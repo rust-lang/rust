@@ -476,14 +476,15 @@ pub trait Visitor<'v>: Sized {
 /// Walks the contents of a crate. See also `Crate::visit_all_items`.
 pub fn walk_crate<'v, V: Visitor<'v>>(visitor: &mut V, krate: &'v Crate<'v>) {
     visitor.visit_mod(&krate.item.module, krate.item.span, CRATE_HIR_ID);
-    walk_list!(visitor, visit_attribute, krate.item.attrs);
     walk_list!(visitor, visit_macro_def, krate.exported_macros);
+    for attr in krate.attrs.iter().flat_map(|l| *l) {
+        visitor.visit_attribute(attr)
+    }
 }
 
 pub fn walk_macro_def<'v, V: Visitor<'v>>(visitor: &mut V, macro_def: &'v MacroDef<'v>) {
     visitor.visit_id(macro_def.hir_id());
     visitor.visit_ident(macro_def.ident);
-    walk_list!(visitor, visit_attribute, macro_def.attrs);
 }
 
 pub fn walk_mod<'v, V: Visitor<'v>>(visitor: &mut V, module: &'v Mod<'v>, mod_hir_id: HirId) {
@@ -502,7 +503,6 @@ pub fn walk_local<'v, V: Visitor<'v>>(visitor: &mut V, local: &'v Local<'v>) {
     // Intentionally visiting the expr first - the initialization expr
     // dominates the local's definition.
     walk_list!(visitor, visit_expr, &local.init);
-    walk_list!(visitor, visit_attribute, local.attrs.iter());
     visitor.visit_id(local.hir_id);
     visitor.visit_pat(&local.pat);
     walk_list!(visitor, visit_ty, &local.ty);
@@ -549,7 +549,6 @@ pub fn walk_trait_ref<'v, V: Visitor<'v>>(visitor: &mut V, trait_ref: &'v TraitR
 pub fn walk_param<'v, V: Visitor<'v>>(visitor: &mut V, param: &'v Param<'v>) {
     visitor.visit_id(param.hir_id);
     visitor.visit_pat(&param.pat);
-    walk_list!(visitor, visit_attribute, param.attrs);
 }
 
 pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) {
@@ -644,7 +643,6 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) {
             walk_list!(visitor, visit_param_bound, bounds);
         }
     }
-    walk_list!(visitor, visit_attribute, item.attrs);
 }
 
 pub fn walk_use<'v, V: Visitor<'v>>(visitor: &mut V, path: &'v Path<'v>, hir_id: HirId) {
@@ -678,7 +676,6 @@ pub fn walk_variant<'v, V: Visitor<'v>>(
         variant.span,
     );
     walk_list!(visitor, visit_anon_const, &variant.disr_expr);
-    walk_list!(visitor, visit_attribute, variant.attrs);
 }
 
 pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty<'v>) {
@@ -843,8 +840,6 @@ pub fn walk_foreign_item<'v, V: Visitor<'v>>(visitor: &mut V, foreign_item: &'v 
         ForeignItemKind::Static(ref typ, _) => visitor.visit_ty(typ),
         ForeignItemKind::Type => (),
     }
-
-    walk_list!(visitor, visit_attribute, foreign_item.attrs);
 }
 
 pub fn walk_param_bound<'v, V: Visitor<'v>>(visitor: &mut V, bound: &'v GenericBound<'v>) {
@@ -862,7 +857,6 @@ pub fn walk_param_bound<'v, V: Visitor<'v>>(visitor: &mut V, bound: &'v GenericB
 
 pub fn walk_generic_param<'v, V: Visitor<'v>>(visitor: &mut V, param: &'v GenericParam<'v>) {
     visitor.visit_id(param.hir_id);
-    walk_list!(visitor, visit_attribute, param.attrs);
     match param.name {
         ParamName::Plain(ident) => visitor.visit_ident(ident),
         ParamName::Error | ParamName::Fresh(_) => {}
@@ -952,7 +946,6 @@ pub fn walk_fn<'v, V: Visitor<'v>>(
 
 pub fn walk_trait_item<'v, V: Visitor<'v>>(visitor: &mut V, trait_item: &'v TraitItem<'v>) {
     visitor.visit_ident(trait_item.ident);
-    walk_list!(visitor, visit_attribute, trait_item.attrs);
     visitor.visit_generics(&trait_item.generics);
     match trait_item.kind {
         TraitItemKind::Const(ref ty, default) => {
@@ -1000,7 +993,7 @@ pub fn walk_impl_item<'v, V: Visitor<'v>>(visitor: &mut V, impl_item: &'v ImplIt
         ident,
         ref vis,
         ref defaultness,
-        attrs,
+        attrs: _,
         ref generics,
         ref kind,
         span: _,
@@ -1009,7 +1002,6 @@ pub fn walk_impl_item<'v, V: Visitor<'v>>(visitor: &mut V, impl_item: &'v ImplIt
     visitor.visit_ident(ident);
     visitor.visit_vis(vis);
     visitor.visit_defaultness(defaultness);
-    walk_list!(visitor, visit_attribute, attrs);
     visitor.visit_generics(generics);
     match *kind {
         ImplItemKind::Const(ref ty, body) => {
@@ -1067,7 +1059,6 @@ pub fn walk_struct_field<'v, V: Visitor<'v>>(visitor: &mut V, struct_field: &'v 
     visitor.visit_vis(&struct_field.vis);
     visitor.visit_ident(struct_field.ident);
     visitor.visit_ty(&struct_field.ty);
-    walk_list!(visitor, visit_attribute, struct_field.attrs);
 }
 
 pub fn walk_block<'v, V: Visitor<'v>>(visitor: &mut V, block: &'v Block<'v>) {
@@ -1094,7 +1085,6 @@ pub fn walk_anon_const<'v, V: Visitor<'v>>(visitor: &mut V, constant: &'v AnonCo
 
 pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr<'v>) {
     visitor.visit_id(expression.hir_id);
-    walk_list!(visitor, visit_attribute, expression.attrs.iter());
     match expression.kind {
         ExprKind::Box(ref subexpression) => visitor.visit_expr(subexpression),
         ExprKind::Array(subexpressions) => {
@@ -1238,7 +1228,6 @@ pub fn walk_arm<'v, V: Visitor<'v>>(visitor: &mut V, arm: &'v Arm<'v>) {
         }
     }
     visitor.visit_expr(&arm.body);
-    walk_list!(visitor, visit_attribute, arm.attrs);
 }
 
 pub fn walk_vis<'v, V: Visitor<'v>>(visitor: &mut V, vis: &'v Visibility<'v>) {
