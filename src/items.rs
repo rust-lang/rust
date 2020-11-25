@@ -2418,7 +2418,8 @@ fn rewrite_fn_base(
     result.push_str(&where_clause_str);
 
     force_new_line_for_brace |= last_line_contains_single_line_comment(&result);
-    force_new_line_for_brace |= is_params_multi_lined && context.config.where_single_line();
+    force_new_line_for_brace |=
+        is_params_multi_lined && context.config.where_single_line() && !where_clause_str.is_empty();
     Some((result, force_new_line_for_brace))
 }
 
