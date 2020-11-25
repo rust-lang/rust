@@ -121,9 +121,9 @@ pub struct Ipv6Addr {
 /// # Stability guarantees
 ///
 /// This enum [may by subject to changes][changes] in the
-/// future, as new RFCs are published.
+/// future, as new IETF RFCs are published.
 ///
-/// [changes]: ../net/index.html#stability-guarantees-for-ietf-defined-behavior
+/// [changes]: super#stability-guarantees-for-ietf-defined-behavior
 /// [section 2 of IETF RFC 7346]: https://tools.ietf.org/html/rfc7346#section-2
 #[derive(Copy, PartialEq, Eq, Clone, Hash, Debug)]
 #[stable(feature = "ip", since = "1.48.0")]
@@ -208,7 +208,14 @@ impl IpAddr {
     /// assert_eq!(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)).is_unspecified(), true);
     /// assert_eq!(IpAddr::V6(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0)).is_unspecified(), true);
     /// ```
-    #[rustc_const_stable(feature = "const_ip", since = "1.50.0")]
+    ///
+    /// # Stability guarantees
+    ///
+    /// This method's behavior [may by subject to changes][changes] in the
+    /// future, as new IETF RFCs are published.
+    ///
+    /// [changes]: super#stability-guarantees-for-ietf-defined-behavior
+    #[rustc_const_unstable(feature = "const_ip", issue = "76205")]
     #[stable(feature = "ip_shared", since = "1.12.0")]
     #[inline]
     pub const fn is_unspecified(&self) -> bool {
@@ -231,7 +238,14 @@ impl IpAddr {
     /// assert_eq!(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)).is_loopback(), true);
     /// assert_eq!(IpAddr::V6(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0x1)).is_loopback(), true);
     /// ```
-    #[rustc_const_stable(feature = "const_ip", since = "1.50.0")]
+    ///
+    /// # Stability guarantees
+    ///
+    /// This method's behavior [may by subject to changes][changes] in the
+    /// future, as new IETF RFCs are published.
+    ///
+    /// [changes]: super#stability-guarantees-for-ietf-defined-behavior
+    #[rustc_const_unstable(feature = "const_ip", issue = "76205")]
     #[stable(feature = "ip_shared", since = "1.12.0")]
     #[inline]
     pub const fn is_loopback(&self) -> bool {
@@ -258,9 +272,9 @@ impl IpAddr {
     /// # Stability guarantees
     ///
     /// This method's behavior [may by subject to changes][changes] in the
-    /// future, as new RFCs are published.
+    /// future, as new IETF RFCs are published.
     ///
-    /// [changes]: ../net/index.html#stability-guarantees-for-ietf-defined-behavior
+    /// [changes]: super#stability-guarantees-for-ietf-defined-behavior
     #[stable(feature = "ip", since = "1.48.0")]
     #[rustc_const_unstable(feature = "const_ip", issue = "76205")]
     pub const fn is_global(&self) -> bool {
@@ -283,7 +297,14 @@ impl IpAddr {
     /// assert_eq!(IpAddr::V4(Ipv4Addr::new(224, 254, 0, 0)).is_multicast(), true);
     /// assert_eq!(IpAddr::V6(Ipv6Addr::new(0xff00, 0, 0, 0, 0, 0, 0, 0)).is_multicast(), true);
     /// ```
-    #[rustc_const_stable(feature = "const_ip", since = "1.50.0")]
+    ///
+    /// # Stability guarantees
+    ///
+    /// This method's behavior [may by subject to changes][changes] in the
+    /// future, as new IETF RFCs are published.
+    ///
+    /// [changes]: super#stability-guarantees-for-ietf-defined-behavior
+    #[rustc_const_unstable(feature = "const_ip", issue = "76205")]
     #[stable(feature = "ip_shared", since = "1.12.0")]
     #[inline]
     pub const fn is_multicast(&self) -> bool {
@@ -313,9 +334,9 @@ impl IpAddr {
     /// # Stability guarantees
     ///
     /// This method's behavior [may by subject to changes][changes] in the
-    /// future, as new RFCs are published.
+    /// future, as new IETF RFCs are published.
     ///
-    /// [changes]: ../net/index.html#stability-guarantees-for-ietf-defined-behavior
+    /// [changes]: super#stability-guarantees-for-ietf-defined-behavior
     #[stable(feature = "ip", since = "1.48.0")]
     #[rustc_const_unstable(feature = "const_ip", issue = "76205")]
     pub const fn is_documentation(&self) -> bool {
@@ -338,6 +359,13 @@ impl IpAddr {
     /// assert_eq!(IpAddr::V4(Ipv4Addr::new(203, 0, 113, 6)).is_ipv4(), true);
     /// assert_eq!(IpAddr::V6(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 0)).is_ipv4(), false);
     /// ```
+    ///
+    /// # Stability guarantees
+    ///
+    /// This method's behavior [may by subject to changes][changes] in the
+    /// future, as new IETF RFCs are published.
+    ///
+    /// [changes]: super#stability-guarantees-for-ietf-defined-behavior
     #[rustc_const_stable(feature = "const_ip", since = "1.50.0")]
     #[stable(feature = "ipaddr_checker", since = "1.16.0")]
     #[inline]
@@ -358,6 +386,13 @@ impl IpAddr {
     /// assert_eq!(IpAddr::V4(Ipv4Addr::new(203, 0, 113, 6)).is_ipv6(), false);
     /// assert_eq!(IpAddr::V6(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 0)).is_ipv6(), true);
     /// ```
+    ///
+    /// # Stability guarantees
+    ///
+    /// This method's behavior [may by subject to changes][changes] in the
+    /// future, as new IETF RFCs are published.
+    ///
+    /// [changes]: super#stability-guarantees-for-ietf-defined-behavior
     #[rustc_const_stable(feature = "const_ip", since = "1.50.0")]
     #[stable(feature = "ipaddr_checker", since = "1.16.0")]
     #[inline]
@@ -439,7 +474,14 @@ impl Ipv4Addr {
     /// let addr = Ipv4Addr::new(127, 0, 0, 1);
     /// assert_eq!(addr.octets(), [127, 0, 0, 1]);
     /// ```
-    #[rustc_const_stable(feature = "const_ipv4", since = "1.50.0")]
+    ///
+    /// # Stability guarantees
+    ///
+    /// This method's behavior [may by subject to changes][changes] in the
+    /// future, as new IETF RFCs are published.
+    ///
+    /// [changes]: super#stability-guarantees-for-ietf-defined-behavior
+    #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub const fn octets(&self) -> [u8; 4] {
@@ -483,7 +525,14 @@ impl Ipv4Addr {
     /// assert_eq!(Ipv4Addr::new(127, 0, 0, 1).is_loopback(), true);
     /// assert_eq!(Ipv4Addr::new(45, 22, 13, 197).is_loopback(), false);
     /// ```
-    #[rustc_const_stable(feature = "const_ipv4", since = "1.50.0")]
+    ///
+    /// # Stability guarantees
+    ///
+    /// This method's behavior [may by subject to changes][changes] in the
+    /// future, as new IETF RFCs are published.
+    ///
+    /// [changes]: super#stability-guarantees-for-ietf-defined-behavior
+    #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
     #[stable(since = "1.7.0", feature = "ip_17")]
     #[inline]
     pub const fn is_loopback(&self) -> bool {
@@ -513,7 +562,14 @@ impl Ipv4Addr {
     /// assert_eq!(Ipv4Addr::new(192, 168, 0, 2).is_private(), true);
     /// assert_eq!(Ipv4Addr::new(192, 169, 0, 2).is_private(), false);
     /// ```
-    #[rustc_const_stable(feature = "const_ipv4", since = "1.50.0")]
+    ///
+    /// # Stability guarantees
+    ///
+    /// This method's behavior [may by subject to changes][changes] in the
+    /// future, as new IETF RFCs are published.
+    ///
+    /// [changes]: super#stability-guarantees-for-ietf-defined-behavior
+    #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
     #[stable(since = "1.7.0", feature = "ip_17")]
     #[inline]
     pub const fn is_private(&self) -> bool {
@@ -540,7 +596,14 @@ impl Ipv4Addr {
     /// assert_eq!(Ipv4Addr::new(169, 254, 10, 65).is_link_local(), true);
     /// assert_eq!(Ipv4Addr::new(16, 89, 10, 65).is_link_local(), false);
     /// ```
-    #[rustc_const_stable(feature = "const_ipv4", since = "1.50.0")]
+    ///
+    /// # Stability guarantees
+    ///
+    /// This method's behavior [may by subject to changes][changes] in the
+    /// future, as new IETF RFCs are published.
+    ///
+    /// [changes]: super#stability-guarantees-for-ietf-defined-behavior
+    #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
     #[stable(since = "1.7.0", feature = "ip_17")]
     #[inline]
     pub const fn is_link_local(&self) -> bool {
@@ -618,9 +681,9 @@ impl Ipv4Addr {
     /// # Stability guarantees
     ///
     /// This method's behavior [may by subject to changes][changes] in the
-    /// future, as new RFCs are published.
+    /// future, as new IETF RFCs are published.
     ///
-    /// [changes]: ../net/index.html#stability-guarantees-for-ietf-defined-behavior
+    /// [changes]: super#stability-guarantees-for-ietf-defined-behavior
     #[stable(feature = "ip", since = "1.48.0")]
     #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
     pub const fn is_global(&self) -> bool {
@@ -662,9 +725,9 @@ impl Ipv4Addr {
     /// # Stability guarantees
     ///
     /// This method's behavior [may by subject to changes][changes] in the
-    /// future, as new RFCs are published.
+    /// future, as new IETF RFCs are published.
     ///
-    /// [changes]: ../net/index.html#stability-guarantees-for-ietf-defined-behavior
+    /// [changes]: super#stability-guarantees-for-ietf-defined-behavior
     #[stable(feature = "ip", since = "1.48.0")]
     #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
     pub const fn is_shared(&self) -> bool {
@@ -701,9 +764,9 @@ impl Ipv4Addr {
     /// # Stability guarantees
     ///
     /// This method's behavior [may by subject to changes][changes] in the
-    /// future, as new RFCs are published.
+    /// future, as new IETF RFCs are published.
     ///
-    /// [changes]: ../net/index.html#stability-guarantees-for-ietf-defined-behavior
+    /// [changes]: super#stability-guarantees-for-ietf-defined-behavior
     #[stable(feature = "ip", since = "1.48.0")]
     #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
     pub const fn is_ietf_protocol_assignment(&self) -> bool {
@@ -731,9 +794,9 @@ impl Ipv4Addr {
     /// # Stability guarantees
     ///
     /// This method's behavior [may by subject to changes][changes] in the
-    /// future, as new RFCs are published.
+    /// future, as new IETF RFCs are published.
     ///
-    /// [changes]: ../net/index.html#stability-guarantees-for-ietf-defined-behavior
+    /// [changes]: super#stability-guarantees-for-ietf-defined-behavior
     #[stable(feature = "ip", since = "1.48.0")]
     #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
     pub const fn is_benchmarking(&self) -> bool {
@@ -770,9 +833,9 @@ impl Ipv4Addr {
     /// # Stability guarantees
     ///
     /// This method's behavior [may by subject to changes][changes] in the
-    /// future, as new RFCs are published.
+    /// future, as new IETF RFCs are published.
     ///
-    /// [changes]: ../net/index.html#stability-guarantees-for-ietf-defined-behavior
+    /// [changes]: super#stability-guarantees-for-ietf-defined-behavior
     #[stable(feature = "ip", since = "1.48.0")]
     #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
     pub const fn is_reserved(&self) -> bool {
@@ -795,7 +858,14 @@ impl Ipv4Addr {
     /// assert_eq!(Ipv4Addr::new(236, 168, 10, 65).is_multicast(), true);
     /// assert_eq!(Ipv4Addr::new(172, 16, 10, 65).is_multicast(), false);
     /// ```
-    #[rustc_const_stable(feature = "const_ipv4", since = "1.50.0")]
+    ///
+    /// # Stability guarantees
+    ///
+    /// This method's behavior [may by subject to changes][changes] in the
+    /// future, as new IETF RFCs are published.
+    ///
+    /// [changes]: super#stability-guarantees-for-ietf-defined-behavior
+    #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
     #[stable(since = "1.7.0", feature = "ip_17")]
     #[inline]
     pub const fn is_multicast(&self) -> bool {
@@ -816,7 +886,14 @@ impl Ipv4Addr {
     /// assert_eq!(Ipv4Addr::new(255, 255, 255, 255).is_broadcast(), true);
     /// assert_eq!(Ipv4Addr::new(236, 168, 10, 65).is_broadcast(), false);
     /// ```
-    #[rustc_const_stable(feature = "const_ipv4", since = "1.50.0")]
+    ///
+    /// # Stability guarantees
+    ///
+    /// This method's behavior [may by subject to changes][changes] in the
+    /// future, as new IETF RFCs are published.
+    ///
+    /// [changes]: super#stability-guarantees-for-ietf-defined-behavior
+    #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
     #[stable(since = "1.7.0", feature = "ip_17")]
     #[inline]
     pub const fn is_broadcast(&self) -> bool {
@@ -843,7 +920,14 @@ impl Ipv4Addr {
     /// assert_eq!(Ipv4Addr::new(203, 0, 113, 6).is_documentation(), true);
     /// assert_eq!(Ipv4Addr::new(193, 34, 17, 19).is_documentation(), false);
     /// ```
-    #[rustc_const_stable(feature = "const_ipv4", since = "1.50.0")]
+    ///
+    /// # Stability guarantees
+    ///
+    /// This method's behavior [may by subject to changes][changes] in the
+    /// future, as new IETF RFCs are published.
+    ///
+    /// [changes]: super#stability-guarantees-for-ietf-defined-behavior
+    #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
     #[stable(since = "1.7.0", feature = "ip_17")]
     #[inline]
     pub const fn is_documentation(&self) -> bool {
@@ -874,7 +958,14 @@ impl Ipv4Addr {
     ///     Ipv6Addr::new(0, 0, 0, 0, 0, 0, 49152, 767)
     /// );
     /// ```
-    #[rustc_const_stable(feature = "const_ipv4", since = "1.50.0")]
+    ///
+    /// # Stability guarantees
+    ///
+    /// This method's behavior [may by subject to changes][changes] in the
+    /// future, as new IETF RFCs are published.
+    ///
+    /// [changes]: super#stability-guarantees-for-ietf-defined-behavior
+    #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub const fn to_ipv6_compatible(&self) -> Ipv6Addr {
@@ -898,7 +989,14 @@ impl Ipv4Addr {
     /// assert_eq!(Ipv4Addr::new(192, 0, 2, 255).to_ipv6_mapped(),
     ///            Ipv6Addr::new(0, 0, 0, 0, 0, 65535, 49152, 767));
     /// ```
-    #[rustc_const_stable(feature = "const_ipv4", since = "1.50.0")]
+    ///
+    /// # Stability guarantees
+    ///
+    /// This method's behavior [may by subject to changes][changes] in the
+    /// future, as new IETF RFCs are published.
+    ///
+    /// [changes]: super#stability-guarantees-for-ietf-defined-behavior
+    #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub const fn to_ipv6_mapped(&self) -> Ipv6Addr {
@@ -1246,8 +1344,14 @@ impl Ipv6Addr {
     /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).segments(),
     ///            [0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff]);
     /// ```
-    #[rustc_allow_const_fn_unstable(const_fn_transmute)]
-    #[rustc_const_stable(feature = "const_ipv6", since = "1.50.0")]
+    ///
+    /// # Stability guarantees
+    ///
+    /// This method's behavior [may by subject to changes][changes] in the
+    /// future, as new IETF RFCs are published.
+    ///
+    /// [changes]: super#stability-guarantees-for-ietf-defined-behavior
+    #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub const fn segments(&self) -> [u16; 8] {
@@ -1283,7 +1387,14 @@ impl Ipv6Addr {
     /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).is_unspecified(), false);
     /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0).is_unspecified(), true);
     /// ```
-    #[rustc_const_stable(feature = "const_ipv6", since = "1.50.0")]
+    ///
+    /// # Stability guarantees
+    ///
+    /// This method's behavior [may by subject to changes][changes] in the
+    /// future, as new IETF RFCs are published.
+    ///
+    /// [changes]: super#stability-guarantees-for-ietf-defined-behavior
+    #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
     #[stable(since = "1.7.0", feature = "ip_17")]
     #[inline]
     pub const fn is_unspecified(&self) -> bool {
@@ -1305,7 +1416,14 @@ impl Ipv6Addr {
     /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).is_loopback(), false);
     /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0x1).is_loopback(), true);
     /// ```
-    #[rustc_const_stable(feature = "const_ipv6", since = "1.50.0")]
+    ///
+    /// # Stability guarantees
+    ///
+    /// This method's behavior [may by subject to changes][changes] in the
+    /// future, as new IETF RFCs are published.
+    ///
+    /// [changes]: super#stability-guarantees-for-ietf-defined-behavior
+    #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
     #[stable(since = "1.7.0", feature = "ip_17")]
     #[inline]
     pub const fn is_loopback(&self) -> bool {
@@ -1334,9 +1452,9 @@ impl Ipv6Addr {
     /// # Stability guarantees
     ///
     /// This method's behavior [may by subject to changes][changes] in the
-    /// future, as new RFCs are published.
+    /// future, as new IETF RFCs are published.
     ///
-    /// [changes]: ../net/index.html#stability-guarantees-for-ietf-defined-behavior
+    /// [changes]: super#stability-guarantees-for-ietf-defined-behavior
     #[stable(feature = "ip", since = "1.48.0")]
     #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
     pub const fn is_global(&self) -> bool {
@@ -1365,9 +1483,9 @@ impl Ipv6Addr {
     /// # Stability guarantees
     ///
     /// This method's behavior [may by subject to changes][changes] in the
-    /// future, as new RFCs are published.
+    /// future, as new IETF RFCs are published.
     ///
-    /// [changes]: ../net/index.html#stability-guarantees-for-ietf-defined-behavior
+    /// [changes]: super#stability-guarantees-for-ietf-defined-behavior
     #[stable(feature = "ip", since = "1.48.0")]
     #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
     pub const fn is_unique_local(&self) -> bool {
@@ -1420,9 +1538,9 @@ impl Ipv6Addr {
     /// # Stability guarantees
     ///
     /// This method's behavior [may by subject to changes][changes] in the
-    /// future, as new RFCs are published.
+    /// future, as new IETF RFCs are published.
     ///
-    /// [changes]: ../net/index.html#stability-guarantees-for-ietf-defined-behavior
+    /// [changes]: super#stability-guarantees-for-ietf-defined-behavior
     #[stable(feature = "ip", since = "1.48.0")]
     #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
     pub const fn is_unicast_link_local(&self) -> bool {
@@ -1466,9 +1584,9 @@ impl Ipv6Addr {
     /// # Stability guarantees
     ///
     /// This method's behavior [may by subject to changes][changes] in the
-    /// future, as new RFCs are published.
+    /// future, as new IETF RFCs are published.
     ///
-    /// [changes]: ../net/index.html#stability-guarantees-for-ietf-defined-behavior
+    /// [changes]: super#stability-guarantees-for-ietf-defined-behavior
     #[stable(feature = "ip", since = "1.48.0")]
     #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
     pub const fn is_unicast_site_local(&self) -> bool {
@@ -1494,9 +1612,9 @@ impl Ipv6Addr {
     /// # Stability guarantees
     ///
     /// This method's behavior [may by subject to changes][changes] in the
-    /// future, as new RFCs are published.
+    /// future, as new IETF RFCs are published.
     ///
-    /// [changes]: ../net/index.html#stability-guarantees-for-ietf-defined-behavior
+    /// [changes]: super#stability-guarantees-for-ietf-defined-behavior
     #[stable(feature = "ip", since = "1.48.0")]
     #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
     pub const fn is_documentation(&self) -> bool {
@@ -1536,9 +1654,9 @@ impl Ipv6Addr {
     /// # Stability guarantees
     ///
     /// This method's behavior [may by subject to changes][changes] in the
-    /// future, as new RFCs are published.
+    /// future, as new IETF RFCs are published.
     ///
-    /// [changes]: ../net/index.html#stability-guarantees-for-ietf-defined-behavior
+    /// [changes]: super#stability-guarantees-for-ietf-defined-behavior
     #[stable(feature = "ip", since = "1.48.0")]
     #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
     pub const fn is_unicast_global(&self) -> bool {
@@ -1567,9 +1685,9 @@ impl Ipv6Addr {
     /// # Stability guarantees
     ///
     /// This method's behavior [may by subject to changes][changes] in the
-    /// future, as new RFCs are published.
+    /// future, as new IETF RFCs are published.
     ///
-    /// [changes]: ../net/index.html#stability-guarantees-for-ietf-defined-behavior
+    /// [changes]: super#stability-guarantees-for-ietf-defined-behavior
     #[stable(feature = "ip", since = "1.48.0")]
     #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
     pub const fn multicast_scope(&self) -> Option<Ipv6MulticastScope> {
@@ -1607,7 +1725,14 @@ impl Ipv6Addr {
     /// assert_eq!(Ipv6Addr::new(0xff00, 0, 0, 0, 0, 0, 0, 0).is_multicast(), true);
     /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).is_multicast(), false);
     /// ```
-    #[rustc_const_stable(feature = "const_ipv6", since = "1.50.0")]
+    ///
+    /// # Stability guarantees
+    ///
+    /// This method's behavior [may by subject to changes][changes] in the
+    /// future, as new IETF RFCs are published.
+    ///
+    /// [changes]: super#stability-guarantees-for-ietf-defined-behavior
+    #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
     #[stable(since = "1.7.0", feature = "ip_17")]
     #[inline]
     pub const fn is_multicast(&self) -> bool {
