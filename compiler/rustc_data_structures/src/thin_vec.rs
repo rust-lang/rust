@@ -46,6 +46,17 @@ impl<T> ::std::ops::DerefMut for ThinVec<T> {
     }
 }
 
+impl<T> IntoIterator for ThinVec<T> {
+    type Item = T;
+    type IntoIter = <Vec<T> as IntoIterator>::IntoIter;
+    fn into_iter(self) -> Self::IntoIter {
+        match self.0 {
+            Some(b) => b.into_iter(),
+            None => Vec::new().into_iter(),
+        }
+    }
+}
+
 impl<T> Extend<T> for ThinVec<T> {
     fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
         match *self {

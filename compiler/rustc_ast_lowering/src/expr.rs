@@ -26,9 +26,22 @@ impl<'hir> LoweringContext<'_, 'hir> {
         self.arena.alloc(self.lower_expr_mut(e))
     }
 
-    pub(super) fn lower_expr_mut(&mut self, e: &Expr) -> hir::Expr<'hir> {
-        ensure_sufficient_stack(|| {
+    pub(super) fn lower_expr_mut(&mut self, mut e: &Expr) -> hir::Expr<'hir> {
+        // Span with all the parenthesis included
+        let mut outer_span = e.span;
+        let mut attrs = AttrVec::new();
+        while let ExprKind::Paren(ref ex) = e.kind {
+            attrs.extend(e.attrs.iter().map(|a| self.lower_attr(a)));
+            // If it is not a super-span, keep only the new version
+            if !outer_span.contains(ex.span) {
+                outer_span = ex.span
+            }
+            e = ex;
+        }
+
+        let mut ex = ensure_sufficient_stack(|| {
             let kind = match e.kind {
+                ExprKind::Paren(_) => unreachable!(),
                 ExprKind::Box(ref inner) => hir::ExprKind::Box(self.lower_expr(inner)),
                 ExprKind::Array(ref exprs) => hir::ExprKind::Array(self.lower_exprs(exprs)),
                 ExprKind::ConstBlock(ref anon_const) => {
@@ -224,18 +237,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ExprKind::Yield(ref opt_expr) => self.lower_expr_yield(e.span, opt_expr.as_deref()),
                 ExprKind::Err => hir::ExprKind::Err,
                 ExprKind::Try(ref sub_expr) => self.lower_expr_try(e.span, sub_expr),
-                ExprKind::Paren(ref ex) => {
-                    let mut ex = self.lower_expr_mut(ex);
-                    // Include parens in span, but only if it is a super-span.
-                    if e.span.contains(ex.span) {
-                        ex.span = e.span;
-                    }
-                    // Merge attributes into the inner expression.
-                    let mut attrs: Vec<_> = e.attrs.iter().map(|a| self.lower_attr(a)).collect();
-                    attrs.extend::<Vec<_>>(ex.attrs.into());
-                    ex.attrs = attrs.into();
-                    return ex;
-                }
 
                 // Desugar `ExprForLoop`
                 // from: `[opt_ident]: for <pat> in <head> <body>`
@@ -251,7 +252,20 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 span: e.span,
                 attrs: e.attrs.iter().map(|a| self.lower_attr(a)).collect::<Vec<_>>().into(),
             }
-        })
+        });
+
+        // Include parens in span, but only if it is a super-span.
+        if outer_span.contains(ex.span) {
+            ex.span = outer_span;
+        }
+
+        // Prepend attributes applied on parentheses.
+        if !attrs.is_empty() {
+            attrs.extend(ex.attrs.into_iter());
+            ex.attrs = attrs;
+        }
+
+        ex
     }
 
     fn lower_unop(&mut self, u: UnOp) -> hir::UnOp {
