@@ -12,7 +12,6 @@ use crate::convert::{Infallible, TryFrom};
 use crate::fmt;
 use crate::hash::{self, Hash};
 use crate::marker::Unsize;
-use crate::ops::{Index, IndexMut};
 use crate::slice::{Iter, IterMut};
 
 mod iter;
@@ -206,30 +205,6 @@ impl<'a, T, const N: usize> IntoIterator for &'a mut [T; N] {
 
     fn into_iter(self) -> IterMut<'a, T> {
         self.iter_mut()
-    }
-}
-
-#[stable(feature = "index_trait_on_arrays", since = "1.50.0")]
-impl<T, I, const N: usize> Index<I> for [T; N]
-where
-    [T]: Index<I>,
-{
-    type Output = <[T] as Index<I>>::Output;
-
-    #[inline]
-    fn index(&self, index: I) -> &Self::Output {
-        Index::index(self as &[T], index)
-    }
-}
-
-#[stable(feature = "index_trait_on_arrays", since = "1.50.0")]
-impl<T, I, const N: usize> IndexMut<I> for [T; N]
-where
-    [T]: IndexMut<I>,
-{
-    #[inline]
-    fn index_mut(&mut self, index: I) -> &mut Self::Output {
-        IndexMut::index_mut(self as &mut [T], index)
     }
 }
 
