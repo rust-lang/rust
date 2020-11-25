@@ -51,6 +51,7 @@ pub(crate) struct CompletionContext<'a> {
     /// If a name-binding or reference to a const in a pattern.
     /// Irrefutable patterns (like let) are excluded.
     pub(super) is_pat_binding_or_const: bool,
+    pub(super) is_irrefutable_let_pat_binding: bool,
     /// A single-indent path, like `foo`. `::foo` should not be considered a trivial path.
     pub(super) is_trivial_path: bool,
     /// If not a trivial path, the prefix (qualifier).
@@ -146,6 +147,7 @@ impl<'a> CompletionContext<'a> {
             active_parameter: ActiveParameter::at(db, position),
             is_param: false,
             is_pat_binding_or_const: false,
+            is_irrefutable_let_pat_binding: false,
             is_trivial_path: false,
             path_qual: None,
             after_if: false,
@@ -330,6 +332,7 @@ impl<'a> CompletionContext<'a> {
                         if pat.syntax().text_range().contains_range(bind_pat.syntax().text_range())
                         {
                             self.is_pat_binding_or_const = false;
+                            self.is_irrefutable_let_pat_binding = true;
                         }
                     }
                 }
