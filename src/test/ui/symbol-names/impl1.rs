@@ -6,7 +6,7 @@
 //[legacy]normalize-stderr-32bit: "hee444285569b39c2" -> "SYMBOL_HASH"
 //[legacy]normalize-stderr-64bit: "h310ea0259fc3d32d" -> "SYMBOL_HASH"
 
-#![feature(optin_builtin_traits, rustc_attrs)]
+#![feature(auto_traits, rustc_attrs)]
 #![allow(dead_code)]
 
 mod foo {

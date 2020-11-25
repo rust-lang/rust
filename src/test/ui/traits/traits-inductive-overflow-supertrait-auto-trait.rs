@@ -1,8 +1,8 @@
-// OIBIT-based version of #29859, supertrait version. Test that using
-// a simple OIBIT `..` impl alone still doesn't allow arbitrary bounds
+// Auto-trait-based version of #29859, supertrait version. Test that using
+// a simple auto trait `..` impl alone still doesn't allow arbitrary bounds
 // to be synthesized.
 
-#![feature(optin_builtin_traits)]
+#![feature(auto_traits)]
 #![feature(negative_impls)]
 
 auto trait Magic: Copy {} //~ ERROR E0568

@@ -1,7 +1,7 @@
-// Ensure that OIBIT checks `T` when it encounters a `PhantomData<T>` field, instead of checking
-// the `PhantomData<T>` type itself (which almost always implements an auto trait)
+// Ensure that auto trait checks `T` when it encounters a `PhantomData<T>` field, instead of
+// checking the `PhantomData<T>` type itself (which almost always implements an auto trait).
 
-#![feature(optin_builtin_traits)]
+#![feature(auto_traits)]
 
 use std::marker::{PhantomData};
 

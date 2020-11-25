@@ -71,7 +71,7 @@ pub enum Reveal {
     /// be observable directly by the user, `Reveal::All`
     /// should not be used by checks which may expose
     /// type equality or type contents to the user.
-    /// There are some exceptions, e.g., around OIBITS and
+    /// There are some exceptions, e.g., around auto traits and
     /// transmute-checking, which expose some details, but
     /// not the whole concrete type of the `impl Trait`.
     All,

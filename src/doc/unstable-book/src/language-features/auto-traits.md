@@ -1,4 +1,4 @@
-# `optin_builtin_traits`
+# `auto_traits`
 
 The tracking issue for this feature is [#13231] 
 
@@ -6,7 +6,7 @@ The tracking issue for this feature is [#13231]
 
 ----
 
-The `optin_builtin_traits` feature gate allows you to define auto traits.
+The `auto_traits` feature gate allows you to define auto traits.
 
 Auto traits, like [`Send`] or [`Sync`] in the standard library, are marker traits
 that are automatically implemented for every type, unless the type, or a type it contains, 
@@ -24,7 +24,7 @@ Example:
 
 ```rust
 #![feature(negative_impls)]
-#![feature(optin_builtin_traits)]
+#![feature(auto_traits)]
 
 auto trait Valid {}
 

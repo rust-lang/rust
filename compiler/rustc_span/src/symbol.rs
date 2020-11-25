@@ -285,6 +285,7 @@ symbols! {
         attr_literals,
         attributes,
         augmented_assignments,
+        auto_traits,
         automatically_derived,
         avx512_target_feature,
         await_macro,

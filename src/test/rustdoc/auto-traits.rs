@@ -1,6 +1,6 @@
 // aux-build:auto-traits.rs
 
-#![feature(optin_builtin_traits)]
+#![feature(auto_traits)]
 
 #![crate_name = "foo"]
 

@@ -811,7 +811,7 @@ pub struct LocalDecl<'tcx> {
     /// after typeck.
     ///
     /// This should be sound because the drop flags are fully algebraic, and
-    /// therefore don't affect the OIBIT or outlives properties of the
+    /// therefore don't affect the auto-trait or outlives properties of the
     /// generator.
     pub internal: bool,
 

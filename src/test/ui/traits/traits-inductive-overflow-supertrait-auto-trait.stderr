@@ -1,5 +1,5 @@
 error[E0568]: auto traits cannot have super traits
-  --> $DIR/traits-inductive-overflow-supertrait-oibit.rs:8:19
+  --> $DIR/traits-inductive-overflow-supertrait-auto-trait.rs:8:19
    |
 LL | auto trait Magic: Copy {}
    |            -----  ^^^^ help: remove the super traits
@@ -7,7 +7,7 @@ LL | auto trait Magic: Copy {}
    |            auto trait cannot have super traits
 
 error[E0277]: the trait bound `NoClone: Copy` is not satisfied
-  --> $DIR/traits-inductive-overflow-supertrait-oibit.rs:16:23
+  --> $DIR/traits-inductive-overflow-supertrait-auto-trait.rs:16:23
    |
 LL | fn copy<T: Magic>(x: T) -> (T, T) { (x, x) }
    |            ----- required by this bound in `copy`
