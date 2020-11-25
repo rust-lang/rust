@@ -182,6 +182,7 @@ fn toolchain_path(home: Option<String>, toolchain: Option<String>) -> Option<Pat
     })
 }
 
+#[allow(clippy::too_many_lines)]
 pub fn main() {
     rustc_driver::init_rustc_env_logger();
     SyncLazy::force(&ICE_HOOK);
@@ -294,17 +295,20 @@ pub fn main() {
 
         // this check ensures that dependencies are built but not linted and the final
         // crate is linted but not built
-        let clippy_disabled = env::var("CLIPPY_TESTS").map_or(false, |val| val != "true")
-            || arg_value(&orig_args, "--cap-lints", |val| val == "allow").is_some()
-            || no_deps && env::var("CARGO_PRIMARY_PACKAGE").is_err();
+        let clippy_tests_set = env::var("CLIPPY_TESTS").map_or(false, |val| val == "true");
+        let cap_lints_allow = arg_value(&orig_args, "--cap-lints", |val| val == "allow").is_some();
+        let in_primary_package = env::var("CARGO_PRIMARY_PACKAGE").is_ok();
 
-        if !clippy_disabled {
+        let clippy_enabled = clippy_tests_set || (!cap_lints_allow && (!no_deps || in_primary_package));
+        if clippy_enabled {
             args.extend(clippy_args);
         }
+
         let mut clippy = ClippyCallbacks;
         let mut default = DefaultCallbacks;
         let callbacks: &mut (dyn rustc_driver::Callbacks + Send) =
-            if clippy_disabled { &mut default } else { &mut clippy };
+            if clippy_enabled { &mut clippy } else { &mut default };
+
         rustc_driver::RunCompiler::new(&args, callbacks).run()
     }))
 }
