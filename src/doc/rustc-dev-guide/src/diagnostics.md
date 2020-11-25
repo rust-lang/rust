@@ -70,14 +70,23 @@ example of how to trigger it and advice on how to fix it.
 Please read [RFC 1567] for details on how to format and write long error
 codes.
 
-The descriptions are written in markdown, and all of them are linked in the
+The descriptions are written in Markdown, and all of them are linked in the
 [`rustc_error_codes`] crate.
 
-TODO: When should an error use an error code, and when shouldn't it?
+As a general rule, give an error a code (with an associated explanation) if the
+explanation would give more information than the error itself. A lot of the time
+it's better to put all the information in the emitted error itself. However,
+sometimes that would make the error verbose or there are too many possible
+triggers to include useful information for all cases in the error, in which case
+it's a good idea to add an explanation.[^estebank]
+As always, if you are not sure, just ask your reviewer!
+
+[^estebank]: This rule of thumb was suggested by **@estebank** [here][estebank-comment].
 
 [`rustc_error_codes`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_error_codes/error_codes/index.html
 [error index]: https://doc.rust-lang.org/error-index.html
 [RFC 1567]: https://github.com/rust-lang/rfcs/blob/master/text/1567-long-error-codes-explanation-normalization.md
+[estebank-comment]: https://github.com/rust-lang/rustc-dev-guide/pull/967#issuecomment-733218283
 
 ### Lints versus fixed diagnostics
 
