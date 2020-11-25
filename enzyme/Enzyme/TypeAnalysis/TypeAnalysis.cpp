@@ -1704,6 +1704,7 @@ void TypeAnalyzer::visitIntrinsicInst(llvm::IntrinsicInst &I) {
 #if LLVM_VERSION_MAJOR >= 9
   case Intrinsic::experimental_vector_reduce_v2_fadd:
 #endif
+  case Intrinsic::copysign:
   case Intrinsic::maxnum:
   case Intrinsic::minnum:
   case Intrinsic::pow:

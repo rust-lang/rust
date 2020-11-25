@@ -1352,6 +1352,7 @@ public:
       case Intrinsic::log10:
       case Intrinsic::exp:
       case Intrinsic::exp2:
+      case Intrinsic::copysign:
       case Intrinsic::pow:
       case Intrinsic::powi:
 #if LLVM_VERSION_MAJOR >= 9
@@ -1627,6 +1628,48 @@ public:
           Value *dif0 = Builder2.CreateFMul(
               Builder2.CreateFMul(vdiff, lookup(cal, Builder2)),
               ConstantFP::get(II.getType(), 0.6931471805599453));
+          addToDiffe(orig_ops[0], dif0, Builder2, II.getType());
+        }
+        return;
+      }
+      case Intrinsic::copysign: {
+        if (vdiff && !gutils->isConstantValue(orig_ops[0])) {
+
+          Value *xsign = nullptr;
+          {
+            Type *tys[] = {orig_ops[0]->getType()};
+            SmallVector<Value *, 2> args = {
+                ConstantFP::get(tys[0], 1.0),
+                lookup(gutils->getNewFromOriginal(orig_ops[0]), Builder2)};
+
+            auto cal = cast<CallInst>(Builder2.CreateCall(
+                Intrinsic::getDeclaration(M, Intrinsic::copysign, tys), args));
+            cal->copyIRFlags(&II);
+            cal->setAttributes(II.getAttributes());
+            cal->setCallingConv(II.getCallingConv());
+            cal->setTailCallKind(II.getTailCallKind());
+            cal->setDebugLoc(gutils->getNewFromOriginal(II.getDebugLoc()));
+            xsign = cal;
+          }
+
+          Value *ysign = nullptr;
+          {
+            Type *tys[] = {orig_ops[1]->getType()};
+            SmallVector<Value *, 2> args = {
+                ConstantFP::get(tys[0], 1.0),
+                lookup(gutils->getNewFromOriginal(orig_ops[1]), Builder2)};
+
+            auto cal = cast<CallInst>(Builder2.CreateCall(
+                Intrinsic::getDeclaration(M, Intrinsic::copysign, tys), args));
+            cal->copyIRFlags(&II);
+            cal->setAttributes(II.getAttributes());
+            cal->setCallingConv(II.getCallingConv());
+            cal->setTailCallKind(II.getTailCallKind());
+            cal->setDebugLoc(gutils->getNewFromOriginal(II.getDebugLoc()));
+            ysign = cal;
+          }
+          Value *dif0 =
+              Builder2.CreateFMul(Builder2.CreateFMul(xsign, ysign), vdiff);
           addToDiffe(orig_ops[0], dif0, Builder2, II.getType());
         }
         return;

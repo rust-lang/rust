@@ -168,6 +168,12 @@ bool ActivityAnalyzer::isFunctionArgumentConstant(CallInst *CI, Value *val) {
   if (F->getIntrinsicID() == Intrinsic::trap)
     return true;
 
+  /// Only the first argument (magnitude) of copysign is active
+  if (F->getIntrinsicID() == Intrinsic::copysign &&
+      CI->getArgOperand(0) != val) {
+    return true;
+  }
+
   /// Use of the value as a non-src/dst in memset/memcpy/memmove is an inactive
   /// use
   if (F->getIntrinsicID() == Intrinsic::memset && CI->getArgOperand(0) != val &&
