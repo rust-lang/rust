@@ -186,27 +186,26 @@ fn ipv4_to_ipv6() {
 }
 
 #[test]
-fn ipv6_to_ipv4_mapped() {
-    assert_eq!(
-        Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0x1234, 0x5678).to_ipv4_mapped(),
-        Some(Ipv4Addr::new(0x12, 0x34, 0x56, 0x78))
-    );
-    assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0x1234, 0x5678).to_ipv4_mapped(), None);
-}
-
-#[test]
 fn ipv6_to_ipv4() {
     assert_eq!(
-        Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0x1234, 0x5678).to_ipv4_mapped(),
+        Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0x1234, 0x5678).to_ipv4(),
         Some(Ipv4Addr::new(0x12, 0x34, 0x56, 0x78))
     );
+
+    assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0x1234, 0x5678).to_ipv4(), None);
+
     assert_eq!(
-        Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0x1234, 0x5678).to_ipv4_mapped(),
+        Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0x1234, 0x5678).to_ipv4(),
+        Some(Ipv4Addr::new(0x12, 0x34, 0x56, 0x78))
+    );
+
+    assert_eq!(
+        Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0x1234, 0x5678).to_ipv4(),
         // IPv4-Compatible IPv6 addresses are unrecognized
         // Some(Ipv4Addr::new(0x12, 0x34, 0x56, 0x78))
         None
     );
-    assert_eq!(Ipv6Addr::new(0, 0, 1, 0, 0, 0, 0x1234, 0x5678).to_ipv4_mapped(), None);
+    assert_eq!(Ipv6Addr::new(0, 0, 1, 0, 0, 0, 0x1234, 0x5678).to_ipv4(), None);
 }
 
 #[test]
@@ -969,7 +968,7 @@ fn ipv6_const() {
     const IS_MULTICAST: bool = IP_ADDRESS.is_multicast();
     assert!(!IS_MULTICAST);
 
-    const IP_V4: Option<Ipv4Addr> = IP_ADDRESS.to_ipv4_mapped();
+    const IP_V4: Option<Ipv4Addr> = IP_ADDRESS.to_ipv4();
     assert!(IP_V4.is_none());
 }
 
