@@ -213,7 +213,7 @@ pub(crate) fn make_hasher<K, Q, V, S>(hash_builder: &S) -> impl Fn(&(Q, V)) -> u
 where
     K: Borrow<Q>,
     Q: Hash,
-    S: BuildHasher
+    S: BuildHasher,
 {
     move |val| make_hash::<K, Q, S>(hash_builder, &val.0)
 }
@@ -242,10 +242,10 @@ where
 
 #[cfg_attr(feature = "inline-more", inline)]
 pub(crate) fn make_hash<K, Q, S>(hash_builder: &S, val: &Q) -> u64
-    where
-        K: Borrow<Q>,
-        Q: Hash + ?Sized,
-        S: BuildHasher
+where
+    K: Borrow<Q>,
+    Q: Hash + ?Sized,
+    S: BuildHasher,
 {
     #[cfg(feature = "ahash")]
     {
@@ -265,24 +265,24 @@ pub(crate) fn make_hash<K, Q, S>(hash_builder: &S, val: &Q) -> u64
 
 #[cfg_attr(feature = "inline-more", inline)]
 pub(crate) fn make_insert_hash<K, S>(hash_builder: &S, val: &K) -> u64
-    where
-        K: Hash,
-        S: BuildHasher
+where
+    K: Hash,
+    S: BuildHasher,
 {
     #[cfg(feature = "ahash")]
-        {
-            //This enables specialization to improve performance on primitive types
-            use ahash::CallHasher;
-            let state = hash_builder.build_hasher();
-            K::get_hash(val, state)
-        }
+    {
+        //This enables specialization to improve performance on primitive types
+        use ahash::CallHasher;
+        let state = hash_builder.build_hasher();
+        K::get_hash(val, state)
+    }
     #[cfg(not(feature = "ahash"))]
-        {
-            use core::hash::Hasher;
-            let mut state = hash_builder.build_hasher();
-            val.hash(&mut state);
-            state.finish()
-        }
+    {
+        use core::hash::Hasher;
+        let mut state = hash_builder.build_hasher();
+        val.hash(&mut state);
+        state.finish()
+    }
 }
 
 #[cfg(feature = "ahash")]
@@ -860,7 +860,8 @@ where
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn shrink_to_fit(&mut self) {
-        self.table.shrink_to(0, make_hasher::<K, _, V, S>(&self.hash_builder));
+        self.table
+            .shrink_to(0, make_hasher::<K, _, V, S>(&self.hash_builder));
     }
 
     /// Shrinks the capacity of the map with a lower limit. It will drop
@@ -1269,7 +1270,6 @@ impl<K, V, S, A: AllocRef + Clone> HashMap<K, V, S, A> {
     pub fn raw_entry(&self) -> RawEntryBuilder<'_, K, V, S, A> {
         RawEntryBuilder { map: self }
     }
-
 }
 
 impl<K, V, S, A> PartialEq for HashMap<K, V, S, A>
@@ -2098,9 +2098,11 @@ impl<'a, K, V, S, A: AllocRef + Clone> RawVacantEntryMut<'a, K, V, S, A> {
         K: Hash,
         S: BuildHasher,
     {
-        let &mut (ref mut k, ref mut v) =
-            self.table
-                .insert_entry(hash, (key, value), make_hasher::<K, _, V, S>(self.hash_builder));
+        let &mut (ref mut k, ref mut v) = self.table.insert_entry(
+            hash,
+            (key, value),
+            make_hasher::<K, _, V, S>(self.hash_builder),
+        );
         (k, v)
     }
 
@@ -2129,9 +2131,11 @@ impl<'a, K, V, S, A: AllocRef + Clone> RawVacantEntryMut<'a, K, V, S, A> {
         S: BuildHasher,
     {
         let hash = make_insert_hash::<K, S>(self.hash_builder, &key);
-        let elem = self
-            .table
-            .insert(hash, (key, value), make_hasher::<K, _, V, S>(self.hash_builder));
+        let elem = self.table.insert(
+            hash,
+            (key, value),
+            make_hasher::<K, _, V, S>(self.hash_builder),
+        );
         RawOccupiedEntryMut {
             elem,
             table: self.table,
