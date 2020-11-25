@@ -1171,7 +1171,6 @@ pub struct Local<'hir> {
     pub init: Option<&'hir Expr<'hir>>,
     pub hir_id: HirId,
     pub span: Span,
-    pub attrs: AttrVec,
     /// Can be `ForLoopDesugar` if the `let` statement is part of a `for` loop
     /// desugaring. Otherwise will be `Normal`.
     pub source: LocalSource,

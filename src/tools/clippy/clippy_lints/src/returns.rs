@@ -81,7 +81,7 @@ impl<'tcx> LateLintPass<'tcx> for Return {
             if let Some(stmt) = block.stmts.iter().last();
             if let StmtKind::Local(local) = &stmt.kind;
             if local.ty.is_none();
-            if local.attrs.is_empty();
+            if cx.tcx.hir().attrs(local.hir_id).is_empty();
             if let Some(initexpr) = &local.init;
             if let PatKind::Binding(.., ident, _) = local.pat.kind;
             if let ExprKind::Path(qpath) = &retexpr.kind;
