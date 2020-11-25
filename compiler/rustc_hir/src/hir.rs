@@ -1169,16 +1169,6 @@ pub enum StmtKind<'hir> {
     Semi(&'hir Expr<'hir>),
 }
 
-impl<'hir> StmtKind<'hir> {
-    pub fn attrs(&self, get_item: impl FnOnce(ItemId) -> &'hir Item<'hir>) -> &'hir [Attribute] {
-        match *self {
-            StmtKind::Local(ref l) => &l.attrs,
-            StmtKind::Item(ref item_id) => &get_item(*item_id).attrs,
-            StmtKind::Expr(ref e) | StmtKind::Semi(ref e) => &e.attrs,
-        }
-    }
-}
-
 /// Represents a `let` statement (i.e., `let <pat>:<ty> = <expr>;`).
 #[derive(Debug, HashStable_Generic)]
 pub struct Local<'hir> {
