@@ -143,6 +143,11 @@ const char *KnownInactiveFunctions[] = {"__assert_fail",
 /// This tool can only be used when in DOWN mode
 bool ActivityAnalyzer::isFunctionArgumentConstant(CallInst *CI, Value *val) {
   assert(directions & DOWN);
+
+  if (CI->hasFnAttr("enzyme_inactive")) {
+    return true;
+  }
+
   Function *F = CI->getCalledFunction();
 
   // Indirect function calls may actively use the argument
@@ -1133,11 +1138,15 @@ bool ActivityAnalyzer::isInstructionInactiveFromOrigin(TypeResults &TR,
 
   // Calls to print/assert/cxa guard are definitionally inactive
   if (auto op = dyn_cast<CallInst>(inst)) {
+    if (op->hasFnAttr("enzyme_inactive")) {
+      return true;
+    }
     if (auto called = op->getCalledFunction()) {
       if (called->getName() == "free" || called->getName() == "_ZdlPv" ||
           called->getName() == "_ZdlPvm" || called->getName() == "munmap") {
         return true;
       }
+
       for (auto FuncName : KnownInactiveFunctionsStartingWith) {
         if (called->getName().startswith(FuncName)) {
           return true;
