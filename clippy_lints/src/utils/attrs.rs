@@ -130,7 +130,9 @@ pub fn get_unique_inner_attr(sess: &Session, attrs: &[ast::Attribute], name: &'s
         match attr.style {
             ast::AttrStyle::Inner if unique_attr.is_none() => unique_attr = Some(attr.clone()),
             ast::AttrStyle::Inner => {
-                sess.span_err(attr.span, &format!("`{}` is defined multiple times", name));
+                sess.struct_span_err(attr.span, &format!("`{}` is defined multiple times", name))
+                    .span_note(unique_attr.as_ref().unwrap().span, "first definition found here")
+                    .emit();
             },
             ast::AttrStyle::Outer => {
                 sess.span_err(attr.span, &format!("`{}` cannot be an outer attribute", name));
