@@ -1128,54 +1128,10 @@ fn super_traits_of(tcx: TyCtxt<'_>, trait_def_id: DefId) -> Lrc<FxHashSet<DefId>
             continue;
         }
 
-        if trait_did.is_local() {
-            let trait_hir_id = tcx.hir().local_def_id_to_hir_id(trait_did.expect_local());
-
-            let item = match tcx.hir().get(trait_hir_id) {
-                Node::Item(item) => item,
-                _ => bug!("super_trait_of {} is not an item", trait_hir_id),
-            };
-
-            let (generics, supertraits) = match item.kind {
-                hir::ItemKind::Trait(.., ref generics, ref supertraits, _) => {
-                    (generics, supertraits)
-                }
-                hir::ItemKind::TraitAlias(ref generics, ref supertraits) => (generics, supertraits),
-                _ => span_bug!(item.span, "super_predicates invoked on non-trait"),
-            };
-
-            for supertrait in supertraits.iter() {
-                let trait_ref = supertrait.trait_ref();
-                if let Some(trait_did) = trait_ref.and_then(|trait_ref| trait_ref.trait_def_id()) {
-                    stack.push(trait_did);
-                }
-            }
-
-            let icx = ItemCtxt::new(tcx, trait_did);
-            // Convert any explicit superbounds in the where-clause,
-            // e.g., `trait Foo where Self: Bar`.
-            // In the case of trait aliases, however, we include all bounds in the where-clause,
-            // so e.g., `trait Foo = where u32: PartialEq<Self>` would include `u32: PartialEq<Self>`
-            // as one of its "superpredicates".
-            let is_trait_alias = tcx.is_trait_alias(trait_did);
-            let self_param_ty = tcx.types.self_param;
-            for (predicate, _) in icx.type_parameter_bounds_in_generics(
-                generics,
-                item.hir_id,
-                self_param_ty,
-                OnlySelfBounds(!is_trait_alias),
-                None,
-            ) {
-                if let ty::PredicateAtom::Trait(data, _) = predicate.skip_binders() {
-                    stack.push(data.def_id());
-                }
-            }
-        } else {
-            let generic_predicates = tcx.super_predicates_of(trait_did);
-            for (predicate, _) in generic_predicates.predicates {
-                if let ty::PredicateAtom::Trait(data, _) = predicate.skip_binders() {
-                    stack.push(data.def_id());
-                }
+        let generic_predicates = tcx.super_predicates_of(trait_did);
+        for (predicate, _) in generic_predicates.predicates {
+            if let ty::PredicateAtom::Trait(data, _) = predicate.skip_binders() {
+                stack.push(data.def_id());
             }
         }
     }
