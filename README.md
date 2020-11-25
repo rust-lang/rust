@@ -147,30 +147,6 @@ lints can be configured and the meaning of the variables.
 To deactivate the “for further information visit *lint-link*” message you can
 define the `CLIPPY_DISABLE_DOCS_LINKS` environment variable.
 
-### Specifying the minimum supported Rust version
-
-Projects that intend to support old versions of Rust can disable lints pertaining to newer features by
-specifying the minimum supported Rust version (msrv) in the clippy configuration file.
-
-```toml
-msrv = "1.30.0"
-```
-
-The msrv can also be specified as an inner attribute, like below.
-
-```rust
-#![feature(custom_inner_attributes)]
-#![clippy::msrv = "1.30.0"]
-
-fn main() {
-  ...
-}
-```
-
-Tilde/Caret version requirements(like `^1.0` or `~1.2`) can be specified as well.
-
-Note: `custom_inner_attributes` is an unstable feature so it has to be enabled explicitly.
-
 ### Allowing/denying lints
 
 You can add options to your code to `allow`/`warn`/`deny` Clippy lints:
@@ -217,6 +193,32 @@ the lint(s) you are interested in:
 cargo clippy -- -A clippy::all -W clippy::useless_format -W clippy::...
 ```
 Note that if you've run clippy before, this may only take effect after you've modified a file or ran `cargo clean`.
+
+### Specifying the minimum supported Rust version
+
+Projects that intend to support old versions of Rust can disable lints pertaining to newer features by
+specifying the minimum supported Rust version (MSRV) in the clippy configuration file.
+
+```toml
+msrv = "1.30.0"
+```
+
+The MSRV can also be specified as an inner attribute, like below.
+
+```rust
+#![feature(custom_inner_attributes)]
+#![clippy::msrv = "1.30.0"]
+
+fn main() {
+  ...
+}
+```
+
+Tilde/Caret version requirements(like `^1.0` or `~1.2`) can be specified as well.
+
+Note: `custom_inner_attributes` is an unstable feature so it has to be enabled explicitly.
+
+Lints that recognize this configuration option can be found [here](https://rust-lang.github.io/rust-clippy/master/index.html#msrv)
 
 ## Contributing
 
