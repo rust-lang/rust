@@ -26,7 +26,6 @@ use rustc_ast::{MetaItemKind, NestedMetaItem};
 use rustc_attr::{list_contains_name, InlineAttr, InstructionSetAttr, OptimizeAttr};
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
-use rustc_data_structures::sync::Lrc;
 use rustc_errors::{struct_span_err, Applicability};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
@@ -81,7 +80,6 @@ pub fn provide(providers: &mut Providers) {
         projection_ty_from_predicates,
         explicit_predicates_of,
         super_predicates_of,
-        super_traits_of,
         super_predicates_that_define_assoc_type,
         trait_explicit_predicates_and_bounds,
         type_param_predicates,
@@ -1114,29 +1112,6 @@ fn super_predicates_that_define_assoc_type(
         assert!(assoc_name.is_some());
         tcx.super_predicates_of(trait_def_id)
     }
-}
-
-/// Computes the def-ids of the transitive super-traits of `trait_def_id`. This (intentionally)
-/// does not compute the full elaborated super-predicates but just the set of def-ids. It is used
-/// to identify which traits may define a given associated type to help avoid cycle errors.
-/// Returns `Lrc<FxHashSet<DefId>>` so that cloning is cheaper.
-fn super_traits_of(tcx: TyCtxt<'_>, trait_def_id: DefId) -> Lrc<FxHashSet<DefId>> {
-    let mut set = FxHashSet::default();
-    let mut stack = vec![trait_def_id];
-    while let Some(trait_did) = stack.pop() {
-        if !set.insert(trait_did) {
-            continue;
-        }
-
-        let generic_predicates = tcx.super_predicates_of(trait_did);
-        for (predicate, _) in generic_predicates.predicates {
-            if let ty::PredicateAtom::Trait(data, _) = predicate.skip_binders() {
-                stack.push(data.def_id());
-            }
-        }
-    }
-
-    Lrc::new(set)
 }
 
 fn trait_def(tcx: TyCtxt<'_>, def_id: DefId) -> ty::TraitDef {

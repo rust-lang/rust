@@ -436,12 +436,6 @@ rustc_queries! {
             desc { |tcx| "computing the super predicates of `{}`", tcx.def_path_str(key) }
         }
 
-        /// Maps from the `DefId` of a trait to the list of
-        /// all the ancestors super traits.
-        query super_traits_of(key: DefId) -> Lrc<FxHashSet<DefId>> {
-            desc { |tcx| "computing the super traits of `{}`", tcx.def_path_str(key) }
-        }
-
         /// The `Option<Ident>` is the name of an associated type. If it is `None`, then this query
         /// returns the full set of predicates. If `Some<Ident>`, then the query returns only the
         /// subset of super-predicates that reference traits that define the given associated type.
