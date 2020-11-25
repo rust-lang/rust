@@ -1008,7 +1008,7 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "whether to use the PLT when calling into shared libraries;
         only has effect for PIC code on systems with ELF binaries
         (default: PLT is disabled if full relro is enabled)"),
-    polonius: bool = (false, parse_bool, [UNTRACKED],
+    polonius: bool = (false, parse_bool, [TRACKED],
         "enable polonius-based borrow-checker (default: no)"),
     polymorphize: bool = (false, parse_bool, [TRACKED],
           "perform polymorphization analysis"),
