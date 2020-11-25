@@ -767,7 +767,6 @@ impl Crate<'_> {
 pub struct MacroDef<'hir> {
     pub ident: Ident,
     pub vis: Visibility<'hir>,
-    pub attrs: &'hir [Attribute],
     pub hir_id: HirId,
     pub span: Span,
     pub ast: ast::MacroDef,

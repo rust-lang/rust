@@ -1088,9 +1088,10 @@ impl<'a, 'hir, 'tcx> intravisit::Visitor<'hir> for HirCollector<'a, 'hir, 'tcx> 
     }
 
     fn visit_macro_def(&mut self, macro_def: &'hir hir::MacroDef<'_>) {
+        let attrs = self.tcx.hir().attrs(macro_def.hir_id);
         self.visit_testable(
             macro_def.ident.to_string(),
-            &macro_def.attrs,
+            attrs,
             macro_def.hir_id,
             macro_def.span,
             |_| (),
