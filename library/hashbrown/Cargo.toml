@@ -34,6 +34,7 @@ doc-comment = "0.3.1"
 
 [features]
 default = ["ahash", "inline-more"]
+
 ahash-compile-time-rng = ["ahash/compile-time-rng"]
 nightly = []
 rustc-internal-api = []

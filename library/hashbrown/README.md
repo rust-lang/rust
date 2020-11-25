@@ -98,16 +98,15 @@ map.insert(1, "one");
 ## Flags
 This crate has the following Cargo features:
 
-- `nightly`: Enables nightly-only features including: `#[may_dangle]`
+- `nightly`: Enables nightly-only features including: `#[may_dangle]`.
 - `serde`: Enables serde serialization support.
 - `rayon`: Enables rayon parallel iterator support.
 - `raw`: Enables access to the experimental and unsafe `RawTable` API.
 - `inline-more`: Adds inline hints to most functions, improving run-time performance at the cost
-   of compilation time. (enabled by default)
+  of compilation time. (enabled by default)
 - `ahash`: Compiles with ahash as default hasher. (enabled by default)
 - `ahash-compile-time-rng`: Activates the `compile-time-rng` feature of ahash. For targets with no random number generator
 this pre-generates seeds at compile time and embeds them as constants. See [aHash's documentation](https://github.com/tkaitchuck/aHash#flags) (disabled by default)
-
 
 ## License
 
