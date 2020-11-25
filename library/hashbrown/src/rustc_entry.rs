@@ -1,5 +1,5 @@
 use self::RustcEntry::*;
-use crate::map::{make_hash, Drain, HashMap, IntoIter, Iter, IterMut};
+use crate::map::{Drain, HashMap, IntoIter, Iter, IterMut, make_insert_hash};
 use crate::raw::{AllocRef, Bucket, Global, RawTable};
 use core::fmt::{self, Debug};
 use core::hash::{BuildHasher, Hash};
@@ -32,7 +32,7 @@ where
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn rustc_entry(&mut self, key: K) -> RustcEntry<'_, K, V, A> {
-        let hash = make_hash(&self.hash_builder, &key);
+        let hash = make_insert_hash(&self.hash_builder, &key);
         if let Some(elem) = self.table.find(hash, |q| q.0.eq(&key)) {
             RustcEntry::Occupied(RustcOccupiedEntry {
                 key: Some(key),
