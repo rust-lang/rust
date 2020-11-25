@@ -884,7 +884,7 @@ mod while_keyword {}
 ///
 /// See also, [`for`].
 ///
-/// [`for`]: keyword.loop.html
+/// [`for`]: keyword.for.html
 /// [Reference]: ../reference/expressions/loop-expr.html
 mod loop_keyword {}
 
