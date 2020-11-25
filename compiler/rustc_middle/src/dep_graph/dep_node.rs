@@ -252,8 +252,7 @@ macro_rules! define_dep_nodes {
             /// has been removed.
             fn extract_def_id(&self, tcx: TyCtxt<'tcx>) -> Option<DefId> {
                 if self.kind.can_reconstruct_query_key() {
-                    let def_path_hash = DefPathHash(self.hash);
-                    tcx.queries.on_disk_cache.as_ref()?.def_path_hash_to_def_id(tcx, def_path_hash)
+                    tcx.queries.on_disk_cache.as_ref()?.def_path_hash_to_def_id(tcx, DefPathHash(self.hash.into()))
                 } else {
                     None
                 }
@@ -326,7 +325,9 @@ impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for DefId {
         // we will use the old DefIndex as an initial guess for
         // a lookup into the crate metadata.
         if !self.is_local() {
-            tcx.queries.on_disk_cache.store_foreign_def_id_hash(*self, hash);
+            if let Some(cache) = &tcx.queries.on_disk_cache {
+                cache.store_foreign_def_id_hash(*self, hash);
+            }
         }
         hash.0
     }

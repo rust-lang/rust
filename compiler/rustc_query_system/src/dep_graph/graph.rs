@@ -709,7 +709,7 @@ impl<K: DepKind> DepGraph<K> {
         // from the old incremental cache into the new cache that we serialize
         // and the end of this compilation session.
         if dep_node.kind.can_reconstruct_query_key() {
-            tcx.register_reused_dep_path_hash(DefPathHash(dep_node.hash));
+            tcx.register_reused_dep_path_hash(DefPathHash(dep_node.hash.into()));
         }
 
         // ... emitting any stored diagnostic ...

@@ -92,7 +92,9 @@ impl<'tcx> DepContext for TyCtxt<'tcx> {
     type StableHashingContext = StableHashingContext<'tcx>;
 
     fn register_reused_dep_path_hash(&self, hash: DefPathHash) {
-        self.queries.on_disk_cache.register_reused_dep_path_hash(hash)
+        if let Some(cache) = self.queries.on_disk_cache.as_ref() {
+            cache.register_reused_dep_path_hash(hash)
+        }
     }
 
     fn create_stable_hashing_context(&self) -> Self::StableHashingContext {
