@@ -1182,7 +1182,7 @@ impl<'a> Formatter<'a> {
     /// ```
     /// use std::fmt;
     ///
-    /// struct Foo { nb: i32 };
+    /// struct Foo { nb: i32 }
     ///
     /// impl Foo {
     ///     fn new(nb: i32) -> Foo {

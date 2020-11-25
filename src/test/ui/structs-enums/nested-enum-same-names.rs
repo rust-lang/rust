@@ -17,10 +17,10 @@ as it does not include the method name in the symbol name.
 pub struct Foo;
 impl Foo {
     pub fn foo() {
-        enum Panic { Common };
+        enum Panic { Common }
     }
     pub fn bar() {
-        enum Panic { Common };
+        enum Panic { Common }
     }
 }
 

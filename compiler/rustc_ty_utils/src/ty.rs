@@ -309,7 +309,7 @@ fn well_formed_types_in_env<'tcx>(
         InherentImpl,
         Fn,
         Other,
-    };
+    }
 
     let node_kind = match node {
         Node::TraitItem(item) => match item.kind {

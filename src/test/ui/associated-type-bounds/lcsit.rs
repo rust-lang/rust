@@ -39,7 +39,7 @@ const cdef_et3: impl Tr1<As1: Clone + Iterator<Item: Add<u8, Output: Into<u8>>>>
     impl Tr1 for A {
         type As1 = core::ops::Range<u8>;
         fn mk(&self) -> Self::As1 { 0..10 }
-    };
+    }
     let x: impl Tr1<As1: Clone + Iterator<Item: Add<u8, Output: Into<u8>>>> = A;
     x
 };

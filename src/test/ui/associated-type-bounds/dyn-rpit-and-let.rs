@@ -35,7 +35,7 @@ fn def_et3() -> Box<dyn Tr1<As1: Clone + Iterator<Item: Add<u8, Output: Into<u8>
     impl Tr1 for A {
         type As1 = core::ops::Range<u8>;
         fn mk(&self) -> Self::As1 { 0..10 }
-    };
+    }
     let x /* : Box<dyn Tr1<As1: Clone + Iterator<Item: Add<u8, Output: Into<u8>>>>> */
         = Box::new(A);
     x

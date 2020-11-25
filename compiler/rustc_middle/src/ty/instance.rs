@@ -540,7 +540,7 @@ fn polymorphize<'tcx>(
 
     struct PolymorphizationFolder<'tcx> {
         tcx: TyCtxt<'tcx>,
-    };
+    }
 
     impl ty::TypeFolder<'tcx> for PolymorphizationFolder<'tcx> {
         fn tcx<'a>(&'a self) -> TyCtxt<'tcx> {

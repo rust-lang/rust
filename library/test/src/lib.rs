@@ -265,14 +265,14 @@ where
             running_tests.remove(test);
         }
         timed_out
-    };
+    }
 
     fn calc_timeout(running_tests: &TestMap) -> Option<Duration> {
         running_tests.values().min().map(|next_timeout| {
             let now = Instant::now();
             if *next_timeout >= now { *next_timeout - now } else { Duration::new(0, 0) }
         })
-    };
+    }
 
     if concurrency == 1 {
         while !remaining.is_empty() {

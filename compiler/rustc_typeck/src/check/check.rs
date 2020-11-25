@@ -477,7 +477,7 @@ pub(super) fn check_opaque_for_inheriting_lifetimes(
     struct ProhibitOpaqueVisitor<'tcx> {
         opaque_identity_ty: Ty<'tcx>,
         generics: &'tcx ty::Generics,
-    };
+    }
 
     impl<'tcx> ty::fold::TypeVisitor<'tcx> for ProhibitOpaqueVisitor<'tcx> {
         type BreakTy = Option<Ty<'tcx>>;
