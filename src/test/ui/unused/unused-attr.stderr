@@ -1,8 +1,8 @@
 error: unused attribute
-  --> $DIR/unused-attr.rs:6:1
+  --> $DIR/unused-attr.rs:4:1
    |
-LL | #[rustc_dummy]
-   | ^^^^^^^^^^^^^^
+LL | #![rustc_dummy]
+   | ^^^^^^^^^^^^^^^
    |
 note: the lint level is defined here
   --> $DIR/unused-attr.rs:1:9
@@ -11,7 +11,19 @@ LL | #![deny(unused_attributes)]
    |         ^^^^^^^^^^^^^^^^^
 
 error: unused attribute
+  --> $DIR/unused-attr.rs:6:1
+   |
+LL | #[rustc_dummy]
+   | ^^^^^^^^^^^^^^
+
+error: unused attribute
   --> $DIR/unused-attr.rs:9:1
+   |
+LL | #[rustc_dummy]
+   | ^^^^^^^^^^^^^^
+
+error: unused attribute
+  --> $DIR/unused-attr.rs:12:1
    |
 LL | #[rustc_dummy]
    | ^^^^^^^^^^^^^^
@@ -23,16 +35,10 @@ LL |     #[rustc_dummy]
    |     ^^^^^^^^^^^^^^
 
 error: unused attribute
-  --> $DIR/unused-attr.rs:12:1
+  --> $DIR/unused-attr.rs:18:1
    |
 LL | #[rustc_dummy]
    | ^^^^^^^^^^^^^^
-
-error: unused attribute
-  --> $DIR/unused-attr.rs:22:9
-   |
-LL |         #[rustc_dummy]
-   |         ^^^^^^^^^^^^^^
 
 error: unused attribute
   --> $DIR/unused-attr.rs:20:5
@@ -41,13 +47,7 @@ LL |     #[rustc_dummy]
    |     ^^^^^^^^^^^^^^
 
 error: unused attribute
-  --> $DIR/unused-attr.rs:18:1
-   |
-LL | #[rustc_dummy]
-   | ^^^^^^^^^^^^^^
-
-error: unused attribute
-  --> $DIR/unused-attr.rs:30:9
+  --> $DIR/unused-attr.rs:22:9
    |
 LL |         #[rustc_dummy]
    |         ^^^^^^^^^^^^^^
@@ -59,13 +59,25 @@ LL | #[rustc_dummy]
    | ^^^^^^^^^^^^^^
 
 error: unused attribute
+  --> $DIR/unused-attr.rs:30:9
+   |
+LL |         #[rustc_dummy]
+   |         ^^^^^^^^^^^^^^
+
+error: unused attribute
+  --> $DIR/unused-attr.rs:35:1
+   |
+LL | #[rustc_dummy]
+   | ^^^^^^^^^^^^^^
+
+error: unused attribute
   --> $DIR/unused-attr.rs:37:5
    |
 LL |     #[rustc_dummy]
    |     ^^^^^^^^^^^^^^
 
 error: unused attribute
-  --> $DIR/unused-attr.rs:35:1
+  --> $DIR/unused-attr.rs:41:1
    |
 LL | #[rustc_dummy]
    | ^^^^^^^^^^^^^^
@@ -81,18 +93,6 @@ error: unused attribute
    |
 LL |     #[rustc_dummy]
    |     ^^^^^^^^^^^^^^
-
-error: unused attribute
-  --> $DIR/unused-attr.rs:41:1
-   |
-LL | #[rustc_dummy]
-   | ^^^^^^^^^^^^^^
-
-error: unused attribute
-  --> $DIR/unused-attr.rs:4:1
-   |
-LL | #![rustc_dummy]
-   | ^^^^^^^^^^^^^^^
 
 error: aborting due to 15 previous errors
 
