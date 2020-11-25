@@ -199,9 +199,14 @@ pub fn load_dep_graph(sess: &Session) -> DepGraphFuture {
     }))
 }
 
-pub fn load_query_result_cache(sess: &Session) -> OnDiskCache<'_> {
+/// Attempts to load the query result cache from disk
+///
+/// If we are not in incremental compilation mode, returns `None`.
+/// Otherwise, tries to load the query result cache from disk,
+/// creating an empty cache if it could not be loaded.
+pub fn load_query_result_cache(sess: &Session) -> Option<OnDiskCache<'_>> {
     if sess.opts.incremental.is_none() {
-        return OnDiskCache::new_empty(sess.source_map());
+        return None;
     }
 
     let _prof_timer = sess.prof.generic_activity("incr_comp_load_query_result_cache");
@@ -211,7 +216,9 @@ pub fn load_query_result_cache(sess: &Session) -> OnDiskCache<'_> {
         &query_cache_path(sess),
         sess.is_nightly_build(),
     ) {
-        LoadResult::Ok { data: (bytes, start_pos) } => OnDiskCache::new(sess, bytes, start_pos),
-        _ => OnDiskCache::new_empty(sess.source_map()),
+        LoadResult::Ok { data: (bytes, start_pos) } => {
+            Some(OnDiskCache::new(sess, bytes, start_pos))
+        }
+        _ => Some(OnDiskCache::new_empty(sess.source_map())),
     }
 }

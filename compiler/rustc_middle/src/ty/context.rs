@@ -1096,7 +1096,7 @@ impl<'tcx> TyCtxt<'tcx> {
         krate: &'tcx hir::Crate<'tcx>,
         definitions: &'tcx Definitions,
         dep_graph: DepGraph,
-        on_disk_query_result_cache: query::OnDiskCache<'tcx>,
+        on_disk_query_result_cache: Option<query::OnDiskCache<'tcx>>,
         crate_name: &str,
         output_filenames: &OutputFilenames,
     ) -> GlobalCtxt<'tcx> {
@@ -1345,7 +1345,7 @@ impl<'tcx> TyCtxt<'tcx> {
     where
         E: ty::codec::OpaqueEncoder,
     {
-        self.queries.on_disk_cache.serialize(self, encoder)
+        self.queries.on_disk_cache.as_ref().map(|c| c.serialize(self, encoder)).unwrap_or(Ok(()))
     }
 
     /// If `true`, we should use the MIR-based borrowck, but also
