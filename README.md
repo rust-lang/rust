@@ -214,7 +214,7 @@ fn main() {
 }
 ```
 
-Tilde/Caret version requirements(like `^1.0` or `~1.2`) can be specified as well.
+Tilde/Caret version requirements (like `^1.0` or `~1.2`) can be specified as well.
 
 Note: `custom_inner_attributes` is an unstable feature so it has to be enabled explicitly.
 
