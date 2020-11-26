@@ -513,7 +513,7 @@ fn main_options(options: config::Options) -> MainResult {
     }
 
     // need to move these items separately because we lose them by the time the closure is called,
-    // but we can't crates the Handler ahead of time because it's not Send
+    // but we can't create the Handler ahead of time because it's not Send
     let diag_opts = (options.error_format, options.edition, options.debugging_opts.clone());
     let show_coverage = options.show_coverage;
     let run_check = options.run_check;
