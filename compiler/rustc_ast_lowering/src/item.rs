@@ -749,9 +749,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     fn lower_variant(&mut self, v: &Variant) -> hir::Variant<'hir> {
         let id = self.lower_node_id(v.id);
+        self.lower_attrs(id, &v.attrs);
         hir::Variant {
             id,
-            attrs: self.lower_attrs(id, &v.attrs),
             data: self.lower_variant_data(id, &v.data),
             disr_expr: v.disr_expr.as_ref().map(|e| self.lower_anon_const(e)),
             ident: v.ident,

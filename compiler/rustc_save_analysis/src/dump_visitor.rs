@@ -554,6 +554,7 @@ impl<'tcx> DumpVisitor<'tcx> {
                         let span = self.span_from_span(name_span);
                         let id = id_from_hir_id(variant.id, &self.save_ctxt);
                         let parent = Some(id_from_def_id(item.def_id.to_def_id()));
+                        let attrs = self.tcx.hir().attrs(variant.id);
 
                         self.dumper.dump_def(
                             &access,
@@ -567,12 +568,9 @@ impl<'tcx> DumpVisitor<'tcx> {
                                 parent,
                                 children: vec![],
                                 decl_id: None,
-                                docs: self.save_ctxt.docs_for_attrs(&variant.attrs),
+                                docs: self.save_ctxt.docs_for_attrs(attrs),
                                 sig: sig::variant_signature(variant, &self.save_ctxt),
-                                attributes: lower_attributes(
-                                    variant.attrs.to_vec(),
-                                    &self.save_ctxt,
-                                ),
+                                attributes: lower_attributes(attrs.to_vec(), &self.save_ctxt),
                             },
                         );
                     }
@@ -594,6 +592,7 @@ impl<'tcx> DumpVisitor<'tcx> {
                         let span = self.span_from_span(name_span);
                         let id = id_from_hir_id(variant.id, &self.save_ctxt);
                         let parent = Some(id_from_def_id(item.def_id.to_def_id()));
+                        let attrs = self.tcx.hir().attrs(variant.id);
 
                         self.dumper.dump_def(
                             &access,
@@ -607,12 +606,9 @@ impl<'tcx> DumpVisitor<'tcx> {
                                 parent,
                                 children: vec![],
                                 decl_id: None,
-                                docs: self.save_ctxt.docs_for_attrs(&variant.attrs),
+                                docs: self.save_ctxt.docs_for_attrs(attrs),
                                 sig: sig::variant_signature(variant, &self.save_ctxt),
-                                attributes: lower_attributes(
-                                    variant.attrs.to_vec(),
-                                    &self.save_ctxt,
-                                ),
+                                attributes: lower_attributes(attrs.to_vec(), &self.save_ctxt),
                             },
                         );
                     }
