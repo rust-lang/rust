@@ -1,7 +1,7 @@
 //! The main loop of `rust-analyzer` responsible for dispatching LSP
 //! requests/replies and notifications back to the client.
 use std::{
-    env, fmt, panic,
+    env, fmt,
     time::{Duration, Instant},
 };
 
