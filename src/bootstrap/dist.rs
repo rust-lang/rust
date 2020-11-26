@@ -297,41 +297,23 @@ impl Step for Mingw {
     /// without any extra installed software (e.g., we bundle gcc, libraries, etc).
     fn run(self, builder: &Builder<'_>) -> Option<PathBuf> {
         let host = self.host;
-
         if !host.contains("pc-windows-gnu") {
             return None;
         }
 
         builder.info(&format!("Dist mingw ({})", host));
         let _time = timeit(builder);
-        let name = pkgname(builder, "rust-mingw");
-        let image = tmpdir(builder).join(format!("{}-{}-image", name, host.triple));
-        let _ = fs::remove_dir_all(&image);
-        t!(fs::create_dir_all(&image));
+
+        let mut tarball = Tarball::new(builder, "rust-mingw", &host.triple);
+        tarball.set_product_name("Rust MinGW");
 
         // The first argument is a "temporary directory" which is just
         // thrown away (this contains the runtime DLLs included in the rustc package
         // above) and the second argument is where to place all the MinGW components
         // (which is what we want).
-        make_win_dist(&tmpdir(builder), &image, host, &builder);
+        make_win_dist(&tmpdir(builder), tarball.image_dir(), host, &builder);
 
-        let mut cmd = rust_installer(builder);
-        cmd.arg("generate")
-            .arg("--product-name=Rust-MinGW")
-            .arg("--rel-manifest-dir=rustlib")
-            .arg("--success-message=Rust-MinGW-is-installed.")
-            .arg("--image-dir")
-            .arg(&image)
-            .arg("--work-dir")
-            .arg(&tmpdir(builder))
-            .arg("--output-dir")
-            .arg(&distdir(builder))
-            .arg(format!("--package-name={}-{}", name, host.triple))
-            .arg("--component-name=rust-mingw")
-            .arg("--legacy-manifest-dirs=rustlib,cargo");
-        builder.run(&mut cmd);
-        t!(fs::remove_dir_all(&image));
-        Some(distdir(builder).join(format!("{}-{}.tar.gz", name, host.triple)))
+        Some(tarball.generate())
     }
 }
 
