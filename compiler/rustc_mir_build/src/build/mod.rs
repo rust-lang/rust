@@ -10,6 +10,7 @@ use rustc_hir::lang_items::LangItem;
 use rustc_hir::{GeneratorKind, HirIdMap, Node};
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_infer::infer::TyCtxtInferExt;
+use rustc_middle::hir::place::PlaceBase as HirPlaceBase;
 use rustc_middle::middle::region;
 use rustc_middle::mir::*;
 use rustc_middle::ty::subst::Subst;
@@ -823,7 +824,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // with the closure's DefId. Here, we run through that vec of UpvarIds for
         // the given closure and use the necessary information to create upvar
         // debuginfo and to fill `self.upvar_mutbls`.
-        if let Some(upvars) = hir_typeck_results.closure_captures.get(&fn_def_id) {
+        if hir_typeck_results.closure_min_captures.get(&fn_def_id).is_some() {
             let closure_env_arg = Local::new(1);
             let mut closure_env_projs = vec![];
             let mut closure_ty = self.local_decls[closure_env_arg].ty;
@@ -836,14 +837,23 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 ty::Generator(_, substs, _) => ty::UpvarSubsts::Generator(substs),
                 _ => span_bug!(self.fn_span, "upvars with non-closure env ty {:?}", closure_ty),
             };
-            let upvar_tys = upvar_substs.upvar_tys();
-            let upvars_with_tys = upvars.iter().zip(upvar_tys);
-            self.upvar_mutbls = upvars_with_tys
+            let capture_tys = upvar_substs.upvar_tys();
+            let captures_with_tys = hir_typeck_results
+                .closure_min_captures_flattened(fn_def_id)
+                .zip(capture_tys);
+
+            self.upvar_mutbls = captures_with_tys
                 .enumerate()
-                .map(|(i, ((&var_id, &upvar_id), ty))| {
-                    let capture = hir_typeck_results.upvar_capture(upvar_id);
+                .map(|(i, (captured_place, ty))| {
+                    let capture = captured_place.info.capture_kind;
+                    let var_id = match captured_place.place.base {
+                        HirPlaceBase::Upvar(upvar_id) => upvar_id.var_path.hir_id,
+                        _ => bug!("Expected an upvar")
+                    };
 
                     let mut mutability = Mutability::Not;
+
+                    // FIXME(project-rfc-2229#8): Store more precise information
                     let mut name = kw::Invalid;
                     if let Some(Node::Binding(pat)) = tcx_hir.find(var_id) {
                         if let hir::PatKind::Binding(_, _, ident, _) = pat.kind {
