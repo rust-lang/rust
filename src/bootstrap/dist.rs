@@ -95,7 +95,7 @@ pub struct RustcDocs {
 }
 
 impl Step for RustcDocs {
-    type Output = PathBuf;
+    type Output = Option<PathBuf>;
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -107,47 +107,21 @@ impl Step for RustcDocs {
     }
 
     /// Builds the `rustc-docs` installer component.
-    fn run(self, builder: &Builder<'_>) -> PathBuf {
+    fn run(self, builder: &Builder<'_>) -> Option<PathBuf> {
         let host = self.host;
-
-        let name = pkgname(builder, "rustc-docs");
-
         if !builder.config.compiler_docs {
-            return distdir(builder).join(format!("{}-{}.tar.gz", name, host.triple));
+            return None;
         }
 
         builder.default_doc(None);
-
-        let image = tmpdir(builder).join(format!("{}-{}-image", name, host.triple));
-        let _ = fs::remove_dir_all(&image);
-
-        let dst = image.join("share/doc/rust/html/rustc");
-        t!(fs::create_dir_all(&dst));
-        let src = builder.compiler_doc_out(host);
-        builder.cp_r(&src, &dst);
-
-        let mut cmd = rust_installer(builder);
-        cmd.arg("generate")
-            .arg("--product-name=Rustc-Documentation")
-            .arg("--rel-manifest-dir=rustlib")
-            .arg("--success-message=Rustc-documentation-is-installed.")
-            .arg("--image-dir")
-            .arg(&image)
-            .arg("--work-dir")
-            .arg(&tmpdir(builder))
-            .arg("--output-dir")
-            .arg(&distdir(builder))
-            .arg(format!("--package-name={}-{}", name, host.triple))
-            .arg("--component-name=rustc-docs")
-            .arg("--legacy-manifest-dirs=rustlib,cargo")
-            .arg("--bulk-dirs=share/doc/rust/html/rustc");
-
         builder.info(&format!("Dist compiler docs ({})", host));
         let _time = timeit(builder);
-        builder.run(&mut cmd);
-        builder.remove_dir(&image);
 
-        distdir(builder).join(format!("{}-{}.tar.gz", name, host.triple))
+        let mut tarball = Tarball::new(builder, "rustc-docs", &host.triple);
+        tarball.set_product_name("Rustc Documentation");
+        tarball.add_dir(&builder.compiler_doc_out(host), "share/doc/rust/html/rustc");
+
+        Some(tarball.generate())
     }
 }
 
