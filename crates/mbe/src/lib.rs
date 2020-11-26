@@ -12,6 +12,8 @@ mod subtree_source;
 #[cfg(test)]
 mod tests;
 
+use std::fmt;
+
 pub use tt::{Delimiter, Punct};
 
 use crate::{
@@ -39,6 +41,20 @@ pub enum ExpandError {
 impl From<tt::ExpansionError> for ExpandError {
     fn from(it: tt::ExpansionError) -> Self {
         ExpandError::ProcMacroError(it)
+    }
+}
+
+impl fmt::Display for ExpandError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ExpandError::NoMatchingRule => f.write_str("no rule matches input tokens"),
+            ExpandError::UnexpectedToken => f.write_str("unexpected token in input"),
+            ExpandError::BindingError(e) => f.write_str(e),
+            ExpandError::ConversionError => f.write_str("could not convert tokens"),
+            ExpandError::InvalidRepeat => f.write_str("invalid repeat expression"),
+            ExpandError::ProcMacroError(e) => write!(f, "{}", e),
+            ExpandError::Other(e) => f.write_str(e),
+        }
     }
 }
 

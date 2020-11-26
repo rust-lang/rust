@@ -240,6 +240,17 @@ pub enum ExpansionError {
     ExpansionError(String),
 }
 
+impl fmt::Display for ExpansionError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ExpansionError::IOError(e) => write!(f, "I/O error: {}", e),
+            ExpansionError::JsonError(e) => write!(f, "JSON decoding error: {}", e),
+            ExpansionError::Unknown(e) => write!(f, "{}", e),
+            ExpansionError::ExpansionError(e) => write!(f, "proc macro returned error: {}", e),
+        }
+    }
+}
+
 pub trait TokenExpander: Debug + Send + Sync + RefUnwindSafe {
     fn expand(&self, subtree: &Subtree, attrs: Option<&Subtree>)
         -> Result<Subtree, ExpansionError>;
