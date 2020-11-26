@@ -9,12 +9,14 @@ use rustc_ast as ast;
 use rustc_ast::token::{self, DelimToken, Nonterminal, Token, TokenKind};
 use rustc_ast::tokenstream::{self, LazyTokenStream, TokenStream, TokenTree};
 use rustc_ast_pretty::pprust;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Diagnostic, FatalError, Level, PResult};
 use rustc_session::parse::ParseSess;
 use rustc_span::{symbol::kw, FileName, SourceFile, Span, DUMMY_SP};
 
 use smallvec::SmallVec;
+use std::cell::RefCell;
 use std::mem;
 use std::path::Path;
 use std::str;
@@ -281,6 +283,25 @@ pub fn nt_to_tokenstream(nt: &Nonterminal, sess: &ParseSess, span: Span) -> Toke
         }
     };
 
+    // Caches the stringification of 'good' `TokenStreams` which passed
+    // `tokenstream_probably_equal_for_proc_macro`. This allows us to avoid
+    // repeatedly stringifying and comparing the same `TokenStream` for deeply
+    // nested nonterminals.
+    //
+    // We cache by the strinification instead of the `TokenStream` to avoid
+    // needing to implement `Hash` for `TokenStream`. Note that it's possible to
+    // have two distinct `TokenStream`s that stringify to the same result
+    // (e.g. if they differ only in hygiene information). However, any
+    // information lost during the stringification process is also intentionally
+    // ignored by `tokenstream_probably_equal_for_proc_macro`, so it's fine
+    // that a single cache entry may 'map' to multiple distinct `TokenStream`s.
+    //
+    // This is a temporary hack to prevent compilation blowup on certain inputs.
+    // The entire pretty-print/retokenize process will be removed soon.
+    thread_local! {
+        static GOOD_TOKEN_CACHE: RefCell<FxHashSet<String>> = Default::default();
+    }
+
     // FIXME(#43081): Avoid this pretty-print + reparse hack
     // Pretty-print the AST struct without inserting any parenthesis
     // beyond those explicitly written by the user (e.g. `ExpnKind::Paren`).
@@ -288,7 +309,7 @@ pub fn nt_to_tokenstream(nt: &Nonterminal, sess: &ParseSess, span: Span) -> Toke
     // ever used for a comparison against the capture tokenstream.
     let source = pprust::nonterminal_to_string_no_extra_parens(nt);
     let filename = FileName::macro_expansion_source_code(&source);
-    let reparsed_tokens = parse_stream_from_source_str(filename, source, sess, Some(span));
+    let reparsed_tokens = parse_stream_from_source_str(filename, source.clone(), sess, Some(span));
 
     // During early phases of the compiler the AST could get modified
     // directly (e.g., attributes added or removed) and the internal cache
@@ -314,8 +335,13 @@ pub fn nt_to_tokenstream(nt: &Nonterminal, sess: &ParseSess, span: Span) -> Toke
     // modifications, including adding/removing typically non-semantic
     // tokens such as extra braces and commas, don't happen.
     if let Some(tokens) = tokens {
+        if GOOD_TOKEN_CACHE.with(|cache| cache.borrow().contains(&source)) {
+            return tokens;
+        }
+
         // Compare with a non-relaxed delim match to start.
         if tokenstream_probably_equal_for_proc_macro(&tokens, &reparsed_tokens, sess, false) {
+            GOOD_TOKEN_CACHE.with(|cache| cache.borrow_mut().insert(source.clone()));
             return tokens;
         }
 
@@ -324,6 +350,11 @@ pub fn nt_to_tokenstream(nt: &Nonterminal, sess: &ParseSess, span: Span) -> Toke
         // token stream to match up with inserted parenthesis in the reparsed stream.
         let source_with_parens = pprust::nonterminal_to_string(nt);
         let filename_with_parens = FileName::macro_expansion_source_code(&source_with_parens);
+
+        if GOOD_TOKEN_CACHE.with(|cache| cache.borrow().contains(&source_with_parens)) {
+            return tokens;
+        }
+
         let reparsed_tokens_with_parens = parse_stream_from_source_str(
             filename_with_parens,
             source_with_parens,
@@ -339,6 +370,7 @@ pub fn nt_to_tokenstream(nt: &Nonterminal, sess: &ParseSess, span: Span) -> Toke
             sess,
             true,
         ) {
+            GOOD_TOKEN_CACHE.with(|cache| cache.borrow_mut().insert(source.clone()));
             return tokens;
         }
 
@@ -418,9 +450,9 @@ pub fn tokenstream_probably_equal_for_proc_macro(
         // to iterate breaking tokens mutliple times. For example:
         // '[BinOpEq(Shr)] => [Gt, Ge] -> [Gt, Gt, Eq]'
         let mut token_trees: SmallVec<[_; 2]>;
-        if let TokenTree::Token(token) = &tree {
+        if let TokenTree::Token(token) = tree {
             let mut out = SmallVec::<[_; 2]>::new();
-            out.push(token.clone());
+            out.push(token);
             // Iterate to fixpoint:
             // * We start off with 'out' containing our initial token, and `temp` empty
             // * If we are able to break any tokens in `out`, then `out` will have
