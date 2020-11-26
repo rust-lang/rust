@@ -15,7 +15,6 @@ use rustc_middle::middle::privacy;
 use rustc_middle::ty::{self, DefIdTree, TyCtxt};
 use rustc_session::lint;
 
-use rustc_ast as ast;
 use rustc_span::symbol::{sym, Symbol};
 
 // Any local node that may call something in its body block should be
@@ -346,11 +345,8 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
     }
 }
 
-fn has_allow_dead_code_or_lang_attr(
-    tcx: TyCtxt<'_>,
-    id: hir::HirId,
-    attrs: &[ast::Attribute],
-) -> bool {
+fn has_allow_dead_code_or_lang_attr(tcx: TyCtxt<'_>, id: hir::HirId) -> bool {
+    let attrs = tcx.hir().attrs(id);
     if tcx.sess.contains_name(attrs, sym::lang) {
         return true;
     }
@@ -400,8 +396,7 @@ struct LifeSeeder<'k, 'tcx> {
 
 impl<'v, 'k, 'tcx> ItemLikeVisitor<'v> for LifeSeeder<'k, 'tcx> {
     fn visit_item(&mut self, item: &hir::Item<'_>) {
-        let allow_dead_code =
-            has_allow_dead_code_or_lang_attr(self.tcx, item.hir_id(), &item.attrs);
+        let allow_dead_code = has_allow_dead_code_or_lang_attr(self.tcx, item.hir_id());
         if allow_dead_code {
             self.worklist.push(item.hir_id());
         }
@@ -424,11 +419,7 @@ impl<'v, 'k, 'tcx> ItemLikeVisitor<'v> for LifeSeeder<'k, 'tcx> {
                 for impl_item_ref in items {
                     let impl_item = self.krate.impl_item(impl_item_ref.id);
                     if of_trait.is_some()
-                        || has_allow_dead_code_or_lang_attr(
-                            self.tcx,
-                            impl_item.hir_id(),
-                            &impl_item.attrs,
-                        )
+                        || has_allow_dead_code_or_lang_attr(self.tcx, impl_item.hir_id())
                     {
                         self.worklist.push(impl_item_ref.id.hir_id());
                     }
@@ -446,7 +437,7 @@ impl<'v, 'k, 'tcx> ItemLikeVisitor<'v> for LifeSeeder<'k, 'tcx> {
     fn visit_trait_item(&mut self, trait_item: &hir::TraitItem<'_>) {
         use hir::TraitItemKind::{Const, Fn};
         if matches!(trait_item.kind, Const(_, Some(_)) | Fn(_, hir::TraitFn::Provided(_)))
-            && has_allow_dead_code_or_lang_attr(self.tcx, trait_item.hir_id(), &trait_item.attrs)
+            && has_allow_dead_code_or_lang_attr(self.tcx, trait_item.hir_id())
         {
             self.worklist.push(trait_item.hir_id());
         }
@@ -459,11 +450,7 @@ impl<'v, 'k, 'tcx> ItemLikeVisitor<'v> for LifeSeeder<'k, 'tcx> {
     fn visit_foreign_item(&mut self, foreign_item: &hir::ForeignItem<'_>) {
         use hir::ForeignItemKind::{Fn, Static};
         if matches!(foreign_item.kind, Static(..) | Fn(..))
-            && has_allow_dead_code_or_lang_attr(
-                self.tcx,
-                foreign_item.hir_id(),
-                &foreign_item.attrs,
-            )
+            && has_allow_dead_code_or_lang_attr(self.tcx, foreign_item.hir_id())
         {
             self.worklist.push(foreign_item.hir_id());
         }
@@ -543,17 +530,16 @@ impl DeadVisitor<'tcx> {
         !field.is_positional()
             && !self.symbol_is_live(field.hir_id)
             && !field_type.is_phantom_data()
-            && !has_allow_dead_code_or_lang_attr(self.tcx, field.hir_id, &field.attrs)
+            && !has_allow_dead_code_or_lang_attr(self.tcx, field.hir_id)
     }
 
     fn should_warn_about_variant(&mut self, variant: &hir::Variant<'_>) -> bool {
-        !self.symbol_is_live(variant.id)
-            && !has_allow_dead_code_or_lang_attr(self.tcx, variant.id, &variant.attrs)
+        !self.symbol_is_live(variant.id) && !has_allow_dead_code_or_lang_attr(self.tcx, variant.id)
     }
 
     fn should_warn_about_foreign_item(&mut self, fi: &hir::ForeignItem<'_>) -> bool {
         !self.symbol_is_live(fi.hir_id())
-            && !has_allow_dead_code_or_lang_attr(self.tcx, fi.hir_id(), &fi.attrs)
+            && !has_allow_dead_code_or_lang_attr(self.tcx, fi.hir_id())
     }
 
     // id := HIR id of an item's definition.
