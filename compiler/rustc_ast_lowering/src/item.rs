@@ -708,10 +708,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_foreign_item(&mut self, i: &ForeignItem) -> hir::ForeignItem<'hir> {
         let def_id = self.resolver.local_def_id(i.id);
         let hir_id = self.lower_node_id(i.id);
+        self.lower_attrs(hir_id, &i.attrs);
         hir::ForeignItem {
             hir_id,
             ident: i.ident,
-            attrs: self.lower_attrs(hir_id, &i.attrs),
             kind: match i.kind {
                 ForeignItemKind::Fn(box FnKind(_, ref sig, ref generics, _)) => {
                     let fdec = &sig.decl;
