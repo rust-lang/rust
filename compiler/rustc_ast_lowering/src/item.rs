@@ -810,6 +810,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             self.lower_ty(&f.ty, ImplTraitContext::disallowed())
         };
         let hir_id = self.lower_node_id(f.id);
+        self.lower_attrs(hir_id, &f.attrs);
         hir::StructField {
             span: f.span,
             hir_id,
@@ -820,7 +821,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
             },
             vis: self.lower_visibility(&f.vis, None),
             ty,
-            attrs: self.lower_attrs(hir_id, &f.attrs),
         }
     }
 

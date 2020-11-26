@@ -103,7 +103,7 @@ impl<'tcx> LateLintPass<'tcx> for Author {
     }
 
     fn check_struct_field(&mut self, cx: &LateContext<'tcx>, field: &'tcx hir::StructField<'_>) {
-        if !has_attr(cx.sess(), &field.attrs) {
+        if !has_attr(cx.sess(), cx.tcx.hir().attrs(field.hir_id)) {
             return;
         }
         prelude();
