@@ -93,17 +93,18 @@ fn expand_subtree(
         match op {
             Op::TokenTree(tt @ tt::TokenTree::Leaf(..)) => arena.push(tt.clone()),
             Op::TokenTree(tt::TokenTree::Subtree(tt)) => {
-                let ExpandResult(tt, e) = expand_subtree(ctx, tt, arena);
+                let ExpandResult { value: tt, err: e } = expand_subtree(ctx, tt, arena);
                 err = err.or(e);
                 arena.push(tt.into());
             }
             Op::Var { name, kind: _ } => {
-                let ExpandResult(fragment, e) = expand_var(ctx, name);
+                let ExpandResult { value: fragment, err: e } = expand_var(ctx, name);
                 err = err.or(e);
                 push_fragment(arena, fragment);
             }
             Op::Repeat { subtree, kind, separator } => {
-                let ExpandResult(fragment, e) = expand_repeat(ctx, subtree, kind, separator, arena);
+                let ExpandResult { value: fragment, err: e } =
+                    expand_repeat(ctx, subtree, kind, separator, arena);
                 err = err.or(e);
                 push_fragment(arena, fragment)
             }
@@ -111,7 +112,7 @@ fn expand_subtree(
     }
     // drain the elements added in this instance of expand_subtree
     let tts = arena.drain(start_elements..arena.len()).collect();
-    ExpandResult(tt::Subtree { delimiter: template.delimiter, token_trees: tts }, err)
+    ExpandResult { value: tt::Subtree { delimiter: template.delimiter, token_trees: tts }, err }
 }
 
 fn expand_var(ctx: &mut ExpandCtx, v: &SmolStr) -> ExpandResult<Fragment> {
@@ -152,7 +153,7 @@ fn expand_var(ctx: &mut ExpandCtx, v: &SmolStr) -> ExpandResult<Fragment> {
         ExpandResult::ok(Fragment::Tokens(tt))
     } else {
         ctx.bindings.get(&v, &mut ctx.nesting).map_or_else(
-            |e| ExpandResult(Fragment::Tokens(tt::TokenTree::empty()), Some(e)),
+            |e| ExpandResult { value: Fragment::Tokens(tt::TokenTree::empty()), err: Some(e) },
             |b| ExpandResult::ok(b.clone()),
         )
     }
@@ -174,7 +175,7 @@ fn expand_repeat(
     let mut counter = 0;
 
     loop {
-        let ExpandResult(mut t, e) = expand_subtree(ctx, template, arena);
+        let ExpandResult { value: mut t, err: e } = expand_subtree(ctx, template, arena);
         let nesting_state = ctx.nesting.last_mut().unwrap();
         if nesting_state.at_end || !nesting_state.hit {
             break;
@@ -234,7 +235,10 @@ fn expand_repeat(
     let tt = tt::Subtree { delimiter: None, token_trees: buf }.into();
 
     if RepeatKind::OneOrMore == kind && counter == 0 {
-        return ExpandResult(Fragment::Tokens(tt), Some(ExpandError::UnexpectedToken));
+        return ExpandResult {
+            value: Fragment::Tokens(tt),
+            err: Some(ExpandError::UnexpectedToken),
+        };
     }
     ExpandResult::ok(Fragment::Tokens(tt))
 }

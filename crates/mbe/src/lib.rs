@@ -246,33 +246,35 @@ fn validate(pattern: &tt::Subtree) -> Result<(), ParseError> {
     Ok(())
 }
 
-#[derive(Debug)]
-pub struct ExpandResult<T>(pub T, pub Option<ExpandError>);
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct ExpandResult<T> {
+    pub value: T,
+    pub err: Option<ExpandError>,
+}
 
 impl<T> ExpandResult<T> {
-    pub fn ok(t: T) -> ExpandResult<T> {
-        ExpandResult(t, None)
+    pub fn ok(value: T) -> Self {
+        Self { value, err: None }
     }
 
-    pub fn only_err(err: ExpandError) -> ExpandResult<T>
+    pub fn only_err(err: ExpandError) -> Self
     where
         T: Default,
     {
-        ExpandResult(Default::default(), Some(err))
+        Self { value: Default::default(), err: Some(err) }
     }
 
     pub fn map<U>(self, f: impl FnOnce(T) -> U) -> ExpandResult<U> {
-        ExpandResult(f(self.0), self.1)
+        ExpandResult { value: f(self.value), err: self.err }
     }
 
     pub fn result(self) -> Result<T, ExpandError> {
-        self.1.map(Err).unwrap_or(Ok(self.0))
+        self.err.map(Err).unwrap_or(Ok(self.value))
     }
 }
 
 impl<T: Default> From<Result<T, ExpandError>> for ExpandResult<T> {
-    fn from(result: Result<T, ExpandError>) -> ExpandResult<T> {
-        result
-            .map_or_else(|e| ExpandResult(Default::default(), Some(e)), |it| ExpandResult(it, None))
+    fn from(result: Result<T, ExpandError>) -> Self {
+        result.map_or_else(|e| Self::only_err(e), |it| Self::ok(it))
     }
 }

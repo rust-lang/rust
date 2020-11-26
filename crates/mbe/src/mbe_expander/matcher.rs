@@ -158,7 +158,8 @@ fn match_subtree(
                         continue;
                     }
                 };
-                let ExpandResult(matched, match_err) = match_meta_var(kind.as_str(), src);
+                let ExpandResult { value: matched, err: match_err } =
+                    match_meta_var(kind.as_str(), src);
                 match matched {
                     Some(fragment) => {
                         res.bindings.inner.insert(name.clone(), Binding::Fragment(fragment));
@@ -342,17 +343,17 @@ impl<'a> TtIter<'a> {
                 token_trees: res.into_iter().cloned().collect(),
             })),
         };
-        ExpandResult(res, err)
+        ExpandResult { value: res, err }
     }
 
     pub(crate) fn eat_vis(&mut self) -> Option<tt::TokenTree> {
         let mut fork = self.clone();
         match fork.expect_fragment(Visibility) {
-            ExpandResult(tt, None) => {
+            ExpandResult { value: tt, err: None } => {
                 *self = fork;
                 tt
             }
-            ExpandResult(_, Some(_)) => None,
+            ExpandResult { value: _, err: Some(_) } => None,
         }
     }
 }
