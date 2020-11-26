@@ -38,6 +38,9 @@ fn typing_inside_a_function_should_not_invalidate_def_map() {
         fn foo() -> i32 {
             1 + 1
         }
+
+        #[cfg(never)]
+        fn no() {}
         //- /foo/mod.rs
         pub mod bar;
 
@@ -53,6 +56,9 @@ fn typing_inside_a_function_should_not_invalidate_def_map() {
         use E::*;
 
         fn foo() -> i32 { 92 }
+
+        #[cfg(never)]
+        fn no() {}
         ",
     );
 }
