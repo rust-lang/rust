@@ -82,6 +82,7 @@ impl PpAnn for &dyn rustc_hir::intravisit::Map<'_> {
 pub struct State<'a> {
     pub s: pp::Printer,
     comments: Option<Comments<'a>>,
+    attrs: &'a hir::HirIdVec<&'a [ast::Attribute]>,
     ann: &'a (dyn PpAnn + 'a),
 }
 
@@ -163,7 +164,7 @@ pub fn print_crate<'a>(
     input: String,
     ann: &'a dyn PpAnn,
 ) -> String {
-    let mut s = State::new_from_input(sm, filename, input, ann);
+    let mut s = State::new_from_input(sm, filename, input, &krate.attrs, ann);
 
     // When printing the AST, we sometimes need to inject `#[no_std]` here.
     // Since you can't compile the HIR, it's not necessary.
@@ -178,9 +179,19 @@ impl<'a> State<'a> {
         sm: &'a SourceMap,
         filename: FileName,
         input: String,
+        attrs: &'a hir::HirIdVec<&[ast::Attribute]>,
         ann: &'a dyn PpAnn,
     ) -> State<'a> {
-        State { s: pp::mk_printer(), comments: Some(Comments::new(sm, filename, input)), ann }
+        State {
+            s: pp::mk_printer(),
+            comments: Some(Comments::new(sm, filename, input)),
+            attrs,
+            ann,
+        }
+    }
+
+    fn attrs(&self, id: hir::HirId) -> &'a [ast::Attribute] {
+        self.attrs.get(id).map_or(&[], |la| *la)
     }
 }
 
@@ -188,7 +199,8 @@ pub fn to_string<F>(ann: &dyn PpAnn, f: F) -> String
 where
     F: FnOnce(&mut State<'_>),
 {
-    let mut printer = State { s: pp::mk_printer(), comments: None, ann };
+    let mut printer =
+        State { s: pp::mk_printer(), comments: None, attrs: &hir::HirIdVec::default(), ann };
     f(&mut printer);
     printer.s.eof()
 }
@@ -2027,13 +2039,13 @@ impl<'a> State<'a> {
     pub fn print_arm(&mut self, arm: &hir::Arm<'_>) {
         // I have no idea why this check is necessary, but here it
         // is :(
-        if arm.attrs.is_empty() {
+        if self.attrs(arm.hir_id).is_empty() {
             self.s.space();
         }
         self.cbox(INDENT_UNIT);
         self.ann.pre(self, AnnNode::Arm(arm));
         self.ibox(0);
-        self.print_outer_attributes(&arm.attrs);
+        self.print_outer_attributes(&self.attrs(arm.hir_id));
         self.print_pat(&arm.pat);
         self.s.space();
         if let Some(ref g) = arm.guard {

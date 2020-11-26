@@ -96,7 +96,7 @@ impl<'tcx> LateLintPass<'tcx> for DeepCodeInspector {
     }
 
     fn check_arm(&mut self, cx: &LateContext<'tcx>, arm: &'tcx hir::Arm<'_>) {
-        if !has_attr(cx.sess(), &arm.attrs) {
+        if !has_attr(cx.sess(), cx.tcx.hir().attrs(arm.hir_id)) {
             return;
         }
         print_pat(cx, &arm.pat, 1);
