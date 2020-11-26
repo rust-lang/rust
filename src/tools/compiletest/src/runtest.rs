@@ -2437,7 +2437,8 @@ impl<'test> TestCx<'test> {
             })
         };
         let mut diff = Command::new("diff");
-        diff.args(&["-u", "-r"]).args(&[&compare_dir, out_dir]);
+        // diff recursively, showing context, and excluding .css files
+        diff.args(&["-u", "-r", "-x", "*.css"]).args(&[&compare_dir, out_dir]);
 
         let output = if let Some(pager) = pager {
             let diff_pid = diff.stdout(Stdio::piped()).spawn().expect("failed to run `diff`");
