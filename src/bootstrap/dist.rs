@@ -341,30 +341,13 @@ impl Step for Rustc {
         let compiler = self.compiler;
         let host = self.compiler.host;
 
-        let name = pkgname(builder, "rustc");
-        let image = tmpdir(builder).join(format!("{}-{}-image", name, host.triple));
-        let _ = fs::remove_dir_all(&image);
-        let overlay = tmpdir(builder).join(format!("{}-{}-overlay", name, host.triple));
-        let _ = fs::remove_dir_all(&overlay);
+        builder.info(&format!("Dist rustc stage{} ({})", compiler.stage, host.triple));
+        let _time = timeit(builder);
+
+        let tarball = Tarball::new(builder, "rustc", &host.triple);
 
         // Prepare the rustc "image", what will actually end up getting installed
-        prepare_image(builder, compiler, &image);
-
-        // Prepare the overlay which is part of the tarball but won't actually be
-        // installed
-        let cp = |file: &str| {
-            builder.install(&builder.src.join(file), &overlay, 0o644);
-        };
-        cp("COPYRIGHT");
-        cp("LICENSE-APACHE");
-        cp("LICENSE-MIT");
-        cp("README.md");
-        // tiny morsel of metadata is used by rust-packaging
-        let version = builder.rust_version();
-        builder.create(&overlay.join("version"), &version);
-        if let Some(sha) = builder.rust_sha() {
-            builder.create(&overlay.join("git-commit-hash"), &sha);
-        }
+        prepare_image(builder, compiler, tarball.image_dir());
 
         // On MinGW we've got a few runtime DLL dependencies that we need to
         // include. The first argument to this script is where to put these DLLs
@@ -377,38 +360,11 @@ impl Step for Rustc {
         // install will *also* include the rust-mingw package, which also needs
         // licenses, so to be safe we just include it here in all MinGW packages.
         if host.contains("pc-windows-gnu") {
-            make_win_dist(&image, &tmpdir(builder), host, builder);
-
-            let dst = image.join("share/doc");
-            t!(fs::create_dir_all(&dst));
-            builder.cp_r(&builder.src.join("src/etc/third-party"), &dst);
+            make_win_dist(tarball.image_dir(), &tmpdir(builder), host, builder);
+            tarball.add_dir(builder.src.join("src/etc/third-party"), "share/doc");
         }
 
-        // Finally, wrap everything up in a nice tarball!
-        let mut cmd = rust_installer(builder);
-        cmd.arg("generate")
-            .arg("--product-name=Rust")
-            .arg("--rel-manifest-dir=rustlib")
-            .arg("--success-message=Rust-is-ready-to-roll.")
-            .arg("--image-dir")
-            .arg(&image)
-            .arg("--work-dir")
-            .arg(&tmpdir(builder))
-            .arg("--output-dir")
-            .arg(&distdir(builder))
-            .arg("--non-installed-overlay")
-            .arg(&overlay)
-            .arg(format!("--package-name={}-{}", name, host.triple))
-            .arg("--component-name=rustc")
-            .arg("--legacy-manifest-dirs=rustlib,cargo");
-
-        builder.info(&format!("Dist rustc stage{} ({})", compiler.stage, host.triple));
-        let _time = timeit(builder);
-        builder.run(&mut cmd);
-        builder.remove_dir(&image);
-        builder.remove_dir(&overlay);
-
-        return distdir(builder).join(format!("{}-{}.tar.gz", name, host.triple));
+        return tarball.generate();
 
         fn prepare_image(builder: &Builder<'_>, compiler: Compiler, image: &Path) {
             let host = compiler.host;

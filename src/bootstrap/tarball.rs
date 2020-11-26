@@ -107,6 +107,9 @@ impl<'a> Tarball<'a> {
     pub(crate) fn generate(self) -> PathBuf {
         t!(std::fs::create_dir_all(&self.overlay_dir));
         self.builder.create(&self.overlay_dir.join("version"), &self.builder.rust_version());
+        if let Some(sha) = self.builder.rust_sha() {
+            self.builder.create(&self.overlay_dir.join("git-commit-hash"), &sha);
+        }
         for file in self.overlay.included_files() {
             self.builder.install(&self.builder.src.join(file), &self.overlay_dir, 0o644);
         }
