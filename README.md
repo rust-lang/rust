@@ -214,8 +214,6 @@ fn main() {
 }
 ```
 
-Tilde/Caret version requirements (like `^1.0` or `~1.2`) can be specified as well.
-
 Note: `custom_inner_attributes` is an unstable feature so it has to be enabled explicitly.
 
 Lints that recognize this configuration option can be found [here](https://rust-lang.github.io/rust-clippy/master/index.html#msrv)
