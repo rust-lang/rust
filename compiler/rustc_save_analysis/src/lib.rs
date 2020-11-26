@@ -387,6 +387,7 @@ impl<'tcx> SaveContext<'tcx> {
 
         let id = id_from_def_id(field_def_id);
         let span = self.span_from_span(field.ident.span);
+        let attrs = self.tcx.hir().attrs(field.hir_id);
 
         Some(Def {
             kind: DefKind::Field,
@@ -398,9 +399,9 @@ impl<'tcx> SaveContext<'tcx> {
             parent: Some(id_from_def_id(scope_def_id)),
             children: vec![],
             decl_id: None,
-            docs: self.docs_for_attrs(&field.attrs),
+            docs: self.docs_for_attrs(attrs),
             sig: sig::field_signature(field, self),
-            attributes: lower_attributes(field.attrs.to_vec(), self),
+            attributes: lower_attributes(attrs.to_vec(), self),
         })
     }
 

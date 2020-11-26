@@ -888,7 +888,7 @@ impl<'a> State<'a> {
                     self.popen();
                     self.commasep(Inconsistent, struct_def.fields(), |s, field| {
                         s.maybe_print_comment(field.span.lo());
-                        s.print_outer_attributes(&field.attrs);
+                        s.print_outer_attributes(s.attrs(field.hir_id));
                         s.print_visibility(&field.vis);
                         s.print_type(&field.ty)
                     });
@@ -910,7 +910,7 @@ impl<'a> State<'a> {
                 for field in struct_def.fields() {
                     self.hardbreak_if_not_bol();
                     self.maybe_print_comment(field.span.lo());
-                    self.print_outer_attributes(&field.attrs);
+                    self.print_outer_attributes(self.attrs(field.hir_id));
                     self.print_visibility(&field.vis);
                     self.print_ident(field.ident);
                     self.word_nbsp(":");

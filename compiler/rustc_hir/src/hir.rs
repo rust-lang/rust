@@ -2631,7 +2631,6 @@ pub struct StructField<'hir> {
     pub vis: Visibility<'hir>,
     pub hir_id: HirId,
     pub ty: &'hir Ty<'hir>,
-    pub attrs: &'hir [Attribute],
 }
 
 impl StructField<'_> {
