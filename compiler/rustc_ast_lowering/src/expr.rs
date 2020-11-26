@@ -353,7 +353,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let else_arm = self.arm(else_pat, else_expr);
 
         // Handle then + scrutinee:
-        let then_expr = self.lower_block_expr(then);
         let (then_pat, scrutinee, desugar) = match cond.kind {
             // `<pat> => <then>`:
             ExprKind::Let(ref pat, ref scrutinee) => {
@@ -375,6 +374,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 (pat, cond, hir::MatchSource::IfDesugar { contains_else_clause })
             }
         };
+        let then_expr = self.lower_block_expr(then);
         let then_arm = self.arm(then_pat, self.arena.alloc(then_expr));
 
         hir::ExprKind::Match(scrutinee, arena_vec![self; then_arm, else_arm], desugar)
@@ -400,7 +400,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
         };
 
         // Handle then + scrutinee:
-        let then_expr = self.lower_block_expr(body);
         let (then_pat, scrutinee, desugar, source) = match cond.kind {
             ExprKind::Let(ref pat, ref scrutinee) => {
                 // to:
@@ -440,6 +439,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 (pat, cond, hir::MatchSource::WhileDesugar, hir::LoopSource::While)
             }
         };
+        let then_expr = self.lower_block_expr(body);
         let then_arm = self.arm(then_pat, self.arena.alloc(then_expr));
 
         // `match <scrutinee> { ... }`
