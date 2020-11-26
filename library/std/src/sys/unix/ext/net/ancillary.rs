@@ -160,6 +160,8 @@ fn add_to_ancillary_data<T>(
             previous_cmsg = cmsg;
             cmsg = libc::CMSG_NXTHDR(&msg, cmsg);
             cfg_if::cfg_if! {
+                // Android return the same pointer if it is the last cmsg.
+                // Therefore, check it if the previous pointer is the same as the current one.
                 if #[cfg(target_os = "android")] {
                     if cmsg == previous_cmsg {
                         break;
@@ -430,6 +432,8 @@ impl<'a> Iterator for Messages<'a> {
 
             let cmsg = cmsg.as_ref()?;
             cfg_if::cfg_if! {
+                // Android return the same pointer if it is the last cmsg.
+                // Therefore, check it if the previous pointer is the same as the current one.
                 if #[cfg(target_os = "android")] {
                     if let Some(current) = self.current {
                         if eq(current, cmsg) {
