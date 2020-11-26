@@ -17,6 +17,12 @@ This diagnostic is shown for code with inactive `#[cfg]` attributes.
 This diagnostic is triggered if item name doesn't follow https://doc.rust-lang.org/1.0.0/style/style/naming/README.html[Rust naming convention].
 
 
+=== macro-error
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/hir_def/src/diagnostics.rs#L164[diagnostics.rs]
+
+This diagnostic is shown for macro expansion errors.
+
+
 === mismatched-arg-count
 **Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/hir_ty/src/diagnostics.rs#L267[diagnostics.rs]
 
@@ -103,3 +109,11 @@ This diagnostic is triggered if rust-analyzer is unable to discover imported mod
 **Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/hir_def/src/diagnostics.rs#L18[diagnostics.rs]
 
 This diagnostic is triggered if rust-analyzer is unable to discover referred module.
+
+
+=== unresolved-proc-macro
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/hir_def/src/diagnostics.rs#L131[diagnostics.rs]
+
+This diagnostic is shown when a procedural macro can not be found. This usually means that
+procedural macro support is simply disabled (and hence is only a weak hint instead of an error),
+but can also indicate project setup problems.

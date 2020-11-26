@@ -7,7 +7,6 @@ use std::iter;
 
 use base_db::{CrateId, FileId, ProcMacroId};
 use cfg::{CfgExpr, CfgOptions};
-use hir_expand::InFile;
 use hir_expand::{
     ast_id_map::FileAstId,
     builtin_derive::find_builtin_derive,
@@ -16,6 +15,7 @@ use hir_expand::{
     proc_macro::ProcMacroExpander,
     HirFileId, MacroCallId, MacroDefId, MacroDefKind,
 };
+use hir_expand::{InFile, MacroCallLoc};
 use rustc_hash::{FxHashMap, FxHashSet};
 use syntax::ast;
 use test_utils::mark;
@@ -812,7 +812,30 @@ impl DefCollector<'_> {
             log::warn!("macro expansion is too deep");
             return;
         }
-        let file_id: HirFileId = macro_call_id.as_file();
+        let file_id = macro_call_id.as_file();
+
+        // First, fetch the raw expansion result for purposes of error reporting. This goes through
+        // `macro_expand_error` to avoid depending on the full expansion result (to improve
+        // incrementality).
+        let err = self.db.macro_expand_error(macro_call_id);
+        if let Some(err) = err {
+            if let MacroCallId::LazyMacro(id) = macro_call_id {
+                let loc: MacroCallLoc = self.db.lookup_intern_macro(id);
+
+                let diag = match err {
+                    hir_expand::ExpandError::UnresolvedProcMacro => {
+                        // Missing proc macros are non-fatal, so they are handled specially.
+                        DefDiagnostic::unresolved_proc_macro(module_id, loc.kind)
+                    }
+                    _ => DefDiagnostic::macro_error(module_id, loc.kind, err.to_string()),
+                };
+
+                self.def_map.diagnostics.push(diag);
+            }
+            // FIXME: Handle eager macros.
+        }
+
+        // Then, fetch and process the item tree. This will reuse the expansion result from above.
         let item_tree = self.db.item_tree(file_id);
         let mod_dir = self.mod_dirs[&module_id].clone();
         ModCollector {
