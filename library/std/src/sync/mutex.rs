@@ -7,7 +7,7 @@ use crate::mem;
 use crate::ops::{Deref, DerefMut};
 use crate::ptr;
 use crate::sys_common::mutex as sys;
-use crate::sys_common::poison::{self, LockResult, TryLockError, TryLockResult};
+use crate::sys_common::poison::{self, LockResult, PoisonError, TryLockError, TryLockResult};
 
 /// A mutual exclusion primitive useful for protecting shared data
 ///
@@ -399,6 +399,71 @@ impl<T: ?Sized> Mutex<T> {
         let data = self.data.get_mut();
         poison::map_result(self.poison.borrow(), |_| data)
     }
+
+    /// Run the given closure while holding the lock. The guarded value is mutably passed to the
+    /// closure, and the result of the closure is returned from `with`.
+    ///
+    /// This function is functionally equivalent to calling `lock` before the closure and dropping
+    /// the `MutexGuard` immediately after.
+    ///
+    /// # Errors
+    ///
+    /// If another user of this mutex panicked while holding the mutex, then
+    /// this call will return an error once the mutex is acquired.
+    ///
+    /// # Panics
+    ///
+    /// This function might panic when called if the lock is already held by
+    /// the current thread.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::sync::Mutex;
+    ///
+    /// let mutex = Mutex::new(0);
+    /// let result = mutex.with(|myint| { myint += 1; myint * 42 }).unwrap();
+    /// assert_eq!(*mutex.lock().unwrap(), 1);
+    /// assert_eq!(result, 42);
+    /// ```
+    #[unstable(feature = "mutex_with", issue = "none")]
+    pub fn with<R, F>(&self, f: F) -> Result<R, PoisonError<MutexGuard<'_, T>>>
+    where
+        F: FnOnce(&mut T) -> R,
+    {
+        Ok(f(&mut *self.lock()?))
+    }
+
+    /// Attempt to acquire the lock. If it cannot be acquired at this time, [`Err`] is returned. If
+    /// it is acquired, run the given closure with the lock held.
+    ///
+    /// This function is functionally equivalent to calling `try_lock`, and calling the closure if
+    /// the lock is acquired. After the closure is run, the `MutexGuard` is dropped immediately.
+    ///
+    /// This function does not block.
+    ///
+    /// # Errors
+    ///
+    /// If another user of this mutex panicked while holding the mutex, then
+    /// this call will return an error if the mutex would otherwise be
+    /// acquired.
+    ///
+    /// # Examples
+    /// ```
+    /// use std::sync::Mutex;
+    ///
+    /// let mutex = Mutex::new(0);
+    /// let result = mutex.try_with(|myint| { myint += 1; myint * 42 }).unwrap();
+    /// assert_eq!(*mutex.lock().unwrap(), 1);
+    /// assert_eq!(result, 42);
+    /// ```
+    #[unstable(feature = "mutex_with", issue = "none")]
+    pub fn try_with<R, F>(&self, f: F) -> Result<R, TryLockError<MutexGuard<'_, T>>>
+    where
+        F: FnOnce(&mut T) -> R,
+    {
+        Ok(f(&mut *self.try_lock()?))
+    }
 }
 
 #[stable(feature = "mutex_from", since = "1.24.0")]
@@ -443,6 +508,14 @@ impl<T: ?Sized + fmt::Debug> fmt::Debug for Mutex<T> {
 impl<'mutex, T: ?Sized> MutexGuard<'mutex, T> {
     unsafe fn new(lock: &'mutex Mutex<T>) -> LockResult<MutexGuard<'mutex, T>> {
         poison::map_result(lock.poison.borrow(), |guard| MutexGuard { lock, poison: guard })
+    }
+
+    /// Immediately drops `self`, and consequently unlocks the mutex.
+    ///
+    /// This is equivalent to calling [`Drop::drop`] on the guard, but is more self-documenting.
+    #[unstable(feature = "guard_unlock", issue = "none")]
+    pub fn unlock(self) {
+        drop(self);
     }
 }
 
