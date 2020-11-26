@@ -108,6 +108,7 @@ impl<'a> Visitor<'a> for ItemLowerer<'a, '_, '_> {
     }
 
     fn visit_foreign_item(&mut self, item: &'a ForeignItem) {
+        self.lctx.allocate_hir_id_counter(item.id);
         self.lctx.with_hir_id_owner(item.id, |lctx| {
             let hir_item = lctx.lower_foreign_item(item);
             let id = hir::ForeignItemId { hir_id: hir_item.hir_id };

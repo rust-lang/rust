@@ -487,6 +487,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 visit::walk_assoc_item(self, item, ctxt);
             }
 
+            fn visit_foreign_item(&mut self, item: &'tcx ForeignItem) {
+                self.lctx.allocate_hir_id_counter(item.id);
+                visit::walk_foreign_item(self, item);
+            }
+
             fn visit_ty(&mut self, t: &'tcx Ty) {
                 match t.kind {
                     // Mirrors the case in visit::walk_ty
