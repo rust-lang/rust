@@ -27,19 +27,19 @@ struct DiagnosticItemCollector<'tcx> {
 
 impl<'v, 'tcx> ItemLikeVisitor<'v> for DiagnosticItemCollector<'tcx> {
     fn visit_item(&mut self, item: &hir::Item<'_>) {
-        self.observe_item(&item.attrs, item.hir_id);
+        self.observe_item(item.hir_id);
     }
 
     fn visit_trait_item(&mut self, trait_item: &hir::TraitItem<'_>) {
-        self.observe_item(&trait_item.attrs, trait_item.hir_id);
+        self.observe_item(trait_item.hir_id);
     }
 
     fn visit_impl_item(&mut self, impl_item: &hir::ImplItem<'_>) {
-        self.observe_item(&impl_item.attrs, impl_item.hir_id);
+        self.observe_item(impl_item.hir_id);
     }
 
     fn visit_foreign_item(&mut self, foreign_item: &hir::ForeignItem<'_>) {
-        self.observe_item(foreign_item.attrs, foreign_item.hir_id);
+        self.observe_item(foreign_item.hir_id);
     }
 }
 
@@ -48,7 +48,8 @@ impl<'tcx> DiagnosticItemCollector<'tcx> {
         DiagnosticItemCollector { tcx, items: Default::default() }
     }
 
-    fn observe_item(&mut self, attrs: &[ast::Attribute], hir_id: hir::HirId) {
+    fn observe_item(&mut self, hir_id: hir::HirId) {
+        let attrs = self.tcx.hir().attrs(hir_id);
         if let Some(name) = extract(&self.tcx.sess, attrs) {
             let def_id = self.tcx.hir().local_def_id(hir_id);
             // insert into our table
@@ -106,7 +107,7 @@ fn collect<'tcx>(tcx: TyCtxt<'tcx>) -> FxHashMap<Symbol, DefId> {
     tcx.hir().krate().visit_all_item_likes(&mut collector);
 
     for m in tcx.hir().krate().exported_macros {
-        collector.observe_item(m.attrs, m.hir_id);
+        collector.observe_item(m.hir_id);
     }
 
     collector.items
