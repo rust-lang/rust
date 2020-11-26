@@ -9,16 +9,16 @@ pub struct DepGraphQuery<K> {
 }
 
 impl<K: DepKind> DepGraphQuery<K> {
-    pub fn new(nodes: &[DepNode<K>], edges: &[(DepNode<K>, DepNode<K>)]) -> DepGraphQuery<K> {
+    pub fn new(nodes: &[DepNode<K>], edges: &[(usize, usize)]) -> DepGraphQuery<K> {
         let mut graph = Graph::with_capacity(nodes.len(), edges.len());
         let mut indices = FxHashMap::default();
         for node in nodes {
             indices.insert(*node, graph.add_node(*node));
         }
 
-        for &(ref source, ref target) in edges {
-            let source = indices[source];
-            let target = indices[target];
+        for &(source, target) in edges {
+            let source = indices[&nodes[source]];
+            let target = indices[&nodes[target]];
             graph.add_edge(source, target, ());
         }
 
