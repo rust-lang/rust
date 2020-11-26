@@ -559,7 +559,7 @@ pub struct Std {
 }
 
 impl Step for Std {
-    type Output = PathBuf;
+    type Output = Option<PathBuf>;
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -577,46 +577,24 @@ impl Step for Std {
         });
     }
 
-    fn run(self, builder: &Builder<'_>) -> PathBuf {
+    fn run(self, builder: &Builder<'_>) -> Option<PathBuf> {
         let compiler = self.compiler;
         let target = self.target;
 
-        let name = pkgname(builder, "rust-std");
-        let archive = distdir(builder).join(format!("{}-{}.tar.gz", name, target.triple));
         if skip_host_target_lib(builder, compiler) {
-            return archive;
+            return None;
         }
 
         builder.ensure(compile::Std { compiler, target });
 
-        let image = tmpdir(builder).join(format!("{}-{}-image", name, target.triple));
-        let _ = fs::remove_dir_all(&image);
+        let mut tarball = Tarball::new(builder, "rust-std", &target.triple);
+        tarball.include_target_in_component_name(true);
 
         let compiler_to_use = builder.compiler_for(compiler.stage, compiler.host, target);
         let stamp = compile::libstd_stamp(builder, compiler_to_use, target);
-        copy_target_libs(builder, target, &image, &stamp);
+        copy_target_libs(builder, target, &tarball.image_dir(), &stamp);
 
-        let mut cmd = rust_installer(builder);
-        cmd.arg("generate")
-            .arg("--product-name=Rust")
-            .arg("--rel-manifest-dir=rustlib")
-            .arg("--success-message=std-is-standing-at-the-ready.")
-            .arg("--image-dir")
-            .arg(&image)
-            .arg("--work-dir")
-            .arg(&tmpdir(builder))
-            .arg("--output-dir")
-            .arg(&distdir(builder))
-            .arg(format!("--package-name={}-{}", name, target.triple))
-            .arg(format!("--component-name=rust-std-{}", target.triple))
-            .arg("--legacy-manifest-dirs=rustlib,cargo");
-
-        builder
-            .info(&format!("Dist std stage{} ({} -> {})", compiler.stage, &compiler.host, target));
-        let _time = timeit(builder);
-        builder.run(&mut cmd);
-        builder.remove_dir(&image);
-        archive
+        Some(tarball.generate())
     }
 }
 
@@ -1699,7 +1677,7 @@ impl Step for Extended {
         tarballs.extend(rustfmt_installer.clone());
         tarballs.extend(llvm_tools_installer);
         tarballs.push(analysis_installer);
-        tarballs.push(std_installer);
+        tarballs.push(std_installer.expect("missing std"));
         if let Some(docs_installer) = docs_installer {
             tarballs.push(docs_installer);
         }

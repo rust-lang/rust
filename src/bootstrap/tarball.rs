@@ -35,6 +35,7 @@ pub(crate) struct Tarball<'a> {
     overlay_dir: PathBuf,
     work_dir: PathBuf,
 
+    include_target_in_component_name: bool,
     is_preview: bool,
 }
 
@@ -63,6 +64,7 @@ impl<'a> Tarball<'a> {
             overlay_dir,
             work_dir,
 
+            include_target_in_component_name: false,
             is_preview: false,
         }
     }
@@ -73,6 +75,10 @@ impl<'a> Tarball<'a> {
 
     pub(crate) fn set_product_name(&mut self, name: &str) {
         self.product_name = name.into();
+    }
+
+    pub(crate) fn include_target_in_component_name(&mut self, include: bool) {
+        self.include_target_in_component_name = include;
     }
 
     pub(crate) fn is_preview(&mut self, is: bool) {
@@ -122,6 +128,10 @@ impl<'a> Tarball<'a> {
         let mut component_name = self.component.clone();
         if self.is_preview {
             component_name.push_str("-preview");
+        }
+        if self.include_target_in_component_name {
+            component_name.push('-');
+            component_name.push_str(&self.target);
         }
 
         let distdir = crate::dist::distdir(self.builder);
