@@ -1420,11 +1420,11 @@ impl Type {
     pub fn normalize_trait_assoc_type(
         &self,
         db: &dyn HirDatabase,
-        r#trait: Trait,
+        trait_: Trait,
         args: &[Type],
         alias: TypeAlias,
     ) -> Option<Type> {
-        let subst = Substs::build_for_def(db, r#trait.id)
+        let subst = Substs::build_for_def(db, trait_.id)
             .push(self.ty.value.clone())
             .fill(args.iter().map(|t| t.ty.value.clone()))
             .build();
