@@ -22,20 +22,7 @@ pub fn run(update_mode: UpdateMode) {
 
     let usable_lint_count = round_to_fifty(usable_lints.len());
 
-    let mut file_change = replace_region_in_file(
-        Path::new("src/lintlist/mod.rs"),
-        "begin lint list",
-        "end lint list",
-        false,
-        update_mode == UpdateMode::Change,
-        || {
-            format!("vec!{:#?}", sorted_usable_lints)
-                .lines()
-                .map(ToString::to_string)
-                .collect::<Vec<_>>()
-        },
-    )
-    .changed;
+    let mut file_change = false;
 
     file_change |= replace_region_in_file(
         Path::new("README.md"),
