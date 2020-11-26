@@ -1462,7 +1462,7 @@ extern "C" void LLVMRustSetComdat(LLVMModuleRef M, LLVMValueRef V,
                                   const char *Name, size_t NameLen) {
   Triple TargetTriple(unwrap(M)->getTargetTriple());
   GlobalObject *GV = unwrap<GlobalObject>(V);
-  if (!TargetTriple.isOSBinFormatMachO()) {
+  if (TargetTriple.supportsCOMDAT()) {
     StringRef NameRef(Name, NameLen);
     GV->setComdat(unwrap(M)->getOrInsertComdat(NameRef));
   }

@@ -24,7 +24,12 @@ For revisions in Pull Requests (PR):
 endef
 export SPANVIEW_HEADER
 
+ifeq ($(LLVM_VERSION_11_PLUS),true)
 all: $(patsubst $(SOURCEDIR)/%.rs,%,$(wildcard $(SOURCEDIR)/*.rs))
+else
+$(info Rust option `-Z instrument-coverage` requires LLVM 11 or higher. Test skipped.)
+all:
+endif
 
 # Ensure there are no `expected` results for tests that may have been removed or renamed
 .PHONY: clear_expected_if_blessed
