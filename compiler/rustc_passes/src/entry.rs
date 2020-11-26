@@ -46,7 +46,9 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for EntryContext<'a, 'tcx> {
         // Entry fn is never a trait item.
     }
 
-    fn visit_foreign_item(&mut self, _: &'tcx ForeignItem<'tcx>) {}
+    fn visit_foreign_item(&mut self, _: &'tcx ForeignItem<'tcx>) {
+        // Entry fn is never a foreign item.
+    }
 }
 
 fn entry_fn(tcx: TyCtxt<'_>, cnum: CrateNum) -> Option<(LocalDefId, EntryFnType)> {

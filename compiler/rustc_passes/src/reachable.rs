@@ -379,7 +379,9 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for CollectPrivateImplItemsVisitor<'a, 'tcx
         // processed in visit_item above
     }
 
-    fn visit_foreign_item(&mut self, _foreign_item: &hir::ForeignItem<'_>) {}
+    fn visit_foreign_item(&mut self, _foreign_item: &hir::ForeignItem<'_>) {
+        // We never export foreign functions as they have no body to export.
+    }
 }
 
 fn reachable_set<'tcx>(tcx: TyCtxt<'tcx>, crate_num: CrateNum) -> FxHashSet<LocalDefId> {

@@ -1855,7 +1855,7 @@ pub struct FnSig<'hir> {
 }
 
 // The bodies for items are stored "out of line", in a separate
-// hashmap in the `Crate`. Here we just record the node-id of the item
+// hashmap in the `Crate`. Here we just record the hir-id of the item
 // so it can fetched later.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Encodable, Debug)]
 pub struct TraitItemId {
@@ -1899,7 +1899,7 @@ pub enum TraitItemKind<'hir> {
 }
 
 // The bodies for items are stored "out of line", in a separate
-// hashmap in the `Crate`. Here we just record the node-id of the item
+// hashmap in the `Crate`. Here we just record the hir-id of the item
 // so it can fetched later.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Encodable, Debug)]
 pub struct ImplItemId {
@@ -2441,7 +2441,7 @@ impl VariantData<'hir> {
 }
 
 // The bodies for items are stored "out of line", in a separate
-// hashmap in the `Crate`. Here we just record the node-id of the item
+// hashmap in the `Crate`. Here we just record the hir-id of the item
 // so it can fetched later.
 #[derive(Copy, Clone, Encodable, Debug)]
 pub struct ItemId {
@@ -2624,7 +2624,7 @@ pub enum AssocItemKind {
 }
 
 // The bodies for items are stored "out of line", in a separate
-// hashmap in the `Crate`. Here we just record the node-id of the item
+// hashmap in the `Crate`. Here we just record the hir-id of the item
 // so it can fetched later.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Encodable, Debug)]
 pub struct ForeignItemId {

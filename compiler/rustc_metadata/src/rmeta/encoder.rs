@@ -1225,7 +1225,7 @@ impl EncodeContext<'a, 'tcx> {
             hir::ItemKind::Mod(ref m) => {
                 return self.encode_info_for_mod(item.hir_id, m, &item.attrs);
             }
-            hir::ItemKind::ForeignMod{..} => EntryKind::ForeignMod,
+            hir::ItemKind::ForeignMod { .. } => EntryKind::ForeignMod,
             hir::ItemKind::GlobalAsm(..) => EntryKind::GlobalAsm,
             hir::ItemKind::TyAlias(..) => EntryKind::Type,
             hir::ItemKind::OpaqueTy(..) => {

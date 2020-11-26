@@ -289,7 +289,7 @@ pub trait Visitor<'v>: Sized {
         walk_list!(self, visit_impl_item, opt_item);
     }
 
-    /// Like `visit_nested_item()`, but for impl items. See
+    /// Like `visit_nested_item()`, but for foreign items. See
     /// `visit_nested_item()` for advice on when to override this
     /// method.
     fn visit_nested_foreign_item(&mut self, id: ForeignItemId) {

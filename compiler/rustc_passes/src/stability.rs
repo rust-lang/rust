@@ -499,7 +499,7 @@ impl<'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'tcx> {
         // optional. They inherit stability from their parents when unannotated.
         if !matches!(
             i.kind,
-            hir::ItemKind::Impl { of_trait: None, .. } | hir::ItemKind::ForeignMod{..}
+            hir::ItemKind::Impl { of_trait: None, .. } | hir::ItemKind::ForeignMod { .. }
         ) {
             self.check_missing_stability(i.hir_id, i.span);
         }
