@@ -63,7 +63,9 @@ use rustc_span::symbol::{sym, Symbol};
 use serde::ser::SerializeSeq;
 use serde::{Serialize, Serializer};
 
-use crate::clean::{self, AttributesExt, Deprecation, GetDefId, RenderedLink, SelfTy, TypeKind};
+use crate::clean::{
+    self, AttributesExt, Deprecation, GetDefId, ImplPolarity, RenderedLink, SelfTy, TypeKind,
+};
 use crate::config::{RenderInfo, RenderOptions};
 use crate::docfs::{DocFS, PathError};
 use crate::doctree;
@@ -2532,6 +2534,16 @@ fn compare_impl<'a, 'b>(lhs: &'a &&Impl, rhs: &'b &&Impl) -> Ordering {
     compare_names(&lhs, &rhs)
 }
 
+fn compare_impl_polarity(a: &Impl, b: &Impl) -> Ordering {
+    match (a.inner_impl().polarity.as_ref(), b.inner_impl().polarity.as_ref()) {
+        (Some(ImplPolarity::Positive), Some(ImplPolarity::Negative)) => Ordering::Greater,
+        (Some(ImplPolarity::Negative), Some(ImplPolarity::Positive)) => Ordering::Less,
+        (Some(ImplPolarity::Positive), Some(ImplPolarity::Positive))
+        | (Some(ImplPolarity::Negative), Some(ImplPolarity::Negative)) => Ordering::Equal,
+        (None, _) | (_, None) => Ordering::Equal,
+    }
+}
+
 fn item_trait(w: &mut Buffer, cx: &Context, it: &clean::Item, t: &clean::Trait, cache: &Cache) {
     let bounds = bounds(&t.bounds, false);
     let types = t.items.iter().filter(|m| m.is_associated_type()).collect::<Vec<_>>();
@@ -2717,6 +2729,10 @@ fn item_trait(w: &mut Buffer, cx: &Context, it: &clean::Item, t: &clean::Trait, 
                 _ => {}
             }
         }
+
+        let mut implementors = implementors.clone();
+
+        implementors.sort_by(compare_impl_polarity);
 
         let (local, foreign) = implementors.iter().partition::<Vec<_>, _>(|i| {
             i.inner_impl().for_.def_id().map_or(true, |d| cache.paths.contains_key(&d))
