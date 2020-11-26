@@ -202,7 +202,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // inference algorithm will reject it).
 
         // Equate the type variables for the upvars with the actual types.
-        let final_upvar_tys = self.final_upvar_tys(closure_hir_id);
+        let final_upvar_tys = self.final_upvar_tys(closure_def_id);
         debug!(
             "analyze_closure: id={:?} substs={:?} final_upvar_tys={:?}",
             closure_hir_id, substs, final_upvar_tys
@@ -222,36 +222,33 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     // Returns a list of `Ty`s for each upvar.
-    fn final_upvar_tys(&self, closure_id: hir::HirId) -> Vec<Ty<'tcx>> {
+    fn final_upvar_tys(&self, closure_id: DefId) -> Vec<Ty<'tcx>> {
         // Presently an unboxed closure type cannot "escape" out of a
         // function, so we will only encounter ones that originated in the
         // local crate or were inlined into it along with some function.
         // This may change if abstract return types of some sort are
         // implemented.
         let tcx = self.tcx;
-        let closure_def_id = tcx.hir().local_def_id(closure_id);
 
         self.typeck_results
             .borrow()
-            .closure_captures
-            .get(&closure_def_id.to_def_id())
-            .iter()
-            .flat_map(|upvars| {
-                upvars.iter().map(|(&var_hir_id, _)| {
-                    let upvar_ty = self.node_ty(var_hir_id);
-                    let upvar_id = ty::UpvarId::new(var_hir_id, closure_def_id);
-                    let capture = self.typeck_results.borrow().upvar_capture(upvar_id);
+            .closure_min_captures_flattened(closure_id)
+            .map(|captured_place| {
+                let upvar_ty = captured_place.place.ty();
+                let capture = captured_place.info.capture_kind;
 
-                    debug!("var_id={:?} upvar_ty={:?} capture={:?}", var_hir_id, upvar_ty, capture);
+                debug!(
+                    "place={:?} upvar_ty={:?} capture={:?}",
+                    captured_place.place, upvar_ty, capture
+                );
 
-                    match capture {
-                        ty::UpvarCapture::ByValue(_) => upvar_ty,
-                        ty::UpvarCapture::ByRef(borrow) => tcx.mk_ref(
-                            borrow.region,
-                            ty::TypeAndMut { ty: upvar_ty, mutbl: borrow.kind.to_mutbl_lossy() },
-                        ),
-                    }
-                })
+                match capture {
+                    ty::UpvarCapture::ByValue(_) => upvar_ty,
+                    ty::UpvarCapture::ByRef(borrow) => tcx.mk_ref(
+                        borrow.region,
+                        ty::TypeAndMut { ty: upvar_ty, mutbl: borrow.kind.to_mutbl_lossy() },
+                    ),
+                }
             })
             .collect()
     }

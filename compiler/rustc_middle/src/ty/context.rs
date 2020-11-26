@@ -624,6 +624,19 @@ impl<'tcx> TypeckResults<'tcx> {
         LocalTableInContextMut { hir_owner: self.hir_owner, data: &mut self.pat_adjustments }
     }
 
+    /// For a given closure, returns the iterator of `ty::CapturedPlace`s that are captured
+    /// by the closure.
+    pub fn closure_min_captures_flattened(
+        &self,
+        closure_def_id: DefId,
+    ) -> impl Iterator<Item = &ty::CapturedPlace<'tcx>> {
+        self.closure_min_captures
+            .get(&closure_def_id)
+            .map(|closure_min_captures| closure_min_captures.values().flat_map(|v| v.iter()))
+            .into_iter()
+            .flatten()
+    }
+
     pub fn upvar_capture(&self, upvar_id: ty::UpvarId) -> ty::UpvarCapture<'tcx> {
         self.upvar_capture_map[&upvar_id]
     }
