@@ -568,7 +568,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         visit::walk_crate(&mut item::ItemLowerer { lctx: &mut self }, c);
 
         let module = self.lower_mod(&c.items, c.span);
-        let attrs = self.lower_attrs(hir::CRATE_HIR_ID, &c.attrs);
+        self.lower_attrs(hir::CRATE_HIR_ID, &c.attrs);
         let body_ids = body_ids(&self.bodies);
         let proc_macros =
             c.proc_macros.iter().map(|id| self.node_id_to_hir_id[*id].unwrap()).collect();
@@ -599,7 +599,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.attrs.push_owner(Idx::new(self.resolver.definitions().def_index_count() - 1));
 
         hir::Crate {
-            item: hir::CrateItem { module, attrs, span: c.span },
+            item: hir::CrateItem { module, span: c.span },
             exported_macros: self.arena.alloc_from_iter(self.exported_macros),
             non_exported_macro_attrs: self.arena.alloc_from_iter(self.non_exported_macro_attrs),
             items: self.items,

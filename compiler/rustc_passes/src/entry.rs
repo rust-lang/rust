@@ -2,7 +2,7 @@ use rustc_ast::entry::EntryPointType;
 use rustc_errors::struct_span_err;
 use rustc_hir::def_id::{CrateNum, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
-use rustc_hir::{ForeignItem, HirId, ImplItem, Item, ItemKind, TraitItem};
+use rustc_hir::{ForeignItem, HirId, ImplItem, Item, ItemKind, TraitItem, CRATE_HIR_ID};
 use rustc_middle::hir::map::Map;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
@@ -60,7 +60,7 @@ fn entry_fn(tcx: TyCtxt<'_>, cnum: CrateNum) -> Option<(LocalDefId, EntryFnType)
     }
 
     // If the user wants no main function at all, then stop here.
-    if tcx.sess.contains_name(&tcx.hir().krate().item.attrs, sym::no_main) {
+    if tcx.sess.contains_name(&tcx.hir().attrs(CRATE_HIR_ID), sym::no_main) {
         return None;
     }
 

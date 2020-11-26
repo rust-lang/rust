@@ -629,7 +629,6 @@ pub struct ModuleItems {
 #[derive(Encodable, Debug, HashStable_Generic)]
 pub struct CrateItem<'hir> {
     pub module: Mod<'hir>,
-    pub attrs: &'hir [Attribute],
     pub span: Span,
 }
 

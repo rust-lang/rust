@@ -106,25 +106,27 @@ crate fn run(options: Options) -> Result<(), ErrorReported> {
 
     let tests = interface::run_compiler(config, |compiler| {
         compiler.enter(|queries| {
-            let lower_to_hir = queries.lower_to_hir()?;
+            let _lower_to_hir = queries.lower_to_hir()?;
 
-            let mut opts = scrape_test_config(lower_to_hir.peek().0);
-            opts.display_warnings |= options.display_warnings;
-            let enable_per_target_ignores = options.enable_per_target_ignores;
-            let mut collector = Collector::new(
-                queries.crate_name()?.peek().to_string(),
-                options,
-                false,
-                opts,
-                Some(compiler.session().parse_sess.clone_source_map()),
-                None,
-                enable_per_target_ignores,
-            );
-
+            let crate_name = queries.crate_name()?.peek().to_string();
             let mut global_ctxt = queries.global_ctxt()?.take();
 
-            global_ctxt.enter(|tcx| {
+            let collector = global_ctxt.enter(|tcx| {
                 let krate = tcx.hir().krate();
+                let crate_attrs = tcx.hir().attrs(CRATE_HIR_ID);
+
+                let mut opts = scrape_test_config(crate_attrs);
+                opts.display_warnings |= options.display_warnings;
+                let enable_per_target_ignores = options.enable_per_target_ignores;
+                let mut collector = Collector::new(
+                    crate_name,
+                    options,
+                    false,
+                    opts,
+                    Some(compiler.session().parse_sess.clone_source_map()),
+                    None,
+                    enable_per_target_ignores,
+                );
 
                 let mut hir_collector = HirCollector {
                     sess: compiler.session(),
@@ -143,6 +145,8 @@ crate fn run(options: Options) -> Result<(), ErrorReported> {
                         intravisit::walk_crate(this, krate);
                     },
                 );
+
+                collector
             });
             compiler.session().abort_if_errors();
 
@@ -167,15 +171,13 @@ crate fn run(options: Options) -> Result<(), ErrorReported> {
 }
 
 // Look for `#![doc(test(no_crate_inject))]`, used by crates in the std facade.
-fn scrape_test_config(krate: &::rustc_hir::Crate<'_>) -> TestOptions {
+fn scrape_test_config(attrs: &[ast::Attribute]) -> TestOptions {
     use rustc_ast_pretty::pprust;
 
     let mut opts =
         TestOptions { no_crate_inject: false, display_warnings: false, attrs: Vec::new() };
 
-    let test_attrs: Vec<_> = krate
-        .item
-        .attrs
+    let test_attrs: Vec<_> = attrs
         .iter()
         .filter(|a| a.has_name(sym::doc))
         .flat_map(|a| a.meta_item_list().unwrap_or_else(Vec::new))
