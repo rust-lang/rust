@@ -95,18 +95,18 @@
 //!
 //!     Depending on the values and combinations, counters can be labeled by:
 //!
-//!         * `id` - counter or expression ID (ascending counter IDs, starting at 1, or descending
-//!           expression IDs, starting at `u32:MAX`)
-//!         * `block` - the `BasicCoverageBlock` label (for example, `bcb0`) or edge label (for
-//!           example `bcb0->bcb1`), for counters or expressions assigned to count a
-//!           `BasicCoverageBlock` or edge. Intermediate expressions (not directly associated with
-//!           a BCB or edge) will be labeled by their expression ID, unless `operation` is also
-//!           specified.
-//!         * `operation` - applied to expressions only, labels include the left-hand-side counter
-//!           or expression label (lhs operand), the operator (`+` or `-`), and the right-hand-side
-//!           counter or expression (rhs operand). Expression operand labels are generated
-//!           recursively, generating labels with nested operations, enclosed in parentheses
-//!           (for example: `bcb2 + (bcb0 - bcb1)`).
+//!       * `id` - counter or expression ID (ascending counter IDs, starting at 1, or descending
+//!         expression IDs, starting at `u32:MAX`)
+//!       * `block` - the `BasicCoverageBlock` label (for example, `bcb0`) or edge label (for
+//!         example `bcb0->bcb1`), for counters or expressions assigned to count a
+//!         `BasicCoverageBlock` or edge. Intermediate expressions (not directly associated with
+//!         a BCB or edge) will be labeled by their expression ID, unless `operation` is also
+//!         specified.
+//!       * `operation` - applied to expressions only, labels include the left-hand-side counter
+//!         or expression label (lhs operand), the operator (`+` or `-`), and the right-hand-side
+//!         counter or expression (rhs operand). Expression operand labels are generated
+//!         recursively, generating labels with nested operations, enclosed in parentheses
+//!         (for example: `bcb2 + (bcb0 - bcb1)`).
 
 use super::graph::{BasicCoverageBlock, BasicCoverageBlockData, CoverageGraph};
 use super::spans::CoverageSpan;
