@@ -14,9 +14,11 @@ SYSROOT=/usr/local/$TARGET/sysroot
 mkdir -p $SYSROOT
 pushd $SYSROOT
 
-centos_base=http://vault.centos.org/altarch/7.3.1611/os/ppc64le/Packages/
-glibc_v=2.17-157.el7
-kernel_v=3.10.0-514.el7
+# centos_base=http://vault.centos.org/altarch/7.3.1611/os/ppc64le/Packages/
+# Mirrored from centos_base above
+centos_base=https://ci-mirrors.rust-lang.org/rustc
+glibc_v=2.17-157-2020-11-25.el7
+kernel_v=3.10.0-514-2020-11-25.el7
 for package in glibc{,-devel,-headers}-$glibc_v kernel-headers-$kernel_v; do
   curl $centos_base/$package.ppc64le.rpm | \
     rpm2cpio - | cpio -idm
