@@ -8,8 +8,9 @@ use rustc_span::{sym, Span};
 
 use tracing::debug;
 
+// Public for rustfmt usage
 #[derive(Debug)]
-pub(super) enum InnerAttrPolicy<'a> {
+pub enum InnerAttrPolicy<'a> {
     Permitted,
     Forbidden { reason: &'a str, saw_doc_comment: bool, prev_attr_sp: Option<Span> },
 }
@@ -78,7 +79,8 @@ impl<'a> Parser<'a> {
 
     /// Matches `attribute = # ! [ meta_item ]`.
     /// `inner_parse_policy` prescribes how to handle inner attributes.
-    fn parse_attribute(
+    // Public for rustfmt usage.
+    pub fn parse_attribute(
         &mut self,
         inner_parse_policy: InnerAttrPolicy<'_>,
     ) -> PResult<'a, ast::Attribute> {
