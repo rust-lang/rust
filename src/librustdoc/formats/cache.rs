@@ -249,7 +249,7 @@ impl DocFolder for Cache {
                     self.implementors
                         .entry(did)
                         .or_default()
-                        .push(Impl { impl_item: item.clone() });
+                        .push(Impl { inner: item.clone() });
                 }
             }
         }
@@ -454,7 +454,7 @@ impl DocFolder for Cache {
             } else {
                 unreachable!()
             };
-            let impl_item = Impl { impl_item: item };
+            let impl_item = Impl { inner: item };
             if impl_item.trait_did().map_or(true, |d| self.traits.contains_key(&d)) {
                 for did in dids {
                     self.impls.entry(did).or_insert(vec![]).push(impl_item.clone());

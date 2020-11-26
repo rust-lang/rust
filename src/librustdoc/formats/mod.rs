@@ -27,15 +27,12 @@ crate enum RenderMode {
 /// Metadata about implementations for a type or trait.
 #[derive(Clone, Debug)]
 crate struct Impl {
-    crate impl_item: clean::Item,
+    crate inner: clean::Impl,
 }
 
 impl Impl {
     crate fn inner_impl(&self) -> &clean::Impl {
-        match self.impl_item.kind {
-            clean::ImplItem(ref impl_) => impl_,
-            _ => panic!("non-impl item found in impl"),
-        }
+        &self.inner
     }
 
     crate fn trait_did(&self) -> Option<DefId> {
