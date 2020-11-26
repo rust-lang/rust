@@ -86,7 +86,6 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
     fn annotate<F>(
         &mut self,
         hir_id: HirId,
-        attrs: &[Attribute],
         item_sp: Span,
         kind: AnnotationKind,
         inherit_deprecation: InheritDeprecation,
@@ -95,6 +94,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
     ) where
         F: FnOnce(&mut Self),
     {
+        let attrs = self.tcx.hir().attrs(hir_id);
         debug!("annotate(id = {:?}, attrs = {:?})", hir_id, attrs);
         let mut did_error = false;
         if !self.tcx.features().staged_api {
@@ -363,7 +363,6 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
                 if let Some(ctor_hir_id) = sd.ctor_hir_id() {
                     self.annotate(
                         ctor_hir_id,
-                        &i.attrs,
                         i.span,
                         AnnotationKind::Required,
                         InheritDeprecation::Yes,
@@ -375,22 +374,15 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
             _ => {}
         }
 
-        self.annotate(
-            i.hir_id,
-            &i.attrs,
-            i.span,
-            kind,
-            InheritDeprecation::Yes,
-            const_stab_inherit,
-            |v| intravisit::walk_item(v, i),
-        );
+        self.annotate(i.hir_id, i.span, kind, InheritDeprecation::Yes, const_stab_inherit, |v| {
+            intravisit::walk_item(v, i)
+        });
         self.in_trait_impl = orig_in_trait_impl;
     }
 
     fn visit_trait_item(&mut self, ti: &'tcx hir::TraitItem<'tcx>) {
         self.annotate(
             ti.hir_id,
-            &ti.attrs,
             ti.span,
             AnnotationKind::Required,
             InheritDeprecation::Yes,
@@ -406,7 +398,6 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
             if self.in_trait_impl { AnnotationKind::Prohibited } else { AnnotationKind::Required };
         self.annotate(
             ii.hir_id,
-            &ii.attrs,
             ii.span,
             kind,
             InheritDeprecation::Yes,
@@ -420,7 +411,6 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
     fn visit_variant(&mut self, var: &'tcx Variant<'tcx>, g: &'tcx Generics<'tcx>, item_id: HirId) {
         self.annotate(
             var.id,
-            &var.attrs,
             var.span,
             AnnotationKind::Required,
             InheritDeprecation::Yes,
@@ -429,7 +419,6 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
                 if let Some(ctor_hir_id) = var.data.ctor_hir_id() {
                     v.annotate(
                         ctor_hir_id,
-                        &var.attrs,
                         var.span,
                         AnnotationKind::Required,
                         InheritDeprecation::Yes,
@@ -446,7 +435,6 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
     fn visit_struct_field(&mut self, s: &'tcx StructField<'tcx>) {
         self.annotate(
             s.hir_id,
-            &s.attrs,
             s.span,
             AnnotationKind::Required,
             InheritDeprecation::Yes,
@@ -460,7 +448,6 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
     fn visit_foreign_item(&mut self, i: &'tcx hir::ForeignItem<'tcx>) {
         self.annotate(
             i.hir_id,
-            &i.attrs,
             i.span,
             AnnotationKind::Required,
             InheritDeprecation::Yes,
@@ -474,7 +461,6 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
     fn visit_macro_def(&mut self, md: &'tcx hir::MacroDef<'tcx>) {
         self.annotate(
             md.hir_id,
-            &md.attrs,
             md.span,
             AnnotationKind::Required,
             InheritDeprecation::Yes,
@@ -494,7 +480,6 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
 
         self.annotate(
             p.hir_id,
-            &p.attrs,
             p.span,
             kind,
             InheritDeprecation::No,
@@ -664,7 +649,6 @@ fn new_index(tcx: TyCtxt<'tcx>) -> Index<'tcx> {
 
         annotator.annotate(
             hir::CRATE_HIR_ID,
-            &krate.item.attrs,
             krate.item.span,
             AnnotationKind::Required,
             InheritDeprecation::Yes,
