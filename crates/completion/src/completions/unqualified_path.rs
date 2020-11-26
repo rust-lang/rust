@@ -81,32 +81,34 @@ fn fuzzy_completion(acc: &mut Completions, ctx: &CompletionContext) -> Option<()
 
     let potential_import_name = ctx.token.to_string();
 
-    let possible_imports =
-        imports_locator::find_similar_imports(&ctx.sema, ctx.krate?, &potential_import_name, 400)
-            .filter_map(|import_candidate| match import_candidate {
-                // when completing outside the use declaration, modules are pretty useless
-                // and tend to bloat the completion suggestions a lot
-                Either::Left(ModuleDef::Module(_)) => None,
-                Either::Left(module_def) => Some((
-                    current_module.find_use_path(ctx.db, module_def)?,
-                    ScopeDef::ModuleDef(module_def),
-                )),
-                Either::Right(macro_def) => Some((
-                    current_module.find_use_path(ctx.db, macro_def)?,
-                    ScopeDef::MacroDef(macro_def),
-                )),
-            })
-            .filter(|(mod_path, _)| mod_path.len() > 1)
-            .filter_map(|(import_path, definition)| {
-                render_resolution_with_import(
-                    RenderContext::new(ctx),
-                    import_path.clone(),
-                    import_scope.clone(),
-                    ctx.config.merge,
-                    &definition,
-                )
-            })
-            .take(20);
+    let possible_imports = imports_locator::find_similar_imports(
+        &ctx.sema,
+        ctx.krate?,
+        &potential_import_name,
+        50,
+        true,
+    )
+    .filter_map(|import_candidate| {
+        Some(match import_candidate {
+            Either::Left(module_def) => {
+                (current_module.find_use_path(ctx.db, module_def)?, ScopeDef::ModuleDef(module_def))
+            }
+            Either::Right(macro_def) => {
+                (current_module.find_use_path(ctx.db, macro_def)?, ScopeDef::MacroDef(macro_def))
+            }
+        })
+    })
+    .filter(|(mod_path, _)| mod_path.len() > 1)
+    .take(20)
+    .filter_map(|(import_path, definition)| {
+        render_resolution_with_import(
+            RenderContext::new(ctx),
+            import_path.clone(),
+            import_scope.clone(),
+            ctx.config.merge,
+            &definition,
+        )
+    });
 
     acc.add_all(possible_imports);
     Some(())
