@@ -317,6 +317,14 @@ fn array_map() {
     assert_eq!(b, [1, 2, 3]);
 }
 
+#[test]
+fn array_zip() {
+    let a = [1, 2, 3];
+    let b = [4, 5, 6];
+    let c = a.zip(b);
+    assert_eq!(c, [(1, 4), (2, 5), (3, 6)]);
+}
+
 // See note on above test for why `should_panic` is used.
 #[test]
 #[should_panic(expected = "test succeeded")]

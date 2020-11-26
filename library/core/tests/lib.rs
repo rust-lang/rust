@@ -3,6 +3,7 @@
 #![feature(array_from_ref)]
 #![feature(array_methods)]
 #![feature(array_map)]
+#![feature(array_zip)]
 #![feature(array_windows)]
 #![feature(bool_to_option)]
 #![feature(bound_cloned)]
