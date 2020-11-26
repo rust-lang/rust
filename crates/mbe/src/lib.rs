@@ -35,6 +35,7 @@ pub enum ExpandError {
     ConversionError,
     InvalidRepeat,
     ProcMacroError(tt::ExpansionError),
+    UnresolvedProcMacro,
     Other(String),
 }
 
@@ -53,6 +54,7 @@ impl fmt::Display for ExpandError {
             ExpandError::ConversionError => f.write_str("could not convert tokens"),
             ExpandError::InvalidRepeat => f.write_str("invalid repeat expression"),
             ExpandError::ProcMacroError(e) => e.fmt(f),
+            ExpandError::UnresolvedProcMacro => f.write_str("unresolved proc macro"),
             ExpandError::Other(e) => f.write_str(e),
         }
     }
