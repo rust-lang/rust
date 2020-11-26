@@ -425,7 +425,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         /// declared for every type and trait definition.
         struct MiscCollector<'tcx, 'lowering, 'hir> {
             lctx: &'tcx mut LoweringContext<'lowering, 'hir>,
-            hir_id_owner: Option<NodeId>,
         }
 
         impl MiscCollector<'_, '_, '_> {
@@ -452,30 +451,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     }
                 }
             }
-
-            fn with_hir_id_owner<T>(
-                &mut self,
-                owner: Option<NodeId>,
-                f: impl FnOnce(&mut Self) -> T,
-            ) -> T {
-                let old = mem::replace(&mut self.hir_id_owner, owner);
-                let r = f(self);
-                self.hir_id_owner = old;
-                r
-            }
         }
 
         impl<'tcx> Visitor<'tcx> for MiscCollector<'tcx, '_, '_> {
-            fn visit_pat(&mut self, p: &'tcx Pat) {
-                if let PatKind::Paren(..) | PatKind::Rest = p.kind {
-                    // Doesn't generate a HIR node
-                } else if let Some(owner) = self.hir_id_owner {
-                    self.lctx.lower_node_id_with_owner(p.id, owner);
-                }
-
-                visit::walk_pat(self, p)
-            }
-
             fn visit_item(&mut self, item: &'tcx Item) {
                 let hir_id = self.lctx.allocate_hir_id_counter(item.id);
 
@@ -499,24 +477,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     _ => {}
                 }
 
-                self.with_hir_id_owner(Some(item.id), |this| {
-                    visit::walk_item(this, item);
-                });
+                visit::walk_item(self, item);
             }
 
             fn visit_assoc_item(&mut self, item: &'tcx AssocItem, ctxt: AssocCtxt) {
                 self.lctx.allocate_hir_id_counter(item.id);
-                let owner = match (&item.kind, ctxt) {
-                    // Ignore patterns in trait methods without bodies.
-                    (AssocItemKind::Fn(_, _, _, None), AssocCtxt::Trait) => None,
-                    _ => Some(item.id),
-                };
-                self.with_hir_id_owner(owner, |this| visit::walk_assoc_item(this, item, ctxt));
-            }
-
-            fn visit_foreign_item(&mut self, i: &'tcx ForeignItem) {
-                // Ignore patterns in foreign items
-                self.with_hir_id_owner(None, |this| visit::walk_foreign_item(this, i));
+                visit::walk_assoc_item(self, item, ctxt);
             }
 
             fn visit_ty(&mut self, t: &'tcx Ty) {
@@ -527,18 +493,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         // Mirrors visit::walk_fn_decl
                         for parameter in &f.decl.inputs {
                             // We don't lower the ids of argument patterns
-                            self.with_hir_id_owner(None, |this| {
-                                this.visit_pat(&parameter.pat);
-                            });
+                            self.visit_pat(&parameter.pat);
                             self.visit_ty(&parameter.ty)
                         }
                         self.visit_fn_ret_ty(&f.decl.output)
                     }
                     TyKind::ImplTrait(def_node_id, _) => {
                         self.lctx.allocate_hir_id_counter(def_node_id);
-                        self.with_hir_id_owner(Some(def_node_id), |this| {
-                            visit::walk_ty(this, t);
-                        });
+                        visit::walk_ty(self, t);
                     }
                     _ => visit::walk_ty(self, t),
                 }
@@ -548,7 +510,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.lower_node_id(CRATE_NODE_ID);
         debug_assert!(self.node_id_to_hir_id[CRATE_NODE_ID] == Some(hir::CRATE_HIR_ID));
 
-        visit::walk_crate(&mut MiscCollector { lctx: &mut self, hir_id_owner: None }, c);
+        visit::walk_crate(&mut MiscCollector { lctx: &mut self }, c);
         visit::walk_crate(&mut item::ItemLowerer { lctx: &mut self }, c);
 
         let module = self.lower_mod(&c.module);
