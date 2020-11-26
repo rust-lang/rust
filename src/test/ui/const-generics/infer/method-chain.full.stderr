@@ -3,6 +3,11 @@ error[E0282]: type annotations needed
    |
 LL |     Foo.bar().bar().bar().bar().baz();
    |                                 ^^^ cannot infer the value of const parameter `N` declared on the associated function `baz`
+   |
+help: consider specifying the const argument
+   |
+LL |     Foo.bar().bar().bar().bar().baz::<N>();
+   |                                 ^^^^^^^^
 
 error: aborting due to previous error
 

@@ -1,23 +1,23 @@
 error: `#[doc(alias = "...")]` isn't allowed on extern block
-  --> $DIR/check-doc-alias-attr-location.rs:9:7
+  --> $DIR/check-doc-alias-attr-location.rs:7:7
    |
 LL | #[doc(alias = "foo")]
    |       ^^^^^^^^^^^^^
 
 error: `#[doc(alias = "...")]` isn't allowed on implementation block
-  --> $DIR/check-doc-alias-attr-location.rs:12:7
+  --> $DIR/check-doc-alias-attr-location.rs:10:7
    |
 LL | #[doc(alias = "bar")]
    |       ^^^^^^^^^^^^^
 
 error: `#[doc(alias = "...")]` isn't allowed on implementation block
-  --> $DIR/check-doc-alias-attr-location.rs:18:7
+  --> $DIR/check-doc-alias-attr-location.rs:16:7
    |
 LL | #[doc(alias = "foobar")]
    |       ^^^^^^^^^^^^^^^^
 
 error: `#[doc(alias = "...")]` isn't allowed on type alias in implementation block
-  --> $DIR/check-doc-alias-attr-location.rs:20:11
+  --> $DIR/check-doc-alias-attr-location.rs:18:11
    |
 LL |     #[doc(alias = "assoc")]
    |           ^^^^^^^^^^^^^^^

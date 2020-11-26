@@ -3,7 +3,10 @@
 
 WINDOWS:      $__llvm_profile_runtime_user = comdat any
 
-CHECK:        @__llvm_coverage_mapping = internal constant
+CHECK:        @__covrec_{{[A-F0-9]+}}u = linkonce_odr hidden constant
+CHECK-SAME:   section "[[INSTR_PROF_COVFUN]]"[[COMDAT_IF_SUPPORTED]], align 8
+
+CHECK:        @__llvm_coverage_mapping = private constant
 CHECK-SAME:   section "[[INSTR_PROF_COVMAP]]", align 8
 
 WINDOWS:      @__llvm_profile_runtime = external global i32

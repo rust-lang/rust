@@ -754,12 +754,14 @@ impl Tester for Collector {
             let folder_name = filename
                 .to_string()
                 .chars()
-                .map(|c| if c == '/' || c == '.' { '_' } else { c })
+                .map(|c| if c == '\\' || c == '/' || c == '.' { '_' } else { c })
                 .collect::<String>();
 
             path.push(format!(
-                "{name}_{line}_{number}",
-                name = folder_name,
+                "{krate}_{file}_{line}_{number}",
+                krate = cratename,
+                file = folder_name,
+                line = line,
                 number = {
                     // Increases the current test number, if this file already
                     // exists or it creates a new entry with a test number of 0.
@@ -768,7 +770,6 @@ impl Tester for Collector {
                         .and_modify(|v| *v += 1)
                         .or_insert(0)
                 },
-                line = line,
             ));
 
             std::fs::create_dir_all(&path)

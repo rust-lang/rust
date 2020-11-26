@@ -18,7 +18,10 @@ SOURCEDIR=../coverage
 # `llvm/release_debuginfo`. Note that some CI builds disable debug assertions (by setting
 # `NO_LLVM_ASSERTIONS=1`), so it is not OK to fail the test, but `bless`ed test results cannot be
 # generated without debug assertions.
-LLVM_COV_DEBUG := $(shell "$(LLVM_BIN_DIR)"/llvm-cov show --debug 2>&1 | grep -q "Unknown command line argument '--debug'"; echo $$?)
+LLVM_COV_DEBUG := $(shell \
+		"$(LLVM_BIN_DIR)"/llvm-cov show --debug 2>&1 | \
+		grep -q "Unknown command line argument '--debug'"; \
+		echo $$?)
 ifeq ($(LLVM_COV_DEBUG), 1)
 DEBUG_FLAG=--debug
 endif
@@ -30,7 +33,12 @@ ifdef RUSTC_BLESS_TEST
 DEBUG_FLAG=--debug
 endif
 
+ifeq ($(LLVM_VERSION_11_PLUS),true)
 all: $(patsubst $(SOURCEDIR)/%.rs,%,$(wildcard $(SOURCEDIR)/*.rs))
+else
+$(info Rust option `-Z instrument-coverage` requires LLVM 11 or higher. Test skipped.)
+all:
+endif
 
 # Ensure there are no `expected` results for tests that may have been removed or renamed
 .PHONY: clear_expected_if_blessed

@@ -21,38 +21,35 @@ fn test_lev_distance() {
 
 #[test]
 fn test_find_best_match_for_name() {
-    use rustc_span::with_default_session_globals;
+    use crate::with_default_session_globals;
     with_default_session_globals(|| {
         let input = vec![Symbol::intern("aaab"), Symbol::intern("aaabc")];
         assert_eq!(
-            find_best_match_for_name(input.iter(), Symbol::intern("aaaa"), None),
+            find_best_match_for_name(&input, Symbol::intern("aaaa"), None),
             Some(Symbol::intern("aaab"))
         );
 
-        assert_eq!(
-            find_best_match_for_name(input.iter(), Symbol::intern("1111111111"), None),
-            None
-        );
+        assert_eq!(find_best_match_for_name(&input, Symbol::intern("1111111111"), None), None);
 
         let input = vec![Symbol::intern("aAAA")];
         assert_eq!(
-            find_best_match_for_name(input.iter(), Symbol::intern("AAAA"), None),
+            find_best_match_for_name(&input, Symbol::intern("AAAA"), None),
             Some(Symbol::intern("aAAA"))
         );
 
         let input = vec![Symbol::intern("AAAA")];
         // Returns None because `lev_distance > max_dist / 3`
-        assert_eq!(find_best_match_for_name(input.iter(), Symbol::intern("aaaa"), None), None);
+        assert_eq!(find_best_match_for_name(&input, Symbol::intern("aaaa"), None), None);
 
         let input = vec![Symbol::intern("AAAA")];
         assert_eq!(
-            find_best_match_for_name(input.iter(), Symbol::intern("aaaa"), Some(4)),
+            find_best_match_for_name(&input, Symbol::intern("aaaa"), Some(4)),
             Some(Symbol::intern("AAAA"))
         );
 
         let input = vec![Symbol::intern("a_longer_variable_name")];
         assert_eq!(
-            find_best_match_for_name(input.iter(), Symbol::intern("a_variable_longer_name"), None),
+            find_best_match_for_name(&input, Symbol::intern("a_variable_longer_name"), None),
             Some(Symbol::intern("a_longer_variable_name"))
         );
     })

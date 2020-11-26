@@ -2,7 +2,6 @@
 //! found or is otherwise invalid.
 
 use crate::check::FnCtxt;
-use rustc_ast::util::lev_distance;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
@@ -17,6 +16,7 @@ use rustc_middle::ty::print::with_crate_prefix;
 use rustc_middle::ty::{
     self, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness,
 };
+use rustc_span::lev_distance;
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{source_map, FileName, Span};
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
@@ -744,7 +744,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if actual.is_enum() {
                     let adt_def = actual.ty_adt_def().expect("enum is not an ADT");
                     if let Some(suggestion) = lev_distance::find_best_match_for_name(
-                        adt_def.variants.iter().map(|s| &s.ident.name),
+                        &adt_def.variants.iter().map(|s| s.ident.name).collect::<Vec<_>>(),
                         item_name.name,
                         None,
                     ) {
