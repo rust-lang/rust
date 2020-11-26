@@ -1133,6 +1133,7 @@ impl<'tcx> DumpVisitor<'tcx> {
             .map(|i| id_from_hir_id(i.id, &self.save_ctxt))
             .collect();
         let span = self.span_from_span(krate.item.span);
+        let attrs = self.tcx.hir().attrs(id);
 
         self.dumper.dump_def(
             &Access { public: true, reachable: true },
@@ -1146,9 +1147,9 @@ impl<'tcx> DumpVisitor<'tcx> {
                 children,
                 parent: None,
                 decl_id: None,
-                docs: self.save_ctxt.docs_for_attrs(krate.item.attrs),
+                docs: self.save_ctxt.docs_for_attrs(attrs),
                 sig: None,
-                attributes: lower_attributes(krate.item.attrs.to_owned(), &self.save_ctxt),
+                attributes: lower_attributes(attrs.to_owned(), &self.save_ctxt),
             },
         );
         intravisit::walk_crate(self, krate);

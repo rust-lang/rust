@@ -208,8 +208,9 @@ impl_lint_pass!(DocMarkdown =>
 );
 
 impl<'tcx> LateLintPass<'tcx> for DocMarkdown {
-    fn check_crate(&mut self, cx: &LateContext<'tcx>, krate: &'tcx hir::Crate<'_>) {
-        check_attrs(cx, &self.valid_idents, &krate.item.attrs);
+    fn check_crate(&mut self, cx: &LateContext<'tcx>, _: &'tcx hir::Crate<'_>) {
+        let attrs = cx.tcx.hir().attrs(hir::CRATE_HIR_ID);
+        check_attrs(cx, &self.valid_idents, attrs);
     }
 
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>) {

@@ -433,12 +433,10 @@ pub fn start_async_codegen<B: ExtraBackendMethods>(
     let sess = tcx.sess;
 
     let crate_name = tcx.crate_name(LOCAL_CRATE);
-    let no_builtins = tcx.sess.contains_name(&tcx.hir().krate().item.attrs, sym::no_builtins);
-    let is_compiler_builtins =
-        tcx.sess.contains_name(&tcx.hir().krate().item.attrs, sym::compiler_builtins);
-    let subsystem = tcx
-        .sess
-        .first_attr_value_str_by_name(&tcx.hir().krate().item.attrs, sym::windows_subsystem);
+    let crate_attrs = tcx.hir().attrs(rustc_hir::CRATE_HIR_ID);
+    let no_builtins = tcx.sess.contains_name(crate_attrs, sym::no_builtins);
+    let is_compiler_builtins = tcx.sess.contains_name(crate_attrs, sym::compiler_builtins);
+    let subsystem = tcx.sess.first_attr_value_str_by_name(crate_attrs, sym::windows_subsystem);
     let windows_subsystem = subsystem.map(|subsystem| {
         if subsystem != sym::windows && subsystem != sym::console {
             tcx.sess.fatal(&format!(

@@ -127,7 +127,8 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
     }
 
     fn check_crate(&mut self, cx: &LateContext<'tcx>, krate: &'tcx hir::Crate<'_>) {
-        self.check_missing_docs_attrs(cx, &krate.item.attrs, krate.item.span, "the", "crate");
+        let attrs = cx.tcx.hir().attrs(hir::CRATE_HIR_ID);
+        self.check_missing_docs_attrs(cx, attrs, krate.item.span, "the", "crate");
     }
 
     fn check_item(&mut self, cx: &LateContext<'tcx>, it: &'tcx hir::Item<'_>) {
