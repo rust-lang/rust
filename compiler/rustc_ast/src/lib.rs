@@ -34,7 +34,6 @@ macro_rules! unwrap_or {
 pub mod util {
     pub mod classify;
     pub mod comments;
-    pub mod lev_distance;
     pub mod literal;
     pub mod parser;
 }

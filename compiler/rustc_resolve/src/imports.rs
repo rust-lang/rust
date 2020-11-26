@@ -10,7 +10,6 @@ use crate::{CrateLint, Module, ModuleOrUniformRoot, ParentScope, PerNS, ScopeSet
 use crate::{NameBinding, NameBindingKind, PathResult, PrivacyError, ToNameBinding};
 
 use rustc_ast::unwrap_or;
-use rustc_ast::util::lev_distance::find_best_match_for_name;
 use rustc_ast::NodeId;
 use rustc_ast_lowering::ResolverAstLowering;
 use rustc_data_structures::fx::FxHashSet;
@@ -25,6 +24,7 @@ use rustc_session::lint::builtin::{PUB_USE_OF_PRIVATE_EXTERN_CRATE, UNUSED_IMPOR
 use rustc_session::lint::BuiltinLintDiagnostics;
 use rustc_session::DiagnosticMessageId;
 use rustc_span::hygiene::ExpnId;
+use rustc_span::lev_distance::find_best_match_for_name;
 use rustc_span::symbol::{kw, Ident, Symbol};
 use rustc_span::{MultiSpan, Span};
 
@@ -1096,33 +1096,37 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                     _ => None,
                 };
                 let resolutions = resolutions.as_ref().into_iter().flat_map(|r| r.iter());
-                let names = resolutions.filter_map(|(BindingKey { ident: i, .. }, resolution)| {
-                    if *i == ident {
-                        return None;
-                    } // Never suggest the same name
-                    match *resolution.borrow() {
-                        NameResolution { binding: Some(name_binding), .. } => {
-                            match name_binding.kind {
-                                NameBindingKind::Import { binding, .. } => {
-                                    match binding.kind {
-                                        // Never suggest the name that has binding error
-                                        // i.e., the name that cannot be previously resolved
-                                        NameBindingKind::Res(Res::Err, _) => None,
-                                        _ => Some(&i.name),
+                let names = resolutions
+                    .filter_map(|(BindingKey { ident: i, .. }, resolution)| {
+                        if *i == ident {
+                            return None;
+                        } // Never suggest the same name
+                        match *resolution.borrow() {
+                            NameResolution { binding: Some(name_binding), .. } => {
+                                match name_binding.kind {
+                                    NameBindingKind::Import { binding, .. } => {
+                                        match binding.kind {
+                                            // Never suggest the name that has binding error
+                                            // i.e., the name that cannot be previously resolved
+                                            NameBindingKind::Res(Res::Err, _) => None,
+                                            _ => Some(i.name),
+                                        }
                                     }
+                                    _ => Some(i.name),
                                 }
-                                _ => Some(&i.name),
                             }
+                            NameResolution { ref single_imports, .. }
+                                if single_imports.is_empty() =>
+                            {
+                                None
+                            }
+                            _ => Some(i.name),
                         }
-                        NameResolution { ref single_imports, .. } if single_imports.is_empty() => {
-                            None
-                        }
-                        _ => Some(&i.name),
-                    }
-                });
+                    })
+                    .collect::<Vec<Symbol>>();
 
                 let lev_suggestion =
-                    find_best_match_for_name(names, ident.name, None).map(|suggestion| {
+                    find_best_match_for_name(&names, ident.name, None).map(|suggestion| {
                         (
                             vec![(ident.span, suggestion.to_string())],
                             String::from("a similar name exists in the module"),

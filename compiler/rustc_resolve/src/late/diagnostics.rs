@@ -5,7 +5,6 @@ use crate::path_names_to_string;
 use crate::{CrateLint, Module, ModuleKind, ModuleOrUniformRoot};
 use crate::{PathResult, PathSource, Segment};
 
-use rustc_ast::util::lev_distance::find_best_match_for_name;
 use rustc_ast::visit::FnKind;
 use rustc_ast::{self as ast, Expr, ExprKind, Item, ItemKind, NodeId, Path, Ty, TyKind};
 use rustc_ast_pretty::pprust::path_segment_to_string;
@@ -18,6 +17,7 @@ use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::PrimTy;
 use rustc_session::parse::feature_err;
 use rustc_span::hygiene::MacroKind;
+use rustc_span::lev_distance::find_best_match_for_name;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{BytePos, MultiSpan, Span, DUMMY_SP};
 
@@ -1206,7 +1206,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
         names.sort_by_cached_key(|suggestion| suggestion.candidate.as_str());
 
         match find_best_match_for_name(
-            names.iter().map(|suggestion| &suggestion.candidate),
+            &names.iter().map(|suggestion| suggestion.candidate).collect::<Vec<Symbol>>(),
             name,
             None,
         ) {
@@ -1592,9 +1592,10 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
             .bindings
             .iter()
             .filter(|(id, _)| id.span.ctxt() == label.span.ctxt())
-            .map(|(id, _)| &id.name);
+            .map(|(id, _)| id.name)
+            .collect::<Vec<Symbol>>();
 
-        find_best_match_for_name(names, label.name, None).map(|symbol| {
+        find_best_match_for_name(&names, label.name, None).map(|symbol| {
             // Upon finding a similar name, get the ident that it was from - the span
             // contained within helps make a useful diagnostic. In addition, determine
             // whether this candidate is within scope.

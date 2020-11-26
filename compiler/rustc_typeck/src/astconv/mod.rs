@@ -13,7 +13,6 @@ use crate::errors::{
 };
 use crate::middle::resolve_lifetime as rl;
 use crate::require_c_abi_if_c_variadic;
-use rustc_ast::util::lev_distance::find_best_match_for_name;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{struct_span_err, Applicability, ErrorReported, FatalError};
 use rustc_hir as hir;
@@ -26,6 +25,7 @@ use rustc_middle::ty::subst::{self, InternalSubsts, Subst, SubstsRef};
 use rustc_middle::ty::GenericParamDefKind;
 use rustc_middle::ty::{self, Const, DefIdTree, Ty, TyCtxt, TypeFoldable};
 use rustc_session::lint::builtin::AMBIGUOUS_ASSOCIATED_ITEMS;
+use rustc_span::lev_distance::find_best_match_for_name;
 use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::spec::abi;
@@ -1579,7 +1579,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
                     let adt_def = qself_ty.ty_adt_def().expect("enum is not an ADT");
                     if let Some(suggested_name) = find_best_match_for_name(
-                        adt_def.variants.iter().map(|variant| &variant.ident.name),
+                        &adt_def
+                            .variants
+                            .iter()
+                            .map(|variant| variant.ident.name)
+                            .collect::<Vec<Symbol>>(),
                         assoc_ident.name,
                         None,
                     ) {

@@ -1,6 +1,5 @@
 use rustc_ast::mut_visit::{visit_clobber, MutVisitor, *};
 use rustc_ast::ptr::P;
-use rustc_ast::util::lev_distance::find_best_match_for_name;
 use rustc_ast::{self as ast, AttrVec, BlockCheckMode};
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::fingerprint::Fingerprint;
@@ -20,6 +19,7 @@ use rustc_session::parse::CrateConfig;
 use rustc_session::CrateDisambiguator;
 use rustc_session::{early_error, filesearch, output, DiagnosticOutput, Session};
 use rustc_span::edition::Edition;
+use rustc_span::lev_distance::find_best_match_for_name;
 use rustc_span::source_map::FileLoader;
 use rustc_span::symbol::{sym, Symbol};
 use smallvec::SmallVec;
@@ -512,8 +512,11 @@ pub(crate) fn check_attr_crate_type(
 
                 if let ast::MetaItemKind::NameValue(spanned) = a.meta().unwrap().kind {
                     let span = spanned.span;
-                    let lev_candidate =
-                        find_best_match_for_name(CRATE_TYPES.iter().map(|(k, _)| k), n, None);
+                    let lev_candidate = find_best_match_for_name(
+                        &CRATE_TYPES.iter().map(|(k, _)| *k).collect::<Vec<_>>(),
+                        n,
+                        None,
+                    );
                     if let Some(candidate) = lev_candidate {
                         lint_buffer.buffer_lint_with_diagnostic(
                             lint::builtin::UNKNOWN_CRATE_TYPES,

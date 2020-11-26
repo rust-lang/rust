@@ -1,6 +1,4 @@
-// FIXME(Centril): Move to rustc_span?
-
-use rustc_span::symbol::Symbol;
+use crate::symbol::Symbol;
 use std::cmp;
 
 #[cfg(test)]
@@ -45,17 +43,14 @@ pub fn lev_distance(a: &str, b: &str) -> usize {
 ///
 /// Besides Levenshtein, we use case insensitive comparison to improve accuracy on an edge case with
 /// a lower(upper)case letters mismatch.
-pub fn find_best_match_for_name<'a, T>(
-    iter_names: T,
+#[cold]
+pub fn find_best_match_for_name(
+    name_vec: &[Symbol],
     lookup: Symbol,
     dist: Option<usize>,
-) -> Option<Symbol>
-where
-    T: Iterator<Item = &'a Symbol>,
-{
+) -> Option<Symbol> {
     let lookup = &lookup.as_str();
     let max_dist = dist.unwrap_or_else(|| cmp::max(lookup.len(), 3) / 3);
-    let name_vec: Vec<&Symbol> = iter_names.collect();
 
     let (case_insensitive_match, levenshtein_match) = name_vec
         .iter()
@@ -83,18 +78,18 @@ where
     // 2. Levenshtein distance match
     // 3. Sorted word match
     if let Some(candidate) = case_insensitive_match {
-        Some(*candidate)
+        Some(candidate)
     } else if levenshtein_match.is_some() {
-        levenshtein_match.map(|(candidate, _)| *candidate)
+        levenshtein_match.map(|(candidate, _)| candidate)
     } else {
         find_match_by_sorted_words(name_vec, lookup)
     }
 }
 
-fn find_match_by_sorted_words<'a>(iter_names: Vec<&'a Symbol>, lookup: &str) -> Option<Symbol> {
+fn find_match_by_sorted_words(iter_names: &[Symbol], lookup: &str) -> Option<Symbol> {
     iter_names.iter().fold(None, |result, candidate| {
         if sort_by_words(&candidate.as_str()) == sort_by_words(lookup) {
-            Some(**candidate)
+            Some(*candidate)
         } else {
             result
         }
