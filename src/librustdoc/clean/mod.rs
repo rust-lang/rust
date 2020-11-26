@@ -1503,7 +1503,7 @@ impl Clean<Type> for hir::Ty<'_> {
 }
 
 /// Returns `None` if the type could not be normalized
-fn normalize(cx: &DocContext<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
+fn normalize(cx: &DocContext<'tcx>, ty: Ty<'_>) -> Option<Ty<'tcx>> {
     use crate::rustc_trait_selection::infer::TyCtxtInferExt;
     use crate::rustc_trait_selection::traits::query::normalize::AtExt;
     use rustc_middle::traits::ObligationCause;
@@ -1518,11 +1518,11 @@ fn normalize(cx: &DocContext<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
     });
     match normalized {
         Ok(normalized_value) => {
-            debug!("resolved {:?} to {:?}", ty, normalized_value);
+            debug!("normalized {:?} to {:?}", ty, normalized_value);
             Some(normalized_value)
         }
         Err(err) => {
-            debug!("failed to resolve {:?}: {:?}", ty, err);
+            debug!("failed to normalize {:?}: {:?}", ty, err);
             None
         }
     }
@@ -1531,7 +1531,7 @@ fn normalize(cx: &DocContext<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
 impl<'tcx> Clean<Type> for Ty<'tcx> {
     fn clean(&self, cx: &DocContext<'_>) -> Type {
         debug!("cleaning type: {:?}", self);
-        let ty = normalize(cx, self.lift_to_tcx(cx.tcx).unwrap()).unwrap_or(self);
+        let ty = normalize(cx, self).unwrap_or(self);
         match *ty.kind() {
             ty::Never => Never,
             ty::Bool => Primitive(PrimitiveType::Bool),
