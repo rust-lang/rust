@@ -453,7 +453,7 @@ impl<'a> State<'a> {
     pub fn print_foreign_item(&mut self, item: &hir::ForeignItem<'_>) {
         self.hardbreak_if_not_bol();
         self.maybe_print_comment(item.span.lo());
-        self.print_outer_attributes(&item.attrs);
+        self.print_outer_attributes(self.attrs(item.hir_id()));
         match item.kind {
             hir::ForeignItemKind::Fn(ref decl, ref arg_names, ref generics) => {
                 self.head("");

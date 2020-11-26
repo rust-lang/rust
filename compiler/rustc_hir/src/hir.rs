@@ -2916,7 +2916,6 @@ pub struct ForeignItemRef<'hir> {
 #[derive(Debug)]
 pub struct ForeignItem<'hir> {
     pub ident: Ident,
-    pub attrs: &'hir [Attribute],
     pub kind: ForeignItemKind<'hir>,
     pub def_id: LocalDefId,
     pub span: Span,
@@ -3083,5 +3082,5 @@ mod size_asserts {
     rustc_data_structures::static_assert_size!(super::Item<'static>, 200);
     rustc_data_structures::static_assert_size!(super::TraitItem<'static>, 144);
     rustc_data_structures::static_assert_size!(super::ImplItem<'static>, 168);
-    rustc_data_structures::static_assert_size!(super::ForeignItem<'static>, 152);
+    rustc_data_structures::static_assert_size!(super::ForeignItem<'static>, 136);
 }

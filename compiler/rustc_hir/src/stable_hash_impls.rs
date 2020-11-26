@@ -178,11 +178,10 @@ impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for ImplItem<'_> {
 
 impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for ForeignItem<'_> {
     fn hash_stable(&self, hcx: &mut HirCtx, hasher: &mut StableHasher) {
-        let ForeignItem { def_id: _, ident, ref attrs, ref kind, span, ref vis } = *self;
+        let ForeignItem { def_id: _, ident, ref kind, span, ref vis } = *self;
 
         hcx.hash_hir_item_like(|hcx| {
             ident.name.hash_stable(hcx, hasher);
-            attrs.hash_stable(hcx, hasher);
             kind.hash_stable(hcx, hasher);
             span.hash_stable(hcx, hasher);
             vis.hash_stable(hcx, hasher);

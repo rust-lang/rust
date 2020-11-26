@@ -700,10 +700,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_foreign_item(&mut self, i: &ForeignItem) -> hir::ForeignItem<'hir> {
         let hir_id = self.lower_node_id(i.id);
         let def_id = hir_id.expect_owner();
+        self.lower_attrs(hir_id, &i.attrs);
         hir::ForeignItem {
             def_id,
             ident: i.ident,
-            attrs: self.lower_attrs(hir_id, &i.attrs),
             kind: match i.kind {
                 ForeignItemKind::Fn(box FnKind(_, ref sig, ref generics, _)) => {
                     let fdec = &sig.decl;

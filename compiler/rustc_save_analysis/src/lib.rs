@@ -139,6 +139,7 @@ impl<'tcx> SaveContext<'tcx> {
     pub fn get_extern_item_data(&self, item: &hir::ForeignItem<'_>) -> Option<Data> {
         let def_id = item.def_id.to_def_id();
         let qualname = format!("::{}", self.tcx.def_path_str(def_id));
+        let attrs = self.tcx.hir().attrs(item.hir_id());
         match item.kind {
             hir::ForeignItemKind::Fn(ref decl, arg_names, ref generics) => {
                 filter!(self.span_utils, item.ident.span);
@@ -169,9 +170,9 @@ impl<'tcx> SaveContext<'tcx> {
                     parent: None,
                     children: vec![],
                     decl_id: None,
-                    docs: self.docs_for_attrs(&item.attrs),
+                    docs: self.docs_for_attrs(attrs),
                     sig: sig::foreign_item_signature(item, self),
-                    attributes: lower_attributes(item.attrs.to_vec(), self),
+                    attributes: lower_attributes(attrs.to_vec(), self),
                 }))
             }
             hir::ForeignItemKind::Static(ref ty, _) => {
@@ -190,9 +191,9 @@ impl<'tcx> SaveContext<'tcx> {
                     parent: None,
                     children: vec![],
                     decl_id: None,
-                    docs: self.docs_for_attrs(&item.attrs),
+                    docs: self.docs_for_attrs(attrs),
                     sig: sig::foreign_item_signature(item, self),
-                    attributes: lower_attributes(item.attrs.to_vec(), self),
+                    attributes: lower_attributes(attrs.to_vec(), self),
                 }))
             }
             // FIXME(plietar): needs a new DefKind in rls-data
