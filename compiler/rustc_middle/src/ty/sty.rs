@@ -2174,6 +2174,15 @@ impl<'tcx> TyS<'tcx> {
         }
     }
 
+    /// Get the `i`-th element of a tuple.
+    /// Panics when called on anything but a tuple.
+    pub fn tuple_element_ty(&self, i: usize) -> Option<Ty<'tcx>> {
+        match self.kind() {
+            Tuple(substs) => substs.iter().nth(i).map(|field| field.expect_ty()),
+            _ => bug!("tuple_fields called on non-tuple"),
+        }
+    }
+
     /// If the type contains variants, returns the valid range of variant indices.
     //
     // FIXME: This requires the optimized MIR in the case of generators.
