@@ -19,6 +19,7 @@ use crate::builder::{Builder, RunConfig, ShouldRun, Step};
 use crate::cache::{Interned, INTERNER};
 use crate::compile;
 use crate::config::TargetSelection;
+use crate::tarball::{OverlayKind, Tarball};
 use crate::tool::{self, Tool};
 use crate::util::{exe, is_dylib, timeit};
 use crate::{Compiler, DependencyType, Mode, LLVM_TOOLS};
@@ -2517,68 +2518,36 @@ impl Step for RustDev {
 
         builder.info(&format!("Dist RustDev ({})", target));
         let _time = timeit(builder);
-        let src = builder.src.join("src/llvm-project/llvm");
-        let name = pkgname(builder, "rust-dev");
 
-        let tmp = tmpdir(builder);
-        let image = tmp.join("rust-dev-image");
-        drop(fs::remove_dir_all(&image));
-
-        // Prepare the image directory
-        let dst_bindir = image.join("bin");
-        t!(fs::create_dir_all(&dst_bindir));
+        let mut tarball = Tarball::new(builder, "rust-dev", &target.triple);
+        tarball.set_overlay(OverlayKind::LLVM);
 
         let src_bindir = builder.llvm_out(target).join("bin");
-        let install_bin =
-            |name| builder.install(&src_bindir.join(exe(name, target)), &dst_bindir, 0o755);
-        install_bin("llvm-config");
-        install_bin("llvm-ar");
-        install_bin("llvm-objdump");
-        install_bin("llvm-profdata");
-        install_bin("llvm-bcanalyzer");
-        install_bin("llvm-cov");
-        install_bin("llvm-dwp");
-        builder.install(&builder.llvm_filecheck(target), &dst_bindir, 0o755);
+        for bin in &[
+            "llvm-config",
+            "llvm-ar",
+            "llvm-objdump",
+            "llvm-profdata",
+            "llvm-bcanalyzer",
+            "llvm-cov",
+            "llvm-dwp",
+        ] {
+            tarball.add_file(src_bindir.join(exe(bin, target)), "bin", 0o755);
+        }
+        tarball.add_file(&builder.llvm_filecheck(target), "bin", 0o755);
 
         // Copy the include directory as well; needed mostly to build
         // librustc_llvm properly (e.g., llvm-config.h is in here). But also
         // just broadly useful to be able to link against the bundled LLVM.
-        builder.cp_r(&builder.llvm_out(target).join("include"), &image.join("include"));
+        tarball.add_dir(&builder.llvm_out(target).join("include"), ".");
 
         // Copy libLLVM.so to the target lib dir as well, so the RPATH like
         // `$ORIGIN/../lib` can find it. It may also be used as a dependency
         // of `rustc-dev` to support the inherited `-lLLVM` when using the
         // compiler libraries.
-        maybe_install_llvm(builder, target, &image.join("lib"));
+        maybe_install_llvm(builder, target, &tarball.image_dir().join("lib"));
 
-        // Prepare the overlay
-        let overlay = tmp.join("rust-dev-overlay");
-        drop(fs::remove_dir_all(&overlay));
-        builder.create_dir(&overlay);
-        builder.install(&src.join("README.txt"), &overlay, 0o644);
-        builder.install(&src.join("LICENSE.TXT"), &overlay, 0o644);
-        builder.create(&overlay.join("version"), &builder.rust_version());
-
-        // Generate the installer tarball
-        let mut cmd = rust_installer(builder);
-        cmd.arg("generate")
-            .arg("--product-name=Rust")
-            .arg("--rel-manifest-dir=rustlib")
-            .arg("--success-message=rust-dev-installed.")
-            .arg("--image-dir")
-            .arg(&image)
-            .arg("--work-dir")
-            .arg(&tmpdir(builder))
-            .arg("--output-dir")
-            .arg(&distdir(builder))
-            .arg("--non-installed-overlay")
-            .arg(&overlay)
-            .arg(format!("--package-name={}-{}", name, target.triple))
-            .arg("--legacy-manifest-dirs=rustlib,cargo")
-            .arg("--component-name=rust-dev");
-
-        builder.run(&mut cmd);
-        Some(distdir(builder).join(format!("{}-{}.tar.gz", name, target.triple)))
+        Some(tarball.generate())
     }
 }
 
@@ -2607,45 +2576,9 @@ impl Step for BuildManifest {
     fn run(self, builder: &Builder<'_>) -> PathBuf {
         let build_manifest = builder.tool_exe(Tool::BuildManifest);
 
-        let name = pkgname(builder, "build-manifest");
-        let tmp = tmpdir(builder);
-
-        // Prepare the image.
-        let image = tmp.join("build-manifest-image");
-        let image_bin = image.join("bin");
-        let _ = fs::remove_dir_all(&image);
-        t!(fs::create_dir_all(&image_bin));
-        builder.install(&build_manifest, &image_bin, 0o755);
-
-        // Prepare the overlay.
-        let overlay = tmp.join("build-manifest-overlay");
-        let _ = fs::remove_dir_all(&overlay);
-        builder.create_dir(&overlay);
-        builder.create(&overlay.join("version"), &builder.rust_version());
-        for file in &["COPYRIGHT", "LICENSE-APACHE", "LICENSE-MIT", "README.md"] {
-            builder.install(&builder.src.join(file), &overlay, 0o644);
-        }
-
-        // Create the final tarball.
-        let mut cmd = rust_installer(builder);
-        cmd.arg("generate")
-            .arg("--product-name=Rust")
-            .arg("--rel-manifest-dir=rustlib")
-            .arg("--success-message=build-manifest installed.")
-            .arg("--image-dir")
-            .arg(&image)
-            .arg("--work-dir")
-            .arg(&tmpdir(builder))
-            .arg("--output-dir")
-            .arg(&distdir(builder))
-            .arg("--non-installed-overlay")
-            .arg(&overlay)
-            .arg(format!("--package-name={}-{}", name, self.target.triple))
-            .arg("--legacy-manifest-dirs=rustlib,cargo")
-            .arg("--component-name=build-manifest");
-
-        builder.run(&mut cmd);
-        distdir(builder).join(format!("{}-{}.tar.gz", name, self.target.triple))
+        let tarball = Tarball::new(builder, "build-manifest", &self.target.triple);
+        tarball.add_file(&build_manifest, "bin", 0o755);
+        tarball.generate()
     }
 }
 
