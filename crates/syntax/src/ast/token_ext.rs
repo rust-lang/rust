@@ -130,19 +130,28 @@ impl ast::String {
         let text = self.text().as_str();
         let text = &text[self.text_range_between_quotes()? - self.syntax().text_range().start()];
 
-        let mut buf = String::with_capacity(text.len());
+        let mut buf = String::new();
+        let mut text_iter = text.chars();
         let mut has_error = false;
-        unescape_literal(text, Mode::Str, &mut |_, unescaped_char| match unescaped_char {
-            Ok(c) => buf.push(c),
-            Err(_) => has_error = true,
+        unescape_literal(text, Mode::Str, &mut |char_range, unescaped_char| match (
+            unescaped_char,
+            buf.capacity() == 0,
+        ) {
+            (Ok(c), false) => buf.push(c),
+            (Ok(c), true) if Some(c) == text_iter.next() => (),
+            (Ok(c), true) => {
+                buf.reserve_exact(text.len());
+                buf.push_str(&text[..char_range.start]);
+                buf.push(c);
+            }
+            (Err(_), _) => has_error = true,
         });
 
-        if has_error {
-            return None;
+        match (has_error, buf.capacity() == 0) {
+            (true, _) => None,
+            (false, true) => Some(Cow::Borrowed(text)),
+            (false, false) => Some(Cow::Owned(buf)),
         }
-        // FIXME: don't actually allocate for borrowed case
-        let res = if buf == text { Cow::Borrowed(text) } else { Cow::Owned(buf) };
-        Some(res)
     }
 
     pub fn quote_offsets(&self) -> Option<QuoteOffsets> {
