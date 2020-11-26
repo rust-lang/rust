@@ -10,13 +10,13 @@ error: binary float literal is not supported
 LL |     0b101010f64;
    |     ^^^^^^^^^^^ not supported
 
-error: invalid suffix `p4f64` for integer literal
+error: invalid suffix `p4f64` for number literal
   --> $DIR/no-binary-float-literal.rs:6:5
    |
 LL |     0b101p4f64;
    |     ^^^^^^^^^^ invalid suffix `p4f64`
    |
-   = help: the suffix must be one of the integral types (`u32`, `isize`, etc)
+   = help: the suffix must be one of the numeric types (`u32`, `isize`, `f32`, etc.)
 
 error: aborting due to 3 previous errors
 

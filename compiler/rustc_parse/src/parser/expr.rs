@@ -1450,10 +1450,10 @@ impl<'a> Parser<'a> {
                         .help("valid widths are 8, 16, 32, 64 and 128")
                         .emit();
                 } else {
-                    let msg = format!("invalid suffix `{}` for integer literal", suf);
+                    let msg = format!("invalid suffix `{}` for number literal", suf);
                     self.struct_span_err(span, &msg)
                         .span_label(span, format!("invalid suffix `{}`", suf))
-                        .help("the suffix must be one of the integral types (`u32`, `isize`, etc)")
+                        .help("the suffix must be one of the numeric types (`u32`, `isize`, `f32`, etc.)")
                         .emit();
                 }
             }
