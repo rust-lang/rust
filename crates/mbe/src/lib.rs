@@ -52,7 +52,7 @@ impl fmt::Display for ExpandError {
             ExpandError::BindingError(e) => f.write_str(e),
             ExpandError::ConversionError => f.write_str("could not convert tokens"),
             ExpandError::InvalidRepeat => f.write_str("invalid repeat expression"),
-            ExpandError::ProcMacroError(e) => write!(f, "{}", e),
+            ExpandError::ProcMacroError(e) => e.fmt(f),
             ExpandError::Other(e) => f.write_str(e),
         }
     }
