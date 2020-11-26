@@ -15,6 +15,8 @@ pub mod proc_macro;
 pub mod quote;
 pub mod eager;
 
+pub use mbe::{ExpandError, ExpandResult};
+
 use std::hash::Hash;
 use std::sync::Arc;
 
