@@ -114,13 +114,17 @@ impl<'a> Tarball<'a> {
             self.builder.install(&self.builder.src.join(file), &self.overlay_dir, 0o644);
         }
 
+        let mut cmd = self.builder.tool_cmd(crate::tool::Tool::RustInstaller);
+
+        self.builder.info(&format!("Dist {} ({})", self.component, self.target));
+        let _time = crate::util::timeit(self.builder);
+
         let mut component_name = self.component.clone();
         if self.is_preview {
             component_name.push_str("-preview");
         }
 
         let distdir = crate::dist::distdir(self.builder);
-        let mut cmd = self.builder.tool_cmd(crate::tool::Tool::RustInstaller);
         cmd.arg("generate")
             .arg(format!("--product-name={}", self.product_name))
             .arg("--rel-manifest-dir=rustlib")
@@ -137,7 +141,6 @@ impl<'a> Tarball<'a> {
             .arg("--legacy-manifest-dirs=rustlib,cargo")
             .arg(format!("--component-name={}", component_name));
         self.builder.run(&mut cmd);
-
         t!(std::fs::remove_dir_all(&self.temp_dir));
 
         distdir.join(format!("{}-{}.tar.gz", self.pkgname, self.target))

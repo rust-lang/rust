@@ -72,11 +72,7 @@ impl Step for Docs {
         if !builder.config.docs {
             return None;
         }
-
         builder.default_doc(None);
-
-        builder.info(&format!("Dist docs ({})", host));
-        let _time = timeit(builder);
 
         let dest = "share/doc/rust/html";
 
@@ -84,7 +80,6 @@ impl Step for Docs {
         tarball.set_product_name("Rust Documentation");
         tarball.add_dir(&builder.doc_out(host), dest);
         tarball.add_file(&builder.src.join("src/doc/robots.txt"), dest, 0o644);
-
         Some(tarball.generate())
     }
 }
@@ -112,15 +107,11 @@ impl Step for RustcDocs {
         if !builder.config.compiler_docs {
             return None;
         }
-
         builder.default_doc(None);
-        builder.info(&format!("Dist compiler docs ({})", host));
-        let _time = timeit(builder);
 
         let mut tarball = Tarball::new(builder, "rustc-docs", &host.triple);
         tarball.set_product_name("Rustc Documentation");
         tarball.add_dir(&builder.compiler_doc_out(host), "share/doc/rust/html/rustc");
-
         Some(tarball.generate())
     }
 }
@@ -301,9 +292,6 @@ impl Step for Mingw {
             return None;
         }
 
-        builder.info(&format!("Dist mingw ({})", host));
-        let _time = timeit(builder);
-
         let mut tarball = Tarball::new(builder, "rust-mingw", &host.triple);
         tarball.set_product_name("Rust MinGW");
 
@@ -340,9 +328,6 @@ impl Step for Rustc {
     fn run(self, builder: &Builder<'_>) -> PathBuf {
         let compiler = self.compiler;
         let host = self.compiler.host;
-
-        builder.info(&format!("Dist rustc stage{} ({})", compiler.stage, host.triple));
-        let _time = timeit(builder);
 
         let tarball = Tarball::new(builder, "rustc", &host.triple);
 
@@ -2318,9 +2303,6 @@ impl Step for LlvmTools {
             }
         }
 
-        builder.info(&format!("Dist LlvmTools ({})", target));
-        let _time = timeit(builder);
-
         let mut tarball = Tarball::new(builder, "llvm-tools", &target.triple);
         tarball.set_overlay(OverlayKind::LLVM);
         tarball.is_preview(true);
@@ -2374,9 +2356,6 @@ impl Step for RustDev {
                 return None;
             }
         }
-
-        builder.info(&format!("Dist RustDev ({})", target));
-        let _time = timeit(builder);
 
         let mut tarball = Tarball::new(builder, "rust-dev", &target.triple);
         tarball.set_overlay(OverlayKind::LLVM);
