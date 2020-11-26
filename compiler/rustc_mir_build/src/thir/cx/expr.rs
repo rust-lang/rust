@@ -6,6 +6,8 @@ use crate::thir::*;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_index::vec::Idx;
+use rustc_middle::hir::place::PlaceBase as HirPlaceBase;
+use rustc_middle::hir::place::ProjectionKind as HirProjectionKind;
 use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::BorrowKind;
 use rustc_middle::ty::adjustment::{
@@ -386,14 +388,12 @@ fn make_mirror_unadjusted<'a, 'tcx>(
                     span_bug!(expr.span, "closure expr w/o closure type: {:?}", closure_ty);
                 }
             };
+
             let upvars = cx
                 .typeck_results()
-                .closure_captures
-                .get(&def_id)
-                .iter()
-                .flat_map(|upvars| upvars.iter())
+                .closure_min_captures_flattened(def_id)
                 .zip(substs.upvar_tys())
-                .map(|((&var_hir_id, _), ty)| capture_upvar(cx, expr, var_hir_id, ty))
+                .map(|(captured_place, ty)| capture_upvar(cx, expr, captured_place, ty))
                 .collect();
             ExprKind::Closure { closure_id: def_id, substs, upvars, movability }
         }
@@ -981,27 +981,55 @@ fn overloaded_place<'a, 'tcx>(
     ExprKind::Deref { arg: ref_expr.to_ref() }
 }
 
-fn capture_upvar<'tcx>(
+fn capture_upvar<'a, 'tcx>(
     cx: &mut Cx<'_, 'tcx>,
     closure_expr: &'tcx hir::Expr<'tcx>,
-    var_hir_id: hir::HirId,
+    captured_place: &'a ty::CapturedPlace<'tcx>,
     upvar_ty: Ty<'tcx>,
 ) -> ExprRef<'tcx> {
-    let upvar_id = ty::UpvarId {
-        var_path: ty::UpvarPath { hir_id: var_hir_id },
-        closure_expr_id: cx.tcx.hir().local_def_id(closure_expr.hir_id),
-    };
-    let upvar_capture = cx.typeck_results().upvar_capture(upvar_id);
+    let upvar_capture = captured_place.info.capture_kind;
     let temp_lifetime = cx.region_scope_tree.temporary_scope(closure_expr.hir_id.local_id);
-    let var_ty = cx.typeck_results().node_type(var_hir_id);
-    let captured_var = Expr {
+    let var_ty = captured_place.place.base_ty;
+
+    // The result of capture analysis in `rustc_typeck/check/upvar.rs`represents a captured path
+    // as it's seen for use within the closure and not at the time of closure creation.
+    //
+    // That is we see expect to see it start from a captured upvar and not something that is local
+    // to the closure's parent.
+    let var_hir_id = match captured_place.place.base {
+        HirPlaceBase::Upvar(upvar_id) => upvar_id.var_path.hir_id,
+        base => bug!("Expected an upvar, found {:?}", base),
+    };
+
+    let mut captured_place_expr = Expr {
         temp_lifetime,
         ty: var_ty,
         span: closure_expr.span,
         kind: convert_var(cx, var_hir_id),
     };
+
+    for proj in captured_place.place.projections.iter() {
+        let kind = match proj.kind {
+            HirProjectionKind::Deref => ExprKind::Deref { arg: captured_place_expr.to_ref() },
+            HirProjectionKind::Field(field, ..) => {
+                // Variant index will always be 0, because for multi-variant
+                // enums, we capture the enum entirely.
+                ExprKind::Field {
+                    lhs: captured_place_expr.to_ref(),
+                    name: Field::new(field as usize),
+                }
+            }
+            HirProjectionKind::Index | HirProjectionKind::Subslice => {
+                // We don't capture these projections, so we can ignore them here
+                continue;
+            }
+        };
+
+        captured_place_expr = Expr { temp_lifetime, ty: proj.ty, span: closure_expr.span, kind };
+    }
+
     match upvar_capture {
-        ty::UpvarCapture::ByValue(_) => captured_var.to_ref(),
+        ty::UpvarCapture::ByValue(_) => captured_place_expr.to_ref(),
         ty::UpvarCapture::ByRef(upvar_borrow) => {
             let borrow_kind = match upvar_borrow.kind {
                 ty::BorrowKind::ImmBorrow => BorrowKind::Shared,
@@ -1012,7 +1040,7 @@ fn capture_upvar<'tcx>(
                 temp_lifetime,
                 ty: upvar_ty,
                 span: closure_expr.span,
-                kind: ExprKind::Borrow { borrow_kind, arg: captured_var.to_ref() },
+                kind: ExprKind::Borrow { borrow_kind, arg: captured_place_expr.to_ref() },
             }
             .to_ref()
         }

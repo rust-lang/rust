@@ -18,7 +18,7 @@ use rustc_index::vec::Idx;
 
 /// The "outermost" place that holds this value.
 #[derive(Copy, Clone)]
-pub enum PlaceBase {
+crate enum PlaceBase {
     /// Denotes the start of a `Place`.
     Local(Local),
 
@@ -67,7 +67,7 @@ pub enum PlaceBase {
 /// This is used internally when building a place for an expression like `a.b.c`. The fields `b`
 /// and `c` can be progressively pushed onto the place builder that is created when converting `a`.
 #[derive(Clone)]
-struct PlaceBuilder<'tcx> {
+crate struct PlaceBuilder<'tcx> {
     base: PlaceBase,
     projection: Vec<PlaceElem<'tcx>>,
 }
@@ -279,7 +279,7 @@ fn to_upvars_resolved_place_builder<'a, 'tcx>(
 }
 
 impl<'tcx> PlaceBuilder<'tcx> {
-    fn into_place<'a>(
+    crate fn into_place<'a>(
         self,
         tcx: TyCtxt<'tcx>,
         typeck_results: &'a ty::TypeckResults<'tcx>,
@@ -297,6 +297,10 @@ impl<'tcx> PlaceBuilder<'tcx> {
         typeck_results: &'a ty::TypeckResults<'tcx>,
     ) -> PlaceBuilder<'tcx> {
         to_upvars_resolved_place_builder(self, tcx, typeck_results).unwrap()
+    }
+
+    crate fn base(&self) -> PlaceBase {
+        self.base
     }
 
     fn field(self, f: Field, ty: Ty<'tcx>) -> Self {
@@ -352,7 +356,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
     /// This is used when constructing a compound `Place`, so that we can avoid creating
     /// intermediate `Place` values until we know the full set of projections.
-    fn as_place_builder<M>(&mut self, block: BasicBlock, expr: M) -> BlockAnd<PlaceBuilder<'tcx>>
+    crate fn as_place_builder<M>(&mut self, block: BasicBlock, expr: M) -> BlockAnd<PlaceBuilder<'tcx>>
     where
         M: Mirror<'tcx, Output = Expr<'tcx>>,
     {
