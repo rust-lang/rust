@@ -242,7 +242,7 @@ fn macro_expand_with_arg(
         Some(it) => it,
         None => return MacroResult::error("Fail to find macro definition".into()),
     };
-    let ExpandResult(tt, err) = macro_rules.0.expand(db, lazy_id, &macro_arg.0);
+    let ExpandResult { value: tt, err } = macro_rules.0.expand(db, lazy_id, &macro_arg.0);
     // Set a hard limit for the expanded tt
     let count = tt.count();
     if count > 262144 {

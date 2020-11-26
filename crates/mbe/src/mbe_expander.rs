@@ -28,10 +28,10 @@ fn expand_rules(rules: &[crate::Rule], input: &tt::Subtree) -> ExpandResult<tt::
             // If we find a rule that applies without errors, we're done.
             // Unconditionally returning the transcription here makes the
             // `test_repeat_bad_var` test fail.
-            let ExpandResult(res, transcribe_err) =
+            let ExpandResult { value, err: transcribe_err } =
                 transcriber::transcribe(&rule.rhs, &new_match.bindings);
             if transcribe_err.is_none() {
-                return ExpandResult::ok(res);
+                return ExpandResult::ok(value);
             }
         }
         // Use the rule if we matched more tokens, or had fewer errors
@@ -47,11 +47,11 @@ fn expand_rules(rules: &[crate::Rule], input: &tt::Subtree) -> ExpandResult<tt::
     }
     if let Some((match_, rule)) = match_ {
         // if we got here, there was no match without errors
-        let ExpandResult(result, transcribe_err) =
+        let ExpandResult { value, err: transcribe_err } =
             transcriber::transcribe(&rule.rhs, &match_.bindings);
-        ExpandResult(result, match_.err.or(transcribe_err))
+        ExpandResult { value, err: match_.err.or(transcribe_err) }
     } else {
-        ExpandResult(tt::Subtree::default(), Some(ExpandError::NoMatchingRule))
+        ExpandResult::only_err(ExpandError::NoMatchingRule)
     }
 }
 
@@ -143,7 +143,10 @@ mod tests {
     }
 
     fn assert_err(macro_body: &str, invocation: &str, err: ExpandError) {
-        assert_eq!(expand_first(&create_rules(&format_macro(macro_body)), invocation).1, Some(err));
+        assert_eq!(
+            expand_first(&create_rules(&format_macro(macro_body)), invocation).err,
+            Some(err)
+        );
     }
 
     fn format_macro(macro_body: &str) -> String {
