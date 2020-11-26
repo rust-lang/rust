@@ -9,7 +9,6 @@ use crate::hir::def::DefKind;
 use crate::hir::def_id::DefId;
 
 use rustc_ast as ast;
-use rustc_ast::util::lev_distance::{find_best_match_for_name, lev_distance};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lrc;
 use rustc_hir as hir;
@@ -27,6 +26,7 @@ use rustc_middle::ty::{
 };
 use rustc_session::lint;
 use rustc_span::def_id::LocalDefId;
+use rustc_span::lev_distance::{find_best_match_for_name, lev_distance};
 use rustc_span::{symbol::Ident, Span, Symbol, DUMMY_SP};
 use rustc_trait_selection::autoderef::{self, Autoderef};
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
@@ -1538,8 +1538,11 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 Ok(None)
             } else {
                 let best_name = {
-                    let names = applicable_close_candidates.iter().map(|cand| &cand.ident.name);
-                    find_best_match_for_name(names, self.method_name.unwrap().name, None)
+                    let names = applicable_close_candidates
+                        .iter()
+                        .map(|cand| cand.ident.name)
+                        .collect::<Vec<Symbol>>();
+                    find_best_match_for_name(&names, self.method_name.unwrap().name, None)
                 }
                 .unwrap();
                 Ok(applicable_close_candidates

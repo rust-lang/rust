@@ -1,7 +1,6 @@
 use crate::check::FnCtxt;
 use rustc_ast as ast;
 
-use rustc_ast::util::lev_distance::find_best_match_for_name;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
@@ -13,6 +12,7 @@ use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKi
 use rustc_middle::ty::subst::GenericArg;
 use rustc_middle::ty::{self, Adt, BindingMode, Ty, TypeFoldable};
 use rustc_span::hygiene::DesugaringKind;
+use rustc_span::lev_distance::find_best_match_for_name;
 use rustc_span::source_map::{Span, Spanned};
 use rustc_span::symbol::Ident;
 use rustc_trait_selection::traits::{ObligationCause, Pattern};
@@ -1302,8 +1302,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ),
             );
             if plural == "" {
-                let input = unmentioned_fields.iter().map(|(_, field)| &field.name);
-                let suggested_name = find_best_match_for_name(input, ident.name, None);
+                let input =
+                    unmentioned_fields.iter().map(|(_, field)| field.name).collect::<Vec<_>>();
+                let suggested_name = find_best_match_for_name(&input, ident.name, None);
                 if let Some(suggested_name) = suggested_name {
                     err.span_suggestion(
                         ident.span,
