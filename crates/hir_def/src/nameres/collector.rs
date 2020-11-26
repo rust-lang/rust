@@ -1336,13 +1336,11 @@ impl ModCollector<'_, '_> {
 
     fn emit_unconfigured_diagnostic(&mut self, item: ModItem, cfg: &CfgExpr) {
         let ast_id = item.ast_id(self.item_tree);
-        let id_map = self.def_collector.db.ast_id_map(self.file_id);
-        let syntax_ptr = id_map.get(ast_id).syntax_node_ptr();
 
-        let ast_node = InFile::new(self.file_id, syntax_ptr);
+        let ast_id = InFile::new(self.file_id, ast_id);
         self.def_collector.def_map.diagnostics.push(DefDiagnostic::unconfigured_code(
             self.module_id,
-            ast_node,
+            ast_id,
             cfg.clone(),
             self.def_collector.cfg_options.clone(),
         ));

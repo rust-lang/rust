@@ -287,7 +287,7 @@ mod diagnostics {
     use hir_expand::diagnostics::DiagnosticSink;
     use hir_expand::hygiene::Hygiene;
     use hir_expand::InFile;
-    use syntax::{ast, AstPtr, SyntaxNodePtr};
+    use syntax::{ast, AstPtr};
 
     use crate::path::ModPath;
     use crate::{db::DefDatabase, diagnostics::*, nameres::LocalModuleId, AstId};
@@ -300,7 +300,7 @@ mod diagnostics {
 
         UnresolvedImport { ast: AstId<ast::Use>, index: usize },
 
-        UnconfiguredCode { ast: InFile<SyntaxNodePtr>, cfg: CfgExpr, opts: CfgOptions },
+        UnconfiguredCode { ast: AstId<ast::Item>, cfg: CfgExpr, opts: CfgOptions },
     }
 
     #[derive(Debug, PartialEq, Eq)]
@@ -341,7 +341,7 @@ mod diagnostics {
 
         pub(super) fn unconfigured_code(
             container: LocalModuleId,
-            ast: InFile<SyntaxNodePtr>,
+            ast: AstId<ast::Item>,
             cfg: CfgExpr,
             opts: CfgOptions,
         ) -> Self {
@@ -399,9 +399,10 @@ mod diagnostics {
                 }
 
                 DiagnosticKind::UnconfiguredCode { ast, cfg, opts } => {
+                    let item = ast.to_node(db.upcast());
                     sink.push(InactiveCode {
                         file: ast.file_id,
-                        node: ast.value.clone(),
+                        node: AstPtr::new(&item).into(),
                         cfg: cfg.clone(),
                         opts: opts.clone(),
                     });
