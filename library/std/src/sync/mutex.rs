@@ -419,10 +419,11 @@ impl<T: ?Sized> Mutex<T> {
     /// # Example
     ///
     /// ```
+    /// #![feature(mutex_with)]
     /// use std::sync::Mutex;
     ///
     /// let mutex = Mutex::new(0);
-    /// let result = mutex.with(|myint| { myint += 1; myint * 42 }).unwrap();
+    /// let result = mutex.with(|myint| { *myint += 1; *myint * 42 }).unwrap();
     /// assert_eq!(*mutex.lock().unwrap(), 1);
     /// assert_eq!(result, 42);
     /// ```
@@ -450,10 +451,11 @@ impl<T: ?Sized> Mutex<T> {
     ///
     /// # Examples
     /// ```
+    /// #![feature(mutex_with)]
     /// use std::sync::Mutex;
     ///
     /// let mutex = Mutex::new(0);
-    /// let result = mutex.try_with(|myint| { myint += 1; myint * 42 }).unwrap();
+    /// let result = mutex.try_with(|myint| { *myint += 1; *myint * 42 }).unwrap();
     /// assert_eq!(*mutex.lock().unwrap(), 1);
     /// assert_eq!(result, 42);
     /// ```
