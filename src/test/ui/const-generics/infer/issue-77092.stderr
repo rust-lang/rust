@@ -3,6 +3,11 @@ error[E0282]: type annotations needed
    |
 LL |         println!("{:?}", take_array_from_mut(&mut arr, i));
    |                          ^^^^^^^^^^^^^^^^^^^ cannot infer the value of const parameter `N` declared on the function `take_array_from_mut`
+   |
+help: consider specifying the const argument
+   |
+LL |         println!("{:?}", take_array_from_mut::<N>(&mut arr, i));
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 
