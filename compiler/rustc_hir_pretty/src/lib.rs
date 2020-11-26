@@ -2032,7 +2032,7 @@ impl<'a> State<'a> {
     }
 
     pub fn print_param(&mut self, arg: &hir::Param<'_>) {
-        self.print_outer_attributes(&arg.attrs);
+        self.print_outer_attributes(self.attrs(arg.hir_id));
         self.print_pat(&arg.pat);
     }
 

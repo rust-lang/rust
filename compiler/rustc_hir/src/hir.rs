@@ -2421,7 +2421,6 @@ pub struct LlvmInlineAsm<'hir> {
 /// Represents a parameter in a function header.
 #[derive(Debug, HashStable_Generic)]
 pub struct Param<'hir> {
-    pub attrs: &'hir [Attribute],
     pub hir_id: HirId,
     pub pat: &'hir Pat<'hir>,
     pub ty_span: Span,

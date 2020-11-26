@@ -1042,9 +1042,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     fn lower_param(&mut self, param: &Param) -> hir::Param<'hir> {
         let hir_id = self.lower_node_id(param.id);
+        self.lower_attrs(hir_id, &param.attrs);
         hir::Param {
             hir_id,
-            attrs: self.lower_attrs(hir_id, &param.attrs),
             pat: self.lower_pat(&param.pat),
             ty_span: param.ty.span,
             span: param.span,
@@ -1179,7 +1179,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let stmt_attrs = this.attrs[parameter.hir_id];
                 let (new_parameter_pat, new_parameter_id) = this.pat_ident(desugared_span, ident);
                 let new_parameter = hir::Param {
-                    attrs: parameter.attrs,
                     hir_id: parameter.hir_id,
                     pat: new_parameter_pat,
                     ty_span: parameter.ty_span,
