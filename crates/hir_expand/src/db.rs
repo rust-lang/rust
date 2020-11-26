@@ -13,19 +13,6 @@ use crate::{
     MacroFile, ProcMacroExpander,
 };
 
-/// A result of some macro expansion.
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub struct MacroResult<T> {
-    /// The result of the expansion. Might be `None` when error recovery was impossible and no
-    /// usable result was produced.
-    pub value: Option<T>,
-
-    /// The error that occurred during expansion or processing.
-    ///
-    /// Since we do error recovery, getting an error here does not mean that `value` will be absent.
-    pub error: Option<String>,
-}
-
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum TokenExpander {
     MacroRules(mbe::MacroRules),
@@ -91,27 +78,13 @@ pub trait AstDatabase: SourceDatabase {
     fn parse_macro_expansion(
         &self,
         macro_file: MacroFile,
-    ) -> MacroResult<(Parse<SyntaxNode>, Arc<mbe::TokenMap>)>;
-    fn macro_expand(&self, macro_call: MacroCallId) -> MacroResult<Arc<tt::Subtree>>;
+    ) -> ExpandResult<Option<(Parse<SyntaxNode>, Arc<mbe::TokenMap>)>>;
+    fn macro_expand(&self, macro_call: MacroCallId) -> ExpandResult<Option<Arc<tt::Subtree>>>;
 
     #[salsa::interned]
     fn intern_eager_expansion(&self, eager: EagerCallLoc) -> EagerMacroId;
 
     fn expand_proc_macro(&self, call: MacroCallId) -> Result<tt::Subtree, mbe::ExpandError>;
-}
-
-impl<T> MacroResult<T> {
-    fn error(message: String) -> Self {
-        Self { value: None, error: Some(message) }
-    }
-
-    fn map<U>(self, f: impl FnOnce(T) -> U) -> MacroResult<U> {
-        MacroResult { value: self.value.map(f), error: self.error }
-    }
-
-    fn drop_value<U>(self) -> MacroResult<U> {
-        MacroResult { value: None, error: self.error }
-    }
 }
 
 /// This expands the given macro call, but with different arguments. This is
@@ -194,7 +167,7 @@ fn macro_arg(db: &dyn AstDatabase, id: MacroCallId) -> Option<Arc<(tt::Subtree, 
     Some(Arc::new((tt, tmap)))
 }
 
-fn macro_expand(db: &dyn AstDatabase, id: MacroCallId) -> MacroResult<Arc<tt::Subtree>> {
+fn macro_expand(db: &dyn AstDatabase, id: MacroCallId) -> ExpandResult<Option<Arc<tt::Subtree>>> {
     macro_expand_with_arg(db, id, None)
 }
 
@@ -215,18 +188,18 @@ fn macro_expand_with_arg(
     db: &dyn AstDatabase,
     id: MacroCallId,
     arg: Option<Arc<(tt::Subtree, mbe::TokenMap)>>,
-) -> MacroResult<Arc<tt::Subtree>> {
+) -> ExpandResult<Option<Arc<tt::Subtree>>> {
     let lazy_id = match id {
         MacroCallId::LazyMacro(id) => id,
         MacroCallId::EagerMacro(id) => {
             if arg.is_some() {
-                return MacroResult::error(
+                return ExpandResult::str_err(
                     "hypothetical macro expansion not implemented for eager macro".to_owned(),
                 );
             } else {
-                return MacroResult {
+                return ExpandResult {
                     value: Some(db.lookup_intern_eager_expansion(id).subtree),
-                    error: None,
+                    err: None,
                 };
             }
         }
@@ -235,21 +208,24 @@ fn macro_expand_with_arg(
     let loc = db.lookup_intern_macro(lazy_id);
     let macro_arg = match arg.or_else(|| db.macro_arg(id)) {
         Some(it) => it,
-        None => return MacroResult::error("Fail to args in to tt::TokenTree".into()),
+        None => return ExpandResult::str_err("Fail to args in to tt::TokenTree".into()),
     };
 
     let macro_rules = match db.macro_def(loc.def) {
         Some(it) => it,
-        None => return MacroResult::error("Fail to find macro definition".into()),
+        None => return ExpandResult::str_err("Fail to find macro definition".into()),
     };
     let ExpandResult { value: tt, err } = macro_rules.0.expand(db, lazy_id, &macro_arg.0);
     // Set a hard limit for the expanded tt
     let count = tt.count();
     if count > 262144 {
-        return MacroResult::error(format!("Total tokens count exceed limit : count = {}", count));
+        return ExpandResult::str_err(format!(
+            "Total tokens count exceed limit : count = {}",
+            count
+        ));
     }
 
-    MacroResult { value: Some(Arc::new(tt)), error: err.map(|e| format!("{:?}", e)) }
+    ExpandResult { value: Some(Arc::new(tt)), err }
 }
 
 fn expand_proc_macro(
@@ -283,7 +259,7 @@ fn parse_or_expand(db: &dyn AstDatabase, file_id: HirFileId) -> Option<SyntaxNod
     match file_id.0 {
         HirFileIdRepr::FileId(file_id) => Some(db.parse(file_id).tree().syntax().clone()),
         HirFileIdRepr::MacroFile(macro_file) => {
-            db.parse_macro_expansion(macro_file).map(|(it, _)| it.syntax_node()).value
+            db.parse_macro_expansion(macro_file).value.map(|(it, _)| it.syntax_node())
         }
     }
 }
@@ -291,7 +267,7 @@ fn parse_or_expand(db: &dyn AstDatabase, file_id: HirFileId) -> Option<SyntaxNod
 fn parse_macro_expansion(
     db: &dyn AstDatabase,
     macro_file: MacroFile,
-) -> MacroResult<(Parse<SyntaxNode>, Arc<mbe::TokenMap>)> {
+) -> ExpandResult<Option<(Parse<SyntaxNode>, Arc<mbe::TokenMap>)>> {
     parse_macro_with_arg(db, macro_file, None)
 }
 
@@ -299,7 +275,7 @@ fn parse_macro_with_arg(
     db: &dyn AstDatabase,
     macro_file: MacroFile,
     arg: Option<Arc<(tt::Subtree, mbe::TokenMap)>>,
-) -> MacroResult<(Parse<SyntaxNode>, Arc<mbe::TokenMap>)> {
+) -> ExpandResult<Option<(Parse<SyntaxNode>, Arc<mbe::TokenMap>)>> {
     let _p = profile::span("parse_macro_query");
 
     let macro_call_id = macro_file.macro_call_id;
@@ -308,7 +284,7 @@ fn parse_macro_with_arg(
     } else {
         db.macro_expand(macro_call_id)
     };
-    if let Some(err) = &result.error {
+    if let Some(err) = &result.err {
         // Note:
         // The final goal we would like to make all parse_macro success,
         // such that the following log will not call anyway.
@@ -326,20 +302,20 @@ fn parse_macro_with_arg(
                 .join("\n");
 
                 log::warn!(
-                    "fail on macro_parse: (reason: {} macro_call: {:#}) parents: {}",
+                    "fail on macro_parse: (reason: {:?} macro_call: {:#}) parents: {}",
                     err,
                     node.value,
                     parents
                 );
             }
             _ => {
-                log::warn!("fail on macro_parse: (reason: {})", err);
+                log::warn!("fail on macro_parse: (reason: {:?})", err);
             }
         }
     }
     let tt = match result.value {
         Some(tt) => tt,
-        None => return result.drop_value(),
+        None => return ExpandResult { value: None, err: result.err },
     };
 
     let fragment_kind = to_fragment_kind(db, macro_call_id);
@@ -347,29 +323,29 @@ fn parse_macro_with_arg(
     let (parse, rev_token_map) = match mbe::token_tree_to_syntax_node(&tt, fragment_kind) {
         Ok(it) => it,
         Err(err) => {
-            return MacroResult::error(format!("{:?}", err));
+            return ExpandResult::only_err(err);
         }
     };
 
-    match result.error {
-        Some(error) => {
+    match result.err {
+        Some(err) => {
             // Safety check for recursive identity macro.
             let node = parse.syntax_node();
             let file: HirFileId = macro_file.into();
             let call_node = match file.call_node(db) {
                 Some(it) => it,
                 None => {
-                    return MacroResult::error(error);
+                    return ExpandResult::only_err(err);
                 }
             };
 
             if !diff(&node, &call_node.value).is_empty() {
-                MacroResult { value: Some((parse, Arc::new(rev_token_map))), error: Some(error) }
+                ExpandResult { value: Some((parse, Arc::new(rev_token_map))), err: Some(err) }
             } else {
-                return MacroResult::error(error);
+                return ExpandResult::only_err(err);
             }
         }
-        None => MacroResult { value: Some((parse, Arc::new(rev_token_map))), error: None },
+        None => ExpandResult { value: Some((parse, Arc::new(rev_token_map))), err: None },
     }
 }
 

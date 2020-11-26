@@ -33,6 +33,7 @@ pub enum ExpandError {
     ConversionError,
     InvalidRepeat,
     ProcMacroError(tt::ExpansionError),
+    Other(String),
 }
 
 impl From<tt::ExpansionError> for ExpandError {
@@ -262,6 +263,13 @@ impl<T> ExpandResult<T> {
         T: Default,
     {
         Self { value: Default::default(), err: Some(err) }
+    }
+
+    pub fn str_err(err: String) -> Self
+    where
+        T: Default,
+    {
+        Self::only_err(ExpandError::Other(err))
     }
 
     pub fn map<U>(self, f: impl FnOnce(T) -> U) -> ExpandResult<U> {

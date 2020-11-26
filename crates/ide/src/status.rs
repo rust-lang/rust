@@ -1,6 +1,6 @@
 use std::{fmt, iter::FromIterator, sync::Arc};
 
-use hir::{MacroFile, MacroResult};
+use hir::{ExpandResult, MacroFile};
 use ide_db::base_db::{
     salsa::debug::{DebugQueryTable, TableEntry},
     CrateId, FileId, FileTextQuery, SourceDatabase, SourceRootId,
@@ -115,12 +115,12 @@ impl FromIterator<TableEntry<FileId, Parse<ast::SourceFile>>> for SyntaxTreeStat
     }
 }
 
-impl<M> FromIterator<TableEntry<MacroFile, MacroResult<(Parse<SyntaxNode>, M)>>>
+impl<M> FromIterator<TableEntry<MacroFile, ExpandResult<Option<(Parse<SyntaxNode>, M)>>>>
     for SyntaxTreeStats
 {
     fn from_iter<T>(iter: T) -> SyntaxTreeStats
     where
-        T: IntoIterator<Item = TableEntry<MacroFile, MacroResult<(Parse<SyntaxNode>, M)>>>,
+        T: IntoIterator<Item = TableEntry<MacroFile, ExpandResult<Option<(Parse<SyntaxNode>, M)>>>>,
     {
         let mut res = SyntaxTreeStats::default();
         for entry in iter {
