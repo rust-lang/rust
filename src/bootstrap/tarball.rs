@@ -27,6 +27,7 @@ pub(crate) struct Tarball<'a> {
     pkgname: String,
     component: String,
     target: String,
+    product_name: String,
     overlay: OverlayKind,
 
     temp_dir: PathBuf,
@@ -54,6 +55,7 @@ impl<'a> Tarball<'a> {
             pkgname,
             component: component.into(),
             target: target.into(),
+            product_name: "Rust".into(),
             overlay: OverlayKind::Rust,
 
             temp_dir,
@@ -67,6 +69,10 @@ impl<'a> Tarball<'a> {
 
     pub(crate) fn set_overlay(&mut self, overlay: OverlayKind) {
         self.overlay = overlay;
+    }
+
+    pub(crate) fn set_product_name(&mut self, name: &str) {
+        self.product_name = name.into();
     }
 
     pub(crate) fn is_preview(&mut self, is: bool) {
@@ -91,12 +97,11 @@ impl<'a> Tarball<'a> {
         self.builder.install(src.as_ref(), &destdir, perms);
     }
 
-    pub(crate) fn add_dir(&self, src: impl AsRef<Path>, destdir: impl AsRef<Path>) {
-        t!(std::fs::create_dir_all(destdir.as_ref()));
-        self.builder.cp_r(
-            src.as_ref(),
-            &self.image_dir.join(destdir.as_ref()).join(src.as_ref().file_name().unwrap()),
-        );
+    pub(crate) fn add_dir(&self, src: impl AsRef<Path>, dest: impl AsRef<Path>) {
+        let dest = self.image_dir.join(dest.as_ref());
+
+        t!(std::fs::create_dir_all(&dest));
+        self.builder.cp_r(src.as_ref(), &dest);
     }
 
     pub(crate) fn generate(self) -> PathBuf {
@@ -114,7 +119,7 @@ impl<'a> Tarball<'a> {
         let distdir = crate::dist::distdir(self.builder);
         let mut cmd = self.builder.tool_cmd(crate::tool::Tool::RustInstaller);
         cmd.arg("generate")
-            .arg("--product-name=Rust")
+            .arg(format!("--product-name={}", self.product_name))
             .arg("--rel-manifest-dir=rustlib")
             .arg(format!("--success-message={} installed.", self.component))
             .arg("--image-dir")

@@ -55,7 +55,7 @@ pub struct Docs {
 }
 
 impl Step for Docs {
-    type Output = PathBuf;
+    type Output = Option<PathBuf>;
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -67,13 +67,10 @@ impl Step for Docs {
     }
 
     /// Builds the `rust-docs` installer component.
-    fn run(self, builder: &Builder<'_>) -> PathBuf {
+    fn run(self, builder: &Builder<'_>) -> Option<PathBuf> {
         let host = self.host;
-
-        let name = pkgname(builder, "rust-docs");
-
         if !builder.config.docs {
-            return distdir(builder).join(format!("{}-{}.tar.gz", name, host.triple));
+            return None;
         }
 
         builder.default_doc(None);
@@ -81,34 +78,14 @@ impl Step for Docs {
         builder.info(&format!("Dist docs ({})", host));
         let _time = timeit(builder);
 
-        let image = tmpdir(builder).join(format!("{}-{}-image", name, host.triple));
-        let _ = fs::remove_dir_all(&image);
+        let dest = "share/doc/rust/html";
 
-        let dst = image.join("share/doc/rust/html");
-        t!(fs::create_dir_all(&dst));
-        let src = builder.doc_out(host);
-        builder.cp_r(&src, &dst);
-        builder.install(&builder.src.join("src/doc/robots.txt"), &dst, 0o644);
+        let mut tarball = Tarball::new(builder, "rust-docs", &host.triple);
+        tarball.set_product_name("Rust Documentation");
+        tarball.add_dir(&builder.doc_out(host), dest);
+        tarball.add_file(&builder.src.join("src/doc/robots.txt"), dest, 0o644);
 
-        let mut cmd = rust_installer(builder);
-        cmd.arg("generate")
-            .arg("--product-name=Rust-Documentation")
-            .arg("--rel-manifest-dir=rustlib")
-            .arg("--success-message=Rust-documentation-is-installed.")
-            .arg("--image-dir")
-            .arg(&image)
-            .arg("--work-dir")
-            .arg(&tmpdir(builder))
-            .arg("--output-dir")
-            .arg(&distdir(builder))
-            .arg(format!("--package-name={}-{}", name, host.triple))
-            .arg("--component-name=rust-docs")
-            .arg("--legacy-manifest-dirs=rustlib,cargo")
-            .arg("--bulk-dirs=share/doc/rust/html");
-        builder.run(&mut cmd);
-        builder.remove_dir(&image);
-
-        distdir(builder).join(format!("{}-{}.tar.gz", name, host.triple))
+        Some(tarball.generate())
     }
 }
 
@@ -1826,7 +1803,7 @@ impl Step for Extended {
         tarballs.extend(llvm_tools_installer);
         tarballs.push(analysis_installer);
         tarballs.push(std_installer);
-        if builder.config.docs {
+        if let Some(docs_installer) = docs_installer {
             tarballs.push(docs_installer);
         }
         if target.contains("pc-windows-gnu") {
@@ -2509,7 +2486,7 @@ impl Step for RustDev {
         // Copy the include directory as well; needed mostly to build
         // librustc_llvm properly (e.g., llvm-config.h is in here). But also
         // just broadly useful to be able to link against the bundled LLVM.
-        tarball.add_dir(&builder.llvm_out(target).join("include"), ".");
+        tarball.add_dir(&builder.llvm_out(target).join("include"), "include");
 
         // Copy libLLVM.so to the target lib dir as well, so the RPATH like
         // `$ORIGIN/../lib` can find it. It may also be used as a dependency
