@@ -248,11 +248,18 @@ fn run_compiler(
                 interface::run_compiler(config, |compiler| {
                     let sopts = &compiler.session().opts;
                     if sopts.describe_lints {
-                        let lint_store = rustc_lint::new_lint_store(
+                        let mut lint_store = rustc_lint::new_lint_store(
                             sopts.debugging_opts.no_interleave_lints,
                             compiler.session().unstable_options(),
                         );
-                        describe_lints(compiler.session(), &lint_store, false);
+                        let registered_lints =
+                            if let Some(register_lints) = compiler.register_lints() {
+                                register_lints(compiler.session(), &mut lint_store);
+                                true
+                            } else {
+                                false
+                            };
+                        describe_lints(compiler.session(), &lint_store, registered_lints);
                         return;
                     }
                     let should_stop = RustcDefaultCalls::print_crate_info(
@@ -954,10 +961,7 @@ Available lint options:
 
     match (loaded_plugins, plugin.len(), plugin_groups.len()) {
         (false, 0, _) | (false, _, 0) => {
-            println!(
-                "Compiler plugins can provide additional lints and lint groups. To see a \
-                      listing of these, re-run `rustc -W help` with a crate filename."
-            );
+            println!("Lint tools like Clippy can provide additional lints and lint groups.");
         }
         (false, ..) => panic!("didn't load lint plugins but got them anyway!"),
         (true, 0, 0) => println!("This crate does not load any lint plugins or lint groups."),
