@@ -327,6 +327,9 @@ pub struct Config {
     /// created in `/<build_base>/rustfix_missing_coverage.txt`
     pub rustfix_coverage: bool,
 
+    /// whether to run `tidy` when a rustdoc test fails
+    pub has_tidy: bool,
+
     // Configuration for various run-make tests frobbing things like C compilers
     // or querying about various LLVM component information.
     pub cc: String,

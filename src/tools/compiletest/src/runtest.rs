@@ -2409,32 +2409,22 @@ impl<'test> TestCx<'test> {
             "-modify",
         ];
         let tidy_dir = |dir| {
-            let tidy = |file: &_| {
-                let tidy_proc = Command::new("tidy").args(&tidy_args).arg(file).spawn();
-                match tidy_proc {
-                    Ok(mut proc) => {
-                        proc.wait().unwrap();
-                        true
-                    }
-                    Err(err) => {
-                        eprintln!("failed to run tidy - is it installed? - {}", err);
-                        false
-                    }
-                }
-            };
             for entry in walkdir::WalkDir::new(dir) {
                 let entry = entry.expect("failed to read file");
                 if entry.file_type().is_file()
                     && entry.path().extension().and_then(|p| p.to_str()) == Some("html".into())
                 {
-                    if !tidy(entry.path()) {
-                        return;
-                    }
+                    let status =
+                        Command::new("tidy").args(&tidy_args).arg(entry.path()).status().unwrap();
+                    // `tidy` returns 1 if it modified the file.
+                    assert!(status.success() || status.code() == Some(1));
                 }
             }
         };
-        tidy_dir(out_dir);
-        tidy_dir(&compare_dir);
+        if self.config.has_tidy {
+            tidy_dir(out_dir);
+            tidy_dir(&compare_dir);
+        }
 
         let pager = {
             let output = Command::new("git").args(&["config", "--get", "core.pager"]).output().ok();
