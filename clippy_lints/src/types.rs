@@ -1719,7 +1719,7 @@ fn show_unnecessary_cast(cx: &LateContext<'_>, expr: &Expr<'_>, literal_str: &st
         expr.span,
         &format!("casting {} literal to `{}` is unnecessary", literal_kind_name, cast_to),
         "try",
-        format!("{}_{}", literal_str, cast_to),
+        format!("{}_{}", literal_str.trim_end_matches('.'), cast_to),
         Applicability::MachineApplicable,
     );
 }
