@@ -2431,56 +2431,26 @@ impl Step for LlvmTools {
 
         builder.info(&format!("Dist LlvmTools ({})", target));
         let _time = timeit(builder);
-        let src = builder.src.join("src/llvm-project/llvm");
-        let name = pkgname(builder, "llvm-tools");
 
-        let tmp = tmpdir(builder);
-        let image = tmp.join("llvm-tools-image");
-        drop(fs::remove_dir_all(&image));
+        let mut tarball = Tarball::new(builder, "llvm-tools", &target.triple);
+        tarball.set_overlay(OverlayKind::LLVM);
+        tarball.is_preview(true);
 
         // Prepare the image directory
         let src_bindir = builder.llvm_out(target).join("bin");
-        let dst_bindir = image.join("lib/rustlib").join(&*target.triple).join("bin");
-        t!(fs::create_dir_all(&dst_bindir));
+        let dst_bindir = format!("lib/rustlib/{}/bin", target.triple);
         for tool in LLVM_TOOLS {
             let exe = src_bindir.join(exe(tool, target));
-            builder.install(&exe, &dst_bindir, 0o755);
+            tarball.add_file(&exe, &dst_bindir, 0o755);
         }
 
         // Copy libLLVM.so to the target lib dir as well, so the RPATH like
         // `$ORIGIN/../lib` can find it. It may also be used as a dependency
         // of `rustc-dev` to support the inherited `-lLLVM` when using the
         // compiler libraries.
-        maybe_install_llvm_target(builder, target, &image);
+        maybe_install_llvm_target(builder, target, tarball.image_dir());
 
-        // Prepare the overlay
-        let overlay = tmp.join("llvm-tools-overlay");
-        drop(fs::remove_dir_all(&overlay));
-        builder.create_dir(&overlay);
-        builder.install(&src.join("README.txt"), &overlay, 0o644);
-        builder.install(&src.join("LICENSE.TXT"), &overlay, 0o644);
-        builder.create(&overlay.join("version"), &builder.llvm_tools_vers());
-
-        // Generate the installer tarball
-        let mut cmd = rust_installer(builder);
-        cmd.arg("generate")
-            .arg("--product-name=Rust")
-            .arg("--rel-manifest-dir=rustlib")
-            .arg("--success-message=llvm-tools-installed.")
-            .arg("--image-dir")
-            .arg(&image)
-            .arg("--work-dir")
-            .arg(&tmpdir(builder))
-            .arg("--output-dir")
-            .arg(&distdir(builder))
-            .arg("--non-installed-overlay")
-            .arg(&overlay)
-            .arg(format!("--package-name={}-{}", name, target.triple))
-            .arg("--legacy-manifest-dirs=rustlib,cargo")
-            .arg("--component-name=llvm-tools-preview");
-
-        builder.run(&mut cmd);
-        Some(distdir(builder).join(format!("{}-{}.tar.gz", name, target.triple)))
+        Some(tarball.generate())
     }
 }
 

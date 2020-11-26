@@ -33,6 +33,8 @@ pub(crate) struct Tarball<'a> {
     image_dir: PathBuf,
     overlay_dir: PathBuf,
     work_dir: PathBuf,
+
+    is_preview: bool,
 }
 
 impl<'a> Tarball<'a> {
@@ -58,11 +60,17 @@ impl<'a> Tarball<'a> {
             image_dir,
             overlay_dir,
             work_dir,
+
+            is_preview: false,
         }
     }
 
     pub(crate) fn set_overlay(&mut self, overlay: OverlayKind) {
         self.overlay = overlay;
+    }
+
+    pub(crate) fn is_preview(&mut self, is: bool) {
+        self.is_preview = is;
     }
 
     pub(crate) fn image_dir(&self) -> &Path {
@@ -98,6 +106,11 @@ impl<'a> Tarball<'a> {
             self.builder.install(&self.builder.src.join(file), &self.overlay_dir, 0o644);
         }
 
+        let mut component_name = self.component.clone();
+        if self.is_preview {
+            component_name.push_str("-preview");
+        }
+
         let distdir = crate::dist::distdir(self.builder);
         let mut cmd = self.builder.tool_cmd(crate::tool::Tool::RustInstaller);
         cmd.arg("generate")
@@ -114,7 +127,7 @@ impl<'a> Tarball<'a> {
             .arg(self.overlay_dir)
             .arg(format!("--package-name={}-{}", self.pkgname, self.target))
             .arg("--legacy-manifest-dirs=rustlib,cargo")
-            .arg(format!("--component-name={}", self.component));
+            .arg(format!("--component-name={}", component_name));
         self.builder.run(&mut cmd);
 
         t!(std::fs::remove_dir_all(&self.temp_dir));

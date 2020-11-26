@@ -1069,10 +1069,6 @@ impl Build {
         self.package_vers(&self.version)
     }
 
-    fn llvm_tools_vers(&self) -> String {
-        self.rust_version()
-    }
-
     fn llvm_link_tools_dynamically(&self, target: TargetSelection) -> bool {
         target.contains("linux-gnu") || target.contains("apple-darwin")
     }
