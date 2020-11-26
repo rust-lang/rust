@@ -15,7 +15,7 @@ use rustc_interface::interface;
 use rustc_middle::hir::map::Map;
 use rustc_middle::middle::cstore::CrateStore;
 use rustc_middle::middle::privacy::AccessLevels;
-use rustc_middle::ty::{Ty, TyCtxt};
+use rustc_middle::ty::{ParamEnv, Ty, TyCtxt};
 use rustc_resolve as resolve;
 use rustc_session::config::{self, CrateType, ErrorOutputType};
 use rustc_session::lint;
@@ -25,7 +25,7 @@ use rustc_span::source_map;
 use rustc_span::symbol::sym;
 use rustc_span::DUMMY_SP;
 
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::mem;
 use std::rc::Rc;
 
@@ -42,6 +42,10 @@ crate type ExternalPaths = FxHashMap<DefId, (Vec<String>, clean::TypeKind)>;
 crate struct DocContext<'tcx> {
     crate tcx: TyCtxt<'tcx>,
     crate resolver: Rc<RefCell<interface::BoxedResolver>>,
+    /// Used for normalization.
+    ///
+    /// Most of this logic is copied from rustc_lint::late.
+    crate param_env: Cell<ParamEnv<'tcx>>,
     /// Later on moved into `CACHE_KEY`
     crate renderinfo: RefCell<RenderInfo>,
     /// Later on moved through `clean::Crate` into `CACHE_KEY`
@@ -77,6 +81,13 @@ crate struct DocContext<'tcx> {
 impl<'tcx> DocContext<'tcx> {
     crate fn sess(&self) -> &Session {
         &self.tcx.sess
+    }
+
+    crate fn with_param_env<T, F: FnOnce() -> T>(&self, def_id: DefId, f: F) -> T {
+        let old_param_env = self.param_env.replace(self.tcx.param_env(def_id));
+        let ret = f();
+        self.param_env.set(old_param_env);
+        ret
     }
 
     crate fn enter_resolver<F, R>(&self, f: F) -> R
@@ -524,6 +535,7 @@ fn run_global_ctxt(
     let mut ctxt = DocContext {
         tcx,
         resolver,
+        param_env: Cell::new(ParamEnv::empty()),
         external_traits: Default::default(),
         active_extern_traits: Default::default(),
         renderinfo: RefCell::new(renderinfo),
