@@ -348,13 +348,7 @@ impl GlobalState {
         }
 
         if self.status == Status::Ready && (state_changed || prev_status == Status::Loading) {
-            let subscriptions = self
-                .mem_docs
-                .keys()
-                .map(|path| self.vfs.read().0.file_id(&path).unwrap())
-                .collect::<Vec<_>>();
-
-            self.update_file_notifications_on_threadpool(subscriptions);
+            self.update_file_notifications_on_threadpool();
 
             // Refresh semantic tokens if the client supports it.
             if self.config.semantic_tokens_refresh {
@@ -498,6 +492,7 @@ impl GlobalState {
                         .write()
                         .0
                         .set_file_contents(path, Some(params.text_document.text.into_bytes()));
+                    this.update_file_notifications_on_threadpool();
                 }
                 Ok(())
             })?
@@ -606,7 +601,13 @@ impl GlobalState {
             .finish();
         Ok(())
     }
-    fn update_file_notifications_on_threadpool(&mut self, subscriptions: Vec<FileId>) {
+    fn update_file_notifications_on_threadpool(&mut self) {
+        let subscriptions = self
+            .mem_docs
+            .keys()
+            .map(|path| self.vfs.read().0.file_id(&path).unwrap())
+            .collect::<Vec<_>>();
+
         log::trace!("updating notifications for {:?}", subscriptions);
         if self.config.publish_diagnostics {
             let snapshot = self.snapshot();
