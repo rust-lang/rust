@@ -18,7 +18,7 @@ crate struct Module<'hir> {
     // (item, renamed)
     crate items: Vec<(&'hir hir::Item<'hir>, Option<Ident>)>,
     crate foreigns: Vec<(&'hir hir::ForeignItem<'hir>, Option<Ident>)>,
-    crate macros: Vec<Macro>,
+    crate macros: Vec<(&'hir hir::MacroDef<'hir>, Option<Ident>)>,
     crate is_crate: bool,
 }
 
@@ -54,15 +54,6 @@ crate struct Variant<'hir> {
     crate name: Symbol,
     crate id: hir::HirId,
     crate def: &'hir hir::VariantData<'hir>,
-}
-
-// For Macro we store the DefId instead of the NodeId, since we also create
-// these imported macro_rules (which only have a DUMMY_NODE_ID).
-crate struct Macro {
-    crate name: Symbol,
-    crate def_id: hir::def_id::DefId,
-    crate matchers: Vec<Span>,
-    crate imported_from: Option<Symbol>,
 }
 
 #[derive(Debug)]

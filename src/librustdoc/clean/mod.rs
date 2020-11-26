@@ -2313,21 +2313,28 @@ impl Clean<Item> for (&hir::ForeignItem<'_>, Option<Ident>) {
     }
 }
 
-impl Clean<Item> for doctree::Macro {
+impl Clean<Item> for (&hir::MacroDef<'_>, Option<Ident>) {
     fn clean(&self, cx: &DocContext<'_>) -> Item {
+        let (item, renamed) = self;
+        let name = renamed.unwrap_or(item.ident).name;
+        let tts = item.ast.body.inner_tokens().trees().collect::<Vec<_>>();
+        // Extract the spans of all matchers. They represent the "interface" of the macro.
+        let matchers = tts.chunks(4).map(|arm| arm[0].span()).collect::<Vec<_>>();
+
         Item::from_def_id_and_parts(
-            self.def_id,
-            Some(self.name.clean(cx)),
+            cx.tcx.hir().local_def_id(item.hir_id).to_def_id(),
+            Some(name.clean(cx)),
             MacroItem(Macro {
+                // FIXME(#76761): Make this respect `macro_rules!` vs `pub macro`
                 source: format!(
                     "macro_rules! {} {{\n{}}}",
-                    self.name,
-                    self.matchers
+                    name,
+                    matchers
                         .iter()
                         .map(|span| { format!("    {} => {{ ... }};\n", span.to_src(cx)) })
-                        .collect::<String>()
+                        .collect::<String>(),
                 ),
-                imported_from: self.imported_from.clean(cx),
+                imported_from: None,
             }),
             cx,
         )
