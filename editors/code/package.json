@@ -957,9 +957,6 @@
             {
                 "language": "rust",
                 "scopes": {
-                    "macro": [
-                        "entity.name.function.macro.rust"
-                    ],
                     "attribute": [
                         "meta.attribute.rust"
                     ],
