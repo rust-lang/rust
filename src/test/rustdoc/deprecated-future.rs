@@ -1,5 +1,3 @@
-#![feature(deprecated)]
-
 // @has deprecated_future/index.html '//*[@class="stab deprecated"]' \
 //      'Deprecated'
 // @has deprecated_future/struct.S.html '//*[@class="stab deprecated"]' \
