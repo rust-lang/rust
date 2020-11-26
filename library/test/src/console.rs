@@ -3,6 +3,7 @@
 use std::fs::File;
 use std::io;
 use std::io::prelude::Write;
+use std::time::Instant;
 
 use super::{
     bench::fmt_bench_samples,
@@ -14,7 +15,7 @@ use super::{
     options::{Options, OutputFormat},
     run_tests,
     test_result::TestResult,
-    time::TestExecTime,
+    time::{TestExecTime, TestSuiteExecTime},
     types::{NamePadding, TestDesc, TestDescAndFn},
 };
 
@@ -49,6 +50,7 @@ pub struct ConsoleTestState {
     pub allowed_fail: usize,
     pub filtered_out: usize,
     pub measured: usize,
+    pub exec_time: Option<TestSuiteExecTime>,
     pub metrics: MetricMap,
     pub failures: Vec<(TestDesc, Vec<u8>)>,
     pub not_failures: Vec<(TestDesc, Vec<u8>)>,
@@ -72,6 +74,7 @@ impl ConsoleTestState {
             allowed_fail: 0,
             filtered_out: 0,
             measured: 0,
+            exec_time: None,
             metrics: MetricMap::new(),
             failures: Vec::new(),
             not_failures: Vec::new(),
@@ -277,7 +280,14 @@ pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Resu
     };
     let mut st = ConsoleTestState::new(opts)?;
 
+    // Prevent the usage of `Instant` in some cases:
+    // - It's currently not supported for wasm targets.
+    // - We disable it for miri because it's not available when isolation is enabled.
+    let is_instant_supported = !cfg!(target_arch = "wasm32") && !cfg!(miri);
+
+    let start_time = is_instant_supported.then(Instant::now);
     run_tests(opts, tests, |x| on_test_event(&x, &mut st, &mut *out))?;
+    st.exec_time = start_time.map(|t| TestSuiteExecTime(t.elapsed()));
 
     assert!(st.current_test_count() == st.total);
 

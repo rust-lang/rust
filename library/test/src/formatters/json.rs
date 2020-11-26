@@ -47,7 +47,7 @@ impl<T: Write> JsonFormatter<T> {
             evt
         ))?;
         if let Some(exec_time) = exec_time {
-            self.write_message(&*format!(r#", "exec_time": "{}""#, exec_time))?;
+            self.write_message(&*format!(r#", "exec_time": {}"#, exec_time.0.as_secs_f64()))?;
         }
         if let Some(stdout) = stdout {
             self.write_message(&*format!(r#", "stdout": "{}""#, EscapedString(stdout)))?;
@@ -162,7 +162,7 @@ impl<T: Write> OutputFormatter for JsonFormatter<T> {
     }
 
     fn write_run_finish(&mut self, state: &ConsoleTestState) -> io::Result<bool> {
-        self.writeln_message(&*format!(
+        self.write_message(&*format!(
             "{{ \"type\": \"suite\", \
              \"event\": \"{}\", \
              \"passed\": {}, \
@@ -170,15 +170,22 @@ impl<T: Write> OutputFormatter for JsonFormatter<T> {
              \"allowed_fail\": {}, \
              \"ignored\": {}, \
              \"measured\": {}, \
-             \"filtered_out\": {} }}",
+             \"filtered_out\": {}",
             if state.failed == 0 { "ok" } else { "failed" },
             state.passed,
             state.failed + state.allowed_fail,
             state.allowed_fail,
             state.ignored,
             state.measured,
-            state.filtered_out
+            state.filtered_out,
         ))?;
+
+        if let Some(ref exec_time) = state.exec_time {
+            let time_str = format!(", \"exec_time\": {}", exec_time.0.as_secs_f64());
+            self.write_message(&time_str)?;
+        }
+
+        self.writeln_message(" }")?;
 
         Ok(state.failed == 0)
     }
