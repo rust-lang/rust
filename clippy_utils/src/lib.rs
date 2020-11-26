@@ -61,7 +61,7 @@ use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::Node;
 use rustc_hir::{
-    def, Arm, Block, Body, Constness, Crate, Expr, ExprKind, FnDecl, HirId, ImplItem, ImplItemKind, Item, ItemKind,
+    def, Arm, Block, Body, Constness, Expr, ExprKind, FnDecl, HirId, ImplItem, ImplItemKind, Item, ItemKind,
     MatchSource, Param, Pat, PatKind, Path, PathSegment, QPath, TraitItem, TraitItemKind, TraitRef, TyKind, Unsafety,
 };
 use rustc_infer::infer::TyCtxtInferExt;
@@ -1510,8 +1510,8 @@ pub fn is_must_use_func_call(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     did.map_or(false, |did| must_use_attr(&cx.tcx.get_attrs(did)).is_some())
 }
 
-pub fn is_no_std_crate(krate: &Crate<'_>) -> bool {
-    krate.item.attrs.iter().any(|attr| {
+pub fn is_no_std_crate(cx: &LateContext<'_>) -> bool {
+    cx.tcx.hir().attrs(hir::CRATE_HIR_ID).iter().any(|attr| {
         if let ast::AttrKind::Normal(ref attr, _) = attr.kind {
             attr.path == sym::no_std
         } else {
