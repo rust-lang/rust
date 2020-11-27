@@ -189,6 +189,7 @@ fn macro_expand_with_arg(
     id: MacroCallId,
     arg: Option<Arc<(tt::Subtree, mbe::TokenMap)>>,
 ) -> ExpandResult<Option<Arc<tt::Subtree>>> {
+    let _p = profile::span("macro_expand");
     let lazy_id = match id {
         MacroCallId::LazyMacro(id) => id,
         MacroCallId::EagerMacro(id) => {
@@ -276,14 +277,15 @@ fn parse_macro_with_arg(
     macro_file: MacroFile,
     arg: Option<Arc<(tt::Subtree, mbe::TokenMap)>>,
 ) -> ExpandResult<Option<(Parse<SyntaxNode>, Arc<mbe::TokenMap>)>> {
-    let _p = profile::span("parse_macro_query");
-
     let macro_call_id = macro_file.macro_call_id;
     let result = if let Some(arg) = arg {
         macro_expand_with_arg(db, macro_call_id, Some(arg))
     } else {
         db.macro_expand(macro_call_id)
     };
+
+    let _p = profile::span("parse_macro_expansion");
+
     if let Some(err) = &result.err {
         // Note:
         // The final goal we would like to make all parse_macro success,
