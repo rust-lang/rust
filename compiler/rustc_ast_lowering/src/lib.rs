@@ -1000,6 +1000,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     ) -> hir::TypeBinding<'hir> {
         debug!("lower_assoc_ty_constraint(constraint={:?}, itctx={:?})", constraint, itctx);
 
+        if let Some(ref gen_args) = constraint.gen_args {
+            self.sess.span_fatal(
+                gen_args.span(),
+                "generic associated types in trait paths are currently not implemented",
+            );
+        }
+
         let kind = match constraint.kind {
             AssocTyConstraintKind::Equality { ref ty } => {
                 hir::TypeBindingKind::Equality { ty: self.lower_ty(ty, itctx) }

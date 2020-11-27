@@ -1372,16 +1372,18 @@ fn deny_equality_constraints(
                         if param.ident == *ident {
                             let param = ident;
                             match &full_path.segments[qself.position..] {
-                                [PathSegment { ident, .. }] => {
+                                [PathSegment { ident, args, .. }] => {
                                     // Make a new `Path` from `foo::Bar` to `Foo<Bar = RhsTy>`.
                                     let mut assoc_path = full_path.clone();
                                     // Remove `Bar` from `Foo::Bar`.
                                     assoc_path.segments.pop();
                                     let len = assoc_path.segments.len() - 1;
+                                    let gen_args = args.as_ref().map(|p| (**p).clone());
                                     // Build `<Bar = RhsTy>`.
                                     let arg = AngleBracketedArg::Constraint(AssocTyConstraint {
                                         id: rustc_ast::node_id::DUMMY_NODE_ID,
                                         ident: *ident,
+                                        gen_args,
                                         kind: AssocTyConstraintKind::Equality {
                                             ty: predicate.rhs_ty.clone(),
                                         },

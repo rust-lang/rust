@@ -1845,6 +1845,7 @@ impl UintTy {
 pub struct AssocTyConstraint {
     pub id: NodeId,
     pub ident: Ident,
+    pub gen_args: Option<GenericArgs>,
     pub kind: AssocTyConstraintKind,
     pub span: Span,
 }

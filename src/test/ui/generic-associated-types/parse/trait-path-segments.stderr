@@ -1,0 +1,31 @@
+error: paths with multiple segments cannot be used in associated type constraints
+  --> $DIR/trait-path-segments.rs:9:31
+   |
+LL |     fn f1<'a>(arg : Box<dyn X<X::Y = u32>>) {}
+   |                               ^^^^
+
+error: qualified paths cannot be used in associated type constraints
+  --> $DIR/trait-path-segments.rs:20:16
+   |
+LL |     impl<T : X<<Self as X>::Y<'a> = &'a u32>> Z for T {}
+   |                ^^^^^^^^^-^^^^^^^^
+   |                         |
+   |                         not allowed in associated type constraints
+
+error: paths with multiple segments cannot be used in associated type constraints
+  --> $DIR/trait-path-segments.rs:31:16
+   |
+LL |     impl<T : X<X::Y<'a> = &'a u32>> Z for T {}
+   |                ^^^^^^^^
+
+warning: the feature `generic_associated_types` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/trait-path-segments.rs:1:12
+   |
+LL | #![feature(generic_associated_types)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+   = note: see issue #44265 <https://github.com/rust-lang/rust/issues/44265> for more information
+
+error: aborting due to 3 previous errors; 1 warning emitted
+

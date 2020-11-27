@@ -1,8 +1,8 @@
-error: expected one of `>`, const, identifier, lifetime, or type, found `,`
+error: expected one of `>`, const, lifetime, or type, found `,`
   --> $DIR/issue-20616-7.rs:28:22
    |
 LL | type Type_7 = Box<(),,>;
-   |                      ^ expected one of `>`, const, identifier, lifetime, or type
+   |                      ^ expected one of `>`, const, lifetime, or type
 
 error: aborting due to previous error
 
