@@ -344,7 +344,8 @@ impl<'tcx> LateLintPass<'tcx> for Functions {
                 check_result_unit_err(cx, &sig.decl, item.span, fn_header_span);
             }
 
-            let attr = must_use_attr(&item.attrs);
+            let attrs = cx.tcx.hir().attrs(item.hir_id());
+            let attr = must_use_attr(attrs);
             if let Some(attr) = attr {
                 check_needless_must_use(cx, &sig.decl, item.hir_id(), item.span, fn_header_span, attr);
             }
@@ -352,7 +353,7 @@ impl<'tcx> LateLintPass<'tcx> for Functions {
                 let body = cx.tcx.hir().body(eid);
                 Self::check_raw_ptr(cx, sig.header.unsafety, &sig.decl, body, item.hir_id());
 
-                if attr.is_none() && is_public && !is_proc_macro(cx.sess(), &item.attrs) {
+                if attr.is_none() && is_public && !is_proc_macro(cx.sess(), attrs) {
                     check_must_use_candidate(
                         cx,
                         &sig.decl,

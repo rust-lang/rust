@@ -108,7 +108,8 @@ impl<'tcx> LateLintPass<'tcx> for MissingInline {
                                 // an impl is not provided
                                 let desc = "a default trait method";
                                 let item = cx.tcx.hir().trait_item(tit.id);
-                                check_missing_inline_attrs(cx, &item.attrs, item.span, desc);
+                                let attrs = cx.tcx.hir().attrs(item.hir_id());
+                                check_missing_inline_attrs(cx, attrs, item.span, desc);
                             }
                         },
                     }
