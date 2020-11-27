@@ -36,6 +36,7 @@ pub enum Nested {
     Item(hir::ItemId),
     TraitItem(hir::TraitItemId),
     ImplItem(hir::ImplItemId),
+    ForeignItem(hir::ForeignItemId),
     Body(hir::BodyId),
     BodyParamPat(hir::BodyId, usize),
 }
@@ -56,6 +57,7 @@ impl PpAnn for hir::Crate<'_> {
             Nested::Item(id) => state.print_item(self.item(id.id)),
             Nested::TraitItem(id) => state.print_trait_item(self.trait_item(id)),
             Nested::ImplItem(id) => state.print_impl_item(self.impl_item(id)),
+            Nested::ForeignItem(id) => state.print_foreign_item(self.foreign_item(id)),
             Nested::Body(id) => state.print_expr(&self.body(id).value),
             Nested::BodyParamPat(id, i) => state.print_pat(&self.body(id).params[i].pat),
         }
@@ -70,6 +72,7 @@ impl PpAnn for &dyn rustc_hir::intravisit::Map<'_> {
             Nested::Item(id) => state.print_item(self.item(id.id)),
             Nested::TraitItem(id) => state.print_trait_item(self.trait_item(id)),
             Nested::ImplItem(id) => state.print_impl_item(self.impl_item(id)),
+            Nested::ForeignItem(id) => state.print_foreign_item(self.foreign_item(id)),
             Nested::Body(id) => state.print_expr(&self.body(id).value),
             Nested::BodyParamPat(id, i) => state.print_pat(&self.body(id).params[i].pat),
         }
@@ -346,13 +349,6 @@ impl<'a> State<'a> {
         self.print_inner_attributes(attrs);
         for &item_id in _mod.item_ids {
             self.ann.nested(self, Nested::Item(item_id));
-        }
-    }
-
-    pub fn print_foreign_mod(&mut self, nmod: &hir::ForeignMod<'_>, attrs: &[ast::Attribute]) {
-        self.print_inner_attributes(attrs);
-        for item in nmod.items {
-            self.print_foreign_item(item);
         }
     }
 
@@ -644,11 +640,14 @@ impl<'a> State<'a> {
                 self.print_mod(_mod, &item.attrs);
                 self.bclose(item.span);
             }
-            hir::ItemKind::ForeignMod(ref nmod) => {
+            hir::ItemKind::ForeignMod { abi, items } => {
                 self.head("extern");
-                self.word_nbsp(nmod.abi.to_string());
+                self.word_nbsp(abi.to_string());
                 self.bopen();
-                self.print_foreign_mod(nmod, &item.attrs);
+                self.print_inner_attributes(item.attrs);
+                for item in items {
+                    self.ann.nested(self, Nested::ForeignItem(item.id));
+                }
                 self.bclose(item.span);
             }
             hir::ItemKind::GlobalAsm(ref ga) => {

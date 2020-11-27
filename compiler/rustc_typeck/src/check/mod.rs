@@ -1134,6 +1134,7 @@ impl ItemLikeVisitor<'tcx> for CheckItemTypesVisitor<'tcx> {
     }
     fn visit_trait_item(&mut self, _: &'tcx hir::TraitItem<'tcx>) {}
     fn visit_impl_item(&mut self, _: &'tcx hir::ImplItem<'tcx>) {}
+    fn visit_foreign_item(&mut self, _: &'tcx hir::ForeignItem<'tcx>) {}
 }
 
 fn typeck_item_bodies(tcx: TyCtxt<'_>, crate_num: CrateNum) {

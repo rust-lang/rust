@@ -101,6 +101,7 @@ struct LoweringContext<'a, 'hir: 'a> {
 
     trait_items: BTreeMap<hir::TraitItemId, hir::TraitItem<'hir>>,
     impl_items: BTreeMap<hir::ImplItemId, hir::ImplItem<'hir>>,
+    foreign_items: BTreeMap<hir::ForeignItemId, hir::ForeignItem<'hir>>,
     bodies: BTreeMap<hir::BodyId, hir::Body<'hir>>,
     exported_macros: Vec<hir::MacroDef<'hir>>,
     non_exported_macro_attrs: Vec<ast::Attribute>,
@@ -298,6 +299,7 @@ pub fn lower_crate<'a, 'hir>(
         items: BTreeMap::new(),
         trait_items: BTreeMap::new(),
         impl_items: BTreeMap::new(),
+        foreign_items: BTreeMap::new(),
         bodies: BTreeMap::new(),
         trait_impls: BTreeMap::new(),
         modules: BTreeMap::new(),
@@ -485,6 +487,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 visit::walk_assoc_item(self, item, ctxt);
             }
 
+            fn visit_foreign_item(&mut self, item: &'tcx ForeignItem) {
+                self.lctx.allocate_hir_id_counter(item.id);
+                visit::walk_foreign_item(self, item);
+            }
+
             fn visit_ty(&mut self, t: &'tcx Ty) {
                 match t.kind {
                     // Mirrors the case in visit::walk_ty
@@ -548,6 +555,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             items: self.items,
             trait_items: self.trait_items,
             impl_items: self.impl_items,
+            foreign_items: self.foreign_items,
             bodies: self.bodies,
             body_ids,
             trait_impls: self.trait_impls,

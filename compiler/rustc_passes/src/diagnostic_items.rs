@@ -37,6 +37,10 @@ impl<'v, 'tcx> ItemLikeVisitor<'v> for DiagnosticItemCollector<'tcx> {
     fn visit_impl_item(&mut self, impl_item: &hir::ImplItem<'_>) {
         self.observe_item(&impl_item.attrs, impl_item.hir_id);
     }
+
+    fn visit_foreign_item(&mut self, foreign_item: &hir::ForeignItem<'_>) {
+        self.observe_item(foreign_item.attrs, foreign_item.hir_id);
+    }
 }
 
 impl<'tcx> DiagnosticItemCollector<'tcx> {
@@ -100,18 +104,6 @@ fn collect<'tcx>(tcx: TyCtxt<'tcx>) -> FxHashMap<Symbol, DefId> {
 
     // Collect diagnostic items in this crate.
     tcx.hir().krate().visit_all_item_likes(&mut collector);
-    // FIXME(visit_all_item_likes): Foreign items are not visited
-    // here, so we have to manually look at them for now.
-    for (_, foreign_module) in tcx.foreign_modules(LOCAL_CRATE).iter() {
-        for &foreign_item in foreign_module.foreign_items.iter() {
-            match tcx.hir().get(tcx.hir().local_def_id_to_hir_id(foreign_item.expect_local())) {
-                hir::Node::ForeignItem(item) => {
-                    collector.observe_item(item.attrs, item.hir_id);
-                }
-                item => bug!("unexpected foreign item {:?}", item),
-            }
-        }
-    }
 
     for m in tcx.hir().krate().exported_macros {
         collector.observe_item(m.attrs, m.hir_id);

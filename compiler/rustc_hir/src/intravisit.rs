@@ -64,6 +64,10 @@ where
     fn visit_impl_item(&mut self, impl_item: &'hir ImplItem<'hir>) {
         self.visitor.visit_impl_item(impl_item);
     }
+
+    fn visit_foreign_item(&mut self, foreign_item: &'hir ForeignItem<'hir>) {
+        self.visitor.visit_foreign_item(foreign_item);
+    }
 }
 
 pub trait IntoVisitor<'hir> {
@@ -87,6 +91,10 @@ where
 
     fn visit_impl_item(&self, impl_item: &'hir ImplItem<'hir>) {
         self.0.into_visitor().visit_impl_item(impl_item);
+    }
+
+    fn visit_foreign_item(&self, foreign_item: &'hir ForeignItem<'hir>) {
+        self.0.into_visitor().visit_foreign_item(foreign_item);
     }
 }
 
@@ -128,6 +136,7 @@ pub trait Map<'hir> {
     fn item(&self, id: HirId) -> &'hir Item<'hir>;
     fn trait_item(&self, id: TraitItemId) -> &'hir TraitItem<'hir>;
     fn impl_item(&self, id: ImplItemId) -> &'hir ImplItem<'hir>;
+    fn foreign_item(&self, id: ForeignItemId) -> &'hir ForeignItem<'hir>;
 }
 
 /// An erased version of `Map<'hir>`, using dynamic dispatch.
@@ -149,6 +158,9 @@ impl<'hir> Map<'hir> for ErasedMap<'hir> {
     }
     fn impl_item(&self, id: ImplItemId) -> &'hir ImplItem<'hir> {
         self.0.impl_item(id)
+    }
+    fn foreign_item(&self, id: ForeignItemId) -> &'hir ForeignItem<'hir> {
+        self.0.foreign_item(id)
     }
 }
 
@@ -277,6 +289,14 @@ pub trait Visitor<'v>: Sized {
         walk_list!(self, visit_impl_item, opt_item);
     }
 
+    /// Like `visit_nested_item()`, but for foreign items. See
+    /// `visit_nested_item()` for advice on when to override this
+    /// method.
+    fn visit_nested_foreign_item(&mut self, id: ForeignItemId) {
+        let opt_item = self.nested_visit_map().inter().map(|map| map.foreign_item(id));
+        walk_list!(self, visit_foreign_item, opt_item);
+    }
+
     /// Invoked to visit the body of a function, method or closure. Like
     /// visit_nested_item, does nothing by default unless you override
     /// `nested_visit_map` to return other than `None`, in which case it will walk
@@ -377,6 +397,9 @@ pub trait Visitor<'v>: Sized {
     }
     fn visit_impl_item(&mut self, ii: &'v ImplItem<'v>) {
         walk_impl_item(self, ii)
+    }
+    fn visit_foreign_item_ref(&mut self, ii: &'v ForeignItemRef<'v>) {
+        walk_foreign_item_ref(self, ii)
     }
     fn visit_impl_item_ref(&mut self, ii: &'v ImplItemRef<'v>) {
         walk_impl_item_ref(self, ii)
@@ -566,9 +589,9 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) {
             // `visit_mod()` takes care of visiting the `Item`'s `HirId`.
             visitor.visit_mod(module, item.span, item.hir_id)
         }
-        ItemKind::ForeignMod(ref foreign_module) => {
+        ItemKind::ForeignMod { abi: _, items } => {
             visitor.visit_id(item.hir_id);
-            walk_list!(visitor, visit_foreign_item, foreign_module.items);
+            walk_list!(visitor, visit_foreign_item_ref, items);
         }
         ItemKind::GlobalAsm(_) => {
             visitor.visit_id(item.hir_id);
@@ -1010,6 +1033,17 @@ pub fn walk_impl_item<'v, V: Visitor<'v>>(visitor: &mut V, impl_item: &'v ImplIt
             visitor.visit_ty(ty);
         }
     }
+}
+
+pub fn walk_foreign_item_ref<'v, V: Visitor<'v>>(
+    visitor: &mut V,
+    foreign_item_ref: &'v ForeignItemRef<'v>,
+) {
+    // N.B., deliberately force a compilation error if/when new fields are added.
+    let ForeignItemRef { id, ident, span: _, ref vis } = *foreign_item_ref;
+    visitor.visit_nested_foreign_item(id);
+    visitor.visit_ident(ident);
+    visitor.visit_vis(vis);
 }
 
 pub fn walk_impl_item_ref<'v, V: Visitor<'v>>(visitor: &mut V, impl_item_ref: &'v ImplItemRef<'v>) {

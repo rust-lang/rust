@@ -646,8 +646,9 @@ fn convert_item(tcx: TyCtxt<'_>, item_id: hir::HirId) {
         | hir::ItemKind::Use(..)
         | hir::ItemKind::Mod(_)
         | hir::ItemKind::GlobalAsm(_) => {}
-        hir::ItemKind::ForeignMod(ref foreign_mod) => {
-            for item in foreign_mod.items {
+        hir::ItemKind::ForeignMod { items, .. } => {
+            for item in items {
+                let item = tcx.hir().foreign_item(item.id);
                 let def_id = tcx.hir().local_def_id(item.hir_id);
                 tcx.ensure().generics_of(def_id);
                 tcx.ensure().type_of(def_id);

@@ -205,7 +205,7 @@ impl<'hir> Map<'hir> {
                 ItemKind::TraitAlias(..) => DefKind::TraitAlias,
                 ItemKind::ExternCrate(_) => DefKind::ExternCrate,
                 ItemKind::Use(..) => DefKind::Use,
-                ItemKind::ForeignMod(..) => DefKind::ForeignMod,
+                ItemKind::ForeignMod { .. } => DefKind::ForeignMod,
                 ItemKind::GlobalAsm(..) => DefKind::GlobalAsm,
                 ItemKind::Impl { .. } => DefKind::Impl,
             },
@@ -305,6 +305,13 @@ impl<'hir> Map<'hir> {
     pub fn impl_item(&self, id: ImplItemId) -> &'hir ImplItem<'hir> {
         match self.find(id.hir_id).unwrap() {
             Node::ImplItem(item) => item,
+            _ => bug!(),
+        }
+    }
+
+    pub fn foreign_item(&self, id: ForeignItemId) -> &'hir ForeignItem<'hir> {
+        match self.find(id.hir_id).unwrap() {
+            Node::ForeignItem(item) => item,
             _ => bug!(),
         }
     }
@@ -469,6 +476,10 @@ impl<'hir> Map<'hir> {
 
         for id in &module.impl_items {
             visitor.visit_impl_item(self.expect_impl_item(id.hir_id));
+        }
+
+        for id in &module.foreign_items {
+            visitor.visit_foreign_item(self.expect_foreign_item(id.hir_id));
         }
     }
 
@@ -718,10 +729,11 @@ impl<'hir> Map<'hir> {
         let parent = self.get_parent_item(hir_id);
         if let Some(entry) = self.find_entry(parent) {
             if let Entry {
-                node: Node::Item(Item { kind: ItemKind::ForeignMod(ref nm), .. }), ..
+                node: Node::Item(Item { kind: ItemKind::ForeignMod { abi, .. }, .. }),
+                ..
             } = entry
             {
-                return nm.abi;
+                return *abi;
             }
         }
         bug!("expected foreign mod or inlined parent, found {}", self.node_to_string(parent))
@@ -937,6 +949,10 @@ impl<'hir> intravisit::Map<'hir> for Map<'hir> {
     fn impl_item(&self, id: ImplItemId) -> &'hir ImplItem<'hir> {
         self.impl_item(id)
     }
+
+    fn foreign_item(&self, id: ForeignItemId) -> &'hir ForeignItem<'hir> {
+        self.foreign_item(id)
+    }
 }
 
 trait Named {
@@ -1030,7 +1046,7 @@ fn hir_id_to_string(map: &Map<'_>, id: HirId) -> String {
                 ItemKind::Const(..) => "const",
                 ItemKind::Fn(..) => "fn",
                 ItemKind::Mod(..) => "mod",
-                ItemKind::ForeignMod(..) => "foreign mod",
+                ItemKind::ForeignMod { .. } => "foreign mod",
                 ItemKind::GlobalAsm(..) => "global asm",
                 ItemKind::TyAlias(..) => "ty",
                 ItemKind::OpaqueTy(..) => "opaque type",

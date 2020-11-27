@@ -579,6 +579,7 @@ pub struct ModuleItems {
     pub items: BTreeSet<HirId>,
     pub trait_items: BTreeSet<TraitItemId>,
     pub impl_items: BTreeSet<ImplItemId>,
+    pub foreign_items: BTreeSet<ForeignItemId>,
 }
 
 /// A type representing only the top-level module.
@@ -612,6 +613,7 @@ pub struct Crate<'hir> {
 
     pub trait_items: BTreeMap<TraitItemId, TraitItem<'hir>>,
     pub impl_items: BTreeMap<ImplItemId, ImplItem<'hir>>,
+    pub foreign_items: BTreeMap<ForeignItemId, ForeignItem<'hir>>,
     pub bodies: BTreeMap<BodyId, Body<'hir>>,
     pub trait_impls: BTreeMap<DefId, Vec<HirId>>,
 
@@ -644,6 +646,10 @@ impl Crate<'hir> {
         &self.impl_items[&id]
     }
 
+    pub fn foreign_item(&self, id: ForeignItemId) -> &ForeignItem<'hir> {
+        &self.foreign_items[&id]
+    }
+
     pub fn body(&self, id: BodyId) -> &Body<'hir> {
         &self.bodies[&id]
     }
@@ -673,6 +679,10 @@ impl Crate<'_> {
         for impl_item in self.impl_items.values() {
             visitor.visit_impl_item(impl_item);
         }
+
+        for foreign_item in self.foreign_items.values() {
+            visitor.visit_foreign_item(foreign_item);
+        }
     }
 
     /// A parallel version of `visit_all_item_likes`.
@@ -694,6 +704,11 @@ impl Crate<'_> {
             {
                 par_for_each_in(&self.impl_items, |(_, impl_item)| {
                     visitor.visit_impl_item(impl_item);
+                });
+            },
+            {
+                par_for_each_in(&self.foreign_items, |(_, foreign_item)| {
+                    visitor.visit_foreign_item(foreign_item);
                 });
             }
         );
@@ -1840,7 +1855,7 @@ pub struct FnSig<'hir> {
 }
 
 // The bodies for items are stored "out of line", in a separate
-// hashmap in the `Crate`. Here we just record the node-id of the item
+// hashmap in the `Crate`. Here we just record the hir-id of the item
 // so it can fetched later.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Encodable, Debug)]
 pub struct TraitItemId {
@@ -1884,7 +1899,7 @@ pub enum TraitItemKind<'hir> {
 }
 
 // The bodies for items are stored "out of line", in a separate
-// hashmap in the `Crate`. Here we just record the node-id of the item
+// hashmap in the `Crate`. Here we just record the hir-id of the item
 // so it can fetched later.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Encodable, Debug)]
 pub struct ImplItemId {
@@ -2269,12 +2284,6 @@ pub struct Mod<'hir> {
     pub item_ids: &'hir [ItemId],
 }
 
-#[derive(Debug, HashStable_Generic)]
-pub struct ForeignMod<'hir> {
-    pub abi: Abi,
-    pub items: &'hir [ForeignItem<'hir>],
-}
-
 #[derive(Encodable, Debug, HashStable_Generic)]
 pub struct GlobalAsm {
     pub asm: Symbol,
@@ -2432,7 +2441,7 @@ impl VariantData<'hir> {
 }
 
 // The bodies for items are stored "out of line", in a separate
-// hashmap in the `Crate`. Here we just record the node-id of the item
+// hashmap in the `Crate`. Here we just record the hir-id of the item
 // so it can fetched later.
 #[derive(Copy, Clone, Encodable, Debug)]
 pub struct ItemId {
@@ -2521,7 +2530,7 @@ pub enum ItemKind<'hir> {
     /// A module.
     Mod(Mod<'hir>),
     /// An external module, e.g. `extern { .. }`.
-    ForeignMod(ForeignMod<'hir>),
+    ForeignMod { abi: Abi, items: &'hir [ForeignItemRef<'hir>] },
     /// Module-level inline assembly (from `global_asm!`).
     GlobalAsm(&'hir GlobalAsm),
     /// A type alias, e.g., `type Foo = Bar<u8>`.
@@ -2612,6 +2621,29 @@ pub enum AssocItemKind {
     Const,
     Fn { has_self: bool },
     Type,
+}
+
+// The bodies for items are stored "out of line", in a separate
+// hashmap in the `Crate`. Here we just record the hir-id of the item
+// so it can fetched later.
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Encodable, Debug)]
+pub struct ForeignItemId {
+    pub hir_id: HirId,
+}
+
+/// A reference from a foreign block to one of its items. This
+/// contains the item's ID, naturally, but also the item's name and
+/// some other high-level details (like whether it is an associated
+/// type or method, and whether it is public). This allows other
+/// passes to find the impl they want without loading the ID (which
+/// means fewer edges in the incremental compilation graph).
+#[derive(Debug, HashStable_Generic)]
+pub struct ForeignItemRef<'hir> {
+    pub id: ForeignItemId,
+    #[stable_hasher(project(name))]
+    pub ident: Ident,
+    pub span: Span,
+    pub vis: Visibility<'hir>,
 }
 
 #[derive(Debug, HashStable_Generic)]

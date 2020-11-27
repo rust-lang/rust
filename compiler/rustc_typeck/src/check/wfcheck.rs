@@ -156,8 +156,9 @@ pub fn check_item_well_formed(tcx: TyCtxt<'_>, def_id: LocalDefId) {
         hir::ItemKind::Const(ref ty, ..) => {
             check_item_type(tcx, item.hir_id, ty.span, false);
         }
-        hir::ItemKind::ForeignMod(ref module) => {
-            for it in module.items.iter() {
+        hir::ItemKind::ForeignMod { items, .. } => {
+            for it in items.iter() {
+                let it = tcx.hir().foreign_item(it.id);
                 match it.kind {
                     hir::ForeignItemKind::Fn(ref decl, ..) => {
                         check_item_fn(tcx, it.hir_id, it.ident, it.span, decl)
@@ -1344,6 +1345,10 @@ impl ParItemLikeVisitor<'tcx> for CheckTypeWellFormedVisitor<'tcx> {
 
     fn visit_impl_item(&self, impl_item: &'tcx hir::ImplItem<'tcx>) {
         Visitor::visit_impl_item(&mut self.clone(), impl_item);
+    }
+
+    fn visit_foreign_item(&self, foreign_item: &'tcx hir::ForeignItem<'tcx>) {
+        Visitor::visit_foreign_item(&mut self.clone(), foreign_item)
     }
 }
 

@@ -326,7 +326,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
             // they don't have their own stability. They still can be annotated as unstable
             // and propagate this unstability to children, but this annotation is completely
             // optional. They inherit stability from their parents when unannotated.
-            hir::ItemKind::Impl { of_trait: None, .. } | hir::ItemKind::ForeignMod(..) => {
+            hir::ItemKind::Impl { of_trait: None, .. } | hir::ItemKind::ForeignMod { .. } => {
                 self.in_trait_impl = false;
                 kind = AnnotationKind::Container;
             }
@@ -499,7 +499,7 @@ impl<'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'tcx> {
         // optional. They inherit stability from their parents when unannotated.
         if !matches!(
             i.kind,
-            hir::ItemKind::Impl { of_trait: None, .. } | hir::ItemKind::ForeignMod(..)
+            hir::ItemKind::Impl { of_trait: None, .. } | hir::ItemKind::ForeignMod { .. }
         ) {
             self.check_missing_stability(i.hir_id, i.span);
         }

@@ -2,7 +2,7 @@ use rustc_ast::entry::EntryPointType;
 use rustc_errors::struct_span_err;
 use rustc_hir::def_id::{CrateNum, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
-use rustc_hir::{HirId, ImplItem, Item, ItemKind, TraitItem};
+use rustc_hir::{ForeignItem, HirId, ImplItem, Item, ItemKind, TraitItem};
 use rustc_middle::hir::map::Map;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
@@ -44,6 +44,10 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for EntryContext<'a, 'tcx> {
 
     fn visit_impl_item(&mut self, _impl_item: &'tcx ImplItem<'tcx>) {
         // Entry fn is never a trait item.
+    }
+
+    fn visit_foreign_item(&mut self, _: &'tcx ForeignItem<'tcx>) {
+        // Entry fn is never a foreign item.
     }
 }
 

@@ -1308,6 +1308,8 @@ fn compute_all_traits(tcx: TyCtxt<'_>) -> Vec<DefId> {
         fn visit_trait_item(&mut self, _trait_item: &hir::TraitItem<'_>) {}
 
         fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem<'_>) {}
+
+        fn visit_foreign_item(&mut self, _foreign_item: &hir::ForeignItem<'_>) {}
     }
 
     tcx.hir().krate().visit_all_item_likes(&mut Visitor { map: &tcx.hir(), traits: &mut traits });

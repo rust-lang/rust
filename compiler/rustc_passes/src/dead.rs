@@ -190,7 +190,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
 
                     intravisit::walk_item(self, &item);
                 }
-                hir::ItemKind::ForeignMod(..) => {}
+                hir::ItemKind::ForeignMod { .. } => {}
                 _ => {
                     intravisit::walk_item(self, &item);
                 }
@@ -447,6 +447,8 @@ impl<'v, 'k, 'tcx> ItemLikeVisitor<'v> for LifeSeeder<'k, 'tcx> {
     fn visit_impl_item(&mut self, _item: &hir::ImplItem<'_>) {
         // ignore: we are handling this in `visit_item` above
     }
+
+    fn visit_foreign_item(&mut self, _item: &'v hir::ForeignItem<'v>) {}
 }
 
 fn create_and_seed_worklist<'tcx>(

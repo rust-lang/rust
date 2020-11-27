@@ -550,7 +550,7 @@ impl<'hir> Sig for hir::Item<'hir> {
 
                 // FIXME where clause
             }
-            hir::ItemKind::ForeignMod(_) => Err("extern mod"),
+            hir::ItemKind::ForeignMod { .. } => Err("extern mod"),
             hir::ItemKind::GlobalAsm(_) => Err("global asm"),
             hir::ItemKind::ExternCrate(_) => Err("extern crate"),
             hir::ItemKind::OpaqueTy(..) => Err("opaque type"),

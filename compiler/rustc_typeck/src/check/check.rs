@@ -746,20 +746,22 @@ pub fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, it: &'tcx hir::Item<'tcx>) {
             let generics = tcx.generics_of(def_id);
             check_type_params_are_used(tcx, &generics, pty_ty);
         }
-        hir::ItemKind::ForeignMod(ref m) => {
-            check_abi(tcx, it.span, m.abi);
+        hir::ItemKind::ForeignMod { abi, items } => {
+            check_abi(tcx, it.span, abi);
 
-            if m.abi == Abi::RustIntrinsic {
-                for item in m.items {
+            if abi == Abi::RustIntrinsic {
+                for item in items {
+                    let item = tcx.hir().foreign_item(item.id);
                     intrinsic::check_intrinsic_type(tcx, item);
                 }
-            } else if m.abi == Abi::PlatformIntrinsic {
-                for item in m.items {
+            } else if abi == Abi::PlatformIntrinsic {
+                for item in items {
+                    let item = tcx.hir().foreign_item(item.id);
                     intrinsic::check_platform_intrinsic_type(tcx, item);
                 }
             } else {
-                for item in m.items {
-                    let def_id = tcx.hir().local_def_id(item.hir_id);
+                for item in items {
+                    let def_id = tcx.hir().local_def_id(item.id.hir_id);
                     let generics = tcx.generics_of(def_id);
                     let own_counts = generics.own_counts();
                     if generics.params.len() - own_counts.lifetimes != 0 {
@@ -791,9 +793,10 @@ pub fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, it: &'tcx hir::Item<'tcx>) {
                         .emit();
                     }
 
+                    let item = tcx.hir().foreign_item(item.id);
                     match item.kind {
                         hir::ForeignItemKind::Fn(ref fn_decl, _, _) => {
-                            require_c_abi_if_c_variadic(tcx, fn_decl, m.abi, item.span);
+                            require_c_abi_if_c_variadic(tcx, fn_decl, abi, item.span);
                         }
                         hir::ForeignItemKind::Static(..) => {
                             check_static_inhabited(tcx, def_id, item.span);
