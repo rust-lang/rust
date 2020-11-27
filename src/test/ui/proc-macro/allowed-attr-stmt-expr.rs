@@ -13,14 +13,20 @@ extern crate std;
 
 extern crate attr_stmt_expr;
 extern crate test_macros;
-use attr_stmt_expr::{expect_let, expect_print_stmt, expect_expr, expect_print_expr};
+use attr_stmt_expr::{expect_let, expect_my_macro_stmt, expect_expr, expect_my_macro_expr};
 use test_macros::print_attr;
-use std::println;
+
+// We don't use `std::println` so that we avoid loading hygiene
+// information from libstd, which would affect the SyntaxContext ids
+macro_rules! my_macro {
+    ($($tt:tt)*) => { () }
+}
+
 
 fn print_str(string: &'static str) {
     // macros are handled a bit differently
-    #[expect_print_expr]
-    println!("{}", string)
+    #[expect_my_macro_expr]
+    my_macro!("{}", string)
 }
 
 macro_rules! make_stmt {
@@ -51,8 +57,8 @@ fn main() {
     let string = "Hello, world!";
 
     #[print_attr]
-    #[expect_print_stmt]
-    println!("{}", string);
+    #[expect_my_macro_stmt]
+    my_macro!("{}", string);
 
     #[print_attr]
     second_make_stmt!(#[allow(dead_code)] struct Bar {});
