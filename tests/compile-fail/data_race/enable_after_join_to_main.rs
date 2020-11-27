@@ -9,7 +9,7 @@ unsafe impl<T> Send for EvilSend<T> {}
 unsafe impl<T> Sync for EvilSend<T> {}
 
 pub fn main() {
-    // Enable and the join with multiple threads
+    // Enable and then join with multiple threads.
     let t1 = spawn(|| ());
     let t2 = spawn(|| ());
     let t3 = spawn(|| ());
@@ -19,7 +19,7 @@ pub fn main() {
     t3.join().unwrap();
     t4.join().unwrap();
 
-    // Perform write-write data race detection
+    // Perform write-write data race detection.
     let mut a = 0u32;
     let b = &mut a as *mut u32;
     let c = EvilSend(b);

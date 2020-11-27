@@ -15,7 +15,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
 
         this.tcx.sess.warn(
-            "thread support is experimental, no weak memory effects are currently emulated.",
+            "thread support is experimental and incomplete: weak memory effects are not emulated."
         );
 
         // Create the new thread

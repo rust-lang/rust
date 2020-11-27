@@ -29,9 +29,9 @@ fn main() {
     sleep(Duration::from_millis(100));
 
     // Spawn and immediately join a thread
-    //  to execute the join code-path
-    //  and ensure that data-race detection
-    //  remains enabled
+    // to execute the join code-path
+    // and ensure that data-race detection
+    // remains enabled nevertheless.
     spawn(|| ()).join().unwrap();
 
 

@@ -18,6 +18,14 @@ pub fn main() {
     let b = &mut a as *mut u32;
     let c = EvilSend(b);
 
+    // Note: this is scheduler-dependent
+    // the operations need to occur in
+    // order, the sleep operations currently
+    // force the desired ordering:
+    //  1. store release : 1
+    //  2. store relaxed : 2
+    //  3. store relaxed : 3
+    //  4. load acquire : 3
     unsafe {
         let j1 = spawn(move || {
             *c.0 = 1;

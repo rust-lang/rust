@@ -37,6 +37,24 @@
 //! to a acquire load and a release store given the global sequentially consistent order
 //! of the schedule.
 //!
+//! The timestamps used in the data-race detector assign each sequence of non-atomic operations
+//! followed by a single atomic or concurrent operation a single timestamp.
+//! Write, Read, Write, ThreadJoin will be represented by a single timestamp value on a thread
+//! This is because extra increment operations between the operations in the sequence are not
+//! required for accurate reporting of data-race values.
+//!
+//! If the timestamp was not incremented after the atomic operation, then data-races would not be detected:
+//!  Example - this should report a data-race but does not:
+//!   t1: (x,0), atomic[release A],                    t1=(x+1, 0  ), write(var B),
+//!   t2: (0,y)                   , atomic[acquire A], t2=(x+1, y+1),             ,write(var B)
+//!
+//! The timestamp is not incremented before an atomic operation, since the result is indistinguishable
+//! from the value not being incremented.
+//!    t: (x, 0), atomic[release _], (x + 1, 0) || (0, y), atomic[acquire _], (x, _)
+//! vs t: (x, 0), atomic[release _], (x + 1, 0) || (0, y), atomic[acquire _], (x+1, _)
+//! Both result in the sequence on thread x up to and including the atomic release as happening
+//! before the acquire.
+//!
 //! FIXME:
 //! currently we have our own local copy of the currently active thread index and names, this is due
 //! in part to the inability to access the current location of threads.active_thread inside the AllocExtra
@@ -499,7 +517,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
     }
 
     /// Perform an atomic compare and exchange at a given memory location
-    /// on success an atomic RMW operation is performed and on failure
+    /// On success an atomic RMW operation is performed and on failure
     /// only an atomic read occurs.
     fn atomic_compare_exchange_scalar(
         &mut self,
@@ -1136,9 +1154,6 @@ impl GlobalState {
         // Now load the two clocks and configure the initial state.
         let (current, created) = vector_clocks.pick2_mut(current_index, created_index);
 
-        // Advance the current thread before the synchronized operation.
-        current.increment_clock(current_index);
-
         // Join the created with current, since the current threads
         // previous actions happen-before the created thread.
         created.join_with(current);
@@ -1167,14 +1182,12 @@ impl GlobalState {
             .as_ref()
             .expect("Joined with thread but thread has not terminated");
 
-        // Pre increment clocks before atomic operation.
-        current.increment_clock(current_index);
 
         // The join thread happens-before the current thread
         // so update the current vector clock.
         current.clock.join(join_clock);
 
-        // Post increment clocks after atomic operation.
+        // Increment clocks after atomic operation.
         current.increment_clock(current_index);
 
         // Check the number of active threads, if the value is 1
@@ -1277,8 +1290,7 @@ impl GlobalState {
         op: impl FnOnce(VectorIdx, RefMut<'_, ThreadClockSet>) -> InterpResult<'tcx>,
     ) -> InterpResult<'tcx> {
         if self.multi_threaded.get() {
-            let (index, mut clocks) = self.current_thread_state_mut();
-            clocks.increment_clock(index);
+            let (index, clocks) = self.current_thread_state_mut();
             op(index, clocks)?;
             let (_, mut clocks) = self.current_thread_state_mut();
             clocks.increment_clock(index);
@@ -1303,16 +1315,18 @@ impl GlobalState {
     /// `validate_lock_release` must happen before this.
     pub fn validate_lock_acquire(&self, lock: &VClock, thread: ThreadId) {
         let (index, mut clocks) = self.load_thread_state_mut(thread);
-        clocks.increment_clock(index);
         clocks.clock.join(&lock);
         clocks.increment_clock(index);
     }
 
     /// Release a lock handle, express that this happens-before
     /// any subsequent calls to `validate_lock_acquire`.
+    /// For normal locks this should be equivalent to `validate_lock_release_shared`
+    /// since an acquire operation should have occured before, however
+    /// for futex & cond-var operations this is not the case and this
+    /// operation must be used.
     pub fn validate_lock_release(&self, lock: &mut VClock, thread: ThreadId) {
         let (index, mut clocks) = self.load_thread_state_mut(thread);
-        clocks.increment_clock(index);
         lock.clone_from(&clocks.clock);
         clocks.increment_clock(index);
     }
@@ -1321,9 +1335,11 @@ impl GlobalState {
     /// any subsequent calls to `validate_lock_acquire` as well
     /// as any previous calls to this function after any
     /// `validate_lock_release` calls.
+    /// For normal locks this should be equivalent to `validate_lock_release`
+    /// this function only exists for joining over the set of concurrent readers
+    /// in a read-write lock and should not be used for anything else.
     pub fn validate_lock_release_shared(&self, lock: &mut VClock, thread: ThreadId) {
         let (index, mut clocks) = self.load_thread_state_mut(thread);
-        clocks.increment_clock(index);
         lock.join(&clocks.clock);
         clocks.increment_clock(index);
     }
