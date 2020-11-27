@@ -11,6 +11,7 @@ pub(crate) enum OverlayKind {
     Cargo,
     Clippy,
     Miri,
+    Rustfmt,
 }
 
 impl OverlayKind {
@@ -36,6 +37,11 @@ impl OverlayKind {
                 "src/tools/miri/LICENSE-APACHE",
                 "src/tools/miri/LICENSE-MIT",
             ],
+            OverlayKind::Rustfmt => &[
+                "src/tools/rustfmt/README.md",
+                "src/tools/rustfmt/LICENSE-APACHE",
+                "src/tools/rustfmt/LICENSE-MIT",
+            ],
         }
     }
 
@@ -50,6 +56,9 @@ impl OverlayKind {
                 builder.clippy_info.version(builder, &builder.release_num("clippy"))
             }
             OverlayKind::Miri => builder.miri_info.version(builder, &builder.release_num("miri")),
+            OverlayKind::Rustfmt => {
+                builder.rustfmt_info.version(builder, &builder.release_num("rustfmt"))
+            }
         }
     }
 }
