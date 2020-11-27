@@ -664,7 +664,7 @@ pub struct Analysis {
 }
 
 impl Step for Analysis {
-    type Output = PathBuf;
+    type Output = Option<PathBuf>;
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -687,52 +687,26 @@ impl Step for Analysis {
     }
 
     /// Creates a tarball of save-analysis metadata, if available.
-    fn run(self, builder: &Builder<'_>) -> PathBuf {
+    fn run(self, builder: &Builder<'_>) -> Option<PathBuf> {
         let compiler = self.compiler;
         let target = self.target;
         assert!(builder.config.extended);
-        let name = pkgname(builder, "rust-analysis");
-
         if compiler.host != builder.config.build {
-            return distdir(builder).join(format!("{}-{}.tar.gz", name, target.triple));
+            return None;
         }
 
         builder.ensure(compile::Std { compiler, target });
-
-        let image = tmpdir(builder).join(format!("{}-{}-image", name, target.triple));
-
         let src = builder
             .stage_out(compiler, Mode::Std)
             .join(target.triple)
             .join(builder.cargo_dir())
-            .join("deps");
+            .join("deps")
+            .join("save-analysis");
 
-        let image_src = src.join("save-analysis");
-        let dst = image.join("lib/rustlib").join(target.triple).join("analysis");
-        t!(fs::create_dir_all(&dst));
-        builder.info(&format!("image_src: {:?}, dst: {:?}", image_src, dst));
-        builder.cp_r(&image_src, &dst);
-
-        let mut cmd = rust_installer(builder);
-        cmd.arg("generate")
-            .arg("--product-name=Rust")
-            .arg("--rel-manifest-dir=rustlib")
-            .arg("--success-message=save-analysis-saved.")
-            .arg("--image-dir")
-            .arg(&image)
-            .arg("--work-dir")
-            .arg(&tmpdir(builder))
-            .arg("--output-dir")
-            .arg(&distdir(builder))
-            .arg(format!("--package-name={}-{}", name, target.triple))
-            .arg(format!("--component-name=rust-analysis-{}", target.triple))
-            .arg("--legacy-manifest-dirs=rustlib,cargo");
-
-        builder.info("Dist analysis");
-        let _time = timeit(builder);
-        builder.run(&mut cmd);
-        builder.remove_dir(&image);
-        distdir(builder).join(format!("{}-{}.tar.gz", name, target.triple))
+        let mut tarball = Tarball::new(builder, "rust-analysis", &target.triple);
+        tarball.include_target_in_component_name(true);
+        tarball.add_dir(src, format!("lib/rustlib/{}/analysis", target.triple));
+        Some(tarball.generate())
     }
 }
 
@@ -1652,7 +1626,9 @@ impl Step for Extended {
         tarballs.extend(miri_installer.clone());
         tarballs.extend(rustfmt_installer.clone());
         tarballs.extend(llvm_tools_installer);
-        tarballs.push(analysis_installer);
+        if let Some(analysis_installer) = analysis_installer {
+            tarballs.push(analysis_installer);
+        }
         tarballs.push(std_installer.expect("missing std"));
         if let Some(docs_installer) = docs_installer {
             tarballs.push(docs_installer);
