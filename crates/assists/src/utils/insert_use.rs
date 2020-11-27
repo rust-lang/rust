@@ -95,7 +95,7 @@ pub fn insert_use<'a>(
     path: ast::Path,
     merge: Option<MergeBehaviour>,
 ) -> SyntaxRewriter<'a> {
-    let _p = profile::span("mod_path_to_ast");
+    let _p = profile::span("insert_use");
     let mut rewriter = SyntaxRewriter::default();
     let use_item = make::use_(make::use_tree(path.clone(), None, None, false));
     // merge into existing imports if possible
