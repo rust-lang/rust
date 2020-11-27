@@ -2143,7 +2143,7 @@ impl<'hir> InlineAsmOperand<'hir> {
 #[derive(Debug, HashStable_Generic)]
 pub struct InlineAsm<'hir> {
     pub template: &'hir [InlineAsmTemplatePiece],
-    pub operands: &'hir [InlineAsmOperand<'hir>],
+    pub operands: &'hir [(InlineAsmOperand<'hir>, Span)],
     pub options: InlineAsmOptions,
     pub line_spans: &'hir [Span],
 }

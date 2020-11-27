@@ -14,7 +14,7 @@ macro_rules! arena_types {
             // HIR types
             [few] hir_krate: rustc_hir::Crate<$tcx>,
             [] arm: rustc_hir::Arm<$tcx>,
-            [] asm_operand: rustc_hir::InlineAsmOperand<$tcx>,
+            [] asm_operand: (rustc_hir::InlineAsmOperand<$tcx>, Span),
             [] asm_template: rustc_ast::InlineAsmTemplatePiece,
             [] attribute: rustc_ast::Attribute,
             [] block: rustc_hir::Block<$tcx>,

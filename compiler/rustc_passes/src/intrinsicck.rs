@@ -347,7 +347,7 @@ impl ExprVisitor<'tcx> {
     }
 
     fn check_asm(&self, asm: &hir::InlineAsm<'tcx>) {
-        for (idx, op) in asm.operands.iter().enumerate() {
+        for (idx, (op, _op_sp)) in asm.operands.iter().enumerate() {
             match *op {
                 hir::InlineAsmOperand::In { reg, ref expr } => {
                     self.check_asm_operand_type(idx, reg, expr, asm.template, None);

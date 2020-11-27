@@ -293,7 +293,7 @@ fn print_expr(cx: &LateContext<'_>, expr: &hir::Expr<'_>, indent: usize) {
             println!("{}template: {}", ind, InlineAsmTemplatePiece::to_string(asm.template));
             println!("{}options: {:?}", ind, asm.options);
             println!("{}operands:", ind);
-            for op in asm.operands {
+            for (op, _op_sp) in asm.operands {
                 match op {
                     hir::InlineAsmOperand::In { expr, .. }
                     | hir::InlineAsmOperand::InOut { expr, .. }
