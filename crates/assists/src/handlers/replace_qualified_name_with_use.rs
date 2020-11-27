@@ -51,7 +51,7 @@ pub(crate) fn replace_qualified_name_with_use(
     )
 }
 
-/// Adds replacements to `re` that shorten `path` in all descendants of `node`.g
+/// Adds replacements to `re` that shorten `path` in all descendants of `node`.
 fn shorten_paths(rewriter: &mut SyntaxRewriter<'static>, node: SyntaxNode, path: &ast::Path) {
     for child in node.children() {
         match_ast! {

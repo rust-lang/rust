@@ -1,12 +1,14 @@
+//! A module with ide helpers for high-level ide features.
 use hir::{Crate, Enum, Module, ScopeDef, Semantics, Trait};
 use ide_db::RootDatabase;
 use syntax::ast::{self, make};
 
 pub mod insert_use;
 
+/// Converts the mod path struct into its ast representation.
 pub fn mod_path_to_ast(path: &hir::ModPath) -> ast::Path {
     let _p = profile::span("mod_path_to_ast");
-    
+
     let mut segments = Vec::new();
     let mut is_abs = false;
     match path.kind {
