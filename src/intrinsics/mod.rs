@@ -263,6 +263,48 @@ fn simd_pair_for_each_lane<'tcx, M: Module>(
     }
 }
 
+fn simd_reduce<'tcx, M: Module>(
+    fx: &mut FunctionCx<'_, 'tcx, M>,
+    val: CValue<'tcx>,
+    ret: CPlace<'tcx>,
+    f: impl Fn(&mut FunctionCx<'_, 'tcx, M>, TyAndLayout<'tcx>, Value, Value) -> Value,
+) {
+    let (lane_layout, lane_count) = lane_type_and_count(fx.tcx, val.layout());
+    assert_eq!(lane_layout, ret.layout());
+
+    let mut res_val = val.value_field(fx, mir::Field::new(0)).load_scalar(fx);
+    for lane_idx in 1..lane_count {
+        let lane = val
+            .value_field(fx, mir::Field::new(lane_idx.into()))
+            .load_scalar(fx);
+        res_val = f(fx, lane_layout, res_val, lane);
+    }
+    let res = CValue::by_val(res_val, lane_layout);
+    ret.write_cvalue(fx, res);
+}
+
+fn simd_reduce_bool<'tcx, M: Module>(
+    fx: &mut FunctionCx<'_, 'tcx, M>,
+    val: CValue<'tcx>,
+    ret: CPlace<'tcx>,
+    f: impl Fn(&mut FunctionCx<'_, 'tcx, M>, Value, Value) -> Value,
+) {
+    let (_lane_layout, lane_count) = lane_type_and_count(fx.tcx, val.layout());
+    assert!(ret.layout().ty.is_bool());
+
+    let res_val = val.value_field(fx, mir::Field::new(0)).load_scalar(fx);
+    let mut res_val = fx.bcx.ins().band_imm(res_val, 1); // mask to boolean
+    for lane_idx in 1..lane_count {
+        let lane = val
+            .value_field(fx, mir::Field::new(lane_idx.into()))
+            .load_scalar(fx);
+        let lane = fx.bcx.ins().band_imm(lane, 1); // mask to boolean
+        res_val = f(fx, res_val, lane);
+    }
+    let res = CValue::by_val(res_val, ret.layout());
+    ret.write_cvalue(fx, res);
+}
+
 fn bool_to_zero_or_max_uint<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Module>,
     layout: TyAndLayout<'tcx>,
@@ -287,7 +329,7 @@ fn bool_to_zero_or_max_uint<'tcx>(
 }
 
 macro simd_cmp {
-    ($fx:expr, $cc:ident($x:ident, $y:ident) -> $ret:ident) => {
+    ($fx:expr, $cc:ident|$cc_f:ident($x:ident, $y:ident) -> $ret:ident) => {
         let vector_ty = clif_vector_type($fx.tcx, $x.layout());
 
         if let Some(vector_ty) = vector_ty {
@@ -308,6 +350,7 @@ macro simd_cmp {
                 |fx, lane_layout, res_lane_layout, x_lane, y_lane| {
                     let res_lane = match lane_layout.ty.kind() {
                         ty::Uint(_) | ty::Int(_) => fx.bcx.ins().icmp(IntCC::$cc, x_lane, y_lane),
+                        ty::Float(_) => fx.bcx.ins().fcmp(FloatCC::$cc_f, x_lane, y_lane),
                         _ => unreachable!("{:?}", lane_layout.ty),
                     };
                     bool_to_zero_or_max_uint(fx, res_lane_layout, res_lane)
@@ -315,7 +358,7 @@ macro simd_cmp {
             );
         }
     },
-    ($fx:expr, $cc_u:ident|$cc_s:ident($x:ident, $y:ident) -> $ret:ident) => {
+    ($fx:expr, $cc_u:ident|$cc_s:ident|$cc_f:ident($x:ident, $y:ident) -> $ret:ident) => {
         // FIXME use vector icmp when possible
         simd_pair_for_each_lane(
             $fx,
@@ -326,6 +369,7 @@ macro simd_cmp {
                 let res_lane = match lane_layout.ty.kind() {
                     ty::Uint(_) => fx.bcx.ins().icmp(IntCC::$cc_u, x_lane, y_lane),
                     ty::Int(_) => fx.bcx.ins().icmp(IntCC::$cc_s, x_lane, y_lane),
+                    ty::Float(_) => fx.bcx.ins().fcmp(FloatCC::$cc_f, x_lane, y_lane),
                     _ => unreachable!("{:?}", lane_layout.ty),
                 };
                 bool_to_zero_or_max_uint(fx, res_lane_layout, res_lane)
@@ -497,12 +541,12 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
         };
         copy | copy_nonoverlapping, <elem_ty> (v src, v dst, v count) {
             let elem_size: u64 = fx.layout_of(elem_ty).size.bytes();
-            let elem_size = fx
-                .bcx
-                .ins()
-                .iconst(fx.pointer_type, elem_size as i64);
             assert_eq!(args.len(), 3);
-            let byte_amount = fx.bcx.ins().imul(count, elem_size);
+            let byte_amount = if elem_size != 1 {
+                fx.bcx.ins().imul_imm(count, elem_size as i64)
+            } else {
+                count
+            };
 
             if intrinsic.contains("nonoverlapping") {
                 // FIXME emit_small_memcpy
@@ -515,12 +559,12 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
         // NOTE: the volatile variants have src and dst swapped
         volatile_copy_memory | volatile_copy_nonoverlapping_memory, <elem_ty> (v dst, v src, v count) {
             let elem_size: u64 = fx.layout_of(elem_ty).size.bytes();
-            let elem_size = fx
-                .bcx
-                .ins()
-                .iconst(fx.pointer_type, elem_size as i64);
             assert_eq!(args.len(), 3);
-            let byte_amount = fx.bcx.ins().imul(count, elem_size);
+            let byte_amount = if elem_size != 1 {
+                fx.bcx.ins().imul_imm(count, elem_size as i64)
+            } else {
+                count
+            };
 
             // FIXME make the copy actually volatile when using emit_small_mem{cpy,move}
             if intrinsic.contains("nonoverlapping") {
@@ -676,7 +720,11 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
         offset | arith_offset, (c base, v offset) {
             let pointee_ty = base.layout().ty.builtin_deref(true).unwrap().ty;
             let pointee_size = fx.layout_of(pointee_ty).size.bytes();
-            let ptr_diff = fx.bcx.ins().imul_imm(offset, pointee_size as i64);
+            let ptr_diff = if pointee_size != 1 {
+                fx.bcx.ins().imul_imm(offset, pointee_size as i64)
+            } else {
+                offset
+            };
             let base_val = base.load_scalar(fx);
             let res = fx.bcx.ins().iadd(base_val, ptr_diff);
             ret.write_cvalue(fx, CValue::by_val(res, base.layout()));
@@ -688,7 +736,11 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
         write_bytes | volatile_set_memory, (c dst, v val, v count) {
             let pointee_ty = dst.layout().ty.builtin_deref(true).unwrap().ty;
             let pointee_size = fx.layout_of(pointee_ty).size.bytes();
-            let count = fx.bcx.ins().imul_imm(count, pointee_size as i64);
+            let count = if pointee_size != 1 {
+                fx.bcx.ins().imul_imm(count, pointee_size as i64)
+            } else {
+                count
+            };
             let dst_ptr = dst.load_scalar(fx);
             // FIXME make the memset actually volatile when switching to emit_small_memset
             // FIXME use emit_small_memset
