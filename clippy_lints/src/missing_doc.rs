@@ -147,7 +147,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
             hir::ItemKind::Union(..) => "a union",
             hir::ItemKind::OpaqueTy(..) => "an existential type",
             hir::ItemKind::ExternCrate(..)
-            | hir::ItemKind::ForeignMod(..)
+            | hir::ItemKind::ForeignMod { .. }
             | hir::ItemKind::GlobalAsm(..)
             | hir::ItemKind::Impl { .. }
             | hir::ItemKind::Use(..) => return,
