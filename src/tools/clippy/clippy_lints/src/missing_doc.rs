@@ -170,7 +170,8 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
         let def_id = cx.tcx.hir().local_def_id(trait_item.hir_id);
         let (article, desc) = cx.tcx.article_and_description(def_id.to_def_id());
 
-        self.check_missing_docs_attrs(cx, &trait_item.attrs, trait_item.span, article, desc);
+        let attrs = cx.tcx.hir().attrs(trait_item.hir_id);
+        self.check_missing_docs_attrs(cx, attrs, trait_item.span, article, desc);
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, impl_item: &'tcx hir::ImplItem<'_>) {

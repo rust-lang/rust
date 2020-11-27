@@ -1006,6 +1006,7 @@ impl<'tcx> DumpVisitor<'tcx> {
             hir::TraitItemKind::Const(ref ty, body) => {
                 let body = body.map(|b| &self.tcx.hir().body(b).value);
                 let respan = respan(vis_span, hir::VisibilityKind::Public);
+                let attrs = self.tcx.hir().attrs(trait_item.hir_id);
                 self.process_assoc_const(
                     trait_item.hir_id,
                     trait_item.ident,
@@ -1013,7 +1014,7 @@ impl<'tcx> DumpVisitor<'tcx> {
                     body,
                     trait_id,
                     &respan,
-                    &trait_item.attrs,
+                    attrs,
                 );
             }
             hir::TraitItemKind::Fn(ref sig, ref trait_fn) => {
@@ -1042,6 +1043,7 @@ impl<'tcx> DumpVisitor<'tcx> {
                 if !self.span.filter_generated(trait_item.ident.span) {
                     let span = self.span_from_span(trait_item.ident.span);
                     let id = id_from_hir_id(trait_item.hir_id, &self.save_ctxt);
+                    let attrs = self.tcx.hir().attrs(trait_item.hir_id);
 
                     self.dumper.dump_def(
                         &Access { public: true, reachable: true },
@@ -1055,7 +1057,7 @@ impl<'tcx> DumpVisitor<'tcx> {
                             parent: Some(id_from_def_id(trait_id)),
                             children: vec![],
                             decl_id: None,
-                            docs: self.save_ctxt.docs_for_attrs(&trait_item.attrs),
+                            docs: self.save_ctxt.docs_for_attrs(attrs),
                             sig: sig::assoc_type_signature(
                                 trait_item.hir_id,
                                 trait_item.ident,
@@ -1063,10 +1065,7 @@ impl<'tcx> DumpVisitor<'tcx> {
                                 default_ty.as_ref().map(|ty| &**ty),
                                 &self.save_ctxt,
                             ),
-                            attributes: lower_attributes(
-                                trait_item.attrs.to_vec(),
-                                &self.save_ctxt,
-                            ),
+                            attributes: lower_attributes(attrs.to_vec(), &self.save_ctxt),
                         },
                     );
                 }

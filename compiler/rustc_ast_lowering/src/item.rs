@@ -859,14 +859,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
         };
 
         let hir_id = self.lower_node_id(i.id);
-        hir::TraitItem {
-            hir_id,
-            ident: i.ident,
-            attrs: self.lower_attrs(hir_id, &i.attrs),
-            generics,
-            kind,
-            span: i.span,
-        }
+        self.lower_attrs(hir_id, &i.attrs);
+        hir::TraitItem { hir_id, ident: i.ident, generics, kind, span: i.span }
     }
 
     fn lower_trait_item_ref(&mut self, i: &AssocItem) -> hir::TraitItemRef {

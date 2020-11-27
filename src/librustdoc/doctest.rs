@@ -1055,7 +1055,8 @@ impl<'a, 'hir, 'tcx> intravisit::Visitor<'hir> for HirCollector<'a, 'hir, 'tcx> 
     }
 
     fn visit_trait_item(&mut self, item: &'hir hir::TraitItem<'_>) {
-        self.visit_testable(item.ident.to_string(), &item.attrs, item.hir_id, item.span, |this| {
+        let attrs = self.tcx.hir().attrs(item.hir_id);
+        self.visit_testable(item.ident.to_string(), attrs, item.hir_id, item.span, |this| {
             intravisit::walk_trait_item(this, item);
         });
     }

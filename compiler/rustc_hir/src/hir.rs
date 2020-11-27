@@ -1910,7 +1910,6 @@ pub struct TraitItemId {
 pub struct TraitItem<'hir> {
     pub ident: Ident,
     pub hir_id: HirId,
-    pub attrs: &'hir [Attribute],
     pub generics: Generics<'hir>,
     pub kind: TraitItemKind<'hir>,
     pub span: Span,
