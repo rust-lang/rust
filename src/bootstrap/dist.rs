@@ -1303,19 +1303,6 @@ impl Step for Miri {
         let target = self.target;
         assert!(builder.config.extended);
 
-        let src = builder.src.join("src/tools/miri");
-        let release_num = builder.release_num("miri");
-        let name = pkgname(builder, "miri");
-        let version = builder.miri_info.version(builder, &release_num);
-
-        let tmp = tmpdir(builder);
-        let image = tmp.join("miri-image");
-        drop(fs::remove_dir_all(&image));
-        builder.create_dir(&image);
-
-        // Prepare the image directory
-        // We expect miri to build, because we've exited this step above if tool
-        // state for miri isn't testing.
         let miri = builder
             .ensure(tool::Miri { compiler, target, extra_features: Vec::new() })
             .or_else(|| {
@@ -1329,44 +1316,13 @@ impl Step for Miri {
                 None
             })?;
 
-        builder.install(&miri, &image.join("bin"), 0o755);
-        builder.install(&cargomiri, &image.join("bin"), 0o755);
-        let doc = image.join("share/doc/miri");
-        builder.install(&src.join("README.md"), &doc, 0o644);
-        builder.install(&src.join("LICENSE-APACHE"), &doc, 0o644);
-        builder.install(&src.join("LICENSE-MIT"), &doc, 0o644);
-
-        // Prepare the overlay
-        let overlay = tmp.join("miri-overlay");
-        drop(fs::remove_dir_all(&overlay));
-        t!(fs::create_dir_all(&overlay));
-        builder.install(&src.join("README.md"), &overlay, 0o644);
-        builder.install(&src.join("LICENSE-APACHE"), &doc, 0o644);
-        builder.install(&src.join("LICENSE-MIT"), &doc, 0o644);
-        builder.create(&overlay.join("version"), &version);
-
-        // Generate the installer tarball
-        let mut cmd = rust_installer(builder);
-        cmd.arg("generate")
-            .arg("--product-name=Rust")
-            .arg("--rel-manifest-dir=rustlib")
-            .arg("--success-message=miri-ready-to-serve.")
-            .arg("--image-dir")
-            .arg(&image)
-            .arg("--work-dir")
-            .arg(&tmpdir(builder))
-            .arg("--output-dir")
-            .arg(&distdir(builder))
-            .arg("--non-installed-overlay")
-            .arg(&overlay)
-            .arg(format!("--package-name={}-{}", name, target.triple))
-            .arg("--legacy-manifest-dirs=rustlib,cargo")
-            .arg("--component-name=miri-preview");
-
-        builder.info(&format!("Dist miri stage{} ({})", compiler.stage, target));
-        let _time = timeit(builder);
-        builder.run(&mut cmd);
-        Some(distdir(builder).join(format!("{}-{}.tar.gz", name, target.triple)))
+        let mut tarball = Tarball::new(builder, "miri", &target.triple);
+        tarball.set_overlay(OverlayKind::Miri);
+        tarball.is_preview(true);
+        tarball.add_file(miri, "bin", 0o755);
+        tarball.add_file(cargomiri, "bin", 0o755);
+        tarball.add_legal_and_readme_to("share/doc/miri");
+        Some(tarball.generate())
     }
 }
 

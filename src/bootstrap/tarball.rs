@@ -10,6 +10,7 @@ pub(crate) enum OverlayKind {
     LLVM,
     Cargo,
     Clippy,
+    Miri,
 }
 
 impl OverlayKind {
@@ -30,6 +31,11 @@ impl OverlayKind {
                 "src/tools/clippy/LICENSE-APACHE",
                 "src/tools/clippy/LICENSE-MIT",
             ],
+            OverlayKind::Miri => &[
+                "src/tools/miri/README.md",
+                "src/tools/miri/LICENSE-APACHE",
+                "src/tools/miri/LICENSE-MIT",
+            ],
         }
     }
 
@@ -43,6 +49,7 @@ impl OverlayKind {
             OverlayKind::Clippy => {
                 builder.clippy_info.version(builder, &builder.release_num("clippy"))
             }
+            OverlayKind::Miri => builder.miri_info.version(builder, &builder.release_num("miri")),
         }
     }
 }
