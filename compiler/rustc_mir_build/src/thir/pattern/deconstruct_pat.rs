@@ -4,8 +4,8 @@
 use self::Constructor::*;
 use self::SliceKind::*;
 
-use super::_match::{MatchCheckCtxt, PatCtxt};
 use super::compare_const_vals;
+use super::usefulness::{MatchCheckCtxt, PatCtxt};
 use super::{FieldPat, Pat, PatKind, PatRange};
 
 use rustc_data_structures::captures::Captures;
