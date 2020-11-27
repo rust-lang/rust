@@ -2320,22 +2320,29 @@ impl Clean<Item> for (&hir::MacroDef<'_>, Option<Ident>) {
         let tts = item.ast.body.inner_tokens().trees().collect::<Vec<_>>();
         // Extract the spans of all matchers. They represent the "interface" of the macro.
         let matchers = tts.chunks(4).map(|arm| arm[0].span()).collect::<Vec<_>>();
+        let source = if item.ast.macro_rules {
+            format!(
+                "macro_rules! {} {{\n{}}}",
+                name,
+                matchers
+                    .iter()
+                    .map(|span| { format!("    {} => {{ ... }};\n", span.to_src(cx)) })
+                    .collect::<String>(),
+            )
+        } else {
+            // This code currently assumes that there will only be one or zero matchers, as syntax
+            // for multiple is not currently defined.
+            format!(
+                "pub macro {}({}) {{\n\t...\n}}",
+                name,
+                matchers.iter().map(|span| span.to_src(cx)).collect::<String>(),
+            )
+        };
 
-        Item::from_def_id_and_parts(
-            cx.tcx.hir().local_def_id(item.hir_id).to_def_id(),
+        Item::from_hir_id_and_parts(
+            item.hir_id,
             Some(name.clean(cx)),
-            MacroItem(Macro {
-                // FIXME(#76761): Make this respect `macro_rules!` vs `pub macro`
-                source: format!(
-                    "macro_rules! {} {{\n{}}}",
-                    name,
-                    matchers
-                        .iter()
-                        .map(|span| { format!("    {} => {{ ... }};\n", span.to_src(cx)) })
-                        .collect::<String>(),
-                ),
-                imported_from: None,
-            }),
+            MacroItem(Macro { source, imported_from: None }),
             cx,
         )
     }
