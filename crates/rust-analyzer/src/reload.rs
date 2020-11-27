@@ -205,7 +205,7 @@ impl GlobalState {
                 }
                 let res = vfs.file_id(&vfs_path);
                 if res.is_none() {
-                    log::error!("failed to load {}", path.display())
+                    log::warn!("failed to load {}", path.display())
                 }
                 res
             };
