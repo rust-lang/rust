@@ -2333,7 +2333,8 @@ impl Clean<Item> for (&hir::MacroDef<'_>, Option<Ident>) {
             // This code currently assumes that there will only be one or zero matchers, as syntax
             // for multiple is not currently defined.
             format!(
-                "pub macro {}({}) {{\n\t...\n}}",
+                "{}macro {}{} {{\n\t...\n}}",
+                item.vis.clean(cx).print_with_space(),
                 name,
                 matchers.iter().map(|span| span.to_src(cx)).collect::<String>(),
             )
@@ -2341,7 +2342,7 @@ impl Clean<Item> for (&hir::MacroDef<'_>, Option<Ident>) {
 
         Item::from_hir_id_and_parts(
             item.hir_id,
-            Some(name.clean(cx)),
+            Some(name),
             MacroItem(Macro { source, imported_from: None }),
             cx,
         )
