@@ -1015,72 +1015,31 @@ impl Step for Cargo {
         let compiler = self.compiler;
         let target = self.target;
 
+        let cargo = builder.ensure(tool::Cargo { compiler, target });
         let src = builder.src.join("src/tools/cargo");
         let etc = src.join("src/etc");
-        let release_num = builder.release_num("cargo");
-        let name = pkgname(builder, "cargo");
-        let version = builder.cargo_info.version(builder, &release_num);
-
-        let tmp = tmpdir(builder);
-        let image = tmp.join("cargo-image");
-        drop(fs::remove_dir_all(&image));
-        builder.create_dir(&image);
 
         // Prepare the image directory
-        builder.create_dir(&image.join("share/zsh/site-functions"));
-        builder.create_dir(&image.join("etc/bash_completion.d"));
-        let cargo = builder.ensure(tool::Cargo { compiler, target });
-        builder.install(&cargo, &image.join("bin"), 0o755);
+        let mut tarball = Tarball::new(builder, "cargo", &target.triple);
+        tarball.set_overlay(OverlayKind::Cargo);
+
+        tarball.add_file(&cargo, "bin", 0o755);
+        tarball.add_file(src.join("README.md"), "share/doc/cargo", 0o644);
+        tarball.add_file(src.join("LICENSE-MIT"), "share/doc/cargo", 0o644);
+        tarball.add_file(src.join("LICENSE-APACHE"), "share/doc/cargo", 0o644);
+        tarball.add_file(src.join("LICENSE-THIRD-PARTY"), "share/doc/cargo", 0o644);
+        tarball.add_file(etc.join("_cargo"), "share/zsh/site-functions", 0o644);
+        tarball.add_renamed_file(etc.join("cargo.bashcomp.sh"), "etc/bash_completion.d", "cargo");
+        tarball.add_dir(etc.join("man"), "share/man/man1");
+
         for dirent in fs::read_dir(cargo.parent().unwrap()).expect("read_dir") {
             let dirent = dirent.expect("read dir entry");
             if dirent.file_name().to_str().expect("utf8").starts_with("cargo-credential-") {
-                builder.install(&dirent.path(), &image.join("libexec"), 0o755);
+                tarball.add_file(&dirent.path(), "libexec", 0o755);
             }
         }
-        for man in t!(etc.join("man").read_dir()) {
-            let man = t!(man);
-            builder.install(&man.path(), &image.join("share/man/man1"), 0o644);
-        }
-        builder.install(&etc.join("_cargo"), &image.join("share/zsh/site-functions"), 0o644);
-        builder.copy(&etc.join("cargo.bashcomp.sh"), &image.join("etc/bash_completion.d/cargo"));
-        let doc = image.join("share/doc/cargo");
-        builder.install(&src.join("README.md"), &doc, 0o644);
-        builder.install(&src.join("LICENSE-MIT"), &doc, 0o644);
-        builder.install(&src.join("LICENSE-APACHE"), &doc, 0o644);
-        builder.install(&src.join("LICENSE-THIRD-PARTY"), &doc, 0o644);
 
-        // Prepare the overlay
-        let overlay = tmp.join("cargo-overlay");
-        drop(fs::remove_dir_all(&overlay));
-        builder.create_dir(&overlay);
-        builder.install(&src.join("README.md"), &overlay, 0o644);
-        builder.install(&src.join("LICENSE-MIT"), &overlay, 0o644);
-        builder.install(&src.join("LICENSE-APACHE"), &overlay, 0o644);
-        builder.install(&src.join("LICENSE-THIRD-PARTY"), &overlay, 0o644);
-        builder.create(&overlay.join("version"), &version);
-
-        // Generate the installer tarball
-        let mut cmd = rust_installer(builder);
-        cmd.arg("generate")
-            .arg("--product-name=Rust")
-            .arg("--rel-manifest-dir=rustlib")
-            .arg("--success-message=Rust-is-ready-to-roll.")
-            .arg("--image-dir")
-            .arg(&image)
-            .arg("--work-dir")
-            .arg(&tmpdir(builder))
-            .arg("--output-dir")
-            .arg(&distdir(builder))
-            .arg("--non-installed-overlay")
-            .arg(&overlay)
-            .arg(format!("--package-name={}-{}", name, target.triple))
-            .arg("--component-name=cargo")
-            .arg("--legacy-manifest-dirs=rustlib,cargo");
-
-        builder.info(&format!("Dist cargo stage{} ({})", compiler.stage, target));
-        let _time = timeit(builder);
-        builder.run(&mut cmd);
-        distdir(builder).join(format!("{}-{}.tar.gz", name, target.triple))
+        tarball.generate()
     }
 }
 

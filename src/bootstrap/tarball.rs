@@ -8,6 +8,7 @@ use crate::builder::Builder;
 pub(crate) enum OverlayKind {
     Rust,
     LLVM,
+    Cargo,
 }
 
 impl OverlayKind {
@@ -16,6 +17,22 @@ impl OverlayKind {
             OverlayKind::Rust => &["COPYRIGHT", "LICENSE-APACHE", "LICENSE-MIT", "README.md"],
             OverlayKind::LLVM => {
                 &["src/llvm-project/llvm/LICENSE.TXT", "src/llvm-project/llvm/README.txt"]
+            }
+            OverlayKind::Cargo => &[
+                "src/tools/cargo/README.md",
+                "src/tools/cargo/LICENSE-MIT",
+                "src/tools/cargo/LICENSE-APACHE",
+                "src/tools/cargo/LICENSE-THIRD-PARTY",
+            ],
+        }
+    }
+
+    fn version(&self, builder: &Builder<'_>) -> String {
+        match self {
+            OverlayKind::Rust => builder.rust_version(),
+            OverlayKind::LLVM => builder.rust_version(),
+            OverlayKind::Cargo => {
+                builder.cargo_info.version(builder, &builder.release_num("cargo"))
             }
         }
     }
@@ -103,6 +120,17 @@ impl<'a> Tarball<'a> {
         self.builder.install(src.as_ref(), &destdir, perms);
     }
 
+    pub(crate) fn add_renamed_file(
+        &self,
+        src: impl AsRef<Path>,
+        destdir: impl AsRef<Path>,
+        new_name: &str,
+    ) {
+        let destdir = self.image_dir.join(destdir.as_ref());
+        t!(std::fs::create_dir_all(&destdir));
+        self.builder.copy(src.as_ref(), &destdir.join(new_name));
+    }
+
     pub(crate) fn add_dir(&self, src: impl AsRef<Path>, dest: impl AsRef<Path>) {
         let dest = self.image_dir.join(dest.as_ref());
 
@@ -112,7 +140,7 @@ impl<'a> Tarball<'a> {
 
     pub(crate) fn generate(self) -> PathBuf {
         t!(std::fs::create_dir_all(&self.overlay_dir));
-        self.builder.create(&self.overlay_dir.join("version"), &self.builder.rust_version());
+        self.builder.create(&self.overlay_dir.join("version"), &self.overlay.version(self.builder));
         if let Some(sha) = self.builder.rust_sha() {
             self.builder.create(&self.overlay_dir.join("git-commit-hash"), &sha);
         }
