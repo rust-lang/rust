@@ -44,6 +44,7 @@ extern crate rustc_target;
 extern crate rustc_trait_selection;
 extern crate rustc_typeck;
 
+use crate::utils::parse_msrv;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_lint::LintId;
 use rustc_session::Session;
@@ -441,14 +442,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         "`Vec::as_mut_slice` has been stabilized in 1.7",
     );
     store.register_removed(
-        "clippy::str_to_string",
-        "using `str::to_string` is common even today and specialization will likely happen soon",
-    );
-    store.register_removed(
-        "clippy::string_to_string",
-        "using `string::to_string` is common even today and specialization will likely happen soon",
-    );
-    store.register_removed(
         "clippy::misaligned_transmute",
         "this lint has been split into cast_ptr_alignment and transmute_ptr_to_ptr",
     );
@@ -839,6 +832,8 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &strings::STRING_ADD_ASSIGN,
         &strings::STRING_FROM_UTF8_AS_BYTES,
         &strings::STRING_LIT_AS_BYTES,
+        &strings::STRING_TO_STRING,
+        &strings::STR_TO_STRING,
         &suspicious_trait_impl::SUSPICIOUS_ARITHMETIC_IMPL,
         &suspicious_trait_impl::SUSPICIOUS_OP_ASSIGN_IMPL,
         &swap::ALMOST_SWAPPED,
@@ -933,7 +928,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &zero_div_zero::ZERO_DIVIDED_BY_ZERO,
     ]);
     // end register lints, do not remove this comment, it’s used in `update_lints`
-
     store.register_late_pass(|| box await_holding_invalid::AwaitHolding);
     store.register_late_pass(|| box serde_api::SerdeAPI);
     store.register_late_pass(|| box utils::internal_lints::CompilerLintFunctions::new());
@@ -969,7 +963,23 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box strings::StringAdd);
     store.register_late_pass(|| box implicit_return::ImplicitReturn);
     store.register_late_pass(|| box implicit_saturating_sub::ImplicitSaturatingSub);
-    store.register_late_pass(|| box methods::Methods);
+
+    let parsed_msrv = conf.msrv.as_ref().and_then(|s| {
+        parse_msrv(s, None, None).or_else(|| {
+            sess.err(&format!("error reading Clippy's configuration file. `{}` is not a valid Rust version", s));
+            None
+        })
+    });
+
+    let msrv = parsed_msrv.clone();
+    store.register_late_pass(move || box methods::Methods::new(msrv.clone()));
+    let msrv = parsed_msrv.clone();
+    store.register_late_pass(move || box matches::Matches::new(msrv.clone()));
+    let msrv = parsed_msrv.clone();
+    store.register_early_pass(move || box manual_non_exhaustive::ManualNonExhaustive::new(msrv.clone()));
+    let msrv = parsed_msrv;
+    store.register_late_pass(move || box manual_strip::ManualStrip::new(msrv.clone()));
+
     store.register_late_pass(|| box map_clone::MapClone);
     store.register_late_pass(|| box map_err_ignore::MapErrIgnore);
     store.register_late_pass(|| box shadow::Shadow);
@@ -983,7 +993,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box types::Casts);
     let type_complexity_threshold = conf.type_complexity_threshold;
     store.register_late_pass(move || box types::TypeComplexity::new(type_complexity_threshold));
-    store.register_late_pass(|| box matches::Matches::default());
     store.register_late_pass(|| box minmax::MinMaxPass);
     store.register_late_pass(|| box open_options::OpenOptions);
     store.register_late_pass(|| box zero_div_zero::ZeroDiv);
@@ -1144,7 +1153,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box if_let_mutex::IfLetMutex);
     store.register_late_pass(|| box mut_mutex_lock::MutMutexLock);
     store.register_late_pass(|| box match_on_vec_items::MatchOnVecItems);
-    store.register_early_pass(|| box manual_non_exhaustive::ManualNonExhaustive);
     store.register_late_pass(|| box manual_async_fn::ManualAsyncFn);
     store.register_early_pass(|| box redundant_field_names::RedundantFieldNames);
     store.register_late_pass(|| box vec_resize_to_zero::VecResizeToZero);
@@ -1166,13 +1174,14 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box manual_ok_or::ManualOkOr);
     store.register_late_pass(|| box float_equality_without_abs::FloatEqualityWithoutAbs);
     store.register_late_pass(|| box async_yields_async::AsyncYieldsAsync);
-    store.register_late_pass(|| box manual_strip::ManualStrip);
     store.register_late_pass(|| box utils::internal_lints::MatchTypeOnDiagItem);
     let disallowed_methods = conf.disallowed_methods.iter().cloned().collect::<FxHashSet<_>>();
     store.register_late_pass(move || box disallowed_method::DisallowedMethod::new(&disallowed_methods));
     store.register_early_pass(|| box asm_syntax::InlineAsmX86AttSyntax);
     store.register_early_pass(|| box asm_syntax::InlineAsmX86IntelSyntax);
     store.register_late_pass(|| box undropped_manually_drops::UndroppedManuallyDrops);
+    store.register_late_pass(|| box strings::StrToString);
+    store.register_late_pass(|| box strings::StringToString);
 
 
     store.register_group(true, "clippy::restriction", Some("clippy_restriction"), vec![
@@ -1215,6 +1224,8 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&shadow::SHADOW_REUSE),
         LintId::of(&shadow::SHADOW_SAME),
         LintId::of(&strings::STRING_ADD),
+        LintId::of(&strings::STRING_TO_STRING),
+        LintId::of(&strings::STR_TO_STRING),
         LintId::of(&types::RC_BUFFER),
         LintId::of(&unwrap_in_result::UNWRAP_IN_RESULT),
         LintId::of(&verbose_file_reads::VERBOSE_FILE_READS),
@@ -1929,14 +1940,6 @@ fn register_removed_non_tool_lints(store: &mut rustc_lint::LintStore) {
     store.register_removed(
         "unstable_as_mut_slice",
         "`Vec::as_mut_slice` has been stabilized in 1.7",
-    );
-    store.register_removed(
-        "str_to_string",
-        "using `str::to_string` is common even today and specialization will likely happen soon",
-    );
-    store.register_removed(
-        "string_to_string",
-        "using `string::to_string` is common even today and specialization will likely happen soon",
     );
     store.register_removed(
         "misaligned_transmute",

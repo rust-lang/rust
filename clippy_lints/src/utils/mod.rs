@@ -51,6 +51,7 @@ use rustc_lint::{LateContext, Level, Lint, LintContext};
 use rustc_middle::hir::map::Map;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind};
 use rustc_middle::ty::{self, layout::IntegerExt, Ty, TyCtxt, TypeFoldable};
+use rustc_session::Session;
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::source_map::original_sp;
 use rustc_span::sym as rustc_sym;
@@ -58,9 +59,53 @@ use rustc_span::symbol::{self, kw, Symbol};
 use rustc_span::{BytePos, Pos, Span, DUMMY_SP};
 use rustc_target::abi::Integer;
 use rustc_trait_selection::traits::query::normalize::AtExt;
+use semver::{Version, VersionReq};
 use smallvec::SmallVec;
 
 use crate::consts::{constant, Constant};
+
+pub fn parse_msrv(msrv: &str, sess: Option<&Session>, span: Option<Span>) -> Option<VersionReq> {
+    if let Ok(version) = VersionReq::parse(msrv) {
+        return Some(version);
+    } else if let Some(sess) = sess {
+        if let Some(span) = span {
+            sess.span_err(span, &format!("`{}` is not a valid Rust version", msrv));
+        }
+    }
+    None
+}
+
+pub fn meets_msrv(msrv: Option<&VersionReq>, lint_msrv: &Version) -> bool {
+    msrv.map_or(true, |msrv| !msrv.matches(lint_msrv))
+}
+
+macro_rules! extract_msrv_attr {
+    (LateContext) => {
+        extract_msrv_attr!(@LateContext, ());
+    };
+    (EarlyContext) => {
+        extract_msrv_attr!(@EarlyContext);
+    };
+    (@$context:ident$(, $call:tt)?) => {
+        fn enter_lint_attrs(&mut self, cx: &rustc_lint::$context<'tcx>, attrs: &'tcx [rustc_ast::ast::Attribute]) {
+            use $crate::utils::get_unique_inner_attr;
+            match get_unique_inner_attr(cx.sess$($call)?, attrs, "msrv") {
+                Some(msrv_attr) => {
+                    if let Some(msrv) = msrv_attr.value_str() {
+                        self.msrv = $crate::utils::parse_msrv(
+                            &msrv.to_string(),
+                            Some(cx.sess$($call)?),
+                            Some(msrv_attr.span),
+                        );
+                    } else {
+                        cx.sess$($call)?.span_err(msrv_attr.span, "bad clippy attribute");
+                    }
+                },
+                _ => (),
+            }
+        }
+    };
+}
 
 /// Returns `true` if the two spans come from differing expansions (i.e., one is
 /// from a macro and one isn't).

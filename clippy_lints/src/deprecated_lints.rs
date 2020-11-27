@@ -54,26 +54,6 @@ declare_deprecated_lint! {
 declare_deprecated_lint! {
     /// **What it does:** Nothing. This lint has been deprecated.
     ///
-    /// **Deprecation reason:** This used to check for `.to_string()` method calls on values
-    /// of type `&str`. This is not unidiomatic and with specialization coming, `to_string` could be
-    /// specialized to be as efficient as `to_owned`.
-    pub STR_TO_STRING,
-    "using `str::to_string` is common even today and specialization will likely happen soon"
-}
-
-declare_deprecated_lint! {
-    /// **What it does:** Nothing. This lint has been deprecated.
-    ///
-    /// **Deprecation reason:** This used to check for `.to_string()` method calls on values
-    /// of type `String`. This is not unidiomatic and with specialization coming, `to_string` could be
-    /// specialized to be as efficient as `clone`.
-    pub STRING_TO_STRING,
-    "using `string::to_string` is common even today and specialization will likely happen soon"
-}
-
-declare_deprecated_lint! {
-    /// **What it does:** Nothing. This lint has been deprecated.
-    ///
     /// **Deprecation reason:** This lint should never have applied to non-pointer types, as transmuting
     /// between non-pointer types of differing alignment is well-defined behavior (it's semantically
     /// equivalent to a memcpy). This lint has thus been refactored into two separate lints:
