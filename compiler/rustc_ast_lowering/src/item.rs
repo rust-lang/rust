@@ -851,14 +851,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
             AssocItemKind::MacCall(..) => panic!("macro item shouldn't exist at this point"),
         };
 
-        hir::TraitItem {
-            def_id: trait_item_def_id,
-            ident: i.ident,
-            attrs: self.lower_attrs(hir_id, &i.attrs),
-            generics,
-            kind,
-            span: i.span,
-        }
+        self.lower_attrs(hir_id, &i.attrs);
+        hir::TraitItem { def_id: trait_item_def_id, ident: i.ident, generics, kind, span: i.span }
     }
 
     fn lower_trait_item_ref(&mut self, i: &AssocItem) -> hir::TraitItemRef {

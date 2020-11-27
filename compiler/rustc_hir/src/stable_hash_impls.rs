@@ -139,11 +139,10 @@ impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for VisibilityKind<'_>
 
 impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for TraitItem<'_> {
     fn hash_stable(&self, hcx: &mut HirCtx, hasher: &mut StableHasher) {
-        let TraitItem { def_id: _, ident, ref attrs, ref generics, ref kind, span } = *self;
+        let TraitItem { def_id: _, ident, ref generics, ref kind, span } = *self;
 
         hcx.hash_hir_item_like(|hcx| {
             ident.name.hash_stable(hcx, hasher);
-            attrs.hash_stable(hcx, hasher);
             generics.hash_stable(hcx, hasher);
             kind.hash_stable(hcx, hasher);
             span.hash_stable(hcx, hasher);

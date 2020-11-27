@@ -472,9 +472,9 @@ impl<'tcx> SaveContext<'tcx> {
                         let mut docs = String::new();
                         let mut attrs = vec![];
 
-                        if let Some(Node::TraitItem(item)) = self.tcx.hir().find(hir_id) {
-                            docs = self.docs_for_attrs(&item.attrs);
-                            attrs = item.attrs.to_vec();
+                        if let Some(Node::TraitItem(_)) = self.tcx.hir().find(hir_id) {
+                            attrs = self.tcx.hir().attrs(hir_id).to_vec();
+                            docs = self.docs_for_attrs(&attrs);
                         }
 
                         (

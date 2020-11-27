@@ -2028,7 +2028,6 @@ impl TraitItemId {
 pub struct TraitItem<'hir> {
     pub ident: Ident,
     pub def_id: LocalDefId,
-    pub attrs: &'hir [Attribute],
     pub generics: Generics<'hir>,
     pub kind: TraitItemKind<'hir>,
     pub span: Span,
@@ -3080,7 +3079,7 @@ mod size_asserts {
     rustc_data_structures::static_assert_size!(super::Ty<'static>, 72);
 
     rustc_data_structures::static_assert_size!(super::Item<'static>, 200);
-    rustc_data_structures::static_assert_size!(super::TraitItem<'static>, 144);
+    rustc_data_structures::static_assert_size!(super::TraitItem<'static>, 128);
     rustc_data_structures::static_assert_size!(super::ImplItem<'static>, 168);
     rustc_data_structures::static_assert_size!(super::ForeignItem<'static>, 136);
 }
