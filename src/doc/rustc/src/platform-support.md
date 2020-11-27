@@ -152,6 +152,7 @@ not available.
 
 target | std | host | notes
 -------|-----|------|-------
+`aarch64-apple-ios-macabi` | ? |  | Apple Catalyst on ARM64
 `aarch64-apple-tvos` | * |  | ARM64 tvOS
 `aarch64-unknown-freebsd` | ✓ | ✓ | ARM64 FreeBSD
 `aarch64-unknown-hermit` | ? |  |
@@ -207,7 +208,7 @@ target | std | host | notes
 `thumbv7a-uwp-windows-msvc` | ✓ |  |
 `thumbv7neon-unknown-linux-musleabihf` | ? |  | Thumb2-mode ARMv7a Linux with NEON, MUSL
 `thumbv4t-none-eabi` | * |  | ARMv4T T32
-`x86_64-apple-ios-macabi` | ✓ |  | Apple Catalyst
+`x86_64-apple-ios-macabi` | ✓ |  | Apple Catalyst on x86_64
 `x86_64-apple-tvos` | * | | x86 64-bit tvOS
 `x86_64-linux-kernel` | * |  | Linux kernel modules
 `x86_64-pc-solaris` | ? |  |
