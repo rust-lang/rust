@@ -182,7 +182,7 @@ cargo clippy -- -W clippy::lint_name
 ```
 
 This also works with lint groups. For example you
-can run Clippy with warnings for all lints enabled: 
+can run Clippy with warnings for all lints enabled:
 ```terminal
 cargo clippy -- -W clippy::pedantic
 ```
@@ -214,7 +214,8 @@ fn main() {
 }
 ```
 
-Tilde/Caret version requirements (like `^1.0` or `~1.2`) can be specified as well.
+You can also omit the patch version when specifying the MSRV, so `msrv = 1.30`
+is equivalent to `msrv = 1.30.0`.
 
 Note: `custom_inner_attributes` is an unstable feature so it has to be enabled explicitly.
 
