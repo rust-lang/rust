@@ -13,6 +13,7 @@ pub(crate) enum OverlayKind {
     Miri,
     Rustfmt,
     RLS,
+    RustAnalyzer,
 }
 
 impl OverlayKind {
@@ -48,6 +49,11 @@ impl OverlayKind {
                 "src/tools/rls/LICENSE-APACHE",
                 "src/tools/rls/LICENSE-MIT",
             ],
+            OverlayKind::RustAnalyzer => &[
+                "src/tools/rust-analyzer/README.md",
+                "src/tools/rust-analyzer/LICENSE-APACHE",
+                "src/tools/rust-analyzer/LICENSE-MIT",
+            ],
         }
     }
 
@@ -66,6 +72,9 @@ impl OverlayKind {
                 builder.rustfmt_info.version(builder, &builder.release_num("rustfmt"))
             }
             OverlayKind::RLS => builder.rls_info.version(builder, &builder.release_num("rls")),
+            OverlayKind::RustAnalyzer => builder
+                .rust_analyzer_info
+                .version(builder, &builder.release_num("rust-analyzer/crates/rust-analyzer")),
         }
     }
 }

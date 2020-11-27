@@ -1122,60 +1122,16 @@ impl Step for RustAnalyzer {
             return None;
         }
 
-        let src = builder.src.join("src/tools/rust-analyzer");
-        let release_num = builder.release_num("rust-analyzer/crates/rust-analyzer");
-        let name = pkgname(builder, "rust-analyzer");
-        let version = builder.rust_analyzer_info.version(builder, &release_num);
-
-        let tmp = tmpdir(builder);
-        let image = tmp.join("rust-analyzer-image");
-        drop(fs::remove_dir_all(&image));
-        builder.create_dir(&image);
-
-        // Prepare the image directory
-        // We expect rust-analyer to always build, as it doesn't depend on rustc internals
-        // and doesn't have associated toolstate.
         let rust_analyzer = builder
             .ensure(tool::RustAnalyzer { compiler, target, extra_features: Vec::new() })
             .expect("rust-analyzer always builds");
 
-        builder.install(&rust_analyzer, &image.join("bin"), 0o755);
-        let doc = image.join("share/doc/rust-analyzer");
-        builder.install(&src.join("README.md"), &doc, 0o644);
-        builder.install(&src.join("LICENSE-APACHE"), &doc, 0o644);
-        builder.install(&src.join("LICENSE-MIT"), &doc, 0o644);
-
-        // Prepare the overlay
-        let overlay = tmp.join("rust-analyzer-overlay");
-        drop(fs::remove_dir_all(&overlay));
-        t!(fs::create_dir_all(&overlay));
-        builder.install(&src.join("README.md"), &overlay, 0o644);
-        builder.install(&src.join("LICENSE-APACHE"), &doc, 0o644);
-        builder.install(&src.join("LICENSE-MIT"), &doc, 0o644);
-        builder.create(&overlay.join("version"), &version);
-
-        // Generate the installer tarball
-        let mut cmd = rust_installer(builder);
-        cmd.arg("generate")
-            .arg("--product-name=Rust")
-            .arg("--rel-manifest-dir=rustlib")
-            .arg("--success-message=rust-analyzer-ready-to-serve.")
-            .arg("--image-dir")
-            .arg(&image)
-            .arg("--work-dir")
-            .arg(&tmpdir(builder))
-            .arg("--output-dir")
-            .arg(&distdir(builder))
-            .arg("--non-installed-overlay")
-            .arg(&overlay)
-            .arg(format!("--package-name={}-{}", name, target.triple))
-            .arg("--legacy-manifest-dirs=rustlib,cargo")
-            .arg("--component-name=rust-analyzer-preview");
-
-        builder.info(&format!("Dist rust-analyzer stage{} ({})", compiler.stage, target));
-        let _time = timeit(builder);
-        builder.run(&mut cmd);
-        Some(distdir(builder).join(format!("{}-{}.tar.gz", name, target.triple)))
+        let mut tarball = Tarball::new(builder, "rust-analyzer", &target.triple);
+        tarball.set_overlay(OverlayKind::RustAnalyzer);
+        tarball.is_preview(true);
+        tarball.add_file(rust_analyzer, "bin", 0o755);
+        tarball.add_legal_and_readme_to("share/doc/rust-analyzer");
+        Some(tarball.generate())
     }
 }
 
