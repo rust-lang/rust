@@ -1,5 +1,5 @@
-use super::_match::Usefulness::*;
-use super::_match::{
+use super::usefulness::Usefulness::*;
+use super::usefulness::{
     compute_match_usefulness, expand_pattern, MatchArm, MatchCheckCtxt, UsefulnessReport,
 };
 use super::{PatCtxt, PatKind, PatternError};
