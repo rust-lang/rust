@@ -97,13 +97,13 @@ impl Default for SkipLeakCheck {
 /// The mode that trait queries run in.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum TraitQueryMode {
-    // Standard/un-canonicalized queries get accurate
-    // spans etc. passed in and hence can do reasonable
-    // error reporting on their own.
+    /// Standard/un-canonicalized queries get accurate
+    /// spans etc. passed in and hence can do reasonable
+    /// error reporting on their own.
     Standard,
-    // Canonicalized queries get dummy spans and hence
-    // must generally propagate errors to
-    // pre-canonicalization callsites.
+    /// Canonicalized queries get dummy spans and hence
+    /// must generally propagate errors to
+    /// pre-canonicalization callsites.
     Canonical,
 }
 
