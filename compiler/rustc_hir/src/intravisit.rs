@@ -988,16 +988,8 @@ pub fn walk_trait_item_ref<'v, V: Visitor<'v>>(visitor: &mut V, trait_item_ref: 
 
 pub fn walk_impl_item<'v, V: Visitor<'v>>(visitor: &mut V, impl_item: &'v ImplItem<'v>) {
     // N.B., deliberately force a compilation error if/when new fields are added.
-    let ImplItem {
-        def_id: _,
-        ident,
-        ref vis,
-        ref defaultness,
-        attrs: _,
-        ref generics,
-        ref kind,
-        span: _,
-    } = *impl_item;
+    let ImplItem { def_id: _, ident, ref vis, ref defaultness, ref generics, ref kind, span: _ } =
+        *impl_item;
 
     visitor.visit_ident(ident);
     visitor.visit_vis(vis);

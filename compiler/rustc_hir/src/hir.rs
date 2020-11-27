@@ -2090,7 +2090,6 @@ pub struct ImplItem<'hir> {
     pub def_id: LocalDefId,
     pub vis: Visibility<'hir>,
     pub defaultness: Defaultness,
-    pub attrs: &'hir [Attribute],
     pub generics: Generics<'hir>,
     pub kind: ImplItemKind<'hir>,
     pub span: Span,
@@ -3080,6 +3079,6 @@ mod size_asserts {
 
     rustc_data_structures::static_assert_size!(super::Item<'static>, 200);
     rustc_data_structures::static_assert_size!(super::TraitItem<'static>, 128);
-    rustc_data_structures::static_assert_size!(super::ImplItem<'static>, 168);
+    rustc_data_structures::static_assert_size!(super::ImplItem<'static>, 152);
     rustc_data_structures::static_assert_size!(super::ForeignItem<'static>, 136);
 }

@@ -931,10 +931,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let has_value = true;
         let (defaultness, _) = self.lower_defaultness(i.kind.defaultness(), has_value);
         let hir_id = self.lower_node_id(i.id);
+        self.lower_attrs(hir_id, &i.attrs);
         hir::ImplItem {
             def_id: hir_id.expect_owner(),
             ident: i.ident,
-            attrs: self.lower_attrs(hir_id, &i.attrs),
             generics,
             vis: self.lower_visibility(&i.vis, None),
             defaultness,

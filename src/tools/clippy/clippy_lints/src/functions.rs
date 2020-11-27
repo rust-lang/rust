@@ -312,11 +312,12 @@ impl<'tcx> LateLintPass<'tcx> for Functions {
             if is_public && trait_ref_of_method(cx, item.hir_id()).is_none() {
                 check_result_unit_err(cx, &sig.decl, item.span, fn_header_span);
             }
-            let attr = must_use_attr(&item.attrs);
+            let attrs = cx.tcx.hir().attrs(item.hir_id());
+            let attr = must_use_attr(attrs);
             if let Some(attr) = attr {
                 check_needless_must_use(cx, &sig.decl, item.hir_id(), item.span, fn_header_span, attr);
             } else if is_public
-                && !is_proc_macro(cx.sess(), &item.attrs)
+                && !is_proc_macro(cx.sess(), attrs)
                 && trait_ref_of_method(cx, item.hir_id()).is_none()
             {
                 check_must_use_candidate(

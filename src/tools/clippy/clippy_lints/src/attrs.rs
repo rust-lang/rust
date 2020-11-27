@@ -353,7 +353,7 @@ impl<'tcx> LateLintPass<'tcx> for Attributes {
 
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx ImplItem<'_>) {
         if is_relevant_impl(cx, item) {
-            check_attrs(cx, item.span, item.ident.name, &item.attrs)
+            check_attrs(cx, item.span, item.ident.name, cx.tcx.hir().attrs(item.hir_id()))
         }
     }
 

@@ -152,22 +152,13 @@ impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for TraitItem<'_> {
 
 impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for ImplItem<'_> {
     fn hash_stable(&self, hcx: &mut HirCtx, hasher: &mut StableHasher) {
-        let ImplItem {
-            def_id: _,
-            ident,
-            ref vis,
-            defaultness,
-            ref attrs,
-            ref generics,
-            ref kind,
-            span,
-        } = *self;
+        let ImplItem { def_id: _, ident, ref vis, defaultness, ref generics, ref kind, span } =
+            *self;
 
         hcx.hash_hir_item_like(|hcx| {
             ident.name.hash_stable(hcx, hasher);
             vis.hash_stable(hcx, hasher);
             defaultness.hash_stable(hcx, hasher);
-            attrs.hash_stable(hcx, hasher);
             generics.hash_stable(hcx, hasher);
             kind.hash_stable(hcx, hasher);
             span.hash_stable(hcx, hasher);

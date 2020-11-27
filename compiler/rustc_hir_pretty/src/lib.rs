@@ -988,7 +988,7 @@ impl<'a> State<'a> {
         self.ann.pre(self, AnnNode::SubItem(ii.hir_id()));
         self.hardbreak_if_not_bol();
         self.maybe_print_comment(ii.span.lo());
-        self.print_outer_attributes(&ii.attrs);
+        self.print_outer_attributes(self.attrs(ii.hir_id()));
         self.print_defaultness(ii.defaultness);
 
         match ii.kind {
