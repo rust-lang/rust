@@ -605,7 +605,7 @@ pub struct RustcDev {
 }
 
 impl Step for RustcDev {
-    type Output = PathBuf;
+    type Output = Option<PathBuf>;
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
 
@@ -624,60 +624,36 @@ impl Step for RustcDev {
         });
     }
 
-    fn run(self, builder: &Builder<'_>) -> PathBuf {
+    fn run(self, builder: &Builder<'_>) -> Option<PathBuf> {
         let compiler = self.compiler;
         let target = self.target;
-
-        let name = pkgname(builder, "rustc-dev");
-        let archive = distdir(builder).join(format!("{}-{}.tar.gz", name, target.triple));
         if skip_host_target_lib(builder, compiler) {
-            return archive;
+            return None;
         }
 
         builder.ensure(compile::Rustc { compiler, target });
 
-        let image = tmpdir(builder).join(format!("{}-{}-image", name, target.triple));
-        let _ = fs::remove_dir_all(&image);
+        let tarball = Tarball::new(builder, "rustc-dev", &target.triple);
 
         let compiler_to_use = builder.compiler_for(compiler.stage, compiler.host, target);
         let stamp = compile::librustc_stamp(builder, compiler_to_use, target);
-        copy_target_libs(builder, target, &image, &stamp);
+        copy_target_libs(builder, target, tarball.image_dir(), &stamp);
 
-        // Copy compiler sources.
-        let dst_src = image.join("lib/rustlib/rustc-src/rust");
-        t!(fs::create_dir_all(&dst_src));
-
-        let src_files = ["Cargo.lock"];
+        let src_files = &["Cargo.lock"];
         // This is the reduced set of paths which will become the rustc-dev component
         // (essentially the compiler crates and all of their path dependencies).
-        copy_src_dirs(builder, &builder.src, &["compiler"], &[], &dst_src);
-        for file in src_files.iter() {
-            builder.copy(&builder.src.join(file), &dst_src.join(file));
+        copy_src_dirs(
+            builder,
+            &builder.src,
+            &["compiler"],
+            &[],
+            &tarball.image_dir().join("lib/rustlib/rustc-src/rust"),
+        );
+        for file in src_files {
+            tarball.add_file(builder.src.join(file), "lib/rustlib/rustc-src/rust", 0o644);
         }
 
-        let mut cmd = rust_installer(builder);
-        cmd.arg("generate")
-            .arg("--product-name=Rust")
-            .arg("--rel-manifest-dir=rustlib")
-            .arg("--success-message=Rust-is-ready-to-develop.")
-            .arg("--image-dir")
-            .arg(&image)
-            .arg("--work-dir")
-            .arg(&tmpdir(builder))
-            .arg("--output-dir")
-            .arg(&distdir(builder))
-            .arg(format!("--package-name={}-{}", name, target.triple))
-            .arg(format!("--component-name=rustc-dev-{}", target.triple))
-            .arg("--legacy-manifest-dirs=rustlib,cargo");
-
-        builder.info(&format!(
-            "Dist rustc-dev stage{} ({} -> {})",
-            compiler.stage, &compiler.host, target
-        ));
-        let _time = timeit(builder);
-        builder.run(&mut cmd);
-        builder.remove_dir(&image);
-        archive
+        Some(tarball.generate())
     }
 }
 
