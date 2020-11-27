@@ -17,6 +17,7 @@ pub(crate) fn render_enum_variant<'a>(
     variant: hir::EnumVariant,
     path: Option<ModPath>,
 ) -> CompletionItem {
+    let _p = profile::span("render_enum_variant");
     EnumVariantRender::new(ctx, local_name, variant, path).render(import_data)
 }
 

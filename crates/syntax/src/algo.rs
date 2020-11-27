@@ -127,6 +127,8 @@ pub struct TreeDiff {
 
 impl TreeDiff {
     pub fn into_text_edit(&self, builder: &mut TextEditBuilder) {
+        let _p = profile::span("into_text_edit");
+
         for (anchor, to) in self.insertions.iter() {
             let offset = match anchor {
                 TreeDiffInsertPos::After(it) => it.text_range().end(),
@@ -154,6 +156,8 @@ impl TreeDiff {
 ///
 /// This function tries to find a fine-grained diff.
 pub fn diff(from: &SyntaxNode, to: &SyntaxNode) -> TreeDiff {
+    let _p = profile::span("diff");
+
     let mut diff = TreeDiff {
         replacements: FxHashMap::default(),
         insertions: FxIndexMap::default(),
@@ -467,6 +471,8 @@ impl<'a> SyntaxRewriter<'a> {
     }
 
     pub fn rewrite(&self, node: &SyntaxNode) -> SyntaxNode {
+        let _p = profile::span("rewrite");
+
         if self.f.is_none() && self.replacements.is_empty() && self.insertions.is_empty() {
             return node.clone();
         }
@@ -483,6 +489,7 @@ impl<'a> SyntaxRewriter<'a> {
     ///
     /// Returns `None` when there are no replacements.
     pub fn rewrite_root(&self) -> Option<SyntaxNode> {
+        let _p = profile::span("rewrite_root");
         fn element_to_node_or_parent(element: &SyntaxElement) -> SyntaxNode {
             match element {
                 SyntaxElement::Node(it) => it.clone(),
@@ -517,6 +524,8 @@ impl<'a> SyntaxRewriter<'a> {
     }
 
     fn rewrite_children(&self, node: &SyntaxNode) -> SyntaxNode {
+        let _p = profile::span("rewrite_children");
+
         //  FIXME: this could be made much faster.
         let mut new_children = Vec::new();
         if let Some(elements) = self.insertions(&InsertPos::FirstChildOf(node.clone())) {
@@ -533,6 +542,8 @@ impl<'a> SyntaxRewriter<'a> {
         acc: &mut Vec<NodeOrToken<rowan::GreenNode, rowan::GreenToken>>,
         element: &SyntaxElement,
     ) {
+        let _p = profile::span("rewrite_self");
+
         if let Some(replacement) = self.replacement(&element) {
             match replacement {
                 Replacement::Single(element) => acc.push(element_to_green(element)),
@@ -588,6 +599,8 @@ fn with_children(
     parent: &SyntaxNode,
     new_children: Vec<NodeOrToken<rowan::GreenNode, rowan::GreenToken>>,
 ) -> SyntaxNode {
+    let _p = profile::span("with_children");
+
     let len = new_children.iter().map(|it| it.text_len()).sum::<TextSize>();
     let new_node = rowan::GreenNode::new(rowan::SyntaxKind(parent.kind() as u16), new_children);
     let new_root_node = parent.replace_with(new_node);

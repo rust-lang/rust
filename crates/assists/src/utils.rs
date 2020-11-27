@@ -25,6 +25,7 @@ use crate::{
 pub use insert_use::{insert_use, ImportScope, MergeBehaviour};
 
 pub fn mod_path_to_ast(path: &hir::ModPath) -> ast::Path {
+    let _p = profile::span("mod_path_to_ast");
     let mut segments = Vec::new();
     let mut is_abs = false;
     match path.kind {

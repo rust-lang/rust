@@ -16,6 +16,7 @@ pub(crate) fn render_macro<'a>(
     name: String,
     macro_: hir::MacroDef,
 ) -> Option<CompletionItem> {
+    let _p = profile::span("render_macro");
     MacroRender::new(ctx, name, macro_).render(import_data)
 }
 
