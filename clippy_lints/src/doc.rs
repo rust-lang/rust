@@ -260,7 +260,8 @@ impl<'tcx> LateLintPass<'tcx> for DocMarkdown {
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::ImplItem<'_>) {
-        let headers = check_attrs(cx, &self.valid_idents, &item.attrs);
+        let attrs = cx.tcx.hir().attrs(item.hir_id());
+        let headers = check_attrs(cx, &self.valid_idents, attrs);
         if self.in_trait_impl || in_external_macro(cx.tcx.sess, item.span) {
             return;
         }

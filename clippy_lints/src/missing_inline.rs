@@ -161,6 +161,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingInline {
             }
         }
 
-        check_missing_inline_attrs(cx, &impl_item.attrs, impl_item.span, desc);
+        let attrs = cx.tcx.hir().attrs(impl_item.hir_id());
+        check_missing_inline_attrs(cx, attrs, impl_item.span, desc);
     }
 }
