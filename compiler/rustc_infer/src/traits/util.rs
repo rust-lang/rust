@@ -1,7 +1,7 @@
 use smallvec::smallvec;
 
 use crate::traits::{Obligation, ObligationCause, PredicateObligation};
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_middle::ty::outlives::Component;
 use rustc_middle::ty::{self, ToPredicate, TyCtxt, WithConstness};
 use rustc_span::symbol::Ident;
@@ -297,9 +297,9 @@ pub fn transitive_bounds_that_define_assoc_type<'tcx>(
     tcx: TyCtxt<'tcx>,
     bounds: impl Iterator<Item = ty::PolyTraitRef<'tcx>>,
     assoc_name: Ident,
-) -> FxHashSet<ty::PolyTraitRef<'tcx>> {
+) -> FxIndexSet<ty::PolyTraitRef<'tcx>> {
     let mut stack: Vec<_> = bounds.collect();
-    let mut trait_refs = FxHashSet::default();
+    let mut trait_refs = FxIndexSet::default();
 
     while let Some(trait_ref) = stack.pop() {
         if trait_refs.insert(trait_ref) {
