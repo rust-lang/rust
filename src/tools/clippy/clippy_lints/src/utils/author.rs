@@ -75,7 +75,7 @@ impl<'tcx> LateLintPass<'tcx> for Author {
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::ImplItem<'_>) {
-        if !has_attr(cx.sess(), &item.attrs) {
+        if !has_attr(cx.sess(), cx.tcx.hir().attrs(item.hir_id)) {
             return;
         }
         prelude();

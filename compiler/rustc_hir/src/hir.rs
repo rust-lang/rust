@@ -1952,7 +1952,6 @@ pub struct ImplItem<'hir> {
     pub hir_id: HirId,
     pub vis: Visibility<'hir>,
     pub defaultness: Defaultness,
-    pub attrs: &'hir [Attribute],
     pub generics: Generics<'hir>,
     pub kind: ImplItemKind<'hir>,
     pub span: Span,

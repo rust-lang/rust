@@ -1062,7 +1062,8 @@ impl<'a, 'hir, 'tcx> intravisit::Visitor<'hir> for HirCollector<'a, 'hir, 'tcx> 
     }
 
     fn visit_impl_item(&mut self, item: &'hir hir::ImplItem<'_>) {
-        self.visit_testable(item.ident.to_string(), &item.attrs, item.hir_id, item.span, |this| {
+        let attrs = self.tcx.hir().attrs(item.hir_id);
+        self.visit_testable(item.ident.to_string(), attrs, item.hir_id, item.span, |this| {
             intravisit::walk_impl_item(this, item);
         });
     }
