@@ -6,6 +6,7 @@
 
 #![feature(bindings_after_at)]
 #![feature(iter_is_partitioned)]
+#![recursion_limit = "256"]
 
 pub mod ast_validation;
 pub mod feature_gate;
