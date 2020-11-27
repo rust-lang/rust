@@ -18,7 +18,7 @@ This diagnostic is triggered if item name doesn't follow https://doc.rust-lang.o
 
 
 === macro-error
-**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/hir_def/src/diagnostics.rs#L164[diagnostics.rs]
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/hir_def/src/diagnostics.rs#L167[diagnostics.rs]
 
 This diagnostic is shown for macro expansion errors.
 

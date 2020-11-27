@@ -287,7 +287,8 @@ mod diagnostics {
     use hir_expand::diagnostics::DiagnosticSink;
     use hir_expand::hygiene::Hygiene;
     use hir_expand::{InFile, MacroCallKind};
-    use syntax::{ast, AstPtr, SyntaxNodePtr};
+    use syntax::ast::AttrsOwner;
+    use syntax::{ast, AstNode, AstPtr, SyntaxKind, SyntaxNodePtr};
 
     use crate::path::ModPath;
     use crate::{db::DefDatabase, diagnostics::*, nameres::LocalModuleId, AstId};
@@ -425,6 +426,7 @@ mod diagnostics {
                 }
 
                 DiagnosticKind::UnresolvedProcMacro { ast } => {
+                    let mut precise_location = None;
                     let (file, ast, name) = match ast {
                         MacroCallKind::FnLike(ast) => {
                             let node = ast.to_node(db.upcast());
@@ -432,14 +434,47 @@ mod diagnostics {
                         }
                         MacroCallKind::Attr(ast, name) => {
                             let node = ast.to_node(db.upcast());
+
+                            // Compute the precise location of the macro name's token in the derive
+                            // list.
+                            // FIXME: This does not handle paths to the macro, but neither does the
+                            // rest of r-a.
+                            let derive_attrs =
+                                node.attrs().filter_map(|attr| match attr.as_simple_call() {
+                                    Some((name, args)) if name == "derive" => Some(args),
+                                    _ => None,
+                                });
+                            'outer: for attr in derive_attrs {
+                                let tokens =
+                                    attr.syntax().children_with_tokens().filter_map(|elem| {
+                                        match elem {
+                                            syntax::NodeOrToken::Node(_) => None,
+                                            syntax::NodeOrToken::Token(tok) => Some(tok),
+                                        }
+                                    });
+                                for token in tokens {
+                                    if token.kind() == SyntaxKind::IDENT
+                                        && token.to_string() == *name
+                                    {
+                                        precise_location = Some(token.text_range());
+                                        break 'outer;
+                                    }
+                                }
+                            }
+
                             (
                                 ast.file_id,
                                 SyntaxNodePtr::from(AstPtr::new(&node)),
-                                Some(name.to_string()),
+                                Some(name.clone()),
                             )
                         }
                     };
-                    sink.push(UnresolvedProcMacro { file, node: ast, macro_name: name });
+                    sink.push(UnresolvedProcMacro {
+                        file,
+                        node: ast,
+                        precise_location,
+                        macro_name: name,
+                    });
                 }
 
                 DiagnosticKind::MacroError { ast, message } => {

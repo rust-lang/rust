@@ -6,7 +6,7 @@ use stdx::format_to;
 use cfg::{CfgExpr, CfgOptions, DnfExpr};
 use hir_expand::diagnostics::{Diagnostic, DiagnosticCode, DiagnosticSink};
 use hir_expand::{HirFileId, InFile};
-use syntax::{ast, AstPtr, SyntaxNodePtr};
+use syntax::{ast, AstPtr, SyntaxNodePtr, TextRange};
 
 use crate::{db::DefDatabase, DefWithBodyId};
 
@@ -137,6 +137,9 @@ impl Diagnostic for InactiveCode {
 pub struct UnresolvedProcMacro {
     pub file: HirFileId,
     pub node: SyntaxNodePtr,
+    /// If the diagnostic can be pinpointed more accurately than via `node`, this is the `TextRange`
+    /// to use instead.
+    pub precise_location: Option<TextRange>,
     pub macro_name: Option<String>,
 }
 

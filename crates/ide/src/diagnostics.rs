@@ -143,11 +143,13 @@ pub(crate) fn diagnostics(
             );
         })
         .on::<hir::diagnostics::UnresolvedProcMacro, _>(|d| {
+            // Use more accurate position if available.
+            let display_range =
+                d.precise_location.unwrap_or_else(|| sema.diagnostics_display_range(d).range);
+
             // FIXME: it would be nice to tell the user whether proc macros are currently disabled
-            res.borrow_mut().push(
-                Diagnostic::hint(sema.diagnostics_display_range(d).range, d.message())
-                    .with_code(Some(d.code())),
-            );
+            res.borrow_mut()
+                .push(Diagnostic::hint(display_range, d.message()).with_code(Some(d.code())));
         })
         // Only collect experimental diagnostics when they're enabled.
         .filter(|diag| !(diag.is_experimental() && config.disable_experimental))
