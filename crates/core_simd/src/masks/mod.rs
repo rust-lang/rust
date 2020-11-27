@@ -161,9 +161,7 @@ macro_rules! define_opaque_mask {
 
         impl core::fmt::Debug for $name {
             fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
-                f.debug_list()
-                    .entries((0..$lanes).map(|i| self.test(i)))
-                    .finish()
+                core::fmt::Debug::fmt(&self.0, f)
             }
         }
 

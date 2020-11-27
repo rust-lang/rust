@@ -84,25 +84,25 @@ macro_rules! define_mask {
 
         impl core::fmt::Binary for $name {
             fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
-                <$type as core::fmt::Binary>::fmt(&self.0, f)
+                core::fmt::Binary::fmt(&self.0, f)
             }
         }
 
         impl core::fmt::Octal for $name {
             fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
-                <$type as core::fmt::Octal>::fmt(&self.0, f)
+                core::fmt::Octal::fmt(&self.0, f)
             }
         }
 
         impl core::fmt::LowerHex for $name {
             fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
-                <$type as core::fmt::LowerHex>::fmt(&self.0, f)
+                core::fmt::LowerHex::fmt(&self.0, f)
             }
         }
 
         impl core::fmt::UpperHex for $name {
             fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
-                <$type as core::fmt::UpperHex>::fmt(&self.0, f)
+                core::fmt::UpperHex::fmt(&self.0, f)
             }
         }
     }
