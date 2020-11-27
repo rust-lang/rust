@@ -395,7 +395,7 @@ fn print_item(cx: &LateContext<'_>, item: &hir::Item<'_>) {
             println!("function of type {:#?}", item_ty);
         },
         hir::ItemKind::Mod(..) => println!("module"),
-        hir::ItemKind::ForeignMod(ref fm) => println!("foreign module with abi: {}", fm.abi),
+        hir::ItemKind::ForeignMod { abi, .. } => println!("foreign module with abi: {}", abi),
         hir::ItemKind::GlobalAsm(ref asm) => println!("global asm: {:?}", asm),
         hir::ItemKind::TyAlias(..) => {
             println!("type alias for {:?}", cx.tcx.type_of(did));
