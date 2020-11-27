@@ -1256,16 +1256,6 @@ impl Step for Clippy {
         let target = self.target;
         assert!(builder.config.extended);
 
-        let src = builder.src.join("src/tools/clippy");
-        let release_num = builder.release_num("clippy");
-        let name = pkgname(builder, "clippy");
-        let version = builder.clippy_info.version(builder, &release_num);
-
-        let tmp = tmpdir(builder);
-        let image = tmp.join("clippy-image");
-        drop(fs::remove_dir_all(&image));
-        builder.create_dir(&image);
-
         // Prepare the image directory
         // We expect clippy to build, because we've exited this step above if tool
         // state for clippy isn't testing.
@@ -1275,45 +1265,17 @@ impl Step for Clippy {
         let cargoclippy = builder
             .ensure(tool::CargoClippy { compiler, target, extra_features: Vec::new() })
             .expect("clippy expected to build - essential tool");
+        let src = builder.src.join("src/tools/clippy");
 
-        builder.install(&clippy, &image.join("bin"), 0o755);
-        builder.install(&cargoclippy, &image.join("bin"), 0o755);
-        let doc = image.join("share/doc/clippy");
-        builder.install(&src.join("README.md"), &doc, 0o644);
-        builder.install(&src.join("LICENSE-APACHE"), &doc, 0o644);
-        builder.install(&src.join("LICENSE-MIT"), &doc, 0o644);
-
-        // Prepare the overlay
-        let overlay = tmp.join("clippy-overlay");
-        drop(fs::remove_dir_all(&overlay));
-        t!(fs::create_dir_all(&overlay));
-        builder.install(&src.join("README.md"), &overlay, 0o644);
-        builder.install(&src.join("LICENSE-APACHE"), &doc, 0o644);
-        builder.install(&src.join("LICENSE-MIT"), &doc, 0o644);
-        builder.create(&overlay.join("version"), &version);
-
-        // Generate the installer tarball
-        let mut cmd = rust_installer(builder);
-        cmd.arg("generate")
-            .arg("--product-name=Rust")
-            .arg("--rel-manifest-dir=rustlib")
-            .arg("--success-message=clippy-ready-to-serve.")
-            .arg("--image-dir")
-            .arg(&image)
-            .arg("--work-dir")
-            .arg(&tmpdir(builder))
-            .arg("--output-dir")
-            .arg(&distdir(builder))
-            .arg("--non-installed-overlay")
-            .arg(&overlay)
-            .arg(format!("--package-name={}-{}", name, target.triple))
-            .arg("--legacy-manifest-dirs=rustlib,cargo")
-            .arg("--component-name=clippy-preview");
-
-        builder.info(&format!("Dist clippy stage{} ({})", compiler.stage, target));
-        let _time = timeit(builder);
-        builder.run(&mut cmd);
-        distdir(builder).join(format!("{}-{}.tar.gz", name, target.triple))
+        let mut tarball = Tarball::new(builder, "clippy", &target.triple);
+        tarball.set_overlay(OverlayKind::Clippy);
+        tarball.is_preview(true);
+        tarball.add_file(clippy, "bin", 0o755);
+        tarball.add_file(cargoclippy, "bin", 0o755);
+        tarball.add_file(src.join("README.md"), "share/doc/clippy", 0o644);
+        tarball.add_file(src.join("LICENSE-APACHE"), "share/doc/clippy", 0o644);
+        tarball.add_file(src.join("LICENSE-MIT"), "share/doc/clippy", 0o644);
+        tarball.generate()
     }
 }
 

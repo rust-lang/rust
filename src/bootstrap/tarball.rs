@@ -9,6 +9,7 @@ pub(crate) enum OverlayKind {
     Rust,
     LLVM,
     Cargo,
+    Clippy,
 }
 
 impl OverlayKind {
@@ -24,6 +25,11 @@ impl OverlayKind {
                 "src/tools/cargo/LICENSE-APACHE",
                 "src/tools/cargo/LICENSE-THIRD-PARTY",
             ],
+            OverlayKind::Clippy => &[
+                "src/tools/clippy/README.md",
+                "src/tools/clippy/LICENSE-APACHE",
+                "src/tools/clippy/LICENSE-MIT",
+            ],
         }
     }
 
@@ -33,6 +39,9 @@ impl OverlayKind {
             OverlayKind::LLVM => builder.rust_version(),
             OverlayKind::Cargo => {
                 builder.cargo_info.version(builder, &builder.release_num("cargo"))
+            }
+            OverlayKind::Clippy => {
+                builder.clippy_info.version(builder, &builder.release_num("clippy"))
             }
         }
     }
