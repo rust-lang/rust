@@ -12,6 +12,10 @@ pub(crate) fn codegen_fn<'tcx>(
 ) {
     let tcx = cx.tcx;
 
+    let _inst_guard =
+        crate::PrintOnPanic(|| format!("{:?} {}", instance, tcx.symbol_name(instance).name));
+    debug_assert!(!instance.substs.needs_infer());
+
     let mir = tcx.instance_mir(instance.def);
 
     // Declare function
@@ -499,7 +503,8 @@ fn codegen_stmt<'tcx>(
                         UnOp::Neg => match layout.ty.kind() {
                             ty::Int(IntTy::I128) => {
                                 // FIXME remove this case once ineg.i128 works
-                                let zero = CValue::const_val(fx, layout, ty::ScalarInt::null(layout.size));
+                                let zero =
+                                    CValue::const_val(fx, layout, ty::ScalarInt::null(layout.size));
                                 crate::num::codegen_int_binop(fx, BinOp::Sub, zero, operand)
                             }
                             ty::Int(_) => CValue::by_val(fx.bcx.ins().ineg(val), layout),
@@ -509,7 +514,11 @@ fn codegen_stmt<'tcx>(
                     };
                     lval.write_cvalue(fx, res);
                 }
-                Rvalue::Cast(CastKind::Pointer(PointerCast::ReifyFnPointer), ref operand, to_ty) => {
+                Rvalue::Cast(
+                    CastKind::Pointer(PointerCast::ReifyFnPointer),
+                    ref operand,
+                    to_ty,
+                ) => {
                     let from_ty = fx.monomorphize(operand.ty(&fx.mir.local_decls, fx.tcx));
                     let to_layout = fx.layout_of(fx.monomorphize(to_ty));
                     match *from_ty.kind() {
@@ -530,9 +539,21 @@ fn codegen_stmt<'tcx>(
                         _ => bug!("Trying to ReifyFnPointer on non FnDef {:?}", from_ty),
                     }
                 }
-                Rvalue::Cast(CastKind::Pointer(PointerCast::UnsafeFnPointer), ref operand, to_ty)
-                | Rvalue::Cast(CastKind::Pointer(PointerCast::MutToConstPointer), ref operand, to_ty)
-                | Rvalue::Cast(CastKind::Pointer(PointerCast::ArrayToPointer), ref operand, to_ty) => {
+                Rvalue::Cast(
+                    CastKind::Pointer(PointerCast::UnsafeFnPointer),
+                    ref operand,
+                    to_ty,
+                )
+                | Rvalue::Cast(
+                    CastKind::Pointer(PointerCast::MutToConstPointer),
+                    ref operand,
+                    to_ty,
+                )
+                | Rvalue::Cast(
+                    CastKind::Pointer(PointerCast::ArrayToPointer),
+                    ref operand,
+                    to_ty,
+                ) => {
                     let to_layout = fx.layout_of(fx.monomorphize(to_ty));
                     let operand = codegen_operand(fx, operand);
                     lval.write_cvalue(fx, operand.cast_pointer_to(to_layout));

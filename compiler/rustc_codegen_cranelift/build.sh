@@ -26,22 +26,35 @@ while [[ $# != 0 ]]; do
 done
 
 # Build cg_clif
+unset CARGO_TARGET_DIR
 export RUSTFLAGS="-Zrun_dsymutil=no"
+unamestr=$(uname)
+if [[ "$unamestr" == 'Linux' ]]; then
+   export RUSTFLAGS='-Clink-arg=-Wl,-rpath=$ORIGIN/../lib '$RUSTFLAGS
+elif [[ "$unamestr" == 'Darwin' ]]; then
+   export RUSTFLAGS='-Clink-arg=-Wl,-rpath,@loader_path/../lib -Zosx-rpath-install-name '$RUSTFLAGS
+   dylib_ext='dylib'
+else
+   echo "Unsupported os"
+   exit 1
+fi
 if [[ "$CHANNEL" == "release" ]]; then
     cargo build --release
 else
     cargo build
 fi
 
-rm -rf $target_dir
-mkdir $target_dir
-cp -a target/$CHANNEL/cg_clif{,_build_sysroot} target/$CHANNEL/*rustc_codegen_cranelift* $target_dir/
-cp -a rust-toolchain scripts/config.sh scripts/cargo.sh $target_dir
+rm -rf "$target_dir"
+mkdir "$target_dir"
+mkdir "$target_dir"/bin "$target_dir"/lib
+ln target/$CHANNEL/cg_clif{,_build_sysroot} "$target_dir"/bin
+ln target/$CHANNEL/*rustc_codegen_cranelift* "$target_dir"/lib
+ln rust-toolchain scripts/config.sh scripts/cargo.sh "$target_dir"
 
 if [[ "$build_sysroot" == "1" ]]; then
     echo "[BUILD] sysroot"
     export CG_CLIF_INCR_CACHE_DISABLED=1
     dir=$(pwd)
-    cd $target_dir
-    time $dir/build_sysroot/build_sysroot.sh
+    cd "$target_dir"
+    time "$dir/build_sysroot/build_sysroot.sh"
 fi

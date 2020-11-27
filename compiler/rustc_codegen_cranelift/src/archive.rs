@@ -8,7 +8,7 @@ use rustc_codegen_ssa::back::archive::{find_library, ArchiveBuilder};
 use rustc_codegen_ssa::METADATA_FILENAME;
 use rustc_session::Session;
 
-use object::{Object, SymbolKind};
+use object::{Object, ObjectSymbol, SymbolKind};
 
 #[derive(Debug)]
 enum ArchiveEntry {
@@ -184,7 +184,7 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
                             entry_name.as_bytes().to_vec(),
                             object
                                 .symbols()
-                                .filter_map(|(_index, symbol)| {
+                                .filter_map(|symbol| {
                                     if symbol.is_undefined()
                                         || symbol.is_local()
                                         || symbol.kind() != SymbolKind::Data
@@ -193,7 +193,7 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
                                     {
                                         None
                                     } else {
-                                        symbol.name().map(|name| name.as_bytes().to_vec())
+                                        symbol.name().map(|name| name.as_bytes().to_vec()).ok()
                                     }
                                 })
                                 .collect::<Vec<_>>(),
