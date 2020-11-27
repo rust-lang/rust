@@ -177,7 +177,8 @@ fn check_final_expr<'tcx>(
         // simple return is always "bad"
         ExprKind::Ret(ref inner) => {
             // allow `#[cfg(a)] return a; #[cfg(b)] return b;`
-            if !expr.attrs.iter().any(attr_is_cfg) {
+            let attrs = cx.tcx.hir().attrs(expr.hir_id);
+            if !attrs.iter().any(attr_is_cfg) {
                 let borrows = inner.map_or(false, |inner| last_statement_borrows(cx, inner));
                 if !borrows {
                     emit_return_lint(

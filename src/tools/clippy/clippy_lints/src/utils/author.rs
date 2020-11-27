@@ -112,7 +112,7 @@ impl<'tcx> LateLintPass<'tcx> for Author {
     }
 
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
-        if !has_attr(cx.sess(), &expr.attrs) {
+        if !has_attr(cx.sess(), cx.tcx.hir().attrs(expr.hir_id)) {
             return;
         }
         prelude();
