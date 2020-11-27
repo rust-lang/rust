@@ -101,29 +101,21 @@ where
 #[derive(Copy, Clone)]
 pub enum FnKind<'a> {
     /// `#[xxx] pub async/const/extern "Abi" fn foo()`
-    ItemFn(Ident, &'a Generics<'a>, FnHeader, &'a Visibility<'a>, &'a [Attribute]),
+    ItemFn(Ident, &'a Generics<'a>, FnHeader, &'a Visibility<'a>),
 
     /// `fn foo(&self)`
-    Method(Ident, &'a FnSig<'a>, Option<&'a Visibility<'a>>, &'a [Attribute]),
+    Method(Ident, &'a FnSig<'a>, Option<&'a Visibility<'a>>),
 
     /// `|x, y| {}`
-    Closure(&'a [Attribute]),
+    Closure,
 }
 
 impl<'a> FnKind<'a> {
-    pub fn attrs(&self) -> &'a [Attribute] {
-        match *self {
-            FnKind::ItemFn(.., attrs) => attrs,
-            FnKind::Method(.., attrs) => attrs,
-            FnKind::Closure(attrs) => attrs,
-        }
-    }
-
     pub fn header(&self) -> Option<&FnHeader> {
         match *self {
-            FnKind::ItemFn(_, _, ref header, _, _) => Some(header),
-            FnKind::Method(_, ref sig, _, _) => Some(&sig.header),
-            FnKind::Closure(_) => None,
+            FnKind::ItemFn(_, _, ref header, _) => Some(header),
+            FnKind::Method(_, ref sig, _) => Some(&sig.header),
+            FnKind::Closure => None,
         }
     }
 }
@@ -579,7 +571,7 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) {
             visitor.visit_nested_body(body);
         }
         ItemKind::Fn(ref sig, ref generics, body_id) => visitor.visit_fn(
-            FnKind::ItemFn(item.ident, generics, sig.header, &item.vis, &item.attrs),
+            FnKind::ItemFn(item.ident, generics, sig.header, &item.vis),
             &sig.decl,
             body_id,
             item.span,
@@ -940,7 +932,7 @@ pub fn walk_fn_kind<'v, V: Visitor<'v>>(visitor: &mut V, function_kind: FnKind<'
         FnKind::ItemFn(_, generics, ..) => {
             visitor.visit_generics(generics);
         }
-        FnKind::Method(..) | FnKind::Closure(_) => {}
+        FnKind::Method(..) | FnKind::Closure => {}
     }
 }
 
@@ -977,7 +969,7 @@ pub fn walk_trait_item<'v, V: Visitor<'v>>(visitor: &mut V, trait_item: &'v Trai
         }
         TraitItemKind::Fn(ref sig, TraitFn::Provided(body_id)) => {
             visitor.visit_fn(
-                FnKind::Method(trait_item.ident, sig, None, &trait_item.attrs),
+                FnKind::Method(trait_item.ident, sig, None),
                 &sig.decl,
                 body_id,
                 trait_item.span,
@@ -1027,7 +1019,7 @@ pub fn walk_impl_item<'v, V: Visitor<'v>>(visitor: &mut V, impl_item: &'v ImplIt
         }
         ImplItemKind::Fn(ref sig, body_id) => {
             visitor.visit_fn(
-                FnKind::Method(impl_item.ident, sig, Some(&impl_item.vis), &impl_item.attrs),
+                FnKind::Method(impl_item.ident, sig, Some(&impl_item.vis)),
                 &sig.decl,
                 body_id,
                 impl_item.span,
@@ -1162,7 +1154,7 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr<'v>) 
         }
         ExprKind::Closure(_, ref function_declaration, body, _fn_decl_span, _gen) => visitor
             .visit_fn(
-                FnKind::Closure(&expression.attrs),
+                FnKind::Closure,
                 function_declaration,
                 body,
                 expression.span,
