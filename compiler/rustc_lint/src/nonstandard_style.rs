@@ -400,14 +400,15 @@ impl<'tcx> LateLintPass<'tcx> for NonSnakeCase {
                 }
                 _ => (),
             },
-            FnKind::ItemFn(ident, _, header, _, attrs) => {
+            FnKind::ItemFn(ident, _, header, _) => {
+                let attrs = cx.tcx.hir().attrs(id);
                 // Skip foreign-ABI #[no_mangle] functions (Issue #31924)
                 if header.abi != Abi::Rust && cx.sess().contains_name(attrs, sym::no_mangle) {
                     return;
                 }
                 self.check_snake_case(cx, "function", ident);
             }
-            FnKind::Closure(_) => (),
+            FnKind::Closure => (),
         }
     }
 

@@ -224,10 +224,11 @@ impl<'tcx> LateLintPass<'tcx> for PassByRefOrValue {
         }
 
         match kind {
-            FnKind::ItemFn(.., header, _, attrs) => {
+            FnKind::ItemFn(.., header, _) => {
                 if header.abi != Abi::Rust {
                     return;
                 }
+                let attrs = cx.tcx.hir().attrs(hir_id);
                 for a in attrs {
                     if let Some(meta_items) = a.meta_item_list() {
                         if a.has_name(sym::proc_macro_derive)
@@ -239,7 +240,7 @@ impl<'tcx> LateLintPass<'tcx> for PassByRefOrValue {
                 }
             },
             FnKind::Method(..) => (),
-            FnKind::Closure(..) => return,
+            FnKind::Closure => return,
         }
 
         // Exclude non-inherent impls

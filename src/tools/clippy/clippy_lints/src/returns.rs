@@ -131,7 +131,7 @@ impl<'tcx> LateLintPass<'tcx> for Return {
         _: HirId,
     ) {
         match kind {
-            FnKind::Closure(_) => {
+            FnKind::Closure => {
                 // when returning without value in closure, replace this `return`
                 // with an empty block to prevent invalid suggestion (see #6501)
                 let replacement = if let ExprKind::Ret(None) = &body.value.kind {

@@ -251,9 +251,9 @@ impl<'tcx> LateLintPass<'tcx> for Functions {
         hir_id: hir::HirId,
     ) {
         let unsafety = match kind {
-            intravisit::FnKind::ItemFn(_, _, hir::FnHeader { unsafety, .. }, _, _) => unsafety,
-            intravisit::FnKind::Method(_, sig, _, _) => sig.header.unsafety,
-            intravisit::FnKind::Closure(_) => return,
+            intravisit::FnKind::ItemFn(_, _, hir::FnHeader { unsafety, .. }, _) => unsafety,
+            intravisit::FnKind::Method(_, sig, _) => sig.header.unsafety,
+            intravisit::FnKind::Closure => return,
         };
 
         // don't warn for implementations, it's not their fault
@@ -267,9 +267,8 @@ impl<'tcx> LateLintPass<'tcx> for Functions {
                         ..
                     },
                     _,
-                    _,
                 )
-                | intravisit::FnKind::ItemFn(_, _, hir::FnHeader { abi: Abi::Rust, .. }, _, _) => {
+                | intravisit::FnKind::ItemFn(_, _, hir::FnHeader { abi: Abi::Rust, .. }, _) => {
                     self.check_arg_number(cx, decl, span.with_hi(decl.output.span().hi()))
                 },
                 _ => {},

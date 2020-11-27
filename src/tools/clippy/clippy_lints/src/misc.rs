@@ -278,7 +278,7 @@ impl<'tcx> LateLintPass<'tcx> for MiscLints {
         span: Span,
         _: HirId,
     ) {
-        if let FnKind::Closure(_) = k {
+        if let FnKind::Closure = k {
             // Does not apply to closures
             return;
         }
