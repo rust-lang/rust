@@ -13,7 +13,7 @@ pub(crate) enum OverlayKind {
 }
 
 impl OverlayKind {
-    fn included_files(&self) -> &[&str] {
+    fn legal_and_readme(&self) -> &[&str] {
         match self {
             OverlayKind::Rust => &["COPYRIGHT", "LICENSE-APACHE", "LICENSE-MIT", "README.md"],
             OverlayKind::LLVM => {
@@ -140,6 +140,12 @@ impl<'a> Tarball<'a> {
         self.builder.copy(src.as_ref(), &destdir.join(new_name));
     }
 
+    pub(crate) fn add_legal_and_readme_to(&self, destdir: impl AsRef<Path>) {
+        for file in self.overlay.legal_and_readme() {
+            self.add_file(self.builder.src.join(file), destdir.as_ref(), 0o644);
+        }
+    }
+
     pub(crate) fn add_dir(&self, src: impl AsRef<Path>, dest: impl AsRef<Path>) {
         let dest = self.image_dir.join(dest.as_ref());
 
@@ -153,7 +159,7 @@ impl<'a> Tarball<'a> {
         if let Some(sha) = self.builder.rust_sha() {
             self.builder.create(&self.overlay_dir.join("git-commit-hash"), &sha);
         }
-        for file in self.overlay.included_files() {
+        for file in self.overlay.legal_and_readme() {
             self.builder.install(&self.builder.src.join(file), &self.overlay_dir, 0o644);
         }
 

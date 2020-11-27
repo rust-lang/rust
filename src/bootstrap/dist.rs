@@ -1024,13 +1024,10 @@ impl Step for Cargo {
         tarball.set_overlay(OverlayKind::Cargo);
 
         tarball.add_file(&cargo, "bin", 0o755);
-        tarball.add_file(src.join("README.md"), "share/doc/cargo", 0o644);
-        tarball.add_file(src.join("LICENSE-MIT"), "share/doc/cargo", 0o644);
-        tarball.add_file(src.join("LICENSE-APACHE"), "share/doc/cargo", 0o644);
-        tarball.add_file(src.join("LICENSE-THIRD-PARTY"), "share/doc/cargo", 0o644);
         tarball.add_file(etc.join("_cargo"), "share/zsh/site-functions", 0o644);
         tarball.add_renamed_file(etc.join("cargo.bashcomp.sh"), "etc/bash_completion.d", "cargo");
         tarball.add_dir(etc.join("man"), "share/man/man1");
+        tarball.add_legal_and_readme_to("share/doc/cargo");
 
         for dirent in fs::read_dir(cargo.parent().unwrap()).expect("read_dir") {
             let dirent = dirent.expect("read dir entry");
@@ -1265,16 +1262,13 @@ impl Step for Clippy {
         let cargoclippy = builder
             .ensure(tool::CargoClippy { compiler, target, extra_features: Vec::new() })
             .expect("clippy expected to build - essential tool");
-        let src = builder.src.join("src/tools/clippy");
 
         let mut tarball = Tarball::new(builder, "clippy", &target.triple);
         tarball.set_overlay(OverlayKind::Clippy);
         tarball.is_preview(true);
         tarball.add_file(clippy, "bin", 0o755);
         tarball.add_file(cargoclippy, "bin", 0o755);
-        tarball.add_file(src.join("README.md"), "share/doc/clippy", 0o644);
-        tarball.add_file(src.join("LICENSE-APACHE"), "share/doc/clippy", 0o644);
-        tarball.add_file(src.join("LICENSE-MIT"), "share/doc/clippy", 0o644);
+        tarball.add_legal_and_readme_to("share/doc/clippy");
         tarball.generate()
     }
 }
