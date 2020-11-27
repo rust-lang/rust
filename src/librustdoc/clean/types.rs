@@ -34,6 +34,7 @@ use crate::clean::cfg::Cfg;
 use crate::clean::external_path;
 use crate::clean::inline;
 use crate::clean::types::Type::{QPath, ResolvedPath};
+use crate::clean::Clean;
 use crate::core::DocContext;
 use crate::doctree;
 use crate::formats::cache::cache;
@@ -54,7 +55,7 @@ crate struct Crate {
     crate src: FileName,
     crate module: Option<Item>,
     crate externs: Vec<(CrateNum, ExternalCrate)>,
-    crate primitives: Vec<(DefId, PrimitiveType, Attributes)>,
+    crate primitives: Vec<(DefId, PrimitiveType)>,
     // These are later on moved into `CACHEKEY`, leaving the map empty.
     // Only here so that they can be filtered through the rustdoc passes.
     crate external_traits: Rc<RefCell<FxHashMap<DefId, Trait>>>,
@@ -67,8 +68,8 @@ crate struct ExternalCrate {
     crate name: String,
     crate src: FileName,
     crate attrs: Attributes,
-    crate primitives: Vec<(DefId, PrimitiveType, Attributes)>,
-    crate keywords: Vec<(DefId, String, Attributes)>,
+    crate primitives: Vec<(DefId, PrimitiveType)>,
+    crate keywords: Vec<(DefId, String)>,
 }
 
 /// Anything with a source location and set of attributes and, optionally, a
@@ -120,17 +121,20 @@ impl Item {
         kind: ItemKind,
         cx: &DocContext<'_>,
     ) -> Item {
-        Item::from_def_id_and_parts(cx.tcx.hir().local_def_id(hir_id).to_def_id(), name, kind, cx)
+        Item::from_def_id_and_parts(
+            cx.tcx.hir().local_def_id(hir_id).to_def_id(),
+            name.clean(cx),
+            kind,
+            cx,
+        )
     }
 
     pub fn from_def_id_and_parts(
         def_id: DefId,
-        name: Option<Symbol>,
+        name: Option<String>,
         kind: ItemKind,
         cx: &DocContext<'_>,
     ) -> Item {
-        use super::Clean;
-
         debug!("name={:?}, def_id={:?}", name, def_id);
 
         // `span_if_local()` lies about functions and only gives the span of the function signature
@@ -145,7 +149,7 @@ impl Item {
         Item {
             def_id,
             kind,
-            name: name.clean(cx),
+            name,
             source: source.clean(cx),
             attrs: cx.tcx.get_attrs(def_id).clean(cx),
             visibility: cx.tcx.visibility(def_id).clean(cx),
