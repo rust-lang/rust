@@ -841,7 +841,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         hir::GenericParam {
             hir_id: self.lower_node_id(node_id),
             name: hir_name,
-            attrs: &[],
             bounds: &[],
             span,
             pure_wrt_drop: false,
@@ -1453,7 +1452,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             hir_id: self.lower_node_id(def_node_id),
                             name: ParamName::Plain(ident),
                             pure_wrt_drop: false,
-                            attrs: &[],
                             bounds: hir_bounds,
                             span,
                             kind: hir::GenericParamKind::Type {
@@ -1742,7 +1740,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         name,
                         span: lifetime.span,
                         pure_wrt_drop: false,
-                        attrs: &[],
                         bounds: &[],
                         kind: hir::GenericParamKind::Lifetime { kind },
                     });
@@ -2311,12 +2308,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         };
 
         let hir_id = self.lower_node_id(param.id);
+        self.lower_attrs(hir_id, &param.attrs);
         hir::GenericParam {
             hir_id,
             name,
             span: param.ident.span,
             pure_wrt_drop: self.sess.contains_name(&param.attrs, sym::may_dangle),
-            attrs: self.lower_attrs(hir_id, &param.attrs),
             bounds: self.arena.alloc_from_iter(bounds),
             kind,
         }
