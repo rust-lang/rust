@@ -293,8 +293,11 @@ pub fn main() {
             .chain(vec!["--cfg".into(), r#"feature="cargo-clippy""#.into()])
             .collect::<Vec<String>>();
 
-        // this check ensures that dependencies are built but not linted and the final
-        // crate is linted but not built
+        // We enable Clippy if one of the following conditions is met
+        // - IF Clippy is run on its test suite OR
+        // - IF Clippy is run on the main crate, not on deps (`!cap_lints_allow`) THEN
+        //    - IF `--no-deps` is not set (`!no_deps`) OR
+        //    - IF `--no-deps` is set and Clippy is run on the specified primary package
         let clippy_tests_set = env::var("CLIPPY_TESTS").map_or(false, |val| val == "true");
         let cap_lints_allow = arg_value(&orig_args, "--cap-lints", |val| val == "allow").is_some();
         let in_primary_package = env::var("CARGO_PRIMARY_PACKAGE").is_ok();
