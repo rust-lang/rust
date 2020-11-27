@@ -40,6 +40,7 @@ jobs:
       run: |
         git config --global user.email "user@example.com"
         git config --global user.name "User"
+        rustup self update
         ./prepare.sh
 
     - name: Test
