@@ -58,7 +58,7 @@ ConstArg =
   Expr
 
 MacroCall =
-  Attr* Path '!' Name? TokenTree ';'?
+  Attr* Path '!' TokenTree ';'?
 
 TokenTree =
   '(' ')'
@@ -89,6 +89,7 @@ Item =
 | Fn
 | Impl
 | MacroCall
+| MacroRules
 | Module
 | Static
 | Struct
@@ -96,6 +97,14 @@ Item =
 | TypeAlias
 | Union
 | Use
+
+MacroRules =
+  Attr* Visibility?
+  'macro_rules' '!' Name
+  '{' MacroArm (';' MacroArm)* ';'? '}'
+
+MacroArm =
+  TokenTree '=>' TokenTree
 
 Module =
   Attr* Visibility?
