@@ -337,6 +337,14 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             infer_args,
         );
 
+        // Skip processing if type has no generic parameters.
+        // Traits always have `Self` as a generic parameter, which means they will not return early
+        // here and so associated type bindings will be handled regardless of whether there are any
+        // non-`Self` generic parameters.
+        if generic_params.params.len() == 0 {
+            return (tcx.intern_substs(&[]), vec![], arg_count);
+        }
+
         let is_object = self_ty.map_or(false, |ty| ty == self.tcx().types.trait_object_dummy_self);
 
         struct SubstsForAstPathCtxt<'a, 'tcx> {
