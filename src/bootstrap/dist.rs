@@ -1070,19 +1070,6 @@ impl Step for Rls {
         let target = self.target;
         assert!(builder.config.extended);
 
-        let src = builder.src.join("src/tools/rls");
-        let release_num = builder.release_num("rls");
-        let name = pkgname(builder, "rls");
-        let version = builder.rls_info.version(builder, &release_num);
-
-        let tmp = tmpdir(builder);
-        let image = tmp.join("rls-image");
-        drop(fs::remove_dir_all(&image));
-        t!(fs::create_dir_all(&image));
-
-        // Prepare the image directory
-        // We expect RLS to build, because we've exited this step above if tool
-        // state for RLS isn't testing.
         let rls = builder
             .ensure(tool::Rls { compiler, target, extra_features: Vec::new() })
             .or_else(|| {
@@ -1090,43 +1077,12 @@ impl Step for Rls {
                 None
             })?;
 
-        builder.install(&rls, &image.join("bin"), 0o755);
-        let doc = image.join("share/doc/rls");
-        builder.install(&src.join("README.md"), &doc, 0o644);
-        builder.install(&src.join("LICENSE-MIT"), &doc, 0o644);
-        builder.install(&src.join("LICENSE-APACHE"), &doc, 0o644);
-
-        // Prepare the overlay
-        let overlay = tmp.join("rls-overlay");
-        drop(fs::remove_dir_all(&overlay));
-        t!(fs::create_dir_all(&overlay));
-        builder.install(&src.join("README.md"), &overlay, 0o644);
-        builder.install(&src.join("LICENSE-MIT"), &overlay, 0o644);
-        builder.install(&src.join("LICENSE-APACHE"), &overlay, 0o644);
-        builder.create(&overlay.join("version"), &version);
-
-        // Generate the installer tarball
-        let mut cmd = rust_installer(builder);
-        cmd.arg("generate")
-            .arg("--product-name=Rust")
-            .arg("--rel-manifest-dir=rustlib")
-            .arg("--success-message=RLS-ready-to-serve.")
-            .arg("--image-dir")
-            .arg(&image)
-            .arg("--work-dir")
-            .arg(&tmpdir(builder))
-            .arg("--output-dir")
-            .arg(&distdir(builder))
-            .arg("--non-installed-overlay")
-            .arg(&overlay)
-            .arg(format!("--package-name={}-{}", name, target.triple))
-            .arg("--legacy-manifest-dirs=rustlib,cargo")
-            .arg("--component-name=rls-preview");
-
-        builder.info(&format!("Dist RLS stage{} ({})", compiler.stage, target.triple));
-        let _time = timeit(builder);
-        builder.run(&mut cmd);
-        Some(distdir(builder).join(format!("{}-{}.tar.gz", name, target.triple)))
+        let mut tarball = Tarball::new(builder, "rls", &target.triple);
+        tarball.set_overlay(OverlayKind::RLS);
+        tarball.is_preview(true);
+        tarball.add_file(rls, "bin", 0o755);
+        tarball.add_legal_and_readme_to("share/doc/rls");
+        Some(tarball.generate())
     }
 }
 
