@@ -15,6 +15,7 @@ pub(crate) fn render_fn<'a>(
     local_name: Option<String>,
     fn_: hir::Function,
 ) -> CompletionItem {
+    let _p = profile::span("render_fn");
     FunctionRender::new(ctx, local_name, fn_).render(import_data)
 }
 

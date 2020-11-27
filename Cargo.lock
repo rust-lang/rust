@@ -1658,6 +1658,7 @@ dependencies = [
  "itertools",
  "once_cell",
  "parser",
+ "profile",
  "rayon",
  "rowan",
  "rustc-ap-rustc_lexer",

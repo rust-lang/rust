@@ -278,6 +278,8 @@ pub(crate) struct Builder {
 
 impl Builder {
     pub(crate) fn build(self) -> CompletionItem {
+        let _p = profile::span("item::Builder::build");
+
         let mut label = self.label;
         let mut lookup = self.lookup;
         let mut insert_text = self.insert_text;
