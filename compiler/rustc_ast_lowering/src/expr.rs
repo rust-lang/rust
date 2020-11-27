@@ -258,10 +258,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         ex.span = e.span;
                     }
                     // Merge attributes into the inner expression.
-                    let mut attrs: Vec<_> = e.attrs.iter().map(|a| self.lower_attr(a)).collect();
-                    attrs.extend::<Vec<_>>(ex.attrs.into());
-                    self.attrs[ex.hir_id] = &*self.arena.alloc_from_iter(attrs.iter().cloned());
-                    ex.attrs = attrs.into();
+                    self.attrs[ex.hir_id] = &*self.arena.alloc_from_iter(
+                        e.attrs
+                            .iter()
+                            .map(|a| self.lower_attr(a))
+                            .chain(self.attrs[ex.hir_id].iter().cloned()),
+                    );
                     return ex;
                 }
 
@@ -274,9 +276,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
             };
 
             let hir_id = self.lower_node_id(e.id);
-            let attrs = e.attrs.iter().map(|a| self.lower_attr(a)).collect::<Vec<_>>();
-            self.attrs.push_sparse(hir_id, &*self.arena.alloc_from_iter(attrs.iter().cloned()));
-            hir::Expr { hir_id, kind, span: e.span, attrs: attrs.into() }
+            self.lower_attrs(hir_id, &e.attrs);
+            hir::Expr { hir_id, kind, span: e.span }
         })
     }
 
@@ -684,12 +685,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
             span,
             Some(hir::Movability::Static),
         );
-        let generator = hir::Expr {
-            hir_id: self.lower_node_id(closure_node_id),
-            kind: generator_kind,
-            span,
-            attrs: ThinVec::new(),
-        };
+        let generator =
+            hir::Expr { hir_id: self.lower_node_id(closure_node_id), kind: generator_kind, span };
 
         // `future::from_generator`:
         let unstable_span =
@@ -843,7 +840,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
             hir_id: loop_hir_id,
             kind: hir::ExprKind::Loop(loop_block, None, hir::LoopSource::Loop, span),
             span,
-            attrs: ThinVec::new(),
         });
 
         // mut pinned => loop { ... }
@@ -1813,12 +1809,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
             hir::LoopSource::ForLoop,
             e.span.with_hi(orig_head_span.hi()),
         );
-        let loop_expr = self.arena.alloc(hir::Expr {
-            hir_id: self.lower_node_id(e.id),
-            kind,
-            span: e.span,
-            attrs: ThinVec::new(),
-        });
+        let loop_expr =
+            self.arena.alloc(hir::Expr { hir_id: self.lower_node_id(e.id), kind, span: e.span });
 
         // `mut iter => { ... }`
         let iter_arm = self.arm(iter_pat, loop_expr);
@@ -2154,8 +2146,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
         attrs: AttrVec,
     ) -> hir::Expr<'hir> {
         let hir_id = self.next_id();
-        self.attrs.push_sparse(hir_id, &*self.arena.alloc_from_iter(attrs.iter().cloned()));
-        hir::Expr { hir_id, kind, span, attrs }
+        self.lower_attrs(hir_id, &attrs);
+        hir::Expr { hir_id, kind, span }
     }
 
     fn field(&mut self, ident: Ident, expr: &'hir hir::Expr<'hir>, span: Span) -> hir::Field<'hir> {

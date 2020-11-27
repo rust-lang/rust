@@ -979,7 +979,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         ret
     }
 
-    fn lower_attr(&mut self, attr: &Attribute) -> Attribute {
+    fn lower_attr(&self, attr: &Attribute) -> Attribute {
         // Note that we explicitly do not walk the path. Since we don't really
         // lower attributes (we use the AST version) there is nowhere to keep
         // the `HirId`s. We don't actually need HIR version of attributes anyway.
@@ -999,7 +999,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         Attribute { kind, id: attr.id, style: attr.style, span: attr.span }
     }
 
-    fn lower_mac_args(&mut self, args: &MacArgs) -> MacArgs {
+    fn lower_mac_args(&self, args: &MacArgs) -> MacArgs {
         match *args {
             MacArgs::Empty => MacArgs::Empty,
             MacArgs::Delimited(dspan, delim, ref tokens) => {
