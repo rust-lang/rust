@@ -52,7 +52,7 @@
 #![feature(const_pin)]
 #![feature(const_slice_from_raw_parts)]
 #![feature(const_raw_ptr_deref)]
-#![feature(never_type)]
+#![cfg_attr(bootstrap, feature(never_type))]
 #![feature(unwrap_infallible)]
 #![feature(option_unwrap_none)]
 #![feature(peekable_next_if)]

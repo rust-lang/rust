@@ -1,7 +1,6 @@
 // check-pass
 
 #![allow(dead_code)]
-#![feature(never_type)]
 #![feature(exhaustive_patterns)]
 
 // Regression test for inhabitedness check. The old
@@ -14,20 +13,22 @@ struct Foo {
 }
 
 struct Bar {
-    field1: &'static Foo
+    field1: &'static Foo,
 }
 
 fn test_a() {
     let x: Option<Foo> = None;
-    match x { None => () }
+    match x {
+        None => (),
+    }
 }
 
 fn test_b() {
     let x: Option<Bar> = None;
     match x {
         Some(_) => (),
-        None => ()
+        None => (),
     }
 }
 
-fn main() { }
+fn main() {}

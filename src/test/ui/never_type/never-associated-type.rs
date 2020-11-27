@@ -2,8 +2,6 @@
 
 // check-pass
 
-#![feature(never_type)]
-
 trait Foo {
     type Wow;
 

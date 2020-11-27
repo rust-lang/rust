@@ -32,7 +32,7 @@
 #![feature(box_syntax)]
 #![feature(crate_visibility_modifier)]
 #![feature(iter_order_by)]
-#![feature(never_type)]
+#![cfg_attr(bootstrap, feature(never_type))]
 #![feature(nll)]
 #![feature(or_patterns)]
 #![feature(half_open_range_patterns)]

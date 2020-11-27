@@ -1,5 +1,3 @@
-#![feature(never_type)]
-
 fn foo() -> Result<u32, !> {
     Ok(123)
 }

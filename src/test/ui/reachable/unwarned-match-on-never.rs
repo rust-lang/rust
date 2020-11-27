@@ -1,8 +1,6 @@
 #![deny(unreachable_code)]
 #![allow(dead_code)]
 
-#![feature(never_type)]
-
 fn foo(x: !) -> bool {
     // Explicit matches on the never type are unwarned.
     match x {}
@@ -12,13 +10,14 @@ fn foo(x: !) -> bool {
 
 fn bar() {
     match (return) {
-        () => () //~ ERROR unreachable arm
+        () => (), //~ ERROR unreachable arm
     }
 }
 
 fn main() {
     return;
-    match () { //~ ERROR unreachable expression
+    match () {
+        //~ ERROR unreachable expression
         () => (),
     }
 }

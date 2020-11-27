@@ -1,5 +1,4 @@
 #![feature(min_const_generics)]
-#![feature(never_type)]
 
 struct Foo<const N: [u8; 0]>;
 //~^ ERROR `[u8; 0]` is forbidden
@@ -18,11 +17,15 @@ struct Faz<const N: &'static u8>;
 struct Fiz<const N: !>;
 //~^ ERROR `!` is forbidden
 
-enum Goo<const N: ()> { A, B }
+enum Goo<const N: ()> {
+    A,
+    B,
+}
 //~^ ERROR `()` is forbidden
 
-union Boo<const N: ()> { a: () }
+union Boo<const N: ()> {
+    a: (),
+}
 //~^ ERROR `()` is forbidden
-
 
 fn main() {}

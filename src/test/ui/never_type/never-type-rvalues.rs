@@ -1,6 +1,5 @@
 // run-pass
 
-#![feature(never_type)]
 #![allow(dead_code)]
 #![allow(path_statements)]
 #![allow(unreachable_patterns)]
@@ -30,9 +29,9 @@ fn never_slice(x: &[!]) {
 
 fn never_match(x: Result<(), !>) {
     match x {
-        Ok(_) => {},
-        Err(_) => {},
+        Ok(_) => {}
+        Err(_) => {}
     }
 }
 
-pub fn main() { }
+pub fn main() {}

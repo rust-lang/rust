@@ -88,7 +88,7 @@
 //! DefPaths which are much more robust in the face of changes to the code base.
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
-#![feature(never_type)]
+#![cfg_attr(bootstrap, feature(never_type))]
 #![feature(nll)]
 #![feature(or_patterns)]
 #![feature(in_band_lifetimes)]

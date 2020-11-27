@@ -284,7 +284,7 @@
 #![feature(min_specialization)]
 #![feature(needs_panic_runtime)]
 #![feature(negative_impls)]
-#![feature(never_type)]
+#![cfg_attr(bootstrap, feature(never_type))]
 #![feature(nll)]
 #![feature(nonnull_slice_from_raw_parts)]
 #![feature(once_cell)]

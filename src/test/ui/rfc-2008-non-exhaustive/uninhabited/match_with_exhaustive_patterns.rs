@@ -1,15 +1,11 @@
 // aux-build:uninhabited.rs
 #![deny(unreachable_patterns)]
 #![feature(exhaustive_patterns)]
-#![feature(never_type)]
 
 extern crate uninhabited;
 
 use uninhabited::{
-    UninhabitedEnum,
-    UninhabitedStruct,
-    UninhabitedTupleStruct,
-    UninhabitedVariants,
+    UninhabitedEnum, UninhabitedStruct, UninhabitedTupleStruct, UninhabitedVariants,
 };
 
 struct A;

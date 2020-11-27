@@ -1,12 +1,9 @@
 // aux-build:uninhabited.rs
-#![feature(never_type)]
 
 extern crate uninhabited;
 
 use uninhabited::{
-    IndirectUninhabitedEnum,
-    IndirectUninhabitedStruct,
-    IndirectUninhabitedTupleStruct,
+    IndirectUninhabitedEnum, IndirectUninhabitedStruct, IndirectUninhabitedTupleStruct,
     IndirectUninhabitedVariants,
 };
 

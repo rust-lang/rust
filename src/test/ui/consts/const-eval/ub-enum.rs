@@ -1,5 +1,4 @@
 // normalize-stderr-64bit "0x0000000000" -> "0x00"
-#![feature(never_type)]
 #![allow(const_err)] // make sure we cannot allow away the errors tested here
 
 use std::mem;
@@ -53,7 +52,7 @@ union MaybeUninit<T: Copy> {
     uninit: (),
     init: T,
 }
-const BAD_ENUM2_UNDEF : Enum2 = unsafe { MaybeUninit { uninit: () }.init };
+const BAD_ENUM2_UNDEF: Enum2 = unsafe { MaybeUninit { uninit: () }.init };
 //~^ ERROR is undefined behavior
 
 // Pointer value in an enum with a niche that is not just 0.
@@ -94,5 +93,4 @@ const BAD_UNINHABITED_WITH_DATA1: Result<(i32, Never), (i32, !)> = unsafe { mem:
 const BAD_UNINHABITED_WITH_DATA2: Result<(i32, !), (i32, Never)> = unsafe { mem::transmute(0u64) };
 //~^ ERROR is undefined behavior
 
-fn main() {
-}
+fn main() {}

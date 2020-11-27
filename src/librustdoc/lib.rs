@@ -12,7 +12,7 @@
 #![feature(peekable_next_if)]
 #![feature(test)]
 #![feature(crate_visibility_modifier)]
-#![feature(never_type)]
+#![cfg_attr(bootstrap, feature(never_type))]
 #![feature(once_cell)]
 #![recursion_limit = "256"]
 

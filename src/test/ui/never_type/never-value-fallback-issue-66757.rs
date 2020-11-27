@@ -6,8 +6,6 @@
 //
 // run-pass
 
-#![feature(never_type)]
-
 // FIXME(#67225) -- this should be true even without the fallback gate.
 #![feature(never_type_fallback)]
 
@@ -22,8 +20,8 @@ impl From<!> for E {
 #[allow(unreachable_code)]
 #[allow(dead_code)]
 fn foo(never: !) {
-    <E as From<!>>::from(never);  // Ok
-    <E as From<_>>::from(never);  // Inference fails here
+    <E as From<!>>::from(never); // Ok
+    <E as From<_>>::from(never); // Inference fails here
 }
 
-fn main() { }
+fn main() {}

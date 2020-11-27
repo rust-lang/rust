@@ -115,7 +115,7 @@
 #![feature(link_llvm_intrinsics)]
 #![feature(llvm_asm)]
 #![feature(negative_impls)]
-#![feature(never_type)]
+#![cfg_attr(bootstrap, feature(never_type))]
 #![feature(nll)]
 #![feature(exhaustive_patterns)]
 #![feature(no_core)]

@@ -2,11 +2,9 @@
 
 #![deny(unreachable_patterns)]
 #![feature(exhaustive_patterns)]
-#![feature(never_type)]
 
 #[non_exhaustive]
-pub enum UninhabitedEnum {
-}
+pub enum UninhabitedEnum {}
 
 #[non_exhaustive]
 pub struct UninhabitedStruct {
@@ -17,8 +15,10 @@ pub struct UninhabitedStruct {
 pub struct UninhabitedTupleStruct(!);
 
 pub enum UninhabitedVariants {
-    #[non_exhaustive] Tuple(!),
-    #[non_exhaustive] Struct { x: ! }
+    #[non_exhaustive]
+    Tuple(!),
+    #[non_exhaustive]
+    Struct { x: ! },
 }
 
 pub struct IndirectUninhabitedEnum(UninhabitedEnum);

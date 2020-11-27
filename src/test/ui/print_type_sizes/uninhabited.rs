@@ -4,7 +4,6 @@
 // ^-- needed because `--pass check` does not emit the output needed.
 //     FIXME: consider using an attribute instead of side-effects.
 
-#![feature(never_type)]
 #![feature(start)]
 
 #[start]

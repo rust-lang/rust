@@ -11,7 +11,7 @@
 #![feature(min_specialization)]
 #![feature(stmt_expr_attributes)]
 #![feature(try_blocks)]
-#![feature(never_type)]
+#![cfg_attr(bootstrap, feature(never_type))]
 #![recursion_limit = "256"]
 
 extern crate proc_macro;

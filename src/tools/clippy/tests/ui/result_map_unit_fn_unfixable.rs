@@ -1,5 +1,4 @@
 #![warn(clippy::result_map_unit_fn)]
-#![feature(never_type)]
 #![allow(unused)]
 
 struct HasResult {

@@ -323,9 +323,6 @@ declare_features! (
     /// Allows `X..Y` patterns.
     (active, exclusive_range_pattern, "1.11.0", Some(37854), None),
 
-    /// Allows the `!` type. Does not imply 'exhaustive_patterns' (below) any more.
-    (active, never_type, "1.13.0", Some(35121), None),
-
     /// Allows exhaustive pattern matching on types that contain uninhabited types.
     (active, exhaustive_patterns, "1.13.0", Some(51085), None),
 
@@ -509,9 +506,6 @@ declare_features! (
 
     /// Allows `&raw const $place_expr` and `&raw mut $place_expr` expressions.
     (active, raw_ref_op, "1.41.0", Some(64490), None),
-
-    /// Allows diverging expressions to fall back to `!` rather than `()`.
-    (active, never_type_fallback, "1.41.0", Some(65992), None),
 
     /// Allows using the `#[register_attr]` attribute.
     (active, register_attr, "1.41.0", Some(66080), None),

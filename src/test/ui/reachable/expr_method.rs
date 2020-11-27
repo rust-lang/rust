@@ -1,4 +1,3 @@
-#![feature(never_type)]
 #![allow(unused_variables)]
 #![allow(unused_assignments)]
 #![allow(dead_code)]
@@ -7,8 +6,8 @@
 struct Foo;
 
 impl Foo {
-    fn foo(&self, x: !, y: usize) { }
-    fn bar(&self, x: !) { }
+    fn foo(&self, x: !, y: usize) {}
+    fn bar(&self, x: !) {}
 }
 
 fn a() {
@@ -21,4 +20,4 @@ fn b() {
     Foo.bar(return); //~ ERROR unreachable
 }
 
-fn main() { }
+fn main() {}

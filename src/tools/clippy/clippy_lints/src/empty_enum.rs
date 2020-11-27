@@ -27,8 +27,6 @@ declare_clippy_lint! {
     ///
     /// Good:
     /// ```rust
-    /// #![feature(never_type)]
-    ///
     /// struct Test(!);
     /// ```
     pub EMPTY_ENUM,

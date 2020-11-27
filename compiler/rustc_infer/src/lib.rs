@@ -19,7 +19,7 @@
 #![feature(const_fn)]
 #![feature(const_panic)]
 #![feature(extend_one)]
-#![feature(never_type)]
+#![cfg_attr(bootstrap, feature(never_type))]
 #![feature(or_patterns)]
 #![feature(in_band_lifetimes)]
 #![feature(control_flow_enum)]

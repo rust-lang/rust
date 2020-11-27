@@ -1,7 +1,7 @@
-#![feature(never_type)]
-
 fn main() {
-    let val: ! = loop { break break; };
+    let val: ! = loop {
+        break break;
+    };
     //~^ ERROR mismatched types
 
     loop {
@@ -10,7 +10,7 @@ fn main() {
         } else {
             break 123; //~ ERROR mismatched types
         }
-    };
+    }
 
     let _: i32 = loop {
         break "asdf"; //~ ERROR mismatched types
@@ -20,10 +20,11 @@ fn main() {
         loop {
             break 'outer_loop "nope"; //~ ERROR mismatched types
             break "ok";
-        };
+        }
     };
 
-    'while_loop: while true { //~ WARN denote infinite loops with
+    'while_loop: while true {
+        //~ WARN denote infinite loops with
         break;
         break (); //~ ERROR `break` with value from a `while` loop
         loop {
@@ -31,7 +32,7 @@ fn main() {
             //~^ ERROR `break` with value from a `while` loop
             break 456;
             break 789;
-        };
+        }
     }
 
     while let Some(_) = Some(()) {
@@ -49,21 +50,21 @@ fn main() {
             break 'while_let_loop "nope";
             //~^ ERROR `break` with value from a `while` loop
             break 33;
-        };
+        }
     }
 
-    for _ in &[1,2,3] {
+    for _ in &[1, 2, 3] {
         break (); //~ ERROR `break` with value from a `for` loop
         break [()];
         //~^ ERROR `break` with value from a `for` loop
     }
 
-    'for_loop: for _ in &[1,2,3] {
+    'for_loop: for _ in &[1, 2, 3] {
         loop {
             break Some(3);
             break 'for_loop Some(17);
             //~^ ERROR `break` with value from a `for` loop
-        };
+        }
     }
 
     let _: i32 = 'a: loop {
@@ -78,16 +79,16 @@ fn main() {
 
     loop {
         break (break, break); //~ ERROR mismatched types
-    };
+    }
 
     loop {
         break;
         break 2; //~ ERROR mismatched types
-    };
+    }
 
     loop {
         break 2;
         break; //~ ERROR mismatched types
         break 4;
-    };
+    }
 }

@@ -2,7 +2,6 @@
 
 #![feature(optin_builtin_traits)]
 #![feature(negative_impls)]
-#![feature(never_type)]
 
 fn main() {
     enum Void {}

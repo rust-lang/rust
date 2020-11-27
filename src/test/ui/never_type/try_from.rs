@@ -5,9 +5,7 @@
 // This test was added to show the motivation for doing this
 // over `TryFrom` being blanket impl for all `T: From`
 
-#![feature(never_type)]
-
-use std::convert::{TryInto, Infallible};
+use std::convert::{Infallible, TryInto};
 
 struct Foo<T> {
     t: T,

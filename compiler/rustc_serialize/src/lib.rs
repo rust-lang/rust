@@ -10,7 +10,7 @@ Core encoding and decoding interfaces.
     test(attr(allow(unused_variables), deny(warnings)))
 )]
 #![feature(box_syntax)]
-#![feature(never_type)]
+#![cfg_attr(bootstrap, feature(never_type))]
 #![feature(nll)]
 #![feature(associated_type_bounds)]
 #![feature(min_const_generics)]

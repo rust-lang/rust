@@ -1086,7 +1086,6 @@ impl<T, E: Into<!>> Result<T, E> {
     /// Basic usage:
     ///
     /// ```
-    /// # #![feature(never_type)]
     /// # #![feature(unwrap_infallible)]
     ///
     /// fn only_good_news() -> Result<String, !> {

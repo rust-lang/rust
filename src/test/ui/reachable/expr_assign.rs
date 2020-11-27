@@ -1,4 +1,3 @@
-#![feature(never_type)]
 #![allow(unused_variables)]
 #![allow(unused_assignments)]
 #![allow(dead_code)]
@@ -23,7 +22,10 @@ fn bar() {
 
 fn baz() {
     let mut i = 0;
-    *{return; &mut i} = 22; //~ ERROR unreachable
+    *{
+        return;
+        &mut i
+    } = 22; //~ ERROR unreachable
 }
 
-fn main() { }
+fn main() {}

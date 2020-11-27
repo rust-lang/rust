@@ -2,15 +2,19 @@
 // ignore-wasm32-bare compiled with panic=abort by default
 
 #![feature(fn_traits)]
-#![feature(never_type)]
 
 use std::panic;
 
-fn foo(x: u32, y: u32) -> u32 { x/y }
-fn foo_diverges() -> ! { panic!() }
+fn foo(x: u32, y: u32) -> u32 {
+    x / y
+}
+fn foo_diverges() -> ! {
+    panic!()
+}
 
 fn test_fn_ptr<T>(mut t: T)
-    where T: Fn(u32, u32) -> u32,
+where
+    T: Fn(u32, u32) -> u32,
 {
     let as_fn = <T as Fn<(u32, u32)>>::call;
     assert_eq!(as_fn(&t, (9, 3)), 3);
@@ -20,18 +24,20 @@ fn test_fn_ptr<T>(mut t: T)
     assert_eq!(as_fn_once(t, (24, 3)), 8);
 }
 
-fn assert_panics<F>(f: F) where F: FnOnce() {
+fn assert_panics<F>(f: F)
+where
+    F: FnOnce(),
+{
     let f = panic::AssertUnwindSafe(f);
-    let result = panic::catch_unwind(move || {
-        f.0()
-    });
+    let result = panic::catch_unwind(move || f.0());
     if let Ok(..) = result {
         panic!("diverging function returned");
     }
 }
 
 fn test_fn_ptr_panic<T>(mut t: T)
-    where T: Fn() -> !
+where
+    T: Fn() -> !,
 {
     let as_fn = <T as Fn<()>>::call;
     assert_panics(|| as_fn(&t, ()));

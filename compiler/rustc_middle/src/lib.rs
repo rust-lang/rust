@@ -34,7 +34,7 @@
 #![feature(const_panic)]
 #![feature(core_intrinsics)]
 #![feature(discriminant_kind)]
-#![feature(never_type)]
+#![cfg_attr(bootstrap, feature(never_type))]
 #![feature(extern_types)]
 #![feature(nll)]
 #![feature(once_cell)]

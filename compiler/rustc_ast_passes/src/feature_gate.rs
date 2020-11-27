@@ -424,9 +424,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             ast::TyKind::BareFn(ref bare_fn_ty) => {
                 self.check_extern(bare_fn_ty.ext);
             }
-            ast::TyKind::Never => {
-                gate_feature_post!(&self, never_type, ty.span, "the `!` type is experimental");
-            }
             _ => {}
         }
         visit::walk_ty(self, ty)

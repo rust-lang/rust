@@ -1,6 +1,4 @@
 // aux-build:empty.rs
-#![feature(never_type)]
-#![feature(never_type_fallback)]
 #![deny(unreachable_patterns)]
 
 extern crate empty;
@@ -8,19 +6,23 @@ extern crate empty;
 enum EmptyEnum {}
 
 struct NonEmptyStruct(bool); //~ `NonEmptyStruct` defined here
-union NonEmptyUnion1 { //~ `NonEmptyUnion1` defined here
+union NonEmptyUnion1 {
+    //~ `NonEmptyUnion1` defined here
     foo: (),
 }
-union NonEmptyUnion2 { //~ `NonEmptyUnion2` defined here
+union NonEmptyUnion2 {
+    //~ `NonEmptyUnion2` defined here
     foo: (),
     bar: (),
 }
-enum NonEmptyEnum1 { //~ `NonEmptyEnum1` defined here
+enum NonEmptyEnum1 {
+    //~ `NonEmptyEnum1` defined here
     Foo(bool),
     //~^ not covered
     //~| not covered
 }
-enum NonEmptyEnum2 { //~ `NonEmptyEnum2` defined here
+enum NonEmptyEnum2 {
+    //~ `NonEmptyEnum2` defined here
     Foo(bool),
     //~^ not covered
     //~| not covered
@@ -28,8 +30,13 @@ enum NonEmptyEnum2 { //~ `NonEmptyEnum2` defined here
     //~^ not covered
     //~| not covered
 }
-enum NonEmptyEnum5 { //~ `NonEmptyEnum5` defined here
-    V1, V2, V3, V4, V5,
+enum NonEmptyEnum5 {
+    //~ `NonEmptyEnum5` defined here
+    V1,
+    V2,
+    V3,
+    V4,
+    V5,
 }
 
 macro_rules! match_empty {
@@ -48,30 +55,30 @@ macro_rules! match_false {
 fn empty_enum(x: EmptyEnum) {
     match x {} // ok
     match x {
-        _ => {}, //~ ERROR unreachable pattern
+        _ => {} //~ ERROR unreachable pattern
     }
     match x {
-        _ if false => {}, //~ ERROR unreachable pattern
+        _ if false => {} //~ ERROR unreachable pattern
     }
 }
 
 fn empty_foreign_enum(x: empty::EmptyForeignEnum) {
     match x {} // ok
     match x {
-        _ => {}, //~ ERROR unreachable pattern
+        _ => {} //~ ERROR unreachable pattern
     }
     match x {
-        _ if false => {}, //~ ERROR unreachable pattern
+        _ if false => {} //~ ERROR unreachable pattern
     }
 }
 
 fn never(x: !) {
     match x {} // ok
     match x {
-        _ => {}, //~ ERROR unreachable pattern
+        _ => {} //~ ERROR unreachable pattern
     }
     match x {
-        _ if false => {}, //~ ERROR unreachable pattern
+        _ if false => {} //~ ERROR unreachable pattern
     }
 }
 

@@ -273,6 +273,10 @@ declare_features! (
     /// Allows patterns with concurrent by-move and by-ref bindings.
     /// For example, you can write `Foo(a, ref b)` where `a` is by-move and `b` is by-ref.
     (accepted, move_ref_pattern, "1.48.0", Some(68354), None),
+    /// Allows the `!` type. Does not imply 'exhaustive_patterns' (below) any more.
+    (accepted, never_type, "1.49.0", Some(35121), None),
+    /// Allows diverging expressions to fall back to `!` rather than `()`.
+    (accepted, never_type_fallback, "1.49.0", Some(65992), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: accepted features

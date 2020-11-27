@@ -1,8 +1,6 @@
 // check-pass
 
-#![crate_type="lib"]
-
-#![feature(never_type)]
+#![crate_type = "lib"]
 #![allow(dead_code)]
 #![allow(unreachable_code)]
 #![allow(unused_variables)]
@@ -16,8 +14,6 @@ pub fn f(x: !) -> ! {
 pub fn ub() {
     // This is completely undefined behaviour,
     // but we still want to make sure it compiles.
-    let x: ! = unsafe {
-        std::mem::transmute::<Foo, !>(Foo)
-    };
+    let x: ! = unsafe { std::mem::transmute::<Foo, !>(Foo) };
     f(x)
 }

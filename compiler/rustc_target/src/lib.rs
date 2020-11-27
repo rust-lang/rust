@@ -12,7 +12,7 @@
 #![feature(const_fn)]
 #![feature(const_panic)]
 #![feature(nll)]
-#![feature(never_type)]
+#![cfg_attr(bootstrap, feature(never_type))]
 #![feature(associated_type_bounds)]
 #![feature(exhaustive_patterns)]
 

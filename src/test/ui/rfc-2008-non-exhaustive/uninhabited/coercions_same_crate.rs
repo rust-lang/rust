@@ -1,8 +1,5 @@
-#![feature(never_type)]
-
 #[non_exhaustive]
-pub enum UninhabitedEnum {
-}
+pub enum UninhabitedEnum {}
 
 #[non_exhaustive]
 pub struct UninhabitedTupleStruct(!);
@@ -13,8 +10,10 @@ pub struct UninhabitedStruct {
 }
 
 pub enum UninhabitedVariants {
-    #[non_exhaustive] Tuple(!),
-    #[non_exhaustive] Struct { x: ! }
+    #[non_exhaustive]
+    Tuple(!),
+    #[non_exhaustive]
+    Struct { x: ! },
 }
 
 struct A;
