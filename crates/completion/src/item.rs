@@ -3,11 +3,8 @@
 use std::fmt;
 
 use hir::{Documentation, ModPath, Mutability};
-use ide_db::helpers::{
-    insert_use::{self, ImportScope, MergeBehaviour},
-    mod_path_to_ast,
-};
-use syntax::{algo, TextRange};
+use ide_db::helpers::insert_use::{ImportScope, MergeBehaviour};
+use syntax::TextRange;
 use text_edit::TextEdit;
 
 use crate::config::SnippetCap;
@@ -65,6 +62,10 @@ pub struct CompletionItem {
     /// Indicates that a reference or mutable reference to this variable is a
     /// possible match.
     ref_match: Option<(Mutability, CompletionScore)>,
+
+    /// The data later to be used in the `completionItem/resolve` response
+    /// to add the insert import edit.
+    import_to_add: Option<ImportToAdd>,
 }
 
 // We use custom debug for CompletionItem to make snapshot tests more readable.
@@ -294,11 +295,9 @@ impl Builder {
         let mut label = self.label;
         let mut lookup = self.lookup;
         let mut insert_text = self.insert_text;
-        let mut text_edits = TextEdit::builder();
 
-        if let Some(import_data) = self.import_to_add {
-            let import = mod_path_to_ast(&import_data.import_path);
-            let mut import_path_without_last_segment = import_data.import_path;
+        if let Some(import_to_add) = self.import_to_add.as_ref() {
+            let mut import_path_without_last_segment = import_to_add.import_path.to_owned();
             let _ = import_path_without_last_segment.segments.pop();
 
             if !import_path_without_last_segment.segments.is_empty() {
@@ -310,32 +309,20 @@ impl Builder {
                 }
                 label = format!("{}::{}", import_path_without_last_segment, label);
             }
-
-            let rewriter = insert_use::insert_use(
-                &import_data.import_scope,
-                import,
-                import_data.merge_behaviour,
-            );
-            if let Some(old_ast) = rewriter.rewrite_root() {
-                algo::diff(&old_ast, &rewriter.rewrite(&old_ast)).into_text_edit(&mut text_edits);
-            }
         }
 
-        let original_edit = match self.text_edit {
+        let text_edit = match self.text_edit {
             Some(it) => it,
             None => {
                 TextEdit::replace(self.source_range, insert_text.unwrap_or_else(|| label.clone()))
             }
         };
 
-        let mut resulting_edit = text_edits.finish();
-        resulting_edit.union(original_edit).expect("Failed to unite text edits");
-
         CompletionItem {
             source_range: self.source_range,
             label,
             insert_text_format: self.insert_text_format,
-            text_edit: resulting_edit,
+            text_edit,
             detail: self.detail,
             documentation: self.documentation,
             lookup,
@@ -345,6 +332,7 @@ impl Builder {
             trigger_call_info: self.trigger_call_info.unwrap_or(false),
             score: self.score,
             ref_match: self.ref_match,
+            import_to_add: self.import_to_add,
         }
     }
     pub(crate) fn lookup_by(mut self, lookup: impl Into<String>) -> Builder {

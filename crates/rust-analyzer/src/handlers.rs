@@ -577,6 +577,16 @@ pub(crate) fn handle_completion(
     Ok(Some(completion_list.into()))
 }
 
+pub(crate) fn handle_resolve_completion(
+    snap: GlobalStateSnapshot,
+    original_completion: CompletionItem,
+) -> Result<CompletionItem> {
+    let _p = profile::span("handle_resolve_completion");
+    // TODO kb use the field to detect it's for autocompletion and do the insert logic
+    let _data = dbg!(original_completion).data;
+    Ok(original_completion)
+}
+
 pub(crate) fn handle_folding_range(
     snap: GlobalStateSnapshot,
     params: FoldingRangeParams,

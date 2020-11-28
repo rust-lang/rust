@@ -231,6 +231,35 @@ pub(crate) fn completion_item(
         None => vec![res],
     };
 
+    // TODO kb need to get this logic away and store for the later resolve request
+    /*
+    let mut label = self.label;
+    let mut lookup = self.lookup;
+    let mut insert_text = self.insert_text;
+    let mut text_edits = TextEdit::builder();
+
+    if let Some((import_path, import_scope, merge_behaviour)) = completion_item.import_data.as_ref() {
+        let import = mod_path_to_ast(&import_path);
+            let mut import_path_without_last_segment = import_path;
+            let _ = import_path_without_last_segment.segments.pop();
+
+            if !import_path_without_last_segment.segments.is_empty() {
+                if lookup.is_none() {
+                    lookup = Some(label.clone());
+                }
+                if insert_text.is_none() {
+                    insert_text = Some(label.clone());
+                }
+                label = format!("{}::{}", import_path_without_last_segment, label);
+            }
+
+            let rewriter = insert_use(&import_scope, import, merge_behaviour);
+            if let Some(old_ast) = rewriter.rewrite_root() {
+                algo::diff(&old_ast, &rewriter.rewrite(&old_ast)).into_text_edit(&mut text_edits);
+            }
+    }
+    */
+
     for mut r in all_results.iter_mut() {
         r.insert_text_format = Some(insert_text_format(completion_item.insert_text_format()));
     }
