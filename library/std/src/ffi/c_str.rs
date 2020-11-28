@@ -3,11 +3,13 @@
 #[cfg(test)]
 mod tests;
 
+use crate::alloc::{AllocRef, Global};
 use crate::ascii;
 use crate::borrow::{Borrow, Cow};
 use crate::cmp::Ordering;
 use crate::error::Error;
 use crate::fmt::{self, Write};
+use crate::hash;
 use crate::io;
 use crate::mem;
 use crate::memchr;
@@ -109,14 +111,14 @@ use crate::sys;
 /// documentation of `CString` before use, as improper ownership management
 /// of `CString` instances can lead to invalid memory accesses, memory leaks,
 /// and other memory errors.
-#[derive(PartialEq, PartialOrd, Eq, Ord, Hash, Clone)]
+#[derive(PartialEq, PartialOrd, Eq, Ord, Clone)]
 #[cfg_attr(not(test), rustc_diagnostic_item = "cstring_type")]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct CString {
+pub struct CString<#[unstable(feature = "allocator_api", issue = "32838")] A: AllocRef = Global> {
     // Invariant 1: the slice ends with a zero byte and has a length of at least one.
     // Invariant 2: the slice contains only one zero byte.
     // Improper usage of unsafe function can break Invariant 2, but not Invariant 1.
-    inner: Box<[u8]>,
+    inner: Box<[u8], A>,
 }
 
 /// Representation of a borrowed C string.
@@ -219,7 +221,7 @@ pub struct CStr {
 /// ```
 #[derive(Clone, PartialEq, Eq, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct NulError(usize, Vec<u8>);
+pub struct NulError<#[unstable(feature = "allocator_api", issue = "32838")] A: AllocRef = Global>(usize, Vec<u8, A>);
 
 /// An error indicating that a nul byte was not in the expected position.
 ///
@@ -258,11 +260,11 @@ pub struct FromBytesWithNulError {
 ///
 /// let _: FromVecWithNulError = CString::from_vec_with_nul(b"f\0oo".to_vec()).unwrap_err();
 /// ```
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Eq)]
 #[unstable(feature = "cstring_from_vec_with_nul", issue = "73179")]
-pub struct FromVecWithNulError {
+pub struct FromVecWithNulError<#[unstable(feature = "allocator_api", issue = "32838")] A: AllocRef = Global> {
     error_kind: FromBytesWithNulErrorKind,
-    bytes: Vec<u8>,
+    bytes: Vec<u8, A>,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -281,7 +283,7 @@ impl FromBytesWithNulError {
 }
 
 #[unstable(feature = "cstring_from_vec_with_nul", issue = "73179")]
-impl FromVecWithNulError {
+impl<A: AllocRef> FromVecWithNulError<A> {
     /// Returns a slice of [`u8`]s bytes that were attempted to convert to a [`CString`].
     ///
     /// # Examples
@@ -324,7 +326,7 @@ impl FromVecWithNulError {
     ///
     /// assert_eq!(bytes, value.unwrap_err().into_bytes());
     /// ```
-    pub fn into_bytes(self) -> Vec<u8> {
+    pub fn into_bytes(self) -> Vec<u8, A> {
         self.bytes
     }
 }
@@ -337,10 +339,10 @@ impl FromVecWithNulError {
 ///
 /// This `struct` is created by [`CString::into_string()`]. See
 /// its documentation for more.
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Eq)]
 #[stable(feature = "cstring_into", since = "1.7.0")]
-pub struct IntoStringError {
-    inner: CString,
+pub struct IntoStringError<#[unstable(feature = "allocator_api", issue = "32838")] A: AllocRef = Global> {
+    inner: CString<A>,
     error: Utf8Error,
 }
 
@@ -373,7 +375,7 @@ impl CString {
     /// internal 0 byte. The [`NulError`] returned will contain the bytes as well as
     /// the position of the nul byte.
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn new<T: Into<Vec<u8>>>(t: T) -> Result<CString, NulError> {
+    pub fn new<T: Into<Vec<u8>>>(t: T) -> Result<Self, NulError> {
         trait SpecIntoVec {
             fn into_vec(self) -> Vec<u8>;
         }
@@ -399,37 +401,6 @@ impl CString {
         }
 
         Self::_new(SpecIntoVec::into_vec(t))
-    }
-
-    fn _new(bytes: Vec<u8>) -> Result<CString, NulError> {
-        match memchr::memchr(0, &bytes) {
-            Some(i) => Err(NulError(i, bytes)),
-            None => Ok(unsafe { CString::from_vec_unchecked(bytes) }),
-        }
-    }
-
-    /// Creates a C-compatible string by consuming a byte vector,
-    /// without checking for interior 0 bytes.
-    ///
-    /// This method is equivalent to [`CString::new`] except that no runtime
-    /// assertion is made that `v` contains no 0 bytes, and it requires an
-    /// actual byte vector, not anything that can be converted to one with Into.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::ffi::CString;
-    ///
-    /// let raw = b"foo".to_vec();
-    /// unsafe {
-    ///     let c_string = CString::from_vec_unchecked(raw);
-    /// }
-    /// ```
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub unsafe fn from_vec_unchecked(mut v: Vec<u8>) -> CString {
-        v.reserve_exact(1);
-        v.push(0);
-        CString { inner: v.into_boxed_slice() }
     }
 
     /// Retakes ownership of a `CString` that was transferred to C via
@@ -477,7 +448,7 @@ impl CString {
     /// }
     /// ```
     #[stable(feature = "cstr_memory", since = "1.4.0")]
-    pub unsafe fn from_raw(ptr: *mut c_char) -> CString {
+    pub unsafe fn from_raw(ptr: *mut c_char) -> Self {
         // SAFETY: This is called with a pointer that was obtained from a call
         // to `CString::into_raw` and the length has not been modified. As such,
         // we know there is a NUL byte (and only one) at the end and that the
@@ -487,6 +458,76 @@ impl CString {
             let len = sys::strlen(ptr) + 1; // Including the NUL byte
             let slice = slice::from_raw_parts_mut(ptr, len as usize);
             CString { inner: Box::from_raw(slice as *mut [c_char] as *mut [u8]) }
+        }
+    }
+}
+
+impl<A: AllocRef> CString<A> {
+    fn _new(bytes: Vec<u8, A>) -> Result<Self, NulError<A>> {
+        match memchr::memchr(0, &bytes) {
+            Some(i) => Err(NulError(i, bytes)),
+            None => Ok(unsafe { Self::from_vec_unchecked(bytes) }),
+        }
+    }
+
+    /// Creates a C-compatible string by consuming a byte vector,
+    /// without checking for interior 0 bytes.
+    ///
+    /// This method is equivalent to [`CString::new`] except that no runtime
+    /// assertion is made that `v` contains no 0 bytes, and it requires an
+    /// actual byte vector, not anything that can be converted to one with Into.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::ffi::CString;
+    ///
+    /// let raw = b"foo".to_vec();
+    /// unsafe {
+    ///     let c_string = CString::from_vec_unchecked(raw);
+    /// }
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub unsafe fn from_vec_unchecked(mut v: Vec<u8, A>) -> Self {
+        v.reserve_exact(1);
+        v.push(0);
+        Self { inner: v.into_boxed_slice() }
+    }
+
+    /// Retakes ownership of a `CString` that was transferred to C via
+    /// [`CString::into_raw`].
+    ///
+    /// Additionally, the length of the string will be recalculated from the pointer.
+    ///
+    /// # Safety
+    ///
+    /// This should only ever be called with a pointer that was earlier
+    /// obtained by calling [`CString::into_raw`]. Other usage (e.g., trying to take
+    /// ownership of a string that was allocated by foreign code) is likely to lead
+    /// to undefined behavior or allocator corruption.
+    ///
+    /// It should be noted that the length isn't just "recomputed," but that
+    /// the recomputed length must match the original length from the
+    /// [`CString::into_raw`] call. This means the [`CString::into_raw`]/`from_raw`
+    /// methods should not be used when passing the string to C functions that can
+    /// modify the string's length.
+    ///
+    /// > **Note:** If you need to borrow a string that was allocated by
+    /// > foreign code, use [`CStr`]. If you need to take ownership of
+    /// > a string that was allocated by foreign code, you will need to
+    /// > make your own provisions for freeing it appropriately, likely
+    /// > with the foreign code's API to do that.
+    #[stable(feature = "cstr_memory", since = "1.4.0")]
+    pub unsafe fn from_raw_in(ptr: *mut c_char, alloc: A) -> Self {
+        // SAFETY: This is called with a pointer that was obtained from a call
+        // to `CString::into_raw` and the length has not been modified. As such,
+        // we know there is a NUL byte (and only one) at the end and that the
+        // information about the size of the allocation is correct on Rust's
+        // side.
+        unsafe {
+            let len = sys::strlen(ptr) + 1; // Including the NUL byte
+            let slice = slice::from_raw_parts_mut(ptr, len as usize);
+            CString { inner: Box::from_raw_in(slice as *mut [c_char] as *mut [u8], alloc) }
         }
     }
 
@@ -549,7 +590,7 @@ impl CString {
     /// ```
 
     #[stable(feature = "cstring_into", since = "1.7.0")]
-    pub fn into_string(self) -> Result<String, IntoStringError> {
+    pub fn into_string(self) -> Result<String<A>, IntoStringError<A>> {
         String::from_utf8(self.into_bytes()).map_err(|e| IntoStringError {
             error: e.utf8_error(),
             inner: unsafe { CString::from_vec_unchecked(e.into_bytes()) },
@@ -572,7 +613,7 @@ impl CString {
     /// assert_eq!(bytes, vec![b'f', b'o', b'o']);
     /// ```
     #[stable(feature = "cstring_into", since = "1.7.0")]
-    pub fn into_bytes(self) -> Vec<u8> {
+    pub fn into_bytes(self) -> Vec<u8, A> {
         let mut vec = self.into_inner().into_vec();
         let _nul = vec.pop();
         debug_assert_eq!(_nul, Some(0u8));
@@ -592,7 +633,7 @@ impl CString {
     /// assert_eq!(bytes, vec![b'f', b'o', b'o', b'\0']);
     /// ```
     #[stable(feature = "cstring_into", since = "1.7.0")]
-    pub fn into_bytes_with_nul(self) -> Vec<u8> {
+    pub fn into_bytes_with_nul(self) -> Vec<u8, A> {
         self.into_inner().into_vec()
     }
 
@@ -667,12 +708,13 @@ impl CString {
     ///            CStr::from_bytes_with_nul(b"foo\0").expect("CStr::from_bytes_with_nul failed"));
     /// ```
     #[stable(feature = "into_boxed_c_str", since = "1.20.0")]
-    pub fn into_boxed_c_str(self) -> Box<CStr> {
-        unsafe { Box::from_raw(Box::into_raw(self.into_inner()) as *mut CStr) }
+    pub fn into_boxed_c_str(self) -> Box<CStr, A> {
+        let (s, alloc) = Box::into_raw_with_alloc(self.into_inner());
+        unsafe { Box::from_raw_in(s as *mut CStr, alloc) }
     }
 
     /// Bypass "move out of struct which implements [`Drop`] trait" restriction.
-    fn into_inner(self) -> Box<[u8]> {
+    fn into_inner(self) -> Box<[u8], A> {
         // Rationale: `mem::forget(self)` invalidates the previous call to `ptr::read(&self.inner)`
         // so we use `ManuallyDrop` to ensure `self` is not dropped.
         // Then we can return the box directly without invalidating it.
@@ -700,7 +742,7 @@ impl CString {
     /// );
     /// ```
     #[unstable(feature = "cstring_from_vec_with_nul", issue = "73179")]
-    pub unsafe fn from_vec_with_nul_unchecked(v: Vec<u8>) -> Self {
+    pub unsafe fn from_vec_with_nul_unchecked(v: Vec<u8, A>) -> Self {
         Self { inner: v.into_boxed_slice() }
     }
 
@@ -740,7 +782,7 @@ impl CString {
     /// let _: FromVecWithNulError = CString::from_vec_with_nul(b"abc".to_vec()).unwrap_err();
     /// ```
     #[unstable(feature = "cstring_from_vec_with_nul", issue = "73179")]
-    pub fn from_vec_with_nul(v: Vec<u8>) -> Result<Self, FromVecWithNulError> {
+    pub fn from_vec_with_nul(v: Vec<u8, A>) -> Result<Self, FromVecWithNulError<A>> {
         let nul_pos = memchr::memchr(0, &v);
         match nul_pos {
             Some(nul_pos) if nul_pos + 1 == v.len() => {
@@ -764,7 +806,7 @@ impl CString {
 // memory-unsafe code from working by accident. Inline
 // to prevent LLVM from optimizing it away in debug builds.
 #[stable(feature = "cstring_drop", since = "1.13.0")]
-impl Drop for CString {
+impl<A: AllocRef> Drop for CString<A> {
     #[inline]
     fn drop(&mut self) {
         unsafe {
@@ -774,7 +816,7 @@ impl Drop for CString {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl ops::Deref for CString {
+impl<A: AllocRef> ops::Deref for CString<A> {
     type Target = CStr;
 
     #[inline]
@@ -784,19 +826,19 @@ impl ops::Deref for CString {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl fmt::Debug for CString {
+impl<A: AllocRef> fmt::Debug for CString<A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(&**self, f)
     }
 }
 
 #[stable(feature = "cstring_into", since = "1.7.0")]
-impl From<CString> for Vec<u8> {
+impl<A: AllocRef> From<CString<A>> for Vec<u8, A> {
     /// Converts a [`CString`] into a [`Vec`]`<u8>`.
     ///
     /// The conversion consumes the [`CString`], and removes the terminating NUL byte.
     #[inline]
-    fn from(s: CString) -> Vec<u8> {
+    fn from(s: CString<A>) -> Self {
         s.into_bytes()
     }
 }
@@ -829,8 +871,16 @@ impl Default for CString {
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<A: AllocRef> hash::Hash for CString<A> {
+    #[inline]
+    fn hash<H: hash::Hasher>(&self, hasher: &mut H) {
+        self.inner.hash(hasher)
+    }
+}
+
 #[stable(feature = "cstr_borrow", since = "1.3.0")]
-impl Borrow<CStr> for CString {
+impl<A: AllocRef> Borrow<CStr> for CString<A> {
     #[inline]
     fn borrow(&self) -> &CStr {
         self
@@ -865,28 +915,29 @@ impl From<Cow<'_, CStr>> for Box<CStr> {
 }
 
 #[stable(feature = "c_string_from_box", since = "1.18.0")]
-impl From<Box<CStr>> for CString {
+impl<A: AllocRef> From<Box<CStr, A>> for CString<A> {
     /// Converts a [`Box`]`<CStr>` into a [`CString`] without copying or allocating.
     #[inline]
-    fn from(s: Box<CStr>) -> CString {
+    fn from(s: Box<CStr, A>) -> Self {
         s.into_c_string()
     }
 }
 
 #[stable(feature = "cstring_from_vec_of_nonzerou8", since = "1.43.0")]
-impl From<Vec<NonZeroU8>> for CString {
+impl<A: AllocRef> From<Vec<NonZeroU8, A>> for CString<A> {
     /// Converts a [`Vec`]`<`[`NonZeroU8`]`>` into a [`CString`] without
     /// copying nor checking for inner null bytes.
     #[inline]
-    fn from(v: Vec<NonZeroU8>) -> CString {
+    fn from(v: Vec<NonZeroU8, A>) -> Self {
         unsafe {
             // Transmute `Vec<NonZeroU8>` to `Vec<u8>`.
-            let v: Vec<u8> = {
+            let v: Vec<u8, A> = {
                 // SAFETY:
                 //   - transmuting between `NonZeroU8` and `u8` is sound;
                 //   - `alloc::Layout<NonZeroU8> == alloc::Layout<u8>`.
-                let (ptr, len, cap): (*mut NonZeroU8, _, _) = Vec::into_raw_parts(v);
-                Vec::from_raw_parts(ptr.cast::<u8>(), len, cap)
+                let (ptr, len, cap, alloc): (*mut NonZeroU8, _, _, _) =
+                    Vec::into_raw_parts_with_alloc(v);
+                Vec::from_raw_parts_in(ptr.cast::<u8>(), len, cap, alloc)
             };
             // SAFETY: `v` cannot contain null bytes, given the type-level
             // invariant of `NonZeroU8`.
@@ -896,18 +947,20 @@ impl From<Vec<NonZeroU8>> for CString {
 }
 
 #[stable(feature = "more_box_slice_clone", since = "1.29.0")]
-impl Clone for Box<CStr> {
+impl<A: AllocRef + Clone> Clone for Box<CStr, A> {
     #[inline]
     fn clone(&self) -> Self {
-        (**self).into()
+        let alloc = Box::alloc_ref(self).clone();
+        // SAFETY: vector comes from `CStr` so it's valid
+        unsafe { CString::from_vec_unchecked(self.to_bytes().to_vec_in(alloc)).into_boxed_c_str() }
     }
 }
 
 #[stable(feature = "box_from_c_string", since = "1.20.0")]
-impl From<CString> for Box<CStr> {
+impl<A: AllocRef> From<CString<A>> for Box<CStr, A> {
     /// Converts a [`CString`] into a [`Box`]`<CStr>` without copying or allocating.
     #[inline]
-    fn from(s: CString) -> Box<CStr> {
+    fn from(s: CString<A>) -> Self {
         s.into_boxed_c_str()
     }
 }
@@ -915,7 +968,7 @@ impl From<CString> for Box<CStr> {
 #[stable(feature = "cow_from_cstr", since = "1.28.0")]
 impl<'a> From<CString> for Cow<'a, CStr> {
     #[inline]
-    fn from(s: CString) -> Cow<'a, CStr> {
+    fn from(s: CString) -> Self {
         Cow::Owned(s)
     }
 }
@@ -923,7 +976,7 @@ impl<'a> From<CString> for Cow<'a, CStr> {
 #[stable(feature = "cow_from_cstr", since = "1.28.0")]
 impl<'a> From<&'a CStr> for Cow<'a, CStr> {
     #[inline]
-    fn from(s: &'a CStr) -> Cow<'a, CStr> {
+    fn from(s: &'a CStr) -> Self {
         Cow::Borrowed(s)
     }
 }
@@ -931,7 +984,7 @@ impl<'a> From<&'a CStr> for Cow<'a, CStr> {
 #[stable(feature = "cow_from_cstr", since = "1.28.0")]
 impl<'a> From<&'a CString> for Cow<'a, CStr> {
     #[inline]
-    fn from(s: &'a CString) -> Cow<'a, CStr> {
+    fn from(s: &'a CString) -> Self {
         Cow::Borrowed(s.as_c_str())
     }
 }
@@ -940,7 +993,7 @@ impl<'a> From<&'a CString> for Cow<'a, CStr> {
 impl From<CString> for Arc<CStr> {
     /// Converts a [`CString`] into a [`Arc`]`<CStr>` without copying or allocating.
     #[inline]
-    fn from(s: CString) -> Arc<CStr> {
+    fn from(s: CString) -> Self {
         let arc: Arc<[u8]> = Arc::from(s.into_inner());
         unsafe { Arc::from_raw(Arc::into_raw(arc) as *const CStr) }
     }
@@ -949,7 +1002,7 @@ impl From<CString> for Arc<CStr> {
 #[stable(feature = "shared_from_slice2", since = "1.24.0")]
 impl From<&CStr> for Arc<CStr> {
     #[inline]
-    fn from(s: &CStr) -> Arc<CStr> {
+    fn from(s: &CStr) -> Self {
         let arc: Arc<[u8]> = Arc::from(s.to_bytes_with_nul());
         unsafe { Arc::from_raw(Arc::into_raw(arc) as *const CStr) }
     }
@@ -959,7 +1012,7 @@ impl From<&CStr> for Arc<CStr> {
 impl From<CString> for Rc<CStr> {
     /// Converts a [`CString`] into a [`Rc`]`<CStr>` without copying or allocating.
     #[inline]
-    fn from(s: CString) -> Rc<CStr> {
+    fn from(s: CString) -> Self {
         let rc: Rc<[u8]> = Rc::from(s.into_inner());
         unsafe { Rc::from_raw(Rc::into_raw(rc) as *const CStr) }
     }
@@ -968,7 +1021,7 @@ impl From<CString> for Rc<CStr> {
 #[stable(feature = "shared_from_slice2", since = "1.24.0")]
 impl From<&CStr> for Rc<CStr> {
     #[inline]
-    fn from(s: &CStr) -> Rc<CStr> {
+    fn from(s: &CStr) -> Self {
         let rc: Rc<[u8]> = Rc::from(s.to_bytes_with_nul());
         unsafe { Rc::from_raw(Rc::into_raw(rc) as *const CStr) }
     }
@@ -976,7 +1029,7 @@ impl From<&CStr> for Rc<CStr> {
 
 #[stable(feature = "default_box_extra", since = "1.17.0")]
 impl Default for Box<CStr> {
-    fn default() -> Box<CStr> {
+    fn default() -> Self {
         let boxed: Box<[u8]> = Box::from([0]);
         unsafe { Box::from_raw(Box::into_raw(boxed) as *mut CStr) }
     }
@@ -1068,10 +1121,20 @@ impl fmt::Display for FromBytesWithNulError {
 }
 
 #[unstable(feature = "cstring_from_vec_with_nul", issue = "73179")]
-impl Error for FromVecWithNulError {}
+impl<A: AllocRef> Error for FromVecWithNulError<A> {}
+
+#[stable(feature = "cstring_into", since = "1.7.0")]
+impl<A: AllocRef> fmt::Debug for FromVecWithNulError<A> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("FromVecWithNulError")
+            .field("error_kind", &self.error_kind)
+            .field("bytes", &self.bytes)
+            .finish()
+    }
+}
 
 #[unstable(feature = "cstring_from_vec_with_nul", issue = "73179")]
-impl fmt::Display for FromVecWithNulError {
+impl<A: AllocRef> fmt::Display for FromVecWithNulError<A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.error_kind {
             FromBytesWithNulErrorKind::InteriorNul(pos) => {
@@ -1084,11 +1147,11 @@ impl fmt::Display for FromVecWithNulError {
     }
 }
 
-impl IntoStringError {
+impl<A: AllocRef> IntoStringError<A> {
     /// Consumes this error, returning original [`CString`] which generated the
     /// error.
     #[stable(feature = "cstring_into", since = "1.7.0")]
-    pub fn into_cstring(self) -> CString {
+    pub fn into_cstring(self) -> CString<A> {
         self.inner
     }
 
@@ -1100,7 +1163,7 @@ impl IntoStringError {
 }
 
 #[stable(feature = "cstring_into", since = "1.7.0")]
-impl Error for IntoStringError {
+impl<A: AllocRef> Error for IntoStringError<A> {
     #[allow(deprecated)]
     fn description(&self) -> &str {
         "C string contained non-utf8 bytes"
@@ -1112,7 +1175,17 @@ impl Error for IntoStringError {
 }
 
 #[stable(feature = "cstring_into", since = "1.7.0")]
-impl fmt::Display for IntoStringError {
+impl<A: AllocRef> fmt::Debug for IntoStringError<A> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("IntoStringError")
+            .field("inner", &self.inner)
+            .field("error", &self.error)
+            .finish()
+    }
+}
+
+#[stable(feature = "cstring_into", since = "1.7.0")]
+impl<A: AllocRef> fmt::Display for IntoStringError<A> {
     #[allow(deprecated, deprecated_in_future)]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.description().fmt(f)
@@ -1433,9 +1506,9 @@ impl CStr {
     /// assert_eq!(boxed.into_c_string(), CString::new("foo").expect("CString::new failed"));
     /// ```
     #[stable(feature = "into_boxed_c_str", since = "1.20.0")]
-    pub fn into_c_string(self: Box<CStr>) -> CString {
-        let raw = Box::into_raw(self) as *mut [u8];
-        CString { inner: unsafe { Box::from_raw(raw) } }
+    pub fn into_c_string<A: AllocRef>(self: Box<CStr, A>) -> CString<A> {
+        let (raw, alloc) = Box::into_raw_with_alloc(self);
+        CString { inner: unsafe { Box::from_raw_in(raw as *mut [u8], alloc) } }
     }
 }
 
@@ -1483,7 +1556,7 @@ impl From<&CStr> for CString {
 }
 
 #[stable(feature = "cstring_asref", since = "1.7.0")]
-impl ops::Index<ops::RangeFull> for CString {
+impl<A: AllocRef> ops::Index<ops::RangeFull> for CString<A> {
     type Output = CStr;
 
     #[inline]
@@ -1522,7 +1595,7 @@ impl AsRef<CStr> for CStr {
 }
 
 #[stable(feature = "cstring_asref", since = "1.7.0")]
-impl AsRef<CStr> for CString {
+impl<A: AllocRef> AsRef<CStr> for CString<A> {
     #[inline]
     fn as_ref(&self) -> &CStr {
         self
