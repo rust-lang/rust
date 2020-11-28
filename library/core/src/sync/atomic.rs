@@ -1201,7 +1201,10 @@ impl<T> AtomicPtr<T> {
             }
         }
         #[cfg(not(bootstrap))]
-        // SAFETY: data races are prevented by atomic intrinsics.
+        // SAFETY: This intrinsic is unsafe because it operates on a raw pointer
+        // but we know for sure that the pointer is valid (we just got it from
+        // an `UnsafeCell` that we have by reference) and the atomic operation
+        // itself allows us to safely mutate the `UnsafeCell` contents.
         unsafe {
             atomic_compare_exchange_weak(self.p.get(), current, new, success, failure)
         }
