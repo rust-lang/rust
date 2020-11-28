@@ -572,6 +572,14 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
 
         self.visit_nested_impl_item(id);
     }
+
+    fn visit_foreign_item_ref(&mut self, fi: &'hir ForeignItemRef<'hir>) {
+        // Do not visit the duplicate information in ForeignItemRef. We want to
+        // map the actual nodes, not the duplicate ones in the *Ref.
+        let ForeignItemRef { id, ident: _, span: _, vis: _ } = *fi;
+
+        self.visit_nested_foreign_item(id);
+    }
 }
 
 struct HirItemLike<T> {
