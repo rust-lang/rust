@@ -535,12 +535,20 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
         self.patterns.iter().map(|r| r.head())
     }
 
-    /// Iterate over the first constructor of each row
+    /// Iterate over the first constructor of each row.
     pub(super) fn head_ctors<'a>(
         &'a self,
         cx: &'a MatchCheckCtxt<'p, 'tcx>,
-    ) -> impl Iterator<Item = &'a Constructor<'tcx>> + Captures<'a> + Captures<'p> {
+    ) -> impl Iterator<Item = &'a Constructor<'tcx>> + Captures<'p> {
         self.patterns.iter().map(move |r| r.head_ctor(cx))
+    }
+
+    /// Iterate over the first constructor and the corresponding span of each row.
+    pub(super) fn head_ctors_and_spans<'a>(
+        &'a self,
+        cx: &'a MatchCheckCtxt<'p, 'tcx>,
+    ) -> impl Iterator<Item = (&'a Constructor<'tcx>, Span)> + Captures<'p> {
+        self.patterns.iter().map(move |r| (r.head_ctor(cx), r.head().span))
     }
 
     /// This computes `S(constructor, self)`. See top of the file for explanations.
