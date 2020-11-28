@@ -236,7 +236,10 @@ impl<'a> Parser<'a> {
         }
 
         let prev_token_to_string = pprust::token_kind_to_string(&self.prev_token.kind);
-        let prev_token_seems_reserved_token = self.prev_token.is_ident() && Ident::from_str(&prev_token_to_string.to_lowercase()).is_reserved() && prev_token_to_string != prev_token_to_string.to_lowercase();
+        let prev_token_seems_reserved_token = !self.prev_token.is_path_segment_keyword()
+            && self.prev_token.is_ident()
+            && Ident::from_str(&prev_token_to_string.to_lowercase()).is_reserved()
+            && prev_token_to_string != prev_token_to_string.to_lowercase();
 
         let mut expected = edible
             .iter()
@@ -248,24 +251,29 @@ impl<'a> Parser<'a> {
         expected.dedup();
         let expect = tokens_to_string(&expected[..]);
         let actual = super::token_descr(&self.token);
-        let (msg_exp, (label_sp, label_exp)) = if prev_token_seems_reserved_token {
-            (
-                format!("`{:?}` is not a keyword", prev_token_to_string),
+        let (msg_exp, (label_sp, label_exp)) = if expected.len() > 1 {
+            if prev_token_seems_reserved_token {
                 (
-                    self.prev_token.span,
-                    format!("help: try {:?} instead", prev_token_to_string.to_lowercase()),
-                ),
-            )
-        } else if expected.len() > 1 {
-            let short_expect = if expected.len() > 6 {
-                format!("{} possible tokens", expected.len())
+                    format!("`{:?}` is not a keyword", prev_token_to_string),
+                    (
+                        self.prev_token.span,
+                        format!("help: try `{:?}` instead", prev_token_to_string.to_lowercase()),
+                    ),
+                )
             } else {
-                expect.clone()
-            };
-            (
-                format!("expected one of {}, found {}", expect, actual),
-                (self.prev_token.span.shrink_to_hi(), format!("expected one of {}", short_expect)),
-            )
+                let short_expect = if expected.len() > 6 {
+                    format!("{} possible tokens", expected.len())
+                } else {
+                    expect.clone()
+                };
+                (
+                    format!("expected one of {}, found {}", expect, actual),
+                    (
+                        self.prev_token.span.shrink_to_hi(),
+                        format!("expected one of {}", short_expect),
+                    ),
+                )
+            }
         } else if expected.is_empty() {
             (
                 format!("unexpected token: {}", actual),
@@ -278,11 +286,7 @@ impl<'a> Parser<'a> {
             )
         };
         self.last_unexpected_token_span = Some(self.token.span);
-        let mut err = if prev_token_seems_reserved_token {
-            self.struct_span_err(self.prev_token.span, &msg_exp)
-        } else {
-            self.struct_span_err(self.token.span, &msg_exp)
-        };
+        let mut err = self.struct_span_err(self.token.span, &msg_exp);
         let sp = if self.token == token::Eof {
             // This is EOF; don't want to point at the following char, but rather the last token.
             self.prev_token.span
@@ -330,11 +334,7 @@ impl<'a> Parser<'a> {
             err.span_label(self.token.span, label_exp);
         } else {
             err.span_label(sp, label_exp);
-            if prev_token_seems_reserved_token {
-                err.span_label(self.prev_token.span, "unexpected token");
-            } else {
-                err.span_label(self.token.span, "unexpected token");
-            }
+            err.span_label(self.token.span, "unexpected token");
         }
         self.maybe_annotate_with_ascription(&mut err, false);
         Err(err)
@@ -664,6 +664,10 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, ()> {
         if let ExprKind::Binary(binop, _, _) = &expr.kind {
             if let ast::BinOpKind::Lt = binop.node {
+                debug!(
+                    "check_mistyped_turbofish_with_multiple_type_params = {:?} {:?}",
+                    e, self.token
+                );
                 if self.eat(&token::Comma) {
                     let x = self.parse_seq_to_before_end(
                         &token::Gt,
