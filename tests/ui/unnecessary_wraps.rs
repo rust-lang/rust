@@ -109,6 +109,13 @@ impl B for A {
     }
 }
 
+fn issue_6384(s: &str) -> Option<&str> {
+    Some(match s {
+        "a" => "A",
+        _ => return None,
+    })
+}
+
 fn main() {
     // method calls are not linted
     func1(true, true);

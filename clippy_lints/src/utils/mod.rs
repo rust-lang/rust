@@ -572,6 +572,36 @@ pub fn contains_name(name: Symbol, expr: &Expr<'_>) -> bool {
     cn.result
 }
 
+/// Returns `true` if `expr` contains a return expression
+pub fn contains_return(expr: &hir::Expr<'_>) -> bool {
+    struct RetCallFinder {
+        found: bool,
+    }
+
+    impl<'tcx> hir::intravisit::Visitor<'tcx> for RetCallFinder {
+        type Map = Map<'tcx>;
+
+        fn visit_expr(&mut self, expr: &'tcx hir::Expr<'_>) {
+            if self.found {
+                return;
+            }
+            if let hir::ExprKind::Ret(..) = &expr.kind {
+                self.found = true;
+            } else {
+                hir::intravisit::walk_expr(self, expr);
+            }
+        }
+
+        fn nested_visit_map(&mut self) -> hir::intravisit::NestedVisitorMap<Self::Map> {
+            hir::intravisit::NestedVisitorMap::None
+        }
+    }
+
+    let mut visitor = RetCallFinder { found: false };
+    visitor.visit_expr(expr);
+    visitor.found
+}
+
 /// Converts a span to a code snippet if available, otherwise use default.
 ///
 /// This is useful if you want to provide suggestions for your lint or more generally, if you want

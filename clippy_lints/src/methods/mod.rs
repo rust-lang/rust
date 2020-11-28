@@ -14,10 +14,8 @@ use if_chain::if_chain;
 use rustc_ast::ast;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
-use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{TraitItem, TraitItemKind};
 use rustc_lint::{LateContext, LateLintPass, Lint, LintContext};
-use rustc_middle::hir::map::Map;
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, TraitRef, Ty, TyS};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
@@ -28,11 +26,12 @@ use crate::consts::{constant, Constant};
 use crate::utils::eager_or_lazy::is_lazyness_candidate;
 use crate::utils::usage::mutated_variables;
 use crate::utils::{
-    contains_ty, get_arg_name, get_parent_expr, get_trait_def_id, has_iter_method, higher, implements_trait, in_macro,
-    is_copy, is_expn_of, is_type_diagnostic_item, iter_input_pats, last_path_segment, match_def_path, match_qpath,
-    match_trait_method, match_type, match_var, meets_msrv, method_calls, method_chain_args, paths, remove_blocks,
-    return_ty, single_segment_path, snippet, snippet_with_applicability, snippet_with_macro_callsite, span_lint,
-    span_lint_and_help, span_lint_and_sugg, span_lint_and_then, sugg, walk_ptrs_ty_depth, SpanlessEq,
+    contains_return, contains_ty, get_arg_name, get_parent_expr, get_trait_def_id, has_iter_method, higher,
+    implements_trait, in_macro, is_copy, is_expn_of, is_type_diagnostic_item, iter_input_pats, last_path_segment,
+    match_def_path, match_qpath, match_trait_method, match_type, match_var, meets_msrv, method_calls,
+    method_chain_args, paths, remove_blocks, return_ty, single_segment_path, snippet, snippet_with_applicability,
+    snippet_with_macro_callsite, span_lint, span_lint_and_help, span_lint_and_sugg, span_lint_and_then, sugg,
+    walk_ptrs_ty_depth, SpanlessEq,
 };
 use semver::{Version, VersionReq};
 
@@ -3875,36 +3874,6 @@ fn is_bool(ty: &hir::Ty<'_>) -> bool {
     } else {
         false
     }
-}
-
-// Returns `true` if `expr` contains a return expression
-fn contains_return(expr: &hir::Expr<'_>) -> bool {
-    struct RetCallFinder {
-        found: bool,
-    }
-
-    impl<'tcx> intravisit::Visitor<'tcx> for RetCallFinder {
-        type Map = Map<'tcx>;
-
-        fn visit_expr(&mut self, expr: &'tcx hir::Expr<'_>) {
-            if self.found {
-                return;
-            }
-            if let hir::ExprKind::Ret(..) = &expr.kind {
-                self.found = true;
-            } else {
-                intravisit::walk_expr(self, expr);
-            }
-        }
-
-        fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<Self::Map> {
-            intravisit::NestedVisitorMap::None
-        }
-    }
-
-    let mut visitor = RetCallFinder { found: false };
-    visitor.visit_expr(expr);
-    visitor.found
 }
 
 fn check_pointer_offset(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[hir::Expr<'_>]) {
