@@ -1,6 +1,5 @@
-use crate::methods::contains_return;
 use crate::utils::{
-    in_macro, is_type_diagnostic_item, match_qpath, paths, return_ty, snippet, span_lint_and_then,
+    contains_return, in_macro, is_type_diagnostic_item, match_qpath, paths, return_ty, snippet, span_lint_and_then,
     visitors::find_all_ret_expressions,
 };
 use if_chain::if_chain;
