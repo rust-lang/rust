@@ -1,6 +1,6 @@
 #![allow(clippy::redundant_clone)]
 #![feature(custom_inner_attributes)]
-#![clippy::msrv = "^1.0"]
+#![clippy::msrv = "1.0"]
 
 fn manual_strip_msrv() {
     let s = "hello, world!";
