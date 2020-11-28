@@ -12,7 +12,8 @@ declare_clippy_lint! {
     /// **Why is this bad?** `if` is not guaranteed to be exhaustive and conditionals can get
     /// repetitive
     ///
-    /// **Known problems:** None.
+    /// **Known problems:** The match statement may be slower due to the compiler
+    /// not inlining the call to cmp. See issue #5354
     ///
     /// **Example:**
     /// ```rust,ignore
