@@ -104,7 +104,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClosureCall {
                 cx: &'a LateContext<'tcx>,
                 path: &'tcx hir::Path<'tcx>,
                 count: usize,
-            };
+            }
             impl<'a, 'tcx> hir_visit::Visitor<'tcx> for ClosureUsageCount<'a, 'tcx> {
                 type Map = Map<'tcx>;
 
@@ -124,7 +124,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClosureCall {
                 fn nested_visit_map(&mut self) -> hir_visit::NestedVisitorMap<Self::Map> {
                     hir_visit::NestedVisitorMap::OnlyBodies(self.cx.tcx.hir())
                 }
-            };
+            }
             let mut closure_usage_count = ClosureUsageCount { cx, path, count: 0 };
             closure_usage_count.visit_block(block);
             closure_usage_count.count
