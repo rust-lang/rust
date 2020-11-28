@@ -769,6 +769,7 @@ impl EncodeContext<'a, 'tcx> {
             });
             record!(self.tables.span[def_id] <- tcx.def_span(def_id));
             record!(self.tables.attributes[def_id] <- tcx.get_attrs(def_id));
+            record!(self.tables.expn_that_defined[def_id] <- self.tcx.expansion_that_defined(def_id));
             if should_encode_visibility(def_kind) {
                 record!(self.tables.visibility[def_id] <- self.tcx.visibility(def_id));
             }
@@ -799,7 +800,6 @@ impl EncodeContext<'a, 'tcx> {
         };
 
         record!(self.tables.kind[def_id] <- EntryKind::Variant(self.lazy(data)));
-        record!(self.tables.expn_that_defined[def_id] <- self.tcx.expansion_that_defined(def_id));
         record!(self.tables.children[def_id] <- variant.fields.iter().map(|f| {
             assert!(f.did.is_local());
             f.did.index
@@ -910,7 +910,6 @@ impl EncodeContext<'a, 'tcx> {
         debug!("EncodeContext::encode_field({:?})", def_id);
 
         record!(self.tables.kind[def_id] <- EntryKind::Field);
-        record!(self.tables.expn_that_defined[def_id] <- self.tcx.expansion_that_defined(def_id));
         self.encode_ident_span(def_id, field.ident);
         self.encode_stability(def_id);
         self.encode_deprecation(def_id);
@@ -933,7 +932,6 @@ impl EncodeContext<'a, 'tcx> {
         };
 
         record!(self.tables.kind[def_id] <- EntryKind::Struct(self.lazy(data), adt_def.repr));
-        record!(self.tables.expn_that_defined[def_id] <- self.tcx.expansion_that_defined(def_id));
         self.encode_stability(def_id);
         self.encode_deprecation(def_id);
         self.encode_item_type(def_id);
@@ -1380,7 +1378,6 @@ impl EncodeContext<'a, 'tcx> {
             }
         };
         record!(self.tables.kind[def_id] <- entry_kind);
-        record!(self.tables.expn_that_defined[def_id] <- self.tcx.expansion_that_defined(def_id));
         // FIXME(eddyb) there should be a nicer way to do this.
         match item.kind {
             hir::ItemKind::ForeignMod { items, .. } => record!(self.tables.children[def_id] <-
