@@ -15,8 +15,8 @@ cranelift-module = { git = "https://github.com/bytecodealliance/wasmtime/", bran
 cranelift-simplejit = { git = "https://github.com/bytecodealliance/wasmtime/", branch = "main", optional = true }
 cranelift-object = { git = "https://github.com/bytecodealliance/wasmtime/", branch = "main" }
 target-lexicon = "0.11.0"
-gimli = { version = "0.22.0", default-features = false, features = ["write"]}
-object = { version = "0.21.1", default-features = false, features = ["std", "read_core", "write", "coff", "elf", "macho", "pe"] }
+gimli = { version = "0.23.0", default-features = false, features = ["write"]}
+object = { version = "0.22.0", default-features = false, features = ["std", "read_core", "write", "coff", "elf", "macho", "pe"] }
 
 ar = { git = "https://github.com/bjorn3/rust-ar.git", branch = "do_not_remove_cg_clif_ranlib" }
 indexmap = "1.0.2"

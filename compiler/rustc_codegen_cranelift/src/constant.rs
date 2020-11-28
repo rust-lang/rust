@@ -163,10 +163,7 @@ pub(crate) fn codegen_const_value<'tcx>(
     assert!(!layout.is_unsized(), "sized const value");
 
     if layout.is_zst() {
-        return CValue::by_ref(
-            crate::Pointer::dangling(layout.align.pref),
-            layout,
-        );
+        return CValue::by_ref(crate::Pointer::dangling(layout.align.pref), layout);
     }
 
     match const_val {
@@ -186,9 +183,7 @@ pub(crate) fn codegen_const_value<'tcx>(
             }
 
             match x {
-                Scalar::Int(int) => {
-                    CValue::const_val(fx, layout, int)
-                }
+                Scalar::Int(int) => CValue::const_val(fx, layout, int),
                 Scalar::Ptr(ptr) => {
                     let alloc_kind = fx.tcx.get_global_alloc(ptr.alloc_id);
                     let base_addr = match alloc_kind {

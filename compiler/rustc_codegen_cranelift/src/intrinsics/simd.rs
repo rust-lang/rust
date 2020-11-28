@@ -35,30 +35,33 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             });
         };
 
-        // FIXME support float comparisons
         simd_eq, (c x, c y) {
             validate_simd_type!(fx, intrinsic, span, x.layout().ty);
-            simd_cmp!(fx, Equal(x, y) -> ret);
+            simd_cmp!(fx, Equal|Equal(x, y) -> ret);
         };
         simd_ne, (c x, c y) {
             validate_simd_type!(fx, intrinsic, span, x.layout().ty);
-            simd_cmp!(fx, NotEqual(x, y) -> ret);
+            simd_cmp!(fx, NotEqual|NotEqual(x, y) -> ret);
         };
         simd_lt, (c x, c y) {
             validate_simd_type!(fx, intrinsic, span, x.layout().ty);
-            simd_cmp!(fx, UnsignedLessThan|SignedLessThan(x, y) -> ret);
+            simd_cmp!(fx, UnsignedLessThan|SignedLessThan|LessThan(x, y) -> ret);
         };
         simd_le, (c x, c y) {
             validate_simd_type!(fx, intrinsic, span, x.layout().ty);
-            simd_cmp!(fx, UnsignedLessThanOrEqual|SignedLessThanOrEqual(x, y) -> ret);
+            simd_cmp!(fx, UnsignedLessThanOrEqual|SignedLessThanOrEqual|LessThanOrEqual(x, y) -> ret);
         };
         simd_gt, (c x, c y) {
             validate_simd_type!(fx, intrinsic, span, x.layout().ty);
-            simd_cmp!(fx, UnsignedGreaterThan|SignedGreaterThan(x, y) -> ret);
+            simd_cmp!(fx, UnsignedGreaterThan|SignedGreaterThan|GreaterThan(x, y) -> ret);
         };
         simd_ge, (c x, c y) {
             validate_simd_type!(fx, intrinsic, span, x.layout().ty);
-            simd_cmp!(fx, UnsignedGreaterThanOrEqual|SignedGreaterThanOrEqual(x, y) -> ret);
+            simd_cmp!(
+                fx,
+                UnsignedGreaterThanOrEqual|SignedGreaterThanOrEqual|GreaterThanOrEqual
+                (x, y) -> ret
+            );
         };
 
         // simd_shuffle32<T, U>(x: T, y: T, idx: [u32; 32]) -> U
@@ -107,9 +110,9 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
 
             for (out_idx, in_idx) in indexes.into_iter().enumerate() {
                 let in_lane = if in_idx < lane_count {
-                    x.value_field(fx, mir::Field::new(in_idx.try_into().unwrap()))
+                    x.value_field(fx, mir::Field::new(in_idx.into()))
                 } else {
-                    y.value_field(fx, mir::Field::new((in_idx - lane_count).try_into().unwrap()))
+                    y.value_field(fx, mir::Field::new((in_idx - lane_count).into()))
                 };
                 let out_lane = ret.place_field(fx, mir::Field::new(out_idx));
                 out_lane.write_cvalue(fx, in_lane);
@@ -143,10 +146,17 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             let idx_const = if let Some(idx_const) = crate::constant::mir_operand_get_const_val(fx, idx) {
                 idx_const
             } else {
-                fx.tcx.sess.span_fatal(
+                fx.tcx.sess.span_warn(
                     span,
                     "Index argument for `simd_extract` is not a constant",
                 );
+                let res = crate::trap::trap_unimplemented_ret_value(
+                    fx,
+                    ret.layout(),
+                    "Index argument for `simd_extract` is not a constant",
+                );
+                ret.write_cvalue(fx, res);
+                return;
             };
 
             let idx = idx_const.val.try_to_bits(Size::from_bytes(4 /* u32*/)).unwrap_or_else(|| panic!("kind not scalar: {:?}", idx_const));
@@ -207,7 +217,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             assert_eq!(lane_count, ret_lane_count);
 
             for lane in 0..lane_count {
-                let lane = mir::Field::new(lane.try_into().unwrap());
+                let lane = mir::Field::new(lane.into());
                 let a_lane = a.value_field(fx, lane).load_scalar(fx);
                 let b_lane = b.value_field(fx, lane).load_scalar(fx);
                 let c_lane = c.value_field(fx, lane).load_scalar(fx);
@@ -228,11 +238,42 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             simd_flt_binop!(fx, fmax(x, y) -> ret);
         };
 
+        simd_reduce_add_ordered | simd_reduce_add_unordered, (c v) {
+            validate_simd_type!(fx, intrinsic, span, v.layout().ty);
+            simd_reduce(fx, v, ret, |fx, lane_layout, a, b| {
+                if lane_layout.ty.is_floating_point() {
+                    fx.bcx.ins().fadd(a, b)
+                } else {
+                    fx.bcx.ins().iadd(a, b)
+                }
+            });
+        };
+
+        simd_reduce_mul_ordered | simd_reduce_mul_unordered, (c v) {
+            validate_simd_type!(fx, intrinsic, span, v.layout().ty);
+            simd_reduce(fx, v, ret, |fx, lane_layout, a, b| {
+                if lane_layout.ty.is_floating_point() {
+                    fx.bcx.ins().fmul(a, b)
+                } else {
+                    fx.bcx.ins().imul(a, b)
+                }
+            });
+        };
+
+        simd_reduce_all, (c v) {
+            validate_simd_type!(fx, intrinsic, span, v.layout().ty);
+            simd_reduce_bool(fx, v, ret, |fx, a, b| fx.bcx.ins().band(a, b));
+        };
+
+        simd_reduce_any, (c v) {
+            validate_simd_type!(fx, intrinsic, span, v.layout().ty);
+            simd_reduce_bool(fx, v, ret, |fx, a, b| fx.bcx.ins().bor(a, b));
+        };
+
         // simd_fabs
         // simd_saturating_add
         // simd_bitmask
         // simd_select
-        // simd_reduce_add_{,un}ordered
         // simd_rem
     }
 }
