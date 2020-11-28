@@ -352,7 +352,7 @@ class StdHashMapProvider:
         ctrl = table["ctrl"]["pointer"]
 
         self.size = int(table["items"])
-        self.pair_type = table.type.template_argument(0)
+        self.pair_type = table.type.template_argument(0).strip_typedefs()
 
         self.new_layout = not table.type.has_key("data")
         if self.new_layout:
