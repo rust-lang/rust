@@ -459,7 +459,8 @@ declare_clippy_lint! {
     ///
     /// **Why is this bad?** Readability and needless complexity.
     ///
-    /// **Known problems:** None
+    /// **Known problems:** This lint falsely triggers, if there are arms with
+    /// `cfg` attributes that remove an arm evaluating to `false`.
     ///
     /// **Example:**
     /// ```rust
@@ -1167,13 +1168,16 @@ fn find_matches_sugg(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>], expr
         if b0 != b1;
         let if_guard = &b0_arms[0].guard;
         if if_guard.is_none() || b0_arms.len() == 1;
+        if b0_arms[0].attrs.is_empty();
         if b0_arms[1..].iter()
             .all(|arm| {
                 find_bool_lit(&arm.body.kind, desugared).map_or(false, |b| b == b0) &&
-                arm.guard.is_none()
+                arm.guard.is_none() && arm.attrs.is_empty()
             });
         then {
-            let mut applicability = Applicability::MachineApplicable;
+            // The suggestion may be incorrect, because some arms can have `cfg` attributes
+            // evaluated into `false` and so such arms will be stripped before.
+            let mut applicability = Applicability::MaybeIncorrect;
             let pat = {
                 use itertools::Itertools as _;
                 b0_arms.iter()
