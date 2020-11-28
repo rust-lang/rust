@@ -140,12 +140,7 @@ impl<'a> ExtCtxt<'a> {
     }
 
     pub fn stmt_expr(&self, expr: P<ast::Expr>) -> ast::Stmt {
-        ast::Stmt {
-            id: ast::DUMMY_NODE_ID,
-            span: expr.span,
-            kind: ast::StmtKind::Expr(expr),
-            tokens: None,
-        }
+        ast::Stmt { id: ast::DUMMY_NODE_ID, span: expr.span, kind: ast::StmtKind::Expr(expr) }
     }
 
     pub fn stmt_let(&self, sp: Span, mutbl: bool, ident: Ident, ex: P<ast::Expr>) -> ast::Stmt {
@@ -162,13 +157,9 @@ impl<'a> ExtCtxt<'a> {
             id: ast::DUMMY_NODE_ID,
             span: sp,
             attrs: AttrVec::new(),
-        });
-        ast::Stmt {
-            id: ast::DUMMY_NODE_ID,
-            kind: ast::StmtKind::Local(local),
-            span: sp,
             tokens: None,
-        }
+        });
+        ast::Stmt { id: ast::DUMMY_NODE_ID, kind: ast::StmtKind::Local(local), span: sp }
     }
 
     // Generates `let _: Type;`, which is usually used for type assertions.
@@ -180,17 +171,13 @@ impl<'a> ExtCtxt<'a> {
             id: ast::DUMMY_NODE_ID,
             span,
             attrs: AttrVec::new(),
+            tokens: None,
         });
-        ast::Stmt { id: ast::DUMMY_NODE_ID, kind: ast::StmtKind::Local(local), span, tokens: None }
+        ast::Stmt { id: ast::DUMMY_NODE_ID, kind: ast::StmtKind::Local(local), span }
     }
 
     pub fn stmt_item(&self, sp: Span, item: P<ast::Item>) -> ast::Stmt {
-        ast::Stmt {
-            id: ast::DUMMY_NODE_ID,
-            kind: ast::StmtKind::Item(item),
-            span: sp,
-            tokens: None,
-        }
+        ast::Stmt { id: ast::DUMMY_NODE_ID, kind: ast::StmtKind::Item(item), span: sp }
     }
 
     pub fn block_expr(&self, expr: P<ast::Expr>) -> P<ast::Block> {
@@ -200,7 +187,6 @@ impl<'a> ExtCtxt<'a> {
                 id: ast::DUMMY_NODE_ID,
                 span: expr.span,
                 kind: ast::StmtKind::Expr(expr),
-                tokens: None,
             }],
         )
     }

@@ -104,8 +104,9 @@ pub fn placeholder(
                 mac: mac_placeholder(),
                 style: ast::MacStmtStyle::Braces,
                 attrs: ast::AttrVec::new(),
+                tokens: None,
             });
-            ast::Stmt { id, span, kind: ast::StmtKind::MacCall(mac), tokens: None }
+            ast::Stmt { id, span, kind: ast::StmtKind::MacCall(mac) }
         }]),
         AstFragmentKind::Arms => AstFragment::Arms(smallvec![ast::Arm {
             attrs: Default::default(),
@@ -331,12 +332,8 @@ impl<'a, 'b> MutVisitor for PlaceholderExpander<'a, 'b> {
 
             // FIXME: We will need to preserve the original semicolon token and
             // span as part of #15701
-            let empty_stmt = ast::Stmt {
-                id: ast::DUMMY_NODE_ID,
-                kind: ast::StmtKind::Empty,
-                span: DUMMY_SP,
-                tokens: None,
-            };
+            let empty_stmt =
+                ast::Stmt { id: ast::DUMMY_NODE_ID, kind: ast::StmtKind::Empty, span: DUMMY_SP };
 
             if let Some(stmt) = stmts.pop() {
                 if stmt.has_trailing_semicolon() {

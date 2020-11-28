@@ -348,7 +348,7 @@ impl<T> MaybeUninit<T> {
     /// ```rust,no_run
     /// use std::mem::MaybeUninit;
     ///
-    /// enum NotZero { One = 1, Two = 2 };
+    /// enum NotZero { One = 1, Two = 2 }
     ///
     /// let x = MaybeUninit::<(u8, NotZero)>::zeroed();
     /// let x = unsafe { x.assume_init() };

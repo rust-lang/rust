@@ -1,14 +1,14 @@
 error[E0658]: attributes on expressions are experimental
-  --> $DIR/attr-stmt-expr.rs:19:5
+  --> $DIR/attr-stmt-expr.rs:24:5
    |
-LL |     #[expect_print_expr]
-   |     ^^^^^^^^^^^^^^^^^^^^
+LL |     #[expect_my_macro_expr]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
    = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
 
 error[E0658]: attributes on expressions are experimental
-  --> $DIR/attr-stmt-expr.rs:55:5
+  --> $DIR/attr-stmt-expr.rs:62:5
    |
 LL |     #[expect_expr]
    |     ^^^^^^^^^^^^^^

@@ -6,6 +6,7 @@
 #![feature(or_patterns)]
 
 use rustc_ast as ast;
+use rustc_ast::attr::HasAttrs;
 use rustc_ast::token::{self, DelimToken, Nonterminal, Token, TokenKind};
 use rustc_ast::tokenstream::{self, LazyTokenStream, TokenStream, TokenTree};
 use rustc_ast_pretty::pprust;
@@ -251,29 +252,23 @@ pub fn nt_to_tokenstream(nt: &Nonterminal, sess: &ParseSess, span: Span) -> Toke
     // before we fall back to the stringification.
 
     let convert_tokens =
-        |tokens: &Option<LazyTokenStream>| tokens.as_ref().map(|t| t.create_token_stream());
+        |tokens: Option<&LazyTokenStream>| tokens.as_ref().map(|t| t.create_token_stream());
 
     let tokens = match *nt {
         Nonterminal::NtItem(ref item) => prepend_attrs(&item.attrs, item.tokens.as_ref()),
-        Nonterminal::NtBlock(ref block) => convert_tokens(&block.tokens),
-        Nonterminal::NtStmt(ref stmt) => {
-            // FIXME: We currently only collect tokens for `:stmt`
-            // matchers in `macro_rules!` macros. When we start collecting
-            // tokens for attributes on statements, we will need to prepend
-            // attributes here
-            convert_tokens(&stmt.tokens)
-        }
-        Nonterminal::NtPat(ref pat) => convert_tokens(&pat.tokens),
-        Nonterminal::NtTy(ref ty) => convert_tokens(&ty.tokens),
+        Nonterminal::NtBlock(ref block) => convert_tokens(block.tokens.as_ref()),
+        Nonterminal::NtStmt(ref stmt) => prepend_attrs(stmt.attrs(), stmt.tokens()),
+        Nonterminal::NtPat(ref pat) => convert_tokens(pat.tokens.as_ref()),
+        Nonterminal::NtTy(ref ty) => convert_tokens(ty.tokens.as_ref()),
         Nonterminal::NtIdent(ident, is_raw) => {
             Some(tokenstream::TokenTree::token(token::Ident(ident.name, is_raw), ident.span).into())
         }
         Nonterminal::NtLifetime(ident) => {
             Some(tokenstream::TokenTree::token(token::Lifetime(ident.name), ident.span).into())
         }
-        Nonterminal::NtMeta(ref attr) => convert_tokens(&attr.tokens),
-        Nonterminal::NtPath(ref path) => convert_tokens(&path.tokens),
-        Nonterminal::NtVis(ref vis) => convert_tokens(&vis.tokens),
+        Nonterminal::NtMeta(ref attr) => convert_tokens(attr.tokens.as_ref()),
+        Nonterminal::NtPath(ref path) => convert_tokens(path.tokens.as_ref()),
+        Nonterminal::NtVis(ref vis) => convert_tokens(vis.tokens.as_ref()),
         Nonterminal::NtTT(ref tt) => Some(tt.clone().into()),
         Nonterminal::NtExpr(ref expr) | Nonterminal::NtLiteral(ref expr) => {
             if expr.tokens.is_none() {

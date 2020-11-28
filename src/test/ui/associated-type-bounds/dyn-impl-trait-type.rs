@@ -30,7 +30,7 @@ fn def_et3() -> Et3 {
     impl Tr1 for A {
         type As1 = core::ops::Range<u8>;
         fn mk(&self) -> Self::As1 { 0..10 }
-    };
+    }
     Box::new(A)
 }
 pub fn use_et3() {

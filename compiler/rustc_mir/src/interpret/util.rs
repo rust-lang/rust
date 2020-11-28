@@ -15,7 +15,7 @@ where
 
     struct UsedParamsNeedSubstVisitor<'tcx> {
         tcx: TyCtxt<'tcx>,
-    };
+    }
 
     impl<'tcx> TypeVisitor<'tcx> for UsedParamsNeedSubstVisitor<'tcx> {
         type BreakTy = ();

@@ -2345,7 +2345,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
         enum InitKind {
             Zeroed,
             Uninit,
-        };
+        }
 
         /// Information about why a type cannot be initialized this way.
         /// Contains an error message and optionally a span to point at.

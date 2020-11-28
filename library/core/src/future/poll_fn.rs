@@ -21,7 +21,7 @@ use crate::task::{Context, Poll};
 ///
 /// let read_future = poll_fn(read_line);
 /// assert_eq!(read_future.await, "Hello, World!".to_owned());
-/// # };
+/// # }
 /// ```
 #[unstable(feature = "future_poll_fn", issue = "72302")]
 pub fn poll_fn<T, F>(f: F) -> PollFn<F>

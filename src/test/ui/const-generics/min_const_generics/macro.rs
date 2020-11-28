@@ -15,14 +15,14 @@ impl<const N: usize> Marker<N> for Example<N> {}
 
 fn make_marker() -> impl Marker<{
     #[macro_export]
-    macro_rules! const_macro { () => {{ 3 }} }; inline!()
+    macro_rules! const_macro { () => {{ 3 }} } inline!()
 }> {
   Example::<{ const_macro!() }>
 }
 
 fn from_marker(_: impl Marker<{
     #[macro_export]
-    macro_rules! inline { () => {{ 3 }} }; inline!()
+    macro_rules! inline { () => {{ 3 }} } inline!()
 }>) {}
 
 fn main() {
@@ -30,7 +30,7 @@ fn main() {
     #[macro_export]
     macro_rules! gimme_a_const {
       ($rusty: ident) => {{ let $rusty = 3; *&$rusty }}
-    };
+    }
     gimme_a_const!(run)
   }>;
 
@@ -42,13 +42,13 @@ fn main() {
 
   let _ok: [u8; {
     #[macro_export]
-    macro_rules! const_two { () => {{ 2 }} };
+    macro_rules! const_two { () => {{ 2 }} }
     const_two!()
   }];
 
   let _ok = [0; {
     #[macro_export]
-    macro_rules! const_three { () => {{ 3 }} };
+    macro_rules! const_three { () => {{ 3 }} }
     const_three!()
   }];
   let _ok = [0; const_three!()];

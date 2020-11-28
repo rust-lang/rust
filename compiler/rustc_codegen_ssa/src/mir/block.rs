@@ -451,7 +451,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             Inhabited,
             ZeroValid,
             UninitValid,
-        };
+        }
         let panic_intrinsic = intrinsic.and_then(|i| match i {
             sym::assert_inhabited => Some(AssertIntrinsic::Inhabited),
             sym::assert_zero_valid => Some(AssertIntrinsic::ZeroValid),

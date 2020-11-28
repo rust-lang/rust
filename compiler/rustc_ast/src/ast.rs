@@ -901,10 +901,39 @@ pub struct Stmt {
     pub id: NodeId,
     pub kind: StmtKind,
     pub span: Span,
-    pub tokens: Option<LazyTokenStream>,
 }
 
 impl Stmt {
+    pub fn tokens(&self) -> Option<&LazyTokenStream> {
+        match self.kind {
+            StmtKind::Local(ref local) => local.tokens.as_ref(),
+            StmtKind::Item(ref item) => item.tokens.as_ref(),
+            StmtKind::Expr(ref expr) | StmtKind::Semi(ref expr) => expr.tokens.as_ref(),
+            StmtKind::Empty => None,
+            StmtKind::MacCall(ref mac) => mac.tokens.as_ref(),
+        }
+    }
+
+    pub fn tokens_mut(&mut self) -> Option<&mut LazyTokenStream> {
+        match self.kind {
+            StmtKind::Local(ref mut local) => local.tokens.as_mut(),
+            StmtKind::Item(ref mut item) => item.tokens.as_mut(),
+            StmtKind::Expr(ref mut expr) | StmtKind::Semi(ref mut expr) => expr.tokens.as_mut(),
+            StmtKind::Empty => None,
+            StmtKind::MacCall(ref mut mac) => mac.tokens.as_mut(),
+        }
+    }
+
+    pub fn set_tokens(&mut self, tokens: Option<LazyTokenStream>) {
+        match self.kind {
+            StmtKind::Local(ref mut local) => local.tokens = tokens,
+            StmtKind::Item(ref mut item) => item.tokens = tokens,
+            StmtKind::Expr(ref mut expr) | StmtKind::Semi(ref mut expr) => expr.tokens = tokens,
+            StmtKind::Empty => {}
+            StmtKind::MacCall(ref mut mac) => mac.tokens = tokens,
+        }
+    }
+
     pub fn has_trailing_semicolon(&self) -> bool {
         match &self.kind {
             StmtKind::Semi(_) => true,
@@ -912,18 +941,25 @@ impl Stmt {
             _ => false,
         }
     }
+
+    /// Converts a parsed `Stmt` to a `Stmt` with
+    /// a trailing semicolon.
+    ///
+    /// This only modifies the parsed AST struct, not the attached
+    /// `LazyTokenStream`. The parser is responsible for calling
+    /// `CreateTokenStream::add_trailing_semi` when there is actually
+    /// a semicolon in the tokenstream.
     pub fn add_trailing_semicolon(mut self) -> Self {
         self.kind = match self.kind {
             StmtKind::Expr(expr) => StmtKind::Semi(expr),
             StmtKind::MacCall(mac) => {
-                StmtKind::MacCall(mac.map(|MacCallStmt { mac, style: _, attrs }| MacCallStmt {
-                    mac,
-                    style: MacStmtStyle::Semicolon,
-                    attrs,
+                StmtKind::MacCall(mac.map(|MacCallStmt { mac, style: _, attrs, tokens }| {
+                    MacCallStmt { mac, style: MacStmtStyle::Semicolon, attrs, tokens }
                 }))
             }
             kind => kind,
         };
+
         self
     }
 
@@ -963,6 +999,7 @@ pub struct MacCallStmt {
     pub mac: MacCall,
     pub style: MacStmtStyle,
     pub attrs: AttrVec,
+    pub tokens: Option<LazyTokenStream>,
 }
 
 #[derive(Clone, Copy, PartialEq, Encodable, Decodable, Debug)]
@@ -988,6 +1025,7 @@ pub struct Local {
     pub init: Option<P<Expr>>,
     pub span: Span,
     pub attrs: AttrVec,
+    pub tokens: Option<LazyTokenStream>,
 }
 
 /// An arm of a 'match'.
