@@ -182,7 +182,9 @@ impl Attribute {
 
     pub fn name_value_literal_span(&self) -> Option<Span> {
         match self.kind {
-            AttrKind::Normal(ref item, _) => item.meta(self.span).and_then(|meta| meta.name_value_literal_span()),
+            AttrKind::Normal(ref item, _) => {
+                item.meta(self.span).and_then(|meta| meta.name_value_literal_span())
+            }
             AttrKind::DocComment(..) => None,
         }
     }
