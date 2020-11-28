@@ -62,7 +62,7 @@ error: `unimplemented` should not be present in production code
 LL |     unimplemented!("{} {}", "panic with", "multiple arguments");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: `unreachable` should not be present in production code
+error: usage of the `unreachable!` macro
   --> $DIR/panicking_macros.rs:32:5
    |
 LL |     unreachable!();
@@ -70,7 +70,7 @@ LL |     unreachable!();
    |
    = note: `-D clippy::unreachable` implied by `-D warnings`
 
-error: `unreachable` should not be present in production code
+error: usage of the `unreachable!` macro
   --> $DIR/panicking_macros.rs:33:5
    |
 LL |     unreachable!("message");
@@ -78,7 +78,7 @@ LL |     unreachable!("message");
    |
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: `unreachable` should not be present in production code
+error: usage of the `unreachable!` macro
   --> $DIR/panicking_macros.rs:34:5
    |
 LL |     unreachable!("{} {}", "panic with", "multiple arguments");
@@ -102,7 +102,7 @@ error: `unimplemented` should not be present in production code
 LL |     unimplemented!();
    |     ^^^^^^^^^^^^^^^^^
 
-error: `unreachable` should not be present in production code
+error: usage of the `unreachable!` macro
   --> $DIR/panicking_macros.rs:43:5
    |
 LL |     unreachable!();
