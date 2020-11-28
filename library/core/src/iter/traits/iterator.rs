@@ -582,7 +582,7 @@ pub trait Iterator {
     /// assert_eq!(hello, "Hello World");
     /// ```
     #[inline]
-    #[unstable(feature = "iter_intersperse", reason = "recently added", issue = "none")]
+    #[unstable(feature = "iter_intersperse", reason = "recently added", issue = "79524")]
     fn intersperse(self, separator: Self::Item) -> Intersperse<Self>
     where
         Self: Sized,

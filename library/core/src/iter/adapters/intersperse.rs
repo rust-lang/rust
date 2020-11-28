@@ -1,7 +1,7 @@
 use super::Peekable;
 
 /// An iterator adapter that places a separator between all elements.
-#[unstable(feature = "iter_intersperse", reason = "recently added", issue = "none")]
+#[unstable(feature = "iter_intersperse", reason = "recently added", issue = "79524")]
 #[derive(Debug, Clone)]
 pub struct Intersperse<I: Iterator>
 where
@@ -21,7 +21,7 @@ where
     }
 }
 
-#[unstable(feature = "iter_intersperse", reason = "recently added", issue = "none")]
+#[unstable(feature = "iter_intersperse", reason = "recently added", issue = "79524")]
 impl<I> Iterator for Intersperse<I>
 where
     I: Iterator,

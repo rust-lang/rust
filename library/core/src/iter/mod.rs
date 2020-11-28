@@ -395,7 +395,7 @@ pub use self::adapters::Cloned;
 pub use self::adapters::Copied;
 #[stable(feature = "iterator_flatten", since = "1.29.0")]
 pub use self::adapters::Flatten;
-#[unstable(feature = "iter_intersperse", reason = "recently added", issue = "none")]
+#[unstable(feature = "iter_intersperse", reason = "recently added", issue = "79524")]
 pub use self::adapters::Intersperse;
 #[unstable(feature = "iter_map_while", reason = "recently added", issue = "68537")]
 pub use self::adapters::MapWhile;
