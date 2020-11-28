@@ -41,7 +41,7 @@ static mut STATIC_MUTABILITY: u8 = 0;
 static STATIC_LINKAGE: u8 = 0;
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes")]
+#[rustc_clean(cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
 #[linkage="weak_odr"]
 static STATIC_LINKAGE: u8 = 0;
@@ -52,7 +52,7 @@ static STATIC_LINKAGE: u8 = 0;
 static STATIC_NO_MANGLE: u8 = 0;
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes")]
+#[rustc_clean(cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
 #[no_mangle]
 static STATIC_NO_MANGLE: u8 = 0;
@@ -63,7 +63,7 @@ static STATIC_NO_MANGLE: u8 = 0;
 static STATIC_THREAD_LOCAL: u8 = 0;
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes")]
+#[rustc_clean(cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
 #[thread_local]
 static STATIC_THREAD_LOCAL: u8 = 0;
