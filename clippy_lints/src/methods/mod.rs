@@ -3878,7 +3878,7 @@ fn is_bool(ty: &hir::Ty<'_>) -> bool {
 }
 
 // Returns `true` if `expr` contains a return expression
-fn contains_return(expr: &hir::Expr<'_>) -> bool {
+pub(crate) fn contains_return(expr: &hir::Expr<'_>) -> bool {
     struct RetCallFinder {
         found: bool,
     }
