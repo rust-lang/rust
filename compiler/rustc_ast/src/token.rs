@@ -717,6 +717,13 @@ pub enum NonterminalKind {
     TT,
 }
 
+/// Used when parsing a non-terminal (see `parse_nonterminal`) to determine if `:pat` should match
+/// `top_pat` or `pat<no_top_alt>`. See issue https://github.com/rust-lang/rust/pull/78935.
+pub enum OrPatNonterminalMode {
+    TopPat,
+    NoTopAlt,
+}
+
 impl NonterminalKind {
     pub fn from_symbol(symbol: Symbol) -> Option<NonterminalKind> {
         Some(match symbol {

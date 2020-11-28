@@ -76,7 +76,9 @@ use TokenTreeOrTokenTreeSlice::*;
 
 use crate::mbe::{self, TokenTree};
 
-use rustc_ast::token::{self, DocComment, Nonterminal, Token};
+use rustc_ast::token::{
+    self, BinOpToken, DocComment, Nonterminal, OrPatNonterminalMode, Token, TokenKind,
+};
 use rustc_parse::parser::Parser;
 use rustc_session::parse::ParseSess;
 use rustc_span::symbol::MacroRulesNormalizedIdent;
@@ -414,6 +416,27 @@ fn token_name_eq(t1: &Token, t2: &Token) -> bool {
     }
 }
 
+/// Check whether the next token in the matcher is `|` (i.e. if we are matching against `$foo:type
+/// |`). The reason is that when we stabilized the `or_patterns` feature, we wanted `:pat` to match
+/// top-level or-patterns too.  But doing that would cause a lot of breakage, since `|` could
+/// previously be a separator that follows `:pat`. Thus, we make a special case to parse `:pat` the
+/// old way if it happens to be followed by `|` in the matcher.
+///
+/// See https://github.com/rust-lang/rust/issues/54883 for more info.
+fn or_pat_mode(item: &MatcherPosHandle<'_, '_>) -> OrPatNonterminalMode {
+    if item.idx < item.top_elts.len() - 1 {
+        // Look at the token after the current one to see if it is `|`.
+        let tt = item.top_elts.get_tt(item.idx + 1);
+        if let TokenTree::Token(Token { kind: TokenKind::BinOp(BinOpToken::Or), .. }) = tt {
+            OrPatNonterminalMode::NoTopAlt
+        } else {
+            OrPatNonterminalMode::TopPat
+        }
+    } else {
+        OrPatNonterminalMode::TopPat
+    }
+}
+
 /// Process the matcher positions of `cur_items` until it is empty. In the process, this will
 /// produce more items in `next_items`, `eof_items`, and `bb_items`.
 ///
@@ -518,6 +541,8 @@ fn inner_parse_loop<'root, 'tt>(
         }
         // We are in the middle of a matcher.
         else {
+            let or_pat_mode = or_pat_mode(&item);
+
             // Look at what token in the matcher we are trying to match the current token (`token`)
             // against. Depending on that, we may generate new items.
             match item.top_elts.get_tt(idx) {
@@ -559,7 +584,7 @@ fn inner_parse_loop<'root, 'tt>(
                 TokenTree::MetaVarDecl(_, _, kind) => {
                     // Built-in nonterminals never start with these tokens,
                     // so we can eliminate them from consideration.
-                    if Parser::nonterminal_may_begin_with(kind, token) {
+                    if Parser::nonterminal_may_begin_with(kind, token, or_pat_mode) {
                         bb_items.push(item);
                     }
                 }
@@ -718,9 +743,10 @@ pub(super) fn parse_tt(parser: &mut Cow<'_, Parser<'_>>, ms: &[TokenTree]) -> Na
             assert_eq!(bb_items.len(), 1);
 
             let mut item = bb_items.pop().unwrap();
+            let or_pat_mode = or_pat_mode(&item);
             if let TokenTree::MetaVarDecl(span, _, kind) = item.top_elts.get_tt(item.idx) {
                 let match_cur = item.match_cur;
-                let nt = match parser.to_mut().parse_nonterminal(kind) {
+                let nt = match parser.to_mut().parse_nonterminal(kind, or_pat_mode) {
                     Err(mut err) => {
                         err.span_label(
                             span,
