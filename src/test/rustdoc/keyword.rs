@@ -14,3 +14,8 @@
 #[doc(keyword = "match")]
 /// this is a test!
 mod foo{}
+
+// @has foo/keyword.foo.html '//section[@id="main"]//div[@class="docblock"]//p' 'hello'
+#[doc(keyword = "foo")]
+/// hello
+mod bar {}
