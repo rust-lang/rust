@@ -70,7 +70,11 @@ pub(super) fn run_jit(tcx: TyCtxt<'_>) -> ! {
 
     let (mut jit_module, global_asm, _debug, mut unwind_context) =
         super::time(tcx, "codegen mono items", || {
-            super::codegen_mono_items(&mut cx, mono_items);
+            super::predefine_mono_items(&mut cx, &mono_items);
+            for (mono_item, (linkage, visibility)) in mono_items {
+                let linkage = crate::linkage::get_clif_linkage(mono_item, linkage, visibility);
+                super::codegen_mono_item(&mut cx, mono_item, linkage);
+            }
             tcx.sess.time("finalize CodegenCx", || cx.finalize())
         });
     if !global_asm.is_empty() {
@@ -81,11 +85,11 @@ pub(super) fn run_jit(tcx: TyCtxt<'_>) -> ! {
 
     tcx.sess.abort_if_errors();
 
-    let jit_product = jit_module.finish();
+    jit_module.finalize_definitions();
 
-    let _unwind_register_guard = unsafe { unwind_context.register_jit(&jit_product) };
+    let _unwind_register_guard = unsafe { unwind_context.register_jit(&jit_module) };
 
-    let finalized_main: *const u8 = jit_product.lookup_func(main_func_id);
+    let finalized_main: *const u8 = jit_module.get_finalized_function(main_func_id);
 
     println!("Rustc codegen cranelift will JIT run the executable, because --jit was passed");
 
@@ -140,11 +144,11 @@ fn load_imported_symbols_for_jit(tcx: TyCtxt<'_>) -> Vec<(String, *const u8)> {
 
     let mut imported_symbols = Vec::new();
     for path in dylib_paths {
-        use object::Object;
+        use object::{Object, ObjectSymbol};
         let lib = libloading::Library::new(&path).unwrap();
         let obj = std::fs::read(path).unwrap();
         let obj = object::File::parse(&obj).unwrap();
-        imported_symbols.extend(obj.dynamic_symbols().filter_map(|(_idx, symbol)| {
+        imported_symbols.extend(obj.dynamic_symbols().filter_map(|symbol| {
             let name = symbol.name().unwrap().to_string();
             if name.is_empty() || !symbol.is_global() || symbol.is_undefined() {
                 return None;

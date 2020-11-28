@@ -30,8 +30,16 @@ pub(crate) fn codegen_set_discriminant<'tcx>(
                 .ty
                 .discriminant_for_variant(fx.tcx, variant_index)
                 .unwrap()
-                .val
-                .into();
+                .val;
+            let to = if ptr.layout().abi.is_signed() {
+                ty::ScalarInt::try_from_int(
+                    ptr.layout().size.sign_extend(to) as i128,
+                    ptr.layout().size,
+                )
+                .unwrap()
+            } else {
+                ty::ScalarInt::try_from_uint(to, ptr.layout().size).unwrap()
+            };
             let discr = CValue::const_val(fx, ptr.layout(), to);
             ptr.write_cvalue(fx, discr);
         }
@@ -49,8 +57,12 @@ pub(crate) fn codegen_set_discriminant<'tcx>(
             if variant_index != dataful_variant {
                 let niche = place.place_field(fx, mir::Field::new(tag_field));
                 let niche_value = variant_index.as_u32() - niche_variants.start().as_u32();
-                let niche_value = u128::from(niche_value).wrapping_add(niche_start);
-                let niche_llval = CValue::const_val(fx, niche.layout(), niche_value.into());
+                let niche_value = ty::ScalarInt::try_from_uint(
+                    u128::from(niche_value).wrapping_add(niche_start),
+                    niche.layout().size,
+                )
+                .unwrap();
+                let niche_llval = CValue::const_val(fx, niche.layout(), niche_value);
                 niche.write_cvalue(fx, niche_llval);
             }
         }
@@ -78,7 +90,16 @@ pub(crate) fn codegen_get_discriminant<'tcx>(
                 .ty
                 .discriminant_for_variant(fx.tcx, *index)
                 .map_or(u128::from(index.as_u32()), |discr| discr.val);
-            return CValue::const_val(fx, dest_layout, discr_val.into());
+            let discr_val = if dest_layout.abi.is_signed() {
+                ty::ScalarInt::try_from_int(
+                    dest_layout.size.sign_extend(discr_val) as i128,
+                    dest_layout.size,
+                )
+                .unwrap()
+            } else {
+                ty::ScalarInt::try_from_uint(discr_val, dest_layout.size).unwrap()
+            };
+            return CValue::const_val(fx, dest_layout, discr_val);
         }
         Variants::Multiple {
             tag,

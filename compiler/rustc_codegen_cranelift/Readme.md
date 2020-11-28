@@ -51,7 +51,7 @@ This should build and run your project with rustc_codegen_cranelift instead of t
 > You should prefer using the Cargo method.
 
 ```bash
-$ $cg_clif_dir/build/cg_clif my_crate.rs
+$ $cg_clif_dir/build/bin/cg_clif my_crate.rs
 ```
 
 ### Jit mode
@@ -68,7 +68,7 @@ $ $cg_clif_dir/build/cargo.sh jit
 or
 
 ```bash
-$ $cg_clif_dir/build/cg_clif --jit my_crate.rs
+$ $cg_clif_dir/build/bin/cg_clif --jit my_crate.rs
 ```
 
 ### Shell
@@ -77,7 +77,7 @@ These are a few functions that allow you to easily run rust code from the shell 
 
 ```bash
 function jit_naked() {
-    echo "$@" | $cg_clif_dir/build/cg_clif - --jit
+    echo "$@" | $cg_clif_dir/build/bin/cg_clif - --jit
 }
 
 function jit() {

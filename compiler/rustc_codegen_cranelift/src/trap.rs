@@ -67,3 +67,15 @@ pub(crate) fn trap_unimplemented(fx: &mut FunctionCx<'_, '_, impl Module>, msg: 
     let true_ = fx.bcx.ins().iconst(types::I32, 1);
     fx.bcx.ins().trapnz(true_, TrapCode::User(!0));
 }
+
+/// Like `trap_unimplemented` but returns a fake value of the specified type.
+///
+/// Trap code: user65535
+pub(crate) fn trap_unimplemented_ret_value<'tcx>(
+    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
+    dest_layout: TyAndLayout<'tcx>,
+    msg: impl AsRef<str>,
+) -> CValue<'tcx> {
+    trap_unimplemented(fx, msg);
+    CValue::by_ref(Pointer::const_addr(fx, 0), dest_layout)
+}

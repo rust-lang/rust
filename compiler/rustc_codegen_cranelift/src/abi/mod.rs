@@ -214,10 +214,8 @@ pub(crate) fn get_function_name_and_sig<'tcx>(
     support_vararg: bool,
 ) -> (String, Signature) {
     assert!(!inst.substs.needs_infer());
-    let fn_sig = tcx.normalize_erasing_late_bound_regions(
-        ParamEnv::reveal_all(),
-        fn_sig_for_fn_abi(tcx, inst),
-    );
+    let fn_sig = tcx
+        .normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), fn_sig_for_fn_abi(tcx, inst));
     if fn_sig.c_variadic && !support_vararg {
         tcx.sess.span_fatal(
             tcx.def_span(inst.def_id()),

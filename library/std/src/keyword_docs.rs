@@ -20,19 +20,30 @@
 /// explicitly using `as` allows a few more coercions that aren't allowed implicitly, such as
 /// changing the type of a raw pointer or turning closures into raw pointers.
 ///
-/// `as` is also used to rename imports in [`use`] and [`extern crate`] statements:
+/// `as` can be seen as the primitive for `From` and `Into`: `as` only works  with primitives
+/// (`u8`, `bool`, `str`, pointers, ...) whereas `From` and `Into`  also works with types like
+/// `String` or `Vec`.
+///
+/// `as` can also be used with the `_` placeholder when the destination type can be inferred. Note
+/// that this can cause inference breakage and usually such code should use an explicit type for
+/// both clarity and stability. This is most useful when converting pointers using `as *const _` or
+/// `as *mut _` though the [`cast`][const-cast] method is recommended over `as *const _` and it is
+/// [the same][mut-cast] for `as *mut _`: those methods make the intent clearer.
+///
+/// `as` is also used to rename imports in [`use`] and [`extern crate`][`crate`] statements:
 ///
 /// ```
 /// # #[allow(unused_imports)]
 /// use std::{mem as memory, net as network};
 /// // Now you can use the names `memory` and `network` to refer to `std::mem` and `std::net`.
 /// ```
-///
 /// For more information on what `as` is capable of, see the [Reference].
 ///
 /// [Reference]: ../reference/expressions/operator-expr.html#type-cast-expressions
+/// [`crate`]: keyword.crate.html
 /// [`use`]: keyword.use.html
-/// [`extern crate`]: keyword.crate.html
+/// [const-cast]: primitive.pointer.html#method.cast
+/// [mut-cast]: primitive.pointer.html#method.cast-1
 mod as_keyword {}
 
 #[doc(keyword = "break")]
@@ -707,8 +718,8 @@ mod impl_keyword {}
 ///
 /// ## Literal Examples:
 ///
-///    * `for _ **in** 1..3 {}` - Iterate over an exclusive range up to but excluding 3.
-///    * `for _ **in** 1..=3 {}` - Iterate over an inclusive range up to and including 3.
+///    * `for _ in 1..3 {}` - Iterate over an exclusive range up to but excluding 3.
+///    * `for _ in 1..=3 {}` - Iterate over an inclusive range up to and including 3.
 ///
 /// (Read more about [range patterns])
 ///

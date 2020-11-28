@@ -80,7 +80,7 @@ impl<'tcx> UnwindContext<'tcx> {
     #[cfg(feature = "jit")]
     pub(crate) unsafe fn register_jit(
         self,
-        jit_product: &cranelift_simplejit::SimpleJITProduct,
+        jit_module: &cranelift_simplejit::SimpleJITModule,
     ) -> Option<UnwindRegistry> {
         let mut eh_frame = EhFrame::from(super::emit::WriterRelocate::new(super::target_endian(
             self.tcx,
@@ -91,7 +91,7 @@ impl<'tcx> UnwindContext<'tcx> {
             return None;
         }
 
-        let mut eh_frame = eh_frame.0.relocate_for_jit(jit_product);
+        let mut eh_frame = eh_frame.0.relocate_for_jit(jit_module);
 
         // GCC expects a terminating "empty" length, so write a 0 length at the end of the table.
         eh_frame.extend(&[0, 0, 0, 0]);
