@@ -44,6 +44,8 @@ pub use crate::{
 // - `expr.while` -> `while expr {}` or `while let ... {}` for `Option` or `Result`
 // - `expr.ref` -> `&expr`
 // - `expr.refm` -> `&mut expr`
+// - `expr.let` -> `let <|> = expr;`
+// - `expr.letm` -> `let mut <|> = expr;`
 // - `expr.not` -> `!expr`
 // - `expr.dbg` -> `dbg!(expr)`
 // - `expr.dbgr` -> `dbg!(&expr)`
