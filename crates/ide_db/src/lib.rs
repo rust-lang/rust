@@ -13,6 +13,7 @@ pub mod source_change;
 pub mod ty_filter;
 pub mod traits;
 pub mod call_info;
+pub mod helpers;
 
 use std::{fmt, sync::Arc};
 

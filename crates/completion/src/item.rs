@@ -2,8 +2,11 @@
 
 use std::fmt;
 
-use assists::utils::{insert_use, mod_path_to_ast, ImportScope, MergeBehaviour};
 use hir::{Documentation, ModPath, Mutability};
+use ide_db::helpers::{
+    insert_use::{self, ImportScope, MergeBehaviour},
+    mod_path_to_ast,
+};
 use syntax::{algo, TextRange};
 use text_edit::TextEdit;
 
@@ -201,7 +204,7 @@ impl CompletionItem {
             trigger_call_info: None,
             score: None,
             ref_match: None,
-            import_data: None,
+            import_to_add: None,
         }
     }
 
@@ -255,13 +258,21 @@ impl CompletionItem {
     }
 }
 
+/// An extra import to add after the completion is applied.
+#[derive(Clone)]
+pub(crate) struct ImportToAdd {
+    pub(crate) import_path: ModPath,
+    pub(crate) import_scope: ImportScope,
+    pub(crate) merge_behaviour: Option<MergeBehaviour>,
+}
+
 /// A helper to make `CompletionItem`s.
 #[must_use]
 #[derive(Clone)]
 pub(crate) struct Builder {
     source_range: TextRange,
     completion_kind: CompletionKind,
-    import_data: Option<(ModPath, ImportScope, Option<MergeBehaviour>)>,
+    import_to_add: Option<ImportToAdd>,
     label: String,
     insert_text: Option<String>,
     insert_text_format: InsertTextFormat,
@@ -285,9 +296,9 @@ impl Builder {
         let mut insert_text = self.insert_text;
         let mut text_edits = TextEdit::builder();
 
-        if let Some((import_path, import_scope, merge_behaviour)) = self.import_data {
-            let import = mod_path_to_ast(&import_path);
-            let mut import_path_without_last_segment = import_path;
+        if let Some(import_data) = self.import_to_add {
+            let import = mod_path_to_ast(&import_data.import_path);
+            let mut import_path_without_last_segment = import_data.import_path;
             let _ = import_path_without_last_segment.segments.pop();
 
             if !import_path_without_last_segment.segments.is_empty() {
@@ -300,7 +311,11 @@ impl Builder {
                 label = format!("{}::{}", import_path_without_last_segment, label);
             }
 
-            let rewriter = insert_use(&import_scope, import, merge_behaviour);
+            let rewriter = insert_use::insert_use(
+                &import_data.import_scope,
+                import,
+                import_data.merge_behaviour,
+            );
             if let Some(old_ast) = rewriter.rewrite_root() {
                 algo::diff(&old_ast, &rewriter.rewrite(&old_ast)).into_text_edit(&mut text_edits);
             }
@@ -392,11 +407,8 @@ impl Builder {
         self.trigger_call_info = Some(true);
         self
     }
-    pub(crate) fn import_data(
-        mut self,
-        import_data: Option<(ModPath, ImportScope, Option<MergeBehaviour>)>,
-    ) -> Builder {
-        self.import_data = import_data;
+    pub(crate) fn add_import(mut self, import_to_add: Option<ImportToAdd>) -> Builder {
+        self.import_to_add = import_to_add;
         self
     }
     pub(crate) fn set_ref_match(

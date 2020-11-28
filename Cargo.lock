@@ -253,7 +253,6 @@ dependencies = [
 name = "completion"
 version = "0.0.0"
 dependencies = [
- "assists",
  "base_db",
  "either",
  "expect-test",
@@ -682,6 +681,7 @@ dependencies = [
  "expect-test",
  "fst",
  "hir",
+ "itertools",
  "log",
  "once_cell",
  "profile",

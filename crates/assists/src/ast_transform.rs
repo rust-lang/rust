@@ -1,13 +1,12 @@
 //! `AstTransformer`s are functions that replace nodes in an AST and can be easily combined.
 use hir::{HirDisplay, PathResolution, SemanticsScope};
+use ide_db::helpers::mod_path_to_ast;
 use rustc_hash::FxHashMap;
 use syntax::{
     algo::SyntaxRewriter,
     ast::{self, AstNode},
     SyntaxNode,
 };
-
-use crate::utils::mod_path_to_ast;
 
 pub fn apply<'a, N: AstNode>(transformer: &dyn AstTransform<'a>, node: N) -> N {
     SyntaxRewriter::from_fn(|element| match element {

@@ -1,6 +1,7 @@
 use std::iter;
 
 use hir::AsName;
+use ide_db::helpers::mod_path_to_ast;
 use ide_db::RootDatabase;
 use syntax::{
     ast,
@@ -12,7 +13,6 @@ use test_utils::mark;
 use crate::{
     assist_context::{AssistContext, Assists},
     utils::import_assets::{ImportAssets, ImportCandidate},
-    utils::mod_path_to_ast,
     AssistId, AssistKind, GroupLabel,
 };
 

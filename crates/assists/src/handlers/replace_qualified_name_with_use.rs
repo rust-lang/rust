@@ -1,10 +1,8 @@
+use ide_db::helpers::insert_use::{insert_use, ImportScope};
 use syntax::{algo::SyntaxRewriter, ast, match_ast, AstNode, SyntaxNode};
 use test_utils::mark;
 
-use crate::{
-    utils::{insert_use, ImportScope},
-    AssistContext, AssistId, AssistKind, Assists,
-};
+use crate::{AssistContext, AssistId, AssistKind, Assists};
 
 // Assist: replace_qualified_name_with_use
 //

@@ -1,3 +1,4 @@
+use ide_db::helpers::mod_path_to_ast;
 use ide_db::imports_locator;
 use itertools::Itertools;
 use syntax::{
@@ -10,8 +11,7 @@ use syntax::{
 use crate::{
     assist_context::{AssistBuilder, AssistContext, Assists},
     utils::{
-        add_trait_assoc_items_to_impl, filter_assoc_items, mod_path_to_ast, render_snippet, Cursor,
-        DefaultMethods,
+        add_trait_assoc_items_to_impl, filter_assoc_items, render_snippet, Cursor, DefaultMethods,
     },
     AssistId, AssistKind,
 };

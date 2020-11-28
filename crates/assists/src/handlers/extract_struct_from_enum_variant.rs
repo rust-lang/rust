@@ -2,6 +2,10 @@ use std::iter;
 
 use either::Either;
 use hir::{AsName, EnumVariant, Module, ModuleDef, Name};
+use ide_db::helpers::{
+    insert_use::{insert_use, ImportScope},
+    mod_path_to_ast,
+};
 use ide_db::{defs::Definition, search::Reference, RootDatabase};
 use rustc_hash::{FxHashMap, FxHashSet};
 use syntax::{
@@ -10,10 +14,7 @@ use syntax::{
     SourceFile, SyntaxElement, SyntaxNode, T,
 };
 
-use crate::{
-    utils::{insert_use, mod_path_to_ast, ImportScope},
-    AssistContext, AssistId, AssistKind, Assists,
-};
+use crate::{AssistContext, AssistId, AssistKind, Assists};
 
 // Assist: extract_struct_from_enum_variant
 //
@@ -236,10 +237,9 @@ fn update_reference(
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        tests::{check_assist, check_assist_not_applicable},
-        utils::FamousDefs,
-    };
+    use ide_db::helpers::FamousDefs;
+
+    use crate::tests::{check_assist, check_assist_not_applicable};
 
     use super::*;
 

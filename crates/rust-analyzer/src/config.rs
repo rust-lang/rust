@@ -11,10 +11,8 @@ use std::{convert::TryFrom, ffi::OsString, path::PathBuf};
 
 use flycheck::FlycheckConfig;
 use hir::PrefixKind;
-use ide::{
-    AssistConfig, CompletionConfig, DiagnosticsConfig, HoverConfig, InlayHintsConfig,
-    MergeBehaviour,
-};
+use ide::{AssistConfig, CompletionConfig, DiagnosticsConfig, HoverConfig, InlayHintsConfig};
+use ide_db::helpers::insert_use::MergeBehaviour;
 use lsp_types::{ClientCapabilities, MarkupKind};
 use project_model::{CargoConfig, ProjectJson, ProjectJsonData, ProjectManifest};
 use rustc_hash::FxHashSet;

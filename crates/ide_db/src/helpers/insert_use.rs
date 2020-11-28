@@ -1,8 +1,8 @@
 //! Handle syntactic aspects of inserting a new `use`.
 use std::{cmp::Ordering, iter::successors};
 
+use crate::RootDatabase;
 use hir::Semantics;
-use ide_db::RootDatabase;
 use itertools::{EitherOrBoth, Itertools};
 use syntax::{
     algo::SyntaxRewriter,
@@ -22,7 +22,7 @@ pub enum ImportScope {
 }
 
 impl ImportScope {
-    pub(crate) fn from(syntax: SyntaxNode) -> Option<Self> {
+    pub fn from(syntax: SyntaxNode) -> Option<Self> {
         if let Some(module) = ast::Module::cast(syntax.clone()) {
             module.item_list().map(ImportScope::Module)
         } else if let this @ Some(_) = ast::SourceFile::cast(syntax.clone()) {
@@ -180,7 +180,7 @@ fn eq_visibility(vis0: Option<ast::Visibility>, vis1: Option<ast::Visibility>) -
     }
 }
 
-pub(crate) fn try_merge_imports(
+pub fn try_merge_imports(
     lhs: &ast::Use,
     rhs: &ast::Use,
     merge_behaviour: MergeBehaviour,
@@ -195,7 +195,7 @@ pub(crate) fn try_merge_imports(
     Some(lhs.with_use_tree(merged))
 }
 
-pub(crate) fn try_merge_trees(
+pub fn try_merge_trees(
     lhs: &ast::UseTree,
     rhs: &ast::UseTree,
     merge: MergeBehaviour,

@@ -1,8 +1,9 @@
+use ide_db::helpers::FamousDefs;
 use ide_db::RootDatabase;
 use syntax::ast::{self, AstNode, NameOwner};
 use test_utils::mark;
 
-use crate::{utils::FamousDefs, AssistContext, AssistId, AssistKind, Assists};
+use crate::{AssistContext, AssistId, AssistKind, Assists};
 
 // Assist: generate_from_impl_for_enum
 //

@@ -87,9 +87,7 @@ pub use ide_db::{
     search::{Reference, ReferenceAccess, ReferenceKind},
 };
 
-pub use assists::{
-    utils::MergeBehaviour, Assist, AssistConfig, AssistId, AssistKind, ResolvedAssist,
-};
+pub use assists::{Assist, AssistConfig, AssistId, AssistKind, ResolvedAssist};
 pub use hir::{Documentation, Semantics};
 pub use ide_db::base_db::{
     Canceled, Change, CrateGraph, CrateId, Edition, FileId, FilePosition, FileRange, SourceRoot,

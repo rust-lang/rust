@@ -1,22 +1,21 @@
 //! Renderer for function calls.
 
-use assists::utils::{ImportScope, MergeBehaviour};
-use hir::{HasSource, ModPath, Type};
+use hir::{HasSource, Type};
 use syntax::{ast::Fn, display::function_declaration};
 
 use crate::{
-    item::{CompletionItem, CompletionItemKind, CompletionKind},
+    item::{CompletionItem, CompletionItemKind, CompletionKind, ImportToAdd},
     render::{builder_ext::Params, RenderContext},
 };
 
 pub(crate) fn render_fn<'a>(
     ctx: RenderContext<'a>,
-    import_data: Option<(ModPath, ImportScope, Option<MergeBehaviour>)>,
+    import_to_add: Option<ImportToAdd>,
     local_name: Option<String>,
     fn_: hir::Function,
 ) -> CompletionItem {
     let _p = profile::span("render_fn");
-    FunctionRender::new(ctx, local_name, fn_).render(import_data)
+    FunctionRender::new(ctx, local_name, fn_).render(import_to_add)
 }
 
 #[derive(Debug)]
@@ -39,10 +38,7 @@ impl<'a> FunctionRender<'a> {
         FunctionRender { ctx, name, fn_, ast_node }
     }
 
-    fn render(
-        self,
-        import_data: Option<(ModPath, ImportScope, Option<MergeBehaviour>)>,
-    ) -> CompletionItem {
+    fn render(self, import_to_add: Option<ImportToAdd>) -> CompletionItem {
         let params = self.params();
         CompletionItem::new(CompletionKind::Reference, self.ctx.source_range(), self.name.clone())
             .kind(self.kind())
@@ -50,7 +46,7 @@ impl<'a> FunctionRender<'a> {
             .set_deprecated(self.ctx.is_deprecated(self.fn_))
             .detail(self.detail())
             .add_call_parens(self.ctx.completion, self.name, params)
-            .import_data(import_data)
+            .add_import(import_to_add)
             .build()
     }
 

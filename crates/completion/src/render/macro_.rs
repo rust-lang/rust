@@ -1,23 +1,22 @@
 //! Renderer for macro invocations.
 
-use assists::utils::{ImportScope, MergeBehaviour};
-use hir::{Documentation, HasSource, ModPath};
+use hir::{Documentation, HasSource};
 use syntax::display::macro_label;
 use test_utils::mark;
 
 use crate::{
-    item::{CompletionItem, CompletionItemKind, CompletionKind},
+    item::{CompletionItem, CompletionItemKind, CompletionKind, ImportToAdd},
     render::RenderContext,
 };
 
 pub(crate) fn render_macro<'a>(
     ctx: RenderContext<'a>,
-    import_data: Option<(ModPath, ImportScope, Option<MergeBehaviour>)>,
+    import_to_add: Option<ImportToAdd>,
     name: String,
     macro_: hir::MacroDef,
 ) -> Option<CompletionItem> {
     let _p = profile::span("render_macro");
-    MacroRender::new(ctx, name, macro_).render(import_data)
+    MacroRender::new(ctx, name, macro_).render(import_to_add)
 }
 
 #[derive(Debug)]
@@ -39,10 +38,7 @@ impl<'a> MacroRender<'a> {
         MacroRender { ctx, name, macro_, docs, bra, ket }
     }
 
-    fn render(
-        &self,
-        import_data: Option<(ModPath, ImportScope, Option<MergeBehaviour>)>,
-    ) -> Option<CompletionItem> {
+    fn render(&self, import_to_add: Option<ImportToAdd>) -> Option<CompletionItem> {
         // FIXME: Currently proc-macro do not have ast-node,
         // such that it does not have source
         if self.macro_.is_proc_macro() {
@@ -54,7 +50,7 @@ impl<'a> MacroRender<'a> {
                 .kind(CompletionItemKind::Macro)
                 .set_documentation(self.docs.clone())
                 .set_deprecated(self.ctx.is_deprecated(self.macro_))
-                .import_data(import_data)
+                .add_import(import_to_add)
                 .detail(self.detail());
 
         let needs_bang = self.needs_bang();
