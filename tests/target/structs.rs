@@ -15,6 +15,20 @@ pub struct Foo {
     pub i: TypeForPublicField,
 }
 
+// Destructuring
+fn foo() {
+    S { x: 5, .. };
+    Struct { .. } = Struct { a: 1, b: 4 };
+    Struct { a, .. } = Struct { a: 1, b: 2, c: 3 };
+    TupleStruct(a, .., b) = TupleStruct(1, 2);
+    TupleStruct(..) = TupleStruct(3, 4);
+    TupleStruct(
+        aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,
+        ..,
+        bbbbbbbbbbbbbbbbbbbbbbbbbbbbbb,
+    ) = TupleStruct(1, 2);
+}
+
 // #1095
 struct S<T /* comment */> {
     t: T,
