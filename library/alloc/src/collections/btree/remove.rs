@@ -4,7 +4,7 @@ use super::unwrap_unchecked;
 use core::mem;
 
 impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>, marker::KV> {
-    /// Removes a key/value-pair from the tree, and returns that pair, as well as
+    /// Removes a key-value pair from the tree, and returns that pair, as well as
     /// the leaf edge corresponding to that former pair. It's possible this empties
     /// a root node that is internal, which the caller should pop from the map
     /// holding the tree. The caller should also decrement the map's length.

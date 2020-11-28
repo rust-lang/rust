@@ -459,7 +459,7 @@ impl<'a, K: Ord, V> OccupiedEntry<'a, K, V> {
         self.remove_kv().1
     }
 
-    // Body of `remove_entry`, separate to keep the above implementations short.
+    // Body of `remove_entry`, probably separate because the name reflects the returned pair.
     pub(super) fn remove_kv(self) -> (K, V) {
         let mut emptied_internal_root = false;
         let (old_kv, _) = self.handle.remove_kv_tracking(|| emptied_internal_root = true);
