@@ -66,7 +66,7 @@ declare_clippy_lint! {
     /// ```
     pub UNREACHABLE,
     restriction,
-    "`unreachable!` should not be present in production code"
+    "usage of the `unreachable!` macro"
 }
 
 declare_lint_pass!(PanicUnimplemented => [UNIMPLEMENTED, UNREACHABLE, TODO, PANIC]);
@@ -85,12 +85,7 @@ impl<'tcx> LateLintPass<'tcx> for PanicUnimplemented {
             } else if is_expn_of(expr.span, "todo").is_some() {
                 span_lint(cx, TODO, span, "`todo` should not be present in production code");
             } else if is_expn_of(expr.span, "unreachable").is_some() {
-                span_lint(
-                    cx,
-                    UNREACHABLE,
-                    span,
-                    "`unreachable` should not be present in production code",
-                );
+                span_lint(cx, UNREACHABLE, span, "usage of the `unreachable!` macro");
             } else if is_expn_of(expr.span, "panic").is_some() {
                 span_lint(cx, PANIC, span, "`panic` should not be present in production code");
             }
