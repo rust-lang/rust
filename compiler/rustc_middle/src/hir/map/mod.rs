@@ -183,6 +183,10 @@ impl<'hir> Map<'hir> {
         self.tcx.definitions.opt_local_def_id_to_hir_id(def_id)
     }
 
+    pub fn iter_local_def_id(&self) -> impl Iterator<Item = LocalDefId> + '_ {
+        self.tcx.definitions.iter_local_def_id()
+    }
+
     pub fn def_kind(&self, local_def_id: LocalDefId) -> DefKind {
         // FIXME(eddyb) support `find` on the crate root.
         if local_def_id.to_def_id().index == CRATE_DEF_INDEX {
