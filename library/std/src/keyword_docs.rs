@@ -718,8 +718,8 @@ mod impl_keyword {}
 ///
 /// ## Literal Examples:
 ///
-///    * `for _ **in** 1..3 {}` - Iterate over an exclusive range up to but excluding 3.
-///    * `for _ **in** 1..=3 {}` - Iterate over an inclusive range up to and including 3.
+///    * `for _ in 1..3 {}` - Iterate over an exclusive range up to but excluding 3.
+///    * `for _ in 1..=3 {}` - Iterate over an inclusive range up to and including 3.
 ///
 /// (Read more about [range patterns])
 ///
