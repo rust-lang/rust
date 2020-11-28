@@ -1744,6 +1744,10 @@ impl<'tcx> Place<'tcx> {
 
     /// Iterate over the projections in evaluation order, i.e., the first element is the base with
     /// its projection and then subsequently more projections are added.
+    /// As a concrete example, given the place a.b.c, this would yield:
+    /// - (a, .b)
+    /// - (a.b, .c)
+    /// Given a place without projections, the iterator is empty.
     pub fn iter_projections(
         self,
     ) -> impl Iterator<Item = (PlaceRef<'tcx>, PlaceElem<'tcx>)> + DoubleEndedIterator {
