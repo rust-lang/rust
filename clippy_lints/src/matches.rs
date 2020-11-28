@@ -460,7 +460,7 @@ declare_clippy_lint! {
     /// **Why is this bad?** Readability and needless complexity.
     ///
     /// **Known problems:** This lint falsely triggers, if there are arms with
-    /// `cfg` attributes that remove an arm evaluating to `false`. 
+    /// `cfg` attributes that remove an arm evaluating to `false`.
     ///
     /// **Example:**
     /// ```rust
