@@ -659,3 +659,13 @@ fn foo() {
     }
     .await;
 }
+
+fn underscore() {
+    _ = 1;
+    _;
+    [_, a, _] = [1, 2, 3];
+    (a, _) = (8, 9);
+    TupleStruct(_, a) = TupleStruct(2, 2);
+
+    let _: usize = foo(_, _);
+}

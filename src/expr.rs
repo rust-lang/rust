@@ -384,6 +384,7 @@ pub(crate) fn format_expr(
             }
         }
         ast::ExprKind::Await(_) => rewrite_chain(expr, context, shape),
+        ast::ExprKind::Underscore => Some("_".to_owned()),
         ast::ExprKind::Err => None,
     };
 

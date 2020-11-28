@@ -504,7 +504,8 @@ pub(crate) fn is_block_expr(context: &RewriteContext<'_>, expr: &ast::Expr, repr
         | ast::ExprKind::Ret(..)
         | ast::ExprKind::Tup(..)
         | ast::ExprKind::Type(..)
-        | ast::ExprKind::Yield(None) => false,
+        | ast::ExprKind::Yield(None)
+        | ast::ExprKind::Underscore => false,
     }
 }
 
