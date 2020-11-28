@@ -823,34 +823,25 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         ast_bounds: &[hir::GenericBound<'_>],
         bounds: &mut Bounds<'tcx>,
     ) {
-        let mut trait_bounds = Vec::new();
-        let mut region_bounds = Vec::new();
-
         let constness = self.default_constness_for_trait_bounds();
         for ast_bound in ast_bounds {
             match *ast_bound {
                 hir::GenericBound::Trait(ref b, hir::TraitBoundModifier::None) => {
-                    trait_bounds.push((b, constness))
+                    self.instantiate_poly_trait_ref(b, constness, param_ty, bounds);
                 }
                 hir::GenericBound::Trait(ref b, hir::TraitBoundModifier::MaybeConst) => {
-                    trait_bounds.push((b, Constness::NotConst))
+                    self.instantiate_poly_trait_ref(b, Constness::NotConst, param_ty, bounds);
                 }
                 hir::GenericBound::Trait(_, hir::TraitBoundModifier::Maybe) => {}
                 hir::GenericBound::LangItemTrait(lang_item, span, hir_id, args) => self
                     .instantiate_lang_item_trait_ref(
                         lang_item, span, hir_id, args, param_ty, bounds,
                     ),
-                hir::GenericBound::Outlives(ref l) => region_bounds.push(l),
+                hir::GenericBound::Outlives(ref l) => {
+                    bounds.region_bounds.push((self.ast_region_to_region(l, None), l.span))
+                }
             }
         }
-
-        for (bound, constness) in trait_bounds {
-            let _ = self.instantiate_poly_trait_ref(bound, constness, param_ty, bounds);
-        }
-
-        bounds.region_bounds.extend(
-            region_bounds.into_iter().map(|r| (self.ast_region_to_region(r, None), r.span)),
-        );
     }
 
     /// Translates a list of bounds from the HIR into the `Bounds` data structure.
