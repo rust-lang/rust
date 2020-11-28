@@ -58,12 +58,12 @@ impl EarlyLintPass for ItemsAfterStatements {
             return;
         }
 
-        // skip initial items
+        // skip initial items and trailing semicolons
         let stmts = item
             .stmts
             .iter()
             .map(|stmt| &stmt.kind)
-            .skip_while(|s| matches!(**s, StmtKind::Item(..)));
+            .skip_while(|s| matches!(**s, StmtKind::Item(..) | StmtKind::Empty));
 
         // lint on all further items
         for stmt in stmts {

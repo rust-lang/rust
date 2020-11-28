@@ -37,3 +37,16 @@ fn mac() {
     b!();
     println!("{}", a);
 }
+
+fn semicolon() {
+    struct S {
+        a: u32,
+    };
+    impl S {
+        fn new(a: u32) -> Self {
+            Self { a }
+        }
+    }
+
+    let _ = S::new(3);
+}
