@@ -1,7 +1,6 @@
 use crate::rmeta::table::{FixedSizeEncoding, TableBuilder};
 use crate::rmeta::*;
 
-use rustc_ast as ast;
 use rustc_data_structures::fingerprint::{Fingerprint, FingerprintEncoder};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_data_structures::stable_hasher::StableHasher;
@@ -437,7 +436,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
     fn encode_info_for_items(&mut self) {
         let krate = self.tcx.hir().krate();
-        self.encode_info_for_mod(hir::CRATE_HIR_ID, &krate.item.module, &krate.item.attrs);
+        self.encode_info_for_mod(hir::CRATE_HIR_ID, &krate.item.module);
 
         // Proc-macro crates only export proc-macro items, which are looked
         // up using `proc_macro_data`
@@ -769,6 +768,7 @@ impl EncodeContext<'a, 'tcx> {
                 def_kind => def_kind,
             });
             record!(self.tables.span[def_id] <- tcx.def_span(def_id));
+            record!(self.tables.attributes[def_id] <- tcx.get_attrs(def_id));
             if should_encode_visibility(def_kind) {
                 record!(self.tables.visibility[def_id] <- self.tcx.visibility(def_id));
             }
@@ -799,7 +799,6 @@ impl EncodeContext<'a, 'tcx> {
         };
 
         record!(self.tables.kind[def_id] <- EntryKind::Variant(self.lazy(data)));
-        record!(self.tables.attributes[def_id] <- &self.tcx.get_attrs(def_id)[..]);
         record!(self.tables.expn_that_defined[def_id] <- self.tcx.expansion_that_defined(def_id));
         record!(self.tables.children[def_id] <- variant.fields.iter().map(|f| {
             assert!(f.did.is_local());
@@ -854,7 +853,7 @@ impl EncodeContext<'a, 'tcx> {
         self.encode_mir_for_ctfe(def_id.expect_local());
     }
 
-    fn encode_info_for_mod(&mut self, id: hir::HirId, md: &hir::Mod<'_>, attrs: &[ast::Attribute]) {
+    fn encode_info_for_mod(&mut self, id: hir::HirId, md: &hir::Mod<'_>) {
         let tcx = self.tcx;
         let local_def_id = tcx.hir().local_def_id(id);
         let def_id = local_def_id.to_def_id();
@@ -887,7 +886,6 @@ impl EncodeContext<'a, 'tcx> {
         };
 
         record!(self.tables.kind[def_id] <- EntryKind::Mod(self.lazy(data)));
-        record!(self.tables.attributes[def_id] <- attrs);
         if self.is_proc_macro {
             record!(self.tables.children[def_id] <- &[]);
         } else {
@@ -905,18 +903,13 @@ impl EncodeContext<'a, 'tcx> {
         variant_index: VariantIdx,
         field_index: usize,
     ) {
-        let tcx = self.tcx;
         let variant = &adt_def.variants[variant_index];
         let field = &variant.fields[field_index];
 
         let def_id = field.did;
         debug!("EncodeContext::encode_field({:?})", def_id);
 
-        let variant_id = tcx.hir().local_def_id_to_hir_id(variant.def_id.expect_local());
-        let variant_data = tcx.hir().expect_variant_data(variant_id);
-
         record!(self.tables.kind[def_id] <- EntryKind::Field);
-        record!(self.tables.attributes[def_id] <- variant_data.fields()[field_index].attrs);
         record!(self.tables.expn_that_defined[def_id] <- self.tcx.expansion_that_defined(def_id));
         self.encode_ident_span(def_id, field.ident);
         self.encode_stability(def_id);
@@ -1043,7 +1036,6 @@ impl EncodeContext<'a, 'tcx> {
                 record!(self.tables.kind[def_id] <- EntryKind::AssocType(container));
             }
         }
-        record!(self.tables.attributes[def_id] <- ast_item.attrs);
         self.encode_ident_span(def_id, ast_item.ident);
         self.encode_stability(def_id);
         self.encode_const_stability(def_id);
@@ -1145,7 +1137,6 @@ impl EncodeContext<'a, 'tcx> {
                 record!(self.tables.kind[def_id] <- EntryKind::AssocType(container));
             }
         }
-        record!(self.tables.attributes[def_id] <- ast_item.attrs);
         self.encode_ident_span(def_id, impl_item.ident);
         self.encode_stability(def_id);
         self.encode_const_stability(def_id);
@@ -1296,7 +1287,7 @@ impl EncodeContext<'a, 'tcx> {
                 EntryKind::Fn(self.lazy(data))
             }
             hir::ItemKind::Mod(ref m) => {
-                return self.encode_info_for_mod(item.hir_id, m, &item.attrs);
+                return self.encode_info_for_mod(item.hir_id, m);
             }
             hir::ItemKind::ForeignMod { .. } => EntryKind::ForeignMod,
             hir::ItemKind::GlobalAsm(..) => EntryKind::GlobalAsm,
@@ -1389,7 +1380,6 @@ impl EncodeContext<'a, 'tcx> {
             }
         };
         record!(self.tables.kind[def_id] <- entry_kind);
-        record!(self.tables.attributes[def_id] <- item.attrs);
         record!(self.tables.expn_that_defined[def_id] <- self.tcx.expansion_that_defined(def_id));
         // FIXME(eddyb) there should be a nicer way to do this.
         match item.kind {
@@ -1507,7 +1497,6 @@ impl EncodeContext<'a, 'tcx> {
     fn encode_info_for_macro_def(&mut self, macro_def: &hir::MacroDef<'_>) {
         let def_id = self.tcx.hir().local_def_id(macro_def.hir_id).to_def_id();
         record!(self.tables.kind[def_id] <- EntryKind::MacroDef(self.lazy(macro_def.ast.clone())));
-        record!(self.tables.attributes[def_id] <- macro_def.attrs);
         self.encode_ident_span(def_id, macro_def.ident);
         self.encode_stability(def_id);
         self.encode_deprecation(def_id);
@@ -1540,7 +1529,6 @@ impl EncodeContext<'a, 'tcx> {
 
             _ => bug!("closure that is neither generator nor closure"),
         }
-        record!(self.tables.attributes[def_id.to_def_id()] <- &self.tcx.get_attrs(def_id.to_def_id())[..]);
         self.encode_item_type(def_id.to_def_id());
         if let ty::Closure(def_id, substs) = *ty.kind() {
             record!(self.tables.fn_sig[def_id] <- substs.as_closure().sig());
@@ -1837,7 +1825,6 @@ impl EncodeContext<'a, 'tcx> {
                 record!(self.tables.kind[def_id] <- EntryKind::ForeignType);
             }
         }
-        record!(self.tables.attributes[def_id] <- nitem.attrs);
         self.encode_ident_span(def_id, nitem.ident);
         self.encode_stability(def_id);
         self.encode_const_stability(def_id);
