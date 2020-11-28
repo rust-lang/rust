@@ -1536,7 +1536,6 @@ fn rewrite_struct_lit<'a>(
     let path_shape = shape.sub_width(2)?;
     let path_str = rewrite_path(context, PathContext::Expr, None, path, path_shape)?;
 
-
     let has_base = match struct_rest {
         ast::StructRest::None if fields.is_empty() => return Some(format!("{} {{}}", path_str)),
         ast::StructRest::Rest(_) if fields.is_empty() => {
