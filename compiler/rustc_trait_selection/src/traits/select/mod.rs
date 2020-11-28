@@ -833,11 +833,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// - it also appears in the backtrace at some position `X`,
     /// - all the predicates at positions `X..` between `X` and the top are
     ///   also defaulted traits.
-    pub fn coinductive_match<I>(&mut self, cycle: I) -> bool
+    pub fn coinductive_match<I>(&mut self, mut cycle: I) -> bool
     where
         I: Iterator<Item = ty::Predicate<'tcx>>,
     {
-        let mut cycle = cycle;
         cycle.all(|predicate| self.coinductive_predicate(predicate))
     }
 
