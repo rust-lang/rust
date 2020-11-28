@@ -139,14 +139,17 @@ pub(crate) fn hover(
         }
     }
 
-    let node = token
-        .ancestors()
-        .find(|n| ast::Expr::cast(n.clone()).is_some() || ast::Pat::cast(n.clone()).is_some())?;
+    let node = token.ancestors().find(|n| {
+        ast::Expr::can_cast(n.kind())
+            || ast::Pat::can_cast(n.kind())
+            || ast::SelfParam::can_cast(n.kind())
+    })?;
 
     let ty = match_ast! {
         match node {
             ast::Expr(it) => sema.type_of_expr(&it)?,
             ast::Pat(it) => sema.type_of_pat(&it)?,
+            ast::SelfParam(self_param) => sema.type_of_self(&self_param)?,
             // If this node is a MACRO_CALL, it means that `descend_into_macros` failed to resolve.
             // (e.g expanding a builtin macro). So we give up here.
             ast::MacroCall(_it) => return None,
@@ -3278,6 +3281,43 @@ fn main() {
 
                 ```rust
                 &i32
+                ```
+            "#]],
+        );
+    }
+
+    #[test]
+    fn hover_self_param_shows_type() {
+        check(
+            r#"
+struct Foo {}
+impl Foo {
+    fn bar(&sel<|>f) {}
+}
+"#,
+            expect![[r#"
+                *&self*
+                ```rust
+                &Foo
+                ```
+            "#]],
+        );
+    }
+
+    #[test]
+    fn hover_self_param_shows_type_for_arbitrary_self_type() {
+        check(
+            r#"
+struct Arc<T>(T);
+struct Foo {}
+impl Foo {
+    fn bar(sel<|>f: Arc<Foo>) {}
+}
+"#,
+            expect![[r#"
+                *self: Arc<Foo>*
+                ```rust
+                Arc<Foo>
                 ```
             "#]],
         );
