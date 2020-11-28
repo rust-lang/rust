@@ -1,0 +1,49 @@
+error: no rules expected the token `|`
+  --> $DIR/or-pattern-macro-pat-fallback.rs:13:10
+   |
+LL | macro_rules! bar {
+   | ---------------- when calling this macro
+...
+LL |     bar!(|1| 2 | 3 |);
+   |          ^ no rules expected this token in macro call
+
+error: no rules expected the token `2`
+  --> $DIR/or-pattern-macro-pat-fallback.rs:16:14
+   |
+LL | macro_rules! bar {
+   | ---------------- when calling this macro
+...
+LL |     bar!(1 | 2 | 3 |);
+   |              ^ no rules expected this token in macro call
+
+error: no rules expected the token `2`
+  --> $DIR/or-pattern-macro-pat-fallback.rs:17:14
+   |
+LL | macro_rules! bar {
+   | ---------------- when calling this macro
+...
+LL |     bar!(1 | 2 | 3);
+   |              ^ no rules expected this token in macro call
+
+error: unexpected end of macro invocation
+  --> $DIR/or-pattern-macro-pat-fallback.rs:18:21
+   |
+LL | macro_rules! bar {
+   | ---------------- when calling this macro
+...
+LL |     bar!((1 | 2 | 3));
+   |                     ^ missing tokens in macro arguments
+
+error: expected pattern, found `<eof>`
+  --> $DIR/or-pattern-macro-pat-fallback.rs:23:20
+   |
+LL |     ($nonor:pat) => {};
+   |      ---------- while parsing argument for this `pat` macro fragment
+...
+LL |     baz!(|1| 2 | 3 |);
+   |           -        ^ expected pattern
+   |           |
+   |           while parsing this or-pattern starting here
+
+error: aborting due to 5 previous errors
+
