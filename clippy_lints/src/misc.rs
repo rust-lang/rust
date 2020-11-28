@@ -18,7 +18,7 @@ use crate::utils::sugg::Sugg;
 use crate::utils::{
     get_item_name, get_parent_expr, higher, implements_trait, in_constant, is_integer_const, iter_input_pats,
     last_path_segment, match_qpath, match_trait_method, paths, snippet, snippet_opt, span_lint, span_lint_and_sugg,
-    span_lint_and_then, span_lint_hir_and_then, SpanlessEq,
+    span_lint_and_then, span_lint_hir_and_then, unsext, SpanlessEq,
 };
 
 declare_clippy_lint! {
@@ -139,12 +139,14 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for getting the remainder of a division by one.
+    /// **What it does:** Checks for getting the remainder of a division by one or minus
+    /// one.
     ///
-    /// **Why is this bad?** The result can only ever be zero. No one will write
-    /// such code deliberately, unless trying to win an Underhanded Rust
-    /// Contest. Even for that contest, it's probably a bad idea. Use something more
-    /// underhanded.
+    /// **Why is this bad?** The result for a divisor of one can only ever be zero; for
+    /// minus one it can cause panic/overflow (if the left operand is the minimal value of
+    /// the respective integer type) or results in zero. No one will write such code
+    /// deliberately, unless trying to win an Underhanded Rust Contest. Even for that
+    /// contest, it's probably a bad idea. Use something more underhanded.
     ///
     /// **Known problems:** None.
     ///
@@ -152,10 +154,11 @@ declare_clippy_lint! {
     /// ```rust
     /// # let x = 1;
     /// let a = x % 1;
+    /// let a = x % -1;
     /// ```
     pub MODULO_ONE,
     correctness,
-    "taking a number modulo 1, which always returns 0"
+    "taking a number modulo +/-1, which can either panic/overflow or always returns 0"
 }
 
 declare_clippy_lint! {
@@ -378,60 +381,8 @@ impl<'tcx> LateLintPass<'tcx> for MiscLints {
                 return;
             },
             ExprKind::Binary(ref cmp, ref left, ref right) => {
-                let op = cmp.node;
-                if op.is_comparison() {
-                    check_nan(cx, left, expr);
-                    check_nan(cx, right, expr);
-                    check_to_owned(cx, left, right, true);
-                    check_to_owned(cx, right, left, false);
-                }
-                if (op == BinOpKind::Eq || op == BinOpKind::Ne) && (is_float(cx, left) || is_float(cx, right)) {
-                    if is_allowed(cx, left) || is_allowed(cx, right) {
-                        return;
-                    }
-
-                    // Allow comparing the results of signum()
-                    if is_signum(cx, left) && is_signum(cx, right) {
-                        return;
-                    }
-
-                    if let Some(name) = get_item_name(cx, expr) {
-                        let name = name.as_str();
-                        if name == "eq"
-                            || name == "ne"
-                            || name == "is_nan"
-                            || name.starts_with("eq_")
-                            || name.ends_with("_eq")
-                        {
-                            return;
-                        }
-                    }
-                    let is_comparing_arrays = is_array(cx, left) || is_array(cx, right);
-                    let (lint, msg) = get_lint_and_message(
-                        is_named_constant(cx, left) || is_named_constant(cx, right),
-                        is_comparing_arrays,
-                    );
-                    span_lint_and_then(cx, lint, expr.span, msg, |diag| {
-                        let lhs = Sugg::hir(cx, left, "..");
-                        let rhs = Sugg::hir(cx, right, "..");
-
-                        if !is_comparing_arrays {
-                            diag.span_suggestion(
-                                expr.span,
-                                "consider comparing them within some margin of error",
-                                format!(
-                                    "({}).abs() {} error_margin",
-                                    lhs - rhs,
-                                    if op == BinOpKind::Eq { '<' } else { '>' }
-                                ),
-                                Applicability::HasPlaceholders, // snippet
-                            );
-                        }
-                        diag.note("`f32::EPSILON` and `f64::EPSILON` are available for the `error_margin`");
-                    });
-                } else if op == BinOpKind::Rem && is_integer_const(cx, right, 1) {
-                    span_lint(cx, MODULO_ONE, expr.span, "any number modulo 1 will be 0");
-                }
+                check_binary(cx, expr, cmp, left, right);
+                return;
             },
             _ => {},
         }
@@ -742,5 +693,76 @@ fn check_cast(cx: &LateContext<'_>, span: Span, e: &Expr<'_>, ty: &hir::Ty<'_>) 
             };
             span_lint_and_sugg(cx, ZERO_PTR, span, msg, "try", sugg, appl);
         }
+    }
+}
+
+fn check_binary(
+    cx: &LateContext<'a>,
+    expr: &Expr<'_>,
+    cmp: &rustc_span::source_map::Spanned<rustc_hir::BinOpKind>,
+    left: &'a Expr<'_>,
+    right: &'a Expr<'_>,
+) {
+    let op = cmp.node;
+    if op.is_comparison() {
+        check_nan(cx, left, expr);
+        check_nan(cx, right, expr);
+        check_to_owned(cx, left, right, true);
+        check_to_owned(cx, right, left, false);
+    }
+    if (op == BinOpKind::Eq || op == BinOpKind::Ne) && (is_float(cx, left) || is_float(cx, right)) {
+        if is_allowed(cx, left) || is_allowed(cx, right) {
+            return;
+        }
+
+        // Allow comparing the results of signum()
+        if is_signum(cx, left) && is_signum(cx, right) {
+            return;
+        }
+
+        if let Some(name) = get_item_name(cx, expr) {
+            let name = name.as_str();
+            if name == "eq" || name == "ne" || name == "is_nan" || name.starts_with("eq_") || name.ends_with("_eq") {
+                return;
+            }
+        }
+        let is_comparing_arrays = is_array(cx, left) || is_array(cx, right);
+        let (lint, msg) = get_lint_and_message(
+            is_named_constant(cx, left) || is_named_constant(cx, right),
+            is_comparing_arrays,
+        );
+        span_lint_and_then(cx, lint, expr.span, msg, |diag| {
+            let lhs = Sugg::hir(cx, left, "..");
+            let rhs = Sugg::hir(cx, right, "..");
+
+            if !is_comparing_arrays {
+                diag.span_suggestion(
+                    expr.span,
+                    "consider comparing them within some margin of error",
+                    format!(
+                        "({}).abs() {} error_margin",
+                        lhs - rhs,
+                        if op == BinOpKind::Eq { '<' } else { '>' }
+                    ),
+                    Applicability::HasPlaceholders, // snippet
+                );
+            }
+            diag.note("`f32::EPSILON` and `f64::EPSILON` are available for the `error_margin`");
+        });
+    } else if op == BinOpKind::Rem {
+        if is_integer_const(cx, right, 1) {
+            span_lint(cx, MODULO_ONE, expr.span, "any number modulo 1 will be 0");
+        }
+
+        if let ty::Int(ity) = cx.typeck_results().expr_ty(right).kind() {
+            if is_integer_const(cx, right, unsext(cx.tcx, -1, *ity)) {
+                span_lint(
+                    cx,
+                    MODULO_ONE,
+                    expr.span,
+                    "any number modulo -1 will panic/overflow or result in 0",
+                );
+            }
+        };
     }
 }

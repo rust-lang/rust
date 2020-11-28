@@ -1,13 +1,45 @@
+error: this arithmetic operation will overflow
+  --> $DIR/modulo_one.rs:11:5
+   |
+LL |     i32::MIN % (-1); // also caught by rustc
+   |     ^^^^^^^^^^^^^^^ attempt to compute the remainder of `i32::MIN % -1_i32`, which would overflow
+   |
+   = note: `#[deny(arithmetic_overflow)]` on by default
+
+error: this arithmetic operation will overflow
+  --> $DIR/modulo_one.rs:21:5
+   |
+LL |     INT_MIN % NEG_ONE; // also caught by rustc
+   |     ^^^^^^^^^^^^^^^^^ attempt to compute the remainder of `i64::MIN % -1_i64`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/modulo_one.rs:22:5
+   |
+LL |     INT_MIN % STATIC_NEG_ONE; // ONLY caught by rustc
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ attempt to compute the remainder of `i64::MIN % -1_i64`, which would overflow
+
 error: any number modulo 1 will be 0
-  --> $DIR/modulo_one.rs:7:5
+  --> $DIR/modulo_one.rs:8:5
    |
 LL |     10 % 1;
    |     ^^^^^^
    |
    = note: `-D clippy::modulo-one` implied by `-D warnings`
 
+error: any number modulo -1 will panic/overflow or result in 0
+  --> $DIR/modulo_one.rs:9:5
+   |
+LL |     10 % -1;
+   |     ^^^^^^^
+
+error: any number modulo -1 will panic/overflow or result in 0
+  --> $DIR/modulo_one.rs:11:5
+   |
+LL |     i32::MIN % (-1); // also caught by rustc
+   |     ^^^^^^^^^^^^^^^
+
 error: the operation is ineffective. Consider reducing it to `1`
-  --> $DIR/modulo_one.rs:10:22
+  --> $DIR/modulo_one.rs:13:22
    |
 LL |     const ONE: u32 = 1 * 1;
    |                      ^^^^^
@@ -15,16 +47,28 @@ LL |     const ONE: u32 = 1 * 1;
    = note: `-D clippy::identity-op` implied by `-D warnings`
 
 error: the operation is ineffective. Consider reducing it to `1`
-  --> $DIR/modulo_one.rs:10:22
+  --> $DIR/modulo_one.rs:13:22
    |
 LL |     const ONE: u32 = 1 * 1;
    |                      ^^^^^
 
 error: any number modulo 1 will be 0
-  --> $DIR/modulo_one.rs:12:5
+  --> $DIR/modulo_one.rs:17:5
    |
 LL |     2 % ONE;
    |     ^^^^^^^
 
-error: aborting due to 4 previous errors
+error: any number modulo -1 will panic/overflow or result in 0
+  --> $DIR/modulo_one.rs:19:5
+   |
+LL |     2 % NEG_ONE;
+   |     ^^^^^^^^^^^
+
+error: any number modulo -1 will panic/overflow or result in 0
+  --> $DIR/modulo_one.rs:21:5
+   |
+LL |     INT_MIN % NEG_ONE; // also caught by rustc
+   |     ^^^^^^^^^^^^^^^^^
+
+error: aborting due to 11 previous errors
 
