@@ -5,6 +5,7 @@ use std::fmt::Write;
 use std::fs;
 use std::process::Command;
 
+/// Descriptions of rustc lint groups.
 static GROUP_DESCRIPTIONS: &[(&str, &str)] = &[
     ("unused", "Lints that detect things being declared but not used, or excess syntax"),
     ("rustdoc", "Rustdoc-specific lints"),
@@ -86,17 +87,27 @@ impl<'a> LintExtractor<'a> {
         result.push_str("|-------|-------------|-------|\n");
         result.push_str("| warnings | All lints that are set to issue warnings | See [warn-by-default] for the default set of warnings |\n");
         for (group_name, group_lints) in groups {
-            let description = GROUP_DESCRIPTIONS
-                .iter()
-                .find(|(n, _)| n == group_name)
-                .ok_or_else(|| {
-                    format!(
+            let description = match GROUP_DESCRIPTIONS.iter().find(|(n, _)| n == group_name) {
+                Some((_, desc)) => desc,
+                None if self.validate => {
+                    return Err(format!(
                         "lint group `{}` does not have a description, \
-                         please update the GROUP_DESCRIPTIONS list",
+                         please update the GROUP_DESCRIPTIONS list in \
+                         src/tools/lint-docs/src/groups.rs",
                         group_name
                     )
-                })?
-                .1;
+                    .into());
+                }
+                None => {
+                    eprintln!(
+                        "warning: lint group `{}` is missing from the GROUP_DESCRIPTIONS list\n\
+                         If this is a new lint group, please update the GROUP_DESCRIPTIONS in \
+                         src/tools/lint-docs/src/groups.rs",
+                        group_name
+                    );
+                    continue;
+                }
+            };
             to_link.extend(group_lints);
             let brackets: Vec<_> = group_lints.iter().map(|l| format!("[{}]", l)).collect();
             write!(result, "| {} | {} | {} |\n", group_name, description, brackets.join(", "))

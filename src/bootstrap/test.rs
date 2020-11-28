@@ -2115,3 +2115,36 @@ impl Step for TierCheck {
         try_run(builder, &mut cargo.into());
     }
 }
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct LintDocs {
+    pub compiler: Compiler,
+    pub target: TargetSelection,
+}
+
+impl Step for LintDocs {
+    type Output = ();
+    const DEFAULT: bool = true;
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("src/tools/lint-docs")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(LintDocs {
+            compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build),
+            target: run.target,
+        });
+    }
+
+    /// Tests that the lint examples in the rustc book generate the correct
+    /// lints and have the expected format.
+    fn run(self, builder: &Builder<'_>) {
+        builder.ensure(crate::doc::RustcBook {
+            compiler: self.compiler,
+            target: self.target,
+            validate: true,
+        });
+    }
+}

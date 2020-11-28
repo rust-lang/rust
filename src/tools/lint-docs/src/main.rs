@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 fn main() {
     if let Err(e) = doit() {
-        println!("error: {}", e);
+        eprintln!("error: {}", e);
         std::process::exit(1);
     }
 }
@@ -15,6 +15,7 @@ fn doit() -> Result<(), Box<dyn Error>> {
     let mut rustc_path = None;
     let mut rustc_target = None;
     let mut verbose = false;
+    let mut validate = false;
     while let Some(arg) = args.next() {
         match arg.as_str() {
             "--src" => {
@@ -42,6 +43,7 @@ fn doit() -> Result<(), Box<dyn Error>> {
                 };
             }
             "-v" | "--verbose" => verbose = true,
+            "--validate" => validate = true,
             s => return Err(format!("unexpected argument `{}`", s).into()),
         }
     }
@@ -63,6 +65,7 @@ fn doit() -> Result<(), Box<dyn Error>> {
         rustc_path: &rustc_path.unwrap(),
         rustc_target: &rustc_target.unwrap(),
         verbose,
+        validate,
     };
     le.extract_lint_docs()
 }

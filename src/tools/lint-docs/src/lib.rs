@@ -19,6 +19,8 @@ pub struct LintExtractor<'a> {
     pub rustc_target: &'a str,
     /// Verbose output.
     pub verbose: bool,
+    /// Validate the style and the code example.
+    pub validate: bool,
 }
 
 struct Lint {
@@ -122,7 +124,7 @@ impl<'a> LintExtractor<'a> {
         let contents = fs::read_to_string(path)
             .map_err(|e| format!("could not read {}: {}", path.display(), e))?;
         let mut lines = contents.lines().enumerate();
-        loop {
+        'outer: loop {
             // Find a lint declaration.
             let lint_start = loop {
                 match lines.next() {
@@ -158,12 +160,22 @@ impl<'a> LintExtractor<'a> {
                                 )
                             })?;
                             if doc_lines.is_empty() {
-                                return Err(format!(
-                                    "did not find doc lines for lint `{}` in {}",
-                                    name,
-                                    path.display()
-                                )
-                                .into());
+                                if self.validate {
+                                    return Err(format!(
+                                        "did not find doc lines for lint `{}` in {}",
+                                        name,
+                                        path.display()
+                                    )
+                                    .into());
+                                } else {
+                                    eprintln!(
+                                        "warning: lint `{}` in {} does not define any doc lines, \
+                                         these are required for the lint documentation",
+                                        name,
+                                        path.display()
+                                    );
+                                    continue 'outer;
+                                }
                             }
                             break (doc_lines, name);
                         }
@@ -234,13 +246,26 @@ impl<'a> LintExtractor<'a> {
             // Rustdoc lints are documented in the rustdoc book, don't check these.
             return Ok(());
         }
-        lint.check_style()?;
+        if self.validate {
+            lint.check_style()?;
+        }
         // Unfortunately some lints have extra requirements that this simple test
         // setup can't handle (like extern crates). An alternative is to use a
         // separate test suite, and use an include mechanism such as mdbook's
         // `{{#rustdoc_include}}`.
         if !lint.is_ignored() {
-            self.replace_produces(lint)?;
+            if let Err(e) = self.replace_produces(lint) {
+                if self.validate {
+                    return Err(e);
+                }
+                eprintln!(
+                    "warning: the code example in lint `{}` in {} failed to \
+                     generate the expected output: {}",
+                    lint.name,
+                    lint.path.display(),
+                    e
+                );
+            }
         }
         Ok(())
     }
