@@ -1618,7 +1618,6 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
 /// implies exclusive access to its `T`:
 ///
 /// ```rust
-/// #![feature(unsafe_cell_get_mut)]
 /// #![forbid(unsafe_code)] // with exclusive accesses,
 ///                         // `UnsafeCell` is a transparent no-op wrapper,
 ///                         // so no need for `unsafe` here.
@@ -1722,7 +1721,6 @@ impl<T: ?Sized> UnsafeCell<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(unsafe_cell_get_mut)]
     /// use std::cell::UnsafeCell;
     ///
     /// let mut c = UnsafeCell::new(5);
@@ -1731,7 +1729,7 @@ impl<T: ?Sized> UnsafeCell<T> {
     /// assert_eq!(*c.get_mut(), 6);
     /// ```
     #[inline]
-    #[unstable(feature = "unsafe_cell_get_mut", issue = "76943")]
+    #[stable(feature = "unsafe_cell_get_mut", since = "1.50.0")]
     pub fn get_mut(&mut self) -> &mut T {
         &mut self.value
     }
