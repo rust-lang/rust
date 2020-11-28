@@ -2,16 +2,15 @@
 //! generate the actual methods on tcx which find and execute the provider,
 //! manage the caches, and so forth.
 
-use super::{queries, Query};
+use super::queries;
 use rustc_middle::dep_graph::{DepKind, DepNode, DepNodeExt, DepNodeIndex, SerializedDepNodeIndex};
 use rustc_middle::ty::query::on_disk_cache;
 use rustc_middle::ty::tls::{self, ImplicitCtxt};
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_query_system::dep_graph::HasDepContext;
-use rustc_query_system::query::{CycleError, QueryJobId, QueryJobInfo};
-use rustc_query_system::query::{QueryContext, QueryDescription};
+use rustc_query_system::query::{CycleError, QueryJobId};
+use rustc_query_system::query::{QueryContext, QueryDescription, QueryMap, QueryStackFrame};
 
-use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lock;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::{struct_span_err, Diagnostic, DiagnosticBuilder};
@@ -45,8 +44,6 @@ impl HasDepContext for QueryCtxt<'tcx> {
 }
 
 impl QueryContext for QueryCtxt<'tcx> {
-    type Query = Query;
-
     fn def_path_str(&self, def_id: DefId) -> String {
         self.tcx.def_path_str(def_id)
     }
@@ -55,10 +52,7 @@ impl QueryContext for QueryCtxt<'tcx> {
         tls::with_related_context(**self, |icx| icx.query)
     }
 
-    fn try_collect_active_jobs(
-        &self,
-    ) -> Option<FxHashMap<QueryJobId<Self::DepKind>, QueryJobInfo<Self::DepKind, Self::Query>>>
-    {
+    fn try_collect_active_jobs(&self) -> Option<QueryMap<Self::DepKind>> {
         self.queries.try_collect_active_jobs(**self)
     }
 
@@ -185,11 +179,11 @@ impl<'tcx> QueryCtxt<'tcx> {
     #[cold]
     pub(super) fn report_cycle(
         self,
-        CycleError { usage, cycle: stack }: CycleError<Query>,
+        CycleError { usage, cycle: stack }: CycleError,
     ) -> DiagnosticBuilder<'tcx> {
         assert!(!stack.is_empty());
 
-        let fix_span = |span: Span, query: &Query| {
+        let fix_span = |span: Span, query: &QueryStackFrame| {
             self.sess.source_map().guess_head_span(query.default_span(span))
         };
 
@@ -371,17 +365,12 @@ macro_rules! define_queries {
             input: ($(([$($modifiers)*] [$($attr)*] [$name]))*)
         }
 
-        #[derive(Clone, Debug)]
-        pub struct Query {
-            pub name: &'static str,
-            hash: Fingerprint,
-            description: String,
-            span: Option<Span>,
-        }
+        mod make_query {
+            use super::*;
 
-        impl Query {
+            // Create an eponymous constructor for each query.
             $(#[allow(nonstandard_style)] $(#[$attr])*
-            pub fn $name<$tcx>(tcx: QueryCtxt<$tcx>, key: query_keys::$name<$tcx>) -> Self {
+            pub fn $name<$tcx>(tcx: QueryCtxt<$tcx>, key: query_keys::$name<$tcx>) -> QueryStackFrame {
                 let kind = dep_graph::DepKind::$name;
                 let name = stringify!($name);
                 let description = ty::print::with_forced_impl_filename_line(
@@ -408,22 +397,8 @@ macro_rules! define_queries {
                     hasher.finish()
                 };
 
-                Self { name, description, span, hash }
+                QueryStackFrame::new(name, description, span, hash)
             })*
-
-            // FIXME(eddyb) Get more valid `Span`s on queries.
-            pub fn default_span(&self, span: Span) -> Span {
-                if !span.is_dummy() {
-                    return span;
-                }
-                self.span.unwrap_or(span)
-            }
-        }
-
-        impl<'a> HashStable<StableHashingContext<'a>> for Query {
-            fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-                self.hash.hash_stable(hcx, hasher)
-            }
         }
 
         #[allow(nonstandard_style)]
@@ -450,7 +425,7 @@ macro_rules! define_queries {
             type Cache = query_storage::$name<$tcx>;
 
             #[inline(always)]
-            fn query_state<'a>(tcx: QueryCtxt<$tcx>) -> &'a QueryState<crate::dep_graph::DepKind, Query, Self::Key>
+            fn query_state<'a>(tcx: QueryCtxt<$tcx>) -> &'a QueryState<crate::dep_graph::DepKind, Self::Key>
                 where QueryCtxt<$tcx>: 'a
             {
                 &tcx.queries.$name
@@ -484,7 +459,7 @@ macro_rules! define_queries {
 
             fn handle_cycle_error(
                 tcx: QueryCtxt<'tcx>,
-                error: CycleError<Query>
+                error: CycleError,
             ) -> Self::Value {
                 handle_cycle_error!([$($modifiers)*][tcx, error])
             }
@@ -587,7 +562,6 @@ macro_rules! define_queries_struct {
 
             $($(#[$attr])*  $name: QueryState<
                 crate::dep_graph::DepKind,
-                Query,
                 query_keys::$name<$tcx>,
             >,)*
         }
@@ -607,15 +581,15 @@ macro_rules! define_queries_struct {
             pub(crate) fn try_collect_active_jobs(
                 &$tcx self,
                 tcx: TyCtxt<$tcx>,
-            ) -> Option<FxHashMap<QueryJobId<crate::dep_graph::DepKind>, QueryJobInfo<crate::dep_graph::DepKind, Query>>> {
+            ) -> Option<QueryMap<crate::dep_graph::DepKind>> {
                 let tcx = QueryCtxt { tcx, queries: self };
-                let mut jobs = FxHashMap::default();
+                let mut jobs = QueryMap::default();
 
                 $(
                     self.$name.try_collect_active_jobs(
                         tcx,
                         dep_graph::DepKind::$name,
-                        Query::$name,
+                        make_query::$name,
                         &mut jobs,
                     )?;
                 )*
