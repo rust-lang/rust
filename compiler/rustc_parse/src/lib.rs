@@ -1,5 +1,6 @@
 //! The main parser interface.
 
+#![feature(array_windows)]
 #![feature(crate_visibility_modifier)]
 #![feature(bindings_after_at)]
 #![feature(iter_order_by)]
@@ -9,9 +10,12 @@
 #![recursion_limit = "256"]
 
 use rustc_ast as ast;
-use rustc_ast::token::{self, Nonterminal};
-use rustc_ast::tokenstream::{self, CanSynthesizeMissingTokens, LazyTokenStream, TokenStream};
+use rustc_ast::token::{self, Nonterminal, Token, TokenKind};
+use rustc_ast::tokenstream::{self, AttributesData, CanSynthesizeMissingTokens, LazyTokenStream};
+use rustc_ast::tokenstream::{AttrAnnotatedTokenStream, AttrAnnotatedTokenTree};
+use rustc_ast::tokenstream::{Spacing, TokenStream};
 use rustc_ast::AstLike;
+use rustc_ast::Attribute;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Diagnostic, FatalError, Level, PResult};
@@ -20,8 +24,6 @@ use rustc_span::{FileName, SourceFile, Span};
 
 use std::path::Path;
 use std::str;
-
-use tracing::debug;
 
 pub const MACRO_ARGUMENTS: Option<&str> = Some("macro arguments");
 
@@ -255,19 +257,23 @@ pub fn nt_to_tokenstream(
     // before we fall back to the stringification.
 
     let convert_tokens =
-        |tokens: Option<&LazyTokenStream>| tokens.as_ref().map(|t| t.create_token_stream());
+        |tokens: Option<&LazyTokenStream>| Some(tokens?.create_token_stream().to_tokenstream());
 
     let tokens = match *nt {
-        Nonterminal::NtItem(ref item) => prepend_attrs(sess, &item.attrs, nt, item.tokens.as_ref()),
+        Nonterminal::NtItem(ref item) => prepend_attrs(&item.attrs, item.tokens.as_ref()),
         Nonterminal::NtBlock(ref block) => convert_tokens(block.tokens.as_ref()),
         Nonterminal::NtStmt(ref stmt) => {
-            let do_prepend = |tokens| prepend_attrs(sess, stmt.attrs(), nt, tokens);
             if let ast::StmtKind::Empty = stmt.kind {
-                let tokens: TokenStream =
-                    tokenstream::TokenTree::token(token::Semi, stmt.span).into();
-                do_prepend(Some(&LazyTokenStream::new(tokens)))
+                let tokens = AttrAnnotatedTokenStream::new(vec![(
+                    tokenstream::AttrAnnotatedTokenTree::Token(Token::new(
+                        TokenKind::Semi,
+                        stmt.span,
+                    )),
+                    Spacing::Alone,
+                )]);
+                prepend_attrs(&stmt.attrs(), Some(&LazyTokenStream::new(tokens)))
             } else {
-                do_prepend(stmt.tokens())
+                prepend_attrs(&stmt.attrs(), stmt.tokens())
             }
         }
         Nonterminal::NtPat(ref pat) => convert_tokens(pat.tokens.as_ref()),
@@ -283,10 +289,7 @@ pub fn nt_to_tokenstream(
         Nonterminal::NtVis(ref vis) => convert_tokens(vis.tokens.as_ref()),
         Nonterminal::NtTT(ref tt) => Some(tt.clone().into()),
         Nonterminal::NtExpr(ref expr) | Nonterminal::NtLiteral(ref expr) => {
-            if expr.tokens.is_none() {
-                debug!("missing tokens for expr {:?}", expr);
-            }
-            prepend_attrs(sess, &expr.attrs, nt, expr.tokens.as_ref())
+            prepend_attrs(&expr.attrs, expr.tokens.as_ref())
         }
     };
 
@@ -295,34 +298,30 @@ pub fn nt_to_tokenstream(
     } else if matches!(synthesize_tokens, CanSynthesizeMissingTokens::Yes) {
         return fake_token_stream(sess, nt);
     } else {
-        panic!("Missing tokens for nt at {:?}: {:?}", nt.span(), pprust::nonterminal_to_string(nt));
+        panic!(
+            "Missing tokens for nt {:?} at {:?}: {:?}",
+            nt,
+            nt.span(),
+            pprust::nonterminal_to_string(nt)
+        );
     }
+}
+
+fn prepend_attrs(attrs: &[Attribute], tokens: Option<&LazyTokenStream>) -> Option<TokenStream> {
+    let tokens = tokens?;
+    if attrs.is_empty() {
+        return Some(tokens.create_token_stream().to_tokenstream());
+    }
+    let attr_data = AttributesData { attrs: attrs.to_vec().into(), tokens: tokens.clone() };
+    let wrapped = AttrAnnotatedTokenStream::new(vec![(
+        AttrAnnotatedTokenTree::Attributes(attr_data),
+        Spacing::Alone,
+    )]);
+    Some(wrapped.to_tokenstream())
 }
 
 pub fn fake_token_stream(sess: &ParseSess, nt: &Nonterminal) -> TokenStream {
     let source = pprust::nonterminal_to_string(nt);
     let filename = FileName::macro_expansion_source_code(&source);
     parse_stream_from_source_str(filename, source, sess, Some(nt.span()))
-}
-
-fn prepend_attrs(
-    sess: &ParseSess,
-    attrs: &[ast::Attribute],
-    nt: &Nonterminal,
-    tokens: Option<&tokenstream::LazyTokenStream>,
-) -> Option<tokenstream::TokenStream> {
-    if attrs.is_empty() {
-        return Some(tokens?.create_token_stream());
-    }
-    let mut builder = tokenstream::TokenStreamBuilder::new();
-    for attr in attrs {
-        // FIXME: Correctly handle tokens for inner attributes.
-        // For now, we fall back to reparsing the original AST node
-        if attr.style == ast::AttrStyle::Inner {
-            return Some(fake_token_stream(sess, nt));
-        }
-        builder.push(attr.tokens());
-    }
-    builder.push(tokens?.create_token_stream());
-    Some(builder.build())
 }

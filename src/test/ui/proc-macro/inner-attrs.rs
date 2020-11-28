@@ -37,7 +37,7 @@ struct MyDerivePrint {
             #![cfg_attr(not(FALSE), rustc_dummy(first))]
             #![cfg_attr(not(FALSE), rustc_dummy(second))]
             _ => {
-                #![cfg_attr(not(FALSE), rustc_dummy(second))]
+                #![cfg_attr(not(FALSE), rustc_dummy(third))]
                 true
             }
         };

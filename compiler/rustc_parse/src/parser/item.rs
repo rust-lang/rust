@@ -103,20 +103,11 @@ impl<'a> Parser<'a> {
         // over when we bump the parser
         if let token::Interpolated(nt) = &self.token.kind {
             if let token::NtItem(item) = &**nt {
-                let item = item.clone();
+                let mut item = item.clone();
+                self.bump();
 
-                return self.collect_tokens_trailing_token(
-                    attrs,
-                    force_collect,
-                    |this, mut attrs| {
-                        let mut item = item;
-                        mem::swap(&mut item.attrs, &mut attrs);
-                        item.attrs.extend(attrs);
-                        // Bump the parser so the we capture the token::Interpolated
-                        this.bump();
-                        Ok((Some(item.into_inner()), TrailingToken::None))
-                    },
-                );
+                attrs.prepend_to_nt_inner(&mut item.attrs);
+                return Ok(Some(item.into_inner()));
             }
         };
 
@@ -530,7 +521,7 @@ impl<'a> Parser<'a> {
 
         generics.where_clause = self.parse_where_clause()?;
 
-        let impl_items = self.parse_item_list(attrs, |p| p.parse_impl_item())?;
+        let impl_items = self.parse_item_list(attrs, |p| p.parse_impl_item(ForceCollect::No))?;
 
         let item_kind = match ty_second {
             Some(ty_second) => {
@@ -718,22 +709,32 @@ impl<'a> Parser<'a> {
         } else {
             // It's a normal trait.
             tps.where_clause = self.parse_where_clause()?;
-            let items = self.parse_item_list(attrs, |p| p.parse_trait_item())?;
+            let items = self.parse_item_list(attrs, |p| p.parse_trait_item(ForceCollect::No))?;
             Ok((ident, ItemKind::Trait(box TraitKind(is_auto, unsafety, tps, bounds, items))))
         }
     }
 
-    pub fn parse_impl_item(&mut self) -> PResult<'a, Option<Option<P<AssocItem>>>> {
-        self.parse_assoc_item(|_| true)
+    pub fn parse_impl_item(
+        &mut self,
+        force_collect: ForceCollect,
+    ) -> PResult<'a, Option<Option<P<AssocItem>>>> {
+        self.parse_assoc_item(|_| true, force_collect)
     }
 
-    pub fn parse_trait_item(&mut self) -> PResult<'a, Option<Option<P<AssocItem>>>> {
-        self.parse_assoc_item(|edition| edition >= Edition::Edition2018)
+    pub fn parse_trait_item(
+        &mut self,
+        force_collect: ForceCollect,
+    ) -> PResult<'a, Option<Option<P<AssocItem>>>> {
+        self.parse_assoc_item(|edition| edition >= Edition::Edition2018, force_collect)
     }
 
     /// Parses associated items.
-    fn parse_assoc_item(&mut self, req_name: ReqName) -> PResult<'a, Option<Option<P<AssocItem>>>> {
-        Ok(self.parse_item_(req_name, ForceCollect::No)?.map(
+    fn parse_assoc_item(
+        &mut self,
+        req_name: ReqName,
+        force_collect: ForceCollect,
+    ) -> PResult<'a, Option<Option<P<AssocItem>>>> {
+        Ok(self.parse_item_(req_name, force_collect)?.map(
             |Item { attrs, id, span, vis, ident, kind, tokens }| {
                 let kind = match AssocItemKind::try_from(kind) {
                     Ok(kind) => kind,
@@ -918,14 +919,17 @@ impl<'a> Parser<'a> {
         unsafety: Unsafe,
     ) -> PResult<'a, ItemInfo> {
         let abi = self.parse_abi(); // ABI?
-        let items = self.parse_item_list(attrs, |p| p.parse_foreign_item())?;
+        let items = self.parse_item_list(attrs, |p| p.parse_foreign_item(ForceCollect::No))?;
         let module = ast::ForeignMod { unsafety, abi, items };
         Ok((Ident::invalid(), ItemKind::ForeignMod(module)))
     }
 
     /// Parses a foreign item (one in an `extern { ... }` block).
-    pub fn parse_foreign_item(&mut self) -> PResult<'a, Option<Option<P<ForeignItem>>>> {
-        Ok(self.parse_item_(|_| true, ForceCollect::No)?.map(
+    pub fn parse_foreign_item(
+        &mut self,
+        force_collect: ForceCollect,
+    ) -> PResult<'a, Option<Option<P<ForeignItem>>>> {
+        Ok(self.parse_item_(|_| true, force_collect)?.map(
             |Item { attrs, id, span, vis, ident, kind, tokens }| {
                 let kind = match ForeignItemKind::try_from(kind) {
                     Ok(kind) => kind,

@@ -2581,19 +2581,17 @@ impl<'a> Parser<'a> {
         attrs: AttrWrapper,
         f: impl FnOnce(&mut Self, Vec<ast::Attribute>) -> PResult<'a, P<Expr>>,
     ) -> PResult<'a, P<Expr>> {
-        // FIXME - come up with a nice way to properly forward `ForceCollect`from
-        // the nonterminal parsing code. TThis approach iscorrect, but will cause
-        // us to unnecessarily capture tokens for exprs that have only builtin
-        // attributes. Revisit this before #![feature(stmt_expr_attributes)] is stabilized
-        let force_collect = if attrs.is_empty() { ForceCollect::No } else { ForceCollect::Yes };
-        self.collect_tokens_trailing_token(attrs, force_collect, |this, attrs| {
+        self.collect_tokens_trailing_token(attrs, ForceCollect::No, |this, attrs| {
             let res = f(this, attrs)?;
             let trailing = if this.restrictions.contains(Restrictions::STMT_EXPR)
                 && this.token.kind == token::Semi
             {
                 TrailingToken::Semi
             } else {
-                TrailingToken::None
+                // FIXME - pass this through from the place where we know
+                // we need a comma, rather than assuming that `#[attr] expr,`
+                // always captures a trailing comma
+                TrailingToken::MaybeComma
             };
             Ok((res, trailing))
         })

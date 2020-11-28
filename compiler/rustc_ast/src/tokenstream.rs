@@ -14,6 +14,7 @@
 //! ownership of the original.
 
 use crate::token::{self, DelimToken, Token, TokenKind};
+use crate::AttrVec;
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::{self, Lrc};
@@ -123,11 +124,11 @@ where
 }
 
 pub trait CreateTokenStream: sync::Send + sync::Sync {
-    fn create_token_stream(&self) -> TokenStream;
+    fn create_token_stream(&self) -> AttrAnnotatedTokenStream;
 }
 
-impl CreateTokenStream for TokenStream {
-    fn create_token_stream(&self) -> TokenStream {
+impl CreateTokenStream for AttrAnnotatedTokenStream {
+    fn create_token_stream(&self) -> AttrAnnotatedTokenStream {
         self.clone()
     }
 }
@@ -143,14 +144,14 @@ impl LazyTokenStream {
         LazyTokenStream(Lrc::new(Box::new(inner)))
     }
 
-    pub fn create_token_stream(&self) -> TokenStream {
+    pub fn create_token_stream(&self) -> AttrAnnotatedTokenStream {
         self.0.create_token_stream()
     }
 }
 
 impl fmt::Debug for LazyTokenStream {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Debug::fmt("LazyTokenStream", f)
+        write!(f, "LazyTokenStream({:?})", self.create_token_stream())
     }
 }
 
@@ -171,6 +172,145 @@ impl<CTX> HashStable<CTX> for LazyTokenStream {
     fn hash_stable(&self, _hcx: &mut CTX, _hasher: &mut StableHasher) {
         panic!("Attempted to compute stable hash for LazyTokenStream");
     }
+}
+
+/// A `AttrAnnotatedTokenStream` is similar to a `TokenStream`, but with extra
+/// information about the tokens for attribute targets. This is used
+/// during expansion to perform early cfg-expansion, and to process attributes
+/// during proc-macro invocations.
+#[derive(Clone, Debug, Default, Encodable, Decodable)]
+pub struct AttrAnnotatedTokenStream(pub Lrc<Vec<(AttrAnnotatedTokenTree, Spacing)>>);
+
+/// Like `TokenTree`, but for `AttrAnnotatedTokenStream`
+#[derive(Clone, Debug, Encodable, Decodable)]
+pub enum AttrAnnotatedTokenTree {
+    Token(Token),
+    Delimited(DelimSpan, DelimToken, AttrAnnotatedTokenStream),
+    /// Stores the attributes for an attribute target,
+    /// along with the tokens for that attribute target.
+    /// See `AttributesData` for more information
+    Attributes(AttributesData),
+}
+
+impl AttrAnnotatedTokenStream {
+    pub fn new(tokens: Vec<(AttrAnnotatedTokenTree, Spacing)>) -> AttrAnnotatedTokenStream {
+        AttrAnnotatedTokenStream(Lrc::new(tokens))
+    }
+
+    /// Converts this `AttrAnnotatedTokenStream` to a plain `TokenStream
+    /// During conversion, `AttrAnnotatedTokenTree::Attributes` get 'flattened'
+    /// back to a `TokenStream` of the form `outer_attr attr_target`.
+    /// If there are inner attributes, they are inserted into the proper
+    /// place in the attribute target tokens.
+    pub fn to_tokenstream(&self) -> TokenStream {
+        let trees: Vec<_> = self
+            .0
+            .iter()
+            .flat_map(|tree| match &tree.0 {
+                AttrAnnotatedTokenTree::Token(inner) => {
+                    smallvec![(TokenTree::Token(inner.clone()), tree.1)].into_iter()
+                }
+                AttrAnnotatedTokenTree::Delimited(span, delim, stream) => smallvec![(
+                    TokenTree::Delimited(*span, *delim, stream.to_tokenstream()),
+                    tree.1,
+                )]
+                .into_iter(),
+                AttrAnnotatedTokenTree::Attributes(data) => {
+                    let mut outer_attrs = Vec::new();
+                    let mut inner_attrs = Vec::new();
+                    let attrs: Vec<_> = data.attrs.clone().into();
+                    for attr in attrs {
+                        match attr.style {
+                            crate::AttrStyle::Outer => {
+                                assert!(
+                                    inner_attrs.len() == 0,
+                                    "Found outer attribute {:?} after inner attrs {:?}",
+                                    attr,
+                                    inner_attrs
+                                );
+                                outer_attrs.push(attr);
+                            }
+                            crate::AttrStyle::Inner => {
+                                inner_attrs.push(attr);
+                            }
+                        }
+                    }
+
+                    let mut target_tokens: Vec<_> = data
+                        .tokens
+                        .create_token_stream()
+                        .to_tokenstream()
+                        .0
+                        .iter()
+                        .cloned()
+                        .collect();
+                    if !inner_attrs.is_empty() {
+                        let mut found = false;
+                        // Check the last two trees (to account for a trailing semi)
+                        for (tree, _) in target_tokens.iter_mut().rev().take(2) {
+                            if let TokenTree::Delimited(span, delim, delim_tokens) = tree {
+                                // Inner attributes are only supported on extern blocks, functions, impls,
+                                // and modules. All of these have their inner attributes placed at
+                                // the beginning of the rightmost outermost braced group:
+                                // e.g. fn foo() { #![my_attr} }
+                                //
+                                // Therefore, we can insert them back into the right location
+                                // without needing to do any extra position tracking.
+                                //
+                                // Note: Outline modules are an exception - they can
+                                // have attributes like `#![my_attr]` at the start of a file.
+                                // Support for custom attributes in this position is not
+                                // properly implemented - we always synthesize fake tokens,
+                                // so we never reach this code.
+
+                                let mut builder = TokenStreamBuilder::new();
+                                for inner_attr in &inner_attrs {
+                                    builder.push(inner_attr.tokens().to_tokenstream());
+                                }
+                                builder.push(delim_tokens.clone());
+                                *tree = TokenTree::Delimited(*span, *delim, builder.build());
+                                found = true;
+                                break;
+                            }
+                        }
+
+                        assert!(
+                            found,
+                            "Failed to find trailing delimited group in: {:?}",
+                            target_tokens
+                        );
+                    }
+                    let mut flat: SmallVec<[_; 1]> = SmallVec::new();
+                    for attr in outer_attrs {
+                        // FIXME: Make this more efficient
+                        flat.extend(attr.tokens().to_tokenstream().0.clone().iter().cloned());
+                    }
+                    flat.extend(target_tokens);
+                    flat.into_iter()
+                }
+            })
+            .collect();
+        TokenStream::new(trees)
+    }
+}
+
+/// Stores the tokens for an attribute target, along
+/// with its attributes.
+///
+/// This is constructed during parsing when we need to capture
+/// tokens.
+///
+/// For example, `#[cfg(FALSE)] struct Foo {}` would
+/// have an `attrs` field contaiing the `#[cfg(FALSE)]` attr,
+/// and a `tokens` field storing the (unparesd) tokens `struct Foo {}`
+#[derive(Clone, Debug, Encodable, Decodable)]
+pub struct AttributesData {
+    /// Attributes, both outer and inner.
+    /// These are stored in the original order that they were parsed in.
+    pub attrs: AttrVec,
+    /// The underlying tokens for the attribute target that `attrs`
+    /// are applied to
+    pub tokens: LazyTokenStream,
 }
 
 /// A `TokenStream` is an abstract sequence of tokens, organized into [`TokenTree`]s.
@@ -232,6 +372,12 @@ impl TokenStream {
             return Some((TokenStream::new(new_stream), sp));
         }
         None
+    }
+}
+
+impl From<(AttrAnnotatedTokenTree, Spacing)> for AttrAnnotatedTokenStream {
+    fn from((tree, spacing): (AttrAnnotatedTokenTree, Spacing)) -> AttrAnnotatedTokenStream {
+        AttrAnnotatedTokenStream::new(vec![(tree, spacing)])
     }
 }
 
@@ -455,6 +601,10 @@ impl Cursor {
         } else {
             None
         }
+    }
+
+    pub fn index(&self) -> usize {
+        self.index
     }
 
     pub fn append(&mut self, new_stream: TokenStream) {

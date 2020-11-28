@@ -87,16 +87,16 @@ PRINT-DERIVE INPUT (DISPLAY): struct AttributeDerive { }
 PRINT-DERIVE INPUT (DEBUG): TokenStream [
     Ident {
         ident: "struct",
-        span: $DIR/attribute-after-derive.rs:18:1: 21:2 (#0),
+        span: $DIR/attribute-after-derive.rs:18:1: 18:7 (#0),
     },
     Ident {
         ident: "AttributeDerive",
-        span: $DIR/attribute-after-derive.rs:18:1: 21:2 (#0),
+        span: $DIR/attribute-after-derive.rs:18:8: 18:23 (#0),
     },
     Group {
         delimiter: Brace,
         stream: TokenStream [],
-        span: $DIR/attribute-after-derive.rs:18:1: 21:2 (#0),
+        span: $DIR/attribute-after-derive.rs:18:24: 21:2 (#0),
     },
 ]
 PRINT-DERIVE INPUT (DISPLAY): #[print_attr] struct DeriveAttribute { }
@@ -104,45 +104,45 @@ PRINT-DERIVE INPUT (DEBUG): TokenStream [
     Punct {
         ch: '#',
         spacing: Alone,
-        span: $DIR/attribute-after-derive.rs:25:1: 28:2 (#0),
+        span: $DIR/attribute-after-derive.rs:24:1: 24:2 (#0),
     },
     Group {
         delimiter: Bracket,
         stream: TokenStream [
             Ident {
                 ident: "print_attr",
-                span: $DIR/attribute-after-derive.rs:25:1: 28:2 (#0),
+                span: $DIR/attribute-after-derive.rs:24:3: 24:13 (#0),
             },
         ],
-        span: $DIR/attribute-after-derive.rs:25:1: 28:2 (#0),
+        span: $DIR/attribute-after-derive.rs:24:2: 24:14 (#0),
     },
     Ident {
         ident: "struct",
-        span: $DIR/attribute-after-derive.rs:25:1: 28:2 (#0),
+        span: $DIR/attribute-after-derive.rs:25:1: 25:7 (#0),
     },
     Ident {
         ident: "DeriveAttribute",
-        span: $DIR/attribute-after-derive.rs:25:1: 28:2 (#0),
+        span: $DIR/attribute-after-derive.rs:25:8: 25:23 (#0),
     },
     Group {
         delimiter: Brace,
         stream: TokenStream [],
-        span: $DIR/attribute-after-derive.rs:25:1: 28:2 (#0),
+        span: $DIR/attribute-after-derive.rs:25:24: 28:2 (#0),
     },
 ]
 PRINT-ATTR INPUT (DISPLAY): struct DeriveAttribute { }
 PRINT-ATTR INPUT (DEBUG): TokenStream [
     Ident {
         ident: "struct",
-        span: $DIR/attribute-after-derive.rs:25:1: 28:2 (#0),
+        span: $DIR/attribute-after-derive.rs:25:1: 25:7 (#0),
     },
     Ident {
         ident: "DeriveAttribute",
-        span: $DIR/attribute-after-derive.rs:25:1: 28:2 (#0),
+        span: $DIR/attribute-after-derive.rs:25:8: 25:23 (#0),
     },
     Group {
         delimiter: Brace,
         stream: TokenStream [],
-        span: $DIR/attribute-after-derive.rs:25:1: 28:2 (#0),
+        span: $DIR/attribute-after-derive.rs:25:24: 28:2 (#0),
     },
 ]

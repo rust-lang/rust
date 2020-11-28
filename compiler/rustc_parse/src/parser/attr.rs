@@ -1,10 +1,11 @@
-use super::{AttrWrapper, Parser, PathStyle};
+use super::{AttrWrapper, Capturing, Parser, PathStyle};
 use rustc_ast as ast;
 use rustc_ast::attr;
 use rustc_ast::token::{self, Nonterminal};
 use rustc_ast_pretty::pprust;
 use rustc_errors::{error_code, PResult};
 use rustc_span::{sym, Span};
+use std::convert::TryInto;
 
 use tracing::debug;
 
@@ -29,6 +30,7 @@ impl<'a> Parser<'a> {
     pub(super) fn parse_outer_attributes(&mut self) -> PResult<'a, AttrWrapper> {
         let mut attrs: Vec<ast::Attribute> = Vec::new();
         let mut just_parsed_doc_comment = false;
+        let start_pos = self.token_cursor.num_next_calls;
         loop {
             debug!("parse_outer_attributes: self.token={:?}", self.token);
             let attr = if self.check(&token::Pound) {
@@ -74,7 +76,7 @@ impl<'a> Parser<'a> {
                 break;
             }
         }
-        Ok(AttrWrapper::new(attrs))
+        Ok(AttrWrapper::new(attrs.into(), start_pos))
     }
 
     /// Matches `attribute = # ! [ meta_item ]`.
@@ -177,6 +179,7 @@ impl<'a> Parser<'a> {
     crate fn parse_inner_attributes(&mut self) -> PResult<'a, Vec<ast::Attribute>> {
         let mut attrs: Vec<ast::Attribute> = vec![];
         loop {
+            let start_pos: u32 = self.token_cursor.num_next_calls.try_into().unwrap();
             // Only try to parse if it is an inner attribute (has `!`).
             let attr = if self.check(&token::Pound) && self.look_ahead(1, |t| t == &token::Not) {
                 Some(self.parse_attribute(InnerAttrPolicy::Permitted)?)
@@ -191,6 +194,18 @@ impl<'a> Parser<'a> {
                 None
             };
             if let Some(attr) = attr {
+                let end_pos: u32 = self.token_cursor.num_next_calls.try_into().unwrap();
+                // If we are currently capturing tokens, mark the location of this inner attribute.
+                // If capturing ends up creating a `LazyTokenStream`, we will include
+                // this replace range with it, removing the inner attribute from the final
+                // `AttrAnnotatedTokenStream`. Inner attributes are stored in the parsed AST note.
+                // During macro expansion, they are selectively inserted back into the
+                // token stream (the first inner attribute is remoevd each time we invoke the
+                // corresponding macro).
+                let range = start_pos..end_pos;
+                if let Capturing::Yes = self.capture_state.capturing {
+                    self.capture_state.inner_attr_ranges.insert(attr.id, (range, vec![]));
+                }
                 attrs.push(attr);
             } else {
                 break;
@@ -311,6 +326,9 @@ pub fn maybe_needs_tokens(attrs: &[ast::Attribute]) -> bool {
     // One of the attributes may either itself be a macro,
     // or expand to macro attributes (`cfg_attr`).
     attrs.iter().any(|attr| {
+        if attr.is_doc_comment() {
+            return false;
+        }
         attr.ident().map_or(true, |ident| {
             ident.name == sym::cfg_attr || !rustc_feature::is_builtin_attr_name(ident.name)
         })
