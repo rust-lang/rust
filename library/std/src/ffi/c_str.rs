@@ -221,7 +221,10 @@ pub struct CStr {
 /// ```
 #[derive(Clone, PartialEq, Eq, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct NulError<#[unstable(feature = "allocator_api", issue = "32838")] A: AllocRef = Global>(usize, Vec<u8, A>);
+pub struct NulError<#[unstable(feature = "allocator_api", issue = "32838")] A: AllocRef = Global>(
+    usize,
+    Vec<u8, A>,
+);
 
 /// An error indicating that a nul byte was not in the expected position.
 ///
@@ -262,7 +265,9 @@ pub struct FromBytesWithNulError {
 /// ```
 #[derive(Clone, PartialEq, Eq)]
 #[unstable(feature = "cstring_from_vec_with_nul", issue = "73179")]
-pub struct FromVecWithNulError<#[unstable(feature = "allocator_api", issue = "32838")] A: AllocRef = Global> {
+pub struct FromVecWithNulError<
+    #[unstable(feature = "allocator_api", issue = "32838")] A: AllocRef = Global,
+> {
     error_kind: FromBytesWithNulErrorKind,
     bytes: Vec<u8, A>,
 }
@@ -341,7 +346,9 @@ impl<A: AllocRef> FromVecWithNulError<A> {
 /// its documentation for more.
 #[derive(Clone, PartialEq, Eq)]
 #[stable(feature = "cstring_into", since = "1.7.0")]
-pub struct IntoStringError<#[unstable(feature = "allocator_api", issue = "32838")] A: AllocRef = Global> {
+pub struct IntoStringError<
+    #[unstable(feature = "allocator_api", issue = "32838")] A: AllocRef = Global,
+> {
     inner: CString<A>,
     error: Utf8Error,
 }
