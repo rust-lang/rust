@@ -20,7 +20,7 @@ tools and submodules for building a full Rust distribution.
 
 As of this writing, this structure is gradually undergoing some transformation
 to make it a bit less monolithic and more approachable, especially to
-newcommers.
+newcomers.
 
 The repository consists of a `src` directory, under which there live many
 crates, which are the source for the compiler, build system, tools, etc. This
