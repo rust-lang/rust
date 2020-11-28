@@ -6,7 +6,7 @@ use stdx::format_to;
 use cfg::{CfgExpr, CfgOptions, DnfExpr};
 use hir_expand::diagnostics::{Diagnostic, DiagnosticCode, DiagnosticSink};
 use hir_expand::{HirFileId, InFile};
-use syntax::{ast, AstPtr, SyntaxNodePtr};
+use syntax::{ast, AstPtr, SyntaxNodePtr, TextRange};
 
 use crate::{db::DefDatabase, DefWithBodyId};
 
@@ -125,5 +125,70 @@ impl Diagnostic for InactiveCode {
     }
     fn as_any(&self) -> &(dyn Any + Send + 'static) {
         self
+    }
+}
+
+// Diagnostic: unresolved-proc-macro
+//
+// This diagnostic is shown when a procedural macro can not be found. This usually means that
+// procedural macro support is simply disabled (and hence is only a weak hint instead of an error),
+// but can also indicate project setup problems.
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct UnresolvedProcMacro {
+    pub file: HirFileId,
+    pub node: SyntaxNodePtr,
+    /// If the diagnostic can be pinpointed more accurately than via `node`, this is the `TextRange`
+    /// to use instead.
+    pub precise_location: Option<TextRange>,
+    pub macro_name: Option<String>,
+}
+
+impl Diagnostic for UnresolvedProcMacro {
+    fn code(&self) -> DiagnosticCode {
+        DiagnosticCode("unresolved-proc-macro")
+    }
+
+    fn message(&self) -> String {
+        match &self.macro_name {
+            Some(name) => format!("proc macro `{}` not expanded", name),
+            None => "proc macro not expanded".to_string(),
+        }
+    }
+
+    fn display_source(&self) -> InFile<SyntaxNodePtr> {
+        InFile::new(self.file, self.node.clone())
+    }
+
+    fn as_any(&self) -> &(dyn Any + Send + 'static) {
+        self
+    }
+}
+
+// Diagnostic: macro-error
+//
+// This diagnostic is shown for macro expansion errors.
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct MacroError {
+    pub file: HirFileId,
+    pub node: SyntaxNodePtr,
+    pub message: String,
+}
+
+impl Diagnostic for MacroError {
+    fn code(&self) -> DiagnosticCode {
+        DiagnosticCode("macro-error")
+    }
+    fn message(&self) -> String {
+        self.message.clone()
+    }
+    fn display_source(&self) -> InFile<SyntaxNodePtr> {
+        InFile::new(self.file, self.node.clone())
+    }
+    fn as_any(&self) -> &(dyn Any + Send + 'static) {
+        self
+    }
+    fn is_experimental(&self) -> bool {
+        // Newly added and not very well-tested, might contain false positives.
+        true
     }
 }

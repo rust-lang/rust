@@ -3,7 +3,7 @@
 use std::sync::Arc;
 
 use base_db::{salsa, SourceDatabase};
-use mbe::{ExpandResult, MacroRules};
+use mbe::{ExpandError, ExpandResult, MacroRules};
 use parser::FragmentKind;
 use syntax::{algo::diff, AstNode, GreenNode, Parse, SyntaxKind::*, SyntaxNode};
 
@@ -80,6 +80,9 @@ pub trait AstDatabase: SourceDatabase {
         macro_file: MacroFile,
     ) -> ExpandResult<Option<(Parse<SyntaxNode>, Arc<mbe::TokenMap>)>>;
     fn macro_expand(&self, macro_call: MacroCallId) -> ExpandResult<Option<Arc<tt::Subtree>>>;
+
+    /// Firewall query that returns the error from the `macro_expand` query.
+    fn macro_expand_error(&self, macro_call: MacroCallId) -> Option<ExpandError>;
 
     #[salsa::interned]
     fn intern_eager_expansion(&self, eager: EagerCallLoc) -> EagerMacroId;
@@ -169,6 +172,10 @@ fn macro_arg(db: &dyn AstDatabase, id: MacroCallId) -> Option<Arc<(tt::Subtree, 
 
 fn macro_expand(db: &dyn AstDatabase, id: MacroCallId) -> ExpandResult<Option<Arc<tt::Subtree>>> {
     macro_expand_with_arg(db, id, None)
+}
+
+fn macro_expand_error(db: &dyn AstDatabase, macro_call: MacroCallId) -> Option<ExpandError> {
+    db.macro_expand(macro_call).err
 }
 
 fn expander(db: &dyn AstDatabase, id: MacroCallId) -> Option<Arc<(TokenExpander, mbe::TokenMap)>> {

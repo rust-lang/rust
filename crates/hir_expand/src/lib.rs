@@ -255,7 +255,7 @@ pub enum MacroDefKind {
 pub struct MacroCallLoc {
     pub(crate) def: MacroDefId,
     pub(crate) krate: CrateId,
-    pub(crate) kind: MacroCallKind,
+    pub kind: MacroCallKind,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

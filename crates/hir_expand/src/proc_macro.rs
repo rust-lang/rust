@@ -50,7 +50,7 @@ impl ProcMacroExpander {
 
                 proc_macro.expander.expand(&tt, None).map_err(mbe::ExpandError::from)
             }
-            None => Err(err!("Unresolved proc macro")),
+            None => Err(mbe::ExpandError::UnresolvedProcMacro),
         }
     }
 }
