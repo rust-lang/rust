@@ -716,6 +716,41 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     }
 }
 
+fn should_encode_visibility(def_kind: DefKind) -> bool {
+    match def_kind {
+        DefKind::Mod
+        | DefKind::Struct
+        | DefKind::Union
+        | DefKind::Enum
+        | DefKind::Variant
+        | DefKind::Trait
+        | DefKind::TyAlias
+        | DefKind::ForeignTy
+        | DefKind::TraitAlias
+        | DefKind::AssocTy
+        | DefKind::Fn
+        | DefKind::Const
+        | DefKind::Static
+        | DefKind::Ctor(..)
+        | DefKind::AssocFn
+        | DefKind::AssocConst
+        | DefKind::Macro(..)
+        | DefKind::Use
+        | DefKind::ForeignMod
+        | DefKind::OpaqueTy
+        | DefKind::Impl
+        | DefKind::Field => true,
+        DefKind::TyParam
+        | DefKind::ConstParam
+        | DefKind::LifetimeParam
+        | DefKind::AnonConst
+        | DefKind::GlobalAsm
+        | DefKind::Closure
+        | DefKind::Generator
+        | DefKind::ExternCrate => false,
+    }
+}
+
 impl EncodeContext<'a, 'tcx> {
     fn encode_def_ids(&mut self) {
         if self.is_proc_macro {
@@ -734,6 +769,9 @@ impl EncodeContext<'a, 'tcx> {
                 def_kind => def_kind,
             });
             record!(self.tables.span[def_id] <- tcx.def_span(def_id));
+            if should_encode_visibility(def_kind) {
+                record!(self.tables.visibility[def_id] <- self.tcx.visibility(def_id));
+            }
         }
     }
 
@@ -761,7 +799,6 @@ impl EncodeContext<'a, 'tcx> {
         };
 
         record!(self.tables.kind[def_id] <- EntryKind::Variant(self.lazy(data)));
-        record!(self.tables.visibility[def_id] <- self.tcx.visibility(def_id));
         record!(self.tables.attributes[def_id] <- &self.tcx.get_attrs(def_id)[..]);
         record!(self.tables.expn_that_defined[def_id] <- self.tcx.expansion_that_defined(def_id));
         record!(self.tables.children[def_id] <- variant.fields.iter().map(|f| {
@@ -800,7 +837,6 @@ impl EncodeContext<'a, 'tcx> {
         };
 
         record!(self.tables.kind[def_id] <- EntryKind::Variant(self.lazy(data)));
-        record!(self.tables.visibility[def_id] <- self.tcx.visibility(def_id));
         self.encode_stability(def_id);
         self.encode_deprecation(def_id);
         self.encode_item_type(def_id);
@@ -851,7 +887,6 @@ impl EncodeContext<'a, 'tcx> {
         };
 
         record!(self.tables.kind[def_id] <- EntryKind::Mod(self.lazy(data)));
-        record!(self.tables.visibility[def_id] <- self.tcx.visibility(def_id));
         record!(self.tables.attributes[def_id] <- attrs);
         if self.is_proc_macro {
             record!(self.tables.children[def_id] <- &[]);
@@ -881,7 +916,6 @@ impl EncodeContext<'a, 'tcx> {
         let variant_data = tcx.hir().expect_variant_data(variant_id);
 
         record!(self.tables.kind[def_id] <- EntryKind::Field);
-        record!(self.tables.visibility[def_id] <- self.tcx.visibility(def_id));
         record!(self.tables.attributes[def_id] <- variant_data.fields()[field_index].attrs);
         record!(self.tables.expn_that_defined[def_id] <- self.tcx.expansion_that_defined(def_id));
         self.encode_ident_span(def_id, field.ident);
@@ -906,7 +940,6 @@ impl EncodeContext<'a, 'tcx> {
         };
 
         record!(self.tables.kind[def_id] <- EntryKind::Struct(self.lazy(data), adt_def.repr));
-        record!(self.tables.visibility[def_id] <- self.tcx.visibility(def_id));
         record!(self.tables.expn_that_defined[def_id] <- self.tcx.expansion_that_defined(def_id));
         self.encode_stability(def_id);
         self.encode_deprecation(def_id);
@@ -1010,7 +1043,6 @@ impl EncodeContext<'a, 'tcx> {
                 record!(self.tables.kind[def_id] <- EntryKind::AssocType(container));
             }
         }
-        record!(self.tables.visibility[def_id] <- self.tcx.visibility(def_id));
         record!(self.tables.attributes[def_id] <- ast_item.attrs);
         self.encode_ident_span(def_id, ast_item.ident);
         self.encode_stability(def_id);
@@ -1113,7 +1145,6 @@ impl EncodeContext<'a, 'tcx> {
                 record!(self.tables.kind[def_id] <- EntryKind::AssocType(container));
             }
         }
-        record!(self.tables.visibility[def_id] <- self.tcx.visibility(def_id));
         record!(self.tables.attributes[def_id] <- ast_item.attrs);
         self.encode_ident_span(def_id, impl_item.ident);
         self.encode_stability(def_id);
@@ -1358,7 +1389,6 @@ impl EncodeContext<'a, 'tcx> {
             }
         };
         record!(self.tables.kind[def_id] <- entry_kind);
-        record!(self.tables.visibility[def_id] <- self.tcx.visibility(def_id));
         record!(self.tables.attributes[def_id] <- item.attrs);
         record!(self.tables.expn_that_defined[def_id] <- self.tcx.expansion_that_defined(def_id));
         // FIXME(eddyb) there should be a nicer way to do this.
@@ -1477,7 +1507,6 @@ impl EncodeContext<'a, 'tcx> {
     fn encode_info_for_macro_def(&mut self, macro_def: &hir::MacroDef<'_>) {
         let def_id = self.tcx.hir().local_def_id(macro_def.hir_id).to_def_id();
         record!(self.tables.kind[def_id] <- EntryKind::MacroDef(self.lazy(macro_def.ast.clone())));
-        record!(self.tables.visibility[def_id] <- self.tcx.visibility(def_id));
         record!(self.tables.attributes[def_id] <- macro_def.attrs);
         self.encode_ident_span(def_id, macro_def.ident);
         self.encode_stability(def_id);
@@ -1808,7 +1837,6 @@ impl EncodeContext<'a, 'tcx> {
                 record!(self.tables.kind[def_id] <- EntryKind::ForeignType);
             }
         }
-        record!(self.tables.visibility[def_id] <- self.tcx.visibility(def_id));
         record!(self.tables.attributes[def_id] <- nitem.attrs);
         self.encode_ident_span(def_id, nitem.ident);
         self.encode_stability(def_id);
