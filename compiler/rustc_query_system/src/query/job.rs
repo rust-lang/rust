@@ -2,6 +2,8 @@ use crate::query::plumbing::CycleError;
 use crate::query::QueryStackFrame;
 
 use rustc_data_structures::fx::FxHashMap;
+use rustc_errors::{struct_span_err, DiagnosticBuilder};
+use rustc_session::Session;
 use rustc_span::Span;
 
 use std::convert::TryFrom;
@@ -589,4 +591,38 @@ pub fn deadlock<CTX: QueryContext>(tcx: CTX, registry: &rayon_core::Registry) {
     }
 
     on_panic.disable();
+}
+
+#[inline(never)]
+#[cold]
+pub(crate) fn report_cycle<'a>(
+    sess: &'a Session,
+    CycleError { usage, cycle: stack }: CycleError,
+) -> DiagnosticBuilder<'a> {
+    assert!(!stack.is_empty());
+
+    let fix_span = |span: Span, query: &QueryStackFrame| {
+        sess.source_map().guess_head_span(query.default_span(span))
+    };
+
+    let span = fix_span(stack[1 % stack.len()].span, &stack[0].query);
+    let mut err =
+        struct_span_err!(sess, span, E0391, "cycle detected when {}", stack[0].query.description);
+
+    for i in 1..stack.len() {
+        let query = &stack[i].query;
+        let span = fix_span(stack[(i + 1) % stack.len()].span, query);
+        err.span_note(span, &format!("...which requires {}...", query.description));
+    }
+
+    err.note(&format!(
+        "...which again requires {}, completing the cycle",
+        stack[0].query.description
+    ));
+
+    if let Some((span, query)) = usage {
+        err.span_note(fix_span(span, &query), &format!("cycle used when {}", query.description));
+    }
+
+    err
 }

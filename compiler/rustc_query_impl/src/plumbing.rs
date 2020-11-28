@@ -8,15 +8,13 @@ use rustc_middle::ty::query::on_disk_cache;
 use rustc_middle::ty::tls::{self, ImplicitCtxt};
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_query_system::dep_graph::HasDepContext;
-use rustc_query_system::query::{CycleError, QueryJobId};
-use rustc_query_system::query::{QueryContext, QueryDescription, QueryMap, QueryStackFrame};
+use rustc_query_system::query::{QueryContext, QueryDescription, QueryJobId, QueryMap};
 
 use rustc_data_structures::sync::Lock;
 use rustc_data_structures::thin_vec::ThinVec;
-use rustc_errors::{struct_span_err, Diagnostic, DiagnosticBuilder};
+use rustc_errors::Diagnostic;
 use rustc_serialize::opaque;
 use rustc_span::def_id::{DefId, LocalDefId};
-use rustc_span::Span;
 
 #[derive(Copy, Clone)]
 pub struct QueryCtxt<'tcx> {
@@ -175,54 +173,6 @@ impl QueryContext for QueryCtxt<'tcx> {
 }
 
 impl<'tcx> QueryCtxt<'tcx> {
-    #[inline(never)]
-    #[cold]
-    pub(super) fn report_cycle(
-        self,
-        CycleError { usage, cycle: stack }: CycleError,
-    ) -> DiagnosticBuilder<'tcx> {
-        assert!(!stack.is_empty());
-
-        let fix_span = |span: Span, query: &QueryStackFrame| {
-            self.sess.source_map().guess_head_span(query.default_span(span))
-        };
-
-        // Disable naming impls with types in this path, since that
-        // sometimes cycles itself, leading to extra cycle errors.
-        // (And cycle errors around impls tend to occur during the
-        // collect/coherence phases anyhow.)
-        ty::print::with_forced_impl_filename_line(|| {
-            let span = fix_span(stack[1 % stack.len()].span, &stack[0].query);
-            let mut err = struct_span_err!(
-                self.sess,
-                span,
-                E0391,
-                "cycle detected when {}",
-                stack[0].query.description
-            );
-
-            for i in 1..stack.len() {
-                let query = &stack[i].query;
-                let span = fix_span(stack[(i + 1) % stack.len()].span, query);
-                err.span_note(span, &format!("...which requires {}...", query.description));
-            }
-
-            err.note(&format!(
-                "...which again requires {}, completing the cycle",
-                stack[0].query.description
-            ));
-
-            if let Some((span, query)) = usage {
-                err.span_note(
-                    fix_span(span, &query),
-                    &format!("cycle used when {}", query.description),
-                );
-            }
-
-            err
-        })
-    }
-
     pub(super) fn encode_query_results(
         self,
         encoder: &mut on_disk_cache::CacheEncoder<'a, 'tcx, opaque::FileEncoder>,
@@ -302,16 +252,16 @@ pub struct QueryStruct {
 
 macro_rules! handle_cycle_error {
     ([][$tcx: expr, $error:expr]) => {{
-        $tcx.report_cycle($error).emit();
+        $error.emit();
         Value::from_cycle_error($tcx)
     }};
     ([fatal_cycle $($rest:tt)*][$tcx:expr, $error:expr]) => {{
-        $tcx.report_cycle($error).emit();
+        $error.emit();
         $tcx.sess.abort_if_errors();
         unreachable!()
     }};
     ([cycle_delay_bug $($rest:tt)*][$tcx:expr, $error:expr]) => {{
-        $tcx.report_cycle($error).delay_as_bug();
+        $error.delay_as_bug();
         Value::from_cycle_error($tcx)
     }};
     ([$other:ident $(($($other_args:tt)*))* $(, $($modifiers:tt)*)*][$($args:tt)*]) => {
@@ -459,7 +409,7 @@ macro_rules! define_queries {
 
             fn handle_cycle_error(
                 tcx: QueryCtxt<'tcx>,
-                error: CycleError,
+                mut error: DiagnosticBuilder<'_>,
             ) -> Self::Value {
                 handle_cycle_error!([$($modifiers)*][tcx, error])
             }

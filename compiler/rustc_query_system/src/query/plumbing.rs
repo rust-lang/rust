@@ -6,7 +6,9 @@ use crate::dep_graph::{DepContext, DepKind, DepNode};
 use crate::dep_graph::{DepNodeIndex, SerializedDepNodeIndex};
 use crate::query::caches::QueryCache;
 use crate::query::config::{QueryDescription, QueryVtable, QueryVtableExt};
-use crate::query::job::{QueryInfo, QueryJob, QueryJobId, QueryJobInfo, QueryShardJobId};
+use crate::query::job::{
+    report_cycle, QueryInfo, QueryJob, QueryJobId, QueryJobInfo, QueryShardJobId,
+};
 use crate::query::{QueryContext, QueryMap, QueryStackFrame};
 
 #[cfg(not(parallel_compiler))]
@@ -245,6 +247,7 @@ where
                 &tcx.current_query_job(),
                 span,
             );
+            let error = report_cycle(tcx.dep_context().sess(), error);
             let value = query.handle_cycle_error(tcx, error);
             cache.cache.store_nocache(value)
         }));
@@ -256,6 +259,7 @@ where
             let result = latch.wait_on(tcx.current_query_job(), span);
 
             if let Err(cycle) = result {
+                let cycle = report_cycle(tcx.dep_context().sess(), cycle);
                 let value = query.handle_cycle_error(tcx, cycle);
                 let value = cache.cache.store_nocache(value);
                 return TryGetJob::Cycle(value);
@@ -352,7 +356,7 @@ where
 }
 
 #[derive(Clone)]
-pub struct CycleError {
+pub(crate) struct CycleError {
     /// The query and related span that uses the cycle.
     pub usage: Option<(Span, QueryStackFrame)>,
     pub cycle: Vec<QueryInfo>,
