@@ -227,8 +227,16 @@ impl<'a> Parser<'a> {
                 if !parser.eat_keyword(kw::If) {
                     return Err("Expected `if`");
                 }
+                // Inner attributes are not actually syntactically permitted here, but we don't
+                // care about inner vs outer attributes in this position. Our purpose with this
+                // special case parsing of cfg_if macros is to ensure we can correctly resolve
+                // imported modules that may have a custom `path` defined.
+                //
+                // As such, we just need to advance the parser past the attribute and up to
+                // to the opening brace.
+                // See also https://github.com/rust-lang/rust/pull/79433
                 parser
-                    .parse_attribute(false)
+                    .parse_attribute(rustc_parse::parser::attr::InnerAttrPolicy::Permitted)
                     .map_err(|_| "Failed to parse attributes")?;
             }
 
