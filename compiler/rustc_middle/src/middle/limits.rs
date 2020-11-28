@@ -43,8 +43,7 @@ fn update_limit(
 
                     let value_span = attr
                         .meta()
-                        .and_then(|meta| meta.name_value_literal().cloned())
-                        .map(|lit| lit.span)
+                        .and_then(|meta| meta.name_value_literal_span())
                         .unwrap_or(attr.span);
 
                     let error_str = match e.kind() {
