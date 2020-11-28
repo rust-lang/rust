@@ -5,7 +5,7 @@
 //!
 //! `DiagnosticSink` struct is used as an emitter for diagnostic. When creating
 //! a `DiagnosticSink`, you supply a callback which can react to a `dyn
-//! Diagnostic` or to any concrete diagnostic (downcasting is sued internally).
+//! Diagnostic` or to any concrete diagnostic (downcasting is used internally).
 //!
 //! Because diagnostics store file offsets, it's a bad idea to store them
 //! directly in salsa. For this reason, every hir subsytem defines it's own
@@ -32,7 +32,12 @@ impl DiagnosticCode {
 pub trait Diagnostic: Any + Send + Sync + fmt::Debug + 'static {
     fn code(&self) -> DiagnosticCode;
     fn message(&self) -> String;
-    /// Used in highlighting and related purposes
+    /// Source element that triggered the diagnostics.
+    ///
+    /// Note that this should reflect "semantics", rather than specific span we
+    /// want to highlight. When rendering the diagnostics into an error message,
+    /// the IDE will fetch the `SyntaxNode` and will narrow the span
+    /// appropriately.
     fn display_source(&self) -> InFile<SyntaxNodePtr>;
     fn as_any(&self) -> &(dyn Any + Send + 'static);
     fn is_experimental(&self) -> bool {
