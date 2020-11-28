@@ -553,21 +553,21 @@ h4 > code, h3 > code, .invisible > code {
 	border: none;
 }
 
-.content .stability code {
+.content .item-info code {
 	font-size: 90%;
 }
 
-.content .stability {
+.content .item-info {
 	position: relative;
 	margin-left: 33px;
 	margin-top: -13px;
 }
 
-.sub-variant > div > .stability {
+.sub-variant > div > .item-info {
 	margin-top: initial;
 }
 
-.content .stability::before {
+.content .item-info::before {
 	content: '⬑';
 	font-size: 25px;
 	position: absolute;
@@ -579,15 +579,15 @@ h4 > code, h3 > code, .invisible > code {
 	margin-left: 20px;
 }
 
-.content .impl-items .docblock, .content .impl-items .stability {
+.content .impl-items .docblock, .content .impl-items .item-info {
 	margin-bottom: .6em;
 }
 
-.content .impl-items > .stability {
+.content .impl-items > .item-info {
 	margin-left: 40px;
 }
 
-.methods > .stability, .content .impl-items > .stability {
+.methods > .item-info, .content .impl-items > .item-info {
 	margin-top: -8px;
 }
 
@@ -595,7 +595,7 @@ h4 > code, h3 > code, .invisible > code {
 	flex-basis: 100%;
 }
 
-#main > .stability {
+#main > .item-info {
 	margin-top: 0;
 }
 
@@ -655,7 +655,7 @@ a {
 }
 
 .docblock a:not(.srclink):not(.test-arrow):hover,
-.docblock-short a:not(.srclink):not(.test-arrow):hover, .stability a {
+.docblock-short a:not(.srclink):not(.test-arrow):hover, .item-info a {
 	text-decoration: underline;
 }
 
