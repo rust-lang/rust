@@ -84,6 +84,24 @@ impl AstLike for Annotatable {
     fn finalize_tokens(&mut self, tokens: LazyTokenStream) {
         panic!("Called finalize_tokens on an Annotatable: {:?}", tokens);
     }
+
+    fn visit_tokens(&mut self, f: impl FnOnce(&mut Option<LazyTokenStream>)) {
+        match self {
+            Annotatable::Item(item) => item.visit_tokens(f),
+            Annotatable::TraitItem(trait_item) => trait_item.visit_tokens(f),
+            Annotatable::ImplItem(impl_item) => impl_item.visit_tokens(f),
+            Annotatable::ForeignItem(foreign_item) => foreign_item.visit_tokens(f),
+            Annotatable::Stmt(stmt) => stmt.visit_tokens(f),
+            Annotatable::Expr(expr) => expr.visit_tokens(f),
+            Annotatable::Arm(arm) => arm.visit_tokens(f),
+            Annotatable::Field(field) => field.visit_tokens(f),
+            Annotatable::FieldPat(fp) => fp.visit_tokens(f),
+            Annotatable::GenericParam(gp) => gp.visit_tokens(f),
+            Annotatable::Param(p) => p.visit_tokens(f),
+            Annotatable::StructField(sf) => sf.visit_tokens(f),
+            Annotatable::Variant(v) => v.visit_tokens(f),
+        }
+    }
 }
 
 impl Annotatable {
@@ -145,10 +163,7 @@ impl Annotatable {
     }
 
     crate fn into_tokens(self, sess: &ParseSess) -> TokenStream {
-        // Tokens of an attribute target may be invalidated by some outer `#[derive]` performing
-        // "full configuration" (attributes following derives on the same item should be the most
-        // common case), that's why synthesizing tokens is allowed.
-        nt_to_tokenstream(&self.into_nonterminal(), sess, CanSynthesizeMissingTokens::Yes)
+        nt_to_tokenstream(&self.into_nonterminal(), sess, CanSynthesizeMissingTokens::No)
     }
 
     pub fn expect_item(self) -> P<ast::Item> {

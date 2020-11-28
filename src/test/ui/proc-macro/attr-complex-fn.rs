@@ -1,0 +1,23 @@
+// check-pass
+// compile-flags: -Z span-debug --error-format human
+// aux-build:test-macros.rs
+
+#![feature(stmt_expr_attributes)]
+#![feature(custom_inner_attributes)]
+#![feature(rustc_attrs)]
+
+#[macro_use]
+extern crate test_macros;
+
+trait MyTrait<T> {}
+struct MyStruct<const N: bool>;
+
+#[print_attr]
+fn foo<T: MyTrait<MyStruct<{ true }>>>() {}
+
+impl<T> MyTrait<T> for MyStruct<{true}> {
+    #![print_attr]
+    #![rustc_dummy]
+}
+
+fn main() {}

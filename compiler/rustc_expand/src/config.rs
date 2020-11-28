@@ -28,7 +28,10 @@ use smallvec::SmallVec;
 pub struct StripUnconfigured<'a> {
     pub sess: &'a Session,
     pub features: Option<&'a Features>,
-    pub modified: bool,
+    /// If `true`, perform cfg-stripping on attached tokens.
+    /// This is only used for the input to derive macros,
+    /// which needs  eager expansion of `cfg` and `cfg_attr`
+    pub config_tokens: bool,
 }
 
 fn get_features(
@@ -199,7 +202,7 @@ fn get_features(
 
 // `cfg_attr`-process the crate's attributes and compute the crate's features.
 pub fn features(sess: &Session, mut krate: ast::Crate) -> (ast::Crate, Features) {
-    let mut strip_unconfigured = StripUnconfigured { sess, features: None, modified: false };
+    let mut strip_unconfigured = StripUnconfigured { sess, features: None, config_tokens: false };
 
     let unconfigured_attrs = krate.attrs.clone();
     let diag = &sess.parse_sess.span_diagnostic;
@@ -246,9 +249,16 @@ impl<'a> StripUnconfigured<'a> {
     pub fn configure<T: AstLike>(&mut self, mut node: T) -> Option<T> {
         self.process_cfg_attrs(&mut node);
         if self.in_cfg(node.attrs()) {
+            if self.config_tokens {
+                node.visit_tokens(|tokens| {
+                    if let Some(tokens) = tokens {
+                        let preexp_tokens = tokens.create_token_stream();
+                        *tokens = LazyTokenStream::new(self.configure_tokens(&preexp_tokens));
+                    }
+                });
+            }
             Some(node)
         } else {
-            self.modified = true;
             None
         }
     }
@@ -264,6 +274,36 @@ impl<'a> StripUnconfigured<'a> {
             self.modified = true;
             None
         }
+    }
+
+    fn configure_tokens(&mut self, stream: &PreexpTokenStream) -> PreexpTokenStream {
+        let trees: Vec<_> = stream
+            .0
+            .iter()
+            .flat_map(|tree| match tree.0.clone() {
+                PreexpTokenTree::Attributes(mut data) => {
+                    let mut attrs: Vec<_> = std::mem::take(&mut data.attrs).into();
+                    attrs.flat_map_in_place(|attr| self.process_cfg_attr(attr));
+                    data.attrs = attrs.into();
+
+                    if self.in_cfg(&data.attrs) {
+                        data.tokens = LazyTokenStream::new(
+                            self.configure_tokens(&data.tokens.create_token_stream()),
+                        );
+                        Some((PreexpTokenTree::Attributes(data), tree.1)).into_iter()
+                    } else {
+                        None.into_iter()
+                    }
+                }
+                PreexpTokenTree::Delimited(sp, delim, mut inner) => {
+                    inner = self.configure_tokens(&inner);
+                    Some((PreexpTokenTree::Delimited(sp, delim, inner), tree.1))
+                }
+                .into_iter(),
+                token_tree @ PreexpTokenTree::Token(_) => Some((token_tree, tree.1)).into_iter(),
+            })
+            .collect();
+        PreexpTokenStream::new(trees)
     }
 
     /// Parse and expand all `cfg_attr` attributes into a list of attributes
@@ -290,9 +330,6 @@ impl<'a> StripUnconfigured<'a> {
             return vec![attr];
         }
 
-        // A `#[cfg_attr]` either gets removed, or replaced with a new attribute
-        self.modified = true;
-
         let (cfg_predicate, expanded_attrs) = match self.parse_cfg_attr(&attr) {
             None => return vec![],
             Some(r) => r,
@@ -316,7 +353,7 @@ impl<'a> StripUnconfigured<'a> {
         expanded_attrs
             .into_iter()
             .flat_map(|(item, span)| {
-                let orig_tokens = attr.tokens();
+                let orig_tokens = attr.tokens().to_tokenstream();
 
                 // We are taking an attribute of the form `#[cfg_attr(pred, attr)]`
                 // and producing an attribute of the form `#[attr]`. We
@@ -326,25 +363,34 @@ impl<'a> StripUnconfigured<'a> {
 
                 // Use the `#` in `#[cfg_attr(pred, attr)]` as the `#` token
                 // for `attr` when we expand it to `#[attr]`
-                let pound_token = orig_tokens.trees().next().unwrap();
-                if !matches!(pound_token, TokenTree::Token(Token { kind: TokenKind::Pound, .. })) {
-                    panic!("Bad tokens for attribute {:?}", attr);
+                let mut orig_trees = orig_tokens.trees();
+                let pound_token = match orig_trees.next().unwrap() {
+                    TokenTree::Token(token @ Token { kind: TokenKind::Pound, .. }) => token,
+                    _ => panic!("Bad tokens for attribute {:?}", attr),
+                };
+                let pound_span = pound_token.span;
+
+                let mut trees = vec![(PreexpTokenTree::Token(pound_token), Spacing::Alone)];
+                if attr.style == AttrStyle::Inner {
+                    // For inner attributes, we do the same thing for the `!` in `#![some_attr]`
+                    let bang_token = match orig_trees.next().unwrap() {
+                        TokenTree::Token(token @ Token { kind: TokenKind::Not, .. }) => token,
+                        _ => panic!("Bad tokens for attribute {:?}", attr),
+                    };
+                    trees.push((PreexpTokenTree::Token(bang_token), Spacing::Alone));
                 }
                 // We don't really have a good span to use for the syntheized `[]`
                 // in `#[attr]`, so just use the span of the `#` token.
-                let bracket_group = TokenTree::Delimited(
-                    DelimSpan::from_single(pound_token.span()),
+                let bracket_group = PreexpTokenTree::Delimited(
+                    DelimSpan::from_single(pound_span),
                     DelimToken::Bracket,
                     item.tokens
                         .as_ref()
                         .unwrap_or_else(|| panic!("Missing tokens for {:?}", item))
                         .create_token_stream(),
                 );
-                let tokens = Some(LazyTokenStream::new(TokenStream::new(vec![
-                    (pound_token, Spacing::Alone),
-                    (bracket_group, Spacing::Alone),
-                ])));
-
+                trees.push((bracket_group, Spacing::Alone));
+                let tokens = Some(LazyTokenStream::new(PreexpTokenStream::new(trees)));
                 self.process_cfg_attr(attr::mk_attr_from_item(item, tokens, attr.style, span))
             })
             .collect()

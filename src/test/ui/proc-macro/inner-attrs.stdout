@@ -1,0 +1,292 @@
+PRINT-ATTR_ARGS INPUT (DISPLAY): first
+PRINT-ATTR_ARGS INPUT (DEBUG): TokenStream [
+    Ident {
+        ident: "first",
+        span: $DIR/inner-attrs.rs:10:25: 10:30 (#0),
+    },
+]
+PRINT-ATTR INPUT (DISPLAY): #[print_target_and_args(second)] fn foo()
+{ # ! [print_target_and_args(third)] # ! [print_target_and_args(fourth)] }
+PRINT-ATTR INPUT (DEBUG): TokenStream [
+    Punct {
+        ch: '#',
+        spacing: Alone,
+        span: $DIR/inner-attrs.rs:11:1: 11:2 (#0),
+    },
+    Group {
+        delimiter: Bracket,
+        stream: TokenStream [
+            Ident {
+                ident: "print_target_and_args",
+                span: $DIR/inner-attrs.rs:11:3: 11:24 (#0),
+            },
+            Group {
+                delimiter: Parenthesis,
+                stream: TokenStream [
+                    Ident {
+                        ident: "second",
+                        span: $DIR/inner-attrs.rs:11:25: 11:31 (#0),
+                    },
+                ],
+                span: $DIR/inner-attrs.rs:11:24: 11:32 (#0),
+            },
+        ],
+        span: $DIR/inner-attrs.rs:11:2: 11:33 (#0),
+    },
+    Ident {
+        ident: "fn",
+        span: $DIR/inner-attrs.rs:12:1: 12:3 (#0),
+    },
+    Ident {
+        ident: "foo",
+        span: $DIR/inner-attrs.rs:12:4: 12:7 (#0),
+    },
+    Group {
+        delimiter: Parenthesis,
+        stream: TokenStream [],
+        span: $DIR/inner-attrs.rs:12:7: 12:9 (#0),
+    },
+    Group {
+        delimiter: Brace,
+        stream: TokenStream [
+            Punct {
+                ch: '#',
+                spacing: Joint,
+                span: $DIR/inner-attrs.rs:13:5: 13:6 (#0),
+            },
+            Punct {
+                ch: '!',
+                spacing: Alone,
+                span: $DIR/inner-attrs.rs:13:6: 13:7 (#0),
+            },
+            Group {
+                delimiter: Bracket,
+                stream: TokenStream [
+                    Ident {
+                        ident: "print_target_and_args",
+                        span: $DIR/inner-attrs.rs:13:8: 13:29 (#0),
+                    },
+                    Group {
+                        delimiter: Parenthesis,
+                        stream: TokenStream [
+                            Ident {
+                                ident: "third",
+                                span: $DIR/inner-attrs.rs:13:30: 13:35 (#0),
+                            },
+                        ],
+                        span: $DIR/inner-attrs.rs:13:29: 13:36 (#0),
+                    },
+                ],
+                span: $DIR/inner-attrs.rs:13:7: 13:37 (#0),
+            },
+            Punct {
+                ch: '#',
+                spacing: Joint,
+                span: $DIR/inner-attrs.rs:14:5: 14:6 (#0),
+            },
+            Punct {
+                ch: '!',
+                spacing: Alone,
+                span: $DIR/inner-attrs.rs:14:6: 14:7 (#0),
+            },
+            Group {
+                delimiter: Bracket,
+                stream: TokenStream [
+                    Ident {
+                        ident: "print_target_and_args",
+                        span: $DIR/inner-attrs.rs:14:8: 14:29 (#0),
+                    },
+                    Group {
+                        delimiter: Parenthesis,
+                        stream: TokenStream [
+                            Ident {
+                                ident: "fourth",
+                                span: $DIR/inner-attrs.rs:14:30: 14:36 (#0),
+                            },
+                        ],
+                        span: $DIR/inner-attrs.rs:14:29: 14:37 (#0),
+                    },
+                ],
+                span: $DIR/inner-attrs.rs:14:7: 14:38 (#0),
+            },
+        ],
+        span: $DIR/inner-attrs.rs:12:10: 15:2 (#0),
+    },
+]
+PRINT-ATTR_ARGS INPUT (DISPLAY): second
+PRINT-ATTR_ARGS INPUT (DEBUG): TokenStream [
+    Ident {
+        ident: "second",
+        span: $DIR/inner-attrs.rs:11:25: 11:31 (#0),
+    },
+]
+PRINT-ATTR INPUT (DISPLAY): fn foo()
+{ # ! [print_target_and_args(third)] # ! [print_target_and_args(fourth)] }
+PRINT-ATTR INPUT (DEBUG): TokenStream [
+    Ident {
+        ident: "fn",
+        span: $DIR/inner-attrs.rs:12:1: 12:3 (#0),
+    },
+    Ident {
+        ident: "foo",
+        span: $DIR/inner-attrs.rs:12:4: 12:7 (#0),
+    },
+    Group {
+        delimiter: Parenthesis,
+        stream: TokenStream [],
+        span: $DIR/inner-attrs.rs:12:7: 12:9 (#0),
+    },
+    Group {
+        delimiter: Brace,
+        stream: TokenStream [
+            Punct {
+                ch: '#',
+                spacing: Joint,
+                span: $DIR/inner-attrs.rs:13:5: 13:6 (#0),
+            },
+            Punct {
+                ch: '!',
+                spacing: Alone,
+                span: $DIR/inner-attrs.rs:13:6: 13:7 (#0),
+            },
+            Group {
+                delimiter: Bracket,
+                stream: TokenStream [
+                    Ident {
+                        ident: "print_target_and_args",
+                        span: $DIR/inner-attrs.rs:13:8: 13:29 (#0),
+                    },
+                    Group {
+                        delimiter: Parenthesis,
+                        stream: TokenStream [
+                            Ident {
+                                ident: "third",
+                                span: $DIR/inner-attrs.rs:13:30: 13:35 (#0),
+                            },
+                        ],
+                        span: $DIR/inner-attrs.rs:13:29: 13:36 (#0),
+                    },
+                ],
+                span: $DIR/inner-attrs.rs:13:7: 13:37 (#0),
+            },
+            Punct {
+                ch: '#',
+                spacing: Joint,
+                span: $DIR/inner-attrs.rs:14:5: 14:6 (#0),
+            },
+            Punct {
+                ch: '!',
+                spacing: Alone,
+                span: $DIR/inner-attrs.rs:14:6: 14:7 (#0),
+            },
+            Group {
+                delimiter: Bracket,
+                stream: TokenStream [
+                    Ident {
+                        ident: "print_target_and_args",
+                        span: $DIR/inner-attrs.rs:14:8: 14:29 (#0),
+                    },
+                    Group {
+                        delimiter: Parenthesis,
+                        stream: TokenStream [
+                            Ident {
+                                ident: "fourth",
+                                span: $DIR/inner-attrs.rs:14:30: 14:36 (#0),
+                            },
+                        ],
+                        span: $DIR/inner-attrs.rs:14:29: 14:37 (#0),
+                    },
+                ],
+                span: $DIR/inner-attrs.rs:14:7: 14:38 (#0),
+            },
+        ],
+        span: $DIR/inner-attrs.rs:12:10: 15:2 (#0),
+    },
+]
+PRINT-ATTR_ARGS INPUT (DISPLAY): third
+PRINT-ATTR_ARGS INPUT (DEBUG): TokenStream [
+    Ident {
+        ident: "third",
+        span: $DIR/inner-attrs.rs:13:30: 13:35 (#0),
+    },
+]
+PRINT-ATTR INPUT (DISPLAY): fn foo() { # ! [print_target_and_args(fourth)] }
+PRINT-ATTR INPUT (DEBUG): TokenStream [
+    Ident {
+        ident: "fn",
+        span: $DIR/inner-attrs.rs:12:1: 12:3 (#0),
+    },
+    Ident {
+        ident: "foo",
+        span: $DIR/inner-attrs.rs:12:4: 12:7 (#0),
+    },
+    Group {
+        delimiter: Parenthesis,
+        stream: TokenStream [],
+        span: $DIR/inner-attrs.rs:12:7: 12:9 (#0),
+    },
+    Group {
+        delimiter: Brace,
+        stream: TokenStream [
+            Punct {
+                ch: '#',
+                spacing: Joint,
+                span: $DIR/inner-attrs.rs:14:5: 14:6 (#0),
+            },
+            Punct {
+                ch: '!',
+                spacing: Alone,
+                span: $DIR/inner-attrs.rs:14:6: 14:7 (#0),
+            },
+            Group {
+                delimiter: Bracket,
+                stream: TokenStream [
+                    Ident {
+                        ident: "print_target_and_args",
+                        span: $DIR/inner-attrs.rs:14:8: 14:29 (#0),
+                    },
+                    Group {
+                        delimiter: Parenthesis,
+                        stream: TokenStream [
+                            Ident {
+                                ident: "fourth",
+                                span: $DIR/inner-attrs.rs:14:30: 14:36 (#0),
+                            },
+                        ],
+                        span: $DIR/inner-attrs.rs:14:29: 14:37 (#0),
+                    },
+                ],
+                span: $DIR/inner-attrs.rs:14:7: 14:38 (#0),
+            },
+        ],
+        span: $DIR/inner-attrs.rs:12:10: 15:2 (#0),
+    },
+]
+PRINT-ATTR_ARGS INPUT (DISPLAY): fourth
+PRINT-ATTR_ARGS INPUT (DEBUG): TokenStream [
+    Ident {
+        ident: "fourth",
+        span: $DIR/inner-attrs.rs:14:30: 14:36 (#0),
+    },
+]
+PRINT-ATTR INPUT (DISPLAY): fn foo() { }
+PRINT-ATTR INPUT (DEBUG): TokenStream [
+    Ident {
+        ident: "fn",
+        span: $DIR/inner-attrs.rs:12:1: 12:3 (#0),
+    },
+    Ident {
+        ident: "foo",
+        span: $DIR/inner-attrs.rs:12:4: 12:7 (#0),
+    },
+    Group {
+        delimiter: Parenthesis,
+        stream: TokenStream [],
+        span: $DIR/inner-attrs.rs:12:7: 12:9 (#0),
+    },
+    Group {
+        delimiter: Brace,
+        stream: TokenStream [],
+        span: $DIR/inner-attrs.rs:12:10: 15:2 (#0),
+    },
+]

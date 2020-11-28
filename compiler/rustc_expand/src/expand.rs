@@ -598,10 +598,15 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
 
         let invocations = {
             let mut collector = InvocationCollector {
+                // Non-derive macro invocations cannot see the results of cfg expansion - they
+                // will either be removed along with the item, or invoked before the cfg/cfg_attr
+                // attribute is expanded. Therefore, we don't need to configure the tokens
+                // Derive macros *can* see the results of cfg-expansion - they are handled
+                // specially in `fully_expand_fragment`
                 cfg: StripUnconfigured {
                     sess: &self.cx.sess,
                     features: self.cx.ecfg.features,
-                    modified: false,
+                    config_tokens: false,
                 },
                 cx: self.cx,
                 invocations: Vec::new(),
@@ -696,13 +701,24 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 SyntaxExtensionKind::Attr(expander) => {
                     self.gate_proc_macro_input(&item);
                     self.gate_proc_macro_attr_item(span, &item);
-                    let tokens = match attr.style {
-                        AttrStyle::Outer => item.into_tokens(&self.cx.sess.parse_sess),
-                        // FIXME: Properly collect tokens for inner attributes
-                        AttrStyle::Inner => rustc_parse::fake_token_stream(
+                    let mut fake_tokens = false;
+                    if let Annotatable::Item(item_inner) = &item {
+                        if let ItemKind::Mod(..) = &item_inner.kind {
+                            // We are invoking an inner attribute
+                            // at the crate/module root.
+                            // FIXME: Collect tokens and use them instead of generating
+                            // fake ones. These are unstable, so it needs to be
+                            // fixed prior to stabilization
+                            fake_tokens = item_inner.ident.name.is_empty();
+                        }
+                    }
+                    let tokens = if fake_tokens {
+                        rustc_parse::fake_token_stream(
                             &self.cx.sess.parse_sess,
                             &item.into_nonterminal(),
-                        ),
+                        )
+                    } else {
+                        item.into_tokens(&self.cx.sess.parse_sess)
                     };
                     let attr_item = attr.unwrap_normal_item();
                     if let MacArgs::Eq(..) = attr_item.args {

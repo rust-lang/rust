@@ -22,6 +22,7 @@ use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_span::{Span, DUMMY_SP};
 use smallvec::{smallvec, SmallVec};
 
+use crate::AttrVec;
 use std::{fmt, iter, mem};
 
 /// When the main Rust parser encounters a syntax-extension invocation, it
@@ -127,11 +128,11 @@ where
 }
 
 pub trait CreateTokenStream: sync::Send + sync::Sync {
-    fn create_token_stream(&self) -> TokenStream;
+    fn create_token_stream(&self) -> PreexpTokenStream;
 }
 
-impl CreateTokenStream for TokenStream {
-    fn create_token_stream(&self) -> TokenStream {
+impl CreateTokenStream for PreexpTokenStream {
+    fn create_token_stream(&self) -> PreexpTokenStream {
         self.clone()
     }
 }
@@ -147,14 +148,14 @@ impl LazyTokenStream {
         LazyTokenStream(Lrc::new(Box::new(inner)))
     }
 
-    pub fn create_token_stream(&self) -> TokenStream {
+    pub fn create_token_stream(&self) -> PreexpTokenStream {
         self.0.create_token_stream()
     }
 }
 
 impl fmt::Debug for LazyTokenStream {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Debug::fmt("LazyTokenStream", f)
+        write!(f, "LazyTokenStream({:?})", self.create_token_stream())
     }
 }
 
@@ -175,6 +176,135 @@ impl<CTX> HashStable<CTX> for LazyTokenStream {
     fn hash_stable(&self, _hcx: &mut CTX, _hasher: &mut StableHasher) {
         panic!("Attempted to compute stable hash for LazyTokenStream");
     }
+}
+
+#[derive(Clone, Debug, Default, Encodable, Decodable)]
+pub struct PreexpTokenStream(pub Lrc<Vec<(PreexpTokenTree, Spacing)>>);
+
+#[derive(Clone, Debug, Encodable, Decodable)]
+pub enum PreexpTokenTree {
+    Token(Token),
+    Delimited(DelimSpan, DelimToken, PreexpTokenStream),
+    Attributes(AttributesData),
+}
+
+impl PreexpTokenStream {
+    pub fn new(tokens: Vec<(PreexpTokenTree, Spacing)>) -> PreexpTokenStream {
+        PreexpTokenStream(Lrc::new(tokens))
+    }
+
+    pub fn to_tokenstream(&self) -> TokenStream {
+        let trees: Vec<_> = self
+            .0
+            .iter()
+            .flat_map(|tree| match &tree.0 {
+                PreexpTokenTree::Token(inner) => {
+                    smallvec![(TokenTree::Token(inner.clone()), tree.1)].into_iter()
+                }
+                PreexpTokenTree::Delimited(span, delim, stream) => smallvec![(
+                    TokenTree::Delimited(
+                        *span,
+                        *delim,
+                        stream.create_token_stream().to_tokenstream()
+                    ),
+                    tree.1,
+                )]
+                .into_iter(),
+                PreexpTokenTree::Attributes(data) => {
+                    let mut outer_attrs = Vec::new();
+                    let mut inner_attrs = Vec::new();
+                    let attrs: Vec<_> = data.attrs.clone().into();
+                    for attr in attrs {
+                        match attr.style {
+                            crate::AttrStyle::Outer => {
+                                assert!(
+                                    inner_attrs.len() == 0,
+                                    "Found outer attribute {:?} after inner attrs {:?}",
+                                    attr,
+                                    inner_attrs
+                                );
+                                outer_attrs.push(attr);
+                            }
+                            crate::AttrStyle::Inner => {
+                                inner_attrs.push(attr);
+                            }
+                        }
+                    }
+
+                    let mut target_tokens: Vec<_> = data
+                        .tokens
+                        .create_token_stream()
+                        .to_tokenstream()
+                        .0
+                        .iter()
+                        .cloned()
+                        .collect();
+                    if !inner_attrs.is_empty() {
+                        // Inner attributes are only supported on extern blocks, functions, impls,
+                        // and modules. All of these have their inner attributes placed at
+                        // the beginning of the rightmost outermost braced group:
+                        // e.g. fn foo() { #![my_attr} }
+                        //
+                        // Therefore, we can insert them back into the right location
+                        // without needing to do any extra position tracking.
+                        //
+                        // Note: Outline modules are an exception - they can
+                        // have attributes like `#![my_attr]` at the start of a file.
+                        // Support for custom attributes in this position is not
+                        // properly implemented - we always synthesize fake tokens,
+                        // so we never reach this code.
+                        let mut last_braced = target_tokens
+                            .iter()
+                            .rev()
+                            .position(|(t, _)| {
+                                matches!(t, TokenTree::Delimited(_, DelimToken::Brace, _))
+                            })
+                            .expect("Missing final brace-delimited group");
+                        last_braced = target_tokens.len() - 1 - last_braced;
+
+                        let mut builder = TokenStreamBuilder::new();
+                        for inner_attr in inner_attrs {
+                            builder.push(inner_attr.tokens().to_tokenstream());
+                        }
+                        match &target_tokens[last_braced] {
+                            (
+                                TokenTree::Delimited(span, DelimToken::Brace, delim_tokens),
+                                spacing,
+                            ) => {
+                                builder.push(delim_tokens.clone());
+                                target_tokens[last_braced] = (
+                                    TokenTree::Delimited(*span, DelimToken::Brace, builder.build()),
+                                    *spacing,
+                                );
+                            }
+                            _ => unreachable!(),
+                        }
+                    }
+
+                    let flat: SmallVec<[_; 1]> = data
+                        .attrs
+                        .iter()
+                        .filter(|attr| attr.style == crate::AttrStyle::Outer)
+                        .flat_map(|attr| {
+                            // FIXME: Make this more efficient
+                            let tokens: Vec<_> =
+                                attr.tokens().to_tokenstream().0.clone().iter().cloned().collect();
+                            tokens.into_iter()
+                        })
+                        .chain(target_tokens.into_iter())
+                        .collect();
+                    flat.into_iter()
+                }
+            })
+            .collect();
+        TokenStream::new(trees)
+    }
+}
+
+#[derive(Clone, Debug, Encodable, Decodable)]
+pub struct AttributesData {
+    pub attrs: AttrVec,
+    pub tokens: LazyTokenStream,
 }
 
 /// A `TokenStream` is an abstract sequence of tokens, organized into [`TokenTree`]s.
@@ -236,6 +366,12 @@ impl TokenStream {
             return Some((TokenStream::new(new_stream), sp));
         }
         None
+    }
+}
+
+impl From<(PreexpTokenTree, Spacing)> for PreexpTokenStream {
+    fn from((tree, spacing): (PreexpTokenTree, Spacing)) -> PreexpTokenStream {
+        PreexpTokenStream::new(vec![(tree, spacing)])
     }
 }
 

@@ -8,7 +8,6 @@
 // We need '--error-format human' to stop compiletest from
 // trying to interpret proc-macro output as JSON messages
 // (a pretty-printed struct may cause a line to start with '{' )
-// FIXME: We currently lose spans here (see issue #43081)
 
 #[macro_use]
 extern crate test_macros;
@@ -57,6 +56,10 @@ struct Foo<#[cfg(FALSE)] A, B> {
             #[cfg(FALSE)] bool,
             u8
         );
+
+        fn plain_removed_fn() {
+            #![cfg_attr(not(FALSE), cfg(FALSE))]
+        }
 
         0
     }],

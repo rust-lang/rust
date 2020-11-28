@@ -19,8 +19,9 @@ pub use path::PathStyle;
 
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, DelimToken, Token, TokenKind};
+use rustc_ast::tokenstream::AttributesData;
 use rustc_ast::tokenstream::{self, DelimSpan, Spacing};
-use rustc_ast::tokenstream::{TokenStream, TokenTree, TreeAndSpacing};
+use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_ast::DUMMY_NODE_ID;
 use rustc_ast::{self as ast, AnonConst, AstLike, AttrStyle, AttrVec, Const, CrateSugar, Extern};
 use rustc_ast::{Async, Expr, ExprKind, MacArgs, MacDelimiter, Mutability, StrLit, Unsafe};
@@ -34,6 +35,7 @@ use rustc_span::source_map::{Span, DUMMY_SP};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use tracing::debug;
 
+use std::ops::Range;
 use std::{cmp, mem, slice};
 
 bitflags::bitflags! {
@@ -134,6 +136,54 @@ pub struct Parser<'a> {
     pub last_type_ascription: Option<(Span, bool /* likely path typo */)>,
     /// If present, this `Parser` is not parsing Rust code but rather a macro call.
     subparser_name: Option<&'static str>,
+    capture_state: CaptureState,
+}
+
+pub type ReplaceRange = (Range<u32>, Vec<(FlatToken, Spacing)>);
+
+/// Controls how we capture tokens. Capturing can be expensive,
+/// so we try to avoid performing capturing in cases where
+/// we will never need a `PreexpTokenStream`
+#[derive(Copy, Clone)]
+pub enum Capturing {
+    /// We aren't performing any capturing - this is the default mode.
+    No,
+    /// We are capturing tokens
+    Yes {
+        /// 1. We are forcing collection of tokens for a macro_rules! matcher
+
+        /// If `true`, we are capturing tokens because we've encountered
+        /// an attribute that may need them. In this mode, we will also
+        /// capture tokens for 'nested' items that have `#[cfg]` or `#[cfg_attr]`.
+        /// For example:
+        ///
+        /// ```rust
+        /// #[some_attr]
+        /// struct Foo {
+        ///     val: u8,
+        ///     #[cfg(FALSE)] removed: u8
+        /// }
+        /// ```
+        ///
+        /// Here, `some_attr` could be `derive` (imported under a different name).
+        /// Therefore, we need to separately capture the tokens for `removed: u8`
+        /// to allow eager expansion.
+        ///
+        /// If `false`, we are capturing tokens for some other reason:
+        /// * We are forcing collection of tokens for a `macro_rules!` matcher
+        ///   We are parsing something that might have inner attributes
+        /// (e.g. a function), and need to start capturing in case
+        /// we end up parsing custom inner attributes
+        ///
+        /// In that case, we don't need special handling for `#[cfg]` and `#[cfg_attr]`
+        tokens_for_attrs: bool,
+    },
+}
+
+#[derive(Clone)]
+struct CaptureState {
+    capturing: Capturing,
+    replace_ranges: Vec<ReplaceRange>,
 }
 
 impl<'a> Drop for Parser<'a> {
@@ -171,7 +221,7 @@ struct TokenCursor {
     // field is used to track this token - it gets
     // appended to the captured stream when
     // we evaluate a `LazyTokenStream`
-    append_unglued_token: Option<TreeAndSpacing>,
+    append_unglued_token: Option<(Token, Spacing)>,
 }
 
 #[derive(Clone)]
@@ -385,6 +435,7 @@ impl<'a> Parser<'a> {
             last_unexpected_token_span: None,
             last_type_ascription: None,
             subparser_name,
+            capture_state: CaptureState { capturing: Capturing::No, replace_ranges: Vec::new() },
         };
 
         // Make parser point to the first token.
@@ -606,8 +657,7 @@ impl<'a> Parser<'a> {
                 // If we consume any additional tokens, then this token
                 // is not needed (we'll capture the entire 'glued' token),
                 // and `next_tok` will set this field to `None`
-                self.token_cursor.append_unglued_token =
-                    Some((TokenTree::Token(self.token.clone()), Spacing::Alone));
+                self.token_cursor.append_unglued_token = Some((self.token.clone(), Spacing::Alone));
                 // Use the spacing of the glued token as the spacing
                 // of the unglued second token.
                 self.bump_with((Token::new(second, second_span), self.token_spacing));
@@ -1286,4 +1336,11 @@ pub fn emit_unclosed_delims(unclosed_delims: &mut Vec<UnmatchedBrace>, sess: &Pa
             e.emit();
         }
     }
+}
+
+#[derive(Debug, Clone)]
+pub enum FlatToken {
+    Token(Token),
+    AttrTarget(AttributesData),
+    Empty,
 }

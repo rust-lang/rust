@@ -52,23 +52,10 @@ impl MultiItemModifier for Expander {
         // FIXME: Try to cache intermediate results to avoid collecting same paths multiple times.
         match ecx.resolver.resolve_derives(ecx.current_expansion.id, derives, ecx.force_mode) {
             Ok(()) => {
+                // Cfg-strip the tokens, since we will be invoking a proc-macro with them
                 let mut visitor =
-                    StripUnconfigured { sess, features: ecx.ecfg.features, modified: false };
-                let mut item = visitor.fully_configure(item);
-                if visitor.modified {
-                    // Erase the tokens if cfg-stripping modified the item
-                    // This will cause us to synthesize fake tokens
-                    // when `nt_to_tokenstream` is called on this item.
-                    match &mut item {
-                        Annotatable::Item(item) => item,
-                        Annotatable::Stmt(stmt) => match &mut stmt.kind {
-                            StmtKind::Item(item) => item,
-                            _ => unreachable!(),
-                        },
-                        _ => unreachable!(),
-                    }
-                    .tokens = None;
-                }
+                    StripUnconfigured { sess, features: ecx.ecfg.features, config_tokens: true };
+                let item = visitor.fully_configure(item);
                 ExpandResult::Ready(vec![item])
             }
             Err(Indeterminate) => ExpandResult::Retry(item),

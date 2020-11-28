@@ -1,0 +1,171 @@
+PRINT-DERIVE INPUT (DISPLAY): struct Foo
+{
+    val :
+    [bool ;
+     {
+         let a = #[rustc_dummy(first)] #[rustc_dummy(second)]
+         { # ! [allow(unused)] 30 } ; 0
+     }]
+}
+PRINT-DERIVE INPUT (DEBUG): TokenStream [
+    Ident {
+        ident: "struct",
+        span: $DIR/macro-rules-derive-cfg.rs:14:9: 14:15 (#6),
+    },
+    Ident {
+        ident: "Foo",
+        span: $DIR/macro-rules-derive-cfg.rs:14:16: 14:19 (#6),
+    },
+    Group {
+        delimiter: Brace,
+        stream: TokenStream [
+            Ident {
+                ident: "val",
+                span: $DIR/macro-rules-derive-cfg.rs:15:13: 15:16 (#6),
+            },
+            Punct {
+                ch: ':',
+                spacing: Alone,
+                span: $DIR/macro-rules-derive-cfg.rs:15:16: 15:17 (#6),
+            },
+            Group {
+                delimiter: Bracket,
+                stream: TokenStream [
+                    Ident {
+                        ident: "bool",
+                        span: $DIR/macro-rules-derive-cfg.rs:15:19: 15:23 (#6),
+                    },
+                    Punct {
+                        ch: ';',
+                        spacing: Alone,
+                        span: $DIR/macro-rules-derive-cfg.rs:15:23: 15:24 (#6),
+                    },
+                    Group {
+                        delimiter: Brace,
+                        stream: TokenStream [
+                            Ident {
+                                ident: "let",
+                                span: $DIR/macro-rules-derive-cfg.rs:16:17: 16:20 (#6),
+                            },
+                            Ident {
+                                ident: "a",
+                                span: $DIR/macro-rules-derive-cfg.rs:16:21: 16:22 (#6),
+                            },
+                            Punct {
+                                ch: '=',
+                                spacing: Alone,
+                                span: $DIR/macro-rules-derive-cfg.rs:16:23: 16:24 (#6),
+                            },
+                            Punct {
+                                ch: '#',
+                                spacing: Alone,
+                                span: $DIR/macro-rules-derive-cfg.rs:16:25: 16:26 (#6),
+                            },
+                            Group {
+                                delimiter: Bracket,
+                                stream: TokenStream [
+                                    Ident {
+                                        ident: "rustc_dummy",
+                                        span: $DIR/macro-rules-derive-cfg.rs:16:48: 16:59 (#6),
+                                    },
+                                    Group {
+                                        delimiter: Parenthesis,
+                                        stream: TokenStream [
+                                            Ident {
+                                                ident: "first",
+                                                span: $DIR/macro-rules-derive-cfg.rs:16:60: 16:65 (#6),
+                                            },
+                                        ],
+                                        span: $DIR/macro-rules-derive-cfg.rs:16:59: 16:66 (#6),
+                                    },
+                                ],
+                                span: $DIR/macro-rules-derive-cfg.rs:16:25: 16:26 (#6),
+                            },
+                            Punct {
+                                ch: '#',
+                                spacing: Alone,
+                                span: $DIR/macro-rules-derive-cfg.rs:23:13: 23:14 (#0),
+                            },
+                            Group {
+                                delimiter: Bracket,
+                                stream: TokenStream [
+                                    Ident {
+                                        ident: "rustc_dummy",
+                                        span: $DIR/macro-rules-derive-cfg.rs:23:36: 23:47 (#0),
+                                    },
+                                    Group {
+                                        delimiter: Parenthesis,
+                                        stream: TokenStream [
+                                            Ident {
+                                                ident: "second",
+                                                span: $DIR/macro-rules-derive-cfg.rs:23:48: 23:54 (#0),
+                                            },
+                                        ],
+                                        span: $DIR/macro-rules-derive-cfg.rs:23:47: 23:55 (#0),
+                                    },
+                                ],
+                                span: $DIR/macro-rules-derive-cfg.rs:23:13: 23:14 (#0),
+                            },
+                            Group {
+                                delimiter: Brace,
+                                stream: TokenStream [
+                                    Punct {
+                                        ch: '#',
+                                        spacing: Alone,
+                                        span: $DIR/macro-rules-derive-cfg.rs:24:5: 24:6 (#0),
+                                    },
+                                    Punct {
+                                        ch: '!',
+                                        spacing: Alone,
+                                        span: $DIR/macro-rules-derive-cfg.rs:24:6: 24:7 (#0),
+                                    },
+                                    Group {
+                                        delimiter: Bracket,
+                                        stream: TokenStream [
+                                            Ident {
+                                                ident: "allow",
+                                                span: $DIR/macro-rules-derive-cfg.rs:24:29: 24:34 (#0),
+                                            },
+                                            Group {
+                                                delimiter: Parenthesis,
+                                                stream: TokenStream [
+                                                    Ident {
+                                                        ident: "unused",
+                                                        span: $DIR/macro-rules-derive-cfg.rs:24:35: 24:41 (#0),
+                                                    },
+                                                ],
+                                                span: $DIR/macro-rules-derive-cfg.rs:24:34: 24:42 (#0),
+                                            },
+                                        ],
+                                        span: $DIR/macro-rules-derive-cfg.rs:24:5: 24:6 (#0),
+                                    },
+                                    Literal {
+                                        kind: Integer,
+                                        symbol: "30",
+                                        suffix: None,
+                                        span: $DIR/macro-rules-derive-cfg.rs:25:5: 25:7 (#0),
+                                    },
+                                ],
+                                span: $DIR/macro-rules-derive-cfg.rs:23:58: 26:2 (#0),
+                            },
+                            Punct {
+                                ch: ';',
+                                spacing: Alone,
+                                span: $DIR/macro-rules-derive-cfg.rs:16:74: 16:75 (#6),
+                            },
+                            Literal {
+                                kind: Integer,
+                                symbol: "0",
+                                suffix: None,
+                                span: $DIR/macro-rules-derive-cfg.rs:17:17: 17:18 (#6),
+                            },
+                        ],
+                        span: $DIR/macro-rules-derive-cfg.rs:15:25: 18:14 (#6),
+                    },
+                ],
+                span: $DIR/macro-rules-derive-cfg.rs:15:18: 18:15 (#6),
+            },
+        ],
+        span: $DIR/macro-rules-derive-cfg.rs:14:20: 19:10 (#6),
+    },
+]

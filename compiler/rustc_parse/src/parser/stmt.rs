@@ -66,20 +66,15 @@ impl<'a> Parser<'a> {
         Ok(Some(if self.token.is_keyword(kw::Let) {
             self.parse_local_mk(lo, attrs, capture_semi, force_collect)?
         } else if self.is_kw_followed_by_ident(kw::Mut) {
-            self.recover_stmt_local(
-                lo,
-                attrs.take_for_recovery().into(),
-                "missing keyword",
-                "let mut",
-            )?
+            self.recover_stmt_local(lo, attrs, "missing keyword", "let mut")?
         } else if self.is_kw_followed_by_ident(kw::Auto) {
             self.bump(); // `auto`
             let msg = "write `let` instead of `auto` to introduce a new variable";
-            self.recover_stmt_local(lo, attrs.take_for_recovery().into(), msg, "let")?
+            self.recover_stmt_local(lo, attrs, msg, "let")?
         } else if self.is_kw_followed_by_ident(sym::var) {
             self.bump(); // `var`
             let msg = "write `let` instead of `var` to introduce a new variable";
-            self.recover_stmt_local(lo, attrs.take_for_recovery().into(), msg, "let")?
+            self.recover_stmt_local(lo, attrs, msg, "let")?
         } else if self.check_path() && !self.token.is_qpath_start() && !self.is_path_start_item() {
             // We have avoided contextual keywords like `union`, items with `crate` visibility,
             // or `auto trait` items. We aim to parse an arbitrary path `a::b` but not something
@@ -182,7 +177,7 @@ impl<'a> Parser<'a> {
     fn recover_stmt_local(
         &mut self,
         lo: Span,
-        attrs: AttrVec,
+        attrs: AttrWrapper,
         msg: &str,
         sugg: &str,
     ) -> PResult<'a, Stmt> {
@@ -212,9 +207,15 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn recover_local_after_let(&mut self, lo: Span, attrs: AttrVec) -> PResult<'a, Stmt> {
-        let local = self.parse_local(attrs)?;
-        Ok(self.mk_stmt(lo.to(self.prev_token.span), StmtKind::Local(local)))
+    fn recover_local_after_let(&mut self, lo: Span, attrs: AttrWrapper) -> PResult<'a, Stmt> {
+        self.collect_tokens_trailing_token(attrs, ForceCollect::No, |this, attrs| {
+            let local = this.parse_local(attrs.into())?;
+            // FIXME - maybe capture semicolon in recovery?
+            Ok((
+                this.mk_stmt(lo.to(this.prev_token.span), StmtKind::Local(local)),
+                TrailingToken::None,
+            ))
+        })
     }
 
     /// Parses a local variable declaration.
