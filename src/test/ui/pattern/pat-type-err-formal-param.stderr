@@ -5,6 +5,9 @@ LL | fn foo(Tuple(_): String) {}
    |        ^^^^^^^^  ------ expected due to this
    |        |
    |        expected struct `String`, found struct `Tuple`
+   |
+   = note: expected struct `String`
+              found struct `Tuple`
 
 error: aborting due to previous error
 

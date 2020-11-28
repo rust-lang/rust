@@ -1,4 +1,5 @@
 // ignore-freebsd: gdb package too new
+// ignore-tidy-linelength
 // only-cdb // "Temporarily" ignored on GDB/LLDB due to debuginfo tests being disabled, see PR 47155
 // ignore-android: FIXME(#10381)
 // compile-flags:-g
@@ -87,8 +88,8 @@
 // NOTE: While string slices have a .natvis entry that works in VS & VS Code, it fails in CDB
 
 // cdb-command: dx string
-// cdb-check:string           : "IAMA string!" [Type: [...]::String]
-// cdb-check:    [<Raw View>]     [Type: [...]::String]
+// cdb-check:string           : "IAMA string!" [Type: [...]::String<[...]>]
+// cdb-check:    [<Raw View>]     [Type: [...]::String<[...]>]
 // cdb-check:    [size]           : 0xc [Type: [...]]
 // cdb-check:    [capacity]       : 0xc [Type: [...]]
 // cdb-check:    [0]              : 73 'I' [Type: char]
@@ -113,7 +114,7 @@
 // cdb-command: dx none
 // cdb-check:none             : { None } [Type: [...]::Option<i64>]
 // cdb-command: dx some_string
-// cdb-check:some_string      : { Some "IAMA optional string!" } [[...]::Option<[...]::String>]
+// cdb-check:some_string      : { Some "IAMA optional string!" } [[...]::Option<[...]::String<[...]>>]
 
 #![allow(unused_variables)]
 use std::ffi::OsString;

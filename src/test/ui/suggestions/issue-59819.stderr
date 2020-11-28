@@ -27,6 +27,9 @@ LL |     let g: String = f;
    |            |        expected struct `String`, found struct `Bar`
    |            |        help: try using a conversion method: `f.to_string()`
    |            expected due to this
+   |
+   = note: expected struct `String`
+              found struct `Bar`
 
 error: aborting due to 3 previous errors
 

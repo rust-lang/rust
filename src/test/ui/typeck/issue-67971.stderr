@@ -11,6 +11,9 @@ LL | fn foo(ctx: &mut S) -> String {
    |    ---                 ^^^^^^ expected struct `String`, found `()`
    |    |
    |    implicitly returns `()` as its body has no tail or `return` expression
+   |
+   = note: expected struct `String`
+           found unit type `()`
 
 error: aborting due to 2 previous errors
 

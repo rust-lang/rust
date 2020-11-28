@@ -27,6 +27,7 @@
 // It's cleaner to just turn off the unused_imports warning than to fix them.
 #![allow(unused_imports)]
 
+use core::alloc::AllocRef;
 use core::borrow::{Borrow, BorrowMut};
 use core::iter::FusedIterator;
 use core::mem;
@@ -571,6 +572,7 @@ impl str {
 /// ```
 #[stable(feature = "str_box_extras", since = "1.20.0")]
 #[inline]
-pub unsafe fn from_boxed_utf8_unchecked(v: Box<[u8]>) -> Box<str> {
-    unsafe { Box::from_raw(Box::into_raw(v) as *mut str) }
+pub unsafe fn from_boxed_utf8_unchecked<A: AllocRef>(v: Box<[u8], A>) -> Box<str, A> {
+    let (slice, alloc) = Box::into_raw_with_alloc(v);
+    unsafe { Box::from_raw_in(slice as *mut str, alloc) }
 }

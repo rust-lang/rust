@@ -45,7 +45,7 @@ extern "Rust" {
 /// Note: while this type is unstable, the functionality it provides can be
 /// accessed through the [free functions in `alloc`](self#functions).
 #[unstable(feature = "allocator_api", issue = "32838")]
-#[derive(Copy, Clone, Default, Debug)]
+#[derive(Copy, Clone, Default, Debug, Ord, PartialOrd, Eq, PartialEq)]
 #[cfg(not(test))]
 pub struct Global;
 

@@ -4,6 +4,8 @@ error[E0308]: mismatched types
 LL |     stream.write_fmt(format!("message received"))
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected struct `Arguments`, found struct `String`
    |
+   = note: expected struct `Arguments<'_>`
+              found struct `String`
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error

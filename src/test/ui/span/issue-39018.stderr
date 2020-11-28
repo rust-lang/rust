@@ -72,6 +72,9 @@ LL |     let _ = a + b;
    |                 |
    |                 expected `&str`, found struct `String`
    |                 help: consider borrowing here: `&b`
+   |
+   = note: expected reference `&str`
+                 found struct `String`
 
 error[E0369]: cannot add `String` to `&String`
   --> $DIR/issue-39018.rs:30:15

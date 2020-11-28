@@ -6,6 +6,9 @@ LL | static i: String = 10;
    |                    |
    |                    expected struct `String`, found integer
    |                    help: try using a conversion method: `10.to_string()`
+   |
+   = note: expected struct `String`
+                found type `{integer}`
 
 error: aborting due to previous error
 

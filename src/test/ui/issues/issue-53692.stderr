@@ -20,6 +20,9 @@ LL |         let string: String = s.clone();
    |                     |        expected struct `String`, found `&str`
    |                     |        help: try using a conversion method: `s.to_string()`
    |                     expected due to this
+   |
+   = note: expected struct `String`
+           found reference `&str`
 
 error: aborting due to 2 previous errors
 

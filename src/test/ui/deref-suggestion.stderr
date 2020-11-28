@@ -6,6 +6,9 @@ LL |     foo(s);
    |         |
    |         expected struct `String`, found `&String`
    |         help: try using a conversion method: `s.to_string()`
+   |
+   = note: expected struct `String`
+           found reference `&String`
 
 error[E0308]: mismatched types
   --> $DIR/deref-suggestion.rs:14:10
@@ -24,6 +27,9 @@ LL |     foo(&"aaa".to_owned());
    |         |
    |         expected struct `String`, found `&String`
    |         help: consider removing the borrow: `"aaa".to_owned()`
+   |
+   = note: expected struct `String`
+           found reference `&String`
 
 error[E0308]: mismatched types
   --> $DIR/deref-suggestion.rs:32:9
@@ -33,6 +39,9 @@ LL |     foo(&mut "aaa".to_owned());
    |         |
    |         expected struct `String`, found `&mut String`
    |         help: consider removing the borrow: `"aaa".to_owned()`
+   |
+   = note:         expected struct `String`
+           found mutable reference `&mut String`
 
 error[E0308]: mismatched types
   --> $DIR/deref-suggestion.rs:2:20
