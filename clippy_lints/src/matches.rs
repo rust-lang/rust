@@ -20,10 +20,10 @@ use rustc_hir::{
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, Ty, TyS};
+use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::{Span, Spanned};
 use rustc_span::{sym, Symbol};
-use semver::{Version, VersionReq};
 use std::cmp::Ordering;
 use std::collections::hash_map::Entry;
 use std::collections::Bound;
@@ -535,13 +535,13 @@ declare_clippy_lint! {
 
 #[derive(Default)]
 pub struct Matches {
-    msrv: Option<VersionReq>,
+    msrv: Option<RustcVersion>,
     infallible_destructuring_match_linted: bool,
 }
 
 impl Matches {
     #[must_use]
-    pub fn new(msrv: Option<VersionReq>) -> Self {
+    pub fn new(msrv: Option<RustcVersion>) -> Self {
         Self {
             msrv,
             ..Matches::default()
@@ -568,13 +568,7 @@ impl_lint_pass!(Matches => [
     MATCH_SAME_ARMS,
 ]);
 
-const MATCH_LIKE_MATCHES_MACRO_MSRV: Version = Version {
-    major: 1,
-    minor: 42,
-    patch: 0,
-    pre: Vec::new(),
-    build: Vec::new(),
-};
+const MATCH_LIKE_MATCHES_MACRO_MSRV: RustcVersion = RustcVersion::new(1, 42, 0);
 
 impl<'tcx> LateLintPass<'tcx> for Matches {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {

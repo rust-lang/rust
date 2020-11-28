@@ -18,6 +18,7 @@ use rustc_hir::{TraitItem, TraitItemKind};
 use rustc_lint::{LateContext, LateLintPass, Lint, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, TraitRef, Ty, TyS};
+use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::Span;
 use rustc_span::symbol::{sym, SymbolStr};
@@ -33,7 +34,6 @@ use crate::utils::{
     snippet_with_macro_callsite, span_lint, span_lint_and_help, span_lint_and_sugg, span_lint_and_then, sugg,
     walk_ptrs_ty_depth, SpanlessEq,
 };
-use semver::{Version, VersionReq};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for `.unwrap()` calls on `Option`s and on `Result`s.
@@ -1405,12 +1405,12 @@ declare_clippy_lint! {
 }
 
 pub struct Methods {
-    msrv: Option<VersionReq>,
+    msrv: Option<RustcVersion>,
 }
 
 impl Methods {
     #[must_use]
-    pub fn new(msrv: Option<VersionReq>) -> Self {
+    pub fn new(msrv: Option<RustcVersion>) -> Self {
         Self { msrv }
     }
 }
@@ -3470,13 +3470,7 @@ fn lint_suspicious_map(cx: &LateContext<'_>, expr: &hir::Expr<'_>) {
     );
 }
 
-const OPTION_AS_REF_DEREF_MSRV: Version = Version {
-    major: 1,
-    minor: 40,
-    patch: 0,
-    pre: Vec::new(),
-    build: Vec::new(),
-};
+const OPTION_AS_REF_DEREF_MSRV: RustcVersion = RustcVersion::new(1, 40, 0);
 
 /// lint use of `_.as_ref().map(Deref::deref)` for `Option`s
 fn lint_option_as_ref_deref<'tcx>(
@@ -3485,7 +3479,7 @@ fn lint_option_as_ref_deref<'tcx>(
     as_ref_args: &[hir::Expr<'_>],
     map_args: &[hir::Expr<'_>],
     is_mut: bool,
-    msrv: Option<&VersionReq>,
+    msrv: Option<&RustcVersion>,
 ) {
     if !meets_msrv(msrv, &OPTION_AS_REF_DEREF_MSRV) {
         return;

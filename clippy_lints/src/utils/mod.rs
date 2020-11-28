@@ -51,6 +51,7 @@ use rustc_lint::{LateContext, Level, Lint, LintContext};
 use rustc_middle::hir::map::Map;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind};
 use rustc_middle::ty::{self, layout::IntegerExt, Ty, TyCtxt, TypeFoldable};
+use rustc_semver::RustcVersion;
 use rustc_session::Session;
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::source_map::original_sp;
@@ -59,13 +60,12 @@ use rustc_span::symbol::{self, kw, Symbol};
 use rustc_span::{BytePos, Pos, Span, DUMMY_SP};
 use rustc_target::abi::Integer;
 use rustc_trait_selection::traits::query::normalize::AtExt;
-use semver::{Version, VersionReq};
 use smallvec::SmallVec;
 
 use crate::consts::{constant, Constant};
 
-pub fn parse_msrv(msrv: &str, sess: Option<&Session>, span: Option<Span>) -> Option<VersionReq> {
-    if let Ok(version) = VersionReq::parse(msrv) {
+pub fn parse_msrv(msrv: &str, sess: Option<&Session>, span: Option<Span>) -> Option<RustcVersion> {
+    if let Ok(version) = RustcVersion::parse(msrv) {
         return Some(version);
     } else if let Some(sess) = sess {
         if let Some(span) = span {
@@ -75,8 +75,8 @@ pub fn parse_msrv(msrv: &str, sess: Option<&Session>, span: Option<Span>) -> Opt
     None
 }
 
-pub fn meets_msrv(msrv: Option<&VersionReq>, lint_msrv: &Version) -> bool {
-    msrv.map_or(true, |msrv| !msrv.matches(lint_msrv))
+pub fn meets_msrv(msrv: Option<&RustcVersion>, lint_msrv: &RustcVersion) -> bool {
+    msrv.map_or(true, |msrv| msrv > lint_msrv)
 }
 
 macro_rules! extract_msrv_attr {
