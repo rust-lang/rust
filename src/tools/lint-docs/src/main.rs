@@ -57,13 +57,12 @@ fn doit() -> Result<(), Box<dyn Error>> {
     if rustc_target.is_none() {
         return Err("--rustc-target must be specified to the rustc target".into());
     }
-    lint_docs::extract_lint_docs(
-        &src_path.unwrap(),
-        &out_path.unwrap(),
-        lint_docs::Rustc {
-            path: rustc_path.as_deref().unwrap(),
-            target: rustc_target.as_deref().unwrap(),
-        },
+    let le = lint_docs::LintExtractor {
+        src_path: &src_path.unwrap(),
+        out_path: &out_path.unwrap(),
+        rustc_path: &rustc_path.unwrap(),
+        rustc_target: &rustc_target.unwrap(),
         verbose,
-    )
+    };
+    le.extract_lint_docs()
 }
