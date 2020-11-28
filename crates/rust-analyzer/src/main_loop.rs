@@ -289,55 +289,69 @@ impl GlobalState {
                     }
                 }
             }
-            Event::Flycheck(task) => match task {
-                flycheck::Message::AddDiagnostic { workspace_root, diagnostic } => {
-                    let diagnostics = crate::diagnostics::to_proto::map_rust_diagnostic_to_lsp(
-                        &self.config.diagnostics_map,
-                        &diagnostic,
-                        &workspace_root,
-                    );
-                    for diag in diagnostics {
-                        match url_to_file_id(&self.vfs.read().0, &diag.url) {
-                            Ok(file_id) => self.diagnostics.add_check_diagnostic(
-                                file_id,
-                                diag.diagnostic,
-                                diag.fixes,
-                            ),
-                            Err(err) => {
-                                log::error!("File with cargo diagnostic not found in VFS: {}", err);
+            Event::Flycheck(mut task) => {
+                let _p = profile::span("GlobalState::handle_event/flycheck");
+                loop {
+                    match task {
+                        flycheck::Message::AddDiagnostic { workspace_root, diagnostic } => {
+                            let diagnostics =
+                                crate::diagnostics::to_proto::map_rust_diagnostic_to_lsp(
+                                    &self.config.diagnostics_map,
+                                    &diagnostic,
+                                    &workspace_root,
+                                );
+                            for diag in diagnostics {
+                                match url_to_file_id(&self.vfs.read().0, &diag.url) {
+                                    Ok(file_id) => self.diagnostics.add_check_diagnostic(
+                                        file_id,
+                                        diag.diagnostic,
+                                        diag.fixes,
+                                    ),
+                                    Err(err) => {
+                                        log::error!(
+                                            "File with cargo diagnostic not found in VFS: {}",
+                                            err
+                                        );
+                                    }
+                                };
                             }
-                        };
+                        }
+
+                        flycheck::Message::Progress { id, progress } => {
+                            let (state, message) = match progress {
+                                flycheck::Progress::DidStart => {
+                                    self.diagnostics.clear_check();
+                                    (Progress::Begin, None)
+                                }
+                                flycheck::Progress::DidCheckCrate(target) => {
+                                    (Progress::Report, Some(target))
+                                }
+                                flycheck::Progress::DidCancel => (Progress::End, None),
+                                flycheck::Progress::DidFinish(result) => {
+                                    if let Err(err) = result {
+                                        log::error!("cargo check failed: {}", err)
+                                    }
+                                    (Progress::End, None)
+                                }
+                            };
+
+                            // When we're running multiple flychecks, we have to include a disambiguator in
+                            // the title, or the editor complains. Note that this is a user-facing string.
+                            let title = if self.flycheck.len() == 1 {
+                                "cargo check".to_string()
+                            } else {
+                                format!("cargo check (#{})", id + 1)
+                            };
+                            self.report_progress(&title, state, message, None);
+                        }
+                    }
+                    // Coalesce many flycheck updates into a single loop turn
+                    task = match self.flycheck_receiver.try_recv() {
+                        Ok(task) => task,
+                        Err(_) => break,
                     }
                 }
-
-                flycheck::Message::Progress { id, progress } => {
-                    let (state, message) = match progress {
-                        flycheck::Progress::DidStart => {
-                            self.diagnostics.clear_check();
-                            (Progress::Begin, None)
-                        }
-                        flycheck::Progress::DidCheckCrate(target) => {
-                            (Progress::Report, Some(target))
-                        }
-                        flycheck::Progress::DidCancel => (Progress::End, None),
-                        flycheck::Progress::DidFinish(result) => {
-                            if let Err(err) = result {
-                                log::error!("cargo check failed: {}", err)
-                            }
-                            (Progress::End, None)
-                        }
-                    };
-
-                    // When we're running multiple flychecks, we have to include a disambiguator in
-                    // the title, or the editor complains. Note that this is a user-facing string.
-                    let title = if self.flycheck.len() == 1 {
-                        "cargo check".to_string()
-                    } else {
-                        format!("cargo check (#{})", id + 1)
-                    };
-                    self.report_progress(&title, state, message, None);
-                }
-            },
+            }
         }
 
         let state_changed = self.process_changes();
