@@ -58,12 +58,6 @@ impl<'tcx> IntRange<'tcx> {
         (*self.range.start(), *self.range.end())
     }
 
-    /// Don't treat `usize`/`isize` exhaustively unless the `precise_pointer_size_matching` feature
-    /// is enabled.
-    fn treat_exhaustively(&self, tcx: TyCtxt<'tcx>) -> bool {
-        !self.ty.is_ptr_sized_integral() || tcx.features().precise_pointer_size_matching
-    }
-
     #[inline]
     fn integral_size_and_signed_bias(tcx: TyCtxt<'tcx>, ty: Ty<'_>) -> Option<(Size, u128)> {
         match *ty.kind() {
@@ -147,20 +141,15 @@ impl<'tcx> IntRange<'tcx> {
         other.range.start() <= self.range.start() && self.range.end() <= other.range.end()
     }
 
-    fn intersection(&self, tcx: TyCtxt<'tcx>, other: &Self) -> Option<Self> {
+    fn intersection(&self, other: &Self) -> Option<Self> {
         let ty = self.ty;
         let (lo, hi) = self.boundaries();
         let (other_lo, other_hi) = other.boundaries();
-        if self.treat_exhaustively(tcx) {
-            if lo <= other_hi && other_lo <= hi {
-                let span = other.span;
-                Some(IntRange { range: max(lo, other_lo)..=min(hi, other_hi), ty, span })
-            } else {
-                None
-            }
+        if lo <= other_hi && other_lo <= hi {
+            let span = other.span;
+            Some(IntRange { range: max(lo, other_lo)..=min(hi, other_hi), ty, span })
         } else {
-            // If the range should not be treated exhaustively, fallback to checking for inclusion.
-            if self.is_subrange(other) { Some(self.clone()) } else { None }
+            None
         }
     }
 
@@ -271,7 +260,7 @@ impl<'tcx> IntRange<'tcx> {
             .head_ctors(pcx.cx)
             .filter_map(|ctor| ctor.as_int_range())
             .filter_map(|range| {
-                let intersection = self.intersection(pcx.cx.tcx, &range);
+                let intersection = self.intersection(&range);
                 let should_lint = self.suspicious_intersection(&range);
                 if let (Some(range), 1, true) = (&intersection, row_len, should_lint) {
                     // FIXME: for now, only check for overlapping ranges on simple range
@@ -346,8 +335,8 @@ impl<'tcx> IntRange<'tcx> {
     }
 
     /// See `Constructor::is_covered_by`
-    fn is_covered_by<'p>(&self, pcx: PatCtxt<'_, 'p, 'tcx>, other: &Self) -> bool {
-        if self.intersection(pcx.cx.tcx, other).is_some() {
+    fn is_covered_by(&self, other: &Self) -> bool {
+        if self.intersection(other).is_some() {
             // Constructor splitting should ensure that all intersections we encounter are actually
             // inclusions.
             assert!(self.is_subrange(other));
@@ -694,11 +683,7 @@ impl<'tcx> Constructor<'tcx> {
             Wildcard => Constructor::split_wildcard(pcx),
             // Fast-track if the range is trivial. In particular, we don't do the overlapping
             // ranges check.
-            IntRange(ctor_range)
-                if ctor_range.treat_exhaustively(pcx.cx.tcx) && !ctor_range.is_singleton() =>
-            {
-                ctor_range.split(pcx, hir_id)
-            }
+            IntRange(ctor_range) if !ctor_range.is_singleton() => ctor_range.split(pcx, hir_id),
             Slice(slice @ Slice { kind: VarLen(..), .. }) => slice.split(pcx),
             // Any other constructor can be used unchanged.
             _ => smallvec![self.clone()],
@@ -740,9 +725,7 @@ impl<'tcx> Constructor<'tcx> {
             (Single, Single) => true,
             (Variant(self_id), Variant(other_id)) => self_id == other_id,
 
-            (IntRange(self_range), IntRange(other_range)) => {
-                self_range.is_covered_by(pcx, other_range)
-            }
+            (IntRange(self_range), IntRange(other_range)) => self_range.is_covered_by(other_range),
             (
                 FloatRange(self_from, self_to, self_end),
                 FloatRange(other_from, other_to, other_end),
@@ -803,7 +786,7 @@ impl<'tcx> Constructor<'tcx> {
             IntRange(range) => used_ctors
                 .iter()
                 .filter_map(|c| c.as_int_range())
-                .any(|other| range.is_covered_by(pcx, other)),
+                .any(|other| range.is_covered_by(other)),
             Slice(slice) => used_ctors
                 .iter()
                 .filter_map(|c| c.as_slice())
@@ -811,7 +794,7 @@ impl<'tcx> Constructor<'tcx> {
             // This constructor is never covered by anything else
             NonExhaustive => false,
             Str(..) | FloatRange(..) | Opaque | Wildcard => {
-                bug!("found unexpected ctor in all_ctors: {:?}", self)
+                span_bug!(pcx.span, "found unexpected ctor in all_ctors: {:?}", self)
             }
         }
     }

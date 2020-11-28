@@ -125,6 +125,12 @@ LL |         5..25 => {},
    |         ^^^^^
 
 error: unreachable pattern
+  --> $DIR/reachability.rs:75:9
+   |
+LL |         5..15 => {},
+   |         ^^^^^
+
+error: unreachable pattern
   --> $DIR/reachability.rs:82:9
    |
 LL |         '\u{D7FF}'..='\u{E000}' => {},
@@ -142,5 +148,5 @@ error: unreachable pattern
 LL |         BAR => {}
    |         ^^^
 
-error: aborting due to 23 previous errors
+error: aborting due to 24 previous errors
 
