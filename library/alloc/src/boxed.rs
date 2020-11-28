@@ -327,7 +327,10 @@ impl<T, A: AllocRef> Box<T, A> {
     /// `x` will be pinned in memory and unable to be moved.
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[inline(always)]
-    pub fn pin_in(x: T, alloc: A) -> Pin<Self> {
+    pub fn pin_in(x: T, alloc: A) -> Pin<Self>
+    where
+        A: 'static,
+    {
         Self::new_in(x, alloc).into()
     }
 
@@ -802,7 +805,10 @@ impl<T: ?Sized, A: AllocRef> Box<T, A> {
     ///
     /// This is also available via [`From`].
     #[unstable(feature = "box_into_pin", issue = "62370")]
-    pub fn into_pin(boxed: Self) -> Pin<Self> {
+    pub fn into_pin(boxed: Self) -> Pin<Self>
+    where
+        A: 'static,
+    {
         // It's not possible to move or replace the insides of a `Pin<Box<T>>`
         // when `T: !Unpin`,  so it's safe to pin it directly without any
         // additional requirements.
@@ -1010,7 +1016,10 @@ impl<T> From<T> for Box<T> {
 }
 
 #[stable(feature = "pin", since = "1.33.0")]
-impl<T: ?Sized, A: AllocRef> From<Box<T, A>> for Pin<Box<T, A>> {
+impl<T: ?Sized, A: AllocRef> From<Box<T, A>> for Pin<Box<T, A>>
+where
+    A: 'static,
+{
     /// Converts a `Box<T>` into a `Pin<Box<T>>`
     ///
     /// This conversion does not allocate on the heap and happens in place.
@@ -1413,10 +1422,13 @@ impl<T: ?Sized, A: AllocRef> AsMut<T> for Box<T, A> {
  *  could have a method to project a Pin<T> from it.
  */
 #[stable(feature = "pin", since = "1.33.0")]
-impl<T: ?Sized, A: AllocRef> Unpin for Box<T, A> {}
+impl<T: ?Sized, A: AllocRef> Unpin for Box<T, A> where A: 'static {}
 
 #[unstable(feature = "generator_trait", issue = "43122")]
-impl<G: ?Sized + Generator<R> + Unpin, R, A: AllocRef> Generator<R> for Box<G, A> {
+impl<G: ?Sized + Generator<R> + Unpin, R, A: AllocRef> Generator<R> for Box<G, A>
+where
+    A: 'static,
+{
     type Yield = G::Yield;
     type Return = G::Return;
 
@@ -1426,7 +1438,10 @@ impl<G: ?Sized + Generator<R> + Unpin, R, A: AllocRef> Generator<R> for Box<G, A
 }
 
 #[unstable(feature = "generator_trait", issue = "43122")]
-impl<G: ?Sized + Generator<R>, R, A: AllocRef> Generator<R> for Pin<Box<G, A>> {
+impl<G: ?Sized + Generator<R>, R, A: AllocRef> Generator<R> for Pin<Box<G, A>>
+where
+    A: 'static,
+{
     type Yield = G::Yield;
     type Return = G::Return;
 
@@ -1436,7 +1451,10 @@ impl<G: ?Sized + Generator<R>, R, A: AllocRef> Generator<R> for Pin<Box<G, A>> {
 }
 
 #[stable(feature = "futures_api", since = "1.36.0")]
-impl<F: ?Sized + Future + Unpin, A: AllocRef> Future for Box<F, A> {
+impl<F: ?Sized + Future + Unpin, A: AllocRef> Future for Box<F, A>
+where
+    A: 'static,
+{
     type Output = F::Output;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
