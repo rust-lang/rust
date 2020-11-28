@@ -14,5 +14,5 @@ all:
 	cat $(OUTPUT_FILE_STDOUT_SUCCESS) | "$(PYTHON)" validate_json.py
 
 	# Normalize the actual output and compare to expected output file
-	cat $(OUTPUT_FILE_DEFAULT) | sed -r 's/\"exec_time\": [0-9]+(\.[0-9]+)?/\"exec_time\": \$$TIME/' | diff output-default.json -
-	cat $(OUTPUT_FILE_STDOUT_SUCCESS) | sed -r 's/\"exec_time\": [0-9]+(\.[0-9]+)?/\"exec_time\": \$$TIME/' | diff output-stdout-success.json -
+	cat $(OUTPUT_FILE_DEFAULT) | sed 's/"exec_time": [0-9.]*/"exec_time": $$TIME/' | diff output-default.json -
+	cat $(OUTPUT_FILE_STDOUT_SUCCESS) | sed 's/"exec_time": [0-9.]*/"exec_time": $$TIME/' | diff output-stdout-success.json -
