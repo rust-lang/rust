@@ -3,12 +3,7 @@ use ide_db::{
     defs::{NameClass, NameRefClass},
     symbol_index, RootDatabase,
 };
-use syntax::{
-    ast::{self},
-    match_ast, AstNode,
-    SyntaxKind::*,
-    SyntaxToken, TokenAtOffset, T,
-};
+use syntax::{ast, match_ast, AstNode, SyntaxKind::*, SyntaxToken, TokenAtOffset, T};
 
 use crate::{
     display::{ToNav, TryToNav},
@@ -42,6 +37,12 @@ pub(crate) fn goto_definition(
             ast::Name(name) => {
                 let def = NameClass::classify(&sema, &name)?.referenced_or_defined(sema.db);
                 let nav = def.try_to_nav(sema.db)?;
+                vec![nav]
+            },
+            ast::SelfParam(self_param) => {
+                let ty = sema.type_of_self(&self_param)?;
+                let adt_def = ty.autoderef(db).filter_map(|ty| ty.as_adt()).last()?;
+                let nav = adt_def.to_nav(db);
                 vec![nav]
             },
             _ => return None,
@@ -981,6 +982,35 @@ trait Iterator {
 }
 
 fn g() -> <() as Iterator<A = (), B<|> = u8>>::A {}
+"#,
+        );
+    }
+
+    #[test]
+    fn todo_def_type_for_self() {
+        check(
+            r#"
+struct Foo {}
+     //^^^
+
+impl Foo {
+    fn bar(&self<|>) {}
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn todo_def_type_for_arbitrary_self() {
+        check(
+            r#"
+struct Arc<T>(T);
+     //^^^
+struct Foo {}
+
+impl Foo {
+    fn bar(self<|>: Arc<Self>) {}
+}
 "#,
         );
     }
