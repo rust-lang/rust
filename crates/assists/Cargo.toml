@@ -21,4 +21,3 @@ profile = { path = "../profile", version = "0.0.0" }
 ide_db = { path = "../ide_db", version = "0.0.0" }
 hir = { path = "../hir", version = "0.0.0" }
 test_utils = { path = "../test_utils", version = "0.0.0" }
-ide_helpers = { path = "../ide_helpers", version = "0.0.0" }

@@ -1,8 +1,8 @@
 //! Handle syntactic aspects of inserting a new `use`.
 use std::{cmp::Ordering, iter::successors};
 
+use crate::RootDatabase;
 use hir::Semantics;
-use ide_db::RootDatabase;
 use itertools::{EitherOrBoth, Itertools};
 use syntax::{
     algo::SyntaxRewriter,

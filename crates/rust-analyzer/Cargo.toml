@@ -39,7 +39,7 @@ tracing-tree = { version = "0.1.4" }
 stdx = { path = "../stdx", version = "0.0.0" }
 flycheck = { path = "../flycheck", version = "0.0.0" }
 ide = { path = "../ide", version = "0.0.0" }
-ide_helpers = { path = "../ide_helpers", version = "0.0.0" }
+ide_db = { path = "../ide_db", version = "0.0.0" }
 profile = { path = "../profile", version = "0.0.0" }
 project_model = { path = "../project_model", version = "0.0.0" }
 syntax = { path = "../syntax", version = "0.0.0" }
@@ -50,7 +50,6 @@ cfg = { path = "../cfg", version = "0.0.0" }
 toolchain = { path = "../toolchain", version = "0.0.0" }
 
 # This should only be used in CLI
-ide_db = { path = "../ide_db", version = "0.0.0" }
 ssr = { path = "../ssr", version = "0.0.0" }
 hir = { path = "../hir", version = "0.0.0" }
 hir_def = { path = "../hir_def", version = "0.0.0" }

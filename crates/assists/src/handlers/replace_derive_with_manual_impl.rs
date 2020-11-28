@@ -1,5 +1,5 @@
+use ide_db::helpers::mod_path_to_ast;
 use ide_db::imports_locator;
-use ide_helpers::mod_path_to_ast;
 use itertools::Itertools;
 use syntax::{
     ast::{self, make, AstNode},

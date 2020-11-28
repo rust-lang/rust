@@ -1,5 +1,5 @@
 //! Complete fields in record literals and patterns.
-use ide_helpers::FamousDefs;
+use ide_db::helpers::FamousDefs;
 use syntax::ast::Expr;
 
 use crate::{
@@ -46,7 +46,7 @@ pub(crate) fn complete_record(acc: &mut Completions, ctx: &CompletionContext) ->
 #[cfg(test)]
 mod tests {
     use expect_test::{expect, Expect};
-    use ide_helpers::FamousDefs;
+    use ide_db::helpers::FamousDefs;
 
     use crate::{test_utils::completion_list, CompletionKind};
 

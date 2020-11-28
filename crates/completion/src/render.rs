@@ -10,8 +10,8 @@ pub(crate) mod type_alias;
 mod builder_ext;
 
 use hir::{Documentation, HasAttrs, HirDisplay, ModPath, Mutability, ScopeDef, Type};
+use ide_db::helpers::insert_use::{ImportScope, MergeBehaviour};
 use ide_db::RootDatabase;
-use ide_helpers::insert_use::{ImportScope, MergeBehaviour};
 use syntax::TextRange;
 use test_utils::mark;
 

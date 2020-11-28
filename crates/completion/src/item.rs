@@ -3,7 +3,7 @@
 use std::fmt;
 
 use hir::{Documentation, ModPath, Mutability};
-use ide_helpers::{
+use ide_db::helpers::{
     insert_use::{self, ImportScope, MergeBehaviour},
     mod_path_to_ast,
 };

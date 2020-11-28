@@ -1,8 +1,8 @@
 use std::iter;
 
 use hir::AsName;
+use ide_db::helpers::mod_path_to_ast;
 use ide_db::RootDatabase;
-use ide_helpers::mod_path_to_ast;
 use syntax::{
     ast,
     ast::{make, ArgListOwner},

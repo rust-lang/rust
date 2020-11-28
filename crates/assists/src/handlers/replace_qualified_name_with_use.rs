@@ -1,4 +1,4 @@
-use ide_helpers::insert_use::{insert_use, ImportScope};
+use ide_db::helpers::insert_use::{insert_use, ImportScope};
 use syntax::{algo::SyntaxRewriter, ast, match_ast, AstNode, SyntaxNode};
 use test_utils::mark;
 

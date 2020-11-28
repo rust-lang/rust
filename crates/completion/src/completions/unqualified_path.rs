@@ -2,8 +2,8 @@
 
 use either::Either;
 use hir::{Adt, ModuleDef, ScopeDef, Type};
+use ide_db::helpers::insert_use::ImportScope;
 use ide_db::imports_locator;
-use ide_helpers::insert_use::ImportScope;
 use syntax::AstNode;
 use test_utils::mark;
 

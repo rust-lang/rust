@@ -2,11 +2,11 @@ use std::iter;
 
 use either::Either;
 use hir::{AsName, EnumVariant, Module, ModuleDef, Name};
-use ide_db::{defs::Definition, search::Reference, RootDatabase};
-use ide_helpers::{
+use ide_db::helpers::{
     insert_use::{insert_use, ImportScope},
     mod_path_to_ast,
 };
+use ide_db::{defs::Definition, search::Reference, RootDatabase};
 use rustc_hash::{FxHashMap, FxHashSet};
 use syntax::{
     algo::{find_node_at_offset, SyntaxRewriter},
@@ -237,7 +237,7 @@ fn update_reference(
 
 #[cfg(test)]
 mod tests {
-    use ide_helpers::FamousDefs;
+    use ide_db::helpers::FamousDefs;
 
     use crate::tests::{check_assist, check_assist_not_applicable};
 

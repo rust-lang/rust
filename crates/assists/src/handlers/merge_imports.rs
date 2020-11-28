@@ -1,4 +1,4 @@
-use ide_helpers::insert_use::{try_merge_imports, try_merge_trees, MergeBehaviour};
+use ide_db::helpers::insert_use::{try_merge_imports, try_merge_trees, MergeBehaviour};
 use syntax::{
     algo::{neighbor, SyntaxRewriter},
     ast, AstNode,

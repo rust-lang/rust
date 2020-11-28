@@ -1,4 +1,4 @@
-use ide_helpers::{
+use ide_db::helpers::{
     insert_use::{insert_use, ImportScope},
     mod_path_to_ast,
 };

@@ -1,5 +1,5 @@
+use ide_db::helpers::FamousDefs;
 use ide_db::RootDatabase;
-use ide_helpers::FamousDefs;
 use syntax::ast::{self, AstNode, NameOwner};
 use test_utils::mark;
 

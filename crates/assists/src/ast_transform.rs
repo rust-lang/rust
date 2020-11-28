@@ -1,6 +1,6 @@
 //! `AstTransformer`s are functions that replace nodes in an AST and can be easily combined.
 use hir::{HirDisplay, PathResolution, SemanticsScope};
-use ide_helpers::mod_path_to_ast;
+use ide_db::helpers::mod_path_to_ast;
 use rustc_hash::FxHashMap;
 use syntax::{
     algo::SyntaxRewriter,

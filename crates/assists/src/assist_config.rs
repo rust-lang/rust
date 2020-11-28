@@ -5,7 +5,7 @@
 //! assists if we are allowed to.
 
 use hir::PrefixKind;
-use ide_helpers::insert_use::MergeBehaviour;
+use ide_db::helpers::insert_use::MergeBehaviour;
 
 use crate::AssistKind;
 

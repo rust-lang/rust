@@ -1,6 +1,6 @@
 //! A module with ide helpers for high-level ide features.
+use crate::RootDatabase;
 use hir::{Crate, Enum, Module, ScopeDef, Semantics, Trait};
-use ide_db::RootDatabase;
 use syntax::ast::{self, make};
 
 pub mod insert_use;
