@@ -20,6 +20,7 @@ use rustc_serialize::opaque::Encoder;
 use rustc_session::config::SymbolManglingVersion;
 use rustc_session::CrateDisambiguator;
 use rustc_span::edition::Edition;
+use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::{self, ExpnData, ExpnId, Span};
 use rustc_target::spec::{PanicStrategy, TargetTriple};
@@ -336,6 +337,7 @@ enum EntryKind {
     ForeignFn(Lazy<FnData>),
     Mod(Lazy<ModData>),
     MacroDef(Lazy<MacroDef>),
+    ProcMacro(MacroKind),
     Closure,
     Generator(hir::GeneratorKind),
     Trait(Lazy<TraitData>),
