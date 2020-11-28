@@ -612,3 +612,40 @@ impl Radix {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::ast::{make, FloatNumber, IntNumber};
+
+    fn check_float_suffix<'a>(lit: &str, expected: impl Into<Option<&'a str>>) {
+        assert_eq!(FloatNumber { syntax: make::tokens::literal(lit) }.suffix(), expected.into());
+    }
+
+    fn check_int_suffix<'a>(lit: &str, expected: impl Into<Option<&'a str>>) {
+        assert_eq!(IntNumber { syntax: make::tokens::literal(lit) }.suffix(), expected.into());
+    }
+
+    #[test]
+    fn test_float_number_suffix() {
+        check_float_suffix("123.0", None);
+        check_float_suffix("123f32", "f32");
+        check_float_suffix("123.0e", None);
+        check_float_suffix("123.0e4", None);
+        check_float_suffix("123.0ef32", "f32");
+        check_float_suffix("123.0E4f32", "f32");
+        check_float_suffix("1_2_3.0_f32", "f32");
+    }
+
+    #[test]
+    fn test_int_number_suffix() {
+        check_int_suffix("123", None);
+        check_int_suffix("123i32", "i32");
+        check_int_suffix("1_0_1_l_o_l", "l_o_l");
+        check_int_suffix("0b11", None);
+        check_int_suffix("0o11", None);
+        check_int_suffix("0xff", None);
+        check_int_suffix("0b11u32", "u32");
+        check_int_suffix("0o11u32", "u32");
+        check_int_suffix("0xffu32", "u32");
+    }
+}
