@@ -584,38 +584,8 @@ macro_rules! define_queries_struct {
                 handler: &Handler,
                 num_frames: Option<usize>,
             ) -> usize {
-                let query_map = self.try_collect_active_jobs(tcx);
-
-                let mut current_query = query;
-                let mut i = 0;
-
-                while let Some(query) = current_query {
-                    if Some(i) == num_frames {
-                        break;
-                    }
-                    let query_info = if let Some(info) = query_map.as_ref().and_then(|map| map.get(&query))
-                    {
-                        info
-                    } else {
-                        break;
-                    };
-                    let mut diag = Diagnostic::new(
-                        Level::FailureNote,
-                        &format!(
-                            "#{} [{}] {}",
-                            i,
-                            query_info.info.query.name,
-                            query_info.info.query.description,
-                        ),
-                    );
-                    diag.span = tcx.sess.source_map().guess_head_span(query_info.info.span).into();
-                    handler.force_print_diagnostic(diag);
-
-                    current_query = query_info.job.parent;
-                    i += 1;
-                }
-
-                i
+                let qcx = QueryCtxt { tcx, queries: self };
+                rustc_query_system::query::print_query_stack(qcx, query, handler, num_frames)
             }
 
             $($(#[$attr])*

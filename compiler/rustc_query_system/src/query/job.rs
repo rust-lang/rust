@@ -1,8 +1,9 @@
+use crate::dep_graph::DepContext;
 use crate::query::plumbing::CycleError;
-use crate::query::QueryStackFrame;
+use crate::query::{QueryContext, QueryStackFrame};
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{struct_span_err, DiagnosticBuilder};
+use rustc_errors::{struct_span_err, Diagnostic, DiagnosticBuilder, Handler, Level};
 use rustc_session::Session;
 use rustc_span::Span;
 
@@ -13,8 +14,6 @@ use std::num::NonZeroU32;
 
 #[cfg(parallel_compiler)]
 use {
-    crate::dep_graph::DepContext,
-    crate::query::QueryContext,
     parking_lot::{Condvar, Mutex},
     rustc_data_structures::fx::FxHashSet,
     rustc_data_structures::stable_hasher::{HashStable, StableHasher},
@@ -625,4 +624,43 @@ pub(crate) fn report_cycle<'a>(
     }
 
     err
+}
+
+pub fn print_query_stack<CTX: QueryContext>(
+    tcx: CTX,
+    mut current_query: Option<QueryJobId<CTX::DepKind>>,
+    handler: &Handler,
+    num_frames: Option<usize>,
+) -> usize {
+    // Be careful relying on global state here: this code is called from
+    // a panic hook, which means that the global `Handler` may be in a weird
+    // state if it was responsible for triggering the panic.
+    let mut i = 0;
+    let query_map = tcx.try_collect_active_jobs();
+
+    while let Some(query) = current_query {
+        if Some(i) == num_frames {
+            break;
+        }
+        let query_info = if let Some(info) = query_map.as_ref().and_then(|map| map.get(&query)) {
+            info
+        } else {
+            break;
+        };
+        let mut diag = Diagnostic::new(
+            Level::FailureNote,
+            &format!(
+                "#{} [{}] {}",
+                i, query_info.info.query.name, query_info.info.query.description
+            ),
+        );
+        diag.span =
+            tcx.dep_context().sess().source_map().guess_head_span(query_info.info.span).into();
+        handler.force_print_diagnostic(diag);
+
+        current_query = query_info.job.parent;
+        i += 1;
+    }
+
+    i
 }
