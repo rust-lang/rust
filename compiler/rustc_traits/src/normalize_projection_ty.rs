@@ -24,7 +24,8 @@ fn normalize_projection_ty<'tcx>(
     tcx.infer_ctxt().enter_canonical_trait_query(
         &goal,
         |infcx, fulfill_cx, ParamEnvAnd { param_env, value: goal }| {
-            let selcx = &mut SelectionContext::new(infcx);
+            let selcx =
+                &mut SelectionContext::with_query_mode(infcx, traits::TraitQueryMode::Canonical);
             let cause = ObligationCause::dummy();
             let mut obligations = vec![];
             let answer = traits::normalize_projection_type(

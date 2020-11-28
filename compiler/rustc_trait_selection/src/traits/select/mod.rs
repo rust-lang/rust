@@ -223,14 +223,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     }
 
     pub fn intercrate(infcx: &'cx InferCtxt<'cx, 'tcx>) -> SelectionContext<'cx, 'tcx> {
-        SelectionContext {
-            infcx,
-            freshener: infcx.freshener(),
-            intercrate: true,
-            intercrate_ambiguity_causes: None,
-            allow_negative_impls: false,
-            query_mode: TraitQueryMode::Standard,
-        }
+        SelectionContext { intercrate: true, ..SelectionContext::new(infcx) }
     }
 
     pub fn with_negative(
