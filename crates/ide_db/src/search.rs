@@ -31,6 +31,7 @@ pub enum ReferenceKind {
     FieldShorthandForLocal,
     StructLiteral,
     RecordFieldExprOrPat,
+    SelfKw,
     Other,
 }
 
