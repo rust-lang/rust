@@ -30,7 +30,7 @@ impl<'a> CfgIfVisitor<'a> {
 }
 
 impl<'a, 'ast: 'a> Visitor<'ast> for CfgIfVisitor<'a> {
-    fn visit_mac(&mut self, mac: &'ast ast::MacCall) {
+    fn visit_mac_call(&mut self, mac: &'ast ast::MacCall) {
         match self.visit_mac_inner(mac) {
             Ok(()) => (),
             Err(e) => debug!("{}", e),
