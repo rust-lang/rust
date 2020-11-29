@@ -17,7 +17,6 @@
 mod tests;
 
 use core::array;
-use core::convert::Infallible;
 
 use crate::alloc::{AllocError, LayoutError};
 use crate::any::TypeId;
@@ -459,13 +458,6 @@ impl Error for string::FromUtf16Error {
     #[allow(deprecated)]
     fn description(&self) -> &str {
         "invalid utf-16"
-    }
-}
-
-#[stable(feature = "str_parse_error2", since = "1.8.0")]
-impl Error for Infallible {
-    fn description(&self) -> &str {
-        match *self {}
     }
 }
 
