@@ -60,10 +60,6 @@ libc::c_long;
                               -> *mut FILE;
 
 
-       async fn foo(
-
-       ) -> *mut
-       Bar;
        const fn foo(
 
        ) ->
@@ -74,7 +70,6 @@ libc::c_long;
        mut
        Bar;
 
-       pub async fn foo() -> *mut Bar;
        pub(super) const fn foo() -> *mut Bar;
        pub(crate) unsafe fn foo() -> *mut Bar;
    }
