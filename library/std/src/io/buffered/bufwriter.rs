@@ -18,15 +18,15 @@ use crate::iter::FusedIterator;
 /// let tail = tail!(self.write_to_buffer(buf));
 /// ```
 macro_rules! tail {
-    ($this:ident $(. $write:ident)+ ($buf:expr)) => {{
+    ($($write:ident).+ ($buf:expr)) => {{
         let buf = $buf;
-        let written = $this $(. $write)+ (buf);
+        let written = $($write).+ (buf);
         &buf[written..]
     }};
 
-    ($this:ident $(. $write:ident)+ ($buf:expr) ? ) => {{
+    ($($write:ident).+ ($buf:expr) ? ) => {{
         let buf = $buf;
-        let written = $this $(. $write)+ (buf)?;
+        let written = $($write).+ (buf)?;
         &buf[written..]
     }};
 }
