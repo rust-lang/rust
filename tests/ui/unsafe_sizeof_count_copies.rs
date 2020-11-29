@@ -14,6 +14,11 @@ fn main() {
     unsafe { copy_nonoverlapping::<u8>(x.as_ptr(), y.as_mut_ptr(), size_of::<u8>()) };
     unsafe { copy_nonoverlapping(x.as_ptr(), y.as_mut_ptr(), size_of_val(&x[0])) };
 
+    unsafe { x.as_ptr().copy_to(y.as_mut_ptr(), size_of::<u8>()) };
+    unsafe { x.as_ptr().copy_to_nonoverlapping(y.as_mut_ptr(), size_of::<u8>()) };
+    unsafe { y.as_mut_ptr().copy_from(x.as_ptr(), size_of::<u8>()) };
+    unsafe { y.as_mut_ptr().copy_from_nonoverlapping(x.as_ptr(), size_of::<u8>()) };
+
     unsafe { copy(x.as_ptr(), y.as_mut_ptr(), size_of::<u8>()) };
     unsafe { copy(x.as_ptr(), y.as_mut_ptr(), size_of_val(&x[0])) };
 

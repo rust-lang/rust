@@ -18,13 +18,45 @@ LL |     unsafe { copy_nonoverlapping(x.as_ptr(), y.as_mut_ptr(), size_of_val(&x
 error: unsafe memory copying using a byte count (Multiplied by size_of::<T>) instead of a count of T
   --> $DIR/unsafe_sizeof_count_copies.rs:17:14
    |
+LL |     unsafe { x.as_ptr().copy_to(y.as_mut_ptr(), size_of::<u8>()) };
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: use a count of elements instead of a count of bytes for the count parameter, it already gets multiplied by the size of the pointed to type
+
+error: unsafe memory copying using a byte count (Multiplied by size_of::<T>) instead of a count of T
+  --> $DIR/unsafe_sizeof_count_copies.rs:18:14
+   |
+LL |     unsafe { x.as_ptr().copy_to_nonoverlapping(y.as_mut_ptr(), size_of::<u8>()) };
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: use a count of elements instead of a count of bytes for the count parameter, it already gets multiplied by the size of the pointed to type
+
+error: unsafe memory copying using a byte count (Multiplied by size_of::<T>) instead of a count of T
+  --> $DIR/unsafe_sizeof_count_copies.rs:19:14
+   |
+LL |     unsafe { y.as_mut_ptr().copy_from(x.as_ptr(), size_of::<u8>()) };
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: use a count of elements instead of a count of bytes for the count parameter, it already gets multiplied by the size of the pointed to type
+
+error: unsafe memory copying using a byte count (Multiplied by size_of::<T>) instead of a count of T
+  --> $DIR/unsafe_sizeof_count_copies.rs:20:14
+   |
+LL |     unsafe { y.as_mut_ptr().copy_from_nonoverlapping(x.as_ptr(), size_of::<u8>()) };
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: use a count of elements instead of a count of bytes for the count parameter, it already gets multiplied by the size of the pointed to type
+
+error: unsafe memory copying using a byte count (Multiplied by size_of::<T>) instead of a count of T
+  --> $DIR/unsafe_sizeof_count_copies.rs:22:14
+   |
 LL |     unsafe { copy(x.as_ptr(), y.as_mut_ptr(), size_of::<u8>()) };
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: use a count of elements instead of a count of bytes for the count parameter, it already gets multiplied by the size of the pointed to type
 
 error: unsafe memory copying using a byte count (Multiplied by size_of::<T>) instead of a count of T
-  --> $DIR/unsafe_sizeof_count_copies.rs:18:14
+  --> $DIR/unsafe_sizeof_count_copies.rs:23:14
    |
 LL |     unsafe { copy(x.as_ptr(), y.as_mut_ptr(), size_of_val(&x[0])) };
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -32,7 +64,7 @@ LL |     unsafe { copy(x.as_ptr(), y.as_mut_ptr(), size_of_val(&x[0])) };
    = help: use a count of elements instead of a count of bytes for the count parameter, it already gets multiplied by the size of the pointed to type
 
 error: unsafe memory copying using a byte count (Multiplied by size_of::<T>) instead of a count of T
-  --> $DIR/unsafe_sizeof_count_copies.rs:21:14
+  --> $DIR/unsafe_sizeof_count_copies.rs:26:14
    |
 LL |     unsafe { copy_nonoverlapping(x.as_ptr(), y.as_mut_ptr(), size_of::<u8>() * SIZE) };
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -40,7 +72,7 @@ LL |     unsafe { copy_nonoverlapping(x.as_ptr(), y.as_mut_ptr(), size_of::<u8>(
    = help: use a count of elements instead of a count of bytes for the count parameter, it already gets multiplied by the size of the pointed to type
 
 error: unsafe memory copying using a byte count (Multiplied by size_of::<T>) instead of a count of T
-  --> $DIR/unsafe_sizeof_count_copies.rs:22:14
+  --> $DIR/unsafe_sizeof_count_copies.rs:27:14
    |
 LL |     unsafe { copy_nonoverlapping(x.as_ptr(), y.as_mut_ptr(), size_of_val(&x[0]) * SIZE) };
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -48,7 +80,7 @@ LL |     unsafe { copy_nonoverlapping(x.as_ptr(), y.as_mut_ptr(), size_of_val(&x
    = help: use a count of elements instead of a count of bytes for the count parameter, it already gets multiplied by the size of the pointed to type
 
 error: unsafe memory copying using a byte count (Multiplied by size_of::<T>) instead of a count of T
-  --> $DIR/unsafe_sizeof_count_copies.rs:24:14
+  --> $DIR/unsafe_sizeof_count_copies.rs:29:14
    |
 LL |     unsafe { copy(x.as_ptr(), y.as_mut_ptr(), size_of::<u8>() * SIZE) };
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -56,7 +88,7 @@ LL |     unsafe { copy(x.as_ptr(), y.as_mut_ptr(), size_of::<u8>() * SIZE) };
    = help: use a count of elements instead of a count of bytes for the count parameter, it already gets multiplied by the size of the pointed to type
 
 error: unsafe memory copying using a byte count (Multiplied by size_of::<T>) instead of a count of T
-  --> $DIR/unsafe_sizeof_count_copies.rs:25:14
+  --> $DIR/unsafe_sizeof_count_copies.rs:30:14
    |
 LL |     unsafe { copy(x.as_ptr(), y.as_mut_ptr(), size_of_val(&x[0]) * SIZE) };
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -64,7 +96,7 @@ LL |     unsafe { copy(x.as_ptr(), y.as_mut_ptr(), size_of_val(&x[0]) * SIZE) };
    = help: use a count of elements instead of a count of bytes for the count parameter, it already gets multiplied by the size of the pointed to type
 
 error: unsafe memory copying using a byte count (Multiplied by size_of::<T>) instead of a count of T
-  --> $DIR/unsafe_sizeof_count_copies.rs:28:14
+  --> $DIR/unsafe_sizeof_count_copies.rs:33:14
    |
 LL |     unsafe { copy_nonoverlapping(x.as_ptr(), y.as_mut_ptr(), size_of::<u8>() * HALF_SIZE * 2) };
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -72,7 +104,7 @@ LL |     unsafe { copy_nonoverlapping(x.as_ptr(), y.as_mut_ptr(), size_of::<u8>(
    = help: use a count of elements instead of a count of bytes for the count parameter, it already gets multiplied by the size of the pointed to type
 
 error: unsafe memory copying using a byte count (Multiplied by size_of::<T>) instead of a count of T
-  --> $DIR/unsafe_sizeof_count_copies.rs:29:14
+  --> $DIR/unsafe_sizeof_count_copies.rs:34:14
    |
 LL |     unsafe { copy_nonoverlapping(x.as_ptr(), y.as_mut_ptr(), HALF_SIZE * size_of_val(&x[0]) * 2) };
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -80,7 +112,7 @@ LL |     unsafe { copy_nonoverlapping(x.as_ptr(), y.as_mut_ptr(), HALF_SIZE * si
    = help: use a count of elements instead of a count of bytes for the count parameter, it already gets multiplied by the size of the pointed to type
 
 error: unsafe memory copying using a byte count (Multiplied by size_of::<T>) instead of a count of T
-  --> $DIR/unsafe_sizeof_count_copies.rs:31:14
+  --> $DIR/unsafe_sizeof_count_copies.rs:36:14
    |
 LL |     unsafe { copy(x.as_ptr(), y.as_mut_ptr(), size_of::<u8>() * SIZE * HALF_SIZE) };
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -88,7 +120,7 @@ LL |     unsafe { copy(x.as_ptr(), y.as_mut_ptr(), size_of::<u8>() * SIZE * HALF
    = help: use a count of elements instead of a count of bytes for the count parameter, it already gets multiplied by the size of the pointed to type
 
 error: unsafe memory copying using a byte count (Multiplied by size_of::<T>) instead of a count of T
-  --> $DIR/unsafe_sizeof_count_copies.rs:32:14
+  --> $DIR/unsafe_sizeof_count_copies.rs:37:14
    |
 LL |     unsafe { copy(x.as_ptr(), y.as_mut_ptr(), size_of_val(&x[0]) * HALF_SIZE * 2) };
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -96,7 +128,7 @@ LL |     unsafe { copy(x.as_ptr(), y.as_mut_ptr(), size_of_val(&x[0]) * HALF_SIZ
    = help: use a count of elements instead of a count of bytes for the count parameter, it already gets multiplied by the size of the pointed to type
 
 error: unsafe memory copying using a byte count (Multiplied by size_of::<T>) instead of a count of T
-  --> $DIR/unsafe_sizeof_count_copies.rs:35:14
+  --> $DIR/unsafe_sizeof_count_copies.rs:40:14
    |
 LL |     unsafe { copy_nonoverlapping(x.as_ptr(), y.as_mut_ptr(), size_of::<u8>() * DOUBLE_SIZE / 2) };
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -104,7 +136,7 @@ LL |     unsafe { copy_nonoverlapping(x.as_ptr(), y.as_mut_ptr(), size_of::<u8>(
    = help: use a count of elements instead of a count of bytes for the count parameter, it already gets multiplied by the size of the pointed to type
 
 error: unsafe memory copying using a byte count (Multiplied by size_of::<T>) instead of a count of T
-  --> $DIR/unsafe_sizeof_count_copies.rs:36:14
+  --> $DIR/unsafe_sizeof_count_copies.rs:41:14
    |
 LL |     unsafe { copy_nonoverlapping(x.as_ptr(), y.as_mut_ptr(), DOUBLE_SIZE / 2 * size_of_val(&x[0])) };
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -112,7 +144,7 @@ LL |     unsafe { copy_nonoverlapping(x.as_ptr(), y.as_mut_ptr(), DOUBLE_SIZE / 
    = help: use a count of elements instead of a count of bytes for the count parameter, it already gets multiplied by the size of the pointed to type
 
 error: unsafe memory copying using a byte count (Multiplied by size_of::<T>) instead of a count of T
-  --> $DIR/unsafe_sizeof_count_copies.rs:38:14
+  --> $DIR/unsafe_sizeof_count_copies.rs:43:14
    |
 LL |     unsafe { copy(x.as_ptr(), y.as_mut_ptr(), DOUBLE_SIZE * size_of::<u8>() / 2) };
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -120,12 +152,12 @@ LL |     unsafe { copy(x.as_ptr(), y.as_mut_ptr(), DOUBLE_SIZE * size_of::<u8>()
    = help: use a count of elements instead of a count of bytes for the count parameter, it already gets multiplied by the size of the pointed to type
 
 error: unsafe memory copying using a byte count (Multiplied by size_of::<T>) instead of a count of T
-  --> $DIR/unsafe_sizeof_count_copies.rs:39:14
+  --> $DIR/unsafe_sizeof_count_copies.rs:44:14
    |
 LL |     unsafe { copy(x.as_ptr(), y.as_mut_ptr(), size_of_val(&x[0]) * DOUBLE_SIZE / 2) };
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: use a count of elements instead of a count of bytes for the count parameter, it already gets multiplied by the size of the pointed to type
 
-error: aborting due to 16 previous errors
+error: aborting due to 20 previous errors
 
