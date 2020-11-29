@@ -562,15 +562,15 @@ impl<W: Write> Drop for BufWriter<W> {
 /// buffer in a list input to write_vectored.
 ///
 /// FIXME: delete this function and replace it with slice::trim if that becomes
-/// a things (https://github.com/rust-lang/rfcs/issues/2547)
-fn only_one<I, T>(iter: I, filter: impl FnMut(&T) -> bool) -> Option<T>
+/// a thing (https://github.com/rust-lang/rfcs/issues/2547)
+fn only_one<I>(iter: I, filter: impl Fn(&I::Item) -> bool) -> Option<I::Item>
 where
-    I: IntoIterator<Item = T>,
+    I: IntoIterator,
     I::IntoIter: FusedIterator,
 {
     let mut iter = iter.into_iter().filter(filter);
-    match (iter.next(), iter.count()) {
-        (Some(item), 0) => Some(item),
+    match (iter.next(), iter.next()) {
+        (Some(item), None) => Some(item),
         _ => None,
     }
 }
