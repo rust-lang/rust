@@ -2,6 +2,7 @@ use crate::consts::constant;
 use crate::utils::paths;
 use crate::utils::sugg::Sugg;
 use crate::utils::usage::{is_unused, mutated_variables};
+use crate::utils::visitors::LocalUsedVisitor;
 use crate::utils::{
     contains_name, get_enclosing_block, get_parent_expr, get_trait_def_id, has_iter_method, higher, implements_trait,
     indent_of, is_in_panic_handler, is_integer_const, is_no_std_crate, is_refutable, is_type_diagnostic_item,
@@ -2069,28 +2070,6 @@ fn pat_is_wild<'tcx>(pat: &'tcx PatKind<'_>, body: &'tcx Expr<'_>) -> bool {
     }
 }
 
-struct LocalUsedVisitor<'a, 'tcx> {
-    cx: &'a LateContext<'tcx>,
-    local: HirId,
-    used: bool,
-}
-
-impl<'a, 'tcx> Visitor<'tcx> for LocalUsedVisitor<'a, 'tcx> {
-    type Map = Map<'tcx>;
-
-    fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
-        if same_var(self.cx, expr, self.local) {
-            self.used = true;
-        } else {
-            walk_expr(self, expr);
-        }
-    }
-
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::None
-    }
-}
-
 struct VarVisitor<'a, 'tcx> {
     /// context reference
     cx: &'a LateContext<'tcx>,
@@ -2124,11 +2103,7 @@ impl<'a, 'tcx> VarVisitor<'a, 'tcx> {
             then {
                 let index_used_directly = same_var(self.cx, idx, self.var);
                 let indexed_indirectly = {
-                    let mut used_visitor = LocalUsedVisitor {
-                        cx: self.cx,
-                        local: self.var,
-                        used: false,
-                    };
+                    let mut used_visitor = LocalUsedVisitor::new(self.var);
                     walk_expr(&mut used_visitor, idx);
                     used_visitor.used
                 };
