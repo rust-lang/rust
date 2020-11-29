@@ -280,7 +280,11 @@ fn text_edit_from_self_param(
 
     let mut replacement_text = String::from(new_name);
     replacement_text.push_str(": ");
-    replacement_text.push_str(self_param.mut_token().map_or("&", |_| "&mut "));
+    match (self_param.amp_token(), self_param.mut_token()) {
+        (None, None) => (),
+        (Some(_), None) => replacement_text.push('&'),
+        (_, Some(_)) => replacement_text.push_str("&mut "),
+    };
     replacement_text.push_str(type_name.as_str());
 
     Some(TextEdit::replace(self_param.syntax().text_range(), replacement_text))
@@ -1102,6 +1106,31 @@ struct Foo { i: i32 }
 
 impl Foo {
     fn f(foo: &mut Foo) -> i32 {
+        foo.i
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_owned_self_to_parameter() {
+        check(
+            "foo",
+            r#"
+struct Foo { i: i32 }
+
+impl Foo {
+    fn f(<|>self) -> i32 {
+        self.i
+    }
+}
+"#,
+            r#"
+struct Foo { i: i32 }
+
+impl Foo {
+    fn f(foo: Foo) -> i32 {
         foo.i
     }
 }
