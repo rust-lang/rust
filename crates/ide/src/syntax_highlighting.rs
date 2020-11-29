@@ -76,6 +76,7 @@ pub(crate) fn highlight(
     let mut current_macro_call: Option<ast::MacroCall> = None;
     let mut format_string_highlighter = FormatStringHighlighter::default();
     let mut macro_rules_highlighter = MacroRulesHighlighter::default();
+    let mut inside_attribute = false;
 
     // Walk all nodes, keeping track of whether we are inside a macro or not.
     // If in macro, expand it first and highlight the expanded code.
@@ -132,9 +133,12 @@ pub(crate) fn highlight(
             _ => (),
         }
 
-        // Check for Rust code in documentation
         match &event {
+            // Check for Rust code in documentation
             WalkEvent::Leave(NodeOrToken::Node(node)) => {
+                if ast::Attr::can_cast(node.kind()) {
+                    inside_attribute = false
+                }
                 if let Some((doctest, range_mapping, new_comments)) =
                     injection::extract_doc_comments(node)
                 {
@@ -145,6 +149,9 @@ pub(crate) fn highlight(
                         &mut stack,
                     );
                 }
+            }
+            WalkEvent::Enter(NodeOrToken::Node(node)) if ast::Attr::can_cast(node.kind()) => {
+                inside_attribute = true
             }
             _ => (),
         }
@@ -188,12 +195,16 @@ pub(crate) fn highlight(
             }
         }
 
-        if let Some((highlight, binding_hash)) = highlight_element(
+        if let Some((mut highlight, binding_hash)) = highlight_element(
             &sema,
             &mut bindings_shadow_count,
             syntactic_name_ref_highlighting,
             element_to_highlight.clone(),
         ) {
+            if inside_attribute {
+                highlight = highlight | HighlightModifier::Attribute;
+            }
+
             if macro_rules_highlighter.highlight(element_to_highlight.clone()).is_none() {
                 stack.add(HighlightedRange { range, highlight, binding_hash });
             }
@@ -474,7 +485,9 @@ fn highlight_element(
 
         // Highlight references like the definitions they resolve to
         NAME_REF if element.ancestors().any(|it| it.kind() == ATTR) => {
-            Highlight::from(HighlightTag::Function) | HighlightModifier::Attribute
+            // even though we track whether we are in an attribute or not we still need this special case
+            // as otherwise we would emit unresolved references for name refs inside attributes
+            Highlight::from(HighlightTag::Function)
         }
         NAME_REF => {
             let name_ref = element.into_node().and_then(ast::NameRef::cast).unwrap();
