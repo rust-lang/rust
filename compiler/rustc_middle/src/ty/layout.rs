@@ -631,30 +631,106 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
             }
 
             // SIMD vector types.
-            ty::Adt(def, ..) if def.repr.simd() => {
-                let element = self.layout_of(ty.simd_type(tcx))?;
-                let count = ty.simd_size(tcx);
-                assert!(count > 0);
-                let scalar = match element.abi {
-                    Abi::Scalar(ref scalar) => scalar.clone(),
-                    _ => {
+            ty::Adt(def, substs) if def.repr.simd() => {
+                // Supported SIMD vectors are homogeneous ADTs with at least one field:
+                //
+                // * #[repr(simd)] struct S(T, T, T, T);
+                // * #[repr(simd)] struct S { x: T, y: T, z: T, w: T }
+                // * #[repr(simd)] struct S([T; 4])
+                //
+                // where T is a primitive scalar (integer/float/pointer).
+
+                // SIMD vectors with zero fields are not supported.
+                // (should be caught by typeck)
+                if def.non_enum_variant().fields.is_empty() {
+                    tcx.sess.fatal(&format!("monomorphising SIMD type `{}` of zero length", ty));
+                }
+
+                // Type of the first ADT field:
+                let f0_ty = def.non_enum_variant().fields[0].ty(tcx, substs);
+
+                // Heterogeneous SIMD vectors are not supported:
+                // (should be caught by typeck)
+                for fi in &def.non_enum_variant().fields {
+                    if fi.ty(tcx, substs) != f0_ty {
+                        tcx.sess.fatal(&format!("monomorphising heterogeneous SIMD type `{}`", ty));
+                    }
+                }
+
+                // The element type and number of elements of the SIMD vector
+                // are obtained from:
+                //
+                // * the element type and length of the single array field, if
+                // the first field is of array type, or
+                //
+                // * the homogenous field type and the number of fields.
+                let (e_ty, e_len, is_array) = if let ty::Array(e_ty, _) = f0_ty.kind() {
+                    // First ADT field is an array:
+
+                    // SIMD vectors with multiple array fields are not supported:
+                    // (should be caught by typeck)
+                    if def.non_enum_variant().fields.len() != 1 {
                         tcx.sess.fatal(&format!(
-                            "monomorphising SIMD type `{}` with \
-                                                 a non-machine element type `{}`",
-                            ty, element.ty
+                            "monomorphising SIMD type `{}` with more than one array field",
+                            ty
                         ));
                     }
+
+                    // Extract the number of elements from the layout of the array field:
+                    let len = if let Ok(TyAndLayout {
+                        layout: Layout { fields: FieldsShape::Array { count, .. }, .. },
+                        ..
+                    }) = self.layout_of(f0_ty)
+                    {
+                        count
+                    } else {
+                        return Err(LayoutError::Unknown(ty));
+                    };
+
+                    (*e_ty, *len, true)
+                } else {
+                    // First ADT field is not an array:
+                    (f0_ty, def.non_enum_variant().fields.len() as _, false)
                 };
-                let size =
-                    element.size.checked_mul(count, dl).ok_or(LayoutError::SizeOverflow(ty))?;
+
+                // SIMD vectors of zero length are not supported.
+                //
+                // Can't be caught in typeck if the array length is generic.
+                if e_len == 0 {
+                    tcx.sess.fatal(&format!("monomorphising SIMD type `{}` of zero length", ty));
+                }
+
+                // Compute the ABI of the element type:
+                let e_ly = self.layout_of(e_ty)?;
+                let e_abi = if let Abi::Scalar(ref scalar) = e_ly.abi {
+                    scalar.clone()
+                } else {
+                    // This error isn't caught in typeck, e.g., if
+                    // the element type of the vector is generic.
+                    tcx.sess.fatal(&format!(
+                        "monomorphising SIMD type `{}` with a non-primitive-scalar \
+                        (integer/float/pointer) element type `{}`",
+                        ty, e_ty
+                    ))
+                };
+
+                // Compute the size and alignment of the vector:
+                let size = e_ly.size.checked_mul(e_len, dl).ok_or(LayoutError::SizeOverflow(ty))?;
                 let align = dl.vector_align(size);
                 let size = size.align_to(align.abi);
 
+                // Compute the placement of the vector fields:
+                let fields = if is_array {
+                    FieldsShape::Arbitrary { offsets: vec![Size::ZERO], memory_index: vec![0] }
+                } else {
+                    FieldsShape::Array { stride: e_ly.size, count: e_len }
+                };
+
                 tcx.intern_layout(Layout {
                     variants: Variants::Single { index: VariantIdx::new(0) },
-                    fields: FieldsShape::Array { stride: element.size, count },
-                    abi: Abi::Vector { element: scalar, count },
-                    largest_niche: element.largest_niche.clone(),
+                    fields,
+                    abi: Abi::Vector { element: e_abi, count: e_len },
+                    largest_niche: e_ly.largest_niche.clone(),
                     size,
                     align,
                 })
@@ -2120,9 +2196,6 @@ where
             },
 
             ty::Tuple(tys) => tys[i].expect_ty(),
-
-            // SIMD vector types.
-            ty::Adt(def, ..) if def.repr.simd() => this.ty.simd_type(tcx),
 
             // ADTs.
             ty::Adt(def, substs) => {

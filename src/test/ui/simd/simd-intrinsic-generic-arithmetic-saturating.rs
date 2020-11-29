@@ -2,15 +2,15 @@
 // ignore-emscripten
 
 #![allow(non_camel_case_types)]
-#![feature(repr_simd, platform_intrinsics)]
+#![feature(repr_simd, platform_intrinsics, min_const_generics)]
 
 #[repr(simd)]
 #[derive(Copy, Clone, PartialEq, Debug)]
 struct u32x4(pub u32, pub u32, pub u32, pub u32);
 
 #[repr(simd)]
-#[derive(Copy, Clone, PartialEq, Debug)]
-struct i32x4(pub i32, pub i32, pub i32, pub i32);
+#[derive(Copy, Clone)]
+struct I32<const N: usize>([i32; N]);
 
 extern "platform-intrinsic" {
     fn simd_saturating_add<T>(x: T, y: T) -> T;
@@ -51,41 +51,41 @@ fn main() {
         const MIN: i32 = i32::MIN;
         const MAX: i32 = i32::MAX;
 
-        let a = i32x4(1, 2, 3, 4);
-        let b = i32x4(2, 4, 6, 8);
-        let c = i32x4(-1, -2, -3, -4);
-        let d = i32x4(-2, -4, -6, -8);
+        let a = I32::<4>([1, 2, 3, 4]);
+        let b = I32::<4>([2, 4, 6, 8]);
+        let c = I32::<4>([-1, -2, -3, -4]);
+        let d = I32::<4>([-2, -4, -6, -8]);
 
-        let max = i32x4(MAX, MAX, MAX, MAX);
-        let max1 = i32x4(MAX - 1, MAX - 1, MAX - 1, MAX - 1);
-        let min = i32x4(MIN, MIN, MIN, MIN);
-        let min1 = i32x4(MIN + 1, MIN + 1, MIN + 1, MIN + 1);
+        let max = I32::<4>([MAX, MAX, MAX, MAX]);
+        let max1 = I32::<4>([MAX - 1, MAX - 1, MAX - 1, MAX - 1]);
+        let min = I32::<4>([MIN, MIN, MIN, MIN]);
+        let min1 = I32::<4>([MIN + 1, MIN + 1, MIN + 1, MIN + 1]);
 
-        let z = i32x4(0, 0, 0, 0);
+        let z = I32::<4>([0, 0, 0, 0]);
 
         unsafe {
-            assert_eq!(simd_saturating_add(z, z), z);
-            assert_eq!(simd_saturating_add(z, a), a);
-            assert_eq!(simd_saturating_add(b, z), b);
-            assert_eq!(simd_saturating_add(a, a), b);
-            assert_eq!(simd_saturating_add(a, max), max);
-            assert_eq!(simd_saturating_add(max, b), max);
-            assert_eq!(simd_saturating_add(max1, a), max);
-            assert_eq!(simd_saturating_add(min1, z), min1);
-            assert_eq!(simd_saturating_add(min, z), min);
-            assert_eq!(simd_saturating_add(min1, c), min);
-            assert_eq!(simd_saturating_add(min, c), min);
-            assert_eq!(simd_saturating_add(min1, d), min);
-            assert_eq!(simd_saturating_add(min, d), min);
+            assert_eq!(simd_saturating_add(z, z).0, z.0);
+            assert_eq!(simd_saturating_add(z, a).0, a.0);
+            assert_eq!(simd_saturating_add(b, z).0, b.0);
+            assert_eq!(simd_saturating_add(a, a).0, b.0);
+            assert_eq!(simd_saturating_add(a, max).0, max.0);
+            assert_eq!(simd_saturating_add(max, b).0, max.0);
+            assert_eq!(simd_saturating_add(max1, a).0, max.0);
+            assert_eq!(simd_saturating_add(min1, z).0, min1.0);
+            assert_eq!(simd_saturating_add(min, z).0, min.0);
+            assert_eq!(simd_saturating_add(min1, c).0, min.0);
+            assert_eq!(simd_saturating_add(min, c).0, min.0);
+            assert_eq!(simd_saturating_add(min1, d).0, min.0);
+            assert_eq!(simd_saturating_add(min, d).0, min.0);
 
-            assert_eq!(simd_saturating_sub(b, z), b);
-            assert_eq!(simd_saturating_sub(b, a), a);
-            assert_eq!(simd_saturating_sub(a, a), z);
-            assert_eq!(simd_saturating_sub(a, b), c);
-            assert_eq!(simd_saturating_sub(z, max), min1);
-            assert_eq!(simd_saturating_sub(min1, z), min1);
-            assert_eq!(simd_saturating_sub(min1, a), min);
-            assert_eq!(simd_saturating_sub(min1, b), min);
+            assert_eq!(simd_saturating_sub(b, z).0, b.0);
+            assert_eq!(simd_saturating_sub(b, a).0, a.0);
+            assert_eq!(simd_saturating_sub(a, a).0, z.0);
+            assert_eq!(simd_saturating_sub(a, b).0, c.0);
+            assert_eq!(simd_saturating_sub(z, max).0, min1.0);
+            assert_eq!(simd_saturating_sub(min1, z).0, min1.0);
+            assert_eq!(simd_saturating_sub(min1, a).0, min.0);
+            assert_eq!(simd_saturating_sub(min1, b).0, min.0);
         }
     }
 }
