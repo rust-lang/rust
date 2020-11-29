@@ -1,15 +1,25 @@
-error[E0391]: cycle detected when computing the supertraits of `T1`
+error[E0391]: cycle detected when computing the super predicates of `T1`
+  --> $DIR/issue-12511.rs:1:1
+   |
+LL | trait T1 : T2 {
+   | ^^^^^^^^^^^^^
+   |
+note: ...which requires computing the super traits of `T1`...
   --> $DIR/issue-12511.rs:1:12
    |
 LL | trait T1 : T2 {
    |            ^^
+note: ...which requires computing the super predicates of `T2`...
+  --> $DIR/issue-12511.rs:5:1
    |
-note: ...which requires computing the supertraits of `T2`...
+LL | trait T2 : T1 {
+   | ^^^^^^^^^^^^^
+note: ...which requires computing the super traits of `T2`...
   --> $DIR/issue-12511.rs:5:12
    |
 LL | trait T2 : T1 {
    |            ^^
-   = note: ...which again requires computing the supertraits of `T1`, completing the cycle
+   = note: ...which again requires computing the super predicates of `T1`, completing the cycle
 note: cycle used when collecting item types in top-level module
   --> $DIR/issue-12511.rs:1:1
    |
