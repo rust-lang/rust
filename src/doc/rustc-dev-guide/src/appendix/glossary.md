@@ -72,6 +72,7 @@ Term                                           | Meaning
 <span id="soundness">soundness</span>          |  A technical term in type theory. Roughly, if a type system is sound, then a program that type-checks is type-safe. That is, one can never (in safe rust) force a value into a variable of the wrong type. (see "completeness").
 <span id="span">span</span>                    |  A location in the user's source code, used for error reporting primarily. These are like a file-name/line-number/column tuple on steroids: they carry a start/end point, and also track macro expansions and compiler desugaring. All while being packed into a few bytes (really, it's an index into a table). See the Span datatype for more.
 <span id="substs">substs</span>                |  The substitutions for a given generic type or item (e.g. the `i32`, `u32` in `HashMap<i32, u32>`).
+<span id="sysroot">sysroot</span>              |  The directory for build artifacts that are loaded by the compiler at runtime. ([see more](../building/bootstrapping.html#what-is-a-sysroot))
 <span id="tag">Tag</span>                      |  The "tag" of an enum/generator encodes the [discriminant](#discriminant) of the active variant/state.  Tags can either be "direct" (simply storing the discriminant in a field) or use a ["niche"](#niche).
 <span id="tcx">tcx</span>                      |  The "typing context", main data structure of the compiler. ([see more](../ty.md))
 <span id="lifetime-tcx">`'tcx`</span>          |  The lifetime of the allocation arena. ([see more](../ty.md))
