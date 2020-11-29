@@ -944,3 +944,26 @@ fn ip_const() {
     const IS_IP_V6: bool = IP_ADDRESS.is_ipv6();
     assert!(!IS_IP_V6);
 }
+
+#[test]
+fn structural_match() {
+    // test that all IP types can be structurally matched upon
+
+    const IPV4: Ipv4Addr = Ipv4Addr::LOCALHOST;
+    match IPV4 {
+        Ipv4Addr::LOCALHOST => {}
+        _ => unreachable!(),
+    }
+
+    const IPV6: Ipv6Addr = Ipv6Addr::LOCALHOST;
+    match IPV6 {
+        Ipv6Addr::LOCALHOST => {}
+        _ => unreachable!(),
+    }
+
+    const IP: IpAddr = IpAddr::V4(Ipv4Addr::LOCALHOST);
+    match IP {
+        IpAddr::V4(Ipv4Addr::LOCALHOST) => {}
+        _ => unreachable!(),
+    }
+}
