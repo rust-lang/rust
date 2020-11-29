@@ -5,6 +5,7 @@
 // compile-flags:--test --test-args --test-threads=1
 // rustc-env:RUST_BACKTRACE=0
 // normalize-stdout-test: "src/test/rustdoc-ui" -> "$$DIR"
+// normalize-stdout-test "finished in \d+\.\d+s" -> "finished in $$TIME"
 // failure-status: 101
 
 // doctest fails at runtime

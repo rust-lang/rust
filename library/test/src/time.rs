@@ -1,8 +1,9 @@
 //! Module `time` contains everything related to the time measurement of unit tests
 //! execution.
-//! Two main purposes of this module:
+//! The purposes of this module:
 //! - Check whether test is timed out.
 //! - Provide helpers for `report-time` and `measure-time` options.
+//! - Provide newtypes for executions times.
 
 use std::env;
 use std::fmt;
@@ -60,13 +61,23 @@ pub fn get_default_test_timeout() -> Instant {
     Instant::now() + Duration::from_secs(TEST_WARN_TIMEOUT_S)
 }
 
-/// The meassured execution time of a unit test.
+/// The measured execution time of a unit test.
 #[derive(Debug, Clone, PartialEq)]
 pub struct TestExecTime(pub Duration);
 
 impl fmt::Display for TestExecTime {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:.3}s", self.0.as_secs_f64())
+    }
+}
+
+/// The measured execution time of the whole test suite.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct TestSuiteExecTime(pub Duration);
+
+impl fmt::Display for TestSuiteExecTime {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:.2}s", self.0.as_secs_f64())
     }
 }
 
