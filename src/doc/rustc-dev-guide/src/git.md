@@ -73,6 +73,55 @@ the same, with some steps skipped:
  2. Make, stage, and commit your additional changes just like before.
  3. Push those changes to your fork: `git push`.
 
+## Troubleshooting git issues
+
+You don't need to clone `rust-lang/rust` from scratch if it's out of date!
+Even if you think you've messed it up beyond repair, there are ways to fix
+the git state that don't require downloading the whole repository again.
+Here are some common issues you might run into:
+
+### I deleted my fork on GitHub!
+
+This is not a problem from git's perspective. If you run `git remote -v`,
+it will say something like this:
+
+```
+$ git remote -v
+origin	https://github.com//rust-lang/rust (fetch)
+origin	https://github.com//rust-lang/rust (push)
+personal	https://github.com/jyn514/rust (fetch)
+personal	https://github.com/jyn514/rust (push)
+```
+
+You can change the URL of the fork like this:
+
+```console
+git remote set-url personal <URL>
+```
+
+where the <URL> is your new fork.
+
+### I see 'Untracked Files: src/stdarch'?
+
+This is left over from the move to the `library/` directory.
+Unfortunately, `git rebase` does not follow renames for submodules, so you
+have to delete the directory yourself:
+
+```console
+rm -r src/stdarch
+```
+
+### I see `<<< HEAD`?
+
+You were probably in the middle of a rebase or merge conflict. See
+[Conflicts](#conflicts) for how to fix the conflict. If you don't care about the changes
+and just want to get a clean copy of the repository back, you can use `git reset`:
+
+```console
+# WARNING: this throws out any local changes you've made! Consider resolving the conflicts instead.
+git reset --hard master
+```
+
 ### Quick note about submodules
 
 When updating your local repository with `git pull`, you may notice that sometimes
@@ -94,7 +143,7 @@ no changes added to commit (use "git add" and/or "git commit -a")
 ```
 
 These changes are not changes to files: they are changes to submodules
-(more on this later). To get rid of those, run `git submodule update` (or run any
+(more on this [later](#git-submodules)). To get rid of those, run `git submodule update` (or run any
 `x.py` command, which will automatically update the submodules).
 Note that there is currently a bug if you use worktrees, submodules, and x.py in a commit hook.
 If you run into an error like:
