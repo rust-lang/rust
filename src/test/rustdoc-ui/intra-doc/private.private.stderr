@@ -1,5 +1,5 @@
 warning: public documentation for `DocMe` links to private item `DontDocMe`
-  --> $DIR/intra-links-private.rs:5:11
+  --> $DIR/private.rs:5:11
    |
 LL | /// docs [DontDocMe]
    |           ^^^^^^^^^ this item is private

@@ -1,5 +1,5 @@
 warning: unresolved link to `error`
-  --> $DIR/intra-links-warning-crlf.rs:7:6
+  --> $DIR/warning-crlf.rs:7:6
    |
 LL | /// [error]
    |      ^^^^^ no item named `error` in scope
@@ -8,7 +8,7 @@ LL | /// [error]
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
 warning: unresolved link to `error1`
-  --> $DIR/intra-links-warning-crlf.rs:12:11
+  --> $DIR/warning-crlf.rs:12:11
    |
 LL | /// docs [error1]
    |           ^^^^^^ no item named `error1` in scope
@@ -16,7 +16,7 @@ LL | /// docs [error1]
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
 warning: unresolved link to `error2`
-  --> $DIR/intra-links-warning-crlf.rs:15:11
+  --> $DIR/warning-crlf.rs:15:11
    |
 LL | /// docs [error2]
    |           ^^^^^^ no item named `error2` in scope
@@ -24,7 +24,7 @@ LL | /// docs [error2]
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
 warning: unresolved link to `error`
-  --> $DIR/intra-links-warning-crlf.rs:23:20
+  --> $DIR/warning-crlf.rs:23:20
    |
 LL |  * It also has an [error].
    |                    ^^^^^ no item named `error` in scope

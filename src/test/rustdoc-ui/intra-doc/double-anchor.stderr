@@ -1,5 +1,5 @@
 warning: `with#anchor#error` contains multiple anchors
-  --> $DIR/intra-link-double-anchor.rs:5:18
+  --> $DIR/double-anchor.rs:5:18
    |
 LL | /// docs [label][with#anchor#error]
    |                  ^^^^^^^^^^^^^^^^^ contains invalid anchor
