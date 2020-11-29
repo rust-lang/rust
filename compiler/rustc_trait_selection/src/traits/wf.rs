@@ -4,7 +4,7 @@ use crate::traits;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
-use rustc_middle::ty::subst::{GenericArg, GenericArgKind, SubstsRef};
+use rustc_middle::ty::subst::{GenericArg, GenericArgKind, Subst, SubstsRef};
 use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness};
 use rustc_span::Span;
 
@@ -117,6 +117,26 @@ pub fn predicate_obligations<'a, 'tcx>(
         ty::PredicateAtom::Projection(t) => {
             wf.compute_projection(t.projection_ty);
             wf.compute(t.ty.into());
+
+            // Check item bounds apply.
+            //
+            // This is relying on this predicate being used to normalize any
+            // bounds. For example, for the projection predicate `<T as
+            // Iterator>::Item = U` we will get a bound `<T as Iterator>::Item:
+            // Sized`, which then normalizes to `U: Sized`.
+            let bounds = infcx.tcx.explicit_item_bounds(t.projection_ty.item_def_id);
+            let bound_obligations: Vec<_> = bounds
+                .iter()
+                .map(|&(bound, span)| {
+                    traits::Obligation::new(
+                        wf.cause(traits::BindingObligation(t.projection_ty.item_def_id, span)),
+                        param_env,
+                        bound.subst(infcx.tcx, t.projection_ty.substs),
+                    )
+                })
+                .filter(|arg| !arg.has_escaping_bound_vars())
+                .collect();
+            wf.out.extend(bound_obligations);
         }
         ty::PredicateAtom::WellFormed(arg) => {
             wf.compute(arg);

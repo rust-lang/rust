@@ -9,7 +9,9 @@
 // run-pass
 
 trait Collection<T> {
-    type Iter<'iter>: Iterator<Item=&'iter T> where T: 'iter;
+    type Iter<'iter>: Iterator<Item = &'iter T>
+    where
+        T: 'iter;
     type Family: CollectionFamily;
     // Test associated type defaults with parameters
     type Sibling<U>: Collection<U> =
@@ -22,7 +24,7 @@ trait Collection<T> {
     fn iterate<'iter>(&'iter self) -> Self::Iter<'iter>;
 }
 
-trait CollectionFamily {
+trait CollectionFamily: Sized {
     type Member<T>: Collection<T, Family = Self>;
 }
 
@@ -33,7 +35,10 @@ impl CollectionFamily for VecFamily {
 }
 
 impl<T> Collection<T> for Vec<T> {
-    type Iter<'iter> where T: 'iter = std::slice::Iter<'iter, T>;
+    type Iter<'iter>
+    where
+        T: 'iter,
+    = std::slice::Iter<'iter, T>;
     type Family = VecFamily;
 
     fn empty() -> Self {

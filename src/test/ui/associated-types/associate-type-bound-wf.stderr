@@ -1,0 +1,41 @@
+error[E0277]: the size for values of type `(dyn Fn() + 'static)` cannot be known at compilation time
+  --> $DIR/associate-type-bound-wf.rs:8:32
+   |
+LL | fn object_iterator<T: Iterator<Item = dyn Fn()>>() {}
+   |                                ^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   | 
+  ::: $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
+   |
+LL |     type Item;
+   |     ---------- required by this bound in `std::iter::Iterator::Item`
+   |
+   = help: the trait `Sized` is not implemented for `(dyn Fn() + 'static)`
+
+error[E0277]: the size for values of type `impl ?Sized` cannot be known at compilation time
+  --> $DIR/associate-type-bound-wf.rs:11:40
+   |
+LL | fn parameter_iterator(_: impl Iterator<Item = impl ?Sized>) {}
+   |                                        ^^^^^^^-----------
+   |                                        |      |
+   |                                        |      this type parameter needs to be `Sized`
+   |                                        doesn't have a size known at compile-time
+   | 
+  ::: $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
+   |
+LL |     type Item;
+   |     ---------- required by this bound in `std::iter::Iterator::Item`
+
+error[E0277]: the size for values of type `(dyn Fn() + 'static)` cannot be known at compilation time
+  --> $DIR/associate-type-bound-wf.rs:14:44
+   |
+LL |     type Y;
+   |     ------- required by this bound in `TwoAssocTypes::Y`
+...
+LL | fn unsized_object<T: TwoAssocTypes<X = (), Y = dyn Fn()>>() {}
+   |                                            ^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `(dyn Fn() + 'static)`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0277`.
