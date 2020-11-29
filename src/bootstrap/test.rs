@@ -904,6 +904,12 @@ host_test!(UiFullDeps { path: "src/test/ui-fulldeps", mode: "ui", suite: "ui-ful
 host_test!(Rustdoc { path: "src/test/rustdoc", mode: "rustdoc", suite: "rustdoc" });
 host_test!(RustdocUi { path: "src/test/rustdoc-ui", mode: "ui", suite: "rustdoc-ui" });
 
+host_test!(RustdocJson {
+    path: "src/test/rustdoc-json",
+    mode: "rustdoc-json",
+    suite: "rustdoc-json"
+});
+
 host_test!(Pretty { path: "src/test/pretty", mode: "pretty", suite: "pretty" });
 
 default_test!(RunMake { path: "src/test/run-make", mode: "run-make", suite: "run-make" });
@@ -1001,6 +1007,7 @@ note: if you're sure you want to do this, please open an issue as to why. In the
             || (mode == "run-make" && suite.ends_with("fulldeps"))
             || (mode == "ui" && is_rustdoc)
             || mode == "js-doc-test"
+            || mode == "rustdoc-json"
         {
             cmd.arg("--rustdoc-path").arg(builder.rustdoc(compiler));
         }

@@ -130,12 +130,16 @@ while work_list:
         work_list |= set(item["inner"]["items"]) - visited
     elif item["kind"] == "struct":
         check_generics(item["inner"]["generics"])
-        work_list |= (set(item["inner"]["fields"]) | set(item["inner"]["impls"])) - visited
+        work_list |= (
+            set(item["inner"]["fields"]) | set(item["inner"]["impls"])
+        ) - visited
     elif item["kind"] == "struct_field":
         check_type(item["inner"])
     elif item["kind"] == "enum":
         check_generics(item["inner"]["generics"])
-        work_list |= (set(item["inner"]["variants"]) | set(item["inner"]["impls"])) - visited
+        work_list |= (
+            set(item["inner"]["variants"]) | set(item["inner"]["impls"])
+        ) - visited
     elif item["kind"] == "variant":
         if item["inner"]["variant_kind"] == "tuple":
             for ty in item["inner"]["variant_inner"]:
@@ -162,7 +166,9 @@ while work_list:
         check_generics(item["inner"]["generics"])
         for bound in item["inner"]["bounds"]:
             check_generic_bound(bound)
-        work_list |= (set(item["inner"]["items"]) | set(item["inner"]["implementors"])) - visited
+        work_list |= (
+            set(item["inner"]["items"]) | set(item["inner"]["implementors"])
+        ) - visited
     elif item["kind"] == "impl":
         check_generics(item["inner"]["generics"])
         if item["inner"]["trait"]:
