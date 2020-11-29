@@ -480,7 +480,7 @@ macro_rules! config_data {
 
 config_data! {
     struct ConfigData {
-        assist_importMergeBehaviour: MergeBehaviourDef = MergeBehaviourDef::None,
+        assist_importMergeBehaviour: MergeBehaviourDef = MergeBehaviourDef::Full,
         assist_importPrefix: ImportPrefixDef           = ImportPrefixDef::Plain,
 
         callInfo_full: bool = true,
