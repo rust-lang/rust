@@ -422,7 +422,7 @@ fn token_name_eq(t1: &Token, t2: &Token) -> bool {
 /// previously be a separator that follows `:pat`. Thus, we make a special case to parse `:pat` the
 /// old way if it happens to be followed by `|` in the matcher.
 ///
-/// See https://github.com/rust-lang/rust/issues/54883 for more info.
+/// See <https://github.com/rust-lang/rust/issues/54883> for more info.
 fn or_pat_mode(item: &MatcherPosHandle<'_, '_>) -> OrPatNonterminalMode {
     if item.idx < item.top_elts.len() - 1 {
         // Look at the token after the current one to see if it is `|`.
