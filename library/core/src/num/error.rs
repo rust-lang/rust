@@ -1,6 +1,5 @@
 //! Error types for conversion to integral types.
 
-use crate::convert::Infallible;
 use crate::fmt;
 
 /// The error type returned when a checked integral type conversion fails.
@@ -25,13 +24,6 @@ impl TryFromIntError {
 impl fmt::Display for TryFromIntError {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.__description().fmt(fmt)
-    }
-}
-
-#[stable(feature = "try_from", since = "1.34.0")]
-impl From<Infallible> for TryFromIntError {
-    fn from(x: Infallible) -> TryFromIntError {
-        match x {}
     }
 }
 

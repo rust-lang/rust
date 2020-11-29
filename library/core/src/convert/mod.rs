@@ -34,9 +34,6 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use crate::fmt;
-use crate::hash::{Hash, Hasher};
-
 mod num;
 
 #[unstable(feature = "convert_float_to_int", issue = "67057")]
@@ -675,64 +672,4 @@ impl AsRef<str> for str {
 ///
 /// [never]: ../../std/primitive.never.html
 #[stable(feature = "convert_infallible", since = "1.34.0")]
-#[derive(Copy)]
-pub enum Infallible {}
-
-#[stable(feature = "convert_infallible", since = "1.34.0")]
-impl Clone for Infallible {
-    fn clone(&self) -> Infallible {
-        match *self {}
-    }
-}
-
-#[stable(feature = "convert_infallible", since = "1.34.0")]
-impl fmt::Debug for Infallible {
-    fn fmt(&self, _: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match *self {}
-    }
-}
-
-#[stable(feature = "convert_infallible", since = "1.34.0")]
-impl fmt::Display for Infallible {
-    fn fmt(&self, _: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match *self {}
-    }
-}
-
-#[stable(feature = "convert_infallible", since = "1.34.0")]
-impl PartialEq for Infallible {
-    fn eq(&self, _: &Infallible) -> bool {
-        match *self {}
-    }
-}
-
-#[stable(feature = "convert_infallible", since = "1.34.0")]
-impl Eq for Infallible {}
-
-#[stable(feature = "convert_infallible", since = "1.34.0")]
-impl PartialOrd for Infallible {
-    fn partial_cmp(&self, _other: &Self) -> Option<crate::cmp::Ordering> {
-        match *self {}
-    }
-}
-
-#[stable(feature = "convert_infallible", since = "1.34.0")]
-impl Ord for Infallible {
-    fn cmp(&self, _other: &Self) -> crate::cmp::Ordering {
-        match *self {}
-    }
-}
-
-#[stable(feature = "convert_infallible", since = "1.34.0")]
-impl From<!> for Infallible {
-    fn from(x: !) -> Self {
-        x
-    }
-}
-
-#[stable(feature = "convert_infallible_hash", since = "1.44.0")]
-impl Hash for Infallible {
-    fn hash<H: Hasher>(&self, _: &mut H) {
-        match *self {}
-    }
-}
+pub type Infallible = !;
