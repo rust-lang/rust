@@ -2,5 +2,7 @@
 
 fn main() {
     eprintln!("Hello");
+    println!("This should not do anything");
     eprint!("World");
+    print!("Nor should this");
 }
