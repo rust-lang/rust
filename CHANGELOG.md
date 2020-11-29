@@ -2,6 +2,36 @@
 
 ## [Unreleased]
 
+## [1.4.28] 2020-11-29
+
+### Changed
+
+- `rustc-ap-*` crates updated to v691.0.0
+- In the event of an invalid inner attribute on a `cfg_if` condition, rustfmt will now attempt to continue and format the imported modules. Previously rustfmt would emit the parser error about an inner attribute being invalid in this position, but for rustfmt's purposes the invalid attribute doesn't prevent nor impact module formatting.
+
+### Added
+
+- [`group_imports`][group-imports-config-docs] - a new configuration option that allows users to control the strategy used for grouping imports ([#4107](https://github.com/rust-lang/rustfmt/issues/4107))
+
+[group-imports-config-docs]: https://github.com/rust-lang/rustfmt/blob/v1.4.28/Configurations.md#group_imports
+
+### Fixed
+- Formatting of malformed derived attributes is no longer butchered. ([#3898](https://github.com/rust-lang/rustfmt/issues/3898), [#4029](https://github.com/rust-lang/rustfmt/issues/4029), [#4115](https://github.com/rust-lang/rustfmt/issues/4115), [#4545](https://github.com/rust-lang/rustfmt/issues/4545))
+- Correct indentation used in macro branches when `hard_tabs` is enabled. ([#4152](https://github.com/rust-lang/rustfmt/issues/4152))
+- Comments between the visibility modifier and item name are no longer dropped. ([#2781](https://github.com/rust-lang/rustfmt/issues/2781))
+- Comments preceding the assignment operator in type aliases are no longer dropped. ([#4244](https://github.com/rust-lang/rustfmt/issues/4244))
+- Comments between {`&` operator, lifetime, `mut` kw, type} are no longer dropped. ([#4245](https://github.com/rust-lang/rustfmt/issues/4245))
+- Comments between type bounds are no longer dropped. ([#4243](https://github.com/rust-lang/rustfmt/issues/4243))
+- Function headers are no longer dropped on foreign function items. ([#4288](https://github.com/rust-lang/rustfmt/issues/4288))
+- Foreign function blocks are no longer dropped. ([#4313](https://github.com/rust-lang/rustfmt/issues/4313))
+- `where_single_line` is no longer incorrectly applied to multiline function signatures that have no `where` clause. ([#4547](https://github.com/rust-lang/rustfmt/issues/4547))
+
+### Install/Download Options
+- **crates.io package** - *pending*
+- **rustup (nightly)** - *pending*
+- **GitHub Release Binaries** - [Release v1.4.28](https://github.com/rust-lang/rustfmt/releases/tag/v1.4.28)
+- **Build from source** - [Tag v1.4.28](https://github.com/rust-lang/rustfmt/tree/v1.4.28), see instructions for how to [install rustfmt from source][install-from-source]
+
 ## [1.4.27] 2020-11-16
 
 ### Fixed
@@ -10,7 +40,7 @@
 
 ### Install/Download Options
 - **crates.io package** - *pending*
-- **rustup (nightly)** - *pending*
+- **rustup (nightly)** - Starting in `2020-11-18`
 - **GitHub Release Binaries** - [Release v1.4.27](https://github.com/rust-lang/rustfmt/releases/tag/v1.4.27)
 - **Build from source** - [Tag v1.4.27](https://github.com/rust-lang/rustfmt/tree/v1.4.27), see instructions for how to [install rustfmt from source][install-from-source]
 
