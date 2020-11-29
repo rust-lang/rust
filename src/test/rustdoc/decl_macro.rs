@@ -30,3 +30,10 @@ pub macro my_macro_multi {
 
     }
 }
+
+// @has decl_macro/macro.by_example_single.html //pre 'pub macro by_example_single($foo:expr) {'
+// @has - //pre '...'
+// @has - //pre '}'
+pub macro by_example_single {
+    ($foo:expr) => {}
+}
