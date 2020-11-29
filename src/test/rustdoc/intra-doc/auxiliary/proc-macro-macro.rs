@@ -3,7 +3,6 @@
 // compile-flags: --crate-type proc-macro
 
 #![crate_type="proc-macro"]
-#![crate_name="intra_link_proc_macro_macro"]
 
 extern crate proc_macro;
 

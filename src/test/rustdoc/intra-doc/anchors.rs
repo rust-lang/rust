@@ -3,8 +3,8 @@
 /// # Anchor!
 pub struct Something;
 
-// @has intra_links_anchors/struct.SomeOtherType.html
-// @has - '//a/@href' '../intra_links_anchors/struct.Something.html#Anchor!'
+// @has anchors/struct.SomeOtherType.html
+// @has - '//a/@href' '../anchors/struct.Something.html#Anchor!'
 
 /// I want...
 ///

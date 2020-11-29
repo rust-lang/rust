@@ -2,7 +2,7 @@
 
 // ignore-tidy-linelength
 
-// @has intra_link_primitive_non_default_impl/fn.str_methods.html
+// @has primitive_non_default_impl/fn.str_methods.html
 /// [`str::trim`]
 // @has - '//*[@href="https://doc.rust-lang.org/nightly/std/primitive.str.html#method.trim"]' 'str::trim'
 /// [`str::to_lowercase`]
@@ -13,7 +13,7 @@
 // @has - '//*[@href="https://doc.rust-lang.org/nightly/std/primitive.str.html#method.replace"]' 'str::replace'
 pub fn str_methods() {}
 
-// @has intra_link_primitive_non_default_impl/fn.f32_methods.html
+// @has primitive_non_default_impl/fn.f32_methods.html
 /// [f32::powi]
 // @has - '//*[@href="https://doc.rust-lang.org/nightly/std/primitive.f32.html#method.powi"]' 'f32::powi'
 /// [f32::sqrt]
@@ -22,7 +22,7 @@ pub fn str_methods() {}
 // @has - '//*[@href="https://doc.rust-lang.org/nightly/std/primitive.f32.html#method.mul_add"]' 'f32::mul_add'
 pub fn f32_methods() {}
 
-// @has intra_link_primitive_non_default_impl/fn.f64_methods.html
+// @has primitive_non_default_impl/fn.f64_methods.html
 /// [`f64::powi`]
 // @has - '//*[@href="https://doc.rust-lang.org/nightly/std/primitive.f64.html#method.powi"]' 'f64::powi'
 /// [`f64::sqrt`]

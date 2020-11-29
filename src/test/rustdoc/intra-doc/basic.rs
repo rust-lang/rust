@@ -1,21 +1,21 @@
-// @has intra_links/index.html
-// @has - '//a/@href' '../intra_links/struct.ThisType.html'
-// @has - '//a/@href' '../intra_links/struct.ThisType.html#method.this_method'
-// @has - '//a/@href' '../intra_links/enum.ThisEnum.html'
-// @has - '//a/@href' '../intra_links/enum.ThisEnum.html#variant.ThisVariant'
-// @has - '//a/@href' '../intra_links/trait.ThisTrait.html'
-// @has - '//a/@href' '../intra_links/trait.ThisTrait.html#tymethod.this_associated_method'
-// @has - '//a/@href' '../intra_links/trait.ThisTrait.html#associatedtype.ThisAssociatedType'
-// @has - '//a/@href' '../intra_links/trait.ThisTrait.html#associatedconstant.THIS_ASSOCIATED_CONST'
-// @has - '//a/@href' '../intra_links/trait.ThisTrait.html'
-// @has - '//a/@href' '../intra_links/type.ThisAlias.html'
-// @has - '//a/@href' '../intra_links/union.ThisUnion.html'
-// @has - '//a/@href' '../intra_links/fn.this_function.html'
-// @has - '//a/@href' '../intra_links/constant.THIS_CONST.html'
-// @has - '//a/@href' '../intra_links/static.THIS_STATIC.html'
-// @has - '//a/@href' '../intra_links/macro.this_macro.html'
-// @has - '//a/@href' '../intra_links/trait.SoAmbiguous.html'
-// @has - '//a/@href' '../intra_links/fn.SoAmbiguous.html'
+// @has basic/index.html
+// @has - '//a/@href' '../basic/struct.ThisType.html'
+// @has - '//a/@href' '../basic/struct.ThisType.html#method.this_method'
+// @has - '//a/@href' '../basic/enum.ThisEnum.html'
+// @has - '//a/@href' '../basic/enum.ThisEnum.html#variant.ThisVariant'
+// @has - '//a/@href' '../basic/trait.ThisTrait.html'
+// @has - '//a/@href' '../basic/trait.ThisTrait.html#tymethod.this_associated_method'
+// @has - '//a/@href' '../basic/trait.ThisTrait.html#associatedtype.ThisAssociatedType'
+// @has - '//a/@href' '../basic/trait.ThisTrait.html#associatedconstant.THIS_ASSOCIATED_CONST'
+// @has - '//a/@href' '../basic/trait.ThisTrait.html'
+// @has - '//a/@href' '../basic/type.ThisAlias.html'
+// @has - '//a/@href' '../basic/union.ThisUnion.html'
+// @has - '//a/@href' '../basic/fn.this_function.html'
+// @has - '//a/@href' '../basic/constant.THIS_CONST.html'
+// @has - '//a/@href' '../basic/static.THIS_STATIC.html'
+// @has - '//a/@href' '../basic/macro.this_macro.html'
+// @has - '//a/@href' '../basic/trait.SoAmbiguous.html'
+// @has - '//a/@href' '../basic/fn.SoAmbiguous.html'
 //! In this crate we would like to link to:
 //!
 //! * [`ThisType`](ThisType)
@@ -46,7 +46,7 @@ macro_rules! this_macro {
     () => {};
 }
 
-// @has intra_links/struct.ThisType.html '//a/@href' '../intra_links/macro.this_macro.html'
+// @has basic/struct.ThisType.html '//a/@href' '../basic/macro.this_macro.html'
 /// another link to [`this_macro!()`]
 pub struct ThisType;
 
@@ -72,10 +72,10 @@ pub trait SoAmbiguous {}
 pub fn SoAmbiguous() {}
 
 
-// @has intra_links/struct.SomeOtherType.html '//a/@href' '../intra_links/struct.ThisType.html'
-// @has - '//a/@href' '../intra_links/struct.ThisType.html#method.this_method'
-// @has - '//a/@href' '../intra_links/enum.ThisEnum.html'
-// @has - '//a/@href' '../intra_links/enum.ThisEnum.html#variant.ThisVariant'
+// @has basic/struct.SomeOtherType.html '//a/@href' '../basic/struct.ThisType.html'
+// @has - '//a/@href' '../basic/struct.ThisType.html#method.this_method'
+// @has - '//a/@href' '../basic/enum.ThisEnum.html'
+// @has - '//a/@href' '../basic/enum.ThisEnum.html#variant.ThisVariant'
 /// Shortcut links for:
 /// * [`ThisType`]
 /// * [`ThisType::this_method`]
