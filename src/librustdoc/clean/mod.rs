@@ -2330,14 +2330,26 @@ impl Clean<Item> for (&hir::MacroDef<'_>, Option<Ident>) {
                     .collect::<String>(),
             )
         } else {
-            // This code currently assumes that there will only be one or zero matchers, as syntax
-            // for multiple is not currently defined.
-            format!(
-                "{}macro {}{} {{\n\t...\n}}",
-                item.vis.clean(cx).print_with_space(),
-                name,
-                matchers.iter().map(|span| span.to_src(cx)).collect::<String>(),
-            )
+            let vis = item.vis.clean(cx);
+
+            if matchers.len() <= 1 {
+                format!(
+                    "{}macro {}{} {{\n    ...\n}}",
+                    vis.print_with_space(),
+                    name,
+                    matchers.iter().map(|span| span.to_src(cx)).collect::<String>(),
+                )
+            } else {
+                format!(
+                    "{}macro {} {{\n{}}}",
+                    vis.print_with_space(),
+                    name,
+                    matchers
+                        .iter()
+                        .map(|span| { format!("    {} => {{ ... }},\n", span.to_src(cx)) })
+                        .collect::<String>(),
+                )
+            }
         };
 
         Item::from_hir_id_and_parts(

@@ -13,3 +13,20 @@ pub macro my_macro() {
 pub macro my_macro_2($($tok:tt)*) {
 
 }
+
+// @has decl_macro/macro.my_macro_multi.html //pre 'pub macro my_macro_multi {'
+// @has - //pre '(_) => { ... },'
+// @has - //pre '($foo:ident . $bar:expr) => { ... },'
+// @has - //pre '($($foo:literal),+) => { ... }'
+// @has - //pre '}'
+pub macro my_macro_multi {
+    (_) => {
+
+    },
+    ($foo:ident . $bar:expr) => {
+
+    },
+    ($($foo:literal),+) => {
+
+    }
+}
