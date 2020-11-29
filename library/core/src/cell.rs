@@ -1580,7 +1580,7 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
 /// `&UnsafeCell<_>` reference); there is no magic whatsoever when dealing with _exclusive_
 /// accesses (_e.g._, through an `&mut UnsafeCell<_>`): neither the cell nor the wrapped value
 /// may be aliased for the duration of that `&mut` borrow.
-/// This is showcased by the [`.get_mut()`] accessor, which is a non-`unsafe` getter that yields
+/// This is showcased by the [`.get_mut()`] accessor, which is a _safe_ getter that yields
 /// a `&mut T`.
 ///
 /// [`.get_mut()`]: `UnsafeCell::get_mut`
