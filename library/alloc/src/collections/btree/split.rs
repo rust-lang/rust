@@ -23,8 +23,8 @@ impl<K, V> Root<K, V> {
             loop {
                 let mut split_edge = match search_node(left_node, key) {
                     // key is going to the right tree
-                    Found(handle) => handle.left_edge(),
-                    GoDown(handle) => handle,
+                    Found(kv) => kv.left_edge(),
+                    GoDown(edge) => edge,
                 };
 
                 split_edge.move_suffix(&mut right_node);

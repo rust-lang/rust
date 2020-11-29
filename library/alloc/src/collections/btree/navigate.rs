@@ -9,6 +9,9 @@ use super::search::{self, SearchResult};
 use super::unwrap_unchecked;
 
 /// Finds the leaf edges delimiting a specified range in or underneath a node.
+///
+/// The result is meaningful only if the tree is ordered by key, like the tree
+/// in a `BTreeMap` is.
 fn range_search<BorrowType, K, V, Q, R>(
     root1: NodeRef<BorrowType, K, V, marker::LeafOrInternal>,
     root2: NodeRef<BorrowType, K, V, marker::LeafOrInternal>,
@@ -122,6 +125,9 @@ fn full_range<BorrowType, K, V>(
 
 impl<'a, K: 'a, V: 'a> NodeRef<marker::Immut<'a>, K, V, marker::LeafOrInternal> {
     /// Creates a pair of leaf edges delimiting a specified range in or underneath a node.
+    ///
+    /// The result is meaningful only if the tree is ordered by key, like the tree
+    /// in a `BTreeMap` is.
     pub fn range_search<Q, R>(
         self,
         range: R,
@@ -152,6 +158,9 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::ValMut<'a>, K, V, marker::LeafOrInternal>
     /// Splits a unique reference into a pair of leaf edges delimiting a specified range.
     /// The result are non-unique references allowing (some) mutation, which must be used
     /// carefully.
+    ///
+    /// The result is meaningful only if the tree is ordered by key, like the tree
+    /// in a `BTreeMap` is.
     pub fn range_search<Q, R>(
         self,
         range: R,

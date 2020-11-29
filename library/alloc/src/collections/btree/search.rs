@@ -14,6 +14,9 @@ pub enum SearchResult<BorrowType, K, V, FoundType, GoDownType> {
 /// Returns a `Found` with the handle of the matching KV, if any. Otherwise,
 /// returns a `GoDown` with the handle of the possible leaf edge where the key
 /// belongs.
+///
+/// The result is meaningful only if the tree is ordered by key, like the tree
+/// in a `BTreeMap` is.
 pub fn search_tree<BorrowType, K, V, Q: ?Sized>(
     mut node: NodeRef<BorrowType, K, V, marker::LeafOrInternal>,
     key: &Q,
@@ -38,8 +41,11 @@ where
 
 /// Looks up a given key in a given node, without recursion.
 /// Returns a `Found` with the handle of the matching KV, if any. Otherwise,
-/// returns a `GoDown` with the handle of the edge where the key might be found.
-/// If the node is a leaf, a `GoDown` edge is not an actual edge but a possible edge.
+/// returns a `GoDown` with the handle of the edge where the key might be found
+/// (if the node is internal) or where the key can be inserted.
+///
+/// The result is meaningful only if the tree is ordered by key, like the tree
+/// in a `BTreeMap` is.
 pub fn search_node<BorrowType, K, V, Type, Q: ?Sized>(
     node: NodeRef<BorrowType, K, V, Type>,
     key: &Q,
@@ -54,11 +60,11 @@ where
     }
 }
 
-/// Returns the index in the node at which the key (or an equivalent) exists
-/// or could exist, and whether it exists in the node itself. If it doesn't
-/// exist in the node itself, it may exist in the subtree with that index
-/// (if the node has subtrees). If the key doesn't exist in node or subtree,
-/// the returned index is the position or subtree where the key belongs.
+/// Returns either the KV index in the node at which the key (or an equivalent)
+/// exists and `true`, or the edge index where the key belongs and `false`.
+///
+/// The result is meaningful only if the tree is ordered by key, like the tree
+/// in a `BTreeMap` is.
 fn search_linear<BorrowType, K, V, Type, Q: ?Sized>(
     node: &NodeRef<BorrowType, K, V, Type>,
     key: &Q,

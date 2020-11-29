@@ -94,9 +94,9 @@ fn to_camel_case(s: &str) -> String {
                 }
 
                 if new_word {
-                    camel_cased_component.push_str(&c.to_uppercase().to_string());
+                    camel_cased_component.extend(c.to_uppercase());
                 } else {
-                    camel_cased_component.push_str(&c.to_lowercase().to_string());
+                    camel_cased_component.extend(c.to_lowercase());
                 }
 
                 prev_is_lower_case = c.is_lowercase();

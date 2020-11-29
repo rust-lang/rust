@@ -134,7 +134,7 @@ pre {
 .content .highlighted.primitive { background-color: #9aecff; }
 .content .highlighted.keyword { background-color: #f99650; }
 
-.content .stability::before { color: #ccc; }
+.content .item-info::before { color: #ccc; }
 
 .content span.enum, .content a.enum, .block a.current.enum { color: #508157; }
 .content span.struct, .content a.struct, .block a.current.struct { color: #ad448e; }
@@ -175,7 +175,7 @@ a {
 }
 
 .docblock:not(.type-decl) a:not(.srclink):not(.test-arrow),
-.docblock-short a:not(.srclink):not(.test-arrow), .stability a,
+.docblock-short a:not(.srclink):not(.test-arrow), .item-info a,
 #help a {
 	color: #3873AD;
 }

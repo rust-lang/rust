@@ -551,7 +551,7 @@ impl Config {
         config.deny_warnings = true;
         config.missing_tools = false;
 
-        // set by bootstrap.py
+        // set by build.rs
         config.build = TargetSelection::from_user(&env!("BUILD_TRIPLE"));
         let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
         // Undo `src/bootstrap`
