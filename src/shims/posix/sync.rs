@@ -62,7 +62,10 @@ fn mutex_get_kind<'mir, 'tcx: 'mir>(
     mutex_op: OpTy<'tcx, Tag>,
 ) -> InterpResult<'tcx, ScalarMaybeUninit<Tag>> {
     let offset = if ecx.pointer_size().bytes() == 8 { 16 } else { 12 };
-    ecx.read_scalar_at_offset(mutex_op, offset, ecx.machine.layouts.i32)
+    ecx.read_scalar_at_offset_atomic(
+        mutex_op, offset, ecx.machine.layouts.i32,
+        AtomicReadOp::Relaxed
+    )
 }
 
 fn mutex_set_kind<'mir, 'tcx: 'mir>(
@@ -71,14 +74,20 @@ fn mutex_set_kind<'mir, 'tcx: 'mir>(
     kind: impl Into<ScalarMaybeUninit<Tag>>,
 ) -> InterpResult<'tcx, ()> {
     let offset = if ecx.pointer_size().bytes() == 8 { 16 } else { 12 };
-    ecx.write_scalar_at_offset(mutex_op, offset, kind, ecx.machine.layouts.i32)
+    ecx.write_scalar_at_offset_atomic(
+        mutex_op, offset, kind, ecx.machine.layouts.i32,
+        AtomicWriteOp::Relaxed
+    )
 }
 
 fn mutex_get_id<'mir, 'tcx: 'mir>(
     ecx: &MiriEvalContext<'mir, 'tcx>,
     mutex_op: OpTy<'tcx, Tag>,
 ) -> InterpResult<'tcx, ScalarMaybeUninit<Tag>> {
-    ecx.read_scalar_at_offset(mutex_op, 4, ecx.machine.layouts.u32)
+    ecx.read_scalar_at_offset_atomic(
+        mutex_op, 4, ecx.machine.layouts.u32, 
+        AtomicReadOp::Relaxed
+    )
 }
 
 fn mutex_set_id<'mir, 'tcx: 'mir>(
@@ -86,7 +95,10 @@ fn mutex_set_id<'mir, 'tcx: 'mir>(
     mutex_op: OpTy<'tcx, Tag>,
     id: impl Into<ScalarMaybeUninit<Tag>>,
 ) -> InterpResult<'tcx, ()> {
-    ecx.write_scalar_at_offset(mutex_op, 4, id, ecx.machine.layouts.u32)
+    ecx.write_scalar_at_offset_atomic(
+        mutex_op, 4, id, ecx.machine.layouts.u32,
+        AtomicWriteOp::Relaxed
+    )
 }
 
 fn mutex_get_or_create_id<'mir, 'tcx: 'mir>(
@@ -116,7 +128,10 @@ fn rwlock_get_id<'mir, 'tcx: 'mir>(
     ecx: &MiriEvalContext<'mir, 'tcx>,
     rwlock_op: OpTy<'tcx, Tag>,
 ) -> InterpResult<'tcx, ScalarMaybeUninit<Tag>> {
-    ecx.read_scalar_at_offset(rwlock_op, 4, ecx.machine.layouts.u32)
+    ecx.read_scalar_at_offset_atomic(
+        rwlock_op, 4, ecx.machine.layouts.u32,
+        AtomicReadOp::Relaxed
+    )
 }
 
 fn rwlock_set_id<'mir, 'tcx: 'mir>(
@@ -124,7 +139,10 @@ fn rwlock_set_id<'mir, 'tcx: 'mir>(
     rwlock_op: OpTy<'tcx, Tag>,
     id: impl Into<ScalarMaybeUninit<Tag>>,
 ) -> InterpResult<'tcx, ()> {
-    ecx.write_scalar_at_offset(rwlock_op, 4, id, ecx.machine.layouts.u32)
+    ecx.write_scalar_at_offset_atomic(
+        rwlock_op, 4, id, ecx.machine.layouts.u32,
+        AtomicWriteOp::Relaxed
+    )
 }
 
 fn rwlock_get_or_create_id<'mir, 'tcx: 'mir>(
@@ -177,7 +195,10 @@ fn cond_get_id<'mir, 'tcx: 'mir>(
     ecx: &MiriEvalContext<'mir, 'tcx>,
     cond_op: OpTy<'tcx, Tag>,
 ) -> InterpResult<'tcx, ScalarMaybeUninit<Tag>> {
-    ecx.read_scalar_at_offset(cond_op, 4, ecx.machine.layouts.u32)
+    ecx.read_scalar_at_offset_atomic(
+        cond_op, 4, ecx.machine.layouts.u32,
+        AtomicReadOp::Relaxed
+    )
 }
 
 fn cond_set_id<'mir, 'tcx: 'mir>(
@@ -185,7 +206,10 @@ fn cond_set_id<'mir, 'tcx: 'mir>(
     cond_op: OpTy<'tcx, Tag>,
     id: impl Into<ScalarMaybeUninit<Tag>>,
 ) -> InterpResult<'tcx, ()> {
-    ecx.write_scalar_at_offset(cond_op, 4, id, ecx.machine.layouts.u32)
+    ecx.write_scalar_at_offset_atomic(
+        cond_op, 4, id, ecx.machine.layouts.u32,
+        AtomicWriteOp::Relaxed
+    )
 }
 
 fn cond_get_or_create_id<'mir, 'tcx: 'mir>(

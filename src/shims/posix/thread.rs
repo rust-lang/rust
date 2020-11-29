@@ -15,24 +15,32 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
 
         this.tcx.sess.warn(
-            "thread support is experimental. \
-             For example, Miri does not detect data races yet.",
+            "thread support is experimental and incomplete: weak memory effects are not emulated."
         );
 
+        // Create the new thread
         let new_thread_id = this.create_thread();
-        // Also switch to new thread so that we can push the first stackframe.
-        let old_thread_id = this.set_active_thread(new_thread_id);
 
+        // Write the current thread-id, switch to the next thread later
+        // to treat this write operation as occuring on the current thread.
         let thread_info_place = this.deref_operand(thread)?;
         this.write_scalar(
             Scalar::from_uint(new_thread_id.to_u32(), thread_info_place.layout.size),
             thread_info_place.into(),
         )?;
 
+        // Read the function argument that will be sent to the new thread
+        // before the thread starts executing since reading after the 
+        // context switch will incorrectly report a data-race.
         let fn_ptr = this.read_scalar(start_routine)?.check_init()?;
-        let instance = this.memory.get_fn(fn_ptr)?.as_instance()?;
-
         let func_arg = this.read_immediate(arg)?;
+
+        // Finally switch to new thread so that we can push the first stackframe.
+        // After this all accesses will be treated as occuring in the new thread.
+        let old_thread_id = this.set_active_thread(new_thread_id);
+
+        // Perform the function pointer load in the new thread frame.
+        let instance = this.memory.get_fn(fn_ptr)?.as_instance()?;
 
         // Note: the returned value is currently ignored (see the FIXME in
         // pthread_join below) because the Rust standard library does not use
@@ -47,6 +55,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             StackPopCleanup::None { cleanup: true },
         )?;
 
+        // Restore the old active thread frame.
         this.set_active_thread(old_thread_id);
 
         Ok(0)

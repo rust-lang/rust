@@ -195,6 +195,9 @@ fn main() {
                 "-Zmiri-disable-stacked-borrows" => {
                     miri_config.stacked_borrows = false;
                 }
+                "-Zmiri-disable-data-race-detector" => {
+                    miri_config.data_race_detector = false;
+                }
                 "-Zmiri-disable-alignment-check" => {
                     miri_config.check_alignment = miri::AlignmentCheck::None;
                 }

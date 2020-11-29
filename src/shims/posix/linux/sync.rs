@@ -78,7 +78,18 @@ pub fn futex<'tcx>(
             // Read an `i32` through the pointer, regardless of any wrapper types.
             // It's not uncommon for `addr` to be passed as another type than `*mut i32`, such as `*const AtomicI32`.
             // FIXME: this fails if `addr` is not a pointer type.
-            let futex_val = this.read_scalar_at_offset(addr.into(), 0, this.machine.layouts.i32)?.to_i32()?;
+            // The atomic ordering for futex(https://man7.org/linux/man-pages/man2/futex.2.html):
+            //  "The load of the value of the futex word is an
+            //   atomic memory access (i.e., using atomic machine instructions
+            //   of the respective architecture).  This load, the comparison
+            //   with the expected value, and starting to sleep are performed
+            //   atomically and totally ordered with respect to other futex
+            //   operations on the same futex word."
+            // SeqCst is total order over all operations.
+            // FIXME: check if this should be changed when weak memory orders are added.
+            let futex_val = this.read_scalar_at_offset_atomic(
+                addr.into(), 0, this.machine.layouts.i32, AtomicReadOp::SeqCst
+            )?.to_i32()?;
             if val == futex_val {
                 // The value still matches, so we block the trait make it wait for FUTEX_WAKE.
                 this.block_thread(thread);

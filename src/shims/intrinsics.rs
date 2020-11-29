@@ -4,7 +4,7 @@ use log::trace;
 
 use rustc_attr as attr;
 use rustc_ast::ast::FloatTy;
-use rustc_middle::{mir, ty};
+use rustc_middle::{mir, mir::BinOp, ty};
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_apfloat::{Float, Round};
 use rustc_target::abi::{Align, Integer, LayoutOf};
@@ -306,157 +306,117 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
 
             // Atomic operations
-            #[rustfmt::skip]
-            | "atomic_load"
-            | "atomic_load_relaxed"
-            | "atomic_load_acq"
-            => {
-                let &[place] = check_arg_count(args)?;
-                let place = this.deref_operand(place)?;
-                let val = this.read_scalar(place.into())?; // make sure it fits into a scalar; otherwise it cannot be atomic
+            "atomic_load" => this.atomic_load(args, dest, AtomicReadOp::SeqCst)?,
+            "atomic_load_relaxed" => this.atomic_load(args, dest, AtomicReadOp::Relaxed)?,
+            "atomic_load_acq" => this.atomic_load(args, dest, AtomicReadOp::Acquire)?,
 
-                // Check alignment requirements. Atomics must always be aligned to their size,
-                // even if the type they wrap would be less aligned (e.g. AtomicU64 on 32bit must
-                // be 8-aligned).
-                let align = Align::from_bytes(place.layout.size.bytes()).unwrap();
-                this.memory.check_ptr_access(place.ptr, place.layout.size, align)?;
+            "atomic_store" => this.atomic_store(args, AtomicWriteOp::SeqCst)?,
+            "atomic_store_relaxed" => this.atomic_store(args, AtomicWriteOp::Relaxed)?,
+            "atomic_store_rel" => this.atomic_store(args, AtomicWriteOp::Release)?,
 
-                this.write_scalar(val, dest)?;
-            }
+            "atomic_fence_acq" => this.atomic_fence(args, AtomicFenceOp::Acquire)?,
+            "atomic_fence_rel" => this.atomic_fence(args, AtomicFenceOp::Release)?,
+            "atomic_fence_acqrel" => this.atomic_fence(args, AtomicFenceOp::AcqRel)?,
+            "atomic_fence" => this.atomic_fence(args, AtomicFenceOp::SeqCst)?,
 
-            #[rustfmt::skip]
-            | "atomic_store"
-            | "atomic_store_relaxed"
-            | "atomic_store_rel"
-            => {
-                let &[place, val] = check_arg_count(args)?;
-                let place = this.deref_operand(place)?;
-                let val = this.read_scalar(val)?; // make sure it fits into a scalar; otherwise it cannot be atomic
+            "atomic_singlethreadfence_acq" => this.compiler_fence(args, AtomicFenceOp::Acquire)?,
+            "atomic_singlethreadfence_rel" => this.compiler_fence(args, AtomicFenceOp::Release)?,
+            "atomic_singlethreadfence_acqrel" => this.compiler_fence(args, AtomicFenceOp::AcqRel)?,
+            "atomic_singlethreadfence" => this.compiler_fence(args, AtomicFenceOp::SeqCst)?,
 
-                // Check alignment requirements. Atomics must always be aligned to their size,
-                // even if the type they wrap would be less aligned (e.g. AtomicU64 on 32bit must
-                // be 8-aligned).
-                let align = Align::from_bytes(place.layout.size.bytes()).unwrap();
-                this.memory.check_ptr_access(place.ptr, place.layout.size, align)?;
+            "atomic_xchg" => this.atomic_exchange(args, dest, AtomicRwOp::SeqCst)?,
+            "atomic_xchg_acq" => this.atomic_exchange(args, dest, AtomicRwOp::Acquire)?,
+            "atomic_xchg_rel" => this.atomic_exchange(args, dest, AtomicRwOp::Release)?,
+            "atomic_xchg_acqrel" => this.atomic_exchange(args, dest, AtomicRwOp::AcqRel)?,
+            "atomic_xchg_relaxed" => this.atomic_exchange(args, dest, AtomicRwOp::Relaxed)?,
 
-                this.write_scalar(val, place.into())?;
-            }
+            "atomic_cxchg" => this.atomic_compare_exchange(
+                args, dest, AtomicRwOp::SeqCst, AtomicReadOp::SeqCst
+            )?,
+            "atomic_cxchg_acq" => this.atomic_compare_exchange(
+                args, dest, AtomicRwOp::Acquire, AtomicReadOp::Acquire
+            )?,
+            "atomic_cxchg_rel" => this.atomic_compare_exchange(
+                args, dest, AtomicRwOp::Release, AtomicReadOp::Relaxed
+            )?,
+            "atomic_cxchg_acqrel" => this.atomic_compare_exchange
+            (args, dest, AtomicRwOp::AcqRel, AtomicReadOp::Acquire
+            )?,
+            "atomic_cxchg_relaxed" => this.atomic_compare_exchange(
+                args, dest, AtomicRwOp::Relaxed, AtomicReadOp::Relaxed
+            )?,
+            "atomic_cxchg_acq_failrelaxed" => this.atomic_compare_exchange(
+                args, dest, AtomicRwOp::Acquire, AtomicReadOp::Relaxed
+            )?,
+            "atomic_cxchg_acqrel_failrelaxed" => this.atomic_compare_exchange(
+                args, dest, AtomicRwOp::AcqRel, AtomicReadOp::Relaxed
+            )?,
+            "atomic_cxchg_failrelaxed" => this.atomic_compare_exchange(
+                args, dest, AtomicRwOp::SeqCst, AtomicReadOp::Relaxed
+            )?,
+            "atomic_cxchg_failacq" => this.atomic_compare_exchange(
+                args, dest, AtomicRwOp::SeqCst, AtomicReadOp::Acquire
+            )?,
 
-            #[rustfmt::skip]
-            | "atomic_fence_acq"
-            | "atomic_fence_rel"
-            | "atomic_fence_acqrel"
-            | "atomic_fence"
-            | "atomic_singlethreadfence_acq"
-            | "atomic_singlethreadfence_rel"
-            | "atomic_singlethreadfence_acqrel"
-            | "atomic_singlethreadfence"
-            => {
-                let &[] = check_arg_count(args)?;
-                // FIXME: this will become relevant once we try to detect data races.
-            }
+            "atomic_cxchgweak" => this.atomic_compare_exchange_weak(
+                args, dest, AtomicRwOp::SeqCst, AtomicReadOp::SeqCst
+            )?,
+            "atomic_cxchgweak_acq" => this.atomic_compare_exchange_weak(
+                args, dest, AtomicRwOp::Acquire, AtomicReadOp::Acquire
+            )?,
+            "atomic_cxchgweak_rel" => this.atomic_compare_exchange_weak(
+                args, dest, AtomicRwOp::Release, AtomicReadOp::Relaxed
+            )?,
+            "atomic_cxchgweak_acqrel" => this.atomic_compare_exchange_weak(
+                args, dest, AtomicRwOp::AcqRel, AtomicReadOp::Acquire
+            )?,
+            "atomic_cxchgweak_relaxed" => this.atomic_compare_exchange_weak(
+                args, dest, AtomicRwOp::Relaxed, AtomicReadOp::Relaxed
+            )?,
+            "atomic_cxchgweak_acq_failrelaxed" => this.atomic_compare_exchange_weak(
+                args, dest, AtomicRwOp::Acquire, AtomicReadOp::Relaxed
+            )?,
+            "atomic_cxchgweak_acqrel_failrelaxed" => this.atomic_compare_exchange_weak(
+                args, dest, AtomicRwOp::AcqRel, AtomicReadOp::Relaxed
+            )?,
+            "atomic_cxchgweak_failrelaxed" => this.atomic_compare_exchange_weak(
+                args, dest, AtomicRwOp::SeqCst, AtomicReadOp::Relaxed
+            )?,
+            "atomic_cxchgweak_failacq" => this.atomic_compare_exchange_weak(
+                args, dest, AtomicRwOp::SeqCst, AtomicReadOp::Acquire
+            )?,
 
-            _ if intrinsic_name.starts_with("atomic_xchg") => {
-                let &[place, new] = check_arg_count(args)?;
-                let place = this.deref_operand(place)?;
-                let new = this.read_scalar(new)?;
-                let old = this.read_scalar(place.into())?;
+            "atomic_or" => this.atomic_op(args, dest, BinOp::BitOr, false, AtomicRwOp::SeqCst)?,
+            "atomic_or_acq" => this.atomic_op(args, dest, BinOp::BitOr, false, AtomicRwOp::Acquire)?,
+            "atomic_or_rel" => this.atomic_op(args, dest, BinOp::BitOr, false, AtomicRwOp::Release)?,
+            "atomic_or_acqrel" => this.atomic_op(args, dest, BinOp::BitOr, false, AtomicRwOp::AcqRel)?,
+            "atomic_or_relaxed" => this.atomic_op(args, dest, BinOp::BitOr, false, AtomicRwOp::Relaxed)?,
+            "atomic_xor" => this.atomic_op(args, dest, BinOp::BitXor, false, AtomicRwOp::SeqCst)?,
+            "atomic_xor_acq" => this.atomic_op(args, dest, BinOp::BitXor, false, AtomicRwOp::Acquire)?,
+            "atomic_xor_rel" => this.atomic_op(args, dest, BinOp::BitXor, false, AtomicRwOp::Release)?,
+            "atomic_xor_acqrel" => this.atomic_op(args, dest, BinOp::BitXor, false, AtomicRwOp::AcqRel)?,
+            "atomic_xor_relaxed" => this.atomic_op(args, dest, BinOp::BitXor, false, AtomicRwOp::Relaxed)?,
+            "atomic_and" => this.atomic_op(args, dest, BinOp::BitAnd, false, AtomicRwOp::SeqCst)?,
+            "atomic_and_acq" => this.atomic_op(args, dest, BinOp::BitAnd, false, AtomicRwOp::Acquire)?,
+            "atomic_and_rel" => this.atomic_op(args, dest, BinOp::BitAnd, false, AtomicRwOp::Release)?,
+            "atomic_and_acqrel" => this.atomic_op(args, dest, BinOp::BitAnd, false, AtomicRwOp::AcqRel)?,
+            "atomic_and_relaxed" => this.atomic_op(args, dest, BinOp::BitAnd, false, AtomicRwOp::Relaxed)?,
+            "atomic_nand" => this.atomic_op(args, dest, BinOp::BitAnd, true, AtomicRwOp::SeqCst)?,
+            "atomic_nand_acq" => this.atomic_op(args, dest, BinOp::BitAnd, true, AtomicRwOp::Acquire)?,
+            "atomic_nand_rel" => this.atomic_op(args, dest, BinOp::BitAnd, true, AtomicRwOp::Release)?,
+            "atomic_nand_acqrel" => this.atomic_op(args, dest, BinOp::BitAnd, true, AtomicRwOp::AcqRel)?,
+            "atomic_nand_relaxed" => this.atomic_op(args, dest, BinOp::BitAnd, true, AtomicRwOp::Relaxed)?,
+            "atomic_xadd" => this.atomic_op(args, dest, BinOp::Add, false, AtomicRwOp::SeqCst)?,
+            "atomic_xadd_acq" => this.atomic_op(args, dest, BinOp::Add, false, AtomicRwOp::Acquire)?,
+            "atomic_xadd_rel" => this.atomic_op(args, dest, BinOp::Add, false, AtomicRwOp::Release)?,
+            "atomic_xadd_acqrel" => this.atomic_op(args, dest, BinOp::Add, false, AtomicRwOp::AcqRel)?,
+            "atomic_xadd_relaxed" => this.atomic_op(args, dest, BinOp::Add, false, AtomicRwOp::Relaxed)?,
+            "atomic_xsub" => this.atomic_op(args, dest, BinOp::Sub, false, AtomicRwOp::SeqCst)?,
+            "atomic_xsub_acq" => this.atomic_op(args, dest, BinOp::Sub, false, AtomicRwOp::Acquire)?,
+            "atomic_xsub_rel" => this.atomic_op(args, dest, BinOp::Sub, false, AtomicRwOp::Release)?,
+            "atomic_xsub_acqrel" => this.atomic_op(args, dest, BinOp::Sub, false, AtomicRwOp::AcqRel)?,
+            "atomic_xsub_relaxed" => this.atomic_op(args, dest, BinOp::Sub, false, AtomicRwOp::Relaxed)?,
 
-                // Check alignment requirements. Atomics must always be aligned to their size,
-                // even if the type they wrap would be less aligned (e.g. AtomicU64 on 32bit must
-                // be 8-aligned).
-                let align = Align::from_bytes(place.layout.size.bytes()).unwrap();
-                this.memory.check_ptr_access(place.ptr, place.layout.size, align)?;
-
-                this.write_scalar(old, dest)?; // old value is returned
-                this.write_scalar(new, place.into())?;
-            }
-
-            _ if intrinsic_name.starts_with("atomic_cxchg") => {
-                let &[place, expect_old, new] = check_arg_count(args)?;
-                let place = this.deref_operand(place)?;
-                let expect_old = this.read_immediate(expect_old)?; // read as immediate for the sake of `binary_op()`
-                let new = this.read_scalar(new)?;
-                let old = this.read_immediate(place.into())?; // read as immediate for the sake of `binary_op()`
-
-                // Check alignment requirements. Atomics must always be aligned to their size,
-                // even if the type they wrap would be less aligned (e.g. AtomicU64 on 32bit must
-                // be 8-aligned).
-                let align = Align::from_bytes(place.layout.size.bytes()).unwrap();
-                this.memory.check_ptr_access(place.ptr, place.layout.size, align)?;
-
-                // `binary_op` will bail if either of them is not a scalar.
-                let eq = this.overflowing_binary_op(mir::BinOp::Eq, old, expect_old)?.0;
-                let res = Immediate::ScalarPair(old.to_scalar_or_uninit(), eq.into());
-                // Return old value.
-                this.write_immediate(res, dest)?;
-                // Update ptr depending on comparison.
-                if eq.to_bool()? {
-                    this.write_scalar(new, place.into())?;
-                }
-            }
-
-            #[rustfmt::skip]
-            | "atomic_or"
-            | "atomic_or_acq"
-            | "atomic_or_rel"
-            | "atomic_or_acqrel"
-            | "atomic_or_relaxed"
-            | "atomic_xor"
-            | "atomic_xor_acq"
-            | "atomic_xor_rel"
-            | "atomic_xor_acqrel"
-            | "atomic_xor_relaxed"
-            | "atomic_and"
-            | "atomic_and_acq"
-            | "atomic_and_rel"
-            | "atomic_and_acqrel"
-            | "atomic_and_relaxed"
-            | "atomic_nand"
-            | "atomic_nand_acq"
-            | "atomic_nand_rel"
-            | "atomic_nand_acqrel"
-            | "atomic_nand_relaxed"
-            | "atomic_xadd"
-            | "atomic_xadd_acq"
-            | "atomic_xadd_rel"
-            | "atomic_xadd_acqrel"
-            | "atomic_xadd_relaxed"
-            | "atomic_xsub"
-            | "atomic_xsub_acq"
-            | "atomic_xsub_rel"
-            | "atomic_xsub_acqrel"
-            | "atomic_xsub_relaxed"
-            => {
-                let &[place, rhs] = check_arg_count(args)?;
-                let place = this.deref_operand(place)?;
-                if !place.layout.ty.is_integral() {
-                    bug!("Atomic arithmetic operations only work on integer types");
-                }
-                let rhs = this.read_immediate(rhs)?;
-                let old = this.read_immediate(place.into())?;
-
-                // Check alignment requirements. Atomics must always be aligned to their size,
-                // even if the type they wrap would be less aligned (e.g. AtomicU64 on 32bit must
-                // be 8-aligned).
-                let align = Align::from_bytes(place.layout.size.bytes()).unwrap();
-                this.memory.check_ptr_access(place.ptr, place.layout.size, align)?;
-
-                this.write_immediate(*old, dest)?; // old value is returned
-                let (op, neg) = match intrinsic_name.split('_').nth(1).unwrap() {
-                    "or" => (mir::BinOp::BitOr, false),
-                    "xor" => (mir::BinOp::BitXor, false),
-                    "and" => (mir::BinOp::BitAnd, false),
-                    "xadd" => (mir::BinOp::Add, false),
-                    "xsub" => (mir::BinOp::Sub, false),
-                    "nand" => (mir::BinOp::BitAnd, true),
-                    _ => bug!(),
-                };
-                // Atomics wrap around on overflow.
-                let val = this.binary_op(op, old, rhs)?;
-                let val = if neg { this.unary_op(mir::UnOp::Not, val)? } else { val };
-                this.write_immediate(*val, place.into())?;
-            }
 
             // Query type information
             "assert_inhabited" |
@@ -496,6 +456,142 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         trace!("{:?}", this.dump_place(*dest));
         this.go_to_block(ret);
         Ok(())
+    }
+
+    fn atomic_load(
+        &mut self, args: &[OpTy<'tcx, Tag>], dest: PlaceTy<'tcx, Tag>,
+        atomic: AtomicReadOp
+    ) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+
+
+        let &[place] = check_arg_count(args)?;
+        let place = this.deref_operand(place)?;
+
+        // make sure it fits into a scalar; otherwise it cannot be atomic
+        let val = this.read_scalar_atomic(place, atomic)?;
+
+        // Check alignment requirements. Atomics must always be aligned to their size,
+        // even if the type they wrap would be less aligned (e.g. AtomicU64 on 32bit must
+        // be 8-aligned).
+        let align = Align::from_bytes(place.layout.size.bytes()).unwrap();
+        this.memory.check_ptr_access(place.ptr, place.layout.size, align)?;
+        this.write_scalar(val, dest)?;
+        Ok(())
+    }
+
+    fn atomic_store(&mut self, args: &[OpTy<'tcx, Tag>], atomic: AtomicWriteOp) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+
+        let &[place, val] = check_arg_count(args)?;
+        let place = this.deref_operand(place)?;
+        let val = this.read_scalar(val)?; // make sure it fits into a scalar; otherwise it cannot be atomic
+
+        // Check alignment requirements. Atomics must always be aligned to their size,
+        // even if the type they wrap would be less aligned (e.g. AtomicU64 on 32bit must
+        // be 8-aligned).
+        let align = Align::from_bytes(place.layout.size.bytes()).unwrap();
+        this.memory.check_ptr_access(place.ptr, place.layout.size, align)?;
+
+        // Perform atomic store
+        this.write_scalar_atomic(val, place, atomic)?;
+        Ok(())
+    }
+
+    fn compiler_fence(&mut self, args: &[OpTy<'tcx, Tag>], atomic: AtomicFenceOp) -> InterpResult<'tcx> {
+        let &[] = check_arg_count(args)?;
+        let _ = atomic;
+        //FIXME: compiler fences are currently ignored
+        Ok(())
+    }
+
+    fn atomic_fence(&mut self, args: &[OpTy<'tcx, Tag>], atomic: AtomicFenceOp) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+        let &[] = check_arg_count(args)?;
+        this.validate_atomic_fence(atomic)?;
+        Ok(())
+    }
+
+    fn atomic_op(
+        &mut self, args: &[OpTy<'tcx, Tag>], dest: PlaceTy<'tcx, Tag>,
+        op: mir::BinOp, neg: bool, atomic: AtomicRwOp
+    ) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+
+        let &[place, rhs] = check_arg_count(args)?;
+        let place = this.deref_operand(place)?;
+        if !place.layout.ty.is_integral() {
+            bug!("Atomic arithmetic operations only work on integer types");
+        }
+        let rhs = this.read_immediate(rhs)?;
+
+        // Check alignment requirements. Atomics must always be aligned to their size,
+        // even if the type they wrap would be less aligned (e.g. AtomicU64 on 32bit must
+        // be 8-aligned).
+        let align = Align::from_bytes(place.layout.size.bytes()).unwrap();
+        this.memory.check_ptr_access(place.ptr, place.layout.size, align)?;
+        
+        let old = this.atomic_op_immediate(place, rhs, op, neg, atomic)?;
+        this.write_immediate(*old, dest)?; // old value is returned
+        Ok(())
+    }
+    
+    fn atomic_exchange(
+        &mut self, args: &[OpTy<'tcx, Tag>], dest: PlaceTy<'tcx, Tag>, atomic: AtomicRwOp
+    ) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+
+        let &[place, new] = check_arg_count(args)?;
+        let place = this.deref_operand(place)?;
+        let new = this.read_scalar(new)?;
+
+        // Check alignment requirements. Atomics must always be aligned to their size,
+        // even if the type they wrap would be less aligned (e.g. AtomicU64 on 32bit must
+        // be 8-aligned).
+        let align = Align::from_bytes(place.layout.size.bytes()).unwrap();
+        this.memory.check_ptr_access(place.ptr, place.layout.size, align)?;
+
+        let old = this.atomic_exchange_scalar(place, new, atomic)?;
+        this.write_scalar(old, dest)?; // old value is returned
+        Ok(())
+    }
+
+    fn atomic_compare_exchange(
+        &mut self, args: &[OpTy<'tcx, Tag>], dest: PlaceTy<'tcx, Tag>,
+        success: AtomicRwOp, fail: AtomicReadOp
+    ) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+
+        let &[place, expect_old, new] = check_arg_count(args)?;
+        let place = this.deref_operand(place)?;
+        let expect_old = this.read_immediate(expect_old)?; // read as immediate for the sake of `binary_op()`
+        let new = this.read_scalar(new)?;
+
+
+        // Check alignment requirements. Atomics must always be aligned to their size,
+        // even if the type they wrap would be less aligned (e.g. AtomicU64 on 32bit must
+        // be 8-aligned).
+        let align = Align::from_bytes(place.layout.size.bytes()).unwrap();
+        this.memory.check_ptr_access(place.ptr, place.layout.size, align)?;
+
+        
+        let old = this.atomic_compare_exchange_scalar(
+            place, expect_old, new, success, fail
+        )?;
+
+        // Return old value.
+        this.write_immediate(old, dest)?;
+        Ok(())
+    }
+
+    fn atomic_compare_exchange_weak(
+        &mut self, args: &[OpTy<'tcx, Tag>], dest: PlaceTy<'tcx, Tag>,
+        success: AtomicRwOp, fail: AtomicReadOp
+    ) -> InterpResult<'tcx> {
+
+        // FIXME: the weak part of this is currently not modelled,
+        //  it is assumed to always succeed unconditionally.
+        self.atomic_compare_exchange(args, dest, success, fail)
     }
 
     fn float_to_int_unchecked<F>(

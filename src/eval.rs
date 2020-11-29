@@ -48,6 +48,8 @@ pub struct MiriConfig {
     pub tracked_alloc_id: Option<AllocId>,
     /// Whether to track raw pointers in stacked borrows.
     pub track_raw: bool,
+    /// Determine if data race detection should be enabled
+    pub data_race_detector: bool,
 }
 
 impl Default for MiriConfig {
@@ -65,6 +67,7 @@ impl Default for MiriConfig {
             tracked_call_id: None,
             tracked_alloc_id: None,
             track_raw: false,
+            data_race_detector: true,
         }
     }
 }

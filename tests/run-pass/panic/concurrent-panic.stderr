@@ -1,4 +1,4 @@
-warning: thread support is experimental. For example, Miri does not detect data races yet.
+warning: thread support is experimental and incomplete: weak memory effects are not emulated.
 
 Thread 1 starting, will block on mutex
 Thread 1 reported it has started

@@ -22,6 +22,7 @@ extern crate rustc_mir;
 extern crate rustc_span;
 extern crate rustc_target;
 
+mod data_race;
 mod diagnostics;
 mod eval;
 mod helpers;
@@ -34,6 +35,7 @@ mod shims;
 mod stacked_borrows;
 mod sync;
 mod thread;
+mod vector_clock;
 
 // Establish a "crate-wide prelude": we often import `crate::*`.
 
@@ -52,6 +54,10 @@ pub use crate::shims::panic::{CatchUnwindData, EvalContextExt as _};
 pub use crate::shims::tls::{EvalContextExt as _, TlsData};
 pub use crate::shims::EvalContextExt as _;
 
+pub use crate::data_race::{
+    AtomicReadOp, AtomicWriteOp, AtomicRwOp, AtomicFenceOp,
+    EvalContextExt as DataRaceEvalContextExt
+};
 pub use crate::diagnostics::{
     register_diagnostic, report_error, EvalContextExt as DiagnosticsEvalContextExt,
     TerminationInfo, NonHaltingDiagnostic,
@@ -73,6 +79,9 @@ pub use crate::thread::{
 };
 pub use crate::sync::{
     EvalContextExt as SyncEvalContextExt, CondvarId, MutexId, RwLockId
+};
+pub use crate::vector_clock::{
+    VClock, VSmallClockMap, VectorIdx, VTimestamp
 };
 
 /// Insert rustc arguments at the beginning of the argument list that Miri wants to be
