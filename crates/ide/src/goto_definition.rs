@@ -1,5 +1,6 @@
 use hir::Semantics;
 use ide_db::{
+    base_db::FileId,
     defs::{NameClass, NameRefClass},
     symbol_index, RootDatabase,
 };
@@ -40,10 +41,17 @@ pub(crate) fn goto_definition(
                 vec![nav]
             },
             ast::SelfParam(self_param) => {
-                let ty = sema.type_of_self(&self_param)?;
-                let adt_def = ty.autoderef(db).filter_map(|ty| ty.as_adt()).last()?;
-                let nav = adt_def.to_nav(db);
-                vec![nav]
+                vec![self_to_nav_target(self_param, position.file_id)?]
+            },
+            ast::PathSegment(segment) => {
+                segment.self_token()?;
+                let path = segment.parent_path();
+                if path.qualifier().is_some() && !ast::PathExpr::can_cast(path.syntax().parent()?.kind()) {
+                    return None;
+                }
+                let func = segment.syntax().ancestors().find_map(ast::Fn::cast)?;
+                let self_param = func.param_list()?.self_param()?;
+                vec![self_to_nav_target(self_param, position.file_id)?]
             },
             _ => return None,
         }
@@ -61,6 +69,20 @@ fn pick_best(tokens: TokenAtOffset<SyntaxToken>) -> Option<SyntaxToken> {
             _ => 1,
         }
     }
+}
+
+fn self_to_nav_target(self_param: ast::SelfParam, file_id: FileId) -> Option<NavigationTarget> {
+    let self_token = self_param.self_token()?;
+    Some(NavigationTarget {
+        file_id,
+        full_range: self_param.syntax().text_range(),
+        focus_range: Some(self_token.text_range()),
+        name: self_token.text().clone(),
+        kind: self_token.kind(),
+        container_name: None,
+        description: None,
+        docs: None,
+    })
 }
 
 #[derive(Debug)]
@@ -987,31 +1009,31 @@ fn g() -> <() as Iterator<A = (), B<|> = u8>>::A {}
     }
 
     #[test]
-    fn todo_def_type_for_self() {
+    fn goto_self_param_ty_specified() {
         check(
             r#"
 struct Foo {}
-     //^^^
 
 impl Foo {
-    fn bar(&self<|>) {}
-}
-"#,
-        );
+    fn bar(self: &Foo) {
+         //^^^^
+        let foo = sel<|>f;
+    }
+}"#,
+        )
     }
 
     #[test]
-    fn todo_def_type_for_arbitrary_self() {
+    fn goto_self_param_on_decl() {
         check(
             r#"
-struct Arc<T>(T);
-     //^^^
 struct Foo {}
 
 impl Foo {
-    fn bar(self<|>: Arc<Self>) {}
-}
-"#,
-        );
+    fn bar(&self<|>) {
+          //^^^^
+    }
+}"#,
+        )
     }
 }
