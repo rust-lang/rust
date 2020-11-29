@@ -142,8 +142,8 @@ impl<'a> LintExtractor<'a> {
                 match lines.next() {
                     Some((lineno, line)) => {
                         let line = line.trim();
-                        if line.starts_with("/// ") {
-                            doc_lines.push(line.trim()[4..].to_string());
+                        if let Some(text) = line.strip_prefix("/// ") {
+                            doc_lines.push(text.trim().to_string());
                         } else if line.starts_with("///") {
                             doc_lines.push("".to_string());
                         } else if line.starts_with("// ") {
@@ -347,8 +347,7 @@ impl<'a> LintExtractor<'a> {
         let mut source = String::new();
         let needs_main = !example.iter().any(|line| line.contains("fn main"));
         // Remove `# ` prefix for hidden lines.
-        let unhidden =
-            example.iter().map(|line| if line.starts_with("# ") { &line[2..] } else { line });
+        let unhidden = example.iter().map(|line| line.strip_prefix("# ").unwrap_or(line));
         let mut lines = unhidden.peekable();
         while let Some(line) = lines.peek() {
             if line.starts_with("#!") {
