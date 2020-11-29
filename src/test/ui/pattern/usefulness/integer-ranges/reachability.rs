@@ -72,7 +72,7 @@ fn main() {
     match 0usize {
         0..10 => {},
         10..20 => {},
-        5..15 => {}, // FIXME: should be unreachable
+        5..15 => {}, //~ ERROR unreachable pattern
         _ => {},
     }
     // Chars between '\u{D7FF}' and '\u{E000}' are invalid even though ranges that contain them are

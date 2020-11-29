@@ -37,14 +37,12 @@ use std::ops::RangeInclusive;
 ///
 /// `IntRange` is never used to encode an empty range or a "range" that wraps
 /// around the (offset) space: i.e., `range.lo <= range.hi`.
-#[derive(Clone, Debug)]
-pub(super) struct IntRange<'tcx> {
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(super) struct IntRange {
     range: RangeInclusive<u128>,
-    ty: Ty<'tcx>,
-    span: Span,
 }
 
-impl<'tcx> IntRange<'tcx> {
+impl IntRange {
     #[inline]
     fn is_integral(ty: Ty<'_>) -> bool {
         matches!(ty.kind(), ty::Char | ty::Int(_) | ty::Uint(_) | ty::Bool)
@@ -58,14 +56,8 @@ impl<'tcx> IntRange<'tcx> {
         (*self.range.start(), *self.range.end())
     }
 
-    /// Don't treat `usize`/`isize` exhaustively unless the `precise_pointer_size_matching` feature
-    /// is enabled.
-    fn treat_exhaustively(&self, tcx: TyCtxt<'tcx>) -> bool {
-        !self.ty.is_ptr_sized_integral() || tcx.features().precise_pointer_size_matching
-    }
-
     #[inline]
-    fn integral_size_and_signed_bias(tcx: TyCtxt<'tcx>, ty: Ty<'_>) -> Option<(Size, u128)> {
+    fn integral_size_and_signed_bias(tcx: TyCtxt<'_>, ty: Ty<'_>) -> Option<(Size, u128)> {
         match *ty.kind() {
             ty::Bool => Some((Size::from_bytes(1), 0)),
             ty::Char => Some((Size::from_bytes(4), 0)),
@@ -79,12 +71,11 @@ impl<'tcx> IntRange<'tcx> {
     }
 
     #[inline]
-    fn from_const(
+    fn from_const<'tcx>(
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         value: &Const<'tcx>,
-        span: Span,
-    ) -> Option<IntRange<'tcx>> {
+    ) -> Option<IntRange> {
         if let Some((target_size, bias)) = Self::integral_size_and_signed_bias(tcx, value.ty) {
             let ty = value.ty;
             let val = (|| {
@@ -101,21 +92,20 @@ impl<'tcx> IntRange<'tcx> {
                 value.try_eval_bits(tcx, param_env, ty)
             })()?;
             let val = val ^ bias;
-            Some(IntRange { range: val..=val, ty, span })
+            Some(IntRange { range: val..=val })
         } else {
             None
         }
     }
 
     #[inline]
-    fn from_range(
+    fn from_range<'tcx>(
         tcx: TyCtxt<'tcx>,
         lo: u128,
         hi: u128,
         ty: Ty<'tcx>,
         end: &RangeEnd,
-        span: Span,
-    ) -> Option<IntRange<'tcx>> {
+    ) -> Option<IntRange> {
         if Self::is_integral(ty) {
             // Perform a shift if the underlying types are signed,
             // which makes the interval arithmetic simpler.
@@ -126,14 +116,14 @@ impl<'tcx> IntRange<'tcx> {
                 // This should have been caught earlier by E0030.
                 bug!("malformed range pattern: {}..={}", lo, (hi - offset));
             }
-            Some(IntRange { range: lo..=(hi - offset), ty, span })
+            Some(IntRange { range: lo..=(hi - offset) })
         } else {
             None
         }
     }
 
     // The return value of `signed_bias` should be XORed with an endpoint to encode/decode it.
-    fn signed_bias(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> u128 {
+    fn signed_bias(tcx: TyCtxt<'_>, ty: Ty<'_>) -> u128 {
         match *ty.kind() {
             ty::Int(ity) => {
                 let bits = Integer::from_attr(&tcx, SignedInt(ity)).size().bits() as u128;
@@ -147,20 +137,13 @@ impl<'tcx> IntRange<'tcx> {
         other.range.start() <= self.range.start() && self.range.end() <= other.range.end()
     }
 
-    fn intersection(&self, tcx: TyCtxt<'tcx>, other: &Self) -> Option<Self> {
-        let ty = self.ty;
+    fn intersection(&self, other: &Self) -> Option<Self> {
         let (lo, hi) = self.boundaries();
         let (other_lo, other_hi) = other.boundaries();
-        if self.treat_exhaustively(tcx) {
-            if lo <= other_hi && other_lo <= hi {
-                let span = other.span;
-                Some(IntRange { range: max(lo, other_lo)..=min(hi, other_hi), ty, span })
-            } else {
-                None
-            }
+        if lo <= other_hi && other_lo <= hi {
+            Some(IntRange { range: max(lo, other_lo)..=min(hi, other_hi) })
         } else {
-            // If the range should not be treated exhaustively, fallback to checking for inclusion.
-            if self.is_subrange(other) { Some(self.clone()) } else { None }
+            None
         }
     }
 
@@ -181,15 +164,15 @@ impl<'tcx> IntRange<'tcx> {
         lo == other_hi || hi == other_lo
     }
 
-    fn to_pat(&self, tcx: TyCtxt<'tcx>) -> Pat<'tcx> {
+    fn to_pat<'tcx>(&self, tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Pat<'tcx> {
         let (lo, hi) = self.boundaries();
 
-        let bias = IntRange::signed_bias(tcx, self.ty);
+        let bias = IntRange::signed_bias(tcx, ty);
         let (lo, hi) = (lo ^ bias, hi ^ bias);
 
-        let ty = ty::ParamEnv::empty().and(self.ty);
-        let lo_const = ty::Const::from_bits(tcx, lo, ty);
-        let hi_const = ty::Const::from_bits(tcx, hi, ty);
+        let env = ty::ParamEnv::empty().and(ty);
+        let lo_const = ty::Const::from_bits(tcx, lo, env);
+        let hi_const = ty::Const::from_bits(tcx, hi, env);
 
         let kind = if lo == hi {
             PatKind::Constant { value: lo_const }
@@ -197,8 +180,7 @@ impl<'tcx> IntRange<'tcx> {
             PatKind::Range(PatRange { lo: lo_const, hi: hi_const, end: RangeEnd::Included })
         };
 
-        // This is a brand new pattern, so we don't reuse `self.span`.
-        Pat { ty: self.ty, span: DUMMY_SP, kind: Box::new(kind) }
+        Pat { ty, span: DUMMY_SP, kind: Box::new(kind) }
     }
 
     /// For exhaustive integer matching, some constructors are grouped within other constructors
@@ -233,13 +215,11 @@ impl<'tcx> IntRange<'tcx> {
     /// boundaries for each interval range, sort them, then create constructors for each new interval
     /// between every pair of boundary points. (This essentially sums up to performing the intuitive
     /// merging operation depicted above.)
-    fn split<'p>(
+    fn split<'p, 'tcx>(
         &self,
         pcx: PatCtxt<'_, 'p, 'tcx>,
         hir_id: Option<HirId>,
     ) -> SmallVec<[Constructor<'tcx>; 1]> {
-        let ty = pcx.ty;
-
         /// Represents a border between 2 integers. Because the intervals spanning borders
         /// must be able to cover every integer, we need to be able to represent
         /// 2^128 + 1 such borders.
@@ -250,7 +230,7 @@ impl<'tcx> IntRange<'tcx> {
         }
 
         // A function for extracting the borders of an integer interval.
-        fn range_borders(r: IntRange<'_>) -> impl Iterator<Item = Border> {
+        fn range_borders(r: IntRange) -> impl Iterator<Item = Border> {
             let (lo, hi) = r.range.into_inner();
             let from = Border::JustBefore(lo);
             let to = match hi.checked_add(1) {
@@ -268,21 +248,23 @@ impl<'tcx> IntRange<'tcx> {
         // class lies between 2 borders.
         let row_borders = pcx
             .matrix
-            .head_ctors(pcx.cx)
-            .filter_map(|ctor| ctor.as_int_range())
-            .filter_map(|range| {
-                let intersection = self.intersection(pcx.cx.tcx, &range);
+            .head_ctors_and_spans(pcx.cx)
+            .filter_map(|(ctor, span)| Some((ctor.as_int_range()?, span)))
+            .filter_map(|(range, span)| {
+                let intersection = self.intersection(&range);
                 let should_lint = self.suspicious_intersection(&range);
                 if let (Some(range), 1, true) = (&intersection, row_len, should_lint) {
                     // FIXME: for now, only check for overlapping ranges on simple range
                     // patterns. Otherwise with the current logic the following is detected
                     // as overlapping:
-                    //   match (10u8, true) {
-                    //    (0 ..= 125, false) => {}
-                    //    (126 ..= 255, false) => {}
-                    //    (0 ..= 255, true) => {}
-                    //  }
-                    overlaps.push(range.clone());
+                    // ```
+                    // match (0u8, true) {
+                    //   (0 ..= 125, false) => {}
+                    //   (125 ..= 255, true) => {}
+                    //   _ => {}
+                    // }
+                    // ```
+                    overlaps.push((range.clone(), span));
                 }
                 intersection
             })
@@ -291,7 +273,7 @@ impl<'tcx> IntRange<'tcx> {
         let mut borders: Vec<_> = row_borders.chain(self_borders).collect();
         borders.sort_unstable();
 
-        self.lint_overlapping_patterns(pcx.cx.tcx, hir_id, ty, overlaps);
+        self.lint_overlapping_patterns(pcx, hir_id, overlaps);
 
         // We're going to iterate through every adjacent pair of borders, making sure that
         // each represents an interval of nonnegative length, and convert each such
@@ -309,33 +291,32 @@ impl<'tcx> IntRange<'tcx> {
                 [Border::JustBefore(n), Border::AfterMax] => Some(n..=u128::MAX),
                 [Border::AfterMax, _] => None,
             })
-            .map(|range| IntRange { range, ty, span: pcx.span })
+            .map(|range| IntRange { range })
             .map(IntRange)
             .collect()
     }
 
     fn lint_overlapping_patterns(
         &self,
-        tcx: TyCtxt<'tcx>,
+        pcx: PatCtxt<'_, '_, '_>,
         hir_id: Option<HirId>,
-        ty: Ty<'tcx>,
-        overlaps: Vec<IntRange<'tcx>>,
+        overlaps: Vec<(IntRange, Span)>,
     ) {
         if let (true, Some(hir_id)) = (!overlaps.is_empty(), hir_id) {
-            tcx.struct_span_lint_hir(
+            pcx.cx.tcx.struct_span_lint_hir(
                 lint::builtin::OVERLAPPING_PATTERNS,
                 hir_id,
-                self.span,
+                pcx.span,
                 |lint| {
                     let mut err = lint.build("multiple patterns covering the same range");
-                    err.span_label(self.span, "overlapping patterns");
-                    for int_range in overlaps {
+                    err.span_label(pcx.span, "overlapping patterns");
+                    for (int_range, span) in overlaps {
                         // Use the real type for user display of the ranges:
                         err.span_label(
-                            int_range.span,
+                            span,
                             &format!(
                                 "this range overlaps on `{}`",
-                                IntRange { range: int_range.range, ty, span: DUMMY_SP }.to_pat(tcx),
+                                int_range.to_pat(pcx.cx.tcx, pcx.ty),
                             ),
                         );
                     }
@@ -346,8 +327,8 @@ impl<'tcx> IntRange<'tcx> {
     }
 
     /// See `Constructor::is_covered_by`
-    fn is_covered_by<'p>(&self, pcx: PatCtxt<'_, 'p, 'tcx>, other: &Self) -> bool {
-        if self.intersection(pcx.cx.tcx, other).is_some() {
+    fn is_covered_by(&self, other: &Self) -> bool {
+        if self.intersection(other).is_some() {
             // Constructor splitting should ensure that all intersections we encounter are actually
             // inclusions.
             assert!(self.is_subrange(other));
@@ -355,13 +336,6 @@ impl<'tcx> IntRange<'tcx> {
         } else {
             false
         }
-    }
-}
-
-/// Ignore spans when comparing, they don't carry semantic information as they are only for lints.
-impl<'tcx> std::cmp::PartialEq for IntRange<'tcx> {
-    fn eq(&self, other: &Self) -> bool {
-        self.range == other.range && self.ty == other.ty
     }
 }
 
@@ -558,7 +532,7 @@ pub(super) enum Constructor<'tcx> {
     /// Enum variants.
     Variant(DefId),
     /// Ranges of integer literal values (`2`, `2..=5` or `2..5`).
-    IntRange(IntRange<'tcx>),
+    IntRange(IntRange),
     /// Ranges of floating-point literal values (`2.0..=5.2`).
     FloatRange(&'tcx ty::Const<'tcx>, &'tcx ty::Const<'tcx>, RangeEnd),
     /// String literals. Strings are not quite the same as `&[u8]` so we treat them separately.
@@ -581,7 +555,7 @@ impl<'tcx> Constructor<'tcx> {
         matches!(self, Wildcard)
     }
 
-    fn as_int_range(&self) -> Option<&IntRange<'tcx>> {
+    fn as_int_range(&self) -> Option<&IntRange> {
         match self {
             IntRange(range) => Some(range),
             _ => None,
@@ -616,8 +590,7 @@ impl<'tcx> Constructor<'tcx> {
                 Variant(adt_def.variants[variant_index].def_id)
             }
             PatKind::Constant { value } => {
-                if let Some(int_range) = IntRange::from_const(cx.tcx, cx.param_env, value, pat.span)
-                {
+                if let Some(int_range) = IntRange::from_const(cx.tcx, cx.param_env, value) {
                     IntRange(int_range)
                 } else {
                     match pat.ty.kind() {
@@ -641,7 +614,6 @@ impl<'tcx> Constructor<'tcx> {
                     hi.eval_bits(cx.tcx, cx.param_env, hi.ty),
                     ty,
                     &end,
-                    pat.span,
                 ) {
                     IntRange(int_range)
                 } else {
@@ -694,11 +666,7 @@ impl<'tcx> Constructor<'tcx> {
             Wildcard => Constructor::split_wildcard(pcx),
             // Fast-track if the range is trivial. In particular, we don't do the overlapping
             // ranges check.
-            IntRange(ctor_range)
-                if ctor_range.treat_exhaustively(pcx.cx.tcx) && !ctor_range.is_singleton() =>
-            {
-                ctor_range.split(pcx, hir_id)
-            }
+            IntRange(ctor_range) if !ctor_range.is_singleton() => ctor_range.split(pcx, hir_id),
             Slice(slice @ Slice { kind: VarLen(..), .. }) => slice.split(pcx),
             // Any other constructor can be used unchanged.
             _ => smallvec![self.clone()],
@@ -740,9 +708,7 @@ impl<'tcx> Constructor<'tcx> {
             (Single, Single) => true,
             (Variant(self_id), Variant(other_id)) => self_id == other_id,
 
-            (IntRange(self_range), IntRange(other_range)) => {
-                self_range.is_covered_by(pcx, other_range)
-            }
+            (IntRange(self_range), IntRange(other_range)) => self_range.is_covered_by(other_range),
             (
                 FloatRange(self_from, self_to, self_end),
                 FloatRange(other_from, other_to, other_end),
@@ -803,7 +769,7 @@ impl<'tcx> Constructor<'tcx> {
             IntRange(range) => used_ctors
                 .iter()
                 .filter_map(|c| c.as_int_range())
-                .any(|other| range.is_covered_by(pcx, other)),
+                .any(|other| range.is_covered_by(other)),
             Slice(slice) => used_ctors
                 .iter()
                 .filter_map(|c| c.as_slice())
@@ -811,7 +777,7 @@ impl<'tcx> Constructor<'tcx> {
             // This constructor is never covered by anything else
             NonExhaustive => false,
             Str(..) | FloatRange(..) | Opaque | Wildcard => {
-                bug!("found unexpected ctor in all_ctors: {:?}", self)
+                span_bug!(pcx.span, "found unexpected ctor in all_ctors: {:?}", self)
             }
         }
     }
@@ -832,8 +798,7 @@ fn all_constructors<'p, 'tcx>(pcx: PatCtxt<'_, 'p, 'tcx>) -> Vec<Constructor<'tc
     let make_range = |start, end| {
         IntRange(
             // `unwrap()` is ok because we know the type is an integer.
-            IntRange::from_range(cx.tcx, start, end, pcx.ty, &RangeEnd::Included, pcx.span)
-                .unwrap(),
+            IntRange::from_range(cx.tcx, start, end, pcx.ty, &RangeEnd::Included).unwrap(),
         )
     };
     match pcx.ty.kind() {
@@ -1238,7 +1203,7 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
             },
             &Str(value) => PatKind::Constant { value },
             &FloatRange(lo, hi, end) => PatKind::Range(PatRange { lo, hi, end }),
-            IntRange(range) => return range.to_pat(pcx.cx.tcx),
+            IntRange(range) => return range.to_pat(pcx.cx.tcx, pcx.ty),
             NonExhaustive => PatKind::Wild,
             Opaque => bug!("we should not try to apply an opaque constructor"),
             Wildcard => bug!(
