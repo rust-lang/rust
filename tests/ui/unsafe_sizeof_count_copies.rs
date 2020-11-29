@@ -1,7 +1,9 @@
 #![warn(clippy::unsafe_sizeof_count_copies)]
 
 use std::mem::{size_of, size_of_val};
-use std::ptr::{copy, copy_nonoverlapping};
+use std::ptr::{
+    copy, copy_nonoverlapping, slice_from_raw_parts, slice_from_raw_parts_mut, swap_nonoverlapping, write_bytes,
+};
 
 fn main() {
     const SIZE: usize = 128;
@@ -21,6 +23,14 @@ fn main() {
 
     unsafe { copy(x.as_ptr(), y.as_mut_ptr(), size_of::<u8>()) };
     unsafe { copy(x.as_ptr(), y.as_mut_ptr(), size_of_val(&x[0])) };
+
+    unsafe { y.as_mut_ptr().write_bytes(0u8, size_of::<u8>() * SIZE) };
+    unsafe { write_bytes(y.as_mut_ptr(), 0u8, size_of::<u8>() * SIZE) };
+
+    unsafe { swap_nonoverlapping(y.as_mut_ptr(), x.as_mut_ptr(), size_of::<u8>() * SIZE) };
+
+    unsafe { slice_from_raw_parts_mut(y.as_mut_ptr(), size_of::<u8>() * SIZE) };
+    unsafe { slice_from_raw_parts(y.as_ptr(), size_of::<u8>() * SIZE) };
 
     // Count expression involving multiplication of size_of (Should trigger the lint)
     unsafe { copy_nonoverlapping(x.as_ptr(), y.as_mut_ptr(), size_of::<u8>() * SIZE) };

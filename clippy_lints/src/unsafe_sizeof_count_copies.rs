@@ -41,8 +41,8 @@ declare_clippy_lint! {
 declare_lint_pass!(UnsafeSizeofCountCopies => [UNSAFE_SIZEOF_COUNT_COPIES]);
 
 fn get_size_of_ty(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<Ty<'tcx>> {
-    match &expr.kind {
-        ExprKind::Call(ref count_func, _func_args) => {
+    match expr.kind {
+        ExprKind::Call(count_func, _func_args) => {
             if_chain! {
                 if let ExprKind::Path(ref count_func_qpath) = count_func.kind;
                 if let Some(def_id) = cx.qpath_res(count_func_qpath, count_func.hir_id).opt_def_id();
@@ -56,7 +56,7 @@ fn get_size_of_ty(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<Ty<'tc
             }
         },
         ExprKind::Binary(op, left, right) if BinOpKind::Mul == op.node || BinOpKind::Div == op.node => {
-            get_size_of_ty(cx, &*left).or_else(|| get_size_of_ty(cx, &*right))
+            get_size_of_ty(cx, left).or_else(|| get_size_of_ty(cx, right))
         },
         _ => None,
     }
@@ -64,13 +64,16 @@ fn get_size_of_ty(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<Ty<'tc
 
 fn get_pointee_ty_and_count_expr(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<(Ty<'tcx>, &'tcx Expr<'tcx>)> {
     if_chain! {
-        // Find calls to ptr::copy and copy_nonoverlapping
-        if let ExprKind::Call(ref func, ref args) = expr.kind;
-        if let [_src, _dest, count] = &**args;
+        // Find calls to ptr::{copy, copy_nonoverlapping}
+        // and ptr::{swap_nonoverlapping, write_bytes},
+        if let ExprKind::Call(func, args) = expr.kind;
+        if let [_, _, count] = args;
         if let ExprKind::Path(ref func_qpath) = func.kind;
         if let Some(def_id) = cx.qpath_res(func_qpath, func.hir_id).opt_def_id();
         if match_def_path(cx, def_id, &paths::COPY_NONOVERLAPPING)
-            || match_def_path(cx, def_id, &paths::COPY);
+            || match_def_path(cx, def_id, &paths::COPY)
+            || match_def_path(cx, def_id, &paths::WRITE_BYTES)
+            || match_def_path(cx, def_id, &paths::PTR_SWAP_NONOVERLAPPING);
 
         // Get the pointee type
         if let Some(pointee_ty) = cx.typeck_results().node_substs(func.hir_id).types().next();
@@ -79,16 +82,31 @@ fn get_pointee_ty_and_count_expr(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -
         }
     };
     if_chain! {
-        // Find calls to copy_{from,to}{,_nonoverlapping}
-        if let ExprKind::MethodCall(ref method_path, _, ref args, _) = expr.kind;
-        if let [ptr_self, _, count] = &**args;
+        // Find calls to copy_{from,to}{,_nonoverlapping} and write_bytes methods
+        if let ExprKind::MethodCall(method_path, _, args, _) = expr.kind;
+        if let [ptr_self, _, count] = args;
         let method_ident = method_path.ident.as_str();
-        if method_ident== "copy_to" || method_ident == "copy_from"
+        if method_ident == "write_bytes" || method_ident == "copy_to" || method_ident == "copy_from"
             || method_ident == "copy_to_nonoverlapping" || method_ident == "copy_from_nonoverlapping";
 
         // Get the pointee type
         if let ty::RawPtr(TypeAndMut { ty: pointee_ty, mutbl:_mutability }) =
             cx.typeck_results().expr_ty(ptr_self).kind();
+        then {
+            return Some((pointee_ty, count));
+        }
+    };
+    if_chain! {
+        // Find calls to ptr::copy and copy_nonoverlapping
+        if let ExprKind::Call(func, args) = expr.kind;
+        if let [_data, count] = args;
+        if let ExprKind::Path(ref func_qpath) = func.kind;
+        if let Some(def_id) = cx.qpath_res(func_qpath, func.hir_id).opt_def_id();
+        if match_def_path(cx, def_id, &paths::PTR_SLICE_FROM_RAW_PARTS)
+            || match_def_path(cx, def_id, &paths::PTR_SLICE_FROM_RAW_PARTS_MUT);
+
+        // Get the pointee type
+        if let Some(pointee_ty) = cx.typeck_results().node_substs(func.hir_id).types().next();
         then {
             return Some((pointee_ty, count));
         }
@@ -102,7 +120,7 @@ impl<'tcx> LateLintPass<'tcx> for UnsafeSizeofCountCopies {
             for the count parameter, it already gets multiplied by the size of the pointed to type";
 
         const LINT_MSG: &str = "unsafe memory copying using a byte count \
-            (Multiplied by size_of::<T>) instead of a count of T";
+            (multiplied by size_of/size_of_val::<T>) instead of a count of T";
 
         if_chain! {
             // Find calls to unsafe copy functions and get
