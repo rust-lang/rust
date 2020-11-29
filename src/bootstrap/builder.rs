@@ -730,6 +730,7 @@ impl<'a> Builder<'a> {
             .env("CFG_RELEASE_CHANNEL", &self.config.channel)
             .env("RUSTDOC_REAL", self.rustdoc(compiler))
             .env("RUSTC_BOOTSTRAP", "1")
+            .arg("-Znormalize_docs")
             .arg("-Winvalid_codeblock_attributes");
         if self.config.deny_warnings {
             cmd.arg("-Dwarnings");

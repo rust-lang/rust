@@ -527,6 +527,7 @@ impl Step for Rustc {
         cargo.rustdocflag("--document-private-items");
         cargo.rustdocflag("--enable-index-page");
         cargo.rustdocflag("-Zunstable-options");
+        cargo.rustdocflag("-Znormalize-docs");
         compile::rustc_cargo(builder, &mut cargo, target);
 
         // Only include compiler crates, no dependencies of those, such as `libc`.
