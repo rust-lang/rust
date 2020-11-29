@@ -966,22 +966,17 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box implicit_return::ImplicitReturn);
     store.register_late_pass(|| box implicit_saturating_sub::ImplicitSaturatingSub);
 
-    let parsed_msrv = conf.msrv.as_ref().and_then(|s| {
+    let msrv = conf.msrv.as_ref().and_then(|s| {
         parse_msrv(s, None, None).or_else(|| {
             sess.err(&format!("error reading Clippy's configuration file. `{}` is not a valid Rust version", s));
             None
         })
     });
 
-    let msrv = parsed_msrv.clone();
-    store.register_late_pass(move || box methods::Methods::new(msrv.clone()));
-    let msrv = parsed_msrv.clone();
-    store.register_late_pass(move || box matches::Matches::new(msrv.clone()));
-    let msrv = parsed_msrv.clone();
-    store.register_early_pass(move || box manual_non_exhaustive::ManualNonExhaustive::new(msrv.clone()));
-    let msrv = parsed_msrv;
-    store.register_late_pass(move || box manual_strip::ManualStrip::new(msrv.clone()));
-
+    store.register_late_pass(move || box methods::Methods::new(msrv));
+    store.register_late_pass(move || box matches::Matches::new(msrv));
+    store.register_early_pass(move || box manual_non_exhaustive::ManualNonExhaustive::new(msrv));
+    store.register_late_pass(move || box manual_strip::ManualStrip::new(msrv));
     store.register_late_pass(|| box map_clone::MapClone);
     store.register_late_pass(|| box map_err_ignore::MapErrIgnore);
     store.register_late_pass(|| box shadow::Shadow);
