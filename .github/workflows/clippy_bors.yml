@@ -105,11 +105,6 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-${{ matrix.host }}
 
-    - name: Master Toolchain Setup
-      run: bash setup-toolchain.sh
-      env:
-        HOST_TOOLCHAIN: ${{ matrix.host }}
-
     # Run
     - name: Set LD_LIBRARY_PATH (Linux)
       if: runner.os == 'Linux'
@@ -192,9 +187,6 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-x86_64-unknown-linux-gnu
 
-    - name: Master Toolchain Setup
-      run: bash setup-toolchain.sh
-
     # Run
     - name: Build Integration Test
       run: cargo test --test integration --features integration --no-run
@@ -272,9 +264,6 @@ jobs:
         key: ${{ runner.os }}-x86_64-unknown-linux-gnu-${{ hashFiles('Cargo.lock') }}
         restore-keys: |
           ${{ runner.os }}-x86_64-unknown-linux-gnu
-
-    - name: Master Toolchain Setup
-      run: bash setup-toolchain.sh
 
     # Download
     - name: Download target dir

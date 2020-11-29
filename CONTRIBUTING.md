@@ -182,18 +182,21 @@ That's why the `else_if_without_else` example uses the `register_early_pass` fun
 [early_lint_pass]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/trait.EarlyLintPass.html
 [late_lint_pass]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/trait.LateLintPass.html
 
-## Fixing build failures caused by Rust
+## Syncing changes from [`rust-lang/rust`] to Clippy
 
-Clippy currently gets built with `rustc` of the `rust-lang/rust` `master`
-branch. Most of the times we have to adapt to the changes and only very rarely
-there's an actual bug in Rust.
+Clippy currently gets built with a pinned nightly version.
 
-If you decide to make Clippy work again with a Rust commit that breaks it, you
-have to sync the `rust-lang/rust-clippy` repository with the `subtree` copy of
-Clippy in the `rust-lang/rust` repository.
+In the `rust-lang/rust` repository, where rustc resides, there's a copy of Clippy
+that compiler hackers modify from time to time to adapt to changes in the unstable
+API of the compiler.
 
-For general information about `subtree`s in the Rust repository see [Rust's
-`CONTRIBUTING.md`][subtree].
+We need to sync these changes back to this repository periodically. If you want
+to help with that, you have to sync the `rust-lang/rust-clippy` repository with 
+the `subtree` copy of Clippy in the `rust-lang/rust` repository, and update
+the `rustc-toolchain` file accordingly.
+
+For general information about `subtree`s in the Rust repository
+see [Rust's `CONTRIBUTING.md`][subtree].
 
 ### Patching git-subtree to work with big repos
 

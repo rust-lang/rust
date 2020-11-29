@@ -56,9 +56,6 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-x86_64-unknown-linux-gnu
 
-    - name: Master Toolchain Setup
-      run: bash setup-toolchain.sh
-
     # Run
     - name: Set LD_LIBRARY_PATH (Linux)
       run: |
