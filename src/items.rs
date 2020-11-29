@@ -2932,7 +2932,7 @@ fn format_header(
     let after_vis = vis.span.hi();
     if let Some(before_item_name) = context
         .snippet_provider
-        .opt_span_before(mk_sp(vis.span().lo(), ident.span.hi()), item_name.trim())
+        .opt_span_before(mk_sp(vis.span.lo(), ident.span.hi()), item_name.trim())
     {
         let missing_span = mk_sp(after_vis, before_item_name);
         if let Some(result_with_comment) = combine_strs_with_missing_comments(
