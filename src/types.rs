@@ -4,6 +4,7 @@ use std::ops::Deref;
 use rustc_ast::ast::{self, FnRetTy, Mutability};
 use rustc_span::{symbol::kw, BytePos, Pos, Span};
 
+use crate::comment::{combine_strs_with_missing_comments, contains_comment};
 use crate::config::lists::*;
 use crate::config::{IndentStyle, TypeDensity, Version};
 use crate::expr::{format_expr, rewrite_assign_rhs, rewrite_tuple, rewrite_unary_prefix, ExprType};
