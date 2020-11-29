@@ -44,7 +44,7 @@
 //! required for accurate reporting of data-race values.
 //!
 //! As per the paper a threads timestamp is only incremented after a release operation is performed
-//! so some atomic operations that only perform acquires do not increment the timestamp, due to shared
+//! so some atomic operations that only perform acquires do not increment the timestamp. Due to shared
 //! code some atomic operations may increment the timestamp when not necessary but this has no effect
 //! on the data-race detection code.
 //!
@@ -634,7 +634,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
                     clocks.apply_release_fence();
                 }
                 
-                // Increment timestamp if hase release semantics
+                // Increment timestamp in case of release semantics.
                 Ok(atomic != AtomicFenceOp::Acquire)
             })
         } else {
