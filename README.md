@@ -43,16 +43,15 @@ in your program, and cannot run all programs:
   still run fine in Miri -- but might break (including causing UB) on different
   compiler versions or different platforms.
 * Program execution is non-deterministic when it depends, for example, on where
-  exactly in memory allocations end up. Miri tests one of many possible
-  executions of your program. If your code is sensitive to allocation base
-  addresses or other non-deterministic data, try running Miri with different
-  values for `-Zmiri-seed` to test different executions.
+  exactly in memory allocations end up, or on the exact interleaving of
+  concurrent threads. Miri tests one of many possible executions of your
+  program. You can alleviate this to some extend by running Miri with different
+  values for `-Zmiri-seed`, but that will still by far not explore all possible
+  executions.
 * Miri runs the program as a platform-independent interpreter, so the program
   has no access to most platform-specific APIs or FFI. A few APIs have been
   implemented (such as printing to stdout) but most have not: for example, Miri
   currently does not support SIMD or networking.
-* Miri currently does not check for data-races and most other concurrency-related
-  issues.
 
 [rust]: https://www.rust-lang.org/
 [mir]: https://github.com/rust-lang/rfcs/blob/master/text/1211-mir.md
