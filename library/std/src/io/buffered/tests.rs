@@ -13,7 +13,11 @@ impl Read for ShortReader {
     fn read(&mut self, _: &mut [u8]) -> io::Result<usize> {
         // Note for developers: if your editor is fighting you about the
         // correct rustfmt here, make sure you're using nightly
-        if self.lengths.is_empty() { Ok(0) } else { Ok(self.lengths.remove(0)) }
+        if self.lengths.is_empty() {
+            Ok(0)
+        } else {
+            Ok(self.lengths.remove(0))
+        }
     }
 }
 
@@ -401,6 +405,26 @@ fn test_buffered_writer_write_vectored() {
     assert_eq!(writer.buffer(), b"abcd");
     assert_eq!(writer.get_ref(), b"");
     assert_eq!(writer.get_ref().write_count, 0);
+}
+
+// An old implementation of BufWriter had a bug when deciding whether to
+// forward a write directly (skipping the buffer) where it would forward even
+// if there was buffered data from a previous write. This is a regression test
+// for that bug.
+#[test]
+fn test_buffered_writer_vectored_corner_case() -> io::Result<()> {
+    let inner = ProgrammableSink::default();
+    let mut writer = BufWriter::with_capacity(10, inner);
+
+    assert_eq!(writer.write(b"aaaa")?, 4);
+
+    let input = [IoSlice::new(b"bbbbbb"), IoSlice::new(b"cccccc")];
+
+    writer.write_vectored(&input)?;
+    writer.flush()?;
+    assert_eq!(&writer.get_ref().buffer[..10], b"aaaabbbbbb");
+
+    Ok(())
 }
 
 #[test]

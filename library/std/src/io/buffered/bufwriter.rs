@@ -399,6 +399,8 @@ impl<W: Write> Write for BufWriter<W> {
         } else if written > 0 {
             0
         } else {
+            // It's guaranteed at this point that the buffer is empty, because
+            // if wasn't, it would have been flushed earlier in this function.
             self.get_mut().write(tail)?
         };
 
@@ -490,7 +492,7 @@ impl<W: Write> Write for BufWriter<W> {
                         self.flush_buf()?;
                     }
 
-                    if buf.len() >= self.available() {
+                    if buf.len() >= self.capacity() && self.buf.is_empty() {
                         // If an individual buffer exceeds our *total* capacity
                         // and we haven't buffered anything yet, just forward
                         // it to the underlying device
