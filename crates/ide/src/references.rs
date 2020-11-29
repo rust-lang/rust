@@ -21,7 +21,7 @@ use ide_db::{
 use syntax::{
     algo::find_node_at_offset,
     ast::{self, NameOwner},
-    AstNode, SyntaxKind, SyntaxNode, TextRange, TokenAtOffset,
+    match_ast, AstNode, SyntaxKind, SyntaxNode, TextRange, TokenAtOffset,
 };
 
 use crate::{display::TryToNav, FilePosition, FileRange, NavigationTarget, RangeInfo};
@@ -88,6 +88,10 @@ pub(crate) fn find_all_refs(
 ) -> Option<RangeInfo<ReferenceSearchResult>> {
     let _p = profile::span("find_all_refs");
     let syntax = sema.parse(position.file_id).syntax().clone();
+
+    if let Some(res) = try_find_self_references(&syntax, position) {
+        return Some(res);
+    }
 
     let (opt_name, search_kind) = if let Some(name) =
         get_struct_def_name_for_struct_literal_search(&sema, &syntax, position)
@@ -192,6 +196,77 @@ fn get_struct_def_name_for_struct_literal_search(
         }
     }
     None
+}
+
+fn try_find_self_references(
+    syntax: &SyntaxNode,
+    position: FilePosition,
+) -> Option<RangeInfo<ReferenceSearchResult>> {
+    let self_token =
+        syntax.token_at_offset(position.offset).find(|t| t.kind() == SyntaxKind::SELF_KW)?;
+    let parent = self_token.parent();
+    match_ast! {
+        match parent {
+            ast::SelfParam(it) => (),
+            ast::PathSegment(segment) => {
+                segment.self_token()?;
+                let path = segment.parent_path();
+                if path.qualifier().is_some() && !ast::PathExpr::can_cast(path.syntax().parent()?.kind()) {
+                    return None;
+                }
+            },
+            _ => return None,
+        }
+    };
+    let function = parent.ancestors().find_map(ast::Fn::cast)?;
+    let self_param = function.param_list()?.self_param()?;
+    let param_self_token = self_param.self_token()?;
+
+    let declaration = Declaration {
+        nav: NavigationTarget {
+            file_id: position.file_id,
+            full_range: self_param.syntax().text_range(),
+            focus_range: Some(param_self_token.text_range()),
+            name: param_self_token.text().clone(),
+            kind: param_self_token.kind(),
+            container_name: None,
+            description: None,
+            docs: None,
+        },
+        kind: ReferenceKind::SelfKw,
+        access: Some(if self_param.mut_token().is_some() {
+            ReferenceAccess::Write
+        } else {
+            ReferenceAccess::Read
+        }),
+    };
+    let references = function
+        .body()
+        .map(|body| {
+            body.syntax()
+                .descendants()
+                .filter_map(ast::PathExpr::cast)
+                .filter_map(|expr| {
+                    let path = expr.path()?;
+                    if path.qualifier().is_none() {
+                        path.segment()?.self_token()
+                    } else {
+                        None
+                    }
+                })
+                .map(|token| Reference {
+                    file_range: FileRange { file_id: position.file_id, range: token.text_range() },
+                    kind: ReferenceKind::SelfKw,
+                    access: declaration.access, // FIXME: properly check access kind here instead of copying it from the declaration
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+
+    Some(RangeInfo::new(
+        param_self_token.text_range(),
+        ReferenceSearchResult { declaration, references },
+    ))
 }
 
 #[cfg(test)]
@@ -758,6 +833,32 @@ fn f() -> m::En {
                 field RECORD_FIELD FileId(0) 56..65 56..61 Other
 
                 FileId(0) 125..130 RecordFieldExprOrPat Read
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_find_self_refs() {
+        check(
+            r#"
+struct Foo { bar: i32 }
+
+impl Foo {
+    fn foo(self) {
+        let x = self<|>.bar;
+        if true {
+            let _ = match () {
+                () => self,
+            };
+        }
+    }
+}
+"#,
+            expect![[r#"
+                self SELF_KW FileId(0) 47..51 47..51 SelfKw Read
+
+                FileId(0) 71..75 SelfKw Read
+                FileId(0) 152..156 SelfKw Read
             "#]],
         );
     }
