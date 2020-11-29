@@ -1590,11 +1590,6 @@ impl Symbol {
         self == kw::Try
     }
 
-    /// Used for sanity checking rustdoc keyword sections.
-    pub fn is_doc_keyword(self) -> bool {
-        self <= kw::Union
-    }
-
     /// A keyword or reserved identifier that can be used as a path segment.
     pub fn is_path_segment_keyword(self) -> bool {
         self == kw::Super
