@@ -146,12 +146,12 @@ macro atomic_minmax($fx:expr, $cc:expr, <$T:ident> ($ptr:ident, $src:ident) -> $
 
 macro validate_atomic_type($fx:ident, $intrinsic:ident, $span:ident, $ty:expr) {
     match $ty.kind() {
-        ty::Uint(_) | ty::Int(_) => {}
+        ty::Uint(_) | ty::Int(_) | ty::RawPtr(..) => {}
         _ => {
             $fx.tcx.sess.span_err(
                 $span,
                 &format!(
-                    "`{}` intrinsic: expected basic integer type, found `{:?}`",
+                    "`{}` intrinsic: expected basic integer or raw pointer type, found `{:?}`",
                     $intrinsic, $ty
                 ),
             );
