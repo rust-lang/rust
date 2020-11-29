@@ -2327,22 +2327,49 @@ impl Clean<Item> for (&hir::ForeignItem<'_>, Option<Ident>) {
     }
 }
 
-impl Clean<Item> for doctree::Macro {
+impl Clean<Item> for (&hir::MacroDef<'_>, Option<Ident>) {
     fn clean(&self, cx: &DocContext<'_>) -> Item {
-        Item::from_def_id_and_parts(
-            self.def_id,
-            Some(self.name.clean(cx)),
-            MacroItem(Macro {
-                source: format!(
-                    "macro_rules! {} {{\n{}}}",
-                    self.name,
-                    self.matchers
+        let (item, renamed) = self;
+        let name = renamed.unwrap_or(item.ident).name;
+        let tts = item.ast.body.inner_tokens().trees().collect::<Vec<_>>();
+        // Extract the spans of all matchers. They represent the "interface" of the macro.
+        let matchers = tts.chunks(4).map(|arm| arm[0].span()).collect::<Vec<_>>();
+        let source = if item.ast.macro_rules {
+            format!(
+                "macro_rules! {} {{\n{}}}",
+                name,
+                matchers
+                    .iter()
+                    .map(|span| { format!("    {} => {{ ... }};\n", span.to_src(cx)) })
+                    .collect::<String>(),
+            )
+        } else {
+            let vis = item.vis.clean(cx);
+
+            if matchers.len() <= 1 {
+                format!(
+                    "{}macro {}{} {{\n    ...\n}}",
+                    vis.print_with_space(),
+                    name,
+                    matchers.iter().map(|span| span.to_src(cx)).collect::<String>(),
+                )
+            } else {
+                format!(
+                    "{}macro {} {{\n{}}}",
+                    vis.print_with_space(),
+                    name,
+                    matchers
                         .iter()
-                        .map(|span| { format!("    {} => {{ ... }};\n", span.to_src(cx)) })
-                        .collect::<String>()
-                ),
-                imported_from: self.imported_from.clean(cx),
-            }),
+                        .map(|span| { format!("    {} => {{ ... }},\n", span.to_src(cx)) })
+                        .collect::<String>(),
+                )
+            }
+        };
+
+        Item::from_hir_id_and_parts(
+            item.hir_id,
+            Some(name),
+            MacroItem(Macro { source, imported_from: None }),
             cx,
         )
     }

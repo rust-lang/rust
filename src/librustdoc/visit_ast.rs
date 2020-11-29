@@ -71,9 +71,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             None,
         );
         // Attach the crate's exported macros to the top-level module:
-        module
-            .macros
-            .extend(krate.exported_macros.iter().map(|def| self.visit_local_macro(def, None)));
+        module.macros.extend(krate.exported_macros.iter().map(|def| (def, None)));
         module.is_crate = true;
 
         self.cx.renderinfo.get_mut().exact_paths = self.exact_paths;
@@ -216,7 +214,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 true
             }
             Node::MacroDef(def) if !glob => {
-                om.macros.push(self.visit_local_macro(def, renamed.map(|i| i.name)));
+                om.macros.push((def, renamed));
                 true
             }
             _ => false,
@@ -337,21 +335,6 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         // If inlining we only want to include public functions.
         if !self.inlining || item.vis.node.is_pub() {
             om.foreigns.push((item, renamed));
-        }
-    }
-
-    // Convert each `exported_macro` into a doc item.
-    fn visit_local_macro(&self, def: &'tcx hir::MacroDef<'_>, renamed: Option<Symbol>) -> Macro {
-        debug!("visit_local_macro: {}", def.ident);
-        let tts = def.ast.body.inner_tokens().trees().collect::<Vec<_>>();
-        // Extract the spans of all matchers. They represent the "interface" of the macro.
-        let matchers = tts.chunks(4).map(|arm| arm[0].span()).collect();
-
-        Macro {
-            def_id: self.cx.tcx.hir().local_def_id(def.hir_id).to_def_id(),
-            name: renamed.unwrap_or(def.ident.name),
-            matchers,
-            imported_from: None,
         }
     }
 }
