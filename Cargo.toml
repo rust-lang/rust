@@ -17,12 +17,6 @@ name = "miri"
 test = false # we have no unit tests
 doctest = false # and no doc tests
 
-[[bin]]
-name = "miri-rustc-tests"
-test = false # we have no unit tests
-doctest = false # and no doc tests
-required-features = ["rustc_tests"]
-
 [dependencies]
 getrandom = { version = "0.2", features = ["std"] }
 env_logger = "0.7.1"
@@ -46,6 +40,3 @@ libc = "0.2"
 compiletest_rs = { version = "0.5", features = ["tmp"] }
 rustc_version = "0.2.3"
 colored = "2"
-
-[features]
-rustc_tests = []
