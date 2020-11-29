@@ -26,19 +26,19 @@ macro_rules! test_int {
 }
 
 fn unsigned_int() {
-    test_int!(0u8, core::u8::MIN, core::u8::MAX);
-    test_int!(0u16, core::u16::MIN, core::u16::MAX);
-    test_int!(0u32, core::u32::MIN, core::u32::MAX);
-    test_int!(0u64, core::u64::MIN, core::u64::MAX);
-    test_int!(0u128, core::u128::MIN, core::u128::MAX);
+    test_int!(0u8, u8::MIN, u8::MAX);
+    test_int!(0u16, u16::MIN, u16::MAX);
+    test_int!(0u32, u32::MIN, u32::MAX);
+    test_int!(0u64, u64::MIN, u64::MAX);
+    test_int!(0u128, u128::MIN, u128::MAX);
 }
 
 fn signed_int() {
-    test_int!(0i8, core::i8::MIN, core::i8::MAX);
-    test_int!(0i16, core::i16::MIN, core::i16::MAX);
-    test_int!(0i32, core::i32::MIN, core::i32::MAX);
-    test_int!(0i64, core::i64::MIN, core::i64::MAX);
-    test_int!(0i128, core::i128::MIN, core::i128::MAX);
+    test_int!(0i8, i8::MIN, i8::MAX);
+    test_int!(0i16, i16::MIN, i16::MAX);
+    test_int!(0i32, i32::MIN, i32::MAX);
+    test_int!(0i64, i64::MIN, i64::MAX);
+    test_int!(0i128, i128::MIN, i128::MAX);
 }
 
 fn khar() {

@@ -19,11 +19,11 @@
     // `i8`
     pub struct I8<const F: i8>;
 
-    impl I8<{std::i8::MIN}> {
+    impl I8<{i8::MIN}> {
         pub fn foo() {}
     }
 
-    impl I8<{std::i8::MAX}> {
+    impl I8<{i8::MAX}> {
         pub fn foo() {}
     }
 
@@ -34,7 +34,7 @@
     // `i16`
     pub struct I16<const F: i16>;
 
-    impl I16<{std::i16::MIN}> {
+    impl I16<{i16::MIN}> {
         pub fn foo() {}
     }
 
@@ -45,7 +45,7 @@
     // `i32`
     pub struct I32<const F: i32>;
 
-    impl I32<{std::i32::MIN}> {
+    impl I32<{i32::MIN}> {
         pub fn foo() {}
     }
 
@@ -56,7 +56,7 @@
     // `i64`
     pub struct I64<const F: i64>;
 
-    impl I64<{std::i64::MIN}> {
+    impl I64<{i64::MIN}> {
         pub fn foo() {}
     }
 
@@ -67,7 +67,7 @@
     // `i128`
     pub struct I128<const F: i128>;
 
-    impl I128<{std::i128::MIN}> {
+    impl I128<{i128::MIN}> {
         pub fn foo() {}
     }
 

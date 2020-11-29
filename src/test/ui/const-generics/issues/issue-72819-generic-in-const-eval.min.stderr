@@ -1,7 +1,7 @@
 error: generic parameters may not be used in const operations
   --> $DIR/issue-72819-generic-in-const-eval.rs:9:17
    |
-LL | where Assert::<{N < usize::max_value() / 2}>: IsTrue,
+LL | where Assert::<{N < usize::MAX / 2}>: IsTrue,
    |                 ^ cannot perform const operation using `N`
    |
    = help: const parameters may only be used as standalone arguments, i.e. `N`

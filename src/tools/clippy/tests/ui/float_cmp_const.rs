@@ -48,7 +48,7 @@ fn main() {
     v != 1.0;
 
     const ZERO_ARRAY: [f32; 3] = [0.0, 0.0, 0.0];
-    const ZERO_INF_ARRAY: [f32; 3] = [0.0, ::std::f32::INFINITY, ::std::f32::NEG_INFINITY];
+    const ZERO_INF_ARRAY: [f32; 3] = [0.0, f32::INFINITY, f32::NEG_INFINITY];
     const NON_ZERO_ARRAY: [f32; 3] = [0.0, 0.1, 0.2];
     const NON_ZERO_ARRAY2: [f32; 3] = [0.2, 0.1, 0.0];
 

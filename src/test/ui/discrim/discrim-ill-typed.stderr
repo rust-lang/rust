@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/discrim-ill-typed.rs:17:16
+  --> $DIR/discrim-ill-typed.rs:15:16
    |
 LL |         OhNo = 0_u8,
    |                ^^^^ expected `i8`, found `u8`
@@ -10,7 +10,7 @@ LL |         OhNo = 0_i8,
    |                ^^^^
 
 error[E0308]: mismatched types
-  --> $DIR/discrim-ill-typed.rs:30:16
+  --> $DIR/discrim-ill-typed.rs:28:16
    |
 LL |         OhNo = 0_i8,
    |                ^^^^ expected `u8`, found `i8`
@@ -21,7 +21,7 @@ LL |         OhNo = 0_u8,
    |                ^^^^
 
 error[E0308]: mismatched types
-  --> $DIR/discrim-ill-typed.rs:43:16
+  --> $DIR/discrim-ill-typed.rs:41:16
    |
 LL |         OhNo = 0_u16,
    |                ^^^^^ expected `i16`, found `u16`
@@ -32,7 +32,7 @@ LL |         OhNo = 0_i16,
    |                ^^^^^
 
 error[E0308]: mismatched types
-  --> $DIR/discrim-ill-typed.rs:56:16
+  --> $DIR/discrim-ill-typed.rs:54:16
    |
 LL |         OhNo = 0_i16,
    |                ^^^^^ expected `u16`, found `i16`
@@ -43,7 +43,7 @@ LL |         OhNo = 0_u16,
    |                ^^^^^
 
 error[E0308]: mismatched types
-  --> $DIR/discrim-ill-typed.rs:69:16
+  --> $DIR/discrim-ill-typed.rs:67:16
    |
 LL |         OhNo = 0_u32,
    |                ^^^^^ expected `i32`, found `u32`
@@ -54,7 +54,7 @@ LL |         OhNo = 0_i32,
    |                ^^^^^
 
 error[E0308]: mismatched types
-  --> $DIR/discrim-ill-typed.rs:82:16
+  --> $DIR/discrim-ill-typed.rs:80:16
    |
 LL |         OhNo = 0_i32,
    |                ^^^^^ expected `u32`, found `i32`
@@ -65,7 +65,7 @@ LL |         OhNo = 0_u32,
    |                ^^^^^
 
 error[E0308]: mismatched types
-  --> $DIR/discrim-ill-typed.rs:95:16
+  --> $DIR/discrim-ill-typed.rs:93:16
    |
 LL |         OhNo = 0_u64,
    |                ^^^^^ expected `i64`, found `u64`
@@ -76,7 +76,7 @@ LL |         OhNo = 0_i64,
    |                ^^^^^
 
 error[E0308]: mismatched types
-  --> $DIR/discrim-ill-typed.rs:108:16
+  --> $DIR/discrim-ill-typed.rs:106:16
    |
 LL |         OhNo = 0_i64,
    |                ^^^^^ expected `u64`, found `i64`

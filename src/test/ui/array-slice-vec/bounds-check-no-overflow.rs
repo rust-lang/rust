@@ -2,7 +2,6 @@
 // error-pattern:index out of bounds
 // ignore-emscripten no processes
 
-use std::usize;
 use std::mem::size_of;
 
 fn main() {

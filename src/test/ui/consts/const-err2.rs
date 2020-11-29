@@ -16,13 +16,13 @@ fn black_box<T>(_: T) {
 }
 
 fn main() {
-    let a = -std::i8::MIN;
+    let a = -i8::MIN;
     //~^ ERROR arithmetic operation will overflow
-    let a_i128 = -std::i128::MIN;
+    let a_i128 = -i128::MIN;
     //~^ ERROR arithmetic operation will overflow
     let b = 200u8 + 200u8 + 200u8;
     //~^ ERROR arithmetic operation will overflow
-    let b_i128 = std::i128::MIN - std::i128::MAX;
+    let b_i128 = i128::MIN - i128::MAX;
     //~^ ERROR arithmetic operation will overflow
     let c = 200u8 * 4;
     //~^ ERROR arithmetic operation will overflow

@@ -1,5 +1,3 @@
-use std::{isize, usize};
-
 fn main() {
     match 0usize {
         //~^ ERROR non-exhaustive patterns: `_` not covered

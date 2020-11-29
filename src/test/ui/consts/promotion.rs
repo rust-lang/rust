@@ -13,5 +13,5 @@ fn main() {
 
     // make sure that these do not cause trouble despite overflowing
     baz_u32(&(0-1));
-    baz_i32(&-std::i32::MIN);
+    baz_i32(&-i32::MIN);
 }

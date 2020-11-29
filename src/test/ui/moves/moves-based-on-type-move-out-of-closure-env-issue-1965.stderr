@@ -1,5 +1,5 @@
 error[E0507]: cannot move out of `i`, a captured variable in an `Fn` closure
-  --> $DIR/moves-based-on-type-move-out-of-closure-env-issue-1965.rs:11:28
+  --> $DIR/moves-based-on-type-move-out-of-closure-env-issue-1965.rs:9:28
    |
 LL |     let i = box 3;
    |         - captured outer variable

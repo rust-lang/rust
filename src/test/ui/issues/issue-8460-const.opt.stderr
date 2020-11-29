@@ -1,5 +1,5 @@
 error: this arithmetic operation will overflow
-  --> $DIR/issue-8460-const.rs:14:36
+  --> $DIR/issue-8460-const.rs:13:36
    |
 LL |     assert!(thread::spawn(move|| { isize::MIN / -1; }).join().is_err());
    |                                    ^^^^^^^^^^^^^^^ attempt to compute `isize::MIN / -1_isize`, which would overflow
@@ -7,37 +7,37 @@ LL |     assert!(thread::spawn(move|| { isize::MIN / -1; }).join().is_err());
    = note: `#[deny(arithmetic_overflow)]` on by default
 
 error: this arithmetic operation will overflow
-  --> $DIR/issue-8460-const.rs:16:36
+  --> $DIR/issue-8460-const.rs:15:36
    |
 LL |     assert!(thread::spawn(move|| { i8::MIN / -1; }).join().is_err());
    |                                    ^^^^^^^^^^^^ attempt to compute `i8::MIN / -1_i8`, which would overflow
 
 error: this arithmetic operation will overflow
-  --> $DIR/issue-8460-const.rs:18:36
+  --> $DIR/issue-8460-const.rs:17:36
    |
 LL |     assert!(thread::spawn(move|| { i16::MIN / -1; }).join().is_err());
    |                                    ^^^^^^^^^^^^^ attempt to compute `i16::MIN / -1_i16`, which would overflow
 
 error: this arithmetic operation will overflow
-  --> $DIR/issue-8460-const.rs:20:36
+  --> $DIR/issue-8460-const.rs:19:36
    |
 LL |     assert!(thread::spawn(move|| { i32::MIN / -1; }).join().is_err());
    |                                    ^^^^^^^^^^^^^ attempt to compute `i32::MIN / -1_i32`, which would overflow
 
 error: this arithmetic operation will overflow
-  --> $DIR/issue-8460-const.rs:22:36
+  --> $DIR/issue-8460-const.rs:21:36
    |
 LL |     assert!(thread::spawn(move|| { i64::MIN / -1; }).join().is_err());
    |                                    ^^^^^^^^^^^^^ attempt to compute `i64::MIN / -1_i64`, which would overflow
 
 error: this arithmetic operation will overflow
-  --> $DIR/issue-8460-const.rs:24:36
+  --> $DIR/issue-8460-const.rs:23:36
    |
 LL |     assert!(thread::spawn(move|| { i128::MIN / -1; }).join().is_err());
    |                                    ^^^^^^^^^^^^^^ attempt to compute `i128::MIN / -1_i128`, which would overflow
 
 error: this operation will panic at runtime
-  --> $DIR/issue-8460-const.rs:26:36
+  --> $DIR/issue-8460-const.rs:25:36
    |
 LL |     assert!(thread::spawn(move|| { 1isize / 0; }).join().is_err());
    |                                    ^^^^^^^^^^ attempt to divide `1_isize` by zero
@@ -45,103 +45,103 @@ LL |     assert!(thread::spawn(move|| { 1isize / 0; }).join().is_err());
    = note: `#[deny(unconditional_panic)]` on by default
 
 error: this operation will panic at runtime
-  --> $DIR/issue-8460-const.rs:28:36
+  --> $DIR/issue-8460-const.rs:27:36
    |
 LL |     assert!(thread::spawn(move|| { 1i8 / 0; }).join().is_err());
    |                                    ^^^^^^^ attempt to divide `1_i8` by zero
 
 error: this operation will panic at runtime
-  --> $DIR/issue-8460-const.rs:30:36
+  --> $DIR/issue-8460-const.rs:29:36
    |
 LL |     assert!(thread::spawn(move|| { 1i16 / 0; }).join().is_err());
    |                                    ^^^^^^^^ attempt to divide `1_i16` by zero
 
 error: this operation will panic at runtime
-  --> $DIR/issue-8460-const.rs:32:36
+  --> $DIR/issue-8460-const.rs:31:36
    |
 LL |     assert!(thread::spawn(move|| { 1i32 / 0; }).join().is_err());
    |                                    ^^^^^^^^ attempt to divide `1_i32` by zero
 
 error: this operation will panic at runtime
-  --> $DIR/issue-8460-const.rs:34:36
+  --> $DIR/issue-8460-const.rs:33:36
    |
 LL |     assert!(thread::spawn(move|| { 1i64 / 0; }).join().is_err());
    |                                    ^^^^^^^^ attempt to divide `1_i64` by zero
 
 error: this operation will panic at runtime
-  --> $DIR/issue-8460-const.rs:36:36
+  --> $DIR/issue-8460-const.rs:35:36
    |
 LL |     assert!(thread::spawn(move|| { 1i128 / 0; }).join().is_err());
    |                                    ^^^^^^^^^ attempt to divide `1_i128` by zero
 
 error: this arithmetic operation will overflow
-  --> $DIR/issue-8460-const.rs:38:36
+  --> $DIR/issue-8460-const.rs:37:36
    |
 LL |     assert!(thread::spawn(move|| { isize::MIN % -1; }).join().is_err());
    |                                    ^^^^^^^^^^^^^^^ attempt to compute the remainder of `isize::MIN % -1_isize`, which would overflow
 
 error: this arithmetic operation will overflow
-  --> $DIR/issue-8460-const.rs:40:36
+  --> $DIR/issue-8460-const.rs:39:36
    |
 LL |     assert!(thread::spawn(move|| { i8::MIN % -1; }).join().is_err());
    |                                    ^^^^^^^^^^^^ attempt to compute the remainder of `i8::MIN % -1_i8`, which would overflow
 
 error: this arithmetic operation will overflow
-  --> $DIR/issue-8460-const.rs:42:36
+  --> $DIR/issue-8460-const.rs:41:36
    |
 LL |     assert!(thread::spawn(move|| { i16::MIN % -1; }).join().is_err());
    |                                    ^^^^^^^^^^^^^ attempt to compute the remainder of `i16::MIN % -1_i16`, which would overflow
 
 error: this arithmetic operation will overflow
-  --> $DIR/issue-8460-const.rs:44:36
+  --> $DIR/issue-8460-const.rs:43:36
    |
 LL |     assert!(thread::spawn(move|| { i32::MIN % -1; }).join().is_err());
    |                                    ^^^^^^^^^^^^^ attempt to compute the remainder of `i32::MIN % -1_i32`, which would overflow
 
 error: this arithmetic operation will overflow
-  --> $DIR/issue-8460-const.rs:46:36
+  --> $DIR/issue-8460-const.rs:45:36
    |
 LL |     assert!(thread::spawn(move|| { i64::MIN % -1; }).join().is_err());
    |                                    ^^^^^^^^^^^^^ attempt to compute the remainder of `i64::MIN % -1_i64`, which would overflow
 
 error: this arithmetic operation will overflow
-  --> $DIR/issue-8460-const.rs:48:36
+  --> $DIR/issue-8460-const.rs:47:36
    |
 LL |     assert!(thread::spawn(move|| { i128::MIN % -1; }).join().is_err());
    |                                    ^^^^^^^^^^^^^^ attempt to compute the remainder of `i128::MIN % -1_i128`, which would overflow
 
 error: this operation will panic at runtime
-  --> $DIR/issue-8460-const.rs:50:36
+  --> $DIR/issue-8460-const.rs:49:36
    |
 LL |     assert!(thread::spawn(move|| { 1isize % 0; }).join().is_err());
    |                                    ^^^^^^^^^^ attempt to calculate the remainder of `1_isize` with a divisor of zero
 
 error: this operation will panic at runtime
-  --> $DIR/issue-8460-const.rs:52:36
+  --> $DIR/issue-8460-const.rs:51:36
    |
 LL |     assert!(thread::spawn(move|| { 1i8 % 0; }).join().is_err());
    |                                    ^^^^^^^ attempt to calculate the remainder of `1_i8` with a divisor of zero
 
 error: this operation will panic at runtime
-  --> $DIR/issue-8460-const.rs:54:36
+  --> $DIR/issue-8460-const.rs:53:36
    |
 LL |     assert!(thread::spawn(move|| { 1i16 % 0; }).join().is_err());
    |                                    ^^^^^^^^ attempt to calculate the remainder of `1_i16` with a divisor of zero
 
 error: this operation will panic at runtime
-  --> $DIR/issue-8460-const.rs:56:36
+  --> $DIR/issue-8460-const.rs:55:36
    |
 LL |     assert!(thread::spawn(move|| { 1i32 % 0; }).join().is_err());
    |                                    ^^^^^^^^ attempt to calculate the remainder of `1_i32` with a divisor of zero
 
 error: this operation will panic at runtime
-  --> $DIR/issue-8460-const.rs:58:36
+  --> $DIR/issue-8460-const.rs:57:36
    |
 LL |     assert!(thread::spawn(move|| { 1i64 % 0; }).join().is_err());
    |                                    ^^^^^^^^ attempt to calculate the remainder of `1_i64` with a divisor of zero
 
 error: this operation will panic at runtime
-  --> $DIR/issue-8460-const.rs:60:36
+  --> $DIR/issue-8460-const.rs:59:36
    |
 LL |     assert!(thread::spawn(move|| { 1i128 % 0; }).join().is_err());
    |                                    ^^^^^^^^^ attempt to calculate the remainder of `1_i128` with a divisor of zero
