@@ -221,24 +221,47 @@ fn rename_to_self(
     let source_file = sema.parse(position.file_id);
     let syn = source_file.syntax();
 
-    let fn_def = find_node_at_offset::<ast::Fn>(syn, position.offset)
+    let (fn_def, fn_ast) = find_node_at_offset::<ast::Fn>(syn, position.offset)
+        .and_then(|fn_ast| sema.to_def(&fn_ast).zip(Some(fn_ast)))
         .ok_or_else(|| RenameError("No surrounding method declaration found".to_string()))?;
-    let params =
-        fn_def.param_list().ok_or_else(|| RenameError("Method has no parameters".to_string()))?;
-    if params.self_param().is_some() {
+    let param_range = fn_ast
+        .param_list()
+        .and_then(|p| p.params().next())
+        .ok_or_else(|| RenameError("Method has no parameters".to_string()))?
+        .syntax()
+        .text_range();
+    if !param_range.contains(position.offset) {
+        return Err(RenameError("Only the first parameter can be self".to_string()));
+    }
+
+    let impl_block = find_node_at_offset::<ast::Impl>(syn, position.offset)
+        .and_then(|def| sema.to_def(&def))
+        .ok_or_else(|| RenameError("No impl block found for function".to_string()))?;
+    if fn_def.self_param(sema.db).is_some() {
         return Err(RenameError("Method already has a self parameter".to_string()));
     }
+
+    let params = fn_def.params(sema.db);
     let first_param =
-        params.params().next().ok_or_else(|| RenameError("Method has no parameters".into()))?;
-    let mutable = match first_param.ty() {
-        Some(ast::Type::RefType(rt)) => rt.mut_token().is_some(),
-        _ => return Err(RenameError("Not renaming other types".to_string())),
+        params.first().ok_or_else(|| RenameError("Method has no parameters".into()))?;
+    let first_param_ty = first_param.ty();
+    let impl_ty = impl_block.target_ty(sema.db);
+    let (ty, self_param) = if impl_ty.remove_ref().is_some() {
+        // if the impl is a ref to the type we can just match the `&T` with self directly
+        (first_param_ty.clone(), "self")
+    } else {
+        first_param_ty.remove_ref().map_or((first_param_ty.clone(), "self"), |ty| {
+            (ty, if first_param_ty.is_mutable_reference() { "&mut self" } else { "&self" })
+        })
     };
+
+    if ty != impl_ty {
+        return Err(RenameError("Parameter type differs from impl block type".to_string()));
+    }
 
     let RangeInfo { range, info: refs } = find_all_refs(sema, position, None)
         .ok_or_else(|| RenameError("No reference found at position".to_string()))?;
 
-    let param_range = first_param.syntax().text_range();
     let (param_ref, usages): (Vec<Reference>, Vec<Reference>) = refs
         .into_iter()
         .partition(|reference| param_range.intersect(reference.file_range.range).is_some());
@@ -254,10 +277,7 @@ fn rename_to_self(
 
     edits.push(SourceFileEdit {
         file_id: position.file_id,
-        edit: TextEdit::replace(
-            param_range,
-            String::from(if mutable { "&mut self" } else { "&self" }),
-        ),
+        edit: TextEdit::replace(param_range, String::from(self_param)),
     });
 
     Ok(RangeInfo::new(range, SourceChange::from(edits)))
@@ -1081,6 +1101,95 @@ struct Foo { i: i32 }
 
 impl Foo {
     fn f(&mut self) -> i32 {
+        self.i
+    }
+}
+"#,
+        );
+        check(
+            "self",
+            r#"
+struct Foo { i: i32 }
+
+impl Foo {
+    fn f(foo<|>: Foo) -> i32 {
+        foo.i
+    }
+}
+"#,
+            r#"
+struct Foo { i: i32 }
+
+impl Foo {
+    fn f(self) -> i32 {
+        self.i
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_parameter_to_self_error_no_impl() {
+        check(
+            "self",
+            r#"
+struct Foo { i: i32 }
+
+fn f(foo<|>: &mut Foo) -> i32 {
+    foo.i
+}
+"#,
+            "error: No impl block found for function",
+        );
+        check(
+            "self",
+            r#"
+struct Foo { i: i32 }
+struct Bar;
+
+impl Bar {
+    fn f(foo<|>: &mut Foo) -> i32 {
+        foo.i
+    }
+}
+"#,
+            "error: Parameter type differs from impl block type",
+        );
+    }
+
+    #[test]
+    fn test_parameter_to_self_error_not_first() {
+        check(
+            "self",
+            r#"
+struct Foo { i: i32 }
+impl Foo {
+    fn f(x: (), foo<|>: &mut Foo) -> i32 {
+        foo.i
+    }
+}
+"#,
+            "error: Only the first parameter can be self",
+        );
+    }
+
+    #[test]
+    fn test_parameter_to_self_impl_ref() {
+        check(
+            "self",
+            r#"
+struct Foo { i: i32 }
+impl &Foo {
+    fn f(foo<|>: &Foo) -> i32 {
+        foo.i
+    }
+}
+"#,
+            r#"
+struct Foo { i: i32 }
+impl &Foo {
+    fn f(self) -> i32 {
         self.i
     }
 }
