@@ -93,7 +93,7 @@ personal	https://github.com/jyn514/rust (fetch)
 personal	https://github.com/jyn514/rust (push)
 ```
 
-You can change the URL of the fork like this:
+If you renamed your fork, you can change the URL like this:
 
 ```console
 git remote set-url personal <URL>
