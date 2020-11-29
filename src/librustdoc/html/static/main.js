@@ -2266,7 +2266,7 @@ function defocusSearchBar() {
                         }
                     }
                     var ns = n.nextElementSibling;
-                    while (ns && (hasClass(ns, "docblock") || hasClass(ns, "stability"))) {
+                    while (ns && (hasClass(ns, "docblock") || hasClass(ns, "item-info"))) {
                         if (addOrRemove) {
                             addClass(ns, "hidden-by-impl-hider");
                         } else {
@@ -2282,7 +2282,7 @@ function defocusSearchBar() {
         var action = mode;
         if (hasClass(toggle.parentNode, "impl") === false) {
             relatedDoc = toggle.parentNode.nextElementSibling;
-            if (hasClass(relatedDoc, "stability")) {
+            if (hasClass(relatedDoc, "item-info")) {
                 relatedDoc = relatedDoc.nextElementSibling;
             }
             if (hasClass(relatedDoc, "docblock") || hasClass(relatedDoc, "sub-variant")) {
@@ -2332,16 +2332,17 @@ function defocusSearchBar() {
             var dontApplyBlockRule = toggle.parentNode.parentNode.id !== "main";
             if (action === "show") {
                 removeClass(relatedDoc, "fns-now-collapsed");
-                // Stability information is never hidden.
-                if (hasClass(docblock, "stability") === false) {
+                // Stability/deprecation/portability information is never hidden.
+                if (hasClass(docblock, "item-info") === false) {
                     removeClass(docblock, "hidden-by-usual-hider");
                 }
                 onEachLazy(toggle.childNodes, adjustToggle(false, dontApplyBlockRule));
                 onEachLazy(relatedDoc.childNodes, implHider(false, dontApplyBlockRule));
             } else if (action === "hide") {
                 addClass(relatedDoc, "fns-now-collapsed");
-                // Stability information should be shown even when detailed info is hidden.
-                if (hasClass(docblock, "stability") === false) {
+                // Stability/deprecation/portability information should be shown even when detailed
+                // info is hidden.
+                if (hasClass(docblock, "item-info") === false) {
                     addClass(docblock, "hidden-by-usual-hider");
                 }
                 onEachLazy(toggle.childNodes, adjustToggle(true, dontApplyBlockRule));
@@ -2445,7 +2446,7 @@ function defocusSearchBar() {
 
         var func = function(e) {
             var next = e.nextElementSibling;
-            if (next && hasClass(next, "stability")) {
+            if (next && hasClass(next, "item-info")) {
               next = next.nextElementSibling;
             }
             if (!next) {
@@ -2462,7 +2463,7 @@ function defocusSearchBar() {
 
         var funcImpl = function(e) {
             var next = e.nextElementSibling;
-            if (next && hasClass(next, "stability")) {
+            if (next && hasClass(next, "item-info")) {
                 next = next.nextElementSibling;
             }
             if (next && hasClass(next, "docblock")) {
