@@ -76,7 +76,7 @@ pub fn parse_msrv(msrv: &str, sess: Option<&Session>, span: Option<Span>) -> Opt
 }
 
 pub fn meets_msrv(msrv: Option<&RustcVersion>, lint_msrv: &RustcVersion) -> bool {
-    msrv.map_or(true, |msrv| msrv > lint_msrv)
+    msrv.map_or(true, |msrv| msrv >= lint_msrv)
 }
 
 macro_rules! extract_msrv_attr {
