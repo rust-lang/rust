@@ -24,7 +24,7 @@ class SubsetException(Exception):
         super().__init__("{}: {}".format(trace, msg))
 
 
-def check_subset(expected_main, actual_main):
+def check_subset(expected_main, actual_main, base_dir):
     expected_index = expected_main["index"]
     expected_paths = expected_main["paths"]
     actual_index = actual_main["index"]
@@ -39,11 +39,24 @@ def check_subset(expected_main, actual_main):
                 "expected type `{}`, got `{}`".format(expected_type, actual_type), trace
             )
         if expected_type in (str, int, bool) and expected != actual:
-            raise SubsetException("expected `{}`, got: `{}`".format(expected, actual), trace)
+            if expected_type == str and actual.startswith(base_dir):
+                if actual.replace(base_dir + "/", "") != expected:
+                    raise SubsetException(
+                        "expected `{}`, got: `{}`".format(
+                            expected, actual.replace(base_dir + "/", "")
+                        ),
+                        trace,
+                    )
+            else:
+                raise SubsetException(
+                    "expected `{}`, got: `{}`".format(expected, actual), trace
+                )
         if expected_type is dict:
             for key in expected:
                 if key not in actual:
-                    raise SubsetException("Key `{}` not found in output".format(key), trace)
+                    raise SubsetException(
+                        "Key `{}` not found in output".format(key), trace
+                    )
                 new_trace = copy.deepcopy(trace)
                 new_trace.append(key)
                 _check_subset(expected[key], actual[key], new_trace)
@@ -52,7 +65,10 @@ def check_subset(expected_main, actual_main):
             actual_elements = len(actual)
             if expected_elements != actual_elements:
                 raise SubsetException(
-                    "Found {} items, expected {}".format(expected_elements, actual_elements), trace
+                    "Found {} items, expected {}".format(
+                        expected_elements, actual_elements
+                    ),
+                    trace,
                 )
             for expected, actual in zip(expected, actual):
                 new_trace = copy.deepcopy(trace)
@@ -60,8 +76,12 @@ def check_subset(expected_main, actual_main):
                 _check_subset(expected, actual, new_trace)
         elif expected_type is ID and expected not in already_checked:
             already_checked.add(expected)
-            _check_subset(expected_index.get(expected, {}), actual_index.get(actual, {}), trace)
-            _check_subset(expected_paths.get(expected, {}), actual_paths.get(actual, {}), trace)
+            _check_subset(
+                expected_index.get(expected, {}), actual_index.get(actual, {}), trace
+            )
+            _check_subset(
+                expected_paths.get(expected, {}), actual_paths.get(actual, {}), trace
+            )
 
     _check_subset(expected_main["root"], actual_main["root"], [])
 
@@ -90,18 +110,22 @@ def rustdoc_object_hook(obj):
     return obj
 
 
-def main(expected_fpath, actual_fpath):
-    print("checking that {} is a logical subset of {}".format(expected_fpath, actual_fpath))
+def main(expected_fpath, actual_fpath, base_dir):
+    print(
+        "checking that {} is a logical subset of {}".format(
+            expected_fpath, actual_fpath
+        )
+    )
     with open(expected_fpath) as expected_file:
         expected_main = json.load(expected_file, object_hook=rustdoc_object_hook)
     with open(actual_fpath) as actual_file:
         actual_main = json.load(actual_file, object_hook=rustdoc_object_hook)
-    check_subset(expected_main, actual_main)
+    check_subset(expected_main, actual_main, base_dir)
     print("all checks passed")
 
 
 if __name__ == "__main__":
-    if len(sys.argv) < 3:
-        print("Usage: `compare.py expected.json actual.json`")
+    if len(sys.argv) < 4:
+        print("Usage: `compare.py expected.json actual.json test-dir`")
     else:
-        main(sys.argv[1], sys.argv[2])
+        main(sys.argv[1], sys.argv[2], sys.argv[3])

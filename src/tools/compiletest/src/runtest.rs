@@ -2,7 +2,7 @@
 
 use crate::common::{expected_output_path, UI_EXTENSIONS, UI_FIXED, UI_STDERR, UI_STDOUT};
 use crate::common::{output_base_dir, output_base_name, output_testname_unique};
-use crate::common::{Assembly, Incremental, JsDocTest, MirOpt, RunMake, Ui};
+use crate::common::{Assembly, Incremental, JsDocTest, MirOpt, RunMake, RustdocJson, Ui};
 use crate::common::{Codegen, CodegenUnits, DebugInfo, Debugger, Rustdoc};
 use crate::common::{CompareMode, FailMode, PassMode};
 use crate::common::{CompileFail, Pretty, RunFail, RunPassValgrind};
@@ -342,6 +342,7 @@ impl<'test> TestCx<'test> {
             DebugInfo => self.run_debuginfo_test(),
             Codegen => self.run_codegen_test(),
             Rustdoc => self.run_rustdoc_test(),
+            RustdocJson => self.run_rustdoc_json_test(),
             CodegenUnits => self.run_codegen_units_test(),
             Incremental => self.run_incremental_test(),
             RunMake => self.run_rmake_test(),
@@ -1564,7 +1565,7 @@ impl<'test> TestCx<'test> {
         self.compose_and_run_compiler(rustc, None)
     }
 
-    fn document(&self, out_dir: &Path) -> ProcRes {
+    fn document(&self, out_dir: &Path, json: bool) -> ProcRes {
         if self.props.build_aux_docs {
             for rel_ab in &self.props.aux_builds {
                 let aux_testpaths = self.compute_aux_test_paths(rel_ab);
@@ -1578,7 +1579,7 @@ impl<'test> TestCx<'test> {
                 };
                 // Create the directory for the stdout/stderr files.
                 create_dir_all(aux_cx.output_base_dir()).unwrap();
-                let auxres = aux_cx.document(out_dir);
+                let auxres = aux_cx.document(out_dir, json);
                 if !auxres.status.success() {
                     return auxres;
                 }
@@ -1599,6 +1600,10 @@ impl<'test> TestCx<'test> {
             .arg(out_dir)
             .arg(&self.testpaths.file)
             .args(&self.props.compile_flags);
+
+        if json {
+            rustdoc.arg("--output-format").arg("json");
+        }
 
         if let Some(ref linker) = self.config.linker {
             rustdoc.arg(format!("-Clinker={}", linker));
@@ -1887,7 +1892,9 @@ impl<'test> TestCx<'test> {
     }
 
     fn is_rustdoc(&self) -> bool {
-        self.config.src_base.ends_with("rustdoc-ui") || self.config.src_base.ends_with("rustdoc-js")
+        self.config.src_base.ends_with("rustdoc-ui")
+            || self.config.src_base.ends_with("rustdoc-js")
+            || self.config.src_base.ends_with("rustdoc-json")
     }
 
     fn make_compile_args(
@@ -1968,8 +1975,8 @@ impl<'test> TestCx<'test> {
 
                 rustc.arg(dir_opt);
             }
-            RunFail | RunPassValgrind | Pretty | DebugInfo | Codegen | Rustdoc | RunMake
-            | CodegenUnits | JsDocTest | Assembly => {
+            RunFail | RunPassValgrind | Pretty | DebugInfo | Codegen | Rustdoc | RustdocJson
+            | RunMake | CodegenUnits | JsDocTest | Assembly => {
                 // do not use JSON output
             }
         }
@@ -2329,7 +2336,7 @@ impl<'test> TestCx<'test> {
         let _ = fs::remove_dir_all(&out_dir);
         create_dir_all(&out_dir).unwrap();
 
-        let proc_res = self.document(&out_dir);
+        let proc_res = self.document(&out_dir, false);
         if !proc_res.status.success() {
             self.fatal_proc_rec("rustdoc failed!", &proc_res);
         }
@@ -2385,7 +2392,7 @@ impl<'test> TestCx<'test> {
         rustc.arg("-L").arg(&new_rustdoc.aux_output_dir_name());
         new_rustdoc.build_all_auxiliary(&mut rustc);
 
-        let proc_res = new_rustdoc.document(&compare_dir);
+        let proc_res = new_rustdoc.document(&compare_dir, false);
         if !proc_res.status.success() {
             proc_res.fatal(Some("failed to run nightly rustdoc"), || ());
         }
@@ -2464,6 +2471,48 @@ impl<'test> TestCx<'test> {
         };
         println!("{}", String::from_utf8_lossy(&output.stdout));
         eprintln!("{}", String::from_utf8_lossy(&output.stderr));
+    }
+
+    fn run_rustdoc_json_test(&self) {
+        //FIXME: Add bless option.
+
+        assert!(self.revision.is_none(), "revisions not relevant here");
+
+        let out_dir = self.output_base_dir();
+        let _ = fs::remove_dir_all(&out_dir);
+        create_dir_all(&out_dir).unwrap();
+
+        let proc_res = self.document(&out_dir, true);
+        if !proc_res.status.success() {
+            self.fatal_proc_rec("rustdoc failed!", &proc_res);
+        }
+
+        let root = self.config.find_rust_src_root().unwrap();
+        let mut json_out = out_dir.join(self.testpaths.file.file_stem().unwrap());
+        json_out.set_extension("json");
+        let res = self.cmd2procres(
+            Command::new(&self.config.docck_python)
+                .arg(root.join("src/test/rustdoc-json/check_missing_items.py"))
+                .arg(&json_out),
+        );
+
+        if !res.status.success() {
+            self.fatal_proc_rec("check_missing_items failed!", &res);
+        }
+
+        let mut expected = self.testpaths.file.clone();
+        expected.set_extension("expected");
+        let res = self.cmd2procres(
+            Command::new(&self.config.docck_python)
+                .arg(root.join("src/test/rustdoc-json/compare.py"))
+                .arg(&expected)
+                .arg(&json_out)
+                .arg(&expected.parent().unwrap()),
+        );
+
+        if !res.status.success() {
+            self.fatal_proc_rec("compare failed!", &res);
+        }
     }
 
     fn get_lines<P: AsRef<Path>>(
@@ -3003,7 +3052,7 @@ impl<'test> TestCx<'test> {
         if let Some(nodejs) = &self.config.nodejs {
             let out_dir = self.output_base_dir();
 
-            self.document(&out_dir);
+            self.document(&out_dir, false);
 
             let root = self.config.find_rust_src_root().unwrap();
             let file_stem =
