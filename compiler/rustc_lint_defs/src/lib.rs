@@ -253,6 +253,7 @@ pub enum BuiltinLintDiagnostics {
     RedundantImport(Vec<(Span, bool)>, Ident),
     DeprecatedMacro(Option<Symbol>, Span),
     UnusedDocComment(Span),
+    PatternsInFnsWithoutBody(Span, Ident),
 }
 
 /// Lints that are buffered up early on in the `Session` before the
