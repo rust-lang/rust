@@ -390,7 +390,7 @@ impl char {
     /// assert_eq!('❤'.escape_unicode().to_string(), "\\u{2764}");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[stable(feature = "const_char_escape_unicode", since = "1.48.0")]
+    #[rustc_const_stable(feature = "const_char_escape_unicode", since = "1.48.0")]
     #[inline]
     pub const fn escape_unicode(self) -> EscapeUnicode {
         let c = self as u32;
@@ -518,7 +518,7 @@ impl char {
     /// assert_eq!('"'.escape_default().to_string(), "\\\"");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[stable(feature = "const_char_escape_default", since = "1.48.0")]
+    #[rustc_const_stable(feature = "const_char_escape_default", since = "1.48.0")]
     #[inline]
     pub const fn escape_default(self) -> EscapeDefault {
         let init_state = match self {
