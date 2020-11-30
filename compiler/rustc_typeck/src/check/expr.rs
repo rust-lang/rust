@@ -38,6 +38,7 @@ use rustc_middle::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase};
 use rustc_middle::ty::Ty;
 use rustc_middle::ty::TypeFoldable;
 use rustc_middle::ty::{AdtKind, Visibility};
+use rustc_span::edition::LATEST_STABLE_EDITION;
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::lev_distance::find_best_match_for_name;
 use rustc_span::source_map::Span;
@@ -1637,8 +1638,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if field.name == kw::Await {
             // We know by construction that `<expr>.await` is either on Rust 2015
             // or results in `ExprKind::Await`. Suggest switching the edition to 2018.
-            err.note("to `.await` a `Future`, switch to Rust 2018");
-            err.help("set `edition = \"2018\"` in `Cargo.toml`");
+            err.note("to `.await` a `Future`, switch to Rust 2018 or later");
+            err.help(&format!("set `edition = \"{}\"` in `Cargo.toml`", LATEST_STABLE_EDITION));
             err.note("for more on editions, read https://doc.rust-lang.org/edition-guide");
         }
 

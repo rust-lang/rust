@@ -1076,6 +1076,11 @@ impl Session {
         self.opts.edition >= Edition::Edition2018
     }
 
+    /// Are we allowed to use features from the Rust 2021 edition?
+    pub fn rust_2021(&self) -> bool {
+        self.opts.edition >= Edition::Edition2021
+    }
+
     pub fn edition(&self) -> Edition {
         self.opts.edition
     }
