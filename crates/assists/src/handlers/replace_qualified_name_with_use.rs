@@ -407,7 +407,7 @@ impl std::fmt::Display<|> for Foo {
 }
 ",
             r"
-use std::fmt::{nested::Debug, Display};
+use std::fmt::{Display, nested::Debug};
 
 impl Display for Foo {
 }
