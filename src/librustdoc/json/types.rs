@@ -62,9 +62,6 @@ pub struct Item {
     pub crate_id: u32,
     /// Some items such as impls don't have names.
     pub name: Option<String>,
-    /// Whether this item is meant to be omitted from the generated documentation due to `#doc(hidden)`,
-    /// because it is private, or because it was inlined.
-    pub stripped: bool,
     /// The source location of this item (absent if it came from a macro expansion or inline
     /// assembly).
     pub source: Option<Span>,

@@ -99,7 +99,6 @@ impl JsonRenderer {
                                 .0
                                 .last()
                                 .map(Clone::clone),
-                            stripped: false,
                             visibility: types::Visibility::Public,
                             kind: types::ItemKind::Trait,
                             inner: types::ItemEnum::TraitItem(trait_item.clone().into()),
@@ -144,16 +143,17 @@ impl FormatRenderer for JsonRenderer {
         item.kind.inner_items().for_each(|i| self.item(i.clone(), cache).unwrap());
 
         let id = item.def_id;
-        let mut new_item: types::Item = item.into();
-        if let types::ItemEnum::TraitItem(ref mut t) = new_item.inner {
-            t.implementors = self.get_trait_implementors(id, cache)
-        } else if let types::ItemEnum::StructItem(ref mut s) = new_item.inner {
-            s.impls = self.get_impls(id, cache)
-        } else if let types::ItemEnum::EnumItem(ref mut e) = new_item.inner {
-            e.impls = self.get_impls(id, cache)
+        if let Some(mut new_item) = item.into(): Option<types::Item> {
+            if let types::ItemEnum::TraitItem(ref mut t) = new_item.inner {
+                t.implementors = self.get_trait_implementors(id, cache)
+            } else if let types::ItemEnum::StructItem(ref mut s) = new_item.inner {
+                s.impls = self.get_impls(id, cache)
+            } else if let types::ItemEnum::EnumItem(ref mut e) = new_item.inner {
+                e.impls = self.get_impls(id, cache)
+            }
+            self.index.borrow_mut().insert(id.into(), new_item);
         }
 
-        self.index.borrow_mut().insert(id.into(), new_item);
         Ok(())
     }
 

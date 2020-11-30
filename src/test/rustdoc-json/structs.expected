@@ -7,7 +7,7 @@
       "crate_id": 0,
       "name": "Unit",
       "source": {
-        "filename": "structs.rs",
+        "filename": "$TEST_BASE_DIR/structs.rs",
         "begin": [
           7,
           0
@@ -37,7 +37,7 @@
       "crate_id": 0,
       "name": "1",
       "source": {
-        "filename": "structs.rs",
+        "filename": "$TEST_BASE_DIR/structs.rs",
         "begin": [
           5,
           22
@@ -72,7 +72,7 @@
       "crate_id": 0,
       "name": "stuff",
       "source": {
-        "filename": "structs.rs",
+        "filename": "$TEST_BASE_DIR/structs.rs",
         "begin": [
           15,
           4
@@ -114,7 +114,7 @@
       "crate_id": 0,
       "name": "WithPrimitives",
       "source": {
-        "filename": "structs.rs",
+        "filename": "$TEST_BASE_DIR/structs.rs",
         "begin": [
           9,
           0
@@ -141,18 +141,14 @@
           ],
           "where_predicates": []
         },
-        "fields_stripped": true,
-        "fields": [
-          "0:13",
-          "0:14"
-        ]
+        "fields_stripped": true
       }
     },
     "0:14": {
       "crate_id": 0,
       "name": "s",
       "source": {
-        "filename": "structs.rs",
+        "filename": "$TEST_BASE_DIR/structs.rs",
         "begin": [
           11,
           4
@@ -184,7 +180,7 @@
       "crate_id": 0,
       "name": "things",
       "source": {
-        "filename": "structs.rs",
+        "filename": "$TEST_BASE_DIR/structs.rs",
         "begin": [
           16,
           4
@@ -232,7 +228,7 @@
       "crate_id": 0,
       "name": "WithGenerics",
       "source": {
-        "filename": "structs.rs",
+        "filename": "$TEST_BASE_DIR/structs.rs",
         "begin": [
           14,
           0
@@ -273,18 +269,14 @@
           ],
           "where_predicates": []
         },
-        "fields_stripped": true,
-        "fields": [
-          "0:18",
-          "0:19"
-        ]
+        "fields_stripped": true
       }
     },
     "0:0": {
       "crate_id": 0,
       "name": "structs",
       "source": {
-        "filename": "structs.rs",
+        "filename": "$TEST_BASE_DIR/structs.rs",
         "begin": [
           1,
           0
@@ -315,7 +307,7 @@
       "crate_id": 0,
       "name": "num",
       "source": {
-        "filename": "structs.rs",
+        "filename": "$TEST_BASE_DIR/structs.rs",
         "begin": [
           10,
           4
@@ -340,7 +332,7 @@
       "crate_id": 0,
       "name": "Tuple",
       "source": {
-        "filename": "structs.rs",
+        "filename": "$TEST_BASE_DIR/structs.rs",
         "begin": [
           5,
           0
@@ -362,18 +354,14 @@
           "params": [],
           "where_predicates": []
         },
-        "fields_stripped": true,
-        "fields": [
-          "0:7",
-          "0:8"
-        ]
+        "fields_stripped": true
       }
     },
     "0:4": {
       "crate_id": 0,
       "name": "PlainEmpty",
       "source": {
-        "filename": "structs.rs",
+        "filename": "$TEST_BASE_DIR/structs.rs",
         "begin": [
           3,
           0
@@ -403,7 +391,7 @@
       "crate_id": 0,
       "name": "0",
       "source": {
-        "filename": "structs.rs",
+        "filename": "$TEST_BASE_DIR/structs.rs",
         "begin": [
           5,
           17

@@ -34,23 +34,18 @@ def check_subset(expected_main, actual_main, base_dir):
     def _check_subset(expected, actual, trace):
         expected_type = type(expected)
         actual_type = type(actual)
+
+        if actual_type is str:
+            actual = actual.replace(base_dir, "$TEST_BASE_DIR")
+
         if expected_type is not actual_type:
             raise SubsetException(
                 "expected type `{}`, got `{}`".format(expected_type, actual_type), trace
             )
-        if expected_type in (str, int, bool) and expected != actual:
-            if expected_type == str and actual.startswith(base_dir):
-                if actual.replace(base_dir + "/", "") != expected:
-                    raise SubsetException(
-                        "expected `{}`, got: `{}`".format(
-                            expected, actual.replace(base_dir + "/", "")
-                        ),
-                        trace,
-                    )
-            else:
-                raise SubsetException(
-                    "expected `{}`, got: `{}`".format(expected, actual), trace
-                )
+
+
+        if expected_type in (int, bool, str) and expected != actual:
+            raise SubsetException("expected `{}`, got: `{}`".format(expected, actual), trace)
         if expected_type is dict:
             for key in expected:
                 if key not in actual:
