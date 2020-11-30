@@ -13,7 +13,7 @@ doctest = false
 [dependencies]
 itertools = "0.9.0"
 rowan = "0.10.0"
-rustc_lexer = { version = "688.0.0", package = "rustc-ap-rustc_lexer" }
+rustc_lexer = { version = "691.0.0", package = "rustc-ap-rustc_lexer" }
 rustc-hash = "1.1.0"
 arrayvec = "0.5.1"
 once_cell = "1.3.1"
