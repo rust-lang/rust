@@ -6,7 +6,7 @@ use crate::{
 
 use base_db::FileId;
 use either::Either;
-use mbe::parse_to_token_tree;
+use mbe::{parse_to_token_tree, ExpandResult};
 use parser::FragmentKind;
 use syntax::ast::{self, AstToken};
 
@@ -28,7 +28,7 @@ macro_rules! register_builtin {
                 db: &dyn AstDatabase,
                 id: LazyMacroId,
                 tt: &tt::Subtree,
-            ) -> Result<tt::Subtree, mbe::ExpandError> {
+            ) -> ExpandResult<tt::Subtree> {
                 let expander = match *self {
                     $( BuiltinFnLikeExpander::$kind => $expand, )*
                 };
@@ -42,7 +42,7 @@ macro_rules! register_builtin {
                 db: &dyn AstDatabase,
                 arg_id: EagerMacroId,
                 tt: &tt::Subtree,
-            ) -> Result<(tt::Subtree, FragmentKind), mbe::ExpandError> {
+            ) -> ExpandResult<Option<(tt::Subtree, FragmentKind)>> {
                 let expander = match *self {
                     $( EagerExpander::$e_kind => $e_expand, )*
                 };
@@ -109,25 +109,28 @@ fn line_expand(
     _db: &dyn AstDatabase,
     _id: LazyMacroId,
     _tt: &tt::Subtree,
-) -> Result<tt::Subtree, mbe::ExpandError> {
+) -> ExpandResult<tt::Subtree> {
     // dummy implementation for type-checking purposes
     let line_num = 0;
     let expanded = quote! {
         #line_num
     };
 
-    Ok(expanded)
+    ExpandResult::ok(expanded)
 }
 
 fn stringify_expand(
     db: &dyn AstDatabase,
     id: LazyMacroId,
     _tt: &tt::Subtree,
-) -> Result<tt::Subtree, mbe::ExpandError> {
+) -> ExpandResult<tt::Subtree> {
     let loc = db.lookup_intern_macro(id);
 
     let macro_content = {
-        let arg = loc.kind.arg(db).ok_or_else(|| mbe::ExpandError::UnexpectedToken)?;
+        let arg = match loc.kind.arg(db) {
+            Some(arg) => arg,
+            None => return ExpandResult::only_err(mbe::ExpandError::UnexpectedToken),
+        };
         let macro_args = arg;
         let text = macro_args.text();
         let without_parens = TextSize::of('(')..text.len() - TextSize::of(')');
@@ -138,28 +141,28 @@ fn stringify_expand(
         #macro_content
     };
 
-    Ok(expanded)
+    ExpandResult::ok(expanded)
 }
 
 fn column_expand(
     _db: &dyn AstDatabase,
     _id: LazyMacroId,
     _tt: &tt::Subtree,
-) -> Result<tt::Subtree, mbe::ExpandError> {
+) -> ExpandResult<tt::Subtree> {
     // dummy implementation for type-checking purposes
     let col_num = 0;
     let expanded = quote! {
         #col_num
     };
 
-    Ok(expanded)
+    ExpandResult::ok(expanded)
 }
 
 fn assert_expand(
     _db: &dyn AstDatabase,
     _id: LazyMacroId,
     tt: &tt::Subtree,
-) -> Result<tt::Subtree, mbe::ExpandError> {
+) -> ExpandResult<tt::Subtree> {
     // A hacky implementation for goto def and hover
     // We expand `assert!(cond, arg1, arg2)` to
     // ```
@@ -191,14 +194,14 @@ fn assert_expand(
     let expanded = quote! {
         { { (##arg_tts); } }
     };
-    Ok(expanded)
+    ExpandResult::ok(expanded)
 }
 
 fn file_expand(
     _db: &dyn AstDatabase,
     _id: LazyMacroId,
     _tt: &tt::Subtree,
-) -> Result<tt::Subtree, mbe::ExpandError> {
+) -> ExpandResult<tt::Subtree> {
     // FIXME: RA purposefully lacks knowledge of absolute file names
     // so just return "".
     let file_name = "";
@@ -207,31 +210,33 @@ fn file_expand(
         #file_name
     };
 
-    Ok(expanded)
+    ExpandResult::ok(expanded)
 }
 
 fn compile_error_expand(
     _db: &dyn AstDatabase,
     _id: LazyMacroId,
     tt: &tt::Subtree,
-) -> Result<tt::Subtree, mbe::ExpandError> {
+) -> ExpandResult<tt::Subtree> {
     if tt.count() == 1 {
         if let tt::TokenTree::Leaf(tt::Leaf::Literal(it)) = &tt.token_trees[0] {
             let s = it.text.as_str();
             if s.contains('"') {
-                return Ok(quote! { loop { #it }});
+                return ExpandResult::ok(quote! { loop { #it }});
             }
         };
     }
 
-    Err(mbe::ExpandError::BindingError("Must be a string".into()))
+    ExpandResult::only_err(mbe::ExpandError::BindingError(
+        "`compile_error!` argument be a string".into(),
+    ))
 }
 
 fn format_args_expand(
     _db: &dyn AstDatabase,
     _id: LazyMacroId,
     tt: &tt::Subtree,
-) -> Result<tt::Subtree, mbe::ExpandError> {
+) -> ExpandResult<tt::Subtree> {
     // We expand `format_args!("", a1, a2)` to
     // ```
     // std::fmt::Arguments::new_v1(&[], &[
@@ -257,7 +262,7 @@ fn format_args_expand(
         args.push(current);
     }
     if args.is_empty() {
-        return Err(mbe::ExpandError::NoMatchingRule);
+        return ExpandResult::only_err(mbe::ExpandError::NoMatchingRule);
     }
     let _format_string = args.remove(0);
     let arg_tts = args.into_iter().flat_map(|arg| {
@@ -266,7 +271,7 @@ fn format_args_expand(
     let expanded = quote! {
         std::fmt::Arguments::new_v1(&[], &[##arg_tts])
     };
-    Ok(expanded)
+    ExpandResult::ok(expanded)
 }
 
 fn unquote_str(lit: &tt::Literal) -> Option<String> {
@@ -279,19 +284,24 @@ fn concat_expand(
     _db: &dyn AstDatabase,
     _arg_id: EagerMacroId,
     tt: &tt::Subtree,
-) -> Result<(tt::Subtree, FragmentKind), mbe::ExpandError> {
+) -> ExpandResult<Option<(tt::Subtree, FragmentKind)>> {
     let mut text = String::new();
     for (i, t) in tt.token_trees.iter().enumerate() {
         match t {
             tt::TokenTree::Leaf(tt::Leaf::Literal(it)) if i % 2 == 0 => {
-                text += &unquote_str(&it).ok_or_else(|| mbe::ExpandError::ConversionError)?;
+                text += &match unquote_str(&it) {
+                    Some(s) => s,
+                    None => {
+                        return ExpandResult::only_err(mbe::ExpandError::ConversionError);
+                    }
+                };
             }
             tt::TokenTree::Leaf(tt::Leaf::Punct(punct)) if i % 2 == 1 && punct.char == ',' => (),
-            _ => return Err(mbe::ExpandError::UnexpectedToken),
+            _ => return ExpandResult::only_err(mbe::ExpandError::UnexpectedToken),
         }
     }
 
-    Ok((quote!(#text), FragmentKind::Expr))
+    ExpandResult::ok(Some((quote!(#text), FragmentKind::Expr)))
 }
 
 fn relative_file(
@@ -324,26 +334,35 @@ fn include_expand(
     db: &dyn AstDatabase,
     arg_id: EagerMacroId,
     tt: &tt::Subtree,
-) -> Result<(tt::Subtree, FragmentKind), mbe::ExpandError> {
-    let path = parse_string(tt)?;
-    let file_id = relative_file(db, arg_id.into(), &path, false)
-        .ok_or_else(|| mbe::ExpandError::ConversionError)?;
+) -> ExpandResult<Option<(tt::Subtree, FragmentKind)>> {
+    let res = (|| {
+        let path = parse_string(tt)?;
+        let file_id = relative_file(db, arg_id.into(), &path, false)
+            .ok_or_else(|| mbe::ExpandError::ConversionError)?;
 
-    // FIXME:
-    // Handle include as expression
-    let res = parse_to_token_tree(&db.file_text(file_id))
-        .ok_or_else(|| mbe::ExpandError::ConversionError)?
-        .0;
+        Ok(parse_to_token_tree(&db.file_text(file_id))
+            .ok_or_else(|| mbe::ExpandError::ConversionError)?
+            .0)
+    })();
 
-    Ok((res, FragmentKind::Items))
+    match res {
+        Ok(res) => {
+            // FIXME:
+            // Handle include as expression
+            ExpandResult::ok(Some((res, FragmentKind::Items)))
+        }
+        Err(e) => ExpandResult::only_err(e),
+    }
 }
 
 fn include_bytes_expand(
     _db: &dyn AstDatabase,
     _arg_id: EagerMacroId,
     tt: &tt::Subtree,
-) -> Result<(tt::Subtree, FragmentKind), mbe::ExpandError> {
-    let _path = parse_string(tt)?;
+) -> ExpandResult<Option<(tt::Subtree, FragmentKind)>> {
+    if let Err(e) = parse_string(tt) {
+        return ExpandResult::only_err(e);
+    }
 
     // FIXME: actually read the file here if the user asked for macro expansion
     let res = tt::Subtree {
@@ -353,15 +372,18 @@ fn include_bytes_expand(
             id: tt::TokenId::unspecified(),
         }))],
     };
-    Ok((res, FragmentKind::Expr))
+    ExpandResult::ok(Some((res, FragmentKind::Expr)))
 }
 
 fn include_str_expand(
     db: &dyn AstDatabase,
     arg_id: EagerMacroId,
     tt: &tt::Subtree,
-) -> Result<(tt::Subtree, FragmentKind), mbe::ExpandError> {
-    let path = parse_string(tt)?;
+) -> ExpandResult<Option<(tt::Subtree, FragmentKind)>> {
+    let path = match parse_string(tt) {
+        Ok(it) => it,
+        Err(e) => return ExpandResult::only_err(e),
+    };
 
     // FIXME: we're not able to read excluded files (which is most of them because
     // it's unusual to `include_str!` a Rust file), but we can return an empty string.
@@ -370,14 +392,14 @@ fn include_str_expand(
     let file_id = match relative_file(db, arg_id.into(), &path, true) {
         Some(file_id) => file_id,
         None => {
-            return Ok((quote!(""), FragmentKind::Expr));
+            return ExpandResult::ok(Some((quote!(""), FragmentKind::Expr)));
         }
     };
 
     let text = db.file_text(file_id);
     let text = &*text;
 
-    Ok((quote!(#text), FragmentKind::Expr))
+    ExpandResult::ok(Some((quote!(#text), FragmentKind::Expr)))
 }
 
 fn get_env_inner(db: &dyn AstDatabase, arg_id: EagerMacroId, key: &str) -> Option<String> {
@@ -389,8 +411,11 @@ fn env_expand(
     db: &dyn AstDatabase,
     arg_id: EagerMacroId,
     tt: &tt::Subtree,
-) -> Result<(tt::Subtree, FragmentKind), mbe::ExpandError> {
-    let key = parse_string(tt)?;
+) -> ExpandResult<Option<(tt::Subtree, FragmentKind)>> {
+    let key = match parse_string(tt) {
+        Ok(it) => it,
+        Err(e) => return ExpandResult::only_err(e),
+    };
 
     // FIXME:
     // If the environment variable is not defined int rustc, then a compilation error will be emitted.
@@ -402,21 +427,25 @@ fn env_expand(
     let s = get_env_inner(db, arg_id, &key).unwrap_or_else(|| "__RA_UNIMPLEMENTED__".to_string());
     let expanded = quote! { #s };
 
-    Ok((expanded, FragmentKind::Expr))
+    ExpandResult::ok(Some((expanded, FragmentKind::Expr)))
 }
 
 fn option_env_expand(
     db: &dyn AstDatabase,
     arg_id: EagerMacroId,
     tt: &tt::Subtree,
-) -> Result<(tt::Subtree, FragmentKind), mbe::ExpandError> {
-    let key = parse_string(tt)?;
+) -> ExpandResult<Option<(tt::Subtree, FragmentKind)>> {
+    let key = match parse_string(tt) {
+        Ok(it) => it,
+        Err(e) => return ExpandResult::only_err(e),
+    };
+
     let expanded = match get_env_inner(db, arg_id, &key) {
         None => quote! { std::option::Option::None::<&str> },
         Some(s) => quote! { std::option::Some(#s) },
     };
 
-    Ok((expanded, FragmentKind::Expr))
+    ExpandResult::ok(Some((expanded, FragmentKind::Expr)))
 }
 
 #[cfg(test)]
@@ -485,7 +514,7 @@ mod tests {
                     }
                 });
 
-                let (subtree, fragment) = expander.expand(&db, arg_id, &parsed_args).unwrap();
+                let (subtree, fragment) = expander.expand(&db, arg_id, &parsed_args).value.unwrap();
                 let eager = EagerCallLoc {
                     def,
                     fragment,

@@ -30,8 +30,8 @@ impl TokenExpander {
     ) -> mbe::ExpandResult<tt::Subtree> {
         match self {
             TokenExpander::MacroRules(it) => it.expand(tt),
+            TokenExpander::Builtin(it) => it.expand(db, id, tt),
             // FIXME switch these to ExpandResult as well
-            TokenExpander::Builtin(it) => it.expand(db, id, tt).into(),
             TokenExpander::BuiltinDerive(it) => it.expand(db, id, tt).into(),
             TokenExpander::ProcMacro(_) => {
                 // We store the result in salsa db to prevent non-determinisc behavior in
