@@ -9,8 +9,7 @@ help: you can convert an `isize` to an `i16` and panic if the converted value do
 LL |     foo((1*(1 as isize)).try_into().unwrap());
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-LL |     use std::convert::TryInto; // by importing this trait
-   |
+   = note: you have import `std::convert::TryInto;` before using `try_into()`
 
 error[E0308]: mismatched types
   --> $DIR/issue-13359.rs:10:9
@@ -23,8 +22,7 @@ help: you can convert a `usize` to a `u32` and panic if the converted value does
 LL |     bar((1*(1 as usize)).try_into().unwrap());
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-LL |     use std::convert::TryInto; // by importing this trait
-   |
+   = note: you have import `std::convert::TryInto;` before using `try_into()`
 
 error: aborting due to 2 previous errors
 

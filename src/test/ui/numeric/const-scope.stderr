@@ -62,8 +62,7 @@ help: you can convert an `i32` to an `i8` and panic if the converted value doesn
 LL |     let d: i8 = c.try_into().unwrap();
    |                 ^^^^^^^^^^^^^^^^^^^^^
    |
-LL |     use std::convert::TryInto; // by importing this trait
-   |
+   = note: you have import `std::convert::TryInto;` before using `try_into()`
 
 error: aborting due to 6 previous errors
 

@@ -19,8 +19,7 @@ help: you can convert an `isize` to a `usize` and panic if the converted value d
 LL |     let y: usize = x.foo().try_into().unwrap();
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-LL |     use std::convert::TryInto; // by importing this trait
-   |
+   = note: you have import `std::convert::TryInto;` before using `try_into()`
 
 error: aborting due to 2 previous errors
 

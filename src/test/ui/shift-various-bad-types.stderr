@@ -35,8 +35,7 @@ help: you can convert an `i64` to an `i32` and panic if the converted value does
 LL |     let _: i32 = (22_i64 >> 1_i32).try_into().unwrap();
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-LL |     use std::convert::TryInto; // by importing this trait
-   |
+   = note: you have import `std::convert::TryInto;` before using `try_into()`
 
 error: aborting due to 4 previous errors
 

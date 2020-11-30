@@ -9,8 +9,7 @@ help: you can convert a `u64` to a `usize` and panic if the converted value does
 LL |     foo::<usize>(x_u64.try_into().unwrap());
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-LL |     use std::convert::TryInto; // by importing this trait
-   |
+   = note: you have import `std::convert::TryInto;` before using `try_into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:25:18
@@ -23,8 +22,7 @@ help: you can convert a `u32` to a `usize` and panic if the converted value does
 LL |     foo::<usize>(x_u32.try_into().unwrap());
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-LL |     use std::convert::TryInto; // by importing this trait
-   |
+   = note: you have import `std::convert::TryInto;` before using `try_into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:27:18
@@ -55,8 +53,7 @@ help: you can convert an `isize` to a `usize` and panic if the converted value d
 LL |     foo::<usize>(x_isize.try_into().unwrap());
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-LL |     use std::convert::TryInto; // by importing this trait
-   |
+   = note: you have import `std::convert::TryInto;` before using `try_into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:33:18
@@ -69,8 +66,7 @@ help: you can convert an `i64` to a `usize` and panic if the converted value doe
 LL |     foo::<usize>(x_i64.try_into().unwrap());
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-LL |     use std::convert::TryInto; // by importing this trait
-   |
+   = note: you have import `std::convert::TryInto;` before using `try_into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:35:18
@@ -83,8 +79,7 @@ help: you can convert an `i32` to a `usize` and panic if the converted value doe
 LL |     foo::<usize>(x_i32.try_into().unwrap());
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-LL |     use std::convert::TryInto; // by importing this trait
-   |
+   = note: you have import `std::convert::TryInto;` before using `try_into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:37:18
@@ -97,8 +92,7 @@ help: you can convert an `i16` to a `usize` and panic if the converted value doe
 LL |     foo::<usize>(x_i16.try_into().unwrap());
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-LL |     use std::convert::TryInto; // by importing this trait
-   |
+   = note: you have import `std::convert::TryInto;` before using `try_into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:39:18
@@ -111,8 +105,7 @@ help: you can convert an `i8` to a `usize` and panic if the converted value does
 LL |     foo::<usize>(x_i8.try_into().unwrap());
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^
    |
-LL |     use std::convert::TryInto; // by importing this trait
-   |
+   = note: you have import `std::convert::TryInto;` before using `try_into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:44:18
@@ -125,8 +118,7 @@ help: you can convert a `usize` to an `isize` and panic if the converted value d
 LL |     foo::<isize>(x_usize.try_into().unwrap());
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-LL |     use std::convert::TryInto; // by importing this trait
-   |
+   = note: you have import `std::convert::TryInto;` before using `try_into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:46:18
@@ -139,8 +131,7 @@ help: you can convert a `u64` to an `isize` and panic if the converted value doe
 LL |     foo::<isize>(x_u64.try_into().unwrap());
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-LL |     use std::convert::TryInto; // by importing this trait
-   |
+   = note: you have import `std::convert::TryInto;` before using `try_into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:48:18
@@ -153,8 +144,7 @@ help: you can convert a `u32` to an `isize` and panic if the converted value doe
 LL |     foo::<isize>(x_u32.try_into().unwrap());
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-LL |     use std::convert::TryInto; // by importing this trait
-   |
+   = note: you have import `std::convert::TryInto;` before using `try_into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:50:18
@@ -167,8 +157,7 @@ help: you can convert a `u16` to an `isize` and panic if the converted value doe
 LL |     foo::<isize>(x_u16.try_into().unwrap());
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-LL |     use std::convert::TryInto; // by importing this trait
-   |
+   = note: you have import `std::convert::TryInto;` before using `try_into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:52:18
@@ -190,8 +179,7 @@ help: you can convert an `i64` to an `isize` and panic if the converted value do
 LL |     foo::<isize>(x_i64.try_into().unwrap());
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-LL |     use std::convert::TryInto; // by importing this trait
-   |
+   = note: you have import `std::convert::TryInto;` before using `try_into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:57:18
@@ -204,8 +192,7 @@ help: you can convert an `i32` to an `isize` and panic if the converted value do
 LL |     foo::<isize>(x_i32.try_into().unwrap());
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-LL |     use std::convert::TryInto; // by importing this trait
-   |
+   = note: you have import `std::convert::TryInto;` before using `try_into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:59:18
@@ -236,8 +223,7 @@ help: you can convert a `usize` to a `u64` and panic if the converted value does
 LL |     foo::<u64>(x_usize.try_into().unwrap());
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-LL |     use std::convert::TryInto; // by importing this trait
-   |
+   = note: you have import `std::convert::TryInto;` before using `try_into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:69:16
@@ -277,8 +263,7 @@ help: you can convert an `isize` to a `u64` and panic if the converted value doe
 LL |     foo::<u64>(x_isize.try_into().unwrap());
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-LL |     use std::convert::TryInto; // by importing this trait
-   |
+   = note: you have import `std::convert::TryInto;` before using `try_into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:77:16
@@ -291,8 +276,7 @@ help: you can convert an `i64` to a `u64` and panic if the converted value doesn
 LL |     foo::<u64>(x_i64.try_into().unwrap());
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-LL |     use std::convert::TryInto; // by importing this trait
-   |
+   = note: you have import `std::convert::TryInto;` before using `try_into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:79:16
@@ -305,8 +289,7 @@ help: you can convert an `i32` to a `u64` and panic if the converted value doesn
 LL |     foo::<u64>(x_i32.try_into().unwrap());
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-LL |     use std::convert::TryInto; // by importing this trait
-   |
+   = note: you have import `std::convert::TryInto;` before using `try_into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:81:16
@@ -319,8 +302,7 @@ help: you can convert an `i16` to a `u64` and panic if the converted value doesn
 LL |     foo::<u64>(x_i16.try_into().unwrap());
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-LL |     use std::convert::TryInto; // by importing this trait
-   |
+   = note: you have import `std::convert::TryInto;` before using `try_into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:83:16
@@ -333,8 +315,7 @@ help: you can convert an `i8` to a `u64` and panic if the converted value doesn'
 LL |     foo::<u64>(x_i8.try_into().unwrap());
    |                ^^^^^^^^^^^^^^^^^^^^^^^^
    |
-LL |     use std::convert::TryInto; // by importing this trait
-   |
+   = note: you have import `std::convert::TryInto;` before using `try_into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:88:16
@@ -347,8 +328,7 @@ help: you can convert a `usize` to an `i64` and panic if the converted value doe
 LL |     foo::<i64>(x_usize.try_into().unwrap());
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-LL |     use std::convert::TryInto; // by importing this trait
-   |
+   = note: you have import `std::convert::TryInto;` before using `try_into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:90:16
@@ -361,8 +341,7 @@ help: you can convert a `u64` to an `i64` and panic if the converted value doesn
 LL |     foo::<i64>(x_u64.try_into().unwrap());
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-LL |     use std::convert::TryInto; // by importing this trait
-   |
+   = note: you have import `std::convert::TryInto;` before using `try_into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:92:16
@@ -402,8 +381,7 @@ help: you can convert an `isize` to an `i64` and panic if the converted value do
 LL |     foo::<i64>(x_isize.try_into().unwrap());
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-LL |     use std::convert::TryInto; // by importing this trait
-   |
+   = note: you have import `std::convert::TryInto;` before using `try_into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:101:16
@@ -443,8 +421,7 @@ help: you can convert a `usize` to a `u32` and panic if the converted value does
 LL |     foo::<u32>(x_usize.try_into().unwrap());
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-LL |     use std::convert::TryInto; // by importing this trait
-   |
+   = note: you have import `std::convert::TryInto;` before using `try_into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:112:16
@@ -457,8 +434,7 @@ help: you can convert a `u64` to a `u32` and panic if the converted value doesn'
 LL |     foo::<u32>(x_u64.try_into().unwrap());
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-LL |     use std::convert::TryInto; // by importing this trait
-   |
+   = note: you have import `std::convert::TryInto;` before using `try_into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:115:16
@@ -489,8 +465,7 @@ help: you can convert an `isize` to a `u32` and panic if the converted value doe
 LL |     foo::<u32>(x_isize.try_into().unwrap());
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-LL |     use std::convert::TryInto; // by importing this trait
-   |
+   = note: you have import `std::convert::TryInto;` before using `try_into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:121:16
@@ -503,8 +478,7 @@ help: you can convert an `i64` to a `u32` and panic if the converted value doesn
 LL |     foo::<u32>(x_i64.try_into().unwrap());
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-LL |     use std::convert::TryInto; // by importing this trait
-   |
+   = note: you have import `std::convert::TryInto;` before using `try_into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:123:16
@@ -517,8 +491,7 @@ help: you can convert an `i32` to a `u32` and panic if the converted value doesn
 LL |     foo::<u32>(x_i32.try_into().unwrap());
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-LL |     use std::convert::TryInto; // by importing this trait
-   |
+   = note: you have import `std::convert::TryInto;` before using `try_into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:125:16
@@ -531,8 +504,7 @@ help: you can convert an `i16` to a `u32` and panic if the converted value doesn
 LL |     foo::<u32>(x_i16.try_into().unwrap());
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-LL |     use std::convert::TryInto; // by importing this trait
-   |
+   = note: you have import `std::convert::TryInto;` before using `try_into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:127:16
@@ -545,8 +517,7 @@ help: you can convert an `i8` to a `u32` and panic if the converted value doesn'
 LL |     foo::<u32>(x_i8.try_into().unwrap());
    |                ^^^^^^^^^^^^^^^^^^^^^^^^
    |
-LL |     use std::convert::TryInto; // by importing this trait
-   |
+   = note: you have import `std::convert::TryInto;` before using `try_into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:132:16
@@ -559,8 +530,7 @@ help: you can convert a `usize` to an `i32` and panic if the converted value doe
 LL |     foo::<i32>(x_usize.try_into().unwrap());
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-LL |     use std::convert::TryInto; // by importing this trait
-   |
+   = note: you have import `std::convert::TryInto;` before using `try_into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:134:16
@@ -573,8 +543,7 @@ help: you can convert a `u64` to an `i32` and panic if the converted value doesn
 LL |     foo::<i32>(x_u64.try_into().unwrap());
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-LL |     use std::convert::TryInto; // by importing this trait
-   |
+   = note: you have import `std::convert::TryInto;` before using `try_into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:136:16
@@ -587,8 +556,7 @@ help: you can convert a `u32` to an `i32` and panic if the converted value doesn
 LL |     foo::<i32>(x_u32.try_into().unwrap());
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-LL |     use std::convert::TryInto; // by importing this trait
-   |
+   = note: you have import `std::convert::TryInto;` before using `try_into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:138:16
@@ -619,8 +587,7 @@ help: you can convert an `isize` to an `i32` and panic if the converted value do
 LL |     foo::<i32>(x_isize.try_into().unwrap());
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-LL |     use std::convert::TryInto; // by importing this trait
-   |
+   = note: you have import `std::convert::TryInto;` before using `try_into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:144:16
@@ -633,8 +600,7 @@ help: you can convert an `i64` to an `i32` and panic if the converted value does
 LL |     foo::<i32>(x_i64.try_into().unwrap());
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-LL |     use std::convert::TryInto; // by importing this trait
-   |
+   = note: you have import `std::convert::TryInto;` before using `try_into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:147:16
@@ -665,8 +631,7 @@ help: you can convert a `usize` to a `u16` and panic if the converted value does
 LL |     foo::<u16>(x_usize.try_into().unwrap());
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-LL |     use std::convert::TryInto; // by importing this trait
-   |
+   = note: you have import `std::convert::TryInto;` before using `try_into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:156:16
@@ -679,8 +644,7 @@ help: you can convert a `u64` to a `u16` and panic if the converted value doesn'
 LL |     foo::<u16>(x_u64.try_into().unwrap());
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-LL |     use std::convert::TryInto; // by importing this trait
-   |
+   = note: you have import `std::convert::TryInto;` before using `try_into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:158:16
@@ -693,9 +657,7 @@ help: you can convert a `u32` to a `u16` and panic if the converted value doesn'
 LL |     foo::<u16>(x_u32.try_into().unwrap());
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-LL |     use std::convert::TryInto; // by importing this trait
-   |
-
+   = note: you have import `std::convert::TryInto;` before using `try_into()`
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:161:16
    |
@@ -716,8 +678,7 @@ help: you can convert an `isize` to a `u16` and panic if the converted value doe
 LL |     foo::<u16>(x_isize.try_into().unwrap());
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-LL |     use std::convert::TryInto; // by importing this trait
-   |
+   = note: you have import `std::convert::TryInto;` before using `try_into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:165:16
@@ -730,8 +691,7 @@ help: you can convert an `i64` to a `u16` and panic if the converted value doesn
 LL |     foo::<u16>(x_i64.try_into().unwrap());
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-LL |     use std::convert::TryInto; // by importing this trait
-   |
+   = note: you have import `std::convert::TryInto;` before using `try_into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:167:16
@@ -744,8 +704,7 @@ help: you can convert an `i32` to a `u16` and panic if the converted value doesn
 LL |     foo::<u16>(x_i32.try_into().unwrap());
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-LL |     use std::convert::TryInto; // by importing this trait
-   |
+   = note: you have import `std::convert::TryInto;` before using `try_into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:169:16
@@ -758,8 +717,7 @@ help: you can convert an `i16` to a `u16` and panic if the converted value doesn
 LL |     foo::<u16>(x_i16.try_into().unwrap());
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-LL |     use std::convert::TryInto; // by importing this trait
-   |
+   = note: you have import `std::convert::TryInto;` before using `try_into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:171:16
@@ -772,8 +730,7 @@ help: you can convert an `i8` to a `u16` and panic if the converted value doesn'
 LL |     foo::<u16>(x_i8.try_into().unwrap());
    |                ^^^^^^^^^^^^^^^^^^^^^^^^
    |
-LL |     use std::convert::TryInto; // by importing this trait
-   |
+   = note: you have import `std::convert::TryInto;` before using `try_into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:176:16
@@ -786,8 +743,7 @@ help: you can convert a `usize` to an `i16` and panic if the converted value doe
 LL |     foo::<i16>(x_usize.try_into().unwrap());
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-LL |     use std::convert::TryInto; // by importing this trait
-   |
+   = note: you have import `std::convert::TryInto;` before using `try_into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:178:16
@@ -800,8 +756,7 @@ help: you can convert a `u64` to an `i16` and panic if the converted value doesn
 LL |     foo::<i16>(x_u64.try_into().unwrap());
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-LL |     use std::convert::TryInto; // by importing this trait
-   |
+   = note: you have import `std::convert::TryInto;` before using `try_into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:180:16
@@ -814,8 +769,7 @@ help: you can convert a `u32` to an `i16` and panic if the converted value doesn
 LL |     foo::<i16>(x_u32.try_into().unwrap());
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-LL |     use std::convert::TryInto; // by importing this trait
-   |
+   = note: you have import `std::convert::TryInto;` before using `try_into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:182:16
@@ -828,8 +782,7 @@ help: you can convert a `u16` to an `i16` and panic if the converted value doesn
 LL |     foo::<i16>(x_u16.try_into().unwrap());
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-LL |     use std::convert::TryInto; // by importing this trait
-   |
+   = note: you have import `std::convert::TryInto;` before using `try_into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:184:16
@@ -851,8 +804,7 @@ help: you can convert an `isize` to an `i16` and panic if the converted value do
 LL |     foo::<i16>(x_isize.try_into().unwrap());
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-LL |     use std::convert::TryInto; // by importing this trait
-   |
+   = note: you have import `std::convert::TryInto;` before using `try_into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:188:16
@@ -865,8 +817,7 @@ help: you can convert an `i64` to an `i16` and panic if the converted value does
 LL |     foo::<i16>(x_i64.try_into().unwrap());
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-LL |     use std::convert::TryInto; // by importing this trait
-   |
+   = note: you have import `std::convert::TryInto;` before using `try_into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:190:16
@@ -879,8 +830,7 @@ help: you can convert an `i32` to an `i16` and panic if the converted value does
 LL |     foo::<i16>(x_i32.try_into().unwrap());
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-LL |     use std::convert::TryInto; // by importing this trait
-   |
+   = note: you have import `std::convert::TryInto;` before using `try_into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:193:16
@@ -902,8 +852,7 @@ help: you can convert a `usize` to a `u8` and panic if the converted value doesn
 LL |     foo::<u8>(x_usize.try_into().unwrap());
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-LL |     use std::convert::TryInto; // by importing this trait
-   |
+   = note: you have import `std::convert::TryInto;` before using `try_into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:200:15
@@ -916,8 +865,7 @@ help: you can convert a `u64` to a `u8` and panic if the converted value doesn't
 LL |     foo::<u8>(x_u64.try_into().unwrap());
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-LL |     use std::convert::TryInto; // by importing this trait
-   |
+   = note: you have import `std::convert::TryInto;` before using `try_into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:202:15
@@ -930,8 +878,7 @@ help: you can convert a `u32` to a `u8` and panic if the converted value doesn't
 LL |     foo::<u8>(x_u32.try_into().unwrap());
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-LL |     use std::convert::TryInto; // by importing this trait
-   |
+   = note: you have import `std::convert::TryInto;` before using `try_into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:204:15
@@ -944,8 +891,7 @@ help: you can convert a `u16` to a `u8` and panic if the converted value doesn't
 LL |     foo::<u8>(x_u16.try_into().unwrap());
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-LL |     use std::convert::TryInto; // by importing this trait
-   |
+   = note: you have import `std::convert::TryInto;` before using `try_into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:207:15
@@ -958,8 +904,7 @@ help: you can convert an `isize` to a `u8` and panic if the converted value does
 LL |     foo::<u8>(x_isize.try_into().unwrap());
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-LL |     use std::convert::TryInto; // by importing this trait
-   |
+   = note: you have import `std::convert::TryInto;` before using `try_into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:209:15
@@ -972,8 +917,7 @@ help: you can convert an `i64` to a `u8` and panic if the converted value doesn'
 LL |     foo::<u8>(x_i64.try_into().unwrap());
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-LL |     use std::convert::TryInto; // by importing this trait
-   |
+   = note: you have import `std::convert::TryInto;` before using `try_into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:211:15
@@ -986,8 +930,7 @@ help: you can convert an `i32` to a `u8` and panic if the converted value doesn'
 LL |     foo::<u8>(x_i32.try_into().unwrap());
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-LL |     use std::convert::TryInto; // by importing this trait
-   |
+   = note: you have import `std::convert::TryInto;` before using `try_into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:213:15
@@ -1000,8 +943,7 @@ help: you can convert an `i16` to a `u8` and panic if the converted value doesn'
 LL |     foo::<u8>(x_i16.try_into().unwrap());
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-LL |     use std::convert::TryInto; // by importing this trait
-   |
+   = note: you have import `std::convert::TryInto;` before using `try_into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:215:15
@@ -1014,8 +956,7 @@ help: you can convert an `i8` to a `u8` and panic if the converted value doesn't
 LL |     foo::<u8>(x_i8.try_into().unwrap());
    |               ^^^^^^^^^^^^^^^^^^^^^^^^
    |
-LL |     use std::convert::TryInto; // by importing this trait
-   |
+   = note: you have import `std::convert::TryInto;` before using `try_into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:220:15
@@ -1028,8 +969,7 @@ help: you can convert a `usize` to an `i8` and panic if the converted value does
 LL |     foo::<i8>(x_usize.try_into().unwrap());
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-LL |     use std::convert::TryInto; // by importing this trait
-   |
+   = note: you have import `std::convert::TryInto;` before using `try_into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:222:15
@@ -1042,8 +982,7 @@ help: you can convert a `u64` to an `i8` and panic if the converted value doesn'
 LL |     foo::<i8>(x_u64.try_into().unwrap());
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-LL |     use std::convert::TryInto; // by importing this trait
-   |
+   = note: you have import `std::convert::TryInto;` before using `try_into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:224:15
@@ -1056,8 +995,7 @@ help: you can convert a `u32` to an `i8` and panic if the converted value doesn'
 LL |     foo::<i8>(x_u32.try_into().unwrap());
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-LL |     use std::convert::TryInto; // by importing this trait
-   |
+   = note: you have import `std::convert::TryInto;` before using `try_into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:226:15
@@ -1070,8 +1008,7 @@ help: you can convert a `u16` to an `i8` and panic if the converted value doesn'
 LL |     foo::<i8>(x_u16.try_into().unwrap());
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-LL |     use std::convert::TryInto; // by importing this trait
-   |
+   = note: you have import `std::convert::TryInto;` before using `try_into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:228:15
@@ -1084,8 +1021,7 @@ help: you can convert a `u8` to an `i8` and panic if the converted value doesn't
 LL |     foo::<i8>(x_u8.try_into().unwrap());
    |               ^^^^^^^^^^^^^^^^^^^^^^^^
    |
-LL |     use std::convert::TryInto; // by importing this trait
-   |
+   = note: you have import `std::convert::TryInto;` before using `try_into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:230:15
@@ -1098,8 +1034,7 @@ help: you can convert an `isize` to an `i8` and panic if the converted value doe
 LL |     foo::<i8>(x_isize.try_into().unwrap());
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-LL |     use std::convert::TryInto; // by importing this trait
-   |
+   = note: you have import `std::convert::TryInto;` before using `try_into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:232:15
@@ -1112,8 +1047,7 @@ help: you can convert an `i64` to an `i8` and panic if the converted value doesn
 LL |     foo::<i8>(x_i64.try_into().unwrap());
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-LL |     use std::convert::TryInto; // by importing this trait
-   |
+   = note: you have import `std::convert::TryInto;` before using `try_into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:234:15
@@ -1126,8 +1060,7 @@ help: you can convert an `i32` to an `i8` and panic if the converted value doesn
 LL |     foo::<i8>(x_i32.try_into().unwrap());
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-LL |     use std::convert::TryInto; // by importing this trait
-   |
+   = note: you have import `std::convert::TryInto;` before using `try_into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:236:15
@@ -1140,8 +1073,7 @@ help: you can convert an `i16` to an `i8` and panic if the converted value doesn
 LL |     foo::<i8>(x_i16.try_into().unwrap());
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-LL |     use std::convert::TryInto; // by importing this trait
-   |
+   = note: you have import `std::convert::TryInto;` before using `try_into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast.rs:242:16

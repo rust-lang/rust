@@ -11,8 +11,7 @@ help: you can convert an `i32` to a `u16` and panic if the converted value doesn
 LL |     let x: u16 = foo().try_into().unwrap();
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-LL |     use std::convert::TryInto; // by importing this trait
-   |
+   = note: you have import `std::convert::TryInto;` before using `try_into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast-2.rs:7:18
