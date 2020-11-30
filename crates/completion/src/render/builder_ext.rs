@@ -24,7 +24,7 @@ impl Params {
 }
 
 impl Builder {
-    pub(super) fn should_add_parems(&self, ctx: &CompletionContext) -> bool {
+    fn should_add_parens(&self, ctx: &CompletionContext) -> bool {
         if !ctx.config.add_call_parenthesis {
             return false;
         }
@@ -58,7 +58,7 @@ impl Builder {
         name: String,
         params: Params,
     ) -> Builder {
-        if !self.should_add_parems(ctx) {
+        if !self.should_add_parens(ctx) {
             return self;
         }
 
