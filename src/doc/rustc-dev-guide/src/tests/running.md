@@ -59,43 +59,6 @@ Likewise, you can test a single file by passing its path:
 ./x.py test src/test/ui/const-generics/const-test.rs
 ```
 
-### Run the UI test suite
-
-The UI test suite is special in that it tests the command-line output
-of the compiler, e.g. the wording and formatting of warnings and errors.
-Every UI test file such as `foo.rs` will have a corresponding file
-`foo.stderr` describing its expected output.
-
-Similar to any other test suite, the UI test suite can be run with:
-
-```bash
-./x.py test src/test/ui
-```
-
-If you have made a change to the way that the compiler formats its output,
-it would be extraordinarily tedious to have to reformat every `*.stderr`
-file manually. Fortunately there exists a flag that will allow you to
-"bless" the current output of the compiler as the expected output.
-When using this flag with the test runner, any UI tests that would
-ordinarily fail will instead have their `*.stderr` files overwritten
-with whatever output the compiler produces:
-
-```bash
-./x.py test src/test/ui --bless
-```
-
-Some UI tests will have different output depending on which "mode" that
-the compiler is in. Specifically, the compiler may have different output
-depending on whether the feature "non-lexical lifetimes" (NLL) is enabled.
-Any UI test such as `foo.rs` whose output differs with NLL enabled will
-have both a `foo.stderr` file and a `foo.nll.stderr` file.
-By default, the UI test suite will not be run in NLL mode.
-To run the UI test suite in NLL mode, use the following:
-
-```bash
-./x.py test src/test/ui --compare-mode=nll
-```
-
 ### Run only the tidy script
 
 ```bash
@@ -194,6 +157,21 @@ incremental = true
 Note that incremental compilation will use more disk space than usual.
 If disk space is a concern for you, you might want to check the size
 of the `build` directory from time to time.
+
+## Running tests with different "compare modes"
+
+UI tests may have different output depending on certain "modes" that
+the compiler is in. For example, when in "non-lexical lifetimes" (NLL)
+mode a test `foo.rs` will first look for expected output in
+`foo.nll.stderr`, falling back to the usual `foo.stderr` if not found.
+To run the UI test suite in NLL mode, one would use the following:
+
+```bash
+./x.py test src/test/ui --compare-mode=nll
+```
+
+Other examples of compare-modes are "noopt", "migrate", and
+[revisions](./adding.html#revisions).
 
 ## Running tests manually
 
