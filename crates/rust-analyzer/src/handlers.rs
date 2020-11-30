@@ -11,6 +11,7 @@ use ide::{
     FileId, FilePosition, FileRange, HoverAction, HoverGotoTypeData, NavigationTarget, Query,
     RangeInfo, Runnable, RunnableKind, SearchScope, TextEdit,
 };
+use ide_db::helpers::{insert_use, mod_path_to_ast};
 use itertools::Itertools;
 use lsp_server::ErrorCode;
 use lsp_types::{
@@ -24,6 +25,7 @@ use lsp_types::{
     SymbolTag, TextDocumentIdentifier, Url, WorkspaceEdit,
 };
 use project_model::TargetKind;
+use rustc_hash::FxHashMap;
 use serde::{Deserialize, Serialize};
 use serde_json::to_value;
 use stdx::{format_to, split_once};
@@ -535,10 +537,11 @@ pub(crate) fn handle_runnables(
 }
 
 pub(crate) fn handle_completion(
-    snap: GlobalStateSnapshot,
+    global_state: &mut GlobalState,
     params: lsp_types::CompletionParams,
 ) -> Result<Option<lsp_types::CompletionResponse>> {
     let _p = profile::span("handle_completion");
+    let snap = global_state.snapshot();
     let position = from_proto::file_position(&snap, params.text_document_position)?;
     let completion_triggered_after_single_colon = {
         let mut res = false;
@@ -568,22 +571,68 @@ pub(crate) fn handle_completion(
     };
     let line_index = snap.analysis.file_line_index(position.file_id)?;
     let line_endings = snap.file_line_endings(position.file_id);
+    let mut additional_imports = FxHashMap::default();
+
     let items: Vec<CompletionItem> = items
         .into_iter()
-        .flat_map(|item| to_proto::completion_item(&line_index, line_endings, item))
+        .flat_map(|item| {
+            let import_to_add = item.import_to_add().cloned();
+            let new_completion_items = to_proto::completion_item(&line_index, line_endings, item);
+            if let Some(import_to_add) = import_to_add {
+                for new_item in &new_completion_items {
+                    additional_imports.insert(new_item.label.clone(), import_to_add.clone());
+                }
+            }
+            new_completion_items
+        })
+        .map(|mut item| {
+            item.data = Some(position.file_id.0.into());
+            item
+        })
         .collect();
+
+    global_state.additional_imports = additional_imports;
 
     let completion_list = lsp_types::CompletionList { is_incomplete: true, items };
     Ok(Some(completion_list.into()))
 }
 
 pub(crate) fn handle_resolve_completion(
-    snap: GlobalStateSnapshot,
-    original_completion: CompletionItem,
-) -> Result<CompletionItem> {
+    global_state: &mut GlobalState,
+    mut original_completion: lsp_types::CompletionItem,
+) -> Result<lsp_types::CompletionItem> {
+    // TODO kb slow, takes over 130ms
     let _p = profile::span("handle_resolve_completion");
-    // TODO kb use the field to detect it's for autocompletion and do the insert logic
-    let _data = dbg!(original_completion).data;
+
+    if let Some(import_data) =
+        global_state.additional_imports.get(dbg!(original_completion.label.as_str()))
+    {
+        let rewriter = insert_use::insert_use(
+            &import_data.import_scope,
+            mod_path_to_ast(&import_data.import_path),
+            import_data.merge_behaviour,
+        );
+        if let Some((old_ast, file_id)) =
+            // TODO kb for file_id, better use &str and then cast to u32?
+            rewriter
+            .rewrite_root()
+            .zip(original_completion.data.as_ref().and_then(|value| Some(value.as_u64()? as u32)))
+        {
+            let snap = global_state.snapshot();
+            let mut import_insert = TextEdit::builder();
+            algo::diff(&old_ast, &rewriter.rewrite(&old_ast)).into_text_edit(&mut import_insert);
+            let line_index = snap.analysis.file_line_index(FileId(file_id))?;
+            let line_endings = snap.file_line_endings(FileId(file_id));
+            let text_edit = import_insert.finish();
+
+            let mut new_edits = original_completion.additional_text_edits.unwrap_or_default();
+            for indel in text_edit {
+                new_edits.push(to_proto::text_edit(&line_index, line_endings, indel));
+            }
+            original_completion.additional_text_edits = Some(new_edits);
+        }
+    }
+
     Ok(original_completion)
 }
 

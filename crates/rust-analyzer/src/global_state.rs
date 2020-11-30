@@ -7,7 +7,7 @@ use std::{sync::Arc, time::Instant};
 
 use crossbeam_channel::{unbounded, Receiver, Sender};
 use flycheck::FlycheckHandle;
-use ide::{Analysis, AnalysisHost, Change, FileId};
+use ide::{Analysis, AnalysisHost, Change, FileId, ImportToAdd};
 use ide_db::base_db::{CrateId, VfsPath};
 use lsp_types::{SemanticTokens, Url};
 use parking_lot::{Mutex, RwLock};
@@ -69,6 +69,7 @@ pub(crate) struct GlobalState {
     pub(crate) config: Config,
     pub(crate) analysis_host: AnalysisHost,
     pub(crate) diagnostics: DiagnosticCollection,
+    pub(crate) additional_imports: FxHashMap<String, ImportToAdd>,
     pub(crate) mem_docs: FxHashMap<VfsPath, DocumentData>,
     pub(crate) semantic_tokens_cache: Arc<Mutex<FxHashMap<Url, SemanticTokens>>>,
     pub(crate) vfs: Arc<RwLock<(vfs::Vfs, FxHashMap<FileId, LineEndings>)>>,
@@ -121,6 +122,7 @@ impl GlobalState {
             config,
             analysis_host,
             diagnostics: Default::default(),
+            additional_imports: FxHashMap::default(),
             mem_docs: FxHashMap::default(),
             semantic_tokens_cache: Arc::new(Default::default()),
             vfs: Arc::new(RwLock::new((vfs::Vfs::default(), FxHashMap::default()))),

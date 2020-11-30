@@ -257,14 +257,18 @@ impl CompletionItem {
     pub fn ref_match(&self) -> Option<(Mutability, CompletionScore)> {
         self.ref_match
     }
+
+    pub fn import_to_add(&self) -> Option<&ImportToAdd> {
+        self.import_to_add.as_ref()
+    }
 }
 
 /// An extra import to add after the completion is applied.
-#[derive(Clone)]
-pub(crate) struct ImportToAdd {
-    pub(crate) import_path: ModPath,
-    pub(crate) import_scope: ImportScope,
-    pub(crate) merge_behaviour: Option<MergeBehaviour>,
+#[derive(Debug, Clone)]
+pub struct ImportToAdd {
+    pub import_path: ModPath,
+    pub import_scope: ImportScope,
+    pub merge_behaviour: Option<MergeBehaviour>,
 }
 
 /// A helper to make `CompletionItem`s.
