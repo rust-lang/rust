@@ -14,8 +14,8 @@ use cfg::CfgOptions;
 use drop_bomb::DropBomb;
 use either::Either;
 use hir_expand::{
-    ast_id_map::AstIdMap, diagnostics::DiagnosticSink, hygiene::Hygiene, AstId, HirFileId, InFile,
-    MacroDefId,
+    ast_id_map::AstIdMap, diagnostics::DiagnosticSink, hygiene::Hygiene, AstId, ExpandResult,
+    HirFileId, InFile, MacroDefId,
 };
 use rustc_hash::FxHashMap;
 use syntax::{ast, AstNode, AstPtr};
@@ -102,11 +102,11 @@ impl Expander {
         db: &dyn DefDatabase,
         local_scope: Option<&ItemScope>,
         macro_call: ast::MacroCall,
-    ) -> Option<(Mark, T)> {
+    ) -> ExpandResult<Option<(Mark, T)>> {
         self.recursion_limit += 1;
         if self.recursion_limit > EXPANSION_RECURSION_LIMIT {
             mark::hit!(your_stack_belongs_to_me);
-            return None;
+            return ExpandResult::str_err("reached recursion limit during macro expansion".into());
         }
 
         let macro_call = InFile::new(self.current_file_id, &macro_call);
@@ -120,28 +120,55 @@ impl Expander {
             self.resolve_path_as_macro(db, &path)
         };
 
-        if let Some(call_id) = macro_call.as_call_id(db, self.crate_def_map.krate, resolver) {
-            let file_id = call_id.as_file();
-            if let Some(node) = db.parse_or_expand(file_id) {
-                if let Some(expr) = T::cast(node) {
-                    log::debug!("macro expansion {:#?}", expr.syntax());
-
-                    let mark = Mark {
-                        file_id: self.current_file_id,
-                        ast_id_map: mem::take(&mut self.ast_id_map),
-                        bomb: DropBomb::new("expansion mark dropped"),
-                    };
-                    self.cfg_expander.hygiene = Hygiene::new(db.upcast(), file_id);
-                    self.current_file_id = file_id;
-                    self.ast_id_map = db.ast_id_map(file_id);
-                    return Some((mark, expr));
-                }
+        let call_id = match macro_call.as_call_id(db, self.crate_def_map.krate, resolver) {
+            Some(it) => it,
+            None => {
+                // FIXME: this can mean other things too, but `as_call_id` doesn't provide enough
+                // info.
+                return ExpandResult::only_err(mbe::ExpandError::Other(
+                    "failed to parse or resolve macro invocation".into(),
+                ));
             }
-        }
+        };
 
-        // FIXME: Instead of just dropping the error from expansion
-        // report it
-        None
+        let err = db.macro_expand_error(call_id);
+
+        let file_id = call_id.as_file();
+
+        let raw_node = match db.parse_or_expand(file_id) {
+            Some(it) => it,
+            None => {
+                // Only `None` if the macro expansion produced no usable AST.
+                if err.is_none() {
+                    log::warn!("no error despite `parse_or_expand` failing");
+                }
+
+                return ExpandResult::only_err(err.unwrap_or_else(|| {
+                    mbe::ExpandError::Other("failed to parse macro invocation".into())
+                }));
+            }
+        };
+
+        let node = match T::cast(raw_node) {
+            Some(it) => it,
+            None => {
+                // This can happen without being an error, so only forward previous errors.
+                return ExpandResult { value: None, err };
+            }
+        };
+
+        log::debug!("macro expansion {:#?}", node.syntax());
+
+        let mark = Mark {
+            file_id: self.current_file_id,
+            ast_id_map: mem::take(&mut self.ast_id_map),
+            bomb: DropBomb::new("expansion mark dropped"),
+        };
+        self.cfg_expander.hygiene = Hygiene::new(db.upcast(), file_id);
+        self.current_file_id = file_id;
+        self.ast_id_map = db.ast_id_map(file_id);
+
+        ExpandResult { value: Some((mark, node)), err }
     }
 
     pub(crate) fn exit(&mut self, db: &dyn DefDatabase, mut mark: Mark) {
