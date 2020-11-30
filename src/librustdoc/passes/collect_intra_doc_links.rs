@@ -169,22 +169,18 @@ enum AnchorFailure {
 }
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
-struct CacheKey {
+struct ResolutionInfo {
     module_id: DefId,
     dis: Option<Disambiguator>,
     path_str: String,
     extra_fragment: Option<String>,
 }
 
-impl CacheKey {
-    fn new(
-        module_id: DefId,
-        dis: Option<Disambiguator>,
-        path_str: String,
-        extra_fragment: Option<String>,
-    ) -> Self {
-        Self { module_id, dis, path_str, extra_fragment }
-    }
+struct DiagnosticInfo<'a> {
+    item: &'a Item,
+    dox: &'a str,
+    ori_link: &'a str,
+    link_range: Option<Range<usize>>,
 }
 
 #[derive(Clone, Debug, Hash)]
@@ -205,7 +201,7 @@ struct LinkCollector<'a, 'tcx> {
     /// See the code for associated items on inherent impls for details.
     kind_side_channel: Cell<Option<(DefKind, DefId)>>,
     /// Cache the resolved links so we can avoid resolving (and emitting errors for) the same link
-    visited_links: FxHashMap<CacheKey, CachedLink>,
+    visited_links: FxHashMap<ResolutionInfo, CachedLink>,
 }
 
 impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
@@ -1108,9 +1104,15 @@ impl LinkCollector<'_, '_> {
             return None;
         }
 
-        let key = CacheKey::new(module_id, disambiguator, path_str.to_owned(), extra_fragment);
-        let (mut res, mut fragment) =
-            self.resolve_with_disambiguator_cached(key, item, dox, &ori_link, link_range.clone())?;
+        let key = ResolutionInfo {
+            module_id,
+            dis: disambiguator,
+            path_str: path_str.to_owned(),
+            extra_fragment,
+        };
+        let diag =
+            DiagnosticInfo { item, dox, ori_link: &ori_link, link_range: link_range.clone() };
+        let (mut res, mut fragment) = self.resolve_with_disambiguator_cached(key, diag)?;
 
         // Check for a primitive which might conflict with a module
         // Report the ambiguity and require that the user specify which one they meant.
@@ -1220,59 +1222,47 @@ impl LinkCollector<'_, '_> {
 
     fn resolve_with_disambiguator_cached(
         &mut self,
-        key: CacheKey,
-        item: &Item,
-        dox: &str,
-        ori_link: &str,
-        link_range: Option<Range<usize>>,
+        key: ResolutionInfo,
+        diag: DiagnosticInfo<'_>,
     ) -> Option<(Res, Option<String>)> {
         // Try to look up both the result and the corresponding side channel value
         if let Some(ref cached) = self.visited_links.get(&key) {
             self.kind_side_channel.set(cached.side_channel.clone());
-            Some(cached.res.clone())
-        } else {
-            match self.resolve_with_disambiguator(
-                key.dis,
-                item,
-                dox,
-                &key.path_str,
-                key.module_id,
-                key.extra_fragment.clone(),
-                ori_link,
-                link_range,
-            ) {
-                Some(res) => {
-                    // Store result for the actual namespace
-                    self.visited_links.insert(
-                        key,
-                        CachedLink {
-                            res: res.clone(),
-                            side_channel: self.kind_side_channel.clone().into_inner(),
-                        },
-                    );
-                    Some(res)
-                }
-                _ => None,
-            }
+            return Some(cached.res.clone());
         }
+
+        let res = self.resolve_with_disambiguator(&key, diag);
+
+        // Cache only if resolved successfully - don't silence duplicate errors
+        if let Some(res) = &res {
+            // Store result for the actual namespace
+            self.visited_links.insert(
+                key,
+                CachedLink {
+                    res: res.clone(),
+                    side_channel: self.kind_side_channel.clone().into_inner(),
+                },
+            );
+        }
+
+        res
     }
 
     /// After parsing the disambiguator, resolve the main part of the link.
     // FIXME(jynelson): wow this is just so much
     fn resolve_with_disambiguator(
         &self,
-        disambiguator: Option<Disambiguator>,
-        item: &Item,
-        dox: &str,
-        path_str: &str,
-        base_node: DefId,
-        extra_fragment: Option<String>,
-        ori_link: &str,
-        link_range: Option<Range<usize>>,
+        key: &ResolutionInfo,
+        diag: DiagnosticInfo<'_>,
     ) -> Option<(Res, Option<String>)> {
+        let disambiguator = key.dis;
+        let path_str = &key.path_str;
+        let base_node = key.module_id;
+        let extra_fragment = &key.extra_fragment;
+
         match disambiguator.map(Disambiguator::ns) {
             Some(ns @ (ValueNS | TypeNS)) => {
-                match self.resolve(path_str, ns, base_node, &extra_fragment) {
+                match self.resolve(path_str, ns, base_node, extra_fragment) {
                     Ok(res) => Some(res),
                     Err(ErrorKind::Resolve(box mut kind)) => {
                         // We only looked in one namespace. Try to give a better error if possible.
@@ -1281,12 +1271,9 @@ impl LinkCollector<'_, '_> {
                             // FIXME: really it should be `resolution_failure` that does this, not `resolve_with_disambiguator`
                             // See https://github.com/rust-lang/rust/pull/76955#discussion_r493953382 for a good approach
                             for &new_ns in &[other_ns, MacroNS] {
-                                if let Some(res) = self.check_full_res(
-                                    new_ns,
-                                    path_str,
-                                    base_node,
-                                    &extra_fragment,
-                                ) {
+                                if let Some(res) =
+                                    self.check_full_res(new_ns, path_str, base_node, extra_fragment)
+                                {
                                     kind = ResolutionFailure::WrongNamespace(res, ns);
                                     break;
                                 }
@@ -1294,11 +1281,11 @@ impl LinkCollector<'_, '_> {
                         }
                         resolution_failure(
                             self,
-                            &item,
+                            diag.item,
                             path_str,
                             disambiguator,
-                            dox,
-                            link_range,
+                            diag.dox,
+                            diag.link_range,
                             smallvec![kind],
                         );
                         // This could just be a normal link or a broken link
@@ -1307,7 +1294,14 @@ impl LinkCollector<'_, '_> {
                         return None;
                     }
                     Err(ErrorKind::AnchorFailure(msg)) => {
-                        anchor_failure(self.cx, &item, &ori_link, dox, link_range, msg);
+                        anchor_failure(
+                            self.cx,
+                            diag.item,
+                            diag.ori_link,
+                            diag.dox,
+                            diag.link_range,
+                            msg,
+                        );
                         return None;
                     }
                 }
@@ -1318,21 +1312,35 @@ impl LinkCollector<'_, '_> {
                     macro_ns: self
                         .resolve_macro(path_str, base_node)
                         .map(|res| (res, extra_fragment.clone())),
-                    type_ns: match self.resolve(path_str, TypeNS, base_node, &extra_fragment) {
+                    type_ns: match self.resolve(path_str, TypeNS, base_node, extra_fragment) {
                         Ok(res) => {
                             debug!("got res in TypeNS: {:?}", res);
                             Ok(res)
                         }
                         Err(ErrorKind::AnchorFailure(msg)) => {
-                            anchor_failure(self.cx, &item, ori_link, dox, link_range, msg);
+                            anchor_failure(
+                                self.cx,
+                                diag.item,
+                                diag.ori_link,
+                                diag.dox,
+                                diag.link_range,
+                                msg,
+                            );
                             return None;
                         }
                         Err(ErrorKind::Resolve(box kind)) => Err(kind),
                     },
-                    value_ns: match self.resolve(path_str, ValueNS, base_node, &extra_fragment) {
+                    value_ns: match self.resolve(path_str, ValueNS, base_node, extra_fragment) {
                         Ok(res) => Ok(res),
                         Err(ErrorKind::AnchorFailure(msg)) => {
-                            anchor_failure(self.cx, &item, ori_link, dox, link_range, msg);
+                            anchor_failure(
+                                self.cx,
+                                diag.item,
+                                diag.ori_link,
+                                diag.dox,
+                                diag.link_range,
+                                msg,
+                            );
                             return None;
                         }
                         Err(ErrorKind::Resolve(box kind)) => Err(kind),
@@ -1343,7 +1351,7 @@ impl LinkCollector<'_, '_> {
                             Res::Def(DefKind::Ctor(..), _) | Res::SelfCtor(..) => {
                                 Err(ResolutionFailure::WrongNamespace(res, TypeNS))
                             }
-                            _ => match (fragment, extra_fragment) {
+                            _ => match (fragment, extra_fragment.clone()) {
                                 (Some(fragment), Some(_)) => {
                                     // Shouldn't happen but who knows?
                                     Ok((res, Some(fragment)))
@@ -1359,11 +1367,11 @@ impl LinkCollector<'_, '_> {
                 if len == 0 {
                     resolution_failure(
                         self,
-                        &item,
+                        diag.item,
                         path_str,
                         disambiguator,
-                        dox,
-                        link_range,
+                        diag.dox,
+                        diag.link_range,
                         candidates.into_iter().filter_map(|res| res.err()).collect(),
                     );
                     // this could just be a normal link
@@ -1382,10 +1390,10 @@ impl LinkCollector<'_, '_> {
                     let candidates = candidates.map(|candidate| candidate.ok().map(|(res, _)| res));
                     ambiguity_error(
                         self.cx,
-                        &item,
+                        diag.item,
                         path_str,
-                        dox,
-                        link_range,
+                        diag.dox,
+                        diag.link_range,
                         candidates.present_items().collect(),
                     );
                     return None;
@@ -1393,12 +1401,12 @@ impl LinkCollector<'_, '_> {
             }
             Some(MacroNS) => {
                 match self.resolve_macro(path_str, base_node) {
-                    Ok(res) => Some((res, extra_fragment)),
+                    Ok(res) => Some((res, extra_fragment.clone())),
                     Err(mut kind) => {
                         // `resolve_macro` only looks in the macro namespace. Try to give a better error if possible.
                         for &ns in &[TypeNS, ValueNS] {
                             if let Some(res) =
-                                self.check_full_res(ns, path_str, base_node, &extra_fragment)
+                                self.check_full_res(ns, path_str, base_node, extra_fragment)
                             {
                                 kind = ResolutionFailure::WrongNamespace(res, MacroNS);
                                 break;
@@ -1406,11 +1414,11 @@ impl LinkCollector<'_, '_> {
                         }
                         resolution_failure(
                             self,
-                            &item,
+                            diag.item,
                             path_str,
                             disambiguator,
-                            dox,
-                            link_range,
+                            diag.dox,
+                            diag.link_range,
                             smallvec![kind],
                         );
                         return None;
