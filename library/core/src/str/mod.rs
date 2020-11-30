@@ -2254,7 +2254,7 @@ impl str {
     /// To return a new uppercased value without modifying the existing one, use
     /// [`to_ascii_uppercase()`].
     ///
-    /// [`to_ascii_uppercase()`]: prim@str::to_ascii_uppercase()
+    /// [`to_ascii_uppercase()`]: #method.to_ascii_uppercase
     ///
     /// # Examples
     ///
@@ -2281,7 +2281,7 @@ impl str {
     /// To return a new lowercased value without modifying the existing one, use
     /// [`to_ascii_lowercase()`].
     ///
-    /// [`to_ascii_lowercase()`]: prim@str::to_ascii_lowercase()
+    /// [`to_ascii_lowercase()`]: #method.to_ascii_lowercase
     ///
     /// # Examples
     ///
