@@ -3,6 +3,6 @@
 # only-linux
 
 all:
-	$(RUSTC) -Z split-dwarf=split foo.rs
+	$(RUSTC) -Z unstable-options -C split-debuginfo=packed foo.rs -g
 	rm $(TMPDIR)/foo.dwp
 	rm $(TMPDIR)/$(call BIN,foo)

@@ -282,6 +282,20 @@ pub struct TargetMachineFactoryConfig {
     pub split_dwarf_file: Option<PathBuf>,
 }
 
+impl TargetMachineFactoryConfig {
+    pub fn new(
+        cgcx: &CodegenContext<impl WriteBackendMethods>,
+        module_name: &str,
+    ) -> TargetMachineFactoryConfig {
+        let split_dwarf_file = if cgcx.target_can_use_split_dwarf {
+            cgcx.output_filenames.split_dwarf_filename(cgcx.split_debuginfo, Some(module_name))
+        } else {
+            None
+        };
+        TargetMachineFactoryConfig { split_dwarf_file }
+    }
+}
+
 pub type TargetMachineFactoryFn<B> = Arc<
     dyn Fn(TargetMachineFactoryConfig) -> Result<<B as WriteBackendMethods>::TargetMachine, String>
         + Send
@@ -311,10 +325,11 @@ pub struct CodegenContext<B: WriteBackendMethods> {
     pub tm_factory: TargetMachineFactoryFn<B>,
     pub msvc_imps_needed: bool,
     pub is_pe_coff: bool,
+    pub target_can_use_split_dwarf: bool,
     pub target_pointer_width: u32,
     pub target_arch: String,
     pub debuginfo: config::DebugInfo,
-    pub split_dwarf_kind: config::SplitDwarfKind,
+    pub split_debuginfo: rustc_target::spec::SplitDebuginfo,
 
     // Number of cgus excluding the allocator/metadata modules
     pub total_cgus: usize,
@@ -1035,10 +1050,11 @@ fn start_executing_work<B: ExtraBackendMethods>(
         total_cgus,
         msvc_imps_needed: msvc_imps_needed(tcx),
         is_pe_coff: tcx.sess.target.is_like_windows,
+        target_can_use_split_dwarf: tcx.sess.target_can_use_split_dwarf(),
         target_pointer_width: tcx.sess.target.pointer_width,
         target_arch: tcx.sess.target.arch.clone(),
         debuginfo: tcx.sess.opts.debuginfo,
-        split_dwarf_kind: tcx.sess.opts.debugging_opts.split_dwarf,
+        split_debuginfo: tcx.sess.split_debuginfo(),
     };
 
     // This is the "main loop" of parallel work happening for parallel codegen.
