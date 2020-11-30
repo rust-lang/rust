@@ -384,7 +384,7 @@ fn path_cmp_for_sort(a: Option<ast::Path>, b: Option<ast::Path>) -> Ordering {
 
 /// Path comparison func for binary searching for merging.
 fn path_cmp_bin_search(lhs: Option<ast::Path>, rhs: Option<ast::Path>) -> Ordering {
-    match (lhs.and_then(|path| path.segment()), rhs.and_then(|path| path.segment())) {
+    match (lhs.as_ref().and_then(first_segment), rhs.as_ref().and_then(first_segment)) {
         (None, None) => Ordering::Equal,
         (None, Some(_)) => Ordering::Less,
         (Some(_), None) => Ordering::Greater,
@@ -1079,6 +1079,15 @@ use std::io;",
             r"use foo::bar::{Baz, quux::*};",
             r"use foo::bar::{Baz, quux::{self::*, Fez}};",
         )
+    }
+
+    #[test]
+    fn merge_nested_considers_first_segments() {
+        check_full(
+            "hir_ty::display::write_bounds_like_dyn_trait",
+            r"use hir_ty::{autoderef, display::{HirDisplayError, HirFormatter}, method_resolution};",
+            r"use hir_ty::{autoderef, display::{HirDisplayError, HirFormatter, write_bounds_like_dyn_trait}, method_resolution};",
+        );
     }
 
     #[test]
