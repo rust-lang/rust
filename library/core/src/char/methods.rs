@@ -391,7 +391,7 @@ impl char {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn escape_unicode(self) -> EscapeUnicode {
+    pub const fn escape_unicode(self) -> EscapeUnicode {
         let c = self as u32;
 
         // or-ing 1 ensures that for c==0 the code computes that one
@@ -518,7 +518,7 @@ impl char {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn escape_default(self) -> EscapeDefault {
+    pub const fn escape_default(self) -> EscapeDefault {
         let init_state = match self {
             '\t' => EscapeDefaultState::Backslash('t'),
             '\r' => EscapeDefaultState::Backslash('r'),
@@ -577,7 +577,7 @@ impl char {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn len_utf8(self) -> usize {
+    pub const fn len_utf8(self) -> usize {
         len_utf8(self as u32)
     }
 
@@ -602,7 +602,7 @@ impl char {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn len_utf16(self) -> usize {
+    pub const fn len_utf16(self) -> usize {
         let ch = self as u32;
         if (ch & 0xFFFF) == ch { 1 } else { 2 }
     }
@@ -1560,7 +1560,7 @@ impl char {
 }
 
 #[inline]
-fn len_utf8(code: u32) -> usize {
+const fn len_utf8(code: u32) -> usize {
     if code < MAX_ONE_B {
         1
     } else if code < MAX_TWO_B {
