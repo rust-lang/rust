@@ -141,7 +141,6 @@ mod handlers {
     mod generate_function;
     mod generate_impl;
     mod generate_new;
-    mod ignore_test;
     mod infer_function_return_type;
     mod inline_local_variable;
     mod introduce_named_lifetime;
@@ -164,6 +163,7 @@ mod handlers {
     mod replace_string_with_char;
     mod replace_unwrap_with_match;
     mod split_import;
+    mod toggle_ignore;
     mod unwrap_block;
     mod wrap_return_type_in_result;
 
@@ -190,7 +190,6 @@ mod handlers {
             generate_function::generate_function,
             generate_impl::generate_impl,
             generate_new::generate_new,
-            ignore_test::ignore_test,
             infer_function_return_type::infer_function_return_type,
             inline_local_variable::inline_local_variable,
             introduce_named_lifetime::introduce_named_lifetime,
@@ -215,6 +214,7 @@ mod handlers {
             replace_qualified_name_with_use::replace_qualified_name_with_use,
             replace_unwrap_with_match::replace_unwrap_with_match,
             split_import::split_import,
+            toggle_ignore::toggle_ignore,
             unwrap_block::unwrap_block,
             wrap_return_type_in_result::wrap_return_type_in_result,
             // These are manually sorted for better priorities
