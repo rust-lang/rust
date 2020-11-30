@@ -59,8 +59,11 @@ LL |     let d: i8 = c;
    |
 help: you can convert an `i32` to an `i8` and panic if the converted value doesn't fit
    |
-LL |     let d: i8 = c.try_into().unwrap(); // by importing `use std::convert::TryInto;`
+LL |     let d: i8 = c.try_into().unwrap();
    |                 ^^^^^^^^^^^^^^^^^^^^^
+   |
+LL |     use std::convert::TryInto; // by importing this trait
+   |
 
 error: aborting due to 6 previous errors
 

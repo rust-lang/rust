@@ -6,8 +6,11 @@ LL |     foo(1*(1 as isize));
    |
 help: you can convert an `isize` to an `i16` and panic if the converted value doesn't fit
    |
-LL |     foo((1*(1 as isize)).try_into().unwrap()); // by importing `use std::convert::TryInto;`
+LL |     foo((1*(1 as isize)).try_into().unwrap());
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+LL |     use std::convert::TryInto; // by importing this trait
+   |
 
 error[E0308]: mismatched types
   --> $DIR/issue-13359.rs:10:9
@@ -17,8 +20,11 @@ LL |     bar(1*(1 as usize));
    |
 help: you can convert a `usize` to a `u32` and panic if the converted value doesn't fit
    |
-LL |     bar((1*(1 as usize)).try_into().unwrap()); // by importing `use std::convert::TryInto;`
+LL |     bar((1*(1 as usize)).try_into().unwrap());
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+LL |     use std::convert::TryInto; // by importing this trait
+   |
 
 error: aborting due to 2 previous errors
 
