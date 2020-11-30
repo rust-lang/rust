@@ -195,8 +195,9 @@ impl u8 {
     ///
     /// [`make_ascii_uppercase`]: #method.make_ascii_uppercase
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
+    #[rustc_const_stable(feature = "const_ascii_methods_on_intrinsics", since = "1.50.0")]
     #[inline]
-    pub fn to_ascii_uppercase(&self) -> u8 {
+    pub const fn to_ascii_uppercase(&self) -> u8 {
         // Unset the fifth bit if this is a lowercase letter
         *self & !((self.is_ascii_lowercase() as u8) * ASCII_CASE_MASK)
     }
@@ -218,8 +219,9 @@ impl u8 {
     ///
     /// [`make_ascii_lowercase`]: #method.make_ascii_lowercase
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
+    #[rustc_const_stable(feature = "const_ascii_methods_on_intrinsics", since = "1.50.0")]
     #[inline]
-    pub fn to_ascii_lowercase(&self) -> u8 {
+    pub const fn to_ascii_lowercase(&self) -> u8 {
         // Set the fifth bit if this is an uppercase letter
         *self | (self.is_ascii_uppercase() as u8 * ASCII_CASE_MASK)
     }
@@ -243,8 +245,9 @@ impl u8 {
     /// assert!(lowercase_a.eq_ignore_ascii_case(&uppercase_a));
     /// ```
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
+    #[rustc_const_stable(feature = "const_ascii_methods_on_intrinsics", since = "1.50.0")]
     #[inline]
-    pub fn eq_ignore_ascii_case(&self, other: &u8) -> bool {
+    pub const fn eq_ignore_ascii_case(&self, other: &u8) -> bool {
         self.to_ascii_lowercase() == other.to_ascii_lowercase()
     }
 
