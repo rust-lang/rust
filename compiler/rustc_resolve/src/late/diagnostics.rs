@@ -180,7 +180,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
             (
                 format!("cannot find {} `{}` in {}{}", expected, item_str, mod_prefix, mod_str),
                 if path_str == "async" && expected.starts_with("struct") {
-                    "`async` blocks are only allowed in the 2018 edition".to_string()
+                    "`async` blocks are only allowed in Rust 2018 or later".to_string()
                 } else {
                     format!("not found in {}", mod_str)
                 },
@@ -904,7 +904,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                     Applicability::MaybeIncorrect,
                 );
                 if path_str == "try" && span.rust_2015() {
-                    err.note("if you want the `try` keyword, you need to be in the 2018 edition");
+                    err.note("if you want the `try` keyword, you need Rust 2018 or later");
                 }
             }
             (Res::Def(DefKind::TyAlias, def_id), PathSource::Trait(_)) => {

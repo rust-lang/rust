@@ -1667,7 +1667,7 @@ impl<'a> Parser<'a> {
     fn ban_async_in_2015(&self, span: Span) {
         if span.rust_2015() {
             let diag = self.diagnostic();
-            struct_span_err!(diag, span, E0670, "`async fn` is not permitted in the 2015 edition")
+            struct_span_err!(diag, span, E0670, "`async fn` is not permitted in Rust 2015")
                 .span_label(span, "to use `async fn`, switch to Rust 2018 or later")
                 .help(&format!("set `edition = \"{}\"` in `Cargo.toml`", LATEST_STABLE_EDITION))
                 .note("for more on editions, read https://doc.rust-lang.org/edition-guide")
