@@ -936,4 +936,10 @@ fn ip_const() {
 
     const IS_MULTICAST: bool = IP_ADDRESS.is_multicast();
     assert!(!IS_MULTICAST);
+
+    const IS_IP_V4: bool = IP_ADDRESS.is_ipv4();
+    assert!(IS_IP_V4);
+
+    const IS_IP_V6: bool = IP_ADDRESS.is_ipv6();
+    assert!(!IS_IP_V6);
 }
