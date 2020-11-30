@@ -355,42 +355,6 @@ macro_rules! float_tests {
 
             #[test]
             #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
-            fn round_odd_floats() {
-                for v in slice_chunks(&C) {
-                    let expected = apply_unary_lanewise(v, <$scalar>::round);
-                    assert_biteq!(v.round(), expected);
-                }
-            }
-
-            #[test]
-            #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
-            fn round_mode() {
-                assert_biteq!(core_simd::$vector::splat(1.5).round(), core_simd::$vector::splat(2.0));
-                assert_biteq!(core_simd::$vector::splat(2.5).round(), core_simd::$vector::splat(3.0));
-                assert_biteq!(core_simd::$vector::splat(-1.5).round(), core_simd::$vector::splat(-2.0));
-                assert_biteq!(core_simd::$vector::splat(-2.5).round(), core_simd::$vector::splat(-3.0));
-            }
-
-            #[test]
-            #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
-            fn trunc_odd_floats() {
-                for v in slice_chunks(&C) {
-                    let expected = apply_unary_lanewise(v, <$scalar>::trunc);
-                    assert_biteq!(v.trunc(), expected);
-                }
-            }
-
-            #[test]
-            #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
-            fn fract_odd_floats() {
-                for v in slice_chunks(&C) {
-                    let expected = apply_unary_lanewise(v, <$scalar>::fract);
-                    assert_biteq!(v.fract(), expected);
-                }
-            }
-
-            #[test]
-            #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
             fn to_int_unchecked() {
                 // The maximum integer that can be represented by the equivalently sized float has
                 // all of the mantissa digits set to 1, pushed up to the MSB.
