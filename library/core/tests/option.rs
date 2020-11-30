@@ -402,3 +402,13 @@ fn test_unwrap_drop() {
 
     assert_eq!(x.get(), 0);
 }
+
+#[test]
+pub fn option_ext() {
+    let thing = "{{ f }}";
+    let f = thing.find("{{");
+
+    if f.is_none() {
+        println!("None!");
+    }
+}
