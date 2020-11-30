@@ -1565,7 +1565,7 @@ impl<'test> TestCx<'test> {
         self.compose_and_run_compiler(rustc, None)
     }
 
-    fn document(&self, out_dir: &Path, json: bool) -> ProcRes {
+    fn document(&self, out_dir: &Path) -> ProcRes {
         if self.props.build_aux_docs {
             for rel_ab in &self.props.aux_builds {
                 let aux_testpaths = self.compute_aux_test_paths(rel_ab);
@@ -1579,7 +1579,7 @@ impl<'test> TestCx<'test> {
                 };
                 // Create the directory for the stdout/stderr files.
                 create_dir_all(aux_cx.output_base_dir()).unwrap();
-                let auxres = aux_cx.document(out_dir, json);
+                let auxres = aux_cx.document(out_dir);
                 if !auxres.status.success() {
                     return auxres;
                 }
@@ -1601,7 +1601,7 @@ impl<'test> TestCx<'test> {
             .arg(&self.testpaths.file)
             .args(&self.props.compile_flags);
 
-        if json {
+        if self.config.mode == RustdocJson {
             rustdoc.arg("--output-format").arg("json");
         }
 
@@ -2336,7 +2336,7 @@ impl<'test> TestCx<'test> {
         let _ = fs::remove_dir_all(&out_dir);
         create_dir_all(&out_dir).unwrap();
 
-        let proc_res = self.document(&out_dir, false);
+        let proc_res = self.document(&out_dir);
         if !proc_res.status.success() {
             self.fatal_proc_rec("rustdoc failed!", &proc_res);
         }
@@ -2392,7 +2392,7 @@ impl<'test> TestCx<'test> {
         rustc.arg("-L").arg(&new_rustdoc.aux_output_dir_name());
         new_rustdoc.build_all_auxiliary(&mut rustc);
 
-        let proc_res = new_rustdoc.document(&compare_dir, false);
+        let proc_res = new_rustdoc.document(&compare_dir);
         if !proc_res.status.success() {
             proc_res.fatal(Some("failed to run nightly rustdoc"), || ());
         }
@@ -2482,7 +2482,7 @@ impl<'test> TestCx<'test> {
         let _ = fs::remove_dir_all(&out_dir);
         create_dir_all(&out_dir).unwrap();
 
-        let proc_res = self.document(&out_dir, true);
+        let proc_res = self.document(&out_dir);
         if !proc_res.status.success() {
             self.fatal_proc_rec("rustdoc failed!", &proc_res);
         }
@@ -3052,7 +3052,7 @@ impl<'test> TestCx<'test> {
         if let Some(nodejs) = &self.config.nodejs {
             let out_dir = self.output_base_dir();
 
-            self.document(&out_dir, false);
+            self.document(&out_dir);
 
             let root = self.config.find_rust_src_root().unwrap();
             let file_stem =

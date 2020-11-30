@@ -12,43 +12,44 @@ use crate::doctree;
 use crate::formats::item_type::ItemType;
 use crate::json::types::*;
 
-impl From<clean::Item> for Item {
+impl From<clean::Item> for Option<Item> {
     fn from(item: clean::Item) -> Self {
         let item_type = ItemType::from(&item);
         let clean::Item {
             source,
             name,
             attrs,
-            kind: inner,
+            kind,
             visibility,
             def_id,
             stability: _,
             deprecation,
         } = item;
-        Item {
-            id: def_id.into(),
-            crate_id: def_id.krate.as_u32(),
-            name,
-            stripped: match inner {
-                clean::StrippedItem(_) => true,
-                _ => false,
-            },
-            source: source.into(),
-            visibility: visibility.into(),
-            docs: attrs.collapsed_doc_value().unwrap_or_default(),
-            links: attrs
-                .links
-                .into_iter()
-                .filter_map(|clean::ItemLink { link, did, .. }| did.map(|did| (link, did.into())))
-                .collect(),
-            attrs: attrs
-                .other_attrs
-                .iter()
-                .map(rustc_ast_pretty::pprust::attribute_to_string)
-                .collect(),
-            deprecation: deprecation.map(Into::into),
-            kind: item_type.into(),
-            inner: inner.into(),
+        match kind {
+            clean::StrippedItem(_) => None,
+            _ => Some(Item {
+                id: def_id.into(),
+                crate_id: def_id.krate.as_u32(),
+                name,
+                source: source.into(),
+                visibility: visibility.into(),
+                docs: attrs.collapsed_doc_value().unwrap_or_default(),
+                links: attrs
+                    .links
+                    .into_iter()
+                    .filter_map(|clean::ItemLink { link, did, .. }| {
+                        did.map(|did| (link, did.into()))
+                    })
+                    .collect(),
+                attrs: attrs
+                    .other_attrs
+                    .iter()
+                    .map(rustc_ast_pretty::pprust::attribute_to_string)
+                    .collect(),
+                deprecation: deprecation.map(Into::into),
+                kind: item_type.into(),
+                inner: kind.into(),
+            }),
         }
     }
 }
@@ -194,10 +195,7 @@ impl From<clean::ItemKind> for ItemEnum {
 
 impl From<clean::Module> for Module {
     fn from(module: clean::Module) -> Self {
-        Module {
-            is_crate: module.is_crate,
-            items: module.items.into_iter().map(|i| i.def_id.into()).collect(),
-        }
+        Module { is_crate: module.is_crate, items: ids(module.items) }
     }
 }
 
@@ -208,7 +206,7 @@ impl From<clean::Struct> for Struct {
             struct_type: struct_type.into(),
             generics: generics.into(),
             fields_stripped,
-            fields: fields.into_iter().map(|i| i.def_id.into()).collect(),
+            fields: ids(fields),
             impls: Vec::new(), // Added in JsonRenderer::item
         }
     }
@@ -221,7 +219,7 @@ impl From<clean::Union> for Struct {
             struct_type: struct_type.into(),
             generics: generics.into(),
             fields_stripped,
-            fields: fields.into_iter().map(|i| i.def_id.into()).collect(),
+            fields: ids(fields),
             impls: Vec::new(), // Added in JsonRenderer::item
         }
     }
@@ -407,7 +405,7 @@ impl From<clean::Trait> for Trait {
         Trait {
             is_auto,
             is_unsafe: unsafety == rustc_hir::Unsafety::Unsafe,
-            items: items.into_iter().map(|i| i.def_id.into()).collect(),
+            items: ids(items),
             generics: generics.into(),
             bounds: bounds.into_iter().map(Into::into).collect(),
             implementors: Vec::new(), // Added in JsonRenderer::item
@@ -434,7 +432,7 @@ impl From<clean::Impl> for Impl {
             provided_trait_methods: provided_trait_methods.into_iter().collect(),
             trait_: trait_.map(Into::into),
             for_: for_.into(),
-            items: items.into_iter().map(|i| i.def_id.into()).collect(),
+            items: ids(items),
             negative: polarity == Some(clean::ImplPolarity::Negative),
             synthetic,
             blanket_impl: blanket_impl.map(Into::into),
@@ -460,7 +458,7 @@ impl From<clean::Enum> for Enum {
         Enum {
             generics: generics.into(),
             variants_stripped,
-            variants: variants.into_iter().map(|i| i.def_id.into()).collect(),
+            variants: ids(variants),
             impls: Vec::new(), // Added in JsonRenderer::item
         }
     }
@@ -473,7 +471,7 @@ impl From<clean::VariantStruct> for Struct {
             struct_type: struct_type.into(),
             generics: Default::default(),
             fields_stripped,
-            fields: fields.into_iter().map(|i| i.def_id.into()).collect(),
+            fields: ids(fields),
             impls: Vec::new(),
         }
     }
@@ -485,7 +483,7 @@ impl From<clean::Variant> for Variant {
         match variant.kind {
             CLike => Variant::Plain,
             Tuple(t) => Variant::Tuple(t.into_iter().map(Into::into).collect()),
-            Struct(s) => Variant::Struct(s.fields.into_iter().map(|i| i.def_id.into()).collect()),
+            Struct(s) => Variant::Struct(ids(s.fields)),
         }
     }
 }
@@ -593,4 +591,8 @@ impl From<ItemType> for ItemKind {
             ProcDerive => ItemKind::ProcDerive,
         }
     }
+}
+
+fn ids(items: impl IntoIterator<Item = clean::Item>) -> Vec<Id> {
+    items.into_iter().filter(|x| !x.is_stripped()).map(|i| i.def_id.into()).collect()
 }
