@@ -1,0 +1,19 @@
+error[E0107]: missing generics for associated type `TestMut::Output`
+  --> $DIR/issue-80433.rs:10:10
+   |
+LL |     type Output<'a>;
+   |          ^^^^^^ expected 1 lifetime argument
+   |
+note: associated type defined here, with 1 lifetime parameter: `'a`
+  --> $DIR/issue-80433.rs:10:10
+   |
+LL |     type Output<'a>;
+   |          ^^^^^^ --
+help: use angle brackets to add missing lifetime argument
+   |
+LL |     type Output<'a><'a>;
+   |                ^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0107`.
