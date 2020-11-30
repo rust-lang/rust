@@ -814,9 +814,7 @@ impl Step for Src {
 
     /// Creates the `rust-src` installer component
     fn run(self, builder: &Builder<'_>) -> PathBuf {
-        let name = pkgname(builder, "rust-src");
-        let image = tmpdir(builder).join(format!("{}-image", name));
-        let _ = fs::remove_dir_all(&image);
+        let tarball = Tarball::new_targetless(builder, "rust-src");
 
         // A lot of tools expect the rust-src component to be entirely in this directory, so if you
         // change that (e.g. by adding another directory `lib/rustlib/src/foo` or
@@ -825,8 +823,7 @@ impl Step for Src {
         //
         // NOTE: if you update the paths here, you also should update the "virtual" path
         // translation code in `imported_source_files` in `src/librustc_metadata/rmeta/decoder.rs`
-        let dst_src = image.join("lib/rustlib/src/rust");
-        t!(fs::create_dir_all(&dst_src));
+        let dst_src = tarball.image_dir().join("lib/rustlib/src/rust");
 
         let src_files = ["Cargo.lock"];
         // This is the reduced set of paths which will become the rust-src component
@@ -846,28 +843,7 @@ impl Step for Src {
             builder.copy(&builder.src.join(file), &dst_src.join(file));
         }
 
-        // Create source tarball in rust-installer format
-        let mut cmd = rust_installer(builder);
-        cmd.arg("generate")
-            .arg("--product-name=Rust")
-            .arg("--rel-manifest-dir=rustlib")
-            .arg("--success-message=Awesome-Source.")
-            .arg("--image-dir")
-            .arg(&image)
-            .arg("--work-dir")
-            .arg(&tmpdir(builder))
-            .arg("--output-dir")
-            .arg(&distdir(builder))
-            .arg(format!("--package-name={}", name))
-            .arg("--component-name=rust-src")
-            .arg("--legacy-manifest-dirs=rustlib,cargo");
-
-        builder.info("Dist src");
-        let _time = timeit(builder);
-        builder.run(&mut cmd);
-
-        builder.remove_dir(&image);
-        distdir(builder).join(&format!("{}.tar.gz", name))
+        tarball.generate()
     }
 }
 

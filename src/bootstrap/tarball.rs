@@ -84,7 +84,7 @@ pub(crate) struct Tarball<'a> {
 
     pkgname: String,
     component: String,
-    target: String,
+    target: Option<String>,
     product_name: String,
     overlay: OverlayKind,
 
@@ -99,6 +99,14 @@ pub(crate) struct Tarball<'a> {
 
 impl<'a> Tarball<'a> {
     pub(crate) fn new(builder: &'a Builder<'a>, component: &str, target: &str) -> Self {
+        Self::new_inner(builder, component, Some(target.into()))
+    }
+
+    pub(crate) fn new_targetless(builder: &'a Builder<'a>, component: &str) -> Self {
+        Self::new_inner(builder, component, None)
+    }
+
+    fn new_inner(builder: &'a Builder<'a>, component: &str, target: Option<String>) -> Self {
         let pkgname = crate::dist::pkgname(builder, component);
 
         let temp_dir = builder.out.join("tmp").join("tarball").join(component);
@@ -113,7 +121,7 @@ impl<'a> Tarball<'a> {
 
             pkgname,
             component: component.into(),
-            target: target.into(),
+            target,
             product_name: "Rust".into(),
             overlay: OverlayKind::Rust,
 
@@ -197,7 +205,14 @@ impl<'a> Tarball<'a> {
 
         let mut cmd = self.builder.tool_cmd(crate::tool::Tool::RustInstaller);
 
-        self.builder.info(&format!("Dist {} ({})", self.component, self.target));
+        let package_name = if let Some(target) = &self.target {
+            self.builder.info(&format!("Dist {} ({})", self.component, target));
+            format!("{}-{}", self.pkgname, target)
+        } else {
+            self.builder.info(&format!("Dist {}", self.component));
+            self.pkgname.clone()
+        };
+
         let _time = crate::util::timeit(self.builder);
 
         let mut component_name = self.component.clone();
@@ -206,7 +221,11 @@ impl<'a> Tarball<'a> {
         }
         if self.include_target_in_component_name {
             component_name.push('-');
-            component_name.push_str(&self.target);
+            component_name.push_str(
+                &self
+                    .target
+                    .expect("include_target_in_component_name used in a targetless tarball"),
+            );
         }
 
         let distdir = crate::dist::distdir(self.builder);
@@ -222,12 +241,12 @@ impl<'a> Tarball<'a> {
             .arg(&distdir)
             .arg("--non-installed-overlay")
             .arg(self.overlay_dir)
-            .arg(format!("--package-name={}-{}", self.pkgname, self.target))
+            .arg(format!("--package-name={}", package_name))
             .arg("--legacy-manifest-dirs=rustlib,cargo")
             .arg(format!("--component-name={}", component_name));
         self.builder.run(&mut cmd);
         t!(std::fs::remove_dir_all(&self.temp_dir));
 
-        distdir.join(format!("{}-{}.tar.gz", self.pkgname, self.target))
+        distdir.join(format!("{}.tar.gz", package_name))
     }
 }
