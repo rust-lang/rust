@@ -40,6 +40,29 @@ if (!DOMTokenList.prototype.remove) {
     };
 }
 
+
+// Gets the human-readable string for the virtual-key code of the
+// given KeyboardEvent, ev.
+//
+// This function is meant as a polyfill for KeyboardEvent#key,
+// since it is not supported in IE 11 or Chrome for Android. We also test for
+// KeyboardEvent#keyCode because the handleShortcut handler is
+// also registered for the keydown event, because Blink doesn't fire
+// keypress on hitting the Escape key.
+//
+// So I guess you could say things are getting pretty interoperable.
+function getVirtualKey(ev) {
+    if ("key" in ev && typeof ev.key != "undefined") {
+        return ev.key;
+    }
+
+    var c = ev.charCode || ev.keyCode;
+    if (c == 27) {
+        return "Escape";
+    }
+    return String.fromCharCode(c);
+}
+
 function getSearchInput() {
     return document.getElementsByClassName("search-input")[0];
 }
@@ -324,28 +347,6 @@ function defocusSearchBar() {
                 }
             }
         }
-    }
-
-    // Gets the human-readable string for the virtual-key code of the
-    // given KeyboardEvent, ev.
-    //
-    // This function is meant as a polyfill for KeyboardEvent#key,
-    // since it is not supported in Trident.  We also test for
-    // KeyboardEvent#keyCode because the handleShortcut handler is
-    // also registered for the keydown event, because Blink doesn't fire
-    // keypress on hitting the Escape key.
-    //
-    // So I guess you could say things are getting pretty interoperable.
-    function getVirtualKey(ev) {
-        if ("key" in ev && typeof ev.key != "undefined") {
-            return ev.key;
-        }
-
-        var c = ev.charCode || ev.keyCode;
-        if (c == 27) {
-            return "Escape";
-        }
-        return String.fromCharCode(c);
     }
 
     function getHelpElement() {
