@@ -11,7 +11,7 @@ pub struct S {
     c: u32,
 }
 
-// CHECK: define i128 @modify(i128 %0)
+// CHECK: define i128 @modify(i128{{( %0)?}})
 #[no_mangle]
 pub fn modify(s: S) -> S {
     S { a: s.a + s.a, b: s.b + s.b, c: s.c + s.c }
