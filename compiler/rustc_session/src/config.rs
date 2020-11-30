@@ -13,7 +13,7 @@ use rustc_data_structures::impl_stable_hash_via_hash;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 
 use rustc_target::abi::{Align, TargetDataLayout};
-use rustc_target::spec::{Target, TargetTriple};
+use rustc_target::spec::{SplitDebuginfo, Target, TargetTriple};
 
 use crate::parse::CrateConfig;
 use rustc_feature::UnstableFeatures;
@@ -219,23 +219,6 @@ pub enum DebugInfo {
     None,
     Limited,
     Full,
-}
-
-/// Some debuginfo requires link-time relocation and some does not. LLVM can partition the debuginfo
-/// into sections depending on whether or not it requires link-time relocation. Split DWARF
-/// provides a mechanism which allows the linker to skip the sections which don't require link-time
-/// relocation - either by putting those sections into DWARF object files, or keeping them in the
-/// object file in such a way that the linker will skip them.
-#[derive(Clone, Copy, Debug, PartialEq, Hash)]
-pub enum SplitDwarfKind {
-    /// Disabled.
-    None,
-    /// Sections which do not require relocation are written into the object file but ignored
-    /// by the linker.
-    Single,
-    /// Sections which do not require relocation are written into a DWARF object (`.dwo`) file,
-    /// which is skipped by the linker by virtue of being a different file.
-    Split,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
@@ -635,10 +618,10 @@ impl OutputFilenames {
     /// mode is being used, which is the logic that this function is intended to encapsulate.
     pub fn split_dwarf_filename(
         &self,
-        split_dwarf_kind: SplitDwarfKind,
+        split_debuginfo_kind: SplitDebuginfo,
         cgu_name: Option<&str>,
     ) -> Option<PathBuf> {
-        self.split_dwarf_path(split_dwarf_kind, cgu_name)
+        self.split_dwarf_path(split_debuginfo_kind, cgu_name)
             .map(|path| path.strip_prefix(&self.out_directory).unwrap_or(&path).to_path_buf())
     }
 
@@ -646,19 +629,19 @@ impl OutputFilenames {
     /// mode is being used, which is the logic that this function is intended to encapsulate.
     pub fn split_dwarf_path(
         &self,
-        split_dwarf_kind: SplitDwarfKind,
+        split_debuginfo_kind: SplitDebuginfo,
         cgu_name: Option<&str>,
     ) -> Option<PathBuf> {
         let obj_out = self.temp_path(OutputType::Object, cgu_name);
         let dwo_out = self.temp_path_dwo(cgu_name);
-        match split_dwarf_kind {
-            SplitDwarfKind::None => None,
+        match split_debuginfo_kind {
+            SplitDebuginfo::Off => None,
             // Single mode doesn't change how DWARF is emitted, but does add Split DWARF attributes
             // (pointing at the path which is being determined here). Use the path to the current
             // object file.
-            SplitDwarfKind::Single => Some(obj_out),
+            SplitDebuginfo::Packed => Some(obj_out),
             // Split mode emits the DWARF into a different file, use that path.
-            SplitDwarfKind::Split => Some(dwo_out),
+            SplitDebuginfo::Unpacked => Some(dwo_out),
         }
     }
 }
@@ -1910,6 +1893,15 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
 
     let pretty = parse_pretty(matches, &debugging_opts, error_format);
 
+    if !debugging_opts.unstable_options
+        && !target_triple.triple().contains("apple")
+        && cg.split_debuginfo.is_some()
+    {
+        {
+            early_error(error_format, "`-Csplit-debuginfo` is unstable on this platform");
+        }
+    }
+
     Options {
         crate_types,
         optimize: opt_level,
@@ -2191,7 +2183,7 @@ crate mod dep_tracking {
     use rustc_feature::UnstableFeatures;
     use rustc_span::edition::Edition;
     use rustc_target::spec::{CodeModel, MergeFunctions, PanicStrategy, RelocModel};
-    use rustc_target::spec::{RelroLevel, TargetTriple, TlsModel};
+    use rustc_target::spec::{RelroLevel, SplitDebuginfo, TargetTriple, TlsModel};
     use std::collections::hash_map::DefaultHasher;
     use std::collections::BTreeMap;
     use std::hash::Hash;
@@ -2263,6 +2255,7 @@ crate mod dep_tracking {
     impl_dep_tracking_hash_via_hash!(TargetTriple);
     impl_dep_tracking_hash_via_hash!(Edition);
     impl_dep_tracking_hash_via_hash!(LinkerPluginLto);
+    impl_dep_tracking_hash_via_hash!(Option<SplitDebuginfo>);
     impl_dep_tracking_hash_via_hash!(SwitchWithOptPath);
     impl_dep_tracking_hash_via_hash!(Option<SymbolManglingVersion>);
     impl_dep_tracking_hash_via_hash!(Option<SourceFileHashAlgorithm>);
