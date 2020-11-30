@@ -2109,7 +2109,7 @@ impl<'a> Parser<'a> {
 
         let mut async_block_err = |e: &mut DiagnosticBuilder<'_>, span: Span| {
             recover_async = true;
-            e.span_label(span, "`async` blocks are only allowed in edition 2018 or later");
+            e.span_label(span, "`async` blocks are only allowed in Rust 2018 or later");
             e.help(&format!("set `edition = \"{}\"` in `Cargo.toml`", LATEST_STABLE_EDITION));
             e.note("for more on editions, read https://doc.rust-lang.org/edition-guide");
         };
