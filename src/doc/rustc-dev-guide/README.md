@@ -9,8 +9,10 @@ some new part of the compiler that they haven't worked on before.
 [You can read the latest version of the guide here.](https://rustc-dev-guide.rust-lang.org/)
 
 You may also find the rustdocs [for the compiler itself][rustdocs] useful.
+Note that these are not intended as a guide; it's recommended that you search
+for the docs you're looking for instead of reading them top to bottom.
 
-[rustdocs]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/
+[rustdocs]: https://doc.rust-lang.org/nightly/nightly-rustc
 
 ### Contributing to the guide
 
@@ -35,37 +37,10 @@ rustdocs][rustdocs].
 
 ### Build Instructions
 
-Deactivate the CI testing link validations by commenting out the `[output.linkcheck]` field in the `book.toml` configuration file like this:
-
-```toml
-[book]
-title = "Guide to Rustc Development"
-author = "Rustc developers"
-description = "A guide to developing rustc"
-
-[build]
-create-missing = false
-
-[output.html]
-git-repository-url = "https://github.com/rust-lang/rustc-dev-guide"
-
-[output.html.fold]
-enable = true
-level = 1
-
-# [output.linkcheck]
-# follow-web-links = false
-# exclude = [ "crates\\.io", "gcc\\.godbolt\\.org", "youtube\\.com", "youtu\\.be", "dl\\.acm\\.org", "cs\\.bgu\\.ac\\.il" ]
-# cache-timeout = 172800
-# warning-policy = "error"
-```
-
-These validations can cause errors during local builds (see Link Validations section below).  Please **do not** commit these `book.toml` file changes when you submit a pull request.
-
 To build a local static HTML site, install [`mdbook`](https://github.com/rust-lang/mdBook) with:
 
 ```
-> cargo install mdbook
+> cargo install mdbook mdbook-linkcheck
 ```
 
 and execute the following command in the root of the repository:
@@ -75,6 +50,11 @@ and execute the following command in the root of the repository:
 ```
 
 The build files are found in the `book` directory.
+
+### Link Validations
+
+We use `mdbook-linkcheck` to validate URLs included in our documentation.
+`linkcheck` will be run automatically when you build with the instructions in the section above.
 
 ### Pre-commit script
 
@@ -95,36 +75,11 @@ On Windows:
 New-Item -Path .git/hooks/pre-commit -ItemType HardLink -Value <absolute_path/to/check_line_lengths.sh>
 ```
 
-### Link Validations
-
-We use `mdbook-linkcheck` to validate URLs included in our documentation. To perform link checks, uncomment the `[output.linkcheck]` field in the `book.toml` configuration file and install `mdbook-linkcheck` with:
-
-```bash
-> cargo install mdbook-linkcheck
-```
-
-You will need recent versions of `mdbook` and `mdbook-linkcheck` to check links.
-`linkcheck` will be run automatically when you build with the instructions in the section above.
-
-**Please note**: You may receive errors like the following when link-checking is enabled on local `mdbook` builds:
-
-```
-error: The server responded with 429 Too Many Requests for "https://github.com/rust-lang/rust/tree/master/src/tools/compiletest"
-
-   ┌── tests/intro.md:6:1 ───
-   │
- 6 │ [`src/tools/compiletest`] directory). This section gives a brief
-   │ ^ Server responded with 429 Too Many Requests
-```
-
-There is not a workaround for this error at the moment. Comment out the `[output.linkcheck]` field in the `book.toml` using the build instructions above to complete a local site build without link validations.
-
-
 ## How to fix toolstate failures
 
 > **NOTE**: Currently, we do not track the rustc-dev-guide toolstate due to
-[the spurious failure](https://github.com/rust-lang/rust/pull/71731),
-but we leave this instructions for when we do it again in the future.
+[spurious failures](https://github.com/rust-lang/rust/pull/71731),
+but we leave these instructions for when we do it again in the future.
 
 1. You will get a ping from the toolstate commit. e.g. https://github.com/rust-lang-nursery/rust-toolstate/commit/8ffa0e4c30ac9ba8546b7046e5c4ccc2b96ebdd4
 
