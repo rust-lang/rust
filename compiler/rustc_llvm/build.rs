@@ -86,6 +86,7 @@ fn main() {
         "nvptx",
         "hexagon",
         "riscv",
+        "bpf",
     ];
 
     let required_components = &[

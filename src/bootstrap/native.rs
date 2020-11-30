@@ -236,7 +236,7 @@ impl Step for Llvm {
             Some(s) => s,
             None => {
                 "AArch64;ARM;Hexagon;MSP430;Mips;NVPTX;PowerPC;RISCV;\
-                     Sparc;SystemZ;WebAssembly;X86"
+                     Sparc;SystemZ;WebAssembly;X86;BPF"
             }
         };
 

@@ -234,6 +234,8 @@ flavor. Valid options are:
 * `ptx-linker`: use
   [`rust-ptx-linker`](https://github.com/denzp/rust-ptx-linker) for Nvidia
   NVPTX GPGPU support.
+* `bpf-linker`: use
+  [`bpf-linker`](https://github.com/alessandrod/bpf-linker) for eBPF support.
 * `wasm-ld`: use the [`wasm-ld`](https://lld.llvm.org/WebAssembly.html)
   executable, a port of LLVM `lld` for WebAssembly.
 * `ld64.lld`: use the LLVM `lld` executable with the [`-flavor darwin`
