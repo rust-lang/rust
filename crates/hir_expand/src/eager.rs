@@ -65,7 +65,7 @@ pub fn expand_eager_macro(
     let subtree = to_subtree(&result)?;
 
     if let MacroDefKind::BuiltInEager(eager) = def.kind {
-        let (subtree, fragment) = eager.expand(db, arg_id, &subtree).ok()?;
+        let (subtree, fragment) = eager.expand(db, arg_id, &subtree).value?;
         let eager = EagerCallLoc {
             def,
             fragment,
