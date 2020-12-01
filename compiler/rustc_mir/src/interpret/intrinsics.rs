@@ -344,7 +344,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
                 let align = match Align::from_bytes(align) {
                     Ok(a) => a,
-                    Err(err) => bug!("align has to power of 2, {}", err),
+                    Err(err) => throw_ub_format!("align has to be a power of 2, {}", err),
                 };
 
                 let ptr =

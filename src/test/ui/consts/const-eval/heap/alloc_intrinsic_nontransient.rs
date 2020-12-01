@@ -1,4 +1,3 @@
-// run-pass
 #![feature(core_intrinsics)]
 #![feature(const_heap)]
 #![feature(const_raw_ptr_deref)]
@@ -6,6 +5,7 @@
 use std::intrinsics;
 
 const FOO: *const i32 = foo();
+//~^ error: untyped pointers are not allowed in constant
 
 const fn foo() -> &'static i32 {
     let t = unsafe {

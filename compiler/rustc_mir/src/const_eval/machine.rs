@@ -1,5 +1,6 @@
 use rustc_middle::mir;
 use rustc_middle::ty::layout::HasTyCtxt;
+use rustc_middle::ty::InstanceDef;
 use rustc_middle::ty::{self, Ty};
 use std::borrow::Borrow;
 use std::collections::hash_map::Entry;
@@ -231,8 +232,13 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
             if ecx.tcx.is_const_fn_raw(def.did) {
                 // If this function is a `const fn` then under certain circumstances we
                 // can evaluate call via the query system, thus memoizing all future calls.
-                if ecx.try_eval_const_fn_call(instance, ret, args)? {
-                    return Ok(None);
+                match instance.def {
+                    InstanceDef::Intrinsic(_) => {
+                        if ecx.try_eval_const_fn_call(instance, ret, args)? {
+                            return Ok(None);
+                        }
+                    }
+                    _ => {}
                 }
             } else {
                 // Some functions we support even if they are non-const -- but avoid testing
