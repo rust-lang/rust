@@ -319,7 +319,7 @@ impl CheckAttrVisitor<'tcx> {
                             self.tcx
                                 .sess
                                 .struct_span_err(
-                                    meta.span(),
+                                    meta.name_value_literal_span().unwrap_or_else(|| meta.span()),
                                     &format!(
                                         "{:?} character isn't allowed in `#[doc(alias = \"...\")]`",
                                         c,
@@ -332,7 +332,7 @@ impl CheckAttrVisitor<'tcx> {
                             self.tcx
                                 .sess
                                 .struct_span_err(
-                                    meta.span(),
+                                    meta.name_value_literal_span().unwrap_or_else(|| meta.span()),
                                     "`#[doc(alias = \"...\")]` cannot start or end with ' '",
                                 )
                                 .emit();

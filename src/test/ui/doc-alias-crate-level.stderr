@@ -1,8 +1,8 @@
 error: '\'' character isn't allowed in `#[doc(alias = "...")]`
-  --> $DIR/doc-alias-crate-level.rs:7:8
+  --> $DIR/doc-alias-crate-level.rs:7:16
    |
 LL | #![doc(alias = "shouldn't work!")]
-   |        ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                ^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

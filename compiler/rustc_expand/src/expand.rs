@@ -1603,23 +1603,22 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                             items.push(ast::NestedMetaItem::MetaItem(item));
                         }
                         Err(e) => {
-                            let lit =
-                                it.meta_item().and_then(|item| item.name_value_literal()).unwrap();
+                            let lit_span = it.name_value_literal_span().unwrap();
 
                             if e.kind() == ErrorKind::InvalidData {
                                 self.cx
                                     .struct_span_err(
-                                        lit.span,
+                                        lit_span,
                                         &format!("{} wasn't a utf-8 file", filename.display()),
                                     )
-                                    .span_label(lit.span, "contains invalid utf-8")
+                                    .span_label(lit_span, "contains invalid utf-8")
                                     .emit();
                             } else {
                                 let mut err = self.cx.struct_span_err(
-                                    lit.span,
+                                    lit_span,
                                     &format!("couldn't read {}: {}", filename.display(), e),
                                 );
-                                err.span_label(lit.span, "couldn't read file");
+                                err.span_label(lit_span, "couldn't read file");
 
                                 err.emit();
                             }

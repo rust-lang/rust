@@ -118,6 +118,35 @@ fn bench_file_to_socket_copy(b: &mut test::Bencher) {
     });
 }
 
+#[bench]
+fn bench_file_to_uds_copy(b: &mut test::Bencher) {
+    const BYTES: usize = 128 * 1024;
+    let src_path = temp_dir().join("uds-copy-bench-src");
+    let mut src = OpenOptions::new()
+        .create(true)
+        .truncate(true)
+        .read(true)
+        .write(true)
+        .open(src_path)
+        .unwrap();
+    src.write(&vec![0u8; BYTES]).unwrap();
+
+    let (mut sink, mut sink_drainer) = crate::os::unix::net::UnixStream::pair().unwrap();
+
+    crate::thread::spawn(move || {
+        let mut sink_buf = vec![0u8; 1024 * 1024];
+        loop {
+            sink_drainer.read(&mut sink_buf[..]).unwrap();
+        }
+    });
+
+    b.bytes = BYTES as u64;
+    b.iter(|| {
+        src.seek(SeekFrom::Start(0)).unwrap();
+        assert_eq!(BYTES as u64, io::copy(&mut src, &mut sink).unwrap());
+    });
+}
+
 #[cfg(any(target_os = "linux", target_os = "android"))]
 #[bench]
 fn bench_socket_pipe_socket_copy(b: &mut test::Bencher) {
