@@ -24,7 +24,7 @@ use crate::task::{Context, Poll};
 /// # }
 /// ```
 #[unstable(feature = "future_poll_fn", issue = "72302")]
-pub fn poll_fn<T, F>(f: F) -> PollFn<F>
+pub fn poll_fn<T, F>(f: F) -> impl Future<Output = T>
 where
     F: FnMut(&mut Context<'_>) -> Poll<T>,
 {
@@ -37,7 +37,7 @@ where
 /// documentation for more.
 #[must_use = "futures do nothing unless you `.await` or poll them"]
 #[unstable(feature = "future_poll_fn", issue = "72302")]
-pub struct PollFn<F> {
+struct PollFn<F> {
     f: F,
 }
 
