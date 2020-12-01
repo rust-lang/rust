@@ -744,14 +744,13 @@ impl Function {
         Some(SelfParam { func: self.id })
     }
 
-    pub fn params(self, db: &dyn HirDatabase) -> Vec<Param> {
+    pub fn assoc_fn_params(self, db: &dyn HirDatabase) -> Vec<Param> {
         let resolver = self.id.resolver(db.upcast());
         let ctx = hir_ty::TyLoweringContext::new(db, &resolver);
         let environment = TraitEnvironment::lower(db, &resolver);
         db.function_data(self.id)
             .params
             .iter()
-            .skip(if self.self_param(db).is_some() { 1 } else { 0 })
             .map(|type_ref| {
                 let ty = Type {
                     krate: self.id.lookup(db.upcast()).container.module(db.upcast()).krate,
@@ -763,6 +762,14 @@ impl Function {
                 Param { ty }
             })
             .collect()
+    }
+    pub fn method_params(self, db: &dyn HirDatabase) -> Option<Vec<Param>> {
+        if self.self_param(db).is_none() {
+            return None;
+        }
+        let mut res = self.assoc_fn_params(db);
+        res.remove(0);
+        Some(res)
     }
 
     pub fn is_unsafe(self, db: &dyn HirDatabase) -> bool {
@@ -799,6 +806,7 @@ impl From<Mutability> for Access {
     }
 }
 
+#[derive(Debug)]
 pub struct Param {
     ty: Type,
 }
