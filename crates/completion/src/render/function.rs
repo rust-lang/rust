@@ -22,7 +22,7 @@ pub(crate) fn render_fn<'a>(
 struct FunctionRender<'a> {
     ctx: RenderContext<'a>,
     name: String,
-    fn_: hir::Function,
+    func: hir::Function,
     ast_node: Fn,
 }
 
@@ -35,15 +35,15 @@ impl<'a> FunctionRender<'a> {
         let name = local_name.unwrap_or_else(|| fn_.name(ctx.db()).to_string());
         let ast_node = fn_.source(ctx.db()).value;
 
-        FunctionRender { ctx, name, fn_, ast_node }
+        FunctionRender { ctx, name, func: fn_, ast_node }
     }
 
     fn render(self, import_to_add: Option<ImportToAdd>) -> CompletionItem {
         let params = self.params();
         CompletionItem::new(CompletionKind::Reference, self.ctx.source_range(), self.name.clone())
             .kind(self.kind())
-            .set_documentation(self.ctx.docs(self.fn_))
-            .set_deprecated(self.ctx.is_deprecated(self.fn_))
+            .set_documentation(self.ctx.docs(self.func))
+            .set_deprecated(self.ctx.is_deprecated(self.func))
             .detail(self.detail())
             .add_call_parens(self.ctx.completion, self.name, params)
             .add_import(import_to_add)
@@ -67,7 +67,11 @@ impl<'a> FunctionRender<'a> {
     }
 
     fn params(&self) -> Params {
-        let params_ty = self.fn_.params(self.ctx.db());
+        let params_ty = if self.ctx.completion.dot_receiver.is_some() {
+            self.func.method_params(self.ctx.db()).unwrap_or_default()
+        } else {
+            self.func.assoc_fn_params(self.ctx.db())
+        };
         let params = self
             .ast_node
             .param_list()
@@ -87,7 +91,7 @@ impl<'a> FunctionRender<'a> {
     }
 
     fn kind(&self) -> CompletionItemKind {
-        if self.fn_.self_param(self.ctx.db()).is_some() {
+        if self.func.self_param(self.ctx.db()).is_some() {
             CompletionItemKind::Method
         } else {
             CompletionItemKind::Function

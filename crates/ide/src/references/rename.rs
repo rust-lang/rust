@@ -241,7 +241,7 @@ fn rename_to_self(
         return Err(RenameError("Method already has a self parameter".to_string()));
     }
 
-    let params = fn_def.params(sema.db);
+    let params = fn_def.assoc_fn_params(sema.db);
     let first_param =
         params.first().ok_or_else(|| RenameError("Method has no parameters".into()))?;
     let first_param_ty = first_param.ty();

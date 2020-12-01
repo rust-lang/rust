@@ -139,7 +139,7 @@ fn add_function_impl(
 ) {
     let fn_name = func.name(ctx.db).to_string();
 
-    let label = if func.params(ctx.db).is_empty() {
+    let label = if func.assoc_fn_params(ctx.db).is_empty() {
         format!("fn {}()", fn_name)
     } else {
         format!("fn {}(..)", fn_name)
