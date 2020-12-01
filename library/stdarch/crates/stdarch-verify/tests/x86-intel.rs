@@ -689,6 +689,10 @@ fn equate(t: &Type, intel: &str, intrinsic: &str, is_const: bool) -> Result<(), 
         (&Type::M512, "__m512") => {}
         (&Type::M512I, "__m512i") => {}
         (&Type::M512D, "__m512d") => {}
+        (&Type::MMASK64, "__mmask64") => {}
+        (&Type::MMASK32, "__mmask32") => {}
+        (&Type::MMASK16, "__mmask16") => {}
+        (&Type::MMASK8, "__mmask8") => {}
 
         (&Type::MutPtr(&Type::PrimFloat(32)), "float*") => {}
         (&Type::MutPtr(&Type::PrimFloat(64)), "double*") => {}
@@ -706,6 +710,8 @@ fn equate(t: &Type, intel: &str, intrinsic: &str, is_const: bool) -> Result<(), 
         (&Type::MutPtr(&Type::PrimUnsigned(32)), "unsigned int*") => {}
         (&Type::MutPtr(&Type::PrimUnsigned(64)), "unsigned __int64*") => {}
         (&Type::MutPtr(&Type::PrimUnsigned(8)), "void*") => {}
+        (&Type::MutPtr(&Type::PrimUnsigned(32)), "__mmask32*") => {}
+        (&Type::MutPtr(&Type::PrimUnsigned(64)), "__mmask64*") => {}
         (&Type::MutPtr(&Type::M64), "__m64*") => {}
         (&Type::MutPtr(&Type::M128), "__m128*") => {}
         (&Type::MutPtr(&Type::M128I), "__m128i*") => {}
@@ -733,6 +739,7 @@ fn equate(t: &Type, intel: &str, intrinsic: &str, is_const: bool) -> Result<(), 
         (&Type::ConstPtr(&Type::PrimUnsigned(32)), "unsigned int const*") => {}
         (&Type::ConstPtr(&Type::PrimUnsigned(64)), "unsigned __int64 const*") => {}
         (&Type::ConstPtr(&Type::PrimUnsigned(8)), "void const*") => {}
+        (&Type::ConstPtr(&Type::PrimUnsigned(32)), "void const*") => {}
         (&Type::ConstPtr(&Type::M64), "__m64 const*") => {}
         (&Type::ConstPtr(&Type::M128), "__m128 const*") => {}
         (&Type::ConstPtr(&Type::M128I), "__m128i const*") => {}
@@ -743,11 +750,9 @@ fn equate(t: &Type, intel: &str, intrinsic: &str, is_const: bool) -> Result<(), 
         (&Type::ConstPtr(&Type::M512), "__m512 const*") => {}
         (&Type::ConstPtr(&Type::M512I), "__m512i const*") => {}
         (&Type::ConstPtr(&Type::M512D), "__m512d const*") => {}
+        (&Type::ConstPtr(&Type::PrimUnsigned(32)), "__mmask32*") => {}
+        (&Type::ConstPtr(&Type::PrimUnsigned(64)), "__mmask64*") => {}
 
-        (&Type::MMASK8, "__mmask8") => {}
-        (&Type::MMASK16, "__mmask16") => {}
-        (&Type::MMASK32, "__mmask32") => {}
-        (&Type::MMASK64, "__mmask64") => {}
         (&Type::MM_CMPINT_ENUM, "_MM_CMPINT_ENUM") => {}
         (&Type::MM_MANTISSA_NORM_ENUM, "_MM_MANTISSA_NORM_ENUM") => {}
         (&Type::MM_MANTISSA_SIGN_ENUM, "_MM_MANTISSA_SIGN_ENUM") => {}
