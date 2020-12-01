@@ -69,5 +69,19 @@ error: digits grouped inconsistently by underscores
 LL |     let fail23 = 3__16___23;
    |                  ^^^^^^^^^^ help: consider: `31_623`
 
-error: aborting due to 8 previous errors
+error: digits of hex or binary literal not grouped by four
+  --> $DIR/literals.rs:37:18
+   |
+LL |     let fail24 = 0xAB_ABC_AB;
+   |                  ^^^^^^^^^^^ help: consider: `0x0ABA_BCAB`
+   |
+   = note: `-D clippy::unusual-byte-groupings` implied by `-D warnings`
+
+error: digits of hex or binary literal not grouped by four
+  --> $DIR/literals.rs:38:18
+   |
+LL |     let fail25 = 0b01_100_101;
+   |                  ^^^^^^^^^^^^ help: consider: `0b0110_0101`
+
+error: aborting due to 10 previous errors
 

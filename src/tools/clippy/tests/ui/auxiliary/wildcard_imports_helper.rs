@@ -19,3 +19,9 @@ mod extern_exports {
         A,
     }
 }
+
+pub mod prelude {
+    pub mod v1 {
+        pub struct PreludeModAnywhere;
+    }
+}

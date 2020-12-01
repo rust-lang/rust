@@ -1,4 +1,4 @@
-error: called `map_or(None, f)` on an `Option` value. This can be done more directly by calling `and_then(f)` instead
+error: called `map_or(None, ..)` on an `Option` value. This can be done more directly by calling `and_then(..)` instead
   --> $DIR/option_map_or_none.rs:10:13
    |
 LL |     let _ = opt.map_or(None, |x| Some(x + 1));
@@ -6,7 +6,7 @@ LL |     let _ = opt.map_or(None, |x| Some(x + 1));
    |
    = note: `-D clippy::option-map-or-none` implied by `-D warnings`
 
-error: called `map_or(None, f)` on an `Option` value. This can be done more directly by calling `and_then(f)` instead
+error: called `map_or(None, ..)` on an `Option` value. This can be done more directly by calling `and_then(..)` instead
   --> $DIR/option_map_or_none.rs:13:13
    |
 LL |       let _ = opt.map_or(None, |x| {

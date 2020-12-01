@@ -4,11 +4,12 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{def, BindingAnnotation, Block, Expr, ExprKind, MatchSource, PatKind, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_span::sym;
 
 use crate::utils::sugg::Sugg;
 use crate::utils::{
-    higher, is_type_diagnostic_item, match_def_path, match_qpath, paths, snippet_with_applicability,
-    span_lint_and_sugg, SpanlessEq,
+    eq_expr_value, higher, is_type_diagnostic_item, match_def_path, match_qpath, paths, snippet_with_applicability,
+    span_lint_and_sugg,
 };
 
 declare_clippy_lint! {
@@ -65,7 +66,7 @@ impl QuestionMark {
                         if let ExprKind::Block(block, None) = &else_.kind;
                         if block.stmts.is_empty();
                         if let Some(block_expr) = &block.expr;
-                        if SpanlessEq::new(cx).ignore_fn().eq_expr(subject, block_expr);
+                        if eq_expr_value(cx, subject, block_expr);
                         then {
                             replacement = Some(format!("Some({}?)", receiver_str));
                         }
@@ -143,7 +144,7 @@ impl QuestionMark {
     fn is_option(cx: &LateContext<'_>, expression: &Expr<'_>) -> bool {
         let expr_ty = cx.typeck_results().expr_ty(expression);
 
-        is_type_diagnostic_item(cx, expr_ty, sym!(option_type))
+        is_type_diagnostic_item(cx, expr_ty, sym::option_type)
     }
 
     fn expression_returns_none(cx: &LateContext<'_>, expression: &Expr<'_>) -> bool {

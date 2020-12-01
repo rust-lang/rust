@@ -1,24 +1,30 @@
-error: digit groups should be smaller
+error: digits of hex or binary literal not grouped by four
+  --> $DIR/large_digit_groups.rs:14:9
+   |
+LL |         0x1_234_567,
+   |         ^^^^^^^^^^^ help: consider: `0x0123_4567`
+   |
+   = note: `-D clippy::unusual-byte-groupings` implied by `-D warnings`
+
+error: digits of hex or binary literal not grouped by four
   --> $DIR/large_digit_groups.rs:22:9
    |
 LL |         0b1_10110_i64,
    |         ^^^^^^^^^^^^^ help: consider: `0b11_0110_i64`
-   |
-   = note: `-D clippy::large-digit-groups` implied by `-D warnings`
 
-error: digits grouped inconsistently by underscores
+error: digits of hex or binary literal not grouped by four
   --> $DIR/large_digit_groups.rs:23:9
    |
 LL |         0xd_e_adbee_f_usize,
    |         ^^^^^^^^^^^^^^^^^^^ help: consider: `0xdead_beef_usize`
-   |
-   = note: `-D clippy::inconsistent-digit-grouping` implied by `-D warnings`
 
 error: digit groups should be smaller
   --> $DIR/large_digit_groups.rs:24:9
    |
 LL |         1_23456_f32,
    |         ^^^^^^^^^^^ help: consider: `123_456_f32`
+   |
+   = note: `-D clippy::large-digit-groups` implied by `-D warnings`
 
 error: digit groups should be smaller
   --> $DIR/large_digit_groups.rs:25:9
@@ -38,5 +44,5 @@ error: digit groups should be smaller
 LL |         1_23456.12345_6_f64,
    |         ^^^^^^^^^^^^^^^^^^^ help: consider: `123_456.123_456_f64`
 
-error: aborting due to 6 previous errors
+error: aborting due to 7 previous errors
 

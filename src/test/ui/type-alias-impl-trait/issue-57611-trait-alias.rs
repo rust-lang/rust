@@ -16,12 +16,16 @@ struct X;
 impl Foo for X {
     type Bar = impl Baz<Self, Self>;
     //~^ ERROR mismatched types
+    //~| ERROR mismatched types
+    //~| ERROR mismatched types
+    //~| ERROR mismatched types
+    //~| ERROR mismatched types
 
     fn bar(&self) -> Self::Bar {
         |x| x
     }
 }
 
-trait Baz<A, B> = Fn(&A) -> &B;
+trait Baz<A: ?Sized, B: ?Sized> = Fn(&A) -> &B;
 
 fn main() {}

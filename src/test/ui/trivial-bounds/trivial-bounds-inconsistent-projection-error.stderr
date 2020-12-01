@@ -7,7 +7,7 @@ LL | fn global_bound_is_hidden() -> u8
 LL |     B::get_x()
    |     ^^^^^^^^^^ expected `u8`, found `i32`
    |
-help: you can convert an `i32` to `u8` and panic if the converted value wouldn't fit
+help: you can convert an `i32` to a `u8` and panic if the converted value doesn't fit
    |
 LL |     B::get_x().try_into().unwrap()
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

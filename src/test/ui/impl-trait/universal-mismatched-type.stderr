@@ -2,13 +2,13 @@ error[E0308]: mismatched types
   --> $DIR/universal-mismatched-type.rs:4:5
    |
 LL | fn foo(x: impl Debug) -> String {
-   |           ----------     ------ expected `std::string::String` because of return type
+   |           ----------     ------ expected `String` because of return type
    |           |
    |           this type parameter
 LL |     x
-   |     ^ expected struct `std::string::String`, found type parameter `impl Debug`
+   |     ^ expected struct `String`, found type parameter `impl Debug`
    |
-   = note:      expected struct `std::string::String`
+   = note:      expected struct `String`
            found type parameter `impl Debug`
 
 error: aborting due to previous error

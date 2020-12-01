@@ -53,7 +53,7 @@ impl DwarfReader {
     }
 
     pub unsafe fn read_sleb128(&mut self) -> i64 {
-        let mut shift: usize = 0;
+        let mut shift: u32 = 0;
         let mut result: u64 = 0;
         let mut byte: u8;
         loop {
@@ -65,7 +65,7 @@ impl DwarfReader {
             }
         }
         // sign-extend
-        if shift < 8 * mem::size_of::<u64>() && (byte & 0x40) != 0 {
+        if shift < u64::BITS && (byte & 0x40) != 0 {
             result |= (!0 as u64) << shift;
         }
         result as i64

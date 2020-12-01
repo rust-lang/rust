@@ -1,5 +1,4 @@
 // run-pass
-// ignore-cloudabi no target_family
 // ignore-wasm32-bare no target_family
 // ignore-sgx
 

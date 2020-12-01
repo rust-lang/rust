@@ -1,0 +1,85 @@
+// run-rustfix
+
+#![warn(clippy::all)]
+#![warn(clippy::redundant_pattern_matching)]
+#![allow(
+    clippy::unit_arg,
+    unused_must_use,
+    clippy::needless_bool,
+    clippy::match_like_matches_macro,
+    deprecated
+)]
+
+fn main() {
+    if None::<()>.is_none() {}
+
+    if Some(42).is_some() {}
+
+    if Some(42).is_some() {
+        foo();
+    } else {
+        bar();
+    }
+
+    while Some(42).is_some() {}
+
+    while Some(42).is_none() {}
+
+    while None::<()>.is_none() {}
+
+    let mut v = vec![1, 2, 3];
+    while v.pop().is_some() {
+        foo();
+    }
+
+    if None::<i32>.is_none() {}
+
+    if Some(42).is_some() {}
+
+    Some(42).is_some();
+
+    None::<()>.is_none();
+
+    let _ = None::<()>.is_none();
+
+    let opt = Some(false);
+    let x = if opt.is_some() { true } else { false };
+    takes_bool(x);
+
+    issue6067();
+
+    let _ = if gen_opt().is_some() {
+        1
+    } else if gen_opt().is_none() {
+        2
+    } else {
+        3
+    };
+}
+
+fn gen_opt() -> Option<()> {
+    None
+}
+
+fn takes_bool(_: bool) {}
+
+fn foo() {}
+
+fn bar() {}
+
+// Methods that are unstable const should not be suggested within a const context, see issue #5697.
+// However, in Rust 1.48.0 the methods `is_some` and `is_none` of `Option` were stabilized as const,
+// so the following should be linted.
+const fn issue6067() {
+    if Some(42).is_some() {}
+
+    if None::<()>.is_none() {}
+
+    while Some(42).is_some() {}
+
+    while None::<()>.is_none() {}
+
+    Some(42).is_some();
+
+    None::<()>.is_none();
+}

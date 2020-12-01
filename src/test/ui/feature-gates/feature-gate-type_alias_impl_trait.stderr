@@ -1,5 +1,5 @@
 error[E0658]: `impl Trait` in type aliases is unstable
-  --> $DIR/feature-gate-type_alias_impl_trait.rs:3:12
+  --> $DIR/feature-gate-type_alias_impl_trait.rs:4:12
    |
 LL | type Foo = impl Debug;
    |            ^^^^^^^^^^
@@ -8,7 +8,7 @@ LL | type Foo = impl Debug;
    = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
 
 error[E0658]: `impl Trait` in type aliases is unstable
-  --> $DIR/feature-gate-type_alias_impl_trait.rs:11:16
+  --> $DIR/feature-gate-type_alias_impl_trait.rs:12:16
    |
 LL |     type Baa = impl Debug;
    |                ^^^^^^^^^^
@@ -17,7 +17,7 @@ LL |     type Baa = impl Debug;
    = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
 
 error[E0658]: associated type defaults are unstable
-  --> $DIR/feature-gate-type_alias_impl_trait.rs:22:5
+  --> $DIR/feature-gate-type_alias_impl_trait.rs:23:5
    |
 LL |     type Assoc = impl Debug;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -26,7 +26,7 @@ LL |     type Assoc = impl Debug;
    = help: add `#![feature(associated_type_defaults)]` to the crate attributes to enable
 
 error[E0658]: `impl Trait` in type aliases is unstable
-  --> $DIR/feature-gate-type_alias_impl_trait.rs:22:18
+  --> $DIR/feature-gate-type_alias_impl_trait.rs:23:18
    |
 LL |     type Assoc = impl Debug;
    |                  ^^^^^^^^^^
@@ -35,7 +35,7 @@ LL |     type Assoc = impl Debug;
    = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
 
 error[E0658]: `impl Trait` in type aliases is unstable
-  --> $DIR/feature-gate-type_alias_impl_trait.rs:28:24
+  --> $DIR/feature-gate-type_alias_impl_trait.rs:29:24
    |
 LL | type NestedFree = (Vec<impl Debug>, impl Debug, impl Iterator<Item = impl Debug>);
    |                        ^^^^^^^^^^
@@ -44,7 +44,7 @@ LL | type NestedFree = (Vec<impl Debug>, impl Debug, impl Iterator<Item = impl D
    = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
 
 error[E0658]: `impl Trait` in type aliases is unstable
-  --> $DIR/feature-gate-type_alias_impl_trait.rs:28:37
+  --> $DIR/feature-gate-type_alias_impl_trait.rs:29:37
    |
 LL | type NestedFree = (Vec<impl Debug>, impl Debug, impl Iterator<Item = impl Debug>);
    |                                     ^^^^^^^^^^
@@ -53,7 +53,7 @@ LL | type NestedFree = (Vec<impl Debug>, impl Debug, impl Iterator<Item = impl D
    = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
 
 error[E0658]: `impl Trait` in type aliases is unstable
-  --> $DIR/feature-gate-type_alias_impl_trait.rs:28:49
+  --> $DIR/feature-gate-type_alias_impl_trait.rs:29:49
    |
 LL | type NestedFree = (Vec<impl Debug>, impl Debug, impl Iterator<Item = impl Debug>);
    |                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -62,7 +62,7 @@ LL | type NestedFree = (Vec<impl Debug>, impl Debug, impl Iterator<Item = impl D
    = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
 
 error[E0658]: `impl Trait` in type aliases is unstable
-  --> $DIR/feature-gate-type_alias_impl_trait.rs:28:70
+  --> $DIR/feature-gate-type_alias_impl_trait.rs:29:70
    |
 LL | type NestedFree = (Vec<impl Debug>, impl Debug, impl Iterator<Item = impl Debug>);
    |                                                                      ^^^^^^^^^^
@@ -71,7 +71,7 @@ LL | type NestedFree = (Vec<impl Debug>, impl Debug, impl Iterator<Item = impl D
    = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
 
 error[E0658]: `impl Trait` in type aliases is unstable
-  --> $DIR/feature-gate-type_alias_impl_trait.rs:39:21
+  --> $DIR/feature-gate-type_alias_impl_trait.rs:40:21
    |
 LL |     type Baa = (Vec<impl Debug>, impl Debug, impl Iterator<Item = impl Debug> + Debug);
    |                     ^^^^^^^^^^
@@ -80,7 +80,7 @@ LL |     type Baa = (Vec<impl Debug>, impl Debug, impl Iterator<Item = impl Debu
    = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
 
 error[E0658]: `impl Trait` in type aliases is unstable
-  --> $DIR/feature-gate-type_alias_impl_trait.rs:39:34
+  --> $DIR/feature-gate-type_alias_impl_trait.rs:40:34
    |
 LL |     type Baa = (Vec<impl Debug>, impl Debug, impl Iterator<Item = impl Debug> + Debug);
    |                                  ^^^^^^^^^^
@@ -89,7 +89,7 @@ LL |     type Baa = (Vec<impl Debug>, impl Debug, impl Iterator<Item = impl Debu
    = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
 
 error[E0658]: `impl Trait` in type aliases is unstable
-  --> $DIR/feature-gate-type_alias_impl_trait.rs:39:46
+  --> $DIR/feature-gate-type_alias_impl_trait.rs:40:46
    |
 LL |     type Baa = (Vec<impl Debug>, impl Debug, impl Iterator<Item = impl Debug> + Debug);
    |                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -98,7 +98,7 @@ LL |     type Baa = (Vec<impl Debug>, impl Debug, impl Iterator<Item = impl Debu
    = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
 
 error[E0658]: `impl Trait` in type aliases is unstable
-  --> $DIR/feature-gate-type_alias_impl_trait.rs:39:67
+  --> $DIR/feature-gate-type_alias_impl_trait.rs:40:67
    |
 LL |     type Baa = (Vec<impl Debug>, impl Debug, impl Iterator<Item = impl Debug> + Debug);
    |                                                                   ^^^^^^^^^^
@@ -107,7 +107,7 @@ LL |     type Baa = (Vec<impl Debug>, impl Debug, impl Iterator<Item = impl Debu
    = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
 
 error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
-  --> $DIR/feature-gate-type_alias_impl_trait.rs:22:18
+  --> $DIR/feature-gate-type_alias_impl_trait.rs:23:18
    |
 LL |     type Assoc = impl Debug;
    |                  ^^^^^^^^^^

@@ -108,3 +108,32 @@ fn write_str_macro_debug(bh: &mut Bencher) {
         }
     });
 }
+
+#[bench]
+fn write_u128_max(bh: &mut Bencher) {
+    bh.iter(|| {
+        std::hint::black_box(format!("{}", u128::MAX));
+    });
+}
+
+#[bench]
+fn write_u128_min(bh: &mut Bencher) {
+    bh.iter(|| {
+        let s = format!("{}", 0u128);
+        std::hint::black_box(s);
+    });
+}
+
+#[bench]
+fn write_u64_max(bh: &mut Bencher) {
+    bh.iter(|| {
+        std::hint::black_box(format!("{}", u64::MAX));
+    });
+}
+
+#[bench]
+fn write_u64_min(bh: &mut Bencher) {
+    bh.iter(|| {
+        std::hint::black_box(format!("{}", 0u64));
+    });
+}

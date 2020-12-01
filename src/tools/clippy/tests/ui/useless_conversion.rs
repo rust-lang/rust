@@ -1,6 +1,7 @@
 // run-rustfix
 
 #![deny(clippy::useless_conversion)]
+#![allow(clippy::unnecessary_wraps)]
 
 fn test_generic<T: Copy>(val: T) -> T {
     let _ = T::from(val);
@@ -64,4 +65,9 @@ fn main() {
     let _ = "".lines().into_iter();
     let _ = vec![1, 2, 3].into_iter().into_iter();
     let _: String = format!("Hello {}", "world").into();
+
+    // keep parenthesis around `a + b` for suggestion (see #4750)
+    let a: i32 = 1;
+    let b: i32 = 1;
+    let _ = i32::from(a + b) * 3;
 }

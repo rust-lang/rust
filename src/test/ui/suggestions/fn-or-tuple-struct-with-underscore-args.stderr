@@ -1,38 +1,93 @@
-error: expected expression, found reserved identifier `_`
+error[E0658]: destructuring assignments are unstable
   --> $DIR/fn-or-tuple-struct-with-underscore-args.rs:10:24
    |
 LL |     let _: usize = foo(_, _);
-   |                        ^ expected expression
+   |                        ^
+   |
+   = note: see issue #71126 <https://github.com/rust-lang/rust/issues/71126> for more information
+   = help: add `#![feature(destructuring_assignment)]` to the crate attributes to enable
 
-error: expected expression, found reserved identifier `_`
+error[E0658]: destructuring assignments are unstable
   --> $DIR/fn-or-tuple-struct-with-underscore-args.rs:10:27
    |
 LL |     let _: usize = foo(_, _);
-   |                           ^ expected expression
+   |                           ^
+   |
+   = note: see issue #71126 <https://github.com/rust-lang/rust/issues/71126> for more information
+   = help: add `#![feature(destructuring_assignment)]` to the crate attributes to enable
 
-error: expected expression, found reserved identifier `_`
-  --> $DIR/fn-or-tuple-struct-with-underscore-args.rs:13:18
+error[E0658]: destructuring assignments are unstable
+  --> $DIR/fn-or-tuple-struct-with-underscore-args.rs:15:18
    |
 LL |     let _: S = S(_, _);
-   |                  ^ expected expression
+   |                  ^
+   |
+   = note: see issue #71126 <https://github.com/rust-lang/rust/issues/71126> for more information
+   = help: add `#![feature(destructuring_assignment)]` to the crate attributes to enable
 
-error: expected expression, found reserved identifier `_`
-  --> $DIR/fn-or-tuple-struct-with-underscore-args.rs:13:21
+error[E0658]: destructuring assignments are unstable
+  --> $DIR/fn-or-tuple-struct-with-underscore-args.rs:15:21
    |
 LL |     let _: S = S(_, _);
-   |                     ^ expected expression
+   |                     ^
+   |
+   = note: see issue #71126 <https://github.com/rust-lang/rust/issues/71126> for more information
+   = help: add `#![feature(destructuring_assignment)]` to the crate attributes to enable
 
-error: expected expression, found reserved identifier `_`
-  --> $DIR/fn-or-tuple-struct-with-underscore-args.rs:16:27
+error[E0658]: destructuring assignments are unstable
+  --> $DIR/fn-or-tuple-struct-with-underscore-args.rs:20:27
    |
 LL |     let _: usize = T::baz(_, _);
-   |                           ^ expected expression
+   |                           ^
+   |
+   = note: see issue #71126 <https://github.com/rust-lang/rust/issues/71126> for more information
+   = help: add `#![feature(destructuring_assignment)]` to the crate attributes to enable
 
-error: expected expression, found reserved identifier `_`
-  --> $DIR/fn-or-tuple-struct-with-underscore-args.rs:16:30
+error[E0658]: destructuring assignments are unstable
+  --> $DIR/fn-or-tuple-struct-with-underscore-args.rs:20:30
    |
 LL |     let _: usize = T::baz(_, _);
-   |                              ^ expected expression
+   |                              ^
+   |
+   = note: see issue #71126 <https://github.com/rust-lang/rust/issues/71126> for more information
+   = help: add `#![feature(destructuring_assignment)]` to the crate attributes to enable
 
-error: aborting due to 6 previous errors
+error: in expressions, `_` can only be used on the left-hand side of an assignment
+  --> $DIR/fn-or-tuple-struct-with-underscore-args.rs:10:24
+   |
+LL |     let _: usize = foo(_, _);
+   |                        ^ `_` not allowed here
 
+error: in expressions, `_` can only be used on the left-hand side of an assignment
+  --> $DIR/fn-or-tuple-struct-with-underscore-args.rs:10:27
+   |
+LL |     let _: usize = foo(_, _);
+   |                           ^ `_` not allowed here
+
+error: in expressions, `_` can only be used on the left-hand side of an assignment
+  --> $DIR/fn-or-tuple-struct-with-underscore-args.rs:15:18
+   |
+LL |     let _: S = S(_, _);
+   |                  ^ `_` not allowed here
+
+error: in expressions, `_` can only be used on the left-hand side of an assignment
+  --> $DIR/fn-or-tuple-struct-with-underscore-args.rs:15:21
+   |
+LL |     let _: S = S(_, _);
+   |                     ^ `_` not allowed here
+
+error: in expressions, `_` can only be used on the left-hand side of an assignment
+  --> $DIR/fn-or-tuple-struct-with-underscore-args.rs:20:27
+   |
+LL |     let _: usize = T::baz(_, _);
+   |                           ^ `_` not allowed here
+
+error: in expressions, `_` can only be used on the left-hand side of an assignment
+  --> $DIR/fn-or-tuple-struct-with-underscore-args.rs:20:30
+   |
+LL |     let _: usize = T::baz(_, _);
+   |                              ^ `_` not allowed here
+
+error: aborting due to 12 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

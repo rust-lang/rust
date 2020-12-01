@@ -9,7 +9,6 @@ const FOO: &u32 = {
     {
         let b: *mut u32 = &mut a; //~ ERROR mutable references are not allowed in constants
         unsafe { *b = 5; } //~ ERROR dereferencing raw pointers in constants
-        //[stock]~^ contains unimplemented expression
     }
     &{a}
 };

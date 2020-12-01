@@ -44,7 +44,7 @@ impl<'tcx> LateLintPass<'tcx> for ToDigitIsSome {
                             if let [char_arg, radix_arg] = &**to_digit_args;
                             if to_digits_path.ident.name.as_str() == "to_digit";
                             let char_arg_ty = cx.typeck_results().expr_ty_adjusted(char_arg);
-                            if char_arg_ty.kind == ty::Char;
+                            if *char_arg_ty.kind() == ty::Char;
                             then {
                                 Some((true, char_arg, radix_arg))
                             } else {

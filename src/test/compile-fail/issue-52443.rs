@@ -11,5 +11,4 @@ fn main() {
     //~| ERROR calls in constants are limited to constant functions
     //~| ERROR mutable references are not allowed in constants
     //~| ERROR calls in constants are limited to constant functions
-    //~| ERROR evaluation of constant value failed
 }

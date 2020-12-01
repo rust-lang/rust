@@ -3,7 +3,6 @@
 // compile-flags:-C panic=abort
 // aux-build:exit-success-if-unwind.rs
 // no-prefer-dynamic
-// ignore-cloudabi no processes
 // ignore-emscripten no processes
 // ignore-sgx no processes
 // ignore-macos

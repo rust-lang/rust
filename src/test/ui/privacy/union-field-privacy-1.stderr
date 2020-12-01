@@ -1,10 +1,10 @@
-error[E0451]: field `c` of union `m::U` is private
+error[E0451]: field `c` of union `U` is private
   --> $DIR/union-field-privacy-1.rs:12:20
    |
 LL |     let u = m::U { c: 0 };
    |                    ^^^^ private field
 
-error[E0451]: field `c` of union `m::U` is private
+error[E0451]: field `c` of union `U` is private
   --> $DIR/union-field-privacy-1.rs:16:16
    |
 LL |     let m::U { c } = u;

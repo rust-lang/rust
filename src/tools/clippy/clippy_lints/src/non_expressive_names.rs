@@ -1,12 +1,11 @@
 use crate::utils::{span_lint, span_lint_and_then};
-use rustc_ast::ast::{
-    Arm, AssocItem, AssocItemKind, Attribute, Block, FnDecl, Item, ItemKind, Local, MacCall, Pat, PatKind,
-};
+use rustc_ast::ast::{Arm, AssocItem, AssocItemKind, Attribute, Block, FnDecl, Item, ItemKind, Local, Pat, PatKind};
 use rustc_ast::visit::{walk_block, walk_expr, walk_pat, Visitor};
 use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::Span;
+use rustc_span::sym;
 use rustc_span::symbol::{Ident, Symbol};
 use std::cmp::Ordering;
 
@@ -148,9 +147,6 @@ impl<'a, 'tcx, 'b> Visitor<'tcx> for SimilarNamesNameVisitor<'a, 'tcx, 'b> {
             PatKind::Or(ref pats) => self.visit_pat(&pats[0]),
             _ => walk_pat(self, pat),
         }
-    }
-    fn visit_mac(&mut self, _mac: &MacCall) {
-        // do not check macs
     }
 }
 
@@ -356,9 +352,6 @@ impl<'a, 'tcx> Visitor<'tcx> for SimilarNamesLocalVisitor<'a, 'tcx> {
     fn visit_item(&mut self, _: &Item) {
         // do not recurse into inner items
     }
-    fn visit_mac(&mut self, _mac: &MacCall) {
-        // do not check macs
-    }
 }
 
 impl EarlyLintPass for NonExpressiveNames {
@@ -384,7 +377,7 @@ impl EarlyLintPass for NonExpressiveNames {
 }
 
 fn do_check(lint: &mut NonExpressiveNames, cx: &EarlyContext<'_>, attrs: &[Attribute], decl: &FnDecl, blk: &Block) {
-    if !attrs.iter().any(|attr| attr.has_name(sym!(test))) {
+    if !attrs.iter().any(|attr| attr.has_name(sym::test)) {
         let mut visitor = SimilarNamesLocalVisitor {
             names: Vec::new(),
             cx,

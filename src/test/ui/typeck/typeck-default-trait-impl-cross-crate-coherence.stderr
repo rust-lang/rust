@@ -20,7 +20,7 @@ LL | impl !DefaultedTrait for (B,) { }
    |
    = note: define and implement a trait or new type instead
 
-error[E0321]: cross-crate traits with a default impl, like `lib::DefaultedTrait`, can only be implemented for a struct/enum type defined in the current crate
+error[E0321]: cross-crate traits with a default impl, like `DefaultedTrait`, can only be implemented for a struct/enum type defined in the current crate
   --> $DIR/typeck-default-trait-impl-cross-crate-coherence.rs:20:1
    |
 LL | impl DefaultedTrait for Box<C> { }
@@ -32,7 +32,7 @@ error[E0117]: only traits defined in the current crate can be implemented for ar
 LL | impl DefaultedTrait for lib::Something<C> { }
    | ^^^^^^^^^^^^^^^^^^^^^^^^-----------------
    | |                       |
-   | |                       `lib::Something` is not defined in the current crate
+   | |                       `Something` is not defined in the current crate
    | impl doesn't use only types from inside the current crate
    |
    = note: define and implement a trait or new type instead

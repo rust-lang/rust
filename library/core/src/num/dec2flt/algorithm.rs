@@ -60,12 +60,19 @@ mod fpu_precision {
     fn set_cw(cw: u16) {
         // SAFETY: the `fldcw` instruction has been audited to be able to work correctly with
         // any `u16`
-        unsafe { llvm_asm!("fldcw $0" :: "m" (cw) :: "volatile") }
+        unsafe {
+            asm!(
+                "fldcw ({})",
+                in(reg) &cw,
+                // FIXME: We are using ATT syntax to support LLVM 8 and LLVM 9.
+                options(att_syntax, nostack),
+            )
+        }
     }
 
     /// Sets the precision field of the FPU to `T` and returns a `FPUControlWord`.
     pub fn set_precision<T>() -> FPUControlWord {
-        let cw = 0u16;
+        let mut cw = 0_u16;
 
         // Compute the value for the Precision Control field that is appropriate for `T`.
         let cw_precision = match size_of::<T>() {
@@ -78,7 +85,14 @@ mod fpu_precision {
         // `FPUControlWord` structure is dropped
         // SAFETY: the `fnstcw` instruction has been audited to be able to work correctly with
         // any `u16`
-        unsafe { llvm_asm!("fnstcw $0" : "=*m" (&cw) ::: "volatile") }
+        unsafe {
+            asm!(
+                "fnstcw ({})",
+                in(reg) &mut cw,
+                // FIXME: We are using ATT syntax to support LLVM 8 and LLVM 9.
+                options(att_syntax, nostack),
+            )
+        }
 
         // Set the control word to the desired precision. This is achieved by masking away the old
         // precision (bits 8 and 9, 0x300) and replacing it with the precision flag computed above.

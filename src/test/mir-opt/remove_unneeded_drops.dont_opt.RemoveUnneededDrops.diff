@@ -1,0 +1,32 @@
+- // MIR for `dont_opt` before RemoveUnneededDrops
++ // MIR for `dont_opt` after RemoveUnneededDrops
+  
+  fn dont_opt(_1: Vec<bool>) -> () {
+      debug x => _1;                       // in scope 0 at $DIR/remove_unneeded_drops.rs:8:13: 8:14
+      let mut _0: ();                      // return place in scope 0 at $DIR/remove_unneeded_drops.rs:8:27: 8:27
+      let _2: ();                          // in scope 0 at $DIR/remove_unneeded_drops.rs:9:5: 9:12
+      let mut _3: std::vec::Vec<bool>;     // in scope 0 at $DIR/remove_unneeded_drops.rs:9:10: 9:11
+      scope 1 (inlined std::mem::drop::<Vec<bool>>) { // at $DIR/remove_unneeded_drops.rs:9:5: 9:12
+          debug _x => _3;                  // in scope 1 at $DIR/remove_unneeded_drops.rs:9:5: 9:12
+      }
+  
+      bb0: {
+          StorageLive(_2);                 // scope 0 at $DIR/remove_unneeded_drops.rs:9:5: 9:12
+          StorageLive(_3);                 // scope 0 at $DIR/remove_unneeded_drops.rs:9:10: 9:11
+          _3 = move _1;                    // scope 0 at $DIR/remove_unneeded_drops.rs:9:10: 9:11
+          _2 = const ();                   // scope 1 at $DIR/remove_unneeded_drops.rs:9:5: 9:12
+          drop(_3) -> [return: bb2, unwind: bb1]; // scope 1 at $DIR/remove_unneeded_drops.rs:9:5: 9:12
+      }
+  
+      bb1 (cleanup): {
+          resume;                          // scope 0 at $DIR/remove_unneeded_drops.rs:8:1: 10:2
+      }
+  
+      bb2: {
+          StorageDead(_3);                 // scope 0 at $DIR/remove_unneeded_drops.rs:9:11: 9:12
+          StorageDead(_2);                 // scope 0 at $DIR/remove_unneeded_drops.rs:9:12: 9:13
+          _0 = const ();                   // scope 0 at $DIR/remove_unneeded_drops.rs:8:27: 10:2
+          return;                          // scope 0 at $DIR/remove_unneeded_drops.rs:10:2: 10:2
+      }
+  }
+  

@@ -1,5 +1,3 @@
-#![feature(doc_alias)]
-
 #[doc(alias = "StructItem")]
 pub struct Struct {
     #[doc(alias = "StructFieldItem")]

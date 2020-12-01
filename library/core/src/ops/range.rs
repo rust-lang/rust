@@ -1,5 +1,9 @@
 use crate::fmt;
 use crate::hash::Hash;
+use crate::slice::index::{
+    slice_end_index_len_fail, slice_end_index_overflow_fail, slice_index_order_fail,
+    slice_start_index_overflow_fail,
+};
 
 /// An unbounded range (`..`).
 ///
@@ -19,7 +23,7 @@ use crate::hash::Hash;
 ///
 /// ```compile_fail,E0277
 /// for i in .. {
-///    // ...
+///     // ...
 /// }
 /// ```
 ///
@@ -27,12 +31,12 @@ use crate::hash::Hash;
 ///
 /// ```
 /// let arr = [0, 1, 2, 3, 4];
-/// assert_eq!(arr[ ..  ], [0,1,2,3,4]);  // RangeFull
-/// assert_eq!(arr[ .. 3], [0,1,2    ]);
-/// assert_eq!(arr[ ..=3], [0,1,2,3  ]);
-/// assert_eq!(arr[1..  ], [  1,2,3,4]);
-/// assert_eq!(arr[1.. 3], [  1,2    ]);
-/// assert_eq!(arr[1..=3], [  1,2,3  ]);
+/// assert_eq!(arr[ ..  ], [0, 1, 2, 3, 4]); // This is the `RangeFull`
+/// assert_eq!(arr[ .. 3], [0, 1, 2      ]);
+/// assert_eq!(arr[ ..=3], [0, 1, 2, 3   ]);
+/// assert_eq!(arr[1..  ], [   1, 2, 3, 4]);
+/// assert_eq!(arr[1.. 3], [   1, 2      ]);
+/// assert_eq!(arr[1..=3], [   1, 2, 3   ]);
 /// ```
 ///
 /// [slicing index]: crate::slice::SliceIndex
@@ -52,22 +56,26 @@ impl fmt::Debug for RangeFull {
 /// A (half-open) range bounded inclusively below and exclusively above
 /// (`start..end`).
 ///
-/// The `Range` `start..end` contains all values with `x >= start` and
-/// `x < end`. It is empty unless `start < end`.
+/// The range `start..end` contains all values with `start <= x < end`.
+/// It is empty if `start >= end`.
 ///
 /// # Examples
+///
+/// The `start..end` syntax is a `Range`:
 ///
 /// ```
 /// assert_eq!((3..5), std::ops::Range { start: 3, end: 5 });
 /// assert_eq!(3 + 4 + 5, (3..6).sum());
+/// ```
 ///
+/// ```
 /// let arr = [0, 1, 2, 3, 4];
-/// assert_eq!(arr[ ..  ], [0,1,2,3,4]);
-/// assert_eq!(arr[ .. 3], [0,1,2    ]);
-/// assert_eq!(arr[ ..=3], [0,1,2,3  ]);
-/// assert_eq!(arr[1..  ], [  1,2,3,4]);
-/// assert_eq!(arr[1.. 3], [  1,2    ]);  // Range
-/// assert_eq!(arr[1..=3], [  1,2,3  ]);
+/// assert_eq!(arr[ ..  ], [0, 1, 2, 3, 4]);
+/// assert_eq!(arr[ .. 3], [0, 1, 2      ]);
+/// assert_eq!(arr[ ..=3], [0, 1, 2, 3   ]);
+/// assert_eq!(arr[1..  ], [   1, 2, 3, 4]);
+/// assert_eq!(arr[1.. 3], [   1, 2      ]); // This is a `Range`
+/// assert_eq!(arr[1..=3], [   1, 2, 3   ]);
 /// ```
 #[lang = "Range"]
 #[doc(alias = "..")]
@@ -160,17 +168,21 @@ impl<Idx: PartialOrd<Idx>> Range<Idx> {
 ///
 /// # Examples
 ///
+/// The `start..` syntax is a `RangeFrom`:
+///
 /// ```
 /// assert_eq!((2..), std::ops::RangeFrom { start: 2 });
 /// assert_eq!(2 + 3 + 4, (2..).take(3).sum());
+/// ```
 ///
+/// ```
 /// let arr = [0, 1, 2, 3, 4];
-/// assert_eq!(arr[ ..  ], [0,1,2,3,4]);
-/// assert_eq!(arr[ .. 3], [0,1,2    ]);
-/// assert_eq!(arr[ ..=3], [0,1,2,3  ]);
-/// assert_eq!(arr[1..  ], [  1,2,3,4]);  // RangeFrom
-/// assert_eq!(arr[1.. 3], [  1,2    ]);
-/// assert_eq!(arr[1..=3], [  1,2,3  ]);
+/// assert_eq!(arr[ ..  ], [0, 1, 2, 3, 4]);
+/// assert_eq!(arr[ .. 3], [0, 1, 2      ]);
+/// assert_eq!(arr[ ..=3], [0, 1, 2, 3   ]);
+/// assert_eq!(arr[1..  ], [   1, 2, 3, 4]); // This is a `RangeFrom`
+/// assert_eq!(arr[1.. 3], [   1, 2      ]);
+/// assert_eq!(arr[1..=3], [   1, 2, 3   ]);
 /// ```
 #[lang = "RangeFrom"]
 #[doc(alias = "..")]
@@ -244,12 +256,12 @@ impl<Idx: PartialOrd<Idx>> RangeFrom<Idx> {
 ///
 /// ```
 /// let arr = [0, 1, 2, 3, 4];
-/// assert_eq!(arr[ ..  ], [0,1,2,3,4]);
-/// assert_eq!(arr[ .. 3], [0,1,2    ]);  // RangeTo
-/// assert_eq!(arr[ ..=3], [0,1,2,3  ]);
-/// assert_eq!(arr[1..  ], [  1,2,3,4]);
-/// assert_eq!(arr[1.. 3], [  1,2    ]);
-/// assert_eq!(arr[1..=3], [  1,2,3  ]);
+/// assert_eq!(arr[ ..  ], [0, 1, 2, 3, 4]);
+/// assert_eq!(arr[ .. 3], [0, 1, 2      ]); // This is a `RangeTo`
+/// assert_eq!(arr[ ..=3], [0, 1, 2, 3   ]);
+/// assert_eq!(arr[1..  ], [   1, 2, 3, 4]);
+/// assert_eq!(arr[1.. 3], [   1, 2      ]);
+/// assert_eq!(arr[1..=3], [   1, 2, 3   ]);
 /// ```
 ///
 /// [slicing index]: crate::slice::SliceIndex
@@ -310,17 +322,21 @@ impl<Idx: PartialOrd<Idx>> RangeTo<Idx> {
 ///
 /// # Examples
 ///
+/// The `start..=end` syntax is a `RangeInclusive`:
+///
 /// ```
 /// assert_eq!((3..=5), std::ops::RangeInclusive::new(3, 5));
 /// assert_eq!(3 + 4 + 5, (3..=5).sum());
+/// ```
 ///
+/// ```
 /// let arr = [0, 1, 2, 3, 4];
-/// assert_eq!(arr[ ..  ], [0,1,2,3,4]);
-/// assert_eq!(arr[ .. 3], [0,1,2    ]);
-/// assert_eq!(arr[ ..=3], [0,1,2,3  ]);
-/// assert_eq!(arr[1..  ], [  1,2,3,4]);
-/// assert_eq!(arr[1.. 3], [  1,2    ]);
-/// assert_eq!(arr[1..=3], [  1,2,3  ]);  // RangeInclusive
+/// assert_eq!(arr[ ..  ], [0, 1, 2, 3, 4]);
+/// assert_eq!(arr[ .. 3], [0, 1, 2      ]);
+/// assert_eq!(arr[ ..=3], [0, 1, 2, 3   ]);
+/// assert_eq!(arr[1..  ], [   1, 2, 3, 4]);
+/// assert_eq!(arr[1.. 3], [   1, 2      ]);
+/// assert_eq!(arr[1..=3], [   1, 2, 3   ]); // This is a `RangeInclusive`
 /// ```
 #[lang = "RangeInclusive"]
 #[doc(alias = "..=")]
@@ -430,6 +446,20 @@ impl<Idx> RangeInclusive<Idx> {
     }
 }
 
+impl RangeInclusive<usize> {
+    /// Converts to an exclusive `Range` for `SliceIndex` implementations.
+    /// The caller is responsible for dealing with `end == usize::MAX`.
+    #[inline]
+    pub(crate) fn into_slice_range(self) -> Range<usize> {
+        // If we're not exhausted, we want to simply slice `start..end + 1`.
+        // If we are exhausted, then slicing with `end + 1..end + 1` gives us an
+        // empty range that is still subject to bounds-checks for that endpoint.
+        let exclusive_end = self.end + 1;
+        let start = if self.exhausted { exclusive_end } else { self.start };
+        start..exclusive_end
+    }
+}
+
 #[stable(feature = "inclusive_range", since = "1.26.0")]
 impl<Idx: fmt::Debug> fmt::Debug for RangeInclusive<Idx> {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -462,6 +492,16 @@ impl<Idx: PartialOrd<Idx>> RangeInclusive<Idx> {
     /// assert!(!(0.0..=1.0).contains(&f32::NAN));
     /// assert!(!(0.0..=f32::NAN).contains(&0.0));
     /// assert!(!(f32::NAN..=1.0).contains(&1.0));
+    /// ```
+    ///
+    /// This method always returns `false` after iteration has finished:
+    ///
+    /// ```
+    /// let mut r = 3..=5;
+    /// assert!(r.contains(&3) && r.contains(&5));
+    /// for _ in r.by_ref() {}
+    /// // Precise field values are unspecified here
+    /// assert!(!r.contains(&3) && !r.contains(&5));
     /// ```
     #[stable(feature = "range_contains", since = "1.35.0")]
     pub fn contains<U>(&self, item: &U) -> bool
@@ -534,12 +574,12 @@ impl<Idx: PartialOrd<Idx>> RangeInclusive<Idx> {
 ///
 /// ```
 /// let arr = [0, 1, 2, 3, 4];
-/// assert_eq!(arr[ ..  ], [0,1,2,3,4]);
-/// assert_eq!(arr[ .. 3], [0,1,2    ]);
-/// assert_eq!(arr[ ..=3], [0,1,2,3  ]);  // RangeToInclusive
-/// assert_eq!(arr[1..  ], [  1,2,3,4]);
-/// assert_eq!(arr[1.. 3], [  1,2    ]);
-/// assert_eq!(arr[1..=3], [  1,2,3  ]);
+/// assert_eq!(arr[ ..  ], [0, 1, 2, 3, 4]);
+/// assert_eq!(arr[ .. 3], [0, 1, 2      ]);
+/// assert_eq!(arr[ ..=3], [0, 1, 2, 3   ]); // This is a `RangeToInclusive`
+/// assert_eq!(arr[1..  ], [   1, 2, 3, 4]);
+/// assert_eq!(arr[1.. 3], [   1, 2      ]);
+/// assert_eq!(arr[1..=3], [   1, 2, 3   ]);
 /// ```
 ///
 /// [slicing index]: crate::slice::SliceIndex
@@ -661,9 +701,9 @@ impl<T: Clone> Bound<&T> {
     }
 }
 
-#[stable(feature = "collections_range", since = "1.28.0")]
 /// `RangeBounds` is implemented by Rust's built-in range types, produced
 /// by range syntax like `..`, `a..`, `..b`, `..=c`, `d..e`, or `f..=g`.
+#[stable(feature = "collections_range", since = "1.28.0")]
 pub trait RangeBounds<T: ?Sized> {
     /// Start index bound.
     ///
@@ -700,6 +740,92 @@ pub trait RangeBounds<T: ?Sized> {
     /// ```
     #[stable(feature = "collections_range", since = "1.28.0")]
     fn end_bound(&self) -> Bound<&T>;
+
+    /// Performs bounds-checking of this range.
+    ///
+    /// The returned [`Range`] is safe to pass to [`slice::get_unchecked`] and
+    /// [`slice::get_unchecked_mut`] for slices of the given length.
+    ///
+    /// [`slice::get_unchecked`]: ../../std/primitive.slice.html#method.get_unchecked
+    /// [`slice::get_unchecked_mut`]: ../../std/primitive.slice.html#method.get_unchecked_mut
+    ///
+    /// # Panics
+    ///
+    /// Panics if the range would be out of bounds.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(range_bounds_assert_len)]
+    ///
+    /// use std::ops::RangeBounds;
+    ///
+    /// let v = [10, 40, 30];
+    /// assert_eq!(1..2, (1..2).assert_len(v.len()));
+    /// assert_eq!(0..2, (..2).assert_len(v.len()));
+    /// assert_eq!(1..3, (1..).assert_len(v.len()));
+    /// ```
+    ///
+    /// Panics when [`Index::index`] would panic:
+    ///
+    /// ```should_panic
+    /// #![feature(range_bounds_assert_len)]
+    ///
+    /// use std::ops::RangeBounds;
+    ///
+    /// (2..1).assert_len(3);
+    /// ```
+    ///
+    /// ```should_panic
+    /// #![feature(range_bounds_assert_len)]
+    ///
+    /// use std::ops::RangeBounds;
+    ///
+    /// (1..4).assert_len(3);
+    /// ```
+    ///
+    /// ```should_panic
+    /// #![feature(range_bounds_assert_len)]
+    ///
+    /// use std::ops::RangeBounds;
+    ///
+    /// (1..=usize::MAX).assert_len(3);
+    /// ```
+    ///
+    /// [`Index::index`]: crate::ops::Index::index
+    #[track_caller]
+    #[unstable(feature = "range_bounds_assert_len", issue = "76393")]
+    fn assert_len(self, len: usize) -> Range<usize>
+    where
+        Self: RangeBounds<usize>,
+    {
+        let start: Bound<&usize> = self.start_bound();
+        let start = match start {
+            Bound::Included(&start) => start,
+            Bound::Excluded(start) => {
+                start.checked_add(1).unwrap_or_else(|| slice_start_index_overflow_fail())
+            }
+            Bound::Unbounded => 0,
+        };
+
+        let end: Bound<&usize> = self.end_bound();
+        let end = match end {
+            Bound::Included(end) => {
+                end.checked_add(1).unwrap_or_else(|| slice_end_index_overflow_fail())
+            }
+            Bound::Excluded(&end) => end,
+            Bound::Unbounded => len,
+        };
+
+        if start > end {
+            slice_index_order_fail(start, end);
+        }
+        if end > len {
+            slice_end_index_len_fail(end, len);
+        }
+
+        Range { start, end }
+    }
 
     /// Returns `true` if `item` is contained in the range.
     ///
@@ -779,7 +905,13 @@ impl<T> RangeBounds<T> for RangeInclusive<T> {
         Included(&self.start)
     }
     fn end_bound(&self) -> Bound<&T> {
-        Included(&self.end)
+        if self.exhausted {
+            // When the iterator is exhausted, we usually have start == end,
+            // but we want the range to appear empty, containing nothing.
+            Excluded(&self.end)
+        } else {
+            Included(&self.end)
+        }
     }
 }
 

@@ -1,4 +1,5 @@
 // run-rustfix
+#![warn(clippy::deref_addrof)]
 
 fn get_number() -> usize {
     10
@@ -10,7 +11,6 @@ fn get_reference(n: &usize) -> &usize {
 
 #[allow(clippy::many_single_char_names, clippy::double_parens)]
 #[allow(unused_variables, unused_parens)]
-#[warn(clippy::deref_addrof)]
 fn main() {
     let a = 10;
     let aref = &a;
@@ -36,4 +36,28 @@ fn main() {
     let b = *&&a;
 
     let b = **&aref;
+}
+
+#[rustfmt::skip]
+macro_rules! m {
+    ($visitor: expr) => {
+        *& $visitor
+    };
+}
+
+#[rustfmt::skip]
+macro_rules! m_mut {
+    ($visitor: expr) => {
+        *& mut $visitor
+    };
+}
+
+pub struct S;
+impl S {
+    pub fn f(&self) -> &Self {
+        m!(self)
+    }
+    pub fn f_mut(&self) -> &Self {
+        m_mut!(self)
+    }
 }

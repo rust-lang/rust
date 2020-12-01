@@ -1,0 +1,72 @@
+- // MIR for `try_identity` before DestinationPropagation
++ // MIR for `try_identity` after DestinationPropagation
+  
+  fn try_identity(_1: std::result::Result<u32, i32>) -> std::result::Result<u32, i32> {
+      debug x => _1;                       // in scope 0 at $DIR/simplify_try.rs:6:17: 6:18
+      let mut _0: std::result::Result<u32, i32>; // return place in scope 0 at $DIR/simplify_try.rs:6:41: 6:57
+      let _2: u32;                         // in scope 0 at $DIR/simplify_try.rs:7:9: 7:10
+      let mut _3: std::result::Result<u32, i32>; // in scope 0 at $DIR/simplify_try.rs:7:13: 7:15
+      let mut _4: std::result::Result<u32, i32>; // in scope 0 at $DIR/simplify_try.rs:7:13: 7:14
+      let mut _5: isize;                   // in scope 0 at $DIR/simplify_try.rs:7:14: 7:15
+      let _6: i32;                         // in scope 0 at $DIR/simplify_try.rs:7:14: 7:15
+      let mut _7: !;                       // in scope 0 at $DIR/simplify_try.rs:7:14: 7:15
+      let mut _8: i32;                     // in scope 0 at $DIR/simplify_try.rs:7:14: 7:15
+      let mut _9: i32;                     // in scope 0 at $DIR/simplify_try.rs:7:14: 7:15
+      let _10: u32;                        // in scope 0 at $DIR/simplify_try.rs:7:13: 7:15
+      let mut _11: u32;                    // in scope 0 at $DIR/simplify_try.rs:8:8: 8:9
+      scope 1 {
+          debug y => _2;                   // in scope 1 at $DIR/simplify_try.rs:7:9: 7:10
+      }
+      scope 2 {
+          debug err => _6;                 // in scope 2 at $DIR/simplify_try.rs:7:14: 7:15
+          scope 3 {
+              scope 7 {
+                  debug t => _9;           // in scope 7 at $SRC_DIR/libcore/convert/mod.rs:LL:COL
+              }
+              scope 8 {
+                  debug v => _8;           // in scope 8 at $SRC_DIR/libcore/result.rs:LL:COL
+                  let mut _12: i32;        // in scope 8 at $DIR/simplify_try.rs:7:14: 7:15
+              }
+          }
+      }
+      scope 4 {
+          debug val => _10;                // in scope 4 at $DIR/simplify_try.rs:7:13: 7:15
+          scope 5 {
+          }
+      }
+      scope 6 {
+-         debug self => _4;                // in scope 6 at $SRC_DIR/libcore/result.rs:LL:COL
++         debug self => _0;                // in scope 6 at $SRC_DIR/libcore/result.rs:LL:COL
+      }
+  
+      bb0: {
+          StorageLive(_2);                 // scope 0 at $DIR/simplify_try.rs:7:9: 7:10
+-         StorageLive(_3);                 // scope 0 at $DIR/simplify_try.rs:7:13: 7:15
+-         StorageLive(_4);                 // scope 0 at $DIR/simplify_try.rs:7:13: 7:14
+-         _4 = _1;                         // scope 0 at $DIR/simplify_try.rs:7:13: 7:14
+-         _3 = move _4;                    // scope 6 at $SRC_DIR/libcore/result.rs:LL:COL
+-         StorageDead(_4);                 // scope 0 at $DIR/simplify_try.rs:7:14: 7:15
+-         _5 = discriminant(_3);           // scope 0 at $DIR/simplify_try.rs:7:14: 7:15
++         nop;                             // scope 0 at $DIR/simplify_try.rs:7:13: 7:15
++         nop;                             // scope 0 at $DIR/simplify_try.rs:7:13: 7:14
++         _0 = _1;                         // scope 0 at $DIR/simplify_try.rs:7:13: 7:14
++         nop;                             // scope 6 at $SRC_DIR/libcore/result.rs:LL:COL
++         nop;                             // scope 0 at $DIR/simplify_try.rs:7:14: 7:15
++         _5 = discriminant(_0);           // scope 0 at $DIR/simplify_try.rs:7:14: 7:15
+          goto -> bb1;                     // scope 0 at $DIR/simplify_try.rs:7:14: 7:15
+      }
+  
+      bb1: {
+-         _0 = move _3;                    // scope 1 at $DIR/simplify_try.rs:8:5: 8:10
+-         StorageDead(_3);                 // scope 0 at $DIR/simplify_try.rs:7:15: 7:16
++         nop;                             // scope 1 at $DIR/simplify_try.rs:8:5: 8:10
++         nop;                             // scope 0 at $DIR/simplify_try.rs:7:15: 7:16
+          StorageDead(_2);                 // scope 0 at $DIR/simplify_try.rs:9:1: 9:2
+          goto -> bb2;                     // scope 0 at $DIR/simplify_try.rs:9:2: 9:2
+      }
+  
+      bb2: {
+          return;                          // scope 0 at $DIR/simplify_try.rs:9:2: 9:2
+      }
+  }
+  

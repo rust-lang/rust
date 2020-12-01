@@ -1,0 +1,43 @@
+error[E0601]: `main` function not found in crate `ice_6251`
+  --> $DIR/ice-6251.rs:4:1
+   |
+LL | / fn bug<T>() -> impl Iterator<Item = [(); { |x: [u8]| x }]> {
+LL | |     std::iter::empty()
+LL | | }
+   | |_^ consider adding a `main` function to `$DIR/ice-6251.rs`
+
+error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
+  --> $DIR/ice-6251.rs:4:45
+   |
+LL | fn bug<T>() -> impl Iterator<Item = [(); { |x: [u8]| x }]> {
+   |                                             ^ doesn't have a size known at compile-time
+   |
+   = help: the trait `std::marker::Sized` is not implemented for `[u8]`
+   = help: unsized fn params are gated as an unstable feature
+help: function arguments must have a statically known size, borrowed types always have a known size
+   |
+LL | fn bug<T>() -> impl Iterator<Item = [(); { |&x: [u8]| x }]> {
+   |                                             ^
+
+error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
+  --> $DIR/ice-6251.rs:4:54
+   |
+LL | fn bug<T>() -> impl Iterator<Item = [(); { |x: [u8]| x }]> {
+   |                                                      ^ doesn't have a size known at compile-time
+   |
+   = help: the trait `std::marker::Sized` is not implemented for `[u8]`
+   = note: the return type of a function must have a statically known size
+
+error[E0308]: mismatched types
+  --> $DIR/ice-6251.rs:4:44
+   |
+LL | fn bug<T>() -> impl Iterator<Item = [(); { |x: [u8]| x }]> {
+   |                                            ^^^^^^^^^^^ expected `usize`, found closure
+   |
+   = note: expected type `usize`
+           found closure `[closure@$DIR/ice-6251.rs:4:44: 4:55]`
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0277, E0308, E0601.
+For more information about an error, try `rustc --explain E0277`.

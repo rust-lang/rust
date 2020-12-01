@@ -1,6 +1,6 @@
 [alias]
 uitest = "test --test compile-test"
-dev = "run --package clippy_dev --bin clippy_dev --manifest-path clippy_dev/Cargo.toml --"
+dev = "run --target-dir clippy_dev/target --package clippy_dev --bin clippy_dev --manifest-path clippy_dev/Cargo.toml --"
 
 [build]
 rustflags = ["-Zunstable-options"]

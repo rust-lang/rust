@@ -1,8 +1,13 @@
-error: expected one of `,` or `>`, found `+`
-  --> $DIR/const-expression-parameter.rs:16:22
+error: expressions must be enclosed in braces to be used as const generic arguments
+  --> $DIR/const-expression-parameter.rs:16:20
    |
 LL |     i32_identity::<1 + 2>();
-   |                      ^ expected one of `,` or `>`
+   |                    ^^^^^
+   |
+help: enclose the `const` expression in braces
+   |
+LL |     i32_identity::<{ 1 + 2 }>();
+   |                    ^       ^
 
 error: aborting due to previous error
 

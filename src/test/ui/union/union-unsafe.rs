@@ -1,4 +1,3 @@
-#![feature(untagged_unions)]
 use std::mem::ManuallyDrop;
 
 union U1 {

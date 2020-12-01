@@ -21,7 +21,7 @@ fn main() {
         //~^ ERROR mismatched types
         //~| perhaps two different versions of crate `crate_a1`
         //~| expected trait `main::a::Bar`
-        //~| expected struct `std::boxed::Box<(dyn main::a::Bar + 'static)>`
-        //~| found struct `std::boxed::Box<dyn main::a::Bar>`
+        //~| expected struct `Box<(dyn main::a::Bar + 'static)>`
+        //~| found struct `Box<dyn main::a::Bar>`
     }
 }

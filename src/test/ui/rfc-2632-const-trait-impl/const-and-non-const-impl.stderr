@@ -5,7 +5,7 @@ LL | impl const std::ops::Add for i32 {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: conflicting implementation in crate `core`:
-           - impl std::ops::Add for i32;
+           - impl Add for i32;
 
 error[E0119]: conflicting implementations of trait `std::ops::Add` for type `Int`:
   --> $DIR/const-and-non-const-impl.rs:24:1

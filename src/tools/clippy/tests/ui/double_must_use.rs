@@ -1,4 +1,5 @@
 #![warn(clippy::double_must_use)]
+#![allow(clippy::result_unit_err)]
 
 #[must_use]
 pub fn must_use_result() -> Result<(), ()> {

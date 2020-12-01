@@ -19,7 +19,7 @@ use crate::compile;
 use crate::config::TargetSelection;
 use crate::dist;
 use crate::doc;
-use crate::flags::Subcommand;
+use crate::flags::{Color, Subcommand};
 use crate::install;
 use crate::native;
 use crate::run;
@@ -87,9 +87,14 @@ pub trait Step: 'static + Clone + Debug + PartialEq + Eq + Hash {
 
 pub struct RunConfig<'a> {
     pub builder: &'a Builder<'a>,
-    pub host: TargetSelection,
     pub target: TargetSelection,
     pub path: PathBuf,
+}
+
+impl RunConfig<'_> {
+    pub fn build_triple(&self) -> TargetSelection {
+        self.builder.build.build
+    }
 }
 
 struct StepDescription {
@@ -165,29 +170,13 @@ impl StepDescription {
                 pathset, self.name, builder.config.exclude
             );
         }
-        let hosts = &builder.hosts;
 
         // Determine the targets participating in this rule.
-        let targets = if self.only_hosts {
-            if builder.config.skip_only_host_steps {
-                return; // don't run anything
-            } else {
-                &builder.hosts
-            }
-        } else {
-            &builder.targets
-        };
+        let targets = if self.only_hosts { &builder.hosts } else { &builder.targets };
 
-        for host in hosts {
-            for target in targets {
-                let run = RunConfig {
-                    builder,
-                    path: pathset.path(builder),
-                    host: *host,
-                    target: *target,
-                };
-                (self.make_run)(run);
-            }
+        for target in targets {
+            let run = RunConfig { builder, path: pathset.path(builder), target: *target };
+            (self.make_run)(run);
         }
     }
 
@@ -204,36 +193,36 @@ impl StepDescription {
             );
         }
 
-        if paths.is_empty() {
-            for (desc, should_run) in v.iter().zip(should_runs) {
+        if paths.is_empty() || builder.config.include_default_paths {
+            for (desc, should_run) in v.iter().zip(&should_runs) {
                 if desc.default && should_run.is_really_default {
                     for pathset in &should_run.paths {
                         desc.maybe_run(builder, pathset);
                     }
                 }
             }
-        } else {
-            for path in paths {
-                // strip CurDir prefix if present
-                let path = match path.strip_prefix(".") {
-                    Ok(p) => p,
-                    Err(_) => path,
-                };
+        }
 
-                let mut attempted_run = false;
-                for (desc, should_run) in v.iter().zip(&should_runs) {
-                    if let Some(suite) = should_run.is_suite_path(path) {
-                        attempted_run = true;
-                        desc.maybe_run(builder, suite);
-                    } else if let Some(pathset) = should_run.pathset_for_path(path) {
-                        attempted_run = true;
-                        desc.maybe_run(builder, pathset);
-                    }
-                }
+        for path in paths {
+            // strip CurDir prefix if present
+            let path = match path.strip_prefix(".") {
+                Ok(p) => p,
+                Err(_) => path,
+            };
 
-                if !attempted_run {
-                    panic!("error: no rules matched {}", path.display());
+            let mut attempted_run = false;
+            for (desc, should_run) in v.iter().zip(&should_runs) {
+                if let Some(suite) = should_run.is_suite_path(path) {
+                    attempted_run = true;
+                    desc.maybe_run(builder, suite);
+                } else if let Some(pathset) = should_run.pathset_for_path(path) {
+                    attempted_run = true;
+                    desc.maybe_run(builder, pathset);
                 }
+            }
+
+            if !attempted_run {
+                panic!("error: no rules matched {}", path.display());
             }
         }
     }
@@ -275,7 +264,7 @@ impl<'a> ShouldRun<'a> {
     /// `all_krates` should probably be removed at some point.
     pub fn all_krates(mut self, name: &str) -> Self {
         let mut set = BTreeSet::new();
-        for krate in self.builder.in_tree_crates(name) {
+        for krate in self.builder.in_tree_crates(name, None) {
             let path = krate.local_path(self.builder);
             set.insert(path);
         }
@@ -288,7 +277,7 @@ impl<'a> ShouldRun<'a> {
     ///
     /// `make_run` will be called separately for each matching command-line path.
     pub fn krate(mut self, name: &str) -> Self {
-        for krate in self.builder.in_tree_crates(name) {
+        for krate in self.builder.in_tree_crates(name, None) {
             let path = krate.local_path(self.builder);
             self.paths.insert(PathSet::one(path));
         }
@@ -355,6 +344,7 @@ impl<'a> Builder<'a> {
             Kind::Build => describe!(
                 compile::Std,
                 compile::Rustc,
+                compile::CodegenBackend,
                 compile::StartupObjects,
                 tool::BuildManifest,
                 tool::Rustbook,
@@ -381,9 +371,14 @@ impl<'a> Builder<'a> {
                 tool::CargoMiri,
                 native::Lld
             ),
-            Kind::Check | Kind::Clippy | Kind::Fix | Kind::Format => {
-                describe!(check::Std, check::Rustc, check::Rustdoc, check::Clippy)
-            }
+            Kind::Check | Kind::Clippy { .. } | Kind::Fix | Kind::Format => describe!(
+                check::Std,
+                check::Rustc,
+                check::Rustdoc,
+                check::CodegenBackend,
+                check::Clippy,
+                check::Bootstrap
+            ),
             Kind::Test => describe!(
                 crate::toolstate::ToolStateCheck,
                 test::ExpandYamlAnchors,
@@ -471,8 +466,9 @@ impl<'a> Builder<'a> {
                 dist::Clippy,
                 dist::Miri,
                 dist::LlvmTools,
+                dist::RustDev,
                 dist::Extended,
-                dist::HashSign
+                dist::BuildManifest,
             ),
             Kind::Install => describe!(
                 install::Docs,
@@ -487,7 +483,7 @@ impl<'a> Builder<'a> {
                 install::Src,
                 install::Rustc
             ),
-            Kind::Run => describe!(run::ExpandYamlAnchors,),
+            Kind::Run => describe!(run::ExpandYamlAnchors, run::BuildManifest),
         }
     }
 
@@ -528,23 +524,9 @@ impl<'a> Builder<'a> {
     }
 
     fn new_internal(build: &Build, kind: Kind, paths: Vec<PathBuf>) -> Builder<'_> {
-        let top_stage = if let Some(explicit_stage) = build.config.stage {
-            explicit_stage
-        } else {
-            // See https://github.com/rust-lang/compiler-team/issues/326
-            match kind {
-                Kind::Doc => 0,
-                Kind::Build | Kind::Test => 1,
-                Kind::Bench | Kind::Dist | Kind::Install => 2,
-                // These are all bootstrap tools, which don't depend on the compiler.
-                // The stage we pass shouldn't matter, but use 0 just in case.
-                Kind::Check | Kind::Clippy | Kind::Fix | Kind::Run | Kind::Format => 0,
-            }
-        };
-
         Builder {
             build,
-            top_stage,
+            top_stage: build.config.stage,
             kind,
             cache: Cache::new(),
             stack: RefCell::new(Vec::new()),
@@ -556,8 +538,8 @@ impl<'a> Builder<'a> {
     pub fn new(build: &Build) -> Builder<'_> {
         let (kind, paths) = match build.config.cmd {
             Subcommand::Build { ref paths } => (Kind::Build, &paths[..]),
-            Subcommand::Check { ref paths } => (Kind::Check, &paths[..]),
-            Subcommand::Clippy { ref paths } => (Kind::Clippy, &paths[..]),
+            Subcommand::Check { ref paths, all_targets: _ } => (Kind::Check, &paths[..]),
+            Subcommand::Clippy { ref paths, .. } => (Kind::Clippy, &paths[..]),
             Subcommand::Fix { ref paths } => (Kind::Fix, &paths[..]),
             Subcommand::Doc { ref paths, .. } => (Kind::Doc, &paths[..]),
             Subcommand::Test { ref paths, .. } => (Kind::Test, &paths[..]),
@@ -565,23 +547,12 @@ impl<'a> Builder<'a> {
             Subcommand::Dist { ref paths } => (Kind::Dist, &paths[..]),
             Subcommand::Install { ref paths } => (Kind::Install, &paths[..]),
             Subcommand::Run { ref paths } => (Kind::Run, &paths[..]),
-            Subcommand::Format { .. } | Subcommand::Clean { .. } => panic!(),
+            Subcommand::Format { .. } | Subcommand::Clean { .. } | Subcommand::Setup { .. } => {
+                panic!()
+            }
         };
 
-        let this = Self::new_internal(build, kind, paths.to_owned());
-
-        // CI should always run stage 2 builds, unless it specifically states otherwise
-        #[cfg(not(test))]
-        if build.config.stage.is_none() && build.ci_env != crate::CiEnv::None {
-            match kind {
-                Kind::Test | Kind::Doc | Kind::Build | Kind::Bench | Kind::Dist | Kind::Install => {
-                    assert_eq!(this.top_stage, 2)
-                }
-                Kind::Check | Kind::Clippy | Kind::Fix | Kind::Run | Kind::Format => {}
-            }
-        }
-
-        this
+        Self::new_internal(build, kind, paths.to_owned())
     }
 
     pub fn execute_cli(&self) {
@@ -664,6 +635,10 @@ impl<'a> Builder<'a> {
         self.ensure(Libdir { compiler, target })
     }
 
+    pub fn sysroot_codegen_backends(&self, compiler: Compiler) -> PathBuf {
+        self.sysroot_libdir(compiler, compiler.host).with_file_name("codegen-backends")
+    }
+
     /// Returns the compiler's libdir where it stores the dynamic libraries that
     /// it itself links against.
     ///
@@ -712,7 +687,7 @@ impl<'a> Builder<'a> {
 
     /// Adds the compiler's directory of dynamic libraries to `cmd`'s dynamic
     /// library lookup path.
-    pub fn add_rustc_lib_path(&self, compiler: Compiler, cmd: &mut Cargo) {
+    pub fn add_rustc_lib_path(&self, compiler: Compiler, cmd: &mut Command) {
         // Windows doesn't need dylib path munging because the dlls for the
         // compiler live next to the compiler and the system will find them
         // automatically.
@@ -720,7 +695,7 @@ impl<'a> Builder<'a> {
             return;
         }
 
-        add_dylib_path(vec![self.rustc_libdir(compiler)], &mut cmd.command);
+        add_dylib_path(vec![self.rustc_libdir(compiler)], cmd);
     }
 
     /// Gets a path to the compiler specified.
@@ -730,6 +705,15 @@ impl<'a> Builder<'a> {
         } else {
             self.sysroot(compiler).join("bin").join(exe("rustc", compiler.host))
         }
+    }
+
+    /// Gets the paths to all of the compiler's codegen backends.
+    fn codegen_backends(&self, compiler: Compiler) -> impl Iterator<Item = PathBuf> {
+        fs::read_dir(self.sysroot_codegen_backends(compiler))
+            .into_iter()
+            .flatten()
+            .filter_map(Result::ok)
+            .map(|entry| entry.path())
     }
 
     pub fn rustdoc(&self, compiler: Compiler) -> PathBuf {
@@ -755,8 +739,11 @@ impl<'a> Builder<'a> {
         cmd.env_remove("MAKEFLAGS");
         cmd.env_remove("MFLAGS");
 
-        if let Some(linker) = self.linker(compiler.host, true) {
-            cmd.env("RUSTC_TARGET_LINKER", linker);
+        if let Some(linker) = self.linker(compiler.host) {
+            cmd.env("RUSTDOC_LINKER", linker);
+        }
+        if self.is_fuse_ld_lld(compiler.host) {
+            cmd.env("RUSTDOC_FUSE_LD_LLD", "1");
         }
         cmd
     }
@@ -793,10 +780,16 @@ impl<'a> Builder<'a> {
         let mut cargo = Command::new(&self.initial_cargo);
         let out_dir = self.stage_out(compiler, mode);
 
+        // Codegen backends are not yet tracked by -Zbinary-dep-depinfo,
+        // so we need to explicitly clear out if they've been updated.
+        for backend in self.codegen_backends(compiler) {
+            self.clear_if_dirty(&out_dir, &backend);
+        }
+
         if cmd == "doc" || cmd == "rustdoc" {
             let my_out = match mode {
                 // This is the intended out directory for compiler documentation.
-                Mode::Rustc | Mode::ToolRustc | Mode::Codegen => self.compiler_doc_out(target),
+                Mode::Rustc | Mode::ToolRustc => self.compiler_doc_out(target),
                 Mode::Std => out_dir.join(target.triple).join("doc"),
                 _ => panic!("doc mode {:?} not expected", mode),
             };
@@ -811,11 +804,21 @@ impl<'a> Builder<'a> {
             format!("CARGO_PROFILE_{}_{}", profile, name)
         };
 
-        // See comment in librustc_llvm/build.rs for why this is necessary, largely llvm-config
+        // See comment in rustc_llvm/build.rs for why this is necessary, largely llvm-config
         // needs to not accidentally link to libLLVM in stage0/lib.
         cargo.env("REAL_LIBRARY_PATH_VAR", &util::dylib_path_var());
         if let Some(e) = env::var_os(util::dylib_path_var()) {
             cargo.env("REAL_LIBRARY_PATH", e);
+        }
+
+        match self.build.config.color {
+            Color::Always => {
+                cargo.arg("--color=always");
+            }
+            Color::Never => {
+                cargo.arg("--color=never");
+            }
+            Color::Auto => {} // nothing to do
         }
 
         if cmd != "install" {
@@ -828,9 +831,9 @@ impl<'a> Builder<'a> {
         // scripts can do less work (i.e. not building/requiring LLVM).
         if cmd == "check" || cmd == "clippy" || cmd == "fix" {
             // If we've not yet built LLVM, or it's stale, then bust
-            // the librustc_llvm cache. That will always work, even though it
+            // the rustc_llvm cache. That will always work, even though it
             // may mean that on the next non-check build we'll need to rebuild
-            // librustc_llvm. But if LLVM is stale, that'll be a tiny amount
+            // rustc_llvm. But if LLVM is stale, that'll be a tiny amount
             // of work comparitively, and we'd likely need to rebuild it anyway,
             // so that's okay.
             if crate::native::prebuilt_llvm_config(self, target).is_err() {
@@ -856,7 +859,41 @@ impl<'a> Builder<'a> {
                 cargo.args(s.split_whitespace());
             }
             rustflags.env("RUSTFLAGS_BOOTSTRAP");
-            rustflags.arg("--cfg=bootstrap");
+            if cmd == "clippy" {
+                // clippy overwrites sysroot if we pass it to cargo.
+                // Pass it directly to clippy instead.
+                // NOTE: this can't be fixed in clippy because we explicitly don't set `RUSTC`,
+                // so it has no way of knowing the sysroot.
+                rustflags.arg("--sysroot");
+                rustflags.arg(
+                    self.sysroot(compiler)
+                        .as_os_str()
+                        .to_str()
+                        .expect("sysroot must be valid UTF-8"),
+                );
+                // Only run clippy on a very limited subset of crates (in particular, not build scripts).
+                cargo.arg("-Zunstable-options");
+                // Explicitly does *not* set `--cfg=bootstrap`, since we're using a nightly clippy.
+                let host_version = Command::new("rustc").arg("--version").output().map_err(|_| ());
+                let output = host_version.and_then(|output| {
+                    if output.status.success() {
+                        Ok(output)
+                    } else {
+                        Err(())
+                    }
+                }).unwrap_or_else(|_| {
+                    eprintln!(
+                        "error: `x.py clippy` requires a host `rustc` toolchain with the `clippy` component"
+                    );
+                    eprintln!("help: try `rustup component add clippy`");
+                    std::process::exit(1);
+                });
+                if !t!(std::str::from_utf8(&output.stdout)).contains("nightly") {
+                    rustflags.arg("--cfg=bootstrap");
+                }
+            } else {
+                rustflags.arg("--cfg=bootstrap");
+            }
         }
 
         if self.config.rust_new_symbol_mangling {
@@ -935,6 +972,8 @@ impl<'a> Builder<'a> {
             // problem, somehow -- not really clear why -- but we know that this
             // fixes things.
             Mode::ToolRustc => metadata.push_str("tool-rustc"),
+            // Same for codegen backends.
+            Mode::Codegen => metadata.push_str("codegen"),
             _ => {}
         }
         cargo.env("__CARGO_DEFAULT_LIB_METADATA", &metadata);
@@ -979,7 +1018,6 @@ impl<'a> Builder<'a> {
         // src/bootstrap/bin/{rustc.rs,rustdoc.rs}
         cargo
             .env("RUSTBUILD_NATIVE_DIR", self.native_dir(target))
-            .env("RUSTC", self.out.join("bootstrap/debug/rustc"))
             .env("RUSTC_REAL", self.rustc(compiler))
             .env("RUSTC_STAGE", stage.to_string())
             .env("RUSTC_SYSROOT", &sysroot)
@@ -995,6 +1033,11 @@ impl<'a> Builder<'a> {
             )
             .env("RUSTC_ERROR_METADATA_DST", self.extended_error_dir())
             .env("RUSTC_BREAK_ON_ICE", "1");
+        // Clippy support is a hack and uses the default `cargo-clippy` in path.
+        // Don't override RUSTC so that the `cargo-clippy` in path will be run.
+        if cmd != "clippy" {
+            cargo.env("RUSTC", self.out.join("bootstrap/debug/rustc"));
+        }
 
         // Dealing with rpath here is a little special, so let's go into some
         // detail. First off, `-rpath` is a linker option on Unix platforms
@@ -1041,20 +1084,18 @@ impl<'a> Builder<'a> {
             }
         }
 
-        // FIXME: Don't use LLD with MSVC if we're compiling libtest, since it fails to link it.
-        // See https://github.com/rust-lang/rust/issues/68647.
-        let can_use_lld = mode != Mode::Std;
-
-        if let Some(host_linker) = self.linker(compiler.host, can_use_lld) {
+        if let Some(host_linker) = self.linker(compiler.host) {
             cargo.env("RUSTC_HOST_LINKER", host_linker);
         }
+        if self.is_fuse_ld_lld(compiler.host) {
+            cargo.env("RUSTC_HOST_FUSE_LD_LLD", "1");
+        }
 
-        if let Some(target_linker) = self.linker(target, can_use_lld) {
+        if let Some(target_linker) = self.linker(target) {
             let target = crate::envify(&target.triple);
             cargo.env(&format!("CARGO_TARGET_{}_LINKER", target), target_linker);
         }
-
-        if self.config.use_lld && !target.contains("msvc") {
+        if self.is_fuse_ld_lld(target) {
             rustflags.arg("-Clink-args=-fuse-ld=lld");
         }
 
@@ -1078,6 +1119,11 @@ impl<'a> Builder<'a> {
                 self.config.rust_debug_assertions.to_string()
             },
         );
+
+        if self.config.cmd.bless() {
+            // Bless `expect!` tests.
+            cargo.env("UPDATE_EXPECT", "1");
+        }
 
         if !mode.is_tool() {
             cargo.env("RUSTC_FORCE_UNSTABLE", "1");
@@ -1142,6 +1188,14 @@ impl<'a> Builder<'a> {
             }
         }
 
+        // Compile everything except libraries and proc macros with the more
+        // efficient initial-exec TLS model. This doesn't work with `dlopen`,
+        // so we can't use it by default in general, but we can use it for tools
+        // and our own internal libraries.
+        if !mode.must_support_dlopen() {
+            rustflags.arg("-Ztls-model=initial-exec");
+        }
+
         if self.config.incremental {
             cargo.env("CARGO_INCREMENTAL", "1");
         } else {
@@ -1195,7 +1249,7 @@ impl<'a> Builder<'a> {
             rustdocflags.arg("-Winvalid_codeblock_attributes");
         }
 
-        if let Mode::Rustc | Mode::Codegen = mode {
+        if mode == Mode::Rustc {
             rustflags.arg("-Zunstable-options");
             rustflags.arg("-Wrustc::internal");
         }
@@ -1232,7 +1286,7 @@ impl<'a> Builder<'a> {
             cargo.env(format!("CC_{}", target.triple), &cc);
 
             let cflags = self.cflags(target, GitRepo::Rustc).join(" ");
-            cargo.env(format!("CFLAGS_{}", target.triple), cflags.clone());
+            cargo.env(format!("CFLAGS_{}", target.triple), &cflags);
 
             if let Some(ar) = self.ar(target) {
                 let ranlib = format!("{} s", ar.display());
@@ -1358,7 +1412,7 @@ impl<'a> Builder<'a> {
         // When we build Rust dylibs they're all intended for intermediate
         // usage, so make sure we pass the -Cprefer-dynamic flag instead of
         // linking all deps statically into the dylib.
-        if let Mode::Std | Mode::Rustc | Mode::Codegen = mode {
+        if matches!(mode, Mode::Std | Mode::Rustc) {
             rustflags.arg("-Cprefer-dynamic");
         }
 
@@ -1417,7 +1471,7 @@ impl<'a> Builder<'a> {
             (out, dur - deps)
         };
 
-        if self.config.print_step_timings && dur > Duration::from_millis(100) {
+        if self.config.print_step_timings && !self.config.dry_run {
             println!("[TIMING] {:?} -- {}.{:03}", step, dur.as_secs(), dur.subsec_millis());
         }
 
@@ -1510,6 +1564,10 @@ impl Cargo {
         assert_ne!(key.as_ref(), "RUSTDOCFLAGS");
         self.command.env(key.as_ref(), value.as_ref());
         self
+    }
+
+    pub fn add_rustc_lib_path(&mut self, builder: &Builder<'_>, compiler: Compiler) {
+        builder.add_rustc_lib_path(compiler, &mut self.command);
     }
 }
 

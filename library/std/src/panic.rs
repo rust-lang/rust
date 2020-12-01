@@ -23,6 +23,20 @@ pub use crate::panicking::{set_hook, take_hook};
 #[stable(feature = "panic_hooks", since = "1.10.0")]
 pub use core::panic::{Location, PanicInfo};
 
+/// Panic the current thread with the given message as the panic payload.
+///
+/// The message can be of any (`Any + Send`) type, not just strings.
+///
+/// The message is wrapped in a `Box<'static + Any + Send>`, which can be
+/// accessed later using [`PanicInfo::payload`].
+///
+/// See the [`panic!`] macro for more information about panicking.
+#[unstable(feature = "panic_any", issue = "78500")]
+#[inline]
+pub fn panic_any<M: Any + Send>(msg: M) -> ! {
+    crate::panicking::begin_panic(msg);
+}
+
 /// A marker trait which represents "panic safe" types in Rust.
 ///
 /// This trait is implemented by default for many types and behaves similarly in
@@ -232,16 +246,16 @@ impl<T: ?Sized> RefUnwindSafe for RwLock<T> {}
 #[stable(feature = "unwind_safe_atomic_refs", since = "1.14.0")]
 impl RefUnwindSafe for atomic::AtomicIsize {}
 #[cfg(target_has_atomic_load_store = "8")]
-#[unstable(feature = "integer_atomics", issue = "32976")]
+#[stable(feature = "integer_atomics_stable", since = "1.34.0")]
 impl RefUnwindSafe for atomic::AtomicI8 {}
 #[cfg(target_has_atomic_load_store = "16")]
-#[unstable(feature = "integer_atomics", issue = "32976")]
+#[stable(feature = "integer_atomics_stable", since = "1.34.0")]
 impl RefUnwindSafe for atomic::AtomicI16 {}
 #[cfg(target_has_atomic_load_store = "32")]
-#[unstable(feature = "integer_atomics", issue = "32976")]
+#[stable(feature = "integer_atomics_stable", since = "1.34.0")]
 impl RefUnwindSafe for atomic::AtomicI32 {}
 #[cfg(target_has_atomic_load_store = "64")]
-#[unstable(feature = "integer_atomics", issue = "32976")]
+#[stable(feature = "integer_atomics_stable", since = "1.34.0")]
 impl RefUnwindSafe for atomic::AtomicI64 {}
 #[cfg(target_has_atomic_load_store = "128")]
 #[unstable(feature = "integer_atomics", issue = "32976")]
@@ -251,16 +265,16 @@ impl RefUnwindSafe for atomic::AtomicI128 {}
 #[stable(feature = "unwind_safe_atomic_refs", since = "1.14.0")]
 impl RefUnwindSafe for atomic::AtomicUsize {}
 #[cfg(target_has_atomic_load_store = "8")]
-#[unstable(feature = "integer_atomics", issue = "32976")]
+#[stable(feature = "integer_atomics_stable", since = "1.34.0")]
 impl RefUnwindSafe for atomic::AtomicU8 {}
 #[cfg(target_has_atomic_load_store = "16")]
-#[unstable(feature = "integer_atomics", issue = "32976")]
+#[stable(feature = "integer_atomics_stable", since = "1.34.0")]
 impl RefUnwindSafe for atomic::AtomicU16 {}
 #[cfg(target_has_atomic_load_store = "32")]
-#[unstable(feature = "integer_atomics", issue = "32976")]
+#[stable(feature = "integer_atomics_stable", since = "1.34.0")]
 impl RefUnwindSafe for atomic::AtomicU32 {}
 #[cfg(target_has_atomic_load_store = "64")]
-#[unstable(feature = "integer_atomics", issue = "32976")]
+#[stable(feature = "integer_atomics_stable", since = "1.34.0")]
 impl RefUnwindSafe for atomic::AtomicU64 {}
 #[cfg(target_has_atomic_load_store = "128")]
 #[unstable(feature = "integer_atomics", issue = "32976")]
@@ -411,3 +425,6 @@ pub fn catch_unwind<F: FnOnce() -> R + UnwindSafe, R>(f: F) -> Result<R> {
 pub fn resume_unwind(payload: Box<dyn Any + Send>) -> ! {
     panicking::rust_panic_without_hook(payload)
 }
+
+#[cfg(test)]
+mod tests;

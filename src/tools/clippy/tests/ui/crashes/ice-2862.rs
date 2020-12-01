@@ -1,5 +1,3 @@
-// run-pass
-
 /// Test for https://github.com/rust-lang/rust-clippy/issues/2862
 
 pub trait FooMap {

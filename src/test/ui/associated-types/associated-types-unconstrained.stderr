@@ -1,11 +1,14 @@
-error[E0284]: type annotations needed
+error[E0283]: type annotations needed
   --> $DIR/associated-types-unconstrained.rs:14:20
    |
+LL |     fn bar() -> isize;
+   |     ------------------ required by `Foo::bar`
+...
 LL |     let x: isize = Foo::bar();
    |                    ^^^^^^^^ cannot infer type
    |
-   = note: cannot satisfy `<_ as Foo>::A == _`
+   = note: cannot satisfy `_: Foo`
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0284`.
+For more information about this error, try `rustc --explain E0283`.

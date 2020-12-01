@@ -1,5 +1,7 @@
 // run-pass
 // Test a ZST enum whose dicriminant is ~0i128. This caused an ICE when casting to a i32.
+#![feature(test)]
+use std::hint::black_box;
 
 #[derive(Copy, Clone)]
 enum Nums {
@@ -11,9 +13,6 @@ const NEG_ONE_I16: i16 = Nums::NegOne as i16;
 const NEG_ONE_I32: i32 = Nums::NegOne as i32;
 const NEG_ONE_I64: i64 = Nums::NegOne as i64;
 const NEG_ONE_I128: i128 = Nums::NegOne as i128;
-
-#[inline(never)]
-fn identity<T>(t: T) -> T { t }
 
 fn test_as_arg(n: Nums) {
     assert_eq!(-1i8, n as i8);
@@ -31,11 +30,11 @@ fn main() {
     assert_eq!(-1i64, kind as i64);
     assert_eq!(-1i128, kind as i128);
 
-    assert_eq!(-1i8, identity(kind) as i8);
-    assert_eq!(-1i16, identity(kind) as i16);
-    assert_eq!(-1i32, identity(kind) as i32);
-    assert_eq!(-1i64, identity(kind) as i64);
-    assert_eq!(-1i128, identity(kind) as i128);
+    assert_eq!(-1i8, black_box(kind) as i8);
+    assert_eq!(-1i16, black_box(kind) as i16);
+    assert_eq!(-1i32, black_box(kind) as i32);
+    assert_eq!(-1i64, black_box(kind) as i64);
+    assert_eq!(-1i128, black_box(kind) as i128);
 
     test_as_arg(Nums::NegOne);
 

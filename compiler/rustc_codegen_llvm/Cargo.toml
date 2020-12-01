@@ -1,0 +1,34 @@
+[package]
+authors = ["The Rust Project Developers"]
+name = "rustc_codegen_llvm"
+version = "0.0.0"
+edition = "2018"
+
+[lib]
+test = false
+doctest = false
+
+[dependencies]
+bitflags = "1.0"
+libc = "0.2"
+measureme = "9.0.0"
+snap = "1"
+tracing = "0.1"
+rustc_middle = { path = "../rustc_middle" }
+rustc-demangle = "0.1.18"
+rustc_attr = { path = "../rustc_attr" }
+rustc_codegen_ssa = { path = "../rustc_codegen_ssa" }
+rustc_data_structures = { path = "../rustc_data_structures" }
+rustc_errors = { path = "../rustc_errors" }
+rustc_feature = { path = "../rustc_feature" }
+rustc_fs_util = { path = "../rustc_fs_util" }
+rustc_hir = { path = "../rustc_hir" }
+rustc_incremental = { path = "../rustc_incremental" }
+rustc_index = { path = "../rustc_index" }
+rustc_llvm = { path = "../rustc_llvm" }
+rustc_session = { path = "../rustc_session" }
+rustc_serialize = { path = "../rustc_serialize" }
+rustc_target = { path = "../rustc_target" }
+smallvec = { version = "1.0", features = ["union", "may_dangle"] }
+rustc_ast = { path = "../rustc_ast" }
+rustc_span = { path = "../rustc_span" }

@@ -1,5 +1,5 @@
 error[E0267]: `break` inside of an `async` block
-  --> $DIR/async-block-control-flow-static-semantics.rs:33:9
+  --> $DIR/async-block-control-flow-static-semantics.rs:32:9
    |
 LL |       async {
    |  ___________-
@@ -9,7 +9,7 @@ LL | |     };
    | |_____- enclosing `async` block
 
 error[E0267]: `break` inside of an `async` block
-  --> $DIR/async-block-control-flow-static-semantics.rs:40:13
+  --> $DIR/async-block-control-flow-static-semantics.rs:39:13
    |
 LL |           async {
    |  _______________-
@@ -19,7 +19,7 @@ LL | |         };
    | |_________- enclosing `async` block
 
 error[E0308]: mismatched types
-  --> $DIR/async-block-control-flow-static-semantics.rs:22:58
+  --> $DIR/async-block-control-flow-static-semantics.rs:21:58
    |
 LL |   async fn return_targets_async_block_not_async_fn() -> u8 {
    |  __________________________________________________________^
@@ -31,32 +31,32 @@ LL | |
 LL | | }
    | |_^ expected `u8`, found `()`
 
-error[E0271]: type mismatch resolving `<impl std::future::Future as std::future::Future>::Output == ()`
-  --> $DIR/async-block-control-flow-static-semantics.rs:27:39
+error[E0271]: type mismatch resolving `<impl Future as Future>::Output == ()`
+  --> $DIR/async-block-control-flow-static-semantics.rs:26:39
    |
 LL |     let _: &dyn Future<Output = ()> = &block;
    |                                       ^^^^^^ expected `()`, found `u8`
    |
-   = note: required for the cast to the object type `dyn std::future::Future<Output = ()>`
+   = note: required for the cast to the object type `dyn Future<Output = ()>`
 
 error[E0308]: mismatched types
-  --> $DIR/async-block-control-flow-static-semantics.rs:13:43
+  --> $DIR/async-block-control-flow-static-semantics.rs:12:43
    |
 LL | fn return_targets_async_block_not_fn() -> u8 {
    |    ---------------------------------      ^^ expected `u8`, found `()`
    |    |
    |    implicitly returns `()` as its body has no tail or `return` expression
 
-error[E0271]: type mismatch resolving `<impl std::future::Future as std::future::Future>::Output == ()`
-  --> $DIR/async-block-control-flow-static-semantics.rs:18:39
+error[E0271]: type mismatch resolving `<impl Future as Future>::Output == ()`
+  --> $DIR/async-block-control-flow-static-semantics.rs:17:39
    |
 LL |     let _: &dyn Future<Output = ()> = &block;
    |                                       ^^^^^^ expected `()`, found `u8`
    |
-   = note: required for the cast to the object type `dyn std::future::Future<Output = ()>`
+   = note: required for the cast to the object type `dyn Future<Output = ()>`
 
 error[E0308]: mismatched types
-  --> $DIR/async-block-control-flow-static-semantics.rs:48:44
+  --> $DIR/async-block-control-flow-static-semantics.rs:47:44
    |
 LL | fn rethrow_targets_async_block_not_fn() -> Result<u8, MyErr> {
    |    ----------------------------------      ^^^^^^^^^^^^^^^^^ expected enum `std::result::Result`, found `()`
@@ -67,7 +67,7 @@ LL | fn rethrow_targets_async_block_not_fn() -> Result<u8, MyErr> {
            found unit type `()`
 
 error[E0308]: mismatched types
-  --> $DIR/async-block-control-flow-static-semantics.rs:57:50
+  --> $DIR/async-block-control-flow-static-semantics.rs:56:50
    |
 LL | fn rethrow_targets_async_block_not_async_fn() -> Result<u8, MyErr> {
    |    ----------------------------------------      ^^^^^^^^^^^^^^^^^ expected enum `std::result::Result`, found `()`

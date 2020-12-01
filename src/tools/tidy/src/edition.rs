@@ -1,5 +1,4 @@
 //! Tidy check to ensure that crate `edition` is '2018'
-//!
 
 use std::path::Path;
 

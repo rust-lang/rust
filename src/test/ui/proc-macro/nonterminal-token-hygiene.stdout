@@ -1,0 +1,88 @@
+PRINT-BANG INPUT (DISPLAY): struct S;
+PRINT-BANG RE-COLLECTED (DISPLAY): struct S ;
+PRINT-BANG INPUT (DEBUG): TokenStream [
+    Group {
+        delimiter: None,
+        stream: TokenStream [
+            Ident {
+                ident: "struct",
+                span: $DIR/nonterminal-token-hygiene.rs:30:5: 30:11 (#5),
+            },
+            Ident {
+                ident: "S",
+                span: $DIR/nonterminal-token-hygiene.rs:30:12: 30:13 (#5),
+            },
+            Punct {
+                ch: ';',
+                spacing: Alone,
+                span: $DIR/nonterminal-token-hygiene.rs:30:13: 30:14 (#5),
+            },
+        ],
+        span: $DIR/nonterminal-token-hygiene.rs:20:27: 20:32 (#6),
+    },
+]
+#![feature /* 0#0 */(prelude_import)]
+#![no_std /* 0#0 */]
+// Make sure that marks from declarative macros are applied to tokens in nonterminal.
+
+// check-pass
+// compile-flags: -Z span-debug -Z macro-backtrace -Z unpretty=expanded,hygiene
+// compile-flags: -Z trim-diagnostic-paths=no
+// normalize-stdout-test "\d+#" -> "0#"
+// aux-build:test-macros.rs
+
+#![feature /* 0#0 */(decl_macro)]
+
+#![no_std /* 0#0 */]
+#[prelude_import /* 0#1 */]
+use ::core /* 0#1 */::prelude /* 0#1 */::v1 /* 0#1 */::*;
+#[macro_use /* 0#1 */]
+extern crate core /* 0#2 */;
+#[macro_use /* 0#1 */]
+extern crate compiler_builtins /* 0#2 */;
+// Don't load unnecessary hygiene information from std
+extern crate std /* 0#0 */;
+
+#[macro_use /* 0#0 */]
+extern crate test_macros /* 0#0 */;
+
+macro_rules! outer
+    /*
+    0#0
+    */ {
+    ($ item : item) =>
+    {
+        macro inner() { print_bang ! { $ item } } inner ! () ;
+
+    } ;
+}
+
+struct S /* 0#0 */;
+macro inner /* 0#4 */ { () => { print_bang ! { struct S; } } }
+
+struct S /* 0#5 */;
+// OK, not a duplicate definition of `S`
+
+fn main /* 0#0 */() { }
+
+/*
+Expansions:
+0: parent: ExpnId(0), call_site_ctxt: #0, def_site_ctxt: #0, kind: Root
+1: parent: ExpnId(0), call_site_ctxt: #0, def_site_ctxt: #0, kind: AstPass(StdImports)
+2: parent: ExpnId(0), call_site_ctxt: #0, def_site_ctxt: #0, kind: Macro(Bang, "outer")
+3: parent: ExpnId(0), call_site_ctxt: #0, def_site_ctxt: #0, kind: AstPass(StdImports)
+4: parent: ExpnId(2), call_site_ctxt: #4, def_site_ctxt: #4, kind: Macro(Bang, "inner")
+5: parent: ExpnId(4), call_site_ctxt: #6, def_site_ctxt: #0, kind: Macro(Bang, "print_bang")
+
+SyntaxContexts:
+#0: parent: #0, outer_mark: (ExpnId(0), Opaque)
+#1: parent: #0, outer_mark: (ExpnId(1), Opaque)
+#2: parent: #0, outer_mark: (ExpnId(1), Transparent)
+#3: parent: #0, outer_mark: (ExpnId(3), Opaque)
+#4: parent: #0, outer_mark: (ExpnId(2), SemiTransparent)
+#5: parent: #0, outer_mark: (ExpnId(4), Opaque)
+#6: parent: #4, outer_mark: (ExpnId(4), Opaque)
+#7: parent: #0, outer_mark: (ExpnId(5), Opaque)
+#8: parent: #6, outer_mark: (ExpnId(5), Transparent)
+#9: parent: #5, outer_mark: (ExpnId(5), SemiTransparent)
+*/

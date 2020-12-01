@@ -120,10 +120,14 @@ h3.impl, h3.method, h3.type {
 }
 
 h1, h2, h3, h4,
-.sidebar, a.source, .search-input, .content table :not(code)>a,
+.sidebar, a.source, .search-input, .content table td:first-child > a,
 .collapse-toggle, div.item-list .out-of-band,
 #source-sidebar, #sidebar-toggle {
 	font-family: "Fira Sans", sans-serif;
+}
+
+.content ul.crate a.crate {
+	font: 16px/1.6 "Fira Sans";
 }
 
 ol, ul {
@@ -386,15 +390,11 @@ nav.sub {
 	cursor: pointer;
 }
 
+.docblock-short {
+	overflow-wrap: anywhere;
+}
 .docblock-short p {
 	display: inline;
-}
-
-.docblock-short.nowrap {
-	display: block;
-	overflow: hidden;
-	white-space: nowrap;
-	text-overflow: ellipsis;
 }
 
 .docblock-short p {
@@ -553,21 +553,21 @@ h4 > code, h3 > code, .invisible > code {
 	border: none;
 }
 
-.content .stability code {
+.content .item-info code {
 	font-size: 90%;
 }
 
-.content .stability {
+.content .item-info {
 	position: relative;
 	margin-left: 33px;
 	margin-top: -13px;
 }
 
-.sub-variant > div > .stability {
+.sub-variant > div > .item-info {
 	margin-top: initial;
 }
 
-.content .stability::before {
+.content .item-info::before {
 	content: '⬑';
 	font-size: 25px;
 	position: absolute;
@@ -579,15 +579,15 @@ h4 > code, h3 > code, .invisible > code {
 	margin-left: 20px;
 }
 
-.content .impl-items .docblock, .content .impl-items .stability {
+.content .impl-items .docblock, .content .impl-items .item-info {
 	margin-bottom: .6em;
 }
 
-.content .impl-items > .stability {
+.content .impl-items > .item-info {
 	margin-left: 40px;
 }
 
-.methods > .stability, .content .impl-items > .stability {
+.methods > .item-info, .content .impl-items > .item-info {
 	margin-top: -8px;
 }
 
@@ -595,7 +595,7 @@ h4 > code, h3 > code, .invisible > code {
 	flex-basis: 100%;
 }
 
-#main > .stability {
+#main > .item-info {
 	margin-top: 0;
 }
 
@@ -655,11 +655,11 @@ a {
 }
 
 .docblock a:not(.srclink):not(.test-arrow):hover,
-.docblock-short a:not(.srclink):not(.test-arrow):hover, .stability a {
+.docblock-short a:not(.srclink):not(.test-arrow):hover, .item-info a {
 	text-decoration: underline;
 }
 
-.invisible > .srclink, h4 > code + .srclink {
+.invisible > .srclink, h4 > code + .srclink, h3 > code + .srclink {
 	position: absolute;
 	top: 0;
 	right: 0;
@@ -796,14 +796,22 @@ body.blur > :not(#help) {
 	clear: left;
 	display: block;
 }
+#help > div > span {
+	text-align: center;
+	display: block;
+	margin: 10px 0;
+	font-size: 18px;
+	border-bottom: 1px solid #ccc;
+	padding-bottom: 4px;
+	margin-bottom: 6px;
+}
 #help dd { margin: 5px 35px; }
 #help .infos { padding-left: 0; }
 #help h1, #help h2 { margin-top: 0; }
 #help > div div {
 	width: 50%;
 	float: left;
-	padding: 20px;
-	padding-left: 17px;
+	padding: 0 20px 20px 17px;;
 }
 
 .stab {
@@ -849,25 +857,25 @@ body.blur > :not(#help) {
 	top: 0;
 }
 
-.impl-items .since, .impl .since {
+.impl-items .since, .impl .since, .methods .since {
 	flex-grow: 0;
 	padding-left: 12px;
 	padding-right: 2px;
 	position: initial;
 }
 
-.impl-items .srclink, .impl .srclink {
+.impl-items .srclink, .impl .srclink, .methods .srclink {
 	flex-grow: 0;
 	/* Override header settings otherwise it's too bold */
 	font-size: 17px;
 	font-weight: normal;
 }
 
-.impl-items code, .impl code {
+.impl-items code, .impl code, .methods code {
 	flex-grow: 1;
 }
 
-.impl-items h4, h4.impl, h3.impl {
+.impl-items h4, h4.impl, h3.impl, .methods h3 {
 	display: flex;
 	flex-basis: 100%;
 	font-size: 16px;
@@ -1094,6 +1102,10 @@ h3 > .collapse-toggle, h4 > .collapse-toggle {
 	border-style: solid;
 }
 
+.tooltip:hover .tooltiptext {
+	display: inline;
+}
+
 .tooltip.compile_fail, .tooltip.should_panic, .tooltip.ignore {
 	font-weight: bold;
 	font-size: 20px;
@@ -1290,7 +1302,7 @@ h4 > .notable-traits {
 #theme-choices > button {
 	border: none;
 	width: 100%;
-	padding: 4px;
+	padding: 4px 8px;
 	text-align: center;
 	background: rgba(0,0,0,0);
 }
@@ -1536,6 +1548,14 @@ h4 > .notable-traits {
 		left: 0;
 		top: 100%;
 	}
+
+	/* We don't display the help button on mobile devices. */
+	.help-button {
+		display: none;
+	}
+	.search-container > div {
+		width: calc(100% - 32px);
+	}
 }
 
 @media print {
@@ -1545,12 +1565,43 @@ h4 > .notable-traits {
 }
 
 @media (max-width: 416px) {
-	#titles {
+	#titles, #titles > div {
 		height: 73px;
 	}
 
-	#titles > div {
-		height: 73px;
+	#main > table:not(.table-display) td {
+		word-break: break-word;
+		min-width: 10%;
+	}
+
+	.search-container > div {
+		display: block;
+		width: calc(100% - 37px);
+	}
+
+	#crate-search {
+		width: 100%;
+		border-radius: 4px;
+		border: 0;
+	}
+
+	#crate-search + .search-input {
+		width: calc(100% + 71px);
+		margin-left: -36px;
+	}
+
+	#theme-picker, #settings-menu {
+		padding: 5px;
+		width: 31px;
+		height: 31px;
+	}
+
+	#theme-picker {
+		margin-top: -2px;
+	}
+
+	#settings-menu {
+		top: 7px;
 	}
 }
 

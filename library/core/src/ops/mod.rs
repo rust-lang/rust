@@ -49,18 +49,18 @@
 //! }
 //!
 //! impl Add for Point {
-//!     type Output = Point;
+//!     type Output = Self;
 //!
-//!     fn add(self, other: Point) -> Point {
-//!         Point {x: self.x + other.x, y: self.y + other.y}
+//!     fn add(self, other: Self) -> Self {
+//!         Self {x: self.x + other.x, y: self.y + other.y}
 //!     }
 //! }
 //!
 //! impl Sub for Point {
-//!     type Output = Point;
+//!     type Output = Self;
 //!
-//!     fn sub(self, other: Point) -> Point {
-//!         Point {x: self.x - other.x, y: self.y - other.y}
+//!     fn sub(self, other: Self) -> Self {
+//!         Self {x: self.x - other.x, y: self.y - other.y}
 //!     }
 //! }
 //!
@@ -140,6 +140,7 @@
 
 mod arith;
 mod bit;
+mod control_flow;
 mod deref;
 mod drop;
 mod function;
@@ -191,3 +192,6 @@ pub use self::unsize::CoerceUnsized;
 
 #[unstable(feature = "dispatch_from_dyn", issue = "none")]
 pub use self::unsize::DispatchFromDyn;
+
+#[unstable(feature = "control_flow_enum", reason = "new API", issue = "75744")]
+pub use self::control_flow::ControlFlow;

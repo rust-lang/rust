@@ -7,6 +7,7 @@ use rustc_errors::Applicability;
 use rustc_hir::{Body, Expr, ExprKind, Pat, PatKind, QPath, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_span::sym;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for instances of `map(f)` where `f` is the identity function.
@@ -65,8 +66,8 @@ fn get_map_argument<'a>(cx: &LateContext<'_>, expr: &'a Expr<'a>) -> Option<&'a 
         if args.len() == 2 && method.ident.as_str() == "map";
         let caller_ty = cx.typeck_results().expr_ty(&args[0]);
         if match_trait_method(cx, expr, &paths::ITERATOR)
-            || is_type_diagnostic_item(cx, caller_ty, sym!(result_type))
-            || is_type_diagnostic_item(cx, caller_ty, sym!(option_type));
+            || is_type_diagnostic_item(cx, caller_ty, sym::result_type)
+            || is_type_diagnostic_item(cx, caller_ty, sym::option_type);
         then {
             Some(args)
         } else {

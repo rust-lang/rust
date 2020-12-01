@@ -47,7 +47,7 @@ LL |     let _: i32 = f2(2i32);
    |            |
    |            expected due to this
    |
-help: you can convert an `u32` to `i32` and panic if the converted value wouldn't fit
+help: you can convert a `u32` to an `i32` and panic if the converted value doesn't fit
    |
 LL |     let _: i32 = f2(2i32).try_into().unwrap();
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^

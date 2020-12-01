@@ -14,7 +14,7 @@
 
 // This checks the constants from {low,high}_align_const, they share the same
 // constant, but the alignment differs, so the higher one should be used
-// CHECK: [[LOW_HIGH:@[0-9]+]] = {{.*}} getelementptr inbounds (<{ [8 x i8] }>, <{ [8 x i8] }>* @alloc20, i32 0, i32 0, i32 0), {{.*}}
+// CHECK: [[LOW_HIGH:@alloc[0-9]+]] = {{.*}}, align 4
 
 #[derive(Copy, Clone)]
 // repr(i16) is required for the {low,high}_align_const test
@@ -43,7 +43,7 @@ pub fn inline_enum_const() -> E<i8, i16> {
 #[no_mangle]
 pub fn low_align_const() -> E<i16, [i16; 3]> {
     // Check that low_align_const and high_align_const use the same constant
-    // CHECK: load %"E<i16, [i16; 3]>"*, %"E<i16, [i16; 3]>"** bitcast (<{ i8*, [0 x i8] }>* [[LOW_HIGH]] to %"E<i16, [i16; 3]>"**),
+    // CHECK: memcpy.p0i8.p0i8.i{{(32|64)}}(i8* align 2 %1, i8* align 2 getelementptr inbounds (<{ [8 x i8] }>, <{ [8 x i8] }>* [[LOW_HIGH]], i32 0, i32 0, i32 0), i{{(32|64)}} 8, i1 false)
     *&E::A(0)
 }
 
@@ -51,6 +51,6 @@ pub fn low_align_const() -> E<i16, [i16; 3]> {
 #[no_mangle]
 pub fn high_align_const() -> E<i16, i32> {
     // Check that low_align_const and high_align_const use the same constant
-    // CHECK: load %"E<i16, i32>"*, %"E<i16, i32>"** bitcast (<{ i8*, [0 x i8] }>* [[LOW_HIGH]] to %"E<i16, i32>"**),
+    // CHECK: memcpy.p0i8.p0i8.i{{(32|64)}}(i8* align 4 %1, i8* align 4 getelementptr inbounds (<{ [8 x i8] }>, <{ [8 x i8] }>* [[LOW_HIGH]], i32 0, i32 0, i32 0), i{{(32|64)}} 8, i1 false)
     *&E::A(0)
 }

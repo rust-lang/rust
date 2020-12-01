@@ -12,6 +12,18 @@ pub(crate) unsafe fn rel_ptr_mut<T>(offset: u64) -> *mut T {
 
 extern "C" {
     static ENCLAVE_SIZE: usize;
+    static HEAP_BASE: u64;
+    static HEAP_SIZE: usize;
+}
+
+/// Returns the base memory address of the heap
+pub(crate) fn heap_base() -> *const u8 {
+    unsafe { rel_ptr_mut(HEAP_BASE) }
+}
+
+/// Returns the size of the heap
+pub(crate) fn heap_size() -> usize {
+    unsafe { HEAP_SIZE }
 }
 
 // Do not remove inline: will result in relocation failure
@@ -21,8 +33,15 @@ extern "C" {
 #[inline(always)]
 #[unstable(feature = "sgx_platform", issue = "56975")]
 pub fn image_base() -> u64 {
-    let base;
-    unsafe { llvm_asm!("lea IMAGE_BASE(%rip),$0":"=r"(base)) };
+    let base: u64;
+    unsafe {
+        asm!(
+            "lea IMAGE_BASE(%rip), {}",
+            lateout(reg) base,
+            // NOTE(#76738): ATT syntax is used to support LLVM 8 and 9.
+            options(att_syntax, nostack, preserves_flags, nomem, pure),
+        )
+    };
     base
 }
 

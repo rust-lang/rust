@@ -1,0 +1,20 @@
+error: passing `TyCtxt<'tcx>` by reference
+  --> $DIR/pass_ty_by_ref_self.rs:17:15
+   |
+LL |     fn by_ref(&self) {}
+   |               ^^^^^ help: try passing by value: `TyCtxt<'tcx>`
+   |
+note: the lint level is defined here
+  --> $DIR/pass_ty_by_ref_self.rs:7:9
+   |
+LL | #![deny(rustc::ty_pass_by_reference)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: passing `Ty<'tcx>` by reference
+  --> $DIR/pass_ty_by_ref_self.rs:30:21
+   |
+LL |     fn by_ref(self: &Ty<'tcx>) {}
+   |                     ^^^^^^^^^ help: try passing by value: `Ty<'tcx>`
+
+error: aborting due to 2 previous errors
+

@@ -7,7 +7,7 @@ use rustc_errors::Applicability;
 use rustc_hir::{TraitFn, TraitItem, TraitItemKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::Symbol;
+use rustc_span::{sym, Symbol};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for `#[inline]` on trait methods without bodies
@@ -41,7 +41,7 @@ impl<'tcx> LateLintPass<'tcx> for InlineFnWithoutBody {
 
 fn check_attrs(cx: &LateContext<'_>, name: Symbol, attrs: &[Attribute]) {
     for attr in attrs {
-        if !attr.has_name(sym!(inline)) {
+        if !attr.has_name(sym::inline) {
             continue;
         }
 

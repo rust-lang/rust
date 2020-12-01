@@ -1,0 +1,9 @@
+error[E0277]: the trait bound `dyn Foo: CastTo<[i32]>` is not satisfied
+  --> $DIR/issue-71659.rs:30:15
+   |
+LL |     let x = x.cast::<[i32]>();
+   |               ^^^^ the trait `CastTo<[i32]>` is not implemented for `dyn Foo`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

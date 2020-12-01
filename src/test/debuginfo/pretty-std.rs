@@ -13,7 +13,7 @@
 // gdb-check:$1 = &[i32](len: 4) = {0, 1, 2, 3}
 
 // gdb-command: print vec
-// gdb-check:$2 = Vec<u64>(len: 4, cap: [...]) = {4, 5, 6, 7}
+// gdb-check:$2 = Vec<u64, alloc::alloc::Global>(len: 4, cap: [...]) = {4, 5, 6, 7}
 
 // gdb-command: print str_slice
 // gdb-check:$3 = "IAMA string slice!"
@@ -74,7 +74,7 @@
 // NOTE: While slices have a .natvis entry that works in VS & VS Code, it fails in CDB 10.0.18362.1
 
 // cdb-command: dx vec,d
-// cdb-check:vec,d [...] : { size=4 } [Type: [...]::Vec<u64>]
+// cdb-check:vec,d [...] : { size=4 } [Type: [...]::Vec<u64, alloc::alloc::Global>]
 // cdb-check:    [size]           : 4 [Type: [...]]
 // cdb-check:    [capacity]       : [...] [Type: [...]]
 // cdb-check:    [0]              : 4 [Type: unsigned __int64]

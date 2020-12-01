@@ -1,12 +1,15 @@
-// run-pass
-#![feature(const_generics)]
-#![allow(incomplete_features)]
+// [full] run-pass
+// revisions: full min
+#![cfg_attr(full, feature(const_generics))]
+#![cfg_attr(full, allow(incomplete_features))]
+#![cfg_attr(min, feature(min_const_generics))]
 
 struct Foo {
     i: i32,
 }
 
 trait Get<'a, const N: &'static str> {
+    //[min]~^ ERROR `&'static str` is forbidden as the type of a const generic parameter
     type Target: 'a;
 
     fn get(&'a self) -> &'a Self::Target;
@@ -14,6 +17,7 @@ trait Get<'a, const N: &'static str> {
 
 impl Foo {
     fn ask<'a, const N: &'static str>(&'a self) -> &'a <Self as Get<N>>::Target
+    //[min]~^ ERROR `&'static str` is forbidden as the type of a const generic parameter
     where
         Self: Get<'a, N>,
     {

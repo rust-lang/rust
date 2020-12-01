@@ -6,17 +6,17 @@ LL |     *OH_YES = 99;
 
 warning: skipping const checks
    |
-help: skipping check for `const_mut_refs` feature
+help: skipping check that does not even have a feature gate
   --> $DIR/mutable_references.rs:9:26
    |
 LL | static FOO: &&mut u32 = &&mut 42;
    |                          ^^^^^^^
-help: skipping check for `const_mut_refs` feature
+help: skipping check that does not even have a feature gate
   --> $DIR/mutable_references.rs:13:23
    |
 LL | static BAR: &mut () = &mut ();
    |                       ^^^^^^^
-help: skipping check for `const_mut_refs` feature
+help: skipping check that does not even have a feature gate
   --> $DIR/mutable_references.rs:18:28
    |
 LL | static BOO: &mut Foo<()> = &mut Foo(());
@@ -26,7 +26,7 @@ help: skipping check that does not even have a feature gate
    |
 LL |     x: &UnsafeCell::new(42),
    |        ^^^^^^^^^^^^^^^^^^^^
-help: skipping check for `const_mut_refs` feature
+help: skipping check that does not even have a feature gate
   --> $DIR/mutable_references.rs:30:27
    |
 LL | static OH_YES: &mut i32 = &mut 42;

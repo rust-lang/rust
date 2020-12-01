@@ -159,12 +159,12 @@ specify some extra info about the inline assembly:
 
 Current valid options are:
 
-1. *volatile* - specifying this is analogous to
+1. `volatile` - specifying this is analogous to
    `__asm__ __volatile__ (...)` in gcc/clang.
-2. *alignstack* - certain instructions expect the stack to be
+2. `alignstack` - certain instructions expect the stack to be
    aligned a certain way (i.e. SSE) and specifying this indicates to
    the compiler to insert its usual stack alignment code
-3. *intel* - use intel syntax instead of the default AT&T.
+3. `intel` - use intel syntax instead of the default AT&T.
 
 ```rust
 # #![feature(llvm_asm)]

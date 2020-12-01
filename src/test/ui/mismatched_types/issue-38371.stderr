@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/issue-38371.rs:4:8
    |
 LL | fn foo(&foo: Foo) {
-   |        ^^^^------
+   |        ^^^^-----
    |        |     |
    |        |     expected due to this
    |        expected struct `Foo`, found reference

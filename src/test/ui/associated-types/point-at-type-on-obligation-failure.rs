@@ -10,8 +10,9 @@ struct Foo;
 struct Foo2;
 
 impl Bar for Foo {
-    type Ok = ();  //~ ERROR type mismatch resolving `<Foo2 as Bar2>::Ok == ()`
+    type Ok = ();
     type Sibling = Foo2;
+    //~^ ERROR type mismatch resolving `<Foo2 as Bar2>::Ok == ()`
 }
 impl Bar2 for Foo2 {
     type Ok = u32;

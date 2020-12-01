@@ -1,0 +1,17 @@
+[package]
+authors = ["The Rust Project Developers"]
+name = "rustc_ty_utils"
+version = "0.0.0"
+edition = "2018"
+
+[dependencies]
+tracing = "0.1"
+rustc_middle = { path = "../rustc_middle" }
+rustc_data_structures = { path = "../rustc_data_structures" }
+rustc_errors = { path = "../rustc_errors" }
+rustc_hir = { path = "../rustc_hir" }
+rustc_infer = { path = "../rustc_infer" }
+rustc_span = { path = "../rustc_span" }
+rustc_session = { path = "../rustc_session" }
+rustc_target = { path = "../rustc_target" }
+rustc_trait_selection = { path = "../rustc_trait_selection" }

@@ -2,6 +2,9 @@
 
 #![allow(unused_imports)] // lots of cfg code here
 
+#[cfg(all(test, target_env = "gnu"))]
+mod tests;
+
 use crate::os::unix::prelude::*;
 
 use crate::error::Error as StdError;
@@ -18,7 +21,7 @@ use crate::slice;
 use crate::str;
 use crate::sys::cvt;
 use crate::sys::fd;
-use crate::sys_common::mutex::{Mutex, MutexGuard};
+use crate::sys_common::mutex::{StaticMutex, StaticMutexGuard};
 use crate::vec;
 
 use libc::{c_char, c_int, c_void};
@@ -34,7 +37,7 @@ cfg_if::cfg_if! {
 }
 
 extern "C" {
-    #[cfg(not(target_os = "dragonfly"))]
+    #[cfg(not(any(target_os = "dragonfly", target_os = "vxworks")))]
     #[cfg_attr(
         any(
             target_os = "linux",
@@ -64,16 +67,26 @@ extern "C" {
 }
 
 /// Returns the platform-specific value of errno
-#[cfg(not(target_os = "dragonfly"))]
+#[cfg(not(any(target_os = "dragonfly", target_os = "vxworks")))]
 pub fn errno() -> i32 {
     unsafe { (*errno_location()) as i32 }
 }
 
 /// Sets the platform-specific value of errno
-#[cfg(all(not(target_os = "linux"), not(target_os = "dragonfly")))] // needed for readdir and syscall!
+#[cfg(all(not(target_os = "linux"), not(target_os = "dragonfly"), not(target_os = "vxworks")))] // needed for readdir and syscall!
 #[allow(dead_code)] // but not all target cfgs actually end up using it
 pub fn set_errno(e: i32) {
     unsafe { *errno_location() = e as c_int }
+}
+
+#[cfg(target_os = "vxworks")]
+pub fn errno() -> i32 {
+    unsafe { libc::errnoGet() }
+}
+
+#[cfg(target_os = "vxworks")]
+pub fn set_errno(e: i32) {
+    unsafe { libc::errnoSet(e as c_int) };
 }
 
 #[cfg(target_os = "dragonfly")]
@@ -436,6 +449,19 @@ pub fn current_exe() -> io::Result<PathBuf> {
     Err(io::Error::new(ErrorKind::Other, "Not yet implemented!"))
 }
 
+#[cfg(target_os = "vxworks")]
+pub fn current_exe() -> io::Result<PathBuf> {
+    #[cfg(test)]
+    use realstd::env;
+
+    #[cfg(not(test))]
+    use crate::env;
+
+    let exe_path = env::args().next().unwrap();
+    let path = path::Path::new(&exe_path);
+    path.canonicalize()
+}
+
 pub struct Env {
     iter: vec::IntoIter<(OsString, OsString)>,
     _dont_send_or_sync_me: PhantomData<*mut ()>,
@@ -467,10 +493,9 @@ pub unsafe fn environ() -> *mut *const *const c_char {
     &mut environ
 }
 
-pub unsafe fn env_lock() -> MutexGuard<'static> {
-    // We never call `ENV_LOCK.init()`, so it is UB to attempt to
-    // acquire this mutex reentrantly!
-    static ENV_LOCK: Mutex = Mutex::new();
+pub unsafe fn env_lock() -> StaticMutexGuard {
+    // It is UB to attempt to acquire this mutex reentrantly!
+    static ENV_LOCK: StaticMutex = StaticMutex::new();
     ENV_LOCK.lock()
 }
 
@@ -566,7 +591,8 @@ pub fn home_dir() -> Option<PathBuf> {
         target_os = "android",
         target_os = "ios",
         target_os = "emscripten",
-        target_os = "redox"
+        target_os = "redox",
+        target_os = "vxworks"
     ))]
     unsafe fn fallback() -> Option<OsString> {
         None
@@ -575,7 +601,8 @@ pub fn home_dir() -> Option<PathBuf> {
         target_os = "android",
         target_os = "ios",
         target_os = "emscripten",
-        target_os = "redox"
+        target_os = "redox",
+        target_os = "vxworks"
     )))]
     unsafe fn fallback() -> Option<OsString> {
         let amt = match libc::sysconf(libc::_SC_GETPW_R_SIZE_MAX) {
@@ -643,32 +670,5 @@ fn parse_glibc_version(version: &str) -> Option<(usize, usize)> {
     match (parsed_ints.next(), parsed_ints.next()) {
         (Some(Ok(major)), Some(Ok(minor))) => Some((major, minor)),
         _ => None,
-    }
-}
-
-#[cfg(all(test, target_env = "gnu"))]
-mod test {
-    use super::*;
-
-    #[test]
-    fn test_glibc_version() {
-        // This mostly just tests that the weak linkage doesn't panic wildly...
-        glibc_version();
-    }
-
-    #[test]
-    fn test_parse_glibc_version() {
-        let cases = [
-            ("0.0", Some((0, 0))),
-            ("01.+2", Some((1, 2))),
-            ("3.4.5.six", Some((3, 4))),
-            ("1", None),
-            ("1.-2", None),
-            ("1.foo", None),
-            ("foo.1", None),
-        ];
-        for &(version_str, parsed) in cases.iter() {
-            assert_eq!(parsed, parse_glibc_version(version_str));
-        }
     }
 }

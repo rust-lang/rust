@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/issue-37665.rs:10:17
+  --> $DIR/issue-37665.rs:9:17
    |
 LL |     let x: () = 0;
    |            --   ^ expected `()`, found integer

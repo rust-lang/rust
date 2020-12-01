@@ -60,7 +60,7 @@ error[E0382]: borrow of moved value: `x`
   --> $DIR/closure-access-spans.rs:35:5
    |
 LL | fn closure_imm_capture_moved(mut x: String) {
-   |                              ----- move occurs because `x` has type `std::string::String`, which does not implement the `Copy` trait
+   |                              ----- move occurs because `x` has type `String`, which does not implement the `Copy` trait
 LL |     let r = x;
    |             - value moved here
 LL |     || x.len();
@@ -72,7 +72,7 @@ error[E0382]: borrow of moved value: `x`
   --> $DIR/closure-access-spans.rs:40:5
    |
 LL | fn closure_mut_capture_moved(mut x: String) {
-   |                              ----- move occurs because `x` has type `std::string::String`, which does not implement the `Copy` trait
+   |                              ----- move occurs because `x` has type `String`, which does not implement the `Copy` trait
 LL |     let r = x;
    |             - value moved here
 LL |     || x = String::new();
@@ -84,7 +84,7 @@ error[E0382]: borrow of moved value: `x`
   --> $DIR/closure-access-spans.rs:45:5
    |
 LL | fn closure_unique_capture_moved(x: &mut String) {
-   |                                 - move occurs because `x` has type `&mut std::string::String`, which does not implement the `Copy` trait
+   |                                 - move occurs because `x` has type `&mut String`, which does not implement the `Copy` trait
 LL |     let r = x;
    |             - value moved here
 LL |     || *x = String::new();
@@ -96,7 +96,7 @@ error[E0382]: use of moved value: `x`
   --> $DIR/closure-access-spans.rs:50:5
    |
 LL | fn closure_move_capture_moved(x: &mut String) {
-   |                               - move occurs because `x` has type `&mut std::string::String`, which does not implement the `Copy` trait
+   |                               - move occurs because `x` has type `&mut String`, which does not implement the `Copy` trait
 LL |     let r = x;
    |             - value moved here
 LL |     || x;

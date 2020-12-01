@@ -1,14 +1,15 @@
 use crate::utils::{
-    is_type_diagnostic_item, match_def_path, match_qpath, paths, snippet,
+    differing_macro_contexts, in_macro, is_type_diagnostic_item, match_def_path, match_qpath, paths, snippet,
     snippet_with_macro_callsite, span_lint_and_sugg,
 };
 use if_chain::if_chain;
 use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind, QPath, LangItem, MatchSource};
+use rustc_hir::{Expr, ExprKind, LangItem, MatchSource, QPath};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, Ty};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_span::sym;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for usages of `Err(x)?`.
@@ -91,8 +92,11 @@ impl<'tcx> LateLintPass<'tcx> for TryErr {
                 };
 
                 let expr_err_ty = cx.typeck_results().expr_ty(err_arg);
+                let differing_contexts = differing_macro_contexts(expr.span, err_arg.span);
 
-                let origin_snippet = if err_arg.span.from_expansion() {
+                let origin_snippet = if in_macro(expr.span) && in_macro(err_arg.span) && differing_contexts {
+                    snippet(cx, err_arg.span.ctxt().outer_expn_data().call_site, "_")
+                } else if err_arg.span.from_expansion() && !in_macro(expr.span) {
                     snippet_with_macro_callsite(cx, err_arg.span, "_")
                 } else {
                     snippet(cx, err_arg.span, "_")
@@ -132,8 +136,8 @@ fn find_return_type<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx ExprKind<'_>) -> O
 /// Extracts the error type from Result<T, E>.
 fn result_error_type<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
     if_chain! {
-        if let ty::Adt(_, subst) = ty.kind;
-        if is_type_diagnostic_item(cx, ty, sym!(result_type));
+        if let ty::Adt(_, subst) = ty.kind();
+        if is_type_diagnostic_item(cx, ty, sym::result_type);
         let err_ty = subst.type_at(1);
         then {
             Some(err_ty)
@@ -146,12 +150,12 @@ fn result_error_type<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'t
 /// Extracts the error type from Poll<Result<T, E>>.
 fn poll_result_error_type<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
     if_chain! {
-        if let ty::Adt(def, subst) = ty.kind;
+        if let ty::Adt(def, subst) = ty.kind();
         if match_def_path(cx, def.did, &paths::POLL);
         let ready_ty = subst.type_at(0);
 
-        if let ty::Adt(ready_def, ready_subst) = ready_ty.kind;
-        if cx.tcx.is_diagnostic_item(sym!(result_type), ready_def.did);
+        if let ty::Adt(ready_def, ready_subst) = ready_ty.kind();
+        if cx.tcx.is_diagnostic_item(sym::result_type, ready_def.did);
         let err_ty = ready_subst.type_at(1);
 
         then {
@@ -165,16 +169,16 @@ fn poll_result_error_type<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<
 /// Extracts the error type from Poll<Option<Result<T, E>>>.
 fn poll_option_result_error_type<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
     if_chain! {
-        if let ty::Adt(def, subst) = ty.kind;
+        if let ty::Adt(def, subst) = ty.kind();
         if match_def_path(cx, def.did, &paths::POLL);
         let ready_ty = subst.type_at(0);
 
-        if let ty::Adt(ready_def, ready_subst) = ready_ty.kind;
-        if cx.tcx.is_diagnostic_item(sym!(option_type), ready_def.did);
+        if let ty::Adt(ready_def, ready_subst) = ready_ty.kind();
+        if cx.tcx.is_diagnostic_item(sym::option_type, ready_def.did);
         let some_ty = ready_subst.type_at(0);
 
-        if let ty::Adt(some_def, some_subst) = some_ty.kind;
-        if cx.tcx.is_diagnostic_item(sym!(result_type), some_def.did);
+        if let ty::Adt(some_def, some_subst) = some_ty.kind();
+        if cx.tcx.is_diagnostic_item(sym::result_type, some_def.did);
         let err_ty = some_subst.type_at(1);
 
         then {

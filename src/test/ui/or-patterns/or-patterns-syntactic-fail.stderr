@@ -112,7 +112,7 @@ error[E0308]: mismatched types
 LL |     let recovery_witness: String = 0;
    |                           ------   ^
    |                           |        |
-   |                           |        expected struct `std::string::String`, found integer
+   |                           |        expected struct `String`, found integer
    |                           |        help: try using a conversion method: `0.to_string()`
    |                           expected due to this
 

@@ -6,6 +6,7 @@ LL | #![feature(specialization)]
    |
    = note: `#[warn(incomplete_features)]` on by default
    = note: see issue #31844 <https://github.com/rust-lang/rust/issues/31844> for more information
+   = help: consider using `min_specialization` instead, which is more stable and complete
 
 error[E0308]: mismatched types
   --> $DIR/equality.rs:15:5
@@ -23,7 +24,7 @@ LL |     0_u32
    = note: for information on `impl Trait`, see <https://doc.rust-lang.org/book/ch10-02-traits.html#returning-types-that-implement-traits>
    = help: if the trait `Foo` were object safe, you could return a boxed trait object
    = note: for information on trait objects, see <https://doc.rust-lang.org/book/ch17-02-trait-objects.html#using-trait-objects-that-allow-for-values-of-different-types>
-   = help: alternatively, create a new `enum` with a variant for each returned type
+   = help: you could instead create a new `enum` with a variant for each returned type
 
 error[E0277]: cannot add `impl Foo` to `u32`
   --> $DIR/equality.rs:24:11
@@ -31,7 +32,7 @@ error[E0277]: cannot add `impl Foo` to `u32`
 LL |         n + sum_to(n - 1)
    |           ^ no implementation for `u32 + impl Foo`
    |
-   = help: the trait `std::ops::Add<impl Foo>` is not implemented for `u32`
+   = help: the trait `Add<impl Foo>` is not implemented for `u32`
 
 error: aborting due to 2 previous errors; 1 warning emitted
 

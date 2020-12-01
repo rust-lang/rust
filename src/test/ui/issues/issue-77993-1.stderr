@@ -1,0 +1,16 @@
+error[E0412]: cannot find type `It` in this scope
+  --> $DIR/issue-77993-1.rs:3:9
+   |
+LL |     it: It,
+   |         ^^ not found in this scope
+
+error[E0063]: missing field `it` in initializer of `InGroup<_>`
+  --> $DIR/issue-77993-1.rs:8:5
+   |
+LL |     InGroup { f: |d| d }
+   |     ^^^^^^^ missing `it`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0063, E0412.
+For more information about an error, try `rustc --explain E0063`.

@@ -5,12 +5,14 @@ LL | type Underconstrained<T: Trait> = impl 'static;
    |                                   ^^^^^^^^^^^^
 
 error[E0277]: the trait bound `T: Trait` is not satisfied
-  --> $DIR/generic_underconstrained.rs:6:35
+  --> $DIR/generic_underconstrained.rs:10:31
    |
 LL | type Underconstrained<T: Trait> = impl 'static;
-   |                                   ^^^^^^^^^^^^ the trait `Trait` is not implemented for `T`
+   |                          ----- required by this bound in `Underconstrained`
+...
+LL | fn underconstrain<T>(_: T) -> Underconstrained<T> {
+   |                               ^^^^^^^^^^^^^^^^^^^ the trait `Trait` is not implemented for `T`
    |
-   = note: the return type of a function must have a statically known size
 help: consider restricting type parameter `T`
    |
 LL | fn underconstrain<T: Trait>(_: T) -> Underconstrained<T> {

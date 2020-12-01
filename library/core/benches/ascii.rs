@@ -253,9 +253,9 @@ macro_rules! repeat {
     };
 }
 
-const SHORT: &'static str = "Alice's";
-const MEDIUM: &'static str = "Alice's Adventures in Wonderland";
-const LONG: &'static str = repeat!(
+const SHORT: &str = "Alice's";
+const MEDIUM: &str = "Alice's Adventures in Wonderland";
+const LONG: &str = repeat!(
     r#"
     La Guida di Bragia, a Ballad Opera for the Marionette Theatre (around 1850)
     Alice's Adventures in Wonderland (1865)

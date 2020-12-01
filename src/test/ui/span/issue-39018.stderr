@@ -22,11 +22,11 @@ LL |     let y = World::Hello + World::Goodbye;
    |
    = note: an implementation of `std::ops::Add` might be missing for `World`
 
-error[E0369]: cannot add `std::string::String` to `&str`
+error[E0369]: cannot add `String` to `&str`
   --> $DIR/issue-39018.rs:11:22
    |
 LL |     let x = "Hello " + "World!".to_owned();
-   |             -------- ^ ------------------- std::string::String
+   |             -------- ^ ------------------- String
    |             |        |
    |             |        `+` cannot be used to concatenate a `&str` with a `String`
    |             &str
@@ -36,28 +36,28 @@ help: `to_owned()` can be used to create an owned `String` from a string referen
 LL |     let x = "Hello ".to_owned() + &"World!".to_owned();
    |             ^^^^^^^^^^^^^^^^^^^   ^^^^^^^^^^^^^^^^^^^^
 
-error[E0369]: cannot add `&std::string::String` to `&std::string::String`
+error[E0369]: cannot add `&String` to `&String`
   --> $DIR/issue-39018.rs:26:16
    |
 LL |     let _ = &a + &b;
-   |             -- ^ -- &std::string::String
+   |             -- ^ -- &String
    |             |  |
    |             |  `+` cannot be used to concatenate two `&str` strings
-   |             &std::string::String
+   |             &String
    |
 help: String concatenation appends the string on the right to the string on the left and may require reallocation. This requires ownership of the string on the left
    |
 LL |     let _ = a + &b;
    |             ^
 
-error[E0369]: cannot add `std::string::String` to `&std::string::String`
+error[E0369]: cannot add `String` to `&String`
   --> $DIR/issue-39018.rs:27:16
    |
 LL |     let _ = &a + b;
-   |             -- ^ - std::string::String
+   |             -- ^ - String
    |             |  |
    |             |  `+` cannot be used to concatenate a `&str` with a `String`
-   |             &std::string::String
+   |             &String
    |
 help: `to_owned()` can be used to create an owned `String` from a string reference. String concatenation appends the string on the right to the string on the left and may require reallocation. This requires ownership of the string on the left
    |
@@ -70,59 +70,59 @@ error[E0308]: mismatched types
 LL |     let _ = a + b;
    |                 ^
    |                 |
-   |                 expected `&str`, found struct `std::string::String`
+   |                 expected `&str`, found struct `String`
    |                 help: consider borrowing here: `&b`
 
-error[E0369]: cannot add `std::string::String` to `&std::string::String`
+error[E0369]: cannot add `String` to `&String`
   --> $DIR/issue-39018.rs:30:15
    |
 LL |     let _ = e + b;
-   |             - ^ - std::string::String
+   |             - ^ - String
    |             | |
    |             | `+` cannot be used to concatenate a `&str` with a `String`
-   |             &std::string::String
+   |             &String
    |
 help: `to_owned()` can be used to create an owned `String` from a string reference. String concatenation appends the string on the right to the string on the left and may require reallocation. This requires ownership of the string on the left
    |
 LL |     let _ = e.to_owned() + &b;
    |             ^^^^^^^^^^^^   ^^
 
-error[E0369]: cannot add `&std::string::String` to `&std::string::String`
+error[E0369]: cannot add `&String` to `&String`
   --> $DIR/issue-39018.rs:31:15
    |
 LL |     let _ = e + &b;
-   |             - ^ -- &std::string::String
+   |             - ^ -- &String
    |             | |
    |             | `+` cannot be used to concatenate two `&str` strings
-   |             &std::string::String
+   |             &String
    |
 help: `to_owned()` can be used to create an owned `String` from a string reference. String concatenation appends the string on the right to the string on the left and may require reallocation. This requires ownership of the string on the left
    |
 LL |     let _ = e.to_owned() + &b;
    |             ^^^^^^^^^^^^
 
-error[E0369]: cannot add `&str` to `&std::string::String`
+error[E0369]: cannot add `&str` to `&String`
   --> $DIR/issue-39018.rs:32:15
    |
 LL |     let _ = e + d;
    |             - ^ - &str
    |             | |
    |             | `+` cannot be used to concatenate two `&str` strings
-   |             &std::string::String
+   |             &String
    |
 help: `to_owned()` can be used to create an owned `String` from a string reference. String concatenation appends the string on the right to the string on the left and may require reallocation. This requires ownership of the string on the left
    |
 LL |     let _ = e.to_owned() + d;
    |             ^^^^^^^^^^^^
 
-error[E0369]: cannot add `&&str` to `&std::string::String`
+error[E0369]: cannot add `&&str` to `&String`
   --> $DIR/issue-39018.rs:33:15
    |
 LL |     let _ = e + &d;
    |             - ^ -- &&str
    |             | |
    |             | `+` cannot be used to concatenate two `&str` strings
-   |             &std::string::String
+   |             &String
    |
 help: `to_owned()` can be used to create an owned `String` from a string reference. String concatenation appends the string on the right to the string on the left and may require reallocation. This requires ownership of the string on the left
    |

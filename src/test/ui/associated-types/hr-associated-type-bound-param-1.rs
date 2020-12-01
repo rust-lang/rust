@@ -12,7 +12,7 @@ where
 
 impl<'a> Y<'a, u8> for u8 {
     type V = str;
-    //~^ ERROR the trait bound `for<'b> <u8 as Y<'b, u8>>::V: std::clone::Clone` is not satisfied
+    //~^ ERROR the trait bound `for<'b> <u8 as Y<'b, u8>>::V: Clone` is not satisfied
 }
 
 fn main() {

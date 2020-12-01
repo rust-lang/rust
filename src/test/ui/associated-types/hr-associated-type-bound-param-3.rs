@@ -1,5 +1,3 @@
-// ignore-tidy-linelength
-
 trait X<'a, T>
 where
     for<'b> T: X<'b, T>,
@@ -13,7 +11,7 @@ where
 
 impl<S, T> X<'_, (T,)> for (S,) {
     type U = str;
-    //~^ ERROR the trait bound `for<'b> <(T,) as X<'b, (T,)>>::U: std::clone::Clone` is not satisfied
+    //~^ ERROR the trait bound `for<'b> <(T,) as X<'b, (T,)>>::U: Clone` is not satisfied
 }
 
 pub fn main() {

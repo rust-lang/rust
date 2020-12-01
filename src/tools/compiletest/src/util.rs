@@ -12,7 +12,6 @@ mod tests;
 const OS_TABLE: &[(&str, &str)] = &[
     ("android", "android"),
     ("androideabi", "android"),
-    ("cloudabi", "cloudabi"),
     ("cuda", "cuda"),
     ("darwin", "macos"),
     ("dragonfly", "dragonfly"),

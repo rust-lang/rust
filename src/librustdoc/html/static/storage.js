@@ -1,8 +1,37 @@
 // From rust:
-/* global resourcesSuffix */
+/* global resourcesSuffix, getSettingValue */
 
+var darkThemes = ["dark", "ayu"];
 var currentTheme = document.getElementById("themeStyle");
 var mainTheme = document.getElementById("mainThemeStyle");
+
+var settingsDataset = (function () {
+    var settingsElement = document.getElementById("default-settings");
+    if (settingsElement === null) {
+        return null;
+    }
+    var dataset = settingsElement.dataset;
+    if (dataset === undefined) {
+        return null;
+    }
+    return dataset;
+})();
+
+function getSettingValue(settingName) {
+    var current = getCurrentValue('rustdoc-' + settingName);
+    if (current !== null) {
+        return current;
+    }
+    if (settingsDataset !== null) {
+        var def = settingsDataset[settingName.replace(/-/g,'_')];
+        if (def !== undefined) {
+            return def;
+        }
+    }
+    return null;
+}
+
+var localStoredTheme = getSettingValue("theme");
 
 var savedHref = [];
 
@@ -92,6 +121,12 @@ function switchTheme(styleElem, mainStyleElem, newTheme, saveTheme) {
     var fullNewTheme = newTheme + resourcesSuffix + ".css";
     var newHref = mainStyleElem.href.replace(fullBasicCss, fullNewTheme);
 
+    // If this new value comes from a system setting or from the previously
+    // saved theme, no need to save it.
+    if (saveTheme === true) {
+        updateLocalStorage("rustdoc-theme", newTheme);
+    }
+
     if (styleElem.href === newHref) {
         return;
     }
@@ -110,19 +145,85 @@ function switchTheme(styleElem, mainStyleElem, newTheme, saveTheme) {
     });
     if (found === true) {
         styleElem.href = newHref;
-        // If this new value comes from a system setting or from the previously saved theme, no
-        // need to save it.
-        if (saveTheme === true) {
-            updateLocalStorage("rustdoc-theme", newTheme);
-        }
     }
 }
 
-function getSystemValue() {
-    var property = getComputedStyle(document.documentElement).getPropertyValue('content');
-    return property.replace(/[\"\']/g, "");
+function useSystemTheme(value) {
+    if (value === undefined) {
+        value = true;
+    }
+
+    updateLocalStorage("rustdoc-use-system-theme", value);
+
+    // update the toggle if we're on the settings page
+    var toggle = document.getElementById("use-system-theme");
+    if (toggle && toggle instanceof HTMLInputElement) {
+        toggle.checked = value;
+    }
 }
 
-switchTheme(currentTheme, mainTheme,
-            getCurrentValue("rustdoc-theme") || getSystemValue() || "light",
-            false);
+var updateSystemTheme = (function() {
+    if (!window.matchMedia) {
+        // fallback to the CSS computed value
+        return function() {
+            let cssTheme = getComputedStyle(document.documentElement)
+                .getPropertyValue('content');
+
+            switchTheme(
+                currentTheme,
+                mainTheme,
+                JSON.parse(cssTheme) || light,
+                true
+            );
+        };
+    }
+
+    // only listen to (prefers-color-scheme: dark) because light is the default
+    var mql = window.matchMedia("(prefers-color-scheme: dark)");
+
+    function handlePreferenceChange(mql) {
+        // maybe the user has disabled the setting in the meantime!
+        if (getSettingValue("use-system-theme") !== "false") {
+            var lightTheme = getSettingValue("preferred-light-theme") || "light";
+            var darkTheme = getSettingValue("preferred-dark-theme") || "dark";
+
+            if (mql.matches) {
+                // prefers a dark theme
+                switchTheme(currentTheme, mainTheme, darkTheme, true);
+            } else {
+                // prefers a light theme, or has no preference
+                switchTheme(currentTheme, mainTheme, lightTheme, true);
+            }
+
+            // note: we save the theme so that it doesn't suddenly change when
+            // the user disables "use-system-theme" and reloads the page or
+            // navigates to another page
+        }
+    }
+
+    mql.addListener(handlePreferenceChange);
+
+    return function() {
+        handlePreferenceChange(mql);
+    };
+})();
+
+if (getSettingValue("use-system-theme") !== "false" && window.matchMedia) {
+    // update the preferred dark theme if the user is already using a dark theme
+    // See https://github.com/rust-lang/rust/pull/77809#issuecomment-707875732
+    if (getSettingValue("use-system-theme") === null
+        && getSettingValue("preferred-dark-theme") === null
+        && darkThemes.indexOf(localStoredTheme) >= 0) {
+        updateLocalStorage("rustdoc-preferred-dark-theme", localStoredTheme);
+    }
+
+    // call the function to initialize the theme at least once!
+    updateSystemTheme();
+} else {
+    switchTheme(
+        currentTheme,
+        mainTheme,
+        getSettingValue("theme") || "light",
+        false
+    );
+}

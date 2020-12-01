@@ -1,3 +1,4 @@
+#!/bin/sh
 set -ex
 
 # Mirrored from https://github.com/crosstool-ng/crosstool-ng/archive/crosstool-ng-1.24.0.tar.gz

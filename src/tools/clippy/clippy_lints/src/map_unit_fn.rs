@@ -6,10 +6,11 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, Ty};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
+use rustc_span::sym;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for usage of `option.map(f)` where f is a function
-    /// or closure that returns the unit type.
+    /// or closure that returns the unit type `()`.
     ///
     /// **Why is this bad?** Readability, this can be written more clearly with
     /// an if let statement
@@ -51,7 +52,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// **What it does:** Checks for usage of `result.map(f)` where f is a function
-    /// or closure that returns the unit type.
+    /// or closure that returns the unit type `()`.
     ///
     /// **Why is this bad?** Readability, this can be written more clearly with
     /// an if let statement
@@ -93,7 +94,7 @@ declare_clippy_lint! {
 declare_lint_pass!(MapUnit => [OPTION_MAP_UNIT_FN, RESULT_MAP_UNIT_FN]);
 
 fn is_unit_type(ty: Ty<'_>) -> bool {
-    match ty.kind {
+    match ty.kind() {
         ty::Tuple(slice) => slice.is_empty(),
         ty::Never => true,
         _ => false,
@@ -103,7 +104,7 @@ fn is_unit_type(ty: Ty<'_>) -> bool {
 fn is_unit_function(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> bool {
     let ty = cx.typeck_results().expr_ty(expr);
 
-    if let ty::FnDef(id, _) = ty.kind {
+    if let ty::FnDef(id, _) = *ty.kind() {
         if let Some(fn_type) = cx.tcx.fn_sig(id).no_bound_vars() {
             return is_unit_type(fn_type.output());
         }
@@ -197,7 +198,7 @@ fn let_binding_name(cx: &LateContext<'_>, var_arg: &hir::Expr<'_>) -> String {
 #[must_use]
 fn suggestion_msg(function_type: &str, map_type: &str) -> String {
     format!(
-        "called `map(f)` on an `{0}` value where `f` is a {1} that returns the unit type",
+        "called `map(f)` on an `{0}` value where `f` is a {1} that returns the unit type `()`",
         map_type, function_type
     )
 }
@@ -206,9 +207,9 @@ fn lint_map_unit_fn(cx: &LateContext<'_>, stmt: &hir::Stmt<'_>, expr: &hir::Expr
     let var_arg = &map_args[0];
 
     let (map_type, variant, lint) =
-        if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(var_arg), sym!(option_type)) {
+        if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(var_arg), sym::option_type) {
             ("Option", "Some", OPTION_MAP_UNIT_FN)
-        } else if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(var_arg), sym!(result_type)) {
+        } else if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(var_arg), sym::result_type) {
             ("Result", "Ok", RESULT_MAP_UNIT_FN)
         } else {
             return;

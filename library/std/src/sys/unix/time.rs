@@ -117,8 +117,7 @@ impl Hash for Timespec {
 #[cfg(any(target_os = "macos", target_os = "ios"))]
 mod inner {
     use crate::fmt;
-    use crate::mem;
-    use crate::sync::atomic::{AtomicUsize, Ordering::SeqCst};
+    use crate::sync::atomic::{AtomicU64, Ordering};
     use crate::sys::cvt;
     use crate::sys_common::mul_div_u64;
     use crate::time::Duration;
@@ -233,31 +232,42 @@ mod inner {
     }
 
     fn info() -> mach_timebase_info {
-        static mut INFO: mach_timebase_info = mach_timebase_info { numer: 0, denom: 0 };
-        static STATE: AtomicUsize = AtomicUsize::new(0);
+        // INFO_BITS conceptually is an `Option<mach_timebase_info>`. We can do
+        // this in 64 bits because we know 0 is never a valid value for the
+        // `denom` field.
+        //
+        // Encoding this as a single `AtomicU64` allows us to use `Relaxed`
+        // operations, as we are only interested in in the effects on a single
+        // memory location.
+        static INFO_BITS: AtomicU64 = AtomicU64::new(0);
 
-        unsafe {
-            // If a previous thread has filled in this global state, use that.
-            if STATE.load(SeqCst) == 2 {
-                return INFO;
-            }
-
-            // ... otherwise learn for ourselves ...
-            let mut info = mem::zeroed();
-            extern "C" {
-                fn mach_timebase_info(info: mach_timebase_info_t) -> kern_return_t;
-            }
-
-            mach_timebase_info(&mut info);
-
-            // ... and attempt to be the one thread that stores it globally for
-            // all other threads
-            if STATE.compare_exchange(0, 1, SeqCst, SeqCst).is_ok() {
-                INFO = info;
-                STATE.store(2, SeqCst);
-            }
-            return info;
+        // If a previous thread has initialized `INFO_BITS`, use it.
+        let info_bits = INFO_BITS.load(Ordering::Relaxed);
+        if info_bits != 0 {
+            return info_from_bits(info_bits);
         }
+
+        // ... otherwise learn for ourselves ...
+        extern "C" {
+            fn mach_timebase_info(info: mach_timebase_info_t) -> kern_return_t;
+        }
+
+        let mut info = info_from_bits(0);
+        unsafe {
+            mach_timebase_info(&mut info);
+        }
+        INFO_BITS.store(info_to_bits(info), Ordering::Relaxed);
+        info
+    }
+
+    #[inline]
+    fn info_to_bits(info: mach_timebase_info) -> u64 {
+        ((info.denom as u64) << 32) | (info.numer as u64)
+    }
+
+    #[inline]
+    fn info_from_bits(bits: u64) -> mach_timebase_info {
+        mach_timebase_info { numer: bits as u32, denom: (bits >> 32) as u32 }
     }
 }
 

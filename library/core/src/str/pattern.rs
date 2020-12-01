@@ -28,7 +28,7 @@
 //! assert_eq!(s.find(|c: char| c.is_ascii_punctuation()), Some(35));
 //! ```
 //!
-//! [pattern-impls]: trait.Pattern.html#implementors
+//! [pattern-impls]: Pattern#implementors
 
 #![unstable(
     feature = "pattern",

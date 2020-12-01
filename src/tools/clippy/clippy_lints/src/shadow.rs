@@ -25,7 +25,6 @@ declare_clippy_lint! {
     /// **Example:**
     /// ```rust
     /// # let x = 1;
-    ///
     /// // Bad
     /// let x = &x;
     ///
@@ -75,7 +74,9 @@ declare_clippy_lint! {
     /// names to bindings or introducing more scopes to contain the bindings.
     ///
     /// **Known problems:** This lint, as the other shadowing related lints,
-    /// currently only catches very simple patterns.
+    /// currently only catches very simple patterns. Note that
+    /// `allow`/`warn`/`deny`/`forbid` attributes only work on the function level
+    /// for this lint.
     ///
     /// **Example:**
     /// ```rust
@@ -165,7 +166,7 @@ fn check_local<'tcx>(cx: &LateContext<'tcx>, local: &'tcx Local<'_>, bindings: &
 
 fn is_binding(cx: &LateContext<'_>, pat_id: HirId) -> bool {
     let var_ty = cx.typeck_results().node_type_opt(pat_id);
-    var_ty.map_or(false, |var_ty| !matches!(var_ty.kind, ty::Adt(..)))
+    var_ty.map_or(false, |var_ty| !matches!(var_ty.kind(), ty::Adt(..)))
 }
 
 fn check_pat<'tcx>(

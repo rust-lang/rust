@@ -6,7 +6,7 @@ LL | fn mk_int() -> usize { let i: isize = 3; return i; }
    |                |
    |                expected `usize` because of return type
    |
-help: you can convert an `isize` to `usize` and panic if the converted value wouldn't fit
+help: you can convert an `isize` to a `usize` and panic if the converted value doesn't fit
    |
 LL | fn mk_int() -> usize { let i: isize = 3; return i.try_into().unwrap(); }
    |                                                 ^^^^^^^^^^^^^^^^^^^^^

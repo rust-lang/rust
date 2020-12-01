@@ -4,7 +4,7 @@ warning: any use of this value will cause an error
 LL | pub const Z: u32 = 0 - 1;
    | -------------------^^^^^-
    |                    |
-   |                    attempt to compute `0_u32 - 1_u32` which would overflow
+   |                    attempt to compute `0_u32 - 1_u32`, which would overflow
    |
 note: the lint level is defined here
   --> $DIR/pub_const_err.rs:2:9

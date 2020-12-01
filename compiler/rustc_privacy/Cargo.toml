@@ -1,0 +1,16 @@
+[package]
+authors = ["The Rust Project Developers"]
+name = "rustc_privacy"
+version = "0.0.0"
+edition = "2018"
+
+[dependencies]
+rustc_middle = { path = "../rustc_middle" }
+rustc_attr = { path = "../rustc_attr" }
+rustc_errors = { path = "../rustc_errors" }
+rustc_hir = { path = "../rustc_hir" }
+rustc_typeck = { path = "../rustc_typeck" }
+rustc_session = { path = "../rustc_session" }
+rustc_span = { path = "../rustc_span" }
+rustc_data_structures = { path = "../rustc_data_structures" }
+tracing = "0.1"

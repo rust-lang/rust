@@ -1,0 +1,29 @@
+error[E0532]: cannot match against a tuple struct which contains private fields
+  --> $DIR/issue-75907.rs:15:9
+   |
+LL |     let Bar(x, y, Foo(z)) = make_bar();
+   |         ^^^
+   |
+note: constructor is not visible here due to private fields
+  --> $DIR/issue-75907.rs:15:16
+   |
+LL |     let Bar(x, y, Foo(z)) = make_bar();
+   |                ^  ^^^^^^ private field
+   |                |
+   |                private field
+
+error[E0532]: cannot match against a tuple struct which contains private fields
+  --> $DIR/issue-75907.rs:15:19
+   |
+LL |     let Bar(x, y, Foo(z)) = make_bar();
+   |                   ^^^
+   |
+note: constructor is not visible here due to private fields
+  --> $DIR/issue-75907.rs:15:23
+   |
+LL |     let Bar(x, y, Foo(z)) = make_bar();
+   |                       ^ private field
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0532`.

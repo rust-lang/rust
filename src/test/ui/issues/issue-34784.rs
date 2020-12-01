@@ -1,4 +1,6 @@
 // run-pass
+
+#![warn(pointer_structural_match)]
 #![allow(dead_code)]
 const C: *const u8 = &0;
 

@@ -45,7 +45,7 @@ unsafe extern "C" fn tcs_init(secondary: bool) {
         // We need to wait until the initialization is done.
         BUSY => {
             while RELOC_STATE.load(Ordering::Acquire) == BUSY {
-                core::arch::x86_64::_mm_pause()
+                core::hint::spin_loop();
             }
         }
         // Initialization is done.

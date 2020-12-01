@@ -51,7 +51,7 @@ impl<'tcx> LateLintPass<'tcx> for LargeConstArrays {
             if !item.span.from_expansion();
             if let ItemKind::Const(hir_ty, _) = &item.kind;
             let ty = hir_ty_to_ty(cx.tcx, hir_ty);
-            if let ty::Array(element_type, cst) = ty.kind;
+            if let ty::Array(element_type, cst) = ty.kind();
             if let ConstKind::Value(val) = cst.val;
             if let ConstValue::Scalar(element_count) = val;
             if let Ok(element_count) = element_count.to_machine_usize(&cx.tcx);

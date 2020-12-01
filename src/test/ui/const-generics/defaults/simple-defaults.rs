@@ -1,10 +1,13 @@
-// run-pass
+// [full] run-pass
+// revisions: min full
 // Checks some basic test cases for defaults.
-#![feature(const_generics)]
-#![allow(incomplete_features)]
+#![cfg_attr(full, feature(const_generics))]
+#![cfg_attr(full, allow(incomplete_features))]
+#![cfg_attr(min, feature(min_const_generics))]
 #![allow(dead_code)]
 
 struct FixedOutput<'a, const N: usize, T=u32> {
+  //[min]~^ ERROR type parameters must be declared prior to const parameters
   out: &'a [T; N],
 }
 

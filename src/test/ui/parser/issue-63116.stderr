@@ -12,7 +12,7 @@ error: expected one of `!`, `(`, `)`, `+`, `,`, `::`, or `<`, found `;`
 LL | impl W <s(f;Y(;]
    |            ^ expected one of 7 possible tokens
 
-error: expected one of `!`, `&&`, `&`, `(`, `)`, `*`, `+`, `,`, `->`, `...`, `::`, `<`, `>`, `?`, `[`, `_`, `async`, `const`, `dyn`, `extern`, `fn`, `for`, `impl`, `unsafe`, lifetime, or path, found `;`
+error: expected one of `!`, `&&`, `&`, `(`, `)`, `*`, `+`, `,`, `->`, `...`, `::`, `:`, `<`, `=`, `>`, `?`, `[`, `_`, `async`, `const`, `dyn`, `extern`, `fn`, `for`, `impl`, `unsafe`, lifetime, or path, found `;`
   --> $DIR/issue-63116.rs:3:15
    |
 LL | impl W <s(f;Y(;]

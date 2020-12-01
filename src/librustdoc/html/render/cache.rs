@@ -9,11 +9,11 @@ use crate::clean::types::GetDefId;
 use crate::clean::{self, AttributesExt};
 use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;
-use crate::html::render::{plain_summary_line, shorten};
+use crate::html::render::{plain_text_summary, shorten};
 use crate::html::render::{Generic, IndexItem, IndexItemFunctionType, RenderType, TypeWithKind};
 
 /// Indicates where an external crate can be found.
-pub enum ExternalLocation {
+crate enum ExternalLocation {
     /// Remote URL root of the external crate
     Remote(String),
     /// This external crate can be found in the local doc/ folder
@@ -24,7 +24,7 @@ pub enum ExternalLocation {
 
 /// Attempts to find where an external crate is located, given that we're
 /// rendering in to the specified source destination.
-pub fn extern_location(
+crate fn extern_location(
     e: &clean::ExternalCrate,
     extern_url: Option<&str>,
     dst: &Path,
@@ -62,7 +62,7 @@ pub fn extern_location(
 }
 
 /// Builds the search index from the collected metadata
-pub fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
+crate fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
     let mut defid_to_pathid = FxHashMap::default();
     let mut crate_items = Vec::with_capacity(cache.search_index.len());
     let mut crate_paths = vec![];
@@ -78,7 +78,7 @@ pub fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
                 ty: item.type_(),
                 name: item.name.clone().unwrap(),
                 path: fqp[..fqp.len() - 1].join("::"),
-                desc: shorten(plain_summary_line(item.doc_value())),
+                desc: shorten(plain_text_summary(item.doc_value())),
                 parent: Some(did),
                 parent_idx: None,
                 search_type: get_index_search_type(&item),
@@ -127,8 +127,8 @@ pub fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
     let crate_doc = krate
         .module
         .as_ref()
-        .map(|module| shorten(plain_summary_line(module.doc_value())))
-        .unwrap_or(String::new());
+        .map(|module| shorten(plain_text_summary(module.doc_value())))
+        .unwrap_or_default();
 
     #[derive(Serialize)]
     struct CrateData<'a> {
@@ -165,9 +165,9 @@ pub fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
 }
 
 crate fn get_index_search_type(item: &clean::Item) -> Option<IndexItemFunctionType> {
-    let (all_types, ret_types) = match item.inner {
+    let (all_types, ret_types) = match item.kind {
         clean::FunctionItem(ref f) => (&f.all_types, &f.ret_types),
-        clean::MethodItem(ref m) => (&m.all_types, &m.ret_types),
+        clean::MethodItem(ref m, _) => (&m.all_types, &m.ret_types),
         clean::TyMethodItem(ref m) => (&m.all_types, &m.ret_types),
         _ => return None,
     };

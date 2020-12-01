@@ -1,5 +1,5 @@
 // compile-flags: -Z print-type-sizes
-// build-pass (FIXME(62277): could be check-pass?)
+// build-pass
 // ignore-pass
 // ^-- needed because `--pass check` does not emit the output needed.
 //     FIXME: consider using an attribute instead of side-effects.

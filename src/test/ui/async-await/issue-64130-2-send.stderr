@@ -7,7 +7,7 @@ LL | fn is_send<T: Send>(t: T) { }
 LL |     is_send(bar());
    |     ^^^^^^^ future returned by `bar` is not `Send`
    |
-   = help: within `impl std::future::Future`, the trait `std::marker::Send` is not implemented for `Foo`
+   = help: within `impl Future`, the trait `Send` is not implemented for `Foo`
 note: future is not `Send` as this value is used across an await
   --> $DIR/issue-64130-2-send.rs:15:5
    |

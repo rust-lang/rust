@@ -231,7 +231,6 @@ declare_clippy_lint! {
     /// ```rust
     /// # struct TupleStruct(u32, u32, u32);
     /// # let t = TupleStruct(1, 2, 3);
-    ///
     /// // Bad
     /// match t {
     ///     TupleStruct(0, .., _) => (),
@@ -377,8 +376,8 @@ impl EarlyLintPass for MiscEarlyLints {
             if let PatKind::Ident(_, ident, None) = arg.pat.kind {
                 let arg_name = ident.to_string();
 
-                if arg_name.starts_with('_') {
-                    if let Some(correspondence) = registered_names.get(&arg_name[1..]) {
+                if let Some(arg_name) = arg_name.strip_prefix('_') {
+                    if let Some(correspondence) = registered_names.get(arg_name) {
                         span_lint(
                             cx,
                             DUPLICATE_UNDERSCORE_ARGUMENT,
@@ -386,7 +385,7 @@ impl EarlyLintPass for MiscEarlyLints {
                             &format!(
                                 "`{}` already exists, having another argument having almost the same \
                                  name makes code comprehension and documentation more difficult",
-                                arg_name[1..].to_owned()
+                                arg_name
                             ),
                         );
                     }

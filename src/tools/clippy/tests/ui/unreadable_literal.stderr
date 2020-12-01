@@ -1,3 +1,11 @@
+error: digits of hex or binary literal not grouped by four
+  --> $DIR/unreadable_literal.rs:17:9
+   |
+LL |         0x1_234_567,
+   |         ^^^^^^^^^^^ help: consider: `0x0123_4567`
+   |
+   = note: `-D clippy::unusual-byte-groupings` implied by `-D warnings`
+
 error: long literal lacking separators
   --> $DIR/unreadable_literal.rs:25:17
    |
@@ -54,5 +62,5 @@ error: long literal lacking separators
 LL |     let _fail12: i128 = 0xabcabcabcabcabcabc;
    |                         ^^^^^^^^^^^^^^^^^^^^ help: consider: `0x00ab_cabc_abca_bcab_cabc`
 
-error: aborting due to 9 previous errors
+error: aborting due to 10 previous errors
 

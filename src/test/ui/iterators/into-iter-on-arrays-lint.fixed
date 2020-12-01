@@ -55,4 +55,7 @@ fn main() {
     (&small as &[_]).into_iter();
     small[..].into_iter();
     std::iter::IntoIterator::into_iter(&[1, 2]);
+
+    #[allow(array_into_iter)]
+    [0, 1].into_iter();
 }

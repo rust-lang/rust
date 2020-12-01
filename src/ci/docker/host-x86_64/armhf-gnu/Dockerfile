@@ -58,7 +58,7 @@ RUN curl https://www.busybox.net/downloads/busybox-1.21.1.tar.bz2 | tar xjf - &&
 # Download the ubuntu rootfs, which we'll use as a chroot for all our tests.
 WORKDIR /tmp
 RUN mkdir rootfs/ubuntu
-RUN curl http://cdimage.ubuntu.com/ubuntu-base/releases/16.04/release/ubuntu-base-16.04-core-armhf.tar.gz | \
+RUN curl http://cdimage.ubuntu.com/ubuntu-base/releases/16.04/release/ubuntu-base-16.04.6-base-armhf.tar.gz | \
       tar xzf - -C rootfs/ubuntu && \
       cd rootfs && mkdir proc sys dev etc etc/init.d
 
@@ -79,6 +79,6 @@ COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
 ENV RUST_CONFIGURE_ARGS --qemu-armhf-rootfs=/tmp/rootfs
-ENV SCRIPT python3 ../x.py --stage 2 test --target arm-unknown-linux-gnueabihf
+ENV SCRIPT python3 ../x.py --stage 2 test --host='' --target arm-unknown-linux-gnueabihf
 
 ENV NO_CHANGE_USER=1

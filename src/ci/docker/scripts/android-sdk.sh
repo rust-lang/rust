@@ -1,3 +1,4 @@
+#!/bin/sh
 set -ex
 
 export ANDROID_HOME=/android/sdk

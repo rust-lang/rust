@@ -13,7 +13,7 @@ error[E0621]: explicit lifetime required in the type of `s`
   --> $DIR/guarantor-issue-46974.rs:15:5
    |
 LL | fn bar(s: &Box<(i32,)>) -> &'static i32 {
-   |           ------------ help: add explicit lifetime `'static` to the type of `s`: `&'static std::boxed::Box<(i32,)>`
+   |           ------------ help: add explicit lifetime `'static` to the type of `s`: `&'static Box<(i32,)>`
 LL |     // FIXME(#46983): error message should be better
 LL |     &s.0
    |     ^^^^ lifetime `'static` required

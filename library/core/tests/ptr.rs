@@ -18,7 +18,7 @@ fn test() {
         struct Pair {
             fst: isize,
             snd: isize,
-        };
+        }
         let mut p = Pair { fst: 10, snd: 20 };
         let pptr: *mut Pair = &mut p;
         let iptr: *mut isize = pptr as *mut isize;

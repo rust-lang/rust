@@ -10,15 +10,13 @@
 
 use std::env;
 use std::fs;
-use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
+use std::process::Command;
 
 use build_helper::{output, t};
 
 use crate::builder::{Builder, RunConfig, ShouldRun, Step};
 use crate::cache::{Interned, INTERNER};
-use crate::channel;
 use crate::compile;
 use crate::config::TargetSelection;
 use crate::tool::{self, Tool};
@@ -27,27 +25,10 @@ use crate::{Compiler, DependencyType, Mode, LLVM_TOOLS};
 use time::{self, Timespec};
 
 pub fn pkgname(builder: &Builder<'_>, component: &str) -> String {
-    if component == "cargo" {
-        format!("{}-{}", component, builder.cargo_package_vers())
-    } else if component == "rls" {
-        format!("{}-{}", component, builder.rls_package_vers())
-    } else if component == "rust-analyzer" {
-        format!("{}-{}", component, builder.rust_analyzer_package_vers())
-    } else if component == "clippy" {
-        format!("{}-{}", component, builder.clippy_package_vers())
-    } else if component == "miri" {
-        format!("{}-{}", component, builder.miri_package_vers())
-    } else if component == "rustfmt" {
-        format!("{}-{}", component, builder.rustfmt_package_vers())
-    } else if component == "llvm-tools" {
-        format!("{}-{}", component, builder.llvm_tools_package_vers())
-    } else {
-        assert!(component.starts_with("rust"));
-        format!("{}-{}", component, builder.rust_package_vers())
-    }
+    format!("{}-{}", component, builder.rust_package_vers())
 }
 
-fn distdir(builder: &Builder<'_>) -> PathBuf {
+pub(crate) fn distdir(builder: &Builder<'_>) -> PathBuf {
     builder.out.join("dist")
 }
 
@@ -323,8 +304,8 @@ fn make_win_dist(
     // Warn windows-gnu users that the bundled GCC cannot compile C files
     builder.create(
         &target_bin_dir.join("GCC-WARNING.txt"),
-        "gcc.exe contained in this folder cannot be used for compiling C files - it is only\
-         used as a linker. In order to be able to compile projects containing C code use\
+        "gcc.exe contained in this folder cannot be used for compiling C files - it is only \
+         used as a linker. In order to be able to compile projects containing C code use \
          the GCC provided by MinGW or Cygwin.",
     );
 
@@ -522,6 +503,19 @@ impl Step for Rustc {
                 }
             }
 
+            // Copy over the codegen backends
+            let backends_src = builder.sysroot_codegen_backends(compiler);
+            let backends_rel = backends_src
+                .strip_prefix(&src)
+                .unwrap()
+                .strip_prefix(builder.sysroot_libdir_relative(compiler))
+                .unwrap();
+            // Don't use custom libdir here because ^lib/ will be resolved again with installer
+            let backends_dst = image.join("lib").join(&backends_rel);
+
+            t!(fs::create_dir_all(&backends_dst));
+            builder.cp_r(&backends_src, &backends_dst);
+
             // Copy libLLVM.so to the lib dir as well, if needed. While not
             // technically needed by rustc itself it's needed by lots of other
             // components like the llvm tools and LLD. LLD is included below and
@@ -569,7 +563,7 @@ impl Step for Rustc {
                     &page_dst,
                     &[
                         ("<INSERT DATE HERE>", &month_year),
-                        ("<INSERT VERSION HERE>", channel::CFG_RELEASE_NUM),
+                        ("<INSERT VERSION HERE>", &builder.version),
                     ],
                 );
             }
@@ -605,7 +599,9 @@ impl Step for DebuggerScripts {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(DebuggerScripts {
-            sysroot: run.builder.sysroot(run.builder.compiler(run.builder.top_stage, run.host)),
+            sysroot: run
+                .builder
+                .sysroot(run.builder.compiler(run.builder.top_stage, run.build_triple())),
             host: run.target,
         });
     }
@@ -647,6 +643,7 @@ impl Step for DebuggerScripts {
 
             cp_debugger_script("lldb_lookup.py");
             cp_debugger_script("lldb_providers.py");
+            cp_debugger_script("lldb_commands")
         }
     }
 }
@@ -789,6 +786,18 @@ impl Step for RustcDev {
         let compiler_to_use = builder.compiler_for(compiler.stage, compiler.host, target);
         let stamp = compile::librustc_stamp(builder, compiler_to_use, target);
         copy_target_libs(builder, target, &image, &stamp);
+
+        // Copy compiler sources.
+        let dst_src = image.join("lib/rustlib/rustc-src/rust");
+        t!(fs::create_dir_all(&dst_src));
+
+        let src_files = ["Cargo.lock"];
+        // This is the reduced set of paths which will become the rustc-dev component
+        // (essentially the compiler crates and all of their path dependencies).
+        copy_src_dirs(builder, &builder.src, &["compiler"], &[], &dst_src);
+        for file in src_files.iter() {
+            builder.copy(&builder.src.join(file), &dst_src.join(file));
+        }
 
         let mut cmd = rust_installer(builder);
         cmd.arg("generate")
@@ -1019,7 +1028,7 @@ impl Step for Src {
         copy_src_dirs(
             builder,
             &builder.src,
-            &["library"],
+            &["library", "src/llvm-project/libunwind"],
             &[
                 // not needed and contains symlinks which rustup currently
                 // chokes on when unpacking.
@@ -1030,6 +1039,30 @@ impl Step for Src {
         for file in src_files.iter() {
             builder.copy(&builder.src.join(file), &dst_src.join(file));
         }
+
+        // libtest includes std and everything else, so vendoring it
+        // creates exactly what's needed for `cargo -Zbuild-std` or any
+        // other analysis of the stdlib's source. Cargo also needs help
+        // finding the lock, so we copy it to libtest temporarily.
+        //
+        // Note that this requires std to only have one version of each
+        // crate. e.g. two versions of getopts won't be patchable.
+        let dst_libtest = dst_src.join("library/test");
+        let dst_vendor = dst_src.join("vendor");
+        let root_lock = dst_src.join("Cargo.lock");
+        let temp_lock = dst_libtest.join("Cargo.lock");
+
+        // `cargo vendor` will delete everything from the lockfile that
+        // isn't used by libtest, so we need to not use any links!
+        builder.really_copy(&root_lock, &temp_lock);
+
+        let mut cmd = Command::new(&builder.initial_cargo);
+        cmd.arg("vendor").arg(dst_vendor).current_dir(&dst_libtest);
+        builder.info("Dist src");
+        let _time = timeit(builder);
+        builder.run(&mut cmd);
+
+        builder.remove(&temp_lock);
 
         // Create source tarball in rust-installer format
         let mut cmd = rust_installer(builder);
@@ -1047,8 +1080,6 @@ impl Step for Src {
             .arg("--component-name=rust-src")
             .arg("--legacy-manifest-dirs=rustlib,cargo");
 
-        builder.info("Dist src");
-        let _time = timeit(builder);
         builder.run(&mut cmd);
 
         builder.remove_dir(&image);
@@ -1096,7 +1127,7 @@ impl Step for PlainSourceTarball {
             "Cargo.toml",
             "Cargo.lock",
         ];
-        let src_dirs = ["src", "library"];
+        let src_dirs = ["src", "compiler", "library"];
 
         copy_src_dirs(builder, &builder.src, &src_dirs, &[], &plain_dst_src);
 
@@ -1118,6 +1149,7 @@ impl Step for PlainSourceTarball {
             cmd.arg("vendor")
                 .arg("--sync")
                 .arg(builder.src.join("./src/tools/rust-analyzer/Cargo.toml"))
+                .arg(builder.src.join("./compiler/rustc_codegen_cranelift/Cargo.toml"))
                 .current_dir(&plain_dst_src);
             builder.run(&mut cmd);
         }
@@ -1151,7 +1183,11 @@ impl Step for PlainSourceTarball {
 // characters and on `C:\` paths, so normalize both of them away.
 pub fn sanitize_sh(path: &Path) -> String {
     let path = path.to_str().unwrap().replace("\\", "/");
-    return change_drive(&path).unwrap_or(path);
+    return change_drive(unc_to_lfs(&path)).unwrap_or(path);
+
+    fn unc_to_lfs(s: &str) -> &str {
+        if s.starts_with("//?/") { &s[4..] } else { s }
+    }
 
     fn change_drive(s: &str) -> Option<String> {
         let mut ch = s.chars();
@@ -2286,9 +2322,9 @@ impl Step for Extended {
 }
 
 fn add_env(builder: &Builder<'_>, cmd: &mut Command, target: TargetSelection) {
-    let mut parts = channel::CFG_RELEASE_NUM.split('.');
+    let mut parts = builder.version.split('.');
     cmd.env("CFG_RELEASE_INFO", builder.rust_version())
-        .env("CFG_RELEASE_NUM", channel::CFG_RELEASE_NUM)
+        .env("CFG_RELEASE_NUM", &builder.version)
         .env("CFG_RELEASE", builder.rust_release())
         .env("CFG_VER_MAJOR", parts.next().unwrap())
         .env("CFG_VER_MINOR", parts.next().unwrap())
@@ -2312,93 +2348,54 @@ fn add_env(builder: &Builder<'_>, cmd: &mut Command, target: TargetSelection) {
     }
 }
 
-#[derive(Debug, PartialOrd, Ord, Copy, Clone, Hash, PartialEq, Eq)]
-pub struct HashSign;
-
-impl Step for HashSign {
-    type Output = ();
-    const ONLY_HOSTS: bool = true;
-
-    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("hash-and-sign")
-    }
-
-    fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(HashSign);
-    }
-
-    fn run(self, builder: &Builder<'_>) {
-        // This gets called by `promote-release`
-        // (https://github.com/rust-lang/rust-central-station/tree/master/promote-release).
-        let mut cmd = builder.tool_cmd(Tool::BuildManifest);
-        if builder.config.dry_run {
-            return;
-        }
-        let sign = builder.config.dist_sign_folder.as_ref().unwrap_or_else(|| {
-            panic!("\n\nfailed to specify `dist.sign-folder` in `config.toml`\n\n")
-        });
-        let addr = builder.config.dist_upload_addr.as_ref().unwrap_or_else(|| {
-            panic!("\n\nfailed to specify `dist.upload-addr` in `config.toml`\n\n")
-        });
-        let pass = if env::var("BUILD_MANIFEST_DISABLE_SIGNING").is_err() {
-            let file = builder.config.dist_gpg_password_file.as_ref().unwrap_or_else(|| {
-                panic!("\n\nfailed to specify `dist.gpg-password-file` in `config.toml`\n\n")
-            });
-            t!(fs::read_to_string(&file))
-        } else {
-            String::new()
-        };
-
-        let today = output(Command::new("date").arg("+%Y-%m-%d"));
-
-        cmd.arg(sign);
-        cmd.arg(distdir(builder));
-        cmd.arg(today.trim());
-        cmd.arg(builder.rust_package_vers());
-        cmd.arg(addr);
-        cmd.arg(builder.package_vers(&builder.release_num("cargo")));
-        cmd.arg(builder.package_vers(&builder.release_num("rls")));
-        cmd.arg(builder.package_vers(&builder.release_num("rust-analyzer/crates/rust-analyzer")));
-        cmd.arg(builder.package_vers(&builder.release_num("clippy")));
-        cmd.arg(builder.package_vers(&builder.release_num("miri")));
-        cmd.arg(builder.package_vers(&builder.release_num("rustfmt")));
-        cmd.arg(builder.llvm_tools_package_vers());
-
-        builder.create_dir(&distdir(builder));
-
-        let mut child = t!(cmd.stdin(Stdio::piped()).spawn());
-        t!(child.stdin.take().unwrap().write_all(pass.as_bytes()));
-        let status = t!(child.wait());
-        assert!(status.success());
-    }
-}
-
 /// Maybe add libLLVM.so to the given destination lib-dir. It will only have
 /// been built if LLVM tools are linked dynamically.
 ///
 /// Note: This function does not yet support Windows, but we also don't support
 ///       linking LLVM tools dynamically on Windows yet.
 fn maybe_install_llvm(builder: &Builder<'_>, target: TargetSelection, dst_libdir: &Path) {
-    let src_libdir = builder.llvm_out(target).join("lib");
+    if !builder.config.llvm_link_shared {
+        // We do not need to copy LLVM files into the sysroot if it is not
+        // dynamically linked; it is already included into librustc_llvm
+        // statically.
+        return;
+    }
 
+    if let Some(config) = builder.config.target_config.get(&target) {
+        if config.llvm_config.is_some() && !builder.config.llvm_from_ci {
+            // If the LLVM was externally provided, then we don't currently copy
+            // artifacts into the sysroot. This is not necessarily the right
+            // choice (in particular, it will require the LLVM dylib to be in
+            // the linker's load path at runtime), but the common use case for
+            // external LLVMs is distribution provided LLVMs, and in that case
+            // they're usually in the standard search path (e.g., /usr/lib) and
+            // copying them here is going to cause problems as we may end up
+            // with the wrong files and isn't what distributions want.
+            //
+            // This behavior may be revisited in the future though.
+            //
+            // If the LLVM is coming from ourselves (just from CI) though, we
+            // still want to install it, as it otherwise won't be available.
+            return;
+        }
+    }
+
+    // On macOS, rustc (and LLVM tools) link to an unversioned libLLVM.dylib
+    // instead of libLLVM-11-rust-....dylib, as on linux. It's not entirely
+    // clear why this is the case, though. llvm-config will emit the versioned
+    // paths and we don't want those in the sysroot (as we're expecting
+    // unversioned paths).
     if target.contains("apple-darwin") {
+        let src_libdir = builder.llvm_out(target).join("lib");
         let llvm_dylib_path = src_libdir.join("libLLVM.dylib");
         if llvm_dylib_path.exists() {
             builder.install(&llvm_dylib_path, dst_libdir, 0o644);
         }
-        return;
-    }
-
-    // Usually libLLVM.so is a symlink to something like libLLVM-6.0.so.
-    // Since tools link to the latter rather than the former, we have to
-    // follow the symlink to find out what to distribute.
-    let llvm_dylib_path = src_libdir.join("libLLVM.so");
-    if llvm_dylib_path.exists() {
-        let llvm_dylib_path = llvm_dylib_path.canonicalize().unwrap_or_else(|e| {
-            panic!("dist: Error calling canonicalize path `{}`: {}", llvm_dylib_path.display(), e);
-        });
-
-        builder.install(&llvm_dylib_path, dst_libdir, 0o644);
+    } else if let Ok(llvm_config) = crate::native::prebuilt_llvm_config(builder, target) {
+        let files = output(Command::new(llvm_config).arg("--libfiles"));
+        for file in files.lines() {
+            builder.install(Path::new(file), dst_libdir, 0o644);
+        }
     }
 }
 
@@ -2496,5 +2493,170 @@ impl Step for LlvmTools {
 
         builder.run(&mut cmd);
         Some(distdir(builder).join(format!("{}-{}.tar.gz", name, target.triple)))
+    }
+}
+
+// Tarball intended for internal consumption to ease rustc/std development.
+//
+// Should not be considered stable by end users.
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub struct RustDev {
+    pub target: TargetSelection,
+}
+
+impl Step for RustDev {
+    type Output = Option<PathBuf>;
+    const DEFAULT: bool = true;
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("rust-dev")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(RustDev { target: run.target });
+    }
+
+    fn run(self, builder: &Builder<'_>) -> Option<PathBuf> {
+        let target = self.target;
+
+        /* run only if llvm-config isn't used */
+        if let Some(config) = builder.config.target_config.get(&target) {
+            if let Some(ref _s) = config.llvm_config {
+                builder.info(&format!("Skipping RustDev ({}): external LLVM", target));
+                return None;
+            }
+        }
+
+        builder.info(&format!("Dist RustDev ({})", target));
+        let _time = timeit(builder);
+        let src = builder.src.join("src/llvm-project/llvm");
+        let name = pkgname(builder, "rust-dev");
+
+        let tmp = tmpdir(builder);
+        let image = tmp.join("rust-dev-image");
+        drop(fs::remove_dir_all(&image));
+
+        // Prepare the image directory
+        let dst_bindir = image.join("bin");
+        t!(fs::create_dir_all(&dst_bindir));
+
+        let src_bindir = builder.llvm_out(target).join("bin");
+        let install_bin =
+            |name| builder.install(&src_bindir.join(exe(name, target)), &dst_bindir, 0o755);
+        install_bin("llvm-config");
+        install_bin("llvm-ar");
+        install_bin("llvm-objdump");
+        install_bin("llvm-profdata");
+        install_bin("llvm-bcanalyzer");
+        install_bin("llvm-cov");
+        builder.install(&builder.llvm_filecheck(target), &dst_bindir, 0o755);
+
+        // Copy the include directory as well; needed mostly to build
+        // librustc_llvm properly (e.g., llvm-config.h is in here). But also
+        // just broadly useful to be able to link against the bundled LLVM.
+        builder.cp_r(&builder.llvm_out(target).join("include"), &image.join("include"));
+
+        // Copy libLLVM.so to the target lib dir as well, so the RPATH like
+        // `$ORIGIN/../lib` can find it. It may also be used as a dependency
+        // of `rustc-dev` to support the inherited `-lLLVM` when using the
+        // compiler libraries.
+        maybe_install_llvm(builder, target, &image.join("lib"));
+
+        // Prepare the overlay
+        let overlay = tmp.join("rust-dev-overlay");
+        drop(fs::remove_dir_all(&overlay));
+        builder.create_dir(&overlay);
+        builder.install(&src.join("README.txt"), &overlay, 0o644);
+        builder.install(&src.join("LICENSE.TXT"), &overlay, 0o644);
+        builder.create(&overlay.join("version"), &builder.rust_version());
+
+        // Generate the installer tarball
+        let mut cmd = rust_installer(builder);
+        cmd.arg("generate")
+            .arg("--product-name=Rust")
+            .arg("--rel-manifest-dir=rustlib")
+            .arg("--success-message=rust-dev-installed.")
+            .arg("--image-dir")
+            .arg(&image)
+            .arg("--work-dir")
+            .arg(&tmpdir(builder))
+            .arg("--output-dir")
+            .arg(&distdir(builder))
+            .arg("--non-installed-overlay")
+            .arg(&overlay)
+            .arg(format!("--package-name={}-{}", name, target.triple))
+            .arg("--legacy-manifest-dirs=rustlib,cargo")
+            .arg("--component-name=rust-dev");
+
+        builder.run(&mut cmd);
+        Some(distdir(builder).join(format!("{}-{}.tar.gz", name, target.triple)))
+    }
+}
+
+/// Tarball containing a prebuilt version of the build-manifest tool, intented to be used by the
+/// release process to avoid cloning the monorepo and building stuff.
+///
+/// Should not be considered stable by end users.
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub struct BuildManifest {
+    pub target: TargetSelection,
+}
+
+impl Step for BuildManifest {
+    type Output = PathBuf;
+    const DEFAULT: bool = false;
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("src/tools/build-manifest")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(BuildManifest { target: run.target });
+    }
+
+    fn run(self, builder: &Builder<'_>) -> PathBuf {
+        let build_manifest = builder.tool_exe(Tool::BuildManifest);
+
+        let name = pkgname(builder, "build-manifest");
+        let tmp = tmpdir(builder);
+
+        // Prepare the image.
+        let image = tmp.join("build-manifest-image");
+        let image_bin = image.join("bin");
+        let _ = fs::remove_dir_all(&image);
+        t!(fs::create_dir_all(&image_bin));
+        builder.install(&build_manifest, &image_bin, 0o755);
+
+        // Prepare the overlay.
+        let overlay = tmp.join("build-manifest-overlay");
+        let _ = fs::remove_dir_all(&overlay);
+        builder.create_dir(&overlay);
+        builder.create(&overlay.join("version"), &builder.rust_version());
+        for file in &["COPYRIGHT", "LICENSE-APACHE", "LICENSE-MIT", "README.md"] {
+            builder.install(&builder.src.join(file), &overlay, 0o644);
+        }
+
+        // Create the final tarball.
+        let mut cmd = rust_installer(builder);
+        cmd.arg("generate")
+            .arg("--product-name=Rust")
+            .arg("--rel-manifest-dir=rustlib")
+            .arg("--success-message=build-manifest installed.")
+            .arg("--image-dir")
+            .arg(&image)
+            .arg("--work-dir")
+            .arg(&tmpdir(builder))
+            .arg("--output-dir")
+            .arg(&distdir(builder))
+            .arg("--non-installed-overlay")
+            .arg(&overlay)
+            .arg(format!("--package-name={}-{}", name, self.target.triple))
+            .arg("--legacy-manifest-dirs=rustlib,cargo")
+            .arg("--component-name=build-manifest");
+
+        builder.run(&mut cmd);
+        distdir(builder).join(format!("{}-{}.tar.gz", name, self.target.triple))
     }
 }

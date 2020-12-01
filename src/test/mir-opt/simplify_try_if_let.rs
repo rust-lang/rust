@@ -1,5 +1,8 @@
-// compile-flags: -Zmir-opt-level=1
-// EMIT_MIR simplify_try_if_let.{{impl}}-append.SimplifyArmIdentity.diff
+// compile-flags: -Zmir-opt-level=1 -Zunsound-mir-opts
+// ignore-test
+// FIXME: the pass is unsound and causes ICEs in the MIR validator
+
+// EMIT_MIR simplify_try_if_let.{impl#0}-append.SimplifyArmIdentity.diff
 
 use std::ptr::NonNull;
 
@@ -19,7 +22,7 @@ impl LinkedList {
 
     pub fn append(&mut self, other: &mut Self) {
         match self.tail {
-            None => { },
+            None => {}
             Some(mut tail) => {
                 // `as_mut` is okay here because we have exclusive access to the entirety
                 // of both lists.

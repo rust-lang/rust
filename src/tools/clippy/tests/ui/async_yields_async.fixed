@@ -1,0 +1,68 @@
+// run-rustfix
+// edition:2018
+
+#![feature(async_closure)]
+#![warn(clippy::async_yields_async)]
+
+use core::future::Future;
+use core::pin::Pin;
+use core::task::{Context, Poll};
+
+struct CustomFutureType;
+
+impl Future for CustomFutureType {
+    type Output = u8;
+
+    fn poll(self: Pin<&mut Self>, _: &mut Context) -> Poll<Self::Output> {
+        Poll::Ready(3)
+    }
+}
+
+fn custom_future_type_ctor() -> CustomFutureType {
+    CustomFutureType
+}
+
+async fn f() -> CustomFutureType {
+    // Don't warn for functions since you have to explicitly declare their
+    // return types.
+    CustomFutureType
+}
+
+#[rustfmt::skip]
+fn main() {
+    let _f = {
+        3
+    };
+    let _g = async {
+        3
+    };
+    let _h = async {
+        async {
+            3
+        }.await
+    };
+    let _i = async {
+        CustomFutureType.await
+    };
+    let _i = async || {
+        3
+    };
+    let _j = async || {
+        async {
+            3
+        }.await
+    };
+    let _k = async || {
+        CustomFutureType.await
+    };
+    let _l = async || CustomFutureType.await;
+    let _m = async || {
+        println!("I'm bored");
+        // Some more stuff
+
+        // Finally something to await
+        CustomFutureType.await
+    };
+    let _n = async || custom_future_type_ctor();
+    let _o = async || f();
+}

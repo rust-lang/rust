@@ -2,7 +2,7 @@ error: concrete type differs from previous defining opaque type use
   --> $DIR/issue-52843-closure-constrain.rs:10:16
    |
 LL |     let null = || -> Opaque { 0 };
-   |                ^^^^^^^^^^^^^^^^^^ expected `std::string::String`, got `i32`
+   |                ^^^^^^^^^^^^^^^^^^ expected `String`, got `i32`
    |
 note: previous use here
   --> $DIR/issue-52843-closure-constrain.rs:9:5

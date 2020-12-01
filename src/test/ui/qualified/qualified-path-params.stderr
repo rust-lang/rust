@@ -4,7 +4,7 @@ error[E0533]: expected unit struct, unit variant or constant, found associated f
 LL |         <S as Tr>::A::f::<u8> => {}
    |         ^^^^^^^^^^^^^^^^^^^^^
 
-error[E0029]: only char and numeric types are allowed in range patterns
+error[E0029]: only `char` and numeric types are allowed in range patterns
   --> $DIR/qualified-path-params.rs:22:15
    |
 LL |         0 ..= <S as Tr>::A::f::<u8> => {}

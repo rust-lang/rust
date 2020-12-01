@@ -13,6 +13,24 @@ LL |     foo((), drop)
    |             expected signature of `fn(<() as Trait<'a>>::Item) -> _`
    |             found signature of `fn(()) -> _`
 
-error: aborting due to previous error
+error[E0277]: the size for values of type `<() as Trait<'_>>::Item` cannot be known at compilation time
+  --> $DIR/issue-60283.rs:17:13
+   |
+LL |     foo((), drop)
+   |             ^^^^ doesn't have a size known at compile-time
+   | 
+  ::: $SRC_DIR/core/src/mem/mod.rs:LL:COL
+   |
+LL | pub fn drop<T>(_x: T) {}
+   |             - required by this bound in `std::mem::drop`
+   |
+   = help: the trait `Sized` is not implemented for `<() as Trait<'_>>::Item`
+help: consider further restricting the associated type
+   |
+LL | fn main() where <() as Trait<'_>>::Item: Sized {
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-For more information about this error, try `rustc --explain E0631`.
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0277, E0631.
+For more information about an error, try `rustc --explain E0277`.

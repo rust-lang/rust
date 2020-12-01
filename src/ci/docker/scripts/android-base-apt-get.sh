@@ -1,3 +1,4 @@
+#!/bin/sh
 set -ex
 
 apt-get update

@@ -20,11 +20,9 @@ Then, you can generate the manifest and all the packages from `path/to/dist` to
 `path/to/output` with:
 
 ```
-$ BUILD_MANIFEST_DISABLE_SIGNING=1 cargo +nightly run \
-    path/to/dist path/to/output 1970-01-01 \
-    nightly nightly nightly nightly nightly nightly nightly nightly \
-    http://example.com
+$ cargo +nightly run path/to/dist path/to/output 1970-01-01 http://example.com \
+    CHANNEL VERSION
 ```
 
-In the future, if the tool complains about missing arguments just add more
-`nightly`s in the middle.
+Remember to replace `CHANNEL` with the channel you produced dist artifacts of
+and `VERSION` with the current Rust version.

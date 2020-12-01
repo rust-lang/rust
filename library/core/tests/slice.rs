@@ -1,3 +1,4 @@
+use core::cell::Cell;
 use core::result::Result::{Err, Ok};
 
 #[test]
@@ -562,6 +563,148 @@ fn test_array_chunks_zip() {
         .map(|(a, b)| a.iter().sum::<i32>() + b.iter().sum::<i32>())
         .collect::<Vec<_>>();
     assert_eq!(res, vec![14, 22]);
+}
+
+#[test]
+fn test_array_chunks_mut_infer() {
+    let v: &mut [i32] = &mut [0, 1, 2, 3, 4, 5, 6];
+    for a in v.array_chunks_mut() {
+        let sum = a.iter().sum::<i32>();
+        *a = [sum; 3];
+    }
+    assert_eq!(v, &[3, 3, 3, 12, 12, 12, 6]);
+
+    let v2: &mut [i32] = &mut [0, 1, 2, 3, 4, 5, 6];
+    v2.array_chunks_mut().for_each(|[a, b]| core::mem::swap(a, b));
+    assert_eq!(v2, &[1, 0, 3, 2, 5, 4, 6]);
+}
+
+#[test]
+fn test_array_chunks_mut_count() {
+    let v: &mut [i32] = &mut [0, 1, 2, 3, 4, 5];
+    let c = v.array_chunks_mut::<3>();
+    assert_eq!(c.count(), 2);
+
+    let v2: &mut [i32] = &mut [0, 1, 2, 3, 4];
+    let c2 = v2.array_chunks_mut::<2>();
+    assert_eq!(c2.count(), 2);
+
+    let v3: &mut [i32] = &mut [];
+    let c3 = v3.array_chunks_mut::<2>();
+    assert_eq!(c3.count(), 0);
+}
+
+#[test]
+fn test_array_chunks_mut_nth() {
+    let v: &mut [i32] = &mut [0, 1, 2, 3, 4, 5];
+    let mut c = v.array_chunks_mut::<2>();
+    assert_eq!(c.nth(1).unwrap(), &[2, 3]);
+    assert_eq!(c.next().unwrap(), &[4, 5]);
+
+    let v2: &mut [i32] = &mut [0, 1, 2, 3, 4, 5, 6];
+    let mut c2 = v2.array_chunks_mut::<3>();
+    assert_eq!(c2.nth(1).unwrap(), &[3, 4, 5]);
+    assert_eq!(c2.next(), None);
+}
+
+#[test]
+fn test_array_chunks_mut_nth_back() {
+    let v: &mut [i32] = &mut [0, 1, 2, 3, 4, 5];
+    let mut c = v.array_chunks_mut::<2>();
+    assert_eq!(c.nth_back(1).unwrap(), &[2, 3]);
+    assert_eq!(c.next().unwrap(), &[0, 1]);
+    assert_eq!(c.next(), None);
+
+    let v2: &mut [i32] = &mut [0, 1, 2, 3, 4];
+    let mut c2 = v2.array_chunks_mut::<3>();
+    assert_eq!(c2.nth_back(0).unwrap(), &[0, 1, 2]);
+    assert_eq!(c2.next(), None);
+    assert_eq!(c2.next_back(), None);
+
+    let v3: &mut [i32] = &mut [0, 1, 2, 3, 4];
+    let mut c3 = v3.array_chunks_mut::<10>();
+    assert_eq!(c3.nth_back(0), None);
+}
+
+#[test]
+fn test_array_chunks_mut_last() {
+    let v: &mut [i32] = &mut [0, 1, 2, 3, 4, 5];
+    let c = v.array_chunks_mut::<2>();
+    assert_eq!(c.last().unwrap(), &[4, 5]);
+
+    let v2: &mut [i32] = &mut [0, 1, 2, 3, 4];
+    let c2 = v2.array_chunks_mut::<2>();
+    assert_eq!(c2.last().unwrap(), &[2, 3]);
+}
+
+#[test]
+fn test_array_chunks_mut_remainder() {
+    let v: &mut [i32] = &mut [0, 1, 2, 3, 4];
+    let c = v.array_chunks_mut::<2>();
+    assert_eq!(c.into_remainder(), &[4]);
+}
+
+#[test]
+fn test_array_chunks_mut_zip() {
+    let v1: &mut [i32] = &mut [0, 1, 2, 3, 4];
+    let v2: &[i32] = &[6, 7, 8, 9, 10];
+
+    for (a, b) in v1.array_chunks_mut::<2>().zip(v2.array_chunks::<2>()) {
+        let sum = b.iter().sum::<i32>();
+        for v in a {
+            *v += sum;
+        }
+    }
+    assert_eq!(v1, [13, 14, 19, 20, 4]);
+}
+
+#[test]
+fn test_array_windows_infer() {
+    let v: &[i32] = &[0, 1, 0, 1];
+    assert_eq!(v.array_windows::<2>().count(), 3);
+    let c = v.array_windows();
+    for &[a, b] in c {
+        assert_eq!(a + b, 1);
+    }
+
+    let v2: &[i32] = &[0, 1, 2, 3, 4, 5, 6];
+    let total = v2.array_windows().map(|&[a, b, c]| a + b + c).sum::<i32>();
+    assert_eq!(total, 3 + 6 + 9 + 12 + 15);
+}
+
+#[test]
+fn test_array_windows_count() {
+    let v: &[i32] = &[0, 1, 2, 3, 4, 5];
+    let c = v.array_windows::<3>();
+    assert_eq!(c.count(), 4);
+
+    let v2: &[i32] = &[0, 1, 2, 3, 4];
+    let c2 = v2.array_windows::<6>();
+    assert_eq!(c2.count(), 0);
+
+    let v3: &[i32] = &[];
+    let c3 = v3.array_windows::<2>();
+    assert_eq!(c3.count(), 0);
+}
+
+#[test]
+fn test_array_windows_nth() {
+    let v: &[i32] = &[0, 1, 2, 3, 4, 5];
+    let snd = v.array_windows::<4>().nth(1);
+    assert_eq!(snd, Some(&[1, 2, 3, 4]));
+    let mut arr_windows = v.array_windows::<2>();
+    assert_ne!(arr_windows.nth(0), arr_windows.nth(0));
+    let last = v.array_windows::<3>().last();
+    assert_eq!(last, Some(&[3, 4, 5]));
+}
+
+#[test]
+fn test_array_windows_nth_back() {
+    let v: &[i32] = &[0, 1, 2, 3, 4, 5];
+    let snd = v.array_windows::<4>().nth_back(1);
+    assert_eq!(snd, Some(&[1, 2, 3, 4]));
+    let mut arr_windows = v.array_windows::<2>();
+    assert_ne!(arr_windows.nth_back(0), arr_windows.nth_back(0));
 }
 
 #[test]
@@ -1198,6 +1341,14 @@ mod slice_index {
             message: "out of range";
         }
 
+        in mod rangeinclusive_len {
+            data: [0, 1, 2, 3, 4, 5];
+
+            good: data[0..=5] == [0, 1, 2, 3, 4, 5];
+            bad: data[0..=6];
+            message: "out of range";
+        }
+
         in mod range_len_len {
             data: [0, 1, 2, 3, 4, 5];
 
@@ -1211,6 +1362,28 @@ mod slice_index {
 
             good: data[6..=5] == [];
             bad: data[7..=6];
+            message: "out of range";
+        }
+    }
+
+    panic_cases! {
+        in mod rangeinclusive_exhausted {
+            data: [0, 1, 2, 3, 4, 5];
+
+            good: data[0..=5] == [0, 1, 2, 3, 4, 5];
+            good: data[{
+                let mut iter = 0..=5;
+                iter.by_ref().count(); // exhaust it
+                iter
+            }] == [];
+
+            // 0..=6 is out of range before exhaustion, so it
+            // stands to reason that it still would be after.
+            bad: data[{
+                let mut iter = 0..=6;
+                iter.by_ref().count(); // exhaust it
+                iter
+            }];
             message: "out of range";
         }
     }
@@ -1428,7 +1601,7 @@ fn sort_unstable() {
 #[test]
 #[cfg(not(target_arch = "wasm32"))]
 #[cfg_attr(miri, ignore)] // Miri is too slow
-fn partition_at_index() {
+fn select_nth_unstable() {
     use core::cmp::Ordering::{Equal, Greater, Less};
     use rand::rngs::StdRng;
     use rand::seq::SliceRandom;
@@ -1454,7 +1627,7 @@ fn partition_at_index() {
                 // Sort in default order.
                 for pivot in 0..len {
                     let mut v = orig.clone();
-                    v.partition_at_index(pivot);
+                    v.select_nth_unstable(pivot);
 
                     assert_eq!(v_sorted[pivot], v[pivot]);
                     for i in 0..pivot {
@@ -1467,7 +1640,7 @@ fn partition_at_index() {
                 // Sort in ascending order.
                 for pivot in 0..len {
                     let mut v = orig.clone();
-                    let (left, pivot, right) = v.partition_at_index_by(pivot, |a, b| a.cmp(b));
+                    let (left, pivot, right) = v.select_nth_unstable_by(pivot, |a, b| a.cmp(b));
 
                     assert_eq!(left.len() + right.len(), len - 1);
 
@@ -1490,7 +1663,7 @@ fn partition_at_index() {
 
                 for pivot in 0..len {
                     let mut v = orig.clone();
-                    v.partition_at_index_by(pivot, sort_descending_comparator);
+                    v.select_nth_unstable_by(pivot, sort_descending_comparator);
 
                     assert_eq!(v_sorted_descending[pivot], v[pivot]);
                     for i in 0..pivot {
@@ -1511,7 +1684,7 @@ fn partition_at_index() {
     }
 
     for pivot in 0..v.len() {
-        v.partition_at_index_by(pivot, |_, _| *[Less, Equal, Greater].choose(&mut rng).unwrap());
+        v.select_nth_unstable_by(pivot, |_, _| *[Less, Equal, Greater].choose(&mut rng).unwrap());
         v.sort();
         for i in 0..v.len() {
             assert_eq!(v[i], i as i32);
@@ -1519,28 +1692,28 @@ fn partition_at_index() {
     }
 
     // Should not panic.
-    [(); 10].partition_at_index(0);
-    [(); 10].partition_at_index(5);
-    [(); 10].partition_at_index(9);
-    [(); 100].partition_at_index(0);
-    [(); 100].partition_at_index(50);
-    [(); 100].partition_at_index(99);
+    [(); 10].select_nth_unstable(0);
+    [(); 10].select_nth_unstable(5);
+    [(); 10].select_nth_unstable(9);
+    [(); 100].select_nth_unstable(0);
+    [(); 100].select_nth_unstable(50);
+    [(); 100].select_nth_unstable(99);
 
     let mut v = [0xDEADBEEFu64];
-    v.partition_at_index(0);
+    v.select_nth_unstable(0);
     assert!(v == [0xDEADBEEF]);
 }
 
 #[test]
 #[should_panic(expected = "index 0 greater than length of slice")]
-fn partition_at_index_zero_length() {
-    [0i32; 0].partition_at_index(0);
+fn select_nth_unstable_zero_length() {
+    [0i32; 0].select_nth_unstable(0);
 }
 
 #[test]
 #[should_panic(expected = "index 20 greater than length of slice")]
-fn partition_at_index_past_length() {
-    [0i32; 10].partition_at_index(20);
+fn select_nth_unstable_past_length() {
+    [0i32; 10].select_nth_unstable(20);
 }
 
 pub mod memchr {
@@ -1795,7 +1968,7 @@ fn test_copy_within() {
 }
 
 #[test]
-#[should_panic(expected = "src is out of bounds")]
+#[should_panic(expected = "range end index 14 out of range for slice of length 13")]
 fn test_copy_within_panics_src_too_long() {
     let mut bytes = *b"Hello, World!";
     // The length is only 13, so 14 is out of bounds.
@@ -1810,7 +1983,7 @@ fn test_copy_within_panics_dest_too_long() {
     bytes.copy_within(0..4, 10);
 }
 #[test]
-#[should_panic(expected = "src end is before src start")]
+#[should_panic(expected = "slice index starts at 2 but ends at 1")]
 fn test_copy_within_panics_src_inverted() {
     let mut bytes = *b"Hello, World!";
     // 2 is greater than 1, so this range is invalid.
@@ -1837,4 +2010,31 @@ fn test_is_sorted() {
     assert!(![-2i32, -1, 0, 3].is_sorted_by_key(|n| n.abs()));
     assert!(!["c", "bb", "aaa"].is_sorted());
     assert!(["c", "bb", "aaa"].is_sorted_by_key(|s| s.len()));
+}
+
+#[test]
+fn test_slice_run_destructors() {
+    // Make sure that destructors get run on slice literals
+    struct Foo<'a> {
+        x: &'a Cell<isize>,
+    }
+
+    impl<'a> Drop for Foo<'a> {
+        fn drop(&mut self) {
+            self.x.set(self.x.get() + 1);
+        }
+    }
+
+    fn foo(x: &Cell<isize>) -> Foo<'_> {
+        Foo { x }
+    }
+
+    let x = &Cell::new(0);
+
+    {
+        let l = &[foo(x)];
+        assert_eq!(l[0].x.get(), 0);
+    }
+
+    assert_eq!(x.get(), 1);
 }

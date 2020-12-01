@@ -48,10 +48,10 @@ fn main() {
         // Turn off various features of gcc and such, mostly copying
         // compiler-rt's build system already
         cfg.flag("-fno-builtin");
-        cfg.flag("-fvisibility=hidden");
         cfg.flag("-fomit-frame-pointer");
         cfg.define("VISIBILITY_HIDDEN", None);
         if !target.contains("windows") {
+            cfg.flag("-fvisibility=hidden");
             cfg.define("COMPILER_RT_HAS_UNAME", Some("1"));
         } else {
             profile_sources.push("WindowsMMap.c");

@@ -2,10 +2,10 @@
 
 #![deny(clippy::missing_docs_in_private_items)]
 
-use lazy_static::lazy_static;
 use rustc_ast::ast::{LitKind, MetaItemKind, NestedMetaItem};
 use rustc_span::source_map;
 use source_map::Span;
+use std::lazy::SyncLazy;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::{env, fmt, fs, io};
@@ -54,9 +54,8 @@ impl From<io::Error> for Error {
     }
 }
 
-lazy_static! {
-    static ref ERRORS: Mutex<Vec<Error>> = Mutex::new(Vec::new());
-}
+/// Vec of errors that might be collected during config toml parsing
+static ERRORS: SyncLazy<Mutex<Vec<Error>>> = SyncLazy::new(|| Mutex::new(Vec::new()));
 
 macro_rules! define_Conf {
     ($(#[$doc:meta] ($config:ident, $config_str:literal: $Ty:ty, $default:expr),)+) => {
@@ -82,6 +81,7 @@ macro_rules! define_Conf {
                     use serde::Deserialize;
                     pub fn deserialize<'de, D: serde::Deserializer<'de>>(deserializer: D) -> Result<$Ty, D::Error> {
                         use super::super::{ERRORS, Error};
+
                         Ok(
                             <$Ty>::deserialize(deserializer).unwrap_or_else(|e| {
                                 ERRORS
@@ -122,7 +122,7 @@ define_Conf! {
         "IPv4", "IPv6",
         "ClojureScript", "CoffeeScript", "JavaScript", "PureScript", "TypeScript",
         "NaN", "NaNs",
-        "OAuth",
+        "OAuth", "GraphQL",
         "OCaml",
         "OpenGL", "OpenMP", "OpenSSH", "OpenSSL", "OpenStreetMap",
         "TensorFlow",
@@ -138,7 +138,7 @@ define_Conf! {
     (type_complexity_threshold, "type_complexity_threshold": u64, 250),
     /// Lint: MANY_SINGLE_CHAR_NAMES. The maximum number of single char bindings a scope may have
     (single_char_binding_names_threshold, "single_char_binding_names_threshold": u64, 4),
-    /// Lint: BOXED_LOCAL. The maximum size of objects (in bytes) that will be linted. Larger objects are ok on the heap
+    /// Lint: BOXED_LOCAL, USELESS_VEC. The maximum size of objects (in bytes) that will be linted. Larger objects are ok on the heap
     (too_large_for_stack, "too_large_for_stack": u64, 200),
     /// Lint: ENUM_VARIANT_NAMES. The minimum number of enum variants for the lints about variant names to trigger
     (enum_variant_name_threshold, "enum_variant_name_threshold": u64, 3),
@@ -150,6 +150,8 @@ define_Conf! {
     (literal_representation_threshold, "literal_representation_threshold": u64, 16384),
     /// Lint: TRIVIALLY_COPY_PASS_BY_REF. The maximum size (in bytes) to consider a `Copy` type for passing by value instead of by reference.
     (trivial_copy_size_limit, "trivial_copy_size_limit": Option<u64>, None),
+    /// Lint: LARGE_TYPE_PASS_BY_MOVE. The minimum size (in bytes) to consider a type for passing by reference instead of by value.
+    (pass_by_value_size_limit, "pass_by_value_size_limit": u64, 256),
     /// Lint: TOO_MANY_LINES. The maximum number of lines a function or method can have
     (too_many_lines_threshold, "too_many_lines_threshold": u64, 100),
     /// Lint: LARGE_STACK_ARRAYS, LARGE_CONST_ARRAYS. The maximum allowed size for arrays on the stack
@@ -164,6 +166,8 @@ define_Conf! {
     (max_fn_params_bools, "max_fn_params_bools": u64, 3),
     /// Lint: WILDCARD_IMPORTS. Whether to allow certain wildcard imports (prelude, super in tests).
     (warn_on_all_wildcard_imports, "warn_on_all_wildcard_imports": bool, false),
+    /// Lint: DISALLOWED_METHOD. The list of blacklisted methods to lint about. NB: `bar` is not here since it has legitimate uses
+    (disallowed_methods, "disallowed_methods": Vec<String>, Vec::<String>::new()),
 }
 
 impl Default for Conf {

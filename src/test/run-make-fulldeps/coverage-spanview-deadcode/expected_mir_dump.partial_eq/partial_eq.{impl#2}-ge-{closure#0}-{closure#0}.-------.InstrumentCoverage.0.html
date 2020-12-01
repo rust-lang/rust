@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<!--
+
+Preview this file as rendered HTML from the github source at:
+https://htmlpreview.github.io/?https://github.com/rust-lang/rust/blob/master/src/test/run-make-fulldeps/coverage-spanview-base/expected_mir_dump.partial_eq/partial_eq.%7Bimpl%232%7D-ge-%7Bclosure%230%7D-%7Bclosure%230%7D.-------.InstrumentCoverage.0.html
+
+For revisions in Pull Requests (PR):
+  * Replace "rust-lang" with the github PR author
+  * Replace "master" with the PR branch name
+
+-->
+<html>
+<head>
+<title>partial_eq.{impl#2}-ge-{closure#0}-{closure#0} - Coverage Spans</title>
+<style>
+    .line {
+        counter-increment: line;
+    }
+    .line:before {
+        content: counter(line) ": ";
+        font-family: Menlo, Monaco, monospace;
+        font-style: italic;
+        width: 3.8em;
+        display: inline-block;
+        text-align: right;
+        filter: opacity(50%);
+        -webkit-user-select: none;
+    }
+    .code {
+        color: #dddddd;
+        background-color: #222222;
+        font-family: Menlo, Monaco, monospace;
+        line-height: 1.4em;
+        border-bottom: 2px solid #222222;
+        white-space: pre;
+        display: inline-block;
+    }
+    .odd {
+        background-color: #55bbff;
+        color: #223311;
+    }
+    .even {
+        background-color: #ee7756;
+        color: #551133;
+    }
+    .code {
+        --index: calc(var(--layer) - 1);
+        padding-top: calc(var(--index) * 0.15em);
+        filter:
+            hue-rotate(calc(var(--index) * 25deg))
+            saturate(calc(100% - (var(--index) * 2%)))
+            brightness(calc(100% - (var(--index) * 1.5%)));
+    }
+    .annotation {
+        color: #4444ff;
+        font-family: monospace;
+        font-style: italic;
+        display: none;
+        -webkit-user-select: none;
+    }
+    body:active .annotation {
+        /* requires holding mouse down anywhere on the page */
+        display: inline-block;
+    }
+    span:hover .annotation {
+        /* requires hover over a span ONLY on its first line */
+        display: inline-block;
+    }
+</style>
+</head>
+<body>
+<div class="code" style="counter-reset: line 6"><span class="line">    <span class="code" style="--layer: 0">minor: usize,</span></span>
+<span class="line"><span class="code" style="--layer: 0">    </span><span><span class="code even" style="--layer: 1" title="8:5-8:17: @0[3]: _4 = &amp;(*(*(_1.0: &amp;&amp;usize)))
+8:5-8:17: @0[4]: _3 = &amp;(*_4)
+8:5-8:17: @0[7]: _6 = &amp;(*(*(_1.1: &amp;&amp;usize)))
+8:5-8:17: @0[8]: _5 = &amp;(*_6)
+8:5-8:17: @0.Call: _2 = &lt;usize as PartialOrd&gt;::partial_cmp(move _3, move _5) -&gt; [return: bb1, unwind: bb3]
+8:5-8:17: @1[3]: _7 = Less
+8:5-8:17: @1.Call: _0 = Option::&lt;std::cmp::Ordering&gt;::unwrap_or(move _2, move _7) -&gt; [return: bb2, unwind: bb3]
+8:5-8:17: @2.Return: return"><span class="annotation">@0,1,2⦊</span>patch: usize<span class="annotation">⦉@0,1,2</span></span></span></span></div>
+</body>
+</html>

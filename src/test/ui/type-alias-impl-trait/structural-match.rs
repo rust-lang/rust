@@ -1,4 +1,4 @@
-#![feature(const_fn, type_alias_impl_trait)]
+#![feature(const_impl_trait, type_alias_impl_trait)]
 
 type Foo = impl Send;
 
@@ -13,9 +13,9 @@ const VALUE: Foo = value();
 fn test() {
     match todo!() {
         VALUE => (),
-        //~^ opaque types cannot be used in patterns
+        //~^ `impl Send` cannot be used in patterns
         _ => (),
     }
 }
 
-fn main() { }
+fn main() {}

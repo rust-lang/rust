@@ -183,9 +183,14 @@ struct InnerReadDir {
     root: PathBuf,
 }
 
-#[derive(Clone)]
 pub struct ReadDir {
     inner: Arc<InnerReadDir>,
+    #[cfg(not(any(
+        target_os = "solaris",
+        target_os = "illumos",
+        target_os = "fuchsia",
+        target_os = "redox",
+    )))]
     end_of_stream: bool,
 }
 
@@ -196,7 +201,7 @@ unsafe impl Sync for Dir {}
 
 pub struct DirEntry {
     entry: dirent64,
-    dir: ReadDir,
+    dir: Arc<InnerReadDir>,
     // We need to store an owned copy of the entry name
     // on Solaris and Fuchsia because a) it uses a zero-length
     // array to store the name, b) its lifetime between readdir
@@ -292,6 +297,7 @@ impl FileAttr {
 
 #[cfg(not(target_os = "netbsd"))]
 impl FileAttr {
+    #[cfg(not(target_os = "vxworks"))]
     pub fn modified(&self) -> io::Result<SystemTime> {
         Ok(SystemTime::from(libc::timespec {
             tv_sec: self.stat.st_mtime as libc::time_t,
@@ -299,10 +305,27 @@ impl FileAttr {
         }))
     }
 
+    #[cfg(target_os = "vxworks")]
+    pub fn modified(&self) -> io::Result<SystemTime> {
+        Ok(SystemTime::from(libc::timespec {
+            tv_sec: self.stat.st_mtime as libc::time_t,
+            tv_nsec: 0,
+        }))
+    }
+
+    #[cfg(not(target_os = "vxworks"))]
     pub fn accessed(&self) -> io::Result<SystemTime> {
         Ok(SystemTime::from(libc::timespec {
             tv_sec: self.stat.st_atime as libc::time_t,
             tv_nsec: self.stat.st_atime_nsec as _,
+        }))
+    }
+
+    #[cfg(target_os = "vxworks")]
+    pub fn accessed(&self) -> io::Result<SystemTime> {
+        Ok(SystemTime::from(libc::timespec {
+            tv_sec: self.stat.st_atime as libc::time_t,
+            tv_nsec: 0,
         }))
     }
 
@@ -443,7 +466,7 @@ impl Iterator for ReadDir {
                     name: slice::from_raw_parts(name as *const u8, namelen as usize)
                         .to_owned()
                         .into_boxed_slice(),
-                    dir: self.clone(),
+                    dir: Arc::clone(&self.inner),
                 };
                 if ret.name_bytes() != b"." && ret.name_bytes() != b".." {
                     return Some(Ok(ret));
@@ -464,7 +487,7 @@ impl Iterator for ReadDir {
         }
 
         unsafe {
-            let mut ret = DirEntry { entry: mem::zeroed(), dir: self.clone() };
+            let mut ret = DirEntry { entry: mem::zeroed(), dir: Arc::clone(&self.inner) };
             let mut entry_ptr = ptr::null_mut();
             loop {
                 if readdir64_r(self.inner.dirp.0, &mut ret.entry, &mut entry_ptr) != 0 {
@@ -497,7 +520,7 @@ impl Drop for Dir {
 
 impl DirEntry {
     pub fn path(&self) -> PathBuf {
-        self.dir.inner.root.join(OsStr::from_bytes(self.name_bytes()))
+        self.dir.root.join(OsStr::from_bytes(self.name_bytes()))
     }
 
     pub fn file_name(&self) -> OsString {
@@ -506,7 +529,7 @@ impl DirEntry {
 
     #[cfg(any(target_os = "linux", target_os = "emscripten", target_os = "android"))]
     pub fn metadata(&self) -> io::Result<FileAttr> {
-        let fd = cvt(unsafe { dirfd(self.dir.inner.dirp.0) })?;
+        let fd = cvt(unsafe { dirfd(self.dir.dirp.0) })?;
         let name = self.entry.d_name.as_ptr();
 
         cfg_has_statx! {
@@ -530,12 +553,22 @@ impl DirEntry {
         lstat(&self.path())
     }
 
-    #[cfg(any(target_os = "solaris", target_os = "illumos", target_os = "haiku"))]
+    #[cfg(any(
+        target_os = "solaris",
+        target_os = "illumos",
+        target_os = "haiku",
+        target_os = "vxworks"
+    ))]
     pub fn file_type(&self) -> io::Result<FileType> {
         lstat(&self.path()).map(|m| m.file_type())
     }
 
-    #[cfg(not(any(target_os = "solaris", target_os = "illumos", target_os = "haiku")))]
+    #[cfg(not(any(
+        target_os = "solaris",
+        target_os = "illumos",
+        target_os = "haiku",
+        target_os = "vxworks"
+    )))]
     pub fn file_type(&self) -> io::Result<FileType> {
         match self.entry.d_type {
             libc::DT_CHR => Ok(FileType { mode: libc::S_IFCHR }),
@@ -560,7 +593,8 @@ impl DirEntry {
         target_os = "haiku",
         target_os = "l4re",
         target_os = "fuchsia",
-        target_os = "redox"
+        target_os = "redox",
+        target_os = "vxworks"
     ))]
     pub fn ino(&self) -> u64 {
         self.entry.d_ino as u64
@@ -598,7 +632,8 @@ impl DirEntry {
         target_os = "linux",
         target_os = "emscripten",
         target_os = "l4re",
-        target_os = "haiku"
+        target_os = "haiku",
+        target_os = "vxworks"
     ))]
     fn name_bytes(&self) -> &[u8] {
         unsafe { CStr::from_ptr(self.entry.d_name.as_ptr()).to_bytes() }
@@ -752,11 +787,25 @@ impl File {
         unsafe fn os_datasync(fd: c_int) -> c_int {
             libc::fcntl(fd, libc::F_FULLFSYNC)
         }
-        #[cfg(target_os = "linux")]
+        #[cfg(any(
+            target_os = "freebsd",
+            target_os = "linux",
+            target_os = "android",
+            target_os = "netbsd",
+            target_os = "openbsd"
+        ))]
         unsafe fn os_datasync(fd: c_int) -> c_int {
             libc::fdatasync(fd)
         }
-        #[cfg(not(any(target_os = "macos", target_os = "ios", target_os = "linux")))]
+        #[cfg(not(any(
+            target_os = "android",
+            target_os = "freebsd",
+            target_os = "ios",
+            target_os = "linux",
+            target_os = "macos",
+            target_os = "netbsd",
+            target_os = "openbsd"
+        )))]
         unsafe fn os_datasync(fd: c_int) -> c_int {
             libc::fsync(fd)
         }
@@ -896,13 +945,25 @@ impl fmt::Debug for File {
             Some(PathBuf::from(OsString::from_vec(buf)))
         }
 
-        #[cfg(not(any(target_os = "linux", target_os = "macos")))]
+        #[cfg(target_os = "vxworks")]
+        fn get_path(fd: c_int) -> Option<PathBuf> {
+            let mut buf = vec![0; libc::PATH_MAX as usize];
+            let n = unsafe { libc::ioctl(fd, libc::FIOGETNAME, buf.as_ptr()) };
+            if n == -1 {
+                return None;
+            }
+            let l = buf.iter().position(|&c| c == 0).unwrap();
+            buf.truncate(l as usize);
+            Some(PathBuf::from(OsString::from_vec(buf)))
+        }
+
+        #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "vxworks")))]
         fn get_path(_fd: c_int) -> Option<PathBuf> {
             // FIXME(#24570): implement this for other Unix platforms
             None
         }
 
-        #[cfg(any(target_os = "linux", target_os = "macos"))]
+        #[cfg(any(target_os = "linux", target_os = "macos", target_os = "vxworks"))]
         fn get_mode(fd: c_int) -> Option<(bool, bool)> {
             let mode = unsafe { libc::fcntl(fd, libc::F_GETFL) };
             if mode == -1 {
@@ -916,7 +977,7 @@ impl fmt::Debug for File {
             }
         }
 
-        #[cfg(not(any(target_os = "linux", target_os = "macos")))]
+        #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "vxworks")))]
         fn get_mode(_fd: c_int) -> Option<(bool, bool)> {
             // FIXME(#24570): implement this for other Unix platforms
             None
@@ -944,7 +1005,16 @@ pub fn readdir(p: &Path) -> io::Result<ReadDir> {
             Err(Error::last_os_error())
         } else {
             let inner = InnerReadDir { dirp: Dir(ptr), root };
-            Ok(ReadDir { inner: Arc::new(inner), end_of_stream: false })
+            Ok(ReadDir {
+                inner: Arc::new(inner),
+                #[cfg(not(any(
+                    target_os = "solaris",
+                    target_os = "illumos",
+                    target_os = "fuchsia",
+                    target_os = "redox",
+                )))]
+                end_of_stream: false,
+            })
         }
     }
 }
@@ -1001,17 +1071,30 @@ pub fn readlink(p: &Path) -> io::Result<PathBuf> {
     }
 }
 
-pub fn symlink(src: &Path, dst: &Path) -> io::Result<()> {
-    let src = cstr(src)?;
-    let dst = cstr(dst)?;
-    cvt(unsafe { libc::symlink(src.as_ptr(), dst.as_ptr()) })?;
+pub fn symlink(original: &Path, link: &Path) -> io::Result<()> {
+    let original = cstr(original)?;
+    let link = cstr(link)?;
+    cvt(unsafe { libc::symlink(original.as_ptr(), link.as_ptr()) })?;
     Ok(())
 }
 
-pub fn link(src: &Path, dst: &Path) -> io::Result<()> {
-    let src = cstr(src)?;
-    let dst = cstr(dst)?;
-    cvt(unsafe { libc::link(src.as_ptr(), dst.as_ptr()) })?;
+pub fn link(original: &Path, link: &Path) -> io::Result<()> {
+    let original = cstr(original)?;
+    let link = cstr(link)?;
+    cfg_if::cfg_if! {
+        if #[cfg(any(target_os = "vxworks", target_os = "redox", target_os = "android"))] {
+            // VxWorks, Redox, and old versions of Android lack `linkat`, so use
+            // `link` instead. POSIX leaves it implementation-defined whether
+            // `link` follows symlinks, so rely on the `symlink_hard_link` test
+            // in library/std/src/fs/tests.rs to check the behavior.
+            cvt(unsafe { libc::link(original.as_ptr(), link.as_ptr()) })?;
+        } else {
+            // Use `linkat` with `AT_FDCWD` instead of `link` as `linkat` gives
+            // us a flag to specify how symlinks should be handled. Pass 0 as
+            // the flags argument, meaning don't follow symlinks.
+            cvt(unsafe { libc::linkat(libc::AT_FDCWD, original.as_ptr(), libc::AT_FDCWD, link.as_ptr(), 0) })?;
+        }
+    }
     Ok(())
 }
 
@@ -1121,81 +1204,19 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
 
 #[cfg(any(target_os = "linux", target_os = "android"))]
 pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
-    use crate::cmp;
-    use crate::sync::atomic::{AtomicBool, Ordering};
-
-    // Kernel prior to 4.5 don't have copy_file_range
-    // We store the availability in a global to avoid unnecessary syscalls
-    static HAS_COPY_FILE_RANGE: AtomicBool = AtomicBool::new(true);
-
-    unsafe fn copy_file_range(
-        fd_in: libc::c_int,
-        off_in: *mut libc::loff_t,
-        fd_out: libc::c_int,
-        off_out: *mut libc::loff_t,
-        len: libc::size_t,
-        flags: libc::c_uint,
-    ) -> libc::c_long {
-        libc::syscall(libc::SYS_copy_file_range, fd_in, off_in, fd_out, off_out, len, flags)
-    }
-
     let (mut reader, reader_metadata) = open_from(from)?;
-    let len = reader_metadata.len();
+    let max_len = u64::MAX;
     let (mut writer, _) = open_to_and_set_permissions(to, reader_metadata)?;
 
-    let has_copy_file_range = HAS_COPY_FILE_RANGE.load(Ordering::Relaxed);
-    let mut written = 0u64;
-    while written < len {
-        let copy_result = if has_copy_file_range {
-            let bytes_to_copy = cmp::min(len - written, usize::MAX as u64) as usize;
-            let copy_result = unsafe {
-                // We actually don't have to adjust the offsets,
-                // because copy_file_range adjusts the file offset automatically
-                cvt(copy_file_range(
-                    reader.as_raw_fd(),
-                    ptr::null_mut(),
-                    writer.as_raw_fd(),
-                    ptr::null_mut(),
-                    bytes_to_copy,
-                    0,
-                ))
-            };
-            if let Err(ref copy_err) = copy_result {
-                match copy_err.raw_os_error() {
-                    Some(libc::ENOSYS) | Some(libc::EPERM) => {
-                        HAS_COPY_FILE_RANGE.store(false, Ordering::Relaxed);
-                    }
-                    _ => {}
-                }
-            }
-            copy_result
-        } else {
-            Err(io::Error::from_raw_os_error(libc::ENOSYS))
-        };
-        match copy_result {
-            Ok(ret) => written += ret as u64,
-            Err(err) => {
-                match err.raw_os_error() {
-                    Some(os_err)
-                        if os_err == libc::ENOSYS
-                            || os_err == libc::EXDEV
-                            || os_err == libc::EINVAL
-                            || os_err == libc::EPERM =>
-                    {
-                        // Try fallback io::copy if either:
-                        // - Kernel version is < 4.5 (ENOSYS)
-                        // - Files are mounted on different fs (EXDEV)
-                        // - copy_file_range is disallowed, for example by seccomp (EPERM)
-                        // - copy_file_range cannot be used with pipes or device nodes (EINVAL)
-                        assert_eq!(written, 0);
-                        return io::copy(&mut reader, &mut writer);
-                    }
-                    _ => return Err(err),
-                }
-            }
-        }
+    use super::kernel_copy::{copy_regular_files, CopyResult};
+
+    match copy_regular_files(reader.as_raw_fd(), writer.as_raw_fd(), max_len) {
+        CopyResult::Ended(result) => result,
+        CopyResult::Fallback(written) => match io::copy::generic_copy(&mut reader, &mut writer) {
+            Ok(bytes) => Ok(bytes + written),
+            Err(e) => Err(e),
+        },
     }
-    Ok(written)
 }
 
 #[cfg(any(target_os = "macos", target_os = "ios"))]

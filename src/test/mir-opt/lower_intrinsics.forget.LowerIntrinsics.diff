@@ -1,0 +1,31 @@
+- // MIR for `forget` before LowerIntrinsics
++ // MIR for `forget` after LowerIntrinsics
+  
+  fn forget(_1: T) -> () {
+      debug t => _1;                       // in scope 0 at $DIR/lower_intrinsics.rs:18:18: 18:19
+      let mut _0: ();                      // return place in scope 0 at $DIR/lower_intrinsics.rs:18:24: 18:24
+      let _2: ();                          // in scope 0 at $DIR/lower_intrinsics.rs:19:14: 19:41
+      let mut _3: T;                       // in scope 0 at $DIR/lower_intrinsics.rs:19:39: 19:40
+      scope 1 {
+      }
+  
+      bb0: {
+          StorageLive(_2);                 // scope 0 at $DIR/lower_intrinsics.rs:19:5: 19:43
+          StorageLive(_3);                 // scope 1 at $DIR/lower_intrinsics.rs:19:39: 19:40
+          _3 = move _1;                    // scope 1 at $DIR/lower_intrinsics.rs:19:39: 19:40
+-         _2 = std::intrinsics::forget::<T>(move _3) -> bb1; // scope 1 at $DIR/lower_intrinsics.rs:19:14: 19:41
+-                                          // mir::Constant
+-                                          // + span: $DIR/lower_intrinsics.rs:19:14: 19:38
+-                                          // + literal: Const { ty: unsafe extern "rust-intrinsic" fn(T) {std::intrinsics::forget::<T>}, val: Value(Scalar(<ZST>)) }
++         _2 = const ();                   // scope 1 at $DIR/lower_intrinsics.rs:19:14: 19:41
++         goto -> bb1;                     // scope 1 at $DIR/lower_intrinsics.rs:19:14: 19:41
+      }
+  
+      bb1: {
+          StorageDead(_3);                 // scope 1 at $DIR/lower_intrinsics.rs:19:40: 19:41
+          StorageDead(_2);                 // scope 0 at $DIR/lower_intrinsics.rs:19:43: 19:44
+          _0 = const ();                   // scope 0 at $DIR/lower_intrinsics.rs:18:24: 20:2
+          return;                          // scope 0 at $DIR/lower_intrinsics.rs:20:2: 20:2
+      }
+  }
+  

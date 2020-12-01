@@ -1,3 +1,5 @@
+// ignore-compare-mode-chalk
+
 trait Bug {
     type Item: Bug;
 

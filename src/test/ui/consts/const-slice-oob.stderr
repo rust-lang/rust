@@ -4,7 +4,7 @@ error: any use of this value will cause an error
 LL | const BAR: u32 = FOO[5];
    | -----------------^^^^^^-
    |                  |
-   |                  index out of bounds: the len is 3 but the index is 5
+   |                  index out of bounds: the length is 3 but the index is 5
    |
    = note: `#[deny(const_err)]` on by default
 

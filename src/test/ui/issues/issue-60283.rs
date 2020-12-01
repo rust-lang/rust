@@ -16,4 +16,5 @@ where
 fn main() {
     foo((), drop)
     //~^ ERROR type mismatch in function arguments
+    //~| ERROR size for values of type `<() as Trait<'_>>::Item` cannot be known at compilation time
 }

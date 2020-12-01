@@ -28,7 +28,7 @@ error: usage of `Rc<Box<T>>`
   --> $DIR/redundant_allocation.rs:36:17
    |
 LL | pub fn test6(a: Rc<Box<bool>>) {}
-   |                 ^^^^^^^^^^^^^ help: try: `Box<bool>`
+   |                 ^^^^^^^^^^^^^ help: try: `Rc<bool>`
 
 error: usage of `Box<&T>`
   --> $DIR/redundant_allocation.rs:40:22

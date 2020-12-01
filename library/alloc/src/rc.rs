@@ -11,7 +11,7 @@
 //! is no exception: you cannot generally obtain a mutable reference to
 //! something inside an [`Rc`]. If you need mutability, put a [`Cell`]
 //! or [`RefCell`] inside the [`Rc`]; see [an example of mutability
-//! inside an Rc][mutability].
+//! inside an `Rc`][mutability].
 //!
 //! [`Rc`] uses non-atomic reference counting. This means that overhead is very
 //! low, but an [`Rc`] cannot be sent between threads, and consequently [`Rc`]
@@ -35,13 +35,27 @@
 //! `Rc<T>` automatically dereferences to `T` (via the [`Deref`] trait),
 //! so you can call `T`'s methods on a value of type [`Rc<T>`][`Rc`]. To avoid name
 //! clashes with `T`'s methods, the methods of [`Rc<T>`][`Rc`] itself are associated
-//! functions, called using function-like syntax:
+//! functions, called using [fully qualified syntax]:
 //!
 //! ```
 //! use std::rc::Rc;
-//! let my_rc = Rc::new(());
 //!
+//! let my_rc = Rc::new(());
 //! Rc::downgrade(&my_rc);
+//! ```
+//!
+//! `Rc<T>`'s implementations of traits like `Clone` may also be called using
+//! fully qualified syntax. Some people prefer to use fully qualified syntax,
+//! while others prefer using method-call syntax.
+//!
+//! ```
+//! use std::rc::Rc;
+//!
+//! let rc = Rc::new(());
+//! // Method-call syntax
+//! let rc2 = rc.clone();
+//! // Fully qualified syntax
+//! let rc3 = Rc::clone(&rc);
 //! ```
 //!
 //! [`Weak<T>`][`Weak`] does not auto-dereference to `T`, because the inner value may have
@@ -54,6 +68,7 @@
 //!
 //! ```
 //! use std::rc::Rc;
+//!
 //! let foo = Rc::new(vec![1.0, 2.0, 3.0]);
 //! // The two syntaxes below are equivalent.
 //! let a = foo.clone();
@@ -218,7 +233,7 @@
 //! [`Cell`]: core::cell::Cell
 //! [`RefCell`]: core::cell::RefCell
 //! [send]: core::marker::Send
-//! [arc]: ../../std/sync/struct.Arc.html
+//! [arc]: crate::sync::Arc
 //! [`Deref`]: core::ops::Deref
 //! [downgrade]: Rc::downgrade
 //! [upgrade]: Weak::upgrade
@@ -247,7 +262,7 @@ use core::pin::Pin;
 use core::ptr::{self, NonNull};
 use core::slice::from_raw_parts_mut;
 
-use crate::alloc::{box_free, handle_alloc_error, AllocErr, AllocRef, Global, Layout};
+use crate::alloc::{box_free, handle_alloc_error, AllocError, AllocRef, Global, Layout};
 use crate::borrow::{Cow, ToOwned};
 use crate::string::String;
 use crate::vec::Vec;
@@ -272,10 +287,9 @@ struct RcBox<T: ?Sized> {
 ///
 /// The inherent methods of `Rc` are all associated functions, which means
 /// that you have to call them as e.g., [`Rc::get_mut(&mut value)`][get_mut] instead of
-/// `value.get_mut()`. This avoids conflicts with methods of the inner
-/// type `T`.
+/// `value.get_mut()`. This avoids conflicts with methods of the inner type `T`.
 ///
-/// [get_mut]: #method.get_mut
+/// [get_mut]: Rc::get_mut
 #[cfg_attr(not(test), rustc_diagnostic_item = "Rc")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Rc<T: ?Sized> {
@@ -295,6 +309,13 @@ impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Rc<U>> for Rc<T> {}
 impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<Rc<U>> for Rc<T> {}
 
 impl<T: ?Sized> Rc<T> {
+    #[inline(always)]
+    fn inner(&self) -> &RcBox<T> {
+        // This unsafety is ok because while this Rc is alive we're guaranteed
+        // that the inner pointer is valid.
+        unsafe { self.ptr.as_ref() }
+    }
+
     fn from_inner(ptr: NonNull<RcBox<T>>) -> Self {
         Self { ptr, phantom: PhantomData }
     }
@@ -323,6 +344,50 @@ impl<T> Rc<T> {
         Self::from_inner(
             Box::leak(box RcBox { strong: Cell::new(1), weak: Cell::new(1), value }).into(),
         )
+    }
+
+    /// Constructs a new `Rc<T>` using a weak reference to itself. Attempting
+    /// to upgrade the weak reference before this function returns will result
+    /// in a `None` value. However, the weak reference may be cloned freely and
+    /// stored for use at a later time.
+    #[unstable(feature = "arc_new_cyclic", issue = "75861")]
+    pub fn new_cyclic(data_fn: impl FnOnce(&Weak<T>) -> T) -> Rc<T> {
+        // Construct the inner in the "uninitialized" state with a single
+        // weak reference.
+        let uninit_ptr: NonNull<_> = Box::leak(box RcBox {
+            strong: Cell::new(0),
+            weak: Cell::new(1),
+            value: mem::MaybeUninit::<T>::uninit(),
+        })
+        .into();
+
+        let init_ptr: NonNull<RcBox<T>> = uninit_ptr.cast();
+
+        let weak = Weak { ptr: init_ptr };
+
+        // It's important we don't give up ownership of the weak pointer, or
+        // else the memory might be freed by the time `data_fn` returns. If
+        // we really wanted to pass ownership, we could create an additional
+        // weak pointer for ourselves, but this would result in additional
+        // updates to the weak reference count which might not be necessary
+        // otherwise.
+        let data = data_fn(&weak);
+
+        unsafe {
+            let inner = init_ptr.as_ptr();
+            ptr::write(&raw mut (*inner).value, data);
+
+            let prev_value = (*inner).strong.get();
+            debug_assert_eq!(prev_value, 0, "No prior strong references should exist");
+            (*inner).strong.set(1);
+        }
+
+        let strong = Rc::from_inner(init_ptr);
+
+        // Strong references should collectively own a shared weak reference,
+        // so don't run the destructor for our old weak reference.
+        mem::forget(weak);
+        strong
     }
 
     /// Constructs a new `Rc` with uninitialized contents.
@@ -376,7 +441,7 @@ impl<T> Rc<T> {
     /// assert_eq!(*zero, 0)
     /// ```
     ///
-    /// [zeroed]: ../../std/mem/union.MaybeUninit.html#method.zeroed
+    /// [zeroed]: mem::MaybeUninit::zeroed
     #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_zeroed() -> Rc<mem::MaybeUninit<T>> {
         unsafe {
@@ -425,7 +490,7 @@ impl<T> Rc<T> {
                 // the strong count, and then remove the implicit "strong weak"
                 // pointer while also handling drop logic by just crafting a
                 // fake Weak.
-                this.dec_strong();
+                this.inner().dec_strong();
                 let _weak = Weak { ptr: this.ptr };
                 forget(this);
                 Ok(val)
@@ -484,7 +549,7 @@ impl<T> Rc<[T]> {
     /// assert_eq!(*values, [0, 0, 0])
     /// ```
     ///
-    /// [zeroed]: ../../std/mem/union.MaybeUninit.html#method.zeroed
+    /// [zeroed]: mem::MaybeUninit::zeroed
     #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_zeroed_slice(len: usize) -> Rc<[mem::MaybeUninit<T>]> {
         unsafe {
@@ -511,7 +576,7 @@ impl<T> Rc<mem::MaybeUninit<T>> {
     /// Calling this when the content is not yet fully initialized
     /// causes immediate undefined behavior.
     ///
-    /// [`MaybeUninit::assume_init`]: ../../std/mem/union.MaybeUninit.html#method.assume_init
+    /// [`MaybeUninit::assume_init`]: mem::MaybeUninit::assume_init
     ///
     /// # Examples
     ///
@@ -550,7 +615,7 @@ impl<T> Rc<[mem::MaybeUninit<T>]> {
     /// Calling this when the content is not yet fully initialized
     /// causes immediate undefined behavior.
     ///
-    /// [`MaybeUninit::assume_init`]: ../../std/mem/union.MaybeUninit.html#method.assume_init
+    /// [`MaybeUninit::assume_init`]: mem::MaybeUninit::assume_init
     ///
     /// # Examples
     ///
@@ -691,7 +756,7 @@ impl<T: ?Sized> Rc<T> {
     /// ```
     #[stable(feature = "rc_weak", since = "1.4.0")]
     pub fn downgrade(this: &Self) -> Weak<T> {
-        this.inc_weak();
+        this.inner().inc_weak();
         // Make sure we do not create a dangling Weak
         debug_assert!(!is_dangling(this.ptr));
         Weak { ptr: this.ptr }
@@ -712,7 +777,7 @@ impl<T: ?Sized> Rc<T> {
     #[inline]
     #[stable(feature = "rc_counts", since = "1.15.0")]
     pub fn weak_count(this: &Self) -> usize {
-        this.weak() - 1
+        this.inner().weak() - 1
     }
 
     /// Gets the number of strong (`Rc`) pointers to this allocation.
@@ -730,7 +795,7 @@ impl<T: ?Sized> Rc<T> {
     #[inline]
     #[stable(feature = "rc_counts", since = "1.15.0")]
     pub fn strong_count(this: &Self) -> usize {
-        this.strong()
+        this.inner().strong()
     }
 
     /// Returns `true` if there are no other `Rc` or [`Weak`] pointers to
@@ -800,7 +865,9 @@ impl<T: ?Sized> Rc<T> {
     #[inline]
     #[unstable(feature = "get_mut_unchecked", issue = "63292")]
     pub unsafe fn get_mut_unchecked(this: &mut Self) -> &mut T {
-        unsafe { &mut this.ptr.as_mut().value }
+        // We are careful to *not* create a reference covering the "count" fields, as
+        // this would conflict with accesses to the reference counts (e.g. by `Weak`).
+        unsafe { &mut (*this.ptr.as_ptr()).value }
     }
 
     #[inline]
@@ -887,10 +954,10 @@ impl<T: Clone> Rc<T> {
             unsafe {
                 let mut swap = Rc::new(ptr::read(&this.ptr.as_ref().value));
                 mem::swap(this, &mut swap);
-                swap.dec_strong();
+                swap.inner().dec_strong();
                 // Remove implicit strong-weak ref (no need to craft a fake
                 // Weak here -- we know other Weaks can clean up for us)
-                swap.dec_weak();
+                swap.inner().dec_weak();
                 forget(swap);
             }
         }
@@ -943,7 +1010,7 @@ impl<T: ?Sized> Rc<T> {
     /// and must return back a (potentially fat)-pointer for the `RcBox<T>`.
     unsafe fn allocate_for_layout(
         value_layout: Layout,
-        allocate: impl FnOnce(Layout) -> Result<NonNull<[u8]>, AllocErr>,
+        allocate: impl FnOnce(Layout) -> Result<NonNull<[u8]>, AllocError>,
         mem_to_rcbox: impl FnOnce(*mut u8) -> *mut RcBox<T>,
     ) -> *mut RcBox<T> {
         // Calculate layout using the given value layout.
@@ -981,7 +1048,7 @@ impl<T: ?Sized> Rc<T> {
 
     fn from_box(v: Box<T>) -> Rc<T> {
         unsafe {
-            let box_unique = Box::into_unique(v);
+            let (box_unique, alloc) = Box::into_unique(v);
             let bptr = box_unique.as_ptr();
 
             let value_size = size_of_val(&*bptr);
@@ -995,7 +1062,7 @@ impl<T: ?Sized> Rc<T> {
             );
 
             // Free the allocation without dropping its contents
-            box_free(box_unique);
+            box_free(box_unique, alloc);
 
             Self::from_ptr(ptr)
         }
@@ -1148,16 +1215,16 @@ unsafe impl<#[may_dangle] T: ?Sized> Drop for Rc<T> {
     /// ```
     fn drop(&mut self) {
         unsafe {
-            self.dec_strong();
-            if self.strong() == 0 {
+            self.inner().dec_strong();
+            if self.inner().strong() == 0 {
                 // destroy the contained object
-                ptr::drop_in_place(self.ptr.as_mut());
+                ptr::drop_in_place(Self::get_mut_unchecked(self));
 
                 // remove the implicit "strong weak" pointer now that we've
                 // destroyed the contents.
-                self.dec_weak();
+                self.inner().dec_weak();
 
-                if self.weak() == 0 {
+                if self.inner().weak() == 0 {
                     Global.dealloc(self.ptr.cast(), Layout::for_value(self.ptr.as_ref()));
                 }
             }
@@ -1183,7 +1250,7 @@ impl<T: ?Sized> Clone for Rc<T> {
     /// ```
     #[inline]
     fn clone(&self) -> Rc<T> {
-        self.inc_strong();
+        self.inner().inc_strong();
         Self::from_inner(self.ptr)
     }
 }
@@ -1668,7 +1735,21 @@ impl<T> Weak<T> {
     pub fn new() -> Weak<T> {
         Weak { ptr: NonNull::new(usize::MAX as *mut RcBox<T>).expect("MAX is not 0") }
     }
+}
 
+pub(crate) fn is_dangling<T: ?Sized>(ptr: NonNull<T>) -> bool {
+    let address = ptr.as_ptr() as *mut () as usize;
+    address == usize::MAX
+}
+
+/// Helper type to allow accessing the reference counts without
+/// making any assertions about the data field.
+struct WeakInner<'a> {
+    weak: &'a Cell<usize>,
+    strong: &'a Cell<usize>,
+}
+
+impl<T: ?Sized> Weak<T> {
     /// Returns a raw pointer to the object `T` pointed to by this `Weak<T>`.
     ///
     /// The pointer is valid only if there are some strong references. The pointer may be dangling,
@@ -1788,26 +1869,20 @@ impl<T> Weak<T> {
     /// [`new`]: Weak::new
     #[stable(feature = "weak_into_raw", since = "1.45.0")]
     pub unsafe fn from_raw(ptr: *const T) -> Self {
-        if ptr.is_null() {
-            Self::new()
-        } else {
-            // See Rc::from_raw for details
-            unsafe {
-                let offset = data_offset(ptr);
-                let fake_ptr = ptr as *mut RcBox<T>;
-                let ptr = set_data_ptr(fake_ptr, (ptr as *mut u8).offset(-offset));
-                Weak { ptr: NonNull::new(ptr).expect("Invalid pointer passed to from_raw") }
-            }
-        }
+        // SAFETY: data_offset is safe to call, because this pointer originates from a Weak.
+        // See Weak::as_ptr for context on how the input pointer is derived.
+        let offset = unsafe { data_offset(ptr) };
+
+        // Reverse the offset to find the original RcBox.
+        // SAFETY: we use wrapping_offset here because the pointer may be dangling (but only if T: Sized).
+        let ptr = unsafe {
+            set_data_ptr(ptr as *mut RcBox<T>, (ptr as *mut u8).wrapping_offset(-offset))
+        };
+
+        // SAFETY: we now have recovered the original Weak pointer, so can create the Weak.
+        Weak { ptr: unsafe { NonNull::new_unchecked(ptr) } }
     }
-}
 
-pub(crate) fn is_dangling<T: ?Sized>(ptr: NonNull<T>) -> bool {
-    let address = ptr.as_ptr() as *mut () as usize;
-    address == usize::MAX
-}
-
-impl<T: ?Sized> Weak<T> {
     /// Attempts to upgrade the `Weak` pointer to an [`Rc`], delaying
     /// dropping of the inner value if successful.
     ///
@@ -1866,11 +1941,21 @@ impl<T: ?Sized> Weak<T> {
             .unwrap_or(0)
     }
 
-    /// Returns `None` when the pointer is dangling and there is no allocated `RcBox`
+    /// Returns `None` when the pointer is dangling and there is no allocated `RcBox`,
     /// (i.e., when this `Weak` was created by `Weak::new`).
     #[inline]
-    fn inner(&self) -> Option<&RcBox<T>> {
-        if is_dangling(self.ptr) { None } else { Some(unsafe { self.ptr.as_ref() }) }
+    fn inner(&self) -> Option<WeakInner<'_>> {
+        if is_dangling(self.ptr) {
+            None
+        } else {
+            // We are careful to *not* create a reference covering the "data" field, as
+            // the field may be mutated concurrently (for example, if the last `Rc`
+            // is dropped, the data field will be dropped in-place).
+            Some(unsafe {
+                let ptr = self.ptr.as_ptr();
+                WeakInner { strong: &(*ptr).strong, weak: &(*ptr).weak }
+            })
+        }
     }
 
     /// Returns `true` if the two `Weak`s point to the same allocation (similar to
@@ -1948,14 +2033,14 @@ impl<T: ?Sized> Drop for Weak<T> {
     /// assert!(other_weak_foo.upgrade().is_none());
     /// ```
     fn drop(&mut self) {
-        if let Some(inner) = self.inner() {
-            inner.dec_weak();
-            // the weak count starts at 1, and will only go to zero if all
-            // the strong pointers have disappeared.
-            if inner.weak() == 0 {
-                unsafe {
-                    Global.dealloc(self.ptr.cast(), Layout::for_value(self.ptr.as_ref()));
-                }
+        let inner = if let Some(inner) = self.inner() { inner } else { return };
+
+        inner.dec_weak();
+        // the weak count starts at 1, and will only go to zero if all
+        // the strong pointers have disappeared.
+        if inner.weak() == 0 {
+            unsafe {
+                Global.dealloc(self.ptr.cast(), Layout::for_value(self.ptr.as_ref()));
             }
         }
     }
@@ -2021,12 +2106,13 @@ impl<T> Default for Weak<T> {
 // clone these much in Rust thanks to ownership and move-semantics.
 
 #[doc(hidden)]
-trait RcBoxPtr<T: ?Sized> {
-    fn inner(&self) -> &RcBox<T>;
+trait RcInnerPtr {
+    fn weak_ref(&self) -> &Cell<usize>;
+    fn strong_ref(&self) -> &Cell<usize>;
 
     #[inline]
     fn strong(&self) -> usize {
-        self.inner().strong.get()
+        self.strong_ref().get()
     }
 
     #[inline]
@@ -2040,17 +2126,17 @@ trait RcBoxPtr<T: ?Sized> {
         if strong == 0 || strong == usize::MAX {
             abort();
         }
-        self.inner().strong.set(strong + 1);
+        self.strong_ref().set(strong + 1);
     }
 
     #[inline]
     fn dec_strong(&self) {
-        self.inner().strong.set(self.strong() - 1);
+        self.strong_ref().set(self.strong() - 1);
     }
 
     #[inline]
     fn weak(&self) -> usize {
-        self.inner().weak.get()
+        self.weak_ref().get()
     }
 
     #[inline]
@@ -2064,26 +2150,36 @@ trait RcBoxPtr<T: ?Sized> {
         if weak == 0 || weak == usize::MAX {
             abort();
         }
-        self.inner().weak.set(weak + 1);
+        self.weak_ref().set(weak + 1);
     }
 
     #[inline]
     fn dec_weak(&self) {
-        self.inner().weak.set(self.weak() - 1);
+        self.weak_ref().set(self.weak() - 1);
     }
 }
 
-impl<T: ?Sized> RcBoxPtr<T> for Rc<T> {
+impl<T: ?Sized> RcInnerPtr for RcBox<T> {
     #[inline(always)]
-    fn inner(&self) -> &RcBox<T> {
-        unsafe { self.ptr.as_ref() }
+    fn weak_ref(&self) -> &Cell<usize> {
+        &self.weak
+    }
+
+    #[inline(always)]
+    fn strong_ref(&self) -> &Cell<usize> {
+        &self.strong
     }
 }
 
-impl<T: ?Sized> RcBoxPtr<T> for RcBox<T> {
+impl<'a> RcInnerPtr for WeakInner<'a> {
     #[inline(always)]
-    fn inner(&self) -> &RcBox<T> {
-        self
+    fn weak_ref(&self) -> &Cell<usize> {
+        self.weak
+    }
+
+    #[inline(always)]
+    fn strong_ref(&self) -> &Cell<usize> {
+        self.strong
     }
 }
 

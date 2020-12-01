@@ -2,7 +2,7 @@
 // "projection gap": in this test, we know that `T: 'x`, and that
 // is (naturally) enough to conclude that `T: 'x`.
 
-// build-pass (FIXME(62277): could be check-pass?)
+// check-pass
 #![allow(dead_code)]
 #![allow(unused_variables)]
 

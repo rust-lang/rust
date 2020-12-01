@@ -17,12 +17,6 @@ LL | #![deny(missing_doc_code_examples)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: missing code example in this documentation
-  --> $DIR/doc-without-codeblock.rs:3:1
-   |
-LL | /// Some docs.
-   | ^^^^^^^^^^^^^^
-
-error: missing code example in this documentation
   --> $DIR/doc-without-codeblock.rs:7:1
    |
 LL | /// And then, the princess died.
@@ -33,6 +27,12 @@ error: missing code example in this documentation
    |
 LL |     /// Or maybe not because she saved herself!
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: missing code example in this documentation
+  --> $DIR/doc-without-codeblock.rs:3:1
+   |
+LL | /// Some docs.
+   | ^^^^^^^^^^^^^^
 
 error: aborting due to 4 previous errors
 

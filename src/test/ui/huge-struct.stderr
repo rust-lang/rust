@@ -1,4 +1,4 @@
-error: the type `SXX<SXX<SXX<u32>>>` is too big for the current architecture
+error: values of the type `SXX<SXX<SXX<u32>>>` are too big for the current architecture
   --> $DIR/huge-struct.rs:50:9
    |
 LL |     let fat: Option<SXX<SXX<SXX<u32>>>> = None;

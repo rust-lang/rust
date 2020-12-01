@@ -39,4 +39,14 @@ fn main() {
         None => { //~ ERROR incompatible types
         },
     };
+
+    let _ = match Some(42) {
+        Some(x) => "rust-lang.org"
+            .chars()
+            .skip(1)
+            .chain(Some(x as u8 as char))
+            .take(10)
+            .any(char::is_alphanumeric),
+        None => {} //~ ERROR incompatible types
+    };
 }

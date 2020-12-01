@@ -1,0 +1,16 @@
+error: use `std::ptr::eq` when comparing raw pointers
+  --> $DIR/ptr_eq.rs:20:13
+   |
+LL |     let _ = a as *const _ as usize == b as *const _ as usize;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::eq(a, b)`
+   |
+   = note: `-D clippy::ptr-eq` implied by `-D warnings`
+
+error: use `std::ptr::eq` when comparing raw pointers
+  --> $DIR/ptr_eq.rs:21:13
+   |
+LL |     let _ = a as *const _ == b as *const _;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::eq(a, b)`
+
+error: aborting due to 2 previous errors
+

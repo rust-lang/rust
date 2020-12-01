@@ -5,7 +5,7 @@ LL |     let _ = RGB { r, g, b };
    |                   ^
    |                   |
    |                   expected `f64`, found `f32`
-   |                   help: you can convert an `f32` to `f64`: `r: r.into()`
+   |                   help: you can convert an `f32` to an `f64`: `r: r.into()`
 
 error[E0308]: mismatched types
   --> $DIR/type-mismatch-struct-field-shorthand.rs:8:22
@@ -14,7 +14,7 @@ LL |     let _ = RGB { r, g, b };
    |                      ^
    |                      |
    |                      expected `f64`, found `f32`
-   |                      help: you can convert an `f32` to `f64`: `g: g.into()`
+   |                      help: you can convert an `f32` to an `f64`: `g: g.into()`
 
 error[E0308]: mismatched types
   --> $DIR/type-mismatch-struct-field-shorthand.rs:8:25
@@ -23,7 +23,7 @@ LL |     let _ = RGB { r, g, b };
    |                         ^
    |                         |
    |                         expected `f64`, found `f32`
-   |                         help: you can convert an `f32` to `f64`: `b: b.into()`
+   |                         help: you can convert an `f32` to an `f64`: `b: b.into()`
 
 error: aborting due to 3 previous errors
 

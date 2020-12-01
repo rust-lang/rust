@@ -102,7 +102,7 @@ impl<T: fmt::Debug> fmt::Debug for IterMut<'_, T> {
 /// This `struct` is created by the [`into_iter`] method on [`LinkedList`]
 /// (provided by the `IntoIterator` trait). See its documentation for more.
 ///
-/// [`into_iter`]: struct.LinkedList.html#method.into_iter
+/// [`into_iter`]: LinkedList::into_iter
 #[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<T> {

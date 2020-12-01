@@ -1,5 +1,5 @@
 error: this function has an empty `#[must_use]` attribute, but returns a type already marked as `#[must_use]`
-  --> $DIR/double_must_use.rs:4:1
+  --> $DIR/double_must_use.rs:5:1
    |
 LL | pub fn must_use_result() -> Result<(), ()> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -8,7 +8,7 @@ LL | pub fn must_use_result() -> Result<(), ()> {
    = help: either add some descriptive text or remove the attribute
 
 error: this function has an empty `#[must_use]` attribute, but returns a type already marked as `#[must_use]`
-  --> $DIR/double_must_use.rs:9:1
+  --> $DIR/double_must_use.rs:10:1
    |
 LL | pub fn must_use_tuple() -> (Result<(), ()>, u8) {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -16,7 +16,7 @@ LL | pub fn must_use_tuple() -> (Result<(), ()>, u8) {
    = help: either add some descriptive text or remove the attribute
 
 error: this function has an empty `#[must_use]` attribute, but returns a type already marked as `#[must_use]`
-  --> $DIR/double_must_use.rs:14:1
+  --> $DIR/double_must_use.rs:15:1
    |
 LL | pub fn must_use_array() -> [Result<(), ()>; 1] {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

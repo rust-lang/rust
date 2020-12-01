@@ -6,10 +6,12 @@ use crate::ptr;
 use crate::sys::{os, stack_overflow};
 use crate::time::Duration;
 
-#[cfg(not(target_os = "l4re"))]
+#[cfg(not(any(target_os = "l4re", target_os = "vxworks")))]
 pub const DEFAULT_MIN_STACK_SIZE: usize = 2 * 1024 * 1024;
 #[cfg(target_os = "l4re")]
 pub const DEFAULT_MIN_STACK_SIZE: usize = 1024 * 1024;
+#[cfg(target_os = "vxworks")]
+pub const DEFAULT_MIN_STACK_SIZE: usize = 256 * 1024;
 
 pub struct Thread {
     id: libc::pthread_t,
@@ -19,24 +21,6 @@ pub struct Thread {
 // a thread to be Send/Sync
 unsafe impl Send for Thread {}
 unsafe impl Sync for Thread {}
-
-// The pthread_attr_setstacksize symbol doesn't exist in the emscripten libc,
-// so we have to not link to it to satisfy emcc's ERROR_ON_UNDEFINED_SYMBOLS.
-#[cfg(not(target_os = "emscripten"))]
-unsafe fn pthread_attr_setstacksize(
-    attr: *mut libc::pthread_attr_t,
-    stack_size: libc::size_t,
-) -> libc::c_int {
-    libc::pthread_attr_setstacksize(attr, stack_size)
-}
-
-#[cfg(target_os = "emscripten")]
-unsafe fn pthread_attr_setstacksize(
-    _attr: *mut libc::pthread_attr_t,
-    _stack_size: libc::size_t,
-) -> libc::c_int {
-    panic!()
-}
 
 impl Thread {
     // unsafe: see thread::Builder::spawn_unchecked for safety requirements
@@ -48,7 +32,7 @@ impl Thread {
 
         let stack_size = cmp::max(stack, min_stack_size(&attr));
 
-        match pthread_attr_setstacksize(&mut attr, stack_size) {
+        match libc::pthread_attr_setstacksize(&mut attr, stack_size) {
             0 => {}
             n => {
                 assert_eq!(n, libc::EINVAL);
@@ -152,10 +136,11 @@ impl Thread {
         target_os = "haiku",
         target_os = "l4re",
         target_os = "emscripten",
-        target_os = "redox"
+        target_os = "redox",
+        target_os = "vxworks"
     ))]
     pub fn set_name(_name: &CStr) {
-        // Newlib, Haiku, and Emscripten have no way to set a thread name.
+        // Newlib, Haiku, Emscripten, and VxWorks have no way to set a thread name.
     }
     #[cfg(target_os = "fuchsia")]
     pub fn set_name(_name: &CStr) {
@@ -175,7 +160,8 @@ impl Thread {
                     tv_nsec: nsecs,
                 };
                 secs -= ts.tv_sec as u64;
-                if libc::nanosleep(&ts, &mut ts) == -1 {
+                let ts_ptr = &mut ts as *mut _;
+                if libc::nanosleep(ts_ptr, ts_ptr) == -1 {
                     assert_eq!(os::errno(), libc::EINTR);
                     secs += ts.tv_sec as u64;
                     nsecs = ts.tv_nsec;
@@ -294,6 +280,7 @@ pub mod guard {
     unsafe fn get_stack_start() -> Option<*mut libc::c_void> {
         let mut ret = None;
         let mut attr: libc::pthread_attr_t = crate::mem::zeroed();
+        #[cfg(target_os = "freebsd")]
         assert_eq!(libc::pthread_attr_init(&mut attr), 0);
         #[cfg(target_os = "freebsd")]
         let e = libc::pthread_attr_get_np(libc::pthread_self(), &mut attr);
@@ -305,7 +292,9 @@ pub mod guard {
             assert_eq!(libc::pthread_attr_getstack(&attr, &mut stackaddr, &mut stacksize), 0);
             ret = Some(stackaddr);
         }
-        assert_eq!(libc::pthread_attr_destroy(&mut attr), 0);
+        if e == 0 || cfg!(target_os = "freebsd") {
+            assert_eq!(libc::pthread_attr_destroy(&mut attr), 0);
+        }
         ret
     }
 
@@ -403,6 +392,7 @@ pub mod guard {
     pub unsafe fn current() -> Option<Guard> {
         let mut ret = None;
         let mut attr: libc::pthread_attr_t = crate::mem::zeroed();
+        #[cfg(target_os = "freebsd")]
         assert_eq!(libc::pthread_attr_init(&mut attr), 0);
         #[cfg(target_os = "freebsd")]
         let e = libc::pthread_attr_get_np(libc::pthread_self(), &mut attr);
@@ -446,7 +436,9 @@ pub mod guard {
                 Some(stackaddr..stackaddr + guardsize)
             };
         }
-        assert_eq!(libc::pthread_attr_destroy(&mut attr), 0);
+        if e == 0 || cfg!(target_os = "freebsd") {
+            assert_eq!(libc::pthread_attr_destroy(&mut attr), 0);
+        }
         ret
     }
 }

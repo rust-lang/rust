@@ -1,0 +1,75 @@
+error: a `const` item should never be interior mutable
+  --> $DIR/traits.rs:15:5
+   |
+LL |     const ATOMIC: AtomicUsize; //~ ERROR interior mutable
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::declare-interior-mutable-const` implied by `-D warnings`
+
+error: a `const` item should never be interior mutable
+  --> $DIR/traits.rs:9:9
+   |
+LL |         const $name: $ty = $e;
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+...
+LL |     declare_const!(ANOTHER_ATOMIC: AtomicUsize = Self::ATOMIC); //~ ERROR interior mutable
+   |     ----------------------------------------------------------- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: a `const` item should never be interior mutable
+  --> $DIR/traits.rs:43:5
+   |
+LL |     const TO_BE_CONCRETE: AtomicUsize = AtomicUsize::new(11); //~ ERROR interior mutable
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: a `const` item should never be interior mutable
+  --> $DIR/traits.rs:68:5
+   |
+LL |     const TO_BE_UNFROZEN: Self::ToBeUnfrozen = AtomicUsize::new(13); //~ ERROR interior mutable
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: a `const` item should never be interior mutable
+  --> $DIR/traits.rs:69:5
+   |
+LL |     const WRAPPED_TO_BE_UNFROZEN: Wrapper<Self::ToBeUnfrozen> = Wrapper(AtomicUsize::new(14)); //~ ERROR interior mutable
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: a `const` item should never be interior mutable
+  --> $DIR/traits.rs:88:5
+   |
+LL |     const BOUNDED: T::ToBeBounded; //~ ERROR interior mutable
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: a `const` item should never be interior mutable
+  --> $DIR/traits.rs:116:5
+   |
+LL |     const SELF: Self = AtomicUsize::new(17); //~ ERROR interior mutable
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: a `const` item should never be interior mutable
+  --> $DIR/traits.rs:117:5
+   |
+LL |     const WRAPPED_SELF: Option<Self> = Some(AtomicUsize::new(21)); //~ ERROR interior mutable
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: a `const` item should never be interior mutable
+  --> $DIR/traits.rs:125:5
+   |
+LL |     const INDIRECT: Cell<*const T>; //~ ERROR interior mutable
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: a `const` item should never be interior mutable
+  --> $DIR/traits.rs:141:5
+   |
+LL |     const ATOMIC: AtomicUsize = AtomicUsize::new(18); //~ ERROR interior mutable
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: a `const` item should never be interior mutable
+  --> $DIR/traits.rs:147:5
+   |
+LL |     const BOUNDED_ASSOC_TYPE: T::ToBeBounded = AtomicUsize::new(19); //~ ERROR interior mutable
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 11 previous errors
+

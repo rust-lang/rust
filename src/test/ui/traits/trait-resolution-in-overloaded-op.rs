@@ -5,7 +5,7 @@ trait MyMul<Rhs, Res> {
 }
 
 fn foo<T: MyMul<f64, f64>>(a: &T, b: f64) -> f64 {
-    a * b //~ ERROR cannot multiply `f64` to `&T`
+    a * b //~ ERROR cannot multiply `&T` by `f64`
 }
 
 fn main() {}

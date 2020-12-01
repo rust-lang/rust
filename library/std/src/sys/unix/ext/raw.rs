@@ -1,4 +1,4 @@
-//! Unix-specific primitives available on all unix platforms
+//! Unix-specific primitives available on all unix platforms.
 
 #![stable(feature = "raw_ext", since = "1.1.0")]
 #![rustc_deprecated(

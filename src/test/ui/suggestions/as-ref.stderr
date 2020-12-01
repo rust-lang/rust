@@ -36,12 +36,12 @@ error[E0308]: mismatched types
 LL |   let y: Option<&usize> = x;
    |          --------------   ^
    |          |                |
-   |          |                expected enum `std::option::Option`, found reference
+   |          |                expected enum `Option`, found `&Option<usize>`
    |          |                help: you can convert from `&Option<T>` to `Option<&T>` using `.as_ref()`: `x.as_ref()`
    |          expected due to this
    |
-   = note:   expected enum `std::option::Option<&usize>`
-           found reference `&std::option::Option<usize>`
+   = note:   expected enum `Option<&usize>`
+           found reference `&Option<usize>`
 
 error[E0308]: mismatched types
   --> $DIR/as-ref.rs:19:35

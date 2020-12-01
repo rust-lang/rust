@@ -9,7 +9,7 @@ LL |     let v = Unit2.m(
    = help: consider constraining the associated type `<_ as Ty<'_>>::V` to `Unit4`
    = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
 
-error[E0271]: type mismatch resolving `<[closure@$DIR/issue-62203-hrtb-ice.rs:42:17: 42:39] as std::ops::FnOnce<((&u8,),)>>::Output == Unit3`
+error[E0271]: type mismatch resolving `<[closure@$DIR/issue-62203-hrtb-ice.rs:42:17: 42:39] as FnOnce<((&u8,),)>>::Output == Unit3`
   --> $DIR/issue-62203-hrtb-ice.rs:38:19
    |
 LL |     let v = Unit2.m(

@@ -1,7 +1,7 @@
 // does not test any rustfixable lints
 
 #![warn(clippy::clone_on_ref_ptr)]
-#![allow(unused, clippy::redundant_clone)]
+#![allow(unused, clippy::redundant_clone, clippy::unnecessary_wraps)]
 
 use std::cell::RefCell;
 use std::rc::{self, Rc};
@@ -88,5 +88,23 @@ mod many_derefs {
     fn check(mut encoded: &[u8]) {
         let _ = &mut encoded.clone();
         let _ = &encoded.clone();
+    }
+}
+
+mod issue2076 {
+    use std::rc::Rc;
+
+    macro_rules! try_opt {
+        ($expr: expr) => {
+            match $expr {
+                Some(value) => value,
+                None => return None,
+            }
+        };
+    }
+
+    fn func() -> Option<Rc<u8>> {
+        let rc = Rc::new(42);
+        Some(try_opt!(Some(rc)).clone())
     }
 }

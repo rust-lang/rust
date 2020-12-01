@@ -1,6 +1,6 @@
 const fn x() {
     let t = true;
-    let x = || t; //~ ERROR function pointers in const fn are unstable
+    let x = || t; //~ ERROR function pointer
 }
 
 fn main() {}

@@ -59,7 +59,7 @@ error[E0631]: type mismatch in closure arguments
 LL |     g1(|_: (), _: ()| {});
    |     ^^ -------------- found signature of `fn((), ()) -> _`
    |     |
-   |     expected signature of `for<'r> fn(&'r (), std::boxed::Box<(dyn for<'s> std::ops::Fn(&'s ()) + 'static)>) -> _`
+   |     expected signature of `for<'r> fn(&'r (), Box<(dyn for<'s> Fn(&'s ()) + 'static)>) -> _`
 ...
 LL | fn g1<F>(_: F) where F: Fn(&(), Box<dyn Fn(&())>) {}
    |                         ------------------------- required by this bound in `g1`
@@ -81,7 +81,7 @@ error[E0631]: type mismatch in closure arguments
 LL |     g3(|_: (), _: ()| {});
    |     ^^ -------------- found signature of `fn((), ()) -> _`
    |     |
-   |     expected signature of `for<'s> fn(&'s (), std::boxed::Box<(dyn for<'r> std::ops::Fn(&'r ()) + 'static)>) -> _`
+   |     expected signature of `for<'s> fn(&'s (), Box<(dyn for<'r> Fn(&'r ()) + 'static)>) -> _`
 ...
 LL | fn g3<F>(_: F) where F: for<'s> Fn(&'s (), Box<dyn Fn(&())>) {}
    |                         ------------------------------------ required by this bound in `g3`
@@ -103,7 +103,7 @@ error[E0631]: type mismatch in closure arguments
 LL |     h1(|_: (), _: (), _: (), _: ()| {});
    |     ^^ ---------------------------- found signature of `fn((), (), (), ()) -> _`
    |     |
-   |     expected signature of `for<'r, 's> fn(&'r (), std::boxed::Box<(dyn for<'t0> std::ops::Fn(&'t0 ()) + 'static)>, &'s (), for<'t0, 't1> fn(&'t0 (), &'t1 ())) -> _`
+   |     expected signature of `for<'r, 's> fn(&'r (), Box<(dyn for<'t0> Fn(&'t0 ()) + 'static)>, &'s (), for<'t0, 't1> fn(&'t0 (), &'t1 ())) -> _`
 ...
 LL | fn h1<F>(_: F) where F: Fn(&(), Box<dyn Fn(&())>, &(), fn(&(), &())) {}
    |                         -------------------------------------------- required by this bound in `h1`
@@ -114,7 +114,7 @@ error[E0631]: type mismatch in closure arguments
 LL |     h2(|_: (), _: (), _: (), _: ()| {});
    |     ^^ ---------------------------- found signature of `fn((), (), (), ()) -> _`
    |     |
-   |     expected signature of `for<'r, 't0> fn(&'r (), std::boxed::Box<(dyn for<'s> std::ops::Fn(&'s ()) + 'static)>, &'t0 (), for<'s, 't1> fn(&'s (), &'t1 ())) -> _`
+   |     expected signature of `for<'r, 't0> fn(&'r (), Box<(dyn for<'s> Fn(&'s ()) + 'static)>, &'t0 (), for<'s, 't1> fn(&'s (), &'t1 ())) -> _`
 ...
 LL | fn h2<F>(_: F) where F: for<'t0> Fn(&(), Box<dyn Fn(&())>, &'t0 (), fn(&(), &())) {}
    |                         --------------------------------------------------------- required by this bound in `h2`

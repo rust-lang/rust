@@ -28,6 +28,21 @@ help: if you meant to use `self`, you are also missing a `self` receiver argumen
 LL |     fn b(&self, x: i32) {
    |          ^^^^^^
 
-error: aborting due to 2 previous errors
+error[E0425]: cannot find value `this` in this scope
+  --> $DIR/issue-5099.rs:9:20
+   |
+LL |         let _ = || this.a;
+   |                    ^^^^ not found in this scope
+   |
+help: you might have meant to use `self` here instead
+   |
+LL |         let _ = || self.a;
+   |                    ^^^^
+help: if you meant to use `self`, you are also missing a `self` receiver argument
+   |
+LL |     fn c(&self) {
+   |          ^^^^^
+
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0425`.

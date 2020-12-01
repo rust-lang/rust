@@ -441,6 +441,32 @@ impl f32 {
         self.abs_private() < Self::INFINITY
     }
 
+    /// Returns `true` if the number is [subnormal].
+    ///
+    /// ```
+    /// #![feature(is_subnormal)]
+    /// let min = f32::MIN_POSITIVE; // 1.17549435e-38f32
+    /// let max = f32::MAX;
+    /// let lower_than_min = 1.0e-40_f32;
+    /// let zero = 0.0_f32;
+    ///
+    /// assert!(!min.is_subnormal());
+    /// assert!(!max.is_subnormal());
+    ///
+    /// assert!(!zero.is_subnormal());
+    /// assert!(!f32::NAN.is_subnormal());
+    /// assert!(!f32::INFINITY.is_subnormal());
+    /// // Values between `0` and `min` are Subnormal.
+    /// assert!(lower_than_min.is_subnormal());
+    /// ```
+    /// [subnormal]: https://en.wikipedia.org/wiki/Denormal_number
+    #[unstable(feature = "is_subnormal", issue = "79288")]
+    #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
+    #[inline]
+    pub const fn is_subnormal(self) -> bool {
+        matches!(self.classify(), FpCategory::Subnormal)
+    }
+
     /// Returns `true` if the number is neither zero, infinite,
     /// [subnormal], or `NaN`.
     ///
@@ -773,6 +799,35 @@ impl f32 {
         self.to_bits().to_ne_bytes()
     }
 
+    /// Return the memory representation of this floating point number as a byte array in
+    /// native byte order.
+    ///
+    /// [`to_ne_bytes`] should be preferred over this whenever possible.
+    ///
+    /// [`to_ne_bytes`]: #method.to_ne_bytes
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(num_as_ne_bytes)]
+    /// let num = 12.5f32;
+    /// let bytes = num.as_ne_bytes();
+    /// assert_eq!(
+    ///     bytes,
+    ///     if cfg!(target_endian = "big") {
+    ///         &[0x41, 0x48, 0x00, 0x00]
+    ///     } else {
+    ///         &[0x00, 0x00, 0x48, 0x41]
+    ///     }
+    /// );
+    /// ```
+    #[unstable(feature = "num_as_ne_bytes", issue = "76976")]
+    #[inline]
+    pub fn as_ne_bytes(&self) -> &[u8; 4] {
+        // SAFETY: `f32` is a plain old datatype so we can always transmute to it
+        unsafe { &*(self as *const Self as *const _) }
+    }
+
     /// Create a floating point value from its representation as a byte array in big endian.
     ///
     /// # Examples
@@ -846,6 +901,10 @@ impl f32 {
     /// - Positive infinity
     /// - Positive signaling NaN
     /// - Positive quiet NaN
+    ///
+    /// Note that this function does not always agree with the [`PartialOrd`]
+    /// and [`PartialEq`] implementations of `f32`. In particular, they regard
+    /// negative and positive zero as equal, while `total_cmp` doesn't.
     ///
     /// # Example
     /// ```

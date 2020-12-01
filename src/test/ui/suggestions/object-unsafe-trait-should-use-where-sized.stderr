@@ -1,17 +1,23 @@
 error[E0038]: the trait `Trait` cannot be made into an object
   --> $DIR/object-unsafe-trait-should-use-where-sized.rs:9:11
    |
+LL | fn bar(x: &dyn Trait) {}
+   |           ^^^^^^^^^^ `Trait` cannot be made into an object
+   |
+note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/object-unsafe-trait-should-use-where-sized.rs:5:8
+   |
 LL | trait Trait {
    |       ----- this trait cannot be made into an object...
 LL |     fn foo() where Self: Other, { }
-   |        --- ...because associated function `foo` has no `self` parameter
+   |        ^^^ ...because associated function `foo` has no `self` parameter
 LL |     fn bar(self: ()) {}
-   |                  -- ...because method `bar`'s `self` parameter cannot be dispatched on
-...
-LL | fn bar(x: &dyn Trait) {}
-   |           ^^^^^^^^^^ the trait `Trait` cannot be made into an object
+   |                  ^^ ...because method `bar`'s `self` parameter cannot be dispatched on
+help: consider turning `foo` into a method by giving it a `&self` argument
    |
-help: consider turning `foo` into a method by giving it a `&self` argument or constraining it so it does not apply to trait objects
+LL |     fn foo(&self) where Self: Other, { }
+   |            ^^^^^
+help: alternatively, consider constraining `foo` so it does not apply to trait objects
    |
 LL |     fn foo() where Self: Other, Self: Sized, { }
    |                               ^^^^^^^^^^^^^

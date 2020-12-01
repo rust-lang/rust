@@ -1,6 +1,11 @@
 // run-rustfix
 
-#![allow(dead_code, unused_variables, clippy::excessive_precision)]
+#![allow(
+    dead_code,
+    unused_variables,
+    clippy::excessive_precision,
+    clippy::inconsistent_digit_grouping
+)]
 
 fn main() {
     let fail14 = 2_i32;
@@ -12,13 +17,13 @@ fn main() {
     let fail20 = 2_i8; //
     let fail21 = 4_i16; //
 
-    let fail24 = 12.34_f64;
+    let ok24 = 12.34_64;
     let fail25 = 1E2_f32;
     let fail26 = 43E7_f64;
     let fail27 = 243E17_f32;
     #[allow(overflowing_literals)]
     let fail28 = 241_251_235E723_f64;
-    let fail29 = 42_279.911_f32;
+    let ok29 = 42279.911_32;
 
     let _ = 1.123_45E1_f32;
 }

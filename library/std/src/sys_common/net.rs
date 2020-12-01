@@ -1,3 +1,6 @@
+#[cfg(test)]
+mod tests;
+
 use crate::cmp;
 use crate::convert::{TryFrom, TryInto};
 use crate::ffi::CString;
@@ -670,28 +673,5 @@ impl fmt::Debug for UdpSocket {
 
         let name = if cfg!(windows) { "socket" } else { "fd" };
         res.field(name, &self.inner.as_inner()).finish()
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::collections::HashMap;
-
-    #[test]
-    fn no_lookup_host_duplicates() {
-        let mut addrs = HashMap::new();
-        let lh = match LookupHost::try_from(("localhost", 0)) {
-            Ok(lh) => lh,
-            Err(e) => panic!("couldn't resolve `localhost': {}", e),
-        };
-        for sa in lh {
-            *addrs.entry(sa).or_insert(0) += 1;
-        }
-        assert_eq!(
-            addrs.iter().filter(|&(_, &v)| v > 1).collect::<Vec<_>>(),
-            vec![],
-            "There should be no duplicate localhost entries"
-        );
     }
 }

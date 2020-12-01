@@ -7,7 +7,7 @@ LL | fn is_send<T: Send>() {}
 LL |     is_send::<MyNotSendable>();
    |               ^^^^^^^^^^^^^ `MyNotSendable` cannot be sent between threads safely
    |
-   = help: the trait `std::marker::Send` is not implemented for `MyNotSendable`
+   = help: the trait `Send` is not implemented for `MyNotSendable`
 
 error: aborting due to previous error
 

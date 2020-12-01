@@ -75,7 +75,7 @@
 //! [`std::result`]: crate::result
 //! [`std::slice`]: crate::slice
 //! [`std::string`]: crate::string
-//! [`std::vec`]: ../vec/index.html
+//! [`std::vec`]: mod@crate::vec
 //! [`to_owned`]: crate::borrow::ToOwned::to_owned
 //! [book-closures]: ../../book/ch13-01-closures.html
 //! [book-dtor]: ../../book/ch15-03-drop.html

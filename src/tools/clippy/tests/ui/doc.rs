@@ -49,6 +49,16 @@ fn test_emphasis() {
 fn test_units() {
 }
 
+/// This tests allowed identifiers.
+/// DirectX
+/// ECMAScript
+/// OAuth GraphQL
+/// TeX LaTeX BibTeX BibLaTeX
+/// CamelCase (see also #2395)
+/// be_sure_we_got_to_the_end_of_it
+fn test_allowed() {
+}
+
 /// This test has [a link_with_underscores][chunked-example] inside it. See #823.
 /// See also [the issue tracker](https://github.com/rust-lang/rust-clippy/search?q=clippy::doc_markdown&type=Issues)
 /// on GitHub (which is a camel-cased word, but is OK). And here is another [inline link][inline_link].
@@ -167,9 +177,6 @@ fn issue_1920() {}
 /// Not ok: http://www.unicode.org/
 /// Not ok: http://www.unicode.org/reports/tr9/#Reordering_Resolved_Levels
 fn issue_1832() {}
-
-/// Ok: CamelCase (It should not be surrounded by backticks)
-fn issue_2395() {}
 
 /// An iterator over mycrate::Collection's values.
 /// It should not lint a `'static` lifetime in ticks.

@@ -1,5 +1,5 @@
 #![warn(clippy::double_parens)]
-#![allow(dead_code)]
+#![allow(dead_code, clippy::eq_op)]
 #![feature(custom_inner_attributes)]
 #![rustfmt::skip]
 

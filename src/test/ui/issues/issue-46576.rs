@@ -1,5 +1,3 @@
-// ignore-cloudabi no std::fs support
-
 #![allow(dead_code)]
 #![deny(unused_imports)]
 

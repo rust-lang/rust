@@ -1,3 +1,6 @@
+#[cfg(test)]
+mod tests;
+
 use crate::fmt;
 use crate::sync::{Condvar, Mutex};
 
@@ -13,7 +16,7 @@ use crate::sync::{Condvar, Mutex};
 /// let mut handles = Vec::with_capacity(10);
 /// let barrier = Arc::new(Barrier::new(10));
 /// for _ in 0..10 {
-///     let c = barrier.clone();
+///     let c = Arc::clone(&barrier);
 ///     // The same messages will be printed together.
 ///     // You will NOT see any interleaving.
 ///     handles.push(thread::spawn(move|| {
@@ -40,11 +43,8 @@ struct BarrierState {
     generation_id: usize,
 }
 
-/// A `BarrierWaitResult` is returned by [`wait`] when all threads in the [`Barrier`]
-/// have rendezvoused.
-///
-/// [`wait`]: struct.Barrier.html#method.wait
-/// [`Barrier`]: struct.Barrier.html
+/// A `BarrierWaitResult` is returned by [`Barrier::wait()`] when all threads
+/// in the [`Barrier`] have rendezvoused.
 ///
 /// # Examples
 ///
@@ -67,10 +67,10 @@ impl fmt::Debug for Barrier {
 impl Barrier {
     /// Creates a new barrier that can block a given number of threads.
     ///
-    /// A barrier will block `n`-1 threads which call [`wait`] and then wake up
-    /// all threads at once when the `n`th thread calls [`wait`].
+    /// A barrier will block `n`-1 threads which call [`wait()`] and then wake
+    /// up all threads at once when the `n`th thread calls [`wait()`].
     ///
-    /// [`wait`]: #method.wait
+    /// [`wait()`]: Barrier::wait
     ///
     /// # Examples
     ///
@@ -94,12 +94,9 @@ impl Barrier {
     /// be used continuously.
     ///
     /// A single (arbitrary) thread will receive a [`BarrierWaitResult`] that
-    /// returns `true` from [`is_leader`] when returning from this function, and
-    /// all other threads will receive a result that will return `false` from
-    /// [`is_leader`].
-    ///
-    /// [`BarrierWaitResult`]: struct.BarrierWaitResult.html
-    /// [`is_leader`]: struct.BarrierWaitResult.html#method.is_leader
+    /// returns `true` from [`BarrierWaitResult::is_leader()`] when returning
+    /// from this function, and all other threads will receive a result that
+    /// will return `false` from [`BarrierWaitResult::is_leader()`].
     ///
     /// # Examples
     ///
@@ -110,7 +107,7 @@ impl Barrier {
     /// let mut handles = Vec::with_capacity(10);
     /// let barrier = Arc::new(Barrier::new(10));
     /// for _ in 0..10 {
-    ///     let c = barrier.clone();
+    ///     let c = Arc::clone(&barrier);
     ///     // The same messages will be printed together.
     ///     // You will NOT see any interleaving.
     ///     handles.push(thread::spawn(move|| {
@@ -153,12 +150,11 @@ impl fmt::Debug for BarrierWaitResult {
 }
 
 impl BarrierWaitResult {
-    /// Returns `true` if this thread from [`wait`] is the "leader thread".
+    /// Returns `true` if this thread is the "leader thread" for the call to
+    /// [`Barrier::wait()`].
     ///
     /// Only one thread will have `true` returned from their result, all other
     /// threads will have `false` returned.
-    ///
-    /// [`wait`]: struct.Barrier.html#method.wait
     ///
     /// # Examples
     ///
@@ -172,44 +168,5 @@ impl BarrierWaitResult {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn is_leader(&self) -> bool {
         self.0
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::sync::mpsc::{channel, TryRecvError};
-    use crate::sync::{Arc, Barrier};
-    use crate::thread;
-
-    #[test]
-    #[cfg_attr(target_os = "emscripten", ignore)]
-    fn test_barrier() {
-        const N: usize = 10;
-
-        let barrier = Arc::new(Barrier::new(N));
-        let (tx, rx) = channel();
-
-        for _ in 0..N - 1 {
-            let c = barrier.clone();
-            let tx = tx.clone();
-            thread::spawn(move || {
-                tx.send(c.wait().is_leader()).unwrap();
-            });
-        }
-
-        // At this point, all spawned threads should be blocked,
-        // so we shouldn't get anything from the port
-        assert!(matches!(rx.try_recv(), Err(TryRecvError::Empty)));
-
-        let mut leader_found = barrier.wait().is_leader();
-
-        // Now, the barrier is cleared and we should get data.
-        for _ in 0..N - 1 {
-            if rx.recv().unwrap() {
-                assert!(!leader_found);
-                leader_found = true;
-            }
-        }
-        assert!(leader_found);
     }
 }

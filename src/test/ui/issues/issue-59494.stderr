@@ -1,0 +1,14 @@
+error[E0277]: expected a `Fn<(_,)>` closure, found `impl Fn<(((_, _), _),)>`
+  --> $DIR/issue-59494.rs:21:22
+   |
+LL | fn t8n<A, B, C>(f: impl Fn(A) -> B, g: impl Fn(A) -> C) -> impl Fn(A) -> (B, C)
+   |                                             ---------- required by this bound in `t8n`
+...
+LL |     let t8 = t8n(t7, t7p(f, g));
+   |                      ^^^^^^^^^ expected an `Fn<(_,)>` closure, found `impl Fn<(((_, _), _),)>`
+   |
+   = help: the trait `Fn<(_,)>` is not implemented for `impl Fn<(((_, _), _),)>`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

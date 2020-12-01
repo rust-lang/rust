@@ -1,12 +1,16 @@
+// revisions: full min
 // Checks that lifetimes cannot be interspersed between consts and types.
-
-#![feature(const_generics)]
-#![allow(incomplete_features)]
+#![cfg_attr(full, feature(const_generics))]
+#![cfg_attr(full, allow(incomplete_features))]
+#![cfg_attr(min, feature(min_const_generics))]
 
 struct Foo<const N: usize, 'a, T = u32>(&'a (), T);
 //~^ Error lifetime parameters must be declared prior to const parameters
+//[min]~^^ Error type parameters must be declared prior to const parameters
 
 struct Bar<const N: usize, T = u32, 'a>(&'a (), T);
-//~^ Error lifetime parameters must be declared prior to type parameters
+//[full]~^ Error lifetime parameters must be declared prior to type parameters
+//[min]~^^ Error type parameters must be declared prior to const parameters
+//[min]~| Error lifetime parameters must be declared prior to const parameters
 
 fn main() {}

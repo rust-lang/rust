@@ -1,4 +1,4 @@
-error[E0277]: expected a `std::ops::Fn<()>` closure, found `extern "C" fn() {f}`
+error[E0277]: expected a `Fn<()>` closure, found `extern "C" fn() {f}`
   --> $DIR/extern-wrong-value-type.rs:9:11
    |
 LL | fn is_fn<F>(_: F) where F: Fn() {}
@@ -7,7 +7,7 @@ LL | fn is_fn<F>(_: F) where F: Fn() {}
 LL |     is_fn(f);
    |           ^ expected an `Fn<()>` closure, found `extern "C" fn() {f}`
    |
-   = help: the trait `std::ops::Fn<()>` is not implemented for `extern "C" fn() {f}`
+   = help: the trait `Fn<()>` is not implemented for `extern "C" fn() {f}`
    = note: wrap the `extern "C" fn() {f}` in a closure with no arguments: `|| { /* code */ }`
 
 error: aborting due to previous error

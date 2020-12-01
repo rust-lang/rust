@@ -1,7 +1,7 @@
 //! Compiler intrinsics.
 //!
-//! The corresponding definitions are in `librustc_codegen_llvm/intrinsic.rs`.
-//! The corresponding const implementations are in `librustc_mir/interpret/intrinsics.rs`
+//! The corresponding definitions are in `compiler/rustc_codegen_llvm/src/intrinsic.rs`.
+//! The corresponding const implementations are in `compiler/rustc_mir/src/interpret/intrinsics.rs`
 //!
 //! # Const intrinsics
 //!
@@ -9,8 +9,8 @@
 //! This includes changes in the stability of the constness.
 //!
 //! In order to make an intrinsic usable at compile-time, one needs to copy the implementation
-//! from https://github.com/rust-lang/miri/blob/master/src/shims/intrinsics.rs to
-//! `librustc_mir/interpret/intrinsics.rs` and add a
+//! from <https://github.com/rust-lang/miri/blob/master/src/shims/intrinsics.rs> to
+//! `compiler/rustc_mir/src/interpret/intrinsics.rs` and add a
 //! `#[rustc_const_unstable(feature = "foo", issue = "01234")]` to the intrinsic.
 //!
 //! If an intrinsic is supposed to be used from a `const fn` with a `rustc_const_stable` attribute,
@@ -719,7 +719,7 @@ extern "rust-intrinsic" {
     /// macro, which panics when it is executed, it is *undefined behavior* to
     /// reach code marked with this function.
     ///
-    /// The stabilized version of this intrinsic is [`crate::hint::unreachable_unchecked`].
+    /// The stabilized version of this intrinsic is [`core::hint::unreachable_unchecked`](crate::hint::unreachable_unchecked).
     #[rustc_const_unstable(feature = "const_unreachable_unchecked", issue = "53188")]
     pub fn unreachable() -> !;
 
@@ -733,6 +733,7 @@ extern "rust-intrinsic" {
     /// own, or if it does not enable any significant optimizations.
     ///
     /// This intrinsic does not have a stable counterpart.
+    #[rustc_const_unstable(feature = "const_assume", issue = "76972")]
     pub fn assume(b: bool);
 
     /// Hints to the compiler that branch condition is likely to be true.
@@ -763,7 +764,7 @@ extern "rust-intrinsic" {
     /// More specifically, this is the offset in bytes between successive
     /// items of the same type, including alignment padding.
     ///
-    /// The stabilized version of this intrinsic is [`size_of`].
+    /// The stabilized version of this intrinsic is [`core::mem::size_of`](crate::mem::size_of).
     #[rustc_const_stable(feature = "const_size_of", since = "1.40.0")]
     pub fn size_of<T>() -> usize;
 
@@ -771,12 +772,12 @@ extern "rust-intrinsic" {
     ///
     /// Drop glue is not run on the destination.
     ///
-    /// The stabilized version of this intrinsic is [`crate::ptr::write`].
+    /// The stabilized version of this intrinsic is [`core::ptr::write`](crate::ptr::write).
     pub fn move_val_init<T>(dst: *mut T, src: T);
 
     /// The minimum alignment of a type.
     ///
-    /// The stabilized version of this intrinsic is [`crate::mem::align_of`].
+    /// The stabilized version of this intrinsic is [`core::mem::align_of`](crate::mem::align_of).
     #[rustc_const_stable(feature = "const_min_align_of", since = "1.40.0")]
     pub fn min_align_of<T>() -> usize;
     /// The preferred alignment of a type.
@@ -787,18 +788,18 @@ extern "rust-intrinsic" {
 
     /// The size of the referenced value in bytes.
     ///
-    /// The stabilized version of this intrinsic is [`size_of_val`].
+    /// The stabilized version of this intrinsic is [`mem::size_of_val`].
     #[rustc_const_unstable(feature = "const_size_of_val", issue = "46571")]
     pub fn size_of_val<T: ?Sized>(_: *const T) -> usize;
     /// The required alignment of the referenced value.
     ///
-    /// The stabilized version of this intrinsic is [`crate::mem::align_of_val`].
+    /// The stabilized version of this intrinsic is [`core::mem::align_of_val`](crate::mem::align_of_val).
     #[rustc_const_unstable(feature = "const_align_of_val", issue = "46571")]
     pub fn min_align_of_val<T: ?Sized>(_: *const T) -> usize;
 
     /// Gets a static string slice containing the name of a type.
     ///
-    /// The stabilized version of this intrinsic is [`crate::any::type_name`].
+    /// The stabilized version of this intrinsic is [`core::any::type_name`](crate::any::type_name).
     #[rustc_const_unstable(feature = "const_type_name", issue = "63084")]
     pub fn type_name<T: ?Sized>() -> &'static str;
 
@@ -806,8 +807,8 @@ extern "rust-intrinsic" {
     /// function will return the same value for a type regardless of whichever
     /// crate it is invoked in.
     ///
-    /// The stabilized version of this intrinsic is [`crate::any::TypeId::of`].
-    #[rustc_const_stable(feature = "const_type_id", since = "1.46.0")]
+    /// The stabilized version of this intrinsic is [`core::any::TypeId::of`](crate::any::TypeId::of).
+    #[rustc_const_unstable(feature = "const_type_id", issue = "77125")]
     pub fn type_id<T: ?Sized + 'static>() -> u64;
 
     /// A guard for unsafe functions that cannot ever be executed if `T` is uninhabited:
@@ -830,8 +831,8 @@ extern "rust-intrinsic" {
 
     /// Gets a reference to a static `Location` indicating where it was called.
     ///
-    /// Consider using [`crate::panic::Location::caller`] instead.
-    #[rustc_const_unstable(feature = "const_caller_location", issue = "47809")]
+    /// Consider using [`core::panic::Location::caller`](crate::panic::Location::caller) instead.
+    #[rustc_const_unstable(feature = "const_caller_location", issue = "76156")]
     pub fn caller_location() -> &'static crate::panic::Location<'static>;
 
     /// Moves a value out of scope without running drop glue.
@@ -904,7 +905,7 @@ extern "rust-intrinsic" {
     /// let raw_bytes = [0x78, 0x56, 0x34, 0x12];
     ///
     /// let num = unsafe {
-    ///     std::mem::transmute::<[u8; 4], u32>(raw_bytes);
+    ///     std::mem::transmute::<[u8; 4], u32>(raw_bytes)
     /// };
     ///
     /// // use `u32::from_ne_bytes` instead
@@ -1071,6 +1072,7 @@ extern "rust-intrinsic" {
     // NOTE: While this makes the intrinsic const stable, we have some custom code in const fn
     // checks that prevent its use within `const fn`.
     #[rustc_const_stable(feature = "const_transmute", since = "1.46.0")]
+    #[rustc_diagnostic_item = "transmute"]
     pub fn transmute<T, U>(e: T) -> U;
 
     /// Returns `true` if the actual type given as `T` requires drop
@@ -1080,7 +1082,7 @@ extern "rust-intrinsic" {
     /// If the actual type neither requires drop glue nor implements
     /// `Copy`, then the return value of this function is unspecified.
     ///
-    /// The stabilized version of this intrinsic is [`needs_drop`].
+    /// The stabilized version of this intrinsic is [`mem::needs_drop`](crate::mem::needs_drop).
     #[rustc_const_stable(feature = "const_needs_drop", since = "1.40.0")]
     pub fn needs_drop<T>() -> bool;
 
@@ -1150,11 +1152,11 @@ extern "rust-intrinsic" {
 
     /// Performs a volatile load from the `src` pointer.
     ///
-    /// The stabilized version of this intrinsic is [`crate::ptr::read_volatile`].
+    /// The stabilized version of this intrinsic is [`core::ptr::read_volatile`](crate::ptr::read_volatile).
     pub fn volatile_load<T>(src: *const T) -> T;
     /// Performs a volatile store to the `dst` pointer.
     ///
-    /// The stabilized version of this intrinsic is [`crate::ptr::write_volatile`].
+    /// The stabilized version of this intrinsic is [`core::ptr::write_volatile`](crate::ptr::write_volatile).
     pub fn volatile_store<T>(dst: *mut T, val: T);
 
     /// Performs a volatile load from the `src` pointer
@@ -1171,133 +1173,133 @@ extern "rust-intrinsic" {
     /// Returns the square root of an `f32`
     ///
     /// The stabilized version of this intrinsic is
-    /// [`std::f32::sqrt`](../../std/primitive.f32.html#method.sqrt)
+    /// [`f32::sqrt`](../../std/primitive.f32.html#method.sqrt)
     pub fn sqrtf32(x: f32) -> f32;
     /// Returns the square root of an `f64`
     ///
     /// The stabilized version of this intrinsic is
-    /// [`std::f64::sqrt`](../../std/primitive.f64.html#method.sqrt)
+    /// [`f64::sqrt`](../../std/primitive.f64.html#method.sqrt)
     pub fn sqrtf64(x: f64) -> f64;
 
     /// Raises an `f32` to an integer power.
     ///
     /// The stabilized version of this intrinsic is
-    /// [`std::f32::powi`](../../std/primitive.f32.html#method.powi)
+    /// [`f32::powi`](../../std/primitive.f32.html#method.powi)
     pub fn powif32(a: f32, x: i32) -> f32;
     /// Raises an `f64` to an integer power.
     ///
     /// The stabilized version of this intrinsic is
-    /// [`std::f64::powi`](../../std/primitive.f64.html#method.powi)
+    /// [`f64::powi`](../../std/primitive.f64.html#method.powi)
     pub fn powif64(a: f64, x: i32) -> f64;
 
     /// Returns the sine of an `f32`.
     ///
     /// The stabilized version of this intrinsic is
-    /// [`std::f32::sin`](../../std/primitive.f32.html#method.sin)
+    /// [`f32::sin`](../../std/primitive.f32.html#method.sin)
     pub fn sinf32(x: f32) -> f32;
     /// Returns the sine of an `f64`.
     ///
     /// The stabilized version of this intrinsic is
-    /// [`std::f64::sin`](../../std/primitive.f64.html#method.sin)
+    /// [`f64::sin`](../../std/primitive.f64.html#method.sin)
     pub fn sinf64(x: f64) -> f64;
 
     /// Returns the cosine of an `f32`.
     ///
     /// The stabilized version of this intrinsic is
-    /// [`std::f32::cos`](../../std/primitive.f32.html#method.cos)
+    /// [`f32::cos`](../../std/primitive.f32.html#method.cos)
     pub fn cosf32(x: f32) -> f32;
     /// Returns the cosine of an `f64`.
     ///
     /// The stabilized version of this intrinsic is
-    /// [`std::f64::cos`](../../std/primitive.f64.html#method.cos)
+    /// [`f64::cos`](../../std/primitive.f64.html#method.cos)
     pub fn cosf64(x: f64) -> f64;
 
     /// Raises an `f32` to an `f32` power.
     ///
     /// The stabilized version of this intrinsic is
-    /// [`std::f32::powf`](../../std/primitive.f32.html#method.powf)
+    /// [`f32::powf`](../../std/primitive.f32.html#method.powf)
     pub fn powf32(a: f32, x: f32) -> f32;
     /// Raises an `f64` to an `f64` power.
     ///
     /// The stabilized version of this intrinsic is
-    /// [`std::f64::powf`](../../std/primitive.f64.html#method.powf)
+    /// [`f64::powf`](../../std/primitive.f64.html#method.powf)
     pub fn powf64(a: f64, x: f64) -> f64;
 
     /// Returns the exponential of an `f32`.
     ///
     /// The stabilized version of this intrinsic is
-    /// [`std::f32::exp`](../../std/primitive.f32.html#method.exp)
+    /// [`f32::exp`](../../std/primitive.f32.html#method.exp)
     pub fn expf32(x: f32) -> f32;
     /// Returns the exponential of an `f64`.
     ///
     /// The stabilized version of this intrinsic is
-    /// [`std::f64::exp`](../../std/primitive.f64.html#method.exp)
+    /// [`f64::exp`](../../std/primitive.f64.html#method.exp)
     pub fn expf64(x: f64) -> f64;
 
     /// Returns 2 raised to the power of an `f32`.
     ///
     /// The stabilized version of this intrinsic is
-    /// [`std::f32::exp2`](../../std/primitive.f32.html#method.exp2)
+    /// [`f32::exp2`](../../std/primitive.f32.html#method.exp2)
     pub fn exp2f32(x: f32) -> f32;
     /// Returns 2 raised to the power of an `f64`.
     ///
     /// The stabilized version of this intrinsic is
-    /// [`std::f64::exp2`](../../std/primitive.f64.html#method.exp2)
+    /// [`f64::exp2`](../../std/primitive.f64.html#method.exp2)
     pub fn exp2f64(x: f64) -> f64;
 
     /// Returns the natural logarithm of an `f32`.
     ///
     /// The stabilized version of this intrinsic is
-    /// [`std::f32::ln`](../../std/primitive.f32.html#method.ln)
+    /// [`f32::ln`](../../std/primitive.f32.html#method.ln)
     pub fn logf32(x: f32) -> f32;
     /// Returns the natural logarithm of an `f64`.
     ///
     /// The stabilized version of this intrinsic is
-    /// [`std::f64::ln`](../../std/primitive.f64.html#method.ln)
+    /// [`f64::ln`](../../std/primitive.f64.html#method.ln)
     pub fn logf64(x: f64) -> f64;
 
     /// Returns the base 10 logarithm of an `f32`.
     ///
     /// The stabilized version of this intrinsic is
-    /// [`std::f32::log10`](../../std/primitive.f32.html#method.log10)
+    /// [`f32::log10`](../../std/primitive.f32.html#method.log10)
     pub fn log10f32(x: f32) -> f32;
     /// Returns the base 10 logarithm of an `f64`.
     ///
     /// The stabilized version of this intrinsic is
-    /// [`std::f64::log10`](../../std/primitive.f64.html#method.log10)
+    /// [`f64::log10`](../../std/primitive.f64.html#method.log10)
     pub fn log10f64(x: f64) -> f64;
 
     /// Returns the base 2 logarithm of an `f32`.
     ///
     /// The stabilized version of this intrinsic is
-    /// [`std::f32::log2`](../../std/primitive.f32.html#method.log2)
+    /// [`f32::log2`](../../std/primitive.f32.html#method.log2)
     pub fn log2f32(x: f32) -> f32;
     /// Returns the base 2 logarithm of an `f64`.
     ///
     /// The stabilized version of this intrinsic is
-    /// [`std::f64::log2`](../../std/primitive.f64.html#method.log2)
+    /// [`f64::log2`](../../std/primitive.f64.html#method.log2)
     pub fn log2f64(x: f64) -> f64;
 
     /// Returns `a * b + c` for `f32` values.
     ///
     /// The stabilized version of this intrinsic is
-    /// [`std::f32::mul_add`](../../std/primitive.f32.html#method.mul_add)
+    /// [`f32::mul_add`](../../std/primitive.f32.html#method.mul_add)
     pub fn fmaf32(a: f32, b: f32, c: f32) -> f32;
     /// Returns `a * b + c` for `f64` values.
     ///
     /// The stabilized version of this intrinsic is
-    /// [`std::f64::mul_add`](../../std/primitive.f64.html#method.mul_add)
+    /// [`f64::mul_add`](../../std/primitive.f64.html#method.mul_add)
     pub fn fmaf64(a: f64, b: f64, c: f64) -> f64;
 
     /// Returns the absolute value of an `f32`.
     ///
     /// The stabilized version of this intrinsic is
-    /// [`std::f32::abs`](../../std/primitive.f32.html#method.abs)
+    /// [`f32::abs`](../../std/primitive.f32.html#method.abs)
     pub fn fabsf32(x: f32) -> f32;
     /// Returns the absolute value of an `f64`.
     ///
     /// The stabilized version of this intrinsic is
-    /// [`std::f64::abs`](../../std/primitive.f64.html#method.abs)
+    /// [`f64::abs`](../../std/primitive.f64.html#method.abs)
     pub fn fabsf64(x: f64) -> f64;
 
     /// Returns the minimum of two `f32` values.
@@ -1324,45 +1326,45 @@ extern "rust-intrinsic" {
     /// Copies the sign from `y` to `x` for `f32` values.
     ///
     /// The stabilized version of this intrinsic is
-    /// [`std::f32::copysign`](../../std/primitive.f32.html#method.copysign)
+    /// [`f32::copysign`](../../std/primitive.f32.html#method.copysign)
     pub fn copysignf32(x: f32, y: f32) -> f32;
     /// Copies the sign from `y` to `x` for `f64` values.
     ///
     /// The stabilized version of this intrinsic is
-    /// [`std::f64::copysign`](../../std/primitive.f64.html#method.copysign)
+    /// [`f64::copysign`](../../std/primitive.f64.html#method.copysign)
     pub fn copysignf64(x: f64, y: f64) -> f64;
 
     /// Returns the largest integer less than or equal to an `f32`.
     ///
     /// The stabilized version of this intrinsic is
-    /// [`std::f32::floor`](../../std/primitive.f32.html#method.floor)
+    /// [`f32::floor`](../../std/primitive.f32.html#method.floor)
     pub fn floorf32(x: f32) -> f32;
     /// Returns the largest integer less than or equal to an `f64`.
     ///
     /// The stabilized version of this intrinsic is
-    /// [`std::f64::floor`](../../std/primitive.f64.html#method.floor)
+    /// [`f64::floor`](../../std/primitive.f64.html#method.floor)
     pub fn floorf64(x: f64) -> f64;
 
     /// Returns the smallest integer greater than or equal to an `f32`.
     ///
     /// The stabilized version of this intrinsic is
-    /// [`std::f32::ceil`](../../std/primitive.f32.html#method.ceil)
+    /// [`f32::ceil`](../../std/primitive.f32.html#method.ceil)
     pub fn ceilf32(x: f32) -> f32;
     /// Returns the smallest integer greater than or equal to an `f64`.
     ///
     /// The stabilized version of this intrinsic is
-    /// [`std::f64::ceil`](../../std/primitive.f64.html#method.ceil)
+    /// [`f64::ceil`](../../std/primitive.f64.html#method.ceil)
     pub fn ceilf64(x: f64) -> f64;
 
     /// Returns the integer part of an `f32`.
     ///
     /// The stabilized version of this intrinsic is
-    /// [`std::f32::trunc`](../../std/primitive.f32.html#method.trunc)
+    /// [`f32::trunc`](../../std/primitive.f32.html#method.trunc)
     pub fn truncf32(x: f32) -> f32;
     /// Returns the integer part of an `f64`.
     ///
     /// The stabilized version of this intrinsic is
-    /// [`std::f64::trunc`](../../std/primitive.f64.html#method.trunc)
+    /// [`f64::trunc`](../../std/primitive.f64.html#method.trunc)
     pub fn truncf64(x: f64) -> f64;
 
     /// Returns the nearest integer to an `f32`. May raise an inexact floating-point exception
@@ -1384,12 +1386,12 @@ extern "rust-intrinsic" {
     /// Returns the nearest integer to an `f32`. Rounds half-way cases away from zero.
     ///
     /// The stabilized version of this intrinsic is
-    /// [`std::f32::round`](../../std/primitive.f32.html#method.round)
+    /// [`f32::round`](../../std/primitive.f32.html#method.round)
     pub fn roundf32(x: f32) -> f32;
     /// Returns the nearest integer to an `f64`. Rounds half-way cases away from zero.
     ///
     /// The stabilized version of this intrinsic is
-    /// [`std::f64::round`](../../std/primitive.f64.html#method.round)
+    /// [`f64::round`](../../std/primitive.f64.html#method.round)
     pub fn roundf64(x: f64) -> f64;
 
     /// Float addition that allows optimizations based on algebraic rules.
@@ -1484,7 +1486,7 @@ extern "rust-intrinsic" {
     /// let num_leading = unsafe { ctlz_nonzero(x) };
     /// assert_eq!(num_leading, 3);
     /// ```
-    #[rustc_const_unstable(feature = "constctlz", issue = "none")]
+    #[rustc_const_stable(feature = "constctlz", since = "1.50.0")]
     pub fn ctlz_nonzero<T: Copy>(x: T) -> T;
 
     /// Returns the number of trailing unset bits (zeroes) in an integer type `T`.
@@ -1658,22 +1660,22 @@ extern "rust-intrinsic" {
     /// Returns (a + b) mod 2<sup>N</sup>, where N is the width of T in bits.
     ///
     /// The stabilized versions of this intrinsic are available on the integer
-    /// primitives via the `checked_add` method. For example,
-    /// [`u32::checked_add`]
+    /// primitives via the `wrapping_add` method. For example,
+    /// [`u32::wrapping_add`]
     #[rustc_const_stable(feature = "const_int_wrapping", since = "1.40.0")]
     pub fn wrapping_add<T: Copy>(a: T, b: T) -> T;
     /// Returns (a - b) mod 2<sup>N</sup>, where N is the width of T in bits.
     ///
     /// The stabilized versions of this intrinsic are available on the integer
-    /// primitives via the `checked_sub` method. For example,
-    /// [`u32::checked_sub`]
+    /// primitives via the `wrapping_sub` method. For example,
+    /// [`u32::wrapping_sub`]
     #[rustc_const_stable(feature = "const_int_wrapping", since = "1.40.0")]
     pub fn wrapping_sub<T: Copy>(a: T, b: T) -> T;
     /// Returns (a * b) mod 2<sup>N</sup>, where N is the width of T in bits.
     ///
     /// The stabilized versions of this intrinsic are available on the integer
-    /// primitives via the `checked_mul` method. For example,
-    /// [`u32::checked_mul`]
+    /// primitives via the `wrapping_mul` method. For example,
+    /// [`u32::wrapping_mul`]
     #[rustc_const_stable(feature = "const_int_wrapping", since = "1.40.0")]
     pub fn wrapping_mul<T: Copy>(a: T, b: T) -> T;
 
@@ -1695,14 +1697,14 @@ extern "rust-intrinsic" {
     /// Returns the value of the discriminant for the variant in 'v',
     /// cast to a `u64`; if `T` has no discriminant, returns 0.
     ///
-    /// The stabilized version of this intrinsic is [`crate::mem::discriminant`].
+    /// The stabilized version of this intrinsic is [`core::mem::discriminant`](crate::mem::discriminant).
     #[rustc_const_unstable(feature = "const_discriminant", issue = "69821")]
     pub fn discriminant_value<T>(v: &T) -> <T as DiscriminantKind>::Discriminant;
 
     /// Returns the number of variants of the type `T` cast to a `usize`;
     /// if `T` has no variants, returns 0. Uninhabited variants will be counted.
     ///
-    /// The to-be-stabilized version of this intrinsic is [`variant_count`].
+    /// The to-be-stabilized version of this intrinsic is [`mem::variant_count`].
     #[rustc_const_unstable(feature = "variant_count", issue = "73662")]
     pub fn variant_count<T>() -> usize;
 
@@ -1899,11 +1901,22 @@ pub unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize) {
 /// ```
 /// use std::ptr;
 ///
+/// /// # Safety
+/// ///
+/// /// * `ptr` must be correctly aligned for its type and non-zero.
+/// /// * `ptr` must be valid for reads of `elts` contiguous elements of type `T`.
+/// /// * Those elements must not be used after calling this function unless `T: Copy`.
 /// # #[allow(dead_code)]
 /// unsafe fn from_buf_raw<T>(ptr: *const T, elts: usize) -> Vec<T> {
 ///     let mut dst = Vec::with_capacity(elts);
-///     dst.set_len(elts);
+///
+///     // SAFETY: Our precondition ensures the source is aligned and valid,
+///     // and `Vec::with_capacity` ensures that we have usable space to write them.
 ///     ptr::copy(ptr, dst.as_mut_ptr(), elts);
+///
+///     // SAFETY: We created it with this much capacity earlier,
+///     // and the previous `copy` has initialized these elements.
+///     dst.set_len(elts);
 ///     dst
 /// }
 /// ```

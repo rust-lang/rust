@@ -4,7 +4,6 @@
 // 3. get targeted by `?` and not the parent function.
 //
 // edition:2018
-// ignore-tidy-linelength
 
 fn main() {}
 
@@ -16,7 +15,7 @@ fn return_targets_async_block_not_fn() -> u8 {
         return 0u8;
     };
     let _: &dyn Future<Output = ()> = &block;
-    //~^ ERROR type mismatch resolving `<impl std::future::Future as std::future::Future>::Output == ()`
+    //~^ ERROR type mismatch resolving `<impl Future as Future>::Output == ()`
 }
 
 async fn return_targets_async_block_not_async_fn() -> u8 {
@@ -25,7 +24,7 @@ async fn return_targets_async_block_not_async_fn() -> u8 {
         return 0u8;
     };
     let _: &dyn Future<Output = ()> = &block;
-    //~^ ERROR type mismatch resolving `<impl std::future::Future as std::future::Future>::Output == ()`
+    //~^ ERROR type mismatch resolving `<impl Future as Future>::Output == ()`
 }
 
 fn no_break_in_async_block() {

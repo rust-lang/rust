@@ -48,5 +48,27 @@ error: immediately dereferencing a reference
 LL |     let b = **&aref;
    |              ^^^^^^ help: try this: `aref`
 
-error: aborting due to 8 previous errors
+error: immediately dereferencing a reference
+  --> $DIR/deref_addrof.rs:44:9
+   |
+LL |         *& $visitor
+   |         ^^^^^^^^^^^ help: try this: `$visitor`
+...
+LL |         m!(self)
+   |         -------- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: immediately dereferencing a reference
+  --> $DIR/deref_addrof.rs:51:9
+   |
+LL |         *& mut $visitor
+   |         ^^^^^^^^^^^^^^^ help: try this: `$visitor`
+...
+LL |         m_mut!(self)
+   |         ------------ in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 10 previous errors
 

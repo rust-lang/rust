@@ -1,4 +1,6 @@
 // run-pass
+// revisions: default mir-opt
+//[mir-opt] compile-flags: -Zmir-opt-level=3
 
 fn pass_to_ptr_call<T>(f: fn(T), x: T) {
     f(x);

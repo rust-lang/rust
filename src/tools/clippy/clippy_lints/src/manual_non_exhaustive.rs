@@ -5,7 +5,7 @@ use rustc_attr as attr;
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::Span;
+use rustc_span::{sym, Span};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for manual implementations of the non-exhaustive pattern.
@@ -83,9 +83,9 @@ fn check_manual_non_exhaustive_enum(cx: &EarlyContext<'_>, item: &Item, variants
     }
 
     fn is_doc_hidden(attr: &Attribute) -> bool {
-        attr.has_name(sym!(doc))
+        attr.has_name(sym::doc)
             && match attr.meta_item_list() {
-                Some(l) => attr::list_contains_name(&l, sym!(hidden)),
+                Some(l) => attr::list_contains_name(&l, sym::hidden),
                 None => false,
             }
     }
@@ -102,7 +102,7 @@ fn check_manual_non_exhaustive_enum(cx: &EarlyContext<'_>, item: &Item, variants
                 "this seems like a manual implementation of the non-exhaustive pattern",
                 |diag| {
                     if_chain! {
-                        if !item.attrs.iter().any(|attr| attr.has_name(sym!(non_exhaustive)));
+                        if !item.attrs.iter().any(|attr| attr.has_name(sym::non_exhaustive));
                         let header_span = cx.sess.source_map().span_until_char(item.span, '{');
                         if let Some(snippet) = snippet_opt(cx, header_span);
                         then {
@@ -122,7 +122,7 @@ fn check_manual_non_exhaustive_enum(cx: &EarlyContext<'_>, item: &Item, variants
 
 fn check_manual_non_exhaustive_struct(cx: &EarlyContext<'_>, item: &Item, data: &VariantData) {
     fn is_private(field: &StructField) -> bool {
-        matches!(field.vis.node, VisibilityKind::Inherited)
+        matches!(field.vis.kind, VisibilityKind::Inherited)
     }
 
     fn is_non_exhaustive_marker(field: &StructField) -> bool {
@@ -141,7 +141,7 @@ fn check_manual_non_exhaustive_struct(cx: &EarlyContext<'_>, item: &Item, data: 
 
     let fields = data.fields();
     let private_fields = fields.iter().filter(|f| is_private(f)).count();
-    let public_fields = fields.iter().filter(|f| f.vis.node.is_pub()).count();
+    let public_fields = fields.iter().filter(|f| f.vis.kind.is_pub()).count();
 
     if_chain! {
         if private_fields == 1 && public_fields >= 1 && public_fields == fields.len() - 1;
@@ -154,7 +154,7 @@ fn check_manual_non_exhaustive_struct(cx: &EarlyContext<'_>, item: &Item, data: 
                 "this seems like a manual implementation of the non-exhaustive pattern",
                 |diag| {
                     if_chain! {
-                        if !item.attrs.iter().any(|attr| attr.has_name(sym!(non_exhaustive)));
+                        if !item.attrs.iter().any(|attr| attr.has_name(sym::non_exhaustive));
                         let header_span = find_header_span(cx, item, data);
                         if let Some(snippet) = snippet_opt(cx, header_span);
                         then {

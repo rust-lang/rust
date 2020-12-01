@@ -5,7 +5,7 @@ LL |     let x = buffer.last().unwrap().0.clone();
    |             -------^^^^--
    |             |      |
    |             |      cannot infer type for type parameter `T`
-   |             this method call resolves to `std::option::Option<&T>`
+   |             this method call resolves to `Option<&T>`
    |
    = note: type must be known at this point
 

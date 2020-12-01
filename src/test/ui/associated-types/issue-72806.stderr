@@ -1,8 +1,11 @@
 error[E0271]: type mismatch resolving `<Foo2 as Bar2>::Ok == char`
-  --> $DIR/issue-72806.rs:12:6
+  --> $DIR/issue-72806.rs:14:5
    |
-LL | impl Bar for Foo {
-   |      ^^^ expected `u32`, found `char`
+LL |     type Sibling: Bar2<Ok=char>;
+   |                        ------- required by this bound in `Bar::Sibling`
+...
+LL |     type Sibling = Foo2;
+   |     ^^^^^^^^^^^^^^^^^^^^ expected `char`, found `u32`
 
 error: aborting due to previous error
 

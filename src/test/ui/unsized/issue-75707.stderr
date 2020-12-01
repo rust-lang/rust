@@ -1,0 +1,12 @@
+error[E0277]: the trait bound `MyCall: Callback` is not satisfied
+  --> $DIR/issue-75707.rs:15:5
+   |
+LL | fn f<P: Processing + ?Sized>() {
+   |         ---------- required by this bound in `f`
+...
+LL |     f::<dyn Processing<Call = MyCall>>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Callback` is not implemented for `MyCall`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

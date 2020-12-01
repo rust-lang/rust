@@ -1,5 +1,8 @@
 #![unstable(feature = "process_internals", issue = "none")]
 
+#[cfg(test)]
+mod tests;
+
 use crate::borrow::Borrow;
 use crate::collections::BTreeMap;
 use crate::env;
@@ -19,7 +22,7 @@ use crate::sys::handle::Handle;
 use crate::sys::mutex::Mutex;
 use crate::sys::pipe::{self, AnonPipe};
 use crate::sys::stdio;
-use crate::sys_common::process::CommandEnv;
+use crate::sys_common::process::{CommandEnv, CommandEnvs};
 use crate::sys_common::AsInner;
 
 use libc::{c_void, EXIT_FAILURE, EXIT_SUCCESS};
@@ -129,6 +132,23 @@ impl Command {
     }
     pub fn creation_flags(&mut self, flags: u32) {
         self.flags = flags;
+    }
+
+    pub fn get_program(&self) -> &OsStr {
+        &self.program
+    }
+
+    pub fn get_args(&self) -> CommandArgs<'_> {
+        let iter = self.args.iter();
+        CommandArgs { iter }
+    }
+
+    pub fn get_envs(&self) -> CommandEnvs<'_> {
+        self.env.iter()
+    }
+
+    pub fn get_current_dir(&self) -> Option<&Path> {
+        self.cwd.as_ref().map(|cwd| Path::new(cwd))
     }
 
     pub fn spawn(
@@ -527,40 +547,31 @@ fn make_dirp(d: Option<&OsString>) -> io::Result<(*const u16, Vec<u16>)> {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::make_command_line;
-    use crate::ffi::{OsStr, OsString};
+pub struct CommandArgs<'a> {
+    iter: crate::slice::Iter<'a, OsString>,
+}
 
-    #[test]
-    fn test_make_command_line() {
-        fn test_wrapper(prog: &str, args: &[&str]) -> String {
-            let command_line = &make_command_line(
-                OsStr::new(prog),
-                &args.iter().map(|a| OsString::from(a)).collect::<Vec<OsString>>(),
-            )
-            .unwrap();
-            String::from_utf16(command_line).unwrap()
-        }
+impl<'a> Iterator for CommandArgs<'a> {
+    type Item = &'a OsStr;
+    fn next(&mut self) -> Option<&'a OsStr> {
+        self.iter.next().map(|s| s.as_ref())
+    }
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.iter.size_hint()
+    }
+}
 
-        assert_eq!(test_wrapper("prog", &["aaa", "bbb", "ccc"]), "\"prog\" aaa bbb ccc");
+impl<'a> ExactSizeIterator for CommandArgs<'a> {
+    fn len(&self) -> usize {
+        self.iter.len()
+    }
+    fn is_empty(&self) -> bool {
+        self.iter.is_empty()
+    }
+}
 
-        assert_eq!(
-            test_wrapper("C:\\Program Files\\blah\\blah.exe", &["aaa"]),
-            "\"C:\\Program Files\\blah\\blah.exe\" aaa"
-        );
-        assert_eq!(
-            test_wrapper("C:\\Program Files\\test", &["aa\"bb"]),
-            "\"C:\\Program Files\\test\" aa\\\"bb"
-        );
-        assert_eq!(test_wrapper("echo", &["a b c"]), "\"echo\" \"a b c\"");
-        assert_eq!(
-            test_wrapper("echo", &["\" \\\" \\", "\\"]),
-            "\"echo\" \"\\\" \\\\\\\" \\\\\" \\"
-        );
-        assert_eq!(
-            test_wrapper("\u{03c0}\u{042f}\u{97f3}\u{00e6}\u{221e}", &[]),
-            "\"\u{03c0}\u{042f}\u{97f3}\u{00e6}\u{221e}\""
-        );
+impl<'a> fmt::Debug for CommandArgs<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_list().entries(self.iter.clone()).finish()
     }
 }

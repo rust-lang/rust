@@ -7,7 +7,7 @@ LL |
 LL | impl Foo<[isize]> for usize { }
    |      ^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
-   = help: the trait `std::marker::Sized` is not implemented for `[isize]`
+   = help: the trait `Sized` is not implemented for `[isize]`
 help: consider relaxing the implicit `Sized` restriction
    |
 LL | trait Foo<T: ?Sized> : Sized { fn take(self, x: &T) { } } // Note: T is sized
@@ -22,7 +22,7 @@ LL | trait Foo<T> : Sized { fn take(self, x: &T) { } } // Note: T is sized
 LL | impl Foo<isize> for [usize] { }
    |      ^^^^^^^^^^ doesn't have a size known at compile-time
    |
-   = help: the trait `std::marker::Sized` is not implemented for `[usize]`
+   = help: the trait `Sized` is not implemented for `[usize]`
 
 error: aborting due to 2 previous errors
 

@@ -2,10 +2,11 @@ use if_chain::if_chain;
 use rustc_hir::{ImplItem, ImplItemKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_span::sym;
 
 use crate::utils::{
     get_trait_def_id, implements_trait, is_type_diagnostic_item, paths, return_ty, span_lint_and_help,
-    trait_ref_of_method, walk_ptrs_ty,
+    trait_ref_of_method,
 };
 
 declare_clippy_lint! {
@@ -107,7 +108,7 @@ impl<'tcx> LateLintPass<'tcx> for InherentToString {
             if decl.inputs.len() == 1;
 
             // Check if return type is String
-            if is_type_diagnostic_item(cx, return_ty(cx, impl_item.hir_id), sym!(string_type));
+            if is_type_diagnostic_item(cx, return_ty(cx, impl_item.hir_id), sym::string_type);
 
             // Filters instances of to_string which are required by a trait
             if trait_ref_of_method(cx, impl_item.hir_id).is_none();
@@ -125,7 +126,7 @@ fn show_lint(cx: &LateContext<'_>, item: &ImplItem<'_>) {
     // Get the real type of 'self'
     let fn_def_id = cx.tcx.hir().local_def_id(item.hir_id);
     let self_type = cx.tcx.fn_sig(fn_def_id).input(0);
-    let self_type = walk_ptrs_ty(self_type.skip_binder());
+    let self_type = self_type.skip_binder().peel_refs();
 
     // Emit either a warning or an error
     if implements_trait(cx, self_type, display_trait_id, &[]) {

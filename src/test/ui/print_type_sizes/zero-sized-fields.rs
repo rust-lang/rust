@@ -1,5 +1,5 @@
 // compile-flags: -Z print-type-sizes
-// build-pass (FIXME(62277): could be check-pass?)
+// build-pass
 // ignore-pass
 
 // At one point, zero-sized fields such as those in this file were causing

@@ -27,12 +27,12 @@ macro_rules! t {
 
 fn generate_stub_issue(path: &Path, name: &str, issue: u32) {
     let mut file = t!(File::create(path));
-    t!(file.write_fmt(format_args!(include_str!("stub-issue.md"), name = name, issue = issue)));
+    t!(write!(file, include_str!("stub-issue.md"), name = name, issue = issue));
 }
 
 fn generate_stub_no_issue(path: &Path, name: &str) {
     let mut file = t!(File::create(path));
-    t!(file.write_fmt(format_args!(include_str!("stub-no-issue.md"), name = name)));
+    t!(write!(file, include_str!("stub-no-issue.md"), name = name));
 }
 
 fn set_to_summary_str(set: &BTreeSet<String>, dir: &str) -> String {
@@ -94,14 +94,16 @@ fn copy_recursive(from: &Path, to: &Path) {
 }
 
 fn main() {
-    let library_path_str = env::args_os().nth(1).expect("library path required");
-    let src_path_str = env::args_os().nth(2).expect("source path required");
-    let dest_path_str = env::args_os().nth(3).expect("destination path required");
+    let library_path_str = env::args_os().nth(1).expect("library/ path required");
+    let compiler_path_str = env::args_os().nth(2).expect("compiler/ path required");
+    let src_path_str = env::args_os().nth(3).expect("src/ path required");
+    let dest_path_str = env::args_os().nth(4).expect("destination path required");
     let library_path = Path::new(&library_path_str);
+    let compiler_path = Path::new(&compiler_path_str);
     let src_path = Path::new(&src_path_str);
     let dest_path = Path::new(&dest_path_str);
 
-    let lang_features = collect_lang_features(src_path, &mut false);
+    let lang_features = collect_lang_features(compiler_path, &mut false);
     let lib_features = collect_lib_features(library_path)
         .into_iter()
         .filter(|&(ref name, _)| !lang_features.contains_key(name))

@@ -44,7 +44,7 @@ error[E0604]: only `u8` can be cast as `char`, not `u32`
 LL |     0u32 as char;
    |     ^^^^^^^^^^^^ invalid cast
 
-error[E0605]: non-primitive cast: `u8` as `std::vec::Vec<u8>`
+error[E0605]: non-primitive cast: `u8` as `Vec<u8>`
   --> $DIR/error-festival.rs:29:5
    |
 LL |     x as Vec<u8>;

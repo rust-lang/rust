@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<!--
+
+Preview this file as rendered HTML from the github source at:
+https://htmlpreview.github.io/?https://github.com/rust-lang/rust/blob/master/src/test/run-make-fulldeps/coverage-spanview-base/expected_mir_dump.nested_loops/nested_loops.main.-------.InstrumentCoverage.0.html
+
+For revisions in Pull Requests (PR):
+  * Replace "rust-lang" with the github PR author
+  * Replace "master" with the PR branch name
+
+-->
+<html>
+<head>
+<title>nested_loops.main - Coverage Spans</title>
+<style>
+    .line {
+        counter-increment: line;
+    }
+    .line:before {
+        content: counter(line) ": ";
+        font-family: Menlo, Monaco, monospace;
+        font-style: italic;
+        width: 3.8em;
+        display: inline-block;
+        text-align: right;
+        filter: opacity(50%);
+        -webkit-user-select: none;
+    }
+    .code {
+        color: #dddddd;
+        background-color: #222222;
+        font-family: Menlo, Monaco, monospace;
+        line-height: 1.4em;
+        border-bottom: 2px solid #222222;
+        white-space: pre;
+        display: inline-block;
+    }
+    .odd {
+        background-color: #55bbff;
+        color: #223311;
+    }
+    .even {
+        background-color: #ee7756;
+        color: #551133;
+    }
+    .code {
+        --index: calc(var(--layer) - 1);
+        padding-top: calc(var(--index) * 0.15em);
+        filter:
+            hue-rotate(calc(var(--index) * 25deg))
+            saturate(calc(100% - (var(--index) * 2%)))
+            brightness(calc(100% - (var(--index) * 1.5%)));
+    }
+    .annotation {
+        color: #4444ff;
+        font-family: monospace;
+        font-style: italic;
+        display: none;
+        -webkit-user-select: none;
+    }
+    body:active .annotation {
+        /* requires holding mouse down anywhere on the page */
+        display: inline-block;
+    }
+    span:hover .annotation {
+        /* requires hover over a span ONLY on its first line */
+        display: inline-block;
+    }
+</style>
+</head>
+<body>
+<div class="code" style="counter-reset: line 0"><span class="line"><span class="code" style="--layer: 0">fn main() {</span></span>
+<span class="line"><span class="code" style="--layer: 0">    let </span><span><span class="code even" style="--layer: 1" title="2:19-2:35: @0.Call: _4 = args() -&gt; [return: bb1, unwind: bb35]
+2:19-2:35: @1[0]: _3 = &amp;_4
+2:19-2:41: @1.Call: _2 = &lt;Args as ExactSizeIterator&gt;::len(move _3) -&gt; [return: bb2, unwind: bb34]
+2:19-2:46: @2[1]: _1 = Eq(move _2, const 1_usize)
+2:9-2:16: @2[3]: FakeRead(ForLet, _1)
+3:25-3:27: @3[2]: _5 = const 10_i32
+3:9-3:22: @3[3]: FakeRead(ForLet, _5)"><span class="annotation">@0,1,2,3⦊</span>is_true = std::env::args().len() == 1;</span></span>
+<span class="line"><span class="code even" style="--layer: 1" title="2:19-2:35: @0.Call: _4 = args() -&gt; [return: bb1, unwind: bb35]
+2:19-2:35: @1[0]: _3 = &amp;_4
+2:19-2:41: @1.Call: _2 = &lt;Args as ExactSizeIterator&gt;::len(move _3) -&gt; [return: bb2, unwind: bb34]
+2:19-2:46: @2[1]: _1 = Eq(move _2, const 1_usize)
+2:9-2:16: @2[3]: FakeRead(ForLet, _1)
+3:25-3:27: @3[2]: _5 = const 10_i32
+3:9-3:22: @3[3]: FakeRead(ForLet, _5)">    let mut countdown = 10<span class="annotation">⦉@0,1,2,3</span></span></span><span class="code" style="--layer: 0">;</span></span>
+<span class="line"><span class="code" style="--layer: 0"></span></span>
+<span class="line"><span class="code" style="--layer: 0">    'outer: while </span><span><span class="code odd" style="--layer: 1" title="5:19-5:28: @5[2]: _8 = _5
+5:19-5:32: @5[3]: _7 = Gt(move _8, const 0_i32)
+5:19-5:32: @5[5]: FakeRead(ForMatchedPlace, _7)"><span class="annotation">@4,5⦊</span>countdown &gt; 0<span class="annotation">⦉@4,5</span></span></span><span class="code" style="--layer: 0"> {</span></span>
+<span class="line"><span class="code" style="--layer: 0">        let </span><span><span class="code even" style="--layer: 1" title="6:21-6:24: @8[1]: _9 = const 100_i32
+6:13-6:18: @8[2]: FakeRead(ForLet, _9)
+7:21-7:24: @8[4]: _10 = const 100_i32
+7:13-7:18: @8[5]: FakeRead(ForLet, _10)"><span class="annotation">@6,8,9⦊</span>mut a = 100;</span></span>
+<span class="line"><span class="code even" style="--layer: 1" title="6:21-6:24: @8[1]: _9 = const 100_i32
+6:13-6:18: @8[2]: FakeRead(ForLet, _9)
+7:21-7:24: @8[4]: _10 = const 100_i32
+7:13-7:18: @8[5]: FakeRead(ForLet, _10)">        let mut b = 100<span class="annotation">⦉@6,8,9</span></span></span><span class="code" style="--layer: 0">;</span></span>
+<span class="line"><span class="code" style="--layer: 0">        for </span><span><span class="code odd" style="--layer: 1" title="8:13-8:14: @16[1]: _21 = ((_17 as Some).0: i32)
+8:13-8:14: @16[3]: _22 = _21
+8:13-8:14: @16[4]: _15 = move _22
+8:13-8:14: @16[5]: _16 = const ()"><span class="annotation">@14,16⦊</span>_<span class="annotation">⦉@14,16</span></span></span><span class="code" style="--layer: 0"> in </span><span><span class="code even" style="--layer: 1" title="8:18-8:23: @11[5]: _19 = &amp;mut _14
+8:18-8:23: @11[6]: _18 = &amp;mut (*_19)
+8:18-8:23: @11.Call: _17 = &lt;std::ops::Range&lt;i32&gt; as Iterator&gt;::next(move _18) -&gt; [return: bb12, unwind: bb35]
+8:18-8:23: @12[1]: FakeRead(ForMatchedPlace, _17)"><span class="annotation">@10,11,12⦊</span>0..50<span class="annotation">⦉@10,11,12</span></span></span><span class="code" style="--layer: 0"> {</span></span>
+<span class="line"><span class="code" style="--layer: 0">            if </span><span><span class="code odd" style="--layer: 1" title="9:16-9:17: @16[15]: _27 = _9
+9:16-9:22: @16[16]: _26 = Lt(move _27, const 30_i32)
+9:16-9:22: @16[18]: FakeRead(ForMatchedPlace, _26)"><span class="annotation">@14,16⦊</span>a &lt; 30<span class="annotation">⦉@14,16</span></span></span><span class="code" style="--layer: 0"> {</span></span>
+<span class="line"><span class="code" style="--layer: 0">                </span><span><span class="code even" style="--layer: 1" title="10:17-10:22: @19[0]: _11 = const ()"><span class="annotation">@17,19⦊</span>break<span class="annotation">⦉@17,19</span></span></span><span class="code" style="--layer: 0">;</span></span>
+<span class="line"><span class="code" style="--layer: 0">            }</span></span>
+<span class="line"><span class="code" style="--layer: 0">            </span><span><span class="code odd" style="--layer: 1" title="12:13-12:19: @20[0]: _9 = move (_29.0: i32)"><span class="annotation">@20⦊</span>a -= 5<span class="annotation">⦉@20</span></span></span><span class="code" style="--layer: 0">;</span></span>
+<span class="line"><span class="code" style="--layer: 0">            </span><span><span class="code even" style="--layer: 1" title="13:13-13:19: @21[0]: _10 = move (_30.0: i32)"><span class="annotation">@21⦊</span>b -= 5<span class="annotation">⦉@21</span></span></span><span class="code" style="--layer: 0">;</span></span>
+<span class="line"><span class="code" style="--layer: 0">            if </span><span><span class="code even" style="--layer: 1" title="14:16-14:17: @21[3]: _32 = _10
+14:16-14:22: @21[4]: _31 = Lt(move _32, const 90_i32)
+14:16-14:22: @21[6]: FakeRead(ForMatchedPlace, _31)"><span class="annotation">@21⦊</span>b &lt; 90<span class="annotation">⦉@21</span></span></span><span class="code" style="--layer: 0"> {</span></span>
+<span class="line"><span class="code" style="--layer: 0">                </span><span><span class="code odd" style="--layer: 1" title="15:17-15:24: @25[0]: _9 = move (_33.0: i32)
+16:20-16:27: @25[2]: _34 = _1
+16:20-16:27: @25[3]: FakeRead(ForMatchedPlace, _34)"><span class="annotation">@25⦊</span>a -= 10;</span></span>
+<span class="line"><span class="code odd" style="--layer: 1" title="15:17-15:24: @25[0]: _9 = move (_33.0: i32)
+16:20-16:27: @25[2]: _34 = _1
+16:20-16:27: @25[3]: FakeRead(ForMatchedPlace, _34)">                if is_true<span class="annotation">⦉@25</span></span></span><span class="code" style="--layer: 0"> {</span></span>
+<span class="line"><span class="code" style="--layer: 0">                    </span><span><span class="code even" style="--layer: 1" title="17:21-17:33: @28[0]: _0 = const ()"><span class="annotation">@26,28⦊</span>break 'outer<span class="annotation">⦉@26,28</span></span></span><span class="code" style="--layer: 0">;</span></span>
+<span class="line"><span class="code" style="--layer: 0">                } else {</span></span>
+<span class="line"><span class="code" style="--layer: 0">                    </span><span><span class="code odd" style="--layer: 1" title="19:21-19:27: @29[0]: _9 = move (_36.0: i32)
+21:14-21:14: @29.Goto: goto -&gt; bb30"><span class="annotation">@29⦊</span>a -= 2;</span></span>
+<span class="line"><span class="code odd" style="--layer: 1" title="19:21-19:27: @29[0]: _9 = move (_36.0: i32)
+21:14-21:14: @29.Goto: goto -&gt; bb30">                }</span></span>
+<span class="line"><span class="code odd" style="--layer: 1" title="19:21-19:27: @29[0]: _9 = move (_36.0: i32)
+21:14-21:14: @29.Goto: goto -&gt; bb30">            }<span class="annotation">⦉@29</span></span></span><span><span class="code even" style="--layer: 1" title="21:14-21:14: @23.Goto: goto -&gt; bb30"><span class="annotation">@23⦊</span>‸<span class="annotation">⦉@23</span></span></span><span class="code" style="--layer: 0"></span></span>
+<span class="line"><span class="code" style="--layer: 0">        }</span><span><span class="code odd" style="--layer: 1" title="22:10-22:10: @30.Goto: goto -&gt; bb10"><span class="annotation">@30⦊</span>‸<span class="annotation">⦉@30</span></span></span><span class="code" style="--layer: 0"></span></span>
+<span class="line"><span class="code" style="--layer: 0">        </span><span><span class="code even" style="--layer: 1" title="23:9-23:23: @32[0]: _5 = move (_37.0: i32)"><span class="annotation">@32⦊</span>countdown -= 1<span class="annotation">⦉@32</span></span></span><span class="code" style="--layer: 0">;</span></span>
+<span class="line"><span class="code" style="--layer: 0">    }</span><span><span class="code odd" style="--layer: 1" title="24:6-24:6: @7.Goto: goto -&gt; bb33"><span class="annotation">@7⦊</span>‸<span class="annotation">⦉@7</span></span></span><span class="code" style="--layer: 0"></span></span>
+<span class="line"><span class="code" style="--layer: 0">}</span><span><span class="code even" style="--layer: 1" title="25:2-25:2: @33.Return: return"><span class="annotation">@33⦊</span>‸<span class="annotation">⦉@33</span></span></span></span></div>
+</body>
+</html>

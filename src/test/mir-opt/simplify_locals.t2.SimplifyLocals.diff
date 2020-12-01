@@ -1,0 +1,22 @@
+- // MIR for `t2` before SimplifyLocals
++ // MIR for `t2` after SimplifyLocals
+  
+  fn t2() -> () {
+      let mut _0: ();                      // return place in scope 0 at $DIR/simplify-locals.rs:48:9: 48:9
+-     let _1: &mut u32;                    // in scope 0 at $DIR/simplify-locals.rs:50:14: 50:20
+-     let mut _2: *mut u32;                // in scope 0 at $DIR/simplify-locals.rs:50:19: 50:20
+      scope 1 {
+      }
+  
+      bb0: {
+-         StorageLive(_1);                 // scope 0 at $DIR/simplify-locals.rs:50:5: 50:22
+-         StorageLive(_2);                 // scope 1 at $DIR/simplify-locals.rs:50:19: 50:20
+-         _2 = &/*tls*/ mut X;             // scope 1 at $DIR/simplify-locals.rs:50:19: 50:20
+-         _1 = &mut (*_2);                 // scope 1 at $DIR/simplify-locals.rs:50:14: 50:20
+-         StorageDead(_2);                 // scope 0 at $DIR/simplify-locals.rs:50:22: 50:23
+-         StorageDead(_1);                 // scope 0 at $DIR/simplify-locals.rs:50:22: 50:23
+          _0 = const ();                   // scope 0 at $DIR/simplify-locals.rs:48:9: 51:2
+          return;                          // scope 0 at $DIR/simplify-locals.rs:51:2: 51:2
+      }
+  }
+  

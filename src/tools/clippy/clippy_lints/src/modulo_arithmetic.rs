@@ -38,7 +38,7 @@ struct OperandInfo {
 
 fn analyze_operand(operand: &Expr<'_>, cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<OperandInfo> {
     match constant(cx, cx.typeck_results(), operand) {
-        Some((Constant::Int(v), _)) => match cx.typeck_results().expr_ty(expr).kind {
+        Some((Constant::Int(v), _)) => match *cx.typeck_results().expr_ty(expr).kind() {
             ty::Int(ity) => {
                 let value = sext(cx.tcx, v, ity);
                 return Some(OperandInfo {

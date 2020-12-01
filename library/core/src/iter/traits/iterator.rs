@@ -3,9 +3,8 @@
 // can't split that into multiple files.
 
 use crate::cmp::{self, Ordering};
-use crate::ops::{Add, Try};
+use crate::ops::{Add, ControlFlow, Try};
 
-use super::super::LoopState;
 use super::super::TrustedRandomAccess;
 use super::super::{Chain, Cloned, Copied, Cycle, Enumerate, Filter, FilterMap, Fuse};
 use super::super::{FlatMap, Flatten};
@@ -22,8 +21,8 @@ fn _assert_is_object_safe(_: &dyn Iterator<Item = ()>) {}
 /// generally, please see the [module-level documentation]. In particular, you
 /// may want to know how to [implement `Iterator`][impl].
 ///
-/// [module-level documentation]: index.html
-/// [impl]: index.html#implementing-iterator
+/// [module-level documentation]: crate::iter
+/// [impl]: crate::iter#implementing-iterator
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_on_unimplemented(
     on(
@@ -212,7 +211,7 @@ pub trait Iterator {
     /// returning the number of times it saw [`Some`]. Note that [`next`] has to be
     /// called at least once even if the iterator does not have any elements.
     ///
-    /// [`next`]: #tymethod.next
+    /// [`next`]: Iterator::next
     ///
     /// # Overflow Behavior
     ///
@@ -285,6 +284,44 @@ pub trait Iterator {
         self.fold(None, some)
     }
 
+    /// Advances the iterator by `n` elements.
+    ///
+    /// This method will eagerly skip `n` elements by calling [`next`] up to `n`
+    /// times until [`None`] is encountered.
+    ///
+    /// `advance_by(n)` will return [`Ok(())`][Ok] if the iterator successfully advances by
+    /// `n` elements, or [`Err(k)`][Err] if [`None`] is encountered, where `k` is the number
+    /// of elements the iterator is advanced by before running out of elements (i.e. the
+    /// length of the iterator). Note that `k` is always less than `n`.
+    ///
+    /// Calling `advance_by(0)` does not consume any elements and always returns [`Ok(())`][Ok].
+    ///
+    /// [`next`]: Iterator::next
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(iter_advance_by)]
+    ///
+    /// let a = [1, 2, 3, 4];
+    /// let mut iter = a.iter();
+    ///
+    /// assert_eq!(iter.advance_by(2), Ok(()));
+    /// assert_eq!(iter.next(), Some(&3));
+    /// assert_eq!(iter.advance_by(0), Ok(()));
+    /// assert_eq!(iter.advance_by(100), Err(1)); // only `&4` was skipped
+    /// ```
+    #[inline]
+    #[unstable(feature = "iter_advance_by", reason = "recently added", issue = "77404")]
+    fn advance_by(&mut self, n: usize) -> Result<(), usize> {
+        for i in 0..n {
+            self.next().ok_or(i)?;
+        }
+        Ok(())
+    }
+
     /// Returns the `n`th element of the iterator.
     ///
     /// Like most indexing operations, the count starts from zero, so `nth(0)`
@@ -326,14 +363,9 @@ pub trait Iterator {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn nth(&mut self, mut n: usize) -> Option<Self::Item> {
-        while let Some(x) = self.next() {
-            if n == 0 {
-                return Some(x);
-            }
-            n -= 1;
-        }
-        None
+    fn nth(&mut self, n: usize) -> Option<Self::Item> {
+        self.advance_by(n).ok()?;
+        self.next()
     }
 
     /// Creates an iterator starting at the same point, but stepping by
@@ -449,9 +481,7 @@ pub trait Iterator {
     /// }
     /// ```
     ///
-    /// [`once`]: fn.once.html
-    /// [`Iterator`]: trait.Iterator.html
-    /// [`IntoIterator`]: trait.IntoIterator.html
+    /// [`once`]: crate::iter::once
     /// [`OsStr`]: ../../std/ffi/struct.OsStr.html
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -496,9 +526,6 @@ pub trait Iterator {
     /// [`Iterator`] itself. For example, slices (`&[T]`) implement
     /// [`IntoIterator`], and so can be passed to `zip()` directly:
     ///
-    /// [`IntoIterator`]: trait.IntoIterator.html
-    /// [`Iterator`]: trait.Iterator.html
-    ///
     /// ```
     /// let s1 = &[1, 2, 3];
     /// let s2 = &[4, 5, 6];
@@ -530,8 +557,8 @@ pub trait Iterator {
     /// assert_eq!((2, 'o'), zipper[2]);
     /// ```
     ///
-    /// [`enumerate`]: #method.enumerate
-    /// [`next`]: #tymethod.next
+    /// [`enumerate`]: Iterator::enumerate
+    /// [`next`]: Iterator::next
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn zip<U>(self, other: U) -> Zip<Self, U::IntoIter>
@@ -654,11 +681,9 @@ pub trait Iterator {
     /// Creates an iterator which uses a closure to determine if an element
     /// should be yielded.
     ///
-    /// The closure must return `true` or `false`. `filter()` creates an
-    /// iterator which calls this closure on each element. If the closure
-    /// returns `true`, then the element is returned. If the closure returns
-    /// `false`, it will try again, and call the closure on the next element,
-    /// seeing if it passes the test.
+    /// Given an element the closure must return `true` or `false`. The returned
+    /// iterator will yield only the elements for which the closure returns
+    /// true.
     ///
     /// # Examples
     ///
@@ -725,23 +750,15 @@ pub trait Iterator {
 
     /// Creates an iterator that both filters and maps.
     ///
-    /// The closure must return an [`Option<T>`]. `filter_map` creates an
-    /// iterator which calls this closure on each element. If the closure
-    /// returns [`Some(element)`][`Some`], then that element is returned. If the
-    /// closure returns [`None`], it will try again, and call the closure on the
-    /// next element, seeing if it will return [`Some`].
+    /// The returned iterator yields only the `value`s for which the supplied
+    /// closure returns `Some(value)`.
     ///
-    /// Why `filter_map` and not just [`filter`] and [`map`]? The key is in this
-    /// part:
+    /// `filter_map` can be used to make chains of [`filter`] and [`map`] more
+    /// concise. The example below shows how a `map().filter().map()` can be
+    /// shortened to a single call to `filter_map`.
     ///
-    /// [`filter`]: #method.filter
-    /// [`map`]: #method.map
-    ///
-    /// > If the closure returns [`Some(element)`][`Some`], then that element is returned.
-    ///
-    /// In other words, it removes the [`Option<T>`] layer automatically. If your
-    /// mapping is already returning an [`Option<T>`] and you want to skip over
-    /// [`None`]s, then `filter_map` is much, much nicer to use.
+    /// [`filter`]: Iterator::filter
+    /// [`map`]: Iterator::map
     ///
     /// # Examples
     ///
@@ -802,7 +819,7 @@ pub trait Iterator {
     ///
     /// [`usize`]: type@usize
     /// [`usize::MAX`]: crate::usize::MAX
-    /// [`zip`]: #method.zip
+    /// [`zip`]: Iterator::zip
     ///
     /// # Examples
     ///
@@ -825,7 +842,7 @@ pub trait Iterator {
         Enumerate::new(self)
     }
 
-    /// Creates an iterator which can use `peek` to look at the next element of
+    /// Creates an iterator which can use [`peek`] to look at the next element of
     /// the iterator without consuming it.
     ///
     /// Adds a [`peek`] method to an iterator. See its documentation for
@@ -837,8 +854,8 @@ pub trait Iterator {
     /// anything other than fetching the next value) of the [`next`] method
     /// will occur.
     ///
-    /// [`peek`]: crate::iter::Peekable::peek
-    /// [`next`]: #tymethod.next
+    /// [`peek`]: Peekable::peek
+    /// [`next`]: Iterator::next
     ///
     /// # Examples
     ///
@@ -876,7 +893,7 @@ pub trait Iterator {
 
     /// Creates an iterator that [`skip`]s elements based on a predicate.
     ///
-    /// [`skip`]: #method.skip
+    /// [`skip`]: Iterator::skip
     ///
     /// `skip_while()` takes a closure as an argument. It will call this
     /// closure on each element of the iterator, and ignore elements
@@ -1043,8 +1060,8 @@ pub trait Iterator {
     ///
     /// Here's the same example, but with [`take_while`] and [`map`]:
     ///
-    /// [`take_while`]: #method.take_while
-    /// [`map`]: #method.map
+    /// [`take_while`]: Iterator::take_while
+    /// [`map`]: Iterator::map
     ///
     /// ```
     /// let a = [-1i32, 4, 0, 1];
@@ -1104,7 +1121,7 @@ pub trait Iterator {
     /// It is also not specified what this iterator returns after the first` None` is returned.
     /// If you need fused iterator, use [`fuse`].
     ///
-    /// [`fuse`]: #method.fuse
+    /// [`fuse`]: Iterator::fuse
     #[inline]
     #[unstable(feature = "iter_map_while", reason = "recently added", issue = "68537")]
     fn map_while<B, P>(self, predicate: P) -> MapWhile<Self, P>
@@ -1190,7 +1207,7 @@ pub trait Iterator {
     /// An iterator adaptor similar to [`fold`] that holds internal state and
     /// produces a new iterator.
     ///
-    /// [`fold`]: #method.fold
+    /// [`fold`]: Iterator::fold
     ///
     /// `scan()` takes two arguments: an initial value which seeds the internal
     /// state, and a closure with two arguments, the first being a mutable
@@ -1246,8 +1263,8 @@ pub trait Iterator {
     /// one item for each element, and `flat_map()`'s closure returns an
     /// iterator for each element.
     ///
-    /// [`map`]: #method.map
-    /// [`flatten`]: #method.flatten
+    /// [`map`]: Iterator::map
+    /// [`flatten`]: Iterator::flatten
     ///
     /// # Examples
     ///
@@ -1333,7 +1350,7 @@ pub trait Iterator {
     /// two-dimensional and not one-dimensional. To get a one-dimensional
     /// structure, you have to `flatten()` again.
     ///
-    /// [`flat_map()`]: #method.flat_map
+    /// [`flat_map()`]: Iterator::flat_map
     #[inline]
     #[stable(feature = "iterator_flatten", since = "1.29.0")]
     fn flatten(self) -> Flatten<Self>
@@ -1640,7 +1657,7 @@ pub trait Iterator {
     /// assert_eq!(Ok(vec![1, 3]), result);
     /// ```
     ///
-    /// [`iter`]: #tymethod.next
+    /// [`iter`]: Iterator::next
     /// [`String`]: ../../std/string/struct.String.html
     /// [`char`]: type@char
     #[inline]
@@ -1661,8 +1678,8 @@ pub trait Iterator {
     ///
     /// See also [`is_partitioned()`] and [`partition_in_place()`].
     ///
-    /// [`is_partitioned()`]: #method.is_partitioned
-    /// [`partition_in_place()`]: #method.partition_in_place
+    /// [`is_partitioned()`]: Iterator::is_partitioned
+    /// [`partition_in_place()`]: Iterator::partition_in_place
     ///
     /// # Examples
     ///
@@ -1716,8 +1733,8 @@ pub trait Iterator {
     ///
     /// See also [`is_partitioned()`] and [`partition()`].
     ///
-    /// [`is_partitioned()`]: #method.is_partitioned
-    /// [`partition()`]: #method.partition
+    /// [`is_partitioned()`]: Iterator::is_partitioned
+    /// [`partition()`]: Iterator::partition
     ///
     /// # Examples
     ///
@@ -1779,8 +1796,8 @@ pub trait Iterator {
     ///
     /// See also [`partition()`] and [`partition_in_place()`].
     ///
-    /// [`partition()`]: #method.partition
-    /// [`partition_in_place()`]: #method.partition_in_place
+    /// [`partition()`]: Iterator::partition
+    /// [`partition_in_place()`]: Iterator::partition_in_place
     ///
     /// # Examples
     ///
@@ -1870,7 +1887,7 @@ pub trait Iterator {
         while let Some(x) = self.next() {
             accum = f(accum, x)?;
         }
-        Try::from_ok(accum)
+        try { accum }
     }
 
     /// An iterator method that applies a fallible function to each item in the
@@ -1879,8 +1896,8 @@ pub trait Iterator {
     /// This can also be thought of as the fallible form of [`for_each()`]
     /// or as the stateless version of [`try_fold()`].
     ///
-    /// [`for_each()`]: #method.for_each
-    /// [`try_fold()`]: #method.try_fold
+    /// [`for_each()`]: Iterator::for_each
+    /// [`try_fold()`]: Iterator::try_fold
     ///
     /// # Examples
     ///
@@ -1992,6 +2009,8 @@ pub trait Iterator {
     /// // they're the same
     /// assert_eq!(result, result2);
     /// ```
+    #[doc(alias = "reduce")]
+    #[doc(alias = "inject")]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn fold<B, F>(mut self, init: B, mut f: F) -> B
@@ -2006,10 +2025,12 @@ pub trait Iterator {
         accum
     }
 
-    /// The same as [`fold()`](#method.fold), but uses the first element in the
+    /// The same as [`fold()`], but uses the first element in the
     /// iterator as the initial value, folding every subsequent element into it.
-    /// If the iterator is empty, return `None`; otherwise, return the result
+    /// If the iterator is empty, return [`None`]; otherwise, return the result
     /// of the fold.
+    ///
+    /// [`fold()`]: Iterator::fold
     ///
     /// # Example
     ///
@@ -2088,12 +2109,12 @@ pub trait Iterator {
         F: FnMut(Self::Item) -> bool,
     {
         #[inline]
-        fn check<T>(mut f: impl FnMut(T) -> bool) -> impl FnMut((), T) -> LoopState<(), ()> {
+        fn check<T>(mut f: impl FnMut(T) -> bool) -> impl FnMut((), T) -> ControlFlow<()> {
             move |(), x| {
-                if f(x) { LoopState::Continue(()) } else { LoopState::Break(()) }
+                if f(x) { ControlFlow::CONTINUE } else { ControlFlow::BREAK }
             }
         }
-        self.try_fold((), check(f)) == LoopState::Continue(())
+        self.try_fold((), check(f)) == ControlFlow::CONTINUE
     }
 
     /// Tests if any element of the iterator matches a predicate.
@@ -2141,13 +2162,13 @@ pub trait Iterator {
         F: FnMut(Self::Item) -> bool,
     {
         #[inline]
-        fn check<T>(mut f: impl FnMut(T) -> bool) -> impl FnMut((), T) -> LoopState<(), ()> {
+        fn check<T>(mut f: impl FnMut(T) -> bool) -> impl FnMut((), T) -> ControlFlow<()> {
             move |(), x| {
-                if f(x) { LoopState::Break(()) } else { LoopState::Continue(()) }
+                if f(x) { ControlFlow::BREAK } else { ControlFlow::CONTINUE }
             }
         }
 
-        self.try_fold((), check(f)) == LoopState::Break(())
+        self.try_fold((), check(f)) == ControlFlow::BREAK
     }
 
     /// Searches for an element of an iterator that satisfies a predicate.
@@ -2201,11 +2222,9 @@ pub trait Iterator {
         P: FnMut(&Self::Item) -> bool,
     {
         #[inline]
-        fn check<T>(
-            mut predicate: impl FnMut(&T) -> bool,
-        ) -> impl FnMut((), T) -> LoopState<(), T> {
+        fn check<T>(mut predicate: impl FnMut(&T) -> bool) -> impl FnMut((), T) -> ControlFlow<T> {
             move |(), x| {
-                if predicate(&x) { LoopState::Break(x) } else { LoopState::Continue(()) }
+                if predicate(&x) { ControlFlow::Break(x) } else { ControlFlow::CONTINUE }
             }
         }
 
@@ -2216,7 +2235,6 @@ pub trait Iterator {
     /// the first non-none result.
     ///
     /// `iter.find_map(f)` is equivalent to `iter.filter_map(f).next()`.
-    ///
     ///
     /// # Examples
     ///
@@ -2235,10 +2253,10 @@ pub trait Iterator {
         F: FnMut(Self::Item) -> Option<B>,
     {
         #[inline]
-        fn check<T, B>(mut f: impl FnMut(T) -> Option<B>) -> impl FnMut((), T) -> LoopState<(), B> {
+        fn check<T, B>(mut f: impl FnMut(T) -> Option<B>) -> impl FnMut((), T) -> ControlFlow<B> {
             move |(), x| match f(x) {
-                Some(x) => LoopState::Break(x),
-                None => LoopState::Continue(()),
+                Some(x) => ControlFlow::Break(x),
+                None => ControlFlow::CONTINUE,
             }
         }
 
@@ -2274,15 +2292,15 @@ pub trait Iterator {
         R: Try<Ok = bool>,
     {
         #[inline]
-        fn check<F, T, R>(mut f: F) -> impl FnMut((), T) -> LoopState<(), Result<T, R::Error>>
+        fn check<F, T, R>(mut f: F) -> impl FnMut((), T) -> ControlFlow<Result<T, R::Error>>
         where
             F: FnMut(&T) -> R,
             R: Try<Ok = bool>,
         {
             move |(), x| match f(&x).into_result() {
-                Ok(false) => LoopState::Continue(()),
-                Ok(true) => LoopState::Break(Ok(x)),
-                Err(x) => LoopState::Break(Err(x)),
+                Ok(false) => ControlFlow::CONTINUE,
+                Ok(true) => ControlFlow::Break(Ok(x)),
+                Err(x) => ControlFlow::Break(Err(x)),
             }
         }
 
@@ -2352,10 +2370,14 @@ pub trait Iterator {
         #[inline]
         fn check<T>(
             mut predicate: impl FnMut(T) -> bool,
-        ) -> impl FnMut(usize, T) -> LoopState<usize, usize> {
+        ) -> impl FnMut(usize, T) -> ControlFlow<usize, usize> {
             // The addition might panic on overflow
             move |i, x| {
-                if predicate(x) { LoopState::Break(i) } else { LoopState::Continue(Add::add(i, 1)) }
+                if predicate(x) {
+                    ControlFlow::Break(i)
+                } else {
+                    ControlFlow::Continue(Add::add(i, 1))
+                }
             }
         }
 
@@ -2411,10 +2433,10 @@ pub trait Iterator {
         #[inline]
         fn check<T>(
             mut predicate: impl FnMut(T) -> bool,
-        ) -> impl FnMut(usize, T) -> LoopState<usize, usize> {
+        ) -> impl FnMut(usize, T) -> ControlFlow<usize, usize> {
             move |i, x| {
                 let i = i - 1;
-                if predicate(x) { LoopState::Break(i) } else { LoopState::Continue(i) }
+                if predicate(x) { ControlFlow::Break(i) } else { ControlFlow::Continue(i) }
             }
         }
 
@@ -2602,8 +2624,6 @@ pub trait Iterator {
     /// This is only possible if the iterator has an end, so `rev()` only
     /// works on [`DoubleEndedIterator`]s.
     ///
-    /// [`DoubleEndedIterator`]: trait.DoubleEndedIterator.html
-    ///
     /// # Examples
     ///
     /// ```
@@ -2634,7 +2654,7 @@ pub trait Iterator {
     ///
     /// This function is, in some sense, the opposite of [`zip`].
     ///
-    /// [`zip`]: #method.zip
+    /// [`zip`]: Iterator::zip
     ///
     /// # Examples
     ///
@@ -2713,7 +2733,7 @@ pub trait Iterator {
     /// This is useful when you have an iterator over `&T`, but you need an
     /// iterator over `T`.
     ///
-    /// [`clone`]: crate::clone::Clone::clone
+    /// [`clone`]: Clone::clone
     ///
     /// # Examples
     ///
@@ -2831,7 +2851,7 @@ pub trait Iterator {
         Product::product(self)
     }
 
-    /// Lexicographically compares the elements of this `Iterator` with those
+    /// [Lexicographically](Ord#lexicographical-comparison) compares the elements of this [`Iterator`] with those
     /// of another.
     ///
     /// # Examples
@@ -2853,7 +2873,7 @@ pub trait Iterator {
         self.cmp_by(other, |x, y| x.cmp(&y))
     }
 
-    /// Lexicographically compares the elements of this `Iterator` with those
+    /// [Lexicographically](Ord#lexicographical-comparison) compares the elements of this [`Iterator`] with those
     /// of another with respect to the specified comparison function.
     ///
     /// # Examples
@@ -2905,7 +2925,7 @@ pub trait Iterator {
         }
     }
 
-    /// Lexicographically compares the elements of this `Iterator` with those
+    /// [Lexicographically](Ord#lexicographical-comparison) compares the elements of this [`Iterator`] with those
     /// of another.
     ///
     /// # Examples
@@ -2929,7 +2949,7 @@ pub trait Iterator {
         self.partial_cmp_by(other, |x, y| x.partial_cmp(&y))
     }
 
-    /// Lexicographically compares the elements of this `Iterator` with those
+    /// [Lexicographically](Ord#lexicographical-comparison) compares the elements of this [`Iterator`] with those
     /// of another with respect to the specified comparison function.
     ///
     /// # Examples
@@ -2990,7 +3010,7 @@ pub trait Iterator {
         }
     }
 
-    /// Determines if the elements of this `Iterator` are equal to those of
+    /// Determines if the elements of this [`Iterator`] are equal to those of
     /// another.
     ///
     /// # Examples
@@ -3009,7 +3029,7 @@ pub trait Iterator {
         self.eq_by(other, |x, y| x == y)
     }
 
-    /// Determines if the elements of this `Iterator` are equal to those of
+    /// Determines if the elements of this [`Iterator`] are equal to those of
     /// another with respect to the specified equality function.
     ///
     /// # Examples
@@ -3050,7 +3070,7 @@ pub trait Iterator {
         }
     }
 
-    /// Determines if the elements of this `Iterator` are unequal to those of
+    /// Determines if the elements of this [`Iterator`] are unequal to those of
     /// another.
     ///
     /// # Examples
@@ -3069,7 +3089,7 @@ pub trait Iterator {
         !self.eq(other)
     }
 
-    /// Determines if the elements of this `Iterator` are lexicographically
+    /// Determines if the elements of this [`Iterator`] are [lexicographically](Ord#lexicographical-comparison)
     /// less than those of another.
     ///
     /// # Examples
@@ -3078,6 +3098,7 @@ pub trait Iterator {
     /// assert_eq!([1].iter().lt([1].iter()), false);
     /// assert_eq!([1].iter().lt([1, 2].iter()), true);
     /// assert_eq!([1, 2].iter().lt([1].iter()), false);
+    /// assert_eq!([1, 2].iter().lt([1, 2].iter()), false);
     /// ```
     #[stable(feature = "iter_order", since = "1.5.0")]
     fn lt<I>(self, other: I) -> bool
@@ -3089,7 +3110,7 @@ pub trait Iterator {
         self.partial_cmp(other) == Some(Ordering::Less)
     }
 
-    /// Determines if the elements of this `Iterator` are lexicographically
+    /// Determines if the elements of this [`Iterator`] are [lexicographically](Ord#lexicographical-comparison)
     /// less or equal to those of another.
     ///
     /// # Examples
@@ -3098,6 +3119,7 @@ pub trait Iterator {
     /// assert_eq!([1].iter().le([1].iter()), true);
     /// assert_eq!([1].iter().le([1, 2].iter()), true);
     /// assert_eq!([1, 2].iter().le([1].iter()), false);
+    /// assert_eq!([1, 2].iter().le([1, 2].iter()), true);
     /// ```
     #[stable(feature = "iter_order", since = "1.5.0")]
     fn le<I>(self, other: I) -> bool
@@ -3109,7 +3131,7 @@ pub trait Iterator {
         matches!(self.partial_cmp(other), Some(Ordering::Less | Ordering::Equal))
     }
 
-    /// Determines if the elements of this `Iterator` are lexicographically
+    /// Determines if the elements of this [`Iterator`] are [lexicographically](Ord#lexicographical-comparison)
     /// greater than those of another.
     ///
     /// # Examples
@@ -3118,6 +3140,7 @@ pub trait Iterator {
     /// assert_eq!([1].iter().gt([1].iter()), false);
     /// assert_eq!([1].iter().gt([1, 2].iter()), false);
     /// assert_eq!([1, 2].iter().gt([1].iter()), true);
+    /// assert_eq!([1, 2].iter().gt([1, 2].iter()), false);
     /// ```
     #[stable(feature = "iter_order", since = "1.5.0")]
     fn gt<I>(self, other: I) -> bool
@@ -3129,7 +3152,7 @@ pub trait Iterator {
         self.partial_cmp(other) == Some(Ordering::Greater)
     }
 
-    /// Determines if the elements of this `Iterator` are lexicographically
+    /// Determines if the elements of this [`Iterator`] are [lexicographically](Ord#lexicographical-comparison)
     /// greater than or equal to those of another.
     ///
     /// # Examples
@@ -3138,6 +3161,7 @@ pub trait Iterator {
     /// assert_eq!([1].iter().ge([1].iter()), true);
     /// assert_eq!([1].iter().ge([1, 2].iter()), false);
     /// assert_eq!([1, 2].iter().ge([1].iter()), true);
+    /// assert_eq!([1, 2].iter().ge([1, 2].iter()), true);
     /// ```
     #[stable(feature = "iter_order", since = "1.5.0")]
     fn ge<I>(self, other: I) -> bool
@@ -3197,7 +3221,7 @@ pub trait Iterator {
     /// assert!(![0.0, 1.0, f32::NAN].iter().is_sorted_by(|a, b| a.partial_cmp(b)));
     /// ```
     ///
-    /// [`is_sorted`]: #method.is_sorted
+    /// [`is_sorted`]: Iterator::is_sorted
     #[unstable(feature = "is_sorted", reason = "new API", issue = "53485")]
     fn is_sorted_by<F>(mut self, mut compare: F) -> bool
     where
@@ -3226,7 +3250,7 @@ pub trait Iterator {
     /// the elements, as determined by `f`. Apart from that, it's equivalent to [`is_sorted`]; see
     /// its documentation for more information.
     ///
-    /// [`is_sorted`]: #method.is_sorted
+    /// [`is_sorted`]: Iterator::is_sorted
     ///
     /// # Examples
     ///
@@ -3248,10 +3272,12 @@ pub trait Iterator {
     }
 
     /// See [TrustedRandomAccess]
+    // The unusual name is to avoid name collisions in method resolution
+    // see #76479.
     #[inline]
     #[doc(hidden)]
     #[unstable(feature = "trusted_random_access", issue = "none")]
-    unsafe fn get_unchecked(&mut self, _idx: usize) -> Self::Item
+    unsafe fn __iterator_get_unchecked(&mut self, _idx: usize) -> Self::Item
     where
         Self: TrustedRandomAccess,
     {
@@ -3267,6 +3293,9 @@ impl<I: Iterator + ?Sized> Iterator for &mut I {
     }
     fn size_hint(&self) -> (usize, Option<usize>) {
         (**self).size_hint()
+    }
+    fn advance_by(&mut self, n: usize) -> Result<(), usize> {
+        (**self).advance_by(n)
     }
     fn nth(&mut self, n: usize) -> Option<Self::Item> {
         (**self).nth(n)

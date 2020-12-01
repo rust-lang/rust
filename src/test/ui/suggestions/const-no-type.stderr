@@ -14,7 +14,7 @@ error: missing type for `static` item
   --> $DIR/const-no-type.rs:43:8
    |
 LL | static S = Vec::<String>::new();
-   |        ^ help: provide a type for the item: `S: std::vec::Vec<std::string::String>`
+   |        ^ help: provide a type for the item: `S: Vec<String>`
 
 error: missing type for `static mut` item
   --> $DIR/const-no-type.rs:48:12

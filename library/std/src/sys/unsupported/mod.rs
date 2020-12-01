@@ -1,3 +1,5 @@
+#![deny(unsafe_op_in_unsafe_fn)]
+
 pub mod alloc;
 pub mod args;
 pub mod cmath;
@@ -8,6 +10,7 @@ pub mod io;
 pub mod mutex;
 pub mod net;
 pub mod os;
+#[path = "../unix/path.rs"]
 pub mod path;
 pub mod pipe;
 pub mod process;

@@ -1,5 +1,3 @@
-// run-pass
-
 #![allow(clippy::useless_attribute)] //issue #2910
 
 #[macro_use]

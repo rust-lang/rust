@@ -8,8 +8,8 @@ LL | / check! { bound_inv_a_b_vs_bound_inv_a: (for<'a,'b> fn(Inv<'a>, Inv<'b>),
 LL | | for<'a>    fn(Inv<'a>, Inv<'a>)) }
    | |__________________________________- in this macro invocation
    |
-   = note: expected enum `std::option::Option<for<'a, 'b> fn(Inv<'a>, Inv<'b>)>`
-              found enum `std::option::Option<for<'a> fn(Inv<'a>, Inv<'a>)>`
+   = note: expected enum `Option<for<'a, 'b> fn(Inv<'a>, Inv<'b>)>`
+              found enum `Option<for<'a> fn(Inv<'a>, Inv<'a>)>`
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error

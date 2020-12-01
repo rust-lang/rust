@@ -92,18 +92,14 @@ pub type Result = result::Result<(), Error>;
 #[derive(Copy, Clone, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct Error;
 
-/// A collection of methods that are required to format a message into a stream.
+/// A trait for writing or formatting into Unicode-accepting buffers or streams.
 ///
-/// This trait is the type which this modules requires when formatting
-/// information. This is similar to the standard library's [`io::Write`] trait,
-/// but it is only intended for use in libcore.
+/// This trait only accepts UTF-8–encoded data and is not [flushable]. If you only
+/// want to accept Unicode and you don't need flushing, you should implement this trait;
+/// otherwise you should implement [`std::io::Write`].
 ///
-/// This trait should generally not be implemented by consumers of the standard
-/// library. The [`write!`] macro accepts an instance of [`io::Write`], and the
-/// [`io::Write`] trait is favored over implementing this trait.
-///
-/// [`write!`]: ../../std/macro.write.html
-/// [`io::Write`]: ../../std/io/trait.Write.html
+/// [`std::io::Write`]: ../../std/io/trait.Write.html
+/// [flushable]: ../../std/io/trait.Write.html#tymethod.flush
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Write {
     /// Writes a string slice into this writer, returning whether the write
@@ -167,8 +163,6 @@ pub trait Write {
     ///
     /// This method should generally not be invoked manually, but rather through
     /// the [`write!`] macro itself.
-    ///
-    /// [`write!`]: ../../std/macro.write.html
     ///
     /// # Examples
     ///
@@ -926,9 +920,11 @@ pub trait UpperHex {
 /// assert_eq!(&l_ptr[..2], "0x");
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_diagnostic_item = "pointer_trait"]
 pub trait Pointer {
     /// Formats the value using the given formatter.
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_diagnostic_item = "pointer_trait_fmt"]
     fn fmt(&self, f: &mut Formatter<'_>) -> Result;
 }
 
@@ -1060,7 +1056,7 @@ pub trait UpperExp {
 /// assert_eq!(output, "Hello world!");
 /// ```
 ///
-/// [`write!`]: ../../std/macro.write.html
+/// [`write!`]: crate::write!
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn write(output: &mut dyn Write, args: Arguments<'_>) -> Result {
     let mut formatter = Formatter {
@@ -1088,7 +1084,9 @@ pub fn write(output: &mut dyn Write, args: Arguments<'_>) -> Result {
             // a string piece.
             for (arg, piece) in fmt.iter().zip(args.pieces.iter()) {
                 formatter.buf.write_str(*piece)?;
-                run(&mut formatter, arg, &args.args)?;
+                // SAFETY: arg and args.args come from the same Arguments,
+                // which guarantees the indexes are always within bounds.
+                unsafe { run(&mut formatter, arg, &args.args) }?;
                 idx += 1;
             }
         }
@@ -1102,25 +1100,37 @@ pub fn write(output: &mut dyn Write, args: Arguments<'_>) -> Result {
     Ok(())
 }
 
-fn run(fmt: &mut Formatter<'_>, arg: &rt::v1::Argument, args: &[ArgumentV1<'_>]) -> Result {
+unsafe fn run(fmt: &mut Formatter<'_>, arg: &rt::v1::Argument, args: &[ArgumentV1<'_>]) -> Result {
     fmt.fill = arg.format.fill;
     fmt.align = arg.format.align;
     fmt.flags = arg.format.flags;
-    fmt.width = getcount(args, &arg.format.width);
-    fmt.precision = getcount(args, &arg.format.precision);
+    // SAFETY: arg and args come from the same Arguments,
+    // which guarantees the indexes are always within bounds.
+    unsafe {
+        fmt.width = getcount(args, &arg.format.width);
+        fmt.precision = getcount(args, &arg.format.precision);
+    }
 
     // Extract the correct argument
-    let value = args[arg.position];
+    debug_assert!(arg.position < args.len());
+    // SAFETY: arg and args come from the same Arguments,
+    // which guarantees its index is always within bounds.
+    let value = unsafe { args.get_unchecked(arg.position) };
 
     // Then actually do some printing
     (value.formatter)(value.value, fmt)
 }
 
-fn getcount(args: &[ArgumentV1<'_>], cnt: &rt::v1::Count) -> Option<usize> {
+unsafe fn getcount(args: &[ArgumentV1<'_>], cnt: &rt::v1::Count) -> Option<usize> {
     match *cnt {
         rt::v1::Count::Is(n) => Some(n),
         rt::v1::Count::Implied => None,
-        rt::v1::Count::Param(i) => args[i].as_usize(),
+        rt::v1::Count::Param(i) => {
+            debug_assert!(i < args.len());
+            // SAFETY: cnt and args come from the same Arguments,
+            // which guarantees this index is always within bounds.
+            unsafe { args.get_unchecked(i).as_usize() }
+        }
     }
 }
 
@@ -1186,7 +1196,7 @@ impl<'a> Formatter<'a> {
     /// ```
     /// use std::fmt;
     ///
-    /// struct Foo { nb: i32 };
+    /// struct Foo { nb: i32 }
     ///
     /// impl Foo {
     ///     fn new(nb: i32) -> Foo {
@@ -1888,7 +1898,7 @@ impl<'a> Formatter<'a> {
     /// assert_eq!(format!("{:?}", Foo(vec![10, 11])), "{10, 11}");
     /// ```
     ///
-    /// [`format_args!`]: ../../std/macro.format_args.html
+    /// [`format_args!`]: crate::format_args
     ///
     /// In this more complex example, we use [`format_args!`] and `.debug_set()`
     /// to build a list of match arms:
@@ -2088,7 +2098,7 @@ impl<T: ?Sized> Pointer for *const T {
             f.flags |= 1 << (FlagV1::SignAwareZeroPad as u32);
 
             if f.width.is_none() {
-                f.width = Some(((mem::size_of::<usize>() * 8) / 4) + 2);
+                f.width = Some((usize::BITS / 4) as usize + 2);
             }
         }
         f.flags |= 1 << (FlagV1::Alternate as u32);
@@ -2240,5 +2250,6 @@ impl<T: ?Sized + Debug> Debug for UnsafeCell<T> {
     }
 }
 
-// If you expected tests to be here, look instead at the ui/ifmt.rs test,
+// If you expected tests to be here, look instead at the core/tests/fmt.rs file,
 // it's a lot easier than creating all of the rt::Piece structures here.
+// There are also tests in the alloc crate, for those that need allocations.

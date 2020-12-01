@@ -77,10 +77,17 @@ fn main() {
         (false | true, false | true) => {}
     }
     match (true, true) {
-        (true, false) => {}
-        (false, true) => {}
+        (true, true) => {}
+        (false, false) => {}
         (false | true, false | true) => {}
     }
+    // https://github.com/rust-lang/rust/issues/76836
+    match None {
+        Some(false) => {}
+        None | Some(true
+                | false) => {} //~ ERROR unreachable
+    }
+
     // A subpattern that is unreachable in all branches is overall unreachable.
     match (true, true) {
         (false, true) => {}

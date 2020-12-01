@@ -9,8 +9,8 @@ LL | fn is_send<T:Send>() {
    |
 help: consider restricting type parameter `T`
    |
-LL | fn foo<T: std::marker::Send>() {
-   |         ^^^^^^^^^^^^^^^^^^^
+LL | fn foo<T: Send>() {
+   |         ^^^^^^
 
 error: aborting due to previous error
 

@@ -56,10 +56,12 @@ fn in_impl_Fn_return_in_parameters(_: &impl Fn() -> impl Debug) { panic!() }
 fn in_impl_Fn_parameter_in_return() -> &'static impl Fn(impl Debug) { panic!() }
 //~^ ERROR `impl Trait` not allowed outside of function and inherent method return types
 //~| ERROR nested `impl Trait` is not allowed
+//~| ERROR cannot resolve opaque type
 
 // Disallowed
 fn in_impl_Fn_return_in_return() -> &'static impl Fn() -> impl Debug { panic!() }
 //~^ ERROR `impl Trait` not allowed outside of function and inherent method return types
+//~| ERROR cannot resolve opaque type
 
 // Disallowed
 fn in_Fn_parameter_in_generics<F: Fn(impl Debug)> (_: F) { panic!() }

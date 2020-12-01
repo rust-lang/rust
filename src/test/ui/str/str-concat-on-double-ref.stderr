@@ -1,11 +1,11 @@
-error[E0369]: cannot add `&str` to `&std::string::String`
+error[E0369]: cannot add `&str` to `&String`
   --> $DIR/str-concat-on-double-ref.rs:4:15
    |
 LL |     let c = a + b;
    |             - ^ - &str
    |             | |
    |             | `+` cannot be used to concatenate two `&str` strings
-   |             &std::string::String
+   |             &String
    |
 help: `to_owned()` can be used to create an owned `String` from a string reference. String concatenation appends the string on the right to the string on the left and may require reallocation. This requires ownership of the string on the left
    |

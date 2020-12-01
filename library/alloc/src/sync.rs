@@ -10,6 +10,7 @@ use core::cmp::Ordering;
 use core::convert::{From, TryFrom};
 use core::fmt;
 use core::hash::{Hash, Hasher};
+use core::hint;
 use core::intrinsics::abort;
 use core::iter;
 use core::marker::{PhantomData, Unpin, Unsize};
@@ -21,7 +22,7 @@ use core::slice::from_raw_parts_mut;
 use core::sync::atomic;
 use core::sync::atomic::Ordering::{Acquire, Relaxed, Release, SeqCst};
 
-use crate::alloc::{box_free, handle_alloc_error, AllocErr, AllocRef, Global, Layout};
+use crate::alloc::{box_free, handle_alloc_error, AllocError, AllocRef, Global, Layout};
 use crate::borrow::{Cow, ToOwned};
 use crate::boxed::Box;
 use crate::rc::is_dangling;
@@ -111,7 +112,7 @@ macro_rules! acquire {
 ///
 /// # Cloning references
 ///
-/// Creating a new reference from an existing reference counted pointer is done using the
+/// Creating a new reference from an existing reference-counted pointer is done using the
 /// `Clone` trait implemented for [`Arc<T>`][Arc] and [`Weak<T>`][Weak].
 ///
 /// ```
@@ -128,13 +129,27 @@ macro_rules! acquire {
 /// `Arc<T>` automatically dereferences to `T` (via the [`Deref`][deref] trait),
 /// so you can call `T`'s methods on a value of type `Arc<T>`. To avoid name
 /// clashes with `T`'s methods, the methods of `Arc<T>` itself are associated
-/// functions, called using function-like syntax:
+/// functions, called using [fully qualified syntax]:
 ///
 /// ```
 /// use std::sync::Arc;
-/// let my_arc = Arc::new(());
 ///
+/// let my_arc = Arc::new(());
 /// Arc::downgrade(&my_arc);
+/// ```
+///
+/// `Arc<T>`'s implementations of traits like `Clone` may also be called using
+/// fully qualified syntax. Some people prefer to use fully qualified syntax,
+/// while others prefer using method-call syntax.
+///
+/// ```
+/// use std::sync::Arc;
+///
+/// let arc = Arc::new(());
+/// // Method-call syntax
+/// let arc2 = arc.clone();
+/// // Fully qualified syntax
+/// let arc3 = Arc::clone(&arc);
 /// ```
 ///
 /// [`Weak<T>`][Weak] does not auto-dereference to `T`, because the inner value may have
@@ -152,7 +167,8 @@ macro_rules! acquire {
 /// [upgrade]: Weak::upgrade
 /// [`RefCell<T>`]: core::cell::RefCell
 /// [`std::sync`]: ../../std/sync/index.html
-/// [`Arc::clone(&from)`]: #method.clone
+/// [`Arc::clone(&from)`]: Arc::clone
+/// [fully qualified syntax]: https://doc.rust-lang.org/book/ch19-03-advanced-traits.html#fully-qualified-syntax-for-disambiguation-calling-methods-with-the-same-name
 ///
 /// # Examples
 ///
@@ -201,7 +217,7 @@ macro_rules! acquire {
 /// See the [`rc` documentation][rc_examples] for more examples of reference
 /// counting in general.
 ///
-/// [rc_examples]: ../../std/rc/index.html#examples
+/// [rc_examples]: crate::rc#examples
 #[cfg_attr(not(test), rustc_diagnostic_item = "Arc")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Arc<T: ?Sized> {
@@ -764,6 +780,7 @@ impl<T: ?Sized> Arc<T> {
         loop {
             // check if the weak counter is currently "locked"; if so, spin.
             if cur == usize::MAX {
+                hint::spin_loop();
                 cur = this.inner().weak.load(Relaxed);
                 continue;
             }
@@ -969,7 +986,7 @@ impl<T: ?Sized> Arc<T> {
     /// and must return back a (potentially fat)-pointer for the `ArcInner<T>`.
     unsafe fn allocate_for_layout(
         value_layout: Layout,
-        allocate: impl FnOnce(Layout) -> Result<NonNull<[u8]>, AllocErr>,
+        allocate: impl FnOnce(Layout) -> Result<NonNull<[u8]>, AllocError>,
         mem_to_arcinner: impl FnOnce(*mut u8) -> *mut ArcInner<T>,
     ) -> *mut ArcInner<T> {
         // Calculate layout using the given value layout.
@@ -1006,7 +1023,7 @@ impl<T: ?Sized> Arc<T> {
 
     fn from_box(v: Box<T>) -> Arc<T> {
         unsafe {
-            let box_unique = Box::into_unique(v);
+            let (box_unique, alloc) = Box::into_unique(v);
             let bptr = box_unique.as_ptr();
 
             let value_size = size_of_val(&*bptr);
@@ -1020,7 +1037,7 @@ impl<T: ?Sized> Arc<T> {
             );
 
             // Free the allocation without dropping its contents
-            box_free(box_unique);
+            box_free(box_unique, alloc);
 
             Self::from_ptr(ptr)
         }
@@ -1509,7 +1526,16 @@ impl<T> Weak<T> {
     pub fn new() -> Weak<T> {
         Weak { ptr: NonNull::new(usize::MAX as *mut ArcInner<T>).expect("MAX is not 0") }
     }
+}
 
+/// Helper type to allow accessing the reference counts without
+/// making any assertions about the data field.
+struct WeakInner<'a> {
+    weak: &'a atomic::AtomicUsize,
+    strong: &'a atomic::AtomicUsize,
+}
+
+impl<T: ?Sized> Weak<T> {
     /// Returns a raw pointer to the object `T` pointed to by this `Weak<T>`.
     ///
     /// The pointer is valid only if there are some strong references. The pointer may be dangling,
@@ -1629,28 +1655,20 @@ impl<T> Weak<T> {
     /// [`forget`]: std::mem::forget
     #[stable(feature = "weak_into_raw", since = "1.45.0")]
     pub unsafe fn from_raw(ptr: *const T) -> Self {
-        if ptr.is_null() {
-            Self::new()
-        } else {
-            // See Arc::from_raw for details
-            unsafe {
-                let offset = data_offset(ptr);
-                let fake_ptr = ptr as *mut ArcInner<T>;
-                let ptr = set_data_ptr(fake_ptr, (ptr as *mut u8).offset(-offset));
-                Weak { ptr: NonNull::new(ptr).expect("Invalid pointer passed to from_raw") }
-            }
-        }
+        // SAFETY: data_offset is safe to call, because this pointer originates from a Weak.
+        // See Weak::as_ptr for context on how the input pointer is derived.
+        let offset = unsafe { data_offset(ptr) };
+
+        // Reverse the offset to find the original ArcInner.
+        // SAFETY: we use wrapping_offset here because the pointer may be dangling (but only if T: Sized)
+        let ptr = unsafe {
+            set_data_ptr(ptr as *mut ArcInner<T>, (ptr as *mut u8).wrapping_offset(-offset))
+        };
+
+        // SAFETY: we now have recovered the original Weak pointer, so can create the Weak.
+        unsafe { Weak { ptr: NonNull::new_unchecked(ptr) } }
     }
-}
 
-/// Helper type to allow accessing the reference counts without
-/// making any assertions about the data field.
-struct WeakInner<'a> {
-    weak: &'a atomic::AtomicUsize,
-    strong: &'a atomic::AtomicUsize,
-}
-
-impl<T: ?Sized> Weak<T> {
     /// Attempts to upgrade the `Weak` pointer to an [`Arc`], delaying
     /// dropping of the inner value if successful.
     ///

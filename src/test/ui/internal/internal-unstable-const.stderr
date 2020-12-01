@@ -1,12 +1,13 @@
-error[E0723]: can only call `transmute` from const items, not `const fn`
+error[E0658]: `transmute` is not allowed in constant functions
   --> $DIR/internal-unstable-const.rs:11:14
    |
 LL |     unsafe { std::mem::transmute(4u32) }
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
-   = help: add `#![feature(const_fn)]` to the crate attributes to enable
+   = note: see issue #53605 <https://github.com/rust-lang/rust/issues/53605> for more information
+   = help: add `#![feature(const_fn_transmute)]` to the crate attributes to enable
+   = note: `transmute` is only allowed in constants and statics for now
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0723`.
+For more information about this error, try `rustc --explain E0658`.

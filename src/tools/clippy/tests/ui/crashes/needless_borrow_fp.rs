@@ -1,5 +1,3 @@
-// run-pass
-
 #[deny(clippy::all)]
 #[derive(Debug)]
 pub enum Error {

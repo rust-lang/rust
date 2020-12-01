@@ -17,14 +17,14 @@ fn f<T>(val: T) {
     let t: S<T> = S(marker::PhantomData);
     let a = &t as &dyn Gettable<T>;
     //~^ ERROR `T` cannot be sent between threads safely
-    //~| ERROR : std::marker::Copy` is not satisfied
+    //~| ERROR : Copy` is not satisfied
 }
 
 fn g<T>(val: T) {
     let t: S<T> = S(marker::PhantomData);
     let a: &dyn Gettable<T> = &t;
     //~^ ERROR `T` cannot be sent between threads safely
-    //~| ERROR : std::marker::Copy` is not satisfied
+    //~| ERROR : Copy` is not satisfied
 }
 
 fn foo<'a>() {
@@ -36,7 +36,7 @@ fn foo<'a>() {
 fn foo2<'a>() {
     let t: Box<S<String>> = box S(marker::PhantomData);
     let a = t as Box<dyn Gettable<String>>;
-    //~^ ERROR : std::marker::Copy` is not satisfied
+    //~^ ERROR : Copy` is not satisfied
 }
 
 fn foo3<'a>() {
@@ -44,7 +44,7 @@ fn foo3<'a>() {
 
     let t: Box<S<Foo>> = box S(marker::PhantomData);
     let a: Box<dyn Gettable<Foo>> = t;
-    //~^ ERROR : std::marker::Copy` is not satisfied
+    //~^ ERROR : Copy` is not satisfied
 }
 
 fn main() { }

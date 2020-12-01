@@ -1,6 +1,6 @@
 use crate::utils::SpanlessEq;
 use crate::utils::{get_item_name, higher, is_type_diagnostic_item, match_type, paths, snippet, snippet_opt};
-use crate::utils::{snippet_with_applicability, span_lint_and_then, walk_ptrs_ty};
+use crate::utils::{snippet_with_applicability, span_lint_and_then};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
@@ -106,7 +106,7 @@ fn check_cond<'a>(cx: &LateContext<'_>, check: &'a Expr<'a>) -> Option<(&'static
         if let ExprKind::AddrOf(BorrowKind::Ref, _, ref key) = params[1].kind;
         then {
             let map = &params[0];
-            let obj_ty = walk_ptrs_ty(cx.typeck_results().expr_ty(map));
+            let obj_ty = cx.typeck_results().expr_ty(map).peel_refs();
 
             return if match_type(cx, obj_ty, &paths::BTREEMAP) {
                 Some(("BTreeMap", map, key))

@@ -1,9 +1,9 @@
 thread 'main' panicked at 'assertion failed: `(left == right)`
   left: `2`,
- right: `4`', $DIR/test-panic-abort-nocapture.rs:32:5
+ right: `4`', $DIR/test-panic-abort-nocapture.rs:33:5
 note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
 thread 'main' panicked at 'assertion failed: `(left == right)`
   left: `2`,
- right: `4`', $DIR/test-panic-abort-nocapture.rs:26:5
+ right: `4`', $DIR/test-panic-abort-nocapture.rs:27:5
 note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
 testing321

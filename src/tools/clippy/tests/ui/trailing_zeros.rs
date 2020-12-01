@@ -1,4 +1,5 @@
 #![allow(unused_parens)]
+#![warn(clippy::verbose_bit_mask)]
 
 fn main() {
     let x: i32 = 42;

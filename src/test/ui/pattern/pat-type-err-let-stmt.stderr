@@ -4,11 +4,11 @@ error[E0308]: mismatched types
 LL |     let Ok(0): Option<u8> = 42u8;
    |                ----------   ^^^^
    |                |            |
-   |                |            expected enum `std::option::Option`, found `u8`
+   |                |            expected enum `Option`, found `u8`
    |                |            help: try using a variant of the expected enum: `Some(42u8)`
    |                expected due to this
    |
-   = note: expected enum `std::option::Option<u8>`
+   = note: expected enum `Option<u8>`
               found type `u8`
 
 error[E0308]: mismatched types
@@ -17,9 +17,9 @@ error[E0308]: mismatched types
 LL |     let Ok(0): Option<u8> = 42u8;
    |         ^^^^^  ---------- expected due to this
    |         |
-   |         expected enum `std::option::Option`, found enum `std::result::Result`
+   |         expected enum `Option`, found enum `std::result::Result`
    |
-   = note: expected enum `std::option::Option<u8>`
+   = note: expected enum `Option<u8>`
               found enum `std::result::Result<_, _>`
 
 error[E0308]: mismatched types
@@ -28,9 +28,9 @@ error[E0308]: mismatched types
 LL |     let Ok(0): Option<u8>;
    |         ^^^^^  ---------- expected due to this
    |         |
-   |         expected enum `std::option::Option`, found enum `std::result::Result`
+   |         expected enum `Option`, found enum `std::result::Result`
    |
-   = note: expected enum `std::option::Option<u8>`
+   = note: expected enum `Option<u8>`
               found enum `std::result::Result<_, _>`
 
 error[E0308]: mismatched types

@@ -1,21 +1,21 @@
-error[E0277]: `Foo` doesn't implement `std::fmt::Debug`
+error[E0277]: `Foo` doesn't implement `Debug`
   --> $DIR/no-debug.rs:10:27
    |
 LL |     println!("{:?} {:?}", Foo, Bar);
    |                           ^^^ `Foo` cannot be formatted using `{:?}`
    |
-   = help: the trait `std::fmt::Debug` is not implemented for `Foo`
-   = note: add `#[derive(Debug)]` or manually implement `std::fmt::Debug`
+   = help: the trait `Debug` is not implemented for `Foo`
+   = note: add `#[derive(Debug)]` or manually implement `Debug`
    = note: required by `std::fmt::Debug::fmt`
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0277]: `no_debug::Bar` doesn't implement `std::fmt::Debug`
+error[E0277]: `Bar` doesn't implement `Debug`
   --> $DIR/no-debug.rs:10:32
    |
 LL |     println!("{:?} {:?}", Foo, Bar);
-   |                                ^^^ `no_debug::Bar` cannot be formatted using `{:?}` because it doesn't implement `std::fmt::Debug`
+   |                                ^^^ `Bar` cannot be formatted using `{:?}` because it doesn't implement `Debug`
    |
-   = help: the trait `std::fmt::Debug` is not implemented for `no_debug::Bar`
+   = help: the trait `Debug` is not implemented for `Bar`
    = note: required by `std::fmt::Debug::fmt`
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -30,13 +30,13 @@ LL |     println!("{} {}", Foo, Bar);
    = note: required by `std::fmt::Display::fmt`
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0277]: `no_debug::Bar` doesn't implement `std::fmt::Display`
+error[E0277]: `Bar` doesn't implement `std::fmt::Display`
   --> $DIR/no-debug.rs:11:28
    |
 LL |     println!("{} {}", Foo, Bar);
-   |                            ^^^ `no_debug::Bar` cannot be formatted with the default formatter
+   |                            ^^^ `Bar` cannot be formatted with the default formatter
    |
-   = help: the trait `std::fmt::Display` is not implemented for `no_debug::Bar`
+   = help: the trait `std::fmt::Display` is not implemented for `Bar`
    = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
    = note: required by `std::fmt::Display::fmt`
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)

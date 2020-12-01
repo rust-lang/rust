@@ -1,4 +1,4 @@
-thread 'main' panicked at 'explicit panic', $DIR/issue-47429-short-backtraces.rs:17:5
+thread 'main' panicked at 'explicit panic', $DIR/issue-47429-short-backtraces.rs:16:5
 stack backtrace:
    0: std::panicking::begin_panic
    1: issue_47429_short_backtraces::main

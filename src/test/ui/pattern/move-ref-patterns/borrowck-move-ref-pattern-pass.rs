@@ -1,7 +1,5 @@
 // check-pass
 
-#![feature(move_ref_pattern)]
-
 fn main() {}
 
 struct U;

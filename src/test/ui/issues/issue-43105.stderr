@@ -4,28 +4,18 @@ error[E0015]: calls in constants are limited to constant functions, tuple struct
 LL | const NUM: u8 = xyz();
    |                 ^^^^^
 
-error: any use of this value will cause an error
-  --> $DIR/issue-43105.rs:3:17
-   |
-LL | const NUM: u8 = xyz();
-   | ----------------^^^^^-
-   |                 |
-   |                 calling non-const function `xyz`
-   |
-   = note: `#[deny(const_err)]` on by default
-
 error: could not evaluate constant pattern
-  --> $DIR/issue-43105.rs:9:9
+  --> $DIR/issue-43105.rs:8:9
    |
 LL |         NUM => unimplemented!(),
    |         ^^^
 
 error: could not evaluate constant pattern
-  --> $DIR/issue-43105.rs:9:9
+  --> $DIR/issue-43105.rs:8:9
    |
 LL |         NUM => unimplemented!(),
    |         ^^^
 
-error: aborting due to 4 previous errors
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0015`.

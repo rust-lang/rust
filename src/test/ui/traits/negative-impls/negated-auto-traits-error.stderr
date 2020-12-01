@@ -7,7 +7,7 @@ LL | struct Outer<T: Send>(T);
 LL |     Outer(TestType);
    |           ^^^^^^^^ `dummy::TestType` cannot be sent between threads safely
    |
-   = help: the trait `std::marker::Send` is not implemented for `dummy::TestType`
+   = help: the trait `Send` is not implemented for `dummy::TestType`
 
 error[E0277]: `dummy::TestType` cannot be sent between threads safely
   --> $DIR/negated-auto-traits-error.rs:23:5
@@ -18,7 +18,7 @@ LL | struct Outer<T: Send>(T);
 LL |     Outer(TestType);
    |     ^^^^^^^^^^^^^^^ `dummy::TestType` cannot be sent between threads safely
    |
-   = help: the trait `std::marker::Send` is not implemented for `dummy::TestType`
+   = help: the trait `Send` is not implemented for `dummy::TestType`
 
 error[E0277]: `dummy1b::TestType` cannot be sent between threads safely
   --> $DIR/negated-auto-traits-error.rs:32:13
@@ -29,7 +29,7 @@ LL | fn is_send<T: Send>(_: T) {}
 LL |     is_send(TestType);
    |             ^^^^^^^^ `dummy1b::TestType` cannot be sent between threads safely
    |
-   = help: the trait `std::marker::Send` is not implemented for `dummy1b::TestType`
+   = help: the trait `Send` is not implemented for `dummy1b::TestType`
 
 error[E0277]: `dummy1c::TestType` cannot be sent between threads safely
   --> $DIR/negated-auto-traits-error.rs:40:13
@@ -40,7 +40,7 @@ LL | fn is_send<T: Send>(_: T) {}
 LL |     is_send((8, TestType));
    |             ^^^^^^^^^^^^^ `dummy1c::TestType` cannot be sent between threads safely
    |
-   = help: within `({integer}, dummy1c::TestType)`, the trait `std::marker::Send` is not implemented for `dummy1c::TestType`
+   = help: within `({integer}, dummy1c::TestType)`, the trait `Send` is not implemented for `dummy1c::TestType`
    = note: required because it appears within the type `({integer}, dummy1c::TestType)`
 
 error[E0277]: `dummy2::TestType` cannot be sent between threads safely
@@ -52,12 +52,12 @@ LL | fn is_send<T: Send>(_: T) {}
 LL |     is_send(Box::new(TestType));
    |             ^^^^^^^^^^^^^^^^^^
    |             |
-   |             expected an implementor of trait `std::marker::Send`
+   |             expected an implementor of trait `Send`
    |             help: consider borrowing here: `&Box::new(TestType)`
    |
-   = note: the trait bound `dummy2::TestType: std::marker::Send` is not satisfied
-   = note: required because of the requirements on the impl of `std::marker::Send` for `std::ptr::Unique<dummy2::TestType>`
-   = note: required because it appears within the type `std::boxed::Box<dummy2::TestType>`
+   = note: the trait bound `dummy2::TestType: Send` is not satisfied
+   = note: required because of the requirements on the impl of `Send` for `Unique<dummy2::TestType>`
+   = note: required because it appears within the type `Box<dummy2::TestType>`
 
 error[E0277]: `dummy3::TestType` cannot be sent between threads safely
   --> $DIR/negated-auto-traits-error.rs:56:13
@@ -68,10 +68,10 @@ LL | fn is_send<T: Send>(_: T) {}
 LL |     is_send(Box::new(Outer2(TestType)));
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ `dummy3::TestType` cannot be sent between threads safely
    |
-   = help: within `Outer2<dummy3::TestType>`, the trait `std::marker::Send` is not implemented for `dummy3::TestType`
+   = help: within `Outer2<dummy3::TestType>`, the trait `Send` is not implemented for `dummy3::TestType`
    = note: required because it appears within the type `Outer2<dummy3::TestType>`
-   = note: required because of the requirements on the impl of `std::marker::Send` for `std::ptr::Unique<Outer2<dummy3::TestType>>`
-   = note: required because it appears within the type `std::boxed::Box<Outer2<dummy3::TestType>>`
+   = note: required because of the requirements on the impl of `Send` for `Unique<Outer2<dummy3::TestType>>`
+   = note: required because it appears within the type `Box<Outer2<dummy3::TestType>>`
 
 error[E0277]: `main::TestType` cannot be sent between threads safely
   --> $DIR/negated-auto-traits-error.rs:66:13
@@ -82,11 +82,11 @@ LL | fn is_sync<T: Sync>(_: T) {}
 LL |     is_sync(Outer2(TestType));
    |             ^^^^^^^^^^^^^^^^
    |             |
-   |             expected an implementor of trait `std::marker::Sync`
+   |             expected an implementor of trait `Sync`
    |             help: consider borrowing here: `&Outer2(TestType)`
    |
-   = note: the trait bound `main::TestType: std::marker::Sync` is not satisfied
-   = note: required because of the requirements on the impl of `std::marker::Sync` for `Outer2<main::TestType>`
+   = note: the trait bound `main::TestType: Sync` is not satisfied
+   = note: required because of the requirements on the impl of `Sync` for `Outer2<main::TestType>`
 
 error: aborting due to 7 previous errors
 

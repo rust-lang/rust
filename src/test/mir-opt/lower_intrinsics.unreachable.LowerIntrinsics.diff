@@ -1,0 +1,22 @@
+- // MIR for `unreachable` before LowerIntrinsics
++ // MIR for `unreachable` after LowerIntrinsics
+  
+  fn unreachable() -> ! {
+      let mut _0: !;                       // return place in scope 0 at $DIR/lower_intrinsics.rs:23:25: 23:26
+      let mut _1: !;                       // in scope 0 at $DIR/lower_intrinsics.rs:23:27: 25:2
+      let _2: ();                          // in scope 0 at $DIR/lower_intrinsics.rs:24:14: 24:45
+      let mut _3: !;                       // in scope 0 at $DIR/lower_intrinsics.rs:24:14: 24:45
+      scope 1 {
+      }
+  
+      bb0: {
+          StorageLive(_2);                 // scope 0 at $DIR/lower_intrinsics.rs:24:5: 24:47
+          StorageLive(_3);                 // scope 1 at $DIR/lower_intrinsics.rs:24:14: 24:45
+-         std::intrinsics::unreachable();  // scope 1 at $DIR/lower_intrinsics.rs:24:14: 24:45
+-                                          // mir::Constant
+-                                          // + span: $DIR/lower_intrinsics.rs:24:14: 24:43
+-                                          // + literal: Const { ty: unsafe extern "rust-intrinsic" fn() -> ! {std::intrinsics::unreachable}, val: Value(Scalar(<ZST>)) }
++         unreachable;                     // scope 1 at $DIR/lower_intrinsics.rs:24:14: 24:45
+      }
+  }
+  

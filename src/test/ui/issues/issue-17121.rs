@@ -1,7 +1,6 @@
 // check-pass
 #![allow(dead_code)]
 // pretty-expanded FIXME #23616
-// ignore-cloudabi no std::fs
 
 use std::fs::File;
 use std::io::{self, BufReader, Read};

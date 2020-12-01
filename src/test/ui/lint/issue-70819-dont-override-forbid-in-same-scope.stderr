@@ -1,0 +1,29 @@
+error[E0453]: deny(unused) incompatible with previous forbid in same scope
+  --> $DIR/issue-70819-dont-override-forbid-in-same-scope.rs:19:13
+   |
+LL |     #![forbid(unused)]
+   |               ------ `forbid` level set here
+LL |     #![deny(unused)]
+   |             ^^^^^^
+
+error[E0453]: warn(unused) incompatible with previous forbid in same scope
+  --> $DIR/issue-70819-dont-override-forbid-in-same-scope.rs:21:13
+   |
+LL |     #![forbid(unused)]
+   |               ------ `forbid` level set here
+...
+LL |     #![warn(unused)]
+   |             ^^^^^^
+
+error[E0453]: allow(unused) incompatible with previous forbid in same scope
+  --> $DIR/issue-70819-dont-override-forbid-in-same-scope.rs:23:14
+   |
+LL |     #![forbid(unused)]
+   |               ------ `forbid` level set here
+...
+LL |     #![allow(unused)]
+   |              ^^^^^^
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0453`.

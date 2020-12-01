@@ -2,11 +2,10 @@ fn main() {
     (0..)
         .map(
             #[target_feature(enable = "")]
-            //~^ ERROR: the feature named `` is not valid for this target
-            //~| ERROR: `#[target_feature(..)]` can only be applied to `unsafe` functions
+            //~^ ERROR: attribute should be applied to a function
             #[track_caller]
-            //~^ ERROR: `#[track_caller]` requires Rust ABI
             |_| (),
+            //~^ NOTE: not a function
         )
         .next();
 }

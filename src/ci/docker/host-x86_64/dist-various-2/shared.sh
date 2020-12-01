@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 hide_output() {
   { set +x; } 2>/dev/null
   on_err="

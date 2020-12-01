@@ -1,5 +1,5 @@
 // compile-flags: -Z print-type-sizes
-// build-pass (FIXME(62277): could be check-pass?)
+// build-pass
 
 // All of the types that occur in this function are uninteresting, in
 // that one cannot control the sizes of these types with the same sort

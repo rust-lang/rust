@@ -1,5 +1,6 @@
 // Check that we check that default associated types satisfy the required
 // bounds on them.
+// ignore-compare-mode-chalk
 
 #![feature(specialization)]
 //~^ WARNING `specialization` is incomplete
@@ -16,7 +17,7 @@ trait X {
 // normalization.
 impl<T> X for T {
     default type U = str;
-    //~^ ERROR the trait bound `str: std::clone::Clone` is not satisfied
+    //~^ ERROR the trait bound `str: Clone` is not satisfied
 }
 
 pub fn main() {

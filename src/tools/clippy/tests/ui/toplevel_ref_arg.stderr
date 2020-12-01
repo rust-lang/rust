@@ -1,5 +1,5 @@
 error: `ref` on an entire `let` pattern is discouraged, take a reference with `&` instead
-  --> $DIR/toplevel_ref_arg.rs:10:9
+  --> $DIR/toplevel_ref_arg.rs:20:9
    |
 LL |     let ref _x = 1;
    |     ----^^^^^^----- help: try: `let _x = &1;`
@@ -7,28 +7,39 @@ LL |     let ref _x = 1;
    = note: `-D clippy::toplevel-ref-arg` implied by `-D warnings`
 
 error: `ref` on an entire `let` pattern is discouraged, take a reference with `&` instead
-  --> $DIR/toplevel_ref_arg.rs:12:9
+  --> $DIR/toplevel_ref_arg.rs:22:9
    |
 LL |     let ref _y: (&_, u8) = (&1, 2);
    |     ----^^^^^^--------------------- help: try: `let _y: &(&_, u8) = &(&1, 2);`
 
 error: `ref` on an entire `let` pattern is discouraged, take a reference with `&` instead
-  --> $DIR/toplevel_ref_arg.rs:14:9
+  --> $DIR/toplevel_ref_arg.rs:24:9
    |
 LL |     let ref _z = 1 + 2;
    |     ----^^^^^^--------- help: try: `let _z = &(1 + 2);`
 
 error: `ref` on an entire `let` pattern is discouraged, take a reference with `&` instead
-  --> $DIR/toplevel_ref_arg.rs:16:9
+  --> $DIR/toplevel_ref_arg.rs:26:9
    |
 LL |     let ref mut _z = 1 + 2;
    |     ----^^^^^^^^^^--------- help: try: `let _z = &mut (1 + 2);`
 
 error: `ref` on an entire `let` pattern is discouraged, take a reference with `&` instead
-  --> $DIR/toplevel_ref_arg.rs:21:9
+  --> $DIR/toplevel_ref_arg.rs:31:9
    |
 LL |     let ref _x = vec![1, 2, 3];
    |     ----^^^^^^----------------- help: try: `let _x = &vec![1, 2, 3];`
 
-error: aborting due to 5 previous errors
+error: `ref` on an entire `let` pattern is discouraged, take a reference with `&` instead
+  --> $DIR/toplevel_ref_arg.rs:11:13
+   |
+LL |         let ref _y = 42;
+   |         ----^^^^^^------ help: try: `let _y = &42;`
+...
+LL |         gen_binding!();
+   |         --------------- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 6 previous errors
 

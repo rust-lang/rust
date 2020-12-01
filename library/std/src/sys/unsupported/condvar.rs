@@ -3,6 +3,8 @@ use crate::time::Duration;
 
 pub struct Condvar {}
 
+pub type MovableCondvar = Condvar;
+
 impl Condvar {
     pub const fn new() -> Condvar {
         Condvar {}

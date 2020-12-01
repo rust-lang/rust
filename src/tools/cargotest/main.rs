@@ -22,14 +22,14 @@ const TEST_REPOS: &[Test] = &[
     Test {
         name: "ripgrep",
         repo: "https://github.com/BurntSushi/ripgrep",
-        sha: "ad9befbc1d3b5c695e7f6b6734ee1b8e683edd41",
+        sha: "3de31f752729525d85a3d1575ac1978733b3f7e7",
         lock: None,
         packages: &[],
     },
     Test {
         name: "tokei",
         repo: "https://github.com/XAMPPRocky/tokei",
-        sha: "a950ff128d5a435a8083b1c7577c0431f98360ca",
+        sha: "fdf3f8cb279a7aeac0696c87e5d8b0cd946e4f9e",
         lock: None,
         packages: &[],
     },

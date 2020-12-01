@@ -1,0 +1,8 @@
+error: expected one of `!`, `(`, `+`, `,`, `::`, `<`, or `>`, found `=`
+  --> $DIR/default_trait_param.rs:3:28
+   |
+LL | trait Foo<const KIND: bool = true> {}
+   |                            ^ expected one of 7 possible tokens
+
+error: aborting due to previous error
+

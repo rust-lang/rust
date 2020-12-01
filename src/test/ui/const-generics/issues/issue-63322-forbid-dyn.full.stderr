@@ -1,0 +1,9 @@
+error[E0741]: `&'static (dyn A + 'static)` must be annotated with `#[derive(PartialEq, Eq)]` to be used as the type of a const parameter
+  --> $DIR/issue-63322-forbid-dyn.rs:10:18
+   |
+LL | fn test<const T: &'static dyn A>() {
+   |                  ^^^^^^^^^^^^^^ `&'static (dyn A + 'static)` doesn't derive both `PartialEq` and `Eq`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0741`.

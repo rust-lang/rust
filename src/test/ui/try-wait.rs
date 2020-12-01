@@ -1,7 +1,6 @@
 // run-pass
 
 #![allow(stable_features)]
-// ignore-cloudabi no processes
 // ignore-emscripten no processes
 // ignore-sgx no processes
 

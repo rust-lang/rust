@@ -1,24 +1,20 @@
 use crate::fmt;
+use crate::iter::{DoubleEndedIterator, Fuse, FusedIterator, Iterator, Map};
 use crate::ops::Try;
-
-use super::super::{DoubleEndedIterator, Fuse, FusedIterator, Iterator};
-use super::Map;
 
 /// An iterator that maps each element to an iterator, and yields the elements
 /// of the produced iterators.
 ///
-/// This `struct` is created by the [`flat_map`] method on [`Iterator`]. See its
-/// documentation for more.
-///
-/// [`flat_map`]: trait.Iterator.html#method.flat_map
-/// [`Iterator`]: trait.Iterator.html
+/// This `struct` is created by [`Iterator::flat_map`]. See its documentation
+/// for more.
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct FlatMap<I, U: IntoIterator, F> {
     inner: FlattenCompat<Map<I, F>, <U as IntoIterator>::IntoIter>,
 }
+
 impl<I: Iterator, U: IntoIterator, F: FnMut(I::Item) -> U> FlatMap<I, U, F> {
-    pub(in super::super) fn new(iter: I, f: F) -> FlatMap<I, U, F> {
+    pub(in crate::iter) fn new(iter: I, f: F) -> FlatMap<I, U, F> {
         FlatMap { inner: FlattenCompat::new(iter.map(f)) }
     }
 }
@@ -124,8 +120,7 @@ where
 /// This `struct` is created by the [`flatten`] method on [`Iterator`]. See its
 /// documentation for more.
 ///
-/// [`flatten`]: trait.Iterator.html#method.flatten
-/// [`Iterator`]: trait.Iterator.html
+/// [`flatten`]: Iterator::flatten()
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "iterator_flatten", since = "1.29.0")]
 pub struct Flatten<I: Iterator<Item: IntoIterator>> {
@@ -320,7 +315,7 @@ where
         }
         self.backiter = None;
 
-        Try::from_ok(init)
+        try { init }
     }
 
     #[inline]
@@ -400,7 +395,7 @@ where
         }
         self.frontiter = None;
 
-        Try::from_ok(init)
+        try { init }
     }
 
     #[inline]

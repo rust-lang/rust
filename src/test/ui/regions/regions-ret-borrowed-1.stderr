@@ -4,7 +4,7 @@ error[E0495]: cannot infer an appropriate lifetime due to conflicting requiremen
 LL |     with(|o| o)
    |              ^
    |
-note: first, the lifetime cannot outlive the anonymous lifetime #2 defined on the body at 10:10...
+note: first, the lifetime cannot outlive the anonymous lifetime #1 defined on the body at 10:10...
   --> $DIR/regions-ret-borrowed-1.rs:10:10
    |
 LL |     with(|o| o)

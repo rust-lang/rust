@@ -7,11 +7,11 @@
 extern crate test_macros;
 
 fn _test_inner() {
-    #![empty_attr] //~ ERROR: non-builtin inner attributes are unstable
+    #![empty_attr] //~ ERROR: inner macro attributes are unstable
 }
 
 mod _test2_inner {
-    #![empty_attr] //~ ERROR: non-builtin inner attributes are unstable
+    #![empty_attr] //~ ERROR: inner macro attributes are unstable
 }
 
 #[empty_attr = "y"] //~ ERROR: key-value macro attributes are not supported
@@ -43,6 +43,11 @@ fn attrs() {
     // Expr macro
     let _x = #[identity_attr] println!();
     //~^ ERROR: custom attributes cannot be applied to expressions
+}
+
+fn test_case() {
+    #![test] //~ ERROR inner macro attributes are unstable
+             //~| WARN this was previously accepted
 }
 
 fn main() {}

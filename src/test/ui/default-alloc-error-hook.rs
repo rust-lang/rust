@@ -1,5 +1,4 @@
 // run-pass
-// ignore-cloudabi no processes
 // ignore-emscripten no processes
 // ignore-sgx no processes
 
@@ -16,5 +15,5 @@ fn main() {
     let me = env::current_exe().unwrap();
     let output = Command::new(&me).arg("next").output().unwrap();
     assert!(!output.status.success(), "{:?} is a success", output.status);
-    assert_eq!(str::from_utf8(&output.stderr).unwrap(), "memory allocation of 42 bytes failed");
+    assert_eq!(str::from_utf8(&output.stderr).unwrap(), "memory allocation of 42 bytes failed\n");
 }

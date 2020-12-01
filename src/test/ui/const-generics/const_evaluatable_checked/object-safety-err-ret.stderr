@@ -1,0 +1,18 @@
+error[E0038]: the trait `Foo` cannot be made into an object
+  --> $DIR/object-safety-err-ret.rs:17:15
+   |
+LL | fn use_dyn(v: &dyn Foo) {
+   |               ^^^^^^^^ `Foo` cannot be made into an object
+   |
+   = help: consider moving `test` to another trait
+note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/object-safety-err-ret.rs:8:23
+   |
+LL | trait Foo {
+   |       --- this trait cannot be made into an object...
+LL |     fn test(&self) -> [u8; bar::<Self>()];
+   |                       ^^^^^^^^^^^^^^^^^^^ ...because method `test` references the `Self` type in its return type
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0038`.

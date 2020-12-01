@@ -1,0 +1,42 @@
+error: `..` can only be used once per tuple pattern
+  --> $DIR/tuple_destructure_fail.rs:7:16
+   |
+LL |     (a, .., b, ..) = (0, 1);
+   |         --     ^^ can only be used once per tuple pattern
+   |         |
+   |         previously used here
+
+error[E0308]: mismatched types
+  --> $DIR/tuple_destructure_fail.rs:8:5
+   |
+LL |     (a, a, b) = (1, 2);
+   |     ^^^^^^^^^   ------ this expression has type `({integer}, {integer})`
+   |     |
+   |     expected a tuple with 2 elements, found one with 3 elements
+   |
+   = note: expected type `({integer}, {integer})`
+             found tuple `(_, _, _)`
+
+error[E0070]: invalid left-hand side of assignment
+  --> $DIR/tuple_destructure_fail.rs:9:13
+   |
+LL |     (C, ..) = (0,1);
+   |      -      ^
+   |      |
+   |      cannot assign to this expression
+
+error[E0308]: mismatched types
+  --> $DIR/tuple_destructure_fail.rs:10:5
+   |
+LL |     (_,) = (1, 2);
+   |     ^^^^   ------ this expression has type `({integer}, {integer})`
+   |     |
+   |     expected a tuple with 2 elements, found one with 1 element
+   |
+   = note: expected type `({integer}, {integer})`
+             found tuple `(_,)`
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0070, E0308.
+For more information about an error, try `rustc --explain E0070`.

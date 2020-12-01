@@ -1,6 +1,7 @@
 // Regression test for #53789.
 //
 // check-pass
+// ignore-compare-mode-chalk
 
 use std::collections::BTreeMap;
 use std::ops::Range;

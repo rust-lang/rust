@@ -1,6 +1,6 @@
-// MIR for `std::intrinsics::drop_in_place` after SimplifyCfg-make_shim
+// MIR for `drop_in_place` after SimplifyCfg-make_shim
 
-fn std::intrinsics::drop_in_place(_1: *mut Test) -> () {
+fn drop_in_place(_1: *mut Test) -> () {
     let mut _0: ();                      // return place in scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
     let mut _2: &mut Test;               // in scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
     let mut _3: ();                      // in scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
@@ -8,7 +8,7 @@ fn std::intrinsics::drop_in_place(_1: *mut Test) -> () {
     bb0: {
         Retag([raw] _1);                 // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
         _2 = &mut (*_1);                 // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
-        _3 = <Test as std::ops::Drop>::drop(move _2) -> bb1; // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+        _3 = <Test as Drop>::drop(move _2) -> bb1; // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
                                          // mir::Constant
                                          // + span: $SRC_DIR/core/src/ptr/mod.rs:LL:COL
                                          // + literal: Const { ty: for<'r> fn(&'r mut Test) {<Test as std::ops::Drop>::drop}, val: Value(Scalar(<ZST>)) }

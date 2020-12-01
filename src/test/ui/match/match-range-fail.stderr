@@ -1,4 +1,4 @@
-error[E0029]: only char and numeric types are allowed in range patterns
+error[E0029]: only `char` and numeric types are allowed in range patterns
   --> $DIR/match-range-fail.rs:3:9
    |
 LL |         "bar" ..= "foo" => { }
@@ -7,7 +7,7 @@ LL |         "bar" ..= "foo" => { }
    |         |         this is of type `&'static str` but it should be `char` or numeric
    |         this is of type `&'static str` but it should be `char` or numeric
 
-error[E0029]: only char and numeric types are allowed in range patterns
+error[E0029]: only `char` and numeric types are allowed in range patterns
   --> $DIR/match-range-fail.rs:8:16
    |
 LL |         10 ..= "what" => ()
@@ -15,7 +15,7 @@ LL |         10 ..= "what" => ()
    |         |
    |         this is of type `{integer}`
 
-error[E0029]: only char and numeric types are allowed in range patterns
+error[E0029]: only `char` and numeric types are allowed in range patterns
   --> $DIR/match-range-fail.rs:13:9
    |
 LL |         true ..= "what" => {}

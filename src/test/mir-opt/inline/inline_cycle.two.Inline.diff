@@ -1,0 +1,47 @@
+- // MIR for `two` before Inline
++ // MIR for `two` after Inline
+  
+  fn two() -> () {
+      let mut _0: ();                      // return place in scope 0 at $DIR/inline-cycle.rs:48:10: 48:10
+      let _1: ();                          // in scope 0 at $DIR/inline-cycle.rs:49:5: 49:12
++     let mut _2: fn() {f};                // in scope 0 at $DIR/inline-cycle.rs:49:5: 49:12
++     let mut _5: ();                      // in scope 0 at $DIR/inline-cycle.rs:49:5: 49:12
++     scope 1 (inlined call::<fn() {f}>) { // at $DIR/inline-cycle.rs:49:5: 49:12
++         debug f => _2;                   // in scope 1 at $DIR/inline-cycle.rs:49:5: 49:12
++         let _3: ();                      // in scope 1 at $DIR/inline-cycle.rs:49:5: 49:12
++         let mut _4: fn() {f};            // in scope 1 at $DIR/inline-cycle.rs:49:5: 49:12
++         scope 2 (inlined <fn() {f} as FnOnce<()>>::call_once - shim(fn() {f})) { // at $DIR/inline-cycle.rs:49:5: 49:12
++         }
++     }
+  
+      bb0: {
+          StorageLive(_1);                 // scope 0 at $DIR/inline-cycle.rs:49:5: 49:12
+-         _1 = call::<fn() {f}>(f) -> bb1; // scope 0 at $DIR/inline-cycle.rs:49:5: 49:12
++         StorageLive(_2);                 // scope 0 at $DIR/inline-cycle.rs:49:5: 49:12
++         _2 = f;                          // scope 0 at $DIR/inline-cycle.rs:49:5: 49:12
+                                           // mir::Constant
+-                                          // + span: $DIR/inline-cycle.rs:49:5: 49:9
+-                                          // + literal: Const { ty: fn(fn() {f}) {call::<fn() {f}>}, val: Value(Scalar(<ZST>)) }
+-                                          // mir::Constant
+                                           // + span: $DIR/inline-cycle.rs:49:10: 49:11
+                                           // + literal: Const { ty: fn() {f}, val: Value(Scalar(<ZST>)) }
++         StorageLive(_3);                 // scope 1 at $DIR/inline-cycle.rs:49:5: 49:12
++         StorageLive(_4);                 // scope 1 at $DIR/inline-cycle.rs:49:5: 49:12
++         _4 = move _2;                    // scope 1 at $DIR/inline-cycle.rs:49:5: 49:12
++         StorageLive(_5);                 // scope 1 at $DIR/inline-cycle.rs:49:5: 49:12
++         _5 = const ();                   // scope 1 at $DIR/inline-cycle.rs:49:5: 49:12
++         _3 = move _4() -> bb1;           // scope 2 at $DIR/inline-cycle.rs:49:5: 49:12
+      }
+  
+      bb1: {
++         StorageDead(_5);                 // scope 1 at $DIR/inline-cycle.rs:49:5: 49:12
++         StorageDead(_4);                 // scope 1 at $DIR/inline-cycle.rs:49:5: 49:12
++         StorageDead(_3);                 // scope 1 at $DIR/inline-cycle.rs:49:5: 49:12
++         _1 = const ();                   // scope 1 at $DIR/inline-cycle.rs:49:5: 49:12
++         StorageDead(_2);                 // scope 0 at $DIR/inline-cycle.rs:49:5: 49:12
+          StorageDead(_1);                 // scope 0 at $DIR/inline-cycle.rs:49:12: 49:13
+          _0 = const ();                   // scope 0 at $DIR/inline-cycle.rs:48:10: 50:2
+          return;                          // scope 0 at $DIR/inline-cycle.rs:50:2: 50:2
+      }
+  }
+  

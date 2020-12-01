@@ -112,23 +112,25 @@ LL |     C::A;
 error[E0038]: the trait `assoc_const::C` cannot be made into an object
   --> $DIR/trait-item-privacy.rs:101:5
    |
-LL |         const A: u8 = 0;
-   |               - ...because it contains this associated `const`
-...
-LL |         const B: u8 = 0;
-   |               - ...because it contains this associated `const`
-...
-LL |     pub trait C: A + B {
-   |               - this trait cannot be made into an object...
-LL |         const C: u8 = 0;
-   |               - ...because it contains this associated `const`
-...
 LL |     C::A;
-   |     ^^^^ the trait `assoc_const::C` cannot be made into an object
+   |     ^^^^ `assoc_const::C` cannot be made into an object
    |
    = help: consider moving `C` to another trait
    = help: consider moving `B` to another trait
    = help: consider moving `A` to another trait
+note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/trait-item-privacy.rs:25:15
+   |
+LL |         const A: u8 = 0;
+   |               ^ ...because it contains this associated `const`
+...
+LL |         const B: u8 = 0;
+   |               ^ ...because it contains this associated `const`
+...
+LL |     pub trait C: A + B {
+   |               - this trait cannot be made into an object...
+LL |         const C: u8 = 0;
+   |               ^ ...because it contains this associated `const`
 
 error[E0223]: ambiguous associated type
   --> $DIR/trait-item-privacy.rs:115:12

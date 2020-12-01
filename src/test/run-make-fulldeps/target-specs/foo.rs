@@ -1,4 +1,4 @@
-#![feature(lang_items, no_core, optin_builtin_traits)]
+#![feature(lang_items, no_core, auto_traits)]
 #![no_core]
 
 #[lang="copy"]

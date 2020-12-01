@@ -10,6 +10,7 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
+use rustc_span::sym;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for address of operations (`&`) that are going to
@@ -46,7 +47,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessBorrow {
             return;
         }
         if let ExprKind::AddrOf(BorrowKind::Ref, Mutability::Not, ref inner) = e.kind {
-            if let ty::Ref(..) = cx.typeck_results().expr_ty(inner).kind {
+            if let ty::Ref(..) = cx.typeck_results().expr_ty(inner).kind() {
                 for adj3 in cx.typeck_results().expr_adjustments(e).windows(3) {
                     if let [Adjustment {
                         kind: Adjust::Deref(_), ..
@@ -85,9 +86,9 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessBorrow {
         }
         if_chain! {
             if let PatKind::Binding(BindingAnnotation::Ref, .., name, _) = pat.kind;
-            if let ty::Ref(_, tam, mutbl) = cx.typeck_results().pat_ty(pat).kind;
+            if let ty::Ref(_, tam, mutbl) = *cx.typeck_results().pat_ty(pat).kind();
             if mutbl == Mutability::Not;
-            if let ty::Ref(_, _, mutbl) = tam.kind;
+            if let ty::Ref(_, _, mutbl) = *tam.kind();
             // only lint immutable refs, because borrowed `&mut T` cannot be moved out
             if mutbl == Mutability::Not;
             then {
@@ -112,7 +113,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessBorrow {
     }
 
     fn check_item(&mut self, _: &LateContext<'tcx>, item: &'tcx Item<'_>) {
-        if item.attrs.iter().any(|a| a.has_name(sym!(automatically_derived))) {
+        if item.attrs.iter().any(|a| a.has_name(sym::automatically_derived)) {
             debug_assert!(self.derived_item.is_none());
             self.derived_item = Some(item.hir_id);
         }

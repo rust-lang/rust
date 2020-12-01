@@ -1,16 +1,16 @@
-error[E0277]: the trait bound `U: std::marker::Copy` is not satisfied
+error[E0277]: the trait bound `U: Copy` is not satisfied
   --> $DIR/wf-in-fn-where-clause.rs:10:14
    |
 LL | trait MustBeCopy<T:Copy> {
    |                    ---- required by this bound in `MustBeCopy`
 ...
 LL |     where T: MustBeCopy<U>
-   |              ^^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `U`
+   |              ^^^^^^^^^^^^^ the trait `Copy` is not implemented for `U`
    |
 help: consider further restricting type parameter `U`
    |
-LL |     where T: MustBeCopy<U>, U: std::marker::Copy
-   |                           ^^^^^^^^^^^^^^^^^^^^^^
+LL |     where T: MustBeCopy<U>, U: Copy
+   |                           ^^^^^^^^^
 
 error: aborting due to previous error
 

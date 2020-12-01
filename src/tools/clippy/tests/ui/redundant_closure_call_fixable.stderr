@@ -1,4 +1,4 @@
-error: try not to call a closure in the expression where it is declared.
+error: try not to call a closure in the expression where it is declared
   --> $DIR/redundant_closure_call_fixable.rs:7:13
    |
 LL |     let a = (|| 42)();

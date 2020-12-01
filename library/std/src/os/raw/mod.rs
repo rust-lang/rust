@@ -8,6 +8,9 @@
 
 #![stable(feature = "raw_os", since = "1.1.0")]
 
+#[cfg(test)]
+mod tests;
+
 #[doc(include = "char.md")]
 #[cfg(any(
     all(
@@ -19,7 +22,8 @@
             target_arch = "powerpc",
             target_arch = "powerpc64",
             target_arch = "s390x",
-            target_arch = "riscv64"
+            target_arch = "riscv64",
+            target_arch = "riscv32"
         )
     ),
     all(target_os = "android", any(target_arch = "aarch64", target_arch = "arm")),
@@ -62,7 +66,8 @@ pub type c_char = u8;
             target_arch = "powerpc",
             target_arch = "powerpc64",
             target_arch = "s390x",
-            target_arch = "riscv64"
+            target_arch = "riscv64",
+            target_arch = "riscv32"
         )
     ),
     all(target_os = "android", any(target_arch = "aarch64", target_arch = "arm")),
@@ -144,24 +149,3 @@ pub type c_double = f64;
 #[stable(feature = "raw_os", since = "1.1.0")]
 #[doc(no_inline)]
 pub use core::ffi::c_void;
-
-#[cfg(test)]
-#[allow(unused_imports)]
-mod tests {
-    use crate::any::TypeId;
-    use crate::mem;
-
-    macro_rules! ok {
-        ($($t:ident)*) => {$(
-            assert!(TypeId::of::<libc::$t>() == TypeId::of::<raw::$t>(),
-                    "{} is wrong", stringify!($t));
-        )*}
-    }
-
-    #[test]
-    fn same() {
-        use crate::os::raw;
-        ok!(c_char c_schar c_uchar c_short c_ushort c_int c_uint c_long c_ulong
-            c_longlong c_ulonglong c_float c_double);
-    }
-}

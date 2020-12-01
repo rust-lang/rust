@@ -25,7 +25,13 @@ LL | /     format!(
 LL | |         r##"foo {{}}
 LL | | " bar"##
 LL | |     );
-   | |______^ help: consider using `.to_string()`: `"foo {}/n/" bar".to_string();`
+   | |______^
+   |
+help: consider using `.to_string()`
+   |
+LL |     r##"foo {}
+LL | " bar"##.to_string();
+   |
 
 error: useless use of `format!`
   --> $DIR/format.rs:21:5

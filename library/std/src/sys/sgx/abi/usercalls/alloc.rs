@@ -89,9 +89,12 @@ pub unsafe trait UserSafe {
     /// * the pointed-to range is not in user memory.
     unsafe fn from_raw_sized(ptr: *mut u8, size: usize) -> NonNull<Self> {
         assert!(ptr.wrapping_add(size) >= ptr);
-        let ret = Self::from_raw_sized_unchecked(ptr, size);
-        Self::check_ptr(ret);
-        NonNull::new_unchecked(ret as _)
+        // SAFETY: The caller has guaranteed the pointer is valid
+        let ret = unsafe { Self::from_raw_sized_unchecked(ptr, size) };
+        unsafe {
+            Self::check_ptr(ret);
+            NonNull::new_unchecked(ret as _)
+        }
     }
 
     /// Checks if a pointer may point to `Self` in user memory.
@@ -112,7 +115,7 @@ pub unsafe trait UserSafe {
         let is_aligned = |p| -> bool { 0 == (p as usize) & (Self::align_of() - 1) };
 
         assert!(is_aligned(ptr as *const u8));
-        assert!(is_user_range(ptr as _, mem::size_of_val(&*ptr)));
+        assert!(is_user_range(ptr as _, mem::size_of_val(unsafe { &*ptr })));
         assert!(!ptr.is_null());
     }
 }
@@ -135,11 +138,23 @@ unsafe impl<T: UserSafeSized> UserSafe for [T] {
         mem::align_of::<T>()
     }
 
+    /// # Safety
+    /// Behavior is undefined if any of these conditions are violated:
+    /// * `ptr` must be [valid] for writes of `size` many bytes, and it must be
+    ///   properly aligned.
+    ///
+    /// [valid]: core::ptr#safety
+    /// # Panics
+    ///
+    /// This function panics if:
+    ///
+    /// * the element size is not a factor of the size
     unsafe fn from_raw_sized_unchecked(ptr: *mut u8, size: usize) -> *mut Self {
         let elem_size = mem::size_of::<T>();
         assert_eq!(size % elem_size, 0);
         let len = size / elem_size;
-        slice::from_raw_parts_mut(ptr as _, len)
+        // SAFETY: The caller must uphold the safety contract for `from_raw_sized_unchecked`
+        unsafe { slice::from_raw_parts_mut(ptr as _, len) }
     }
 }
 
@@ -170,13 +185,15 @@ trait NewUserRef<T: ?Sized> {
 
 impl<T: ?Sized> NewUserRef<*mut T> for NonNull<UserRef<T>> {
     unsafe fn new_userref(v: *mut T) -> Self {
-        NonNull::new_unchecked(v as _)
+        // SAFETY: The caller has guaranteed the pointer is valid
+        unsafe { NonNull::new_unchecked(v as _) }
     }
 }
 
 impl<T: ?Sized> NewUserRef<NonNull<T>> for NonNull<UserRef<T>> {
     unsafe fn new_userref(v: NonNull<T>) -> Self {
-        NonNull::new_userref(v.as_ptr())
+        // SAFETY: The caller has guaranteed the pointer is valid
+        unsafe { NonNull::new_userref(v.as_ptr()) }
     }
 }
 
@@ -231,8 +248,9 @@ where
     /// * The pointer is null
     /// * The pointed-to range is not in user memory
     pub unsafe fn from_raw(ptr: *mut T) -> Self {
-        T::check_ptr(ptr);
-        User(NonNull::new_userref(ptr))
+        // SAFETY: the caller must uphold the safety contract for `from_raw`.
+        unsafe { T::check_ptr(ptr) };
+        User(unsafe { NonNull::new_userref(ptr) })
     }
 
     /// Converts this value into a raw pointer. The value will no longer be
@@ -280,7 +298,9 @@ where
     /// * The pointed-to range does not fit in the address space
     /// * The pointed-to range is not in user memory
     pub unsafe fn from_raw_parts(ptr: *mut T, len: usize) -> Self {
-        User(NonNull::new_userref(<[T]>::from_raw_sized(ptr as _, len * mem::size_of::<T>())))
+        User(unsafe {
+            NonNull::new_userref(<[T]>::from_raw_sized(ptr as _, len * mem::size_of::<T>()))
+        })
     }
 }
 
@@ -301,8 +321,9 @@ where
     /// * The pointer is null
     /// * The pointed-to range is not in user memory
     pub unsafe fn from_ptr<'a>(ptr: *const T) -> &'a Self {
-        T::check_ptr(ptr);
-        &*(ptr as *const Self)
+        // SAFETY: The caller must uphold the safety contract for `from_ptr`.
+        unsafe { T::check_ptr(ptr) };
+        unsafe { &*(ptr as *const Self) }
     }
 
     /// Creates a `&mut UserRef<[T]>` from a raw pointer. See the struct
@@ -318,8 +339,9 @@ where
     /// * The pointer is null
     /// * The pointed-to range is not in user memory
     pub unsafe fn from_mut_ptr<'a>(ptr: *mut T) -> &'a mut Self {
-        T::check_ptr(ptr);
-        &mut *(ptr as *mut Self)
+        // SAFETY: The caller must uphold the safety contract for `from_mut_ptr`.
+        unsafe { T::check_ptr(ptr) };
+        unsafe { &mut *(ptr as *mut Self) }
     }
 
     /// Copies `val` into user memory.
@@ -394,7 +416,10 @@ where
     /// * The pointed-to range does not fit in the address space
     /// * The pointed-to range is not in user memory
     pub unsafe fn from_raw_parts<'a>(ptr: *const T, len: usize) -> &'a Self {
-        &*(<[T]>::from_raw_sized(ptr as _, len * mem::size_of::<T>()).as_ptr() as *const Self)
+        // SAFETY: The caller must uphold the safety contract for `from_raw_parts`.
+        unsafe {
+            &*(<[T]>::from_raw_sized(ptr as _, len * mem::size_of::<T>()).as_ptr() as *const Self)
+        }
     }
 
     /// Creates a `&mut UserRef<[T]>` from a raw thin pointer and a slice length.
@@ -412,7 +437,10 @@ where
     /// * The pointed-to range does not fit in the address space
     /// * The pointed-to range is not in user memory
     pub unsafe fn from_raw_parts_mut<'a>(ptr: *mut T, len: usize) -> &'a mut Self {
-        &mut *(<[T]>::from_raw_sized(ptr as _, len * mem::size_of::<T>()).as_ptr() as *mut Self)
+        // SAFETY: The caller must uphold the safety contract for `from_raw_parts_mut`.
+        unsafe {
+            &mut *(<[T]>::from_raw_sized(ptr as _, len * mem::size_of::<T>()).as_ptr() as *mut Self)
+        }
     }
 
     /// Obtain a raw pointer to the first element of this user slice.
@@ -437,13 +465,12 @@ where
     /// This function panics if the destination doesn't have the same size as
     /// the source. This can happen for dynamically-sized types such as slices.
     pub fn copy_to_enclave_vec(&self, dest: &mut Vec<T>) {
-        unsafe {
-            if let Some(missing) = self.len().checked_sub(dest.capacity()) {
-                dest.reserve(missing)
-            }
-            dest.set_len(self.len());
-            self.copy_to_enclave(&mut dest[..]);
+        if let Some(missing) = self.len().checked_sub(dest.capacity()) {
+            dest.reserve(missing)
         }
+        // SAFETY: We reserve enough space above.
+        unsafe { dest.set_len(self.len()) };
+        self.copy_to_enclave(&mut dest[..]);
     }
 
     /// Copies the value from user memory into a vector in enclave memory.

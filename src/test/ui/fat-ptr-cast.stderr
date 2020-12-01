@@ -30,7 +30,7 @@ LL |     a as u32;
    |
    = help: cast through a raw pointer first
 
-error[E0605]: non-primitive cast: `std::boxed::Box<[i32]>` as `usize`
+error[E0605]: non-primitive cast: `Box<[i32]>` as `usize`
   --> $DIR/fat-ptr-cast.rs:14:5
    |
 LL |     b as usize;

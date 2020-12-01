@@ -1,12 +1,12 @@
 enum FooEnum {
     #[test]
-    //~^ ERROR expected an inert attribute, found an attribute macro
+    //~^ ERROR expected non-macro attribute, found attribute macro
     Bar(i32),
 }
 
 struct FooStruct {
     #[test]
-    //~^ ERROR expected an inert attribute, found an attribute macro
+    //~^ ERROR expected non-macro attribute, found attribute macro
     bar: i32,
 }
 
@@ -21,20 +21,20 @@ fn main() {
     match foo_struct {
         FooStruct {
             #[test] bar
-            //~^ ERROR expected an inert attribute, found an attribute macro
+            //~^ ERROR expected non-macro attribute, found attribute macro
         } => {}
     }
 
     match 1 {
         0 => {}
         #[test]
-        //~^ ERROR expected an inert attribute, found an attribute macro
+        //~^ ERROR expected non-macro attribute, found attribute macro
         _ => {}
     }
 
     let _another_foo_strunct = FooStruct {
         #[test]
-        //~^ ERROR expected an inert attribute, found an attribute macro
+        //~^ ERROR expected non-macro attribute, found attribute macro
         bar: 1,
     };
 }

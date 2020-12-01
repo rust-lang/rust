@@ -1,15 +1,17 @@
 error[E0038]: the trait `Trait` cannot be made into an object
   --> $DIR/E0038.rs:5:16
    |
+LL | fn call_foo(x: Box<dyn Trait>) {
+   |                ^^^^^^^^^^^^^^ `Trait` cannot be made into an object
+   |
+   = help: consider moving `foo` to another trait
+note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/E0038.rs:2:22
+   |
 LL | trait Trait {
    |       ----- this trait cannot be made into an object...
 LL |     fn foo(&self) -> Self;
-   |                      ---- ...because method `foo` references the `Self` type in its return type
-...
-LL | fn call_foo(x: Box<dyn Trait>) {
-   |                ^^^^^^^^^^^^^^ the trait `Trait` cannot be made into an object
-   |
-   = help: consider moving `foo` to another trait
+   |                      ^^^^ ...because method `foo` references the `Self` type in its return type
 
 error: aborting due to previous error
 

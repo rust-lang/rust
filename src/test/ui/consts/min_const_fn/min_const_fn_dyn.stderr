@@ -7,7 +7,7 @@ LL |     x.0.field;
    = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
    = help: add `#![feature(const_fn)]` to the crate attributes to enable
 
-error[E0723]: trait bounds other than `Sized` on const fn parameters are unstable
+error[E0723]: unsizing casts to types besides slices are not allowed in const fn
   --> $DIR/min_const_fn_dyn.rs:12:66
    |
 LL | const fn no_inner_dyn_trait_ret() -> Hide { Hide(HasDyn { field: &0 }) }

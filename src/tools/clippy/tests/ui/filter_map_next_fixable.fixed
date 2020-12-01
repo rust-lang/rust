@@ -1,0 +1,10 @@
+// run-rustfix
+
+#![warn(clippy::all, clippy::pedantic)]
+
+fn main() {
+    let a = ["1", "lol", "3", "NaN", "5"];
+
+    let element: Option<i32> = a.iter().find_map(|s| s.parse().ok());
+    assert_eq!(element, Some(1));
+}

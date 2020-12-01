@@ -1,0 +1,45 @@
+// run-rustfix
+#![warn(clippy::single_char_add_str)]
+
+macro_rules! get_string {
+    () => {
+        String::from("Hello world!")
+    };
+}
+
+fn main() {
+    // `push_str` tests
+
+    let mut string = String::new();
+    string.push('R');
+    string.push('\'');
+
+    string.push('u');
+    string.push_str("st");
+    string.push_str("");
+    string.push('\x52');
+    string.push('\u{0052}');
+    string.push('a');
+
+    get_string!().push('ö');
+
+    // `insert_str` tests
+
+    let mut string = String::new();
+    string.insert(0, 'R');
+    string.insert(1, '\'');
+
+    string.insert(0, 'u');
+    string.insert_str(2, "st");
+    string.insert_str(0, "");
+    string.insert(0, '\x52');
+    string.insert(0, '\u{0052}');
+    let x: usize = 2;
+    string.insert(x, 'a');
+    const Y: usize = 1;
+    string.insert(Y, 'a');
+    string.insert(Y, '"');
+    string.insert(Y, '\'');
+
+    get_string!().insert(1, '?');
+}

@@ -1,14 +1,18 @@
 use rustc_errors::Applicability;
-use rustc_hir::{BinOpKind, Expr, ExprKind};
+use rustc_hir::{BinOpKind, BorrowKind, Expr, ExprKind, LangItem, QPath};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Spanned;
+use rustc_span::sym;
 
 use if_chain::if_chain;
 
 use crate::utils::SpanlessEq;
-use crate::utils::{get_parent_expr, is_allowed, is_type_diagnostic_item, span_lint, span_lint_and_sugg, walk_ptrs_ty};
+use crate::utils::{
+    get_parent_expr, is_allowed, is_type_diagnostic_item, match_function_call, method_calls, paths, span_lint,
+    span_lint_and_sugg,
+};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for string appends of the form `x = x + y` (without
@@ -69,7 +73,27 @@ declare_clippy_lint! {
     /// **Why is this bad?** Byte string literals (e.g., `b"foo"`) can be used
     /// instead. They are shorter but less discoverable than `as_bytes()`.
     ///
-    /// **Known Problems:** None.
+    /// **Known Problems:**
+    /// `"str".as_bytes()` and the suggested replacement of `b"str"` are not
+    /// equivalent because they have different types. The former is `&[u8]`
+    /// while the latter is `&[u8; 3]`. That means in general they will have a
+    /// different set of methods and different trait implementations.
+    ///
+    /// ```compile_fail
+    /// fn f(v: Vec<u8>) {}
+    ///
+    /// f("...".as_bytes().to_owned()); // works
+    /// f(b"...".to_owned()); // does not work, because arg is [u8; 3] not Vec<u8>
+    ///
+    /// fn g(r: impl std::io::Read) {}
+    ///
+    /// g("...".as_bytes()); // works
+    /// g(b"..."); // does not work
+    /// ```
+    ///
+    /// The actual equivalent of `"str".as_bytes()` with the same type is not
+    /// `b"str"` but `&b"str"[..]`, which is a great deal of punctuation and not
+    /// more readable than a function call.
     ///
     /// **Example:**
     /// ```rust
@@ -80,7 +104,7 @@ declare_clippy_lint! {
     /// let bs = b"a byte string";
     /// ```
     pub STRING_LIT_AS_BYTES,
-    style,
+    nursery,
     "calling `as_bytes` on a string literal instead of using a byte string literal"
 }
 
@@ -134,7 +158,7 @@ impl<'tcx> LateLintPass<'tcx> for StringAdd {
 }
 
 fn is_string(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
-    is_type_diagnostic_item(cx, walk_ptrs_ty(cx.typeck_results().expr_ty(e)), sym!(string_type))
+    is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(e).peel_refs(), sym::string_type)
 }
 
 fn is_add(cx: &LateContext<'_>, src: &Expr<'_>, target: &Expr<'_>) -> bool {
@@ -153,15 +177,74 @@ fn is_add(cx: &LateContext<'_>, src: &Expr<'_>, target: &Expr<'_>) -> bool {
     }
 }
 
+declare_clippy_lint! {
+    /// **What it does:** Check if the string is transformed to byte array and casted back to string.
+    ///
+    /// **Why is this bad?** It's unnecessary, the string can be used directly.
+    ///
+    /// **Known problems:** None
+    ///
+    /// **Example:**
+    /// ```rust
+    /// let _ = std::str::from_utf8(&"Hello World!".as_bytes()[6..11]).unwrap();
+    /// ```
+    /// could be written as
+    /// ```rust
+    /// let _ = &"Hello World!"[6..11];
+    /// ```
+    pub STRING_FROM_UTF8_AS_BYTES,
+    complexity,
+    "casting string slices to byte slices and back"
+}
+
 // Max length a b"foo" string can take
 const MAX_LENGTH_BYTE_STRING_LIT: usize = 32;
 
-declare_lint_pass!(StringLitAsBytes => [STRING_LIT_AS_BYTES]);
+declare_lint_pass!(StringLitAsBytes => [STRING_LIT_AS_BYTES, STRING_FROM_UTF8_AS_BYTES]);
 
 impl<'tcx> LateLintPass<'tcx> for StringLitAsBytes {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
         use crate::utils::{snippet, snippet_with_applicability};
         use rustc_ast::LitKind;
+
+        if_chain! {
+            // Find std::str::converts::from_utf8
+            if let Some(args) = match_function_call(cx, e, &paths::STR_FROM_UTF8);
+
+            // Find string::as_bytes
+            if let ExprKind::AddrOf(BorrowKind::Ref, _, ref args) = args[0].kind;
+            if let ExprKind::Index(ref left, ref right) = args.kind;
+            let (method_names, expressions, _) = method_calls(left, 1);
+            if method_names.len() == 1;
+            if expressions.len() == 1;
+            if expressions[0].len() == 1;
+            if method_names[0] == sym!(as_bytes);
+
+            // Check for slicer
+            if let ExprKind::Struct(ref path, _, _) = right.kind;
+            if let QPath::LangItem(LangItem::Range, _) = path;
+
+            then {
+                let mut applicability = Applicability::MachineApplicable;
+                let string_expression = &expressions[0][0];
+
+                let snippet_app = snippet_with_applicability(
+                    cx,
+                    string_expression.span, "..",
+                    &mut applicability,
+                );
+
+                span_lint_and_sugg(
+                    cx,
+                    STRING_FROM_UTF8_AS_BYTES,
+                    e.span,
+                    "calling a slice of `as_bytes()` with `from_utf8` should be not necessary",
+                    "try",
+                    format!("Some(&{}[{}])", snippet_app, snippet(cx, right.span, "..")),
+                    applicability
+                )
+            }
+        }
 
         if_chain! {
             if let ExprKind::MethodCall(path, _, args, _) = &e.kind;

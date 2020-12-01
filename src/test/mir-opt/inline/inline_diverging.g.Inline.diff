@@ -1,0 +1,52 @@
+- // MIR for `g` before Inline
++ // MIR for `g` after Inline
+  
+  fn g(_1: i32) -> u32 {
+      debug i => _1;                       // in scope 0 at $DIR/inline-diverging.rs:12:10: 12:11
+      let mut _0: u32;                     // return place in scope 0 at $DIR/inline-diverging.rs:12:21: 12:24
+      let mut _2: bool;                    // in scope 0 at $DIR/inline-diverging.rs:13:8: 13:13
+      let mut _3: i32;                     // in scope 0 at $DIR/inline-diverging.rs:13:8: 13:9
+      let mut _4: i32;                     // in scope 0 at $DIR/inline-diverging.rs:14:9: 14:10
+      let mut _5: !;                       // in scope 0 at $DIR/inline-diverging.rs:15:12: 17:6
+      let _6: !;                           // in scope 0 at $DIR/inline-diverging.rs:16:9: 16:16
++     let mut _7: !;                       // in scope 0 at $DIR/inline-diverging.rs:16:9: 16:16
++     scope 1 (inlined panic) {            // at $DIR/inline-diverging.rs:16:9: 16:16
++     }
+  
+      bb0: {
+          StorageLive(_2);                 // scope 0 at $DIR/inline-diverging.rs:13:8: 13:13
+          StorageLive(_3);                 // scope 0 at $DIR/inline-diverging.rs:13:8: 13:9
+          _3 = _1;                         // scope 0 at $DIR/inline-diverging.rs:13:8: 13:9
+          _2 = Gt(move _3, const 0_i32);   // scope 0 at $DIR/inline-diverging.rs:13:8: 13:13
+          StorageDead(_3);                 // scope 0 at $DIR/inline-diverging.rs:13:12: 13:13
+          switchInt(_2) -> [false: bb1, otherwise: bb2]; // scope 0 at $DIR/inline-diverging.rs:13:5: 17:6
+      }
+  
+      bb1: {
+          StorageLive(_6);                 // scope 0 at $DIR/inline-diverging.rs:16:9: 16:16
+-         panic();                         // scope 0 at $DIR/inline-diverging.rs:16:9: 16:16
++         StorageLive(_7);                 // scope 0 at $DIR/inline-diverging.rs:16:9: 16:16
++         begin_panic::<&str>(const "explicit panic"); // scope 1 at $DIR/inline-diverging.rs:16:9: 16:16
+                                           // mir::Constant
+-                                          // + span: $DIR/inline-diverging.rs:16:9: 16:14
+-                                          // + literal: Const { ty: fn() -> ! {panic}, val: Value(Scalar(<ZST>)) }
++                                          // + span: $DIR/inline-diverging.rs:16:9: 16:16
++                                          // + literal: Const { ty: fn(&str) -> ! {std::rt::begin_panic::<&str>}, val: Value(Scalar(<ZST>)) }
++                                          // ty::Const
++                                          // + ty: &str
++                                          // + val: Value(Slice { data: Allocation { bytes: [101, 120, 112, 108, 105, 99, 105, 116, 32, 112, 97, 110, 105, 99], relocations: Relocations(SortedMap { data: [] }), init_mask: InitMask { blocks: [16383], len: Size { raw: 14 } }, size: Size { raw: 14 }, align: Align { pow2: 0 }, mutability: Not, extra: () }, start: 0, end: 14 })
++                                          // mir::Constant
++                                          // + span: $DIR/inline-diverging.rs:16:9: 16:16
++                                          // + literal: Const { ty: &str, val: Value(Slice { data: Allocation { bytes: [101, 120, 112, 108, 105, 99, 105, 116, 32, 112, 97, 110, 105, 99], relocations: Relocations(SortedMap { data: [] }), init_mask: InitMask { blocks: [16383], len: Size { raw: 14 } }, size: Size { raw: 14 }, align: Align { pow2: 0 }, mutability: Not, extra: () }, start: 0, end: 14 }) }
+      }
+  
+      bb2: {
+          StorageLive(_4);                 // scope 0 at $DIR/inline-diverging.rs:14:9: 14:10
+          _4 = _1;                         // scope 0 at $DIR/inline-diverging.rs:14:9: 14:10
+          _0 = move _4 as u32 (Misc);      // scope 0 at $DIR/inline-diverging.rs:14:9: 14:17
+          StorageDead(_4);                 // scope 0 at $DIR/inline-diverging.rs:14:16: 14:17
+          StorageDead(_2);                 // scope 0 at $DIR/inline-diverging.rs:18:1: 18:2
+          return;                          // scope 0 at $DIR/inline-diverging.rs:18:2: 18:2
+      }
+  }
+  

@@ -8,21 +8,21 @@ LL |     let a = &t as &dyn Gettable<T>;
    = note: required for the cast to the object type `dyn Gettable<T>`
 help: consider restricting type parameter `T`
    |
-LL | fn f<T: std::marker::Send>(val: T) {
-   |       ^^^^^^^^^^^^^^^^^^^
+LL | fn f<T: Send>(val: T) {
+   |       ^^^^^^
 
-error[E0277]: the trait bound `T: std::marker::Copy` is not satisfied
+error[E0277]: the trait bound `T: Copy` is not satisfied
   --> $DIR/kindck-impl-type-params.rs:18:13
    |
 LL |     let a = &t as &dyn Gettable<T>;
-   |             ^^ the trait `std::marker::Copy` is not implemented for `T`
+   |             ^^ the trait `Copy` is not implemented for `T`
    |
    = note: required because of the requirements on the impl of `Gettable<T>` for `S<T>`
    = note: required for the cast to the object type `dyn Gettable<T>`
 help: consider restricting type parameter `T`
    |
-LL | fn f<T: std::marker::Copy>(val: T) {
-   |       ^^^^^^^^^^^^^^^^^^^
+LL | fn f<T: Copy>(val: T) {
+   |       ^^^^^^
 
 error[E0277]: `T` cannot be sent between threads safely
   --> $DIR/kindck-impl-type-params.rs:25:31
@@ -34,39 +34,39 @@ LL |     let a: &dyn Gettable<T> = &t;
    = note: required for the cast to the object type `dyn Gettable<T>`
 help: consider restricting type parameter `T`
    |
-LL | fn g<T: std::marker::Send>(val: T) {
-   |       ^^^^^^^^^^^^^^^^^^^
+LL | fn g<T: Send>(val: T) {
+   |       ^^^^^^
 
-error[E0277]: the trait bound `T: std::marker::Copy` is not satisfied
+error[E0277]: the trait bound `T: Copy` is not satisfied
   --> $DIR/kindck-impl-type-params.rs:25:31
    |
 LL |     let a: &dyn Gettable<T> = &t;
-   |                               ^^ the trait `std::marker::Copy` is not implemented for `T`
+   |                               ^^ the trait `Copy` is not implemented for `T`
    |
    = note: required because of the requirements on the impl of `Gettable<T>` for `S<T>`
    = note: required for the cast to the object type `dyn Gettable<T>`
 help: consider restricting type parameter `T`
    |
-LL | fn g<T: std::marker::Copy>(val: T) {
-   |       ^^^^^^^^^^^^^^^^^^^
+LL | fn g<T: Copy>(val: T) {
+   |       ^^^^^^
 
-error[E0277]: the trait bound `std::string::String: std::marker::Copy` is not satisfied
+error[E0277]: the trait bound `String: Copy` is not satisfied
   --> $DIR/kindck-impl-type-params.rs:38:13
    |
 LL |     let a = t as Box<dyn Gettable<String>>;
-   |             ^ the trait `std::marker::Copy` is not implemented for `std::string::String`
+   |             ^ the trait `Copy` is not implemented for `String`
    |
-   = note: required because of the requirements on the impl of `Gettable<std::string::String>` for `S<std::string::String>`
-   = note: required for the cast to the object type `dyn Gettable<std::string::String>`
+   = note: required because of the requirements on the impl of `Gettable<String>` for `S<String>`
+   = note: required for the cast to the object type `dyn Gettable<String>`
 
-error[E0277]: the trait bound `foo3::Foo: std::marker::Copy` is not satisfied
+error[E0277]: the trait bound `Foo: Copy` is not satisfied
   --> $DIR/kindck-impl-type-params.rs:46:37
    |
 LL |     let a: Box<dyn Gettable<Foo>> = t;
-   |                                     ^ the trait `std::marker::Copy` is not implemented for `foo3::Foo`
+   |                                     ^ the trait `Copy` is not implemented for `Foo`
    |
-   = note: required because of the requirements on the impl of `Gettable<foo3::Foo>` for `S<foo3::Foo>`
-   = note: required for the cast to the object type `dyn Gettable<foo3::Foo>`
+   = note: required because of the requirements on the impl of `Gettable<Foo>` for `S<Foo>`
+   = note: required for the cast to the object type `dyn Gettable<Foo>`
 
 error: aborting due to 6 previous errors
 

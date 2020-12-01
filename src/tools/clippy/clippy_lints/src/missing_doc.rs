@@ -14,6 +14,7 @@ use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::ty;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::Span;
+use rustc_span::sym;
 
 declare_clippy_lint! {
     /// **What it does:** Warns if there is missing doc for any documentable item
@@ -105,10 +106,10 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
     fn enter_lint_attrs(&mut self, _: &LateContext<'tcx>, attrs: &'tcx [ast::Attribute]) {
         let doc_hidden = self.doc_hidden()
             || attrs.iter().any(|attr| {
-                attr.has_name(sym!(doc))
+                attr.has_name(sym::doc)
                     && match attr.meta_item_list() {
                         None => false,
-                        Some(l) => attr::list_contains_name(&l[..], sym!(hidden)),
+                        Some(l) => attr::list_contains_name(&l[..], sym::hidden),
                     }
             });
         self.doc_hidden_stack.push(doc_hidden);
@@ -128,7 +129,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
             hir::ItemKind::Enum(..) => "an enum",
             hir::ItemKind::Fn(..) => {
                 // ignore main()
-                if it.ident.name == sym!(main) {
+                if it.ident.name == sym::main {
                     let def_id = it.hir_id.owner;
                     let def_key = cx.tcx.hir().def_key(def_id);
                     if def_key.parent == Some(hir::def_id::CRATE_DEF_INDEX) {
@@ -146,7 +147,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
             hir::ItemKind::Union(..) => "a union",
             hir::ItemKind::OpaqueTy(..) => "an existential type",
             hir::ItemKind::ExternCrate(..)
-            | hir::ItemKind::ForeignMod(..)
+            | hir::ItemKind::ForeignMod { .. }
             | hir::ItemKind::GlobalAsm(..)
             | hir::ItemKind::Impl { .. }
             | hir::ItemKind::Use(..) => return,

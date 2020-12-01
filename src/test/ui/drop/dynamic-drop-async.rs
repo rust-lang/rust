@@ -7,8 +7,6 @@
 // edition:2018
 // ignore-wasm32-bare compiled with panic=abort by default
 
-#![feature(move_ref_pattern)]
-
 #![allow(unused)]
 
 use std::{
@@ -20,7 +18,6 @@ use std::{
     ptr,
     rc::Rc,
     task::{Context, Poll, RawWaker, RawWakerVTable, Waker},
-    usize,
 };
 
 struct InjectedFailure;

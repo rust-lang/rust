@@ -22,7 +22,7 @@ LL |     assert_send::<&'a [isize]>();
    |
    = note: type must satisfy the static lifetime
 
-error[E0477]: the type `std::boxed::Box<&'a isize>` does not fulfill the required lifetime
+error[E0477]: the type `Box<&'a isize>` does not fulfill the required lifetime
   --> $DIR/regions-bounded-by-trait-requiring-static.rs:44:5
    |
 LL |     assert_send::<Box<&'a isize>>();

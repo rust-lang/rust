@@ -1,12 +1,12 @@
-error[E0277]: `NotDebug` doesn't implement `std::fmt::Debug`
+error[E0277]: `NotDebug` doesn't implement `Debug`
   --> $DIR/dbg-macro-requires-debug.rs:6:23
    |
 LL |     let _: NotDebug = dbg!(NotDebug);
    |                       ^^^^^^^^^^^^^^ `NotDebug` cannot be formatted using `{:?}`
    |
-   = help: the trait `std::fmt::Debug` is not implemented for `NotDebug`
-   = note: add `#[derive(Debug)]` or manually implement `std::fmt::Debug`
-   = note: required because of the requirements on the impl of `std::fmt::Debug` for `&NotDebug`
+   = help: the trait `Debug` is not implemented for `NotDebug`
+   = note: add `#[derive(Debug)]` or manually implement `Debug`
+   = note: required because of the requirements on the impl of `Debug` for `&NotDebug`
    = note: required by `std::fmt::Debug::fmt`
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 

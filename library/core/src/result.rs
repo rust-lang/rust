@@ -233,7 +233,7 @@ use crate::{convert, fmt};
 
 /// `Result` is a type that represents either success ([`Ok`]) or failure ([`Err`]).
 ///
-/// See the [`std::result`](index.html) module documentation for details.
+/// See the [module documentation](self) for details.
 #[derive(Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
 #[must_use = "this `Result` may be an `Err` variant, which should be handled"]
 #[rustc_diagnostic_item = "result_type"]
@@ -273,7 +273,7 @@ impl<T, E> Result<T, E> {
     /// assert_eq!(x.is_ok(), false);
     /// ```
     #[must_use = "if you intended to assert that this is ok, consider `.unwrap()` instead"]
-    #[rustc_const_unstable(feature = "const_result", issue = "67520")]
+    #[rustc_const_stable(feature = "const_result", since = "1.48.0")]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub const fn is_ok(&self) -> bool {
@@ -294,7 +294,7 @@ impl<T, E> Result<T, E> {
     /// assert_eq!(x.is_err(), true);
     /// ```
     #[must_use = "if you intended to assert that this is err, consider `.unwrap_err()` instead"]
-    #[rustc_const_unstable(feature = "const_result", issue = "67520")]
+    #[rustc_const_stable(feature = "const_result", since = "1.48.0")]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub const fn is_err(&self) -> bool {
@@ -438,7 +438,7 @@ impl<T, E> Result<T, E> {
     /// assert_eq!(x.as_ref(), Err(&"Error"));
     /// ```
     #[inline]
-    #[rustc_const_unstable(feature = "const_result", issue = "67520")]
+    #[rustc_const_stable(feature = "const_result", since = "1.48.0")]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub const fn as_ref(&self) -> Result<&T, &E> {
         match *self {

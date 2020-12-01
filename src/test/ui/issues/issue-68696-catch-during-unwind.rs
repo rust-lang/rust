@@ -4,8 +4,7 @@
 // entering the catch_unwind.
 //
 // run-pass
-// ignore-wasm       no panic support
-// ignore-emscripten no panic support
+#![feature(cfg_panic)]
 
 use std::panic::catch_unwind;
 
@@ -19,6 +18,7 @@ impl Drop for Guard {
 }
 
 fn main() {
+    #[cfg(panic = "unwind")]
     let _ = catch_unwind(|| {
         let _guard = Guard::default();
         panic!();

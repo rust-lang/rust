@@ -6,8 +6,13 @@ LL |         5
    |
    = note: expected type `std::result::Result<{integer}, _>`
               found type `{integer}`
+note: return type inferred to be `std::result::Result<{integer}, _>` here
+  --> $DIR/type-mismatch-signature-deduction.rs:8:20
+   |
+LL |             return Ok(6);
+   |                    ^^^^^
 
-error[E0271]: type mismatch resolving `<[generator@$DIR/type-mismatch-signature-deduction.rs:6:5: 14:6 _] as std::ops::Generator>::Return == i32`
+error[E0271]: type mismatch resolving `<[generator@$DIR/type-mismatch-signature-deduction.rs:6:5: 14:6] as Generator>::Return == i32`
   --> $DIR/type-mismatch-signature-deduction.rs:5:13
    |
 LL | fn foo() -> impl Generator<Return = i32> {
@@ -15,7 +20,6 @@ LL | fn foo() -> impl Generator<Return = i32> {
    |
    = note: expected enum `std::result::Result<{integer}, _>`
               found type `i32`
-   = note: the return type of a function must have a statically known size
 
 error: aborting due to 2 previous errors
 

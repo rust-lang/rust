@@ -1,16 +1,28 @@
 error[E0075]: SIMD vector cannot be empty
-  --> $DIR/simd-type.rs:5:1
+  --> $DIR/simd-type.rs:7:1
    |
 LL | struct empty;
    | ^^^^^^^^^^^^^
 
 error[E0076]: SIMD vector should be homogeneous
-  --> $DIR/simd-type.rs:8:1
+  --> $DIR/simd-type.rs:10:1
    |
 LL | struct i64f64(i64, f64);
    | ^^^^^^^^^^^^^^^^^^^^^^^^ SIMD elements must have the same type
 
-error: aborting due to 2 previous errors
+error[E0077]: SIMD vector element type should be a primitive scalar (integer/float/pointer) type
+  --> $DIR/simd-type.rs:15:1
+   |
+LL | struct FooV(Foo, Foo);
+   | ^^^^^^^^^^^^^^^^^^^^^^
 
-Some errors have detailed explanations: E0075, E0076.
+error[E0077]: SIMD vector element type should be a primitive scalar (integer/float/pointer) type
+  --> $DIR/simd-type.rs:18:1
+   |
+LL | struct FooV2([Foo; 2]);
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0075, E0076, E0077.
 For more information about an error, try `rustc --explain E0075`.

@@ -2,7 +2,7 @@ error[E0382]: use of moved value: `x`
   --> $DIR/closures-in-loops.rs:6:9
    |
 LL | fn repreated_move(x: String) {
-   |                   - move occurs because `x` has type `std::string::String`, which does not implement the `Copy` trait
+   |                   - move occurs because `x` has type `String`, which does not implement the `Copy` trait
 LL |     for i in 0..10 {
 LL |         || x;
    |         ^^ - use occurs due to use in closure

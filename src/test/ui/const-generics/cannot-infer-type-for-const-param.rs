@@ -1,6 +1,8 @@
 // check-pass
-#![feature(const_generics)]
-//~^ WARN the feature `const_generics` is incomplete
+// revisions: full min
+#![cfg_attr(full, feature(const_generics))]
+#![cfg_attr(full, allow(incomplete_features))]
+#![cfg_attr(min, feature(min_const_generics))]
 
 // This test confirms that the types can be inferred correctly for this example with const
 // generics. Previously this would ICE, and more recently error.

@@ -1,33 +1,103 @@
 error: any use of this value will cause an error
-  --> $DIR/const_panic.rs:4:19
+  --> $DIR/const_panic.rs:6:15
    |
-LL | pub const Z: () = panic!("cheese");
-   | ------------------^^^^^^^^^^^^^^^^-
-   |                   |
-   |                   the evaluated program panicked at 'cheese', $DIR/const_panic.rs:4:19
+LL | const Z: () = std::panic!("cheese");
+   | --------------^^^^^^^^^^^^^^^^^^^^^-
+   |               |
+   |               the evaluated program panicked at 'cheese', $DIR/const_panic.rs:6:15
    |
    = note: `#[deny(const_err)]` on by default
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: any use of this value will cause an error
-  --> $DIR/const_panic.rs:7:19
+  --> $DIR/const_panic.rs:9:16
    |
-LL | pub const Y: () = unreachable!();
-   | ------------------^^^^^^^^^^^^^^-
-   |                   |
-   |                   the evaluated program panicked at 'internal error: entered unreachable code', $DIR/const_panic.rs:7:19
+LL | const Z2: () = std::panic!();
+   | ---------------^^^^^^^^^^^^^-
+   |                |
+   |                the evaluated program panicked at 'explicit panic', $DIR/const_panic.rs:9:16
    |
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: any use of this value will cause an error
-  --> $DIR/const_panic.rs:10:19
+  --> $DIR/const_panic.rs:12:15
    |
-LL | pub const X: () = unimplemented!();
-   | ------------------^^^^^^^^^^^^^^^^-
-   |                   |
-   |                   the evaluated program panicked at 'not implemented', $DIR/const_panic.rs:10:19
+LL | const Y: () = std::unreachable!();
+   | --------------^^^^^^^^^^^^^^^^^^^-
+   |               |
+   |               the evaluated program panicked at 'internal error: entered unreachable code', $DIR/const_panic.rs:12:15
    |
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 3 previous errors
+error: any use of this value will cause an error
+  --> $DIR/const_panic.rs:15:15
+   |
+LL | const X: () = std::unimplemented!();
+   | --------------^^^^^^^^^^^^^^^^^^^^^-
+   |               |
+   |               the evaluated program panicked at 'not implemented', $DIR/const_panic.rs:15:15
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: any use of this value will cause an error
+  --> $DIR/const_panic.rs:18:15
+   |
+LL | const W: () = std::panic!(MSG);
+   | --------------^^^^^^^^^^^^^^^^-
+   |               |
+   |               the evaluated program panicked at 'hello', $DIR/const_panic.rs:18:15
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: any use of this value will cause an error
+  --> $DIR/const_panic.rs:21:20
+   |
+LL | const Z_CORE: () = core::panic!("cheese");
+   | -------------------^^^^^^^^^^^^^^^^^^^^^^-
+   |                    |
+   |                    the evaluated program panicked at 'cheese', $DIR/const_panic.rs:21:20
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: any use of this value will cause an error
+  --> $DIR/const_panic.rs:24:21
+   |
+LL | const Z2_CORE: () = core::panic!();
+   | --------------------^^^^^^^^^^^^^^-
+   |                     |
+   |                     the evaluated program panicked at 'explicit panic', $DIR/const_panic.rs:24:21
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: any use of this value will cause an error
+  --> $DIR/const_panic.rs:27:20
+   |
+LL | const Y_CORE: () = core::unreachable!();
+   | -------------------^^^^^^^^^^^^^^^^^^^^-
+   |                    |
+   |                    the evaluated program panicked at 'internal error: entered unreachable code', $DIR/const_panic.rs:27:20
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: any use of this value will cause an error
+  --> $DIR/const_panic.rs:30:20
+   |
+LL | const X_CORE: () = core::unimplemented!();
+   | -------------------^^^^^^^^^^^^^^^^^^^^^^-
+   |                    |
+   |                    the evaluated program panicked at 'not implemented', $DIR/const_panic.rs:30:20
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: any use of this value will cause an error
+  --> $DIR/const_panic.rs:33:20
+   |
+LL | const W_CORE: () = core::panic!(MSG);
+   | -------------------^^^^^^^^^^^^^^^^^-
+   |                    |
+   |                    the evaluated program panicked at 'hello', $DIR/const_panic.rs:33:20
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 10 previous errors
 

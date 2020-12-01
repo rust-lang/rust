@@ -1,6 +1,6 @@
 use rustc_ast::ast::{Lit, LitFloatType, LitIntType, LitKind};
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Copy, Clone)]
 pub enum Radix {
     Binary,
     Octal,
@@ -11,8 +11,8 @@ pub enum Radix {
 impl Radix {
     /// Returns a reasonable digit group size for this radix.
     #[must_use]
-    fn suggest_grouping(&self) -> usize {
-        match *self {
+    fn suggest_grouping(self) -> usize {
+        match self {
             Self::Binary | Self::Hexadecimal => 4,
             Self::Octal | Self::Decimal => 3,
         }
@@ -36,8 +36,9 @@ pub struct NumericLiteral<'a> {
     pub integer: &'a str,
     /// The fraction part of the number.
     pub fraction: Option<&'a str>,
-    /// The character used as exponent separator (b'e' or b'E') and the exponent part.
-    pub exponent: Option<(char, &'a str)>,
+    /// The exponent separator (b'e' or b'E') including preceding underscore if present
+    /// and the exponent part.
+    pub exponent: Option<(&'a str, &'a str)>,
 
     /// The type suffix, including preceding underscore if present.
     pub suffix: Option<&'a str>,
@@ -100,7 +101,7 @@ impl<'a> NumericLiteral<'a> {
         self.radix == Radix::Decimal
     }
 
-    pub fn split_digit_parts(digits: &str, float: bool) -> (&str, Option<&str>, Option<(char, &str)>) {
+    pub fn split_digit_parts(digits: &str, float: bool) -> (&str, Option<&str>, Option<(&str, &str)>) {
         let mut integer = digits;
         let mut fraction = None;
         let mut exponent = None;
@@ -113,12 +114,14 @@ impl<'a> NumericLiteral<'a> {
                         fraction = Some(&digits[i + 1..]);
                     },
                     'e' | 'E' => {
-                        if integer.len() > i {
-                            integer = &digits[..i];
+                        let exp_start = if digits[..i].ends_with('_') { i - 1 } else { i };
+
+                        if integer.len() > exp_start {
+                            integer = &digits[..exp_start];
                         } else {
-                            fraction = Some(&digits[integer.len() + 1..i]);
+                            fraction = Some(&digits[integer.len() + 1..exp_start]);
                         };
-                        exponent = Some((c, &digits[i + 1..]));
+                        exponent = Some((&digits[exp_start..=i], &digits[i + 1..]));
                         break;
                     },
                     _ => {},
@@ -153,7 +156,7 @@ impl<'a> NumericLiteral<'a> {
         }
 
         if let Some((separator, exponent)) = self.exponent {
-            output.push(separator);
+            output.push_str(separator);
             Self::group_digits(&mut output, exponent, group_size, true, false);
         }
 

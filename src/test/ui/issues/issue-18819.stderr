@@ -1,13 +1,16 @@
 error[E0061]: this function takes 2 arguments but 1 argument was supplied
   --> $DIR/issue-18819.rs:16:5
    |
-LL | fn print_x(_: &dyn Foo<Item=bool>, extra: &str) {
-   | ----------------------------------------------- defined here
-...
 LL |     print_x(X);
    |     ^^^^^^^ - supplied 1 argument
    |     |
    |     expected 2 arguments
+   |
+note: function defined here
+  --> $DIR/issue-18819.rs:11:4
+   |
+LL | fn print_x(_: &dyn Foo<Item=bool>, extra: &str) {
+   |    ^^^^^^^ ----------------------  -----------
 
 error: aborting due to previous error
 

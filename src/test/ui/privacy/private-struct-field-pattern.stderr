@@ -1,4 +1,4 @@
-error[E0451]: field `x` of struct `a::Foo` is private
+error[E0451]: field `x` of struct `Foo` is private
   --> $DIR/private-struct-field-pattern.rs:15:15
    |
 LL |         Foo { x: _ } => {}

@@ -1,0 +1,27 @@
+error: non-binding `let` on a type that implements `Drop`
+  --> $DIR/let_underscore_drop.rs:16:5
+   |
+LL |     let _ = Box::new(());
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::let-underscore-drop` implied by `-D warnings`
+   = help: consider using an underscore-prefixed named binding or dropping explicitly with `std::mem::drop`
+
+error: non-binding `let` on a type that implements `Drop`
+  --> $DIR/let_underscore_drop.rs:17:5
+   |
+LL |     let _ = Droppable;
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using an underscore-prefixed named binding or dropping explicitly with `std::mem::drop`
+
+error: non-binding `let` on a type that implements `Drop`
+  --> $DIR/let_underscore_drop.rs:18:5
+   |
+LL |     let _ = Some(Droppable);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using an underscore-prefixed named binding or dropping explicitly with `std::mem::drop`
+
+error: aborting due to 3 previous errors
+

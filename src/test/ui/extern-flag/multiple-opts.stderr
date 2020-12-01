@@ -1,8 +1,8 @@
-error[E0433]: failed to resolve: use of undeclared type or module `somedep`
+error[E0433]: failed to resolve: use of undeclared crate or module `somedep`
   --> $DIR/multiple-opts.rs:19:5
    |
 LL |     somedep::somefun();
-   |     ^^^^^^^ use of undeclared type or module `somedep`
+   |     ^^^^^^^ use of undeclared crate or module `somedep`
 
 error: aborting due to previous error
 

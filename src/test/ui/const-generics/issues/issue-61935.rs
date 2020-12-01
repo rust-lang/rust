@@ -1,12 +1,15 @@
-#![feature(const_generics)]
-//~^ WARN the feature `const_generics` is incomplete
+// revisions: full min
+#![cfg_attr(full, feature(const_generics))]
+#![cfg_attr(full, allow(incomplete_features))]
+#![cfg_attr(min, feature(min_const_generics))]
 
 trait Foo {}
 
 impl<const N: usize> Foo for [(); N]
     where
         Self:FooImpl<{N==0}>
-//~^ERROR constant expression depends on a generic parameter
+//[full]~^ERROR constant expression depends on a generic parameter
+//[min]~^^ERROR generic parameters may not be used in const operations
 {}
 
 trait FooImpl<const IS_ZERO: bool>{}

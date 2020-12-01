@@ -1,4 +1,4 @@
-error[E0277]: expected a `std::ops::Fn<(isize,)>` closure, found `S`
+error[E0277]: expected a `Fn<(isize,)>` closure, found `S`
   --> $DIR/unboxed-closures-fnmut-as-fn.rs:28:21
    |
 LL | fn call_it<F:Fn(isize)->isize>(f: &F, x: isize) -> isize {
@@ -7,7 +7,7 @@ LL | fn call_it<F:Fn(isize)->isize>(f: &F, x: isize) -> isize {
 LL |     let x = call_it(&S, 22);
    |                     ^^ expected an `Fn<(isize,)>` closure, found `S`
    |
-   = help: the trait `std::ops::Fn<(isize,)>` is not implemented for `S`
+   = help: the trait `Fn<(isize,)>` is not implemented for `S`
 
 error: aborting due to previous error
 

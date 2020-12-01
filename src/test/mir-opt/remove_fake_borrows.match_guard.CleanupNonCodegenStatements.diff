@@ -1,7 +1,7 @@
 - // MIR for `match_guard` before CleanupNonCodegenStatements
 + // MIR for `match_guard` after CleanupNonCodegenStatements
   
-  fn match_guard(_1: std::option::Option<&&i32>, _2: bool) -> i32 {
+  fn match_guard(_1: Option<&&i32>, _2: bool) -> i32 {
       debug x => _1;                       // in scope 0 at $DIR/remove_fake_borrows.rs:6:16: 6:17
       debug c => _2;                       // in scope 0 at $DIR/remove_fake_borrows.rs:6:34: 6:35
       let mut _0: i32;                     // return place in scope 0 at $DIR/remove_fake_borrows.rs:6:46: 6:49

@@ -1,5 +1,6 @@
 #![cfg(not(target_arch = "wasm32"))]
 
+use std::mem::MaybeUninit;
 use std::str;
 
 use core::num::flt2dec::strategy::grisu::format_exact_opt;
@@ -20,8 +21,8 @@ pub fn decode_finite<T: DecodableFloat>(v: T) -> Decoded {
 
 fn iterate<F, G, V>(func: &str, k: usize, n: usize, mut f: F, mut g: G, mut v: V) -> (usize, usize)
 where
-    F: FnMut(&Decoded, &mut [u8]) -> Option<(usize, i16)>,
-    G: FnMut(&Decoded, &mut [u8]) -> (usize, i16),
+    F: for<'a> FnMut(&Decoded, &'a mut [MaybeUninit<u8>]) -> Option<(&'a [u8], i16)>,
+    G: for<'a> FnMut(&Decoded, &'a mut [MaybeUninit<u8>]) -> (&'a [u8], i16),
     V: FnMut(usize) -> Decoded,
 {
     assert!(k <= 1024);
@@ -42,11 +43,11 @@ where
         }
 
         let decoded = v(i);
-        let mut buf1 = [0; 1024];
-        if let Some((len1, e1)) = f(&decoded, &mut buf1[..k]) {
-            let mut buf2 = [0; 1024];
-            let (len2, e2) = g(&decoded, &mut buf2[..k]);
-            if e1 == e2 && &buf1[..len1] == &buf2[..len2] {
+        let mut buf1 = [MaybeUninit::new(0); 1024];
+        if let Some((buf1, e1)) = f(&decoded, &mut buf1[..k]) {
+            let mut buf2 = [MaybeUninit::new(0); 1024];
+            let (buf2, e2) = g(&decoded, &mut buf2[..k]);
+            if e1 == e2 && buf1 == buf2 {
                 npassed += 1;
             } else {
                 println!(
@@ -54,9 +55,9 @@ where
                     i,
                     n,
                     decoded,
-                    str::from_utf8(&buf1[..len1]).unwrap(),
+                    str::from_utf8(buf1).unwrap(),
                     e1,
-                    str::from_utf8(&buf2[..len2]).unwrap(),
+                    str::from_utf8(buf2).unwrap(),
                     e2
                 );
             }
@@ -85,8 +86,8 @@ where
 
 pub fn f32_random_equivalence_test<F, G>(f: F, g: G, k: usize, n: usize)
 where
-    F: FnMut(&Decoded, &mut [u8]) -> Option<(usize, i16)>,
-    G: FnMut(&Decoded, &mut [u8]) -> (usize, i16),
+    F: for<'a> FnMut(&Decoded, &'a mut [MaybeUninit<u8>]) -> Option<(&'a [u8], i16)>,
+    G: for<'a> FnMut(&Decoded, &'a mut [MaybeUninit<u8>]) -> (&'a [u8], i16),
 {
     if cfg!(target_os = "emscripten") {
         return; // using rng pulls in i128 support, which doesn't work
@@ -101,8 +102,8 @@ where
 
 pub fn f64_random_equivalence_test<F, G>(f: F, g: G, k: usize, n: usize)
 where
-    F: FnMut(&Decoded, &mut [u8]) -> Option<(usize, i16)>,
-    G: FnMut(&Decoded, &mut [u8]) -> (usize, i16),
+    F: for<'a> FnMut(&Decoded, &'a mut [MaybeUninit<u8>]) -> Option<(&'a [u8], i16)>,
+    G: for<'a> FnMut(&Decoded, &'a mut [MaybeUninit<u8>]) -> (&'a [u8], i16),
 {
     if cfg!(target_os = "emscripten") {
         return; // using rng pulls in i128 support, which doesn't work
@@ -117,8 +118,8 @@ where
 
 pub fn f32_exhaustive_equivalence_test<F, G>(f: F, g: G, k: usize)
 where
-    F: FnMut(&Decoded, &mut [u8]) -> Option<(usize, i16)>,
-    G: FnMut(&Decoded, &mut [u8]) -> (usize, i16),
+    F: for<'a> FnMut(&Decoded, &'a mut [MaybeUninit<u8>]) -> Option<(&'a [u8], i16)>,
+    G: for<'a> FnMut(&Decoded, &'a mut [MaybeUninit<u8>]) -> (&'a [u8], i16),
 {
     // we have only 2^23 * (2^8 - 1) - 1 = 2,139,095,039 positive finite f32 values,
     // so why not simply testing all of them?

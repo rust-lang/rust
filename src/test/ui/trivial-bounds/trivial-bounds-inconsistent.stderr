@@ -60,31 +60,31 @@ warning: Trait bound &'static str: Foo does not depend on any type or lifetime p
 LL | fn g() where &'static str: Foo {
    |                            ^^^
 
-warning: Trait bound str: std::marker::Sized does not depend on any type or lifetime parameters
+warning: Trait bound str: Sized does not depend on any type or lifetime parameters
   --> $DIR/trivial-bounds-inconsistent.rs:55:37
    |
 LL | struct TwoStrs(str, str) where str: Sized;
    |                                     ^^^^^
 
-warning: Trait bound for<'a> Dst<(dyn A + 'a)>: std::marker::Sized does not depend on any type or lifetime parameters
+warning: Trait bound for<'a> Dst<(dyn A + 'a)>: Sized does not depend on any type or lifetime parameters
   --> $DIR/trivial-bounds-inconsistent.rs:57:51
    |
 LL | fn unsized_local() where for<'a> Dst<dyn A + 'a>: Sized {
    |                                                   ^^^^^
 
-warning: Trait bound str: std::marker::Sized does not depend on any type or lifetime parameters
+warning: Trait bound str: Sized does not depend on any type or lifetime parameters
   --> $DIR/trivial-bounds-inconsistent.rs:61:35
    |
 LL | fn return_str() -> str where str: Sized {
    |                                   ^^^^^
 
-warning: Trait bound std::string::String: std::ops::Neg does not depend on any type or lifetime parameters
+warning: Trait bound String: Neg does not depend on any type or lifetime parameters
   --> $DIR/trivial-bounds-inconsistent.rs:65:46
    |
 LL | fn use_op(s: String) -> String where String: ::std::ops::Neg<Output=String> {
    |                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: Trait bound i32: std::iter::Iterator does not depend on any type or lifetime parameters
+warning: Trait bound i32: Iterator does not depend on any type or lifetime parameters
   --> $DIR/trivial-bounds-inconsistent.rs:70:25
    |
 LL | fn use_for() where i32: Iterator {

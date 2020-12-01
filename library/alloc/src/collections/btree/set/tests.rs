@@ -1,10 +1,10 @@
-use crate::collections::BTreeSet;
+use super::super::DeterministicRng;
+use super::*;
 use crate::vec::Vec;
+use std::cmp::Ordering;
 use std::iter::FromIterator;
 use std::panic::{catch_unwind, AssertUnwindSafe};
-use std::sync::atomic::{AtomicU32, Ordering};
-
-use super::super::DeterministicRng;
+use std::sync::atomic::{AtomicU32, Ordering::SeqCst};
 
 #[test]
 fn test_clone_eq() {
@@ -14,6 +14,13 @@ fn test_clone_eq() {
     m.insert(2);
 
     assert_eq!(m.clone(), m);
+}
+
+#[allow(dead_code)]
+fn test_const() {
+    const SET: &'static BTreeSet<()> = &BTreeSet::new();
+    const LEN: usize = SET.len();
+    const IS_EMPTY: bool = SET.is_empty();
 }
 
 #[test]
@@ -319,6 +326,17 @@ fn test_is_subset() {
 }
 
 #[test]
+fn test_retain() {
+    let xs = [1, 2, 3, 4, 5, 6];
+    let mut set: BTreeSet<i32> = xs.iter().cloned().collect();
+    set.retain(|&k| k % 2 == 0);
+    assert_eq!(set.len(), 3);
+    assert!(set.contains(&2));
+    assert!(set.contains(&4));
+    assert!(set.contains(&6));
+}
+
+#[test]
 fn test_drain_filter() {
     let mut x: BTreeSet<_> = [1].iter().copied().collect();
     let mut y: BTreeSet<_> = [1].iter().copied().collect();
@@ -338,7 +356,7 @@ fn test_drain_filter_drop_panic_leak() {
     struct D(i32);
     impl Drop for D {
         fn drop(&mut self) {
-            if DROPS.fetch_add(1, Ordering::SeqCst) == 1 {
+            if DROPS.fetch_add(1, SeqCst) == 1 {
                 panic!("panic in `drop`");
             }
         }
@@ -351,14 +369,14 @@ fn test_drain_filter_drop_panic_leak() {
 
     catch_unwind(move || {
         drop(set.drain_filter(|d| {
-            PREDS.fetch_add(1u32 << d.0, Ordering::SeqCst);
+            PREDS.fetch_add(1u32 << d.0, SeqCst);
             true
         }))
     })
     .ok();
 
-    assert_eq!(PREDS.load(Ordering::SeqCst), 0x011);
-    assert_eq!(DROPS.load(Ordering::SeqCst), 3);
+    assert_eq!(PREDS.load(SeqCst), 0x011);
+    assert_eq!(DROPS.load(SeqCst), 3);
 }
 
 #[test]
@@ -370,7 +388,7 @@ fn test_drain_filter_pred_panic_leak() {
     struct D(i32);
     impl Drop for D {
         fn drop(&mut self) {
-            DROPS.fetch_add(1, Ordering::SeqCst);
+            DROPS.fetch_add(1, SeqCst);
         }
     }
 
@@ -381,7 +399,7 @@ fn test_drain_filter_pred_panic_leak() {
 
     catch_unwind(AssertUnwindSafe(|| {
         drop(set.drain_filter(|d| {
-            PREDS.fetch_add(1u32 << d.0, Ordering::SeqCst);
+            PREDS.fetch_add(1u32 << d.0, SeqCst);
             match d.0 {
                 0 => true,
                 _ => panic!(),
@@ -390,8 +408,8 @@ fn test_drain_filter_pred_panic_leak() {
     }))
     .ok();
 
-    assert_eq!(PREDS.load(Ordering::SeqCst), 0x011);
-    assert_eq!(DROPS.load(Ordering::SeqCst), 1);
+    assert_eq!(PREDS.load(SeqCst), 0x011);
+    assert_eq!(DROPS.load(SeqCst), 1);
     assert_eq!(set.len(), 2);
     assert_eq!(set.first().unwrap().0, 4);
     assert_eq!(set.last().unwrap().0, 8);
@@ -481,8 +499,6 @@ fn test_extend_ref() {
 
 #[test]
 fn test_recovery() {
-    use std::cmp::Ordering;
-
     #[derive(Debug)]
     struct Foo(&'static str, i32);
 
@@ -528,11 +544,8 @@ fn test_recovery() {
     assert_eq!(s.iter().next(), None);
 }
 
-#[test]
 #[allow(dead_code)]
 fn test_variance() {
-    use std::collections::btree_set::{IntoIter, Iter, Range};
-
     fn set<'new>(v: BTreeSet<&'static str>) -> BTreeSet<&'new str> {
         v
     }
@@ -544,6 +557,85 @@ fn test_variance() {
     }
     fn range<'a, 'new>(v: Range<'a, &'static str>) -> Range<'a, &'new str> {
         v
+    }
+    // not applied to Difference, Intersection, SymmetricDifference, Union
+}
+
+#[allow(dead_code)]
+fn test_sync() {
+    fn set<T: Sync>(v: &BTreeSet<T>) -> impl Sync + '_ {
+        v
+    }
+
+    fn iter<T: Sync>(v: &BTreeSet<T>) -> impl Sync + '_ {
+        v.iter()
+    }
+
+    fn into_iter<T: Sync>(v: BTreeSet<T>) -> impl Sync {
+        v.into_iter()
+    }
+
+    fn range<T: Sync + Ord>(v: &BTreeSet<T>) -> impl Sync + '_ {
+        v.range(..)
+    }
+
+    fn drain_filter<T: Sync + Ord>(v: &mut BTreeSet<T>) -> impl Sync + '_ {
+        v.drain_filter(|_| false)
+    }
+
+    fn difference<T: Sync + Ord>(v: &BTreeSet<T>) -> impl Sync + '_ {
+        v.difference(&v)
+    }
+
+    fn intersection<T: Sync + Ord>(v: &BTreeSet<T>) -> impl Sync + '_ {
+        v.intersection(&v)
+    }
+
+    fn symmetric_difference<T: Sync + Ord>(v: &BTreeSet<T>) -> impl Sync + '_ {
+        v.symmetric_difference(&v)
+    }
+
+    fn union<T: Sync + Ord>(v: &BTreeSet<T>) -> impl Sync + '_ {
+        v.union(&v)
+    }
+}
+
+#[allow(dead_code)]
+fn test_send() {
+    fn set<T: Send>(v: BTreeSet<T>) -> impl Send {
+        v
+    }
+
+    fn iter<T: Send + Sync>(v: &BTreeSet<T>) -> impl Send + '_ {
+        v.iter()
+    }
+
+    fn into_iter<T: Send>(v: BTreeSet<T>) -> impl Send {
+        v.into_iter()
+    }
+
+    fn range<T: Send + Sync + Ord>(v: &BTreeSet<T>) -> impl Send + '_ {
+        v.range(..)
+    }
+
+    fn drain_filter<T: Send + Ord>(v: &mut BTreeSet<T>) -> impl Send + '_ {
+        v.drain_filter(|_| false)
+    }
+
+    fn difference<T: Send + Sync + Ord>(v: &BTreeSet<T>) -> impl Send + '_ {
+        v.difference(&v)
+    }
+
+    fn intersection<T: Send + Sync + Ord>(v: &BTreeSet<T>) -> impl Send + '_ {
+        v.intersection(&v)
+    }
+
+    fn symmetric_difference<T: Send + Sync + Ord>(v: &BTreeSet<T>) -> impl Send + '_ {
+        v.symmetric_difference(&v)
+    }
+
+    fn union<T: Send + Sync + Ord>(v: &BTreeSet<T>) -> impl Send + '_ {
+        v.union(&v)
     }
 }
 
@@ -605,6 +697,7 @@ fn test_first_last() {
 }
 
 fn rand_data(len: usize) -> Vec<u32> {
+    assert!(len <= 70029); // from that point on numbers repeat
     let mut rng = DeterministicRng::new();
     Vec::from_iter((0..len).map(|_| rng.next()))
 }

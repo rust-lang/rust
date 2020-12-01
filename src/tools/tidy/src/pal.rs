@@ -56,9 +56,14 @@ const EXCEPTION_PATHS: &[&str] = &[
     // Integration test for platform-specific run-time feature detection:
     "library/std/tests/run-time-detect.rs",
     "library/std/src/net/test.rs",
+    "library/std/src/net/addr",
+    "library/std/src/net/udp",
     "library/std/src/sys_common/mod.rs",
     "library/std/src/sys_common/net.rs",
     "library/std/src/sys_common/backtrace.rs",
+    "library/std/src/sys_common/remutex.rs",
+    "library/std/src/sync/mutex.rs",
+    "library/std/src/sync/rwlock.rs",
     // panic_unwind shims
     "library/std/src/panicking.rs",
     "library/term", // Not sure how to make this crate portable, but test crate needs it.

@@ -1,0 +1,9 @@
+error[E0423]: expected value, found type parameter `T`
+  --> $DIR/issue-69654.rs:5:25
+   |
+LL | impl<T> Bar<T> for [u8; T] {}
+   |                         ^ not a value
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0423`.

@@ -1,4 +1,4 @@
-error[E0369]: cannot multiply `f64` to `&T`
+error[E0369]: cannot multiply `&T` by `f64`
   --> $DIR/trait-resolution-in-overloaded-op.rs:8:7
    |
 LL |     a * b

@@ -1,0 +1,10 @@
+error[E0521]: borrowed data escapes outside of closure
+  --> $DIR/issue-78262.rs:12:26
+   |
+LL |     let f = |x: &dyn TT| x.func();
+   |              -           ^^^^^^^^ `x` escapes the closure body here
+   |              |
+   |              `x` is a reference that is only valid in the closure body
+
+error: aborting due to previous error
+

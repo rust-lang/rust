@@ -11,10 +11,10 @@ use std::path::PathBuf;
 // code. See https://github.com/rust-analyzer/rust-analyzer/issues/3517 and https://github.com/rust-lang/rust-clippy/issues/5514 for details
 
 pub fn run(rustc_path: Option<&str>) {
-    // we can unwrap here because the arg is required here
+    // we can unwrap here because the arg is required by clap
     let rustc_path = PathBuf::from(rustc_path.unwrap());
     assert!(rustc_path.is_dir(), "path is not a directory");
-    let rustc_source_basedir = rustc_path.join("src");
+    let rustc_source_basedir = rustc_path.join("compiler");
     assert!(
         rustc_source_basedir.is_dir(),
         "are you sure the path leads to a rustc repo?"
@@ -49,6 +49,15 @@ fn inject_deps_into_manifest(
     cargo_toml: &str,
     lib_rs: &str,
 ) -> std::io::Result<()> {
+    // do not inject deps if we have aleady done so
+    if cargo_toml.contains("[target.'cfg(NOT_A_PLATFORM)'.dependencies]") {
+        eprintln!(
+            "cargo dev ra-setup: warning: deps already found inside {}, doing nothing.",
+            manifest_path
+        );
+        return Ok(());
+    }
+
     let extern_crates = lib_rs
         .lines()
         // get the deps
@@ -61,7 +70,7 @@ fn inject_deps_into_manifest(
     let new_deps = extern_crates.map(|dep| {
         // format the dependencies that are going to be put inside the Cargo.toml
         format!(
-            "{dep} = {{ path = \"{source_path}/lib{dep}\" }}\n",
+            "{dep} = {{ path = \"{source_path}/{dep}\" }}\n",
             dep = dep,
             source_path = rustc_source_dir.display()
         )

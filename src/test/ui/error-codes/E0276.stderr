@@ -5,7 +5,7 @@ LL |     fn foo<T>(x: T);
    |     ---------------- definition of `foo` from trait
 ...
 LL |     fn foo<T>(x: T) where T: Copy {}
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl has extra requirement `T: std::marker::Copy`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl has extra requirement `T: Copy`
 
 error: aborting due to previous error
 

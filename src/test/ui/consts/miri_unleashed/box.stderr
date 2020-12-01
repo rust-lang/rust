@@ -21,7 +21,7 @@ help: skipping check for `const_mut_refs` feature
    |
 LL |     &mut *(box 0)
    |     ^^^^^^^^^^^^^
-help: skipping check for `const_mut_refs` feature
+help: skipping check that does not even have a feature gate
   --> $DIR/box.rs:10:5
    |
 LL |     &mut *(box 0)

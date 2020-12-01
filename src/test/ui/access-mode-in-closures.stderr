@@ -5,7 +5,7 @@ LL |         match *s { S(v) => v }
    |               ^^     -
    |               |      |
    |               |      data moved here
-   |               |      move occurs because `v` has type `std::vec::Vec<isize>`, which does not implement the `Copy` trait
+   |               |      move occurs because `v` has type `Vec<isize>`, which does not implement the `Copy` trait
    |               help: consider borrowing here: `&*s`
 
 error: aborting due to previous error

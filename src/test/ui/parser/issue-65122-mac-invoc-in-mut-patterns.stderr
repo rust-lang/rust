@@ -34,15 +34,15 @@ LL |     mac2! { does_not_exist!() }
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: cannot find macro `does_not_exist` in this scope
-  --> $DIR/issue-65122-mac-invoc-in-mut-patterns.rs:20:13
-   |
-LL |     mac1! { does_not_exist!() }
-   |             ^^^^^^^^^^^^^^
-
-error: cannot find macro `does_not_exist` in this scope
   --> $DIR/issue-65122-mac-invoc-in-mut-patterns.rs:22:13
    |
 LL |     mac2! { does_not_exist!() }
+   |             ^^^^^^^^^^^^^^
+
+error: cannot find macro `does_not_exist` in this scope
+  --> $DIR/issue-65122-mac-invoc-in-mut-patterns.rs:20:13
+   |
+LL |     mac1! { does_not_exist!() }
    |             ^^^^^^^^^^^^^^
 
 error: aborting due to 5 previous errors

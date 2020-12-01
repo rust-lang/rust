@@ -1,11 +1,11 @@
-error[E0277]: the trait bound `std::option::Option<Bar>: std::marker::Copy` is not satisfied
+error[E0277]: the trait bound `Option<Bar>: Copy` is not satisfied
   --> $DIR/fn-call-in-non-const.rs:16:31
    |
 LL |     let _: [Option<Bar>; 2] = [no_copy(); 2];
-   |                               ^^^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `std::option::Option<Bar>`
+   |                               ^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `Option<Bar>`
    |
    = help: the following implementations were found:
-             <std::option::Option<T> as std::marker::Copy>
+             <Option<T> as Copy>
    = note: the `Copy` trait is required because the repeated element will be copied
 
 error: aborting due to previous error

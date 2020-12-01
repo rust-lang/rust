@@ -1,16 +1,16 @@
-error[E0277]: the trait bound `<Self as SomeTrait>::Type1: std::marker::Copy` is not satisfied
+error[E0277]: the trait bound `<Self as SomeTrait>::Type1: Copy` is not satisfied
   --> $DIR/wf-trait-associated-type-trait.rs:11:5
    |
 LL | struct IsCopy<T:Copy> { x: T }
    |                 ---- required by this bound in `IsCopy`
 ...
 LL |     type Type2 = IsCopy<Self::Type1>;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `<Self as SomeTrait>::Type1`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `<Self as SomeTrait>::Type1`
    |
 help: consider further restricting the associated type
    |
-LL | trait SomeTrait where <Self as SomeTrait>::Type1: std::marker::Copy {
-   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | trait SomeTrait where <Self as SomeTrait>::Type1: Copy {
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

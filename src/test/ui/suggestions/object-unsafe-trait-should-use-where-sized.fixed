@@ -2,7 +2,7 @@
 #![allow(unused_variables, dead_code)]
 
 trait Trait {
-    fn foo() where Self: Other, Self: Sized, { }
+    fn foo(&self) where Self: Other, Self: Sized, { }
     fn bar(self: &Self) {} //~ ERROR invalid `self` parameter type
 }
 

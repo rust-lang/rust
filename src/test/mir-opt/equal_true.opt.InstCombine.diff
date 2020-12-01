@@ -1,0 +1,35 @@
+- // MIR for `opt` before InstCombine
++ // MIR for `opt` after InstCombine
+  
+  fn opt(_1: bool) -> i32 {
+      debug x => _1;                       // in scope 0 at $DIR/equal_true.rs:3:8: 3:9
+      let mut _0: i32;                     // return place in scope 0 at $DIR/equal_true.rs:3:20: 3:23
+      let mut _2: bool;                    // in scope 0 at $DIR/equal_true.rs:4:8: 4:17
+      let mut _3: bool;                    // in scope 0 at $DIR/equal_true.rs:4:8: 4:9
+  
+      bb0: {
+          StorageLive(_2);                 // scope 0 at $DIR/equal_true.rs:4:8: 4:17
+          StorageLive(_3);                 // scope 0 at $DIR/equal_true.rs:4:8: 4:9
+          _3 = _1;                         // scope 0 at $DIR/equal_true.rs:4:8: 4:9
+-         _2 = Eq(move _3, const true);    // scope 0 at $DIR/equal_true.rs:4:8: 4:17
++         _2 = move _3;                    // scope 0 at $DIR/equal_true.rs:4:8: 4:17
+          StorageDead(_3);                 // scope 0 at $DIR/equal_true.rs:4:16: 4:17
+          switchInt(_2) -> [false: bb1, otherwise: bb2]; // scope 0 at $DIR/equal_true.rs:4:5: 4:34
+      }
+  
+      bb1: {
+          _0 = const 1_i32;                // scope 0 at $DIR/equal_true.rs:4:31: 4:32
+          goto -> bb3;                     // scope 0 at $DIR/equal_true.rs:4:5: 4:34
+      }
+  
+      bb2: {
+          _0 = const 0_i32;                // scope 0 at $DIR/equal_true.rs:4:20: 4:21
+          goto -> bb3;                     // scope 0 at $DIR/equal_true.rs:4:5: 4:34
+      }
+  
+      bb3: {
+          StorageDead(_2);                 // scope 0 at $DIR/equal_true.rs:5:1: 5:2
+          return;                          // scope 0 at $DIR/equal_true.rs:5:2: 5:2
+      }
+  }
+  

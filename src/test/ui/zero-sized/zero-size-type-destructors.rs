@@ -10,7 +10,7 @@ pub fn foo() {
         fn drop(&mut self) {
           unsafe { destructions -= 1 };
         }
-    };
+    }
 
     let _x = [Foo, Foo, Foo];
 }

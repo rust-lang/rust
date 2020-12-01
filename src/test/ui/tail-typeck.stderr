@@ -6,7 +6,7 @@ LL | fn f() -> isize { return g(); }
    |           |
    |           expected `isize` because of return type
    |
-help: you can convert an `usize` to `isize` and panic if the converted value wouldn't fit
+help: you can convert a `usize` to an `isize` and panic if the converted value doesn't fit
    |
 LL | fn f() -> isize { return g().try_into().unwrap(); }
    |                          ^^^^^^^^^^^^^^^^^^^^^^^

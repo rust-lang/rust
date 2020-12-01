@@ -1,0 +1,25 @@
+[package]
+authors = ["The Rust Project Developers"]
+name = "rustc_trait_selection"
+version = "0.0.0"
+edition = "2018"
+
+[lib]
+doctest = false
+
+[dependencies]
+rustc_parse_format = { path = "../rustc_parse_format" }
+tracing = "0.1"
+rustc_attr = { path = "../rustc_attr" }
+rustc_middle = { path = "../rustc_middle" }
+rustc_ast = { path = "../rustc_ast" }
+rustc_data_structures = { path = "../rustc_data_structures" }
+rustc_errors = { path = "../rustc_errors" }
+rustc_hir = { path = "../rustc_hir" }
+rustc_index = { path = "../rustc_index" }
+rustc_infer = { path = "../rustc_infer" }
+rustc_macros = { path = "../rustc_macros" }
+rustc_session = { path = "../rustc_session" }
+rustc_span = { path = "../rustc_span" }
+rustc_target = { path = "../rustc_target" }
+smallvec = { version = "1.0", features = ["union", "may_dangle"] }

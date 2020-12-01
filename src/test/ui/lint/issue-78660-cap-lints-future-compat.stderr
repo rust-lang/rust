@@ -1,0 +1,11 @@
+Future incompatibility report: Future breakage date: None, diagnostic:
+warning: this method call currently resolves to `<&[T; N] as IntoIterator>::into_iter` (due to autoref coercions), but that might change in the future when `IntoIterator` impls for arrays are added.
+  --> $DIR/issue-78660-cap-lints-future-compat.rs:9:12
+   |
+LL |     ["hi"].into_iter();
+   |            ^^^^^^^^^ help: use `.iter()` instead of `.into_iter()` to avoid ambiguity: `iter`
+   |
+   = note: `-D array-into-iter` implied by `-D warnings`
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #66145 <https://github.com/rust-lang/rust/issues/66145>
+

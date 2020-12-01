@@ -8,13 +8,15 @@ use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::mir::Mutability;
 use rustc_middle::ty;
+use rustc_middle::ty::adjustment::Adjust;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::symbol::Ident;
-use rustc_span::Span;
+use rustc_span::{sym, Span};
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for usage of `iterator.map(|x| x.clone())` and suggests
-    /// `iterator.cloned()` instead
+    /// **What it does:** Checks for usage of `map(|x| x.clone())` or
+    /// dereferencing closures for `Copy` types, on `Iterator` or `Option`,
+    /// and suggests `cloned()` or `copied()` instead
     ///
     /// **Why is this bad?** Readability, this can be written more concisely
     ///
@@ -53,7 +55,7 @@ impl<'tcx> LateLintPass<'tcx> for MapClone {
             if args.len() == 2;
             if method.ident.as_str() == "map";
             let ty = cx.typeck_results().expr_ty(&args[0]);
-            if is_type_diagnostic_item(cx, ty, sym!(option_type)) || match_trait_method(cx, e, &paths::ITERATOR);
+            if is_type_diagnostic_item(cx, ty, sym::option_type) || match_trait_method(cx, e, &paths::ITERATOR);
             if let hir::ExprKind::Closure(_, _, body_id, _, _) = args[1].kind;
             let closure_body = cx.tcx.hir().body(body_id);
             let closure_expr = remove_blocks(&closure_body.value);
@@ -70,19 +72,24 @@ impl<'tcx> LateLintPass<'tcx> for MapClone {
                         match closure_expr.kind {
                             hir::ExprKind::Unary(hir::UnOp::UnDeref, ref inner) => {
                                 if ident_eq(name, inner) {
-                                    if let ty::Ref(.., Mutability::Not) = cx.typeck_results().expr_ty(inner).kind {
+                                    if let ty::Ref(.., Mutability::Not) = cx.typeck_results().expr_ty(inner).kind() {
                                         lint(cx, e.span, args[0].span, true);
                                     }
                                 }
                             },
-                            hir::ExprKind::MethodCall(ref method, _, ref obj, _) => {
-                                if ident_eq(name, &obj[0]) && method.ident.as_str() == "clone"
-                                    && match_trait_method(cx, closure_expr, &paths::CLONE_TRAIT) {
-
-                                    let obj_ty = cx.typeck_results().expr_ty(&obj[0]);
-                                    if let ty::Ref(_, ty, _) = obj_ty.kind {
-                                        let copy = is_copy(cx, ty);
-                                        lint(cx, e.span, args[0].span, copy);
+                            hir::ExprKind::MethodCall(ref method, _, [obj], _) => if_chain! {
+                                if ident_eq(name, obj) && method.ident.name == sym::clone;
+                                if match_trait_method(cx, closure_expr, &paths::CLONE_TRAIT);
+                                // no autoderefs
+                                if !cx.typeck_results().expr_adjustments(obj).iter()
+                                    .any(|a| matches!(a.kind, Adjust::Deref(Some(..))));
+                                then {
+                                    let obj_ty = cx.typeck_results().expr_ty(obj);
+                                    if let ty::Ref(_, ty, mutability) = obj_ty.kind() {
+                                        if matches!(mutability, Mutability::Not) {
+                                            let copy = is_copy(cx, ty);
+                                            lint(cx, e.span, args[0].span, copy);
+                                        }
                                     } else {
                                         lint_needless_cloning(cx, e.span, args[0].span);
                                     }
@@ -111,8 +118,8 @@ fn lint_needless_cloning(cx: &LateContext<'_>, root: Span, receiver: Span) {
         cx,
         MAP_CLONE,
         root.trim_start(receiver).unwrap(),
-        "You are needlessly cloning iterator elements",
-        "Remove the `map` call",
+        "you are needlessly cloning iterator elements",
+        "remove the `map` call",
         String::new(),
         Applicability::MachineApplicable,
     )
@@ -125,8 +132,8 @@ fn lint(cx: &LateContext<'_>, replace: Span, root: Span, copied: bool) {
             cx,
             MAP_CLONE,
             replace,
-            "You are using an explicit closure for copying elements",
-            "Consider calling the dedicated `copied` method",
+            "you are using an explicit closure for copying elements",
+            "consider calling the dedicated `copied` method",
             format!(
                 "{}.copied()",
                 snippet_with_applicability(cx, root, "..", &mut applicability)
@@ -138,8 +145,8 @@ fn lint(cx: &LateContext<'_>, replace: Span, root: Span, copied: bool) {
             cx,
             MAP_CLONE,
             replace,
-            "You are using an explicit closure for cloning elements",
-            "Consider calling the dedicated `cloned` method",
+            "you are using an explicit closure for cloning elements",
+            "consider calling the dedicated `cloned` method",
             format!(
                 "{}.cloned()",
                 snippet_with_applicability(cx, root, "..", &mut applicability)

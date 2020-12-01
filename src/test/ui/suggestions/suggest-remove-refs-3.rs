@@ -7,7 +7,7 @@ fn main() {
         & &v
         .iter()
         .enumerate() {
-        //~^^^^ ERROR `&&&&&std::iter::Enumerate<std::slice::Iter<'_, {integer}>>` is not an
+        //~^^^^ ERROR `&&&&&Enumerate<std::slice::Iter<'_, {integer}>>` is not an
         println!("{}", i);
     }
 }

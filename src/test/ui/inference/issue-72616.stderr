@@ -1,0 +1,13 @@
+error[E0283]: type annotations needed
+  --> $DIR/issue-72616.rs:20:30
+   |
+LL |         if String::from("a") == "a".try_into().unwrap() {}
+   |                              ^^ -------------- this method call resolves to `std::result::Result<T, <Self as TryInto<T>>::Error>`
+   |                              |
+   |                              cannot infer type
+   |
+   = note: cannot satisfy `String: PartialEq<_>`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0283`.

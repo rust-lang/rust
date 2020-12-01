@@ -1,6 +1,5 @@
 // run-pass
 // pretty-expanded FIXME #23616
-// ignore-cloudabi no std::env
 
 use std::env;
 

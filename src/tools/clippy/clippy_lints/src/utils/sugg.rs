@@ -13,8 +13,10 @@ use rustc_span::{BytePos, Pos};
 use std::borrow::Cow;
 use std::convert::TryInto;
 use std::fmt::Display;
+use std::ops::{Add, Neg, Not, Sub};
 
 /// A helper type to build suggestion correctly handling parenthesis.
+#[derive(Clone, PartialEq)]
 pub enum Sugg<'a> {
     /// An expression that never needs parenthesis such as `1337` or `[0; 42]`.
     NonParen(Cow<'a, str>),
@@ -25,8 +27,12 @@ pub enum Sugg<'a> {
     BinOp(AssocOp, Cow<'a, str>),
 }
 
+/// Literal constant `0`, for convenience.
+pub const ZERO: Sugg<'static> = Sugg::NonParen(Cow::Borrowed("0"));
 /// Literal constant `1`, for convenience.
 pub const ONE: Sugg<'static> = Sugg::NonParen(Cow::Borrowed("1"));
+/// a constant represents an empty string, for convenience.
+pub const EMPTY: Sugg<'static> = Sugg::NonParen(Cow::Borrowed(""));
 
 impl Display for Sugg<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
@@ -49,7 +55,7 @@ impl<'a> Sugg<'a> {
     /// Convenience function around `hir_opt` for suggestions with a default
     /// text.
     pub fn hir(cx: &LateContext<'_>, expr: &hir::Expr<'_>, default: &'a str) -> Self {
-        Self::hir_opt(cx, expr).unwrap_or_else(|| Sugg::NonParen(Cow::Borrowed(default)))
+        Self::hir_opt(cx, expr).unwrap_or(Sugg::NonParen(Cow::Borrowed(default)))
     }
 
     /// Same as `hir`, but it adapts the applicability level by following rules:
@@ -110,6 +116,7 @@ impl<'a> Sugg<'a> {
             | hir::ExprKind::Index(..)
             | hir::ExprKind::InlineAsm(..)
             | hir::ExprKind::LlvmInlineAsm(..)
+            | hir::ExprKind::ConstBlock(..)
             | hir::ExprKind::Lit(..)
             | hir::ExprKind::Loop(..)
             | hir::ExprKind::MethodCall(..)
@@ -132,7 +139,11 @@ impl<'a> Sugg<'a> {
     pub fn ast(cx: &EarlyContext<'_>, expr: &ast::Expr, default: &'a str) -> Self {
         use rustc_ast::ast::RangeLimits;
 
-        let snippet = snippet(cx, expr.span, default);
+        let snippet = if expr.span.from_expansion() {
+            snippet_with_macro_callsite(cx, expr.span, default)
+        } else {
+            snippet(cx, expr.span, default)
+        };
 
         match expr.kind {
             ast::ExprKind::AddrOf(..)
@@ -153,11 +164,13 @@ impl<'a> Sugg<'a> {
             | ast::ExprKind::Index(..)
             | ast::ExprKind::InlineAsm(..)
             | ast::ExprKind::LlvmInlineAsm(..)
+            | ast::ExprKind::ConstBlock(..)
             | ast::ExprKind::Lit(..)
             | ast::ExprKind::Loop(..)
             | ast::ExprKind::MacCall(..)
             | ast::ExprKind::MethodCall(..)
             | ast::ExprKind::Paren(..)
+            | ast::ExprKind::Underscore
             | ast::ExprKind::Path(..)
             | ast::ExprKind::Repeat(..)
             | ast::ExprKind::Ret(..)
@@ -263,21 +276,60 @@ impl<'a> Sugg<'a> {
     }
 }
 
-impl<'a, 'b> std::ops::Add<Sugg<'b>> for Sugg<'a> {
+// Copied from the rust standart library, and then edited
+macro_rules! forward_binop_impls_to_ref {
+    (impl $imp:ident, $method:ident for $t:ty, type Output = $o:ty) => {
+        impl $imp<$t> for &$t {
+            type Output = $o;
+
+            fn $method(self, other: $t) -> $o {
+                $imp::$method(self, &other)
+            }
+        }
+
+        impl $imp<&$t> for $t {
+            type Output = $o;
+
+            fn $method(self, other: &$t) -> $o {
+                $imp::$method(&self, other)
+            }
+        }
+
+        impl $imp for $t {
+            type Output = $o;
+
+            fn $method(self, other: $t) -> $o {
+                $imp::$method(&self, &other)
+            }
+        }
+    };
+}
+
+impl Add for &Sugg<'_> {
     type Output = Sugg<'static>;
-    fn add(self, rhs: Sugg<'b>) -> Sugg<'static> {
-        make_binop(ast::BinOpKind::Add, &self, &rhs)
+    fn add(self, rhs: &Sugg<'_>) -> Sugg<'static> {
+        make_binop(ast::BinOpKind::Add, self, rhs)
     }
 }
 
-impl<'a, 'b> std::ops::Sub<Sugg<'b>> for Sugg<'a> {
+impl Sub for &Sugg<'_> {
     type Output = Sugg<'static>;
-    fn sub(self, rhs: Sugg<'b>) -> Sugg<'static> {
-        make_binop(ast::BinOpKind::Sub, &self, &rhs)
+    fn sub(self, rhs: &Sugg<'_>) -> Sugg<'static> {
+        make_binop(ast::BinOpKind::Sub, self, rhs)
     }
 }
 
-impl<'a> std::ops::Not for Sugg<'a> {
+forward_binop_impls_to_ref!(impl Add, add for Sugg<'_>, type Output = Sugg<'static>);
+forward_binop_impls_to_ref!(impl Sub, sub for Sugg<'_>, type Output = Sugg<'static>);
+
+impl Neg for Sugg<'_> {
+    type Output = Sugg<'static>;
+    fn neg(self) -> Sugg<'static> {
+        make_unop("-", self)
+    }
+}
+
+impl Not for Sugg<'_> {
     type Output = Sugg<'static>;
     fn not(self) -> Sugg<'static> {
         make_unop("!", self)

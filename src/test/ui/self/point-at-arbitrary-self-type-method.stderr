@@ -5,7 +5,7 @@ LL | struct A;
    | --------- method `foo` not found for this
 ...
 LL |     fn foo(self: Box<Self>) {}
-   |        --- the method is available for `std::boxed::Box<A>` here
+   |        --- the method is available for `Box<A>` here
 ...
 LL |     A.foo();
    |       ^^^ method not found in `A`

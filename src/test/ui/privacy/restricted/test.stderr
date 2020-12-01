@@ -46,7 +46,7 @@ note: the function `f` is defined here
 LL |         pub(super) fn f() {}
    |         ^^^^^^^^^^^^^^^^^
 
-error[E0616]: field `x` of struct `foo::bar::S` is private
+error[E0616]: field `x` of struct `S` is private
   --> $DIR/test.rs:31:18
    |
 LL |     S::default().x;
@@ -64,13 +64,13 @@ error[E0624]: associated function `g` is private
 LL |     S::g();
    |        ^ private associated function
 
-error[E0616]: field `y` of struct `pub_restricted::Universe` is private
+error[E0616]: field `y` of struct `Universe` is private
   --> $DIR/test.rs:42:15
    |
 LL |     let _ = u.y;
    |               ^ private field
 
-error[E0616]: field `z` of struct `pub_restricted::Universe` is private
+error[E0616]: field `z` of struct `Universe` is private
   --> $DIR/test.rs:43:15
    |
 LL |     let _ = u.z;

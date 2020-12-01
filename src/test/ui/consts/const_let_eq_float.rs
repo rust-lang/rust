@@ -1,6 +1,6 @@
-// build-pass (FIXME(62277): could be check-pass?)
+// run-pass
 
-#![feature(const_fn)]
+#![feature(const_fn_floating_point_arithmetic)]
 
 struct Foo<T>(T);
 struct Bar<T> { x: T }

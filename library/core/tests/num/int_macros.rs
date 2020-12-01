@@ -2,7 +2,6 @@ macro_rules! int_module {
     ($T:ident, $T_i:ident) => {
         #[cfg(test)]
         mod tests {
-            use core::mem;
             use core::ops::{BitAnd, BitOr, BitXor, Not, Shl, Shr};
             use core::$T_i::*;
 
@@ -82,30 +81,27 @@ macro_rules! int_module {
 
             #[test]
             fn test_count_zeros() {
-                let bits = mem::size_of::<$T>() * 8;
-                assert_eq!(A.count_zeros(), bits as u32 - 3);
-                assert_eq!(B.count_zeros(), bits as u32 - 2);
-                assert_eq!(C.count_zeros(), bits as u32 - 5);
+                assert_eq!(A.count_zeros(), $T::BITS - 3);
+                assert_eq!(B.count_zeros(), $T::BITS - 2);
+                assert_eq!(C.count_zeros(), $T::BITS - 5);
             }
 
             #[test]
             fn test_leading_trailing_ones() {
-                let bits = (mem::size_of::<$T>() * 8) as u32;
-
                 let a: $T = 0b0101_1111;
                 assert_eq!(a.trailing_ones(), 5);
-                assert_eq!((!a).leading_ones(), bits - 7);
+                assert_eq!((!a).leading_ones(), $T::BITS - 7);
 
                 assert_eq!(a.reverse_bits().leading_ones(), 5);
 
-                assert_eq!(_1.leading_ones(), bits);
-                assert_eq!(_1.trailing_ones(), bits);
+                assert_eq!(_1.leading_ones(), $T::BITS);
+                assert_eq!(_1.trailing_ones(), $T::BITS);
 
                 assert_eq!((_1 << 1).trailing_ones(), 0);
                 assert_eq!(MAX.leading_ones(), 0);
 
-                assert_eq!((_1 << 1).leading_ones(), bits - 1);
-                assert_eq!(MAX.trailing_ones(), bits - 1);
+                assert_eq!((_1 << 1).leading_ones(), $T::BITS - 1);
+                assert_eq!(MAX.trailing_ones(), $T::BITS - 1);
 
                 assert_eq!(_0.leading_ones(), 0);
                 assert_eq!(_0.trailing_ones(), 0);
@@ -135,9 +131,9 @@ macro_rules! int_module {
                 assert_eq!(B.rotate_left(0), B);
                 assert_eq!(C.rotate_left(0), C);
                 // Rotating by a multiple of word size should also have no effect
-                assert_eq!(A.rotate_left(64), A);
-                assert_eq!(B.rotate_left(64), B);
-                assert_eq!(C.rotate_left(64), C);
+                assert_eq!(A.rotate_left(128), A);
+                assert_eq!(B.rotate_left(128), B);
+                assert_eq!(C.rotate_left(128), C);
             }
 
             #[test]
@@ -208,8 +204,8 @@ macro_rules! int_module {
 
             #[test]
             fn test_from_str() {
-                fn from_str<T: ::std::str::FromStr>(t: &str) -> Option<T> {
-                    ::std::str::FromStr::from_str(t).ok()
+                fn from_str<T: std::str::FromStr>(t: &str) -> Option<T> {
+                    std::str::FromStr::from_str(t).ok()
                 }
                 assert_eq!(from_str::<$T>("0"), Some(0 as $T));
                 assert_eq!(from_str::<$T>("3"), Some(3 as $T));

@@ -89,6 +89,28 @@ rustc -Clinker-plugin-lto="/path/to/LLVMgold.so" -L. -Copt-level=2 ./main.rs
 
 ## Toolchain Compatibility
 
+<!-- NOTE: to update the below table, you can use this shell script:
+
+```sh
+rustup toolchain install --profile minimal nightly
+MINOR_VERSION=$(rustc +nightly --version | cut -d . -f 2)
+LOWER_BOUND=44
+
+llvm_version() {
+    toolchain="$1"
+    printf "Rust $toolchain    |    Clang "
+    rustc +"$toolchain" -Vv | grep LLVM | cut -d ':' -f 2 | tr -d ' '
+}
+
+for version in `seq $LOWER_BOUND $((MINOR_VERSION - 2))`; do
+    toolchain=1.$version.0
+    rustup toolchain install --no-self-update --profile  minimal $toolchain >/dev/null 2>&1
+    llvm_version $toolchain
+done
+```
+
+-->
+
 In order for this kind of LTO to work, the LLVM linker plugin must be able to
 handle the LLVM bitcode produced by both `rustc` and `clang`.
 
@@ -100,17 +122,20 @@ LLVM. However, the approximation is usually reliable.
 
 The following table shows known good combinations of toolchain versions.
 
-|           |  Clang 7  |  Clang 8  |  Clang 9  |
-|-----------|-----------|-----------|-----------|
-| Rust 1.34 |     ✗     |     ✓     |     ✗     |
-| Rust 1.35 |     ✗     |     ✓     |     ✗     |
-| Rust 1.36 |     ✗     |     ✓     |     ✗     |
-| Rust 1.37 |     ✗     |     ✓     |     ✗     |
-| Rust 1.38 |     ✗     |     ✗     |     ✓     |
-| Rust 1.39 |     ✗     |     ✗     |     ✓     |
-| Rust 1.40 |     ✗     |     ✗     |     ✓     |
-| Rust 1.41 |     ✗     |     ✗     |     ✓     |
-| Rust 1.42 |     ✗     |     ✗     |     ✓     |
-| Rust 1.43 |     ✗     |     ✗     |     ✓     |
+| Rust Version | Clang Version |
+|--------------|---------------|
+| Rust 1.34    |    Clang 8    |
+| Rust 1.35    |    Clang 8    |
+| Rust 1.36    |    Clang 8    |
+| Rust 1.37    |    Clang 8    |
+| Rust 1.38    |    Clang 9    |
+| Rust 1.39    |    Clang 9    |
+| Rust 1.40    |    Clang 9    |
+| Rust 1.41    |    Clang 9    |
+| Rust 1.42    |    Clang 9    |
+| Rust 1.43    |    Clang 9    |
+| Rust 1.44    |    Clang 9    |
+| Rust 1.45    |    Clang 10   |
+| Rust 1.46    |    Clang 10   |
 
 Note that the compatibility policy for this feature might change in the future.

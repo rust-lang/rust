@@ -2,12 +2,12 @@ error[E0277]: `!` is not an iterator
   --> $DIR/issue-51506.rs:13:5
    |
 LL |     type Out: Iterator<Item = u32>;
-   |     ------------------------------- required by `Trait::Out`
+   |               -------------------- required by this bound in `Trait::Out`
 ...
 LL |     default type Out = !;
    |     ^^^^^^^^^^^^^^^^^^^^^ `!` is not an iterator
    |
-   = help: the trait `std::iter::Iterator` is not implemented for `!`
+   = help: the trait `Iterator` is not implemented for `!`
 
 error: aborting due to previous error
 

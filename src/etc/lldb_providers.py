@@ -526,12 +526,12 @@ class StdHashMapSyntheticProvider:
 
     def update(self):
         # type: () -> None
-        table = self.valobj.GetChildMemberWithName("base").GetChildMemberWithName("table")
+        table = self.table()
         capacity = table.GetChildMemberWithName("bucket_mask").GetValueAsUnsigned() + 1
         ctrl = table.GetChildMemberWithName("ctrl").GetChildAtIndex(0)
 
         self.size = table.GetChildMemberWithName("items").GetValueAsUnsigned()
-        self.pair_type = table.type.template_args[0]
+        self.pair_type = table.type.template_args[0].GetTypedefedType()
         self.pair_type_size = self.pair_type.GetByteSize()
 
         self.new_layout = not table.GetChildMemberWithName("data").IsValid()
@@ -551,6 +551,17 @@ class StdHashMapSyntheticProvider:
             is_present = value & 128 == 0
             if is_present:
                 self.valid_indices.append(idx)
+
+    def table(self):
+        # type: () -> SBValue
+        if self.show_values:
+            hashbrown_hashmap = self.valobj.GetChildMemberWithName("base")
+        else:
+            # BACKCOMPAT: rust 1.47
+            # HashSet wraps either std HashMap or hashbrown::HashSet, which both
+            # wrap hashbrown::HashMap, so either way we "unwrap" twice.
+            hashbrown_hashmap = self.valobj.GetChildAtIndex(0).GetChildAtIndex(0)
+        return hashbrown_hashmap.GetChildMemberWithName("table")
 
     def has_children(self):
         # type: () -> bool

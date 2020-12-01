@@ -1,4 +1,4 @@
-error[E0658]: `&raw mut` is not allowed in constant functions
+error[E0658]: raw mutable references are not allowed in constant functions
   --> $DIR/address_of.rs:5:13
    |
 LL |     let b = &raw mut a;
@@ -7,7 +7,7 @@ LL |     let b = &raw mut a;
    = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
    = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
 
-error[E0658]: `&raw mut` is not allowed in constant functions
+error[E0658]: raw mutable references are not allowed in constant functions
   --> $DIR/address_of.rs:13:17
    |
 LL |         let b = &raw mut a;

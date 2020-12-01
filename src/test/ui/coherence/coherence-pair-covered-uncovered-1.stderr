@@ -5,7 +5,7 @@ LL | impl<T, U> Remote1<Pair<T, Local<U>>> for i32 { }
    | ^^^^^^^^^^^--------------------------^^^^^---
    | |          |                              |
    | |          |                              `i32` is not defined in the current crate
-   | |          `lib::Pair` is not defined in the current crate
+   | |          `Pair` is not defined in the current crate
    | impl doesn't use only types from inside the current crate
    |
    = note: define and implement a trait or new type instead

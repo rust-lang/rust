@@ -2,7 +2,7 @@
 
 #![feature(try_blocks)]
 
-#![inline(never)]
+#[inline(never)]
 fn do_something_with<T>(_x: T) {}
 
 // This test checks that borrows made and returned inside try blocks are properly constrained

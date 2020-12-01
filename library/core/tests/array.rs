@@ -1,4 +1,4 @@
-use core::array::{FixedSizeArray, IntoIter};
+use core::array::{self, FixedSizeArray, IntoIter};
 use core::convert::TryFrom;
 
 #[test]
@@ -17,6 +17,21 @@ fn fixed_size_array() {
     assert_eq!(FixedSizeArray::as_mut_slice(&mut zero_sized).len(), 64);
     assert_eq!(FixedSizeArray::as_mut_slice(&mut empty_array).len(), 0);
     assert_eq!(FixedSizeArray::as_mut_slice(&mut empty_zero_sized).len(), 0);
+}
+
+#[test]
+fn array_from_ref() {
+    let value: String = "Hello World!".into();
+    let arr: &[String; 1] = array::from_ref(&value);
+    assert_eq!(&[value.clone()], arr);
+}
+
+#[test]
+fn array_from_mut() {
+    let mut value: String = "Hello World".into();
+    let arr: &mut [String; 1] = array::from_mut(&mut value);
+    arr[0].push_str("!");
+    assert_eq!(&value, "Hello World!");
 }
 
 #[test]
@@ -329,4 +344,33 @@ fn array_map_drop_safety() {
     assert!(success.is_err());
     assert_eq!(DROPPED.load(Ordering::SeqCst), num_to_create);
     panic!("test succeeded")
+}
+
+#[test]
+fn cell_allows_array_cycle() {
+    use core::cell::Cell;
+
+    #[derive(Debug)]
+    struct B<'a> {
+        a: [Cell<Option<&'a B<'a>>>; 2],
+    }
+
+    impl<'a> B<'a> {
+        fn new() -> B<'a> {
+            B { a: [Cell::new(None), Cell::new(None)] }
+        }
+    }
+
+    let b1 = B::new();
+    let b2 = B::new();
+    let b3 = B::new();
+
+    b1.a[0].set(Some(&b2));
+    b1.a[1].set(Some(&b3));
+
+    b2.a[0].set(Some(&b2));
+    b2.a[1].set(Some(&b3));
+
+    b3.a[0].set(Some(&b1));
+    b3.a[1].set(Some(&b2));
 }

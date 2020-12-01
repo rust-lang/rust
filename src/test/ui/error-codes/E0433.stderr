@@ -1,8 +1,8 @@
-error[E0433]: failed to resolve: use of undeclared type or module `NonExistingMap`
+error[E0433]: failed to resolve: use of undeclared type `NonExistingMap`
   --> $DIR/E0433.rs:2:15
    |
 LL |     let map = NonExistingMap::new();
-   |               ^^^^^^^^^^^^^^ use of undeclared type or module `NonExistingMap`
+   |               ^^^^^^^^^^^^^^ use of undeclared type `NonExistingMap`
 
 error: aborting due to previous error
 

@@ -17,8 +17,8 @@ fn exclusive_from_to() {
     if let 0..Y = 0 {} // OK.
     if let X..3 = 0 {} // OK.
     if let X..Y = 0 {} // OK.
-    if let true..Y = 0 {} //~ ERROR only char and numeric types
-    if let X..true = 0 {} //~ ERROR only char and numeric types
+    if let true..Y = 0 {} //~ ERROR only `char` and numeric types
+    if let X..true = 0 {} //~ ERROR only `char` and numeric types
     if let .0..Y = 0 {} //~ ERROR mismatched types
     //~^ ERROR float literals must have an integer part
     if let X.. .0 = 0 {} //~ ERROR mismatched types
@@ -30,8 +30,8 @@ fn inclusive_from_to() {
     if let 0..=Y = 0 {} // OK.
     if let X..=3 = 0 {} // OK.
     if let X..=Y = 0 {} // OK.
-    if let true..=Y = 0 {} //~ ERROR only char and numeric types
-    if let X..=true = 0 {} //~ ERROR only char and numeric types
+    if let true..=Y = 0 {} //~ ERROR only `char` and numeric types
+    if let X..=true = 0 {} //~ ERROR only `char` and numeric types
     if let .0..=Y = 0 {} //~ ERROR mismatched types
     //~^ ERROR float literals must have an integer part
     if let X..=.0 = 0 {} //~ ERROR mismatched types
@@ -43,9 +43,9 @@ fn inclusive2_from_to() {
     if let 0...Y = 0 {} //~ ERROR `...` range patterns are deprecated
     if let X...3 = 0 {} //~ ERROR `...` range patterns are deprecated
     if let X...Y = 0 {} //~ ERROR `...` range patterns are deprecated
-    if let true...Y = 0 {} //~ ERROR only char and numeric types
+    if let true...Y = 0 {} //~ ERROR only `char` and numeric types
     //~^ ERROR `...` range patterns are deprecated
-    if let X...true = 0 {} //~ ERROR only char and numeric types
+    if let X...true = 0 {} //~ ERROR only `char` and numeric types
     //~^ ERROR `...` range patterns are deprecated
     if let .0...Y = 0 {} //~ ERROR mismatched types
     //~^ ERROR float literals must have an integer part
@@ -59,7 +59,7 @@ fn exclusive_from() {
     if let 0.. = 0 {}
     if let X.. = 0 {}
     if let true.. = 0 {}
-    //~^ ERROR only char and numeric types
+    //~^ ERROR only `char` and numeric types
     if let .0.. = 0 {}
     //~^ ERROR float literals must have an integer part
     //~| ERROR mismatched types
@@ -69,7 +69,7 @@ fn inclusive_from() {
     if let 0..= = 0 {} //~ ERROR inclusive range with no end
     if let X..= = 0 {} //~ ERROR inclusive range with no end
     if let true..= = 0 {} //~ ERROR inclusive range with no end
-    //~| ERROR only char and numeric types
+    //~| ERROR only `char` and numeric types
     if let .0..= = 0 {} //~ ERROR inclusive range with no end
     //~^ ERROR float literals must have an integer part
     //~| ERROR mismatched types
@@ -79,7 +79,7 @@ fn inclusive2_from() {
     if let 0... = 0 {} //~ ERROR inclusive range with no end
     if let X... = 0 {} //~ ERROR inclusive range with no end
     if let true... = 0 {} //~ ERROR inclusive range with no end
-    //~| ERROR only char and numeric types
+    //~| ERROR only `char` and numeric types
     if let .0... = 0 {} //~ ERROR inclusive range with no end
     //~^ ERROR float literals must have an integer part
     //~| ERROR mismatched types
@@ -89,7 +89,7 @@ fn exclusive_to() {
     if let ..0 = 0 {}
     if let ..Y = 0 {}
     if let ..true = 0 {}
-    //~^ ERROR only char and numeric types
+    //~^ ERROR only `char` and numeric types
     if let .. .0 = 0 {}
     //~^ ERROR float literals must have an integer part
     //~| ERROR mismatched types
@@ -99,7 +99,7 @@ fn inclusive_to() {
     if let ..=3 = 0 {}
     if let ..=Y = 0 {}
     if let ..=true = 0 {}
-    //~^ ERROR only char and numeric types
+    //~^ ERROR only `char` and numeric types
     if let ..=.0 = 0 {}
     //~^ ERROR float literals must have an integer part
     //~| ERROR mismatched types
@@ -112,7 +112,7 @@ fn inclusive2_to() {
     //~^ ERROR range-to patterns with `...` are not allowed
     if let ...true = 0 {}
     //~^ ERROR range-to patterns with `...` are not allowed
-    //~| ERROR only char and numeric types
+    //~| ERROR only `char` and numeric types
     if let ....3 = 0 {}
     //~^ ERROR float literals must have an integer part
     //~| ERROR range-to patterns with `...` are not allowed

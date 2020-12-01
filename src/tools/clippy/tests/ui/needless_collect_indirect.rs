@@ -16,4 +16,10 @@ fn main() {
         .into_iter()
         .map(|x| (*x, *x + 1))
         .collect::<HashMap<_, _>>();
+
+    // #6202
+    let a = "a".to_string();
+    let sample = vec![a.clone(), "b".to_string(), "c".to_string()];
+    let non_copy_contains = sample.into_iter().collect::<Vec<_>>();
+    non_copy_contains.contains(&a);
 }

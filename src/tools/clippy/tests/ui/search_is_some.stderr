@@ -1,0 +1,39 @@
+error: called `is_some()` after searching an `Iterator` with `find`
+  --> $DIR/search_is_some.rs:13:13
+   |
+LL |       let _ = v.iter().find(|&x| {
+   |  _____________^
+LL | |                               *x < 0
+LL | |                           }
+LL | |                    ).is_some();
+   | |______________________________^
+   |
+   = note: `-D clippy::search-is-some` implied by `-D warnings`
+   = help: this is more succinctly expressed by calling `any()`
+
+error: called `is_some()` after searching an `Iterator` with `position`
+  --> $DIR/search_is_some.rs:19:13
+   |
+LL |       let _ = v.iter().position(|&x| {
+   |  _____________^
+LL | |                                   x < 0
+LL | |                               }
+LL | |                    ).is_some();
+   | |______________________________^
+   |
+   = help: this is more succinctly expressed by calling `any()`
+
+error: called `is_some()` after searching an `Iterator` with `rposition`
+  --> $DIR/search_is_some.rs:25:13
+   |
+LL |       let _ = v.iter().rposition(|&x| {
+   |  _____________^
+LL | |                                    x < 0
+LL | |                                }
+LL | |                    ).is_some();
+   | |______________________________^
+   |
+   = help: this is more succinctly expressed by calling `any()`
+
+error: aborting due to 3 previous errors
+

@@ -1,4 +1,4 @@
-error: useless conversion to the same type
+error: useless conversion to the same type: `T`
   --> $DIR/useless_conversion_try.rs:6:13
    |
 LL |     let _ = T::try_from(val).unwrap();
@@ -11,7 +11,7 @@ LL | #![deny(clippy::useless_conversion)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
    = help: consider removing `T::try_from()`
 
-error: useless conversion to the same type
+error: useless conversion to the same type: `T`
   --> $DIR/useless_conversion_try.rs:7:5
    |
 LL |     val.try_into().unwrap()
@@ -19,7 +19,7 @@ LL |     val.try_into().unwrap()
    |
    = help: consider removing `.try_into()`
 
-error: useless conversion to the same type
+error: useless conversion to the same type: `std::string::String`
   --> $DIR/useless_conversion_try.rs:29:21
    |
 LL |     let _: String = "foo".to_string().try_into().unwrap();
@@ -27,7 +27,7 @@ LL |     let _: String = "foo".to_string().try_into().unwrap();
    |
    = help: consider removing `.try_into()`
 
-error: useless conversion to the same type
+error: useless conversion to the same type: `std::string::String`
   --> $DIR/useless_conversion_try.rs:30:21
    |
 LL |     let _: String = TryFrom::try_from("foo".to_string()).unwrap();
@@ -35,7 +35,7 @@ LL |     let _: String = TryFrom::try_from("foo".to_string()).unwrap();
    |
    = help: consider removing `TryFrom::try_from()`
 
-error: useless conversion to the same type
+error: useless conversion to the same type: `std::string::String`
   --> $DIR/useless_conversion_try.rs:31:13
    |
 LL |     let _ = String::try_from("foo".to_string()).unwrap();
@@ -43,7 +43,7 @@ LL |     let _ = String::try_from("foo".to_string()).unwrap();
    |
    = help: consider removing `String::try_from()`
 
-error: useless conversion to the same type
+error: useless conversion to the same type: `std::string::String`
   --> $DIR/useless_conversion_try.rs:32:13
    |
 LL |     let _ = String::try_from(format!("A: {:04}", 123)).unwrap();
@@ -51,7 +51,7 @@ LL |     let _ = String::try_from(format!("A: {:04}", 123)).unwrap();
    |
    = help: consider removing `String::try_from()`
 
-error: useless conversion to the same type
+error: useless conversion to the same type: `std::string::String`
   --> $DIR/useless_conversion_try.rs:33:21
    |
 LL |     let _: String = format!("Hello {}", "world").try_into().unwrap();
@@ -59,7 +59,7 @@ LL |     let _: String = format!("Hello {}", "world").try_into().unwrap();
    |
    = help: consider removing `.try_into()`
 
-error: useless conversion to the same type
+error: useless conversion to the same type: `std::string::String`
   --> $DIR/useless_conversion_try.rs:34:21
    |
 LL |     let _: String = "".to_owned().try_into().unwrap();
@@ -67,7 +67,7 @@ LL |     let _: String = "".to_owned().try_into().unwrap();
    |
    = help: consider removing `.try_into()`
 
-error: useless conversion to the same type
+error: useless conversion to the same type: `std::string::String`
   --> $DIR/useless_conversion_try.rs:35:27
    |
 LL |     let _: String = match String::from("_").try_into() {

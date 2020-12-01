@@ -83,6 +83,25 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
+    /// **What it does:** Warns if hexadecimal or binary literals are not grouped
+    /// by nibble or byte.
+    ///
+    /// **Why is this bad?** Negatively impacts readability.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    ///
+    /// ```rust
+    /// let x: u32 = 0xFFF_FFF;
+    /// let y: u8 = 0b01_011_101;
+    /// ```
+    pub UNUSUAL_BYTE_GROUPINGS,
+    style,
+    "binary or hex literals that aren't grouped by four"
+}
+
+declare_clippy_lint! {
     /// **What it does:** Warns if the digits of an integral or floating-point
     /// constant are grouped into groups that
     /// are too large.
@@ -125,6 +144,7 @@ enum WarningType {
     LargeDigitGroups,
     DecimalRepresentation,
     MistypedLiteralSuffix,
+    UnusualByteGroupings,
 }
 
 impl WarningType {
@@ -175,6 +195,15 @@ impl WarningType {
                 suggested_format,
                 Applicability::MachineApplicable,
             ),
+            Self::UnusualByteGroupings => span_lint_and_sugg(
+                cx,
+                UNUSUAL_BYTE_GROUPINGS,
+                span,
+                "digits of hex or binary literal not grouped by four",
+                "consider",
+                suggested_format,
+                Applicability::MachineApplicable,
+            ),
         };
     }
 }
@@ -184,6 +213,7 @@ declare_lint_pass!(LiteralDigitGrouping => [
     INCONSISTENT_DIGIT_GROUPING,
     LARGE_DIGIT_GROUPS,
     MISTYPED_LITERAL_SUFFIXES,
+    UNUSUAL_BYTE_GROUPINGS,
 ]);
 
 impl EarlyLintPass for LiteralDigitGrouping {
@@ -217,9 +247,9 @@ impl LiteralDigitGrouping {
 
                 let result = (|| {
 
-                    let integral_group_size = Self::get_group_size(num_lit.integer.split('_'))?;
+                    let integral_group_size = Self::get_group_size(num_lit.integer.split('_'), num_lit.radix)?;
                     if let Some(fraction) = num_lit.fraction {
-                        let fractional_group_size = Self::get_group_size(fraction.rsplit('_'))?;
+                        let fractional_group_size = Self::get_group_size(fraction.rsplit('_'), num_lit.radix)?;
 
                         let consistent = Self::parts_consistent(integral_group_size,
                                                                 fractional_group_size,
@@ -229,6 +259,7 @@ impl LiteralDigitGrouping {
                             return Err(WarningType::InconsistentDigitGrouping);
                         };
                     }
+
                     Ok(())
                 })();
 
@@ -237,6 +268,7 @@ impl LiteralDigitGrouping {
                     let should_warn = match warning_type {
                         | WarningType::UnreadableLiteral
                         | WarningType::InconsistentDigitGrouping
+                        | WarningType::UnusualByteGroupings
                         | WarningType::LargeDigitGroups => {
                             !in_macro(lit.span)
                         }
@@ -264,13 +296,10 @@ impl LiteralDigitGrouping {
 
         let (part, mistyped_suffixes, missing_char) = if let Some((_, exponent)) = &mut num_lit.exponent {
             (exponent, &["32", "64"][..], 'f')
+        } else if num_lit.fraction.is_some() {
+            (&mut num_lit.integer, &["32", "64"][..], 'f')
         } else {
-            num_lit
-                .fraction
-                .as_mut()
-                .map_or((&mut num_lit.integer, &["8", "16", "32", "64"][..], 'i'), |fraction| {
-                    (fraction, &["32", "64"][..], 'f')
-                })
+            (&mut num_lit.integer, &["8", "16", "32", "64"][..], 'i')
         };
 
         let mut split = part.rsplit('_');
@@ -334,10 +363,14 @@ impl LiteralDigitGrouping {
 
     /// Returns the size of the digit groups (or None if ungrouped) if successful,
     /// otherwise returns a `WarningType` for linting.
-    fn get_group_size<'a>(groups: impl Iterator<Item = &'a str>) -> Result<Option<usize>, WarningType> {
+    fn get_group_size<'a>(groups: impl Iterator<Item = &'a str>, radix: Radix) -> Result<Option<usize>, WarningType> {
         let mut groups = groups.map(str::len);
 
         let first = groups.next().expect("At least one group");
+
+        if (radix == Radix::Binary || radix == Radix::Hexadecimal) && groups.any(|i| i != 4 && i != 2) {
+            return Err(WarningType::UnusualByteGroupings);
+        }
 
         if let Some(second) = groups.next() {
             if !groups.all(|x| x == second) || first > second {

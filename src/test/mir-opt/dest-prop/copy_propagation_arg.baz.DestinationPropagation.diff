@@ -1,0 +1,22 @@
+- // MIR for `baz` before DestinationPropagation
++ // MIR for `baz` after DestinationPropagation
+  
+  fn baz(_1: i32) -> () {
+      debug x => _1;                       // in scope 0 at $DIR/copy_propagation_arg.rs:21:8: 21:13
+      let mut _0: ();                      // return place in scope 0 at $DIR/copy_propagation_arg.rs:21:20: 21:20
+      let mut _2: i32;                     // in scope 0 at $DIR/copy_propagation_arg.rs:23:9: 23:10
+  
+      bb0: {
+-         StorageLive(_2);                 // scope 0 at $DIR/copy_propagation_arg.rs:23:9: 23:10
+-         _2 = _1;                         // scope 0 at $DIR/copy_propagation_arg.rs:23:9: 23:10
+-         _1 = move _2;                    // scope 0 at $DIR/copy_propagation_arg.rs:23:5: 23:10
+-         StorageDead(_2);                 // scope 0 at $DIR/copy_propagation_arg.rs:23:9: 23:10
++         nop;                             // scope 0 at $DIR/copy_propagation_arg.rs:23:9: 23:10
++         nop;                             // scope 0 at $DIR/copy_propagation_arg.rs:23:9: 23:10
++         nop;                             // scope 0 at $DIR/copy_propagation_arg.rs:23:5: 23:10
++         nop;                             // scope 0 at $DIR/copy_propagation_arg.rs:23:9: 23:10
+          _0 = const ();                   // scope 0 at $DIR/copy_propagation_arg.rs:21:20: 24:2
+          return;                          // scope 0 at $DIR/copy_propagation_arg.rs:24:2: 24:2
+      }
+  }
+  

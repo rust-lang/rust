@@ -1,5 +1,5 @@
 error: cannot determine resolution for the attribute macro `test`
-  --> $DIR/issue-43106-gating-of-test.rs:3:4
+  --> $DIR/issue-43106-gating-of-test.rs:4:4
    |
 LL | #![test                    = "4200"]
    |    ^^^^

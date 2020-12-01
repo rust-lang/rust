@@ -1,3 +1,279 @@
+Version 1.48.0 (2020-11-19)
+==========================
+
+Language
+--------
+
+- [The `unsafe` keyword is now syntactically permitted on modules.][75857] This
+  is still rejected *semantically*, but can now be parsed by procedural macros.
+
+Compiler
+--------
+- [Stabilised the `-C link-self-contained=<yes|no>` compiler flag.][76158] This tells
+  `rustc` whether to link its own C runtime and libraries or to rely on a external 
+  linker to find them. (Supported only on `windows-gnu`, `linux-musl`, and `wasi` platforms.)
+- [You can now use `-C target-feature=+crt-static` on `linux-gnu` targets.][77386]
+  Note: If you're using cargo you must explicitly pass the `--target` flag.
+- [Added tier 2\* support for `aarch64-unknown-linux-musl`.][76420]
+
+\* Refer to Rust's [platform support page][forge-platform-support] for more
+information on Rust's tiered platform support.
+
+Libraries
+---------
+- [`io::Write` is now implemented for `&ChildStdin` `&Sink`, `&Stdout`,
+  and `&Stderr`.][76275]
+- [All arrays of any length now implement `TryFrom<Vec<T>>`.][76310]
+- [The `matches!` macro now supports having a trailing comma.][74880]
+- [`Vec<A>` now implements `PartialEq<[B]>` where `A: PartialEq<B>`.][74194]
+- [The `RefCell::{replace, replace_with, clone}` methods now all use `#[track_caller]`.][77055]
+
+Stabilized APIs
+---------------
+- [`slice::as_ptr_range`]
+- [`slice::as_mut_ptr_range`]
+- [`VecDeque::make_contiguous`]
+- [`future::pending`]
+- [`future::ready`]
+
+The following previously stable methods are now `const fn`'s:
+
+- [`Option::is_some`]
+- [`Option::is_none`]
+- [`Option::as_ref`]
+- [`Result::is_ok`]
+- [`Result::is_err`]
+- [`Result::as_ref`]
+- [`Ordering::reverse`]
+- [`Ordering::then`]
+
+Cargo
+-----
+
+Rustdoc
+-------
+- [You can now link to items in `rustdoc` using the intra-doc link
+  syntax.][74430] E.g. ``/// Uses [`std::future`]`` will automatically generate
+  a link to `std::future`'s documentation. See ["Linking to items by
+  name"][intradoc-links] for more information.
+- [You can now specify `#[doc(alias = "<alias>")]` on items to add search aliases
+  when searching through `rustdoc`'s UI.][75740]
+
+Compatibility Notes
+-------------------
+- [Promotion of references to `'static` lifetime inside `const fn` now follows the
+  same rules as inside a `fn` body.][75502] In particular, `&foo()` will not be
+  promoted to `'static` lifetime any more inside `const fn`s.
+- [Associated type bindings on trait objects are now verified to meet the bounds
+  declared on the trait when checking that they implement the trait.][27675]
+- [When trait bounds on associated types or opaque types are ambiguous, the
+  compiler no longer makes an arbitrary choice on which bound to use.][54121]
+- [Fixed recursive nonterminals not being expanded in macros during
+  pretty-print/reparse check.][77153] This may cause errors if your macro wasn't
+  correctly handling recursive nonterminal tokens.
+- [`&mut` references to non zero-sized types are no longer promoted.][75585]
+- [`rustc` will now warn if you use attributes like `#[link_name]` or `#[cold]`
+  in places where they have no effect.][73461]
+- [Updated `_mm256_extract_epi8` and `_mm256_extract_epi16` signatures in
+  `arch::{x86, x86_64}` to return `i32` to match the vendor signatures.][73166]
+- [`mem::uninitialized` will now panic if any inner types inside a struct or enum
+  disallow zero-initialization.][71274]
+- [`#[target_feature]` will now error if used in a place where it has no effect.][78143]
+- [Foreign exceptions are now caught by `catch_unwind` and will cause an abort.][70212]
+  Note: This behaviour is not guaranteed and is still considered undefined behaviour,
+  see the [`catch_unwind`] documentation for further information.
+  
+
+
+Internal Only
+-------------
+These changes provide no direct user facing benefits, but represent significant
+improvements to the internals and overall performance of rustc and
+related tools.
+
+- [Building `rustc` from source now uses `ninja` by default over `make`.][74922]
+  You can continue building with `make` by setting `ninja=false` in
+  your `config.toml`.
+- [cg_llvm: `fewer_names` in `uncached_llvm_type`][76030]
+- [Made `ensure_sufficient_stack()` non-generic][76680]
+
+[78143]: https://github.com/rust-lang/rust/issues/78143
+[76680]: https://github.com/rust-lang/rust/pull/76680/
+[76030]: https://github.com/rust-lang/rust/pull/76030/
+[70212]: https://github.com/rust-lang/rust/pull/70212/
+[27675]: https://github.com/rust-lang/rust/issues/27675/
+[54121]: https://github.com/rust-lang/rust/issues/54121/  
+[71274]: https://github.com/rust-lang/rust/pull/71274/
+[77386]: https://github.com/rust-lang/rust/pull/77386/
+[77153]: https://github.com/rust-lang/rust/pull/77153/
+[77055]: https://github.com/rust-lang/rust/pull/77055/
+[76275]: https://github.com/rust-lang/rust/pull/76275/
+[76310]: https://github.com/rust-lang/rust/pull/76310/
+[76420]: https://github.com/rust-lang/rust/pull/76420/
+[76158]: https://github.com/rust-lang/rust/pull/76158/
+[75857]: https://github.com/rust-lang/rust/pull/75857/
+[75585]: https://github.com/rust-lang/rust/pull/75585/
+[75740]: https://github.com/rust-lang/rust/pull/75740/
+[75502]: https://github.com/rust-lang/rust/pull/75502/
+[74880]: https://github.com/rust-lang/rust/pull/74880/
+[74922]: https://github.com/rust-lang/rust/pull/74922/
+[74430]: https://github.com/rust-lang/rust/pull/74430/
+[74194]: https://github.com/rust-lang/rust/pull/74194/
+[73461]: https://github.com/rust-lang/rust/pull/73461/
+[73166]: https://github.com/rust-lang/rust/pull/73166/
+[intradoc-links]: https://doc.rust-lang.org/rustdoc/linking-to-items-by-name.html
+[`catch_unwind`]: https://doc.rust-lang.org/std/panic/fn.catch_unwind.html
+[`Option::is_some`]: https://doc.rust-lang.org/std/option/enum.Option.html#method.is_some
+[`Option::is_none`]: https://doc.rust-lang.org/std/option/enum.Option.html#method.is_none
+[`Option::as_ref`]: https://doc.rust-lang.org/std/option/enum.Option.html#method.as_ref
+[`Result::is_ok`]: https://doc.rust-lang.org/std/result/enum.Result.html#method.is_ok
+[`Result::is_err`]: https://doc.rust-lang.org/std/result/enum.Result.html#method.is_err
+[`Result::as_ref`]: https://doc.rust-lang.org/std/result/enum.Result.html#method.as_ref
+[`Ordering::reverse`]: https://doc.rust-lang.org/std/cmp/enum.Ordering.html#method.reverse
+[`Ordering::then`]: https://doc.rust-lang.org/std/cmp/enum.Ordering.html#method.then
+[`slice::as_ptr_range`]: https://doc.rust-lang.org/std/primitive.slice.html#method.as_ptr_range
+[`slice::as_mut_ptr_range`]: https://doc.rust-lang.org/std/primitive.slice.html#method.as_mut_ptr_range
+[`VecDeque::make_contiguous`]: https://doc.rust-lang.org/std/collections/struct.VecDeque.html#method.make_contiguous
+[`future::pending`]: https://doc.rust-lang.org/std/future/fn.pending.html
+[`future::ready`]: https://doc.rust-lang.org/std/future/fn.ready.html
+
+
+Version 1.47.0 (2020-10-08)
+==========================
+
+Language
+--------
+- [Closures will now warn when not used.][74869]
+
+Compiler
+--------
+- [Stabilized the `-C control-flow-guard` codegen option][73893], which enables
+  [Control Flow Guard][1.47.0-cfg] for Windows platforms, and is ignored on other
+  platforms.
+- [Upgraded to LLVM 11.][73526]
+- [Added tier 3\* support for the `thumbv4t-none-eabi` target.][74419]
+- [Upgrade the FreeBSD toolchain to version 11.4][75204]
+- [`RUST_BACKTRACE`'s output is now more compact.][75048]
+
+\* Refer to Rust's [platform support page][forge-platform-support] for more
+information on Rust's tiered platform support.
+
+Libraries
+---------
+- [`CStr` now implements `Index<RangeFrom<usize>>`.][74021]
+- [Traits in `std`/`core` are now implemented for arrays of any length, not just
+  those of length less than 33.][74060]
+- [`ops::RangeFull` and `ops::Range` now implement Default.][73197]
+- [`panic::Location` now implements `Copy`, `Clone`, `Eq`, `Hash`, `Ord`,
+  `PartialEq`, and `PartialOrd`.][73583]
+
+Stabilized APIs
+---------------
+- [`Ident::new_raw`]
+- [`Range::is_empty`]
+- [`RangeInclusive::is_empty`]
+- [`Result::as_deref`]
+- [`Result::as_deref_mut`]
+- [`Vec::leak`]
+- [`pointer::offset_from`]
+- [`f32::TAU`]
+- [`f64::TAU`]
+
+The following previously stable APIs have now been made const.
+
+- [The `new` method for all `NonZero` integers.][73858]
+- [The `checked_add`,`checked_sub`,`checked_mul`,`checked_neg`, `checked_shl`,
+  `checked_shr`, `saturating_add`, `saturating_sub`, and `saturating_mul`
+  methods for all integers.][73858]
+- [The `checked_abs`, `saturating_abs`, `saturating_neg`, and `signum`  for all
+  signed integers.][73858]
+- [The `is_ascii_alphabetic`, `is_ascii_uppercase`, `is_ascii_lowercase`,
+  `is_ascii_alphanumeric`, `is_ascii_digit`, `is_ascii_hexdigit`,
+  `is_ascii_punctuation`, `is_ascii_graphic`, `is_ascii_whitespace`, and
+  `is_ascii_control` methods for `char` and `u8`.][73858]
+
+Cargo
+-----
+- [`build-dependencies` are now built with opt-level 0 by default.][cargo/8500]
+  You can override this by setting the following in your `Cargo.toml`.
+  ```toml
+  [profile.release.build-override]
+  opt-level = 3
+  ```
+- [`cargo-help` will now display man pages for commands rather just the
+  `--help` text.][cargo/8456]
+- [`cargo-metadata` now emits a `test` field indicating if a target has
+  tests enabled.][cargo/8478]
+- [`workspace.default-members` now respects `workspace.exclude`.][cargo/8485]
+- [`cargo-publish` will now use an alternative registry by default if it's the
+  only registry specified in `package.publish`.][cargo/8571]
+
+Misc
+----
+- [Added a help button beside Rustdoc's searchbar that explains rustdoc's
+  type based search.][75366]
+- [Added the Ayu theme to rustdoc.][71237]
+
+Compatibility Notes
+-------------------
+- [Bumped the minimum supported Emscripten version to 1.39.20.][75716]
+- [Fixed a regression parsing `{} && false` in tail expressions.][74650]
+- [Added changes to how proc-macros are expanded in `macro_rules!` that should
+  help to preserve more span information.][73084] These changes may cause
+  compiliation errors if your macro was unhygenic or didn't correctly handle
+  `Delimiter::None`.
+- [Moved support for the CloudABI target to tier 3.][75568]
+- [`linux-gnu` targets now require minimum kernel 2.6.32 and glibc 2.11.][74163]
+- [Added the `rustc-docs` component.][75560] This allows you to install
+  and read the documentation for the compiler internal APIs. (Currently only
+  available for `x86_64-unknown-linux-gnu`.)
+
+Internal Only
+--------
+
+- [Improved default settings for bootstrapping in `x.py`.][73964] You can read details about this change in the ["Changes to `x.py` defaults"](https://blog.rust-lang.org/inside-rust/2020/08/30/changes-to-x-py-defaults.html) post on the Inside Rust blog.
+
+[1.47.0-cfg]: https://docs.microsoft.com/en-us/windows/win32/secbp/control-flow-guard
+[75048]: https://github.com/rust-lang/rust/pull/75048/
+[74163]: https://github.com/rust-lang/rust/pull/74163/
+[71237]: https://github.com/rust-lang/rust/pull/71237/
+[74869]: https://github.com/rust-lang/rust/pull/74869/
+[73858]: https://github.com/rust-lang/rust/pull/73858/
+[75716]: https://github.com/rust-lang/rust/pull/75716/
+[75908]: https://github.com/rust-lang/rust/pull/75908/
+[75516]: https://github.com/rust-lang/rust/pull/75516/
+[75560]: https://github.com/rust-lang/rust/pull/75560/
+[75568]: https://github.com/rust-lang/rust/pull/75568/
+[75366]: https://github.com/rust-lang/rust/pull/75366/
+[75204]: https://github.com/rust-lang/rust/pull/75204/
+[74650]: https://github.com/rust-lang/rust/pull/74650/
+[74419]: https://github.com/rust-lang/rust/pull/74419/
+[73964]: https://github.com/rust-lang/rust/pull/73964/
+[74021]: https://github.com/rust-lang/rust/pull/74021/
+[74060]: https://github.com/rust-lang/rust/pull/74060/
+[73893]: https://github.com/rust-lang/rust/pull/73893/
+[73526]: https://github.com/rust-lang/rust/pull/73526/
+[73583]: https://github.com/rust-lang/rust/pull/73583/
+[73084]: https://github.com/rust-lang/rust/pull/73084/
+[73197]: https://github.com/rust-lang/rust/pull/73197/
+[72488]: https://github.com/rust-lang/rust/pull/72488/
+[cargo/8456]: https://github.com/rust-lang/cargo/pull/8456/
+[cargo/8478]: https://github.com/rust-lang/cargo/pull/8478/
+[cargo/8485]: https://github.com/rust-lang/cargo/pull/8485/
+[cargo/8500]: https://github.com/rust-lang/cargo/pull/8500/
+[cargo/8571]: https://github.com/rust-lang/cargo/pull/8571/
+[`Ident::new_raw`]:  https://doc.rust-lang.org/nightly/proc_macro/struct.Ident.html#method.new_raw
+[`Range::is_empty`]: https://doc.rust-lang.org/nightly/std/ops/struct.Range.html#method.is_empty
+[`RangeInclusive::is_empty`]: https://doc.rust-lang.org/nightly/std/ops/struct.RangeInclusive.html#method.is_empty
+[`Result::as_deref_mut`]: https://doc.rust-lang.org/nightly/std/result/enum.Result.html#method.as_deref_mut
+[`Result::as_deref`]: https://doc.rust-lang.org/nightly/std/result/enum.Result.html#method.as_deref
+[`TypeId::of`]: https://doc.rust-lang.org/nightly/std/any/struct.TypeId.html#method.of
+[`Vec::leak`]: https://doc.rust-lang.org/nightly/std/vec/struct.Vec.html#method.leak
+[`f32::TAU`]: https://doc.rust-lang.org/nightly/std/f32/consts/constant.TAU.html
+[`f64::TAU`]: https://doc.rust-lang.org/nightly/std/f64/consts/constant.TAU.html
+[`pointer::offset_from`]: https://doc.rust-lang.org/nightly/std/primitive.pointer.html#method.offset_from
+
+
 Version 1.46.0 (2020-08-27)
 ==========================
 
@@ -10,7 +286,7 @@ Language
   function's caller's location information for panic messages.][72445]
 - [Recursively indexing into tuples no longer needs parentheses.][71322] E.g.
   `x.0.0` over `(x.0).0`.
-- [`mem::transmute` can now be used in static and constants.][72920] **Note**
+- [`mem::transmute` can now be used in statics and constants.][72920] **Note**
   You currently can't use `mem::transmute` in constant functions.
 
 Compiler
@@ -162,6 +438,7 @@ Compiler
 - [Added the `tiny` value to the `code-model` codegen flag.][72397]
 - [Added tier 3 support\* for the `mipsel-sony-psp` target.][72062]
 - [Added tier 3 support for the `thumbv7a-uwp-windows-msvc` target.][72133]
+- [Upgraded to LLVM 10.][67759]
 
 \* Refer to Rust's [platform support page][forge-platform-support] for more
 information on Rust's tiered platform support.
@@ -261,6 +538,7 @@ Internals Only
 [72062]: https://github.com/rust-lang/rust/pull/72062/
 [72094]: https://github.com/rust-lang/rust/pull/72094/
 [72133]: https://github.com/rust-lang/rust/pull/72133/
+[67759]: https://github.com/rust-lang/rust/pull/67759/
 [71900]: https://github.com/rust-lang/rust/pull/71900/
 [71928]: https://github.com/rust-lang/rust/pull/71928/
 [71662]: https://github.com/rust-lang/rust/pull/71662/
@@ -1135,6 +1413,7 @@ Compiler
   `armv7-unknown-linux-musleabi` targets.][63107]
 - [Added tier 3 support for the `hexagon-unknown-linux-musl` target.][62814]
 - [Added tier 3 support for the `riscv32i-unknown-none-elf` target.][62784]
+- [Upgraded to LLVM 9.][62592]
 
 \* Refer to Rust's [platform support page][forge-platform-support] for more
 information on Rust's tiered platform support.
@@ -1201,6 +1480,7 @@ Compatibility Notes
 [62735]: https://github.com/rust-lang/rust/pull/62735/
 [62766]: https://github.com/rust-lang/rust/pull/62766/
 [62784]: https://github.com/rust-lang/rust/pull/62784/
+[62592]: https://github.com/rust-lang/rust/pull/62592/
 [62785]: https://github.com/rust-lang/rust/issues/62785/
 [62814]: https://github.com/rust-lang/rust/pull/62814/
 [62896]: https://github.com/rust-lang/rust/issues/62896/
@@ -2296,6 +2576,7 @@ Compiler
 --------
 - [Added the `riscv32imc-unknown-none-elf` target.][53822]
 - [Added the `aarch64-unknown-netbsd` target][53165]
+- [Upgraded to LLVM 8.][53611]
 
 Libraries
 ---------
@@ -2344,6 +2625,7 @@ Misc
 [53033]: https://github.com/rust-lang/rust/pull/53033/
 [53044]: https://github.com/rust-lang/rust/pull/53044/
 [53165]: https://github.com/rust-lang/rust/pull/53165/
+[53611]: https://github.com/rust-lang/rust/pull/53611/
 [53213]: https://github.com/rust-lang/rust/pull/53213/
 [53236]: https://github.com/rust-lang/rust/pull/53236/
 [53272]: https://github.com/rust-lang/rust/pull/53272/
@@ -2402,6 +2684,7 @@ Compiler
 - [Bumped minimum LLVM version to 5.0.][51899]
 - [Added `powerpc64le-unknown-linux-musl` target.][51619]
 - [Added `aarch64-unknown-hermit` and `x86_64-unknown-hermit` targets.][52861]
+- [Upgraded to LLVM 7.][51966]
 
 Libraries
 ---------
@@ -2453,6 +2736,7 @@ Compatibility Notes
 
 [53893]: https://github.com/rust-lang/rust/pull/53893/
 [52861]: https://github.com/rust-lang/rust/pull/52861/
+[51966]: https://github.com/rust-lang/rust/pull/51966/
 [52656]: https://github.com/rust-lang/rust/pull/52656/
 [52239]: https://github.com/rust-lang/rust/pull/52239/
 [52330]: https://github.com/rust-lang/rust/pull/52330/

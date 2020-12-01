@@ -62,7 +62,7 @@ impl fmt::Debug for c_void {
 // The name is WIP, using `VaListImpl` for now.
 #[cfg(any(
     all(not(target_arch = "aarch64"), not(target_arch = "powerpc"), not(target_arch = "x86_64")),
-    all(target_arch = "aarch64", target_os = "ios"),
+    all(target_arch = "aarch64", any(target_os = "macos", target_os = "ios")),
     target_arch = "wasm32",
     target_arch = "asmjs",
     windows
@@ -85,7 +85,7 @@ pub struct VaListImpl<'f> {
 
 #[cfg(any(
     all(not(target_arch = "aarch64"), not(target_arch = "powerpc"), not(target_arch = "x86_64")),
-    all(target_arch = "aarch64", target_os = "ios"),
+    all(target_arch = "aarch64", any(target_os = "macos", target_os = "ios")),
     target_arch = "wasm32",
     target_arch = "asmjs",
     windows
@@ -107,7 +107,11 @@ impl<'f> fmt::Debug for VaListImpl<'f> {
 ///
 /// [AArch64 Procedure Call Standard]:
 /// http://infocenter.arm.com/help/topic/com.arm.doc.ihi0055b/IHI0055B_aapcs64.pdf
-#[cfg(all(target_arch = "aarch64", not(target_os = "ios"), not(windows)))]
+#[cfg(all(
+    target_arch = "aarch64",
+    not(any(target_os = "macos", target_os = "ios")),
+    not(windows)
+))]
 #[repr(C)]
 #[derive(Debug)]
 #[unstable(
@@ -181,7 +185,7 @@ pub struct VaList<'a, 'f: 'a> {
             not(target_arch = "powerpc"),
             not(target_arch = "x86_64")
         ),
-        all(target_arch = "aarch64", target_os = "ios"),
+        all(target_arch = "aarch64", any(target_os = "macos", target_os = "ios")),
         target_arch = "wasm32",
         target_arch = "asmjs",
         windows
@@ -190,7 +194,7 @@ pub struct VaList<'a, 'f: 'a> {
 
     #[cfg(all(
         any(target_arch = "aarch64", target_arch = "powerpc", target_arch = "x86_64"),
-        any(not(target_arch = "aarch64"), not(target_os = "ios")),
+        any(not(target_arch = "aarch64"), not(any(target_os = "macos", target_os = "ios"))),
         not(target_arch = "wasm32"),
         not(target_arch = "asmjs"),
         not(windows)
@@ -202,7 +206,7 @@ pub struct VaList<'a, 'f: 'a> {
 
 #[cfg(any(
     all(not(target_arch = "aarch64"), not(target_arch = "powerpc"), not(target_arch = "x86_64")),
-    all(target_arch = "aarch64", target_os = "ios"),
+    all(target_arch = "aarch64", any(target_os = "macos", target_os = "ios")),
     target_arch = "wasm32",
     target_arch = "asmjs",
     windows
@@ -223,7 +227,7 @@ impl<'f> VaListImpl<'f> {
 
 #[cfg(all(
     any(target_arch = "aarch64", target_arch = "powerpc", target_arch = "x86_64"),
-    any(not(target_arch = "aarch64"), not(target_os = "ios")),
+    any(not(target_arch = "aarch64"), not(any(target_os = "macos", target_os = "ios"))),
     not(target_arch = "wasm32"),
     not(target_arch = "asmjs"),
     not(windows)
@@ -280,7 +284,7 @@ impl<'a, 'f: 'a> DerefMut for VaList<'a, 'f> {
 // within a private module. Once RFC 2145 has been implemented look into
 // improving this.
 mod sealed_trait {
-    /// Trait which permits the allowed types to be used with [VaList::arg].
+    /// Trait which permits the allowed types to be used with [super::VaListImpl::arg].
     #[unstable(
         feature = "c_variadic",
         reason = "the `c_variadic` feature has not been properly tested on \

@@ -191,6 +191,48 @@ fn test_into_from_raw_unsized() {
 }
 
 #[test]
+fn into_from_weak_raw() {
+    let x = Rc::new(box "hello");
+    let y = Rc::downgrade(&x);
+
+    let y_ptr = Weak::into_raw(y);
+    unsafe {
+        assert_eq!(**y_ptr, "hello");
+
+        let y = Weak::from_raw(y_ptr);
+        let y_up = Weak::upgrade(&y).unwrap();
+        assert_eq!(**y_up, "hello");
+        drop(y_up);
+
+        assert_eq!(Rc::try_unwrap(x).map(|x| *x), Ok("hello"));
+    }
+}
+
+#[test]
+fn test_into_from_weak_raw_unsized() {
+    use std::fmt::Display;
+    use std::string::ToString;
+
+    let arc: Rc<str> = Rc::from("foo");
+    let weak: Weak<str> = Rc::downgrade(&arc);
+
+    let ptr = Weak::into_raw(weak.clone());
+    let weak2 = unsafe { Weak::from_raw(ptr) };
+
+    assert_eq!(unsafe { &*ptr }, "foo");
+    assert!(weak.ptr_eq(&weak2));
+
+    let arc: Rc<dyn Display> = Rc::new(123);
+    let weak: Weak<dyn Display> = Rc::downgrade(&arc);
+
+    let ptr = Weak::into_raw(weak.clone());
+    let weak2 = unsafe { Weak::from_raw(ptr) };
+
+    assert_eq!(unsafe { &*ptr }.to_string(), "123");
+    assert!(weak.ptr_eq(&weak2));
+}
+
+#[test]
 fn get_mut() {
     let mut x = Rc::new(3);
     *Rc::get_mut(&mut x).unwrap() = 4;
@@ -433,4 +475,70 @@ fn test_array_from_slice() {
 
     let a: Result<Rc<[u32; 2]>, _> = r.clone().try_into();
     assert!(a.is_err());
+}
+
+#[test]
+fn test_rc_cyclic_with_zero_refs() {
+    struct ZeroRefs {
+        inner: Weak<ZeroRefs>,
+    }
+
+    let zero_refs = Rc::new_cyclic(|inner| {
+        assert_eq!(inner.strong_count(), 0);
+        assert!(inner.upgrade().is_none());
+        ZeroRefs { inner: Weak::new() }
+    });
+
+    assert_eq!(Rc::strong_count(&zero_refs), 1);
+    assert_eq!(Rc::weak_count(&zero_refs), 0);
+    assert_eq!(zero_refs.inner.strong_count(), 0);
+    assert_eq!(zero_refs.inner.weak_count(), 0);
+}
+
+#[test]
+fn test_rc_cyclic_with_one_ref() {
+    struct OneRef {
+        inner: Weak<OneRef>,
+    }
+
+    let one_ref = Rc::new_cyclic(|inner| {
+        assert_eq!(inner.strong_count(), 0);
+        assert!(inner.upgrade().is_none());
+        OneRef { inner: inner.clone() }
+    });
+
+    assert_eq!(Rc::strong_count(&one_ref), 1);
+    assert_eq!(Rc::weak_count(&one_ref), 1);
+
+    let one_ref2 = Weak::upgrade(&one_ref.inner).unwrap();
+    assert!(Rc::ptr_eq(&one_ref, &one_ref2));
+
+    assert_eq!(one_ref.inner.strong_count(), 2);
+    assert_eq!(one_ref.inner.weak_count(), 1);
+}
+
+#[test]
+fn test_rc_cyclic_with_two_ref() {
+    struct TwoRefs {
+        inner: Weak<TwoRefs>,
+        inner1: Weak<TwoRefs>,
+    }
+
+    let two_refs = Rc::new_cyclic(|inner| {
+        assert_eq!(inner.strong_count(), 0);
+        assert!(inner.upgrade().is_none());
+        TwoRefs { inner: inner.clone(), inner1: inner.clone() }
+    });
+
+    assert_eq!(Rc::strong_count(&two_refs), 1);
+    assert_eq!(Rc::weak_count(&two_refs), 2);
+
+    let two_ref3 = Weak::upgrade(&two_refs.inner).unwrap();
+    assert!(Rc::ptr_eq(&two_refs, &two_ref3));
+
+    let two_ref2 = Weak::upgrade(&two_refs.inner1).unwrap();
+    assert!(Rc::ptr_eq(&two_refs, &two_ref2));
+
+    assert_eq!(Rc::strong_count(&two_refs), 3);
+    assert_eq!(Rc::weak_count(&two_refs), 2);
 }

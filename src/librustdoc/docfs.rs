@@ -24,38 +24,38 @@ macro_rules! try_err {
     };
 }
 
-pub trait PathError {
+crate trait PathError {
     fn new<S, P: AsRef<Path>>(e: S, path: P) -> Self
     where
         S: ToString + Sized;
 }
 
-pub struct DocFS {
+crate struct DocFS {
     sync_only: bool,
     errors: Option<Sender<String>>,
 }
 
 impl DocFS {
-    pub fn new(errors: Sender<String>) -> DocFS {
+    crate fn new(errors: Sender<String>) -> DocFS {
         DocFS { sync_only: false, errors: Some(errors) }
     }
 
-    pub fn set_sync_only(&mut self, sync_only: bool) {
+    crate fn set_sync_only(&mut self, sync_only: bool) {
         self.sync_only = sync_only;
     }
 
-    pub fn close(&mut self) {
+    crate fn close(&mut self) {
         self.errors = None;
     }
 
-    pub fn create_dir_all<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
+    crate fn create_dir_all<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
         // For now, dir creation isn't a huge time consideration, do it
         // synchronously, which avoids needing ordering between write() actions
         // and directory creation.
         fs::create_dir_all(path)
     }
 
-    pub fn write<P, C, E>(&self, path: P, contents: C) -> Result<(), E>
+    crate fn write<P, C, E>(&self, path: P, contents: C) -> Result<(), E>
     where
         P: AsRef<Path>,
         C: AsRef<[u8]>,

@@ -63,11 +63,13 @@
 pub trait Deref {
     /// The resulting type after dereferencing.
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_diagnostic_item = "deref_target"]
     type Target: ?Sized;
 
     /// Dereferences the value.
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_diagnostic_item = "deref_method"]
     fn deref(&self) -> &Self::Target;
 }
 

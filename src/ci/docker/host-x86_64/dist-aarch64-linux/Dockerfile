@@ -35,6 +35,5 @@ ENV HOSTS=aarch64-unknown-linux-gnu
 ENV RUST_CONFIGURE_ARGS \
       --enable-full-tools \
       --enable-profiler \
-      --enable-sanitizers \
-      --disable-docs
+      --enable-sanitizers
 ENV SCRIPT python3 ../x.py dist --host $HOSTS --target $HOSTS

@@ -13,6 +13,6 @@ all:
 	cat $(OUTPUT_FILE_DEFAULT) | "$(PYTHON)" validate_json.py
 	cat $(OUTPUT_FILE_STDOUT_SUCCESS) | "$(PYTHON)" validate_json.py
 
-	# Compare to output file
-	diff output-default.json $(OUTPUT_FILE_DEFAULT)
-	diff output-stdout-success.json $(OUTPUT_FILE_STDOUT_SUCCESS)
+	# Normalize the actual output and compare to expected output file
+	cat $(OUTPUT_FILE_DEFAULT) | sed 's/"exec_time": [0-9.]*/"exec_time": $$TIME/' | diff output-default.json -
+	cat $(OUTPUT_FILE_STDOUT_SUCCESS) | sed 's/"exec_time": [0-9.]*/"exec_time": $$TIME/' | diff output-stdout-success.json -

@@ -15,7 +15,7 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
-use rustc_span::MultiSpan;
+use rustc_span::{sym, MultiSpan};
 use std::borrow::Cow;
 
 declare_clippy_lint! {
@@ -36,14 +36,27 @@ declare_clippy_lint! {
     /// argument may also fail to compile if you change the argument. Applying
     /// this lint on them will fix the problem, but they may be in other crates.
     ///
+    /// One notable example of a function that may cause issues, and which cannot
+    /// easily be changed due to being in the standard library is `Vec::contains`.
+    /// when called on a `Vec<Vec<T>>`. If a `&Vec` is passed to that method then
+    /// it will compile, but if a `&[T]` is passed then it will not compile.
+    ///
+    /// ```ignore
+    /// fn cannot_take_a_slice(v: &Vec<u8>) -> bool {
+    ///     let vec_of_vecs: Vec<Vec<u8>> = some_other_fn();
+    ///
+    ///     vec_of_vecs.contains(v)
+    /// }
+    /// ```
+    ///
     /// Also there may be `fn(&Vec)`-typed references pointing to your function.
     /// If you have them, you will get a compiler error after applying this lint's
     /// suggestions. You then have the choice to undo your changes or change the
     /// type of the reference.
     ///
     /// Note that if the function is part of your public interface, there may be
-    /// other crates referencing it you may not be aware. Carefully deprecate the
-    /// function before applying the lint suggestions in this case.
+    /// other crates referencing it, of which you may not be aware. Carefully
+    /// deprecate the function before applying the lint suggestions in this case.
     ///
     /// **Example:**
     /// ```ignore
@@ -167,8 +180,8 @@ fn check_fn(cx: &LateContext<'_>, decl: &FnDecl<'_>, fn_id: HirId, opt_body_id: 
             }
         }
 
-        if let ty::Ref(_, ty, Mutability::Not) = ty.kind {
-            if is_type_diagnostic_item(cx, ty, sym!(vec_type)) {
+        if let ty::Ref(_, ty, Mutability::Not) = ty.kind() {
+            if is_type_diagnostic_item(cx, ty, sym::vec_type) {
                 let mut ty_snippet = None;
                 if_chain! {
                     if let TyKind::Path(QPath::Resolved(_, ref path)) = walk_ptrs_hir_ty(arg).kind;
@@ -212,7 +225,7 @@ fn check_fn(cx: &LateContext<'_>, decl: &FnDecl<'_>, fn_id: HirId, opt_body_id: 
                         },
                     );
                 }
-            } else if is_type_diagnostic_item(cx, ty, sym!(string_type)) {
+            } else if is_type_diagnostic_item(cx, ty, sym::string_type) {
                 if let Some(spans) = get_spans(cx, opt_body_id, idx, &[("clone", ".to_string()"), ("as_str", "")]) {
                     span_lint_and_then(
                         cx,

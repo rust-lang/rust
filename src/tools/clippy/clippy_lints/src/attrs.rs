@@ -1,12 +1,12 @@
 //! checks for attributes
 
 use crate::utils::{
-    first_line_of_span, is_present_in_source, match_def_path, paths, snippet_opt, span_lint, span_lint_and_help,
+    first_line_of_span, is_present_in_source, match_panic_def_id, snippet_opt, span_lint, span_lint_and_help,
     span_lint_and_sugg, span_lint_and_then, without_block_comments,
 };
 use if_chain::if_chain;
+use rustc_span::lev_distance::find_best_match_for_name;
 use rustc_ast::{AttrKind, AttrStyle, Attribute, Lit, LitKind, MetaItemKind, NestedMetaItem};
-use rustc_ast::util::lev_distance::find_best_match_for_name;
 use rustc_errors::Applicability;
 use rustc_hir::{
     Block, Expr, ExprKind, ImplItem, ImplItemKind, Item, ItemKind, StmtKind, TraitFn, TraitItem, TraitItemKind,
@@ -16,6 +16,7 @@ use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
+use rustc_span::sym;
 use rustc_span::symbol::{Symbol, SymbolStr};
 use semver::Version;
 
@@ -39,7 +40,7 @@ static UNIX_SYSTEMS: &[&str] = &[
 ];
 
 // NOTE: windows is excluded from the list because it's also a valid target family.
-static NON_UNIX_SYSTEMS: &[&str] = &["cloudabi", "hermit", "none", "wasi"];
+static NON_UNIX_SYSTEMS: &[&str] = &["hermit", "none", "wasi"];
 
 declare_clippy_lint! {
     /// **What it does:** Checks for items annotated with `#[inline(always)]`,
@@ -71,8 +72,9 @@ declare_clippy_lint! {
     /// **What it does:** Checks for `extern crate` and `use` items annotated with
     /// lint attributes.
     ///
-    /// This lint permits `#[allow(unused_imports)]`, `#[allow(deprecated)]` and
-    /// `#[allow(unreachable_pub)]` on `use` items and `#[allow(unused_imports)]` on
+    /// This lint permits `#[allow(unused_imports)]`, `#[allow(deprecated)]`,
+    /// `#[allow(unreachable_pub)]`, `#[allow(clippy::wildcard_imports)]` and
+    /// `#[allow(clippy::enum_glob_use)]` on `use` items and `#[allow(unused_imports)]` on
     /// `extern crate` items with a `#[macro_use]` attribute.
     ///
     /// **Why is this bad?** Lint attributes have no effect on crate imports. Most
@@ -136,17 +138,17 @@ declare_clippy_lint! {
     /// **Example:**
     /// ```rust
     /// // Good (as inner attribute)
-    /// #![inline(always)]
+    /// #![allow(dead_code)]
     ///
     /// fn this_is_fine() { }
     ///
     /// // Bad
-    /// #[inline(always)]
+    /// #[allow(dead_code)]
     ///
     /// fn not_quite_good_code() { }
     ///
     /// // Good (as outer attribute)
-    /// #[inline(always)]
+    /// #[allow(dead_code)]
     /// fn this_is_fine_too() { }
     /// ```
     pub EMPTY_LINE_AFTER_OUTER_ATTR,
@@ -285,14 +287,14 @@ impl<'tcx> LateLintPass<'tcx> for Attributes {
                     },
                     _ => {},
                 }
-                if items.is_empty() || !attr.has_name(sym!(deprecated)) {
+                if items.is_empty() || !attr.has_name(sym::deprecated) {
                     return;
                 }
                 for item in items {
                     if_chain! {
                         if let NestedMetaItem::MetaItem(mi) = &item;
                         if let MetaItemKind::NameValue(lit) = &mi.kind;
-                        if mi.has_name(sym!(since));
+                        if mi.has_name(sym::since);
                         then {
                             check_semver(cx, item.span(), lit);
                         }
@@ -308,7 +310,7 @@ impl<'tcx> LateLintPass<'tcx> for Attributes {
         }
         match item.kind {
             ItemKind::ExternCrate(..) | ItemKind::Use(..) => {
-                let skip_unused_imports = item.attrs.iter().any(|attr| attr.has_name(sym!(macro_use)));
+                let skip_unused_imports = item.attrs.iter().any(|attr| attr.has_name(sym::macro_use));
 
                 for attr in item.attrs {
                     if in_external_macro(cx.sess(), attr.span) {
@@ -318,15 +320,19 @@ impl<'tcx> LateLintPass<'tcx> for Attributes {
                         if let Some(ident) = attr.ident() {
                             match &*ident.as_str() {
                                 "allow" | "warn" | "deny" | "forbid" => {
-                                    // permit `unused_imports`, `deprecated` and `unreachable_pub` for `use` items
+                                    // permit `unused_imports`, `deprecated`, `unreachable_pub`,
+                                    // `clippy::wildcard_imports`, and `clippy::enum_glob_use` for `use` items
                                     // and `unused_imports` for `extern crate` items with `macro_use`
                                     for lint in lint_list {
                                         match item.kind {
                                             ItemKind::Use(..) => {
                                                 if is_word(lint, sym!(unused_imports))
-                                                    || is_word(lint, sym!(deprecated))
+                                                    || is_word(lint, sym::deprecated)
                                                     || is_word(lint, sym!(unreachable_pub))
                                                     || is_word(lint, sym!(unused))
+                                                    || extract_clippy_lint(lint)
+                                                        .map_or(false, |s| s == "wildcard_imports")
+                                                    || extract_clippy_lint(lint).map_or(false, |s| s == "enum_glob_use")
                                                 {
                                                     return;
                                                 }
@@ -387,26 +393,26 @@ impl<'tcx> LateLintPass<'tcx> for Attributes {
     }
 }
 
-fn check_clippy_lint_names(cx: &LateContext<'_>, ident: &str, items: &[NestedMetaItem]) {
-    fn extract_name(lint: &NestedMetaItem) -> Option<SymbolStr> {
-        if_chain! {
-            if let Some(meta_item) = lint.meta_item();
-            if meta_item.path.segments.len() > 1;
-            if let tool_name = meta_item.path.segments[0].ident;
-            if tool_name.as_str() == "clippy";
-            let lint_name = meta_item.path.segments.last().unwrap().ident.name;
-            then {
-                return Some(lint_name.as_str());
-            }
+/// Returns the lint name if it is clippy lint.
+fn extract_clippy_lint(lint: &NestedMetaItem) -> Option<SymbolStr> {
+    if_chain! {
+        if let Some(meta_item) = lint.meta_item();
+        if meta_item.path.segments.len() > 1;
+        if let tool_name = meta_item.path.segments[0].ident;
+        if tool_name.as_str() == "clippy";
+        let lint_name = meta_item.path.segments.last().unwrap().ident.name;
+        then {
+            return Some(lint_name.as_str());
         }
-        None
     }
+    None
+}
 
+fn check_clippy_lint_names(cx: &LateContext<'_>, ident: &str, items: &[NestedMetaItem]) {
     let lint_store = cx.lints();
     for lint in items {
-        if let Some(lint_name) = extract_name(lint) {
-            if let CheckLintNameResult::Tool(Err((None, _))) =
-                lint_store.check_lint_name(&lint_name, Some(sym!(clippy)))
+        if let Some(lint_name) = extract_clippy_lint(lint) {
+            if let CheckLintNameResult::Tool(Err((None, _))) = lint_store.check_lint_name(&lint_name, Some(sym::clippy))
             {
                 span_lint_and_then(
                     cx,
@@ -421,7 +427,7 @@ fn check_clippy_lint_names(cx: &LateContext<'_>, ident: &str, items: &[NestedMet
                             .map(|l| Symbol::intern(&l.name_lower()))
                             .collect::<Vec<_>>();
                         let sugg = find_best_match_for_name(
-                            symbols.iter(),
+                            &symbols,
                             Symbol::intern(&format!("clippy::{}", name_lower)),
                             None,
                         );
@@ -507,7 +513,7 @@ fn is_relevant_expr(cx: &LateContext<'_>, typeck_results: &ty::TypeckResults<'_>
                 typeck_results
                     .qpath_res(qpath, path_expr.hir_id)
                     .opt_def_id()
-                    .map_or(true, |fun_id| !match_def_path(cx, fun_id, &paths::BEGIN_PANIC))
+                    .map_or(true, |fun_id| !match_panic_def_id(cx, fun_id))
             } else {
                 true
             }
@@ -523,10 +529,10 @@ fn check_attrs(cx: &LateContext<'_>, span: Span, name: Symbol, attrs: &[Attribut
 
     for attr in attrs {
         if let Some(values) = attr.meta_item_list() {
-            if values.len() != 1 || !attr.has_name(sym!(inline)) {
+            if values.len() != 1 || !attr.has_name(sym::inline) {
                 continue;
             }
-            if is_word(&values[0], sym!(always)) {
+            if is_word(&values[0], sym::always) {
                 span_lint(
                     cx,
                     INLINE_ALWAYS,
@@ -582,7 +588,7 @@ impl EarlyLintPass for EarlyAttributes {
 
 fn check_empty_line_after_outer_attr(cx: &EarlyContext<'_>, item: &rustc_ast::Item) {
     for attr in &item.attrs {
-        let attr_item = if let AttrKind::Normal(ref attr) = attr.kind {
+        let attr_item = if let AttrKind::Normal(ref attr, _) = attr.kind {
             attr
         } else {
             return;
@@ -617,12 +623,12 @@ fn check_empty_line_after_outer_attr(cx: &EarlyContext<'_>, item: &rustc_ast::It
 fn check_deprecated_cfg_attr(cx: &EarlyContext<'_>, attr: &Attribute) {
     if_chain! {
         // check cfg_attr
-        if attr.has_name(sym!(cfg_attr));
+        if attr.has_name(sym::cfg_attr);
         if let Some(items) = attr.meta_item_list();
         if items.len() == 2;
         // check for `rustfmt`
         if let Some(feature_item) = items[0].meta_item();
-        if feature_item.has_name(sym!(rustfmt));
+        if feature_item.has_name(sym::rustfmt);
         // check for `rustfmt_skip` and `rustfmt::skip`
         if let Some(skip_item) = &items[1].meta_item();
         if skip_item.has_name(sym!(rustfmt_skip)) ||
@@ -684,7 +690,7 @@ fn check_mismatched_target_os(cx: &EarlyContext<'_>, attr: &Attribute) {
     }
 
     if_chain! {
-        if attr.has_name(sym!(cfg));
+        if attr.has_name(sym::cfg);
         if let Some(list) = attr.meta_item_list();
         let mismatched = find_mismatched_target_os(&list);
         if !mismatched.is_empty();

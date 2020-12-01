@@ -13,10 +13,13 @@
 // coherence challenge (e.g., specialization, neg impls, etc) we can
 // reconsider what crate these items belong in.
 
+#[cfg(test)]
+mod tests;
+
 use core::array;
 use core::convert::Infallible;
 
-use crate::alloc::{AllocErr, LayoutErr};
+use crate::alloc::{AllocError, LayoutError};
 use crate::any::TypeId;
 use crate::backtrace::Backtrace;
 use crate::borrow::Cow;
@@ -384,14 +387,10 @@ impl Error for ! {}
     reason = "the precise API and guarantees it provides may be tweaked.",
     issue = "32838"
 )]
-impl Error for AllocErr {}
+impl Error for AllocError {}
 
-#[unstable(
-    feature = "allocator_api",
-    reason = "the precise API and guarantees it provides may be tweaked.",
-    issue = "32838"
-)]
-impl Error for LayoutErr {}
+#[stable(feature = "alloc_layout", since = "1.28.0")]
+impl Error for LayoutError {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Error for str::ParseBoolError {
@@ -736,46 +735,5 @@ impl dyn Error + Send + Sync {
             // Reapply the `Send + Sync` marker.
             transmute::<Box<dyn Error>, Box<dyn Error + Send + Sync>>(s)
         })
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::Error;
-    use crate::fmt;
-
-    #[derive(Debug, PartialEq)]
-    struct A;
-    #[derive(Debug, PartialEq)]
-    struct B;
-
-    impl fmt::Display for A {
-        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            write!(f, "A")
-        }
-    }
-    impl fmt::Display for B {
-        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            write!(f, "B")
-        }
-    }
-
-    impl Error for A {}
-    impl Error for B {}
-
-    #[test]
-    fn downcasting() {
-        let mut a = A;
-        let a = &mut a as &mut (dyn Error + 'static);
-        assert_eq!(a.downcast_ref::<A>(), Some(&A));
-        assert_eq!(a.downcast_ref::<B>(), None);
-        assert_eq!(a.downcast_mut::<A>(), Some(&mut A));
-        assert_eq!(a.downcast_mut::<B>(), None);
-
-        let a: Box<dyn Error> = Box::new(A);
-        match a.downcast::<B>() {
-            Ok(..) => panic!("expected error"),
-            Err(e) => assert_eq!(*e.downcast::<A>().unwrap(), A),
-        }
     }
 }

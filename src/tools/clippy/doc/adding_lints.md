@@ -104,7 +104,8 @@ every time before running `tests/ui/update-all-references.sh`.
 Running `TESTNAME=foo_functions cargo uitest` should pass then. When we commit
 our lint, we need to commit the generated `.stderr` files, too. In general, you
 should only commit files changed by `tests/ui/update-all-references.sh` for the
-specific lint you are creating/editing.
+specific lint you are creating/editing. Note that if the generated files are
+empty, they should be removed.
 
 ### Cargo lints
 
@@ -189,7 +190,8 @@ declare_clippy_lint! {
 
 * The section of lines prefixed with `///` constitutes the lint documentation
   section. This is the default documentation style and will be displayed
-  [like this][example_lint_page].
+  [like this][example_lint_page]. To render and open this documentation locally
+  in a browser, run `cargo dev serve`.
 * `FOO_FUNCTIONS` is the name of our lint. Be sure to follow the
   [lint naming guidelines][lint_naming] here when naming your lint.
   In short, the name should state the thing that is being checked for and
@@ -222,6 +224,17 @@ automate everything. We will have to register our lint pass manually in the
 ```rust
 store.register_early_pass(|| box foo_functions::FooFunctions);
 ```
+
+As one may expect, there is a corresponding `register_late_pass` method
+available as well. Without a call to one of `register_early_pass` or 
+`register_late_pass`, the lint pass in question will not be run.
+
+One reason that `cargo dev` does not automate this step is that multiple lints 
+can use the same lint pass, so registering the lint pass may already be done
+when adding a new lint. Another reason that this step is not automated is that
+the order that the passes are registered determines the order the passes 
+actually run, which in turn affects the order that any emitted lints are output
+in.
 
 [declare_clippy_lint]: https://github.com/rust-lang/rust-clippy/blob/557f6848bd5b7183f55c1e1522a326e9e1df6030/clippy_lints/src/lib.rs#L60
 [example_lint_page]: https://rust-lang.github.io/rust-clippy/master/index.html#redundant_closure
@@ -295,8 +308,14 @@ impl EarlyLintPass for FooFunctions {
 
 Running our UI test should now produce output that contains the lint message.
 
+According to [the rustc-dev-guide], the text should be matter of fact and avoid
+capitalization and periods, unless multiple sentences are needed.
+When code or an identifier must appear in a message or label, it should be
+surrounded with single grave accents \`.
+
 [check_fn]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/trait.EarlyLintPass.html#method.check_fn
 [diagnostics]: https://github.com/rust-lang/rust-clippy/blob/master/clippy_lints/src/utils/diagnostics.rs
+[the rustc-dev-guide]: https://rustc-dev-guide.rust-lang.org/diagnostics.html
 
 ## Adding the lint logic
 
@@ -446,12 +465,12 @@ Before submitting your PR make sure you followed all of the basic requirements:
 
 <!-- Sync this with `.github/PULL_REQUEST_TEMPLATE` -->
 
-- [ ] Followed [lint naming conventions][lint_naming]
-- [ ] Added passing UI tests (including committed `.stderr` file)
-- [ ] `cargo test` passes locally
-- [ ] Executed `cargo dev update_lints`
-- [ ] Added lint documentation
-- [ ] Run `cargo dev fmt`
+- \[ ] Followed [lint naming conventions][lint_naming]
+- \[ ] Added passing UI tests (including committed `.stderr` file)
+- \[ ] `cargo test` passes locally
+- \[ ] Executed `cargo dev update_lints`
+- \[ ] Added lint documentation
+- \[ ] Run `cargo dev fmt`
 
 ## Cheatsheet
 
@@ -482,7 +501,7 @@ For `LateLintPass` lints:
 While most of Clippy's lint utils are documented, most of rustc's internals lack
 documentation currently. This is unfortunate, but in most cases you can probably
 get away with copying things from existing similar lints. If you are stuck,
-don't hesitate to ask on [Discord] or in the issue/PR.
+don't hesitate to ask on [Zulip] or in the issue/PR.
 
 [utils]: https://github.com/rust-lang/rust-clippy/blob/master/clippy_lints/src/utils/mod.rs
 [if_chain]: https://docs.rs/if_chain/*/if_chain/
@@ -494,4 +513,4 @@ don't hesitate to ask on [Discord] or in the issue/PR.
 [nightly_docs]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/
 [ast]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/ast/index.html
 [ty]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/sty/index.html
-[Discord]: https://discord.gg/rust-lang
+[Zulip]: https://rust-lang.zulipchat.com/#narrow/stream/clippy

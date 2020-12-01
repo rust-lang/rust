@@ -1,0 +1,10 @@
+error: called `filter_map(..).next()` on an `Iterator`. This is more succinctly expressed by calling `.find_map(..)` instead.
+  --> $DIR/filter_map_next_fixable.rs:8:32
+   |
+LL |     let element: Option<i32> = a.iter().filter_map(|s| s.parse().ok()).next();
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `a.iter().find_map(|s| s.parse().ok())`
+   |
+   = note: `-D clippy::filter-map-next` implied by `-D warnings`
+
+error: aborting due to previous error
+

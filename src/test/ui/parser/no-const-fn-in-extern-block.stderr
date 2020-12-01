@@ -4,9 +4,12 @@ error: functions in `extern` blocks cannot have qualifiers
 LL | extern {
    | ------ in this `extern` block
 LL |     const fn foo();
-   |     ---------^^^
-   |     |
-   |     help: remove the qualifiers: `fn`
+   |              ^^^
+   |
+help: remove the qualifiers
+   |
+LL |     fn foo();
+   |     ^^
 
 error: functions in `extern` blocks cannot have qualifiers
   --> $DIR/no-const-fn-in-extern-block.rs:4:21
@@ -15,9 +18,12 @@ LL | extern {
    | ------ in this `extern` block
 ...
 LL |     const unsafe fn bar();
-   |     ----------------^^^
-   |     |
-   |     help: remove the qualifiers: `fn`
+   |                     ^^^
+   |
+help: remove the qualifiers
+   |
+LL |     fn bar();
+   |     ^^
 
 error: aborting due to 2 previous errors
 

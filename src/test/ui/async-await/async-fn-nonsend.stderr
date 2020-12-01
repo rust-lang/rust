@@ -7,12 +7,12 @@ LL | fn assert_send(_: impl Send) {}
 LL |     assert_send(local_dropped_before_await());
    |     ^^^^^^^^^^^ future returned by `local_dropped_before_await` is not `Send`
    |
-   = help: within `impl std::future::Future`, the trait `std::marker::Send` is not implemented for `std::rc::Rc<()>`
+   = help: within `impl Future`, the trait `Send` is not implemented for `Rc<()>`
 note: future is not `Send` as this value is used across an await
   --> $DIR/async-fn-nonsend.rs:24:5
    |
 LL |     let x = non_send();
-   |         - has type `impl std::fmt::Debug` which is not `Send`
+   |         - has type `impl Debug` which is not `Send`
 LL |     drop(x);
 LL |     fut().await;
    |     ^^^^^^^^^^^ await occurs here, with `x` maybe used later
@@ -28,12 +28,12 @@ LL | fn assert_send(_: impl Send) {}
 LL |     assert_send(non_send_temporary_in_match());
    |     ^^^^^^^^^^^ future returned by `non_send_temporary_in_match` is not `Send`
    |
-   = help: within `impl std::future::Future`, the trait `std::marker::Send` is not implemented for `std::rc::Rc<()>`
+   = help: within `impl Future`, the trait `Send` is not implemented for `Rc<()>`
 note: future is not `Send` as this value is used across an await
   --> $DIR/async-fn-nonsend.rs:33:20
    |
 LL |     match Some(non_send()) {
-   |                ---------- has type `impl std::fmt::Debug` which is not `Send`
+   |                ---------- has type `impl Debug` which is not `Send`
 LL |         Some(_) => fut().await,
    |                    ^^^^^^^^^^^ await occurs here, with `non_send()` maybe used later
 ...
@@ -49,12 +49,12 @@ LL | fn assert_send(_: impl Send) {}
 LL |     assert_send(non_sync_with_method_call());
    |     ^^^^^^^^^^^ future returned by `non_sync_with_method_call` is not `Send`
    |
-   = help: the trait `std::marker::Send` is not implemented for `dyn std::fmt::Write`
+   = help: the trait `Send` is not implemented for `dyn std::fmt::Write`
 note: future is not `Send` as this value is used across an await
   --> $DIR/async-fn-nonsend.rs:42:9
    |
 LL |     let f: &mut std::fmt::Formatter = panic!();
-   |         - has type `&mut std::fmt::Formatter<'_>` which is not `Send`
+   |         - has type `&mut Formatter<'_>` which is not `Send`
 LL |     if non_sync().fmt(f).unwrap() == () {
 LL |         fut().await;
    |         ^^^^^^^^^^^ await occurs here, with `f` maybe used later

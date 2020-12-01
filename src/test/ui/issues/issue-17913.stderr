@@ -1,4 +1,4 @@
-error: the type `[&usize; N]` is too big for the current architecture
+error: values of the type `[&usize; N]` are too big for the current architecture
 
 error: aborting due to previous error
 

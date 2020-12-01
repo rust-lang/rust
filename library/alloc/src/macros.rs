@@ -71,7 +71,7 @@ macro_rules! vec {
 ///
 /// Additional parameters passed to `format!` replace the `{}`s within the
 /// formatting string in the order given unless named or positional parameters
-/// are used; see [`std::fmt`][fmt] for more information.
+/// are used; see [`std::fmt`] for more information.
 ///
 /// A common use for `format!` is concatenation and interpolation of strings.
 /// The same convention is used with [`print!`] and [`write!`] macros,
@@ -80,7 +80,7 @@ macro_rules! vec {
 /// To convert a single value to a string, use the [`to_string`] method. This
 /// will use the [`Display`] formatting trait.
 ///
-/// [fmt]: core::fmt
+/// [`std::fmt`]: ../std/fmt/index.html
 /// [`print!`]: ../std/macro.print.html
 /// [`write!`]: core::write
 /// [`to_string`]: crate::string::ToString

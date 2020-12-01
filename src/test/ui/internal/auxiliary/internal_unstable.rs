@@ -52,6 +52,15 @@ macro_rules! access_field_allow {
     ($e: expr) => { $e.x }
 }
 
+// regression test for #77088
+#[stable(feature = "stable", since = "1.0.0")]
+#[allow_internal_unstable(struct_field)]
+#[allow_internal_unstable(struct2_field)]
+#[macro_export]
+macro_rules! access_field_allow2 {
+    ($e: expr) => { $e.x }
+}
+
 #[stable(feature = "stable", since = "1.0.0")]
 #[allow_internal_unstable()]
 #[macro_export]

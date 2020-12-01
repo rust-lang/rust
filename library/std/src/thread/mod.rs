@@ -137,13 +137,16 @@
 //! [`thread::current`]: current
 //! [`thread::Result`]: Result
 //! [`unpark`]: Thread::unpark
-//! [`Thread::name`]: Thread::name
 //! [`thread::park_timeout`]: park_timeout
 //! [`Cell`]: crate::cell::Cell
 //! [`RefCell`]: crate::cell::RefCell
 //! [`with`]: LocalKey::with
 
 #![stable(feature = "rust1", since = "1.0.0")]
+#![deny(unsafe_op_in_unsafe_fn)]
+
+#[cfg(all(test, not(target_os = "emscripten")))]
+mod tests;
 
 use crate::any::Any;
 use crate::cell::UnsafeCell;
@@ -155,13 +158,12 @@ use crate::num::NonZeroU64;
 use crate::panic;
 use crate::panicking;
 use crate::str;
-use crate::sync::atomic::AtomicUsize;
-use crate::sync::atomic::Ordering::SeqCst;
-use crate::sync::{Arc, Condvar, Mutex};
+use crate::sync::Arc;
 use crate::sys::thread as imp;
 use crate::sys_common::mutex;
 use crate::sys_common::thread;
 use crate::sys_common::thread_info;
+use crate::sys_common::thread_parker::Parker;
 use crate::sys_common::{AsInner, IntoInner};
 use crate::time::Duration;
 
@@ -172,8 +174,14 @@ use crate::time::Duration;
 #[macro_use]
 mod local;
 
+#[unstable(feature = "available_concurrency", issue = "74479")]
+mod available_concurrency;
+
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::local::{AccessError, LocalKey};
+
+#[unstable(feature = "available_concurrency", issue = "74479")]
+pub use available_concurrency::available_concurrency;
 
 // The types used by the thread_local! macro to access TLS keys. Note that there
 // are two types, the "OS" type and the "fast" type. The OS thread local key
@@ -448,19 +456,33 @@ impl Builder {
         let my_packet: Arc<UnsafeCell<Option<Result<T>>>> = Arc::new(UnsafeCell::new(None));
         let their_packet = my_packet.clone();
 
+        let output_capture = crate::io::set_output_capture(None);
+        crate::io::set_output_capture(output_capture.clone());
+
         let main = move || {
             if let Some(name) = their_thread.cname() {
                 imp::Thread::set_name(name);
             }
 
-            thread_info::set(imp::guard::current(), their_thread);
+            crate::io::set_output_capture(output_capture);
+
+            // SAFETY: the stack guard passed is the one for the current thread.
+            // This means the current thread's stack and the new thread's stack
+            // are properly set and protected from each other.
+            thread_info::set(unsafe { imp::guard::current() }, their_thread);
             let try_result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
                 crate::sys_common::backtrace::__rust_begin_short_backtrace(f)
             }));
-            *their_packet.get() = Some(try_result);
+            // SAFETY: `their_packet` as been built just above and moved by the
+            // closure (it is an Arc<...>) and `my_packet` will be stored in the
+            // same `JoinInner` as this closure meaning the mutation will be
+            // safe (not modify it and affect a value far away).
+            unsafe { *their_packet.get() = Some(try_result) };
         };
 
         Ok(JoinHandle(JoinInner {
+            // SAFETY:
+            //
             // `imp::Thread::new` takes a closure with a `'static` lifetime, since it's passed
             // through FFI or otherwise used with low-level threading primitives that have no
             // notion of or way to enforce lifetimes.
@@ -472,12 +494,14 @@ impl Builder {
             // Similarly, the `sys` implementation must guarantee that no references to the closure
             // exist after the thread has terminated, which is signaled by `Thread::join`
             // returning.
-            native: Some(imp::Thread::new(
-                stack_size,
-                mem::transmute::<Box<dyn FnOnce() + 'a>, Box<dyn FnOnce() + 'static>>(Box::new(
-                    main,
-                )),
-            )?),
+            native: unsafe {
+                Some(imp::Thread::new(
+                    stack_size,
+                    mem::transmute::<Box<dyn FnOnce() + 'a>, Box<dyn FnOnce() + 'static>>(
+                        Box::new(main),
+                    ),
+                )?)
+            },
             thread: my_thread,
             packet: Packet(my_packet),
         }))
@@ -652,6 +676,8 @@ pub fn current() -> Thread {
 ///
 /// [`channel`]: crate::sync::mpsc
 /// [`join`]: JoinHandle::join
+/// [`Condvar`]: crate::sync::Condvar
+/// [`Mutex`]: crate::sync::Mutex
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn yield_now() {
     imp::Thread::yield_now()
@@ -697,6 +723,8 @@ pub fn yield_now() {
 ///     panic!()
 /// }
 /// ```
+///
+/// [Mutex]: crate::sync::Mutex
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn panicking() -> bool {
@@ -763,11 +791,6 @@ pub fn sleep_ms(ms: u32) {
 pub fn sleep(dur: Duration) {
     imp::Thread::sleep(dur)
 }
-
-// constants for park/unpark
-const EMPTY: usize = 0;
-const PARKED: usize = 1;
-const NOTIFIED: usize = 2;
 
 /// Blocks unless or until the current thread's token is made available.
 ///
@@ -855,45 +878,11 @@ const NOTIFIED: usize = 2;
 ///
 /// [`unpark`]: Thread::unpark
 /// [`thread::park_timeout`]: park_timeout
-//
-// The implementation currently uses the trivial strategy of a Mutex+Condvar
-// with wakeup flag, which does not actually allow spurious wakeups. In the
-// future, this will be implemented in a more efficient way, perhaps along the lines of
-//   http://cr.openjdk.java.net/~stefank/6989984.1/raw_files/new/src/os/linux/vm/os_linux.cpp
-// or futuxes, and in either case may allow spurious wakeups.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn park() {
-    let thread = current();
-
-    // If we were previously notified then we consume this notification and
-    // return quickly.
-    if thread.inner.state.compare_exchange(NOTIFIED, EMPTY, SeqCst, SeqCst).is_ok() {
-        return;
-    }
-
-    // Otherwise we need to coordinate going to sleep
-    let mut m = thread.inner.lock.lock().unwrap();
-    match thread.inner.state.compare_exchange(EMPTY, PARKED, SeqCst, SeqCst) {
-        Ok(_) => {}
-        Err(NOTIFIED) => {
-            // We must read here, even though we know it will be `NOTIFIED`.
-            // This is because `unpark` may have been called again since we read
-            // `NOTIFIED` in the `compare_exchange` above. We must perform an
-            // acquire operation that synchronizes with that `unpark` to observe
-            // any writes it made before the call to unpark. To do that we must
-            // read from the write it made to `state`.
-            let old = thread.inner.state.swap(EMPTY, SeqCst);
-            assert_eq!(old, NOTIFIED, "park state changed unexpectedly");
-            return;
-        } // should consume this notification, so prohibit spurious wakeups in next park.
-        Err(_) => panic!("inconsistent park state"),
-    }
-    loop {
-        m = thread.inner.cvar.wait(m).unwrap();
-        match thread.inner.state.compare_exchange(NOTIFIED, EMPTY, SeqCst, SeqCst) {
-            Ok(_) => return, // got a notification
-            Err(_) => {}     // spurious wakeup, go back to sleep
-        }
+    // SAFETY: park_timeout is called on the parker owned by this thread.
+    unsafe {
+        current().inner.parker.park();
     }
 }
 
@@ -955,35 +944,9 @@ pub fn park_timeout_ms(ms: u32) {
 /// ```
 #[stable(feature = "park_timeout", since = "1.4.0")]
 pub fn park_timeout(dur: Duration) {
-    let thread = current();
-
-    // Like `park` above we have a fast path for an already-notified thread, and
-    // afterwards we start coordinating for a sleep.
-    // return quickly.
-    if thread.inner.state.compare_exchange(NOTIFIED, EMPTY, SeqCst, SeqCst).is_ok() {
-        return;
-    }
-    let m = thread.inner.lock.lock().unwrap();
-    match thread.inner.state.compare_exchange(EMPTY, PARKED, SeqCst, SeqCst) {
-        Ok(_) => {}
-        Err(NOTIFIED) => {
-            // We must read again here, see `park`.
-            let old = thread.inner.state.swap(EMPTY, SeqCst);
-            assert_eq!(old, NOTIFIED, "park state changed unexpectedly");
-            return;
-        } // should consume this notification, so prohibit spurious wakeups in next park.
-        Err(_) => panic!("inconsistent park_timeout state"),
-    }
-
-    // Wait with a timeout, and if we spuriously wake up or otherwise wake up
-    // from a notification we just want to unconditionally set the state back to
-    // empty, either consuming a notification or un-flagging ourselves as
-    // parked.
-    let (_m, _result) = thread.inner.cvar.wait_timeout(m, dur).unwrap();
-    match thread.inner.state.swap(EMPTY, SeqCst) {
-        NOTIFIED => {} // got a notification, hurray!
-        PARKED => {}   // no notification, alas
-        n => panic!("inconsistent park_timeout state: {}", n),
+    // SAFETY: park_timeout is called on the parker owned by this thread.
+    unsafe {
+        current().inner.parker.park_timeout(dur);
     }
 }
 
@@ -1019,9 +982,8 @@ pub struct ThreadId(NonZeroU64);
 impl ThreadId {
     // Generate a new unique thread ID.
     fn new() -> ThreadId {
-        // We never call `GUARD.init()`, so it is UB to attempt to
-        // acquire this mutex reentrantly!
-        static GUARD: mutex::Mutex = mutex::Mutex::new();
+        // It is UB to attempt to acquire this mutex reentrantly!
+        static GUARD: mutex::StaticMutex = mutex::StaticMutex::new();
         static mut COUNTER: u64 = 1;
 
         unsafe {
@@ -1062,11 +1024,7 @@ impl ThreadId {
 struct Inner {
     name: Option<CString>, // Guaranteed to be UTF-8
     id: ThreadId,
-
-    // state for thread park/unpark
-    state: AtomicUsize,
-    lock: Mutex<()>,
-    cvar: Condvar,
+    parker: Parker,
 }
 
 #[derive(Clone)]
@@ -1100,13 +1058,7 @@ impl Thread {
         let cname =
             name.map(|n| CString::new(n).expect("thread name may not contain interior null bytes"));
         Thread {
-            inner: Arc::new(Inner {
-                name: cname,
-                id: ThreadId::new(),
-                state: AtomicUsize::new(EMPTY),
-                lock: Mutex::new(()),
-                cvar: Condvar::new(),
-            }),
+            inner: Arc::new(Inner { name: cname, id: ThreadId::new(), parker: Parker::new() }),
         }
     }
 
@@ -1141,33 +1093,9 @@ impl Thread {
     /// parked_thread.join().unwrap();
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     pub fn unpark(&self) {
-        // To ensure the unparked thread will observe any writes we made
-        // before this call, we must perform a release operation that `park`
-        // can synchronize with. To do that we must write `NOTIFIED` even if
-        // `state` is already `NOTIFIED`. That is why this must be a swap
-        // rather than a compare-and-swap that returns if it reads `NOTIFIED`
-        // on failure.
-        match self.inner.state.swap(NOTIFIED, SeqCst) {
-            EMPTY => return,    // no one was waiting
-            NOTIFIED => return, // already unparked
-            PARKED => {}        // gotta go wake someone up
-            _ => panic!("inconsistent state in unpark"),
-        }
-
-        // There is a period between when the parked thread sets `state` to
-        // `PARKED` (or last checked `state` in the case of a spurious wake
-        // up) and when it actually waits on `cvar`. If we were to notify
-        // during this period it would be ignored and then when the parked
-        // thread went to sleep it would never wake up. Fortunately, it has
-        // `lock` locked at this stage so we can acquire `lock` to wait until
-        // it is ready to receive the notification.
-        //
-        // Releasing `lock` before the call to `notify_one` means that when the
-        // parked thread wakes it doesn't get woken only to have to wait for us
-        // to release `lock`.
-        drop(self.inner.lock.lock().unwrap());
-        self.inner.cvar.notify_one()
+        self.inner.parker.unpark();
     }
 
     /// Gets the thread's unique identifier.
@@ -1469,274 +1397,4 @@ fn _assert_sync_and_send() {
     fn _assert_both<T: Send + Sync>() {}
     _assert_both::<JoinHandle<()>>();
     _assert_both::<Thread>();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// Tests
-////////////////////////////////////////////////////////////////////////////////
-
-#[cfg(all(test, not(target_os = "emscripten")))]
-mod tests {
-    use super::Builder;
-    use crate::any::Any;
-    use crate::mem;
-    use crate::result;
-    use crate::sync::mpsc::{channel, Sender};
-    use crate::thread::{self, ThreadId};
-    use crate::time::Duration;
-
-    // !!! These tests are dangerous. If something is buggy, they will hang, !!!
-    // !!! instead of exiting cleanly. This might wedge the buildbots.       !!!
-
-    #[test]
-    fn test_unnamed_thread() {
-        thread::spawn(move || {
-            assert!(thread::current().name().is_none());
-        })
-        .join()
-        .ok()
-        .expect("thread panicked");
-    }
-
-    #[test]
-    fn test_named_thread() {
-        Builder::new()
-            .name("ada lovelace".to_string())
-            .spawn(move || {
-                assert!(thread::current().name().unwrap() == "ada lovelace".to_string());
-            })
-            .unwrap()
-            .join()
-            .unwrap();
-    }
-
-    #[test]
-    #[should_panic]
-    fn test_invalid_named_thread() {
-        let _ = Builder::new().name("ada l\0velace".to_string()).spawn(|| {});
-    }
-
-    #[test]
-    fn test_run_basic() {
-        let (tx, rx) = channel();
-        thread::spawn(move || {
-            tx.send(()).unwrap();
-        });
-        rx.recv().unwrap();
-    }
-
-    #[test]
-    fn test_join_panic() {
-        match thread::spawn(move || panic!()).join() {
-            result::Result::Err(_) => (),
-            result::Result::Ok(()) => panic!(),
-        }
-    }
-
-    #[test]
-    fn test_spawn_sched() {
-        let (tx, rx) = channel();
-
-        fn f(i: i32, tx: Sender<()>) {
-            let tx = tx.clone();
-            thread::spawn(move || {
-                if i == 0 {
-                    tx.send(()).unwrap();
-                } else {
-                    f(i - 1, tx);
-                }
-            });
-        }
-        f(10, tx);
-        rx.recv().unwrap();
-    }
-
-    #[test]
-    fn test_spawn_sched_childs_on_default_sched() {
-        let (tx, rx) = channel();
-
-        thread::spawn(move || {
-            thread::spawn(move || {
-                tx.send(()).unwrap();
-            });
-        });
-
-        rx.recv().unwrap();
-    }
-
-    fn avoid_copying_the_body<F>(spawnfn: F)
-    where
-        F: FnOnce(Box<dyn Fn() + Send>),
-    {
-        let (tx, rx) = channel();
-
-        let x: Box<_> = box 1;
-        let x_in_parent = (&*x) as *const i32 as usize;
-
-        spawnfn(Box::new(move || {
-            let x_in_child = (&*x) as *const i32 as usize;
-            tx.send(x_in_child).unwrap();
-        }));
-
-        let x_in_child = rx.recv().unwrap();
-        assert_eq!(x_in_parent, x_in_child);
-    }
-
-    #[test]
-    fn test_avoid_copying_the_body_spawn() {
-        avoid_copying_the_body(|v| {
-            thread::spawn(move || v());
-        });
-    }
-
-    #[test]
-    fn test_avoid_copying_the_body_thread_spawn() {
-        avoid_copying_the_body(|f| {
-            thread::spawn(move || {
-                f();
-            });
-        })
-    }
-
-    #[test]
-    fn test_avoid_copying_the_body_join() {
-        avoid_copying_the_body(|f| {
-            let _ = thread::spawn(move || f()).join();
-        })
-    }
-
-    #[test]
-    fn test_child_doesnt_ref_parent() {
-        // If the child refcounts the parent thread, this will stack overflow when
-        // climbing the thread tree to dereference each ancestor. (See #1789)
-        // (well, it would if the constant were 8000+ - I lowered it to be more
-        // valgrind-friendly. try this at home, instead..!)
-        const GENERATIONS: u32 = 16;
-        fn child_no(x: u32) -> Box<dyn Fn() + Send> {
-            return Box::new(move || {
-                if x < GENERATIONS {
-                    thread::spawn(move || child_no(x + 1)());
-                }
-            });
-        }
-        thread::spawn(|| child_no(0)());
-    }
-
-    #[test]
-    fn test_simple_newsched_spawn() {
-        thread::spawn(move || {});
-    }
-
-    #[test]
-    fn test_try_panic_message_static_str() {
-        match thread::spawn(move || {
-            panic!("static string");
-        })
-        .join()
-        {
-            Err(e) => {
-                type T = &'static str;
-                assert!(e.is::<T>());
-                assert_eq!(*e.downcast::<T>().unwrap(), "static string");
-            }
-            Ok(()) => panic!(),
-        }
-    }
-
-    #[test]
-    fn test_try_panic_message_owned_str() {
-        match thread::spawn(move || {
-            panic!("owned string".to_string());
-        })
-        .join()
-        {
-            Err(e) => {
-                type T = String;
-                assert!(e.is::<T>());
-                assert_eq!(*e.downcast::<T>().unwrap(), "owned string".to_string());
-            }
-            Ok(()) => panic!(),
-        }
-    }
-
-    #[test]
-    fn test_try_panic_message_any() {
-        match thread::spawn(move || {
-            panic!(box 413u16 as Box<dyn Any + Send>);
-        })
-        .join()
-        {
-            Err(e) => {
-                type T = Box<dyn Any + Send>;
-                assert!(e.is::<T>());
-                let any = e.downcast::<T>().unwrap();
-                assert!(any.is::<u16>());
-                assert_eq!(*any.downcast::<u16>().unwrap(), 413);
-            }
-            Ok(()) => panic!(),
-        }
-    }
-
-    #[test]
-    fn test_try_panic_message_unit_struct() {
-        struct Juju;
-
-        match thread::spawn(move || panic!(Juju)).join() {
-            Err(ref e) if e.is::<Juju>() => {}
-            Err(_) | Ok(()) => panic!(),
-        }
-    }
-
-    #[test]
-    fn test_park_timeout_unpark_before() {
-        for _ in 0..10 {
-            thread::current().unpark();
-            thread::park_timeout(Duration::from_millis(u32::MAX as u64));
-        }
-    }
-
-    #[test]
-    fn test_park_timeout_unpark_not_called() {
-        for _ in 0..10 {
-            thread::park_timeout(Duration::from_millis(10));
-        }
-    }
-
-    #[test]
-    fn test_park_timeout_unpark_called_other_thread() {
-        for _ in 0..10 {
-            let th = thread::current();
-
-            let _guard = thread::spawn(move || {
-                super::sleep(Duration::from_millis(50));
-                th.unpark();
-            });
-
-            thread::park_timeout(Duration::from_millis(u32::MAX as u64));
-        }
-    }
-
-    #[test]
-    fn sleep_ms_smoke() {
-        thread::sleep(Duration::from_millis(2));
-    }
-
-    #[test]
-    fn test_size_of_option_thread_id() {
-        assert_eq!(mem::size_of::<Option<ThreadId>>(), mem::size_of::<ThreadId>());
-    }
-
-    #[test]
-    fn test_thread_id_equal() {
-        assert!(thread::current().id() == thread::current().id());
-    }
-
-    #[test]
-    fn test_thread_id_not_equal() {
-        let spawned_id = thread::spawn(|| thread::current().id()).join().unwrap();
-        assert!(thread::current().id() != spawned_id);
-    }
-
-    // NOTE: the corresponding test for stderr is in ui/thread-stderr, due
-    // to the test harness apparently interfering with stderr configuration.
 }

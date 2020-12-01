@@ -1,5 +1,5 @@
 error: called `map(..).flatten()` on an `Iterator`
-  --> $DIR/map_flatten.rs:14:46
+  --> $DIR/map_flatten.rs:16:46
    |
 LL |     let _: Vec<_> = vec![5_i8; 6].into_iter().map(option_id).flatten().collect();
    |                                              ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try using `filter_map` instead: `.filter_map(option_id)`
@@ -7,31 +7,31 @@ LL |     let _: Vec<_> = vec![5_i8; 6].into_iter().map(option_id).flatten().coll
    = note: `-D clippy::map-flatten` implied by `-D warnings`
 
 error: called `map(..).flatten()` on an `Iterator`
-  --> $DIR/map_flatten.rs:15:46
+  --> $DIR/map_flatten.rs:17:46
    |
 LL |     let _: Vec<_> = vec![5_i8; 6].into_iter().map(option_id_ref).flatten().collect();
    |                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try using `filter_map` instead: `.filter_map(option_id_ref)`
 
 error: called `map(..).flatten()` on an `Iterator`
-  --> $DIR/map_flatten.rs:16:46
+  --> $DIR/map_flatten.rs:18:46
    |
 LL |     let _: Vec<_> = vec![5_i8; 6].into_iter().map(option_id_closure).flatten().collect();
    |                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try using `filter_map` instead: `.filter_map(option_id_closure)`
 
 error: called `map(..).flatten()` on an `Iterator`
-  --> $DIR/map_flatten.rs:17:46
+  --> $DIR/map_flatten.rs:19:46
    |
 LL |     let _: Vec<_> = vec![5_i8; 6].into_iter().map(|x| x.checked_add(1)).flatten().collect();
    |                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try using `filter_map` instead: `.filter_map(|x| x.checked_add(1))`
 
 error: called `map(..).flatten()` on an `Iterator`
-  --> $DIR/map_flatten.rs:20:46
+  --> $DIR/map_flatten.rs:22:46
    |
 LL |     let _: Vec<_> = vec![5_i8; 6].into_iter().map(|x| 0..x).flatten().collect();
    |                                              ^^^^^^^^^^^^^^^^^^^^^^^^ help: try using `flat_map` instead: `.flat_map(|x| 0..x)`
 
 error: called `map(..).flatten()` on an `Option`
-  --> $DIR/map_flatten.rs:23:39
+  --> $DIR/map_flatten.rs:25:39
    |
 LL |     let _: Option<_> = (Some(Some(1))).map(|x| x).flatten();
    |                                       ^^^^^^^^^^^^^^^^^^^^^ help: try using `and_then` instead: `.and_then(|x| x)`

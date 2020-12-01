@@ -397,3 +397,14 @@ fn test_is_ascii_align_size_thoroughly() {
         }
     }
 }
+
+#[test]
+fn ascii_const() {
+    // test that the `is_ascii` methods of `char` and `u8` are usable in a const context
+
+    const CHAR_IS_ASCII: bool = 'a'.is_ascii();
+    assert!(CHAR_IS_ASCII);
+
+    const BYTE_IS_ASCII: bool = 97u8.is_ascii();
+    assert!(BYTE_IS_ASCII);
+}

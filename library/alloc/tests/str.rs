@@ -529,6 +529,13 @@ mod slice_index {
             message: "out of bounds";
         }
 
+        in mod rangeinclusive_len {
+            data: "abcdef";
+            good: data[0..=5] == "abcdef";
+            bad: data[0..=6];
+            message: "out of bounds";
+        }
+
         in mod range_len_len {
             data: "abcdef";
             good: data[6..6] == "";
@@ -540,6 +547,28 @@ mod slice_index {
             data: "abcdef";
             good: data[6..=5] == "";
             bad: data[7..=6];
+            message: "out of bounds";
+        }
+    }
+
+    panic_cases! {
+        in mod rangeinclusive_exhausted {
+            data: "abcdef";
+
+            good: data[0..=5] == "abcdef";
+            good: data[{
+                let mut iter = 0..=5;
+                iter.by_ref().count(); // exhaust it
+                iter
+            }] == "";
+
+            // 0..=6 is out of bounds before exhaustion, so it
+            // stands to reason that it still would be after.
+            bad: data[{
+                let mut iter = 0..=6;
+                iter.by_ref().count(); // exhaust it
+                iter
+            }];
             message: "out of bounds";
         }
     }
@@ -1920,4 +1949,25 @@ fn different_str_pattern_forwarding_lifetimes() {
     }
 
     foo::<&str>("x");
+}
+
+#[test]
+fn test_str_multiline() {
+    let a: String = "this \
+is a test"
+        .to_string();
+    let b: String = "this \
+              is \
+              another \
+              test"
+        .to_string();
+    assert_eq!(a, "this is a test".to_string());
+    assert_eq!(b, "this is another test".to_string());
+}
+
+#[test]
+fn test_str_escapes() {
+    let x = "\\\\\
+    ";
+    assert_eq!(x, r"\\"); // extraneous whitespace stripped
 }

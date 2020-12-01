@@ -1,8 +1,11 @@
+use crate::utils;
 use crate::utils::match_var;
 use rustc_data_structures::fx::FxHashSet;
+use rustc_hir as hir;
 use rustc_hir::def::Res;
+use rustc_hir::intravisit;
 use rustc_hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
-use rustc_hir::{Expr, HirId, Path};
+use rustc_hir::{Expr, ExprKind, HirId, Path};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::LateContext;
 use rustc_middle::hir::map::Map;
@@ -16,12 +19,11 @@ pub fn mutated_variables<'tcx>(expr: &'tcx Expr<'_>, cx: &LateContext<'tcx>) -> 
         used_mutably: FxHashSet::default(),
         skip: false,
     };
-    let def_id = expr.hir_id.owner.to_def_id();
     cx.tcx.infer_ctxt().enter(|infcx| {
         ExprUseVisitor::new(
             &mut delegate,
             &infcx,
-            def_id.expect_local(),
+            expr.hir_id.owner,
             cx.param_env,
             cx.typeck_results(),
         )
@@ -66,15 +68,15 @@ impl<'tcx> MutVarsDelegate {
 }
 
 impl<'tcx> Delegate<'tcx> for MutVarsDelegate {
-    fn consume(&mut self, _: &PlaceWithHirId<'tcx>, _: ConsumeMode) {}
+    fn consume(&mut self, _: &PlaceWithHirId<'tcx>, _: HirId, _: ConsumeMode) {}
 
-    fn borrow(&mut self, cmt: &PlaceWithHirId<'tcx>, bk: ty::BorrowKind) {
+    fn borrow(&mut self, cmt: &PlaceWithHirId<'tcx>, _: HirId, bk: ty::BorrowKind) {
         if let ty::BorrowKind::MutBorrow = bk {
             self.update(&cmt)
         }
     }
 
-    fn mutate(&mut self, cmt: &PlaceWithHirId<'tcx>) {
+    fn mutate(&mut self, cmt: &PlaceWithHirId<'tcx>, _: HirId) {
         self.update(&cmt)
     }
 }
@@ -107,4 +109,115 @@ pub fn is_unused<'tcx>(ident: &'tcx Ident, body: &'tcx Expr<'_>) -> bool {
     };
     walk_expr(&mut visitor, body);
     !visitor.used
+}
+
+pub struct ParamBindingIdCollector {
+    binding_hir_ids: Vec<hir::HirId>,
+}
+impl<'tcx> ParamBindingIdCollector {
+    fn collect_binding_hir_ids(body: &'tcx hir::Body<'tcx>) -> Vec<hir::HirId> {
+        let mut finder = ParamBindingIdCollector {
+            binding_hir_ids: Vec::new(),
+        };
+        finder.visit_body(body);
+        finder.binding_hir_ids
+    }
+}
+impl<'tcx> intravisit::Visitor<'tcx> for ParamBindingIdCollector {
+    type Map = Map<'tcx>;
+
+    fn visit_param(&mut self, param: &'tcx hir::Param<'tcx>) {
+        if let hir::PatKind::Binding(_, hir_id, ..) = param.pat.kind {
+            self.binding_hir_ids.push(hir_id);
+        }
+    }
+
+    fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<Self::Map> {
+        intravisit::NestedVisitorMap::None
+    }
+}
+
+pub struct BindingUsageFinder<'a, 'tcx> {
+    cx: &'a LateContext<'tcx>,
+    binding_ids: Vec<hir::HirId>,
+    usage_found: bool,
+}
+impl<'a, 'tcx> BindingUsageFinder<'a, 'tcx> {
+    pub fn are_params_used(cx: &'a LateContext<'tcx>, body: &'tcx hir::Body<'tcx>) -> bool {
+        let mut finder = BindingUsageFinder {
+            cx,
+            binding_ids: ParamBindingIdCollector::collect_binding_hir_ids(body),
+            usage_found: false,
+        };
+        finder.visit_body(body);
+        finder.usage_found
+    }
+}
+impl<'a, 'tcx> intravisit::Visitor<'tcx> for BindingUsageFinder<'a, 'tcx> {
+    type Map = Map<'tcx>;
+
+    fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
+        if !self.usage_found {
+            intravisit::walk_expr(self, expr);
+        }
+    }
+
+    fn visit_path(&mut self, path: &'tcx hir::Path<'tcx>, _: hir::HirId) {
+        if let hir::def::Res::Local(id) = path.res {
+            if self.binding_ids.contains(&id) {
+                self.usage_found = true;
+            }
+        }
+    }
+
+    fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<Self::Map> {
+        intravisit::NestedVisitorMap::OnlyBodies(self.cx.tcx.hir())
+    }
+}
+
+struct ReturnBreakContinueMacroVisitor {
+    seen_return_break_continue: bool,
+}
+
+impl ReturnBreakContinueMacroVisitor {
+    fn new() -> ReturnBreakContinueMacroVisitor {
+        ReturnBreakContinueMacroVisitor {
+            seen_return_break_continue: false,
+        }
+    }
+}
+
+impl<'tcx> Visitor<'tcx> for ReturnBreakContinueMacroVisitor {
+    type Map = Map<'tcx>;
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
+        NestedVisitorMap::None
+    }
+
+    fn visit_expr(&mut self, ex: &'tcx Expr<'tcx>) {
+        if self.seen_return_break_continue {
+            // No need to look farther if we've already seen one of them
+            return;
+        }
+        match &ex.kind {
+            ExprKind::Ret(..) | ExprKind::Break(..) | ExprKind::Continue(..) => {
+                self.seen_return_break_continue = true;
+            },
+            // Something special could be done here to handle while or for loop
+            // desugaring, as this will detect a break if there's a while loop
+            // or a for loop inside the expression.
+            _ => {
+                if utils::in_macro(ex.span) {
+                    self.seen_return_break_continue = true;
+                } else {
+                    rustc_hir::intravisit::walk_expr(self, ex);
+                }
+            },
+        }
+    }
+}
+
+pub fn contains_return_break_continue_macro(expression: &Expr<'_>) -> bool {
+    let mut recursive_visitor = ReturnBreakContinueMacroVisitor::new();
+    recursive_visitor.visit_expr(expression);
+    recursive_visitor.seen_return_break_continue
 }

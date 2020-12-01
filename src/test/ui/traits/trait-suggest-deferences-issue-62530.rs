@@ -11,5 +11,5 @@ fn main() {
     let string = String::new();
     takes_str(&string);             // Ok
     takes_type_parameter(&string);  // Error
-    //~^ ERROR the trait bound `&std::string::String: SomeTrait` is not satisfied
+    //~^ ERROR the trait bound `&String: SomeTrait` is not satisfied
 }

@@ -15,7 +15,7 @@ extern "rust-intrinsic" fn f1() {} //~ ERROR intrinsics are subject to change
 extern "platform-intrinsic" fn f2() {} //~ ERROR platform intrinsics are experimental
 //~^ ERROR intrinsic must be in
 extern "vectorcall" fn f3() {} //~ ERROR vectorcall is experimental and subject to change
-extern "rust-call" fn f4() {} //~ ERROR rust-call ABI is subject to change
+extern "rust-call" fn f4(_: ()) {} //~ ERROR rust-call ABI is subject to change
 extern "msp430-interrupt" fn f5() {} //~ ERROR msp430-interrupt ABI is experimental
 extern "ptx-kernel" fn f6() {} //~ ERROR PTX ABIs are experimental and subject to change
 extern "x86-interrupt" fn f7() {} //~ ERROR x86-interrupt ABI is experimental
@@ -30,7 +30,7 @@ trait Tr {
     extern "platform-intrinsic" fn m2(); //~ ERROR platform intrinsics are experimental
     //~^ ERROR intrinsic must be in
     extern "vectorcall" fn m3(); //~ ERROR vectorcall is experimental and subject to change
-    extern "rust-call" fn m4(); //~ ERROR rust-call ABI is subject to change
+    extern "rust-call" fn m4(_: ()); //~ ERROR rust-call ABI is subject to change
     extern "msp430-interrupt" fn m5(); //~ ERROR msp430-interrupt ABI is experimental
     extern "ptx-kernel" fn m6(); //~ ERROR PTX ABIs are experimental and subject to change
     extern "x86-interrupt" fn m7(); //~ ERROR x86-interrupt ABI is experimental
@@ -39,7 +39,7 @@ trait Tr {
     extern "efiapi" fn m10(); //~ ERROR efiapi ABI is experimental and subject to change
 
     extern "vectorcall" fn dm3() {} //~ ERROR vectorcall is experimental and subject to change
-    extern "rust-call" fn dm4() {} //~ ERROR rust-call ABI is subject to change
+    extern "rust-call" fn dm4(_: ()) {} //~ ERROR rust-call ABI is subject to change
     extern "msp430-interrupt" fn dm5() {} //~ ERROR msp430-interrupt ABI is experimental
     extern "ptx-kernel" fn dm6() {} //~ ERROR PTX ABIs are experimental and subject to change
     extern "x86-interrupt" fn dm7() {} //~ ERROR x86-interrupt ABI is experimental
@@ -57,7 +57,7 @@ impl Tr for S {
     extern "platform-intrinsic" fn m2() {} //~ ERROR platform intrinsics are experimental
     //~^ ERROR intrinsic must be in
     extern "vectorcall" fn m3() {} //~ ERROR vectorcall is experimental and subject to change
-    extern "rust-call" fn m4() {} //~ ERROR rust-call ABI is subject to change
+    extern "rust-call" fn m4(_: ()) {} //~ ERROR rust-call ABI is subject to change
     extern "msp430-interrupt" fn m5() {} //~ ERROR msp430-interrupt ABI is experimental
     extern "ptx-kernel" fn m6() {} //~ ERROR PTX ABIs are experimental and subject to change
     extern "x86-interrupt" fn m7() {} //~ ERROR x86-interrupt ABI is experimental
@@ -73,7 +73,7 @@ impl S {
     extern "platform-intrinsic" fn im2() {} //~ ERROR platform intrinsics are experimental
     //~^ ERROR intrinsic must be in
     extern "vectorcall" fn im3() {} //~ ERROR vectorcall is experimental and subject to change
-    extern "rust-call" fn im4() {} //~ ERROR rust-call ABI is subject to change
+    extern "rust-call" fn im4(_: ()) {} //~ ERROR rust-call ABI is subject to change
     extern "msp430-interrupt" fn im5() {} //~ ERROR msp430-interrupt ABI is experimental
     extern "ptx-kernel" fn im6() {} //~ ERROR PTX ABIs are experimental and subject to change
     extern "x86-interrupt" fn im7() {} //~ ERROR x86-interrupt ABI is experimental
@@ -86,7 +86,7 @@ impl S {
 type A1 = extern "rust-intrinsic" fn(); //~ ERROR intrinsics are subject to change
 type A2 = extern "platform-intrinsic" fn(); //~ ERROR platform intrinsics are experimental
 type A3 = extern "vectorcall" fn(); //~ ERROR vectorcall is experimental and subject to change
-type A4 = extern "rust-call" fn(); //~ ERROR rust-call ABI is subject to change
+type A4 = extern "rust-call" fn(_: ()); //~ ERROR rust-call ABI is subject to change
 type A5 = extern "msp430-interrupt" fn(); //~ ERROR msp430-interrupt ABI is experimental
 type A6 = extern "ptx-kernel" fn (); //~ ERROR PTX ABIs are experimental and subject to change
 type A7 = extern "x86-interrupt" fn(); //~ ERROR x86-interrupt ABI is experimental

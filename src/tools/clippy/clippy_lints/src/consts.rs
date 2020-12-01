@@ -7,8 +7,9 @@ use rustc_data_structures::sync::Lrc;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{BinOp, BinOpKind, Block, Expr, ExprKind, HirId, QPath, UnOp};
 use rustc_lint::LateContext;
+use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::ty::subst::{Subst, SubstsRef};
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, ScalarInt, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_span::symbol::Symbol;
 use std::cmp::Ordering::{self, Equal};
@@ -21,7 +22,7 @@ pub enum Constant {
     /// A `String` (e.g., "abc").
     Str(String),
     /// A binary string (e.g., `b"abc"`).
-    Binary(Lrc<Vec<u8>>),
+    Binary(Lrc<[u8]>),
     /// A single `char` (e.g., `'a'`).
     Char(char),
     /// An integer's bit representation.
@@ -40,6 +41,8 @@ pub enum Constant {
     Tuple(Vec<Constant>),
     /// A raw pointer.
     RawPtr(u128),
+    /// A reference
+    Ref(Box<Constant>),
     /// A literal with syntax error.
     Err(Symbol),
 }
@@ -66,6 +69,7 @@ impl PartialEq for Constant {
             (&Self::Bool(l), &Self::Bool(r)) => l == r,
             (&Self::Vec(ref l), &Self::Vec(ref r)) | (&Self::Tuple(ref l), &Self::Tuple(ref r)) => l == r,
             (&Self::Repeat(ref lv, ref ls), &Self::Repeat(ref rv, ref rs)) => ls == rs && lv == rv,
+            (&Self::Ref(ref lb), &Self::Ref(ref rb)) => *lb == *rb,
             // TODO: are there inter-type equalities?
             _ => false,
         }
@@ -110,6 +114,9 @@ impl Hash for Constant {
             Self::RawPtr(u) => {
                 u.hash(state);
             },
+            Self::Ref(ref r) => {
+                r.hash(state);
+            },
             Self::Err(ref s) => {
                 s.hash(state);
             },
@@ -123,7 +130,7 @@ impl Constant {
             (&Self::Str(ref ls), &Self::Str(ref rs)) => Some(ls.cmp(rs)),
             (&Self::Char(ref l), &Self::Char(ref r)) => Some(l.cmp(r)),
             (&Self::Int(l), &Self::Int(r)) => {
-                if let ty::Int(int_ty) = cmp_type.kind {
+                if let ty::Int(int_ty) = *cmp_type.kind() {
                     Some(sext(tcx, l, int_ty).cmp(&sext(tcx, r, int_ty)))
                 } else {
                     Some(l.cmp(&r))
@@ -144,6 +151,7 @@ impl Constant {
                     x => x,
                 }
             },
+            (&Self::Ref(ref lb), &Self::Ref(ref rb)) => Self::partial_cmp(tcx, cmp_type, lb, rb),
             // TODO: are there any useful inter-type orderings?
             _ => None,
         }
@@ -162,7 +170,7 @@ pub fn lit_to_constant(lit: &LitKind, ty: Option<Ty<'_>>) -> Constant {
             FloatTy::F32 => Constant::F32(is.as_str().parse().unwrap()),
             FloatTy::F64 => Constant::F64(is.as_str().parse().unwrap()),
         },
-        LitKind::Float(ref is, LitFloatType::Unsuffixed) => match ty.expect("type of float is known").kind {
+        LitKind::Float(ref is, LitFloatType::Unsuffixed) => match ty.expect("type of float is known").kind() {
             ty::Float(FloatTy::F32) => Constant::F32(is.as_str().parse().unwrap()),
             ty::Float(FloatTy::F64) => Constant::F64(is.as_str().parse().unwrap()),
             _ => bug!(),
@@ -230,7 +238,7 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
             ExprKind::Array(ref vec) => self.multi(vec).map(Constant::Vec),
             ExprKind::Tup(ref tup) => self.multi(tup).map(Constant::Tuple),
             ExprKind::Repeat(ref value, _) => {
-                let n = match self.typeck_results.expr_ty(e).kind {
+                let n = match self.typeck_results.expr_ty(e).kind() {
                     ty::Array(_, n) => n.try_eval_usize(self.lcx.tcx, self.lcx.param_env)?,
                     _ => span_bug!(e.span, "typeck error"),
                 };
@@ -239,7 +247,7 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
             ExprKind::Unary(op, ref operand) => self.expr(operand).and_then(|o| match op {
                 UnOp::UnNot => self.constant_not(&o, self.typeck_results.expr_ty(e)),
                 UnOp::UnNeg => self.constant_negate(&o, self.typeck_results.expr_ty(e)),
-                UnOp::UnDeref => Some(o),
+                UnOp::UnDeref => Some(if let Constant::Ref(r) = o { *r } else { o }),
             }),
             ExprKind::Binary(op, ref left, ref right) => self.binop(op, left, right),
             ExprKind::Call(ref callee, ref args) => {
@@ -269,6 +277,7 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
                 }
             },
             ExprKind::Index(ref arr, ref index) => self.index(arr, index),
+            ExprKind::AddrOf(_, _, ref inner) => self.expr(inner).map(|r| Constant::Ref(Box::new(r))),
             // TODO: add other expressions.
             _ => None,
         }
@@ -281,7 +290,7 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
             Bool(b) => Some(Bool(!b)),
             Int(value) => {
                 let value = !value;
-                match ty.kind {
+                match *ty.kind() {
                     ty::Int(ity) => Some(Int(unsext(self.lcx.tcx, value as i128, ity))),
                     ty::Uint(ity) => Some(Int(clip(self.lcx.tcx, value, ity))),
                     _ => None,
@@ -295,7 +304,7 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
         use self::Constant::{Int, F32, F64};
         match *o {
             Int(value) => {
-                let ity = match ty.kind {
+                let ity = match *ty.kind() {
                     ty::Int(ity) => ity,
                     _ => return None,
                 };
@@ -402,7 +411,7 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
         let l = self.expr(left)?;
         let r = self.expr(right);
         match (l, r) {
-            (Constant::Int(l), Some(Constant::Int(r))) => match self.typeck_results.expr_ty_opt(left)?.kind {
+            (Constant::Int(l), Some(Constant::Int(r))) => match *self.typeck_results.expr_ty_opt(left)?.kind() {
                 ty::Int(ity) => {
                     let l = sext(self.lcx.tcx, l, ity);
                     let r = sext(self.lcx.tcx, r, ity);
@@ -492,21 +501,21 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
 }
 
 pub fn miri_to_const(result: &ty::Const<'_>) -> Option<Constant> {
-    use rustc_middle::mir::interpret::{ConstValue, Scalar};
+    use rustc_middle::mir::interpret::ConstValue;
     match result.val {
-        ty::ConstKind::Value(ConstValue::Scalar(Scalar::Raw { data: d, .. })) => {
-            match result.ty.kind {
-                ty::Bool => Some(Constant::Bool(d == 1)),
-                ty::Uint(_) | ty::Int(_) => Some(Constant::Int(d)),
+        ty::ConstKind::Value(ConstValue::Scalar(Scalar::Int(int))) => {
+            match result.ty.kind() {
+                ty::Bool => Some(Constant::Bool(int == ScalarInt::TRUE)),
+                ty::Uint(_) | ty::Int(_) => Some(Constant::Int(int.assert_bits(int.size()))),
                 ty::Float(FloatTy::F32) => Some(Constant::F32(f32::from_bits(
-                    d.try_into().expect("invalid f32 bit representation"),
+                    int.try_into().expect("invalid f32 bit representation"),
                 ))),
                 ty::Float(FloatTy::F64) => Some(Constant::F64(f64::from_bits(
-                    d.try_into().expect("invalid f64 bit representation"),
+                    int.try_into().expect("invalid f64 bit representation"),
                 ))),
                 ty::RawPtr(type_and_mut) => {
-                    if let ty::Uint(_) = type_and_mut.ty.kind {
-                        return Some(Constant::RawPtr(d));
+                    if let ty::Uint(_) = type_and_mut.ty.kind() {
+                        return Some(Constant::RawPtr(int.assert_bits(int.size())));
                     }
                     None
                 },
@@ -514,8 +523,8 @@ pub fn miri_to_const(result: &ty::Const<'_>) -> Option<Constant> {
                 _ => None,
             }
         },
-        ty::ConstKind::Value(ConstValue::Slice { data, start, end }) => match result.ty.kind {
-            ty::Ref(_, tam, _) => match tam.kind {
+        ty::ConstKind::Value(ConstValue::Slice { data, start, end }) => match result.ty.kind() {
+            ty::Ref(_, tam, _) => match tam.kind() {
                 ty::Str => String::from_utf8(
                     data.inspect_with_uninit_and_ptr_outside_interpreter(start..end)
                         .to_owned(),
@@ -526,8 +535,8 @@ pub fn miri_to_const(result: &ty::Const<'_>) -> Option<Constant> {
             },
             _ => None,
         },
-        ty::ConstKind::Value(ConstValue::ByRef { alloc, offset: _ }) => match result.ty.kind {
-            ty::Array(sub_type, len) => match sub_type.kind {
+        ty::ConstKind::Value(ConstValue::ByRef { alloc, offset: _ }) => match result.ty.kind() {
+            ty::Array(sub_type, len) => match sub_type.kind() {
                 ty::Float(FloatTy::F32) => match miri_to_const(len) {
                     Some(Constant::Int(len)) => alloc
                         .inspect_with_uninit_and_ptr_outside_interpreter(0..(4 * len as usize))

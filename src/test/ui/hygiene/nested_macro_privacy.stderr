@@ -1,4 +1,4 @@
-error[E0616]: field `i` of struct `foo::S` is private
+error[E0616]: field `i` of struct `S` is private
   --> $DIR/nested_macro_privacy.rs:15:18
    |
 LL |     S::default().i;

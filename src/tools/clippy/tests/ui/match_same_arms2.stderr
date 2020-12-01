@@ -141,5 +141,18 @@ LL |         Ok(3) => println!("ok"),
    |         ^^^^^
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 7 previous errors
+error: match expression looks like `matches!` macro
+  --> $DIR/match_same_arms2.rs:133:16
+   |
+LL |       let _ans = match x {
+   |  ________________^
+LL | |         E::A => false,
+LL | |         E::B => false,
+LL | |         _ => true,
+LL | |     };
+   | |_____^ help: try this: `!matches!(x, E::A | E::B)`
+   |
+   = note: `-D clippy::match-like-matches-macro` implied by `-D warnings`
+
+error: aborting due to 8 previous errors
 

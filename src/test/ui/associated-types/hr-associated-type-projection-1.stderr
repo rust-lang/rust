@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `for<'b> <T as UnsafeCopy<'b, T>>::Item: std::ops::Deref` is not satisfied
+error[E0277]: the trait bound `for<'b> <T as UnsafeCopy<'b, T>>::Item: Deref` is not satisfied
   --> $DIR/hr-associated-type-projection-1.rs:15:17
    |
 LL | trait UnsafeCopy<'a, T: Copy>
@@ -8,22 +8,22 @@ LL |     for<'b> <Self as UnsafeCopy<'b, T>>::Item: std::ops::Deref<Target = T>,
    |                                                --------------------------- required by this bound in `UnsafeCopy`
 ...
 LL |     type Item = T;
-   |                 ^ the trait `for<'b> std::ops::Deref` is not implemented for `<T as UnsafeCopy<'b, T>>::Item`
+   |                 ^ the trait `for<'b> Deref` is not implemented for `<T as UnsafeCopy<'b, T>>::Item`
    |
    = help: the following implementations were found:
-             <&T as std::ops::Deref>
-             <&mut T as std::ops::Deref>
+             <&T as Deref>
+             <&mut T as Deref>
 
-error[E0277]: the trait bound `<T as UnsafeCopy<'b, T>>::Item: std::ops::Deref` is not satisfied
+error[E0277]: the trait bound `<T as UnsafeCopy<'b, T>>::Item: Deref` is not satisfied
   --> $DIR/hr-associated-type-projection-1.rs:13:33
    |
 LL | impl<T: Copy + std::ops::Deref> UnsafeCopy<'_, T> for T {
-   |                                 ^^^^^^^^^^^^^^^^^ the trait `std::ops::Deref` is not implemented for `<T as UnsafeCopy<'b, T>>::Item`
+   |                                 ^^^^^^^^^^^^^^^^^ the trait `Deref` is not implemented for `<T as UnsafeCopy<'b, T>>::Item`
    |
 help: consider further restricting the associated type
    |
-LL | impl<T: Copy + std::ops::Deref> UnsafeCopy<'_, T> for T where <T as UnsafeCopy<'b, T>>::Item: std::ops::Deref {
-   |                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | impl<T: Copy + std::ops::Deref> UnsafeCopy<'_, T> for T where <T as UnsafeCopy<'b, T>>::Item: Deref {
+   |                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

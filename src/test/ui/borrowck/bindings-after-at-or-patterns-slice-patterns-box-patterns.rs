@@ -3,8 +3,6 @@
 #![feature(or_patterns)]
 #![feature(box_patterns)]
 
-#![feature(move_ref_pattern)]
-
 enum Test {
     Foo,
     Bar,

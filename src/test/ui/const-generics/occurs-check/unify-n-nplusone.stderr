@@ -1,0 +1,10 @@
+error: constant expression depends on a generic parameter
+  --> $DIR/unify-n-nplusone.rs:6:44
+   |
+LL | fn bind<const N: usize>(value: [u8; N]) -> [u8; N + 1] {
+   |                                            ^^^^^^^^^^^
+   |
+   = note: this may fail depending on what value the parameter takes
+
+error: aborting due to previous error
+

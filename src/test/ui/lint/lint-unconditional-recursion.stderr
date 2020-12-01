@@ -149,7 +149,7 @@ error: function cannot return without recursing
 LL |     fn deref(&self) -> &Baz {
    |     ^^^^^^^^^^^^^^^^^^^^^^^ cannot return without recursing
 LL |         self.as_ref()
-   |         ---- recursive call site
+   |         ------------- recursive call site
    |
    = help: a `loop` may express intention better if this is on purpose
 

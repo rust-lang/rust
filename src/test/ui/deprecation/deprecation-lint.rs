@@ -314,7 +314,7 @@ mod this_crate {
         let _ = || {
             #[deprecated]
             fn bar() { }
-            bar(); //~ ERROR use of deprecated function `this_crate::test_fn_closure_body::{{closure}}#0::bar`
+            bar(); //~ ERROR use of deprecated function `this_crate::test_fn_closure_body::{closure#0}::bar`
         };
     }
 

@@ -1,0 +1,12 @@
+error: to use a constant of type `Foo` in a pattern, `Foo` must be annotated with `#[derive(PartialEq, Eq)]`
+  --> $DIR/ice-6254.rs:12:9
+   |
+LL |         FOO_REF_REF => {},
+   |         ^^^^^^^^^^^
+   |
+   = note: `-D indirect-structural-match` implied by `-D warnings`
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #62411 <https://github.com/rust-lang/rust/issues/62411>
+
+error: aborting due to previous error
+

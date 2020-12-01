@@ -1,0 +1,37 @@
+- // MIR for `main` before ConstProp
++ // MIR for `main` after ConstProp
+  
+  fn main() -> () {
+      let mut _0: ();                      // return place in scope 0 at $DIR/large_array_index.rs:4:11: 4:11
+      let _1: u8;                          // in scope 0 at $DIR/large_array_index.rs:6:9: 6:10
+      let mut _2: [u8; 5000];              // in scope 0 at $DIR/large_array_index.rs:6:17: 6:29
+      let _3: usize;                       // in scope 0 at $DIR/large_array_index.rs:6:30: 6:31
+      let mut _4: usize;                   // in scope 0 at $DIR/large_array_index.rs:6:17: 6:32
+      let mut _5: bool;                    // in scope 0 at $DIR/large_array_index.rs:6:17: 6:32
+      scope 1 {
+          debug x => _1;                   // in scope 1 at $DIR/large_array_index.rs:6:9: 6:10
+      }
+  
+      bb0: {
+          StorageLive(_1);                 // scope 0 at $DIR/large_array_index.rs:6:9: 6:10
+          StorageLive(_2);                 // scope 0 at $DIR/large_array_index.rs:6:17: 6:29
+          _2 = [const 0_u8; 5000];         // scope 0 at $DIR/large_array_index.rs:6:17: 6:29
+          StorageLive(_3);                 // scope 0 at $DIR/large_array_index.rs:6:30: 6:31
+          _3 = const 2_usize;              // scope 0 at $DIR/large_array_index.rs:6:30: 6:31
+          _4 = const 5000_usize;           // scope 0 at $DIR/large_array_index.rs:6:17: 6:32
+-         _5 = Lt(_3, _4);                 // scope 0 at $DIR/large_array_index.rs:6:17: 6:32
+-         assert(move _5, "index out of bounds: the length is {} but the index is {}", move _4, _3) -> bb1; // scope 0 at $DIR/large_array_index.rs:6:17: 6:32
++         _5 = const true;                 // scope 0 at $DIR/large_array_index.rs:6:17: 6:32
++         assert(const true, "index out of bounds: the length is {} but the index is {}", const 5000_usize, const 2_usize) -> bb1; // scope 0 at $DIR/large_array_index.rs:6:17: 6:32
+      }
+  
+      bb1: {
+          _1 = _2[_3];                     // scope 0 at $DIR/large_array_index.rs:6:17: 6:32
+          StorageDead(_3);                 // scope 0 at $DIR/large_array_index.rs:6:32: 6:33
+          StorageDead(_2);                 // scope 0 at $DIR/large_array_index.rs:6:32: 6:33
+          _0 = const ();                   // scope 0 at $DIR/large_array_index.rs:4:11: 7:2
+          StorageDead(_1);                 // scope 0 at $DIR/large_array_index.rs:7:1: 7:2
+          return;                          // scope 0 at $DIR/large_array_index.rs:7:2: 7:2
+      }
+  }
+  

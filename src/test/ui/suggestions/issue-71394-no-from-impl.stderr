@@ -1,10 +1,10 @@
-error[E0277]: the trait bound `&[i8]: std::convert::From<&[u8]>` is not satisfied
+error[E0277]: the trait bound `&[i8]: From<&[u8]>` is not satisfied
   --> $DIR/issue-71394-no-from-impl.rs:3:25
    |
 LL |     let _: &[i8] = data.into();
-   |                         ^^^^ the trait `std::convert::From<&[u8]>` is not implemented for `&[i8]`
+   |                         ^^^^ the trait `From<&[u8]>` is not implemented for `&[i8]`
    |
-   = note: required because of the requirements on the impl of `std::convert::Into<&[i8]>` for `&[u8]`
+   = note: required because of the requirements on the impl of `Into<&[i8]>` for `&[u8]`
 
 error: aborting due to previous error
 

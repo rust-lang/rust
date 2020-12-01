@@ -1,4 +1,5 @@
 #![warn(clippy::all, clippy::pedantic)]
+#![allow(clippy::clippy::let_underscore_drop)]
 #![allow(clippy::missing_docs_in_private_items)]
 
 fn main() {

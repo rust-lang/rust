@@ -1,9 +1,21 @@
+error: A function with the "rust-call" ABI must take a single non-self argument that is a tuple
+  --> $DIR/overloaded-calls-nontuple.rs:11:5
+   |
+LL |     extern "rust-call" fn call_mut(&mut self, z: isize) -> isize {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: A function with the "rust-call" ABI must take a single non-self argument that is a tuple
+  --> $DIR/overloaded-calls-nontuple.rs:19:5
+   |
+LL |     extern "rust-call" fn call_once(mut self, z: isize) -> isize { self.call_mut(z) }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 error[E0059]: cannot use call notation; the first type parameter for the function trait is neither a tuple nor unit
-  --> $DIR/overloaded-calls-nontuple.rs:26:10
+  --> $DIR/overloaded-calls-nontuple.rs:28:10
    |
 LL |     drop(s(3))
    |          ^^^^
 
-error: aborting due to previous error
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0059`.

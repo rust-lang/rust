@@ -1,17 +1,13 @@
 use crate::intrinsics;
-use crate::iter::adapters::zip::try_get_unchecked;
-use crate::iter::TrustedRandomAccess;
-use crate::iter::{DoubleEndedIterator, ExactSizeIterator, FusedIterator, Iterator};
+use crate::iter::adapters::{zip::try_get_unchecked, InPlaceIterable, SourceIter};
+use crate::iter::{DoubleEndedIterator, ExactSizeIterator, FusedIterator, TrustedRandomAccess};
 use crate::ops::Try;
 
 /// An iterator that yields `None` forever after the underlying iterator
 /// yields `None` once.
 ///
-/// This `struct` is created by the [`fuse`] method on [`Iterator`]. See its
-/// documentation for more.
-///
-/// [`fuse`]: trait.Iterator.html#method.fuse
-/// [`Iterator`]: trait.Iterator.html
+/// This `struct` is created by [`Iterator::fuse`]. See its documentation
+/// for more.
 #[derive(Clone, Debug)]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -116,12 +112,13 @@ where
     }
 
     #[inline]
-    unsafe fn get_unchecked(&mut self, idx: usize) -> Self::Item
+    unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item
     where
         Self: TrustedRandomAccess,
     {
         match self.iter {
-            // SAFETY: the caller must uphold the contract for `Iterator::get_unchecked`.
+            // SAFETY: the caller must uphold the contract for
+            // `Iterator::__iterator_get_unchecked`.
             Some(ref mut iter) => unsafe { try_get_unchecked(iter, idx) },
             // SAFETY: the caller asserts there is an item at `i`, so we're not exhausted.
             None => unsafe { intrinsics::unreachable() },
@@ -303,7 +300,7 @@ where
             acc = iter.try_fold(acc, fold)?;
             self.iter = None;
         }
-        Try::from_ok(acc)
+        try { acc }
     }
 
     #[inline]
@@ -353,7 +350,7 @@ where
             acc = iter.try_rfold(acc, fold)?;
             self.iter = None;
         }
-        Try::from_ok(acc)
+        try { acc }
     }
 
     #[inline]
@@ -517,3 +514,24 @@ where
         unchecked!(self).is_empty()
     }
 }
+
+#[unstable(issue = "none", feature = "inplace_iteration")]
+unsafe impl<S: Iterator, I: FusedIterator> SourceIter for Fuse<I>
+where
+    I: SourceIter<Source = S>,
+{
+    type Source = S;
+
+    #[inline]
+    unsafe fn as_inner(&mut self) -> &mut S {
+        match self.iter {
+            // SAFETY: unsafe function forwarding to unsafe function with the same requirements
+            Some(ref mut iter) => unsafe { SourceIter::as_inner(iter) },
+            // SAFETY: the specialized iterator never sets `None`
+            None => unsafe { intrinsics::unreachable() },
+        }
+    }
+}
+
+#[unstable(issue = "none", feature = "inplace_iteration")]
+unsafe impl<I: InPlaceIterable> InPlaceIterable for Fuse<I> {}

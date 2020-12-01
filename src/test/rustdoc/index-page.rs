@@ -6,6 +6,6 @@
 
 // @has foo/../index.html
 // @has - '//span[@class="in-band"]' 'List of all crates'
-// @has - '//ul[@class="mod"]//a[@href="foo/index.html"]' 'foo'
-// @has - '//ul[@class="mod"]//a[@href="all_item_types/index.html"]' 'all_item_types'
+// @has - '//ul[@class="crate mod"]//a[@href="foo/index.html"]' 'foo'
+// @has - '//ul[@class="crate mod"]//a[@href="all_item_types/index.html"]' 'all_item_types'
 pub struct Foo;

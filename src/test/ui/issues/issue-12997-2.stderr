@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/issue-12997-2.rs:8:1
    |
 LL | fn bar(x: isize) { }
-   | ^^^^^^^^^^^^^^^^^^^^ expected `isize`, found `&mut test::Bencher`
+   | ^^^^^^^^^^^^^^^^^^^^ expected `isize`, found `&mut Bencher`
    |
    = note: this error originates in an attribute macro (in Nightly builds, run with -Z macro-backtrace for more info)
 

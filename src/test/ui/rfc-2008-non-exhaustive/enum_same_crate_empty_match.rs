@@ -25,7 +25,7 @@ pub enum EmptyNonExhaustiveEnum {}
 fn empty_non_exhaustive(x: EmptyNonExhaustiveEnum) {
     match x {}
     match x {
-        _ => {} // not detected as unreachable
+        _ => {} //~ ERROR unreachable pattern
     }
 }
 

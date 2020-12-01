@@ -1,0 +1,19 @@
+error: the inner value of this ManuallyDrop will not be dropped
+  --> $DIR/undropped_manually_drops.rs:14:5
+   |
+LL |     drop(std::mem::ManuallyDrop::new(S));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::undropped-manually-drops` implied by `-D warnings`
+   = help: to drop a `ManuallyDrop<T>`, use std::mem::ManuallyDrop::drop
+
+error: the inner value of this ManuallyDrop will not be dropped
+  --> $DIR/undropped_manually_drops.rs:15:5
+   |
+LL |     drop(manual1);
+   |     ^^^^^^^^^^^^^
+   |
+   = help: to drop a `ManuallyDrop<T>`, use std::mem::ManuallyDrop::drop
+
+error: aborting due to 2 previous errors
+

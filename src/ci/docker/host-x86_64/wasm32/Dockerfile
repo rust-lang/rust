@@ -53,7 +53,7 @@ ENV NO_CHANGE_USER=1
 
 # FIXME: Re-enable these tests once https://github.com/rust-lang/cargo/pull/7476
 # is picked up by CI
-ENV SCRIPT python3 ../x.py test --stage 2 --target $TARGETS \
+ENV SCRIPT python3 ../x.py test --stage 2 --host='' --target $TARGETS \
     --exclude library/core \
     --exclude library/alloc \
     --exclude library/proc_macro \

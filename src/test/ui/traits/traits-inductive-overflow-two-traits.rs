@@ -9,6 +9,7 @@ pub trait Magic {
 }
 impl<T: Magic> Magic for T {
     type X = Self;
+    //~^ ERROR E0277
 }
 
 fn check<T: Trait>() {}

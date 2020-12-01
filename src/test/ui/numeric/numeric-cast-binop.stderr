@@ -60,7 +60,7 @@ LL |         x_u16 > x_u8;
    |                 ^^^^
    |                 |
    |                 expected `u16`, found `u8`
-   |                 help: you can convert an `u8` to `u16`: `x_u8.into()`
+   |                 help: you can convert a `u8` to a `u16`: `x_u8.into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast-binop.rs:36:17
@@ -113,7 +113,7 @@ LL |         x_u32 > x_u8;
    |                 ^^^^
    |                 |
    |                 expected `u32`, found `u8`
-   |                 help: you can convert an `u8` to `u32`: `x_u8.into()`
+   |                 help: you can convert a `u8` to a `u32`: `x_u8.into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast-binop.rs:47:17
@@ -122,7 +122,7 @@ LL |         x_u32 > x_u16;
    |                 ^^^^^
    |                 |
    |                 expected `u32`, found `u16`
-   |                 help: you can convert an `u16` to `u32`: `x_u16.into()`
+   |                 help: you can convert a `u16` to a `u32`: `x_u16.into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast-binop.rs:49:17
@@ -152,7 +152,7 @@ error[E0308]: mismatched types
 LL |         x_u32 > x_usize;
    |                 ^^^^^^^ expected `u32`, found `usize`
    |
-help: you can convert an `usize` to `u32` and panic if the converted value wouldn't fit
+help: you can convert a `usize` to a `u32` and panic if the converted value doesn't fit
    |
 LL |         x_u32 > x_usize.try_into().unwrap();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -164,7 +164,7 @@ LL |         x_u64 > x_u8;
    |                 ^^^^
    |                 |
    |                 expected `u64`, found `u8`
-   |                 help: you can convert an `u8` to `u64`: `x_u8.into()`
+   |                 help: you can convert a `u8` to a `u64`: `x_u8.into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast-binop.rs:58:17
@@ -173,7 +173,7 @@ LL |         x_u64 > x_u16;
    |                 ^^^^^
    |                 |
    |                 expected `u64`, found `u16`
-   |                 help: you can convert an `u16` to `u64`: `x_u16.into()`
+   |                 help: you can convert a `u16` to a `u64`: `x_u16.into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast-binop.rs:60:17
@@ -182,7 +182,7 @@ LL |         x_u64 > x_u32;
    |                 ^^^^^
    |                 |
    |                 expected `u64`, found `u32`
-   |                 help: you can convert an `u32` to `u64`: `x_u32.into()`
+   |                 help: you can convert a `u32` to a `u64`: `x_u32.into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast-binop.rs:62:17
@@ -201,7 +201,7 @@ error[E0308]: mismatched types
 LL |         x_u64 > x_usize;
    |                 ^^^^^^^ expected `u64`, found `usize`
    |
-help: you can convert an `usize` to `u64` and panic if the converted value wouldn't fit
+help: you can convert a `usize` to a `u64` and panic if the converted value doesn't fit
    |
 LL |         x_u64 > x_usize.try_into().unwrap();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -213,7 +213,7 @@ LL |         x_u128 > x_u8;
    |                  ^^^^
    |                  |
    |                  expected `u128`, found `u8`
-   |                  help: you can convert an `u8` to `u128`: `x_u8.into()`
+   |                  help: you can convert a `u8` to a `u128`: `x_u8.into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast-binop.rs:69:18
@@ -222,7 +222,7 @@ LL |         x_u128 > x_u16;
    |                  ^^^^^
    |                  |
    |                  expected `u128`, found `u16`
-   |                  help: you can convert an `u16` to `u128`: `x_u16.into()`
+   |                  help: you can convert a `u16` to a `u128`: `x_u16.into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast-binop.rs:71:18
@@ -231,7 +231,7 @@ LL |         x_u128 > x_u32;
    |                  ^^^^^
    |                  |
    |                  expected `u128`, found `u32`
-   |                  help: you can convert an `u32` to `u128`: `x_u32.into()`
+   |                  help: you can convert a `u32` to a `u128`: `x_u32.into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast-binop.rs:73:18
@@ -240,7 +240,7 @@ LL |         x_u128 > x_u64;
    |                  ^^^^^
    |                  |
    |                  expected `u128`, found `u64`
-   |                  help: you can convert an `u64` to `u128`: `x_u64.into()`
+   |                  help: you can convert a `u64` to a `u128`: `x_u64.into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast-binop.rs:75:18
@@ -248,7 +248,7 @@ error[E0308]: mismatched types
 LL |         x_u128 > x_usize;
    |                  ^^^^^^^ expected `u128`, found `usize`
    |
-help: you can convert an `usize` to `u128` and panic if the converted value wouldn't fit
+help: you can convert a `usize` to a `u128` and panic if the converted value doesn't fit
    |
 LL |         x_u128 > x_usize.try_into().unwrap();
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -260,7 +260,7 @@ LL |         x_usize > x_u8;
    |                   ^^^^
    |                   |
    |                   expected `usize`, found `u8`
-   |                   help: you can convert an `u8` to `usize`: `x_u8.into()`
+   |                   help: you can convert a `u8` to a `usize`: `x_u8.into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast-binop.rs:80:19
@@ -269,7 +269,7 @@ LL |         x_usize > x_u16;
    |                   ^^^^^
    |                   |
    |                   expected `usize`, found `u16`
-   |                   help: you can convert an `u16` to `usize`: `x_u16.into()`
+   |                   help: you can convert a `u16` to a `usize`: `x_u16.into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast-binop.rs:82:19
@@ -277,7 +277,7 @@ error[E0308]: mismatched types
 LL |         x_usize > x_u32;
    |                   ^^^^^ expected `usize`, found `u32`
    |
-help: you can convert an `u32` to `usize` and panic if the converted value wouldn't fit
+help: you can convert a `u32` to a `usize` and panic if the converted value doesn't fit
    |
 LL |         x_usize > x_u32.try_into().unwrap();
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -288,7 +288,7 @@ error[E0308]: mismatched types
 LL |         x_usize > x_u64;
    |                   ^^^^^ expected `usize`, found `u64`
    |
-help: you can convert an `u64` to `usize` and panic if the converted value wouldn't fit
+help: you can convert a `u64` to a `usize` and panic if the converted value doesn't fit
    |
 LL |         x_usize > x_u64.try_into().unwrap();
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -299,7 +299,7 @@ error[E0308]: mismatched types
 LL |         x_usize > x_u128;
    |                   ^^^^^^ expected `usize`, found `u128`
    |
-help: you can convert an `u128` to `usize` and panic if the converted value wouldn't fit
+help: you can convert a `u128` to a `usize` and panic if the converted value doesn't fit
    |
 LL |         x_usize > x_u128.try_into().unwrap();
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -366,7 +366,7 @@ LL |         x_i16 > x_i8;
    |                 ^^^^
    |                 |
    |                 expected `i16`, found `i8`
-   |                 help: you can convert an `i8` to `i16`: `x_i8.into()`
+   |                 help: you can convert an `i8` to an `i16`: `x_i8.into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast-binop.rs:105:17
@@ -419,7 +419,7 @@ LL |         x_i32 > x_i8;
    |                 ^^^^
    |                 |
    |                 expected `i32`, found `i8`
-   |                 help: you can convert an `i8` to `i32`: `x_i8.into()`
+   |                 help: you can convert an `i8` to an `i32`: `x_i8.into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast-binop.rs:116:17
@@ -428,7 +428,7 @@ LL |         x_i32 > x_i16;
    |                 ^^^^^
    |                 |
    |                 expected `i32`, found `i16`
-   |                 help: you can convert an `i16` to `i32`: `x_i16.into()`
+   |                 help: you can convert an `i16` to an `i32`: `x_i16.into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast-binop.rs:118:17
@@ -458,7 +458,7 @@ error[E0308]: mismatched types
 LL |         x_i32 > x_isize;
    |                 ^^^^^^^ expected `i32`, found `isize`
    |
-help: you can convert an `isize` to `i32` and panic if the converted value wouldn't fit
+help: you can convert an `isize` to an `i32` and panic if the converted value doesn't fit
    |
 LL |         x_i32 > x_isize.try_into().unwrap();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -470,7 +470,7 @@ LL |         x_i64 > x_i8;
    |                 ^^^^
    |                 |
    |                 expected `i64`, found `i8`
-   |                 help: you can convert an `i8` to `i64`: `x_i8.into()`
+   |                 help: you can convert an `i8` to an `i64`: `x_i8.into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast-binop.rs:127:17
@@ -479,7 +479,7 @@ LL |         x_i64 > x_i16;
    |                 ^^^^^
    |                 |
    |                 expected `i64`, found `i16`
-   |                 help: you can convert an `i16` to `i64`: `x_i16.into()`
+   |                 help: you can convert an `i16` to an `i64`: `x_i16.into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast-binop.rs:129:17
@@ -488,7 +488,7 @@ LL |         x_i64 > x_i32;
    |                 ^^^^^
    |                 |
    |                 expected `i64`, found `i32`
-   |                 help: you can convert an `i32` to `i64`: `x_i32.into()`
+   |                 help: you can convert an `i32` to an `i64`: `x_i32.into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast-binop.rs:131:17
@@ -507,7 +507,7 @@ error[E0308]: mismatched types
 LL |         x_i64 > x_isize;
    |                 ^^^^^^^ expected `i64`, found `isize`
    |
-help: you can convert an `isize` to `i64` and panic if the converted value wouldn't fit
+help: you can convert an `isize` to an `i64` and panic if the converted value doesn't fit
    |
 LL |         x_i64 > x_isize.try_into().unwrap();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -519,7 +519,7 @@ LL |         x_i128 > x_i8;
    |                  ^^^^
    |                  |
    |                  expected `i128`, found `i8`
-   |                  help: you can convert an `i8` to `i128`: `x_i8.into()`
+   |                  help: you can convert an `i8` to an `i128`: `x_i8.into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast-binop.rs:138:18
@@ -528,7 +528,7 @@ LL |         x_i128 > x_i16;
    |                  ^^^^^
    |                  |
    |                  expected `i128`, found `i16`
-   |                  help: you can convert an `i16` to `i128`: `x_i16.into()`
+   |                  help: you can convert an `i16` to an `i128`: `x_i16.into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast-binop.rs:140:18
@@ -537,7 +537,7 @@ LL |         x_i128 > x_i32;
    |                  ^^^^^
    |                  |
    |                  expected `i128`, found `i32`
-   |                  help: you can convert an `i32` to `i128`: `x_i32.into()`
+   |                  help: you can convert an `i32` to an `i128`: `x_i32.into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast-binop.rs:142:18
@@ -546,7 +546,7 @@ LL |         x_i128 > x_i64;
    |                  ^^^^^
    |                  |
    |                  expected `i128`, found `i64`
-   |                  help: you can convert an `i64` to `i128`: `x_i64.into()`
+   |                  help: you can convert an `i64` to an `i128`: `x_i64.into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast-binop.rs:144:18
@@ -554,7 +554,7 @@ error[E0308]: mismatched types
 LL |         x_i128 > x_isize;
    |                  ^^^^^^^ expected `i128`, found `isize`
    |
-help: you can convert an `isize` to `i128` and panic if the converted value wouldn't fit
+help: you can convert an `isize` to an `i128` and panic if the converted value doesn't fit
    |
 LL |         x_i128 > x_isize.try_into().unwrap();
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -566,7 +566,7 @@ LL |         x_isize > x_i8;
    |                   ^^^^
    |                   |
    |                   expected `isize`, found `i8`
-   |                   help: you can convert an `i8` to `isize`: `x_i8.into()`
+   |                   help: you can convert an `i8` to an `isize`: `x_i8.into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast-binop.rs:149:19
@@ -575,7 +575,7 @@ LL |         x_isize > x_i16;
    |                   ^^^^^
    |                   |
    |                   expected `isize`, found `i16`
-   |                   help: you can convert an `i16` to `isize`: `x_i16.into()`
+   |                   help: you can convert an `i16` to an `isize`: `x_i16.into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast-binop.rs:151:19
@@ -583,7 +583,7 @@ error[E0308]: mismatched types
 LL |         x_isize > x_i32;
    |                   ^^^^^ expected `isize`, found `i32`
    |
-help: you can convert an `i32` to `isize` and panic if the converted value wouldn't fit
+help: you can convert an `i32` to an `isize` and panic if the converted value doesn't fit
    |
 LL |         x_isize > x_i32.try_into().unwrap();
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -594,7 +594,7 @@ error[E0308]: mismatched types
 LL |         x_isize > x_i64;
    |                   ^^^^^ expected `isize`, found `i64`
    |
-help: you can convert an `i64` to `isize` and panic if the converted value wouldn't fit
+help: you can convert an `i64` to an `isize` and panic if the converted value doesn't fit
    |
 LL |         x_isize > x_i64.try_into().unwrap();
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -605,7 +605,7 @@ error[E0308]: mismatched types
 LL |         x_isize > x_i128;
    |                   ^^^^^^ expected `isize`, found `i128`
    |
-help: you can convert an `i128` to `isize` and panic if the converted value wouldn't fit
+help: you can convert an `i128` to an `isize` and panic if the converted value doesn't fit
    |
 LL |         x_isize > x_i128.try_into().unwrap();
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -616,7 +616,7 @@ error[E0308]: mismatched types
 LL |         x_u8 > x_i8;
    |                ^^^^ expected `u8`, found `i8`
    |
-help: you can convert an `i8` to `u8` and panic if the converted value wouldn't fit
+help: you can convert an `i8` to a `u8` and panic if the converted value doesn't fit
    |
 LL |         x_u8 > x_i8.try_into().unwrap();
    |                ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -682,7 +682,7 @@ error[E0308]: mismatched types
 LL |         x_u16 > x_i8;
    |                 ^^^^ expected `u16`, found `i8`
    |
-help: you can convert an `i8` to `u16` and panic if the converted value wouldn't fit
+help: you can convert an `i8` to a `u16` and panic if the converted value doesn't fit
    |
 LL |         x_u16 > x_i8.try_into().unwrap();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -693,7 +693,7 @@ error[E0308]: mismatched types
 LL |         x_u16 > x_i16;
    |                 ^^^^^ expected `u16`, found `i16`
    |
-help: you can convert an `i16` to `u16` and panic if the converted value wouldn't fit
+help: you can convert an `i16` to a `u16` and panic if the converted value doesn't fit
    |
 LL |         x_u16 > x_i16.try_into().unwrap();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -737,7 +737,7 @@ error[E0308]: mismatched types
 LL |         x_u16 > x_isize;
    |                 ^^^^^^^ expected `u16`, found `isize`
    |
-help: you can convert an `isize` to `u16` and panic if the converted value wouldn't fit
+help: you can convert an `isize` to a `u16` and panic if the converted value doesn't fit
    |
 LL |         x_u16 > x_isize.try_into().unwrap();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -748,7 +748,7 @@ error[E0308]: mismatched types
 LL |         x_u32 > x_i8;
    |                 ^^^^ expected `u32`, found `i8`
    |
-help: you can convert an `i8` to `u32` and panic if the converted value wouldn't fit
+help: you can convert an `i8` to a `u32` and panic if the converted value doesn't fit
    |
 LL |         x_u32 > x_i8.try_into().unwrap();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -759,7 +759,7 @@ error[E0308]: mismatched types
 LL |         x_u32 > x_i16;
    |                 ^^^^^ expected `u32`, found `i16`
    |
-help: you can convert an `i16` to `u32` and panic if the converted value wouldn't fit
+help: you can convert an `i16` to a `u32` and panic if the converted value doesn't fit
    |
 LL |         x_u32 > x_i16.try_into().unwrap();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -770,7 +770,7 @@ error[E0308]: mismatched types
 LL |         x_u32 > x_i32;
    |                 ^^^^^ expected `u32`, found `i32`
    |
-help: you can convert an `i32` to `u32` and panic if the converted value wouldn't fit
+help: you can convert an `i32` to a `u32` and panic if the converted value doesn't fit
    |
 LL |         x_u32 > x_i32.try_into().unwrap();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -803,7 +803,7 @@ error[E0308]: mismatched types
 LL |         x_u32 > x_isize;
    |                 ^^^^^^^ expected `u32`, found `isize`
    |
-help: you can convert an `isize` to `u32` and panic if the converted value wouldn't fit
+help: you can convert an `isize` to a `u32` and panic if the converted value doesn't fit
    |
 LL |         x_u32 > x_isize.try_into().unwrap();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -814,7 +814,7 @@ error[E0308]: mismatched types
 LL |         x_u64 > x_i8;
    |                 ^^^^ expected `u64`, found `i8`
    |
-help: you can convert an `i8` to `u64` and panic if the converted value wouldn't fit
+help: you can convert an `i8` to a `u64` and panic if the converted value doesn't fit
    |
 LL |         x_u64 > x_i8.try_into().unwrap();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -825,7 +825,7 @@ error[E0308]: mismatched types
 LL |         x_u64 > x_i16;
    |                 ^^^^^ expected `u64`, found `i16`
    |
-help: you can convert an `i16` to `u64` and panic if the converted value wouldn't fit
+help: you can convert an `i16` to a `u64` and panic if the converted value doesn't fit
    |
 LL |         x_u64 > x_i16.try_into().unwrap();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -836,7 +836,7 @@ error[E0308]: mismatched types
 LL |         x_u64 > x_i32;
    |                 ^^^^^ expected `u64`, found `i32`
    |
-help: you can convert an `i32` to `u64` and panic if the converted value wouldn't fit
+help: you can convert an `i32` to a `u64` and panic if the converted value doesn't fit
    |
 LL |         x_u64 > x_i32.try_into().unwrap();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -847,7 +847,7 @@ error[E0308]: mismatched types
 LL |         x_u64 > x_i64;
    |                 ^^^^^ expected `u64`, found `i64`
    |
-help: you can convert an `i64` to `u64` and panic if the converted value wouldn't fit
+help: you can convert an `i64` to a `u64` and panic if the converted value doesn't fit
    |
 LL |         x_u64 > x_i64.try_into().unwrap();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -869,7 +869,7 @@ error[E0308]: mismatched types
 LL |         x_u64 > x_isize;
    |                 ^^^^^^^ expected `u64`, found `isize`
    |
-help: you can convert an `isize` to `u64` and panic if the converted value wouldn't fit
+help: you can convert an `isize` to a `u64` and panic if the converted value doesn't fit
    |
 LL |         x_u64 > x_isize.try_into().unwrap();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -880,7 +880,7 @@ error[E0308]: mismatched types
 LL |         x_u128 > x_i8;
    |                  ^^^^ expected `u128`, found `i8`
    |
-help: you can convert an `i8` to `u128` and panic if the converted value wouldn't fit
+help: you can convert an `i8` to a `u128` and panic if the converted value doesn't fit
    |
 LL |         x_u128 > x_i8.try_into().unwrap();
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -891,7 +891,7 @@ error[E0308]: mismatched types
 LL |         x_u128 > x_i16;
    |                  ^^^^^ expected `u128`, found `i16`
    |
-help: you can convert an `i16` to `u128` and panic if the converted value wouldn't fit
+help: you can convert an `i16` to a `u128` and panic if the converted value doesn't fit
    |
 LL |         x_u128 > x_i16.try_into().unwrap();
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -902,7 +902,7 @@ error[E0308]: mismatched types
 LL |         x_u128 > x_i32;
    |                  ^^^^^ expected `u128`, found `i32`
    |
-help: you can convert an `i32` to `u128` and panic if the converted value wouldn't fit
+help: you can convert an `i32` to a `u128` and panic if the converted value doesn't fit
    |
 LL |         x_u128 > x_i32.try_into().unwrap();
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -913,7 +913,7 @@ error[E0308]: mismatched types
 LL |         x_u128 > x_i64;
    |                  ^^^^^ expected `u128`, found `i64`
    |
-help: you can convert an `i64` to `u128` and panic if the converted value wouldn't fit
+help: you can convert an `i64` to a `u128` and panic if the converted value doesn't fit
    |
 LL |         x_u128 > x_i64.try_into().unwrap();
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -924,7 +924,7 @@ error[E0308]: mismatched types
 LL |         x_u128 > x_i128;
    |                  ^^^^^^ expected `u128`, found `i128`
    |
-help: you can convert an `i128` to `u128` and panic if the converted value wouldn't fit
+help: you can convert an `i128` to a `u128` and panic if the converted value doesn't fit
    |
 LL |         x_u128 > x_i128.try_into().unwrap();
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -935,7 +935,7 @@ error[E0308]: mismatched types
 LL |         x_u128 > x_isize;
    |                  ^^^^^^^ expected `u128`, found `isize`
    |
-help: you can convert an `isize` to `u128` and panic if the converted value wouldn't fit
+help: you can convert an `isize` to a `u128` and panic if the converted value doesn't fit
    |
 LL |         x_u128 > x_isize.try_into().unwrap();
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -946,7 +946,7 @@ error[E0308]: mismatched types
 LL |         x_usize > x_i8;
    |                   ^^^^ expected `usize`, found `i8`
    |
-help: you can convert an `i8` to `usize` and panic if the converted value wouldn't fit
+help: you can convert an `i8` to a `usize` and panic if the converted value doesn't fit
    |
 LL |         x_usize > x_i8.try_into().unwrap();
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -957,7 +957,7 @@ error[E0308]: mismatched types
 LL |         x_usize > x_i16;
    |                   ^^^^^ expected `usize`, found `i16`
    |
-help: you can convert an `i16` to `usize` and panic if the converted value wouldn't fit
+help: you can convert an `i16` to a `usize` and panic if the converted value doesn't fit
    |
 LL |         x_usize > x_i16.try_into().unwrap();
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -968,7 +968,7 @@ error[E0308]: mismatched types
 LL |         x_usize > x_i32;
    |                   ^^^^^ expected `usize`, found `i32`
    |
-help: you can convert an `i32` to `usize` and panic if the converted value wouldn't fit
+help: you can convert an `i32` to a `usize` and panic if the converted value doesn't fit
    |
 LL |         x_usize > x_i32.try_into().unwrap();
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -979,7 +979,7 @@ error[E0308]: mismatched types
 LL |         x_usize > x_i64;
    |                   ^^^^^ expected `usize`, found `i64`
    |
-help: you can convert an `i64` to `usize` and panic if the converted value wouldn't fit
+help: you can convert an `i64` to a `usize` and panic if the converted value doesn't fit
    |
 LL |         x_usize > x_i64.try_into().unwrap();
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -990,7 +990,7 @@ error[E0308]: mismatched types
 LL |         x_usize > x_i128;
    |                   ^^^^^^ expected `usize`, found `i128`
    |
-help: you can convert an `i128` to `usize` and panic if the converted value wouldn't fit
+help: you can convert an `i128` to a `usize` and panic if the converted value doesn't fit
    |
 LL |         x_usize > x_i128.try_into().unwrap();
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1001,7 +1001,7 @@ error[E0308]: mismatched types
 LL |         x_usize > x_isize;
    |                   ^^^^^^^ expected `usize`, found `isize`
    |
-help: you can convert an `isize` to `usize` and panic if the converted value wouldn't fit
+help: you can convert an `isize` to a `usize` and panic if the converted value doesn't fit
    |
 LL |         x_usize > x_isize.try_into().unwrap();
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1012,7 +1012,7 @@ error[E0308]: mismatched types
 LL |         x_i8 > x_u8;
    |                ^^^^ expected `i8`, found `u8`
    |
-help: you can convert an `u8` to `i8` and panic if the converted value wouldn't fit
+help: you can convert a `u8` to an `i8` and panic if the converted value doesn't fit
    |
 LL |         x_i8 > x_u8.try_into().unwrap();
    |                ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1023,7 +1023,7 @@ error[E0308]: mismatched types
 LL |         x_i8 > x_u16;
    |                ^^^^^ expected `i8`, found `u16`
    |
-help: you can convert an `u16` to `i8` and panic if the converted value wouldn't fit
+help: you can convert a `u16` to an `i8` and panic if the converted value doesn't fit
    |
 LL |         x_i8 > x_u16.try_into().unwrap();
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1034,7 +1034,7 @@ error[E0308]: mismatched types
 LL |         x_i8 > x_u32;
    |                ^^^^^ expected `i8`, found `u32`
    |
-help: you can convert an `u32` to `i8` and panic if the converted value wouldn't fit
+help: you can convert a `u32` to an `i8` and panic if the converted value doesn't fit
    |
 LL |         x_i8 > x_u32.try_into().unwrap();
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1045,7 +1045,7 @@ error[E0308]: mismatched types
 LL |         x_i8 > x_u64;
    |                ^^^^^ expected `i8`, found `u64`
    |
-help: you can convert an `u64` to `i8` and panic if the converted value wouldn't fit
+help: you can convert a `u64` to an `i8` and panic if the converted value doesn't fit
    |
 LL |         x_i8 > x_u64.try_into().unwrap();
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1056,7 +1056,7 @@ error[E0308]: mismatched types
 LL |         x_i8 > x_u128;
    |                ^^^^^^ expected `i8`, found `u128`
    |
-help: you can convert an `u128` to `i8` and panic if the converted value wouldn't fit
+help: you can convert a `u128` to an `i8` and panic if the converted value doesn't fit
    |
 LL |         x_i8 > x_u128.try_into().unwrap();
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1067,7 +1067,7 @@ error[E0308]: mismatched types
 LL |         x_i8 > x_usize;
    |                ^^^^^^^ expected `i8`, found `usize`
    |
-help: you can convert an `usize` to `i8` and panic if the converted value wouldn't fit
+help: you can convert a `usize` to an `i8` and panic if the converted value doesn't fit
    |
 LL |         x_i8 > x_usize.try_into().unwrap();
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1079,7 +1079,7 @@ LL |         x_i16 > x_u8;
    |                 ^^^^
    |                 |
    |                 expected `i16`, found `u8`
-   |                 help: you can convert an `u8` to `i16`: `x_u8.into()`
+   |                 help: you can convert a `u8` to an `i16`: `x_u8.into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast-binop.rs:257:17
@@ -1087,7 +1087,7 @@ error[E0308]: mismatched types
 LL |         x_i16 > x_u16;
    |                 ^^^^^ expected `i16`, found `u16`
    |
-help: you can convert an `u16` to `i16` and panic if the converted value wouldn't fit
+help: you can convert a `u16` to an `i16` and panic if the converted value doesn't fit
    |
 LL |         x_i16 > x_u16.try_into().unwrap();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1098,7 +1098,7 @@ error[E0308]: mismatched types
 LL |         x_i16 > x_u32;
    |                 ^^^^^ expected `i16`, found `u32`
    |
-help: you can convert an `u32` to `i16` and panic if the converted value wouldn't fit
+help: you can convert a `u32` to an `i16` and panic if the converted value doesn't fit
    |
 LL |         x_i16 > x_u32.try_into().unwrap();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1109,7 +1109,7 @@ error[E0308]: mismatched types
 LL |         x_i16 > x_u64;
    |                 ^^^^^ expected `i16`, found `u64`
    |
-help: you can convert an `u64` to `i16` and panic if the converted value wouldn't fit
+help: you can convert a `u64` to an `i16` and panic if the converted value doesn't fit
    |
 LL |         x_i16 > x_u64.try_into().unwrap();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1120,7 +1120,7 @@ error[E0308]: mismatched types
 LL |         x_i16 > x_u128;
    |                 ^^^^^^ expected `i16`, found `u128`
    |
-help: you can convert an `u128` to `i16` and panic if the converted value wouldn't fit
+help: you can convert a `u128` to an `i16` and panic if the converted value doesn't fit
    |
 LL |         x_i16 > x_u128.try_into().unwrap();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1131,7 +1131,7 @@ error[E0308]: mismatched types
 LL |         x_i16 > x_usize;
    |                 ^^^^^^^ expected `i16`, found `usize`
    |
-help: you can convert an `usize` to `i16` and panic if the converted value wouldn't fit
+help: you can convert a `usize` to an `i16` and panic if the converted value doesn't fit
    |
 LL |         x_i16 > x_usize.try_into().unwrap();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1143,7 +1143,7 @@ LL |         x_i32 > x_u8;
    |                 ^^^^
    |                 |
    |                 expected `i32`, found `u8`
-   |                 help: you can convert an `u8` to `i32`: `x_u8.into()`
+   |                 help: you can convert a `u8` to an `i32`: `x_u8.into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast-binop.rs:270:17
@@ -1152,7 +1152,7 @@ LL |         x_i32 > x_u16;
    |                 ^^^^^
    |                 |
    |                 expected `i32`, found `u16`
-   |                 help: you can convert an `u16` to `i32`: `x_u16.into()`
+   |                 help: you can convert a `u16` to an `i32`: `x_u16.into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast-binop.rs:272:17
@@ -1160,7 +1160,7 @@ error[E0308]: mismatched types
 LL |         x_i32 > x_u32;
    |                 ^^^^^ expected `i32`, found `u32`
    |
-help: you can convert an `u32` to `i32` and panic if the converted value wouldn't fit
+help: you can convert a `u32` to an `i32` and panic if the converted value doesn't fit
    |
 LL |         x_i32 > x_u32.try_into().unwrap();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1171,7 +1171,7 @@ error[E0308]: mismatched types
 LL |         x_i32 > x_u64;
    |                 ^^^^^ expected `i32`, found `u64`
    |
-help: you can convert an `u64` to `i32` and panic if the converted value wouldn't fit
+help: you can convert a `u64` to an `i32` and panic if the converted value doesn't fit
    |
 LL |         x_i32 > x_u64.try_into().unwrap();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1182,7 +1182,7 @@ error[E0308]: mismatched types
 LL |         x_i32 > x_u128;
    |                 ^^^^^^ expected `i32`, found `u128`
    |
-help: you can convert an `u128` to `i32` and panic if the converted value wouldn't fit
+help: you can convert a `u128` to an `i32` and panic if the converted value doesn't fit
    |
 LL |         x_i32 > x_u128.try_into().unwrap();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1193,7 +1193,7 @@ error[E0308]: mismatched types
 LL |         x_i32 > x_usize;
    |                 ^^^^^^^ expected `i32`, found `usize`
    |
-help: you can convert an `usize` to `i32` and panic if the converted value wouldn't fit
+help: you can convert a `usize` to an `i32` and panic if the converted value doesn't fit
    |
 LL |         x_i32 > x_usize.try_into().unwrap();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1205,7 +1205,7 @@ LL |         x_i64 > x_u8;
    |                 ^^^^
    |                 |
    |                 expected `i64`, found `u8`
-   |                 help: you can convert an `u8` to `i64`: `x_u8.into()`
+   |                 help: you can convert a `u8` to an `i64`: `x_u8.into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast-binop.rs:283:17
@@ -1214,7 +1214,7 @@ LL |         x_i64 > x_u16;
    |                 ^^^^^
    |                 |
    |                 expected `i64`, found `u16`
-   |                 help: you can convert an `u16` to `i64`: `x_u16.into()`
+   |                 help: you can convert a `u16` to an `i64`: `x_u16.into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast-binop.rs:285:17
@@ -1223,7 +1223,7 @@ LL |         x_i64 > x_u32;
    |                 ^^^^^
    |                 |
    |                 expected `i64`, found `u32`
-   |                 help: you can convert an `u32` to `i64`: `x_u32.into()`
+   |                 help: you can convert a `u32` to an `i64`: `x_u32.into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast-binop.rs:287:17
@@ -1231,7 +1231,7 @@ error[E0308]: mismatched types
 LL |         x_i64 > x_u64;
    |                 ^^^^^ expected `i64`, found `u64`
    |
-help: you can convert an `u64` to `i64` and panic if the converted value wouldn't fit
+help: you can convert a `u64` to an `i64` and panic if the converted value doesn't fit
    |
 LL |         x_i64 > x_u64.try_into().unwrap();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1242,7 +1242,7 @@ error[E0308]: mismatched types
 LL |         x_i64 > x_u128;
    |                 ^^^^^^ expected `i64`, found `u128`
    |
-help: you can convert an `u128` to `i64` and panic if the converted value wouldn't fit
+help: you can convert a `u128` to an `i64` and panic if the converted value doesn't fit
    |
 LL |         x_i64 > x_u128.try_into().unwrap();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1253,7 +1253,7 @@ error[E0308]: mismatched types
 LL |         x_i64 > x_usize;
    |                 ^^^^^^^ expected `i64`, found `usize`
    |
-help: you can convert an `usize` to `i64` and panic if the converted value wouldn't fit
+help: you can convert a `usize` to an `i64` and panic if the converted value doesn't fit
    |
 LL |         x_i64 > x_usize.try_into().unwrap();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1265,7 +1265,7 @@ LL |         x_i128 > x_u8;
    |                  ^^^^
    |                  |
    |                  expected `i128`, found `u8`
-   |                  help: you can convert an `u8` to `i128`: `x_u8.into()`
+   |                  help: you can convert a `u8` to an `i128`: `x_u8.into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast-binop.rs:296:18
@@ -1274,7 +1274,7 @@ LL |         x_i128 > x_u16;
    |                  ^^^^^
    |                  |
    |                  expected `i128`, found `u16`
-   |                  help: you can convert an `u16` to `i128`: `x_u16.into()`
+   |                  help: you can convert a `u16` to an `i128`: `x_u16.into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast-binop.rs:298:18
@@ -1283,7 +1283,7 @@ LL |         x_i128 > x_u32;
    |                  ^^^^^
    |                  |
    |                  expected `i128`, found `u32`
-   |                  help: you can convert an `u32` to `i128`: `x_u32.into()`
+   |                  help: you can convert a `u32` to an `i128`: `x_u32.into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast-binop.rs:300:18
@@ -1292,7 +1292,7 @@ LL |         x_i128 > x_u64;
    |                  ^^^^^
    |                  |
    |                  expected `i128`, found `u64`
-   |                  help: you can convert an `u64` to `i128`: `x_u64.into()`
+   |                  help: you can convert a `u64` to an `i128`: `x_u64.into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast-binop.rs:302:18
@@ -1300,7 +1300,7 @@ error[E0308]: mismatched types
 LL |         x_i128 > x_u128;
    |                  ^^^^^^ expected `i128`, found `u128`
    |
-help: you can convert an `u128` to `i128` and panic if the converted value wouldn't fit
+help: you can convert a `u128` to an `i128` and panic if the converted value doesn't fit
    |
 LL |         x_i128 > x_u128.try_into().unwrap();
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1311,7 +1311,7 @@ error[E0308]: mismatched types
 LL |         x_i128 > x_usize;
    |                  ^^^^^^^ expected `i128`, found `usize`
    |
-help: you can convert an `usize` to `i128` and panic if the converted value wouldn't fit
+help: you can convert a `usize` to an `i128` and panic if the converted value doesn't fit
    |
 LL |         x_i128 > x_usize.try_into().unwrap();
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1323,7 +1323,7 @@ LL |         x_isize > x_u8;
    |                   ^^^^
    |                   |
    |                   expected `isize`, found `u8`
-   |                   help: you can convert an `u8` to `isize`: `x_u8.into()`
+   |                   help: you can convert a `u8` to an `isize`: `x_u8.into()`
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast-binop.rs:309:19
@@ -1331,7 +1331,7 @@ error[E0308]: mismatched types
 LL |         x_isize > x_u16;
    |                   ^^^^^ expected `isize`, found `u16`
    |
-help: you can convert an `u16` to `isize` and panic if the converted value wouldn't fit
+help: you can convert a `u16` to an `isize` and panic if the converted value doesn't fit
    |
 LL |         x_isize > x_u16.try_into().unwrap();
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1342,7 +1342,7 @@ error[E0308]: mismatched types
 LL |         x_isize > x_u32;
    |                   ^^^^^ expected `isize`, found `u32`
    |
-help: you can convert an `u32` to `isize` and panic if the converted value wouldn't fit
+help: you can convert a `u32` to an `isize` and panic if the converted value doesn't fit
    |
 LL |         x_isize > x_u32.try_into().unwrap();
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1353,7 +1353,7 @@ error[E0308]: mismatched types
 LL |         x_isize > x_u64;
    |                   ^^^^^ expected `isize`, found `u64`
    |
-help: you can convert an `u64` to `isize` and panic if the converted value wouldn't fit
+help: you can convert a `u64` to an `isize` and panic if the converted value doesn't fit
    |
 LL |         x_isize > x_u64.try_into().unwrap();
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1364,7 +1364,7 @@ error[E0308]: mismatched types
 LL |         x_isize > x_u128;
    |                   ^^^^^^ expected `isize`, found `u128`
    |
-help: you can convert an `u128` to `isize` and panic if the converted value wouldn't fit
+help: you can convert a `u128` to an `isize` and panic if the converted value doesn't fit
    |
 LL |         x_isize > x_u128.try_into().unwrap();
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1375,7 +1375,7 @@ error[E0308]: mismatched types
 LL |         x_isize > x_usize;
    |                   ^^^^^^^ expected `isize`, found `usize`
    |
-help: you can convert an `usize` to `isize` and panic if the converted value wouldn't fit
+help: you can convert a `usize` to an `isize` and panic if the converted value doesn't fit
    |
 LL |         x_isize > x_usize.try_into().unwrap();
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^

@@ -16,33 +16,33 @@ cfg-if = { version = "0.1.8", features = ['rustc-dep-of-std'] }
 panic_unwind = { path = "../panic_unwind", optional = true }
 panic_abort = { path = "../panic_abort" }
 core = { path = "../core" }
-libc = { version = "0.2.74", default-features = false, features = ['rustc-dep-of-std'] }
+libc = { version = "0.2.79", default-features = false, features = ['rustc-dep-of-std'] }
 compiler_builtins = { version = "0.1.35" }
 profiler_builtins = { path = "../profiler_builtins", optional = true }
 unwind = { path = "../unwind" }
-hashbrown = { version = "0.8.1", default-features = false, features = ['rustc-dep-of-std'] }
+hashbrown = { version = "0.9.0", default-features = false, features = ['rustc-dep-of-std'] }
 
 # Dependencies of the `backtrace` crate
-addr2line = { version = "0.13.0", optional = true, default-features = false }
-rustc-demangle = { version = "0.1.4", features = ['rustc-dep-of-std'] }
+addr2line = { version = "0.14.0", optional = true, default-features = false }
+rustc-demangle = { version = "0.1.18", features = ['rustc-dep-of-std'] }
 miniz_oxide = { version = "0.4.0", optional = true, default-features = false }
 [dependencies.object]
-version = "0.20"
+version = "0.22"
 optional = true
 default-features = false
-features = ['read_core', 'elf', 'macho', 'pe']
+features = ['read_core', 'elf', 'macho', 'pe', 'unaligned', 'archive']
 
 [dev-dependencies]
 rand = "0.7"
 
 [target.'cfg(any(all(target_arch = "wasm32", not(target_os = "emscripten")), all(target_vendor = "fortanix", target_env = "sgx")))'.dependencies]
-dlmalloc = { version = "0.1", features = ['rustc-dep-of-std'] }
+dlmalloc = { version = "0.2.1", features = ['rustc-dep-of-std'] }
 
 [target.x86_64-fortanix-unknown-sgx.dependencies]
 fortanix-sgx-abi = { version = "0.3.2", features = ['rustc-dep-of-std'] }
 
 [target.'cfg(all(any(target_arch = "x86_64", target_arch = "aarch64"), target_os = "hermit"))'.dependencies]
-hermit-abi = { version = "0.1.15", features = ['rustc-dep-of-std'] }
+hermit-abi = { version = "0.1.17", features = ['rustc-dep-of-std'] }
 
 [target.wasm32-wasi.dependencies]
 wasi = { version = "0.9.0", features = ['rustc-dep-of-std'], default-features = false }
@@ -59,7 +59,11 @@ gimli-symbolize = []
 panic-unwind = ["panic_unwind"]
 profiler = ["profiler_builtins"]
 compiler-builtins-c = ["alloc/compiler-builtins-c"]
+compiler-builtins-mem = ["alloc/compiler-builtins-mem"]
+compiler-builtins-asm = ["alloc/compiler-builtins-asm"]
+compiler-builtins-mangled-names = ["alloc/compiler-builtins-mangled-names"]
 llvm-libunwind = ["unwind/llvm-libunwind"]
+system-llvm-libunwind = ["unwind/system-llvm-libunwind"]
 
 # Make panics and failed asserts immediately abort without formatting any message
 panic_immediate_abort = ["core/panic_immediate_abort"]

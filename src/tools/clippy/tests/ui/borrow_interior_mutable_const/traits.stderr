@@ -1,0 +1,123 @@
+error: a `const` item with interior mutability should not be borrowed
+  --> $DIR/traits.rs:15:18
+   |
+LL |         let _ = &Self::ATOMIC; //~ ERROR interior mutable
+   |                  ^^^^^^^^^^^^
+   |
+   = note: `-D clippy::borrow-interior-mutable-const` implied by `-D warnings`
+   = help: assign this const to a local or static variable, and use the variable here
+
+error: a `const` item with interior mutability should not be borrowed
+  --> $DIR/traits.rs:26:18
+   |
+LL |         let _ = &Self::ATOMIC; //~ ERROR interior mutable
+   |                  ^^^^^^^^^^^^
+   |
+   = help: assign this const to a local or static variable, and use the variable here
+
+error: a `const` item with interior mutability should not be borrowed
+  --> $DIR/traits.rs:51:18
+   |
+LL |         let _ = &Self::TO_BE_CONCRETE; //~ ERROR interior mutable
+   |                  ^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: assign this const to a local or static variable, and use the variable here
+
+error: a `const` item with interior mutability should not be borrowed
+  --> $DIR/traits.rs:86:18
+   |
+LL |         let _ = &Self::TO_BE_UNFROZEN; //~ ERROR interior mutable
+   |                  ^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: assign this const to a local or static variable, and use the variable here
+
+error: a `const` item with interior mutability should not be borrowed
+  --> $DIR/traits.rs:87:18
+   |
+LL |         let _ = &Self::WRAPPED_TO_BE_UNFROZEN; //~ ERROR interior mutable
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: assign this const to a local or static variable, and use the variable here
+
+error: a `const` item with interior mutability should not be borrowed
+  --> $DIR/traits.rs:109:18
+   |
+LL |         let _ = &Self::BOUNDED; //~ ERROR interior mutable
+   |                  ^^^^^^^^^^^^^
+   |
+   = help: assign this const to a local or static variable, and use the variable here
+
+error: a `const` item with interior mutability should not be borrowed
+  --> $DIR/traits.rs:122:18
+   |
+LL |         let _ = &Self::BOUNDED; //~ ERROR interior mutable
+   |                  ^^^^^^^^^^^^^
+   |
+   = help: assign this const to a local or static variable, and use the variable here
+
+error: a `const` item with interior mutability should not be borrowed
+  --> $DIR/traits.rs:151:18
+   |
+LL |         let _ = &Self::SELF; //~ ERROR interior mutable
+   |                  ^^^^^^^^^^
+   |
+   = help: assign this const to a local or static variable, and use the variable here
+
+error: a `const` item with interior mutability should not be borrowed
+  --> $DIR/traits.rs:152:18
+   |
+LL |         let _ = &Self::WRAPPED_SELF; //~ ERROR interior mutable
+   |                  ^^^^^^^^^^^^^^^^^^
+   |
+   = help: assign this const to a local or static variable, and use the variable here
+
+error: a `const` item with interior mutability should not be borrowed
+  --> $DIR/traits.rs:162:18
+   |
+LL |         let _ = &Self::INDIRECT; //~ ERROR interior mutable
+   |                  ^^^^^^^^^^^^^^
+   |
+   = help: assign this const to a local or static variable, and use the variable here
+
+error: a `const` item with interior mutability should not be borrowed
+  --> $DIR/traits.rs:172:18
+   |
+LL |         let _ = &Self::INDIRECT; //~ ERROR interior mutable
+   |                  ^^^^^^^^^^^^^^
+   |
+   = help: assign this const to a local or static variable, and use the variable here
+
+error: a `const` item with interior mutability should not be borrowed
+  --> $DIR/traits.rs:191:18
+   |
+LL |         let _ = &Self::ATOMIC; //~ ERROR interior mutable
+   |                  ^^^^^^^^^^^^
+   |
+   = help: assign this const to a local or static variable, and use the variable here
+
+error: a `const` item with interior mutability should not be borrowed
+  --> $DIR/traits.rs:195:18
+   |
+LL |         let _ = &Self::BOUNDED_ASSOC_TYPE; //~ ERROR interior mutable
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: assign this const to a local or static variable, and use the variable here
+
+error: a `const` item with interior mutability should not be borrowed
+  --> $DIR/traits.rs:200:5
+   |
+LL |     u64::ATOMIC.store(5, Ordering::SeqCst); //~ ERROR interior mutability
+   |     ^^^^^^^^^^^
+   |
+   = help: assign this const to a local or static variable, and use the variable here
+
+error: a `const` item with interior mutability should not be borrowed
+  --> $DIR/traits.rs:201:16
+   |
+LL |     assert_eq!(u64::ATOMIC.load(Ordering::SeqCst), 9); //~ ERROR interior mutability
+   |                ^^^^^^^^^^^
+   |
+   = help: assign this const to a local or static variable, and use the variable here
+
+error: aborting due to 15 previous errors
+

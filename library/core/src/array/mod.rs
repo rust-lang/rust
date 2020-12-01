@@ -12,12 +12,27 @@ use crate::convert::{Infallible, TryFrom};
 use crate::fmt;
 use crate::hash::{self, Hash};
 use crate::marker::Unsize;
+use crate::ops::{Index, IndexMut};
 use crate::slice::{Iter, IterMut};
 
 mod iter;
 
 #[unstable(feature = "array_value_iter", issue = "65798")]
 pub use iter::IntoIter;
+
+/// Converts a reference to `T` into a reference to an array of length 1 (without copying).
+#[unstable(feature = "array_from_ref", issue = "77101")]
+pub fn from_ref<T>(s: &T) -> &[T; 1] {
+    // SAFETY: Converting `&T` to `&[T; 1]` is sound.
+    unsafe { &*(s as *const T).cast::<[T; 1]>() }
+}
+
+/// Converts a mutable reference to `T` into a mutable reference to an array of length 1 (without copying).
+#[unstable(feature = "array_from_ref", issue = "77101")]
+pub fn from_mut<T>(s: &mut T) -> &mut [T; 1] {
+    // SAFETY: Converting `&mut T` to `&mut [T; 1]` is sound.
+    unsafe { &mut *(s as *mut T).cast::<[T; 1]>() }
+}
 
 /// Utility trait implemented only on arrays of fixed size
 ///
@@ -194,6 +209,30 @@ impl<'a, T, const N: usize> IntoIterator for &'a mut [T; N] {
     }
 }
 
+#[stable(feature = "index_trait_on_arrays", since = "1.50.0")]
+impl<T, I, const N: usize> Index<I> for [T; N]
+where
+    [T]: Index<I>,
+{
+    type Output = <[T] as Index<I>>::Output;
+
+    #[inline]
+    fn index(&self, index: I) -> &Self::Output {
+        Index::index(self as &[T], index)
+    }
+}
+
+#[stable(feature = "index_trait_on_arrays", since = "1.50.0")]
+impl<T, I, const N: usize> IndexMut<I> for [T; N]
+where
+    [T]: IndexMut<I>,
+{
+    #[inline]
+    fn index_mut(&mut self, index: I) -> &mut Self::Output {
+        IndexMut::index_mut(self as &mut [T], index)
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A, B, const N: usize> PartialEq<[B; N]> for [A; N]
 where
@@ -240,22 +279,22 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'b, A, B, const N: usize> PartialEq<&'b [B]> for [A; N]
+impl<A, B, const N: usize> PartialEq<&[B]> for [A; N]
 where
     A: PartialEq<B>,
 {
     #[inline]
-    fn eq(&self, other: &&'b [B]) -> bool {
+    fn eq(&self, other: &&[B]) -> bool {
         self[..] == other[..]
     }
     #[inline]
-    fn ne(&self, other: &&'b [B]) -> bool {
+    fn ne(&self, other: &&[B]) -> bool {
         self[..] != other[..]
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'b, A, B, const N: usize> PartialEq<[A; N]> for &'b [B]
+impl<A, B, const N: usize> PartialEq<[A; N]> for &[B]
 where
     B: PartialEq<A>,
 {
@@ -270,22 +309,22 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'b, A, B, const N: usize> PartialEq<&'b mut [B]> for [A; N]
+impl<A, B, const N: usize> PartialEq<&mut [B]> for [A; N]
 where
     A: PartialEq<B>,
 {
     #[inline]
-    fn eq(&self, other: &&'b mut [B]) -> bool {
+    fn eq(&self, other: &&mut [B]) -> bool {
         self[..] == other[..]
     }
     #[inline]
-    fn ne(&self, other: &&'b mut [B]) -> bool {
+    fn ne(&self, other: &&mut [B]) -> bool {
         self[..] != other[..]
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'b, A, B, const N: usize> PartialEq<[A; N]> for &'b mut [B]
+impl<A, B, const N: usize> PartialEq<[A; N]> for &mut [B]
 where
     B: PartialEq<A>,
 {
@@ -330,7 +369,7 @@ impl<T: PartialOrd, const N: usize> PartialOrd for [T; N] {
     }
 }
 
-/// Implements comparison of arrays lexicographically.
+/// Implements comparison of arrays [lexicographically](Ord#lexicographical-comparison).
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Ord, const N: usize> Ord for [T; N] {
     #[inline]
@@ -339,8 +378,9 @@ impl<T: Ord, const N: usize> Ord for [T; N] {
     }
 }
 
-// The Default impls cannot be generated using the array_impls! macro because
-// they require array literals.
+// The Default impls cannot be done with const generics because `[T; 0]` doesn't
+// require Default to be implemented, and having different impl blocks for
+// different numbers isn't supported yet.
 
 macro_rules! array_impl_default {
     {$n:expr, $t:ident $($ts:ident)*} => {
@@ -410,7 +450,7 @@ impl<T, const N: usize> [T; N] {
         }
         let mut dst = MaybeUninit::uninit_array::<N>();
         let mut guard: Guard<U, N> =
-            Guard { dst: MaybeUninit::first_ptr_mut(&mut dst), initialized: 0 };
+            Guard { dst: MaybeUninit::slice_as_mut_ptr(&mut dst), initialized: 0 };
         for (src, dst) in IntoIter::new(self).zip(&mut dst) {
             dst.write(f(src));
             guard.initialized += 1;
@@ -421,5 +461,18 @@ impl<T, const N: usize> [T; N] {
         // SAFETY: At this point we've properly initialized the whole array
         // and we just need to cast it to the correct type.
         unsafe { crate::mem::transmute_copy::<_, [U; N]>(&dst) }
+    }
+
+    /// Returns a slice containing the entire array. Equivalent to `&s[..]`.
+    #[unstable(feature = "array_methods", issue = "76118")]
+    pub fn as_slice(&self) -> &[T] {
+        self
+    }
+
+    /// Returns a mutable slice containing the entire array. Equivalent to
+    /// `&mut s[..]`.
+    #[unstable(feature = "array_methods", issue = "76118")]
+    pub fn as_mut_slice(&mut self) -> &mut [T] {
+        self
     }
 }

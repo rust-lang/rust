@@ -39,9 +39,9 @@ fn square_fn() -> impl Fn(u32) -> u32 {
 }
 
 fn main() {
-   iterator(); //~ ERROR unused implementer of `std::iter::Iterator` that must be used
-   future(); //~ ERROR unused implementer of `std::future::Future` that must be used
-   square_fn_once(); //~ ERROR unused implementer of `std::ops::FnOnce` that must be used
-   square_fn_mut(); //~ ERROR unused implementer of `std::ops::FnMut` that must be used
-   square_fn(); //~ ERROR unused implementer of `std::ops::Fn` that must be used
+   iterator(); //~ ERROR unused implementer of `Iterator` that must be used
+   future(); //~ ERROR unused implementer of `Future` that must be used
+   square_fn_once(); //~ ERROR unused implementer of `FnOnce` that must be used
+   square_fn_mut(); //~ ERROR unused implementer of `FnMut` that must be used
+   square_fn(); //~ ERROR unused implementer of `Fn` that must be used
 }

@@ -1,0 +1,43 @@
+error[E0391]: cycle detected when normalizing `<() as Tr>::A`
+   |
+note: ...which requires simplifying constant for the type system `Tr::A`...
+  --> $DIR/defaults-cyclic-fail.rs:6:5
+   |
+LL |     const A: u8 = Self::B;
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires simplifying constant for the type system `Tr::A`...
+  --> $DIR/defaults-cyclic-fail.rs:6:5
+   |
+LL |     const A: u8 = Self::B;
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires const-evaluating + checking `Tr::A`...
+  --> $DIR/defaults-cyclic-fail.rs:6:5
+   |
+LL |     const A: u8 = Self::B;
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   = note: ...which requires normalizing `<() as Tr>::B`...
+note: ...which requires simplifying constant for the type system `Tr::B`...
+  --> $DIR/defaults-cyclic-fail.rs:8:5
+   |
+LL |     const B: u8 = Self::A;
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires simplifying constant for the type system `Tr::B`...
+  --> $DIR/defaults-cyclic-fail.rs:8:5
+   |
+LL |     const B: u8 = Self::A;
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires const-evaluating + checking `Tr::B`...
+  --> $DIR/defaults-cyclic-fail.rs:8:5
+   |
+LL |     const B: u8 = Self::A;
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   = note: ...which again requires normalizing `<() as Tr>::A`, completing the cycle
+note: cycle used when const-evaluating + checking `main::promoted[2]`
+  --> $DIR/defaults-cyclic-fail.rs:14:1
+   |
+LL | fn main() {
+   | ^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0391`.

@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `for<'b> <i32 as X<'b>>::U: std::clone::Clone` is not satisfied
+error[E0277]: the trait bound `for<'b> <i32 as X<'b>>::U: Clone` is not satisfied
   --> $DIR/hr-associated-type-bound-1.rs:12:14
    |
 LL | trait X<'a>
@@ -8,11 +8,11 @@ LL |     for<'b> <Self as X<'b>>::U: Clone,
    |                                 ----- required by this bound in `X`
 ...
 LL |     type U = str;
-   |              ^^^ the trait `for<'b> std::clone::Clone` is not implemented for `<i32 as X<'b>>::U`
+   |              ^^^ the trait `for<'b> Clone` is not implemented for `<i32 as X<'b>>::U`
    |
    = help: the following implementations were found:
-             <&T as std::clone::Clone>
-             <&mut T as std::clone::Clone>
+             <&T as Clone>
+             <&mut T as Clone>
 
 error: aborting due to previous error
 

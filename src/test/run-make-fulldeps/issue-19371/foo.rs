@@ -60,6 +60,7 @@ fn compile(code: String, output: PathBuf, sysroot: PathBuf) {
         lint_caps: Default::default(),
         register_lints: None,
         override_queries: None,
+        make_codegen_backend: None,
         registry: rustc_driver::diagnostics_registry(),
     };
 

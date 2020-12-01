@@ -1,4 +1,4 @@
-// compile-flags: -C no-prepopulate-passes -Z mir-opt-level=2
+// compile-flags: -C no-prepopulate-passes -Z mir-opt-level=2 -Zunsound-mir-opts
 
 // Ensure that `x?` has no overhead on `Result<T, E>` due to identity `match`es in lowering.
 // This requires inlining to trigger the MIR optimizations in `SimplifyArmIdentity`.

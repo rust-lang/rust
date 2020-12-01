@@ -1,0 +1,31 @@
+- // MIR for `non_const` before LowerIntrinsics
++ // MIR for `non_const` after LowerIntrinsics
+  
+  fn non_const() -> usize {
+      let mut _0: usize;                   // return place in scope 0 at $DIR/lower_intrinsics.rs:55:26: 55:31
+      let _1: extern "rust-intrinsic" fn() -> usize {std::intrinsics::size_of::<T>}; // in scope 0 at $DIR/lower_intrinsics.rs:57:9: 57:18
+      let mut _2: extern "rust-intrinsic" fn() -> usize {std::intrinsics::size_of::<T>}; // in scope 0 at $DIR/lower_intrinsics.rs:58:5: 58:14
+      scope 1 {
+          debug size_of_t => _1;           // in scope 1 at $DIR/lower_intrinsics.rs:57:9: 57:18
+      }
+  
+      bb0: {
+          StorageLive(_1);                 // scope 0 at $DIR/lower_intrinsics.rs:57:9: 57:18
+          _1 = std::intrinsics::size_of::<T>; // scope 0 at $DIR/lower_intrinsics.rs:57:21: 57:51
+                                           // mir::Constant
+                                           // + span: $DIR/lower_intrinsics.rs:57:21: 57:51
+                                           // + literal: Const { ty: extern "rust-intrinsic" fn() -> usize {std::intrinsics::size_of::<T>}, val: Value(Scalar(<ZST>)) }
+          StorageLive(_2);                 // scope 1 at $DIR/lower_intrinsics.rs:58:5: 58:14
+          _2 = _1;                         // scope 1 at $DIR/lower_intrinsics.rs:58:5: 58:14
+-         _0 = move _2() -> bb1;           // scope 1 at $DIR/lower_intrinsics.rs:58:5: 58:16
++         _0 = SizeOf(T);                  // scope 1 at $DIR/lower_intrinsics.rs:58:5: 58:16
++         goto -> bb1;                     // scope 1 at $DIR/lower_intrinsics.rs:58:5: 58:16
+      }
+  
+      bb1: {
+          StorageDead(_2);                 // scope 1 at $DIR/lower_intrinsics.rs:58:15: 58:16
+          StorageDead(_1);                 // scope 0 at $DIR/lower_intrinsics.rs:59:1: 59:2
+          return;                          // scope 0 at $DIR/lower_intrinsics.rs:59:2: 59:2
+      }
+  }
+  

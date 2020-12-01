@@ -1,5 +1,3 @@
-// check-pass
-
 #![feature(associated_type_bounds)]
 
 use std::fmt::Debug;
@@ -18,6 +16,7 @@ impl<'a, 'b> Lam<&'a &'b u8> for L2 { type App = u8; }
 
 trait Case1 {
     type A: Iterator<Item: Debug>;
+    //~^ ERROR `<<Self as Case1>::A as Iterator>::Item` doesn't implement `Debug`
 
     type B: Iterator<Item: 'static>;
 }
@@ -30,7 +29,11 @@ impl Case1 for S1 {
 
 // Ensure we don't have opaque `impl Trait` desugaring:
 
+// What is this supposed to mean? Rustc currently lowers `: Default` in the
+// bounds of `Out`, but trait selection can't find the bound since it applies
+// to a type other than `Self::Out`.
 pub trait Foo { type Out: Baz<Assoc: Default>; }
+//~^ ERROR trait bound `<<Self as Foo>::Out as Baz>::Assoc: Default` is not satisfied
 pub trait Baz { type Assoc; }
 
 #[derive(Default)]

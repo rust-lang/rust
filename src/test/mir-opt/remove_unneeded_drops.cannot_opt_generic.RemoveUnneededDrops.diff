@@ -1,0 +1,32 @@
+- // MIR for `cannot_opt_generic` before RemoveUnneededDrops
++ // MIR for `cannot_opt_generic` after RemoveUnneededDrops
+  
+  fn cannot_opt_generic(_1: T) -> () {
+      debug x => _1;                       // in scope 0 at $DIR/remove_unneeded_drops.rs:20:26: 20:27
+      let mut _0: ();                      // return place in scope 0 at $DIR/remove_unneeded_drops.rs:20:32: 20:32
+      let _2: ();                          // in scope 0 at $DIR/remove_unneeded_drops.rs:21:5: 21:12
+      let mut _3: T;                       // in scope 0 at $DIR/remove_unneeded_drops.rs:21:10: 21:11
+      scope 1 (inlined std::mem::drop::<T>) { // at $DIR/remove_unneeded_drops.rs:21:5: 21:12
+          debug _x => _3;                  // in scope 1 at $DIR/remove_unneeded_drops.rs:21:5: 21:12
+      }
+  
+      bb0: {
+          StorageLive(_2);                 // scope 0 at $DIR/remove_unneeded_drops.rs:21:5: 21:12
+          StorageLive(_3);                 // scope 0 at $DIR/remove_unneeded_drops.rs:21:10: 21:11
+          _3 = move _1;                    // scope 0 at $DIR/remove_unneeded_drops.rs:21:10: 21:11
+          _2 = const ();                   // scope 1 at $DIR/remove_unneeded_drops.rs:21:5: 21:12
+          drop(_3) -> [return: bb2, unwind: bb1]; // scope 1 at $DIR/remove_unneeded_drops.rs:21:5: 21:12
+      }
+  
+      bb1 (cleanup): {
+          resume;                          // scope 0 at $DIR/remove_unneeded_drops.rs:20:1: 22:2
+      }
+  
+      bb2: {
+          StorageDead(_3);                 // scope 0 at $DIR/remove_unneeded_drops.rs:21:11: 21:12
+          StorageDead(_2);                 // scope 0 at $DIR/remove_unneeded_drops.rs:21:12: 21:13
+          _0 = const ();                   // scope 0 at $DIR/remove_unneeded_drops.rs:20:32: 22:2
+          return;                          // scope 0 at $DIR/remove_unneeded_drops.rs:22:2: 22:2
+      }
+  }
+  

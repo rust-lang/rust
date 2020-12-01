@@ -1,0 +1,23 @@
+[package]
+authors = ["The Rust Project Developers"]
+name = "rustc_lexer"
+version = "0.1.0"
+license = "MIT OR Apache-2.0"
+edition = "2018"
+
+repository = "https://github.com/rust-lang/rust/"
+description = """
+Rust lexer used by rustc. No stability guarantees are provided.
+"""
+
+# Note: do not remove this blank `[lib]` section.
+# This will be used when publishing this crate as `rustc-ap-rustc_lexer`.
+[lib]
+doctest = false
+
+# Note that this crate purposefully does not depend on other rustc crates
+[dependencies]
+unicode-xid = "0.2.0"
+
+[dev-dependencies]
+expect-test = "1.0"

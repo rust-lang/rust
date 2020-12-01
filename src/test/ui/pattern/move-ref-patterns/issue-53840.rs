@@ -1,7 +1,5 @@
 // check-pass
 
-#![feature(move_ref_pattern)]
-
 enum E {
     Foo(String, String, String),
 }

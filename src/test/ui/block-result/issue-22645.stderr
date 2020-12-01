@@ -6,7 +6,7 @@ LL |   b + 3
    |
    = help: the following implementations were found:
              <f64 as Scalar>
-   = note: required because of the requirements on the impl of `std::ops::Add<{integer}>` for `Bob`
+   = note: required because of the requirements on the impl of `Add<{integer}>` for `Bob`
 
 error[E0308]: mismatched types
   --> $DIR/issue-22645.rs:15:3

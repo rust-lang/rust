@@ -1,0 +1,57 @@
+Counter in file 0 7:9 -> 9:26, #1
+Counter in file 0 10:8 -> 10:15, (#1 + 0)
+Counter in file 0 10:16 -> 12:6, #2
+Counter in file 0 12:6 -> 12:7, (#1 - #2)
+Counter in file 0 15:9 -> 15:10, (((#2 + (#1 - #2)) + (#3 + #4)) - #5)
+Counter in file 0 17:9 -> 17:13, ((#2 + (#1 - #2)) + (#3 + #4))
+Counter in file 0 22:13 -> 22:22, ((((#2 + (#1 - #2)) + (#3 + #4)) - #5) + 0)
+Counter in file 0 24:13 -> 24:14, #3
+Counter in file 0 26:17 -> 28:18, ((((#2 + (#1 - #2)) + (#3 + #4)) - #5) + 0)
+Counter in file 0 28:18 -> 28:19, ((((#2 + (#1 - #2)) + (#3 + #4)) - #5) - #3)
+Counter in file 0 30:13 -> 37:14, (#3 + 0)
+Counter in file 0 40:13 -> 40:15, #4
+Counter in file 0 42:6 -> 42:7, (#2 + (#1 - #2))
+Counter in file 0 42:6 -> 42:7, (#3 + #4)
+Counter in file 0 43:1 -> 43:2, #5
+Emitting segments for file: ../coverage/simple_match.rs
+Combined regions:
+  7:9 -> 9:26 (count=1)
+  10:8 -> 10:15 (count=1)
+  10:16 -> 12:6 (count=1)
+  12:6 -> 12:7 (count=0)
+  15:9 -> 15:10 (count=2)
+  17:9 -> 17:13 (count=3)
+  22:13 -> 22:22 (count=2)
+  24:13 -> 24:14 (count=1)
+  26:17 -> 28:18 (count=2)
+  28:18 -> 28:19 (count=1)
+  30:13 -> 37:14 (count=1)
+  40:13 -> 40:15 (count=1)
+  42:6 -> 42:7 (count=3)
+  43:1 -> 43:2 (count=1)
+Segment at 7:9 (count = 1), RegionEntry
+Segment at 9:26 (count = 0), Skipped
+Segment at 10:8 (count = 1), RegionEntry
+Segment at 10:15 (count = 0), Skipped
+Segment at 10:16 (count = 1), RegionEntry
+Segment at 12:6 (count = 0), RegionEntry
+Segment at 12:7 (count = 0), Skipped
+Segment at 15:9 (count = 2), RegionEntry
+Segment at 15:10 (count = 0), Skipped
+Segment at 17:9 (count = 3), RegionEntry
+Segment at 17:13 (count = 0), Skipped
+Segment at 22:13 (count = 2), RegionEntry
+Segment at 22:22 (count = 0), Skipped
+Segment at 24:13 (count = 1), RegionEntry
+Segment at 24:14 (count = 0), Skipped
+Segment at 26:17 (count = 2), RegionEntry
+Segment at 28:18 (count = 1), RegionEntry
+Segment at 28:19 (count = 0), Skipped
+Segment at 30:13 (count = 1), RegionEntry
+Segment at 37:14 (count = 0), Skipped
+Segment at 40:13 (count = 1), RegionEntry
+Segment at 40:15 (count = 0), Skipped
+Segment at 42:6 (count = 3), RegionEntry
+Segment at 42:7 (count = 0), Skipped
+Segment at 43:1 (count = 1), RegionEntry
+Segment at 43:2 (count = 0), Skipped

@@ -1,5 +1,3 @@
-#![feature(move_ref_pattern)]
-
 struct Foo {}
 
 pub fn main() {

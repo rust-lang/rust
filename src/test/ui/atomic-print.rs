@@ -2,7 +2,6 @@
 
 #![allow(unused_must_use)]
 #![allow(deprecated)]
-// ignore-cloudabi no process support
 // ignore-emscripten no threads support
 // ignore-sgx no processes
 

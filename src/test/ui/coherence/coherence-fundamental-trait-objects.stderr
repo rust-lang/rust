@@ -4,7 +4,7 @@ error[E0117]: only traits defined in the current crate can be implemented for ar
 LL | impl Misc for dyn Fundamental<Local> {}
    | ^^^^^^^^^^^^^^----------------------
    | |             |
-   | |             `dyn coherence_fundamental_trait_lib::Fundamental<Local>` is not defined in the current crate
+   | |             `dyn Fundamental<Local>` is not defined in the current crate
    | impl doesn't use only types from inside the current crate
    |
    = note: define and implement a trait or new type instead

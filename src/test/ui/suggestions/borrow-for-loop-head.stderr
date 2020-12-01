@@ -10,7 +10,7 @@ error[E0382]: use of moved value: `a`
   --> $DIR/borrow-for-loop-head.rs:4:18
    |
 LL |     let a = vec![1, 2, 3];
-   |         - move occurs because `a` has type `std::vec::Vec<i32>`, which does not implement the `Copy` trait
+   |         - move occurs because `a` has type `Vec<i32>`, which does not implement the `Copy` trait
 LL |     for i in &a {
 LL |         for j in a {
    |                  ^

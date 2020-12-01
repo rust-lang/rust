@@ -10,11 +10,23 @@ help: skipping check that does not even have a feature gate
    |
 LL |     X_CONST(x)
    |     ^^^^^^^^^^
+help: skipping check for `const_fn_fn_ptr_basics` feature
+  --> $DIR/const_fn_ptr.rs:19:14
+   |
+LL | const fn foo(x: fn(usize) -> usize, y: usize)  -> usize {
+   |              ^
+help: skipping check for `const_fn_fn_ptr_basics` feature
+  --> $DIR/const_fn_ptr.rs:20:5
+   |
+LL |     x(y)
+   |     ^
 help: skipping check that does not even have a feature gate
   --> $DIR/const_fn_ptr.rs:20:5
    |
 LL |     x(y)
    |     ^^^^
 
-warning: 1 warning emitted
+error: `-Zunleash-the-miri-inside-of-you` may not be used to circumvent feature gates, except when testing error paths in the CTFE engine
+
+error: aborting due to previous error; 1 warning emitted
 

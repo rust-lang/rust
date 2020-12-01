@@ -1,13 +1,13 @@
-error[E0277]: the trait bound `Error: std::cmp::Eq` is not satisfied
+error[E0277]: the trait bound `Error: Eq` is not satisfied
   --> $DIR/derives-span-Eq-tuple-struct.rs:8:5
    |
 LL |     Error
-   |     ^^^^^ the trait `std::cmp::Eq` is not implemented for `Error`
+   |     ^^^^^ the trait `Eq` is not implemented for `Error`
    | 
   ::: $SRC_DIR/core/src/cmp.rs:LL:COL
    |
 LL | pub struct AssertParamIsEq<T: Eq + ?Sized> {
-   |                               -- required by this bound in `std::cmp::AssertParamIsEq`
+   |                               -- required by this bound in `AssertParamIsEq`
    |
    = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
 

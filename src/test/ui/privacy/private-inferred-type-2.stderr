@@ -1,10 +1,10 @@
-error: type `m::Priv` is private
+error: type `Priv` is private
   --> $DIR/private-inferred-type-2.rs:16:5
    |
 LL |     m::Pub::get_priv;
    |     ^^^^^^^^^^^^^^^^ private type
 
-error: type `m::Priv` is private
+error: type `Priv` is private
   --> $DIR/private-inferred-type-2.rs:17:5
    |
 LL |     m::Pub::static_method;

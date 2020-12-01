@@ -1,4 +1,4 @@
-error[E0277]: the size for values of type `(dyn std::ops::Fn() + 'static)` cannot be known at compilation time
+error[E0277]: the size for values of type `(dyn Fn() + 'static)` cannot be known at compilation time
   --> $DIR/issue-23281.rs:4:27
    |
 LL |     pub fn function(funs: Vec<dyn Fn() -> ()>) {}
@@ -7,7 +7,7 @@ LL |     pub fn function(funs: Vec<dyn Fn() -> ()>) {}
 LL | struct Vec<T> {
    |            - required by this bound in `Vec`
    |
-   = help: the trait `std::marker::Sized` is not implemented for `(dyn std::ops::Fn() + 'static)`
+   = help: the trait `Sized` is not implemented for `(dyn Fn() + 'static)`
 help: you could relax the implicit `Sized` bound on `T` if it were used through indirection like `&T` or `Box<T>`
   --> $DIR/issue-23281.rs:8:12
    |

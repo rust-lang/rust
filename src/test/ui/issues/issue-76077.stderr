@@ -1,0 +1,8 @@
+error: cannot construct `Foo` with struct literal syntax due to inaccessible fields
+  --> $DIR/issue-76077.rs:8:5
+   |
+LL |     foo::Foo {};
+   |     ^^^^^^^^
+
+error: aborting due to previous error
+

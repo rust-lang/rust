@@ -5,8 +5,8 @@ LL | impl<S> Into<S> for GenX<S> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: conflicting implementation in crate `core`:
-           - impl<T, U> std::convert::Into<U> for T
-             where U: std::convert::From<T>;
+           - impl<T, U> Into<U> for T
+             where U: From<T>;
 
 error: aborting due to previous error
 

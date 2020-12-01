@@ -1,0 +1,26 @@
+- // MIR for `f` before Inline
++ // MIR for `f` after Inline
+  
+  fn f() -> () {
+      let mut _0: ();                      // return place in scope 0 at $DIR/inline-diverging.rs:7:12: 7:12
+      let mut _1: !;                       // in scope 0 at $DIR/inline-diverging.rs:7:12: 9:2
+      let _2: !;                           // in scope 0 at $DIR/inline-diverging.rs:8:5: 8:12
++     let mut _3: !;                       // in scope 0 at $DIR/inline-diverging.rs:8:5: 8:12
++     scope 1 (inlined sleep) {            // at $DIR/inline-diverging.rs:8:5: 8:12
++     }
+  
+      bb0: {
+          StorageLive(_2);                 // scope 0 at $DIR/inline-diverging.rs:8:5: 8:12
+-         sleep();                         // scope 0 at $DIR/inline-diverging.rs:8:5: 8:12
+-                                          // mir::Constant
+-                                          // + span: $DIR/inline-diverging.rs:8:5: 8:10
+-                                          // + literal: Const { ty: fn() -> ! {sleep}, val: Value(Scalar(<ZST>)) }
++         StorageLive(_3);                 // scope 0 at $DIR/inline-diverging.rs:8:5: 8:12
++         goto -> bb1;                     // scope 0 at $DIR/inline-diverging.rs:8:5: 8:12
++     }
++ 
++     bb1: {
++         goto -> bb1;                     // scope 1 at $DIR/inline-diverging.rs:8:5: 8:12
+      }
+  }
+  

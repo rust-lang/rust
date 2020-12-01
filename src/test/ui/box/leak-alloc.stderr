@@ -1,0 +1,15 @@
+error[E0505]: cannot move out of `alloc` because it is borrowed
+  --> $DIR/leak-alloc.rs:26:10
+   |
+LL |     let boxed = Box::new_in(10, alloc.by_ref());
+   |                                 ----- borrow of `alloc` occurs here
+LL |     let theref = Box::leak(boxed);
+LL |     drop(alloc);
+   |          ^^^^^ move out of `alloc` occurs here
+LL |
+LL |     use_value(*theref)
+   |               ------- borrow later used here
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0505`.

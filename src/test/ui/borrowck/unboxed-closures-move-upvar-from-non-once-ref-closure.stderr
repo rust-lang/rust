@@ -5,7 +5,7 @@ LL |     let y = vec![format!("World")];
    |         - captured outer variable
 LL |     call(|| {
 LL |         y.into_iter();
-   |         ^ move occurs because `y` has type `std::vec::Vec<std::string::String>`, which does not implement the `Copy` trait
+   |         ^ move occurs because `y` has type `Vec<String>`, which does not implement the `Copy` trait
 
 error: aborting due to previous error
 

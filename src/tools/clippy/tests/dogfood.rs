@@ -1,15 +1,14 @@
 // Dogfood cannot run on Windows
 #![cfg(not(windows))]
+#![feature(once_cell)]
 
-use lazy_static::lazy_static;
+use std::lazy::SyncLazy;
 use std::path::PathBuf;
 use std::process::Command;
 
 mod cargo;
 
-lazy_static! {
-    static ref CLIPPY_PATH: PathBuf = cargo::TARGET_LIB.join("cargo-clippy");
-}
+static CLIPPY_PATH: SyncLazy<PathBuf> = SyncLazy::new(|| cargo::TARGET_LIB.join("cargo-clippy"));
 
 #[test]
 fn dogfood_clippy() {

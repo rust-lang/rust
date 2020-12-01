@@ -3,8 +3,6 @@
 // This test checks the dynamic semantics and drop order of pattern matching
 // where a product pattern has both a by-move and by-ref binding.
 
-#![feature(move_ref_pattern)]
-
 use std::cell::RefCell;
 use std::rc::Rc;
 

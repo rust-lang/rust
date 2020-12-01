@@ -105,15 +105,13 @@ pub fn format(build: &Build, check: bool) {
         eprintln!("./x.py fmt is not supported on this channel");
         std::process::exit(1);
     });
-    let src = build.src.clone();
-    let walker = WalkBuilder::new(&build.src).types(matcher).overrides(ignore_fmt).build_parallel();
+    let src = &build.src;
+    let walker = WalkBuilder::new(src).types(matcher).overrides(ignore_fmt).build_parallel();
     walker.run(|| {
-        let src = src.clone();
-        let rustfmt_path = rustfmt_path.clone();
         Box::new(move |entry| {
             let entry = t!(entry);
             if entry.file_type().map_or(false, |t| t.is_file()) {
-                rustfmt(&src, &rustfmt_path, &entry.path(), check);
+                rustfmt(src, &rustfmt_path, &entry.path(), check);
             }
             ignore::WalkState::Continue
         })

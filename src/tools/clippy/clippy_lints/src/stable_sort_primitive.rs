@@ -86,6 +86,7 @@ struct LintDetection {
     slice_name: String,
     method: SortingKind,
     method_args: String,
+    slice_type: String,
 }
 
 fn detect_stable_sort_primitive(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<LintDetection> {
@@ -93,10 +94,10 @@ fn detect_stable_sort_primitive(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option
         if let ExprKind::MethodCall(method_name, _, args, _) = &expr.kind;
         if let Some(slice) = &args.get(0);
         if let Some(method) = SortingKind::from_stable_name(&method_name.ident.name.as_str());
-        if is_slice_of_primitives(cx, slice);
+        if let Some(slice_type) = is_slice_of_primitives(cx, slice);
         then {
             let args_str = args.iter().skip(1).map(|arg| Sugg::hir(cx, arg, "..").to_string()).collect::<Vec<String>>().join(", ");
-            Some(LintDetection { slice_name: Sugg::hir(cx, slice, "..").to_string(), method, method_args: args_str })
+            Some(LintDetection { slice_name: Sugg::hir(cx, slice, "..").to_string(), method, method_args: args_str, slice_type })
         } else {
             None
         }
@@ -111,9 +112,10 @@ impl LateLintPass<'_> for StableSortPrimitive {
                 STABLE_SORT_PRIMITIVE,
                 expr.span,
                 format!(
-                    "Use {} instead of {}",
+                    "used {} instead of {} to sort primitive type `{}`",
+                    detection.method.stable_name(),
                     detection.method.unstable_name(),
-                    detection.method.stable_name()
+                    detection.slice_type,
                 )
                 .as_str(),
                 "try",

@@ -4,18 +4,23 @@
 //! via `x.py dist hash-and-sign`; the cmdline arguments are set up
 //! by rustbuild (in `src/bootstrap/dist.rs`).
 
-use serde::Serialize;
+mod checksum;
+mod manifest;
+mod versions;
 
-use std::collections::BTreeMap;
-use std::collections::HashMap;
+use crate::checksum::Checksums;
+use crate::manifest::{Component, Manifest, Package, Rename, Target};
+use crate::versions::{PkgType, Versions};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::env;
 use std::fs::{self, File};
-use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
 
 static HOSTS: &[&str] = &[
+    "aarch64-apple-darwin",
+    "aarch64-pc-windows-msvc",
     "aarch64-unknown-linux-gnu",
+    "aarch64-unknown-linux-musl",
     "arm-unknown-linux-gnueabi",
     "arm-unknown-linux-gnueabihf",
     "armv7-unknown-linux-gnueabihf",
@@ -47,11 +52,11 @@ static HOSTS: &[&str] = &[
 ];
 
 static TARGETS: &[&str] = &[
+    "aarch64-apple-darwin",
     "aarch64-apple-ios",
     "aarch64-fuchsia",
     "aarch64-linux-android",
     "aarch64-pc-windows-msvc",
-    "aarch64-unknown-cloudabi",
     "aarch64-unknown-hermit",
     "aarch64-unknown-linux-gnu",
     "aarch64-unknown-linux-musl",
@@ -110,6 +115,7 @@ static TARGETS: &[&str] = &[
     "riscv32i-unknown-none-elf",
     "riscv32imc-unknown-none-elf",
     "riscv32imac-unknown-none-elf",
+    "riscv32gc-unknown-linux-gnu",
     "riscv64imac-unknown-none-elf",
     "riscv64gc-unknown-none-elf",
     "riscv64gc-unknown-linux-gnu",
@@ -136,7 +142,6 @@ static TARGETS: &[&str] = &[
     "x86_64-rumprun-netbsd",
     "x86_64-sun-solaris",
     "x86_64-pc-solaris",
-    "x86_64-unknown-cloudabi",
     "x86_64-unknown-freebsd",
     "x86_64-unknown-illumos",
     "x86_64-unknown-linux-gnu",
@@ -148,6 +153,7 @@ static TARGETS: &[&str] = &[
 ];
 
 static DOCS_TARGETS: &[&str] = &[
+    "aarch64-unknown-linux-gnu",
     "i686-apple-darwin",
     "i686-pc-windows-gnu",
     "i686-pc-windows-msvc",
@@ -159,60 +165,19 @@ static DOCS_TARGETS: &[&str] = &[
     "x86_64-unknown-linux-musl",
 ];
 
+static MSI_INSTALLERS: &[&str] = &[
+    "aarch64-pc-windows-msvc",
+    "i686-pc-windows-gnu",
+    "i686-pc-windows-msvc",
+    "x86_64-pc-windows-gnu",
+    "x86_64-pc-windows-msvc",
+];
+
+static PKG_INSTALLERS: &[&str] = &["x86_64-apple-darwin", "aarch64-apple-darwin"];
+
 static MINGW: &[&str] = &["i686-pc-windows-gnu", "x86_64-pc-windows-gnu"];
 
 static NIGHTLY_ONLY_COMPONENTS: &[&str] = &["miri-preview", "rust-analyzer-preview"];
-
-#[derive(Serialize)]
-#[serde(rename_all = "kebab-case")]
-struct Manifest {
-    manifest_version: String,
-    date: String,
-    pkg: BTreeMap<String, Package>,
-    renames: BTreeMap<String, Rename>,
-    profiles: BTreeMap<String, Vec<String>>,
-}
-
-#[derive(Serialize)]
-struct Package {
-    version: String,
-    git_commit_hash: Option<String>,
-    target: BTreeMap<String, Target>,
-}
-
-#[derive(Serialize)]
-struct Rename {
-    to: String,
-}
-
-#[derive(Serialize, Default)]
-struct Target {
-    available: bool,
-    url: Option<String>,
-    hash: Option<String>,
-    xz_url: Option<String>,
-    xz_hash: Option<String>,
-    components: Option<Vec<Component>>,
-    extensions: Option<Vec<Component>>,
-}
-
-impl Target {
-    fn unavailable() -> Self {
-        Self::default()
-    }
-}
-
-#[derive(Serialize)]
-struct Component {
-    pkg: String,
-    target: String,
-}
-
-impl Component {
-    fn from_str(pkg: &str, target: &str) -> Self {
-        Self { pkg: pkg.to_string(), target: target.to_string() }
-    }
-}
 
 macro_rules! t {
     ($e:expr) => {
@@ -224,176 +189,69 @@ macro_rules! t {
 }
 
 struct Builder {
-    rust_release: String,
-    cargo_release: String,
-    rls_release: String,
-    rust_analyzer_release: String,
-    clippy_release: String,
-    rustfmt_release: String,
-    llvm_tools_release: String,
-    miri_release: String,
+    versions: Versions,
+    checksums: Checksums,
+    shipped_files: HashSet<String>,
 
     input: PathBuf,
     output: PathBuf,
-    gpg_passphrase: String,
-    digests: BTreeMap<String, String>,
     s3_address: String,
     date: String,
-
-    rust_version: Option<String>,
-    cargo_version: Option<String>,
-    rls_version: Option<String>,
-    rust_analyzer_version: Option<String>,
-    clippy_version: Option<String>,
-    rustfmt_version: Option<String>,
-    llvm_tools_version: Option<String>,
-    miri_version: Option<String>,
-
-    rust_git_commit_hash: Option<String>,
-    cargo_git_commit_hash: Option<String>,
-    rls_git_commit_hash: Option<String>,
-    rust_analyzer_git_commit_hash: Option<String>,
-    clippy_git_commit_hash: Option<String>,
-    rustfmt_git_commit_hash: Option<String>,
-    llvm_tools_git_commit_hash: Option<String>,
-    miri_git_commit_hash: Option<String>,
-
-    should_sign: bool,
 }
 
 fn main() {
-    // Avoid signing packages while manually testing
-    // Do NOT set this envvar in CI
-    let should_sign = env::var("BUILD_MANIFEST_DISABLE_SIGNING").is_err();
-
-    // Safety check to ensure signing is always enabled on CI
-    // The CI environment variable is set by both Travis and AppVeyor
-    if !should_sign && env::var("CI").is_ok() {
-        println!("The 'BUILD_MANIFEST_DISABLE_SIGNING' env var can't be enabled on CI.");
-        println!("If you're not running this on CI, unset the 'CI' env var.");
-        panic!();
-    }
+    let num_threads = if let Some(num) = env::var_os("BUILD_MANIFEST_NUM_THREADS") {
+        num.to_str().unwrap().parse().expect("invalid number for BUILD_MANIFEST_NUM_THREADS")
+    } else {
+        num_cpus::get()
+    };
+    rayon::ThreadPoolBuilder::new()
+        .num_threads(num_threads)
+        .build_global()
+        .expect("failed to initialize Rayon");
 
     let mut args = env::args().skip(1);
     let input = PathBuf::from(args.next().unwrap());
     let output = PathBuf::from(args.next().unwrap());
     let date = args.next().unwrap();
-    let rust_release = args.next().unwrap();
     let s3_address = args.next().unwrap();
-    let cargo_release = args.next().unwrap();
-    let rls_release = args.next().unwrap();
-    let rust_analyzer_release = args.next().unwrap();
-    let clippy_release = args.next().unwrap();
-    let miri_release = args.next().unwrap();
-    let rustfmt_release = args.next().unwrap();
-    let llvm_tools_release = args.next().unwrap();
-
-    // Do not ask for a passphrase while manually testing
-    let mut passphrase = String::new();
-    if should_sign {
-        // `x.py` passes the passphrase via stdin.
-        t!(io::stdin().read_to_string(&mut passphrase));
-    }
+    let channel = args.next().unwrap();
 
     Builder {
-        rust_release,
-        cargo_release,
-        rls_release,
-        rust_analyzer_release,
-        clippy_release,
-        rustfmt_release,
-        llvm_tools_release,
-        miri_release,
+        versions: Versions::new(&channel, &input).unwrap(),
+        checksums: t!(Checksums::new()),
+        shipped_files: HashSet::new(),
 
         input,
         output,
-        gpg_passphrase: passphrase,
-        digests: BTreeMap::new(),
         s3_address,
         date,
-
-        rust_version: None,
-        cargo_version: None,
-        rls_version: None,
-        rust_analyzer_version: None,
-        clippy_version: None,
-        rustfmt_version: None,
-        llvm_tools_version: None,
-        miri_version: None,
-
-        rust_git_commit_hash: None,
-        cargo_git_commit_hash: None,
-        rls_git_commit_hash: None,
-        rust_analyzer_git_commit_hash: None,
-        clippy_git_commit_hash: None,
-        rustfmt_git_commit_hash: None,
-        llvm_tools_git_commit_hash: None,
-        miri_git_commit_hash: None,
-
-        should_sign,
     }
     .build();
 }
 
-enum PkgType {
-    RustSrc,
-    Cargo,
-    Rls,
-    RustAnalyzer,
-    Clippy,
-    Rustfmt,
-    LlvmTools,
-    Miri,
-    Other,
-}
-
-impl PkgType {
-    fn from_component(component: &str) -> Self {
-        use PkgType::*;
-        match component {
-            "rust-src" => RustSrc,
-            "cargo" => Cargo,
-            "rls" | "rls-preview" => Rls,
-            "rust-analyzer" | "rust-analyzer-preview" => RustAnalyzer,
-            "clippy" | "clippy-preview" => Clippy,
-            "rustfmt" | "rustfmt-preview" => Rustfmt,
-            "llvm-tools" | "llvm-tools-preview" => LlvmTools,
-            "miri" | "miri-preview" => Miri,
-            _ => Other,
-        }
-    }
-}
-
 impl Builder {
     fn build(&mut self) {
-        self.rust_version = self.version("rust", "x86_64-unknown-linux-gnu");
-        self.cargo_version = self.version("cargo", "x86_64-unknown-linux-gnu");
-        self.rls_version = self.version("rls", "x86_64-unknown-linux-gnu");
-        self.rust_analyzer_version = self.version("rust-analyzer", "x86_64-unknown-linux-gnu");
-        self.clippy_version = self.version("clippy", "x86_64-unknown-linux-gnu");
-        self.rustfmt_version = self.version("rustfmt", "x86_64-unknown-linux-gnu");
-        self.llvm_tools_version = self.version("llvm-tools", "x86_64-unknown-linux-gnu");
-        self.miri_version = self.version("miri", "x86_64-unknown-linux-gnu");
-
-        self.rust_git_commit_hash = self.git_commit_hash("rust", "x86_64-unknown-linux-gnu");
-        self.cargo_git_commit_hash = self.git_commit_hash("cargo", "x86_64-unknown-linux-gnu");
-        self.rls_git_commit_hash = self.git_commit_hash("rls", "x86_64-unknown-linux-gnu");
-        self.rust_analyzer_git_commit_hash =
-            self.git_commit_hash("rust-analyzer", "x86_64-unknown-linux-gnu");
-        self.clippy_git_commit_hash = self.git_commit_hash("clippy", "x86_64-unknown-linux-gnu");
-        self.rustfmt_git_commit_hash = self.git_commit_hash("rustfmt", "x86_64-unknown-linux-gnu");
-        self.llvm_tools_git_commit_hash =
-            self.git_commit_hash("llvm-tools", "x86_64-unknown-linux-gnu");
-        self.miri_git_commit_hash = self.git_commit_hash("miri", "x86_64-unknown-linux-gnu");
-
         self.check_toolstate();
-        self.digest_and_sign();
         let manifest = self.build_manifest();
-        self.write_channel_files(&self.rust_release, &manifest);
 
-        if self.rust_release != "beta" && self.rust_release != "nightly" {
-            self.write_channel_files("stable", &manifest);
+        let channel = self.versions.channel().to_string();
+        self.write_channel_files(&channel, &manifest);
+        if channel == "stable" {
+            // channel-rust-1.XX.YY.toml
+            let rust_version = self.versions.rustc_version().to_string();
+            self.write_channel_files(&rust_version, &manifest);
+
+            // channel-rust-1.XX.toml
+            let major_minor = rust_version.split('.').take(2).collect::<Vec<_>>().join(".");
+            self.write_channel_files(&major_minor, &manifest);
         }
+
+        if let Some(path) = std::env::var_os("BUILD_MANIFEST_SHIPPED_FILES_PATH") {
+            self.write_shipped_files(&Path::new(&path));
+        }
+
+        t!(self.checksums.store_cache());
     }
 
     /// If a tool does not pass its tests, don't ship it.
@@ -413,18 +271,7 @@ impl Builder {
         // Mark some tools as missing based on toolstate.
         if toolstates.get("miri").map(|s| &*s as &str) != Some("test-pass") {
             println!("Miri tests are not passing, removing component");
-            self.miri_version = None;
-            self.miri_git_commit_hash = None;
-        }
-    }
-
-    /// Hash all files, compute their signatures, and collect the hashes in `self.digests`.
-    fn digest_and_sign(&mut self) {
-        for file in t!(self.input.read_dir()).map(|e| t!(e).path()) {
-            let filename = file.file_name().unwrap().to_str().unwrap();
-            let digest = self.hash(&file);
-            self.sign(&file);
-            assert!(self.digests.insert(filename.to_string(), digest).is_none());
+            self.versions.disable_version(&PkgType::Miri);
         }
     }
 
@@ -433,13 +280,18 @@ impl Builder {
             manifest_version: "2".to_string(),
             date: self.date.to_string(),
             pkg: BTreeMap::new(),
+            artifacts: BTreeMap::new(),
             renames: BTreeMap::new(),
             profiles: BTreeMap::new(),
         };
         self.add_packages_to(&mut manifest);
+        self.add_artifacts_to(&mut manifest);
         self.add_profiles_to(&mut manifest);
         self.add_renames_to(&mut manifest);
         manifest.pkg.insert("rust".to_string(), self.rust_package(&manifest));
+
+        self.checksums.fill_missing_checksums(&mut manifest);
+
         manifest
     }
 
@@ -460,6 +312,27 @@ impl Builder {
         package("rustfmt-preview", HOSTS);
         package("rust-analysis", TARGETS);
         package("llvm-tools-preview", TARGETS);
+    }
+
+    fn add_artifacts_to(&mut self, manifest: &mut Manifest) {
+        manifest.add_artifact("source-code", |artifact| {
+            let tarball = self.versions.tarball_name(&PkgType::Rustc, "src").unwrap();
+            artifact.add_tarball(self, "*", &tarball);
+        });
+
+        manifest.add_artifact("installer-msi", |artifact| {
+            for target in MSI_INSTALLERS {
+                let msi = self.versions.archive_name(&PkgType::Rust, target, "msi").unwrap();
+                artifact.add_file(self, target, &msi);
+            }
+        });
+
+        manifest.add_artifact("installer-pkg", |artifact| {
+            for target in PKG_INSTALLERS {
+                let pkg = self.versions.archive_name(&PkgType::Rust, target, "pkg").unwrap();
+                artifact.add_file(self, target, &pkg);
+            }
+        });
     }
 
     fn add_profiles_to(&mut self, manifest: &mut Manifest) {
@@ -499,7 +372,7 @@ impl Builder {
         // The compiler libraries are not stable for end users, and they're also huge, so we only
         // `rustc-dev` for nightly users, and only in the "complete" profile. It's still possible
         // for users to install the additional component manually, if needed.
-        if self.rust_release == "nightly" {
+        if self.versions.channel() == "nightly" {
             self.extend_profile("complete", &mut manifest.profiles, &["rustc-dev"]);
             self.extend_profile("complete", &mut manifest.profiles, &["rustc-docs"]);
         }
@@ -516,13 +389,10 @@ impl Builder {
     }
 
     fn rust_package(&mut self, manifest: &Manifest) -> Package {
+        let version_info = self.versions.version(&PkgType::Rust).expect("missing Rust tarball");
         let mut pkg = Package {
-            version: self
-                .cached_version("rust")
-                .as_ref()
-                .expect("Couldn't find Rust version")
-                .clone(),
-            git_commit_hash: self.cached_git_commit_hash("rust").clone(),
+            version: version_info.version.expect("missing Rust version"),
+            git_commit_hash: version_info.git_commit,
             target: BTreeMap::new(),
         };
         for host in HOSTS {
@@ -537,10 +407,13 @@ impl Builder {
     }
 
     fn target_host_combination(&mut self, host: &str, manifest: &Manifest) -> Option<Target> {
-        let filename = self.filename("rust", host);
-        let digest = self.digests.remove(&filename)?;
-        let xz_filename = filename.replace(".tar.gz", ".tar.xz");
-        let xz_digest = self.digests.remove(&xz_filename);
+        let filename = self.versions.tarball_name(&PkgType::Rust, host).unwrap();
+
+        let mut target = Target::from_compressed_tar(self, &filename);
+        if !target.available {
+            return None;
+        }
+
         let mut components = Vec::new();
         let mut extensions = Vec::new();
 
@@ -596,15 +469,9 @@ impl Builder {
         extensions.retain(&has_component);
         components.retain(&has_component);
 
-        Some(Target {
-            available: true,
-            url: Some(self.url(&filename)),
-            hash: Some(digest),
-            xz_url: xz_digest.as_ref().map(|_| self.url(&xz_filename)),
-            xz_hash: xz_digest,
-            components: Some(components),
-            extensions: Some(extensions),
-        })
+        target.components = Some(components);
+        target.extensions = Some(extensions);
+        Some(target)
     }
 
     fn profile(
@@ -628,183 +495,52 @@ impl Builder {
     }
 
     fn package(&mut self, pkgname: &str, dst: &mut BTreeMap<String, Package>, targets: &[&str]) {
-        let (version, mut is_present) = self
-            .cached_version(pkgname)
-            .as_ref()
-            .cloned()
-            .map(|version| (version, true))
-            .unwrap_or_default(); // `is_present` defaults to `false` here.
+        let version_info = self
+            .versions
+            .version(&PkgType::from_component(pkgname))
+            .expect("failed to load package version");
+        let mut is_present = version_info.present;
 
         // Never ship nightly-only components for other trains.
-        if self.rust_release != "nightly" && NIGHTLY_ONLY_COMPONENTS.contains(&pkgname) {
+        if self.versions.channel() != "nightly" && NIGHTLY_ONLY_COMPONENTS.contains(&pkgname) {
             is_present = false; // Pretend the component is entirely missing.
         }
 
         let targets = targets
             .iter()
             .map(|name| {
-                if is_present {
-                    // The component generally exists, but it might still be missing for this target.
-                    let filename = self.filename(pkgname, name);
-                    let digest = match self.digests.remove(&filename) {
-                        Some(digest) => digest,
-                        // This component does not exist for this target -- skip it.
-                        None => return (name.to_string(), Target::unavailable()),
-                    };
-                    let xz_filename = filename.replace(".tar.gz", ".tar.xz");
-                    let xz_digest = self.digests.remove(&xz_filename);
+                let target = if is_present {
+                    let filename = self
+                        .versions
+                        .tarball_name(&PkgType::from_component(pkgname), name)
+                        .unwrap();
 
-                    (
-                        name.to_string(),
-                        Target {
-                            available: true,
-                            url: Some(self.url(&filename)),
-                            hash: Some(digest),
-                            xz_url: xz_digest.as_ref().map(|_| self.url(&xz_filename)),
-                            xz_hash: xz_digest,
-                            components: None,
-                            extensions: None,
-                        },
-                    )
+                    Target::from_compressed_tar(self, &filename)
                 } else {
                     // If the component is not present for this build add it anyway but mark it as
                     // unavailable -- this way rustup won't allow upgrades without --force
-                    (name.to_string(), Target::unavailable())
-                }
+                    Target::unavailable()
+                };
+                (name.to_string(), target)
             })
             .collect();
 
         dst.insert(
             pkgname.to_string(),
             Package {
-                version,
-                git_commit_hash: self.cached_git_commit_hash(pkgname).clone(),
+                version: version_info.version.unwrap_or_default(),
+                git_commit_hash: version_info.git_commit,
                 target: targets,
             },
         );
     }
 
-    fn url(&self, filename: &str) -> String {
-        format!("{}/{}/{}", self.s3_address, self.date, filename)
+    fn url(&self, path: &Path) -> String {
+        let file_name = path.file_name().unwrap().to_str().unwrap();
+        format!("{}/{}/{}", self.s3_address, self.date, file_name)
     }
 
-    fn filename(&self, component: &str, target: &str) -> String {
-        use PkgType::*;
-        match PkgType::from_component(component) {
-            RustSrc => format!("rust-src-{}.tar.gz", self.rust_release),
-            Cargo => format!("cargo-{}-{}.tar.gz", self.cargo_release, target),
-            Rls => format!("rls-{}-{}.tar.gz", self.rls_release, target),
-            RustAnalyzer => {
-                format!("rust-analyzer-{}-{}.tar.gz", self.rust_analyzer_release, target)
-            }
-            Clippy => format!("clippy-{}-{}.tar.gz", self.clippy_release, target),
-            Rustfmt => format!("rustfmt-{}-{}.tar.gz", self.rustfmt_release, target),
-            LlvmTools => format!("llvm-tools-{}-{}.tar.gz", self.llvm_tools_release, target),
-            Miri => format!("miri-{}-{}.tar.gz", self.miri_release, target),
-            Other => format!("{}-{}-{}.tar.gz", component, self.rust_release, target),
-        }
-    }
-
-    fn cached_version(&self, component: &str) -> &Option<String> {
-        use PkgType::*;
-        match PkgType::from_component(component) {
-            Cargo => &self.cargo_version,
-            Rls => &self.rls_version,
-            RustAnalyzer => &self.rust_analyzer_version,
-            Clippy => &self.clippy_version,
-            Rustfmt => &self.rustfmt_version,
-            LlvmTools => &self.llvm_tools_version,
-            Miri => &self.miri_version,
-            _ => &self.rust_version,
-        }
-    }
-
-    fn cached_git_commit_hash(&self, component: &str) -> &Option<String> {
-        use PkgType::*;
-        match PkgType::from_component(component) {
-            Cargo => &self.cargo_git_commit_hash,
-            Rls => &self.rls_git_commit_hash,
-            RustAnalyzer => &self.rust_analyzer_git_commit_hash,
-            Clippy => &self.clippy_git_commit_hash,
-            Rustfmt => &self.rustfmt_git_commit_hash,
-            LlvmTools => &self.llvm_tools_git_commit_hash,
-            Miri => &self.miri_git_commit_hash,
-            _ => &self.rust_git_commit_hash,
-        }
-    }
-
-    fn version(&self, component: &str, target: &str) -> Option<String> {
-        self.untar(component, target, |filename| format!("{}/version", filename))
-    }
-
-    fn git_commit_hash(&self, component: &str, target: &str) -> Option<String> {
-        self.untar(component, target, |filename| format!("{}/git-commit-hash", filename))
-    }
-
-    fn untar<F>(&self, component: &str, target: &str, dir: F) -> Option<String>
-    where
-        F: FnOnce(String) -> String,
-    {
-        let mut cmd = Command::new("tar");
-        let filename = self.filename(component, target);
-        cmd.arg("xf")
-            .arg(self.input.join(&filename))
-            .arg(dir(filename.replace(".tar.gz", "")))
-            .arg("-O");
-        let output = t!(cmd.output());
-        if output.status.success() {
-            Some(String::from_utf8_lossy(&output.stdout).trim().to_string())
-        } else {
-            None
-        }
-    }
-
-    fn hash(&self, path: &Path) -> String {
-        let sha = t!(Command::new("shasum")
-            .arg("-a")
-            .arg("256")
-            .arg(path.file_name().unwrap())
-            .current_dir(path.parent().unwrap())
-            .output());
-        assert!(sha.status.success());
-
-        let filename = path.file_name().unwrap().to_str().unwrap();
-        let sha256 = self.output.join(format!("{}.sha256", filename));
-        t!(fs::write(&sha256, &sha.stdout));
-
-        let stdout = String::from_utf8_lossy(&sha.stdout);
-        stdout.split_whitespace().next().unwrap().to_string()
-    }
-
-    fn sign(&self, path: &Path) {
-        if !self.should_sign {
-            return;
-        }
-
-        let filename = path.file_name().unwrap().to_str().unwrap();
-        let asc = self.output.join(format!("{}.asc", filename));
-        println!("signing: {:?}", path);
-        let mut cmd = Command::new("gpg");
-        cmd.arg("--pinentry-mode=loopback")
-            .arg("--no-tty")
-            .arg("--yes")
-            .arg("--batch")
-            .arg("--passphrase-fd")
-            .arg("0")
-            .arg("--personal-digest-preferences")
-            .arg("SHA512")
-            .arg("--armor")
-            .arg("--output")
-            .arg(&asc)
-            .arg("--detach-sign")
-            .arg(path)
-            .stdin(Stdio::piped());
-        let mut child = t!(cmd.spawn());
-        t!(child.stdin.take().unwrap().write_all(self.gpg_passphrase.as_bytes()));
-        assert!(t!(child.wait()).success());
-    }
-
-    fn write_channel_files(&self, channel_name: &str, manifest: &Manifest) {
+    fn write_channel_files(&mut self, channel_name: &str, manifest: &Manifest) {
         self.write(&toml::to_string(&manifest).unwrap(), channel_name, ".toml");
         self.write(&manifest.date, channel_name, "-date.txt");
         self.write(
@@ -814,10 +550,19 @@ impl Builder {
         );
     }
 
-    fn write(&self, contents: &str, channel_name: &str, suffix: &str) {
-        let dst = self.output.join(format!("channel-rust-{}{}", channel_name, suffix));
+    fn write(&mut self, contents: &str, channel_name: &str, suffix: &str) {
+        let name = format!("channel-rust-{}{}", channel_name, suffix);
+        self.shipped_files.insert(name.clone());
+
+        let dst = self.output.join(name);
         t!(fs::write(&dst, contents));
-        self.hash(&dst);
-        self.sign(&dst);
+    }
+
+    fn write_shipped_files(&self, path: &Path) {
+        let mut files = self.shipped_files.iter().map(|s| s.as_str()).collect::<Vec<_>>();
+        files.sort();
+        let content = format!("{}\n", files.join("\n"));
+
+        t!(std::fs::write(path, content.as_bytes()));
     }
 }

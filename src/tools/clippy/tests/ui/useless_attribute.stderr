@@ -13,7 +13,7 @@ LL | #[cfg_attr(feature = "cargo-clippy", allow(dead_code))]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: if you just forgot a `!`, use: `#![cfg_attr(feature = "cargo-clippy", allow(dead_code)`
 
 error: useless lint attribute
-  --> $DIR/useless_attribute.rs:53:5
+  --> $DIR/useless_attribute.rs:61:5
    |
 LL |     #[allow(clippy::almost_swapped)]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: if you just forgot a `!`, use: `#![allow(clippy::almost_swapped)]`

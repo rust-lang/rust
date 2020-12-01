@@ -1,10 +1,10 @@
-error[E0369]: cannot add `std::vec::Vec<R>` to `std::vec::Vec<R>`
+error[E0369]: cannot add `Vec<R>` to `Vec<R>`
   --> $DIR/vec-res-add.rs:16:15
    |
 LL |     let k = i + j;
-   |             - ^ - std::vec::Vec<R>
+   |             - ^ - Vec<R>
    |             |
-   |             std::vec::Vec<R>
+   |             Vec<R>
 
 error: aborting due to previous error
 

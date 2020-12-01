@@ -285,7 +285,7 @@ note: references must be non-null (in this struct field)
 LL | struct RefPair((&'static i32, i32));
    |                ^^^^^^^^^^^^^^^^^^^
 
-error: the type `std::ptr::NonNull<i32>` does not permit zero-initialization
+error: the type `NonNull<i32>` does not permit zero-initialization
   --> $DIR/uninitialized-zeroed.rs:79:34
    |
 LL |         let _val: NonNull<i32> = mem::zeroed();
@@ -296,7 +296,7 @@ LL |         let _val: NonNull<i32> = mem::zeroed();
    |
    = note: `std::ptr::NonNull<i32>` must be non-null
 
-error: the type `std::ptr::NonNull<i32>` does not permit being left uninitialized
+error: the type `NonNull<i32>` does not permit being left uninitialized
   --> $DIR/uninitialized-zeroed.rs:80:34
    |
 LL |         let _val: NonNull<i32> = mem::uninitialized();
@@ -307,7 +307,7 @@ LL |         let _val: NonNull<i32> = mem::uninitialized();
    |
    = note: `std::ptr::NonNull<i32>` must be non-null
 
-error: the type `*const dyn std::marker::Send` does not permit zero-initialization
+error: the type `*const dyn Send` does not permit zero-initialization
   --> $DIR/uninitialized-zeroed.rs:82:37
    |
 LL |         let _val: *const dyn Send = mem::zeroed();
@@ -318,7 +318,7 @@ LL |         let _val: *const dyn Send = mem::zeroed();
    |
    = note: the vtable of a wide raw pointer must be non-null
 
-error: the type `*const dyn std::marker::Send` does not permit being left uninitialized
+error: the type `*const dyn Send` does not permit being left uninitialized
   --> $DIR/uninitialized-zeroed.rs:83:37
    |
 LL |         let _val: *const dyn Send = mem::uninitialized();
@@ -406,7 +406,7 @@ LL |         let _val: &'static [i32] = mem::transmute((0usize, 0usize));
    |
    = note: references must be non-null
 
-error: the type `std::num::NonZeroU32` does not permit zero-initialization
+error: the type `NonZeroU32` does not permit zero-initialization
   --> $DIR/uninitialized-zeroed.rs:101:32
    |
 LL |         let _val: NonZeroU32 = mem::transmute(0);
@@ -417,7 +417,7 @@ LL |         let _val: NonZeroU32 = mem::transmute(0);
    |
    = note: `std::num::NonZeroU32` must be non-null
 
-error: the type `std::ptr::NonNull<i32>` does not permit zero-initialization
+error: the type `NonNull<i32>` does not permit zero-initialization
   --> $DIR/uninitialized-zeroed.rs:104:34
    |
 LL |         let _val: NonNull<i32> = MaybeUninit::zeroed().assume_init();
@@ -428,7 +428,7 @@ LL |         let _val: NonNull<i32> = MaybeUninit::zeroed().assume_init();
    |
    = note: `std::ptr::NonNull<i32>` must be non-null
 
-error: the type `std::ptr::NonNull<i32>` does not permit being left uninitialized
+error: the type `NonNull<i32>` does not permit being left uninitialized
   --> $DIR/uninitialized-zeroed.rs:105:34
    |
 LL |         let _val: NonNull<i32> = MaybeUninit::uninit().assume_init();

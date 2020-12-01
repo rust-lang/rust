@@ -12,34 +12,42 @@ LL |     let _: Result<(), String> = Ok(());
 error[E0061]: this function takes 2 arguments but 0 arguments were supplied
   --> $DIR/missing-unit-argument.rs:12:5
    |
-LL | fn foo(():(), ():()) {}
-   | -------------------- defined here
-...
 LL |     foo();
    |     ^^^-- supplied 0 arguments
    |     |
    |     expected 2 arguments
+   |
+note: function defined here
+  --> $DIR/missing-unit-argument.rs:1:4
+   |
+LL | fn foo(():(), ():()) {}
+   |    ^^^ -----  -----
 
 error[E0061]: this function takes 2 arguments but 1 argument was supplied
   --> $DIR/missing-unit-argument.rs:13:5
    |
-LL | fn foo(():(), ():()) {}
-   | -------------------- defined here
-...
 LL |     foo(());
    |     ^^^ -- supplied 1 argument
    |     |
    |     expected 2 arguments
+   |
+note: function defined here
+  --> $DIR/missing-unit-argument.rs:1:4
+   |
+LL | fn foo(():(), ():()) {}
+   |    ^^^ -----  -----
 
 error[E0061]: this function takes 1 argument but 0 arguments were supplied
   --> $DIR/missing-unit-argument.rs:14:5
    |
-LL | fn bar(():()) {}
-   | ------------- defined here
-...
 LL |     bar();
    |     ^^^-- supplied 0 arguments
    |
+note: function defined here
+  --> $DIR/missing-unit-argument.rs:2:4
+   |
+LL | fn bar(():()) {}
+   |    ^^^ -----
 help: expected the unit value `()`; create it with empty parentheses
    |
 LL |     bar(());
@@ -48,12 +56,14 @@ LL |     bar(());
 error[E0061]: this function takes 1 argument but 0 arguments were supplied
   --> $DIR/missing-unit-argument.rs:15:7
    |
-LL |     fn baz(self, (): ()) { }
-   |     -------------------- defined here
-...
 LL |     S.baz();
    |       ^^^- supplied 0 arguments
    |
+note: associated function defined here
+  --> $DIR/missing-unit-argument.rs:6:8
+   |
+LL |     fn baz(self, (): ()) { }
+   |        ^^^ ----  ------
 help: expected the unit value `()`; create it with empty parentheses
    |
 LL |     S.baz(());
@@ -62,12 +72,14 @@ LL |     S.baz(());
 error[E0061]: this function takes 1 argument but 0 arguments were supplied
   --> $DIR/missing-unit-argument.rs:16:7
    |
-LL |     fn generic<T>(self, _: T) { }
-   |     ------------------------- defined here
-...
 LL |     S.generic::<()>();
    |       ^^^^^^^------ supplied 0 arguments
    |
+note: associated function defined here
+  --> $DIR/missing-unit-argument.rs:7:8
+   |
+LL |     fn generic<T>(self, _: T) { }
+   |        ^^^^^^^    ----  ----
 help: expected the unit value `()`; create it with empty parentheses
    |
 LL |     S.generic::<()>(());

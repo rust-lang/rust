@@ -5,7 +5,7 @@ struct Foo;
 
 impl Foo {
     pub fn foo(_: i32, self: Box<Self) {}
-    //~^ ERROR expected one of `!`, `(`, `+`, `,`, `::`, `<`, or `>`, found `)`
+    //~^ ERROR expected one of `!`, `(`, `+`, `,`, `::`, `:`, `<`, `=`, or `>`, found `)`
 }
 
 fn main() {}

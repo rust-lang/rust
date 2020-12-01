@@ -38,90 +38,21 @@ future.
 Attempting to use these error numbers on stable will result in the code sample being interpreted as
 plain text.
 
-### Linking to items by name
-
-Rustdoc is capable of directly linking to other rustdoc pages in Markdown documentation using the path of item as a link.
-
-For example, in the following code all of the links will link to the rustdoc page for `Bar`:
-
-```rust
-/// This struct is not [Bar]
-pub struct Foo1;
-
-/// This struct is also not [bar](Bar)
-pub struct Foo2;
-
-/// This struct is also not [bar][b]
-///
-/// [b]: Bar
-pub struct Foo3;
-
-/// This struct is also not [`Bar`]
-pub struct Foo4;
-
-pub struct Bar;
-```
-
-You can refer to anything in scope, and use paths, including `Self`. You may also use `foo()` and `foo!()` to refer to methods/functions and macros respectively.
-
-```rust,edition2018
-use std::sync::mpsc::Receiver;
-
-/// This is an version of [`Receiver`], with support for [`std::future`].
-///
-/// You can obtain a [`std::future::Future`] by calling [`Self::recv()`].
-pub struct AsyncReceiver<T> {
-    sender: Receiver<T>
-}
-
-impl<T> AsyncReceiver<T> {
-    pub async fn recv() -> T {
-        unimplemented!()
-    }
-}
-```
-
-Paths in Rust have three namespaces: type, value, and macro. Items from these namespaces are allowed to overlap. In case of ambiguity, rustdoc will warn about the ambiguity and ask you to disambiguate, which can be done by using a prefix like `struct@`, `enum@`, `type@`, `trait@`, `union@`, `const@`, `static@`, `value@`, `function@`, `mod@`, `fn@`, `module@`, `method@`, `prim@`, `primitive@`, `macro@`, or `derive@`:
-
-```rust
-/// See also: [`Foo`](struct@Foo)
-struct Bar;
-
-/// This is different from [`Foo`](fn@Foo)
-struct Foo {}
-
-fn Foo() {}
-```
-
-Note: Because of how `macro_rules` macros are scoped in Rust, the intra-doc links of a `macro_rules` macro will be resolved relative to the crate root, as opposed to the module it is defined in.
-
 ## Extensions to the `#[doc]` attribute
 
 These features operate by extending the `#[doc]` attribute, and thus can be caught by the compiler
 and enabled with a `#![feature(...)]` attribute in your crate.
 
-### Documenting platform-/feature-specific information
+### `#[doc(cfg)]`: Recording what platforms or features are required for code to be present
 
-Because of the way Rustdoc documents a crate, the documentation it creates is specific to the target
-rustc compiles for. Anything that's specific to any other target is dropped via `#[cfg]` attribute
-processing early in the compilation process. However, Rustdoc has a trick up its sleeve to handle
-platform-specific code if it *does* receive it.
+You can use `#[doc(cfg(...))]` to tell Rustdoc exactly which platform items appear on.
+This has two effects:
 
-Because Rustdoc doesn't need to fully compile a crate to binary, it replaces function bodies with
-`loop {}` to prevent having to process more than necessary. This means that any code within a
-function that requires platform-specific pieces is ignored. Combined with a special attribute,
-`#[doc(cfg(...))]`, you can tell Rustdoc exactly which platform something is supposed to run on,
-ensuring that doctests are only run on the appropriate platforms.
+1. doctests will only run on the appropriate platforms, and
+2. When Rustdoc renders documentation for that item, it will be accompanied by a banner explaining
+   that the item is only available on certain platforms.
 
-The `#[doc(cfg(...))]` attribute has another effect: When Rustdoc renders documentation for that
-item, it will be accompanied by a banner explaining that the item is only available on certain
-platforms.
-
-For Rustdoc to document an item, it needs to see it, regardless of what platform it's currently
-running on. To aid this, Rustdoc sets the flag `#[cfg(doc)]` when running on your crate.
-Combining this with the target platform of a given item allows it to appear when building your crate
-normally on that platform, as well as when building documentation anywhere.
-
+`#[doc(cfg)]` is intended to be used alongside [`#[cfg(doc)]`][cfg-doc].
 For example, `#[cfg(any(windows, doc))]` will preserve the item either on Windows or during the
 documentation process. Then, adding a new attribute `#[doc(cfg(windows))]` will tell Rustdoc that
 the item is supposed to be used on Windows. For example:
@@ -138,6 +69,12 @@ pub struct WindowsToken;
 #[cfg(any(unix, doc))]
 #[doc(cfg(unix))]
 pub struct UnixToken;
+
+/// Token struct that is only available with the `serde` feature
+#[cfg(feature = "serde")]
+#[doc(cfg(feature = "serde"))]
+#[derive(serde::Deserialize)]
+pub struct SerdeToken;
 ```
 
 In this sample, the tokens will only appear on their respective platforms, but they will both appear
@@ -147,6 +84,7 @@ in documentation.
 `#![feature(doc_cfg)]` feature gate. For more information, see [its chapter in the Unstable
 Book][unstable-doc-cfg] and [its tracking issue][issue-doc-cfg].
 
+[cfg-doc]: ./advanced-features.md
 [unstable-doc-cfg]: ../unstable-book/language-features/doc-cfg.html
 [issue-doc-cfg]: https://github.com/rust-lang/rust/issues/43781
 
@@ -206,22 +144,6 @@ issue][issue-include].
 
 [unstable-include]: ../unstable-book/language-features/external-doc.html
 [issue-include]: https://github.com/rust-lang/rust/issues/44732
-
-### Add aliases for an item in documentation search
-
-This feature allows you to add alias(es) to an item when using the `rustdoc` search through the
-`doc(alias)` attribute. Example:
-
-```rust,no_run
-#![feature(doc_alias)]
-
-#[doc(alias = "x")]
-#[doc(alias = "big")]
-pub struct BigX;
-```
-
-Then, when looking for it through the `rustdoc` search, if you enter "x" or
-"big", search will show the `BigX` struct first.
 
 ## Unstable command-line arguments
 
@@ -426,7 +348,7 @@ Using this flag looks like this:
 $ rustdoc src/lib.rs -Z unstable-options --enable-per-target-ignores
 ```
 
-This flag allows you to tag doctests with compiltest style `ignore-foo` filters that prevent
+This flag allows you to tag doctests with compiletest style `ignore-foo` filters that prevent
 rustdoc from running that test if the target triple string contains foo. For example:
 
 ```rust

@@ -1,7 +1,7 @@
-error: opaque types cannot be used in patterns
+error: `impl Copy` cannot be used in patterns
   --> $DIR/issue-71042-opaquely-typed-constant-used-in-pattern.rs:7:9
    |
-LL |         C | _ => {}
+LL |         C |
    |         ^
 
 error: aborting due to previous error

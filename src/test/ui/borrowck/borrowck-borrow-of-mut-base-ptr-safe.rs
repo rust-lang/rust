@@ -5,7 +5,7 @@
 // Test that freezing an `&mut` pointer while referent is
 // frozen is legal.
 //
-// Example from src/librustc_borrowck/borrowck/README.md
+// Example from compiler/rustc_borrowck/borrowck/README.md
 
 // pretty-expanded FIXME #23616
 

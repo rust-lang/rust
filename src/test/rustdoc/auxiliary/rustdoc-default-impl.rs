@@ -1,4 +1,4 @@
-#![feature(optin_builtin_traits)]
+#![feature(auto_traits)]
 
 pub mod bar {
     use std::marker;

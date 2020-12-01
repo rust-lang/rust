@@ -1,0 +1,25 @@
+error: expected unsuffixed literal or identifier, found `n!()`
+  --> $DIR/nonterminal-expansion.rs:5:22
+   |
+LL |         #[repr(align($n))]
+   |                      ^^
+...
+LL | pass_nonterminal!(n!());
+   | ------------------------ in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0552]: unrecognized representation hint
+  --> $DIR/nonterminal-expansion.rs:5:16
+   |
+LL |         #[repr(align($n))]
+   |                ^^^^^^^^^
+...
+LL | pass_nonterminal!(n!());
+   | ------------------------ in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0552`.

@@ -1,0 +1,42 @@
+- // MIR for `main` before DestinationPropagation
++ // MIR for `main` after DestinationPropagation
+  
+  fn main() -> () {
+      let mut _0: ();                      // return place in scope 0 at $DIR/union.rs:8:11: 8:11
+      let _1: main::Un;                    // in scope 0 at $DIR/union.rs:13:9: 13:11
+      let mut _2: u32;                     // in scope 0 at $DIR/union.rs:13:23: 13:28
+      let _3: ();                          // in scope 0 at $DIR/union.rs:15:5: 15:27
+      let mut _4: u32;                     // in scope 0 at $DIR/union.rs:15:10: 15:26
+      scope 1 {
+          debug un => _1;                  // in scope 1 at $DIR/union.rs:13:9: 13:11
+          scope 2 {
+          }
+          scope 3 (inlined std::mem::drop::<u32>) { // at $DIR/union.rs:15:5: 15:27
+              debug _x => _4;              // in scope 3 at $DIR/union.rs:15:5: 15:27
+          }
+      }
+  
+      bb0: {
+          StorageLive(_1);                 // scope 0 at $DIR/union.rs:13:9: 13:11
+          StorageLive(_2);                 // scope 0 at $DIR/union.rs:13:23: 13:28
+          _2 = val() -> bb1;               // scope 0 at $DIR/union.rs:13:23: 13:28
+                                           // mir::Constant
+                                           // + span: $DIR/union.rs:13:23: 13:26
+                                           // + literal: Const { ty: fn() -> u32 {val}, val: Value(Scalar(<ZST>)) }
+      }
+  
+      bb1: {
+          (_1.0: u32) = move _2;           // scope 0 at $DIR/union.rs:13:14: 13:30
+          StorageDead(_2);                 // scope 0 at $DIR/union.rs:13:29: 13:30
+          StorageLive(_3);                 // scope 1 at $DIR/union.rs:15:5: 15:27
+          StorageLive(_4);                 // scope 1 at $DIR/union.rs:15:10: 15:26
+          _4 = (_1.0: u32);                // scope 2 at $DIR/union.rs:15:19: 15:24
+          _3 = const ();                   // scope 3 at $DIR/union.rs:15:5: 15:27
+          StorageDead(_4);                 // scope 1 at $DIR/union.rs:15:26: 15:27
+          StorageDead(_3);                 // scope 1 at $DIR/union.rs:15:27: 15:28
+          _0 = const ();                   // scope 0 at $DIR/union.rs:8:11: 16:2
+          StorageDead(_1);                 // scope 0 at $DIR/union.rs:16:1: 16:2
+          return;                          // scope 0 at $DIR/union.rs:16:2: 16:2
+      }
+  }
+  

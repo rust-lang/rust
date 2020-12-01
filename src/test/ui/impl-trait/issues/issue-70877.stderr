@@ -1,0 +1,15 @@
+error[E0271]: type mismatch resolving `<Bar as Iterator>::Item == Box<(dyn for<'r> Fn(&'r (dyn ToString + 'r)) -> Option<String> + 'static)>`
+  --> $DIR/issue-70877.rs:9:12
+   |
+LL | type FooRet = impl std::fmt::Debug;
+   |               -------------------- the expected opaque type
+...
+LL | type Foo = impl Iterator<Item = FooItem>;
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected opaque type, found enum `Option`
+   |
+   = note: expected struct `Box<(dyn for<'r> Fn(&'r (dyn ToString + 'r)) -> impl Debug + 'static)>`
+              found struct `Box<(dyn for<'r> Fn(&'r (dyn ToString + 'r)) -> Option<String> + 'static)>`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0271`.

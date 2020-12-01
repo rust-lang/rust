@@ -1,8 +1,8 @@
-//! A UTF-8 encoded, growable string.
+//! A UTF-8–encoded, growable string.
 //!
-//! This module contains the [`String`] type, a trait for converting
-//! [`ToString`]s, and several error types that may result from working with
-//! [`String`]s.
+//! This module contains the [`String`] type, the [`ToString`] trait for
+//! converting to strings, and several error types that may result from
+//! working with [`String`]s.
 //!
 //! # Examples
 //!
@@ -47,7 +47,7 @@ use core::fmt;
 use core::hash;
 use core::iter::{FromIterator, FusedIterator};
 use core::ops::Bound::{Excluded, Included, Unbounded};
-use core::ops::{self, Add, AddAssign, Index, IndexMut, RangeBounds};
+use core::ops::{self, Add, AddAssign, Index, IndexMut, Range, RangeBounds};
 use core::ptr;
 use core::str::{lossy, pattern::Pattern};
 
@@ -57,7 +57,7 @@ use crate::collections::TryReserveError;
 use crate::str::{self, from_boxed_utf8_unchecked, Chars, FromStr, Utf8Error};
 use crate::vec::Vec;
 
-/// A UTF-8 encoded, growable string.
+/// A UTF-8–encoded, growable string.
 ///
 /// The `String` type is the most common string type that has ownership over the
 /// contents of the string. It has a close relationship with its borrowed
@@ -565,7 +565,7 @@ impl String {
         Cow::Owned(res)
     }
 
-    /// Decode a UTF-16 encoded vector `v` into a `String`, returning [`Err`]
+    /// Decode a UTF-16–encoded vector `v` into a `String`, returning [`Err`]
     /// if `v` contains any invalid data.
     ///
     /// # Examples
@@ -599,7 +599,7 @@ impl String {
         Ok(ret)
     }
 
-    /// Decode a UTF-16 encoded slice `v` into a `String`, replacing
+    /// Decode a UTF-16–encoded slice `v` into a `String`, replacing
     /// invalid data with [the replacement character (`U+FFFD`)][U+FFFD].
     ///
     /// Unlike [`from_utf8_lossy`] which returns a [`Cow<'a, str>`],
@@ -1235,6 +1235,10 @@ impl String {
         let mut del_bytes = 0;
         let mut idx = 0;
 
+        unsafe {
+            self.vec.set_len(0);
+        }
+
         while idx < len {
             let ch = unsafe { self.get_unchecked(idx..len).chars().next().unwrap() };
             let ch_len = ch.len_utf8();
@@ -1255,10 +1259,8 @@ impl String {
             idx += ch_len;
         }
 
-        if del_bytes > 0 {
-            unsafe {
-                self.vec.set_len(len - del_bytes);
-            }
+        unsafe {
+            self.vec.set_len(len - del_bytes);
         }
     }
 
@@ -1506,23 +1508,15 @@ impl String {
         // of the vector version. The data is just plain bytes.
         // Because the range removal happens in Drop, if the Drain iterator is leaked,
         // the removal will not happen.
-        let len = self.len();
-        let start = match range.start_bound() {
-            Included(&n) => n,
-            Excluded(&n) => n + 1,
-            Unbounded => 0,
-        };
-        let end = match range.end_bound() {
-            Included(&n) => n + 1,
-            Excluded(&n) => n,
-            Unbounded => len,
-        };
+        let Range { start, end } = range.assert_len(self.len());
+        assert!(self.is_char_boundary(start));
+        assert!(self.is_char_boundary(end));
 
         // Take out two simultaneous borrows. The &mut String won't be accessed
         // until iteration is over, in Drop.
         let self_ptr = self as *mut _;
-        // slicing does the appropriate bounds checks
-        let chars_iter = self[start..end].chars();
+        // SAFETY: `assert_len` and `is_char_boundary` do the appropriate bounds checks.
+        let chars_iter = unsafe { self.get_unchecked(start..end) }.chars();
 
         Drain { start, end, iter: chars_iter, string: self_ptr }
     }
@@ -2199,15 +2193,15 @@ pub trait ToString {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: fmt::Display + ?Sized> ToString for T {
     // A common guideline is to not inline generic functions. However,
-    // remove `#[inline]` from this method causes non-negligible regression.
-    // See <https://github.com/rust-lang/rust/pull/74852> as last attempt try to remove it.
+    // removing `#[inline]` from this method causes non-negligible regressions.
+    // See <https://github.com/rust-lang/rust/pull/74852>, the last attempt
+    // to try to remove it.
     #[inline]
     default fn to_string(&self) -> String {
         use fmt::Write;
         let mut buf = String::new();
         buf.write_fmt(format_args!("{}", self))
             .expect("a Display implementation returned an error unexpectedly");
-        buf.shrink_to_fit();
         buf
     }
 }
@@ -2447,7 +2441,7 @@ pub struct Drain<'a> {
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl fmt::Debug for Drain<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.pad("Drain { .. }")
+        f.debug_tuple("Drain").field(&self.as_str()).finish()
     }
 }
 
@@ -2469,6 +2463,40 @@ impl Drop for Drain<'_> {
         }
     }
 }
+
+impl<'a> Drain<'a> {
+    /// Returns the remaining (sub)string of this iterator as a slice.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(string_drain_as_str)]
+    /// let mut s = String::from("abc");
+    /// let mut drain = s.drain(..);
+    /// assert_eq!(drain.as_str(), "abc");
+    /// let _ = drain.next().unwrap();
+    /// assert_eq!(drain.as_str(), "bc");
+    /// ```
+    #[unstable(feature = "string_drain_as_str", issue = "76905")] // Note: uncomment AsRef impls below when stabilizing.
+    pub fn as_str(&self) -> &str {
+        self.iter.as_str()
+    }
+}
+
+// Uncomment when stabilizing `string_drain_as_str`.
+// #[unstable(feature = "string_drain_as_str", issue = "76905")]
+// impl<'a> AsRef<str> for Drain<'a> {
+//     fn as_ref(&self) -> &str {
+//         self.as_str()
+//     }
+// }
+//
+// #[unstable(feature = "string_drain_as_str", issue = "76905")]
+// impl<'a> AsRef<[u8]> for Drain<'a> {
+//     fn as_ref(&self) -> &[u8] {
+//         self.as_str().as_bytes()
+//     }
+// }
 
 #[stable(feature = "drain", since = "1.6.0")]
 impl Iterator for Drain<'_> {

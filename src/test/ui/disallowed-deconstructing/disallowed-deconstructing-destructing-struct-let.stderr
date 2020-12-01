@@ -5,7 +5,7 @@ LL |     let X { x: y } = x;
    |                -     ^ cannot move out of here
    |                |
    |                data moved here
-   |                move occurs because `y` has type `std::string::String`, which does not implement the `Copy` trait
+   |                move occurs because `y` has type `String`, which does not implement the `Copy` trait
 
 error: aborting due to previous error
 

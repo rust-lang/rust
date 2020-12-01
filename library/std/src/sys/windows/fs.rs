@@ -759,13 +759,13 @@ pub fn readlink(path: &Path) -> io::Result<PathBuf> {
     file.readlink()
 }
 
-pub fn symlink(src: &Path, dst: &Path) -> io::Result<()> {
-    symlink_inner(src, dst, false)
+pub fn symlink(original: &Path, link: &Path) -> io::Result<()> {
+    symlink_inner(original, link, false)
 }
 
-pub fn symlink_inner(src: &Path, dst: &Path, dir: bool) -> io::Result<()> {
-    let src = to_u16s(src)?;
-    let dst = to_u16s(dst)?;
+pub fn symlink_inner(original: &Path, link: &Path, dir: bool) -> io::Result<()> {
+    let original = to_u16s(original)?;
+    let link = to_u16s(link)?;
     let flags = if dir { c::SYMBOLIC_LINK_FLAG_DIRECTORY } else { 0 };
     // Formerly, symlink creation required the SeCreateSymbolicLink privilege. For the Windows 10
     // Creators Update, Microsoft loosened this to allow unprivileged symlink creation if the
@@ -773,8 +773,8 @@ pub fn symlink_inner(src: &Path, dst: &Path, dir: bool) -> io::Result<()> {
     // added to dwFlags to opt into this behaviour.
     let result = cvt(unsafe {
         c::CreateSymbolicLinkW(
-            dst.as_ptr(),
-            src.as_ptr(),
+            link.as_ptr(),
+            original.as_ptr(),
             flags | c::SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE,
         ) as c::BOOL
     });
@@ -782,7 +782,9 @@ pub fn symlink_inner(src: &Path, dst: &Path, dir: bool) -> io::Result<()> {
         if err.raw_os_error() == Some(c::ERROR_INVALID_PARAMETER as i32) {
             // Older Windows objects to SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE,
             // so if we encounter ERROR_INVALID_PARAMETER, retry without that flag.
-            cvt(unsafe { c::CreateSymbolicLinkW(dst.as_ptr(), src.as_ptr(), flags) as c::BOOL })?;
+            cvt(unsafe {
+                c::CreateSymbolicLinkW(link.as_ptr(), original.as_ptr(), flags) as c::BOOL
+            })?;
         } else {
             return Err(err);
         }
@@ -791,15 +793,15 @@ pub fn symlink_inner(src: &Path, dst: &Path, dir: bool) -> io::Result<()> {
 }
 
 #[cfg(not(target_vendor = "uwp"))]
-pub fn link(src: &Path, dst: &Path) -> io::Result<()> {
-    let src = to_u16s(src)?;
-    let dst = to_u16s(dst)?;
-    cvt(unsafe { c::CreateHardLinkW(dst.as_ptr(), src.as_ptr(), ptr::null_mut()) })?;
+pub fn link(original: &Path, link: &Path) -> io::Result<()> {
+    let original = to_u16s(original)?;
+    let link = to_u16s(link)?;
+    cvt(unsafe { c::CreateHardLinkW(link.as_ptr(), original.as_ptr(), ptr::null_mut()) })?;
     Ok(())
 }
 
 #[cfg(target_vendor = "uwp")]
-pub fn link(_src: &Path, _dst: &Path) -> io::Result<()> {
+pub fn link(_original: &Path, _link: &Path) -> io::Result<()> {
     return Err(io::Error::new(io::ErrorKind::Other, "hard link are not supported on UWP"));
 }
 
@@ -883,8 +885,11 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
 }
 
 #[allow(dead_code)]
-pub fn symlink_junction<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q) -> io::Result<()> {
-    symlink_junction_inner(src.as_ref(), dst.as_ref())
+pub fn symlink_junction<P: AsRef<Path>, Q: AsRef<Path>>(
+    original: P,
+    junction: Q,
+) -> io::Result<()> {
+    symlink_junction_inner(original.as_ref(), junction.as_ref())
 }
 
 // Creating a directory junction on windows involves dealing with reparse
@@ -893,7 +898,7 @@ pub fn symlink_junction<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q) -> io::R
 //
 // http://www.flexhex.com/docs/articles/hard-links.phtml
 #[allow(dead_code)]
-fn symlink_junction_inner(target: &Path, junction: &Path) -> io::Result<()> {
+fn symlink_junction_inner(original: &Path, junction: &Path) -> io::Result<()> {
     let d = DirBuilder::new();
     d.mkdir(&junction)?;
 
@@ -911,7 +916,7 @@ fn symlink_junction_inner(target: &Path, junction: &Path) -> io::Result<()> {
         // FIXME: this conversion is very hacky
         let v = br"\??\";
         let v = v.iter().map(|x| *x as u16);
-        for c in v.chain(target.as_os_str().encode_wide()) {
+        for c in v.chain(original.as_os_str().encode_wide()) {
             *buf.offset(i) = c;
             i += 1;
         }

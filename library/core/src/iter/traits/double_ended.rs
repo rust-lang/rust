@@ -1,5 +1,4 @@
-use crate::iter::LoopState;
-use crate::ops::Try;
+use crate::ops::{ControlFlow, Try};
 
 /// An iterator able to yield elements from both ends.
 ///
@@ -11,11 +10,12 @@ use crate::ops::Try;
 /// and do not cross: iteration is over when they meet in the middle.
 ///
 /// In a similar fashion to the [`Iterator`] protocol, once a
-/// `DoubleEndedIterator` returns `None` from a `next_back()`, calling it again
-/// may or may not ever return `Some` again. `next()` and `next_back()` are
-/// interchangeable for this purpose.
+/// `DoubleEndedIterator` returns [`None`] from a [`next_back()`], calling it
+/// again may or may not ever return [`Some`] again. [`next()`] and
+/// [`next_back()`] are interchangeable for this purpose.
 ///
-/// [`Iterator`]: trait.Iterator.html
+/// [`next_back()`]: DoubleEndedIterator::next_back
+/// [`next()`]: Iterator::next
 ///
 /// # Examples
 ///
@@ -43,7 +43,7 @@ pub trait DoubleEndedIterator: Iterator {
     ///
     /// The [trait-level] docs contain more details.
     ///
-    /// [trait-level]: trait.DoubleEndedIterator.html
+    /// [trait-level]: DoubleEndedIterator
     ///
     /// # Examples
     ///
@@ -67,7 +67,7 @@ pub trait DoubleEndedIterator: Iterator {
     /// # Remarks
     ///
     /// The elements yielded by `DoubleEndedIterator`'s methods may differ from
-    /// the ones yielded by `Iterator`'s methods:
+    /// the ones yielded by [`Iterator`]'s methods:
     ///
     /// ```
     /// let vec = vec![(1, 'a'), (1, 'b'), (1, 'c'), (2, 'a'), (2, 'b')];
@@ -88,25 +88,66 @@ pub trait DoubleEndedIterator: Iterator {
     ///     vec![(2, 'b'), (1, 'c')]
     /// );
     /// ```
-    ///
     #[stable(feature = "rust1", since = "1.0.0")]
     fn next_back(&mut self) -> Option<Self::Item>;
 
+    /// Advances the iterator from the back by `n` elements.
+    ///
+    /// `advance_back_by` is the reverse version of [`advance_by`]. This method will
+    /// eagerly skip `n` elements starting from the back by calling [`next_back`] up
+    /// to `n` times until [`None`] is encountered.
+    ///
+    /// `advance_back_by(n)` will return [`Ok(())`] if the iterator successfully advances by
+    /// `n` elements, or [`Err(k)`] if [`None`] is encountered, where `k` is the number of
+    /// elements the iterator is advanced by before running out of elements (i.e. the length
+    /// of the iterator). Note that `k` is always less than `n`.
+    ///
+    /// Calling `advance_back_by(0)` does not consume any elements and always returns [`Ok(())`].
+    ///
+    /// [`advance_by`]: Iterator::advance_by
+    /// [`next_back`]: DoubleEndedIterator::next_back
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(iter_advance_by)]
+    ///
+    /// let a = [3, 4, 5, 6];
+    /// let mut iter = a.iter();
+    ///
+    /// assert_eq!(iter.advance_back_by(2), Ok(()));
+    /// assert_eq!(iter.next_back(), Some(&4));
+    /// assert_eq!(iter.advance_back_by(0), Ok(()));
+    /// assert_eq!(iter.advance_back_by(100), Err(1)); // only `&3` was skipped
+    /// ```
+    ///
+    /// [`Ok(())`]: Ok
+    /// [`Err(k)`]: Err
+    #[inline]
+    #[unstable(feature = "iter_advance_by", reason = "recently added", issue = "77404")]
+    fn advance_back_by(&mut self, n: usize) -> Result<(), usize> {
+        for i in 0..n {
+            self.next_back().ok_or(i)?;
+        }
+        Ok(())
+    }
+
     /// Returns the `n`th element from the end of the iterator.
     ///
-    /// This is essentially the reversed version of [`nth`]. Although like most indexing
-    /// operations, the count starts from zero, so `nth_back(0)` returns the first value from
-    /// the end, `nth_back(1)` the second, and so on.
+    /// This is essentially the reversed version of [`Iterator::nth()`].
+    /// Although like most indexing operations, the count starts from zero, so
+    /// `nth_back(0)` returns the first value from the end, `nth_back(1)` the
+    /// second, and so on.
     ///
     /// Note that all elements between the end and the returned element will be
     /// consumed, including the returned element. This also means that calling
     /// `nth_back(0)` multiple times on the same iterator will return different
     /// elements.
     ///
-    /// `nth_back()` will return [`None`] if `n` is greater than or equal to the length of the
-    /// iterator.
-    ///
-    /// [`nth`]: crate::iter::Iterator::nth
+    /// `nth_back()` will return [`None`] if `n` is greater than or equal to the
+    /// length of the iterator.
     ///
     /// # Examples
     ///
@@ -136,20 +177,13 @@ pub trait DoubleEndedIterator: Iterator {
     /// ```
     #[inline]
     #[stable(feature = "iter_nth_back", since = "1.37.0")]
-    fn nth_back(&mut self, mut n: usize) -> Option<Self::Item> {
-        for x in self.rev() {
-            if n == 0 {
-                return Some(x);
-            }
-            n -= 1;
-        }
-        None
+    fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
+        self.advance_back_by(n).ok()?;
+        self.next_back()
     }
 
-    /// This is the reverse version of [`try_fold()`]: it takes elements
-    /// starting from the back of the iterator.
-    ///
-    /// [`try_fold()`]: trait.Iterator.html#method.try_fold
+    /// This is the reverse version of [`Iterator::try_fold()`]: it takes
+    /// elements starting from the back of the iterator.
     ///
     /// # Examples
     ///
@@ -190,14 +224,14 @@ pub trait DoubleEndedIterator: Iterator {
         while let Some(x) = self.next_back() {
             accum = f(accum, x)?;
         }
-        Try::from_ok(accum)
+        try { accum }
     }
 
     /// An iterator method that reduces the iterator's elements to a single,
     /// final value, starting from the back.
     ///
-    /// This is the reverse version of [`fold()`]: it takes elements starting from
-    /// the back of the iterator.
+    /// This is the reverse version of [`Iterator::fold()`]: it takes elements
+    /// starting from the back of the iterator.
     ///
     /// `rfold()` takes two arguments: an initial value, and a closure with two
     /// arguments: an 'accumulator', and an element. The closure returns the value that
@@ -213,8 +247,6 @@ pub trait DoubleEndedIterator: Iterator {
     ///
     /// Folding is useful whenever you have a collection of something, and want
     /// to produce a single value from it.
-    ///
-    /// [`fold()`]: trait.Iterator.html#method.fold
     ///
     /// # Examples
     ///
@@ -307,11 +339,9 @@ pub trait DoubleEndedIterator: Iterator {
         P: FnMut(&Self::Item) -> bool,
     {
         #[inline]
-        fn check<T>(
-            mut predicate: impl FnMut(&T) -> bool,
-        ) -> impl FnMut((), T) -> LoopState<(), T> {
+        fn check<T>(mut predicate: impl FnMut(&T) -> bool) -> impl FnMut((), T) -> ControlFlow<T> {
             move |(), x| {
-                if predicate(&x) { LoopState::Break(x) } else { LoopState::Continue(()) }
+                if predicate(&x) { ControlFlow::Break(x) } else { ControlFlow::CONTINUE }
             }
         }
 
@@ -323,6 +353,9 @@ pub trait DoubleEndedIterator: Iterator {
 impl<'a, I: DoubleEndedIterator + ?Sized> DoubleEndedIterator for &'a mut I {
     fn next_back(&mut self) -> Option<I::Item> {
         (**self).next_back()
+    }
+    fn advance_back_by(&mut self, n: usize) -> Result<(), usize> {
+        (**self).advance_back_by(n)
     }
     fn nth_back(&mut self, n: usize) -> Option<I::Item> {
         (**self).nth_back(n)

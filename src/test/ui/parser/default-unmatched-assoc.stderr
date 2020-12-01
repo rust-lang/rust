@@ -39,13 +39,13 @@ LL | }
    | - item list ends here
 
 error: cannot find macro `default` in this scope
-  --> $DIR/default-unmatched-assoc.rs:12:5
+  --> $DIR/default-unmatched-assoc.rs:4:5
    |
 LL |     default!();
    |     ^^^^^^^
 
 error: cannot find macro `default` in this scope
-  --> $DIR/default-unmatched-assoc.rs:4:5
+  --> $DIR/default-unmatched-assoc.rs:12:5
    |
 LL |     default!();
    |     ^^^^^^^

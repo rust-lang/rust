@@ -1,0 +1,21 @@
+error[E0658]: auto traits are experimental and possibly buggy
+  --> $DIR/feature-gate-auto-traits.rs:6:1
+   |
+LL | auto trait AutoDummyTrait {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #13231 <https://github.com/rust-lang/rust/issues/13231> for more information
+   = help: add `#![feature(auto_traits)]` to the crate attributes to enable
+
+error[E0658]: negative trait bounds are not yet fully implemented; use marker types for now
+  --> $DIR/feature-gate-auto-traits.rs:9:6
+   |
+LL | impl !AutoDummyTrait for DummyStruct {}
+   |      ^^^^^^^^^^^^^^^
+   |
+   = note: see issue #68318 <https://github.com/rust-lang/rust/issues/68318> for more information
+   = help: add `#![feature(negative_impls)]` to the crate attributes to enable
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

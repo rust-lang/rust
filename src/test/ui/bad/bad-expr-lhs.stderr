@@ -1,3 +1,25 @@
+error[E0658]: destructuring assignments are unstable
+  --> $DIR/bad-expr-lhs.rs:4:12
+   |
+LL |     (1, 2) = (3, 4);
+   |     ------ ^
+   |     |
+   |     cannot assign to this expression
+   |
+   = note: see issue #71126 <https://github.com/rust-lang/rust/issues/71126> for more information
+   = help: add `#![feature(destructuring_assignment)]` to the crate attributes to enable
+
+error[E0658]: destructuring assignments are unstable
+  --> $DIR/bad-expr-lhs.rs:9:12
+   |
+LL |     (a, b) = (3, 4);
+   |     ------ ^
+   |     |
+   |     cannot assign to this expression
+   |
+   = note: see issue #71126 <https://github.com/rust-lang/rust/issues/71126> for more information
+   = help: add `#![feature(destructuring_assignment)]` to the crate attributes to enable
+
 error[E0070]: invalid left-hand side of assignment
   --> $DIR/bad-expr-lhs.rs:2:7
    |
@@ -18,30 +40,27 @@ error[E0070]: invalid left-hand side of assignment
   --> $DIR/bad-expr-lhs.rs:4:12
    |
 LL |     (1, 2) = (3, 4);
-   |     ------ ^
-   |     |
-   |     cannot assign to this expression
+   |      -     ^
+   |      |
+   |      cannot assign to this expression
 
 error[E0070]: invalid left-hand side of assignment
-  --> $DIR/bad-expr-lhs.rs:7:12
+  --> $DIR/bad-expr-lhs.rs:4:12
    |
-LL |     (a, b) = (3, 4);
-   |     ------ ^
-   |     |
-   |     cannot assign to this expression
-   |
-   = note: destructuring assignments are not currently supported
-   = note: for more information, see https://github.com/rust-lang/rfcs/issues/372
+LL |     (1, 2) = (3, 4);
+   |         -  ^
+   |         |
+   |         cannot assign to this expression
 
 error[E0070]: invalid left-hand side of assignment
-  --> $DIR/bad-expr-lhs.rs:9:10
+  --> $DIR/bad-expr-lhs.rs:11:10
    |
 LL |     None = Some(3);
    |     ---- ^
    |     |
    |     cannot assign to this expression
 
-error: aborting due to 5 previous errors
+error: aborting due to 7 previous errors
 
-Some errors have detailed explanations: E0067, E0070.
+Some errors have detailed explanations: E0067, E0070, E0658.
 For more information about an error, try `rustc --explain E0067`.

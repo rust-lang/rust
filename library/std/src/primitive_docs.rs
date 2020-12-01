@@ -1,7 +1,6 @@
 #[doc(primitive = "bool")]
 #[doc(alias = "true")]
 #[doc(alias = "false")]
-//
 /// The boolean type.
 ///
 /// The `bool` represents a value, which could only be either `true` or `false`. If you cast
@@ -12,18 +11,17 @@
 /// `bool` implements various traits, such as [`BitAnd`], [`BitOr`], [`Not`], etc.,
 /// which allow us to perform boolean operations using `&`, `|` and `!`.
 ///
-/// `if` always demands a `bool` value. [`assert!`], being an important macro in testing,
-/// checks whether an expression returns `true`.
+/// `if` always demands a `bool` value. [`assert!`], which is an important macro in testing,
+/// checks whether an expression returns `true` and panics if it isn't.
 ///
 /// ```
 /// let bool_val = true & false | false;
 /// assert!(!bool_val);
 /// ```
 ///
-/// [`assert!`]: macro.assert.html
-/// [`BitAnd`]: ops/trait.BitAnd.html
-/// [`BitOr`]: ops/trait.BitOr.html
-/// [`Not`]: ops/trait.Not.html
+/// [`BitAnd`]: ops::BitAnd
+/// [`BitOr`]: ops::BitOr
+/// [`Not`]: ops::Not
 ///
 /// # Examples
 ///
@@ -46,7 +44,7 @@
 /// }
 /// ```
 ///
-/// Also, since `bool` implements the [`Copy`](marker/trait.Copy.html) trait, we don't
+/// Also, since `bool` implements the [`Copy`] trait, we don't
 /// have to worry about the move semantics (just like the integer and float primitives).
 ///
 /// Now an example of `bool` cast to integer type:
@@ -100,8 +98,8 @@ mod prim_bool {}
 /// at all we know it can never produce a value which isn't a [`u32`]. This illustrates another
 /// behaviour of the `!` type - expressions with type `!` will coerce into any other type.
 ///
-/// [`u32`]: primitive.str.html
-/// [`exit`]: process/fn.exit.html
+/// [`u32`]: prim@u32
+/// [`exit`]: process::exit
 ///
 /// # `!` and generics
 ///
@@ -185,26 +183,58 @@ mod prim_bool {}
 /// ever stops, it means that an error occurred. We don't even have to wrap the loop in an `Ok`
 /// because `!` coerces to `Result<!, ConnectionError>` automatically.
 ///
-/// [`String::from_str`]: str/trait.FromStr.html#tymethod.from_str
-/// [`Result<String, !>`]: result/enum.Result.html
-/// [`Result<T, !>`]: result/enum.Result.html
-/// [`Result<!, E>`]: result/enum.Result.html
-/// [`Ok`]: result/enum.Result.html#variant.Ok
-/// [`String`]: string/struct.String.html
-/// [`Err`]: result/enum.Result.html#variant.Err
-/// [`FromStr`]: str/trait.FromStr.html
+/// [`String::from_str`]: str::FromStr::from_str
+/// [`Result<String, !>`]: Result
+/// [`Result<T, !>`]: Result
+/// [`Result<!, E>`]: Result
+/// [`String`]: string::String
+/// [`FromStr`]: str::FromStr
 ///
 /// # `!` and traits
 ///
 /// When writing your own traits, `!` should have an `impl` whenever there is an obvious `impl`
-/// which doesn't `panic!`. As it turns out, most traits can have an `impl` for `!`. Take [`Debug`]
+/// which doesn't `panic!`. The reason is that functions returning an `impl Trait` where `!`
+/// does not have an `impl` of `Trait` cannot diverge as their only possible code path. In other
+/// words, they can't return `!` from every code path. As an example, this code doesn't compile:
+///
+/// ```compile_fail
+/// use core::ops::Add;
+///
+/// fn foo() -> impl Add<u32> {
+///     unimplemented!()
+/// }
+/// ```
+///
+/// But this code does:
+///
+/// ```
+/// use core::ops::Add;
+///
+/// fn foo() -> impl Add<u32> {
+///     if true {
+///         unimplemented!()
+///     } else {
+///         0
+///     }
+/// }
+/// ```
+///
+/// The reason is that, in the first example, there are many possible types that `!` could coerce
+/// to, because many types implement `Add<u32>`. However, in the second example,
+/// the `else` branch returns a `0`, which the compiler infers from the return type to be of type
+/// `u32`. Since `u32` is a concrete type, `!` can and will be coerced to it. See issue [#36375]
+/// for more information on this quirk of `!`.
+///
+/// [#36375]: https://github.com/rust-lang/rust/issues/36375
+///
+/// As it turns out, though, most traits can have an `impl` for `!`. Take [`Debug`]
 /// for example:
 ///
 /// ```
 /// #![feature(never_type)]
 /// # use std::fmt;
 /// # trait Debug {
-/// # fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result;
+/// #     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result;
 /// # }
 /// impl Debug for ! {
 ///     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -233,11 +263,9 @@ mod prim_bool {}
 /// `impl` for this which simply panics, but the same is true for any type (we could `impl
 /// Default` for (eg.) [`File`] by just making [`default()`] panic.)
 ///
-/// [`fmt::Result`]: fmt/type.Result.html
-/// [`File`]: fs/struct.File.html
-/// [`Debug`]: fmt/trait.Debug.html
-/// [`Default`]: default/trait.Default.html
-/// [`default()`]: default/trait.Default.html#tymethod.default
+/// [`File`]: fs::File
+/// [`Debug`]: fmt::Debug
+/// [`default()`]: Default::default
 ///
 #[unstable(feature = "never_type", issue = "35121")]
 mod prim_never {}
@@ -356,11 +384,12 @@ mod prim_char {}
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_unit {}
 
+#[doc(alias = "ptr")]
 #[doc(primitive = "pointer")]
 //
 /// Raw, unsafe pointers, `*const T`, and `*mut T`.
 ///
-/// *[See also the `std::ptr` module](ptr/index.html).*
+/// *[See also the `std::ptr` module](ptr).*
 ///
 /// Working with raw pointers in Rust is uncommon, typically limited to a few patterns.
 /// Raw pointers can be unaligned or [`null`]. However, when a raw pointer is
@@ -439,13 +468,13 @@ mod prim_unit {}
 /// but C APIs hand out a lot of pointers generally, so are a common source
 /// of raw pointers in Rust.
 ///
-/// [`null`]: ../std/ptr/fn.null.html
-/// [`null_mut`]: ../std/ptr/fn.null_mut.html
+/// [`null`]: ptr::null
+/// [`null_mut`]: ptr::null_mut
 /// [`is_null`]: ../std/primitive.pointer.html#method.is_null
 /// [`offset`]: ../std/primitive.pointer.html#method.offset
-/// [`into_raw`]: ../std/boxed/struct.Box.html#method.into_raw
-/// [`drop`]: ../std/mem/fn.drop.html
-/// [`write`]: ../std/ptr/fn.write.html
+/// [`into_raw`]: Box::into_raw
+/// [`drop`]: mem::drop
+/// [`write`]: ptr::write
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_pointer {}
 
@@ -458,32 +487,29 @@ mod prim_pointer {}
 ///
 /// * A list with each element, i.e., `[x, y, z]`.
 /// * A repeat expression `[x; N]`, which produces an array with `N` copies of `x`.
-///   The type of `x` must be [`Copy`][copy].
+///   The type of `x` must be [`Copy`].
 ///
 /// Arrays of *any* size implement the following traits if the element type allows it:
 ///
-/// - [`Debug`][debug]
-/// - [`IntoIterator`][intoiterator] (implemented for `&[T; N]` and `&mut [T; N]`)
-/// - [`PartialEq`][partialeq], [`PartialOrd`][partialord], [`Eq`][eq], [`Ord`][ord]
-/// - [`Hash`][hash]
-/// - [`AsRef`][asref], [`AsMut`][asmut]
-/// - [`Borrow`][borrow], [`BorrowMut`][borrowmut]
+/// - [`Copy`]
+/// - [`Clone`]
+/// - [`Debug`]
+/// - [`IntoIterator`] (implemented for `&[T; N]` and `&mut [T; N]`)
+/// - [`PartialEq`], [`PartialOrd`], [`Eq`], [`Ord`]
+/// - [`Hash`]
+/// - [`AsRef`], [`AsMut`]
+/// - [`Borrow`], [`BorrowMut`]
 ///
-/// Arrays of sizes from 0 to 32 (inclusive) implement [`Default`][default] trait
+/// Arrays of sizes from 0 to 32 (inclusive) implement the [`Default`] trait
 /// if the element type allows it. As a stopgap, trait implementations are
 /// statically generated up to size 32.
-///
-/// Arrays of *any* size are [`Copy`][copy] if the element type is [`Copy`][copy]
-/// and [`Clone`][clone] if the element type is [`Clone`][clone]. This works
-/// because [`Copy`][copy] and [`Clone`][clone] traits are specially known
-/// to the compiler.
 ///
 /// Arrays coerce to [slices (`[T]`)][slice], so a slice method may be called on
 /// an array. Indeed, this provides most of the API for working with arrays.
 /// Slices have a dynamic size and do not coerce to arrays.
 ///
-/// You can move elements out of an array with a slice pattern. If you want
-/// one element, see [`mem::replace`][replace].
+/// You can move elements out of an array with a [slice pattern]. If you want
+/// one element, see [`mem::replace`].
 ///
 /// # Examples
 ///
@@ -524,7 +550,7 @@ mod prim_pointer {}
 /// for x in &array { }
 /// ```
 ///
-/// You can use a slice pattern to move elements out of an array:
+/// You can use a [slice pattern] to move elements out of an array:
 ///
 /// ```
 /// fn move_away(_: String) { /* Do interesting things. */ }
@@ -535,23 +561,11 @@ mod prim_pointer {}
 /// ```
 ///
 /// [slice]: primitive.slice.html
-/// [copy]: marker/trait.Copy.html
-/// [clone]: clone/trait.Clone.html
-/// [debug]: fmt/trait.Debug.html
-/// [intoiterator]: iter/trait.IntoIterator.html
-/// [partialeq]: cmp/trait.PartialEq.html
-/// [partialord]: cmp/trait.PartialOrd.html
-/// [eq]: cmp/trait.Eq.html
-/// [ord]: cmp/trait.Ord.html
-/// [hash]: hash/trait.Hash.html
-/// [asref]: convert/trait.AsRef.html
-/// [asmut]: convert/trait.AsMut.html
-/// [borrow]: borrow/trait.Borrow.html
-/// [borrowmut]: borrow/trait.BorrowMut.html
-/// [default]: default/trait.Default.html
-/// [replace]: mem/fn.replace.html
-/// [`IntoIterator`]: iter/trait.IntoIterator.html
-///
+/// [`Debug`]: fmt::Debug
+/// [`Hash`]: hash::Hash
+/// [`Borrow`]: borrow::Borrow
+/// [`BorrowMut`]: borrow::BorrowMut
+/// [slice pattern]: ../reference/patterns.html#slice-patterns
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_array {}
 
@@ -563,7 +577,7 @@ mod prim_array {}
 /// means that elements are laid out so that every element is the same
 /// distance from its neighbors.
 ///
-/// *[See also the `std::slice` module](slice/index.html).*
+/// *[See also the `std::slice` module](crate::slice).*
 ///
 /// Slices are a view into a block of memory represented as a pointer and a
 /// length.
@@ -608,7 +622,7 @@ mod prim_slice {}
 //
 /// String slices.
 ///
-/// *[See also the `std::str` module](str/index.html).*
+/// *[See also the `std::str` module](crate::str).*
 ///
 /// The `str` type, also called a 'string slice', is the most primitive string
 /// type. It is usually seen in its borrowed form, `&str`. It is also the type
@@ -660,8 +674,8 @@ mod prim_slice {}
 /// assert_eq!(s, Ok(story));
 /// ```
 ///
-/// [`as_ptr`]: #method.as_ptr
-/// [`len`]: #method.len
+/// [`as_ptr`]: str::as_ptr
+/// [`len`]: str::len
 ///
 /// Note: This example shows the internals of `&str`. `unsafe` should not be
 /// used to get a string slice under normal circumstances. Use `as_str`
@@ -729,15 +743,8 @@ mod prim_str {}
 /// * [`Default`]
 /// * [`Hash`]
 ///
-/// [`Clone`]: clone/trait.Clone.html
-/// [`Copy`]: marker/trait.Copy.html
-/// [`PartialEq`]: cmp/trait.PartialEq.html
-/// [`Eq`]: cmp/trait.Eq.html
-/// [`PartialOrd`]: cmp/trait.PartialOrd.html
-/// [`Ord`]: cmp/trait.Ord.html
-/// [`Debug`]: fmt/trait.Debug.html
-/// [`Default`]: default/trait.Default.html
-/// [`Hash`]: hash/trait.Hash.html
+/// [`Debug`]: fmt::Debug
+/// [`Hash`]: hash::Hash
 ///
 /// Due to a temporary restriction in Rust's type system, these traits are only
 /// implemented on tuples of arity 12 or less. In the future, this may change.
@@ -790,7 +797,7 @@ mod prim_tuple {}
 /// calculation with floats round to a nearby representable number. For example,
 /// `5.0` and `1.0` can be exactly represented as `f32`, but `1.0 / 5.0` results
 /// in `0.20000000298023223876953125` since `0.2` cannot be exactly represented
-/// as `f32`. Note however, that printing floats with `println` and friends will
+/// as `f32`. Note, however, that printing floats with `println` and friends will
 /// often discard insignificant digits: `println!("{}", 1.0f32 / 5.0f32)` will
 /// print `0.2`.
 ///
@@ -810,7 +817,7 @@ mod prim_tuple {}
 ///
 /// For more information on floating point numbers, see [Wikipedia][wikipedia].
 ///
-/// *[See also the `std::f32::consts` module](f32/consts/index.html).*
+/// *[See also the `std::f32::consts` module](crate::f32::consts).*
 ///
 /// [wikipedia]: https://en.wikipedia.org/wiki/Single-precision_floating-point_format
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -819,13 +826,14 @@ mod prim_f32 {}
 #[doc(primitive = "f64")]
 /// A 64-bit floating point type (specifically, the "binary64" type defined in IEEE 754-2008).
 ///
-/// This type is very similar to [`f32`](primitive.f32.html), but has increased
+/// This type is very similar to [`f32`], but has increased
 /// precision by using twice as many bits. Please see [the documentation for
-/// `f32`](primitive.f32.html) or [Wikipedia on double precision
+/// `f32`][`f32`] or [Wikipedia on double precision
 /// values][wikipedia] for more information.
 ///
-/// *[See also the `std::f64::consts` module](f64/consts/index.html).*
+/// *[See also the `std::f64::consts` module](crate::f64::consts).*
 ///
+/// [`f32`]: prim@f32
 /// [wikipedia]: https://en.wikipedia.org/wiki/Double-precision_floating-point_format
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_f64 {}
@@ -945,9 +953,6 @@ mod prim_usize {}
 /// implicit reference-pointer coercion and raw pointer equality via [`ptr::eq`], while
 /// [`PartialEq`] compares values.
 ///
-/// [`ptr::eq`]: ptr/fn.eq.html
-/// [`PartialEq`]: cmp/trait.PartialEq.html
-///
 /// ```
 /// use std::ptr;
 ///
@@ -979,11 +984,9 @@ mod prim_usize {}
 /// * [`Borrow`]
 /// * [`Pointer`]
 ///
-/// [`Copy`]: marker/trait.Copy.html
-/// [`Clone`]: clone/trait.Clone.html
-/// [`Deref`]: ops/trait.Deref.html
-/// [`Borrow`]: borrow/trait.Borrow.html
-/// [`Pointer`]: fmt/trait.Pointer.html
+/// [`Deref`]: ops::Deref
+/// [`Borrow`]: borrow::Borrow
+/// [`Pointer`]: fmt::Pointer
 ///
 /// `&mut T` references get all of the above except `Copy` and `Clone` (to prevent creating
 /// multiple simultaneous mutable borrows), plus the following, regardless of the type of its
@@ -992,8 +995,8 @@ mod prim_usize {}
 /// * [`DerefMut`]
 /// * [`BorrowMut`]
 ///
-/// [`DerefMut`]: ops/trait.DerefMut.html
-/// [`BorrowMut`]: borrow/trait.BorrowMut.html
+/// [`DerefMut`]: ops::DerefMut
+/// [`BorrowMut`]: borrow::BorrowMut
 ///
 /// The following traits are implemented on `&T` references if the underlying `T` also implements
 /// that trait:
@@ -1008,18 +1011,10 @@ mod prim_usize {}
 /// * [`Hash`]
 /// * [`ToSocketAddrs`]
 ///
-/// [`std::fmt`]: fmt/index.html
-/// [`fmt::Write`]: fmt/trait.Write.html
-/// [`PartialOrd`]: cmp/trait.PartialOrd.html
-/// [`Ord`]: cmp/trait.Ord.html
-/// [`PartialEq`]: cmp/trait.PartialEq.html
-/// [`Eq`]: cmp/trait.Eq.html
-/// [`AsRef`]: convert/trait.AsRef.html
-/// [`Fn`]: ops/trait.Fn.html
-/// [`FnMut`]: ops/trait.FnMut.html
-/// [`FnOnce`]: ops/trait.FnOnce.html
-/// [`Hash`]: hash/trait.Hash.html
-/// [`ToSocketAddrs`]: net/trait.ToSocketAddrs.html
+/// [`std::fmt`]: fmt
+/// ['Pointer`]: fmt::Pointer
+/// [`Hash`]: hash::Hash
+/// [`ToSocketAddrs`]: net::ToSocketAddrs
 ///
 /// `&mut T` references get all of the above except `ToSocketAddrs`, plus the following, if `T`
 /// implements that trait:
@@ -1038,17 +1033,11 @@ mod prim_usize {}
 /// * [`Seek`]
 /// * [`BufRead`]
 ///
-/// [`AsMut`]: convert/trait.AsMut.html
-/// [`Iterator`]: iter/trait.Iterator.html
-/// [`DoubleEndedIterator`]: iter/trait.DoubleEndedIterator.html
-/// [`ExactSizeIterator`]: iter/trait.ExactSizeIterator.html
-/// [`FusedIterator`]: iter/trait.FusedIterator.html
-/// [`TrustedLen`]: iter/trait.TrustedLen.html
-/// [`Send`]: marker/trait.Send.html
-/// [`io::Write`]: io/trait.Write.html
-/// [`Read`]: io/trait.Read.html
-/// [`Seek`]: io/trait.Seek.html
-/// [`BufRead`]: io/trait.BufRead.html
+/// [`FusedIterator`]: iter::FusedIterator
+/// [`TrustedLen`]: iter::TrustedLen
+/// [`Seek`]: io::Seek
+/// [`BufRead`]: io::BufRead
+/// [`Read`]: io::Read
 ///
 /// Note that due to method call deref coercion, simply calling a trait method will act like they
 /// work on references as well as they do on owned values! The implementations described here are
@@ -1063,9 +1052,9 @@ mod prim_ref {}
 ///
 /// *See also the traits [`Fn`], [`FnMut`], and [`FnOnce`].*
 ///
-/// [`Fn`]: ops/trait.Fn.html
-/// [`FnMut`]: ops/trait.FnMut.html
-/// [`FnOnce`]: ops/trait.FnOnce.html
+/// [`Fn`]: ops::Fn
+/// [`FnMut`]: ops::FnMut
+/// [`FnOnce`]: ops::FnOnce
 ///
 /// Function pointers are pointers that point to *code*, not data. They can be called
 /// just like functions. Like references, function pointers are, among other things, assumed to
@@ -1126,6 +1115,8 @@ mod prim_ref {}
 /// For more information and a list of supported ABIs, see [the nomicon's
 /// section on foreign calling conventions][nomicon-abi].
 ///
+/// [nomicon-abi]: ../nomicon/ffi.html#foreign-calling-conventions
+///
 /// ### Variadic functions
 ///
 /// Extern function declarations with the "C" or "cdecl" ABIs can also be *variadic*, allowing them
@@ -1177,14 +1168,8 @@ mod prim_ref {}
 /// * [`Pointer`]
 /// * [`Debug`]
 ///
-/// [`Clone`]: clone/trait.Clone.html
-/// [`PartialEq`]: cmp/trait.PartialEq.html
-/// [`Eq`]: cmp/trait.Eq.html
-/// [`PartialOrd`]: cmp/trait.PartialOrd.html
-/// [`Ord`]: cmp/trait.Ord.html
-/// [`Hash`]: hash/trait.Hash.html
-/// [`Pointer`]: fmt/trait.Pointer.html
-/// [`Debug`]: fmt/trait.Debug.html
+/// [`Hash`]: hash::Hash
+/// [`Pointer`]: fmt::Pointer
 ///
 /// Due to a temporary restriction in Rust's type system, these traits are only implemented on
 /// functions that take 12 arguments or less, with the `"Rust"` and `"C"` ABIs. In the future, this
@@ -1193,7 +1178,5 @@ mod prim_ref {}
 /// In addition, function pointers of *any* signature, ABI, or safety are [`Copy`], and all *safe*
 /// function pointers implement [`Fn`], [`FnMut`], and [`FnOnce`]. This works because these traits
 /// are specially known to the compiler.
-///
-/// [`Copy`]: marker/trait.Copy.html
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_fn {}

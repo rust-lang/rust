@@ -4,7 +4,7 @@ error: any use of this value will cause an error
 LL | const LEN: usize = ONE - TWO;
    | -------------------^^^^^^^^^-
    |                    |
-   |                    attempt to compute `1_usize - 2_usize` which would overflow
+   |                    attempt to compute `1_usize - 2_usize`, which would overflow
    |
    = note: `#[deny(const_err)]` on by default
 

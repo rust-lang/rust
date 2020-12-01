@@ -4,7 +4,7 @@ use std::intrinsics;
 
 struct Foo {
     bytes: [u8; unsafe { intrinsics::size_of::<Foo>() }],
-    //~^ ERROR cycle detected when const-evaluating + checking
+    //~^ ERROR cycle detected when simplifying constant for the type system
     x: usize,
 }
 

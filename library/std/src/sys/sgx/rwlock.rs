@@ -1,3 +1,6 @@
+#[cfg(test)]
+mod tests;
+
 use crate::num::NonZeroUsize;
 
 use super::waitqueue::{
@@ -11,9 +14,12 @@ pub struct RWLock {
 }
 
 // Check at compile time that RWLock size matches C definition (see test_c_rwlock_initializer below)
+//
+// # Safety
+// Never called, as it is a compile time check.
 #[allow(dead_code)]
 unsafe fn rw_lock_size_assert(r: RWLock) {
-    mem::transmute::<RWLock, [u8; 144]>(r);
+    unsafe { mem::transmute::<RWLock, [u8; 144]>(r) };
 }
 
 impl RWLock {
@@ -109,7 +115,7 @@ impl RWLock {
     pub unsafe fn read_unlock(&self) {
         let rguard = self.readers.lock();
         let wguard = self.writer.lock();
-        self.__read_unlock(rguard, wguard);
+        unsafe { self.__read_unlock(rguard, wguard) };
     }
 
     #[inline]
@@ -145,7 +151,7 @@ impl RWLock {
     pub unsafe fn write_unlock(&self) {
         let rguard = self.readers.lock();
         let wguard = self.writer.lock();
-        self.__write_unlock(rguard, wguard);
+        unsafe { self.__write_unlock(rguard, wguard) };
     }
 
     // only used by __rust_rwlock_unlock below
@@ -155,9 +161,9 @@ impl RWLock {
         let rguard = self.readers.lock();
         let wguard = self.writer.lock();
         if *wguard.lock_var() == true {
-            self.__write_unlock(rguard, wguard);
+            unsafe { self.__write_unlock(rguard, wguard) };
         } else {
-            self.__read_unlock(rguard, wguard);
+            unsafe { self.__read_unlock(rguard, wguard) };
         }
     }
 
@@ -176,7 +182,7 @@ pub unsafe extern "C" fn __rust_rwlock_rdlock(p: *mut RWLock) -> i32 {
     if p.is_null() {
         return EINVAL;
     }
-    (*p).read();
+    unsafe { (*p).read() };
     return 0;
 }
 
@@ -186,7 +192,7 @@ pub unsafe extern "C" fn __rust_rwlock_wrlock(p: *mut RWLock) -> i32 {
     if p.is_null() {
         return EINVAL;
     }
-    (*p).write();
+    unsafe { (*p).write() };
     return 0;
 }
 #[cfg(not(test))]
@@ -195,53 +201,6 @@ pub unsafe extern "C" fn __rust_rwlock_unlock(p: *mut RWLock) -> i32 {
     if p.is_null() {
         return EINVAL;
     }
-    (*p).unlock();
+    unsafe { (*p).unlock() };
     return 0;
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::mem::{self, MaybeUninit};
-    use core::array::FixedSizeArray;
-
-    // Verify that the bytes of initialized RWLock are the same as in
-    // libunwind. If they change, `src/UnwindRustSgx.h` in libunwind needs to
-    // be changed too.
-    #[test]
-    fn test_c_rwlock_initializer() {
-        #[rustfmt::skip]
-        const RWLOCK_INIT: &[u8] = &[
-            /* 0x00 */ 0x1, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
-            /* 0x10 */ 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x2, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
-            /* 0x20 */ 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
-            /* 0x30 */ 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
-            /* 0x40 */ 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
-            /* 0x50 */ 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
-            /* 0x60 */ 0x2, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
-            /* 0x70 */ 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
-            /* 0x80 */ 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
-        ];
-
-        #[inline(never)]
-        fn zero_stack() {
-            test::black_box(MaybeUninit::<[RWLock; 16]>::zeroed());
-        }
-
-        #[inline(never)]
-        unsafe fn rwlock_new(init: &mut MaybeUninit<RWLock>) {
-            init.write(RWLock::new());
-        }
-
-        unsafe {
-            // try hard to make sure that the padding/unused bytes in RWLock
-            // get initialized as 0. If the assertion below fails, that might
-            // just be an issue with the test code and not with the value of
-            // RWLOCK_INIT.
-            zero_stack();
-            let mut init = MaybeUninit::<RWLock>::zeroed();
-            rwlock_new(&mut init);
-            assert_eq!(mem::transmute::<_, [u8; 144]>(init.assume_init()).as_slice(), RWLOCK_INIT)
-        };
-    }
 }

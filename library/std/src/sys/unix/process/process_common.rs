@@ -1,14 +1,18 @@
+#[cfg(all(test, not(target_os = "emscripten")))]
+mod tests;
+
 use crate::os::unix::prelude::*;
 
 use crate::collections::BTreeMap;
 use crate::ffi::{CStr, CString, OsStr, OsString};
 use crate::fmt;
 use crate::io;
+use crate::path::Path;
 use crate::ptr;
 use crate::sys::fd::FileDesc;
 use crate::sys::fs::File;
 use crate::sys::pipe::{self, AnonPipe};
-use crate::sys_common::process::CommandEnv;
+use crate::sys_common::process::{CommandEnv, CommandEnvs};
 
 #[cfg(not(target_os = "fuchsia"))]
 use crate::sys::fs::OpenOptions;
@@ -20,6 +24,8 @@ cfg_if::cfg_if! {
         // fuchsia doesn't have /dev/null
     } else if #[cfg(target_os = "redox")] {
         const DEV_NULL: &str = "null:\0";
+    } else if #[cfg(target_os = "vxworks")] {
+        const DEV_NULL: &str = "/null\0";
     } else {
         const DEV_NULL: &str = "/dev/null\0";
     }
@@ -44,7 +50,7 @@ cfg_if::cfg_if! {
             raw[bit / 8] |= 1 << (bit % 8);
             return 0;
         }
-    } else {
+    } else if #[cfg(not(target_os = "vxworks"))] {
         pub use libc::{sigemptyset, sigaddset};
     }
 }
@@ -181,11 +187,30 @@ impl Command {
     pub fn saw_nul(&self) -> bool {
         self.saw_nul
     }
+
+    pub fn get_program(&self) -> &OsStr {
+        OsStr::from_bytes(self.program.as_bytes())
+    }
+
+    pub fn get_args(&self) -> CommandArgs<'_> {
+        let mut iter = self.args.iter();
+        iter.next();
+        CommandArgs { iter }
+    }
+
+    pub fn get_envs(&self) -> CommandEnvs<'_> {
+        self.env.iter()
+    }
+
+    pub fn get_current_dir(&self) -> Option<&Path> {
+        self.cwd.as_ref().map(|cs| Path::new(OsStr::from_bytes(cs.as_bytes())))
+    }
+
     pub fn get_argv(&self) -> &Vec<*const c_char> {
         &self.argv.0
     }
 
-    pub fn get_program(&self) -> &CStr {
+    pub fn get_program_cstr(&self) -> &CStr {
         &*self.program
     }
 
@@ -230,9 +255,15 @@ impl Command {
         let maybe_env = self.env.capture_if_changed();
         maybe_env.map(|env| construct_envp(env, &mut self.saw_nul))
     }
+
     #[allow(dead_code)]
     pub fn env_saw_path(&self) -> bool {
         self.env.have_changed_path()
+    }
+
+    #[allow(dead_code)]
+    pub fn program_is_path(&self) -> bool {
+        self.program.to_bytes().contains(&b'/')
     }
 
     pub fn setup_io(
@@ -400,70 +431,31 @@ impl ExitCode {
     }
 }
 
-#[cfg(all(test, not(target_os = "emscripten")))]
-mod tests {
-    use super::*;
+pub struct CommandArgs<'a> {
+    iter: crate::slice::Iter<'a, CString>,
+}
 
-    use crate::ffi::OsStr;
-    use crate::mem;
-    use crate::ptr;
-    use crate::sys::cvt;
-
-    macro_rules! t {
-        ($e:expr) => {
-            match $e {
-                Ok(t) => t,
-                Err(e) => panic!("received error for `{}`: {}", stringify!($e), e),
-            }
-        };
+impl<'a> Iterator for CommandArgs<'a> {
+    type Item = &'a OsStr;
+    fn next(&mut self) -> Option<&'a OsStr> {
+        self.iter.next().map(|cs| OsStr::from_bytes(cs.as_bytes()))
     }
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.iter.size_hint()
+    }
+}
 
-    // See #14232 for more information, but it appears that signal delivery to a
-    // newly spawned process may just be raced in the macOS, so to prevent this
-    // test from being flaky we ignore it on macOS.
-    #[test]
-    #[cfg_attr(target_os = "macos", ignore)]
-    // When run under our current QEMU emulation test suite this test fails,
-    // although the reason isn't very clear as to why. For now this test is
-    // ignored there.
-    #[cfg_attr(target_arch = "arm", ignore)]
-    #[cfg_attr(target_arch = "aarch64", ignore)]
-    #[cfg_attr(target_arch = "riscv64", ignore)]
-    fn test_process_mask() {
-        unsafe {
-            // Test to make sure that a signal mask does not get inherited.
-            let mut cmd = Command::new(OsStr::new("cat"));
+impl<'a> ExactSizeIterator for CommandArgs<'a> {
+    fn len(&self) -> usize {
+        self.iter.len()
+    }
+    fn is_empty(&self) -> bool {
+        self.iter.is_empty()
+    }
+}
 
-            let mut set = mem::MaybeUninit::<libc::sigset_t>::uninit();
-            let mut old_set = mem::MaybeUninit::<libc::sigset_t>::uninit();
-            t!(cvt(sigemptyset(set.as_mut_ptr())));
-            t!(cvt(sigaddset(set.as_mut_ptr(), libc::SIGINT)));
-            t!(cvt(libc::pthread_sigmask(libc::SIG_SETMASK, set.as_ptr(), old_set.as_mut_ptr())));
-
-            cmd.stdin(Stdio::MakePipe);
-            cmd.stdout(Stdio::MakePipe);
-
-            let (mut cat, mut pipes) = t!(cmd.spawn(Stdio::Null, true));
-            let stdin_write = pipes.stdin.take().unwrap();
-            let stdout_read = pipes.stdout.take().unwrap();
-
-            t!(cvt(libc::pthread_sigmask(libc::SIG_SETMASK, old_set.as_ptr(), ptr::null_mut())));
-
-            t!(cvt(libc::kill(cat.id() as libc::pid_t, libc::SIGINT)));
-            // We need to wait until SIGINT is definitely delivered. The
-            // easiest way is to write something to cat, and try to read it
-            // back: if SIGINT is unmasked, it'll get delivered when cat is
-            // next scheduled.
-            let _ = stdin_write.write(b"Hello");
-            drop(stdin_write);
-
-            // Either EOF or failure (EPIPE) is okay.
-            let mut buf = [0; 5];
-            if let Ok(ret) = stdout_read.read(&mut buf) {
-                assert_eq!(ret, 0);
-            }
-
-            t!(cat.wait());
-        }
+impl<'a> fmt::Debug for CommandArgs<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_list().entries(self.iter.clone()).finish()
     }
 }

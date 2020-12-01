@@ -7,12 +7,12 @@ LL | fn send<T: Send>(_: T) {}
 LL |     send(format_args!("{:?}", c));
    |     ^^^^ `core::fmt::Opaque` cannot be shared between threads safely
    |
-   = help: within `[std::fmt::ArgumentV1<'_>]`, the trait `std::marker::Sync` is not implemented for `core::fmt::Opaque`
+   = help: within `[ArgumentV1<'_>]`, the trait `Sync` is not implemented for `core::fmt::Opaque`
    = note: required because it appears within the type `&core::fmt::Opaque`
-   = note: required because it appears within the type `std::fmt::ArgumentV1<'_>`
-   = note: required because it appears within the type `[std::fmt::ArgumentV1<'_>]`
-   = note: required because of the requirements on the impl of `std::marker::Send` for `&[std::fmt::ArgumentV1<'_>]`
-   = note: required because it appears within the type `std::fmt::Arguments<'_>`
+   = note: required because it appears within the type `ArgumentV1<'_>`
+   = note: required because it appears within the type `[ArgumentV1<'_>]`
+   = note: required because of the requirements on the impl of `Send` for `&[ArgumentV1<'_>]`
+   = note: required because it appears within the type `Arguments<'_>`
 
 error[E0277]: `core::fmt::Opaque` cannot be shared between threads safely
   --> $DIR/send-sync.rs:9:5
@@ -23,12 +23,12 @@ LL | fn sync<T: Sync>(_: T) {}
 LL |     sync(format_args!("{:?}", c));
    |     ^^^^ `core::fmt::Opaque` cannot be shared between threads safely
    |
-   = help: within `std::fmt::Arguments<'_>`, the trait `std::marker::Sync` is not implemented for `core::fmt::Opaque`
+   = help: within `Arguments<'_>`, the trait `Sync` is not implemented for `core::fmt::Opaque`
    = note: required because it appears within the type `&core::fmt::Opaque`
-   = note: required because it appears within the type `std::fmt::ArgumentV1<'_>`
-   = note: required because it appears within the type `[std::fmt::ArgumentV1<'_>]`
-   = note: required because it appears within the type `&[std::fmt::ArgumentV1<'_>]`
-   = note: required because it appears within the type `std::fmt::Arguments<'_>`
+   = note: required because it appears within the type `ArgumentV1<'_>`
+   = note: required because it appears within the type `[ArgumentV1<'_>]`
+   = note: required because it appears within the type `&[ArgumentV1<'_>]`
+   = note: required because it appears within the type `Arguments<'_>`
 
 error: aborting due to 2 previous errors
 

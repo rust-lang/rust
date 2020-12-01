@@ -8,14 +8,14 @@ use crate::core::DocContext;
 use crate::fold::{DocFolder, StripItem};
 use crate::passes::{ImplStripper, Pass};
 
-pub const STRIP_HIDDEN: Pass = Pass {
+crate const STRIP_HIDDEN: Pass = Pass {
     name: "strip-hidden",
     run: strip_hidden,
     description: "strips all doc(hidden) items from the output",
 };
 
 /// Strip items marked `#[doc(hidden)]`
-pub fn strip_hidden(krate: clean::Crate, _: &DocContext<'_>) -> clean::Crate {
+crate fn strip_hidden(krate: clean::Crate, _: &DocContext<'_>) -> clean::Crate {
     let mut retained = DefIdSet::default();
 
     // strip all #[doc(hidden)] items
@@ -41,13 +41,13 @@ impl<'a> DocFolder for Stripper<'a> {
         if i.attrs.lists(sym::doc).has_word(sym::hidden) {
             debug!("strip_hidden: stripping {:?} {:?}", i.type_(), i.name);
             // use a dedicated hidden item for given item type if any
-            match i.inner {
+            match i.kind {
                 clean::StructFieldItem(..) | clean::ModuleItem(..) => {
                     // We need to recurse into stripped modules to
                     // strip things like impl methods but when doing so
                     // we must not add any items to the `retained` set.
                     let old = mem::replace(&mut self.update_retained, false);
-                    let ret = StripItem(self.fold_item_recur(i).unwrap()).strip();
+                    let ret = StripItem(self.fold_item_recur(i)).strip();
                     self.update_retained = old;
                     return ret;
                 }
@@ -58,6 +58,6 @@ impl<'a> DocFolder for Stripper<'a> {
                 self.retained.insert(i.def_id);
             }
         }
-        self.fold_item_recur(i)
+        Some(self.fold_item_recur(i))
     }
 }

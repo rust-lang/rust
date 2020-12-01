@@ -1,0 +1,41 @@
+error: used unwrap or expect in a function that returns result or option
+  --> $DIR/unwrap_in_result.rs:22:5
+   |
+LL | /     fn bad_divisible_by_3(i_str: String) -> Result<bool, String> {
+LL | |         // checks whether a string represents a number divisible by 3
+LL | |         let i = i_str.parse::<i32>().unwrap();
+LL | |         if i % 3 == 0 {
+...  |
+LL | |         }
+LL | |     }
+   | |_____^
+   |
+   = note: `-D clippy::unwrap-in-result` implied by `-D warnings`
+   = help: unwrap and expect should not be used in a function that returns result or option
+note: potential non-recoverable error(s)
+  --> $DIR/unwrap_in_result.rs:24:17
+   |
+LL |         let i = i_str.parse::<i32>().unwrap();
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: used unwrap or expect in a function that returns result or option
+  --> $DIR/unwrap_in_result.rs:32:5
+   |
+LL | /     fn example_option_expect(i_str: String) -> Option<bool> {
+LL | |         let i = i_str.parse::<i32>().expect("not a number");
+LL | |         if i % 3 == 0 {
+LL | |             return Some(true);
+LL | |         }
+LL | |         None
+LL | |     }
+   | |_____^
+   |
+   = help: unwrap and expect should not be used in a function that returns result or option
+note: potential non-recoverable error(s)
+  --> $DIR/unwrap_in_result.rs:33:17
+   |
+LL |         let i = i_str.parse::<i32>().expect("not a number");
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

@@ -4,7 +4,7 @@ fn main() {
     let x: Option<usize>;
     x = 5;
     //~^ ERROR mismatched types
-    //~| expected enum `std::option::Option<usize>`
+    //~| expected enum `Option<usize>`
     //~| found type `{integer}`
-    //~| expected enum `std::option::Option`, found integer
+    //~| expected enum `Option`, found integer
 }

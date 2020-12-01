@@ -1,0 +1,8 @@
+error: `foo df` is not a valid identifier
+  --> $DIR/invalid-keyword.rs:3:17
+   |
+LL | #[doc(keyword = "foo df")]
+   |                 ^^^^^^^^
+
+error: aborting due to previous error
+

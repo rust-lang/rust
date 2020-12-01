@@ -2,25 +2,25 @@ error[E0507]: cannot move out of `*u.a` which is behind a shared reference
   --> $DIR/move-from-union-field-issue-66500.rs:14:5
    |
 LL |     *u.a
-   |     ^^^^ move occurs because `*u.a` has type `std::string::String`, which does not implement the `Copy` trait
+   |     ^^^^ move occurs because `*u.a` has type `String`, which does not implement the `Copy` trait
 
 error[E0507]: cannot move out of `*u.b` which is behind a mutable reference
   --> $DIR/move-from-union-field-issue-66500.rs:18:5
    |
 LL |     *u.b
-   |     ^^^^ move occurs because `*u.b` has type `std::string::String`, which does not implement the `Copy` trait
+   |     ^^^^ move occurs because `*u.b` has type `String`, which does not implement the `Copy` trait
 
 error[E0507]: cannot move out of `*u.c` which is behind a raw pointer
   --> $DIR/move-from-union-field-issue-66500.rs:22:5
    |
 LL |     *u.c
-   |     ^^^^ move occurs because `*u.c` has type `std::string::String`, which does not implement the `Copy` trait
+   |     ^^^^ move occurs because `*u.c` has type `String`, which does not implement the `Copy` trait
 
 error[E0507]: cannot move out of `*u.d` which is behind a raw pointer
   --> $DIR/move-from-union-field-issue-66500.rs:26:5
    |
 LL |     *u.d
-   |     ^^^^ move occurs because `*u.d` has type `std::string::String`, which does not implement the `Copy` trait
+   |     ^^^^ move occurs because `*u.d` has type `String`, which does not implement the `Copy` trait
 
 error: aborting due to 4 previous errors
 

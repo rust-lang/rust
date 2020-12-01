@@ -8,6 +8,9 @@ use crate::path::Path;
 use crate::sys;
 use crate::sys::platform::fs::MetadataExt as UnixMetadataExt;
 use crate::sys_common::{AsInner, AsInnerMut, FromInner};
+// Used for `File::read` on intra-doc links
+#[allow(unused_imports)]
+use io::{Read, Write};
 
 /// Unix-specific extensions to [`fs::File`].
 #[stable(feature = "file_offset", since = "1.15.0")]
@@ -24,7 +27,7 @@ pub trait FileExt {
     /// Note that similar to [`File::read`], it is not an error to return with a
     /// short read.
     ///
-    /// [`File::read`]: ../../../../std/fs/struct.File.html#method.read
+    /// [`File::read`]: fs::File::read
     ///
     /// # Examples
     ///
@@ -127,7 +130,7 @@ pub trait FileExt {
     /// Note that similar to [`File::write`], it is not an error to return a
     /// short write.
     ///
-    /// [`File::write`]: ../../../../std/fs/struct.File.html#method.write
+    /// [`File::write`]: fs::File::write
     ///
     /// # Examples
     ///
@@ -425,7 +428,7 @@ pub trait MetadataExt {
     /// ```no_run
     /// use std::fs;
     /// use std::os::unix::fs::MetadataExt;
-    ///  use std::io;
+    /// use std::io;
     ///
     /// fn main() -> io::Result<()> {
     ///     let meta = fs::metadata("some_file")?;
@@ -647,6 +650,9 @@ pub trait MetadataExt {
     /// ```
     #[stable(feature = "metadata_ext", since = "1.1.0")]
     fn blocks(&self) -> u64;
+    #[cfg(target_os = "vxworks")]
+    #[stable(feature = "metadata_ext", since = "1.1.0")]
+    fn attrib(&self) -> u8;
 }
 
 #[stable(feature = "metadata_ext", since = "1.1.0")]
@@ -698,6 +704,10 @@ impl MetadataExt for fs::Metadata {
     }
     fn blocks(&self) -> u64 {
         self.st_blocks()
+    }
+    #[cfg(target_os = "vxworks")]
+    fn attrib(&self) -> u8 {
+        self.st_attrib()
     }
 }
 
@@ -831,16 +841,7 @@ impl DirEntryExt for fs::DirEntry {
 
 /// Creates a new symbolic link on the filesystem.
 ///
-/// The `dst` path will be a symbolic link pointing to the `src` path.
-///
-/// # Note
-///
-/// On Windows, you must specify whether a symbolic link points to a file
-/// or directory. Use `os::windows::fs::symlink_file` to create a
-/// symbolic link to a file, or `os::windows::fs::symlink_dir` to create a
-/// symbolic link to a directory. Additionally, the process must have
-/// `SeCreateSymbolicLinkPrivilege` in order to be able to create a
-/// symbolic link.
+/// The `link` path will be a symbolic link pointing to the `original` path.
 ///
 /// # Examples
 ///
@@ -853,8 +854,8 @@ impl DirEntryExt for fs::DirEntry {
 /// }
 /// ```
 #[stable(feature = "symlink", since = "1.1.0")]
-pub fn symlink<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q) -> io::Result<()> {
-    sys::fs::symlink(src.as_ref(), dst.as_ref())
+pub fn symlink<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) -> io::Result<()> {
+    sys::fs::symlink(original.as_ref(), link.as_ref())
 }
 
 /// Unix-specific extensions to [`fs::DirBuilder`].

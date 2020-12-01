@@ -83,25 +83,25 @@ LL |     while let 1 = (2) {}
    |                   ^^^ help: remove these parentheses
 
 error: unnecessary parentheses around method argument
-  --> $DIR/lint-unnecessary-parens.rs:71:24
+  --> $DIR/lint-unnecessary-parens.rs:73:24
    |
 LL |     X { y: false }.foo((true));
    |                        ^^^^^^ help: remove these parentheses
 
 error: unnecessary parentheses around assigned value
-  --> $DIR/lint-unnecessary-parens.rs:73:18
+  --> $DIR/lint-unnecessary-parens.rs:75:18
    |
 LL |     let mut _a = (0);
    |                  ^^^ help: remove these parentheses
 
 error: unnecessary parentheses around assigned value
-  --> $DIR/lint-unnecessary-parens.rs:74:10
+  --> $DIR/lint-unnecessary-parens.rs:76:10
    |
 LL |     _a = (0);
    |          ^^^ help: remove these parentheses
 
 error: unnecessary parentheses around assigned value
-  --> $DIR/lint-unnecessary-parens.rs:75:11
+  --> $DIR/lint-unnecessary-parens.rs:77:11
    |
 LL |     _a += (1);
    |           ^^^ help: remove these parentheses

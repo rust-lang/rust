@@ -1,0 +1,7 @@
+[package]
+name = "x"
+version = "0.1.0"
+description = "Run x.py slightly more conveniently"
+authors = ["Casey Rodarmor <casey@rodarmor.com>"]
+edition = "2018"
+publish = false

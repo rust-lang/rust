@@ -6,6 +6,7 @@
 #[allow(clippy::no_effect, unused_variables, clippy::unnecessary_operation, clippy::short_circuit_statement)]
 #[allow(clippy::nonminimal_bool)]
 #[allow(unused)]
+#[allow(clippy::unnecessary_cast)]
 fn main() {
     // simple values and comparisons
     1 == 1;

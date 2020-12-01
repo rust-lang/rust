@@ -3,9 +3,9 @@ authors = ["The Rust Project Developers"]
 name = "bootstrap"
 version = "0.0.0"
 edition = "2018"
+build = "build.rs"
 
 [lib]
-name = "bootstrap"
 path = "lib.rs"
 doctest = false
 
@@ -49,6 +49,7 @@ lazy_static = "1.3.0"
 time = "0.1"
 ignore = "0.4.10"
 opener = "0.4"
+merge = "0.1.0"
 
 [target.'cfg(windows)'.dependencies.winapi]
 version = "0.3"

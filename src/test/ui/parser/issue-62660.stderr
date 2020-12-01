@@ -1,8 +1,8 @@
-error: expected one of `!`, `(`, `+`, `,`, `::`, `<`, or `>`, found `)`
+error: expected one of `!`, `(`, `+`, `,`, `::`, `:`, `<`, `=`, or `>`, found `)`
   --> $DIR/issue-62660.rs:7:38
    |
 LL |     pub fn foo(_: i32, self: Box<Self) {}
-   |                                      ^ expected one of 7 possible tokens
+   |                                      ^ expected one of 9 possible tokens
 
 error: aborting due to previous error
 

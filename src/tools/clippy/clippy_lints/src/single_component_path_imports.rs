@@ -41,7 +41,7 @@ impl EarlyLintPass for SingleComponentPathImports {
         if_chain! {
             if !in_macro(item.span);
             if cx.sess.opts.edition == Edition::Edition2018;
-            if !item.vis.node.is_pub();
+            if !item.vis.kind.is_pub();
             if let ItemKind::Use(use_tree) = &item.kind;
             if let segments = &use_tree.prefix.segments;
             if segments.len() == 1;

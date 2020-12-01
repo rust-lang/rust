@@ -1,0 +1,18 @@
+error[E0277]: cannot add `<T as SubEncoder>::ActualSize` to `<T as SubEncoder>::ActualSize`
+  --> $DIR/issue-54108.rs:19:5
+   |
+LL |     type Size: Add<Output = Self::Size>;
+   |                ------------------------ required by this bound in `Encoder::Size`
+...
+LL |     type Size = <Self as SubEncoder>::ActualSize;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no implementation for `<T as SubEncoder>::ActualSize + <T as SubEncoder>::ActualSize`
+   |
+   = help: the trait `Add` is not implemented for `<T as SubEncoder>::ActualSize`
+help: consider further restricting the associated type
+   |
+LL |     T: SubEncoder, <T as SubEncoder>::ActualSize: Add
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

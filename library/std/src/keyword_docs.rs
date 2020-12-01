@@ -15,18 +15,35 @@
 /// ```
 ///
 /// In general, any cast that can be performed via ascribing the type can also be done using `as`,
-/// so instead of writing `let x: u32 = 123`, you can write `let x = 123 as u32` (Note: `let x: u32
-/// = 123` would be best in that situation). The same is not true in the other direction, however,
+/// so instead of writing `let x: u32 = 123`, you can write `let x = 123 as u32` (note: `let x: u32
+/// = 123` would be best in that situation). The same is not true in the other direction, however;
 /// explicitly using `as` allows a few more coercions that aren't allowed implicitly, such as
 /// changing the type of a raw pointer or turning closures into raw pointers.
 ///
-/// Other places `as` is used include as extra syntax for [`crate`] and `use`, to change the name
-/// something is imported as.
+/// `as` can be seen as the primitive for `From` and `Into`: `as` only works  with primitives
+/// (`u8`, `bool`, `str`, pointers, ...) whereas `From` and `Into`  also works with types like
+/// `String` or `Vec`.
 ///
-/// For more information on what `as` is capable of, see the [Reference]
+/// `as` can also be used with the `_` placeholder when the destination type can be inferred. Note
+/// that this can cause inference breakage and usually such code should use an explicit type for
+/// both clarity and stability. This is most useful when converting pointers using `as *const _` or
+/// `as *mut _` though the [`cast`][const-cast] method is recommended over `as *const _` and it is
+/// [the same][mut-cast] for `as *mut _`: those methods make the intent clearer.
+///
+/// `as` is also used to rename imports in [`use`] and [`extern crate`][`crate`] statements:
+///
+/// ```
+/// # #[allow(unused_imports)]
+/// use std::{mem as memory, net as network};
+/// // Now you can use the names `memory` and `network` to refer to `std::mem` and `std::net`.
+/// ```
+/// For more information on what `as` is capable of, see the [Reference].
 ///
 /// [Reference]: ../reference/expressions/operator-expr.html#type-cast-expressions
 /// [`crate`]: keyword.crate.html
+/// [`use`]: keyword.use.html
+/// [const-cast]: primitive.pointer.html#method.cast
+/// [mut-cast]: primitive.pointer.html#method.cast-1
 mod as_keyword {}
 
 #[doc(keyword = "break")]
@@ -102,12 +119,14 @@ mod break_keyword {}
 
 #[doc(keyword = "const")]
 //
-/// Compile-time constants and deterministic functions.
+/// Compile-time constants and compile-time evaluable functions.
+///
+/// ## Compile-time constants
 ///
 /// Sometimes a certain value is used many times throughout a program, and it can become
 /// inconvenient to copy it over and over. What's more, it's not always possible or desirable to
 /// make it a variable that gets carried around to each function that needs it. In these cases, the
-/// `const` keyword provides a convenient alternative to code duplication.
+/// `const` keyword provides a convenient alternative to code duplication:
 ///
 /// ```rust
 /// const THING: u32 = 0xABAD1DEA;
@@ -115,10 +134,12 @@ mod break_keyword {}
 /// let foo = 123 + THING;
 /// ```
 ///
-/// Constants must be explicitly typed, unlike with `let` you can't ignore its type and let the
-/// compiler figure it out. Any constant value can be defined in a const, which in practice happens
-/// to be most things that would be reasonable to have a constant (barring `const fn`s). For
-/// example, you can't have a File as a `const`.
+/// Constants must be explicitly typed; unlike with `let`, you can't ignore their type and let the
+/// compiler figure it out. Any constant value can be defined in a `const`, which in practice happens
+/// to be most things that would be reasonable to have in a constant (barring `const fn`s). For
+/// example, you can't have a [`File`] as a `const`.
+///
+/// [`File`]: crate::fs::File
 ///
 /// The only lifetime allowed in a constant is `'static`, which is the lifetime that encompasses
 /// all others in a Rust program. For example, if you wanted to define a constant string, it would
@@ -128,7 +149,7 @@ mod break_keyword {}
 /// const WORDS: &'static str = "hello rust!";
 /// ```
 ///
-/// Thanks to static lifetime elision, you usually don't have to explicitly use 'static:
+/// Thanks to static lifetime elision, you usually don't have to explicitly use `'static`:
 ///
 /// ```rust
 /// const WORDS: &str = "hello convenience!";
@@ -136,22 +157,35 @@ mod break_keyword {}
 ///
 /// `const` items looks remarkably similar to `static` items, which introduces some confusion as
 /// to which one should be used at which times. To put it simply, constants are inlined wherever
-/// they're used, making using them identical to simply replacing the name of the const with its
-/// value. Static variables on the other hand point to a single location in memory, which all
+/// they're used, making using them identical to simply replacing the name of the `const` with its
+/// value. Static variables, on the other hand, point to a single location in memory, which all
 /// accesses share. This means that, unlike with constants, they can't have destructors, and act as
 /// a single value across the entire codebase.
 ///
-/// Constants, as with statics, should always be in SCREAMING_SNAKE_CASE.
+/// Constants, like statics, should always be in `SCREAMING_SNAKE_CASE`.
+///
+/// For more detail on `const`, see the [Rust Book] or the [Reference].
+///
+/// ## Compile-time evaluable functions
+///
+/// The other main use of the `const` keyword is in `const fn`. This marks a function as being
+/// callable in the body of a `const` or `static` item and in array initializers (commonly called
+/// "const contexts"). `const fn` are restricted in the set of operations they can perform, to
+/// ensure that they can be evaluated at compile-time. See the [Reference][const-eval] for more
+/// detail.
+///
+/// Turning a `fn` into a `const fn` has no effect on run-time uses of that function.
+///
+/// ## Other uses of `const`
 ///
 /// The `const` keyword is also used in raw pointers in combination with `mut`, as seen in `*const
-/// T` and `*mut T`. More about that can be read at the [pointer] primitive part of the Rust docs.
+/// T` and `*mut T`. More about `const` as used in raw pointers can be read at the Rust docs for the [pointer primitive].
 ///
-/// For more detail on `const`, see the [Rust Book] or the [Reference]
-///
-/// [pointer]: primitive.pointer.html
+/// [pointer primitive]: primitive.pointer.html
 /// [Rust Book]:
 /// ../book/ch03-01-variables-and-mutability.html#differences-between-variables-and-constants
 /// [Reference]: ../reference/items/constant-items.html
+/// [const-eval]: ../reference/const_eval.html
 mod const_keyword {}
 
 #[doc(keyword = "continue")]
@@ -329,7 +363,7 @@ mod else_keyword {}
 /// When data follows along with a variant, such as with rust's built-in [`Option`] type, the data
 /// is added as the type describes, for example `Option::Some(123)`. The same follows with
 /// struct-like variants, with things looking like `ComplexEnum::LotsOfThings { usual_struct_stuff:
-/// true, blah: "hello!".to_string(), }`. Empty Enums are similar to () in that they cannot be
+/// true, blah: "hello!".to_string(), }`. Empty Enums are similar to [`!`] in that they cannot be
 /// instantiated at all, and are used mainly to mess with the type system in interesting ways.
 ///
 /// For more information, take a look at the [Rust Book] or the [Reference]
@@ -337,6 +371,7 @@ mod else_keyword {}
 /// [ADT]: https://en.wikipedia.org/wiki/Algebraic_data_type
 /// [Rust Book]: ../book/ch06-01-defining-an-enum.html
 /// [Reference]: ../reference/items/enumerations.html
+/// [`!`]: primitive.never.html
 mod enum_keyword {}
 
 #[doc(keyword = "extern")]
@@ -379,6 +414,7 @@ mod enum_keyword {}
 /// [Rust book]:
 /// ../book/ch19-01-unsafe-rust.html#using-extern-functions-to-call-external-code
 /// [Reference]: ../reference/items/external-blocks.html
+/// [`crate`]: keyword.crate.html
 mod extern_keyword {}
 
 #[doc(keyword = "false")]
@@ -682,8 +718,8 @@ mod impl_keyword {}
 ///
 /// ## Literal Examples:
 ///
-///    * `for _ **in** 1..3 {}` - Iterate over an exclusive range up to but excluding 3.
-///    * `for _ **in** 1..=3 {}` - Iterate over an inclusive range up to and including 3.
+///    * `for _ in 1..3 {}` - Iterate over an exclusive range up to but excluding 3.
+///    * `for _ in 1..=3 {}` - Iterate over an inclusive range up to and including 3.
 ///
 /// (Read more about [range patterns])
 ///
@@ -1714,7 +1750,7 @@ mod super_keyword {}
 ///
 /// # Differences between the 2015 and 2018 editions
 ///
-/// In the 2015 edition parameters pattern where not needed for traits:
+/// In the 2015 edition the parameters pattern was not needed for traits:
 ///
 /// ```rust,edition2015
 /// trait Tr {

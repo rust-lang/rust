@@ -30,5 +30,5 @@ fn main() {
     }
     let g = [0; G { g: () }];
     //~^ ERROR mismatched types
-    //~| expected `usize`, found struct `main::G`
+    //~| expected `usize`, found struct `G`
 }

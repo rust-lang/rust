@@ -8,6 +8,8 @@ pub struct Condvar {
     inner: UnsafeCell<c::CONDITION_VARIABLE>,
 }
 
+pub type MovableCondvar = Condvar;
+
 unsafe impl Send for Condvar {}
 unsafe impl Sync for Condvar {}
 

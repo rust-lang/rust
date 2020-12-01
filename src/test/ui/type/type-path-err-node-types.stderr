@@ -1,8 +1,8 @@
-error[E0433]: failed to resolve: use of undeclared type or module `NonExistent`
+error[E0433]: failed to resolve: use of undeclared type `NonExistent`
   --> $DIR/type-path-err-node-types.rs:15:5
    |
 LL |     NonExistent::Assoc::<u8>;
-   |     ^^^^^^^^^^^ use of undeclared type or module `NonExistent`
+   |     ^^^^^^^^^^^ use of undeclared type `NonExistent`
 
 error[E0412]: cannot find type `Nonexistent` in this scope
   --> $DIR/type-path-err-node-types.rs:7:12

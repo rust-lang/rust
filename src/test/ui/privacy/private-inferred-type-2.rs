@@ -13,7 +13,7 @@ mod m {
 }
 
 fn main() {
-    m::Pub::get_priv; //~ ERROR type `m::Priv` is private
-    m::Pub::static_method; //~ ERROR type `m::Priv` is private
+    m::Pub::get_priv; //~ ERROR type `Priv` is private
+    m::Pub::static_method; //~ ERROR type `Priv` is private
     ext::Pub::static_method; //~ ERROR type `ext::Priv` is private
 }

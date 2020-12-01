@@ -1,0 +1,86 @@
+PRINT-BANG INPUT (DISPLAY): foo ! { #[fake_attr] mod bar {
+    #![doc = r" Foo"]
+} }
+PRINT-BANG INPUT (DEBUG): TokenStream [
+    Ident {
+        ident: "foo",
+        span: $DIR/issue-78675-captured-inner-attrs.rs:20:9: 20:12 (#4),
+    },
+    Punct {
+        ch: '!',
+        spacing: Alone,
+        span: $DIR/issue-78675-captured-inner-attrs.rs:20:12: 20:13 (#4),
+    },
+    Group {
+        delimiter: Brace,
+        stream: TokenStream [
+            Punct {
+                ch: '#',
+                spacing: Alone,
+                span: $DIR/issue-78675-captured-inner-attrs.rs:21:13: 21:14 (#4),
+            },
+            Group {
+                delimiter: Bracket,
+                stream: TokenStream [
+                    Ident {
+                        ident: "fake_attr",
+                        span: $DIR/issue-78675-captured-inner-attrs.rs:21:15: 21:24 (#4),
+                    },
+                ],
+                span: $DIR/issue-78675-captured-inner-attrs.rs:21:14: 21:25 (#4),
+            },
+            Group {
+                delimiter: None,
+                stream: TokenStream [
+                    Ident {
+                        ident: "mod",
+                        span: $DIR/issue-78675-captured-inner-attrs.rs:22:13: 22:18 (#4),
+                    },
+                    Ident {
+                        ident: "bar",
+                        span: $DIR/issue-78675-captured-inner-attrs.rs:22:13: 22:18 (#4),
+                    },
+                    Group {
+                        delimiter: Brace,
+                        stream: TokenStream [
+                            Punct {
+                                ch: '#',
+                                spacing: Joint,
+                                span: $DIR/issue-78675-captured-inner-attrs.rs:22:13: 22:18 (#4),
+                            },
+                            Punct {
+                                ch: '!',
+                                spacing: Alone,
+                                span: $DIR/issue-78675-captured-inner-attrs.rs:22:13: 22:18 (#4),
+                            },
+                            Group {
+                                delimiter: Bracket,
+                                stream: TokenStream [
+                                    Ident {
+                                        ident: "doc",
+                                        span: $DIR/issue-78675-captured-inner-attrs.rs:22:13: 22:18 (#4),
+                                    },
+                                    Punct {
+                                        ch: '=',
+                                        spacing: Alone,
+                                        span: $DIR/issue-78675-captured-inner-attrs.rs:22:13: 22:18 (#4),
+                                    },
+                                    Literal {
+                                        kind: StrRaw(0),
+                                        symbol: " Foo",
+                                        suffix: None,
+                                        span: $DIR/issue-78675-captured-inner-attrs.rs:22:13: 22:18 (#4),
+                                    },
+                                ],
+                                span: $DIR/issue-78675-captured-inner-attrs.rs:22:13: 22:18 (#4),
+                            },
+                        ],
+                        span: $DIR/issue-78675-captured-inner-attrs.rs:22:13: 22:18 (#4),
+                    },
+                ],
+                span: $DIR/issue-78675-captured-inner-attrs.rs:22:13: 22:18 (#4),
+            },
+        ],
+        span: $DIR/issue-78675-captured-inner-attrs.rs:20:14: 23:10 (#4),
+    },
+]

@@ -1,3 +1,5 @@
+//! Linux-specific extensions to primitives in the `std::fs` module.
+
 #![stable(feature = "metadata_ext", since = "1.1.0")]
 
 use crate::fs::Metadata;
@@ -18,7 +20,7 @@ pub trait MetadataExt {
     /// Unix platforms. The `os::unix::fs::MetadataExt` trait contains the
     /// cross-Unix abstractions contained within the raw stat.
     ///
-    /// [`stat`]: crate::os::linux::raw::stat
+    /// [`stat`]: struct@crate::os::linux::raw::stat
     ///
     /// # Examples
     ///
@@ -196,7 +198,7 @@ pub trait MetadataExt {
     fn st_atime(&self) -> i64;
     /// Returns the last access time of the file, in nanoseconds since [`st_atime`].
     ///
-    /// [`st_atime`]: #tymethod.st_atime
+    /// [`st_atime`]: Self::st_atime
     ///
     /// # Examples
     ///
@@ -232,7 +234,7 @@ pub trait MetadataExt {
     fn st_mtime(&self) -> i64;
     /// Returns the last modification time of the file, in nanoseconds since [`st_mtime`].
     ///
-    /// [`st_mtime`]: #tymethod.st_mtime
+    /// [`st_mtime`]: Self::st_mtime
     ///
     /// # Examples
     ///
@@ -268,7 +270,7 @@ pub trait MetadataExt {
     fn st_ctime(&self) -> i64;
     /// Returns the last status change time of the file, in nanoseconds since [`st_ctime`].
     ///
-    /// [`st_ctime`]: #tymethod.st_ctime
+    /// [`st_ctime`]: Self::st_ctime
     ///
     /// # Examples
     ///

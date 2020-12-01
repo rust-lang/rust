@@ -4,7 +4,7 @@ error[E0308]: mismatched types
 LL |     test(array.len());
    |          ^^^^^^^^^^^ expected `u32`, found `usize`
    |
-help: you can convert an `usize` to `u32` and panic if the converted value wouldn't fit
+help: you can convert a `usize` to a `u32` and panic if the converted value doesn't fit
    |
 LL |     test(array.len().try_into().unwrap());
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

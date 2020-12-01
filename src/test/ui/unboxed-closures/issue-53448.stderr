@@ -1,0 +1,20 @@
+error[E0277]: the size for values of type `<() as Lt<'_>>::T` cannot be known at compilation time
+  --> $DIR/issue-53448.rs:12:54
+   |
+LL |     let f: &mut dyn FnMut<(_,), Output = ()> = &mut |_: <() as Lt<'_>>::T| {};
+   |                                                      ^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `<() as Lt<'_>>::T`
+   = help: unsized fn params are gated as an unstable feature
+help: consider further restricting the associated type
+   |
+LL | fn main() where <() as Lt<'_>>::T: Sized {
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: function arguments must have a statically known size, borrowed types always have a known size
+   |
+LL |     let f: &mut dyn FnMut<(_,), Output = ()> = &mut |_: &<() as Lt<'_>>::T| {};
+   |                                                         ^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

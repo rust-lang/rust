@@ -27,7 +27,7 @@ mod y {
 
     #[rustc_clean(label="typeck", cfg="cfail2")]
     pub fn y() {
-        //[cfail2]~^ ERROR `typeck(y::y)` should be clean but is not
+        //[cfail2]~^ ERROR `typeck(y)` should be clean but is not
         x::x();
     }
 }
@@ -35,6 +35,6 @@ mod y {
 mod z {
     #[rustc_dirty(label="typeck", cfg="cfail2")]
     pub fn z() {
-        //[cfail2]~^ ERROR `typeck(z::z)` should be dirty but is not
+        //[cfail2]~^ ERROR `typeck(z)` should be dirty but is not
     }
 }

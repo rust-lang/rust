@@ -1,0 +1,23 @@
+From 9c5663e36391fa20becf84f3af2e82afa5bb720b Mon Sep 17 00:00:00 2001
+From: bjorn3 <bjorn3@users.noreply.github.com>
+Date: Sat, 15 Aug 2020 19:56:03 +0200
+Subject: [PATCH] [rand] Enable c2-chacha simd feature
+
+---
+ rand_chacha/Cargo.toml | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/rand_chacha/Cargo.toml b/rand_chacha/Cargo.toml
+index 9190b7f..872cca2 100644
+--- a/rand_chacha/Cargo.toml
++++ b/rand_chacha/Cargo.toml
+@@ -24,5 +24,5 @@ ppv-lite86 = { version = "0.2.8", default-features = false }
+ 
+ [features]
+ default = ["std"]
+-std = ["ppv-lite86/std"]
++std = ["ppv-lite86/std", "ppv-lite86/simd"]
+ simd = [] # deprecated
+-- 
+2.20.1
+

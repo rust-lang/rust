@@ -1,61 +1,37 @@
-error[E0658]: unions with non-`Copy` fields are unstable
-  --> $DIR/feature-gate-untagged_unions.rs:9:1
+error[E0658]: unions with non-`Copy` fields other than `ManuallyDrop<T>` are unstable
+  --> $DIR/feature-gate-untagged_unions.rs:20:5
    |
-LL | / union U3 {
-LL | |     a: String,
-LL | | }
-   | |_^
-   |
-   = note: see issue #55149 <https://github.com/rust-lang/rust/issues/55149> for more information
-   = help: add `#![feature(untagged_unions)]` to the crate attributes to enable
-
-error[E0658]: unions with non-`Copy` fields are unstable
-  --> $DIR/feature-gate-untagged_unions.rs:13:1
-   |
-LL | / union U4<T> {
-LL | |     a: T,
-LL | | }
-   | |_^
-   |
-   = note: see issue #55149 <https://github.com/rust-lang/rust/issues/55149> for more information
-   = help: add `#![feature(untagged_unions)]` to the crate attributes to enable
-
-error[E0658]: unions with `Drop` implementations are unstable
-  --> $DIR/feature-gate-untagged_unions.rs:17:1
-   |
-LL | / union U5 {
-LL | |     a: u8,
-LL | | }
-   | |_^
+LL |     a: std::cell::RefCell<i32>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #55149 <https://github.com/rust-lang/rust/issues/55149> for more information
    = help: add `#![feature(untagged_unions)]` to the crate attributes to enable
 
 error[E0740]: unions may not contain fields that need dropping
-  --> $DIR/feature-gate-untagged_unions.rs:10:5
+  --> $DIR/feature-gate-untagged_unions.rs:16:5
    |
 LL |     a: String,
    |     ^^^^^^^^^
    |
 note: `std::mem::ManuallyDrop` can be used to wrap the type
-  --> $DIR/feature-gate-untagged_unions.rs:10:5
+  --> $DIR/feature-gate-untagged_unions.rs:16:5
    |
 LL |     a: String,
    |     ^^^^^^^^^
 
 error[E0740]: unions may not contain fields that need dropping
-  --> $DIR/feature-gate-untagged_unions.rs:14:5
+  --> $DIR/feature-gate-untagged_unions.rs:24:5
    |
 LL |     a: T,
    |     ^^^^
    |
 note: `std::mem::ManuallyDrop` can be used to wrap the type
-  --> $DIR/feature-gate-untagged_unions.rs:14:5
+  --> $DIR/feature-gate-untagged_unions.rs:24:5
    |
 LL |     a: T,
    |     ^^^^
 
-error: aborting due to 5 previous errors
+error: aborting due to 3 previous errors
 
 Some errors have detailed explanations: E0658, E0740.
 For more information about an error, try `rustc --explain E0658`.

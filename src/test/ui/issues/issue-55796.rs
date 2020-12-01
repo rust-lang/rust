@@ -1,3 +1,5 @@
+// ignore-compare-mode-chalk
+
 pub trait EdgeTrait<N> {
     fn target(&self) -> N;
 }

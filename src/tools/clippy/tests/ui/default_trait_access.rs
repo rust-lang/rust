@@ -1,4 +1,7 @@
-#![warn(clippy::default_trait_access)]
+// run-rustfix
+
+#![allow(unused_imports)]
+#![deny(clippy::default_trait_access)]
 
 use std::default;
 use std::default::Default as D2;

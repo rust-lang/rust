@@ -74,4 +74,4 @@ impl NonGeneric {
 }
 
 // Only the non-generic methods should be instantiated:
-//~ MONO_ITEM fn unused_traits_and_generics::{{impl}}[3]::foo[0]
+//~ MONO_ITEM fn NonGeneric::foo

@@ -39,12 +39,15 @@ impl<T: Write> JsonFormatter<T> {
         stdout: Option<Cow<'_, str>>,
         extra: Option<&str>,
     ) -> io::Result<()> {
+        // A doc test's name includes a filename which must be escaped for correct json.
         self.write_message(&*format!(
             r#"{{ "type": "{}", "name": "{}", "event": "{}""#,
-            ty, name, evt
+            ty,
+            EscapedString(name),
+            evt
         ))?;
         if let Some(exec_time) = exec_time {
-            self.write_message(&*format!(r#", "exec_time": "{}""#, exec_time))?;
+            self.write_message(&*format!(r#", "exec_time": {}"#, exec_time.0.as_secs_f64()))?;
         }
         if let Some(stdout) = stdout {
             self.write_message(&*format!(r#", "stdout": "{}""#, EscapedString(stdout)))?;
@@ -67,7 +70,7 @@ impl<T: Write> OutputFormatter for JsonFormatter<T> {
     fn write_test_start(&mut self, desc: &TestDesc) -> io::Result<()> {
         self.writeln_message(&*format!(
             r#"{{ "type": "test", "event": "started", "name": "{}" }}"#,
-            desc.name
+            EscapedString(desc.name.as_slice())
         ))
     }
 
@@ -140,7 +143,10 @@ impl<T: Write> OutputFormatter for JsonFormatter<T> {
                      \"name\": \"{}\", \
                      \"median\": {}, \
                      \"deviation\": {}{} }}",
-                    desc.name, median, deviation, mbps
+                    EscapedString(desc.name.as_slice()),
+                    median,
+                    deviation,
+                    mbps
                 );
 
                 self.writeln_message(&*line)
@@ -151,12 +157,12 @@ impl<T: Write> OutputFormatter for JsonFormatter<T> {
     fn write_timeout(&mut self, desc: &TestDesc) -> io::Result<()> {
         self.writeln_message(&*format!(
             r#"{{ "type": "test", "event": "timeout", "name": "{}" }}"#,
-            desc.name
+            EscapedString(desc.name.as_slice())
         ))
     }
 
     fn write_run_finish(&mut self, state: &ConsoleTestState) -> io::Result<bool> {
-        self.writeln_message(&*format!(
+        self.write_message(&*format!(
             "{{ \"type\": \"suite\", \
              \"event\": \"{}\", \
              \"passed\": {}, \
@@ -164,15 +170,22 @@ impl<T: Write> OutputFormatter for JsonFormatter<T> {
              \"allowed_fail\": {}, \
              \"ignored\": {}, \
              \"measured\": {}, \
-             \"filtered_out\": {} }}",
+             \"filtered_out\": {}",
             if state.failed == 0 { "ok" } else { "failed" },
             state.passed,
             state.failed + state.allowed_fail,
             state.allowed_fail,
             state.ignored,
             state.measured,
-            state.filtered_out
+            state.filtered_out,
         ))?;
+
+        if let Some(ref exec_time) = state.exec_time {
+            let time_str = format!(", \"exec_time\": {}", exec_time.0.as_secs_f64());
+            self.write_message(&time_str)?;
+        }
+
+        self.writeln_message(" }")?;
 
         Ok(state.failed == 0)
     }
@@ -182,8 +195,8 @@ impl<T: Write> OutputFormatter for JsonFormatter<T> {
 /// Base code taken form `libserialize::json::escape_str`
 struct EscapedString<S: AsRef<str>>(S);
 
-impl<S: AsRef<str>> ::std::fmt::Display for EscapedString<S> {
-    fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+impl<S: AsRef<str>> std::fmt::Display for EscapedString<S> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> ::std::fmt::Result {
         let mut start = 0;
 
         for (i, byte) in self.0.as_ref().bytes().enumerate() {

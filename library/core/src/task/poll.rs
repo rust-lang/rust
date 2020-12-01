@@ -39,15 +39,17 @@ impl<T> Poll<T> {
 
     /// Returns `true` if this is `Poll::Ready`
     #[inline]
+    #[rustc_const_stable(feature = "const_poll", since = "1.49.0")]
     #[stable(feature = "futures_api", since = "1.36.0")]
-    pub fn is_ready(&self) -> bool {
+    pub const fn is_ready(&self) -> bool {
         matches!(*self, Poll::Ready(_))
     }
 
     /// Returns `true` if this is `Poll::Pending`
     #[inline]
+    #[rustc_const_stable(feature = "const_poll", since = "1.49.0")]
     #[stable(feature = "futures_api", since = "1.36.0")]
-    pub fn is_pending(&self) -> bool {
+    pub const fn is_pending(&self) -> bool {
         !self.is_ready()
     }
 }
@@ -112,6 +114,14 @@ impl<T, E> Poll<Option<Result<T, E>>> {
 
 #[stable(feature = "futures_api", since = "1.36.0")]
 impl<T> From<T> for Poll<T> {
+    /// Convert to a `Ready` variant.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use core::task::Poll;
+    /// assert_eq!(Poll::from(true), Poll::Ready(true));
+    /// ```
     fn from(t: T) -> Poll<T> {
         Poll::Ready(t)
     }

@@ -4,6 +4,43 @@ use core::cell::Cell;
 use core::convert::TryFrom;
 use core::iter::*;
 
+/// An iterator wrapper that panics whenever `next` or `next_back` is called
+/// after `None` has been returned.
+struct Unfuse<I> {
+    iter: I,
+    exhausted: bool,
+}
+
+fn unfuse<I: IntoIterator>(iter: I) -> Unfuse<I::IntoIter> {
+    Unfuse { iter: iter.into_iter(), exhausted: false }
+}
+
+impl<I> Iterator for Unfuse<I>
+where
+    I: Iterator,
+{
+    type Item = I::Item;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        assert!(!self.exhausted);
+        let next = self.iter.next();
+        self.exhausted = next.is_none();
+        next
+    }
+}
+
+impl<I> DoubleEndedIterator for Unfuse<I>
+where
+    I: DoubleEndedIterator,
+{
+    fn next_back(&mut self) -> Option<Self::Item> {
+        assert!(!self.exhausted);
+        let next = self.iter.next_back();
+        self.exhausted = next.is_none();
+        next
+    }
+}
+
 #[test]
 fn test_lt() {
     let empty: [isize; 0] = [];
@@ -140,6 +177,72 @@ fn test_iterator_chain() {
         i += 1;
     }
     assert_eq!(i, expected.len());
+}
+
+#[test]
+fn test_iterator_chain_advance_by() {
+    fn test_chain(xs: &[i32], ys: &[i32]) {
+        let len = xs.len() + ys.len();
+
+        for i in 0..xs.len() {
+            let mut iter = unfuse(xs).chain(unfuse(ys));
+            iter.advance_by(i).unwrap();
+            assert_eq!(iter.next(), Some(&xs[i]));
+            assert_eq!(iter.advance_by(100), Err(len - i - 1));
+        }
+
+        for i in 0..ys.len() {
+            let mut iter = unfuse(xs).chain(unfuse(ys));
+            iter.advance_by(xs.len() + i).unwrap();
+            assert_eq!(iter.next(), Some(&ys[i]));
+            assert_eq!(iter.advance_by(100), Err(ys.len() - i - 1));
+        }
+
+        let mut iter = xs.iter().chain(ys);
+        iter.advance_by(len).unwrap();
+        assert_eq!(iter.next(), None);
+
+        let mut iter = xs.iter().chain(ys);
+        assert_eq!(iter.advance_by(len + 1), Err(len));
+    }
+
+    test_chain(&[], &[]);
+    test_chain(&[], &[0, 1, 2, 3, 4, 5]);
+    test_chain(&[0, 1, 2, 3, 4, 5], &[]);
+    test_chain(&[0, 1, 2, 3, 4, 5], &[30, 40, 50, 60]);
+}
+
+#[test]
+fn test_iterator_chain_advance_back_by() {
+    fn test_chain(xs: &[i32], ys: &[i32]) {
+        let len = xs.len() + ys.len();
+
+        for i in 0..ys.len() {
+            let mut iter = unfuse(xs).chain(unfuse(ys));
+            iter.advance_back_by(i).unwrap();
+            assert_eq!(iter.next_back(), Some(&ys[ys.len() - i - 1]));
+            assert_eq!(iter.advance_back_by(100), Err(len - i - 1));
+        }
+
+        for i in 0..xs.len() {
+            let mut iter = unfuse(xs).chain(unfuse(ys));
+            iter.advance_back_by(ys.len() + i).unwrap();
+            assert_eq!(iter.next_back(), Some(&xs[xs.len() - i - 1]));
+            assert_eq!(iter.advance_back_by(100), Err(xs.len() - i - 1));
+        }
+
+        let mut iter = xs.iter().chain(ys);
+        iter.advance_back_by(len).unwrap();
+        assert_eq!(iter.next_back(), None);
+
+        let mut iter = xs.iter().chain(ys);
+        assert_eq!(iter.advance_back_by(len + 1), Err(len));
+    }
+
+    test_chain(&[], &[]);
+    test_chain(&[], &[0, 1, 2, 3, 4, 5]);
+    test_chain(&[0, 1, 2, 3, 4, 5], &[]);
+    test_chain(&[0, 1, 2, 3, 4, 5], &[30, 40, 50, 60]);
 }
 
 #[test]
@@ -376,6 +479,103 @@ fn test_zip_next_back_side_effects_exhausted() {
     assert_eq!(b, vec![200, 300, 400]);
 }
 
+#[derive(Debug)]
+struct CountClone(Cell<i32>);
+
+fn count_clone() -> CountClone {
+    CountClone(Cell::new(0))
+}
+
+impl PartialEq<i32> for CountClone {
+    fn eq(&self, rhs: &i32) -> bool {
+        self.0.get() == *rhs
+    }
+}
+
+impl Clone for CountClone {
+    fn clone(&self) -> Self {
+        let ret = CountClone(self.0.clone());
+        let n = self.0.get();
+        self.0.set(n + 1);
+        ret
+    }
+}
+
+#[test]
+fn test_zip_cloned_sideffectful() {
+    let xs = [count_clone(), count_clone(), count_clone(), count_clone()];
+    let ys = [count_clone(), count_clone()];
+
+    for _ in xs.iter().cloned().zip(ys.iter().cloned()) {}
+
+    assert_eq!(&xs, &[1, 1, 1, 0][..]);
+    assert_eq!(&ys, &[1, 1][..]);
+
+    let xs = [count_clone(), count_clone()];
+    let ys = [count_clone(), count_clone(), count_clone(), count_clone()];
+
+    for _ in xs.iter().cloned().zip(ys.iter().cloned()) {}
+
+    assert_eq!(&xs, &[1, 1][..]);
+    assert_eq!(&ys, &[1, 1, 0, 0][..]);
+}
+
+#[test]
+fn test_zip_map_sideffectful() {
+    let mut xs = [0; 6];
+    let mut ys = [0; 4];
+
+    for _ in xs.iter_mut().map(|x| *x += 1).zip(ys.iter_mut().map(|y| *y += 1)) {}
+
+    assert_eq!(&xs, &[1, 1, 1, 1, 1, 0]);
+    assert_eq!(&ys, &[1, 1, 1, 1]);
+
+    let mut xs = [0; 4];
+    let mut ys = [0; 6];
+
+    for _ in xs.iter_mut().map(|x| *x += 1).zip(ys.iter_mut().map(|y| *y += 1)) {}
+
+    assert_eq!(&xs, &[1, 1, 1, 1]);
+    assert_eq!(&ys, &[1, 1, 1, 1, 0, 0]);
+}
+
+#[test]
+fn test_zip_map_rev_sideffectful() {
+    let mut xs = [0; 6];
+    let mut ys = [0; 4];
+
+    {
+        let mut it = xs.iter_mut().map(|x| *x += 1).zip(ys.iter_mut().map(|y| *y += 1));
+        it.next_back();
+    }
+    assert_eq!(&xs, &[0, 0, 0, 1, 1, 1]);
+    assert_eq!(&ys, &[0, 0, 0, 1]);
+
+    let mut xs = [0; 6];
+    let mut ys = [0; 4];
+
+    {
+        let mut it = xs.iter_mut().map(|x| *x += 1).zip(ys.iter_mut().map(|y| *y += 1));
+        (&mut it).take(5).count();
+        it.next_back();
+    }
+    assert_eq!(&xs, &[1, 1, 1, 1, 1, 1]);
+    assert_eq!(&ys, &[1, 1, 1, 1]);
+}
+
+#[test]
+fn test_zip_nested_sideffectful() {
+    let mut xs = [0; 6];
+    let ys = [0; 4];
+
+    {
+        // test that it has the side effect nested inside enumerate
+        let it = xs.iter_mut().map(|x| *x = 1).enumerate().zip(&ys);
+        it.count();
+    }
+    assert_eq!(&xs, &[1, 1, 1, 1, 1, 0]);
+}
+
 #[test]
 fn test_zip_nth_back_side_effects_exhausted() {
     let mut a = Vec::new();
@@ -474,7 +674,7 @@ fn test_iterator_step_by_nth_overflow() {
     }
 
     let mut it = Test(0);
-    let root = usize::MAX >> (::std::mem::size_of::<usize>() * 8 / 2);
+    let root = usize::MAX >> (usize::BITS / 2);
     let n = root + 20;
     (&mut it).step_by(n).nth(n);
     assert_eq!(it.0, n as Bigger * n as Bigger);
@@ -932,6 +1132,17 @@ fn test_iterator_peekable_next_if_eq() {
     assert_eq!(it.next_if_eq("Ludicrous"), Some("Ludicrous".into()));
     assert_eq!(it.next_if_eq("speed"), Some("speed".into()));
     assert_eq!(it.next_if_eq(""), None);
+}
+
+#[test]
+fn test_iterator_peekable_mut() {
+    let mut it = vec![1, 2, 3].into_iter().peekable();
+    if let Some(p) = it.peek_mut() {
+        if *p == 1 {
+            *p = 5;
+        }
+    }
+    assert_eq!(it.collect::<Vec<_>>(), vec![5, 2, 3]);
 }
 
 /// This is an iterator that follows the Iterator contract,
@@ -1471,6 +1682,66 @@ fn test_iterator_rev_nth() {
         assert_eq!(v.iter().rev().nth(i).unwrap(), &v[v.len() - 1 - i]);
     }
     assert_eq!(v.iter().rev().nth(v.len()), None);
+}
+
+#[test]
+fn test_iterator_advance_by() {
+    let v: &[_] = &[0, 1, 2, 3, 4];
+
+    for i in 0..v.len() {
+        let mut iter = v.iter();
+        assert_eq!(iter.advance_by(i), Ok(()));
+        assert_eq!(iter.next().unwrap(), &v[i]);
+        assert_eq!(iter.advance_by(100), Err(v.len() - 1 - i));
+    }
+
+    assert_eq!(v.iter().advance_by(v.len()), Ok(()));
+    assert_eq!(v.iter().advance_by(100), Err(v.len()));
+}
+
+#[test]
+fn test_iterator_advance_back_by() {
+    let v: &[_] = &[0, 1, 2, 3, 4];
+
+    for i in 0..v.len() {
+        let mut iter = v.iter();
+        assert_eq!(iter.advance_back_by(i), Ok(()));
+        assert_eq!(iter.next_back().unwrap(), &v[v.len() - 1 - i]);
+        assert_eq!(iter.advance_back_by(100), Err(v.len() - 1 - i));
+    }
+
+    assert_eq!(v.iter().advance_back_by(v.len()), Ok(()));
+    assert_eq!(v.iter().advance_back_by(100), Err(v.len()));
+}
+
+#[test]
+fn test_iterator_rev_advance_by() {
+    let v: &[_] = &[0, 1, 2, 3, 4];
+
+    for i in 0..v.len() {
+        let mut iter = v.iter().rev();
+        assert_eq!(iter.advance_by(i), Ok(()));
+        assert_eq!(iter.next().unwrap(), &v[v.len() - 1 - i]);
+        assert_eq!(iter.advance_by(100), Err(v.len() - 1 - i));
+    }
+
+    assert_eq!(v.iter().rev().advance_by(v.len()), Ok(()));
+    assert_eq!(v.iter().rev().advance_by(100), Err(v.len()));
+}
+
+#[test]
+fn test_iterator_rev_advance_back_by() {
+    let v: &[_] = &[0, 1, 2, 3, 4];
+
+    for i in 0..v.len() {
+        let mut iter = v.iter().rev();
+        assert_eq!(iter.advance_back_by(i), Ok(()));
+        assert_eq!(iter.next_back().unwrap(), &v[i]);
+        assert_eq!(iter.advance_back_by(100), Err(v.len() - 1 - i));
+    }
+
+    assert_eq!(v.iter().rev().advance_back_by(v.len()), Ok(()));
+    assert_eq!(v.iter().rev().advance_back_by(100), Err(v.len()));
 }
 
 #[test]

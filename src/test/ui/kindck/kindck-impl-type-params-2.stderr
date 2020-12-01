@@ -1,13 +1,13 @@
-error[E0277]: the trait bound `std::boxed::Box<{integer}>: Foo` is not satisfied
+error[E0277]: the trait bound `Box<{integer}>: Foo` is not satisfied
   --> $DIR/kindck-impl-type-params-2.rs:13:16
    |
 LL | fn take_param<T:Foo>(foo: &T) { }
    |                 --- required by this bound in `take_param`
 ...
 LL |     take_param(&x);
-   |                ^^ the trait `std::marker::Copy` is not implemented for `std::boxed::Box<{integer}>`
+   |                ^^ the trait `Copy` is not implemented for `Box<{integer}>`
    |
-   = note: required because of the requirements on the impl of `Foo` for `std::boxed::Box<{integer}>`
+   = note: required because of the requirements on the impl of `Foo` for `Box<{integer}>`
 
 error: aborting due to previous error
 

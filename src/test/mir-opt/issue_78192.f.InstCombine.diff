@@ -1,0 +1,29 @@
+- // MIR for `f` before InstCombine
++ // MIR for `f` after InstCombine
+  
+  fn f(_1: &T) -> *const T {
+      debug a => _1;                       // in scope 0 at $DIR/issue-78192.rs:2:13: 2:14
+      let mut _0: *const T;                // return place in scope 0 at $DIR/issue-78192.rs:2:23: 2:31
+      let _2: &*const T;                   // in scope 0 at $DIR/issue-78192.rs:3:9: 3:10
+      let _3: &*const T;                   // in scope 0 at $DIR/issue-78192.rs:3:24: 3:40
+      let _4: *const T;                    // in scope 0 at $DIR/issue-78192.rs:3:25: 3:40
+      scope 1 {
+          debug b => _2;                   // in scope 1 at $DIR/issue-78192.rs:3:9: 3:10
+      }
+  
+      bb0: {
+          StorageLive(_2);                 // scope 0 at $DIR/issue-78192.rs:3:9: 3:10
+          StorageLive(_3);                 // scope 0 at $DIR/issue-78192.rs:3:24: 3:40
+          StorageLive(_4);                 // scope 0 at $DIR/issue-78192.rs:3:25: 3:40
+          _4 = &raw const (*_1);           // scope 0 at $DIR/issue-78192.rs:3:26: 3:27
+          _3 = &_4;                        // scope 0 at $DIR/issue-78192.rs:3:24: 3:40
+-         _2 = &(*_3);                     // scope 0 at $DIR/issue-78192.rs:3:24: 3:40
++         _2 = _3;                         // scope 0 at $DIR/issue-78192.rs:3:24: 3:40
+          StorageDead(_3);                 // scope 0 at $DIR/issue-78192.rs:3:40: 3:41
+          _0 = (*_2);                      // scope 1 at $DIR/issue-78192.rs:4:5: 4:7
+          StorageDead(_4);                 // scope 0 at $DIR/issue-78192.rs:5:1: 5:2
+          StorageDead(_2);                 // scope 0 at $DIR/issue-78192.rs:5:1: 5:2
+          return;                          // scope 0 at $DIR/issue-78192.rs:5:2: 5:2
+      }
+  }
+  

@@ -1,0 +1,39 @@
+- // MIR for `nrvo` before DestinationPropagation
++ // MIR for `nrvo` after DestinationPropagation
+  
+  fn nrvo(_1: for<'r> fn(&'r mut [u8; 1024])) -> [u8; 1024] {
+      debug init => _1;                    // in scope 0 at $DIR/simple.rs:4:9: 4:13
+      let mut _0: [u8; 1024];              // return place in scope 0 at $DIR/simple.rs:4:39: 4:49
+      let mut _2: [u8; 1024];              // in scope 0 at $DIR/simple.rs:5:9: 5:16
+      let _3: ();                          // in scope 0 at $DIR/simple.rs:6:5: 6:19
+      let mut _4: for<'r> fn(&'r mut [u8; 1024]); // in scope 0 at $DIR/simple.rs:6:5: 6:9
+      let mut _5: &mut [u8; 1024];         // in scope 0 at $DIR/simple.rs:6:10: 6:18
+      let mut _6: &mut [u8; 1024];         // in scope 0 at $DIR/simple.rs:6:10: 6:18
+      scope 1 {
+          debug buf => _2;                 // in scope 1 at $DIR/simple.rs:5:9: 5:16
+      }
+  
+      bb0: {
+          StorageLive(_2);                 // scope 0 at $DIR/simple.rs:5:9: 5:16
+          _2 = [const 0_u8; 1024];         // scope 0 at $DIR/simple.rs:5:19: 5:28
+          StorageLive(_3);                 // scope 1 at $DIR/simple.rs:6:5: 6:19
+          StorageLive(_4);                 // scope 1 at $DIR/simple.rs:6:5: 6:9
+          _4 = _1;                         // scope 1 at $DIR/simple.rs:6:5: 6:9
+          StorageLive(_5);                 // scope 1 at $DIR/simple.rs:6:10: 6:18
+          StorageLive(_6);                 // scope 1 at $DIR/simple.rs:6:10: 6:18
+          _6 = &mut _2;                    // scope 1 at $DIR/simple.rs:6:10: 6:18
+          _5 = &mut (*_6);                 // scope 1 at $DIR/simple.rs:6:10: 6:18
+          _3 = move _4(move _5) -> bb1;    // scope 1 at $DIR/simple.rs:6:5: 6:19
+      }
+  
+      bb1: {
+          StorageDead(_5);                 // scope 1 at $DIR/simple.rs:6:18: 6:19
+          StorageDead(_4);                 // scope 1 at $DIR/simple.rs:6:18: 6:19
+          StorageDead(_6);                 // scope 1 at $DIR/simple.rs:6:19: 6:20
+          StorageDead(_3);                 // scope 1 at $DIR/simple.rs:6:19: 6:20
+          _0 = _2;                         // scope 1 at $DIR/simple.rs:7:5: 7:8
+          StorageDead(_2);                 // scope 0 at $DIR/simple.rs:8:1: 8:2
+          return;                          // scope 0 at $DIR/simple.rs:8:2: 8:2
+      }
+  }
+  

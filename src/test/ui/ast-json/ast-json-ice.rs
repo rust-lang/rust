@@ -39,3 +39,26 @@ fn main() {
 
     struct A;
 }
+
+// Regressions tests for issues #78398 and #78510 (captured tokens in associated and foreign items)
+
+struct S;
+
+macro_rules! mac_extern {
+    ($i:item) => {
+        extern "C" { $i }
+    }
+}
+macro_rules! mac_assoc {
+    ($i:item) => {
+        impl S { $i }
+        trait Bar { $i }
+    }
+}
+
+mac_extern! {
+    fn foo();
+}
+mac_assoc! {
+    fn foo() {}
+}

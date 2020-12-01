@@ -1,10 +1,10 @@
-error[E0277]: the trait bound `test::TestDescAndFn: example_runner::Testable` is not satisfied
+error[E0277]: the trait bound `TestDescAndFn: Testable` is not satisfied
   --> $DIR/mismatch.rs:9:1
    |
 LL | fn wrong_kind(){}
-   | ^^^^^^^^^^^^^^^^^ the trait `example_runner::Testable` is not implemented for `test::TestDescAndFn`
+   | ^^^^^^^^^^^^^^^^^ the trait `Testable` is not implemented for `TestDescAndFn`
    |
-   = note: required for the cast to the object type `dyn example_runner::Testable`
+   = note: required for the cast to the object type `dyn Testable`
    = note: this error originates in an attribute macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error

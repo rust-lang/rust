@@ -88,9 +88,28 @@ impl<'tcx> LateLintPass<'tcx> for Arithmetic {
 
                 let (l_ty, r_ty) = (cx.typeck_results().expr_ty(l), cx.typeck_results().expr_ty(r));
                 if l_ty.peel_refs().is_integral() && r_ty.peel_refs().is_integral() {
-                    span_lint(cx, INTEGER_ARITHMETIC, expr.span, "integer arithmetic detected");
-                    self.expr_span = Some(expr.span);
-                } else if l_ty.peel_refs().is_floating_point() && r_ty.peel_refs().is_floating_point() {
+                    match op.node {
+                        hir::BinOpKind::Div | hir::BinOpKind::Rem => match &r.kind {
+                            hir::ExprKind::Lit(_lit) => (),
+                            hir::ExprKind::Unary(hir::UnOp::UnNeg, expr) => {
+                                if let hir::ExprKind::Lit(lit) = &expr.kind {
+                                    if let rustc_ast::ast::LitKind::Int(1, _) = lit.node {
+                                        span_lint(cx, INTEGER_ARITHMETIC, expr.span, "integer arithmetic detected");
+                                        self.expr_span = Some(expr.span);
+                                    }
+                                }
+                            },
+                            _ => {
+                                span_lint(cx, INTEGER_ARITHMETIC, expr.span, "integer arithmetic detected");
+                                self.expr_span = Some(expr.span);
+                            },
+                        },
+                        _ => {
+                            span_lint(cx, INTEGER_ARITHMETIC, expr.span, "integer arithmetic detected");
+                            self.expr_span = Some(expr.span);
+                        },
+                    }
+                } else if r_ty.peel_refs().is_floating_point() && r_ty.peel_refs().is_floating_point() {
                     span_lint(cx, FLOAT_ARITHMETIC, expr.span, "floating-point arithmetic detected");
                     self.expr_span = Some(expr.span);
                 }

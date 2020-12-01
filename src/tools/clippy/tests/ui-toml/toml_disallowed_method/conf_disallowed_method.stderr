@@ -1,0 +1,16 @@
+error: use of a disallowed method `regex::re_unicode::Regex::is_match`
+  --> $DIR/conf_disallowed_method.rs:10:5
+   |
+LL |     re.is_match("abc");
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::disallowed-method` implied by `-D warnings`
+
+error: use of a disallowed method `core::iter::traits::iterator::Iterator::sum`
+  --> $DIR/conf_disallowed_method.rs:12:5
+   |
+LL |     a.iter().sum::<i32>();
+   |     ^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

@@ -20,13 +20,13 @@ struct RegionDeps<'tcx> {
     smaller: FxHashSet<RegionTarget<'tcx>>,
 }
 
-pub struct AutoTraitFinder<'a, 'tcx> {
-    pub cx: &'a core::DocContext<'tcx>,
-    pub f: auto_trait::AutoTraitFinder<'tcx>,
+crate struct AutoTraitFinder<'a, 'tcx> {
+    crate cx: &'a core::DocContext<'tcx>,
+    crate f: auto_trait::AutoTraitFinder<'tcx>,
 }
 
 impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
-    pub fn new(cx: &'a core::DocContext<'tcx>) -> Self {
+    crate fn new(cx: &'a core::DocContext<'tcx>) -> Self {
         let f = auto_trait::AutoTraitFinder::new(cx.tcx);
 
         AutoTraitFinder { cx, f }
@@ -34,7 +34,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
 
     // FIXME(eddyb) figure out a better way to pass information about
     // parametrization of `ty` than `param_env_def_id`.
-    pub fn get_auto_trait_impls(&self, ty: Ty<'tcx>, param_env_def_id: DefId) -> Vec<Item> {
+    crate fn get_auto_trait_impls(&self, ty: Ty<'tcx>, param_env_def_id: DefId) -> Vec<Item> {
         let param_env = self.cx.tcx.param_env(param_env_def_id);
 
         debug!("get_auto_trait_impls({:?})", ty);
@@ -125,7 +125,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                     def_id: self.cx.next_def_id(param_env_def_id.krate),
                     stability: None,
                     deprecation: None,
-                    inner: ImplItem(Impl {
+                    kind: ImplItem(Impl {
                         unsafety: hir::Unsafety::Normal,
                         generics: new_generics,
                         provided_trait_methods: Default::default(),
@@ -315,12 +315,13 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
         tcx: TyCtxt<'tcx>,
         pred: ty::Predicate<'tcx>,
     ) -> FxHashSet<GenericParamDef> {
-        let regions = match pred.skip_binders() {
+        let bound_predicate = pred.bound_atom();
+        let regions = match bound_predicate.skip_binder() {
             ty::PredicateAtom::Trait(poly_trait_pred, _) => {
-                tcx.collect_referenced_late_bound_regions(&ty::Binder::bind(poly_trait_pred))
+                tcx.collect_referenced_late_bound_regions(&bound_predicate.rebind(poly_trait_pred))
             }
             ty::PredicateAtom::Projection(poly_proj_pred) => {
-                tcx.collect_referenced_late_bound_regions(&ty::Binder::bind(poly_proj_pred))
+                tcx.collect_referenced_late_bound_regions(&bound_predicate.rebind(poly_proj_pred))
             }
             _ => return FxHashSet::default(),
         };

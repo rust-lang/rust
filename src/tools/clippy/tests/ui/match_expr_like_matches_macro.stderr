@@ -48,5 +48,27 @@ error: if let .. else expression looks like `matches!` macro
 LL |     let _zzz = if let Some(5) = x { true } else { false };
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `matches!(x, Some(5))`
 
-error: aborting due to 5 previous errors
+error: match expression looks like `matches!` macro
+  --> $DIR/match_expr_like_matches_macro.rs:58:20
+   |
+LL |           let _ans = match x {
+   |  ____________________^
+LL | |             E::A(_) => true,
+LL | |             E::B(_) => true,
+LL | |             _ => false,
+LL | |         };
+   | |_________^ help: try this: `matches!(x, E::A(_) | E::B(_))`
+
+error: match expression looks like `matches!` macro
+  --> $DIR/match_expr_like_matches_macro.rs:66:20
+   |
+LL |           let _ans = match x {
+   |  ____________________^
+LL | |             E::B(_) => false,
+LL | |             E::C => false,
+LL | |             _ => true,
+LL | |         };
+   | |_________^ help: try this: `!matches!(x, E::B(_) | E::C)`
+
+error: aborting due to 7 previous errors
 

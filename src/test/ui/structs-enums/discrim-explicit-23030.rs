@@ -5,8 +5,6 @@
 // See also compile-fail/overflow-discrim.rs, which shows what
 // happens if you leave the OhNo explicit cases out here.
 
-use std::{i8,u8,i16,u16,i32,u32,i64,u64,isize,usize};
-
 fn f_i8() {
     #[repr(i8)]
     enum A {

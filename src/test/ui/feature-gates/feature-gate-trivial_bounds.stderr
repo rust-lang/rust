@@ -64,13 +64,13 @@ LL | | }
    = help: see issue #48214
    = help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
 
-error[E0277]: the trait bound `std::string::String: std::ops::Neg` is not satisfied
+error[E0277]: the trait bound `String: Neg` is not satisfied
   --> $DIR/feature-gate-trivial_bounds.rs:36:1
    |
 LL | / fn use_op(s: String) -> String where String: ::std::ops::Neg<Output=String> {
 LL | |     -s
 LL | | }
-   | |_^ the trait `std::ops::Neg` is not implemented for `std::string::String`
+   | |_^ the trait `Neg` is not implemented for `String`
    |
    = help: see issue #48214
    = help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
@@ -83,7 +83,7 @@ LL | |     for _ in 2i32 {}
 LL | | }
    | |_^ `i32` is not an iterator
    |
-   = help: the trait `std::iter::Iterator` is not implemented for `i32`
+   = help: the trait `Iterator` is not implemented for `i32`
    = note: if you want to iterate between `start` until a value `end`, use the exclusive range syntax `start..end` or the inclusive range syntax `start..=end`
    = help: see issue #48214
    = help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
@@ -94,7 +94,7 @@ error[E0277]: the size for values of type `str` cannot be known at compilation t
 LL | struct TwoStrs(str, str) where str: Sized;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
-   = help: the trait `std::marker::Sized` is not implemented for `str`
+   = help: the trait `Sized` is not implemented for `str`
    = help: see issue #48214
    = help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
 
@@ -106,7 +106,7 @@ LL | |     let x: Dst<dyn A> = *(Box::new(Dst { x: 1 }) as Box<Dst<dyn A>>);
 LL | | }
    | |_^ doesn't have a size known at compile-time
    |
-   = help: within `Dst<(dyn A + 'static)>`, the trait `std::marker::Sized` is not implemented for `(dyn A + 'static)`
+   = help: within `Dst<(dyn A + 'static)>`, the trait `Sized` is not implemented for `(dyn A + 'static)`
    = note: required because it appears within the type `Dst<(dyn A + 'static)>`
    = help: see issue #48214
    = help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
@@ -119,7 +119,7 @@ LL | |     *"Sized".to_string().into_boxed_str()
 LL | | }
    | |_^ doesn't have a size known at compile-time
    |
-   = help: the trait `std::marker::Sized` is not implemented for `str`
+   = help: the trait `Sized` is not implemented for `str`
    = help: see issue #48214
    = help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
 

@@ -1,5 +1,5 @@
 error: suspicious use of binary operator in `Add` impl
-  --> $DIR/suspicious_arithmetic_impl.rs:11:20
+  --> $DIR/suspicious_arithmetic_impl.rs:13:20
    |
 LL |         Foo(self.0 - other.0)
    |                    ^
@@ -7,7 +7,7 @@ LL |         Foo(self.0 - other.0)
    = note: `-D clippy::suspicious-arithmetic-impl` implied by `-D warnings`
 
 error: suspicious use of binary operator in `AddAssign` impl
-  --> $DIR/suspicious_arithmetic_impl.rs:17:23
+  --> $DIR/suspicious_arithmetic_impl.rs:19:23
    |
 LL |         *self = *self - other;
    |                       ^
@@ -15,10 +15,46 @@ LL |         *self = *self - other;
    = note: `#[deny(clippy::suspicious_op_assign_impl)]` on by default
 
 error: suspicious use of binary operator in `MulAssign` impl
-  --> $DIR/suspicious_arithmetic_impl.rs:30:16
+  --> $DIR/suspicious_arithmetic_impl.rs:32:16
    |
 LL |         self.0 /= other.0;
    |                ^^
 
-error: aborting due to 3 previous errors
+error: suspicious use of binary operator in `Rem` impl
+  --> $DIR/suspicious_arithmetic_impl.rs:70:20
+   |
+LL |         Foo(self.0 / other.0)
+   |                    ^
+
+error: suspicious use of binary operator in `BitAnd` impl
+  --> $DIR/suspicious_arithmetic_impl.rs:78:20
+   |
+LL |         Foo(self.0 | other.0)
+   |                    ^
+
+error: suspicious use of binary operator in `BitOr` impl
+  --> $DIR/suspicious_arithmetic_impl.rs:86:20
+   |
+LL |         Foo(self.0 ^ other.0)
+   |                    ^
+
+error: suspicious use of binary operator in `BitXor` impl
+  --> $DIR/suspicious_arithmetic_impl.rs:94:20
+   |
+LL |         Foo(self.0 & other.0)
+   |                    ^
+
+error: suspicious use of binary operator in `Shl` impl
+  --> $DIR/suspicious_arithmetic_impl.rs:102:20
+   |
+LL |         Foo(self.0 >> other.0)
+   |                    ^^
+
+error: suspicious use of binary operator in `Shr` impl
+  --> $DIR/suspicious_arithmetic_impl.rs:110:20
+   |
+LL |         Foo(self.0 << other.0)
+   |                    ^^
+
+error: aborting due to 9 previous errors
 

@@ -7,6 +7,7 @@ use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, Ty};
+use rustc_span::sym;
 
 /// Checks for the `INEFFICIENT_TO_STRING` lint
 pub fn lint<'tcx>(cx: &LateContext<'tcx>, expr: &hir::Expr<'_>, arg: &hir::Expr<'_>, arg_ty: Ty<'tcx>) {
@@ -46,15 +47,15 @@ pub fn lint<'tcx>(cx: &LateContext<'tcx>, expr: &hir::Expr<'_>, arg: &hir::Expr<
 /// Returns whether `ty` specializes `ToString`.
 /// Currently, these are `str`, `String`, and `Cow<'_, str>`.
 fn specializes_tostring(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
-    if let ty::Str = ty.kind {
+    if let ty::Str = ty.kind() {
         return true;
     }
 
-    if is_type_diagnostic_item(cx, ty, sym!(string_type)) {
+    if is_type_diagnostic_item(cx, ty, sym::string_type) {
         return true;
     }
 
-    if let ty::Adt(adt, substs) = ty.kind {
+    if let ty::Adt(adt, substs) = ty.kind() {
         match_def_path(cx, adt.did, &paths::COW) && substs.type_at(1).is_str()
     } else {
         false

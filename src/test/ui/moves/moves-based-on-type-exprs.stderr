@@ -2,7 +2,7 @@ error[E0382]: borrow of moved value: `x`
   --> $DIR/moves-based-on-type-exprs.rs:12:11
    |
 LL |     let x = "hi".to_string();
-   |         - move occurs because `x` has type `std::string::String`, which does not implement the `Copy` trait
+   |         - move occurs because `x` has type `String`, which does not implement the `Copy` trait
 LL |     let _y = Foo { f:x };
    |                      - value moved here
 LL |     touch(&x);
@@ -12,7 +12,7 @@ error[E0382]: borrow of moved value: `x`
   --> $DIR/moves-based-on-type-exprs.rs:18:11
    |
 LL |     let x = "hi".to_string();
-   |         - move occurs because `x` has type `std::string::String`, which does not implement the `Copy` trait
+   |         - move occurs because `x` has type `String`, which does not implement the `Copy` trait
 LL |     let _y = (x, 3);
    |               - value moved here
 LL |     touch(&x);
@@ -22,7 +22,7 @@ error[E0382]: borrow of moved value: `x`
   --> $DIR/moves-based-on-type-exprs.rs:35:11
    |
 LL |     let x = "hi".to_string();
-   |         - move occurs because `x` has type `std::string::String`, which does not implement the `Copy` trait
+   |         - move occurs because `x` has type `String`, which does not implement the `Copy` trait
 ...
 LL |         x
    |         - value moved here
@@ -34,7 +34,7 @@ error[E0382]: borrow of moved value: `y`
   --> $DIR/moves-based-on-type-exprs.rs:36:11
    |
 LL |     let y = "ho".to_string();
-   |         - move occurs because `y` has type `std::string::String`, which does not implement the `Copy` trait
+   |         - move occurs because `y` has type `String`, which does not implement the `Copy` trait
 ...
 LL |         y
    |         - value moved here
@@ -46,7 +46,7 @@ error[E0382]: borrow of moved value: `x`
   --> $DIR/moves-based-on-type-exprs.rs:46:11
    |
 LL |     let x = "hi".to_string();
-   |         - move occurs because `x` has type `std::string::String`, which does not implement the `Copy` trait
+   |         - move occurs because `x` has type `String`, which does not implement the `Copy` trait
 ...
 LL |         true => x,
    |                 - value moved here
@@ -58,7 +58,7 @@ error[E0382]: borrow of moved value: `y`
   --> $DIR/moves-based-on-type-exprs.rs:47:11
    |
 LL |     let y = "ho".to_string();
-   |         - move occurs because `y` has type `std::string::String`, which does not implement the `Copy` trait
+   |         - move occurs because `y` has type `String`, which does not implement the `Copy` trait
 ...
 LL |         false => y
    |                  - value moved here
@@ -70,7 +70,7 @@ error[E0382]: borrow of moved value: `x`
   --> $DIR/moves-based-on-type-exprs.rs:58:11
    |
 LL |     let x = "hi".to_string();
-   |         - move occurs because `x` has type `std::string::String`, which does not implement the `Copy` trait
+   |         - move occurs because `x` has type `String`, which does not implement the `Copy` trait
 ...
 LL |         _ if guard(x) => 10,
    |                    - value moved here
@@ -82,7 +82,7 @@ error[E0382]: borrow of moved value: `x`
   --> $DIR/moves-based-on-type-exprs.rs:65:11
    |
 LL |     let x = "hi".to_string();
-   |         - move occurs because `x` has type `std::string::String`, which does not implement the `Copy` trait
+   |         - move occurs because `x` has type `String`, which does not implement the `Copy` trait
 LL |     let _y = [x];
    |               - value moved here
 LL |     touch(&x);
@@ -92,7 +92,7 @@ error[E0382]: borrow of moved value: `x`
   --> $DIR/moves-based-on-type-exprs.rs:71:11
    |
 LL |     let x = "hi".to_string();
-   |         - move occurs because `x` has type `std::string::String`, which does not implement the `Copy` trait
+   |         - move occurs because `x` has type `String`, which does not implement the `Copy` trait
 LL |     let _y = vec![x];
    |                   - value moved here
 LL |     touch(&x);
@@ -102,7 +102,7 @@ error[E0382]: borrow of moved value: `x`
   --> $DIR/moves-based-on-type-exprs.rs:77:11
    |
 LL |     let x = vec!["hi".to_string()];
-   |         - move occurs because `x` has type `std::vec::Vec<std::string::String>`, which does not implement the `Copy` trait
+   |         - move occurs because `x` has type `Vec<String>`, which does not implement the `Copy` trait
 LL |     let _y = x.into_iter().next().unwrap();
    |                ----------- `x` moved due to this method call
 LL |     touch(&x);
@@ -118,7 +118,7 @@ error[E0382]: borrow of moved value: `x`
   --> $DIR/moves-based-on-type-exprs.rs:83:11
    |
 LL |     let x = vec!["hi".to_string()];
-   |         - move occurs because `x` has type `std::vec::Vec<std::string::String>`, which does not implement the `Copy` trait
+   |         - move occurs because `x` has type `Vec<String>`, which does not implement the `Copy` trait
 LL |     let _y = [x.into_iter().next().unwrap(); 1];
    |                 ----------- `x` moved due to this method call
 LL |     touch(&x);

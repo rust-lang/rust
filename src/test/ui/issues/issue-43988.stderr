@@ -5,7 +5,7 @@ LL |     #[repr]
    |     ^^^^^^^ help: must be of the form: `#[repr(C)]`
 
 error: malformed `repr` attribute input
-  --> $DIR/issue-43988.rs:35:14
+  --> $DIR/issue-43988.rs:34:14
    |
 LL |     let _z = #[repr] 1;
    |              ^^^^^^^ help: must be of the form: `#[repr(C)]`
@@ -26,47 +26,33 @@ LL |     #[inline(XYZ)]
 LL |     let _b = 4;
    |     ----------- not a function or closure
 
-error[E0517]: attribute should not be applied to a statement
-  --> $DIR/issue-43988.rs:14:5
+error[E0517]: attribute should be applied to a struct, enum, or union
+  --> $DIR/issue-43988.rs:14:12
    |
 LL |     #[repr(nothing)]
-   |     ^^^^^^^^^^^^^^^^
+   |            ^^^^^^^
 LL |     let _x = 0;
    |     ----------- not a struct, enum, or union
 
-error[E0517]: attribute should not be applied to an expression
-  --> $DIR/issue-43988.rs:18:5
+error[E0517]: attribute should be applied to a struct, enum, or union
+  --> $DIR/issue-43988.rs:18:12
    |
 LL |       #[repr(something_not_real)]
-   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              ^^^^^^^^^^^^^^^^^^
 LL | /     loop {
 LL | |         ()
 LL | |     };
-   | |_____- not defining a struct, enum, or union
-
-error[E0517]: attribute should not be applied to a statement
-  --> $DIR/issue-43988.rs:24:5
-   |
-LL |     #[repr]
-   |     ^^^^^^^
-LL |     let _y = "123";
-   |     --------------- not a struct, enum, or union
+   | |_____- not a struct, enum, or union
 
 error[E0518]: attribute should be applied to function or closure
-  --> $DIR/issue-43988.rs:31:5
+  --> $DIR/issue-43988.rs:30:5
    |
 LL |     #[inline(ABC)]
    |     ^^^^^^^^^^^^^^
 LL |     foo();
    |     ----- not a function or closure
 
-error[E0517]: attribute should not be applied to an expression
-  --> $DIR/issue-43988.rs:35:14
-   |
-LL |     let _z = #[repr] 1;
-   |              ^^^^^^^ - not defining a struct, enum, or union
-
-error: aborting due to 9 previous errors
+error: aborting due to 7 previous errors
 
 Some errors have detailed explanations: E0517, E0518.
 For more information about an error, try `rustc --explain E0517`.

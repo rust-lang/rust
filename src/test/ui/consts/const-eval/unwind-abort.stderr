@@ -1,0 +1,21 @@
+error[E0080]: evaluation of constant value failed
+  --> $DIR/unwind-abort.rs:5:5
+   |
+LL |     panic!()
+   |     ^^^^^^^^ the evaluated program panicked at 'explicit panic', $DIR/unwind-abort.rs:5:5
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: any use of this value will cause an error
+  --> $DIR/unwind-abort.rs:8:15
+   |
+LL | const _: () = foo();
+   | --------------^^^^^-
+   |               |
+   |               referenced constant has errors
+   |
+   = note: `#[deny(const_err)]` on by default
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0080`.

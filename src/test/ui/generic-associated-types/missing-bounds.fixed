@@ -4,7 +4,7 @@ use std::ops::Add;
 
 struct A<B>(B);
 
-impl<B> Add for A<B> where B: Add + std::ops::Add<Output = B> {
+impl<B> Add for A<B> where B: Add + Add<Output = B> {
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self {
@@ -14,7 +14,7 @@ impl<B> Add for A<B> where B: Add + std::ops::Add<Output = B> {
 
 struct C<B>(B);
 
-impl<B: Add + std::ops::Add<Output = B>> Add for C<B> {
+impl<B: Add + Add<Output = B>> Add for C<B> {
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self {

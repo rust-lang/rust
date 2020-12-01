@@ -1,5 +1,5 @@
 error[E0597]: `v` does not live long enough
-  --> $DIR/dropck-union.rs:39:18
+  --> $DIR/dropck-union.rs:37:18
    |
 LL |     v.0.set(Some(&v));
    |                  ^^ borrowed value does not live long enough

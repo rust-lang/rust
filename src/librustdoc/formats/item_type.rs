@@ -20,7 +20,7 @@ use crate::clean;
 /// a heading, edit the listing in `html/render.rs`, function `sidebar_module`. This uses an
 /// ordering based on a helper function inside `item_module`, in the same file.
 #[derive(Copy, PartialEq, Eq, Clone, Debug, PartialOrd, Ord)]
-pub enum ItemType {
+crate enum ItemType {
     Module = 0,
     ExternCrate = 1,
     Import = 2,
@@ -60,12 +60,12 @@ impl Serialize for ItemType {
 
 impl<'a> From<&'a clean::Item> for ItemType {
     fn from(item: &'a clean::Item) -> ItemType {
-        let inner = match item.inner {
+        let kind = match item.kind {
             clean::StrippedItem(box ref item) => item,
-            ref inner => inner,
+            ref kind => kind,
         };
 
-        match *inner {
+        match *kind {
             clean::ModuleItem(..) => ItemType::Module,
             clean::ExternCrateItem(..) => ItemType::ExternCrate,
             clean::ImportItem(..) => ItemType::Import,
@@ -124,7 +124,7 @@ impl From<clean::TypeKind> for ItemType {
 }
 
 impl ItemType {
-    pub fn as_str(&self) -> &'static str {
+    crate fn as_str(&self) -> &'static str {
         match *self {
             ItemType::Module => "mod",
             ItemType::ExternCrate => "externcrate",

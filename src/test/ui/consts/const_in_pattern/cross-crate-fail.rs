@@ -12,7 +12,6 @@ fn main() {
     match None {
         consts::SOME => panic!(),
         //~^ must be annotated with `#[derive(PartialEq, Eq)]`
-        //~| must be annotated with `#[derive(PartialEq, Eq)]`
 
         _ => {}
     }
@@ -20,7 +19,6 @@ fn main() {
     match None {
         <Defaulted as consts::AssocConst>::SOME  => panic!(),
         //~^ must be annotated with `#[derive(PartialEq, Eq)]`
-        //~| must be annotated with `#[derive(PartialEq, Eq)]`
 
         _ => {}
     }

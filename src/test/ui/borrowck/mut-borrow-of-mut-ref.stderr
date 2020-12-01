@@ -1,11 +1,21 @@
 error[E0596]: cannot borrow `b` as mutable, as it is not declared as mutable
-  --> $DIR/mut-borrow-of-mut-ref.rs:8:7
+  --> $DIR/mut-borrow-of-mut-ref.rs:5:7
    |
-LL | fn f(b: &mut i32) {
-   |      - help: consider changing this to be mutable: `mut b`
-LL |     g(&mut b)
-   |       ^^^^^^ cannot borrow as mutable
+LL |     g(&mut b);
+   |       ^^^^^^
+   |       |
+   |       cannot borrow as mutable
+   |       try removing `&mut` here
 
-error: aborting due to previous error
+error[E0596]: cannot borrow `b` as mutable, as it is not declared as mutable
+  --> $DIR/mut-borrow-of-mut-ref.rs:7:12
+   |
+LL |     g(&mut &mut b);
+   |            ^^^^^^
+   |            |
+   |            cannot borrow as mutable
+   |            try removing `&mut` here
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0596`.

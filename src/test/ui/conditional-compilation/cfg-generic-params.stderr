@@ -17,22 +17,10 @@ LL | struct WhereBad where for<#[cfg(no)] 'a, #[cfg(yes)] T> u8: Copy;
    |                                                      ^
 
 error: cannot find attribute `unknown` in this scope
-  --> $DIR/cfg-generic-params.rs:34:43
+  --> $DIR/cfg-generic-params.rs:19:29
    |
-LL | struct WhereYes where for<#[cfg_attr(yes, unknown)] 'a> u8: Copy;
-   |                                           ^^^^^^^
-
-error: cannot find attribute `unknown` in this scope
-  --> $DIR/cfg-generic-params.rs:30:40
-   |
-LL | type PolyYes = dyn for<#[cfg_attr(yes, unknown)] 'a> Copy;
-   |                                        ^^^^^^^
-
-error: cannot find attribute `unknown` in this scope
-  --> $DIR/cfg-generic-params.rs:26:34
-   |
-LL | type FnYes = for<#[cfg_attr(yes, unknown)] 'a> fn();
-   |                                  ^^^^^^^
+LL | fn f_lt_yes<#[cfg_attr(yes, unknown)] 'a>() {}
+   |                             ^^^^^^^
 
 error: cannot find attribute `unknown` in this scope
   --> $DIR/cfg-generic-params.rs:22:29
@@ -41,10 +29,22 @@ LL | fn f_ty_yes<#[cfg_attr(yes, unknown)] T>() {}
    |                             ^^^^^^^
 
 error: cannot find attribute `unknown` in this scope
-  --> $DIR/cfg-generic-params.rs:19:29
+  --> $DIR/cfg-generic-params.rs:26:34
    |
-LL | fn f_lt_yes<#[cfg_attr(yes, unknown)] 'a>() {}
-   |                             ^^^^^^^
+LL | type FnYes = for<#[cfg_attr(yes, unknown)] 'a> fn();
+   |                                  ^^^^^^^
+
+error: cannot find attribute `unknown` in this scope
+  --> $DIR/cfg-generic-params.rs:30:40
+   |
+LL | type PolyYes = dyn for<#[cfg_attr(yes, unknown)] 'a> Copy;
+   |                                        ^^^^^^^
+
+error: cannot find attribute `unknown` in this scope
+  --> $DIR/cfg-generic-params.rs:34:43
+   |
+LL | struct WhereYes where for<#[cfg_attr(yes, unknown)] 'a> u8: Copy;
+   |                                           ^^^^^^^
 
 error: aborting due to 8 previous errors
 

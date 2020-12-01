@@ -115,26 +115,62 @@ LL |     match s {
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `&[bool]`
 
-error[E0004]: non-exhaustive patterns: `&[..]` not covered
+error[E0004]: non-exhaustive patterns: `&[]` and `&[_, _, ..]` not covered
   --> $DIR/slice-patterns-exhaustiveness.rs:85:11
    |
 LL |     match s {
-   |           ^ pattern `&[..]` not covered
+   |           ^ patterns `&[]` and `&[_, _, ..]` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `&[bool]`
 
-error[E0004]: non-exhaustive patterns: `&[true]` not covered
+error[E0004]: non-exhaustive patterns: `&[]` and `&[_, _, ..]` not covered
   --> $DIR/slice-patterns-exhaustiveness.rs:89:11
    |
 LL |     match s {
-   |           ^ pattern `&[true]` not covered
+   |           ^ patterns `&[]` and `&[_, _, ..]` not covered
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = note: the matched value is of type `&[bool]`
+
+error[E0004]: non-exhaustive patterns: `&[]` and `&[_, _, ..]` not covered
+  --> $DIR/slice-patterns-exhaustiveness.rs:93:11
+   |
+LL |     match s {
+   |           ^ patterns `&[]` and `&[_, _, ..]` not covered
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = note: the matched value is of type `&[bool]`
+
+error[E0004]: non-exhaustive patterns: `&[]` and `&[_, _, ..]` not covered
+  --> $DIR/slice-patterns-exhaustiveness.rs:98:11
+   |
+LL |     match s {
+   |           ^ patterns `&[]` and `&[_, _, ..]` not covered
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = note: the matched value is of type `&[bool]`
+
+error[E0004]: non-exhaustive patterns: `&[_, _, ..]` not covered
+  --> $DIR/slice-patterns-exhaustiveness.rs:103:11
+   |
+LL |     match s {
+   |           ^ pattern `&[_, _, ..]` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `&[bool]`
 
 error[E0004]: non-exhaustive patterns: `&[false]` not covered
-  --> $DIR/slice-patterns-exhaustiveness.rs:97:11
+  --> $DIR/slice-patterns-exhaustiveness.rs:108:11
+   |
+LL |     match s {
+   |           ^ pattern `&[false]` not covered
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = note: the matched value is of type `&[bool]`
+
+error[E0004]: non-exhaustive patterns: `&[false]` not covered
+  --> $DIR/slice-patterns-exhaustiveness.rs:121:11
    |
 LL |     match s1 {
    |           ^^ pattern `&[false]` not covered
@@ -142,6 +178,6 @@ LL |     match s1 {
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `&[bool; 1]`
 
-error: aborting due to 16 previous errors
+error: aborting due to 20 previous errors
 
 For more information about this error, try `rustc --explain E0004`.

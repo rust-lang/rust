@@ -2,9 +2,7 @@ error: incorrect unicode escape sequence
   --> $DIR/format-string-error-2.rs:77:20
    |
 LL |     println!("\x7B}\u8 {", 1);
-   |                    ^^-
-   |                      |
-   |                      help: format of unicode escape sequences uses braces: `\u{8}`
+   |                    ^^^ help: format of unicode escape sequences uses braces: `\u{8}`
 
 error: invalid format string: expected `'}'`, found `'a'`
   --> $DIR/format-string-error-2.rs:5:5

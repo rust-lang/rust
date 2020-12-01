@@ -4,9 +4,9 @@
 //! "Exception Handling in LLVM" (llvm.org/docs/ExceptionHandling.html) and
 //! documents linked from it.
 //! These are also good reads:
-//!     https://itanium-cxx-abi.github.io/cxx-abi/abi-eh.html
-//!     http://monoinfinito.wordpress.com/series/exception-handling-in-c/
-//!     http://www.airs.com/blog/index.php?s=exception+frames
+//!  * <https://itanium-cxx-abi.github.io/cxx-abi/abi-eh.html>
+//!  * <http://monoinfinito.wordpress.com/series/exception-handling-in-c/>
+//!  * <http://www.airs.com/blog/index.php?s=exception+frames>
 //!
 //! ## A brief summary
 //!
@@ -114,13 +114,13 @@ const UNWIND_DATA_REG: (i32, i32) = (3, 4); // R3, R4 / X3, X4
 #[cfg(target_arch = "s390x")]
 const UNWIND_DATA_REG: (i32, i32) = (6, 7); // R6, R7
 
-#[cfg(target_arch = "sparc64")]
+#[cfg(any(target_arch = "sparc", target_arch = "sparc64"))]
 const UNWIND_DATA_REG: (i32, i32) = (24, 25); // I0, I1
 
 #[cfg(target_arch = "hexagon")]
 const UNWIND_DATA_REG: (i32, i32) = (0, 1); // R0, R1
 
-#[cfg(target_arch = "riscv64")]
+#[cfg(any(target_arch = "riscv64", target_arch = "riscv32"))]
 const UNWIND_DATA_REG: (i32, i32) = (10, 11); // x10, x11
 
 // The following code is based on GCC's C and C++ personality routines.  For reference, see:

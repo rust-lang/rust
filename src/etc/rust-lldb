@@ -30,5 +30,8 @@ EOF
     fi
 fi
 
+script_import="command script import \"$RUSTC_SYSROOT/lib/rustlib/etc/lldb_lookup.py\""
+commands_file="$RUSTC_SYSROOT/lib/rustlib/etc/lldb_commands"
+
 # Call LLDB with the commands added to the argument list
-exec "$lldb" --source-before-file ./lldb_commands "$@"
+exec "$lldb" --one-line-before-file "$script_import" --source-before-file "$commands_file" "$@"

@@ -18,14 +18,18 @@
     test(no_crate_inject, attr(deny(warnings))),
     test(attr(allow(dead_code, deprecated, unused_variables, unused_mut)))
 )]
+#![feature(rustc_allow_const_fn_unstable)]
 #![feature(nll)]
 #![feature(staged_api)]
+#![feature(const_fn)]
+#![feature(const_fn_fn_ptr_basics)]
 #![feature(allow_internal_unstable)]
 #![feature(decl_macro)]
 #![feature(extern_types)]
 #![feature(in_band_lifetimes)]
 #![feature(negative_impls)]
-#![feature(optin_builtin_traits)]
+#![cfg_attr(bootstrap, feature(optin_builtin_traits))]
+#![cfg_attr(not(bootstrap), feature(auto_traits))]
 #![feature(restricted_std)]
 #![feature(rustc_attrs)]
 #![feature(min_specialization)]
@@ -839,6 +843,13 @@ impl fmt::Debug for Punct {
     }
 }
 
+#[stable(feature = "proc_macro_punct_eq", since = "1.49.0")]
+impl PartialEq<char> for Punct {
+    fn eq(&self, rhs: &char) -> bool {
+        self.as_char() == *rhs
+    }
+}
+
 /// An identifier (`ident`).
 #[derive(Clone)]
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
@@ -879,7 +890,7 @@ impl Ident {
     }
 
     /// Returns the span of this `Ident`, encompassing the entire string returned
-    /// by `as_str`.
+    /// by [`to_string`](Self::to_string).
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn span(&self) -> Span {
         Span(self.0.span())

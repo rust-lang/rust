@@ -7,8 +7,8 @@ LL | trait Trait<T> {}
 LL |     foo::<()>();
    |     ^^^^^^^^^ implementation of `Trait` is not general enough
    |
-   = note: `()` must implement `Trait<for<'b> fn(std::cell::Cell<&'b u32>)>`
-   = note: ...but `()` actually implements `Trait<fn(std::cell::Cell<&'0 u32>)>`, for some specific lifetime `'0`
+   = note: `()` must implement `Trait<for<'b> fn(Cell<&'b u32>)>`
+   = note: ...but `()` actually implements `Trait<fn(Cell<&'0 u32>)>`, for some specific lifetime `'0`
 
 error: aborting due to previous error
 

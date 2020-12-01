@@ -2,7 +2,7 @@ error[E0382]: use of moved value: `x`
   --> $DIR/move-in-guard-2.rs:10:24
    |
 LL |     let x: Box<_> = box 1;
-   |         - move occurs because `x` has type `std::boxed::Box<i32>`, which does not implement the `Copy` trait
+   |         - move occurs because `x` has type `Box<i32>`, which does not implement the `Copy` trait
 ...
 LL |         (_, 2) if take(x) => (),
    |                        ^

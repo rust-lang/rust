@@ -1,0 +1,53 @@
+error: lifetime must precede `mut`
+  --> $DIR/issue-73568-lifetime-after-mut.rs:2:13
+   |
+LL | fn x<'a>(x: &mut 'a i32){}
+   |             ^^^^^^^ help: place the lifetime before `mut`: `&'a mut`
+
+error[E0178]: expected a path on the left-hand side of `+`, not `&mut 'a`
+  --> $DIR/issue-73568-lifetime-after-mut.rs:14:13
+   |
+LL | fn y<'a>(y: &mut 'a + Send) {
+   |             ^^^^^^^^^^^^^^ help: try adding parentheses: `&mut ('a + Send)`
+
+error: lifetime must precede `mut`
+  --> $DIR/issue-73568-lifetime-after-mut.rs:6:22
+   |
+LL |         fn w<$lt>(w: &mut $lt i32) {}
+   |                      ^^^^^^^^ help: place the lifetime before `mut`: `&$lt mut`
+...
+LL | mac!('a);
+   | --------- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0423]: expected value, found trait `Send`
+  --> $DIR/issue-73568-lifetime-after-mut.rs:18:28
+   |
+LL |     let z = y as &mut 'a + Send;
+   |                            ^^^^ not a value
+
+warning: trait objects without an explicit `dyn` are deprecated
+  --> $DIR/issue-73568-lifetime-after-mut.rs:14:18
+   |
+LL | fn y<'a>(y: &mut 'a + Send) {
+   |                  ^^ help: use `dyn`: `dyn 'a`
+   |
+   = note: `#[warn(bare_trait_objects)]` on by default
+
+warning: trait objects without an explicit `dyn` are deprecated
+  --> $DIR/issue-73568-lifetime-after-mut.rs:18:23
+   |
+LL |     let z = y as &mut 'a + Send;
+   |                       ^^ help: use `dyn`: `dyn 'a`
+
+error[E0224]: at least one trait is required for an object type
+  --> $DIR/issue-73568-lifetime-after-mut.rs:14:18
+   |
+LL | fn y<'a>(y: &mut 'a + Send) {
+   |                  ^^
+
+error: aborting due to 5 previous errors; 2 warnings emitted
+
+Some errors have detailed explanations: E0178, E0224, E0423.
+For more information about an error, try `rustc --explain E0178`.

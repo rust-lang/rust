@@ -5,7 +5,7 @@ LL | pub const fn sof<T>() -> usize {
    |                  - required by this bound in `sof`
 ...
 LL | fn test<T>() {
-   |         - this type parameter needs to be `std::marker::Sized`
+   |         - this type parameter needs to be `Sized`
 LL |     let _: [u8; sof::<T>()];
    |                       ^ doesn't have a size known at compile-time
    |

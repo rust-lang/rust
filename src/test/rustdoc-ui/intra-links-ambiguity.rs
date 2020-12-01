@@ -34,3 +34,7 @@ pub mod foo {
 ///
 /// Ambiguous non-implied shortcut link [`foo::bar`]. //~ERROR `foo::bar`
 pub struct Docs {}
+
+/// [true] //~ ERROR `true` is both a module and a builtin type
+/// [primitive@true]
+pub mod r#true {}

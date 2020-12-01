@@ -1,10 +1,10 @@
-error[E0433]: failed to resolve: use of undeclared type or module `GooMap`
+error[E0433]: failed to resolve: use of undeclared type `GooMap`
   --> $DIR/use_suggestion.rs:3:14
    |
 LL |     let x2 = GooMap::new();
-   |              ^^^^^^ use of undeclared type or module `GooMap`
+   |              ^^^^^^ use of undeclared type `GooMap`
 
-error[E0433]: failed to resolve: use of undeclared type or module `HashMap`
+error[E0433]: failed to resolve: use of undeclared type `HashMap`
   --> $DIR/use_suggestion.rs:2:14
    |
 LL |     let x1 = HashMap::new();

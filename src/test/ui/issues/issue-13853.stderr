@@ -22,11 +22,11 @@ error[E0308]: mismatched types
 LL |     iterate(graph);
    |             ^^^^^
    |             |
-   |             expected reference, found struct `std::vec::Vec`
+   |             expected reference, found struct `Vec`
    |             help: consider borrowing here: `&graph`
    |
    = note: expected reference `&_`
-                 found struct `std::vec::Vec<Stuff>`
+                 found struct `Vec<Stuff>`
 
 error: aborting due to 3 previous errors
 

@@ -3,8 +3,6 @@
 
 // Drop works for union itself.
 
-#![feature(untagged_unions)]
-
 use std::mem::ManuallyDrop;
 
 struct S;

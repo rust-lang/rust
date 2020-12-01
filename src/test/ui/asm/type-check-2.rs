@@ -78,7 +78,7 @@ fn main() {
         asm!("{}", in(reg) |x: i32| x);
         //~^ ERROR cannot use value of type
         asm!("{}", in(reg) vec![0]);
-        //~^ ERROR cannot use value of type `std::vec::Vec<i32>` for inline assembly
+        //~^ ERROR cannot use value of type `Vec<i32>` for inline assembly
         asm!("{}", in(reg) (1, 2, 3));
         //~^ ERROR cannot use value of type `(i32, i32, i32)` for inline assembly
         asm!("{}", in(reg) [1, 2, 3]);

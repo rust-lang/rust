@@ -1,0 +1,10 @@
+Counter in file 0 2:8 -> 2:13, #1
+Counter in file 0 5:1 -> 5:2, (#1 - #2)
+Emitting segments for file: ../coverage/tight_inf_loop.rs
+Combined regions:
+  2:8 -> 2:13 (count=1)
+  5:1 -> 5:2 (count=1)
+Segment at 2:8 (count = 1), RegionEntry
+Segment at 2:13 (count = 0), Skipped
+Segment at 5:1 (count = 1), RegionEntry
+Segment at 5:2 (count = 0), Skipped

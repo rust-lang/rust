@@ -1,0 +1,38 @@
+A builtin-macro was defined more than once.
+
+Erroneous code example:
+
+```compile_fail,E0773
+#![feature(decl_macro)]
+#![feature(rustc_attrs)]
+
+#[rustc_builtin_macro]
+pub macro test($item:item) {
+    /* compiler built-in */
+}
+
+mod inner {
+    #[rustc_builtin_macro]
+    pub macro test($item:item) {
+        /* compiler built-in */
+    }
+}
+```
+
+To fix the issue, remove the duplicate declaration:
+
+```
+#![feature(decl_macro)]
+#![feature(rustc_attrs)]
+
+#[rustc_builtin_macro]
+pub macro test($item:item) {
+    /* compiler built-in */
+}
+```
+
+In very rare edge cases, this may happen when loading `core` or `std` twice,
+once with `check` metadata and once with `build` metadata.
+For more information, see [#75176].
+
+[#75176]: https://github.com/rust-lang/rust/pull/75176#issuecomment-683234468

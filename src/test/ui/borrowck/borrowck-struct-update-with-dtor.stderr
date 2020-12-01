@@ -14,7 +14,7 @@ LL |     let _s2 = T{a: 2, ..s0};
    |               ^^^^^^^^^^^^^
    |               |
    |               cannot move out of here
-   |               move occurs because `s0.mv` has type `std::boxed::Box<isize>`, which does not implement the `Copy` trait
+   |               move occurs because `s0.mv` has type `Box<isize>`, which does not implement the `Copy` trait
 
 error: aborting due to 2 previous errors
 

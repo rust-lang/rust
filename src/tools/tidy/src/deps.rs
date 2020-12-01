@@ -42,6 +42,7 @@ const EXCEPTIONS: &[(&str, &str)] = &[
     ("crossbeam-queue", "MIT/Apache-2.0 AND BSD-2-Clause"), // rls via rayon
     ("arrayref", "BSD-2-Clause"),       // cargo-miri/directories/.../rust-argon2 (redox)
     ("instant", "BSD-3-Clause"),        // rustc_driver/tracing-subscriber/parking_lot
+    ("snap", "BSD-3-Clause"),           // rustc
     // FIXME: this dependency violates the documentation comment above:
     ("fortanix-sgx-abi", "MPL-2.0"), // libstd but only for `sgx` target
 ];
@@ -79,6 +80,7 @@ const PERMITTED_DEPENDENCIES: &[&str] = &[
     "cloudabi",
     "cmake",
     "compiler_builtins",
+    "cpuid-bool",
     "crc32fast",
     "crossbeam-deque",
     "crossbeam-epoch",
@@ -115,7 +117,6 @@ const PERMITTED_DEPENDENCIES: &[&str] = &[
     "libz-sys",
     "lock_api",
     "log",
-    "log_settings",
     "maybe-uninit",
     "md-5",
     "measureme",
@@ -160,7 +161,9 @@ const PERMITTED_DEPENDENCIES: &[&str] = &[
     "serde",
     "serde_derive",
     "sha-1",
+    "sha2",
     "smallvec",
+    "snap",
     "stable_deref_trait",
     "stacker",
     "syn",

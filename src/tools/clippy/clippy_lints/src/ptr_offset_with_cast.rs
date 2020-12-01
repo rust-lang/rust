@@ -3,6 +3,7 @@ use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_span::sym;
 use std::fmt;
 
 declare_clippy_lint! {
@@ -92,7 +93,7 @@ fn expr_as_ptr_offset_call<'tcx>(
 ) -> Option<(&'tcx Expr<'tcx>, &'tcx Expr<'tcx>, Method)> {
     if let ExprKind::MethodCall(ref path_segment, _, ref args, _) = expr.kind {
         if is_expr_ty_raw_ptr(cx, &args[0]) {
-            if path_segment.ident.name == sym!(offset) {
+            if path_segment.ident.name == sym::offset {
                 return Some((&args[0], &args[1], Method::Offset));
             }
             if path_segment.ident.name == sym!(wrapping_offset) {

@@ -26,7 +26,7 @@ error: comparison operators cannot be chained
 LL |     f<X>();
    |      ^ ^
    |
-help: use `::<...>` instead of `<...>` to specify type arguments
+help: use `::<...>` instead of `<...>` to specify type or const arguments
    |
 LL |     f::<X>();
    |      ^^
@@ -37,7 +37,7 @@ error: comparison operators cannot be chained
 LL |     f<Result<Option<X>, Option<Option<X>>>(1, 2);
    |      ^      ^
    |
-help: use `::<...>` instead of `<...>` to specify type arguments
+help: use `::<...>` instead of `<...>` to specify type or const arguments
    |
 LL |     f::<Result<Option<X>, Option<Option<X>>>(1, 2);
    |      ^^
@@ -48,7 +48,7 @@ error: comparison operators cannot be chained
 LL |     let _ = identity<u8>;
    |                     ^  ^
    |
-   = help: use `::<...>` instead of `<...>` to specify type arguments
+   = help: use `::<...>` instead of `<...>` to specify type or const arguments
    = help: or use `(...)` if you meant to specify fn arguments
 
 error: aborting due to 5 previous errors

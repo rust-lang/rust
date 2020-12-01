@@ -14,7 +14,7 @@ trait UnsafeCopy<T: Copy> {
 
 impl<T: Copy + std::ops::Deref> UnsafeCopy<T> for T {
     type Item<'a> = T;
-    //~^ ERROR type mismatch resolving `<T as std::ops::Deref>::Target == T`
+    //~^ ERROR type mismatch resolving `<T as Deref>::Target == T`
 }
 
 fn main() {

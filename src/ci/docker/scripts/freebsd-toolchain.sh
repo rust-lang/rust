@@ -19,7 +19,7 @@ exit 1
   trap "$on_err" ERR
   bash -c "while true; do sleep 30; echo \$(date) - building ...; done" &
   local ping_loop_pid=$!
-  $@ &> /tmp/build.log
+  "$@" &> /tmp/build.log
   trap - ERR
   kill $ping_loop_pid
   set -x

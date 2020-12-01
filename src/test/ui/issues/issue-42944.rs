@@ -7,7 +7,7 @@ mod bar {
 
     fn foo() {
         Bx(());
-        //~^ ERROR expected function, tuple struct or tuple variant, found struct `Bx` [E0423]
+        //~^ ERROR cannot initialize a tuple struct which contains private fields [E0423]
     }
 }
 

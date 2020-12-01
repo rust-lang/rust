@@ -22,7 +22,7 @@ LL |     Some(#[stable(feature = "rust1", since = "1.0.0")] T),
    |     not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
-   = note: the matched value is of type `std::option::Option<std::option::Option<Direction>>`
+   = note: the matched value is of type `Option<Option<Direction>>`
 
 error[E0004]: non-exhaustive patterns: `Foo { bar: Some(North), baz: NewBool(true) }` not covered
   --> $DIR/match-arm-statics-2.rs:48:11

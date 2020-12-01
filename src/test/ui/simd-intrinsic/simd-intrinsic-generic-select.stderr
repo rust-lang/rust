@@ -22,11 +22,11 @@ error[E0511]: invalid monomorphization of `simd_select` intrinsic: expected SIMD
 LL |         simd_select(m4, 0u32, 1u32);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0511]: invalid monomorphization of `simd_select_bitmask` intrinsic: mismatched lengths: mask length `8` != other vector length `4`
+error[E0511]: invalid monomorphization of `simd_select_bitmask` intrinsic: mismatched lengths: mask length `16` != other vector length `4`
   --> $DIR/simd-intrinsic-generic-select.rs:52:9
    |
-LL |         simd_select_bitmask(0u8, x, x);
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |         simd_select_bitmask(0u16, x, x);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `simd_select_bitmask` intrinsic: expected SIMD argument type, found non-SIMD `u32`
   --> $DIR/simd-intrinsic-generic-select.rs:55:9

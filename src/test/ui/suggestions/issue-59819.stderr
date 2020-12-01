@@ -24,7 +24,7 @@ error[E0308]: mismatched types
 LL |     let g: String = f;
    |            ------   ^
    |            |        |
-   |            |        expected struct `std::string::String`, found struct `Bar`
+   |            |        expected struct `String`, found struct `Bar`
    |            |        help: try using a conversion method: `f.to_string()`
    |            expected due to this
 

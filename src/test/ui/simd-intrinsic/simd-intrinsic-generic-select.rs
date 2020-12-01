@@ -49,8 +49,8 @@ fn main() {
         simd_select(m4, 0u32, 1u32);
         //~^ ERROR found non-SIMD `u32`
 
-        simd_select_bitmask(0u8, x, x);
-        //~^ ERROR mask length `8` != other vector length `4`
+        simd_select_bitmask(0u16, x, x);
+        //~^ ERROR mask length `16` != other vector length `4`
         //
         simd_select_bitmask(0u8, 1u32, 2u32);
         //~^ ERROR found non-SIMD `u32`

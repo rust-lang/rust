@@ -1,10 +1,10 @@
-error: type `m::Priv` is private
+error: type `Priv` is private
   --> $DIR/private-type-in-interface.rs:15:9
    |
 LL | fn f(_: m::Alias) {}
    |         ^^^^^^^^ private type
 
-error: type `m::Priv` is private
+error: type `Priv` is private
   --> $DIR/private-type-in-interface.rs:15:6
    |
 LL | fn f(_: m::Alias) {}
@@ -22,7 +22,7 @@ error: type `ext::Priv` is private
 LL | fn f_ext(_: ext::Alias) {}
    |          ^ private type
 
-error: type `m::Priv` is private
+error: type `Priv` is private
   --> $DIR/private-type-in-interface.rs:21:6
    |
 LL | impl m::Alias {}
@@ -34,13 +34,13 @@ error: type `ext::Priv` is private
 LL | impl Tr1 for ext::Alias {}
    |              ^^^^^^^^^^ private type
 
-error: type `m::Priv` is private
+error: type `Priv` is private
   --> $DIR/private-type-in-interface.rs:23:10
    |
 LL | type A = <m::Alias as m::Trait>::X;
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^ private type
 
-error: type `m::Priv` is private
+error: type `Priv` is private
   --> $DIR/private-type-in-interface.rs:27:11
    |
 LL | fn g() -> impl Tr2<m::Alias> { 0 }

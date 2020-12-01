@@ -7,3 +7,7 @@ edition = "2018"
 [[bin]]
 name = "linkchecker"
 path = "main.rs"
+
+[dependencies]
+regex = "1"
+once_cell = "1"

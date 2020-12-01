@@ -1,0 +1,42 @@
+error: attribute should be applied to a function definition
+  --> $DIR/naked-invalid-attr.rs:13:1
+   |
+LL |   #[naked]
+   |   ^^^^^^^^
+LL |   #[repr(C)]
+LL | / struct S {
+LL | |     a: u32,
+LL | |     b: u32,
+LL | | }
+   | |_- not a function definition
+
+error: attribute should be applied to a function definition
+  --> $DIR/naked-invalid-attr.rs:50:5
+   |
+LL |     #[naked] || {};
+   |     ^^^^^^^^ ----- not a function definition
+
+error: attribute should be applied to a function definition
+  --> $DIR/naked-invalid-attr.rs:21:5
+   |
+LL |     #[naked]
+   |     ^^^^^^^^
+LL |     extern "C" fn invoke(&self);
+   |     ---------------------------- not a function definition
+
+error: attribute should be applied to a function definition
+  --> $DIR/naked-invalid-attr.rs:9:5
+   |
+LL |     #[naked]
+   |     ^^^^^^^^
+LL |     fn f();
+   |     ------- not a function definition
+
+error: attribute should be applied to a function definition
+  --> $DIR/naked-invalid-attr.rs:6:1
+   |
+LL | #![naked]
+   | ^^^^^^^^^
+
+error: aborting due to 5 previous errors
+

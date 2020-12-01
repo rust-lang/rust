@@ -1,4 +1,4 @@
-#![feature(unsized_tuple_coercion, unsized_locals)]
+#![feature(unsized_tuple_coercion, unsized_fn_params)]
 
 struct A<X: ?Sized>(X);
 

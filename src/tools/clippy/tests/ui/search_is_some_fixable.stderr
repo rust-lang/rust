@@ -1,0 +1,94 @@
+error: called `is_some()` after searching an `Iterator` with `find`
+  --> $DIR/search_is_some_fixable.rs:10:22
+   |
+LL |     let _ = v.iter().find(|&x| *x < 0).is_some();
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `any()` instead: `any(|x| *x < 0)`
+   |
+   = note: `-D clippy::search-is-some` implied by `-D warnings`
+
+error: called `is_some()` after searching an `Iterator` with `find`
+  --> $DIR/search_is_some_fixable.rs:11:20
+   |
+LL |     let _ = (0..1).find(|x| **y == *x).is_some(); // one dereference less
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `any()` instead: `any(|x| **y == x)`
+
+error: called `is_some()` after searching an `Iterator` with `find`
+  --> $DIR/search_is_some_fixable.rs:12:20
+   |
+LL |     let _ = (0..1).find(|x| *x == 0).is_some();
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `any()` instead: `any(|x| x == 0)`
+
+error: called `is_some()` after searching an `Iterator` with `find`
+  --> $DIR/search_is_some_fixable.rs:13:22
+   |
+LL |     let _ = v.iter().find(|x| **x == 0).is_some();
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `any()` instead: `any(|x| *x == 0)`
+
+error: called `is_some()` after searching an `Iterator` with `position`
+  --> $DIR/search_is_some_fixable.rs:16:22
+   |
+LL |     let _ = v.iter().position(|&x| x < 0).is_some();
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `any()` instead: `any(|&x| x < 0)`
+
+error: called `is_some()` after searching an `Iterator` with `rposition`
+  --> $DIR/search_is_some_fixable.rs:19:22
+   |
+LL |     let _ = v.iter().rposition(|&x| x < 0).is_some();
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `any()` instead: `any(|&x| x < 0)`
+
+error: called `is_some()` after calling `find()` on a string
+  --> $DIR/search_is_some_fixable.rs:24:27
+   |
+LL |     let _ = "hello world".find("world").is_some();
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^ help: use `contains()` instead: `contains("world")`
+
+error: called `is_some()` after calling `find()` on a string
+  --> $DIR/search_is_some_fixable.rs:25:27
+   |
+LL |     let _ = "hello world".find(&s2).is_some();
+   |                           ^^^^^^^^^^^^^^^^^^^ help: use `contains()` instead: `contains(&s2)`
+
+error: called `is_some()` after calling `find()` on a string
+  --> $DIR/search_is_some_fixable.rs:26:27
+   |
+LL |     let _ = "hello world".find(&s2[2..]).is_some();
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^ help: use `contains()` instead: `contains(&s2[2..])`
+
+error: called `is_some()` after calling `find()` on a string
+  --> $DIR/search_is_some_fixable.rs:28:16
+   |
+LL |     let _ = s1.find("world").is_some();
+   |                ^^^^^^^^^^^^^^^^^^^^^^^ help: use `contains()` instead: `contains("world")`
+
+error: called `is_some()` after calling `find()` on a string
+  --> $DIR/search_is_some_fixable.rs:29:16
+   |
+LL |     let _ = s1.find(&s2).is_some();
+   |                ^^^^^^^^^^^^^^^^^^^ help: use `contains()` instead: `contains(&s2)`
+
+error: called `is_some()` after calling `find()` on a string
+  --> $DIR/search_is_some_fixable.rs:30:16
+   |
+LL |     let _ = s1.find(&s2[2..]).is_some();
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^ help: use `contains()` instead: `contains(&s2[2..])`
+
+error: called `is_some()` after calling `find()` on a string
+  --> $DIR/search_is_some_fixable.rs:32:21
+   |
+LL |     let _ = s1[2..].find("world").is_some();
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^ help: use `contains()` instead: `contains("world")`
+
+error: called `is_some()` after calling `find()` on a string
+  --> $DIR/search_is_some_fixable.rs:33:21
+   |
+LL |     let _ = s1[2..].find(&s2).is_some();
+   |                     ^^^^^^^^^^^^^^^^^^^ help: use `contains()` instead: `contains(&s2)`
+
+error: called `is_some()` after calling `find()` on a string
+  --> $DIR/search_is_some_fixable.rs:34:21
+   |
+LL |     let _ = s1[2..].find(&s2[2..]).is_some();
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^ help: use `contains()` instead: `contains(&s2[2..])`
+
+error: aborting due to 15 previous errors
+

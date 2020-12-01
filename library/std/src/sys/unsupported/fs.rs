@@ -233,10 +233,6 @@ impl File {
     pub fn set_permissions(&self, _perm: FilePermissions) -> io::Result<()> {
         match self.0 {}
     }
-
-    pub fn diverge(&self) -> ! {
-        match self.0 {}
-    }
 }
 
 impl DirBuilder {
@@ -283,7 +279,7 @@ pub fn readlink(_p: &Path) -> io::Result<PathBuf> {
     unsupported()
 }
 
-pub fn symlink(_src: &Path, _dst: &Path) -> io::Result<()> {
+pub fn symlink(_original: &Path, _link: &Path) -> io::Result<()> {
     unsupported()
 }
 

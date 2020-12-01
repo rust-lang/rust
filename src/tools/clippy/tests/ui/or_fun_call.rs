@@ -2,6 +2,7 @@
 
 #![warn(clippy::or_fun_call)]
 #![allow(dead_code)]
+#![allow(clippy::unnecessary_wraps)]
 
 use std::collections::BTreeMap;
 use std::collections::HashMap;
@@ -70,6 +71,15 @@ fn or_fun_call() {
     let opt = Some(1);
     let hello = "Hello";
     let _ = opt.ok_or(format!("{} world.", hello));
+
+    // index
+    let map = HashMap::<u64, u64>::new();
+    let _ = Some(1).unwrap_or(map[&1]);
+    let map = BTreeMap::<u64, u64>::new();
+    let _ = Some(1).unwrap_or(map[&1]);
+    // don't lint index vec
+    let vec = vec![1];
+    let _ = Some(1).unwrap_or(vec[1]);
 }
 
 struct Foo(u8);
@@ -114,14 +124,6 @@ fn f() -> Option<()> {
     let _ = a.unwrap_or(b.checked_mul(3)?.min(240));
 
     Some(())
-}
-
-// Issue 5886 - const fn (with no arguments)
-pub fn skip_const_fn_with_no_args() {
-    const fn foo() -> Option<i32> {
-        Some(42)
-    }
-    let _ = None.or(foo());
 }
 
 fn main() {}

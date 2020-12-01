@@ -20,7 +20,7 @@ use crate::html::escape::Escape;
 mod tests;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub enum Cfg {
+crate enum Cfg {
     /// Accepts all configurations.
     True,
     /// Denies all configurations.
@@ -36,9 +36,9 @@ pub enum Cfg {
 }
 
 #[derive(PartialEq, Debug)]
-pub struct InvalidCfgError {
-    pub msg: &'static str,
-    pub span: Span,
+crate struct InvalidCfgError {
+    crate msg: &'static str,
+    crate span: Span,
 }
 
 impl Cfg {
@@ -59,7 +59,7 @@ impl Cfg {
     ///
     /// If the content is not properly formatted, it will return an error indicating what and where
     /// the error is.
-    pub fn parse(cfg: &MetaItem) -> Result<Cfg, InvalidCfgError> {
+    crate fn parse(cfg: &MetaItem) -> Result<Cfg, InvalidCfgError> {
         let name = match cfg.ident() {
             Some(ident) => ident.name,
             None => {
@@ -102,7 +102,7 @@ impl Cfg {
     ///
     /// Equivalent to `attr::cfg_matches`.
     // FIXME: Actually make use of `features`.
-    pub fn matches(&self, parse_sess: &ParseSess, features: Option<&Features>) -> bool {
+    crate fn matches(&self, parse_sess: &ParseSess, features: Option<&Features>) -> bool {
         match *self {
             Cfg::False => false,
             Cfg::True => true,
@@ -200,6 +200,37 @@ impl Cfg {
             Cfg::Cfg(name, _) if name == sym::target_feature => true,
             _ => false,
         }
+    }
+
+    /// Attempt to simplify this cfg by assuming that `assume` is already known to be true, will
+    /// return `None` if simplification managed to completely eliminate any requirements from this
+    /// `Cfg`.
+    ///
+    /// See `tests::test_simplify_with` for examples.
+    pub(crate) fn simplify_with(&self, assume: &Cfg) -> Option<Cfg> {
+        if self == assume {
+            return None;
+        }
+
+        if let Cfg::All(a) = self {
+            let mut sub_cfgs: Vec<Cfg> = if let Cfg::All(b) = assume {
+                a.iter().filter(|a| !b.contains(a)).cloned().collect()
+            } else {
+                a.iter().filter(|&a| a != assume).cloned().collect()
+            };
+            let len = sub_cfgs.len();
+            return match len {
+                0 => None,
+                1 => sub_cfgs.pop(),
+                _ => Some(Cfg::All(sub_cfgs)),
+            };
+        } else if let Cfg::All(b) = assume {
+            if b.contains(self) {
+                return None;
+            }
+        }
+
+        Some(self.clone())
     }
 }
 

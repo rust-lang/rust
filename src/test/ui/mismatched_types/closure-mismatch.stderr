@@ -4,8 +4,8 @@ error[E0308]: mismatched types
 LL |     baz(|_| ());
    |     ^^^ one type is more general than the other
    |
-   = note: expected type `for<'r> std::ops::Fn<(&'r (),)>`
-              found type `std::ops::Fn<(&(),)>`
+   = note: expected type `for<'r> Fn<(&'r (),)>`
+              found type `Fn<(&(),)>`
 
 error: aborting due to previous error
 

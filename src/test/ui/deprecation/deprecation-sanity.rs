@@ -24,10 +24,19 @@ mod bogus_attribute_types_1 {
 }
 
 #[deprecated(since = "a", note = "b")]
-#[deprecated(since = "a", note = "b")]
-fn multiple1() { } //~ ERROR multiple deprecated attributes
+#[deprecated(since = "a", note = "b")] //~ ERROR multiple deprecated attributes
+fn multiple1() { }
 
 #[deprecated(since = "a", since = "b", note = "c")] //~ ERROR multiple 'since' items
 fn f1() { }
+
+struct X;
+
+#[deprecated = "hello"] //~ ERROR this `#[deprecated]` annotation has no effect
+impl Default for X {
+    fn default() -> Self {
+        X
+    }
+}
 
 fn main() { }

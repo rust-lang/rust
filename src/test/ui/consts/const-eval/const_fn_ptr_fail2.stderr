@@ -20,6 +20,16 @@ LL |     assert_eq!(Z, 4);
 
 warning: skipping const checks
    |
+help: skipping check for `const_fn_fn_ptr_basics` feature
+  --> $DIR/const_fn_ptr_fail2.rs:12:14
+   |
+LL | const fn bar(x: fn(usize) -> usize, y: usize) -> usize {
+   |              ^
+help: skipping check for `const_fn_fn_ptr_basics` feature
+  --> $DIR/const_fn_ptr_fail2.rs:13:5
+   |
+LL |     x(y)
+   |     ^
 help: skipping check that does not even have a feature gate
   --> $DIR/const_fn_ptr_fail2.rs:13:5
    |

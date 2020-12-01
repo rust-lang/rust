@@ -1,0 +1,31 @@
+- // MIR for `r` before SimplifyLocals
++ // MIR for `r` after SimplifyLocals
+  
+  fn r() -> () {
+      let mut _0: ();                      // return place in scope 0 at $DIR/simplify-locals.rs:32:8: 32:8
+      let mut _1: i32;                     // in scope 0 at $DIR/simplify-locals.rs:33:9: 33:14
+-     let mut _2: &i32;                    // in scope 0 at $DIR/simplify-locals.rs:35:13: 35:15
+-     let mut _3: &mut i32;                // in scope 0 at $DIR/simplify-locals.rs:36:13: 36:19
+      scope 1 {
+          debug a => _1;                   // in scope 1 at $DIR/simplify-locals.rs:33:9: 33:14
+          scope 2 {
+              scope 3 {
+              }
+          }
+      }
+  
+      bb0: {
+          StorageLive(_1);                 // scope 0 at $DIR/simplify-locals.rs:33:9: 33:14
+          _1 = const 1_i32;                // scope 0 at $DIR/simplify-locals.rs:33:17: 33:18
+-         StorageLive(_2);                 // scope 1 at $DIR/simplify-locals.rs:35:13: 35:15
+-         _2 = &_1;                        // scope 1 at $DIR/simplify-locals.rs:35:13: 35:15
+-         StorageDead(_2);                 // scope 1 at $DIR/simplify-locals.rs:35:15: 35:16
+-         StorageLive(_3);                 // scope 2 at $DIR/simplify-locals.rs:36:13: 36:19
+-         _3 = &mut _1;                    // scope 2 at $DIR/simplify-locals.rs:36:13: 36:19
+-         StorageDead(_3);                 // scope 2 at $DIR/simplify-locals.rs:36:19: 36:20
+          _0 = const ();                   // scope 0 at $DIR/simplify-locals.rs:32:8: 37:2
+          StorageDead(_1);                 // scope 0 at $DIR/simplify-locals.rs:37:1: 37:2
+          return;                          // scope 0 at $DIR/simplify-locals.rs:37:2: 37:2
+      }
+  }
+  

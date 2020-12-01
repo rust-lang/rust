@@ -6,6 +6,10 @@
     issue = "27709"
 )]
 
+// Tests for this module
+#[cfg(all(test, not(target_os = "emscripten")))]
+mod tests;
+
 use crate::cmp::Ordering;
 use crate::fmt::{self, Write as FmtWrite};
 use crate::hash;
@@ -136,8 +140,6 @@ impl IpAddr {
     /// See the documentation for [`Ipv4Addr::is_unspecified()`] and
     /// [`Ipv6Addr::is_unspecified()`] for more details.
     ///
-    /// [`true`]: ../../std/primitive.bool.html
-    ///
     /// # Examples
     ///
     /// ```
@@ -146,8 +148,9 @@ impl IpAddr {
     /// assert_eq!(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)).is_unspecified(), true);
     /// assert_eq!(IpAddr::V6(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0)).is_unspecified(), true);
     /// ```
+    #[rustc_const_unstable(feature = "const_ip", issue = "76205")]
     #[stable(feature = "ip_shared", since = "1.12.0")]
-    pub fn is_unspecified(&self) -> bool {
+    pub const fn is_unspecified(&self) -> bool {
         match self {
             IpAddr::V4(ip) => ip.is_unspecified(),
             IpAddr::V6(ip) => ip.is_unspecified(),
@@ -159,8 +162,6 @@ impl IpAddr {
     /// See the documentation for [`Ipv4Addr::is_loopback()`] and
     /// [`Ipv6Addr::is_loopback()`] for more details.
     ///
-    /// [`true`]: ../../std/primitive.bool.html
-    ///
     /// # Examples
     ///
     /// ```
@@ -169,8 +170,9 @@ impl IpAddr {
     /// assert_eq!(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)).is_loopback(), true);
     /// assert_eq!(IpAddr::V6(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0x1)).is_loopback(), true);
     /// ```
+    #[rustc_const_unstable(feature = "const_ip", issue = "76205")]
     #[stable(feature = "ip_shared", since = "1.12.0")]
-    pub fn is_loopback(&self) -> bool {
+    pub const fn is_loopback(&self) -> bool {
         match self {
             IpAddr::V4(ip) => ip.is_loopback(),
             IpAddr::V6(ip) => ip.is_loopback(),
@@ -182,8 +184,6 @@ impl IpAddr {
     /// See the documentation for [`Ipv4Addr::is_global()`] and
     /// [`Ipv6Addr::is_global()`] for more details.
     ///
-    /// [`true`]: ../../std/primitive.bool.html
-    ///
     /// # Examples
     ///
     /// ```
@@ -194,7 +194,8 @@ impl IpAddr {
     /// assert_eq!(IpAddr::V4(Ipv4Addr::new(80, 9, 12, 3)).is_global(), true);
     /// assert_eq!(IpAddr::V6(Ipv6Addr::new(0, 0, 0x1c9, 0, 0, 0xafc8, 0, 0x1)).is_global(), true);
     /// ```
-    pub fn is_global(&self) -> bool {
+    #[rustc_const_unstable(feature = "const_ip", issue = "76205")]
+    pub const fn is_global(&self) -> bool {
         match self {
             IpAddr::V4(ip) => ip.is_global(),
             IpAddr::V6(ip) => ip.is_global(),
@@ -206,8 +207,6 @@ impl IpAddr {
     /// See the documentation for [`Ipv4Addr::is_multicast()`] and
     /// [`Ipv6Addr::is_multicast()`] for more details.
     ///
-    /// [`true`]: ../../std/primitive.bool.html
-    ///
     /// # Examples
     ///
     /// ```
@@ -216,8 +215,9 @@ impl IpAddr {
     /// assert_eq!(IpAddr::V4(Ipv4Addr::new(224, 254, 0, 0)).is_multicast(), true);
     /// assert_eq!(IpAddr::V6(Ipv6Addr::new(0xff00, 0, 0, 0, 0, 0, 0, 0)).is_multicast(), true);
     /// ```
+    #[rustc_const_unstable(feature = "const_ip", issue = "76205")]
     #[stable(feature = "ip_shared", since = "1.12.0")]
-    pub fn is_multicast(&self) -> bool {
+    pub const fn is_multicast(&self) -> bool {
         match self {
             IpAddr::V4(ip) => ip.is_multicast(),
             IpAddr::V6(ip) => ip.is_multicast(),
@@ -228,8 +228,6 @@ impl IpAddr {
     ///
     /// See the documentation for [`Ipv4Addr::is_documentation()`] and
     /// [`Ipv6Addr::is_documentation()`] for more details.
-    ///
-    /// [`true`]: ../../std/primitive.bool.html
     ///
     /// # Examples
     ///
@@ -244,7 +242,8 @@ impl IpAddr {
     ///     true
     /// );
     /// ```
-    pub fn is_documentation(&self) -> bool {
+    #[rustc_const_unstable(feature = "const_ip", issue = "76205")]
+    pub const fn is_documentation(&self) -> bool {
         match self {
             IpAddr::V4(ip) => ip.is_documentation(),
             IpAddr::V6(ip) => ip.is_documentation(),
@@ -254,8 +253,6 @@ impl IpAddr {
     /// Returns [`true`] if this address is an [`IPv4` address], and [`false`]
     /// otherwise.
     ///
-    /// [`true`]: ../../std/primitive.bool.html
-    /// [`false`]: ../../std/primitive.bool.html
     /// [`IPv4` address]: IpAddr::V4
     ///
     /// # Examples
@@ -266,16 +263,15 @@ impl IpAddr {
     /// assert_eq!(IpAddr::V4(Ipv4Addr::new(203, 0, 113, 6)).is_ipv4(), true);
     /// assert_eq!(IpAddr::V6(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 0)).is_ipv4(), false);
     /// ```
+    #[rustc_const_stable(feature = "const_ip", since = "1.50.0")]
     #[stable(feature = "ipaddr_checker", since = "1.16.0")]
-    pub fn is_ipv4(&self) -> bool {
+    pub const fn is_ipv4(&self) -> bool {
         matches!(self, IpAddr::V4(_))
     }
 
     /// Returns [`true`] if this address is an [`IPv6` address], and [`false`]
     /// otherwise.
     ///
-    /// [`true`]: ../../std/primitive.bool.html
-    /// [`false`]: ../../std/primitive.bool.html
     /// [`IPv6` address]: IpAddr::V6
     ///
     /// # Examples
@@ -286,8 +282,9 @@ impl IpAddr {
     /// assert_eq!(IpAddr::V4(Ipv4Addr::new(203, 0, 113, 6)).is_ipv6(), false);
     /// assert_eq!(IpAddr::V6(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 0)).is_ipv6(), true);
     /// ```
+    #[rustc_const_stable(feature = "const_ip", since = "1.50.0")]
     #[stable(feature = "ipaddr_checker", since = "1.16.0")]
-    pub fn is_ipv6(&self) -> bool {
+    pub const fn is_ipv6(&self) -> bool {
         matches!(self, IpAddr::V6(_))
     }
 }
@@ -361,8 +358,9 @@ impl Ipv4Addr {
     /// let addr = Ipv4Addr::new(127, 0, 0, 1);
     /// assert_eq!(addr.octets(), [127, 0, 0, 1]);
     /// ```
+    #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn octets(&self) -> [u8; 4] {
+    pub const fn octets(&self) -> [u8; 4] {
         // This returns the order we want because s_addr is stored in big-endian.
         self.inner.s_addr.to_ne_bytes()
     }
@@ -372,7 +370,6 @@ impl Ipv4Addr {
     /// This property is defined in _UNIX Network Programming, Second Edition_,
     /// W. Richard Stevens, p. 891; see also [ip7].
     ///
-    /// [`true`]: ../../std/primitive.bool.html
     /// [ip7]: http://man7.org/linux/man-pages/man7/ip.7.html
     ///
     /// # Examples
@@ -393,7 +390,6 @@ impl Ipv4Addr {
     ///
     /// This property is defined by [IETF RFC 1122].
     ///
-    /// [`true`]: ../../std/primitive.bool.html
     /// [IETF RFC 1122]: https://tools.ietf.org/html/rfc1122
     ///
     /// # Examples
@@ -404,8 +400,9 @@ impl Ipv4Addr {
     /// assert_eq!(Ipv4Addr::new(127, 0, 0, 1).is_loopback(), true);
     /// assert_eq!(Ipv4Addr::new(45, 22, 13, 197).is_loopback(), false);
     /// ```
+    #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
     #[stable(since = "1.7.0", feature = "ip_17")]
-    pub fn is_loopback(&self) -> bool {
+    pub const fn is_loopback(&self) -> bool {
         self.octets()[0] == 127
     }
 
@@ -417,7 +414,6 @@ impl Ipv4Addr {
     ///  - 172.16.0.0/12
     ///  - 192.168.0.0/16
     ///
-    /// [`true`]: ../../std/primitive.bool.html
     /// [IETF RFC 1918]: https://tools.ietf.org/html/rfc1918
     ///
     /// # Examples
@@ -433,8 +429,9 @@ impl Ipv4Addr {
     /// assert_eq!(Ipv4Addr::new(192, 168, 0, 2).is_private(), true);
     /// assert_eq!(Ipv4Addr::new(192, 169, 0, 2).is_private(), false);
     /// ```
+    #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
     #[stable(since = "1.7.0", feature = "ip_17")]
-    pub fn is_private(&self) -> bool {
+    pub const fn is_private(&self) -> bool {
         match self.octets() {
             [10, ..] => true,
             [172, b, ..] if b >= 16 && b <= 31 => true,
@@ -447,7 +444,6 @@ impl Ipv4Addr {
     ///
     /// This property is defined by [IETF RFC 3927].
     ///
-    /// [`true`]: ../../std/primitive.bool.html
     /// [IETF RFC 3927]: https://tools.ietf.org/html/rfc3927
     ///
     /// # Examples
@@ -459,12 +455,10 @@ impl Ipv4Addr {
     /// assert_eq!(Ipv4Addr::new(169, 254, 10, 65).is_link_local(), true);
     /// assert_eq!(Ipv4Addr::new(16, 89, 10, 65).is_link_local(), false);
     /// ```
+    #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
     #[stable(since = "1.7.0", feature = "ip_17")]
-    pub fn is_link_local(&self) -> bool {
-        match self.octets() {
-            [169, 254, ..] => true,
-            _ => false,
-        }
+    pub const fn is_link_local(&self) -> bool {
+        matches!(self.octets(), [169, 254, ..])
     }
 
     /// Returns [`true`] if the address appears to be globally routable.
@@ -486,8 +480,6 @@ impl Ipv4Addr {
     /// - addresses reserved for networking devices benchmarking (see
     /// [`Ipv4Addr::is_benchmarking()`])
     ///
-    /// [`true`]: ../../std/primitive.bool.html
-    /// [`false`]: ../../std/primitive.bool.html
     /// [ipv4-sr]: https://www.iana.org/assignments/iana-ipv4-special-registry/iana-ipv4-special-registry.xhtml
     ///
     /// # Examples
@@ -538,10 +530,13 @@ impl Ipv4Addr {
     /// assert_eq!(Ipv4Addr::new(1, 1, 1, 1).is_global(), true);
     /// assert_eq!(Ipv4Addr::new(80, 9, 12, 3).is_global(), true);
     /// ```
-    pub fn is_global(&self) -> bool {
+    #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
+    pub const fn is_global(&self) -> bool {
         // check if this address is 192.0.0.9 or 192.0.0.10. These addresses are the only two
         // globally routable addresses in the 192.0.0.0/24 range.
-        if u32::from(*self) == 0xc0000009 || u32::from(*self) == 0xc000000a {
+        if u32::from_be_bytes(self.octets()) == 0xc0000009
+            || u32::from_be_bytes(self.octets()) == 0xc000000a
+        {
             return true;
         }
         !self.is_private()
@@ -560,7 +555,6 @@ impl Ipv4Addr {
     /// Returns [`true`] if this address is part of the Shared Address Space defined in
     /// [IETF RFC 6598] (`100.64.0.0/10`).
     ///
-    /// [`true`]: ../../std/primitive.bool.html
     /// [IETF RFC 6598]: https://tools.ietf.org/html/rfc6598
     ///
     /// # Examples
@@ -573,7 +567,8 @@ impl Ipv4Addr {
     /// assert_eq!(Ipv4Addr::new(100, 127, 255, 255).is_shared(), true);
     /// assert_eq!(Ipv4Addr::new(100, 128, 0, 0).is_shared(), false);
     /// ```
-    pub fn is_shared(&self) -> bool {
+    #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
+    pub const fn is_shared(&self) -> bool {
         self.octets()[0] == 100 && (self.octets()[1] & 0b1100_0000 == 0b0100_0000)
     }
 
@@ -586,7 +581,6 @@ impl Ipv4Addr {
     /// - `192.0.0.9/32` is the "Port Control Protocol Anycast" (see [IETF RFC 7723])
     /// - `192.0.0.10/32` is used for NAT traversal (see [IETF RFC 8155])
     ///
-    /// [`true`]: ../../std/primitive.bool.html
     /// [IETF RFC 6890]: https://tools.ietf.org/html/rfc6890
     /// [IETF RFC 7600]: https://tools.ietf.org/html/rfc7600
     /// [IETF RFC 7723]: https://tools.ietf.org/html/rfc7723
@@ -605,7 +599,8 @@ impl Ipv4Addr {
     /// assert_eq!(Ipv4Addr::new(192, 0, 1, 0).is_ietf_protocol_assignment(), false);
     /// assert_eq!(Ipv4Addr::new(191, 255, 255, 255).is_ietf_protocol_assignment(), false);
     /// ```
-    pub fn is_ietf_protocol_assignment(&self) -> bool {
+    #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
+    pub const fn is_ietf_protocol_assignment(&self) -> bool {
         self.octets()[0] == 192 && self.octets()[1] == 0 && self.octets()[2] == 0
     }
 
@@ -613,7 +608,6 @@ impl Ipv4Addr {
     /// network devices benchmarking. This range is defined in [IETF RFC 2544] as `192.18.0.0`
     /// through `198.19.255.255` but [errata 423] corrects it to `198.18.0.0/15`.
     ///
-    /// [`true`]: ../../std/primitive.bool.html
     /// [IETF RFC 2544]: https://tools.ietf.org/html/rfc2544
     /// [errata 423]: https://www.rfc-editor.org/errata/eid423
     ///
@@ -628,7 +622,8 @@ impl Ipv4Addr {
     /// assert_eq!(Ipv4Addr::new(198, 19, 255, 255).is_benchmarking(), true);
     /// assert_eq!(Ipv4Addr::new(198, 20, 0, 0).is_benchmarking(), false);
     /// ```
-    pub fn is_benchmarking(&self) -> bool {
+    #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
+    pub const fn is_benchmarking(&self) -> bool {
         self.octets()[0] == 198 && (self.octets()[1] & 0xfe) == 18
     }
 
@@ -637,7 +632,6 @@ impl Ipv4Addr {
     /// broadcast address `255.255.255.255`, but this implementation explicitly excludes it, since
     /// it is obviously not reserved for future use.
     ///
-    /// [`true`]: ../../std/primitive.bool.html
     /// [IETF RFC 1112]: https://tools.ietf.org/html/rfc1112
     ///
     /// # Warning
@@ -660,7 +654,8 @@ impl Ipv4Addr {
     /// // The broadcast address is not considered as reserved for future use by this implementation
     /// assert_eq!(Ipv4Addr::new(255, 255, 255, 255).is_reserved(), false);
     /// ```
-    pub fn is_reserved(&self) -> bool {
+    #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
+    pub const fn is_reserved(&self) -> bool {
         self.octets()[0] & 240 == 240 && !self.is_broadcast()
     }
 
@@ -669,7 +664,6 @@ impl Ipv4Addr {
     /// Multicast addresses have a most significant octet between 224 and 239,
     /// and is defined by [IETF RFC 5771].
     ///
-    /// [`true`]: ../../std/primitive.bool.html
     /// [IETF RFC 5771]: https://tools.ietf.org/html/rfc5771
     ///
     /// # Examples
@@ -681,8 +675,9 @@ impl Ipv4Addr {
     /// assert_eq!(Ipv4Addr::new(236, 168, 10, 65).is_multicast(), true);
     /// assert_eq!(Ipv4Addr::new(172, 16, 10, 65).is_multicast(), false);
     /// ```
+    #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
     #[stable(since = "1.7.0", feature = "ip_17")]
-    pub fn is_multicast(&self) -> bool {
+    pub const fn is_multicast(&self) -> bool {
         self.octets()[0] >= 224 && self.octets()[0] <= 239
     }
 
@@ -690,7 +685,6 @@ impl Ipv4Addr {
     ///
     /// A broadcast address has all octets set to 255 as defined in [IETF RFC 919].
     ///
-    /// [`true`]: ../../std/primitive.bool.html
     /// [IETF RFC 919]: https://tools.ietf.org/html/rfc919
     ///
     /// # Examples
@@ -701,9 +695,10 @@ impl Ipv4Addr {
     /// assert_eq!(Ipv4Addr::new(255, 255, 255, 255).is_broadcast(), true);
     /// assert_eq!(Ipv4Addr::new(236, 168, 10, 65).is_broadcast(), false);
     /// ```
+    #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
     #[stable(since = "1.7.0", feature = "ip_17")]
-    pub fn is_broadcast(&self) -> bool {
-        self == &Self::BROADCAST
+    pub const fn is_broadcast(&self) -> bool {
+        u32::from_be_bytes(self.octets()) == u32::from_be_bytes(Self::BROADCAST.octets())
     }
 
     /// Returns [`true`] if this address is in a range designated for documentation.
@@ -714,7 +709,6 @@ impl Ipv4Addr {
     /// - 198.51.100.0/24 (TEST-NET-2)
     /// - 203.0.113.0/24 (TEST-NET-3)
     ///
-    /// [`true`]: ../../std/primitive.bool.html
     /// [IETF RFC 5737]: https://tools.ietf.org/html/rfc5737
     ///
     /// # Examples
@@ -727,8 +721,9 @@ impl Ipv4Addr {
     /// assert_eq!(Ipv4Addr::new(203, 0, 113, 6).is_documentation(), true);
     /// assert_eq!(Ipv4Addr::new(193, 34, 17, 19).is_documentation(), false);
     /// ```
+    #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
     #[stable(since = "1.7.0", feature = "ip_17")]
-    pub fn is_documentation(&self) -> bool {
+    pub const fn is_documentation(&self) -> bool {
         match self.octets() {
             [192, 0, 2, _] => true,
             [198, 51, 100, _] => true,
@@ -740,6 +735,9 @@ impl Ipv4Addr {
     /// Converts this address to an IPv4-compatible [`IPv6` address].
     ///
     /// a.b.c.d becomes ::a.b.c.d
+    ///
+    /// This isn't typically the method you want; these addresses don't typically
+    /// function on modern systems. Use `to_ipv6_mapped` instead.
     ///
     /// [`IPv6` address]: Ipv6Addr
     ///
@@ -753,10 +751,13 @@ impl Ipv4Addr {
     ///     Ipv6Addr::new(0, 0, 0, 0, 0, 0, 49152, 767)
     /// );
     /// ```
+    #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn to_ipv6_compatible(&self) -> Ipv6Addr {
+    pub const fn to_ipv6_compatible(&self) -> Ipv6Addr {
         let [a, b, c, d] = self.octets();
-        Ipv6Addr::from([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, a, b, c, d])
+        Ipv6Addr {
+            inner: c::in6_addr { s6_addr: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, a, b, c, d] },
+        }
     }
 
     /// Converts this address to an IPv4-mapped [`IPv6` address].
@@ -773,10 +774,13 @@ impl Ipv4Addr {
     /// assert_eq!(Ipv4Addr::new(192, 0, 2, 255).to_ipv6_mapped(),
     ///            Ipv6Addr::new(0, 0, 0, 0, 0, 65535, 49152, 767));
     /// ```
+    #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn to_ipv6_mapped(&self) -> Ipv6Addr {
+    pub const fn to_ipv6_mapped(&self) -> Ipv6Addr {
         let [a, b, c, d] = self.octets();
-        Ipv6Addr::from([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xFF, 0xFF, a, b, c, d])
+        Ipv6Addr {
+            inner: c::in6_addr { s6_addr: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xFF, 0xFF, a, b, c, d] },
+        }
     }
 }
 
@@ -1041,7 +1045,7 @@ impl Ipv6Addr {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_ipv6", since = "1.32.0")]
-    #[allow_internal_unstable(const_fn_transmute)]
+    #[rustc_allow_const_fn_unstable(const_fn_transmute)]
     pub const fn new(a: u16, b: u16, c: u16, d: u16, e: u16, f: u16, g: u16, h: u16) -> Ipv6Addr {
         let addr16 = [
             a.to_be(),
@@ -1098,8 +1102,9 @@ impl Ipv6Addr {
     /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).segments(),
     ///            [0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff]);
     /// ```
+    #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn segments(&self) -> [u16; 8] {
+    pub const fn segments(&self) -> [u16; 8] {
         // All elements in `s6_addr` must be big endian.
         // SAFETY: `[u8; 16]` is always safe to transmute to `[u16; 8]`.
         let [a, b, c, d, e, f, g, h] = unsafe { transmute::<_, [u16; 8]>(self.inner.s6_addr) };
@@ -1120,7 +1125,6 @@ impl Ipv6Addr {
     ///
     /// This property is defined in [IETF RFC 4291].
     ///
-    /// [`true`]: ../../std/primitive.bool.html
     /// [IETF RFC 4291]: https://tools.ietf.org/html/rfc4291
     ///
     /// # Examples
@@ -1131,16 +1135,16 @@ impl Ipv6Addr {
     /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).is_unspecified(), false);
     /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0).is_unspecified(), true);
     /// ```
+    #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
     #[stable(since = "1.7.0", feature = "ip_17")]
-    pub fn is_unspecified(&self) -> bool {
-        self.segments() == [0, 0, 0, 0, 0, 0, 0, 0]
+    pub const fn is_unspecified(&self) -> bool {
+        u128::from_be_bytes(self.octets()) == u128::from_be_bytes(Ipv6Addr::UNSPECIFIED.octets())
     }
 
     /// Returns [`true`] if this is a loopback address (::1).
     ///
     /// This property is defined in [IETF RFC 4291].
     ///
-    /// [`true`]: ../../std/primitive.bool.html
     /// [IETF RFC 4291]: https://tools.ietf.org/html/rfc4291
     ///
     /// # Examples
@@ -1151,9 +1155,10 @@ impl Ipv6Addr {
     /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).is_loopback(), false);
     /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0x1).is_loopback(), true);
     /// ```
+    #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
     #[stable(since = "1.7.0", feature = "ip_17")]
-    pub fn is_loopback(&self) -> bool {
-        self.segments() == [0, 0, 0, 0, 0, 0, 0, 1]
+    pub const fn is_loopback(&self) -> bool {
+        u128::from_be_bytes(self.octets()) == u128::from_be_bytes(Ipv6Addr::LOCALHOST.octets())
     }
 
     /// Returns [`true`] if the address appears to be globally routable.
@@ -1163,9 +1168,6 @@ impl Ipv6Addr {
     /// - the loopback address
     /// - link-local and unique local unicast addresses
     /// - interface-, link-, realm-, admin- and site-local multicast addresses
-    ///
-    /// [`true`]: ../../std/primitive.bool.html
-    /// [`false`]: ../../std/primitive.bool.html
     ///
     /// # Examples
     ///
@@ -1178,7 +1180,8 @@ impl Ipv6Addr {
     /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0x1).is_global(), false);
     /// assert_eq!(Ipv6Addr::new(0, 0, 0x1c9, 0, 0, 0xafc8, 0, 0x1).is_global(), true);
     /// ```
-    pub fn is_global(&self) -> bool {
+    #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
+    pub const fn is_global(&self) -> bool {
         match self.multicast_scope() {
             Some(Ipv6MulticastScope::Global) => true,
             None => self.is_unicast_global(),
@@ -1192,8 +1195,6 @@ impl Ipv6Addr {
     ///
     /// [IETF RFC 4193]: https://tools.ietf.org/html/rfc4193
     ///
-    /// [`true`]: ../../std/primitive.bool.html
-    ///
     /// # Examples
     ///
     /// ```
@@ -1204,7 +1205,8 @@ impl Ipv6Addr {
     /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).is_unique_local(), false);
     /// assert_eq!(Ipv6Addr::new(0xfc02, 0, 0, 0, 0, 0, 0, 0).is_unique_local(), true);
     /// ```
-    pub fn is_unique_local(&self) -> bool {
+    #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
+    pub const fn is_unique_local(&self) -> bool {
         (self.segments()[0] & 0xfe00) == 0xfc00
     }
 
@@ -1224,8 +1226,6 @@ impl Ipv6Addr {
     /// This method validates the format defined in the RFC and won't recognize the following
     /// addresses such as `fe80:0:0:1::` or `fe81::` as unicast link-local addresses for example.
     /// If you need a less strict validation use [`Ipv6Addr::is_unicast_link_local()`] instead.
-    ///
-    /// [`true`]: ../../std/primitive.bool.html
     ///
     /// # Examples
     ///
@@ -1259,11 +1259,9 @@ impl Ipv6Addr {
     /// [IETF RFC 4291]: https://tools.ietf.org/html/rfc4291
     /// [IETF RFC 4291 section 2.5.6]: https://tools.ietf.org/html/rfc4291#section-2.5.6
     /// [RFC 4291 errata 4406]: https://www.rfc-editor.org/errata/eid4406
-    pub fn is_unicast_link_local_strict(&self) -> bool {
-        (self.segments()[0] & 0xffff) == 0xfe80
-            && (self.segments()[1] & 0xffff) == 0
-            && (self.segments()[2] & 0xffff) == 0
-            && (self.segments()[3] & 0xffff) == 0
+    #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
+    pub const fn is_unicast_link_local_strict(&self) -> bool {
+        matches!(self.segments(), [0xfe80, 0, 0, 0, ..])
     }
 
     /// Returns [`true`] if the address is a unicast link-local address (`fe80::/10`).
@@ -1283,8 +1281,6 @@ impl Ipv6Addr {
     /// unicast link-local addresses, whereas [`Ipv6Addr::is_unicast_link_local_strict()`] does not.
     /// If you need a strict validation fully compliant with the RFC, use
     /// [`Ipv6Addr::is_unicast_link_local_strict()`] instead.
-    ///
-    /// [`true`]: ../../std/primitive.bool.html
     ///
     /// # Examples
     ///
@@ -1316,7 +1312,8 @@ impl Ipv6Addr {
     ///
     /// [IETF RFC 4291 section 2.4]: https://tools.ietf.org/html/rfc4291#section-2.4
     /// [RFC 4291 errata 4406]: https://www.rfc-editor.org/errata/eid4406
-    pub fn is_unicast_link_local(&self) -> bool {
+    #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
+    pub const fn is_unicast_link_local(&self) -> bool {
         (self.segments()[0] & 0xffc0) == 0xfe80
     }
 
@@ -1331,7 +1328,6 @@ impl Ipv6Addr {
     /// +----------+-------------------------+----------------------------+
     /// ```
     ///
-    /// [`true`]: ../../std/primitive.bool.html
     /// [RFC 4291 section 2.5.7]: https://tools.ietf.org/html/rfc4291#section-2.5.7
     ///
     /// # Examples
@@ -1355,7 +1351,8 @@ impl Ipv6Addr {
     /// addresses.
     ///
     /// [RFC 3879]: https://tools.ietf.org/html/rfc3879
-    pub fn is_unicast_site_local(&self) -> bool {
+    #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
+    pub const fn is_unicast_site_local(&self) -> bool {
         (self.segments()[0] & 0xffc0) == 0xfec0
     }
 
@@ -1364,7 +1361,6 @@ impl Ipv6Addr {
     ///
     /// This property is defined in [IETF RFC 3849].
     ///
-    /// [`true`]: ../../std/primitive.bool.html
     /// [IETF RFC 3849]: https://tools.ietf.org/html/rfc3849
     ///
     /// # Examples
@@ -1377,7 +1373,8 @@ impl Ipv6Addr {
     /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).is_documentation(), false);
     /// assert_eq!(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 0).is_documentation(), true);
     /// ```
-    pub fn is_documentation(&self) -> bool {
+    #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
+    pub const fn is_documentation(&self) -> bool {
         (self.segments()[0] == 0x2001) && (self.segments()[1] == 0xdb8)
     }
 
@@ -1399,7 +1396,6 @@ impl Ipv6Addr {
     /// Global Unicast).
     /// ```
     ///
-    /// [`true`]: ../../std/primitive.bool.html
     /// [RFC 4291 section 2.5.7]: https://tools.ietf.org/html/rfc4291#section-2.5.7
     ///
     /// # Examples
@@ -1412,7 +1408,8 @@ impl Ipv6Addr {
     /// assert_eq!(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 0).is_unicast_global(), false);
     /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).is_unicast_global(), true);
     /// ```
-    pub fn is_unicast_global(&self) -> bool {
+    #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
+    pub const fn is_unicast_global(&self) -> bool {
         !self.is_multicast()
             && !self.is_loopback()
             && !self.is_unicast_link_local()
@@ -1436,7 +1433,8 @@ impl Ipv6Addr {
     /// );
     /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).multicast_scope(), None);
     /// ```
-    pub fn multicast_scope(&self) -> Option<Ipv6MulticastScope> {
+    #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
+    pub const fn multicast_scope(&self) -> Option<Ipv6MulticastScope> {
         if self.is_multicast() {
             match self.segments()[0] & 0x000f {
                 1 => Some(Ipv6MulticastScope::InterfaceLocal),
@@ -1457,7 +1455,6 @@ impl Ipv6Addr {
     ///
     /// This property is defined by [IETF RFC 4291].
     ///
-    /// [`true`]: ../../std/primitive.bool.html
     /// [IETF RFC 4291]: https://tools.ietf.org/html/rfc4291
     ///
     /// # Examples
@@ -1468,8 +1465,9 @@ impl Ipv6Addr {
     /// assert_eq!(Ipv6Addr::new(0xff00, 0, 0, 0, 0, 0, 0, 0).is_multicast(), true);
     /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).is_multicast(), false);
     /// ```
+    #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
     #[stable(since = "1.7.0", feature = "ip_17")]
-    pub fn is_multicast(&self) -> bool {
+    pub const fn is_multicast(&self) -> bool {
         (self.segments()[0] & 0xff00) == 0xff00
     }
 
@@ -1494,7 +1492,8 @@ impl Ipv6Addr {
     ///            Some(Ipv4Addr::new(192, 10, 2, 255)));
     /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1).to_ipv4_mapped(), None);
     /// ```
-    pub fn to_ipv4_mapped(&self) -> Option<Ipv4Addr> {
+    #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
+    pub const fn to_ipv4_mapped(&self) -> Option<Ipv4Addr> {
         match self.octets() {
             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xff, 0xff, a, b, c, d] => {
                 Some(Ipv4Addr::new(a, b, c, d))
@@ -1521,8 +1520,9 @@ impl Ipv6Addr {
     /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1).to_ipv4(),
     ///            Some(Ipv4Addr::new(0, 0, 0, 1)));
     /// ```
+    #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn to_ipv4(&self) -> Option<Ipv4Addr> {
+    pub const fn to_ipv4(&self) -> Option<Ipv4Addr> {
         if let [0, 0, 0, 0, 0, 0 | 0xffff, ab, cd] = self.segments() {
             let [a, b] = ab.to_be_bytes();
             let [c, d] = cd.to_be_bytes();
@@ -1893,864 +1893,5 @@ impl From<[u16; 8]> for IpAddr {
     /// ```
     fn from(segments: [u16; 8]) -> IpAddr {
         IpAddr::V6(Ipv6Addr::from(segments))
-    }
-}
-
-// Tests for this module
-#[cfg(all(test, not(target_os = "emscripten")))]
-mod tests {
-    use crate::net::test::{sa4, sa6, tsa};
-    use crate::net::*;
-    use crate::str::FromStr;
-
-    #[test]
-    fn test_from_str_ipv4() {
-        assert_eq!(Ok(Ipv4Addr::new(127, 0, 0, 1)), "127.0.0.1".parse());
-        assert_eq!(Ok(Ipv4Addr::new(255, 255, 255, 255)), "255.255.255.255".parse());
-        assert_eq!(Ok(Ipv4Addr::new(0, 0, 0, 0)), "0.0.0.0".parse());
-
-        // out of range
-        let none: Option<Ipv4Addr> = "256.0.0.1".parse().ok();
-        assert_eq!(None, none);
-        // too short
-        let none: Option<Ipv4Addr> = "255.0.0".parse().ok();
-        assert_eq!(None, none);
-        // too long
-        let none: Option<Ipv4Addr> = "255.0.0.1.2".parse().ok();
-        assert_eq!(None, none);
-        // no number between dots
-        let none: Option<Ipv4Addr> = "255.0..1".parse().ok();
-        assert_eq!(None, none);
-    }
-
-    #[test]
-    fn test_from_str_ipv6() {
-        assert_eq!(Ok(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0)), "0:0:0:0:0:0:0:0".parse());
-        assert_eq!(Ok(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1)), "0:0:0:0:0:0:0:1".parse());
-
-        assert_eq!(Ok(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1)), "::1".parse());
-        assert_eq!(Ok(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0)), "::".parse());
-
-        assert_eq!(
-            Ok(Ipv6Addr::new(0x2a02, 0x6b8, 0, 0, 0, 0, 0x11, 0x11)),
-            "2a02:6b8::11:11".parse()
-        );
-
-        // too long group
-        let none: Option<Ipv6Addr> = "::00000".parse().ok();
-        assert_eq!(None, none);
-        // too short
-        let none: Option<Ipv6Addr> = "1:2:3:4:5:6:7".parse().ok();
-        assert_eq!(None, none);
-        // too long
-        let none: Option<Ipv6Addr> = "1:2:3:4:5:6:7:8:9".parse().ok();
-        assert_eq!(None, none);
-        // triple colon
-        let none: Option<Ipv6Addr> = "1:2:::6:7:8".parse().ok();
-        assert_eq!(None, none);
-        // two double colons
-        let none: Option<Ipv6Addr> = "1:2::6::8".parse().ok();
-        assert_eq!(None, none);
-        // `::` indicating zero groups of zeros
-        let none: Option<Ipv6Addr> = "1:2:3:4::5:6:7:8".parse().ok();
-        assert_eq!(None, none);
-    }
-
-    #[test]
-    fn test_from_str_ipv4_in_ipv6() {
-        assert_eq!(Ok(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 49152, 545)), "::192.0.2.33".parse());
-        assert_eq!(
-            Ok(Ipv6Addr::new(0, 0, 0, 0, 0, 0xFFFF, 49152, 545)),
-            "::FFFF:192.0.2.33".parse()
-        );
-        assert_eq!(
-            Ok(Ipv6Addr::new(0x64, 0xff9b, 0, 0, 0, 0, 49152, 545)),
-            "64:ff9b::192.0.2.33".parse()
-        );
-        assert_eq!(
-            Ok(Ipv6Addr::new(0x2001, 0xdb8, 0x122, 0xc000, 0x2, 0x2100, 49152, 545)),
-            "2001:db8:122:c000:2:2100:192.0.2.33".parse()
-        );
-
-        // colon after v4
-        let none: Option<Ipv4Addr> = "::127.0.0.1:".parse().ok();
-        assert_eq!(None, none);
-        // not enough groups
-        let none: Option<Ipv6Addr> = "1.2.3.4.5:127.0.0.1".parse().ok();
-        assert_eq!(None, none);
-        // too many groups
-        let none: Option<Ipv6Addr> = "1.2.3.4.5:6:7:127.0.0.1".parse().ok();
-        assert_eq!(None, none);
-    }
-
-    #[test]
-    fn test_from_str_socket_addr() {
-        assert_eq!(Ok(sa4(Ipv4Addr::new(77, 88, 21, 11), 80)), "77.88.21.11:80".parse());
-        assert_eq!(
-            Ok(SocketAddrV4::new(Ipv4Addr::new(77, 88, 21, 11), 80)),
-            "77.88.21.11:80".parse()
-        );
-        assert_eq!(
-            Ok(sa6(Ipv6Addr::new(0x2a02, 0x6b8, 0, 1, 0, 0, 0, 1), 53)),
-            "[2a02:6b8:0:1::1]:53".parse()
-        );
-        assert_eq!(
-            Ok(SocketAddrV6::new(Ipv6Addr::new(0x2a02, 0x6b8, 0, 1, 0, 0, 0, 1), 53, 0, 0)),
-            "[2a02:6b8:0:1::1]:53".parse()
-        );
-        assert_eq!(
-            Ok(sa6(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0x7F00, 1), 22)),
-            "[::127.0.0.1]:22".parse()
-        );
-        assert_eq!(
-            Ok(SocketAddrV6::new(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0x7F00, 1), 22, 0, 0)),
-            "[::127.0.0.1]:22".parse()
-        );
-
-        // without port
-        let none: Option<SocketAddr> = "127.0.0.1".parse().ok();
-        assert_eq!(None, none);
-        // without port
-        let none: Option<SocketAddr> = "127.0.0.1:".parse().ok();
-        assert_eq!(None, none);
-        // wrong brackets around v4
-        let none: Option<SocketAddr> = "[127.0.0.1]:22".parse().ok();
-        assert_eq!(None, none);
-        // port out of range
-        let none: Option<SocketAddr> = "127.0.0.1:123456".parse().ok();
-        assert_eq!(None, none);
-    }
-
-    #[test]
-    fn ipv4_addr_to_string() {
-        assert_eq!(Ipv4Addr::new(127, 0, 0, 1).to_string(), "127.0.0.1");
-        // Short address
-        assert_eq!(Ipv4Addr::new(1, 1, 1, 1).to_string(), "1.1.1.1");
-        // Long address
-        assert_eq!(Ipv4Addr::new(127, 127, 127, 127).to_string(), "127.127.127.127");
-
-        // Test padding
-        assert_eq!(&format!("{:16}", Ipv4Addr::new(1, 1, 1, 1)), "1.1.1.1         ");
-        assert_eq!(&format!("{:>16}", Ipv4Addr::new(1, 1, 1, 1)), "         1.1.1.1");
-    }
-
-    #[test]
-    fn ipv6_addr_to_string() {
-        // ipv4-mapped address
-        let a1 = Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc000, 0x280);
-        assert_eq!(a1.to_string(), "::ffff:192.0.2.128");
-
-        // ipv4-compatible address
-        let a1 = Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0xc000, 0x280);
-        assert_eq!(a1.to_string(), "::192.0.2.128");
-
-        // v6 address with no zero segments
-        assert_eq!(Ipv6Addr::new(8, 9, 10, 11, 12, 13, 14, 15).to_string(), "8:9:a:b:c:d:e:f");
-
-        // longest possible IPv6 length
-        assert_eq!(
-            Ipv6Addr::new(0x1111, 0x2222, 0x3333, 0x4444, 0x5555, 0x6666, 0x7777, 0x8888)
-                .to_string(),
-            "1111:2222:3333:4444:5555:6666:7777:8888"
-        );
-        // padding
-        assert_eq!(
-            &format!("{:20}", Ipv6Addr::new(1, 2, 3, 4, 5, 6, 7, 8)),
-            "1:2:3:4:5:6:7:8     "
-        );
-        assert_eq!(
-            &format!("{:>20}", Ipv6Addr::new(1, 2, 3, 4, 5, 6, 7, 8)),
-            "     1:2:3:4:5:6:7:8"
-        );
-
-        // reduce a single run of zeros
-        assert_eq!(
-            "ae::ffff:102:304",
-            Ipv6Addr::new(0xae, 0, 0, 0, 0, 0xffff, 0x0102, 0x0304).to_string()
-        );
-
-        // don't reduce just a single zero segment
-        assert_eq!("1:2:3:4:5:6:0:8", Ipv6Addr::new(1, 2, 3, 4, 5, 6, 0, 8).to_string());
-
-        // 'any' address
-        assert_eq!("::", Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0).to_string());
-
-        // loopback address
-        assert_eq!("::1", Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1).to_string());
-
-        // ends in zeros
-        assert_eq!("1::", Ipv6Addr::new(1, 0, 0, 0, 0, 0, 0, 0).to_string());
-
-        // two runs of zeros, second one is longer
-        assert_eq!("1:0:0:4::8", Ipv6Addr::new(1, 0, 0, 4, 0, 0, 0, 8).to_string());
-
-        // two runs of zeros, equal length
-        assert_eq!("1::4:5:0:0:8", Ipv6Addr::new(1, 0, 0, 4, 5, 0, 0, 8).to_string());
-    }
-
-    #[test]
-    fn ipv4_to_ipv6() {
-        assert_eq!(
-            Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0x1234, 0x5678),
-            Ipv4Addr::new(0x12, 0x34, 0x56, 0x78).to_ipv6_mapped()
-        );
-        assert_eq!(
-            Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0x1234, 0x5678),
-            Ipv4Addr::new(0x12, 0x34, 0x56, 0x78).to_ipv6_compatible()
-        );
-    }
-
-    #[test]
-    fn ipv6_to_ipv4_mapped() {
-        assert_eq!(
-            Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0x1234, 0x5678).to_ipv4_mapped(),
-            Some(Ipv4Addr::new(0x12, 0x34, 0x56, 0x78))
-        );
-        assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0x1234, 0x5678).to_ipv4_mapped(), None);
-    }
-
-    #[test]
-    fn ipv6_to_ipv4() {
-        assert_eq!(
-            Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0x1234, 0x5678).to_ipv4(),
-            Some(Ipv4Addr::new(0x12, 0x34, 0x56, 0x78))
-        );
-        assert_eq!(
-            Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0x1234, 0x5678).to_ipv4(),
-            Some(Ipv4Addr::new(0x12, 0x34, 0x56, 0x78))
-        );
-        assert_eq!(Ipv6Addr::new(0, 0, 1, 0, 0, 0, 0x1234, 0x5678).to_ipv4(), None);
-    }
-
-    #[test]
-    fn ip_properties() {
-        macro_rules! ip {
-            ($s:expr) => {
-                IpAddr::from_str($s).unwrap()
-            };
-        }
-
-        macro_rules! check {
-            ($s:expr) => {
-                check!($s, 0);
-            };
-
-            ($s:expr, $mask:expr) => {{
-                let unspec: u8 = 1 << 0;
-                let loopback: u8 = 1 << 1;
-                let global: u8 = 1 << 2;
-                let multicast: u8 = 1 << 3;
-                let doc: u8 = 1 << 4;
-
-                if ($mask & unspec) == unspec {
-                    assert!(ip!($s).is_unspecified());
-                } else {
-                    assert!(!ip!($s).is_unspecified());
-                }
-
-                if ($mask & loopback) == loopback {
-                    assert!(ip!($s).is_loopback());
-                } else {
-                    assert!(!ip!($s).is_loopback());
-                }
-
-                if ($mask & global) == global {
-                    assert!(ip!($s).is_global());
-                } else {
-                    assert!(!ip!($s).is_global());
-                }
-
-                if ($mask & multicast) == multicast {
-                    assert!(ip!($s).is_multicast());
-                } else {
-                    assert!(!ip!($s).is_multicast());
-                }
-
-                if ($mask & doc) == doc {
-                    assert!(ip!($s).is_documentation());
-                } else {
-                    assert!(!ip!($s).is_documentation());
-                }
-            }};
-        }
-
-        let unspec: u8 = 1 << 0;
-        let loopback: u8 = 1 << 1;
-        let global: u8 = 1 << 2;
-        let multicast: u8 = 1 << 3;
-        let doc: u8 = 1 << 4;
-
-        check!("0.0.0.0", unspec);
-        check!("0.0.0.1");
-        check!("0.1.0.0");
-        check!("10.9.8.7");
-        check!("127.1.2.3", loopback);
-        check!("172.31.254.253");
-        check!("169.254.253.242");
-        check!("192.0.2.183", doc);
-        check!("192.1.2.183", global);
-        check!("192.168.254.253");
-        check!("198.51.100.0", doc);
-        check!("203.0.113.0", doc);
-        check!("203.2.113.0", global);
-        check!("224.0.0.0", global | multicast);
-        check!("239.255.255.255", global | multicast);
-        check!("255.255.255.255");
-        // make sure benchmarking addresses are not global
-        check!("198.18.0.0");
-        check!("198.18.54.2");
-        check!("198.19.255.255");
-        // make sure addresses reserved for protocol assignment are not global
-        check!("192.0.0.0");
-        check!("192.0.0.255");
-        check!("192.0.0.100");
-        // make sure reserved addresses are not global
-        check!("240.0.0.0");
-        check!("251.54.1.76");
-        check!("254.255.255.255");
-        // make sure shared addresses are not global
-        check!("100.64.0.0");
-        check!("100.127.255.255");
-        check!("100.100.100.0");
-
-        check!("::", unspec);
-        check!("::1", loopback);
-        check!("::0.0.0.2", global);
-        check!("1::", global);
-        check!("fc00::");
-        check!("fdff:ffff::");
-        check!("fe80:ffff::");
-        check!("febf:ffff::");
-        check!("fec0::", global);
-        check!("ff01::", multicast);
-        check!("ff02::", multicast);
-        check!("ff03::", multicast);
-        check!("ff04::", multicast);
-        check!("ff05::", multicast);
-        check!("ff08::", multicast);
-        check!("ff0e::", global | multicast);
-        check!("2001:db8:85a3::8a2e:370:7334", doc);
-        check!("102:304:506:708:90a:b0c:d0e:f10", global);
-    }
-
-    #[test]
-    fn ipv4_properties() {
-        macro_rules! ip {
-            ($s:expr) => {
-                Ipv4Addr::from_str($s).unwrap()
-            };
-        }
-
-        macro_rules! check {
-            ($s:expr) => {
-                check!($s, 0);
-            };
-
-            ($s:expr, $mask:expr) => {{
-                let unspec: u16 = 1 << 0;
-                let loopback: u16 = 1 << 1;
-                let private: u16 = 1 << 2;
-                let link_local: u16 = 1 << 3;
-                let global: u16 = 1 << 4;
-                let multicast: u16 = 1 << 5;
-                let broadcast: u16 = 1 << 6;
-                let documentation: u16 = 1 << 7;
-                let benchmarking: u16 = 1 << 8;
-                let ietf_protocol_assignment: u16 = 1 << 9;
-                let reserved: u16 = 1 << 10;
-                let shared: u16 = 1 << 11;
-
-                if ($mask & unspec) == unspec {
-                    assert!(ip!($s).is_unspecified());
-                } else {
-                    assert!(!ip!($s).is_unspecified());
-                }
-
-                if ($mask & loopback) == loopback {
-                    assert!(ip!($s).is_loopback());
-                } else {
-                    assert!(!ip!($s).is_loopback());
-                }
-
-                if ($mask & private) == private {
-                    assert!(ip!($s).is_private());
-                } else {
-                    assert!(!ip!($s).is_private());
-                }
-
-                if ($mask & link_local) == link_local {
-                    assert!(ip!($s).is_link_local());
-                } else {
-                    assert!(!ip!($s).is_link_local());
-                }
-
-                if ($mask & global) == global {
-                    assert!(ip!($s).is_global());
-                } else {
-                    assert!(!ip!($s).is_global());
-                }
-
-                if ($mask & multicast) == multicast {
-                    assert!(ip!($s).is_multicast());
-                } else {
-                    assert!(!ip!($s).is_multicast());
-                }
-
-                if ($mask & broadcast) == broadcast {
-                    assert!(ip!($s).is_broadcast());
-                } else {
-                    assert!(!ip!($s).is_broadcast());
-                }
-
-                if ($mask & documentation) == documentation {
-                    assert!(ip!($s).is_documentation());
-                } else {
-                    assert!(!ip!($s).is_documentation());
-                }
-
-                if ($mask & benchmarking) == benchmarking {
-                    assert!(ip!($s).is_benchmarking());
-                } else {
-                    assert!(!ip!($s).is_benchmarking());
-                }
-
-                if ($mask & ietf_protocol_assignment) == ietf_protocol_assignment {
-                    assert!(ip!($s).is_ietf_protocol_assignment());
-                } else {
-                    assert!(!ip!($s).is_ietf_protocol_assignment());
-                }
-
-                if ($mask & reserved) == reserved {
-                    assert!(ip!($s).is_reserved());
-                } else {
-                    assert!(!ip!($s).is_reserved());
-                }
-
-                if ($mask & shared) == shared {
-                    assert!(ip!($s).is_shared());
-                } else {
-                    assert!(!ip!($s).is_shared());
-                }
-            }};
-        }
-
-        let unspec: u16 = 1 << 0;
-        let loopback: u16 = 1 << 1;
-        let private: u16 = 1 << 2;
-        let link_local: u16 = 1 << 3;
-        let global: u16 = 1 << 4;
-        let multicast: u16 = 1 << 5;
-        let broadcast: u16 = 1 << 6;
-        let documentation: u16 = 1 << 7;
-        let benchmarking: u16 = 1 << 8;
-        let ietf_protocol_assignment: u16 = 1 << 9;
-        let reserved: u16 = 1 << 10;
-        let shared: u16 = 1 << 11;
-
-        check!("0.0.0.0", unspec);
-        check!("0.0.0.1");
-        check!("0.1.0.0");
-        check!("10.9.8.7", private);
-        check!("127.1.2.3", loopback);
-        check!("172.31.254.253", private);
-        check!("169.254.253.242", link_local);
-        check!("192.0.2.183", documentation);
-        check!("192.1.2.183", global);
-        check!("192.168.254.253", private);
-        check!("198.51.100.0", documentation);
-        check!("203.0.113.0", documentation);
-        check!("203.2.113.0", global);
-        check!("224.0.0.0", global | multicast);
-        check!("239.255.255.255", global | multicast);
-        check!("255.255.255.255", broadcast);
-        check!("198.18.0.0", benchmarking);
-        check!("198.18.54.2", benchmarking);
-        check!("198.19.255.255", benchmarking);
-        check!("192.0.0.0", ietf_protocol_assignment);
-        check!("192.0.0.255", ietf_protocol_assignment);
-        check!("192.0.0.100", ietf_protocol_assignment);
-        check!("240.0.0.0", reserved);
-        check!("251.54.1.76", reserved);
-        check!("254.255.255.255", reserved);
-        check!("100.64.0.0", shared);
-        check!("100.127.255.255", shared);
-        check!("100.100.100.0", shared);
-    }
-
-    #[test]
-    fn ipv6_properties() {
-        macro_rules! ip {
-            ($s:expr) => {
-                Ipv6Addr::from_str($s).unwrap()
-            };
-        }
-
-        macro_rules! check {
-            ($s:expr, &[$($octet:expr),*], $mask:expr) => {
-                assert_eq!($s, ip!($s).to_string());
-                let octets = &[$($octet),*];
-                assert_eq!(&ip!($s).octets(), octets);
-                assert_eq!(Ipv6Addr::from(*octets), ip!($s));
-
-                let unspecified: u16 = 1 << 0;
-                let loopback: u16 = 1 << 1;
-                let unique_local: u16 = 1 << 2;
-                let global: u16 = 1 << 3;
-                let unicast_link_local: u16 = 1 << 4;
-                let unicast_link_local_strict: u16 = 1 << 5;
-                let unicast_site_local: u16 = 1 << 6;
-                let unicast_global: u16 = 1 << 7;
-                let documentation: u16 = 1 << 8;
-                let multicast_interface_local: u16 = 1 << 9;
-                let multicast_link_local: u16 = 1 << 10;
-                let multicast_realm_local: u16 = 1 << 11;
-                let multicast_admin_local: u16 = 1 << 12;
-                let multicast_site_local: u16 = 1 << 13;
-                let multicast_organization_local: u16 = 1 << 14;
-                let multicast_global: u16 = 1 << 15;
-                let multicast: u16 = multicast_interface_local
-                    | multicast_admin_local
-                    | multicast_global
-                    | multicast_link_local
-                    | multicast_realm_local
-                    | multicast_site_local
-                    | multicast_organization_local;
-
-                if ($mask & unspecified) == unspecified {
-                    assert!(ip!($s).is_unspecified());
-                } else {
-                    assert!(!ip!($s).is_unspecified());
-                }
-                if ($mask & loopback) == loopback {
-                    assert!(ip!($s).is_loopback());
-                } else {
-                    assert!(!ip!($s).is_loopback());
-                }
-                if ($mask & unique_local) == unique_local {
-                    assert!(ip!($s).is_unique_local());
-                } else {
-                    assert!(!ip!($s).is_unique_local());
-                }
-                if ($mask & global) == global {
-                    assert!(ip!($s).is_global());
-                } else {
-                    assert!(!ip!($s).is_global());
-                }
-                if ($mask & unicast_link_local) == unicast_link_local {
-                    assert!(ip!($s).is_unicast_link_local());
-                } else {
-                    assert!(!ip!($s).is_unicast_link_local());
-                }
-                if ($mask & unicast_link_local_strict) == unicast_link_local_strict {
-                    assert!(ip!($s).is_unicast_link_local_strict());
-                } else {
-                    assert!(!ip!($s).is_unicast_link_local_strict());
-                }
-                if ($mask & unicast_site_local) == unicast_site_local {
-                    assert!(ip!($s).is_unicast_site_local());
-                } else {
-                    assert!(!ip!($s).is_unicast_site_local());
-                }
-                if ($mask & unicast_global) == unicast_global {
-                    assert!(ip!($s).is_unicast_global());
-                } else {
-                    assert!(!ip!($s).is_unicast_global());
-                }
-                if ($mask & documentation) == documentation {
-                    assert!(ip!($s).is_documentation());
-                } else {
-                    assert!(!ip!($s).is_documentation());
-                }
-                if ($mask & multicast) != 0 {
-                    assert!(ip!($s).multicast_scope().is_some());
-                    assert!(ip!($s).is_multicast());
-                } else {
-                    assert!(ip!($s).multicast_scope().is_none());
-                    assert!(!ip!($s).is_multicast());
-                }
-                if ($mask & multicast_interface_local) == multicast_interface_local {
-                    assert_eq!(ip!($s).multicast_scope().unwrap(),
-                               Ipv6MulticastScope::InterfaceLocal);
-                }
-                if ($mask & multicast_link_local) == multicast_link_local {
-                    assert_eq!(ip!($s).multicast_scope().unwrap(),
-                               Ipv6MulticastScope::LinkLocal);
-                }
-                if ($mask & multicast_realm_local) == multicast_realm_local {
-                    assert_eq!(ip!($s).multicast_scope().unwrap(),
-                               Ipv6MulticastScope::RealmLocal);
-                }
-                if ($mask & multicast_admin_local) == multicast_admin_local {
-                    assert_eq!(ip!($s).multicast_scope().unwrap(),
-                               Ipv6MulticastScope::AdminLocal);
-                }
-                if ($mask & multicast_site_local) == multicast_site_local {
-                    assert_eq!(ip!($s).multicast_scope().unwrap(),
-                               Ipv6MulticastScope::SiteLocal);
-                }
-                if ($mask & multicast_organization_local) == multicast_organization_local {
-                    assert_eq!(ip!($s).multicast_scope().unwrap(),
-                               Ipv6MulticastScope::OrganizationLocal);
-                }
-                if ($mask & multicast_global) == multicast_global {
-                    assert_eq!(ip!($s).multicast_scope().unwrap(),
-                               Ipv6MulticastScope::Global);
-                }
-            }
-        }
-
-        let unspecified: u16 = 1 << 0;
-        let loopback: u16 = 1 << 1;
-        let unique_local: u16 = 1 << 2;
-        let global: u16 = 1 << 3;
-        let unicast_link_local: u16 = 1 << 4;
-        let unicast_link_local_strict: u16 = 1 << 5;
-        let unicast_site_local: u16 = 1 << 6;
-        let unicast_global: u16 = 1 << 7;
-        let documentation: u16 = 1 << 8;
-        let multicast_interface_local: u16 = 1 << 9;
-        let multicast_link_local: u16 = 1 << 10;
-        let multicast_realm_local: u16 = 1 << 11;
-        let multicast_admin_local: u16 = 1 << 12;
-        let multicast_site_local: u16 = 1 << 13;
-        let multicast_organization_local: u16 = 1 << 14;
-        let multicast_global: u16 = 1 << 15;
-
-        check!("::", &[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], unspecified);
-
-        check!("::1", &[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1], loopback);
-
-        check!(
-            "::0.0.0.2",
-            &[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2],
-            global | unicast_global
-        );
-
-        check!("1::", &[0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], global | unicast_global);
-
-        check!("fc00::", &[0xfc, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], unique_local);
-
-        check!(
-            "fdff:ffff::",
-            &[0xfd, 0xff, 0xff, 0xff, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            unique_local
-        );
-
-        check!(
-            "fe80:ffff::",
-            &[0xfe, 0x80, 0xff, 0xff, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            unicast_link_local
-        );
-
-        check!(
-            "fe80::",
-            &[0xfe, 0x80, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            unicast_link_local | unicast_link_local_strict
-        );
-
-        check!(
-            "febf:ffff::",
-            &[0xfe, 0xbf, 0xff, 0xff, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            unicast_link_local
-        );
-
-        check!(
-            "febf::",
-            &[0xfe, 0xbf, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            unicast_link_local
-        );
-
-        check!(
-            "febf:ffff:ffff:ffff:ffff:ffff:ffff:ffff",
-            &[
-                0xfe, 0xbf, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-                0xff, 0xff
-            ],
-            unicast_link_local
-        );
-
-        check!(
-            "fe80::ffff:ffff:ffff:ffff",
-            &[
-                0xfe, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-                0xff, 0xff
-            ],
-            unicast_link_local | unicast_link_local_strict
-        );
-
-        check!(
-            "fe80:0:0:1::",
-            &[0xfe, 0x80, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
-            unicast_link_local
-        );
-
-        check!(
-            "fec0::",
-            &[0xfe, 0xc0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            unicast_site_local | unicast_global | global
-        );
-
-        check!(
-            "ff01::",
-            &[0xff, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            multicast_interface_local
-        );
-
-        check!(
-            "ff02::",
-            &[0xff, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            multicast_link_local
-        );
-
-        check!(
-            "ff03::",
-            &[0xff, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            multicast_realm_local
-        );
-
-        check!(
-            "ff04::",
-            &[0xff, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            multicast_admin_local
-        );
-
-        check!(
-            "ff05::",
-            &[0xff, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            multicast_site_local
-        );
-
-        check!(
-            "ff08::",
-            &[0xff, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            multicast_organization_local
-        );
-
-        check!(
-            "ff0e::",
-            &[0xff, 0xe, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            multicast_global | global
-        );
-
-        check!(
-            "2001:db8:85a3::8a2e:370:7334",
-            &[0x20, 1, 0xd, 0xb8, 0x85, 0xa3, 0, 0, 0, 0, 0x8a, 0x2e, 3, 0x70, 0x73, 0x34],
-            documentation
-        );
-
-        check!(
-            "102:304:506:708:90a:b0c:d0e:f10",
-            &[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
-            global | unicast_global
-        );
-    }
-
-    #[test]
-    fn to_socket_addr_socketaddr() {
-        let a = sa4(Ipv4Addr::new(77, 88, 21, 11), 12345);
-        assert_eq!(Ok(vec![a]), tsa(a));
-    }
-
-    #[test]
-    fn test_ipv4_to_int() {
-        let a = Ipv4Addr::new(0x11, 0x22, 0x33, 0x44);
-        assert_eq!(u32::from(a), 0x11223344);
-    }
-
-    #[test]
-    fn test_int_to_ipv4() {
-        let a = Ipv4Addr::new(0x11, 0x22, 0x33, 0x44);
-        assert_eq!(Ipv4Addr::from(0x11223344), a);
-    }
-
-    #[test]
-    fn test_ipv6_to_int() {
-        let a = Ipv6Addr::new(0x1122, 0x3344, 0x5566, 0x7788, 0x99aa, 0xbbcc, 0xddee, 0xff11);
-        assert_eq!(u128::from(a), 0x112233445566778899aabbccddeeff11u128);
-    }
-
-    #[test]
-    fn test_int_to_ipv6() {
-        let a = Ipv6Addr::new(0x1122, 0x3344, 0x5566, 0x7788, 0x99aa, 0xbbcc, 0xddee, 0xff11);
-        assert_eq!(Ipv6Addr::from(0x112233445566778899aabbccddeeff11u128), a);
-    }
-
-    #[test]
-    fn ipv4_from_constructors() {
-        assert_eq!(Ipv4Addr::LOCALHOST, Ipv4Addr::new(127, 0, 0, 1));
-        assert!(Ipv4Addr::LOCALHOST.is_loopback());
-        assert_eq!(Ipv4Addr::UNSPECIFIED, Ipv4Addr::new(0, 0, 0, 0));
-        assert!(Ipv4Addr::UNSPECIFIED.is_unspecified());
-        assert_eq!(Ipv4Addr::BROADCAST, Ipv4Addr::new(255, 255, 255, 255));
-        assert!(Ipv4Addr::BROADCAST.is_broadcast());
-    }
-
-    #[test]
-    fn ipv6_from_contructors() {
-        assert_eq!(Ipv6Addr::LOCALHOST, Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1));
-        assert!(Ipv6Addr::LOCALHOST.is_loopback());
-        assert_eq!(Ipv6Addr::UNSPECIFIED, Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0));
-        assert!(Ipv6Addr::UNSPECIFIED.is_unspecified());
-    }
-
-    #[test]
-    fn ipv4_from_octets() {
-        assert_eq!(Ipv4Addr::from([127, 0, 0, 1]), Ipv4Addr::new(127, 0, 0, 1))
-    }
-
-    #[test]
-    fn ipv6_from_segments() {
-        let from_u16s =
-            Ipv6Addr::from([0x0011, 0x2233, 0x4455, 0x6677, 0x8899, 0xaabb, 0xccdd, 0xeeff]);
-        let new = Ipv6Addr::new(0x0011, 0x2233, 0x4455, 0x6677, 0x8899, 0xaabb, 0xccdd, 0xeeff);
-        assert_eq!(new, from_u16s);
-    }
-
-    #[test]
-    fn ipv6_from_octets() {
-        let from_u16s =
-            Ipv6Addr::from([0x0011, 0x2233, 0x4455, 0x6677, 0x8899, 0xaabb, 0xccdd, 0xeeff]);
-        let from_u8s = Ipv6Addr::from([
-            0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd,
-            0xee, 0xff,
-        ]);
-        assert_eq!(from_u16s, from_u8s);
-    }
-
-    #[test]
-    fn cmp() {
-        let v41 = Ipv4Addr::new(100, 64, 3, 3);
-        let v42 = Ipv4Addr::new(192, 0, 2, 2);
-        let v61 = "2001:db8:f00::1002".parse::<Ipv6Addr>().unwrap();
-        let v62 = "2001:db8:f00::2001".parse::<Ipv6Addr>().unwrap();
-        assert!(v41 < v42);
-        assert!(v61 < v62);
-
-        assert_eq!(v41, IpAddr::V4(v41));
-        assert_eq!(v61, IpAddr::V6(v61));
-        assert!(v41 != IpAddr::V4(v42));
-        assert!(v61 != IpAddr::V6(v62));
-
-        assert!(v41 < IpAddr::V4(v42));
-        assert!(v61 < IpAddr::V6(v62));
-        assert!(IpAddr::V4(v41) < v42);
-        assert!(IpAddr::V6(v61) < v62);
-
-        assert!(v41 < IpAddr::V6(v61));
-        assert!(IpAddr::V4(v41) < v61);
-    }
-
-    #[test]
-    fn is_v4() {
-        let ip = IpAddr::V4(Ipv4Addr::new(100, 64, 3, 3));
-        assert!(ip.is_ipv4());
-        assert!(!ip.is_ipv6());
-    }
-
-    #[test]
-    fn is_v6() {
-        let ip = IpAddr::V6(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0x1234, 0x5678));
-        assert!(!ip.is_ipv4());
-        assert!(ip.is_ipv6());
     }
 }

@@ -1,5 +1,7 @@
 // run-pass
 // ignore-wasm32-bare compiled with panic=abort by default
+// revisions: default mir-opt
+//[mir-opt] compile-flags: -Zmir-opt-level=3
 
 #![feature(option_expect_none, option_unwrap_none)]
 #![allow(unconditional_panic)]

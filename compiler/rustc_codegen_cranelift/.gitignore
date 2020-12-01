@@ -1,0 +1,14 @@
+target
+**/*.rs.bk
+*.rlib
+*.o
+perf.data
+perf.data.old
+*.events
+*.string*
+/build
+/build_sysroot/sysroot_src
+/rust
+/rand
+/regex
+/simple-raytracer

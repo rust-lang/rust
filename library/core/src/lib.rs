@@ -63,35 +63,40 @@
 #![warn(missing_debug_implementations)]
 #![allow(explicit_outlives_requirements)]
 #![allow(incomplete_features)]
+#![feature(rustc_allow_const_fn_unstable)]
 #![feature(allow_internal_unstable)]
 #![feature(arbitrary_self_types)]
 #![feature(asm)]
-#![feature(bound_cloned)]
 #![feature(cfg_target_has_atomic)]
-#![feature(concat_idents)]
 #![feature(const_alloc_layout)]
 #![feature(const_discriminant)]
+#![feature(const_cell_into_inner)]
 #![feature(const_checked_int_methods)]
 #![feature(const_euclidean_int_methods)]
 #![feature(const_float_classify)]
 #![feature(const_float_bits_conv)]
 #![feature(const_overflowing_int_methods)]
 #![feature(const_int_unchecked_arith)]
-#![feature(const_int_pow)]
-#![feature(constctlz)]
+#![feature(const_mut_refs)]
+#![feature(const_cttz)]
 #![feature(const_panic)]
+#![feature(const_pin)]
+#![feature(const_fn)]
 #![feature(const_fn_union)]
+#![feature(const_impl_trait)]
+#![feature(const_fn_floating_point_arithmetic)]
+#![feature(const_fn_fn_ptr_basics)]
 #![feature(const_generics)]
 #![feature(const_option)]
 #![feature(const_precise_live_drops)]
 #![feature(const_ptr_offset)]
 #![feature(const_ptr_offset_from)]
 #![feature(const_raw_ptr_comparison)]
-#![feature(const_result)]
 #![feature(const_slice_from_raw_parts)]
 #![feature(const_slice_ptr_len)]
 #![feature(const_size_of_val)]
 #![feature(const_align_of_val)]
+#![feature(const_type_id)]
 #![feature(const_type_name)]
 #![feature(const_likely)]
 #![feature(const_unreachable_unchecked)]
@@ -100,11 +105,10 @@
 #![feature(doc_cfg)]
 #![feature(doc_spotlight)]
 #![feature(duration_consts_2)]
+#![feature(duration_saturating_ops)]
 #![feature(extern_types)]
 #![feature(fundamental)]
 #![feature(intrinsics)]
-#![feature(try_find)]
-#![feature(is_sorted)]
 #![feature(lang_items)]
 #![feature(link_llvm_intrinsics)]
 #![feature(llvm_asm)]
@@ -113,10 +117,10 @@
 #![feature(nll)]
 #![feature(exhaustive_patterns)]
 #![feature(no_core)]
-#![feature(optin_builtin_traits)]
+#![cfg_attr(bootstrap, feature(optin_builtin_traits))]
+#![cfg_attr(not(bootstrap), feature(auto_traits))]
 #![feature(or_patterns)]
 #![feature(prelude_import)]
-#![feature(ptr_as_uninit)]
 #![feature(repr_simd, platform_intrinsics)]
 #![feature(rustc_attrs)]
 #![feature(simd_ffi)]
@@ -124,14 +128,14 @@
 #![feature(staged_api)]
 #![feature(std_internals)]
 #![feature(stmt_expr_attributes)]
+#![feature(str_split_as_str)]
+#![feature(str_split_inclusive_as_str)]
 #![feature(transparent_unions)]
+#![feature(try_blocks)]
 #![feature(unboxed_closures)]
-#![feature(unsized_locals)]
-#![feature(untagged_unions)]
+#![feature(unsized_fn_params)]
 #![feature(unwind_attributes)]
 #![feature(variant_count)]
-#![feature(doc_alias)]
-#![feature(mmx_target_feature)]
 #![feature(tbm_target_feature)]
 #![feature(sse4a_target_feature)]
 #![feature(arm_target_feature)]
@@ -147,14 +151,13 @@
 #![feature(const_fn_transmute)]
 #![feature(abi_unadjusted)]
 #![feature(adx_target_feature)]
-#![feature(maybe_uninit_slice)]
-#![feature(maybe_uninit_extra)]
 #![feature(external_doc)]
 #![feature(associated_type_bounds)]
 #![feature(const_caller_location)]
 #![feature(slice_ptr_get)]
 #![feature(no_niche)] // rust-lang/rust#68303
 #![feature(unsafe_block_in_unsafe_fn)]
+#![feature(int_error_matching)]
 #![deny(unsafe_op_in_unsafe_fn)]
 
 #[prelude_import]
@@ -168,34 +171,34 @@ mod macros;
 #[macro_use]
 mod internal_macros;
 
-#[path = "num/int_macros.rs"]
+#[path = "num/shells/int_macros.rs"]
 #[macro_use]
 mod int_macros;
 
-#[path = "num/i128.rs"]
+#[path = "num/shells/i128.rs"]
 pub mod i128;
-#[path = "num/i16.rs"]
+#[path = "num/shells/i16.rs"]
 pub mod i16;
-#[path = "num/i32.rs"]
+#[path = "num/shells/i32.rs"]
 pub mod i32;
-#[path = "num/i64.rs"]
+#[path = "num/shells/i64.rs"]
 pub mod i64;
-#[path = "num/i8.rs"]
+#[path = "num/shells/i8.rs"]
 pub mod i8;
-#[path = "num/isize.rs"]
+#[path = "num/shells/isize.rs"]
 pub mod isize;
 
-#[path = "num/u128.rs"]
+#[path = "num/shells/u128.rs"]
 pub mod u128;
-#[path = "num/u16.rs"]
+#[path = "num/shells/u16.rs"]
 pub mod u16;
-#[path = "num/u32.rs"]
+#[path = "num/shells/u32.rs"]
 pub mod u32;
-#[path = "num/u64.rs"]
+#[path = "num/shells/u64.rs"]
 pub mod u64;
-#[path = "num/u8.rs"]
+#[path = "num/shells/u8.rs"]
 pub mod u8;
-#[path = "num/usize.rs"]
+#[path = "num/shells/usize.rs"]
 pub mod usize;
 
 #[path = "num/f32.rs"]
@@ -220,52 +223,41 @@ pub mod ptr;
 /* Core language traits */
 
 pub mod borrow;
-#[cfg(not(test))] // See #65860
 pub mod clone;
-#[cfg(not(test))] // See #65860
 pub mod cmp;
 pub mod convert;
-#[cfg(not(test))] // See #65860
 pub mod default;
-#[cfg(not(test))] // See #65860
 pub mod marker;
 pub mod ops;
 
 /* Core types and methods on primitives */
 
 pub mod any;
-#[cfg(not(test))] // See #65860
 pub mod array;
 pub mod ascii;
 pub mod cell;
 pub mod char;
 pub mod ffi;
-#[cfg(not(test))] // See #65860
 pub mod iter;
 #[unstable(feature = "once_cell", issue = "74465")]
 pub mod lazy;
 pub mod option;
 pub mod panic;
 pub mod panicking;
-#[cfg(not(test))] // See #65860
 pub mod pin;
 pub mod raw;
 pub mod result;
 pub mod sync;
 
-#[cfg(not(test))] // See #65860
 pub mod fmt;
-#[cfg(not(test))] // See #65860
 pub mod hash;
 pub mod slice;
-#[cfg(not(test))] // See #65860
 pub mod str;
 pub mod time;
 
 pub mod unicode;
 
 /* Async */
-#[cfg(not(test))] // See #65860
 pub mod future;
 pub mod task;
 
@@ -295,6 +287,7 @@ pub mod primitive;
     unused_imports,
     unsafe_op_in_unsafe_fn
 )]
+#[allow(non_autolinks)]
 // FIXME: This annotation should be moved into rust-lang/stdarch after clashing_extern_declarations is
 // merged. It currently cannot because bootstrap fails as the lint hasn't been defined yet.
 #[allow(clashing_extern_declarations)]

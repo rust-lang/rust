@@ -1,0 +1,11 @@
+warning: the feature `repr128` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/discriminant_size.rs:2:29
+   |
+LL | #![feature(core_intrinsics, repr128)]
+   |                             ^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+   = note: see issue #56071 <https://github.com/rust-lang/rust/issues/56071> for more information
+
+warning: 1 warning emitted
+

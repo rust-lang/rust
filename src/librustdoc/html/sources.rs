@@ -52,7 +52,7 @@ impl<'a> DocFolder for SourceCollector<'a> {
                 Err(e) => {
                     println!(
                         "warning: source code was requested to be rendered, \
-                              but processing `{}` had an error: {}",
+                         but processing `{}` had an error: {}",
                         item.source.filename, e
                     );
                     println!("         skipping rendering of source code");
@@ -60,7 +60,7 @@ impl<'a> DocFolder for SourceCollector<'a> {
                 }
             };
         }
-        self.fold_item_recur(item)
+        Some(self.fold_item_recur(item))
     }
 }
 
@@ -84,7 +84,7 @@ impl<'a> SourceCollector<'a> {
         };
 
         // Remove the utf-8 BOM if any
-        if contents.starts_with("\u{feff}") {
+        if contents.starts_with('\u{feff}') {
             contents.drain(..3);
         }
 
@@ -99,16 +99,15 @@ impl<'a> SourceCollector<'a> {
             href.push('/');
         });
         self.scx.ensure_dir(&cur)?;
-        let mut fname = p.file_name().expect("source has no filename").to_os_string();
+
+        let src_fname = p.file_name().expect("source has no filename").to_os_string();
+        let mut fname = src_fname.clone();
         fname.push(".html");
         cur.push(&fname);
         href.push_str(&fname.to_string_lossy());
 
-        let title = format!(
-            "{} -- source",
-            cur.file_name().expect("failed to get file name").to_string_lossy()
-        );
-        let desc = format!("Source to the Rust file `{}`.", filename);
+        let title = format!("{} - source", src_fname.to_string_lossy());
+        let desc = format!("Source of the Rust file `{}`.", filename);
         let page = layout::Page {
             title: &title,
             css_class: "source",
@@ -138,7 +137,7 @@ impl<'a> SourceCollector<'a> {
 /// static HTML tree. Each component in the cleaned path will be passed as an
 /// argument to `f`. The very last component of the path (ie the file name) will
 /// be passed to `f` if `keep_filename` is true, and ignored otherwise.
-pub fn clean_path<F>(src_root: &Path, p: &Path, keep_filename: bool, mut f: F)
+crate fn clean_path<F>(src_root: &Path, p: &Path, keep_filename: bool, mut f: F)
 where
     F: FnMut(&OsStr),
 {

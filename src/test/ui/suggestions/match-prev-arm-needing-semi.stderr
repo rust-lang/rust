@@ -1,0 +1,118 @@
+error[E0308]: `match` arms have incompatible types
+  --> $DIR/match-prev-arm-needing-semi.rs:26:18
+   |
+LL |   async fn async_dummy() {}
+   |                          - the `Output` of this `async fn`'s found opaque type
+...
+LL |       let _ = match true {
+   |  _____________-
+LL | |         true => {
+LL | |             async_dummy();
+   | |             -------------- this is found to be of type `()`
+LL | |
+LL | |         }
+LL | |         false => async_dummy(),
+   | |                  ^^^^^^^^^^^^^ expected `()`, found opaque type
+...  |
+LL | |
+LL | |     };
+   | |_____- `match` arms have incompatible types
+   |
+   = note:     expected type `()`
+           found opaque type `impl Future`
+help: consider `await`ing on the `Future`
+   |
+LL |         false => async_dummy().await,
+   |                               ^^^^^^
+help: consider removing this semicolon and boxing the expressions
+   |
+LL |             Box::new(async_dummy())
+LL |
+LL |         }
+LL |         false => Box::new(async_dummy()),
+   |
+
+error[E0308]: `match` arms have incompatible types
+  --> $DIR/match-prev-arm-needing-semi.rs:39:18
+   |
+LL |   async fn async_dummy2() {}
+   |                           - the `Output` of this `async fn`'s found opaque type
+...
+LL |       let _ = match true {
+   |  _____________-
+LL | |         true => {
+LL | |             async_dummy();
+   | |             -------------- this is found to be of type `()`
+LL | |
+LL | |         }
+LL | |         false => async_dummy2(),
+   | |                  ^^^^^^^^^^^^^^ expected `()`, found opaque type
+...  |
+LL | |
+LL | |     };
+   | |_____- `match` arms have incompatible types
+   |
+   = note:     expected type `()`
+           found opaque type `impl Future`
+help: consider `await`ing on the `Future`
+   |
+LL |         false => async_dummy2().await,
+   |                                ^^^^^^
+help: consider removing this semicolon and boxing the expressions
+   |
+LL |             Box::new(async_dummy())
+LL |
+LL |         }
+LL |         false => Box::new(async_dummy2()),
+   |
+
+error[E0308]: `match` arms have incompatible types
+  --> $DIR/match-prev-arm-needing-semi.rs:50:18
+   |
+LL |   async fn async_dummy2() {}
+   |                           - the `Output` of this `async fn`'s found opaque type
+...
+LL |       let _ = match true {
+   |  _____________-
+LL | |         true => async_dummy(),
+   | |                 ------------- this is found to be of type `impl Future`
+LL | |
+LL | |         false => async_dummy2(),
+   | |                  ^^^^^^^^^^^^^^ expected opaque type, found a different opaque type
+...  |
+LL | |
+LL | |     };
+   | |_____- `match` arms have incompatible types
+   |
+   = note:     expected type `impl Future` (opaque type at <$DIR/match-prev-arm-needing-semi.rs:16:24>)
+           found opaque type `impl Future` (opaque type at <$DIR/match-prev-arm-needing-semi.rs:17:25>)
+   = note: distinct uses of `impl Trait` result in different opaque types
+help: consider `await`ing on both `Future`s
+   |
+LL |         true => async_dummy().await,
+LL |
+LL |         false => async_dummy2().await,
+   |
+
+error[E0308]: `match` arms have incompatible types
+  --> $DIR/match-prev-arm-needing-semi.rs:11:18
+   |
+LL |       let _ = match true {
+   |  _____________-
+LL | |         true => {
+LL | |             dummy();
+   | |             --------
+   | |             |      |
+   | |             |      help: consider removing this semicolon
+   | |             this is found to be of type `()`
+LL | |
+LL | |         }
+LL | |         false => dummy(),
+   | |                  ^^^^^^^ expected `()`, found `i32`
+LL | |
+LL | |     };
+   | |_____- `match` arms have incompatible types
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

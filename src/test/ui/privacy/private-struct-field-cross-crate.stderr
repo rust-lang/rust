@@ -1,4 +1,4 @@
-error[E0616]: field `meows` of struct `cci_class::kitties::cat` is private
+error[E0616]: field `meows` of struct `cat` is private
   --> $DIR/private-struct-field-cross-crate.rs:7:19
    |
 LL |   assert_eq!(nyan.meows, 52);

@@ -1,16 +1,16 @@
-error[E0277]: the trait bound `A: std::marker::Copy` is not satisfied
+error[E0277]: the trait bound `A: Copy` is not satisfied
   --> $DIR/wf-struct-field.rs:12:11
    |
 LL | struct IsCopy<T:Copy> {
    |                 ---- required by this bound in `IsCopy`
 ...
 LL |     data: IsCopy<A>
-   |           ^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `A`
+   |           ^^^^^^^^^ the trait `Copy` is not implemented for `A`
    |
 help: consider restricting type parameter `A`
    |
-LL | struct SomeStruct<A: std::marker::Copy> {
-   |                    ^^^^^^^^^^^^^^^^^^^
+LL | struct SomeStruct<A: Copy> {
+   |                    ^^^^^^
 
 error: aborting due to previous error
 

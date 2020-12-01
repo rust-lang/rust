@@ -1,70 +1,75 @@
 //! Contains information about "passes", used to modify crate information during the documentation
 //! process.
 
-use rustc_hir::def_id::{DefId, DefIdSet};
-use rustc_middle::middle::privacy::AccessLevels;
 use rustc_span::{InnerSpan, Span, DUMMY_SP};
-use std::mem;
 use std::ops::Range;
 
 use self::Condition::*;
-use crate::clean::{self, GetDefId, Item};
+use crate::clean::{self, DocFragmentKind};
 use crate::core::DocContext;
-use crate::fold::{DocFolder, StripItem};
+
+mod stripper;
+crate use stripper::*;
+
+mod non_autolinks;
+crate use self::non_autolinks::CHECK_NON_AUTOLINKS;
 
 mod collapse_docs;
-pub use self::collapse_docs::COLLAPSE_DOCS;
+crate use self::collapse_docs::COLLAPSE_DOCS;
 
 mod strip_hidden;
-pub use self::strip_hidden::STRIP_HIDDEN;
+crate use self::strip_hidden::STRIP_HIDDEN;
 
 mod strip_private;
-pub use self::strip_private::STRIP_PRIVATE;
+crate use self::strip_private::STRIP_PRIVATE;
 
 mod strip_priv_imports;
-pub use self::strip_priv_imports::STRIP_PRIV_IMPORTS;
+crate use self::strip_priv_imports::STRIP_PRIV_IMPORTS;
 
 mod unindent_comments;
-pub use self::unindent_comments::UNINDENT_COMMENTS;
+crate use self::unindent_comments::UNINDENT_COMMENTS;
 
 mod propagate_doc_cfg;
-pub use self::propagate_doc_cfg::PROPAGATE_DOC_CFG;
+crate use self::propagate_doc_cfg::PROPAGATE_DOC_CFG;
 
 mod collect_intra_doc_links;
-pub use self::collect_intra_doc_links::COLLECT_INTRA_DOC_LINKS;
+crate use self::collect_intra_doc_links::COLLECT_INTRA_DOC_LINKS;
 
 mod doc_test_lints;
-pub use self::doc_test_lints::CHECK_PRIVATE_ITEMS_DOC_TESTS;
+crate use self::doc_test_lints::CHECK_PRIVATE_ITEMS_DOC_TESTS;
 
 mod collect_trait_impls;
-pub use self::collect_trait_impls::COLLECT_TRAIT_IMPLS;
+crate use self::collect_trait_impls::COLLECT_TRAIT_IMPLS;
 
 mod check_code_block_syntax;
-pub use self::check_code_block_syntax::CHECK_CODE_BLOCK_SYNTAX;
+crate use self::check_code_block_syntax::CHECK_CODE_BLOCK_SYNTAX;
 
 mod calculate_doc_coverage;
-pub use self::calculate_doc_coverage::CALCULATE_DOC_COVERAGE;
+crate use self::calculate_doc_coverage::CALCULATE_DOC_COVERAGE;
+
+mod html_tags;
+crate use self::html_tags::CHECK_INVALID_HTML_TAGS;
 
 /// A single pass over the cleaned documentation.
 ///
 /// Runs in the compiler context, so it has access to types and traits and the like.
 #[derive(Copy, Clone)]
-pub struct Pass {
-    pub name: &'static str,
-    pub run: fn(clean::Crate, &DocContext<'_>) -> clean::Crate,
-    pub description: &'static str,
+crate struct Pass {
+    crate name: &'static str,
+    crate run: fn(clean::Crate, &DocContext<'_>) -> clean::Crate,
+    crate description: &'static str,
 }
 
 /// In a list of passes, a pass that may or may not need to be run depending on options.
 #[derive(Copy, Clone)]
-pub struct ConditionalPass {
-    pub pass: Pass,
-    pub condition: Condition,
+crate struct ConditionalPass {
+    crate pass: Pass,
+    crate condition: Condition,
 }
 
 /// How to decide whether to run a conditional pass.
 #[derive(Copy, Clone)]
-pub enum Condition {
+crate enum Condition {
     Always,
     /// When `--document-private-items` is passed.
     WhenDocumentPrivate,
@@ -75,7 +80,7 @@ pub enum Condition {
 }
 
 /// The full list of passes.
-pub const PASSES: &[Pass] = &[
+crate const PASSES: &[Pass] = &[
     CHECK_PRIVATE_ITEMS_DOC_TESTS,
     STRIP_HIDDEN,
     UNINDENT_COMMENTS,
@@ -87,10 +92,12 @@ pub const PASSES: &[Pass] = &[
     CHECK_CODE_BLOCK_SYNTAX,
     COLLECT_TRAIT_IMPLS,
     CALCULATE_DOC_COVERAGE,
+    CHECK_INVALID_HTML_TAGS,
+    CHECK_NON_AUTOLINKS,
 ];
 
 /// The list of passes run by default.
-pub const DEFAULT_PASSES: &[ConditionalPass] = &[
+crate const DEFAULT_PASSES: &[ConditionalPass] = &[
     ConditionalPass::always(COLLECT_TRAIT_IMPLS),
     ConditionalPass::always(COLLAPSE_DOCS),
     ConditionalPass::always(UNINDENT_COMMENTS),
@@ -100,11 +107,13 @@ pub const DEFAULT_PASSES: &[ConditionalPass] = &[
     ConditionalPass::new(STRIP_PRIV_IMPORTS, WhenDocumentPrivate),
     ConditionalPass::always(COLLECT_INTRA_DOC_LINKS),
     ConditionalPass::always(CHECK_CODE_BLOCK_SYNTAX),
+    ConditionalPass::always(CHECK_INVALID_HTML_TAGS),
     ConditionalPass::always(PROPAGATE_DOC_CFG),
+    ConditionalPass::always(CHECK_NON_AUTOLINKS),
 ];
 
 /// The list of default passes run when `--doc-coverage` is passed to rustdoc.
-pub const COVERAGE_PASSES: &[ConditionalPass] = &[
+crate const COVERAGE_PASSES: &[ConditionalPass] = &[
     ConditionalPass::always(COLLECT_TRAIT_IMPLS),
     ConditionalPass::new(STRIP_HIDDEN, WhenNotDocumentHidden),
     ConditionalPass::new(STRIP_PRIVATE, WhenNotDocumentPrivate),
@@ -112,11 +121,11 @@ pub const COVERAGE_PASSES: &[ConditionalPass] = &[
 ];
 
 impl ConditionalPass {
-    pub const fn always(pass: Pass) -> Self {
+    crate const fn always(pass: Pass) -> Self {
         Self::new(pass, Always)
     }
 
-    pub const fn new(pass: Pass, condition: Condition) -> Self {
+    crate const fn new(pass: Pass, condition: Condition) -> Self {
         ConditionalPass { pass, condition }
     }
 }
@@ -124,14 +133,14 @@ impl ConditionalPass {
 /// A shorthand way to refer to which set of passes to use, based on the presence of
 /// `--no-defaults` and `--show-coverage`.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub enum DefaultPassOption {
+crate enum DefaultPassOption {
     Default,
     Coverage,
     None,
 }
 
 /// Returns the given default set of passes.
-pub fn defaults(default_set: DefaultPassOption) -> &'static [ConditionalPass] {
+crate fn defaults(default_set: DefaultPassOption) -> &'static [ConditionalPass] {
     match default_set {
         DefaultPassOption::Default => DEFAULT_PASSES,
         DefaultPassOption::Coverage => COVERAGE_PASSES,
@@ -140,174 +149,8 @@ pub fn defaults(default_set: DefaultPassOption) -> &'static [ConditionalPass] {
 }
 
 /// If the given name matches a known pass, returns its information.
-pub fn find_pass(pass_name: &str) -> Option<Pass> {
+crate fn find_pass(pass_name: &str) -> Option<Pass> {
     PASSES.iter().find(|p| p.name == pass_name).copied()
-}
-
-struct Stripper<'a> {
-    retained: &'a mut DefIdSet,
-    access_levels: &'a AccessLevels<DefId>,
-    update_retained: bool,
-}
-
-impl<'a> DocFolder for Stripper<'a> {
-    fn fold_item(&mut self, i: Item) -> Option<Item> {
-        match i.inner {
-            clean::StrippedItem(..) => {
-                // We need to recurse into stripped modules to strip things
-                // like impl methods but when doing so we must not add any
-                // items to the `retained` set.
-                debug!("Stripper: recursing into stripped {:?} {:?}", i.type_(), i.name);
-                let old = mem::replace(&mut self.update_retained, false);
-                let ret = self.fold_item_recur(i);
-                self.update_retained = old;
-                return ret;
-            }
-            // These items can all get re-exported
-            clean::OpaqueTyItem(..)
-            | clean::TypedefItem(..)
-            | clean::StaticItem(..)
-            | clean::StructItem(..)
-            | clean::EnumItem(..)
-            | clean::TraitItem(..)
-            | clean::FunctionItem(..)
-            | clean::VariantItem(..)
-            | clean::MethodItem(..)
-            | clean::ForeignFunctionItem(..)
-            | clean::ForeignStaticItem(..)
-            | clean::ConstantItem(..)
-            | clean::UnionItem(..)
-            | clean::AssocConstItem(..)
-            | clean::TraitAliasItem(..)
-            | clean::ForeignTypeItem => {
-                if i.def_id.is_local() {
-                    if !self.access_levels.is_exported(i.def_id) {
-                        debug!("Stripper: stripping {:?} {:?}", i.type_(), i.name);
-                        return None;
-                    }
-                }
-            }
-
-            clean::StructFieldItem(..) => {
-                if i.visibility != clean::Public {
-                    return StripItem(i).strip();
-                }
-            }
-
-            clean::ModuleItem(..) => {
-                if i.def_id.is_local() && i.visibility != clean::Public {
-                    debug!("Stripper: stripping module {:?}", i.name);
-                    let old = mem::replace(&mut self.update_retained, false);
-                    let ret = StripItem(self.fold_item_recur(i).unwrap()).strip();
-                    self.update_retained = old;
-                    return ret;
-                }
-            }
-
-            // handled in the `strip-priv-imports` pass
-            clean::ExternCrateItem(..) | clean::ImportItem(..) => {}
-
-            clean::ImplItem(..) => {}
-
-            // tymethods/macros have no control over privacy
-            clean::MacroItem(..) | clean::TyMethodItem(..) => {}
-
-            // Proc-macros are always public
-            clean::ProcMacroItem(..) => {}
-
-            // Primitives are never stripped
-            clean::PrimitiveItem(..) => {}
-
-            // Associated types are never stripped
-            clean::AssocTypeItem(..) => {}
-
-            // Keywords are never stripped
-            clean::KeywordItem(..) => {}
-        }
-
-        let fastreturn = match i.inner {
-            // nothing left to do for traits (don't want to filter their
-            // methods out, visibility controlled by the trait)
-            clean::TraitItem(..) => true,
-
-            // implementations of traits are always public.
-            clean::ImplItem(ref imp) if imp.trait_.is_some() => true,
-            // Struct variant fields have inherited visibility
-            clean::VariantItem(clean::Variant { kind: clean::VariantKind::Struct(..) }) => true,
-            _ => false,
-        };
-
-        let i = if fastreturn {
-            if self.update_retained {
-                self.retained.insert(i.def_id);
-            }
-            return Some(i);
-        } else {
-            self.fold_item_recur(i)
-        };
-
-        if let Some(ref i) = i {
-            if self.update_retained {
-                self.retained.insert(i.def_id);
-            }
-        }
-        i
-    }
-}
-
-// This stripper discards all impls which reference stripped items
-struct ImplStripper<'a> {
-    retained: &'a DefIdSet,
-}
-
-impl<'a> DocFolder for ImplStripper<'a> {
-    fn fold_item(&mut self, i: Item) -> Option<Item> {
-        if let clean::ImplItem(ref imp) = i.inner {
-            // emptied none trait impls can be stripped
-            if imp.trait_.is_none() && imp.items.is_empty() {
-                return None;
-            }
-            if let Some(did) = imp.for_.def_id() {
-                if did.is_local() && !imp.for_.is_generic() && !self.retained.contains(&did) {
-                    debug!("ImplStripper: impl item for stripped type; removing");
-                    return None;
-                }
-            }
-            if let Some(did) = imp.trait_.def_id() {
-                if did.is_local() && !self.retained.contains(&did) {
-                    debug!("ImplStripper: impl item for stripped trait; removing");
-                    return None;
-                }
-            }
-            if let Some(generics) = imp.trait_.as_ref().and_then(|t| t.generics()) {
-                for typaram in generics {
-                    if let Some(did) = typaram.def_id() {
-                        if did.is_local() && !self.retained.contains(&did) {
-                            debug!(
-                                "ImplStripper: stripped item in trait's generics; \
-                                    removing impl"
-                            );
-                            return None;
-                        }
-                    }
-                }
-            }
-        }
-        self.fold_item_recur(i)
-    }
-}
-
-// This stripper discards all private import statements (`use`, `extern crate`)
-struct ImportStripper;
-impl DocFolder for ImportStripper {
-    fn fold_item(&mut self, i: Item) -> Option<Item> {
-        match i.inner {
-            clean::ExternCrateItem(..) | clean::ImportItem(..) if i.visibility != clean::Public => {
-                None
-            }
-            _ => self.fold_item_recur(i),
-        }
-    }
 }
 
 /// Returns a span encompassing all the given attributes.
@@ -315,11 +158,11 @@ crate fn span_of_attrs(attrs: &clean::Attributes) -> Option<Span> {
     if attrs.doc_strings.is_empty() {
         return None;
     }
-    let start = attrs.doc_strings[0].span();
+    let start = attrs.doc_strings[0].span;
     if start == DUMMY_SP {
         return None;
     }
-    let end = attrs.doc_strings.last().expect("no doc strings provided").span();
+    let end = attrs.doc_strings.last().expect("no doc strings provided").span;
     Some(start.to(end))
 }
 
@@ -334,10 +177,8 @@ crate fn source_span_for_markdown_range(
     md_range: &Range<usize>,
     attrs: &clean::Attributes,
 ) -> Option<Span> {
-    let is_all_sugared_doc = attrs.doc_strings.iter().all(|frag| match frag {
-        clean::DocFragment::SugaredDoc(..) => true,
-        _ => false,
-    });
+    let is_all_sugared_doc =
+        attrs.doc_strings.iter().all(|frag| frag.kind == DocFragmentKind::SugaredDoc);
 
     if !is_all_sugared_doc {
         return None;

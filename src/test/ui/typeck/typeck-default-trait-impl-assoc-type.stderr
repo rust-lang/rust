@@ -7,11 +7,11 @@ LL |     is_send::<T::AssocType>();
 LL | fn is_send<T:Send>() {
    |              ---- required by this bound in `is_send`
    |
-   = help: the trait `std::marker::Send` is not implemented for `<T as Trait>::AssocType`
+   = help: the trait `Send` is not implemented for `<T as Trait>::AssocType`
 help: consider further restricting the associated type
    |
-LL | fn bar<T:Trait+Send>() where <T as Trait>::AssocType: std::marker::Send {
-   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | fn bar<T:Trait+Send>() where <T as Trait>::AssocType: Send {
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

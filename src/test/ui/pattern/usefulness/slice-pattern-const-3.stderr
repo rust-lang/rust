@@ -1,8 +1,8 @@
 error: unreachable pattern
-  --> $DIR/slice-pattern-const-3.rs:28:9
+  --> $DIR/slice-pattern-const-3.rs:9:9
    |
-LL |         FOO => (),
-   |         ^^^
+LL |         ["4", "5", "6", "7"] => (),
+   |         ^^^^^^^^^^^^^^^^^^^^
    |
 note: the lint level is defined here
   --> $DIR/slice-pattern-const-3.rs:1:9
@@ -10,5 +10,23 @@ note: the lint level is defined here
 LL | #![deny(unreachable_patterns)]
    |         ^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: unreachable pattern
+  --> $DIR/slice-pattern-const-3.rs:15:9
+   |
+LL |         ["4", "5", "6", "7"] => (),
+   |         ^^^^^^^^^^^^^^^^^^^^
+
+error: unreachable pattern
+  --> $DIR/slice-pattern-const-3.rs:21:9
+   |
+LL |         MAGIC_TEST => (),
+   |         ^^^^^^^^^^
+
+error: unreachable pattern
+  --> $DIR/slice-pattern-const-3.rs:28:9
+   |
+LL |         FOO => (),
+   |         ^^^
+
+error: aborting due to 4 previous errors
 

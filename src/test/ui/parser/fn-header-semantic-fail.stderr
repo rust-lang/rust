@@ -108,9 +108,12 @@ error: functions in `extern` blocks cannot have qualifiers
 LL |     extern {
    |     ------ in this `extern` block
 LL |         async fn fe1();
-   |         ---------^^^
-   |         |
-   |         help: remove the qualifiers: `fn`
+   |                  ^^^
+   |
+help: remove the qualifiers
+   |
+LL |         fn fe1();
+   |         ^^
 
 error: functions in `extern` blocks cannot have qualifiers
   --> $DIR/fn-header-semantic-fail.rs:52:19
@@ -119,9 +122,12 @@ LL |     extern {
    |     ------ in this `extern` block
 LL |         async fn fe1();
 LL |         unsafe fn fe2();
-   |         ----------^^^
-   |         |
-   |         help: remove the qualifiers: `fn`
+   |                   ^^^
+   |
+help: remove the qualifiers
+   |
+LL |         fn fe2();
+   |         ^^
 
 error: functions in `extern` blocks cannot have qualifiers
   --> $DIR/fn-header-semantic-fail.rs:53:18
@@ -130,9 +136,12 @@ LL |     extern {
    |     ------ in this `extern` block
 ...
 LL |         const fn fe3();
-   |         ---------^^^
-   |         |
-   |         help: remove the qualifiers: `fn`
+   |                  ^^^
+   |
+help: remove the qualifiers
+   |
+LL |         fn fe3();
+   |         ^^
 
 error: functions in `extern` blocks cannot have qualifiers
   --> $DIR/fn-header-semantic-fail.rs:54:23
@@ -141,9 +150,12 @@ LL |     extern {
    |     ------ in this `extern` block
 ...
 LL |         extern "C" fn fe4();
-   |         --------------^^^
-   |         |
-   |         help: remove the qualifiers: `fn`
+   |                       ^^^
+   |
+help: remove the qualifiers
+   |
+LL |         fn fe4();
+   |         ^^
 
 error: functions in `extern` blocks cannot have qualifiers
   --> $DIR/fn-header-semantic-fail.rs:55:42
@@ -152,9 +164,12 @@ LL |     extern {
    |     ------ in this `extern` block
 ...
 LL |         const async unsafe extern "C" fn fe5();
-   |         ---------------------------------^^^
-   |         |
-   |         help: remove the qualifiers: `fn`
+   |                                          ^^^
+   |
+help: remove the qualifiers
+   |
+LL |         fn fe5();
+   |         ^^
 
 error: functions cannot be both `const` and `async`
   --> $DIR/fn-header-semantic-fail.rs:55:9
@@ -178,7 +193,7 @@ LL |         async fn ft1() {}
    |                        expected `()`, found opaque type
    |
    = note: expected fn pointer `fn()`
-              found fn pointer `fn() -> impl std::future::Future`
+              found fn pointer `fn() -> impl Future`
 
 error[E0053]: method `ft5` has an incompatible type for trait
   --> $DIR/fn-header-semantic-fail.rs:34:48
@@ -193,7 +208,7 @@ LL |         const async unsafe extern "C" fn ft5() {}
    |                                                expected `()`, found opaque type
    |
    = note: expected fn pointer `unsafe extern "C" fn()`
-              found fn pointer `unsafe extern "C" fn() -> impl std::future::Future`
+              found fn pointer `unsafe extern "C" fn() -> impl Future`
 
 error: aborting due to 20 previous errors
 

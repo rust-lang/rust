@@ -1,0 +1,41 @@
+error: this pattern reimplements `Option::ok_or`
+  --> $DIR/manual_ok_or.rs:11:5
+   |
+LL |     foo.map_or(Err("error"), |v| Ok(v));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `foo.ok_or("error")`
+   |
+   = note: `-D clippy::manual-ok-or` implied by `-D warnings`
+
+error: this pattern reimplements `Option::ok_or`
+  --> $DIR/manual_ok_or.rs:14:5
+   |
+LL |     foo.map_or(Err("error"), Ok);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `foo.ok_or("error")`
+
+error: this pattern reimplements `Option::ok_or`
+  --> $DIR/manual_ok_or.rs:17:5
+   |
+LL |     None::<i32>.map_or(Err("error"), |v| Ok(v));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `None::<i32>.ok_or("error")`
+
+error: this pattern reimplements `Option::ok_or`
+  --> $DIR/manual_ok_or.rs:21:5
+   |
+LL | /     foo.map_or(Err::<i32, &str>(
+LL | |         &format!(
+LL | |             "{}{}{}{}{}{}{}",
+LL | |             "Alice", "Bob", "Sarah", "Marc", "Sandra", "Eric", "Jenifer")
+LL | |         ),
+LL | |         |v| Ok(v),
+LL | |     );
+   | |_____^
+   |
+help: replace with
+   |
+LL |     foo.ok_or(&format!(
+LL |         "{}{}{}{}{}{}{}",
+LL |         "Alice", "Bob", "Sarah", "Marc", "Sandra", "Eric", "Jenifer"));
+   |
+
+error: aborting due to 4 previous errors
+

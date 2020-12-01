@@ -8,6 +8,7 @@
 #![allow(
     unused_parens,
     unused_variables,
+    clippy::manual_unwrap_or,
     clippy::missing_docs_in_private_items,
     clippy::single_match
 )]

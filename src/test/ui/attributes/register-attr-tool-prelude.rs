@@ -7,7 +7,7 @@
 #[no_implicit_prelude]
 mod m {
     #[attr] //~ ERROR cannot find attribute `attr` in this scope
-    #[tool::attr] //~ ERROR failed to resolve: use of undeclared type or module `tool`
+    #[tool::attr] //~ ERROR failed to resolve: use of undeclared crate or module `tool`
     fn check() {}
 }
 

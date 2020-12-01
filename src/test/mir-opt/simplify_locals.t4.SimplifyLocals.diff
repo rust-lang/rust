@@ -1,0 +1,22 @@
+- // MIR for `t4` before SimplifyLocals
++ // MIR for `t4` after SimplifyLocals
+  
+  fn t4() -> u32 {
+      let mut _0: u32;                     // return place in scope 0 at $DIR/simplify-locals.rs:60:12: 60:15
+      let mut _1: u32;                     // in scope 0 at $DIR/simplify-locals.rs:62:14: 62:15
+      let mut _2: *mut u32;                // in scope 0 at $DIR/simplify-locals.rs:62:14: 62:15
+      scope 1 {
+      }
+  
+      bb0: {
+          StorageLive(_1);                 // scope 1 at $DIR/simplify-locals.rs:62:14: 62:15
+          StorageLive(_2);                 // scope 1 at $DIR/simplify-locals.rs:62:14: 62:15
+          _2 = &/*tls*/ mut X;             // scope 1 at $DIR/simplify-locals.rs:62:14: 62:15
+          _1 = (*_2);                      // scope 1 at $DIR/simplify-locals.rs:62:14: 62:15
+          _0 = Add(move _1, const 1_u32);  // scope 1 at $DIR/simplify-locals.rs:62:14: 62:19
+          StorageDead(_1);                 // scope 1 at $DIR/simplify-locals.rs:62:18: 62:19
+          StorageDead(_2);                 // scope 0 at $DIR/simplify-locals.rs:63:1: 63:2
+          return;                          // scope 0 at $DIR/simplify-locals.rs:63:2: 63:2
+      }
+  }
+  

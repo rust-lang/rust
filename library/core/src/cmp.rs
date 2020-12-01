@@ -29,7 +29,7 @@ use self::Ordering::*;
 ///
 /// This trait allows for partial equality, for types that do not have a full
 /// equivalence relation. For example, in floating point numbers `NaN != NaN`,
-/// so floating point types implement `PartialEq` but not [`Eq`](Eq).
+/// so floating point types implement `PartialEq` but not [`Eq`].
 ///
 /// Formally, the equality must be (for all `a`, `b` and `c`):
 ///
@@ -356,8 +356,9 @@ impl Ordering {
     /// ```
     #[inline]
     #[must_use]
+    #[rustc_const_stable(feature = "const_ordering", since = "1.48.0")]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn reverse(self) -> Ordering {
+    pub const fn reverse(self) -> Ordering {
         match self {
             Less => Greater,
             Equal => Equal,
@@ -394,8 +395,9 @@ impl Ordering {
     /// ```
     #[inline]
     #[must_use]
+    #[rustc_const_stable(feature = "const_ordering", since = "1.48.0")]
     #[stable(feature = "ordering_chaining", since = "1.17.0")]
-    pub fn then(self, other: Ordering) -> Ordering {
+    pub const fn then(self, other: Ordering) -> Ordering {
         match self {
             Equal => other,
             _ => self,
@@ -504,8 +506,18 @@ impl<T: Ord> Ord for Reverse<T> {
 /// ## Derivable
 ///
 /// This trait can be used with `#[derive]`. When `derive`d on structs, it will produce a
-/// lexicographic ordering based on the top-to-bottom declaration order of the struct's members.
+/// [lexicographic](https://en.wikipedia.org/wiki/Lexicographic_order) ordering based on the top-to-bottom declaration order of the struct's members.
 /// When `derive`d on enums, variants are ordered by their top-to-bottom discriminant order.
+///
+/// ## Lexicographical comparison
+///
+/// Lexicographical comparison is an operation with the following properties:
+///  - Two sequences are compared element by element.
+///  - The first mismatching element defines which sequence is lexicographically less or greater than the other.
+///  - If one sequence is a prefix of another, the shorter sequence is lexicographically less than the other.
+///  - If two sequence have equivalent elements and are of the same length, then the sequences are lexicographically equal.
+///  - An empty sequence is lexicographically less than any non-empty sequence.
+///  - Two empty sequences are lexicographically equal.
 ///
 /// ## How can I implement `Ord`?
 ///
@@ -629,14 +641,12 @@ pub trait Ord: Eq + PartialOrd<Self> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(clamp)]
-    ///
     /// assert!((-3).clamp(-2, 1) == -2);
     /// assert!(0.clamp(-2, 1) == 0);
     /// assert!(2.clamp(-2, 1) == 1);
     /// ```
     #[must_use]
-    #[unstable(feature = "clamp", issue = "44095")]
+    #[stable(feature = "clamp", since = "1.50.0")]
     fn clamp(self, min: Self, max: Self) -> Self
     where
         Self: Sized,
@@ -724,19 +734,19 @@ impl PartialOrd for Ordering {
 /// }
 ///
 /// impl PartialOrd for Person {
-///     fn partial_cmp(&self, other: &Person) -> Option<Ordering> {
+///     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
 ///         Some(self.cmp(other))
 ///     }
 /// }
 ///
 /// impl Ord for Person {
-///     fn cmp(&self, other: &Person) -> Ordering {
+///     fn cmp(&self, other: &Self) -> Ordering {
 ///         self.height.cmp(&other.height)
 ///     }
 /// }
 ///
 /// impl PartialEq for Person {
-///     fn eq(&self, other: &Person) -> bool {
+///     fn eq(&self, other: &Self) -> bool {
 ///         self.height == other.height
 ///     }
 /// }

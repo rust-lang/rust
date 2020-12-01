@@ -3,7 +3,7 @@
 #![allow(unused)]
 #![deny(illegal_floating_point_literal_pattern)]
 
-use std::f64::NAN;
+const NAN: f64 = f64::NAN;
 
 fn main() {
     let x = NAN;

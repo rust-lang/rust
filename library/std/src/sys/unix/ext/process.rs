@@ -16,12 +16,20 @@ pub trait CommandExt {
     /// `setuid` call in the child process. Failure in the `setuid`
     /// call will cause the spawn to fail.
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn uid(&mut self, id: u32) -> &mut process::Command;
+    fn uid(
+        &mut self,
+        #[cfg(not(target_os = "vxworks"))] id: u32,
+        #[cfg(target_os = "vxworks")] id: u16,
+    ) -> &mut process::Command;
 
     /// Similar to `uid`, but sets the group ID of the child process. This has
     /// the same semantics as the `uid` field.
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn gid(&mut self, id: u32) -> &mut process::Command;
+    fn gid(
+        &mut self,
+        #[cfg(not(target_os = "vxworks"))] id: u32,
+        #[cfg(target_os = "vxworks")] id: u16,
+    ) -> &mut process::Command;
 
     /// Schedules a closure to be run just before the `exec` function is
     /// invoked.
@@ -115,12 +123,20 @@ pub trait CommandExt {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl CommandExt for process::Command {
-    fn uid(&mut self, id: u32) -> &mut process::Command {
+    fn uid(
+        &mut self,
+        #[cfg(not(target_os = "vxworks"))] id: u32,
+        #[cfg(target_os = "vxworks")] id: u16,
+    ) -> &mut process::Command {
         self.as_inner_mut().uid(id);
         self
     }
 
-    fn gid(&mut self, id: u32) -> &mut process::Command {
+    fn gid(
+        &mut self,
+        #[cfg(not(target_os = "vxworks"))] id: u32,
+        #[cfg(target_os = "vxworks")] id: u16,
+    ) -> &mut process::Command {
         self.as_inner_mut().gid(id);
         self
     }

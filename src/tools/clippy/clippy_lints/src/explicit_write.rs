@@ -5,6 +5,7 @@ use rustc_errors::Applicability;
 use rustc_hir::{BorrowKind, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_span::sym;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for usage of `write!()` / `writeln()!` which can be
@@ -33,7 +34,7 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitWrite {
         if_chain! {
             // match call to unwrap
             if let ExprKind::MethodCall(ref unwrap_fun, _, ref unwrap_args, _) = expr.kind;
-            if unwrap_fun.ident.name == sym!(unwrap);
+            if unwrap_fun.ident.name == sym::unwrap;
             // match call to write_fmt
             if !unwrap_args.is_empty();
             if let ExprKind::MethodCall(ref write_fun, _, write_args, _) =

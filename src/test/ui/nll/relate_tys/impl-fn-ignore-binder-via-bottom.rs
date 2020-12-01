@@ -32,5 +32,4 @@ fn main() {
     let _x = <fn(&())>::make_f();
     //~^ higher-ranked subtype error
     //~| higher-ranked subtype error
-    //~| higher-ranked subtype error
 }

@@ -1,7 +1,7 @@
 // Test that scalar values outlive all regions.
 // Rule OutlivesScalar from RFC 1214.
 
-// build-pass (FIXME(62277): could be check-pass?)
+// check-pass
 #![allow(dead_code)]
 
 struct Foo<'a> {

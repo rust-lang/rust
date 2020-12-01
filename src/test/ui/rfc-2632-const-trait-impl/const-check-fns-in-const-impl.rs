@@ -10,7 +10,7 @@ fn non_const() {}
 
 impl const T for S {
     fn foo() { non_const() }
-    //~^ ERROR can only call other `const fn`
+    //~^ ERROR calls in constant functions
 }
 
 fn main() {}

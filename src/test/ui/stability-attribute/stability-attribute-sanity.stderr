@@ -83,10 +83,12 @@ LL | #[stable(feature = "a", since = "b")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0550]: multiple deprecated attributes
-  --> $DIR/stability-attribute-sanity.rs:65:1
+  --> $DIR/stability-attribute-sanity.rs:62:1
    |
-LL | pub const fn multiple4() { }
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #[rustc_deprecated(since = "b", reason = "text")]
+   | ------------------------------------------------- first deprecation attribute
+LL | #[rustc_deprecated(since = "b", reason = "text")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ repeated deprecation attribute
 
 error[E0544]: multiple stability levels
   --> $DIR/stability-attribute-sanity.rs:64:1
@@ -101,10 +103,10 @@ LL | pub const fn multiple4() { }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0549]: rustc_deprecated attribute must be paired with either stable or unstable attribute
-  --> $DIR/stability-attribute-sanity.rs:69:1
+  --> $DIR/stability-attribute-sanity.rs:68:1
    |
-LL | fn deprecated_without_unstable_or_stable() { }
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #[rustc_deprecated(since = "a", reason = "text")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 18 previous errors
 

@@ -1,28 +1,11 @@
-error[E0495]: cannot infer an appropriate lifetime for lifetime parameter `'a` due to conflicting requirements
-  --> $DIR/regions-assoc-type-static-bound-in-trait-not-met.rs:9:10
+error[E0477]: the type `&'a i32` does not fulfill the required lifetime
+  --> $DIR/regions-assoc-type-static-bound-in-trait-not-met.rs:10:5
    |
-LL | impl<'a> Foo for &'a i32 {
-   |          ^^^
+LL |     type Value = &'a i32;
+   |     ^^^^^^^^^^^^^^^^^^^^^
    |
-note: first, the lifetime cannot outlive the lifetime `'a` as defined on the impl at 9:6...
-  --> $DIR/regions-assoc-type-static-bound-in-trait-not-met.rs:9:6
-   |
-LL | impl<'a> Foo for &'a i32 {
-   |      ^^
-note: ...so that the types are compatible
-  --> $DIR/regions-assoc-type-static-bound-in-trait-not-met.rs:9:10
-   |
-LL | impl<'a> Foo for &'a i32 {
-   |          ^^^
-   = note: expected `Foo`
-              found `Foo`
-   = note: but, the lifetime must be valid for the static lifetime...
-note: ...so that the type `&i32` will meet its required lifetime bounds
-  --> $DIR/regions-assoc-type-static-bound-in-trait-not-met.rs:9:10
-   |
-LL | impl<'a> Foo for &'a i32 {
-   |          ^^^
+   = note: type must satisfy the static lifetime
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0495`.
+For more information about this error, try `rustc --explain E0477`.

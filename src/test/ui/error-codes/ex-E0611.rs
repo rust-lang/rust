@@ -8,5 +8,5 @@ mod a {
 
 fn main() {
    let y = a::Foo::new();
-   y.0; //~ ERROR field `0` of struct `a::Foo` is private
+   y.0; //~ ERROR field `0` of struct `Foo` is private
 }

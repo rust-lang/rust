@@ -26,13 +26,13 @@ error[E0308]: mismatched types
   --> $DIR/fn-item-type.rs:29:23
    |
 LL |     eq(bar::<String>, bar::<Vec<u8>>);
-   |                       ^^^^^^^^^^^^^^ expected struct `std::string::String`, found struct `std::vec::Vec`
+   |                       ^^^^^^^^^^^^^^ expected struct `String`, found struct `Vec`
    |
-   = note: expected fn item `fn(_) -> _ {bar::<std::string::String>}`
-              found fn item `fn(_) -> _ {bar::<std::vec::Vec<u8>>}`
+   = note: expected fn item `fn(_) -> _ {bar::<String>}`
+              found fn item `fn(_) -> _ {bar::<Vec<u8>>}`
    = note: different `fn` items always have unique types, even if their signatures are the same
    = help: change the expected type to be function pointer `fn(isize) -> isize`
-   = help: if the expected type is due to type inference, cast the expected `fn` to a function pointer: `bar::<std::string::String> as fn(isize) -> isize`
+   = help: if the expected type is due to type inference, cast the expected `fn` to a function pointer: `bar::<String> as fn(isize) -> isize`
 
 error[E0308]: mismatched types
   --> $DIR/fn-item-type.rs:39:26

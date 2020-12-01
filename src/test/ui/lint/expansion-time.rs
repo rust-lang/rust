@@ -12,6 +12,16 @@ mod benches {
     fn foo() {}
 }
 
+#[deprecated = "reason"]
+macro_rules! deprecated {
+    () => {}
+}
+
+#[allow(deprecated)]
+mod deprecated {
+    deprecated!(); // No warning
+}
+
 #[warn(incomplete_include)]
 fn main() {
     // WARN see in the stderr file, the warning points to the included file.

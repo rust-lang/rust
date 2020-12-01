@@ -22,7 +22,7 @@ impl<T> Key<T> {
 use std::thread::__FastLocalKeyInner as Key;
 
 static __KEY: Key<()> = Key::new();
-//~^ ERROR `std::cell::UnsafeCell<std::option::Option<()>>` cannot be shared between threads
+//~^ ERROR `UnsafeCell<Option<()>>` cannot be shared between threads
 //~| ERROR cannot be shared between threads safely [E0277]
 
 fn main() {}

@@ -21,13 +21,13 @@ LL | impl !Send for dyn Marker2 {}
    |
    = note: define and implement a trait or new type instead
 
-error[E0321]: cross-crate traits with a default impl, like `std::marker::Send`, can only be implemented for a struct/enum type, not `(dyn Object + 'static)`
+error[E0321]: cross-crate traits with a default impl, like `Send`, can only be implemented for a struct/enum type, not `(dyn Object + 'static)`
   --> $DIR/coherence-impl-trait-for-marker-trait-negative.rs:27:1
    |
 LL | impl !Send for dyn Object {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^ can't implement cross-crate trait with a default impl for non-struct/enum type
 
-error[E0321]: cross-crate traits with a default impl, like `std::marker::Send`, can only be implemented for a struct/enum type, not `(dyn Object + Marker2 + 'static)`
+error[E0321]: cross-crate traits with a default impl, like `Send`, can only be implemented for a struct/enum type, not `(dyn Object + Marker2 + 'static)`
   --> $DIR/coherence-impl-trait-for-marker-trait-negative.rs:28:1
    |
 LL | impl !Send for dyn Object + Marker2 {}

@@ -1,0 +1,15 @@
+error[E0277]: the trait bound `u16: Bar<N>` is not satisfied
+  --> $DIR/associated-type-bound-fail.rs:14:5
+   |
+LL |     type Assoc: Bar<N>;
+   |                 ------ required by this bound in `Foo::Assoc`
+...
+LL |     type Assoc = u16;
+   |     ^^^^^^^^^^^^^^^^^ the trait `Bar<N>` is not implemented for `u16`
+   |
+   = help: the following implementations were found:
+             <u16 as Bar<3_usize>>
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

@@ -1,4 +1,5 @@
 #![warn(clippy::derive_ord_xor_partial_ord)]
+#![allow(clippy::unnecessary_wraps)]
 
 use std::cmp::Ordering;
 

@@ -8,6 +8,9 @@ LL |     macro_two!();
    |
 LL | macro_rules! macro_one { () => ("one") }
    | ---------------------- similarly named macro `macro_one` defined here
+   |
+   = note: consider importing this macro:
+           two_macros::macro_two
 
 error: aborting due to previous error
 

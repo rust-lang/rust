@@ -4,15 +4,6 @@ error[E0764]: mutable references are not allowed in statics
 LL | pub static mut STDERR_BUFFER: () = unsafe { *(&mut STDERR_BUFFER_SPACE) = 42; };
    |                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^ `&mut` is only allowed in `const fn`
 
-error[E0019]: static contains unimplemented expression type
-  --> $DIR/static_mut_containing_mut_ref2.rs:7:45
-   |
-LL | pub static mut STDERR_BUFFER: () = unsafe { *(&mut STDERR_BUFFER_SPACE) = 42; };
-   |                                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
+error: aborting due to previous error
 
-error: aborting due to 2 previous errors
-
-Some errors have detailed explanations: E0019, E0764.
-For more information about an error, try `rustc --explain E0019`.
+For more information about this error, try `rustc --explain E0764`.

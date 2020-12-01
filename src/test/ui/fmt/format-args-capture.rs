@@ -1,13 +1,16 @@
 // run-pass
-// ignore-wasm32
-// ignore-wasm64
 #![feature(format_args_capture)]
+#![feature(cfg_panic)]
 
 fn main() {
     named_argument_takes_precedence_to_captured();
-    panic_with_single_argument_does_not_get_formatted();
-    panic_with_multiple_arguments_is_formatted();
     formatting_parameters_can_be_captured();
+
+    #[cfg(panic = "unwind")]
+    {
+        panic_with_single_argument_does_not_get_formatted();
+        panic_with_multiple_arguments_is_formatted();
+    }
 }
 
 fn named_argument_takes_precedence_to_captured() {
@@ -22,11 +25,13 @@ fn named_argument_takes_precedence_to_captured() {
     assert_eq!(&s, "positional-named-captured");
 }
 
+#[cfg(panic = "unwind")]
 fn panic_with_single_argument_does_not_get_formatted() {
     // panic! with a single argument does not perform string formatting.
     // RFC #2795 suggests that this may need to change so that captured arguments are formatted.
     // For stability reasons this will need to part of an edition change.
 
+    #[allow(panic_fmt)]
     let msg = std::panic::catch_unwind(|| {
         panic!("{foo}");
     }).unwrap_err();
@@ -34,6 +39,7 @@ fn panic_with_single_argument_does_not_get_formatted() {
     assert_eq!(msg.downcast_ref::<&str>(), Some(&"{foo}"))
 }
 
+#[cfg(panic = "unwind")]
 fn panic_with_multiple_arguments_is_formatted() {
     let foo = "captured";
 

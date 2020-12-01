@@ -137,9 +137,9 @@ impl MutPointerReturnerOk {
     }
 }
 
-struct MutPointerReturnerOk2;
+struct ConstPointerReturnerOk2;
 
-impl MutPointerReturnerOk2 {
+impl ConstPointerReturnerOk2 {
     // should not trigger lint
     pub fn new() -> *const Self {
         unimplemented!();
@@ -208,5 +208,135 @@ impl<'a> WithLifetime<'a> {
     // should not trigger the lint, because the lifetimes are different
     pub fn new<'b: 'a>(s: &'b str) -> WithLifetime<'b> {
         unimplemented!();
+    }
+}
+
+mod issue5435 {
+    struct V;
+
+    pub trait TraitRetSelf {
+        // should not trigger lint
+        fn new() -> Self;
+    }
+
+    pub trait TraitRet {
+        // should trigger lint as we are in trait definition
+        fn new() -> String;
+    }
+    pub struct StructRet;
+    impl TraitRet for StructRet {
+        // should not trigger lint as we are in the impl block
+        fn new() -> String {
+            unimplemented!();
+        }
+    }
+
+    pub trait TraitRet2 {
+        // should trigger lint
+        fn new(_: String) -> String;
+    }
+
+    trait TupleReturnerOk {
+        // should not trigger lint
+        fn new() -> (Self, u32)
+        where
+            Self: Sized,
+        {
+            unimplemented!();
+        }
+    }
+
+    trait TupleReturnerOk2 {
+        // should not trigger lint (it doesn't matter which element in the tuple is Self)
+        fn new() -> (u32, Self)
+        where
+            Self: Sized,
+        {
+            unimplemented!();
+        }
+    }
+
+    trait TupleReturnerOk3 {
+        // should not trigger lint (tuple can contain multiple Self)
+        fn new() -> (Self, Self)
+        where
+            Self: Sized,
+        {
+            unimplemented!();
+        }
+    }
+
+    trait TupleReturnerBad {
+        // should trigger lint
+        fn new() -> (u32, u32) {
+            unimplemented!();
+        }
+    }
+
+    trait MutPointerReturnerOk {
+        // should not trigger lint
+        fn new() -> *mut Self
+        where
+            Self: Sized,
+        {
+            unimplemented!();
+        }
+    }
+
+    trait ConstPointerReturnerOk2 {
+        // should not trigger lint
+        fn new() -> *const Self
+        where
+            Self: Sized,
+        {
+            unimplemented!();
+        }
+    }
+
+    trait MutPointerReturnerBad {
+        // should trigger lint
+        fn new() -> *mut V {
+            unimplemented!();
+        }
+    }
+
+    trait GenericReturnerOk {
+        // should not trigger lint
+        fn new() -> Option<Self>
+        where
+            Self: Sized,
+        {
+            unimplemented!();
+        }
+    }
+
+    trait NestedReturnerOk {
+        // should not trigger lint
+        fn new() -> (Option<Self>, u32)
+        where
+            Self: Sized,
+        {
+            unimplemented!();
+        }
+    }
+
+    trait NestedReturnerOk2 {
+        // should not trigger lint
+        fn new() -> ((Self, u32), u32)
+        where
+            Self: Sized,
+        {
+            unimplemented!();
+        }
+    }
+
+    trait NestedReturnerOk3 {
+        // should not trigger lint
+        fn new() -> Option<(Self, u32)>
+        where
+            Self: Sized,
+        {
+            unimplemented!();
+        }
     }
 }

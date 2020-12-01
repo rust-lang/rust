@@ -5,7 +5,7 @@
 
 fn main() {
     let try = 2;
-    struct try { try: u32 };
+    struct try { try: u32 }
     let try: try = try { try };
     assert_eq!(try.try, 2);
 }

@@ -13,25 +13,17 @@ fn f(_1: Void) -> ! {
         unreachable;                     // scope 0 at $DIR/issue-72181-1.rs:11:11: 11:12
     }
 
-    bb1 (cleanup): {
-        resume;                          // scope 0 at $DIR/issue-72181-1.rs:10:1: 12:2
-    }
-
-    bb2: {
+    bb1: {
         unreachable;                     // scope 0 at $DIR/issue-72181-1.rs:11:5: 11:15
     }
 
-    bb3: {
+    bb2: {
         StorageDead(_3);                 // scope 0 at $DIR/issue-72181-1.rs:11:14: 11:15
         unreachable;                     // scope 0 at $DIR/issue-72181-1.rs:10:20: 12:2
     }
 
-    bb4: {
+    bb3: {
         StorageDead(_2);                 // scope 0 at $DIR/issue-72181-1.rs:12:1: 12:2
-        goto -> bb5;                     // scope 0 at $DIR/issue-72181-1.rs:12:2: 12:2
-    }
-
-    bb5: {
         return;                          // scope 0 at $DIR/issue-72181-1.rs:12:2: 12:2
     }
 }

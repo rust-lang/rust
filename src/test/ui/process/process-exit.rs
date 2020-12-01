@@ -1,6 +1,5 @@
 // run-pass
 #![allow(unused_imports)]
-// ignore-cloudabi no processes
 // ignore-emscripten no processes
 // ignore-sgx no processes
 

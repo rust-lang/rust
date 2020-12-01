@@ -30,7 +30,7 @@ impl const std::ops::Add for Int {
 #[rustc_const_stable(feature = "rust1", since = "1.0.0")]
 pub const fn foo() -> Int {
     Int(1i32) + Int(2i32)
-    //~^ ERROR can only call other `const fn` within a `const fn`
+    //~^ ERROR not yet stable as a const fn
 }
 
 // ok

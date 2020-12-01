@@ -1,0 +1,145 @@
+error: this pattern reimplements `Option::unwrap_or`
+  --> $DIR/manual_unwrap_or.rs:7:5
+   |
+LL | /     match Some(1) {
+LL | |         Some(i) => i,
+LL | |         None => 42,
+LL | |     };
+   | |_____^ help: replace with: `Some(1).unwrap_or(42)`
+   |
+   = note: `-D clippy::manual-unwrap-or` implied by `-D warnings`
+
+error: this pattern reimplements `Option::unwrap_or`
+  --> $DIR/manual_unwrap_or.rs:13:5
+   |
+LL | /     match Some(1) {
+LL | |         None => 42,
+LL | |         Some(i) => i,
+LL | |     };
+   | |_____^ help: replace with: `Some(1).unwrap_or(42)`
+
+error: this pattern reimplements `Option::unwrap_or`
+  --> $DIR/manual_unwrap_or.rs:19:5
+   |
+LL | /     match Some(1) {
+LL | |         Some(i) => i,
+LL | |         None => 1 + 42,
+LL | |     };
+   | |_____^ help: replace with: `Some(1).unwrap_or(1 + 42)`
+
+error: this pattern reimplements `Option::unwrap_or`
+  --> $DIR/manual_unwrap_or.rs:26:5
+   |
+LL | /     match Some(1) {
+LL | |         Some(i) => i,
+LL | |         None => {
+LL | |             42 + 42
+...  |
+LL | |         }
+LL | |     };
+   | |_____^
+   |
+help: replace with
+   |
+LL |     Some(1).unwrap_or({
+LL |         42 + 42
+LL |             + 42 + 42 + 42
+LL |             + 42 + 42 + 42
+LL |     });
+   |
+
+error: this pattern reimplements `Option::unwrap_or`
+  --> $DIR/manual_unwrap_or.rs:36:5
+   |
+LL | /     match Some("Bob") {
+LL | |         Some(i) => i,
+LL | |         None => "Alice",
+LL | |     };
+   | |_____^ help: replace with: `Some("Bob").unwrap_or("Alice")`
+
+error: this pattern reimplements `Result::unwrap_or`
+  --> $DIR/manual_unwrap_or.rs:86:5
+   |
+LL | /     match Ok::<i32, &str>(1) {
+LL | |         Ok(i) => i,
+LL | |         Err(_) => 42,
+LL | |     };
+   | |_____^ help: replace with: `Ok::<i32, &str>(1).unwrap_or(42)`
+
+error: this pattern reimplements `Result::unwrap_or`
+  --> $DIR/manual_unwrap_or.rs:93:5
+   |
+LL | /     match a {
+LL | |         Ok(i) => i,
+LL | |         Err(_) => 42,
+LL | |     };
+   | |_____^ help: replace with: `a.unwrap_or(42)`
+
+error: this pattern reimplements `Result::unwrap_or`
+  --> $DIR/manual_unwrap_or.rs:99:5
+   |
+LL | /     match Ok(1) as Result<i32, &str> {
+LL | |         Ok(i) => i,
+LL | |         Err(_) => 42,
+LL | |     };
+   | |_____^ help: replace with: `(Ok(1) as Result<i32, &str>).unwrap_or(42)`
+
+error: this pattern reimplements `Option::unwrap_or`
+  --> $DIR/manual_unwrap_or.rs:112:5
+   |
+LL | /     match s.method() {
+LL | |         Some(i) => i,
+LL | |         None => 42,
+LL | |     };
+   | |_____^ help: replace with: `s.method().unwrap_or(42)`
+
+error: this pattern reimplements `Result::unwrap_or`
+  --> $DIR/manual_unwrap_or.rs:118:5
+   |
+LL | /     match Ok::<i32, &str>(1) {
+LL | |         Err(_) => 42,
+LL | |         Ok(i) => i,
+LL | |     };
+   | |_____^ help: replace with: `Ok::<i32, &str>(1).unwrap_or(42)`
+
+error: this pattern reimplements `Result::unwrap_or`
+  --> $DIR/manual_unwrap_or.rs:124:5
+   |
+LL | /     match Ok::<i32, &str>(1) {
+LL | |         Ok(i) => i,
+LL | |         Err(_) => 1 + 42,
+LL | |     };
+   | |_____^ help: replace with: `Ok::<i32, &str>(1).unwrap_or(1 + 42)`
+
+error: this pattern reimplements `Result::unwrap_or`
+  --> $DIR/manual_unwrap_or.rs:131:5
+   |
+LL | /     match Ok::<i32, &str>(1) {
+LL | |         Ok(i) => i,
+LL | |         Err(_) => {
+LL | |             42 + 42
+...  |
+LL | |         }
+LL | |     };
+   | |_____^
+   |
+help: replace with
+   |
+LL |     Ok::<i32, &str>(1).unwrap_or({
+LL |         42 + 42
+LL |             + 42 + 42 + 42
+LL |             + 42 + 42 + 42
+LL |     });
+   |
+
+error: this pattern reimplements `Result::unwrap_or`
+  --> $DIR/manual_unwrap_or.rs:141:5
+   |
+LL | /     match Ok::<&str, &str>("Bob") {
+LL | |         Ok(i) => i,
+LL | |         Err(_) => "Alice",
+LL | |     };
+   | |_____^ help: replace with: `Ok::<&str, &str>("Bob").unwrap_or("Alice")`
+
+error: aborting due to 13 previous errors
+

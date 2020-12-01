@@ -2,7 +2,7 @@ error[E0382]: borrow of moved value: `some_vec`
   --> $DIR/tab_3.rs:7:20
    |
 LL |     let some_vec = vec!["hi"];
-   |         -------- move occurs because `some_vec` has type `std::vec::Vec<&str>`, which does not implement the `Copy` trait
+   |         -------- move occurs because `some_vec` has type `Vec<&str>`, which does not implement the `Copy` trait
 LL |     some_vec.into_iter();
    |              ----------- `some_vec` moved due to this method call
 LL |     {

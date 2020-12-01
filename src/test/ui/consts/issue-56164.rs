@@ -1,12 +1,11 @@
-#![feature(const_fn)]
+#![feature(const_fn_fn_ptr_basics)]
 
 const fn foo() { (||{})() }
-//~^ ERROR calls in constant functions are limited to constant functions, tuple structs and tuple
-// variants
+//~^ ERROR calls in constant functions
 
 const fn bad(input: fn()) {
     input()
-    //~^ ERROR function pointers are not allowed in const fn
+    //~^ ERROR function pointer
 }
 
 fn main() {

@@ -1,10 +1,10 @@
-error[E0368]: binary assignment operation `+=` cannot be applied to type `std::collections::LinkedList<_>`
+error[E0368]: binary assignment operation `+=` cannot be applied to type `LinkedList<_>`
   --> $DIR/E0067.rs:4:5
    |
 LL |     LinkedList::new() += 1;
    |     -----------------^^^^^
    |     |
-   |     cannot use `+=` on type `std::collections::LinkedList<_>`
+   |     cannot use `+=` on type `LinkedList<_>`
 
 error[E0067]: invalid left-hand side of assignment
   --> $DIR/E0067.rs:4:23

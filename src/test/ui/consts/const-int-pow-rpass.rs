@@ -1,6 +1,5 @@
 // run-pass
 
-#![feature(const_int_pow)]
 #![feature(wrapping_next_power_of_two)]
 
 const IS_POWER_OF_TWO_A: bool = 0u32.is_power_of_two();

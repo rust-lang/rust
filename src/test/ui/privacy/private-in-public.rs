@@ -128,8 +128,8 @@ mod aliases_priv {
     }
     impl PrivTr for Priv {}
 
-    pub fn f1(arg: PrivUseAlias) {} //~ ERROR private type `aliases_priv::Priv1` in public interface
-    pub fn f2(arg: PrivAlias) {} //~ ERROR private type `aliases_priv::Priv2` in public interface
+    pub fn f1(arg: PrivUseAlias) {} //~ ERROR private type `Priv1` in public interface
+    pub fn f2(arg: PrivAlias) {} //~ ERROR private type `Priv2` in public interface
     pub fn f3(arg: <Priv as PrivTr>::Assoc) {}
     //~^ ERROR private trait `aliases_priv::PrivTr` in public interface
     //~| ERROR private type `aliases_priv::Priv` in public interface

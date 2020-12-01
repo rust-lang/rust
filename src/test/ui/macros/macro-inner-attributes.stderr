@@ -1,8 +1,8 @@
-error[E0433]: failed to resolve: use of undeclared type or module `a`
+error[E0433]: failed to resolve: use of undeclared crate or module `a`
   --> $DIR/macro-inner-attributes.rs:17:5
    |
 LL |     a::bar();
-   |     ^ use of undeclared type or module `a`
+   |     ^ use of undeclared crate or module `a`
 
 error: aborting due to previous error
 

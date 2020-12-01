@@ -33,7 +33,7 @@ LL | 2
    | ^
    |
 note: the lint level is defined here
-  --> $DIR/expansion-time.rs:15:8
+  --> $DIR/expansion-time.rs:25:8
    |
 LL | #[warn(incomplete_include)]
    |        ^^^^^^^^^^^^^^^^^^

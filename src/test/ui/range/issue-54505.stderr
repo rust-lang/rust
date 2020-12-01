@@ -16,11 +16,11 @@ error[E0308]: mismatched types
 LL |     take_range(1..);
    |                ^^^
    |                |
-   |                expected reference, found struct `std::ops::RangeFrom`
+   |                expected reference, found struct `RangeFrom`
    |                help: consider borrowing here: `&(1..)`
    |
    = note: expected reference `&_`
-                 found struct `std::ops::RangeFrom<{integer}>`
+                 found struct `RangeFrom<{integer}>`
 
 error[E0308]: mismatched types
   --> $DIR/issue-54505.rs:24:16
@@ -28,11 +28,11 @@ error[E0308]: mismatched types
 LL |     take_range(..);
    |                ^^
    |                |
-   |                expected reference, found struct `std::ops::RangeFull`
+   |                expected reference, found struct `RangeFull`
    |                help: consider borrowing here: `&(..)`
    |
    = note: expected reference `&_`
-                 found struct `std::ops::RangeFull`
+                 found struct `RangeFull`
 
 error[E0308]: mismatched types
   --> $DIR/issue-54505.rs:29:16
@@ -40,11 +40,11 @@ error[E0308]: mismatched types
 LL |     take_range(0..=1);
    |                ^^^^^
    |                |
-   |                expected reference, found struct `std::ops::RangeInclusive`
+   |                expected reference, found struct `RangeInclusive`
    |                help: consider borrowing here: `&(0..=1)`
    |
    = note: expected reference `&_`
-                 found struct `std::ops::RangeInclusive<{integer}>`
+                 found struct `RangeInclusive<{integer}>`
 
 error[E0308]: mismatched types
   --> $DIR/issue-54505.rs:34:16
@@ -52,11 +52,11 @@ error[E0308]: mismatched types
 LL |     take_range(..5);
    |                ^^^
    |                |
-   |                expected reference, found struct `std::ops::RangeTo`
+   |                expected reference, found struct `RangeTo`
    |                help: consider borrowing here: `&(..5)`
    |
    = note: expected reference `&_`
-                 found struct `std::ops::RangeTo<{integer}>`
+                 found struct `RangeTo<{integer}>`
 
 error[E0308]: mismatched types
   --> $DIR/issue-54505.rs:39:16
@@ -64,11 +64,11 @@ error[E0308]: mismatched types
 LL |     take_range(..=42);
    |                ^^^^^
    |                |
-   |                expected reference, found struct `std::ops::RangeToInclusive`
+   |                expected reference, found struct `RangeToInclusive`
    |                help: consider borrowing here: `&(..=42)`
    |
    = note: expected reference `&_`
-                 found struct `std::ops::RangeToInclusive<{integer}>`
+                 found struct `RangeToInclusive<{integer}>`
 
 error: aborting due to 6 previous errors
 

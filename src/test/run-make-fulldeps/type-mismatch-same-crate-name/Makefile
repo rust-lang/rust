@@ -11,9 +11,9 @@ all:
 		tr -d '\r\n' | $(CGREP) -e \
 	"mismatched types.*\
 	crateB::try_foo\(foo2\);.*\
-	expected struct \`crateA::foo::Foo\`, found struct \`crateA::Foo\`.*\
+	expected struct \`crateA::foo::Foo\`, found struct \`Foo\`.*\
 	different versions of crate \`crateA\`.*\
 	mismatched types.*\
 	crateB::try_bar\(bar2\);.*\
-	expected trait \`crateA::bar::Bar\`, found trait \`crateA::Bar\`.*\
+	expected trait \`crateA::bar::Bar\`, found trait \`Bar\`.*\
 	different versions of crate \`crateA\`"

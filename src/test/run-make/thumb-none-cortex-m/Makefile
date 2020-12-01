@@ -35,4 +35,4 @@ all:
 	# HACK(eddyb) sets `RUSTC_BOOTSTRAP=1` so Cargo can accept nightly features.
 	# These come from the top-level Rust workspace, that this crate is not a
 	# member of, but Cargo tries to load the workspace `Cargo.toml` anyway.
-	cd $(WORK_DIR) && cd $(CRATE) && env RUSTC_BOOTSTRAP=1 $(CARGO) build --target $(TARGET) -v
+	cd $(WORK_DIR) && cd $(CRATE) && env RUSTC_BOOTSTRAP=1 $(BOOTSTRAP_CARGO) build --target $(TARGET) -v

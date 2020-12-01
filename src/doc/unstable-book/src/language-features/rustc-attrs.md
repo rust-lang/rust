@@ -13,8 +13,8 @@ The `rustc_attrs` feature allows debugging rustc type layouts by using
 with `cargo check`) as an alternative to `rustc -Z print-type-sizes`
 that is way more verbose.
 
-Options provided by `#[rustc_layout(...)]` are `debug`, `size`, `abi`.
-Note that it only work best with sized type without generics.
+Options provided by `#[rustc_layout(...)]` are `debug`, `size`, `align`,
+`abi`. Note that it only works on sized types without generics.
 
 ## Examples
 

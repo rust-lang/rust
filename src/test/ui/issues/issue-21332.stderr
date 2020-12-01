@@ -2,9 +2,9 @@ error[E0053]: method `next` has an incompatible type for trait
   --> $DIR/issue-21332.rs:5:5
    |
 LL |     fn next(&mut self) -> Result<i32, i32> { Ok(7) }
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected enum `std::option::Option`, found enum `std::result::Result`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected enum `Option`, found enum `std::result::Result`
    |
-   = note: expected fn pointer `fn(&mut S) -> std::option::Option<i32>`
+   = note: expected fn pointer `fn(&mut S) -> Option<i32>`
               found fn pointer `fn(&mut S) -> std::result::Result<i32, i32>`
 
 error: aborting due to previous error

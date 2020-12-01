@@ -1,13 +1,16 @@
 error[E0038]: the trait `Expr` cannot be made into an object
   --> $DIR/object-safety-issue-22040.rs:12:23
    |
+LL |     elements: Vec<Box<dyn Expr + 'x>>,
+   |                       ^^^^^^^^^^^^^ `Expr` cannot be made into an object
+   |
+note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/object-safety-issue-22040.rs:5:21
+   |
 LL | trait Expr: Debug + PartialEq {
-   |       ----          --------- ...because it uses `Self` as a type parameter in this
+   |       ----          ^^^^^^^^^ ...because it uses `Self` as a type parameter
    |       |
    |       this trait cannot be made into an object...
-...
-LL |     elements: Vec<Box<dyn Expr + 'x>>,
-   |                       ^^^^^^^^^^^^^ the trait `Expr` cannot be made into an object
 
 error: aborting due to previous error
 

@@ -33,7 +33,7 @@
 //!
 //! Primarily, this module and its children implement the algorithms described in:
 //! "How to Read Floating Point Numbers Accurately" by William D. Clinger,
-//! available online: http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.45.4152
+//! available online: <http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.45.4152>
 //!
 //! In addition, there are numerous helper functions that are used in the paper but not available
 //! in Rust (or at least in core). Our version is additionally complicated by the need to handle
@@ -166,6 +166,16 @@ from_str_float_impl!(f64);
 ///
 /// This error is used as the error type for the [`FromStr`] implementation
 /// for [`f32`] and [`f64`].
+///
+/// # Example
+///
+/// ```
+/// use std::str::FromStr;
+///
+/// if let Err(e) = f64::from_str("a.12") {
+///     println!("Failed conversion to f64: {}", e);
+/// }
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct ParseFloatError {

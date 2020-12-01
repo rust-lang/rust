@@ -1,5 +1,7 @@
 #![warn(clippy::suspicious_arithmetic_impl)]
-use std::ops::{Add, AddAssign, BitOrAssign, Div, DivAssign, Mul, MulAssign, Sub};
+use std::ops::{
+    Add, AddAssign, BitAnd, BitOr, BitOrAssign, BitXor, Div, DivAssign, Mul, MulAssign, Rem, Shl, Shr, Sub,
+};
 
 #[derive(Copy, Clone)]
 struct Foo(u32);
@@ -58,6 +60,54 @@ impl Div for Foo {
 
     fn div(self, other: Self) -> Self {
         Foo(do_nothing(self.0 + other.0) / 42) // OK: BinOpKind::Add part of BiExpr as child node
+    }
+}
+
+impl Rem for Foo {
+    type Output = Foo;
+
+    fn rem(self, other: Self) -> Self {
+        Foo(self.0 / other.0)
+    }
+}
+
+impl BitAnd for Foo {
+    type Output = Foo;
+
+    fn bitand(self, other: Self) -> Self {
+        Foo(self.0 | other.0)
+    }
+}
+
+impl BitOr for Foo {
+    type Output = Foo;
+
+    fn bitor(self, other: Self) -> Self {
+        Foo(self.0 ^ other.0)
+    }
+}
+
+impl BitXor for Foo {
+    type Output = Foo;
+
+    fn bitxor(self, other: Self) -> Self {
+        Foo(self.0 & other.0)
+    }
+}
+
+impl Shl for Foo {
+    type Output = Foo;
+
+    fn shl(self, other: Self) -> Self {
+        Foo(self.0 >> other.0)
+    }
+}
+
+impl Shr for Foo {
+    type Output = Foo;
+
+    fn shr(self, other: Self) -> Self {
+        Foo(self.0 << other.0)
     }
 }
 

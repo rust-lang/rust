@@ -6,8 +6,8 @@ LL |     1.bar::<T>();
    |
 help: consider further restricting this bound
    |
-LL | fn foo<T:'static + std::marker::Send>() {
-   |                  ^^^^^^^^^^^^^^^^^^^
+LL | fn foo<T:'static + Send>() {
+   |                  ^^^^^^
 
 error: aborting due to previous error
 

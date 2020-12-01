@@ -1,4 +1,3 @@
-#![feature(untagged_unions)]
 #![allow(dead_code)]
 // run-pass
 

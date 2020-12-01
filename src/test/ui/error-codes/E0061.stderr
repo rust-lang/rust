@@ -1,24 +1,30 @@
 error[E0061]: this function takes 2 arguments but 1 argument was supplied
   --> $DIR/E0061.rs:6:5
    |
-LL | fn f(a: u16, b: &str) {}
-   | --------------------- defined here
-...
 LL |     f(0);
    |     ^ - supplied 1 argument
    |     |
    |     expected 2 arguments
+   |
+note: function defined here
+  --> $DIR/E0061.rs:1:4
+   |
+LL | fn f(a: u16, b: &str) {}
+   |    ^ ------  -------
 
 error[E0061]: this function takes 1 argument but 0 arguments were supplied
   --> $DIR/E0061.rs:10:5
    |
-LL | fn f2(a: u16) {}
-   | ------------- defined here
-...
 LL |     f2();
    |     ^^-- supplied 0 arguments
    |     |
    |     expected 1 argument
+   |
+note: function defined here
+  --> $DIR/E0061.rs:3:4
+   |
+LL | fn f2(a: u16) {}
+   |    ^^ ------
 
 error: aborting due to 2 previous errors
 

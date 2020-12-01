@@ -1,0 +1,135 @@
+error: `#[derive(SessionDiagnostic)]` can only be used on structs
+  --> $DIR/session-derive-errors.rs:28:1
+   |
+LL | / #[error = "E0123"]
+LL | |
+LL | | enum SessionDiagnosticOnEnum {
+LL | |     Foo,
+LL | |     Bar,
+LL | | }
+   | |_^
+
+error: `#[label = ...]` is not a valid SessionDiagnostic struct attribute
+  --> $DIR/session-derive-errors.rs:37:1
+   |
+LL | #[label = "This is in the wrong place"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `#[suggestion = ...]` is not a valid SessionDiagnostic field attribute
+  --> $DIR/session-derive-errors.rs:44:5
+   |
+LL |     #[suggestion = "this is the wrong kind of attribute"]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `error` specified multiple times
+  --> $DIR/session-derive-errors.rs:52:11
+   |
+LL | #[error = "E0456"]
+   |           ^^^^^^^
+
+error: `lint` specified when `error` was already specified
+  --> $DIR/session-derive-errors.rs:58:10
+   |
+LL | #[lint = "some_useful_lint"]
+   |          ^^^^^^^^^^^^^^^^^^
+
+error: `code` not specified
+  --> $DIR/session-derive-errors.rs:67:1
+   |
+LL | struct ErrorCodeNotProvided {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: use the [code = "..."] attribute to set this diagnostic's error code 
+
+error: the `#[message = "..."]` attribute can only be applied to fields of type Span
+  --> $DIR/session-derive-errors.rs:95:5
+   |
+LL |     #[message = "this message is applied to a String field"]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `name` doesn't refer to a field on this type
+  --> $DIR/session-derive-errors.rs:102:1
+   |
+LL | #[message = "This error has a field, and references {name}"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: invalid format string: expected `'}'` but string was terminated
+  --> $DIR/session-derive-errors.rs:110:1
+   |
+LL | #[error = "E0123"]
+   |               - because of this opening brace
+LL | #[message = "This is missing a closing brace: {name"]
+   | ^ expected `'}'` in format string
+   |
+   = note: if you intended to print `{`, you can escape it using `{{`
+   = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: invalid format string: unmatched `}` found
+  --> $DIR/session-derive-errors.rs:119:1
+   |
+LL | #[message = "This is missing an opening brace: name}"]
+   | ^ unmatched `}` in format string
+   |
+   = note: if you intended to print `}`, you can escape it using `}}`
+   = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: The `#[label = ...]` attribute can only be applied to fields of type Span
+  --> $DIR/session-derive-errors.rs:138:5
+   |
+LL |     #[label = "See here"]
+   |     ^^^^^^^^^^^^^^^^^^^^^
+
+error: `nonsense` is not a valid key for `#[suggestion(...)]`
+  --> $DIR/session-derive-errors.rs:163:18
+   |
+LL |     #[suggestion(nonsense = "This is nonsense")]
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `msg` is not a valid key for `#[suggestion(...)]`
+  --> $DIR/session-derive-errors.rs:171:18
+   |
+LL |     #[suggestion(msg = "This is a suggestion")]
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: missing suggestion message
+  --> $DIR/session-derive-errors.rs:179:7
+   |
+LL |     #[suggestion(code = "This is suggested code")]
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: provide a suggestion message using #[suggestion(message = "...")]
+
+error: wrong field type for suggestion
+  --> $DIR/session-derive-errors.rs:194:5
+   |
+LL | /     #[suggestion(message = "This is a message", code = "This is suggested code")]
+LL | |
+LL | |     suggestion: Applicability,
+   | |_____________________________^
+   |
+   = help: #[suggestion(...)] should be applied to fields of type Span or (Span, Applicability)
+
+error: type of field annotated with `#[suggestion(...)]` contains more than one Span
+  --> $DIR/session-derive-errors.rs:209:5
+   |
+LL | /     #[suggestion(message = "This is a message", code = "This is suggested code")]
+LL | |
+LL | |     suggestion: (Span, Span, Applicability),
+   | |___________________________________________^
+
+error: type of field annotated with `#[suggestion(...)]` contains more than one Applicability
+  --> $DIR/session-derive-errors.rs:217:5
+   |
+LL | /     #[suggestion(message = "This is a message", code = "This is suggested code")]
+LL | |
+LL | |     suggestion: (Applicability, Applicability, Span),
+   | |____________________________________________________^
+
+error: invalid annotation list `#[label(...)]`
+  --> $DIR/session-derive-errors.rs:225:7
+   |
+LL |     #[label("wrong kind of annotation for label")]
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 18 previous errors
+

@@ -4,15 +4,6 @@ error[E0010]: allocations are not allowed in statics
 LL | static mut a: Box<isize> = box 3;
    |                            ^^^^^ allocation not allowed in statics
 
-error[E0019]: static contains unimplemented expression type
-  --> $DIR/static-mut-not-constant.rs:3:32
-   |
-LL | static mut a: Box<isize> = box 3;
-   |                                ^
-   |
-   = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
+error: aborting due to previous error
 
-error: aborting due to 2 previous errors
-
-Some errors have detailed explanations: E0010, E0019.
-For more information about an error, try `rustc --explain E0010`.
+For more information about this error, try `rustc --explain E0010`.

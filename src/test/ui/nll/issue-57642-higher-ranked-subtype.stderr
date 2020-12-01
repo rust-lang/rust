@@ -1,0 +1,31 @@
+error[E0599]: no function or associated item named `make_g` found for fn pointer `for<'r> fn(&'r ())` in the current scope
+  --> $DIR/issue-57642-higher-ranked-subtype.rs:34:25
+   |
+LL |     let x = <fn (&())>::make_g();
+   |                         ^^^^^^ function or associated item not found in `for<'r> fn(&'r ())`
+   |
+   = note: the method `make_g` exists but the following trait bounds were not satisfied:
+           `for<'r> fn(&'r ()): X`
+   = help: items from traits can only be used if the trait is implemented and in scope
+note: `X` defines an item `make_g`, perhaps you need to implement it
+  --> $DIR/issue-57642-higher-ranked-subtype.rs:7:1
+   |
+LL | trait X {
+   | ^^^^^^^
+
+error[E0599]: no function or associated item named `make_f` found for fn pointer `for<'r> fn(&'r ())` in the current scope
+  --> $DIR/issue-57642-higher-ranked-subtype.rs:38:25
+   |
+LL |     let x = <fn (&())>::make_f();
+   |                         ^^^^^^ function or associated item not found in `for<'r> fn(&'r ())`
+   |
+   = help: items from traits can only be used if the trait is implemented and in scope
+note: `Y` defines an item `make_f`, perhaps you need to implement it
+  --> $DIR/issue-57642-higher-ranked-subtype.rs:20:1
+   |
+LL | trait Y {
+   | ^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0599`.

@@ -45,7 +45,7 @@ LL | fn main() {}
    | 
   ::: $SRC_DIR/core/src/macros/mod.rs:LL:COL
    |
-LL |     ($left:expr, $right:expr) => ({
+LL |     ($left:expr, $right:expr $(,)?) => ({
    |      ---------- while parsing argument for this `expr` macro fragment
 
 error: aborting due to 4 previous errors

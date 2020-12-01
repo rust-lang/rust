@@ -1,4 +1,5 @@
 // aux-build:const_generic_lib.rs
+// revisions: full min
 
 extern crate const_generic_lib;
 

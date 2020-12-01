@@ -20,7 +20,6 @@
 #![macro_use]
 
 use crate::intrinsics;
-use crate::mem;
 
 /// Arithmetic operations required by bignums.
 pub trait FullOps: Sized {
@@ -58,25 +57,22 @@ macro_rules! impl_full_ops {
                     // This cannot overflow;
                     // the output is between `0` and `2^nbits * (2^nbits - 1)`.
                     // FIXME: will LLVM optimize this into ADC or similar?
-                    let nbits = mem::size_of::<$ty>() * 8;
                     let v = (self as $bigty) * (other as $bigty) + (carry as $bigty);
-                    ((v >> nbits) as $ty, v as $ty)
+                    ((v >> <$ty>::BITS) as $ty, v as $ty)
                 }
 
                 fn full_mul_add(self, other: $ty, other2: $ty, carry: $ty) -> ($ty, $ty) {
                     // This cannot overflow;
                     // the output is between `0` and `2^nbits * (2^nbits - 1)`.
-                    let nbits = mem::size_of::<$ty>() * 8;
                     let v = (self as $bigty) * (other as $bigty) + (other2 as $bigty) +
                             (carry as $bigty);
-                    ((v >> nbits) as $ty, v as $ty)
+                    ((v >> <$ty>::BITS) as $ty, v as $ty)
                 }
 
                 fn full_div_rem(self, other: $ty, borrow: $ty) -> ($ty, $ty) {
                     debug_assert!(borrow < other);
                     // This cannot overflow; the output is between `0` and `other * (2^nbits - 1)`.
-                    let nbits = mem::size_of::<$ty>() * 8;
-                    let lhs = ((borrow as $bigty) << nbits) | (self as $bigty);
+                    let lhs = ((borrow as $bigty) << <$ty>::BITS) | (self as $bigty);
                     let rhs = other as $bigty;
                     ((lhs / rhs) as $ty, (lhs % rhs) as $ty)
                 }
@@ -128,13 +124,11 @@ macro_rules! define_bignum {
 
             /// Makes a bignum from `u64` value.
             pub fn from_u64(mut v: u64) -> $name {
-                use crate::mem;
-
                 let mut base = [0; $n];
                 let mut sz = 0;
                 while v > 0 {
                     base[sz] = v as $ty;
-                    v >>= mem::size_of::<$ty>() * 8;
+                    v >>= <$ty>::BITS;
                     sz += 1;
                 }
                 $name { size: sz, base: base }
@@ -150,9 +144,7 @@ macro_rules! define_bignum {
             /// Returns the `i`-th bit where bit 0 is the least significant one.
             /// In other words, the bit with weight `2^i`.
             pub fn get_bit(&self, i: usize) -> u8 {
-                use crate::mem;
-
-                let digitbits = mem::size_of::<$ty>() * 8;
+                let digitbits = <$ty>::BITS as usize;
                 let d = i / digitbits;
                 let b = i % digitbits;
                 ((self.base[d] >> b) & 1) as u8
@@ -166,8 +158,6 @@ macro_rules! define_bignum {
             /// Returns the number of bits necessary to represent this value. Note that zero
             /// is considered to need 0 bits.
             pub fn bit_length(&self) -> usize {
-                use crate::mem;
-
                 // Skip over the most significant digits which are zero.
                 let digits = self.digits();
                 let zeros = digits.iter().rev().take_while(|&&x| x == 0).count();
@@ -180,7 +170,7 @@ macro_rules! define_bignum {
                 }
                 // This could be optimized with leading_zeros() and bit shifts, but that's
                 // probably not worth the hassle.
-                let digitbits = mem::size_of::<$ty>() * 8;
+                let digitbits = <$ty>::BITS as usize;
                 let mut i = nonzero.len() * digitbits - 1;
                 while self.get_bit(i) == 0 {
                     i -= 1;
@@ -265,9 +255,7 @@ macro_rules! define_bignum {
 
             /// Multiplies itself by `2^bits` and returns its own mutable reference.
             pub fn mul_pow2(&mut self, bits: usize) -> &mut $name {
-                use crate::mem;
-
-                let digitbits = mem::size_of::<$ty>() * 8;
+                let digitbits = <$ty>::BITS as usize;
                 let digits = bits / digitbits;
                 let bits = bits % digitbits;
 
@@ -393,13 +381,11 @@ macro_rules! define_bignum {
             /// Divide self by another bignum, overwriting `q` with the quotient and `r` with the
             /// remainder.
             pub fn div_rem(&self, d: &$name, q: &mut $name, r: &mut $name) {
-                use crate::mem;
-
                 // Stupid slow base-2 long division taken from
                 // https://en.wikipedia.org/wiki/Division_algorithm
                 // FIXME use a greater base ($ty) for the long division.
                 assert!(!d.is_zero());
-                let digitbits = mem::size_of::<$ty>() * 8;
+                let digitbits = <$ty>::BITS as usize;
                 for digit in &mut q.base[..] {
                     *digit = 0;
                 }
@@ -462,10 +448,8 @@ macro_rules! define_bignum {
 
         impl crate::fmt::Debug for $name {
             fn fmt(&self, f: &mut crate::fmt::Formatter<'_>) -> crate::fmt::Result {
-                use crate::mem;
-
                 let sz = if self.size < 1 { 1 } else { self.size };
-                let digitlen = mem::size_of::<$ty>() * 2;
+                let digitlen = <$ty>::BITS as usize / 4;
 
                 write!(f, "{:#x}", self.base[sz - 1])?;
                 for &v in self.base[..sz - 1].iter().rev() {

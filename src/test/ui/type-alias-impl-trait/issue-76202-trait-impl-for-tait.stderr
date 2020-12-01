@@ -1,0 +1,14 @@
+error: cannot implement trait on type alias impl trait
+  --> $DIR/issue-76202-trait-impl-for-tait.rs:16:1
+   |
+LL | impl Test for F {
+   | ^^^^^^^^^^^^^^^
+   |
+note: type alias impl trait defined here
+  --> $DIR/issue-76202-trait-impl-for-tait.rs:9:10
+   |
+LL | type F = impl Dummy;
+   |          ^^^^^^^^^^
+
+error: aborting due to previous error
+

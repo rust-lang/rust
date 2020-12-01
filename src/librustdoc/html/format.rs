@@ -11,7 +11,7 @@ use std::fmt;
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
-use rustc_span::def_id::DefId;
+use rustc_span::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc_target::spec::abi::Abi;
 
 use crate::clean::{self, PrimitiveType};
@@ -21,7 +21,7 @@ use crate::html::escape::Escape;
 use crate::html::render::cache::ExternalLocation;
 use crate::html::render::CURRENT_DEPTH;
 
-pub trait Print {
+crate trait Print {
     fn print(self, buffer: &mut Buffer);
 }
 
@@ -47,7 +47,7 @@ impl Print for &'_ str {
 }
 
 #[derive(Debug, Clone)]
-pub struct Buffer {
+crate struct Buffer {
     for_html: bool,
     buffer: String,
 }
@@ -115,28 +115,28 @@ impl Buffer {
 }
 
 /// Wrapper struct for properly emitting a function or method declaration.
-pub struct Function<'a> {
+crate struct Function<'a> {
     /// The declaration to emit.
-    pub decl: &'a clean::FnDecl,
+    crate decl: &'a clean::FnDecl,
     /// The length of the function header and name. In other words, the number of characters in the
     /// function declaration up to but not including the parentheses.
     ///
     /// Used to determine line-wrapping.
-    pub header_len: usize,
+    crate header_len: usize,
     /// The number of spaces to indent each successive line with, if line-wrapping is necessary.
-    pub indent: usize,
+    crate indent: usize,
     /// Whether the function is async or not.
-    pub asyncness: hir::IsAsync,
+    crate asyncness: hir::IsAsync,
 }
 
 /// Wrapper struct for emitting a where-clause from Generics.
-pub struct WhereClause<'a> {
+crate struct WhereClause<'a> {
     /// The Generics from which to emit a where-clause.
-    pub gens: &'a clean::Generics,
+    crate gens: &'a clean::Generics,
     /// The number of spaces to indent each line with.
-    pub indent: usize,
+    crate indent: usize,
     /// Whether the where-clause needs to add a comma and newline after the last bound.
-    pub end_newline: bool,
+    crate end_newline: bool,
 }
 
 fn comma_sep<T: fmt::Display>(items: impl Iterator<Item = T>) -> impl fmt::Display {
@@ -480,7 +480,7 @@ impl clean::Path {
     }
 }
 
-pub fn href(did: DefId) -> Option<(String, ItemType, Vec<String>)> {
+crate fn href(did: DefId) -> Option<(String, ItemType, Vec<String>)> {
     let cache = cache();
     if !did.is_local() && !cache.access_levels.is_public(did) && !cache.document_private {
         return None;
@@ -618,7 +618,7 @@ fn tybounds(param_names: &Option<Vec<clean::GenericBound>>) -> impl fmt::Display
     })
 }
 
-pub fn anchor(did: DefId, text: &str) -> impl fmt::Display + '_ {
+crate fn anchor(did: DefId, text: &str) -> impl fmt::Display + '_ {
     display_fn(move |f| {
         if let Some((url, short_ty, fqp)) = href(did) {
             write!(
@@ -833,7 +833,7 @@ fn fmt_type(t: &clean::Type, f: &mut fmt::Formatter<'_>, use_absolute: bool) -> 
                             write!(
                                 f,
                                 "<a class=\"type\" href=\"{url}#{shortty}.{name}\" \
-                                   title=\"type {path}::{name}\">{name}</a>",
+                                    title=\"type {path}::{name}\">{name}</a>",
                                 url = url,
                                 shortty = ItemType::AssocType,
                                 name = name,
@@ -910,7 +910,7 @@ impl clean::Impl {
 }
 
 // The difference from above is that trait is not hyperlinked.
-pub fn fmt_impl_for_trait_page(i: &clean::Impl, f: &mut Buffer, use_absolute: bool) {
+crate fn fmt_impl_for_trait_page(i: &clean::Impl, f: &mut Buffer, use_absolute: bool) {
     f.from_display(i.print_inner(false, use_absolute))
 }
 
@@ -1089,19 +1089,31 @@ impl Function<'_> {
 
 impl clean::Visibility {
     crate fn print_with_space(&self) -> impl fmt::Display + '_ {
+        use rustc_span::symbol::kw;
+
         display_fn(move |f| match *self {
             clean::Public => f.write_str("pub "),
             clean::Inherited => Ok(()),
-            clean::Visibility::Crate => write!(f, "pub(crate) "),
+            // If this is `pub(crate)`, `path` will be empty.
+            clean::Visibility::Restricted(did, _) if did.index == CRATE_DEF_INDEX => {
+                write!(f, "pub(crate) ")
+            }
             clean::Visibility::Restricted(did, ref path) => {
                 f.write_str("pub(")?;
-                if path.segments.len() != 1
-                    || (path.segments[0].name != "self" && path.segments[0].name != "super")
+                debug!("path={:?}", path);
+                let first_name =
+                    path.data[0].data.get_opt_name().expect("modules are always named");
+                if path.data.len() != 1 || (first_name != kw::SelfLower && first_name != kw::Super)
                 {
                     f.write_str("in ")?;
                 }
-                resolved_path(f, did, path, true, false)?;
-                f.write_str(") ")
+                // modified from `resolved_path()` to work with `DefPathData`
+                let last_name = path.data.last().unwrap().data.get_opt_name().unwrap();
+                for seg in &path.data[..path.data.len() - 1] {
+                    write!(f, "{}::", seg.data.get_opt_name().unwrap())?;
+                }
+                let path = anchor(did, &last_name.as_str()).to_string();
+                write!(f, "{}) ", path)
             }
         })
     }
@@ -1149,19 +1161,19 @@ impl PrintWithSpace for hir::Mutability {
 
 impl clean::Import {
     crate fn print(&self) -> impl fmt::Display + '_ {
-        display_fn(move |f| match *self {
-            clean::Import::Simple(ref name, ref src) => {
-                if *name == src.path.last_name() {
-                    write!(f, "use {};", src.print())
+        display_fn(move |f| match self.kind {
+            clean::ImportKind::Simple(ref name) => {
+                if *name == self.source.path.last_name() {
+                    write!(f, "use {};", self.source.print())
                 } else {
-                    write!(f, "use {} as {};", src.print(), *name)
+                    write!(f, "use {} as {};", self.source.print(), *name)
                 }
             }
-            clean::Import::Glob(ref src) => {
-                if src.path.segments.is_empty() {
+            clean::ImportKind::Glob => {
+                if self.source.path.segments.is_empty() {
                     write!(f, "use *;")
                 } else {
-                    write!(f, "use {}::*;", src.print())
+                    write!(f, "use {}::*;", self.source.print())
                 }
             }
         })

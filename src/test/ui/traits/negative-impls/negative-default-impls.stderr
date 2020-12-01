@@ -6,6 +6,7 @@ LL | #![feature(specialization)]
    |
    = note: `#[warn(incomplete_features)]` on by default
    = note: see issue #31844 <https://github.com/rust-lang/rust/issues/31844> for more information
+   = help: consider using `min_specialization` instead, which is more stable and complete
 
 error[E0750]: negative impls cannot be default impls
   --> $DIR/negative-default-impls.rs:9:1

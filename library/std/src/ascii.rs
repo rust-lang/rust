@@ -70,7 +70,6 @@ pub trait AsciiExt {
     /// inherent methods on `u8`, `char`, `[u8]` and `str`.
     ///
     /// [`make_ascii_uppercase`]: AsciiExt::make_ascii_uppercase
-    /// [`str::to_uppercase`]: ../primitive.str.html#method.to_uppercase
     #[stable(feature = "rust1", since = "1.0.0")]
     #[allow(deprecated)]
     fn to_ascii_uppercase(&self) -> Self::Owned;
@@ -91,7 +90,6 @@ pub trait AsciiExt {
     /// inherent methods on `u8`, `char`, `[u8]` and `str`.
     ///
     /// [`make_ascii_lowercase`]: AsciiExt::make_ascii_lowercase
-    /// [`str::to_lowercase`]: ../primitive.str.html#method.to_lowercase
     #[stable(feature = "rust1", since = "1.0.0")]
     #[allow(deprecated)]
     fn to_ascii_lowercase(&self) -> Self::Owned;

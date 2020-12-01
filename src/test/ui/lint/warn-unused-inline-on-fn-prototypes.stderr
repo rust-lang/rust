@@ -1,5 +1,5 @@
 error: `#[inline]` is ignored on function prototypes
-  --> $DIR/warn-unused-inline-on-fn-prototypes.rs:9:5
+  --> $DIR/warn-unused-inline-on-fn-prototypes.rs:4:5
    |
 LL |     #[inline]
    |     ^^^^^^^^^
@@ -11,7 +11,7 @@ LL | #![deny(unused_attributes)]
    |         ^^^^^^^^^^^^^^^^^
 
 error: `#[inline]` is ignored on function prototypes
-  --> $DIR/warn-unused-inline-on-fn-prototypes.rs:4:5
+  --> $DIR/warn-unused-inline-on-fn-prototypes.rs:9:5
    |
 LL |     #[inline]
    |     ^^^^^^^^^

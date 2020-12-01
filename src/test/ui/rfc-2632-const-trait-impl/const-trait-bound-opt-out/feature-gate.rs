@@ -4,6 +4,7 @@
 #![cfg_attr(gated, feature(const_trait_bound_opt_out))]
 #![allow(incomplete_features)]
 #![feature(rustc_attrs)]
+#![feature(const_fn)]
 
 trait T {
     const CONST: i32;

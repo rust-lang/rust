@@ -10,6 +10,8 @@ Adds a free `default()` function to the `std::default` module.  This function
 just forwards to [`Default::default()`], but may remove repetition of the word
 "default" from the call site.
 
+[`Default::default()`]: https://doc.rust-lang.org/nightly/std/default/trait.Default.html#tymethod.default
+
 Here is an example:
 
 ```rust

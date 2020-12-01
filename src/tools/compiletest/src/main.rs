@@ -35,7 +35,7 @@ pub mod runtest;
 pub mod util;
 
 fn main() {
-    env_logger::init();
+    tracing_subscriber::fmt::init();
 
     let config = parse_config(env::args().collect());
 
@@ -69,6 +69,12 @@ pub fn parse_config(args: Vec<String>) -> Config {
             "which sort of compile tests to run",
             "compile-fail | run-fail | run-pass-valgrind | pretty | debug-info | codegen | rustdoc \
              codegen-units | incremental | run-make | ui | js-doc-test | mir-opt | assembly",
+        )
+        .reqopt(
+            "",
+            "suite",
+            "which suite of compile tests to run. used for nicer error reporting.",
+            "SUITE",
         )
         .optopt(
             "",
@@ -163,7 +169,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
 
     let target = opt_str2(matches.opt_str("target"));
     let android_cross_path = opt_path(matches, "android-cross-path");
-    let cdb = analyze_cdb(matches.opt_str("cdb"), &target);
+    let (cdb, cdb_version) = analyze_cdb(matches.opt_str("cdb"), &target);
     let (gdb, gdb_version, gdb_native_rust) =
         analyze_gdb(matches.opt_str("gdb"), &target, &android_cross_path);
     let (lldb_version, lldb_native_rust) = matches
@@ -201,6 +207,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         build_base: opt_path(matches, "build-base"),
         stage_id: matches.opt_str("stage-id").unwrap(),
         mode: matches.opt_str("mode").unwrap().parse().expect("invalid mode"),
+        suite: matches.opt_str("suite").unwrap(),
         debugger: None,
         run_ignored,
         filter: matches.free.first().cloned(),
@@ -216,6 +223,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         target,
         host: opt_str2(matches.opt_str("host")),
         cdb,
+        cdb_version,
         gdb,
         gdb_version,
         gdb_native_rust,
@@ -339,7 +347,7 @@ pub fn run_tests(config: Config) {
             configs.extend(configure_lldb(&config));
         }
     } else {
-        configs.push(config);
+        configs.push(config.clone());
     };
 
     let mut tests = Vec::new();
@@ -350,11 +358,32 @@ pub fn run_tests(config: Config) {
     let res = test::run_tests_console(&opts, tests);
     match res {
         Ok(true) => {}
-        Ok(false) => panic!("Some tests failed"),
+        Ok(false) => {
+            // We want to report that the tests failed, but we also want to give
+            // some indication of just what tests we were running. Especially on
+            // CI, where there can be cross-compiled tests for a lot of
+            // architectures, without this critical information it can be quite
+            // easy to miss which tests failed, and as such fail to reproduce
+            // the failure locally.
+
+            eprintln!(
+                "Some tests failed in compiletest suite={}{} mode={} host={} target={}",
+                config.suite,
+                config.compare_mode.map(|c| format!(" compare_mode={:?}", c)).unwrap_or_default(),
+                config.mode,
+                config.host,
+                config.target
+            );
+
+            std::process::exit(1);
+        }
         Err(e) => {
             // We don't know if tests passed or not, but if there was an error
-            // during testing we don't want to just suceeed (we may not have
+            // during testing we don't want to just succeed (we may not have
             // tested something), so fail.
+            //
+            // This should realistically "never" happen, so don't try to make
+            // this a pretty error message.
             panic!("I/O failure during tests: {:?}", e);
         }
     }
@@ -773,8 +802,30 @@ fn find_cdb(target: &str) -> Option<OsString> {
 }
 
 /// Returns Path to CDB
-fn analyze_cdb(cdb: Option<String>, target: &str) -> Option<OsString> {
-    cdb.map(OsString::from).or_else(|| find_cdb(target))
+fn analyze_cdb(cdb: Option<String>, target: &str) -> (Option<OsString>, Option<[u16; 4]>) {
+    let cdb = cdb.map(OsString::from).or_else(|| find_cdb(target));
+
+    let mut version = None;
+    if let Some(cdb) = cdb.as_ref() {
+        if let Ok(output) = Command::new(cdb).arg("/version").output() {
+            if let Some(first_line) = String::from_utf8_lossy(&output.stdout).lines().next() {
+                version = extract_cdb_version(&first_line);
+            }
+        }
+    }
+
+    (cdb, version)
+}
+
+fn extract_cdb_version(full_version_line: &str) -> Option<[u16; 4]> {
+    // Example full_version_line: "cdb version 10.0.18362.1"
+    let version = full_version_line.rsplit(' ').next()?;
+    let mut components = version.split('.');
+    let major: u16 = components.next().unwrap().parse().unwrap();
+    let minor: u16 = components.next().unwrap().parse().unwrap();
+    let patch: u16 = components.next().unwrap_or("0").parse().unwrap();
+    let build: u16 = components.next().unwrap_or("0").parse().unwrap();
+    Some([major, minor, patch, build])
 }
 
 /// Returns (Path to GDB, GDB Version, GDB has Rust Support)

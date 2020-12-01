@@ -1,0 +1,10 @@
+error: constant expression depends on a generic parameter
+  --> $DIR/issue-61935.rs:10:14
+   |
+LL |         Self:FooImpl<{N==0}>
+   |              ^^^^^^^^^^^^^^^
+   |
+   = note: this may fail depending on what value the parameter takes
+
+error: aborting due to previous error
+

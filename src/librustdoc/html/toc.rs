@@ -2,7 +2,7 @@
 
 /// A (recursive) table of contents
 #[derive(Debug, PartialEq)]
-pub struct Toc {
+crate struct Toc {
     /// The levels are strictly decreasing, i.e.
     ///
     /// `entries[0].level >= entries[1].level >= ...`
@@ -26,7 +26,7 @@ impl Toc {
 }
 
 #[derive(Debug, PartialEq)]
-pub struct TocEntry {
+crate struct TocEntry {
     level: u32,
     sec_number: String,
     name: String,
@@ -36,7 +36,7 @@ pub struct TocEntry {
 
 /// Progressive construction of a table of contents.
 #[derive(PartialEq)]
-pub struct TocBuilder {
+crate struct TocBuilder {
     top_level: Toc,
     /// The current hierarchy of parent headings, the levels are
     /// strictly increasing (i.e., `chain[0].level < chain[1].level <
@@ -50,12 +50,12 @@ pub struct TocBuilder {
 }
 
 impl TocBuilder {
-    pub fn new() -> TocBuilder {
+    crate fn new() -> TocBuilder {
         TocBuilder { top_level: Toc { entries: Vec::new() }, chain: Vec::new() }
     }
 
     /// Converts into a true `Toc` struct.
-    pub fn into_toc(mut self) -> Toc {
+    crate fn into_toc(mut self) -> Toc {
         // we know all levels are >= 1.
         self.fold_until(0);
         self.top_level
@@ -115,7 +115,7 @@ impl TocBuilder {
     /// Push a level `level` heading into the appropriate place in the
     /// hierarchy, returning a string containing the section number in
     /// `<num>.<num>.<num>` format.
-    pub fn push(&mut self, level: u32, name: String, id: String) -> &str {
+    crate fn push(&mut self, level: u32, name: String, id: String) -> &str {
         assert!(level >= 1);
 
         // collapse all previous sections into their parents until we

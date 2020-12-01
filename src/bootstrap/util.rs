@@ -122,7 +122,7 @@ impl Drop for TimeIt {
     fn drop(&mut self) {
         let time = self.1.elapsed();
         if !self.0 {
-            println!("\tfinished in {}.{:03}", time.as_secs(), time.subsec_millis());
+            println!("\tfinished in {}.{:03} seconds", time.as_secs(), time.subsec_millis());
         }
     }
 }

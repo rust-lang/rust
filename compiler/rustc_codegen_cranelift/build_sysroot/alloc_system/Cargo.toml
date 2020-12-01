@@ -1,0 +1,13 @@
+[package]
+authors = ["The Rust Project Developers", "bjorn3 (edited to be usable outside the rust source)"]
+name = "alloc_system"
+version = "0.0.0"
+[lib]
+name = "alloc_system"
+path = "lib.rs"
+test = false
+doc = false
+[dependencies]
+core = { path = "../sysroot_src/library/core" }
+libc = { version = "0.2.43", features = ['rustc-dep-of-std'], default-features = false }
+compiler_builtins = "0.1"

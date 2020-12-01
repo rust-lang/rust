@@ -18,5 +18,77 @@ error: casting integer literal to `f64` is unnecessary
 LL |     100_i32 as f64;
    |     ^^^^^^^^^^^^^^ help: try: `100_f64`
 
-error: aborting due to 3 previous errors
+error: casting integer literal to `f32` is unnecessary
+  --> $DIR/unnecessary_cast_fixable.rs:11:13
+   |
+LL |     let _ = -100 as f32;
+   |             ^^^^^^^^^^^ help: try: `-100_f32`
+
+error: casting integer literal to `f64` is unnecessary
+  --> $DIR/unnecessary_cast_fixable.rs:12:13
+   |
+LL |     let _ = -100 as f64;
+   |             ^^^^^^^^^^^ help: try: `-100_f64`
+
+error: casting integer literal to `f64` is unnecessary
+  --> $DIR/unnecessary_cast_fixable.rs:13:13
+   |
+LL |     let _ = -100_i32 as f64;
+   |             ^^^^^^^^^^^^^^^ help: try: `-100_f64`
+
+error: casting integer literal to `u32` is unnecessary
+  --> $DIR/unnecessary_cast_fixable.rs:25:5
+   |
+LL |     1 as u32;
+   |     ^^^^^^^^ help: try: `1_u32`
+
+error: casting integer literal to `i32` is unnecessary
+  --> $DIR/unnecessary_cast_fixable.rs:26:5
+   |
+LL |     0x10 as i32;
+   |     ^^^^^^^^^^^ help: try: `0x10_i32`
+
+error: casting integer literal to `usize` is unnecessary
+  --> $DIR/unnecessary_cast_fixable.rs:27:5
+   |
+LL |     0b10 as usize;
+   |     ^^^^^^^^^^^^^ help: try: `0b10_usize`
+
+error: casting integer literal to `u16` is unnecessary
+  --> $DIR/unnecessary_cast_fixable.rs:28:5
+   |
+LL |     0o73 as u16;
+   |     ^^^^^^^^^^^ help: try: `0o73_u16`
+
+error: casting integer literal to `u32` is unnecessary
+  --> $DIR/unnecessary_cast_fixable.rs:29:5
+   |
+LL |     1_000_000_000 as u32;
+   |     ^^^^^^^^^^^^^^^^^^^^ help: try: `1_000_000_000_u32`
+
+error: casting float literal to `f64` is unnecessary
+  --> $DIR/unnecessary_cast_fixable.rs:31:5
+   |
+LL |     1.0 as f64;
+   |     ^^^^^^^^^^ help: try: `1.0_f64`
+
+error: casting float literal to `f32` is unnecessary
+  --> $DIR/unnecessary_cast_fixable.rs:32:5
+   |
+LL |     0.5 as f32;
+   |     ^^^^^^^^^^ help: try: `0.5_f32`
+
+error: casting integer literal to `i32` is unnecessary
+  --> $DIR/unnecessary_cast_fixable.rs:36:13
+   |
+LL |     let _ = -1 as i32;
+   |             ^^^^^^^^^ help: try: `-1_i32`
+
+error: casting float literal to `f32` is unnecessary
+  --> $DIR/unnecessary_cast_fixable.rs:37:13
+   |
+LL |     let _ = -1.0 as f32;
+   |             ^^^^^^^^^^^ help: try: `-1.0_f32`
+
+error: aborting due to 15 previous errors
 

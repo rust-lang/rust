@@ -1,4 +1,4 @@
-error[E0277]: expected a `std::ops::Fn<(&isize,)>` closure, found `unsafe fn(isize) -> isize {square}`
+error[E0277]: expected a `Fn<(&isize,)>` closure, found `unsafe fn(isize) -> isize {square}`
   --> $DIR/unboxed-closures-wrong-arg-type-extern-fn.rs:21:21
    |
 LL | fn call_it<F: Fn(&isize) -> isize>(_: &F, _: isize) -> isize {
@@ -7,9 +7,9 @@ LL | fn call_it<F: Fn(&isize) -> isize>(_: &F, _: isize) -> isize {
 LL |     let x = call_it(&square, 22);
    |                     ^^^^^^^ expected an `Fn<(&isize,)>` closure, found `unsafe fn(isize) -> isize {square}`
    |
-   = help: the trait `for<'r> std::ops::Fn<(&'r isize,)>` is not implemented for `unsafe fn(isize) -> isize {square}`
+   = help: the trait `for<'r> Fn<(&'r isize,)>` is not implemented for `unsafe fn(isize) -> isize {square}`
 
-error[E0277]: expected a `std::ops::FnMut<(&isize,)>` closure, found `unsafe fn(isize) -> isize {square}`
+error[E0277]: expected a `FnMut<(&isize,)>` closure, found `unsafe fn(isize) -> isize {square}`
   --> $DIR/unboxed-closures-wrong-arg-type-extern-fn.rs:26:25
    |
 LL | fn call_it_mut<F: FnMut(&isize) -> isize>(_: &mut F, _: isize) -> isize {
@@ -18,9 +18,9 @@ LL | fn call_it_mut<F: FnMut(&isize) -> isize>(_: &mut F, _: isize) -> isize {
 LL |     let y = call_it_mut(&mut square, 22);
    |                         ^^^^^^^^^^^ expected an `FnMut<(&isize,)>` closure, found `unsafe fn(isize) -> isize {square}`
    |
-   = help: the trait `for<'r> std::ops::FnMut<(&'r isize,)>` is not implemented for `unsafe fn(isize) -> isize {square}`
+   = help: the trait `for<'r> FnMut<(&'r isize,)>` is not implemented for `unsafe fn(isize) -> isize {square}`
 
-error[E0277]: expected a `std::ops::FnOnce<(&isize,)>` closure, found `unsafe fn(isize) -> isize {square}`
+error[E0277]: expected a `FnOnce<(&isize,)>` closure, found `unsafe fn(isize) -> isize {square}`
   --> $DIR/unboxed-closures-wrong-arg-type-extern-fn.rs:31:26
    |
 LL | fn call_it_once<F: FnOnce(&isize) -> isize>(_: F, _: isize) -> isize {
@@ -29,7 +29,7 @@ LL | fn call_it_once<F: FnOnce(&isize) -> isize>(_: F, _: isize) -> isize {
 LL |     let z = call_it_once(square, 22);
    |                          ^^^^^^ expected an `FnOnce<(&isize,)>` closure, found `unsafe fn(isize) -> isize {square}`
    |
-   = help: the trait `for<'r> std::ops::FnOnce<(&'r isize,)>` is not implemented for `unsafe fn(isize) -> isize {square}`
+   = help: the trait `for<'r> FnOnce<(&'r isize,)>` is not implemented for `unsafe fn(isize) -> isize {square}`
 
 error: aborting due to 3 previous errors
 

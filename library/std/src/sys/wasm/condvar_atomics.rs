@@ -9,6 +9,8 @@ pub struct Condvar {
     cnt: AtomicUsize,
 }
 
+pub type MovableCondvar = Condvar;
+
 // Condition variables are implemented with a simple counter internally that is
 // likely to cause spurious wakeups. Blocking on a condition variable will first
 // read the value of the internal counter, unlock the given mutex, and then
@@ -42,13 +44,19 @@ impl Condvar {
 
     pub unsafe fn notify_one(&self) {
         self.cnt.fetch_add(1, SeqCst);
-        wasm32::memory_atomic_notify(self.ptr(), 1);
+        // SAFETY: ptr() is always valid
+        unsafe {
+            wasm32::memory_atomic_notify(self.ptr(), 1);
+        }
     }
 
     #[inline]
     pub unsafe fn notify_all(&self) {
         self.cnt.fetch_add(1, SeqCst);
-        wasm32::memory_atomic_notify(self.ptr(), u32::MAX); // -1 == "wake everyone"
+        // SAFETY: ptr() is always valid
+        unsafe {
+            wasm32::memory_atomic_notify(self.ptr(), u32::MAX); // -1 == "wake everyone"
+        }
     }
 
     pub unsafe fn wait(&self, mutex: &Mutex) {

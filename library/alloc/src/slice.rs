@@ -87,12 +87,17 @@ use core::cmp::Ordering::{self, Less};
 use core::mem::{self, size_of};
 use core::ptr;
 
+use crate::alloc::{AllocRef, Global};
 use crate::borrow::ToOwned;
 use crate::boxed::Box;
 use crate::vec::Vec;
 
 #[unstable(feature = "array_chunks", issue = "74985")]
 pub use core::slice::ArrayChunks;
+#[unstable(feature = "array_chunks", issue = "74985")]
+pub use core::slice::ArrayChunksMut;
+#[unstable(feature = "array_windows", issue = "75027")]
+pub use core::slice::ArrayWindows;
 #[stable(feature = "slice_get_slice", since = "1.28.0")]
 pub use core::slice::SliceIndex;
 #[stable(feature = "from_ref", since = "1.28.0")]
@@ -133,28 +138,82 @@ pub use hack::to_vec;
 // `core::slice::SliceExt` - we need to supply these functions for the
 // `test_permutations` test
 mod hack {
+    use core::alloc::AllocRef;
+
     use crate::boxed::Box;
     use crate::vec::Vec;
 
     // We shouldn't add inline attribute to this since this is used in
     // `vec!` macro mostly and causes perf regression. See #71204 for
     // discussion and perf results.
-    pub fn into_vec<T>(b: Box<[T]>) -> Vec<T> {
+    pub fn into_vec<T, A: AllocRef>(b: Box<[T], A>) -> Vec<T, A> {
         unsafe {
             let len = b.len();
-            let b = Box::into_raw(b);
-            Vec::from_raw_parts(b as *mut T, len, len)
+            let (b, alloc) = Box::into_raw_with_alloc(b);
+            Vec::from_raw_parts_in(b as *mut T, len, len, alloc)
         }
     }
 
     #[inline]
-    pub fn to_vec<T>(s: &[T]) -> Vec<T>
-    where
-        T: Clone,
-    {
-        let mut vec = Vec::with_capacity(s.len());
-        vec.extend_from_slice(s);
-        vec
+    pub fn to_vec<T: ConvertVec, A: AllocRef>(s: &[T], alloc: A) -> Vec<T, A> {
+        T::to_vec(s, alloc)
+    }
+
+    pub trait ConvertVec {
+        fn to_vec<A: AllocRef>(s: &[Self], alloc: A) -> Vec<Self, A>
+        where
+            Self: Sized;
+    }
+
+    impl<T: Clone> ConvertVec for T {
+        #[inline]
+        default fn to_vec<A: AllocRef>(s: &[Self], alloc: A) -> Vec<Self, A> {
+            struct DropGuard<'a, T, A: AllocRef> {
+                vec: &'a mut Vec<T, A>,
+                num_init: usize,
+            }
+            impl<'a, T, A: AllocRef> Drop for DropGuard<'a, T, A> {
+                #[inline]
+                fn drop(&mut self) {
+                    // SAFETY:
+                    // items were marked initialized in the loop below
+                    unsafe {
+                        self.vec.set_len(self.num_init);
+                    }
+                }
+            }
+            let mut vec = Vec::with_capacity_in(s.len(), alloc);
+            let mut guard = DropGuard { vec: &mut vec, num_init: 0 };
+            let slots = guard.vec.spare_capacity_mut();
+            // .take(slots.len()) is necessary for LLVM to remove bounds checks
+            // and has better codegen than zip.
+            for (i, b) in s.iter().enumerate().take(slots.len()) {
+                guard.num_init = i;
+                slots[i].write(b.clone());
+            }
+            core::mem::forget(guard);
+            // SAFETY:
+            // the vec was allocated and initialized above to at least this length.
+            unsafe {
+                vec.set_len(s.len());
+            }
+            vec
+        }
+    }
+
+    impl<T: Copy> ConvertVec for T {
+        #[inline]
+        fn to_vec<A: AllocRef>(s: &[Self], alloc: A) -> Vec<Self, A> {
+            let mut v = Vec::with_capacity_in(s.len(), alloc);
+            // SAFETY:
+            // allocated above with the capacity of `s`, and initialize to `s.len()` in
+            // ptr::copy_to_non_overlapping below.
+            unsafe {
+                s.as_ptr().copy_to_nonoverlapping(v.as_mut_ptr(), s.len());
+                v.set_len(s.len());
+            }
+            v
+        }
     }
 }
 
@@ -163,7 +222,7 @@ mod hack {
 impl<T> [T] {
     /// Sorts the slice.
     ///
-    /// This sort is stable (i.e., does not reorder equal elements) and `O(n * log(n))` worst-case.
+    /// This sort is stable (i.e., does not reorder equal elements) and *O*(*n* \* log(*n*)) worst-case.
     ///
     /// When applicable, unstable sorting is preferred because it is generally faster than stable
     /// sorting and it doesn't allocate auxiliary memory.
@@ -198,7 +257,7 @@ impl<T> [T] {
 
     /// Sorts the slice with a comparator function.
     ///
-    /// This sort is stable (i.e., does not reorder equal elements) and `O(n * log(n))` worst-case.
+    /// This sort is stable (i.e., does not reorder equal elements) and *O*(*n* \* log(*n*)) worst-case.
     ///
     /// The comparator function must define a total ordering for the elements in the slice. If
     /// the ordering is not total, the order of the elements is unspecified. An order is a
@@ -252,8 +311,8 @@ impl<T> [T] {
 
     /// Sorts the slice with a key extraction function.
     ///
-    /// This sort is stable (i.e., does not reorder equal elements) and `O(m * n * log(n))`
-    /// worst-case, where the key function is `O(m)`.
+    /// This sort is stable (i.e., does not reorder equal elements) and *O*(*m* \* *n* \* log(*n*))
+    /// worst-case, where the key function is *O*(*m*).
     ///
     /// For expensive key functions (e.g. functions that are not simple property accesses or
     /// basic operations), [`sort_by_cached_key`](#method.sort_by_cached_key) is likely to be
@@ -295,8 +354,8 @@ impl<T> [T] {
     ///
     /// During sorting, the key function is called only once per element.
     ///
-    /// This sort is stable (i.e., does not reorder equal elements) and `O(m * n + n * log(n))`
-    /// worst-case, where the key function is `O(m)`.
+    /// This sort is stable (i.e., does not reorder equal elements) and *O*(*m* \* *n* + *n* \* log(*n*))
+    /// worst-case, where the key function is *O*(*m*).
     ///
     /// For simple key functions (e.g., functions that are property accesses or
     /// basic operations), [`sort_by_key`](#method.sort_by_key) is likely to be
@@ -387,8 +446,30 @@ impl<T> [T] {
     where
         T: Clone,
     {
+        self.to_vec_in(Global)
+    }
+
+    /// Copies `self` into a new `Vec` with an allocator.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(allocator_api)]
+    ///
+    /// use std::alloc::System;
+    ///
+    /// let s = [10, 40, 30];
+    /// let x = s.to_vec_in(System);
+    /// // Here, `s` and `x` can be modified independently.
+    /// ```
+    #[inline]
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    pub fn to_vec_in<A: AllocRef>(&self, alloc: A) -> Vec<T, A>
+    where
+        T: Clone,
+    {
         // N.B., see the `hack` module in this file for more details.
-        hack::to_vec(self)
+        hack::to_vec(self, alloc)
     }
 
     /// Converts `self` into a vector without clones or allocation.
@@ -407,7 +488,7 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn into_vec(self: Box<Self>) -> Vec<T> {
+    pub fn into_vec<A: AllocRef>(self: Box<Self, A>) -> Vec<T, A> {
         // N.B., see the `hack` module in this file for more details.
         hack::into_vec(self)
     }
@@ -726,7 +807,7 @@ impl<T: Clone> ToOwned for [T] {
 
     #[cfg(test)]
     fn to_owned(&self) -> Vec<T> {
-        hack::to_vec(self)
+        hack::to_vec(self, Global)
     }
 
     fn clone_into(&self, target: &mut Vec<T>) {
@@ -940,7 +1021,7 @@ where
 /// 1. for every `i` in `1..runs.len()`: `runs[i - 1].len > runs[i].len`
 /// 2. for every `i` in `2..runs.len()`: `runs[i - 2].len > runs[i - 1].len + runs[i].len`
 ///
-/// The invariants ensure that the total running time is `O(n * log(n))` worst-case.
+/// The invariants ensure that the total running time is *O*(*n* \* log(*n*)) worst-case.
 fn merge_sort<T, F>(v: &mut [T], mut is_less: F)
 where
     F: FnMut(&T, &T) -> bool,

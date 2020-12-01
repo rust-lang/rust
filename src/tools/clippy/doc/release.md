@@ -68,7 +68,7 @@ be updated.
 ```bash
 # Assuming the current directory corresponds to the Clippy repository
 $ git checkout beta
-$ git rebase $BETA_SHA
+$ git reset --hard $BETA_SHA
 $ git push upstream beta
 ```
 

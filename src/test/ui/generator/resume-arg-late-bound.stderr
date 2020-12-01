@@ -4,8 +4,8 @@ error[E0308]: mismatched types
 LL |     test(gen);
    |     ^^^^ one type is more general than the other
    |
-   = note: expected type `for<'a> std::ops::Generator<&'a mut bool>`
-              found type `std::ops::Generator<&mut bool>`
+   = note: expected type `for<'a> Generator<&'a mut bool>`
+              found type `Generator<&mut bool>`
 
 error[E0308]: mismatched types
   --> $DIR/resume-arg-late-bound.rs:15:5
@@ -13,8 +13,8 @@ error[E0308]: mismatched types
 LL |     test(gen);
    |     ^^^^ one type is more general than the other
    |
-   = note: expected type `for<'a> std::ops::Generator<&'a mut bool>`
-              found type `std::ops::Generator<&mut bool>`
+   = note: expected type `for<'a> Generator<&'a mut bool>`
+              found type `Generator<&mut bool>`
 
 error: aborting due to 2 previous errors
 

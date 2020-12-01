@@ -119,6 +119,22 @@ fn match_same_arms() {
             unreachable!();
         },
     }
+
+    match_expr_like_matches_macro_priority();
+}
+
+fn match_expr_like_matches_macro_priority() {
+    enum E {
+        A,
+        B,
+        C,
+    }
+    let x = E::A;
+    let _ans = match x {
+        E::A => false,
+        E::B => false,
+        _ => true,
+    };
 }
 
 fn main() {}

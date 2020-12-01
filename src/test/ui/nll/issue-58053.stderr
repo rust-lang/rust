@@ -2,9 +2,9 @@ error: lifetime may not live long enough
   --> $DIR/issue-58053.rs:6:33
    |
 LL |     let f = |x: &i32| -> &i32 { x };
-   |                 -        ----   ^ returning this value requires that `'1` must outlive `'2`
+   |                 -        -      ^ returning this value requires that `'1` must outlive `'2`
    |                 |        |
-   |                 |        return type of closure is &'2 i32
+   |                 |        let's call the lifetime of this reference `'2`
    |                 let's call the lifetime of this reference `'1`
 
 error: lifetime may not live long enough

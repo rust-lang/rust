@@ -1,5 +1,8 @@
 use core::convert::TryFrom;
-use core::num::{IntErrorKind, NonZeroI32, NonZeroI8, NonZeroU32, NonZeroU8};
+use core::num::{
+    IntErrorKind, NonZeroI128, NonZeroI16, NonZeroI32, NonZeroI64, NonZeroI8, NonZeroIsize,
+    NonZeroU128, NonZeroU16, NonZeroU32, NonZeroU64, NonZeroU8, NonZeroUsize,
+};
 use core::option::Option::{self, None, Some};
 use std::mem::size_of;
 
@@ -82,7 +85,7 @@ fn test_match_option_string() {
     let five = "Five".to_string();
     match Some(five) {
         Some(s) => assert_eq!(s, "Five"),
-        None => panic!("unexpected None while matching on Some(String { ... })"),
+        None => panic!("{}", "unexpected None while matching on Some(String { ... })"),
     }
 }
 
@@ -135,11 +138,11 @@ fn test_from_str() {
     );
     assert_eq!(
         "-129".parse::<NonZeroI8>().err().map(|e| e.kind().clone()),
-        Some(IntErrorKind::Underflow)
+        Some(IntErrorKind::NegOverflow)
     );
     assert_eq!(
         "257".parse::<NonZeroU8>().err().map(|e| e.kind().clone()),
-        Some(IntErrorKind::Overflow)
+        Some(IntErrorKind::PosOverflow)
     );
 }
 
@@ -194,4 +197,118 @@ fn test_nonzero_from_int_on_err() {
 
     assert!(NonZeroI8::try_from(0).is_err());
     assert!(NonZeroI32::try_from(0).is_err());
+}
+
+#[test]
+fn nonzero_const() {
+    // test that the methods of `NonZeroX>` are usable in a const context
+    // Note: only tests NonZero8
+
+    const NONZERO: NonZeroU8 = unsafe { NonZeroU8::new_unchecked(5) };
+
+    const GET: u8 = NONZERO.get();
+    assert_eq!(GET, 5);
+
+    const ZERO: Option<NonZeroU8> = NonZeroU8::new(0);
+    assert!(ZERO.is_none());
+
+    const ONE: Option<NonZeroU8> = NonZeroU8::new(1);
+    assert!(ONE.is_some());
+}
+
+#[test]
+fn nonzero_leading_zeros() {
+    assert_eq!(NonZeroU8::new(1).unwrap().leading_zeros(), 7);
+    assert_eq!(NonZeroI8::new(1).unwrap().leading_zeros(), 7);
+    assert_eq!(NonZeroU16::new(1).unwrap().leading_zeros(), 15);
+    assert_eq!(NonZeroI16::new(1).unwrap().leading_zeros(), 15);
+    assert_eq!(NonZeroU32::new(1).unwrap().leading_zeros(), 31);
+    assert_eq!(NonZeroI32::new(1).unwrap().leading_zeros(), 31);
+    assert_eq!(NonZeroU64::new(1).unwrap().leading_zeros(), 63);
+    assert_eq!(NonZeroI64::new(1).unwrap().leading_zeros(), 63);
+    assert_eq!(NonZeroU128::new(1).unwrap().leading_zeros(), 127);
+    assert_eq!(NonZeroI128::new(1).unwrap().leading_zeros(), 127);
+    assert_eq!(NonZeroUsize::new(1).unwrap().leading_zeros(), usize::BITS - 1);
+    assert_eq!(NonZeroIsize::new(1).unwrap().leading_zeros(), usize::BITS - 1);
+
+    assert_eq!(NonZeroU8::new(u8::MAX >> 2).unwrap().leading_zeros(), 2);
+    assert_eq!(NonZeroI8::new((u8::MAX >> 2) as i8).unwrap().leading_zeros(), 2);
+    assert_eq!(NonZeroU16::new(u16::MAX >> 2).unwrap().leading_zeros(), 2);
+    assert_eq!(NonZeroI16::new((u16::MAX >> 2) as i16).unwrap().leading_zeros(), 2);
+    assert_eq!(NonZeroU32::new(u32::MAX >> 2).unwrap().leading_zeros(), 2);
+    assert_eq!(NonZeroI32::new((u32::MAX >> 2) as i32).unwrap().leading_zeros(), 2);
+    assert_eq!(NonZeroU64::new(u64::MAX >> 2).unwrap().leading_zeros(), 2);
+    assert_eq!(NonZeroI64::new((u64::MAX >> 2) as i64).unwrap().leading_zeros(), 2);
+    assert_eq!(NonZeroU128::new(u128::MAX >> 2).unwrap().leading_zeros(), 2);
+    assert_eq!(NonZeroI128::new((u128::MAX >> 2) as i128).unwrap().leading_zeros(), 2);
+    assert_eq!(NonZeroUsize::new(usize::MAX >> 2).unwrap().leading_zeros(), 2);
+    assert_eq!(NonZeroIsize::new((usize::MAX >> 2) as isize).unwrap().leading_zeros(), 2);
+
+    assert_eq!(NonZeroU8::new(u8::MAX).unwrap().leading_zeros(), 0);
+    assert_eq!(NonZeroI8::new(-1i8).unwrap().leading_zeros(), 0);
+    assert_eq!(NonZeroU16::new(u16::MAX).unwrap().leading_zeros(), 0);
+    assert_eq!(NonZeroI16::new(-1i16).unwrap().leading_zeros(), 0);
+    assert_eq!(NonZeroU32::new(u32::MAX).unwrap().leading_zeros(), 0);
+    assert_eq!(NonZeroI32::new(-1i32).unwrap().leading_zeros(), 0);
+    assert_eq!(NonZeroU64::new(u64::MAX).unwrap().leading_zeros(), 0);
+    assert_eq!(NonZeroI64::new(-1i64).unwrap().leading_zeros(), 0);
+    assert_eq!(NonZeroU128::new(u128::MAX).unwrap().leading_zeros(), 0);
+    assert_eq!(NonZeroI128::new(-1i128).unwrap().leading_zeros(), 0);
+    assert_eq!(NonZeroUsize::new(usize::MAX).unwrap().leading_zeros(), 0);
+    assert_eq!(NonZeroIsize::new(-1isize).unwrap().leading_zeros(), 0);
+
+    const LEADING_ZEROS: u32 = NonZeroU16::new(1).unwrap().leading_zeros();
+    assert_eq!(LEADING_ZEROS, 15);
+}
+
+#[test]
+fn nonzero_trailing_zeros() {
+    assert_eq!(NonZeroU8::new(1).unwrap().trailing_zeros(), 0);
+    assert_eq!(NonZeroI8::new(1).unwrap().trailing_zeros(), 0);
+    assert_eq!(NonZeroU16::new(1).unwrap().trailing_zeros(), 0);
+    assert_eq!(NonZeroI16::new(1).unwrap().trailing_zeros(), 0);
+    assert_eq!(NonZeroU32::new(1).unwrap().trailing_zeros(), 0);
+    assert_eq!(NonZeroI32::new(1).unwrap().trailing_zeros(), 0);
+    assert_eq!(NonZeroU64::new(1).unwrap().trailing_zeros(), 0);
+    assert_eq!(NonZeroI64::new(1).unwrap().trailing_zeros(), 0);
+    assert_eq!(NonZeroU128::new(1).unwrap().trailing_zeros(), 0);
+    assert_eq!(NonZeroI128::new(1).unwrap().trailing_zeros(), 0);
+    assert_eq!(NonZeroUsize::new(1).unwrap().trailing_zeros(), 0);
+    assert_eq!(NonZeroIsize::new(1).unwrap().trailing_zeros(), 0);
+
+    assert_eq!(NonZeroU8::new(1 << 2).unwrap().trailing_zeros(), 2);
+    assert_eq!(NonZeroI8::new(1 << 2).unwrap().trailing_zeros(), 2);
+    assert_eq!(NonZeroU16::new(1 << 2).unwrap().trailing_zeros(), 2);
+    assert_eq!(NonZeroI16::new(1 << 2).unwrap().trailing_zeros(), 2);
+    assert_eq!(NonZeroU32::new(1 << 2).unwrap().trailing_zeros(), 2);
+    assert_eq!(NonZeroI32::new(1 << 2).unwrap().trailing_zeros(), 2);
+    assert_eq!(NonZeroU64::new(1 << 2).unwrap().trailing_zeros(), 2);
+    assert_eq!(NonZeroI64::new(1 << 2).unwrap().trailing_zeros(), 2);
+    assert_eq!(NonZeroU128::new(1 << 2).unwrap().trailing_zeros(), 2);
+    assert_eq!(NonZeroI128::new(1 << 2).unwrap().trailing_zeros(), 2);
+    assert_eq!(NonZeroUsize::new(1 << 2).unwrap().trailing_zeros(), 2);
+    assert_eq!(NonZeroIsize::new(1 << 2).unwrap().trailing_zeros(), 2);
+
+    assert_eq!(NonZeroU8::new(1 << 7).unwrap().trailing_zeros(), 7);
+    assert_eq!(NonZeroI8::new(1 << 7).unwrap().trailing_zeros(), 7);
+    assert_eq!(NonZeroU16::new(1 << 15).unwrap().trailing_zeros(), 15);
+    assert_eq!(NonZeroI16::new(1 << 15).unwrap().trailing_zeros(), 15);
+    assert_eq!(NonZeroU32::new(1 << 31).unwrap().trailing_zeros(), 31);
+    assert_eq!(NonZeroI32::new(1 << 31).unwrap().trailing_zeros(), 31);
+    assert_eq!(NonZeroU64::new(1 << 63).unwrap().trailing_zeros(), 63);
+    assert_eq!(NonZeroI64::new(1 << 63).unwrap().trailing_zeros(), 63);
+    assert_eq!(NonZeroU128::new(1 << 127).unwrap().trailing_zeros(), 127);
+    assert_eq!(NonZeroI128::new(1 << 127).unwrap().trailing_zeros(), 127);
+
+    assert_eq!(
+        NonZeroUsize::new(1 << (usize::BITS - 1)).unwrap().trailing_zeros(),
+        usize::BITS - 1
+    );
+    assert_eq!(
+        NonZeroIsize::new(1 << (usize::BITS - 1)).unwrap().trailing_zeros(),
+        usize::BITS - 1
+    );
+
+    const TRAILING_ZEROS: u32 = NonZeroU16::new(1 << 2).unwrap().trailing_zeros();
+    assert_eq!(TRAILING_ZEROS, 2);
 }

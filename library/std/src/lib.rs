@@ -85,7 +85,7 @@
 //! # Contributing changes to the documentation
 //!
 //! Check out the rust contribution guidelines [here](
-//! https://rustc-dev-guide.rust-lang.org/getting-started.html).
+//! https://rustc-dev-guide.rust-lang.org/contributing.html#writing-documentation).
 //! The source for this documentation can be found on
 //! [GitHub](https://github.com/rust-lang/rust).
 //! To contribute changes, make sure you read the guidelines first, then submit
@@ -206,7 +206,8 @@
 #![needs_panic_runtime]
 // std may use features in a platform-specific way
 #![allow(unused_features)]
-#![cfg_attr(test, feature(print_internals, set_stdio, update_panic_count))]
+#![feature(rustc_allow_const_fn_unstable)]
+#![cfg_attr(test, feature(internal_output_capture, print_internals, update_panic_count))]
 #![cfg_attr(
     all(target_vendor = "fortanix", target_env = "sgx"),
     feature(slice_index_methods, coerce_unsized, sgx_platform)
@@ -228,46 +229,49 @@
 #![feature(atomic_mut_ptr)]
 #![feature(box_syntax)]
 #![feature(c_variadic)]
-#![feature(can_vector)]
 #![feature(cfg_accessible)]
 #![feature(cfg_target_has_atomic)]
 #![feature(cfg_target_thread_local)]
 #![feature(char_error_internals)]
 #![feature(char_internals)]
-#![feature(clamp)]
 #![feature(concat_idents)]
 #![feature(const_cstr_unchecked)]
+#![feature(const_fn_floating_point_arithmetic)]
 #![feature(const_fn_transmute)]
+#![feature(const_fn)]
+#![feature(const_fn_fn_ptr_basics)]
+#![feature(const_io_structs)]
+#![feature(const_ip)]
+#![feature(const_ipv6)]
 #![feature(const_raw_ptr_deref)]
+#![feature(const_ipv4)]
 #![feature(container_error_extra)]
 #![feature(core_intrinsics)]
 #![feature(custom_test_frameworks)]
 #![feature(decl_macro)]
-#![feature(doc_alias)]
 #![feature(doc_cfg)]
 #![feature(doc_keyword)]
 #![feature(doc_masked)]
 #![feature(doc_spotlight)]
 #![feature(dropck_eyepatch)]
 #![feature(duration_constants)]
+#![feature(duration_zero)]
 #![feature(exact_size_is_empty)]
 #![feature(exhaustive_patterns)]
 #![feature(extend_one)]
 #![feature(external_doc)]
+#![feature(fmt_as_str)]
 #![feature(fn_traits)]
 #![feature(format_args_nl)]
-#![feature(future_readiness_fns)]
 #![feature(gen_future)]
 #![feature(generator_trait)]
 #![feature(global_asm)]
-#![feature(hash_raw_entry)]
 #![feature(hashmap_internals)]
 #![feature(int_error_internals)]
 #![feature(int_error_matching)]
 #![feature(integer_atomics)]
 #![feature(into_future)]
 #![feature(lang_items)]
-#![feature(libc)]
 #![feature(link_args)]
 #![feature(linkage)]
 #![feature(llvm_asm)]
@@ -282,7 +286,8 @@
 #![feature(nll)]
 #![feature(nonnull_slice_from_raw_parts)]
 #![feature(once_cell)]
-#![feature(optin_builtin_traits)]
+#![cfg_attr(bootstrap, feature(optin_builtin_traits))]
+#![cfg_attr(not(bootstrap), feature(auto_traits))]
 #![feature(or_patterns)]
 #![feature(panic_info_message)]
 #![feature(panic_internals)]
@@ -292,7 +297,6 @@
 #![feature(raw)]
 #![feature(raw_ref_macros)]
 #![feature(ready_macro)]
-#![feature(renamed_spin_loop)]
 #![feature(rustc_attrs)]
 #![feature(rustc_private)]
 #![feature(shrink_to)]
@@ -308,13 +312,16 @@
 #![feature(str_internals)]
 #![feature(test)]
 #![feature(thread_local)]
+#![feature(thread_local_internals)]
 #![feature(toowned_clone_into)]
 #![feature(total_cmp)]
 #![feature(trace_macros)]
+#![feature(try_blocks)]
 #![feature(try_reserve)]
 #![feature(unboxed_closures)]
 #![feature(unsafe_block_in_unsafe_fn)]
-#![feature(untagged_unions)]
+#![feature(unsafe_cell_get_mut)]
+#![feature(unsafe_cell_raw_get)]
 #![feature(unwind_attributes)]
 #![feature(vec_into_raw_parts)]
 #![feature(wake_trait)]
@@ -556,5 +563,5 @@ include!("keyword_docs.rs");
 // This is required to avoid an unstable error when `restricted-std` is not
 // enabled. The use of #![feature(restricted_std)] in rustc-std-workspace-std
 // is unconditional, so the unstable feature needs to be defined somewhere.
-#[cfg_attr(not(feature = "restricted-std"), unstable(feature = "restricted_std", issue = "none"))]
+#[unstable(feature = "restricted_std", issue = "none")]
 mod __restricted_std_workaround {}

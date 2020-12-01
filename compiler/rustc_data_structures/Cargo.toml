@@ -1,0 +1,38 @@
+[package]
+authors = ["The Rust Project Developers"]
+name = "rustc_data_structures"
+version = "0.0.0"
+edition = "2018"
+
+[lib]
+doctest = false
+
+[dependencies]
+arrayvec = { version = "0.5.1", default-features = false }
+ena = "0.14"
+indexmap = "1.5.1"
+tracing = "0.1"
+jobserver_crate = { version = "0.1.13", package = "jobserver" }
+rustc_serialize = { path = "../rustc_serialize" }
+rustc_macros = { path = "../rustc_macros" }
+rustc_graphviz = { path = "../rustc_graphviz" }
+cfg-if = "0.1.2"
+crossbeam-utils = { version = "0.7", features = ["nightly"] }
+stable_deref_trait = "1.0.0"
+rayon = { version = "0.3.0", package = "rustc-rayon" }
+rayon-core = { version = "0.3.0", package = "rustc-rayon-core" }
+rustc-hash = "1.1.0"
+smallvec = { version = "1.0", features = ["union", "may_dangle"] }
+rustc_index = { path = "../rustc_index", package = "rustc_index" }
+bitflags = "1.2.1"
+measureme = "9.0.0"
+libc = "0.2"
+stacker = "0.1.12"
+tempfile = "3.0.5"
+
+[dependencies.parking_lot]
+version = "0.11"
+features = ["nightly"]
+
+[target.'cfg(windows)'.dependencies]
+winapi = { version = "0.3", features = ["fileapi", "psapi"] }

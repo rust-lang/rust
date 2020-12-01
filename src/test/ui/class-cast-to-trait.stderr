@@ -1,8 +1,8 @@
-error[E0599]: no method named `eat` found for struct `std::boxed::Box<dyn Noisy>` in the current scope
+error[E0599]: no method named `eat` found for struct `Box<dyn Noisy>` in the current scope
   --> $DIR/class-cast-to-trait.rs:53:8
    |
 LL |   nyan.eat();
-   |        ^^^ method not found in `std::boxed::Box<dyn Noisy>`
+   |        ^^^ method not found in `Box<dyn Noisy>`
 
 error: aborting due to previous error
 

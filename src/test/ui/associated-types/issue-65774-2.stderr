@@ -1,21 +1,19 @@
 error[E0277]: the trait bound `T: MyDisplay` is not satisfied
-  --> $DIR/issue-65774-2.rs:10:21
+  --> $DIR/issue-65774-2.rs:10:5
    |
-LL | trait MPU {
-   | --------- required by `MPU`
 LL |     type MpuConfig: MyDisplay = T;
-   |                     ^^^^^^^^^ the trait `MyDisplay` is not implemented for `T`
+   |     ^^^^^^^^^^^^^^^^---------^^^^^
+   |     |               |
+   |     |               required by this bound in `MPU::MpuConfig`
+   |     the trait `MyDisplay` is not implemented for `T`
 
 error[E0277]: the trait bound `T: MyDisplay` is not satisfied
-  --> $DIR/issue-65774-2.rs:16:6
+  --> $DIR/issue-65774-2.rs:39:25
    |
-LL | trait MPU {
-   |       --- required by a bound in this
-LL |     type MpuConfig: MyDisplay = T;
-   |                     --------- required by this bound in `MPU`
-...
-LL | impl MPU for S { }
-   |      ^^^ the trait `MyDisplay` is not implemented for `T`
+LL |         writer.my_write(valref)
+   |                         ^^^^^^ the trait `MyDisplay` is not implemented for `T`
+   |
+   = note: required for the cast to the object type `dyn MyDisplay`
 
 error: aborting due to 2 previous errors
 

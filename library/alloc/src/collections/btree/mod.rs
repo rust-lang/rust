@@ -1,8 +1,14 @@
+mod append;
+mod borrow;
 pub mod map;
+mod mem;
+mod merge_iter;
 mod navigate;
 mod node;
+mod remove;
 mod search;
 pub mod set;
+mod split;
 
 #[doc(hidden)]
 trait Recover<Q: ?Sized> {
@@ -13,6 +19,9 @@ trait Recover<Q: ?Sized> {
     fn replace(&mut self, key: Self::Key) -> Option<Self::Key>;
 }
 
+/// Same purpose as `Option::unwrap` but doesn't always guarantee a panic
+/// if the option contains no value.
+/// SAFETY: the caller must ensure that the option contains a value.
 #[inline(always)]
 pub unsafe fn unwrap_unchecked<T>(val: Option<T>) -> T {
     val.unwrap_or_else(|| {
@@ -41,6 +50,7 @@ impl DeterministicRng {
         DeterministicRng { x: 0x193a6754, y: 0xa8a7d469, z: 0x97830e05, w: 0x113ba7bb }
     }
 
+    /// Guarantees that the first 70029 results are unique.
     fn next(&mut self) -> u32 {
         let x = self.x;
         let t = x ^ (x << 11);

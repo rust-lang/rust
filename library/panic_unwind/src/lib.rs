@@ -18,8 +18,8 @@
     issue_tracker_base_url = "https://github.com/rust-lang/rust/issues/"
 )]
 #![feature(core_intrinsics)]
+#![feature(int_bits_const)]
 #![feature(lang_items)]
-#![feature(libc)]
 #![feature(nll)]
 #![feature(panic_unwind)]
 #![feature(staged_api)]
@@ -49,7 +49,6 @@ cfg_if::cfg_if! {
         mod real_imp;
     } else if #[cfg(any(
         all(target_family = "windows", target_env = "gnu"),
-        target_os = "cloudabi",
         target_os = "psp",
         target_family = "unix",
         all(target_vendor = "fortanix", target_env = "sgx"),

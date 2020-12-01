@@ -3,7 +3,7 @@
 
 trait Foo<'a> {
     type Value: 'a;
-    fn dummy(&'a self) { }
+    fn dummy(&'a self) {}
 }
 
 impl<'a> Foo<'a> for &'a i16 {
@@ -12,13 +12,13 @@ impl<'a> Foo<'a> for &'a i16 {
 }
 
 impl<'a> Foo<'static> for &'a i32 {
-    //~^ ERROR cannot infer
     type Value = &'a i32;
+    //~^ ERROR the type `&'a i32` does not fulfill the required lifetime
 }
 
-impl<'a,'b> Foo<'b> for &'a i64 {
-    //~^ ERROR cannot infer
+impl<'a, 'b> Foo<'b> for &'a i64 {
     type Value = &'a i32;
+    //~^ ERROR the type `&'a i32` does not fulfill the required lifetime
 }
 
-fn main() { }
+fn main() {}

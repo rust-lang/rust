@@ -55,9 +55,18 @@ impl Socket {
     pub fn new_raw(fam: c_int, ty: c_int) -> io::Result<Socket> {
         unsafe {
             cfg_if::cfg_if! {
-                if #[cfg(target_os = "linux")] {
-                    // On Linux we pass the SOCK_CLOEXEC flag to atomically create
-                    // the socket and set it as CLOEXEC, added in 2.6.27.
+                if #[cfg(any(
+                    target_os = "android",
+                    target_os = "dragonfly",
+                    target_os = "freebsd",
+                    target_os = "illumos",
+                    target_os = "linux",
+                    target_os = "netbsd",
+                    target_os = "opensbd",
+                ))] {
+                    // On platforms that support it we pass the SOCK_CLOEXEC
+                    // flag to atomically create the socket and set it as
+                    // CLOEXEC. On Linux this was added in 2.6.27.
                     let fd = cvt(libc::socket(fam, ty | libc::SOCK_CLOEXEC, 0))?;
                     Ok(Socket(FileDesc::new(fd)))
                 } else {
@@ -77,12 +86,21 @@ impl Socket {
         }
     }
 
+    #[cfg(not(target_os = "vxworks"))]
     pub fn new_pair(fam: c_int, ty: c_int) -> io::Result<(Socket, Socket)> {
         unsafe {
             let mut fds = [0, 0];
 
             cfg_if::cfg_if! {
-                if #[cfg(target_os = "linux")] {
+                if #[cfg(any(
+                    target_os = "android",
+                    target_os = "dragonfly",
+                    target_os = "freebsd",
+                    target_os = "illumos",
+                    target_os = "linux",
+                    target_os = "netbsd",
+                    target_os = "opensbd",
+                ))] {
                     // Like above, set cloexec atomically
                     cvt(libc::socketpair(fam, ty | libc::SOCK_CLOEXEC, 0, fds.as_mut_ptr()))?;
                     Ok((Socket(FileDesc::new(fds[0])), Socket(FileDesc::new(fds[1]))))
@@ -96,6 +114,11 @@ impl Socket {
                 }
             }
         }
+    }
+
+    #[cfg(target_os = "vxworks")]
+    pub fn new_pair(_fam: c_int, _ty: c_int) -> io::Result<(Socket, Socket)> {
+        unimplemented!()
     }
 
     pub fn connect_timeout(&self, addr: &SocketAddr, timeout: Duration) -> io::Result<()> {
@@ -168,13 +191,28 @@ impl Socket {
     pub fn accept(&self, storage: *mut sockaddr, len: *mut socklen_t) -> io::Result<Socket> {
         // Unfortunately the only known way right now to accept a socket and
         // atomically set the CLOEXEC flag is to use the `accept4` syscall on
-        // Linux. This was added in 2.6.28, glibc 2.10 and musl 0.9.5.
+        // platforms that support it. On Linux, this was added in 2.6.28,
+        // glibc 2.10 and musl 0.9.5.
         cfg_if::cfg_if! {
-            if #[cfg(target_os = "linux")] {
+            if #[cfg(any(
+                target_os = "dragonfly",
+                target_os = "freebsd",
+                target_os = "illumos",
+                target_os = "linux",
+                target_os = "netbsd",
+                target_os = "opensbd",
+            ))] {
                 let fd = cvt_r(|| unsafe {
                     libc::accept4(self.0.raw(), storage, len, libc::SOCK_CLOEXEC)
                 })?;
                 Ok(Socket(FileDesc::new(fd)))
+            // While the Android kernel supports the syscall,
+            // it is not included in all versions of Android's libc.
+            } else if #[cfg(target_os = "android")] {
+                let fd = cvt_r(|| unsafe {
+                    libc::syscall(libc::SYS_accept4, self.0.raw(), storage, len, libc::SOCK_CLOEXEC)
+                })?;
+                Ok(Socket(FileDesc::new(fd as c_int)))
             } else {
                 let fd = cvt_r(|| unsafe { libc::accept(self.0.raw(), storage, len) })?;
                 let fd = FileDesc::new(fd);
@@ -366,7 +404,7 @@ impl IntoInner<c_int> for Socket {
 // res_init unconditionally, we call it only when we detect we're linking
 // against glibc version < 2.26. (That is, when we both know its needed and
 // believe it's thread-safe).
-#[cfg(target_env = "gnu")]
+#[cfg(all(target_env = "gnu", not(target_os = "vxworks")))]
 fn on_resolver_failure() {
     use crate::sys;
 
@@ -378,5 +416,5 @@ fn on_resolver_failure() {
     }
 }
 
-#[cfg(not(target_env = "gnu"))]
+#[cfg(any(not(target_env = "gnu"), target_os = "vxworks"))]
 fn on_resolver_failure() {}

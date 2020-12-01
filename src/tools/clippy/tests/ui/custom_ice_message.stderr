@@ -9,3 +9,5 @@ note: we would appreciate a bug report: https://github.com/rust-lang/rust-clippy
 
 note: Clippy version: foo
 
+query stack during panic:
+end of query stack

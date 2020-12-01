@@ -1,4 +1,4 @@
-#![feature(optin_builtin_traits)]
+#![feature(auto_traits)]
 
 auto trait Generic<T> {}
 //~^ auto traits cannot have generic parameters [E0567]

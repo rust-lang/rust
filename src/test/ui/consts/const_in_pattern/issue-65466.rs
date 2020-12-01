@@ -1,8 +1,6 @@
-// FIXME: This still ICEs.
-//
-// ignore-test
-
 #![deny(indirect_structural_match)]
+
+// check-pass
 
 #[derive(PartialEq, Eq)]
 enum O<T> {

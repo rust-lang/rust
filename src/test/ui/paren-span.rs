@@ -16,6 +16,6 @@ mod m {
 
 fn main() {
     let s = m::make();
-    paren!(s.x); //~ ERROR field `x` of struct `m::S` is private
+    paren!(s.x); //~ ERROR field `x` of struct `S` is private
     //     ^^^ highlight here
 }

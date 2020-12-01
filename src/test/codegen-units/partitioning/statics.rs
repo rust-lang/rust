@@ -4,34 +4,34 @@
 
 #![crate_type="rlib"]
 
-//~ MONO_ITEM static statics::FOO[0] @@ statics[Internal]
+//~ MONO_ITEM static FOO @@ statics[Internal]
 static FOO: u32 = 0;
 
-//~ MONO_ITEM static statics::BAR[0] @@ statics[Internal]
+//~ MONO_ITEM static BAR @@ statics[Internal]
 static BAR: u32 = 0;
 
-//~ MONO_ITEM fn statics::function[0] @@ statics[External]
+//~ MONO_ITEM fn function @@ statics[External]
 pub fn function() {
-    //~ MONO_ITEM static statics::function[0]::FOO[0] @@ statics[Internal]
+    //~ MONO_ITEM static function::FOO @@ statics[Internal]
     static FOO: u32 = 0;
 
-    //~ MONO_ITEM static statics::function[0]::BAR[0] @@ statics[Internal]
+    //~ MONO_ITEM static function::BAR @@ statics[Internal]
     static BAR: u32 = 0;
 }
 
 pub mod mod1 {
-    //~ MONO_ITEM static statics::mod1[0]::FOO[0] @@ statics-mod1[Internal]
+    //~ MONO_ITEM static mod1::FOO @@ statics-mod1[Internal]
     static FOO: u32 = 0;
 
-    //~ MONO_ITEM static statics::mod1[0]::BAR[0] @@ statics-mod1[Internal]
+    //~ MONO_ITEM static mod1::BAR @@ statics-mod1[Internal]
     static BAR: u32 = 0;
 
-    //~ MONO_ITEM fn statics::mod1[0]::function[0] @@ statics-mod1[External]
+    //~ MONO_ITEM fn mod1::function @@ statics-mod1[External]
     pub fn function() {
-        //~ MONO_ITEM static statics::mod1[0]::function[0]::FOO[0] @@ statics-mod1[Internal]
+        //~ MONO_ITEM static mod1::function::FOO @@ statics-mod1[Internal]
         static FOO: u32 = 0;
 
-        //~ MONO_ITEM static statics::mod1[0]::function[0]::BAR[0] @@ statics-mod1[Internal]
+        //~ MONO_ITEM static mod1::function::BAR @@ statics-mod1[Internal]
         static BAR: u32 = 0;
     }
 }

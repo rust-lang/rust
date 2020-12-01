@@ -3,6 +3,9 @@ error: cannot find macro `macro_two` in this scope
    |
 LL |     macro_two!();
    |     ^^^^^^^^^
+   |
+   = note: consider importing this macro:
+           two_macros::macro_two
 
 error: aborting due to previous error
 

@@ -271,10 +271,10 @@ LL |     s.1e1;
    = note: available fields are: `0`, `1`
 
 error[E0609]: no field `1e1` on type `(u8, u8)`
-  --> $DIR/float-field.rs:9:7
+  --> $DIR/float-field.rs:9:9
    |
 LL |     s.1.1e1;
-   |       ^^^^^
+   |         ^^^
 
 error[E0609]: no field `0x1e1` on type `S`
   --> $DIR/float-field.rs:24:7
@@ -288,7 +288,7 @@ error[E0609]: no field `0x1` on type `S`
   --> $DIR/float-field.rs:25:7
    |
 LL |     s.0x1.;
-   |       ^^^^ unknown field
+   |       ^^^ unknown field
    |
    = note: available fields are: `0`, `1`
 
@@ -296,7 +296,7 @@ error[E0609]: no field `0x1` on type `S`
   --> $DIR/float-field.rs:28:7
    |
 LL |     s.0x1.1;
-   |       ^^^^^ unknown field
+   |       ^^^ unknown field
    |
    = note: available fields are: `0`, `1`
 
@@ -304,7 +304,7 @@ error[E0609]: no field `0x1` on type `S`
   --> $DIR/float-field.rs:30:7
    |
 LL |     s.0x1.1e1;
-   |       ^^^^^^^ unknown field
+   |       ^^^ unknown field
    |
    = note: available fields are: `0`, `1`
 

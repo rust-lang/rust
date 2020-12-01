@@ -32,7 +32,7 @@ fn test(a: A, b: inner::A, c: inner::B, d: xc::A, e: xc::B, z: inner::Z) {
     e.b; //~ ERROR: field `b` of struct `xc::B` is private
 
     z.0;
-    z.1; //~ ERROR: field `1` of struct `inner::Z` is private
+    z.1; //~ ERROR: field `1` of struct `Z` is private
 }
 
 fn main() {}

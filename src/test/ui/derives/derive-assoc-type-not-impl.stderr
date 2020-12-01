@@ -5,10 +5,10 @@ LL | struct Bar<T: Foo> {
    | ------------------
    | |
    | method `clone` not found for this
-   | doesn't satisfy `Bar<NotClone>: std::clone::Clone`
+   | doesn't satisfy `Bar<NotClone>: Clone`
 ...
 LL | struct NotClone;
-   | ---------------- doesn't satisfy `NotClone: std::clone::Clone`
+   | ---------------- doesn't satisfy `NotClone: Clone`
 ...
 LL |     Bar::<NotClone> { x: 1 }.clone();
    |                              ^^^^^ method not found in `Bar<NotClone>`
@@ -18,15 +18,15 @@ LL |     Bar::<NotClone> { x: 1 }.clone();
 LL |     fn clone(&self) -> Self;
    |        -----
    |        |
-   |        the method is available for `std::sync::Arc<Bar<NotClone>>` here
-   |        the method is available for `std::rc::Rc<Bar<NotClone>>` here
+   |        the method is available for `Arc<Bar<NotClone>>` here
+   |        the method is available for `Rc<Bar<NotClone>>` here
    |
    = note: the method `clone` exists but the following trait bounds were not satisfied:
-           `NotClone: std::clone::Clone`
-           which is required by `Bar<NotClone>: std::clone::Clone`
+           `NotClone: Clone`
+           which is required by `Bar<NotClone>: Clone`
    = help: items from traits can only be used if the trait is implemented and in scope
    = note: the following trait defines an item `clone`, perhaps you need to implement it:
-           candidate #1: `std::clone::Clone`
+           candidate #1: `Clone`
 
 error: aborting due to previous error
 

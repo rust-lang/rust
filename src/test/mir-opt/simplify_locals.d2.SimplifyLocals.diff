@@ -1,0 +1,38 @@
+- // MIR for `d2` before SimplifyLocals
++ // MIR for `d2` after SimplifyLocals
+  
+  fn d2() -> () {
+      let mut _0: ();                      // return place in scope 0 at $DIR/simplify-locals.rs:26:9: 26:9
+-     let mut _1: E;                       // in scope 0 at $DIR/simplify-locals.rs:28:22: 28:26
+-     let mut _2: (i32, E);                // in scope 0 at $DIR/simplify-locals.rs:28:5: 28:17
+-     let mut _3: E;                       // in scope 0 at $DIR/simplify-locals.rs:28:11: 28:15
+  
+      bb0: {
+-         StorageLive(_1);                 // scope 0 at $DIR/simplify-locals.rs:28:22: 28:26
+-         discriminant(_1) = 1;            // scope 0 at $DIR/simplify-locals.rs:28:22: 28:26
+-         StorageLive(_2);                 // scope 0 at $DIR/simplify-locals.rs:28:5: 28:17
+-         StorageLive(_3);                 // scope 0 at $DIR/simplify-locals.rs:28:11: 28:15
+-         discriminant(_3) = 0;            // scope 0 at $DIR/simplify-locals.rs:28:11: 28:15
+-         (_2.0: i32) = const 10_i32;      // scope 0 at $DIR/simplify-locals.rs:28:6: 28:16
+-         (_2.1: E) = const E::A;          // scope 0 at $DIR/simplify-locals.rs:28:6: 28:16
+-                                          // ty::Const
+-                                          // + ty: E
+-                                          // + val: Value(Scalar(0x00))
+-                                          // mir::Constant
+-                                          // + span: $DIR/simplify-locals.rs:28:6: 28:16
+-                                          // + literal: Const { ty: E, val: Value(Scalar(0x00)) }
+-         StorageDead(_3);                 // scope 0 at $DIR/simplify-locals.rs:28:15: 28:16
+-         (_2.1: E) = const E::B;          // scope 0 at $DIR/simplify-locals.rs:28:5: 28:26
+-                                          // ty::Const
+-                                          // + ty: E
+-                                          // + val: Value(Scalar(0x01))
+-                                          // mir::Constant
+-                                          // + span: $DIR/simplify-locals.rs:28:5: 28:26
+-                                          // + literal: Const { ty: E, val: Value(Scalar(0x01)) }
+-         StorageDead(_1);                 // scope 0 at $DIR/simplify-locals.rs:28:25: 28:26
+-         StorageDead(_2);                 // scope 0 at $DIR/simplify-locals.rs:28:26: 28:27
+          _0 = const ();                   // scope 0 at $DIR/simplify-locals.rs:26:9: 29:2
+          return;                          // scope 0 at $DIR/simplify-locals.rs:29:2: 29:2
+      }
+  }
+  

@@ -1,83 +1,92 @@
-error[E0723]: can only call `transmute` from const items, not `const fn`
+error[E0658]: `transmute` is not allowed in constant functions
   --> $DIR/feature-gate-const_fn_transmute.rs:8:43
    |
 LL | const fn transmute_fn() -> u32 { unsafe { mem::transmute(Foo(3)) } }
    |                                           ^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
-   = help: add `#![feature(const_fn)]` to the crate attributes to enable
+   = note: see issue #53605 <https://github.com/rust-lang/rust/issues/53605> for more information
+   = help: add `#![feature(const_fn_transmute)]` to the crate attributes to enable
+   = note: `transmute` is only allowed in constants and statics for now
 
-error[E0723]: can only call `transmute` from const items, not `const fn`
+error[E0658]: `transmute` is not allowed in constant functions
   --> $DIR/feature-gate-const_fn_transmute.rs:11:53
    |
 LL | const fn transmute_fn_intrinsic() -> u32 { unsafe { std::intrinsics::transmute(Foo(3)) } }
    |                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
-   = help: add `#![feature(const_fn)]` to the crate attributes to enable
+   = note: see issue #53605 <https://github.com/rust-lang/rust/issues/53605> for more information
+   = help: add `#![feature(const_fn_transmute)]` to the crate attributes to enable
+   = note: `transmute` is only allowed in constants and statics for now
 
-error[E0723]: can only call `transmute` from const items, not `const fn`
+error[E0658]: `transmute` is not allowed in constant functions
   --> $DIR/feature-gate-const_fn_transmute.rs:14:58
    |
 LL | const fn transmute_fn_core_intrinsic() -> u32 { unsafe { core::intrinsics::transmute(Foo(3)) } }
    |                                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
-   = help: add `#![feature(const_fn)]` to the crate attributes to enable
+   = note: see issue #53605 <https://github.com/rust-lang/rust/issues/53605> for more information
+   = help: add `#![feature(const_fn_transmute)]` to the crate attributes to enable
+   = note: `transmute` is only allowed in constants and statics for now
 
-error[E0723]: can only call `transmute` from const items, not `const fn`
+error[E0658]: `transmute` is not allowed in constant functions
   --> $DIR/feature-gate-const_fn_transmute.rs:17:48
    |
 LL | const unsafe fn unsafe_transmute_fn() -> u32 { mem::transmute(Foo(3)) }
    |                                                ^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
-   = help: add `#![feature(const_fn)]` to the crate attributes to enable
+   = note: see issue #53605 <https://github.com/rust-lang/rust/issues/53605> for more information
+   = help: add `#![feature(const_fn_transmute)]` to the crate attributes to enable
+   = note: `transmute` is only allowed in constants and statics for now
 
-error[E0723]: can only call `transmute` from const items, not `const fn`
+error[E0658]: `transmute` is not allowed in constant functions
   --> $DIR/feature-gate-const_fn_transmute.rs:20:58
    |
 LL | const unsafe fn unsafe_transmute_fn_intrinsic() -> u32 { std::intrinsics::transmute(Foo(3)) }
    |                                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
-   = help: add `#![feature(const_fn)]` to the crate attributes to enable
+   = note: see issue #53605 <https://github.com/rust-lang/rust/issues/53605> for more information
+   = help: add `#![feature(const_fn_transmute)]` to the crate attributes to enable
+   = note: `transmute` is only allowed in constants and statics for now
 
-error[E0723]: can only call `transmute` from const items, not `const fn`
+error[E0658]: `transmute` is not allowed in constant functions
   --> $DIR/feature-gate-const_fn_transmute.rs:23:63
    |
 LL | const unsafe fn unsafe_transmute_fn_core_intrinsic() -> u32 { core::intrinsics::transmute(Foo(3)) }
    |                                                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
-   = help: add `#![feature(const_fn)]` to the crate attributes to enable
+   = note: see issue #53605 <https://github.com/rust-lang/rust/issues/53605> for more information
+   = help: add `#![feature(const_fn_transmute)]` to the crate attributes to enable
+   = note: `transmute` is only allowed in constants and statics for now
 
-error[E0723]: can only call `transmute` from const items, not `const fn`
+error[E0658]: `transmute` is not allowed in constant functions
   --> $DIR/feature-gate-const_fn_transmute.rs:26:39
    |
 LL | const fn safe_transmute_fn() -> u32 { mem::transmute(Foo(3)) }
    |                                       ^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
-   = help: add `#![feature(const_fn)]` to the crate attributes to enable
+   = note: see issue #53605 <https://github.com/rust-lang/rust/issues/53605> for more information
+   = help: add `#![feature(const_fn_transmute)]` to the crate attributes to enable
+   = note: `transmute` is only allowed in constants and statics for now
 
-error[E0723]: can only call `transmute` from const items, not `const fn`
+error[E0658]: `transmute` is not allowed in constant functions
   --> $DIR/feature-gate-const_fn_transmute.rs:30:49
    |
 LL | const fn safe_transmute_fn_intrinsic() -> u32 { std::intrinsics::transmute(Foo(3)) }
    |                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
-   = help: add `#![feature(const_fn)]` to the crate attributes to enable
+   = note: see issue #53605 <https://github.com/rust-lang/rust/issues/53605> for more information
+   = help: add `#![feature(const_fn_transmute)]` to the crate attributes to enable
+   = note: `transmute` is only allowed in constants and statics for now
 
-error[E0723]: can only call `transmute` from const items, not `const fn`
+error[E0658]: `transmute` is not allowed in constant functions
   --> $DIR/feature-gate-const_fn_transmute.rs:34:54
    |
 LL | const fn safe_transmute_fn_core_intrinsic() -> u32 { core::intrinsics::transmute(Foo(3)) }
    |                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
-   = help: add `#![feature(const_fn)]` to the crate attributes to enable
+   = note: see issue #53605 <https://github.com/rust-lang/rust/issues/53605> for more information
+   = help: add `#![feature(const_fn_transmute)]` to the crate attributes to enable
+   = note: `transmute` is only allowed in constants and statics for now
 
 error[E0133]: call to unsafe function is unsafe and requires unsafe function or block
   --> $DIR/feature-gate-const_fn_transmute.rs:26:39
@@ -105,5 +114,5 @@ LL | const fn safe_transmute_fn_core_intrinsic() -> u32 { core::intrinsics::tran
 
 error: aborting due to 12 previous errors
 
-Some errors have detailed explanations: E0133, E0723.
+Some errors have detailed explanations: E0133, E0658.
 For more information about an error, try `rustc --explain E0133`.

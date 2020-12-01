@@ -1,0 +1,8 @@
+error: expected one of `->`, `;`, `where`, or `{`, found `:`
+  --> $DIR/fn-colon-return-type.rs:1:15
+   |
+LL | fn foo(x: i32): i32 {
+   |               ^ expected one of `->`, `;`, `where`, or `{`
+
+error: aborting due to previous error
+

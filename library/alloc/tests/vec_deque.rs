@@ -2,6 +2,7 @@ use std::collections::TryReserveError::*;
 use std::collections::{vec_deque::Drain, VecDeque};
 use std::fmt::Debug;
 use std::mem::size_of;
+use std::ops::Bound::*;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 
 use crate::hash;
@@ -113,6 +114,20 @@ fn test_index_out_of_bounds() {
         deq.push_front(i);
     }
     deq[3];
+}
+
+#[test]
+#[should_panic]
+fn test_range_start_overflow() {
+    let deq = VecDeque::from(vec![1, 2, 3]);
+    deq.range((Included(0), Included(usize::MAX)));
+}
+
+#[test]
+#[should_panic]
+fn test_range_end_overflow() {
+    let deq = VecDeque::from(vec![1, 2, 3]);
+    deq.range((Excluded(usize::MAX), Included(0)));
 }
 
 #[derive(Clone, PartialEq, Debug)]
@@ -1643,4 +1658,73 @@ fn test_drain_leak() {
     assert_eq!(v.len(), 3);
     drop(v);
     assert_eq!(unsafe { DROPS }, 7);
+}
+
+#[test]
+fn test_binary_search() {
+    // Contiguous (front only) search:
+    let deque: VecDeque<_> = vec![1, 2, 3, 5, 6].into();
+    assert!(deque.as_slices().1.is_empty());
+    assert_eq!(deque.binary_search(&3), Ok(2));
+    assert_eq!(deque.binary_search(&4), Err(3));
+
+    // Split search (both front & back non-empty):
+    let mut deque: VecDeque<_> = vec![5, 6].into();
+    deque.push_front(3);
+    deque.push_front(2);
+    deque.push_front(1);
+    deque.push_back(10);
+    assert!(!deque.as_slices().0.is_empty());
+    assert!(!deque.as_slices().1.is_empty());
+    assert_eq!(deque.binary_search(&0), Err(0));
+    assert_eq!(deque.binary_search(&1), Ok(0));
+    assert_eq!(deque.binary_search(&5), Ok(3));
+    assert_eq!(deque.binary_search(&7), Err(5));
+    assert_eq!(deque.binary_search(&20), Err(6));
+}
+
+#[test]
+fn test_binary_search_by() {
+    let deque: VecDeque<_> = vec![(1,), (2,), (3,), (5,), (6,)].into();
+
+    assert_eq!(deque.binary_search_by(|&(v,)| v.cmp(&3)), Ok(2));
+    assert_eq!(deque.binary_search_by(|&(v,)| v.cmp(&4)), Err(3));
+}
+
+#[test]
+fn test_binary_search_by_key() {
+    let deque: VecDeque<_> = vec![(1,), (2,), (3,), (5,), (6,)].into();
+
+    assert_eq!(deque.binary_search_by_key(&3, |&(v,)| v), Ok(2));
+    assert_eq!(deque.binary_search_by_key(&4, |&(v,)| v), Err(3));
+}
+
+#[test]
+fn test_zero_sized_push() {
+    const N: usize = 8;
+
+    // Zero sized type
+    struct Zst;
+
+    // Test that for all possible sequences of push_front / push_back,
+    // we end up with a deque of the correct size
+
+    for len in 0..N {
+        let mut tester = VecDeque::with_capacity(len);
+        assert_eq!(tester.len(), 0);
+        assert!(tester.capacity() >= len);
+        for case in 0..(1 << len) {
+            assert_eq!(tester.len(), 0);
+            for bit in 0..len {
+                if case & (1 << bit) != 0 {
+                    tester.push_front(Zst);
+                } else {
+                    tester.push_back(Zst);
+                }
+            }
+            assert_eq!(tester.len(), len);
+            assert_eq!(tester.iter().count(), len);
+            tester.clear();
+        }
+    }
 }

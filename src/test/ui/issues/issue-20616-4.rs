@@ -14,7 +14,7 @@ type Type_1_<'a, T> = &'a T;
 
 
 type Type_4<T> = Type_1_<'static,, T>;
-//~^ error: expected one of `>`, const, identifier, lifetime, or type, found `,`
+//~^ error: expected one of `>`, const, lifetime, or type, found `,`
 
 
 type Type_5_<'a> = Type_1_<'a, ()>;

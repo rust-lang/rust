@@ -1,0 +1,13 @@
+error: lifetime may not live long enough
+  --> $DIR/issue-75777.rs:13:5
+   |
+LL | fn inject<'a, Env: 'a, A: 'a + Send>(v: A) -> Box<dyn FnOnce(&'a Env) -> BoxFuture<'a, A>> {
+   |           -- lifetime `'a` defined here
+LL |     let fut: BoxFuture<'a, A> = Box::pin(future::ready(v));
+LL |     Box::new(move |_| fut)
+   |     ^^^^^^^^^^^^^^^^^^^^^^ returning this value requires that `'a` must outlive `'static`
+   |
+   = help: consider replacing `'a` with `'static`
+
+error: aborting due to previous error
+

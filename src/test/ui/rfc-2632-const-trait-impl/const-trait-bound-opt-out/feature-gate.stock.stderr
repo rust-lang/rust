@@ -1,5 +1,5 @@
 error[E0658]: `?const` on trait bounds is experimental
-  --> $DIR/feature-gate.rs:12:29
+  --> $DIR/feature-gate.rs:13:29
    |
 LL | const fn get_assoc_const<S: ?const T>() -> i32 { <S as T>::CONST }
    |                             ^^^^^^

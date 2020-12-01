@@ -44,13 +44,13 @@ incremental builds the default is 256 which allows caching to be more granular.
 
 ## control-flow-guard
 
-This flag controls whether LLVM enables the Windows [Control Flow 
-Guard](https://docs.microsoft.com/en-us/windows/win32/secbp/control-flow-guard) 
-platform security feature. This flag is currently ignored for non-Windows targets. 
+This flag controls whether LLVM enables the Windows [Control Flow
+Guard](https://docs.microsoft.com/en-us/windows/win32/secbp/control-flow-guard)
+platform security feature. This flag is currently ignored for non-Windows targets.
 It takes one of the following values:
 
 * `y`, `yes`, `on`, `checks`, or no value: enable Control Flow Guard.
-* `nochecks`: emit Control Flow Guard metadata without runtime enforcement checks (this 
+* `nochecks`: emit Control Flow Guard metadata without runtime enforcement checks (this
 should only be used for testing purposes as it does not provide security enforcement).
 * `n`, `no`, `off`: do not enable Control Flow Guard (the default).
 
@@ -199,6 +199,18 @@ the following values:
 
 An example of when this flag might be useful is when trying to construct code coverage
 metrics.
+
+## link-self-contained
+
+On targets that support it this flag controls whether the linker will use libraries and objects
+shipped with Rust instead or those in the system.
+It takes one of the following values:
+
+* no value: rustc will use heuristic to disable self-contained mode if system has necessary tools.
+* `y`, `yes`, `on`: use only libraries/objects shipped with Rust.
+* `n`, `no`, or `off`: rely on the user or the linker to provide non-Rust libraries/objects.
+
+This allows overriding cases when detection fails or user wants to use shipped libraries.
 
 ## linker
 
@@ -485,8 +497,10 @@ point instructions in software. It takes one of the following values:
 This instructs `rustc` to generate code specifically for a particular processor.
 
 You can run `rustc --print target-cpus` to see the valid options to pass
-here. Additionally, `native` can be passed to use the processor of the host
-machine. Each target has a default base CPU.
+here. Each target has a default base CPU. Special values include:
+
+* `native` can be passed to use the processor of the host machine. 
+* `generic` refers to an LLVM target with minimal features but modern tuning.
 
 ## target-feature
 
@@ -517,6 +531,20 @@ This also supports the feature `+crt-static` and `-crt-static` to control
 
 Each target and [`target-cpu`](#target-cpu) has a default set of enabled
 features.
+
+## tune-cpu
+
+This instructs `rustc` to schedule code specifically for a particular
+processor. This does not affect the compatibility (instruction sets or ABI),
+but should make your code slightly more efficient on the selected CPU.
+
+The valid options are the same as those for [`target-cpu`](#target-cpu).
+The default is `None`, which LLVM translates as the `target-cpu`.
+
+This is an unstable option. Use `-Z tune-cpu=machine` to specify a value.
+
+Due to limitations in LLVM (12.0.0-git9218f92), this option is currently
+effective only for x86 targets.
 
 [option-emit]: ../command-line-arguments.md#option-emit
 [option-o-optimize]: ../command-line-arguments.md#option-o-optimize

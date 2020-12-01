@@ -37,7 +37,7 @@ error[E0277]: can't compare `&str` with `char`
 LL |     if x == y {}
    |          ^^ no implementation for `&str == char`
    |
-   = help: the trait `std::cmp::PartialEq<char>` is not implemented for `&str`
+   = help: the trait `PartialEq<char>` is not implemented for `&str`
 
 error[E0308]: mismatched types
   --> $DIR/lex-bad-char-literals-6.rs:15:20
@@ -53,7 +53,7 @@ error[E0277]: can't compare `&str` with `char`
 LL |     if x == z {}
    |          ^^ no implementation for `&str == char`
    |
-   = help: the trait `std::cmp::PartialEq<char>` is not implemented for `&str`
+   = help: the trait `PartialEq<char>` is not implemented for `&str`
 
 error: aborting due to 6 previous errors
 

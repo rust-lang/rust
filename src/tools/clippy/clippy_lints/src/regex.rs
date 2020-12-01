@@ -11,7 +11,7 @@ use std::convert::TryFrom;
 
 declare_clippy_lint! {
     /// **What it does:** Checks [regex](https://crates.io/crates/regex) creation
-    /// (with `Regex::new`,`RegexBuilder::new` or `RegexSet::new`) for correct
+    /// (with `Regex::new`, `RegexBuilder::new`, or `RegexSet::new`) for correct
     /// regex syntax.
     ///
     /// **Why is this bad?** This will lead to a runtime panic.
@@ -29,7 +29,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// **What it does:** Checks for trivial [regex](https://crates.io/crates/regex)
-    /// creation (with `Regex::new`, `RegexBuilder::new` or `RegexSet::new`).
+    /// creation (with `Regex::new`, `RegexBuilder::new`, or `RegexSet::new`).
     ///
     /// **Why is this bad?** Matching the regex can likely be replaced by `==` or
     /// `str::starts_with`, `str::ends_with` or `std::contains` or other `str`
@@ -143,7 +143,7 @@ fn check_set<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, utf8: bool) {
 
 fn check_regex<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, utf8: bool) {
     let mut parser = regex_syntax::ParserBuilder::new()
-        .unicode(utf8)
+        .unicode(true)
         .allow_invalid_utf8(!utf8)
         .build();
 

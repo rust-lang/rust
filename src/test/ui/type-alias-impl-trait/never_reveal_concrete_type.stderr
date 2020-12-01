@@ -10,9 +10,9 @@ LL |     let _: &'static str = x;
    |            expected due to this
    |
    = note: expected reference `&'static str`
-            found opaque type `impl std::fmt::Debug`
+            found opaque type `impl Debug`
 
-error[E0605]: non-primitive cast: `impl std::fmt::Debug` as `&'static str`
+error[E0605]: non-primitive cast: `impl Debug` as `&'static str`
   --> $DIR/never_reveal_concrete_type.rs:14:13
    |
 LL |     let _ = x as &'static str;

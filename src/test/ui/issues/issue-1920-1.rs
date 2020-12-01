@@ -10,5 +10,5 @@ fn assert_clone<T>() where T : Clone { }
 
 fn main() {
     assert_clone::<foo::issue_1920::S>();
-    //~^ ERROR `foo::issue_1920::S: std::clone::Clone` is not satisfied
+    //~^ ERROR `S: Clone` is not satisfied
 }

@@ -435,7 +435,7 @@ impl TypeId {
     /// assert_eq!(is_string(&"cookie monster".to_string()), true);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_type_id", since = "1.46.0")]
+    #[rustc_const_unstable(feature = "const_type_id", issue = "77125")]
     pub const fn of<T: ?Sized + 'static>() -> TypeId {
         TypeId { t: intrinsics::type_id::<T>() }
     }

@@ -1,0 +1,110 @@
+error[E0658]: attributes on expressions are experimental
+  --> $DIR/nested-closure.rs:23:18
+   |
+LL |     let mut c1 = #[rustc_capture_analysis]
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+
+error[E0658]: attributes on expressions are experimental
+  --> $DIR/nested-closure.rs:33:22
+   |
+LL |         let mut c2 = #[rustc_capture_analysis]
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+
+warning: the feature `capture_disjoint_fields` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/nested-closure.rs:3:12
+   |
+LL | #![feature(capture_disjoint_fields)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+   = note: see issue #53488 <https://github.com/rust-lang/rust/issues/53488> for more information
+
+error: First Pass analysis includes:
+  --> $DIR/nested-closure.rs:36:9
+   |
+LL |         || p.y += incr;
+   |         ^^^^^^^^^^^^^^
+   |
+note: Capturing p[(1, 0)] -> MutBorrow
+  --> $DIR/nested-closure.rs:36:12
+   |
+LL |         || p.y += incr;
+   |            ^^^
+note: Capturing incr[] -> ImmBorrow
+  --> $DIR/nested-closure.rs:36:19
+   |
+LL |         || p.y += incr;
+   |                   ^^^^
+
+error: Min Capture analysis includes:
+  --> $DIR/nested-closure.rs:36:9
+   |
+LL |         || p.y += incr;
+   |         ^^^^^^^^^^^^^^
+   |
+note: Min Capture p[(1, 0)] -> MutBorrow
+  --> $DIR/nested-closure.rs:36:12
+   |
+LL |         || p.y += incr;
+   |            ^^^
+note: Min Capture incr[] -> ImmBorrow
+  --> $DIR/nested-closure.rs:36:19
+   |
+LL |         || p.y += incr;
+   |                   ^^^^
+
+error: First Pass analysis includes:
+  --> $DIR/nested-closure.rs:26:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         println!("{}", p.x);
+...  |
+LL | |         println!("{}", p.y);
+LL | |     };
+   | |_____^
+   |
+note: Capturing p[(0, 0)] -> ImmBorrow
+  --> $DIR/nested-closure.rs:29:24
+   |
+LL |         println!("{}", p.x);
+   |                        ^^^
+note: Capturing p[(1, 0)] -> MutBorrow
+  --> $DIR/nested-closure.rs:36:12
+   |
+LL |         || p.y += incr;
+   |            ^^^
+
+error: Min Capture analysis includes:
+  --> $DIR/nested-closure.rs:26:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         println!("{}", p.x);
+...  |
+LL | |         println!("{}", p.y);
+LL | |     };
+   | |_____^
+   |
+note: Min Capture p[(0, 0)] -> ImmBorrow
+  --> $DIR/nested-closure.rs:29:24
+   |
+LL |         println!("{}", p.x);
+   |                        ^^^
+note: Min Capture p[(1, 0)] -> MutBorrow
+  --> $DIR/nested-closure.rs:36:12
+   |
+LL |         || p.y += incr;
+   |            ^^^
+
+error: aborting due to 6 previous errors; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0658`.

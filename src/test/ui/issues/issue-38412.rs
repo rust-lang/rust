@@ -1,6 +1,6 @@
 fn main() {
     let Box(a) = loop { };
-    //~^ ERROR expected tuple struct or tuple variant, found struct `Box`
+    //~^ ERROR cannot match against a tuple struct which contains private fields
 
     // (The below is a trick to allow compiler to infer a type for
     // variable `a` without attempting to ascribe a type to the

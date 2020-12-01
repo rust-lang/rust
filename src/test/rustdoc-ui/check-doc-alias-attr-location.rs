@@ -1,5 +1,3 @@
-#![feature(doc_alias)]
-
 pub struct Bar;
 pub trait Foo {
     type X;

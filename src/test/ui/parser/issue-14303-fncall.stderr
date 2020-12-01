@@ -3,8 +3,6 @@ error[E0747]: type provided when a lifetime was expected
    |
 LL |         .collect::<Vec<S<_, 'a>>>();
    |                          ^
-   |
-   = note: lifetime arguments must be provided before type arguments
 
 error: aborting due to previous error
 

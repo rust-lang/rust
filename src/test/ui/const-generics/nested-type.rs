@@ -15,7 +15,6 @@ struct Foo<const N: [u8; { //[min]~ ERROR `[u8; _]` is forbidden
 
     Foo::<17>::value()
     //~^ ERROR calls in constants are limited to constant functions
-    //~| ERROR evaluation of constant value failed
 }]>;
 
 fn main() {}
