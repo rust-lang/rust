@@ -2131,6 +2131,7 @@ dependencies = [
  "rustc-workspace-hack",
  "rustc_version",
  "shell-escape",
+ "smallvec 1.4.2",
 ]
 
 [[package]]

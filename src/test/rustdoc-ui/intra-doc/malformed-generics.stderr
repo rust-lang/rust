@@ -1,0 +1,102 @@
+error: unresolved link to `Vec<`
+  --> $DIR/malformed-generics.rs:3:6
+   |
+LL | //! [Vec<]
+   |      ^^^^ unbalanced angle brackets
+   |
+note: the lint level is defined here
+  --> $DIR/malformed-generics.rs:1:9
+   |
+LL | #![deny(broken_intra_doc_links)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+
+error: unresolved link to `Vec<Box<T`
+  --> $DIR/malformed-generics.rs:4:6
+   |
+LL | //! [Vec<Box<T]
+   |      ^^^^^^^^^ unbalanced angle brackets
+
+error: unresolved link to `Vec<Box<T>`
+  --> $DIR/malformed-generics.rs:5:6
+   |
+LL | //! [Vec<Box<T>]
+   |      ^^^^^^^^^^ unbalanced angle brackets
+
+error: unresolved link to `Vec<Box<T>>>`
+  --> $DIR/malformed-generics.rs:6:6
+   |
+LL | //! [Vec<Box<T>>>]
+   |      ^^^^^^^^^^^^ unbalanced angle brackets
+
+error: unresolved link to `Vec<T>>>`
+  --> $DIR/malformed-generics.rs:7:6
+   |
+LL | //! [Vec<T>>>]
+   |      ^^^^^^^^ unbalanced angle brackets
+
+error: unresolved link to `<Vec`
+  --> $DIR/malformed-generics.rs:8:6
+   |
+LL | //! [<Vec]
+   |      ^^^^ unbalanced angle brackets
+
+error: unresolved link to `Vec::<`
+  --> $DIR/malformed-generics.rs:9:6
+   |
+LL | //! [Vec::<]
+   |      ^^^^^^ unbalanced angle brackets
+
+error: unresolved link to `<T>`
+  --> $DIR/malformed-generics.rs:10:6
+   |
+LL | //! [<T>]
+   |      ^^^ missing type for generic parameters
+
+error: unresolved link to `<invalid syntax>`
+  --> $DIR/malformed-generics.rs:11:6
+   |
+LL | //! [<invalid syntax>]
+   |      ^^^^^^^^^^^^^^^^ missing type for generic parameters
+
+error: unresolved link to `Vec:<T>:new`
+  --> $DIR/malformed-generics.rs:12:6
+   |
+LL | //! [Vec:<T>:new()]
+   |      ^^^^^^^^^^^^^ has invalid path separator
+
+error: unresolved link to `Vec<<T>>`
+  --> $DIR/malformed-generics.rs:13:6
+   |
+LL | //! [Vec<<T>>]
+   |      ^^^^^^^^ too many angle brackets
+
+error: unresolved link to `Vec<>`
+  --> $DIR/malformed-generics.rs:14:6
+   |
+LL | //! [Vec<>]
+   |      ^^^^^ empty angle brackets
+
+error: unresolved link to `Vec<<>>`
+  --> $DIR/malformed-generics.rs:15:6
+   |
+LL | //! [Vec<<>>]
+   |      ^^^^^^^ too many angle brackets
+
+error: unresolved link to `<Vec as IntoIterator>::into_iter`
+  --> $DIR/malformed-generics.rs:18:6
+   |
+LL | //! [<Vec as IntoIterator>::into_iter]
+   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ fully-qualified syntax is unsupported
+   |
+   = note: see https://github.com/rust-lang/rust/issues/74563 for more information
+
+error: unresolved link to `<Vec<T> as IntoIterator>::iter`
+  --> $DIR/malformed-generics.rs:19:6
+   |
+LL | //! [<Vec<T> as IntoIterator>::iter]
+   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ fully-qualified syntax is unsupported
+   |
+   = note: see https://github.com/rust-lang/rust/issues/74563 for more information
+
+error: aborting due to 15 previous errors
+

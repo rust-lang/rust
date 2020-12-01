@@ -1692,13 +1692,13 @@ fn print_item(cx: &Context, item: &clean::Item, buf: &mut Buffer, cache: &Cache)
     debug_assert!(!item.is_stripped());
     // Write the breadcrumb trail header for the top
     write!(buf, "<h1 class=\"fqn\"><span class=\"out-of-band\">");
-    if let Some(version) = item.stable_since() {
-        write!(
-            buf,
-            "<span class=\"since\" title=\"Stable since Rust version {0}\">{0}</span>",
-            version
-        );
-    }
+    render_stability_since_raw(
+        buf,
+        item.stable_since().as_deref(),
+        item.const_stable_since().as_deref(),
+        None,
+        None,
+    );
     write!(
         buf,
         "<span id=\"render-detail\">\
@@ -2476,6 +2476,7 @@ fn render_implementor(
         AssocItemLink::Anchor(None),
         RenderMode::Normal,
         implementor.impl_item.stable_since().as_deref(),
+        implementor.impl_item.const_stable_since().as_deref(),
         false,
         Some(use_absolute),
         false,
@@ -2506,6 +2507,7 @@ fn render_impls(
                 assoc_link,
                 RenderMode::Normal,
                 containing_item.stable_since().as_deref(),
+                containing_item.const_stable_since().as_deref(),
                 true,
                 None,
                 false,
@@ -2756,6 +2758,7 @@ fn item_trait(w: &mut Buffer, cx: &Context, it: &clean::Item, t: &clean::Trait, 
                     assoc_link,
                     RenderMode::Normal,
                     implementor.impl_item.stable_since().as_deref(),
+                    implementor.impl_item.const_stable_since().as_deref(),
                     false,
                     None,
                     true,
@@ -2898,10 +2901,40 @@ fn assoc_type(
     }
 }
 
-fn render_stability_since_raw(w: &mut Buffer, ver: Option<&str>, containing_ver: Option<&str>) {
+fn render_stability_since_raw(
+    w: &mut Buffer,
+    ver: Option<&str>,
+    const_ver: Option<&str>,
+    containing_ver: Option<&str>,
+    containing_const_ver: Option<&str>,
+) {
+    let ver = ver.and_then(|inner| if !inner.is_empty() { Some(inner) } else { None });
+
+    let const_ver = const_ver.and_then(|inner| if !inner.is_empty() { Some(inner) } else { None });
+
     if let Some(v) = ver {
-        if containing_ver != ver && !v.is_empty() {
-            write!(w, "<span class=\"since\" title=\"Stable since Rust version {0}\">{0}</span>", v)
+        if let Some(cv) = const_ver {
+            if const_ver != containing_const_ver {
+                write!(
+                    w,
+                    "<span class=\"since\" title=\"Stable since Rust version {0}, const since {1}\">{0} (const: {1})</span>",
+                    v, cv
+                );
+            } else if ver != containing_ver {
+                write!(
+                    w,
+                    "<span class=\"since\" title=\"Stable since Rust version {0}\">{0}</span>",
+                    v
+                );
+            }
+        } else {
+            if ver != containing_ver {
+                write!(
+                    w,
+                    "<span class=\"since\" title=\"Stable since Rust version {0}\">{0}</span>",
+                    v
+                );
+            }
         }
     }
 }
@@ -2910,7 +2943,9 @@ fn render_stability_since(w: &mut Buffer, item: &clean::Item, containing_item: &
     render_stability_since_raw(
         w,
         item.stable_since().as_deref(),
+        item.const_stable_since().as_deref(),
         containing_item.stable_since().as_deref(),
+        containing_item.const_stable_since().as_deref(),
     )
 }
 
@@ -3462,6 +3497,7 @@ fn render_assoc_items(
                 AssocItemLink::Anchor(None),
                 render_mode,
                 containing_item.stable_since().as_deref(),
+                containing_item.const_stable_since().as_deref(),
                 true,
                 None,
                 false,
@@ -3654,6 +3690,7 @@ fn render_impl(
     link: AssocItemLink<'_>,
     render_mode: RenderMode,
     outer_version: Option<&str>,
+    outer_const_version: Option<&str>,
     show_def_docs: bool,
     use_absolute: Option<bool>,
     is_on_foreign_type: bool,
@@ -3705,11 +3742,13 @@ fn render_impl(
             );
         }
         write!(w, "<a href=\"#{}\" class=\"anchor\"></a>", id);
-        let since = i.impl_item.stability.as_ref().and_then(|s| match s.level {
-            StabilityLevel::Stable { since } => Some(since.as_str()),
-            StabilityLevel::Unstable { .. } => None,
-        });
-        render_stability_since_raw(w, since.as_deref(), outer_version);
+        render_stability_since_raw(
+            w,
+            i.impl_item.stable_since().as_deref(),
+            i.impl_item.const_stable_since().as_deref(),
+            outer_version,
+            outer_const_version,
+        );
         write_srclink(cx, &i.impl_item, w, cache);
         write!(w, "</h3>");
 
@@ -3746,6 +3785,7 @@ fn render_impl(
         render_mode: RenderMode,
         is_default_item: bool,
         outer_version: Option<&str>,
+        outer_const_version: Option<&str>,
         trait_: Option<&clean::Trait>,
         show_def_docs: bool,
         cache: &Cache,
@@ -3775,7 +3815,13 @@ fn render_impl(
                     write!(w, "<code>");
                     render_assoc_item(w, item, link.anchor(&id), ItemType::Impl);
                     write!(w, "</code>");
-                    render_stability_since_raw(w, item.stable_since().as_deref(), outer_version);
+                    render_stability_since_raw(
+                        w,
+                        item.stable_since().as_deref(),
+                        item.const_stable_since().as_deref(),
+                        outer_version,
+                        outer_const_version,
+                    );
                     write_srclink(cx, item, w, cache);
                     write!(w, "</h4>");
                 }
@@ -3791,7 +3837,13 @@ fn render_impl(
                 write!(w, "<h4 id=\"{}\" class=\"{}{}\"><code>", id, item_type, extra_class);
                 assoc_const(w, item, ty, default.as_ref(), link.anchor(&id), "");
                 write!(w, "</code>");
-                render_stability_since_raw(w, item.stable_since().as_deref(), outer_version);
+                render_stability_since_raw(
+                    w,
+                    item.stable_since().as_deref(),
+                    item.const_stable_since().as_deref(),
+                    outer_version,
+                    outer_const_version,
+                );
                 write_srclink(cx, item, w, cache);
                 write!(w, "</h4>");
             }
@@ -3854,6 +3906,7 @@ fn render_impl(
             render_mode,
             false,
             outer_version,
+            outer_const_version,
             trait_,
             show_def_docs,
             cache,
@@ -3868,6 +3921,7 @@ fn render_impl(
         parent: &clean::Item,
         render_mode: RenderMode,
         outer_version: Option<&str>,
+        outer_const_version: Option<&str>,
         show_def_docs: bool,
         cache: &Cache,
     ) {
@@ -3888,6 +3942,7 @@ fn render_impl(
                 render_mode,
                 true,
                 outer_version,
+                outer_const_version,
                 None,
                 show_def_docs,
                 cache,
@@ -3909,6 +3964,7 @@ fn render_impl(
                 &i.impl_item,
                 render_mode,
                 outer_version,
+                outer_const_version,
                 show_def_docs,
                 cache,
             );

@@ -1515,9 +1515,12 @@ impl Clean<Type> for hir::Ty<'_> {
 }
 
 /// Returns `None` if the type could not be normalized
-#[allow(unreachable_code, unused_variables)]
 fn normalize(cx: &DocContext<'tcx>, ty: Ty<'_>) -> Option<Ty<'tcx>> {
-    return None; // HACK: low-churn fix for #79459 while we wait for a trait normalization fix
+    // HACK: low-churn fix for #79459 while we wait for a trait normalization fix
+    if !cx.tcx.sess.opts.debugging_opts.normalize_docs {
+        return None;
+    }
+
     use crate::rustc_trait_selection::infer::TyCtxtInferExt;
     use crate::rustc_trait_selection::traits::query::normalize::AtExt;
     use rustc_middle::traits::ObligationCause;
@@ -2189,6 +2192,7 @@ fn clean_extern_crate(
         def_id: crate_def_id,
         visibility: krate.vis.clean(cx),
         stability: None,
+        const_stability: None,
         deprecation: None,
         kind: ExternCrateItem(name.clean(cx), path),
     }]
@@ -2259,6 +2263,7 @@ impl Clean<Vec<Item>> for doctree::Import<'_> {
                         def_id: cx.tcx.hir().local_def_id(self.id).to_def_id(),
                         visibility: self.vis.clean(cx),
                         stability: None,
+                        const_stability: None,
                         deprecation: None,
                         kind: ImportItem(Import::new_simple(
                             self.name.clean(cx),
@@ -2279,6 +2284,7 @@ impl Clean<Vec<Item>> for doctree::Import<'_> {
             def_id: DefId::local(CRATE_DEF_INDEX),
             visibility: self.vis.clean(cx),
             stability: None,
+            const_stability: None,
             deprecation: None,
             kind: ImportItem(inner),
         }]

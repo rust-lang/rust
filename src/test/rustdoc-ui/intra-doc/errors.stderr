@@ -1,0 +1,143 @@
+error: unresolved link to `path::to::nonexistent::module`
+  --> $DIR/errors.rs:7:6
+   |
+LL | /// [path::to::nonexistent::module]
+   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no item named `path` in scope
+   |
+note: the lint level is defined here
+  --> $DIR/errors.rs:1:9
+   |
+LL | #![deny(broken_intra_doc_links)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+
+error: unresolved link to `path::to::nonexistent::macro`
+  --> $DIR/errors.rs:11:6
+   |
+LL | /// [path::to::nonexistent::macro!]
+   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no item named `path` in scope
+
+error: unresolved link to `path::to::nonexistent::type`
+  --> $DIR/errors.rs:15:6
+   |
+LL | /// [type@path::to::nonexistent::type]
+   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no item named `path` in scope
+
+error: unresolved link to `std::io::not::here`
+  --> $DIR/errors.rs:19:6
+   |
+LL | /// [std::io::not::here]
+   |      ^^^^^^^^^^^^^^^^^^ no item named `not` in module `io`
+
+error: unresolved link to `std::io::not::here`
+  --> $DIR/errors.rs:23:6
+   |
+LL | /// [type@std::io::not::here]
+   |      ^^^^^^^^^^^^^^^^^^^^^^^ no item named `not` in module `io`
+
+error: unresolved link to `std::io::Error::x`
+  --> $DIR/errors.rs:27:6
+   |
+LL | /// [std::io::Error::x]
+   |      ^^^^^^^^^^^^^^^^^ the struct `Error` has no field or associated item named `x`
+
+error: unresolved link to `std::io::ErrorKind::x`
+  --> $DIR/errors.rs:31:6
+   |
+LL | /// [std::io::ErrorKind::x]
+   |      ^^^^^^^^^^^^^^^^^^^^^ the enum `ErrorKind` has no variant or associated item named `x`
+
+error: unresolved link to `f::A`
+  --> $DIR/errors.rs:35:6
+   |
+LL | /// [f::A]
+   |      ^^^^ `f` is a function, not a module or type, and cannot have associated items
+
+error: unresolved link to `f::A`
+  --> $DIR/errors.rs:39:6
+   |
+LL | /// [f::A!]
+   |      ^^^^^ `f` is a function, not a module or type, and cannot have associated items
+
+error: unresolved link to `S::A`
+  --> $DIR/errors.rs:43:6
+   |
+LL | /// [S::A]
+   |      ^^^^ the struct `S` has no field or associated item named `A`
+
+error: unresolved link to `S::fmt`
+  --> $DIR/errors.rs:47:6
+   |
+LL | /// [S::fmt]
+   |      ^^^^^^ the struct `S` has no field or associated item named `fmt`
+
+error: unresolved link to `E::D`
+  --> $DIR/errors.rs:51:6
+   |
+LL | /// [E::D]
+   |      ^^^^ the enum `E` has no variant or associated item named `D`
+
+error: unresolved link to `u8::not_found`
+  --> $DIR/errors.rs:55:6
+   |
+LL | /// [u8::not_found]
+   |      ^^^^^^^^^^^^^ the builtin type `u8` has no associated item named `not_found`
+
+error: unresolved link to `std::primitive::u8::not_found`
+  --> $DIR/errors.rs:59:6
+   |
+LL | /// [std::primitive::u8::not_found]
+   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the builtin type `u8` has no associated item named `not_found`
+
+error: unresolved link to `Vec::into_iter`
+  --> $DIR/errors.rs:63:6
+   |
+LL | /// [type@Vec::into_iter]
+   |      ^^^^^^^^^^^^^^^^^^^
+   |      |
+   |      this link resolves to the associated function `into_iter`, which is not in the type namespace
+   |      help: to link to the associated function, add parentheses: `Vec::into_iter()`
+
+error: unresolved link to `S`
+  --> $DIR/errors.rs:68:6
+   |
+LL | /// [S!]
+   |      ^^
+   |      |
+   |      this link resolves to the struct `S`, which is not in the macro namespace
+   |      help: to link to the struct, prefix with `struct@`: `struct@S`
+
+error: unresolved link to `S::h`
+  --> $DIR/errors.rs:78:6
+   |
+LL | /// [type@S::h]
+   |      ^^^^^^^^^
+   |      |
+   |      this link resolves to the associated function `h`, which is not in the type namespace
+   |      help: to link to the associated function, add parentheses: `S::h()`
+
+error: unresolved link to `T::g`
+  --> $DIR/errors.rs:86:6
+   |
+LL | /// [type@T::g]
+   |      ^^^^^^^^^
+   |      |
+   |      this link resolves to the associated function `g`, which is not in the type namespace
+   |      help: to link to the associated function, add parentheses: `T::g()`
+
+error: unresolved link to `T::h`
+  --> $DIR/errors.rs:91:6
+   |
+LL | /// [T::h!]
+   |      ^^^^^ the trait `T` has no macro named `h`
+
+error: unresolved link to `m`
+  --> $DIR/errors.rs:98:6
+   |
+LL | /// [m()]
+   |      ^^^
+   |      |
+   |      this link resolves to the macro `m`, which is not in the value namespace
+   |      help: to link to the macro, add an exclamation mark: `m!`
+
+error: aborting due to 20 previous errors
+

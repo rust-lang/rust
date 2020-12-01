@@ -1,5 +1,6 @@
 use std::env::*;
 use std::ffi::{OsStr, OsString};
+use std::path::PathBuf;
 
 use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
@@ -75,4 +76,64 @@ fn test_env_set_var() {
     assert!(!e.any(|(k, v)| { &*k == &*n && &*v == "VALUE" }));
 
     assert!(vars_os().any(|(k, v)| { &*k == &*n && &*v == "VALUE" }));
+}
+
+#[test]
+#[cfg_attr(any(target_os = "emscripten", target_env = "sgx"), ignore)]
+#[allow(deprecated)]
+fn env_home_dir() {
+    fn var_to_os_string(var: Result<String, VarError>) -> Option<OsString> {
+        match var {
+            Ok(var) => Some(OsString::from(var)),
+            Err(VarError::NotUnicode(var)) => Some(var),
+            _ => None,
+        }
+    }
+
+    cfg_if::cfg_if! {
+        if #[cfg(unix)] {
+            let oldhome = var_to_os_string(var("HOME"));
+
+            set_var("HOME", "/home/MountainView");
+            assert_eq!(home_dir(), Some(PathBuf::from("/home/MountainView")));
+
+            remove_var("HOME");
+            if cfg!(target_os = "android") {
+                assert!(home_dir().is_none());
+            } else {
+                // When HOME is not set, some platforms return `None`,
+                // but others return `Some` with a default.
+                // Just check that it is not "/home/MountainView".
+                assert_ne!(home_dir(), Some(PathBuf::from("/home/MountainView")));
+            }
+
+            if let Some(oldhome) = oldhome { set_var("HOME", oldhome); }
+        } else if #[cfg(windows)] {
+            let oldhome = var_to_os_string(var("HOME"));
+            let olduserprofile = var_to_os_string(var("USERPROFILE"));
+
+            remove_var("HOME");
+            remove_var("USERPROFILE");
+
+            assert!(home_dir().is_some());
+
+            set_var("HOME", "/home/MountainView");
+            assert_eq!(home_dir(), Some(PathBuf::from("/home/MountainView")));
+
+            remove_var("HOME");
+
+            set_var("USERPROFILE", "/home/MountainView");
+            assert_eq!(home_dir(), Some(PathBuf::from("/home/MountainView")));
+
+            set_var("HOME", "/home/MountainView");
+            set_var("USERPROFILE", "/home/PaloAlto");
+            assert_eq!(home_dir(), Some(PathBuf::from("/home/MountainView")));
+
+            remove_var("HOME");
+            remove_var("USERPROFILE");
+
+            if let Some(oldhome) = oldhome { set_var("HOME", oldhome); }
+            if let Some(olduserprofile) = olduserprofile { set_var("USERPROFILE", olduserprofile); }
+        }
+    }
 }
