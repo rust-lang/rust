@@ -723,7 +723,7 @@ impl<T: ?Sized> *const T {
     ///
     /// See [`ptr::read`] for safety concerns and examples.
     ///
-    /// [`ptr::read`]: ./ptr/fn.read.html
+    /// [`ptr::read`]: crate::ptr::read()
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline]
     pub unsafe fn read(self) -> T
@@ -743,7 +743,7 @@ impl<T: ?Sized> *const T {
     ///
     /// See [`ptr::read_volatile`] for safety concerns and examples.
     ///
-    /// [`ptr::read_volatile`]: ./ptr/fn.read_volatile.html
+    /// [`ptr::read_volatile`]: crate::ptr::read_volatile()
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline]
     pub unsafe fn read_volatile(self) -> T
@@ -761,7 +761,7 @@ impl<T: ?Sized> *const T {
     ///
     /// See [`ptr::read_unaligned`] for safety concerns and examples.
     ///
-    /// [`ptr::read_unaligned`]: ./ptr/fn.read_unaligned.html
+    /// [`ptr::read_unaligned`]: crate::ptr::read_unaligned()
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline]
     pub unsafe fn read_unaligned(self) -> T
@@ -779,7 +779,7 @@ impl<T: ?Sized> *const T {
     ///
     /// See [`ptr::copy`] for safety concerns and examples.
     ///
-    /// [`ptr::copy`]: ./ptr/fn.copy.html
+    /// [`ptr::copy`]: crate::ptr::copy()
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline]
     pub unsafe fn copy_to(self, dest: *mut T, count: usize)
@@ -797,7 +797,7 @@ impl<T: ?Sized> *const T {
     ///
     /// See [`ptr::copy_nonoverlapping`] for safety concerns and examples.
     ///
-    /// [`ptr::copy_nonoverlapping`]: ./ptr/fn.copy_nonoverlapping.html
+    /// [`ptr::copy_nonoverlapping`]: crate::ptr::copy_nonoverlapping()
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline]
     pub unsafe fn copy_to_nonoverlapping(self, dest: *mut T, count: usize)

@@ -2252,9 +2252,9 @@ impl str {
     /// but non-ASCII letters are unchanged.
     ///
     /// To return a new uppercased value without modifying the existing one, use
-    /// [`to_ascii_uppercase`].
+    /// [`to_ascii_uppercase()`].
     ///
-    /// [`to_ascii_uppercase`]: #method.to_ascii_uppercase
+    /// [`to_ascii_uppercase()`]: #method.to_ascii_uppercase
     ///
     /// # Examples
     ///
@@ -2279,9 +2279,9 @@ impl str {
     /// but non-ASCII letters are unchanged.
     ///
     /// To return a new lowercased value without modifying the existing one, use
-    /// [`to_ascii_lowercase`].
+    /// [`to_ascii_lowercase()`].
     ///
-    /// [`to_ascii_lowercase`]: #method.to_ascii_lowercase
+    /// [`to_ascii_lowercase()`]: #method.to_ascii_lowercase
     ///
     /// # Examples
     ///

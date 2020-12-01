@@ -120,8 +120,7 @@ where
 /// This `struct` is created by the [`flatten`] method on [`Iterator`]. See its
 /// documentation for more.
 ///
-/// [`flatten`]: Iterator::flatten
-/// [`Iterator`]: trait.Iterator.html
+/// [`flatten`]: Iterator::flatten()
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "iterator_flatten", since = "1.29.0")]
 pub struct Flatten<I: Iterator<Item: IntoIterator>> {

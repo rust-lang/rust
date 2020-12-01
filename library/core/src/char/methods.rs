@@ -109,8 +109,6 @@ impl char {
     /// `char`s. `from_u32()` will return `None` if the input is not a valid value
     /// for a `char`.
     ///
-    /// [`u32`]: primitive.u32.html
-    ///
     /// For an unsafe version of this function which ignores these checks, see
     /// [`from_u32_unchecked`].
     ///
@@ -158,8 +156,6 @@ impl char {
     /// However, the reverse is not true: not all valid [`u32`]s are valid
     /// `char`s. `from_u32_unchecked()` will ignore this, and blindly cast to
     /// `char`, possibly creating an invalid one.
-    ///
-    /// [`u32`]: primitive.u32.html
     ///
     /// # Safety
     ///
@@ -249,7 +245,7 @@ impl char {
     /// sixteen, hexadecimal, to give some common values. Arbitrary
     /// radices are supported.
     ///
-    /// Compared to `is_numeric()`, this function only recognizes the characters
+    /// Compared to [`is_numeric()`], this function only recognizes the characters
     /// `0-9`, `a-z` and `A-Z`.
     ///
     /// 'Digit' is defined to be only the following characters:
@@ -258,9 +254,9 @@ impl char {
     /// * `a-z`
     /// * `A-Z`
     ///
-    /// For a more comprehensive understanding of 'digit', see [`is_numeric`][is_numeric].
+    /// For a more comprehensive understanding of 'digit', see [`is_numeric()`].
     ///
-    /// [is_numeric]: #method.is_numeric
+    /// [`is_numeric()`]: #method.is_numeric
     ///
     /// # Panics
     ///
@@ -483,9 +479,9 @@ impl char {
     /// * Any character in the 'printable ASCII' range `0x20` .. `0x7e`
     ///   inclusive is not escaped.
     /// * All other characters are given hexadecimal Unicode escapes; see
-    ///   [`escape_unicode`][escape_unicode].
+    ///   [`escape_unicode`].
     ///
-    /// [escape_unicode]: #method.escape_unicode
+    /// [`escape_unicode`]: #method.escape_unicode
     ///
     /// # Examples
     ///
@@ -503,7 +499,6 @@ impl char {
     /// ```
     /// println!("{}", '"'.escape_default());
     /// ```
-    ///
     ///
     /// Both are equivalent to:
     ///
@@ -584,10 +579,10 @@ impl char {
     /// Returns the number of 16-bit code units this `char` would need if
     /// encoded in UTF-16.
     ///
-    /// See the documentation for [`len_utf8`] for more explanation of this
+    /// See the documentation for [`len_utf8()`] for more explanation of this
     /// concept. This function is a mirror, but for UTF-16 instead of UTF-8.
     ///
-    /// [`len_utf8`]: #method.len_utf8
+    /// [`len_utf8()`]: #method.len_utf8
     ///
     /// # Examples
     ///
@@ -1075,10 +1070,10 @@ impl char {
     /// ASCII letters 'a' to 'z' are mapped to 'A' to 'Z',
     /// but non-ASCII letters are unchanged.
     ///
-    /// To uppercase the value in-place, use [`make_ascii_uppercase`].
+    /// To uppercase the value in-place, use [`make_ascii_uppercase()`].
     ///
     /// To uppercase ASCII characters in addition to non-ASCII characters, use
-    /// [`to_uppercase`].
+    /// [`to_uppercase()`].
     ///
     /// # Examples
     ///
@@ -1090,8 +1085,8 @@ impl char {
     /// assert_eq!('❤', non_ascii.to_ascii_uppercase());
     /// ```
     ///
-    /// [`make_ascii_uppercase`]: #method.make_ascii_uppercase
-    /// [`to_uppercase`]: #method.to_uppercase
+    /// [`make_ascii_uppercase()`]: #method.make_ascii_uppercase
+    /// [`to_uppercase()`]: #method.to_uppercase
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
     pub fn to_ascii_uppercase(&self) -> char {
@@ -1103,10 +1098,10 @@ impl char {
     /// ASCII letters 'A' to 'Z' are mapped to 'a' to 'z',
     /// but non-ASCII letters are unchanged.
     ///
-    /// To lowercase the value in-place, use [`make_ascii_lowercase`].
+    /// To lowercase the value in-place, use [`make_ascii_lowercase()`].
     ///
     /// To lowercase ASCII characters in addition to non-ASCII characters, use
-    /// [`to_lowercase`].
+    /// [`to_lowercase()`].
     ///
     /// # Examples
     ///
@@ -1118,8 +1113,8 @@ impl char {
     /// assert_eq!('❤', non_ascii.to_ascii_lowercase());
     /// ```
     ///
-    /// [`make_ascii_lowercase`]: #method.make_ascii_lowercase
-    /// [`to_lowercase`]: #method.to_lowercase
+    /// [`make_ascii_lowercase()`]: #method.make_ascii_lowercase
+    /// [`to_lowercase()`]: #method.to_lowercase
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
     pub fn to_ascii_lowercase(&self) -> char {
@@ -1153,7 +1148,7 @@ impl char {
     /// but non-ASCII letters are unchanged.
     ///
     /// To return a new uppercased value without modifying the existing one, use
-    /// [`to_ascii_uppercase`].
+    /// [`to_ascii_uppercase()`].
     ///
     /// # Examples
     ///
@@ -1165,7 +1160,7 @@ impl char {
     /// assert_eq!('A', ascii);
     /// ```
     ///
-    /// [`to_ascii_uppercase`]: #method.to_ascii_uppercase
+    /// [`to_ascii_uppercase()`]: #method.to_ascii_uppercase
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
     pub fn make_ascii_uppercase(&mut self) {
@@ -1178,7 +1173,7 @@ impl char {
     /// but non-ASCII letters are unchanged.
     ///
     /// To return a new lowercased value without modifying the existing one, use
-    /// [`to_ascii_lowercase`].
+    /// [`to_ascii_lowercase()`].
     ///
     /// # Examples
     ///
@@ -1190,7 +1185,7 @@ impl char {
     /// assert_eq!('a', ascii);
     /// ```
     ///
-    /// [`to_ascii_lowercase`]: #method.to_ascii_lowercase
+    /// [`to_ascii_lowercase()`]: #method.to_ascii_lowercase
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
     pub fn make_ascii_lowercase(&mut self) {

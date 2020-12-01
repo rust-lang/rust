@@ -929,7 +929,7 @@ impl<T: ?Sized> RefCell<T> {
     /// Also, please be aware that this method is only for special circumstances and is usually
     /// not what you want. In case of doubt, use [`borrow_mut`] instead.
     ///
-    /// [`borrow_mut`]: #method.borrow_mut
+    /// [`borrow_mut`]: RefCell::borrow_mut()
     ///
     /// # Examples
     ///
@@ -953,7 +953,7 @@ impl<T: ?Sized> RefCell<T> {
     /// ensure no borrows exist and then resets the state tracking shared borrows. This is relevant
     /// if some `Ref` or `RefMut` borrows have been leaked.
     ///
-    /// [`get_mut`]: #method.get_mut
+    /// [`get_mut`]: RefCell::get_mut()
     ///
     /// # Examples
     ///
@@ -1745,7 +1745,7 @@ impl<T: ?Sized> UnsafeCell<T> {
     /// when casting to `&mut T`, and ensure that there are no mutations
     /// or mutable aliases going on when casting to `&T`.
     ///
-    /// [`get`]: #method.get
+    /// [`get`]: UnsafeCell::get()
     ///
     /// # Examples
     ///
