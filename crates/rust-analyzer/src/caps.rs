@@ -1,6 +1,7 @@
 //! Advertizes the capabilities of the LSP Server.
 use std::env;
 
+use ide::CompletionResolveCapability;
 use lsp_types::{
     CallHierarchyServerCapability, ClientCapabilities, CodeActionKind, CodeActionOptions,
     CodeActionProviderCapability, CodeLensOptions, CompletionOptions,
@@ -11,6 +12,7 @@ use lsp_types::{
     TextDocumentSyncKind, TextDocumentSyncOptions, TypeDefinitionProviderCapability,
     WorkDoneProgressOptions,
 };
+use rustc_hash::FxHashSet;
 use serde_json::json;
 
 use crate::semantic_tokens;
@@ -48,7 +50,9 @@ pub fn server_capabilities(client_caps: &ClientCapabilities) -> ServerCapabiliti
         document_symbol_provider: Some(OneOf::Left(true)),
         workspace_symbol_provider: Some(OneOf::Left(true)),
         code_action_provider: Some(code_action_capabilities(client_caps)),
-        code_lens_provider: Some(CodeLensOptions { resolve_provider: Some(true) }),
+        code_lens_provider: Some(CodeLensOptions {
+            resolve_provider: resolve_provider(client_caps),
+        }),
         document_formatting_provider: Some(OneOf::Left(true)),
         document_range_formatting_provider: None,
         document_on_type_formatting_provider: Some(DocumentOnTypeFormattingOptions {
@@ -91,6 +95,41 @@ pub fn server_capabilities(client_caps: &ClientCapabilities) -> ServerCapabiliti
             },
         })),
     }
+}
+
+fn resolve_provider(client_caps: &ClientCapabilities) -> Option<bool> {
+    if enabled_resolve_capabilities(client_caps)?.is_empty() {
+        None
+    } else {
+        Some(true)
+    }
+}
+
+/// Parses client capabilities and returns all that rust-analyzer supports.
+pub fn enabled_resolve_capabilities(
+    caps: &ClientCapabilities,
+) -> Option<FxHashSet<CompletionResolveCapability>> {
+    Some(
+        caps.text_document
+            .as_ref()?
+            .completion
+            .as_ref()?
+            .completion_item
+            .as_ref()?
+            .resolve_support
+            .as_ref()?
+            .properties
+            .iter()
+            .filter_map(|cap_string| {
+                Some(match cap_string.as_str() {
+                    "additionalTextEdits" => CompletionResolveCapability::AdditionalTextEdits,
+                    "detail" => CompletionResolveCapability::Detail,
+                    "documentation" => CompletionResolveCapability::Documentation,
+                    _unsupported => return None,
+                })
+            })
+            .collect(),
+    )
 }
 
 fn code_action_capabilities(client_caps: &ClientCapabilities) -> CodeActionProviderCapability {

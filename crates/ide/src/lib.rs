@@ -80,8 +80,8 @@ pub use crate::{
     },
 };
 pub use completion::{
-    CompletionConfig, CompletionItem, CompletionItemKind, CompletionScore, ImportToAdd,
-    InsertTextFormat,
+    CompletionConfig, CompletionItem, CompletionItemKind, CompletionResolveCapability,
+    CompletionScore, ImportToAdd, InsertTextFormat,
 };
 pub use ide_db::{
     call_info::CallInfo,

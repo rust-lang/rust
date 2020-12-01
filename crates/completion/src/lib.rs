@@ -17,7 +17,7 @@ use ide_db::RootDatabase;
 use crate::{completions::Completions, context::CompletionContext, item::CompletionKind};
 
 pub use crate::{
-    config::CompletionConfig,
+    config::{CompletionConfig, CompletionResolveCapability},
     item::{CompletionItem, CompletionItemKind, CompletionScore, ImportToAdd, InsertTextFormat},
 };
 

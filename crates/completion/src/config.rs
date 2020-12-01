@@ -5,6 +5,7 @@
 //! completions if we are allowed to.
 
 use ide_db::helpers::insert_use::MergeBehaviour;
+use rustc_hash::FxHashSet;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CompletionConfig {
@@ -14,6 +15,14 @@ pub struct CompletionConfig {
     pub add_call_argument_snippets: bool,
     pub snippet_cap: Option<SnippetCap>,
     pub merge: Option<MergeBehaviour>,
+    pub resolve_capabilities: FxHashSet<CompletionResolveCapability>,
+}
+
+#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq)]
+pub enum CompletionResolveCapability {
+    Documentation,
+    Detail,
+    AdditionalTextEdits,
 }
 
 impl CompletionConfig {
@@ -36,6 +45,7 @@ impl Default for CompletionConfig {
             add_call_argument_snippets: true,
             snippet_cap: Some(SnippetCap { _private: () }),
             merge: Some(MergeBehaviour::Full),
+            resolve_capabilities: FxHashSet::default(),
         }
     }
 }
