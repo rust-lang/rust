@@ -36,7 +36,6 @@ mod thread_pool;
 mod document;
 pub mod lsp_ext;
 pub mod config;
-mod completions;
 
 use ide::AnalysisHost;
 use serde::de::DeserializeOwned;
