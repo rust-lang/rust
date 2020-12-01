@@ -1515,9 +1515,12 @@ impl Clean<Type> for hir::Ty<'_> {
 }
 
 /// Returns `None` if the type could not be normalized
-#[allow(unreachable_code, unused_variables)]
 fn normalize(cx: &DocContext<'tcx>, ty: Ty<'_>) -> Option<Ty<'tcx>> {
-    return None; // HACK: low-churn fix for #79459 while we wait for a trait normalization fix
+    // HACK: low-churn fix for #79459 while we wait for a trait normalization fix
+    if !cx.tcx.sess.opts.debugging_opts.normalize_docs {
+        return None;
+    }
+
     use crate::rustc_trait_selection::infer::TyCtxtInferExt;
     use crate::rustc_trait_selection::traits::query::normalize::AtExt;
     use rustc_middle::traits::ObligationCause;

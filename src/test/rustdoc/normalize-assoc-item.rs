@@ -1,7 +1,7 @@
 // ignore-tidy-linelength
 // aux-build:normalize-assoc-item.rs
 // build-aux-docs
-// ignore-test
+// compile-flags:-Znormalize-docs
 
 pub trait Trait {
     type X;
