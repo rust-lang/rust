@@ -1,0 +1,175 @@
+warning: unresolved link to `Foo::baz`
+  --> $DIR/warning.rs:3:23
+   |
+LL |        //! Test with [Foo::baz], [Bar::foo], ...
+   |                       ^^^^^^^^ the struct `Foo` has no field or associated item named `baz`
+   |
+   = note: `#[warn(broken_intra_doc_links)]` on by default
+
+warning: unresolved link to `Bar::foo`
+  --> $DIR/warning.rs:3:35
+   |
+LL |        //! Test with [Foo::baz], [Bar::foo], ...
+   |                                   ^^^^^^^^ no item named `Bar` in scope
+
+warning: unresolved link to `Uniooon::X`
+  --> $DIR/warning.rs:6:13
+   |
+LL |      //! , [Uniooon::X] and [Qux::Z].
+   |             ^^^^^^^^^^ no item named `Uniooon` in scope
+
+warning: unresolved link to `Qux::Z`
+  --> $DIR/warning.rs:6:30
+   |
+LL |      //! , [Uniooon::X] and [Qux::Z].
+   |                              ^^^^^^ no item named `Qux` in scope
+
+warning: unresolved link to `Uniooon::X`
+  --> $DIR/warning.rs:10:14
+   |
+LL |       //! , [Uniooon::X] and [Qux::Z].
+   |              ^^^^^^^^^^ no item named `Uniooon` in scope
+
+warning: unresolved link to `Qux::Z`
+  --> $DIR/warning.rs:10:31
+   |
+LL |       //! , [Uniooon::X] and [Qux::Z].
+   |                               ^^^^^^ no item named `Qux` in scope
+
+warning: unresolved link to `Qux:Y`
+  --> $DIR/warning.rs:14:13
+   |
+LL |        /// [Qux:Y]
+   |             ^^^^^ no item named `Qux:Y` in scope
+   |
+   = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
+warning: unresolved link to `BarA`
+  --> $DIR/warning.rs:21:10
+   |
+LL | /// bar [BarA] bar
+   |          ^^^^ no item named `BarA` in scope
+   |
+   = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
+warning: unresolved link to `BarB`
+  --> $DIR/warning.rs:27:9
+   |
+LL |  * bar [BarB] bar
+   |         ^^^^ no item named `BarB` in scope
+   |
+   = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
+warning: unresolved link to `BarC`
+  --> $DIR/warning.rs:34:6
+   |
+LL | bar [BarC] bar
+   |      ^^^^ no item named `BarC` in scope
+   |
+   = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
+warning: unresolved link to `BarD`
+  --> $DIR/warning.rs:45:1
+   |
+LL | #[doc = "Foo\nbar [BarD] bar\nbaz"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the link appears in this line:
+           
+           bar [BarD] bar
+                ^^^^
+   = note: no item named `BarD` in scope
+   = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
+warning: unresolved link to `BarF`
+  --> $DIR/warning.rs:50:9
+   |
+LL |         #[doc = $f]
+   |         ^^^^^^^^^^^
+...
+LL | f!("Foo\nbar [BarF] bar\nbaz");
+   | ------------------------------- in this macro invocation
+   |
+   = note: the link appears in this line:
+           
+           bar [BarF] bar
+                ^^^^
+   = note: no item named `BarF` in scope
+   = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+   = note: this warning originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: unresolved link to `error`
+  --> $DIR/warning.rs:58:30
+   |
+LL |  * time to introduce a link [error]*/
+   |                              ^^^^^ no item named `error` in scope
+   |
+   = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
+warning: unresolved link to `error`
+  --> $DIR/warning.rs:64:30
+   |
+LL |  * time to introduce a link [error]
+   |                              ^^^^^ no item named `error` in scope
+   |
+   = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
+warning: unresolved link to `error`
+  --> $DIR/warning.rs:68:1
+   |
+LL | #[doc = "single line [error]"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the link appears in this line:
+           
+           single line [error]
+                        ^^^^^
+   = note: no item named `error` in scope
+   = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
+warning: unresolved link to `error`
+  --> $DIR/warning.rs:71:1
+   |
+LL | #[doc = "single line with \"escaping\" [error]"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the link appears in this line:
+           
+           single line with "escaping" [error]
+                                        ^^^^^
+   = note: no item named `error` in scope
+   = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
+warning: unresolved link to `error`
+  --> $DIR/warning.rs:74:1
+   |
+LL | / /// Item docs.
+LL | | #[doc="Hello there!"]
+LL | | /// [error]
+   | |___________^
+   |
+   = note: the link appears in this line:
+           
+           [error]
+            ^^^^^
+   = note: no item named `error` in scope
+   = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
+warning: unresolved link to `error1`
+  --> $DIR/warning.rs:80:11
+   |
+LL | /// docs [error1]
+   |           ^^^^^^ no item named `error1` in scope
+   |
+   = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
+warning: unresolved link to `error2`
+  --> $DIR/warning.rs:82:11
+   |
+LL | /// docs [error2]
+   |           ^^^^^^ no item named `error2` in scope
+   |
+   = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
+warning: 19 warnings emitted
+
