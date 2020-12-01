@@ -98,7 +98,7 @@ pub(super) fn note_and_explain_region(
         // uh oh, hope no user ever sees THIS
         ty::ReEmpty(ui) => (format!("the empty lifetime in universe {:?}", ui), None),
 
-        ty::RePlaceholder(_) => ("any other region".to_string(), None),
+        ty::RePlaceholder(_) => return,
 
         // FIXME(#13998) RePlaceholder should probably print like
         // ReFree rather than dumping Debug output on the user.
@@ -1674,6 +1674,16 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             });
         self.check_and_note_conflicting_crates(diag, terr);
         self.tcx.note_and_explain_type_err(diag, terr, cause, span, body_owner_def_id.to_def_id());
+
+        if let Some(ValuePairs::PolyTraitRefs(exp_found)) = values {
+            if let ty::Closure(def_id, _) = exp_found.expected.skip_binder().self_ty().kind() {
+                if let Some(def_id) = def_id.as_local() {
+                    let hir_id = self.tcx.hir().local_def_id_to_hir_id(def_id);
+                    let span = self.tcx.hir().span(hir_id);
+                    diag.span_note(span, "this closure does not fulfill the lifetime requirements");
+                }
+            }
+        }
 
         // It reads better to have the error origin as the final
         // thing.

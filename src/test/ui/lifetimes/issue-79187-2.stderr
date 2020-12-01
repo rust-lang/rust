@@ -1,0 +1,60 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-79187-2.rs:8:5
+   |
+LL |     take_foo(|a| a);
+   |     ^^^^^^^^ lifetime mismatch
+   |
+   = note: expected type `for<'r> Fn<(&'r i32,)>`
+              found type `Fn<(&i32,)>`
+note: this closure does not fulfill the lifetime requirements
+  --> $DIR/issue-79187-2.rs:8:14
+   |
+LL |     take_foo(|a| a);
+   |              ^^^^^
+note: the lifetime requirement is introduced here
+  --> $DIR/issue-79187-2.rs:5:21
+   |
+LL | fn take_foo(_: impl Foo) {}
+   |                     ^^^
+
+error[E0308]: mismatched types
+  --> $DIR/issue-79187-2.rs:9:5
+   |
+LL |     take_foo(|a: &i32| a);
+   |     ^^^^^^^^ lifetime mismatch
+   |
+   = note: expected reference `&i32`
+              found reference `&i32`
+note: the anonymous lifetime #1 defined on the body at 9:14 doesn't meet the lifetime requirements
+  --> $DIR/issue-79187-2.rs:9:14
+   |
+LL |     take_foo(|a: &i32| a);
+   |              ^^^^^^^^^^^
+note: the lifetime requirement is introduced here
+  --> $DIR/issue-79187-2.rs:5:21
+   |
+LL | fn take_foo(_: impl Foo) {}
+   |                     ^^^
+
+error[E0308]: mismatched types
+  --> $DIR/issue-79187-2.rs:10:5
+   |
+LL |     take_foo(|a: &i32| -> &i32 { a });
+   |     ^^^^^^^^ lifetime mismatch
+   |
+   = note: expected reference `&i32`
+              found reference `&i32`
+note: the anonymous lifetime #1 defined on the body at 10:14 doesn't meet the lifetime requirements
+  --> $DIR/issue-79187-2.rs:10:14
+   |
+LL |     take_foo(|a: &i32| -> &i32 { a });
+   |              ^^^^^^^^^^^^^^^^^^^^^^^
+note: the lifetime requirement is introduced here
+  --> $DIR/issue-79187-2.rs:5:21
+   |
+LL | fn take_foo(_: impl Foo) {}
+   |                     ^^^
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0308`.
