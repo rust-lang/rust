@@ -306,6 +306,9 @@ use crate::raw_vec::RawVec;
 /// [`reserve`]: Vec::reserve
 /// [owned slice]: Box
 /// [`MaybeUninit`]: core::mem::MaybeUninit
+/// [`MaybeUninit`]: core::mem::MaybeUninit
+/// [slice]: ../../std/primitive.slice.html
+/// [`&`]: ../../std/primitive.reference.html
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "vec_type")]
 pub struct Vec<T> {
