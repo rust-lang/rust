@@ -5,6 +5,7 @@ use test_utils::mark;
 
 use crate::{item::Builder, CompletionContext};
 
+#[derive(Debug)]
 pub(super) enum Params {
     Named(Vec<String>),
     Anonymous(usize),

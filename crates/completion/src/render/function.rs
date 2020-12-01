@@ -2,6 +2,7 @@
 
 use hir::{HasSource, Type};
 use syntax::{ast::Fn, display::function_declaration};
+use test_utils::mark;
 
 use crate::{
     item::{CompletionItem, CompletionItemKind, CompletionKind, ImportToAdd},
@@ -67,24 +68,32 @@ impl<'a> FunctionRender<'a> {
     }
 
     fn params(&self) -> Params {
+        let ast_params = match self.ast_node.param_list() {
+            Some(it) => it,
+            None => return Params::Named(Vec::new()),
+        };
+
+        let mut params_pats = Vec::new();
         let params_ty = if self.ctx.completion.dot_receiver.is_some() {
             self.func.method_params(self.ctx.db()).unwrap_or_default()
         } else {
+            if let Some(s) = ast_params.self_param() {
+                mark::hit!(parens_for_method_call_as_assoc_fn);
+                params_pats.push(Some(s.to_string()));
+            }
             self.func.assoc_fn_params(self.ctx.db())
         };
-        let params = self
-            .ast_node
-            .param_list()
+        params_pats
+            .extend(ast_params.params().into_iter().map(|it| it.pat().map(|it| it.to_string())));
+
+        let params = params_pats
             .into_iter()
-            .flat_map(|it| it.params())
             .zip(params_ty)
-            .flat_map(|(it, param_ty)| {
-                if let Some(pat) = it.pat() {
-                    let name = pat.to_string();
-                    let arg = name.trim_start_matches("mut ").trim_start_matches('_');
-                    return Some(self.add_arg(arg, param_ty.ty()));
-                }
-                None
+            .flat_map(|(pat, param_ty)| {
+                let pat = pat?;
+                let name = pat.to_string();
+                let arg = name.trim_start_matches("mut ").trim_start_matches('_');
+                Some(self.add_arg(arg, param_ty.ty()))
             })
             .collect();
         Params::Named(params)
@@ -172,6 +181,28 @@ impl S {
 fn bar(s: &S) {
     s.foo(${1:x})$0
 }
+"#,
+        );
+    }
+
+    #[test]
+    fn parens_for_method_call_as_assoc_fn() {
+        mark::check!(parens_for_method_call_as_assoc_fn);
+        check_edit(
+            "foo",
+            r#"
+struct S;
+impl S {
+    fn foo(&self) {}
+}
+fn main() { S::f<|> }
+"#,
+            r#"
+struct S;
+impl S {
+    fn foo(&self) {}
+}
+fn main() { S::foo(${1:&self})$0 }
 "#,
         );
     }

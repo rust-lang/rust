@@ -806,6 +806,7 @@ impl From<Mutability> for Access {
     }
 }
 
+#[derive(Debug)]
 pub struct Param {
     ty: Type,
 }

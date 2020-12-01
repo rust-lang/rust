@@ -353,10 +353,10 @@ impl S {
 fn foo() { let _ = S::<|> }
 "#,
             expect![[r#"
-                ct C   const C: i32 = 42;
-                ta T   type T = i32;
-                fn a() fn a()
-                me b() fn b(&self)
+                ct C    const C: i32 = 42;
+                ta T    type T = i32;
+                fn a()  fn a()
+                me b(…) fn b(&self)
             "#]],
         );
     }
@@ -503,14 +503,14 @@ trait Sub: Super {
 fn foo<T: Sub>() { T::<|> }
 "#,
             expect![[r#"
-                ct C2          const C2: ();
-                ct CONST       const CONST: u8;
-                ta SubTy       type SubTy;
-                ta Ty          type Ty;
-                fn func()      fn func()
-                me method()    fn method(&self)
-                fn subfunc()   fn subfunc()
-                me submethod() fn submethod(&self)
+                ct C2           const C2: ();
+                ct CONST        const CONST: u8;
+                ta SubTy        type SubTy;
+                ta Ty           type Ty;
+                fn func()       fn func()
+                me method(…)    fn method(&self)
+                fn subfunc()    fn subfunc()
+                me submethod(…) fn submethod(&self)
             "#]],
         );
     }
@@ -543,14 +543,14 @@ impl<T> Sub for Wrap<T> {
 }
 "#,
             expect![[r#"
-                ct C2          const C2: () = ();
-                ct CONST       const CONST: u8 = 0;
-                ta SubTy       type SubTy;
-                ta Ty          type Ty;
-                fn func()      fn func()
-                me method()    fn method(&self)
-                fn subfunc()   fn subfunc()
-                me submethod() fn submethod(&self)
+                ct C2           const C2: () = ();
+                ct CONST        const CONST: u8 = 0;
+                ta SubTy        type SubTy;
+                ta Ty           type Ty;
+                fn func()       fn func()
+                me method(…)    fn method(&self)
+                fn subfunc()    fn subfunc()
+                me submethod(…) fn submethod(&self)
             "#]],
         );
     }
