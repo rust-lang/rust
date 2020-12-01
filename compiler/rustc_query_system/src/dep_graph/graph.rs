@@ -242,7 +242,6 @@ impl<K: DepKind> DepGraph<K> {
             key,
             cx,
             arg,
-            false,
             task,
             |_key| {
                 Some(TaskDeps {
@@ -262,29 +261,16 @@ impl<K: DepKind> DepGraph<K> {
         key: DepNode<K>,
         cx: Ctxt,
         arg: A,
-        no_tcx: bool,
         task: fn(Ctxt, A) -> R,
         create_task: fn(DepNode<K>) -> Option<TaskDeps<K>>,
         hash_result: impl FnOnce(&mut Ctxt::StableHashingContext, &R) -> Option<Fingerprint>,
     ) -> (R, DepNodeIndex) {
         if let Some(ref data) = self.data {
             let task_deps = create_task(key).map(Lock::new);
-
-            // In incremental mode, hash the result of the task. We don't
-            // do anything with the hash yet, but we are computing it
-            // anyway so that
-            //  - we make sure that the infrastructure works and
-            //  - we can get an idea of the runtime cost.
-            let mut hcx = cx.create_stable_hashing_context();
-
-            let result = if no_tcx {
-                task(cx, arg)
-            } else {
-                K::with_deps(task_deps.as_ref(), || task(cx, arg))
-            };
-
+            let result = K::with_deps(task_deps.as_ref(), || task(cx, arg));
             let edges = task_deps.map_or_else(|| smallvec![], |lock| lock.into_inner().reads);
 
+            let mut hcx = cx.create_stable_hashing_context();
             let current_fingerprint = hash_result(&mut hcx, &result);
 
             let print_status = cfg!(debug_assertions) && cx.debug_dep_tasks();
@@ -413,7 +399,7 @@ impl<K: DepKind> DepGraph<K> {
         task: fn(Ctxt, A) -> R,
         hash_result: impl FnOnce(&mut Ctxt::StableHashingContext, &R) -> Option<Fingerprint>,
     ) -> (R, DepNodeIndex) {
-        self.with_task_impl(key, cx, arg, false, task, |_| None, hash_result)
+        self.with_task_impl(key, cx, arg, task, |_| None, hash_result)
     }
 
     #[inline]
