@@ -84,7 +84,10 @@ impl LinkerInfo {
             LinkerFlavor::PtxLinker => {
                 Box::new(PtxLinker { cmd, sess, info: self }) as Box<dyn Linker>
             }
-            LinkerFlavor::BpfLinker => Box::new(BpfLinker { cmd, sess, info: self }) as Box<dyn Linker>
+
+            LinkerFlavor::BpfLinker => {
+                Box::new(BpfLinker { cmd, sess, info: self }) as Box<dyn Linker>
+            }
         }
     }
 }
