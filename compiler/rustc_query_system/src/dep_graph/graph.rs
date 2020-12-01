@@ -15,6 +15,7 @@ use std::env;
 use std::hash::Hash;
 use std::marker::PhantomData;
 use std::mem;
+use std::ops::Range;
 use std::sync::atomic::Ordering::Relaxed;
 
 use super::debug::EdgeFilter;
@@ -143,42 +144,48 @@ impl<K: DepKind> DepGraph<K> {
         let node_count = data.hybrid_indices.len();
 
         let mut nodes = Vec::with_capacity(node_count);
-        let mut edges = Vec::with_capacity(edge_count);
+        let mut edge_list_indices = Vec::with_capacity(node_count);
+        let mut edge_list_data = Vec::with_capacity(edge_count);
+        edge_list_data.extend(data.unshared_edges.iter().map(|i| i.index()));
 
-        for (index, &hybrid_index) in data.hybrid_indices.iter_enumerated() {
-            let src = index.index();
-
+        for &hybrid_index in data.hybrid_indices.iter() {
             match hybrid_index.into() {
                 HybridIndex::New(new_index) => {
-                    let new = &data.new;
-                    nodes.push(new.nodes[new_index]);
-                    edges.extend(new.edges[new_index].iter().map(|dst| (src, dst.index())));
+                    nodes.push(data.new.nodes[new_index]);
+                    let edges = &data.new.edges[new_index];
+                    edge_list_indices.push((edges.start.index(), edges.end.index()));
                 }
                 HybridIndex::Red(red_index) => {
-                    let red = &data.red;
-                    nodes.push(previous.index_to_node(red.node_indices[red_index]));
-                    edges.extend(red.edges[red_index].iter().map(|dst| (src, dst.index())));
+                    nodes.push(previous.index_to_node(data.red.node_indices[red_index]));
+                    let edges = &data.red.edges[red_index];
+                    edge_list_indices.push((edges.start.index(), edges.end.index()));
                 }
                 HybridIndex::LightGreen(lg_index) => {
-                    let lg = &data.light_green;
-                    nodes.push(previous.index_to_node(lg.node_indices[lg_index]));
-                    edges.extend(lg.edges[lg_index].iter().map(|dst| (src, dst.index())));
+                    nodes.push(previous.index_to_node(data.light_green.node_indices[lg_index]));
+                    let edges = &data.light_green.edges[lg_index];
+                    edge_list_indices.push((edges.start.index(), edges.end.index()));
                 }
                 HybridIndex::DarkGreen(prev_index) => {
                     nodes.push(previous.index_to_node(prev_index));
+
                     let edges_iter = previous
                         .edge_targets_from(prev_index)
                         .iter()
-                        .map(|&dst| (src, prev_index_to_index[dst].unwrap().index()));
-                    edges.extend(edges_iter);
+                        .map(|&dst| prev_index_to_index[dst].unwrap().index());
+
+                    let start = edge_list_data.len();
+                    edge_list_data.extend(edges_iter);
+                    let end = edge_list_data.len();
+                    edge_list_indices.push((start, end));
                 }
             }
         }
 
         debug_assert_eq!(nodes.len(), node_count);
-        debug_assert_eq!(edges.len(), edge_count);
+        debug_assert_eq!(edge_list_indices.len(), node_count);
+        debug_assert_eq!(edge_list_data.len(), edge_count);
 
-        DepGraphQuery::new(&nodes[..], &edges[..])
+        DepGraphQuery::new(&nodes[..], &edge_list_indices[..], &edge_list_data[..])
     }
 
     pub fn assert_ignored(&self) {
@@ -561,11 +568,7 @@ impl<K: DepKind> DepGraph<K> {
         let previous = &data.previous;
         let data = data.current.data.lock();
 
-        // Linearly scanning each collection is a bit faster than scanning
-        // `hybrid_indices` and bouncing around the different collections.
-        let mut edge_count = data.new.edges.iter().map(|e| e.len()).sum::<usize>()
-            + data.red.edges.iter().map(|e| e.len()).sum::<usize>()
-            + data.light_green.edges.iter().map(|e| e.len()).sum::<usize>();
+        let mut edge_count = data.unshared_edges.len();
 
         for &hybrid_index in data.hybrid_indices.iter() {
             if let HybridIndex::DarkGreen(prev_index) = hybrid_index.into() {
@@ -591,17 +594,7 @@ impl<K: DepKind> DepGraph<K> {
         let mut fingerprints = IndexVec::with_capacity(node_count);
         let mut edge_list_indices = IndexVec::with_capacity(node_count);
         let mut edge_list_data = Vec::with_capacity(edge_count);
-
-        fn add_edges<'a, I: Iterator<Item = &'a DepNodeIndex>>(
-            edge_list_indices: &mut IndexVec<SerializedDepNodeIndex, (u32, u32)>,
-            edge_list_data: &mut Vec<SerializedDepNodeIndex>,
-            iter: I,
-        ) {
-            let start = edge_list_data.len() as u32;
-            edge_list_data.extend(iter.map(|i| SDNI::new(i.index())));
-            let end = edge_list_data.len() as u32;
-            edge_list_indices.push((start, end));
-        };
+        edge_list_data.extend(data.unshared_edges.iter().map(|i| SDNI::new(i.index())));
 
         for &hybrid_index in data.hybrid_indices.iter() {
             match hybrid_index.into() {
@@ -609,28 +602,36 @@ impl<K: DepKind> DepGraph<K> {
                     let new = &data.new;
                     nodes.push(new.nodes[i]);
                     fingerprints.push(new.fingerprints[i]);
-                    add_edges(&mut edge_list_indices, &mut edge_list_data, new.edges[i].iter());
+                    let edges = &new.edges[i];
+                    edge_list_indices.push((edges.start.as_u32(), edges.end.as_u32()));
                 }
                 HybridIndex::Red(i) => {
                     let red = &data.red;
                     nodes.push(previous.index_to_node(red.node_indices[i]));
                     fingerprints.push(red.fingerprints[i]);
-                    add_edges(&mut edge_list_indices, &mut edge_list_data, red.edges[i].iter());
+                    let edges = &red.edges[i];
+                    edge_list_indices.push((edges.start.as_u32(), edges.end.as_u32()));
                 }
                 HybridIndex::LightGreen(i) => {
                     let lg = &data.light_green;
                     nodes.push(previous.index_to_node(lg.node_indices[i]));
                     fingerprints.push(previous.fingerprint_by_index(lg.node_indices[i]));
-                    add_edges(&mut edge_list_indices, &mut edge_list_data, lg.edges[i].iter());
+                    let edges = &lg.edges[i];
+                    edge_list_indices.push((edges.start.as_u32(), edges.end.as_u32()));
                 }
                 HybridIndex::DarkGreen(prev_index) => {
                     nodes.push(previous.index_to_node(prev_index));
                     fingerprints.push(previous.fingerprint_by_index(prev_index));
+
                     let edges_iter = previous
                         .edge_targets_from(prev_index)
                         .iter()
                         .map(|&dst| prev_index_to_index[dst].as_ref().unwrap());
-                    add_edges(&mut edge_list_indices, &mut edge_list_data, edges_iter);
+
+                    let start = edge_list_data.len() as u32;
+                    edge_list_data.extend(edges_iter.map(|i| SDNI::new(i.index())));
+                    let end = edge_list_data.len() as u32;
+                    edge_list_indices.push((start, end));
                 }
             }
         }
@@ -1125,6 +1126,11 @@ impl From<CompressedHybridIndex> for HybridIndex {
     }
 }
 
+// Index type for `DepNodeData`'s edges.
+rustc_index::newtype_index! {
+    struct EdgeIndex { .. }
+}
+
 /// Data for nodes in the current graph, divided into different collections
 /// based on their presence in the previous graph, and if present, their color.
 /// We divide nodes this way because different types of nodes are able to share
@@ -1171,6 +1177,16 @@ struct DepNodeData<K> {
     /// Data for nodes in previous graph that have been marked light green.
     light_green: LightGreenDepNodeData,
 
+    // Edges for all nodes other than dark-green ones. Edges for each node
+    // occupy a contiguous region of this collection, which a node can reference
+    // using two indices. Storing edges this way rather than using an `EdgesVec`
+    // for each node reduces memory consumption by a not insignificant amount
+    // when compiling large crates. The downside is that we have to copy into
+    // this collection the edges from the `EdgesVec`s that are built up during
+    // query execution. But this is mostly balanced out by the more efficient
+    // implementation of `DepGraph::serialize` enabled by this representation.
+    unshared_edges: IndexVec<EdgeIndex, DepNodeIndex>,
+
     /// Mapping from `DepNodeIndex` to an index into a collection above.
     /// Indicates which of the above collections contains a node's data.
     ///
@@ -1186,7 +1202,7 @@ struct DepNodeData<K> {
 /// the previous graph, so we must store all of such a node's data here.
 struct NewDepNodeData<K> {
     nodes: IndexVec<NewDepNodeIndex, DepNode<K>>,
-    edges: IndexVec<NewDepNodeIndex, EdgesVec>,
+    edges: IndexVec<NewDepNodeIndex, Range<EdgeIndex>>,
     fingerprints: IndexVec<NewDepNodeIndex, Fingerprint>,
 }
 
@@ -1195,7 +1211,7 @@ struct NewDepNodeData<K> {
 /// fingerprint is known to be different, so we store the latter two directly.
 struct RedDepNodeData {
     node_indices: IndexVec<RedDepNodeIndex, SerializedDepNodeIndex>,
-    edges: IndexVec<RedDepNodeIndex, EdgesVec>,
+    edges: IndexVec<RedDepNodeIndex, Range<EdgeIndex>>,
     fingerprints: IndexVec<RedDepNodeIndex, Fingerprint>,
 }
 
@@ -1205,7 +1221,7 @@ struct RedDepNodeData {
 /// graph, but the edges may be different, so we store them directly.
 struct LightGreenDepNodeData {
     node_indices: IndexVec<LightGreenDepNodeIndex, SerializedDepNodeIndex>,
-    edges: IndexVec<LightGreenDepNodeIndex, EdgesVec>,
+    edges: IndexVec<LightGreenDepNodeIndex, Range<EdgeIndex>>,
 }
 
 /// `CurrentDepGraph` stores the dependency graph for the current session. It
@@ -1294,10 +1310,26 @@ impl<K: DepKind> CurrentDepGraph<K> {
         // not be enough. The allocation for red and green node data doesn't
         // include a constant, as we don't want to allocate anything for these
         // structures during full incremental builds, where they aren't used.
+        //
+        // These estimates are based on the distribution of node and edge counts
+        // seen in rustc-perf benchmarks, adjusted somewhat to account for the
+        // fact that these benchmarks aren't perfectly representative.
+        //
+        // FIXME Use a collection type that doesn't copy node and edge data and
+        // grow multiplicatively on reallocation. Without such a collection or
+        // solution having the same effect, there is a performance hazard here
+        // in both time and space, as growing these collections means copying a
+        // large amount of data and doubling already large buffer capacities. A
+        // solution for this will also mean that it's less important to get
+        // these estimates right.
         let new_node_count_estimate = (prev_graph_node_count * 2) / 100 + 200;
         let red_node_count_estimate = (prev_graph_node_count * 3) / 100;
         let light_green_node_count_estimate = (prev_graph_node_count * 25) / 100;
         let total_node_count_estimate = prev_graph_node_count + new_node_count_estimate;
+
+        let average_edges_per_node_estimate = 6;
+        let unshared_edge_count_estimate = average_edges_per_node_estimate
+            * (new_node_count_estimate + red_node_count_estimate + light_green_node_count_estimate);
 
         // We store a large collection of these in `prev_index_to_index` during
         // non-full incremental builds, and want to ensure that the element size
@@ -1320,6 +1352,7 @@ impl<K: DepKind> CurrentDepGraph<K> {
                     node_indices: IndexVec::with_capacity(light_green_node_count_estimate),
                     edges: IndexVec::with_capacity(light_green_node_count_estimate),
                 },
+                unshared_edges: IndexVec::with_capacity(unshared_edge_count_estimate),
                 hybrid_indices: IndexVec::with_capacity(total_node_count_estimate),
             }),
             new_node_to_index: Sharded::new(|| {
@@ -1352,9 +1385,9 @@ impl<K: DepKind> CurrentDepGraph<K> {
         match self.new_node_to_index.get_shard_by_value(&dep_node).lock().entry(dep_node) {
             Entry::Occupied(entry) => *entry.get(),
             Entry::Vacant(entry) => {
-                let mut data = self.data.lock();
+                let data = &mut *self.data.lock();
                 let new_index = data.new.nodes.push(dep_node);
-                data.new.edges.push(edges);
+                add_edges(&mut data.unshared_edges, &mut data.new.edges, edges);
                 data.new.fingerprints.push(fingerprint);
                 let dep_node_index = data.hybrid_indices.push(new_index.into());
                 entry.insert(dep_node_index);
@@ -1377,9 +1410,9 @@ impl<K: DepKind> CurrentDepGraph<K> {
         match prev_index_to_index[prev_index] {
             Some(dep_node_index) => dep_node_index,
             None => {
-                let mut data = self.data.lock();
+                let data = &mut *self.data.lock();
                 let red_index = data.red.node_indices.push(prev_index);
-                data.red.edges.push(edges);
+                add_edges(&mut data.unshared_edges, &mut data.red.edges, edges);
                 data.red.fingerprints.push(fingerprint);
                 let dep_node_index = data.hybrid_indices.push(red_index.into());
                 prev_index_to_index[prev_index] = Some(dep_node_index);
@@ -1401,9 +1434,9 @@ impl<K: DepKind> CurrentDepGraph<K> {
         match prev_index_to_index[prev_index] {
             Some(dep_node_index) => dep_node_index,
             None => {
-                let mut data = self.data.lock();
+                let data = &mut *self.data.lock();
                 let light_green_index = data.light_green.node_indices.push(prev_index);
-                data.light_green.edges.push(edges);
+                add_edges(&mut data.unshared_edges, &mut data.light_green.edges, edges);
                 let dep_node_index = data.hybrid_indices.push(light_green_index.into());
                 prev_index_to_index[prev_index] = Some(dep_node_index);
                 dep_node_index
@@ -1443,6 +1476,18 @@ impl<K: DepKind> CurrentDepGraph<K> {
             "node from previous graph present in new node collection"
         );
     }
+}
+
+#[inline]
+fn add_edges<I: Idx>(
+    edges: &mut IndexVec<EdgeIndex, DepNodeIndex>,
+    edge_indices: &mut IndexVec<I, Range<EdgeIndex>>,
+    new_edges: EdgesVec,
+) {
+    let start = edges.next_index();
+    edges.extend(new_edges);
+    let end = edges.next_index();
+    edge_indices.push(start..end);
 }
 
 /// The capacity of the `reads` field `SmallVec`
