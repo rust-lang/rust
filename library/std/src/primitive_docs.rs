@@ -198,7 +198,7 @@ mod prim_bool {}
 /// words, they can't return `!` from every code path. As an example, this code doesn't compile:
 ///
 /// ```compile_fail
-/// use core::ops::Add;
+/// use std::ops::Add;
 ///
 /// fn foo() -> impl Add<u32> {
 ///     unimplemented!()
@@ -208,7 +208,7 @@ mod prim_bool {}
 /// But this code does:
 ///
 /// ```
-/// use core::ops::Add;
+/// use std::ops::Add;
 ///
 /// fn foo() -> impl Add<u32> {
 ///     if true {

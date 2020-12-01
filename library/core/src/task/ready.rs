@@ -1,15 +1,18 @@
-/// Extracts the successful type of a `Poll<T>`.
+/// Extracts the successful type of a [`Poll<T>`].
 ///
-/// This macro bakes in propagation of `Pending` signals by returning early.
+/// This macro bakes in propagation of [`Pending`] signals by returning early.
+///
+/// [`Poll<T>`]: crate::task::Poll
+/// [`Pending`]: crate::task::Poll::Pending
 ///
 /// # Examples
 ///
 /// ```
 /// #![feature(ready_macro)]
 ///
-/// use core::task::{ready, Context, Poll};
-/// use core::future::{self, Future};
-/// use core::pin::Pin;
+/// use std::task::{ready, Context, Poll};
+/// use std::future::{self, Future};
+/// use std::pin::Pin;
 ///
 /// pub fn do_poll(cx: &mut Context<'_>) -> Poll<()> {
 ///     let mut fut = future::ready(42);
@@ -28,9 +31,9 @@
 /// ```
 /// # #![feature(ready_macro)]
 /// #
-/// # use core::task::{Context, Poll};
-/// # use core::future::{self, Future};
-/// # use core::pin::Pin;
+/// # use std::task::{Context, Poll};
+/// # use std::future::{self, Future};
+/// # use std::pin::Pin;
 /// #
 /// # pub fn do_poll(cx: &mut Context<'_>) -> Poll<()> {
 ///     # let mut fut = future::ready(42);
