@@ -12,7 +12,6 @@ LL |     type U = str;
    |
    = help: the following implementations were found:
              <&T as Clone>
-             <&mut T as Clone>
 
 error[E0277]: the trait bound `for<'b> T: X<'b, T>` is not satisfied
   --> $DIR/hr-associated-type-bound-param-6.rs:12:12
