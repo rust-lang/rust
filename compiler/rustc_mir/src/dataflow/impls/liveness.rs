@@ -11,7 +11,7 @@ use crate::dataflow::{AnalysisDomain, Backward, GenKill, GenKillAnalysis};
 /// exist. See [this `mir-dataflow` test][flow-test] for an example. You almost never want to use
 /// this analysis without also looking at the results of [`MaybeBorrowedLocals`].
 ///
-/// [`MaybeBorrowedLocals`]: ../struct.MaybeBorrowedLocals.html
+/// [`MaybeBorrowedLocals`]: super::MaybeBorrowedLocals
 /// [flow-test]: https://github.com/rust-lang/rust/blob/a08c47310c7d49cbdc5d7afb38408ba519967ecd/src/test/ui/mir-dataflow/liveness-ptr.rs
 /// [liveness]: https://en.wikipedia.org/wiki/Live_variable_analysis
 pub struct MaybeLiveLocals;

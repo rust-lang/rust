@@ -27,7 +27,6 @@ pub const WORD_BITS: usize = WORD_BYTES * 8;
 /// to or greater than the domain size. All operations that involve two bitsets
 /// will panic if the bitsets have differing domain sizes.
 ///
-/// [`GrowableBitSet`]: struct.GrowableBitSet.html
 #[derive(Eq, PartialEq, Decodable, Encodable)]
 pub struct BitSet<T> {
     domain_size: usize,
