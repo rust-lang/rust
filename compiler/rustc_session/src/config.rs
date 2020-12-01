@@ -214,7 +214,7 @@ pub enum SymbolManglingVersion {
 
 impl_stable_hash_via_hash!(SymbolManglingVersion);
 
-#[derive(Clone, Copy, PartialEq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Hash)]
 pub enum DebugInfo {
     None,
     Limited,
