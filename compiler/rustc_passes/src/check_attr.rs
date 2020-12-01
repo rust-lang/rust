@@ -287,24 +287,20 @@ impl CheckAttrVisitor<'tcx> {
         }
     }
 
-    fn doc_alias_str_error(&self, meta: &NestedMetaItem) {
+    fn doc_attr_str_error(&self, meta: &NestedMetaItem, attr_name: &str) {
         self.tcx
             .sess
             .struct_span_err(
                 meta.span(),
-                "doc alias attribute expects a string: #[doc(alias = \"0\")]",
+                &format!("doc {0} attribute expects a string: #[doc({0} = \"a\")]", attr_name),
             )
             .emit();
     }
 
     fn check_doc_alias(&self, meta: &NestedMetaItem, hir_id: HirId, target: Target) -> bool {
-        if !meta.is_value_str() {
-            self.doc_alias_str_error(meta);
-            return false;
-        }
         let doc_alias = meta.value_str().map(|s| s.to_string()).unwrap_or_else(String::new);
         if doc_alias.is_empty() {
-            self.doc_alias_str_error(meta);
+            self.doc_attr_str_error(meta, "alias");
             return false;
         }
         if let Some(c) =
@@ -365,6 +361,49 @@ impl CheckAttrVisitor<'tcx> {
         true
     }
 
+    fn check_doc_keyword(&self, meta: &NestedMetaItem, hir_id: HirId) -> bool {
+        let doc_keyword = meta.value_str().map(|s| s.to_string()).unwrap_or_else(String::new);
+        if doc_keyword.is_empty() {
+            self.doc_attr_str_error(meta, "keyword");
+            return false;
+        }
+        match self.tcx.hir().expect_item(hir_id).kind {
+            ItemKind::Mod(ref module) => {
+                if !module.item_ids.is_empty() {
+                    self.tcx
+                        .sess
+                        .struct_span_err(
+                            meta.span(),
+                            "`#[doc(keyword = \"...\")]` can only be used on empty modules",
+                        )
+                        .emit();
+                    return false;
+                }
+            }
+            _ => {
+                self.tcx
+                    .sess
+                    .struct_span_err(
+                        meta.span(),
+                        "`#[doc(keyword = \"...\")]` can only be used on modules",
+                    )
+                    .emit();
+                return false;
+            }
+        }
+        if !rustc_lexer::is_ident(&doc_keyword) {
+            self.tcx
+                .sess
+                .struct_span_err(
+                    meta.name_value_literal_span().unwrap_or_else(|| meta.span()),
+                    &format!("`{}` is not a valid identifier", doc_keyword),
+                )
+                .emit();
+            return false;
+        }
+        true
+    }
+
     fn check_attr_crate_level(
         &self,
         meta: &NestedMetaItem,
@@ -384,6 +423,7 @@ impl CheckAttrVisitor<'tcx> {
                 .emit();
             return false;
         }
+        true
     }
 
     fn check_doc_attrs(&self, attr: &Attribute, hir_id: HirId, target: Target) -> bool {
@@ -393,6 +433,12 @@ impl CheckAttrVisitor<'tcx> {
                     if meta.has_name(sym::alias) {
                         if !self.check_attr_crate_level(meta, hir_id, "alias")
                             || !self.check_doc_alias(meta, hir_id, target)
+                        {
+                            return false;
+                        }
+                    } else if meta.has_name(sym::keyword) {
+                        if !self.check_attr_crate_level(meta, hir_id, "keyword")
+                            || !self.check_doc_keyword(meta, hir_id)
                         {
                             return false;
                         }

@@ -162,9 +162,6 @@ impl Clean<ExternalCrate> for CrateNum {
                 .collect()
         };
 
-        let get_span =
-            |attr: &ast::NestedMetaItem| Some(attr.meta_item()?.name_value_literal()?.span);
-
         let as_keyword = |res: Res| {
             if let Res::Def(DefKind::Mod, def_id) = res {
                 let attrs = cx.tcx.get_attrs(def_id).clean(cx);
