@@ -294,7 +294,7 @@ where
                                                     or \"none\"",
                                                 )
                                                 .span_label(
-                                                    mi.name_value_literal().unwrap().span,
+                                                    mi.name_value_literal_span().unwrap(),
                                                     msg,
                                                 )
                                                 .emit();
