@@ -12,7 +12,7 @@ use rustc_ast::attr;
 use rustc_ast::util::comments::beautify_doc_string;
 use rustc_ast::{self as ast, AttrStyle};
 use rustc_ast::{FloatTy, IntTy, UintTy};
-use rustc_attr::{Stability, StabilityLevel};
+use rustc_attr::{ConstStability, Stability, StabilityLevel};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_feature::UnstableFeatures;
 use rustc_hir as hir;
@@ -87,6 +87,7 @@ crate struct Item {
     crate def_id: DefId,
     crate stability: Option<Stability>,
     crate deprecation: Option<Deprecation>,
+    crate const_stability: Option<ConstStability>,
 }
 
 impl fmt::Debug for Item {
@@ -155,6 +156,7 @@ impl Item {
             visibility: cx.tcx.visibility(def_id).clean(cx),
             stability: cx.tcx.lookup_stability(def_id).cloned(),
             deprecation: cx.tcx.lookup_deprecation(def_id).clean(cx),
+            const_stability: cx.tcx.lookup_const_stability(def_id).cloned(),
         }
     }
 
@@ -257,6 +259,13 @@ impl Item {
 
     crate fn stable_since(&self) -> Option<SymbolStr> {
         match self.stability?.level {
+            StabilityLevel::Stable { since, .. } => Some(since.as_str()),
+            StabilityLevel::Unstable { .. } => None,
+        }
+    }
+
+    crate fn const_stable_since(&self) -> Option<SymbolStr> {
+        match self.const_stability?.level {
             StabilityLevel::Stable { since, .. } => Some(since.as_str()),
             StabilityLevel::Unstable { .. } => None,
         }
