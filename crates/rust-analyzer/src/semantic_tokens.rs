@@ -27,7 +27,7 @@ macro_rules! define_semantic_token_types {
             SemanticTokenType::ENUM_MEMBER,
             SemanticTokenType::TYPE_PARAMETER,
             SemanticTokenType::FUNCTION,
-            SemanticTokenType::MEMBER,
+            SemanticTokenType::METHOD,
             SemanticTokenType::PROPERTY,
             SemanticTokenType::MACRO,
             SemanticTokenType::VARIABLE,
