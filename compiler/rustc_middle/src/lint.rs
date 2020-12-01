@@ -5,6 +5,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_errors::{DiagnosticBuilder, DiagnosticId};
 use rustc_hir::HirId;
+use rustc_index::vec::IndexVec;
 use rustc_session::lint::{
     builtin::{self, FORBIDDEN_LINT_GROUPS},
     FutureIncompatibilityReason, Level, Lint, LintId,
@@ -53,8 +54,15 @@ pub type LevelAndSource = (Level, LintLevelSource);
 
 #[derive(Debug, HashStable)]
 pub struct LintLevelSets {
-    pub list: Vec<LintSet>,
+    pub list: IndexVec<LintStackIndex, LintSet>,
     pub lint_cap: Level,
+}
+
+rustc_index::newtype_index! {
+    #[derive(HashStable)]
+    pub struct LintStackIndex {
+        const COMMAND_LINE = 0,
+    }
 }
 
 #[derive(Debug, HashStable)]
@@ -67,19 +75,19 @@ pub enum LintSet {
 
     Node {
         specs: FxHashMap<LintId, LevelAndSource>,
-        parent: u32,
+        parent: LintStackIndex,
     },
 }
 
 impl LintLevelSets {
     pub fn new() -> Self {
-        LintLevelSets { list: Vec::new(), lint_cap: Level::Forbid }
+        LintLevelSets { list: IndexVec::new(), lint_cap: Level::Forbid }
     }
 
     pub fn get_lint_level(
         &self,
         lint: &'static Lint,
-        idx: u32,
+        idx: LintStackIndex,
         aux: Option<&FxHashMap<LintId, LevelAndSource>>,
         sess: &Session,
     ) -> LevelAndSource {
@@ -122,7 +130,7 @@ impl LintLevelSets {
     pub fn get_lint_id_level(
         &self,
         id: LintId,
-        mut idx: u32,
+        mut idx: LintStackIndex,
         aux: Option<&FxHashMap<LintId, LevelAndSource>>,
     ) -> (Option<Level>, LintLevelSource) {
         if let Some(specs) = aux {
@@ -131,7 +139,7 @@ impl LintLevelSets {
             }
         }
         loop {
-            match self.list[idx as usize] {
+            match self.list[idx] {
                 LintSet::CommandLine { ref specs } => {
                     if let Some(&(level, src)) = specs.get(&id) {
                         return (Some(level), src);
@@ -152,7 +160,7 @@ impl LintLevelSets {
 #[derive(Debug)]
 pub struct LintLevelMap {
     pub sets: LintLevelSets,
-    pub id_to_set: FxHashMap<HirId, u32>,
+    pub id_to_set: FxHashMap<HirId, LintStackIndex>,
 }
 
 impl LintLevelMap {
