@@ -38,6 +38,10 @@ impl<'mir, 'tcx> InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>> {
         if instance.def.requires_caller_location(self.tcx()) {
             return Ok(false);
         }
+        // only memoize instrinsics
+        if !matches!(instance.def, InstanceDef::Intrinsic(_)) {
+            return Ok(false);
+        }
         // For the moment we only do this for functions which take no arguments
         // (or all arguments are ZSTs) so that we don't memoize too much.
         if args.iter().any(|a| !a.layout.is_zst()) {
@@ -232,13 +236,8 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
             if ecx.tcx.is_const_fn_raw(def.did) {
                 // If this function is a `const fn` then under certain circumstances we
                 // can evaluate call via the query system, thus memoizing all future calls.
-                match instance.def {
-                    InstanceDef::Intrinsic(_) => {
-                        if ecx.try_eval_const_fn_call(instance, ret, args)? {
-                            return Ok(None);
-                        }
-                    }
-                    _ => {}
+                if ecx.try_eval_const_fn_call(instance, ret, args)? {
+                    return Ok(None);
                 }
             } else {
                 // Some functions we support even if they are non-const -- but avoid testing
