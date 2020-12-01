@@ -672,6 +672,9 @@ pub use self::avx512bw::*;
 mod avx512ifma;
 pub use self::avx512ifma::*;
 
+mod avx512vpopcntdq;
+pub use self::avx512vpopcntdq::*;
+
 mod avx512vaes;
 pub use self::avx512vaes::*;
 
