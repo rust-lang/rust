@@ -51,13 +51,13 @@ impl LintLevelSource {
 /// A tuple of a lint level and its source.
 pub type LevelAndSource = (Level, LintLevelSource);
 
-#[derive(Debug)]
+#[derive(Debug, HashStable)]
 pub struct LintLevelSets {
     pub list: Vec<LintSet>,
     pub lint_cap: Level,
 }
 
-#[derive(Debug)]
+#[derive(Debug, HashStable)]
 pub enum LintSet {
     CommandLine {
         // -A,-W,-D flags, a `Symbol` for the flag itself and `Level` for which
@@ -180,29 +180,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for LintLevelMap {
 
         id_to_set.hash_stable(hcx, hasher);
 
-        let LintLevelSets { ref list, lint_cap } = *sets;
-
-        lint_cap.hash_stable(hcx, hasher);
-
-        hcx.while_hashing_spans(true, |hcx| {
-            list.len().hash_stable(hcx, hasher);
-
-            // We are working under the assumption here that the list of
-            // lint-sets is built in a deterministic order.
-            for lint_set in list {
-                ::std::mem::discriminant(lint_set).hash_stable(hcx, hasher);
-
-                match *lint_set {
-                    LintSet::CommandLine { ref specs } => {
-                        specs.hash_stable(hcx, hasher);
-                    }
-                    LintSet::Node { ref specs, parent } => {
-                        specs.hash_stable(hcx, hasher);
-                        parent.hash_stable(hcx, hasher);
-                    }
-                }
-            }
-        })
+        hcx.while_hashing_spans(true, |hcx| sets.hash_stable(hcx, hasher))
     }
 }
 
