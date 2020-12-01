@@ -41,7 +41,7 @@ PR. Once you do rebase your branch, you should change the labels yourself to rem
 the `S-waiting-on-author` label and add back `S-waiting-on-review`. In this case,
 the `@rustbot` command will look like this:
 
-    @rustbot modify labels: -S-waiting-on-author +S-waiting-on-review
+    @rustbot label -S-waiting-on-author +S-waiting-on-review
 
 The syntax for this command is pretty loose, so there are other variants of this
 command invocation. For more details, see [the wiki page about labeling][labeling].
