@@ -1310,10 +1310,20 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                             return None;
                         }
                     }
+                    if self.tcx.impl_polarity(def_id) == ty::ImplPolarity::Negative {
+                        return None;
+                    }
                     Some(imp)
                 })
                 .collect(),
-            None => all_impls.map(|def_id| self.tcx.impl_trait_ref(def_id).unwrap()).collect(),
+            None => all_impls
+                .filter_map(|def_id| {
+                    if self.tcx.impl_polarity(def_id) == ty::ImplPolarity::Negative {
+                        return None;
+                    }
+                    self.tcx.impl_trait_ref(def_id)
+                })
+                .collect(),
         }
     }
 
