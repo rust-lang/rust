@@ -162,6 +162,7 @@ target | std | host | notes
 `aarch64-uwp-windows-msvc` | ? |  |
 `aarch64-wrs-vxworks` | ? |  |
 `armv4t-unknown-linux-gnueabi` | ? |  |
+`armv5te-unknown-linux-uclibceabi` | ? |  | ARMv5TE Linux with uClibc
 `armv6-unknown-freebsd` | ✓ | ✓ | ARMv6 FreeBSD
 `armv6-unknown-netbsd-eabihf` | ? |  |
 `armv7-apple-ios` | ✓ |  | ARMv7 iOS, Cortex-a8

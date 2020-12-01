@@ -504,6 +504,7 @@ supported_targets! {
     ("armv4t-unknown-linux-gnueabi", armv4t_unknown_linux_gnueabi),
     ("armv5te-unknown-linux-gnueabi", armv5te_unknown_linux_gnueabi),
     ("armv5te-unknown-linux-musleabi", armv5te_unknown_linux_musleabi),
+    ("armv5te-unknown-linux-uclibceabi", armv5te_unknown_linux_uclibceabi),
     ("armv7-unknown-linux-gnueabi", armv7_unknown_linux_gnueabi),
     ("armv7-unknown-linux-gnueabihf", armv7_unknown_linux_gnueabihf),
     ("thumbv7neon-unknown-linux-gnueabihf", thumbv7neon_unknown_linux_gnueabihf),
