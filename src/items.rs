@@ -857,6 +857,8 @@ fn format_impl_ref_and_type(
             ast::ImplPolarity::Positive => "",
         };
 
+        let polarity_overhead;
+        let trait_ref_overhead;
         if let Some(ref trait_ref) = *trait_ref {
             let result_len = last_line_width(&result);
             result.push_str(&rewrite_trait_ref(
@@ -866,11 +868,14 @@ fn format_impl_ref_and_type(
                 polarity_str,
                 result_len,
             )?);
+            polarity_overhead = 0; // already written
+            trait_ref_overhead = " for".len();
+        } else {
+            polarity_overhead = polarity_str.len();
+            trait_ref_overhead = 0;
         }
 
         // Try to put the self type in a single line.
-        // ` for`
-        let trait_ref_overhead = if trait_ref.is_some() { 4 } else { 0 };
         let curly_brace_overhead = if generics.where_clause.predicates.is_empty() {
             // If there is no where-clause adapt budget for type formatting to take space and curly
             // brace into account.
@@ -881,7 +886,10 @@ fn format_impl_ref_and_type(
         } else {
             0
         };
-        let used_space = last_line_width(&result) + trait_ref_overhead + curly_brace_overhead;
+        let used_space = last_line_width(&result)
+            + polarity_overhead
+            + trait_ref_overhead
+            + curly_brace_overhead;
         // 1 = space before the type.
         let budget = context.budget(used_space + 1);
         if let Some(self_ty_str) = self_ty.rewrite(context, Shape::legacy(budget, offset)) {
@@ -890,6 +898,7 @@ fn format_impl_ref_and_type(
                     result.push_str(" for ");
                 } else {
                     result.push(' ');
+                    result.push_str(polarity_str);
                 }
                 result.push_str(&self_ty_str);
                 return Some(result);
@@ -903,8 +912,10 @@ fn format_impl_ref_and_type(
         result.push_str(&new_line_offset.to_string(context.config));
         if trait_ref.is_some() {
             result.push_str("for ");
+        } else {
+            result.push_str(polarity_str);
         }
-        let budget = context.budget(last_line_width(&result));
+        let budget = context.budget(last_line_width(&result) + polarity_overhead);
         let type_offset = match context.config.indent_style() {
             IndentStyle::Visual => new_line_offset + trait_ref_overhead,
             IndentStyle::Block => new_line_offset,
