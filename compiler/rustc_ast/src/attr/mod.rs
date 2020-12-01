@@ -180,6 +180,13 @@ impl Attribute {
         self.value_str().is_some()
     }
 
+    /// This is used in case you want the value span instead of the whole attribute. Example:
+    ///
+    /// ```text
+    /// #[doc(alias = "foo")]
+    /// ```
+    ///
+    /// In here, it'll return a span for `"foo"`.
     pub fn name_value_literal_span(&self) -> Option<Span> {
         match self.kind {
             AttrKind::Normal(ref item, _) => {
@@ -241,6 +248,13 @@ impl MetaItem {
         self.value_str().is_some()
     }
 
+    /// This is used in case you want the value span instead of the whole attribute. Example:
+    ///
+    /// ```text
+    /// #[doc(alias = "foo")]
+    /// ```
+    ///
+    /// In here, it'll return a span for `"foo"`.
     pub fn name_value_literal_span(&self) -> Option<Span> {
         Some(self.name_value_literal()?.span)
     }
