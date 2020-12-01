@@ -1,7 +1,7 @@
     1|       |#![allow(unused_assignments)]
     2|       |// expect-exit-status-101
     3|       |
-    4|       |fn might_overflow(to_add: u32) -> u32 {
+    4|      4|fn might_overflow(to_add: u32) -> u32 {
     5|      4|    if to_add > 5 {
     6|      1|        println!("this will probably overflow");
     7|      3|    }
@@ -12,7 +12,7 @@
    12|      4|    result
    13|      4|}
    14|       |
-   15|       |fn main() -> Result<(),u8> {
+   15|      1|fn main() -> Result<(),u8> {
    16|      1|    let mut countdown = 10;
    17|     10|    while countdown > 0 {
    18|     10|        if countdown == 1 {
@@ -21,7 +21,7 @@
    21|     10|        } else if countdown < 5 {
    22|      3|            let result = might_overflow(1);
    23|      3|            println!("Result: {}", result);
-   24|     15|        }
+   24|      6|        }
    25|      9|        countdown -= 1;
    26|       |    }
    27|      0|    Ok(())

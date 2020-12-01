@@ -10,7 +10,7 @@ fn might_panic(should_panic: bool) {
     }
 }
 
-fn main() -> Result<(),u8> {
+fn main() -> Result<(), u8> {
     let mut countdown = 10;
     while countdown > 0 {
         if countdown == 1 {
@@ -42,8 +42,8 @@ fn main() -> Result<(),u8> {
 //   5. The reason the coverage results actually show `panic!()` was called is most likely because
 //      `panic!()` is a macro, not a simple function call, and there are other `Statement`s and/or
 //      `Terminator`s that execute with a coverage counter before the panic and unwind occur.
-//   6. By best practice, programs should not panic. By design, the coverage implementation will not
-//      incur additional cost (in program size and execution time) to improve coverage results for
-//      an event that is not supposted to happen.
+//   6. Since the common practice is not to use `panic!()` for error handling, the coverage
+//      implementation avoids incurring an additional cost (in program size and execution time) to
+//      improve coverage results for an event that is generally not "supposed" to happen.
 //   7. FIXME(#78544): This issue describes a feature request for a proposed option to enable
 //      more accurate coverage results for tests that intentionally panic.

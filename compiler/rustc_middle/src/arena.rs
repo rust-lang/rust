@@ -32,6 +32,7 @@ macro_rules! arena_types {
             [decode] borrowck_result:
                 rustc_middle::mir::BorrowCheckResult<$tcx>,
             [decode] unsafety_check_result: rustc_middle::mir::UnsafetyCheckResult,
+            [decode] code_region: rustc_middle::mir::coverage::CodeRegion,
             [] const_allocs: rustc_middle::mir::interpret::Allocation,
             // Required for the incremental on-disk cache
             [few] mir_keys: rustc_hir::def_id::DefIdSet,

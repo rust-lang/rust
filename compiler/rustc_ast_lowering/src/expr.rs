@@ -347,7 +347,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // `_ => else_block` where `else_block` is `{}` if there's `None`:
         let else_pat = self.pat_wild(span);
         let (else_expr, contains_else_clause) = match else_opt {
-            None => (self.expr_block_empty(span), false),
+            None => (self.expr_block_empty(span.shrink_to_hi()), false),
             Some(els) => (self.lower_expr(els), true),
         };
         let else_arm = self.arm(else_pat, else_expr);

@@ -33,7 +33,7 @@
 - 
 -     bb4: {
 +     bb2: {
-          _1 = const ();                   // scope 0 at $DIR/simplify_cfg.rs:7:9: 9:10
+          _1 = const ();                   // scope 0 at $DIR/simplify_cfg.rs:9:10: 9:10
           StorageDead(_2);                 // scope 0 at $DIR/simplify_cfg.rs:10:5: 10:6
           goto -> bb0;                     // scope 0 at $DIR/simplify_cfg.rs:6:5: 10:6
       }

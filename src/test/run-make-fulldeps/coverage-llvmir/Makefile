@@ -1,9 +1,5 @@
 # needs-profiler-support
 
-# ISSUE(76038): When targeting MSVC, Rust binaries built with both `-Z instrument-coverage` and
-# `-C link-dead-code` typically crash (with a seg-fault) or at best generate an empty `*.profraw`.
-# See ../coverage/coverage_tools.mk for more information.
-
 -include ../coverage/coverage_tools.mk
 
 BASEDIR=../coverage-llvmir
@@ -20,11 +16,7 @@ else
 	COMDAT_IF_SUPPORTED=, comdat
 endif
 
-ifeq ($(LINK_DEAD_CODE),yes)
-	DEFINE_INTERNAL=define hidden
-else
-	DEFINE_INTERNAL=define internal
-endif
+DEFINE_INTERNAL=define internal
 
 ifdef IS_WINDOWS
 	LLVM_FILECHECK_OPTIONS=\
@@ -65,14 +57,8 @@ endif
 
 test_llvm_ir:
 	# Compile the test program with non-experimental coverage instrumentation, and generate LLVM IR
-	#
-	# Note: `-Clink-dead-code=no` disables the option, needed because the option is automatically
-	# enabled for some platforms, but not for Windows MSVC (due to Issue #76038). The state of this
-	# option affects the generated MIR and coverage, so it is enabled for tests to ensure the
-	# tests results are the same across platforms.
 	$(RUSTC) $(BASEDIR)/testprog.rs \
 			-Zinstrument-coverage \
-			-Clink-dead-code=$(LINK_DEAD_CODE) \
 			--emit=llvm-ir
 
 	cat "$(TMPDIR)"/testprog.ll | \

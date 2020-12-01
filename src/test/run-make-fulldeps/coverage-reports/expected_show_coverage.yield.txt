@@ -4,7 +4,7 @@
     4|       |use std::ops::{Generator, GeneratorState};
     5|       |use std::pin::Pin;
     6|       |
-    7|       |fn main() {
+    7|      1|fn main() {
     8|      1|    let mut generator = || {
     9|      1|        yield 1;
    10|      1|        return "foo"

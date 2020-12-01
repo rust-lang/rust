@@ -37,7 +37,7 @@ fn main() -> () {
     }
 
     bb2: {
-        _0 = const ();                   // scope 1 at $DIR/issue-41888.rs:8:5: 14:6
+        _0 = const ();                   // scope 1 at $DIR/issue-41888.rs:14:6: 14:6
         goto -> bb8;                     // scope 1 at $DIR/issue-41888.rs:8:5: 14:6
     }
 
@@ -61,7 +61,7 @@ fn main() -> () {
     }
 
     bb6: {
-        _0 = const ();                   // scope 1 at $DIR/issue-41888.rs:10:9: 13:10
+        _0 = const ();                   // scope 1 at $DIR/issue-41888.rs:13:10: 13:10
         goto -> bb8;                     // scope 1 at $DIR/issue-41888.rs:10:9: 13:10
     }
 

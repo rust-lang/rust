@@ -69,11 +69,13 @@ For revisions in Pull Requests (PR):
 </style>
 </head>
 <body>
-<div class="code" style="counter-reset: line 17"><span class="line"><span class="code" style="--layer: 0">async fn h(x: usize) {</span></span>
+<div class="code" style="counter-reset: line 28"><span class="line"><span><span class="code even" style="--layer: 1"><span class="annotation">@0,1⦊</span>async fn h(x: usize) <span class="annotation">⦉@0,1</span></span></span><span class="code" style="--layer: 0">{ // The function signature is counted when called, but the body is not</span></span>
+<span class="line"><span class="code" style="--layer: 0">                       // executed (not awaited) so the open brace has a `0` count (at least when</span></span>
+<span class="line"><span class="code" style="--layer: 0">                       // displayed with `llvm-cov show` in color-mode).</span></span>
 <span class="line"><span class="code" style="--layer: 0">    match x {</span></span>
 <span class="line"><span class="code" style="--layer: 0">        y if foo().await[y] =&gt; (),</span></span>
 <span class="line"><span class="code" style="--layer: 0">        _ =&gt; (),</span></span>
 <span class="line"><span class="code" style="--layer: 0">    }</span></span>
-<span class="line"><span class="code" style="--layer: 0">}</span><span><span class="code even" style="--layer: 1" title="23:2-23:2: @1.Return: return"><span class="annotation">@0,1⦊</span>‸<span class="annotation">⦉@0,1</span></span></span></span></div>
+<span class="line"><span class="code" style="--layer: 0">}</span></span></div>
 </body>
 </html>

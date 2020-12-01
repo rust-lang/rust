@@ -16,8 +16,8 @@
               "percent": 100
             },
             "lines": {
-              "count": 2,
-              "covered": 2,
+              "count": 4,
+              "covered": 4,
               "percent": 100
             },
             "regions": {
@@ -41,8 +41,8 @@
           "percent": 100
         },
         "lines": {
-          "count": 2,
-          "covered": 2,
+          "count": 4,
+          "covered": 4,
           "percent": 100
         },
         "regions": {

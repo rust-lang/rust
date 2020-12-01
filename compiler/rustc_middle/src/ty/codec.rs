@@ -162,7 +162,8 @@ encodable_via_deref! {
     ty::Region<'tcx>,
     &'tcx mir::Body<'tcx>,
     &'tcx mir::UnsafetyCheckResult,
-    &'tcx mir::BorrowCheckResult<'tcx>
+    &'tcx mir::BorrowCheckResult<'tcx>,
+    &'tcx mir::coverage::CodeRegion
 }
 
 pub trait TyDecoder<'tcx>: Decoder {
@@ -376,7 +377,8 @@ impl_decodable_via_ref! {
     &'tcx Allocation,
     &'tcx mir::Body<'tcx>,
     &'tcx mir::UnsafetyCheckResult,
-    &'tcx mir::BorrowCheckResult<'tcx>
+    &'tcx mir::BorrowCheckResult<'tcx>,
+    &'tcx mir::coverage::CodeRegion
 }
 
 #[macro_export]

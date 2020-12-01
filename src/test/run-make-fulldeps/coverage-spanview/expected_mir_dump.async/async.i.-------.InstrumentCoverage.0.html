@@ -69,11 +69,15 @@ For revisions in Pull Requests (PR):
 </style>
 </head>
 <body>
-<div class="code" style="counter-reset: line 24"><span class="line"><span class="code" style="--layer: 0">async fn i(x: u8) {</span></span>
+<div class="code" style="counter-reset: line 37"><span class="line"><span><span class="code even" style="--layer: 1"><span class="annotation">@0,1⦊</span>async fn i(x: u8) <span class="annotation">⦉@0,1</span></span></span><span class="code" style="--layer: 0">{ // line coverage is 1, but there are 2 regions:</span></span>
+<span class="line"><span class="code" style="--layer: 0">                    // (a) the function signature, counted when the function is called; and</span></span>
+<span class="line"><span class="code" style="--layer: 0">                    // (b) the open brace for the function body, counted once when the body is</span></span>
+<span class="line"><span class="code" style="--layer: 0">                    // executed asynchronously.</span></span>
 <span class="line"><span class="code" style="--layer: 0">    match x {</span></span>
+<span class="line"><span class="code" style="--layer: 0">        y if c(x).await == y + 1 =&gt; { d().await; }</span></span>
 <span class="line"><span class="code" style="--layer: 0">        y if f().await == y + 1 =&gt; (),</span></span>
 <span class="line"><span class="code" style="--layer: 0">        _ =&gt; (),</span></span>
 <span class="line"><span class="code" style="--layer: 0">    }</span></span>
-<span class="line"><span class="code" style="--layer: 0">}</span><span><span class="code even" style="--layer: 1" title="30:2-30:2: @1.Return: return"><span class="annotation">@0,1⦊</span>‸<span class="annotation">⦉@0,1</span></span></span></span></div>
+<span class="line"><span class="code" style="--layer: 0">}</span></span></div>
 </body>
 </html>

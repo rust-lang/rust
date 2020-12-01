@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<!--
+
+Preview this file as rendered HTML from the github source at:
+https://htmlpreview.github.io/?https://github.com/rust-lang/rust/blob/master/src/test/run-make-fulldeps/coverage-spanview/expected_mir_dump.closure/closure.main-%7Bclosure%239%7D.-------.InstrumentCoverage.0.html
+
+For revisions in Pull Requests (PR):
+  * Replace "rust-lang" with the github PR author
+  * Replace "master" with the PR branch name
+
+-->
+<html>
+<head>
+<title>closure.main-{closure#9} - Coverage Spans</title>
+<style>
+    .line {
+        counter-increment: line;
+    }
+    .line:before {
+        content: counter(line) ": ";
+        font-family: Menlo, Monaco, monospace;
+        font-style: italic;
+        width: 3.8em;
+        display: inline-block;
+        text-align: right;
+        filter: opacity(50%);
+        -webkit-user-select: none;
+    }
+    .code {
+        color: #dddddd;
+        background-color: #222222;
+        font-family: Menlo, Monaco, monospace;
+        line-height: 1.4em;
+        border-bottom: 2px solid #222222;
+        white-space: pre;
+        display: inline-block;
+    }
+    .odd {
+        background-color: #55bbff;
+        color: #223311;
+    }
+    .even {
+        background-color: #ee7756;
+        color: #551133;
+    }
+    .code {
+        --index: calc(var(--layer) - 1);
+        padding-top: calc(var(--index) * 0.15em);
+        filter:
+            hue-rotate(calc(var(--index) * 25deg))
+            saturate(calc(100% - (var(--index) * 2%)))
+            brightness(calc(100% - (var(--index) * 1.5%)));
+    }
+    .annotation {
+        color: #4444ff;
+        font-family: monospace;
+        font-style: italic;
+        display: none;
+        -webkit-user-select: none;
+    }
+    body:active .annotation {
+        /* requires holding mouse down anywhere on the page */
+        display: inline-block;
+    }
+    span:hover .annotation {
+        /* requires hover over a span ONLY on its first line */
+        display: inline-block;
+    }
+</style>
+</head>
+<body>
+<div class="code" style="counter-reset: line 150"><span class="line">                                          <span class="code" style="--layer: 0">|</span></span>
+<span class="line"><span class="code" style="--layer: 0">        _unused_arg: u8</span></span>
+<span class="line"><span class="code" style="--layer: 0">    | </span><span><span class="code even" style="--layer: 1" title="153:18-153:30: @0[5]: _15 = const main::{closure#9}::promoted[1]
+153:18-153:30: @0[6]: _7 = &amp;(*_15)
+153:18-153:30: @0[7]: _6 = &amp;(*_7)
+153:18-153:30: @0[8]: _5 = move _6 as &amp;[&amp;str] (Pointer(Unsize))
+153:9-153:31: @0[14]: _13 = ()
+153:9-153:31: @0[15]: FakeRead(ForMatchedPlace, _13)
+153:9-153:31: @0[16]: _14 = const main::{closure#9}::promoted[0]
+153:9-153:31: @0[17]: _11 = &amp;(*_14)
+153:9-153:31: @0[18]: _10 = &amp;(*_11)
+153:9-153:31: @0[19]: _9 = move _10 as &amp;[std::fmt::ArgumentV1] (Pointer(Unsize))
+153:9-153:31: @0.Call: _4 = Arguments::new_v1(move _5, move _9) -&gt; [return: bb1, unwind: bb3]
+153:9-153:31: @1.Call: _3 = _print(move _4) -&gt; [return: bb2, unwind: bb3]
+153:9-153:31: @2[5]: _0 = const ()
+153:33-153:33: @2.Return: return"><span class="annotation">@0,1,2⦊</span>{ println!("not called") }<span class="annotation">⦉@0,1,2</span></span></span></span></div>
+</body>
+</html>

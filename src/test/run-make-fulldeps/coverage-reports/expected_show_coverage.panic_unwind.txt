@@ -1,7 +1,7 @@
     1|       |#![allow(unused_assignments)]
     2|       |// expect-exit-status-101
     3|       |
-    4|       |fn might_panic(should_panic: bool) {
+    4|      4|fn might_panic(should_panic: bool) {
     5|      4|    if should_panic {
     6|      1|        println!("panicking...");
     7|      1|        panic!("panics");
@@ -10,14 +10,14 @@
    10|      3|    }
    11|      3|}
    12|       |
-   13|       |fn main() -> Result<(),u8> {
+   13|      1|fn main() -> Result<(), u8> {
    14|      1|    let mut countdown = 10;
    15|     10|    while countdown > 0 {
    16|     10|        if countdown == 1 {
    17|      0|            might_panic(true);
    18|     10|        } else if countdown < 5 {
    19|      3|            might_panic(false);
-   20|     15|        }
+   20|      6|        }
    21|      9|        countdown -= 1;
    22|       |    }
    23|      0|    Ok(())
@@ -42,9 +42,9 @@
    42|       |//   5. The reason the coverage results actually show `panic!()` was called is most likely because
    43|       |//      `panic!()` is a macro, not a simple function call, and there are other `Statement`s and/or
    44|       |//      `Terminator`s that execute with a coverage counter before the panic and unwind occur.
-   45|       |//   6. By best practice, programs should not panic. By design, the coverage implementation will not
-   46|       |//      incur additional cost (in program size and execution time) to improve coverage results for
-   47|       |//      an event that is not supposted to happen.
+   45|       |//   6. Since the common practice is not to use `panic!()` for error handling, the coverage
+   46|       |//      implementation avoids incurring an additional cost (in program size and execution time) to
+   47|       |//      improve coverage results for an event that is generally not "supposed" to happen.
    48|       |//   7. FIXME(#78544): This issue describes a feature request for a proposed option to enable
    49|       |//      more accurate coverage results for tests that intentionally panic.
 

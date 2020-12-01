@@ -4,7 +4,7 @@ fn hello() -> () {
     let mut _0: ();                      // return place in scope 0 at $DIR/control-flow-simplification.rs:11:14: 11:14
 
     bb0: {
-        _0 = const ();                   // scope 0 at $DIR/control-flow-simplification.rs:12:5: 14:6
+        _0 = const ();                   // scope 0 at $DIR/control-flow-simplification.rs:14:6: 14:6
         return;                          // scope 0 at $DIR/control-flow-simplification.rs:15:2: 15:2
     }
 }

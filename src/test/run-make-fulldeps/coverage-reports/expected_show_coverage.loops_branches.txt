@@ -6,7 +6,7 @@
     6|       |struct DebugTest;
     7|       |
     8|       |impl std::fmt::Debug for DebugTest {
-    9|       |    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+    9|      1|    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
    10|      1|        if true {
    11|      1|            if false {
    12|       |                while true {
@@ -15,7 +15,7 @@
    15|      1|            write!(f, "error")?;
                                             ^0
    16|       |        } else {
-   17|      1|        }
+   17|       |        }
    18|      1|        Ok(())
    19|      1|    }
    20|       |}

@@ -11,11 +11,11 @@
    11|      2|    }
    12|       |}
    13|       |
-   14|       |fn main() -> Result<(),u8> {
+   14|      1|fn main() -> Result<(),u8> {
    15|      1|    let _firecracker = Firework { strength: 1 };
    16|      1|
    17|      1|    let _tnt = Firework { strength: 100 };
-   18|       |
+   18|      1|
    19|      1|    if true {
    20|      1|        println!("Exiting with error...");
    21|      1|        return Err(1);

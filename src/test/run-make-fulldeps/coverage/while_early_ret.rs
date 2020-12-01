@@ -40,8 +40,3 @@ fn main() -> Result<(),u8> {
 // and MacOS. But on Windows (MSVC, at least), the call to `std::process::exit()` exits the program
 // without saving the InstrProf coverage counters. The use of `std::process:exit()` is not critical
 // to the coverage test for early returns, but this is a limitation that should be fixed.
-//
-// FIXME(richkadel): Consider creating a new tests for coverage when calling `std::process::exit()`,
-// move the `ISSUE` comment to that test, and implement a new test directive that supports skipping
-// coverage tests when targeting specific platforms (at least skipping Windows, or MSVC if the
-// problem exists on MSVC only).

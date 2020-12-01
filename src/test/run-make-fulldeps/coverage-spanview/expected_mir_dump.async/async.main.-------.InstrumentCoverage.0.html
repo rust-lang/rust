@@ -69,65 +69,101 @@ For revisions in Pull Requests (PR):
 </style>
 </head>
 <body>
-<div class="code" style="counter-reset: line 31"><span class="line"><span class="code" style="--layer: 0">fn main() </span><span><span class="code even" style="--layer: 1" title="33:13-33:18: @0.Call: _1 = g(const 10_u8) -&gt; [return: bb1, unwind: bb12]
-34:13-34:17: @2.Call: _2 = h(const 9_usize) -&gt; [return: bb3, unwind: bb12]
-35:31-35:35: @4.Call: _4 = i(const 8_u8) -&gt; [return: bb5, unwind: bb12]
-35:22-35:36: @5.Call: _3 = Box::&lt;impl Future&gt;::pin(move _4) -&gt; [return: bb6, unwind: bb11]
-35:9-35:19: @6[1]: FakeRead(ForLet, _3)
-36:24-36:30: @6[5]: _7 = &amp;mut _3
-36:24-36:39: @6.Call: _6 = Pin::&lt;Box&lt;impl Future&gt;&gt;::as_mut(move _7) -&gt; [return: bb7, unwind: bb10]
-36:5-36:40: @7.Call: _5 = block_on::&lt;Pin&lt;&amp;mut impl Future&gt;&gt;(move _6) -&gt; [return: bb8, unwind: bb10]
-32:11-37:2: @8[2]: _0 = const ()
-37:2-37:2: @9.Return: return"><span class="annotation">@0,1,2,3,4,5,6,7,8,9⦊</span>{</span></span>
-<span class="line"><span class="code even" style="--layer: 1" title="33:13-33:18: @0.Call: _1 = g(const 10_u8) -&gt; [return: bb1, unwind: bb12]
-34:13-34:17: @2.Call: _2 = h(const 9_usize) -&gt; [return: bb3, unwind: bb12]
-35:31-35:35: @4.Call: _4 = i(const 8_u8) -&gt; [return: bb5, unwind: bb12]
-35:22-35:36: @5.Call: _3 = Box::&lt;impl Future&gt;::pin(move _4) -&gt; [return: bb6, unwind: bb11]
-35:9-35:19: @6[1]: FakeRead(ForLet, _3)
-36:24-36:30: @6[5]: _7 = &amp;mut _3
-36:24-36:39: @6.Call: _6 = Pin::&lt;Box&lt;impl Future&gt;&gt;::as_mut(move _7) -&gt; [return: bb7, unwind: bb10]
-36:5-36:40: @7.Call: _5 = block_on::&lt;Pin&lt;&amp;mut impl Future&gt;&gt;(move _6) -&gt; [return: bb8, unwind: bb10]
-32:11-37:2: @8[2]: _0 = const ()
-37:2-37:2: @9.Return: return">    let _ = g(10);</span></span>
-<span class="line"><span class="code even" style="--layer: 1" title="33:13-33:18: @0.Call: _1 = g(const 10_u8) -&gt; [return: bb1, unwind: bb12]
-34:13-34:17: @2.Call: _2 = h(const 9_usize) -&gt; [return: bb3, unwind: bb12]
-35:31-35:35: @4.Call: _4 = i(const 8_u8) -&gt; [return: bb5, unwind: bb12]
-35:22-35:36: @5.Call: _3 = Box::&lt;impl Future&gt;::pin(move _4) -&gt; [return: bb6, unwind: bb11]
-35:9-35:19: @6[1]: FakeRead(ForLet, _3)
-36:24-36:30: @6[5]: _7 = &amp;mut _3
-36:24-36:39: @6.Call: _6 = Pin::&lt;Box&lt;impl Future&gt;&gt;::as_mut(move _7) -&gt; [return: bb7, unwind: bb10]
-36:5-36:40: @7.Call: _5 = block_on::&lt;Pin&lt;&amp;mut impl Future&gt;&gt;(move _6) -&gt; [return: bb8, unwind: bb10]
-32:11-37:2: @8[2]: _0 = const ()
-37:2-37:2: @9.Return: return">    let _ = h(9);</span></span>
-<span class="line"><span class="code even" style="--layer: 1" title="33:13-33:18: @0.Call: _1 = g(const 10_u8) -&gt; [return: bb1, unwind: bb12]
-34:13-34:17: @2.Call: _2 = h(const 9_usize) -&gt; [return: bb3, unwind: bb12]
-35:31-35:35: @4.Call: _4 = i(const 8_u8) -&gt; [return: bb5, unwind: bb12]
-35:22-35:36: @5.Call: _3 = Box::&lt;impl Future&gt;::pin(move _4) -&gt; [return: bb6, unwind: bb11]
-35:9-35:19: @6[1]: FakeRead(ForLet, _3)
-36:24-36:30: @6[5]: _7 = &amp;mut _3
-36:24-36:39: @6.Call: _6 = Pin::&lt;Box&lt;impl Future&gt;&gt;::as_mut(move _7) -&gt; [return: bb7, unwind: bb10]
-36:5-36:40: @7.Call: _5 = block_on::&lt;Pin&lt;&amp;mut impl Future&gt;&gt;(move _6) -&gt; [return: bb8, unwind: bb10]
-32:11-37:2: @8[2]: _0 = const ()
-37:2-37:2: @9.Return: return">    let mut future = Box::pin(i(8));</span></span>
-<span class="line"><span class="code even" style="--layer: 1" title="33:13-33:18: @0.Call: _1 = g(const 10_u8) -&gt; [return: bb1, unwind: bb12]
-34:13-34:17: @2.Call: _2 = h(const 9_usize) -&gt; [return: bb3, unwind: bb12]
-35:31-35:35: @4.Call: _4 = i(const 8_u8) -&gt; [return: bb5, unwind: bb12]
-35:22-35:36: @5.Call: _3 = Box::&lt;impl Future&gt;::pin(move _4) -&gt; [return: bb6, unwind: bb11]
-35:9-35:19: @6[1]: FakeRead(ForLet, _3)
-36:24-36:30: @6[5]: _7 = &amp;mut _3
-36:24-36:39: @6.Call: _6 = Pin::&lt;Box&lt;impl Future&gt;&gt;::as_mut(move _7) -&gt; [return: bb7, unwind: bb10]
-36:5-36:40: @7.Call: _5 = block_on::&lt;Pin&lt;&amp;mut impl Future&gt;&gt;(move _6) -&gt; [return: bb8, unwind: bb10]
-32:11-37:2: @8[2]: _0 = const ()
-37:2-37:2: @9.Return: return">    executor::block_on(future.as_mut());</span></span>
-<span class="line"><span class="code even" style="--layer: 1" title="33:13-33:18: @0.Call: _1 = g(const 10_u8) -&gt; [return: bb1, unwind: bb12]
-34:13-34:17: @2.Call: _2 = h(const 9_usize) -&gt; [return: bb3, unwind: bb12]
-35:31-35:35: @4.Call: _4 = i(const 8_u8) -&gt; [return: bb5, unwind: bb12]
-35:22-35:36: @5.Call: _3 = Box::&lt;impl Future&gt;::pin(move _4) -&gt; [return: bb6, unwind: bb11]
-35:9-35:19: @6[1]: FakeRead(ForLet, _3)
-36:24-36:30: @6[5]: _7 = &amp;mut _3
-36:24-36:39: @6.Call: _6 = Pin::&lt;Box&lt;impl Future&gt;&gt;::as_mut(move _7) -&gt; [return: bb7, unwind: bb10]
-36:5-36:40: @7.Call: _5 = block_on::&lt;Pin&lt;&amp;mut impl Future&gt;&gt;(move _6) -&gt; [return: bb8, unwind: bb10]
-32:11-37:2: @8[2]: _0 = const ()
-37:2-37:2: @9.Return: return">}<span class="annotation">⦉@0,1,2,3,4,5,6,7,8,9</span></span></span></span></div>
+<div class="code" style="counter-reset: line 90"><span class="line"><span><span class="code even" style="--layer: 1" title="92:13-92:18: @0.Call: _1 = g(const 10_u8) -&gt; [return: bb1, unwind: bb14]
+93:13-93:17: @2.Call: _2 = h(const 9_usize) -&gt; [return: bb3, unwind: bb14]
+94:31-94:35: @4.Call: _4 = i(const 8_u8) -&gt; [return: bb5, unwind: bb14]
+94:22-94:36: @5.Call: _3 = Box::&lt;impl Future&gt;::pin(move _4) -&gt; [return: bb6, unwind: bb13]
+94:9-94:19: @6[1]: FakeRead(ForLet, _3)
+95:5-95:9: @6.Call: _5 = j(const 7_u8) -&gt; [return: bb7, unwind: bb12]
+96:5-96:9: @7.Call: _6 = l(const 6_u8) -&gt; [return: bb8, unwind: bb12]
+97:24-97:30: @8[4]: _9 = &amp;mut _3
+97:24-97:39: @8.Call: _8 = Pin::&lt;Box&lt;impl Future&gt;&gt;::as_mut(move _9) -&gt; [return: bb9, unwind: bb12]
+97:5-97:40: @9.Call: _7 = block_on::&lt;Pin&lt;&amp;mut impl Future&gt;&gt;(move _8) -&gt; [return: bb10, unwind: bb12]
+91:11-98:2: @10[2]: _0 = const ()
+98:2-98:2: @11.Return: return"><span class="annotation">@0,1,2,3,4,5,6,7,8,9,10,11⦊</span>fn main() {</span></span>
+<span class="line"><span class="code even" style="--layer: 1" title="92:13-92:18: @0.Call: _1 = g(const 10_u8) -&gt; [return: bb1, unwind: bb14]
+93:13-93:17: @2.Call: _2 = h(const 9_usize) -&gt; [return: bb3, unwind: bb14]
+94:31-94:35: @4.Call: _4 = i(const 8_u8) -&gt; [return: bb5, unwind: bb14]
+94:22-94:36: @5.Call: _3 = Box::&lt;impl Future&gt;::pin(move _4) -&gt; [return: bb6, unwind: bb13]
+94:9-94:19: @6[1]: FakeRead(ForLet, _3)
+95:5-95:9: @6.Call: _5 = j(const 7_u8) -&gt; [return: bb7, unwind: bb12]
+96:5-96:9: @7.Call: _6 = l(const 6_u8) -&gt; [return: bb8, unwind: bb12]
+97:24-97:30: @8[4]: _9 = &amp;mut _3
+97:24-97:39: @8.Call: _8 = Pin::&lt;Box&lt;impl Future&gt;&gt;::as_mut(move _9) -&gt; [return: bb9, unwind: bb12]
+97:5-97:40: @9.Call: _7 = block_on::&lt;Pin&lt;&amp;mut impl Future&gt;&gt;(move _8) -&gt; [return: bb10, unwind: bb12]
+91:11-98:2: @10[2]: _0 = const ()
+98:2-98:2: @11.Return: return">    let _ = g(10);</span></span>
+<span class="line"><span class="code even" style="--layer: 1" title="92:13-92:18: @0.Call: _1 = g(const 10_u8) -&gt; [return: bb1, unwind: bb14]
+93:13-93:17: @2.Call: _2 = h(const 9_usize) -&gt; [return: bb3, unwind: bb14]
+94:31-94:35: @4.Call: _4 = i(const 8_u8) -&gt; [return: bb5, unwind: bb14]
+94:22-94:36: @5.Call: _3 = Box::&lt;impl Future&gt;::pin(move _4) -&gt; [return: bb6, unwind: bb13]
+94:9-94:19: @6[1]: FakeRead(ForLet, _3)
+95:5-95:9: @6.Call: _5 = j(const 7_u8) -&gt; [return: bb7, unwind: bb12]
+96:5-96:9: @7.Call: _6 = l(const 6_u8) -&gt; [return: bb8, unwind: bb12]
+97:24-97:30: @8[4]: _9 = &amp;mut _3
+97:24-97:39: @8.Call: _8 = Pin::&lt;Box&lt;impl Future&gt;&gt;::as_mut(move _9) -&gt; [return: bb9, unwind: bb12]
+97:5-97:40: @9.Call: _7 = block_on::&lt;Pin&lt;&amp;mut impl Future&gt;&gt;(move _8) -&gt; [return: bb10, unwind: bb12]
+91:11-98:2: @10[2]: _0 = const ()
+98:2-98:2: @11.Return: return">    let _ = h(9);</span></span>
+<span class="line"><span class="code even" style="--layer: 1" title="92:13-92:18: @0.Call: _1 = g(const 10_u8) -&gt; [return: bb1, unwind: bb14]
+93:13-93:17: @2.Call: _2 = h(const 9_usize) -&gt; [return: bb3, unwind: bb14]
+94:31-94:35: @4.Call: _4 = i(const 8_u8) -&gt; [return: bb5, unwind: bb14]
+94:22-94:36: @5.Call: _3 = Box::&lt;impl Future&gt;::pin(move _4) -&gt; [return: bb6, unwind: bb13]
+94:9-94:19: @6[1]: FakeRead(ForLet, _3)
+95:5-95:9: @6.Call: _5 = j(const 7_u8) -&gt; [return: bb7, unwind: bb12]
+96:5-96:9: @7.Call: _6 = l(const 6_u8) -&gt; [return: bb8, unwind: bb12]
+97:24-97:30: @8[4]: _9 = &amp;mut _3
+97:24-97:39: @8.Call: _8 = Pin::&lt;Box&lt;impl Future&gt;&gt;::as_mut(move _9) -&gt; [return: bb9, unwind: bb12]
+97:5-97:40: @9.Call: _7 = block_on::&lt;Pin&lt;&amp;mut impl Future&gt;&gt;(move _8) -&gt; [return: bb10, unwind: bb12]
+91:11-98:2: @10[2]: _0 = const ()
+98:2-98:2: @11.Return: return">    let mut future = Box::pin(i(8));</span></span>
+<span class="line"><span class="code even" style="--layer: 1" title="92:13-92:18: @0.Call: _1 = g(const 10_u8) -&gt; [return: bb1, unwind: bb14]
+93:13-93:17: @2.Call: _2 = h(const 9_usize) -&gt; [return: bb3, unwind: bb14]
+94:31-94:35: @4.Call: _4 = i(const 8_u8) -&gt; [return: bb5, unwind: bb14]
+94:22-94:36: @5.Call: _3 = Box::&lt;impl Future&gt;::pin(move _4) -&gt; [return: bb6, unwind: bb13]
+94:9-94:19: @6[1]: FakeRead(ForLet, _3)
+95:5-95:9: @6.Call: _5 = j(const 7_u8) -&gt; [return: bb7, unwind: bb12]
+96:5-96:9: @7.Call: _6 = l(const 6_u8) -&gt; [return: bb8, unwind: bb12]
+97:24-97:30: @8[4]: _9 = &amp;mut _3
+97:24-97:39: @8.Call: _8 = Pin::&lt;Box&lt;impl Future&gt;&gt;::as_mut(move _9) -&gt; [return: bb9, unwind: bb12]
+97:5-97:40: @9.Call: _7 = block_on::&lt;Pin&lt;&amp;mut impl Future&gt;&gt;(move _8) -&gt; [return: bb10, unwind: bb12]
+91:11-98:2: @10[2]: _0 = const ()
+98:2-98:2: @11.Return: return">    j(7);</span></span>
+<span class="line"><span class="code even" style="--layer: 1" title="92:13-92:18: @0.Call: _1 = g(const 10_u8) -&gt; [return: bb1, unwind: bb14]
+93:13-93:17: @2.Call: _2 = h(const 9_usize) -&gt; [return: bb3, unwind: bb14]
+94:31-94:35: @4.Call: _4 = i(const 8_u8) -&gt; [return: bb5, unwind: bb14]
+94:22-94:36: @5.Call: _3 = Box::&lt;impl Future&gt;::pin(move _4) -&gt; [return: bb6, unwind: bb13]
+94:9-94:19: @6[1]: FakeRead(ForLet, _3)
+95:5-95:9: @6.Call: _5 = j(const 7_u8) -&gt; [return: bb7, unwind: bb12]
+96:5-96:9: @7.Call: _6 = l(const 6_u8) -&gt; [return: bb8, unwind: bb12]
+97:24-97:30: @8[4]: _9 = &amp;mut _3
+97:24-97:39: @8.Call: _8 = Pin::&lt;Box&lt;impl Future&gt;&gt;::as_mut(move _9) -&gt; [return: bb9, unwind: bb12]
+97:5-97:40: @9.Call: _7 = block_on::&lt;Pin&lt;&amp;mut impl Future&gt;&gt;(move _8) -&gt; [return: bb10, unwind: bb12]
+91:11-98:2: @10[2]: _0 = const ()
+98:2-98:2: @11.Return: return">    l(6);</span></span>
+<span class="line"><span class="code even" style="--layer: 1" title="92:13-92:18: @0.Call: _1 = g(const 10_u8) -&gt; [return: bb1, unwind: bb14]
+93:13-93:17: @2.Call: _2 = h(const 9_usize) -&gt; [return: bb3, unwind: bb14]
+94:31-94:35: @4.Call: _4 = i(const 8_u8) -&gt; [return: bb5, unwind: bb14]
+94:22-94:36: @5.Call: _3 = Box::&lt;impl Future&gt;::pin(move _4) -&gt; [return: bb6, unwind: bb13]
+94:9-94:19: @6[1]: FakeRead(ForLet, _3)
+95:5-95:9: @6.Call: _5 = j(const 7_u8) -&gt; [return: bb7, unwind: bb12]
+96:5-96:9: @7.Call: _6 = l(const 6_u8) -&gt; [return: bb8, unwind: bb12]
+97:24-97:30: @8[4]: _9 = &amp;mut _3
+97:24-97:39: @8.Call: _8 = Pin::&lt;Box&lt;impl Future&gt;&gt;::as_mut(move _9) -&gt; [return: bb9, unwind: bb12]
+97:5-97:40: @9.Call: _7 = block_on::&lt;Pin&lt;&amp;mut impl Future&gt;&gt;(move _8) -&gt; [return: bb10, unwind: bb12]
+91:11-98:2: @10[2]: _0 = const ()
+98:2-98:2: @11.Return: return">    executor::block_on(future.as_mut());</span></span>
+<span class="line"><span class="code even" style="--layer: 1" title="92:13-92:18: @0.Call: _1 = g(const 10_u8) -&gt; [return: bb1, unwind: bb14]
+93:13-93:17: @2.Call: _2 = h(const 9_usize) -&gt; [return: bb3, unwind: bb14]
+94:31-94:35: @4.Call: _4 = i(const 8_u8) -&gt; [return: bb5, unwind: bb14]
+94:22-94:36: @5.Call: _3 = Box::&lt;impl Future&gt;::pin(move _4) -&gt; [return: bb6, unwind: bb13]
+94:9-94:19: @6[1]: FakeRead(ForLet, _3)
+95:5-95:9: @6.Call: _5 = j(const 7_u8) -&gt; [return: bb7, unwind: bb12]
+96:5-96:9: @7.Call: _6 = l(const 6_u8) -&gt; [return: bb8, unwind: bb12]
+97:24-97:30: @8[4]: _9 = &amp;mut _3
+97:24-97:39: @8.Call: _8 = Pin::&lt;Box&lt;impl Future&gt;&gt;::as_mut(move _9) -&gt; [return: bb9, unwind: bb12]
+97:5-97:40: @9.Call: _7 = block_on::&lt;Pin&lt;&amp;mut impl Future&gt;&gt;(move _8) -&gt; [return: bb10, unwind: bb12]
+91:11-98:2: @10[2]: _0 = const ()
+98:2-98:2: @11.Return: return">}<span class="annotation">⦉@0,1,2,3,4,5,6,7,8,9,10,11</span></span></span></span></div>
 </body>
 </html>

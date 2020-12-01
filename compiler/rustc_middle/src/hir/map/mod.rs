@@ -47,7 +47,7 @@ fn fn_decl<'hir>(node: Node<'hir>) -> Option<&'hir FnDecl<'hir>> {
     }
 }
 
-fn fn_sig<'hir>(node: Node<'hir>) -> Option<&'hir FnSig<'hir>> {
+pub fn fn_sig<'hir>(node: Node<'hir>) -> Option<&'hir FnSig<'hir>> {
     match &node {
         Node::Item(Item { kind: ItemKind::Fn(sig, _, _), .. })
         | Node::TraitItem(TraitItem { kind: TraitItemKind::Fn(sig, _), .. })

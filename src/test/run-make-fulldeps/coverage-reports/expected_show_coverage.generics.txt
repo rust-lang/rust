@@ -41,27 +41,31 @@
   ------------------
    20|       |}
    21|       |
-   22|       |fn main() -> Result<(),u8> {
+   22|      1|fn main() -> Result<(),u8> {
    23|      1|    let mut firecracker = Firework { strength: 1 };
    24|      1|    firecracker.set_strength(2);
    25|      1|
    26|      1|    let mut tnt = Firework { strength: 100.1 };
    27|      1|    tnt.set_strength(200.1);
    28|      1|    tnt.set_strength(300.3);
-   29|       |
+   29|      1|
    30|      1|    if true {
    31|      1|        println!("Exiting with error...");
    32|      1|        return Err(1);
-   33|       |    }
-   34|       |
-   35|       |    let _ = Firework { strength: 1000 };
-   36|       |
-   37|       |    Ok(())
-   38|      1|}
-   39|       |
-   40|       |// Expected program output:
-   41|       |//   Exiting with error...
-   42|       |//   BOOM times 100!!!
-   43|       |//   BOOM times 1!!!
-   44|       |//   Error: 1
+   33|       |    } // The remaining lines below have no coverage because `if true` (with the constant literal
+   34|       |      // `true`) is guaranteed to execute the `then` block, which is also guaranteed to `return`.
+   35|       |      // Thankfully, in the normal case, conditions are not guaranteed ahead of time, and as shown
+   36|       |      // in other tests, the lines below would have coverage (which would show they had `0`
+   37|       |      // executions, assuming the condition still evaluated to `true`).
+   38|       |
+   39|       |    let _ = Firework { strength: 1000 };
+   40|       |
+   41|       |    Ok(())
+   42|      1|}
+   43|       |
+   44|       |// Expected program output:
+   45|       |//   Exiting with error...
+   46|       |//   BOOM times 100!!!
+   47|       |//   BOOM times 1!!!
+   48|       |//   Error: 1
 

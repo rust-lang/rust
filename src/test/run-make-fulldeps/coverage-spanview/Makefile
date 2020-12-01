@@ -1,9 +1,5 @@
 # needs-profiler-support
 
-# ISSUE(76038): When targeting MSVC, Rust binaries built with both `-Z instrument-coverage` and
-# `-C link-dead-code` typically crash (with a seg-fault) or at best generate an empty `*.profraw`.
-# See ../coverage/coverage_tools.mk for more information.
-
 -include ../coverage/coverage_tools.mk
 
 BASEDIR=../coverage-spanview
@@ -47,7 +43,6 @@ endif
 				echo "--edition=2018" \
 			) \
 			-Zinstrument-coverage \
-			-Clink-dead-code=$(LINK_DEAD_CODE) \
 			-Zdump-mir=InstrumentCoverage \
 			-Zdump-mir-spanview \
 			-Zdump-mir-dir="$(TMPDIR)"/mir_dump.$@

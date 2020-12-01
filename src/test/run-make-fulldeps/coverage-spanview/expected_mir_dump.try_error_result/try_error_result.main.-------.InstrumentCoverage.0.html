@@ -69,9 +69,10 @@ For revisions in Pull Requests (PR):
 </style>
 </head>
 <body>
-<div class="code" style="counter-reset: line 11"><span class="line"><span class="code" style="--layer: 0">fn main() -&gt; Result&lt;(),()&gt; {</span></span>
-<span class="line"><span class="code" style="--layer: 0">    let </span><span><span class="code even" style="--layer: 1" title="14:21-14:23: @0[1]: _1 = const 10_i32
-13:9-14:18: @0[2]: FakeRead(ForLet, _1)"><span class="annotation">@0,1⦊</span>mut</span></span>
+<div class="code" style="counter-reset: line 11"><span class="line"><span><span class="code even" style="--layer: 1" title="14:21-14:23: @0[1]: _1 = const 10_i32
+13:9-14:18: @0[2]: FakeRead(ForLet, _1)"><span class="annotation">@0,1⦊</span>fn main() -&gt; Result&lt;(),()&gt; {</span></span>
+<span class="line"><span class="code even" style="--layer: 1" title="14:21-14:23: @0[1]: _1 = const 10_i32
+13:9-14:18: @0[2]: FakeRead(ForLet, _1)">    let mut</span></span>
 <span class="line"><span class="code even" style="--layer: 1" title="14:21-14:23: @0[1]: _1 = const 10_i32
 13:9-14:18: @0[2]: FakeRead(ForLet, _1)">        countdown = 10<span class="annotation">⦉@0,1</span></span></span><span class="code" style="--layer: 0"></span></span>
 <span class="line"><span class="code" style="--layer: 0">    ;</span></span>
@@ -124,10 +125,10 @@ For revisions in Pull Requests (PR):
 <span class="line"><span class="code" style="--layer: 0">            </span><span><span class="code even" style="--layer: 1" title="32:13-32:42: @11.Call: _40 = call(const false) -&gt; [return: bb29, unwind: bb40]"><span class="annotation">@11,29,30⦊</span>call(/*return_error=*/ false)<span class="annotation">⦉@11,29,30</span></span></span><span><span class="code odd" style="--layer: 1" title="32:42-32:43: @34[1]: _42 = ((_39 as Err).0: ())
 32:42-32:43: @34[4]: _45 = _42
 32:42-32:43: @34.Call: _44 = &lt;() as From&lt;()&gt;&gt;::from(move _45) -&gt; [return: bb35, unwind: bb40]"><span class="annotation">@32,34,35,36⦊</span>?<span class="annotation">⦉@32,34,35,36</span></span></span><span class="code" style="--layer: 0">;</span></span>
-<span class="line"><span class="code" style="--layer: 0">        }</span><span><span class="code even" style="--layer: 1" title="33:10-33:10: @23.Goto: goto -&gt; bb37"><span class="annotation">@23⦊</span>‸<span class="annotation">⦉@23</span></span></span><span><span class="code odd" style="--layer: 1" title="33:10-33:10: @31.Goto: goto -&gt; bb37"><span class="annotation">@31⦊</span>‸<span class="annotation">⦉@31</span></span></span><span class="code" style="--layer: 0"></span></span>
-<span class="line"><span class="code" style="--layer: 0">    }</span><span><span class="code even" style="--layer: 1" title="34:6-34:6: @37.Goto: goto -&gt; bb2"><span class="annotation">@37⦊</span>‸<span class="annotation">⦉@37</span></span></span><span class="code" style="--layer: 0"></span></span>
-<span class="line"><span class="code" style="--layer: 0">    </span><span><span class="code odd" style="--layer: 1" title="35:8-35:10: @5[9]: _47 = ()
+<span class="line"><span class="code" style="--layer: 0">        }</span></span>
+<span class="line"><span class="code" style="--layer: 0">    }</span></span>
+<span class="line"><span class="code" style="--layer: 0">    </span><span><span class="code even" style="--layer: 1" title="35:8-35:10: @5[9]: _47 = ()
 35:5-35:11: @5[10]: _0 = std::result::Result::&lt;(), ()&gt;::Ok(move _47)"><span class="annotation">@5⦊</span>Ok(())<span class="annotation">⦉@5</span></span></span><span class="code" style="--layer: 0"></span></span>
-<span class="line"><span class="code" style="--layer: 0">}</span><span><span class="code even" style="--layer: 1" title="36:2-36:2: @38.Goto: goto -&gt; bb39"><span class="annotation">@38⦊</span>‸<span class="annotation">⦉@38</span></span></span><span><span class="code odd" style="--layer: 1" title="36:2-36:2: @39.Return: return"><span class="annotation">@39⦊</span>‸<span class="annotation">⦉@39</span></span></span></span></div>
+<span class="line"><span class="code" style="--layer: 0">}</span><span><span class="code odd" style="--layer: 1" title="36:2-36:2: @39.Return: return"><span class="annotation">@39⦊</span>‸<span class="annotation">⦉@39</span></span></span></span></div>
 </body>
 </html>

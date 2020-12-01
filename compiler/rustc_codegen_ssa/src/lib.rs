@@ -2,6 +2,7 @@
 #![feature(bool_to_option)]
 #![feature(option_expect_none)]
 #![feature(box_patterns)]
+#![feature(drain_filter)]
 #![feature(try_blocks)]
 #![feature(in_band_lifetimes)]
 #![feature(nll)]

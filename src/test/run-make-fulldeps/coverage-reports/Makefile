@@ -4,10 +4,6 @@
 # FIXME(mati865): MinGW GCC miscompiles compiler-rt profiling library but with Clang it works
 # properly. Since we only have GCC on the CI ignore the test for now.
 
-# ISSUE(76038): When targeting MSVC, Rust binaries built with both `-Z instrument-coverage` and
-# `-C link-dead-code` typically crash (with a seg-fault) or at best generate an empty `*.profraw`.
-# See ../coverage/coverage_tools.mk for more information.
-
 -include ../coverage/coverage_tools.mk
 
 BASEDIR=../coverage-reports
@@ -57,8 +53,7 @@ endif
 			$$( grep -q '^\/\/ require-rust-edition-2018' $(SOURCEDIR)/$@.rs && \
 				echo "--edition=2018" \
 			) \
-			-Zinstrument-coverage \
-			-Clink-dead-code=$(LINK_DEAD_CODE)
+			-Zinstrument-coverage
 
 	# Run it in order to generate some profiling data,
 	# with `LLVM_PROFILE_FILE=<profdata_file>` environment variable set to

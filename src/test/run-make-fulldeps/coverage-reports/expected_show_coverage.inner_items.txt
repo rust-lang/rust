@@ -1,6 +1,6 @@
     1|       |#![allow(unused_assignments, unused_variables)]
     2|       |
-    3|       |fn main() {
+    3|      1|fn main() {
     4|       |    // Initialize test constants in a way that cannot be determined at compile time, to ensure
     5|       |    // rustc and LLVM cannot optimize out statements (or coverage counters) downstream from
     6|       |    // dependent conditions.
@@ -16,7 +16,7 @@
    15|       |        const IN_MOD_CONST: u32 = 1000;
    16|       |    }
    17|       |
-   18|       |    fn in_func(a: u32) {
+   18|      3|    fn in_func(a: u32) {
    19|      3|        let b = 1;
    20|      3|        let c = a + b;
    21|      3|        println!("c = {}", c)

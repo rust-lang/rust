@@ -69,9 +69,9 @@ For revisions in Pull Requests (PR):
 </style>
 </head>
 <body>
-<div class="code" style="counter-reset: line 3"><span class="line"><span class="code" style="--layer: 0">fn might_fail_assert(one_plus_one: u32) {</span></span>
-<span class="line"><span class="code" style="--layer: 0">    </span><span><span class="code even" style="--layer: 1" title="5:14-5:32: @0[6]: _75 = const might_fail_assert::promoted[4]
-5:14-5:32: @0[7]: _7 = &amp;(*_75)
+<div class="code" style="counter-reset: line 3"><span class="line"><span><span class="code even" style="--layer: 1"><span class="annotation">@0,1,2,3,4⦊</span>fn might_fail_assert(one_plus_one: u32) <span class="annotation">⦉@0,1,2,3,4</span></span></span><span class="code" style="--layer: 0">{</span></span>
+<span class="line"><span class="code" style="--layer: 0">    </span><span><span class="code even" style="--layer: 1" title="5:14-5:32: @0[6]: _73 = const might_fail_assert::promoted[4]
+5:14-5:32: @0[7]: _7 = &amp;(*_73)
 5:14-5:32: @0[8]: _6 = &amp;(*_7)
 5:14-5:32: @0[9]: _5 = move _6 as &amp;[&amp;str] (Pointer(Unsize))
 5:34-5:46: @0[17]: _14 = &amp;_1
@@ -88,10 +88,10 @@ For revisions in Pull Requests (PR):
 5:5-5:48: @1.Call: _4 = Arguments::new_v1(move _5, move _9) -&gt; [return: bb2, unwind: bb13]
 5:5-5:48: @2.Call: _3 = _print(move _4) -&gt; [return: bb3, unwind: bb13]
 5:5-5:48: @3[6]: _2 = const ()"><span class="annotation">@0,1,2,3,4⦊</span>println!("does 1 + 1 = {}?", one_plus_one);<span class="annotation">⦉@0,1,2,3,4</span></span></span><span class="code" style="--layer: 0"></span></span>
-<span class="line"><span class="code" style="--layer: 0">    assert_eq!(</span><span><span class="code even" style="--layer: 1" title="6:16-6:21: @3[11]: _23 = CheckedAdd(const 1_u32, const 1_u32)"><span class="annotation">@0,1,2,3,4⦊</span>1 + 1<span class="annotation">⦉@0,1,2,3,4</span></span></span><span class="code" style="--layer: 0">, one_plus_one, </span><span><span class="code odd" style="--layer: 1" title="6:37-6:61: @7[30]: _72 = const might_fail_assert::promoted[1]
-6:37-6:61: @7[31]: _52 = &amp;(*_72)
-6:37-6:61: @7[32]: _51 = &amp;(*_52)
-6:37-6:61: @7[33]: _50 = move _51 as &amp;[&amp;str] (Pointer(Unsize))"><span class="annotation">@5,7,8,9,10,11,12⦊</span>"the argument was wrong"<span class="annotation">⦉@5,7,8,9,10,11,12</span></span></span><span class="code" style="--layer: 0">);</span></span>
+<span class="line"><span class="code" style="--layer: 0">    assert_eq!(</span><span><span class="code even" style="--layer: 1" title="6:16-6:21: @3[11]: _23 = CheckedAdd(const 1_u32, const 1_u32)"><span class="annotation">@0,1,2,3,4⦊</span>1 + 1<span class="annotation">⦉@0,1,2,3,4</span></span></span><span class="code" style="--layer: 0">, one_plus_one, </span><span><span class="code odd" style="--layer: 1" title="6:37-6:61: @7[28]: _70 = const might_fail_assert::promoted[1]
+6:37-6:61: @7[29]: _50 = &amp;(*_70)
+6:37-6:61: @7[30]: _49 = &amp;(*_50)
+6:37-6:61: @7[31]: _48 = move _49 as &amp;[&amp;str] (Pointer(Unsize))"><span class="annotation">@5,7,8,9,10,11,12⦊</span>"the argument was wrong"<span class="annotation">⦉@5,7,8,9,10,11,12</span></span></span><span class="code" style="--layer: 0">);</span></span>
 <span class="line"><span class="code" style="--layer: 0">}</span><span><span class="code even" style="--layer: 1" title="7:2-7:2: @6.Return: return"><span class="annotation">@6⦊</span>‸<span class="annotation">⦉@6</span></span></span></span></div>
 </body>
 </html>

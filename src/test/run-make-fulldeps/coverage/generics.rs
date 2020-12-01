@@ -30,7 +30,11 @@ fn main() -> Result<(),u8> {
     if true {
         println!("Exiting with error...");
         return Err(1);
-    }
+    } // The remaining lines below have no coverage because `if true` (with the constant literal
+      // `true`) is guaranteed to execute the `then` block, which is also guaranteed to `return`.
+      // Thankfully, in the normal case, conditions are not guaranteed ahead of time, and as shown
+      // in other tests, the lines below would have coverage (which would show they had `0`
+      // executions, assuming the condition still evaluated to `true`).
 
     let _ = Firework { strength: 1000 };
 

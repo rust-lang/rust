@@ -69,9 +69,10 @@ For revisions in Pull Requests (PR):
 </style>
 </head>
 <body>
-<div class="code" style="counter-reset: line 12"><span class="line"><span class="code" style="--layer: 0">fn main() -&gt; Result&lt;(),u8&gt; {</span></span>
-<span class="line"><span class="code" style="--layer: 0">    let </span><span><span class="code even" style="--layer: 1" title="14:25-14:27: @0[1]: _1 = const 10_i32
-14:9-14:22: @0[2]: FakeRead(ForLet, _1)"><span class="annotation">@0⦊</span>mut countdown = 10<span class="annotation">⦉@0</span></span></span><span class="code" style="--layer: 0">;</span></span>
+<div class="code" style="counter-reset: line 12"><span class="line"><span><span class="code even" style="--layer: 1" title="14:25-14:27: @0[1]: _1 = const 10_i32
+14:9-14:22: @0[2]: FakeRead(ForLet, _1)"><span class="annotation">@0⦊</span>fn main() -&gt; Result&lt;(), u8&gt; {</span></span>
+<span class="line"><span class="code even" style="--layer: 1" title="14:25-14:27: @0[1]: _1 = const 10_i32
+14:9-14:22: @0[2]: FakeRead(ForLet, _1)">    let mut countdown = 10<span class="annotation">⦉@0</span></span></span><span class="code" style="--layer: 0">;</span></span>
 <span class="line"><span class="code" style="--layer: 0">    while </span><span><span class="code odd" style="--layer: 1" title="15:11-15:20: @2[2]: _5 = _1
 15:11-15:24: @2[3]: _4 = Gt(move _5, const 0_i32)
 15:11-15:24: @2[5]: FakeRead(ForMatchedPlace, _4)"><span class="annotation">@1,2⦊</span>countdown &gt; 0<span class="annotation">⦉@1,2</span></span></span><span class="code" style="--layer: 0"> {</span></span>
@@ -89,14 +90,14 @@ For revisions in Pull Requests (PR):
 <span class="line"><span class="code odd" style="--layer: 1" title="19:13-19:31: @12.Call: _12 = might_panic(const false) -&gt; [return: bb13, unwind: bb17]
 18:33-20:10: @13[1]: _6 = const ()">            might_panic(false);</span></span>
 <span class="line"><span class="code odd" style="--layer: 1" title="19:13-19:31: @12.Call: _12 = might_panic(const false) -&gt; [return: bb13, unwind: bb17]
-18:33-20:10: @13[1]: _6 = const ()">        }<span class="annotation">⦉@10,12,13</span></span></span><span><span class="code even" style="--layer: 1" title="20:10-20:10: @11.Goto: goto -&gt; bb14"><span class="annotation">@11⦊</span>‸<span class="annotation">⦉@11</span></span></span><span><span class="code odd" style="--layer: 1" title="20:10-20:10: @14.Goto: goto -&gt; bb15"><span class="annotation">@14⦊</span>‸<span class="annotation">⦉@14</span></span></span><span class="code" style="--layer: 0"></span></span>
-<span class="line"><span class="code" style="--layer: 0">        </span><span><span class="code even" style="--layer: 1" title="21:9-21:23: @15[2]: _13 = CheckedSub(_1, const 1_i32)
+18:33-20:10: @13[1]: _6 = const ()">        }<span class="annotation">⦉@10,12,13</span></span></span><span><span class="code even" style="--layer: 1" title="20:10-20:10: @11[0]: _6 = const ()"><span class="annotation">@11⦊</span>‸<span class="annotation">⦉@11</span></span></span><span class="code" style="--layer: 0"></span></span>
+<span class="line"><span class="code" style="--layer: 0">        </span><span><span class="code odd" style="--layer: 1" title="21:9-21:23: @15[2]: _13 = CheckedSub(_1, const 1_i32)
 21:9-21:23: @16[0]: _1 = move (_13.0: i32)"><span class="annotation">@15,16⦊</span>countdown -= 1<span class="annotation">⦉@15,16</span></span></span><span class="code" style="--layer: 0">;</span></span>
 <span class="line"><span class="code" style="--layer: 0">    }</span></span>
-<span class="line"><span class="code" style="--layer: 0">    </span><span><span class="code odd" style="--layer: 1" title="23:8-23:10: @4[4]: _15 = ()
+<span class="line"><span class="code" style="--layer: 0">    </span><span><span class="code even" style="--layer: 1" title="23:8-23:10: @4[4]: _15 = ()
 23:5-23:11: @4[5]: _0 = std::result::Result::&lt;(), u8&gt;::Ok(move _15)
 24:2-24:2: @4.Return: return"><span class="annotation">@4⦊</span>Ok(())</span></span>
-<span class="line"><span class="code odd" style="--layer: 1" title="23:8-23:10: @4[4]: _15 = ()
+<span class="line"><span class="code even" style="--layer: 1" title="23:8-23:10: @4[4]: _15 = ()
 23:5-23:11: @4[5]: _0 = std::result::Result::&lt;(), u8&gt;::Ok(move _15)
 24:2-24:2: @4.Return: return">}<span class="annotation">⦉@4</span></span></span></span></div>
 </body>
