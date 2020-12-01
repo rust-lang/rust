@@ -5,7 +5,7 @@ mod format_like;
 use ide_db::ty_filter::TryEnum;
 use syntax::{
     ast::{self, AstNode, AstToken},
-    SyntaxKind::BLOCK_EXPR,
+    SyntaxKind::{BLOCK_EXPR, EXPR_STMT},
     TextRange, TextSize,
 };
 use text_edit::TextEdit;
@@ -221,9 +221,8 @@ pub(crate) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
     )
     .add_to(acc);
 
-    let parent_node = dot_receiver.syntax().parent().and_then(|p| p.parent());
-    if let Some(parent) = parent_node {
-        if parent.kind() == BLOCK_EXPR {
+    if let Some(parent) = dot_receiver.syntax().parent().and_then(|p| p.parent()) {
+        if matches!(parent.kind(), BLOCK_EXPR | EXPR_STMT) {
             postfix_snippet(
                 ctx,
                 cap,
@@ -387,6 +386,34 @@ fn main() {
                 sn some  Some(expr)
             "#]],
         )
+    }
+
+    #[test]
+    fn let_middle_block() {
+        check(
+            r#"
+fn main() {
+    baz.l<|>
+    res
+}
+"#,
+            expect![[r#"
+                sn box   Box::new(expr)
+                sn call  function(expr)
+                sn dbg   dbg!(expr)
+                sn dbgr  dbg!(&expr)
+                sn if    if expr {}
+                sn let   let
+                sn letm  let mut
+                sn match match expr {}
+                sn not   !expr
+                sn ok    Ok(expr)
+                sn ref   &expr
+                sn refm  &mut expr
+                sn some  Some(expr)
+                sn while while expr {}
+            "#]],
+        );
     }
 
     #[test]
