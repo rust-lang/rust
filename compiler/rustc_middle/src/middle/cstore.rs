@@ -191,6 +191,12 @@ pub trait CrateStore {
     fn def_path_hash(&self, def: DefId) -> DefPathHash;
     fn all_def_path_hashes_and_def_ids(&self, cnum: CrateNum) -> Vec<(DefPathHash, DefId)>;
     fn num_def_ids(&self, cnum: CrateNum) -> usize;
+    fn def_path_hash_to_def_id(
+        &self,
+        cnum: CrateNum,
+        index_guess: u32,
+        hash: DefPathHash,
+    ) -> Option<DefId>;
 
     // "queries" used in resolve that aren't tracked for incremental compilation
     fn crate_name_untracked(&self, cnum: CrateNum) -> Symbol;

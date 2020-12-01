@@ -7,6 +7,7 @@ use rustc_data_structures::sync::{AtomicU32, AtomicU64, Lock, Lrc, Ordering};
 use rustc_data_structures::unlikely;
 use rustc_errors::Diagnostic;
 use rustc_index::vec::{Idx, IndexVec};
+use rustc_span::def_id::DefPathHash;
 
 use parking_lot::{Condvar, Mutex};
 use smallvec::{smallvec, SmallVec};
@@ -698,6 +699,18 @@ impl<K: DepKind> DepGraph<K> {
             // adding all the appropriate edges imported from the previous graph
             data.current.intern_node(*dep_node, current_deps, fingerprint)
         };
+
+        // We have just loaded a deserialized `DepNode` from the previous
+        // compilation session into the current one. If this was a foreign `DefId`,
+        // then we stored additional information in the incr comp cache when we
+        // initially created its fingerprint (see `DepNodeParams::to_fingerprint`)
+        // We won't be calling `to_fingerprint` again for this `DepNode` (we no longer
+        // have the original value), so we need to copy over this additional information
+        // from the old incremental cache into the new cache that we serialize
+        // and the end of this compilation session.
+        if dep_node.kind.can_reconstruct_query_key() {
+            tcx.register_reused_dep_path_hash(DefPathHash(dep_node.hash.into()));
+        }
 
         // ... emitting any stored diagnostic ...
 

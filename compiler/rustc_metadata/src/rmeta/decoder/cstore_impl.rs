@@ -506,6 +506,16 @@ impl CrateStore for CStore {
         self.get_crate_data(cnum).num_def_ids()
     }
 
+    // See `CrateMetadataRef::def_path_hash_to_def_id` for more details
+    fn def_path_hash_to_def_id(
+        &self,
+        cnum: CrateNum,
+        index_guess: u32,
+        hash: DefPathHash,
+    ) -> Option<DefId> {
+        self.get_crate_data(cnum).def_path_hash_to_def_id(cnum, index_guess, hash)
+    }
+
     fn crates_untracked(&self) -> Vec<CrateNum> {
         let mut result = vec![];
         self.iter_crate_data(|cnum, _| result.push(cnum));

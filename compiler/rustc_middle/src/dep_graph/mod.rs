@@ -5,7 +5,7 @@ use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::sync::Lock;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::Diagnostic;
-use rustc_hir::def_id::LocalDefId;
+use rustc_hir::def_id::{DefPathHash, LocalDefId};
 
 mod dep_node;
 
@@ -90,6 +90,12 @@ impl rustc_query_system::dep_graph::DepKind for DepKind {
 impl<'tcx> DepContext for TyCtxt<'tcx> {
     type DepKind = DepKind;
     type StableHashingContext = StableHashingContext<'tcx>;
+
+    fn register_reused_dep_path_hash(&self, hash: DefPathHash) {
+        if let Some(cache) = self.queries.on_disk_cache.as_ref() {
+            cache.register_reused_dep_path_hash(hash)
+        }
+    }
 
     fn create_stable_hashing_context(&self) -> Self::StableHashingContext {
         TyCtxt::create_stable_hashing_context(*self)

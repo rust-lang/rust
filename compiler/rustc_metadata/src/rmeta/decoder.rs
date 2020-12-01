@@ -77,6 +77,10 @@ crate struct CrateMetadata {
     raw_proc_macros: Option<&'static [ProcMacro]>,
     /// Source maps for code from the crate.
     source_map_import_info: OnceCell<Vec<ImportedSourceFile>>,
+    /// For every definition in this crate, maps its `DefPathHash` to its
+    /// `DefIndex`. See `raw_def_id_to_def_id` for more details about how
+    /// this is used.
+    def_path_hash_map: OnceCell<FxHashMap<DefPathHash, DefIndex>>,
     /// Used for decoding interpret::AllocIds in a cached & thread-safe manner.
     alloc_decoding_state: AllocDecodingState,
     /// The `DepNodeIndex` of the `DepNode` representing this upstream crate.
@@ -1519,6 +1523,53 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             .or_insert_with(|| self.root.tables.def_keys.get(self, index).unwrap().decode(self))
     }
 
+    /// Finds the corresponding `DefId` for the provided `DefPathHash`, if it exists.
+    /// This is used by incremental compilation to map a serialized `DefPathHash` to
+    /// its `DefId` in the current session.
+    /// Normally, only one 'main' crate will change between incremental compilation sessions:
+    /// all dependencies will be completely unchanged. In this case, we can avoid
+    /// decoding every `DefPathHash` in the crate, since the `DefIndex` from the previous
+    /// session will still be valid. If our 'guess' is wrong (the `DefIndex` no longer exists,
+    /// or has a different `DefPathHash`, then we need to decode all `DefPathHashes` to determine
+    /// the correct mapping).
+    fn def_path_hash_to_def_id(
+        &self,
+        krate: CrateNum,
+        index_guess: u32,
+        hash: DefPathHash,
+    ) -> Option<DefId> {
+        let def_index_guess = DefIndex::from_u32(index_guess);
+        let old_hash = self
+            .root
+            .tables
+            .def_path_hashes
+            .get(self, def_index_guess)
+            .map(|lazy| lazy.decode(self));
+
+        // Fast path: the definition and its index is unchanged from the
+        // previous compilation session. There is no need to decode anything
+        // else
+        if old_hash == Some(hash) {
+            return Some(DefId { krate, index: def_index_guess });
+        }
+
+        // Slow path: We need to find out the new `DefIndex` of the provided
+        // `DefPathHash`, if its still exists. This requires decoding every `DefPathHash`
+        // stored in this crate.
+        let map = self.cdata.def_path_hash_map.get_or_init(|| {
+            let end_id = self.root.tables.def_path_hashes.size() as u32;
+            let mut map = FxHashMap::with_capacity_and_hasher(end_id as usize, Default::default());
+            for i in 0..end_id {
+                let def_index = DefIndex::from_u32(i);
+                let hash =
+                    self.root.tables.def_path_hashes.get(self, def_index).unwrap().decode(self);
+                map.insert(hash, def_index);
+            }
+            map
+        });
+        map.get(&hash).map(|index| DefId { krate, index: *index })
+    }
+
     // Returns the path leading to the thing with this `id`.
     fn def_path(&self, id: DefIndex) -> DefPath {
         debug!("def_path(cnum={:?}, id={:?})", self.cnum, id);
@@ -1797,6 +1848,7 @@ impl CrateMetadata {
             trait_impls,
             raw_proc_macros,
             source_map_import_info: OnceCell::new(),
+            def_path_hash_map: Default::default(),
             alloc_decoding_state,
             dep_node_index: AtomicCell::new(DepNodeIndex::INVALID),
             cnum,
