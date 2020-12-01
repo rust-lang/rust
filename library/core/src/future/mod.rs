@@ -27,7 +27,7 @@ pub use pending::{pending, Pending};
 pub use ready::{ready, Ready};
 
 #[unstable(feature = "future_poll_fn", issue = "72302")]
-pub use poll_fn::{poll_fn, PollFn};
+pub use poll_fn::poll_fn;
 
 /// This type is needed because:
 ///
