@@ -2,7 +2,8 @@ use std::borrow::Cow;
 use std::ops::Range;
 
 use crate::utils::{snippet_with_applicability, span_lint, span_lint_and_sugg, span_lint_and_then};
-use rustc_ast::ast::{Expr, ExprKind, Item, ItemKind, MacCall, StrLit, StrStyle};
+use if_chain::if_chain;
+use rustc_ast::ast::{Expr, ExprKind, Item, ItemKind, LitKind, MacCall, StrLit, StrStyle};
 use rustc_ast::token;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_errors::Applicability;
@@ -442,7 +443,12 @@ impl Write {
                 return (Some(fmtstr), None);
             };
             match &token_expr.kind {
-                ExprKind::Lit(_) => {
+                ExprKind::Lit(lit)
+                    if match lit.kind {
+                        LitKind::Int(_, _) | LitKind::Float(_, _) => false,
+                        _ => true,
+                    } =>
+                {
                     let mut all_simple = true;
                     let mut seen = false;
                     for arg in &args {
@@ -460,10 +466,16 @@ impl Write {
                         span_lint(cx, lint, token_expr.span, "literal with an empty format string");
                     }
                     idx += 1;
-                },
+                }
                 ExprKind::Assign(lhs, rhs, _) => {
-                    if let ExprKind::Lit(_) = rhs.kind {
-                        if let ExprKind::Path(_, p) = &lhs.kind {
+                    if_chain! {
+                        if let ExprKind::Lit(ref lit) = rhs.kind;
+                        if match lit.kind {
+                            LitKind::Int(_, _) | LitKind::Float(_, _) => false,
+                            _ => true,
+                        };
+                        if let ExprKind::Path(_, p) = &lhs.kind;
+                        then {
                             let mut all_simple = true;
                             let mut seen = false;
                             for arg in &args {
