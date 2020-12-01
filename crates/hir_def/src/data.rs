@@ -257,7 +257,7 @@ fn collect_items(
                 let root = db.parse_or_expand(file_id).unwrap();
                 let call = ast_id_map.get(call.ast_id).to_node(&root);
 
-                if let Some((mark, mac)) = expander.enter_expand(db, None, call) {
+                if let Some((mark, mac)) = expander.enter_expand(db, None, call).value {
                     let src: InFile<ast::MacroItems> = expander.to_source(mac);
                     let item_tree = db.item_tree(src.file_id);
                     let iter =
