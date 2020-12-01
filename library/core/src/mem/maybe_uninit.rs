@@ -860,4 +860,154 @@ impl<T> MaybeUninit<T> {
     pub const fn slice_as_mut_ptr(this: &mut [MaybeUninit<T>]) -> *mut T {
         this.as_mut_ptr() as *mut T
     }
+
+    /// Copies the elements from `src` to `this`, returning a mutable reference to the now initalized contents of `this`.
+    ///
+    /// If `T` does not implement `Copy`, use [`write_slice_cloned`]
+    ///
+    /// This is similar to [`slice::copy_from_slice`].
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if the two slices have different lengths.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(maybe_uninit_write_slice)]
+    /// use std::mem::MaybeUninit;
+    ///
+    /// let mut dst = [MaybeUninit::uninit(); 32];
+    /// let src = [0; 32];
+    ///
+    /// let init = MaybeUninit::write_slice(&mut dst, &src);
+    ///
+    /// assert_eq!(init, src);
+    /// ```
+    ///
+    /// ```
+    /// #![feature(maybe_uninit_write_slice, vec_spare_capacity)]
+    /// use std::mem::MaybeUninit;
+    ///
+    /// let mut vec = Vec::with_capacity(32);
+    /// let src = [0; 16];
+    ///
+    /// MaybeUninit::write_slice(&mut vec.spare_capacity_mut()[..src.len()], &src);
+    ///
+    /// // SAFETY: we have just copied all the elements of len into the spare capacity
+    /// // the first src.len() elements of the vec are valid now.
+    /// unsafe {
+    ///     vec.set_len(src.len());
+    /// }
+    ///
+    /// assert_eq!(vec, src);
+    /// ```
+    ///
+    /// [`write_slice_cloned`]: MaybeUninit::write_slice_cloned
+    /// [`slice::copy_from_slice`]: ../../std/primitive.slice.html#method.copy_from_slice
+    #[unstable(feature = "maybe_uninit_write_slice", issue = "79995")]
+    pub fn write_slice<'a>(this: &'a mut [MaybeUninit<T>], src: &[T]) -> &'a mut [T]
+    where
+        T: Copy,
+    {
+        // SAFETY: &[T] and &[MaybeUninit<T>] have the same layout
+        let uninit_src: &[MaybeUninit<T>] = unsafe { super::transmute(src) };
+
+        this.copy_from_slice(uninit_src);
+
+        // SAFETY: Valid elements have just been copied into `this` so it is initalized
+        unsafe { MaybeUninit::slice_assume_init_mut(this) }
+    }
+
+    /// Clones the elements from `src` to `this`, returning a mutable reference to the now initalized contents of `this`.
+    /// Any already initalized elements will not be dropped.
+    ///
+    /// If `T` implements `Copy`, use [`write_slice`]
+    ///
+    /// This is similar to [`slice::clone_from_slice`] but does not drop existing elements.
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if the two slices have different lengths, or if the implementation of `Clone` panics.
+    ///
+    /// If there is a panic, the already cloned elements will be dropped.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(maybe_uninit_write_slice)]
+    /// use std::mem::MaybeUninit;
+    ///
+    /// let mut dst = [MaybeUninit::uninit(), MaybeUninit::uninit(), MaybeUninit::uninit(), MaybeUninit::uninit(), MaybeUninit::uninit()];
+    /// let src = ["wibbly".to_string(), "wobbly".to_string(), "timey".to_string(), "wimey".to_string(), "stuff".to_string()];
+    ///
+    /// let init = MaybeUninit::write_slice_cloned(&mut dst, &src);
+    ///
+    /// assert_eq!(init, src);
+    /// ```
+    ///
+    /// ```
+    /// #![feature(maybe_uninit_write_slice, vec_spare_capacity)]
+    /// use std::mem::MaybeUninit;
+    ///
+    /// let mut vec = Vec::with_capacity(32);
+    /// let src = ["rust", "is", "a", "pretty", "cool", "language"];
+    ///
+    /// MaybeUninit::write_slice_cloned(&mut vec.spare_capacity_mut()[..src.len()], &src);
+    ///
+    /// // SAFETY: we have just cloned all the elements of len into the spare capacity
+    /// // the first src.len() elements of the vec are valid now.
+    /// unsafe {
+    ///     vec.set_len(src.len());
+    /// }
+    ///
+    /// assert_eq!(vec, src);
+    /// ```
+    ///
+    /// [`write_slice`]: MaybeUninit::write_slice
+    /// [`slice::clone_from_slice`]: ../../std/primitive.slice.html#method.clone_from_slice
+    #[unstable(feature = "maybe_uninit_write_slice", issue = "79995")]
+    pub fn write_slice_cloned<'a>(this: &'a mut [MaybeUninit<T>], src: &[T]) -> &'a mut [T]
+    where
+        T: Clone,
+    {
+        // unlike copy_from_slice this does not call clone_from_slice on the slice
+        // this is because `MaybeUninit<T: Clone>` does not implement Clone.
+
+        struct Guard<'a, T> {
+            slice: &'a mut [MaybeUninit<T>],
+            initialized: usize,
+        }
+
+        impl<'a, T> Drop for Guard<'a, T> {
+            fn drop(&mut self) {
+                let initialized_part = &mut self.slice[..self.initialized];
+                // SAFETY: this raw slice will contain only initialized objects
+                // that's why, it is allowed to drop it.
+                unsafe {
+                    crate::ptr::drop_in_place(MaybeUninit::slice_assume_init_mut(initialized_part));
+                }
+            }
+        }
+
+        assert_eq!(this.len(), src.len(), "destination and source slices have different lengths");
+        // NOTE: We need to explicitly slice them to the same length
+        // for bounds checking to be elided, and the optimizer will
+        // generate memcpy for simple cases (for example T = u8).
+        let len = this.len();
+        let src = &src[..len];
+
+        // guard is needed b/c panic might happen during a clone
+        let mut guard = Guard { slice: this, initialized: 0 };
+
+        for i in 0..len {
+            guard.slice[i].write(src[i].clone());
+            guard.initialized += 1;
+        }
+
+        super::forget(guard);
+
+        // SAFETY: Valid elements have just been written into `this` so it is initalized
+        unsafe { MaybeUninit::slice_assume_init_mut(this) }
+    }
 }
