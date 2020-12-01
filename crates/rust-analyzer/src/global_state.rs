@@ -7,7 +7,7 @@ use std::{sync::Arc, time::Instant};
 
 use crossbeam_channel::{unbounded, Receiver, Sender};
 use flycheck::FlycheckHandle;
-use ide::{Analysis, AnalysisHost, Change, FileId, ImportToAdd};
+use ide::{Analysis, AnalysisHost, Change, CompletionItem, FileId};
 use ide_db::base_db::{CrateId, VfsPath};
 use lsp_types::{SemanticTokens, Url};
 use parking_lot::{Mutex, RwLock};
@@ -51,6 +51,11 @@ pub(crate) struct Handle<H, C> {
 pub(crate) type ReqHandler = fn(&mut GlobalState, lsp_server::Response);
 pub(crate) type ReqQueue = lsp_server::ReqQueue<(String, Instant), ReqHandler>;
 
+pub(crate) struct CompletionResolveData {
+    pub(crate) file_id: FileId,
+    pub(crate) item: CompletionItem,
+}
+
 /// `GlobalState` is the primary mutable state of the language server
 ///
 /// The most interesting components are `vfs`, which stores a consistent
@@ -69,7 +74,7 @@ pub(crate) struct GlobalState {
     pub(crate) config: Config,
     pub(crate) analysis_host: AnalysisHost,
     pub(crate) diagnostics: DiagnosticCollection,
-    pub(crate) additional_imports: FxHashMap<usize, ImportToAdd>,
+    pub(crate) completion_resolve_data: FxHashMap<usize, CompletionResolveData>,
     pub(crate) mem_docs: FxHashMap<VfsPath, DocumentData>,
     pub(crate) semantic_tokens_cache: Arc<Mutex<FxHashMap<Url, SemanticTokens>>>,
     pub(crate) vfs: Arc<RwLock<(vfs::Vfs, FxHashMap<FileId, LineEndings>)>>,
@@ -122,7 +127,7 @@ impl GlobalState {
             config,
             analysis_host,
             diagnostics: Default::default(),
-            additional_imports: FxHashMap::default(),
+            completion_resolve_data: FxHashMap::default(),
             mem_docs: FxHashMap::default(),
             semantic_tokens_cache: Arc::new(Default::default()),
             vfs: Arc::new(RwLock::new((vfs::Vfs::default(), FxHashMap::default()))),

@@ -12,6 +12,7 @@ use crate::config::SnippetCap;
 /// `CompletionItem` describes a single completion variant in the editor pop-up.
 /// It is basically a POD with various properties. To construct a
 /// `CompletionItem`, use `new` method and the `Builder` struct.
+#[derive(Clone)]
 pub struct CompletionItem {
     /// Used only internally in tests, to check only specific kind of
     /// completion (postfix, keyword, reference, etc).
