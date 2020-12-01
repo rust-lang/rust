@@ -30,12 +30,11 @@ LL |     let _: i32 = 22_i64 >> 1_i32;
    |            |
    |            expected due to this
    |
-help: you can convert an `i64` to an `i32` and panic if the converted value doesn't fit
+help: you can convert an `i64` to an `i32` and panic if the converted value doesn't fit by adding `use std::convert::TryInto;`
    |
 LL |     let _: i32 = (22_i64 >> 1_i32).try_into().unwrap();
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: you have import `std::convert::TryInto;` before using `try_into()`
 
 error: aborting due to 4 previous errors
 
