@@ -5,11 +5,12 @@
 use std::{
     io::Write as _,
     process::{self, Stdio},
+    sync::Arc,
 };
 
 use ide::{
-    FileId, FilePosition, FileRange, HoverAction, HoverGotoTypeData, NavigationTarget, Query,
-    RangeInfo, Runnable, RunnableKind, SearchScope, TextEdit,
+    FileId, FilePosition, FileRange, HoverAction, HoverGotoTypeData, ImportToAdd, LineIndex,
+    NavigationTarget, Query, RangeInfo, Runnable, RunnableKind, SearchScope, TextEdit,
 };
 use ide_db::helpers::{insert_use, mod_path_to_ast};
 use itertools::Itertools;
@@ -36,6 +37,7 @@ use crate::{
     config::RustfmtConfig,
     from_json, from_proto,
     global_state::{GlobalState, GlobalStateSnapshot},
+    line_endings::LineEndings,
     lsp_ext::{self, InlayHint, InlayHintsParams},
     to_proto, LspError, Result,
 };
@@ -536,6 +538,12 @@ pub(crate) fn handle_runnables(
     Ok(res)
 }
 
+#[derive(Debug, Copy, Clone, Serialize, Deserialize)]
+pub(crate) struct ResolveCompletionData {
+    completion_id: usize,
+    completion_file_id: u32,
+}
+
 pub(crate) fn handle_completion(
     global_state: &mut GlobalState,
     params: lsp_types::CompletionParams,
@@ -575,19 +583,30 @@ pub(crate) fn handle_completion(
 
     let items: Vec<CompletionItem> = items
         .into_iter()
-        .flat_map(|item| {
+        .enumerate()
+        .flat_map(|(item_index, item)| {
+            let resolve_completion_data = ResolveCompletionData {
+                completion_id: item_index,
+                completion_file_id: position.file_id.0,
+            };
             let import_to_add = item.import_to_add().cloned();
-            let new_completion_items = to_proto::completion_item(&line_index, line_endings, item);
+            let mut new_completion_items =
+                to_proto::completion_item(&line_index, line_endings, item);
+
             if let Some(import_to_add) = import_to_add {
-                for new_item in &new_completion_items {
-                    additional_imports.insert(new_item.label.clone(), import_to_add.clone());
+                for new_item in &mut new_completion_items {
+                    match serde_json::to_value(&resolve_completion_data) {
+                        Ok(resolve_value) => {
+                            new_item.data = Some(resolve_value);
+                            additional_imports.insert(item_index, import_to_add.clone());
+                        }
+                        Err(e) => {
+                            log::error!("Failed to serialize completion resolve metadata: {}", e)
+                        }
+                    }
                 }
             }
             new_completion_items
-        })
-        .map(|mut item| {
-            item.data = Some(position.file_id.0.into());
-            item
         })
         .collect();
 
@@ -601,39 +620,73 @@ pub(crate) fn handle_resolve_completion(
     global_state: &mut GlobalState,
     mut original_completion: lsp_types::CompletionItem,
 ) -> Result<lsp_types::CompletionItem> {
-    // TODO kb slow, takes over 130ms
     let _p = profile::span("handle_resolve_completion");
 
-    if let Some(import_data) =
-        global_state.additional_imports.get(dbg!(original_completion.label.as_str()))
-    {
-        let rewriter = insert_use::insert_use(
-            &import_data.import_scope,
-            mod_path_to_ast(&import_data.import_path),
-            import_data.merge_behaviour,
-        );
-        if let Some((old_ast, file_id)) =
-            // TODO kb for file_id, better use &str and then cast to u32?
-            rewriter
-            .rewrite_root()
-            .zip(original_completion.data.as_ref().and_then(|value| Some(value.as_u64()? as u32)))
-        {
-            let snap = global_state.snapshot();
-            let mut import_insert = TextEdit::builder();
-            algo::diff(&old_ast, &rewriter.rewrite(&old_ast)).into_text_edit(&mut import_insert);
-            let line_index = snap.analysis.file_line_index(FileId(file_id))?;
-            let line_endings = snap.file_line_endings(FileId(file_id));
-            let text_edit = import_insert.finish();
+    match original_completion.data.as_ref() {
+        Some(completion_data) => {
+            match serde_json::from_value::<ResolveCompletionData>(completion_data.clone()) {
+                Ok(resolve_completion_data) => {
+                    if let Some(import_to_add) =
+                        global_state.additional_imports.get(&resolve_completion_data.completion_id)
+                    {
+                        let snap = global_state.snapshot();
+                        let file_id = FileId(resolve_completion_data.completion_file_id);
+                        let line_index = snap.analysis.file_line_index(file_id)?;
+                        let line_endings = snap.file_line_endings(file_id);
 
-            let mut new_edits = original_completion.additional_text_edits.unwrap_or_default();
-            for indel in text_edit {
-                new_edits.push(to_proto::text_edit(&line_index, line_endings, indel));
+                        let resolved_edits =
+                            resolve_additional_edits(import_to_add, line_index, line_endings);
+
+                        original_completion.additional_text_edits =
+                            match original_completion.additional_text_edits {
+                                Some(mut original_additional_edits) => {
+                                    if let Some(mut new_edits) = resolved_edits {
+                                        original_additional_edits.extend(new_edits.drain(..))
+                                    }
+                                    Some(original_additional_edits)
+                                }
+                                None => resolved_edits,
+                            };
+                    } else {
+                        log::error!(
+                            "Got no import data for completion with label {}, id {}",
+                            original_completion.label,
+                            resolve_completion_data.completion_id
+                        )
+                    }
+                }
+                Err(e) => log::error!("Failed to deserialize completion resolve metadata: {}", e),
             }
-            original_completion.additional_text_edits = Some(new_edits);
         }
+        None => (),
     }
-
     Ok(original_completion)
+}
+
+// TODO kb what to do when no resolve is available on the client?
+fn resolve_additional_edits(
+    import_to_add: &ImportToAdd,
+    line_index: Arc<LineIndex>,
+    line_endings: LineEndings,
+) -> Option<Vec<lsp_types::TextEdit>> {
+    let _p = profile::span("resolve_additional_edits");
+
+    let rewriter = insert_use::insert_use(
+        &import_to_add.import_scope,
+        mod_path_to_ast(&import_to_add.import_path),
+        import_to_add.merge_behaviour,
+    );
+    let old_ast = rewriter.rewrite_root()?;
+    let mut import_insert = TextEdit::builder();
+    algo::diff(&old_ast, &rewriter.rewrite(&old_ast)).into_text_edit(&mut import_insert);
+    let text_edit = import_insert.finish();
+
+    Some(
+        text_edit
+            .into_iter()
+            .map(|indel| to_proto::text_edit(&line_index, line_endings, indel))
+            .collect_vec(),
+    )
 }
 
 pub(crate) fn handle_folding_range(

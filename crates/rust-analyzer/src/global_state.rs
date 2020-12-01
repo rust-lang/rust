@@ -69,7 +69,7 @@ pub(crate) struct GlobalState {
     pub(crate) config: Config,
     pub(crate) analysis_host: AnalysisHost,
     pub(crate) diagnostics: DiagnosticCollection,
-    pub(crate) additional_imports: FxHashMap<String, ImportToAdd>,
+    pub(crate) additional_imports: FxHashMap<usize, ImportToAdd>,
     pub(crate) mem_docs: FxHashMap<VfsPath, DocumentData>,
     pub(crate) semantic_tokens_cache: Arc<Mutex<FxHashMap<Url, SemanticTokens>>>,
     pub(crate) vfs: Arc<RwLock<(vfs::Vfs, FxHashMap<FileId, LineEndings>)>>,
