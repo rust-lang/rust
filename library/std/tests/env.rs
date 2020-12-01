@@ -1,6 +1,5 @@
 use std::env::*;
 use std::ffi::{OsStr, OsString};
-use std::path::PathBuf;
 
 use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
@@ -82,6 +81,8 @@ fn test_env_set_var() {
 #[cfg_attr(any(target_os = "emscripten", target_env = "sgx"), ignore)]
 #[allow(deprecated)]
 fn env_home_dir() {
+    use std::path::PathBuf;
+
     fn var_to_os_string(var: Result<String, VarError>) -> Option<OsString> {
         match var {
             Ok(var) => Some(OsString::from(var)),
