@@ -1,5 +1,5 @@
-// compile-flags: --target wasm32-unknown-unknown
-// needs-llvm-components: webassembly
+// compile-flags: --target sparc-unknown-linux-gnu
+// needs-llvm-components: sparc
 
 #![feature(no_core, lang_items, rustc_attrs)]
 #![no_core]
