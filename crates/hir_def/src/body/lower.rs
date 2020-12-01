@@ -8,7 +8,7 @@ use either::Either;
 use hir_expand::{
     hygiene::Hygiene,
     name::{name, AsName, Name},
-    HirFileId, MacroDefId, MacroDefKind,
+    ExpandError, HirFileId, MacroDefId, MacroDefKind,
 };
 use rustc_hash::FxHashMap;
 use syntax::{
@@ -25,7 +25,7 @@ use crate::{
     body::{Body, BodySourceMap, Expander, PatPtr, SyntheticSyntax},
     builtin_type::{BuiltinFloat, BuiltinInt},
     db::DefDatabase,
-    diagnostics::{InactiveCode, MacroError},
+    diagnostics::{InactiveCode, MacroError, UnresolvedProcMacro},
     expr::{
         dummy_expr_id, ArithOp, Array, BinaryOp, BindingAnnotation, CmpOp, Expr, ExprId, Literal,
         LogicOp, MatchArm, Ordering, Pat, PatId, RecordFieldPat, RecordLitField, Statement,
@@ -563,12 +563,27 @@ impl ExprCollector<'_> {
                     let macro_call = self.expander.to_source(AstPtr::new(&e));
                     let res = self.expander.enter_expand(self.db, Some(&self.body.item_scope), e);
 
-                    if let Some(err) = res.err {
-                        self.source_map.diagnostics.push(BodyDiagnostic::MacroError(MacroError {
-                            file: self.expander.current_file_id,
-                            node: syntax_ptr.clone().into(),
-                            message: err.to_string(),
-                        }));
+                    match res.err {
+                        Some(ExpandError::UnresolvedProcMacro) => {
+                            self.source_map.diagnostics.push(BodyDiagnostic::UnresolvedProcMacro(
+                                UnresolvedProcMacro {
+                                    file: self.expander.current_file_id,
+                                    node: syntax_ptr.clone().into(),
+                                    precise_location: None,
+                                    macro_name: None,
+                                },
+                            ));
+                        }
+                        Some(err) => {
+                            self.source_map.diagnostics.push(BodyDiagnostic::MacroError(
+                                MacroError {
+                                    file: self.expander.current_file_id,
+                                    node: syntax_ptr.clone().into(),
+                                    message: err.to_string(),
+                                },
+                            ));
+                        }
+                        None => {}
                     }
 
                     match res.value {
