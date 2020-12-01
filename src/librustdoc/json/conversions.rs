@@ -23,6 +23,7 @@ impl From<clean::Item> for Option<Item> {
             visibility,
             def_id,
             stability: _,
+            const_stability: _,
             deprecation,
         } = item;
         match kind {
