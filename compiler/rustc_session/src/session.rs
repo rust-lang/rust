@@ -1338,7 +1338,7 @@ pub fn build_session(
 
         let profiler = SelfProfiler::new(
             directory,
-            sopts.crate_name.as_ref().map(|s| &s[..]),
+            sopts.crate_name.as_deref(),
             &sopts.debugging_opts.self_profile_events,
         );
         match profiler {
