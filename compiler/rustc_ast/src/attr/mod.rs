@@ -115,6 +115,10 @@ impl NestedMetaItem {
     pub fn is_meta_item_list(&self) -> bool {
         self.meta_item_list().is_some()
     }
+
+    pub fn name_value_literal_span(&self) -> Option<Span> {
+        self.meta_item()?.name_value_literal_span()
+    }
 }
 
 impl Attribute {
@@ -175,6 +179,22 @@ impl Attribute {
     pub fn is_value_str(&self) -> bool {
         self.value_str().is_some()
     }
+
+    /// This is used in case you want the value span instead of the whole attribute. Example:
+    ///
+    /// ```text
+    /// #[doc(alias = "foo")]
+    /// ```
+    ///
+    /// In here, it'll return a span for `"foo"`.
+    pub fn name_value_literal_span(&self) -> Option<Span> {
+        match self.kind {
+            AttrKind::Normal(ref item, _) => {
+                item.meta(self.span).and_then(|meta| meta.name_value_literal_span())
+            }
+            AttrKind::DocComment(..) => None,
+        }
+    }
 }
 
 impl MetaItem {
@@ -226,6 +246,17 @@ impl MetaItem {
 
     pub fn is_value_str(&self) -> bool {
         self.value_str().is_some()
+    }
+
+    /// This is used in case you want the value span instead of the whole attribute. Example:
+    ///
+    /// ```text
+    /// #[doc(alias = "foo")]
+    /// ```
+    ///
+    /// In here, it'll return a span for `"foo"`.
+    pub fn name_value_literal_span(&self) -> Option<Span> {
+        Some(self.name_value_literal()?.span)
     }
 }
 
