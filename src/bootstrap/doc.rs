@@ -726,6 +726,7 @@ fn symlink_dir_force(config: &Config, src: &Path, dst: &Path) -> io::Result<()> 
 pub struct RustcBook {
     pub compiler: Compiler,
     pub target: TargetSelection,
+    pub validate: bool,
 }
 
 impl Step for RustcBook {
@@ -742,6 +743,7 @@ impl Step for RustcBook {
         run.builder.ensure(RustcBook {
             compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build),
             target: run.target,
+            validate: false,
         });
     }
 
@@ -771,6 +773,9 @@ impl Step for RustcBook {
         cmd.arg("--rustc-target").arg(&self.target.rustc_target_arg());
         if builder.config.verbose() {
             cmd.arg("--verbose");
+        }
+        if self.validate {
+            cmd.arg("--validate");
         }
         // If the lib directories are in an unusual location (changed in
         // config.toml), then this needs to explicitly update the dylib search
