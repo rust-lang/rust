@@ -4011,6 +4011,7 @@ dependencies = [
  "rustc_errors",
  "rustc_hir",
  "rustc_index",
+ "rustc_lexer",
  "rustc_middle",
  "rustc_serialize",
  "rustc_session",
