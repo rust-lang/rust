@@ -66,17 +66,12 @@ rustc_index::newtype_index! {
 }
 
 #[derive(Debug, HashStable)]
-pub enum LintSet {
-    CommandLine {
-        // -A,-W,-D flags, a `Symbol` for the flag itself and `Level` for which
-        // flag.
-        specs: FxHashMap<LintId, LevelAndSource>,
-    },
+pub struct LintSet {
+    // -A,-W,-D flags, a `Symbol` for the flag itself and `Level` for which
+    // flag.
+    pub specs: FxHashMap<LintId, LevelAndSource>,
 
-    Node {
-        specs: FxHashMap<LintId, LevelAndSource>,
-        parent: LintStackIndex,
-    },
+    pub parent: LintStackIndex,
 }
 
 impl LintLevelSets {
@@ -139,20 +134,14 @@ impl LintLevelSets {
             }
         }
         loop {
-            match self.list[idx] {
-                LintSet::CommandLine { ref specs } => {
-                    if let Some(&(level, src)) = specs.get(&id) {
-                        return (Some(level), src);
-                    }
-                    return (None, LintLevelSource::Default);
-                }
-                LintSet::Node { ref specs, parent } => {
-                    if let Some(&(level, src)) = specs.get(&id) {
-                        return (Some(level), src);
-                    }
-                    idx = parent;
-                }
+            let LintSet { ref specs, parent } = self.list[idx];
+            if let Some(&(level, src)) = specs.get(&id) {
+                return (Some(level), src);
             }
+            if idx == COMMAND_LINE {
+                return (None, LintLevelSource::Default);
+            }
+            idx = parent;
         }
     }
 }

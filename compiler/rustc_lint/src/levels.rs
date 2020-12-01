@@ -121,7 +121,7 @@ impl<'s> LintLevelsBuilder<'s> {
             }
         }
 
-        self.cur = self.sets.list.push(LintSet::CommandLine { specs });
+        self.cur = self.sets.list.push(LintSet { specs, parent: COMMAND_LINE });
     }
 
     /// Attempts to insert the `id` to `level_src` map entry. If unsuccessful
@@ -524,7 +524,7 @@ impl<'s> LintLevelsBuilder<'s> {
 
         let prev = self.cur;
         if !specs.is_empty() {
-            self.cur = self.sets.list.push(LintSet::Node { specs, parent: prev });
+            self.cur = self.sets.list.push(LintSet { specs, parent: prev });
         }
 
         BuilderPush { prev, changed: prev != self.cur }
