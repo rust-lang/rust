@@ -94,7 +94,14 @@ pub fn push_debuginfo_type_name<'tcx>(
             push_debuginfo_type_name(tcx, inner_type, true, output, visited);
 
             if cpp_like_names {
-                output.push('*');
+                // Slices and `&str` are treated like C++ pointers when computing debug
+                // info for MSVC debugger. However, adding '*' at the end of these types' names
+                // causes the .natvis engine for WinDbg to fail to display their data, so we opt these
+                // types out to aid debugging in MSVC.
+                match *inner_type.kind() {
+                    ty::Slice(_) | ty::Str => {}
+                    _ => output.push('*'),
+                }
             }
         }
         ty::Array(inner_type, len) => {
