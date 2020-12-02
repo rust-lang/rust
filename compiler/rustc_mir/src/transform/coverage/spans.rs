@@ -359,12 +359,12 @@ impl<'a, 'tcx> CoverageSpans<'a, 'tcx> {
         }
 
         // Async functions wrap a closure that implements the body to be executed. The enclosing
-        // function is initially called, posts the closure to the executor, and returns. To avoid
-        // showing the return from the enclosing function as a "covered" return from the closure,
-        // the enclosing function's `TerminatorKind::Return`s `CoverageSpan` is excluded. The
-        // closure's `Return` is the only one that will be counted. This provides adequate
-        // coverage, and more intuitive counts. (Avoids double-counting the closing brace of the
-        // function body.)
+        // function is called and returns an `impl Future` without initially executing any of the
+        // body. To avoid showing the return from the enclosing function as a "covered" return from
+        // the closure, the enclosing function's `TerminatorKind::Return`s `CoverageSpan` is
+        // excluded. The closure's `Return` is the only one that will be counted. This provides
+        // adequate coverage, and more intuitive counts. (Avoids double-counting the closing brace
+        // of the function body.)
         let body_ends_with_closure = if let Some(last_covspan) = refined_spans.last() {
             last_covspan.is_closure && last_covspan.span.hi() == self.body_span.hi()
         } else {

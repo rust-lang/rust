@@ -262,6 +262,10 @@ fn add_unreachable_coverage<'tcx>(
     tcx: TyCtxt<'tcx>,
     function_coverage_map: &mut FxHashMap<Instance<'tcx>, FunctionCoverage<'tcx>>,
 ) {
+    // FIXME(#79622): Can this solution be simplified and/or improved? Are there other sources
+    // of compiler state data that might help (or better sources that could be exposed, but
+    // aren't yet)?
+
     // Note: If the crate *only* defines generic functions, there are no codegenerated non-generic
     // functions to add any unreachable code to. In this case, the unreachable code regions will
     // have no coverage, instead of having coverage with zero executions.
@@ -359,6 +363,21 @@ fn add_unreachable_coverage<'tcx>(
             for def_id in
                 unreachable_def_ids_by_file.remove(&covered_file_name).into_iter().flatten()
             {
+                // Note, this loop adds an unreachable code regions for each MIR-derived region.
+                // Alternatively, we could add a single code region for the maximum span of all
+                // code regions here.
+                //
+                // Observed downsides of this approach are:
+                //
+                // 1. The coverage results will appear inconsistent compared with the same (or
+                //    similar) code in a function that is reached.
+                // 2. If the function is unreachable from one crate but reachable when compiling
+                //    another referencing crate (such as a cross-crate reference to a
+                //    generic function or inlined function), actual coverage regions overlaid
+                //    on a single larger code span of `Zero` coverage can appear confusing or
+                //    wrong. Chaning the unreachable coverage from a `code_region` to a
+                //    `gap_region` can help, but still can look odd with `0` line counts for
+                //    lines between executed (> 0) lines (such as for blank lines or comments).
                 for &region in tcx.covered_code_regions(def_id) {
                     function_coverage.add_unreachable_region(region.clone());
                 }

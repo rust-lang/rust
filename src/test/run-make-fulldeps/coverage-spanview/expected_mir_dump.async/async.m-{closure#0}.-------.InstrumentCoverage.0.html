@@ -2,7 +2,7 @@
 <!--
 
 Preview this file as rendered HTML from the github source at:
-https://htmlpreview.github.io/?https://github.com/rust-lang/rust/blob/master/src/test/run-make-fulldeps/coverage-spanview/expected_mir_dump.async/async.executor-block_on-VTABLE-%7Bclosure%233%7D.-------.InstrumentCoverage.0.html
+https://htmlpreview.github.io/?https://github.com/rust-lang/rust/blob/master/src/test/run-make-fulldeps/coverage-spanview/expected_mir_dump.async/async.m-%7Bclosure%230%7D.-------.InstrumentCoverage.0.html
 
 For revisions in Pull Requests (PR):
   * Replace "rust-lang" with the github PR author
@@ -11,7 +11,7 @@ For revisions in Pull Requests (PR):
 -->
 <html>
 <head>
-<title>async.executor-block_on-VTABLE-{closure#3} - Coverage Spans</title>
+<title>async.m-{closure#0} - Coverage Spans</title>
 <style>
     .line {
         counter-increment: line;
@@ -69,7 +69,11 @@ For revisions in Pull Requests (PR):
 </style>
 </head>
 <body>
-<div class="code" style="counter-reset: line 116"><span class="line">            <span class="code" style="--layer: 0">|_| </span><span><span class="code even" style="--layer: 1" title="117:17-117:19: @0[0]: _0 = ()
-117:19-117:19: @0.Return: return"><span class="annotation">@0⦊</span>()<span class="annotation">⦉@0</span></span></span></span></div>
+<div class="code" style="counter-reset: line 90"><span class="line">                        <span><span class="code even" style="--layer: 1" title="91:25-91:34: @0[1]: _3 = (_1.0: u8)
+91:25-91:34: @0[2]: FakeRead(ForLet, _3)
+91:27-91:28: @0[4]: _4 = _3
+91:27-91:32: @0[5]: _5 = CheckedSub(_4, const 1_u8)
+91:27-91:32: @1[0]: _0 = move (_5.0: u8)
+91:34-91:34: @1.Return: return"><span class="annotation">@0,1⦊</span>{ x - 1 }<span class="annotation">⦉@0,1</span></span></span></span></div>
 </body>
 </html>

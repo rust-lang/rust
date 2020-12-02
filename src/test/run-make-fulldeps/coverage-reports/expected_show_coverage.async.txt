@@ -93,39 +93,43 @@
    88|       |    }
    89|      1|}
    90|       |
-   91|      1|fn main() {
-   92|      1|    let _ = g(10);
-   93|      1|    let _ = h(9);
-   94|      1|    let mut future = Box::pin(i(8));
-   95|      1|    j(7);
-   96|      1|    l(6);
-   97|      1|    executor::block_on(future.as_mut());
-   98|      1|}
-   99|       |
-  100|       |mod executor {
-  101|       |    use core::{
-  102|       |        future::Future,
-  103|       |        pin::Pin,
-  104|       |        task::{Context, Poll, RawWaker, RawWakerVTable, Waker},
-  105|       |    };
-  106|       |
-  107|      1|    pub fn block_on<F: Future>(mut future: F) -> F::Output {
-  108|      1|        let mut future = unsafe { Pin::new_unchecked(&mut future) };
-  109|      1|
-  110|      1|        static VTABLE: RawWakerVTable = RawWakerVTable::new(
-  111|      1|            |_| unimplemented!("clone"),
-  112|      1|            |_| unimplemented!("wake"),
-  113|      1|            |_| unimplemented!("wake_by_ref"),
-  114|      1|            |_| (),
-  115|      1|        );
-  116|      1|        let waker = unsafe { Waker::from_raw(RawWaker::new(core::ptr::null(), &VTABLE)) };
-  117|      1|        let mut context = Context::from_waker(&waker);
-  118|       |
-  119|       |        loop {
-  120|      1|            if let Poll::Ready(val) = future.as_mut().poll(&mut context) {
-  121|      1|                break val;
-  122|      0|            }
-  123|       |        }
-  124|      1|    }
-  125|       |}
+   91|      1|async fn m(x: u8) -> u8 { x - 1 }
+                                      ^0
+   92|       |
+   93|      1|fn main() {
+   94|      1|    let _ = g(10);
+   95|      1|    let _ = h(9);
+   96|      1|    let mut future = Box::pin(i(8));
+   97|      1|    j(7);
+   98|      1|    l(6);
+   99|      1|    let _ = m(5);
+  100|      1|    executor::block_on(future.as_mut());
+  101|      1|}
+  102|       |
+  103|       |mod executor {
+  104|       |    use core::{
+  105|       |        future::Future,
+  106|       |        pin::Pin,
+  107|       |        task::{Context, Poll, RawWaker, RawWakerVTable, Waker},
+  108|       |    };
+  109|       |
+  110|      1|    pub fn block_on<F: Future>(mut future: F) -> F::Output {
+  111|      1|        let mut future = unsafe { Pin::new_unchecked(&mut future) };
+  112|      1|
+  113|      1|        static VTABLE: RawWakerVTable = RawWakerVTable::new(
+  114|      1|            |_| unimplemented!("clone"),
+  115|      1|            |_| unimplemented!("wake"),
+  116|      1|            |_| unimplemented!("wake_by_ref"),
+  117|      1|            |_| (),
+  118|      1|        );
+  119|      1|        let waker = unsafe { Waker::from_raw(RawWaker::new(core::ptr::null(), &VTABLE)) };
+  120|      1|        let mut context = Context::from_waker(&waker);
+  121|       |
+  122|       |        loop {
+  123|      1|            if let Poll::Ready(val) = future.as_mut().poll(&mut context) {
+  124|      1|                break val;
+  125|      0|            }
+  126|       |        }
+  127|      1|    }
+  128|       |}
 

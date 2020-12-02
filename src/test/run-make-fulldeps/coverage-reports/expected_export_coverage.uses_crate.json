@@ -1,0 +1,85 @@
+{
+  "data": [
+    {
+      "files": [
+        {
+          "filename": "../coverage/used_crate/mod.rs",
+          "summary": {
+            "functions": {
+              "count": 3,
+              "covered": 3,
+              "percent": 100
+            },
+            "instantiations": {
+              "count": 4,
+              "covered": 4,
+              "percent": 100
+            },
+            "lines": {
+              "count": 31,
+              "covered": 14,
+              "percent": 45.16129032258064
+            },
+            "regions": {
+              "count": 16,
+              "covered": 6,
+              "notcovered": 10,
+              "percent": 37.5
+            }
+          }
+        },
+        {
+          "filename": "../coverage/uses_crate.rs",
+          "summary": {
+            "functions": {
+              "count": 1,
+              "covered": 1,
+              "percent": 100
+            },
+            "instantiations": {
+              "count": 1,
+              "covered": 1,
+              "percent": 100
+            },
+            "lines": {
+              "count": 6,
+              "covered": 6,
+              "percent": 100
+            },
+            "regions": {
+              "count": 1,
+              "covered": 1,
+              "notcovered": 0,
+              "percent": 100
+            }
+          }
+        }
+      ],
+      "totals": {
+        "functions": {
+          "count": 4,
+          "covered": 4,
+          "percent": 100
+        },
+        "instantiations": {
+          "count": 5,
+          "covered": 5,
+          "percent": 100
+        },
+        "lines": {
+          "count": 37,
+          "covered": 20,
+          "percent": 54.054054054054056
+        },
+        "regions": {
+          "count": 17,
+          "covered": 7,
+          "notcovered": 10,
+          "percent": 41.17647058823529
+        }
+      }
+    }
+  ],
+  "type": "llvm.coverage.json.export",
+  "version": "2.0.1"
+}

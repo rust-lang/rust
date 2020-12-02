@@ -1,0 +1,69 @@
+../coverage/used_crate/mod.rs:
+    1|       |#![allow(unused_assignments, unused_variables)]
+    2|       |
+    3|       |use std::fmt::Debug;
+    4|       |
+    5|      1|pub fn used_function() {
+    6|       |    // Initialize test constants in a way that cannot be determined at compile time, to ensure
+    7|       |    // rustc and LLVM cannot optimize out statements (or coverage counters) downstream from
+    8|       |    // dependent conditions.
+    9|      1|    let is_true = std::env::args().len() == 1;
+   10|      1|    let mut countdown = 0;
+   11|      1|    if is_true {
+   12|      1|        countdown = 10;
+   13|      1|    }
+                   ^0
+   14|      1|    used_twice_generic_function("some str");
+   15|      1|}
+   16|       |
+   17|      1|pub fn used_generic_function<T: Debug>(arg: T) {
+   18|      1|    println!("used_generic_function with {:?}", arg);
+   19|      1|}
+   20|       |
+   21|      2|pub fn used_twice_generic_function<T: Debug>(arg: T) {
+   22|      2|    println!("used_twice_generic_function with {:?}", arg);
+   23|      2|}
+  ------------------
+  | uses_crate::used_crate::used_twice_generic_function::<alloc::vec::Vec<i32>>:
+  |   21|      1|pub fn used_twice_generic_function<T: Debug>(arg: T) {
+  |   22|      1|    println!("used_twice_generic_function with {:?}", arg);
+  |   23|      1|}
+  ------------------
+  | uses_crate::used_crate::used_twice_generic_function::<&str>:
+  |   21|      1|pub fn used_twice_generic_function<T: Debug>(arg: T) {
+  |   22|      1|    println!("used_twice_generic_function with {:?}", arg);
+  |   23|      1|}
+  ------------------
+   24|       |
+   25|      0|pub fn unused_generic_function<T: Debug>(arg: T) {
+   26|      0|    println!("unused_generic_function with {:?}", arg);
+   27|      0|}
+   28|       |
+   29|      0|pub fn unused_function() {
+   30|      0|    let is_true = std::env::args().len() == 1;
+   31|      0|    let mut countdown = 2;
+   32|      0|    if !is_true {
+   33|      0|        countdown = 20;
+   34|      0|    }
+   35|      0|}
+   36|       |
+   37|      0|fn unused_private_function() {
+   38|      0|    let is_true = std::env::args().len() == 1;
+   39|      0|    let mut countdown = 2;
+   40|      0|    if !is_true {
+   41|      0|        countdown = 20;
+   42|      0|    }
+   43|      0|}
+
+../coverage/uses_crate.rs:
+    1|       |#![allow(unused_assignments, unused_variables)]
+    2|       |
+    3|       |mod used_crate;
+    4|       |
+    5|      1|fn main() {
+    6|      1|    used_crate::used_function();
+    7|      1|    let some_vec = vec![1, 2, 3, 4];
+    8|      1|    used_crate::used_generic_function(&some_vec);
+    9|      1|    used_crate::used_twice_generic_function(some_vec);
+   10|      1|}
+

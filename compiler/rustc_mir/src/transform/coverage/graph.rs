@@ -140,7 +140,9 @@ impl CoverageGraph {
 
                 // The following `TerminatorKind`s are either not expected outside an unwind branch,
                 // or they should not (under normal circumstances) branch. Coverage graphs are
-                // simplified by assuring coverage results are accurate for well-behaved programs.
+                // simplified by assuring coverage results are accurate for program executions that
+                // don't panic.
+                //
                 // Programs that panic and unwind may record slightly inaccurate coverage results
                 // for a coverage region containing the `Terminator` that began the panic. This
                 // is as intended. (See Issue #78544 for a possible future option to support

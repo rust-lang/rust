@@ -499,6 +499,8 @@ fn fn_sig_and_body<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
 ) -> (Option<&'tcx rustc_hir::FnSig<'tcx>>, &'tcx rustc_hir::Body<'tcx>) {
+    // FIXME(#79625): Consider improving MIR to provide the information needed, to avoid going back
+    // to HIR for it.
     let hir_node = tcx.hir().get_if_local(def_id).expect("expected DefId is local");
     let fn_body_id = hir::map::associated_body(hir_node).expect("HIR node is a function with body");
     (hir::map::fn_sig(hir_node), tcx.hir().body(fn_body_id))

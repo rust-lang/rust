@@ -6,50 +6,50 @@
           "filename": "../coverage/async.rs",
           "summary": {
             "functions": {
-              "count": 16,
-              "covered": 15,
-              "percent": 93.75
+              "count": 17,
+              "covered": 16,
+              "percent": 94.11764705882352
             },
             "instantiations": {
-              "count": 16,
-              "covered": 15,
-              "percent": 93.75
+              "count": 17,
+              "covered": 16,
+              "percent": 94.11764705882352
             },
             "lines": {
-              "count": 102,
-              "covered": 75,
-              "percent": 73.52941176470588
+              "count": 105,
+              "covered": 77,
+              "percent": 73.33333333333333
             },
             "regions": {
-              "count": 76,
-              "covered": 35,
-              "notcovered": 41,
-              "percent": 46.05263157894737
+              "count": 78,
+              "covered": 36,
+              "notcovered": 42,
+              "percent": 46.15384615384615
             }
           }
         }
       ],
       "totals": {
         "functions": {
-          "count": 16,
-          "covered": 15,
-          "percent": 93.75
+          "count": 17,
+          "covered": 16,
+          "percent": 94.11764705882352
         },
         "instantiations": {
-          "count": 16,
-          "covered": 15,
-          "percent": 93.75
+          "count": 17,
+          "covered": 16,
+          "percent": 94.11764705882352
         },
         "lines": {
-          "count": 102,
-          "covered": 75,
-          "percent": 73.52941176470588
+          "count": 105,
+          "covered": 77,
+          "percent": 73.33333333333333
         },
         "regions": {
-          "count": 76,
-          "covered": 35,
-          "notcovered": 41,
-          "percent": 46.05263157894737
+          "count": 78,
+          "covered": 36,
+          "notcovered": 42,
+          "percent": 46.15384615384615
         }
       }
     }

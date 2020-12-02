@@ -88,12 +88,15 @@ fn l(x: u8) {
     }
 }
 
+async fn m(x: u8) -> u8 { x - 1 }
+
 fn main() {
     let _ = g(10);
     let _ = h(9);
     let mut future = Box::pin(i(8));
     j(7);
     l(6);
+    let _ = m(5);
     executor::block_on(future.as_mut());
 }
 

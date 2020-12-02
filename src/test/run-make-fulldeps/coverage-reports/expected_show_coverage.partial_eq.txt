@@ -45,4 +45,19 @@
    44|       |`function_source_hash` without a code region, if necessary.
    45|       |
    46|       |*/
+   47|       |
+   48|       |// FIXME(#79626): The derived traits get coverage, which is great, but some of the traits appear
+   49|       |// to get two coverage execution counts at different positions:
+   50|       |//
+   51|       |// ```text
+   52|       |//    4|      2|#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+   53|       |//                       ^0            ^0      ^0 ^0  ^1       ^0 ^0^0
+   54|       |// ```text
+   55|       |//
+   56|       |// `PartialEq`, `PartialOrd`, and `Ord` (and possibly `Eq`, if the trait name was longer than 2
+   57|       |// characters) have counts at their first and last characters.
+   58|       |//
+   59|       |// Why is this? Why does `PartialOrd` have two values (1 and 0)? This must mean we are checking
+   60|       |// distinct coverages, so maybe we don't want to eliminate one of them. Should we merge them?
+   61|       |// If merged, do we lose some information?
 

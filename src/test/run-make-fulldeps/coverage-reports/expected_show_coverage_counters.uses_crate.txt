@@ -1,0 +1,80 @@
+Counter in file 0 17:1 -> 19:2, #1
+Counter in file 0 25:1 -> 27:2, 0
+Counter in file 0 29:1 -> 32:16, 0
+Counter in file 0 32:17 -> 34:6, 0
+Counter in file 0 34:6 -> 34:7, 0
+Counter in file 0 35:1 -> 35:2, 0
+Counter in file 0 37:1 -> 40:16, 0
+Counter in file 0 40:17 -> 42:6, 0
+Counter in file 0 42:6 -> 42:7, 0
+Counter in file 0 43:1 -> 43:2, 0
+Counter in file 0 5:1 -> 5:24, #1
+Counter in file 0 9:9 -> 11:15, (#1 + 0)
+Counter in file 0 11:16 -> 13:6, #2
+Counter in file 0 13:6 -> 13:7, (#1 - #2)
+Counter in file 0 14:5 -> 15:2, (#2 + (#1 - #2))
+Counter in file 0 21:1 -> 23:2, #1
+Counter in file 0 21:1 -> 23:2, #1
+Counter in file 0 5:1 -> 10:2, #1
+Emitting segments for file: ../coverage/used_crate/mod.rs
+Combined regions:
+  5:1 -> 5:24 (count=1)
+  9:9 -> 11:15 (count=1)
+  11:16 -> 13:6 (count=1)
+  13:6 -> 13:7 (count=0)
+  14:5 -> 15:2 (count=1)
+  17:1 -> 19:2 (count=1)
+  21:1 -> 23:2 (count=2)
+  25:1 -> 27:2 (count=0)
+  29:1 -> 32:16 (count=0)
+  32:17 -> 34:6 (count=0)
+  34:6 -> 34:7 (count=0)
+  35:1 -> 35:2 (count=0)
+  37:1 -> 40:16 (count=0)
+  40:17 -> 42:6 (count=0)
+  42:6 -> 42:7 (count=0)
+  43:1 -> 43:2 (count=0)
+Segment at 5:1 (count = 1), RegionEntry
+Segment at 5:24 (count = 0), Skipped
+Segment at 9:9 (count = 1), RegionEntry
+Segment at 11:15 (count = 0), Skipped
+Segment at 11:16 (count = 1), RegionEntry
+Segment at 13:6 (count = 0), RegionEntry
+Segment at 13:7 (count = 0), Skipped
+Segment at 14:5 (count = 1), RegionEntry
+Segment at 15:2 (count = 0), Skipped
+Segment at 17:1 (count = 1), RegionEntry
+Segment at 19:2 (count = 0), Skipped
+Segment at 21:1 (count = 2), RegionEntry
+Segment at 23:2 (count = 0), Skipped
+Segment at 25:1 (count = 0), RegionEntry
+Segment at 27:2 (count = 0), Skipped
+Segment at 29:1 (count = 0), RegionEntry
+Segment at 32:16 (count = 0), Skipped
+Segment at 32:17 (count = 0), RegionEntry
+Segment at 34:6 (count = 0), RegionEntry
+Segment at 34:7 (count = 0), Skipped
+Segment at 35:1 (count = 0), RegionEntry
+Segment at 35:2 (count = 0), Skipped
+Segment at 37:1 (count = 0), RegionEntry
+Segment at 40:16 (count = 0), Skipped
+Segment at 40:17 (count = 0), RegionEntry
+Segment at 42:6 (count = 0), RegionEntry
+Segment at 42:7 (count = 0), Skipped
+Segment at 43:1 (count = 0), RegionEntry
+Segment at 43:2 (count = 0), Skipped
+Emitting segments for function: _RINvNtCs4fqI2P2rA04_10uses_crate10used_crate27used_twice_generic_functionINtNtCs3QflaznQylx_5alloc3vec3VeclEEB4_
+Combined regions:
+  21:1 -> 23:2 (count=1)
+Segment at 21:1 (count = 1), RegionEntry
+Segment at 23:2 (count = 0), Skipped
+Emitting segments for function: _RINvNtCs4fqI2P2rA04_10uses_crate10used_crate27used_twice_generic_functionReEB4_
+Combined regions:
+  21:1 -> 23:2 (count=1)
+Segment at 21:1 (count = 1), RegionEntry
+Segment at 23:2 (count = 0), Skipped
+Emitting segments for file: ../coverage/uses_crate.rs
+Combined regions:
+  5:1 -> 10:2 (count=1)
+Segment at 5:1 (count = 1), RegionEntry
+Segment at 10:2 (count = 0), Skipped

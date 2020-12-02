@@ -76,6 +76,8 @@ $ RUSTC=$HOME/rust/build/x86_64-unknown-linux-gnu/stage1/bin/rustc \
     cargo build --example formatjson5
 ```
 
+Note that some compiler options, combined with `-Zinstrument-coverage`, can produce LLVM IR and/or linked binaries that are incompatible with LLVM coverage maps. For example, coverage requires references to actual functions in LLVM IR. If any covered function is optimized out, the coverage tools may not be able to process the coverage results. If you need to pass additional options, with coverage enabled, test them early, to confirm you will get the coverage results you expect.
+
 ## Running the instrumented binary to generate raw coverage profiling data
 
 In the previous example, `cargo` generated the coverage-instrumented binary `formatjson5`:

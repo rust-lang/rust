@@ -26,18 +26,18 @@ Counter in file 0 77:14 -> 77:16, 0
 Counter in file 0 78:14 -> 78:16, 0
 Counter in file 0 79:14 -> 79:16, 0
 Counter in file 0 81:1 -> 81:2, 0
+Counter in file 0 91:25 -> 91:34, 0
 Counter in file 0 5:1 -> 5:25, #1
-Counter in file 0 21:1 -> 21:23, #1
-Counter in file 0 17:20 -> 17:21, #1
-Counter in file 0 67:5 -> 67:23, #1
-Counter in file 0 38:1 -> 38:19, #1
-Counter in file 0 13:20 -> 13:21, #1
-Counter in file 0 29:1 -> 29:22, #1
-Counter in file 0 91:1 -> 98:2, #1
 Counter in file 0 5:25 -> 6:14, #1
 Counter in file 0 7:9 -> 7:10, #2
 Counter in file 0 9:9 -> 9:10, (#1 - #2)
 Counter in file 0 11:1 -> 11:2, (#2 + (#1 - #2))
+Counter in file 0 21:1 -> 21:23, #1
+Counter in file 0 67:5 -> 67:23, #1
+Counter in file 0 38:1 -> 38:19, #1
+Counter in file 0 29:1 -> 29:22, #1
+Counter in file 0 93:1 -> 101:2, #1
+Counter in file 0 91:1 -> 91:25, #1
 Counter in file 0 38:19 -> 42:12, #1
 Counter in file 0 43:9 -> 43:10, #3
 Counter in file 0 43:14 -> 43:18, (#1 + 0)
@@ -53,6 +53,7 @@ Counter in file 0 51:5 -> 52:18, #1
 Counter in file 0 53:13 -> 53:14, #2
 Counter in file 0 63:13 -> 63:14, (#1 - #2)
 Counter in file 0 65:5 -> 65:6, (#2 + (#1 - #2))
+Counter in file 0 17:20 -> 17:21, #1
 Counter in file 0 49:1 -> 68:12, #1
 Counter in file 0 69:9 -> 69:10, #2
 Counter in file 0 69:14 -> 69:27, (#1 + 0)
@@ -68,17 +69,18 @@ Counter in file 0 86:14 -> 86:16, #2
 Counter in file 0 87:14 -> 87:16, #3
 Counter in file 0 89:1 -> 89:2, (#3 + (#2 + (#1 - (#3 + #2))))
 Counter in file 0 17:1 -> 17:20, #1
+Counter in file 0 13:20 -> 13:21, #1
 Counter in file 0 66:5 -> 66:23, #1
-Counter in file 0 107:5 -> 117:54, #1
-Counter in file 0 120:32 -> 120:35, ((#1 + #2) - #2)
-Counter in file 0 120:39 -> 120:73, (#1 + #2)
-Counter in file 0 121:23 -> 121:26, (((#1 + #2) - #2) + 0)
-Counter in file 0 122:14 -> 122:15, #2
-Counter in file 0 124:5 -> 124:6, (((#1 + #2) - #2) + 0)
-Counter in file 0 114:17 -> 114:19, #1
 Counter in file 0 17:9 -> 17:10, #1
 Counter in file 0 17:9 -> 17:10, #1
+Counter in file 0 117:17 -> 117:19, #1
 Counter in file 0 17:9 -> 17:10, #1
+Counter in file 0 110:5 -> 120:54, #1
+Counter in file 0 123:32 -> 123:35, ((#1 + #2) - #2)
+Counter in file 0 123:39 -> 123:73, (#1 + #2)
+Counter in file 0 124:23 -> 124:26, (((#1 + #2) - #2) + 0)
+Counter in file 0 125:14 -> 125:15, #2
+Counter in file 0 127:5 -> 127:6, (((#1 + #2) - #2) + 0)
 Emitting segments for file: ../coverage/async.rs
 Combined regions:
   5:1 -> 5:25 (count=1)
@@ -149,14 +151,16 @@ Combined regions:
   86:14 -> 86:16 (count=0)
   87:14 -> 87:16 (count=1)
   89:1 -> 89:2 (count=1)
-  91:1 -> 98:2 (count=1)
-  107:5 -> 117:54 (count=1)
-  114:17 -> 114:19 (count=1)
-  120:32 -> 120:35 (count=1)
-  120:39 -> 120:73 (count=1)
-  121:23 -> 121:26 (count=1)
-  122:14 -> 122:15 (count=0)
-  124:5 -> 124:6 (count=1)
+  91:1 -> 91:25 (count=1)
+  91:25 -> 91:34 (count=0)
+  93:1 -> 101:2 (count=1)
+  110:5 -> 120:54 (count=1)
+  117:17 -> 117:19 (count=1)
+  123:32 -> 123:35 (count=1)
+  123:39 -> 123:73 (count=1)
+  124:23 -> 124:26 (count=1)
+  125:14 -> 125:15 (count=0)
+  127:5 -> 127:6 (count=1)
 Segment at 5:1 (count = 1), RegionEntry
 Segment at 5:25 (count = 1), RegionEntry
 Segment at 6:14 (count = 0), Skipped
@@ -287,18 +291,21 @@ Segment at 87:16 (count = 0), Skipped
 Segment at 89:1 (count = 1), RegionEntry
 Segment at 89:2 (count = 0), Skipped
 Segment at 91:1 (count = 1), RegionEntry
-Segment at 98:2 (count = 0), Skipped
-Segment at 107:5 (count = 1), RegionEntry
-Segment at 114:17 (count = 1), RegionEntry
-Segment at 114:19 (count = 1)
-Segment at 117:54 (count = 0), Skipped
-Segment at 120:32 (count = 1), RegionEntry
-Segment at 120:35 (count = 0), Skipped
-Segment at 120:39 (count = 1), RegionEntry
-Segment at 120:73 (count = 0), Skipped
-Segment at 121:23 (count = 1), RegionEntry
-Segment at 121:26 (count = 0), Skipped
-Segment at 122:14 (count = 0), RegionEntry
-Segment at 122:15 (count = 0), Skipped
-Segment at 124:5 (count = 1), RegionEntry
-Segment at 124:6 (count = 0), Skipped
+Segment at 91:25 (count = 0), RegionEntry
+Segment at 91:34 (count = 0), Skipped
+Segment at 93:1 (count = 1), RegionEntry
+Segment at 101:2 (count = 0), Skipped
+Segment at 110:5 (count = 1), RegionEntry
+Segment at 117:17 (count = 1), RegionEntry
+Segment at 117:19 (count = 1)
+Segment at 120:54 (count = 0), Skipped
+Segment at 123:32 (count = 1), RegionEntry
+Segment at 123:35 (count = 0), Skipped
+Segment at 123:39 (count = 1), RegionEntry
+Segment at 123:73 (count = 0), Skipped
+Segment at 124:23 (count = 1), RegionEntry
+Segment at 124:26 (count = 0), Skipped
+Segment at 125:14 (count = 0), RegionEntry
+Segment at 125:15 (count = 0), Skipped
+Segment at 127:5 (count = 1), RegionEntry
+Segment at 127:6 (count = 0), Skipped
