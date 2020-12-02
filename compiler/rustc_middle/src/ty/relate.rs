@@ -33,6 +33,11 @@ pub trait TypeRelation<'tcx>: Sized {
     /// relation. Just affects error messages.
     fn a_is_expected(&self) -> bool;
 
+    /// Whether we should look into the substs of unevaluated constants
+    /// even if `feature(const_evaluatable_checked)` is active.
+    ///
+    /// This is needed in `combine` to prevent accidentially creating
+    /// infinite types as we abuse `TypeRelation` to walk a type there.
     fn visit_ct_substs(&self) -> bool {
         false
     }

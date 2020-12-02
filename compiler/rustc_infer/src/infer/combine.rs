@@ -881,9 +881,7 @@ impl TypeRelation<'tcx> for ConstInferUnifier<'_, 'tcx> {
                     }
                 }
             }
-            ty::Infer(ty::IntVar(_) | ty::FloatVar(_)) => {
-                Ok(t)
-            }
+            ty::Infer(ty::IntVar(_) | ty::FloatVar(_)) => Ok(t),
             _ => relate::super_relate_tys(self, t, t),
         }
     }
