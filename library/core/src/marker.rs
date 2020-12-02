@@ -818,8 +818,10 @@ mod copy_impls {
         bool char
     }
 
-    #[unstable(feature = "never_type", issue = "35121")]
-    impl Copy for ! {}
+    // A stable attribute works, but unstable not. Interesting.
+    //#[unstable(feature = "never_type", issue = "35121")]
+    #[stable(feature = "haven't made a feature gate yet", since = "1.50.0")]
+    impl Copy for never {}
 
     #[stable(feature = "rust1", since = "1.0.0")]
     impl<T: ?Sized> Copy for *const T {}

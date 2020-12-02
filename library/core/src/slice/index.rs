@@ -30,35 +30,35 @@ where
 #[inline(never)]
 #[cold]
 #[track_caller]
-fn slice_start_index_len_fail(index: usize, len: usize) -> ! {
+fn slice_start_index_len_fail(index: usize, len: usize) -> never {
     panic!("range start index {} out of range for slice of length {}", index, len);
 }
 
 #[inline(never)]
 #[cold]
 #[track_caller]
-pub(crate) fn slice_end_index_len_fail(index: usize, len: usize) -> ! {
+pub(crate) fn slice_end_index_len_fail(index: usize, len: usize) -> never {
     panic!("range end index {} out of range for slice of length {}", index, len);
 }
 
 #[inline(never)]
 #[cold]
 #[track_caller]
-pub(crate) fn slice_index_order_fail(index: usize, end: usize) -> ! {
+pub(crate) fn slice_index_order_fail(index: usize, end: usize) -> never {
     panic!("slice index starts at {} but ends at {}", index, end);
 }
 
 #[inline(never)]
 #[cold]
 #[track_caller]
-pub(crate) fn slice_start_index_overflow_fail() -> ! {
+pub(crate) fn slice_start_index_overflow_fail() -> never {
     panic!("attempted to index slice from after maximum usize");
 }
 
 #[inline(never)]
 #[cold]
 #[track_caller]
-pub(crate) fn slice_end_index_overflow_fail() -> ! {
+pub(crate) fn slice_end_index_overflow_fail() -> never {
     panic!("attempted to index slice up to maximum usize");
 }
 

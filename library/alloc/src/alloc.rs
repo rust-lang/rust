@@ -342,7 +342,7 @@ extern "Rust" {
     // it to call `__rg_oom` if there is a `#[alloc_error_handler]`, or to call the
     // default implementations below (`__rdl_oom`) otherwise.
     #[rustc_allocator_nounwind]
-    fn __rust_alloc_error_handler(size: usize, align: usize) -> !;
+    fn __rust_alloc_error_handler(size: usize, align: usize) -> never;
 }
 
 /// Abort on memory allocation error or failure.
@@ -361,7 +361,7 @@ extern "Rust" {
 #[cfg(not(test))]
 #[rustc_allocator_nounwind]
 #[cold]
-pub fn handle_alloc_error(layout: Layout) -> ! {
+pub fn handle_alloc_error(layout: Layout) -> never {
     unsafe {
         __rust_alloc_error_handler(layout.size(), layout.align());
     }
@@ -382,17 +382,17 @@ pub mod __alloc_error_handler {
 
     // if there is no `#[alloc_error_handler]`
     #[rustc_std_internal_symbol]
-    pub unsafe extern "C" fn __rdl_oom(size: usize, _align: usize) -> ! {
+    pub unsafe extern "C" fn __rdl_oom(size: usize, _align: usize) -> never {
         panic!("memory allocation of {} bytes failed", size)
     }
 
     // if there is a `#[alloc_error_handler]`
     #[rustc_std_internal_symbol]
-    pub unsafe extern "C" fn __rg_oom(size: usize, align: usize) -> ! {
+    pub unsafe extern "C" fn __rg_oom(size: usize, align: usize) -> never {
         let layout = unsafe { Layout::from_size_align_unchecked(size, align) };
         extern "Rust" {
             #[lang = "oom"]
-            fn oom_impl(layout: Layout) -> !;
+            fn oom_impl(layout: Layout) -> never;
         }
         unsafe { oom_impl(layout) }
     }

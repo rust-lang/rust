@@ -710,7 +710,7 @@ extern "rust-intrinsic" {
     ///
     /// A more user-friendly and stable version of this operation is
     /// [`std::process::abort`](../../std/process/fn.abort.html).
-    pub fn abort() -> !;
+    pub fn abort() -> crate::primitive::never;
 
     /// Tells LLVM that this point in the code is not reachable, enabling
     /// further optimizations.
@@ -721,7 +721,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is [`core::hint::unreachable_unchecked`](crate::hint::unreachable_unchecked).
     #[rustc_const_unstable(feature = "const_unreachable_unchecked", issue = "53188")]
-    pub fn unreachable() -> !;
+    pub fn unreachable() -> crate::primitive::never;
 
     /// Informs the optimizer that a condition is always true.
     /// If the condition is false, the behavior is undefined.

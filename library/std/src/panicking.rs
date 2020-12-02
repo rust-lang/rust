@@ -56,7 +56,7 @@ extern "C" {
 /// with our panic count.
 #[cfg(not(test))]
 #[rustc_std_internal_symbol]
-extern "C" fn __rust_drop_panic() -> ! {
+extern "C" fn __rust_drop_panic() -> never {
     rtabort!("Rust panics must be rethrown");
 }
 
@@ -64,7 +64,7 @@ extern "C" fn __rust_drop_panic() -> ! {
 /// object which does not correspond to a Rust panic.
 #[cfg(not(test))]
 #[rustc_std_internal_symbol]
-extern "C" fn __rust_foreign_exception() -> ! {
+extern "C" fn __rust_foreign_exception() -> never {
     rtabort!("Rust cannot catch foreign exceptions");
 }
 
@@ -426,7 +426,7 @@ pub fn panicking() -> bool {
 #[cfg_attr(not(feature = "panic_immediate_abort"), track_caller)]
 #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
 #[cfg_attr(feature = "panic_immediate_abort", inline)]
-pub fn begin_panic_fmt(msg: &fmt::Arguments<'_>) -> ! {
+pub fn begin_panic_fmt(msg: &fmt::Arguments<'_>) -> never {
     if cfg!(feature = "panic_immediate_abort") {
         intrinsics::abort()
     }
@@ -438,7 +438,7 @@ pub fn begin_panic_fmt(msg: &fmt::Arguments<'_>) -> ! {
 /// Entry point of panics from the libcore crate (`panic_impl` lang item).
 #[cfg_attr(not(test), panic_handler)]
 #[unwind(allowed)]
-pub fn begin_panic_handler(info: &PanicInfo<'_>) -> ! {
+pub fn begin_panic_handler(info: &PanicInfo<'_>) -> never {
     struct PanicPayload<'a> {
         inner: &'a fmt::Arguments<'a>,
         string: Option<String>,
@@ -510,7 +510,7 @@ pub fn begin_panic_handler(info: &PanicInfo<'_>) -> ! {
 #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
 #[cold]
 #[track_caller]
-pub fn begin_panic<M: Any + Send>(msg: M) -> ! {
+pub fn begin_panic<M: Any + Send>(msg: M) -> never {
     if cfg!(feature = "panic_immediate_abort") {
         intrinsics::abort()
     }
@@ -562,7 +562,7 @@ fn rust_panic_with_hook(
     payload: &mut dyn BoxMeUp,
     message: Option<&fmt::Arguments<'_>>,
     location: &Location<'_>,
-) -> ! {
+) -> never {
     let panics = panic_count::increase();
 
     // If this is the third nested call (e.g., panics == 2, this is 0-indexed),
@@ -612,7 +612,7 @@ fn rust_panic_with_hook(
 
 /// This is the entry point for `resume_unwind`.
 /// It just forwards the payload to the panic runtime.
-pub fn rust_panic_without_hook(payload: Box<dyn Any + Send>) -> ! {
+pub fn rust_panic_without_hook(payload: Box<dyn Any + Send>) -> never {
     panic_count::increase();
 
     struct RewrapBox(Box<dyn Any + Send>);
@@ -634,7 +634,7 @@ pub fn rust_panic_without_hook(payload: Box<dyn Any + Send>) -> ! {
 /// yer breakpoints.
 #[inline(never)]
 #[cfg_attr(not(test), rustc_std_internal_symbol)]
-fn rust_panic(mut msg: &mut dyn BoxMeUp) -> ! {
+fn rust_panic(mut msg: &mut dyn BoxMeUp) -> never {
     let code = unsafe {
         let obj = &mut msg as *mut &mut dyn BoxMeUp;
         __rust_start_panic(obj as usize)
