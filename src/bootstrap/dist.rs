@@ -1314,21 +1314,7 @@ impl Step for Extended {
         let std_installer =
             builder.ensure(Std { compiler: builder.compiler(stage, target), target });
 
-        let tmp = tmpdir(builder);
-        let overlay = tmp.join("extended-overlay");
         let etc = builder.src.join("src/etc/installer");
-        let work = tmp.join("work");
-
-        let _ = fs::remove_dir_all(&overlay);
-        builder.install(&builder.src.join("COPYRIGHT"), &overlay, 0o644);
-        builder.install(&builder.src.join("LICENSE-APACHE"), &overlay, 0o644);
-        builder.install(&builder.src.join("LICENSE-MIT"), &overlay, 0o644);
-        let version = builder.rust_version();
-        builder.create(&overlay.join("version"), &version);
-        if let Some(sha) = builder.rust_sha() {
-            builder.create(&overlay.join("git-commit-hash"), &sha);
-        }
-        builder.install(&etc.join("README.md"), &overlay, 0o644);
 
         // When rust-std package split from rustc, we needed to ensure that during
         // upgrades rustc was upgraded before rust-std. To avoid rustc clobbering
@@ -1353,31 +1339,12 @@ impl Step for Extended {
         if target.contains("pc-windows-gnu") {
             tarballs.push(mingw_installer.unwrap());
         }
-        let mut input_tarballs = tarballs[0].as_os_str().to_owned();
-        for tarball in &tarballs[1..] {
-            input_tarballs.push(",");
-            input_tarballs.push(tarball);
-        }
 
-        builder.info("building combined installer");
-        let mut cmd = rust_installer(builder);
-        cmd.arg("combine")
-            .arg("--product-name=Rust")
-            .arg("--rel-manifest-dir=rustlib")
-            .arg("--success-message=Rust-is-ready-to-roll.")
-            .arg("--work-dir")
-            .arg(&work)
-            .arg("--output-dir")
-            .arg(&distdir(builder))
-            .arg(format!("--package-name={}-{}", pkgname(builder, "rust"), target.triple))
-            .arg("--legacy-manifest-dirs=rustlib,cargo")
-            .arg("--input-tarballs")
-            .arg(input_tarballs)
-            .arg("--non-installed-overlay")
-            .arg(&overlay);
-        let time = timeit(&builder);
-        builder.run(&mut cmd);
-        drop(time);
+        let mut tarball = Tarball::new(builder, "rust", &target.triple);
+        let work = tarball.persist_work_dir();
+        tarball.combine(&tarballs);
+
+        let tmp = tmpdir(builder).join("combined-tarball");
 
         let mut license = String::new();
         license += &builder.read(&builder.src.join("COPYRIGHT"));

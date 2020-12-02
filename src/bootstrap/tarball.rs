@@ -1,4 +1,7 @@
-use std::path::{Path, PathBuf};
+use std::{
+    path::{Path, PathBuf},
+    process::Command,
+};
 
 use build_helper::t;
 
@@ -95,6 +98,7 @@ pub(crate) struct Tarball<'a> {
 
     include_target_in_component_name: bool,
     is_preview: bool,
+    delete_temp_dir: bool,
 }
 
 impl<'a> Tarball<'a> {
@@ -132,6 +136,7 @@ impl<'a> Tarball<'a> {
 
             include_target_in_component_name: false,
             is_preview: false,
+            delete_temp_dir: true,
         }
     }
 
@@ -193,7 +198,53 @@ impl<'a> Tarball<'a> {
         self.builder.cp_r(src.as_ref(), &dest);
     }
 
+    pub(crate) fn persist_work_dir(&mut self) -> PathBuf {
+        self.delete_temp_dir = false;
+        self.work_dir.clone()
+    }
+
     pub(crate) fn generate(self) -> PathBuf {
+        let mut component_name = self.component.clone();
+        if self.is_preview {
+            component_name.push_str("-preview");
+        }
+        if self.include_target_in_component_name {
+            component_name.push('-');
+            component_name.push_str(
+                &self
+                    .target
+                    .as_ref()
+                    .expect("include_target_in_component_name used in a targetless tarball"),
+            );
+        }
+
+        self.run(|this, cmd| {
+            cmd.arg("generate")
+                .arg("--image-dir")
+                .arg(&this.image_dir)
+                .arg("--non-installed-overlay")
+                .arg(&this.overlay_dir)
+                .arg(format!("--component-name={}", &component_name));
+        })
+    }
+
+    pub(crate) fn combine(self, tarballs: &[PathBuf]) {
+        let mut input_tarballs = tarballs[0].as_os_str().to_os_string();
+        for tarball in &tarballs[1..] {
+            input_tarballs.push(",");
+            input_tarballs.push(tarball);
+        }
+
+        self.run(|this, cmd| {
+            cmd.arg("combine")
+                .arg("--input-tarballs")
+                .arg(input_tarballs)
+                .arg("--non-installed-overlay")
+                .arg(&this.overlay_dir);
+        });
+    }
+
+    fn run(self, build_cli: impl FnOnce(&Tarball<'a>, &mut Command)) -> PathBuf {
         t!(std::fs::create_dir_all(&self.overlay_dir));
         self.builder.create(&self.overlay_dir.join("version"), &self.overlay.version(self.builder));
         if let Some(sha) = self.builder.rust_sha() {
@@ -215,37 +266,21 @@ impl<'a> Tarball<'a> {
 
         let _time = crate::util::timeit(self.builder);
 
-        let mut component_name = self.component.clone();
-        if self.is_preview {
-            component_name.push_str("-preview");
-        }
-        if self.include_target_in_component_name {
-            component_name.push('-');
-            component_name.push_str(
-                &self
-                    .target
-                    .expect("include_target_in_component_name used in a targetless tarball"),
-            );
-        }
-
         let distdir = crate::dist::distdir(self.builder);
-        cmd.arg("generate")
+        build_cli(&self, &mut cmd);
+        cmd.arg("--rel-manifest-dir=rustlib")
+            .arg("--legacy-manifest-dirs=rustlib,cargo")
             .arg(format!("--product-name={}", self.product_name))
-            .arg("--rel-manifest-dir=rustlib")
             .arg(format!("--success-message={} installed.", self.component))
-            .arg("--image-dir")
-            .arg(self.image_dir)
+            .arg(format!("--package-name={}", package_name))
             .arg("--work-dir")
             .arg(self.work_dir)
             .arg("--output-dir")
-            .arg(&distdir)
-            .arg("--non-installed-overlay")
-            .arg(self.overlay_dir)
-            .arg(format!("--package-name={}", package_name))
-            .arg("--legacy-manifest-dirs=rustlib,cargo")
-            .arg(format!("--component-name={}", component_name));
+            .arg(&distdir);
         self.builder.run(&mut cmd);
-        t!(std::fs::remove_dir_all(&self.temp_dir));
+        if self.delete_temp_dir {
+            t!(std::fs::remove_dir_all(&self.temp_dir));
+        }
 
         distdir.join(format!("{}.tar.gz", package_name))
     }
