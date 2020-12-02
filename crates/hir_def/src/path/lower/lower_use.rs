@@ -76,7 +76,7 @@ fn convert_path(prefix: Option<ModPath>, path: ast::Path, hygiene: &Hygiene) -> 
                 Either::Left(name) => {
                     // no type args in use
                     let mut res = prefix.unwrap_or_else(|| ModPath {
-                        kind: PathKind::Plain,
+                        kind: segment.coloncolon_token().map_or(PathKind::Plain, |_| PathKind::Abs),
                         segments: Vec::with_capacity(1),
                     });
                     res.segments.push(name);

@@ -798,3 +798,24 @@ mod foo;
 "#,
     );
 }
+
+#[test]
+fn abs_path_ignores_local() {
+    check(
+        r#"
+//- /main.rs crate:main deps:core
+pub use ::core::hash::Hash;
+pub mod core {}
+
+//- /lib.rs crate:core
+pub mod hash { pub trait Hash {} }
+"#,
+        expect![[r#"
+            crate
+            Hash: t
+            core: t
+
+            crate::core
+        "#]],
+    );
+}
