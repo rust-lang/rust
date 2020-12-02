@@ -633,7 +633,7 @@ fn main() {
             if a.0.is_nan()
                 || b.0.is_nan()
                 || c.is_nan()
-                || c.abs() <= unsafe { mem::transmute(4503599627370495u64) }
+                || c.abs() <= f64::from_bits(4503599627370495u64)
             {
                 None
             } else {
@@ -651,7 +651,7 @@ fn main() {
             if a.0.is_nan()
                 || b.0.is_nan()
                 || c.is_nan()
-                || c.abs() <= unsafe { mem::transmute(16777215u32) }
+                || c.abs() <= f32::from_bits(16777215u32)
             {
                 None
             } else {
@@ -671,7 +671,7 @@ fn main() {
                 if a.0.is_nan()
                     || b.0.is_nan()
                     || c.is_nan()
-                    || c.abs() <= unsafe { mem::transmute(4503599627370495u64) }
+                    || c.abs() <= f64::from_bits(4503599627370495u64)
                 {
                     None
                 } else {
@@ -689,7 +689,7 @@ fn main() {
                 if a.0.is_nan()
                     || b.0.is_nan()
                     || c.is_nan()
-                    || c.abs() <= unsafe { mem::transmute(16777215u32) }
+                    || c.abs() <= f32::from_bits(16777215u32)
                 {
                     None
                 } else {
