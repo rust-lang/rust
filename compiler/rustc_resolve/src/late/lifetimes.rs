@@ -1098,7 +1098,7 @@ fn signal_shadowing_problem(tcx: TyCtxt<'_>, name: Symbol, orig: Original, shado
         )
     };
     err.span_label(orig.span, "first declared here");
-    err.span_label(shadower.span, format!("lifetime {} already in scope", name));
+    err.span_label(shadower.span, format!("{} `{}` already in scope", orig.kind.desc(), name));
     err.emit();
 }
 
