@@ -1,5 +1,5 @@
 use float::Float;
-use int::{CastInto, Int, WideInt};
+use int::{CastInto, DInt, HInt, Int};
 
 fn mul<F: Float>(a: F, b: F) -> F
 where
@@ -7,7 +7,7 @@ where
     F::Int: CastInto<u32>,
     i32: CastInto<F::Int>,
     F::Int: CastInto<i32>,
-    F::Int: WideInt,
+    F::Int: HInt,
 {
     let one = F::Int::ONE;
     let zero = F::Int::ZERO;
@@ -112,8 +112,9 @@ where
     // have (exponentBits + 2) integral digits, all but two of which must be
     // zero.  Normalizing this result is just a conditional left-shift by one
     // and bumping the exponent accordingly.
-    let (mut product_high, mut product_low) =
-        <F::Int as WideInt>::wide_mul(a_significand, b_significand << exponent_bits);
+    let (mut product_low, mut product_high) = a_significand
+        .widen_mul(b_significand << exponent_bits)
+        .lo_hi();
 
     let a_exponent_i32: i32 = a_exponent.cast();
     let b_exponent_i32: i32 = b_exponent.cast();
@@ -126,7 +127,8 @@ where
     if (product_high & implicit_bit) != zero {
         product_exponent = product_exponent.wrapping_add(1);
     } else {
-        <F::Int as WideInt>::wide_shift_left(&mut product_high, &mut product_low, 1);
+        product_high = (product_high << 1) | (product_low >> (bits - 1));
+        product_low <<= 1;
     }
 
     // If we have overflowed the type, return +/- infinity.
@@ -142,17 +144,23 @@ where
         // handle this case separately, but we make it a special case to
         // simplify the shift logic.
         let shift = one.wrapping_sub(product_exponent.cast()).cast();
-        if shift >= bits as i32 {
+        if shift >= bits {
             return F::from_repr(product_sign);
         }
 
         // Otherwise, shift the significand of the result so that the round
         // bit is the high bit of productLo.
-        <F::Int as WideInt>::wide_shift_right_with_sticky(
-            &mut product_high,
-            &mut product_low,
-            shift,
-        )
+        if shift < bits {
+            let sticky = product_low << (bits - shift);
+            product_low = product_high << (bits - shift) | product_low >> shift | sticky;
+            product_high >>= shift;
+        } else if shift < (2 * bits) {
+            let sticky = product_high << (2 * bits - shift) | product_low;
+            product_low = product_high >> (shift - bits) | sticky;
+            product_high = zero;
+        } else {
+            product_high = zero;
+        }
     } else {
         // Result is normal before rounding; insert the exponent.
         product_high &= significand_mask;

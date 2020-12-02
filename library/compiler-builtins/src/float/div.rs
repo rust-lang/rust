@@ -1,5 +1,5 @@
 use float::Float;
-use int::{CastInto, Int, WideInt};
+use int::{CastInto, DInt, HInt, Int};
 
 fn div32<F: Float>(a: F, b: F) -> F
 where
@@ -7,7 +7,7 @@ where
     F::Int: CastInto<u32>,
     i32: CastInto<F::Int>,
     F::Int: CastInto<i32>,
-    F::Int: WideInt,
+    F::Int: HInt,
 {
     let one = F::Int::ONE;
     let zero = F::Int::ZERO;
@@ -156,7 +156,7 @@ where
     //       is the error in the reciprocal of b scaled by the maximum
     //       possible value of a.  As a consequence of this error bound,
     //       either q or nextafter(q) is the correctly rounded
-    let (mut quotient, _) = <F::Int as WideInt>::wide_mul(a_significand << 1, reciprocal.cast());
+    let mut quotient = (a_significand << 1).widen_mul(reciprocal.cast()).hi();
 
     // Two cases: quotient is in [0.5, 1.0) or quotient is in [1.0, 2.0).
     // In either case, we are going to compute a residual of the form
@@ -211,7 +211,7 @@ where
     F::Int: CastInto<u64>,
     i64: CastInto<F::Int>,
     F::Int: CastInto<i64>,
-    F::Int: WideInt,
+    F::Int: HInt,
 {
     let one = F::Int::ONE;
     let zero = F::Int::ZERO;
@@ -394,7 +394,7 @@ where
 
     // We need a 64 x 64 multiply high to compute q, which isn't a basic
     // operation in C, so we need to be a little bit fussy.
-    let (mut quotient, _) = <F::Int as WideInt>::wide_mul(a_significand << 2, reciprocal.cast());
+    let mut quotient = (a_significand << 2).widen_mul(reciprocal.cast()).hi();
 
     // Two cases: quotient is in [0.5, 1.0) or quotient is in [1.0, 2.0).
     // In either case, we are going to compute a residual of the form
