@@ -3,8 +3,11 @@
 use std::fmt;
 
 use hir::{Documentation, ModPath, Mutability};
-use ide_db::helpers::insert_use::{ImportScope, MergeBehaviour};
-use syntax::TextRange;
+use ide_db::helpers::{
+    insert_use::{self, ImportScope, MergeBehaviour},
+    mod_path_to_ast,
+};
+use syntax::{algo, TextRange};
 use text_edit::TextEdit;
 
 use crate::config::SnippetCap;
@@ -207,6 +210,7 @@ impl CompletionItem {
             score: None,
             ref_match: None,
             import_to_add: None,
+            resolve_import_immediately: true,
         }
     }
 
@@ -279,6 +283,7 @@ pub(crate) struct Builder {
     source_range: TextRange,
     completion_kind: CompletionKind,
     import_to_add: Option<ImportToAdd>,
+    resolve_import_immediately: bool,
     label: String,
     insert_text: Option<String>,
     insert_text_format: InsertTextFormat,
@@ -300,6 +305,7 @@ impl Builder {
         let mut label = self.label;
         let mut lookup = self.lookup;
         let mut insert_text = self.insert_text;
+        let mut text_edits = TextEdit::builder();
 
         if let Some(import_to_add) = self.import_to_add.as_ref() {
             let mut import_path_without_last_segment = import_to_add.import_path.to_owned();
@@ -314,20 +320,35 @@ impl Builder {
                 }
                 label = format!("{}::{}", import_path_without_last_segment, label);
             }
+
+            if self.resolve_import_immediately {
+                let rewriter = insert_use::insert_use(
+                    &import_to_add.import_scope,
+                    mod_path_to_ast(&import_to_add.import_path),
+                    import_to_add.merge_behaviour,
+                );
+                if let Some(old_ast) = rewriter.rewrite_root() {
+                    algo::diff(&old_ast, &rewriter.rewrite(&old_ast))
+                        .into_text_edit(&mut text_edits);
+                }
+            }
         }
 
-        let text_edit = match self.text_edit {
+        let original_edit = match self.text_edit {
             Some(it) => it,
             None => {
                 TextEdit::replace(self.source_range, insert_text.unwrap_or_else(|| label.clone()))
             }
         };
 
+        let mut resulting_edit = text_edits.finish();
+        resulting_edit.union(original_edit).expect("Failed to unite text edits");
+
         CompletionItem {
             source_range: self.source_range,
             label,
             insert_text_format: self.insert_text_format,
-            text_edit,
+            text_edit: resulting_edit,
             detail: self.detail,
             documentation: self.documentation,
             lookup,
@@ -400,8 +421,13 @@ impl Builder {
         self.trigger_call_info = Some(true);
         self
     }
-    pub(crate) fn add_import(mut self, import_to_add: Option<ImportToAdd>) -> Builder {
+    pub(crate) fn add_import(
+        mut self,
+        import_to_add: Option<ImportToAdd>,
+        resolve_import_immediately: bool,
+    ) -> Builder {
         self.import_to_add = import_to_add;
+        self.resolve_import_immediately = resolve_import_immediately;
         self
     }
     pub(crate) fn set_ref_match(

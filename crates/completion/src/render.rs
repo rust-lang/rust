@@ -194,7 +194,7 @@ impl<'a> Render<'a> {
                     local_name,
                 )
                 .kind(CompletionItemKind::UnresolvedReference)
-                .add_import(import_to_add)
+                .add_import(import_to_add, self.ctx.completion.config.should_resolve_immediately())
                 .build();
                 return Some(item);
             }
@@ -249,7 +249,7 @@ impl<'a> Render<'a> {
 
         let item = item
             .kind(kind)
-            .add_import(import_to_add)
+            .add_import(import_to_add, self.ctx.completion.config.should_resolve_immediately())
             .set_documentation(docs)
             .set_ref_match(ref_match)
             .build();

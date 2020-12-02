@@ -623,7 +623,7 @@ pub(crate) fn handle_resolve_completion(
     for supported_completion_resolve_cap in &snap.config.completion.resolve_capabilities {
         match supported_completion_resolve_cap {
             ide::CompletionResolveCapability::AdditionalTextEdits => {
-                // TODO kb actually add all additional edits here?
+                // FIXME actually add all additional edits here?
                 if let Some(import_to_add) = server_completion_data.item.import_to_add() {
                     append_import_edits(
                         &mut original_completion,
@@ -633,7 +633,7 @@ pub(crate) fn handle_resolve_completion(
                     );
                 }
             }
-            // TODO kb calculate the rest also?
+            // FIXME resolve the other capabilities also?
             _ => {}
         }
     }

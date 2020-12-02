@@ -29,6 +29,10 @@ impl CompletionConfig {
     pub fn allow_snippets(&mut self, yes: bool) {
         self.snippet_cap = if yes { Some(SnippetCap { _private: () }) } else { None }
     }
+
+    pub fn should_resolve_immediately(&self) -> bool {
+        !self.resolve_capabilities.contains(&CompletionResolveCapability::AdditionalTextEdits)
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
