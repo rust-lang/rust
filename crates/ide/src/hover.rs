@@ -295,7 +295,6 @@ fn definition_owner_name(db: &RootDatabase, def: &Definition) -> Option<String> 
             ModuleDef::EnumVariant(e) => Some(e.parent_enum(db).name(db)),
             _ => None,
         },
-        Definition::SelfType(i) => i.target_ty(db).as_adt().map(|adt| adt.name(db)),
         _ => None,
     }
     .map(|name| name.to_string())
@@ -357,7 +356,14 @@ fn hover_for_definition(db: &RootDatabase, def: Definition) -> Option<Markup> {
             ModuleDef::BuiltinType(it) => return Some(it.to_string().into()),
         },
         Definition::Local(it) => return Some(Markup::fenced_block(&it.ty(db).display(db))),
-        Definition::TypeParam(_) | Definition::SelfType(_) => {
+        Definition::SelfType(impl_def) => {
+            impl_def.target_ty(db).as_adt().and_then(|adt| match adt {
+                Adt::Struct(it) => from_def_source(db, it, mod_path),
+                Adt::Union(it) => from_def_source(db, it, mod_path),
+                Adt::Enum(it) => from_def_source(db, it, mod_path),
+            })
+        }
+        Definition::TypeParam(_) => {
             // FIXME: Hover for generic param
             None
         }
@@ -1025,52 +1031,75 @@ impl Thing {
 }
 "#,
             expect![[r#"
-                *Self { x: 0 }*
+                *Self*
+
                 ```rust
-                Thing
+                test
+                ```
+
+                ```rust
+                struct Thing
                 ```
             "#]],
-        )
-    } /* FIXME: revive these tests
-              let (analysis, position) = fixture::position(
-                  "
-                  struct Thing { x: u32 }
-                  impl Thing {
-                      fn new() -> Self<|> {
-                          Self { x: 0 }
-                      }
-                  }
-                  ",
-              );
+        );
+        check(
+            r#"
+struct Thing { x: u32 }
+impl Thing {
+    fn new() -> Self<|> { Self { x: 0 } }
+}
+"#,
+            expect![[r#"
+                *Self*
 
-              let hover = analysis.hover(position).unwrap().unwrap();
-              assert_eq!(trim_markup(&hover.info.markup.as_str()), ("Thing"));
+                ```rust
+                test
+                ```
 
-              let (analysis, position) = fixture::position(
-                  "
-                  enum Thing { A }
-                  impl Thing {
-                      pub fn new() -> Self<|> {
-                          Thing::A
-                      }
-                  }
-                  ",
-              );
-              let hover = analysis.hover(position).unwrap().unwrap();
-              assert_eq!(trim_markup(&hover.info.markup.as_str()), ("enum Thing"));
+                ```rust
+                struct Thing
+                ```
+            "#]],
+        );
+        check(
+            r#"
+enum Thing { A }
+impl Thing {
+    pub fn new() -> Self<|> { Thing::A }
+}
+"#,
+            expect![[r#"
+                *Self*
 
-              let (analysis, position) = fixture::position(
-                  "
-                  enum Thing { A }
-                  impl Thing {
-                      pub fn thing(a: Self<|>) {
-                      }
-                  }
-                  ",
-              );
-              let hover = analysis.hover(position).unwrap().unwrap();
-              assert_eq!(trim_markup(&hover.info.markup.as_str()), ("enum Thing"));
-      */
+                ```rust
+                test
+                ```
+
+                ```rust
+                enum Thing
+                ```
+            "#]],
+        );
+        check(
+            r#"
+        enum Thing { A }
+        impl Thing {
+            pub fn thing(a: Self<|>) {}
+        }
+        "#,
+            expect![[r#"
+                *Self*
+
+                ```rust
+                test
+                ```
+
+                ```rust
+                enum Thing
+                ```
+            "#]],
+        );
+    }
 
     #[test]
     fn test_hover_shadowing_pat() {
