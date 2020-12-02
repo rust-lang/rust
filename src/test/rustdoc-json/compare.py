@@ -4,7 +4,8 @@
 # The comparison is independent of the value of IDs (which are unstable) and instead uses their
 # relative ordering to check them against eachother by looking them up in their respective blob's
 # `index` or `paths` mappings. To add a new test run `rustdoc --output-format json -o . yourtest.rs`
-# and then create `yourtest.expected` by stripping unnecessary details from `yourtest.json`.
+# and then create `yourtest.expected` by stripping unnecessary details from `yourtest.json`. If
+# you're on windows, replace `\` with `/`.
 
 import copy
 import sys
@@ -36,7 +37,7 @@ def check_subset(expected_main, actual_main, base_dir):
         actual_type = type(actual)
 
         if actual_type is str:
-            actual = actual.replace(base_dir, "$TEST_BASE_DIR")
+            actual = normalize(actual).replace(base_dir, "$TEST_BASE_DIR")
 
         if expected_type is not actual_type:
             raise SubsetException(
@@ -118,9 +119,11 @@ def main(expected_fpath, actual_fpath, base_dir):
     check_subset(expected_main, actual_main, base_dir)
     print("all checks passed")
 
+def normalize(s):
+    return s.replace('\\', '/')
 
 if __name__ == "__main__":
     if len(sys.argv) < 4:
         print("Usage: `compare.py expected.json actual.json test-dir`")
     else:
-        main(sys.argv[1], sys.argv[2], sys.argv[3])
+        main(sys.argv[1], sys.argv[2], normalize(sys.argv[3]))
