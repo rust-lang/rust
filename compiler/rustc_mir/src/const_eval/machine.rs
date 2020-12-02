@@ -38,7 +38,11 @@ impl<'mir, 'tcx> InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>> {
         if instance.def.requires_caller_location(self.tcx()) {
             return Ok(false);
         }
-        // only memoize instrinsics
+        // Only memoize instrinsics. This was added in #79594 while adding the `const_allocate` intrinsic.
+        // We only memoize intrinsics because it would be unsound to memoize functions
+        // which might interact with the heap.
+        // Additionally, const_allocate intrinsic is impure and thus should not be memoized;
+        // it will not be memoized because it has non-ZST args
         if !matches!(instance.def, InstanceDef::Intrinsic(_)) {
             return Ok(false);
         }
