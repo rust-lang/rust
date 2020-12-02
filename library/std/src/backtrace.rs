@@ -472,7 +472,7 @@ impl Frames {
     // Private clone method so that we don't expose a
     // public Frames.clone() by deriving Clone
     fn clone(&self) -> Self {
-        let clone_frames: Vec<BacktraceFrame> = self.inner
+        let cloned_frames: Vec<BacktraceFrame> = self.inner
             .iter()
             .map(|frame| frame.clone())
             .collect();
