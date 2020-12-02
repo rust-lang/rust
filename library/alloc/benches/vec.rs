@@ -548,6 +548,16 @@ fn bench_in_place_zip_iter_mut(b: &mut Bencher) {
     black_box(data);
 }
 
+#[inline(never)]
+pub fn vec_cast(input: Vec<usize>) -> Vec<isize> {
+    input.into_iter().map(|e| e as isize).collect()
+}
+
+#[bench]
+fn bench_transmute(b: &mut Bencher) {
+    b.iter(|| vec_cast(black_box(Vec::with_capacity(100))));
+}
+
 #[derive(Clone)]
 struct Droppable(usize);
 
