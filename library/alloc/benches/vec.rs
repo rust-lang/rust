@@ -548,6 +548,22 @@ fn bench_in_place_zip_iter_mut(b: &mut Bencher) {
     black_box(data);
 }
 
+pub fn vec_cast<T, U>(input: Vec<T>) -> Vec<U> {
+    input.into_iter().map(|e| unsafe { std::mem::transmute_copy(&e) }).collect()
+}
+
+#[bench]
+fn bench_transmute(b: &mut Bencher) {
+    let mut vec = vec![10u32; 100];
+    b.bytes = 800; // 2 casts x 4 bytes x 100
+    b.iter(|| {
+        let v = std::mem::take(&mut vec);
+        let v = black_box(vec_cast::<u32, i32>(v));
+        let v = black_box(vec_cast::<i32, u32>(v));
+        vec = v;
+    });
+}
+
 #[derive(Clone)]
 struct Droppable(usize);
 
