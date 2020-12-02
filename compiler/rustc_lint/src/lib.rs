@@ -169,6 +169,7 @@ macro_rules! late_lint_passes {
                 DropTraitConstraints: DropTraitConstraints,
                 TemporaryCStringAsPtr: TemporaryCStringAsPtr,
                 PanicFmt: PanicFmt,
+                InvalidAtomicOrdering: InvalidAtomicOrdering,
             ]
         );
     };

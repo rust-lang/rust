@@ -143,6 +143,7 @@ pub fn spin_loop_hint() {
 /// loads and stores of `u8`.
 #[cfg(target_has_atomic_load_store = "8")]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_diagnostic_item = "atomic_bool_type"]
 #[repr(C, align(1))]
 pub struct AtomicBool {
     v: UnsafeCell<u8>,
@@ -174,6 +175,7 @@ unsafe impl Sync for AtomicBool {}
 #[cfg_attr(target_pointer_width = "16", repr(C, align(2)))]
 #[cfg_attr(target_pointer_width = "32", repr(C, align(4)))]
 #[cfg_attr(target_pointer_width = "64", repr(C, align(8)))]
+#[rustc_diagnostic_item = "atomic_ptr_type"]
 pub struct AtomicPtr<T> {
     p: UnsafeCell<*mut T>,
 }
@@ -1295,6 +1297,7 @@ macro_rules! atomic_int {
      $stable_nand:meta,
      $const_stable:meta,
      $stable_init_const:meta,
+     $diag_item_name:expr,
      $s_int_type:literal, $int_ref:expr,
      $extra_feature:expr,
      $min_fn:ident, $max_fn:ident,
@@ -1321,6 +1324,7 @@ macro_rules! atomic_int {
         ///
         /// [module-level documentation]: crate::sync::atomic
         #[$stable]
+        #[rustc_diagnostic_item = $diag_item_name]
         #[repr(C, align($align))]
         pub struct $atomic_type {
             v: UnsafeCell<$int_type>,
@@ -2097,6 +2101,7 @@ atomic_int! {
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
     unstable(feature = "integer_atomics", issue = "32976"),
+    "atomic_i8_type",
     "i8", "../../../std/primitive.i8.html",
     "",
     atomic_min, atomic_max,
@@ -2116,6 +2121,7 @@ atomic_int! {
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
     unstable(feature = "integer_atomics", issue = "32976"),
+    "atomic_u8_type",
     "u8", "../../../std/primitive.u8.html",
     "",
     atomic_umin, atomic_umax,
@@ -2135,6 +2141,7 @@ atomic_int! {
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
     unstable(feature = "integer_atomics", issue = "32976"),
+    "atomic_i16_type",
     "i16", "../../../std/primitive.i16.html",
     "",
     atomic_min, atomic_max,
@@ -2154,6 +2161,7 @@ atomic_int! {
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
     unstable(feature = "integer_atomics", issue = "32976"),
+    "atomic_u16_type",
     "u16", "../../../std/primitive.u16.html",
     "",
     atomic_umin, atomic_umax,
@@ -2173,6 +2181,7 @@ atomic_int! {
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
     unstable(feature = "integer_atomics", issue = "32976"),
+    "atomic_i32_type",
     "i32", "../../../std/primitive.i32.html",
     "",
     atomic_min, atomic_max,
@@ -2192,6 +2201,7 @@ atomic_int! {
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
     unstable(feature = "integer_atomics", issue = "32976"),
+    "atomic_u32_type",
     "u32", "../../../std/primitive.u32.html",
     "",
     atomic_umin, atomic_umax,
@@ -2211,6 +2221,7 @@ atomic_int! {
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
     unstable(feature = "integer_atomics", issue = "32976"),
+    "atomic_i64_type",
     "i64", "../../../std/primitive.i64.html",
     "",
     atomic_min, atomic_max,
@@ -2230,6 +2241,7 @@ atomic_int! {
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
     unstable(feature = "integer_atomics", issue = "32976"),
+    "atomic_u64_type",
     "u64", "../../../std/primitive.u64.html",
     "",
     atomic_umin, atomic_umax,
@@ -2249,6 +2261,7 @@ atomic_int! {
     unstable(feature = "integer_atomics", issue = "32976"),
     rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
     unstable(feature = "integer_atomics", issue = "32976"),
+    "atomic_i128_type",
     "i128", "../../../std/primitive.i128.html",
     "#![feature(integer_atomics)]\n\n",
     atomic_min, atomic_max,
@@ -2268,6 +2281,7 @@ atomic_int! {
     unstable(feature = "integer_atomics", issue = "32976"),
     rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
     unstable(feature = "integer_atomics", issue = "32976"),
+    "atomic_u128_type",
     "u128", "../../../std/primitive.u128.html",
     "#![feature(integer_atomics)]\n\n",
     atomic_umin, atomic_umax,
@@ -2291,6 +2305,7 @@ macro_rules! atomic_int_ptr_sized {
             stable(feature = "atomic_nand", since = "1.27.0"),
             rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
             stable(feature = "rust1", since = "1.0.0"),
+            "atomic_isize_type",
             "isize", "../../../std/primitive.isize.html",
             "",
             atomic_min, atomic_max,
@@ -2311,6 +2326,7 @@ macro_rules! atomic_int_ptr_sized {
             stable(feature = "atomic_nand", since = "1.27.0"),
             rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
             stable(feature = "rust1", since = "1.0.0"),
+            "atomic_usize_type",
             "usize", "../../../std/primitive.usize.html",
             "",
             atomic_umin, atomic_umax,
@@ -2668,6 +2684,7 @@ unsafe fn atomic_umin<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_diagnostic_item = "fence"]
 pub fn fence(order: Ordering) {
     // SAFETY: using an atomic fence is safe.
     unsafe {
@@ -2749,6 +2766,7 @@ pub fn fence(order: Ordering) {
 /// [memory barriers]: https://www.kernel.org/doc/Documentation/memory-barriers.txt
 #[inline]
 #[stable(feature = "compiler_fences", since = "1.21.0")]
+#[rustc_diagnostic_item = "compiler_fence"]
 pub fn compiler_fence(order: Ordering) {
     // SAFETY: using an atomic fence is safe.
     unsafe {

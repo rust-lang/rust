@@ -1,0 +1,131 @@
+error: compare_exchange's failure ordering may not be `Release` or `AcqRel`
+  --> $DIR/lint-invalid-atomic-ordering-exchange.rs:19:57
+   |
+LL |     let _ = x.compare_exchange(0, 0, Ordering::Relaxed, Ordering::AcqRel);
+   |                                                         ^^^^^^^^^^^^^^^^
+   |
+   = note: `#[deny(invalid_atomic_ordering)]` on by default
+   = help: consider using ordering mode `Relaxed` instead
+
+error: compare_exchange's failure ordering may not be `Release` or `AcqRel`
+  --> $DIR/lint-invalid-atomic-ordering-exchange.rs:21:57
+   |
+LL |     let _ = x.compare_exchange(0, 0, Ordering::Acquire, Ordering::AcqRel);
+   |                                                         ^^^^^^^^^^^^^^^^
+   |
+   = help: consider using ordering modes `Acquire` or `Relaxed` instead
+
+error: compare_exchange's failure ordering may not be `Release` or `AcqRel`
+  --> $DIR/lint-invalid-atomic-ordering-exchange.rs:23:57
+   |
+LL |     let _ = x.compare_exchange(0, 0, Ordering::Release, Ordering::AcqRel);
+   |                                                         ^^^^^^^^^^^^^^^^
+   |
+   = help: consider using ordering mode `Relaxed` instead
+
+error: compare_exchange's failure ordering may not be `Release` or `AcqRel`
+  --> $DIR/lint-invalid-atomic-ordering-exchange.rs:25:56
+   |
+LL |     let _ = x.compare_exchange(0, 0, Ordering::AcqRel, Ordering::AcqRel);
+   |                                                        ^^^^^^^^^^^^^^^^
+   |
+   = help: consider using ordering modes `Acquire` or `Relaxed` instead
+
+error: compare_exchange's failure ordering may not be `Release` or `AcqRel`
+  --> $DIR/lint-invalid-atomic-ordering-exchange.rs:27:56
+   |
+LL |     let _ = x.compare_exchange(0, 0, Ordering::SeqCst, Ordering::AcqRel);
+   |                                                        ^^^^^^^^^^^^^^^^
+   |
+   = help: consider using ordering modes `Acquire`, `SeqCst` or `Relaxed` instead
+
+error: compare_exchange's failure ordering may not be `Release` or `AcqRel`
+  --> $DIR/lint-invalid-atomic-ordering-exchange.rs:31:57
+   |
+LL |     let _ = x.compare_exchange(0, 0, Ordering::Relaxed, Ordering::Release);
+   |                                                         ^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using ordering mode `Relaxed` instead
+
+error: compare_exchange's failure ordering may not be `Release` or `AcqRel`
+  --> $DIR/lint-invalid-atomic-ordering-exchange.rs:33:57
+   |
+LL |     let _ = x.compare_exchange(0, 0, Ordering::Acquire, Ordering::Release);
+   |                                                         ^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using ordering modes `Acquire` or `Relaxed` instead
+
+error: compare_exchange's failure ordering may not be `Release` or `AcqRel`
+  --> $DIR/lint-invalid-atomic-ordering-exchange.rs:35:57
+   |
+LL |     let _ = x.compare_exchange(0, 0, Ordering::Release, Ordering::Release);
+   |                                                         ^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using ordering mode `Relaxed` instead
+
+error: compare_exchange's failure ordering may not be `Release` or `AcqRel`
+  --> $DIR/lint-invalid-atomic-ordering-exchange.rs:37:56
+   |
+LL |     let _ = x.compare_exchange(0, 0, Ordering::AcqRel, Ordering::Release);
+   |                                                        ^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using ordering modes `Acquire` or `Relaxed` instead
+
+error: compare_exchange's failure ordering may not be `Release` or `AcqRel`
+  --> $DIR/lint-invalid-atomic-ordering-exchange.rs:39:56
+   |
+LL |     let _ = x.compare_exchange(0, 0, Ordering::SeqCst, Ordering::Release);
+   |                                                        ^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using ordering modes `Acquire`, `SeqCst` or `Relaxed` instead
+
+error: compare_exchange's failure ordering may not be stronger than the success ordering of `Release`
+  --> $DIR/lint-invalid-atomic-ordering-exchange.rs:43:57
+   |
+LL |     let _ = x.compare_exchange(0, 0, Ordering::Release, Ordering::Acquire);
+   |                                                         ^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using ordering mode `Relaxed` instead
+
+error: compare_exchange's failure ordering may not be stronger than the success ordering of `Release`
+  --> $DIR/lint-invalid-atomic-ordering-exchange.rs:45:57
+   |
+LL |     let _ = x.compare_exchange(0, 0, Ordering::Release, Ordering::SeqCst);
+   |                                                         ^^^^^^^^^^^^^^^^
+   |
+   = help: consider using ordering mode `Relaxed` instead
+
+error: compare_exchange's failure ordering may not be stronger than the success ordering of `Relaxed`
+  --> $DIR/lint-invalid-atomic-ordering-exchange.rs:49:57
+   |
+LL |     let _ = x.compare_exchange(0, 0, Ordering::Relaxed, Ordering::SeqCst);
+   |                                                         ^^^^^^^^^^^^^^^^
+   |
+   = help: consider using ordering mode `Relaxed` instead
+
+error: compare_exchange's failure ordering may not be stronger than the success ordering of `Relaxed`
+  --> $DIR/lint-invalid-atomic-ordering-exchange.rs:51:57
+   |
+LL |     let _ = x.compare_exchange(0, 0, Ordering::Relaxed, Ordering::Acquire);
+   |                                                         ^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using ordering mode `Relaxed` instead
+
+error: compare_exchange's failure ordering may not be stronger than the success ordering of `Acquire`
+  --> $DIR/lint-invalid-atomic-ordering-exchange.rs:55:57
+   |
+LL |     let _ = x.compare_exchange(0, 0, Ordering::Acquire, Ordering::SeqCst);
+   |                                                         ^^^^^^^^^^^^^^^^
+   |
+   = help: consider using ordering modes `Acquire` or `Relaxed` instead
+
+error: compare_exchange's failure ordering may not be stronger than the success ordering of `AcqRel`
+  --> $DIR/lint-invalid-atomic-ordering-exchange.rs:57:56
+   |
+LL |     let _ = x.compare_exchange(0, 0, Ordering::AcqRel, Ordering::SeqCst);
+   |                                                        ^^^^^^^^^^^^^^^^
+   |
+   = help: consider using ordering modes `Acquire` or `Relaxed` instead
+
+error: aborting due to 16 previous errors
+

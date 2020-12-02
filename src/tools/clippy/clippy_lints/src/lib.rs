@@ -496,6 +496,10 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         "clippy::panic_params",
         "this lint has been uplifted to rustc and is now called `panic_fmt`",
     );
+    store.register_removed(
+        "clippy::invalid_atomic_ordering",
+        "this lint has been uplifted to rustc and is now called `invalid_atomic_ordering`",
+    );
     // end deprecated lints, do not remove this comment, it’s used in `update_lints`
 
     // begin register lints, do not remove this comment, it’s used in `update_lints`
