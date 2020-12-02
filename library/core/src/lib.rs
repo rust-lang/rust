@@ -92,6 +92,7 @@
 #![feature(const_ptr_offset)]
 #![feature(const_ptr_offset_from)]
 #![feature(const_raw_ptr_comparison)]
+#![feature(const_raw_ptr_deref)]
 #![feature(const_slice_from_raw_parts)]
 #![feature(const_slice_ptr_len)]
 #![feature(const_size_of_val)]
