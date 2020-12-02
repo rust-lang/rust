@@ -44,6 +44,8 @@ use rustc_middle::ty::{self, Ty, TyCtxt, UpvarSubsts};
 use rustc_span::sym;
 use rustc_span::{Span, Symbol};
 
+use std::env;
+
 /// Describe the relationship between the paths of two places
 /// eg:
 /// - `foo` is ancestor of `foo.bar.baz`
@@ -123,10 +125,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         let local_def_id = closure_def_id.expect_local();
-
         let mut capture_information: FxIndexMap<Place<'tcx>, ty::CaptureInfo<'tcx>> =
             Default::default();
-        if !self.tcx.features().capture_disjoint_fields {
+
+        if !self.tcx.features().capture_disjoint_fields && env::var("SG_NEW").is_err() {
             if let Some(upvars) = self.tcx.upvars_mentioned(closure_def_id) {
                 for (&var_hir_id, _) in upvars.iter() {
                     let place = self.place_for_root_variable(local_def_id, var_hir_id);
@@ -238,8 +240,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let capture = captured_place.info.capture_kind;
 
                 debug!(
-                    "place={:?} upvar_ty={:?} capture={:?}",
-                    captured_place.place, upvar_ty, capture
+                    "final_upvar_tys: place={:?} upvar_ty={:?} capture={:?}, mutability={:?}",
+                    captured_place.place,
+                    upvar_ty,
+                    capture,
+                    self.determine_mutability(&captured_place.place),
                 );
 
                 match capture {
@@ -391,7 +396,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             let min_cap_list = match root_var_min_capture_list.get_mut(&var_hir_id) {
                 None => {
-                    let min_cap_list = vec![ty::CapturedPlace { place: place, info: capture_info }];
+                    let mutability = self.determine_mutability(&place);
+                    let min_cap_list =
+                        vec![ty::CapturedPlace { place, info: capture_info, mutability }];
                     root_var_min_capture_list.insert(var_hir_id, min_cap_list);
                     continue;
                 }
@@ -445,8 +452,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             // Only need to insert when we don't have an ancestor in the existing min capture list
             if !ancestor_found {
+                let mutability = self.determine_mutability(&place);
                 let captured_place =
-                    ty::CapturedPlace { place: place.clone(), info: updated_capture_info };
+                    ty::CapturedPlace { place, info: updated_capture_info, mutability };
                 min_cap_list.push(captured_place);
             }
         }
@@ -541,6 +549,49 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 diag.emit();
             }
         }
+    }
+
+    /// A place is mutable if
+    /// 1. Projections don't include a Deref of an immut-borrow, **and**
+    /// 2. PlaceBase is mut or projections include a Deref of a mut-borrow.
+    fn determine_mutability(&self, place: &Place<'tcx>) -> hir::Mutability {
+        if place.deref_tys().any(ty::TyS::is_unsafe_ptr) {
+            // Raw pointers don't inherit mutability.
+            return hir::Mutability::Not;
+        }
+
+        let var_hir_id = match place.base {
+            PlaceBase::Upvar(upvar_id) => upvar_id.var_path.hir_id,
+            _ => unreachable!(),
+        };
+
+        let bm = *self
+            .typeck_results
+            .borrow()
+            .pat_binding_modes()
+            .get(var_hir_id)
+            .expect("missing binding mode");
+
+        let mut is_mutbl = match bm {
+            ty::BindByValue(mutability) => mutability,
+            ty::BindByReference(_) => hir::Mutability::Not,
+        };
+
+        for pointer_ty in place.deref_tys() {
+            match pointer_ty.kind() {
+                // Raw pointers don't inherit mutability.
+                ty::RawPtr(_) => return hir::Mutability::Not,
+                // assignment to deref of an `&mut`
+                // borrowed pointer implies that the
+                // pointer itself must be unique, but not
+                // necessarily *mutable*
+                ty::Ref(.., hir::Mutability::Mut) => is_mutbl = hir::Mutability::Mut,
+                ty::Ref(.., hir::Mutability::Not) => return hir::Mutability::Not,
+                _ => (),
+            }
+        }
+
+        is_mutbl
     }
 }
 
