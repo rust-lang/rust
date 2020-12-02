@@ -269,7 +269,7 @@ fn opts() -> Vec<RustcOptGroup> {
                 "sort modules by where they appear in the program, rather than alphabetically",
             )
         }),
-        unstable("default-theme", |o| {
+        stable("default-theme", |o| {
             o.optopt(
                 "",
                 "default-theme",
