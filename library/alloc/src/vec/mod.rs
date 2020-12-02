@@ -1784,14 +1784,20 @@ impl<T, A: Allocator> Vec<T, A> {
     /// assert_eq!(static_ref, &[2, 2, 3]);
     /// ```
     ///
-    /// As well as `Vec::into_boxed_slice`, any excess capacity will be removed:
+    /// Drop excess capacity:
     ///
     /// ```
-    /// let mut vec = Vec::with_capacity(10);
-    /// vec.extend([1, 2, 3].iter().cloned());
-    /// assert_eq!(vec.capacity(), 10);
-    /// let slice = vec.leak();
-    /// assert_eq!(slice.to_vec().capacity(), 3);
+    /// let mut v = Vec::with_capacity(10);
+    /// v.extend([1, 2, 3].iter().cloned());
+    /// let slice = v.clone().into_boxed_slice();
+    /// let static_ref = Box::leak(slice);
+    ///
+    /// unsafe {
+    ///     let p = v.as_mut_ptr();
+    ///     let len = v.len();
+    ///     let rebuilt = Vec::from_raw_parts(p, len, static_ref.len());
+    ///     assert_eq!(rebuilt.capacity(), 3);
+    /// }
     /// ```
     #[stable(feature = "vec_leak", since = "1.47.0")]
     #[inline]
