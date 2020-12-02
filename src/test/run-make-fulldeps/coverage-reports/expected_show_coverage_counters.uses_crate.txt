@@ -73,8 +73,3 @@ Combined regions:
   21:1 -> 23:2 (count=1)
 Segment at 21:1 (count = 1), RegionEntry
 Segment at 23:2 (count = 0), Skipped
-Emitting segments for file: ../coverage/uses_crate.rs
-Combined regions:
-  5:1 -> 10:2 (count=1)
-Segment at 5:1 (count = 1), RegionEntry
-Segment at 10:2 (count = 0), Skipped

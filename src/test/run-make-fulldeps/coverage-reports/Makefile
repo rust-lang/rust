@@ -22,6 +22,43 @@ ifeq ($(LLVM_COV_DEBUG), 1)
 DEBUG_FLAG=--debug
 endif
 
+# FIXME(richkadel): I'm adding `--ignore-filename-regex=` line(s) for specific test(s) that produce
+# `llvm-cov` results for multiple files (for example `uses_crate.rs` and `used_crate/mod.rs`) as a
+# workaround for two problems causing tests to fail on Windows:
+#
+# 1. When multiple files appear in the `llvm-cov show` results, each file's coverage results can
+#    appear in different a different order. Whether this is random or, somehow, platform-specific,
+#    the Windows output flips the order of the files, compared to Linux. In the `uses_crate.rs`
+#    test, the only test-unique (interesting) results we care about are the results for only one
+#    of the two files, `mod/uses_crate.rs`, so the workaround is to ignore all but this one file.
+#    In the future, we may want a more sophisticated solution that splits apart `llvm-cov show`
+#    results into separate results files for each result (taking care not to create new file
+#    paths that might be too long for Windows MAX_PATH limits when creating these new sub-results,
+#    as well).
+# 2. When multiple files appear in the `llvm-cov show` results, the results for each file are
+#    prefixed with their filename, including platform-specific path separators (`\` for Windows,
+#    and `/` everywhere else). This could be filtered or normalized of course, but by ignoring
+#    coverage results for all but one of the file, the filenames are no longer included anyway.
+#    If this changes (if/when we decide to support `llvm-cov show` results for multiple files),
+#    the file path separator differences may need to be addressed.
+#
+# Since this is only a workaround, I decided to implement the override by adding an option for
+# each file to be ignored, using a `--ignore-filename-regex=` entry for each one, rather than
+# implement some more sophisticated solution with a new custom test directive in the test file
+# itself (similar to `expect-exit-status`) because that would add a lot of complexity and still
+# be a workaround, with the same result, with no benefit.
+#
+# Yes these `--ignore-filename-regex=` options are included in all invocations of `llvm-cov show`
+# for now, but it is effectively ignored for all tests that don't include this file anyway.
+#
+# Note that it's also possible the `_counters.<test>.txt` and `<test>.json` files may order
+# results from multiple files inconsistently, which might also have to be accomodated if and when
+# we allow `llvm-cov` to produce results for multiple files. (The path separators appear to be
+# normalized to `/` in those files, thankfully.) But since we are ignoring results for all but one
+# file, this workaround addresses those potential issues as well.
+LLVM_COV_IGNORE_FILES=\
+	--ignore-filename-regex=uses_crate.rs
+
 # When generating `expected_*` results (using `x.py test --bless`), the `--debug` flag is forced.
 # If assertions are disabled, the command will fail with an error, rather than attempt to generate
 # only partial results.
@@ -76,6 +113,7 @@ endif
 	# Generate a coverage report using `llvm-cov show`.
 	"$(LLVM_BIN_DIR)"/llvm-cov show \
 			$(DEBUG_FLAG) \
+			$(LLVM_COV_IGNORE_FILES) \
 			--Xdemangler="$(RUST_DEMANGLER)" \
 			--show-line-counts-or-regions \
 			--instr-profile="$(TMPDIR)"/$@.profdata \
@@ -133,6 +171,7 @@ endif
 	# Generate a coverage report in JSON, using `llvm-cov export`, and fail if
 	# there are differences from the expected output.
 	"$(LLVM_BIN_DIR)"/llvm-cov export \
+			$(LLVM_COV_IGNORE_FILES) \
 			--summary-only \
 			--instr-profile="$(TMPDIR)"/$@.profdata \
 			$(call BIN,"$(TMPDIR)"/$@) \

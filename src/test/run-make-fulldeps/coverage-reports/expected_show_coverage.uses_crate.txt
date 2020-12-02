@@ -1,4 +1,3 @@
-../coverage/used_crate/mod.rs:
     1|       |#![allow(unused_assignments, unused_variables)]
     2|       |
     3|       |use std::fmt::Debug;
@@ -54,16 +53,4 @@
    41|      0|        countdown = 20;
    42|      0|    }
    43|      0|}
-
-../coverage/uses_crate.rs:
-    1|       |#![allow(unused_assignments, unused_variables)]
-    2|       |
-    3|       |mod used_crate;
-    4|       |
-    5|      1|fn main() {
-    6|      1|    used_crate::used_function();
-    7|      1|    let some_vec = vec![1, 2, 3, 4];
-    8|      1|    used_crate::used_generic_function(&some_vec);
-    9|      1|    used_crate::used_twice_generic_function(some_vec);
-   10|      1|}
 
