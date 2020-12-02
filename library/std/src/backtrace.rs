@@ -157,18 +157,21 @@ pub struct Frames {
     inner: Vec<BacktraceFrame>
 }
 
+#[derive(Clone)]
 enum RawFrame {
     Actual(backtrace_rs::Frame),
     #[cfg(test)]
     Fake,
 }
 
+#[derive(Clone)]
 struct BacktraceSymbol {
     name: Option<Vec<u8>>,
     filename: Option<BytesOrWide>,
     lineno: Option<u32>,
 }
 
+#[derive(Clone)]
 enum BytesOrWide {
     Bytes(Vec<u8>),
     Wide(Vec<u16>),
@@ -358,11 +361,11 @@ impl Backtrace {
     pub fn frames(&self) -> Frames {
         if let Inner::Captured(captured) = self.inner {
             Frames {
-                frames: captured.lock().unwrap().frames.clone()
+                inner: captured.lock().unwrap().frames.clone()
             }
         } else {
             Frames {
-                frames: vec![]
+                inner: vec![]
             }
         }
     }
@@ -464,10 +467,36 @@ impl RawFrame {
     }
 }
 
+impl Frames {
+    // Private clone method so that we don't expose a
+    // public Frames.clone() by deriving Clone
+    fn clone(&self) -> Self {
+        let clone_frames: Vec<BacktraceFrame> = self.inner
+            .iter()
+            .map(|frame| frame.clone())
+            .collect();
+
+        Frames {
+            inner: cloned_frames
+        }
+    }
+}
+
 #[unstable(feature = "backtrace_frames")]
-impl<'a> AsRef<[BacktraceFrame]> for Frames<'a> {
+impl AsRef<[BacktraceFrame]> for Frames {
     fn as_ref(&self) -> &[BacktraceFrame] {
         &self.inner
+    }
+}
+
+impl BacktraceFrame {
+    // Private clone method so that we don't expose a
+    // public BacktraceFrame.clone() by deriving Clone
+    fn clone(&self) -> Self {
+        BacktraceFrame {
+            frame: self.frame.clone(),
+            symbols: self.symbols.clone(),
+        }
     }
 }
 
