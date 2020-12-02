@@ -1,5 +1,5 @@
 error[E0004]: non-exhaustive patterns: `_` not covered
-  --> $DIR/pointer-sized-int-deny.rs:10:11
+  --> $DIR/pointer-sized-int.rs:12:11
    |
 LL |     match 0usize {
    |           ^^^^^^ pattern `_` not covered
@@ -10,7 +10,7 @@ LL |     match 0usize {
    = help: add `#![feature(precise_pointer_size_matching)]` to the crate attributes to enable precise `usize` matching
 
 error[E0004]: non-exhaustive patterns: `_` not covered
-  --> $DIR/pointer-sized-int-deny.rs:15:11
+  --> $DIR/pointer-sized-int.rs:17:11
    |
 LL |     match 0isize {
    |           ^^^^^^ pattern `_` not covered
@@ -21,7 +21,7 @@ LL |     match 0isize {
    = help: add `#![feature(precise_pointer_size_matching)]` to the crate attributes to enable precise `isize` matching
 
 error[E0004]: non-exhaustive patterns: `_` not covered
-  --> $DIR/pointer-sized-int-deny.rs:20:8
+  --> $DIR/pointer-sized-int.rs:22:8
    |
 LL |     m!(0usize, 0..=usize::MAX);
    |        ^^^^^^ pattern `_` not covered
@@ -32,7 +32,7 @@ LL |     m!(0usize, 0..=usize::MAX);
    = help: add `#![feature(precise_pointer_size_matching)]` to the crate attributes to enable precise `usize` matching
 
 error[E0004]: non-exhaustive patterns: `_` not covered
-  --> $DIR/pointer-sized-int-deny.rs:22:8
+  --> $DIR/pointer-sized-int.rs:24:8
    |
 LL |     m!(0usize, 0..5 | 5..=usize::MAX);
    |        ^^^^^^ pattern `_` not covered
@@ -43,7 +43,7 @@ LL |     m!(0usize, 0..5 | 5..=usize::MAX);
    = help: add `#![feature(precise_pointer_size_matching)]` to the crate attributes to enable precise `usize` matching
 
 error[E0004]: non-exhaustive patterns: `_` not covered
-  --> $DIR/pointer-sized-int-deny.rs:24:8
+  --> $DIR/pointer-sized-int.rs:26:8
    |
 LL |     m!(0usize, 0..usize::MAX | usize::MAX);
    |        ^^^^^^ pattern `_` not covered
@@ -54,7 +54,7 @@ LL |     m!(0usize, 0..usize::MAX | usize::MAX);
    = help: add `#![feature(precise_pointer_size_matching)]` to the crate attributes to enable precise `usize` matching
 
 error[E0004]: non-exhaustive patterns: `(_, _)` not covered
-  --> $DIR/pointer-sized-int-deny.rs:26:8
+  --> $DIR/pointer-sized-int.rs:28:8
    |
 LL |     m!((0usize, true), (0..5, true) | (5..=usize::MAX, true) | (0..=usize::MAX, false));
    |        ^^^^^^^^^^^^^^ pattern `(_, _)` not covered
@@ -63,7 +63,7 @@ LL |     m!((0usize, true), (0..5, true) | (5..=usize::MAX, true) | (0..=usize::
    = note: the matched value is of type `(usize, bool)`
 
 error[E0004]: non-exhaustive patterns: `_` not covered
-  --> $DIR/pointer-sized-int-deny.rs:29:8
+  --> $DIR/pointer-sized-int.rs:31:8
    |
 LL |     m!(0isize, isize::MIN..=isize::MAX);
    |        ^^^^^^ pattern `_` not covered
@@ -74,7 +74,7 @@ LL |     m!(0isize, isize::MIN..=isize::MAX);
    = help: add `#![feature(precise_pointer_size_matching)]` to the crate attributes to enable precise `isize` matching
 
 error[E0004]: non-exhaustive patterns: `_` not covered
-  --> $DIR/pointer-sized-int-deny.rs:31:8
+  --> $DIR/pointer-sized-int.rs:33:8
    |
 LL |     m!(0isize, isize::MIN..5 | 5..=isize::MAX);
    |        ^^^^^^ pattern `_` not covered
@@ -85,7 +85,7 @@ LL |     m!(0isize, isize::MIN..5 | 5..=isize::MAX);
    = help: add `#![feature(precise_pointer_size_matching)]` to the crate attributes to enable precise `isize` matching
 
 error[E0004]: non-exhaustive patterns: `_` not covered
-  --> $DIR/pointer-sized-int-deny.rs:33:8
+  --> $DIR/pointer-sized-int.rs:35:8
    |
 LL |     m!(0isize, isize::MIN..isize::MAX | isize::MAX);
    |        ^^^^^^ pattern `_` not covered
@@ -96,7 +96,7 @@ LL |     m!(0isize, isize::MIN..isize::MAX | isize::MAX);
    = help: add `#![feature(precise_pointer_size_matching)]` to the crate attributes to enable precise `isize` matching
 
 error[E0004]: non-exhaustive patterns: `(_, _)` not covered
-  --> $DIR/pointer-sized-int-deny.rs:35:8
+  --> $DIR/pointer-sized-int.rs:37:8
    |
 LL |     m!((0isize, true), (isize::MIN..5, true)
    |        ^^^^^^^^^^^^^^ pattern `(_, _)` not covered
@@ -105,7 +105,7 @@ LL |     m!((0isize, true), (isize::MIN..5, true)
    = note: the matched value is of type `(isize, bool)`
 
 error[E0004]: non-exhaustive patterns: `_` not covered
-  --> $DIR/pointer-sized-int-deny.rs:39:11
+  --> $DIR/pointer-sized-int.rs:41:11
    |
 LL |     match 0isize {
    |           ^^^^^^ pattern `_` not covered
@@ -116,7 +116,7 @@ LL |     match 0isize {
    = help: add `#![feature(precise_pointer_size_matching)]` to the crate attributes to enable precise `isize` matching
 
 error[E0004]: non-exhaustive patterns: type `usize` is non-empty
-  --> $DIR/pointer-sized-int-deny.rs:46:11
+  --> $DIR/pointer-sized-int.rs:48:11
    |
 LL |     match 7usize {}
    |           ^^^^^^

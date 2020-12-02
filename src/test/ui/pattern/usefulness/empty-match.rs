@@ -1,6 +1,8 @@
 // aux-build:empty.rs
+// revisions: normal exhaustive_patterns
 #![feature(never_type)]
 #![feature(never_type_fallback)]
+#![cfg_attr(exhaustive_patterns, feature(exhaustive_patterns))]
 #![deny(unreachable_patterns)]
 
 extern crate empty;
@@ -76,14 +78,13 @@ fn never(x: !) {
 }
 
 fn main() {
-    // `exhaustive_patterns` is not on, so uninhabited branches are not detected as unreachable.
     match None::<!> {
         None => {}
-        Some(_) => {}
+        Some(_) => {} //[exhaustive_patterns]~ ERROR unreachable pattern
     }
     match None::<EmptyEnum> {
         None => {}
-        Some(_) => {}
+        Some(_) => {} //[exhaustive_patterns]~ ERROR unreachable pattern
     }
 
     match_empty!(0u8);
