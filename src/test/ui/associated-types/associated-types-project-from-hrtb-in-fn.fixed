@@ -11,7 +11,7 @@ pub trait Foo<T> {
 
 fn foo2<I : for<'x> Foo<&'x isize>>(
     x: <I as Foo<&isize>>::A)
-    //~^ ERROR cannot extract an associated type from a higher-ranked trait bound in this context
+    //~^ ERROR cannot use the associated type of a trait with uninferred generic parameters
 {
     // This case is illegal because we have to instantiate `'x`, and
     // we don't know what region to instantiate it with.
