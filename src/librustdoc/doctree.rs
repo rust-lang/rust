@@ -3,7 +3,7 @@
 crate use self::StructType::*;
 
 use rustc_ast as ast;
-use rustc_span::{self, symbol::Ident, Span, Symbol};
+use rustc_span::{self, Span, Symbol};
 
 use rustc_hir as hir;
 
@@ -16,9 +16,9 @@ crate struct Module<'hir> {
     crate mods: Vec<Module<'hir>>,
     crate id: hir::HirId,
     // (item, renamed)
-    crate items: Vec<(&'hir hir::Item<'hir>, Option<Ident>)>,
-    crate foreigns: Vec<(&'hir hir::ForeignItem<'hir>, Option<Ident>)>,
-    crate macros: Vec<(&'hir hir::MacroDef<'hir>, Option<Ident>)>,
+    crate items: Vec<(&'hir hir::Item<'hir>, Option<Symbol>)>,
+    crate foreigns: Vec<(&'hir hir::ForeignItem<'hir>, Option<Symbol>)>,
+    crate macros: Vec<(&'hir hir::MacroDef<'hir>, Option<Symbol>)>,
     crate is_crate: bool,
 }
 

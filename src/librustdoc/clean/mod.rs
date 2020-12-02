@@ -1989,16 +1989,13 @@ impl Clean<BareFunctionDecl> for hir::BareFnTy<'_> {
     }
 }
 
-impl Clean<Vec<Item>> for (&hir::Item<'_>, Option<Ident>) {
+impl Clean<Vec<Item>> for (&hir::Item<'_>, Option<Symbol>) {
     fn clean(&self, cx: &DocContext<'_>) -> Vec<Item> {
         use hir::ItemKind;
 
         let (item, renamed) = self;
         let def_id = cx.tcx.hir().local_def_id(item.hir_id).to_def_id();
-        let mut name = match renamed {
-            Some(ident) => ident.name,
-            None => cx.tcx.hir().name(item.hir_id),
-        };
+        let mut name = renamed.unwrap_or_else(|| cx.tcx.hir().name(item.hir_id));
         cx.with_param_env(def_id, || {
             let kind = match item.kind {
                 ItemKind::Static(ty, mutability, body_id) => StaticItem(Static {
@@ -2291,7 +2288,7 @@ impl Clean<Vec<Item>> for doctree::Import<'_> {
     }
 }
 
-impl Clean<Item> for (&hir::ForeignItem<'_>, Option<Ident>) {
+impl Clean<Item> for (&hir::ForeignItem<'_>, Option<Symbol>) {
     fn clean(&self, cx: &DocContext<'_>) -> Item {
         let (item, renamed) = self;
         cx.with_param_env(cx.tcx.hir().local_def_id(item.hir_id).to_def_id(), || {
@@ -2325,7 +2322,7 @@ impl Clean<Item> for (&hir::ForeignItem<'_>, Option<Ident>) {
 
             Item::from_hir_id_and_parts(
                 item.hir_id,
-                Some(renamed.unwrap_or(item.ident).name),
+                Some(renamed.unwrap_or(item.ident.name)),
                 kind,
                 cx,
             )
@@ -2333,10 +2330,10 @@ impl Clean<Item> for (&hir::ForeignItem<'_>, Option<Ident>) {
     }
 }
 
-impl Clean<Item> for (&hir::MacroDef<'_>, Option<Ident>) {
+impl Clean<Item> for (&hir::MacroDef<'_>, Option<Symbol>) {
     fn clean(&self, cx: &DocContext<'_>) -> Item {
         let (item, renamed) = self;
-        let name = renamed.unwrap_or(item.ident).name;
+        let name = renamed.unwrap_or(item.ident.name);
         let tts = item.ast.body.inner_tokens().trees().collect::<Vec<_>>();
         // Extract the spans of all matchers. They represent the "interface" of the macro.
         let matchers = tts.chunks(4).map(|arm| arm[0].span()).collect::<Vec<_>>();
