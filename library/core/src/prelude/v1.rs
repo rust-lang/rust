@@ -76,3 +76,6 @@ pub use crate::macros::builtin::{
 )]
 #[doc(no_inline)]
 pub use crate::macros::builtin::cfg_accessible;
+
+#[stable(feature = "haven't made a feature gate yet", since = "1.50.0")]
+pub use crate::primitive::never;

@@ -79,3 +79,6 @@ pub use crate::string::{String, ToString};
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)]
 pub use crate::vec::Vec;
+
+#[stable(feature = "haven't made a feature gate yet", since = "1.50.0")]
+pub use core::primitive::never;

@@ -65,3 +65,9 @@ pub use u64;
 pub use u8;
 #[stable(feature = "core_primitive", since = "1.43.0")]
 pub use usize;
+
+// Haven't looked into how to make this a compiler buildin,
+// or if that is even needed.
+#[stable(feature = "haven't made a feature gate yet", since = "1.50.0")]
+#[allow(non_camel_case_types, missing_docs)]
+pub type never = !;
