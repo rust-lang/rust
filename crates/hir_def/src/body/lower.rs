@@ -560,6 +560,9 @@ impl ExprCollector<'_> {
                     // FIXME: do we still need to allocate this as missing ?
                     self.alloc_expr(Expr::Missing, syntax_ptr)
                 } else {
+                    // File containing the macro call. Expansion errors will be attached here.
+                    let outer_file = self.expander.current_file_id;
+
                     let macro_call = self.expander.to_source(AstPtr::new(&e));
                     let res = self.expander.enter_expand(self.db, Some(&self.body.item_scope), e);
 
@@ -567,7 +570,7 @@ impl ExprCollector<'_> {
                         Some(ExpandError::UnresolvedProcMacro) => {
                             self.source_map.diagnostics.push(BodyDiagnostic::UnresolvedProcMacro(
                                 UnresolvedProcMacro {
-                                    file: self.expander.current_file_id,
+                                    file: outer_file,
                                     node: syntax_ptr.clone().into(),
                                     precise_location: None,
                                     macro_name: None,
@@ -577,7 +580,7 @@ impl ExprCollector<'_> {
                         Some(err) => {
                             self.source_map.diagnostics.push(BodyDiagnostic::MacroError(
                                 MacroError {
-                                    file: self.expander.current_file_id,
+                                    file: outer_file,
                                     node: syntax_ptr.clone().into(),
                                     message: err.to_string(),
                                 },
