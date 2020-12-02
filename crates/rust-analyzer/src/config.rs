@@ -388,7 +388,7 @@ impl Config {
             }
 
             self.completion.allow_snippets(false);
-            self.completion.resolve_capabilities =
+            self.completion.active_resolve_capabilities =
                 enabled_completions_resolve_capabilities(caps).unwrap_or_default();
             if let Some(completion) = &doc_caps.completion {
                 if let Some(completion_item) = &completion.completion_item {

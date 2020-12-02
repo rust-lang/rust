@@ -15,12 +15,12 @@ pub struct CompletionConfig {
     pub add_call_argument_snippets: bool,
     pub snippet_cap: Option<SnippetCap>,
     pub merge: Option<MergeBehaviour>,
-    /// A set of capabilities, enabled on the cliend and supported on the server.
-    pub resolve_capabilities: FxHashSet<CompletionResolveCapability>,
+    /// A set of capabilities, enabled on the client and supported on the server.
+    pub active_resolve_capabilities: FxHashSet<CompletionResolveCapability>,
 }
 
-/// A resolve capability, supported on a server.
-/// If the client registers any of those in its completion resolve capabilities,
+/// A resolve capability, supported on the server.
+/// If the client registers any completion resolve capabilities,
 /// the server is able to render completion items' corresponding fields later,
 /// not during an initial completion item request.
 /// See https://github.com/rust-analyzer/rust-analyzer/issues/6366 for more details.
@@ -37,8 +37,11 @@ impl CompletionConfig {
     }
 
     /// Whether the completions' additional edits are calculated later, during a resolve request or not.
-    pub fn should_resolve_additional_edits_immediately(&self) -> bool {
-        !self.resolve_capabilities.contains(&CompletionResolveCapability::AdditionalTextEdits)
+    /// See `CompletionResolveCapability` for the details.
+    pub fn resolve_edits_immediately(&self) -> bool {
+        !self
+            .active_resolve_capabilities
+            .contains(&CompletionResolveCapability::AdditionalTextEdits)
     }
 }
 
@@ -56,7 +59,7 @@ impl Default for CompletionConfig {
             add_call_argument_snippets: true,
             snippet_cap: Some(SnippetCap { _private: () }),
             merge: Some(MergeBehaviour::Full),
-            resolve_capabilities: FxHashSet::default(),
+            active_resolve_capabilities: FxHashSet::default(),
         }
     }
 }

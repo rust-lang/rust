@@ -50,10 +50,7 @@ impl<'a> MacroRender<'a> {
                 .kind(CompletionItemKind::Macro)
                 .set_documentation(self.docs.clone())
                 .set_deprecated(self.ctx.is_deprecated(self.macro_))
-                .add_import(
-                    import_to_add,
-                    self.ctx.completion.config.should_resolve_additional_edits_immediately(),
-                )
+                .add_import(import_to_add, self.ctx.completion.config.resolve_edits_immediately())
                 .detail(self.detail());
 
         let needs_bang = self.needs_bang();

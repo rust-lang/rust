@@ -71,10 +71,7 @@ impl<'a> EnumVariantRender<'a> {
         .kind(CompletionItemKind::EnumVariant)
         .set_documentation(self.variant.docs(self.ctx.db()))
         .set_deprecated(self.ctx.is_deprecated(self.variant))
-        .add_import(
-            import_to_add,
-            self.ctx.completion.config.should_resolve_additional_edits_immediately(),
-        )
+        .add_import(import_to_add, self.ctx.completion.config.resolve_edits_immediately())
         .detail(self.detail());
 
         if self.variant_kind == StructKind::Tuple {
