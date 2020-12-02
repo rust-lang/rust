@@ -805,6 +805,7 @@ pub type MinCaptureList<'tcx> = Vec<CapturedPlace<'tcx>>;
 pub struct CapturedPlace<'tcx> {
     pub place: HirPlace<'tcx>,
     pub info: CaptureInfo<'tcx>,
+    pub mutability: hir::Mutability,
 }
 
 /// Part of `MinCaptureInformationMap`; describes the capture kind (&, &mut, move)

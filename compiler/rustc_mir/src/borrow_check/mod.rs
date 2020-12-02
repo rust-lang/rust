@@ -168,17 +168,12 @@ fn do_mir_borrowck<'a, 'tcx>(
                 ty::UpvarCapture::ByValue(_) => false,
                 ty::UpvarCapture::ByRef(..) => true,
             };
-            let mut upvar = Upvar {
+            Upvar {
                 name: tcx.hir().name(var_hir_id),
                 var_hir_id,
                 by_ref,
-                mutability: Mutability::Not,
-            };
-            let bm = *tables.pat_binding_modes().get(var_hir_id).expect("missing binding mode");
-            if bm == ty::BindByValue(hir::Mutability::Mut) {
-                upvar.mutability = Mutability::Mut;
+                mutability: captured_place.mutability,
             }
-            upvar
         })
         .collect();
 
