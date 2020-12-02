@@ -467,6 +467,7 @@ impl RawFrame {
     }
 }
 
+#[unstable(feature = "backtrace_frames")]
 impl Frames {
     // Private clone method so that we don't expose a
     // public Frames.clone() by deriving Clone
@@ -489,6 +490,7 @@ impl AsRef<[BacktraceFrame]> for Frames {
     }
 }
 
+#[unstable(feature = "backtrace_frames")]
 impl BacktraceFrame {
     // Private clone method so that we don't expose a
     // public BacktraceFrame.clone() by deriving Clone
