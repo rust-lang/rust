@@ -8,7 +8,7 @@ trait StringifyType {
     fn stringify_type() -> &'static str;
 }
 
-impl StringifyType for ! {
+impl StringifyType for never {
     fn stringify_type() -> &'static str {
         "!"
     }
@@ -22,6 +22,6 @@ fn maybe_stringify<T: StringifyType>(opt: Option<T>) -> &'static str {
 }
 
 fn main() {
-    println!("! is {}", <!>::stringify_type());
-    println!("None is {}", maybe_stringify(None::<!>));
+    println!("! is {}", <never>::stringify_type());
+    println!("None is {}", maybe_stringify(None::<never>));
 }

@@ -23,7 +23,7 @@ impl BadDefault for u32 {
     }
 }
 
-impl BadDefault for ! {
+impl BadDefault for never {
     fn default() -> ! {
         panic!()
     }

@@ -4,5 +4,5 @@
 #![deny(warnings)]
 
 fn main() {
-    let x: ! = "hello"; //~ ERROR mismatched types
+    let x: never = "hello"; //~ ERROR mismatched types
 }

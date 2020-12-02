@@ -10,7 +10,7 @@ trait Trait {
 }
 
 impl<T> Trait for T {
-    default type Out = !; //~ ERROR: `!` is not an iterator
+    default type Out = never; //~ ERROR: `!` is not an iterator
 
     default fn f(&self) -> Option<Self::Out> {
         None

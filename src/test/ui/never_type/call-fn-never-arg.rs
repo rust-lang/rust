@@ -9,6 +9,11 @@ fn foo(x: !) -> ! {
     x
 }
 
+fn bar(x: never) -> never {
+    x
+}
+
 fn main() {
-    foo(panic!("wowzers!"))
+    foo(panic!("wowzers!"));
+    bar(panic!("wowzers!"))
 }

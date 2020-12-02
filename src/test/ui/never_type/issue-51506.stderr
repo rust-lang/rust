@@ -4,8 +4,8 @@ error[E0277]: `!` is not an iterator
 LL |     type Out: Iterator<Item = u32>;
    |               -------------------- required by this bound in `Trait::Out`
 ...
-LL |     default type Out = !;
-   |     ^^^^^^^^^^^^^^^^^^^^^ `!` is not an iterator
+LL |     default type Out = never;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ `!` is not an iterator
    |
    = help: the trait `Iterator` is not implemented for `!`
 

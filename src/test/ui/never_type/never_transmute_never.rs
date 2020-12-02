@@ -21,3 +21,12 @@ pub fn ub() {
     };
     f(x)
 }
+
+pub fn ub2() {
+    // This is completely undefined behaviour,
+    // but we still want to make sure it compiles.
+    let x: ! = unsafe {
+        std::mem::transmute::<Foo, never>(Foo)
+    };
+    f(x)
+}

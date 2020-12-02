@@ -8,7 +8,7 @@
 #![feature(never_type)]
 
 fn main() {
-    let x: Result<u32, !> = Ok(123);
+    let x: Result<u32, never> = Ok(123);
     match x {
         Ok(z) => (),
         Err(y) => {
