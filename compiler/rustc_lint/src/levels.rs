@@ -108,18 +108,32 @@ impl<'s> LintLevelsBuilder<'s> {
         id: LintId,
         (level, src): LevelSource,
     ) {
-        if let Some((old_level, old_src)) = specs.get(&id) {
-            if old_level == &Level::Forbid && level != Level::Forbid {
+        // Setting to a non-forbid level is an error if the lint previously had
+        // a forbid level. Note that this is not necessarily true even with a
+        // `#[forbid(..)]` attribute present, as that is overriden by `--cap-lints`.
+        //
+        // This means that this only errors if we're truly lowering the lint
+        // level from forbid.
+        if level != Level::Forbid {
+            if let (Level::Forbid, old_src) =
+                self.sets.get_lint_level(id.lint, self.cur, Some(&specs), &self.sess)
+            {
                 let mut diag_builder = struct_span_err!(
                     self.sess,
                     src.span(),
                     E0453,
-                    "{}({}) incompatible with previous forbid in same scope",
+                    "{}({}) incompatible with previous forbid",
                     level.as_str(),
                     src.name(),
                 );
-                match *old_src {
-                    LintSource::Default => {}
+                diag_builder.span_label(src.span(), "overruled by previous forbid");
+                match old_src {
+                    LintSource::Default => {
+                        diag_builder.note(&format!(
+                            "`forbid` lint level is the default for {}",
+                            id.to_string()
+                        ));
+                    }
                     LintSource::Node(_, forbid_source_span, reason) => {
                         diag_builder.span_label(forbid_source_span, "`forbid` level set here");
                         if let Some(rationale) = reason {
@@ -131,6 +145,8 @@ impl<'s> LintLevelsBuilder<'s> {
                     }
                 }
                 diag_builder.emit();
+
+                // Retain the forbid lint level
                 return;
             }
         }
@@ -412,50 +428,6 @@ impl<'s> LintLevelsBuilder<'s> {
                 // don't set a separate error for every lint in the group
                 break;
             }
-        }
-
-        for (id, &(level, ref src)) in specs.iter() {
-            if level == Level::Forbid {
-                continue;
-            }
-            let forbid_src = match self.sets.get_lint_id_level(*id, self.cur, None) {
-                (Some(Level::Forbid), src) => src,
-                _ => continue,
-            };
-            let forbidden_lint_name = match forbid_src {
-                LintSource::Default => id.to_string(),
-                LintSource::Node(name, _, _) => name.to_string(),
-                LintSource::CommandLine(name, _) => name.to_string(),
-            };
-            let (lint_attr_name, lint_attr_span) = match *src {
-                LintSource::Node(name, span, _) => (name, span),
-                _ => continue,
-            };
-            let mut diag_builder = struct_span_err!(
-                self.sess,
-                lint_attr_span,
-                E0453,
-                "{}({}) overruled by outer forbid({})",
-                level.as_str(),
-                lint_attr_name,
-                forbidden_lint_name
-            );
-            diag_builder.span_label(lint_attr_span, "overruled by previous forbid");
-            match forbid_src {
-                LintSource::Default => {}
-                LintSource::Node(_, forbid_source_span, reason) => {
-                    diag_builder.span_label(forbid_source_span, "`forbid` level set here");
-                    if let Some(rationale) = reason {
-                        diag_builder.note(&rationale.as_str());
-                    }
-                }
-                LintSource::CommandLine(_, _) => {
-                    diag_builder.note("`forbid` lint level was set on command line");
-                }
-            }
-            diag_builder.emit();
-            // don't set a separate error for every lint in the group
-            break;
         }
 
         let prev = self.cur;

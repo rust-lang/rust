@@ -1,4 +1,4 @@
-error[E0453]: allow(test_lint) overruled by outer forbid(test_lint)
+error[E0453]: allow(test_lint) incompatible with previous forbid
   --> $DIR/lint-plugin-forbid-cmdline.rs:10:9
    |
 LL | #[allow(test_lint)]
@@ -6,7 +6,7 @@ LL | #[allow(test_lint)]
    |
    = note: `forbid` lint level was set on command line
 
-error[E0453]: allow(test_lint) overruled by outer forbid(test_lint)
+error[E0453]: allow(test_lint) incompatible with previous forbid
   --> $DIR/lint-plugin-forbid-cmdline.rs:10:9
    |
 LL | #[allow(test_lint)]
@@ -30,7 +30,7 @@ LL | fn lintme() { }
    |
    = note: requested on the command line with `-F test-lint`
 
-error[E0453]: allow(test_lint) overruled by outer forbid(test_lint)
+error[E0453]: allow(test_lint) incompatible with previous forbid
   --> $DIR/lint-plugin-forbid-cmdline.rs:10:9
    |
 LL | #[allow(test_lint)]

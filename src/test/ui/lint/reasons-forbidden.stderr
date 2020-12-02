@@ -1,5 +1,5 @@
-error[E0453]: allow(unsafe_code) overruled by outer forbid(unsafe_code)
-  --> $DIR/reasons-forbidden.rs:19:13
+error[E0453]: allow(unsafe_code) incompatible with previous forbid
+  --> $DIR/reasons-forbidden.rs:25:13
    |
 LL |     unsafe_code,
    |     ----------- `forbid` level set here
@@ -9,61 +9,23 @@ LL |     #[allow(unsafe_code)]
    |
    = note: our errors & omissions insurance policy doesn't cover unsafe Rust
 
-error[E0453]: allow(unsafe_code) overruled by outer forbid(unsafe_code)
-  --> $DIR/reasons-forbidden.rs:19:13
+error: usage of an `unsafe` block
+  --> $DIR/reasons-forbidden.rs:29:5
    |
-LL |     unsafe_code,
-   |     ----------- `forbid` level set here
-...
-LL |     #[allow(unsafe_code)]
-   |             ^^^^^^^^^^^ overruled by previous forbid
-   |
-   = note: our errors & omissions insurance policy doesn't cover unsafe Rust
-
-error[E0453]: allow(unsafe_code) overruled by outer forbid(unsafe_code)
-  --> $DIR/reasons-forbidden.rs:19:13
-   |
-LL |     unsafe_code,
-   |     ----------- `forbid` level set here
-...
-LL |     #[allow(unsafe_code)]
-   |             ^^^^^^^^^^^ overruled by previous forbid
+LL | /     unsafe {
+LL | |
+LL | |
+LL | |         *a_billion_dollar_mistake
+LL | |     }
+   | |_____^
    |
    = note: our errors & omissions insurance policy doesn't cover unsafe Rust
-
-error[E0453]: allow(unsafe_code) overruled by outer forbid(unsafe_code)
-  --> $DIR/reasons-forbidden.rs:19:13
+note: the lint level is defined here
+  --> $DIR/reasons-forbidden.rs:14:5
    |
 LL |     unsafe_code,
-   |     ----------- `forbid` level set here
-...
-LL |     #[allow(unsafe_code)]
-   |             ^^^^^^^^^^^ overruled by previous forbid
-   |
-   = note: our errors & omissions insurance policy doesn't cover unsafe Rust
+   |     ^^^^^^^^^^^
 
-error[E0453]: allow(unsafe_code) overruled by outer forbid(unsafe_code)
-  --> $DIR/reasons-forbidden.rs:19:13
-   |
-LL |     unsafe_code,
-   |     ----------- `forbid` level set here
-...
-LL |     #[allow(unsafe_code)]
-   |             ^^^^^^^^^^^ overruled by previous forbid
-   |
-   = note: our errors & omissions insurance policy doesn't cover unsafe Rust
-
-error[E0453]: allow(unsafe_code) overruled by outer forbid(unsafe_code)
-  --> $DIR/reasons-forbidden.rs:19:13
-   |
-LL |     unsafe_code,
-   |     ----------- `forbid` level set here
-...
-LL |     #[allow(unsafe_code)]
-   |             ^^^^^^^^^^^ overruled by previous forbid
-   |
-   = note: our errors & omissions insurance policy doesn't cover unsafe Rust
-
-error: aborting due to 6 previous errors
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0453`.

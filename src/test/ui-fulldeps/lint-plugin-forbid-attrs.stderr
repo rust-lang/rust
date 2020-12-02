@@ -1,4 +1,4 @@
-error[E0453]: allow(test_lint) overruled by outer forbid(test_lint)
+error[E0453]: allow(test_lint) incompatible with previous forbid
   --> $DIR/lint-plugin-forbid-attrs.rs:11:9
    |
 LL | #![forbid(test_lint)]
@@ -7,7 +7,7 @@ LL | #![forbid(test_lint)]
 LL | #[allow(test_lint)]
    |         ^^^^^^^^^ overruled by previous forbid
 
-error[E0453]: allow(test_lint) overruled by outer forbid(test_lint)
+error[E0453]: allow(test_lint) incompatible with previous forbid
   --> $DIR/lint-plugin-forbid-attrs.rs:11:9
    |
 LL | #![forbid(test_lint)]
@@ -27,8 +27,8 @@ LL | #![plugin(lint_plugin_test)]
 error: item is named 'lintme'
   --> $DIR/lint-plugin-forbid-attrs.rs:9:1
    |
-LL | fn lintme() { }
-   | ^^^^^^^^^^^^^^^
+LL | fn lintme() {}
+   | ^^^^^^^^^^^^^^
    |
 note: the lint level is defined here
   --> $DIR/lint-plugin-forbid-attrs.rs:7:11
@@ -36,7 +36,7 @@ note: the lint level is defined here
 LL | #![forbid(test_lint)]
    |           ^^^^^^^^^
 
-error[E0453]: allow(test_lint) overruled by outer forbid(test_lint)
+error[E0453]: allow(test_lint) incompatible with previous forbid
   --> $DIR/lint-plugin-forbid-attrs.rs:11:9
    |
 LL | #![forbid(test_lint)]
