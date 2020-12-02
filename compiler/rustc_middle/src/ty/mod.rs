@@ -800,11 +800,17 @@ pub type RootVariableMinCaptureList<'tcx> = FxIndexMap<hir::HirId, MinCaptureLis
 /// Part of `MinCaptureInformationMap`; List of `CapturePlace`s.
 pub type MinCaptureList<'tcx> = Vec<CapturedPlace<'tcx>>;
 
-/// A `Place` and the corresponding `CaptureInfo`.
+/// A composite describing a `Place` that is captured by a closure.
 #[derive(PartialEq, Clone, Debug, TyEncodable, TyDecodable, TypeFoldable, HashStable)]
 pub struct CapturedPlace<'tcx> {
+    /// The `Place` that is captured.
     pub place: HirPlace<'tcx>,
+
+    /// `CaptureKind` and expression(s) that resulted in such capture of `place`.
     pub info: CaptureInfo<'tcx>,
+
+    /// Represents if `place` can be mutated or not.
+    pub mutability: hir::Mutability,
 }
 
 /// Part of `MinCaptureInformationMap`; describes the capture kind (&, &mut, move)

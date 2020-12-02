@@ -238,8 +238,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let capture = captured_place.info.capture_kind;
 
                 debug!(
-                    "place={:?} upvar_ty={:?} capture={:?}",
-                    captured_place.place, upvar_ty, capture
+                    "final_upvar_tys: place={:?} upvar_ty={:?} capture={:?}, mutability={:?}",
+                    captured_place.place, upvar_ty, capture, captured_place.mutability,
                 );
 
                 match capture {
@@ -391,7 +391,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             let min_cap_list = match root_var_min_capture_list.get_mut(&var_hir_id) {
                 None => {
-                    let min_cap_list = vec![ty::CapturedPlace { place: place, info: capture_info }];
+                    let mutability = self.determine_mutability(&place);
+                    let min_cap_list =
+                        vec![ty::CapturedPlace { place, info: capture_info, mutability }];
                     root_var_min_capture_list.insert(var_hir_id, min_cap_list);
                     continue;
                 }
@@ -445,8 +447,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             // Only need to insert when we don't have an ancestor in the existing min capture list
             if !ancestor_found {
+                let mutability = self.determine_mutability(&place);
                 let captured_place =
-                    ty::CapturedPlace { place: place.clone(), info: updated_capture_info };
+                    ty::CapturedPlace { place, info: updated_capture_info, mutability };
                 min_cap_list.push(captured_place);
             }
         }
@@ -541,6 +544,40 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 diag.emit();
             }
         }
+    }
+
+    /// A place is mutable if
+    /// 1. Projections don't include a Deref of an immut-borrow, **and**
+    /// 2. PlaceBase is mut or projections include a Deref of a mut-borrow.
+    fn determine_mutability(&self, place: &Place<'tcx>) -> hir::Mutability {
+        let var_hir_id = match place.base {
+            PlaceBase::Upvar(upvar_id) => upvar_id.var_path.hir_id,
+            _ => unreachable!(),
+        };
+
+        let bm = *self
+            .typeck_results
+            .borrow()
+            .pat_binding_modes()
+            .get(var_hir_id)
+            .expect("missing binding mode");
+
+        let mut is_mutbl = match bm {
+            ty::BindByValue(mutability) => mutability,
+            ty::BindByReference(_) => hir::Mutability::Not,
+        };
+
+        for pointer_ty in place.deref_tys() {
+            match pointer_ty.kind() {
+                ty::Ref(.., hir::Mutability::Mut) => is_mutbl = hir::Mutability::Mut,
+                // The place isn't mutable once we dereference a immutable reference.
+                ty::Ref(.., hir::Mutability::Not) => return hir::Mutability::Not,
+
+                _ => (),
+            }
+        }
+
+        is_mutbl
     }
 }
 
