@@ -97,7 +97,6 @@ pub(crate) fn check_edit_with_config(
         .unwrap_or_else(|| panic!("can't find {:?} completion in {:#?}", what, completions));
     let mut actual = db.file_text(position.file_id).to_string();
     completion.text_edit().apply(&mut actual);
-    // git  how to apply imports now?
     assert_eq_text!(&ra_fixture_after, &actual)
 }
 

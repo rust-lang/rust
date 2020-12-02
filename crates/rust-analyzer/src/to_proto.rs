@@ -5,10 +5,10 @@ use std::{
 };
 
 use ide::{
-    Assist, AssistKind, CallInfo, CompletionItem, CompletionItemKind, CompletionResolveCapability,
-    Documentation, FileSystemEdit, Fold, FoldKind, Highlight, HighlightModifier, HighlightTag,
-    HighlightedRange, ImportToAdd, Indel, InlayHint, InlayKind, InsertTextFormat, LineIndex,
-    Markup, NavigationTarget, ReferenceAccess, ResolvedAssist, Runnable, Severity, SourceChange,
+    Assist, AssistKind, CallInfo, CompletionItem, CompletionItemKind, Documentation,
+    FileSystemEdit, Fold, FoldKind, Highlight, HighlightModifier, HighlightTag, HighlightedRange,
+    ImportToAdd, Indel, InlayHint, InlayKind, InsertTextFormat, LineIndex, Markup,
+    NavigationTarget, ReferenceAccess, ResolvedAssist, Runnable, Severity, SourceChange,
     SourceFileEdit, TextEdit,
 };
 use ide_db::{
@@ -16,7 +16,6 @@ use ide_db::{
     helpers::{insert_use, mod_path_to_ast},
 };
 use itertools::Itertools;
-use rustc_hash::FxHashSet;
 use syntax::{algo, SyntaxKind, TextRange, TextSize};
 
 use crate::{
@@ -163,7 +162,7 @@ pub(crate) fn completion_item(
     line_index: &LineIndex,
     line_endings: LineEndings,
     completion_item: CompletionItem,
-    resolve_capabilities: &FxHashSet<CompletionResolveCapability>,
+    should_resolve_additional_edits_immediately: bool,
 ) -> Vec<lsp_types::CompletionItem> {
     fn set_score(res: &mut lsp_types::CompletionItem, label: &str) {
         res.preselect = Some(true);
@@ -237,14 +236,12 @@ pub(crate) fn completion_item(
         None => vec![res],
     };
 
-    let unapplied_import_data = completion_item.import_to_add().filter(|_| {
-        !resolve_capabilities.contains(&CompletionResolveCapability::AdditionalTextEdits)
-    });
-
     for mut r in all_results.iter_mut() {
         r.insert_text_format = Some(insert_text_format(completion_item.insert_text_format()));
-        if let Some(unapplied_import_data) = unapplied_import_data {
-            append_import_edits(r, unapplied_import_data, line_index, line_endings);
+        if !should_resolve_additional_edits_immediately {
+            if let Some(unapplied_import_data) = completion_item.import_to_add() {
+                append_import_edits(r, unapplied_import_data, line_index, line_endings);
+            }
         }
     }
 
@@ -891,7 +888,6 @@ mod tests {
         let (offset, text) = test_utils::extract_offset(fixture);
         let line_index = LineIndex::new(&text);
         let (analysis, file_id) = Analysis::from_single_file(text);
-        let resolve_caps = FxHashSet::default();
         let completions: Vec<(String, Option<String>)> = analysis
             .completions(
                 &ide::CompletionConfig::default(),
@@ -901,7 +897,7 @@ mod tests {
             .unwrap()
             .into_iter()
             .filter(|c| c.label().ends_with("arg"))
-            .map(|c| completion_item(&line_index, LineEndings::Unix, c, &resolve_caps))
+            .map(|c| completion_item(&line_index, LineEndings::Unix, c, true))
             .flat_map(|comps| comps.into_iter().map(|c| (c.label, c.sort_text)))
             .collect();
         expect_test::expect![[r#"

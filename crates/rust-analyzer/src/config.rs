@@ -19,7 +19,7 @@ use rustc_hash::FxHashSet;
 use serde::Deserialize;
 use vfs::AbsPathBuf;
 
-use crate::{caps::enabled_resolve_capabilities, diagnostics::DiagnosticsMapConfig};
+use crate::{caps::enabled_completions_resolve_capabilities, diagnostics::DiagnosticsMapConfig};
 
 #[derive(Debug, Clone)]
 pub struct Config {
@@ -389,7 +389,7 @@ impl Config {
 
             self.completion.allow_snippets(false);
             self.completion.resolve_capabilities =
-                enabled_resolve_capabilities(caps).unwrap_or_default();
+                enabled_completions_resolve_capabilities(caps).unwrap_or_default();
             if let Some(completion) = &doc_caps.completion {
                 if let Some(completion_item) = &completion.completion_item {
                     if let Some(value) = completion_item.snippet_support {

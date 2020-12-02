@@ -15,9 +15,15 @@ pub struct CompletionConfig {
     pub add_call_argument_snippets: bool,
     pub snippet_cap: Option<SnippetCap>,
     pub merge: Option<MergeBehaviour>,
+    /// A set of capabilities, enabled on the cliend and supported on the server.
     pub resolve_capabilities: FxHashSet<CompletionResolveCapability>,
 }
 
+/// A resolve capability, supported on a server.
+/// If the client registers any of those in its completion resolve capabilities,
+/// the server is able to render completion items' corresponding fields later,
+/// not during an initial completion item request.
+/// See https://github.com/rust-analyzer/rust-analyzer/issues/6366 for more details.
 #[derive(Debug, Copy, Clone, Hash, Eq, PartialEq)]
 pub enum CompletionResolveCapability {
     Documentation,
@@ -30,7 +36,8 @@ impl CompletionConfig {
         self.snippet_cap = if yes { Some(SnippetCap { _private: () }) } else { None }
     }
 
-    pub fn should_resolve_immediately(&self) -> bool {
+    /// Whether the completions' additional edits are calculated later, during a resolve request or not.
+    pub fn should_resolve_additional_edits_immediately(&self) -> bool {
         !self.resolve_capabilities.contains(&CompletionResolveCapability::AdditionalTextEdits)
     }
 }

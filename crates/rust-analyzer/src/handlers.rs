@@ -581,7 +581,7 @@ pub(crate) fn handle_completion(
                 &line_index,
                 line_endings,
                 item.clone(),
-                &snap.config.completion.resolve_capabilities,
+                snap.config.completion.should_resolve_additional_edits_immediately(),
             );
 
             let item_id = serde_json::to_value(&item_index)

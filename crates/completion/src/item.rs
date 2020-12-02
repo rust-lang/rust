@@ -67,8 +67,7 @@ pub struct CompletionItem {
     /// possible match.
     ref_match: Option<(Mutability, CompletionScore)>,
 
-    /// The data later to be used in the `completionItem/resolve` response
-    /// to add the insert import edit.
+    /// The import data to add to completion's edits.
     import_to_add: Option<ImportToAdd>,
 }
 
