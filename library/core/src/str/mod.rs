@@ -1131,6 +1131,13 @@ impl str {
     /// assert_eq!(v, ["lion", "tiger", "leopard"]);
     /// ```
     ///
+    /// If the pattern is a slice of chars, split on each occurrence of any of the characters:
+    ///
+    /// ```
+    /// let v: Vec<&str> = "2020-11-03 23:59".split(&['-', ' ', ':', '@'][..]).collect();
+    /// assert_eq!(v, ["2020", "11", "03", "23", "59"]);
+    /// ```
+    ///
     /// A more complex pattern, using a closure:
     ///
     /// ```
