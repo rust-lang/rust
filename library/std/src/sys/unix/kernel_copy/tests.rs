@@ -217,7 +217,7 @@ fn bench_socket_pipe_socket_copy(b: &mut test::Bencher) {
     );
 
     match probe {
-        CopyResult::Ended(Ok(1)) => {
+        CopyResult::Ended(1) => {
             // splice works
         }
         _ => {
