@@ -73,3 +73,44 @@ fn f() {
     ",
     );
 }
+
+#[test]
+fn macro_diag_builtin() {
+    check_diagnostics(
+        r#"
+fn f() {
+    // Test a handful of built-in (eager) macros:
+
+    include!(invalid);
+  //^^^^^^^^^^^^^^^^^ failed to parse or resolve macro invocation
+    include!("does not exist");
+  //^^^^^^^^^^^^^^^^^^^^^^^^^^ failed to parse or resolve macro invocation
+
+    env!(invalid);
+  //^^^^^^^^^^^^^ failed to parse or resolve macro invocation
+
+    // Lazy:
+
+    format_args!();
+  //^^^^^^^^^^^^^^ failed to parse or resolve macro invocation
+}
+        "#,
+    );
+}
+
+#[test]
+fn macro_rules_diag() {
+    check_diagnostics(
+        r#"
+macro_rules! m {
+    () => {};
+}
+fn f() {
+    m!();
+
+    m!(hi);
+  //^^^^^^ leftover tokens
+}
+      "#,
+    );
+}
