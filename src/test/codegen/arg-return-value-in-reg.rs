@@ -1,4 +1,4 @@
-//! This test checks that types of up to 128 bits are returned by-value instead of via out-pointer.
+//! Check that types of up to 128 bits are passed and returned by-value instead of via pointer.
 
 // compile-flags: -C no-prepopulate-passes -O
 // only-x86_64
@@ -11,7 +11,7 @@ pub struct S {
     c: u32,
 }
 
-// CHECK: define i128 @modify(%S* noalias nocapture dereferenceable(16) %s)
+// CHECK: define i128 @modify(i128{{( %0)?}})
 #[no_mangle]
 pub fn modify(s: S) -> S {
     S { a: s.a + s.a, b: s.b + s.b, c: s.c + s.c }

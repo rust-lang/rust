@@ -2848,7 +2848,7 @@ where
             || abi == SpecAbi::RustIntrinsic
             || abi == SpecAbi::PlatformIntrinsic
         {
-            let fixup = |arg: &mut ArgAbi<'tcx, Ty<'tcx>>, is_ret: bool| {
+            let fixup = |arg: &mut ArgAbi<'tcx, Ty<'tcx>>| {
                 if arg.is_ignore() {
                     return;
                 }
@@ -2886,9 +2886,9 @@ where
                     _ => return,
                 }
 
-                // Return structures up to 2 pointers in size by value, matching `ScalarPair`. LLVM
-                // will usually return these in 2 registers, which is more efficient than by-ref.
-                let max_by_val_size = if is_ret { Pointer.size(cx) * 2 } else { Pointer.size(cx) };
+                // Pass and return structures up to 2 pointers in size by value, matching `ScalarPair`.
+                // LLVM will usually pass these in 2 registers, which is more efficient than by-ref.
+                let max_by_val_size = Pointer.size(cx) * 2;
                 let size = arg.layout.size;
 
                 if arg.layout.is_unsized() || size > max_by_val_size {
@@ -2900,9 +2900,9 @@ where
                     arg.cast_to(Reg { kind: RegKind::Integer, size });
                 }
             };
-            fixup(&mut self.ret, true);
+            fixup(&mut self.ret);
             for arg in &mut self.args {
-                fixup(arg, false);
+                fixup(arg);
             }
             return;
         }
