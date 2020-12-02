@@ -314,8 +314,10 @@ impl<T> MaybeUninit<T> {
     /// let data = read(&mut buf);
     /// ```
     #[unstable(feature = "maybe_uninit_uninit_array", issue = "none")]
+    #[rustc_const_unstable(feature = "const_maybe_assume_init", issue = "none")]
+    #[rustc_allow_const_fn_unstable(const_maybe_assume_init)]
     #[inline(always)]
-    pub fn uninit_array<const LEN: usize>() -> [Self; LEN] {
+    pub const fn uninit_array<const LEN: usize>() -> [Self; LEN] {
         // SAFETY: An uninitialized `[MaybeUninit<_>; LEN]` is valid.
         unsafe { MaybeUninit::<[MaybeUninit<T>; LEN]>::uninit().assume_init() }
     }
@@ -503,9 +505,10 @@ impl<T> MaybeUninit<T> {
     /// // `x` had not been initialized yet, so this last line caused undefined behavior. ⚠️
     /// ```
     #[stable(feature = "maybe_uninit", since = "1.36.0")]
+    #[rustc_const_unstable(feature = "const_maybe_assume_init", issue = "none")]
     #[inline(always)]
     #[rustc_diagnostic_item = "assume_init"]
-    pub unsafe fn assume_init(self) -> T {
+    pub const unsafe fn assume_init(self) -> T {
         // SAFETY: the caller must guarantee that `self` is initialized.
         // This also means that `self` must be a `value` variant.
         unsafe {
