@@ -1978,7 +1978,8 @@ fn const_str_ptr() {
     const B: &'static [u8; 2] = &A;
     const C: *const u8 = B as *const u8;
 
-    #[cfg(not(miri))] // Miri does not deduplicate consts (https://github.com/rust-lang/miri/issues/131)
+    // Miri does not deduplicate consts (https://github.com/rust-lang/miri/issues/131)
+    #[cfg(not(miri))]
     {
         let foo = &A as *const u8;
         assert_eq!(foo, C);
