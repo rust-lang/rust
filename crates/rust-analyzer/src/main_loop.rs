@@ -506,7 +506,7 @@ impl GlobalState {
                         .write()
                         .0
                         .set_file_contents(path, Some(params.text_document.text.into_bytes()));
-                    this.update_file_notifications_on_threadpool();
+                    this.maybe_update_diagnostics();
                 }
                 Ok(())
             })?
@@ -616,6 +616,23 @@ impl GlobalState {
         Ok(())
     }
     fn update_file_notifications_on_threadpool(&mut self) {
+        self.maybe_update_diagnostics();
+        self.task_pool.handle.spawn_with_sender({
+            let snap = self.snapshot();
+            move |sender| {
+                snap.analysis
+                    .prime_caches(|progress| {
+                        sender.send(Task::PrimeCaches(progress)).unwrap();
+                    })
+                    .unwrap_or_else(|_: Canceled| {
+                        // Pretend that we're done, so that the progress bar is removed. Otherwise
+                        // the editor may complain about it already existing.
+                        sender.send(Task::PrimeCaches(PrimeCachesProgress::Finished)).unwrap()
+                    });
+            }
+        });
+    }
+    fn maybe_update_diagnostics(&mut self) {
         let subscriptions = self
             .mem_docs
             .keys()
@@ -644,19 +661,5 @@ impl GlobalState {
                 Task::Diagnostics(diagnostics)
             })
         }
-        self.task_pool.handle.spawn_with_sender({
-            let snap = self.snapshot();
-            move |sender| {
-                snap.analysis
-                    .prime_caches(|progress| {
-                        sender.send(Task::PrimeCaches(progress)).unwrap();
-                    })
-                    .unwrap_or_else(|_: Canceled| {
-                        // Pretend that we're done, so that the progress bar is removed. Otherwise
-                        // the editor may complain about it already existing.
-                        sender.send(Task::PrimeCaches(PrimeCachesProgress::Finished)).unwrap()
-                    });
-            }
-        });
     }
 }
