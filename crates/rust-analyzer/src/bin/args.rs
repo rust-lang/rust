@@ -28,6 +28,7 @@ pub(crate) enum Command {
     StructuredSearch { debug_snippet: Option<String>, patterns: Vec<SsrPattern> },
     ProcMacro,
     RunServer,
+    PrintConfigSchema,
     Version,
     Help,
 }
@@ -133,6 +134,10 @@ impl Args {
         if matches.contains(["-h", "--help"]) {
             eprintln!("{}", HELP);
             return Ok(Args { verbosity, log_file: None, command: Command::Help });
+        }
+
+        if matches.contains("--print-config-schema") {
+            return Ok(Args { verbosity, log_file, command: Command::PrintConfigSchema });
         }
 
         let subcommand = match matches.subcommand()? {

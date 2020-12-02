@@ -13,13 +13,165 @@ use flycheck::FlycheckConfig;
 use hir::PrefixKind;
 use ide::{AssistConfig, CompletionConfig, DiagnosticsConfig, HoverConfig, InlayHintsConfig};
 use ide_db::helpers::insert_use::MergeBehaviour;
+use itertools::Itertools;
 use lsp_types::{ClientCapabilities, MarkupKind};
 use project_model::{CargoConfig, ProjectJson, ProjectJsonData, ProjectManifest};
 use rustc_hash::FxHashSet;
-use serde::Deserialize;
+use serde::{de::DeserializeOwned, Deserialize};
 use vfs::AbsPathBuf;
 
 use crate::{caps::enabled_completions_resolve_capabilities, diagnostics::DiagnosticsMapConfig};
+
+config_data! {
+    struct ConfigData {
+        /// The strategy to use when inserting new imports or merging imports.
+        assist_importMergeBehaviour: MergeBehaviourDef = "\"full\"",
+        /// The path structure for newly inserted paths to use.
+        assist_importPrefix: ImportPrefixDef           = "\"plain\"",
+
+        /// Show function name and docs in parameter hints.
+        callInfo_full: bool = "true",
+
+        /// Automatically refresh project info via `cargo metadata` on
+        /// Cargo.toml changes.
+        cargo_autoreload: bool           = "true",
+        /// Activate all available features.
+        cargo_allFeatures: bool          = "false",
+        /// List of features to activate.
+        cargo_features: Vec<String>      = "[]",
+        /// Run `cargo check` on startup to get the correct value for package
+        /// OUT_DIRs.
+        cargo_loadOutDirsFromCheck: bool = "false",
+        /// Do not activate the `default` feature.
+        cargo_noDefaultFeatures: bool    = "false",
+        /// Compilation target (target triple).
+        cargo_target: Option<String>     = "null",
+        /// Internal config for debugging, disables loading of sysroot crates.
+        cargo_noSysroot: bool            = "false",
+
+        /// Run specified `cargo check` command for diagnostics on save.
+        checkOnSave_enable: bool                         = "true",
+        /// Check with all features (will be passed as `--all-features`).
+        /// Defaults to `rust-analyzer.cargo.allFeatures`.
+        checkOnSave_allFeatures: Option<bool>            = "null",
+        /// Check all targets and tests (will be passed as `--all-targets`).
+        checkOnSave_allTargets: bool                     = "true",
+        /// Cargo command to use for `cargo check`.
+        checkOnSave_command: String                      = "\"check\"",
+        /// Do not activate the `default` feature.
+        checkOnSave_noDefaultFeatures: Option<bool>      = "null",
+        /// Check for a specific target. Defaults to
+        /// `rust-analyzer.cargo.target`.
+        checkOnSave_target: Option<String>               = "null",
+        /// Extra arguments for `cargo check`.
+        checkOnSave_extraArgs: Vec<String>               = "[]",
+        /// List of features to activate. Defaults to
+        /// `rust-analyzer.cargo.features`.
+        checkOnSave_features: Option<Vec<String>>        = "null",
+        /// Advanced option, fully override the command rust-analyzer uses for
+        /// checking. The command should include `--message-format=json` or
+        /// similar option.
+        checkOnSave_overrideCommand: Option<Vec<String>> = "null",
+
+        /// Whether to add argument snippets when completing functions.
+        completion_addCallArgumentSnippets: bool = "true",
+        /// Whether to add parenthesis when completing functions.
+        completion_addCallParenthesis: bool      = "true",
+        /// Whether to show postfix snippets like `dbg`, `if`, `not`, etc.
+        completion_postfix_enable: bool          = "true",
+        /// Toggles the additional completions that automatically add imports when completed.
+        /// Note that your client have to specify the `additionalTextEdits` LSP client capability to truly have this feature enabled.
+        completion_autoimport_enable: bool       = "true",
+
+        /// Whether to show native rust-analyzer diagnostics.
+        diagnostics_enable: bool                = "true",
+        /// Whether to show experimental rust-analyzer diagnostics that might
+        /// have more false positives than usual.
+        diagnostics_enableExperimental: bool    = "true",
+        /// List of rust-analyzer diagnostics to disable.
+        diagnostics_disabled: FxHashSet<String> = "[]",
+        /// List of warnings that should be displayed with info severity.\nThe
+        /// warnings will be indicated by a blue squiggly underline in code and
+        /// a blue icon in the problems panel.
+        diagnostics_warningsAsHint: Vec<String> = "[]",
+        /// List of warnings that should be displayed with hint severity.\nThe
+        /// warnings will be indicated by faded text or three dots in code and
+        /// will not show up in the problems panel.
+        diagnostics_warningsAsInfo: Vec<String> = "[]",
+
+        /// Controls file watching implementation.
+        files_watcher: String = "\"client\"",
+
+        /// Whether to show `Debug` action. Only applies when
+        /// `#rust-analyzer.hoverActions.enable#` is set.
+        hoverActions_debug: bool           = "true",
+        /// Whether to show HoverActions in Rust files.
+        hoverActions_enable: bool          = "true",
+        /// Whether to show `Go to Type Definition` action. Only applies when
+        /// `#rust-analyzer.hoverActions.enable#` is set.
+        hoverActions_gotoTypeDef: bool     = "true",
+        /// Whether to show `Implementations` action. Only applies when
+        /// `#rust-analyzer.hoverActions.enable#` is set.
+        hoverActions_implementations: bool = "true",
+        /// Whether to show `Run` action. Only applies when
+        /// `#rust-analyzer.hoverActions.enable#` is set.
+        hoverActions_run: bool             = "true",
+        /// Use markdown syntax for links in hover.
+        hoverActions_linksInHover: bool    = "true",
+
+        /// Whether to show inlay type hints for method chains.
+        inlayHints_chainingHints: bool      = "true",
+        /// Maximum length for inlay hints.
+        inlayHints_maxLength: Option<usize> = "null",
+        /// Whether to show function parameter name inlay hints at the call
+        /// site.
+        inlayHints_parameterHints: bool     = "true",
+        /// Whether to show inlay type hints for variables.
+        inlayHints_typeHints: bool          = "true",
+
+        /// Whether to show `Debug` lens. Only applies when
+        /// `#rust-analyzer.lens.enable#` is set.
+        lens_debug: bool            = "true",
+        /// Whether to show CodeLens in Rust files.
+        lens_enable: bool           = "true",
+        /// Whether to show `Implementations` lens. Only applies when
+        /// `#rust-analyzer.lens.enable#` is set.
+        lens_implementations: bool  = "true",
+        /// Whether to show `Run` lens. Only applies when
+        /// `#rust-analyzer.lens.enable#` is set.
+        lens_run: bool              = "true",
+        /// Whether to show `Method References` lens. Only applies when
+        /// `#rust-analyzer.lens.enable#` is set.
+        lens_methodReferences: bool = "false",
+
+        /// Disable project auto-discovery in favor of explicitly specified set
+        /// of projects.  \nElements must be paths pointing to Cargo.toml,
+        /// rust-project.json, or JSON objects in rust-project.json format.
+        linkedProjects: Vec<ManifestOrProjectJson> = "[]",
+        /// Number of syntax trees rust-analyzer keeps in memory.
+        lruCapacity: Option<usize>                 = "null",
+        /// Whether to show `can't find Cargo.toml` error message.
+        notifications_cargoTomlNotFound: bool      = "true",
+        /// Enable Proc macro support, cargo.loadOutDirsFromCheck must be
+        /// enabled.
+        procMacro_enable: bool                     = "false",
+
+        /// Command to be executed instead of 'cargo' for runnables.
+        runnables_overrideCargo: Option<String> = "null",
+        /// Additional arguments to be passed to cargo for runnables such as
+        /// tests or binaries.\nFor example, it may be '--release'.
+        runnables_cargoExtraArgs: Vec<String>   = "[]",
+
+        /// Path to the rust compiler sources, for usage in rustc_private projects.
+        rustcSource : Option<String> = "null",
+
+        /// Additional arguments to rustfmt.
+        rustfmt_extraArgs: Vec<String>               = "[]",
+        /// Advanced option, fully override the command rust-analyzer uses for
+        /// formatting.
+        rustfmt_overrideCommand: Option<Vec<String>> = "null",
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct Config {
@@ -149,25 +301,27 @@ pub struct ClientCapsConfig {
 
 impl Config {
     pub fn new(root_path: AbsPathBuf) -> Self {
-        Config {
+        // Defaults here don't matter, we'll immediately re-write them with
+        // ConfigData.
+        let mut res = Config {
             client_caps: ClientCapsConfig::default(),
 
-            publish_diagnostics: true,
+            publish_diagnostics: false,
             diagnostics: DiagnosticsConfig::default(),
             diagnostics_map: DiagnosticsMapConfig::default(),
             lru_capacity: None,
             proc_macro_srv: None,
             files: FilesConfig { watcher: FilesWatcher::Notify, exclude: Vec::new() },
-            notifications: NotificationsConfig { cargo_toml_not_found: true },
+            notifications: NotificationsConfig { cargo_toml_not_found: false },
 
-            cargo_autoreload: true,
+            cargo_autoreload: false,
             cargo: CargoConfig::default(),
             rustfmt: RustfmtConfig::Rustfmt { extra_args: Vec::new() },
             flycheck: Some(FlycheckConfig::CargoCommand {
-                command: "check".to_string(),
+                command: String::new(),
                 target_triple: None,
                 no_default_features: false,
-                all_targets: true,
+                all_targets: false,
                 all_features: false,
                 extra_args: Vec::new(),
                 features: Vec::new(),
@@ -175,35 +329,32 @@ impl Config {
             runnables: RunnablesConfig::default(),
 
             inlay_hints: InlayHintsConfig {
-                type_hints: true,
-                parameter_hints: true,
-                chaining_hints: true,
+                type_hints: false,
+                parameter_hints: false,
+                chaining_hints: false,
                 max_length: None,
             },
-            completion: CompletionConfig {
-                enable_postfix_completions: true,
-                enable_autoimport_completions: true,
-                add_call_parenthesis: true,
-                add_call_argument_snippets: true,
-                ..CompletionConfig::default()
-            },
+            completion: CompletionConfig::default(),
             assist: AssistConfig::default(),
-            call_info_full: true,
+            call_info_full: false,
             lens: LensConfig::default(),
             hover: HoverConfig::default(),
             semantic_tokens_refresh: false,
             linked_projects: Vec::new(),
             root_path,
-        }
+        };
+        res.do_update(serde_json::json!({}));
+        res
     }
-
     pub fn update(&mut self, json: serde_json::Value) {
         log::info!("Config::update({:#})", json);
-
         if json.is_null() || json.as_object().map_or(false, |it| it.is_empty()) {
             return;
         }
-
+        self.do_update(json);
+        log::info!("Config::update() = {:#?}", self);
+    }
+    fn do_update(&mut self, json: serde_json::Value) {
         let data = ConfigData::from_json(json);
 
         self.publish_diagnostics = data.diagnostics_enable;
@@ -349,8 +500,6 @@ impl Config {
             links_in_hover: data.hoverActions_linksInHover,
             markdown: true,
         };
-
-        log::info!("Config::update() = {:#?}", self);
     }
 
     pub fn update_caps(&mut self, caps: &ClientCapabilities) {
@@ -434,6 +583,10 @@ impl Config {
             }
         }
     }
+
+    pub fn json_schema() -> serde_json::Value {
+        ConfigData::json_schema()
+    }
 }
 
 #[derive(Deserialize)]
@@ -459,94 +612,167 @@ enum ImportPrefixDef {
     ByCrate,
 }
 
-macro_rules! config_data {
-    (struct $name:ident { $($field:ident: $ty:ty = $default:expr,)*}) => {
+macro_rules! _config_data {
+    (struct $name:ident {
+        $(
+            $(#[doc=$doc:literal])*
+            $field:ident: $ty:ty = $default:expr,
+        )*
+    }) => {
         #[allow(non_snake_case)]
         struct $name { $($field: $ty,)* }
         impl $name {
             fn from_json(mut json: serde_json::Value) -> $name {
                 $name {$(
-                    $field: {
-                        let pointer = stringify!($field).replace('_', "/");
-                        let pointer = format!("/{}", pointer);
-                        json.pointer_mut(&pointer)
-                            .and_then(|it| serde_json::from_value(it.take()).ok())
-                            .unwrap_or($default)
-                    },
+                    $field: get_field(&mut json, stringify!($field), $default),
                 )*}
             }
-        }
 
+            fn json_schema() -> serde_json::Value {
+                schema(&[
+                    $({
+                        let field = stringify!($field);
+                        let ty = stringify!($ty);
+                        (field, ty, &[$($doc),*], $default)
+                    },)*
+                ])
+            }
+        }
     };
 }
+use _config_data as config_data;
 
-config_data! {
-    struct ConfigData {
-        assist_importMergeBehaviour: MergeBehaviourDef = MergeBehaviourDef::Full,
-        assist_importPrefix: ImportPrefixDef           = ImportPrefixDef::Plain,
+fn get_field<T: DeserializeOwned>(
+    json: &mut serde_json::Value,
+    field: &'static str,
+    default: &str,
+) -> T {
+    let default = serde_json::from_str(default).unwrap();
 
-        callInfo_full: bool = true,
+    let mut pointer = field.replace('_', "/");
+    pointer.insert(0, '/');
+    json.pointer_mut(&pointer)
+        .and_then(|it| serde_json::from_value(it.take()).ok())
+        .unwrap_or(default)
+}
 
-        cargo_autoreload: bool           = true,
-        cargo_allFeatures: bool          = false,
-        cargo_features: Vec<String>      = Vec::new(),
-        cargo_loadOutDirsFromCheck: bool = false,
-        cargo_noDefaultFeatures: bool    = false,
-        cargo_target: Option<String>     = None,
-        cargo_noSysroot: bool            = false,
-
-        checkOnSave_enable: bool                         = true,
-        checkOnSave_allFeatures: Option<bool>            = None,
-        checkOnSave_allTargets: bool                     = true,
-        checkOnSave_command: String                      = "check".into(),
-        checkOnSave_noDefaultFeatures: Option<bool>      = None,
-        checkOnSave_target: Option<String>               = None,
-        checkOnSave_extraArgs: Vec<String>               = Vec::new(),
-        checkOnSave_features: Option<Vec<String>>        = None,
-        checkOnSave_overrideCommand: Option<Vec<String>> = None,
-
-        completion_addCallArgumentSnippets: bool = true,
-        completion_addCallParenthesis: bool      = true,
-        completion_postfix_enable: bool          = true,
-        completion_autoimport_enable: bool       = true,
-
-        diagnostics_enable: bool                = true,
-        diagnostics_enableExperimental: bool    = true,
-        diagnostics_disabled: FxHashSet<String> = FxHashSet::default(),
-        diagnostics_warningsAsHint: Vec<String> = Vec::new(),
-        diagnostics_warningsAsInfo: Vec<String> = Vec::new(),
-
-        files_watcher: String = "client".into(),
-
-        hoverActions_debug: bool           = true,
-        hoverActions_enable: bool          = true,
-        hoverActions_gotoTypeDef: bool     = true,
-        hoverActions_implementations: bool = true,
-        hoverActions_run: bool             = true,
-        hoverActions_linksInHover: bool    = true,
-
-        inlayHints_chainingHints: bool      = true,
-        inlayHints_maxLength: Option<usize> = None,
-        inlayHints_parameterHints: bool     = true,
-        inlayHints_typeHints: bool          = true,
-
-        lens_debug: bool            = true,
-        lens_enable: bool           = true,
-        lens_implementations: bool  = true,
-        lens_run: bool              = true,
-        lens_methodReferences: bool = false,
-
-        linkedProjects: Vec<ManifestOrProjectJson> = Vec::new(),
-        lruCapacity: Option<usize>                 = None,
-        notifications_cargoTomlNotFound: bool      = true,
-        procMacro_enable: bool                     = false,
-
-        runnables_overrideCargo: Option<String> = None,
-        runnables_cargoExtraArgs: Vec<String>   = Vec::new(),
-
-        rustfmt_extraArgs: Vec<String>               = Vec::new(),
-        rustfmt_overrideCommand: Option<Vec<String>> = None,
-
-        rustcSource : Option<String> = None,
+fn schema(fields: &[(&'static str, &'static str, &[&str], &str)]) -> serde_json::Value {
+    for ((f1, ..), (f2, ..)) in fields.iter().zip(&fields[1..]) {
+        fn key(f: &str) -> &str {
+            f.splitn(2, "_").next().unwrap()
+        };
+        assert!(key(f1) <= key(f2), "wrong field order: {:?} {:?}", f1, f2);
     }
+
+    let map = fields
+        .iter()
+        .map(|(field, ty, doc, default)| {
+            let name = field.replace("_", ".");
+            let name = format!("rust-analyzer.{}", name);
+            let props = field_props(field, ty, doc, default);
+            (name, props)
+        })
+        .collect::<serde_json::Map<_, _>>();
+    map.into()
+}
+
+fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json::Value {
+    let doc = doc.iter().map(|it| it.trim()).join(" ");
+    assert!(
+        doc.ends_with('.') && doc.starts_with(char::is_uppercase),
+        "bad docs for {}: {:?}",
+        field,
+        doc
+    );
+    let default = default.parse::<serde_json::Value>().unwrap();
+
+    let mut map = serde_json::Map::default();
+    macro_rules! set {
+        ($($key:literal: $value:tt),*$(,)?) => {{$(
+            map.insert($key.into(), serde_json::json!($value));
+        )*}};
+    }
+    set!("markdownDescription": doc);
+    set!("default": default);
+
+    match ty {
+        "bool" => set!("type": "boolean"),
+        "String" => set!("type": "string"),
+        "Vec<String>" => set! {
+            "type": "array",
+            "items": { "type": "string" },
+        },
+        "FxHashSet<String>" => set! {
+            "type": "array",
+            "items": { "type": "string" },
+            "uniqueItems": true,
+        },
+        "Option<usize>" => set! {
+            "type": ["null", "integer"],
+            "minimum": 0,
+        },
+        "Option<String>" => set! {
+            "type": ["null", "string"],
+        },
+        "Option<bool>" => set! {
+            "type": ["null", "boolean"],
+        },
+        "Option<Vec<String>>" => set! {
+            "type": ["null", "array"],
+            "items": { "type": "string" },
+        },
+        "MergeBehaviourDef" => set! {
+            "type": "string",
+            "enum": ["none", "full", "last"],
+            "enumDescriptions": [
+                "No merging",
+                "Merge all layers of the import trees",
+                "Only merge the last layer of the import trees"
+            ],
+        },
+        "ImportPrefixDef" => set! {
+            "type": "string",
+            "enum": [
+                "plain",
+                "by_self",
+                "by_crate"
+            ],
+            "enumDescriptions": [
+                "Insert import paths relative to the current module, using up to one `super` prefix if the parent module contains the requested item.",
+                "Prefix all import paths with `self` if they don't begin with `self`, `super`, `crate` or a crate name",
+                "Force import paths to be absolute by always starting them with `crate` or the crate name they refer to."
+            ],
+        },
+        "Vec<ManifestOrProjectJson>" => set! {
+            "type": "array",
+            "items": { "type": ["string", "object"] },
+        },
+        _ => panic!("{}: {}", ty, default),
+    }
+
+    map.into()
+}
+
+#[test]
+fn schema_in_sync_with_package_json() {
+    fn remove_ws(text: &str) -> String {
+        text.replace(char::is_whitespace, "")
+    }
+
+    let s = Config::json_schema();
+    let schema = format!("{:#}", s);
+    let schema = schema.trim_start_matches('{').trim_end_matches('}');
+
+    let package_json = std::env::current_dir()
+        .unwrap()
+        .ancestors()
+        .nth(2)
+        .unwrap()
+        .join("editors/code/package.json");
+    let package_json = std::fs::read_to_string(&package_json).unwrap();
+
+    let p = remove_ws(&package_json);
+    let s = remove_ws(&schema);
+
+    assert!(p.contains(&s), "update config in package.json. New config:\n{:#}", schema);
 }

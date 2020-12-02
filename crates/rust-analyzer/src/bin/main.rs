@@ -31,6 +31,9 @@ fn try_main() -> Result<()> {
     setup_logging(args.log_file)?;
     match args.command {
         args::Command::RunServer => run_server()?,
+        args::Command::PrintConfigSchema => {
+            println!("{:#}", Config::json_schema());
+        }
         args::Command::ProcMacro => proc_macro_srv::cli::run()?,
 
         args::Command::Parse { no_dump } => cli::parse(no_dump)?,
