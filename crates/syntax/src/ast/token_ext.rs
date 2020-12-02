@@ -543,11 +543,6 @@ impl HasFormatSpecifier for ast::String {
 }
 
 impl ast::IntNumber {
-    const SUFFIXES: &'static [&'static str] = &[
-        "u8", "u16", "u32", "u64", "u128", "usize", // Unsigned.
-        "i8", "i16", "i32", "i64", "i128", "isize", // Signed.
-    ];
-
     pub fn radix(&self) -> Radix {
         match self.text().get(..2).unwrap_or_default() {
             "0b" => Radix::Binary,
@@ -580,29 +575,30 @@ impl ast::IntNumber {
 
     pub fn suffix(&self) -> Option<&str> {
         let text = self.text();
-        // FIXME: don't check a fixed set of suffixes, `1_0_1_l_o_l` is valid
-        // syntax, suffix is `l_o_l`.
-        ast::IntNumber::SUFFIXES.iter().chain(ast::FloatNumber::SUFFIXES.iter()).find_map(
-            |suffix| {
-                if text.ends_with(suffix) {
-                    return Some(&text[text.len() - suffix.len()..]);
-                }
-                None
-            },
-        )
+        let radix = self.radix();
+        let mut indices = text.char_indices();
+        if radix != Radix::Decimal {
+            indices.next()?;
+            indices.next()?;
+        }
+        let is_suffix_start: fn(&(usize, char)) -> bool = match radix {
+            Radix::Hexadecimal => |(_, c)| matches!(c, 'g'..='z' | 'G'..='Z'),
+            _ => |(_, c)| c.is_ascii_alphabetic(),
+        };
+        let (suffix_start, _) = indices.find(is_suffix_start)?;
+        Some(&text[suffix_start..])
     }
 }
 
 impl ast::FloatNumber {
-    const SUFFIXES: &'static [&'static str] = &["f32", "f64"];
     pub fn suffix(&self) -> Option<&str> {
         let text = self.text();
-        ast::FloatNumber::SUFFIXES.iter().find_map(|suffix| {
-            if text.ends_with(suffix) {
-                return Some(&text[text.len() - suffix.len()..]);
-            }
-            None
-        })
+        let mut indices = text.char_indices();
+        let (mut suffix_start, c) = indices.by_ref().find(|(_, c)| c.is_ascii_alphabetic())?;
+        if c == 'e' || c == 'E' {
+            suffix_start = indices.find(|(_, c)| c.is_ascii_alphabetic())?.0;
+        }
+        Some(&text[suffix_start..])
     }
 }
 
@@ -623,5 +619,42 @@ impl Radix {
             Self::Decimal => 0,
             _ => 2,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::ast::{make, FloatNumber, IntNumber};
+
+    fn check_float_suffix<'a>(lit: &str, expected: impl Into<Option<&'a str>>) {
+        assert_eq!(FloatNumber { syntax: make::tokens::literal(lit) }.suffix(), expected.into());
+    }
+
+    fn check_int_suffix<'a>(lit: &str, expected: impl Into<Option<&'a str>>) {
+        assert_eq!(IntNumber { syntax: make::tokens::literal(lit) }.suffix(), expected.into());
+    }
+
+    #[test]
+    fn test_float_number_suffix() {
+        check_float_suffix("123.0", None);
+        check_float_suffix("123f32", "f32");
+        check_float_suffix("123.0e", None);
+        check_float_suffix("123.0e4", None);
+        check_float_suffix("123.0ef32", "f32");
+        check_float_suffix("123.0E4f32", "f32");
+        check_float_suffix("1_2_3.0_f32", "f32");
+    }
+
+    #[test]
+    fn test_int_number_suffix() {
+        check_int_suffix("123", None);
+        check_int_suffix("123i32", "i32");
+        check_int_suffix("1_0_1_l_o_l", "l_o_l");
+        check_int_suffix("0b11", None);
+        check_int_suffix("0o11", None);
+        check_int_suffix("0xff", None);
+        check_int_suffix("0b11u32", "u32");
+        check_int_suffix("0o11u32", "u32");
+        check_int_suffix("0xffu32", "u32");
     }
 }
