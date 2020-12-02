@@ -1,0 +1,8 @@
+error: untyped pointers are not allowed in constant
+  --> $DIR/alloc_intrinsic_nontransient_fail.rs:7:1
+   |
+LL | const FOO: *const i32 = foo();
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

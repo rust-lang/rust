@@ -1,7 +1,7 @@
 // build-fail
 
 pub const unsafe fn fake_type<T>() -> T {
-    hint_unreachable() //~ 4:23: any use of this value will cause an error [const_err]
+    hint_unreachable() //~ ERROR any use of this value will cause an error [const_err]
 }
 
 pub const unsafe fn hint_unreachable() -> ! {

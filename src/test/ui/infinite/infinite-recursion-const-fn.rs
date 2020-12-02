@@ -1,7 +1,7 @@
 //https://github.com/rust-lang/rust/issues/31364
 
 const fn a() -> usize {
-    b() //~ 4:8: evaluation of constant value failed [E0080]
+    b() //~ ERROR evaluation of constant value failed [E0080]
 }
 const fn b() -> usize {
     a()

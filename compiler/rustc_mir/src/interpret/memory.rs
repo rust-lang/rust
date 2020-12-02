@@ -28,7 +28,7 @@ pub enum MemoryKind<T> {
     /// Stack memory. Error if deallocated except during a stack pop.
     Stack,
     /// Heap memory.
-    Heap,
+    ConstHeap,
     /// Memory backing vtables. Error if ever deallocated.
     Vtable,
     /// Memory allocated by `caller_location` intrinsic. Error if ever deallocated.
@@ -42,7 +42,7 @@ impl<T: MayLeak> MayLeak for MemoryKind<T> {
     fn may_leak(self) -> bool {
         match self {
             MemoryKind::Stack => false,
-            MemoryKind::Heap => false,
+            MemoryKind::ConstHeap => false,
             MemoryKind::Vtable => true,
             MemoryKind::CallerLocation => true,
             MemoryKind::Machine(k) => k.may_leak(),
@@ -54,7 +54,7 @@ impl<T: fmt::Display> fmt::Display for MemoryKind<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             MemoryKind::Stack => write!(f, "stack variable"),
-            MemoryKind::Heap => write!(f, "heap allocation"),
+            MemoryKind::ConstHeap => write!(f, "heap allocation"),
             MemoryKind::Vtable => write!(f, "vtable"),
             MemoryKind::CallerLocation => write!(f, "caller location"),
             MemoryKind::Machine(m) => write!(f, "{}", m),

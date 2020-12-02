@@ -347,8 +347,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     Err(err) => throw_ub_format!("align has to be a power of 2, {}", err),
                 };
 
-                let ptr =
-                    self.memory.allocate(Size::from_bytes(size as u64), align, MemoryKind::Heap);
+                let ptr = self.memory.allocate(
+                    Size::from_bytes(size as u64),
+                    align,
+                    MemoryKind::ConstHeap,
+                );
                 self.write_scalar(Scalar::Ptr(ptr), dest)?;
             }
             sym::offset => {
