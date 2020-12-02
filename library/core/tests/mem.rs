@@ -129,3 +129,21 @@ fn test_discriminant_send_sync() {
     is_send_sync::<Discriminant<Regular>>();
     is_send_sync::<Discriminant<NotSendSync>>();
 }
+
+#[test]
+fn assume_init_good() {
+    const TRUE: bool = {
+        let mut x = MaybeUninit::<bool>::uninit();
+        x.as_mut_ptr().write(true);
+        x.assume_init()
+    };
+    assert!(TRUE);
+}
+
+#[test]
+#[should_panic]
+fn assume_init_bad() {
+    const BAD: () = {
+        MaybeUninit::<!>::uninit().assume_init();
+    };
+}
