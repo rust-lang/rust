@@ -100,6 +100,9 @@ fn f() {
     env!(invalid);
   //^^^^^^^^^^^^^ could not convert tokens
 
+    env!("OUT_DIR");
+  //^^^^^^^^^^^^^^^ `OUT_DIR` not set, enable "load out dirs from check" to fix
+
     // Lazy:
 
     format_args!();

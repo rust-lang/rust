@@ -417,17 +417,25 @@ fn env_expand(
         Err(e) => return ExpandResult::only_err(e),
     };
 
-    // FIXME:
-    // If the environment variable is not defined int rustc, then a compilation error will be emitted.
-    // We might do the same if we fully support all other stuffs.
-    // But for now on, we should return some dummy string for better type infer purpose.
-    // However, we cannot use an empty string here, because for
-    // `include!(concat!(env!("OUT_DIR"), "/foo.rs"))` will become
-    // `include!("foo.rs"), which might go to infinite loop
-    let s = get_env_inner(db, arg_id, &key).unwrap_or_else(|| "__RA_UNIMPLEMENTED__".to_string());
+    let mut err = None;
+    let s = get_env_inner(db, arg_id, &key).unwrap_or_else(|| {
+        // The only variable rust-analyzer ever sets is `OUT_DIR`, so only diagnose that to avoid
+        // unnecessary diagnostics for eg. `CARGO_PKG_NAME`.
+        if key == "OUT_DIR" {
+            err = Some(mbe::ExpandError::Other(
+                r#"`OUT_DIR` not set, enable "load out dirs from check" to fix"#.into(),
+            ));
+        }
+
+        // If the variable is unset, still return a dummy string to help type inference along.
+        // We cannot use an empty string here, because for
+        // `include!(concat!(env!("OUT_DIR"), "/foo.rs"))` will become
+        // `include!("foo.rs"), which might go to infinite loop
+        "__RA_UNIMPLEMENTED__".to_string()
+    });
     let expanded = quote! { #s };
 
-    ExpandResult::ok(Some((expanded, FragmentKind::Expr)))
+    ExpandResult { value: Some((expanded, FragmentKind::Expr)), err }
 }
 
 fn option_env_expand(
