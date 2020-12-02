@@ -1,4 +1,4 @@
-#![allow(unused_assignments)]
+#![allow(unused_assignments, unused_variables)]
 
 fn main() {
     let result

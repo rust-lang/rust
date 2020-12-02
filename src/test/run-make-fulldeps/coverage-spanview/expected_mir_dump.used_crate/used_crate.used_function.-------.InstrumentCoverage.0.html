@@ -2,7 +2,7 @@
 <!--
 
 Preview this file as rendered HTML from the github source at:
-https://htmlpreview.github.io/?https://github.com/rust-lang/rust/blob/master/src/test/run-make-fulldeps/coverage-spanview/expected_mir_dump.uses_crate/uses_crate.used_crate-used_function.-------.InstrumentCoverage.0.html
+https://htmlpreview.github.io/?https://github.com/rust-lang/rust/blob/master/src/test/run-make-fulldeps/coverage-spanview/expected_mir_dump.used_crate/used_crate.used_function.-------.InstrumentCoverage.0.html
 
 For revisions in Pull Requests (PR):
   * Replace "rust-lang" with the github PR author
@@ -11,7 +11,7 @@ For revisions in Pull Requests (PR):
 -->
 <html>
 <head>
-<title>uses_crate.used_crate-used_function - Coverage Spans</title>
+<title>used_crate.used_function - Coverage Spans</title>
 <style>
     .line {
         counter-increment: line;
@@ -105,9 +105,9 @@ For revisions in Pull Requests (PR):
 11:16-13:6: @6[1]: _6 = const ()">        countdown = 10;</span></span>
 <span class="line"><span class="code odd" style="--layer: 1" title="12:9-12:23: @6[0]: _5 = const 10_i32
 11:16-13:6: @6[1]: _6 = const ()">    }<span class="annotation">⦉@4,6</span></span></span><span><span class="code even" style="--layer: 1" title="13:6-13:6: @5[0]: _6 = const ()"><span class="annotation">@5⦊</span>‸<span class="annotation">⦉@5</span></span></span><span class="code" style="--layer: 0"></span></span>
-<span class="line"><span class="code" style="--layer: 0">    </span><span><span class="code odd" style="--layer: 1" title="14:5-14:44: @7.Call: _8 = used_twice_generic_function::&lt;&amp;str&gt;(const &quot;some str&quot;) -&gt; [return: bb8, unwind: bb10]
-15:2-15:2: @8.Return: return"><span class="annotation">@7,8⦊</span>used_twice_generic_function("some str");</span></span>
-<span class="line"><span class="code odd" style="--layer: 1" title="14:5-14:44: @7.Call: _8 = used_twice_generic_function::&lt;&amp;str&gt;(const &quot;some str&quot;) -&gt; [return: bb8, unwind: bb10]
+<span class="line"><span class="code" style="--layer: 0">    </span><span><span class="code odd" style="--layer: 1" title="14:5-14:25: @7.Call: _8 = use_this_lib_crate() -&gt; [return: bb8, unwind: bb10]
+15:2-15:2: @8.Return: return"><span class="annotation">@7,8⦊</span>use_this_lib_crate();</span></span>
+<span class="line"><span class="code odd" style="--layer: 1" title="14:5-14:25: @7.Call: _8 = use_this_lib_crate() -&gt; [return: bb8, unwind: bb10]
 15:2-15:2: @8.Return: return">}<span class="annotation">⦉@7,8</span></span></span></span></div>
 </body>
 </html>

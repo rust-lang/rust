@@ -1,4 +1,4 @@
-    1|       |#![allow(unused_assignments)]
+    1|       |#![allow(unused_assignments, dead_code)]
     2|       |
     3|       |// require-rust-edition-2018
     4|       |

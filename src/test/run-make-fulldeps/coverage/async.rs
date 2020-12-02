@@ -1,4 +1,4 @@
-#![allow(unused_assignments)]
+#![allow(unused_assignments, dead_code)]
 
 // require-rust-edition-2018
 

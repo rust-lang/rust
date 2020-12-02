@@ -2,7 +2,7 @@
 <!--
 
 Preview this file as rendered HTML from the github source at:
-https://htmlpreview.github.io/?https://github.com/rust-lang/rust/blob/master/src/test/run-make-fulldeps/coverage-spanview/expected_mir_dump.uses_crate/uses_crate.used_crate-unused_private_function.-------.InstrumentCoverage.0.html
+https://htmlpreview.github.io/?https://github.com/rust-lang/rust/blob/master/src/test/run-make-fulldeps/coverage-spanview/expected_mir_dump.used_crate/used_crate.unused_function.-------.InstrumentCoverage.0.html
 
 For revisions in Pull Requests (PR):
   * Replace "rust-lang" with the github PR author
@@ -11,7 +11,7 @@ For revisions in Pull Requests (PR):
 -->
 <html>
 <head>
-<title>uses_crate.used_crate-unused_private_function - Coverage Spans</title>
+<title>used_crate.unused_function - Coverage Spans</title>
 <style>
     .line {
         counter-increment: line;
@@ -78,7 +78,7 @@ For revisions in Pull Requests (PR):
 39:9-39:22: @3[3]: FakeRead(ForLet, _5)
 40:9-40:16: @3[6]: _7 = _1
 40:8-40:16: @3[7]: _6 = Not(move _7)
-40:8-40:16: @3[9]: FakeRead(ForMatchedPlace, _6)"><span class="annotation">@0,1,2,3⦊</span>fn unused_private_function() {</span></span>
+40:8-40:16: @3[9]: FakeRead(ForMatchedPlace, _6)"><span class="annotation">@0,1,2,3⦊</span>pub fn unused_function() {</span></span>
 <span class="line"><span class="code even" style="--layer: 1" title="38:19-38:35: @0.Call: _4 = args() -&gt; [return: bb1, unwind: bb9]
 38:19-38:35: @1[0]: _3 = &amp;_4
 38:19-38:41: @1.Call: _2 = &lt;Args as ExactSizeIterator&gt;::len(move _3) -&gt; [return: bb2, unwind: bb8]

@@ -67,7 +67,7 @@ DEBUG_FLAG=--debug
 endif
 
 ifeq ($(LLVM_VERSION_11_PLUS),true)
-all: $(patsubst $(SOURCEDIR)/%.rs,%,$(wildcard $(SOURCEDIR)/*.rs))
+all: $(patsubst $(SOURCEDIR)/lib/%.rs,%,$(wildcard $(SOURCEDIR)/lib/*.rs)) $(patsubst $(SOURCEDIR)/%.rs,%,$(wildcard $(SOURCEDIR)/*.rs))
 else
 $(info Rust option `-Z instrument-coverage` requires LLVM 11 or higher. Test skipped.)
 all:
@@ -84,12 +84,22 @@ endif
 
 -include clear_expected_if_blessed
 
+%: $(SOURCEDIR)/lib/%.rs
+	# Compile the test library with coverage instrumentation
+	$(RUSTC) $(SOURCEDIR)/lib/$@.rs \
+			$$( grep -q '^\/\/ require-rust-edition-2018' $(SOURCEDIR)/lib/$@.rs && \
+				echo "--edition=2018" \
+			) \
+			--crate-type rlib \
+			-Zinstrument-coverage
+
 %: $(SOURCEDIR)/%.rs
-	# Compile the test program with coverage instrumentation and generate relevant MIR.
+	# Compile the test program with coverage instrumentation
 	$(RUSTC) $(SOURCEDIR)/$@.rs \
 			$$( grep -q '^\/\/ require-rust-edition-2018' $(SOURCEDIR)/$@.rs && \
 				echo "--edition=2018" \
 			) \
+			-L "$(TMPDIR)" \
 			-Zinstrument-coverage
 
 	# Run it in order to generate some profiling data,
@@ -142,8 +152,17 @@ else
 	# Compare the show coverage output (`--bless` refreshes `typical` files)
 	# Note `llvm-cov show` output for some programs can vary, but can be ignored
 	# by inserting `// ignore-llvm-cov-show-diffs` at the top of the source file.
+	#
+	# FIXME(richkadel): It looks like most past variations seem to have been mitigated. None of the
+	# Rust test source samples have the `// ignore-llvm-cov-show-diffs` anymore. The main variation
+	# I had seen (and is still present in the new `coverage/lib/used_crate.rs`) is the `llvm-cov show`
+	# reporting of multiple instantiations of a generic function with different type substitutions.
+	# For some reason, `llvm-cov show` can report these in a non-deterministic order, breaking the
+	# `diff` comparision. I was able to work around the problem with `diff --ignore-matching-lines=RE`
+	# to ignore each line prefixing each generic instantiation coverage code region.
 
-	$(DIFF) expected_show_coverage.$@.txt "$(TMPDIR)"/actual_show_coverage.$@.txt || \
+	$(DIFF) --ignore-matching-lines='::<.*>.*:$$' \
+		expected_show_coverage.$@.txt "$(TMPDIR)"/actual_show_coverage.$@.txt || \
 		( grep -q '^\/\/ ignore-llvm-cov-show-diffs' $(SOURCEDIR)/$@.rs && \
 			>&2 echo 'diff failed, but suppressed with `// ignore-llvm-cov-show-diffs` in $(SOURCEDIR)/$@.rs' \
 		) || \
@@ -177,6 +196,10 @@ endif
 			$(call BIN,"$(TMPDIR)"/$@) \
 		| "$(PYTHON)" $(BASEDIR)/prettify_json.py \
 		> "$(TMPDIR)"/actual_export_coverage.$@.json
+	# FIXME(richkadel): With the addition of `--ignore-matching-lines=RE` to ignore the
+	# non-deterministically-ordered coverage results for multiple instantiations of generics with
+	# differing type substitutions, I probably don't need the `.json` files anymore (and may not
+	# need `prettify_json.py` either).
 
 ifdef RUSTC_BLESS_TEST
 	cp "$(TMPDIR)"/actual_export_coverage.$@.json expected_export_coverage.$@.json
