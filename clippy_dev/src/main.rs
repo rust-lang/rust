@@ -1,10 +1,11 @@
 #![cfg_attr(feature = "deny-warnings", deny(warnings))]
 
 use clap::{App, Arg, SubCommand};
-use clippy_dev::{fmt, new_lint, ra_setup, serve, stderr_length_check, update_lints};
+use clippy_dev::{bless, fmt, new_lint, ra_setup, serve, stderr_length_check, update_lints};
 
 fn main() {
     let matches = App::new("Clippy developer tooling")
+        .subcommand(SubCommand::with_name("bless").about("bless the test output changes"))
         .subcommand(
             SubCommand::with_name("fmt")
                 .about("Run rustfmt on all projects and tests")
@@ -116,6 +117,9 @@ fn main() {
         .get_matches();
 
     match matches.subcommand() {
+        ("bless", Some(_)) => {
+            bless::bless();
+        },
         ("fmt", Some(matches)) => {
             fmt::run(matches.is_present("check"), matches.is_present("verbose"));
         },

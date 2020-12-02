@@ -98,12 +98,12 @@ While we are working on implementing our lint, we can keep running the UI
 test. That allows us to check if the output is turning into what we want.
 
 Once we are satisfied with the output, we need to run
-`tests/ui/update-all-references.sh` to update the `.stderr` file for our lint.
+`cargo dev bless` to update the `.stderr` file for our lint.
 Please note that, we should run `TESTNAME=foo_functions cargo uitest`
-every time before running `tests/ui/update-all-references.sh`.
+every time before running `cargo dev bless`.
 Running `TESTNAME=foo_functions cargo uitest` should pass then. When we commit
 our lint, we need to commit the generated `.stderr` files, too. In general, you
-should only commit files changed by `tests/ui/update-all-references.sh` for the
+should only commit files changed by `cargo dev bless` for the
 specific lint you are creating/editing. Note that if the generated files are
 empty, they should be removed.
 
@@ -122,8 +122,7 @@ we will find by default two new crates, each with its manifest file:
 If you need more cases, you can copy one of those crates (under `foo_categories`) and rename it.
 
 The process of generating the `.stderr` file is the same, and prepending the `TESTNAME`
-variable to `cargo uitest` works too, but the script to update the references
-is in another path: `tests/ui-cargo/update-all-references.sh`.
+variable to `cargo uitest` works too.
 
 ## Rustfix tests
 
@@ -133,7 +132,7 @@ additionally run [rustfix] for that test. Rustfix will apply the suggestions
 from the lint to the code of the test file and compare that to the contents of
 a `.fixed` file.
 
-Use `tests/ui/update-all-references.sh` to automatically generate the
+Use `cargo dev bless` to automatically generate the
 `.fixed` file after running the tests.
 
 [rustfix]: https://github.com/rust-lang/rustfix
@@ -368,7 +367,7 @@ fn is_foo_fn(fn_kind: FnKind<'_>) -> bool {
 
 Now we should also run the full test suite with `cargo test`. At this point
 running `cargo test` should produce the expected output. Remember to run
-`tests/ui/update-all-references.sh` to update the `.stderr` file.
+`cargo dev bless` to update the `.stderr` file.
 
 `cargo test` (as opposed to `cargo uitest`) will also ensure that our lint
 implementation is not violating any Clippy lints itself.
