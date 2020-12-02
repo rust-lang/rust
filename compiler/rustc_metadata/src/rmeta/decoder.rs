@@ -1592,23 +1592,6 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         self.def_path_hash_unlocked(index, &mut def_path_hashes)
     }
 
-    fn all_def_path_hashes_and_def_ids(&self) -> Vec<(DefPathHash, DefId)> {
-        let mut def_path_hashes = self.def_path_hash_cache.lock();
-        let mut def_index_to_data = |index| {
-            (self.def_path_hash_unlocked(index, &mut def_path_hashes), self.local_def_id(index))
-        };
-        if let Some(data) = &self.root.proc_macro_data {
-            std::iter::once(CRATE_DEF_INDEX)
-                .chain(data.macros.decode(self))
-                .map(def_index_to_data)
-                .collect()
-        } else {
-            (0..self.num_def_ids())
-                .map(|index| def_index_to_data(DefIndex::from_usize(index)))
-                .collect()
-        }
-    }
-
     /// Get the `DepNodeIndex` corresponding this crate. The result of this
     /// method is cached in the `dep_node_index` field.
     fn get_crate_dep_node_index(&self, tcx: TyCtxt<'tcx>) -> DepNodeIndex {

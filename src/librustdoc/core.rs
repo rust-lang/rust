@@ -13,7 +13,6 @@ use rustc_hir::{
 };
 use rustc_interface::interface;
 use rustc_middle::hir::map::Map;
-use rustc_middle::middle::cstore::CrateStore;
 use rustc_middle::middle::privacy::AccessLevels;
 use rustc_middle::ty::{ParamEnv, Ty, TyCtxt};
 use rustc_resolve as resolve;
