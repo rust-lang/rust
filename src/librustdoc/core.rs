@@ -371,6 +371,7 @@ crate fn run_core(
         error_format,
         edition,
         describe_lints,
+        crate_name,
         ..Options::default()
     };
 
@@ -384,7 +385,6 @@ crate fn run_core(
         file_loader: None,
         diagnostic_output: DiagnosticOutput::Default,
         stderr: None,
-        crate_name,
         lint_caps,
         register_lints: None,
         override_queries: Some(|_sess, providers, _external_providers| {

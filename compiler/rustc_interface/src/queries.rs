@@ -156,13 +156,11 @@ impl<'tcx> Queries<'tcx> {
 
     pub fn crate_name(&self) -> Result<&Query<String>> {
         self.crate_name.compute(|| {
-            Ok(match self.compiler.crate_name {
-                Some(ref crate_name) => crate_name.clone(),
-                None => {
-                    let parse_result = self.parse()?;
-                    let krate = parse_result.peek();
-                    find_crate_name(self.session(), &krate.attrs, &self.compiler.input)
-                }
+            Ok({
+                let parse_result = self.parse()?;
+                let krate = parse_result.peek();
+                // parse `#[crate_name]` even if `--crate-name` was passed, to make sure it matches.
+                find_crate_name(self.session(), &krate.attrs, &self.compiler.input)
             })
         })
     }

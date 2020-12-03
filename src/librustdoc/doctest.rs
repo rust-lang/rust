@@ -74,6 +74,7 @@ crate fn run(options: Options) -> Result<(), ErrorReported> {
         debugging_opts: config::DebuggingOptions { ..config::basic_debugging_options() },
         edition: options.edition,
         target_triple: options.target.clone(),
+        crate_name: options.crate_name.clone(),
         ..config::Options::default()
     };
 
@@ -90,7 +91,6 @@ crate fn run(options: Options) -> Result<(), ErrorReported> {
         file_loader: None,
         diagnostic_output: DiagnosticOutput::Default,
         stderr: None,
-        crate_name: options.crate_name.clone(),
         lint_caps,
         register_lints: None,
         override_queries: None,
