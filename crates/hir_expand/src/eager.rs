@@ -26,9 +26,76 @@ use crate::{
 };
 
 use base_db::CrateId;
+use mbe::ExpandResult;
 use parser::FragmentKind;
 use std::sync::Arc;
 use syntax::{algo::SyntaxRewriter, SyntaxNode};
+
+pub struct ErrorEmitted {
+    _private: (),
+}
+
+trait ErrorSink {
+    fn emit(&mut self, err: mbe::ExpandError);
+
+    fn option<T>(
+        &mut self,
+        opt: Option<T>,
+        error: impl FnOnce() -> mbe::ExpandError,
+    ) -> Result<T, ErrorEmitted> {
+        match opt {
+            Some(it) => Ok(it),
+            None => {
+                self.emit(error());
+                Err(ErrorEmitted { _private: () })
+            }
+        }
+    }
+
+    fn option_with<T>(
+        &mut self,
+        opt: impl FnOnce() -> Option<T>,
+        error: impl FnOnce() -> mbe::ExpandError,
+    ) -> Result<T, ErrorEmitted> {
+        self.option(opt(), error)
+    }
+
+    fn result<T>(&mut self, res: Result<T, mbe::ExpandError>) -> Result<T, ErrorEmitted> {
+        match res {
+            Ok(it) => Ok(it),
+            Err(e) => {
+                self.emit(e);
+                Err(ErrorEmitted { _private: () })
+            }
+        }
+    }
+
+    fn expand_result_option<T>(&mut self, res: ExpandResult<Option<T>>) -> Result<T, ErrorEmitted> {
+        match (res.value, res.err) {
+            (None, Some(err)) => {
+                self.emit(err);
+                Err(ErrorEmitted { _private: () })
+            }
+            (Some(value), opt_err) => {
+                if let Some(err) = opt_err {
+                    self.emit(err);
+                }
+                Ok(value)
+            }
+            (None, None) => unreachable!("`ExpandResult` without value or error"),
+        }
+    }
+}
+
+impl ErrorSink for &'_ mut dyn FnMut(mbe::ExpandError) {
+    fn emit(&mut self, err: mbe::ExpandError) {
+        self(err);
+    }
+}
+
+fn err(msg: impl Into<String>) -> mbe::ExpandError {
+    mbe::ExpandError::Other(msg.into())
+}
 
 pub fn expand_eager_macro(
     db: &dyn AstDatabase,
@@ -36,9 +103,12 @@ pub fn expand_eager_macro(
     macro_call: InFile<ast::MacroCall>,
     def: MacroDefId,
     resolver: &dyn Fn(ast::Path) -> Option<MacroDefId>,
-) -> Option<EagerMacroId> {
-    let args = macro_call.value.token_tree()?;
-    let parsed_args = mbe::ast_to_token_tree(&args)?.0;
+    mut diagnostic_sink: &mut dyn FnMut(mbe::ExpandError),
+) -> Result<EagerMacroId, ErrorEmitted> {
+    let parsed_args = diagnostic_sink.option_with(
+        || Some(mbe::ast_to_token_tree(&macro_call.value.token_tree()?)?.0),
+        || err("malformed macro invocation"),
+    )?;
 
     // Note:
     // When `lazy_expand` is called, its *parent* file must be already exists.
@@ -55,17 +125,22 @@ pub fn expand_eager_macro(
     });
     let arg_file_id: MacroCallId = arg_id.into();
 
-    let parsed_args = mbe::token_tree_to_syntax_node(&parsed_args, FragmentKind::Expr).ok()?.0;
+    let parsed_args =
+        diagnostic_sink.result(mbe::token_tree_to_syntax_node(&parsed_args, FragmentKind::Expr))?.0;
     let result = eager_macro_recur(
         db,
         InFile::new(arg_file_id.as_file(), parsed_args.syntax_node()),
         krate,
         resolver,
+        diagnostic_sink,
     )?;
-    let subtree = to_subtree(&result)?;
+    let subtree =
+        diagnostic_sink.option(to_subtree(&result), || err("failed to parse macro result"))?;
 
     if let MacroDefKind::BuiltInEager(eager) = def.kind {
-        let (subtree, fragment) = eager.expand(db, arg_id, &subtree).value?;
+        let res = eager.expand(db, arg_id, &subtree);
+
+        let (subtree, fragment) = diagnostic_sink.expand_result_option(res)?;
         let eager = EagerCallLoc {
             def,
             fragment,
@@ -74,9 +149,9 @@ pub fn expand_eager_macro(
             file_id: macro_call.file_id,
         };
 
-        Some(db.intern_eager_expansion(eager))
+        Ok(db.intern_eager_expansion(eager))
     } else {
-        None
+        panic!("called `expand_eager_macro` on non-eager macro def {:?}", def);
     }
 }
 
@@ -91,13 +166,16 @@ fn lazy_expand(
     def: &MacroDefId,
     macro_call: InFile<ast::MacroCall>,
     krate: CrateId,
-) -> Option<InFile<SyntaxNode>> {
+) -> ExpandResult<Option<InFile<SyntaxNode>>> {
     let ast_id = db.ast_id_map(macro_call.file_id).ast_id(&macro_call.value);
 
     let id: MacroCallId =
         def.as_lazy_macro(db, krate, MacroCallKind::FnLike(macro_call.with_value(ast_id))).into();
 
-    db.parse_or_expand(id.as_file()).map(|node| InFile::new(id.as_file(), node))
+    let err = db.macro_expand_error(id);
+    let value = db.parse_or_expand(id.as_file()).map(|node| InFile::new(id.as_file(), node));
+
+    ExpandResult { value, err }
 }
 
 fn eager_macro_recur(
@@ -105,7 +183,8 @@ fn eager_macro_recur(
     curr: InFile<SyntaxNode>,
     krate: CrateId,
     macro_resolver: &dyn Fn(ast::Path) -> Option<MacroDefId>,
-) -> Option<SyntaxNode> {
+    mut diagnostic_sink: &mut dyn FnMut(mbe::ExpandError),
+) -> Result<SyntaxNode, ErrorEmitted> {
     let original = curr.value.clone();
 
     let children = curr.value.descendants().filter_map(ast::MacroCall::cast);
@@ -113,7 +192,8 @@ fn eager_macro_recur(
 
     // Collect replacement
     for child in children {
-        let def: MacroDefId = macro_resolver(child.path()?)?;
+        let def = diagnostic_sink
+            .option_with(|| macro_resolver(child.path()?), || err("failed to resolve macro"))?;
         let insert = match def.kind {
             MacroDefKind::BuiltInEager(_) => {
                 let id: MacroCallId = expand_eager_macro(
@@ -122,17 +202,21 @@ fn eager_macro_recur(
                     curr.with_value(child.clone()),
                     def,
                     macro_resolver,
+                    diagnostic_sink,
                 )?
                 .into();
-                db.parse_or_expand(id.as_file())?
+                db.parse_or_expand(id.as_file())
+                    .expect("successful macro expansion should be parseable")
             }
             MacroDefKind::Declarative
             | MacroDefKind::BuiltIn(_)
             | MacroDefKind::BuiltInDerive(_)
             | MacroDefKind::ProcMacro(_) => {
-                let expanded = lazy_expand(db, &def, curr.with_value(child.clone()), krate)?;
+                let res = lazy_expand(db, &def, curr.with_value(child.clone()), krate);
+                let val = diagnostic_sink.expand_result_option(res)?;
+
                 // replace macro inside
-                eager_macro_recur(db, expanded, krate, macro_resolver)?
+                eager_macro_recur(db, val, krate, macro_resolver, diagnostic_sink)?
             }
         };
 
@@ -140,5 +224,5 @@ fn eager_macro_recur(
     }
 
     let res = rewriter.rewrite(&original);
-    Some(res)
+    Ok(res)
 }

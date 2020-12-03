@@ -78,21 +78,41 @@ fn f() {
 fn macro_diag_builtin() {
     check_diagnostics(
         r#"
+#[rustc_builtin_macro]
+macro_rules! env {}
+
+#[rustc_builtin_macro]
+macro_rules! include {}
+
+#[rustc_builtin_macro]
+macro_rules! compile_error {}
+
+#[rustc_builtin_macro]
+macro_rules! format_args {
+    () => {}
+}
+
 fn f() {
     // Test a handful of built-in (eager) macros:
 
     include!(invalid);
-  //^^^^^^^^^^^^^^^^^ failed to parse or resolve macro invocation
+  //^^^^^^^^^^^^^^^^^ could not convert tokens
     include!("does not exist");
-  //^^^^^^^^^^^^^^^^^^^^^^^^^^ failed to parse or resolve macro invocation
+  //^^^^^^^^^^^^^^^^^^^^^^^^^^ could not convert tokens
 
     env!(invalid);
-  //^^^^^^^^^^^^^ failed to parse or resolve macro invocation
+  //^^^^^^^^^^^^^ could not convert tokens
+
+    env!("OUT_DIR");
+  //^^^^^^^^^^^^^^^ `OUT_DIR` not set, enable "load out dirs from check" to fix
+
+    compile_error!("compile_error works");
+  //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `compile_error!` called: compile_error works
 
     // Lazy:
 
     format_args!();
-  //^^^^^^^^^^^^^^ failed to parse or resolve macro invocation
+  //^^^^^^^^^^^^^^ no rule matches input tokens
 }
         "#,
     );

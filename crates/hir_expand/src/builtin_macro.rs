@@ -86,7 +86,6 @@ pub fn find_builtin_macro(
 register_builtin! {
     LAZY:
     (column, Column) => column_expand,
-    (compile_error, CompileError) => compile_error_expand,
     (file, File) => file_expand,
     (line, Line) => line_expand,
     (assert, Assert) => assert_expand,
@@ -97,6 +96,7 @@ register_builtin! {
     (format_args_nl, FormatArgsNl) => format_args_expand,
 
     EAGER:
+    (compile_error, CompileError) => compile_error_expand,
     (concat, Concat) => concat_expand,
     (include, Include) => include_expand,
     (include_bytes, IncludeBytes) => include_bytes_expand,
@@ -213,25 +213,6 @@ fn file_expand(
     ExpandResult::ok(expanded)
 }
 
-fn compile_error_expand(
-    _db: &dyn AstDatabase,
-    _id: LazyMacroId,
-    tt: &tt::Subtree,
-) -> ExpandResult<tt::Subtree> {
-    if tt.count() == 1 {
-        if let tt::TokenTree::Leaf(tt::Leaf::Literal(it)) = &tt.token_trees[0] {
-            let s = it.text.as_str();
-            if s.contains('"') {
-                return ExpandResult::ok(quote! { loop { #it }});
-            }
-        };
-    }
-
-    ExpandResult::only_err(mbe::ExpandError::BindingError(
-        "`compile_error!` argument be a string".into(),
-    ))
-}
-
 fn format_args_expand(
     _db: &dyn AstDatabase,
     _id: LazyMacroId,
@@ -278,6 +259,30 @@ fn unquote_str(lit: &tt::Literal) -> Option<String> {
     let lit = ast::make::tokens::literal(&lit.to_string());
     let token = ast::String::cast(lit)?;
     token.value().map(|it| it.into_owned())
+}
+
+fn compile_error_expand(
+    _db: &dyn AstDatabase,
+    _id: EagerMacroId,
+    tt: &tt::Subtree,
+) -> ExpandResult<Option<(tt::Subtree, FragmentKind)>> {
+    let err = match &*tt.token_trees {
+        [tt::TokenTree::Leaf(tt::Leaf::Literal(it))] => {
+            let text = it.text.as_str();
+            if text.starts_with('"') && text.ends_with('"') {
+                // FIXME: does not handle raw strings
+                mbe::ExpandError::Other(format!(
+                    "`compile_error!` called: {}",
+                    &text[1..text.len() - 1]
+                ))
+            } else {
+                mbe::ExpandError::BindingError("`compile_error!` argument must be a string".into())
+            }
+        }
+        _ => mbe::ExpandError::BindingError("`compile_error!` argument must be a string".into()),
+    };
+
+    ExpandResult { value: Some((quote! {}, FragmentKind::Items)), err: Some(err) }
 }
 
 fn concat_expand(
@@ -417,17 +422,25 @@ fn env_expand(
         Err(e) => return ExpandResult::only_err(e),
     };
 
-    // FIXME:
-    // If the environment variable is not defined int rustc, then a compilation error will be emitted.
-    // We might do the same if we fully support all other stuffs.
-    // But for now on, we should return some dummy string for better type infer purpose.
-    // However, we cannot use an empty string here, because for
-    // `include!(concat!(env!("OUT_DIR"), "/foo.rs"))` will become
-    // `include!("foo.rs"), which might go to infinite loop
-    let s = get_env_inner(db, arg_id, &key).unwrap_or_else(|| "__RA_UNIMPLEMENTED__".to_string());
+    let mut err = None;
+    let s = get_env_inner(db, arg_id, &key).unwrap_or_else(|| {
+        // The only variable rust-analyzer ever sets is `OUT_DIR`, so only diagnose that to avoid
+        // unnecessary diagnostics for eg. `CARGO_PKG_NAME`.
+        if key == "OUT_DIR" {
+            err = Some(mbe::ExpandError::Other(
+                r#"`OUT_DIR` not set, enable "load out dirs from check" to fix"#.into(),
+            ));
+        }
+
+        // If the variable is unset, still return a dummy string to help type inference along.
+        // We cannot use an empty string here, because for
+        // `include!(concat!(env!("OUT_DIR"), "/foo.rs"))` will become
+        // `include!("foo.rs"), which might go to infinite loop
+        "__RA_UNIMPLEMENTED__".to_string()
+    });
     let expanded = quote! { #s };
 
-    ExpandResult::ok(Some((expanded, FragmentKind::Expr)))
+    ExpandResult { value: Some((expanded, FragmentKind::Expr)), err }
 }
 
 fn option_env_expand(
@@ -638,7 +651,8 @@ mod tests {
             "#,
         );
 
-        assert_eq!(expanded, r#"loop{"error!"}"#);
+        // This expands to nothing (since it's in item position), but emits an error.
+        assert_eq!(expanded, "");
     }
 
     #[test]

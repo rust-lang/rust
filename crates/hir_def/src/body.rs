@@ -120,18 +120,24 @@ impl Expander {
             self.resolve_path_as_macro(db, &path)
         };
 
-        let call_id = match macro_call.as_call_id(db, self.crate_def_map.krate, resolver) {
+        let mut err = None;
+        let call_id =
+            macro_call.as_call_id_with_errors(db, self.crate_def_map.krate, resolver, &mut |e| {
+                err.get_or_insert(e);
+            });
+        let call_id = match call_id {
             Some(it) => it,
             None => {
-                // FIXME: this can mean other things too, but `as_call_id` doesn't provide enough
-                // info.
-                return ExpandResult::only_err(mbe::ExpandError::Other(
-                    "failed to parse or resolve macro invocation".into(),
-                ));
+                if err.is_none() {
+                    eprintln!("no error despite `as_call_id_with_errors` returning `None`");
+                }
+                return ExpandResult { value: None, err };
             }
         };
 
-        let err = db.macro_expand_error(call_id);
+        if err.is_none() {
+            err = db.macro_expand_error(call_id);
+        }
 
         let file_id = call_id.as_file();
 

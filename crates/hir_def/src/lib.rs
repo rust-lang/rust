@@ -465,21 +465,37 @@ pub trait AsMacroCall {
         db: &dyn db::DefDatabase,
         krate: CrateId,
         resolver: impl Fn(path::ModPath) -> Option<MacroDefId>,
-    ) -> Option<MacroCallId>;
-}
+    ) -> Option<MacroCallId> {
+        self.as_call_id_with_errors(db, krate, resolver, &mut |_| ())
+    }
 
-impl AsMacroCall for InFile<&ast::MacroCall> {
-    fn as_call_id(
+    fn as_call_id_with_errors(
         &self,
         db: &dyn db::DefDatabase,
         krate: CrateId,
         resolver: impl Fn(path::ModPath) -> Option<MacroDefId>,
+        error_sink: &mut dyn FnMut(mbe::ExpandError),
+    ) -> Option<MacroCallId>;
+}
+
+impl AsMacroCall for InFile<&ast::MacroCall> {
+    fn as_call_id_with_errors(
+        &self,
+        db: &dyn db::DefDatabase,
+        krate: CrateId,
+        resolver: impl Fn(path::ModPath) -> Option<MacroDefId>,
+        error_sink: &mut dyn FnMut(mbe::ExpandError),
     ) -> Option<MacroCallId> {
         let ast_id = AstId::new(self.file_id, db.ast_id_map(self.file_id).ast_id(self.value));
         let h = Hygiene::new(db.upcast(), self.file_id);
-        let path = path::ModPath::from_src(self.value.path()?, &h)?;
+        let path = self.value.path().and_then(|path| path::ModPath::from_src(path, &h));
 
-        AstIdWithPath::new(ast_id.file_id, ast_id.value, path).as_call_id(db, krate, resolver)
+        if path.is_none() {
+            error_sink(mbe::ExpandError::Other("malformed macro invocation".into()));
+        }
+
+        AstIdWithPath::new(ast_id.file_id, ast_id.value, path?)
+            .as_call_id_with_errors(db, krate, resolver, error_sink)
     }
 }
 
@@ -497,22 +513,32 @@ impl<T: ast::AstNode> AstIdWithPath<T> {
 }
 
 impl AsMacroCall for AstIdWithPath<ast::MacroCall> {
-    fn as_call_id(
+    fn as_call_id_with_errors(
         &self,
         db: &dyn db::DefDatabase,
         krate: CrateId,
         resolver: impl Fn(path::ModPath) -> Option<MacroDefId>,
+        error_sink: &mut dyn FnMut(mbe::ExpandError),
     ) -> Option<MacroCallId> {
-        let def: MacroDefId = resolver(self.path.clone())?;
+        let def: MacroDefId = resolver(self.path.clone()).or_else(|| {
+            error_sink(mbe::ExpandError::Other("could not resolve macro".into()));
+            None
+        })?;
 
         if let MacroDefKind::BuiltInEager(_) = def.kind {
             let macro_call = InFile::new(self.ast_id.file_id, self.ast_id.to_node(db.upcast()));
             let hygiene = Hygiene::new(db.upcast(), self.ast_id.file_id);
 
             Some(
-                expand_eager_macro(db.upcast(), krate, macro_call, def, &|path: ast::Path| {
-                    resolver(path::ModPath::from_src(path, &hygiene)?)
-                })?
+                expand_eager_macro(
+                    db.upcast(),
+                    krate,
+                    macro_call,
+                    def,
+                    &|path: ast::Path| resolver(path::ModPath::from_src(path, &hygiene)?),
+                    error_sink,
+                )
+                .ok()?
                 .into(),
             )
         } else {
@@ -522,13 +548,18 @@ impl AsMacroCall for AstIdWithPath<ast::MacroCall> {
 }
 
 impl AsMacroCall for AstIdWithPath<ast::Item> {
-    fn as_call_id(
+    fn as_call_id_with_errors(
         &self,
         db: &dyn db::DefDatabase,
         krate: CrateId,
         resolver: impl Fn(path::ModPath) -> Option<MacroDefId>,
+        error_sink: &mut dyn FnMut(mbe::ExpandError),
     ) -> Option<MacroCallId> {
-        let def = resolver(self.path.clone())?;
+        let def: MacroDefId = resolver(self.path.clone()).or_else(|| {
+            error_sink(mbe::ExpandError::Other("could not resolve macro".into()));
+            None
+        })?;
+
         Some(
             def.as_lazy_macro(
                 db.upcast(),

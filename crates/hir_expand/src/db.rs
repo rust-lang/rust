@@ -207,6 +207,7 @@ fn macro_expand_with_arg(
             } else {
                 return ExpandResult {
                     value: Some(db.lookup_intern_eager_expansion(id).subtree),
+                    // FIXME: There could be errors here!
                     err: None,
                 };
             }
