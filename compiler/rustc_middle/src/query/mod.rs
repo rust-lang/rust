@@ -1280,7 +1280,7 @@ rustc_queries! {
         /// check whether the forest is empty.
         query type_uninhabited_from(
             key: ty::ParamEnvAnd<'tcx, Ty<'tcx>>
-        ) -> Arc<ty::inhabitedness::DefIdForest> {
+        ) -> ty::inhabitedness::DefIdForest {
             desc { "computing the inhabitedness of `{:?}`", key }
         }
     }
