@@ -1,10 +1,15 @@
-error[E0391]: cycle detected when computing the supertraits of `Chromosome`
+error[E0391]: cycle detected when computing the super predicates of `Chromosome`
+  --> $DIR/cycle-trait-supertrait-direct.rs:3:1
+   |
+LL | trait Chromosome: Chromosome {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: ...which requires computing the super traits of `Chromosome`...
   --> $DIR/cycle-trait-supertrait-direct.rs:3:19
    |
 LL | trait Chromosome: Chromosome {
    |                   ^^^^^^^^^^
-   |
-   = note: ...which again requires computing the supertraits of `Chromosome`, completing the cycle
+   = note: ...which again requires computing the super predicates of `Chromosome`, completing the cycle
 note: cycle used when collecting item types in top-level module
   --> $DIR/cycle-trait-supertrait-direct.rs:3:1
    |
