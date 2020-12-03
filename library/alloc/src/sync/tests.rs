@@ -103,14 +103,8 @@ fn try_unwrap() {
 
 #[test]
 fn unwrap_or_drop() {
-    // FIXME: Is doing this kind of loop reasonable? I tested `Arc::try_unwrap(x).ok()`
-    // and it makes this kind of assertion fail in roughly every second run somewhere
-    // between 1000 and 5000 iterations; I feel like doing a single iteration is too
-    // unlikely to catch anything interesting but doing too many is way too slow
-    // for a test that wouldn't ever fail for any reasonable implementation
-
     for _ in 0..100
-    // ^ increase chances of hitting uncommon race conditions
+    // ^ increase chances of hitting potential race conditions
     {
         let x = Arc::new(3);
         let y = Arc::clone(&x);
