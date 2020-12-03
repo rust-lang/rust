@@ -36,3 +36,5 @@ syn = { version = "1", features = ["full"] }
 
 [features]
 deny-warnings = []
+# build clippy with internal lints enabled, off by default
+internal-lints = []

@@ -14,6 +14,7 @@ pub mod eager_or_lazy;
 pub mod higher;
 mod hir_utils;
 pub mod inspector;
+#[cfg(feature = "internal-lints")]
 pub mod internal_lints;
 pub mod numeric_literal;
 pub mod paths;

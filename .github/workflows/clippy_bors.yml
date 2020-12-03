@@ -128,14 +128,14 @@ jobs:
         SYSROOT=$(rustc --print sysroot)
         echo "$SYSROOT/bin" >> $GITHUB_PATH
 
-    - name: Build
-      run: cargo build --features deny-warnings
+    - name: Build with internal lints
+      run: cargo build --features deny-warnings,internal-lints
 
-    - name: Test
-      run: cargo test --features deny-warnings
+    - name: Test with internal lints
+      run: cargo test --features deny-warnings,internal-lints
 
-    - name: Test clippy_lints
-      run: cargo test --features deny-warnings
+    - name: Test clippy_lints with internal lints
+      run: cargo test --features deny-warnings,internal-lints
       working-directory: clippy_lints
 
     - name: Test rustc_tools_util
