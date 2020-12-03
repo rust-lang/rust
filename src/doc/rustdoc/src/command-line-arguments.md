@@ -250,7 +250,7 @@ previous theme selection from the on-page theme picker).
 
 The supplied value should be the lowercase version of the theme name.
 The set of available themes can be seen in the theme picker in the
-gneerated output.
+generated output.
 
 Note that the set of available themes - and their appearance - is not
 necessarily stable from one rustdoc version to the next.  If the
