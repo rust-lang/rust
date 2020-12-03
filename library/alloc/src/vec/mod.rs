@@ -253,6 +253,26 @@ mod spec_extend;
 /// can be slow. For this reason, it is recommended to use [`Vec::with_capacity`]
 /// whenever possible to specify how big the vector is expected to get.
 ///
+/// A vector containing the elements `'a'` and `'b'` with capacity 4 can be
+/// visualized as:
+///
+/// ```text
+/// Stack       ptr      len  capacity
+/// /Heap  +--------+--------+--------+
+///        | 0x0123 |      2 |      4 |
+///        +--------+--------+--------+
+///             |
+///             v
+/// Heap   +--------+--------+--------+--------+
+///        |    'a' |    'b' | uninit | uninit |
+///        +--------+--------+--------+--------+
+/// ```
+///
+/// - **uninit** represents memory that is not initialized, see [`MaybeUninit`].
+/// - Note: the ABI is not stable and `Vec` makes no guarantees about its memory 
+///   layout (including the order of fields). See [the section about 
+///   guarantees](#guarantees).
+///
 /// # Guarantees
 ///
 /// Due to its incredibly fundamental nature, `Vec` makes a lot of guarantees
@@ -345,6 +365,7 @@ mod spec_extend;
 /// [`push`]: Vec::push
 /// [`insert`]: Vec::insert
 /// [`reserve`]: Vec::reserve
+/// [`MaybeUninit`]: core::mem::MaybeUninit
 /// [owned slice]: Box
 /// [slice]: ../../std/primitive.slice.html
 /// [`&`]: ../../std/primitive.reference.html
