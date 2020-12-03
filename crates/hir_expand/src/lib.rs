@@ -143,7 +143,11 @@ impl HirFileId {
                 let loc: MacroCallLoc = db.lookup_intern_macro(lazy_id);
 
                 let arg_tt = loc.kind.arg(db)?;
-                let def_tt = loc.def.ast_id?.to_node(db).token_tree()?;
+
+                let def = loc.def.ast_id.and_then(|id| {
+                    let def_tt = id.to_node(db).token_tree()?;
+                    Some(InFile::new(id.file_id, def_tt))
+                });
 
                 let macro_def = db.macro_def(loc.def)?;
                 let (parse, exp_map) = db.parse_macro_expansion(macro_file).value?;
@@ -152,7 +156,7 @@ impl HirFileId {
                 Some(ExpansionInfo {
                     expanded: InFile::new(self, parse.syntax_node()),
                     arg: InFile::new(loc.kind.file_id(), arg_tt),
-                    def: InFile::new(loc.def.ast_id?.file_id, def_tt),
+                    def,
                     macro_arg,
                     macro_def,
                     exp_map,
@@ -311,7 +315,8 @@ pub struct EagerCallLoc {
 pub struct ExpansionInfo {
     expanded: InFile<SyntaxNode>,
     arg: InFile<SyntaxNode>,
-    def: InFile<ast::TokenTree>,
+    /// The `macro_rules!` arguments.
+    def: Option<InFile<ast::TokenTree>>,
 
     macro_def: Arc<(db::TokenExpander, mbe::TokenMap)>,
     macro_arg: Arc<(tt::Subtree, mbe::TokenMap)>,
@@ -348,9 +353,14 @@ impl ExpansionInfo {
         let (token_id, origin) = self.macro_def.0.map_id_up(token_id);
         let (token_map, tt) = match origin {
             mbe::Origin::Call => (&self.macro_arg.1, self.arg.clone()),
-            mbe::Origin::Def => {
-                (&self.macro_def.1, self.def.as_ref().map(|tt| tt.syntax().clone()))
-            }
+            mbe::Origin::Def => (
+                &self.macro_def.1,
+                self.def
+                    .as_ref()
+                    .expect("`Origin::Def` used with non-`macro_rules!` macro")
+                    .as_ref()
+                    .map(|tt| tt.syntax().clone()),
+            ),
         };
 
         let range = token_map.range_by_token(token_id)?.by_kind(token.value.kind())?;
