@@ -147,6 +147,7 @@ fn _assert_send_sync() {
 }
 
 /// A single frame of a backtrace.
+#[derive(Debug)]
 #[unstable(feature = "backtrace_frames", issue = "79676")]
 pub struct BacktraceFrame {
     frame: RawFrame,
@@ -155,12 +156,13 @@ pub struct BacktraceFrame {
 
 /// An iterator over the frames of a backtrace, created 
 /// by the [`frames`] method on [`Backtrace`].
+#[derive(Debug)]
 #[unstable(feature = "backtrace_frames", issue = "79676")]
 pub struct Frames {
     inner: Vec<BacktraceFrame>
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 enum RawFrame {
     Actual(backtrace_rs::Frame),
     #[cfg(test)]
