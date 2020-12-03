@@ -697,6 +697,8 @@ impl<'tcx> Constructor<'tcx> {
     /// Returns whether `self` is covered by `other`, i.e. whether `self` is a subset of `other`.
     /// For the simple cases, this is simply checking for equality. For the "grouped" constructors,
     /// this checks for inclusion.
+    // We inline because this has a single call site in `Matrix::specialize_constructor`.
+    #[inline]
     pub(super) fn is_covered_by<'p>(&self, pcx: PatCtxt<'_, 'p, 'tcx>, other: &Self) -> bool {
         // This must be kept in sync with `is_covered_by_any`.
         match (self, other) {
