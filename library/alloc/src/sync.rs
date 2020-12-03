@@ -609,20 +609,19 @@ impl<T> Arc<T> {
     /// // The following code could still cause a stack overflow
     /// // despite the manual `Drop` impl if that `Drop` impl used
     /// // `Arc::try_unwrap(arc).ok()` instead of `Arc::into_inner(arc)`.
-    /// {
-    ///     // Create a long list and clone it
-    ///     let mut x = LinkedList::new();
-    ///     for i in 0..100000 {
-    ///         x.push(i); // Adds i to the front of x
-    ///     }
-    ///     let y = x.clone();
     ///
-    ///     // Drop the clones in parallel
-    ///     let t1 = std::thread::spawn(|| drop(x));
-    ///     let t2 = std::thread::spawn(|| drop(y));
-    ///     t1.join().unwrap();
-    ///     t2.join().unwrap();
+    /// // Create a long list and clone it
+    /// let mut x = LinkedList::new();
+    /// for i in 0..100000 {
+    ///     x.push(i); // Adds i to the front of x
     /// }
+    /// let y = x.clone();
+    ///
+    /// // Drop the clones in parallel
+    /// let t1 = std::thread::spawn(|| drop(x));
+    /// let t2 = std::thread::spawn(|| drop(y));
+    /// t1.join().unwrap();
+    /// t2.join().unwrap();
     /// ```
 
     // FIXME: when `Arc::into_inner` is stabilized, adjust the documentation of
