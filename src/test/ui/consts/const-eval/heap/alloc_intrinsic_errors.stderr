@@ -1,0 +1,17 @@
+error: any use of this value will cause an error
+  --> $DIR/alloc_intrinsic_errors.rs:10:17
+   |
+LL | const FOO: i32 = foo();
+   | -----------------------
+...
+LL |         let _ = intrinsics::const_allocate(4, 3) as * mut i32;
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                 |
+   |                 align has to be a power of 2, `3` is not a power of 2
+   |                 inside `foo` at $DIR/alloc_intrinsic_errors.rs:10:17
+   |                 inside `FOO` at $DIR/alloc_intrinsic_errors.rs:7:18
+   |
+   = note: `#[deny(const_err)]` on by default
+
+error: aborting due to previous error
+

@@ -2,10 +2,10 @@
 
 #[unwind(aborts)]
 const fn foo() {
-    panic!() //~ evaluation of constant value failed
+    panic!() //~ ERROR any use of this value will cause an error [const_err]
 }
 
-const _: () = foo(); //~ any use of this value will cause an error
+const _: () = foo();
 // Ensure that the CTFE engine handles calls to `#[unwind(aborts)]` gracefully
 
 fn main() {

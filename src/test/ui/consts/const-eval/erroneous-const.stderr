@@ -24,18 +24,18 @@ note: the lint level is defined here
 LL | #![warn(const_err, unconditional_panic)]
    |         ^^^^^^^^^
 
-error[E0080]: evaluation of constant value failed
+error[E0080]: could not evaluate static initializer
   --> $DIR/erroneous-const.rs:12:17
    |
 LL |         let _ = PrintName::<T>::VOID;
-   |                 ^^^^^^^^^^^^^^^^^^^^ referenced constant has errors
-
-error[E0080]: could not evaluate static initializer
-  --> $DIR/erroneous-const.rs:16:22
-   |
+   |                 ^^^^^^^^^^^^^^^^^^^^
+   |                 |
+   |                 referenced constant has errors
+   |                 inside `no_codegen::<i32>` at $DIR/erroneous-const.rs:12:17
+...
 LL | pub static FOO: () = no_codegen::<i32>();
-   |                      ^^^^^^^^^^^^^^^^^^^ referenced constant has errors
+   |                      ------------------- inside `FOO` at $DIR/erroneous-const.rs:16:22
 
-error: aborting due to 2 previous errors; 2 warnings emitted
+error: aborting due to previous error; 2 warnings emitted
 
 For more information about this error, try `rustc --explain E0080`.

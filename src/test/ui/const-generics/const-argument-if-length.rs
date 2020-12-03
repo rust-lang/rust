@@ -18,7 +18,6 @@ pub struct AtLeastByte<T: ?Sized> {
     //~^ ERROR the size for values of type `T` cannot be known at compilation time
     pad: [u8; is_zst::<T>()],
     //[min]~^ ERROR generic parameters may not be used in const operations
-    //[full]~^^ ERROR evaluation of constant value failed
 }
 
 fn main() {}

@@ -1,5 +1,6 @@
 use rustc_middle::mir;
 use rustc_middle::ty::layout::HasTyCtxt;
+use rustc_middle::ty::InstanceDef;
 use rustc_middle::ty::{self, Ty};
 use std::borrow::Borrow;
 use std::collections::hash_map::Entry;
@@ -12,6 +13,7 @@ use rustc_hir::def_id::DefId;
 use rustc_middle::mir::AssertMessage;
 use rustc_session::Limit;
 use rustc_span::symbol::{sym, Symbol};
+use rustc_target::abi::{Align, Size};
 
 use crate::interpret::{
     self, compile_time_machine, AllocId, Allocation, Frame, GlobalId, ImmTy, InterpCx,
@@ -35,6 +37,14 @@ impl<'mir, 'tcx> InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>> {
         // Because `#[track_caller]` adds an implicit non-ZST argument, we also cannot
         // perform this optimization on items tagged with it.
         if instance.def.requires_caller_location(self.tcx()) {
+            return Ok(false);
+        }
+        // Only memoize instrinsics. This was added in #79594 while adding the `const_allocate` intrinsic.
+        // We only memoize intrinsics because it would be unsound to memoize functions
+        // which might interact with the heap.
+        // Additionally, const_allocate intrinsic is impure and thus should not be memoized;
+        // it will not be memoized because it has non-ZST args
+        if !matches!(instance.def, InstanceDef::Intrinsic(_)) {
             return Ok(false);
         }
         // For the moment we only do this for functions which take no arguments
@@ -294,6 +304,22 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                     ecx.guaranteed_ne(a, b)
                 };
                 ecx.write_scalar(Scalar::from_bool(cmp), dest)?;
+            }
+            sym::const_allocate => {
+                let size = ecx.read_scalar(args[0])?.to_machine_usize(ecx)?;
+                let align = ecx.read_scalar(args[1])?.to_machine_usize(ecx)?;
+
+                let align = match Align::from_bytes(align) {
+                    Ok(a) => a,
+                    Err(err) => throw_ub_format!("align has to be a power of 2, {}", err),
+                };
+
+                let ptr = ecx.memory.allocate(
+                    Size::from_bytes(size as u64),
+                    align,
+                    interpret::MemoryKind::ConstHeap,
+                );
+                ecx.write_scalar(Scalar::Ptr(ptr), dest)?;
             }
             _ => {
                 return Err(ConstEvalErrKind::NeedsRfc(format!(

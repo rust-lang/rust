@@ -68,6 +68,7 @@
 #![feature(arbitrary_self_types)]
 #![feature(asm)]
 #![feature(cfg_target_has_atomic)]
+#![cfg_attr(not(bootstrap), feature(const_heap))]
 #![feature(const_alloc_layout)]
 #![feature(const_discriminant)]
 #![feature(const_cell_into_inner)]

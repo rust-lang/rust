@@ -1732,6 +1732,11 @@ extern "rust-intrinsic" {
     /// See documentation of `<*const T>::guaranteed_ne` for details.
     #[rustc_const_unstable(feature = "const_raw_ptr_comparison", issue = "53020")]
     pub fn ptr_guaranteed_ne<T>(ptr: *const T, other: *const T) -> bool;
+
+    /// Allocate at compile time. Should not be called at runtime.
+    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+    #[cfg(not(bootstrap))]
+    pub fn const_allocate(size: usize, align: usize) -> *mut u8;
 }
 
 // Some functions are defined here because they accidentally got made

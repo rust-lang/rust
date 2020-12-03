@@ -356,6 +356,7 @@ symbols! {
         concat_idents,
         conservative_impl_trait,
         console,
+        const_allocate,
         const_compare_raw_pointers,
         const_constructor,
         const_eval_limit,

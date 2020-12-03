@@ -286,6 +286,10 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
                 (1, vec![tcx.mk_imm_ptr(param(0)), tcx.mk_imm_ptr(param(0))], tcx.types.bool)
             }
 
+            sym::const_allocate => {
+                (0, vec![tcx.types.usize, tcx.types.usize], tcx.mk_mut_ptr(tcx.types.u8))
+            }
+
             sym::ptr_offset_from => {
                 (1, vec![tcx.mk_imm_ptr(param(0)), tcx.mk_imm_ptr(param(0))], tcx.types.isize)
             }
