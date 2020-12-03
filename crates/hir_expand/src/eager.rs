@@ -103,9 +103,9 @@ pub fn expand_eager_macro(
     macro_call: InFile<ast::MacroCall>,
     def: MacroDefId,
     resolver: &dyn Fn(ast::Path) -> Option<MacroDefId>,
-    mut error_sink: &mut dyn FnMut(mbe::ExpandError),
+    mut diagnostic_sink: &mut dyn FnMut(mbe::ExpandError),
 ) -> Result<EagerMacroId, ErrorEmitted> {
-    let parsed_args = error_sink.option_with(
+    let parsed_args = diagnostic_sink.option_with(
         || Some(mbe::ast_to_token_tree(&macro_call.value.token_tree()?)?.0),
         || err("malformed macro invocation"),
     )?;
@@ -126,20 +126,21 @@ pub fn expand_eager_macro(
     let arg_file_id: MacroCallId = arg_id.into();
 
     let parsed_args =
-        error_sink.result(mbe::token_tree_to_syntax_node(&parsed_args, FragmentKind::Expr))?.0;
+        diagnostic_sink.result(mbe::token_tree_to_syntax_node(&parsed_args, FragmentKind::Expr))?.0;
     let result = eager_macro_recur(
         db,
         InFile::new(arg_file_id.as_file(), parsed_args.syntax_node()),
         krate,
         resolver,
-        error_sink,
+        diagnostic_sink,
     )?;
-    let subtree = error_sink.option(to_subtree(&result), || err("failed to parse macro result"))?;
+    let subtree =
+        diagnostic_sink.option(to_subtree(&result), || err("failed to parse macro result"))?;
 
     if let MacroDefKind::BuiltInEager(eager) = def.kind {
         let res = eager.expand(db, arg_id, &subtree);
 
-        let (subtree, fragment) = error_sink.expand_result_option(res)?;
+        let (subtree, fragment) = diagnostic_sink.expand_result_option(res)?;
         let eager = EagerCallLoc {
             def,
             fragment,
@@ -182,7 +183,7 @@ fn eager_macro_recur(
     curr: InFile<SyntaxNode>,
     krate: CrateId,
     macro_resolver: &dyn Fn(ast::Path) -> Option<MacroDefId>,
-    mut error_sink: &mut dyn FnMut(mbe::ExpandError),
+    mut diagnostic_sink: &mut dyn FnMut(mbe::ExpandError),
 ) -> Result<SyntaxNode, ErrorEmitted> {
     let original = curr.value.clone();
 
@@ -191,7 +192,7 @@ fn eager_macro_recur(
 
     // Collect replacement
     for child in children {
-        let def = error_sink
+        let def = diagnostic_sink
             .option_with(|| macro_resolver(child.path()?), || err("failed to resolve macro"))?;
         let insert = match def.kind {
             MacroDefKind::BuiltInEager(_) => {
@@ -201,7 +202,7 @@ fn eager_macro_recur(
                     curr.with_value(child.clone()),
                     def,
                     macro_resolver,
-                    error_sink,
+                    diagnostic_sink,
                 )?
                 .into();
                 db.parse_or_expand(id.as_file())
@@ -212,10 +213,10 @@ fn eager_macro_recur(
             | MacroDefKind::BuiltInDerive(_)
             | MacroDefKind::ProcMacro(_) => {
                 let res = lazy_expand(db, &def, curr.with_value(child.clone()), krate);
-                let val = error_sink.expand_result_option(res)?;
+                let val = diagnostic_sink.expand_result_option(res)?;
 
                 // replace macro inside
-                eager_macro_recur(db, val, krate, macro_resolver, error_sink)?
+                eager_macro_recur(db, val, krate, macro_resolver, diagnostic_sink)?
             }
         };
 
