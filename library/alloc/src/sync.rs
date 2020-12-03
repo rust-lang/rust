@@ -494,7 +494,7 @@ impl<T> Arc<T> {
     /// drop to zero and the inner value of the `Arc` to be dropped:
     /// For instance if two threads execute this expression in parallel, then
     /// there is a race condition. The threads could first both check whether they
-    /// have the last clone of their `Arc` via `try_unwrap`, and then
+    /// have the last clone of their `Arc` via `Arc::try_unwrap`, and then
     /// both drop their `Arc` in the call to [`ok`][`Result::ok`],
     /// taking the strong count from two down to zero.
     ///
@@ -537,17 +537,17 @@ impl<T> Arc<T> {
     ///
     /// This will succeed even if there are outstanding weak references.
     ///
-    /// If `into_inner` is called on every clone of this `Arc`,
+    /// If `Arc::into_inner` is called on every clone of this `Arc`,
     /// it is guaranteed that exactly one of the calls returns the inner value.
     /// This means in particular that the inner value is not dropped.
     ///
     /// The similar expression `Arc::try_unwrap(this).ok()` does not
     /// offer such a guarantee. See the last example below and the documentation
-    /// of [`try_unwrap`][`Arc::try_unwrap`].
+    /// of [`Arc::try_unwrap`].
     ///
     /// # Examples
     ///
-    /// Minimal example demonstrating the guarantee that `into_inner` gives.
+    /// Minimal example demonstrating the guarantee that `Arc::into_inner` gives.
     /// ```
     /// #![feature(arc_into_inner)]
     ///
@@ -556,7 +556,7 @@ impl<T> Arc<T> {
     /// let x = Arc::new(3);
     /// let y = Arc::clone(&x);
     ///
-    /// // Two threads calling `into_inner` on both clones of an `Arc`:
+    /// // Two threads calling `Arc::into_inner` on both clones of an `Arc`:
     /// let x_unwrap_thread = std::thread::spawn(|| Arc::into_inner(x));
     /// let y_unwrap_thread = std::thread::spawn(|| Arc::into_inner(y));
     ///
@@ -572,7 +572,7 @@ impl<T> Arc<T> {
     /// // `Arc::try_unwrap(x).ok()` and `Arc::try_unwrap(y).ok()` instead.
     /// ```
     ///
-    /// A more practical example demonstrating the need for `into_inner`:
+    /// A more practical example demonstrating the need for `Arc::into_inner`:
     /// ```
     /// #![feature(arc_into_inner)]
     ///
