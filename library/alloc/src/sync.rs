@@ -485,9 +485,9 @@ impl<T> Arc<T> {
     ///
     /// This will succeed even if there are outstanding weak references.
     ///
-    // FIXME: when `Arc::unwrap_or_drop` is stabilized, add this paragraph:
+    // FIXME: when `Arc::into_inner` is stabilized, add this paragraph:
     /*
-    /// It is strongly recommended to use [`Arc::unwrap_or_drop`] instead if you don't
+    /// It is strongly recommended to use [`Arc::into_inner`] instead if you don't
     /// want to keep the `Arc` in the [`Err`] case.
     /// Immediately dropping the [`Err`] payload, like in the expression
     /// `Arc::try_unwrap(this).ok()`, can still cause the strong count to
@@ -537,7 +537,7 @@ impl<T> Arc<T> {
     ///
     /// This will succeed even if there are outstanding weak references.
     ///
-    /// If `unwrap_or_drop` is called on every clone of this `Arc`,
+    /// If `into_inner` is called on every clone of this `Arc`,
     /// it is guaranteed that exactly one of the calls returns the inner value.
     /// This means in particular that the inner value is not dropped.
     ///
@@ -547,18 +547,18 @@ impl<T> Arc<T> {
     ///
     /// # Examples
     ///
-    /// Minimal example demonstrating the guarantee that `unwrap_or_drop` gives.
+    /// Minimal example demonstrating the guarantee that `into_inner` gives.
     /// ```
-    /// #![feature(unwrap_or_drop)]
+    /// #![feature(arc_into_inner)]
     ///
     /// use std::sync::Arc;
     ///
     /// let x = Arc::new(3);
     /// let y = Arc::clone(&x);
     ///
-    /// // Two threads calling `unwrap_or_drop` on both clones of an `Arc`:
-    /// let x_unwrap_thread = std::thread::spawn(|| Arc::unwrap_or_drop(x));
-    /// let y_unwrap_thread = std::thread::spawn(|| Arc::unwrap_or_drop(y));
+    /// // Two threads calling `into_inner` on both clones of an `Arc`:
+    /// let x_unwrap_thread = std::thread::spawn(|| Arc::into_inner(x));
+    /// let y_unwrap_thread = std::thread::spawn(|| Arc::into_inner(y));
     ///
     /// let x_unwrapped_value = x_unwrap_thread.join().unwrap();
     /// let y_unwrapped_value = y_unwrap_thread.join().unwrap();
@@ -572,9 +572,9 @@ impl<T> Arc<T> {
     /// // `Arc::try_unwrap(x).ok()` and `Arc::try_unwrap(y).ok()` instead.
     /// ```
     ///
-    /// A more practical example demonstrating the need for `unwrap_or_drop`:
+    /// A more practical example demonstrating the need for `into_inner`:
     /// ```
-    /// #![feature(unwrap_or_drop)]
+    /// #![feature(arc_into_inner)]
     ///
     /// use std::sync::Arc;
     ///
@@ -590,7 +590,7 @@ impl<T> Arc<T> {
     ///     fn drop(&mut self) {
     ///         let mut x = self.0.take();
     ///         while let Some(arc) = x.take() {
-    ///             Arc::unwrap_or_drop(arc).map(|node| x = node.1);
+    ///             Arc::into_inner(arc).map(|node| x = node.1);
     ///         }
     ///     }
     /// }
@@ -608,7 +608,7 @@ impl<T> Arc<T> {
     ///
     /// // The following code could still cause a stack overflow
     /// // despite the manual `Drop` impl if that `Drop` impl used
-    /// // `Arc::try_unwrap(arc).ok()` instead of `Arc::unwrap_or_drop(arc)`.
+    /// // `Arc::try_unwrap(arc).ok()` instead of `Arc::into_inner(arc)`.
     /// {
     ///     // Create a long list and clone it
     ///     let mut x = LinkedList::new();
@@ -625,11 +625,11 @@ impl<T> Arc<T> {
     /// }
     /// ```
 
-    // FIXME: when `Arc::unwrap_or_drop` is stabilized, adjust the documentation of
+    // FIXME: when `Arc::into_inner` is stabilized, adjust the documentation of
     // `Arc::try_unwrap` according to the `FIXME` presented there.
     #[inline]
-    #[unstable(feature = "unwrap_or_drop", issue = "none")] // FIXME: add issue
-    pub fn unwrap_or_drop(this: Self) -> Option<T> {
+    #[unstable(feature = "arc_into_inner", issue = "none")] // FIXME: create and add issue
+    pub fn into_inner(this: Self) -> Option<T> {
         // Make sure that the ordinary `Drop` implementation isn’t called as well
         let mut this = mem::ManuallyDrop::new(this);
 

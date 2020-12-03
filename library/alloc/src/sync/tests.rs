@@ -102,14 +102,14 @@ fn try_unwrap() {
 }
 
 #[test]
-fn unwrap_or_drop() {
+fn into_inner() {
     for _ in 0..100
     // ^ Increase chances of hitting potential race conditions
     {
         let x = Arc::new(3);
         let y = Arc::clone(&x);
-        let r_thread = std::thread::spawn(|| Arc::unwrap_or_drop(x));
-        let s_thread = std::thread::spawn(|| Arc::unwrap_or_drop(y));
+        let r_thread = std::thread::spawn(|| Arc::into_inner(x));
+        let s_thread = std::thread::spawn(|| Arc::into_inner(y));
         let r = r_thread.join().expect("r_thread panicked");
         let s = s_thread.join().expect("s_thread panicked");
         assert!(
@@ -121,16 +121,16 @@ fn unwrap_or_drop() {
     }
 
     let x = Arc::new(3);
-    assert_eq!(Arc::unwrap_or_drop(x), Some(3));
+    assert_eq!(Arc::into_inner(x), Some(3));
 
     let x = Arc::new(4);
     let y = Arc::clone(&x);
-    assert_eq!(Arc::unwrap_or_drop(x), None);
-    assert_eq!(Arc::unwrap_or_drop(y), Some(4));
+    assert_eq!(Arc::into_inner(x), None);
+    assert_eq!(Arc::into_inner(y), Some(4));
 
     let x = Arc::new(5);
     let _w = Arc::downgrade(&x);
-    assert_eq!(Arc::unwrap_or_drop(x), Some(5));
+    assert_eq!(Arc::into_inner(x), Some(5));
 }
 
 #[test]
