@@ -170,6 +170,22 @@ In general, API is centered around UI concerns -- the result of the call is what
 The results are 100% Rust specific though.
 Shout outs to LSP developers for popularizing the idea that "UI" is a good place to draw a boundary at.
 
+## LSP is sateless
+
+The protocol is implemented in the mostly stateless way.
+A good mental model is HTTP, which doesn't store per-client state, and instead relies on devices like cookies to maintain an illusion of state.
+If some action requires multi-step protocol, each step should be self-contained.
+
+A good example here is code action resolving process.
+TO display the lightbulb, we compute the list of code actions without computing edits.
+Figuring out the edit is done in a separate `codeAction/resolve` call.
+Rather than storing some `lazy_edit: Box<dyn FnOnce() -> Edit>` somewhere, we use a string ID of action to re-compute the list of actions during the resolve process.
+(See [this post](https://rust-analyzer.github.io/blog/2020/09/28/how-to-make-a-light-bulb.html) for more details.)
+The benefit here is that, generally speaking, the state of the world might change between `codeAction` and `codeAction` resolve requests, so any closure we store might become invalid.
+
+While we don't currently implement any complicated refactors with complex GUI, I imagine we'd use the same techniques for refactors.
+After clicking each "Next" button during refactor, the client would send all the info which server needs to re-recreate the context from scratch.
+
 ## CI
 
 CI does not test rust-analyzer, CI is a core part of rust-analyzer, and is maintained with above average standard of quality.
