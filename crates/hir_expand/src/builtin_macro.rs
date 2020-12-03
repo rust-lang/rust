@@ -271,10 +271,7 @@ fn compile_error_expand(
             let text = it.text.as_str();
             if text.starts_with('"') && text.ends_with('"') {
                 // FIXME: does not handle raw strings
-                mbe::ExpandError::Other(format!(
-                    "`compile_error!` called: {}",
-                    &text[1..text.len() - 1]
-                ))
+                mbe::ExpandError::Other(text[1..text.len() - 1].to_string())
             } else {
                 mbe::ExpandError::BindingError("`compile_error!` argument must be a string".into())
             }
