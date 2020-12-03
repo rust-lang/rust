@@ -366,9 +366,9 @@ pub macro compile_time_machine(<$mir: lifetime, $tcx: lifetime>) {
     type PointerTag = ();
     type ExtraFnVal = !;
 
-    type MemoryKind = !;
-    type MemoryMap = rustc_data_structures::fx::FxHashMap<AllocId, (MemoryKind<!>, Allocation)>;
-    const GLOBAL_KIND: Option<!> = None; // no copying of globals from `tcx` to machine memory
+    type MemoryMap =
+        rustc_data_structures::fx::FxHashMap<AllocId, (MemoryKind<Self::MemoryKind>, Allocation)>;
+    const GLOBAL_KIND: Option<Self::MemoryKind> = None; // no copying of globals from `tcx` to machine memory
 
     type AllocExtra = ();
     type FrameExtra = ();
@@ -407,7 +407,7 @@ pub macro compile_time_machine(<$mir: lifetime, $tcx: lifetime>) {
         _memory_extra: &Self::MemoryExtra,
         _id: AllocId,
         alloc: Cow<'b, Allocation>,
-        _kind: Option<MemoryKind<!>>,
+        _kind: Option<MemoryKind<Self::MemoryKind>>,
     ) -> (Cow<'b, Allocation<Self::PointerTag>>, Self::PointerTag) {
         // We do not use a tag so we can just cheaply forward the allocation
         (alloc, ())
