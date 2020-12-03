@@ -133,9 +133,9 @@ impl<'tcx> LateLintPass<'tcx> for MapErrIgnore {
                                     cx,
                                     MAP_ERR_IGNORE,
                                     body_span,
-                                    "`map_err(|_|...` ignores the original error",
+                                    "`map_err(|_|...` wildcard pattern discards the original error",
                                     None,
-                                    "Consider wrapping the error in an enum variant for more error context, or using a named wildcard (`.map_err(|_ignored| ...`) to intentionally ignore the error",
+                                    "Consider storing the original error as a source in the new error, or silence this warning using an ignored identifier (`.map_err(|_foo| ...`)",
                                 );
                             }
                         }
