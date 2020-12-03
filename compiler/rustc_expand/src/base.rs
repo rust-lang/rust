@@ -235,12 +235,10 @@ impl Annotatable {
     pub fn derive_allowed(&self) -> bool {
         match *self {
             Annotatable::Stmt(ref stmt) => match stmt.kind {
-                ast::StmtKind::Item(ref item) => match item.kind {
-                    ast::ItemKind::Struct(..)
-                    | ast::ItemKind::Enum(..)
-                    | ast::ItemKind::Union(..) => true,
-                    _ => false,
-                },
+                ast::StmtKind::Item(ref item) => matches!(
+                    item.kind,
+                    ast::ItemKind::Struct(..) | ast::ItemKind::Enum(..) | ast::ItemKind::Union(..)
+                ),
                 _ => false,
             },
             Annotatable::Item(ref item) => match item.kind {
