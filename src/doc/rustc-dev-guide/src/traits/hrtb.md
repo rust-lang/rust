@@ -42,7 +42,7 @@ subtyping, we recommend you read the paper). There are a few parts:
 
 [hrsubtype]: ./hrtb.md
 [placeholder]: ../appendix/glossary.html#placeholder
-[paper by SPJ]: http://research.microsoft.com/en-us/um/people/simonpj/papers/higher-rank/
+[paper by SPJ]: https://www.microsoft.com/en-us/research/publication/practical-type-inference-for-arbitrary-rank-types
 
 So let's work through our example.
 

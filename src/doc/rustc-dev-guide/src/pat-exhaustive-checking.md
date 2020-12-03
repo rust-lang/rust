@@ -80,9 +80,9 @@ fn foo(Foo { x, y }: Foo) {
 
 ## The algorithm
 
-Exhaustiveness checking is implemented in [check_match].
-The core of the algorithm is in [_match].
+Exhaustiveness checking is implemented in [`check_match`].
+The core of the algorithm is in [`usefulness`].
 That file contains a detailed description of the algorithm.
 
-[check_match]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_build/thir/pattern/check_match/index.html
-[_match]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_build/thir/pattern/_match/index.html
+[`check_match`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_build/thir/pattern/check_match/index.html
+[`usefulness`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_build/thir/pattern/usefulness/index.html
