@@ -49,9 +49,10 @@ pub trait AstConv<'tcx> {
 
     fn default_constness_for_trait_bounds(&self) -> Constness;
 
-    /// Returns predicates in scope of the form `X: Foo`, where `X` is
-    /// a type parameter `X` with the given id `def_id`. This is a
-    /// subset of the full set of predicates.
+    /// Returns predicates in scope of the form `X: Foo<T>`, where `X`
+    /// is a type parameter `X` with the given id `def_id` and T
+    /// matches `assoc_name`. This is a subset of the full set of
+    /// predicates.
     ///
     /// This is used for one specific purpose: resolving "short-hand"
     /// associated type references like `T::Item`. In principle, we
@@ -60,7 +61,12 @@ pub trait AstConv<'tcx> {
     /// but this can lead to cycle errors. The problem is that we have
     /// to do this resolution *in order to create the predicates in
     /// the first place*. Hence, we have this "special pass".
-    fn get_type_parameter_bounds(&self, span: Span, def_id: DefId) -> ty::GenericPredicates<'tcx>;
+    fn get_type_parameter_bounds(
+        &self,
+        span: Span,
+        def_id: DefId,
+        assoc_name: Ident,
+    ) -> ty::GenericPredicates<'tcx>;
 
     /// Returns the lifetime to use when a lifetime is omitted (and not elided).
     fn re_infer(&self, param: Option<&ty::GenericParamDef>, span: Span)
@@ -792,7 +798,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     }
 
     // Returns `true` if a bounds list includes `?Sized`.
-    pub fn is_unsized(&self, ast_bounds: &[hir::GenericBound<'_>], span: Span) -> bool {
+    pub fn is_unsized(&self, ast_bounds: &[&hir::GenericBound<'_>], span: Span) -> bool {
         let tcx = self.tcx();
 
         // Try to find an unbound in bounds.
@@ -850,7 +856,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     fn add_bounds(
         &self,
         param_ty: Ty<'tcx>,
-        ast_bounds: &[hir::GenericBound<'_>],
+        ast_bounds: &[&hir::GenericBound<'_>],
         bounds: &mut Bounds<'tcx>,
     ) {
         let constness = self.default_constness_for_trait_bounds();
@@ -865,7 +871,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 hir::GenericBound::Trait(_, hir::TraitBoundModifier::Maybe) => {}
                 hir::GenericBound::LangItemTrait(lang_item, span, hir_id, args) => self
                     .instantiate_lang_item_trait_ref(
-                        lang_item, span, hir_id, args, param_ty, bounds,
+                        *lang_item, *span, *hir_id, args, param_ty, bounds,
                     ),
                 hir::GenericBound::Outlives(ref l) => bounds
                     .region_bounds
@@ -894,6 +900,42 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         &self,
         param_ty: Ty<'tcx>,
         ast_bounds: &[hir::GenericBound<'_>],
+        sized_by_default: SizedByDefault,
+        span: Span,
+    ) -> Bounds<'tcx> {
+        let ast_bounds: Vec<_> = ast_bounds.iter().collect();
+        self.compute_bounds_inner(param_ty, &ast_bounds, sized_by_default, span)
+    }
+
+    /// Convert the bounds in `ast_bounds` that refer to traits which define an associated type
+    /// named `assoc_name` into ty::Bounds. Ignore the rest.
+    pub fn compute_bounds_that_match_assoc_type(
+        &self,
+        param_ty: Ty<'tcx>,
+        ast_bounds: &[hir::GenericBound<'_>],
+        sized_by_default: SizedByDefault,
+        span: Span,
+        assoc_name: Ident,
+    ) -> Bounds<'tcx> {
+        let mut result = Vec::new();
+
+        for ast_bound in ast_bounds {
+            if let Some(trait_ref) = ast_bound.trait_ref() {
+                if let Some(trait_did) = trait_ref.trait_def_id() {
+                    if self.tcx().trait_may_define_assoc_type(trait_did, assoc_name) {
+                        result.push(ast_bound);
+                    }
+                }
+            }
+        }
+
+        self.compute_bounds_inner(param_ty, &result, sized_by_default, span)
+    }
+
+    fn compute_bounds_inner(
+        &self,
+        param_ty: Ty<'tcx>,
+        ast_bounds: &[&hir::GenericBound<'_>],
         sized_by_default: SizedByDefault,
         span: Span,
     ) -> Bounds<'tcx> {
@@ -1098,7 +1140,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 // parameter to have a skipped binder.
                 let param_ty =
                     tcx.mk_projection(assoc_ty.def_id, projection_ty.skip_binder().substs);
-                self.add_bounds(param_ty, ast_bounds, bounds);
+                let ast_bounds: Vec<_> = ast_bounds.iter().collect();
+                self.add_bounds(param_ty, &ast_bounds, bounds);
             }
         }
         Ok(())
@@ -1413,8 +1456,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             ty_param_def_id, assoc_name, span,
         );
 
-        let predicates =
-            &self.get_type_parameter_bounds(span, ty_param_def_id.to_def_id()).predicates;
+        let predicates = &self
+            .get_type_parameter_bounds(span, ty_param_def_id.to_def_id(), assoc_name)
+            .predicates;
 
         debug!("find_bound_for_assoc_item: predicates={:#?}", predicates);
 
@@ -1422,12 +1466,14 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let param_name = tcx.hir().ty_param_name(param_hir_id);
         self.one_bound_for_assoc_type(
             || {
-                traits::transitive_bounds(
+                traits::transitive_bounds_that_define_assoc_type(
                     tcx,
                     predicates.iter().filter_map(|(p, _)| {
                         p.to_opt_poly_trait_ref().map(|trait_ref| trait_ref.value)
                     }),
+                    assoc_name,
                 )
+                .into_iter()
             },
             || param_name.to_string(),
             assoc_name,
