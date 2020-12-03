@@ -4,7 +4,7 @@ warning: lifetime name `'a` shadows a label name that is already in scope
 LL |     'a: loop {
    |     -- first declared here
 LL |         let b = Box::new(|x: &i8| *x) as Box<dyn for <'a> Fn(&'a i8) -> i8>;
-   |                                                       ^^ lifetime 'a already in scope
+   |                                                       ^^ label `'a` already in scope
 
 warning: 1 warning emitted
 

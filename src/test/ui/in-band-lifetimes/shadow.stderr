@@ -4,7 +4,7 @@ error[E0496]: lifetime name `'s` shadows a lifetime name that is already in scop
 LL | impl Foo<&'s u8> {
    |           -- first declared here
 LL |     fn bar<'s>(&self, x: &'s u8) {}
-   |            ^^ lifetime 's already in scope
+   |            ^^ lifetime `'s` already in scope
 
 error[E0496]: lifetime name `'s` shadows a lifetime name that is already in scope
   --> $DIR/shadow.rs:8:19
@@ -13,7 +13,7 @@ LL | impl Foo<&'s u8> {
    |           -- first declared here
 LL |     fn bar<'s>(&self, x: &'s u8) {}
 LL |     fn baz(x: for<'s> fn(&'s u32)) {}
-   |                   ^^ lifetime 's already in scope
+   |                   ^^ lifetime `'s` already in scope
 
 error: aborting due to 2 previous errors
 
