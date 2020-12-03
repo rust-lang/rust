@@ -270,7 +270,7 @@ impl EarlyLintPass for LintPassImpl {
 
 declare_tool_lint! {
     pub rustc::EXISTING_DOC_KEYWORD,
-    Deny,
+    Allow,
     "Check that documented keywords in std and core actually exist",
     report_in_external_macro: true
 }

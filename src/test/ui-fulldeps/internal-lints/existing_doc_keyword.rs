@@ -5,5 +5,7 @@
 
 #![crate_type = "lib"]
 
+#![deny(rustc::existing_doc_keyword)]
+
 #[doc(keyword = "tadam")] //~ ERROR
 mod tadam {}
