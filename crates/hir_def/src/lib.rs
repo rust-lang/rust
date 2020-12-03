@@ -521,7 +521,7 @@ impl AsMacroCall for AstIdWithPath<ast::MacroCall> {
         error_sink: &mut dyn FnMut(mbe::ExpandError),
     ) -> Option<MacroCallId> {
         let def: MacroDefId = resolver(self.path.clone()).or_else(|| {
-            error_sink(mbe::ExpandError::Other("could not resolve macro".into()));
+            error_sink(mbe::ExpandError::Other(format!("could not resolve macro `{}`", self.path)));
             None
         })?;
 
@@ -556,7 +556,7 @@ impl AsMacroCall for AstIdWithPath<ast::Item> {
         error_sink: &mut dyn FnMut(mbe::ExpandError),
     ) -> Option<MacroCallId> {
         let def: MacroDefId = resolver(self.path.clone()).or_else(|| {
-            error_sink(mbe::ExpandError::Other("could not resolve macro".into()));
+            error_sink(mbe::ExpandError::Other(format!("could not resolve macro `{}`", self.path)));
             None
         })?;
 
