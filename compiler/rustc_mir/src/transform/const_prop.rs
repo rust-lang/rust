@@ -180,6 +180,8 @@ impl<'mir, 'tcx> ConstPropMachine<'mir, 'tcx> {
 impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine<'mir, 'tcx> {
     compile_time_machine!(<'mir, 'tcx>);
 
+    type MemoryKind = !;
+
     type MemoryExtra = ();
 
     fn find_mir_or_eval_fn(
