@@ -588,9 +588,11 @@ impl<T> Arc<T> {
     /// // manual `Drop` implementation that does the destruction in a loop:
     /// impl<T> Drop for LinkedList<T> {
     ///     fn drop(&mut self) {
-    ///         let mut x = self.0.take();
-    ///         while let Some(arc) = x.take() {
-    ///             Arc::into_inner(arc).map(|node| x = node.1);
+    ///         let mut link = self.0.take();
+    ///         while let Some(arc_node) = link.take() {
+    ///             if let Some(Node(_value, next)) = Arc::into_inner(arc_node) {
+    ///                 link = next;
+    ///             }
     ///         }
     ///     }
     /// }
