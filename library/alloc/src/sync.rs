@@ -640,9 +640,6 @@ impl<T> Arc<T> {
 
         acquire!(this.inner().strong);
 
-        // FIXME: should the part below this be moved into a seperate #[inline(never)]
-        // function, like it's done with drop_slow in drop?
-
         // SAFETY: This mirrors the line
         //
         //     unsafe { ptr::drop_in_place(Self::get_mut_unchecked(self)) };
