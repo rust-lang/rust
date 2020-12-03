@@ -1367,7 +1367,7 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```rust
+    /// ```rust,compile_fail
     /// # use core::sync::atomic::{AtomicU8, Ordering};
     /// let atom = AtomicU8::new(0);
     /// let value = atom.load(Ordering::Release);
