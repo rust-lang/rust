@@ -298,21 +298,19 @@ impl CodegenBackend for LlvmCodegenBackend {
         codegen_results: CodegenResults,
         outputs: &OutputFilenames,
     ) -> Result<(), ErrorReported> {
+        use crate::back::archive::LlvmArchiveBuilder;
+        use rustc_codegen_ssa::back::link::link_binary;
+
         // Run the linker on any artifacts that resulted from the LLVM run.
         // This should produce either a finished executable or library.
-        sess.time("link_crate", || {
-            use crate::back::archive::LlvmArchiveBuilder;
-            use rustc_codegen_ssa::back::link::link_binary;
-
-            let target_cpu = crate::llvm_util::target_cpu(sess);
-            link_binary::<LlvmArchiveBuilder<'_>>(
-                sess,
-                &codegen_results,
-                outputs,
-                &codegen_results.crate_name.as_str(),
-                target_cpu,
-            );
-        });
+        let target_cpu = crate::llvm_util::target_cpu(sess);
+        link_binary::<LlvmArchiveBuilder<'_>>(
+            sess,
+            &codegen_results,
+            outputs,
+            &codegen_results.crate_name.as_str(),
+            target_cpu,
+        );
 
         Ok(())
     }
