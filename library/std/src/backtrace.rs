@@ -359,8 +359,8 @@ impl Backtrace {
     /// Returns an iterator over the backtrace frames.
     #[unstable(feature = "backtrace_frames", issue = "79676")]
     pub fn frames(&self) -> Frames {
-        if let Inner::Captured(captured) = self.inner {
-            let frames = captured.lock().unwrap().frames;
+        if let Inner::Captured(captured) = &self.inner {
+            let frames = &captured.lock().unwrap().frames;
             Frames {
                 inner: frames.iter().map(|frame| frame.clone()).collect::<Vec<BacktraceFrame>>()
             }
