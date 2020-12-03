@@ -1274,6 +1274,15 @@ rustc_queries! {
             eval_always
             desc { |tcx| "computing visibility of `{}`", tcx.def_path_str(def_id) }
         }
+
+        /// Computes the set of modules from which this type is visibly uninhabited.
+        /// To check whether a type is uninhabited at all (not just from a given module), you could
+        /// check whether the forest is empty.
+        query type_uninhabited_from(
+            key: ty::ParamEnvAnd<'tcx, Ty<'tcx>>
+        ) -> Arc<ty::inhabitedness::DefIdForest> {
+            desc { "computing the inhabitedness of `{:?}`", key }
+        }
     }
 
     Other {

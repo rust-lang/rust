@@ -11,7 +11,7 @@ use std::mem;
 ///
 /// This is used to represent a set of modules in which a type is visibly
 /// uninhabited.
-#[derive(Clone)]
+#[derive(Clone, HashStable)]
 pub struct DefIdForest {
     /// The minimal set of `DefId`s required to represent the whole set.
     /// If A and B are DefIds in the `DefIdForest`, and A is a descendant
@@ -72,6 +72,9 @@ impl<'tcx> DefIdForest {
                 break;
             }
 
+            // `next_ret` and `old_ret` are empty here.
+            // We keep the elements in `ret` that are also in `next_forest`. Those that aren't are
+            // put back in `ret` via `old_ret`.
             for id in ret.root_ids.drain(..) {
                 if next_forest.contains(tcx, id) {
                     next_ret.push(id);
@@ -81,7 +84,13 @@ impl<'tcx> DefIdForest {
             }
             ret.root_ids.extend(old_ret.drain(..));
 
+            // We keep the elements in `next_forest` that are also in `ret`.
+            // You'd think this is not needed because `next_ret` already contains `ret \inter
+            // next_forest`. But those aren't just sets of things. If `ret = [a]`, `next_forest =
+            // [b]` and `b` is a submodule of `a`, then `b` belongs in the intersection but we
+            // didn't catch it in the loop above.
             next_ret.extend(next_forest.root_ids.into_iter().filter(|&id| ret.contains(tcx, id)));
+            // `next_ret` now contains the intersection of the original `ret` and `next_forest`.
 
             mem::swap(&mut next_ret, &mut ret.root_ids);
             next_ret.drain(..);
