@@ -17,7 +17,9 @@ pub use self::IntVarValue::*;
 pub use self::Variance::*;
 
 use crate::hir::exports::ExportMap;
-use crate::hir::place::Place as HirPlace;
+use crate::hir::place::{
+    Place as HirPlace, PlaceBase as HirPlaceBase, ProjectionKind as HirProjectionKind,
+};
 use crate::ich::StableHashingContext;
 use crate::middle::cstore::CrateStoreDyn;
 use crate::middle::resolve_lifetime::ObjectLifetimeDefault;
@@ -732,6 +734,58 @@ pub type MinCaptureList<'tcx> = Vec<CapturedPlace<'tcx>>;
 pub struct CapturedPlace<'tcx> {
     pub place: HirPlace<'tcx>,
     pub info: CaptureInfo<'tcx>,
+}
+
+pub fn place_to_string_for_capture(tcx: TyCtxt<'tcx>, place: &HirPlace<'tcx>) -> String {
+    let name = match place.base {
+        HirPlaceBase::Upvar(upvar_id) => tcx.hir().name(upvar_id.var_path.hir_id).to_string(),
+        _ => bug!("Capture_information should only contain upvars"),
+    };
+    let mut curr_string = format!("{}", name);
+
+    for (i, proj) in place.projections.iter().enumerate() {
+        if HirProjectionKind::Deref == proj.kind {
+            curr_string = format!("*{}", curr_string);
+        } else {
+            match place.ty_before_projection(i).kind() {
+                ty::Adt(def, ..) if def.is_enum() => {
+                    // we might be projecting *to* a variant, or to a field *in* a variant.
+                    match proj.kind {
+                        HirProjectionKind::Field(_idx, variant) => {
+                            curr_string = format!(
+                                "{}.{}",
+                                curr_string,
+                                def.variants[variant].fields[0].ident.name.as_str()
+                            );
+                        }
+                        _ => {
+                            bug!("Could not handle ProjectionKind {:?}", proj.kind)
+                        }
+                    }
+                }
+                ty::Adt(def, ..) => {
+                    curr_string = format!(
+                        "{}.{}",
+                        curr_string,
+                        def.non_enum_variant().fields[0].ident.name.as_str()
+                    );
+                }
+                ty::Tuple(_) => match proj.kind {
+                    HirProjectionKind::Field(idx, _) => {
+                        curr_string = format!("{}.{}", curr_string, idx);
+                    }
+                    _ => {
+                        bug!("Could not handle ProjectionKind {:?}", proj.kind)
+                    }
+                },
+                _ => {
+                    bug!("Could not handle ty kind {:?}", place.ty_before_projection(i).kind())
+                }
+            }
+        }
+    }
+
+    curr_string.to_string()
 }
 
 /// Part of `MinCaptureInformationMap`; describes the capture kind (&, &mut, move)
