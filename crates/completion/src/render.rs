@@ -16,7 +16,7 @@ use syntax::TextRange;
 use test_utils::mark;
 
 use crate::{
-    config::SnippetCap, item::ImportToAdd, CompletionContext, CompletionItem, CompletionItemKind,
+    config::SnippetCap, item::ImportEdit, CompletionContext, CompletionItem, CompletionItemKind,
     CompletionKind, CompletionScore,
 };
 
@@ -56,7 +56,7 @@ pub(crate) fn render_resolution_with_import<'a>(
     let local_name = import_path.segments.last()?.to_string();
     Render::new(ctx).render_resolution(
         local_name,
-        Some(ImportToAdd { import_path, import_scope, merge_behaviour }),
+        Some(ImportEdit { import_path, import_scope, merge_behaviour }),
         resolution,
     )
 }
@@ -147,7 +147,7 @@ impl<'a> Render<'a> {
     fn render_resolution(
         self,
         local_name: String,
-        import_to_add: Option<ImportToAdd>,
+        import_to_add: Option<ImportEdit>,
         resolution: &ScopeDef,
     ) -> Option<CompletionItem> {
         let _p = profile::span("render_resolution");
@@ -194,7 +194,10 @@ impl<'a> Render<'a> {
                     local_name,
                 )
                 .kind(CompletionItemKind::UnresolvedReference)
-                .add_import(import_to_add, self.ctx.completion.config.resolve_edits_immediately())
+                .add_import(
+                    import_to_add,
+                    self.ctx.completion.config.resolve_additional_edits_lazily(),
+                )
                 .build();
                 return Some(item);
             }
@@ -249,7 +252,7 @@ impl<'a> Render<'a> {
 
         let item = item
             .kind(kind)
-            .add_import(import_to_add, self.ctx.completion.config.resolve_edits_immediately())
+            .add_import(import_to_add, self.ctx.completion.config.resolve_additional_edits_lazily())
             .set_documentation(docs)
             .set_ref_match(ref_match)
             .build();

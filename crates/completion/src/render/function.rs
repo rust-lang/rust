@@ -5,13 +5,13 @@ use syntax::{ast::Fn, display::function_declaration};
 use test_utils::mark;
 
 use crate::{
-    item::{CompletionItem, CompletionItemKind, CompletionKind, ImportToAdd},
+    item::{CompletionItem, CompletionItemKind, CompletionKind, ImportEdit},
     render::{builder_ext::Params, RenderContext},
 };
 
 pub(crate) fn render_fn<'a>(
     ctx: RenderContext<'a>,
-    import_to_add: Option<ImportToAdd>,
+    import_to_add: Option<ImportEdit>,
     local_name: Option<String>,
     fn_: hir::Function,
 ) -> CompletionItem {
@@ -39,7 +39,7 @@ impl<'a> FunctionRender<'a> {
         FunctionRender { ctx, name, func: fn_, ast_node }
     }
 
-    fn render(self, import_to_add: Option<ImportToAdd>) -> CompletionItem {
+    fn render(self, import_to_add: Option<ImportEdit>) -> CompletionItem {
         let params = self.params();
         CompletionItem::new(CompletionKind::Reference, self.ctx.source_range(), self.name.clone())
             .kind(self.kind())
@@ -47,7 +47,7 @@ impl<'a> FunctionRender<'a> {
             .set_deprecated(self.ctx.is_deprecated(self.func))
             .detail(self.detail())
             .add_call_parens(self.ctx.completion, self.name, params)
-            .add_import(import_to_add, self.ctx.completion.config.resolve_edits_immediately())
+            .add_import(import_to_add, self.ctx.completion.config.resolve_additional_edits_lazily())
             .build()
     }
 

@@ -7,7 +7,7 @@ use std::{sync::Arc, time::Instant};
 
 use crossbeam_channel::{unbounded, Receiver, Sender};
 use flycheck::FlycheckHandle;
-use ide::{Analysis, AnalysisHost, Change, CompletionItem, FileId};
+use ide::{Analysis, AnalysisHost, Change, FileId, ImportEdit};
 use ide_db::base_db::{CrateId, VfsPath};
 use lsp_types::{SemanticTokens, Url};
 use parking_lot::{Mutex, RwLock};
@@ -53,7 +53,7 @@ pub(crate) type ReqQueue = lsp_server::ReqQueue<(String, Instant), ReqHandler>;
 
 pub(crate) struct CompletionResolveData {
     pub(crate) file_id: FileId,
-    pub(crate) item: CompletionItem,
+    pub(crate) import_edit: ImportEdit,
 }
 
 /// `GlobalState` is the primary mutable state of the language server

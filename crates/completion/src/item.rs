@@ -68,7 +68,7 @@ pub struct CompletionItem {
     ref_match: Option<(Mutability, CompletionScore)>,
 
     /// The import data to add to completion's edits.
-    import_to_add: Option<ImportToAdd>,
+    import_to_add: Option<ImportEdit>,
 }
 
 // We use custom debug for CompletionItem to make snapshot tests more readable.
@@ -209,7 +209,7 @@ impl CompletionItem {
             score: None,
             ref_match: None,
             import_to_add: None,
-            resolve_import_immediately: true,
+            resolve_import_lazily: false,
         }
     }
 
@@ -262,17 +262,36 @@ impl CompletionItem {
         self.ref_match
     }
 
-    pub fn import_to_add(&self) -> Option<&ImportToAdd> {
+    pub fn import_to_add(&self) -> Option<&ImportEdit> {
         self.import_to_add.as_ref()
     }
 }
 
 /// An extra import to add after the completion is applied.
 #[derive(Debug, Clone)]
-pub struct ImportToAdd {
+pub struct ImportEdit {
     pub import_path: ModPath,
     pub import_scope: ImportScope,
     pub merge_behaviour: Option<MergeBehaviour>,
+}
+
+impl ImportEdit {
+    /// Attempts to insert the import to the given scope, producing a text edit.
+    /// May return no edit in edge cases, such as scope already containing the import.
+    pub fn to_text_edit(&self) -> Option<TextEdit> {
+        let _p = profile::span("ImportEdit::to_edit");
+
+        let rewriter = insert_use::insert_use(
+            &self.import_scope,
+            mod_path_to_ast(&self.import_path),
+            self.merge_behaviour,
+        );
+        let old_ast = rewriter.rewrite_root()?;
+        let mut import_insert = TextEdit::builder();
+        algo::diff(&old_ast, &rewriter.rewrite(&old_ast)).into_text_edit(&mut import_insert);
+
+        Some(import_insert.finish())
+    }
 }
 
 /// A helper to make `CompletionItem`s.
@@ -281,8 +300,8 @@ pub struct ImportToAdd {
 pub(crate) struct Builder {
     source_range: TextRange,
     completion_kind: CompletionKind,
-    import_to_add: Option<ImportToAdd>,
-    resolve_import_immediately: bool,
+    import_to_add: Option<ImportEdit>,
+    resolve_import_lazily: bool,
     label: String,
     insert_text: Option<String>,
     insert_text_format: InsertTextFormat,
@@ -304,7 +323,6 @@ impl Builder {
         let mut label = self.label;
         let mut lookup = self.lookup;
         let mut insert_text = self.insert_text;
-        let mut text_edits = TextEdit::builder();
 
         if let Some(import_to_add) = self.import_to_add.as_ref() {
             let mut import_path_without_last_segment = import_to_add.import_path.to_owned();
@@ -319,35 +337,28 @@ impl Builder {
                 }
                 label = format!("{}::{}", import_path_without_last_segment, label);
             }
-
-            if self.resolve_import_immediately {
-                let rewriter = insert_use::insert_use(
-                    &import_to_add.import_scope,
-                    mod_path_to_ast(&import_to_add.import_path),
-                    import_to_add.merge_behaviour,
-                );
-                if let Some(old_ast) = rewriter.rewrite_root() {
-                    algo::diff(&old_ast, &rewriter.rewrite(&old_ast))
-                        .into_text_edit(&mut text_edits);
-                }
-            }
         }
 
-        let original_edit = match self.text_edit {
+        let mut text_edit = match self.text_edit {
             Some(it) => it,
             None => {
                 TextEdit::replace(self.source_range, insert_text.unwrap_or_else(|| label.clone()))
             }
         };
 
-        let mut resulting_edit = text_edits.finish();
-        resulting_edit.union(original_edit).expect("Failed to unite text edits");
+        if !self.resolve_import_lazily {
+            if let Some(import_edit) =
+                self.import_to_add.as_ref().and_then(|import_edit| import_edit.to_text_edit())
+            {
+                text_edit.union(import_edit).expect("Failed to unite import and completion edits");
+            }
+        }
 
         CompletionItem {
             source_range: self.source_range,
             label,
             insert_text_format: self.insert_text_format,
-            text_edit: resulting_edit,
+            text_edit,
             detail: self.detail,
             documentation: self.documentation,
             lookup,
@@ -422,11 +433,11 @@ impl Builder {
     }
     pub(crate) fn add_import(
         mut self,
-        import_to_add: Option<ImportToAdd>,
-        resolve_import_immediately: bool,
+        import_to_add: Option<ImportEdit>,
+        resolve_import_lazily: bool,
     ) -> Builder {
         self.import_to_add = import_to_add;
-        self.resolve_import_immediately = resolve_import_immediately;
+        self.resolve_import_lazily = resolve_import_lazily;
         self
     }
     pub(crate) fn set_ref_match(

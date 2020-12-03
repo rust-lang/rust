@@ -8,10 +8,9 @@ use std::{
 };
 
 use ide::{
-    FileId, FilePosition, FileRange, HoverAction, HoverGotoTypeData, ImportToAdd, LineIndex,
+    FileId, FilePosition, FileRange, HoverAction, HoverGotoTypeData, ImportEdit, LineIndex,
     NavigationTarget, Query, RangeInfo, Runnable, RunnableKind, SearchScope, TextEdit,
 };
-use ide_db::helpers::{insert_use, mod_path_to_ast};
 use itertools::Itertools;
 use lsp_server::ErrorCode;
 use lsp_types::{
@@ -581,13 +580,21 @@ pub(crate) fn handle_completion(
             let mut new_completion_items =
                 to_proto::completion_item(&line_index, line_endings, item.clone());
 
-            if !snap.config.completion.active_resolve_capabilities.is_empty() {
-                let item_id = serde_json::to_value(&item_index)
-                    .expect(&format!("Should be able to serialize usize value {}", item_index));
-                completion_resolve_data
-                    .insert(item_index, CompletionResolveData { file_id: position.file_id, item });
-                for new_item in &mut new_completion_items {
-                    new_item.data = Some(item_id.clone());
+            if snap.config.completion.resolve_additional_edits_lazily() {
+                if let Some(import_edit) = item.import_to_add() {
+                    completion_resolve_data.insert(
+                        item_index,
+                        CompletionResolveData {
+                            file_id: position.file_id,
+                            import_edit: import_edit.clone(),
+                        },
+                    );
+
+                    let item_id = serde_json::to_value(&item_index)
+                        .expect(&format!("Should be able to serialize usize value {}", item_index));
+                    for new_item in &mut new_completion_items {
+                        new_item.data = Some(item_id.clone());
+                    }
                 }
             }
 
@@ -601,11 +608,16 @@ pub(crate) fn handle_completion(
     Ok(Some(completion_list.into()))
 }
 
-pub(crate) fn handle_resolve_completion(
+pub(crate) fn handle_completion_resolve(
     global_state: &mut GlobalState,
     mut original_completion: lsp_types::CompletionItem,
 ) -> Result<lsp_types::CompletionItem> {
     let _p = profile::span("handle_resolve_completion");
+
+    let active_resolve_caps = &global_state.config.completion.active_resolve_capabilities;
+    if active_resolve_caps.is_empty() {
+        return Ok(original_completion);
+    }
 
     let server_completion_data = match original_completion
         .data
@@ -620,18 +632,16 @@ pub(crate) fn handle_resolve_completion(
     };
 
     let snap = &global_state.snapshot();
-    for supported_completion_resolve_cap in &snap.config.completion.active_resolve_capabilities {
+    for supported_completion_resolve_cap in active_resolve_caps {
         match supported_completion_resolve_cap {
+            // FIXME actually add all additional edits here? see `to_proto::completion_item` for more
             ide::CompletionResolveCapability::AdditionalTextEdits => {
-                // FIXME actually add all additional edits here?
-                if let Some(import_to_add) = server_completion_data.item.import_to_add() {
-                    append_import_edits(
-                        &mut original_completion,
-                        import_to_add,
-                        snap.analysis.file_line_index(server_completion_data.file_id)?.as_ref(),
-                        snap.file_line_endings(server_completion_data.file_id),
-                    );
-                }
+                append_import_edits(
+                    &mut original_completion,
+                    &server_completion_data.import_edit,
+                    snap.analysis.file_line_index(server_completion_data.file_id)?.as_ref(),
+                    snap.file_line_endings(server_completion_data.file_id),
+                );
             }
             // FIXME resolve the other capabilities also?
             _ => {}
@@ -1601,41 +1611,21 @@ fn should_skip_target(runnable: &Runnable, cargo_spec: Option<&CargoTargetSpec>)
 
 fn append_import_edits(
     completion: &mut lsp_types::CompletionItem,
-    import_to_add: &ImportToAdd,
+    import_to_add: &ImportEdit,
     line_index: &LineIndex,
     line_endings: LineEndings,
 ) {
-    let new_edits = import_into_edits(import_to_add, line_index, line_endings);
-    if let Some(original_additional_edits) = completion.additional_text_edits.as_mut() {
-        if let Some(mut new_edits) = new_edits {
-            original_additional_edits.extend(new_edits.drain(..))
-        }
-    } else {
-        completion.additional_text_edits = new_edits;
-    }
-}
-
-fn import_into_edits(
-    import_to_add: &ImportToAdd,
-    line_index: &LineIndex,
-    line_endings: LineEndings,
-) -> Option<Vec<lsp_types::TextEdit>> {
-    let _p = profile::span("add_import_edits");
-
-    let rewriter = insert_use::insert_use(
-        &import_to_add.import_scope,
-        mod_path_to_ast(&import_to_add.import_path),
-        import_to_add.merge_behaviour,
-    );
-    let old_ast = rewriter.rewrite_root()?;
-    let mut import_insert = TextEdit::builder();
-    algo::diff(&old_ast, &rewriter.rewrite(&old_ast)).into_text_edit(&mut import_insert);
-    let import_edit = import_insert.finish();
-
-    Some(
+    let import_edits = import_to_add.to_text_edit().map(|import_edit| {
         import_edit
             .into_iter()
             .map(|indel| to_proto::text_edit(line_index, line_endings, indel))
-            .collect_vec(),
-    )
+            .collect_vec()
+    });
+    if let Some(original_additional_edits) = completion.additional_text_edits.as_mut() {
+        if let Some(mut new_edits) = import_edits {
+            original_additional_edits.extend(new_edits.drain(..))
+        }
+    } else {
+        completion.additional_text_edits = import_edits;
+    }
 }

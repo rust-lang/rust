@@ -104,7 +104,7 @@ fn completions_resolve_provider(client_caps: &ClientCapabilities) -> Option<bool
 }
 
 /// Parses client capabilities and returns all completion resolve capabilities rust-analyzer supports.
-pub fn enabled_completions_resolve_capabilities(
+pub(crate) fn enabled_completions_resolve_capabilities(
     caps: &ClientCapabilities,
 ) -> Option<FxHashSet<CompletionResolveCapability>> {
     Some(
@@ -118,13 +118,11 @@ pub fn enabled_completions_resolve_capabilities(
             .as_ref()?
             .properties
             .iter()
-            .filter_map(|cap_string| {
-                Some(match cap_string.as_str() {
-                    "additionalTextEdits" => CompletionResolveCapability::AdditionalTextEdits,
-                    "detail" => CompletionResolveCapability::Detail,
-                    "documentation" => CompletionResolveCapability::Documentation,
-                    _unsupported => return None,
-                })
+            .filter_map(|cap_string| match cap_string.as_str() {
+                "additionalTextEdits" => Some(CompletionResolveCapability::AdditionalTextEdits),
+                "detail" => Some(CompletionResolveCapability::Detail),
+                "documentation" => Some(CompletionResolveCapability::Documentation),
+                _unsupported => None,
             })
             .collect(),
     )

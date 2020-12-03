@@ -36,12 +36,10 @@ impl CompletionConfig {
         self.snippet_cap = if yes { Some(SnippetCap { _private: () }) } else { None }
     }
 
-    /// Whether the completions' additional edits are calculated later, during a resolve request or not.
-    /// See `CompletionResolveCapability` for the details.
-    pub fn resolve_edits_immediately(&self) -> bool {
-        !self
-            .active_resolve_capabilities
-            .contains(&CompletionResolveCapability::AdditionalTextEdits)
+    /// Whether the completions' additional edits are calculated when sending an initional completions list
+    /// or later, in a separate resolve request.
+    pub fn resolve_additional_edits_lazily(&self) -> bool {
+        self.active_resolve_capabilities.contains(&CompletionResolveCapability::AdditionalTextEdits)
     }
 }
 

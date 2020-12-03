@@ -5,13 +5,13 @@ use itertools::Itertools;
 use test_utils::mark;
 
 use crate::{
-    item::{CompletionItem, CompletionItemKind, CompletionKind, ImportToAdd},
+    item::{CompletionItem, CompletionItemKind, CompletionKind, ImportEdit},
     render::{builder_ext::Params, RenderContext},
 };
 
 pub(crate) fn render_enum_variant<'a>(
     ctx: RenderContext<'a>,
-    import_to_add: Option<ImportToAdd>,
+    import_to_add: Option<ImportEdit>,
     local_name: Option<String>,
     variant: hir::EnumVariant,
     path: Option<ModPath>,
@@ -62,7 +62,7 @@ impl<'a> EnumVariantRender<'a> {
         }
     }
 
-    fn render(self, import_to_add: Option<ImportToAdd>) -> CompletionItem {
+    fn render(self, import_to_add: Option<ImportEdit>) -> CompletionItem {
         let mut builder = CompletionItem::new(
             CompletionKind::Reference,
             self.ctx.source_range(),
@@ -71,7 +71,7 @@ impl<'a> EnumVariantRender<'a> {
         .kind(CompletionItemKind::EnumVariant)
         .set_documentation(self.variant.docs(self.ctx.db()))
         .set_deprecated(self.ctx.is_deprecated(self.variant))
-        .add_import(import_to_add, self.ctx.completion.config.resolve_edits_immediately())
+        .add_import(import_to_add, self.ctx.completion.config.resolve_additional_edits_lazily())
         .detail(self.detail());
 
         if self.variant_kind == StructKind::Tuple {

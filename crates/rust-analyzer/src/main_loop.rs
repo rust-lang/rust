@@ -438,7 +438,7 @@ impl GlobalState {
             .on_sync::<lsp_ext::MemoryUsage>(|s, p| handlers::handle_memory_usage(s, p))?
             .on_sync::<lsp_types::request::Completion>(handlers::handle_completion)?
             .on_sync::<lsp_types::request::ResolveCompletionItem>(
-                handlers::handle_resolve_completion,
+                handlers::handle_completion_resolve,
             )?
             .on::<lsp_ext::AnalyzerStatus>(handlers::handle_analyzer_status)
             .on::<lsp_ext::SyntaxTree>(handlers::handle_syntax_tree)
