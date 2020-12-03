@@ -104,7 +104,7 @@ fn try_unwrap() {
 #[test]
 fn unwrap_or_drop() {
     for _ in 0..100
-    // ^ increase chances of hitting potential race conditions
+    // ^ Increase chances of hitting potential race conditions
     {
         let x = Arc::new(3);
         let y = Arc::clone(&x);

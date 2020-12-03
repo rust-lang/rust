@@ -595,7 +595,7 @@ impl<T> Arc<T> {
     ///     }
     /// }
     ///
-    /// // implementation of `new` and `push` omitted
+    /// // Implementation of `new` and `push` omitted
     /// impl<T> LinkedList<T> {
     ///     /* ... */
     /// #   fn new() -> Self {
@@ -610,14 +610,14 @@ impl<T> Arc<T> {
     /// // despite the manual `Drop` impl if that `Drop` impl used
     /// // `Arc::try_unwrap(arc).ok()` instead of `Arc::unwrap_or_drop(arc)`.
     /// {
-    ///     // create a long list and clone it
+    ///     // Create a long list and clone it
     ///     let mut x = LinkedList::new();
     ///     for i in 0..100000 {
-    ///         x.push(i); // adds i to the front of x
+    ///         x.push(i); // Adds i to the front of x
     ///     }
     ///     let y = x.clone();
     ///
-    ///     // drop the clones in parallel
+    ///     // Drop the clones in parallel
     ///     let t1 = std::thread::spawn(|| drop(x));
     ///     let t2 = std::thread::spawn(|| drop(y));
     ///     t1.join().unwrap();
