@@ -17,7 +17,9 @@ pub use self::IntVarValue::*;
 pub use self::Variance::*;
 
 use crate::hir::exports::ExportMap;
-use crate::hir::place::Place as HirPlace;
+use crate::hir::place::{
+    Place as HirPlace, PlaceBase as HirPlaceBase, ProjectionKind as HirProjectionKind,
+};
 use crate::ich::StableHashingContext;
 use crate::middle::cstore::CrateStoreDyn;
 use crate::middle::resolve_lifetime::ObjectLifetimeDefault;
@@ -732,6 +734,43 @@ pub type MinCaptureList<'tcx> = Vec<CapturedPlace<'tcx>>;
 pub struct CapturedPlace<'tcx> {
     pub place: HirPlace<'tcx>,
     pub info: CaptureInfo<'tcx>,
+}
+
+pub fn place_to_string_for_capture(tcx: TyCtxt<'tcx>, place: &HirPlace<'tcx>) -> String {
+    let name = match place.base {
+        HirPlaceBase::Upvar(upvar_id) => tcx.hir().name(upvar_id.var_path.hir_id).to_string(),
+        _ => bug!("Capture_information should only contain upvars"),
+    };
+    let mut curr_string = name;
+
+    for (i, proj) in place.projections.iter().enumerate() {
+        match proj.kind {
+            HirProjectionKind::Deref => {
+                curr_string = format!("*{}", curr_string);
+            }
+            HirProjectionKind::Field(idx, variant) => match place.ty_before_projection(i).kind() {
+                ty::Adt(def, ..) => {
+                    curr_string = format!(
+                        "{}.{}",
+                        curr_string,
+                        def.variants[variant].fields[idx as usize].ident.name.as_str()
+                    );
+                }
+                ty::Tuple(_) => {
+                    curr_string = format!("{}.{}", curr_string, idx);
+                }
+                _ => {
+                    bug!(
+                        "Field projection applied to a type other than Adt or Tuple: {:?}.",
+                        place.ty_before_projection(i).kind()
+                    )
+                }
+            },
+            proj => bug!("{:?} unexpected because it isn't captured", proj),
+        }
+    }
+
+    curr_string.to_string()
 }
 
 /// Part of `MinCaptureInformationMap`; describes the capture kind (&, &mut, move)
