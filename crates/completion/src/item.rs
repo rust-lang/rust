@@ -4,10 +4,10 @@ use std::fmt;
 
 use hir::{Documentation, ModPath, Mutability};
 use ide_db::helpers::{
-    insert_use::{self, ImportScope, MergeBehaviour},
+    insert_use::{self, ImportScope, ImportScopePtr, MergeBehaviour},
     mod_path_to_ast,
 };
-use syntax::{algo, TextRange};
+use syntax::{algo, SyntaxNode, TextRange};
 use text_edit::TextEdit;
 
 use crate::config::SnippetCap;
@@ -275,7 +275,32 @@ pub struct ImportEdit {
     pub merge_behaviour: Option<MergeBehaviour>,
 }
 
+#[derive(Debug, Clone)]
+pub struct ImportEditPtr {
+    pub import_path: ModPath,
+    pub import_scope: ImportScopePtr,
+    pub merge_behaviour: Option<MergeBehaviour>,
+}
+
+impl ImportEditPtr {
+    pub fn into_import_edit(self, root: &SyntaxNode) -> Option<ImportEdit> {
+        Some(ImportEdit {
+            import_path: self.import_path,
+            import_scope: self.import_scope.into_scope(root)?,
+            merge_behaviour: self.merge_behaviour,
+        })
+    }
+}
+
 impl ImportEdit {
+    pub fn get_edit_ptr(&self) -> ImportEditPtr {
+        ImportEditPtr {
+            import_path: self.import_path.clone(),
+            import_scope: self.import_scope.get_ptr(),
+            merge_behaviour: self.merge_behaviour,
+        }
+    }
+
     /// Attempts to insert the import to the given scope, producing a text edit.
     /// May return no edit in edge cases, such as scope already containing the import.
     pub fn to_text_edit(&self) -> Option<TextEdit> {

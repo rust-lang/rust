@@ -5,11 +5,13 @@
 use std::{
     io::Write as _,
     process::{self, Stdio},
+    sync::Arc,
 };
 
 use ide::{
-    FileId, FilePosition, FileRange, HoverAction, HoverGotoTypeData, ImportEdit, LineIndex,
-    NavigationTarget, Query, RangeInfo, Runnable, RunnableKind, SearchScope, TextEdit,
+    CompletionResolveCapability, FileId, FilePosition, FileRange, HoverAction, HoverGotoTypeData,
+    ImportEdit, LineIndex, NavigationTarget, Query, RangeInfo, Runnable, RunnableKind, SearchScope,
+    TextEdit,
 };
 use itertools::Itertools;
 use lsp_server::ErrorCode;
@@ -34,7 +36,7 @@ use crate::{
     cargo_target_spec::CargoTargetSpec,
     config::RustfmtConfig,
     from_json, from_proto,
-    global_state::{CompletionResolveData, GlobalState, GlobalStateSnapshot},
+    global_state::{GlobalState, GlobalStateSnapshot},
     line_endings::LineEndings,
     lsp_ext::{self, InlayHint, InlayHintsParams},
     to_proto, LspError, Result,
@@ -542,6 +544,7 @@ pub(crate) fn handle_completion(
 ) -> Result<Option<lsp_types::CompletionResponse>> {
     let _p = profile::span("handle_completion");
     let snap = global_state.snapshot();
+    let text_document_url = params.text_document_position.text_document.uri.clone();
     let position = from_proto::file_position(&snap, params.text_document_position)?;
     let completion_triggered_after_single_colon = {
         let mut res = false;
@@ -582,18 +585,15 @@ pub(crate) fn handle_completion(
 
             if snap.config.completion.resolve_additional_edits_lazily() {
                 if let Some(import_edit) = item.import_to_add() {
-                    completion_resolve_data.insert(
-                        item_index,
-                        CompletionResolveData {
-                            file_id: position.file_id,
-                            import_edit: import_edit.clone(),
-                        },
-                    );
+                    completion_resolve_data.insert(item_index, import_edit.get_edit_ptr());
 
-                    let item_id = serde_json::to_value(&item_index)
-                        .expect(&format!("Should be able to serialize usize value {}", item_index));
+                    let data = serde_json::to_value(&CompletionData {
+                        document_url: text_document_url.clone(),
+                        import_id: item_index,
+                    })
+                    .expect(&format!("Should be able to serialize usize value {}", item_index));
                     for new_item in &mut new_completion_items {
-                        new_item.data = Some(item_id.clone());
+                        new_item.data = Some(data.clone());
                     }
                 }
             }
@@ -602,50 +602,54 @@ pub(crate) fn handle_completion(
         })
         .collect();
 
-    global_state.completion_resolve_data = completion_resolve_data;
+    global_state.completion_resolve_data = Arc::new(completion_resolve_data);
 
     let completion_list = lsp_types::CompletionList { is_incomplete: true, items };
     Ok(Some(completion_list.into()))
 }
 
 pub(crate) fn handle_completion_resolve(
-    global_state: &mut GlobalState,
+    snap: GlobalStateSnapshot,
     mut original_completion: lsp_types::CompletionItem,
 ) -> Result<lsp_types::CompletionItem> {
     let _p = profile::span("handle_resolve_completion");
 
-    let active_resolve_caps = &global_state.config.completion.active_resolve_capabilities;
-    if active_resolve_caps.is_empty() {
+    // FIXME resolve the other capabilities also?
+    if !snap
+        .config
+        .completion
+        .active_resolve_capabilities
+        .contains(&CompletionResolveCapability::AdditionalTextEdits)
+    {
         return Ok(original_completion);
     }
 
-    let server_completion_data = match original_completion
+    let (import_edit_ptr, document_url) = match original_completion
         .data
         .as_ref()
-        .map(|data| serde_json::from_value::<usize>(data.clone()))
+        .map(|data| serde_json::from_value::<CompletionData>(data.clone()))
         .transpose()?
-        .and_then(|server_completion_id| {
-            global_state.completion_resolve_data.get(&server_completion_id)
+        .and_then(|data| {
+            let import_edit_ptr = snap.completion_resolve_data.get(&data.import_id).cloned();
+            Some((import_edit_ptr, data.document_url))
         }) {
         Some(data) => data,
         None => return Ok(original_completion),
     };
 
-    let snap = &global_state.snapshot();
-    for supported_completion_resolve_cap in active_resolve_caps {
-        match supported_completion_resolve_cap {
-            // FIXME actually add all additional edits here? see `to_proto::completion_item` for more
-            ide::CompletionResolveCapability::AdditionalTextEdits => {
-                append_import_edits(
-                    &mut original_completion,
-                    &server_completion_data.import_edit,
-                    snap.analysis.file_line_index(server_completion_data.file_id)?.as_ref(),
-                    snap.file_line_endings(server_completion_data.file_id),
-                );
-            }
-            // FIXME resolve the other capabilities also?
-            _ => {}
-        }
+    let file_id = from_proto::file_id(&snap, &document_url)?;
+    let root = snap.analysis.parse(file_id)?;
+
+    if let Some(import_to_add) =
+        import_edit_ptr.and_then(|import_edit| import_edit.into_import_edit(root.syntax()))
+    {
+        // FIXME actually add all additional edits here? see `to_proto::completion_item` for more
+        append_import_edits(
+            &mut original_completion,
+            &import_to_add,
+            snap.analysis.file_line_index(file_id)?.as_ref(),
+            snap.file_line_endings(file_id),
+        );
     }
 
     Ok(original_completion)
@@ -1607,6 +1611,12 @@ fn should_skip_target(runnable: &Runnable, cargo_spec: Option<&CargoTargetSpec>)
         }
         _ => false,
     }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct CompletionData {
+    document_url: Url,
+    import_id: usize,
 }
 
 fn append_import_edits(
