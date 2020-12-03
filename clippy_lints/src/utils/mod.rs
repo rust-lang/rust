@@ -603,12 +603,12 @@ pub fn contains_return(expr: &hir::Expr<'_>) -> bool {
     visitor.found
 }
 
-struct FindMacroCalls<'a> {
-    names: Vec<&'a str>,
+struct FindMacroCalls<'a, 'b> {
+    names: &'a [&'b str],
     result: Vec<Span>,
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for FindMacroCalls<'a> {
+impl<'a, 'b, 'tcx> Visitor<'tcx> for FindMacroCalls<'a, 'b> {
     type Map = Map<'tcx>;
 
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
@@ -625,7 +625,7 @@ impl<'a, 'tcx> Visitor<'tcx> for FindMacroCalls<'a> {
 }
 
 /// Finds calls of the specified macros in a function body.
-pub fn find_macro_calls(names: Vec<&str>, body: &'tcx Body<'tcx>) -> Vec<Span> {
+pub fn find_macro_calls(names: &[&str], body: &Body<'_>) -> Vec<Span> {
     let mut fmc = FindMacroCalls {
         names,
         result: Vec::new(),
