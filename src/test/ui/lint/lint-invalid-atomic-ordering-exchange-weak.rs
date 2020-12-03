@@ -43,19 +43,19 @@ fn main() {
 
     // Release success order forbids failure order of Acquire or SeqCst
     let _ = x.compare_exchange_weak(ptr2, ptr, Ordering::Release, Ordering::Acquire);
-    //~^ ERROR compare_exchange_weak's failure ordering may not be stronger than the success ordering of `Release`
+    //~^ ERROR compare_exchange_weak's failure ordering may not be stronger
     let _ = x.compare_exchange_weak(ptr2, ptr, Ordering::Release, Ordering::SeqCst);
-    //~^ ERROR compare_exchange_weak's failure ordering may not be stronger than the success ordering of `Release`
+    //~^ ERROR compare_exchange_weak's failure ordering may not be stronger
 
     // Relaxed success order also forbids failure order of Acquire or SeqCst
     let _ = x.compare_exchange_weak(ptr, ptr2, Ordering::Relaxed, Ordering::SeqCst);
-    //~^ ERROR compare_exchange_weak's failure ordering may not be stronger than the success ordering of `Relaxed`
+    //~^ ERROR compare_exchange_weak's failure ordering may not be stronger
     let _ = x.compare_exchange_weak(ptr, ptr2, Ordering::Relaxed, Ordering::Acquire);
-    //~^ ERROR compare_exchange_weak's failure ordering may not be stronger than the success ordering of `Relaxed`
+    //~^ ERROR compare_exchange_weak's failure ordering may not be stronger
 
     // Acquire/AcqRel forbids failure order of SeqCst
     let _ = x.compare_exchange_weak(ptr2, ptr, Ordering::Acquire, Ordering::SeqCst);
-    //~^ ERROR compare_exchange_weak's failure ordering may not be stronger than the success ordering of `Acquire`
+    //~^ ERROR compare_exchange_weak's failure ordering may not be stronger
     let _ = x.compare_exchange_weak(ptr2, ptr, Ordering::AcqRel, Ordering::SeqCst);
-    //~^ ERROR compare_exchange_weak's failure ordering may not be stronger than the success ordering of `AcqRel`
+    //~^ ERROR compare_exchange_weak's failure ordering may not be stronger
 }
