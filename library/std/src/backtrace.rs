@@ -146,12 +146,15 @@ fn _assert_send_sync() {
     _assert::<Backtrace>();
 }
 
+/// A single frame of a backtrace.
 #[unstable(feature = "backtrace_frames", issue = "79676")]
 pub struct BacktraceFrame {
     frame: RawFrame,
     symbols: Vec<BacktraceSymbol>,
 }
 
+/// An iterator over the frames of a backtrace, created 
+/// by the [`frames`] method on [`Backtrace`].
 #[unstable(feature = "backtrace_frames", issue = "79676")]
 pub struct Frames {
     inner: Vec<BacktraceFrame>
