@@ -86,7 +86,6 @@ pub fn find_builtin_macro(
 register_builtin! {
     LAZY:
     (column, Column) => column_expand,
-    (compile_error, CompileError) => compile_error_expand,
     (file, File) => file_expand,
     (line, Line) => line_expand,
     (assert, Assert) => assert_expand,
@@ -97,6 +96,7 @@ register_builtin! {
     (format_args_nl, FormatArgsNl) => format_args_expand,
 
     EAGER:
+    (compile_error, CompileError) => compile_error_expand,
     (concat, Concat) => concat_expand,
     (include, Include) => include_expand,
     (include_bytes, IncludeBytes) => include_bytes_expand,
@@ -213,25 +213,6 @@ fn file_expand(
     ExpandResult::ok(expanded)
 }
 
-fn compile_error_expand(
-    _db: &dyn AstDatabase,
-    _id: LazyMacroId,
-    tt: &tt::Subtree,
-) -> ExpandResult<tt::Subtree> {
-    if tt.count() == 1 {
-        if let tt::TokenTree::Leaf(tt::Leaf::Literal(it)) = &tt.token_trees[0] {
-            let s = it.text.as_str();
-            if s.contains('"') {
-                return ExpandResult::ok(quote! { loop { #it }});
-            }
-        };
-    }
-
-    ExpandResult::only_err(mbe::ExpandError::BindingError(
-        "`compile_error!` argument be a string".into(),
-    ))
-}
-
 fn format_args_expand(
     _db: &dyn AstDatabase,
     _id: LazyMacroId,
@@ -278,6 +259,30 @@ fn unquote_str(lit: &tt::Literal) -> Option<String> {
     let lit = ast::make::tokens::literal(&lit.to_string());
     let token = ast::String::cast(lit)?;
     token.value().map(|it| it.into_owned())
+}
+
+fn compile_error_expand(
+    _db: &dyn AstDatabase,
+    _id: EagerMacroId,
+    tt: &tt::Subtree,
+) -> ExpandResult<Option<(tt::Subtree, FragmentKind)>> {
+    let err = match &*tt.token_trees {
+        [tt::TokenTree::Leaf(tt::Leaf::Literal(it))] => {
+            let text = it.text.as_str();
+            if text.starts_with('"') && text.ends_with('"') {
+                // FIXME: does not handle raw strings
+                mbe::ExpandError::Other(format!(
+                    "`compile_error!` called: {}",
+                    &text[1..text.len() - 1]
+                ))
+            } else {
+                mbe::ExpandError::BindingError("`compile_error!` argument must be a string".into())
+            }
+        }
+        _ => mbe::ExpandError::BindingError("`compile_error!` argument must be a string".into()),
+    };
+
+    ExpandResult { value: Some((quote! {}, FragmentKind::Items)), err: Some(err) }
 }
 
 fn concat_expand(
@@ -646,7 +651,8 @@ mod tests {
             "#,
         );
 
-        assert_eq!(expanded, r#"loop{"error!"}"#);
+        // This expands to nothing (since it's in item position), but emits an error.
+        assert_eq!(expanded, "");
     }
 
     #[test]
