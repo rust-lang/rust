@@ -14,11 +14,10 @@ use rustc_middle::ty;
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_span::symbol::{sym, Symbol};
-use rustc_target::abi::{Abi, Align, LayoutOf as _, Primitive, Size};
+use rustc_target::abi::{Abi, LayoutOf as _, Primitive, Size};
 
 use super::{
-    util::ensure_monomorphic_enough, CheckInAllocMsg, ImmTy, InterpCx, Machine, MemoryKind, OpTy,
-    PlaceTy,
+    util::ensure_monomorphic_enough, CheckInAllocMsg, ImmTy, InterpCx, Machine, OpTy, PlaceTy,
 };
 
 mod caller_location;
@@ -337,22 +336,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let truncated_bits = self.truncate(result_bits, layout);
                 let result = Scalar::from_uint(truncated_bits, layout.size);
                 self.write_scalar(result, dest)?;
-            }
-            sym::const_allocate => {
-                let size = self.read_scalar(args[0])?.to_machine_usize(self)?;
-                let align = self.read_scalar(args[1])?.to_machine_usize(self)?;
-
-                let align = match Align::from_bytes(align) {
-                    Ok(a) => a,
-                    Err(err) => throw_ub_format!("align has to be a power of 2, {}", err),
-                };
-
-                let ptr = self.memory.allocate(
-                    Size::from_bytes(size as u64),
-                    align,
-                    MemoryKind::ConstHeap,
-                );
-                self.write_scalar(Scalar::Ptr(ptr), dest)?;
             }
             sym::offset => {
                 let ptr = self.read_scalar(args[0])?.check_init()?;

@@ -28,6 +28,7 @@ pub enum MemoryKind<T> {
     /// Stack memory. Error if deallocated except during a stack pop.
     Stack,
     /// Heap memory.
+    /// FIXME: this variant should be in const_eval
     ConstHeap,
     /// Memory backing vtables. Error if ever deallocated.
     Vtable,

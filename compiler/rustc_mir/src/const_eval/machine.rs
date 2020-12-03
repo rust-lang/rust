@@ -13,6 +13,7 @@ use rustc_hir::def_id::DefId;
 use rustc_middle::mir::AssertMessage;
 use rustc_session::Limit;
 use rustc_span::symbol::{sym, Symbol};
+use rustc_target::abi::{Align, Size};
 
 use crate::interpret::{
     self, compile_time_machine, AllocId, Allocation, Frame, GlobalId, ImmTy, InterpCx,
@@ -303,6 +304,22 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                     ecx.guaranteed_ne(a, b)
                 };
                 ecx.write_scalar(Scalar::from_bool(cmp), dest)?;
+            }
+            sym::const_allocate => {
+                let size = ecx.read_scalar(args[0])?.to_machine_usize(ecx)?;
+                let align = ecx.read_scalar(args[1])?.to_machine_usize(ecx)?;
+
+                let align = match Align::from_bytes(align) {
+                    Ok(a) => a,
+                    Err(err) => throw_ub_format!("align has to be a power of 2, {}", err),
+                };
+
+                let ptr = ecx.memory.allocate(
+                    Size::from_bytes(size as u64),
+                    align,
+                    interpret::MemoryKind::ConstHeap,
+                );
+                ecx.write_scalar(Scalar::Ptr(ptr), dest)?;
             }
             _ => {
                 return Err(ConstEvalErrKind::NeedsRfc(format!(
