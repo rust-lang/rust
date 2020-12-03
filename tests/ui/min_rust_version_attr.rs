@@ -35,7 +35,7 @@ fn match_same_arms2() {
     };
 }
 
-fn manual_strip_msrv() {
+pub fn manual_strip_msrv() {
     let s = "hello, world!";
     if s.starts_with("hello, ") {
         assert_eq!(s["hello, ".len()..].to_uppercase(), "WORLD!");
@@ -48,4 +48,40 @@ fn main() {
     match_same_arms();
     match_same_arms2();
     manual_strip_msrv();
+}
+
+mod meets_msrv {
+    #![feature(custom_inner_attributes)]
+    #![clippy::msrv = "1.45.0"]
+
+    fn main() {
+        let s = "hello, world!";
+        if s.starts_with("hello, ") {
+            assert_eq!(s["hello, ".len()..].to_uppercase(), "WORLD!");
+        }
+    }
+}
+
+mod just_under_msrv {
+    #![feature(custom_inner_attributes)]
+    #![clippy::msrv = "1.46.0"]
+
+    fn main() {
+        let s = "hello, world!";
+        if s.starts_with("hello, ") {
+            assert_eq!(s["hello, ".len()..].to_uppercase(), "WORLD!");
+        }
+    }
+}
+
+mod just_above_msrv {
+    #![feature(custom_inner_attributes)]
+    #![clippy::msrv = "1.44.0"]
+
+    fn main() {
+        let s = "hello, world!";
+        if s.starts_with("hello, ") {
+            assert_eq!(s["hello, ".len()..].to_uppercase(), "WORLD!");
+        }
+    }
 }

@@ -176,8 +176,7 @@ impl QuestionMark {
             if block.stmts.len() == 1;
             if let Some(expr) = block.stmts.iter().last();
             if let StmtKind::Semi(ref expr) = expr.kind;
-            if let ExprKind::Ret(ret_expr) = expr.kind;
-            if let Some(ret_expr) = ret_expr;
+            if let ExprKind::Ret(Some(ret_expr)) = expr.kind;
 
             then {
                 return Some(ret_expr);

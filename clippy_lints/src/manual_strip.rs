@@ -13,18 +13,12 @@ use rustc_hir::{BorrowKind, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::hir::map::Map;
 use rustc_middle::ty;
+use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::Spanned;
 use rustc_span::Span;
-use semver::{Version, VersionReq};
 
-const MANUAL_STRIP_MSRV: Version = Version {
-    major: 1,
-    minor: 45,
-    patch: 0,
-    pre: Vec::new(),
-    build: Vec::new(),
-};
+const MANUAL_STRIP_MSRV: RustcVersion = RustcVersion::new(1, 45, 0);
 
 declare_clippy_lint! {
     /// **What it does:**
@@ -61,12 +55,12 @@ declare_clippy_lint! {
 }
 
 pub struct ManualStrip {
-    msrv: Option<VersionReq>,
+    msrv: Option<RustcVersion>,
 }
 
 impl ManualStrip {
     #[must_use]
-    pub fn new(msrv: Option<VersionReq>) -> Self {
+    pub fn new(msrv: Option<RustcVersion>) -> Self {
         Self { msrv }
     }
 }
@@ -225,8 +219,7 @@ fn find_stripping<'tcx>(
                 if is_ref_str(self.cx, ex);
                 let unref = peel_ref(ex);
                 if let ExprKind::Index(indexed, index) = &unref.kind;
-                if let Some(range) = higher::range(index);
-                if let higher::Range { start, end, .. } = range;
+                if let Some(higher::Range { start, end, .. }) = higher::range(index);
                 if let ExprKind::Path(path) = &indexed.kind;
                 if qpath_res(self.cx, path, ex.hir_id) == self.target;
                 then {

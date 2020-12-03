@@ -280,8 +280,7 @@ fn field_reassigned_by_stmt<'tcx>(this: &Stmt<'tcx>, binding_name: Symbol) -> Op
         // only take assignments to fields where the left-hand side field is a field of
         // the same binding as the previous statement
         if let ExprKind::Field(ref binding, field_ident) = assign_lhs.kind;
-        if let ExprKind::Path(ref qpath) = binding.kind;
-        if let QPath::Resolved(_, path) = qpath;
+        if let ExprKind::Path(QPath::Resolved(_, path)) = binding.kind;
         if let Some(second_binding_name) = path.segments.last();
         if second_binding_name.ident.name == binding_name;
         then {

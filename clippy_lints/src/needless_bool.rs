@@ -6,7 +6,6 @@ use crate::utils::sugg::Sugg;
 use crate::utils::{
     higher, is_expn_of, parent_node_is_if_expr, snippet_with_applicability, span_lint, span_lint_and_sugg,
 };
-use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Block, Expr, ExprKind, StmtKind, UnOp};
@@ -198,13 +197,9 @@ struct ExpressionInfoWithSpan {
 }
 
 fn is_unary_not(e: &Expr<'_>) -> (bool, Span) {
-    if_chain! {
-        if let ExprKind::Unary(unop, operand) = e.kind;
-        if let UnOp::UnNot = unop;
-        then {
-            return (true, operand.span);
-        }
-    };
+    if let ExprKind::Unary(UnOp::UnNot, operand) = e.kind {
+        return (true, operand.span);
+    }
     (false, e.span)
 }
 

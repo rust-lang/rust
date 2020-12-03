@@ -1,12 +1,11 @@
+use crate::utils::visitors::LocalUsedVisitor;
 use crate::utils::{higher, qpath_res, snippet, span_lint_and_then};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::def::Res;
-use rustc_hir::intravisit;
 use rustc_hir::BindingAnnotation;
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::hir::map::Map;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
@@ -66,10 +65,10 @@ impl<'tcx> LateLintPass<'tcx> for LetIfSeq {
                 if let hir::PatKind::Binding(mode, canonical_id, ident, None) = local.pat.kind;
                 if let hir::StmtKind::Expr(ref if_) = expr.kind;
                 if let Some((ref cond, ref then, ref else_)) = higher::if_block(&if_);
-                if !used_in_expr(cx, canonical_id, cond);
+                if !LocalUsedVisitor::new(canonical_id).check_expr(cond);
                 if let hir::ExprKind::Block(ref then, _) = then.kind;
                 if let Some(value) = check_assign(cx, canonical_id, &*then);
-                if !used_in_expr(cx, canonical_id, value);
+                if !LocalUsedVisitor::new(canonical_id).check_expr(value);
                 then {
                     let span = stmt.span.to(if_.span);
 
@@ -136,32 +135,6 @@ impl<'tcx> LateLintPass<'tcx> for LetIfSeq {
     }
 }
 
-struct UsedVisitor<'a, 'tcx> {
-    cx: &'a LateContext<'tcx>,
-    id: hir::HirId,
-    used: bool,
-}
-
-impl<'a, 'tcx> intravisit::Visitor<'tcx> for UsedVisitor<'a, 'tcx> {
-    type Map = Map<'tcx>;
-
-    fn visit_expr(&mut self, expr: &'tcx hir::Expr<'_>) {
-        if_chain! {
-            if let hir::ExprKind::Path(ref qpath) = expr.kind;
-            if let Res::Local(local_id) = qpath_res(self.cx, qpath, expr.hir_id);
-            if self.id == local_id;
-            then {
-                self.used = true;
-                return;
-            }
-        }
-        intravisit::walk_expr(self, expr);
-    }
-    fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<Self::Map> {
-        intravisit::NestedVisitorMap::None
-    }
-}
-
 fn check_assign<'tcx>(
     cx: &LateContext<'tcx>,
     decl: hir::HirId,
@@ -176,18 +149,10 @@ fn check_assign<'tcx>(
         if let Res::Local(local_id) = qpath_res(cx, qpath, var.hir_id);
         if decl == local_id;
         then {
-            let mut v = UsedVisitor {
-                cx,
-                id: decl,
-                used: false,
-            };
+            let mut v = LocalUsedVisitor::new(decl);
 
-            for s in block.stmts.iter().take(block.stmts.len()-1) {
-                intravisit::walk_stmt(&mut v, s);
-
-                if v.used {
-                    return None;
-                }
+            if block.stmts.iter().take(block.stmts.len()-1).any(|stmt| v.check_stmt(stmt)) {
+                return None;
             }
 
             return Some(value);
@@ -195,10 +160,4 @@ fn check_assign<'tcx>(
     }
 
     None
-}
-
-fn used_in_expr<'tcx>(cx: &LateContext<'tcx>, id: hir::HirId, expr: &'tcx hir::Expr<'_>) -> bool {
-    let mut v = UsedVisitor { cx, id, used: false };
-    intravisit::walk_expr(&mut v, expr);
-    v.used
 }

@@ -738,8 +738,7 @@ fn is_any_trait(t: &hir::Ty<'_>) -> bool {
 fn get_bounds_if_impl_trait<'tcx>(cx: &LateContext<'tcx>, qpath: &QPath<'_>, id: HirId) -> Option<GenericBounds<'tcx>> {
     if_chain! {
         if let Some(did) = qpath_res(cx, qpath, id).opt_def_id();
-        if let Some(node) = cx.tcx.hir().get_if_local(did);
-        if let Node::GenericParam(generic_param) = node;
+        if let Some(Node::GenericParam(generic_param)) = cx.tcx.hir().get_if_local(did);
         if let GenericParamKind::Type { synthetic, .. } = generic_param.kind;
         if synthetic == Some(SyntheticTyParamKind::ImplTrait);
         then {
@@ -1470,8 +1469,7 @@ fn check_loss_of_sign(cx: &LateContext<'_>, expr: &Expr<'_>, op: &Expr<'_>, cast
     // don't lint for positive constants
     let const_val = constant(cx, &cx.typeck_results(), op);
     if_chain! {
-        if let Some((const_val, _)) = const_val;
-        if let Constant::Int(n) = const_val;
+        if let Some((Constant::Int(n), _)) = const_val;
         if let ty::Int(ity) = *cast_from.kind();
         if sext(cx.tcx, n, ity) >= 0;
         then {

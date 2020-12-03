@@ -59,8 +59,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitSaturatingSub {
             if let Some(target) = subtracts_one(cx, e);
 
             // Extracting out the variable name
-            if let ExprKind::Path(ref assign_path) = target.kind;
-            if let QPath::Resolved(_, ref ares_path) = assign_path;
+            if let ExprKind::Path(QPath::Resolved(_, ref ares_path)) = target.kind;
 
             then {
                 // Handle symmetric conditions in the if statement

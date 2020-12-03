@@ -18,7 +18,8 @@ fn dogfood_clippy() {
     }
     let root_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
 
-    let output = Command::new(&*CLIPPY_PATH)
+    let mut command = Command::new(&*CLIPPY_PATH);
+    command
         .current_dir(root_dir)
         .env("CLIPPY_DOGFOOD", "1")
         .env("CARGO_INCREMENTAL", "0")
@@ -27,11 +28,16 @@ fn dogfood_clippy() {
         .arg("--all-features")
         .arg("--")
         .args(&["-D", "clippy::all"])
-        .args(&["-D", "clippy::internal"])
         .args(&["-D", "clippy::pedantic"])
-        .arg("-Cdebuginfo=0") // disable debuginfo to generate less data in the target dir
-        .output()
-        .unwrap();
+        .arg("-Cdebuginfo=0"); // disable debuginfo to generate less data in the target dir
+
+    // internal lints only exist if we build with the internal-lints feature
+    if cfg!(feature = "internal-lints") {
+        command.args(&["-D", "clippy::internal"]);
+    }
+
+    let output = command.output().unwrap();
+
     println!("status: {}", output.status);
     println!("stdout: {}", String::from_utf8_lossy(&output.stdout));
     println!("stderr: {}", String::from_utf8_lossy(&output.stderr));
