@@ -306,6 +306,7 @@ mod self_assignment;
 mod serde_api;
 mod shadow;
 mod single_component_path_imports;
+mod size_of_in_element_count;
 mod slow_vector_initialization;
 mod stable_sort_primitive;
 mod strings;
@@ -329,7 +330,6 @@ mod unnecessary_sort_by;
 mod unnecessary_wraps;
 mod unnested_or_patterns;
 mod unsafe_removed_from_name;
-mod unsafe_sizeof_count_copies;
 mod unused_io_amount;
 mod unused_self;
 mod unused_unit;
@@ -917,7 +917,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &unnecessary_wraps::UNNECESSARY_WRAPS,
         &unnested_or_patterns::UNNESTED_OR_PATTERNS,
         &unsafe_removed_from_name::UNSAFE_REMOVED_FROM_NAME,
-        &unsafe_sizeof_count_copies::UNSAFE_SIZEOF_COUNT_COPIES,
+        &size_of_in_element_count::SIZE_OF_IN_ELEMENT_COUNT,
         &unused_io_amount::UNUSED_IO_AMOUNT,
         &unused_self::UNUSED_SELF,
         &unused_unit::UNUSED_UNIT,
@@ -1000,7 +1000,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(move || box matches::Matches::new(msrv));
     store.register_early_pass(move || box manual_non_exhaustive::ManualNonExhaustive::new(msrv));
     store.register_late_pass(move || box manual_strip::ManualStrip::new(msrv));
-    store.register_late_pass(|| box unsafe_sizeof_count_copies::UnsafeSizeofCountCopies);
+    store.register_late_pass(|| box size_of_in_element_count::SizeOfInElementCount);
     store.register_late_pass(|| box map_clone::MapClone);
     store.register_late_pass(|| box map_err_ignore::MapErrIgnore);
     store.register_late_pass(|| box shadow::Shadow);
@@ -1608,7 +1608,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&unnecessary_sort_by::UNNECESSARY_SORT_BY),
         LintId::of(&unnecessary_wraps::UNNECESSARY_WRAPS),
         LintId::of(&unsafe_removed_from_name::UNSAFE_REMOVED_FROM_NAME),
-        LintId::of(&unsafe_sizeof_count_copies::UNSAFE_SIZEOF_COUNT_COPIES),
+        LintId::of(&size_of_in_element_count::SIZE_OF_IN_ELEMENT_COUNT),
         LintId::of(&unused_io_amount::UNUSED_IO_AMOUNT),
         LintId::of(&unused_unit::UNUSED_UNIT),
         LintId::of(&unwrap::PANICKING_UNWRAP),
@@ -1887,7 +1887,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&unit_return_expecting_ord::UNIT_RETURN_EXPECTING_ORD),
         LintId::of(&unnamed_address::FN_ADDRESS_COMPARISONS),
         LintId::of(&unnamed_address::VTABLE_ADDRESS_COMPARISONS),
-        LintId::of(&unsafe_sizeof_count_copies::UNSAFE_SIZEOF_COUNT_COPIES),
+        LintId::of(&size_of_in_element_count::SIZE_OF_IN_ELEMENT_COUNT),
         LintId::of(&unused_io_amount::UNUSED_IO_AMOUNT),
         LintId::of(&unwrap::PANICKING_UNWRAP),
         LintId::of(&vec_resize_to_zero::VEC_RESIZE_TO_ZERO),
