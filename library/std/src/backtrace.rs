@@ -146,13 +146,13 @@ fn _assert_send_sync() {
     _assert::<Backtrace>();
 }
 
-#[unstable(feature = "backtrace_frames")]
+#[unstable(feature = "backtrace_frames", issue = "79676")]
 pub struct BacktraceFrame {
     frame: RawFrame,
     symbols: Vec<BacktraceSymbol>,
 }
 
-#[unstable(feature = "backtrace_frames")]
+#[unstable(feature = "backtrace_frames", issue = "79676")]
 pub struct Frames {
     inner: Vec<BacktraceFrame>
 }
@@ -357,11 +357,12 @@ impl Backtrace {
     }
 
     /// Returns an iterator over the backtrace frames.
-    #[unstable(feature = "backtrace_frames")]
+    #[unstable(feature = "backtrace_frames", issue = "79676")]
     pub fn frames(&self) -> Frames {
         if let Inner::Captured(captured) = self.inner {
+            let frames = captured.lock().unwrap().frames;
             Frames {
-                inner: captured.lock().unwrap().frames.clone()
+                inner: frames.iter().map(|frame| frame.clone()).collect::<Vec<BacktraceFrame>>()
             }
         } else {
             Frames {
@@ -467,30 +468,15 @@ impl RawFrame {
     }
 }
 
-#[unstable(feature = "backtrace_frames")]
-impl Frames {
-    // Private clone method so that we don't expose a
-    // public Frames.clone() by deriving Clone
-    fn clone(&self) -> Self {
-        let cloned_frames: Vec<BacktraceFrame> = self.inner
-            .iter()
-            .map(|frame| frame.clone())
-            .collect();
-
-        Frames {
-            inner: cloned_frames
-        }
-    }
-}
-
-#[unstable(feature = "backtrace_frames")]
+#[unstable(feature = "backtrace_frames", issue = "79676")]
 impl AsRef<[BacktraceFrame]> for Frames {
     fn as_ref(&self) -> &[BacktraceFrame] {
         &self.inner
     }
 }
 
-#[unstable(feature = "backtrace_frames")]
+
+#[unstable(feature = "backtrace_frames", issue = "79676")]
 impl BacktraceFrame {
     // Private clone method so that we don't expose a
     // public BacktraceFrame.clone() by deriving Clone
