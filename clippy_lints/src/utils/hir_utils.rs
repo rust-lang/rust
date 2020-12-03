@@ -81,7 +81,7 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
             }
         }
 
-        match (&left.kind, &right.kind) {
+        match (&reduce_exprkind(&left.kind), &reduce_exprkind(&right.kind)) {
             (&ExprKind::AddrOf(lb, l_mut, ref le), &ExprKind::AddrOf(rb, r_mut, ref re)) => {
                 lb == rb && l_mut == r_mut && self.eq_expr(le, re)
             },
@@ -303,6 +303,32 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
 
     fn eq_type_binding(&mut self, left: &TypeBinding<'_>, right: &TypeBinding<'_>) -> bool {
         left.ident.name == right.ident.name && self.eq_ty(&left.ty(), &right.ty())
+    }
+}
+
+/// Some simple reductions like `{ return }` => `return`
+fn reduce_exprkind<'hir>(kind: &'hir ExprKind<'hir>) -> &ExprKind<'hir> {
+    if let ExprKind::Block(block, _) = kind {
+        match (block.stmts, block.expr) {
+            // `{}` => `()`
+            ([], None) => &ExprKind::Tup(&[]),
+            ([], Some(expr)) => match expr.kind {
+                // `{ return .. }` => `return ..`
+                ExprKind::Ret(..) => &expr.kind,
+                _ => kind,
+            },
+            ([stmt], None) => match stmt.kind {
+                StmtKind::Expr(expr) | StmtKind::Semi(expr) => match expr.kind {
+                    // `{ return ..; }` => `return ..`
+                    ExprKind::Ret(..) => &expr.kind,
+                    _ => kind,
+                },
+                _ => kind,
+            },
+            _ => kind,
+        }
+    } else {
+        kind
     }
 }
 

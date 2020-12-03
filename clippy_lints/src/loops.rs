@@ -2,6 +2,7 @@ use crate::consts::constant;
 use crate::utils::paths;
 use crate::utils::sugg::Sugg;
 use crate::utils::usage::{is_unused, mutated_variables};
+use crate::utils::visitors::LocalUsedVisitor;
 use crate::utils::{
     contains_name, get_enclosing_block, get_parent_expr, get_trait_def_id, has_iter_method, higher, implements_trait,
     indent_of, is_in_panic_handler, is_integer_const, is_no_std_crate, is_refutable, is_type_diagnostic_item,
@@ -1919,8 +1920,7 @@ fn check_for_single_element_loop<'tcx>(
     if_chain! {
         if let ExprKind::AddrOf(BorrowKind::Ref, _, ref arg_expr) = arg.kind;
         if let PatKind::Binding(.., target, _) = pat.kind;
-        if let ExprKind::Array(ref arg_expr_list) = arg_expr.kind;
-        if let [arg_expression] = arg_expr_list;
+        if let ExprKind::Array([arg_expression]) = arg_expr.kind;
         if let ExprKind::Path(ref list_item) = arg_expression.kind;
         if let Some(list_item_name) = single_segment_path(list_item).map(|ps| ps.ident.name);
         if let ExprKind::Block(ref block, _) = body.kind;
@@ -2025,8 +2025,7 @@ fn check_for_mutability(cx: &LateContext<'_>, bound: &Expr<'_>) -> Option<HirId>
                 let node_str = cx.tcx.hir().get(hir_id);
                 if_chain! {
                     if let Node::Binding(pat) = node_str;
-                    if let PatKind::Binding(bind_ann, ..) = pat.kind;
-                    if let BindingAnnotation::Mutable = bind_ann;
+                    if let PatKind::Binding(BindingAnnotation::Mutable, ..) = pat.kind;
                     then {
                         return Some(hir_id);
                     }
@@ -2071,28 +2070,6 @@ fn pat_is_wild<'tcx>(pat: &'tcx PatKind<'_>, body: &'tcx Expr<'_>) -> bool {
     }
 }
 
-struct LocalUsedVisitor<'a, 'tcx> {
-    cx: &'a LateContext<'tcx>,
-    local: HirId,
-    used: bool,
-}
-
-impl<'a, 'tcx> Visitor<'tcx> for LocalUsedVisitor<'a, 'tcx> {
-    type Map = Map<'tcx>;
-
-    fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
-        if same_var(self.cx, expr, self.local) {
-            self.used = true;
-        } else {
-            walk_expr(self, expr);
-        }
-    }
-
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::None
-    }
-}
-
 struct VarVisitor<'a, 'tcx> {
     /// context reference
     cx: &'a LateContext<'tcx>,
@@ -2126,11 +2103,7 @@ impl<'a, 'tcx> VarVisitor<'a, 'tcx> {
             then {
                 let index_used_directly = same_var(self.cx, idx, self.var);
                 let indexed_indirectly = {
-                    let mut used_visitor = LocalUsedVisitor {
-                        cx: self.cx,
-                        local: self.var,
-                        used: false,
-                    };
+                    let mut used_visitor = LocalUsedVisitor::new(self.var);
                     walk_expr(&mut used_visitor, idx);
                     used_visitor.used
                 };

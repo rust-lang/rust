@@ -90,8 +90,7 @@ fn is_min_or_max<'tcx>(cx: &LateContext<'tcx>, expr: &hir::Expr<'_>) -> Option<M
     if_chain! {
         if let hir::ExprKind::Call(func, args) = &expr.kind;
         if args.is_empty();
-        if let hir::ExprKind::Path(path) = &func.kind;
-        if let hir::QPath::TypeRelative(_, segment) = path;
+        if let hir::ExprKind::Path(hir::QPath::TypeRelative(_, segment)) = &func.kind;
         then {
             match &*segment.ident.as_str() {
                 "max_value" => return Some(MinMax::Max),
