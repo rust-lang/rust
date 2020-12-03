@@ -87,20 +87,14 @@ endif
 %: $(SOURCEDIR)/lib/%.rs
 	# Compile the test library with coverage instrumentation
 	$(RUSTC) $(SOURCEDIR)/lib/$@.rs \
-			$$( grep -q '^\/\/ require-rust-edition-2018' $(SOURCEDIR)/lib/$@.rs && \
-				echo "--edition=2018" \
-			) \
-			--crate-type rlib \
-			-Zinstrument-coverage
+			$$( grep -q '^\/\/ require-rust-edition-2018' $(SOURCEDIR)/lib/$@.rs && echo "--edition=2018" ) \
+			--crate-type rlib -Zinstrument-coverage
 
 %: $(SOURCEDIR)/%.rs
 	# Compile the test program with coverage instrumentation
 	$(RUSTC) $(SOURCEDIR)/$@.rs \
-			$$( grep -q '^\/\/ require-rust-edition-2018' $(SOURCEDIR)/$@.rs && \
-				echo "--edition=2018" \
-			) \
-			-L "$(TMPDIR)" \
-			-Zinstrument-coverage
+			$$( grep -q '^\/\/ require-rust-edition-2018' $(SOURCEDIR)/$@.rs && echo "--edition=2018" ) \
+			-L "$(TMPDIR)" -Zinstrument-coverage
 
 	# Run it in order to generate some profiling data,
 	# with `LLVM_PROFILE_FILE=<profdata_file>` environment variable set to
