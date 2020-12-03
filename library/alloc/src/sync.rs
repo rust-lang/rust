@@ -498,7 +498,7 @@ impl<T> Arc<T> {
     /// both drop their `Arc` in the call to [`ok`][`Result::ok`],
     /// taking the strong count from two down to zero.
     ///
-    */
+     */
     /// # Examples
     ///
     /// ```
