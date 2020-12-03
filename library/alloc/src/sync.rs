@@ -485,6 +485,8 @@ impl<T> Arc<T> {
     ///
     /// This will succeed even if there are outstanding weak references.
     ///
+    // FIXME: when `Arc::unwrap_or_drop` is stabilized, add this paragraph:
+    /*
     /// It is strongly recommended to use [`Arc::unwrap_or_drop`] instead if you don't
     /// want to keep the `Arc` in the [`Err`] case.
     /// Immediately dropping the [`Err`] payload, like in the expression
@@ -496,6 +498,7 @@ impl<T> Arc<T> {
     /// both drop their `Arc` in the call to [`ok`][`Result::ok`],
     /// taking the strong count from two down to zero.
     ///
+    */
     /// # Examples
     ///
     /// ```
@@ -621,11 +624,14 @@ impl<T> Arc<T> {
     ///     t2.join().unwrap();
     /// }
     /// ```
+
+    // FIXME: when `Arc::unwrap_or_drop` is stabilized, adjust the documentation of
+    // `Arc::try_unwrap` according to the `FIXME` presented there.
     #[inline]
     #[unstable(feature = "unwrap_or_drop", issue = "none")] // FIXME: add issue
     pub fn unwrap_or_drop(this: Self) -> Option<T> {
         // Make sure that the ordinary `Drop` implementation isn’t called as well
-        let mut this = core::mem::ManuallyDrop::new(this);
+        let mut this = mem::ManuallyDrop::new(this);
 
         // Following the implementation of `drop` and `drop_slow`
         if this.inner().strong.fetch_sub(1, Release) != 1 {
