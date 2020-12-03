@@ -53,7 +53,7 @@ span code {
 .docblock code, .docblock-short code {
 	background-color: #191f26;
 }
-pre {
+pre, #main div.rustdoc-warning {
 	color: #e6e1cf;
 	background-color: #191f26;
 }
@@ -334,6 +334,13 @@ a.test-arrow:hover {
 :target > code, :target > .in-band {
 	background: rgba(255, 236, 164, 0.06);
 	border-right: 3px solid rgba(255, 180, 76, 0.85);
+}
+
+#main div.rustdoc-warning {
+	border-left-color: #f00;
+}
+#main div.rustdoc-warning::before {
+	color: #f00;
 }
 
 pre.compile_fail {

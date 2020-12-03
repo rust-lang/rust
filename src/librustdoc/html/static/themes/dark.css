@@ -26,7 +26,7 @@ h4:not(.method):not(.type):not(.tymethod) {
 .docblock code, .docblock-short code {
 	background-color: #2A2A2A;
 }
-pre {
+pre, #main div.rustdoc-warning {
 	background-color: #2A2A2A;
 }
 
@@ -283,6 +283,13 @@ a.test-arrow:hover{
 :target > code, :target > .in-band {
 	background-color: #494a3d;
 	border-right: 3px solid #bb7410;
+}
+
+#main div.rustdoc-warning {
+	border-left-color: #f00;
+}
+#main div.rustdoc-warning::before {
+	color: #f00;
 }
 
 pre.compile_fail {

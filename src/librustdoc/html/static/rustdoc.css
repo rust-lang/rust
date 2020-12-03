@@ -332,8 +332,21 @@ nav.sub {
 
 .rustdoc:not(.source) .example-wrap {
 	display: inline-flex;
+}
+.rustdoc:not(.source) .example-wrap, #main div.rustdoc-warning {
 	margin-bottom: 10px;
 	position: relative;
+}
+
+#main div.rustdoc-warning {
+	padding: 10px;
+	border-left: 2px solid;
+}
+#main div.rustdoc-warning::before {
+	content: "⚠";
+	position: absolute;
+	left: -25px;
+	font-size: 20px;
 }
 
 .example-wrap {
