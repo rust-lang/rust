@@ -623,11 +623,11 @@ impl<T> Arc<T> {
     /// ```
     #[inline]
     #[unstable(feature = "unwrap_or_drop", issue = "none")] // FIXME: add issue
-    // FIXME: should this copy all/some of the comments from drop and drop_slow?
     pub fn unwrap_or_drop(this: Self) -> Option<T> {
-        // following the implementation of `drop` (and `drop_slow`)
+        // Make sure that the ordinary `Drop` implementation isn’t called as well
         let mut this = core::mem::ManuallyDrop::new(this);
 
+        // Following the implementation of `drop` and `drop_slow`
         if this.inner().strong.fetch_sub(1, Release) != 1 {
             return None;
         }
@@ -637,7 +637,13 @@ impl<T> Arc<T> {
         // FIXME: should the part below this be moved into a seperate #[inline(never)]
         // function, like it's done with drop_slow in drop?
 
-        // using `ptr::read` where `drop_slow` was using `ptr::drop_in_place`
+        // SAFETY: This mirrors the line
+        //
+        //     unsafe { ptr::drop_in_place(Self::get_mut_unchecked(self)) };
+        //
+        // in `drop_slow`. Instead of dropping the value behind the pointer
+        // it is read and eventually returned; `ptr::read` has the same
+        // safety conditions as `ptr::drop_in_place`.
         let inner = unsafe { ptr::read(Self::get_mut_unchecked(&mut this)) };
 
         drop(Weak { ptr: this.ptr });
