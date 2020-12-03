@@ -5,7 +5,7 @@ LL |     println!("{:?}", x.map_err(|_| Errors::Ignored));
    |                                ^^^
    |
    = note: `-D clippy::map-err-ignore` implied by `-D warnings`
-   = help: Consider wrapping the error in an enum variant
+   = help: Consider wrapping the error in an enum variant for more error context, or using a named wildcard (`.map_err(|_ignored| ...`) to intentionally ignore the error
 
 error: aborting due to previous error
 
