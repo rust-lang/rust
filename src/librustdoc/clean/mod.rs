@@ -162,9 +162,6 @@ impl Clean<ExternalCrate> for CrateNum {
                 .collect()
         };
 
-        let get_span =
-            |attr: &ast::NestedMetaItem| Some(attr.meta_item()?.name_value_literal()?.span);
-
         let as_keyword = |res: Res| {
             if let Res::Def(DefKind::Mod, def_id) = res {
                 let attrs = cx.tcx.get_attrs(def_id).clean(cx);
@@ -172,19 +169,7 @@ impl Clean<ExternalCrate> for CrateNum {
                 for attr in attrs.lists(sym::doc) {
                     if attr.has_name(sym::keyword) {
                         if let Some(v) = attr.value_str() {
-                            let k = v.to_string();
-                            if !rustc_lexer::is_ident(&k) {
-                                let sp = get_span(&attr).unwrap_or_else(|| attr.span());
-                                cx.tcx
-                                    .sess
-                                    .struct_span_err(
-                                        sp,
-                                        &format!("`{}` is not a valid identifier", v),
-                                    )
-                                    .emit();
-                            } else {
-                                keyword = Some(k);
-                            }
+                            keyword = Some(v.to_string());
                             break;
                         }
                     }

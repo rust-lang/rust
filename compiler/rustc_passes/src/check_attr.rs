@@ -78,7 +78,7 @@ impl CheckAttrVisitor<'tcx> {
             } else if self.tcx.sess.check_name(attr, sym::track_caller) {
                 self.check_track_caller(&attr.span, attrs, span, target)
             } else if self.tcx.sess.check_name(attr, sym::doc) {
-                self.check_doc_alias(attr, hir_id, target)
+                self.check_doc_attrs(attr, hir_id, target)
             } else if self.tcx.sess.check_name(attr, sym::no_link) {
                 self.check_no_link(&attr, span, target)
             } else if self.tcx.sess.check_name(attr, sym::export_name) {
@@ -287,99 +287,159 @@ impl CheckAttrVisitor<'tcx> {
         }
     }
 
-    fn doc_alias_str_error(&self, meta: &NestedMetaItem) {
+    fn doc_attr_str_error(&self, meta: &NestedMetaItem, attr_name: &str) {
         self.tcx
             .sess
             .struct_span_err(
                 meta.span(),
-                "doc alias attribute expects a string: #[doc(alias = \"0\")]",
+                &format!("doc {0} attribute expects a string: #[doc({0} = \"a\")]", attr_name),
             )
             .emit();
     }
 
-    fn check_doc_alias(&self, attr: &Attribute, hir_id: HirId, target: Target) -> bool {
+    fn check_doc_alias(&self, meta: &NestedMetaItem, hir_id: HirId, target: Target) -> bool {
+        let doc_alias = meta.value_str().map(|s| s.to_string()).unwrap_or_else(String::new);
+        if doc_alias.is_empty() {
+            self.doc_attr_str_error(meta, "alias");
+            return false;
+        }
+        if let Some(c) =
+            doc_alias.chars().find(|&c| c == '"' || c == '\'' || (c.is_whitespace() && c != ' '))
+        {
+            self.tcx
+                .sess
+                .struct_span_err(
+                    meta.name_value_literal_span().unwrap_or_else(|| meta.span()),
+                    &format!("{:?} character isn't allowed in `#[doc(alias = \"...\")]`", c,),
+                )
+                .emit();
+            return false;
+        }
+        if doc_alias.starts_with(' ') || doc_alias.ends_with(' ') {
+            self.tcx
+                .sess
+                .struct_span_err(
+                    meta.name_value_literal_span().unwrap_or_else(|| meta.span()),
+                    "`#[doc(alias = \"...\")]` cannot start or end with ' '",
+                )
+                .emit();
+            return false;
+        }
+        if let Some(err) = match target {
+            Target::Impl => Some("implementation block"),
+            Target::ForeignMod => Some("extern block"),
+            Target::AssocTy => {
+                let parent_hir_id = self.tcx.hir().get_parent_item(hir_id);
+                let containing_item = self.tcx.hir().expect_item(parent_hir_id);
+                if Target::from_item(containing_item) == Target::Impl {
+                    Some("type alias in implementation block")
+                } else {
+                    None
+                }
+            }
+            Target::AssocConst => {
+                let parent_hir_id = self.tcx.hir().get_parent_item(hir_id);
+                let containing_item = self.tcx.hir().expect_item(parent_hir_id);
+                // We can't link to trait impl's consts.
+                let err = "associated constant in trait implementation block";
+                match containing_item.kind {
+                    ItemKind::Impl { of_trait: Some(_), .. } => Some(err),
+                    _ => None,
+                }
+            }
+            _ => None,
+        } {
+            self.tcx
+                .sess
+                .struct_span_err(
+                    meta.span(),
+                    &format!("`#[doc(alias = \"...\")]` isn't allowed on {}", err),
+                )
+                .emit();
+            return false;
+        }
+        true
+    }
+
+    fn check_doc_keyword(&self, meta: &NestedMetaItem, hir_id: HirId) -> bool {
+        let doc_keyword = meta.value_str().map(|s| s.to_string()).unwrap_or_else(String::new);
+        if doc_keyword.is_empty() {
+            self.doc_attr_str_error(meta, "keyword");
+            return false;
+        }
+        match self.tcx.hir().expect_item(hir_id).kind {
+            ItemKind::Mod(ref module) => {
+                if !module.item_ids.is_empty() {
+                    self.tcx
+                        .sess
+                        .struct_span_err(
+                            meta.span(),
+                            "`#[doc(keyword = \"...\")]` can only be used on empty modules",
+                        )
+                        .emit();
+                    return false;
+                }
+            }
+            _ => {
+                self.tcx
+                    .sess
+                    .struct_span_err(
+                        meta.span(),
+                        "`#[doc(keyword = \"...\")]` can only be used on modules",
+                    )
+                    .emit();
+                return false;
+            }
+        }
+        if !rustc_lexer::is_ident(&doc_keyword) {
+            self.tcx
+                .sess
+                .struct_span_err(
+                    meta.name_value_literal_span().unwrap_or_else(|| meta.span()),
+                    &format!("`{}` is not a valid identifier", doc_keyword),
+                )
+                .emit();
+            return false;
+        }
+        true
+    }
+
+    fn check_attr_crate_level(
+        &self,
+        meta: &NestedMetaItem,
+        hir_id: HirId,
+        attr_name: &str,
+    ) -> bool {
+        if CRATE_HIR_ID == hir_id {
+            self.tcx
+                .sess
+                .struct_span_err(
+                    meta.span(),
+                    &format!(
+                        "`#![doc({} = \"...\")]` isn't allowed as a crate level attribute",
+                        attr_name,
+                    ),
+                )
+                .emit();
+            return false;
+        }
+        true
+    }
+
+    fn check_doc_attrs(&self, attr: &Attribute, hir_id: HirId, target: Target) -> bool {
         if let Some(mi) = attr.meta() {
             if let Some(list) = mi.meta_item_list() {
                 for meta in list {
                     if meta.has_name(sym::alias) {
-                        if !meta.is_value_str() {
-                            self.doc_alias_str_error(meta);
-                            return false;
-                        }
-                        let doc_alias =
-                            meta.value_str().map(|s| s.to_string()).unwrap_or_else(String::new);
-                        if doc_alias.is_empty() {
-                            self.doc_alias_str_error(meta);
-                            return false;
-                        }
-                        if let Some(c) = doc_alias
-                            .chars()
-                            .find(|&c| c == '"' || c == '\'' || (c.is_whitespace() && c != ' '))
+                        if !self.check_attr_crate_level(meta, hir_id, "alias")
+                            || !self.check_doc_alias(meta, hir_id, target)
                         {
-                            self.tcx
-                                .sess
-                                .struct_span_err(
-                                    meta.name_value_literal_span().unwrap_or_else(|| meta.span()),
-                                    &format!(
-                                        "{:?} character isn't allowed in `#[doc(alias = \"...\")]`",
-                                        c,
-                                    ),
-                                )
-                                .emit();
                             return false;
                         }
-                        if doc_alias.starts_with(' ') || doc_alias.ends_with(' ') {
-                            self.tcx
-                                .sess
-                                .struct_span_err(
-                                    meta.name_value_literal_span().unwrap_or_else(|| meta.span()),
-                                    "`#[doc(alias = \"...\")]` cannot start or end with ' '",
-                                )
-                                .emit();
-                            return false;
-                        }
-                        if let Some(err) = match target {
-                            Target::Impl => Some("implementation block"),
-                            Target::ForeignMod => Some("extern block"),
-                            Target::AssocTy => {
-                                let parent_hir_id = self.tcx.hir().get_parent_item(hir_id);
-                                let containing_item = self.tcx.hir().expect_item(parent_hir_id);
-                                if Target::from_item(containing_item) == Target::Impl {
-                                    Some("type alias in implementation block")
-                                } else {
-                                    None
-                                }
-                            }
-                            Target::AssocConst => {
-                                let parent_hir_id = self.tcx.hir().get_parent_item(hir_id);
-                                let containing_item = self.tcx.hir().expect_item(parent_hir_id);
-                                // We can't link to trait impl's consts.
-                                let err = "associated constant in trait implementation block";
-                                match containing_item.kind {
-                                    ItemKind::Impl { of_trait: Some(_), .. } => Some(err),
-                                    _ => None,
-                                }
-                            }
-                            _ => None,
-                        } {
-                            self.tcx
-                                .sess
-                                .struct_span_err(
-                                    meta.span(),
-                                    &format!("`#[doc(alias = \"...\")]` isn't allowed on {}", err),
-                                )
-                                .emit();
-                            return false;
-                        }
-                        if CRATE_HIR_ID == hir_id {
-                            self.tcx
-                                .sess
-                                .struct_span_err(
-                                    meta.span(),
-                                    "`#![doc(alias = \"...\")]` isn't allowed as a crate \
-                                     level attribute",
-                                )
-                                .emit();
+                    } else if meta.has_name(sym::keyword) {
+                        if !self.check_attr_crate_level(meta, hir_id, "keyword")
+                            || !self.check_doc_keyword(meta, hir_id)
+                        {
                             return false;
                         }
                     }

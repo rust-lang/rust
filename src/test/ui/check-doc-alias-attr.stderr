@@ -1,16 +1,16 @@
-error: doc alias attribute expects a string: #[doc(alias = "0")]
+error: doc alias attribute expects a string: #[doc(alias = "a")]
   --> $DIR/check-doc-alias-attr.rs:7:7
    |
 LL | #[doc(alias)]
    |       ^^^^^
 
-error: doc alias attribute expects a string: #[doc(alias = "0")]
+error: doc alias attribute expects a string: #[doc(alias = "a")]
   --> $DIR/check-doc-alias-attr.rs:8:7
    |
 LL | #[doc(alias = 0)]
    |       ^^^^^^^^^
 
-error: doc alias attribute expects a string: #[doc(alias = "0")]
+error: doc alias attribute expects a string: #[doc(alias = "a")]
   --> $DIR/check-doc-alias-attr.rs:9:7
    |
 LL | #[doc(alias("bar"))]
