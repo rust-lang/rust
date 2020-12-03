@@ -133,29 +133,31 @@ pub use crate::sys::android::signal;
 pub use libc::signal;
 
 pub fn decode_error_kind(errno: i32) -> ErrorKind {
+    use ErrorKind::*;
     match errno as libc::c_int {
-        libc::ECONNREFUSED => ErrorKind::ConnectionRefused,
-        libc::ECONNRESET => ErrorKind::ConnectionReset,
-        libc::EPERM | libc::EACCES => ErrorKind::PermissionDenied,
-        libc::EPIPE => ErrorKind::BrokenPipe,
-        libc::ENOTCONN => ErrorKind::NotConnected,
-        libc::ECONNABORTED => ErrorKind::ConnectionAborted,
-        libc::EADDRNOTAVAIL => ErrorKind::AddrNotAvailable,
-        libc::EADDRINUSE => ErrorKind::AddrInUse,
-        libc::ENOENT => ErrorKind::NotFound,
-        libc::EINTR => ErrorKind::Interrupted,
-        libc::EINVAL => ErrorKind::InvalidInput,
-        libc::ETIMEDOUT => ErrorKind::TimedOut,
-        libc::EEXIST => ErrorKind::AlreadyExists,
-        libc::ENOSYS => ErrorKind::Unsupported,
-        libc::ENOMEM => ErrorKind::OutOfMemory,
+        libc::EADDRINUSE => AddrInUse,
+        libc::EADDRNOTAVAIL => AddrNotAvailable,
+        libc::ECONNABORTED => ConnectionAborted,
+        libc::ECONNREFUSED => ConnectionRefused,
+        libc::ECONNRESET => ConnectionReset,
+        libc::EEXIST => AlreadyExists,
+        libc::EINTR => Interrupted,
+        libc::EINVAL => InvalidInput,
+        libc::ENOENT => NotFound,
+        libc::ENOMEM => OutOfMemory,
+        libc::ENOSYS => Unsupported,
+        libc::ENOTCONN => NotConnected,
+        libc::EPIPE => BrokenPipe,
+        libc::ETIMEDOUT => TimedOut,
+
+        libc::EACCES | libc::EPERM  => PermissionDenied,
 
         // These two constants can have the same value on some systems,
         // but different values on others, so we can't use a match
         // clause
-        x if x == libc::EAGAIN || x == libc::EWOULDBLOCK => ErrorKind::WouldBlock,
+        x if x == libc::EAGAIN || x == libc::EWOULDBLOCK => WouldBlock,
 
-        _ => ErrorKind::Uncategorized,
+        _ => Uncategorized,
     }
 }
 
