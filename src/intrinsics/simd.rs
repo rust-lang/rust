@@ -73,11 +73,11 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             assert_eq!(x.layout(), y.layout());
             let layout = x.layout();
 
-            let (lane_type, lane_count) = lane_type_and_count(fx.tcx, layout);
-            let (ret_lane_type, ret_lane_count) = lane_type_and_count(fx.tcx, ret.layout());
+            let (lane_count, lane_ty) = layout.ty.simd_size_and_type(fx.tcx);
+            let (ret_lane_count, ret_lane_ty) = ret.layout().ty.simd_size_and_type(fx.tcx);
 
-            assert_eq!(lane_type, ret_lane_type);
-            assert_eq!(n, ret_lane_count);
+            assert_eq!(lane_ty, ret_lane_ty);
+            assert_eq!(u64::from(n), ret_lane_count);
 
             let total_len = lane_count * 2;
 
@@ -105,14 +105,14 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             };
 
             for &idx in &indexes {
-                assert!(idx < total_len, "idx {} out of range 0..{}", idx, total_len);
+                assert!(u64::from(idx) < total_len, "idx {} out of range 0..{}", idx, total_len);
             }
 
             for (out_idx, in_idx) in indexes.into_iter().enumerate() {
-                let in_lane = if in_idx < lane_count {
+                let in_lane = if u64::from(in_idx) < lane_count {
                     x.value_field(fx, mir::Field::new(in_idx.into()))
                 } else {
-                    y.value_field(fx, mir::Field::new((in_idx - lane_count).into()))
+                    y.value_field(fx, mir::Field::new(usize::from(in_idx) - usize::try_from(lane_count).unwrap()))
                 };
                 let out_lane = ret.place_field(fx, mir::Field::new(out_idx));
                 out_lane.write_cvalue(fx, in_lane);
@@ -131,7 +131,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             };
 
             let idx = idx_const.val.try_to_bits(Size::from_bytes(4 /* u32*/)).unwrap_or_else(|| panic!("kind not scalar: {:?}", idx_const));
-            let (_lane_type, lane_count) = lane_type_and_count(fx.tcx, base.layout());
+            let (lane_count, _lane_ty) = base.layout().ty.simd_size_and_type(fx.tcx);
             if idx >= lane_count.into() {
                 fx.tcx.sess.span_fatal(fx.mir.span, &format!("[simd_insert] idx {} >= lane_count {}", idx, lane_count));
             }
@@ -160,7 +160,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             };
 
             let idx = idx_const.val.try_to_bits(Size::from_bytes(4 /* u32*/)).unwrap_or_else(|| panic!("kind not scalar: {:?}", idx_const));
-            let (_lane_type, lane_count) = lane_type_and_count(fx.tcx, v.layout());
+            let (lane_count, _lane_ty) = v.layout().ty.simd_size_and_type(fx.tcx);
             if idx >= lane_count.into() {
                 fx.tcx.sess.span_fatal(fx.mir.span, &format!("[simd_extract] idx {} >= lane_count {}", idx, lane_count));
             }
@@ -212,12 +212,13 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             assert_eq!(a.layout(), c.layout());
             let layout = a.layout();
 
-            let (_lane_layout, lane_count) = lane_type_and_count(fx.tcx, layout);
-            let (ret_lane_layout, ret_lane_count) = lane_type_and_count(fx.tcx, ret.layout());
+            let (lane_count, _lane_ty) = layout.ty.simd_size_and_type(fx.tcx);
+            let (ret_lane_count, ret_lane_ty) = ret.layout().ty.simd_size_and_type(fx.tcx);
             assert_eq!(lane_count, ret_lane_count);
+            let ret_lane_layout = fx.layout_of(ret_lane_ty);
 
             for lane in 0..lane_count {
-                let lane = mir::Field::new(lane.into());
+                let lane = mir::Field::new(lane.try_into().unwrap());
                 let a_lane = a.value_field(fx, lane).load_scalar(fx);
                 let b_lane = b.value_field(fx, lane).load_scalar(fx);
                 let c_lane = c.value_field(fx, lane).load_scalar(fx);
