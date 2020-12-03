@@ -7,8 +7,6 @@ use crate::ty::{AdtDef, FieldDef, Ty, TyS, VariantDef};
 use crate::ty::{AdtKind, Visibility};
 use crate::ty::{DefId, SubstsRef};
 
-use std::sync::Arc;
-
 mod def_id_forest;
 
 // The methods in this module calculate `DefIdForest`s of modules in which a
@@ -193,7 +191,7 @@ impl<'tcx> TyS<'tcx> {
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
     ) -> DefIdForest {
-        tcx.type_uninhabited_from(param_env.and(self)).as_ref().clone()
+        tcx.type_uninhabited_from(param_env.and(self))
     }
 }
 
@@ -201,10 +199,10 @@ impl<'tcx> TyS<'tcx> {
 pub(crate) fn type_uninhabited_from<'tcx>(
     tcx: TyCtxt<'tcx>,
     key: ty::ParamEnvAnd<'tcx, Ty<'tcx>>,
-) -> Arc<DefIdForest> {
+) -> DefIdForest {
     let ty = key.value;
     let param_env = key.param_env;
-    let forest = match *ty.kind() {
+    match *ty.kind() {
         Adt(def, substs) => def.uninhabited_from(tcx, substs, param_env),
 
         Never => DefIdForest::full(tcx),
@@ -229,6 +227,5 @@ pub(crate) fn type_uninhabited_from<'tcx>(
         Ref(..) => DefIdForest::empty(),
 
         _ => DefIdForest::empty(),
-    };
-    Arc::new(forest)
+    }
 }
