@@ -135,6 +135,11 @@ pub(crate) fn diagnostics(
             res.borrow_mut().push(warning_with_fix(d, &sema));
         })
         .on::<hir::diagnostics::InactiveCode, _>(|d| {
+            // If there's inactive code somewhere in a macro, don't propagate to the call-site.
+            if d.display_source().file_id.expansion_info(db).is_some() {
+                return;
+            }
+
             // Override severity and mark as unused.
             res.borrow_mut().push(
                 Diagnostic::hint(sema.diagnostics_display_range(d).range, d.message())
