@@ -33,7 +33,7 @@ impl<T> Future for Ready<T> {
 /// # Examples
 ///
 /// ```
-/// use core::future;
+/// use std::future;
 ///
 /// # async fn run() {
 /// let a = future::ready(1);
