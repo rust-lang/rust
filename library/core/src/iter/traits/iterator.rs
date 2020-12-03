@@ -3,7 +3,9 @@
 // can't split that into multiple files.
 
 use crate::cmp::{self, Ordering};
+use crate::mem::{self, MaybeUninit};
 use crate::ops::{Add, ControlFlow, Try};
+use crate::ptr;
 
 use super::super::TrustedRandomAccess;
 use super::super::{Chain, Cloned, Copied, Cycle, Enumerate, Filter, FilterMap, Fuse};
@@ -1668,6 +1670,77 @@ pub trait Iterator {
         Self: Sized,
     {
         FromIterator::from_iter(self)
+    }
+
+    /// Collects all items from the iterator into an array of a specific size.
+    ///
+    /// If the number of elements inside the iterator is exactly equal to the
+    /// array size, then the array is returned inside `Some`, otherwise `None`
+    /// is returned.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(iter_collect_array)]
+    ///
+    /// let xs = [1, 2, 3];
+    /// let iter = xs.iter().copied();
+    /// let [_a, b, _c] = iter.clone().collect_array().unwrap();
+    /// assert_eq!(b, 2);
+    ///
+    /// match iter.collect_array() {
+    ///     Some([_, _]) => panic!("Didn't expect to see two only elements"),
+    ///     None => (),
+    /// }
+    /// ```
+    #[inline]
+    #[unstable(reason = "new API", issue = "none", feature = "iter_collect_array")]
+    fn collect_array<const N: usize>(self) -> Option<[Self::Item; N]>
+    where
+        Self: Sized,
+    {
+        struct Buf<T, const N: usize> {
+            // Safety invariant: first `len` items are initialized.
+            items: [MaybeUninit<T>; N],
+            len: usize,
+        }
+        impl<T, const N: usize> Buf<T, N> {
+            fn new() -> Buf<T, N> {
+                Buf { items: MaybeUninit::uninit_array(), len: 0 }
+            }
+            fn push(&mut self, item: T) -> Option<()> {
+                let slot = self.items.get_mut(self.len)?;
+                slot.write(item);
+                self.len += 1;
+                Some(())
+            }
+            fn into_array(mut self) -> Option<[T; N]> {
+                if self.len != N {
+                    return None;
+                }
+                self.len = 0;
+                let res =
+                    // SAFETY: `len` field invariant + the guard above.
+                    unsafe { mem::transmute_copy::<[MaybeUninit<T>; N], [T; N]>(&self.items) };
+                Some(res)
+            }
+        }
+
+        impl<T, const N: usize> Drop for Buf<T, N> {
+            fn drop(&mut self) {
+                // SAFETY: `len` field invariant.
+                unsafe {
+                    let slice = MaybeUninit::slice_assume_init_mut(&mut self.items[..self.len]);
+                    ptr::drop_in_place(slice);
+                }
+            }
+        }
+
+        let mut buf: Buf<Self::Item, { N }> = Buf::new();
+        for elem in self {
+            buf.push(elem)?;
+        }
+        buf.into_array()
     }
 
     /// Consumes an iterator, creating two collections from it.
