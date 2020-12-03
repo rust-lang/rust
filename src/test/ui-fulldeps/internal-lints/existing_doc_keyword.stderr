@@ -1,0 +1,11 @@
+error: Found non-existing keyword `tadam` used in `#[doc(keyword = "...")]`
+  --> $DIR/existing_doc_keyword.rs:8:1
+   |
+LL | #[doc(keyword = "tadam")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[deny(rustc::existing_doc_keyword)]` on by default
+   = help: only existing keywords are allowed in core/std
+
+error: aborting due to previous error
+
