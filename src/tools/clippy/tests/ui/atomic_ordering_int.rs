@@ -1,5 +1,5 @@
 #![warn(clippy::invalid_atomic_ordering)]
-
+#![allow(invalid_atomic_ordering)]
 use std::sync::atomic::{AtomicI16, AtomicI32, AtomicI64, AtomicI8, AtomicIsize, Ordering};
 
 fn main() {

@@ -1,5 +1,5 @@
 #![warn(clippy::invalid_atomic_ordering)]
-
+#![allow(invalid_atomic_ordering)]
 use std::sync::atomic::{AtomicPtr, Ordering};
 
 fn main() {
