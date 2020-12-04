@@ -1134,7 +1134,9 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
             if let Some(attr) = self.take_first_attr_no_derive(&mut expr) {
                 // Collect the invoc regardless of whether or not attributes are permitted here
                 // expansion will eat the attribute so it won't error later.
-                attr.0.as_ref().map(|attr| self.cfg.maybe_emit_expr_attr_err(attr));
+                if let Some(attr) = attr.0.as_ref() {
+                    self.cfg.maybe_emit_expr_attr_err(attr)
+                }
 
                 // AstFragmentKind::Expr requires the macro to emit an expression.
                 return self
@@ -1231,7 +1233,9 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
             self.cfg.configure_expr_kind(&mut expr.kind);
 
             if let Some(attr) = self.take_first_attr_no_derive(&mut expr) {
-                attr.0.as_ref().map(|attr| self.cfg.maybe_emit_expr_attr_err(attr));
+                if let Some(attr) = attr.0.as_ref() {
+                    self.cfg.maybe_emit_expr_attr_err(attr)
+                }
 
                 return self
                     .collect_attr(attr, Annotatable::Expr(P(expr)), AstFragmentKind::OptExpr)

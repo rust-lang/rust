@@ -847,12 +847,17 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
 
         // FIXME(jynelson): this shouldn't go through stringification, rustdoc should just use the DefId directly
         let self_name = self_id.and_then(|self_id| {
+            use ty::TyKind;
             if matches!(self.cx.tcx.def_kind(self_id), DefKind::Impl) {
-                // using `ty.to_string()` directly has issues with shortening paths
+                // using `ty.to_string()` (or any variant) has issues with raw idents
                 let ty = self.cx.tcx.type_of(self_id);
-                let name = ty::print::with_crate_prefix(|| ty.to_string());
-                debug!("using type_of(): {}", name);
-                Some(name)
+                let name = match ty.kind() {
+                    TyKind::Adt(def, _) => Some(self.cx.tcx.item_name(def.did).to_string()),
+                    other if other.is_primitive() => Some(ty.to_string()),
+                    _ => None,
+                };
+                debug!("using type_of(): {:?}", name);
+                name
             } else {
                 let name = self.cx.tcx.opt_item_name(self_id).map(|sym| sym.to_string());
                 debug!("using item_name(): {:?}", name);

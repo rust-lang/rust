@@ -189,7 +189,7 @@ impl<'a> Location<'a> {
     /// # Examples
     ///
     /// ```
-    /// use core::panic::Location;
+    /// use std::panic::Location;
     ///
     /// /// Returns the [`Location`] at which it is called.
     /// #[track_caller]

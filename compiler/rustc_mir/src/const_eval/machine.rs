@@ -7,6 +7,7 @@ use std::collections::hash_map::Entry;
 use std::hash::Hash;
 
 use rustc_data_structures::fx::FxHashMap;
+use std::fmt;
 
 use rustc_ast::Mutability;
 use rustc_hir::def_id::DefId;
@@ -179,6 +180,28 @@ impl<K: Hash + Eq, V> interpret::AllocMap<K, V> for FxHashMap<K, V> {
 crate type CompileTimeEvalContext<'mir, 'tcx> =
     InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>>;
 
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
+pub enum MemoryKind {
+    Heap,
+}
+
+impl fmt::Display for MemoryKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            MemoryKind::Heap => write!(f, "heap allocation"),
+        }
+    }
+}
+
+impl interpret::MayLeak for MemoryKind {
+    #[inline(always)]
+    fn may_leak(self) -> bool {
+        match self {
+            MemoryKind::Heap => false,
+        }
+    }
+}
+
 impl interpret::MayLeak for ! {
     #[inline(always)]
     fn may_leak(self) -> bool {
@@ -221,6 +244,8 @@ impl<'mir, 'tcx: 'mir> CompileTimeEvalContext<'mir, 'tcx> {
 
 impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir, 'tcx> {
     compile_time_machine!(<'mir, 'tcx>);
+
+    type MemoryKind = MemoryKind;
 
     type MemoryExtra = MemoryExtra;
 
@@ -317,7 +342,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                 let ptr = ecx.memory.allocate(
                     Size::from_bytes(size as u64),
                     align,
-                    interpret::MemoryKind::ConstHeap,
+                    interpret::MemoryKind::Machine(MemoryKind::Heap),
                 );
                 ecx.write_scalar(Scalar::Ptr(ptr), dest)?;
             }
