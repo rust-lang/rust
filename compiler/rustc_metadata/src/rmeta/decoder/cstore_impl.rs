@@ -456,6 +456,10 @@ impl CStore {
     pub fn module_expansion_untracked(&self, def_id: DefId, sess: &Session) -> ExpnId {
         self.get_crate_data(def_id.krate).module_expansion(def_id.index, sess)
     }
+
+    pub fn num_def_ids(&self, cnum: CrateNum) -> usize {
+        self.get_crate_data(cnum).num_def_ids()
+    }
 }
 
 impl CrateStore for CStore {
@@ -496,14 +500,6 @@ impl CrateStore for CStore {
 
     fn def_path_hash(&self, def: DefId) -> DefPathHash {
         self.get_crate_data(def.krate).def_path_hash(def.index)
-    }
-
-    fn all_def_path_hashes_and_def_ids(&self, cnum: CrateNum) -> Vec<(DefPathHash, DefId)> {
-        self.get_crate_data(cnum).all_def_path_hashes_and_def_ids()
-    }
-
-    fn num_def_ids(&self, cnum: CrateNum) -> usize {
-        self.get_crate_data(cnum).num_def_ids()
     }
 
     // See `CrateMetadataRef::def_path_hash_to_def_id` for more details
