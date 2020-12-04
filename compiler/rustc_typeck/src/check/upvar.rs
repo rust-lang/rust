@@ -933,7 +933,8 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for InferBorrowKind<'a, 'tcx> {
 /// - No Index projections are captured, since arrays are captured completely.
 fn truncate_projections_for_capture<'tcx>(
     mut place: Place<'tcx>,
-    capture_clause: hir::CaptureBy) -> Place<'tcx> {
+    capture_clause: hir::CaptureBy,
+) -> Place<'tcx> {
     if place.projections.is_empty() {
         // Nothing to do here
         return place;
@@ -969,7 +970,7 @@ fn truncate_projections_for_capture<'tcx>(
             ProjectionKind::Field(..) => {
                 last_field_projection = Some(i);
             }
-            ProjectionKind::Subslice => {}  // We never capture this
+            ProjectionKind::Subslice => {} // We never capture this
         }
     }
 
