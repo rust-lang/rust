@@ -17,8 +17,6 @@
 //! // ... something using html
 //! ```
 
-#![allow(non_camel_case_types)]
-
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::DefId;
 use rustc_hir::HirId;
@@ -1037,7 +1035,95 @@ impl MarkdownSummaryLine<'_> {
     }
 }
 
+/// Renders a subset of Markdown in the first paragraph of the provided Markdown.
+///
+/// - *Italics*, **bold**, and `inline code` styles **are** rendered.
+/// - Headings and links are stripped (though the text *is* rendered).
+/// - HTML, code blocks, and everything else are ignored.
+///
+/// Returns a tuple of the rendered HTML string and whether the output was shortened
+/// due to the provided `length_limit`.
+fn markdown_summary_with_limit(md: &str, length_limit: usize) -> (String, bool) {
+    if md.is_empty() {
+        return (String::new(), false);
+    }
+
+    let mut s = String::with_capacity(md.len() * 3 / 2);
+    let mut text_length = 0;
+    let mut stopped_early = false;
+
+    fn push(s: &mut String, text_length: &mut usize, text: &str) {
+        s.push_str(text);
+        *text_length += text.len();
+    };
+
+    'outer: for event in Parser::new_ext(md, Options::ENABLE_STRIKETHROUGH) {
+        match &event {
+            Event::Text(text) => {
+                for word in text.split_inclusive(char::is_whitespace) {
+                    if text_length + word.len() >= length_limit {
+                        stopped_early = true;
+                        break 'outer;
+                    }
+
+                    push(&mut s, &mut text_length, word);
+                }
+            }
+            Event::Code(code) => {
+                if text_length + code.len() >= length_limit {
+                    stopped_early = true;
+                    break;
+                }
+
+                s.push_str("<code>");
+                push(&mut s, &mut text_length, code);
+                s.push_str("</code>");
+            }
+            Event::Start(tag) => match tag {
+                Tag::Emphasis => s.push_str("<em>"),
+                Tag::Strong => s.push_str("<strong>"),
+                Tag::CodeBlock(..) => break,
+                _ => {}
+            },
+            Event::End(tag) => match tag {
+                Tag::Emphasis => s.push_str("</em>"),
+                Tag::Strong => s.push_str("</strong>"),
+                Tag::Paragraph => break,
+                _ => {}
+            },
+            Event::HardBreak | Event::SoftBreak => {
+                if text_length + 1 >= length_limit {
+                    stopped_early = true;
+                    break;
+                }
+
+                push(&mut s, &mut text_length, " ");
+            }
+            _ => {}
+        }
+    }
+
+    (s, stopped_early)
+}
+
+/// Renders a shortened first paragraph of the given Markdown as a subset of Markdown,
+/// making it suitable for contexts like the search index.
+///
+/// Will shorten to 59 or 60 characters, including an ellipsis (…) if it was shortened.
+///
+/// See [`markdown_summary_with_limit`] for details about what is rendered and what is not.
+crate fn short_markdown_summary(markdown: &str) -> String {
+    let (mut s, was_shortened) = markdown_summary_with_limit(markdown, 59);
+
+    if was_shortened {
+        s.push('…');
+    }
+
+    s
+}
+
 /// Renders the first paragraph of the provided markdown as plain text.
+/// Useful for alt-text.
 ///
 /// - Headings, links, and formatting are stripped.
 /// - Inline code is rendered as-is, surrounded by backticks.

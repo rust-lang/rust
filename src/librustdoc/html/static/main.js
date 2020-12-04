@@ -1611,7 +1611,7 @@ function defocusSearchBar() {
                               item.displayPath + "<span class=\"" + type + "\">" +
                               name + "</span></a></td><td>" +
                               "<a href=\"" + item.href + "\">" +
-                              "<span class=\"desc\">" + escape(item.desc) +
+                              "<span class=\"desc\">" + item.desc +
                               "&nbsp;</span></a></td></tr>";
                 });
                 output += "</table>";
@@ -2013,7 +2013,9 @@ function defocusSearchBar() {
                     }
                     var link = document.createElement("a");
                     link.href = rootPath + crates[i] + "/index.html";
-                    link.title = rawSearchIndex[crates[i]].doc;
+                    // The summary in the search index has HTML, so we need to
+                    // dynamically render it as plaintext.
+                    link.title = convertHTMLToPlaintext(rawSearchIndex[crates[i]].doc);
                     link.className = klass;
                     link.textContent = crates[i];
 
@@ -2025,6 +2027,23 @@ function defocusSearchBar() {
             }
         }
     };
+
+    /**
+     * Convert HTML to plaintext:
+     *
+     *   * Replace "<code>foo</code>" with "`foo`"
+     *   * Strip all other HTML tags
+     *
+     * Used by the dynamic sidebar crate list renderer.
+     *
+     * @param  {[string]} html [The HTML to convert]
+     * @return {[string]}      [The resulting plaintext]
+     */
+    function convertHTMLToPlaintext(html) {
+        var x = document.createElement("div");
+        x.innerHTML = html.replace('<code>', '`').replace('</code>', '`');
+        return x.innerText;
+    }
 
 
     // delayed sidebar rendering.

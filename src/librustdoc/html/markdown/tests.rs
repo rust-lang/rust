@@ -1,4 +1,4 @@
-use super::plain_text_summary;
+use super::{plain_text_summary, short_markdown_summary};
 use super::{ErrorCodes, IdMap, Ignore, LangString, Markdown, MarkdownHtml};
 use rustc_span::edition::{Edition, DEFAULT_EDITION};
 use std::cell::RefCell;
@@ -205,6 +205,33 @@ fn test_header_ids_multiple_blocks() {
 }
 
 #[test]
+fn test_short_markdown_summary() {
+    fn t(input: &str, expect: &str) {
+        let output = short_markdown_summary(input);
+        assert_eq!(output, expect, "original: {}", input);
+    }
+
+    t("hello [Rust](https://www.rust-lang.org) :)", "hello Rust :)");
+    t("*italic*", "<em>italic</em>");
+    t("**bold**", "<strong>bold</strong>");
+    t("Multi-line\nsummary", "Multi-line summary");
+    t("Hard-break  \nsummary", "Hard-break summary");
+    t("hello [Rust] :)\n\n[Rust]: https://www.rust-lang.org", "hello Rust :)");
+    t("hello [Rust](https://www.rust-lang.org \"Rust\") :)", "hello Rust :)");
+    t("code `let x = i32;` ...", "code <code>let x = i32;</code> ...");
+    t("type `Type<'static>` ...", "type <code>Type<'static></code> ...");
+    t("# top header", "top header");
+    t("## header", "header");
+    t("first paragraph\n\nsecond paragraph", "first paragraph");
+    t("```\nfn main() {}\n```", "");
+    t("<div>hello</div>", "");
+    t(
+        "a *very*, **very** long first paragraph. it has lots of `inline code: Vec<T>`. and it has a [link](https://www.rust-lang.org).\nthat was a soft line break!  \nthat was a hard one\n\nsecond paragraph.",
+        "a <em>very</em>, <strong>very</strong> long first paragraph. it has lots of …",
+    );
+}
+
+#[test]
 fn test_plain_text_summary() {
     fn t(input: &str, expect: &str) {
         let output = plain_text_summary(input);
@@ -224,6 +251,10 @@ fn test_plain_text_summary() {
     t("first paragraph\n\nsecond paragraph", "first paragraph");
     t("```\nfn main() {}\n```", "");
     t("<div>hello</div>", "");
+    t(
+        "a *very*, **very** long first paragraph. it has lots of `inline code: Vec<T>`. and it has a [link](https://www.rust-lang.org).\nthat was a soft line break!  \nthat was a hard one\n\nsecond paragraph.",
+        "a very, very long first paragraph. it has lots of `inline code: Vec<T>`. and it has a link. that was a soft line break! that was a hard one",
+    );
 }
 
 #[test]

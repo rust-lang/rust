@@ -76,7 +76,9 @@ use crate::html::format::fmt_impl_for_trait_page;
 use crate::html::format::Function;
 use crate::html::format::{href, print_default_space, print_generic_bounds, WhereClause};
 use crate::html::format::{print_abi_with_space, Buffer, PrintWithSpace};
-use crate::html::markdown::{self, ErrorCodes, IdMap, Markdown, MarkdownHtml, MarkdownSummaryLine};
+use crate::html::markdown::{
+    self, plain_text_summary, ErrorCodes, IdMap, Markdown, MarkdownHtml, MarkdownSummaryLine,
+};
 use crate::html::sources;
 use crate::html::{highlight, layout, static_files};
 use cache::{build_index, ExternalLocation};
@@ -1604,9 +1606,10 @@ impl Context {
                 Some(ref s) => s.to_string(),
             };
             let short = short.to_string();
-            map.entry(short)
-                .or_default()
-                .push((myname, Some(plain_text_summary(item.doc_value()))));
+            map.entry(short).or_default().push((
+                myname,
+                Some(item.doc_value().map_or_else(|| String::new(), plain_text_summary)),
+            ));
         }
 
         if self.shared.sort_modules_alphabetically {
@@ -1808,36 +1811,6 @@ fn full_path(cx: &Context, item: &clean::Item) -> String {
     s.push_str("::");
     s.push_str(item.name.as_ref().unwrap());
     s
-}
-
-/// Renders the first paragraph of the given markdown as plain text, making it suitable for
-/// contexts like alt-text or the search index.
-///
-/// If no markdown is supplied, the empty string is returned.
-///
-/// See [`markdown::plain_text_summary`] for further details.
-#[inline]
-crate fn plain_text_summary(s: Option<&str>) -> String {
-    s.map(markdown::plain_text_summary).unwrap_or_default()
-}
-
-crate fn shorten(s: String) -> String {
-    if s.chars().count() > 60 {
-        let mut len = 0;
-        let mut ret = s
-            .split_whitespace()
-            .take_while(|p| {
-                // + 1 for the added character after the word.
-                len += p.chars().count() + 1;
-                len < 60
-            })
-            .collect::<Vec<_>>()
-            .join(" ");
-        ret.push('…');
-        ret
-    } else {
-        s
-    }
 }
 
 fn document(w: &mut Buffer, cx: &Context, item: &clean::Item, parent: Option<&clean::Item>) {
