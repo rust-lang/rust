@@ -44,6 +44,7 @@ use rustc_middle::ty::{self, Ty, TyCtxt, UpvarSubsts};
 use rustc_span::sym;
 use rustc_span::{Span, Symbol};
 
+use std::cmp;
 use std::env;
 
 /// Describe the relationship between the paths of two places
@@ -384,15 +385,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 base => bug!("Expected upvar, found={:?}", base),
             };
 
-            // Arrays are captured in entirety, drop Index projections and projections
-            // after Index projections.
-            let first_index_projection =
-                place.projections.split(|proj| ProjectionKind::Index == proj.kind).next();
-            let place = Place {
-                base_ty: place.base_ty,
-                base: place.base,
-                projections: first_index_projection.map_or(Vec::new(), |p| p.to_vec()),
-            };
+            let place = truncate_projections_for_capture(place, inferred_info.capture_clause);
 
             let min_cap_list = match root_var_min_capture_list.get_mut(&var_hir_id) {
                 None => {
@@ -930,6 +923,79 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for InferBorrowKind<'a, 'tcx> {
 
         self.adjust_upvar_borrow_kind_for_mut(assignee_place, diag_expr_id);
     }
+}
+
+/// Truncate projections so that following rules are obeyed by the captured `place`:
+///
+/// - No Derefs in move closure, this will result in value behind a reference getting moved.
+/// - No projections are applied to raw pointers, since these require unsafe blocks. We capture
+///   them completely.
+/// - No Index projections are captured, since arrays are captured completely.
+fn truncate_projections_for_capture<'tcx>(
+    mut place: Place<'tcx>,
+    capture_clause: hir::CaptureBy) -> Place<'tcx> {
+    if place.projections.is_empty() {
+        // Nothing to do here
+        return place;
+    }
+
+    if place.base_ty.is_unsafe_ptr() {
+        place.projections.truncate(0);
+        return place;
+    }
+
+    let mut first_index_projection = None;
+    let mut first_deref_projection = None;
+    let mut first_raw_ptr = None;
+    let mut last_field_projection = None;
+
+    for (i, proj) in place.projections.iter().enumerate() {
+        if proj.ty.is_unsafe_ptr() {
+            // Don't apply any projections on top of an unsafe ptr
+            first_raw_ptr = Some(i);
+            break;
+        }
+        match proj.kind {
+            ProjectionKind::Index => {
+                // Arrays are completely captured, so we drop Index projections
+                first_index_projection = Some(i);
+                break;
+            }
+            ProjectionKind::Deref => {
+                // We only drop Derefs in case of move closures
+                // There might be an index projection or raw ptr ahead, so we don't stop here.
+                first_deref_projection.get_or_insert(i);
+            }
+            ProjectionKind::Field(..) => {
+                last_field_projection = Some(i);
+            }
+            ProjectionKind::Subslice => {}  // We never capture this
+        }
+    }
+
+    let mut length = place.projections.len();
+
+    // Don't not apply projections on top a raw pointer
+    length = first_raw_ptr.map_or(length, |idx| cmp::min(length, idx + 1));
+
+    // Do not apply index or any further projections
+    length = first_index_projection.map_or(length, |idx| cmp::min(length, idx));
+
+    // In case of move closure, don't apply Deref or any further projections
+    length = match capture_clause {
+        hir::CaptureBy::Value => first_deref_projection.map_or(length, |idx| cmp::min(length, idx)),
+        hir::CaptureBy::Ref => length,
+    };
+
+    if env::var("SG_DROP_DEREFS").is_ok() {
+        // Since we will only have Field and Deref projections at this point.
+        // This will truncate trailing derefs.
+        length = last_field_projection.map_or(length, |idx| cmp::min(length, idx + 1));
+    }
+
+    place.projections.truncate(length);
+
+    place
 }
 
 fn construct_capture_info_string(
