@@ -6,11 +6,24 @@ use std::path::Path;
 use anyhow::anyhow;
 use rustc_hash::FxHashSet;
 
-use hir::Crate;
+use hir::{db::HirDatabase, Crate, Module};
 use ide::{DiagnosticsConfig, Severity};
 use ide_db::base_db::SourceDatabaseExt;
 
 use crate::cli::{load_cargo::load_cargo, Result};
+
+fn all_modules(db: &dyn HirDatabase) -> Vec<Module> {
+    let mut worklist: Vec<_> =
+        Crate::all(db).into_iter().map(|krate| krate.root_module(db)).collect();
+    let mut modules = Vec::new();
+
+    while let Some(module) = worklist.pop() {
+        modules.push(module);
+        worklist.extend(module.children(db));
+    }
+
+    modules
+}
 
 pub fn diagnostics(path: &Path, load_output_dirs: bool, with_proc_macro: bool) -> Result<()> {
     let (host, _vfs) = load_cargo(path, load_output_dirs, with_proc_macro)?;
@@ -20,18 +33,12 @@ pub fn diagnostics(path: &Path, load_output_dirs: bool, with_proc_macro: bool) -
     let mut found_error = false;
     let mut visited_files = FxHashSet::default();
 
-    let mut work = Vec::new();
-    let krates = Crate::all(db);
-    for krate in krates {
-        let module = krate.root_module(db);
-        let file_id = module.definition_source(db).file_id;
-        let file_id = file_id.original_file(db);
+    let work = all_modules(db).into_iter().filter(|module| {
+        let file_id = module.definition_source(db).file_id.original_file(db);
         let source_root = db.file_source_root(file_id);
         let source_root = db.source_root(source_root);
-        if !source_root.is_library {
-            work.push(module);
-        }
-    }
+        !source_root.is_library
+    });
 
     for module in work {
         let file_id = module.definition_source(db).file_id.original_file(db);
