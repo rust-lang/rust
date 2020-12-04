@@ -419,15 +419,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 base => bug!("Expected upvar, found={:?}", base),
             };
 
-            // Arrays are captured in entirety, drop Index projections and projections
-            // after Index projections.
-            let first_index_projection =
-                place.projections.split(|proj| ProjectionKind::Index == proj.kind).next();
-            let place = Place {
-                base_ty: place.base_ty,
-                base: place.base,
-                projections: first_index_projection.map_or(Vec::new(), |p| p.to_vec()),
-            };
+            let place = restrict_capture_precision(place, capture_info.capture_kind);
 
             let min_cap_list = match root_var_min_capture_list.get_mut(&var_hir_id) {
                 None => {
@@ -958,6 +950,66 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for InferBorrowKind<'a, 'tcx> {
 
         self.adjust_upvar_borrow_kind_for_mut(assignee_place, diag_expr_id);
     }
+}
+
+/// Truncate projections so that following rules are obeyed by the captured `place`:
+///
+/// - No Derefs in move closure, this will result in value behind a reference getting moved.
+/// - No projections are applied to raw pointers, since these require unsafe blocks. We capture
+///   them completely.
+/// - No Index projections are captured, since arrays are captured completely.
+fn restrict_capture_precision<'tcx>(
+    mut place: Place<'tcx>,
+    capture_kind: ty::UpvarCapture<'tcx>,
+) -> Place<'tcx> {
+    if place.projections.is_empty() {
+        // Nothing to do here
+        return place;
+    }
+
+    if place.base_ty.is_unsafe_ptr() {
+        place.projections.truncate(0);
+        return place;
+    }
+
+    let mut truncated_length = usize::MAX;
+    let mut first_deref_projection = usize::MAX;
+
+    for (i, proj) in place.projections.iter().enumerate() {
+        if proj.ty.is_unsafe_ptr() {
+            // Don't apply any projections on top of an unsafe ptr
+            truncated_length = truncated_length.min(i + 1);
+            break;
+        }
+        match proj.kind {
+            ProjectionKind::Index => {
+                // Arrays are completely captured, so we drop Index projections
+                truncated_length = truncated_length.min(i);
+                break;
+            }
+            ProjectionKind::Deref => {
+                // We only drop Derefs in case of move closures
+                // There might be an index projection or raw ptr ahead, so we don't stop here.
+                first_deref_projection = first_deref_projection.min(i);
+            }
+            ProjectionKind::Field(..) => {} // ignore
+            ProjectionKind::Subslice => {}  // We never capture this
+        }
+    }
+
+    let length = place
+        .projections
+        .len()
+        .min(truncated_length)
+        // In case of capture `ByValue` we want to not capture derefs
+        .min(match capture_kind {
+            ty::UpvarCapture::ByValue(..) => first_deref_projection,
+            ty::UpvarCapture::ByRef(..) => usize::MAX,
+        });
+
+    place.projections.truncate(length);
+
+    place
 }
 
 fn construct_place_string(tcx: TyCtxt<'_>, place: &Place<'tcx>) -> String {
