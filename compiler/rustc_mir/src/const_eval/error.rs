@@ -22,12 +22,15 @@ pub enum ConstEvalErrKind {
     Panic { msg: Symbol, line: u32, col: u32, file: Symbol },
 }
 
-// The errors become `MachineStop` with plain strings when being raised.
+// Non-panic errors become `MachineStop` with plain strings when being raised.
 // `ConstEvalErr` (in `librustc_middle/mir/interpret/error.rs`) knows to
 // handle these.
 impl<'tcx> Into<InterpErrorInfo<'tcx>> for ConstEvalErrKind {
     fn into(self) -> InterpErrorInfo<'tcx> {
-        err_machine_stop!(self.to_string()).into()
+        match self {
+            ConstEvalErrKind::Panic { msg, .. } => InterpError::Panic(msg).into(),
+            _ => err_machine_stop!(self.to_string()).into(),
+        }
     }
 }
 
@@ -150,13 +153,14 @@ impl<'tcx> ConstEvalErr<'tcx> {
         };
         trace!("reporting const eval failure at {:?}", self.span);
 
-        let err_msg = match &self.error {
+        let (err_msg, is_panic) = match &self.error {
             InterpError::MachineStop(msg) => {
                 // A custom error (`ConstEvalErrKind` in `librustc_mir/interp/const_eval/error.rs`).
                 // Should be turned into a string by now.
-                msg.downcast_ref::<String>().expect("invalid MachineStop payload").clone()
+                (msg.downcast_ref::<String>().expect("invalid MachineStop payload").clone(), false)
             }
-            err => err.to_string(),
+            InterpError::Panic(msg) => (msg.to_string(), true),
+            err => (err.to_string(), false),
         };
 
         let finish = |mut err: DiagnosticBuilder<'_>, span_msg: Option<String>| {
@@ -193,7 +197,13 @@ impl<'tcx> ConstEvalErr<'tcx> {
                     rustc_session::lint::builtin::CONST_ERR,
                     hir_id,
                     tcx.span,
-                    |lint| finish(lint.build(message), Some(err_msg)),
+                    |lint| {
+                        if is_panic {
+                            finish(lint.build(&err_msg), None)
+                        } else {
+                            finish(lint.build(message), Some(err_msg))
+                        }
+                    },
                 );
                 ErrorHandled::Linted
             } else {

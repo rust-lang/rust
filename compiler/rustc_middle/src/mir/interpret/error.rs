@@ -7,7 +7,7 @@ use rustc_data_structures::sync::Lock;
 use rustc_errors::{pluralize, struct_span_err, DiagnosticBuilder, ErrorReported};
 use rustc_macros::HashStable;
 use rustc_session::CtfeBacktrace;
-use rustc_span::def_id::DefId;
+use rustc_span::{def_id::DefId, Symbol};
 use rustc_target::abi::{Align, Size};
 use std::{any::Any, backtrace::Backtrace, fmt, mem};
 
@@ -439,6 +439,8 @@ pub enum InterpError<'tcx> {
     /// The program exhausted the interpreter's resources (stack/heap too big,
     /// execution takes too long, ...).
     ResourceExhaustion(ResourceExhaustionInfo),
+    /// The program terminated immediately from a panic.
+    Panic(Symbol),
     /// Stop execution for a machine-controlled reason. This is never raised by
     /// the core engine itself.
     MachineStop(Box<dyn MachineStopType>),
@@ -454,6 +456,7 @@ impl fmt::Display for InterpError<'_> {
             InvalidProgram(ref msg) => write!(f, "{}", msg),
             UndefinedBehavior(ref msg) => write!(f, "{}", msg),
             ResourceExhaustion(ref msg) => write!(f, "{}", msg),
+            Panic(ref msg) => write!(f, "{}", msg),
             MachineStop(ref msg) => write!(f, "{}", msg),
         }
     }
