@@ -1626,12 +1626,12 @@ fn fill_resolve_data(
         let imported_name = import_edit.import_path.segments.clone().pop()?.to_string();
 
         *resolve_data = Some(
-            serde_json::to_value(CompletionResolveData {
+            to_value(CompletionResolveData {
                 position: position.to_owned(),
                 full_import_path,
                 imported_name,
             })
-            .expect("Failed to serialize a regular struct with derives"),
+            .unwrap(),
         )
     }
     Some(())

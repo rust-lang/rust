@@ -122,8 +122,8 @@ mod tests {
     use test_utils::mark;
 
     use crate::{
-        test_utils::{check_edit, completion_list},
-        CompletionKind,
+        test_utils::{check_edit, check_edit_with_config, completion_list},
+        CompletionConfig, CompletionKind,
     };
 
     fn check(ra_fixture: &str, expect: Expect) {
@@ -806,6 +806,43 @@ use dep::{FirstStruct, some_module::{SecondStruct, ThirdStruct}};
 
 fn main() {
     ThirdStruct
+}
+"#,
+        );
+    }
+
+    /// LSP protocol supports separate completion resolve requests to do the heavy computations there.
+    /// This test checks that for a certain resolve capatilities no such operations (autoimport) are done.
+    #[test]
+    fn no_fuzzy_completions_applied_for_certain_resolve_capability() {
+        let mut completion_config = CompletionConfig::default();
+        completion_config
+            .active_resolve_capabilities
+            .insert(crate::CompletionResolveCapability::AdditionalTextEdits);
+
+        check_edit_with_config(
+            completion_config,
+            "ThirdStruct",
+            r#"
+//- /lib.rs crate:dep
+pub struct FirstStruct;
+pub mod some_module {
+pub struct SecondStruct;
+pub struct ThirdStruct;
+}
+
+//- /main.rs crate:main deps:dep
+use dep::{FirstStruct, some_module::SecondStruct};
+
+fn main() {
+this<|>
+}
+"#,
+            r#"
+use dep::{FirstStruct, some_module::SecondStruct};
+
+fn main() {
+ThirdStruct
 }
 "#,
         );

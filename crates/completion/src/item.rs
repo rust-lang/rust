@@ -346,13 +346,17 @@ impl Builder {
             }
         };
 
-        if !self.resolve_import_lazily {
-            if let Some(import_edit) =
-                self.import_to_add.as_ref().and_then(|import_edit| import_edit.to_text_edit())
-            {
-                text_edit.union(import_edit).expect("Failed to unite import and completion edits");
+        let import_to_add = if self.resolve_import_lazily {
+            self.import_to_add
+        } else {
+            match apply_import_eagerly(self.import_to_add.as_ref(), &mut text_edit) {
+                Ok(()) => self.import_to_add,
+                Err(()) => {
+                    log::error!("Failed to apply eager import edit: original edit and import edit intersect");
+                    None
+                }
             }
-        }
+        };
 
         CompletionItem {
             source_range: self.source_range,
@@ -368,7 +372,7 @@ impl Builder {
             trigger_call_info: self.trigger_call_info.unwrap_or(false),
             score: self.score,
             ref_match: self.ref_match,
-            import_to_add: self.import_to_add,
+            import_to_add,
         }
     }
     pub(crate) fn lookup_by(mut self, lookup: impl Into<String>) -> Builder {
@@ -446,6 +450,16 @@ impl Builder {
     ) -> Builder {
         self.ref_match = ref_match;
         self
+    }
+}
+
+fn apply_import_eagerly(
+    import_to_add: Option<&ImportEdit>,
+    original_edit: &mut TextEdit,
+) -> Result<(), ()> {
+    match import_to_add.and_then(|import_edit| import_edit.to_text_edit()) {
+        Some(import_edit) => original_edit.union(import_edit).map_err(|_| ()),
+        None => Ok(()),
     }
 }
 
