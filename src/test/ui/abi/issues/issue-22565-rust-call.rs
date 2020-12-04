@@ -5,7 +5,6 @@ extern "rust-call" fn b(_i: i32) {}
 
 trait Tr {
     extern "rust-call" fn a();
-    //~^ ERROR A function with the "rust-call" ABI must take a single non-self argument
 
     extern "rust-call" fn b() {}
     //~^ ERROR A function with the "rust-call" ABI must take a single non-self argument
@@ -19,7 +18,7 @@ impl Foo {
 }
 
 impl Tr for Foo {
-    fn a() {}
+    extern "rust-call" fn a() {}
     //~^ ERROR A function with the "rust-call" ABI must take a single non-self argument
 }
 
