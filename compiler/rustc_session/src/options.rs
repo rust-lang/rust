@@ -1103,7 +1103,7 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
     // a sequential compiler for now. This'll likely be adjusted
     // in the future. Note that -Zthreads=0 is the way to get
     // the num_cpus behavior.
-    threads: usize = (12, parse_threads, [UNTRACKED],
+    threads: usize = (1, parse_threads, [UNTRACKED],
         "use a thread pool with N threads"),
     time: bool = (false, parse_bool, [UNTRACKED],
         "measure time of rustc processes (default: no)"),
