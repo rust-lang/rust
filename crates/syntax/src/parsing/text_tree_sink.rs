@@ -148,7 +148,7 @@ fn n_attached_trivias<'a>(
 ) -> usize {
     match kind {
         MACRO_CALL | CONST | TYPE_ALIAS | STRUCT | ENUM | VARIANT | FN | TRAIT | MODULE
-        | RECORD_FIELD | STATIC => {
+        | RECORD_FIELD | STATIC | USE => {
             let mut res = 0;
             let mut trivias = trivias.enumerate().peekable();
 
