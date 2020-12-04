@@ -8,19 +8,5 @@ LL |     || doit(data);
    |
    = note: closure implements `FnMut`, so references to captured variables can't escape the closure
 
-error[E0597]: `data` does not live long enough
-  --> $DIR/issue-42574-diagnostic-in-nested-closure.rs:8:13
-   |
-LL |     || doit(data);
-   |     -- -----^^^^-
-   |     |  |    |
-   |     |  |    borrowed value does not live long enough
-   |     |  argument requires that `data` is borrowed for `'static`
-   |     value captured here
-...
-LL | }
-   |  - `data` dropped here while still borrowed
+error: aborting due to previous error
 
-error: aborting due to 2 previous errors
-
-For more information about this error, try `rustc --explain E0597`.

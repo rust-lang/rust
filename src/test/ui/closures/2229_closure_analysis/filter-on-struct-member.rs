@@ -25,7 +25,10 @@ impl Data {
         // therefore mutating self.list is allowed.
         self.list.retain(
             #[rustc_capture_analysis]
-            |v| self.filter.allowed(*v),
+            |v| {
+                self.filter.div += 1;
+                self.filter.allowed(*v)
+            }
             //~^ ERROR: First Pass analysis includes:
             //~| ERROR: Min Capture analysis includes:
             //~| NOTE: Capturing self[Deref,(0, 0)] -> ImmBorrow

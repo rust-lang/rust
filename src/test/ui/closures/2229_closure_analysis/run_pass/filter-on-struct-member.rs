@@ -23,7 +23,10 @@ impl Data {
         // The closure passed to filter only captures self.filter,
         // therefore mutating self.list is allowed.
         self.list.retain(
-            |v| self.filter.allowed(*v),
+            |v| {
+                self.filter.div = 1;
+                self.filter.allowed(*v)
+            },
         );
     }
 }

@@ -9,11 +9,11 @@ LL | |
 LL | |         |a| {
    | |         --- closure construction occurs here
 LL | |             f.n.insert(*a);
-   | |             - first borrow occurs due to use of `f` in closure
+   | |             - first borrow occurs due to use of `f.n` in closure
 LL | |         })
    | |__________^ second borrow occurs here
 
-error[E0500]: closure requires unique access to `f` but it is already borrowed
+error[E0500]: closure requires unique access to `f.n` but it is already borrowed
   --> $DIR/borrowck-insert-during-each.rs:18:9
    |
 LL |     f.foo(
@@ -24,7 +24,7 @@ LL |
 LL |         |a| {
    |         ^^^ closure construction occurs here
 LL |             f.n.insert(*a);
-   |             - second borrow occurs due to use of `f` in closure
+   |             - second borrow occurs due to use of `f.n` in closure
 
 error: aborting due to 2 previous errors
 
