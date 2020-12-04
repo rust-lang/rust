@@ -104,10 +104,7 @@ impl ProcMacroProcessSrv {
 }
 
 fn client_loop(task_rx: Receiver<Task>, mut process: Process) {
-    let (mut stdin, mut stdout) = match process.stdio() {
-        None => return,
-        Some(it) => it,
-    };
+    let (mut stdin, mut stdout) = process.stdio().expect("couldn't access child stdio");
 
     for Task { req, result_tx } in task_rx {
         match send_request(&mut stdin, &mut stdout, req) {
