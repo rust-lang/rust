@@ -765,13 +765,12 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             )
         });
 
-        // It is illegal to invoke a method on a trait instance that
-        // refers to the `Self` type. An error will be reported by
-        // `enforce_object_limitations()` if the method refers to the
-        // `Self` type anywhere other than the receiver. Here, we use
-        // a substitution that replaces `Self` with the object type
-        // itself. Hence, a `&self` method will wind up with an
-        // argument type like `&Trait`.
+        // It is illegal to invoke a method on a trait instance that refers to
+        // the `Self` type. An [`ObjectSafetyViolation::SupertraitSelf`] error
+        // will be reported by `object_safety.rs` if the method refers to the
+        // `Self` type anywhere other than the receiver. Here, we use a
+        // substitution that replaces `Self` with the object type itself. Hence,
+        // a `&self` method will wind up with an argument type like `&Trait`.
         let trait_ref = principal.with_self_ty(self.tcx, self_ty);
         self.elaborate_bounds(iter::once(trait_ref), |this, new_trait_ref, item| {
             let new_trait_ref = this.erase_late_bound_regions(new_trait_ref);
