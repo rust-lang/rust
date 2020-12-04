@@ -258,7 +258,7 @@ impl NameRefClass {
         sema: &Semantics<RootDatabase>,
         name_ref: &ast::NameRef,
     ) -> Option<NameRefClass> {
-        let _p = profile::span("classify_name_ref");
+        let _p = profile::span("classify_name_ref").detail(|| name_ref.to_string());
 
         let parent = name_ref.syntax().parent()?;
 
