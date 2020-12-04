@@ -463,7 +463,8 @@ impl<T, const N: usize> [T; N] {
         unsafe { crate::mem::transmute_copy::<_, [U; N]>(&dst) }
     }
 
-    /// A fallible function `f` applied to each element on array `self` in order to return an array the same size as `self` or the first error encountered.
+    /// A fallible function `f` applied to each element on array `self` in order to
+    /// return an array the same size as `self` or the first error encountered.
     ///
     /// # Examples
     ///
