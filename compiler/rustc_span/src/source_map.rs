@@ -623,7 +623,7 @@ impl SourceMap {
         self.span_to_source(sp, |src, start_index, end_index| {
             src.get(start_index..end_index)
                 .map(|s| s.to_string())
-                .ok_or_else(|| SpanSnippetError::IllFormedSpan(sp))
+                .ok_or(SpanSnippetError::IllFormedSpan(sp))
         })
     }
 
@@ -640,9 +640,7 @@ impl SourceMap {
     /// Returns the source snippet as `String` before the given `Span`.
     pub fn span_to_prev_source(&self, sp: Span) -> Result<String, SpanSnippetError> {
         self.span_to_source(sp, |src, start_index, _| {
-            src.get(..start_index)
-                .map(|s| s.to_string())
-                .ok_or_else(|| SpanSnippetError::IllFormedSpan(sp))
+            src.get(..start_index).map(|s| s.to_string()).ok_or(SpanSnippetError::IllFormedSpan(sp))
         })
     }
 

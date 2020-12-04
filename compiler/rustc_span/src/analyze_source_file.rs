@@ -97,7 +97,7 @@ cfg_if::cfg_if! {
                 let ptr = src_bytes.as_ptr() as *const __m128i;
                 // We don't know if the pointer is aligned to 16 bytes, so we
                 // use `loadu`, which supports unaligned loading.
-                let chunk = _mm_loadu_si128(ptr.offset(chunk_index as isize));
+                let chunk = _mm_loadu_si128(ptr.add(chunk_index));
 
                 // For character in the chunk, see if its byte value is < 0, which
                 // indicates that it's part of a UTF-8 char.
@@ -253,7 +253,7 @@ fn analyze_source_file_generic(
             let pos = BytePos::from_usize(i) + output_offset;
 
             if char_len > 1 {
-                assert!(char_len >= 2 && char_len <= 4);
+                assert!((2..=4).contains(&char_len));
                 let mbc = MultiByteChar { pos, bytes: char_len as u8 };
                 multi_byte_chars.push(mbc);
             }

@@ -1363,15 +1363,13 @@ impl fmt::Display for IdentPrinter {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.is_raw {
             f.write_str("r#")?;
-        } else {
-            if self.symbol == kw::DollarCrate {
-                if let Some(span) = self.convert_dollar_crate {
-                    let converted = span.ctxt().dollar_crate_name();
-                    if !converted.is_path_segment_keyword() {
-                        f.write_str("::")?;
-                    }
-                    return fmt::Display::fmt(&converted, f);
+        } else if self.symbol == kw::DollarCrate {
+            if let Some(span) = self.convert_dollar_crate {
+                let converted = span.ctxt().dollar_crate_name();
+                if !converted.is_path_segment_keyword() {
+                    f.write_str("::")?;
                 }
+                return fmt::Display::fmt(&converted, f);
             }
         }
         fmt::Display::fmt(&self.symbol, f)

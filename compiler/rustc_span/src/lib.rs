@@ -1015,10 +1015,7 @@ pub enum ExternalSourceKind {
 
 impl ExternalSource {
     pub fn is_absent(&self) -> bool {
-        match self {
-            ExternalSource::Foreign { kind: ExternalSourceKind::Present(_), .. } => false,
-            _ => true,
-        }
+        !matches!(self, ExternalSource::Foreign { kind: ExternalSourceKind::Present(_), .. })
     }
 
     pub fn get_source(&self) -> Option<&Lrc<String>> {
