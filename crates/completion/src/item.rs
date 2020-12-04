@@ -279,7 +279,7 @@ impl ImportEdit {
     /// Attempts to insert the import to the given scope, producing a text edit.
     /// May return no edit in edge cases, such as scope already containing the import.
     pub fn to_text_edit(&self) -> Option<TextEdit> {
-        let _p = profile::span("ImportEdit::to_edit");
+        let _p = profile::span("ImportEdit::to_text_edit");
 
         let rewriter = insert_use::insert_use(
             &self.import_scope,
