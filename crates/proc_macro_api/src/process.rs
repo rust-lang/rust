@@ -19,7 +19,7 @@ use crate::{
 
 #[derive(Debug, Default)]
 pub(crate) struct ProcMacroProcessSrv {
-    inner: Option<Weak<Sender<Task>>>,
+    inner: Weak<Sender<Task>>,
 }
 
 #[derive(Debug)]
@@ -42,7 +42,7 @@ impl ProcMacroProcessSrv {
         });
 
         let task_tx = Arc::new(task_tx);
-        let srv = ProcMacroProcessSrv { inner: Some(Arc::downgrade(&task_tx)) };
+        let srv = ProcMacroProcessSrv { inner: Arc::downgrade(&task_tx) };
         let thread = ProcMacroProcessThread { handle, sender: task_tx };
 
         Ok((thread, srv))
@@ -79,13 +79,8 @@ impl ProcMacroProcessSrv {
     where
         R: TryFrom<Response, Error = &'static str>,
     {
-        let sender = match &self.inner {
-            None => return Err(tt::ExpansionError::Unknown("No sender is found.".to_string())),
-            Some(it) => it,
-        };
-
         let (result_tx, result_rx) = bounded(0);
-        let sender = match sender.upgrade() {
+        let sender = match self.inner.upgrade() {
             None => {
                 return Err(tt::ExpansionError::Unknown("Proc macro process is closed.".into()))
             }
