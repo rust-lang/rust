@@ -10,7 +10,7 @@ use rustc_hir::Node;
 use rustc_middle::middle::privacy::AccessLevel;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::source_map::Spanned;
-use rustc_span::symbol::{kw, sym, Ident, Symbol};
+use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::{self, Span};
 
 use std::mem;
@@ -116,7 +116,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         &mut self,
         id: hir::HirId,
         res: Res,
-        renamed: Option<Ident>,
+        renamed: Option<Symbol>,
         glob: bool,
         om: &mut Module<'tcx>,
         please_inline: bool,
@@ -226,11 +226,11 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
     fn visit_item(
         &mut self,
         item: &'tcx hir::Item<'_>,
-        renamed: Option<Ident>,
+        renamed: Option<Symbol>,
         om: &mut Module<'tcx>,
     ) {
         debug!("visiting item {:?}", item);
-        let ident = renamed.unwrap_or(item.ident);
+        let name = renamed.unwrap_or(item.ident.name);
 
         if item.vis.node.is_pub() {
             let def_id = self.cx.tcx.hir().local_def_id(item.hir_id);
@@ -266,7 +266,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                         }
                         _ => false,
                     });
-                    let ident = if is_glob { None } else { Some(ident) };
+                    let ident = if is_glob { None } else { Some(name) };
                     if self.maybe_inline_local(
                         item.hir_id,
                         path.res,
@@ -280,7 +280,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 }
 
                 om.imports.push(Import {
-                    name: ident.name,
+                    name,
                     id: item.hir_id,
                     vis: &item.vis,
                     attrs: &item.attrs,
@@ -296,7 +296,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     &item.vis,
                     item.hir_id,
                     m,
-                    Some(ident.name),
+                    Some(name),
                 ));
             }
             hir::ItemKind::Fn(..)
@@ -312,7 +312,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             hir::ItemKind::Const(..) => {
                 // Underscore constants do not correspond to a nameable item and
                 // so are never useful in documentation.
-                if ident.name != kw::Underscore {
+                if name != kw::Underscore {
                     om.items.push((item, renamed));
                 }
             }
@@ -329,7 +329,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
     fn visit_foreign_item(
         &mut self,
         item: &'tcx hir::ForeignItem<'_>,
-        renamed: Option<Ident>,
+        renamed: Option<Symbol>,
         om: &mut Module<'tcx>,
     ) {
         // If inlining we only want to include public functions.
