@@ -479,7 +479,7 @@ impl<T, const N: usize> [T; N] {
     /// let b = a.try_map(|v| v.parse::<u32>());
     /// assert!(b.is_err());
     /// ```
-    #[unstable(feature = "array_try_map", issue = "75243")]
+    #[unstable(feature = "array_try_map", issue = "79711")]
     pub fn try_map<F, R, E, U>(self, mut f: F) -> Result<[U; N], E>
     where
         F: FnMut(T) -> R,
