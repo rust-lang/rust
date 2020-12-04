@@ -1,4 +1,4 @@
-error: found a count of bytes instead of a count of elements of T
+error: found a count of bytes instead of a count of elements of `T`
   --> $DIR/size_of_in_element_count.rs:18:68
    |
 LL |     unsafe { copy_nonoverlapping::<u8>(x.as_ptr(), y.as_mut_ptr(), size_of::<u8>()) };
@@ -7,7 +7,7 @@ LL |     unsafe { copy_nonoverlapping::<u8>(x.as_ptr(), y.as_mut_ptr(), size_of:
    = note: `-D clippy::size-of-in-element-count` implied by `-D warnings`
    = help: use a count of elements instead of a count of bytes, it already gets multiplied by the size of the type
 
-error: found a count of bytes instead of a count of elements of T
+error: found a count of bytes instead of a count of elements of `T`
   --> $DIR/size_of_in_element_count.rs:19:62
    |
 LL |     unsafe { copy_nonoverlapping(x.as_ptr(), y.as_mut_ptr(), size_of_val(&x[0])) };
@@ -15,7 +15,7 @@ LL |     unsafe { copy_nonoverlapping(x.as_ptr(), y.as_mut_ptr(), size_of_val(&x
    |
    = help: use a count of elements instead of a count of bytes, it already gets multiplied by the size of the type
 
-error: found a count of bytes instead of a count of elements of T
+error: found a count of bytes instead of a count of elements of `T`
   --> $DIR/size_of_in_element_count.rs:21:49
    |
 LL |     unsafe { x.as_ptr().copy_to(y.as_mut_ptr(), size_of::<u8>()) };
@@ -23,7 +23,7 @@ LL |     unsafe { x.as_ptr().copy_to(y.as_mut_ptr(), size_of::<u8>()) };
    |
    = help: use a count of elements instead of a count of bytes, it already gets multiplied by the size of the type
 
-error: found a count of bytes instead of a count of elements of T
+error: found a count of bytes instead of a count of elements of `T`
   --> $DIR/size_of_in_element_count.rs:22:64
    |
 LL |     unsafe { x.as_ptr().copy_to_nonoverlapping(y.as_mut_ptr(), size_of::<u8>()) };
@@ -31,7 +31,7 @@ LL |     unsafe { x.as_ptr().copy_to_nonoverlapping(y.as_mut_ptr(), size_of::<u8
    |
    = help: use a count of elements instead of a count of bytes, it already gets multiplied by the size of the type
 
-error: found a count of bytes instead of a count of elements of T
+error: found a count of bytes instead of a count of elements of `T`
   --> $DIR/size_of_in_element_count.rs:23:51
    |
 LL |     unsafe { y.as_mut_ptr().copy_from(x.as_ptr(), size_of::<u8>()) };
@@ -39,7 +39,7 @@ LL |     unsafe { y.as_mut_ptr().copy_from(x.as_ptr(), size_of::<u8>()) };
    |
    = help: use a count of elements instead of a count of bytes, it already gets multiplied by the size of the type
 
-error: found a count of bytes instead of a count of elements of T
+error: found a count of bytes instead of a count of elements of `T`
   --> $DIR/size_of_in_element_count.rs:24:66
    |
 LL |     unsafe { y.as_mut_ptr().copy_from_nonoverlapping(x.as_ptr(), size_of::<u8>()) };
@@ -47,7 +47,7 @@ LL |     unsafe { y.as_mut_ptr().copy_from_nonoverlapping(x.as_ptr(), size_of::<
    |
    = help: use a count of elements instead of a count of bytes, it already gets multiplied by the size of the type
 
-error: found a count of bytes instead of a count of elements of T
+error: found a count of bytes instead of a count of elements of `T`
   --> $DIR/size_of_in_element_count.rs:26:47
    |
 LL |     unsafe { copy(x.as_ptr(), y.as_mut_ptr(), size_of::<u8>()) };
@@ -55,7 +55,7 @@ LL |     unsafe { copy(x.as_ptr(), y.as_mut_ptr(), size_of::<u8>()) };
    |
    = help: use a count of elements instead of a count of bytes, it already gets multiplied by the size of the type
 
-error: found a count of bytes instead of a count of elements of T
+error: found a count of bytes instead of a count of elements of `T`
   --> $DIR/size_of_in_element_count.rs:27:47
    |
 LL |     unsafe { copy(x.as_ptr(), y.as_mut_ptr(), size_of_val(&x[0])) };
@@ -63,7 +63,7 @@ LL |     unsafe { copy(x.as_ptr(), y.as_mut_ptr(), size_of_val(&x[0])) };
    |
    = help: use a count of elements instead of a count of bytes, it already gets multiplied by the size of the type
 
-error: found a count of bytes instead of a count of elements of T
+error: found a count of bytes instead of a count of elements of `T`
   --> $DIR/size_of_in_element_count.rs:29:46
    |
 LL |     unsafe { y.as_mut_ptr().write_bytes(0u8, size_of::<u8>() * SIZE) };
@@ -71,7 +71,7 @@ LL |     unsafe { y.as_mut_ptr().write_bytes(0u8, size_of::<u8>() * SIZE) };
    |
    = help: use a count of elements instead of a count of bytes, it already gets multiplied by the size of the type
 
-error: found a count of bytes instead of a count of elements of T
+error: found a count of bytes instead of a count of elements of `T`
   --> $DIR/size_of_in_element_count.rs:30:47
    |
 LL |     unsafe { write_bytes(y.as_mut_ptr(), 0u8, size_of::<u8>() * SIZE) };
@@ -79,7 +79,7 @@ LL |     unsafe { write_bytes(y.as_mut_ptr(), 0u8, size_of::<u8>() * SIZE) };
    |
    = help: use a count of elements instead of a count of bytes, it already gets multiplied by the size of the type
 
-error: found a count of bytes instead of a count of elements of T
+error: found a count of bytes instead of a count of elements of `T`
   --> $DIR/size_of_in_element_count.rs:32:66
    |
 LL |     unsafe { swap_nonoverlapping(y.as_mut_ptr(), x.as_mut_ptr(), size_of::<u8>() * SIZE) };
@@ -87,7 +87,7 @@ LL |     unsafe { swap_nonoverlapping(y.as_mut_ptr(), x.as_mut_ptr(), size_of::<
    |
    = help: use a count of elements instead of a count of bytes, it already gets multiplied by the size of the type
 
-error: found a count of bytes instead of a count of elements of T
+error: found a count of bytes instead of a count of elements of `T`
   --> $DIR/size_of_in_element_count.rs:34:46
    |
 LL |     slice_from_raw_parts_mut(y.as_mut_ptr(), size_of::<u8>() * SIZE);
@@ -95,7 +95,7 @@ LL |     slice_from_raw_parts_mut(y.as_mut_ptr(), size_of::<u8>() * SIZE);
    |
    = help: use a count of elements instead of a count of bytes, it already gets multiplied by the size of the type
 
-error: found a count of bytes instead of a count of elements of T
+error: found a count of bytes instead of a count of elements of `T`
   --> $DIR/size_of_in_element_count.rs:35:38
    |
 LL |     slice_from_raw_parts(y.as_ptr(), size_of::<u8>() * SIZE);
@@ -103,7 +103,7 @@ LL |     slice_from_raw_parts(y.as_ptr(), size_of::<u8>() * SIZE);
    |
    = help: use a count of elements instead of a count of bytes, it already gets multiplied by the size of the type
 
-error: found a count of bytes instead of a count of elements of T
+error: found a count of bytes instead of a count of elements of `T`
   --> $DIR/size_of_in_element_count.rs:37:49
    |
 LL |     unsafe { from_raw_parts_mut(y.as_mut_ptr(), size_of::<u8>() * SIZE) };
@@ -111,7 +111,7 @@ LL |     unsafe { from_raw_parts_mut(y.as_mut_ptr(), size_of::<u8>() * SIZE) };
    |
    = help: use a count of elements instead of a count of bytes, it already gets multiplied by the size of the type
 
-error: found a count of bytes instead of a count of elements of T
+error: found a count of bytes instead of a count of elements of `T`
   --> $DIR/size_of_in_element_count.rs:38:41
    |
 LL |     unsafe { from_raw_parts(y.as_ptr(), size_of::<u8>() * SIZE) };
@@ -119,7 +119,7 @@ LL |     unsafe { from_raw_parts(y.as_ptr(), size_of::<u8>() * SIZE) };
    |
    = help: use a count of elements instead of a count of bytes, it already gets multiplied by the size of the type
 
-error: found a count of bytes instead of a count of elements of T
+error: found a count of bytes instead of a count of elements of `T`
   --> $DIR/size_of_in_element_count.rs:40:33
    |
 LL |     unsafe { y.as_mut_ptr().sub(size_of::<u8>()) };
@@ -127,7 +127,7 @@ LL |     unsafe { y.as_mut_ptr().sub(size_of::<u8>()) };
    |
    = help: use a count of elements instead of a count of bytes, it already gets multiplied by the size of the type
 
-error: found a count of bytes instead of a count of elements of T
+error: found a count of bytes instead of a count of elements of `T`
   --> $DIR/size_of_in_element_count.rs:41:29
    |
 LL |     y.as_ptr().wrapping_sub(size_of::<u8>());
@@ -135,7 +135,7 @@ LL |     y.as_ptr().wrapping_sub(size_of::<u8>());
    |
    = help: use a count of elements instead of a count of bytes, it already gets multiplied by the size of the type
 
-error: found a count of bytes instead of a count of elements of T
+error: found a count of bytes instead of a count of elements of `T`
   --> $DIR/size_of_in_element_count.rs:42:29
    |
 LL |     unsafe { y.as_ptr().add(size_of::<u8>()) };
@@ -143,7 +143,7 @@ LL |     unsafe { y.as_ptr().add(size_of::<u8>()) };
    |
    = help: use a count of elements instead of a count of bytes, it already gets multiplied by the size of the type
 
-error: found a count of bytes instead of a count of elements of T
+error: found a count of bytes instead of a count of elements of `T`
   --> $DIR/size_of_in_element_count.rs:43:33
    |
 LL |     y.as_mut_ptr().wrapping_add(size_of::<u8>());
@@ -151,7 +151,7 @@ LL |     y.as_mut_ptr().wrapping_add(size_of::<u8>());
    |
    = help: use a count of elements instead of a count of bytes, it already gets multiplied by the size of the type
 
-error: found a count of bytes instead of a count of elements of T
+error: found a count of bytes instead of a count of elements of `T`
   --> $DIR/size_of_in_element_count.rs:44:32
    |
 LL |     unsafe { y.as_ptr().offset(size_of::<u8>() as isize) };
@@ -159,7 +159,7 @@ LL |     unsafe { y.as_ptr().offset(size_of::<u8>() as isize) };
    |
    = help: use a count of elements instead of a count of bytes, it already gets multiplied by the size of the type
 
-error: found a count of bytes instead of a count of elements of T
+error: found a count of bytes instead of a count of elements of `T`
   --> $DIR/size_of_in_element_count.rs:45:36
    |
 LL |     y.as_mut_ptr().wrapping_offset(size_of::<u8>() as isize);
@@ -167,7 +167,7 @@ LL |     y.as_mut_ptr().wrapping_offset(size_of::<u8>() as isize);
    |
    = help: use a count of elements instead of a count of bytes, it already gets multiplied by the size of the type
 
-error: found a count of bytes instead of a count of elements of T
+error: found a count of bytes instead of a count of elements of `T`
   --> $DIR/size_of_in_element_count.rs:48:62
    |
 LL |     unsafe { copy_nonoverlapping(x.as_ptr(), y.as_mut_ptr(), size_of::<u8>() * SIZE) };
@@ -175,7 +175,7 @@ LL |     unsafe { copy_nonoverlapping(x.as_ptr(), y.as_mut_ptr(), size_of::<u8>(
    |
    = help: use a count of elements instead of a count of bytes, it already gets multiplied by the size of the type
 
-error: found a count of bytes instead of a count of elements of T
+error: found a count of bytes instead of a count of elements of `T`
   --> $DIR/size_of_in_element_count.rs:51:62
    |
 LL |     unsafe { copy_nonoverlapping(x.as_ptr(), y.as_mut_ptr(), HALF_SIZE * size_of_val(&x[0]) * 2) };
@@ -183,7 +183,7 @@ LL |     unsafe { copy_nonoverlapping(x.as_ptr(), y.as_mut_ptr(), HALF_SIZE * si
    |
    = help: use a count of elements instead of a count of bytes, it already gets multiplied by the size of the type
 
-error: found a count of bytes instead of a count of elements of T
+error: found a count of bytes instead of a count of elements of `T`
   --> $DIR/size_of_in_element_count.rs:54:47
    |
 LL |     unsafe { copy(x.as_ptr(), y.as_mut_ptr(), DOUBLE_SIZE * size_of::<u8>() / 2) };
