@@ -405,6 +405,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         };
 
         let with_place = return_if_err!(self.mc.cat_expr(&with_expr));
+        self.delegate_consume(&with_place, with_place.hir_id);
 
         // Select just those fields of the `with`
         // expression that will actually be used
@@ -531,6 +532,8 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
 
         let tcx = self.tcx();
         let ExprUseVisitor { ref mc, body_owner: _, ref mut delegate } = *self;
+        delegate.borrow(discr_place, discr_place.hir_id, ty::ImmBorrow);
+
         return_if_err!(mc.cat_pattern(discr_place.clone(), pat, |place, pat| {
             if let PatKind::Binding(_, canonical_id, ..) = pat.kind {
                 debug!("walk_pat: binding place={:?} pat={:?}", place, pat,);
