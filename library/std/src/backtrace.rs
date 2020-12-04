@@ -102,6 +102,7 @@ use crate::sync::atomic::{AtomicUsize, Ordering::SeqCst};
 use crate::sync::Mutex;
 use crate::sys_common::backtrace::{lock, output_filename};
 use crate::vec::Vec;
+use crate::marker::PhantomData;
 
 /// A captured OS thread stack backtrace.
 ///
@@ -158,8 +159,9 @@ pub struct BacktraceFrame {
 /// by the [`frames`] method on [`Backtrace`].
 #[derive(Debug)]
 #[unstable(feature = "backtrace_frames", issue = "79676")]
-pub struct Frames {
-    inner: Vec<BacktraceFrame>
+pub struct Frames<'a> {
+    inner: Vec<BacktraceFrame>,
+    _backtrace: PhantomData<&'a Backtrace>
 }
 
 #[derive(Debug, Clone)]
@@ -360,18 +362,22 @@ impl Backtrace {
             Inner::Captured(_) => BacktraceStatus::Captured,
         }
     }
+}
 
+impl<'a> Backtrace {
     /// Returns an iterator over the backtrace frames.
     #[unstable(feature = "backtrace_frames", issue = "79676")]
-    pub fn frames(&self) -> Frames {
+    pub fn frames(&self) -> Frames<'a> {
         if let Inner::Captured(captured) = &self.inner {
             let frames = &captured.lock().unwrap().frames;
             Frames {
-                inner: frames.iter().map(|frame| frame.clone()).collect::<Vec<BacktraceFrame>>()
+                inner: frames.iter().map(|frame| frame.clone()).collect::<Vec<BacktraceFrame>>(),
+                _backtrace: PhantomData
             }
         } else {
             Frames {
-                inner: vec![]
+                inner: vec![],
+                _backtrace: PhantomData
             }
         }
     }
@@ -474,7 +480,7 @@ impl RawFrame {
 }
 
 #[unstable(feature = "backtrace_frames", issue = "79676")]
-impl AsRef<[BacktraceFrame]> for Frames {
+impl<'a> AsRef<[BacktraceFrame]> for Frames<'a> {
     fn as_ref(&self) -> &[BacktraceFrame] {
         &self.inner
     }
