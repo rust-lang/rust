@@ -334,7 +334,7 @@ impl Runtime {
         let print_help = !mem::replace(&mut self.help_printed, true);
         let help = if print_help { HELP } else { "" };
 
-        let diff = Changeset::new(actual, expected, "\n");
+        let diff = Changeset::new(expected, actual, "\n");
 
         println!(
             "\n
