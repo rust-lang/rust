@@ -7,7 +7,6 @@ use rustc_data_structures::sync::{AtomicU32, AtomicU64, Lock, Lrc, Ordering};
 use rustc_data_structures::unlikely;
 use rustc_errors::Diagnostic;
 use rustc_index::vec::{Idx, IndexVec};
-use rustc_span::def_id::DefPathHash;
 
 use parking_lot::{Condvar, Mutex};
 use smallvec::{smallvec, SmallVec};
@@ -555,7 +554,7 @@ impl<K: DepKind> DepGraph<K> {
         // We never try to mark eval_always nodes as green
         debug_assert!(!dep_node.kind.is_eval_always());
 
-        debug_assert_eq!(data.previous.index_to_node(prev_dep_node_index), *dep_node);
+        data.previous.debug_assert_eq(prev_dep_node_index, *dep_node);
 
         let prev_deps = data.previous.edge_targets_from(prev_dep_node_index);
 
@@ -573,7 +572,7 @@ impl<K: DepKind> DepGraph<K> {
                         "try_mark_previous_green({:?}) --- found dependency {:?} to \
                             be immediately green",
                         dep_node,
-                        data.previous.index_to_node(dep_dep_node_index)
+                        data.previous.debug_dep_node(dep_dep_node_index),
                     );
                     current_deps.push(node_index);
                 }
@@ -586,12 +585,12 @@ impl<K: DepKind> DepGraph<K> {
                         "try_mark_previous_green({:?}) - END - dependency {:?} was \
                             immediately red",
                         dep_node,
-                        data.previous.index_to_node(dep_dep_node_index)
+                        data.previous.debug_dep_node(dep_dep_node_index)
                     );
                     return None;
                 }
                 None => {
-                    let dep_dep_node = &data.previous.index_to_node(dep_dep_node_index);
+                    let dep_dep_node = &data.previous.index_to_node(dep_dep_node_index, tcx);
 
                     // We don't know the state of this dependency. If it isn't
                     // an eval_always node, let's try to mark it green recursively.
@@ -700,18 +699,6 @@ impl<K: DepKind> DepGraph<K> {
             data.current.intern_node(*dep_node, current_deps, fingerprint)
         };
 
-        // We have just loaded a deserialized `DepNode` from the previous
-        // compilation session into the current one. If this was a foreign `DefId`,
-        // then we stored additional information in the incr comp cache when we
-        // initially created its fingerprint (see `DepNodeParams::to_fingerprint`)
-        // We won't be calling `to_fingerprint` again for this `DepNode` (we no longer
-        // have the original value), so we need to copy over this additional information
-        // from the old incremental cache into the new cache that we serialize
-        // and the end of this compilation session.
-        if dep_node.kind.can_reconstruct_query_key() {
-            tcx.register_reused_dep_path_hash(DefPathHash(dep_node.hash.into()));
-        }
-
         // ... emitting any stored diagnostic ...
 
         // FIXME: Store the fact that a node has diagnostics in a bit in the dep graph somewhere
@@ -814,7 +801,7 @@ impl<K: DepKind> DepGraph<K> {
         for prev_index in data.colors.values.indices() {
             match data.colors.get(prev_index) {
                 Some(DepNodeColor::Green(_)) => {
-                    let dep_node = data.previous.index_to_node(prev_index);
+                    let dep_node = data.previous.index_to_node(prev_index, tcx);
                     tcx.try_load_from_on_disk_cache(&dep_node);
                 }
                 None | Some(DepNodeColor::Red) => {
