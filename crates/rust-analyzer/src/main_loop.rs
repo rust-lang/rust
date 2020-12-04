@@ -436,8 +436,6 @@ impl GlobalState {
                 handlers::handle_matching_brace(s.snapshot(), p)
             })?
             .on_sync::<lsp_ext::MemoryUsage>(|s, p| handlers::handle_memory_usage(s, p))?
-            .on_sync::<lsp_types::request::Completion>(handlers::handle_completion)?
-            .on::<lsp_types::request::ResolveCompletionItem>(handlers::handle_completion_resolve)
             .on::<lsp_ext::AnalyzerStatus>(handlers::handle_analyzer_status)
             .on::<lsp_ext::SyntaxTree>(handlers::handle_syntax_tree)
             .on::<lsp_ext::ExpandMacro>(handlers::handle_expand_macro)
@@ -455,6 +453,8 @@ impl GlobalState {
             .on::<lsp_types::request::GotoDefinition>(handlers::handle_goto_definition)
             .on::<lsp_types::request::GotoImplementation>(handlers::handle_goto_implementation)
             .on::<lsp_types::request::GotoTypeDefinition>(handlers::handle_goto_type_definition)
+            .on::<lsp_types::request::Completion>(handlers::handle_completion)
+            .on::<lsp_types::request::ResolveCompletionItem>(handlers::handle_completion_resolve)
             .on::<lsp_types::request::CodeLensRequest>(handlers::handle_code_lens)
             .on::<lsp_types::request::CodeLensResolve>(handlers::handle_code_lens_resolve)
             .on::<lsp_types::request::FoldingRangeRequest>(handlers::handle_folding_range)

@@ -5,7 +5,6 @@
 use std::{
     io::Write as _,
     process::{self, Stdio},
-    sync::Arc,
 };
 
 use ide::{
@@ -26,7 +25,6 @@ use lsp_types::{
     SymbolTag, TextDocumentIdentifier, Url, WorkspaceEdit,
 };
 use project_model::TargetKind;
-use rustc_hash::FxHashMap;
 use serde::{Deserialize, Serialize};
 use serde_json::to_value;
 use stdx::{format_to, split_once};
@@ -539,11 +537,10 @@ pub(crate) fn handle_runnables(
 }
 
 pub(crate) fn handle_completion(
-    global_state: &mut GlobalState,
+    snap: GlobalStateSnapshot,
     params: lsp_types::CompletionParams,
 ) -> Result<Option<lsp_types::CompletionResponse>> {
     let _p = profile::span("handle_completion");
-    let snap = global_state.snapshot();
     let text_document_url = params.text_document_position.text_document.uri.clone();
     let position = from_proto::file_position(&snap, params.text_document_position)?;
     let completion_triggered_after_single_colon = {
@@ -574,7 +571,6 @@ pub(crate) fn handle_completion(
     };
     let line_index = snap.analysis.file_line_index(position.file_id)?;
     let line_endings = snap.file_line_endings(position.file_id);
-    let mut completion_resolve_data = FxHashMap::default();
 
     let items: Vec<CompletionItem> = items
         .into_iter()
@@ -584,16 +580,15 @@ pub(crate) fn handle_completion(
                 to_proto::completion_item(&line_index, line_endings, item.clone());
 
             if snap.config.completion.resolve_additional_edits_lazily() {
+                // TODO kb add resolve data somehow here
                 if let Some(import_edit) = item.import_to_add() {
-                    completion_resolve_data.insert(item_index, import_edit.get_edit_ptr());
-
-                    let data = serde_json::to_value(&CompletionData {
-                        document_url: text_document_url.clone(),
-                        import_id: item_index,
-                    })
-                    .expect(&format!("Should be able to serialize usize value {}", item_index));
+                    //     let data = serde_json::to_value(&CompletionData {
+                    //         document_url: text_document_url.clone(),
+                    //         import_id: item_index,
+                    //     })
+                    //     .expect(&format!("Should be able to serialize usize value {}", item_index));
                     for new_item in &mut new_completion_items {
-                        new_item.data = Some(data.clone());
+                        // new_item.data = Some(data.clone());
                     }
                 }
             }
@@ -601,8 +596,6 @@ pub(crate) fn handle_completion(
             new_completion_items
         })
         .collect();
-
-    global_state.completion_resolve_data = Arc::new(completion_resolve_data);
 
     let completion_list = lsp_types::CompletionList { is_incomplete: true, items };
     Ok(Some(completion_list.into()))
@@ -624,33 +617,31 @@ pub(crate) fn handle_completion_resolve(
         return Ok(original_completion);
     }
 
-    let (import_edit_ptr, document_url) = match original_completion
+    let resolve_data = match original_completion
         .data
-        .as_ref()
-        .map(|data| serde_json::from_value::<CompletionData>(data.clone()))
+        .take()
+        .map(|data| serde_json::from_value::<CompletionResolveData>(data))
         .transpose()?
-        .and_then(|data| {
-            let import_edit_ptr = snap.completion_resolve_data.get(&data.import_id).cloned();
-            Some((import_edit_ptr, data.document_url))
-        }) {
+    {
         Some(data) => data,
         None => return Ok(original_completion),
     };
 
-    let file_id = from_proto::file_id(&snap, &document_url)?;
-    let root = snap.analysis.parse(file_id)?;
+    // TODO kb get the resolve data and somehow reparse the whole ast again?
+    // let file_id = from_proto::file_id(&snap, &document_url)?;
+    // let root = snap.analysis.parse(file_id)?;
 
-    if let Some(import_to_add) =
-        import_edit_ptr.and_then(|import_edit| import_edit.into_import_edit(root.syntax()))
-    {
-        // FIXME actually add all additional edits here? see `to_proto::completion_item` for more
-        append_import_edits(
-            &mut original_completion,
-            &import_to_add,
-            snap.analysis.file_line_index(file_id)?.as_ref(),
-            snap.file_line_endings(file_id),
-        );
-    }
+    // if let Some(import_to_add) =
+    //     import_edit_ptr.and_then(|import_edit| import_edit.into_import_edit(root.syntax()))
+    // {
+    //     // FIXME actually add all additional edits here? see `to_proto::completion_item` for more
+    //     append_import_edits(
+    //         &mut original_completion,
+    //         &import_to_add,
+    //         snap.analysis.file_line_index(file_id)?.as_ref(),
+    //         snap.file_line_endings(file_id),
+    //     );
+    // }
 
     Ok(original_completion)
 }
@@ -1614,7 +1605,7 @@ fn should_skip_target(runnable: &Runnable, cargo_spec: Option<&CargoTargetSpec>)
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-struct CompletionData {
+struct CompletionResolveData {
     document_url: Url,
     import_id: usize,
 }

@@ -81,7 +81,7 @@ pub use crate::{
 };
 pub use completion::{
     CompletionConfig, CompletionItem, CompletionItemKind, CompletionResolveCapability,
-    CompletionScore, ImportEdit, ImportEditPtr, InsertTextFormat,
+    CompletionScore, ImportEdit, InsertTextFormat,
 };
 pub use ide_db::{
     call_info::CallInfo,

@@ -7,7 +7,7 @@ use std::{sync::Arc, time::Instant};
 
 use crossbeam_channel::{unbounded, Receiver, Sender};
 use flycheck::FlycheckHandle;
-use ide::{Analysis, AnalysisHost, Change, FileId, ImportEditPtr};
+use ide::{Analysis, AnalysisHost, Change, FileId};
 use ide_db::base_db::{CrateId, VfsPath};
 use lsp_types::{SemanticTokens, Url};
 use parking_lot::{Mutex, RwLock};
@@ -69,7 +69,6 @@ pub(crate) struct GlobalState {
     pub(crate) config: Config,
     pub(crate) analysis_host: AnalysisHost,
     pub(crate) diagnostics: DiagnosticCollection,
-    pub(crate) completion_resolve_data: Arc<FxHashMap<usize, ImportEditPtr>>,
     pub(crate) mem_docs: FxHashMap<VfsPath, DocumentData>,
     pub(crate) semantic_tokens_cache: Arc<Mutex<FxHashMap<Url, SemanticTokens>>>,
     pub(crate) vfs: Arc<RwLock<(vfs::Vfs, FxHashMap<FileId, LineEndings>)>>,
@@ -91,7 +90,6 @@ pub(crate) struct GlobalStateSnapshot {
     pub(crate) semantic_tokens_cache: Arc<Mutex<FxHashMap<Url, SemanticTokens>>>,
     vfs: Arc<RwLock<(vfs::Vfs, FxHashMap<FileId, LineEndings>)>>,
     pub(crate) workspaces: Arc<Vec<ProjectWorkspace>>,
-    pub(crate) completion_resolve_data: Arc<FxHashMap<usize, ImportEditPtr>>,
 }
 
 impl GlobalState {
@@ -123,7 +121,6 @@ impl GlobalState {
             config,
             analysis_host,
             diagnostics: Default::default(),
-            completion_resolve_data: Arc::new(FxHashMap::default()),
             mem_docs: FxHashMap::default(),
             semantic_tokens_cache: Arc::new(Default::default()),
             vfs: Arc::new(RwLock::new((vfs::Vfs::default(), FxHashMap::default()))),
@@ -194,7 +191,6 @@ impl GlobalState {
             check_fixes: Arc::clone(&self.diagnostics.check_fixes),
             mem_docs: self.mem_docs.clone(),
             semantic_tokens_cache: Arc::clone(&self.semantic_tokens_cache),
-            completion_resolve_data: Arc::clone(&self.completion_resolve_data),
         }
     }
 

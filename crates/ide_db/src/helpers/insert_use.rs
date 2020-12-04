@@ -11,7 +11,7 @@ use syntax::{
         edit::{AstNodeEdit, IndentLevel},
         make, AstNode, PathSegmentKind, VisibilityOwner,
     },
-    AstToken, InsertPosition, NodeOrToken, SyntaxElement, SyntaxNode, SyntaxNodePtr, SyntaxToken,
+    AstToken, InsertPosition, NodeOrToken, SyntaxElement, SyntaxNode, SyntaxToken,
 };
 use test_utils::mark;
 
@@ -19,36 +19,6 @@ use test_utils::mark;
 pub enum ImportScope {
     File(ast::SourceFile),
     Module(ast::ItemList),
-}
-
-impl ImportScope {
-    pub fn get_ptr(&self) -> ImportScopePtr {
-        match self {
-            ImportScope::File(file) => ImportScopePtr::File(SyntaxNodePtr::new(file.syntax())),
-            ImportScope::Module(module) => {
-                ImportScopePtr::Module(SyntaxNodePtr::new(module.syntax()))
-            }
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub enum ImportScopePtr {
-    File(SyntaxNodePtr),
-    Module(SyntaxNodePtr),
-}
-
-impl ImportScopePtr {
-    pub fn into_scope(self, root: &SyntaxNode) -> Option<ImportScope> {
-        Some(match self {
-            ImportScopePtr::File(file_ptr) => {
-                ImportScope::File(ast::SourceFile::cast(file_ptr.to_node(root))?)
-            }
-            ImportScopePtr::Module(module_ptr) => {
-                ImportScope::File(ast::SourceFile::cast(module_ptr.to_node(root))?)
-            }
-        })
-    }
 }
 
 impl ImportScope {
