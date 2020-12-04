@@ -6,7 +6,7 @@ LL | impl<T> Drop for T where T: A {
    |
    = note: conflicting implementation in crate `alloc`:
            - impl<T, A> Drop for Box<T, A>
-             where A: AllocRef, T: ?Sized;
+             where A: Allocator, T: ?Sized;
    = note: downstream crates may implement trait `A` for type `std::boxed::Box<_, _>`
 
 error[E0120]: the `Drop` trait may only be implemented for structs, enums, and unions
