@@ -11,11 +11,11 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
     /// **What it does:** Detects expressions where
-    /// size_of::<T> or size_of_val::<T> is used as a
-    /// count of elements of type T
+    /// `size_of::<T>` or `size_of_val::<T>` is used as a
+    /// count of elements of type `T`
     ///
     /// **Why is this bad?** These functions expect a count
-    /// of T and not a number of bytes
+    /// of `T` and not a number of bytes
     ///
     /// **Known problems:** None.
     ///
@@ -23,7 +23,6 @@ declare_clippy_lint! {
     /// ```rust,no_run
     /// # use std::ptr::copy_nonoverlapping;
     /// # use std::mem::size_of;
-    ///
     /// const SIZE: usize = 128;
     /// let x = [2u8; SIZE];
     /// let mut y = [2u8; SIZE];
@@ -31,7 +30,7 @@ declare_clippy_lint! {
     /// ```
     pub SIZE_OF_IN_ELEMENT_COUNT,
     correctness,
-    "using size_of::<T> or size_of_val::<T> where a count of elements of T is expected"
+    "using `size_of::<T>` or `size_of_val::<T>` where a count of elements of `T` is expected"
 }
 
 declare_lint_pass!(SizeOfInElementCount => [SIZE_OF_IN_ELEMENT_COUNT]);
@@ -120,7 +119,7 @@ impl<'tcx> LateLintPass<'tcx> for SizeOfInElementCount {
             , it already gets multiplied by the size of the type";
 
         const LINT_MSG: &str = "found a count of bytes \
-             instead of a count of elements of T";
+             instead of a count of elements of `T`";
 
         if_chain! {
             // Find calls to functions with an element count parameter and get
