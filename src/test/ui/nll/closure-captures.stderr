@@ -137,7 +137,7 @@ LL | |         *x = 1;});
    |            |
    |            mutable borrow occurs due to use of `x` in closure
 
-error[E0596]: cannot borrow `x` as mutable, as it is a captured variable in a `Fn` closure
+error[E0596]: cannot borrow `*x` as mutable, as `Fn` closures cannot mutate their captured variables
   --> $DIR/closure-captures.rs:51:9
    |
 LL |   fn fn_ref<F: Fn()>(f: F) -> F { f }
@@ -152,7 +152,7 @@ LL | |         ||
 LL | |         *x = 1;});
    | |__________-_____- in this closure
    |            |
-   |            mutable borrow occurs due to use of `x` in closure
+   |            mutable borrow occurs due to use of `*x` in closure
 
 error: aborting due to 12 previous errors
 

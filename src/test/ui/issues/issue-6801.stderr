@@ -4,7 +4,7 @@ error[E0505]: cannot move out of `x` because it is borrowed
 LL |       let sq =  || { *x * *x };
    |                 --    - borrow occurs due to use in closure
    |                 |
-   |                 borrow of `x` occurs here
+   |                 borrow of `*x` occurs here
 LL | 
 LL |       twice(x);
    |             ^ move out of `x` occurs here

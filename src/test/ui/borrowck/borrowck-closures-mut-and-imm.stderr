@@ -95,15 +95,15 @@ LL |
 LL |     drop(c1);
    |          -- borrow later used here
 
-error[E0502]: cannot borrow `x` as mutable because it is also borrowed as immutable
+error[E0502]: cannot borrow `*x.f` as mutable because it is also borrowed as immutable
   --> $DIR/borrowck-closures-mut-and-imm.rs:81:14
    |
 LL |     let c1 = || get(&*x.f);
-   |              --       - first borrow occurs due to use of `x` in closure
+   |              --       - first borrow occurs due to use of `*x.f` in closure
    |              |
    |              immutable borrow occurs here
 LL |     let c2 = || *x.f = 5;
-   |              ^^  - second borrow occurs due to use of `x` in closure
+   |              ^^  - second borrow occurs due to use of `*x.f` in closure
    |              |
    |              mutable borrow occurs here
 LL |

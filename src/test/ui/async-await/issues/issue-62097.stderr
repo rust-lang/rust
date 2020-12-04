@@ -1,14 +1,10 @@
-error[E0759]: `self` has an anonymous lifetime `'_` but it needs to satisfy a `'static` lifetime requirement
-  --> $DIR/issue-62097.rs:12:31
+error[E0521]: borrowed data escapes outside of associated function
+  --> $DIR/issue-62097.rs:13:9
    |
 LL |     pub async fn run_dummy_fn(&self) {
-   |                               ^^^^^
-   |                               |
-   |                               this data with an anonymous lifetime `'_`...
-   |                               ...is captured here...
+   |                               ----- `self` is a reference that is only valid in the associated function body
 LL |         foo(|| self.bar()).await;
-   |         --- ...and is required to live as long as `'static` here
+   |         ^^^^^^^^^^^^^^^^^^ `self` escapes the associated function body here
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0759`.

@@ -8,7 +8,7 @@ fn test_boxed() -> Box<impl std::future::Future<Output = u32>> {
 }
 
 fn test_ref(x: &u32) -> impl std::future::Future<Output = u32> + '_ {
-    async move { *x }
+    async { *x }
     //~^ ERROR E0373
 }
 
