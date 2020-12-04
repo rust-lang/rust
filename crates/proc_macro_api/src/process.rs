@@ -109,9 +109,7 @@ fn client_loop(task_rx: Receiver<Task>, mut process: Process) {
         Some(it) => it,
     };
 
-    for task in task_rx {
-        let Task { req, result_tx } = task;
-
+    for Task { req, result_tx } in task_rx {
         match send_request(&mut stdin, &mut stdout, req) {
             Ok(res) => result_tx.send(res).unwrap(),
             Err(_err) => {
