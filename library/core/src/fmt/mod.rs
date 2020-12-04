@@ -403,7 +403,7 @@ impl<'a> Arguments<'a> {
     /// ```rust
     /// #![feature(fmt_as_str)]
     ///
-    /// use core::fmt::Arguments;
+    /// use std::fmt::Arguments;
     ///
     /// fn write_str(_: &str) { /* ... */ }
     ///

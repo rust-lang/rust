@@ -3,7 +3,7 @@ use crate::future::Future;
 use crate::pin::Pin;
 use crate::task::{Context, Poll};
 
-/// Creates a future that wraps a function returning `Poll`.
+/// Creates a future that wraps a function returning [`Poll`].
 ///
 /// Polling the future delegates to the wrapped function.
 ///
@@ -13,7 +13,7 @@ use crate::task::{Context, Poll};
 /// #![feature(future_poll_fn)]
 /// # async fn run() {
 /// use core::future::poll_fn;
-/// use core::task::{Context, Poll};
+/// use std::task::{Context, Poll};
 ///
 /// fn read_line(_cx: &mut Context<'_>) -> Poll<String> {
 ///     Poll::Ready("Hello, World!".into())
@@ -31,7 +31,7 @@ where
     PollFn { f }
 }
 
-/// A Future that wraps a function returning `Poll`.
+/// A Future that wraps a function returning [`Poll`].
 ///
 /// This `struct` is created by [`poll_fn()`]. See its
 /// documentation for more.
