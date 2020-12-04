@@ -36,7 +36,7 @@ use core::marker::PhantomData;
 use core::mem::{self, MaybeUninit};
 use core::ptr::{self, NonNull};
 
-use crate::alloc::{AllocRef, Global, Layout};
+use crate::alloc::{Allocator, Global, Layout};
 use crate::boxed::Box;
 
 const B: usize = 6;
@@ -195,7 +195,7 @@ impl<K, V> NodeRef<marker::Owned, K, V, marker::LeafOrInternal> {
         self.borrow_mut().clear_parent_link();
 
         unsafe {
-            Global.dealloc(top.cast(), Layout::new::<InternalNode<K, V>>());
+            Global.deallocate(top.cast(), Layout::new::<InternalNode<K, V>>());
         }
     }
 }
@@ -449,7 +449,7 @@ impl<K, V> NodeRef<marker::Owned, K, V, marker::LeafOrInternal> {
         let node = self.node;
         let ret = self.ascend().ok();
         unsafe {
-            Global.dealloc(
+            Global.deallocate(
                 node.cast(),
                 if height > 0 {
                     Layout::new::<InternalNode<K, V>>()
@@ -1407,9 +1407,9 @@ impl<'a, K: 'a, V: 'a> BalancingContext<'a, K, V> {
 
                 left_node.correct_childrens_parent_links(left_len + 1..=left_len + 1 + right_len);
 
-                Global.dealloc(right_node.node.cast(), Layout::new::<InternalNode<K, V>>());
+                Global.deallocate(right_node.node.cast(), Layout::new::<InternalNode<K, V>>());
             } else {
-                Global.dealloc(right_node.node.cast(), Layout::new::<LeafNode<K, V>>());
+                Global.deallocate(right_node.node.cast(), Layout::new::<LeafNode<K, V>>());
             }
 
             let new_idx = match track_edge_idx {

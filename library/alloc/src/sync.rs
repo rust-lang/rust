@@ -22,7 +22,7 @@ use core::slice::from_raw_parts_mut;
 use core::sync::atomic;
 use core::sync::atomic::Ordering::{Acquire, Relaxed, Release, SeqCst};
 
-use crate::alloc::{box_free, handle_alloc_error, AllocError, AllocRef, Global, Layout};
+use crate::alloc::{box_free, handle_alloc_error, AllocError, Allocator, Global, Layout};
 use crate::borrow::{Cow, ToOwned};
 use crate::boxed::Box;
 use crate::rc::is_dangling;
@@ -434,7 +434,7 @@ impl<T> Arc<T> {
         unsafe {
             Arc::from_ptr(Arc::allocate_for_layout(
                 Layout::new::<T>(),
-                |layout| Global.alloc(layout),
+                |layout| Global.allocate(layout),
                 |mem| mem as *mut ArcInner<mem::MaybeUninit<T>>,
             ))
         }
@@ -465,7 +465,7 @@ impl<T> Arc<T> {
         unsafe {
             Arc::from_ptr(Arc::allocate_for_layout(
                 Layout::new::<T>(),
-                |layout| Global.alloc_zeroed(layout),
+                |layout| Global.allocate_zeroed(layout),
                 |mem| mem as *mut ArcInner<mem::MaybeUninit<T>>,
             ))
         }
@@ -572,7 +572,7 @@ impl<T> Arc<[T]> {
         unsafe {
             Arc::from_ptr(Arc::allocate_for_layout(
                 Layout::array::<T>(len).unwrap(),
-                |layout| Global.alloc_zeroed(layout),
+                |layout| Global.allocate_zeroed(layout),
                 |mem| {
                     ptr::slice_from_raw_parts_mut(mem as *mut T, len)
                         as *mut ArcInner<[mem::MaybeUninit<T>]>
@@ -1015,7 +1015,7 @@ impl<T: ?Sized> Arc<T> {
         unsafe {
             Self::allocate_for_layout(
                 Layout::for_value(&*ptr),
-                |layout| Global.alloc(layout),
+                |layout| Global.allocate(layout),
                 |mem| set_data_ptr(ptr as *mut T, mem) as *mut ArcInner<T>,
             )
         }
@@ -1050,7 +1050,7 @@ impl<T> Arc<[T]> {
         unsafe {
             Self::allocate_for_layout(
                 Layout::array::<T>(len).unwrap(),
-                |layout| Global.alloc(layout),
+                |layout| Global.allocate(layout),
                 |mem| ptr::slice_from_raw_parts_mut(mem as *mut T, len) as *mut ArcInner<[T]>,
             )
         }
@@ -1102,7 +1102,7 @@ impl<T> Arc<[T]> {
                     let slice = from_raw_parts_mut(self.elems, self.n_elems);
                     ptr::drop_in_place(slice);
 
-                    Global.dealloc(self.mem, self.layout);
+                    Global.deallocate(self.mem, self.layout);
                 }
             }
         }
@@ -1925,7 +1925,7 @@ impl<T: ?Sized> Drop for Weak<T> {
 
         if inner.weak.fetch_sub(1, Release) == 1 {
             acquire!(inner.weak);
-            unsafe { Global.dealloc(self.ptr.cast(), Layout::for_value(self.ptr.as_ref())) }
+            unsafe { Global.deallocate(self.ptr.cast(), Layout::for_value(self.ptr.as_ref())) }
         }
     }
 }

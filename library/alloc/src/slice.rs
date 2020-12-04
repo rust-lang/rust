@@ -87,7 +87,7 @@ use core::cmp::Ordering::{self, Less};
 use core::mem::{self, size_of};
 use core::ptr;
 
-use crate::alloc::{AllocRef, Global};
+use crate::alloc::{Allocator, Global};
 use crate::borrow::ToOwned;
 use crate::boxed::Box;
 use crate::vec::Vec;
@@ -138,7 +138,7 @@ pub use hack::to_vec;
 // `core::slice::SliceExt` - we need to supply these functions for the
 // `test_permutations` test
 mod hack {
-    use core::alloc::AllocRef;
+    use core::alloc::Allocator;
 
     use crate::boxed::Box;
     use crate::vec::Vec;
@@ -146,33 +146,33 @@ mod hack {
     // We shouldn't add inline attribute to this since this is used in
     // `vec!` macro mostly and causes perf regression. See #71204 for
     // discussion and perf results.
-    pub fn into_vec<T, A: AllocRef>(b: Box<[T], A>) -> Vec<T, A> {
+    pub fn into_vec<T, A: Allocator>(b: Box<[T], A>) -> Vec<T, A> {
         unsafe {
             let len = b.len();
-            let (b, alloc) = Box::into_raw_with_alloc(b);
+            let (b, alloc) = Box::into_raw_with_allocator(b);
             Vec::from_raw_parts_in(b as *mut T, len, len, alloc)
         }
     }
 
     #[inline]
-    pub fn to_vec<T: ConvertVec, A: AllocRef>(s: &[T], alloc: A) -> Vec<T, A> {
+    pub fn to_vec<T: ConvertVec, A: Allocator>(s: &[T], alloc: A) -> Vec<T, A> {
         T::to_vec(s, alloc)
     }
 
     pub trait ConvertVec {
-        fn to_vec<A: AllocRef>(s: &[Self], alloc: A) -> Vec<Self, A>
+        fn to_vec<A: Allocator>(s: &[Self], alloc: A) -> Vec<Self, A>
         where
             Self: Sized;
     }
 
     impl<T: Clone> ConvertVec for T {
         #[inline]
-        default fn to_vec<A: AllocRef>(s: &[Self], alloc: A) -> Vec<Self, A> {
-            struct DropGuard<'a, T, A: AllocRef> {
+        default fn to_vec<A: Allocator>(s: &[Self], alloc: A) -> Vec<Self, A> {
+            struct DropGuard<'a, T, A: Allocator> {
                 vec: &'a mut Vec<T, A>,
                 num_init: usize,
             }
-            impl<'a, T, A: AllocRef> Drop for DropGuard<'a, T, A> {
+            impl<'a, T, A: Allocator> Drop for DropGuard<'a, T, A> {
                 #[inline]
                 fn drop(&mut self) {
                     // SAFETY:
@@ -203,7 +203,7 @@ mod hack {
 
     impl<T: Copy> ConvertVec for T {
         #[inline]
-        fn to_vec<A: AllocRef>(s: &[Self], alloc: A) -> Vec<Self, A> {
+        fn to_vec<A: Allocator>(s: &[Self], alloc: A) -> Vec<Self, A> {
             let mut v = Vec::with_capacity_in(s.len(), alloc);
             // SAFETY:
             // allocated above with the capacity of `s`, and initialize to `s.len()` in
@@ -464,7 +464,7 @@ impl<T> [T] {
     /// ```
     #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
-    pub fn to_vec_in<A: AllocRef>(&self, alloc: A) -> Vec<T, A>
+    pub fn to_vec_in<A: Allocator>(&self, alloc: A) -> Vec<T, A>
     where
         T: Clone,
     {
@@ -488,7 +488,7 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn into_vec<A: AllocRef>(self: Box<Self, A>) -> Vec<T, A> {
+    pub fn into_vec<A: Allocator>(self: Box<Self, A>) -> Vec<T, A> {
         // N.B., see the `hack` module in this file for more details.
         hack::into_vec(self)
     }
