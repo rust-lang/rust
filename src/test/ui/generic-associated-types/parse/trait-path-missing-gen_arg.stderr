@@ -1,8 +1,8 @@
-error: expected one of `>`, const, lifetime, or type, found `:`
+error: expected one of `>`, a const expression, lifetime, or type, found `:`
   --> $DIR/trait-path-missing-gen_arg.rs:9:30
    |
 LL |   fn f1<'a>(arg : Box<dyn X< : 32 >>) {}
-   |                              ^ expected one of `>`, const, lifetime, or type
+   |                              ^ expected one of `>`, a const expression, lifetime, or type
    |
 help: expressions must be enclosed in braces to be used as const generic arguments
    |
@@ -24,11 +24,11 @@ LL |   fn f1<'a>(arg : Box<dyn X< : 32 >>) {}
    |                                    expected one of `!`, `)`, `+`, `,`, or `::`
    |                                    help: missing `,`
 
-error: expected one of `>`, const, lifetime, or type, found `=`
+error: expected one of `>`, a const expression, lifetime, or type, found `=`
   --> $DIR/trait-path-missing-gen_arg.rs:17:30
    |
 LL |   fn f1<'a>(arg : Box<dyn X< = 32 >>) {}
-   |                              ^ expected one of `>`, const, lifetime, or type
+   |                              ^ expected one of `>`, a const expression, lifetime, or type
 
 warning: the feature `generic_associated_types` is incomplete and may not be safe to use and/or cause compiler crashes
   --> $DIR/trait-path-missing-gen_arg.rs:1:12
