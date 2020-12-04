@@ -362,7 +362,9 @@ impl Module {
     }
 
     pub fn diagnostics(self, db: &dyn HirDatabase, sink: &mut DiagnosticSink) {
-        let _p = profile::span("Module::diagnostics");
+        let _p = profile::span("Module::diagnostics").detail(|| {
+            format!("{:?}", self.name(db).map_or("<unknown>".into(), |name| name.to_string()))
+        });
         let crate_def_map = db.crate_def_map(self.id.krate);
         crate_def_map.add_diagnostics(db.upcast(), self.id.local_id, sink);
         for decl in self.declarations(db) {
