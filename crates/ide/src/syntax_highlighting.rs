@@ -726,7 +726,7 @@ fn highlight_method_call(
     method_call: &ast::MethodCallExpr,
 ) -> Option<Highlight> {
     let func = sema.resolve_method_call(&method_call)?;
-    let mut h = HighlightTag::Function.into();
+    let mut h = HighlightTag::Method.into();
     if func.is_unsafe(sema.db) || sema.is_unsafe_method_call(&method_call) {
         h |= HighlightModifier::Unsafe;
     }
@@ -755,12 +755,17 @@ fn highlight_def(db: &RootDatabase, def: Definition) -> Highlight {
         Definition::ModuleDef(def) => match def {
             hir::ModuleDef::Module(_) => HighlightTag::Module,
             hir::ModuleDef::Function(func) => {
-                let mut h = HighlightTag::Function.into();
+                let mut h = if func.as_assoc_item(db).is_some() {
+                    if func.self_param(db).is_none() {
+                        Highlight::from(HighlightTag::Method) | HighlightModifier::Static
+                    } else {
+                        HighlightTag::Method.into()
+                    }
+                } else {
+                    HighlightTag::Function.into()
+                };
                 if func.is_unsafe(db) {
                     h |= HighlightModifier::Unsafe;
-                }
-                if func.as_assoc_item(db).is_some() && func.self_param(db).is_none() {
-                    h |= HighlightModifier::Static;
                 }
                 return h;
             }

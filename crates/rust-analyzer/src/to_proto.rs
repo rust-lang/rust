@@ -381,6 +381,7 @@ fn semantic_token_type_and_modifiers(
         HighlightTag::Function => lsp_types::SemanticTokenType::FUNCTION,
         HighlightTag::Generic => semantic_tokens::GENERIC,
         HighlightTag::Module => lsp_types::SemanticTokenType::NAMESPACE,
+        HighlightTag::Method => lsp_types::SemanticTokenType::METHOD,
         HighlightTag::Constant => {
             mods |= semantic_tokens::CONSTANT;
             mods |= lsp_types::SemanticTokenModifier::STATIC;
