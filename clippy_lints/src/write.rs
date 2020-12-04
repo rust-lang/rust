@@ -283,6 +283,26 @@ impl EarlyLintPass for Write {
             span_lint(cx, PRINT_STDERR, mac.span(), "use of `eprintln!`");
         } else if mac.path == sym!(eprint) {
             span_lint(cx, PRINT_STDERR, mac.span(), "use of `eprint!`");
+            if let (Some(fmt_str), _) = self.check_tts(cx, mac.args.inner_tokens(), false) {
+                if check_newlines(&fmt_str) {
+                    span_lint_and_then(
+                        cx,
+                        PRINT_WITH_NEWLINE,
+                        mac.span(),
+                        "using `eprint!()` with a format string that ends in a single newline",
+                        |err| {
+                            err.multipart_suggestion(
+                                "use `eprintln!` instead",
+                                vec![
+                                    (mac.path.span, String::from("eprintln")),
+                                    (newline_span(&fmt_str), String::new()),
+                                ],
+                                Applicability::MachineApplicable,
+                            );
+                        },
+                    );
+                }
+            }
         } else if mac.path == sym!(print) {
             if !is_build_script(cx) {
                 span_lint(cx, PRINT_STDOUT, mac.span(), "use of `print!`");
