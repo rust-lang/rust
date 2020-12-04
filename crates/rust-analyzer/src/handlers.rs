@@ -36,6 +36,7 @@ use crate::{
     from_json, from_proto,
     global_state::{GlobalState, GlobalStateSnapshot},
     lsp_ext::{self, InlayHint, InlayHintsParams},
+    lsp_utils::all_edits_are_disjoint,
     to_proto, LspError, Result,
 };
 
@@ -601,6 +602,14 @@ pub(crate) fn handle_completion_resolve(
 ) -> Result<CompletionItem> {
     let _p = profile::span("handle_resolve_completion");
 
+    if !all_edits_are_disjoint(&original_completion, &[]) {
+        return Err(LspError::new(
+            ErrorCode::InvalidParams as i32,
+            "Received a completion with disjoint edits".into(),
+        )
+        .into());
+    }
+
     // FIXME resolve the other capabilities also?
     if !snap
         .config
@@ -639,6 +648,14 @@ pub(crate) fn handle_completion_resolve(
             edit.into_iter().map(|indel| to_proto::text_edit(&line_index, line_endings, indel))
         })
         .collect_vec();
+
+    if !all_edits_are_disjoint(&original_completion, &additional_edits) {
+        return Err(LspError::new(
+            ErrorCode::InternalError as i32,
+            "Import edit is not disjoint with the original completion edits".into(),
+        )
+        .into());
+    }
 
     if let Some(original_additional_edits) = original_completion.additional_text_edits.as_mut() {
         original_additional_edits.extend(additional_edits.drain(..))
