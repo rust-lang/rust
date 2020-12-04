@@ -11,8 +11,11 @@ mod render;
 
 mod completions;
 
-use ide_db::base_db::FilePosition;
-use ide_db::RootDatabase;
+use ide_db::{
+    base_db::FilePosition, helpers::insert_use::ImportScope, imports_locator, RootDatabase,
+};
+use syntax::AstNode;
+use text_edit::TextEdit;
 
 use crate::{completions::Completions, context::CompletionContext, item::CompletionKind};
 
@@ -129,6 +132,31 @@ pub fn completions(
     completions::mod_::complete_mod(&mut acc, &ctx);
 
     Some(acc)
+}
+
+/// Resolves additional completion data at the position given.
+pub fn resolve_completion_edits(
+    db: &RootDatabase,
+    config: &CompletionConfig,
+    position: FilePosition,
+    full_import_path: &str,
+    imported_name: &str,
+) -> Option<TextEdit> {
+    let ctx = CompletionContext::new(db, position, config)?;
+    let anchor = ctx.name_ref_syntax.as_ref()?;
+    let import_scope = ImportScope::find_insert_use_container(anchor.syntax(), &ctx.sema)?;
+
+    let current_module = ctx.sema.scope(anchor.syntax()).module()?;
+    let current_crate = current_module.krate();
+
+    let import_path = imports_locator::find_exact_imports(&ctx.sema, current_crate, imported_name)
+        .filter_map(|candidate| {
+            let item: hir::ItemInNs = candidate.either(Into::into, Into::into);
+            current_module.find_use_path(db, item)
+        })
+        .find(|mod_path| mod_path.to_string() == full_import_path)?;
+
+    ImportEdit { import_path, import_scope, merge_behaviour: config.merge }.to_text_edit()
 }
 
 #[cfg(test)]

@@ -9,7 +9,7 @@ use test_utils::mark;
 
 use crate::{
     render::{render_resolution_with_import, RenderContext},
-    CompletionContext, Completions,
+    CompletionContext, Completions, ImportEdit,
 };
 
 pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionContext) {
@@ -103,9 +103,11 @@ fn fuzzy_completion(acc: &mut Completions, ctx: &CompletionContext) -> Option<()
     .filter_map(|(import_path, definition)| {
         render_resolution_with_import(
             RenderContext::new(ctx),
-            import_path.clone(),
-            import_scope.clone(),
-            ctx.config.merge,
+            ImportEdit {
+                import_path: import_path.clone(),
+                import_scope: import_scope.clone(),
+                merge_behaviour: ctx.config.merge,
+            },
             &definition,
         )
     });

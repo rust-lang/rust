@@ -276,7 +276,6 @@ pub struct ImportEdit {
 }
 
 impl ImportEdit {
-    // TODO kb remove this at all now, since it's used only once?
     /// Attempts to insert the import to the given scope, producing a text edit.
     /// May return no edit in edge cases, such as scope already containing the import.
     pub fn to_text_edit(&self) -> Option<TextEdit> {

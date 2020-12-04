@@ -9,8 +9,7 @@ pub(crate) mod type_alias;
 
 mod builder_ext;
 
-use hir::{Documentation, HasAttrs, HirDisplay, ModPath, Mutability, ScopeDef, Type};
-use ide_db::helpers::insert_use::{ImportScope, MergeBehaviour};
+use hir::{Documentation, HasAttrs, HirDisplay, Mutability, ScopeDef, Type};
 use ide_db::RootDatabase;
 use syntax::TextRange;
 use test_utils::mark;
@@ -48,15 +47,12 @@ pub(crate) fn render_resolution<'a>(
 
 pub(crate) fn render_resolution_with_import<'a>(
     ctx: RenderContext<'a>,
-    import_path: ModPath,
-    import_scope: ImportScope,
-    merge_behaviour: Option<MergeBehaviour>,
+    import_edit: ImportEdit,
     resolution: &ScopeDef,
 ) -> Option<CompletionItem> {
-    let local_name = import_path.segments.last()?.to_string();
     Render::new(ctx).render_resolution(
-        local_name,
-        Some(ImportEdit { import_path, import_scope, merge_behaviour }),
+        import_edit.import_path.segments.last()?.to_string(),
+        Some(import_edit),
         resolution,
     )
 }

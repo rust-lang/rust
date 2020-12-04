@@ -8,8 +8,8 @@ use std::{
 };
 
 use ide::{
-    CompletionResolveCapability, FileId, FilePosition, FileRange, HoverAction, HoverGotoTypeData,
-    ImportEdit, LineIndex, NavigationTarget, Query, RangeInfo, Runnable, RunnableKind, SearchScope,
+    CompletionConfig, CompletionResolveCapability, FileId, FilePosition, FileRange, HoverAction,
+    HoverGotoTypeData, NavigationTarget, Query, RangeInfo, Runnable, RunnableKind, SearchScope,
     TextEdit,
 };
 use itertools::Itertools;
@@ -22,7 +22,7 @@ use lsp_types::{
     HoverContents, Location, NumberOrString, Position, PrepareRenameResponse, Range, RenameParams,
     SemanticTokensDeltaParams, SemanticTokensFullDeltaResult, SemanticTokensParams,
     SemanticTokensRangeParams, SemanticTokensRangeResult, SemanticTokensResult, SymbolInformation,
-    SymbolTag, TextDocumentIdentifier, Url, WorkspaceEdit,
+    SymbolTag, TextDocumentIdentifier, TextDocumentPositionParams, Url, WorkspaceEdit,
 };
 use project_model::TargetKind;
 use serde::{Deserialize, Serialize};
@@ -35,7 +35,6 @@ use crate::{
     config::RustfmtConfig,
     from_json, from_proto,
     global_state::{GlobalState, GlobalStateSnapshot},
-    line_endings::LineEndings,
     lsp_ext::{self, InlayHint, InlayHintsParams},
     to_proto, LspError, Result,
 };
@@ -541,7 +540,7 @@ pub(crate) fn handle_completion(
     params: lsp_types::CompletionParams,
 ) -> Result<Option<lsp_types::CompletionResponse>> {
     let _p = profile::span("handle_completion");
-    let text_document_url = params.text_document_position.text_document.uri.clone();
+    let text_document_position = params.text_document_position.clone();
     let position = from_proto::file_position(&snap, params.text_document_position)?;
     let completion_triggered_after_single_colon = {
         let mut res = false;
@@ -574,23 +573,18 @@ pub(crate) fn handle_completion(
 
     let items: Vec<CompletionItem> = items
         .into_iter()
-        .enumerate()
-        .flat_map(|(item_index, item)| {
+        .flat_map(|item| {
             let mut new_completion_items =
                 to_proto::completion_item(&line_index, line_endings, item.clone());
 
-            if snap.config.completion.resolve_additional_edits_lazily() {
-                // TODO kb add resolve data somehow here
-                if let Some(import_edit) = item.import_to_add() {
-                    //     let data = serde_json::to_value(&CompletionData {
-                    //         document_url: text_document_url.clone(),
-                    //         import_id: item_index,
-                    //     })
-                    //     .expect(&format!("Should be able to serialize usize value {}", item_index));
-                    for new_item in &mut new_completion_items {
-                        // new_item.data = Some(data.clone());
-                    }
-                }
+            for new_item in &mut new_completion_items {
+                let _ = fill_resolve_data(
+                    &mut new_item.data,
+                    &item,
+                    &snap.config.completion,
+                    &text_document_position,
+                )
+                .take();
             }
 
             new_completion_items
@@ -603,8 +597,8 @@ pub(crate) fn handle_completion(
 
 pub(crate) fn handle_completion_resolve(
     snap: GlobalStateSnapshot,
-    mut original_completion: lsp_types::CompletionItem,
-) -> Result<lsp_types::CompletionItem> {
+    mut original_completion: CompletionItem,
+) -> Result<CompletionItem> {
     let _p = profile::span("handle_resolve_completion");
 
     // FIXME resolve the other capabilities also?
@@ -627,21 +621,30 @@ pub(crate) fn handle_completion_resolve(
         None => return Ok(original_completion),
     };
 
-    // TODO kb get the resolve data and somehow reparse the whole ast again?
-    // let file_id = from_proto::file_id(&snap, &document_url)?;
-    // let root = snap.analysis.parse(file_id)?;
+    let file_id = from_proto::file_id(&snap, &resolve_data.position.text_document.uri)?;
+    let line_index = snap.analysis.file_line_index(file_id)?;
+    let line_endings = snap.file_line_endings(file_id);
+    let offset = from_proto::offset(&line_index, resolve_data.position.position);
 
-    // if let Some(import_to_add) =
-    //     import_edit_ptr.and_then(|import_edit| import_edit.into_import_edit(root.syntax()))
-    // {
-    //     // FIXME actually add all additional edits here? see `to_proto::completion_item` for more
-    //     append_import_edits(
-    //         &mut original_completion,
-    //         &import_to_add,
-    //         snap.analysis.file_line_index(file_id)?.as_ref(),
-    //         snap.file_line_endings(file_id),
-    //     );
-    // }
+    let mut additional_edits = snap
+        .analysis
+        .resolve_completion_edits(
+            &snap.config.completion,
+            FilePosition { file_id, offset },
+            &resolve_data.full_import_path,
+            &resolve_data.imported_name,
+        )?
+        .into_iter()
+        .flat_map(|edit| {
+            edit.into_iter().map(|indel| to_proto::text_edit(&line_index, line_endings, indel))
+        })
+        .collect_vec();
+
+    if let Some(original_additional_edits) = original_completion.additional_text_edits.as_mut() {
+        original_additional_edits.extend(additional_edits.drain(..))
+    } else {
+        original_completion.additional_text_edits = Some(additional_edits);
+    }
 
     Ok(original_completion)
 }
@@ -1606,27 +1609,30 @@ fn should_skip_target(runnable: &Runnable, cargo_spec: Option<&CargoTargetSpec>)
 
 #[derive(Debug, Serialize, Deserialize)]
 struct CompletionResolveData {
-    document_url: Url,
-    import_id: usize,
+    position: lsp_types::TextDocumentPositionParams,
+    full_import_path: String,
+    imported_name: String,
 }
 
-fn append_import_edits(
-    completion: &mut lsp_types::CompletionItem,
-    import_to_add: &ImportEdit,
-    line_index: &LineIndex,
-    line_endings: LineEndings,
-) {
-    let import_edits = import_to_add.to_text_edit().map(|import_edit| {
-        import_edit
-            .into_iter()
-            .map(|indel| to_proto::text_edit(line_index, line_endings, indel))
-            .collect_vec()
-    });
-    if let Some(original_additional_edits) = completion.additional_text_edits.as_mut() {
-        if let Some(mut new_edits) = import_edits {
-            original_additional_edits.extend(new_edits.drain(..))
-        }
-    } else {
-        completion.additional_text_edits = import_edits;
+fn fill_resolve_data(
+    resolve_data: &mut Option<serde_json::Value>,
+    item: &ide::CompletionItem,
+    completion_config: &CompletionConfig,
+    position: &TextDocumentPositionParams,
+) -> Option<()> {
+    if completion_config.resolve_additional_edits_lazily() {
+        let import_edit = item.import_to_add()?;
+        let full_import_path = import_edit.import_path.to_string();
+        let imported_name = import_edit.import_path.segments.clone().pop()?.to_string();
+
+        *resolve_data = Some(
+            serde_json::to_value(CompletionResolveData {
+                position: position.to_owned(),
+                full_import_path,
+                imported_name,
+            })
+            .expect("Failed to serialize a regular struct with derives"),
+        )
     }
+    Some(())
 }
