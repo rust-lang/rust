@@ -129,7 +129,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut capture_information: FxIndexMap<Place<'tcx>, ty::CaptureInfo<'tcx>> =
             Default::default();
 
-        if !self.tcx.features().capture_disjoint_fields && env::var("SG_NEW").is_err() {
+        if !self.tcx.features().capture_disjoint_fields && env::var("SG_NEW").is_ok() {
             if let Some(upvars) = self.tcx.upvars_mentioned(closure_def_id) {
                 for (&var_hir_id, _) in upvars.iter() {
                     let place = self.place_for_root_variable(local_def_id, var_hir_id);
