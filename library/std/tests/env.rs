@@ -1,6 +1,5 @@
 use std::env::*;
 use std::ffi::{OsStr, OsString};
-use std::path::PathBuf;
 
 use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
@@ -92,6 +91,8 @@ fn env_home_dir() {
 
     cfg_if::cfg_if! {
         if #[cfg(unix)] {
+            use std::path::PathBuf;
+
             let oldhome = var_to_os_string(var("HOME"));
 
             set_var("HOME", "/home/MountainView");
@@ -109,6 +110,8 @@ fn env_home_dir() {
 
             if let Some(oldhome) = oldhome { set_var("HOME", oldhome); }
         } else if #[cfg(windows)] {
+            use std::path::PathBuf;
+
             let oldhome = var_to_os_string(var("HOME"));
             let olduserprofile = var_to_os_string(var("USERPROFILE"));
 
