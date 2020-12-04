@@ -1,7 +1,9 @@
+use crate::error;
 use crate::fmt;
 use crate::io::{
     self, Error, ErrorKind, IntoInnerError, IoSlice, Seek, SeekFrom, Write, DEFAULT_BUF_SIZE,
 };
+use crate::mem;
 
 /// Wraps a writer and buffers its output.
 ///
@@ -286,6 +288,77 @@ impl<W: Write> BufWriter<W> {
             Err(e) => Err(IntoInnerError::new(self, e)),
             Ok(()) => Ok(self.inner.take().unwrap()),
         }
+    }
+
+    /// Disassembles this `BufWriter<W>`, returning the underlying writer, and any buffered but
+    /// unwritten data.
+    ///
+    /// If the underlying writer panicked, it is not known what portion of the data was written.
+    /// In this case, we return `WriterPanicked` for the buffered data (from which the buffer
+    /// contents can still be recovered).
+    ///
+    /// `into_raw_parts` makes no attempt to flush data and cannot fail.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(bufwriter_into_raw_parts)]
+    /// use std::io::{BufWriter, Write};
+    ///
+    /// let mut buffer = [0u8; 10];
+    /// let mut stream = BufWriter::new(buffer.as_mut());
+    /// write!(stream, "too much data").unwrap();
+    /// stream.flush().expect_err("it doesn't fit");
+    /// let (recovered_writer, buffered_data) = stream.into_raw_parts();
+    /// assert_eq!(recovered_writer.len(), 0);
+    /// assert_eq!(&buffered_data.unwrap(), b"ata");
+    /// ```
+    #[unstable(feature = "bufwriter_into_raw_parts", issue = "none")]
+    pub fn into_raw_parts(mut self) -> (W, Result<Vec<u8>, WriterPanicked>) {
+        let buf = mem::take(&mut self.buf);
+        let buf = if !self.panicked { Ok(buf) } else { Err(WriterPanicked { buf }) };
+        (self.inner.take().unwrap(), buf)
+    }
+}
+
+#[unstable(feature = "bufwriter_into_raw_parts", issue = "none")]
+/// Error returned for the buffered data from `BufWriter::into_raw_parts`, when the underlying
+/// writer has previously panicked.  Contains the (possibly partly written) buffered data.
+pub struct WriterPanicked {
+    buf: Vec<u8>,
+}
+
+impl WriterPanicked {
+    /// Returns the perhaps-unwritten data.  Some of this data may have been written by the
+    /// panicking call(s) to the underlying writer, so simply writing it again is not a good idea.
+    #[unstable(feature = "bufwriter_into_raw_parts", issue = "none")]
+    pub fn into_inner(self) -> Vec<u8> {
+        self.buf
+    }
+
+    const DESCRIPTION: &'static str =
+        "BufWriter inner writer panicked, what data remains unwritten is not known";
+}
+
+#[unstable(feature = "bufwriter_into_raw_parts", issue = "none")]
+impl error::Error for WriterPanicked {
+    #[allow(deprecated, deprecated_in_future)]
+    fn description(&self) -> &str {
+        Self::DESCRIPTION
+    }
+}
+
+#[unstable(feature = "bufwriter_into_raw_parts", issue = "none")]
+impl fmt::Display for WriterPanicked {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", Self::DESCRIPTION)
+    }
+}
+
+#[unstable(feature = "bufwriter_into_raw_parts", issue = "none")]
+impl fmt::Debug for WriterPanicked {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "WriterPanicked{{..buf.len={}..}}", self.buf.len())
     }
 }
 
