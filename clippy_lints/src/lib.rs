@@ -306,6 +306,7 @@ mod self_assignment;
 mod serde_api;
 mod shadow;
 mod single_component_path_imports;
+mod size_of_in_element_count;
 mod slow_vector_initialization;
 mod stable_sort_primitive;
 mod strings;
@@ -847,6 +848,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &shadow::SHADOW_SAME,
         &shadow::SHADOW_UNRELATED,
         &single_component_path_imports::SINGLE_COMPONENT_PATH_IMPORTS,
+        &size_of_in_element_count::SIZE_OF_IN_ELEMENT_COUNT,
         &slow_vector_initialization::SLOW_VECTOR_INITIALIZATION,
         &stable_sort_primitive::STABLE_SORT_PRIMITIVE,
         &strings::STRING_ADD,
@@ -998,6 +1000,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(move || box matches::Matches::new(msrv));
     store.register_early_pass(move || box manual_non_exhaustive::ManualNonExhaustive::new(msrv));
     store.register_late_pass(move || box manual_strip::ManualStrip::new(msrv));
+    store.register_late_pass(|| box size_of_in_element_count::SizeOfInElementCount);
     store.register_late_pass(|| box map_clone::MapClone);
     store.register_late_pass(|| box map_err_ignore::MapErrIgnore);
     store.register_late_pass(|| box shadow::Shadow);
@@ -1559,6 +1562,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&self_assignment::SELF_ASSIGNMENT),
         LintId::of(&serde_api::SERDE_API_MISUSE),
         LintId::of(&single_component_path_imports::SINGLE_COMPONENT_PATH_IMPORTS),
+        LintId::of(&size_of_in_element_count::SIZE_OF_IN_ELEMENT_COUNT),
         LintId::of(&slow_vector_initialization::SLOW_VECTOR_INITIALIZATION),
         LintId::of(&stable_sort_primitive::STABLE_SORT_PRIMITIVE),
         LintId::of(&strings::STRING_FROM_UTF8_AS_BYTES),
@@ -1868,6 +1872,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&regex::INVALID_REGEX),
         LintId::of(&self_assignment::SELF_ASSIGNMENT),
         LintId::of(&serde_api::SERDE_API_MISUSE),
+        LintId::of(&size_of_in_element_count::SIZE_OF_IN_ELEMENT_COUNT),
         LintId::of(&suspicious_trait_impl::SUSPICIOUS_ARITHMETIC_IMPL),
         LintId::of(&suspicious_trait_impl::SUSPICIOUS_OP_ASSIGN_IMPL),
         LintId::of(&swap::ALMOST_SWAPPED),
