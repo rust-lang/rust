@@ -1,5 +1,5 @@
 error: digits of hex or binary literal not grouped by four
-  --> $DIR/unreadable_literal.rs:17:9
+  --> $DIR/unreadable_literal.rs:25:9
    |
 LL |         0x1_234_567,
    |         ^^^^^^^^^^^ help: consider: `0x0123_4567`
@@ -7,7 +7,7 @@ LL |         0x1_234_567,
    = note: `-D clippy::unusual-byte-groupings` implied by `-D warnings`
 
 error: long literal lacking separators
-  --> $DIR/unreadable_literal.rs:25:17
+  --> $DIR/unreadable_literal.rs:33:17
    |
 LL |     let _bad = (0b110110_i64, 0xcafebabe_usize, 123456_f32, 1.234567_f32);
    |                 ^^^^^^^^^^^^ help: consider: `0b11_0110_i64`
@@ -15,52 +15,58 @@ LL |     let _bad = (0b110110_i64, 0xcafebabe_usize, 123456_f32, 1.234567_f32);
    = note: `-D clippy::unreadable-literal` implied by `-D warnings`
 
 error: long literal lacking separators
-  --> $DIR/unreadable_literal.rs:25:31
+  --> $DIR/unreadable_literal.rs:33:31
    |
 LL |     let _bad = (0b110110_i64, 0xcafebabe_usize, 123456_f32, 1.234567_f32);
    |                               ^^^^^^^^^^^^^^^^ help: consider: `0xcafe_babe_usize`
 
 error: long literal lacking separators
-  --> $DIR/unreadable_literal.rs:25:49
+  --> $DIR/unreadable_literal.rs:33:49
    |
 LL |     let _bad = (0b110110_i64, 0xcafebabe_usize, 123456_f32, 1.234567_f32);
    |                                                 ^^^^^^^^^^ help: consider: `123_456_f32`
 
 error: long literal lacking separators
-  --> $DIR/unreadable_literal.rs:25:61
+  --> $DIR/unreadable_literal.rs:33:61
    |
 LL |     let _bad = (0b110110_i64, 0xcafebabe_usize, 123456_f32, 1.234567_f32);
    |                                                             ^^^^^^^^^^^^ help: consider: `1.234_567_f32`
 
 error: long literal lacking separators
-  --> $DIR/unreadable_literal.rs:27:20
+  --> $DIR/unreadable_literal.rs:35:20
    |
 LL |     let _bad_sci = 1.123456e1;
    |                    ^^^^^^^^^^ help: consider: `1.123_456e1`
 
 error: long literal lacking separators
-  --> $DIR/unreadable_literal.rs:29:18
+  --> $DIR/unreadable_literal.rs:37:18
    |
-LL |     let _fail9 = 0xabcdef;
+LL |     let _fail1 = 0xabcdef;
    |                  ^^^^^^^^ help: consider: `0x00ab_cdef`
 
 error: long literal lacking separators
-  --> $DIR/unreadable_literal.rs:30:24
+  --> $DIR/unreadable_literal.rs:38:23
    |
-LL |     let _fail10: u32 = 0xBAFEBAFE;
-   |                        ^^^^^^^^^^ help: consider: `0xBAFE_BAFE`
+LL |     let _fail2: u32 = 0xBAFEBAFE;
+   |                       ^^^^^^^^^^ help: consider: `0xBAFE_BAFE`
 
 error: long literal lacking separators
-  --> $DIR/unreadable_literal.rs:31:19
+  --> $DIR/unreadable_literal.rs:39:18
    |
-LL |     let _fail11 = 0xabcdeff;
-   |                   ^^^^^^^^^ help: consider: `0x0abc_deff`
+LL |     let _fail3 = 0xabcdeff;
+   |                  ^^^^^^^^^ help: consider: `0x0abc_deff`
 
 error: long literal lacking separators
-  --> $DIR/unreadable_literal.rs:32:25
+  --> $DIR/unreadable_literal.rs:40:24
    |
-LL |     let _fail12: i128 = 0xabcabcabcabcabcabc;
-   |                         ^^^^^^^^^^^^^^^^^^^^ help: consider: `0x00ab_cabc_abca_bcab_cabc`
+LL |     let _fail4: i128 = 0xabcabcabcabcabcabc;
+   |                        ^^^^^^^^^^^^^^^^^^^^ help: consider: `0x00ab_cabc_abca_bcab_cabc`
 
-error: aborting due to 10 previous errors
+error: long literal lacking separators
+  --> $DIR/unreadable_literal.rs:41:18
+   |
+LL |     let _fail5 = 1.100300400;
+   |                  ^^^^^^^^^^^ help: consider: `1.100_300_400`
+
+error: aborting due to 11 previous errors
 
