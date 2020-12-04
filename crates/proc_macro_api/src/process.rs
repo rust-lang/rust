@@ -81,15 +81,16 @@ impl ProcMacroProcessSrv {
     {
         let (result_tx, result_rx) = bounded(0);
         let sender = match self.inner.upgrade() {
-            None => {
-                return Err(tt::ExpansionError::Unknown("Proc macro process is closed.".into()))
-            }
+            None => return Err(tt::ExpansionError::Unknown("proc macro process is closed".into())),
             Some(it) => it,
         };
-        sender.send(Task { req, result_tx }).unwrap();
+        sender
+            .send(Task { req, result_tx })
+            .map_err(|_| tt::ExpansionError::Unknown("proc macro server crashed".into()))?;
+
         let res = result_rx
             .recv()
-            .map_err(|_| tt::ExpansionError::Unknown("Proc macro thread is closed.".into()))?;
+            .map_err(|_| tt::ExpansionError::Unknown("proc macro server crashed".into()))?;
 
         match res {
             Some(Response::Error(err)) => {
@@ -110,21 +111,17 @@ fn client_loop(task_rx: Receiver<Task>, mut process: Process) {
         match send_request(&mut stdin, &mut stdout, req) {
             Ok(res) => result_tx.send(res).unwrap(),
             Err(_err) => {
+                log::error!(
+                    "proc macro server crashed, server process state: {:?}",
+                    process.child.try_wait()
+                );
                 let res = Response::Error(ResponseError {
                     code: ErrorCode::ServerErrorEnd,
-                    message: "Server closed".into(),
+                    message: "proc macro server crashed".into(),
                 });
                 result_tx.send(res.into()).unwrap();
-                // Restart the process
-                if process.restart().is_err() {
-                    break;
-                }
-                let stdio = match process.stdio() {
-                    None => break,
-                    Some(it) => it,
-                };
-                stdin = stdio.0;
-                stdout = stdio.1;
+                // Exit the thread.
+                break;
             }
         }
     }
@@ -136,8 +133,6 @@ struct Task {
 }
 
 struct Process {
-    path: PathBuf,
-    args: Vec<OsString>,
     child: Child,
 }
 
@@ -152,15 +147,9 @@ impl Process {
         path: PathBuf,
         args: impl IntoIterator<Item = impl AsRef<OsStr>>,
     ) -> io::Result<Process> {
-        let args = args.into_iter().map(|s| s.as_ref().into()).collect();
+        let args: Vec<OsString> = args.into_iter().map(|s| s.as_ref().into()).collect();
         let child = mk_child(&path, &args)?;
-        Ok(Process { path, args, child })
-    }
-
-    fn restart(&mut self) -> io::Result<()> {
-        let _ = self.child.kill();
-        self.child = mk_child(&self.path, &self.args)?;
-        Ok(())
+        Ok(Process { child })
     }
 
     fn stdio(&mut self) -> Option<(impl Write, impl BufRead)> {
