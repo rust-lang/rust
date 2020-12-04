@@ -1087,3 +1087,22 @@ fn method_resolution_foreign_opaque_type() {
         "#]],
     );
 }
+
+#[test]
+fn method_with_allocator_box_self_type() {
+    check_types(
+        r#"
+struct Slice<T> {}
+struct Box<T, A> {}
+
+impl<T> Slice<T> {
+    pub fn into_vec<A>(self: Box<Self, A>) { }
+}
+
+fn main() {
+    let foo: Slice<u32>;
+    (foo.into_vec()); // we don't actually support arbitrary self types, but we shouldn't crash at least
+} //^ {unknown}
+"#,
+    );
+}
