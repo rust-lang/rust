@@ -95,8 +95,11 @@ pub unsafe trait AllocRef {
     /// not have its contents initialized.
     ///
     /// Note that you may not rely on this method actually getting called, even if there are calls
-    /// to it in the source. The optimizer may detect allocation/deallocation pairs that it can
-    /// instead move to stack allocations/deallocations and thus never invoke the allocator here.
+    /// to it in the source. The optimizer may detect unused allocations that it can either
+    /// eliminate entirely or move to the stack and thus never invoke the allocator here. The
+    /// optimizer may further assume that allocation is infallible, so code that used to fail due
+    /// to allocator failures may now suddenly work because the optimizer worked around the
+    /// need for an allocation.
     /// More concretely, the following code example is unsound, irrespective of whether your
     /// custom allocator allows counting how many allocations have happened.
     ///
@@ -105,6 +108,13 @@ pub unsafe trait AllocRef {
     /// let number_of_heap_allocs = /* call private allocator API */;
     /// unsafe { std::intrinsics::assume(number_of_heap_allocs > 0); }
     /// ```
+    ///
+    /// Note that the optimizations mentioned above are not the only
+    /// optimization that can be applied. You may generally not rely on heap allocations
+    /// happening if they can be removed without changing program behavior.
+    /// Whether allocations happen or not is not part of the program behavior, even if it
+    /// could be detected via an allocator that tracks allocations by printing or otherwise
+    /// having side effects.
     ///
     /// # Errors
     ///

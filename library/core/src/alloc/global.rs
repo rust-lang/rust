@@ -55,9 +55,12 @@ use crate::ptr;
 ///   and implementors must ensure such contracts remain true.
 ///
 /// * You may not rely on allocations actually happening, even if there are explicit
-///   heap allocations in the source. The optimizer may detect allocation/deallocation
-///   pairs that it can instead move to stack allocations/deallocations and thus never
-///   invoke the allocator here.
+///   heap allocations in the source.
+///   The optimizer may detect unused allocations that it can either
+///   eliminate entirely or move to the stack and thus never invoke the allocator here. The
+///   optimizer may further assume that allocation is infallible, so code that used to fail due
+///   to allocator failures may now suddenly work because the optimizer worked around the
+///   need for an allocation.
 ///   More concretely, the following code example is unsound, irrespective of whether your
 ///   custom allocator allows counting how many allocations have happened.
 ///
@@ -67,10 +70,10 @@ use crate::ptr;
 ///   unsafe { std::intrinsics::assume(number_of_heap_allocs > 0); }
 ///   ```
 ///
-///   Note that allocation/deallocation pairs being moved to the stack is not the only
+///   Note that the optimizations mentioned above are not the only
 ///   optimization that can be applied. You may generally not rely on heap allocations
-///   happening, if they can be removed without changing program behaviour.
-///   Whether allocations happen or not is not part of the program behaviour, even if it
+///   happening if they can be removed without changing program behavior.
+///   Whether allocations happen or not is not part of the program behavior, even if it
 ///   could be detected via an allocator that tracks allocations by printing or otherwise
 ///   having side effects.
 #[stable(feature = "global_alloc", since = "1.28.0")]
