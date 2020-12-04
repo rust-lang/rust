@@ -1,0 +1,6 @@
+Counter in file 0 3:1 -> 13:2, #1
+Emitting segments for file: ../coverage/loop_break_value.rs
+Combined regions:
+  3:1 -> 13:2 (count=1)
+Segment at 3:1 (count = 1), RegionEntry
+Segment at 13:2 (count = 0), Skipped

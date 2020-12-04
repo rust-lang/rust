@@ -1,0 +1,59 @@
+{
+  "data": [
+    {
+      "files": [
+        {
+          "filename": "../coverage/simple_match.rs",
+          "summary": {
+            "functions": {
+              "count": 1,
+              "covered": 1,
+              "percent": 100
+            },
+            "instantiations": {
+              "count": 1,
+              "covered": 1,
+              "percent": 100
+            },
+            "lines": {
+              "count": 27,
+              "covered": 27,
+              "percent": 100
+            },
+            "regions": {
+              "count": 11,
+              "covered": 10,
+              "notcovered": 1,
+              "percent": 90.9090909090909
+            }
+          }
+        }
+      ],
+      "totals": {
+        "functions": {
+          "count": 1,
+          "covered": 1,
+          "percent": 100
+        },
+        "instantiations": {
+          "count": 1,
+          "covered": 1,
+          "percent": 100
+        },
+        "lines": {
+          "count": 27,
+          "covered": 27,
+          "percent": 100
+        },
+        "regions": {
+          "count": 11,
+          "covered": 10,
+          "notcovered": 1,
+          "percent": 90.9090909090909
+        }
+      }
+    }
+  ],
+  "type": "llvm.coverage.json.export",
+  "version": "2.0.1"
+}

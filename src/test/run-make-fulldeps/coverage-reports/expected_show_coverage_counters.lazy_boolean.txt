@@ -1,0 +1,111 @@
+Counter in file 0 3:1 -> 10:15, #1
+Counter in file 0 10:16 -> 14:6, #2
+Counter in file 0 14:6 -> 14:7, (#1 - #2)
+Counter in file 0 16:9 -> 16:17, ((#3 + #4) + (((#2 + (#1 - #2)) - #3) - #4))
+Counter in file 0 18:13 -> 18:18, (#2 + (#1 - #2))
+Counter in file 0 20:13 -> 20:18, ((#2 + (#1 - #2)) - #3)
+Counter in file 0 23:9 -> 23:17, ((#5 + #6) + ((((#3 + #4) + (((#2 + (#1 - #2)) - #3) - #4)) - #5) - #6))
+Counter in file 0 25:13 -> 25:18, (((#3 + #4) + (((#2 + (#1 - #2)) - #3) - #4)) + 0)
+Counter in file 0 27:13 -> 27:18, (((#3 + #4) + (((#2 + (#1 - #2)) - #3) - #4)) - #5)
+Counter in file 0 29:9 -> 29:17, (#8 + ((((#5 + #6) + ((((#3 + #4) + (((#2 + (#1 - #2)) - #3) - #4)) - #5) - #6)) - #7) + (#7 - #8)))
+Counter in file 0 29:20 -> 29:25, (((#5 + #6) + ((((#3 + #4) + (((#2 + (#1 - #2)) - #3) - #4)) - #5) - #6)) + 0)
+Counter in file 0 29:29 -> 29:34, #7
+Counter in file 0 30:9 -> 30:17, (#10 + (((#8 + ((((#5 + #6) + ((((#3 + #4) + (((#2 + (#1 - #2)) - #3) - #4)) - #5) - #6)) - #7) + (#7 - #8))) - #9) + (#9 - #10)))
+Counter in file 0 30:20 -> 30:25, ((#8 + ((((#5 + #6) + ((((#3 + #4) + (((#2 + (#1 - #2)) - #3) - #4)) - #5) - #6)) - #7) + (#7 - #8))) + 0)
+Counter in file 0 30:29 -> 30:34, #9
+Counter in file 0 33:9 -> 34:16, ((#10 + (((#8 + ((((#5 + #6) + ((((#3 + #4) + (((#2 + (#1 - #2)) - #3) - #4)) - #5) - #6)) - #7) + (#7 - #8))) - #9) + (#9 - #10))) + 0)
+Counter in file 0 35:5 -> 38:6, #11
+Counter in file 0 38:6 -> 38:7, ((#10 + (((#8 + ((((#5 + #6) + ((((#3 + #4) + (((#2 + (#1 - #2)) - #3) - #4)) - #5) - #6)) - #7) + (#7 - #8))) - #9) + (#9 - #10))) - #11)
+Counter in file 0 41:9 -> 41:16, (#11 + ((#10 + (((#8 + ((((#5 + #6) + ((((#3 + #4) + (((#2 + (#1 - #2)) - #3) - #4)) - #5) - #6)) - #7) + (#7 - #8))) - #9) + (#9 - #10))) - #11))
+Counter in file 0 42:5 -> 45:6, #12
+Counter in file 0 47:5 -> 50:6, ((#11 + ((#10 + (((#8 + ((((#5 + #6) + ((((#3 + #4) + (((#2 + (#1 - #2)) - #3) - #4)) - #5) - #6)) - #7) + (#7 - #8))) - #9) + (#9 - #10))) - #11)) - #12)
+Counter in file 0 52:8 -> 52:16, (#12 + ((#11 + ((#10 + (((#8 + ((((#5 + #6) + ((((#3 + #4) + (((#2 + (#1 - #2)) - #3) - #4)) - #5) - #6)) - #7) + (#7 - #8))) - #9) + (#9 - #10))) - #11)) - #12))
+Counter in file 0 52:17 -> 54:6, #13
+Counter in file 0 54:6 -> 54:7, ((#12 + ((#11 + ((#10 + (((#8 + ((((#5 + #6) + ((((#3 + #4) + (((#2 + (#1 - #2)) - #3) - #4)) - #5) - #6)) - #7) + (#7 - #8))) - #9) + (#9 - #10))) - #11)) - #12)) - #13)
+Counter in file 0 56:8 -> 56:15, (#13 + ((#12 + ((#11 + ((#10 + (((#8 + ((((#5 + #6) + ((((#3 + #4) + (((#2 + (#1 - #2)) - #3) - #4)) - #5) - #6)) - #7) + (#7 - #8))) - #9) + (#9 - #10))) - #11)) - #12)) - #13))
+Counter in file 0 56:16 -> 58:6, #14
+Counter in file 0 58:12 -> 60:6, ((#13 + ((#12 + ((#11 + ((#10 + (((#8 + ((((#5 + #6) + ((((#3 + #4) + (((#2 + (#1 - #2)) - #3) - #4)) - #5) - #6)) - #7) + (#7 - #8))) - #9) + (#9 - #10))) - #11)) - #12)) - #13)) - #14)
+Counter in file 0 61:1 -> 61:2, (#14 + ((#13 + ((#12 + ((#11 + ((#10 + (((#8 + ((((#5 + #6) + ((((#3 + #4) + (((#2 + (#1 - #2)) - #3) - #4)) - #5) - #6)) - #7) + (#7 - #8))) - #9) + (#9 - #10))) - #11)) - #12)) - #13)) - #14))
+Emitting segments for file: ../coverage/lazy_boolean.rs
+Combined regions:
+  3:1 -> 10:15 (count=1)
+  10:16 -> 14:6 (count=1)
+  14:6 -> 14:7 (count=0)
+  16:9 -> 16:17 (count=1)
+  18:13 -> 18:18 (count=1)
+  20:13 -> 20:18 (count=0)
+  23:9 -> 23:17 (count=1)
+  25:13 -> 25:18 (count=1)
+  27:13 -> 27:18 (count=1)
+  29:9 -> 29:17 (count=1)
+  29:20 -> 29:25 (count=1)
+  29:29 -> 29:34 (count=1)
+  30:9 -> 30:17 (count=1)
+  30:20 -> 30:25 (count=1)
+  30:29 -> 30:34 (count=0)
+  33:9 -> 34:16 (count=1)
+  35:5 -> 38:6 (count=0)
+  38:6 -> 38:7 (count=1)
+  41:9 -> 41:16 (count=1)
+  42:5 -> 45:6 (count=1)
+  47:5 -> 50:6 (count=0)
+  52:8 -> 52:16 (count=1)
+  52:17 -> 54:6 (count=0)
+  54:6 -> 54:7 (count=1)
+  56:8 -> 56:15 (count=1)
+  56:16 -> 58:6 (count=1)
+  58:12 -> 60:6 (count=0)
+  61:1 -> 61:2 (count=1)
+Segment at 3:1 (count = 1), RegionEntry
+Segment at 10:15 (count = 0), Skipped
+Segment at 10:16 (count = 1), RegionEntry
+Segment at 14:6 (count = 0), RegionEntry
+Segment at 14:7 (count = 0), Skipped
+Segment at 16:9 (count = 1), RegionEntry
+Segment at 16:17 (count = 0), Skipped
+Segment at 18:13 (count = 1), RegionEntry
+Segment at 18:18 (count = 0), Skipped
+Segment at 20:13 (count = 0), RegionEntry
+Segment at 20:18 (count = 0), Skipped
+Segment at 23:9 (count = 1), RegionEntry
+Segment at 23:17 (count = 0), Skipped
+Segment at 25:13 (count = 1), RegionEntry
+Segment at 25:18 (count = 0), Skipped
+Segment at 27:13 (count = 1), RegionEntry
+Segment at 27:18 (count = 0), Skipped
+Segment at 29:9 (count = 1), RegionEntry
+Segment at 29:17 (count = 0), Skipped
+Segment at 29:20 (count = 1), RegionEntry
+Segment at 29:25 (count = 0), Skipped
+Segment at 29:29 (count = 1), RegionEntry
+Segment at 29:34 (count = 0), Skipped
+Segment at 30:9 (count = 1), RegionEntry
+Segment at 30:17 (count = 0), Skipped
+Segment at 30:20 (count = 1), RegionEntry
+Segment at 30:25 (count = 0), Skipped
+Segment at 30:29 (count = 0), RegionEntry
+Segment at 30:34 (count = 0), Skipped
+Segment at 33:9 (count = 1), RegionEntry
+Segment at 34:16 (count = 0), Skipped
+Segment at 35:5 (count = 0), RegionEntry
+Segment at 38:6 (count = 1), RegionEntry
+Segment at 38:7 (count = 0), Skipped
+Segment at 41:9 (count = 1), RegionEntry
+Segment at 41:16 (count = 0), Skipped
+Segment at 42:5 (count = 1), RegionEntry
+Segment at 45:6 (count = 0), Skipped
+Segment at 47:5 (count = 0), RegionEntry
+Segment at 50:6 (count = 0), Skipped
+Segment at 52:8 (count = 1), RegionEntry
+Segment at 52:16 (count = 0), Skipped
+Segment at 52:17 (count = 0), RegionEntry
+Segment at 54:6 (count = 1), RegionEntry
+Segment at 54:7 (count = 0), Skipped
+Segment at 56:8 (count = 1), RegionEntry
+Segment at 56:15 (count = 0), Skipped
+Segment at 56:16 (count = 1), RegionEntry
+Segment at 58:6 (count = 0), Skipped
+Segment at 58:12 (count = 0), RegionEntry
+Segment at 60:6 (count = 0), Skipped
+Segment at 61:1 (count = 1), RegionEntry
+Segment at 61:2 (count = 0), Skipped

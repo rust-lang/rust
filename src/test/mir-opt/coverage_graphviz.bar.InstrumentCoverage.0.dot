@@ -2,5 +2,5 @@ digraph Cov_0_4 {
     graph [fontname="Courier, monospace"];
     node [fontname="Courier, monospace"];
     edge [fontname="Courier, monospace"];
-    bcb0__Cov_0_4 [shape="none", label=<<table border="0" cellborder="1" cellspacing="0"><tr><td bgcolor="gray" align="center" colspan="1">bcb0</td></tr><tr><td align="left" balign="left"></td></tr><tr><td align="left" balign="left">Counter(bcb0) at 19:5-20:2<br/>    19:5-19:9: @0[0]: _0 = const true<br/>    20:2-20:2: @0.Return: return</td></tr><tr><td align="left" balign="left">bb0: Return</td></tr></table>>];
+    bcb0__Cov_0_4 [shape="none", label=<<table border="0" cellborder="1" cellspacing="0"><tr><td bgcolor="gray" align="center" colspan="1">bcb0</td></tr><tr><td align="left" balign="left"></td></tr><tr><td align="left" balign="left">Counter(bcb0) at 18:1-20:2<br/>    19:5-19:9: @0[0]: _0 = const true<br/>    20:2-20:2: @0.Return: return</td></tr><tr><td align="left" balign="left">bb0: Return</td></tr></table>>];
 }

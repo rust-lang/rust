@@ -1,0 +1,59 @@
+{
+  "data": [
+    {
+      "files": [
+        {
+          "filename": "../coverage/loops_branches.rs",
+          "summary": {
+            "functions": {
+              "count": 2,
+              "covered": 2,
+              "percent": 100
+            },
+            "instantiations": {
+              "count": 2,
+              "covered": 2,
+              "percent": 100
+            },
+            "lines": {
+              "count": 11,
+              "covered": 11,
+              "percent": 100
+            },
+            "regions": {
+              "count": 8,
+              "covered": 7,
+              "notcovered": 1,
+              "percent": 87.5
+            }
+          }
+        }
+      ],
+      "totals": {
+        "functions": {
+          "count": 2,
+          "covered": 2,
+          "percent": 100
+        },
+        "instantiations": {
+          "count": 2,
+          "covered": 2,
+          "percent": 100
+        },
+        "lines": {
+          "count": 11,
+          "covered": 11,
+          "percent": 100
+        },
+        "regions": {
+          "count": 8,
+          "covered": 7,
+          "notcovered": 1,
+          "percent": 87.5
+        }
+      }
+    }
+  ],
+  "type": "llvm.coverage.json.export",
+  "version": "2.0.1"
+}

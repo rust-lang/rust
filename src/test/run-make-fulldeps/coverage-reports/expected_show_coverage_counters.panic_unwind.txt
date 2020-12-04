@@ -1,0 +1,53 @@
+Counter in file 0 13:1 -> 14:27, #1
+Counter in file 0 15:11 -> 15:24, (#1 + (#2 + (#3 + #4)))
+Counter in file 0 16:12 -> 16:26, ((#1 + (#2 + (#3 + #4))) - #5)
+Counter in file 0 16:27 -> 18:10, #2
+Counter in file 0 18:19 -> 18:32, (((#1 + (#2 + (#3 + #4))) - #5) - #2)
+Counter in file 0 18:33 -> 20:10, #3
+Counter in file 0 20:10 -> 20:11, #4
+Counter in file 0 21:9 -> 21:23, (#2 + (#3 + #4))
+Counter in file 0 23:5 -> 24:2, #5
+Counter in file 0 4:1 -> 4:36, #1
+Counter in file 0 5:8 -> 5:20, (#1 + 0)
+Counter in file 0 6:9 -> 7:26, #2
+Counter in file 0 8:12 -> 11:2, (#1 - #2)
+Emitting segments for file: ../coverage/panic_unwind.rs
+Combined regions:
+  4:1 -> 4:36 (count=4)
+  5:8 -> 5:20 (count=4)
+  6:9 -> 7:26 (count=1)
+  8:12 -> 11:2 (count=3)
+  13:1 -> 14:27 (count=1)
+  15:11 -> 15:24 (count=10)
+  16:12 -> 16:26 (count=10)
+  16:27 -> 18:10 (count=0)
+  18:19 -> 18:32 (count=10)
+  18:33 -> 20:10 (count=3)
+  20:10 -> 20:11 (count=6)
+  21:9 -> 21:23 (count=9)
+  23:5 -> 24:2 (count=0)
+Segment at 4:1 (count = 4), RegionEntry
+Segment at 4:36 (count = 0), Skipped
+Segment at 5:8 (count = 4), RegionEntry
+Segment at 5:20 (count = 0), Skipped
+Segment at 6:9 (count = 1), RegionEntry
+Segment at 7:26 (count = 0), Skipped
+Segment at 8:12 (count = 3), RegionEntry
+Segment at 11:2 (count = 0), Skipped
+Segment at 13:1 (count = 1), RegionEntry
+Segment at 14:27 (count = 0), Skipped
+Segment at 15:11 (count = 10), RegionEntry
+Segment at 15:24 (count = 0), Skipped
+Segment at 16:12 (count = 10), RegionEntry
+Segment at 16:26 (count = 0), Skipped
+Segment at 16:27 (count = 0), RegionEntry
+Segment at 18:10 (count = 0), Skipped
+Segment at 18:19 (count = 10), RegionEntry
+Segment at 18:32 (count = 0), Skipped
+Segment at 18:33 (count = 3), RegionEntry
+Segment at 20:10 (count = 6), RegionEntry
+Segment at 20:11 (count = 0), Skipped
+Segment at 21:9 (count = 9), RegionEntry
+Segment at 21:23 (count = 0), Skipped
+Segment at 23:5 (count = 0), RegionEntry
+Segment at 24:2 (count = 0), Skipped

@@ -1,0 +1,50 @@
+    1|       |#![allow(unused_assignments)]
+    2|       |// expect-exit-status-101
+    3|       |
+    4|      4|fn might_panic(should_panic: bool) {
+    5|      4|    if should_panic {
+    6|      1|        println!("panicking...");
+    7|      1|        panic!("panics");
+    8|      3|    } else {
+    9|      3|        println!("Don't Panic");
+   10|      3|    }
+   11|      3|}
+   12|       |
+   13|      1|fn main() -> Result<(), u8> {
+   14|      1|    let mut countdown = 10;
+   15|     10|    while countdown > 0 {
+   16|     10|        if countdown == 1 {
+   17|      0|            might_panic(true);
+   18|     10|        } else if countdown < 5 {
+   19|      3|            might_panic(false);
+   20|      6|        }
+   21|      9|        countdown -= 1;
+   22|       |    }
+   23|      0|    Ok(())
+   24|      0|}
+   25|       |
+   26|       |// Notes:
+   27|       |//   1. Compare this program and its coverage results to those of the similar tests `abort.rs` and
+   28|       |//      `try_error_result.rs`.
+   29|       |//   2. Since the `panic_unwind.rs` test is allowed to unwind, it is also allowed to execute the
+   30|       |//      normal program exit cleanup, including writing out the current values of the coverage
+   31|       |//      counters.
+   32|       |//   3. The coverage results show (interestingly) that the `panic!()` call did execute, but it does
+   33|       |//      not show coverage of the `if countdown == 1` branch in `main()` that calls
+   34|       |//      `might_panic(true)` (causing the call to `panic!()`).
+   35|       |//   4. The reason `main()`s `if countdown == 1` branch, calling `might_panic(true)`, appears
+   36|       |//      "uncovered" is, InstrumentCoverage (intentionally) treats `TerminatorKind::Call` terminators
+   37|       |//      as non-branching, because when a program executes normally, they always are. Errors handled
+   38|       |//      via the try `?` operator produce error handling branches that *are* treated as branches in
+   39|       |//      coverage results. By treating calls without try `?` operators as non-branching (assumed to
+   40|       |//      return normally and continue) the coverage graph can be simplified, producing smaller,
+   41|       |//      faster binaries, and cleaner coverage results.
+   42|       |//   5. The reason the coverage results actually show `panic!()` was called is most likely because
+   43|       |//      `panic!()` is a macro, not a simple function call, and there are other `Statement`s and/or
+   44|       |//      `Terminator`s that execute with a coverage counter before the panic and unwind occur.
+   45|       |//   6. Since the common practice is not to use `panic!()` for error handling, the coverage
+   46|       |//      implementation avoids incurring an additional cost (in program size and execution time) to
+   47|       |//      improve coverage results for an event that is generally not "supposed" to happen.
+   48|       |//   7. FIXME(#78544): This issue describes a feature request for a proposed option to enable
+   49|       |//      more accurate coverage results for tests that intentionally panic.
+

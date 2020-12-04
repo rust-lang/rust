@@ -1,0 +1,59 @@
+{
+  "data": [
+    {
+      "files": [
+        {
+          "filename": "../coverage/partial_eq.rs",
+          "summary": {
+            "functions": {
+              "count": 5,
+              "covered": 4,
+              "percent": 80
+            },
+            "instantiations": {
+              "count": 5,
+              "covered": 4,
+              "percent": 80
+            },
+            "lines": {
+              "count": 18,
+              "covered": 16,
+              "percent": 88.88888888888889
+            },
+            "regions": {
+              "count": 24,
+              "covered": 5,
+              "notcovered": 19,
+              "percent": 20.833333333333336
+            }
+          }
+        }
+      ],
+      "totals": {
+        "functions": {
+          "count": 5,
+          "covered": 4,
+          "percent": 80
+        },
+        "instantiations": {
+          "count": 5,
+          "covered": 4,
+          "percent": 80
+        },
+        "lines": {
+          "count": 18,
+          "covered": 16,
+          "percent": 88.88888888888889
+        },
+        "regions": {
+          "count": 24,
+          "covered": 5,
+          "notcovered": 19,
+          "percent": 20.833333333333336
+        }
+      }
+    }
+  ],
+  "type": "llvm.coverage.json.export",
+  "version": "2.0.1"
+}

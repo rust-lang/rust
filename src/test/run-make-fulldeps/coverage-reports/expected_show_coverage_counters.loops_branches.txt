@@ -1,0 +1,33 @@
+Counter in file 0 9:5 -> 10:16, #1
+Counter in file 0 11:16 -> 11:21, #2
+Counter in file 0 14:14 -> 14:15, (#2 - #5)
+Counter in file 0 15:13 -> 15:31, ((0 - #6) + (#2 - #5))
+Counter in file 0 15:31 -> 15:32, #4
+Counter in file 0 18:9 -> 18:15, (#3 + 0)
+Counter in file 0 19:5 -> 19:6, (#4 + (#3 + 0))
+Counter in file 0 22:1 -> 25:2, #1
+Emitting segments for file: ../coverage/loops_branches.rs
+Combined regions:
+  9:5 -> 10:16 (count=1)
+  11:16 -> 11:21 (count=1)
+  14:14 -> 14:15 (count=1)
+  15:13 -> 15:31 (count=1)
+  15:31 -> 15:32 (count=0)
+  18:9 -> 18:15 (count=1)
+  19:5 -> 19:6 (count=1)
+  22:1 -> 25:2 (count=1)
+Segment at 9:5 (count = 1), RegionEntry
+Segment at 10:16 (count = 0), Skipped
+Segment at 11:16 (count = 1), RegionEntry
+Segment at 11:21 (count = 0), Skipped
+Segment at 14:14 (count = 1), RegionEntry
+Segment at 14:15 (count = 0), Skipped
+Segment at 15:13 (count = 1), RegionEntry
+Segment at 15:31 (count = 0), RegionEntry
+Segment at 15:32 (count = 0), Skipped
+Segment at 18:9 (count = 1), RegionEntry
+Segment at 18:15 (count = 0), Skipped
+Segment at 19:5 (count = 1), RegionEntry
+Segment at 19:6 (count = 0), Skipped
+Segment at 22:1 (count = 1), RegionEntry
+Segment at 25:2 (count = 0), Skipped

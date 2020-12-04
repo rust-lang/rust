@@ -34,7 +34,7 @@
       }
   
       bb4: {
-          _0 = const ();                   // scope 0 at $DIR/matches_reduce_branches.rs:7:5: 9:6
+          _0 = const ();                   // scope 0 at $DIR/matches_reduce_branches.rs:9:6: 9:6
           goto -> bb5;                     // scope 0 at $DIR/matches_reduce_branches.rs:7:5: 9:6
       }
   

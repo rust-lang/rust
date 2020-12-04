@@ -945,8 +945,7 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "instrument the generated code to support LLVM source-based code coverage \
         reports (note, the compiler build config must include `profiler = true`, \
         and is mutually exclusive with `-C profile-generate`/`-C profile-use`); \
-        implies `-C link-dead-code` (unless targeting MSVC, or explicitly disabled) \
-        and `-Z symbol-mangling-version=v0`; disables/overrides some Rust \
+        implies `-Z symbol-mangling-version=v0`; disables/overrides some Rust \
         optimizations (default: no)"),
     instrument_mcount: bool = (false, parse_bool, [TRACKED],
         "insert function instrument code for mcount-based tracing (default: no)"),

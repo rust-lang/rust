@@ -1111,33 +1111,7 @@ impl Session {
     pub fn link_dead_code(&self) -> bool {
         match self.opts.cg.link_dead_code {
             Some(explicitly_set) => explicitly_set,
-            None => {
-                self.opts.debugging_opts.instrument_coverage && !self.target.is_like_msvc
-                // Issue #76038: (rustc `-Clink-dead-code` causes MSVC linker to produce invalid
-                // binaries when LLVM InstrProf counters are enabled). As described by this issue,
-                // the "link dead code" option produces incorrect binaries when compiled and linked
-                // under MSVC. The resulting Rust programs typically crash with a segmentation
-                // fault, or produce an empty "*.profraw" file (profiling counter results normally
-                // generated during program exit).
-                //
-                // If not targeting MSVC, `-Z instrument-coverage` implies `-C link-dead-code`, so
-                // unexecuted code is still counted as zero, rather than be optimized out. Note that
-                // instrumenting dead code can be explicitly disabled with:
-                //
-                //     `-Z instrument-coverage -C link-dead-code=no`.
-                //
-                // FIXME(richkadel): Investigate if `instrument-coverage` implementation can inject
-                // [zero counters](https://llvm.org/docs/CoverageMappingFormat.html#counter) in the
-                // coverage map when "dead code" is removed, rather than forcing `link-dead-code`.
-                // This may not be possible, however, if (as it seems to appear) the "dead code"
-                // that would otherwise not be linked is only identified as "dead" by the native
-                // linker. If that's the case, I believe it is too late for the Rust compiler to
-                // leverage any information it might be able to get from the linker regarding what
-                // code is dead, to be able to add those counters.
-                //
-                // On the other hand, if any Rust compiler passes are optimizing out dead code blocks
-                // we should inject "zero" counters for those code regions.
-            }
+            None => false,
         }
     }
 

@@ -1,0 +1,59 @@
+{
+  "data": [
+    {
+      "files": [
+        {
+          "filename": "../coverage/lib/used_crate.rs",
+          "summary": {
+            "functions": {
+              "count": 6,
+              "covered": 5,
+              "percent": 83.33333333333334
+            },
+            "instantiations": {
+              "count": 10,
+              "covered": 8,
+              "percent": 80
+            },
+            "lines": {
+              "count": 46,
+              "covered": 26,
+              "percent": 56.52173913043478
+            },
+            "regions": {
+              "count": 19,
+              "covered": 8,
+              "notcovered": 11,
+              "percent": 42.10526315789473
+            }
+          }
+        }
+      ],
+      "totals": {
+        "functions": {
+          "count": 6,
+          "covered": 5,
+          "percent": 83.33333333333334
+        },
+        "instantiations": {
+          "count": 10,
+          "covered": 8,
+          "percent": 80
+        },
+        "lines": {
+          "count": 46,
+          "covered": 26,
+          "percent": 56.52173913043478
+        },
+        "regions": {
+          "count": 19,
+          "covered": 8,
+          "notcovered": 11,
+          "percent": 42.10526315789473
+        }
+      }
+    }
+  ],
+  "type": "llvm.coverage.json.export",
+  "version": "2.0.1"
+}

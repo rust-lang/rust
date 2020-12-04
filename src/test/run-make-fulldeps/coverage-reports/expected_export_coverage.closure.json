@@ -1,0 +1,59 @@
+{
+  "data": [
+    {
+      "files": [
+        {
+          "filename": "../coverage/closure.rs",
+          "summary": {
+            "functions": {
+              "count": 6,
+              "covered": 4,
+              "percent": 66.66666666666666
+            },
+            "instantiations": {
+              "count": 6,
+              "covered": 4,
+              "percent": 66.66666666666666
+            },
+            "lines": {
+              "count": 161,
+              "covered": 131,
+              "percent": 81.36645962732919
+            },
+            "regions": {
+              "count": 42,
+              "covered": 22,
+              "notcovered": 20,
+              "percent": 52.38095238095239
+            }
+          }
+        }
+      ],
+      "totals": {
+        "functions": {
+          "count": 6,
+          "covered": 4,
+          "percent": 66.66666666666666
+        },
+        "instantiations": {
+          "count": 6,
+          "covered": 4,
+          "percent": 66.66666666666666
+        },
+        "lines": {
+          "count": 161,
+          "covered": 131,
+          "percent": 81.36645962732919
+        },
+        "regions": {
+          "count": 42,
+          "covered": 22,
+          "notcovered": 20,
+          "percent": 52.38095238095239
+        }
+      }
+    }
+  ],
+  "type": "llvm.coverage.json.export",
+  "version": "2.0.1"
+}

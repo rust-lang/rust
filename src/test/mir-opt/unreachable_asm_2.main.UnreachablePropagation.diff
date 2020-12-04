@@ -37,7 +37,7 @@
       }
   
       bb2: {
-          _0 = const ();                   // scope 0 at $DIR/unreachable_asm_2.rs:11:5: 25:6
+          _0 = const ();                   // scope 0 at $DIR/unreachable_asm_2.rs:25:6: 25:6
           StorageDead(_1);                 // scope 0 at $DIR/unreachable_asm_2.rs:26:1: 26:2
           return;                          // scope 0 at $DIR/unreachable_asm_2.rs:26:2: 26:2
       }

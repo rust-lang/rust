@@ -30,7 +30,7 @@
       }
   
       bb1: {
-          _0 = const ();                   // scope 0 at $DIR/simplify-locals-fixedpoint.rs:4:5: 8:6
+          _0 = const ();                   // scope 0 at $DIR/simplify-locals-fixedpoint.rs:8:6: 8:6
           goto -> bb7;                     // scope 0 at $DIR/simplify-locals-fixedpoint.rs:4:5: 8:6
       }
   
@@ -51,7 +51,7 @@
       }
   
       bb4: {
-          _0 = const ();                   // scope 1 at $DIR/simplify-locals-fixedpoint.rs:5:9: 7:10
+          _0 = const ();                   // scope 1 at $DIR/simplify-locals-fixedpoint.rs:7:10: 7:10
           goto -> bb6;                     // scope 1 at $DIR/simplify-locals-fixedpoint.rs:5:9: 7:10
       }
   

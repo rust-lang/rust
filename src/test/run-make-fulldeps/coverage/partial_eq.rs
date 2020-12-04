@@ -4,8 +4,8 @@
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Version {
     major: usize,
-    minor: usize,
-    patch: usize,
+    minor: usize, // Count: 1 - `PartialOrd` compared `minor` values in 3.2.1 vs. 3.3.0
+    patch: usize, // Count: 0 - `PartialOrd` was determined by `minor` (2 < 3)
 }
 
 impl Version {
@@ -45,55 +45,17 @@ one expression, which is allowed, but the `function_source_hash` was only passed
 
 */
 
-// FIXME(richkadel): It may be worth investigating why the coverage report for this test produces
-// the following results:
-
-/*
-
-1. Why are their two counts below different characters (first and last) of `PartialOrd`, on line 17?
-
-2. Line 17 is counted twice, but the `::lt` instance shows a line count of 1? Is there a missing
-   line count with a different instance? Or was it really only called once?
-
-3. Line 20 shows another line count (of 1) for a line within a `struct` declaration (on only one of
-   its 3 fields). I doubt the specific field (`minor`) is relevant, but rather I suspect there's a
-   problem computing the file position here, for some reason.
-
-<snip>
-   16|       |
-   17|      2|#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
-                                                    ^1       ^1
-------------------
-|Unexecuted instantiation: <partial_eq_counter_without_region::Version as core::cmp::PartialOrd>::gt
-------------------
-|Unexecuted instantiation: <partial_eq_counter_without_region::Version as core::cmp::PartialOrd>::le
-------------------
-|Unexecuted instantiation: <partial_eq_counter_without_region::Version as core::cmp::PartialOrd>::ge
-------------------
-|<partial_eq_counter_without_region::Version as core::cmp::PartialOrd>::lt:
-|  17|      1|#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
-------------------
-   18|       |pub struct Version {
-   19|       |    major: usize,
-   20|      1|    minor: usize,
-   21|       |    patch: usize,
-   22|       |}
-   23|       |
-   24|       |impl Version {
-   25|       |    pub fn new(major: usize, minor: usize, patch: usize) -> Self {
-   26|      2|        Version {
-   27|      2|            major,
-   28|      2|            minor,
-   29|      2|            patch,
-   30|      2|        }
-   31|      2|    }
-   32|       |}
-   33|       |
-   34|      1|fn main() {
-   35|      1|    let version_3_2_1 = Version::new(3, 2, 1);
-   36|      1|    let version_3_3_0 = Version::new(3, 3, 0);
-   37|      1|
-   38|      1|    println!("{:?} < {:?} = {}", version_3_2_1, version_3_3_0, version_3_2_1 < version
-_3_3_0);
-   39|      1|}
-*/
+// FIXME(#79626): The derived traits get coverage, which is great, but some of the traits appear
+// to get two coverage execution counts at different positions:
+//
+// ```text
+//    4|      2|#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+//                       ^0            ^0      ^0 ^0  ^1       ^0 ^0^0
+// ```text
+//
+// `PartialEq`, `PartialOrd`, and `Ord` (and possibly `Eq`, if the trait name was longer than 2
+// characters) have counts at their first and last characters.
+//
+// Why is this? Why does `PartialOrd` have two values (1 and 0)? This must mean we are checking
+// distinct coverages, so maybe we don't want to eliminate one of them. Should we merge them?
+// If merged, do we lose some information?

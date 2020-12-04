@@ -127,9 +127,6 @@ fn set_probestack(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
         return;
     }
 
-    // FIXME(richkadel): Make sure probestack plays nice with `-Z instrument-coverage`
-    // or disable it if not, similar to above early exits.
-
     // Flag our internal `__rust_probestack` function as the stack probe symbol.
     // This is defined in the `compiler-builtins` crate for each architecture.
     llvm::AddFunctionAttrStringValue(

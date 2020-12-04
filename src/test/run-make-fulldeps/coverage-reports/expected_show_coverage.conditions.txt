@@ -1,0 +1,90 @@
+    1|       |#![allow(unused_assignments, unused_variables)]
+    2|       |
+    3|      1|fn main() {
+    4|      1|    let mut countdown = 0;
+    5|      1|    if true {
+    6|      1|        countdown = 10;
+    7|      1|    }
+    8|       |
+    9|       |    const B: u32 = 100;
+   10|      1|    let x = if countdown > 7 {
+   11|      1|        countdown -= 4;
+   12|      1|        B
+   13|      0|    } else if countdown > 2 {
+   14|      0|        if countdown < 1 || countdown > 5 || countdown != 9 {
+   15|      0|            countdown = 0;
+   16|      0|        }
+   17|      0|        countdown -= 5;
+   18|      0|        countdown
+   19|       |    } else {
+   20|      0|        return;
+   21|       |    };
+   22|       |
+   23|      1|    let mut countdown = 0;
+   24|      1|    if true {
+   25|      1|        countdown = 10;
+   26|      1|    }
+   27|       |
+   28|      1|    if countdown > 7 {
+   29|      1|        countdown -= 4;
+   30|      1|    } else if countdown > 2 {
+                            ^0
+   31|      0|        if countdown < 1 || countdown > 5 || countdown != 9 {
+   32|      0|            countdown = 0;
+   33|      0|        }
+   34|      0|        countdown -= 5;
+   35|       |    } else {
+   36|      0|        return;
+   37|       |    }
+   38|       |
+   39|      1|    if true {
+   40|      1|        let mut countdown = 0;
+   41|      1|        if true {
+   42|      1|            countdown = 10;
+   43|      1|        }
+   44|       |
+   45|      1|        if countdown > 7 {
+   46|      1|            countdown -= 4;
+   47|      1|        }
+   48|      0|        else if countdown > 2 {
+   49|      0|            if countdown < 1 || countdown > 5 || countdown != 9 {
+   50|      0|                countdown = 0;
+   51|      0|            }
+   52|      0|            countdown -= 5;
+   53|       |        } else {
+   54|      0|            return;
+   55|       |        }
+   56|       |    } // Note: closing brace shows uncovered (vs. `0` for implicit else) because condition literal
+   57|       |      // `true` was const-evaluated. The compiler knows the `if` block will be executed.
+   58|       |
+   59|      1|    let mut countdown = 0;
+   60|      1|    if true {
+   61|      1|        countdown = 1;
+   62|      1|    }
+   63|       |
+   64|      1|    let z = if countdown > 7 {
+                      ^0
+   65|      0|        countdown -= 4;
+   66|      1|    } else if countdown > 2 {
+   67|      0|        if countdown < 1 || countdown > 5 || countdown != 9 {
+   68|      0|            countdown = 0;
+   69|      0|        }
+   70|      0|        countdown -= 5;
+   71|       |    } else {
+   72|      1|        let should_be_reachable = countdown;
+   73|      1|        println!("reached");
+   74|      1|        return;
+   75|       |    };
+   76|       |
+   77|      0|    let w = if countdown > 7 {
+   78|      0|        countdown -= 4;
+   79|      0|    } else if countdown > 2 {
+   80|      0|        if countdown < 1 || countdown > 5 || countdown != 9 {
+   81|      0|            countdown = 0;
+   82|      0|        }
+   83|      0|        countdown -= 5;
+   84|       |    } else {
+   85|      0|        return;
+   86|       |    };
+   87|      1|}
+

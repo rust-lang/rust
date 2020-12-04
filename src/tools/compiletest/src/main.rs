@@ -508,8 +508,6 @@ fn common_inputs_stamp(config: &Config) -> Stamp {
         stamp.add_path(&rustdoc_path);
         stamp.add_path(&rust_src_dir.join("src/etc/htmldocck.py"));
     }
-    // FIXME(richkadel): Do I need to add an `if let Some(rust_demangler_path) contribution to the
-    // stamp here as well?
 
     // Compiletest itself.
     stamp.add_dir(&rust_src_dir.join("src/tools/compiletest/"));

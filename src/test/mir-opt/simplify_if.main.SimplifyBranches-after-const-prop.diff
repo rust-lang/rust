@@ -14,7 +14,7 @@
       }
   
       bb1: {
-          _0 = const ();                   // scope 0 at $DIR/simplify_if.rs:6:5: 8:6
+          _0 = const ();                   // scope 0 at $DIR/simplify_if.rs:8:6: 8:6
           goto -> bb4;                     // scope 0 at $DIR/simplify_if.rs:6:5: 8:6
       }
   

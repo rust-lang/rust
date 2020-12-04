@@ -1,0 +1,59 @@
+{
+  "data": [
+    {
+      "files": [
+        {
+          "filename": "../coverage/overflow.rs",
+          "summary": {
+            "functions": {
+              "count": 2,
+              "covered": 2,
+              "percent": 100
+            },
+            "instantiations": {
+              "count": 2,
+              "covered": 2,
+              "percent": 100
+            },
+            "lines": {
+              "count": 23,
+              "covered": 19,
+              "percent": 82.6086956521739
+            },
+            "regions": {
+              "count": 13,
+              "covered": 11,
+              "notcovered": 2,
+              "percent": 84.61538461538461
+            }
+          }
+        }
+      ],
+      "totals": {
+        "functions": {
+          "count": 2,
+          "covered": 2,
+          "percent": 100
+        },
+        "instantiations": {
+          "count": 2,
+          "covered": 2,
+          "percent": 100
+        },
+        "lines": {
+          "count": 23,
+          "covered": 19,
+          "percent": 82.6086956521739
+        },
+        "regions": {
+          "count": 13,
+          "covered": 11,
+          "notcovered": 2,
+          "percent": 84.61538461538461
+        }
+      }
+    }
+  ],
+  "type": "llvm.coverage.json.export",
+  "version": "2.0.1"
+}

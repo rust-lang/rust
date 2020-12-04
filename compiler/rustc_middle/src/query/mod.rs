@@ -346,6 +346,21 @@ rustc_queries! {
             cache_on_disk_if { key.is_local() }
         }
 
+        /// Returns the name of the file that contains the function body, if instrumented for coverage.
+        query covered_file_name(key: DefId) -> Option<Symbol> {
+            desc { |tcx| "retrieving the covered file name, if instrumented, for `{}`", tcx.def_path_str(key) }
+            storage(ArenaCacheSelector<'tcx>)
+            cache_on_disk_if { key.is_local() }
+        }
+
+        /// Returns the `CodeRegions` for a function that has instrumented coverage, in case the
+        /// function was optimized out before codegen, and before being added to the Coverage Map.
+        query covered_code_regions(key: DefId) -> Vec<&'tcx mir::coverage::CodeRegion> {
+            desc { |tcx| "retrieving the covered `CodeRegion`s, if instrumented, for `{}`", tcx.def_path_str(key) }
+            storage(ArenaCacheSelector<'tcx>)
+            cache_on_disk_if { key.is_local() }
+        }
+
         /// The `DefId` is the `DefId` of the containing MIR body. Promoteds do not have their own
         /// `DefId`. This function returns all promoteds in the specified body. The body references
         /// promoteds by the `DefId` and the `mir::Promoted` index. This is necessary, because

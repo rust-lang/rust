@@ -118,18 +118,8 @@ impl CoverageGraph {
 
             match term.kind {
                 TerminatorKind::Return { .. }
-                // FIXME(richkadel): Add test(s) for `Abort` coverage.
                 | TerminatorKind::Abort
-                // FIXME(richkadel): Add test(s) for `Assert` coverage.
-                // Should `Assert` be handled like `FalseUnwind` instead? Since we filter out unwind
-                // branches when creating the BCB CFG, aren't `Assert`s (without unwinds) just like
-                // `FalseUnwinds` (which are kind of like `Goto`s)?
-                | TerminatorKind::Assert { .. }
-                // FIXME(richkadel): Add test(s) for `Yield` coverage, and confirm coverage is
-                // sensible for code using the `yield` keyword.
                 | TerminatorKind::Yield { .. }
-                // FIXME(richkadel): Also add coverage tests using async/await, and threading.
-
                 | TerminatorKind::SwitchInt { .. } => {
                     // The `bb` has more than one _outgoing_ edge, or exits the function. Save the
                     // current sequence of `basic_blocks` gathered to this point, as a new
@@ -147,6 +137,16 @@ impl CoverageGraph {
                     // `Terminator`s `successors()` list) checking the number of successors won't
                     // work.
                 }
+
+                // The following `TerminatorKind`s are either not expected outside an unwind branch,
+                // or they should not (under normal circumstances) branch. Coverage graphs are
+                // simplified by assuring coverage results are accurate for program executions that
+                // don't panic.
+                //
+                // Programs that panic and unwind may record slightly inaccurate coverage results
+                // for a coverage region containing the `Terminator` that began the panic. This
+                // is as intended. (See Issue #78544 for a possible future option to support
+                // coverage in test programs that panic.)
                 TerminatorKind::Goto { .. }
                 | TerminatorKind::Resume
                 | TerminatorKind::Unreachable
@@ -154,6 +154,7 @@ impl CoverageGraph {
                 | TerminatorKind::DropAndReplace { .. }
                 | TerminatorKind::Call { .. }
                 | TerminatorKind::GeneratorDrop
+                | TerminatorKind::Assert { .. }
                 | TerminatorKind::FalseEdge { .. }
                 | TerminatorKind::FalseUnwind { .. }
                 | TerminatorKind::InlineAsm { .. } => {}
@@ -278,6 +279,7 @@ rustc_index::newtype_index! {
     /// A node in the [control-flow graph][CFG] of CoverageGraph.
     pub(super) struct BasicCoverageBlock {
         DEBUG_FORMAT = "bcb{}",
+        const START_BCB = 0,
     }
 }
 

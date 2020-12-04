@@ -32,7 +32,7 @@
       }
   
       bb2: {
-          _0 = const ();                   // scope 0 at $DIR/unreachable.rs:9:5: 19:6
+          _0 = const ();                   // scope 0 at $DIR/unreachable.rs:19:6: 19:6
           StorageDead(_1);                 // scope 0 at $DIR/unreachable.rs:20:1: 20:2
           return;                          // scope 0 at $DIR/unreachable.rs:20:2: 20:2
 -     }
