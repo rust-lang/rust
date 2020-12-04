@@ -720,7 +720,13 @@ fn transform_receiver_ty(
             .push(self_ty.value.clone())
             .fill_with_unknown()
             .build(),
-        AssocContainerId::ImplId(impl_id) => inherent_impl_substs(db, impl_id, &self_ty)?,
+        AssocContainerId::ImplId(impl_id) => {
+            let impl_substs = inherent_impl_substs(db, impl_id, &self_ty)?;
+            Substs::build_for_def(db, function_id)
+                .use_parent_substs(&impl_substs)
+                .fill_with_unknown()
+                .build()
+        }
         AssocContainerId::ContainerId(_) => unreachable!(),
     };
     let sig = db.callable_item_signature(function_id.into());
