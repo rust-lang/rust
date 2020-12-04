@@ -244,7 +244,7 @@ impl LiteralDigitGrouping {
         }
     }
 
-    fn check_lit(&self, cx: &EarlyContext<'_>, lit: &Lit) {
+    fn check_lit(self, cx: &EarlyContext<'_>, lit: &Lit) {
         if_chain! {
             if let Some(src) = snippet_opt(cx, lit.span);
             if let Some(mut num_lit) = NumericLiteral::from_lit(&src, &lit);
