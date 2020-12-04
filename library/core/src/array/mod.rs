@@ -12,7 +12,7 @@ use crate::convert::{Infallible, TryFrom};
 use crate::fmt;
 use crate::hash::{self, Hash};
 use crate::marker::Unsize;
-use crate::ops::{Index, IndexMut};
+use crate::ops::{Index, IndexMut, Try};
 use crate::slice::{Iter, IterMut};
 
 mod iter;
@@ -461,6 +461,61 @@ impl<T, const N: usize> [T; N] {
         // SAFETY: At this point we've properly initialized the whole array
         // and we just need to cast it to the correct type.
         unsafe { crate::mem::transmute_copy::<_, [U; N]>(&dst) }
+    }
+
+    /// A fallible function `f` applied to each element on array `self` in order to return an array the same size as `self` or the first error encountered.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(array_try_map)]
+    /// #![feature(array_map)]
+    /// let a = ["1", "2", "3"];
+    /// let b = a.try_map(|v| v.parse::<u32>()).unwrap().map(|v| v + 1);
+    /// assert_eq!(b, [2, 3, 4]);
+    ///
+    /// let a = ["1", "2a", "3"];
+    /// let b = a.try_map(|v| v.parse::<u32>());
+    /// assert!(b.is_err());
+    /// ```
+    #[unstable(feature = "array_try_map", issue = "75243")]
+    pub fn try_map<F, R, E, U>(self, mut f: F) -> Result<[U; N], E>
+    where
+        F: FnMut(T) -> R,
+        R: Try<Ok = U, Error = E>,
+    {
+        use crate::mem::MaybeUninit;
+        struct Guard<T, const N: usize> {
+            dst: *mut T,
+            initialized: usize,
+        }
+
+        impl<T, const N: usize> Drop for Guard<T, N> {
+            fn drop(&mut self) {
+                debug_assert!(self.initialized <= N);
+
+                let initialized_part =
+                    crate::ptr::slice_from_raw_parts_mut(self.dst, self.initialized);
+                // SAFETY: this raw slice will contain only initialized objects
+                // that's why, it is allowed to drop it.
+                unsafe {
+                    crate::ptr::drop_in_place(initialized_part);
+                }
+            }
+        }
+        let mut dst = MaybeUninit::uninit_array::<N>();
+        let mut guard: Guard<U, N> =
+            Guard { dst: MaybeUninit::slice_as_mut_ptr(&mut dst), initialized: 0 };
+        for (src, dst) in IntoIter::new(self).zip(&mut dst) {
+            dst.write(f(src)?);
+            guard.initialized += 1;
+        }
+        // FIXME: Convert to crate::mem::transmute once it works with generics.
+        // unsafe { crate::mem::transmute::<[MaybeUninit<U>; N], [U; N]>(dst) }
+        crate::mem::forget(guard);
+        // SAFETY: At this point we've properly initialized the whole array
+        // and we just need to cast it to the correct type.
+        unsafe { Ok(crate::mem::transmute_copy::<_, [U; N]>(&dst)) }
     }
 
     /// 'Zips up' two arrays into a single array of pairs.
