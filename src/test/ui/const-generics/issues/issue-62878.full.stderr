@@ -9,6 +9,8 @@ error[E0747]: type provided when a constant was expected
    |
 LL |     foo::<_, {[1]}>();
    |           ^
+   |
+   = help: const arguments cannot yet be inferred with `_`
 
 error[E0308]: mismatched types
   --> $DIR/issue-62878.rs:11:15

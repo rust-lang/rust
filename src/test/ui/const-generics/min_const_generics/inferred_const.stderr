@@ -1,0 +1,11 @@
+error[E0747]: type provided when a constant was expected
+  --> $DIR/inferred_const.rs:6:19
+   |
+LL |     let a = foo::<_, 2>([0, 1, 2]);
+   |                   ^
+   |
+   = help: const arguments cannot yet be inferred with `_`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0747`.
