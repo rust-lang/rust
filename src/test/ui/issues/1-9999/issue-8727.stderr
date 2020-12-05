@@ -20,7 +20,7 @@ note: `generic` defined here
    |
 LL | fn generic<T>() {
    | ^^^^^^^^^^^^^^^
-   = note: the full type name has been written to '$TEST_BUILD_DIR/issues/issue-8727/issue-8727.long-type.txt'
+   = note: the full type name has been written to '$TEST_BUILD_DIR/issues/1-9999/issue-8727/issue-8727.long-type.txt'
 
 error: aborting due to previous error; 1 warning emitted
 
