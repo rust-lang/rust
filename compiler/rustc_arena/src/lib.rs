@@ -136,51 +136,39 @@ where
 impl<T, const N: usize> IterExt<T> for std::array::IntoIter<T, N> {
     #[inline]
     fn alloc_from_iter(self, arena: &TypedArena<T>) -> &mut [T] {
-        let len = self.len();
-        if len == 0 {
-            return &mut [];
-        }
-        // Move the content to the arena by copying and then forgetting it
-        unsafe {
-            let start_ptr = arena.alloc_raw_slice(len);
-            self.as_slice().as_ptr().copy_to_nonoverlapping(start_ptr, len);
-            mem::forget(self);
-            slice::from_raw_parts_mut(start_ptr, len)
-        }
+        alloc_from_iter(arena, self.len(), self.as_slice().as_ptr(), || mem::forget(self))
     }
 }
 
 impl<T> IterExt<T> for Vec<T> {
     #[inline]
     fn alloc_from_iter(mut self, arena: &TypedArena<T>) -> &mut [T] {
-        let len = self.len();
-        if len == 0 {
-            return &mut [];
-        }
-        // Move the content to the arena by copying and then forgetting it
-        unsafe {
-            let start_ptr = arena.alloc_raw_slice(len);
-            self.as_ptr().copy_to_nonoverlapping(start_ptr, len);
-            self.set_len(0);
-            slice::from_raw_parts_mut(start_ptr, len)
-        }
+        alloc_from_iter(arena, self.len(), self.as_ptr(), || unsafe { self.set_len(0) })
     }
 }
 
 impl<A: smallvec::Array> IterExt<A::Item> for SmallVec<A> {
     #[inline]
     fn alloc_from_iter(mut self, arena: &TypedArena<A::Item>) -> &mut [A::Item] {
-        let len = self.len();
-        if len == 0 {
-            return &mut [];
-        }
-        // Move the content to the arena by copying and then forgetting it
-        unsafe {
-            let start_ptr = arena.alloc_raw_slice(len);
-            self.as_ptr().copy_to_nonoverlapping(start_ptr, len);
-            self.set_len(0);
-            slice::from_raw_parts_mut(start_ptr, len)
-        }
+        alloc_from_iter(arena, self.len(), self.as_ptr(), || unsafe { self.set_len(0) })
+    }
+}
+
+/// Reduce duplication for multiple specializations of alloc_from_iter.
+#[inline]
+fn alloc_from_iter<T, F>(arena: &TypedArena<T>, len: usize, ptr: *const T, clean: F) -> &mut [T]
+where
+    F: FnOnce(),
+{
+    if len == 0 {
+        return &mut [];
+    }
+    // Move the content to the arena by copying and then forgetting it
+    unsafe {
+        let start_ptr = arena.alloc_raw_slice(len);
+        ptr.copy_to_nonoverlapping(start_ptr, len);
+        clean();
+        slice::from_raw_parts_mut(start_ptr, len)
     }
 }
 
