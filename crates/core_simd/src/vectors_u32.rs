@@ -1,22 +1,15 @@
-define_integer_vector! {
-    /// Vector of two `u32` values
-    struct u32x2([u32; 2]);
-}
+#![allow(non_camel_case_types)]
 
-define_integer_vector! {
-    /// Vector of four `u32` values
-    struct u32x4([u32; 4]);
-}
+/// A SIMD vector of containing `LANES` lanes of `u32`.
+#[repr(simd)]
+pub struct SimdU32<const LANES: usize>([u32; LANES]);
 
-define_integer_vector! {
-    /// Vector of eight `u32` values
-    struct u32x8([u32; 8]);
-}
+impl_vector! { SimdU32, u32 }
 
-define_integer_vector! {
-    /// Vector of 16 `u32` values
-    struct u32x16([u32; 16]);
-}
+pub type u32x2 = SimdU32<2>;
+pub type u32x4 = SimdU32<4>;
+pub type u32x8 = SimdU32<8>;
+pub type u32x16 = SimdU32<16>;
 
 from_transmute_x86! { unsafe u32x4 => __m128i }
 from_transmute_x86! { unsafe u32x8 => __m256i }

@@ -1,17 +1,14 @@
-define_integer_vector! {
-    /// Vector of two `i64` values
-    struct i64x2([i64; 2]);
-}
+#![allow(non_camel_case_types)]
 
-define_integer_vector! {
-    /// Vector of four `i64` values
-    struct i64x4([i64; 4]);
-}
+/// A SIMD vector of containing `LANES` lanes of `i64`.
+#[repr(simd)]
+pub struct SimdI64<const LANES: usize>([i64; LANES]);
 
-define_integer_vector! {
-    /// Vector of eight `i64` values
-    struct i64x8([i64; 8]);
-}
+impl_vector! { SimdI64, i64 }
+
+pub type i64x2 = SimdI64<2>;
+pub type i64x4 = SimdI64<4>;
+pub type i64x8 = SimdI64<8>;
 
 from_transmute_x86! { unsafe i64x2 => __m128i }
 from_transmute_x86! { unsafe i64x4 => __m256i }

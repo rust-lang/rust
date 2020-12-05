@@ -136,73 +136,110 @@ macro_rules! call_counting_args {
 }
 
 /// Implements common traits on the specified vector `$name`, holding multiple `$lanes` of `$type`.
-macro_rules! base_vector_traits {
-    { $name:path => [$type:ty; $lanes:literal] } => {
-        impl Copy for $name {}
+macro_rules! impl_vector {
+    { $name:ident, $type:ty } => {
+        impl<const LANES: usize> $name<LANES> {
+            /// Construct a vector by setting all lanes to the given value.
+            pub const fn splat(value: $type) -> Self {
+                Self([value; LANES])
+            }
 
-        impl Clone for $name {
+            pub const fn as_slice(&self) -> &[$type] {
+                &self.0
+            }
+
+            pub fn as_mut_slice(&mut self) -> &mut [$type] {
+                &mut self.0
+            }
+
+            pub const fn as_ptr(&self) -> *const $type {
+                self.0.as_ptr()
+            }
+
+            pub fn as_mut_ptr(&mut self) -> *mut $type {
+                self.0.as_mut_ptr()
+            }
+
+            pub const fn from_array(array: [$type; LANES]) -> Self {
+                Self(array)
+            }
+
+            pub const fn to_array(self) -> [$type; LANES] {
+                self.0
+            }
+        }
+
+        impl<const LANES: usize> Copy for $name<LANES> {}
+
+        impl<const LANES: usize> Clone for $name<LANES> {
             #[inline]
             fn clone(&self) -> Self {
                 *self
             }
         }
 
-        impl Default for $name {
+        impl<const LANES: usize> Default for $name<LANES> {
             #[inline]
             fn default() -> Self {
                 Self::splat(<$type>::default())
             }
         }
 
-        impl PartialEq for $name {
+        impl<const LANES: usize> PartialEq for $name<LANES> {
             #[inline]
             fn eq(&self, other: &Self) -> bool {
-                AsRef::<[$type]>::as_ref(self) == AsRef::<[$type]>::as_ref(other)
+                // TODO use SIMD equality
+                self.to_array() == other.to_array()
             }
         }
 
-        impl PartialOrd for $name {
+        impl<const LANES: usize> PartialOrd for $name<LANES> {
             #[inline]
             fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
-                AsRef::<[$type]>::as_ref(self).partial_cmp(AsRef::<[$type]>::as_ref(other))
+                // TODO use SIMD equalitya
+                self.to_array().partial_cmp(other.as_ref())
             }
         }
 
         // array references
-        impl AsRef<[$type; $lanes]> for $name {
+        impl<const LANES: usize> AsRef<[$type; LANES]> for $name<LANES> {
             #[inline]
-            fn as_ref(&self) -> &[$type; $lanes] {
-                unsafe { &*(self as *const _ as *const _) }
+            fn as_ref(&self) -> &[$type; LANES] {
+                &self.0
             }
         }
 
-        impl AsMut<[$type; $lanes]> for $name {
+        impl<const LANES: usize> AsMut<[$type; LANES]> for $name<LANES> {
             #[inline]
-            fn as_mut(&mut self) -> &mut [$type; $lanes] {
-                unsafe { &mut *(self as *mut _ as *mut _) }
+            fn as_mut(&mut self) -> &mut [$type; LANES] {
+                &mut self.0
             }
         }
 
         // slice references
-        impl AsRef<[$type]> for $name {
+        impl<const LANES: usize> AsRef<[$type]> for $name<LANES> {
             #[inline]
             fn as_ref(&self) -> &[$type] {
-                AsRef::<[$type; $lanes]>::as_ref(self)
+                &self.0
             }
         }
 
-        impl AsMut<[$type]> for $name {
+        impl<const LANES: usize> AsMut<[$type]> for $name<LANES> {
             #[inline]
             fn as_mut(&mut self) -> &mut [$type] {
-                AsMut::<[$type; $lanes]>::as_mut(self)
+                &mut self.0
             }
         }
 
         // vector/array conversion
-        from_transmute! { unsafe $name => [$type; $lanes] }
+        impl<const LANES: usize> From<[$type; LANES]> for $name<LANES> {
+            fn from(array: [$type; LANES]) -> Self {
+                Self(array)
+            }
+        }
 
         // splat
-        impl From<$type> for $name {
+        impl<const LANES: usize> From<$type> for $name<LANES> {
             #[inline]
             fn from(value: $type) -> Self {
                 Self::splat(value)
@@ -212,60 +249,28 @@ macro_rules! base_vector_traits {
 }
 
 /// Implements additional integer traits (Eq, Ord, Hash) on the specified vector `$name`, holding multiple `$lanes` of `$type`.
-macro_rules! integer_vector_traits {
-    { $name:path => [$type:ty; $lanes:literal] } => {
-        impl Eq for $name {}
+macro_rules! impl_integer_vector {
+    { $name:path, $type:ty } => {
+        impl_vector! { $name, $type }
 
-        impl Ord for $name {
+        impl<const LANES: usize> Eq for $name<LANES> {}
+
+        impl<const LANES: usize> Ord for $name<LANES> {
             #[inline]
             fn cmp(&self, other: &Self) -> core::cmp::Ordering {
-                AsRef::<[$type]>::as_ref(self).cmp(AsRef::<[$type]>::as_ref(other))
+                // TODO use SIMD cmp
+                self.to_array().cmp(other.as_ref())
             }
         }
 
-        impl core::hash::Hash for $name {
+        impl<const LANES: usize> core::hash::Hash for $name<LANES> {
             #[inline]
             fn hash<H>(&self, state: &mut H)
             where
                 H: core::hash::Hasher
             {
-                AsRef::<[$type]>::as_ref(self).hash(state)
+                self.as_slice().hash(state)
             }
-        }
-    }
-}
-
-/// Defines a vector `$name` containing multiple `$lanes` of `$type`.
-macro_rules! define_vector {
-    { $(#[$attr:meta])* struct $name:ident([$type:ty; $lanes:tt]); } => {
-        call_repeat! { $lanes => define_vector [$type] def $(#[$attr])* | $name | }
-
-        impl $name {
-            call_repeat! { $lanes => define_vector [$type] splat $type | }
-            call_counting_args! { $lanes => define_vector => new $type | }
-        }
-
-        base_vector_traits! { $name => [$type; $lanes] }
-    };
-    { def $(#[$attr:meta])* | $name:ident | $($itype:ty)* } => {
-        $(#[$attr])*
-        #[allow(non_camel_case_types)]
-        #[repr(simd)]
-        pub struct $name($($itype),*);
-    };
-    { splat $type:ty | $($itype:ty)* } => {
-        /// Construct a vector by setting all lanes to the given value.
-        #[inline]
-        pub const fn splat(value: $type) -> Self {
-            Self($(value as $itype),*)
-        }
-    };
-    { new $type:ty | $($var:ident)* } => {
-        /// Construct a vector by setting each lane to the given values.
-        #[allow(clippy::too_many_arguments)]
-        #[inline]
-        pub const fn new($($var: $type),*) -> Self {
-            Self($($var),*)
         }
     }
 }
@@ -276,117 +281,27 @@ macro_rules! define_vector {
 macro_rules! impl_float_vector {
     { $name:path => [$type:ty; $lanes:literal]; bits $bits_ty:ty; } => {
         impl $name {
-            /// Raw transmutation to an unsigned integer vector type with the
-            /// same size and number of lanes.
-            #[inline]
-            pub fn to_bits(self) -> $bits_ty {
-                unsafe { core::mem::transmute(self) }
-            }
-
-            /// Raw transmutation from an unsigned integer vector type with the
-            /// same size and number of lanes.
-            #[inline]
-            pub fn from_bits(bits: $bits_ty) -> Self {
-                unsafe { core::mem::transmute(bits) }
-            }
-
-            /// Produces a vector where every lane has the absolute value of the
-            /// equivalently-indexed lane in `self`.
-            #[inline]
-            pub fn abs(self) -> Self {
-                let no_sign = <$bits_ty>::splat(!0 >> 1);
-                Self::from_bits(self.to_bits() & no_sign)
-            }
+//            /// Raw transmutation to an unsigned integer vector type with the
+//            /// same size and number of lanes.
+//            #[inline]
+//            pub fn to_bits(self) -> $bits_ty {
+//                unsafe { core::mem::transmute(self) }
+//            }
+//
+//            /// Raw transmutation from an unsigned integer vector type with the
+//            /// same size and number of lanes.
+//            #[inline]
+//            pub fn from_bits(bits: $bits_ty) -> Self {
+//                unsafe { core::mem::transmute(bits) }
+//            }
+//
+//            /// Produces a vector where every lane has the absolute value of the
+//            /// equivalently-indexed lane in `self`.
+//            #[inline]
+//            pub fn abs(self) -> Self {
+//                let no_sign = <$bits_ty>::splat(!0 >> 1);
+//                Self::from_bits(self.to_bits() & no_sign)
+//            }
         }
     };
-}
-
-/// Defines a float vector `$name` containing multiple `$lanes` of float
-/// `$type`, which uses `$bits_ty` as its binary representation.
-macro_rules! define_float_vector {
-    { $(#[$attr:meta])* struct $name:ident([$type:ty; $lanes:tt]); bits $bits_ty:ty; } => {
-        define_vector! {
-            $(#[$attr])*
-            struct $name([$type; $lanes]);
-        }
-
-        impl_float_vector! { $name => [$type; $lanes]; bits $bits_ty; }
-    }
-}
-
-/// Defines an integer vector `$name` containing multiple `$lanes` of integer `$type`.
-macro_rules! define_integer_vector {
-    { $(#[$attr:meta])* struct $name:ident([$type:ty; $lanes:tt]); } => {
-        define_vector! {
-            $(#[$attr])*
-            struct $name([$type; $lanes]);
-        }
-
-        integer_vector_traits! { $name => [$type; $lanes] }
-    }
-}
-
-/// Defines a mask vector `$name` containing multiple `$lanes` of `$type`, represented by the
-/// underlying type `$impl_type`.
-macro_rules! define_mask_vector {
-    { $(#[$attr:meta])* struct $name:ident([$impl_type:ty as $type:ty; $lanes:tt]); } => {
-        call_repeat! { $lanes => define_mask_vector [$impl_type] def $(#[$attr])* | $name | }
-
-        impl $name {
-            call_repeat! { $lanes => define_mask_vector [$impl_type] splat $type | }
-            call_counting_args! { $lanes => define_mask_vector => new $type | }
-            call_counting_args! { $lanes => define_mask_vector => new_from_bool $type | }
-
-            /// Tests the value of the specified lane.
-            ///
-            /// # Panics
-            /// Panics if `lane` is greater than or equal to the number of lanes in the vector.
-            #[inline]
-            pub fn test(&self, lane: usize) -> bool {
-                self[lane].test()
-            }
-
-            /// Sets the value of the specified lane.
-            ///
-            /// # Panics
-            /// Panics if `lane` is greater than or equal to the number of lanes in the vector.
-            #[inline]
-            pub fn set(&mut self, lane: usize, value: bool) {
-                self[lane] = value.into();
-            }
-        }
-
-        base_vector_traits! { $name => [$type; $lanes] }
-        integer_vector_traits! { $name => [$type; $lanes] }
-    };
-    { def $(#[$attr:meta])* | $name:ident | $($itype:ty)* } => {
-        $(#[$attr])*
-        #[allow(non_camel_case_types)]
-        #[repr(simd)]
-        pub struct $name($($itype),*);
-    };
-    { splat $type:ty | $($itype:ty)* } => {
-        /// Construct a vector by setting all lanes to the given value.
-        #[inline]
-        pub const fn splat(value: $type) -> Self {
-            Self($(value.0 as $itype),*)
-        }
-    };
-    { new $type:ty | $($var:ident)* } => {
-        /// Construct a vector by setting each lane to the given values.
-        #[allow(clippy::too_many_arguments)]
-        #[inline]
-        pub const fn new($($var: $type),*) -> Self {
-            Self($($var.0),*)
-        }
-    };
-    { new_from_bool $type:ty | $($var:ident)* } => {
-        /// Used internally (since we can't use the Into trait in `const fn`s)
-        #[allow(clippy::too_many_arguments)]
-        #[allow(unused)]
-        #[inline]
-        pub(crate) const fn new_from_bool($($var: bool),*) -> Self {
-            Self($(<$type>::new($var).0),*)
-        }
-    }
 }
