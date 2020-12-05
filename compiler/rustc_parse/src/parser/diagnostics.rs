@@ -289,13 +289,9 @@ impl<'a> Parser<'a> {
         let mut err = if !prev_token_seems_reserved_token {
             self.struct_span_err(self.token.span, &msg_exp)
         } else {
-            self.struct_span_err(self.token.span, &msg_exp)
+            self.struct_span_err(self.prev_token.span, &msg_exp)
         };
 
-        if prev_token_seems_reserved_token {
-            err = self.struct_span_err(self.prev_token.span, &msg_exp);
-        }
-        
         let sp = if self.token == token::Eof {
             // This is EOF; don't want to point at the following char, but rather the last token.
             self.prev_token.span
@@ -325,7 +321,7 @@ impl<'a> Parser<'a> {
 
         let sm = self.sess.source_map();
         if prev_token_seems_reserved_token {
-            err.span_suggestion(sp, &msg_exp, label_exp.clone(), Applicability::MaybeIncorrect);
+            err.span_label(self.prev_token.span, label_exp);
         } else if self.prev_token.span == DUMMY_SP {
             // Account for macro context where the previous span might not be
             // available to avoid incorrect output (#54841).

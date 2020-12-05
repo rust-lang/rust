@@ -1,8 +1,8 @@
 error: `"While"` is not a keyword
-  --> $DIR/mistyped_reserved_token.rs:2:19
+  --> $DIR/mistyped_reserved_token.rs:2:13
    |
 LL |     let a = While true {
-   |                   ^^^^ help: try `"while"` instead
+   |             ^^^^^ try `"while"` instead
 
 error: aborting due to previous error
 
