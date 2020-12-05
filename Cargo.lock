@@ -3392,6 +3392,7 @@ version = "1.0.0"
 dependencies = [
  "byteorder",
  "crossbeam-utils 0.7.2",
+ "libc",
  "proc-macro2",
  "quote",
  "serde",
