@@ -1,0 +1,13 @@
+error[E0623]: lifetime mismatch
+  --> $DIR/unsound-type-ascription-coercion.rs:10:17
+   |
+LL | fn foo<'a, 'b>(arg1 : &'a u32, arg2 : &'b u32) {
+   |                       -------         -------
+   |                       |
+   |                       these two types are declared with different lifetimes...
+LL |   let p = &mut (arg1 : &'b u32);
+   |                 ^^^^ ...but data from `arg1` flows into `arg2` here
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0623`.
