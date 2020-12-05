@@ -1,14 +1,12 @@
 use crate::alloc::{Allocator, Global};
 use crate::raw_vec::RawVec;
-use core::marker::PhantomData;
-use core::intrinsics::{arith_offset};
-use core::mem::{self};
 use core::fmt;
+use core::intrinsics::arith_offset;
+use core::iter::{FusedIterator, InPlaceIterable, SourceIter, TrustedLen, TrustedRandomAccess};
+use core::marker::PhantomData;
+use core::mem::{self};
 use core::ptr::{self, NonNull};
 use core::slice::{self};
-use core::iter::{
-    FusedIterator, InPlaceIterable, SourceIter, TrustedLen, TrustedRandomAccess,
-};
 
 /// An iterator that moves out of a vector.
 ///
@@ -156,8 +154,8 @@ impl<T, A: Allocator> Iterator for IntoIter<T, A> {
     }
 
     unsafe fn __iterator_get_unchecked(&mut self, i: usize) -> Self::Item
-        where
-            Self: TrustedRandomAccess,
+    where
+        Self: TrustedRandomAccess,
     {
         // SAFETY: the caller must guarantee that `i` is in bounds of the
         // `Vec<T>`, so `i` cannot overflow an `isize`, and the `self.ptr.add(i)`
@@ -211,8 +209,8 @@ unsafe impl<T, A: Allocator> TrustedLen for IntoIter<T, A> {}
 // T: Copy as approximation for !Drop since get_unchecked does not advance self.ptr
 // and thus we can't implement drop-handling
 unsafe impl<T, A: Allocator> TrustedRandomAccess for IntoIter<T, A>
-    where
-        T: Copy,
+where
+    T: Copy,
 {
     fn may_have_side_effect() -> bool {
         false

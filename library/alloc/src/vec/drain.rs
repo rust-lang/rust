@@ -1,13 +1,11 @@
 use crate::alloc::{Allocator, Global};
-use core::iter::{
-    FusedIterator, TrustedLen,
-};
+use core::fmt;
+use core::iter::{FusedIterator, TrustedLen};
 use core::mem::{self};
 use core::ptr::{self, NonNull};
 use core::slice::{self};
-use core::fmt;
 
-use super::{Vec};
+use super::Vec;
 
 /// A draining iterator for `Vec<T>`.
 ///

@@ -1,9 +1,9 @@
-use crate::alloc::{Allocator};
-use core::iter::{TrustedLen};
-use core::slice::{self};
+use crate::alloc::Allocator;
+use core::iter::TrustedLen;
 use core::ptr::{self};
+use core::slice::{self};
 
-use super::{Vec, IntoIter, SetLenOnDrop};
+use super::{IntoIter, SetLenOnDrop, Vec};
 
 // Specialization trait used for Vec::extend
 pub(super) trait SpecExtend<T, I> {
@@ -11,8 +11,8 @@ pub(super) trait SpecExtend<T, I> {
 }
 
 impl<T, I, A: Allocator> SpecExtend<T, I> for Vec<T, A>
-    where
-        I: Iterator<Item = T>,
+where
+    I: Iterator<Item = T>,
 {
     default fn spec_extend(&mut self, iter: I) {
         self.extend_desugared(iter)
@@ -20,8 +20,8 @@ impl<T, I, A: Allocator> SpecExtend<T, I> for Vec<T, A>
 }
 
 impl<T, I, A: Allocator> SpecExtend<T, I> for Vec<T, A>
-    where
-        I: TrustedLen<Item = T>,
+where
+    I: TrustedLen<Item = T>,
 {
     default fn spec_extend(&mut self, iterator: I) {
         // This is the case for a TrustedLen iterator.
@@ -62,9 +62,9 @@ impl<T, A: Allocator> SpecExtend<T, IntoIter<T>> for Vec<T, A> {
 }
 
 impl<'a, T: 'a, I, A: Allocator + 'a> SpecExtend<&'a T, I> for Vec<T, A>
-    where
-        I: Iterator<Item = &'a T>,
-        T: Clone,
+where
+    I: Iterator<Item = &'a T>,
+    T: Clone,
 {
     default fn spec_extend(&mut self, iterator: I) {
         self.spec_extend(iterator.cloned())
@@ -72,8 +72,8 @@ impl<'a, T: 'a, I, A: Allocator + 'a> SpecExtend<&'a T, I> for Vec<T, A>
 }
 
 impl<'a, T: 'a, A: Allocator + 'a> SpecExtend<&'a T, slice::Iter<'a, T>> for Vec<T, A>
-    where
-        T: Copy,
+where
+    T: Copy,
 {
     fn spec_extend(&mut self, iterator: slice::Iter<'a, T>) {
         let slice = iterator.as_slice();

@@ -1,7 +1,7 @@
+use core::iter::TrustedLen;
 use core::ptr::{self};
-use core::iter::{TrustedLen};
 
-use super::{Vec, SpecExtend};
+use super::{SpecExtend, Vec};
 
 /// Another specialization trait for Vec::from_iter
 /// necessary to manually prioritize overlapping specializations
@@ -11,8 +11,8 @@ pub(super) trait SpecFromIterNested<T, I> {
 }
 
 impl<T, I> SpecFromIterNested<T, I> for Vec<T>
-    where
-        I: Iterator<Item = T>,
+where
+    I: Iterator<Item = T>,
 {
     default fn from_iter(mut iterator: I) -> Self {
         // Unroll the first iteration, as the vector is going to be
@@ -40,8 +40,8 @@ impl<T, I> SpecFromIterNested<T, I> for Vec<T>
 }
 
 impl<T, I> SpecFromIterNested<T, I> for Vec<T>
-    where
-        I: TrustedLen<Item = T>,
+where
+    I: TrustedLen<Item = T>,
 {
     fn from_iter(iterator: I) -> Self {
         let mut vector = match iterator.size_hint() {

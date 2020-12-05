@@ -1,7 +1,7 @@
 use crate::borrow::Cow;
-use core::iter::{FromIterator};
+use core::iter::FromIterator;
 
-use super::{Vec};
+use super::Vec;
 
 #[stable(feature = "cow_from_vec", since = "1.8.0")]
 impl<'a, T: Clone> From<&'a [T]> for Cow<'a, [T]> {
@@ -26,8 +26,8 @@ impl<'a, T: Clone> From<&'a Vec<T>> for Cow<'a, [T]> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> FromIterator<T> for Cow<'a, [T]>
-    where
-        T: Clone,
+where
+    T: Clone,
 {
     fn from_iter<I: IntoIterator<Item = T>>(it: I) -> Cow<'a, [T]> {
         Cow::Owned(FromIterator::from_iter(it))

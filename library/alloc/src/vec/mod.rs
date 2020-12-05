@@ -58,7 +58,7 @@ use core::convert::TryFrom;
 use core::fmt;
 use core::hash::{Hash, Hasher};
 use core::intrinsics::{arith_offset, assume};
-use core::iter::{FromIterator};
+use core::iter::FromIterator;
 use core::marker::PhantomData;
 use core::mem::{self, ManuallyDrop, MaybeUninit};
 use core::ops::{self, Index, IndexMut, Range, RangeBounds};
@@ -88,9 +88,9 @@ mod drain;
 
 mod cow;
 
+pub(crate) use self::into_iter::AsIntoIter;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::into_iter::IntoIter;
-pub (crate) use self::into_iter::AsIntoIter;
 
 mod into_iter;
 

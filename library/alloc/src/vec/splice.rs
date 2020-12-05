@@ -2,7 +2,7 @@ use crate::alloc::{Allocator, Global};
 use core::ptr::{self};
 use core::slice::{self};
 
-use super::{Vec, Drain};
+use super::{Drain, Vec};
 
 /// A splicing iterator for `Vec`.
 ///

@@ -1,9 +1,9 @@
 use crate::alloc::Global;
-use core::mem::{ManuallyDrop};
+use core::mem::ManuallyDrop;
 use core::ptr::{self};
 use core::slice::{self};
 
-use super::{Vec, IntoIter, SpecFromIterNested, SpecExtend};
+use super::{IntoIter, SpecExtend, SpecFromIterNested, Vec};
 
 /// Specialization trait used for Vec::from_iter
 ///
@@ -30,8 +30,8 @@ pub(super) trait SpecFromIter<T, I> {
 }
 
 impl<T, I> SpecFromIter<T, I> for Vec<T>
-    where
-        I: Iterator<Item = T>,
+where
+    I: Iterator<Item = T>,
 {
     default fn from_iter(iterator: I) -> Self {
         SpecFromIterNested::from_iter(iterator)
@@ -68,9 +68,9 @@ impl<T> SpecFromIter<T, IntoIter<T>> for Vec<T> {
 }
 
 impl<'a, T: 'a, I> SpecFromIter<&'a T, I> for Vec<T>
-    where
-        I: Iterator<Item = &'a T>,
-        T: Clone,
+where
+    I: Iterator<Item = &'a T>,
+    T: Clone,
 {
     default fn from_iter(iterator: I) -> Self {
         SpecFromIter::from_iter(iterator.cloned())

@@ -1,8 +1,8 @@
+use crate::alloc::{Allocator, Global};
 use core::ptr::{self};
 use core::slice::{self};
-use crate::alloc::{Allocator, Global};
 
-use super::{Vec};
+use super::Vec;
 
 /// An iterator which uses a closure to determine if an element should be removed.
 ///
@@ -45,8 +45,8 @@ pub struct DrainFilter<
 }
 
 impl<T, F, A: Allocator> DrainFilter<'_, T, F, A>
-    where
-        F: FnMut(&mut T) -> bool,
+where
+    F: FnMut(&mut T) -> bool,
 {
     /// Returns a reference to the underlying allocator.
     #[unstable(feature = "allocator_api", issue = "32838")]
@@ -58,8 +58,8 @@ impl<T, F, A: Allocator> DrainFilter<'_, T, F, A>
 
 #[unstable(feature = "drain_filter", reason = "recently added", issue = "43244")]
 impl<T, F, A: Allocator> Iterator for DrainFilter<'_, T, F, A>
-    where
-        F: FnMut(&mut T) -> bool,
+where
+    F: FnMut(&mut T) -> bool,
 {
     type Item = T;
 
@@ -96,20 +96,20 @@ impl<T, F, A: Allocator> Iterator for DrainFilter<'_, T, F, A>
 
 #[unstable(feature = "drain_filter", reason = "recently added", issue = "43244")]
 impl<T, F, A: Allocator> Drop for DrainFilter<'_, T, F, A>
-    where
-        F: FnMut(&mut T) -> bool,
+where
+    F: FnMut(&mut T) -> bool,
 {
     fn drop(&mut self) {
         struct BackshiftOnDrop<'a, 'b, T, F, A: Allocator>
-            where
-                F: FnMut(&mut T) -> bool,
+        where
+            F: FnMut(&mut T) -> bool,
         {
             drain: &'b mut DrainFilter<'a, T, F, A>,
         }
 
         impl<'a, 'b, T, F, A: Allocator> Drop for BackshiftOnDrop<'a, 'b, T, F, A>
-            where
-                F: FnMut(&mut T) -> bool,
+        where
+            F: FnMut(&mut T) -> bool,
         {
             fn drop(&mut self) {
                 unsafe {

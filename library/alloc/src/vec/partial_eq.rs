@@ -1,7 +1,7 @@
-use crate::alloc::{Allocator};
+use crate::alloc::Allocator;
 use crate::borrow::Cow;
 
-use super::{Vec};
+use super::Vec;
 
 macro_rules! __impl_slice_eq1 {
     ([$($vars:tt)*] $lhs:ty, $rhs:ty $(where $ty:ty: $bound:ident)?, #[$stability:meta]) => {

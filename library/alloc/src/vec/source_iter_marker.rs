@@ -1,10 +1,8 @@
-use core::iter::{
-    InPlaceIterable, SourceIter,
-};
+use core::iter::{InPlaceIterable, SourceIter};
 use core::mem::{self, ManuallyDrop};
 use core::ptr::{self};
 
-use super::{Vec, InPlaceDrop, AsIntoIter, SpecFromIter, SpecFromIterNested};
+use super::{AsIntoIter, InPlaceDrop, SpecFromIter, SpecFromIterNested, Vec};
 
 /// Specialization marker for collecting an iterator pipeline into a Vec while reusing the
 /// source allocation, i.e. executing the pipeline in place.
@@ -13,7 +11,7 @@ use super::{Vec, InPlaceDrop, AsIntoIter, SpecFromIter, SpecFromIterNested};
 /// which is to be reused. But it is not sufficient for the specialization to be valid. See
 /// additional bounds on the impl.
 #[rustc_unsafe_specialization_marker]
-pub (super) trait SourceIterMarker: SourceIter<Source: AsIntoIter> {}
+pub(super) trait SourceIterMarker: SourceIter<Source: AsIntoIter> {}
 
 // The std-internal SourceIter/InPlaceIterable traits are only implemented by chains of
 // Adapter<Adapter<Adapter<IntoIter>>> (all owned by core/std). Additional bounds
@@ -24,8 +22,8 @@ pub (super) trait SourceIterMarker: SourceIter<Source: AsIntoIter> {}
 impl<T> SourceIterMarker for T where T: SourceIter<Source: AsIntoIter> + InPlaceIterable {}
 
 impl<T, I> SpecFromIter<T, I> for Vec<T>
-    where
-        I: Iterator<Item = T> + SourceIterMarker,
+where
+    I: Iterator<Item = T> + SourceIterMarker,
 {
     default fn from_iter(mut iterator: I) -> Self {
         // Additional requirements which cannot expressed via trait bounds. We rely on const eval
@@ -35,9 +33,9 @@ impl<T, I> SpecFromIter<T, I> for Vec<T>
         // c) alignments match as required by Alloc contract
         if mem::size_of::<T>() == 0
             || mem::size_of::<T>()
-            != mem::size_of::<<<I as SourceIter>::Source as AsIntoIter>::Item>()
+                != mem::size_of::<<<I as SourceIter>::Source as AsIntoIter>::Item>()
             || mem::align_of::<T>()
-            != mem::align_of::<<<I as SourceIter>::Source as AsIntoIter>::Item>()
+                != mem::align_of::<<<I as SourceIter>::Source as AsIntoIter>::Item>()
         {
             // fallback to more generic implementations
             return SpecFromIterNested::from_iter(iterator);
