@@ -28,7 +28,7 @@ MAINTAINERS = {
     'rls': {'Xanewok'},
     'rustfmt': {'topecongiro', 'calebcartwright'},
     'book': {'carols10cents', 'steveklabnik'},
-    'nomicon': {'frewsxcv', 'Gankra'},
+    'nomicon': {'frewsxcv', 'Gankra', 'JohnTitor'},
     'reference': {'steveklabnik', 'Havvy', 'matthewjasper', 'ehuss'},
     'rust-by-example': {'steveklabnik', 'marioidival'},
     'embedded-book': {'adamgreig', 'andre-richter', 'jamesmunns', 'therealprof'},
