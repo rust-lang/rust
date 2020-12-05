@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 
+## [1.4.29] 2020-12-04
+
+### Fixed
+- Negative polarity on non-trait impl now preserved. ([#4566](https://github.com/rust-lang/rustfmt/issues/4566))
+
+### Install/Download Options
+- **crates.io package** - *pending*
+- **rustup (nightly)** - *pending*
+- **GitHub Release Binaries** - [Release v1.4.29](https://github.com/rust-lang/rustfmt/releases/tag/v1.4.29)
+- **Build from source** - [Tag v1.4.29](https://github.com/rust-lang/rustfmt/tree/v1.4.29), see instructions for how to [install rustfmt from source][install-from-source]
+
 ## [1.4.28] 2020-11-29
 
 ### Changed
@@ -25,10 +36,11 @@
 - Function headers are no longer dropped on foreign function items. ([#4288](https://github.com/rust-lang/rustfmt/issues/4288))
 - Foreign function blocks are no longer dropped. ([#4313](https://github.com/rust-lang/rustfmt/issues/4313))
 - `where_single_line` is no longer incorrectly applied to multiline function signatures that have no `where` clause. ([#4547](https://github.com/rust-lang/rustfmt/issues/4547))
+- `matches!` expressions with multiple patterns and a destructure pattern are now able to be formatted. ([#4512](https://github.com/rust-lang/rustfmt/issues/4512))
 
 ### Install/Download Options
 - **crates.io package** - *pending*
-- **rustup (nightly)** - *pending*
+- **rustup (nightly)** - n/a (superseded by [v1.4.29](#1429-2020-12-04))
 - **GitHub Release Binaries** - [Release v1.4.28](https://github.com/rust-lang/rustfmt/releases/tag/v1.4.28)
 - **Build from source** - [Tag v1.4.28](https://github.com/rust-lang/rustfmt/tree/v1.4.28), see instructions for how to [install rustfmt from source][install-from-source]
 
