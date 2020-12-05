@@ -151,7 +151,12 @@ impl FormatRenderer for JsonRenderer {
             } else if let types::ItemEnum::EnumItem(ref mut e) = new_item.inner {
                 e.impls = self.get_impls(id, cache)
             }
-            self.index.borrow_mut().insert(id.into(), new_item);
+            let removed = self.index.borrow_mut().insert(id.into(), new_item.clone());
+            // FIXME(adotinthevoid): Currently, the index is duplicated. This is a sanity check
+            // to make sure the items are unique.
+            if let Some(old_item) = removed {
+                assert_eq!(old_item, new_item);
+            }
         }
 
         Ok(())

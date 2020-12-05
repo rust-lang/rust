@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 /// A `Crate` is the root of the emitted JSON blob. It contains all type/documentation information
 /// about the language items in the local crate, as well as info about external items to allow
 /// tools to find or link to them.
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Crate {
     /// The id of the root [`Module`] item of the local crate.
     pub root: Id,
@@ -31,7 +31,7 @@ pub struct Crate {
     pub format_version: u32,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct ExternalCrate {
     pub name: String,
     pub html_root_url: Option<String>,
@@ -41,7 +41,7 @@ pub struct ExternalCrate {
 /// information. This struct should contain enough to generate a link/reference to the item in
 /// question, or can be used by a tool that takes the json output of multiple crates to find
 /// the actual item definition with all the relevant info.
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct ItemSummary {
     /// Can be used to look up the name and html_root_url of the crate this item came from in the
     /// `external_crates` map.
@@ -53,7 +53,7 @@ pub struct ItemSummary {
     pub kind: ItemKind,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Item {
     /// The unique identifier of this item. Can be used to find this item in various mappings.
     pub id: Id,
@@ -79,7 +79,7 @@ pub struct Item {
     pub inner: ItemEnum,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Span {
     /// The path to the source file for this span relative to the path `rustdoc` was invoked with.
     pub filename: PathBuf,
@@ -89,14 +89,14 @@ pub struct Span {
     pub end: (usize, usize),
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Deprecation {
     pub since: Option<String>,
     pub note: Option<String>,
 }
 
 #[serde(rename_all = "snake_case")]
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub enum Visibility {
     Public,
     /// For the most part items are private by default. The exceptions are associated items of
@@ -112,7 +112,7 @@ pub enum Visibility {
 }
 
 #[serde(rename_all = "snake_case")]
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub enum GenericArgs {
     /// <'a, 32, B: Copy, C = u32>
     AngleBracketed { args: Vec<GenericArg>, bindings: Vec<TypeBinding> },
@@ -121,14 +121,14 @@ pub enum GenericArgs {
 }
 
 #[serde(rename_all = "snake_case")]
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub enum GenericArg {
     Lifetime(String),
     Type(Type),
     Const(Constant),
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Constant {
     #[serde(rename = "type")]
     pub type_: Type,
@@ -137,14 +137,14 @@ pub struct Constant {
     pub is_literal: bool,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct TypeBinding {
     pub name: String,
     pub binding: TypeBindingKind,
 }
 
 #[serde(rename_all = "snake_case")]
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub enum TypeBindingKind {
     Equality(Type),
     Constraint(Vec<GenericBound>),
@@ -154,7 +154,7 @@ pub enum TypeBindingKind {
 pub struct Id(pub String);
 
 #[serde(rename_all = "snake_case")]
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub enum ItemKind {
     Module,
     ExternCrate,
@@ -184,7 +184,7 @@ pub enum ItemKind {
 }
 
 #[serde(untagged)]
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub enum ItemEnum {
     ModuleItem(Module),
     ExternCrateItem {
@@ -231,13 +231,13 @@ pub enum ItemEnum {
     },
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Module {
     pub is_crate: bool,
     pub items: Vec<Id>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Struct {
     pub struct_type: StructType,
     pub generics: Generics,
@@ -246,7 +246,7 @@ pub struct Struct {
     pub impls: Vec<Id>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Enum {
     pub generics: Generics,
     pub variants_stripped: bool,
@@ -256,7 +256,7 @@ pub struct Enum {
 
 #[serde(rename_all = "snake_case")]
 #[serde(tag = "variant_kind", content = "variant_inner")]
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub enum Variant {
     Plain,
     Tuple(Vec<Type>),
@@ -264,14 +264,14 @@ pub enum Variant {
 }
 
 #[serde(rename_all = "snake_case")]
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub enum StructType {
     Plain,
     Tuple,
     Unit,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Function {
     pub decl: FnDecl,
     pub generics: Generics,
@@ -279,7 +279,7 @@ pub struct Function {
     pub abi: String,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Method {
     pub decl: FnDecl,
     pub generics: Generics,
@@ -287,20 +287,20 @@ pub struct Method {
     pub has_body: bool,
 }
 
-#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
 pub struct Generics {
     pub params: Vec<GenericParamDef>,
     pub where_predicates: Vec<WherePredicate>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct GenericParamDef {
     pub name: String,
     pub kind: GenericParamDefKind,
 }
 
 #[serde(rename_all = "snake_case")]
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub enum GenericParamDefKind {
     Lifetime,
     Type { bounds: Vec<GenericBound>, default: Option<Type> },
@@ -308,7 +308,7 @@ pub enum GenericParamDefKind {
 }
 
 #[serde(rename_all = "snake_case")]
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub enum WherePredicate {
     BoundPredicate { ty: Type, bounds: Vec<GenericBound> },
     RegionPredicate { lifetime: String, bounds: Vec<GenericBound> },
@@ -316,7 +316,7 @@ pub enum WherePredicate {
 }
 
 #[serde(rename_all = "snake_case")]
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub enum GenericBound {
     TraitBound {
         #[serde(rename = "trait")]
@@ -329,7 +329,7 @@ pub enum GenericBound {
 }
 
 #[serde(rename_all = "snake_case")]
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub enum TraitBoundModifier {
     None,
     Maybe,
@@ -338,7 +338,7 @@ pub enum TraitBoundModifier {
 
 #[serde(rename_all = "snake_case")]
 #[serde(tag = "kind", content = "inner")]
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub enum Type {
     /// Structs, enums, and traits
     ResolvedPath {
@@ -391,7 +391,7 @@ pub enum Type {
     },
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct FunctionPointer {
     pub is_unsafe: bool,
     pub generic_params: Vec<GenericParamDef>,
@@ -399,14 +399,14 @@ pub struct FunctionPointer {
     pub abi: String,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct FnDecl {
     pub inputs: Vec<(String, Type)>,
     pub output: Option<Type>,
     pub c_variadic: bool,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Trait {
     pub is_auto: bool,
     pub is_unsafe: bool,
@@ -416,13 +416,13 @@ pub struct Trait {
     pub implementors: Vec<Id>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct TraitAlias {
     pub generics: Generics,
     pub params: Vec<GenericBound>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Impl {
     pub is_unsafe: bool,
     pub generics: Generics,
@@ -438,7 +438,7 @@ pub struct Impl {
 }
 
 #[serde(rename_all = "snake_case")]
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Import {
     /// The full path being imported.
     pub span: String,
@@ -451,14 +451,14 @@ pub struct Import {
     pub glob: bool,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct ProcMacro {
     pub kind: MacroKind,
     pub helpers: Vec<String>,
 }
 
 #[serde(rename_all = "snake_case")]
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub enum MacroKind {
     /// A bang macro `foo!()`.
     Bang,
@@ -468,20 +468,20 @@ pub enum MacroKind {
     Derive,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Typedef {
     #[serde(rename = "type")]
     pub type_: Type,
     pub generics: Generics,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct OpaqueTy {
     pub bounds: Vec<GenericBound>,
     pub generics: Generics,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Static {
     #[serde(rename = "type")]
     pub type_: Type,
