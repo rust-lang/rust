@@ -1,37 +1,28 @@
-error: stripping a prefix manually
-  --> $DIR/min_rust_version_attr.rs:60:24
+error[E0425]: cannot find value `x` in this scope
+  --> $DIR/min_rust_version_attr.rs:77:5
    |
-LL |             assert_eq!(s["hello, ".len()..].to_uppercase(), "WORLD!");
-   |                        ^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: `-D clippy::manual-strip` implied by `-D warnings`
-note: the prefix was tested here
-  --> $DIR/min_rust_version_attr.rs:59:9
-   |
-LL |         if s.starts_with("hello, ") {
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-help: try using the `strip_prefix` method
-   |
-LL |         if let Some(<stripped>) = s.strip_prefix("hello, ") {
-LL |             assert_eq!(<stripped>.to_uppercase(), "WORLD!");
-   |
+LL |     x >= 8 && x < 12;
+   |     ^ not found in this scope
 
-error: stripping a prefix manually
-  --> $DIR/min_rust_version_attr.rs:72:24
+error[E0425]: cannot find value `x` in this scope
+  --> $DIR/min_rust_version_attr.rs:77:15
    |
-LL |             assert_eq!(s["hello, ".len()..].to_uppercase(), "WORLD!");
-   |                        ^^^^^^^^^^^^^^^^^^^^
-   |
-note: the prefix was tested here
-  --> $DIR/min_rust_version_attr.rs:71:9
-   |
-LL |         if s.starts_with("hello, ") {
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-help: try using the `strip_prefix` method
-   |
-LL |         if let Some(<stripped>) = s.strip_prefix("hello, ") {
-LL |             assert_eq!(<stripped>.to_uppercase(), "WORLD!");
-   |
+LL |     x >= 8 && x < 12;
+   |               ^ not found in this scope
 
-error: aborting due to 2 previous errors
+error[E0308]: mismatched types
+  --> $DIR/min_rust_version_attr.rs:95:31
+   |
+LL |     let _ = std::mem::replace(s, String::default());
+   |                               ^
+   |                               |
+   |                               expected `&mut _`, found struct `std::string::String`
+   |                               help: consider mutably borrowing here: `&mut s`
+   |
+   = note: expected mutable reference `&mut _`
+                         found struct `std::string::String`
 
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0308, E0425.
+For more information about an error, try `rustc --explain E0308`.

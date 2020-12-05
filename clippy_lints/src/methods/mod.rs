@@ -1487,7 +1487,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             ["expect", ..] => lint_expect(cx, expr, arg_lists[0]),
             ["unwrap_or", "map"] => option_map_unwrap_or::lint(cx, expr, arg_lists[1], arg_lists[0], method_spans[1]),
             ["unwrap_or_else", "map"] => {
-                if !lint_map_unwrap_or_else(cx, expr, arg_lists[1], arg_lists[0]) {
+                if !lint_map_unwrap_or_else(cx, expr, arg_lists[1], arg_lists[0], self.msrv.as_ref()) {
                     unnecessary_lazy_eval::lint(cx, expr, arg_lists[0], "unwrap_or");
                 }
             },
@@ -1509,7 +1509,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             ["next", "iter"] => lint_iter_next(cx, expr, arg_lists[1]),
             ["map", "filter"] => lint_filter_map(cx, expr, arg_lists[1], arg_lists[0]),
             ["map", "filter_map"] => lint_filter_map_map(cx, expr, arg_lists[1], arg_lists[0]),
-            ["next", "filter_map"] => lint_filter_map_next(cx, expr, arg_lists[1]),
+            ["next", "filter_map"] => lint_filter_map_next(cx, expr, arg_lists[1], self.msrv.as_ref()),
             ["map", "find"] => lint_find_map(cx, expr, arg_lists[1], arg_lists[0]),
             ["flat_map", "filter"] => lint_filter_flat_map(cx, expr, arg_lists[1], arg_lists[0]),
             ["flat_map", "filter_map"] => lint_filter_map_flat_map(cx, expr, arg_lists[1], arg_lists[0]),
@@ -2733,6 +2733,8 @@ fn lint_map_flatten<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, map
     }
 }
 
+const MAP_UNWRAP_OR_MSRV: RustcVersion = RustcVersion::new(1, 41, 0);
+
 /// lint use of `map().unwrap_or_else()` for `Option`s and `Result`s
 /// Return true if lint triggered
 fn lint_map_unwrap_or_else<'tcx>(
@@ -2740,7 +2742,11 @@ fn lint_map_unwrap_or_else<'tcx>(
     expr: &'tcx hir::Expr<'_>,
     map_args: &'tcx [hir::Expr<'_>],
     unwrap_args: &'tcx [hir::Expr<'_>],
+    msrv: Option<&RustcVersion>,
 ) -> bool {
+    if !meets_msrv(msrv, &MAP_UNWRAP_OR_MSRV) {
+        return false;
+    }
     // lint if the caller of `map()` is an `Option`
     let is_option = is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(&map_args[0]), sym::option_type);
     let is_result = is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(&map_args[0]), sym::result_type);
@@ -2923,9 +2929,20 @@ fn lint_filter_map<'tcx>(
     }
 }
 
+const FILTER_MAP_NEXT_MSRV: RustcVersion = RustcVersion::new(1, 30, 0);
+
 /// lint use of `filter_map().next()` for `Iterators`
-fn lint_filter_map_next<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, filter_args: &'tcx [hir::Expr<'_>]) {
+fn lint_filter_map_next<'tcx>(
+    cx: &LateContext<'tcx>,
+    expr: &'tcx hir::Expr<'_>,
+    filter_args: &'tcx [hir::Expr<'_>],
+    msrv: Option<&RustcVersion>,
+) {
     if match_trait_method(cx, expr, &paths::ITERATOR) {
+        if !meets_msrv(msrv, &FILTER_MAP_NEXT_MSRV) {
+            return;
+        }
+
         let msg = "called `filter_map(..).next()` on an `Iterator`. This is more succinctly expressed by calling \
                    `.find_map(..)` instead.";
         let filter_snippet = snippet(cx, filter_args[1].span, "..");
