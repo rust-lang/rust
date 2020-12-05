@@ -2,6 +2,7 @@
 
 use super::method::MethodCallee;
 use super::FnCtxt;
+use super::TypeAscriptionCtxt;
 use rustc_ast as ast;
 use rustc_errors::{self, struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
@@ -64,9 +65,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         match BinOpCategory::from(op) {
             BinOpCategory::Shortcircuit => {
                 // && and || are a simple case.
-                self.check_expr_coercable_to_type(lhs_expr, tcx.types.bool, None);
+                self.check_expr_coercable_to_type(
+                    lhs_expr,
+                    tcx.types.bool,
+                    None,
+                    TypeAscriptionCtxt::Normal,
+                );
                 let lhs_diverges = self.diverges.get();
-                self.check_expr_coercable_to_type(rhs_expr, tcx.types.bool, None);
+                self.check_expr_coercable_to_type(
+                    rhs_expr,
+                    tcx.types.bool,
+                    None,
+                    TypeAscriptionCtxt::Normal,
+                );
 
                 // Depending on the LHS' value, the RHS can never execute.
                 self.diverges.set(lhs_diverges);
@@ -203,7 +214,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let result = self.lookup_op_method(lhs_ty, &[rhs_ty_var], Op::Binary(op, is_assign));
 
         // see `NB` above
-        let rhs_ty = self.check_expr_coercable_to_type(rhs_expr, rhs_ty_var, Some(lhs_expr));
+        let rhs_ty = self.check_expr_coercable_to_type(
+            rhs_expr,
+            rhs_ty_var,
+            Some(lhs_expr),
+            TypeAscriptionCtxt::Normal,
+        );
         let rhs_ty = self.resolve_vars_with_obligations(rhs_ty);
 
         let return_ty = match result {

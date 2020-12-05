@@ -96,6 +96,7 @@ use check::{
 pub use check::{check_item_type, check_wf_new};
 pub use diverges::Diverges;
 pub use expectation::Expectation;
+pub use expectation::TypeAscriptionCtxt;
 pub use fn_ctxt::*;
 pub use inherited::{Inherited, InheritedBuilder};
 
@@ -555,7 +556,12 @@ fn typeck_with_fallback<'tcx>(
             // Gather locals in statics (because of block expressions).
             GatherLocalsVisitor::new(&fcx, id).visit_body(body);
 
-            fcx.check_expr_coercable_to_type(&body.value, revealed_ty, None);
+            fcx.check_expr_coercable_to_type(
+                &body.value,
+                revealed_ty,
+                None,
+                TypeAscriptionCtxt::Normal,
+            );
 
             fcx.write_ty(id, revealed_ty);
 

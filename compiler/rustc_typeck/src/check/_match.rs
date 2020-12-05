@@ -1,5 +1,5 @@
 use crate::check::coercion::CoerceMany;
-use crate::check::{Diverges, Expectation, FnCtxt, Needs};
+use crate::check::{Diverges, Expectation, FnCtxt, Needs, TypeAscriptionCtxt};
 use rustc_hir::{self as hir, ExprKind};
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::traits::Obligation;
@@ -41,7 +41,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // 2. By expecting `bool` for `expr` we get nice diagnostics for e.g. `if x = y { .. }`.
             //
             // FIXME(60707): Consider removing hack with principled solution.
-            self.check_expr_has_type_or_error(scrut, self.tcx.types.bool, |_| {})
+            self.check_expr_has_type_or_error(
+                scrut,
+                self.tcx.types.bool,
+                |_| {},
+                orig_expected.get_coercion_ctxt(),
+            )
         } else {
             self.demand_scrutinee_type(arms, scrut)
         };
@@ -82,7 +87,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // us to give better error messages (pointing to a usually better
                 // arm for inconsistent arms or to the whole match when a `()` type
                 // is required).
-                Expectation::ExpectHasType(ety) if ety != self.tcx.mk_unit() => ety,
+                Expectation::ExpectHasType(ety, _) if ety != self.tcx.mk_unit() => ety,
                 _ => self.next_ty_var(TypeVariableOrigin {
                     kind: TypeVariableOriginKind::MiscVariable,
                     span: expr.span,
@@ -97,9 +102,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if let Some(g) = &arm.guard {
                 self.diverges.set(Diverges::Maybe);
                 match g {
-                    hir::Guard::If(e) => {
-                        self.check_expr_has_type_or_error(e, tcx.types.bool, |_| {})
-                    }
+                    hir::Guard::If(e) => self.check_expr_has_type_or_error(
+                        e,
+                        tcx.types.bool,
+                        |_| {},
+                        expected.get_coercion_ctxt(),
+                    ),
                 };
             }
 
@@ -124,7 +132,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 orig_expected,
                 self.ret_coercion_impl_trait.map(|ty| (self.body_id.owner, ty)),
             ) {
-                (Expectation::ExpectHasType(expected), Some((id, ty)))
+                (Expectation::ExpectHasType(expected, _), Some((id, ty)))
                     if self.in_tail_expr && self.can_coerce(arm_ty, expected) =>
                 {
                     let impl_trait_ret_ty = self.infcx.instantiate_opaque_types(
@@ -525,7 +533,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 kind: TypeVariableOriginKind::TypeInference,
                 span: scrut.span,
             });
-            self.check_expr_has_type_or_error(scrut, scrut_ty, |_| {});
+            self.check_expr_has_type_or_error(scrut, scrut_ty, |_| {}, TypeAscriptionCtxt::Normal);
             scrut_ty
         }
     }

@@ -5,22 +5,44 @@ use rustc_span::{self, Span};
 use super::Expectation::*;
 use super::FnCtxt;
 
+// We permit coercion of type ascriptions in coercion sites and sub-expressions
+// that originate from coercion sites. When we encounter a
+// coercion site we propagate this expectation of coercions of type ascriptions
+// down into sub-expressions by providing the `Expectation` with a
+// TypeAscriptionCtxt::Coercion. Whenever we encounter an expression of
+// ExprKind::Type in a sub-expression and TypeAscriptionCtxt is set, we coerce
+// the type ascription
+#[derive(Copy, Clone, Debug)]
+pub enum TypeAscriptionCtxt {
+    Coercion,
+    Normal,
+}
+
+impl TypeAscriptionCtxt {
+    fn is_coercion_site(self) -> bool {
+        match self {
+            TypeAscriptionCtxt::Coercion => true,
+            TypeAscriptionCtxt::Normal => false,
+        }
+    }
+}
+
 /// When type-checking an expression, we propagate downward
 /// whatever type hint we are able in the form of an `Expectation`.
 #[derive(Copy, Clone, Debug)]
 pub enum Expectation<'tcx> {
     /// We know nothing about what type this expression should have.
-    NoExpectation,
+    NoExpectation(TypeAscriptionCtxt),
 
     /// This expression should have the type given (or some subtype).
-    ExpectHasType(Ty<'tcx>),
+    ExpectHasType(Ty<'tcx>, TypeAscriptionCtxt),
 
     /// This expression will be cast to the `Ty`.
-    ExpectCastableToType(Ty<'tcx>),
+    ExpectCastableToType(Ty<'tcx>, TypeAscriptionCtxt),
 
     /// This rvalue expression will be wrapped in `&` or `Box` and coerced
     /// to `&Ty` or `Box<Ty>`, respectively. `Ty` is `[A]` or `Trait`.
-    ExpectRvalueLikeUnsized(Ty<'tcx>),
+    ExpectRvalueLikeUnsized(Ty<'tcx>, TypeAscriptionCtxt),
 }
 
 impl<'a, 'tcx> Expectation<'tcx> {
@@ -42,12 +64,12 @@ impl<'a, 'tcx> Expectation<'tcx> {
     // 'else' branch.
     pub(super) fn adjust_for_branches(&self, fcx: &FnCtxt<'a, 'tcx>) -> Expectation<'tcx> {
         match *self {
-            ExpectHasType(ety) => {
+            ExpectHasType(ety, ctxt) => {
                 let ety = fcx.shallow_resolve(ety);
-                if !ety.is_ty_var() { ExpectHasType(ety) } else { NoExpectation }
+                if !ety.is_ty_var() { ExpectHasType(ety, ctxt) } else { NoExpectation(ctxt) }
             }
-            ExpectRvalueLikeUnsized(ety) => ExpectRvalueLikeUnsized(ety),
-            _ => NoExpectation,
+            ExpectRvalueLikeUnsized(ety, ctxt) => ExpectRvalueLikeUnsized(ety, ctxt),
+            _ => NoExpectation(TypeAscriptionCtxt::Normal),
         }
     }
 
@@ -70,10 +92,14 @@ impl<'a, 'tcx> Expectation<'tcx> {
     /// which still is useful, because it informs integer literals and the like.
     /// See the test case `test/ui/coerce-expect-unsized.rs` and #20169
     /// for examples of where this comes up,.
-    pub(super) fn rvalue_hint(fcx: &FnCtxt<'a, 'tcx>, ty: Ty<'tcx>) -> Expectation<'tcx> {
+    pub(super) fn rvalue_hint(
+        fcx: &FnCtxt<'a, 'tcx>,
+        ty: Ty<'tcx>,
+        ctxt: TypeAscriptionCtxt,
+    ) -> Expectation<'tcx> {
         match fcx.tcx.struct_tail_without_normalization(ty).kind() {
-            ty::Slice(_) | ty::Str | ty::Dynamic(..) => ExpectRvalueLikeUnsized(ty),
-            _ => ExpectHasType(ty),
+            ty::Slice(_) | ty::Str | ty::Dynamic(..) => ExpectRvalueLikeUnsized(ty, ctxt),
+            _ => ExpectHasType(ty, ctxt),
         }
     }
 
@@ -82,17 +108,23 @@ impl<'a, 'tcx> Expectation<'tcx> {
     // no constraints yet present), just returns `None`.
     fn resolve(self, fcx: &FnCtxt<'a, 'tcx>) -> Expectation<'tcx> {
         match self {
-            NoExpectation => NoExpectation,
-            ExpectCastableToType(t) => ExpectCastableToType(fcx.resolve_vars_if_possible(t)),
-            ExpectHasType(t) => ExpectHasType(fcx.resolve_vars_if_possible(t)),
-            ExpectRvalueLikeUnsized(t) => ExpectRvalueLikeUnsized(fcx.resolve_vars_if_possible(t)),
+            NoExpectation(ctxt) => NoExpectation(ctxt),
+            ExpectCastableToType(t, ctxt) => {
+                ExpectCastableToType(fcx.resolve_vars_if_possible(t), ctxt)
+            }
+            ExpectHasType(t, ctxt) => ExpectHasType(fcx.resolve_vars_if_possible(t), ctxt),
+            ExpectRvalueLikeUnsized(t, ctxt) => {
+                ExpectRvalueLikeUnsized(fcx.resolve_vars_if_possible(t), ctxt)
+            }
         }
     }
 
     pub(super) fn to_option(self, fcx: &FnCtxt<'a, 'tcx>) -> Option<Ty<'tcx>> {
         match self.resolve(fcx) {
-            NoExpectation => None,
-            ExpectCastableToType(ty) | ExpectHasType(ty) | ExpectRvalueLikeUnsized(ty) => Some(ty),
+            NoExpectation(_) => None,
+            ExpectCastableToType(ty, _) | ExpectHasType(ty, _) | ExpectRvalueLikeUnsized(ty, _) => {
+                Some(ty)
+            }
         }
     }
 
@@ -102,8 +134,8 @@ impl<'a, 'tcx> Expectation<'tcx> {
     /// such a constraint, if it exists.
     pub(super) fn only_has_type(self, fcx: &FnCtxt<'a, 'tcx>) -> Option<Ty<'tcx>> {
         match self.resolve(fcx) {
-            ExpectHasType(ty) => Some(ty),
-            NoExpectation | ExpectCastableToType(_) | ExpectRvalueLikeUnsized(_) => None,
+            ExpectHasType(ty, _) => Some(ty),
+            NoExpectation(_) | ExpectCastableToType(_, _) | ExpectRvalueLikeUnsized(_, _) => None,
         }
     }
 
@@ -113,5 +145,18 @@ impl<'a, 'tcx> Expectation<'tcx> {
         self.only_has_type(fcx).unwrap_or_else(|| {
             fcx.next_ty_var(TypeVariableOrigin { kind: TypeVariableOriginKind::MiscVariable, span })
         })
+    }
+
+    pub(super) fn get_coercion_ctxt(self) -> TypeAscriptionCtxt {
+        match self {
+            ExpectHasType(_, ctxt) => ctxt,
+            ExpectCastableToType(_, ctxt) => ctxt,
+            ExpectRvalueLikeUnsized(_, ctxt) => ctxt,
+            NoExpectation(ctxt) => ctxt,
+        }
+    }
+
+    pub(super) fn coerce_type_ascriptions(self) -> bool {
+        self.get_coercion_ctxt().is_coercion_site()
     }
 }

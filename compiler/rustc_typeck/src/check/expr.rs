@@ -14,6 +14,7 @@ use crate::check::Expectation::{self, ExpectCastableToType, ExpectHasType, NoExp
 use crate::check::FnCtxt;
 use crate::check::Needs;
 use crate::check::TupleArgumentsFlag::DontTupleArguments;
+use crate::check::TypeAscriptionCtxt;
 use crate::errors::{
     FieldMultiplySpecifiedInInitializer, FunctionalRecordUpdateOnNonStruct,
     YieldExprOutsideOfGenerator,
@@ -57,8 +58,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &'tcx hir::Expr<'tcx>,
         expected: Ty<'tcx>,
         extend_err: impl Fn(&mut DiagnosticBuilder<'_>),
+        type_ascr_ctxt: TypeAscriptionCtxt,
     ) -> Ty<'tcx> {
-        self.check_expr_meets_expectation_or_error(expr, ExpectHasType(expected), extend_err)
+        self.check_expr_meets_expectation_or_error(
+            expr,
+            ExpectHasType(expected, type_ascr_ctxt),
+            extend_err,
+        )
     }
 
     fn check_expr_meets_expectation_or_error(
@@ -101,12 +107,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(super) fn check_expr_coercable_to_type(
         &self,
         expr: &'tcx hir::Expr<'tcx>,
-        expected: Ty<'tcx>,
+        expected_ty: Ty<'tcx>,
         expected_ty_expr: Option<&'tcx hir::Expr<'tcx>>,
+        ctxt: TypeAscriptionCtxt,
     ) -> Ty<'tcx> {
-        let ty = self.check_expr_with_hint(expr, expected);
+        let ty = self.check_expr_with_expectation(expr, ExpectHasType(expected_ty, ctxt));
         // checks don't need two phase
-        self.demand_coerce(expr, ty, expected, expected_ty_expr, AllowTwoPhase::No)
+        self.demand_coerce(expr, ty, expected_ty, expected_ty_expr, AllowTwoPhase::No)
     }
 
     pub(super) fn check_expr_with_hint(
@@ -114,7 +121,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &'tcx hir::Expr<'tcx>,
         expected: Ty<'tcx>,
     ) -> Ty<'tcx> {
-        self.check_expr_with_expectation(expr, ExpectHasType(expected))
+        self.check_expr_with_expectation(expr, ExpectHasType(expected, TypeAscriptionCtxt::Normal))
     }
 
     fn check_expr_with_expectation_and_needs(
@@ -135,7 +142,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     pub(super) fn check_expr(&self, expr: &'tcx hir::Expr<'tcx>) -> Ty<'tcx> {
-        self.check_expr_with_expectation(expr, NoExpectation)
+        self.check_expr_with_expectation(expr, NoExpectation(TypeAscriptionCtxt::Normal))
     }
 
     pub(super) fn check_expr_with_needs(
@@ -143,7 +150,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &'tcx hir::Expr<'tcx>,
         needs: Needs,
     ) -> Ty<'tcx> {
-        self.check_expr_with_expectation_and_needs(expr, NoExpectation, needs)
+        self.check_expr_with_expectation_and_needs(
+            expr,
+            NoExpectation(TypeAscriptionCtxt::Normal),
+            needs,
+        )
     }
 
     /// Invariant:
@@ -281,8 +292,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ExprKind::Cast(ref e, ref t) => self.check_expr_cast(e, t, expr),
             ExprKind::Type(ref e, ref t) => {
                 let ty = self.to_ty_saving_user_provided_ty(&t);
-                self.check_expr_eq_type(&e, ty);
-                ty
+
+                // coerce type ascriptions if we're inside some coercion site
+                if expected.coerce_type_ascriptions() {
+                    self.check_expr_coercable_to_type(e, ty, None, TypeAscriptionCtxt::Coercion)
+                } else {
+                    self.check_expr_eq_type(&e, ty);
+                    ty
+                }
             }
             ExprKind::DropTemps(ref e) => self.check_expr_with_expectation(e, expected),
             ExprKind::Array(ref args) => self.check_expr_array(args, expected, expr),
@@ -302,10 +319,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     fn check_expr_box(&self, expr: &'tcx hir::Expr<'tcx>, expected: Expectation<'tcx>) -> Ty<'tcx> {
-        let expected_inner = expected.to_option(self).map_or(NoExpectation, |ty| match ty.kind() {
-            ty::Adt(def, _) if def.is_box() => Expectation::rvalue_hint(self, ty.boxed_ty()),
-            _ => NoExpectation,
-        });
+        let type_ascr_ctxt = expected.get_coercion_ctxt();
+        let expected_inner =
+            expected.to_option(self).map_or(NoExpectation(type_ascr_ctxt), |ty| match ty.kind() {
+                ty::Adt(def, _) if def.is_box() => {
+                    Expectation::rvalue_hint(self, ty.boxed_ty(), type_ascr_ctxt)
+                }
+                _ => NoExpectation(type_ascr_ctxt),
+            });
         let referent_ty = self.check_expr_with_expectation(expr, expected_inner);
         self.tcx.mk_box(referent_ty)
     }
@@ -320,7 +341,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let tcx = self.tcx;
         let expected_inner = match unop {
             hir::UnOp::UnNot | hir::UnOp::UnNeg => expected,
-            hir::UnOp::UnDeref => NoExpectation,
+            hir::UnOp::UnDeref => NoExpectation(expected.get_coercion_ctxt()),
         };
         let mut oprnd_t = self.check_expr_with_expectation(&oprnd, expected_inner);
 
@@ -376,19 +397,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Expectation<'tcx>,
         expr: &'tcx hir::Expr<'tcx>,
     ) -> Ty<'tcx> {
-        let hint = expected.only_has_type(self).map_or(NoExpectation, |ty| {
+        let type_ascr_ctxt = expected.get_coercion_ctxt();
+        let hint = expected.only_has_type(self).map_or(NoExpectation(type_ascr_ctxt), |ty| {
             match ty.kind() {
                 ty::Ref(_, ty, _) | ty::RawPtr(ty::TypeAndMut { ty, .. }) => {
                     if oprnd.is_syntactic_place_expr() {
                         // Places may legitimately have unsized types.
                         // For example, dereferences of a fat pointer and
                         // the last field of a struct can be unsized.
-                        ExpectHasType(ty)
+                        ExpectHasType(ty, type_ascr_ctxt)
                     } else {
-                        Expectation::rvalue_hint(self, ty)
+                        Expectation::rvalue_hint(self, ty, type_ascr_ctxt)
                     }
                 }
-                _ => NoExpectation,
+                _ => NoExpectation(type_ascr_ctxt),
             }
         });
         let ty =
@@ -709,7 +731,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         });
 
         let ret_ty = ret_coercion.borrow().expected_ty();
-        let return_expr_ty = self.check_expr_with_hint(return_expr, ret_ty.clone());
+        // This is a coercion site, so we allow coercion of type ascriptions in return_expr
+        let expected = ExpectHasType(ret_ty.clone(), TypeAscriptionCtxt::Coercion);
+        let return_expr_ty = self.check_expr_with_expectation(return_expr, expected);
         ret_coercion.borrow_mut().coerce(
             self,
             &self.cause(return_expr.span, ObligationCauseCode::ReturnValue(return_expr.hir_id)),
@@ -805,7 +829,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.check_lhs_assignable(lhs, "E0070", span);
 
         let lhs_ty = self.check_expr_with_needs(&lhs, Needs::MutPlace);
-        let rhs_ty = self.check_expr_coercable_to_type(&rhs, lhs_ty, Some(lhs));
+        let rhs_ty =
+            self.check_expr_coercable_to_type(&rhs, lhs_ty, Some(lhs), TypeAscriptionCtxt::Normal);
 
         self.require_type_is_sized(lhs_ty, lhs.span, traits::AssignmentLhsSized);
 
@@ -964,7 +989,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // if appropriate.
         let t_cast = self.to_ty_saving_user_provided_ty(t);
         let t_cast = self.resolve_vars_if_possible(t_cast);
-        let t_expr = self.check_expr_with_expectation(e, ExpectCastableToType(t_cast));
+        let t_expr = self.check_expr_with_expectation(
+            e,
+            ExpectCastableToType(t_cast, TypeAscriptionCtxt::Normal),
+        );
         let t_cast = self.resolve_vars_if_possible(t_cast);
 
         // Eagerly check for some obvious errors.
@@ -1005,7 +1033,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let mut coerce = CoerceMany::with_coercion_sites(coerce_to, args);
             assert_eq!(self.diverges.get(), Diverges::Maybe);
             for e in args {
-                let e_ty = self.check_expr_with_hint(e, coerce_to);
+                let e_ty = self.check_expr_with_expectation(
+                    e,
+                    ExpectHasType(coerce_to, expected.get_coercion_ctxt()),
+                );
                 let cause = self.misc(e.span);
                 coerce.coerce(self, &cause, e, e_ty);
             }
@@ -1030,16 +1061,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let count = self.to_const(count);
 
         let uty = match expected {
-            ExpectHasType(uty) => match *uty.kind() {
+            ExpectHasType(uty, _) => match *uty.kind() {
                 ty::Array(ty, _) | ty::Slice(ty) => Some(ty),
                 _ => None,
             },
             _ => None,
         };
 
+        let type_ascr_ctxt = expected.get_coercion_ctxt();
         let (element_ty, t) = match uty {
             Some(uty) => {
-                self.check_expr_coercable_to_type(&element, uty, None);
+                self.check_expr_coercable_to_type(&element, uty, None, type_ascr_ctxt);
                 (uty, uty)
             }
             None => {
@@ -1047,7 +1079,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     kind: TypeVariableOriginKind::MiscVariable,
                     span: element.span,
                 });
-                let element_ty = self.check_expr_has_type_or_error(&element, ty, |_| {});
+                let element_ty =
+                    self.check_expr_has_type_or_error(&element, ty, |_| {}, type_ascr_ctxt);
                 (element_ty, ty)
             }
         };
@@ -1073,13 +1106,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         });
 
+        let type_ascr_ctxt = expected.get_coercion_ctxt();
         let elt_ts_iter = elts.iter().enumerate().map(|(i, e)| match flds {
             Some(ref fs) if i < fs.len() => {
                 let ety = fs[i].expect_ty();
-                self.check_expr_coercable_to_type(&e, ety, None);
+                self.check_expr_coercable_to_type(&e, ety, None, type_ascr_ctxt);
                 ety
             }
-            _ => self.check_expr_with_expectation(&e, NoExpectation),
+            _ => self.check_expr_with_expectation(&e, NoExpectation(type_ascr_ctxt)),
         });
         let tuple = self.tcx.mk_tup(elt_ts_iter);
         if tuple.references_error() {
@@ -1129,7 +1163,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // the fields with the base_expr. This could cause us to hit errors later
             // when certain fields are assumed to exist that in fact do not.
             if !error_happened {
-                self.check_expr_has_type_or_error(base_expr, adt_ty, |_| {});
+                self.check_expr_has_type_or_error(
+                    base_expr,
+                    adt_ty,
+                    |_| {},
+                    TypeAscriptionCtxt::Normal,
+                );
                 match adt_ty.kind() {
                     ty::Adt(adt, substs) if adt.is_struct() => {
                         let fru_field_types = adt
@@ -1229,7 +1268,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             // Make sure to give a type to the field even if there's
             // an error, so we can continue type-checking.
-            self.check_expr_coercable_to_type(&field.expr, field_type, None);
+            self.check_expr_coercable_to_type(
+                &field.expr,
+                field_type,
+                None,
+                TypeAscriptionCtxt::Coercion,
+            );
         }
 
         // Make sure the programmer specified correct number of fields.
@@ -1875,7 +1919,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Ty<'tcx> {
         match self.resume_yield_tys {
             Some((resume_ty, yield_ty)) => {
-                self.check_expr_coercable_to_type(&value, yield_ty, None);
+                self.check_expr_coercable_to_type(
+                    &value,
+                    yield_ty,
+                    None,
+                    TypeAscriptionCtxt::Normal,
+                );
 
                 resume_ty
             }
@@ -1884,7 +1933,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // information. Hence, we check the source of the yield expression here and check its
             // value's type against `()` (this check should always hold).
             None if src.is_await() => {
-                self.check_expr_coercable_to_type(&value, self.tcx.mk_unit(), None);
+                self.check_expr_coercable_to_type(
+                    &value,
+                    self.tcx.mk_unit(),
+                    None,
+                    TypeAscriptionCtxt::Normal,
+                );
                 self.tcx.mk_unit()
             }
             _ => {

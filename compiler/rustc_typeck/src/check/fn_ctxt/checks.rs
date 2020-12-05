@@ -3,6 +3,7 @@ use crate::check::coercion::CoerceMany;
 use crate::check::method::MethodCallee;
 use crate::check::Expectation::*;
 use crate::check::TupleArgumentsFlag::*;
+use crate::check::TypeAscriptionCtxt;
 use crate::check::{
     potentially_plural_count, struct_span_err, BreakableCtxt, Diverges, Expectation, FnCtxt,
     LocalTy, Needs, TupleArgumentsFlag,
@@ -339,7 +340,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 // The special-cased logic below has three functions:
                 // 1. Provide as good of an expected type as possible.
-                let expected = Expectation::rvalue_hint(self, expected_arg_tys[i]);
+                let expected = Expectation::rvalue_hint(
+                    self,
+                    expected_arg_tys[i],
+                    TypeAscriptionCtxt::Coercion,
+                );
 
                 let checked_ty = self.check_expr_with_expectation(&arg, expected);
 
@@ -509,7 +514,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.demand_eqtype(init.span, local_ty, init_ty);
             init_ty
         } else {
-            self.check_expr_coercable_to_type(init, local_ty, None)
+            self.check_expr_coercable_to_type(init, local_ty, None, TypeAscriptionCtxt::Coercion)
         }
     }
 
@@ -559,9 +564,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             hir::StmtKind::Item(_) => {}
             hir::StmtKind::Expr(ref expr) => {
                 // Check with expected type of `()`.
-                self.check_expr_has_type_or_error(&expr, self.tcx.mk_unit(), |err| {
-                    self.suggest_semicolon_at_end(expr.span, err);
-                });
+                self.check_expr_has_type_or_error(
+                    &expr,
+                    self.tcx.mk_unit(),
+                    |err| {
+                        self.suggest_semicolon_at_end(expr.span, err);
+                    },
+                    TypeAscriptionCtxt::Normal,
+                );
             }
             hir::StmtKind::Semi(ref expr) => {
                 self.check_expr(&expr);
@@ -575,7 +585,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub fn check_block_no_value(&self, blk: &'tcx hir::Block<'tcx>) {
         let unit = self.tcx.mk_unit();
-        let ty = self.check_block_with_expected(blk, ExpectHasType(unit));
+        let ty =
+            self.check_block_with_expected(blk, ExpectHasType(unit, TypeAscriptionCtxt::Normal));
 
         // if the block produces a `!` value, that can always be
         // (effectively) coerced to unit.
