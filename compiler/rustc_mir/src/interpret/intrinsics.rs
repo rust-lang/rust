@@ -126,7 +126,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             None => match intrinsic_name {
                 sym::transmute => throw_ub_format!("transmuting to uninhabited type"),
                 sym::unreachable => throw_ub!(Unreachable),
-                sym::abort => M::abort(self)?,
+                sym::abort => M::abort(self, "aborted execution".to_owned())?,
                 // Unsupported diverging intrinsic.
                 _ => return Ok(false),
             },
@@ -412,7 +412,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let layout = self.layout_of(ty)?;
 
                 if layout.abi.is_uninhabited() {
-                    throw_ub_format!("attempted to instantiate uninhabited type `{}`", ty);
+                    M::abort(self, format!("attempted to instantiate uninhabited type `{}`", ty))?;
                 }
             }
             sym::simd_insert => {
