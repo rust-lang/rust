@@ -1,22 +1,22 @@
 #![feature(allocator_api, slice_ptr_get)]
 
 use std::ptr::NonNull;
-use std::alloc::{Global, AllocRef, Layout, System};
+use std::alloc::{Global, Allocator, Layout, System};
 use std::slice;
 
-fn check_alloc<T: AllocRef>(allocator: T) { unsafe {
+fn check_alloc<T: Allocator>(allocator: T) { unsafe {
     for &align in &[4, 8, 16, 32] {
         let layout_20 = Layout::from_size_align(20, align).unwrap();
         let layout_40 = Layout::from_size_align(40, 4*align).unwrap();
         let layout_10 = Layout::from_size_align(10, align/2).unwrap();
 
         for _ in 0..32 {
-            let a = allocator.alloc(layout_20).unwrap().as_non_null_ptr();
+            let a = allocator.allocate(layout_20).unwrap().as_non_null_ptr();
             assert_eq!(a.as_ptr() as usize % layout_20.align(), 0, "pointer is incorrectly aligned");
-            allocator.dealloc(a, layout_20);
+            allocator.deallocate(a, layout_20);
         }
 
-        let p1 = allocator.alloc_zeroed(layout_20).unwrap().as_non_null_ptr();
+        let p1 = allocator.allocate_zeroed(layout_20).unwrap().as_non_null_ptr();
         assert_eq!(p1.as_ptr() as usize % layout_20.align(), 0, "pointer is incorrectly aligned");
         assert_eq!(*p1.as_ptr(), 0);
 
@@ -38,17 +38,17 @@ fn check_alloc<T: AllocRef>(allocator: T) { unsafe {
         let slice = slice::from_raw_parts(p4.as_ptr(), 10);
         assert_eq!(&slice, &[0_u8; 10]);
 
-        allocator.dealloc(p4, layout_10);
+        allocator.deallocate(p4, layout_10);
     }
 } }
 
-fn check_align_requests<T: AllocRef>(allocator: T) {
+fn check_align_requests<T: Allocator>(allocator: T) {
     for &size in &[2, 8, 64] { // size less than and bigger than alignment
         for &align in &[4, 8, 16, 32] { // Be sure to cover less than and bigger than `MIN_ALIGN` for all architectures
             let iterations = 32;
             unsafe {
                 let pointers: Vec<_> = (0..iterations).map(|_| {
-                    allocator.alloc(Layout::from_size_align(size, align).unwrap()).unwrap().as_non_null_ptr()
+                    allocator.allocate(Layout::from_size_align(size, align).unwrap()).unwrap().as_non_null_ptr()
                 }).collect();
                 for &ptr in &pointers {
                     assert_eq!((ptr.as_ptr() as usize) % align, 0,
@@ -57,7 +57,7 @@ fn check_align_requests<T: AllocRef>(allocator: T) {
 
                 // Clean up.
                 for &ptr in &pointers {
-                    allocator.dealloc(ptr, Layout::from_size_align(size, align).unwrap())
+                    allocator.deallocate(ptr, Layout::from_size_align(size, align).unwrap())
                 }
             }
         }
@@ -69,7 +69,7 @@ fn global_to_box() {
     let l = Layout::new::<T>();
     // allocate manually with global allocator, then turn into Box and free there
     unsafe {
-        let ptr = Global.alloc(l).unwrap().as_non_null_ptr().as_ptr() as *mut T;
+        let ptr = Global.allocate(l).unwrap().as_non_null_ptr().as_ptr() as *mut T;
         let b = Box::from_raw(ptr);
         drop(b);
     }
@@ -82,7 +82,7 @@ fn box_to_global() {
     unsafe {
         let b = Box::new(T::default());
         let ptr = Box::into_raw(b);
-        Global.dealloc(NonNull::new(ptr as *mut u8).unwrap(), l);
+        Global.deallocate(NonNull::new(ptr as *mut u8).unwrap(), l);
     }
 }
 
