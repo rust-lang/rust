@@ -890,6 +890,34 @@ fn compute() -> Option<i32> { None }
 }
 
 #[test]
+fn doctest_replace_match_with_if_let() {
+    check_doc_test(
+        "replace_match_with_if_let",
+        r#####"
+enum Action { Move { distance: u32 }, Stop }
+
+fn handle(action: Action) {
+    <|>match action {
+        Action::Move { distance } => foo(distance),
+        _ => bar(),
+    }
+}
+"#####,
+        r#####"
+enum Action { Move { distance: u32 }, Stop }
+
+fn handle(action: Action) {
+    if let Action::Move { distance } = action {
+        foo(distance)
+    } else {
+        bar()
+    }
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_replace_qualified_name_with_use() {
     check_doc_test(
         "replace_qualified_name_with_use",

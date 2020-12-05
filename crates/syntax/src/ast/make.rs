@@ -171,8 +171,17 @@ pub fn expr_return() -> ast::Expr {
 pub fn expr_match(expr: ast::Expr, match_arm_list: ast::MatchArmList) -> ast::Expr {
     expr_from_text(&format!("match {} {}", expr, match_arm_list))
 }
-pub fn expr_if(condition: ast::Condition, then_branch: ast::BlockExpr) -> ast::Expr {
-    expr_from_text(&format!("if {} {}", condition, then_branch))
+pub fn expr_if(
+    condition: ast::Condition,
+    then_branch: ast::BlockExpr,
+    else_branch: Option<ast::ElseBranch>,
+) -> ast::Expr {
+    let else_branch = match else_branch {
+        Some(ast::ElseBranch::Block(block)) => format!("else {}", block),
+        Some(ast::ElseBranch::IfExpr(if_expr)) => format!("else {}", if_expr),
+        None => String::new(),
+    };
+    expr_from_text(&format!("if {} {} {}", condition, then_branch, else_branch))
 }
 pub fn expr_prefix(op: SyntaxKind, expr: ast::Expr) -> ast::Expr {
     let token = token(op);

@@ -42,6 +42,7 @@ pub(crate) fn move_guard_to_arm_body(acc: &mut Assists, ctx: &AssistContext) -> 
     let if_expr = make::expr_if(
         make::condition(guard_condition, None),
         make::block_expr(None, Some(arm_expr.clone())),
+        None,
     )
     .indent(arm_expr.indent_level());
 
