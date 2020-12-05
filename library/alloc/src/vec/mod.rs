@@ -93,6 +93,7 @@ mod cow;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::into_iter::IntoIter;
+pub (crate) use self::into_iter::AsIntoIter;
 
 mod into_iter;
 
@@ -3017,20 +3018,5 @@ impl<T, A: Allocator, const N: usize> TryFrom<Vec<T, A>> for [T; N] {
         // tells the `Vec` not to also drop them.
         let array = unsafe { ptr::read(vec.as_ptr() as *const [T; N]) };
         Ok(array)
-    }
-}
-
-// internal helper trait for in-place iteration specialization.
-#[rustc_specialization_trait]
-pub(crate) trait AsIntoIter {
-    type Item;
-    fn as_into_iter(&mut self) -> &mut IntoIter<Self::Item>;
-}
-
-impl<T> AsIntoIter for IntoIter<T> {
-    type Item = T;
-
-    fn as_into_iter(&mut self) -> &mut IntoIter<Self::Item> {
-        self
     }
 }

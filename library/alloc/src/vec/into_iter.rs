@@ -268,3 +268,18 @@ unsafe impl<T, A: Allocator> SourceIter for IntoIter<T, A> {
         self
     }
 }
+
+// internal helper trait for in-place iteration specialization.
+#[rustc_specialization_trait]
+pub(crate) trait AsIntoIter {
+    type Item;
+    fn as_into_iter(&mut self) -> &mut IntoIter<Self::Item>;
+}
+
+impl<T> AsIntoIter for IntoIter<T> {
+    type Item = T;
+
+    fn as_into_iter(&mut self) -> &mut IntoIter<Self::Item> {
+        self
+    }
+}
