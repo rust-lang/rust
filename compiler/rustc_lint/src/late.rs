@@ -16,7 +16,6 @@
 
 use crate::{passes::LateLintPassObject, LateContext, LateLintPass, LintStore};
 use rustc_ast as ast;
-use rustc_ast::walk_list;
 use rustc_data_structures::sync::{join, par_iter, ParallelIterator};
 use rustc_hir as hir;
 use rustc_hir::def_id::{LocalDefId, LOCAL_CRATE};
@@ -333,8 +332,10 @@ impl<'tcx, T: LateLintPass<'tcx>> hir_visit::Visitor<'tcx> for LateContextAndPas
         hir_visit::walk_path(self, p);
     }
 
-    fn visit_attribute(&mut self, attr: &'tcx ast::Attribute) {
-        lint_callback!(self, check_attribute, attr);
+    fn visit_attribute(&mut self, hir_id: hir::HirId, attr: &'tcx ast::Attribute) {
+        self.with_lint_attrs(hir_id, |cx| {
+            lint_callback!(cx, check_attribute, attr);
+        })
     }
 }
 
@@ -395,7 +396,9 @@ fn late_lint_mod_pass<'tcx, T: LateLintPass<'tcx>>(
 
     // Visit the crate attributes
     if hir_id == hir::CRATE_HIR_ID {
-        walk_list!(cx, visit_attribute, tcx.hir().attrs(hir::CRATE_HIR_ID));
+        for attr in tcx.hir().attrs(hir::CRATE_HIR_ID).iter() {
+            cx.visit_attribute(hir_id, attr)
+        }
     }
 }
 

@@ -458,7 +458,7 @@ pub trait Visitor<'v>: Sized {
     fn visit_assoc_type_binding(&mut self, type_binding: &'v TypeBinding<'v>) {
         walk_assoc_type_binding(self, type_binding)
     }
-    fn visit_attribute(&mut self, _attr: &'v Attribute) {}
+    fn visit_attribute(&mut self, _id: HirId, _attr: &'v Attribute) {}
     fn visit_macro_def(&mut self, macro_def: &'v MacroDef<'v>) {
         walk_macro_def(self, macro_def)
     }
@@ -477,8 +477,10 @@ pub trait Visitor<'v>: Sized {
 pub fn walk_crate<'v, V: Visitor<'v>>(visitor: &mut V, krate: &'v Crate<'v>) {
     visitor.visit_mod(&krate.item.module, krate.item.span, CRATE_HIR_ID);
     walk_list!(visitor, visit_macro_def, krate.exported_macros);
-    for attr in krate.attrs.iter().flat_map(|l| *l) {
-        visitor.visit_attribute(attr)
+    for (id, attrs) in krate.attrs.iter_enumerated() {
+        for a in *attrs {
+            visitor.visit_attribute(id, a)
+        }
     }
 }
 
