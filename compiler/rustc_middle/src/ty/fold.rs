@@ -581,7 +581,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let mut const_map = FxHashMap::default();
 
         if !value.has_escaping_bound_vars() {
-            (value.clone(), region_map)
+            (value, region_map)
         } else {
             let mut real_fld_r = |br| *region_map.entry(br).or_insert_with(|| fld_r(br));
 

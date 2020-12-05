@@ -49,7 +49,7 @@ impl<'cx, 'tcx> AtExt<'tcx> for At<'cx, 'tcx> {
             self.param_env,
         );
         if !value.has_projections() {
-            return Ok(Normalized { value: value.clone(), obligations: vec![] });
+            return Ok(Normalized { value, obligations: vec![] });
         }
 
         let mut normalizer = QueryNormalizer {
