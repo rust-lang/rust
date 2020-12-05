@@ -257,7 +257,7 @@ impl<'a> Parser<'a> {
                     format!("`{:?}` is not a keyword", prev_token_to_string),
                     (
                         self.prev_token.span,
-                        format!("help: try `{:?}` instead", prev_token_to_string.to_lowercase()),
+                        format!("try `{:?}` instead", prev_token_to_string.to_lowercase()),
                     ),
                 )
             } else {
@@ -287,12 +287,18 @@ impl<'a> Parser<'a> {
         };
         self.last_unexpected_token_span = Some(self.token.span);
         let mut err = self.struct_span_err(self.token.span, &msg_exp);
+
+        if prev_token_seems_reserved_token {
+            err = self.struct_span_err(self.prev_token.span, &msg_exp);
+        }
+        
         let sp = if self.token == token::Eof {
             // This is EOF; don't want to point at the following char, but rather the last token.
             self.prev_token.span
         } else {
             label_sp
         };
+
         match self.recover_closing_delimiter(
             &expected
                 .iter()
@@ -314,7 +320,10 @@ impl<'a> Parser<'a> {
         }
 
         let sm = self.sess.source_map();
-        if self.prev_token.span == DUMMY_SP {
+        if prev_token_seems_reserved_token {
+            err.span_suggestion(sp, &msg_exp, label_exp.clone(), Applicability::MaybeIncorrect);
+            err.span_label(self.prev_token.span, label_exp);
+        } else if self.prev_token.span == DUMMY_SP {
             // Account for macro context where the previous span might not be
             // available to avoid incorrect output (#54841).
             err.span_label(self.token.span, label_exp);
@@ -664,10 +673,6 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, ()> {
         if let ExprKind::Binary(binop, _, _) = &expr.kind {
             if let ast::BinOpKind::Lt = binop.node {
-                debug!(
-                    "check_mistyped_turbofish_with_multiple_type_params = {:?} {:?}",
-                    e, self.token
-                );
                 if self.eat(&token::Comma) {
                     let x = self.parse_seq_to_before_end(
                         &token::Gt,
