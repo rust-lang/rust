@@ -113,6 +113,10 @@ use self::set_len_on_drop::SetLenOnDrop;
 
 mod set_len_on_drop;
 
+use self::in_place_drop::InPlaceDrop;
+
+mod in_place_drop;
+
 /// A contiguous growable array type, written `Vec<T>` but pronounced 'vector'.
 ///
 /// # Examples
@@ -2230,28 +2234,6 @@ where
 {
     default fn from_iter(iterator: I) -> Self {
         SpecFromIterNested::from_iter(iterator)
-    }
-}
-
-// A helper struct for in-place iteration that drops the destination slice of iteration,
-// i.e. the head. The source slice (the tail) is dropped by IntoIter.
-struct InPlaceDrop<T> {
-    inner: *mut T,
-    dst: *mut T,
-}
-
-impl<T> InPlaceDrop<T> {
-    fn len(&self) -> usize {
-        unsafe { self.dst.offset_from(self.inner) as usize }
-    }
-}
-
-impl<T> Drop for InPlaceDrop<T> {
-    #[inline]
-    fn drop(&mut self) {
-        unsafe {
-            ptr::drop_in_place(slice::from_raw_parts_mut(self.inner, self.len()));
-        }
     }
 }
 
