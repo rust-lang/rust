@@ -264,7 +264,7 @@ impl TokenType {
             TokenType::Ident => "identifier".to_string(),
             TokenType::Path => "path".to_string(),
             TokenType::Type => "type".to_string(),
-            TokenType::Const => "const".to_string(),
+            TokenType::Const => "a const expression".to_string(),
         }
     }
 }
