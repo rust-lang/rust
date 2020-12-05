@@ -388,13 +388,13 @@ pre.ignore:hover, .information:hover + pre.ignore {
 	color: #39AFD7;
 }
 
-.tooltip .tooltiptext {
+.tooltip::after {
 	background-color: #314559;
 	color: #c5c5c5;
 	border: 1px solid #5c6773;
 }
 
-.tooltip .tooltiptext::after {
+.tooltip::before {
 	border-color: transparent #314559 transparent transparent;
 }
 
