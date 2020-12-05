@@ -554,7 +554,7 @@ impl intravisit::Visitor<'tcx> for FindAllAttrs<'_, 'tcx> {
         intravisit::NestedVisitorMap::All(self.tcx.hir())
     }
 
-    fn visit_attribute(&mut self, attr: &'tcx Attribute) {
+    fn visit_attribute(&mut self, _: hir::HirId, attr: &'tcx Attribute) {
         if self.is_active_attr(attr) {
             self.found_attrs.push(attr);
         }
