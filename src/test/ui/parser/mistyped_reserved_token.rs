@@ -1,5 +1,5 @@
 fn main() {
-    let a = While true {
+    let a = While true { //~ ERROR
         break;
     };
 }
