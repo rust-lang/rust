@@ -391,7 +391,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for LinkReplacer<'a, I> {
                 _,
             ))) => {
                 debug!("saw end of shortcut link to {}", dest);
-                if self.links.iter().find(|&link| *link.href == **dest).is_some() {
+                if self.links.iter().any(|link| *link.href == **dest) {
                     assert!(self.shortcut_link.is_some(), "saw closing link without opening tag");
                     self.shortcut_link = None;
                 }
