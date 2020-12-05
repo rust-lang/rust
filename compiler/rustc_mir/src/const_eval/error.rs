@@ -47,7 +47,7 @@ impl fmt::Display for ConstEvalErrKind {
             Panic { msg, line, col, file } => {
                 write!(f, "the evaluated program panicked at '{}', {}:{}:{}", msg, file, line, col)
             }
-            Abort(ref msg) => write!(f, "{}", msg)
+            Abort(ref msg) => write!(f, "{}", msg),
         }
     }
 }

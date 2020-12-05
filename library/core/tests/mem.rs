@@ -132,7 +132,7 @@ fn test_discriminant_send_sync() {
 
 #[test]
 fn assume_init_good() {
-    const TRUE: bool = {
+    const TRUE: bool = unsafe {
         let mut x = MaybeUninit::<bool>::uninit();
         x.as_mut_ptr().write(true);
         x.assume_init()
@@ -143,7 +143,7 @@ fn assume_init_good() {
 #[test]
 #[should_panic]
 fn assume_init_bad() {
-    const BAD: () = {
+    const BAD: () = unsafe {
         MaybeUninit::<!>::uninit().assume_init();
     };
 }
