@@ -132,18 +132,17 @@ fn test_discriminant_send_sync() {
 
 #[test]
 fn assume_init_good() {
-    const TRUE: bool = unsafe {
-        let mut x = MaybeUninit::<bool>::uninit();
-        x.as_mut_ptr().write(true);
-        x.assume_init()
-    };
+    const TRUE: bool = unsafe { MaybeUninit::<bool>::new(true).assume_init() };
+
     assert!(TRUE);
 }
 
 #[test]
-#[should_panic]
 fn assume_init_bad() {
-    const BAD: () = unsafe {
+    const _BAD: () = unsafe {
         MaybeUninit::<!>::uninit().assume_init();
+        //~^ ERROR the type `!` does not permit being left uninitialized
+        //~| ERROR this code causes undefined behavior when executed
+        //~| ERROR help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
     };
 }
