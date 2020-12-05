@@ -103,6 +103,8 @@ mod is_zero;
 
 mod source_iter_marker;
 
+mod partial_eq;
+
 /// A contiguous growable array type, written `Vec<T>` but pronounced 'vector'.
 ///
 /// # Examples
@@ -2614,45 +2616,6 @@ impl<'a, T: Copy + 'a, A: Allocator + 'a> Extend<&'a T> for Vec<T, A> {
         self.reserve(additional);
     }
 }
-
-macro_rules! __impl_slice_eq1 {
-    ([$($vars:tt)*] $lhs:ty, $rhs:ty $(where $ty:ty: $bound:ident)?, #[$stability:meta]) => {
-        #[$stability]
-        impl<T, U, $($vars)*> PartialEq<$rhs> for $lhs
-        where
-            T: PartialEq<U>,
-            $($ty: $bound)?
-        {
-            #[inline]
-            fn eq(&self, other: &$rhs) -> bool { self[..] == other[..] }
-            #[inline]
-            fn ne(&self, other: &$rhs) -> bool { self[..] != other[..] }
-        }
-    }
-}
-
-__impl_slice_eq1! { [A: Allocator] Vec<T, A>, Vec<U, A>, #[stable(feature = "rust1", since = "1.0.0")] }
-__impl_slice_eq1! { [A: Allocator] Vec<T, A>, &[U], #[stable(feature = "rust1", since = "1.0.0")] }
-__impl_slice_eq1! { [A: Allocator] Vec<T, A>, &mut [U], #[stable(feature = "rust1", since = "1.0.0")] }
-__impl_slice_eq1! { [A: Allocator] &[T], Vec<U, A>, #[stable(feature = "partialeq_vec_for_ref_slice", since = "1.46.0")] }
-__impl_slice_eq1! { [A: Allocator] &mut [T], Vec<U, A>, #[stable(feature = "partialeq_vec_for_ref_slice", since = "1.46.0")] }
-__impl_slice_eq1! { [A: Allocator] Vec<T, A>, [U], #[stable(feature = "partialeq_vec_for_slice", since = "1.48.0")]  }
-__impl_slice_eq1! { [A: Allocator] [T], Vec<U, A>, #[stable(feature = "partialeq_vec_for_slice", since = "1.48.0")]  }
-__impl_slice_eq1! { [A: Allocator] Cow<'_, [T]>, Vec<U, A> where T: Clone, #[stable(feature = "rust1", since = "1.0.0")] }
-__impl_slice_eq1! { [] Cow<'_, [T]>, &[U] where T: Clone, #[stable(feature = "rust1", since = "1.0.0")] }
-__impl_slice_eq1! { [] Cow<'_, [T]>, &mut [U] where T: Clone, #[stable(feature = "rust1", since = "1.0.0")] }
-__impl_slice_eq1! { [A: Allocator, const N: usize] Vec<T, A>, [U; N], #[stable(feature = "rust1", since = "1.0.0")] }
-__impl_slice_eq1! { [A: Allocator, const N: usize] Vec<T, A>, &[U; N], #[stable(feature = "rust1", since = "1.0.0")] }
-
-// NOTE: some less important impls are omitted to reduce code bloat
-// FIXME(Centril): Reconsider this?
-//__impl_slice_eq1! { [const N: usize] Vec<A>, &mut [B; N], }
-//__impl_slice_eq1! { [const N: usize] [A; N], Vec<B>, }
-//__impl_slice_eq1! { [const N: usize] &[A; N], Vec<B>, }
-//__impl_slice_eq1! { [const N: usize] &mut [A; N], Vec<B>, }
-//__impl_slice_eq1! { [const N: usize] Cow<'a, [A]>, [B; N], }
-//__impl_slice_eq1! { [const N: usize] Cow<'a, [A]>, &[B; N], }
-//__impl_slice_eq1! { [const N: usize] Cow<'a, [A]>, &mut [B; N], }
 
 /// Implements comparison of vectors, [lexicographically](core::cmp::Ord#lexicographical-comparison).
 #[stable(feature = "rust1", since = "1.0.0")]
