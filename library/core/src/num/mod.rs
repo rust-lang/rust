@@ -824,34 +824,39 @@ fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, Par
         radix
     );
 
-    if src.is_empty() {
-        return Err(PIE { kind: Empty });
-    }
-
     let is_signed_ty = T::from_u32(0) > T::min_value();
 
     // all valid digits are ascii, so we will just iterate over the utf8 bytes
     // and cast them to chars. .to_digit() will safely return None for anything
     // other than a valid ascii digit for the given radix, including the first-byte
     // of multi-byte sequences
-    let src = src.as_bytes();
+    let mut src = src.as_bytes().iter().enumerate().peekable();
 
-    let (is_positive, digits) = match src[0] {
-        b'+' | b'-' if src[1..].is_empty() => {
-            return Err(PIE { kind: InvalidDigit });
+    let first_digit = src.peek().ok_or(PIE { kind: Empty })?.1;
+
+    let (is_positive, digits) = match first_digit {
+        b'+' | b'-' => {
+            src.next();
+            if src.peek().is_none() {
+                return Err(PIE { kind: InvalidDigit(0) });
+            } else {
+                match first_digit {
+                    b'+' => (true, src),
+                    b'-' if is_signed_ty => (false, src),
+                    _ => return Err(PIE { kind: InvalidDigit(0) }),
+                }
+            }
         }
-        b'+' => (true, &src[1..]),
-        b'-' if is_signed_ty => (false, &src[1..]),
         _ => (true, src),
     };
 
     let mut result = T::from_u32(0);
     if is_positive {
         // The number is positive
-        for &c in digits {
+        for (index, &c) in digits {
             let x = match (c as char).to_digit(radix) {
                 Some(x) => x,
-                None => return Err(PIE { kind: InvalidDigit }),
+                None => return Err(PIE { kind: InvalidDigit(index) }),
             };
             result = match result.checked_mul(radix) {
                 Some(result) => result,
@@ -864,10 +869,10 @@ fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, Par
         }
     } else {
         // The number is negative
-        for &c in digits {
+        for (index, &c) in digits {
             let x = match (c as char).to_digit(radix) {
                 Some(x) => x,
-                None => return Err(PIE { kind: InvalidDigit }),
+                None => return Err(PIE { kind: InvalidDigit(index) }),
             };
             result = match result.checked_mul(radix) {
                 Some(result) => result,

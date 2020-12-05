@@ -134,7 +134,7 @@ fn test_from_str() {
     assert_eq!("0".parse::<NonZeroU8>().err().map(|e| e.kind().clone()), Some(IntErrorKind::Zero));
     assert_eq!(
         "-1".parse::<NonZeroU8>().err().map(|e| e.kind().clone()),
-        Some(IntErrorKind::InvalidDigit)
+        Some(IntErrorKind::InvalidDigit(0))
     );
     assert_eq!(
         "-129".parse::<NonZeroI8>().err().map(|e| e.kind().clone()),

@@ -124,14 +124,14 @@ fn test_leading_plus() {
 
 #[test]
 fn test_invalid() {
-    test_parse::<i8>("--129", Err(IntErrorKind::InvalidDigit));
-    test_parse::<i8>("++129", Err(IntErrorKind::InvalidDigit));
-    test_parse::<u8>("Съешь", Err(IntErrorKind::InvalidDigit));
-    test_parse::<u8>("123Hello", Err(IntErrorKind::InvalidDigit));
-    test_parse::<i8>("--", Err(IntErrorKind::InvalidDigit));
-    test_parse::<i8>("-", Err(IntErrorKind::InvalidDigit));
-    test_parse::<i8>("+", Err(IntErrorKind::InvalidDigit));
-    test_parse::<u8>("-1", Err(IntErrorKind::InvalidDigit));
+    test_parse::<i8>("--129", Err(IntErrorKind::InvalidDigit(1)));
+    test_parse::<i8>("++129", Err(IntErrorKind::InvalidDigit(1)));
+    test_parse::<u8>("Съешь", Err(IntErrorKind::InvalidDigit(0)));
+    test_parse::<u8>("123Hello", Err(IntErrorKind::InvalidDigit(3)));
+    test_parse::<i8>("--", Err(IntErrorKind::InvalidDigit(1)));
+    test_parse::<i8>("-", Err(IntErrorKind::InvalidDigit(0)));
+    test_parse::<i8>("+", Err(IntErrorKind::InvalidDigit(0)));
+    test_parse::<u8>("-1", Err(IntErrorKind::InvalidDigit(0)));
 }
 
 #[test]

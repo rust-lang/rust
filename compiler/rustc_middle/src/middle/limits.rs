@@ -49,7 +49,7 @@ fn update_limit(
                     let error_str = match e.kind() {
                         IntErrorKind::PosOverflow => "`limit` is too large",
                         IntErrorKind::Empty => "`limit` must be a non-negative integer",
-                        IntErrorKind::InvalidDigit => "not a valid integer",
+                        IntErrorKind::InvalidDigit(_) => "not a valid integer",
                         IntErrorKind::NegOverflow => {
                             bug!("`limit` should never negatively overflow")
                         }
