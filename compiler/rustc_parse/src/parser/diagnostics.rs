@@ -286,7 +286,11 @@ impl<'a> Parser<'a> {
             )
         };
         self.last_unexpected_token_span = Some(self.token.span);
-        let mut err = self.struct_span_err(self.token.span, &msg_exp);
+        let mut err = if !prev_token_seems_reserved_token {
+            self.struct_span_err(self.token.span, &msg_exp)
+        } else {
+            self.struct_span_err(self.token.span, &msg_exp)
+        };
 
         if prev_token_seems_reserved_token {
             err = self.struct_span_err(self.prev_token.span, &msg_exp);
@@ -322,7 +326,6 @@ impl<'a> Parser<'a> {
         let sm = self.sess.source_map();
         if prev_token_seems_reserved_token {
             err.span_suggestion(sp, &msg_exp, label_exp.clone(), Applicability::MaybeIncorrect);
-            err.span_label(self.prev_token.span, label_exp);
         } else if self.prev_token.span == DUMMY_SP {
             // Account for macro context where the previous span might not be
             // available to avoid incorrect output (#54841).
