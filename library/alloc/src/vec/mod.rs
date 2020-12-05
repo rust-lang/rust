@@ -109,6 +109,10 @@ use self::spec_from_elem::SpecFromElem;
 
 mod spec_from_elem;
 
+use self::set_len_on_drop::SetLenOnDrop;
+
+mod set_len_on_drop;
+
 /// A contiguous growable array type, written `Vec<T>` but pronounced 'vector'.
 ///
 /// # Examples
@@ -1908,35 +1912,6 @@ impl<T, A: Allocator> Vec<T, A> {
 
             // len set by scope guard
         }
-    }
-}
-
-// Set the length of the vec when the `SetLenOnDrop` value goes out of scope.
-//
-// The idea is: The length field in SetLenOnDrop is a local variable
-// that the optimizer will see does not alias with any stores through the Vec's data
-// pointer. This is a workaround for alias analysis issue #32155
-struct SetLenOnDrop<'a> {
-    len: &'a mut usize,
-    local_len: usize,
-}
-
-impl<'a> SetLenOnDrop<'a> {
-    #[inline]
-    fn new(len: &'a mut usize) -> Self {
-        SetLenOnDrop { local_len: *len, len }
-    }
-
-    #[inline]
-    fn increment_len(&mut self, increment: usize) {
-        self.local_len += increment;
-    }
-}
-
-impl Drop for SetLenOnDrop<'_> {
-    #[inline]
-    fn drop(&mut self) {
-        *self.len = self.local_len;
     }
 }
 
