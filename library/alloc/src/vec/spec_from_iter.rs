@@ -1,4 +1,3 @@
-use crate::alloc::Global;
 use core::mem::ManuallyDrop;
 use core::ptr::{self};
 use core::slice::{self};
@@ -93,6 +92,6 @@ impl<'a, T: 'a + Clone> SpecFromIter<&'a T, slice::Iter<'a, T>> for Vec<T> {
     // NB see the slice::hack module in slice.rs for more information
     #[cfg(test)]
     fn from_iter(iterator: slice::Iter<'a, T>) -> Self {
-        crate::slice::to_vec(iterator.as_slice(), Global)
+        crate::slice::to_vec(iterator.as_slice(), crate::alloc::Global)
     }
 }
