@@ -2,9 +2,10 @@ use ide_db::{defs::Definition, search::Reference};
 use syntax::{
     algo::find_node_at_range,
     ast::{self, ArgListOwner},
-    AstNode, SyntaxNode, TextRange, T,
+    AstNode, SyntaxKind, SyntaxNode, TextRange, T,
 };
 use test_utils::mark;
+use SyntaxKind::WHITESPACE;
 
 use crate::{
     assist_context::AssistBuilder, utils::next_prev, AssistContext, AssistId, AssistKind, Assists,
@@ -56,7 +57,7 @@ pub(crate) fn remove_unused_param(acc: &mut Assists, ctx: &AssistContext) -> Opt
         "Remove unused parameter",
         param.syntax().text_range(),
         |builder| {
-            builder.delete(range_with_coma(param.syntax()));
+            builder.delete(range_to_remove(param.syntax()));
             for usage in fn_def.usages(&ctx.sema).all() {
                 process_usage(ctx, builder, usage, param_position);
             }
@@ -80,19 +81,34 @@ fn process_usage(
     let arg = call_expr.arg_list()?.args().nth(arg_to_remove)?;
 
     builder.edit_file(usage.file_range.file_id);
-    builder.delete(range_with_coma(arg.syntax()));
+    builder.delete(range_to_remove(arg.syntax()));
 
     Some(())
 }
 
-fn range_with_coma(node: &SyntaxNode) -> TextRange {
-    let up_to = next_prev().find_map(|dir| {
+fn range_to_remove(node: &SyntaxNode) -> TextRange {
+    let up_to_comma = next_prev().find_map(|dir| {
         node.siblings_with_tokens(dir)
             .filter_map(|it| it.into_token())
             .find(|it| it.kind() == T![,])
+            .map(|it| (dir, it))
     });
-    let up_to = up_to.map_or(node.text_range(), |it| it.text_range());
-    node.text_range().cover(up_to)
+    if let Some((dir, token)) = up_to_comma {
+        if node.next_sibling().is_some() {
+            let up_to_space = token
+                .siblings_with_tokens(dir)
+                .skip(1)
+                .take_while(|it| it.kind() == WHITESPACE)
+                .last()
+                .and_then(|it| it.into_token());
+            return node
+                .text_range()
+                .cover(up_to_space.map_or(token.text_range(), |it| it.text_range()));
+        }
+        node.text_range().cover(token.text_range())
+    } else {
+        node.text_range()
+    }
 }
 
 #[cfg(test)]
@@ -114,6 +130,57 @@ fn b() { foo(9, 2,) }
 fn a() { foo(9) }
 fn foo(x: i32) { x; }
 fn b() { foo(9, ) }
+"#,
+        );
+    }
+
+    #[test]
+    fn remove_unused_first_param() {
+        check_assist(
+            remove_unused_param,
+            r#"
+fn foo(<|>x: i32, y: i32) { y; }
+fn a() { foo(1, 2) }
+fn b() { foo(1, 2,) }
+"#,
+            r#"
+fn foo(y: i32) { y; }
+fn a() { foo(2) }
+fn b() { foo(2,) }
+"#,
+        );
+    }
+
+    #[test]
+    fn remove_unused_single_param() {
+        check_assist(
+            remove_unused_param,
+            r#"
+fn foo(<|>x: i32) { 0; }
+fn a() { foo(1) }
+fn b() { foo(1, ) }
+"#,
+            r#"
+fn foo() { 0; }
+fn a() { foo() }
+fn b() { foo( ) }
+"#,
+        );
+    }
+
+    #[test]
+    fn remove_unused_surrounded_by_parms() {
+        check_assist(
+            remove_unused_param,
+            r#"
+fn foo(x: i32, <|>y: i32, z: i32) { x; }
+fn a() { foo(1, 2, 3) }
+fn b() { foo(1, 2, 3,) }
+"#,
+            r#"
+fn foo(x: i32, z: i32) { x; }
+fn a() { foo(1, 3) }
+fn b() { foo(1, 3,) }
 "#,
         );
     }
