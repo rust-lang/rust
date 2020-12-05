@@ -3,6 +3,7 @@ use crate::build::ForGuard::OutsideGuard;
 use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder};
 use crate::thir::*;
 use rustc_hir as hir;
+use rustc_middle::middle::region;
 use rustc_middle::mir::*;
 use rustc_session::lint::builtin::UNSAFE_OP_IN_UNSAFE_FN;
 use rustc_session::lint::Level;
@@ -12,6 +13,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     crate fn ast_block(
         &mut self,
         destination: Place<'tcx>,
+        scope: Option<region::Scope>,
         block: BasicBlock,
         ast_block: &'tcx hir::Block<'tcx>,
         source_info: SourceInfo,
@@ -28,9 +30,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         self.in_opt_scope(opt_destruction_scope.map(|de| (de, source_info)), move |this| {
             this.in_scope((region_scope, source_info), LintLevel::Inherited, move |this| {
                 if targeted_by_break {
-                    this.in_breakable_scope(None, destination, span, |this| {
+                    this.in_breakable_scope(None, destination, scope, span, |this| {
                         Some(this.ast_block_stmts(
                             destination,
+                            scope,
                             block,
                             span,
                             stmts,
@@ -39,7 +42,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         ))
                     })
                 } else {
-                    this.ast_block_stmts(destination, block, span, stmts, expr, safety_mode)
+                    this.ast_block_stmts(destination, scope, block, span, stmts, expr, safety_mode)
                 }
             })
         })
@@ -48,6 +51,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn ast_block_stmts(
         &mut self,
         destination: Place<'tcx>,
+        scope: Option<region::Scope>,
         mut block: BasicBlock,
         span: Span,
         stmts: Vec<StmtRef<'tcx>>,
@@ -182,7 +186,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             };
             this.block_context.push(BlockFrame::TailExpr { tail_result_is_ignored, span });
 
-            unpack!(block = this.into(destination, block, expr));
+            unpack!(block = this.into(destination, scope, block, expr));
             let popped = this.block_context.pop();
 
             assert!(popped.map_or(false, |bf| bf.is_tail_expr()));
