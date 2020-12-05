@@ -135,7 +135,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryWraps {
                     diag.multipart_suggestion(
                         "...and change the returning expressions",
                         suggs,
-                        Applicability::MachineApplicable,
+                        Applicability::MaybeIncorrect,
                     );
                 },
             );
