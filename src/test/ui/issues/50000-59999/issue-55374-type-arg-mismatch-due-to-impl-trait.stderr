@@ -1,5 +1,5 @@
 error[E0049]: method `foo` has 1 type parameter but its trait declaration has 0 type parameters
-  --> $DIR/type-arg-mismatch-due-to-impl-trait.rs:10:22
+  --> $DIR/issue-55374-type-arg-mismatch-due-to-impl-trait.rs:10:22
    |
 LL |     fn foo(&self, t: Self::T);
    |           - expected 0 type parameters
