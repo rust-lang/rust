@@ -87,13 +87,23 @@ const fn attr(
     AttrCompletion { label, lookup, snippet, prefer_inner: false }
 }
 
+/// https://doc.rust-lang.org/reference/attributes.html#built-in-attributes-index
 const ATTRIBUTES: &[AttrCompletion] = &[
     attr("allow(…)", Some("allow"), Some("allow(${0:lint})")),
+    attr("automatically_derived", None, None),
     attr("cfg_attr(…)", Some("cfg_attr"), Some("cfg_attr(${1:predicate}, ${0:attr})")),
     attr("cfg(…)", Some("cfg"), Some("cfg(${0:predicate})")),
+    attr("cold", None, None),
+    attr(r#"crate_name = """#, Some("crate_name"), Some(r#"crate_name = "${0:crate_name}""#))
+        .prefer_inner(),
     attr("deny(…)", Some("deny"), Some("deny(${0:lint})")),
     attr(r#"deprecated = "…""#, Some("deprecated"), Some(r#"deprecated = "${0:reason}""#)),
     attr("derive(…)", Some("derive"), Some(r#"derive(${0:Debug})"#)),
+    attr(
+        r#"export_name = "…""#,
+        Some("export_name"),
+        Some(r#"export_name = "${0:exported_symbol_name}""#),
+    ),
     attr(r#"doc = "…""#, Some("doc"), Some(r#"doc = "${0:docs}""#)),
     attr("feature(…)", Some("feature"), Some("feature(${0:flag})")).prefer_inner(),
     attr("forbid(…)", Some("forbid"), Some("forbid(${0:lint})")),
@@ -101,16 +111,24 @@ const ATTRIBUTES: &[AttrCompletion] = &[
     attr("global_allocator", None, None).prefer_inner(),
     attr(r#"ignore = "…""#, Some("ignore"), Some(r#"ignore = "${0:reason}""#)),
     attr("inline(…)", Some("inline"), Some("inline(${0:lint})")),
-    attr(r#"link_name = "…""#, Some("link_name"), Some(r#"link_name = "${0:symbol_name}""#)),
     attr("link", None, None),
+    attr(r#"link_name = "…""#, Some("link_name"), Some(r#"link_name = "${0:symbol_name}""#)),
+    attr(
+        r#"link_section = "…""#,
+        Some("link_section"),
+        Some(r#"link_section = "${0:section_name}""#),
+    ),
     attr("macro_export", None, None),
     attr("macro_use", None, None),
     attr(r#"must_use = "…""#, Some("must_use"), Some(r#"must_use = "${0:reason}""#)),
+    attr("no_link", None, None).prefer_inner(),
+    attr("no_implicit_prelude", None, None).prefer_inner(),
+    attr("no_main", None, None).prefer_inner(),
     attr("no_mangle", None, None),
     attr("no_std", None, None).prefer_inner(),
     attr("non_exhaustive", None, None),
     attr("panic_handler", None, None).prefer_inner(),
-    attr("path = \"…\"", Some("path"), Some("path =\"${0:path}\"")),
+    attr(r#"path = "…""#, Some("path"), Some(r#"path ="${0:path}""#)),
     attr("proc_macro", None, None),
     attr("proc_macro_attribute", None, None),
     attr("proc_macro_derive(…)", Some("proc_macro_derive"), Some("proc_macro_derive(${0:Trait})")),
@@ -125,9 +143,12 @@ const ATTRIBUTES: &[AttrCompletion] = &[
     attr(
         r#"target_feature = "…""#,
         Some("target_feature"),
-        Some("target_feature = \"${0:feature}\""),
+        Some(r#"target_feature = "${0:feature}""#),
     ),
     attr("test", None, None),
+    attr("track_caller", None, None),
+    attr("type_length_limit = …", Some("type_length_limit"), Some("type_length_limit = ${0:128}"))
+        .prefer_inner(),
     attr("used", None, None),
     attr("warn(…)", Some("warn"), Some("warn(${0:lint})")),
     attr(
@@ -449,17 +470,21 @@ struct Test {}
             r#"#[<|>]"#,
             expect![[r#"
                 at allow(…)
+                at automatically_derived
                 at cfg(…)
                 at cfg_attr(…)
+                at cold
                 at deny(…)
                 at deprecated = "…"
                 at derive(…)
                 at doc = "…"
+                at export_name = "…"
                 at forbid(…)
                 at ignore = "…"
                 at inline(…)
                 at link
                 at link_name = "…"
+                at link_section = "…"
                 at macro_export
                 at macro_use
                 at must_use = "…"
@@ -473,6 +498,7 @@ struct Test {}
                 at should_panic(…)
                 at target_feature = "…"
                 at test
+                at track_caller
                 at used
                 at warn(…)
             "#]],
@@ -490,12 +516,16 @@ struct Test {}
             r"#![<|>]",
             expect![[r#"
                 at allow(…)
+                at automatically_derived
                 at cfg(…)
                 at cfg_attr(…)
+                at cold
+                at crate_name = ""
                 at deny(…)
                 at deprecated = "…"
                 at derive(…)
                 at doc = "…"
+                at export_name = "…"
                 at feature(…)
                 at forbid(…)
                 at global_allocator
@@ -503,9 +533,13 @@ struct Test {}
                 at inline(…)
                 at link
                 at link_name = "…"
+                at link_section = "…"
                 at macro_export
                 at macro_use
                 at must_use = "…"
+                at no_implicit_prelude
+                at no_link
+                at no_main
                 at no_mangle
                 at no_std
                 at non_exhaustive
@@ -519,6 +553,8 @@ struct Test {}
                 at should_panic(…)
                 at target_feature = "…"
                 at test
+                at track_caller
+                at type_length_limit = …
                 at used
                 at warn(…)
                 at windows_subsystem = "…"
