@@ -1,0 +1,73 @@
+// run-rustfix
+
+#![warn(clippy::all)]
+#![warn(clippy::redundant_pattern_matching)]
+#![allow(unused_must_use, clippy::needless_bool, clippy::match_like_matches_macro)]
+
+use std::net::{
+    IpAddr::{self, V4, V6},
+    Ipv4Addr, Ipv6Addr,
+};
+
+fn main() {
+    let ipaddr: IpAddr = V4(Ipv4Addr::LOCALHOST);
+    if ipaddr.is_ipv4() {}
+
+    if V4(Ipv4Addr::LOCALHOST).is_ipv4() {}
+
+    if V6(Ipv6Addr::LOCALHOST).is_ipv6() {}
+
+    while V4(Ipv4Addr::LOCALHOST).is_ipv4() {}
+
+    while V6(Ipv6Addr::LOCALHOST).is_ipv6() {}
+
+    if V4(Ipv4Addr::LOCALHOST).is_ipv4() {}
+
+    if V6(Ipv6Addr::LOCALHOST).is_ipv6() {}
+
+    if let V4(ipaddr) = V4(Ipv4Addr::LOCALHOST) {
+        println!("{}", ipaddr);
+    }
+
+    V4(Ipv4Addr::LOCALHOST).is_ipv4();
+
+    V4(Ipv4Addr::LOCALHOST).is_ipv6();
+
+    V6(Ipv6Addr::LOCALHOST).is_ipv6();
+
+    V6(Ipv6Addr::LOCALHOST).is_ipv4();
+
+    let _ = if V4(Ipv4Addr::LOCALHOST).is_ipv4() {
+        true
+    } else {
+        false
+    };
+
+    ipaddr_const();
+
+    let _ = if gen_ipaddr().is_ipv4() {
+        1
+    } else if gen_ipaddr().is_ipv6() {
+        2
+    } else {
+        3
+    };
+}
+
+fn gen_ipaddr() -> IpAddr {
+    V4(Ipv4Addr::LOCALHOST)
+}
+
+const fn ipaddr_const() {
+    if V4(Ipv4Addr::LOCALHOST).is_ipv4() {}
+
+    if V6(Ipv6Addr::LOCALHOST).is_ipv6() {}
+
+    while V4(Ipv4Addr::LOCALHOST).is_ipv4() {}
+
+    while V6(Ipv6Addr::LOCALHOST).is_ipv6() {}
+
+    V4(Ipv4Addr::LOCALHOST).is_ipv4();
+
+    V6(Ipv6Addr::LOCALHOST).is_ipv6();
+}

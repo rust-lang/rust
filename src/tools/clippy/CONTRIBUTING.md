@@ -14,11 +14,16 @@ All contributors are expected to follow the [Rust Code of Conduct].
 
 - [Contributing to Clippy](#contributing-to-clippy)
   - [Getting started](#getting-started)
+    - [High level approach](#high-level-approach)
     - [Finding something to fix/improve](#finding-something-to-fiximprove)
   - [Writing code](#writing-code)
   - [Getting code-completion for rustc internals to work](#getting-code-completion-for-rustc-internals-to-work)
   - [How Clippy works](#how-clippy-works)
   - [Fixing build failures caused by Rust](#fixing-build-failures-caused-by-rust)
+    - [Patching git-subtree to work with big repos](#patching-git-subtree-to-work-with-big-repos)
+    - [Performing the sync](#performing-the-sync)
+    - [Syncing back changes in Clippy to [`rust-lang/rust`]](#syncing-back-changes-in-clippy-to-rust-langrust)
+    - [Defining remotes](#defining-remotes)
   - [Issue and PR triage](#issue-and-pr-triage)
   - [Bors and Homu](#bors-and-homu)
   - [Contributions](#contributions)
@@ -320,8 +325,8 @@ commands [here][homu_instructions].
 [l-crash]: https://github.com/rust-lang/rust-clippy/labels/L-crash
 [l-bug]: https://github.com/rust-lang/rust-clippy/labels/L-bug
 [homu]: https://github.com/rust-lang/homu
-[homu_instructions]: https://buildbot2.rust-lang.org/homu/
-[homu_queue]: https://buildbot2.rust-lang.org/homu/queue/clippy
+[homu_instructions]: https://bors.rust-lang.org/
+[homu_queue]: https://bors.rust-lang.org/queue/clippy
 
 ## Contributions
 
