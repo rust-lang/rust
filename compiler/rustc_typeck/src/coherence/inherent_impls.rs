@@ -403,6 +403,32 @@ impl InherentCollect<'tcx> {
                 // OK
             }
             _ => {
+                let to_implement = if assoc_items.len() == 0 {
+                    String::new()
+                } else {
+                    let plural = assoc_items.len() > 1;
+                    let assoc_items_kind = {
+                        let item_types = assoc_items.iter().map(|x| x.kind);
+                        if item_types.clone().all(|x| x == hir::AssocItemKind::Const) {
+                            "constant"
+                        } else if item_types
+                            .clone()
+                            .all(|x| matches! {x, hir::AssocItemKind::Fn{ .. } })
+                        {
+                            "method"
+                        } else {
+                            "associated item"
+                        }
+                    };
+
+                    format!(
+                        " to implement {} {}{}",
+                        if plural { "these" } else { "this" },
+                        assoc_items_kind,
+                        if plural { "s" } else { "" }
+                    )
+                };
+
                 struct_span_err!(
                     self.tcx.sess,
                     span,
@@ -412,34 +438,7 @@ impl InherentCollect<'tcx> {
                     lang,
                     ty
                 )
-                .span_help(
-                    span,
-                    &format!("consider using a trait{}", {
-                        if assoc_items.len() == 0 {
-                            String::new()
-                        } else {
-                            let plural = assoc_items.len() > 1;
-                            format!(
-                                " to implement {} {}{}",
-                                if plural { "these" } else { "this" },
-                                {
-                                    let item_types = assoc_items.iter().map(|x| x.kind);
-                                    if item_types.clone().all(|x| x == hir::AssocItemKind::Const) {
-                                        "constant"
-                                    } else if item_types
-                                        .clone()
-                                        .all(|x| matches! {x, hir::AssocItemKind::Fn{ .. } })
-                                    {
-                                        "method"
-                                    } else {
-                                        "associated item"
-                                    }
-                                },
-                                if plural { "s" } else { "" }
-                            )
-                        }
-                    }),
-                )
+                .help(&format!("consider using a trait{}", to_implement))
                 .emit();
             }
         }
