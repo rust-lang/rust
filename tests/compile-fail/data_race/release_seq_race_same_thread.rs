@@ -31,7 +31,8 @@ pub fn main() {
 
             // C++20 update to release sequences
             // makes this block the release sequence
-            // despite the same thread.
+            // despite the being on the same thread
+            // as the release store.
             SYNC.store(2, Ordering::Relaxed);
         });
 
