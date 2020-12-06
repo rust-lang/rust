@@ -906,6 +906,10 @@ impl EncodeContext<'a, 'tcx> {
             let g = tcx.generics_of(def_id);
             record!(self.tables.generics[def_id] <- g);
             record!(self.tables.explicit_predicates[def_id] <- self.tcx.explicit_predicates_of(def_id));
+            let inferred_outlives = self.tcx.inferred_outlives_of(def_id);
+            if !inferred_outlives.is_empty() {
+                record!(self.tables.inferred_outlives[def_id] <- inferred_outlives);
+            }
         }
         let inherent_impls = tcx.crate_inherent_impls(LOCAL_CRATE);
         for (def_id, implementations) in inherent_impls.inherent_impls.iter() {
@@ -951,7 +955,6 @@ impl EncodeContext<'a, 'tcx> {
                 record!(self.tables.fn_sig[def_id] <- tcx.fn_sig(ctor_def_id));
             }
         }
-        self.encode_inferred_outlives(def_id);
     }
 
     fn encode_enum_variant_ctor(&mut self, def: &ty::AdtDef, index: VariantIdx) {
@@ -973,7 +976,6 @@ impl EncodeContext<'a, 'tcx> {
         if variant.ctor_kind == CtorKind::Fn {
             record!(self.tables.fn_sig[def_id] <- tcx.fn_sig(def_id));
         }
-        self.encode_inferred_outlives(def_id);
     }
 
     fn encode_info_for_mod(&mut self, local_def_id: LocalDefId, md: &hir::Mod<'_>) {
@@ -1032,7 +1034,6 @@ impl EncodeContext<'a, 'tcx> {
         record!(self.tables.kind[def_id] <- EntryKind::Field);
         self.encode_ident_span(def_id, field.ident);
         self.encode_item_type(def_id);
-        self.encode_inferred_outlives(def_id);
     }
 
     fn encode_struct_ctor(&mut self, adt_def: &ty::AdtDef, def_id: DefId) {
@@ -1051,15 +1052,6 @@ impl EncodeContext<'a, 'tcx> {
         self.encode_item_type(def_id);
         if variant.ctor_kind == CtorKind::Fn {
             record!(self.tables.fn_sig[def_id] <- tcx.fn_sig(def_id));
-        }
-        self.encode_inferred_outlives(def_id);
-    }
-
-    fn encode_inferred_outlives(&mut self, def_id: DefId) {
-        debug!("EncodeContext::encode_inferred_outlives({:?})", def_id);
-        let inferred_outlives = self.tcx.inferred_outlives_of(def_id);
-        if !inferred_outlives.is_empty() {
-            record!(self.tables.inferred_outlives[def_id] <- inferred_outlives);
         }
     }
 
@@ -1143,7 +1135,6 @@ impl EncodeContext<'a, 'tcx> {
         if trait_item.kind == ty::AssocKind::Fn {
             record!(self.tables.fn_sig[def_id] <- tcx.fn_sig(def_id));
         }
-        self.encode_inferred_outlives(def_id);
     }
 
     fn encode_info_for_impl_item(&mut self, def_id: DefId) {
@@ -1201,7 +1192,6 @@ impl EncodeContext<'a, 'tcx> {
         if impl_item.kind == ty::AssocKind::Fn {
             record!(self.tables.fn_sig[def_id] <- tcx.fn_sig(def_id));
         }
-        self.encode_inferred_outlives(def_id);
     }
 
     fn encode_fn_param_names_for_body(&mut self, body_id: hir::BodyId) -> Lazy<[Ident]> {
@@ -1467,22 +1457,6 @@ impl EncodeContext<'a, 'tcx> {
             }
         }
         match item.kind {
-            hir::ItemKind::Static(..)
-            | hir::ItemKind::Const(..)
-            | hir::ItemKind::Fn(..)
-            | hir::ItemKind::TyAlias(..)
-            | hir::ItemKind::Enum(..)
-            | hir::ItemKind::Struct(..)
-            | hir::ItemKind::Union(..)
-            | hir::ItemKind::Impl { .. }
-            | hir::ItemKind::OpaqueTy(..)
-            | hir::ItemKind::Trait(..)
-            | hir::ItemKind::TraitAlias(..) => {
-                self.encode_inferred_outlives(def_id);
-            }
-            _ => {}
-        }
-        match item.kind {
             hir::ItemKind::Trait(..) | hir::ItemKind::TraitAlias(..) => {
                 self.encode_super_predicates(def_id);
             }
@@ -1539,7 +1513,6 @@ impl EncodeContext<'a, 'tcx> {
 
         record!(self.tables.kind[def_id.to_def_id()] <- EntryKind::AnonConst(qualifs, const_data));
         self.encode_item_type(def_id.to_def_id());
-        self.encode_inferred_outlives(def_id.to_def_id());
     }
 
     fn encode_native_libraries(&mut self) -> Lazy<[NativeLib]> {
@@ -1819,7 +1792,6 @@ impl EncodeContext<'a, 'tcx> {
         if let hir::ForeignItemKind::Fn(..) = nitem.kind {
             record!(self.tables.fn_sig[def_id] <- tcx.fn_sig(def_id));
         }
-        self.encode_inferred_outlives(def_id);
     }
 }
 
