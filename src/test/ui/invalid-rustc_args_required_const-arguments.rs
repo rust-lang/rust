@@ -23,4 +23,10 @@ extern {
     fn foo7(_: u8);
 }
 
+#[rustc_args_required_const] //~ ERROR malformed `rustc_args_required_const` attribute
+fn bar1() {}
+
+#[rustc_args_required_const = 1] //~ ERROR malformed `rustc_args_required_const` attribute
+fn bar2() {}
+
 fn main() {}
