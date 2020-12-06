@@ -1211,7 +1211,8 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
     use super::kernel_copy::{copy_regular_files, CopyResult};
 
     match copy_regular_files(reader.as_raw_fd(), writer.as_raw_fd(), max_len) {
-        CopyResult::Ended(result) => result,
+        CopyResult::Ended(bytes) => Ok(bytes),
+        CopyResult::Error(e, _) => Err(e),
         CopyResult::Fallback(written) => match io::copy::generic_copy(&mut reader, &mut writer) {
             Ok(bytes) => Ok(bytes + written),
             Err(e) => Err(e),

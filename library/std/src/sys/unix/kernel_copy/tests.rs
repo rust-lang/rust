@@ -42,8 +42,15 @@ fn copy_specialization() -> Result<()> {
         assert_eq!(sink.buffer(), b"wxyz");
 
         let copied = crate::io::copy(&mut source, &mut sink)?;
-        assert_eq!(copied, 10);
-        assert_eq!(sink.buffer().len(), 0);
+        assert_eq!(copied, 10, "copy obeyed limit imposed by Take");
+        assert_eq!(sink.buffer().len(), 0, "sink buffer was flushed");
+        assert_eq!(source.limit(), 0, "outer Take was exhausted");
+        assert_eq!(source.get_ref().buffer().len(), 0, "source buffer should be drained");
+        assert_eq!(
+            source.get_ref().get_ref().limit(),
+            1,
+            "inner Take allowed reading beyond end of file, some bytes should be left"
+        );
 
         let mut sink = sink.into_inner()?;
         sink.seek(SeekFrom::Start(0))?;
@@ -210,7 +217,7 @@ fn bench_socket_pipe_socket_copy(b: &mut test::Bencher) {
     );
 
     match probe {
-        CopyResult::Ended(Ok(1)) => {
+        CopyResult::Ended(1) => {
             // splice works
         }
         _ => {

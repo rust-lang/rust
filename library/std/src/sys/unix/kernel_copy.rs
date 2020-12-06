@@ -167,10 +167,11 @@ impl<R: CopyRead, W: CopyWrite> SpecCopy for Copier<'_, '_, R, W> {
 
             if input_meta.copy_file_range_candidate() && output_meta.copy_file_range_candidate() {
                 let result = copy_regular_files(readfd, writefd, max_write);
+                result.update_take(reader);
 
                 match result {
-                    CopyResult::Ended(Ok(bytes_copied)) => return Ok(bytes_copied + written),
-                    CopyResult::Ended(err) => return err,
+                    CopyResult::Ended(bytes_copied) => return Ok(bytes_copied + written),
+                    CopyResult::Error(e, _) => return Err(e),
                     CopyResult::Fallback(bytes) => written += bytes,
                 }
             }
@@ -182,20 +183,22 @@ impl<R: CopyRead, W: CopyWrite> SpecCopy for Copier<'_, '_, R, W> {
             // fall back to the generic copy loop.
             if input_meta.potential_sendfile_source() {
                 let result = sendfile_splice(SpliceMode::Sendfile, readfd, writefd, max_write);
+                result.update_take(reader);
 
                 match result {
-                    CopyResult::Ended(Ok(bytes_copied)) => return Ok(bytes_copied + written),
-                    CopyResult::Ended(err) => return err,
+                    CopyResult::Ended(bytes_copied) => return Ok(bytes_copied + written),
+                    CopyResult::Error(e, _) => return Err(e),
                     CopyResult::Fallback(bytes) => written += bytes,
                 }
             }
 
             if input_meta.maybe_fifo() || output_meta.maybe_fifo() {
                 let result = sendfile_splice(SpliceMode::Splice, readfd, writefd, max_write);
+                result.update_take(reader);
 
                 match result {
-                    CopyResult::Ended(Ok(bytes_copied)) => return Ok(bytes_copied + written),
-                    CopyResult::Ended(err) => return err,
+                    CopyResult::Ended(bytes_copied) => return Ok(bytes_copied + written),
+                    CopyResult::Error(e, _) => return Err(e),
                     CopyResult::Fallback(0) => { /* use the fallback below */ }
                     CopyResult::Fallback(_) => {
                         unreachable!("splice should not return > 0 bytes on the fallback path")
@@ -225,6 +228,9 @@ trait CopyRead: Read {
         Ok(0)
     }
 
+    /// Updates `Take` wrappers to remove the number of bytes copied.
+    fn taken(&mut self, _bytes: u64) {}
+
     /// The minimum of the limit of all `Take<_>` wrappers, `u64::MAX` otherwise.
     /// This method does not account for data `BufReader` buffers and would underreport
     /// the limit of a `Take<BufReader<Take<_>>>` type. Thus its result is only valid
@@ -249,6 +255,10 @@ where
 {
     fn drain_to<W: Write>(&mut self, writer: &mut W, limit: u64) -> Result<u64> {
         (**self).drain_to(writer, limit)
+    }
+
+    fn taken(&mut self, bytes: u64) {
+        (**self).taken(bytes);
     }
 
     fn min_limit(&self) -> u64 {
@@ -407,6 +417,11 @@ impl<T: CopyRead> CopyRead for Take<T> {
         Ok(bytes_drained)
     }
 
+    fn taken(&mut self, bytes: u64) {
+        self.set_limit(self.limit() - bytes);
+        self.get_mut().taken(bytes);
+    }
+
     fn min_limit(&self) -> u64 {
         min(Take::limit(self), self.get_ref().min_limit())
     }
@@ -430,6 +445,10 @@ impl<T: CopyRead> CopyRead for BufReader<T> {
         let inner_bytes = self.get_mut().drain_to(writer, remaining)?;
 
         Ok(bytes as u64 + inner_bytes)
+    }
+
+    fn taken(&mut self, bytes: u64) {
+        self.get_mut().taken(bytes);
     }
 
     fn min_limit(&self) -> u64 {
@@ -457,8 +476,19 @@ fn fd_to_meta<T: AsRawFd>(fd: &T) -> FdMeta {
 }
 
 pub(super) enum CopyResult {
-    Ended(Result<u64>),
+    Ended(u64),
+    Error(Error, u64),
     Fallback(u64),
+}
+
+impl CopyResult {
+    fn update_take(&self, reader: &mut impl CopyRead) {
+        match *self {
+            CopyResult::Fallback(bytes)
+            | CopyResult::Ended(bytes)
+            | CopyResult::Error(_, bytes) => reader.taken(bytes),
+        }
+    }
 }
 
 /// linux-specific implementation that will attempt to use copy_file_range for copy offloading
@@ -527,7 +557,7 @@ pub(super) fn copy_regular_files(reader: RawFd, writer: RawFd, max_len: u64) -> 
                 // - copying from an overlay filesystem in docker. reported to occur on fedora 32.
                 return CopyResult::Fallback(0);
             }
-            Ok(0) => return CopyResult::Ended(Ok(written)), // reached EOF
+            Ok(0) => return CopyResult::Ended(written), // reached EOF
             Ok(ret) => written += ret as u64,
             Err(err) => {
                 return match err.raw_os_error() {
@@ -545,12 +575,12 @@ pub(super) fn copy_regular_files(reader: RawFd, writer: RawFd, max_len: u64) -> 
                         assert_eq!(written, 0);
                         CopyResult::Fallback(0)
                     }
-                    _ => CopyResult::Ended(Err(err)),
+                    _ => CopyResult::Error(err, written),
                 };
             }
         }
     }
-    CopyResult::Ended(Ok(written))
+    CopyResult::Ended(written)
 }
 
 #[derive(PartialEq)]
@@ -623,10 +653,10 @@ fn sendfile_splice(mode: SpliceMode, reader: RawFd, writer: RawFd, len: u64) -> 
                     Some(os_err) if mode == SpliceMode::Sendfile && os_err == libc::EOVERFLOW => {
                         CopyResult::Fallback(written)
                     }
-                    _ => CopyResult::Ended(Err(err)),
+                    _ => CopyResult::Error(err, written),
                 };
             }
         }
     }
-    CopyResult::Ended(Ok(written))
+    CopyResult::Ended(written)
 }
