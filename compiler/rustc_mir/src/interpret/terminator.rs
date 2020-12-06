@@ -110,7 +110,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
 
             Abort => {
-                M::abort(self, "aborted execution".to_owned())?;
+                M::abort(self, "the program aborted execution".to_owned())?;
             }
 
             // When we encounter Resume, we've finished unwinding

@@ -176,10 +176,8 @@ pub trait Machine<'mir, 'tcx>: Sized {
     ) -> InterpResult<'tcx>;
 
     /// Called to evaluate `Abort` MIR terminator.
-    fn abort(_ecx: &mut InterpCx<'mir, 'tcx, Self>, msg: String) -> InterpResult<'tcx, !> {
-        use crate::const_eval::ConstEvalErrKind;
-
-        Err(ConstEvalErrKind::Abort(msg).into())
+    fn abort(_ecx: &mut InterpCx<'mir, 'tcx, Self>, _msg: String) -> InterpResult<'tcx, !> {
+        throw_unsup_format!("aborting execution is not supported")
     }
 
     /// Called for all binary operations where the LHS has pointer type.

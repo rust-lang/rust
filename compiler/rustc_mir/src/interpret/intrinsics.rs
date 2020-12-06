@@ -126,7 +126,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             None => match intrinsic_name {
                 sym::transmute => throw_ub_format!("transmuting to uninhabited type"),
                 sym::unreachable => throw_ub!(Unreachable),
-                sym::abort => M::abort(self, "aborted execution".to_owned())?,
+                sym::abort => M::abort(self, "the program aborted execution".to_owned())?,
                 // Unsupported diverging intrinsic.
                 _ => return Ok(false),
             },
