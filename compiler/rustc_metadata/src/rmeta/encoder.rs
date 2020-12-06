@@ -903,6 +903,8 @@ impl EncodeContext<'a, 'tcx> {
                 let v = self.tcx.variances_of(def_id);
                 record!(self.tables.variances[def_id] <- v);
             }
+            let g = tcx.generics_of(def_id);
+            record!(self.tables.generics[def_id] <- g);
         }
         let inherent_impls = tcx.crate_inherent_impls(LOCAL_CRATE);
         for (def_id, implementations) in inherent_impls.inherent_impls.iter() {
@@ -948,7 +950,6 @@ impl EncodeContext<'a, 'tcx> {
                 record!(self.tables.fn_sig[def_id] <- tcx.fn_sig(ctor_def_id));
             }
         }
-        self.encode_generics(def_id);
         self.encode_explicit_predicates(def_id);
         self.encode_inferred_outlives(def_id);
     }
@@ -972,7 +973,6 @@ impl EncodeContext<'a, 'tcx> {
         if variant.ctor_kind == CtorKind::Fn {
             record!(self.tables.fn_sig[def_id] <- tcx.fn_sig(def_id));
         }
-        self.encode_generics(def_id);
         self.encode_explicit_predicates(def_id);
         self.encode_inferred_outlives(def_id);
     }
@@ -1033,7 +1033,6 @@ impl EncodeContext<'a, 'tcx> {
         record!(self.tables.kind[def_id] <- EntryKind::Field);
         self.encode_ident_span(def_id, field.ident);
         self.encode_item_type(def_id);
-        self.encode_generics(def_id);
         self.encode_explicit_predicates(def_id);
         self.encode_inferred_outlives(def_id);
     }
@@ -1055,14 +1054,8 @@ impl EncodeContext<'a, 'tcx> {
         if variant.ctor_kind == CtorKind::Fn {
             record!(self.tables.fn_sig[def_id] <- tcx.fn_sig(def_id));
         }
-        self.encode_generics(def_id);
         self.encode_explicit_predicates(def_id);
         self.encode_inferred_outlives(def_id);
-    }
-
-    fn encode_generics(&mut self, def_id: DefId) {
-        debug!("EncodeContext::encode_generics({:?})", def_id);
-        record!(self.tables.generics[def_id] <- self.tcx.generics_of(def_id));
     }
 
     fn encode_explicit_predicates(&mut self, def_id: DefId) {
@@ -1159,7 +1152,6 @@ impl EncodeContext<'a, 'tcx> {
         if trait_item.kind == ty::AssocKind::Fn {
             record!(self.tables.fn_sig[def_id] <- tcx.fn_sig(def_id));
         }
-        self.encode_generics(def_id);
         self.encode_explicit_predicates(def_id);
         self.encode_inferred_outlives(def_id);
     }
@@ -1219,7 +1211,6 @@ impl EncodeContext<'a, 'tcx> {
         if impl_item.kind == ty::AssocKind::Fn {
             record!(self.tables.fn_sig[def_id] <- tcx.fn_sig(def_id));
         }
-        self.encode_generics(def_id);
         self.encode_explicit_predicates(def_id);
         self.encode_inferred_outlives(def_id);
     }
@@ -1498,7 +1489,6 @@ impl EncodeContext<'a, 'tcx> {
             | hir::ItemKind::OpaqueTy(..)
             | hir::ItemKind::Trait(..)
             | hir::ItemKind::TraitAlias(..) => {
-                self.encode_generics(def_id);
                 self.encode_explicit_predicates(def_id);
                 self.encode_inferred_outlives(def_id);
             }
@@ -1550,7 +1540,6 @@ impl EncodeContext<'a, 'tcx> {
         if let ty::Closure(def_id, substs) = *ty.kind() {
             record!(self.tables.fn_sig[def_id] <- substs.as_closure().sig());
         }
-        self.encode_generics(def_id.to_def_id());
     }
 
     fn encode_info_for_anon_const(&mut self, def_id: LocalDefId) {
@@ -1562,7 +1551,6 @@ impl EncodeContext<'a, 'tcx> {
 
         record!(self.tables.kind[def_id.to_def_id()] <- EntryKind::AnonConst(qualifs, const_data));
         self.encode_item_type(def_id.to_def_id());
-        self.encode_generics(def_id.to_def_id());
         self.encode_explicit_predicates(def_id.to_def_id());
         self.encode_inferred_outlives(def_id.to_def_id());
     }
@@ -1844,7 +1832,6 @@ impl EncodeContext<'a, 'tcx> {
         if let hir::ForeignItemKind::Fn(..) = nitem.kind {
             record!(self.tables.fn_sig[def_id] <- tcx.fn_sig(def_id));
         }
-        self.encode_generics(def_id);
         self.encode_explicit_predicates(def_id);
         self.encode_inferred_outlives(def_id);
     }
