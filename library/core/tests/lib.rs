@@ -54,7 +54,6 @@
 #![feature(const_pin)]
 #![feature(const_slice_from_raw_parts)]
 #![feature(const_raw_ptr_deref)]
-#![feature(const_assert_type)]
 #![feature(never_type)]
 #![feature(unwrap_infallible)]
 #![feature(option_unwrap_none)]
