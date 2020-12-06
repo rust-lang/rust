@@ -44,6 +44,13 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             // the match is non-exhaustive.
             _ => bug!("invalid generic parameter kind {}", kind),
         };
+
+        if let ParamKindOrd::Const { .. } = kind_ord {
+            if let GenericArg::Type(hir::Ty { kind: hir::TyKind::Infer, .. }) = arg {
+                err.help("const arguments cannot yet be inferred with `_`");
+            }
+        }
+
         let arg_ord = match arg {
             GenericArg::Lifetime(_) => ParamKindOrd::Lifetime,
             GenericArg::Type(_) => ParamKindOrd::Type,
