@@ -2,7 +2,7 @@
 //! to generate a clippy lint detecting said code automatically.
 
 use crate::utils::get_attr;
-use rustc_ast::ast::{Attribute, LitFloatType, LitKind};
+use rustc_ast::ast::{LitFloatType, LitKind};
 use rustc_ast::walk_list;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
@@ -10,7 +10,6 @@ use rustc_hir::intravisit::{NestedVisitorMap, Visitor};
 use rustc_hir::{BindingAnnotation, Block, Expr, ExprKind, Pat, PatKind, QPath, Stmt, StmtKind, TyKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::hir::map::Map;
-use rustc_session::Session;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
@@ -66,7 +65,7 @@ fn done() {
 
 impl<'tcx> LateLintPass<'tcx> for Author {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>) {
-        if !has_attr(cx.sess(), &item.attrs) {
+        if !has_attr(cx, item.hir_id()) {
             return;
         }
         prelude();
@@ -75,7 +74,7 @@ impl<'tcx> LateLintPass<'tcx> for Author {
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::ImplItem<'_>) {
-        if !has_attr(cx.sess(), &item.attrs) {
+        if !has_attr(cx, item.hir_id()) {
             return;
         }
         prelude();
@@ -84,7 +83,7 @@ impl<'tcx> LateLintPass<'tcx> for Author {
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::TraitItem<'_>) {
-        if !has_attr(cx.sess(), &item.attrs) {
+        if !has_attr(cx, item.hir_id()) {
             return;
         }
         prelude();
@@ -93,7 +92,7 @@ impl<'tcx> LateLintPass<'tcx> for Author {
     }
 
     fn check_variant(&mut self, cx: &LateContext<'tcx>, var: &'tcx hir::Variant<'_>) {
-        if !has_attr(cx.sess(), &var.attrs) {
+        if !has_attr(cx, var.id) {
             return;
         }
         prelude();
@@ -103,7 +102,7 @@ impl<'tcx> LateLintPass<'tcx> for Author {
     }
 
     fn check_struct_field(&mut self, cx: &LateContext<'tcx>, field: &'tcx hir::StructField<'_>) {
-        if !has_attr(cx.sess(), &field.attrs) {
+        if !has_attr(cx, field.hir_id) {
             return;
         }
         prelude();
@@ -112,7 +111,7 @@ impl<'tcx> LateLintPass<'tcx> for Author {
     }
 
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
-        if !has_attr(cx.sess(), &expr.attrs) {
+        if !has_attr(cx, expr.hir_id) {
             return;
         }
         prelude();
@@ -121,7 +120,7 @@ impl<'tcx> LateLintPass<'tcx> for Author {
     }
 
     fn check_arm(&mut self, cx: &LateContext<'tcx>, arm: &'tcx hir::Arm<'_>) {
-        if !has_attr(cx.sess(), &arm.attrs) {
+        if !has_attr(cx, arm.hir_id) {
             return;
         }
         prelude();
@@ -130,7 +129,7 @@ impl<'tcx> LateLintPass<'tcx> for Author {
     }
 
     fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx hir::Stmt<'_>) {
-        if !has_attr(cx.sess(), stmt.kind.attrs(|id| cx.tcx.hir().item(id))) {
+        if !has_attr(cx, stmt.hir_id) {
             return;
         }
         prelude();
@@ -139,7 +138,7 @@ impl<'tcx> LateLintPass<'tcx> for Author {
     }
 
     fn check_foreign_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::ForeignItem<'_>) {
-        if !has_attr(cx.sess(), &item.attrs) {
+        if !has_attr(cx, item.hir_id()) {
             return;
         }
         prelude();
@@ -719,8 +718,9 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
     }
 }
 
-fn has_attr(sess: &Session, attrs: &[Attribute]) -> bool {
-    get_attr(sess, attrs, "author").count() > 0
+fn has_attr(cx: &LateContext<'_>, hir_id: hir::HirId) -> bool {
+    let attrs = cx.tcx.hir().attrs(hir_id);
+    get_attr(cx.sess(), attrs, "author").count() > 0
 }
 
 #[must_use]
