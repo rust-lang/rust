@@ -486,7 +486,7 @@ fn test_send_vectored_fds_unix_stream() {
     let (s1, s2) = or_panic!(UnixStream::pair());
 
     let mut buf1 = [1; 8];
-    let mut bufs_send = &mut [IoSliceMut::new(&mut buf1[..])][..];
+    let mut bufs_send = &[IoSlice::new(&mut buf1[..])][..];
 
     let mut ancillary1_buffer = [0; 128];
     let mut ancillary1 = SocketAncillary::new(&mut ancillary1_buffer[..]);
@@ -543,7 +543,7 @@ fn test_send_vectored_with_ancillary_to_unix_datagram() {
     or_panic!(bsock2.set_passcred(true));
 
     let mut buf1 = [1; 8];
-    let mut bufs_send = &mut [IoSliceMut::new(&mut buf1[..])][..];
+    let mut bufs_send = &[IoSlice::new(&mut buf1[..])][..];
 
     let mut ancillary1_buffer = [0; 128];
     let mut ancillary1 = SocketAncillary::new(&mut ancillary1_buffer[..]);
@@ -604,7 +604,7 @@ fn test_send_vectored_with_ancillary_unix_datagram() {
     let bsock2 = or_panic!(UnixDatagram::bind(&path2));
 
     let mut buf1 = [1; 8];
-    let mut bufs_send = &mut [IoSliceMut::new(&mut buf1[..])][..];
+    let mut bufs_send = &[IoSlice::new(&mut buf1[..])][..];
 
     let mut ancillary1_buffer = [0; 128];
     let mut ancillary1 = SocketAncillary::new(&mut ancillary1_buffer[..]);

@@ -530,17 +530,17 @@ impl UnixStream {
     /// ```no_run
     /// #![feature(unix_socket_ancillary_data)]
     /// use std::os::unix::net::{UnixStream, SocketAncillary};
-    /// use std::io::IoSliceMut;
+    /// use std::io::IoSlice;
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let socket = UnixStream::connect("/tmp/sock")?;
     ///     let mut buf1 = [1; 8];
     ///     let mut buf2 = [2; 16];
     ///     let mut buf3 = [3; 8];
-    ///     let mut bufs = &mut [
-    ///         IoSliceMut::new(&mut buf1),
-    ///         IoSliceMut::new(&mut buf2),
-    ///         IoSliceMut::new(&mut buf3),
+    ///     let mut bufs = &[
+    ///         IoSlice::new(&mut buf1),
+    ///         IoSlice::new(&mut buf2),
+    ///         IoSlice::new(&mut buf3),
     ///     ][..];
     ///     let fds = [0, 1, 2];
     ///     let mut ancillary_buffer = [0; 128];
@@ -562,7 +562,7 @@ impl UnixStream {
     #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
     pub fn send_vectored_with_ancillary(
         &self,
-        bufs: &mut [IoSliceMut<'_>],
+        bufs: &[IoSlice<'_>],
         ancillary: &mut SocketAncillary<'_>,
     ) -> io::Result<usize> {
         send_vectored_with_ancillary_to(&self.0, None, bufs, ancillary)
