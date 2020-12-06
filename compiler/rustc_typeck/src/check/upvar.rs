@@ -385,7 +385,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 base => bug!("Expected upvar, found={:?}", base),
             };
 
-            let place = truncate_projections_for_capture(place, inferred_info.capture_clause);
+            let place = truncate_projections_for_capture(place, capture_info.capture_kind);
 
             let min_cap_list = match root_var_min_capture_list.get_mut(&var_hir_id) {
                 None => {
@@ -933,7 +933,7 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for InferBorrowKind<'a, 'tcx> {
 /// - No Index projections are captured, since arrays are captured completely.
 fn truncate_projections_for_capture<'tcx>(
     mut place: Place<'tcx>,
-    capture_clause: hir::CaptureBy,
+    capture_kind: ty::UpvarCapture<'tcx>,
 ) -> Place<'tcx> {
     if place.projections.is_empty() {
         // Nothing to do here
@@ -948,7 +948,7 @@ fn truncate_projections_for_capture<'tcx>(
     let mut first_index_projection = None;
     let mut first_deref_projection = None;
     let mut first_raw_ptr = None;
-    let mut last_field_projection = None;
+    //let mut last_field_projection = None;
 
     for (i, proj) in place.projections.iter().enumerate() {
         if proj.ty.is_unsafe_ptr() {
@@ -968,7 +968,7 @@ fn truncate_projections_for_capture<'tcx>(
                 first_deref_projection.get_or_insert(i);
             }
             ProjectionKind::Field(..) => {
-                last_field_projection = Some(i);
+                //last_field_projection = Some(i);
             }
             ProjectionKind::Subslice => {} // We never capture this
         }
@@ -983,16 +983,18 @@ fn truncate_projections_for_capture<'tcx>(
     length = first_index_projection.map_or(length, |idx| cmp::min(length, idx));
 
     // In case of move closure, don't apply Deref or any further projections
-    length = match capture_clause {
-        hir::CaptureBy::Value => first_deref_projection.map_or(length, |idx| cmp::min(length, idx)),
-        hir::CaptureBy::Ref => length,
+    length = match capture_kind {
+        ty::UpvarCapture::ByValue(..) => {
+            first_deref_projection.map_or(length, |idx| cmp::min(length, idx))
+        }
+        ty::UpvarCapture::ByRef(..) => length,
     };
 
-    if env::var("SG_DROP_DEREFS").is_ok() {
-        // Since we will only have Field and Deref projections at this point.
-        // This will truncate trailing derefs.
-        length = last_field_projection.map_or(length, |idx| cmp::min(length, idx + 1));
-    }
+    //if env::var("SG_DROP_DEREFS").is_ok() {
+    //// Since we will only have Field and Deref projections at this point.
+    //// This will truncate trailing derefs.
+    //length = last_field_projection.map_or(length, |idx| cmp::min(length, idx + 1));
+    //}
 
     place.projections.truncate(length);
 
