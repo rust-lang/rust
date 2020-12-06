@@ -1,0 +1,10 @@
+error: digits grouped inconsistently by underscores
+  --> $DIR/test.rs:18:18
+   |
+LL |     let _fail1 = 100_200_300.123456789;
+   |                  ^^^^^^^^^^^^^^^^^^^^^ help: consider: `100_200_300.123_456_789`
+   |
+   = note: `-D clippy::inconsistent-digit-grouping` implied by `-D warnings`
+
+error: aborting due to previous error
+

@@ -1138,7 +1138,8 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box cargo_common_metadata::CargoCommonMetadata);
     store.register_late_pass(|| box multiple_crate_versions::MultipleCrateVersions);
     store.register_late_pass(|| box wildcard_dependencies::WildcardDependencies);
-    store.register_early_pass(|| box literal_representation::LiteralDigitGrouping);
+    let literal_representation_lint_fraction_readability = conf.unreadable_literal_lint_fractions;
+    store.register_early_pass(move || box literal_representation::LiteralDigitGrouping::new(literal_representation_lint_fraction_readability));
     let literal_representation_threshold = conf.literal_representation_threshold;
     store.register_early_pass(move || box literal_representation::DecimalLiteralRepresentation::new(literal_representation_threshold));
     let enum_variant_name_threshold = conf.enum_variant_name_threshold;
