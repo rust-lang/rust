@@ -292,7 +292,7 @@ impl MemoryCellClocks {
         
         // The handling of release sequences was changed in C++20 and so
         // the code here is different to the paper since now all relaxed
-        // stored block release sequences, the exception for same-thread
+        // stores block release sequences. The exception for same-thread
         // relaxed stores has been removed.
         let atomic = self.atomic_mut();
         atomic.sync_vector.clone_from(&clocks.fence_release);
