@@ -1,13 +1,18 @@
 //! Implementation of a data-race detector using Lamport Timestamps / Vector-clocks
-//! based on the Dyamic Race Detection for C++:
+//! based on the Dynamic Race Detection for C++:
 //! https://www.doc.ic.ac.uk/~afd/homepages/papers/pdfs/2017/POPL.pdf
 //! which does not report false-positives when fences are used, and gives better
 //! accuracy in presence of read-modify-write operations.
 //!
+//! The implementation contains modifications to correctly model the changes to the memory model in C++20
+//! regarding the weakening of release sequences: http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p0982r1.html.
+//! Relaxed stores now unconditionally block all currently active release sequences and so per-thread tracking of release
+//! sequences is not needed.
+//!
 //! This does not explore weak memory orders and so can still miss data-races
 //! but should not report false-positives
 //!
-//! Data-race definiton from(https://en.cppreference.com/w/cpp/language/memory_model#Threads_and_data_races):
+//! Data-race definition from(https://en.cppreference.com/w/cpp/language/memory_model#Threads_and_data_races):
 //! a data race occurs between two memory accesses if they are on different threads, at least one operation
 //! is non-atomic, at least one operation is a write and neither access happens-before the other. Read the link
 //! for full definition.
@@ -21,7 +26,7 @@
 //! This means that the thread-index can be safely re-used, starting on the next timestamp for the newly created
 //! thread.
 //!
-//! The sequentially consistant ordering corresponds to the ordering that the threads
+//! The sequentially consistent ordering corresponds to the ordering that the threads
 //! are currently scheduled, this means that the data-race detector has no additional
 //! logic for sequentially consistent accesses at the moment since they are indistinguishable
 //! from acquire/release operations. If weak memory orderings are explored then this
@@ -67,7 +72,7 @@ use rustc_target::abi::Size;
 
 use crate::{
     ImmTy, Immediate, InterpResult, MPlaceTy, MemPlaceMeta, MiriEvalContext, MiriEvalContextExt,
-    OpTy, Pointer, RangeMap, ScalarMaybeUninit, Tag, ThreadId, VClock, VSmallClockMap, VTimestamp,
+    OpTy, Pointer, RangeMap, ScalarMaybeUninit, Tag, ThreadId, VClock, VTimestamp,
     VectorIdx,
 };
 
@@ -122,7 +127,7 @@ struct ThreadClockSet {
     /// thread once it performs an acquire fence.
     fence_acquire: VClock,
 
-    /// The last timesamp of happens-before relations that
+    /// The last timestamp of happens-before relations that
     /// have been released by this thread by a fence.
     fence_release: VClock,
 }
@@ -185,13 +190,6 @@ struct AtomicMemoryCellClocks {
     /// happen-before a thread if an acquire-load is
     /// performed on the data.
     sync_vector: VClock,
-
-    /// The Hash-Map of all threads for which a release
-    /// sequence exists in the memory cell, required
-    /// since read-modify-write operations do not
-    /// invalidate existing release sequences.
-    /// See page 6 of linked paper.
-    release_sequences: VSmallClockMap,
 }
 
 /// Memory Cell vector clock metadata
@@ -207,7 +205,7 @@ struct MemoryCellClocks {
     write_index: VectorIdx,
 
     /// The vector-clock of the timestamp of the last read operation
-    /// performed by a thread since the last write operation occured.
+    /// performed by a thread since the last write operation occurred.
     /// It is reset to zero on each write operation.
     read: VClock,
 
@@ -231,6 +229,7 @@ impl Default for MemoryCellClocks {
 }
 
 impl MemoryCellClocks {
+    
     /// Load the internal atomic memory cells if they exist.
     #[inline]
     fn atomic(&self) -> Option<&AtomicMemoryCellClocks> {
@@ -283,8 +282,6 @@ impl MemoryCellClocks {
         self.atomic_write_detect(clocks, index)?;
         let atomic = self.atomic_mut();
         atomic.sync_vector.clone_from(&clocks.clock);
-        atomic.release_sequences.clear();
-        atomic.release_sequences.insert(index, &clocks.clock);
         Ok(())
     }
 
@@ -292,12 +289,13 @@ impl MemoryCellClocks {
     /// store relaxed semantics.
     fn store_relaxed(&mut self, clocks: &ThreadClockSet, index: VectorIdx) -> Result<(), DataRace> {
         self.atomic_write_detect(clocks, index)?;
+        
+        // The handling of release sequences was changed in C++20 and so
+        // the code here is different to the paper since now all relaxed
+        // stored block release sequences, the exception for same-thread
+        // relaxed stores has been removed.
         let atomic = self.atomic_mut();
         atomic.sync_vector.clone_from(&clocks.fence_release);
-        if let Some(release) = atomic.release_sequences.get(index) {
-            atomic.sync_vector.join(release);
-        }
-        atomic.release_sequences.retain_index(index);
         Ok(())
     }
 
@@ -307,7 +305,6 @@ impl MemoryCellClocks {
         self.atomic_write_detect(clocks, index)?;
         let atomic = self.atomic_mut();
         atomic.sync_vector.join(&clocks.clock);
-        atomic.release_sequences.insert(index, &clocks.clock);
         Ok(())
     }
 
@@ -523,7 +520,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
         let this = self.eval_context_mut();
 
         // Failure ordering cannot be stronger than success ordering, therefore first attempt
-        // to read with the failure ordering and if successfull then try again with the success
+        // to read with the failure ordering and if successful then try again with the success
         // read ordering and write in the success case.
         // Read as immediate for the sake of `binary_op()`
         let old = this.allow_data_races_mut(|this| this.read_immediate(place.into()))?;
@@ -546,7 +543,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
         Ok(res)
     }
 
-    /// Update the data-race detector for an atomic read occuring at the
+    /// Update the data-race detector for an atomic read occurring at the
     /// associated memory-place and on the current thread.
     fn validate_atomic_load(
         &self,
@@ -568,7 +565,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
         )
     }
 
-    /// Update the data-race detector for an atomic write occuring at the
+    /// Update the data-race detector for an atomic write occurring at the
     /// associated memory-place and on the current thread.
     fn validate_atomic_store(
         &mut self,
@@ -590,7 +587,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
         )
     }
 
-    /// Update the data-race detector for an atomic read-modify-write occuring
+    /// Update the data-race detector for an atomic read-modify-write occurring
     /// at the associated memory place and on the current thread.
     fn validate_atomic_rmw(
         &mut self,
@@ -694,9 +691,9 @@ impl VClockAlloc {
 
     /// Report a data-race found in the program.
     /// This finds the two racing threads and the type
-    /// of data-race that occured. This will also
+    /// of data-race that occurred. This will also
     /// return info about the memory location the data-race
-    /// occured in.
+    /// occurred in.
     #[cold]
     #[inline(never)]
     fn report_data_race<'tcx>(
@@ -762,7 +759,7 @@ impl VClockAlloc {
         )
     }
 
-    /// Detect data-races for an unsychronized read operation, will not perform
+    /// Detect data-races for an unsynchronized read operation, will not perform
     /// data-race detection if `multi-threaded` is false, either due to no threads
     /// being created or if it is temporarily disabled during a racy read or write
     /// operation for which data-race detection is handled separately, for example
@@ -818,7 +815,7 @@ impl VClockAlloc {
         }
     }
 
-    /// Detect data-races for an unsychronized write operation, will not perform
+    /// Detect data-races for an unsynchronized write operation, will not perform
     /// data-race threads if `multi-threaded` is false, either due to no threads
     /// being created or if it is temporarily disabled during a racy read or write
     /// operation
@@ -826,7 +823,7 @@ impl VClockAlloc {
         self.unique_access(pointer, len, "Write")
     }
 
-    /// Detect data-races for an unsychronized deallocate operation, will not perform
+    /// Detect data-races for an unsynchronized deallocate operation, will not perform
     /// data-race threads if `multi-threaded` is false, either due to no threads
     /// being created or if it is temporarily disabled during a racy read or write
     /// operation
@@ -838,7 +835,7 @@ impl VClockAlloc {
 impl<'mir, 'tcx: 'mir> EvalContextPrivExt<'mir, 'tcx> for MiriEvalContext<'mir, 'tcx> {}
 trait EvalContextPrivExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
     // Temporarily allow data-races to occur, this should only be
-    // used if either one of the appropiate `validate_atomic` functions
+    // used if either one of the appropriate `validate_atomic` functions
     // will be called to treat a memory access as atomic or if the memory
     // being accessed should be treated as internal state, that cannot be
     // accessed by the interpreted program.
@@ -1000,7 +997,7 @@ pub struct GlobalState {
     /// if a vector index is re-assigned to a new thread.
     vector_info: RefCell<IndexVec<VectorIdx, ThreadId>>,
 
-    /// The mapping of a given thread to assocaited thread metadata.
+    /// The mapping of a given thread to associated thread metadata.
     thread_info: RefCell<IndexVec<ThreadId, ThreadExtraState>>,
 
     /// The current vector index being executed.
@@ -1017,7 +1014,7 @@ pub struct GlobalState {
 
     /// Counts the number of threads that are currently active
     /// if the number of active threads reduces to 1 and then
-    /// a join operation occures with the remaining main thread
+    /// a join operation occurs with the remaining main thread
     /// then multi-threaded execution may be disabled.
     active_thread_count: Cell<usize>,
 
@@ -1160,7 +1157,7 @@ impl GlobalState {
     }
 
     /// Hook on a thread join to update the implicit happens-before relation
-    /// between the joined thead and the current thread.
+    /// between the joined thread and the current thread.
     #[inline]
     pub fn thread_joined(&self, current_thread: ThreadId, join_thread: ThreadId) {
         let mut clocks_vec = self.vector_clocks.borrow_mut();
@@ -1194,7 +1191,7 @@ impl GlobalState {
                 .iter_enumerated()
                 .all(|(idx, clocks)| clocks.clock[idx] <= current_clock.clock[idx])
             {
-                // The all thread termations happen-before the current clock
+                // All thread terminations happen-before the current clock
                 // therefore no data-races can be reported until a new thread
                 // is created, so disable multi-threaded execution.
                 self.multi_threaded.set(false);
@@ -1213,7 +1210,7 @@ impl GlobalState {
     /// On thread termination, the vector-clock may re-used
     /// in the future once all remaining thread-clocks catch
     /// up with the time index of the terminated thread.
-    /// This assiges thread termination with a unique index
+    /// This assigns thread termination with a unique index
     /// which will be used to join the thread
     /// This should be called strictly before any calls to
     /// `thread_joined`.
@@ -1318,8 +1315,8 @@ impl GlobalState {
     /// Release a lock handle, express that this happens-before
     /// any subsequent calls to `validate_lock_acquire`.
     /// For normal locks this should be equivalent to `validate_lock_release_shared`
-    /// since an acquire operation should have occured before, however
-    /// for futex & cond-var operations this is not the case and this
+    /// since an acquire operation should have occurred before, however
+    /// for futex & condvar operations this is not the case and this
     /// operation must be used.
     pub fn validate_lock_release(&self, lock: &mut VClock, thread: ThreadId) {
         let (index, mut clocks) = self.load_thread_state_mut(thread);

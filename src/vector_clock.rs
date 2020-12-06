@@ -1,11 +1,9 @@
-use rustc_data_structures::fx::FxHashMap;
 use rustc_index::vec::Idx;
 use smallvec::SmallVec;
 use std::{
     cmp::Ordering,
     convert::TryFrom,
-    fmt::{self, Debug},
-    mem,
+    fmt::Debug,
     ops::Index,
 };
 
@@ -42,160 +40,6 @@ impl From<u32> for VectorIdx {
         Self(id)
     }
 }
-
-/// A sparse mapping of vector index values to vector clocks, this
-/// is optimized for the common case with only one element stored
-/// inside the map.
-/// This is used to store the set of currently active release
-/// sequences at a given memory location, since RMW operations
-/// allow for multiple release sequences to be active at once
-/// and to be collapsed back to one active release sequence
-/// once a non RMW atomic store operation occurs.
-/// An all zero vector is considered to be equal to no
-/// element stored internally since it will never be
-/// stored and has no meaning as a release sequence
-/// vector clock.
-#[derive(Clone)]
-pub struct VSmallClockMap(VSmallClockMapInner);
-
-#[derive(Clone)]
-enum VSmallClockMapInner {
-    /// Zero or 1 vector elements, common
-    /// case for the sparse set.
-    /// The all zero vector clock is treated
-    /// as equal to the empty element.
-    Small(VectorIdx, VClock),
-
-    /// Hash-map of vector clocks.
-    Large(FxHashMap<VectorIdx, VClock>),
-}
-
-impl VSmallClockMap {
-    /// Remove all clock vectors from the map, setting them
-    /// to the zero vector.
-    pub fn clear(&mut self) {
-        match &mut self.0 {
-            VSmallClockMapInner::Small(_, clock) => clock.set_zero_vector(),
-            VSmallClockMapInner::Large(hash_map) => {
-                hash_map.clear();
-            }
-        }
-    }
-
-    /// Remove all clock vectors except for the clock vector
-    /// stored at the given index, which is retained.
-    pub fn retain_index(&mut self, index: VectorIdx) {
-        match &mut self.0 {
-            VSmallClockMapInner::Small(small_idx, clock) => {
-                if index != *small_idx {
-                    // The zero-vector is considered to equal
-                    // the empty element.
-                    clock.set_zero_vector()
-                }
-            }
-            VSmallClockMapInner::Large(hash_map) => {
-                let value = hash_map.remove(&index).unwrap_or_default();
-                self.0 = VSmallClockMapInner::Small(index, value);
-            }
-        }
-    }
-
-    /// Insert the vector clock into the associated vector
-    /// index.
-    pub fn insert(&mut self, index: VectorIdx, clock: &VClock) {
-        match &mut self.0 {
-            VSmallClockMapInner::Small(small_idx, small_clock) => {
-                if small_clock.is_zero_vector() {
-                    *small_idx = index;
-                    small_clock.clone_from(clock);
-                } else if !clock.is_zero_vector() {
-                    // Convert to using the hash-map representation.
-                    let mut hash_map = FxHashMap::default();
-                    hash_map.insert(*small_idx, mem::take(small_clock));
-                    hash_map.insert(index, clock.clone());
-                    self.0 = VSmallClockMapInner::Large(hash_map);
-                }
-            }
-            VSmallClockMapInner::Large(hash_map) =>
-                if !clock.is_zero_vector() {
-                    hash_map.insert(index, clock.clone());
-                },
-        }
-    }
-
-    /// Try to load the vector clock associated with the current
-    ///  vector index.
-    pub fn get(&self, index: VectorIdx) -> Option<&VClock> {
-        match &self.0 {
-            VSmallClockMapInner::Small(small_idx, small_clock) => {
-                if *small_idx == index && !small_clock.is_zero_vector() {
-                    Some(small_clock)
-                } else {
-                    None
-                }
-            }
-            VSmallClockMapInner::Large(hash_map) => hash_map.get(&index),
-        }
-    }
-}
-
-impl Default for VSmallClockMap {
-    #[inline]
-    fn default() -> Self {
-        VSmallClockMap(VSmallClockMapInner::Small(VectorIdx::new(0), VClock::default()))
-    }
-}
-
-impl Debug for VSmallClockMap {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // Print the contents of the small vector clock set as the map
-        // of vector index to vector clock that they represent.
-        let mut map = f.debug_map();
-        match &self.0 {
-            VSmallClockMapInner::Small(small_idx, small_clock) =>
-                if !small_clock.is_zero_vector() {
-                    map.entry(&small_idx, &small_clock);
-                },
-            VSmallClockMapInner::Large(hash_map) =>
-                for (idx, elem) in hash_map.iter() {
-                    map.entry(idx, elem);
-                },
-        }
-        map.finish()
-    }
-}
-
-impl PartialEq for VSmallClockMap {
-    fn eq(&self, other: &Self) -> bool {
-        use VSmallClockMapInner::*;
-        match (&self.0, &other.0) {
-            (Small(i1, c1), Small(i2, c2)) => {
-                if c1.is_zero_vector() {
-                    // Either they are both zero or they are non-equal
-                    c2.is_zero_vector()
-                } else {
-                    // At least one is non-zero, so the full comparison is correct
-                    i1 == i2 && c1 == c2
-                }
-            }
-            (Small(idx, clock), Large(hash_map)) | (Large(hash_map), Small(idx, clock)) => {
-                if hash_map.len() == 0 {
-                    // Equal to the empty hash-map
-                    clock.is_zero_vector()
-                } else if hash_map.len() == 1 {
-                    // Equal to the hash-map with one element
-                    let (hash_idx, hash_clock) = hash_map.iter().next().unwrap();
-                    hash_idx == idx && hash_clock == clock
-                } else {
-                    false
-                }
-            }
-            (Large(map1), Large(map2)) => map1 == map2,
-        }
-    }
-}
-
-impl Eq for VSmallClockMap {}
 
 /// The size of the vector-clock to store inline
 /// clock vectors larger than this will be stored on the heap
@@ -484,7 +328,7 @@ impl Index<VectorIdx> for VClock {
 #[cfg(test)]
 mod tests {
 
-    use super::{VClock, VSmallClockMap, VTimestamp, VectorIdx};
+    use super::{VClock, VTimestamp, VectorIdx};
     use std::cmp::Ordering;
 
     #[test]
@@ -627,34 +471,5 @@ mod tests {
             l,
             r
         );
-    }
-
-    #[test]
-    pub fn test_vclock_set() {
-        let mut map = VSmallClockMap::default();
-        let v1 = from_slice(&[3, 0, 1]);
-        let v2 = from_slice(&[4, 2, 3]);
-        let v3 = from_slice(&[4, 8, 3]);
-        map.insert(VectorIdx(0), &v1);
-        assert_eq!(map.get(VectorIdx(0)), Some(&v1));
-        map.insert(VectorIdx(5), &v2);
-        assert_eq!(map.get(VectorIdx(0)), Some(&v1));
-        assert_eq!(map.get(VectorIdx(5)), Some(&v2));
-        map.insert(VectorIdx(53), &v3);
-        assert_eq!(map.get(VectorIdx(0)), Some(&v1));
-        assert_eq!(map.get(VectorIdx(5)), Some(&v2));
-        assert_eq!(map.get(VectorIdx(53)), Some(&v3));
-        map.retain_index(VectorIdx(53));
-        assert_eq!(map.get(VectorIdx(0)), None);
-        assert_eq!(map.get(VectorIdx(5)), None);
-        assert_eq!(map.get(VectorIdx(53)), Some(&v3));
-        map.clear();
-        assert_eq!(map.get(VectorIdx(0)), None);
-        assert_eq!(map.get(VectorIdx(5)), None);
-        assert_eq!(map.get(VectorIdx(53)), None);
-        map.insert(VectorIdx(53), &v3);
-        assert_eq!(map.get(VectorIdx(0)), None);
-        assert_eq!(map.get(VectorIdx(5)), None);
-        assert_eq!(map.get(VectorIdx(53)), Some(&v3));
     }
 }

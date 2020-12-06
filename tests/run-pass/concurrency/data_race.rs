@@ -89,7 +89,7 @@ pub fn test_rmw_no_block() {
     }
 }
 
-pub fn test_release_no_block() {
+pub fn test_simple_release() {
     let mut a = 0u32;
     let b = &mut a as *mut u32;
     let c = EvilSend(b);
@@ -98,11 +98,10 @@ pub fn test_release_no_block() {
         let j1 = spawn(move || {
             *c.0 = 1;
             SYNC.store(1, Ordering::Release);
-            SYNC.store(3, Ordering::Relaxed);
         });
 
         let j2 = spawn(move || {
-            if SYNC.load(Ordering::Acquire) == 3 {
+            if SYNC.load(Ordering::Acquire) == 1 {
                 *c.0
             } else {
                 0
@@ -118,5 +117,5 @@ pub fn main() {
     test_fence_sync();
     test_multiple_reads();
     test_rmw_no_block();
-    test_release_no_block();
+    test_simple_release();
 }
