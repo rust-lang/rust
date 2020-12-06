@@ -1,9 +1,0 @@
-error[E0432]: unresolved import `native`
-  --> $DIR/hidden-rt-injection.rs:5:9
-   |
-LL |     use native;
-   |         ^^^^^^ no `native` in the root
-
-error: aborting due to previous error
-
-For more information about this error, try `rustc --explain E0432`.
