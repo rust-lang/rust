@@ -775,6 +775,7 @@ impl EncodeContext<'a, 'tcx> {
             }
             self.encode_stability(def_id);
             self.encode_const_stability(def_id);
+            self.encode_deprecation(def_id);
         }
     }
 
@@ -807,7 +808,6 @@ impl EncodeContext<'a, 'tcx> {
             f.did.index
         }));
         self.encode_ident_span(def_id, variant.ident);
-        self.encode_deprecation(def_id);
         self.encode_item_type(def_id);
         if variant.ctor_kind == CtorKind::Fn {
             // FIXME(eddyb) encode signature only in `encode_enum_variant_ctor`.
@@ -837,7 +837,6 @@ impl EncodeContext<'a, 'tcx> {
         };
 
         record!(self.tables.kind[def_id] <- EntryKind::Variant(self.lazy(data)));
-        self.encode_deprecation(def_id);
         self.encode_item_type(def_id);
         if variant.ctor_kind == CtorKind::Fn {
             record!(self.tables.fn_sig[def_id] <- tcx.fn_sig(def_id));
@@ -893,7 +892,6 @@ impl EncodeContext<'a, 'tcx> {
                 tcx.hir().local_def_id(item_id.id).local_def_index
             }));
         }
-        self.encode_deprecation(def_id);
     }
 
     fn encode_field(
@@ -910,7 +908,6 @@ impl EncodeContext<'a, 'tcx> {
 
         record!(self.tables.kind[def_id] <- EntryKind::Field);
         self.encode_ident_span(def_id, field.ident);
-        self.encode_deprecation(def_id);
         self.encode_item_type(def_id);
         self.encode_generics(def_id);
         self.encode_explicit_predicates(def_id);
@@ -930,7 +927,6 @@ impl EncodeContext<'a, 'tcx> {
         };
 
         record!(self.tables.kind[def_id] <- EntryKind::Struct(self.lazy(data), adt_def.repr));
-        self.encode_deprecation(def_id);
         self.encode_item_type(def_id);
         if variant.ctor_kind == CtorKind::Fn {
             record!(self.tables.fn_sig[def_id] <- tcx.fn_sig(def_id));
@@ -1032,7 +1028,6 @@ impl EncodeContext<'a, 'tcx> {
             }
         }
         self.encode_ident_span(def_id, ast_item.ident);
-        self.encode_deprecation(def_id);
         match trait_item.kind {
             ty::AssocKind::Const | ty::AssocKind::Fn => {
                 self.encode_item_type(def_id);
@@ -1131,7 +1126,6 @@ impl EncodeContext<'a, 'tcx> {
             }
         }
         self.encode_ident_span(def_id, impl_item.ident);
-        self.encode_deprecation(def_id);
         self.encode_item_type(def_id);
         if impl_item.kind == ty::AssocKind::Fn {
             record!(self.tables.fn_sig[def_id] <- tcx.fn_sig(def_id));
@@ -1404,7 +1398,6 @@ impl EncodeContext<'a, 'tcx> {
             }
             _ => {}
         }
-        self.encode_deprecation(def_id);
         match item.kind {
             hir::ItemKind::Static(..)
             | hir::ItemKind::Const(..)
@@ -1486,7 +1479,6 @@ impl EncodeContext<'a, 'tcx> {
         let def_id = self.tcx.hir().local_def_id(macro_def.hir_id).to_def_id();
         record!(self.tables.kind[def_id] <- EntryKind::MacroDef(self.lazy(macro_def.ast.clone())));
         self.encode_ident_span(def_id, macro_def.ident);
-        self.encode_deprecation(def_id);
     }
 
     fn encode_info_for_generic_param(&mut self, def_id: DefId, kind: EntryKind, encode_type: bool) {
@@ -1813,7 +1805,6 @@ impl EncodeContext<'a, 'tcx> {
             }
         }
         self.encode_ident_span(def_id, nitem.ident);
-        self.encode_deprecation(def_id);
         self.encode_item_type(def_id);
         self.encode_inherent_implementations(def_id);
         if let hir::ForeignItemKind::Fn(..) = nitem.kind {
