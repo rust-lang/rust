@@ -4,7 +4,7 @@
 #[repr(simd)]
 pub struct SimdF32<const LANES: usize>([f32; LANES]);
 
-impl_vector! { SimdF32, f32 }
+impl_float_vector! { SimdF32, f32, SimdU32 }
 
 pub type f32x2 = SimdF32<2>;
 pub type f32x4 = SimdF32<4>;

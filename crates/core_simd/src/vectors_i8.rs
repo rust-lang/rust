@@ -4,7 +4,7 @@
 #[repr(simd)]
 pub struct SimdI8<const LANES: usize>([i8; LANES]);
 
-impl_vector! { SimdI8, i8 }
+impl_integer_vector! { SimdI8, i8 }
 
 pub type i8x8 = SimdI8<8>;
 pub type i8x16 = SimdI8<16>;

@@ -139,31 +139,27 @@ macro_rules! call_counting_args {
 macro_rules! impl_vector {
     { $name:ident, $type:ty } => {
         impl<const LANES: usize> $name<LANES> {
-            /// Construct a vector by setting all lanes to the given value.
+            /// Construct a SIMD vector by setting all lanes to the given value.
             pub const fn splat(value: $type) -> Self {
                 Self([value; LANES])
             }
 
+            /// Returns a slice containing the entire SIMD vector.
             pub const fn as_slice(&self) -> &[$type] {
                 &self.0
             }
 
+            /// Returns a mutable slice containing the entire SIMD vector.
             pub fn as_mut_slice(&mut self) -> &mut [$type] {
                 &mut self.0
             }
 
-            pub const fn as_ptr(&self) -> *const $type {
-                self.0.as_ptr()
-            }
-
-            pub fn as_mut_ptr(&mut self) -> *mut $type {
-                self.0.as_mut_ptr()
-            }
-
+            /// Converts an array to a SIMD vector.
             pub const fn from_array(array: [$type; LANES]) -> Self {
                 Self(array)
             }
 
+            /// Converts a SIMD vector to an array.
             pub const fn to_array(self) -> [$type; LANES] {
                 self.0
             }
@@ -250,7 +246,7 @@ macro_rules! impl_vector {
 
 /// Implements additional integer traits (Eq, Ord, Hash) on the specified vector `$name`, holding multiple `$lanes` of `$type`.
 macro_rules! impl_integer_vector {
-    { $name:path, $type:ty } => {
+    { $name:ident, $type:ty } => {
         impl_vector! { $name, $type }
 
         impl<const LANES: usize> Eq for $name<LANES> {}
@@ -279,22 +275,26 @@ macro_rules! impl_integer_vector {
 /// `$lanes` of float `$type`, which uses `$bits_ty` as its binary
 /// representation. Called from `define_float_vector!`.
 macro_rules! impl_float_vector {
-    { $name:path => [$type:ty; $lanes:literal]; bits $bits_ty:ty; } => {
-        impl $name {
-//            /// Raw transmutation to an unsigned integer vector type with the
-//            /// same size and number of lanes.
-//            #[inline]
-//            pub fn to_bits(self) -> $bits_ty {
-//                unsafe { core::mem::transmute(self) }
-//            }
-//
-//            /// Raw transmutation from an unsigned integer vector type with the
-//            /// same size and number of lanes.
-//            #[inline]
-//            pub fn from_bits(bits: $bits_ty) -> Self {
-//                unsafe { core::mem::transmute(bits) }
-//            }
-//
+    { $name:ident, $type:ty, $bits_ty:ident } => {
+        impl_vector! { $name, $type }
+
+        impl<const LANES: usize> $name<LANES> {
+            /// Raw transmutation to an unsigned integer vector type with the
+            /// same size and number of lanes.
+            #[inline]
+            pub fn to_bits(self) -> crate::$bits_ty<LANES> {
+                assert_eq!(core::mem::size_of::<Self>(), core::mem::size_of::<crate::$bits_ty<LANES>>());
+                unsafe { core::mem::transmute_copy(&self) }
+            }
+
+            /// Raw transmutation from an unsigned integer vector type with the
+            /// same size and number of lanes.
+            #[inline]
+            pub fn from_bits(bits: crate::$bits_ty<LANES>) -> Self {
+                assert_eq!(core::mem::size_of::<Self>(), core::mem::size_of::<crate::$bits_ty<LANES>>());
+                unsafe { core::mem::transmute_copy(&bits) }
+            }
+
 //            /// Produces a vector where every lane has the absolute value of the
 //            /// equivalently-indexed lane in `self`.
 //            #[inline]

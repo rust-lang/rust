@@ -4,7 +4,7 @@
 #[repr(simd)]
 pub struct SimdUsize<const LANES: usize>([usize; LANES]);
 
-impl_vector! { SimdUsize, usize }
+impl_integer_vector! { SimdUsize, usize }
 
 pub type usizex2 = SimdUsize<2>;
 pub type usizex4 = SimdUsize<4>;
