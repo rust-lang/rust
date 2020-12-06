@@ -773,6 +773,7 @@ impl EncodeContext<'a, 'tcx> {
             if should_encode_visibility(def_kind) {
                 record!(self.tables.visibility[def_id] <- self.tcx.visibility(def_id));
             }
+            self.encode_stability(def_id);
         }
     }
 
@@ -805,7 +806,6 @@ impl EncodeContext<'a, 'tcx> {
             f.did.index
         }));
         self.encode_ident_span(def_id, variant.ident);
-        self.encode_stability(def_id);
         self.encode_deprecation(def_id);
         self.encode_item_type(def_id);
         if variant.ctor_kind == CtorKind::Fn {
@@ -836,7 +836,6 @@ impl EncodeContext<'a, 'tcx> {
         };
 
         record!(self.tables.kind[def_id] <- EntryKind::Variant(self.lazy(data)));
-        self.encode_stability(def_id);
         self.encode_deprecation(def_id);
         self.encode_item_type(def_id);
         if variant.ctor_kind == CtorKind::Fn {
@@ -893,7 +892,6 @@ impl EncodeContext<'a, 'tcx> {
                 tcx.hir().local_def_id(item_id.id).local_def_index
             }));
         }
-        self.encode_stability(def_id);
         self.encode_deprecation(def_id);
     }
 
@@ -911,7 +909,6 @@ impl EncodeContext<'a, 'tcx> {
 
         record!(self.tables.kind[def_id] <- EntryKind::Field);
         self.encode_ident_span(def_id, field.ident);
-        self.encode_stability(def_id);
         self.encode_deprecation(def_id);
         self.encode_item_type(def_id);
         self.encode_generics(def_id);
@@ -932,7 +929,6 @@ impl EncodeContext<'a, 'tcx> {
         };
 
         record!(self.tables.kind[def_id] <- EntryKind::Struct(self.lazy(data), adt_def.repr));
-        self.encode_stability(def_id);
         self.encode_deprecation(def_id);
         self.encode_item_type(def_id);
         if variant.ctor_kind == CtorKind::Fn {
@@ -1035,7 +1031,6 @@ impl EncodeContext<'a, 'tcx> {
             }
         }
         self.encode_ident_span(def_id, ast_item.ident);
-        self.encode_stability(def_id);
         self.encode_const_stability(def_id);
         self.encode_deprecation(def_id);
         match trait_item.kind {
@@ -1136,7 +1131,6 @@ impl EncodeContext<'a, 'tcx> {
             }
         }
         self.encode_ident_span(def_id, impl_item.ident);
-        self.encode_stability(def_id);
         self.encode_const_stability(def_id);
         self.encode_deprecation(def_id);
         self.encode_item_type(def_id);
@@ -1411,7 +1405,6 @@ impl EncodeContext<'a, 'tcx> {
             }
             _ => {}
         }
-        self.encode_stability(def_id);
         self.encode_const_stability(def_id);
         self.encode_deprecation(def_id);
         match item.kind {
@@ -1495,7 +1488,6 @@ impl EncodeContext<'a, 'tcx> {
         let def_id = self.tcx.hir().local_def_id(macro_def.hir_id).to_def_id();
         record!(self.tables.kind[def_id] <- EntryKind::MacroDef(self.lazy(macro_def.ast.clone())));
         self.encode_ident_span(def_id, macro_def.ident);
-        self.encode_stability(def_id);
         self.encode_deprecation(def_id);
     }
 
@@ -1823,7 +1815,6 @@ impl EncodeContext<'a, 'tcx> {
             }
         }
         self.encode_ident_span(def_id, nitem.ident);
-        self.encode_stability(def_id);
         self.encode_const_stability(def_id);
         self.encode_deprecation(def_id);
         self.encode_item_type(def_id);
@@ -1891,15 +1882,12 @@ impl EncodeContext<'a, 'tcx> {
             let def_id = self.tcx.hir().local_def_id(param.hir_id);
             match param.kind {
                 GenericParamKind::Lifetime { .. } => continue,
-                GenericParamKind::Type { ref default, .. } => {
+                GenericParamKind::Type { default, .. } => {
                     self.encode_info_for_generic_param(
                         def_id.to_def_id(),
                         EntryKind::TypeParam,
                         default.is_some(),
                     );
-                    if default.is_some() {
-                        self.encode_stability(def_id.to_def_id());
-                    }
                 }
                 GenericParamKind::Const { .. } => {
                     self.encode_info_for_generic_param(
