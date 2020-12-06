@@ -81,7 +81,7 @@ pub use crate::sync::{
     EvalContextExt as SyncEvalContextExt, CondvarId, MutexId, RwLockId
 };
 pub use crate::vector_clock::{
-    VClock, VSmallClockMap, VectorIdx, VTimestamp
+    VClock, VectorIdx, VTimestamp
 };
 
 /// Insert rustc arguments at the beginning of the argument list that Miri wants to be
