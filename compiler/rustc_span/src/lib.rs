@@ -182,7 +182,7 @@ impl std::fmt::Display for FileName {
         use FileName::*;
         match *self {
             Real(RealFileName::Named(ref path)) => write!(fmt, "{}", path.display()),
-            // FIXME: might be nice to display both compoments of Devirtualized.
+            // FIXME: might be nice to display both components of Devirtualized.
             // But for now (to backport fix for issue #70924), best to not
             // perturb diagnostics so its obvious test suite still works.
             Real(RealFileName::Devirtualized { ref local_path, virtual_name: _ }) => {

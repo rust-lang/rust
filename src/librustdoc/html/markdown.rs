@@ -248,7 +248,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
                 .join("\n");
             let krate = krate.as_ref().map(|s| &**s);
             let (test, _, _) =
-                doctest::make_test(&test, krate, false, &Default::default(), edition);
+                doctest::make_test(&test, krate, false, &Default::default(), edition, None);
             let channel = if test.contains("#![feature(") { "&amp;version=nightly" } else { "" };
 
             let edition_string = format!("&amp;edition={}", edition);
