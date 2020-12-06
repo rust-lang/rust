@@ -221,26 +221,28 @@ function (along with sub-instances of Mir for "promoted constants",
 but [you can read about those below](#promoted)).
 
 - **Basic blocks**: The basic blocks are stored in the field
-  `basic_blocks`; this is a vector of `BasicBlockData`
-  structures. Nobody ever references a basic block directly: instead,
-  we pass around `BasicBlock` values, which are
-  [newtype'd] indices into this vector.
-- **Statements** are represented by the type `Statement`.
+  [`Body::basic_blocks`][basicblocks]; this is a vector 
+  of [`BasicBlockData`] structures. Nobody ever references a
+  basic block directly: instead, we pass around [`BasicBlock`]
+  values, which are [newtype'd] indices into this vector.
+- **Statements** are represented by the type [`Statement`].
 - **Terminators** are represented by the `Terminator`.
-- **Locals** are represented by a [newtype'd] index type `Local`. The
-  data for a local variable is found in the `Mir` (the `local_decls`
+- **Locals** are represented by a [newtype'd] index type [`Local`].
+  The data for a local variable is found in the `Mir` (the `local_decls`
   vector). There is also a special constant `RETURN_PLACE` identifying
   the special "local" representing the return value.
-- **Places** are identified by the enum `Place`. There are a few variants:
+- **Places** are identified by the enum [`Place`]. There are a few 
+  variants:
   - Local variables like `_1`
   - Static variables `FOO`
   - **Projections**, which are fields or other things that "project
-    out" from a base place. So e.g. the place `_1.f` is a projection,
+    out" from a base place. These are represented by the type 
+    [`Projection`].  So e.g. the place `_1.f` is a projection,
     with `f` being the "projection element and `_1` being the base
     path. `*_1` is also a projection, with the `*` being represented
     by the `ProjectionElem::Deref` element.
-- **Rvalues** are represented by the enum `Rvalue`.
-- **Operands** are represented by the enum `Operand`.
+- **Rvalues** are represented by the enum [`Rvalue`].
+- **Operands** are represented by the enum [`Operand`].
 
 ## Representing constants
 
@@ -256,3 +258,12 @@ but [you can read about those below](#promoted)).
 [mir]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/index.html
 [mirmanip]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/index.html
 [newtype'd]: ../appendix/glossary.html#newtype
+[basicblocks](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/struct.Body.html#structfield.basic_blocks)
+[`BasicBlock`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/struct.BasicBlock.html
+[`BasicBlockData`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/struct.BasicBlockData.html
+[`Statement`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/struct.Statement.html
+[`Terminator`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/terminator/struct.Terminator.html
+[`Local`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/struct.Local.html
+[`Place`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/struct.Place.html
+[`Rvalue`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/enum.Rvalue.html
+[`Operand`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/enum.Operand.html
