@@ -8,9 +8,8 @@ use std::{
 };
 
 use ide::{
-    CompletionConfig, CompletionResolveCapability, FileId, FilePosition, FileRange, HoverAction,
-    HoverGotoTypeData, NavigationTarget, Query, RangeInfo, Runnable, RunnableKind, SearchScope,
-    TextEdit,
+    CompletionResolveCapability, FileId, FilePosition, FileRange, HoverAction, HoverGotoTypeData,
+    NavigationTarget, Query, RangeInfo, Runnable, RunnableKind, SearchScope, TextEdit,
 };
 use itertools::Itertools;
 use lsp_server::ErrorCode;
@@ -578,14 +577,11 @@ pub(crate) fn handle_completion(
             let mut new_completion_items =
                 to_proto::completion_item(&line_index, line_endings, item.clone());
 
-            for new_item in &mut new_completion_items {
-                let _ = fill_resolve_data(
-                    &mut new_item.data,
-                    &item,
-                    &snap.config.completion,
-                    &text_document_position,
-                )
-                .take();
+            if snap.config.completion.resolve_additional_edits_lazily() {
+                for new_item in &mut new_completion_items {
+                    let _ = fill_resolve_data(&mut new_item.data, &item, &text_document_position)
+                        .take();
+                }
             }
 
             new_completion_items
@@ -600,12 +596,12 @@ pub(crate) fn handle_completion_resolve(
     snap: GlobalStateSnapshot,
     mut original_completion: CompletionItem,
 ) -> Result<CompletionItem> {
-    let _p = profile::span("handle_resolve_completion");
+    let _p = profile::span("handle_completion_resolve");
 
     if !all_edits_are_disjoint(&original_completion, &[]) {
         return Err(LspError::new(
             ErrorCode::InvalidParams as i32,
-            "Received a completion with disjoint edits".into(),
+            "Received a completion with overlapping edits, this is not LSP-compliant".into(),
         )
         .into());
     }
@@ -635,7 +631,7 @@ pub(crate) fn handle_completion_resolve(
     let line_endings = snap.file_line_endings(file_id);
     let offset = from_proto::offset(&line_index, resolve_data.position.position);
 
-    let mut additional_edits = snap
+    let additional_edits = snap
         .analysis
         .resolve_completion_edits(
             &snap.config.completion,
@@ -652,13 +648,14 @@ pub(crate) fn handle_completion_resolve(
     if !all_edits_are_disjoint(&original_completion, &additional_edits) {
         return Err(LspError::new(
             ErrorCode::InternalError as i32,
-            "Import edit is not disjoint with the original completion edits".into(),
+            "Import edit overlaps with the original completion edits, this is not LSP-compliant"
+                .into(),
         )
         .into());
     }
 
     if let Some(original_additional_edits) = original_completion.additional_text_edits.as_mut() {
-        original_additional_edits.extend(additional_edits.drain(..))
+        original_additional_edits.extend(additional_edits.into_iter())
     } else {
         original_completion.additional_text_edits = Some(additional_edits);
     }
@@ -1634,22 +1631,19 @@ struct CompletionResolveData {
 fn fill_resolve_data(
     resolve_data: &mut Option<serde_json::Value>,
     item: &ide::CompletionItem,
-    completion_config: &CompletionConfig,
     position: &TextDocumentPositionParams,
 ) -> Option<()> {
-    if completion_config.resolve_additional_edits_lazily() {
-        let import_edit = item.import_to_add()?;
-        let full_import_path = import_edit.import_path.to_string();
-        let imported_name = import_edit.import_path.segments.clone().pop()?.to_string();
+    let import_edit = item.import_to_add()?;
+    let full_import_path = import_edit.import_path.to_string();
+    let imported_name = import_edit.import_path.segments.clone().pop()?.to_string();
 
-        *resolve_data = Some(
-            to_value(CompletionResolveData {
-                position: position.to_owned(),
-                full_import_path,
-                imported_name,
-            })
-            .unwrap(),
-        )
-    }
+    *resolve_data = Some(
+        to_value(CompletionResolveData {
+            position: position.to_owned(),
+            full_import_path,
+            imported_name,
+        })
+        .unwrap(),
+    );
     Some(())
 }

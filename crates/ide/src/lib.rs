@@ -487,7 +487,6 @@ impl Analysis {
                     imported_name,
                 )
             })?
-            .map(|edit| vec![edit])
             .unwrap_or_default())
     }
 

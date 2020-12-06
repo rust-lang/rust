@@ -141,7 +141,7 @@ pub fn resolve_completion_edits(
     position: FilePosition,
     full_import_path: &str,
     imported_name: &str,
-) -> Option<TextEdit> {
+) -> Option<Vec<TextEdit>> {
     let ctx = CompletionContext::new(db, position, config)?;
     let anchor = ctx.name_ref_syntax.as_ref()?;
     let import_scope = ImportScope::find_insert_use_container(anchor.syntax(), &ctx.sema)?;
@@ -156,7 +156,9 @@ pub fn resolve_completion_edits(
         })
         .find(|mod_path| mod_path.to_string() == full_import_path)?;
 
-    ImportEdit { import_path, import_scope, merge_behaviour: config.merge }.to_text_edit()
+    ImportEdit { import_path, import_scope, merge_behaviour: config.merge }
+        .to_text_edit()
+        .map(|edit| vec![edit])
 }
 
 #[cfg(test)]

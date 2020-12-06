@@ -129,7 +129,8 @@ pub(crate) fn apply_document_changes(
     }
 }
 
-/// Checks that the edits inside the completion and the additional edits are disjoint.
+/// Checks that the edits inside the completion and the additional edits do not overlap.
+/// LSP explicitly forbits the additional edits to overlap both with the main edit and themselves.
 pub(crate) fn all_edits_are_disjoint(
     completion: &lsp_types::CompletionItem,
     additional_edits: &[lsp_types::TextEdit],
@@ -150,7 +151,10 @@ pub(crate) fn all_edits_are_disjoint(
     };
     edit_ranges.extend(additional_edits.iter().map(|edit| edit.range));
     edit_ranges.sort_by_key(|range| (range.start, range.end));
-    edit_ranges.iter().zip(edit_ranges.iter().skip(1)).all(|(l, r)| l.end <= r.start)
+    edit_ranges
+        .iter()
+        .zip(edit_ranges.iter().skip(1))
+        .all(|(previous, next)| previous.end <= next.start)
 }
 
 #[cfg(test)]
