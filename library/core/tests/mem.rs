@@ -131,18 +131,9 @@ fn test_discriminant_send_sync() {
 }
 
 #[test]
+#[cfg(not(bootstrap))]
 fn assume_init_good() {
     const TRUE: bool = unsafe { MaybeUninit::<bool>::new(true).assume_init() };
 
     assert!(TRUE);
-}
-
-#[test]
-fn assume_init_bad() {
-    const _BAD: () = unsafe {
-        MaybeUninit::<!>::uninit().assume_init();
-        //~^ ERROR the type `!` does not permit being left uninitialized
-        //~| ERROR this code causes undefined behavior when executed
-        //~| ERROR help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
-    };
 }
