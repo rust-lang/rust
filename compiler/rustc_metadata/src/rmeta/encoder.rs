@@ -774,6 +774,7 @@ impl EncodeContext<'a, 'tcx> {
                 record!(self.tables.visibility[def_id] <- self.tcx.visibility(def_id));
             }
             self.encode_stability(def_id);
+            self.encode_const_stability(def_id);
         }
     }
 
@@ -1031,7 +1032,6 @@ impl EncodeContext<'a, 'tcx> {
             }
         }
         self.encode_ident_span(def_id, ast_item.ident);
-        self.encode_const_stability(def_id);
         self.encode_deprecation(def_id);
         match trait_item.kind {
             ty::AssocKind::Const | ty::AssocKind::Fn => {
@@ -1131,7 +1131,6 @@ impl EncodeContext<'a, 'tcx> {
             }
         }
         self.encode_ident_span(def_id, impl_item.ident);
-        self.encode_const_stability(def_id);
         self.encode_deprecation(def_id);
         self.encode_item_type(def_id);
         if impl_item.kind == ty::AssocKind::Fn {
@@ -1405,7 +1404,6 @@ impl EncodeContext<'a, 'tcx> {
             }
             _ => {}
         }
-        self.encode_const_stability(def_id);
         self.encode_deprecation(def_id);
         match item.kind {
             hir::ItemKind::Static(..)
@@ -1815,7 +1813,6 @@ impl EncodeContext<'a, 'tcx> {
             }
         }
         self.encode_ident_span(def_id, nitem.ident);
-        self.encode_const_stability(def_id);
         self.encode_deprecation(def_id);
         self.encode_item_type(def_id);
         self.encode_inherent_implementations(def_id);
