@@ -1,5 +1,5 @@
 error: wildcard match will miss any future added variants
-  --> $DIR/wildcard_enum_match_arm.rs:38:9
+  --> $DIR/wildcard_enum_match_arm.rs:39:9
    |
 LL |         _ => eprintln!("Not red"),
    |         ^ help: try this: `Color::Green | Color::Blue | Color::Rgb(..) | Color::Cyan`
@@ -11,25 +11,25 @@ LL | #![deny(clippy::wildcard_enum_match_arm)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: wildcard match will miss any future added variants
-  --> $DIR/wildcard_enum_match_arm.rs:42:9
+  --> $DIR/wildcard_enum_match_arm.rs:43:9
    |
 LL |         _not_red => eprintln!("Not red"),
    |         ^^^^^^^^ help: try this: `_not_red @ Color::Green | _not_red @ Color::Blue | _not_red @ Color::Rgb(..) | _not_red @ Color::Cyan`
 
 error: wildcard match will miss any future added variants
-  --> $DIR/wildcard_enum_match_arm.rs:46:9
+  --> $DIR/wildcard_enum_match_arm.rs:47:9
    |
 LL |         not_red => format!("{:?}", not_red),
    |         ^^^^^^^ help: try this: `not_red @ Color::Green | not_red @ Color::Blue | not_red @ Color::Rgb(..) | not_red @ Color::Cyan`
 
 error: wildcard match will miss any future added variants
-  --> $DIR/wildcard_enum_match_arm.rs:62:9
+  --> $DIR/wildcard_enum_match_arm.rs:63:9
    |
 LL |         _ => "No red",
    |         ^ help: try this: `Color::Red | Color::Green | Color::Blue | Color::Rgb(..) | Color::Cyan`
 
 error: match on non-exhaustive enum doesn't explicitly match all known variants
-  --> $DIR/wildcard_enum_match_arm.rs:79:9
+  --> $DIR/wildcard_enum_match_arm.rs:80:9
    |
 LL |         _ => {},
    |         ^ help: try this: `std::io::ErrorKind::PermissionDenied | std::io::ErrorKind::ConnectionRefused | std::io::ErrorKind::ConnectionReset | std::io::ErrorKind::ConnectionAborted | std::io::ErrorKind::NotConnected | std::io::ErrorKind::AddrInUse | std::io::ErrorKind::AddrNotAvailable | std::io::ErrorKind::BrokenPipe | std::io::ErrorKind::AlreadyExists | std::io::ErrorKind::WouldBlock | std::io::ErrorKind::InvalidInput | std::io::ErrorKind::InvalidData | std::io::ErrorKind::TimedOut | std::io::ErrorKind::WriteZero | std::io::ErrorKind::Interrupted | std::io::ErrorKind::Other | std::io::ErrorKind::UnexpectedEof | _`

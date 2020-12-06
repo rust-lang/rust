@@ -3,8 +3,8 @@ use crate::utils::sugg::Sugg;
 use crate::utils::usage::is_unused;
 use crate::utils::{
     expr_block, get_arg_name, get_parent_expr, in_macro, indent_of, is_allowed, is_expn_of, is_refutable,
-    is_type_diagnostic_item, is_wild, match_qpath, match_type, match_var, multispan_sugg, remove_blocks, snippet,
-    snippet_block, snippet_with_applicability, span_lint_and_help, span_lint_and_note, span_lint_and_sugg,
+    is_type_diagnostic_item, is_wild, match_qpath, match_type, match_var, meets_msrv, multispan_sugg, remove_blocks,
+    snippet, snippet_block, snippet_with_applicability, span_lint_and_help, span_lint_and_note, span_lint_and_sugg,
     span_lint_and_then,
 };
 use crate::utils::{paths, search_same, SpanlessEq, SpanlessHash};
@@ -20,6 +20,7 @@ use rustc_hir::{
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, Ty, TyS};
+use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::{Span, Spanned};
 use rustc_span::{sym, Symbol};
@@ -411,8 +412,8 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Lint for redundant pattern matching over `Result` or
-    /// `Option`
+    /// **What it does:** Lint for redundant pattern matching over `Result`, `Option`,
+    /// `std::task::Poll` or `std::net::IpAddr`
     ///
     /// **Why is this bad?** It's more concise and clear to just use the proper
     /// utility function
@@ -422,10 +423,16 @@ declare_clippy_lint! {
     /// **Example:**
     ///
     /// ```rust
+    /// # use std::task::Poll;
+    /// # use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
     /// if let Ok(_) = Ok::<i32, i32>(42) {}
     /// if let Err(_) = Err::<i32, i32>(42) {}
     /// if let None = None::<()> {}
     /// if let Some(_) = Some(42) {}
+    /// if let Poll::Pending = Poll::Pending::<()> {}
+    /// if let Poll::Ready(_) = Poll::Ready(42) {}
+    /// if let IpAddr::V4(_) = IpAddr::V4(Ipv4Addr::LOCALHOST) {}
+    /// if let IpAddr::V6(_) = IpAddr::V6(Ipv6Addr::LOCALHOST) {}
     /// match Ok::<i32, i32>(42) {
     ///     Ok(_) => true,
     ///     Err(_) => false,
@@ -435,10 +442,16 @@ declare_clippy_lint! {
     /// The more idiomatic use would be:
     ///
     /// ```rust
+    /// # use std::task::Poll;
+    /// # use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
     /// if Ok::<i32, i32>(42).is_ok() {}
     /// if Err::<i32, i32>(42).is_err() {}
     /// if None::<()>.is_none() {}
     /// if Some(42).is_some() {}
+    /// if Poll::Pending::<()>.is_pending() {}
+    /// if Poll::Ready(42).is_ready() {}
+    /// if IpAddr::V4(Ipv4Addr::LOCALHOST).is_ipv4() {}
+    /// if IpAddr::V6(Ipv6Addr::LOCALHOST).is_ipv6() {}
     /// Ok::<i32, i32>(42).is_ok();
     /// ```
     pub REDUNDANT_PATTERN_MATCHING,
@@ -452,7 +465,8 @@ declare_clippy_lint! {
     ///
     /// **Why is this bad?** Readability and needless complexity.
     ///
-    /// **Known problems:** None
+    /// **Known problems:** This lint falsely triggers, if there are arms with
+    /// `cfg` attributes that remove an arm evaluating to `false`.
     ///
     /// **Example:**
     /// ```rust
@@ -521,7 +535,18 @@ declare_clippy_lint! {
 
 #[derive(Default)]
 pub struct Matches {
+    msrv: Option<RustcVersion>,
     infallible_destructuring_match_linted: bool,
+}
+
+impl Matches {
+    #[must_use]
+    pub fn new(msrv: Option<RustcVersion>) -> Self {
+        Self {
+            msrv,
+            ..Matches::default()
+        }
+    }
 }
 
 impl_lint_pass!(Matches => [
@@ -543,6 +568,8 @@ impl_lint_pass!(Matches => [
     MATCH_SAME_ARMS,
 ]);
 
+const MATCH_LIKE_MATCHES_MACRO_MSRV: RustcVersion = RustcVersion::new(1, 42, 0);
+
 impl<'tcx> LateLintPass<'tcx> for Matches {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if in_external_macro(cx.sess(), expr.span) || in_macro(expr.span) {
@@ -550,7 +577,12 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
         }
 
         redundant_pattern_match::check(cx, expr);
-        if !check_match_like_matches(cx, expr) {
+
+        if meets_msrv(self.msrv.as_ref(), &MATCH_LIKE_MATCHES_MACRO_MSRV) {
+            if !check_match_like_matches(cx, expr) {
+                lint_match_arms(cx, expr);
+            }
+        } else {
             lint_match_arms(cx, expr);
         }
 
@@ -614,8 +646,7 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
         if_chain! {
             if !in_external_macro(cx.sess(), pat.span);
             if !in_macro(pat.span);
-            if let PatKind::Struct(ref qpath, fields, true) = pat.kind;
-            if let QPath::Resolved(_, ref path) = qpath;
+            if let PatKind::Struct(QPath::Resolved(_, ref path), fields, true) = pat.kind;
             if let Some(def_id) = path.res.opt_def_id();
             let ty = cx.tcx.type_of(def_id);
             if let ty::Adt(def, _) = ty.kind();
@@ -634,6 +665,8 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
             }
         }
     }
+
+    extract_msrv_attr!(LateContext);
 }
 
 #[rustfmt::skip]
@@ -922,16 +955,14 @@ fn check_wild_enum_match(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>]) 
                 if let QPath::Resolved(_, p) = path {
                     missing_variants.retain(|e| e.ctor_def_id != Some(p.res.def_id()));
                 }
-            } else if let PatKind::TupleStruct(ref path, ref patterns, ..) = arm.pat.kind {
-                if let QPath::Resolved(_, p) = path {
-                    // Some simple checks for exhaustive patterns.
-                    // There is a room for improvements to detect more cases,
-                    // but it can be more expensive to do so.
-                    let is_pattern_exhaustive =
-                        |pat: &&Pat<'_>| matches!(pat.kind, PatKind::Wild | PatKind::Binding(.., None));
-                    if patterns.iter().all(is_pattern_exhaustive) {
-                        missing_variants.retain(|e| e.ctor_def_id != Some(p.res.def_id()));
-                    }
+            } else if let PatKind::TupleStruct(QPath::Resolved(_, p), ref patterns, ..) = arm.pat.kind {
+                // Some simple checks for exhaustive patterns.
+                // There is a room for improvements to detect more cases,
+                // but it can be more expensive to do so.
+                let is_pattern_exhaustive =
+                    |pat: &&Pat<'_>| matches!(pat.kind, PatKind::Wild | PatKind::Binding(.., None));
+                if patterns.iter().all(is_pattern_exhaustive) {
+                    missing_variants.retain(|e| e.ctor_def_id != Some(p.res.def_id()));
                 }
             }
         }
@@ -1134,13 +1165,16 @@ fn find_matches_sugg(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>], expr
         if b0 != b1;
         let if_guard = &b0_arms[0].guard;
         if if_guard.is_none() || b0_arms.len() == 1;
+        if b0_arms[0].attrs.is_empty();
         if b0_arms[1..].iter()
             .all(|arm| {
                 find_bool_lit(&arm.body.kind, desugared).map_or(false, |b| b == b0) &&
-                arm.guard.is_none()
+                arm.guard.is_none() && arm.attrs.is_empty()
             });
         then {
-            let mut applicability = Applicability::MachineApplicable;
+            // The suggestion may be incorrect, because some arms can have `cfg` attributes
+            // evaluated into `false` and so such arms will be stripped before.
+            let mut applicability = Applicability::MaybeIncorrect;
             let pat = {
                 use itertools::Itertools as _;
                 b0_arms.iter()
@@ -1403,8 +1437,7 @@ fn is_ref_some_arm(arm: &Arm<'_>) -> Option<BindingAnnotation> {
         if let ExprKind::Call(ref e, ref args) = remove_blocks(&arm.body).kind;
         if let ExprKind::Path(ref some_path) = e.kind;
         if match_qpath(some_path, &paths::OPTION_SOME) && args.len() == 1;
-        if let ExprKind::Path(ref qpath) = args[0].kind;
-        if let &QPath::Resolved(_, ref path2) = qpath;
+        if let ExprKind::Path(QPath::Resolved(_, ref path2)) = args[0].kind;
         if path2.segments.len() == 1 && ident.name == path2.segments[0].ident.name;
         then {
             return Some(rb)
@@ -1538,6 +1571,12 @@ mod redundant_pattern_match {
                         "is_err()"
                     } else if match_qpath(path, &paths::OPTION_SOME) {
                         "is_some()"
+                    } else if match_qpath(path, &paths::POLL_READY) {
+                        "is_ready()"
+                    } else if match_qpath(path, &paths::IPADDR_V4) {
+                        "is_ipv4()"
+                    } else if match_qpath(path, &paths::IPADDR_V6) {
+                        "is_ipv6()"
                     } else {
                         return;
                     }
@@ -1545,7 +1584,15 @@ mod redundant_pattern_match {
                     return;
                 }
             },
-            PatKind::Path(ref path) if match_qpath(path, &paths::OPTION_NONE) => "is_none()",
+            PatKind::Path(ref path) => {
+                if match_qpath(path, &paths::OPTION_NONE) {
+                    "is_none()"
+                } else if match_qpath(path, &paths::POLL_PENDING) {
+                    "is_pending()"
+                } else {
+                    return;
+                }
+            },
             _ => return,
         };
 
@@ -1610,6 +1657,17 @@ mod redundant_pattern_match {
                             "is_ok()",
                             "is_err()",
                         )
+                        .or_else(|| {
+                            find_good_method_for_match(
+                                arms,
+                                path_left,
+                                path_right,
+                                &paths::IPADDR_V4,
+                                &paths::IPADDR_V6,
+                                "is_ipv4()",
+                                "is_ipv6()",
+                            )
+                        })
                     } else {
                         None
                     }
@@ -1628,6 +1686,17 @@ mod redundant_pattern_match {
                             "is_some()",
                             "is_none()",
                         )
+                        .or_else(|| {
+                            find_good_method_for_match(
+                                arms,
+                                path_left,
+                                path_right,
+                                &paths::POLL_READY,
+                                &paths::POLL_PENDING,
+                                "is_ready()",
+                                "is_pending()",
+                            )
+                        })
                     } else {
                         None
                     }

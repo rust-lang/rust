@@ -14,6 +14,7 @@ pub mod eager_or_lazy;
 pub mod higher;
 mod hir_utils;
 pub mod inspector;
+#[cfg(feature = "internal-lints")]
 pub mod internal_lints;
 pub mod numeric_literal;
 pub mod paths;
@@ -51,6 +52,8 @@ use rustc_lint::{LateContext, Level, Lint, LintContext};
 use rustc_middle::hir::map::Map;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind};
 use rustc_middle::ty::{self, layout::IntegerExt, Ty, TyCtxt, TypeFoldable};
+use rustc_semver::RustcVersion;
+use rustc_session::Session;
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::source_map::original_sp;
 use rustc_span::sym as rustc_sym;
@@ -61,6 +64,49 @@ use rustc_trait_selection::traits::query::normalize::AtExt;
 use smallvec::SmallVec;
 
 use crate::consts::{constant, Constant};
+
+pub fn parse_msrv(msrv: &str, sess: Option<&Session>, span: Option<Span>) -> Option<RustcVersion> {
+    if let Ok(version) = RustcVersion::parse(msrv) {
+        return Some(version);
+    } else if let Some(sess) = sess {
+        if let Some(span) = span {
+            sess.span_err(span, &format!("`{}` is not a valid Rust version", msrv));
+        }
+    }
+    None
+}
+
+pub fn meets_msrv(msrv: Option<&RustcVersion>, lint_msrv: &RustcVersion) -> bool {
+    msrv.map_or(true, |msrv| msrv.meets(*lint_msrv))
+}
+
+macro_rules! extract_msrv_attr {
+    (LateContext) => {
+        extract_msrv_attr!(@LateContext, ());
+    };
+    (EarlyContext) => {
+        extract_msrv_attr!(@EarlyContext);
+    };
+    (@$context:ident$(, $call:tt)?) => {
+        fn enter_lint_attrs(&mut self, cx: &rustc_lint::$context<'tcx>, attrs: &'tcx [rustc_ast::ast::Attribute]) {
+            use $crate::utils::get_unique_inner_attr;
+            match get_unique_inner_attr(cx.sess$($call)?, attrs, "msrv") {
+                Some(msrv_attr) => {
+                    if let Some(msrv) = msrv_attr.value_str() {
+                        self.msrv = $crate::utils::parse_msrv(
+                            &msrv.to_string(),
+                            Some(cx.sess$($call)?),
+                            Some(msrv_attr.span),
+                        );
+                    } else {
+                        cx.sess$($call)?.span_err(msrv_attr.span, "bad clippy attribute");
+                    }
+                },
+                _ => (),
+            }
+        }
+    };
+}
 
 /// Returns `true` if the two spans come from differing expansions (i.e., one is
 /// from a macro and one isn't).
@@ -525,6 +571,36 @@ pub fn contains_name(name: Symbol, expr: &Expr<'_>) -> bool {
     let mut cn = ContainsName { name, result: false };
     cn.visit_expr(expr);
     cn.result
+}
+
+/// Returns `true` if `expr` contains a return expression
+pub fn contains_return(expr: &hir::Expr<'_>) -> bool {
+    struct RetCallFinder {
+        found: bool,
+    }
+
+    impl<'tcx> hir::intravisit::Visitor<'tcx> for RetCallFinder {
+        type Map = Map<'tcx>;
+
+        fn visit_expr(&mut self, expr: &'tcx hir::Expr<'_>) {
+            if self.found {
+                return;
+            }
+            if let hir::ExprKind::Ret(..) = &expr.kind {
+                self.found = true;
+            } else {
+                hir::intravisit::walk_expr(self, expr);
+            }
+        }
+
+        fn nested_visit_map(&mut self) -> hir::intravisit::NestedVisitorMap<Self::Map> {
+            hir::intravisit::NestedVisitorMap::None
+        }
+    }
+
+    let mut visitor = RetCallFinder { found: false };
+    visitor.visit_expr(expr);
+    visitor.found
 }
 
 /// Converts a span to a code snippet if available, otherwise use default.

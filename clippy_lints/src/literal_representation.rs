@@ -11,7 +11,7 @@ use rustc_ast::ast::{Expr, ExprKind, Lit, LitKind};
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
-use rustc_session::{declare_lint_pass, declare_tool_lint, impl_lint_pass};
+use rustc_session::{declare_tool_lint, impl_lint_pass};
 
 declare_clippy_lint! {
     /// **What it does:** Warns if a long integral or floating-point constant does
@@ -32,7 +32,7 @@ declare_clippy_lint! {
     /// ```
     pub UNREADABLE_LITERAL,
     pedantic,
-    "long integer literal without underscores"
+    "long literal without underscores"
 }
 
 declare_clippy_lint! {
@@ -208,7 +208,13 @@ impl WarningType {
     }
 }
 
-declare_lint_pass!(LiteralDigitGrouping => [
+#[allow(clippy::module_name_repetitions)]
+#[derive(Copy, Clone)]
+pub struct LiteralDigitGrouping {
+    lint_fraction_readability: bool,
+}
+
+impl_lint_pass!(LiteralDigitGrouping => [
     UNREADABLE_LITERAL,
     INCONSISTENT_DIGIT_GROUPING,
     LARGE_DIGIT_GROUPS,
@@ -223,7 +229,7 @@ impl EarlyLintPass for LiteralDigitGrouping {
         }
 
         if let ExprKind::Lit(ref lit) = expr.kind {
-            Self::check_lit(cx, lit)
+            self.check_lit(cx, lit)
         }
     }
 }
@@ -232,7 +238,13 @@ impl EarlyLintPass for LiteralDigitGrouping {
 const UUID_GROUP_LENS: [usize; 5] = [8, 4, 4, 4, 12];
 
 impl LiteralDigitGrouping {
-    fn check_lit(cx: &EarlyContext<'_>, lit: &Lit) {
+    pub fn new(lint_fraction_readability: bool) -> Self {
+        Self {
+            lint_fraction_readability,
+        }
+    }
+
+    fn check_lit(self, cx: &EarlyContext<'_>, lit: &Lit) {
         if_chain! {
             if let Some(src) = snippet_opt(cx, lit.span);
             if let Some(mut num_lit) = NumericLiteral::from_lit(&src, &lit);
@@ -247,9 +259,12 @@ impl LiteralDigitGrouping {
 
                 let result = (|| {
 
-                    let integral_group_size = Self::get_group_size(num_lit.integer.split('_'), num_lit.radix)?;
+                    let integral_group_size = Self::get_group_size(num_lit.integer.split('_'), num_lit.radix, true)?;
                     if let Some(fraction) = num_lit.fraction {
-                        let fractional_group_size = Self::get_group_size(fraction.rsplit('_'), num_lit.radix)?;
+                        let fractional_group_size = Self::get_group_size(
+                            fraction.rsplit('_'),
+                            num_lit.radix,
+                            self.lint_fraction_readability)?;
 
                         let consistent = Self::parts_consistent(integral_group_size,
                                                                 fractional_group_size,
@@ -363,7 +378,11 @@ impl LiteralDigitGrouping {
 
     /// Returns the size of the digit groups (or None if ungrouped) if successful,
     /// otherwise returns a `WarningType` for linting.
-    fn get_group_size<'a>(groups: impl Iterator<Item = &'a str>, radix: Radix) -> Result<Option<usize>, WarningType> {
+    fn get_group_size<'a>(
+        groups: impl Iterator<Item = &'a str>,
+        radix: Radix,
+        lint_unreadable: bool,
+    ) -> Result<Option<usize>, WarningType> {
         let mut groups = groups.map(str::len);
 
         let first = groups.next().expect("At least one group");
@@ -380,7 +399,7 @@ impl LiteralDigitGrouping {
             } else {
                 Ok(Some(second))
             }
-        } else if first > 5 {
+        } else if first > 5 && lint_unreadable {
             Err(WarningType::UnreadableLiteral)
         } else {
             Ok(None)

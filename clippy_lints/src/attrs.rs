@@ -5,7 +5,6 @@ use crate::utils::{
     span_lint_and_sugg, span_lint_and_then, without_block_comments,
 };
 use if_chain::if_chain;
-use rustc_span::lev_distance::find_best_match_for_name;
 use rustc_ast::{AttrKind, AttrStyle, Attribute, Lit, LitKind, MetaItemKind, NestedMetaItem};
 use rustc_errors::Applicability;
 use rustc_hir::{
@@ -15,6 +14,7 @@ use rustc_lint::{CheckLintNameResult, EarlyContext, EarlyLintPass, LateContext, 
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_span::lev_distance::find_best_match_for_name;
 use rustc_span::source_map::Span;
 use rustc_span::sym;
 use rustc_span::symbol::{Symbol, SymbolStr};

@@ -10,6 +10,14 @@ macro_rules! foo {
     };
 }
 
+struct Bar(f32);
+
+macro_rules! bar {
+    () => {
+        Bar(100200300400.100200300400500)
+    };
+}
+
 fn main() {
     let _good = (
         0b1011_i64,
@@ -26,10 +34,12 @@ fn main() {
     let _good_sci = 1.1234e1;
     let _bad_sci = 1.123_456e1;
 
-    let _fail9 = 0x00ab_cdef;
-    let _fail10: u32 = 0xBAFE_BAFE;
-    let _fail11 = 0x0abc_deff;
-    let _fail12: i128 = 0x00ab_cabc_abca_bcab_cabc;
+    let _fail1 = 0x00ab_cdef;
+    let _fail2: u32 = 0xBAFE_BAFE;
+    let _fail3 = 0x0abc_deff;
+    let _fail4: i128 = 0x00ab_cabc_abca_bcab_cabc;
+    let _fail5 = 1.100_300_400;
 
     let _ = foo!();
+    let _ = bar!();
 }

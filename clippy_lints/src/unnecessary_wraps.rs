@@ -1,5 +1,5 @@
 use crate::utils::{
-    in_macro, is_type_diagnostic_item, match_qpath, paths, return_ty, snippet, span_lint_and_then,
+    contains_return, in_macro, is_type_diagnostic_item, match_qpath, paths, return_ty, snippet, span_lint_and_then,
     visitors::find_all_ret_expressions,
 };
 use if_chain::if_chain;
@@ -95,6 +95,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryWraps {
                 if let ExprKind::Path(ref qpath) = func.kind;
                 if match_qpath(qpath, path);
                 if args.len() == 1;
+                if !contains_return(&args[0]);
                 then {
                     suggs.push((ret_expr.span, snippet(cx, args[0].span.source_callsite(), "..").to_string()));
                     true
@@ -134,7 +135,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryWraps {
                     diag.multipart_suggestion(
                         "...and change the returning expressions",
                         suggs,
-                        Applicability::MachineApplicable,
+                        Applicability::MaybeIncorrect,
                     );
                 },
             );

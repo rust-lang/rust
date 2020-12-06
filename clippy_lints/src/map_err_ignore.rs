@@ -99,7 +99,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     pub MAP_ERR_IGNORE,
-    pedantic,
+    restriction,
     "`map_err` should not ignore the original error"
 }
 
@@ -133,9 +133,9 @@ impl<'tcx> LateLintPass<'tcx> for MapErrIgnore {
                                     cx,
                                     MAP_ERR_IGNORE,
                                     body_span,
-                                    "`map_err(|_|...` ignores the original error",
+                                    "`map_err(|_|...` wildcard pattern discards the original error",
                                     None,
-                                    "Consider wrapping the error in an enum variant",
+                                    "Consider storing the original error as a source in the new error, or silence this warning using an ignored identifier (`.map_err(|_foo| ...`)",
                                 );
                             }
                         }

@@ -1,11 +1,11 @@
-error: `map_err(|_|...` ignores the original error
+error: `map_err(|_|...` wildcard pattern discards the original error
   --> $DIR/map_err.rs:23:32
    |
 LL |     println!("{:?}", x.map_err(|_| Errors::Ignored));
    |                                ^^^
    |
    = note: `-D clippy::map-err-ignore` implied by `-D warnings`
-   = help: Consider wrapping the error in an enum variant
+   = help: Consider storing the original error as a source in the new error, or silence this warning using an ignored identifier (`.map_err(|_foo| ...`)
 
 error: aborting due to previous error
 
