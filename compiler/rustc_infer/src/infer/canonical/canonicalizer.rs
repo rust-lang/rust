@@ -505,7 +505,7 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
             let canon_value = Canonical {
                 max_universe: ty::UniverseIndex::ROOT,
                 variables: List::empty(),
-                value: value.clone(),
+                value,
             };
             return canon_value;
         }
