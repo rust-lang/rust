@@ -13,9 +13,6 @@ LL |               intrinsics::assert_inhabited::<T>();
 LL | /     const _BAD: () = unsafe {
 LL | |         MaybeUninit::<!>::uninit().assume_init();
 LL | |
-LL | |
-LL | |
-LL | |
 LL | |     };
    | |______-
    |

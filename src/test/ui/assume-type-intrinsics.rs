@@ -6,8 +6,6 @@ fn main() {
 
     const _BAD: () = unsafe {
         MaybeUninit::<!>::uninit().assume_init();
-        //~^ ERROR: the type `!` does not permit being left uninitialized
-        //~| this code causes undefined behavior when executed
-        //~| WARN: the type `!` does not permit being left uninitialized
+        //~^ WARN: the type `!` does not permit being left uninitialized
     };
 }
