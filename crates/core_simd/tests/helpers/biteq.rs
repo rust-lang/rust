@@ -70,12 +70,6 @@ impl_biteq! {
     integer impl BitEq for
         u8, u16, u32, u64, u128, usize,
         i8, i16, i32, i64, i128, isize,
-        core_simd::masks::wide::m8,
-        core_simd::masks::wide::m16,
-        core_simd::masks::wide::m32,
-        core_simd::masks::wide::m64,
-        core_simd::masks::wide::m128,
-        core_simd::masks::wide::msize,
 }
 
 impl_biteq! {
@@ -98,12 +92,6 @@ impl_biteq! {
         core_simd::isizex2, core_simd::isizex4, core_simd::isizex8,
         core_simd::f32x2, core_simd::f32x4, core_simd::f32x8, core_simd::f32x16,
         core_simd::f64x2, core_simd::f64x4, core_simd::f64x8,
-        core_simd::masks::wide::m8x8,    core_simd::masks::wide::m8x16,   core_simd::masks::wide::m8x32,   core_simd::masks::wide::m8x64,
-        core_simd::masks::wide::m16x4,   core_simd::masks::wide::m16x8,   core_simd::masks::wide::m16x16,  core_simd::masks::wide::m16x32,
-        core_simd::masks::wide::m32x2,   core_simd::masks::wide::m32x4,   core_simd::masks::wide::m32x8,   core_simd::masks::wide::m32x16,
-        core_simd::masks::wide::m64x2,   core_simd::masks::wide::m64x4,   core_simd::masks::wide::m64x8,
-        core_simd::masks::wide::m128x2,  core_simd::masks::wide::m128x4,
-        core_simd::masks::wide::msizex2, core_simd::masks::wide::msizex4, core_simd::masks::wide::msizex8,
 }
 
 pub(crate) struct BitEqWrapper<'a, T>(pub(crate) &'a T);

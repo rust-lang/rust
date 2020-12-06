@@ -295,13 +295,13 @@ macro_rules! impl_float_vector {
                 unsafe { core::mem::transmute_copy(&bits) }
             }
 
-//            /// Produces a vector where every lane has the absolute value of the
-//            /// equivalently-indexed lane in `self`.
-//            #[inline]
-//            pub fn abs(self) -> Self {
-//                let no_sign = <$bits_ty>::splat(!0 >> 1);
-//                Self::from_bits(self.to_bits() & no_sign)
-//            }
+            /// Produces a vector where every lane has the absolute value of the
+            /// equivalently-indexed lane in `self`.
+            #[inline]
+            pub fn abs(self) -> Self {
+                let no_sign = crate::$bits_ty::splat(!0 >> 1);
+                Self::from_bits(self.to_bits() & no_sign)
+            }
         }
     };
 }

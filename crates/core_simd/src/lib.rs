@@ -8,7 +8,7 @@ mod macros;
 
 mod fmt;
 mod intrinsics;
-//mod ops;
+mod ops;
 //mod round;
 
 //pub mod masks;

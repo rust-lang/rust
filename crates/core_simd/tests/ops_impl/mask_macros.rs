@@ -1,5 +1,6 @@
 macro_rules! mask_tests {
     { $vector:ident, $lanes:literal } => {
+        /*
         #[cfg(test)]
         mod $vector {
             use core_simd::$vector as Vector;
@@ -221,5 +222,6 @@ macro_rules! mask_tests {
                 assert_eq!(!v, expected);
             }
         }
+        */
     }
 }
