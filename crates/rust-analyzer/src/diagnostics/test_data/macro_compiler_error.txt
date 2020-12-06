@@ -51,7 +51,7 @@
                                 },
                             },
                         },
-                        message: "Exact error occured here",
+                        message: "Exact error occurred here",
                     },
                 ],
             ),

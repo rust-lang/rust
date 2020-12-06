@@ -266,7 +266,7 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
                 let information_for_additional_diagnostic =
                     vec![lsp_types::DiagnosticRelatedInformation {
                         location: location.clone(),
-                        message: "Exact error occured here".to_string(),
+                        message: "Exact error occurred here".to_string(),
                     }];
 
                 let diagnostic = lsp_types::Diagnostic {
