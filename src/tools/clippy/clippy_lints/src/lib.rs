@@ -44,6 +44,7 @@ extern crate rustc_target;
 extern crate rustc_trait_selection;
 extern crate rustc_typeck;
 
+use crate::utils::parse_msrv;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_lint::LintId;
 use rustc_session::Session;
@@ -171,6 +172,7 @@ mod cargo_common_metadata;
 mod checked_conversions;
 mod cognitive_complexity;
 mod collapsible_if;
+mod collapsible_match;
 mod comparison_chain;
 mod copies;
 mod copy_iterator;
@@ -304,9 +306,11 @@ mod self_assignment;
 mod serde_api;
 mod shadow;
 mod single_component_path_imports;
+mod size_of_in_element_count;
 mod slow_vector_initialization;
 mod stable_sort_primitive;
 mod strings;
+mod suspicious_operation_groupings;
 mod suspicious_trait_impl;
 mod swap;
 mod tabs_in_doc_comments;
@@ -441,14 +445,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         "`Vec::as_mut_slice` has been stabilized in 1.7",
     );
     store.register_removed(
-        "clippy::str_to_string",
-        "using `str::to_string` is common even today and specialization will likely happen soon",
-    );
-    store.register_removed(
-        "clippy::string_to_string",
-        "using `string::to_string` is common even today and specialization will likely happen soon",
-    );
-    store.register_removed(
         "clippy::misaligned_transmute",
         "this lint has been split into cast_ptr_alignment and transmute_ptr_to_ptr",
     );
@@ -504,6 +500,24 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
 
     // begin register lints, do not remove this comment, it’s used in `update_lints`
     store.register_lints(&[
+        #[cfg(feature = "internal-lints")]
+        &utils::internal_lints::CLIPPY_LINTS_INTERNAL,
+        #[cfg(feature = "internal-lints")]
+        &utils::internal_lints::COLLAPSIBLE_SPAN_LINT_CALLS,
+        #[cfg(feature = "internal-lints")]
+        &utils::internal_lints::COMPILER_LINT_FUNCTIONS,
+        #[cfg(feature = "internal-lints")]
+        &utils::internal_lints::DEFAULT_LINT,
+        #[cfg(feature = "internal-lints")]
+        &utils::internal_lints::INVALID_PATHS,
+        #[cfg(feature = "internal-lints")]
+        &utils::internal_lints::LINT_WITHOUT_LINT_PASS,
+        #[cfg(feature = "internal-lints")]
+        &utils::internal_lints::MATCH_TYPE_ON_DIAGNOSTIC_ITEM,
+        #[cfg(feature = "internal-lints")]
+        &utils::internal_lints::OUTER_EXPN_EXPN_DATA,
+        #[cfg(feature = "internal-lints")]
+        &utils::internal_lints::PRODUCE_ICE,
         &approx_const::APPROX_CONSTANT,
         &arithmetic::FLOAT_ARITHMETIC,
         &arithmetic::INTEGER_ARITHMETIC,
@@ -537,6 +551,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &checked_conversions::CHECKED_CONVERSIONS,
         &cognitive_complexity::COGNITIVE_COMPLEXITY,
         &collapsible_if::COLLAPSIBLE_IF,
+        &collapsible_match::COLLAPSIBLE_MATCH,
         &comparison_chain::COMPARISON_CHAIN,
         &copies::IFS_SAME_COND,
         &copies::IF_SAME_THEN_ELSE,
@@ -833,12 +848,16 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &shadow::SHADOW_SAME,
         &shadow::SHADOW_UNRELATED,
         &single_component_path_imports::SINGLE_COMPONENT_PATH_IMPORTS,
+        &size_of_in_element_count::SIZE_OF_IN_ELEMENT_COUNT,
         &slow_vector_initialization::SLOW_VECTOR_INITIALIZATION,
         &stable_sort_primitive::STABLE_SORT_PRIMITIVE,
         &strings::STRING_ADD,
         &strings::STRING_ADD_ASSIGN,
         &strings::STRING_FROM_UTF8_AS_BYTES,
         &strings::STRING_LIT_AS_BYTES,
+        &strings::STRING_TO_STRING,
+        &strings::STR_TO_STRING,
+        &suspicious_operation_groupings::SUSPICIOUS_OPERATION_GROUPINGS,
         &suspicious_trait_impl::SUSPICIOUS_ARITHMETIC_IMPL,
         &suspicious_trait_impl::SUSPICIOUS_OP_ASSIGN_IMPL,
         &swap::ALMOST_SWAPPED,
@@ -907,15 +926,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &unwrap_in_result::UNWRAP_IN_RESULT,
         &use_self::USE_SELF,
         &useless_conversion::USELESS_CONVERSION,
-        &utils::internal_lints::CLIPPY_LINTS_INTERNAL,
-        &utils::internal_lints::COLLAPSIBLE_SPAN_LINT_CALLS,
-        &utils::internal_lints::COMPILER_LINT_FUNCTIONS,
-        &utils::internal_lints::DEFAULT_LINT,
-        &utils::internal_lints::INVALID_PATHS,
-        &utils::internal_lints::LINT_WITHOUT_LINT_PASS,
-        &utils::internal_lints::MATCH_TYPE_ON_DIAGNOSTIC_ITEM,
-        &utils::internal_lints::OUTER_EXPN_EXPN_DATA,
-        &utils::internal_lints::PRODUCE_ICE,
         &vec::USELESS_VEC,
         &vec_resize_to_zero::VEC_RESIZE_TO_ZERO,
         &verbose_file_reads::VERBOSE_FILE_READS,
@@ -934,14 +944,22 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     ]);
     // end register lints, do not remove this comment, it’s used in `update_lints`
 
+    // all the internal lints
+    #[cfg(feature = "internal-lints")]
+    {
+        store.register_early_pass(|| box utils::internal_lints::ClippyLintsInternal);
+        store.register_early_pass(|| box utils::internal_lints::ProduceIce);
+        store.register_late_pass(|| box utils::inspector::DeepCodeInspector);
+        store.register_late_pass(|| box utils::internal_lints::CollapsibleCalls);
+        store.register_late_pass(|| box utils::internal_lints::CompilerLintFunctions::new());
+        store.register_late_pass(|| box utils::internal_lints::InvalidPaths);
+        store.register_late_pass(|| box utils::internal_lints::LintWithoutLintPass::default());
+        store.register_late_pass(|| box utils::internal_lints::MatchTypeOnDiagItem);
+        store.register_late_pass(|| box utils::internal_lints::OuterExpnDataPass);
+    }
+    store.register_late_pass(|| box utils::author::Author);
     store.register_late_pass(|| box await_holding_invalid::AwaitHolding);
     store.register_late_pass(|| box serde_api::SerdeAPI);
-    store.register_late_pass(|| box utils::internal_lints::CompilerLintFunctions::new());
-    store.register_late_pass(|| box utils::internal_lints::LintWithoutLintPass::default());
-    store.register_late_pass(|| box utils::internal_lints::OuterExpnDataPass);
-    store.register_late_pass(|| box utils::internal_lints::InvalidPaths);
-    store.register_late_pass(|| box utils::inspector::DeepCodeInspector);
-    store.register_late_pass(|| box utils::author::Author);
     let vec_box_size_threshold = conf.vec_box_size_threshold;
     store.register_late_pass(move || box types::Types::new(vec_box_size_threshold));
     store.register_late_pass(|| box booleans::NonminimalBool);
@@ -964,12 +982,25 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box len_zero::LenZero);
     store.register_late_pass(|| box attrs::Attributes);
     store.register_late_pass(|| box blocks_in_if_conditions::BlocksInIfConditions);
+    store.register_late_pass(|| box collapsible_match::CollapsibleMatch);
     store.register_late_pass(|| box unicode::Unicode);
     store.register_late_pass(|| box unit_return_expecting_ord::UnitReturnExpectingOrd);
     store.register_late_pass(|| box strings::StringAdd);
     store.register_late_pass(|| box implicit_return::ImplicitReturn);
     store.register_late_pass(|| box implicit_saturating_sub::ImplicitSaturatingSub);
-    store.register_late_pass(|| box methods::Methods);
+
+    let msrv = conf.msrv.as_ref().and_then(|s| {
+        parse_msrv(s, None, None).or_else(|| {
+            sess.err(&format!("error reading Clippy's configuration file. `{}` is not a valid Rust version", s));
+            None
+        })
+    });
+
+    store.register_late_pass(move || box methods::Methods::new(msrv));
+    store.register_late_pass(move || box matches::Matches::new(msrv));
+    store.register_early_pass(move || box manual_non_exhaustive::ManualNonExhaustive::new(msrv));
+    store.register_late_pass(move || box manual_strip::ManualStrip::new(msrv));
+    store.register_late_pass(|| box size_of_in_element_count::SizeOfInElementCount);
     store.register_late_pass(|| box map_clone::MapClone);
     store.register_late_pass(|| box map_err_ignore::MapErrIgnore);
     store.register_late_pass(|| box shadow::Shadow);
@@ -983,7 +1014,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box types::Casts);
     let type_complexity_threshold = conf.type_complexity_threshold;
     store.register_late_pass(move || box types::TypeComplexity::new(type_complexity_threshold));
-    store.register_late_pass(|| box matches::Matches::default());
     store.register_late_pass(|| box minmax::MinMaxPass);
     store.register_late_pass(|| box open_options::OpenOptions);
     store.register_late_pass(|| box zero_div_zero::ZeroDiv);
@@ -1057,6 +1087,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box types::UnitArg);
     store.register_late_pass(|| box double_comparison::DoubleComparisons);
     store.register_late_pass(|| box question_mark::QuestionMark);
+    store.register_early_pass(|| box suspicious_operation_groupings::SuspiciousOperationGroupings);
     store.register_late_pass(|| box suspicious_trait_impl::SuspiciousImpl);
     store.register_late_pass(|| box map_unit_fn::MapUnit);
     store.register_late_pass(|| box inherent_impl::MultipleInherentImpl::default());
@@ -1107,10 +1138,10 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box cargo_common_metadata::CargoCommonMetadata);
     store.register_late_pass(|| box multiple_crate_versions::MultipleCrateVersions);
     store.register_late_pass(|| box wildcard_dependencies::WildcardDependencies);
-    store.register_early_pass(|| box literal_representation::LiteralDigitGrouping);
+    let literal_representation_lint_fraction_readability = conf.unreadable_literal_lint_fractions;
+    store.register_early_pass(move || box literal_representation::LiteralDigitGrouping::new(literal_representation_lint_fraction_readability));
     let literal_representation_threshold = conf.literal_representation_threshold;
     store.register_early_pass(move || box literal_representation::DecimalLiteralRepresentation::new(literal_representation_threshold));
-    store.register_early_pass(|| box utils::internal_lints::ClippyLintsInternal);
     let enum_variant_name_threshold = conf.enum_variant_name_threshold;
     store.register_early_pass(move || box enum_variants::EnumVariantNames::new(enum_variant_name_threshold));
     store.register_early_pass(|| box tabs_in_doc_comments::TabsInDocComments);
@@ -1124,7 +1155,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(move || box large_const_arrays::LargeConstArrays::new(array_size_threshold));
     store.register_late_pass(|| box floating_point_arithmetic::FloatingPointArithmetic);
     store.register_early_pass(|| box as_conversions::AsConversions);
-    store.register_early_pass(|| box utils::internal_lints::ProduceIce);
     store.register_late_pass(|| box let_underscore::LetUnderscore);
     store.register_late_pass(|| box atomic_ordering::AtomicOrdering);
     store.register_early_pass(|| box single_component_path_imports::SingleComponentPathImports);
@@ -1140,16 +1170,13 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box dereference::Dereferencing);
     store.register_late_pass(|| box option_if_let_else::OptionIfLetElse);
     store.register_late_pass(|| box future_not_send::FutureNotSend);
-    store.register_late_pass(|| box utils::internal_lints::CollapsibleCalls);
     store.register_late_pass(|| box if_let_mutex::IfLetMutex);
     store.register_late_pass(|| box mut_mutex_lock::MutMutexLock);
     store.register_late_pass(|| box match_on_vec_items::MatchOnVecItems);
-    store.register_early_pass(|| box manual_non_exhaustive::ManualNonExhaustive);
     store.register_late_pass(|| box manual_async_fn::ManualAsyncFn);
     store.register_early_pass(|| box redundant_field_names::RedundantFieldNames);
     store.register_late_pass(|| box vec_resize_to_zero::VecResizeToZero);
     store.register_late_pass(|| box panic_in_result_fn::PanicInResultFn);
-
     let single_char_binding_names_threshold = conf.single_char_binding_names_threshold;
     store.register_early_pass(move || box non_expressive_names::NonExpressiveNames {
         single_char_binding_names_threshold,
@@ -1166,14 +1193,13 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box manual_ok_or::ManualOkOr);
     store.register_late_pass(|| box float_equality_without_abs::FloatEqualityWithoutAbs);
     store.register_late_pass(|| box async_yields_async::AsyncYieldsAsync);
-    store.register_late_pass(|| box manual_strip::ManualStrip);
-    store.register_late_pass(|| box utils::internal_lints::MatchTypeOnDiagItem);
     let disallowed_methods = conf.disallowed_methods.iter().cloned().collect::<FxHashSet<_>>();
     store.register_late_pass(move || box disallowed_method::DisallowedMethod::new(&disallowed_methods));
     store.register_early_pass(|| box asm_syntax::InlineAsmX86AttSyntax);
     store.register_early_pass(|| box asm_syntax::InlineAsmX86IntelSyntax);
     store.register_late_pass(|| box undropped_manually_drops::UndroppedManuallyDrops);
-
+    store.register_late_pass(|| box strings::StrToString);
+    store.register_late_pass(|| box strings::StringToString);
 
     store.register_group(true, "clippy::restriction", Some("clippy_restriction"), vec![
         LintId::of(&arithmetic::FLOAT_ARITHMETIC),
@@ -1192,6 +1218,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&integer_division::INTEGER_DIVISION),
         LintId::of(&let_underscore::LET_UNDERSCORE_MUST_USE),
         LintId::of(&literal_representation::DECIMAL_LITERAL_REPRESENTATION),
+        LintId::of(&map_err_ignore::MAP_ERR_IGNORE),
         LintId::of(&matches::REST_PAT_IN_FULLY_BOUND_STRUCTS),
         LintId::of(&matches::WILDCARD_ENUM_MATCH_ARM),
         LintId::of(&mem_forget::MEM_FORGET),
@@ -1215,6 +1242,8 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&shadow::SHADOW_REUSE),
         LintId::of(&shadow::SHADOW_SAME),
         LintId::of(&strings::STRING_ADD),
+        LintId::of(&strings::STRING_TO_STRING),
+        LintId::of(&strings::STR_TO_STRING),
         LintId::of(&types::RC_BUFFER),
         LintId::of(&unwrap_in_result::UNWRAP_IN_RESULT),
         LintId::of(&verbose_file_reads::VERBOSE_FILE_READS),
@@ -1256,7 +1285,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&loops::EXPLICIT_ITER_LOOP),
         LintId::of(&macro_use::MACRO_USE_IMPORTS),
         LintId::of(&manual_ok_or::MANUAL_OK_OR),
-        LintId::of(&map_err_ignore::MAP_ERR_IGNORE),
         LintId::of(&match_on_vec_items::MATCH_ON_VEC_ITEMS),
         LintId::of(&matches::MATCH_BOOL),
         LintId::of(&matches::MATCH_SAME_ARMS),
@@ -1304,6 +1332,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&wildcard_imports::WILDCARD_IMPORTS),
     ]);
 
+    #[cfg(feature = "internal-lints")]
     store.register_group(true, "clippy::internal", Some("clippy_internal"), vec![
         LintId::of(&utils::internal_lints::CLIPPY_LINTS_INTERNAL),
         LintId::of(&utils::internal_lints::COLLAPSIBLE_SPAN_LINT_CALLS),
@@ -1337,6 +1366,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&booleans::NONMINIMAL_BOOL),
         LintId::of(&bytecount::NAIVE_BYTECOUNT),
         LintId::of(&collapsible_if::COLLAPSIBLE_IF),
+        LintId::of(&collapsible_match::COLLAPSIBLE_MATCH),
         LintId::of(&comparison_chain::COMPARISON_CHAIN),
         LintId::of(&copies::IFS_SAME_COND),
         LintId::of(&copies::IF_SAME_THEN_ELSE),
@@ -1533,9 +1563,11 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&self_assignment::SELF_ASSIGNMENT),
         LintId::of(&serde_api::SERDE_API_MISUSE),
         LintId::of(&single_component_path_imports::SINGLE_COMPONENT_PATH_IMPORTS),
+        LintId::of(&size_of_in_element_count::SIZE_OF_IN_ELEMENT_COUNT),
         LintId::of(&slow_vector_initialization::SLOW_VECTOR_INITIALIZATION),
         LintId::of(&stable_sort_primitive::STABLE_SORT_PRIMITIVE),
         LintId::of(&strings::STRING_FROM_UTF8_AS_BYTES),
+        LintId::of(&suspicious_operation_groupings::SUSPICIOUS_OPERATION_GROUPINGS),
         LintId::of(&suspicious_trait_impl::SUSPICIOUS_ARITHMETIC_IMPL),
         LintId::of(&suspicious_trait_impl::SUSPICIOUS_OP_ASSIGN_IMPL),
         LintId::of(&swap::ALMOST_SWAPPED),
@@ -1602,6 +1634,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&blacklisted_name::BLACKLISTED_NAME),
         LintId::of(&blocks_in_if_conditions::BLOCKS_IN_IF_CONDITIONS),
         LintId::of(&collapsible_if::COLLAPSIBLE_IF),
+        LintId::of(&collapsible_match::COLLAPSIBLE_MATCH),
         LintId::of(&comparison_chain::COMPARISON_CHAIN),
         LintId::of(&default::FIELD_REASSIGN_WITH_DEFAULT),
         LintId::of(&doc::MISSING_SAFETY_DOC),
@@ -1687,6 +1720,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&returns::LET_AND_RETURN),
         LintId::of(&returns::NEEDLESS_RETURN),
         LintId::of(&single_component_path_imports::SINGLE_COMPONENT_PATH_IMPORTS),
+        LintId::of(&suspicious_operation_groupings::SUSPICIOUS_OPERATION_GROUPINGS),
         LintId::of(&tabs_in_doc_comments::TABS_IN_DOC_COMMENTS),
         LintId::of(&to_digit_is_some::TO_DIGIT_IS_SOME),
         LintId::of(&try_err::TRY_ERR),
@@ -1839,6 +1873,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&regex::INVALID_REGEX),
         LintId::of(&self_assignment::SELF_ASSIGNMENT),
         LintId::of(&serde_api::SERDE_API_MISUSE),
+        LintId::of(&size_of_in_element_count::SIZE_OF_IN_ELEMENT_COUNT),
         LintId::of(&suspicious_trait_impl::SUSPICIOUS_ARITHMETIC_IMPL),
         LintId::of(&suspicious_trait_impl::SUSPICIOUS_OP_ASSIGN_IMPL),
         LintId::of(&swap::ALMOST_SWAPPED),
@@ -1929,14 +1964,6 @@ fn register_removed_non_tool_lints(store: &mut rustc_lint::LintStore) {
     store.register_removed(
         "unstable_as_mut_slice",
         "`Vec::as_mut_slice` has been stabilized in 1.7",
-    );
-    store.register_removed(
-        "str_to_string",
-        "using `str::to_string` is common even today and specialization will likely happen soon",
-    );
-    store.register_removed(
-        "string_to_string",
-        "using `string::to_string` is common even today and specialization will likely happen soon",
     );
     store.register_removed(
         "misaligned_transmute",

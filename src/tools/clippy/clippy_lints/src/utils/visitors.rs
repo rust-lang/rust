@@ -1,5 +1,7 @@
 use rustc_hir as hir;
-use rustc_hir::intravisit::{self, Visitor};
+use rustc_hir::def::Res;
+use rustc_hir::intravisit::{self, walk_expr, NestedVisitorMap, Visitor};
+use rustc_hir::{Arm, Expr, ExprKind, HirId, QPath, Stmt};
 use rustc_lint::LateContext;
 use rustc_middle::hir::map::Map;
 
@@ -121,5 +123,56 @@ where
         };
         ret_finder.visit_expr(expr);
         !ret_finder.failed
+    }
+}
+
+pub struct LocalUsedVisitor {
+    pub local_hir_id: HirId,
+    pub used: bool,
+}
+
+impl LocalUsedVisitor {
+    pub fn new(local_hir_id: HirId) -> Self {
+        Self {
+            local_hir_id,
+            used: false,
+        }
+    }
+
+    fn check<T>(&mut self, t: T, visit: fn(&mut Self, T)) -> bool {
+        visit(self, t);
+        std::mem::replace(&mut self.used, false)
+    }
+
+    pub fn check_arm(&mut self, arm: &Arm<'_>) -> bool {
+        self.check(arm, Self::visit_arm)
+    }
+
+    pub fn check_expr(&mut self, expr: &Expr<'_>) -> bool {
+        self.check(expr, Self::visit_expr)
+    }
+
+    pub fn check_stmt(&mut self, stmt: &Stmt<'_>) -> bool {
+        self.check(stmt, Self::visit_stmt)
+    }
+}
+
+impl<'v> Visitor<'v> for LocalUsedVisitor {
+    type Map = Map<'v>;
+
+    fn visit_expr(&mut self, expr: &'v Expr<'v>) {
+        if let ExprKind::Path(QPath::Resolved(None, path)) = expr.kind {
+            if let Res::Local(id) = path.res {
+                if id == self.local_hir_id {
+                    self.used = true;
+                    return;
+                }
+            }
+        }
+        walk_expr(self, expr);
+    }
+
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
+        NestedVisitorMap::None
     }
 }

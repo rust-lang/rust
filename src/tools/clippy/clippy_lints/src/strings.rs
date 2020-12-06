@@ -2,6 +2,7 @@ use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, BorrowKind, Expr, ExprKind, LangItem, QPath};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
+use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Spanned;
 use rustc_span::sym;
@@ -11,7 +12,7 @@ use if_chain::if_chain;
 use crate::utils::SpanlessEq;
 use crate::utils::{
     get_parent_expr, is_allowed, is_type_diagnostic_item, match_function_call, method_calls, paths, span_lint,
-    span_lint_and_sugg,
+    span_lint_and_help, span_lint_and_sugg,
 };
 
 declare_clippy_lint! {
@@ -221,8 +222,7 @@ impl<'tcx> LateLintPass<'tcx> for StringLitAsBytes {
             if method_names[0] == sym!(as_bytes);
 
             // Check for slicer
-            if let ExprKind::Struct(ref path, _, _) = right.kind;
-            if let QPath::LangItem(LangItem::Range, _) = path;
+            if let ExprKind::Struct(QPath::LangItem(LangItem::Range, _), _, _) = right.kind;
 
             then {
                 let mut applicability = Applicability::MachineApplicable;
@@ -285,6 +285,103 @@ impl<'tcx> LateLintPass<'tcx> for StringLitAsBytes {
                         applicability,
                     );
                 }
+            }
+        }
+    }
+}
+
+declare_clippy_lint! {
+    /// **What it does:** This lint checks for `.to_string()` method calls on values of type `&str`.
+    ///
+    /// **Why is this bad?** The `to_string` method is also used on other types to convert them to a string.
+    /// When called on a `&str` it turns the `&str` into the owned variant `String`, which can be better
+    /// expressed with `.to_owned()`.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    ///
+    /// ```rust
+    /// // example code where clippy issues a warning
+    /// let _ = "str".to_string();
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// // example code which does not raise clippy warning
+    /// let _ = "str".to_owned();
+    /// ```
+    pub STR_TO_STRING,
+    restriction,
+    "using `to_string()` on a `&str`, which should be `to_owned()`"
+}
+
+declare_lint_pass!(StrToString => [STR_TO_STRING]);
+
+impl LateLintPass<'_> for StrToString {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &Expr<'_>) {
+        if_chain! {
+            if let ExprKind::MethodCall(path, _, args, _) = &expr.kind;
+            if path.ident.name == sym!(to_string);
+            let ty = cx.typeck_results().expr_ty(&args[0]);
+            if let ty::Ref(_, ty, ..) = ty.kind();
+            if *ty.kind() == ty::Str;
+            then {
+                span_lint_and_help(
+                    cx,
+                    STR_TO_STRING,
+                    expr.span,
+                    "`to_string()` called on a `&str`",
+                    None,
+                    "consider using `.to_owned()`",
+                );
+            }
+        }
+    }
+}
+
+declare_clippy_lint! {
+    /// **What it does:** This lint checks for `.to_string()` method calls on values of type `String`.
+    ///
+    /// **Why is this bad?** The `to_string` method is also used on other types to convert them to a string.
+    /// When called on a `String` it only clones the `String`, which can be better expressed with `.clone()`.
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    ///
+    /// ```rust
+    /// // example code where clippy issues a warning
+    /// let msg = String::from("Hello World");
+    /// let _ = msg.to_string();
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// // example code which does not raise clippy warning
+    /// let msg = String::from("Hello World");
+    /// let _ = msg.clone();
+    /// ```
+    pub STRING_TO_STRING,
+    restriction,
+    "using `to_string()` on a `String`, which should be `clone()`"
+}
+
+declare_lint_pass!(StringToString => [STRING_TO_STRING]);
+
+impl LateLintPass<'_> for StringToString {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &Expr<'_>) {
+        if_chain! {
+            if let ExprKind::MethodCall(path, _, args, _) = &expr.kind;
+            if path.ident.name == sym!(to_string);
+            let ty = cx.typeck_results().expr_ty(&args[0]);
+            if is_type_diagnostic_item(cx, ty, sym!(string_type));
+            then {
+                span_lint_and_help(
+                    cx,
+                    STRING_TO_STRING,
+                    expr.span,
+                    "`to_string()` called on a `String`",
+                    None,
+                    "consider using `.clone()`",
+                );
             }
         }
     }

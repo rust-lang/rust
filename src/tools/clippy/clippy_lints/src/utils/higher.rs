@@ -162,8 +162,7 @@ pub fn while_loop<'tcx>(expr: &'tcx hir::Expr<'tcx>) -> Option<(&'tcx hir::Expr<
         if let hir::Block { expr: Some(expr), .. } = &**block;
         if let hir::ExprKind::Match(cond, arms, hir::MatchSource::WhileDesugar) = &expr.kind;
         if let hir::ExprKind::DropTemps(cond) = &cond.kind;
-        if let [arm, ..] = &arms[..];
-        if let hir::Arm { body, .. } = arm;
+        if let [hir::Arm { body, .. }, ..] = &arms[..];
         then {
             return Some((cond, body));
         }

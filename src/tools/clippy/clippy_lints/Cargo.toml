@@ -28,6 +28,7 @@ smallvec = { version = "1", features = ["union"] }
 toml = "0.5.3"
 unicode-normalization = "0.1"
 semver = "0.11"
+rustc-semver="1.1.0"
 # NOTE: cargo requires serde feat in its url dep
 # see <https://github.com/rust-lang/rust/pull/63587#issuecomment-522343864>
 url = { version =  "2.1.0", features = ["serde"] }
@@ -36,3 +37,5 @@ syn = { version = "1", features = ["full"] }
 
 [features]
 deny-warnings = []
+# build clippy with internal lints enabled, off by default
+internal-lints = []

@@ -1,5 +1,5 @@
 error: redundant pattern matching, consider using `is_ok()`
-  --> $DIR/redundant_pattern_matching.rs:16:12
+  --> $DIR/redundant_pattern_matching_result.rs:15:12
    |
 LL |     if let Ok(_) = &result {}
    |     -------^^^^^---------- help: try this: `if result.is_ok()`
@@ -7,31 +7,31 @@ LL |     if let Ok(_) = &result {}
    = note: `-D clippy::redundant-pattern-matching` implied by `-D warnings`
 
 error: redundant pattern matching, consider using `is_ok()`
-  --> $DIR/redundant_pattern_matching.rs:18:12
+  --> $DIR/redundant_pattern_matching_result.rs:17:12
    |
 LL |     if let Ok(_) = Ok::<i32, i32>(42) {}
    |     -------^^^^^--------------------- help: try this: `if Ok::<i32, i32>(42).is_ok()`
 
 error: redundant pattern matching, consider using `is_err()`
-  --> $DIR/redundant_pattern_matching.rs:20:12
+  --> $DIR/redundant_pattern_matching_result.rs:19:12
    |
 LL |     if let Err(_) = Err::<i32, i32>(42) {}
    |     -------^^^^^^---------------------- help: try this: `if Err::<i32, i32>(42).is_err()`
 
 error: redundant pattern matching, consider using `is_ok()`
-  --> $DIR/redundant_pattern_matching.rs:22:15
+  --> $DIR/redundant_pattern_matching_result.rs:21:15
    |
 LL |     while let Ok(_) = Ok::<i32, i32>(10) {}
    |     ----------^^^^^--------------------- help: try this: `while Ok::<i32, i32>(10).is_ok()`
 
 error: redundant pattern matching, consider using `is_err()`
-  --> $DIR/redundant_pattern_matching.rs:24:15
+  --> $DIR/redundant_pattern_matching_result.rs:23:15
    |
 LL |     while let Err(_) = Ok::<i32, i32>(10) {}
    |     ----------^^^^^^--------------------- help: try this: `while Ok::<i32, i32>(10).is_err()`
 
 error: redundant pattern matching, consider using `is_ok()`
-  --> $DIR/redundant_pattern_matching.rs:34:5
+  --> $DIR/redundant_pattern_matching_result.rs:33:5
    |
 LL | /     match Ok::<i32, i32>(42) {
 LL | |         Ok(_) => true,
@@ -40,7 +40,7 @@ LL | |     };
    | |_____^ help: try this: `Ok::<i32, i32>(42).is_ok()`
 
 error: redundant pattern matching, consider using `is_err()`
-  --> $DIR/redundant_pattern_matching.rs:39:5
+  --> $DIR/redundant_pattern_matching_result.rs:38:5
    |
 LL | /     match Ok::<i32, i32>(42) {
 LL | |         Ok(_) => false,
@@ -49,7 +49,7 @@ LL | |     };
    | |_____^ help: try this: `Ok::<i32, i32>(42).is_err()`
 
 error: redundant pattern matching, consider using `is_err()`
-  --> $DIR/redundant_pattern_matching.rs:44:5
+  --> $DIR/redundant_pattern_matching_result.rs:43:5
    |
 LL | /     match Err::<i32, i32>(42) {
 LL | |         Ok(_) => false,
@@ -58,7 +58,7 @@ LL | |     };
    | |_____^ help: try this: `Err::<i32, i32>(42).is_err()`
 
 error: redundant pattern matching, consider using `is_ok()`
-  --> $DIR/redundant_pattern_matching.rs:49:5
+  --> $DIR/redundant_pattern_matching_result.rs:48:5
    |
 LL | /     match Err::<i32, i32>(42) {
 LL | |         Ok(_) => true,
@@ -67,73 +67,73 @@ LL | |     };
    | |_____^ help: try this: `Err::<i32, i32>(42).is_ok()`
 
 error: redundant pattern matching, consider using `is_ok()`
-  --> $DIR/redundant_pattern_matching.rs:54:20
+  --> $DIR/redundant_pattern_matching_result.rs:53:20
    |
 LL |     let _ = if let Ok(_) = Ok::<usize, ()>(4) { true } else { false };
    |             -------^^^^^--------------------- help: try this: `if Ok::<usize, ()>(4).is_ok()`
 
 error: redundant pattern matching, consider using `is_ok()`
-  --> $DIR/redundant_pattern_matching.rs:60:20
+  --> $DIR/redundant_pattern_matching_result.rs:59:20
    |
 LL |     let _ = if let Ok(_) = gen_res() {
    |             -------^^^^^------------ help: try this: `if gen_res().is_ok()`
 
 error: redundant pattern matching, consider using `is_err()`
-  --> $DIR/redundant_pattern_matching.rs:62:19
+  --> $DIR/redundant_pattern_matching_result.rs:61:19
    |
 LL |     } else if let Err(_) = gen_res() {
    |            -------^^^^^^------------ help: try this: `if gen_res().is_err()`
 
 error: redundant pattern matching, consider using `is_some()`
-  --> $DIR/redundant_pattern_matching.rs:85:19
+  --> $DIR/redundant_pattern_matching_result.rs:84:19
    |
 LL |         while let Some(_) = r#try!(result_opt()) {}
    |         ----------^^^^^^^----------------------- help: try this: `while r#try!(result_opt()).is_some()`
 
 error: redundant pattern matching, consider using `is_some()`
-  --> $DIR/redundant_pattern_matching.rs:86:16
+  --> $DIR/redundant_pattern_matching_result.rs:85:16
    |
 LL |         if let Some(_) = r#try!(result_opt()) {}
    |         -------^^^^^^^----------------------- help: try this: `if r#try!(result_opt()).is_some()`
 
 error: redundant pattern matching, consider using `is_some()`
-  --> $DIR/redundant_pattern_matching.rs:92:12
+  --> $DIR/redundant_pattern_matching_result.rs:91:12
    |
 LL |     if let Some(_) = m!() {}
    |     -------^^^^^^^------- help: try this: `if m!().is_some()`
 
 error: redundant pattern matching, consider using `is_some()`
-  --> $DIR/redundant_pattern_matching.rs:93:15
+  --> $DIR/redundant_pattern_matching_result.rs:92:15
    |
 LL |     while let Some(_) = m!() {}
    |     ----------^^^^^^^------- help: try this: `while m!().is_some()`
 
 error: redundant pattern matching, consider using `is_ok()`
-  --> $DIR/redundant_pattern_matching.rs:111:12
+  --> $DIR/redundant_pattern_matching_result.rs:110:12
    |
 LL |     if let Ok(_) = Ok::<i32, i32>(42) {}
    |     -------^^^^^--------------------- help: try this: `if Ok::<i32, i32>(42).is_ok()`
 
 error: redundant pattern matching, consider using `is_err()`
-  --> $DIR/redundant_pattern_matching.rs:113:12
+  --> $DIR/redundant_pattern_matching_result.rs:112:12
    |
 LL |     if let Err(_) = Err::<i32, i32>(42) {}
    |     -------^^^^^^---------------------- help: try this: `if Err::<i32, i32>(42).is_err()`
 
 error: redundant pattern matching, consider using `is_ok()`
-  --> $DIR/redundant_pattern_matching.rs:115:15
+  --> $DIR/redundant_pattern_matching_result.rs:114:15
    |
 LL |     while let Ok(_) = Ok::<i32, i32>(10) {}
    |     ----------^^^^^--------------------- help: try this: `while Ok::<i32, i32>(10).is_ok()`
 
 error: redundant pattern matching, consider using `is_err()`
-  --> $DIR/redundant_pattern_matching.rs:117:15
+  --> $DIR/redundant_pattern_matching_result.rs:116:15
    |
 LL |     while let Err(_) = Ok::<i32, i32>(10) {}
    |     ----------^^^^^^--------------------- help: try this: `while Ok::<i32, i32>(10).is_err()`
 
 error: redundant pattern matching, consider using `is_ok()`
-  --> $DIR/redundant_pattern_matching.rs:119:5
+  --> $DIR/redundant_pattern_matching_result.rs:118:5
    |
 LL | /     match Ok::<i32, i32>(42) {
 LL | |         Ok(_) => true,
@@ -142,7 +142,7 @@ LL | |     };
    | |_____^ help: try this: `Ok::<i32, i32>(42).is_ok()`
 
 error: redundant pattern matching, consider using `is_err()`
-  --> $DIR/redundant_pattern_matching.rs:124:5
+  --> $DIR/redundant_pattern_matching_result.rs:123:5
    |
 LL | /     match Err::<i32, i32>(42) {
 LL | |         Ok(_) => false,
