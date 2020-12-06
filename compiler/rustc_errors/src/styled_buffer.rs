@@ -13,33 +13,12 @@ impl StyledBuffer {
         StyledBuffer { text: vec![], styles: vec![] }
     }
 
-    fn replace_tabs(&mut self) {
-        for (line_pos, line) in self.text.iter_mut().enumerate() {
-            let mut tab_pos = vec![];
-            for (pos, c) in line.iter().enumerate() {
-                if *c == '\t' {
-                    tab_pos.push(pos);
-                }
-            }
-            // start with the tabs at the end of the line to replace them with 4 space chars
-            for pos in tab_pos.iter().rev() {
-                assert_eq!(line.remove(*pos), '\t');
-                // fix the position of the style to match up after replacing the tabs
-                let s = self.styles[line_pos].remove(*pos);
-                for _ in 0..4 {
-                    line.insert(*pos, ' ');
-                    self.styles[line_pos].insert(*pos, s);
-                }
-            }
-        }
-    }
+    pub fn render(&self) -> Vec<Vec<StyledString>> {
+        // Tabs are assumed to have been replaced by spaces in calling code.
+        assert!(self.text.iter().all(|r| !r.contains(&'\t')));
 
-    pub fn render(&mut self) -> Vec<Vec<StyledString>> {
         let mut output: Vec<Vec<StyledString>> = vec![];
         let mut styled_vec: Vec<StyledString> = vec![];
-
-        // before we render, replace tabs with spaces
-        self.replace_tabs();
 
         for (row, row_style) in self.text.iter().zip(&self.styles) {
             let mut current_style = Style::NoStyle;
