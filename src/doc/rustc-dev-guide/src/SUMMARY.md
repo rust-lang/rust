@@ -147,6 +147,7 @@
     - [Backend Agnostic Codegen](./backend/backend-agnostic.md)
     - [Implicit Caller Location](./backend/implicit-caller-location.md)
 - [Profile-guided Optimization](./profile-guided-optimization.md)
+- [LLVM Source-Based Code Coverage](./llvm-coverage-instrumentation.md)
 - [Sanitizers Support](./sanitizers.md)
 - [Debugging Support in the Rust Compiler](./debugging-support-in-rustc.md)
 
