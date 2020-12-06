@@ -73,6 +73,49 @@ fn complete_enum_variants(acc: &mut Completions, ctx: &CompletionContext, ty: &T
     }
 }
 
+// Feature: Fuzzy Completion and Autoimports
+//
+// When completing names in the current scope, proposes additional imports from other modules or crates,
+// if they can be qualified in the scope and their name contains all symbols from the completion input
+// (case-insensitive, in any order or places).
+//
+// ```
+// fn main() {
+//     pda<|>
+// }
+// # pub mod std { pub mod marker { pub struct PhantomData { } } }
+// ```
+// ->
+// ```
+// use std::marker::PhantomData;
+//
+// fn main() {
+//     PhantomData
+// }
+// # pub mod std { pub mod marker { pub struct PhantomData { } } }
+// ```
+//
+// .Fuzzy search details
+//
+// To avoid an excessive amount of the results returned, completion input is checked for inclusion in the identifiers only
+// (i.e. in `HashMap` in the `std::collections::HashMap` path), also not in the module indentifiers.
+//
+// .Merge Behaviour
+//
+// It is possible to configure how use-trees are merged with the `importMergeBehaviour` setting.
+// Mimics the corresponding behaviour of the `Auto Import` feature.
+//
+// .LSP and performance implications
+//
+// LSP 3.16 provides the way to defer the computation of some completion data, including the import edits for this feature.
+// If the LSP client supports the `additionalTextEdits` (case sensitive) resolve client capability, rust-analyzer computes
+// the completion edits only when a corresponding completion item is selected.
+// For clients with no such support, all edits have to be calculated on the completion request, including the fuzzy search completion ones,
+// which might be slow.
+//
+// .Feature toggle
+//
+// The feature can be turned off in the settings with the `rust-analyzer.completion.enableExperimental` flag.
 fn fuzzy_completion(acc: &mut Completions, ctx: &CompletionContext) -> Option<()> {
     let _p = profile::span("fuzzy_completion");
     let current_module = ctx.scope.module()?;
