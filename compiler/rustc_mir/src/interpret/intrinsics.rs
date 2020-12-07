@@ -412,6 +412,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let layout = self.layout_of(ty)?;
 
                 if layout.abi.is_uninhabited() {
+                    // The run-time intrinsic panics just to get a good backtrace; here we abort
+                    // since there is no problem showing a backtrace even for aborts.
                     M::abort(self, format!("attempted to instantiate uninhabited type `{}`", ty))?;
                 }
             }
