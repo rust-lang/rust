@@ -1,4 +1,5 @@
 //! Trait solving using Chalk.
+use std::env::var;
 use std::sync::Arc;
 
 use base_db::CrateId;
@@ -15,12 +16,6 @@ use self::chalk::{from_chalk, Interner, ToChalk};
 
 pub(crate) mod chalk;
 
-// This controls the maximum size of types Chalk considers. If we set this too
-// high, we can run into slow edge cases; if we set it too low, Chalk won't
-// find some solutions.
-// FIXME this is currently hardcoded in the recursive solver
-// const CHALK_SOLVER_MAX_SIZE: usize = 10;
-
 /// This controls how much 'time' we give the Chalk solver before giving up.
 const CHALK_SOLVER_FUEL: i32 = 100;
 
@@ -31,9 +26,11 @@ struct ChalkContext<'a> {
 }
 
 fn create_chalk_solver() -> chalk_recursive::RecursiveSolver<Interner> {
-    let overflow_depth = 100;
+    let overflow_depth =
+        var("CHALK_OVERFLOW_DEPTH").ok().and_then(|s| s.parse().ok()).unwrap_or(100);
     let caching_enabled = true;
-    chalk_recursive::RecursiveSolver::new(overflow_depth, caching_enabled)
+    let max_size = var("CHALK_SOLVER_MAX_SIZE").ok().and_then(|s| s.parse().ok()).unwrap_or(30);
+    chalk_recursive::RecursiveSolver::new(overflow_depth, max_size, caching_enabled)
 }
 
 /// A set of clauses that we assume to be true. E.g. if we are inside this function:
