@@ -44,7 +44,7 @@ pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
         acc.add_resolution(ctx, name.to_string(), &res)
     });
 
-    if ctx.config.enable_experimental_completions {
+    if !ctx.config.disable_fuzzy_autoimports && ctx.config.resolve_additional_edits_lazily() {
         fuzzy_completion(acc, ctx).unwrap_or_default()
     }
 }
@@ -99,6 +99,7 @@ fn complete_enum_variants(acc: &mut Completions, ctx: &CompletionContext, ty: &T
 //
 // To avoid an excessive amount of the results returned, completion input is checked for inclusion in the identifiers only
 // (i.e. in `HashMap` in the `std::collections::HashMap` path), also not in the module indentifiers.
+// It also avoids searching for any imports for inputs with their length less that 3 symbols.
 //
 // .Merge Behaviour
 //
@@ -107,53 +108,53 @@ fn complete_enum_variants(acc: &mut Completions, ctx: &CompletionContext, ty: &T
 //
 // .LSP and performance implications
 //
-// LSP 3.16 provides the way to defer the computation of some completion data, including the import edits for this feature.
-// If the LSP client supports the `additionalTextEdits` (case sensitive) resolve client capability, rust-analyzer computes
-// the completion edits only when a corresponding completion item is selected.
+// The feature is enabled only if the LSP client supports LSP protocol version 3.16+ and reports the `additionalTextEdits`
+// (case sensitive) resolve client capability in its client capabilities.
+// This way the server is able to defer the costly computations, doing them for a selected completion item only.
 // For clients with no such support, all edits have to be calculated on the completion request, including the fuzzy search completion ones,
-// which might be slow.
+// which might be slow ergo the feature is automatically disabled.
 //
 // .Feature toggle
 //
-// The feature can be turned off in the settings with the `rust-analyzer.completion.enableExperimental` flag.
+// The feature can be forcefully turned off in the settings with the `rust-analyzer.completion.disableFuzzyAutoimports` flag.
 fn fuzzy_completion(acc: &mut Completions, ctx: &CompletionContext) -> Option<()> {
     let _p = profile::span("fuzzy_completion");
+    let potential_import_name = ctx.token.to_string();
+
+    if potential_import_name.len() < 3 {
+        return None;
+    }
+
     let current_module = ctx.scope.module()?;
     let anchor = ctx.name_ref_syntax.as_ref()?;
     let import_scope = ImportScope::find_insert_use_container(anchor.syntax(), &ctx.sema)?;
 
-    let potential_import_name = ctx.token.to_string();
-
-    let possible_imports = imports_locator::find_similar_imports(
-        &ctx.sema,
-        ctx.krate?,
-        &potential_import_name,
-        50,
-        true,
-    )
-    .filter_map(|import_candidate| {
-        Some(match import_candidate {
-            Either::Left(module_def) => {
-                (current_module.find_use_path(ctx.db, module_def)?, ScopeDef::ModuleDef(module_def))
-            }
-            Either::Right(macro_def) => {
-                (current_module.find_use_path(ctx.db, macro_def)?, ScopeDef::MacroDef(macro_def))
-            }
-        })
-    })
-    .filter(|(mod_path, _)| mod_path.len() > 1)
-    .take(20)
-    .filter_map(|(import_path, definition)| {
-        render_resolution_with_import(
-            RenderContext::new(ctx),
-            ImportEdit {
-                import_path: import_path.clone(),
-                import_scope: import_scope.clone(),
-                merge_behaviour: ctx.config.merge,
-            },
-            &definition,
-        )
-    });
+    let possible_imports =
+        imports_locator::find_similar_imports(&ctx.sema, ctx.krate?, &potential_import_name, true)
+            .filter_map(|import_candidate| {
+                Some(match import_candidate {
+                    Either::Left(module_def) => (
+                        current_module.find_use_path(ctx.db, module_def)?,
+                        ScopeDef::ModuleDef(module_def),
+                    ),
+                    Either::Right(macro_def) => (
+                        current_module.find_use_path(ctx.db, macro_def)?,
+                        ScopeDef::MacroDef(macro_def),
+                    ),
+                })
+            })
+            .filter(|(mod_path, _)| mod_path.len() > 1)
+            .filter_map(|(import_path, definition)| {
+                render_resolution_with_import(
+                    RenderContext::new(ctx),
+                    ImportEdit {
+                        import_path: import_path.clone(),
+                        import_scope: import_scope.clone(),
+                        merge_behaviour: ctx.config.merge,
+                    },
+                    &definition,
+                )
+            });
 
     acc.add_all(possible_imports);
     Some(())
@@ -775,7 +776,13 @@ impl My<|>
 
     #[test]
     fn function_fuzzy_completion() {
-        check_edit(
+        let mut completion_config = CompletionConfig::default();
+        completion_config
+            .active_resolve_capabilities
+            .insert(crate::CompletionResolveCapability::AdditionalTextEdits);
+
+        check_edit_with_config(
+            completion_config,
             "stdin",
             r#"
 //- /lib.rs crate:dep
@@ -800,7 +807,13 @@ fn main() {
 
     #[test]
     fn macro_fuzzy_completion() {
-        check_edit(
+        let mut completion_config = CompletionConfig::default();
+        completion_config
+            .active_resolve_capabilities
+            .insert(crate::CompletionResolveCapability::AdditionalTextEdits);
+
+        check_edit_with_config(
+            completion_config,
             "macro_with_curlies!",
             r#"
 //- /lib.rs crate:dep
@@ -827,7 +840,13 @@ fn main() {
 
     #[test]
     fn struct_fuzzy_completion() {
-        check_edit(
+        let mut completion_config = CompletionConfig::default();
+        completion_config
+            .active_resolve_capabilities
+            .insert(crate::CompletionResolveCapability::AdditionalTextEdits);
+
+        check_edit_with_config(
+            completion_config,
             "ThirdStruct",
             r#"
 //- /lib.rs crate:dep
@@ -849,43 +868,6 @@ use dep::{FirstStruct, some_module::{SecondStruct, ThirdStruct}};
 
 fn main() {
     ThirdStruct
-}
-"#,
-        );
-    }
-
-    /// LSP protocol supports separate completion resolve requests to do the heavy computations there.
-    /// This test checks that for a certain resolve capatilities no such operations (autoimport) are done.
-    #[test]
-    fn no_fuzzy_completions_applied_for_certain_resolve_capability() {
-        let mut completion_config = CompletionConfig::default();
-        completion_config
-            .active_resolve_capabilities
-            .insert(crate::CompletionResolveCapability::AdditionalTextEdits);
-
-        check_edit_with_config(
-            completion_config,
-            "ThirdStruct",
-            r#"
-//- /lib.rs crate:dep
-pub struct FirstStruct;
-pub mod some_module {
-pub struct SecondStruct;
-pub struct ThirdStruct;
-}
-
-//- /main.rs crate:main deps:dep
-use dep::{FirstStruct, some_module::SecondStruct};
-
-fn main() {
-this<|>
-}
-"#,
-            r#"
-use dep::{FirstStruct, some_module::SecondStruct};
-
-fn main() {
-ThirdStruct
 }
 "#,
         );

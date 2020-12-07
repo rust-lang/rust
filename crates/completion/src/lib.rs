@@ -73,7 +73,7 @@ pub use crate::{
 // }
 // ```
 //
-// And experimental completions, enabled with the `rust-analyzer.completion.enableExperimental` setting.
+// And experimental completions, enabled with the `rust-analyzer.completion.disableFuzzyAutoimports` setting.
 // This flag enables or disables:
 //
 // - Auto import: additional completion options with automatic `use` import and options from all project importable items, matched for the input

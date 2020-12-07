@@ -209,7 +209,6 @@ impl CompletionItem {
             score: None,
             ref_match: None,
             import_to_add: None,
-            resolve_import_lazily: false,
         }
     }
 
@@ -301,7 +300,6 @@ pub(crate) struct Builder {
     source_range: TextRange,
     completion_kind: CompletionKind,
     import_to_add: Option<ImportEdit>,
-    resolve_import_lazily: bool,
     label: String,
     insert_text: Option<String>,
     insert_text_format: InsertTextFormat,
@@ -339,22 +337,10 @@ impl Builder {
             }
         }
 
-        let mut text_edit = match self.text_edit {
+        let text_edit = match self.text_edit {
             Some(it) => it,
             None => {
                 TextEdit::replace(self.source_range, insert_text.unwrap_or_else(|| label.clone()))
-            }
-        };
-
-        let import_to_add = if self.resolve_import_lazily {
-            self.import_to_add
-        } else {
-            match apply_import_eagerly(self.import_to_add.as_ref(), &mut text_edit) {
-                Ok(()) => self.import_to_add,
-                Err(()) => {
-                    log::error!("Failed to apply eager import edit: original edit and import edit intersect");
-                    None
-                }
             }
         };
 
@@ -372,7 +358,7 @@ impl Builder {
             trigger_call_info: self.trigger_call_info.unwrap_or(false),
             score: self.score,
             ref_match: self.ref_match,
-            import_to_add,
+            import_to_add: self.import_to_add,
         }
     }
     pub(crate) fn lookup_by(mut self, lookup: impl Into<String>) -> Builder {
@@ -435,13 +421,8 @@ impl Builder {
         self.trigger_call_info = Some(true);
         self
     }
-    pub(crate) fn add_import(
-        mut self,
-        import_to_add: Option<ImportEdit>,
-        resolve_import_lazily: bool,
-    ) -> Builder {
+    pub(crate) fn add_import(mut self, import_to_add: Option<ImportEdit>) -> Builder {
         self.import_to_add = import_to_add;
-        self.resolve_import_lazily = resolve_import_lazily;
         self
     }
     pub(crate) fn set_ref_match(
@@ -450,16 +431,6 @@ impl Builder {
     ) -> Builder {
         self.ref_match = ref_match;
         self
-    }
-}
-
-fn apply_import_eagerly(
-    import_to_add: Option<&ImportEdit>,
-    original_edit: &mut TextEdit,
-) -> Result<(), ()> {
-    match import_to_add.and_then(|import_edit| import_edit.to_text_edit()) {
-        Some(import_edit) => original_edit.union(import_edit).map_err(|_| ()),
-        None => Ok(()),
     }
 }
 

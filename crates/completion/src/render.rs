@@ -190,10 +190,7 @@ impl<'a> Render<'a> {
                     local_name,
                 )
                 .kind(CompletionItemKind::UnresolvedReference)
-                .add_import(
-                    import_to_add,
-                    self.ctx.completion.config.resolve_additional_edits_lazily(),
-                )
+                .add_import(import_to_add)
                 .build();
                 return Some(item);
             }
@@ -248,7 +245,7 @@ impl<'a> Render<'a> {
 
         let item = item
             .kind(kind)
-            .add_import(import_to_add, self.ctx.completion.config.resolve_additional_edits_lazily())
+            .add_import(import_to_add)
             .set_documentation(docs)
             .set_ref_match(ref_match)
             .build();
@@ -448,28 +445,6 @@ fn main() { let _: m::Spam = S<|> }
                         delete: 75..76,
                         insert: "m",
                         kind: Module,
-                    },
-                    CompletionItem {
-                        label: "m::Spam",
-                        source_range: 75..76,
-                        text_edit: TextEdit {
-                            indels: [
-                                Indel {
-                                    insert: "use m::Spam;",
-                                    delete: 0..0,
-                                },
-                                Indel {
-                                    insert: "\n\n",
-                                    delete: 0..0,
-                                },
-                                Indel {
-                                    insert: "Spam",
-                                    delete: 75..76,
-                                },
-                            ],
-                        },
-                        kind: Enum,
-                        lookup: "Spam",
                     },
                     CompletionItem {
                         label: "m::Spam::Foo",

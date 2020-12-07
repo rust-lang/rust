@@ -460,10 +460,10 @@
                     "default": true,
                     "markdownDescription": "Whether to show postfix snippets like `dbg`, `if`, `not`, etc."
                 },
-                "rust-analyzer.completion.enableExperimental": {
+                "rust-analyzer.completion.disableFuzzyAutoimports": {
                     "type": "boolean",
-                    "default": true,
-                    "markdownDescription": "Display additional completions with potential false positives and performance issues"
+                    "default": false,
+                    "markdownDescription": "Turns off extra completion suggestions that might be too noisy or slow"
                 },
                 "rust-analyzer.callInfo.full": {
                     "type": "boolean",

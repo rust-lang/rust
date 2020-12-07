@@ -35,26 +35,16 @@ pub fn find_similar_imports<'a>(
     sema: &Semantics<'a, RootDatabase>,
     krate: Crate,
     name_to_import: &str,
-    limit: usize,
     ignore_modules: bool,
 ) -> impl Iterator<Item = Either<ModuleDef, MacroDef>> {
     let _p = profile::span("find_similar_imports");
 
-    let mut external_query = import_map::Query::new(name_to_import).limit(limit);
+    let mut external_query = import_map::Query::new(name_to_import);
     if ignore_modules {
         external_query = external_query.exclude_import_kind(import_map::ImportKind::Module);
     }
 
-    find_imports(
-        sema,
-        krate,
-        {
-            let mut local_query = symbol_index::Query::new(name_to_import.to_string());
-            local_query.limit(limit);
-            local_query
-        },
-        external_query,
-    )
+    find_imports(sema, krate, symbol_index::Query::new(name_to_import.to_string()), external_query)
 }
 
 fn find_imports<'a>(

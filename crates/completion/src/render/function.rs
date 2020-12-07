@@ -47,7 +47,7 @@ impl<'a> FunctionRender<'a> {
             .set_deprecated(self.ctx.is_deprecated(self.func))
             .detail(self.detail())
             .add_call_parens(self.ctx.completion, self.name, params)
-            .add_import(import_to_add, self.ctx.completion.config.resolve_additional_edits_lazily())
+            .add_import(import_to_add)
             .build()
     }
 
