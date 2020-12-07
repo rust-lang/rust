@@ -1288,6 +1288,11 @@ impl Step for Extended {
 
         let etc = builder.src.join("src/etc/installer");
 
+        // Avoid producing tarballs during a dry run.
+        if builder.config.dry_run {
+            return;
+        }
+
         // When rust-std package split from rustc, we needed to ensure that during
         // upgrades rustc was upgraded before rust-std. To avoid rustc clobbering
         // the std files during uninstall. To do this ensure that rustc comes
