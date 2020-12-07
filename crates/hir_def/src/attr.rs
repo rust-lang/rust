@@ -9,7 +9,7 @@ use itertools::Itertools;
 use mbe::ast_to_token_tree;
 use syntax::{
     ast::{self, AstNode, AttrsOwner},
-    SmolStr,
+    AstToken, SmolStr,
 };
 use tt::Subtree;
 
@@ -110,18 +110,25 @@ impl Attrs {
     }
 
     pub(crate) fn new(owner: &dyn AttrsOwner, hygiene: &Hygiene) -> Attrs {
-        let docs = ast::CommentIter::from_syntax_node(owner.syntax()).doc_comment_text().map(
-            |docs_text| Attr {
-                input: Some(AttrInput::Literal(SmolStr::new(docs_text))),
-                path: ModPath::from(hir_expand::name!(doc)),
-            },
-        );
-        let mut attrs = owner.attrs().peekable();
-        let entries = if attrs.peek().is_none() && docs.is_none() {
+        let docs = ast::CommentIter::from_syntax_node(owner.syntax()).map(|docs_text| {
+            (
+                docs_text.syntax().text_range().start(),
+                docs_text.doc_comment().map(|doc| Attr {
+                    input: Some(AttrInput::Literal(SmolStr::new(doc))),
+                    path: ModPath::from(hir_expand::name!(doc)),
+                }),
+            )
+        });
+        let attrs = owner
+            .attrs()
+            .map(|attr| (attr.syntax().text_range().start(), Attr::from_src(attr, hygiene)));
+        // sort here by syntax node offset because the source can have doc attributes and doc strings be interleaved
+        let attrs: Vec<_> = docs.chain(attrs).sorted_by_key(|&(offset, _)| offset).collect();
+        let entries = if attrs.is_empty() {
             // Avoid heap allocation
             None
         } else {
-            Some(attrs.flat_map(|ast| Attr::from_src(ast, hygiene)).chain(docs).collect())
+            Some(attrs.into_iter().flat_map(|(_, attr)| attr).collect())
         };
         Attrs { entries }
     }
@@ -195,10 +202,15 @@ impl Attr {
     fn from_src(ast: ast::Attr, hygiene: &Hygiene) -> Option<Attr> {
         let path = ModPath::from_src(ast.path()?, hygiene)?;
         let input = if let Some(lit) = ast.literal() {
-            let value = if let ast::LiteralKind::String(string) = lit.kind() {
-                string.value()?.into()
-            } else {
-                lit.syntax().first_token()?.text().trim_matches('"').into()
+            // FIXME: escape?
+            let value = match lit.kind() {
+                ast::LiteralKind::String(string) if string.is_raw() => {
+                    let text = string.text().as_str();
+                    let text = &text[string.text_range_between_quotes()?
+                        - string.syntax().text_range().start()];
+                    text.into()
+                }
+                _ => lit.syntax().first_token()?.text().trim_matches('"').into(),
             };
             Some(AttrInput::Literal(value))
         } else if let Some(tt) = ast.token_tree() {

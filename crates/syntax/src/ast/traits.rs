@@ -91,40 +91,12 @@ impl CommentIter {
     /// That is, strips leading `///` (+ optional 1 character of whitespace),
     /// trailing `*/`, trailing whitespace and then joins the lines.
     pub fn doc_comment_text(self) -> Option<String> {
-        let mut has_comments = false;
-        let docs = self
-            .filter(|comment| comment.kind().doc.is_some())
-            .map(|comment| {
-                has_comments = true;
-                let prefix_len = comment.prefix().len();
-
-                let line: &str = comment.text().as_str();
-
-                // Determine if the prefix or prefix + 1 char is stripped
-                let pos =
-                    if let Some(ws) = line.chars().nth(prefix_len).filter(|c| c.is_whitespace()) {
-                        prefix_len + ws.len_utf8()
-                    } else {
-                        prefix_len
-                    };
-
-                let end = if comment.kind().shape.is_block() && line.ends_with("*/") {
-                    line.len() - 2
-                } else {
-                    line.len()
-                };
-
-                // Note that we do not trim the end of the line here
-                // since whitespace can have special meaning at the end
-                // of a line in markdown.
-                line[pos..end].to_owned()
-            })
-            .join("\n");
-
-        if has_comments {
-            Some(docs)
-        } else {
+        let docs =
+            self.filter_map(|comment| comment.doc_comment().map(ToOwned::to_owned)).join("\n");
+        if docs.is_empty() {
             None
+        } else {
+            Some(docs)
         }
     }
 }

@@ -18,11 +18,32 @@ impl ast::Comment {
     }
 
     pub fn prefix(&self) -> &'static str {
-        let &(prefix, _kind) = CommentKind::BY_PREFIX
-            .iter()
-            .find(|&(prefix, kind)| self.kind() == *kind && self.text().starts_with(prefix))
-            .unwrap();
+        let &(prefix, _kind) = CommentKind::with_prefix_from_text(self.text());
         prefix
+    }
+
+    pub fn kind_and_prefix(&self) -> &(&'static str, CommentKind) {
+        CommentKind::with_prefix_from_text(self.text())
+    }
+
+    /// Returns the textual content of a doc comment block as a single string.
+    /// That is, strips leading `///` (+ optional 1 character of whitespace),
+    /// trailing `*/`, trailing whitespace and then joins the lines.
+    pub fn doc_comment(&self) -> Option<&str> {
+        match self.kind_and_prefix() {
+            (prefix, CommentKind { shape, doc: Some(_) }) => {
+                let text = &self.text().as_str()[prefix.len()..];
+                let ws = text.chars().next().filter(|c| c.is_whitespace());
+                let text = ws.map_or(text, |ws| &text[ws.len_utf8()..]);
+                match shape {
+                    CommentShape::Block if text.ends_with("*/") => {
+                        Some(&text[..text.len() - "*/".len()])
+                    }
+                    _ => Some(text),
+                }
+            }
+            _ => None,
+        }
     }
 }
 
@@ -67,11 +88,12 @@ impl CommentKind {
     ];
 
     pub(crate) fn from_text(text: &str) -> CommentKind {
-        let &(_prefix, kind) = CommentKind::BY_PREFIX
-            .iter()
-            .find(|&(prefix, _kind)| text.starts_with(prefix))
-            .unwrap();
+        let &(_prefix, kind) = Self::with_prefix_from_text(text);
         kind
+    }
+
+    fn with_prefix_from_text(text: &str) -> &(&'static str, CommentKind) {
+        CommentKind::BY_PREFIX.iter().find(|&(prefix, _kind)| text.starts_with(prefix)).unwrap()
     }
 }
 
