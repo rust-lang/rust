@@ -15,13 +15,28 @@ use tt::Subtree;
 
 use crate::{
     db::DefDatabase,
-    docs::Documentation,
     item_tree::{ItemTreeId, ItemTreeNode},
     nameres::ModuleSource,
     path::ModPath,
     src::HasChildSource,
     AdtId, AttrDefId, Lookup,
 };
+
+/// Holds documentation
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Documentation(Arc<str>);
+
+impl Documentation {
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl Into<String> for Documentation {
+    fn into(self) -> String {
+        self.as_str().to_owned()
+    }
+}
 
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub struct Attrs {
@@ -102,7 +117,7 @@ impl Attrs {
             },
         );
         let mut attrs = owner.attrs().peekable();
-        let entries = if attrs.peek().is_none() {
+        let entries = if attrs.peek().is_none() && docs.is_none() {
             // Avoid heap allocation
             None
         } else {
@@ -154,7 +169,11 @@ impl Attrs {
             .intersperse(&SmolStr::new_inline("\n"))
             // No FromIterator<SmolStr> for String
             .for_each(|s| docs.push_str(s.as_str()));
-        if docs.is_empty() { None } else { Some(docs) }.map(|it| Documentation::new(&it))
+        if docs.is_empty() {
+            None
+        } else {
+            Some(Documentation(docs.into()))
+        }
     }
 }
 

@@ -1,6 +1,9 @@
 //! Attributes & documentation for hir types.
 use hir_def::{
-    attr::Attrs, docs::Documentation, path::ModPath, resolver::HasResolver, AttrDefId, ModuleDefId,
+    attr::{Attrs, Documentation},
+    path::ModPath,
+    resolver::HasResolver,
+    AttrDefId, ModuleDefId,
 };
 use hir_expand::hygiene::Hygiene;
 use hir_ty::db::HirDatabase;
