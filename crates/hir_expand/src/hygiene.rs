@@ -30,7 +30,7 @@ impl Hygiene {
                     let loc = db.lookup_intern_macro(id);
                     match loc.def.kind {
                         MacroDefKind::Declarative => (loc.def.krate, loc.def.local_inner),
-                        MacroDefKind::BuiltIn(_) => (None, false),
+                        MacroDefKind::BuiltIn(_) => (loc.def.krate, false),
                         MacroDefKind::BuiltInDerive(_) => (None, false),
                         MacroDefKind::BuiltInEager(_) => (None, false),
                         MacroDefKind::ProcMacro(_) => (None, false),
