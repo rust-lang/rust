@@ -679,14 +679,12 @@ impl VClockAlloc {
 
     /// Create a new data-race detector for newly allocated memory.
     pub fn new_allocation(global: &MemoryExtra, len: Size, track_alloc: bool) -> VClockAlloc {
-        //FIXME: stack allocations are currently ignored due to the lazy nature of stack
-        // allocation, this results in data-races being missed.
-        let (alloc_timestamp, alloc_index) = if !track_alloc {
-            (0, VectorIdx::MAX_INDEX)
-        }else{
+        let (alloc_timestamp, alloc_index) = if track_alloc {
             let (alloc_index, clocks) = global.current_thread_state();
             let alloc_timestamp = clocks.clock[alloc_index];
             (alloc_timestamp, alloc_index)
+        }else{
+            (0, VectorIdx::MAX_INDEX)
         };
         VClockAlloc {
             global: Rc::clone(global),
