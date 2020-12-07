@@ -192,6 +192,25 @@ struct AtomicMemoryCellClocks {
     sync_vector: VClock,
 }
 
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+enum WriteType {
+    /// Allocate memory.
+    Allocate,
+    /// Standard unsynchronized write.
+    Write,
+    /// Deallocate memory
+    Deallocate,
+}
+impl WriteType {
+    fn get_descriptor(self) -> &'static str {
+        match self {
+            WriteType::Allocate => "ALLOCATE",
+            WriteType::Write => "WRITE",
+            WriteType::Deallocate => "DEALLOCATE",
+        }
+    }
+}
+
 /// Memory Cell vector clock metadata
 /// for data-race detection.
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -204,6 +223,11 @@ struct MemoryCellClocks {
     /// that performed the last write operation.
     write_index: VectorIdx,
 
+    /// The type of operation that the write index represents,
+    /// either newly allocated memory, a non-atomic write or
+    /// a deallocation of memory.
+    write_type: WriteType,
+
     /// The vector-clock of the timestamp of the last read operation
     /// performed by a thread since the last write operation occurred.
     /// It is reset to zero on each write operation.
@@ -215,20 +239,19 @@ struct MemoryCellClocks {
     atomic_ops: Option<Box<AtomicMemoryCellClocks>>,
 }
 
-/// Create a default memory cell clocks instance
-/// for uninitialized memory.
-impl Default for MemoryCellClocks {
-    fn default() -> Self {
+impl MemoryCellClocks {
+
+    /// Create a new set of clocks representing memory allocated
+    ///  at a given vector timestamp and index.
+    fn new(alloc: VTimestamp, alloc_index: VectorIdx) -> Self {
         MemoryCellClocks {
             read: VClock::default(),
-            write: 0,
-            write_index: VectorIdx::MAX_INDEX,
+            write: alloc,
+            write_index: alloc_index,
+            write_type: WriteType::Allocate,
             atomic_ops: None,
         }
     }
-}
-
-impl MemoryCellClocks {
     
     /// Load the internal atomic memory cells if they exist.
     #[inline]
@@ -382,6 +405,7 @@ impl MemoryCellClocks {
         &mut self,
         clocks: &ThreadClockSet,
         index: VectorIdx,
+        write_type: WriteType,
     ) -> Result<(), DataRace> {
         log::trace!("Unsynchronized write with vectors: {:#?} :: {:#?}", self, clocks);
         if self.write <= clocks.clock[self.write_index] && self.read <= clocks.clock {
@@ -393,6 +417,7 @@ impl MemoryCellClocks {
             if race_free {
                 self.write = clocks.clock[index];
                 self.write_index = index;
+                self.write_type = write_type;
                 self.read.set_zero_vector();
                 Ok(())
             } else {
@@ -646,16 +671,28 @@ pub struct VClockAlloc {
     /// Assigning each byte a MemoryCellClocks.
     alloc_ranges: RefCell<RangeMap<MemoryCellClocks>>,
 
-    // Pointer to global state.
+    /// Pointer to global state.
     global: MemoryExtra,
 }
 
 impl VClockAlloc {
-    /// Create a new data-race allocation detector.
-    pub fn new_allocation(global: &MemoryExtra, len: Size) -> VClockAlloc {
+
+    /// Create a new data-race detector for newly allocated memory.
+    pub fn new_allocation(global: &MemoryExtra, len: Size, track_alloc: bool) -> VClockAlloc {
+        //FIXME: stack allocations are currently ignored due to the lazy nature of stack
+        // allocation, this results in data-races being missed.
+        let (alloc_timestamp, alloc_index) = if !track_alloc {
+            (0, VectorIdx::MAX_INDEX)
+        }else{
+            let (alloc_index, clocks) = global.current_thread_state();
+            let alloc_timestamp = clocks.clock[alloc_index];
+            (alloc_timestamp, alloc_index)
+        };
         VClockAlloc {
             global: Rc::clone(global),
-            alloc_ranges: RefCell::new(RangeMap::new(len, MemoryCellClocks::default())),
+            alloc_ranges: RefCell::new(RangeMap::new(
+                len, MemoryCellClocks::new(alloc_timestamp, alloc_index)
+            )),
         }
     }
 
@@ -712,7 +749,7 @@ impl VClockAlloc {
             // Convert the write action into the vector clock it
             // represents for diagnostic purposes.
             write_clock = VClock::new_with_index(range.write_index, range.write);
-            ("WRITE", range.write_index, &write_clock)
+            (range.write_type.get_descriptor(), range.write_index, &write_clock)
         } else if let Some(idx) = Self::find_gt_index(&range.read, &current_clocks.clock) {
             ("READ", idx, &range.read)
         } else if !is_atomic {
@@ -792,17 +829,17 @@ impl VClockAlloc {
         &mut self,
         pointer: Pointer<Tag>,
         len: Size,
-        action: &str,
+        write_type: WriteType,
     ) -> InterpResult<'tcx> {
         if self.global.multi_threaded.get() {
             let (index, clocks) = self.global.current_thread_state();
             for (_, range) in self.alloc_ranges.get_mut().iter_mut(pointer.offset, len) {
-                if let Err(DataRace) = range.write_race_detect(&*clocks, index) {
+                if let Err(DataRace) = range.write_race_detect(&*clocks, index, write_type) {
                     // Report data-race
                     return Self::report_data_race(
                         &self.global,
                         range,
-                        action,
+                        write_type.get_descriptor(),
                         false,
                         pointer,
                         len,
@@ -820,7 +857,7 @@ impl VClockAlloc {
     /// being created or if it is temporarily disabled during a racy read or write
     /// operation
     pub fn write<'tcx>(&mut self, pointer: Pointer<Tag>, len: Size) -> InterpResult<'tcx> {
-        self.unique_access(pointer, len, "Write")
+        self.unique_access(pointer, len, WriteType::Write)
     }
 
     /// Detect data-races for an unsynchronized deallocate operation, will not perform
@@ -828,7 +865,7 @@ impl VClockAlloc {
     /// being created or if it is temporarily disabled during a racy read or write
     /// operation
     pub fn deallocate<'tcx>(&mut self, pointer: Pointer<Tag>, len: Size) -> InterpResult<'tcx> {
-        self.unique_access(pointer, len, "Deallocate")
+        self.unique_access(pointer, len, WriteType::Deallocate)
     }
 }
 

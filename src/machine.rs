@@ -478,7 +478,24 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
                 (None, Tag::Untagged)
             };
         let race_alloc = if let Some(data_race) = &memory_extra.data_race {
-            Some(data_race::AllocExtra::new_allocation(&data_race, alloc.size))
+            match kind {
+                // V-Table generation is lazy and so racy, so do not track races.
+                // Also V-Tables are read only so no data races can be detected.
+                MemoryKind::Vtable => None,
+                // User allocated and stack memory should track allocation.
+                MemoryKind::Machine(
+                    MiriMemoryKind::Rust | MiriMemoryKind::C | MiriMemoryKind::WinHeap
+                ) | MemoryKind::Stack => Some(
+                    data_race::AllocExtra::new_allocation(&data_race, alloc.size, true)
+                ),
+                // Other global memory should trace races but be allocated at the 0 timestamp.
+                MemoryKind::Machine(
+                    MiriMemoryKind::Global | MiriMemoryKind::Machine | MiriMemoryKind::Env |
+                    MiriMemoryKind::ExternStatic | MiriMemoryKind::Tls
+                ) | MemoryKind::CallerLocation => Some(
+                    data_race::AllocExtra::new_allocation(&data_race, alloc.size, false)
+                )
+            }
         } else {
             None
         };
