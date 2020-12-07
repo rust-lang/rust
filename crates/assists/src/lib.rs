@@ -209,6 +209,7 @@ mod handlers {
             reorder_fields::reorder_fields,
             replace_derive_with_manual_impl::replace_derive_with_manual_impl,
             replace_if_let_with_match::replace_if_let_with_match,
+            replace_if_let_with_match::replace_match_with_if_let,
             replace_impl_trait_with_generic::replace_impl_trait_with_generic,
             replace_let_with_if_let::replace_let_with_if_let,
             replace_qualified_name_with_use::replace_qualified_name_with_use,

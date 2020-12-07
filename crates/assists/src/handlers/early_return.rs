@@ -112,7 +112,7 @@ pub(crate) fn convert_to_guarded_return(acc: &mut Assists, ctx: &AssistContext) 
                         let then_branch =
                             make::block_expr(once(make::expr_stmt(early_expression).into()), None);
                         let cond = invert_boolean_expression(cond_expr);
-                        make::expr_if(make::condition(cond, None), then_branch)
+                        make::expr_if(make::condition(cond, None), then_branch, None)
                             .indent(if_indent_level)
                     };
                     replace(new_expr.syntax(), &then_block, &parent_block, &if_expr)
