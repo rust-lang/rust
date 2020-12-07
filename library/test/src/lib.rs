@@ -30,6 +30,7 @@
 #![feature(termination_trait_lib)]
 #![feature(test)]
 #![feature(total_cmp)]
+#![feature(str_split_once)]
 
 // Public reexports
 pub use self::bench::{black_box, Bencher};
