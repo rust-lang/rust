@@ -140,7 +140,8 @@ impl ItemLikeVisitor<'v> for InherentOverlapChecker<'tcx> {
                 // Perform a O(n^2) algorithm for small n,
                 // otherwise switch to an allocating algorithm with
                 // faster asymptotic runtime.
-                if impls.len() < 30 {
+                const ALLOCATING_ALGO_THRESHOLD: usize = 500;
+                if impls.len() < ALLOCATING_ALGO_THRESHOLD {
                     for (i, &(&impl1_def_id, impl_items1)) in impls_items.iter().enumerate() {
                         for &(&impl2_def_id, impl_items2) in &impls_items[(i + 1)..] {
                             if self.impls_have_common_items(impl_items1, impl_items2) {
