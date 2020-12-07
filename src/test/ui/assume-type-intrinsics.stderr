@@ -6,29 +6,16 @@ LL |               intrinsics::assert_inhabited::<T>();
    |               |
    |               attempted to instantiate uninhabited type `!`
    |               inside `MaybeUninit::<!>::assume_init` at $SRC_DIR/core/src/mem/maybe_uninit.rs:LL:COL
-   |               inside `_BAD` at $DIR/assume-type-intrinsics.rs:8:9
+   |               inside `_BAD` at $DIR/assume-type-intrinsics.rs:11:9
    | 
-  ::: $DIR/assume-type-intrinsics.rs:7:5
+  ::: $DIR/assume-type-intrinsics.rs:10:5
    |
 LL | /     const _BAD: () = unsafe {
 LL | |         MaybeUninit::<!>::uninit().assume_init();
-LL | |
 LL | |     };
    | |______-
    |
    = note: `#[deny(const_err)]` on by default
 
-warning: the type `!` does not permit being left uninitialized
-  --> $DIR/assume-type-intrinsics.rs:8:9
-   |
-LL |         MaybeUninit::<!>::uninit().assume_init();
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |         |
-   |         this code causes undefined behavior when executed
-   |         help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
-   |
-   = note: `#[warn(invalid_value)]` on by default
-   = note: the `!` type has no valid value
-
-error: aborting due to previous error; 1 warning emitted
+error: aborting due to previous error
 
