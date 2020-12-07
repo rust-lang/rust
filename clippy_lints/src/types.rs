@@ -1104,7 +1104,9 @@ fn is_empty_block(expr: &Expr<'_>) -> bool {
         expr.kind,
         ExprKind::Block(
             Block {
-                stmts: &[], expr: None, ..
+                stmts: &[],
+                expr: None,
+                ..
             },
             _,
         )

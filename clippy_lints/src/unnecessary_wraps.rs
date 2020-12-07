@@ -74,7 +74,10 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryWraps {
         }
 
         if let Some(Node::Item(item)) = cx.tcx.hir().find(cx.tcx.hir().get_parent_node(hir_id)) {
-            if matches!(item.kind, ItemKind::Impl{ of_trait: Some(_), ..} | ItemKind::Trait(..)) {
+            if matches!(
+                item.kind,
+                ItemKind::Impl { of_trait: Some(_), .. } | ItemKind::Trait(..)
+            ) {
                 return;
             }
         }
