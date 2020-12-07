@@ -10,9 +10,9 @@ SOURCE_FILE@0..154
             IDENT@6..16 "crate_name"
     SEMICOLON@16..17 ";"
   WHITESPACE@17..18 " "
-  COMMENT@18..45 "// Rust 2018 - All fl ..."
-  WHITESPACE@45..46 "\n"
-  USE@46..61
+  USE@18..61
+    COMMENT@18..45 "// Rust 2018 - All fl ..."
+    WHITESPACE@45..46 "\n"
     USE_KW@46..49 "use"
     WHITESPACE@49..50 " "
     USE_TREE@50..60
@@ -22,9 +22,9 @@ SOURCE_FILE@0..154
             IDENT@50..60 "crate_name"
     SEMICOLON@60..61 ";"
   WHITESPACE@61..62 " "
-  COMMENT@62..91 "// Rust 2018 - Anchor ..."
-  WHITESPACE@91..92 "\n"
-  USE@92..124
+  USE@62..124
+    COMMENT@62..91 "// Rust 2018 - Anchor ..."
+    WHITESPACE@91..92 "\n"
     USE_KW@92..95 "use"
     WHITESPACE@95..96 " "
     USE_TREE@96..123

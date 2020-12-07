@@ -83,7 +83,6 @@ pub(crate) fn folding_ranges(file: &SourceFile) -> Vec<Fold> {
 fn fold_kind(kind: SyntaxKind) -> Option<FoldKind> {
     match kind {
         COMMENT => Some(FoldKind::Comment),
-        USE => Some(FoldKind::Imports),
         ARG_LIST | PARAM_LIST => Some(FoldKind::ArgList),
         ASSOC_ITEM_LIST
         | RECORD_FIELD_LIST
@@ -258,11 +257,11 @@ fn main() <fold block>{
     fn test_fold_imports() {
         check(
             r#"
-<fold imports>use std::<fold block>{
+use std::<fold block>{
     str,
     vec,
     io as iop
-}</fold>;</fold>
+}</fold>;
 
 fn main() <fold block>{
 }</fold>"#,
@@ -306,9 +305,9 @@ use std::io as iop;</fold>
 <fold imports>use std::mem;
 use std::f64;</fold>
 
-use std::collections::HashMap;
+<fold imports>use std::collections::HashMap;
 // Some random comment
-use std::collections::VecDeque;
+use std::collections::VecDeque;</fold>
 
 fn main() <fold block>{
 }</fold>"#,
@@ -326,10 +325,10 @@ use std::io as iop;</fold>
 <fold imports>use std::mem;
 use std::f64;</fold>
 
-<fold imports>use std::collections::<fold block>{
+use std::collections::<fold block>{
     HashMap,
     VecDeque,
-}</fold>;</fold>
+}</fold>;
 // Some random comment
 
 fn main() <fold block>{

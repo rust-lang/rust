@@ -477,3 +477,4 @@ impl ast::DocCommentsOwner for ast::Const {}
 impl ast::DocCommentsOwner for ast::TypeAlias {}
 impl ast::DocCommentsOwner for ast::Impl {}
 impl ast::DocCommentsOwner for ast::MacroCall {}
+impl ast::DocCommentsOwner for ast::Use {}
