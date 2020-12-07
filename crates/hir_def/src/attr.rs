@@ -195,8 +195,11 @@ impl Attr {
     fn from_src(ast: ast::Attr, hygiene: &Hygiene) -> Option<Attr> {
         let path = ModPath::from_src(ast.path()?, hygiene)?;
         let input = if let Some(lit) = ast.literal() {
-            // FIXME: escape? raw string?
-            let value = lit.syntax().first_token()?.text().trim_matches('"').into();
+            let value = if let ast::LiteralKind::String(string) = lit.kind() {
+                string.value()?.into()
+            } else {
+                lit.syntax().first_token()?.text().trim_matches('"').into()
+            };
             Some(AttrInput::Literal(value))
         } else if let Some(tt) = ast.token_tree() {
             Some(AttrInput::TokenTree(ast_to_token_tree(&tt)?.0))
