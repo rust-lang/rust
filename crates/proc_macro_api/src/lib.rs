@@ -23,7 +23,7 @@ use crate::process::{ProcMacroProcessSrv, ProcMacroProcessThread};
 pub use rpc::{ExpansionResult, ExpansionTask, ListMacrosResult, ListMacrosTask, ProcMacroKind};
 
 #[derive(Debug, Clone)]
-pub struct ProcMacroProcessExpander {
+struct ProcMacroProcessExpander {
     process: Arc<ProcMacroProcessSrv>,
     dylib_path: PathBuf,
     name: SmolStr,
