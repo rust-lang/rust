@@ -2143,8 +2143,6 @@ pub trait Iterator {
     /// Find the maximum value:
     ///
     /// ```
-    /// #![feature(iterator_fold_self)]
-    ///
     /// fn find_max<I>(iter: I) -> Option<I::Item>
     ///     where I: Iterator,
     ///           I::Item: Ord,
@@ -2160,7 +2158,7 @@ pub trait Iterator {
     /// assert_eq!(find_max(b.iter()), None);
     /// ```
     #[inline]
-    #[unstable(feature = "iterator_fold_self", issue = "68125")]
+    #[stable(feature = "iterator_fold_self", since = "1.51.0")]
     fn reduce<F>(mut self, f: F) -> Option<Self::Item>
     where
         Self: Sized,
