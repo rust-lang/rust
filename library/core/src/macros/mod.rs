@@ -221,6 +221,10 @@ macro_rules! debug_assert_ne {
 /// Like in a `match` expression, the pattern can be optionally followed by `if`
 /// and a guard expression that has access to names bound by the pattern.
 ///
+/// If the pattern is followed by a `=>` and a further mapping expression, an
+/// [`Option`] will be produced, optionally containing the value produced by
+/// evaluating the mapping expression in the context of the pattern.
+///
 /// # Examples
 ///
 /// ```
@@ -229,6 +233,14 @@ macro_rules! debug_assert_ne {
 ///
 /// let bar = Some(4);
 /// assert!(matches!(bar, Some(x) if x > 2));
+///
+/// enum Baz {
+///     A(bool),
+///     B(i32),
+/// }
+///
+/// let baz = Baz::A(true);
+/// assert_eq!(matches!(baz, Baz::A(x) => !x), Some(false));
 /// ```
 #[macro_export]
 #[stable(feature = "matches_macro", since = "1.42.0")]
@@ -238,7 +250,13 @@ macro_rules! matches {
             $( $pattern )|+ $( if $guard )? => true,
             _ => false
         }
-    }
+    };
+    ($expression:expr, $( $pattern:pat )|+ $( if $guard: expr )? $(,)? => $mapping:expr) => {
+        match $expression {
+            $( $pattern )|+ $( if $guard )? => $crate::option::Option::Some($mapping),
+            _ => $crate::option::Option::None
+        }
+    };
 }
 
 /// Unwraps a result or propagates its error.
