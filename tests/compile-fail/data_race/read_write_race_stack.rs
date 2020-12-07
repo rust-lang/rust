@@ -40,8 +40,9 @@ pub fn main() {
             
             sleep(Duration::from_millis(1000));
 
-            //read
-            stack_var //~ ERROR Data race detected between Read on Thread(id = 1) and Write on Thread(id = 2)
+            // Read, the add 1 fixes -Z mir-opt-level=3 from removing the read via dest-prop and breaking
+            // the test.
+            stack_var + 1 //~ ERROR Data race detected between Read on Thread(id = 1) and Write on Thread(id = 2)
         });
 
         let j2 = spawn(move || {
