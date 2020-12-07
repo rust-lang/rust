@@ -344,6 +344,8 @@ impl<'a> ResolverExpand for Resolver<'a> {
     }
 
     fn lint_node_id(&mut self, expn_id: ExpnId) -> NodeId {
+        // FIXME - make this more precise. This currently returns the NodeId of the
+        // nearest closing item - we should try to return the closest parent of the ExpnId
         self.invocation_parents
             .get(&expn_id)
             .map_or(ast::CRATE_NODE_ID, |id| self.def_id_to_node_id[*id])
