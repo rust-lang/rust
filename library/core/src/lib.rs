@@ -103,6 +103,7 @@
 #![feature(const_likely)]
 #![feature(const_unreachable_unchecked)]
 #![feature(const_maybe_uninit_assume_init)]
+#![feature(const_maybe_uninit_as_ptr)]
 #![feature(custom_inner_attributes)]
 #![feature(decl_macro)]
 #![feature(doc_cfg)]

@@ -668,13 +668,14 @@ impl<T> MaybeUninit<T> {
     /// }
     /// ```
     #[unstable(feature = "maybe_uninit_ref", issue = "63568")]
+    #[rustc_const_unstable(feature = "const_maybe_uninit_assume_init", issue = "none")]
     #[inline(always)]
-    pub unsafe fn assume_init_ref(&self) -> &T {
+    pub const unsafe fn assume_init_ref(&self) -> &T {
         // SAFETY: the caller must guarantee that `self` is initialized.
         // This also means that `self` must be a `value` variant.
         unsafe {
             intrinsics::assert_inhabited::<T>();
-            &*self.value
+            &*self.as_ptr()
         }
     }
 
@@ -790,13 +791,14 @@ impl<T> MaybeUninit<T> {
     // to uninitialized data (e.g., in `libcore/fmt/float.rs`).  We should make
     // a final decision about the rules before stabilization.
     #[unstable(feature = "maybe_uninit_ref", issue = "63568")]
+    #[rustc_const_unstable(feature = "const_maybe_uninit_assume_init", issue = "none")]
     #[inline(always)]
-    pub unsafe fn assume_init_mut(&mut self) -> &mut T {
+    pub const unsafe fn assume_init_mut(&mut self) -> &mut T {
         // SAFETY: the caller must guarantee that `self` is initialized.
         // This also means that `self` must be a `value` variant.
         unsafe {
             intrinsics::assert_inhabited::<T>();
-            &mut *self.value
+            &mut *self.as_mut_ptr()
         }
     }
 
