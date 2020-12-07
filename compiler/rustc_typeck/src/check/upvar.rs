@@ -948,7 +948,7 @@ fn truncate_projections_for_capture<'tcx>(
     let mut first_index_projection = None;
     let mut first_deref_projection = None;
     let mut first_raw_ptr = None;
-    //let mut last_field_projection = None;
+    let mut last_field_projection = None;
 
     for (i, proj) in place.projections.iter().enumerate() {
         if proj.ty.is_unsafe_ptr() {
@@ -968,7 +968,7 @@ fn truncate_projections_for_capture<'tcx>(
                 first_deref_projection.get_or_insert(i);
             }
             ProjectionKind::Field(..) => {
-                //last_field_projection = Some(i);
+                last_field_projection = Some(i);
             }
             ProjectionKind::Subslice => {} // We never capture this
         }
@@ -990,11 +990,9 @@ fn truncate_projections_for_capture<'tcx>(
         ty::UpvarCapture::ByRef(..) => length,
     };
 
-    //if env::var("SG_DROP_DEREFS").is_ok() {
-    //// Since we will only have Field and Deref projections at this point.
-    //// This will truncate trailing derefs.
-    //length = last_field_projection.map_or(length, |idx| cmp::min(length, idx + 1));
-    //}
+    // Since we will only have Field and Deref projections at this point.
+    // This will truncate trailing derefs.
+    length = last_field_projection.map_or(length, |idx| cmp::min(length, idx + 1));
 
     place.projections.truncate(length);
 
