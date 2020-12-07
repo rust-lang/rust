@@ -373,8 +373,9 @@ impl<T> MaybeUninit<T> {
     /// skip running the destructor. For your convenience, this also returns a mutable
     /// reference to the (now safely initialized) contents of `self`.
     #[unstable(feature = "maybe_uninit_extra", issue = "63567")]
+    #[rustc_const_unstable(feature = "maybe_uninit_extra", issue = "63567")]
     #[inline(always)]
-    pub fn write(&mut self, val: T) -> &mut T {
+    pub const fn write(&mut self, val: T) -> &mut T {
         *self = MaybeUninit::new(val);
         // SAFETY: We just initialized this value.
         unsafe { self.assume_init_mut() }
@@ -846,15 +847,17 @@ impl<T> MaybeUninit<T> {
 
     /// Gets a pointer to the first element of the array.
     #[unstable(feature = "maybe_uninit_slice", issue = "63569")]
+    #[rustc_const_unstable(feature = "maybe_uninit_slice", issue = "63569")]
     #[inline(always)]
-    pub fn slice_as_ptr(this: &[MaybeUninit<T>]) -> *const T {
+    pub const fn slice_as_ptr(this: &[MaybeUninit<T>]) -> *const T {
         this.as_ptr() as *const T
     }
 
     /// Gets a mutable pointer to the first element of the array.
     #[unstable(feature = "maybe_uninit_slice", issue = "63569")]
+    #[rustc_const_unstable(feature = "maybe_uninit_slice", issue = "63569")]
     #[inline(always)]
-    pub fn slice_as_mut_ptr(this: &mut [MaybeUninit<T>]) -> *mut T {
+    pub const fn slice_as_mut_ptr(this: &mut [MaybeUninit<T>]) -> *mut T {
         this.as_mut_ptr() as *mut T
     }
 }
