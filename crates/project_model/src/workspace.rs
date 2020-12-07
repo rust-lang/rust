@@ -453,13 +453,18 @@ fn add_target_crate_root(
         opts.extend(pkg.cfgs.iter().cloned());
         opts
     };
+
     let mut env = Env::default();
+    for (k, v) in &pkg.envs {
+        env.set(k, v.clone());
+    }
     if let Some(out_dir) = &pkg.out_dir {
         // NOTE: cargo and rustc seem to hide non-UTF-8 strings from env! and option_env!()
         if let Some(out_dir) = out_dir.to_str().map(|s| s.to_owned()) {
             env.set("OUT_DIR", out_dir);
         }
     }
+
     let proc_macro =
         pkg.proc_macro_dylib_path.as_ref().map(|it| proc_macro_loader(&it)).unwrap_or_default();
 
