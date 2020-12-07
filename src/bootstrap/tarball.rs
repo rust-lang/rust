@@ -94,7 +94,6 @@ pub(crate) struct Tarball<'a> {
     temp_dir: PathBuf,
     image_dir: PathBuf,
     overlay_dir: PathBuf,
-    work_dir: PathBuf,
 
     include_target_in_component_name: bool,
     is_preview: bool,
@@ -113,12 +112,14 @@ impl<'a> Tarball<'a> {
     fn new_inner(builder: &'a Builder<'a>, component: &str, target: Option<String>) -> Self {
         let pkgname = crate::dist::pkgname(builder, component);
 
-        let temp_dir = builder.out.join("tmp").join("tarball").join(component);
+        let mut temp_dir = builder.out.join("tmp").join("tarball");
+        if let Some(target) = &target {
+            temp_dir = temp_dir.join(target);
+        }
         let _ = std::fs::remove_dir_all(&temp_dir);
 
         let image_dir = temp_dir.join("image");
         let overlay_dir = temp_dir.join("overlay");
-        let work_dir = temp_dir.join("work");
 
         Self {
             builder,
@@ -132,7 +133,6 @@ impl<'a> Tarball<'a> {
             temp_dir,
             image_dir,
             overlay_dir,
-            work_dir,
 
             include_target_in_component_name: false,
             is_preview: false,
@@ -200,7 +200,7 @@ impl<'a> Tarball<'a> {
 
     pub(crate) fn persist_work_dir(&mut self) -> PathBuf {
         self.delete_temp_dir = false;
-        self.work_dir.clone()
+        self.temp_dir.clone()
     }
 
     pub(crate) fn generate(self) -> PathBuf {
@@ -222,9 +222,8 @@ impl<'a> Tarball<'a> {
             cmd.arg("generate")
                 .arg("--image-dir")
                 .arg(&this.image_dir)
-                .arg("--non-installed-overlay")
-                .arg(&this.overlay_dir)
                 .arg(format!("--component-name={}", &component_name));
+            this.non_bare_args(cmd);
         })
     }
 
@@ -236,12 +235,39 @@ impl<'a> Tarball<'a> {
         }
 
         self.run(|this, cmd| {
-            cmd.arg("combine")
-                .arg("--input-tarballs")
-                .arg(input_tarballs)
-                .arg("--non-installed-overlay")
-                .arg(&this.overlay_dir);
+            cmd.arg("combine").arg("--input-tarballs").arg(input_tarballs);
+            this.non_bare_args(cmd);
         });
+    }
+
+    pub(crate) fn bare(self) -> PathBuf {
+        self.run(|this, cmd| {
+            cmd.arg("tarball")
+                .arg("--input")
+                .arg(&this.image_dir)
+                .arg("--output")
+                .arg(crate::dist::distdir(this.builder).join(this.package_name()));
+        })
+    }
+
+    fn package_name(&self) -> String {
+        if let Some(target) = &self.target {
+            format!("{}-{}", self.pkgname, target)
+        } else {
+            self.pkgname.clone()
+        }
+    }
+
+    fn non_bare_args(&self, cmd: &mut Command) {
+        cmd.arg("--rel-manifest-dir=rustlib")
+            .arg("--legacy-manifest-dirs=rustlib,cargo")
+            .arg(format!("--product-name={}", self.product_name))
+            .arg(format!("--success-message={} installed.", self.component))
+            .arg(format!("--package-name={}", self.package_name()))
+            .arg("--non-installed-overlay")
+            .arg(&self.overlay_dir)
+            .arg("--output-dir")
+            .arg(crate::dist::distdir(self.builder));
     }
 
     fn run(self, build_cli: impl FnOnce(&Tarball<'a>, &mut Command)) -> PathBuf {
@@ -256,32 +282,17 @@ impl<'a> Tarball<'a> {
 
         let mut cmd = self.builder.tool_cmd(crate::tool::Tool::RustInstaller);
 
-        let package_name = if let Some(target) = &self.target {
-            self.builder.info(&format!("Dist {} ({})", self.component, target));
-            format!("{}-{}", self.pkgname, target)
-        } else {
-            self.builder.info(&format!("Dist {}", self.component));
-            self.pkgname.clone()
-        };
-
+        let package_name = self.package_name();
+        self.builder.info(&format!("Dist {}", package_name));
         let _time = crate::util::timeit(self.builder);
 
-        let distdir = crate::dist::distdir(self.builder);
         build_cli(&self, &mut cmd);
-        cmd.arg("--rel-manifest-dir=rustlib")
-            .arg("--legacy-manifest-dirs=rustlib,cargo")
-            .arg(format!("--product-name={}", self.product_name))
-            .arg(format!("--success-message={} installed.", self.component))
-            .arg(format!("--package-name={}", package_name))
-            .arg("--work-dir")
-            .arg(self.work_dir)
-            .arg("--output-dir")
-            .arg(&distdir);
+        cmd.arg("--work-dir").arg(&self.temp_dir);
         self.builder.run(&mut cmd);
         if self.delete_temp_dir {
             t!(std::fs::remove_dir_all(&self.temp_dir));
         }
 
-        distdir.join(format!("{}.tar.gz", package_name))
+        crate::dist::distdir(self.builder).join(format!("{}.tar.gz", package_name))
     }
 }

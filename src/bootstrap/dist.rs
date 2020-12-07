@@ -37,10 +37,6 @@ pub fn tmpdir(builder: &Builder<'_>) -> PathBuf {
     builder.out.join("tmp/dist")
 }
 
-fn rust_installer(builder: &Builder<'_>) -> Command {
-    builder.tool_cmd(Tool::RustInstaller)
-}
-
 fn missing_tool(tool_name: &str, skip: bool) {
     if skip {
         println!("Unable to build {}, skipping dist", tool_name)
@@ -867,11 +863,8 @@ impl Step for PlainSourceTarball {
 
     /// Creates the plain source tarball
     fn run(self, builder: &Builder<'_>) -> PathBuf {
-        // Make sure that the root folder of tarball has the correct name
-        let plain_name = format!("{}-src", pkgname(builder, "rustc"));
-        let plain_dst_src = tmpdir(builder).join(&plain_name);
-        let _ = fs::remove_dir_all(&plain_dst_src);
-        t!(fs::create_dir_all(&plain_dst_src));
+        let tarball = Tarball::new(builder, "rustc", "src");
+        let plain_dst_src = tarball.image_dir();
 
         // This is the set of root paths which will become part of the source package
         let src_files = [
@@ -914,28 +907,7 @@ impl Step for PlainSourceTarball {
             builder.run(&mut cmd);
         }
 
-        // Create plain source tarball
-        let plain_name = format!("rustc-{}-src", builder.rust_package_vers());
-        let mut tarball = distdir(builder).join(&format!("{}.tar.gz", plain_name));
-        tarball.set_extension(""); // strip .gz
-        tarball.set_extension(""); // strip .tar
-        if let Some(dir) = tarball.parent() {
-            builder.create_dir(&dir);
-        }
-        builder.info("running installer");
-        let mut cmd = rust_installer(builder);
-        cmd.arg("tarball")
-            .arg("--input")
-            .arg(&plain_name)
-            .arg("--output")
-            .arg(&tarball)
-            .arg("--work-dir=.")
-            .current_dir(tmpdir(builder));
-
-        builder.info("Create plain source tarball");
-        let _time = timeit(builder);
-        builder.run(&mut cmd);
-        distdir(builder).join(&format!("{}.tar.gz", plain_name))
+        tarball.bare()
     }
 }
 
