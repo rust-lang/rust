@@ -112,6 +112,7 @@ pub fn check(
                 let gate_test_str = "gate-test-";
 
                 let feature_name = match line.find(gate_test_str) {
+                    // NB: the `splitn` always succeeds, even if the delimiter is not present.
                     Some(i) => line[i + gate_test_str.len()..].splitn(2, ' ').next().unwrap(),
                     None => continue,
                 };
