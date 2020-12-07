@@ -26,7 +26,7 @@ fn main() {
 
     // Detatch the thread and sleep until it terminates
     mem::drop(join);
-    sleep(Duration::from_millis(100));
+    sleep(Duration::from_millis(1000));
 
     // Spawn and immediately join a thread
     // to execute the join code-path

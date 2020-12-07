@@ -30,7 +30,7 @@ pub fn main() {
         let j1 = spawn(move || {
             *c.0 = 1;
             SYNC.store(1, Ordering::Release);
-            sleep(Duration::from_millis(100));
+            sleep(Duration::from_millis(1000));
             SYNC.store(3, Ordering::Relaxed);
         });
 
@@ -40,7 +40,7 @@ pub fn main() {
         });
 
         let j3 = spawn(move || {
-            sleep(Duration::from_millis(1000));
+            sleep(Duration::from_millis(5000));
             if SYNC.load(Ordering::Acquire) == 3 {
                 *c.0 //~ ERROR Data race
             } else {

@@ -38,7 +38,7 @@ pub fn main() {
 
             pointer.store(&mut stack_var as *mut _, Ordering::Release);
             
-            sleep(Duration::from_millis(100));
+            sleep(Duration::from_millis(1000));
 
             //read
             stack_var //~ ERROR Data race

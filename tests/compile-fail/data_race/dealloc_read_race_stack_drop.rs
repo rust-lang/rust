@@ -36,7 +36,7 @@ pub fn main() {
 
             pointer.store(&mut stack_var as *mut _, Ordering::Release);
 
-            sleep(Duration::from_millis(100));
+            sleep(Duration::from_millis(1000));
 
             // NOTE: the race is also detected with thread 0, and so reported for thread 0 instead of 2, unsure of the cause.
             drop(stack_var);
