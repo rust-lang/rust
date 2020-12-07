@@ -5,6 +5,7 @@ use std::{ops, sync::Arc};
 use cfg::{CfgExpr, CfgOptions};
 use either::Either;
 use hir_expand::{hygiene::Hygiene, AstId, InFile};
+use itertools::Itertools;
 use mbe::ast_to_token_tree;
 use syntax::{
     ast::{self, AstNode, AttrsOwner},
@@ -14,6 +15,7 @@ use tt::Subtree;
 
 use crate::{
     db::DefDatabase,
+    docs::Documentation,
     item_tree::{ItemTreeId, ItemTreeNode},
     nameres::ModuleSource,
     path::ModPath,
@@ -139,6 +141,20 @@ impl Attrs {
             None => true,
             Some(cfg) => cfg_options.check(&cfg) != Some(false),
         }
+    }
+
+    pub fn docs(&self) -> Option<Documentation> {
+        let mut docs = String::new();
+        self.by_key("doc")
+            .attrs()
+            .flat_map(|attr| match attr.input.as_ref()? {
+                AttrInput::Literal(s) => Some(s),
+                AttrInput::TokenTree(_) => None,
+            })
+            .intersperse(&SmolStr::new_inline("\n"))
+            // No FromIterator<SmolStr> for String
+            .for_each(|s| docs.push_str(s.as_str()));
+        if docs.is_empty() { None } else { Some(docs) }.map(|it| Documentation::new(&it))
     }
 }
 

@@ -38,7 +38,7 @@ macro_rules! impl_has_attrs {
             }
             fn docs(self, db: &dyn HirDatabase) -> Option<Documentation> {
                 let def = AttrDefId::$def_id(self.into());
-                db.documentation(def)
+                db.attrs(def).docs()
             }
             fn resolve_doc_path(self, db: &dyn HirDatabase, link: &str, ns: Option<Namespace>) -> Option<ModuleDef> {
                 let def = AttrDefId::$def_id(self.into());

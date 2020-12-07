@@ -5,15 +5,8 @@
 
 use std::sync::Arc;
 
-use either::Either;
 use itertools::Itertools;
 use syntax::{ast, SmolStr};
-
-use crate::{
-    db::DefDatabase,
-    src::{HasChildSource, HasSource},
-    AdtId, AttrDefId, Lookup,
-};
 
 /// Holds documentation
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -26,7 +19,7 @@ impl Into<String> for Documentation {
 }
 
 impl Documentation {
-    fn new(s: &str) -> Documentation {
+    pub fn new(s: &str) -> Documentation {
         Documentation(s.into())
     }
 
@@ -39,42 +32,6 @@ impl Documentation {
 
     pub fn as_str(&self) -> &str {
         &*self.0
-    }
-
-    pub(crate) fn documentation_query(
-        db: &dyn DefDatabase,
-        def: AttrDefId,
-    ) -> Option<Documentation> {
-        match def {
-            AttrDefId::ModuleId(module) => {
-                let def_map = db.crate_def_map(module.krate);
-                let src = def_map[module.local_id].declaration_source(db)?;
-                docs_from_ast(&src.value)
-            }
-            AttrDefId::FieldId(it) => {
-                let src = it.parent.child_source(db);
-                match &src.value[it.local_id] {
-                    Either::Left(_tuple) => None,
-                    Either::Right(record) => docs_from_ast(record),
-                }
-            }
-            AttrDefId::AdtId(it) => match it {
-                AdtId::StructId(it) => docs_from_ast(&it.lookup(db).source(db).value),
-                AdtId::EnumId(it) => docs_from_ast(&it.lookup(db).source(db).value),
-                AdtId::UnionId(it) => docs_from_ast(&it.lookup(db).source(db).value),
-            },
-            AttrDefId::EnumVariantId(it) => {
-                let src = it.parent.child_source(db);
-                docs_from_ast(&src.value[it.local_id])
-            }
-            AttrDefId::TraitId(it) => docs_from_ast(&it.lookup(db).source(db).value),
-            AttrDefId::MacroDefId(it) => docs_from_ast(&it.ast_id?.to_node(db.upcast())),
-            AttrDefId::ConstId(it) => docs_from_ast(&it.lookup(db).source(db).value),
-            AttrDefId::StaticId(it) => docs_from_ast(&it.lookup(db).source(db).value),
-            AttrDefId::FunctionId(it) => docs_from_ast(&it.lookup(db).source(db).value),
-            AttrDefId::TypeAliasId(it) => docs_from_ast(&it.lookup(db).source(db).value),
-            AttrDefId::ImplId(_) => None,
-        }
     }
 }
 
@@ -94,7 +51,8 @@ fn merge_doc_comments_and_attrs(
 ) -> Option<String> {
     match (doc_comment_text, doc_attr_text) {
         (Some(mut comment_text), Some(attr_text)) => {
-            comment_text.push_str("\n");
+            comment_text.reserve(attr_text.len() + 1);
+            comment_text.push('\n');
             comment_text.push_str(&attr_text);
             Some(comment_text)
         }

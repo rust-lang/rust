@@ -10,7 +10,6 @@ use crate::{
     attr::Attrs,
     body::{scope::ExprScopes, Body, BodySourceMap},
     data::{ConstData, FunctionData, ImplData, StaticData, TraitData, TypeAliasData},
-    docs::Documentation,
     generics::GenericParams,
     import_map::ImportMap,
     item_tree::ItemTree,
@@ -104,11 +103,6 @@ pub trait DefDatabase: InternDatabase + AstDatabase + Upcast<dyn AstDatabase> {
 
     #[salsa::invoke(LangItems::lang_item_query)]
     fn lang_item(&self, start_crate: CrateId, item: SmolStr) -> Option<LangItemTarget>;
-
-    // FIXME(https://github.com/rust-analyzer/rust-analyzer/issues/2148#issuecomment-550519102)
-    // Remove this query completely, in favor of `Attrs::docs` method
-    #[salsa::invoke(Documentation::documentation_query)]
-    fn documentation(&self, def: AttrDefId) -> Option<Documentation>;
 
     #[salsa::invoke(ImportMap::import_map_query)]
     fn import_map(&self, krate: CrateId) -> Arc<ImportMap>;
