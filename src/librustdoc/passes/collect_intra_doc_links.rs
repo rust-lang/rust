@@ -435,8 +435,9 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
 
         // Try looking for methods and associated items.
         let mut split = path_str.rsplitn(2, "::");
-        // NB: the `splitn`'s first element is always defined, even if the delimiter is not present.
+        // NB: `split`'s first element is always defined, even if the delimiter was not present.
         let item_str = split.next().unwrap();
+        assert!(!item_str.is_empty());
         let item_name = Symbol::intern(item_str);
         let path_root = split
             .next()
@@ -448,7 +449,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                 ResolutionFailure::NotResolved {
                     module_id,
                     partial_res: None,
-                    unresolved: path_str.into(),
+                    unresolved: item_str.into(),
                 }
             })?;
 
