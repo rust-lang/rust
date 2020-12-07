@@ -171,16 +171,16 @@ impl GlobalState {
         let project_folders = ProjectFolders::new(&workspaces);
 
         self.proc_macro_client = match &self.config.proc_macro_srv {
-            None => ProcMacroClient::dummy(),
+            None => None,
             Some((path, args)) => match ProcMacroClient::extern_process(path.into(), args) {
-                Ok(it) => it,
+                Ok(it) => Some(it),
                 Err(err) => {
                     log::error!(
                         "Failed to run proc_macro_srv from path {}, error: {:?}",
                         path.display(),
                         err
                     );
-                    ProcMacroClient::dummy()
+                    None
                 }
             },
         };
@@ -212,7 +212,7 @@ impl GlobalState {
             for ws in workspaces.iter() {
                 crate_graph.extend(ws.to_crate_graph(
                     self.config.cargo.target.as_deref(),
-                    &self.proc_macro_client,
+                    self.proc_macro_client.as_ref(),
                     &mut load,
                 ));
             }

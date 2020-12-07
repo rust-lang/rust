@@ -19,7 +19,7 @@ pub struct ListMacrosTask {
     pub lib: PathBuf,
 }
 
-#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub enum ProcMacroKind {
     CustomDerive,
     FuncLike,

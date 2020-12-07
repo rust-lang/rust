@@ -2,10 +2,14 @@
 //! metadata` or `rust-project.json`) into representation stored in the salsa
 //! database -- `CrateGraph`.
 
-use std::{fmt, fs, path::Component, process::Command};
+use std::{
+    fmt, fs,
+    path::{Component, Path},
+    process::Command,
+};
 
 use anyhow::{Context, Result};
-use base_db::{CrateDisplayName, CrateGraph, CrateId, CrateName, Edition, Env, FileId};
+use base_db::{CrateDisplayName, CrateGraph, CrateId, CrateName, Edition, Env, FileId, ProcMacro};
 use cfg::CfgOptions;
 use paths::{AbsPath, AbsPathBuf};
 use proc_macro_api::ProcMacroClient;
@@ -194,15 +198,20 @@ impl ProjectWorkspace {
     pub fn to_crate_graph(
         &self,
         target: Option<&str>,
-        proc_macro_client: &ProcMacroClient,
+        proc_macro_client: Option<&ProcMacroClient>,
         load: &mut dyn FnMut(&AbsPath) -> Option<FileId>,
     ) -> CrateGraph {
+        let proc_macro_loader = |path: &Path| match proc_macro_client {
+            Some(client) => client.by_dylib_path(path),
+            None => Vec::new(),
+        };
+
         let mut crate_graph = match self {
             ProjectWorkspace::Json { project, sysroot } => {
-                project_json_to_crate_graph(target, proc_macro_client, load, project, sysroot)
+                project_json_to_crate_graph(target, &proc_macro_loader, load, project, sysroot)
             }
             ProjectWorkspace::Cargo { cargo, sysroot, rustc } => {
-                cargo_to_crate_graph(target, proc_macro_client, load, cargo, sysroot, rustc)
+                cargo_to_crate_graph(target, &proc_macro_loader, load, cargo, sysroot, rustc)
             }
         };
         if crate_graph.patch_cfg_if() {
@@ -216,7 +225,7 @@ impl ProjectWorkspace {
 
 fn project_json_to_crate_graph(
     target: Option<&str>,
-    proc_macro_client: &ProcMacroClient,
+    proc_macro_loader: &dyn Fn(&Path) -> Vec<ProcMacro>,
     load: &mut dyn FnMut(&AbsPath) -> Option<FileId>,
     project: &ProjectJson,
     sysroot: &Option<Sysroot>,
@@ -236,8 +245,7 @@ fn project_json_to_crate_graph(
         })
         .map(|(crate_id, krate, file_id)| {
             let env = krate.env.clone().into_iter().collect();
-            let proc_macro =
-                krate.proc_macro_dylib_path.clone().map(|it| proc_macro_client.by_dylib_path(&it));
+            let proc_macro = krate.proc_macro_dylib_path.clone().map(|it| proc_macro_loader(&it));
 
             let target = krate.target.as_deref().or(target);
             let target_cfgs =
@@ -279,7 +287,7 @@ fn project_json_to_crate_graph(
 
 fn cargo_to_crate_graph(
     target: Option<&str>,
-    proc_macro_client: &ProcMacroClient,
+    proc_macro_loader: &dyn Fn(&Path) -> Vec<ProcMacro>,
     load: &mut dyn FnMut(&AbsPath) -> Option<FileId>,
     cargo: &CargoWorkspace,
     sysroot: &Sysroot,
@@ -309,7 +317,7 @@ fn cargo_to_crate_graph(
                     &mut crate_graph,
                     &cargo[pkg],
                     &cfg_options,
-                    proc_macro_client,
+                    proc_macro_loader,
                     file_id,
                 );
                 if cargo[tgt].kind == TargetKind::Lib {
@@ -385,7 +393,7 @@ fn cargo_to_crate_graph(
                         &mut crate_graph,
                         &rustc_workspace[pkg],
                         &cfg_options,
-                        proc_macro_client,
+                        proc_macro_loader,
                         file_id,
                     );
                     pkg_to_lib_crate.insert(pkg, crate_id);
@@ -433,7 +441,7 @@ fn add_target_crate_root(
     crate_graph: &mut CrateGraph,
     pkg: &cargo_workspace::PackageData,
     cfg_options: &CfgOptions,
-    proc_macro_client: &ProcMacroClient,
+    proc_macro_loader: &dyn Fn(&Path) -> Vec<ProcMacro>,
     file_id: FileId,
 ) -> CrateId {
     let edition = pkg.edition;
@@ -452,11 +460,8 @@ fn add_target_crate_root(
             env.set("OUT_DIR", out_dir);
         }
     }
-    let proc_macro = pkg
-        .proc_macro_dylib_path
-        .as_ref()
-        .map(|it| proc_macro_client.by_dylib_path(&it))
-        .unwrap_or_default();
+    let proc_macro =
+        pkg.proc_macro_dylib_path.as_ref().map(|it| proc_macro_loader(&it)).unwrap_or_default();
 
     let display_name = CrateDisplayName::from_canonical_name(pkg.name.clone());
     let crate_id = crate_graph.add_crate_root(

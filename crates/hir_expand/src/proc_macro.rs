@@ -26,7 +26,6 @@ impl ProcMacroExpander {
 
     pub fn dummy(krate: CrateId) -> Self {
         // FIXME: Should store the name for better errors
-        // FIXME: I think this is the second layer of "dummy" expansion, we should reduce that
         Self { krate, proc_macro_id: None }
     }
 

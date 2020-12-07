@@ -1187,6 +1187,7 @@ dependencies = [
 name = "proc_macro_api"
 version = "0.0.0"
 dependencies = [
+ "base_db",
  "crossbeam-channel 0.5.0",
  "jod-thread",
  "log",
