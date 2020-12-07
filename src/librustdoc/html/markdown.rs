@@ -1035,7 +1035,14 @@ fn markdown_summary_with_limit(md: &str, length_limit: usize) -> (String, bool) 
         *text_length += text.len();
     }
 
-    'outer: for event in Parser::new_ext(md, summary_opts()) {
+    // NOTE: Make sure to update the same variable in `plain_text_summary`
+    //       if/when you update this one. They have to be duplicated because of a typesystem thing.
+    let mut broken_link_callback =
+        |broken_link: BrokenLink<'_>| Some(("#".into(), broken_link.reference.to_owned().into()));
+
+    'outer: for event in
+        Parser::new_with_broken_link_callback(md, summary_opts(), Some(&mut broken_link_callback))
+    {
         match &event {
             Event::Text(text) => {
                 for word in text.split_inclusive(char::is_whitespace) {
@@ -1113,7 +1120,14 @@ crate fn plain_text_summary(md: &str) -> String {
 
     let mut s = String::with_capacity(md.len() * 3 / 2);
 
-    for event in Parser::new_ext(md, summary_opts()) {
+    // NOTE: Make sure to update the same variable in `markdown_summary_with_limit`
+    //       if/when you update this one. They have to be duplicated because of a typesystem thing.
+    let mut broken_link_callback =
+        |broken_link: BrokenLink<'_>| Some(("#".into(), broken_link.reference.to_owned().into()));
+
+    for event in
+        Parser::new_with_broken_link_callback(md, summary_opts(), Some(&mut broken_link_callback))
+    {
         match &event {
             Event::Text(text) => s.push_str(text),
             Event::Code(code) => {
