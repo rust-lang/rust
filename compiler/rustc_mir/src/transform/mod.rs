@@ -280,6 +280,7 @@ fn mir_const<'tcx>(
     tcx.alloc_steal_mir(body)
 }
 
+/// Compute the main MIR body and the list of MIR bodies of the promoteds.
 fn mir_promoted(
     tcx: TyCtxt<'tcx>,
     def: ty::WithOptConstParam<LocalDefId>,
@@ -321,6 +322,7 @@ fn mir_promoted(
     (tcx.alloc_steal_mir(body), tcx.alloc_steal_promoted(promoted))
 }
 
+/// Compute the MIR that is used during CTFE (and thus has no optimizations run on it)
 fn mir_for_ctfe<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> &'tcx Body<'tcx> {
     let did = def_id.expect_local();
     if let Some(def) = ty::WithOptConstParam::try_lookup(did, tcx) {
@@ -330,6 +332,11 @@ fn mir_for_ctfe<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> &'tcx Body<'tcx> {
     }
 }
 
+/// Same as `mir_for_ctfe`, but used to get the MIR of a const generic parameter.
+/// The docs on `WithOptConstParam` explain this a bit more, but the TLDR is that
+/// we'd get cycle errors with `mir_for_ctfe`, because typeck would need to typeck
+/// the const parameter while type checking the main body, which in turn would try
+/// to type check the main body again.
 fn mir_for_ctfe_of_const_arg<'tcx>(
     tcx: TyCtxt<'tcx>,
     (did, param_did): (LocalDefId, DefId),
@@ -378,6 +385,9 @@ fn inner_mir_for_ctfe(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -
     body
 }
 
+/// Obtain just the main MIR (no promoteds) and run some cleanups on it. This also runs
+/// mir borrowck *before* doing so in order to ensure that borrowck can be run and doesn't
+/// end up missing the source MIR due to stealing happening.
 fn mir_drops_elaborated_and_const_checked<'tcx>(
     tcx: TyCtxt<'tcx>,
     def: ty::WithOptConstParam<LocalDefId>,
@@ -515,6 +525,7 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     );
 }
 
+/// Optimize the MIR and prepare it for codegen.
 fn optimized_mir<'tcx>(tcx: TyCtxt<'tcx>, did: DefId) -> &'tcx Body<'tcx> {
     let did = did.expect_local();
     assert_eq!(ty::WithOptConstParam::try_lookup(did, tcx), None);
@@ -544,6 +555,8 @@ fn inner_optimized_mir(tcx: TyCtxt<'_>, did: LocalDefId) -> Body<'_> {
     body
 }
 
+/// Fetch all the promoteds of an item and prepare their MIR bodies to be ready for
+/// constant evaluation once all substitutions become known.
 fn promoted_mir<'tcx>(
     tcx: TyCtxt<'tcx>,
     def: ty::WithOptConstParam<LocalDefId>,
