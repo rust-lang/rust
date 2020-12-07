@@ -38,7 +38,7 @@ pub fn main() {
             
             sleep(Duration::from_millis(1000));
 
-            // FIXME: find cause of implicit read event
+            // Note: Implicit read for drop(_) races with write, would detect race with deallocate after.
             drop(stack_var); //~ ERROR Data race detected between Read on Thread(id = 1) and Write on Thread(id = 2)
         });
 
