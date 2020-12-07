@@ -1525,9 +1525,7 @@ fn foo() { let bar = Ba<|>r; }
                 ---
 
                 bar docs 0
-
                 bar docs 1
-
                 bar docs 2
             "#]],
         );

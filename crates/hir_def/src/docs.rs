@@ -6,7 +6,8 @@
 use std::sync::Arc;
 
 use either::Either;
-use syntax::ast;
+use itertools::Itertools;
+use syntax::{ast, SmolStr};
 
 use crate::{
     db::DefDatabase,
@@ -93,7 +94,7 @@ fn merge_doc_comments_and_attrs(
 ) -> Option<String> {
     match (doc_comment_text, doc_attr_text) {
         (Some(mut comment_text), Some(attr_text)) => {
-            comment_text.push_str("\n\n");
+            comment_text.push_str("\n");
             comment_text.push_str(&attr_text);
             Some(comment_text)
         }
@@ -105,17 +106,16 @@ fn merge_doc_comments_and_attrs(
 
 fn expand_doc_attrs(owner: &dyn ast::AttrsOwner) -> Option<String> {
     let mut docs = String::new();
-    for attr in owner.attrs() {
-        if let Some(("doc", value)) =
-            attr.as_simple_key_value().as_ref().map(|(k, v)| (k.as_str(), v.as_str()))
-        {
-            docs.push_str(value);
-            docs.push_str("\n\n");
-        }
-    }
+    owner
+        .attrs()
+        .filter_map(|attr| attr.as_simple_key_value().filter(|(key, _)| key == "doc"))
+        .map(|(_, value)| value)
+        .intersperse(SmolStr::new_inline("\n"))
+        // No FromIterator<SmolStr> for String
+        .for_each(|s| docs.push_str(s.as_str()));
     if docs.is_empty() {
         None
     } else {
-        Some(docs.trim_end_matches("\n\n").to_owned())
+        Some(docs)
     }
 }
