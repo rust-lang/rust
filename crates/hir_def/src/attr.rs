@@ -24,7 +24,7 @@ use crate::{
 
 /// Holds documentation
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Documentation(Arc<str>);
+pub struct Documentation(String);
 
 impl Documentation {
     pub fn as_str(&self) -> &str {
@@ -34,7 +34,7 @@ impl Documentation {
 
 impl Into<String> for Documentation {
     fn into(self) -> String {
-        self.as_str().to_owned()
+        self.0
     }
 }
 
