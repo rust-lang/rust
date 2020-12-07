@@ -27,14 +27,18 @@
 use crate::edition::Edition;
 use crate::symbol::{kw, sym, Symbol};
 use crate::SESSION_GLOBALS;
-use crate::{Span, DUMMY_SP};
+use crate::{BytePos, CachingSourceMapView, ExpnIdCache, SourceFile, Span, DUMMY_SP};
 
 use crate::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::{Lock, Lrc};
 use rustc_macros::HashStable_Generic;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use std::fmt;
+use std::hash::Hash;
+use std::thread::LocalKey;
 use tracing::*;
 
 /// A `SyntaxContext` represents a chain of pairs `(ExpnId, Transparency)` named "marks".
@@ -80,7 +84,12 @@ pub enum Transparency {
 
 impl ExpnId {
     pub fn fresh(expn_data: Option<ExpnData>) -> Self {
-        HygieneData::with(|data| data.fresh_expn(expn_data))
+        let has_data = expn_data.is_some();
+        let expn_id = HygieneData::with(|data| data.fresh_expn(expn_data));
+        if has_data {
+            update_disambiguator(expn_id);
+        }
+        expn_id
     }
 
     /// The ID of the theoretical expansion that generates freshly parsed, unexpanded AST.
@@ -111,7 +120,8 @@ impl ExpnId {
             assert!(old_expn_data.is_none(), "expansion data is reset for an expansion ID");
             expn_data.orig_id.replace(self.as_u32()).expect_none("orig_id should be None");
             *old_expn_data = Some(expn_data);
-        })
+        });
+        update_disambiguator(self)
     }
 
     pub fn is_descendant_of(self, ancestor: ExpnId) -> bool {
@@ -152,6 +162,12 @@ pub struct HygieneData {
     expn_data: Vec<Option<ExpnData>>,
     syntax_context_data: Vec<SyntaxContextData>,
     syntax_context_map: FxHashMap<(SyntaxContext, ExpnId, Transparency), SyntaxContext>,
+    /// Maps the `Fingerprint` of an `ExpnData` to the next disambiguator value.
+    /// This is used by `update_disambiguator` to keep track of which `ExpnData`s
+    /// would have collisions without a disambiguator.
+    /// The keys of this map are always computed with `ExpnData.disambiguator`
+    /// set to 0.
+    expn_data_disambiguators: FxHashMap<Fingerprint, u32>,
 }
 
 impl HygieneData {
@@ -175,6 +191,7 @@ impl HygieneData {
                 dollar_crate_name: kw::DollarCrate,
             }],
             syntax_context_map: FxHashMap::default(),
+            expn_data_disambiguators: FxHashMap::default(),
         }
     }
 
@@ -649,8 +666,8 @@ impl Span {
         expn_data: ExpnData,
         transparency: Transparency,
     ) -> Span {
+        let expn_id = ExpnId::fresh(Some(expn_data));
         HygieneData::with(|data| {
-            let expn_id = data.fresh_expn(Some(expn_data));
             self.with_ctxt(data.apply_mark(SyntaxContext::root(), expn_id, transparency))
         })
     }
@@ -726,10 +743,23 @@ pub struct ExpnData {
     // be considered equivalent.
     #[stable_hasher(ignore)]
     orig_id: Option<u32>,
+
+    /// Used to force two `ExpnData`s to have different `Fingerprint`s.
+    /// Due to macro expansion, it's possible to end up with two `ExpnId`s
+    /// that have identical `ExpnData`s. This violates the constract of `HashStable`
+    /// - the two `ExpnId`s are not equal, but their `Fingerprint`s are equal
+    /// (since the numerical `ExpnId` value is not considered by the `HashStable`
+    /// implementation).
+    ///
+    /// The `disambiguator` field is set by `update_disambiguator` when two distinct
+    /// `ExpnId`s would end up with the same `Fingerprint`. Since `ExpnData` includes
+    /// a `krate` field, this value only needs to be unique within a single crate.
+    disambiguator: u32,
 }
 
-// This would require special handling of `orig_id` and `parent`
+// These would require special handling of `orig_id`.
 impl !PartialEq for ExpnData {}
+impl !Hash for ExpnData {}
 
 impl ExpnData {
     pub fn new(
@@ -755,6 +785,7 @@ impl ExpnData {
             macro_def_id,
             krate: LOCAL_CRATE,
             orig_id: None,
+            disambiguator: 0,
         }
     }
 
@@ -777,6 +808,7 @@ impl ExpnData {
             macro_def_id,
             krate: LOCAL_CRATE,
             orig_id: None,
+            disambiguator: 0,
         }
     }
 
@@ -1274,5 +1306,120 @@ impl<E: Encoder> Encodable<E> for SyntaxContext {
 impl<D: Decoder> Decodable<D> for SyntaxContext {
     default fn decode(_: &mut D) -> Result<Self, D::Error> {
         panic!("cannot decode `SyntaxContext` with `{}`", std::any::type_name::<D>());
+    }
+}
+
+/// Updates the `disambiguator` field of the corresponding `ExpnData`
+/// such that the `Fingerprint` of the `ExpnData` does not collide with
+/// any other `ExpnIds`.
+///
+/// This method is called only when an `ExpnData` is first associated
+/// with an `ExpnId` (when the `ExpnId` is initially constructed, or via
+/// `set_expn_data`). It is *not* called for foreign `ExpnId`s deserialized
+/// from another crate's metadata - since `ExpnData` includes a `krate` field,
+/// collisions are only possible between `ExpnId`s within the same crate.
+fn update_disambiguator(expn_id: ExpnId) {
+    /// A `HashStableContext` which hashes the raw id values for `DefId`
+    /// and `CrateNum`, rather than using their computed stable hash.
+    ///
+    /// This allows us to use the `HashStable` implementation on `ExpnId`
+    /// early on in compilation, before we've constructed a `TyCtxt`.
+    /// The `Fingerprint`s created by this context are not 'stable', since
+    /// the raw `CrateNum` and `DefId` values for an item may change between
+    /// sessions due to unrelated changes (e.g. adding/removing an different item).
+    ///
+    /// However, this is fine for our purposes - we only need to detect
+    /// when two `ExpnData`s have the same `Fingerprint`. Since the hashes produced
+    /// by this context still obey the properties of `HashStable`, we have
+    /// that
+    /// `hash_stable(expn1, DummyHashStableContext) == hash_stable(expn2, DummyHashStableContext)`
+    /// iff `hash_stable(expn1, StableHashingContext) == hash_stable(expn2, StableHasingContext)`.
+    ///
+    /// This is sufficient for determining when we need to update the disambiguator.
+    struct DummyHashStableContext<'a> {
+        caching_source_map: CachingSourceMapView<'a>,
+    }
+
+    impl<'a> crate::HashStableContext for DummyHashStableContext<'a> {
+        fn hash_def_id(&mut self, def_id: DefId, hasher: &mut StableHasher) {
+            def_id.krate.as_u32().hash_stable(self, hasher);
+            def_id.index.as_u32().hash_stable(self, hasher);
+        }
+
+        fn expn_id_cache() -> &'static LocalKey<ExpnIdCache> {
+            // This cache is only used by `DummyHashStableContext`,
+            // so we won't pollute the cache values of the normal `StableHashingContext`
+            thread_local! {
+                static CACHE: ExpnIdCache = Default::default();
+            }
+
+            &CACHE
+        }
+
+        fn hash_crate_num(&mut self, krate: CrateNum, hasher: &mut StableHasher) {
+            krate.as_u32().hash_stable(self, hasher);
+        }
+        fn hash_spans(&self) -> bool {
+            true
+        }
+        fn byte_pos_to_line_and_col(
+            &mut self,
+            byte: BytePos,
+        ) -> Option<(Lrc<SourceFile>, usize, BytePos)> {
+            self.caching_source_map.byte_pos_to_line_and_col(byte)
+        }
+        fn span_data_to_lines_and_cols(
+            &mut self,
+            span: &crate::SpanData,
+        ) -> Option<(Lrc<SourceFile>, usize, BytePos, usize, BytePos)> {
+            self.caching_source_map.span_data_to_lines_and_cols(span)
+        }
+    }
+
+    let source_map = SESSION_GLOBALS
+        .with(|session_globals| session_globals.source_map.borrow().as_ref().unwrap().clone());
+
+    let mut ctx =
+        DummyHashStableContext { caching_source_map: CachingSourceMapView::new(&source_map) };
+
+    let mut hasher = StableHasher::new();
+
+    let expn_data = expn_id.expn_data();
+    // This disambiguator should not have been set yet.
+    assert_eq!(
+        expn_data.disambiguator, 0,
+        "Already set disambiguator for ExpnData: {:?}",
+        expn_data
+    );
+    expn_data.hash_stable(&mut ctx, &mut hasher);
+    let first_hash = hasher.finish();
+
+    let modified = HygieneData::with(|data| {
+        // If this is the first ExpnData with a given hash, then keep our
+        // disambiguator at 0 (the default u32 value)
+        let disambig = data.expn_data_disambiguators.entry(first_hash).or_default();
+        data.expn_data[expn_id.0 as usize].as_mut().unwrap().disambiguator = *disambig;
+        *disambig += 1;
+
+        *disambig != 1
+    });
+
+    if modified {
+        info!("Set disambiguator for {:?} (hash {:?})", expn_id, first_hash);
+        info!("expn_data = {:?}", expn_id.expn_data());
+
+        // Verify that the new disambiguator makes the hash unique
+        #[cfg(debug_assertions)]
+        {
+            hasher = StableHasher::new();
+            expn_id.expn_data().hash_stable(&mut ctx, &mut hasher);
+            let new_hash: Fingerprint = hasher.finish();
+
+            HygieneData::with(|data| {
+                data.expn_data_disambiguators
+                    .get(&new_hash)
+                    .expect_none("Hash collision after disambiguator update!");
+            });
+        };
     }
 }
