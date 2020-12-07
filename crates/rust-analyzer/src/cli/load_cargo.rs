@@ -33,12 +33,12 @@ pub fn load_cargo(
 
     let proc_macro_client = if with_proc_macro {
         let path = std::env::current_exe()?;
-        ProcMacroClient::extern_process(path, &["proc-macro"]).unwrap()
+        Some(ProcMacroClient::extern_process(path, &["proc-macro"]).unwrap())
     } else {
-        ProcMacroClient::dummy()
+        None
     };
 
-    let crate_graph = ws.to_crate_graph(None, &proc_macro_client, &mut |path: &AbsPath| {
+    let crate_graph = ws.to_crate_graph(None, proc_macro_client.as_ref(), &mut |path: &AbsPath| {
         let contents = loader.load_sync(path);
         let path = vfs::VfsPath::from(path.to_path_buf());
         vfs.set_file_contents(path.clone(), contents);

@@ -58,14 +58,9 @@ impl tt::TokenExpander for ProcMacroProcessExpander {
 }
 
 #[derive(Debug)]
-enum ProcMacroClientKind {
-    Process { process: Arc<ProcMacroProcessSrv>, thread: ProcMacroProcessThread },
-    Dummy,
-}
-
-#[derive(Debug)]
 pub struct ProcMacroClient {
-    kind: ProcMacroClientKind,
+    process: Arc<ProcMacroProcessSrv>,
+    thread: ProcMacroProcessThread,
 }
 
 impl ProcMacroClient {
@@ -74,47 +69,35 @@ impl ProcMacroClient {
         args: impl IntoIterator<Item = impl AsRef<OsStr>>,
     ) -> io::Result<ProcMacroClient> {
         let (thread, process) = ProcMacroProcessSrv::run(process_path, args)?;
-        Ok(ProcMacroClient {
-            kind: ProcMacroClientKind::Process { process: Arc::new(process), thread },
-        })
-    }
-
-    pub fn dummy() -> ProcMacroClient {
-        ProcMacroClient { kind: ProcMacroClientKind::Dummy }
+        Ok(ProcMacroClient { process: Arc::new(process), thread })
     }
 
     pub fn by_dylib_path(&self, dylib_path: &Path) -> Vec<ProcMacro> {
-        match &self.kind {
-            ProcMacroClientKind::Dummy => vec![],
-            ProcMacroClientKind::Process { process, .. } => {
-                let macros = match process.find_proc_macros(dylib_path) {
-                    Err(err) => {
-                        eprintln!("Failed to find proc macros. Error: {:#?}", err);
-                        return vec![];
-                    }
-                    Ok(macros) => macros,
-                };
-
-                macros
-                    .into_iter()
-                    .map(|(name, kind)| {
-                        let name = SmolStr::new(&name);
-                        let kind = match kind {
-                            ProcMacroKind::CustomDerive => base_db::ProcMacroKind::CustomDerive,
-                            ProcMacroKind::FuncLike => base_db::ProcMacroKind::FuncLike,
-                            ProcMacroKind::Attr => base_db::ProcMacroKind::Attr,
-                        };
-                        let expander: Arc<dyn tt::TokenExpander> =
-                            Arc::new(ProcMacroProcessExpander {
-                                process: process.clone(),
-                                name: name.clone(),
-                                dylib_path: dylib_path.into(),
-                            });
-
-                        ProcMacro { name, kind, expander }
-                    })
-                    .collect()
+        let macros = match self.process.find_proc_macros(dylib_path) {
+            Err(err) => {
+                eprintln!("Failed to find proc macros. Error: {:#?}", err);
+                return vec![];
             }
-        }
+            Ok(macros) => macros,
+        };
+
+        macros
+            .into_iter()
+            .map(|(name, kind)| {
+                let name = SmolStr::new(&name);
+                let kind = match kind {
+                    ProcMacroKind::CustomDerive => base_db::ProcMacroKind::CustomDerive,
+                    ProcMacroKind::FuncLike => base_db::ProcMacroKind::FuncLike,
+                    ProcMacroKind::Attr => base_db::ProcMacroKind::Attr,
+                };
+                let expander: Arc<dyn tt::TokenExpander> = Arc::new(ProcMacroProcessExpander {
+                    process: self.process.clone(),
+                    name: name.clone(),
+                    dylib_path: dylib_path.into(),
+                });
+
+                ProcMacro { name, kind, expander }
+            })
+            .collect()
     }
 }

@@ -75,7 +75,7 @@ pub(crate) struct GlobalState {
     pub(crate) shutdown_requested: bool,
     pub(crate) status: Status,
     pub(crate) source_root_config: SourceRootConfig,
-    pub(crate) proc_macro_client: ProcMacroClient,
+    pub(crate) proc_macro_client: Option<ProcMacroClient>,
     pub(crate) workspaces: Arc<Vec<ProjectWorkspace>>,
     latest_requests: Arc<RwLock<LatestRequests>>,
 }
@@ -127,7 +127,7 @@ impl GlobalState {
             shutdown_requested: false,
             status: Status::default(),
             source_root_config: SourceRootConfig::default(),
-            proc_macro_client: ProcMacroClient::dummy(),
+            proc_macro_client: None,
             workspaces: Arc::new(Vec::new()),
             latest_requests: Default::default(),
         }
