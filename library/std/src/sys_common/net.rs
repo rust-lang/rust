@@ -177,9 +177,8 @@ impl TryFrom<&str> for LookupHost {
         }
 
         // split the string by ':' and convert the second part to u16
-        let (port_str, host) = try_opt!(s.rsplit_once(':'), "invalid socket address");
+        let (host, port_str) = try_opt!(s.rsplit_once(':'), "invalid socket address");
         let port: u16 = try_opt!(port_str.parse().ok(), "invalid port value");
-
         (host, port).try_into()
     }
 }
