@@ -297,6 +297,11 @@ pub(crate) fn load_extern_resources(
 ) -> Result<ExternResources> {
     let mut cmd = Command::new(toolchain::cargo());
     cmd.args(&["check", "--message-format=json", "--manifest-path"]).arg(cargo_toml);
+
+    if let Some(target) = &cargo_features.target {
+        cmd.args(&["--target", target]);
+    }
+
     if cargo_features.all_features {
         cmd.arg("--all-features");
     } else {
