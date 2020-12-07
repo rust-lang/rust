@@ -204,9 +204,9 @@ enum WriteType {
 impl WriteType {
     fn get_descriptor(self) -> &'static str {
         match self {
-            WriteType::Allocate => "ALLOCATE",
-            WriteType::Write => "WRITE",
-            WriteType::Deallocate => "DEALLOCATE",
+            WriteType::Allocate => "Allocate",
+            WriteType::Write => "Write",
+            WriteType::Deallocate => "Deallocate",
         }
     }
 }
@@ -695,6 +695,7 @@ impl VClockAlloc {
     // Find an index, if one exists where the value
     // in `l` is greater than the value in `r`.
     fn find_gt_index(l: &VClock, r: &VClock) -> Option<VectorIdx> {
+        log::info!("Find index where not {:?} <= {:?}", l, r);
         let l_slice = l.as_slice();
         let r_slice = r.as_slice();
         l_slice
@@ -714,7 +715,7 @@ impl VClockAlloc {
                         .enumerate()
                         .find_map(|(idx, &r)| if r == 0 { None } else { Some(idx) })
                         .expect("Invalid VClock Invariant");
-                    Some(idx)
+                    Some(idx + r_slice.len())
                 } else {
                     None
                 }
@@ -747,16 +748,16 @@ impl VClockAlloc {
             write_clock = VClock::new_with_index(range.write_index, range.write);
             (range.write_type.get_descriptor(), range.write_index, &write_clock)
         } else if let Some(idx) = Self::find_gt_index(&range.read, &current_clocks.clock) {
-            ("READ", idx, &range.read)
+            ("Read", idx, &range.read)
         } else if !is_atomic {
             if let Some(atomic) = range.atomic() {
                 if let Some(idx) = Self::find_gt_index(&atomic.write_vector, &current_clocks.clock)
                 {
-                    ("ATOMIC_STORE", idx, &atomic.write_vector)
+                    ("Atomic Store", idx, &atomic.write_vector)
                 } else if let Some(idx) =
                     Self::find_gt_index(&atomic.read_vector, &current_clocks.clock)
                 {
-                    ("ATOMIC_LOAD", idx, &atomic.read_vector)
+                    ("Atomic Load", idx, &atomic.read_vector)
                 } else {
                     unreachable!(
                         "Failed to report data-race for non-atomic operation: no race found"
@@ -807,7 +808,7 @@ impl VClockAlloc {
                     return Self::report_data_race(
                         &self.global,
                         range,
-                        "READ",
+                        "Read",
                         false,
                         pointer,
                         len,
@@ -1166,6 +1167,8 @@ impl GlobalState {
             let mut vector_info = self.vector_info.borrow_mut();
             vector_info.push(thread)
         };
+
+        log::info!("Creating thread = {:?} with vector index = {:?}", thread, created_index);
 
         // Mark the chosen vector index as in use by the thread.
         thread_info[thread].vector_index = Some(created_index);

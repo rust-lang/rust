@@ -41,7 +41,7 @@ pub fn main() {
             sleep(Duration::from_millis(1000));
 
             //read
-            stack_var //~ ERROR Data race
+            stack_var //~ ERROR Data race detected between Read on Thread(id = 1) and Write on Thread(id = 2)
         });
 
         let j2 = spawn(move || {

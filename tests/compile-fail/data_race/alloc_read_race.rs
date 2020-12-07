@@ -33,7 +33,9 @@ pub fn main() {
 
         let j2 = spawn(move || {
             let pointer = &*ptr.0;
-            *pointer.load(Ordering::Relaxed) //~ ERROR Data race
+
+            //Note detects with write due to the initialization of memory
+            *pointer.load(Ordering::Relaxed) //~ ERROR Data race detected between Read on Thread(id = 2) and Write on Thread(id = 1)
         });
 
         j1.join().unwrap();

@@ -38,7 +38,7 @@ pub fn main() {
 
                 sleep(Duration::from_millis(1000));
 
-            } //~ ERROR Data race
+            } //~ ERROR Data race detected between Deallocate on Thread(id = 1) and Write on Thread(id = 2)
         });
 
         let j2 = spawn(move || {

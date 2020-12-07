@@ -22,7 +22,7 @@ pub fn main() {
 
         let j2 = spawn(move || {
             let atomic_ref = &mut *c.0;
-            *atomic_ref.get_mut() = 32; //~ ERROR Data race
+            *atomic_ref.get_mut() = 32; //~ ERROR Data race detected between Write on Thread(id = 2) and Atomic Load on Thread(id = 1)
         });
 
         j1.join().unwrap();

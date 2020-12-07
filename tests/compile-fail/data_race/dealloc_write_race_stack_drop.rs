@@ -38,7 +38,8 @@ pub fn main() {
             
             sleep(Duration::from_millis(1000));
 
-            drop(stack_var);  //~ ERROR Data race
+            // FIXME: find cause of implicit read event
+            drop(stack_var); //~ ERROR Data race detected between Read on Thread(id = 1) and Write on Thread(id = 2)
         });
 
         let j2 = spawn(move || {

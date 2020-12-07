@@ -18,7 +18,7 @@ pub fn main() {
         });
 
         let j2 = spawn(move || {
-            *c.0 = 64; //~ ERROR Data race
+            *c.0 = 64; //~ ERROR Data race detected between Write on Thread(id = 2) and Read on Thread(id = 1)
         });
 
         j1.join().unwrap();

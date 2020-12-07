@@ -38,9 +38,8 @@ pub fn main() {
 
             sleep(Duration::from_millis(1000));
 
-            // NOTE: the race is also detected with thread 0, and so reported for thread 0 instead of 2, unsure of the cause.
             drop(stack_var);
-        });  //~ ERROR Data race detected between DEALLOCATE on Thread(id = 1) and READ on Thread(id = 0, name = "main")
+        });  //~ ERROR Data race detected between Deallocate on Thread(id = 1) and Read on Thread(id = 2)
 
         let j2 = spawn(move || {
             let pointer = &*ptr.0;

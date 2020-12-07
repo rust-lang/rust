@@ -22,7 +22,7 @@ pub fn main() {
 
         let j2 = spawn(move || {
             //Equivalent to: (&*c.0).store(64, Ordering::SeqCst)
-            atomic_store(c.0 as *mut usize, 64); //~ ERROR Data race
+            atomic_store(c.0 as *mut usize, 64); //~ ERROR Data race detected between Atomic Store on Thread(id = 2) and Write on Thread(id = 1)
         });
 
         j1.join().unwrap();

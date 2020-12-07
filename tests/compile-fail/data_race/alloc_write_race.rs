@@ -10,6 +10,11 @@ struct EvilSend<T>(pub T);
 unsafe impl<T> Send for EvilSend<T> {}
 unsafe impl<T> Sync for EvilSend<T> {}
 
+extern "C" {
+    fn malloc(size: usize) -> *mut u8;
+    fn free(ptr: *mut u8);
+}
+
 pub fn main() {
     // Shared atomic pointer
     let pointer = AtomicPtr::new(null_mut::<usize>());
@@ -28,18 +33,18 @@ pub fn main() {
             // Uses relaxed semantics to not generate
             // a release sequence.
             let pointer = &*ptr.0;
-            pointer.store(Box::into_raw(Box::new(0usize)), Ordering::Relaxed);
+            pointer.store(malloc(std::mem::size_of::<usize>()) as *mut usize, Ordering::Relaxed);
         });
 
         let j2 = spawn(move || {
             let pointer = &*ptr.0;
-            *pointer.load(Ordering::Relaxed) = 2; //~ ERROR Data race
+            *pointer.load(Ordering::Relaxed) = 2; //~ ERROR Data race detected between Write on Thread(id = 2) and Allocate on Thread(id = 1)
         });
 
         j1.join().unwrap();
         j2.join().unwrap();
 
         // Clean up memory, will never be executed
-        drop(Box::from_raw(pointer.load(Ordering::Relaxed)));
+        free(pointer.load(Ordering::Relaxed) as *mut _);
     }
 }
