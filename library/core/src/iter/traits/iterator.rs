@@ -2138,7 +2138,7 @@ pub trait Iterator {
     ///     where I: Iterator,
     ///           I::Item: Ord,
     /// {
-    ///     iter.fold_first(|a, b| {
+    ///     iter.reduce(|a, b| {
     ///         if a >= b { a } else { b }
     ///     })
     /// }
@@ -2150,7 +2150,7 @@ pub trait Iterator {
     /// ```
     #[inline]
     #[unstable(feature = "iterator_fold_self", issue = "68125")]
-    fn fold_first<F>(mut self, f: F) -> Option<Self::Item>
+    fn reduce<F>(mut self, f: F) -> Option<Self::Item>
     where
         Self: Sized,
         F: FnMut(Self::Item, Self::Item) -> Self::Item,
@@ -2647,7 +2647,7 @@ pub trait Iterator {
             move |x, y| cmp::max_by(x, y, &mut compare)
         }
 
-        self.fold_first(fold(compare))
+        self.reduce(fold(compare))
     }
 
     /// Returns the element that gives the minimum value from the
@@ -2707,7 +2707,7 @@ pub trait Iterator {
             move |x, y| cmp::min_by(x, y, &mut compare)
         }
 
-        self.fold_first(fold(compare))
+        self.reduce(fold(compare))
     }
 
     /// Reverses an iterator's direction.
