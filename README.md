@@ -52,7 +52,7 @@ in your program, and cannot run all programs:
 * Program execution is non-deterministic when it depends, for example, on where
   exactly in memory allocations end up, or on the exact interleaving of
   concurrent threads. Miri tests one of many possible executions of your
-  program. You can alleviate this to some extend by running Miri with different
+  program. You can alleviate this to some extent by running Miri with different
   values for `-Zmiri-seed`, but that will still by far not explore all possible
   executions.
 * Miri runs the program as a platform-independent interpreter, so the program
