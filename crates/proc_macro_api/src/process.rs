@@ -10,11 +10,10 @@ use std::{
 };
 
 use crossbeam_channel::{bounded, Receiver, Sender};
-use tt::Subtree;
 
 use crate::{
     msg::{ErrorCode, Message, Request, Response, ResponseError},
-    rpc::{ExpansionResult, ExpansionTask, ListMacrosResult, ListMacrosTask, ProcMacroKind},
+    rpc::{ListMacrosResult, ListMacrosTask, ProcMacroKind},
 };
 
 #[derive(Debug, Default)]
@@ -56,23 +55,6 @@ impl ProcMacroProcessSrv {
 
         let result: ListMacrosResult = self.send_task(Request::ListMacro(task))?;
         Ok(result.macros)
-    }
-
-    pub(crate) fn custom_derive(
-        &self,
-        dylib_path: &Path,
-        subtree: &Subtree,
-        derive_name: &str,
-    ) -> Result<Subtree, tt::ExpansionError> {
-        let task = ExpansionTask {
-            macro_body: subtree.clone(),
-            macro_name: derive_name.to_string(),
-            attributes: None,
-            lib: dylib_path.to_path_buf(),
-        };
-
-        let result: ExpansionResult = self.send_task(Request::ExpansionMacro(task))?;
-        Ok(result.expansion)
     }
 
     pub(crate) fn send_task<R>(&self, req: Request) -> Result<R, tt::ExpansionError>

@@ -42,9 +42,17 @@ impl tt::TokenExpander for ProcMacroProcessExpander {
     fn expand(
         &self,
         subtree: &Subtree,
-        _attr: Option<&Subtree>,
+        attr: Option<&Subtree>,
     ) -> Result<Subtree, tt::ExpansionError> {
-        self.process.custom_derive(&self.dylib_path, subtree, &self.name)
+        let task = ExpansionTask {
+            macro_body: subtree.clone(),
+            macro_name: self.name.to_string(),
+            attributes: attr.cloned(),
+            lib: self.dylib_path.to_path_buf(),
+        };
+
+        let result: ExpansionResult = self.process.send_task(msg::Request::ExpansionMacro(task))?;
+        Ok(result.expansion)
     }
 }
 
