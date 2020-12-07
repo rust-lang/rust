@@ -408,7 +408,10 @@ pub fn eq_use_tree_kind(l: &UseTreeKind, r: &UseTreeKind) -> bool {
 }
 
 pub fn eq_defaultness(l: Defaultness, r: Defaultness) -> bool {
-    matches!((l, r), (Defaultness::Final, Defaultness::Final) | (Defaultness::Default(_), Defaultness::Default(_)))
+    matches!(
+        (l, r),
+        (Defaultness::Final, Defaultness::Final) | (Defaultness::Default(_), Defaultness::Default(_))
+    )
 }
 
 pub fn eq_vis(l: &Visibility, r: &Visibility) -> bool {

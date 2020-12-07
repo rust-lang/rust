@@ -480,7 +480,7 @@ fn check_code(cx: &LateContext<'_>, text: &str, span: Span) {
                     | ItemKind::ForeignMod(..) => return false,
                     // We found a main function ...
                     ItemKind::Fn(_, sig, _, Some(block)) if item.ident.name == sym::main => {
-                        let is_async = matches!(sig.header.asyncness, Async::Yes{..});
+                        let is_async = matches!(sig.header.asyncness, Async::Yes { .. });
                         let returns_nothing = match &sig.decl.output {
                             FnRetTy::Default(..) => true,
                             FnRetTy::Ty(ty) if ty.kind.is_unit() => true,
