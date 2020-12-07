@@ -1,4 +1,8 @@
+#![feature(maybe_uninit_slice)]
+#![feature(maybe_uninit_uninit_array)]
+
 use rustc_serialize::leb128::*;
+use std::mem::MaybeUninit;
 
 macro_rules! impl_test_unsigned_leb128 {
     ($test_name:ident, $write_fn_name:ident, $read_fn_name:ident, $int_ty:ident) => {
@@ -7,7 +11,8 @@ macro_rules! impl_test_unsigned_leb128 {
             let mut stream = Vec::new();
 
             for x in 0..62 {
-                $write_fn_name(&mut stream, (3u64 << x) as $int_ty);
+                let mut buf = MaybeUninit::uninit_array();
+                stream.extend($write_fn_name(&mut buf, (3u64 << x) as $int_ty));
             }
 
             let mut position = 0;
@@ -28,18 +33,34 @@ impl_test_unsigned_leb128!(test_u64_leb128, write_u64_leb128, read_u64_leb128, u
 impl_test_unsigned_leb128!(test_u128_leb128, write_u128_leb128, read_u128_leb128, u128);
 impl_test_unsigned_leb128!(test_usize_leb128, write_usize_leb128, read_usize_leb128, usize);
 
-#[test]
-fn test_signed_leb128() {
-    let values: Vec<_> = (-500..500).map(|i| i * 0x12345789ABCDEF).collect();
-    let mut stream = Vec::new();
-    for &x in &values {
-        write_signed_leb128(&mut stream, x);
-    }
-    let mut pos = 0;
-    for &x in &values {
-        let (value, bytes_read) = read_signed_leb128(&mut stream, pos);
-        pos += bytes_read;
-        assert_eq!(x, value);
-    }
-    assert_eq!(pos, stream.len());
+macro_rules! impl_test_signed_leb128 {
+    ($test_name:ident, $write_fn_name:ident, $int_ty:ident) => {
+        #[test]
+        fn $test_name() {
+            let values: Vec<_> = (-500..500)
+                .map(|i| ((i as $int_ty).wrapping_mul(0x12345789ABCDEF_i64 as $int_ty)))
+                .collect();
+            let mut stream = Vec::new();
+
+            for &x in &values {
+                let mut buf = MaybeUninit::uninit_array();
+                stream.extend($write_fn_name(&mut buf, x));
+            }
+
+            let mut position = 0;
+            for &x in &values {
+                let expected = x as i128;
+                let (actual, bytes_read) = read_signed_leb128(&mut stream, position);
+                assert_eq!(expected, actual);
+                position += bytes_read;
+            }
+            assert_eq!(stream.len(), position);
+        }
+    };
 }
+
+impl_test_signed_leb128!(test_i16_leb128, write_i16_leb128, i16);
+impl_test_signed_leb128!(test_i32_leb128, write_i32_leb128, i32);
+impl_test_signed_leb128!(test_i64_leb128, write_i64_leb128, i64);
+impl_test_signed_leb128!(test_i128_leb128, write_i128_leb128, i128);
+impl_test_signed_leb128!(test_isize_leb128, write_isize_leb128, isize);

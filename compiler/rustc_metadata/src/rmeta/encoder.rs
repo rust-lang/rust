@@ -308,7 +308,7 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for Span {
 
 impl<'a, 'tcx> FingerprintEncoder for EncodeContext<'a, 'tcx> {
     fn encode_fingerprint(&mut self, f: &Fingerprint) -> Result<(), Self::Error> {
-        f.encode_opaque(&mut self.opaque)
+        self.opaque.encode_fingerprint(f)
     }
 }
 
