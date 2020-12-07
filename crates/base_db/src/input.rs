@@ -143,9 +143,17 @@ impl CrateDisplayName {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct ProcMacroId(pub u32);
 
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+pub enum ProcMacroKind {
+    CustomDerive,
+    FuncLike,
+    Attr,
+}
+
 #[derive(Debug, Clone)]
 pub struct ProcMacro {
     pub name: SmolStr,
+    pub kind: ProcMacroKind,
     pub expander: Arc<dyn TokenExpander>,
 }
 
@@ -198,11 +206,8 @@ impl CrateGraph {
         display_name: Option<CrateDisplayName>,
         cfg_options: CfgOptions,
         env: Env,
-        proc_macro: Vec<(SmolStr, Arc<dyn tt::TokenExpander>)>,
+        proc_macro: Vec<ProcMacro>,
     ) -> CrateId {
-        let proc_macro =
-            proc_macro.into_iter().map(|(name, it)| ProcMacro { name, expander: it }).collect();
-
         let data = CrateData {
             root_file_id: file_id,
             edition,

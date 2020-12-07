@@ -17,3 +17,4 @@ crossbeam-channel = "0.5.0"
 jod-thread = "0.1.1"
 
 tt = { path = "../tt", version = "0.0.0" }
+base_db = { path = "../base_db", version = "0.0.0" }

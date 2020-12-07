@@ -16,6 +16,7 @@ use std::{
     sync::Arc,
 };
 
+use base_db::ProcMacro;
 use tt::{SmolStr, Subtree};
 
 use crate::process::{ProcMacroProcessSrv, ProcMacroProcessThread};
@@ -82,7 +83,7 @@ impl ProcMacroClient {
         ProcMacroClient { kind: ProcMacroClientKind::Dummy }
     }
 
-    pub fn by_dylib_path(&self, dylib_path: &Path) -> Vec<(SmolStr, Arc<dyn tt::TokenExpander>)> {
+    pub fn by_dylib_path(&self, dylib_path: &Path) -> Vec<ProcMacro> {
         match &self.kind {
             ProcMacroClientKind::Dummy => vec![],
             ProcMacroClientKind::Process { process, .. } => {
@@ -96,21 +97,21 @@ impl ProcMacroClient {
 
                 macros
                     .into_iter()
-                    .filter_map(|(name, kind)| {
-                        match kind {
-                            ProcMacroKind::CustomDerive | ProcMacroKind::FuncLike => {
-                                let name = SmolStr::new(&name);
-                                let expander: Arc<dyn tt::TokenExpander> =
-                                    Arc::new(ProcMacroProcessExpander {
-                                        process: process.clone(),
-                                        name: name.clone(),
-                                        dylib_path: dylib_path.into(),
-                                    });
-                                Some((name, expander))
-                            }
-                            // FIXME: Attribute macro are currently unsupported.
-                            ProcMacroKind::Attr => None,
-                        }
+                    .map(|(name, kind)| {
+                        let name = SmolStr::new(&name);
+                        let kind = match kind {
+                            ProcMacroKind::CustomDerive => base_db::ProcMacroKind::CustomDerive,
+                            ProcMacroKind::FuncLike => base_db::ProcMacroKind::FuncLike,
+                            ProcMacroKind::Attr => base_db::ProcMacroKind::Attr,
+                        };
+                        let expander: Arc<dyn tt::TokenExpander> =
+                            Arc::new(ProcMacroProcessExpander {
+                                process: process.clone(),
+                                name: name.clone(),
+                                dylib_path: dylib_path.into(),
+                            });
+
+                        ProcMacro { name, kind, expander }
                     })
                     .collect()
             }
