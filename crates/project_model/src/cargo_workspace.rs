@@ -88,6 +88,7 @@ pub struct PackageData {
     pub edition: Edition,
     pub features: Vec<String>,
     pub cfgs: Vec<CfgFlag>,
+    pub envs: Vec<(String, String)>,
     pub out_dir: Option<AbsPathBuf>,
     pub proc_macro_dylib_path: Option<AbsPathBuf>,
 }
@@ -173,11 +174,13 @@ impl CargoWorkspace {
 
         let mut out_dir_by_id = FxHashMap::default();
         let mut cfgs = FxHashMap::default();
+        let mut envs = FxHashMap::default();
         let mut proc_macro_dylib_paths = FxHashMap::default();
         if config.load_out_dirs_from_check {
             let resources = load_extern_resources(cargo_toml, config)?;
             out_dir_by_id = resources.out_dirs;
             cfgs = resources.cfgs;
+            envs = resources.env;
             proc_macro_dylib_paths = resources.proc_dylib_paths;
         }
 
@@ -205,6 +208,7 @@ impl CargoWorkspace {
                 dependencies: Vec::new(),
                 features: Vec::new(),
                 cfgs: cfgs.get(&id).cloned().unwrap_or_default(),
+                envs: envs.get(&id).cloned().unwrap_or_default(),
                 out_dir: out_dir_by_id.get(&id).cloned(),
                 proc_macro_dylib_path: proc_macro_dylib_paths.get(&id).cloned(),
             });
@@ -289,6 +293,7 @@ pub(crate) struct ExternResources {
     out_dirs: FxHashMap<PackageId, AbsPathBuf>,
     proc_dylib_paths: FxHashMap<PackageId, AbsPathBuf>,
     cfgs: FxHashMap<PackageId, Vec<CfgFlag>>,
+    env: FxHashMap<PackageId, Vec<(String, String)>>,
 }
 
 pub(crate) fn load_extern_resources(
@@ -323,7 +328,13 @@ pub(crate) fn load_extern_resources(
     for message in cargo_metadata::Message::parse_stream(output.stdout.as_slice()) {
         if let Ok(message) = message {
             match message {
-                Message::BuildScriptExecuted(BuildScript { package_id, out_dir, cfgs, .. }) => {
+                Message::BuildScriptExecuted(BuildScript {
+                    package_id,
+                    out_dir,
+                    cfgs,
+                    env,
+                    ..
+                }) => {
                     let cfgs = {
                         let mut acc = Vec::new();
                         for cfg in cfgs {
@@ -341,8 +352,10 @@ pub(crate) fn load_extern_resources(
                     if out_dir != PathBuf::default() {
                         let out_dir = AbsPathBuf::assert(out_dir);
                         res.out_dirs.insert(package_id.clone(), out_dir);
-                        res.cfgs.insert(package_id, cfgs);
+                        res.cfgs.insert(package_id.clone(), cfgs);
                     }
+
+                    res.env.insert(package_id, env);
                 }
                 Message::CompilerArtifact(message) => {
                     if message.target.kind.contains(&"proc-macro".to_string()) {
