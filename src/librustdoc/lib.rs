@@ -16,6 +16,7 @@
 #![feature(once_cell)]
 #![feature(type_ascription)]
 #![feature(split_inclusive)]
+#![feature(str_split_once)]
 #![recursion_limit = "256"]
 
 #[macro_use]
