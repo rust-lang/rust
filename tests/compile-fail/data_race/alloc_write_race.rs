@@ -24,9 +24,9 @@ pub fn main() {
     //  2. write
     unsafe {
         let j1 = spawn(move || {
-            //Concurrent allocate the memory.
-            //Uses relaxed semantics to not generate
-            //a release sequence.
+            // Concurrent allocate the memory.
+            // Uses relaxed semantics to not generate
+            // a release sequence.
             let pointer = &*ptr.0;
             pointer.store(Box::into_raw(Box::new(0usize)), Ordering::Relaxed);
         });

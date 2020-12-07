@@ -29,9 +29,9 @@ pub fn main() {
     //  5. read-value
     unsafe {
         let j1 = spawn(move || {
-            //Concurrent allocate the memory.
-            //Uses relaxed semantics to not generate
-            //a release sequence.
+            // Concurrent allocate the memory.
+            // Uses relaxed semantics to not generate
+            // a release sequence.
             let pointer = &*ptr.0;
 
             let mut stack_var = 0usize;

@@ -240,7 +240,6 @@ struct MemoryCellClocks {
 }
 
 impl MemoryCellClocks {
-
     /// Create a new set of clocks representing memory allocated
     ///  at a given vector timestamp and index.
     fn new(alloc: VTimestamp, alloc_index: VectorIdx) -> Self {
@@ -676,7 +675,6 @@ pub struct VClockAlloc {
 }
 
 impl VClockAlloc {
-
     /// Create a new data-race detector for newly allocated memory.
     pub fn new_allocation(global: &MemoryExtra, len: Size, track_alloc: bool) -> VClockAlloc {
         let (alloc_timestamp, alloc_index) = if track_alloc {
