@@ -148,23 +148,19 @@ impl DebugOptions {
 
         if let Ok(env_debug_options) = std::env::var(RUSTC_COVERAGE_DEBUG_OPTIONS) {
             for setting_str in env_debug_options.replace(" ", "").replace("-", "_").split(',') {
-                let mut setting = setting_str.splitn(2, '=');
-                match setting.next() {
-                    Some(option) if option == "allow_unused_expressions" => {
-                        allow_unused_expressions = bool_option_val(option, setting.next());
-                        debug!(
-                            "{} env option `allow_unused_expressions` is set to {}",
-                            RUSTC_COVERAGE_DEBUG_OPTIONS, allow_unused_expressions
-                        );
-                    }
-                    Some(option) if option == "counter_format" => {
-                        if let Some(strval) = setting.next() {
-                            counter_format = counter_format_option_val(strval);
-                            debug!(
-                                "{} env option `counter_format` is set to {:?}",
-                                RUSTC_COVERAGE_DEBUG_OPTIONS, counter_format
-                            );
-                        } else {
+                let (option, value) = match setting_str.split_once('=') {
+                    None => (setting_str, None),
+                    Some((k, v)) => (k, Some(v)),
+                };
+                if option == "allow_unused_expressions" {
+                    allow_unused_expressions = bool_option_val(option, value);
+                    debug!(
+                        "{} env option `allow_unused_expressions` is set to {}",
+                        RUSTC_COVERAGE_DEBUG_OPTIONS, allow_unused_expressions
+                    );
+                } else if option == "counter_format" {
+                    match value {
+                        None => {
                             bug!(
                                 "`{}` option in environment variable {} requires one or more \
                                 plus-separated choices (a non-empty subset of \
@@ -173,14 +169,20 @@ impl DebugOptions {
                                 RUSTC_COVERAGE_DEBUG_OPTIONS
                             );
                         }
-                    }
-                    Some("") => {}
-                    Some(invalid) => bug!(
+                        Some(val) => {
+                            counter_format = counter_format_option_val(val);
+                            debug!(
+                                "{} env option `counter_format` is set to {:?}",
+                                RUSTC_COVERAGE_DEBUG_OPTIONS, counter_format
+                            );
+                        }
+                    };
+                } else {
+                    bug!(
                         "Unsupported setting `{}` in environment variable {}",
-                        invalid,
+                        option,
                         RUSTC_COVERAGE_DEBUG_OPTIONS
-                    ),
-                    None => {}
+                    )
                 }
             }
         }
