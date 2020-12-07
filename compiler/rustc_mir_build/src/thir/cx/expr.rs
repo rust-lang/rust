@@ -408,7 +408,7 @@ fn make_mirror_unadjusted<'a, 'tcx>(
             operands: asm
                 .operands
                 .iter()
-                .map(|op| {
+                .map(|(op, _op_sp)| {
                     match *op {
                         hir::InlineAsmOperand::In { reg, ref expr } => {
                             InlineAsmOperand::In { reg, expr: expr.to_ref() }

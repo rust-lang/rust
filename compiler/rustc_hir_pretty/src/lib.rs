@@ -1462,7 +1462,7 @@ impl<'a> State<'a> {
 
                 let mut args = vec![];
                 args.push(AsmArg::Template(ast::InlineAsmTemplatePiece::to_string(&a.template)));
-                args.extend(a.operands.iter().map(|o| AsmArg::Operand(o)));
+                args.extend(a.operands.iter().map(|(o, _)| AsmArg::Operand(o)));
                 if !a.options.is_empty() {
                     args.push(AsmArg::Options(a.options));
                 }

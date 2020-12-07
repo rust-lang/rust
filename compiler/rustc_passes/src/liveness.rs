@@ -1174,7 +1174,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 };
 
                 // Do a first pass for writing outputs only
-                for op in asm.operands.iter().rev() {
+                for (op, _op_sp) in asm.operands.iter().rev() {
                     match op {
                         hir::InlineAsmOperand::In { .. }
                         | hir::InlineAsmOperand::Const { .. }
@@ -1197,7 +1197,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
                 // Then do a second pass for inputs
                 let mut succ = succ;
-                for op in asm.operands.iter().rev() {
+                for (op, _op_sp) in asm.operands.iter().rev() {
                     match op {
                         hir::InlineAsmOperand::In { expr, .. }
                         | hir::InlineAsmOperand::Const { expr, .. }
@@ -1454,7 +1454,7 @@ fn check_expr<'tcx>(this: &mut Liveness<'_, 'tcx>, expr: &'tcx Expr<'tcx>) {
         }
 
         hir::ExprKind::InlineAsm(ref asm) => {
-            for op in asm.operands {
+            for (op, _op_sp) in asm.operands {
                 match op {
                     hir::InlineAsmOperand::Out { expr, .. } => {
                         if let Some(expr) = expr {

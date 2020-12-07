@@ -1929,7 +1929,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     fn check_expr_asm(&self, asm: &'tcx hir::InlineAsm<'tcx>) -> Ty<'tcx> {
-        for op in asm.operands {
+        for (op, _op_sp) in asm.operands {
             match op {
                 hir::InlineAsmOperand::In { expr, .. } | hir::InlineAsmOperand::Const { expr } => {
                     self.check_expr_asm_operand(expr, true);

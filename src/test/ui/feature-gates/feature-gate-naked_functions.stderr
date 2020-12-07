@@ -1,5 +1,5 @@
 error[E0658]: the `#[naked]` attribute is an experimental feature
-  --> $DIR/feature-gate-naked_functions.rs:1:1
+  --> $DIR/feature-gate-naked_functions.rs:3:1
    |
 LL | #[naked]
    | ^^^^^^^^
@@ -8,7 +8,7 @@ LL | #[naked]
    = help: add `#![feature(naked_functions)]` to the crate attributes to enable
 
 error[E0658]: the `#[naked]` attribute is an experimental feature
-  --> $DIR/feature-gate-naked_functions.rs:5:1
+  --> $DIR/feature-gate-naked_functions.rs:9:1
    |
 LL | #[naked]
    | ^^^^^^^^

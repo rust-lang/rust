@@ -1191,7 +1191,7 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr<'v>) 
             walk_list!(visitor, visit_expr, optional_expression);
         }
         ExprKind::InlineAsm(ref asm) => {
-            for op in asm.operands {
+            for (op, _op_sp) in asm.operands {
                 match op {
                     InlineAsmOperand::In { expr, .. }
                     | InlineAsmOperand::InOut { expr, .. }

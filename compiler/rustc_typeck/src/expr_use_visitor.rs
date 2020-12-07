@@ -243,7 +243,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
             }
 
             hir::ExprKind::InlineAsm(ref asm) => {
-                for op in asm.operands {
+                for (op, _op_sp) in asm.operands {
                     match op {
                         hir::InlineAsmOperand::In { expr, .. }
                         | hir::InlineAsmOperand::Const { expr, .. }
