@@ -78,9 +78,11 @@ fn test_env_set_var() {
 }
 
 #[test]
-#[cfg_attr(any(target_os = "emscripten", target_env = "sgx"), ignore)]
+#[cfg_attr(not(any(unix, windows)), ignore, allow(unused))]
 #[allow(deprecated)]
 fn env_home_dir() {
+    use std::path::PathBuf;
+
     fn var_to_os_string(var: Result<String, VarError>) -> Option<OsString> {
         match var {
             Ok(var) => Some(OsString::from(var)),
@@ -91,8 +93,6 @@ fn env_home_dir() {
 
     cfg_if::cfg_if! {
         if #[cfg(unix)] {
-            use std::path::PathBuf;
-
             let oldhome = var_to_os_string(var("HOME"));
 
             set_var("HOME", "/home/MountainView");
@@ -110,8 +110,6 @@ fn env_home_dir() {
 
             if let Some(oldhome) = oldhome { set_var("HOME", oldhome); }
         } else if #[cfg(windows)] {
-            use std::path::PathBuf;
-
             let oldhome = var_to_os_string(var("HOME"));
             let olduserprofile = var_to_os_string(var("USERPROFILE"));
 
