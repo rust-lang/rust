@@ -213,18 +213,101 @@ Then run the `cov` tool, with the `profdata` file and all test binaries:
 $ cargo cov -- report \
     --use-color --ignore-filename-regex='/.cargo/registry' \
     --instr-profile=json5format.profdata \
-    target/debug/deps/lib-30768f9c53506dc5 \
-    target/debug/deps/json5format-fececd4653271682
+    --object target/debug/deps/lib-30768f9c53506dc5 \
+    --object target/debug/deps/json5format-fececd4653271682
 $ cargo cov -- show \
     --use-color --ignore-filename-regex='/.cargo/registry' \
     --instr-profile=json5format.profdata \
-    target/debug/deps/lib-30768f9c53506dc5 \
-    target/debug/deps/json5format-fececd4653271682 \
+    --object target/debug/deps/lib-30768f9c53506dc5 \
+    --object target/debug/deps/json5format-fececd4653271682 \
     --show-instantiations --show-line-counts-or-regions \
     --Xdemangler=rustfilt | less -R
 ```
 
 _Note the command line option `--ignore-filename-regex=/.cargo/registry`, which excludes the sources for dependencies from the coverage results._
+
+### Tips for listing the binaries automatically
+
+For `bash` users, one suggested way to automatically complete the `cov` command with the list of binaries is with a command like:
+
+```bash
+$ cargo cov -- report \
+    $( \
+      for file in \
+        $( \
+          RUSTFLAGS="-Zinstrument-coverage" \
+            cargo test --tests --no-run --message-format=json \
+              | jq -r "select(.profile.test == true) | .filenames[]" \
+              | grep -v dSYM - \
+        ); \
+      do \
+        printf "%s %s " -object $file; \
+      done \
+    ) \
+  --instr-profile=json5format.profdata --summary-only # and/or other options
+```
+
+Adding `--no-run --message-format=json` to the _same_ `cargo test` command used to run
+the tests (including the same environment variables and flags) generates output in a JSON
+format that `jq` can easily query.
+
+The `printf` command takes this list and generates the `--object <binary>` arguments
+for each listed test binary.
+
+### Including doc tests
+
+The previous examples run `cargo test` with `--tests`, which excludes doc tests.[^79417]
+
+To include doc tests in the coverage results, drop the `--tests` flag, and apply the
+`-Zinstrument-coverage` flag, and some doc-test-specific options in the
+`RUSTDOCFLAGS` environment variable. (The `cargo profdata` command does not change.)
+
+```bash
+$ RUSTFLAGS="-Zinstrument-coverage" \
+  RUSTDOCFLAGS="-Zinstrument-coverage -Zunstable-options --persist-doctests target/debug/doctestbins" \
+  LLVM_PROFILE_FILE="json5format-%m.profraw" \
+    cargo test
+$ cargo profdata -- merge \
+    -sparse json5format-*.profraw -o json5format.profdata
+```
+
+The `-Zunstable-options --persist-doctests` flag is required, to save the test binaries
+(with their coverage maps) for `llvm-cov`.
+
+```bash
+$ cargo cov -- report \
+    $( \
+      for file in \
+        $( \
+          RUSTFLAGS="-Zinstrument-coverage" \
+          RUSTDOCFLAGS="-Zinstrument-coverage -Zunstable-options --persist-doctests target/debug/doctestbins" \
+            cargo test --no-run --message-format=json \
+              | jq -r "select(.profile.test == true) | .filenames[]" \
+              | grep -v dSYM - \
+        ) \
+        target/debug/doctestbins/*/rust_out; \
+      do \
+        [[ -x $file ]] && printf "%s %s " -object $file; \
+      done \
+    ) \
+  --instr-profile=json5format.profdata --summary-only # and/or other options
+```
+
+Note, the differences in this `cargo cov` command, compared with the version without
+doc tests, include:
+
+* The `cargo test ... --no-run` command is updated with the same environment variables
+  and flags used to _build_ the tests, _including_ the doc tests. (`LLVM_PROFILE_FILE`
+  is only used when _running_ the tests.)
+* The file glob pattern `target/debug/doctestbins/*/rust_out` adds the `rust_out`
+  binaries generated for doc tests (note, however, that some `rust_out` files may not
+  be executable binaries).
+* `[[ -x $file ]] &&` filters the files passed on to the `printf`, to include only
+  executable binaries.
+
+[^79417]: There is ongoing work to resolve a known issue
+[(#79417)](https://github.com/rust-lang/rust/issues/79417) that doc test coverage
+generates incorrect source line numbers in `llvm-cov show` results.
 
 ## Other references
 
