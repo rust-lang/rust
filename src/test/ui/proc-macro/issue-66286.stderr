@@ -1,0 +1,12 @@
+error[E0214]: parenthesized type parameters may only be used with a `Fn` trait
+  --> $DIR/issue-66286.rs:8:22
+   |
+LL | pub extern fn foo(_: Vec(u32)) -> u32 {
+   |                      ^^^^^^^^
+   |                      |
+   |                      only `Fn` traits may use parentheses
+   |                      help: use angle brackets instead: `Vec<u32>`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0214`.
