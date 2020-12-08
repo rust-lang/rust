@@ -1,7 +1,7 @@
 //! FIXME: write short doc here
 
 use either::Either;
-use hir::{original_range, AssocItem, FieldSource, HasSource, InFile, ModuleSource};
+use hir::{AssocItem, FieldSource, HasSource, InFile, ModuleSource};
 use ide_db::base_db::{FileId, SourceDatabase};
 use ide_db::{defs::Definition, RootDatabase};
 use syntax::{
@@ -62,7 +62,8 @@ impl NavigationTarget {
     pub(crate) fn from_module_to_decl(db: &RootDatabase, module: hir::Module) -> NavigationTarget {
         let name = module.name(db).map(|it| it.to_string().into()).unwrap_or_default();
         if let Some(src) = module.declaration_source(db) {
-            let frange = original_range(db, src.as_ref().map(|it| it.syntax()));
+            let node = src.as_ref().map(|it| it.syntax());
+            let frange = node.original_file_range(db);
             let mut res = NavigationTarget::from_syntax(
                 frange.file_id,
                 name,
@@ -104,8 +105,8 @@ impl NavigationTarget {
         let name =
             node.value.name().map(|it| it.text().clone()).unwrap_or_else(|| SmolStr::new("_"));
         let focus_range =
-            node.value.name().map(|it| original_range(db, node.with_value(it.syntax())).range);
-        let frange = original_range(db, node.map(|it| it.syntax()));
+            node.value.name().map(|it| node.with_value(it.syntax()).original_file_range(db).range);
+        let frange = node.map(|it| it.syntax()).original_file_range(db);
 
         NavigationTarget::from_syntax(
             frange.file_id,
@@ -124,7 +125,7 @@ impl NavigationTarget {
     ) -> NavigationTarget {
         let name =
             named.value.name().map(|it| it.text().clone()).unwrap_or_else(|| SmolStr::new("_"));
-        let frange = original_range(db, node.map(|it| it.syntax()));
+        let frange = node.map(|it| it.syntax()).original_file_range(db);
 
         NavigationTarget::from_syntax(
             frange.file_id,
@@ -236,7 +237,7 @@ impl ToNav for hir::Module {
                 (node.syntax(), node.name().map(|it| it.syntax().text_range()))
             }
         };
-        let frange = original_range(db, src.with_value(syntax));
+        let frange = src.with_value(syntax).original_file_range(db);
         NavigationTarget::from_syntax(frange.file_id, name, focus, frange.range, syntax.kind())
     }
 }
@@ -246,14 +247,14 @@ impl ToNav for hir::ImplDef {
         let src = self.source(db);
         let derive_attr = self.is_builtin_derive(db);
         let frange = if let Some(item) = &derive_attr {
-            original_range(db, item.syntax())
+            item.syntax().original_file_range(db)
         } else {
-            original_range(db, src.as_ref().map(|it| it.syntax()))
+            src.as_ref().map(|it| it.syntax()).original_file_range(db)
         };
         let focus_range = if derive_attr.is_some() {
             None
         } else {
-            src.value.self_ty().map(|ty| original_range(db, src.with_value(ty.syntax())).range)
+            src.value.self_ty().map(|ty| src.with_value(ty.syntax()).original_file_range(db).range)
         };
 
         NavigationTarget::from_syntax(
@@ -278,7 +279,7 @@ impl ToNav for hir::Field {
                 res
             }
             FieldSource::Pos(it) => {
-                let frange = original_range(db, src.with_value(it.syntax()));
+                let frange = src.with_value(it.syntax()).original_file_range(db);
                 NavigationTarget::from_syntax(
                     frange.file_id,
                     "".into(),
@@ -331,7 +332,7 @@ impl ToNav for hir::Local {
             }
             Either::Right(it) => it.syntax().clone(),
         };
-        let full_range = original_range(db, src.with_value(&node));
+        let full_range = src.with_value(&node).original_file_range(db);
         let name = match self.name(db) {
             Some(it) => it.to_string().into(),
             None => "".into(),

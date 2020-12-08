@@ -20,11 +20,11 @@ pub use mbe::{ExpandError, ExpandResult};
 use std::hash::Hash;
 use std::sync::Arc;
 
-use base_db::{impl_intern_key, salsa, CrateId, FileId};
+use base_db::{impl_intern_key, salsa, CrateId, FileId, FileRange};
 use syntax::{
-    algo,
+    algo::{self, skip_trivia_token},
     ast::{self, AstNode},
-    SyntaxNode, SyntaxToken, TextSize,
+    Direction, SyntaxNode, SyntaxToken, TextRange, TextSize,
 };
 
 use crate::ast_id_map::FileAstId;
@@ -443,6 +443,72 @@ impl InFile<SyntaxNode> {
             }
         })
     }
+}
+
+impl<'a> InFile<&'a SyntaxNode> {
+    pub fn original_file_range(self, db: &dyn db::AstDatabase) -> FileRange {
+        if let Some(range) = original_range_opt(db, self) {
+            let original_file = range.file_id.original_file(db);
+            if range.file_id == original_file.into() {
+                return FileRange { file_id: original_file, range: range.value };
+            }
+
+            log::error!("Fail to mapping up more for {:?}", range);
+            return FileRange { file_id: range.file_id.original_file(db), range: range.value };
+        }
+
+        // Fall back to whole macro call
+        if let Some(expansion) = self.file_id.expansion_info(db) {
+            if let Some(call_node) = expansion.call_node() {
+                return FileRange {
+                    file_id: call_node.file_id.original_file(db),
+                    range: call_node.value.text_range(),
+                };
+            }
+        }
+
+        FileRange { file_id: self.file_id.original_file(db), range: self.value.text_range() }
+    }
+}
+
+fn original_range_opt(
+    db: &dyn db::AstDatabase,
+    node: InFile<&SyntaxNode>,
+) -> Option<InFile<TextRange>> {
+    let expansion = node.file_id.expansion_info(db)?;
+
+    // the input node has only one token ?
+    let single = skip_trivia_token(node.value.first_token()?, Direction::Next)?
+        == skip_trivia_token(node.value.last_token()?, Direction::Prev)?;
+
+    Some(node.value.descendants().find_map(|it| {
+        let first = skip_trivia_token(it.first_token()?, Direction::Next)?;
+        let first = ascend_call_token(db, &expansion, node.with_value(first))?;
+
+        let last = skip_trivia_token(it.last_token()?, Direction::Prev)?;
+        let last = ascend_call_token(db, &expansion, node.with_value(last))?;
+
+        if (!single && first == last) || (first.file_id != last.file_id) {
+            return None;
+        }
+
+        Some(first.with_value(first.value.text_range().cover(last.value.text_range())))
+    })?)
+}
+
+fn ascend_call_token(
+    db: &dyn db::AstDatabase,
+    expansion: &ExpansionInfo,
+    token: InFile<SyntaxToken>,
+) -> Option<InFile<SyntaxToken>> {
+    let (mapped, origin) = expansion.map_token_up(token.as_ref())?;
+    if origin != Origin::Call {
+        return None;
+    }
+    if let Some(info) = mapped.file_id.expansion_info(db) {
+        return ascend_call_token(db, &info, mapped);
+    }
+    Some(mapped)
 }
 
 impl InFile<SyntaxToken> {
