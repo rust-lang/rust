@@ -99,7 +99,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingConstForFn {
                 let has_const_generic_params = generics
                     .params
                     .iter()
-                    .any(|param| matches!(param.kind, GenericParamKind::Const{ .. }));
+                    .any(|param| matches!(param.kind, GenericParamKind::Const { .. }));
 
                 if already_const(header) || has_const_generic_params {
                     return;

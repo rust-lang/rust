@@ -69,10 +69,9 @@ fn check_expression<'tcx>(cx: &LateContext<'tcx>, arg_id: hir::HirId, expr: &'tc
                             }
                         }
                         return (true, false);
-                    } else {
-                        // We don't know. It might do anything.
-                        return (true, true);
                     }
+                    // We don't know. It might do anything.
+                    return (true, true);
                 }
             }
             (true, true)

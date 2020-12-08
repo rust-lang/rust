@@ -689,10 +689,9 @@ fn check_single_match(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>], exp
             if stmts.len() == 1 && block_expr.is_none() || stmts.is_empty() && block_expr.is_some() {
                 // single statement/expr "else" block, don't lint
                 return;
-            } else {
-                // block with 2+ statements or 1 expr and 1+ statement
-                Some(els)
             }
+            // block with 2+ statements or 1 expr and 1+ statement
+            Some(els)
         } else {
             // not a block, don't lint
             return;
