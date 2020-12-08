@@ -40,7 +40,8 @@ impl ProcMacroSrv {
         match expander.expand(&task.macro_name, &task.macro_body, task.attributes.as_ref()) {
             Ok(expansion) => Ok(ExpansionResult { expansion }),
             Err(msg) => {
-                Err(format!("Cannot perform expansion for {}: error {:?}", &task.macro_name, msg))
+                let msg = msg.as_str().unwrap_or("<unknown error>");
+                Err(format!("proc-macro panicked: {}", msg))
             }
         }
     }
