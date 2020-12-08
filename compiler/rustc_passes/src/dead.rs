@@ -396,24 +396,6 @@ impl<'v, 'k, 'tcx> ItemLikeVisitor<'v> for LifeSeeder<'k, 'tcx> {
                     }
                 }
             }
-            hir::ItemKind::Trait(.., trait_item_refs) => {
-                for trait_item_ref in trait_item_refs {
-                    let trait_item = self.krate.trait_item(trait_item_ref.id);
-                    match trait_item.kind {
-                        hir::TraitItemKind::Const(_, Some(_))
-                        | hir::TraitItemKind::Fn(_, hir::TraitFn::Provided(_)) => {
-                            if has_allow_dead_code_or_lang_attr(
-                                self.tcx,
-                                trait_item.hir_id,
-                                &trait_item.attrs,
-                            ) {
-                                self.worklist.push(trait_item.hir_id);
-                            }
-                        }
-                        _ => {}
-                    }
-                }
-            }
             hir::ItemKind::Impl { ref of_trait, items, .. } => {
                 if of_trait.is_some() {
                     self.worklist.push(item.hir_id);
@@ -440,15 +422,37 @@ impl<'v, 'k, 'tcx> ItemLikeVisitor<'v> for LifeSeeder<'k, 'tcx> {
         }
     }
 
-    fn visit_trait_item(&mut self, _item: &hir::TraitItem<'_>) {
-        // ignore: we are handling this in `visit_item` above
+    fn visit_trait_item(&mut self, trait_item: &hir::TraitItem<'_>) {
+        match trait_item.kind {
+            hir::TraitItemKind::Const(_, Some(_))
+            | hir::TraitItemKind::Fn(_, hir::TraitFn::Provided(_)) => {
+                if has_allow_dead_code_or_lang_attr(self.tcx, trait_item.hir_id, &trait_item.attrs)
+                {
+                    self.worklist.push(trait_item.hir_id);
+                }
+            }
+            _ => {}
+        }
     }
 
     fn visit_impl_item(&mut self, _item: &hir::ImplItem<'_>) {
         // ignore: we are handling this in `visit_item` above
     }
 
-    fn visit_foreign_item(&mut self, _item: &'v hir::ForeignItem<'v>) {}
+    fn visit_foreign_item(&mut self, foreign_item: &hir::ForeignItem<'_>) {
+        match foreign_item.kind {
+            hir::ForeignItemKind::Static(..) | hir::ForeignItemKind::Fn(..) => {
+                if has_allow_dead_code_or_lang_attr(
+                    self.tcx,
+                    foreign_item.hir_id,
+                    &foreign_item.attrs,
+                ) {
+                    self.worklist.push(foreign_item.hir_id);
+                }
+            }
+            _ => {}
+        }
+    }
 }
 
 fn create_and_seed_worklist<'tcx>(
