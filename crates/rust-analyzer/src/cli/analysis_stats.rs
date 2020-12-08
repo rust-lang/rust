@@ -8,7 +8,7 @@ use std::{
 
 use hir::{
     db::{AstDatabase, DefDatabase, HirDatabase},
-    original_range, AssocItem, Crate, HasSource, HirDisplay, ModuleDef,
+    AssocItem, Crate, HasSource, HirDisplay, ModuleDef,
 };
 use hir_def::FunctionId;
 use hir_ty::{Ty, TypeWalk};
@@ -232,7 +232,7 @@ impl AnalysisStatsCmd {
                             // But also, we should just turn the type mismatches into diagnostics and provide these
                             let root = db.parse_or_expand(src.file_id).unwrap();
                             let node = src.map(|e| e.to_node(&root).syntax().clone());
-                            let original_range = original_range(db, node.as_ref());
+                            let original_range = node.as_ref().original_file_range(db);
                             let path = vfs.file_path(original_range.file_id);
                             let line_index =
                                 host.analysis().file_line_index(original_range.file_id).unwrap();

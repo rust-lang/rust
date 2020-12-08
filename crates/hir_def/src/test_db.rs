@@ -158,17 +158,11 @@ impl TestDB {
             let src = d.display_source();
             let root = db.parse_or_expand(src.file_id).unwrap();
 
-            // Place all diagnostics emitted in macro files on the original caller.
-            // Note that this does *not* match IDE behavior.
-            let mut src = src.map(|ptr| ptr.to_node(&root));
-            while let Some(exp) = src.file_id.call_node(db) {
-                src = exp;
-            }
+            let node = src.map(|ptr| ptr.to_node(&root));
+            let frange = node.as_ref().original_file_range(db);
 
-            let file_id = src.file_id.original_file(db);
-            let range = src.value.text_range();
             let message = d.message().to_owned();
-            actual.entry(file_id).or_default().push((range, message));
+            actual.entry(frange.file_id).or_default().push((frange.range, message));
         });
 
         for (file_id, diags) in actual.iter_mut() {
