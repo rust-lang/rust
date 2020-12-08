@@ -1336,12 +1336,12 @@ pub(crate) fn handle_open_cargo_toml(
 ) -> Result<Option<lsp_types::GotoDefinitionResponse>> {
     let _p = profile::span("handle_open_cargo_toml");
     let file_id = from_proto::file_id(&snap, &params.text_document.uri)?;
-    let maybe_cargo_spec = CargoTargetSpec::for_file(&snap, file_id)?;
-    if maybe_cargo_spec.is_none() {
-        return Ok(None);
-    }
 
-    let cargo_spec = maybe_cargo_spec.unwrap();
+    let cargo_spec = match CargoTargetSpec::for_file(&snap, file_id)? {
+        Some(it) => it,
+        None => return Ok(None),
+    };
+
     let cargo_toml_path = cargo_spec.workspace_root.join("Cargo.toml");
     if !cargo_toml_path.exists() {
         return Ok(None);
