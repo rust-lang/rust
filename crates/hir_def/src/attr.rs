@@ -166,16 +166,16 @@ impl Attrs {
     }
 
     pub fn docs(&self) -> Option<Documentation> {
-        let mut docs = String::new();
-        self.by_key("doc")
+        let docs = self
+            .by_key("doc")
             .attrs()
             .flat_map(|attr| match attr.input.as_ref()? {
                 AttrInput::Literal(s) => Some(s),
                 AttrInput::TokenTree(_) => None,
             })
             .intersperse(&SmolStr::new_inline("\n"))
-            // No FromIterator<SmolStr> for String
-            .for_each(|s| docs.push_str(s.as_str()));
+            .map(|it| it.as_str())
+            .collect::<String>();
         if docs.is_empty() {
             None
         } else {
@@ -202,14 +202,8 @@ impl Attr {
     fn from_src(ast: ast::Attr, hygiene: &Hygiene) -> Option<Attr> {
         let path = ModPath::from_src(ast.path()?, hygiene)?;
         let input = if let Some(lit) = ast.literal() {
-            // FIXME: escape?
             let value = match lit.kind() {
-                ast::LiteralKind::String(string) if string.is_raw() => {
-                    let text = string.text().as_str();
-                    let text = &text[string.text_range_between_quotes()?
-                        - string.syntax().text_range().start()];
-                    text.into()
-                }
+                ast::LiteralKind::String(string) => string.value()?.into(),
                 _ => lit.syntax().first_token()?.text().trim_matches('"').into(),
             };
             Some(AttrInput::Literal(value))
