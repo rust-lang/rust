@@ -4,10 +4,10 @@ Version 1.49.0 (2020-11-19)
 Language
 -----------------------
 
-- [Unions now implement `Drop`, and you can now have a field in a union
+- [Unions can now implement `Drop`, and you can now have a field in a union
   with `ManuallyDrop<T>`.][77547]
-- [You can now cast zero sized enums (0 or 1 variants) integers.][76199]
-- [You can now take bind by reference and by move in patterns.][76119] This
+- [You can now cast zero sized enums (0 or 1 variants) to integers.][76199]
+- [You can now bind by reference and by move in patterns.][76119] This
   allows you to selectively borrow individual components of a type. E.g.
   ```rust
   #[derive(Debug)]
@@ -25,7 +25,7 @@ Language
   let Person { name, ref age } = person;
   println!("{} {}", name, age);
   ```
-- [Macros that end with a semi-colon are now treated as statements.][78376]
+- [Macros that end with a semi-colon are now treated as statements even if they expand to nothing.][78376]
 
 Compiler
 -----------------------
@@ -74,7 +74,8 @@ Compatibility Notes
 -------------------
 
 - [Demoted `i686-unknown-freebsd` to tier 2 support.][78746]
-- [Rustc will now check for the validity of attributes on enum variants.][77015]
+- [Rustc will now check for the validity of some built-in attributes on enum variants.][77015]
+  Previously such invalid or unused attributes could be ignored.
   Previously invalid or unused attributes were ignored.
 
 Internal Only
@@ -83,7 +84,7 @@ These changes provide no direct user facing benefits, but represent significant
 improvements to the internals and overall performance of rustc and
 related tools.
 
-- [rustc's internal crates are now compiled the `initial-exec` Thread
+- [rustc's internal crates are now compiled using the `initial-exec` Thread
   Local Storage model.][78201]
 - [Calculate visibilities once in resolve.][78077]
 - [Added `system` to the `llvm-libunwind` bootstrap config option.][77703]
