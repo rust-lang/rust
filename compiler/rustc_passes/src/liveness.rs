@@ -470,96 +470,144 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
 
 #[derive(Clone, Copy)]
 struct RWU {
-    reader: Option<LiveNode>,
-    writer: Option<LiveNode>,
+    reader: bool,
+    writer: bool,
     used: bool,
 }
 
-/// Conceptually, this is like a `Vec<RWU>`. But the number of `RWU`s can get
-/// very large, so it uses a more compact representation that takes advantage
-/// of the fact that when the number of `RWU`s is large, most of them have an
-/// invalid reader and an invalid writer.
+/// Conceptually, this is like a `Vec<Vec<RWU>>`. But the number of
+/// RWU`s can get very large, so it uses a more compact representation.
 struct RWUTable {
-    /// Each entry in `packed_rwus` is either INV_INV_FALSE, INV_INV_TRUE, or
-    /// an index into `unpacked_rwus`. In the common cases, this compacts the
-    /// 65 bits of data into 32; in the uncommon cases, it expands the 65 bits
-    /// in 96.
+    /// Total number of live nodes.
+    live_nodes: usize,
+    /// Total number of variables.
+    vars: usize,
+
+    /// A compressed representation of `RWU`s.
     ///
-    /// More compact representations are possible -- e.g., use only 2 bits per
-    /// packed `RWU` and make the secondary table a HashMap that maps from
-    /// indices to `RWU`s -- but this one strikes a good balance between size
-    /// and speed.
-    packed_rwus: Vec<u32>,
-    unpacked_rwus: Vec<RWU>,
+    /// Each word represents 2 different `RWU`s packed together. Each packed RWU
+    /// is stored in 4 bits: a reader bit, a writer bit, a used bit and a
+    /// padding bit.
+    ///
+    /// The data for each live node is contiguous and starts at a word boundary,
+    /// so there might be an unused space left.
+    words: Vec<u8>,
+    /// Number of words per each live node.
+    live_node_words: usize,
 }
 
-// A constant representing `RWU { reader: None; writer: None; used: false }`.
-const INV_INV_FALSE: u32 = u32::MAX;
-
-// A constant representing `RWU { reader: None; writer: None; used: true }`.
-const INV_INV_TRUE: u32 = u32::MAX - 1;
-
 impl RWUTable {
-    fn new(num_rwus: usize) -> RWUTable {
-        Self { packed_rwus: vec![INV_INV_FALSE; num_rwus], unpacked_rwus: vec![] }
+    const RWU_READER: u8 = 0b0001;
+    const RWU_WRITER: u8 = 0b0010;
+    const RWU_USED: u8 = 0b0100;
+    const RWU_MASK: u8 = 0b1111;
+
+    /// Size of packed RWU in bits.
+    const RWU_BITS: usize = 4;
+    /// Size of a word in bits.
+    const WORD_BITS: usize = std::mem::size_of::<u8>() * 8;
+    /// Number of packed RWUs that fit into a single word.
+    const WORD_RWU_COUNT: usize = Self::WORD_BITS / Self::RWU_BITS;
+
+    fn new(live_nodes: usize, vars: usize) -> RWUTable {
+        let live_node_words = (vars + Self::WORD_RWU_COUNT - 1) / Self::WORD_RWU_COUNT;
+        Self { live_nodes, vars, live_node_words, words: vec![0u8; live_node_words * live_nodes] }
     }
 
-    fn get(&self, idx: usize) -> RWU {
-        let packed_rwu = self.packed_rwus[idx];
-        match packed_rwu {
-            INV_INV_FALSE => RWU { reader: None, writer: None, used: false },
-            INV_INV_TRUE => RWU { reader: None, writer: None, used: true },
-            _ => self.unpacked_rwus[packed_rwu as usize],
+    fn word_and_shift(&self, ln: LiveNode, var: Variable) -> (usize, u32) {
+        assert!(ln.index() < self.live_nodes);
+        assert!(var.index() < self.vars);
+
+        let var = var.index();
+        let word = var / Self::WORD_RWU_COUNT;
+        let shift = Self::RWU_BITS * (var % Self::WORD_RWU_COUNT);
+        (ln.index() * self.live_node_words + word, shift as u32)
+    }
+
+    fn pick2_rows_mut(&mut self, a: LiveNode, b: LiveNode) -> (&mut [u8], &mut [u8]) {
+        assert!(a.index() < self.live_nodes);
+        assert!(b.index() < self.live_nodes);
+        assert!(a != b);
+
+        let a_start = a.index() * self.live_node_words;
+        let b_start = b.index() * self.live_node_words;
+
+        unsafe {
+            let ptr = self.words.as_mut_ptr();
+            (
+                std::slice::from_raw_parts_mut(ptr.add(a_start), self.live_node_words),
+                std::slice::from_raw_parts_mut(ptr.add(b_start), self.live_node_words),
+            )
         }
     }
 
-    fn get_reader(&self, idx: usize) -> Option<LiveNode> {
-        let packed_rwu = self.packed_rwus[idx];
-        match packed_rwu {
-            INV_INV_FALSE | INV_INV_TRUE => None,
-            _ => self.unpacked_rwus[packed_rwu as usize].reader,
+    fn copy(&mut self, dst: LiveNode, src: LiveNode) {
+        if dst == src {
+            return;
+        }
+
+        let (dst_row, src_row) = self.pick2_rows_mut(dst, src);
+        dst_row.copy_from_slice(src_row);
+    }
+
+    /// Sets `dst` to the union of `dst` and `src`, returns true if `dst` was
+    /// changed.
+    fn union(&mut self, dst: LiveNode, src: LiveNode) -> bool {
+        if dst == src {
+            return false;
+        }
+
+        let mut changed = false;
+        let (dst_row, src_row) = self.pick2_rows_mut(dst, src);
+        for (dst_word, src_word) in dst_row.iter_mut().zip(src_row.iter()) {
+            let old = *dst_word;
+            let new = *dst_word | src_word;
+            *dst_word = new;
+            changed |= old != new;
+        }
+        changed
+    }
+
+    fn get_reader(&self, ln: LiveNode, var: Variable) -> bool {
+        let (word, shift) = self.word_and_shift(ln, var);
+        (self.words[word] >> shift) & Self::RWU_READER != 0
+    }
+
+    fn get_writer(&self, ln: LiveNode, var: Variable) -> bool {
+        let (word, shift) = self.word_and_shift(ln, var);
+        (self.words[word] >> shift) & Self::RWU_WRITER != 0
+    }
+
+    fn get_used(&self, ln: LiveNode, var: Variable) -> bool {
+        let (word, shift) = self.word_and_shift(ln, var);
+        (self.words[word] >> shift) & Self::RWU_USED != 0
+    }
+
+    fn get(&self, ln: LiveNode, var: Variable) -> RWU {
+        let (word, shift) = self.word_and_shift(ln, var);
+        let rwu_packed = self.words[word] >> shift;
+        RWU {
+            reader: rwu_packed & Self::RWU_READER != 0,
+            writer: rwu_packed & Self::RWU_WRITER != 0,
+            used: rwu_packed & Self::RWU_USED != 0,
         }
     }
 
-    fn get_writer(&self, idx: usize) -> Option<LiveNode> {
-        let packed_rwu = self.packed_rwus[idx];
-        match packed_rwu {
-            INV_INV_FALSE | INV_INV_TRUE => None,
-            _ => self.unpacked_rwus[packed_rwu as usize].writer,
+    fn set(&mut self, ln: LiveNode, var: Variable, rwu: RWU) {
+        let mut packed = 0;
+        if rwu.reader {
+            packed |= Self::RWU_READER;
         }
-    }
-
-    fn get_used(&self, idx: usize) -> bool {
-        let packed_rwu = self.packed_rwus[idx];
-        match packed_rwu {
-            INV_INV_FALSE => false,
-            INV_INV_TRUE => true,
-            _ => self.unpacked_rwus[packed_rwu as usize].used,
+        if rwu.writer {
+            packed |= Self::RWU_WRITER;
         }
-    }
-
-    #[inline]
-    fn copy_packed(&mut self, dst_idx: usize, src_idx: usize) {
-        self.packed_rwus[dst_idx] = self.packed_rwus[src_idx];
-    }
-
-    fn assign_unpacked(&mut self, idx: usize, rwu: RWU) {
-        if rwu.reader == None && rwu.writer == None {
-            // When we overwrite an indexing entry in `self.packed_rwus` with
-            // `INV_INV_{TRUE,FALSE}` we don't remove the corresponding entry
-            // from `self.unpacked_rwus`; it's not worth the effort, and we
-            // can't have entries shifting around anyway.
-            self.packed_rwus[idx] = if rwu.used { INV_INV_TRUE } else { INV_INV_FALSE }
-        } else {
-            // Add a new RWU to `unpacked_rwus` and make `packed_rwus[idx]`
-            // point to it.
-            self.packed_rwus[idx] = self.unpacked_rwus.len() as u32;
-            self.unpacked_rwus.push(rwu);
+        if rwu.used {
+            packed |= Self::RWU_USED;
         }
-    }
 
-    fn assign_inv_inv(&mut self, idx: usize) {
-        self.packed_rwus[idx] = if self.get_used(idx) { INV_INV_TRUE } else { INV_INV_FALSE };
+        let (word, shift) = self.word_and_shift(ln, var);
+        let word = &mut self.words[word];
+        *word = (*word & !(Self::RWU_MASK << shift)) | (packed << shift)
     }
 }
 
@@ -613,7 +661,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             upvars,
             closure_captures,
             successors: IndexVec::from_elem_n(None, num_live_nodes),
-            rwu_table: RWUTable::new(num_live_nodes * num_vars),
+            rwu_table: RWUTable::new(num_live_nodes, num_vars),
             closure_ln,
             exit_ln,
             break_ln: Default::default(),
@@ -652,61 +700,37 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         succ
     }
 
-    fn idx(&self, ln: LiveNode, var: Variable) -> usize {
-        ln.index() * self.ir.var_kinds.len() + var.index()
-    }
-
-    fn live_on_entry(&self, ln: LiveNode, var: Variable) -> Option<LiveNodeKind> {
-        if let Some(reader) = self.rwu_table.get_reader(self.idx(ln, var)) {
-            Some(self.ir.lnks[reader])
-        } else {
-            None
-        }
+    fn live_on_entry(&self, ln: LiveNode, var: Variable) -> bool {
+        self.rwu_table.get_reader(ln, var)
     }
 
     // Is this variable live on entry to any of its successor nodes?
-    fn live_on_exit(&self, ln: LiveNode, var: Variable) -> Option<LiveNodeKind> {
+    fn live_on_exit(&self, ln: LiveNode, var: Variable) -> bool {
         let successor = self.successors[ln].unwrap();
         self.live_on_entry(successor, var)
     }
 
     fn used_on_entry(&self, ln: LiveNode, var: Variable) -> bool {
-        self.rwu_table.get_used(self.idx(ln, var))
+        self.rwu_table.get_used(ln, var)
     }
 
-    fn assigned_on_entry(&self, ln: LiveNode, var: Variable) -> Option<LiveNodeKind> {
-        if let Some(writer) = self.rwu_table.get_writer(self.idx(ln, var)) {
-            Some(self.ir.lnks[writer])
-        } else {
-            None
-        }
+    fn assigned_on_entry(&self, ln: LiveNode, var: Variable) -> bool {
+        self.rwu_table.get_writer(ln, var)
     }
 
-    fn assigned_on_exit(&self, ln: LiveNode, var: Variable) -> Option<LiveNodeKind> {
+    fn assigned_on_exit(&self, ln: LiveNode, var: Variable) -> bool {
         let successor = self.successors[ln].unwrap();
         self.assigned_on_entry(successor, var)
     }
 
-    fn indices2<F>(&mut self, ln: LiveNode, succ_ln: LiveNode, mut op: F)
+    fn write_vars<F>(&self, wr: &mut dyn Write, mut test: F) -> io::Result<()>
     where
-        F: FnMut(&mut Liveness<'a, 'tcx>, usize, usize),
+        F: FnMut(Variable) -> bool,
     {
-        let node_base_idx = self.idx(ln, Variable::from(0u32));
-        let succ_base_idx = self.idx(succ_ln, Variable::from(0u32));
         for var_idx in 0..self.ir.var_kinds.len() {
-            op(self, node_base_idx + var_idx, succ_base_idx + var_idx);
-        }
-    }
-
-    fn write_vars<F>(&self, wr: &mut dyn Write, ln: LiveNode, mut test: F) -> io::Result<()>
-    where
-        F: FnMut(usize) -> bool,
-    {
-        let node_base_idx = self.idx(ln, Variable::from(0u32));
-        for var_idx in 0..self.ir.var_kinds.len() {
-            let idx = node_base_idx + var_idx;
-            if test(idx) {
-                write!(wr, " {:?}", Variable::from(var_idx))?;
+            let var = Variable::from(var_idx);
+            if test(var) {
+                write!(wr, " {:?}", var)?;
             }
         }
         Ok(())
@@ -718,11 +742,11 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         {
             let wr = &mut wr as &mut dyn Write;
             write!(wr, "[{:?} of kind {:?} reads", ln, self.ir.lnks[ln]);
-            self.write_vars(wr, ln, |idx| self.rwu_table.get_reader(idx).is_some());
+            self.write_vars(wr, |var| self.rwu_table.get_reader(ln, var));
             write!(wr, "  writes");
-            self.write_vars(wr, ln, |idx| self.rwu_table.get_writer(idx).is_some());
+            self.write_vars(wr, |var| self.rwu_table.get_writer(ln, var));
             write!(wr, "  uses");
-            self.write_vars(wr, ln, |idx| self.rwu_table.get_used(idx));
+            self.write_vars(wr, |var| self.rwu_table.get_used(ln, var));
 
             write!(wr, "  precedes {:?}]", self.successors[ln]);
         }
@@ -747,17 +771,13 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         self.successors[ln] = Some(succ_ln);
 
         // It is not necessary to initialize the RWUs here because they are all
-        // set to INV_INV_FALSE when they are created, and the sets only grow
-        // during iterations.
+        // empty when created, and the sets only grow during iterations.
     }
 
     fn init_from_succ(&mut self, ln: LiveNode, succ_ln: LiveNode) {
         // more efficient version of init_empty() / merge_from_succ()
         self.successors[ln] = Some(succ_ln);
-
-        self.indices2(ln, succ_ln, |this, idx, succ_idx| {
-            this.rwu_table.copy_packed(idx, succ_idx);
-        });
+        self.rwu_table.copy(ln, succ_ln);
         debug!("init_from_succ(ln={}, succ={})", self.ln_str(ln), self.ln_str(succ_ln));
     }
 
@@ -766,81 +786,48 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             return false;
         }
 
-        let mut any_changed = false;
-        self.indices2(ln, succ_ln, |this, idx, succ_idx| {
-            // This is a special case, pulled out from the code below, where we
-            // don't have to do anything. It occurs about 60-70% of the time.
-            if this.rwu_table.packed_rwus[succ_idx] == INV_INV_FALSE {
-                return;
-            }
-
-            let mut changed = false;
-            let mut rwu = this.rwu_table.get(idx);
-            let succ_rwu = this.rwu_table.get(succ_idx);
-            if succ_rwu.reader.is_some() && rwu.reader.is_none() {
-                rwu.reader = succ_rwu.reader;
-                changed = true
-            }
-
-            if succ_rwu.writer.is_some() && rwu.writer.is_none() {
-                rwu.writer = succ_rwu.writer;
-                changed = true
-            }
-
-            if succ_rwu.used && !rwu.used {
-                rwu.used = true;
-                changed = true;
-            }
-
-            if changed {
-                this.rwu_table.assign_unpacked(idx, rwu);
-                any_changed = true;
-            }
-        });
-
+        let changed = self.rwu_table.union(ln, succ_ln);
         debug!(
             "merge_from_succ(ln={:?}, succ={}, first_merge={}, changed={})",
             ln,
             self.ln_str(succ_ln),
             first_merge,
-            any_changed
+            changed
         );
-        any_changed
+        changed
     }
 
     // Indicates that a local variable was *defined*; we know that no
     // uses of the variable can precede the definition (resolve checks
     // this) so we just clear out all the data.
     fn define(&mut self, writer: LiveNode, var: Variable) {
-        let idx = self.idx(writer, var);
-        self.rwu_table.assign_inv_inv(idx);
-
-        debug!("{:?} defines {:?} (idx={}): {}", writer, var, idx, self.ln_str(writer));
+        let used = self.rwu_table.get_used(writer, var);
+        self.rwu_table.set(writer, var, RWU { reader: false, writer: false, used });
+        debug!("{:?} defines {:?}: {}", writer, var, self.ln_str(writer));
     }
 
     // Either read, write, or both depending on the acc bitset
     fn acc(&mut self, ln: LiveNode, var: Variable, acc: u32) {
         debug!("{:?} accesses[{:x}] {:?}: {}", ln, acc, var, self.ln_str(ln));
 
-        let idx = self.idx(ln, var);
-        let mut rwu = self.rwu_table.get(idx);
+        let mut rwu = self.rwu_table.get(ln, var);
 
         if (acc & ACC_WRITE) != 0 {
-            rwu.reader = None;
-            rwu.writer = Some(ln);
+            rwu.reader = false;
+            rwu.writer = true;
         }
 
         // Important: if we both read/write, must do read second
         // or else the write will override.
         if (acc & ACC_READ) != 0 {
-            rwu.reader = Some(ln);
+            rwu.reader = true;
         }
 
         if (acc & ACC_USE) != 0 {
             rwu.used = true;
         }
 
-        self.rwu_table.assign_unpacked(idx, rwu);
+        self.rwu_table.set(ln, var, rwu);
     }
 
     fn compute(&mut self, body: &hir::Body<'_>, hir_id: HirId) -> LiveNode {
@@ -1575,7 +1562,7 @@ impl<'tcx> Liveness<'_, 'tcx> {
                 ty::UpvarCapture::ByRef(..) => continue,
             };
             if self.used_on_entry(entry_ln, var) {
-                if self.live_on_entry(entry_ln, var).is_none() {
+                if !self.live_on_entry(entry_ln, var) {
                     if let Some(name) = self.should_warn(var) {
                         self.ir.tcx.struct_span_lint_hir(
                             lint::builtin::UNUSED_ASSIGNMENTS,
@@ -1609,7 +1596,7 @@ impl<'tcx> Liveness<'_, 'tcx> {
     fn warn_about_unused_args(&self, body: &hir::Body<'_>, entry_ln: LiveNode) {
         for p in body.params {
             self.check_unused_vars_in_pat(&p.pat, Some(entry_ln), |spans, hir_id, ln, var| {
-                if self.live_on_entry(ln, var).is_none() {
+                if !self.live_on_entry(ln, var) {
                     self.report_unsed_assign(hir_id, spans, var, |name| {
                         format!("value passed to `{}` is never read", name)
                     });
@@ -1658,7 +1645,7 @@ impl<'tcx> Liveness<'_, 'tcx> {
             // {ret}`, there is only one node, so asking about
             // assigned_on_exit() is not meaningful.
             let is_assigned =
-                if ln == self.exit_ln { false } else { self.assigned_on_exit(ln, var).is_some() };
+                if ln == self.exit_ln { false } else { self.assigned_on_exit(ln, var) };
 
             if is_assigned {
                 self.ir.tcx.struct_span_lint_hir(
@@ -1725,7 +1712,7 @@ impl<'tcx> Liveness<'_, 'tcx> {
     }
 
     fn warn_about_dead_assign(&self, spans: Vec<Span>, hir_id: HirId, ln: LiveNode, var: Variable) {
-        if self.live_on_exit(ln, var).is_none() {
+        if !self.live_on_exit(ln, var) {
             self.report_unsed_assign(hir_id, spans, var, |name| {
                 format!("value assigned to `{}` is never read", name)
             });
