@@ -1,7 +1,7 @@
 #![allow(unreachable_code)]
 
 use float::Float;
-use int::{CastInto, Int};
+use int::Int;
 
 #[derive(Clone, Copy)]
 enum Result {
@@ -31,13 +31,7 @@ impl Result {
     }
 }
 
-fn cmp<F: Float>(a: F, b: F) -> Result
-where
-    u32: CastInto<F::Int>,
-    F::Int: CastInto<u32>,
-    i32: CastInto<F::Int>,
-    F::Int: CastInto<i32>,
-{
+fn cmp<F: Float>(a: F, b: F) -> Result {
     let one = F::Int::ONE;
     let zero = F::Int::ZERO;
     let szero = F::SignedInt::ZERO;
@@ -90,13 +84,8 @@ where
         }
     }
 }
-fn unord<F: Float>(a: F, b: F) -> bool
-where
-    u32: CastInto<F::Int>,
-    F::Int: CastInto<u32>,
-    i32: CastInto<F::Int>,
-    F::Int: CastInto<i32>,
-{
+
+fn unord<F: Float>(a: F, b: F) -> bool {
     let one = F::Int::ONE;
 
     let sign_bit = F::SIGN_MASK as F::Int;

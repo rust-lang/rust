@@ -59,8 +59,8 @@ pub unsafe fn copy_backward(dest: *mut u8, src: *const u8, count: usize) {
         "cld",
         byte_count = in(reg) byte_count,
         inout("rcx") qword_count => _,
-        inout("rdi") dest.offset(count as isize).wrapping_sub(8) => _,
-        inout("rsi") src.offset(count as isize).wrapping_sub(8) => _,
+        inout("rdi") dest.add(count).wrapping_sub(8) => _,
+        inout("rsi") src.add(count).wrapping_sub(8) => _,
         options(nostack)
     );
 }

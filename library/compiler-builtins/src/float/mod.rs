@@ -1,4 +1,3 @@
-use core::mem;
 use core::ops;
 
 use super::int::Int;
@@ -13,7 +12,8 @@ pub mod pow;
 pub mod sub;
 
 /// Trait for some basic operations on floats
-pub(crate) trait Float:
+#[doc(hidden)]
+pub trait Float:
     Copy
     + PartialEq
     + PartialOrd
@@ -66,7 +66,6 @@ pub(crate) trait Float:
     /// Returns `self` transmuted to `Self::SignedInt`
     fn signed_repr(self) -> Self::SignedInt;
 
-    #[cfg(test)]
     /// Checks if two floats have the same bit representation. *Except* for NaNs! NaN can be
     /// represented in multiple different ways. This method returns `true` if two NaNs are
     /// compared.
@@ -80,10 +79,11 @@ pub(crate) trait Float:
 
     /// Returns (normalized exponent, normalized significand)
     fn normalize(significand: Self::Int) -> (i32, Self::Int);
+
+    /// Returns if `self` is subnormal
+    fn is_subnormal(&self) -> bool;
 }
 
-// FIXME: Some of this can be removed if RFC Issue #1424 is resolved
-//        https://github.com/rust-lang/rfcs/issues/1424
 macro_rules! float_impl {
     ($ty:ident, $ity:ident, $sity:ident, $bits:expr, $significand_bits:expr) => {
         impl Float for $ty {
@@ -101,12 +101,11 @@ macro_rules! float_impl {
             const EXPONENT_MASK: Self::Int = !(Self::SIGN_MASK | Self::SIGNIFICAND_MASK);
 
             fn repr(self) -> Self::Int {
-                unsafe { mem::transmute(self) }
+                self.to_bits()
             }
             fn signed_repr(self) -> Self::SignedInt {
-                unsafe { mem::transmute(self) }
+                self.to_bits() as Self::SignedInt
             }
-            #[cfg(test)]
             fn eq_repr(self, rhs: Self) -> bool {
                 if self.is_nan() && rhs.is_nan() {
                     true
@@ -115,7 +114,7 @@ macro_rules! float_impl {
                 }
             }
             fn from_repr(a: Self::Int) -> Self {
-                unsafe { mem::transmute(a) }
+                Self::from_bits(a)
             }
             fn from_parts(sign: bool, exponent: Self::Int, significand: Self::Int) -> Self {
                 Self::from_repr(
@@ -132,6 +131,9 @@ macro_rules! float_impl {
                     1i32.wrapping_sub(shift as i32),
                     significand << shift as Self::Int,
                 )
+            }
+            fn is_subnormal(&self) -> bool {
+                (self.repr() & Self::EXPONENT_MASK) == Self::Int::ZERO
             }
         }
     };

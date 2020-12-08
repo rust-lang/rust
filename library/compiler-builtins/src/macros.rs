@@ -284,16 +284,16 @@ pub mod win64_128bit_abi_hack {
 
     impl From<i128> for U64x2 {
         fn from(i: i128) -> U64x2 {
-            use int::LargeInt;
+            use int::DInt;
             let j = i as u128;
-            U64x2(j.low(), j.high())
+            U64x2(j.lo(), j.hi())
         }
     }
 
     impl From<u128> for U64x2 {
         fn from(i: u128) -> U64x2 {
-            use int::LargeInt;
-            U64x2(i.low(), i.high())
+            use int::DInt;
+            U64x2(i.lo(), i.hi())
         }
     }
 }
