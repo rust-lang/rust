@@ -16,6 +16,7 @@ pub struct InstallCmd {
 #[derive(Clone, Copy)]
 pub enum ClientOpt {
     VsCode,
+    VsCodeExploration,
     VsCodeInsiders,
     VsCodium,
     VsCodeOss,
@@ -26,10 +27,11 @@ impl ClientOpt {
     pub const fn as_cmds(&self) -> &'static [&'static str] {
         match self {
             ClientOpt::VsCode => &["code"],
+            ClientOpt::VsCodeExploration => &["code-exploration"],
             ClientOpt::VsCodeInsiders => &["code-insiders"],
             ClientOpt::VsCodium => &["codium"],
             ClientOpt::VsCodeOss => &["code-oss"],
-            ClientOpt::Any => &["code", "code-insiders", "codium", "code-oss"],
+            ClientOpt::Any => &["code", "code-exploration", "code-insiders", "codium", "code-oss"],
         }
     }
 }
@@ -44,11 +46,17 @@ impl std::str::FromStr for ClientOpt {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        [ClientOpt::VsCode, ClientOpt::VsCodeInsiders, ClientOpt::VsCodium, ClientOpt::VsCodeOss]
-            .iter()
-            .copied()
-            .find(|c| [s] == c.as_cmds())
-            .ok_or_else(|| anyhow::format_err!("no such client"))
+        [
+            ClientOpt::VsCode,
+            ClientOpt::VsCodeExploration,
+            ClientOpt::VsCodeInsiders,
+            ClientOpt::VsCodium,
+            ClientOpt::VsCodeOss,
+        ]
+        .iter()
+        .copied()
+        .find(|c| [s] == c.as_cmds())
+        .ok_or_else(|| anyhow::format_err!("no such client"))
     }
 }
 
