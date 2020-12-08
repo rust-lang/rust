@@ -85,10 +85,16 @@ fn extract_error_codes(
     for line in f.lines() {
         let s = line.trim();
         if !reached_no_explanation && s.starts_with('E') && s.contains("include_str!(\"") {
-            let err_code = match s.split_once(':') {
-                None => continue,
-                Some((err_code, _)) => err_code.to_owned(),
-            };
+            let err_code = s
+                .split_once(':')
+                .expect(
+                    format!(
+                        "Expected a line with the format `E0xxx: include_str!(\"..\")`, but got {} without a `:` delimiter",
+                        s,
+                    ).as_str()
+                )
+                .0
+                .to_owned();
             if !error_codes.contains_key(&err_code) {
                 error_codes.insert(err_code.clone(), false);
             }
