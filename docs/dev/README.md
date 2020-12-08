@@ -170,7 +170,7 @@ In general, API is centered around UI concerns -- the result of the call is what
 The results are 100% Rust specific though.
 Shout outs to LSP developers for popularizing the idea that "UI" is a good place to draw a boundary at.
 
-## LSP is sateless
+## LSP is stateless
 
 The protocol is implemented in the mostly stateless way.
 A good mental model is HTTP, which doesn't store per-client state, and instead relies on devices like cookies to maintain an illusion of state.
