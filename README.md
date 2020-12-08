@@ -231,10 +231,12 @@ The Rust community congregates in a few places:
 * [Stack Overflow] - Direct questions about using the language.
 * [users.rust-lang.org] - General discussion and broader questions.
 * [/r/rust] - News and general discussion.
+* [Discord] - Direct questions about using the language along with broader questions, news and general discussion.
 
 [Stack Overflow]: https://stackoverflow.com/questions/tagged/rust
 [/r/rust]: https://reddit.com/r/rust
 [users.rust-lang.org]: https://users.rust-lang.org/
+[Discord]: https://discord.gg/rust-lang
 
 ## Contributing
 
