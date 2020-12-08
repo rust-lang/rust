@@ -321,12 +321,11 @@ fn lines_match_works() {
 /// as paths). You can use a `"{...}"` string literal as a wildcard for
 /// arbitrary nested JSON. Arrays are sorted before comparison.
 pub fn find_mismatch<'a>(expected: &'a Value, actual: &'a Value) -> Option<(&'a Value, &'a Value)> {
-    use serde_json::Value::*;
     match (expected, actual) {
-        (&Number(ref l), &Number(ref r)) if l == r => None,
-        (&Bool(l), &Bool(r)) if l == r => None,
-        (&String(ref l), &String(ref r)) if lines_match(l, r) => None,
-        (&Array(ref l), &Array(ref r)) => {
+        (Value::Number(l), Value::Number(r)) if l == r => None,
+        (Value::Bool(l), Value::Bool(r)) if l == r => None,
+        (Value::String(l), Value::String(r)) if lines_match(l, r) => None,
+        (Value::Array(l), Value::Array(r)) => {
             if l.len() != r.len() {
                 return Some((expected, actual));
             }
@@ -350,17 +349,26 @@ pub fn find_mismatch<'a>(expected: &'a Value, actual: &'a Value) -> Option<(&'a 
                 None
             }
         }
-        (&Object(ref l), &Object(ref r)) => {
+        (Value::Object(l), Value::Object(r)) => {
+            fn sorted_values(obj: &serde_json::Map<String, Value>) -> Vec<&Value> {
+                let mut entries = obj.iter().collect::<Vec<_>>();
+                entries.sort_by_key(|it| it.0);
+                entries.into_iter().map(|(_k, v)| v).collect::<Vec<_>>()
+            }
+
             let same_keys = l.len() == r.len() && l.keys().all(|k| r.contains_key(k));
             if !same_keys {
                 return Some((expected, actual));
             }
 
-            l.values().zip(r.values()).filter_map(|(l, r)| find_mismatch(l, r)).next()
+            let l = sorted_values(l);
+            let r = sorted_values(r);
+
+            l.into_iter().zip(r).filter_map(|(l, r)| find_mismatch(l, r)).next()
         }
-        (&Null, &Null) => None,
+        (Value::Null, Value::Null) => None,
         // magic string literal "{...}" acts as wildcard for any sub-JSON
-        (&String(ref l), _) if l == "{...}" => None,
+        (Value::String(l), _) if l == "{...}" => None,
         _ => Some((expected, actual)),
     }
 }
