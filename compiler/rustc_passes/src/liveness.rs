@@ -476,11 +476,9 @@ const ACC_USE: u32 = 4;
 
 struct Liveness<'a, 'tcx> {
     ir: &'a mut IrMaps<'tcx>,
-    body_owner: LocalDefId,
     typeck_results: &'a ty::TypeckResults<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     upvars: Option<&'tcx FxIndexMap<hir::HirId, hir::Upvar>>,
-    // closure_captures: Option<&'tcx FxIndexMap<hir::HirId, ty::UpvarId>>,
     closure_min_captures: Option<&'tcx RootVariableMinCaptureList<'tcx>>,
     successors: IndexVec<LiveNode, Option<LiveNode>>,
     rwu_table: rwu_table::RWUTable,
@@ -505,7 +503,6 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         let typeck_results = ir.tcx.typeck(body_owner);
         let param_env = ir.tcx.param_env(body_owner);
         let upvars = ir.tcx.upvars_mentioned(body_owner);
-        // let closure_captures = typeck_results.closure_captures.get(&body_owner.to_def_id());
         let closure_min_captures = typeck_results.closure_min_captures.get(&body_owner.to_def_id());
         let closure_ln = ir.add_live_node(ClosureNode);
         let exit_ln = ir.add_live_node(ExitNode);
@@ -515,11 +512,9 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
         Liveness {
             ir,
-            body_owner,
             typeck_results,
             param_env,
             upvars,
-            // closure_captures,
             closure_min_captures,
             successors: IndexVec::from_elem_n(None, num_live_nodes),
             rwu_table: rwu_table::RWUTable::new(num_live_nodes, num_vars),
@@ -706,7 +701,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
         if let Some(closure_min_captures) = self.closure_min_captures {
             // Mark upvars captured by reference as used after closure exits.
-            // Since closure_captures is Some, upvars must exists too.
+            // Since closure_min_captures is Some, upvars must exists too.
             //closure_min_captures = MinCaptureInformationMap > RootVariableMinCaptureList > MinCaptureList > CapturedPlace > CaptureInfo > UpvarCapture
             let upvars = self.upvars.unwrap();
             for (&var_hir_id, min_capture_list) in closure_min_captures {
@@ -1400,15 +1395,11 @@ impl<'tcx> Liveness<'_, 'tcx> {
             Some(closure_min_captures) => closure_min_captures,
         };
 
-        // If closure_captures is Some(), upvars must be Some() too.
+        // If closure_min_captures is Some(), upvars must be Some() too.
         let upvars = self.upvars.unwrap();
         for (&var_hir_id, min_capture_list) in closure_min_captures {
             let upvar = upvars[&var_hir_id];
             let var = self.variable(var_hir_id, upvar.span);
-            let _upvar_id = ty::UpvarId {
-                var_path: ty::UpvarPath { hir_id: var_hir_id },
-                closure_expr_id: self.body_owner,
-            };
 
             for captured_place in min_capture_list {
                 match captured_place.info.capture_kind {
