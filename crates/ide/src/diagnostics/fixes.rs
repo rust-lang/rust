@@ -13,7 +13,11 @@ use ide_db::{
     source_change::{FileSystemEdit, SourceFileEdit},
     RootDatabase,
 };
-use syntax::{AstNode, Direction, T, algo, ast::{self, edit::IndentLevel, make}};
+use syntax::{
+    algo,
+    ast::{self, edit::IndentLevel, make},
+    AstNode, Direction, T,
+};
 use text_edit::TextEdit;
 
 use crate::{diagnostics::Fix, references::rename::rename_with_semantics, FilePosition};
@@ -102,7 +106,9 @@ impl DiagnosticWithFix for RemoveThisSemicolon {
     fn fix(&self, sema: &Semantics<RootDatabase>) -> Option<Fix> {
         let root = sema.db.parse_or_expand(self.file)?;
 
-        let semicolon = self.expr.to_node(&root)
+        let semicolon = self
+            .expr
+            .to_node(&root)
             .syntax()
             .siblings_with_tokens(Direction::Next)
             .filter_map(|it| it.into_token())
@@ -110,7 +116,8 @@ impl DiagnosticWithFix for RemoveThisSemicolon {
             .text_range();
 
         let edit = TextEdit::delete(semicolon);
-        let source_change = SourceFileEdit { file_id: self.file.original_file(sema.db), edit }.into();
+        let source_change =
+            SourceFileEdit { file_id: self.file.original_file(sema.db), edit }.into();
 
         Some(Fix::new("Remove this semicolon", source_change, semicolon))
     }

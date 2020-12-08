@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use hir_def::{AdtId, DefWithBodyId, expr::Statement, path::path, resolver::HasResolver};
+use hir_def::{expr::Statement, path::path, resolver::HasResolver, AdtId, DefWithBodyId};
 use hir_expand::diagnostics::DiagnosticSink;
 use rustc_hash::FxHashSet;
 use syntax::{ast, AstPtr};
@@ -11,7 +11,8 @@ use crate::{
     db::HirDatabase,
     diagnostics::{
         match_check::{is_useful, MatchCheckCtx, Matrix, PatStack, Usefulness},
-        MismatchedArgCount, MissingFields, MissingMatchArms, MissingOkInTailExpr, MissingPatFields, RemoveThisSemicolon
+        MismatchedArgCount, MissingFields, MissingMatchArms, MissingOkInTailExpr, MissingPatFields,
+        RemoveThisSemicolon,
     },
     utils::variant_data,
     ApplicationTy, InferenceResult, Ty, TypeCtor,
@@ -324,7 +325,12 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
         }
     }
 
-    fn validate_missing_tail_expr(&mut self, body_id: ExprId, possible_tail_id: ExprId, db: &dyn HirDatabase) {
+    fn validate_missing_tail_expr(
+        &mut self,
+        body_id: ExprId,
+        possible_tail_id: ExprId,
+        db: &dyn HirDatabase,
+    ) {
         let mismatch = match self.infer.type_mismatch_for_expr(body_id) {
             Some(m) => m,
             None => return,
@@ -335,7 +341,10 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
                 let (_, source_map) = db.body_with_source_map(self.owner.into());
 
                 if let Ok(source_ptr) = source_map.expr_syntax(possible_tail_id) {
-                    self.sink.push(RemoveThisSemicolon { file: source_ptr.file_id, expr: source_ptr.value });
+                    self.sink.push(RemoveThisSemicolon {
+                        file: source_ptr.file_id,
+                        expr: source_ptr.value,
+                    });
                 }
             }
         }
