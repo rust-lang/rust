@@ -1,0 +1,16 @@
+error: use of `eprintln!`
+  --> $DIR/print_stderr.rs:4:5
+   |
+LL |     eprintln!("Hello");
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::print-stderr` implied by `-D warnings`
+
+error: use of `eprint!`
+  --> $DIR/print_stderr.rs:6:5
+   |
+LL |     eprint!("World");
+   |     ^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
