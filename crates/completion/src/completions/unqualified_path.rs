@@ -99,7 +99,6 @@ fn complete_enum_variants(acc: &mut Completions, ctx: &CompletionContext, ty: &T
 //
 // To avoid an excessive amount of the results returned, completion input is checked for inclusion in the identifiers only
 // (i.e. in `HashMap` in the `std::collections::HashMap` path), also not in the module indentifiers.
-// It also avoids searching for any imports for inputs with their length less that 3 symbols.
 //
 // .Merge Behaviour
 //
@@ -123,40 +122,39 @@ fn fuzzy_completion(acc: &mut Completions, ctx: &CompletionContext) -> Option<()
     let _p = profile::span("fuzzy_completion");
     let potential_import_name = ctx.token.to_string();
 
-    if potential_import_name.len() < 3 {
-        return None;
-    }
-
     let current_module = ctx.scope.module()?;
     let anchor = ctx.name_ref_syntax.as_ref()?;
     let import_scope = ImportScope::find_insert_use_container(anchor.syntax(), &ctx.sema)?;
 
-    let possible_imports =
-        imports_locator::find_similar_imports(&ctx.sema, ctx.krate?, &potential_import_name, true)
-            .filter_map(|import_candidate| {
-                Some(match import_candidate {
-                    Either::Left(module_def) => (
-                        current_module.find_use_path(ctx.db, module_def)?,
-                        ScopeDef::ModuleDef(module_def),
-                    ),
-                    Either::Right(macro_def) => (
-                        current_module.find_use_path(ctx.db, macro_def)?,
-                        ScopeDef::MacroDef(macro_def),
-                    ),
-                })
-            })
-            .filter(|(mod_path, _)| mod_path.len() > 1)
-            .filter_map(|(import_path, definition)| {
-                render_resolution_with_import(
-                    RenderContext::new(ctx),
-                    ImportEdit {
-                        import_path: import_path.clone(),
-                        import_scope: import_scope.clone(),
-                        merge_behaviour: ctx.config.merge,
-                    },
-                    &definition,
-                )
-            });
+    let possible_imports = imports_locator::find_similar_imports(
+        &ctx.sema,
+        ctx.krate?,
+        Some(100),
+        &potential_import_name,
+        true,
+    )
+    .filter_map(|import_candidate| {
+        Some(match import_candidate {
+            Either::Left(module_def) => {
+                (current_module.find_use_path(ctx.db, module_def)?, ScopeDef::ModuleDef(module_def))
+            }
+            Either::Right(macro_def) => {
+                (current_module.find_use_path(ctx.db, macro_def)?, ScopeDef::MacroDef(macro_def))
+            }
+        })
+    })
+    .filter(|(mod_path, _)| mod_path.len() > 1)
+    .filter_map(|(import_path, definition)| {
+        render_resolution_with_import(
+            RenderContext::new(ctx),
+            ImportEdit {
+                import_path: import_path.clone(),
+                import_scope: import_scope.clone(),
+                merge_behaviour: ctx.config.merge,
+            },
+            &definition,
+        )
+    });
 
     acc.add_all(possible_imports);
     Some(())
