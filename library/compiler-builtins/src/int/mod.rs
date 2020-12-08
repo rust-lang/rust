@@ -72,6 +72,9 @@ pub trait Int:
     /// Prevents the need for excessive conversions between signed and unsigned
     fn logical_shr(self, other: u32) -> Self;
 
+    /// Absolute difference between two integers.
+    fn abs_diff(self, other: Self) -> Self::UnsignedInt;
+
     // copied from primitive integers, but put in a trait
     fn is_zero(self) -> bool;
     fn max_value() -> Self;
@@ -251,6 +254,10 @@ macro_rules! int_impl {
                 me
             }
 
+            fn abs_diff(self, other: Self) -> Self {
+                (self.wrapping_sub(other) as $ity).wrapping_abs() as $uty
+            }
+
             int_impl_common!($uty, $bits);
         }
 
@@ -272,6 +279,10 @@ macro_rules! int_impl {
 
             fn from_unsigned(me: $uty) -> Self {
                 me as $ity
+            }
+
+            fn abs_diff(self, other: Self) -> $uty {
+                self.wrapping_sub(other).wrapping_abs() as $uty
             }
 
             int_impl_common!($ity, $bits);
