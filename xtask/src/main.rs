@@ -47,7 +47,7 @@ USAGE:
 
 FLAGS:
         --client[=CLIENT] Install only VS Code plugin.
-                          CLIENT is one of 'code', 'code-insiders', 'codium', or 'code-oss'
+                          CLIENT is one of 'code', 'code-exploration', 'code-insiders', 'codium', or 'code-oss'
         --server          Install only the language server
         --mimalloc        Use mimalloc for server
     -h, --help            Prints help information
