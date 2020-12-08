@@ -774,7 +774,19 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
         debug!("link_upvar_region(borrorw_region={:?}, upvar_id={:?}", borrow_region, upvar_id);
         // A by-reference upvar can't be borrowed for longer than the
         // upvar is borrowed from the environment.
-        match self.typeck_results.borrow().upvar_capture(upvar_id) {
+        let closure_local_def_id = upvar_id.closure_expr_id;
+        let upvar_capture = self
+            .typeck_results
+            .borrow()
+            .closure_min_captures_flattened(closure_local_def_id.to_def_id())
+            .find(|captured_place| match captured_place.place.base {
+                PlaceBase::Upvar(id) => id == upvar_id,
+                _ => false,
+            })
+            .unwrap()
+            .info
+            .capture_kind;
+        match upvar_capture {
             ty::UpvarCapture::ByRef(upvar_borrow) => {
                 self.sub_regions(
                     infer::ReborrowUpvar(span, upvar_id),
@@ -788,7 +800,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
             }
             ty::UpvarCapture::ByValue(_) => {}
         }
-        let fn_hir_id = self.tcx.hir().local_def_id_to_hir_id(upvar_id.closure_expr_id);
+        let fn_hir_id = self.tcx.hir().local_def_id_to_hir_id(closure_local_def_id);
         let ty = self.resolve_node_type(fn_hir_id);
         debug!("link_upvar_region: ty={:?}", ty);
 

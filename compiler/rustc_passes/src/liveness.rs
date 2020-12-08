@@ -95,7 +95,7 @@ use rustc_hir::{Expr, HirId, HirIdMap, HirIdSet};
 use rustc_index::vec::IndexVec;
 use rustc_middle::hir::map::Map;
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::{self, DefIdTree, TyCtxt};
+use rustc_middle::ty::{self, DefIdTree, RootVariableMinCaptureList, TyCtxt};
 use rustc_session::lint;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
@@ -331,7 +331,7 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
             }
         }
 
-        if let Some(captures) = maps.tcx.typeck(local_def_id).closure_captures.get(&def_id) {
+        if let Some(captures) = maps.tcx.typeck(local_def_id).closure_min_captures.get(&def_id) {
             for &var_hir_id in captures.keys() {
                 let var_name = maps.tcx.hir().name(var_hir_id);
                 maps.add_variable(Upvar(var_hir_id, var_name));
@@ -403,7 +403,7 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
                 if let Some(captures) = self
                     .tcx
                     .typeck(closure_def_id)
-                    .closure_captures
+                    .closure_min_captures
                     .get(&closure_def_id.to_def_id())
                 {
                     // If closure captures is Some, upvars_mentioned must also be Some
@@ -480,7 +480,8 @@ struct Liveness<'a, 'tcx> {
     typeck_results: &'a ty::TypeckResults<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     upvars: Option<&'tcx FxIndexMap<hir::HirId, hir::Upvar>>,
-    closure_captures: Option<&'tcx FxIndexMap<hir::HirId, ty::UpvarId>>,
+    // closure_captures: Option<&'tcx FxIndexMap<hir::HirId, ty::UpvarId>>,
+    closure_min_captures: Option<&'tcx RootVariableMinCaptureList<'tcx>>,
     successors: IndexVec<LiveNode, Option<LiveNode>>,
     rwu_table: rwu_table::RWUTable,
 
@@ -504,8 +505,8 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         let typeck_results = ir.tcx.typeck(body_owner);
         let param_env = ir.tcx.param_env(body_owner);
         let upvars = ir.tcx.upvars_mentioned(body_owner);
-        let closure_captures = typeck_results.closure_captures.get(&body_owner.to_def_id());
-
+        // let closure_captures = typeck_results.closure_captures.get(&body_owner.to_def_id());
+        let closure_min_captures = typeck_results.closure_min_captures.get(&body_owner.to_def_id());
         let closure_ln = ir.add_live_node(ClosureNode);
         let exit_ln = ir.add_live_node(ExitNode);
 
@@ -518,7 +519,8 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             typeck_results,
             param_env,
             upvars,
-            closure_captures,
+            // closure_captures,
+            closure_min_captures,
             successors: IndexVec::from_elem_n(None, num_live_nodes),
             rwu_table: rwu_table::RWUTable::new(num_live_nodes, num_vars),
             closure_ln,
@@ -702,25 +704,28 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         // if they are live on the entry to the closure, since only the closure
         // itself can access them on subsequent calls.
 
-        if let Some(closure_captures) = self.closure_captures {
+        if let Some(closure_min_captures) = self.closure_min_captures {
             // Mark upvars captured by reference as used after closure exits.
             // Since closure_captures is Some, upvars must exists too.
+            //closure_min_captures = MinCaptureInformationMap > RootVariableMinCaptureList > MinCaptureList > CapturedPlace > CaptureInfo > UpvarCapture
             let upvars = self.upvars.unwrap();
-            for (&var_hir_id, upvar_id) in closure_captures {
+            for (&var_hir_id, min_capture_list) in closure_min_captures {
                 let upvar = upvars[&var_hir_id];
-                match self.typeck_results.upvar_capture(*upvar_id) {
-                    ty::UpvarCapture::ByRef(_) => {
-                        let var = self.variable(var_hir_id, upvar.span);
-                        self.acc(self.exit_ln, var, ACC_READ | ACC_USE);
+                for captured_place in min_capture_list {
+                    match captured_place.info.capture_kind {
+                        ty::UpvarCapture::ByRef(_) => {
+                            let var = self.variable(var_hir_id, upvar.span);
+                            self.acc(self.exit_ln, var, ACC_READ | ACC_USE);
+                        }
+                        ty::UpvarCapture::ByValue(_) => {}
                     }
-                    ty::UpvarCapture::ByValue(_) => {}
                 }
             }
         }
 
         let succ = self.propagate_through_expr(&body.value, self.exit_ln);
 
-        if self.closure_captures.is_none() {
+        if self.closure_min_captures.is_none() {
             // Either not a closure, or closure without any captured variables.
             // No need to determine liveness of captured variables, since there
             // are none.
@@ -1190,7 +1195,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         match path.res {
             Res::Local(hid) => {
                 let in_upvars = self.upvars.map_or(false, |u| u.contains_key(&hid));
-                let in_captures = self.closure_captures.map_or(false, |c| c.contains_key(&hid));
+                let in_captures = self.closure_min_captures.map_or(false, |c| c.contains_key(&hid));
 
                 match (in_upvars, in_captures) {
                     (false, _) | (true, true) => self.access_var(hir_id, hid, succ, acc, path.span),
@@ -1390,51 +1395,58 @@ impl<'tcx> Liveness<'_, 'tcx> {
     }
 
     fn warn_about_unused_upvars(&self, entry_ln: LiveNode) {
-        let closure_captures = match self.closure_captures {
+        let closure_min_captures = match self.closure_min_captures {
             None => return,
-            Some(closure_captures) => closure_captures,
+            Some(closure_min_captures) => closure_min_captures,
         };
 
         // If closure_captures is Some(), upvars must be Some() too.
         let upvars = self.upvars.unwrap();
-        for &var_hir_id in closure_captures.keys() {
+        for (&var_hir_id, min_capture_list) in closure_min_captures {
             let upvar = upvars[&var_hir_id];
             let var = self.variable(var_hir_id, upvar.span);
-            let upvar_id = ty::UpvarId {
+            let _upvar_id = ty::UpvarId {
                 var_path: ty::UpvarPath { hir_id: var_hir_id },
                 closure_expr_id: self.body_owner,
             };
-            match self.typeck_results.upvar_capture(upvar_id) {
-                ty::UpvarCapture::ByValue(_) => {}
-                ty::UpvarCapture::ByRef(..) => continue,
-            };
-            if self.used_on_entry(entry_ln, var) {
-                if !self.live_on_entry(entry_ln, var) {
+
+            for captured_place in min_capture_list {
+                match captured_place.info.capture_kind {
+                    ty::UpvarCapture::ByValue(_) => {}
+                    ty::UpvarCapture::ByRef(..) => continue,
+                };
+
+                if self.used_on_entry(entry_ln, var) {
+                    if self.live_on_entry(entry_ln, var).is_none() {
+                        if let Some(name) = self.should_warn(var) {
+                            self.ir.tcx.struct_span_lint_hir(
+                                lint::builtin::UNUSED_ASSIGNMENTS,
+                                var_hir_id,
+                                vec![upvar.span],
+                                |lint| {
+                                    lint.build(&format!(
+                                        "value captured by `{}` is never read",
+                                        name
+                                    ))
+                                    .help("did you mean to capture by reference instead?")
+                                    .emit();
+                                },
+                            );
+                        }
+                    }
+                } else {
                     if let Some(name) = self.should_warn(var) {
                         self.ir.tcx.struct_span_lint_hir(
-                            lint::builtin::UNUSED_ASSIGNMENTS,
+                            lint::builtin::UNUSED_VARIABLES,
                             var_hir_id,
                             vec![upvar.span],
                             |lint| {
-                                lint.build(&format!("value captured by `{}` is never read", name))
+                                lint.build(&format!("unused variable: `{}`", name))
                                     .help("did you mean to capture by reference instead?")
                                     .emit();
                             },
                         );
                     }
-                }
-            } else {
-                if let Some(name) = self.should_warn(var) {
-                    self.ir.tcx.struct_span_lint_hir(
-                        lint::builtin::UNUSED_VARIABLES,
-                        var_hir_id,
-                        vec![upvar.span],
-                        |lint| {
-                            lint.build(&format!("unused variable: `{}`", name))
-                                .help("did you mean to capture by reference instead?")
-                                .emit();
-                        },
-                    );
                 }
             }
         }
