@@ -5,8 +5,6 @@
 // multiple borrows.
 
 
-#![feature(rustc_attrs)]
-
 fn get(x: &isize) -> isize {
     *x
 }
@@ -30,7 +28,7 @@ fn b(x: &mut isize) {
 
 fn c(x: &mut isize) {
     let c1 = || get(x);
-    let c2 = #[rustc_capture_analysis] || { get(x); set(x); }; //~ ERROR closure requires unique access to `x`
+    let c2 = || { get(x); set(x); }; //~ ERROR closure requires unique access to `x`
     c1;
 }
 
