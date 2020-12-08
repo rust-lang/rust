@@ -226,13 +226,13 @@ store.register_early_pass(|| box foo_functions::FooFunctions);
 ```
 
 As one may expect, there is a corresponding `register_late_pass` method
-available as well. Without a call to one of `register_early_pass` or 
+available as well. Without a call to one of `register_early_pass` or
 `register_late_pass`, the lint pass in question will not be run.
 
-One reason that `cargo dev` does not automate this step is that multiple lints 
+One reason that `cargo dev` does not automate this step is that multiple lints
 can use the same lint pass, so registering the lint pass may already be done
 when adding a new lint. Another reason that this step is not automated is that
-the order that the passes are registered determines the order the passes 
+the order that the passes are registered determines the order the passes
 actually run, which in turn affects the order that any emitted lints are output
 in.
 
@@ -379,6 +379,57 @@ pass.
 [fn_kind]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/visit/enum.FnKind.html
 [`FnKind::Fn`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/visit/enum.FnKind.html#variant.Fn
 [ident]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/symbol/struct.Ident.html
+
+## Specifying the lint's minimum supported Rust version (msrv)
+
+Projects supporting older versions of Rust would need to disable a lint if it targets features
+present in later versions. Support for this can be added by specifying an msrv in your lint like so,
+
+```rust
+const MANUAL_STRIP_MSRV: RustcVersion = RustcVersion::new(1, 45, 0);
+```
+
+The project's msrv will also have to be an attribute in the lint so you'll have to add a struct
+and constructor for your lint. The project's msrv needs to be passed when the lint is registered
+in `lib.rs`
+
+```rust
+pub struct ManualStrip {
+    msrv: Option<RustcVersion>,
+}
+
+impl ManualStrip {
+    #[must_use]
+    pub fn new(msrv: Option<RustcVersion>) -> Self {
+        Self { msrv }
+    }
+}
+```
+
+The project's msrv can then be matched against the lint's msrv in the LintPass using the `meets_msrv` utility
+function.
+
+``` rust
+if !meets_msrv(self.msrv.as_ref(), &MANUAL_STRIP_MSRV) {
+    return;
+}
+```
+
+The project's msrv can also be specified as an inner attribute, which overrides the value from
+`clippy.toml`. This can be accounted for using the `extract_msrv_attr!(LintContext)` macro and passing
+LateContext/EarlyContext.
+
+```rust
+impl<'tcx> LateLintPass<'tcx> for ManualStrip {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
+        ...
+    }
+    extract_msrv_attr!(LateContext);
+}
+```
+
+Once the msrv is added to the lint, a relevant test case should be added to `tests/ui/min_rust_version_attr.rs`
+which verifies that the lint isn't emitted if the project's msrv is lower.
 
 ## Author lint
 
