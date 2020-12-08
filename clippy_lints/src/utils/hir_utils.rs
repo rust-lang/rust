@@ -517,7 +517,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                     }
                 }
                 asm.options.hash(&mut self.s);
-                for op in asm.operands {
+                for (op, _op_sp) in asm.operands {
                     match op {
                         InlineAsmOperand::In { reg, expr } => {
                             reg.hash(&mut self.s);

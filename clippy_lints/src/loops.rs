@@ -768,7 +768,7 @@ fn never_loop_expr(expr: &Expr<'_>, main_loop_id: HirId) -> NeverLoopResult {
         ExprKind::InlineAsm(ref asm) => asm
             .operands
             .iter()
-            .map(|o| match o {
+            .map(|(o, _)| match o {
                 InlineAsmOperand::In { expr, .. }
                 | InlineAsmOperand::InOut { expr, .. }
                 | InlineAsmOperand::Const { expr }
