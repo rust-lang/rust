@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use hir_def::{path::path, resolver::HasResolver, AdtId, DefWithBodyId};
+use hir_def::{AdtId, DefWithBodyId, expr::Statement, path::path, resolver::HasResolver};
 use hir_expand::diagnostics::DiagnosticSink;
 use rustc_hash::FxHashSet;
 use syntax::{ast, AstPtr};
@@ -22,6 +22,8 @@ pub(crate) use hir_def::{
     expr::{Expr, ExprId, MatchArm, Pat, PatId},
     LocalFieldId, VariantId,
 };
+
+use super::RemoveThisSemicolon;
 
 pub(super) struct ExprValidator<'a, 'b: 'a> {
     owner: DefWithBodyId,
@@ -78,6 +80,12 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
         let body_expr = &body[body.body_expr];
         if let Expr::Block { tail: Some(t), .. } = body_expr {
             self.validate_results_in_tail_expr(body.body_expr, *t, db);
+        } else {
+            if let Expr::Block { statements, .. } = body_expr {
+                if let Some(Statement::Expr(id)) = statements.last() {
+                    self.validate_missing_tail_expr(body.body_expr, *id, db);
+                }
+            }
         }
     }
 
@@ -314,6 +322,23 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
             if let Ok(source_ptr) = source_map.expr_syntax(id) {
                 self.sink
                     .push(MissingOkInTailExpr { file: source_ptr.file_id, expr: source_ptr.value });
+            }
+        }
+    }
+
+    fn validate_missing_tail_expr(&mut self, body_id: ExprId, possible_tail_id: ExprId, db: &dyn HirDatabase) {
+        let mismatch = match self.infer.type_mismatch_for_expr(body_id) {
+            Some(m) => m,
+            None => return,
+        };
+
+        if let Some(possible_tail_ty) = self.infer.type_of_expr.get(possible_tail_id) {
+            if mismatch.actual == Ty::unit() && mismatch.expected == *possible_tail_ty {
+                let (_, source_map) = db.body_with_source_map(self.owner.into());
+
+                if let Ok(source_ptr) = source_map.expr_syntax(possible_tail_id) {
+                    self.sink.push(RemoveThisSemicolon { file: source_ptr.file_id, expr: source_ptr.value });
+                }
             }
         }
     }

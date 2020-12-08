@@ -4,7 +4,7 @@ use hir::{
     db::AstDatabase,
     diagnostics::{
         Diagnostic, IncorrectCase, MissingFields, MissingOkInTailExpr, NoSuchField,
-        UnresolvedModule,
+        RemoveThisSemicolon, UnresolvedModule,
     },
     HasSource, HirDisplay, Semantics, VariantDef,
 };
@@ -13,11 +13,7 @@ use ide_db::{
     source_change::{FileSystemEdit, SourceFileEdit},
     RootDatabase,
 };
-use syntax::{
-    algo,
-    ast::{self, edit::IndentLevel, make},
-    AstNode,
-};
+use syntax::{AstNode, Direction, T, algo, ast::{self, ExprStmt, edit::IndentLevel, make}};
 use text_edit::TextEdit;
 
 use crate::{diagnostics::Fix, references::rename::rename_with_semantics, FilePosition};
@@ -99,6 +95,24 @@ impl DiagnosticWithFix for MissingOkInTailExpr {
         let source_change =
             SourceFileEdit { file_id: self.file.original_file(sema.db), edit }.into();
         Some(Fix::new("Wrap with ok", source_change, tail_expr_range))
+    }
+}
+
+impl DiagnosticWithFix for RemoveThisSemicolon {
+    fn fix(&self, sema: &Semantics<RootDatabase>) -> Option<Fix> {
+        let root = sema.db.parse_or_expand(self.file)?;
+
+        let semicolon = self.expr.to_node(&root)
+            .syntax()
+            .siblings_with_tokens(Direction::Next)
+            .filter_map(|it| it.into_token())
+            .find(|it| it.kind() == T![;])?
+            .text_range();
+
+        let edit = TextEdit::delete(semicolon);
+        let source_change = SourceFileEdit { file_id: self.file.original_file(sema.db), edit }.into();
+
+        Some(Fix::new("Remove this semicolon", source_change, semicolon))
     }
 }
 
