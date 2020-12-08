@@ -11,7 +11,7 @@ use crate::{
     db::HirDatabase,
     diagnostics::{
         match_check::{is_useful, MatchCheckCtx, Matrix, PatStack, Usefulness},
-        MismatchedArgCount, MissingFields, MissingMatchArms, MissingOkInTailExpr, MissingPatFields,
+        MismatchedArgCount, MissingFields, MissingMatchArms, MissingOkInTailExpr, MissingPatFields, RemoveThisSemicolon
     },
     utils::variant_data,
     ApplicationTy, InferenceResult, Ty, TypeCtor,
@@ -22,8 +22,6 @@ pub(crate) use hir_def::{
     expr::{Expr, ExprId, MatchArm, Pat, PatId},
     LocalFieldId, VariantId,
 };
-
-use super::RemoveThisSemicolon;
 
 pub(super) struct ExprValidator<'a, 'b: 'a> {
     owner: DefWithBodyId,
