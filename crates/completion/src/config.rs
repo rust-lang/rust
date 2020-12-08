@@ -10,7 +10,7 @@ use rustc_hash::FxHashSet;
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CompletionConfig {
     pub enable_postfix_completions: bool,
-    pub disable_fuzzy_autoimports: bool,
+    pub enable_autoimport_completions: bool,
     pub add_call_parenthesis: bool,
     pub add_call_argument_snippets: bool,
     pub snippet_cap: Option<SnippetCap>,
@@ -52,7 +52,7 @@ impl Default for CompletionConfig {
     fn default() -> Self {
         CompletionConfig {
             enable_postfix_completions: true,
-            disable_fuzzy_autoimports: false,
+            enable_autoimport_completions: true,
             add_call_parenthesis: true,
             add_call_argument_snippets: true,
             snippet_cap: Some(SnippetCap { _private: () }),

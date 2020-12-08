@@ -460,10 +460,13 @@
                     "default": true,
                     "markdownDescription": "Whether to show postfix snippets like `dbg`, `if`, `not`, etc."
                 },
-                "rust-analyzer.completion.disableFuzzyAutoimports": {
+                "rust-analyzer.completion.autoimport.enable": {
                     "type": "boolean",
-                    "default": false,
-                    "markdownDescription": "Turns off extra completion suggestions that might be too noisy or slow"
+                    "default": true,
+                    "markdownDescription": [
+                        "Toggles the additional completions that automatically add imports when completed.",
+                        "Note that your client have to specify the `additionalTextEdits` LSP client capability to truly have this feature enabled"
+                    ]
                 },
                 "rust-analyzer.callInfo.full": {
                     "type": "boolean",

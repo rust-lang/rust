@@ -73,12 +73,9 @@ pub use crate::{
 // }
 // ```
 //
-// And experimental completions, enabled with the `rust-analyzer.completion.disableFuzzyAutoimports` setting.
-// This flag enables or disables:
-//
-// - Auto import: additional completion options with automatic `use` import and options from all project importable items, matched for the input
-//
-// Experimental completions might cause issues with performance and completion list look.
+// And the auto import completions, enabled with the `rust-analyzer.completion.autoimport.enable` setting and the corresponding LSP client capabilities.
+// Those are the additional completion options with automatic `use` import and options from all project importable items,
+// fuzzy matched agains the completion imput.
 
 /// Main entry point for completion. We run completion as a two-phase process.
 ///

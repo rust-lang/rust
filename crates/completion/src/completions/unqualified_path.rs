@@ -44,7 +44,7 @@ pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
         acc.add_resolution(ctx, name.to_string(), &res)
     });
 
-    if !ctx.config.disable_fuzzy_autoimports && ctx.config.resolve_additional_edits_lazily() {
+    if ctx.config.enable_autoimport_completions && ctx.config.resolve_additional_edits_lazily() {
         fuzzy_completion(acc, ctx).unwrap_or_default()
     }
 }
@@ -116,7 +116,9 @@ fn complete_enum_variants(acc: &mut Completions, ctx: &CompletionContext, ty: &T
 //
 // .Feature toggle
 //
-// The feature can be forcefully turned off in the settings with the `rust-analyzer.completion.disableFuzzyAutoimports` flag.
+// The feature can be forcefully turned off in the settings with the `rust-analyzer.completion.enableAutoimportCompletions` flag.
+// Note that having this flag set to `true` does not guarantee that the feature is enabled: your client needs to have the corredponding
+// capability enabled.
 fn fuzzy_completion(acc: &mut Completions, ctx: &CompletionContext) -> Option<()> {
     let _p = profile::span("fuzzy_completion");
     let potential_import_name = ctx.token.to_string();

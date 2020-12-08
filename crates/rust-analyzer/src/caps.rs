@@ -97,6 +97,7 @@ pub fn server_capabilities(client_caps: &ClientCapabilities) -> ServerCapabiliti
 
 fn completions_resolve_provider(client_caps: &ClientCapabilities) -> Option<bool> {
     if enabled_completions_resolve_capabilities(client_caps)?.is_empty() {
+        log::info!("No `additionalTextEdits` completion resolve capability was found in the client capabilities, autoimport completion is disabled");
         None
     } else {
         Some(true)
