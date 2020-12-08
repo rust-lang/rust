@@ -8,7 +8,7 @@ LL |           self.thing.bar(|| {
    | |
 LL | |
 LL | |             &self.number;
-   | |              ---- first borrow occurs due to use of `self` in closure
+   | |              ----------- first borrow occurs due to use of `self` in closure
 LL | |         });
    | |__________^ mutable borrow occurs here
 

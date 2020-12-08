@@ -9,7 +9,7 @@ LL | |
 LL | |         |a| {
    | |         --- closure construction occurs here
 LL | |             f.n.insert(*a);
-   | |             - first borrow occurs due to use of `f` in closure
+   | |             --- first borrow occurs due to use of `f` in closure
 LL | |         })
    | |__________^ second borrow occurs here
 
@@ -24,7 +24,7 @@ LL |
 LL |         |a| {
    |         ^^^ closure construction occurs here
 LL |             f.n.insert(*a);
-   |             - second borrow occurs due to use of `f` in closure
+   |             --- second borrow occurs due to use of `f` in closure
 
 error: aborting due to 2 previous errors
 

@@ -7,7 +7,7 @@ LL |     p.blockm(|| {
    |     | immutable borrow later used by call
    |     immutable borrow occurs here
 LL |         p.x = 10;
-   |         - second borrow occurs due to use of `p` in closure
+   |         --- second borrow occurs due to use of `p` in closure
 
 error[E0502]: cannot borrow `p` as immutable because it is also borrowed as mutable
   --> $DIR/borrowck-loan-rcvr.rs:34:5

@@ -10,7 +10,7 @@ error[E0502]: cannot borrow `*x.1` as mutable because it is also borrowed as imm
   --> $DIR/issue-61623.rs:6:19
    |
 LL |     f2(|| x.0, f1(x.1))
-   |     -- -- -       ^^^ mutable borrow occurs here
+   |     -- -- ---     ^^^ mutable borrow occurs here
    |     |  |  |
    |     |  |  first borrow occurs due to use of `x` in closure
    |     |  immutable borrow occurs here
