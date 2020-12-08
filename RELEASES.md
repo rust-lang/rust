@@ -36,7 +36,7 @@ Compiler
 - [Added tier 3 support for `mipsel-unknown-none`.][78676]
 - [Raised the minimum supported LLVM version to LLVM 9.][78848]
 - [Output from threads spawned in tests is now captured.][78227]
-- [TODO: rustc_target: Change os and vendor values to "none" and "unknown" for some targets][78951]
+- [Change os and vendor values to "none" and "unknown" for some targets][78951]
 
 \* Refer to Rust's [platform support page][forge-platform-support] for more
 information on Rust's tiered platform support.
