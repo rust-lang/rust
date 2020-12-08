@@ -110,7 +110,17 @@ impl Attrs {
     }
 
     pub(crate) fn new(owner: &dyn AttrsOwner, hygiene: &Hygiene) -> Attrs {
-        let outer_docs = ast::CommentIter::from_syntax_node(owner.syntax()).map(|docs_text| {
+        let (inner_attrs, inner_docs) = inner_attributes(owner.syntax())
+            .map_or((None, None), |(attrs, docs)| ((Some(attrs), Some(docs))));
+
+        let outer_attrs = owner.attrs().filter(|attr| attr.excl_token().is_none());
+        let attrs = outer_attrs
+            .chain(inner_attrs.into_iter().flatten())
+            .map(|attr| (attr.syntax().text_range().start(), Attr::from_src(attr, hygiene)));
+
+        let outer_docs =
+            ast::CommentIter::from_syntax_node(owner.syntax()).filter(ast::Comment::is_outer);
+        let docs = outer_docs.chain(inner_docs.into_iter().flatten()).map(|docs_text| {
             (
                 docs_text.syntax().text_range().start(),
                 docs_text.doc_comment().map(|doc| Attr {
@@ -119,13 +129,8 @@ impl Attrs {
                 }),
             )
         });
-        let outer_attrs = owner.attrs().filter(|attr| attr.excl_token().is_none());
-        let inner_attrs = inner_attributes(owner.syntax()).into_iter().flatten();
-        let attrs = outer_attrs
-            .chain(inner_attrs)
-            .map(|attr| (attr.syntax().text_range().start(), Attr::from_src(attr, hygiene)));
         // sort here by syntax node offset because the source can have doc attributes and doc strings be interleaved
-        let attrs: Vec<_> = outer_docs.chain(attrs).sorted_by_key(|&(offset, _)| offset).collect();
+        let attrs: Vec<_> = docs.chain(attrs).sorted_by_key(|&(offset, _)| offset).collect();
         let entries = if attrs.is_empty() {
             // Avoid heap allocation
             None
@@ -186,36 +191,39 @@ impl Attrs {
     }
 }
 
-fn inner_attributes(syntax: &SyntaxNode) -> Option<impl Iterator<Item = ast::Attr>> {
-    let (attrs, _docs) = match_ast! {
+fn inner_attributes(
+    syntax: &SyntaxNode,
+) -> Option<(impl Iterator<Item = ast::Attr>, impl Iterator<Item = ast::Comment>)> {
+    let (attrs, docs) = match_ast! {
         match syntax {
-            ast::SourceFile(it) => (it.attrs(), None::<ast::Comment>),
+            ast::SourceFile(it) => (it.attrs(), ast::CommentIter::from_syntax_node(it.syntax())),
             ast::ExternBlock(it) => {
                 let extern_item_list = it.extern_item_list()?;
-                (extern_item_list.attrs(), None)
+                (extern_item_list.attrs(), ast::CommentIter::from_syntax_node(extern_item_list.syntax()))
             },
             ast::Fn(it) => {
                 let body = it.body()?;
-                (body.attrs(), None)
+                (body.attrs(), ast::CommentIter::from_syntax_node(body.syntax()))
             },
             ast::Impl(it) => {
                 let assoc_item_list = it.assoc_item_list()?;
-                (assoc_item_list.attrs(), None)
+                (assoc_item_list.attrs(), ast::CommentIter::from_syntax_node(assoc_item_list.syntax()))
             },
             ast::Module(it) => {
                 let item_list = it.item_list()?;
-                (item_list.attrs(), None)
+                (item_list.attrs(), ast::CommentIter::from_syntax_node(item_list.syntax()))
             },
             // FIXME: BlockExpr's only accept inner attributes in specific cases
             // Excerpt from the reference:
-                // Block expressions accept outer and inner attributes, but only when they are the outer
-                // expression of an expression statement or the final expression of another block expression.
+            // Block expressions accept outer and inner attributes, but only when they are the outer
+            // expression of an expression statement or the final expression of another block expression.
             ast::BlockExpr(it) => return None,
             _ => return None,
         }
     };
     let attrs = attrs.filter(|attr| attr.excl_token().is_some());
-    Some(attrs)
+    let docs = docs.filter(|doc| doc.is_inner());
+    Some((attrs, docs))
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
