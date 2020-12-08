@@ -1,7 +1,7 @@
 //! Rayon extensions for `HashSet`.
 
 use crate::hash_set::HashSet;
-use crate::raw::{AllocRef, Global};
+use crate::raw::{Allocator, Global};
 use core::hash::{BuildHasher, Hash};
 use rayon::iter::plumbing::UnindexedConsumer;
 use rayon::iter::{FromParallelIterator, IntoParallelIterator, ParallelExtend, ParallelIterator};
@@ -15,11 +15,11 @@ use rayon::iter::{FromParallelIterator, IntoParallelIterator, ParallelExtend, Pa
 /// [`into_par_iter`]: /hashbrown/struct.HashSet.html#method.into_par_iter
 /// [`HashSet`]: /hashbrown/struct.HashSet.html
 /// [`IntoParallelIterator`]: https://docs.rs/rayon/1.0/rayon/iter/trait.IntoParallelIterator.html
-pub struct IntoParIter<T, S, A: AllocRef + Clone = Global> {
+pub struct IntoParIter<T, S, A: Allocator + Clone = Global> {
     set: HashSet<T, S, A>,
 }
 
-impl<T: Send, S: Send, A: AllocRef + Clone + Send> ParallelIterator for IntoParIter<T, S, A> {
+impl<T: Send, S: Send, A: Allocator + Clone + Send> ParallelIterator for IntoParIter<T, S, A> {
     type Item = T;
 
     fn drive_unindexed<C>(self, consumer: C) -> C::Result
@@ -41,11 +41,11 @@ impl<T: Send, S: Send, A: AllocRef + Clone + Send> ParallelIterator for IntoParI
 ///
 /// [`par_drain`]: /hashbrown/struct.HashSet.html#method.par_drain
 /// [`HashSet`]: /hashbrown/struct.HashSet.html
-pub struct ParDrain<'a, T, S, A: AllocRef + Clone = Global> {
+pub struct ParDrain<'a, T, S, A: Allocator + Clone = Global> {
     set: &'a mut HashSet<T, S, A>,
 }
 
-impl<T: Send, S: Send, A: AllocRef + Clone + Send + Sync> ParallelIterator
+impl<T: Send, S: Send, A: Allocator + Clone + Send + Sync> ParallelIterator
     for ParDrain<'_, T, S, A>
 {
     type Item = T;
@@ -71,11 +71,11 @@ impl<T: Send, S: Send, A: AllocRef + Clone + Send + Sync> ParallelIterator
 /// [`par_iter`]: /hashbrown/struct.HashSet.html#method.par_iter
 /// [`HashSet`]: /hashbrown/struct.HashSet.html
 /// [`IntoParallelRefIterator`]: https://docs.rs/rayon/1.0/rayon/iter/trait.IntoParallelRefIterator.html
-pub struct ParIter<'a, T, S, A: AllocRef + Clone = Global> {
+pub struct ParIter<'a, T, S, A: Allocator + Clone = Global> {
     set: &'a HashSet<T, S, A>,
 }
 
-impl<'a, T: Sync, S: Sync, A: AllocRef + Clone + Sync> ParallelIterator for ParIter<'a, T, S, A> {
+impl<'a, T: Sync, S: Sync, A: Allocator + Clone + Sync> ParallelIterator for ParIter<'a, T, S, A> {
     type Item = &'a T;
 
     fn drive_unindexed<C>(self, consumer: C) -> C::Result
@@ -94,7 +94,7 @@ impl<'a, T: Sync, S: Sync, A: AllocRef + Clone + Sync> ParallelIterator for ParI
 ///
 /// [`par_difference`]: /hashbrown/struct.HashSet.html#method.par_difference
 /// [`HashSet`]: /hashbrown/struct.HashSet.html
-pub struct ParDifference<'a, T, S, A: AllocRef + Clone = Global> {
+pub struct ParDifference<'a, T, S, A: Allocator + Clone = Global> {
     a: &'a HashSet<T, S, A>,
     b: &'a HashSet<T, S, A>,
 }
@@ -103,7 +103,7 @@ impl<'a, T, S, A> ParallelIterator for ParDifference<'a, T, S, A>
 where
     T: Eq + Hash + Sync,
     S: BuildHasher + Sync,
-    A: AllocRef + Clone + Sync,
+    A: Allocator + Clone + Sync,
 {
     type Item = &'a T;
 
@@ -127,7 +127,7 @@ where
 ///
 /// [`par_symmetric_difference`]: /hashbrown/struct.HashSet.html#method.par_symmetric_difference
 /// [`HashSet`]: /hashbrown/struct.HashSet.html
-pub struct ParSymmetricDifference<'a, T, S, A: AllocRef + Clone = Global> {
+pub struct ParSymmetricDifference<'a, T, S, A: Allocator + Clone = Global> {
     a: &'a HashSet<T, S, A>,
     b: &'a HashSet<T, S, A>,
 }
@@ -136,7 +136,7 @@ impl<'a, T, S, A> ParallelIterator for ParSymmetricDifference<'a, T, S, A>
 where
     T: Eq + Hash + Sync,
     S: BuildHasher + Sync,
-    A: AllocRef + Clone + Sync,
+    A: Allocator + Clone + Sync,
 {
     type Item = &'a T;
 
@@ -159,7 +159,7 @@ where
 ///
 /// [`par_intersection`]: /hashbrown/struct.HashSet.html#method.par_intersection
 /// [`HashSet`]: /hashbrown/struct.HashSet.html
-pub struct ParIntersection<'a, T, S, A: AllocRef + Clone = Global> {
+pub struct ParIntersection<'a, T, S, A: Allocator + Clone = Global> {
     a: &'a HashSet<T, S, A>,
     b: &'a HashSet<T, S, A>,
 }
@@ -168,7 +168,7 @@ impl<'a, T, S, A> ParallelIterator for ParIntersection<'a, T, S, A>
 where
     T: Eq + Hash + Sync,
     S: BuildHasher + Sync,
-    A: AllocRef + Clone + Sync,
+    A: Allocator + Clone + Sync,
 {
     type Item = &'a T;
 
@@ -230,7 +230,7 @@ impl<T, S, A> HashSet<T, S, A>
 where
     T: Eq + Hash + Sync,
     S: BuildHasher + Sync,
-    A: AllocRef + Clone + Sync,
+    A: Allocator + Clone + Sync,
 {
     /// Visits (potentially in parallel) the values representing the difference,
     /// i.e. the values that are in `self` but not in `other`.
@@ -297,7 +297,7 @@ impl<T, S, A> HashSet<T, S, A>
 where
     T: Eq + Hash + Send,
     S: BuildHasher + Send,
-    A: AllocRef + Clone + Send,
+    A: Allocator + Clone + Send,
 {
     /// Consumes (potentially in parallel) all values in an arbitrary order,
     /// while preserving the set's allocated memory for reuse.
@@ -307,7 +307,7 @@ where
     }
 }
 
-impl<T: Send, S: Send, A: AllocRef + Clone + Send> IntoParallelIterator for HashSet<T, S, A> {
+impl<T: Send, S: Send, A: Allocator + Clone + Send> IntoParallelIterator for HashSet<T, S, A> {
     type Item = T;
     type Iter = IntoParIter<T, S, A>;
 
@@ -317,7 +317,7 @@ impl<T: Send, S: Send, A: AllocRef + Clone + Send> IntoParallelIterator for Hash
     }
 }
 
-impl<'a, T: Sync, S: Sync, A: AllocRef + Clone + Sync> IntoParallelIterator
+impl<'a, T: Sync, S: Sync, A: Allocator + Clone + Sync> IntoParallelIterator
     for &'a HashSet<T, S, A>
 {
     type Item = &'a T;
@@ -378,7 +378,7 @@ fn extend<T, S, I, A>(set: &mut HashSet<T, S, A>, par_iter: I)
 where
     T: Eq + Hash,
     S: BuildHasher,
-    A: AllocRef + Clone,
+    A: Allocator + Clone,
     I: IntoParallelIterator,
     HashSet<T, S, A>: Extend<I::Item>,
 {
