@@ -457,17 +457,15 @@ impl<'a> InFile<&'a SyntaxNode> {
             return FileRange { file_id: range.file_id.original_file(db), range: range.value };
         }
 
-        // Fall back to whole macro call
-        if let Some(expansion) = self.file_id.expansion_info(db) {
-            if let Some(call_node) = expansion.call_node() {
-                return FileRange {
-                    file_id: call_node.file_id.original_file(db),
-                    range: call_node.value.text_range(),
-                };
-            }
+        // Fall back to whole macro call.
+        let mut node = self.cloned();
+        while let Some(call_node) = node.file_id.call_node(db) {
+            node = call_node;
         }
 
-        FileRange { file_id: self.file_id.original_file(db), range: self.value.text_range() }
+        let orig_file = node.file_id.original_file(db);
+        assert_eq!(node.file_id, orig_file.into());
+        FileRange { file_id: orig_file, range: node.value.text_range() }
     }
 }
 
