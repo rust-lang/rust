@@ -1,7 +1,4 @@
-// Replace with `import fetch from "node-fetch"` once this is fixed in rollup:
-// https://github.com/rollup/plugins/issues/491
-const fetch = require("node-fetch") as typeof import("node-fetch")["default"];
-
+import fetch from "node-fetch";
 import * as vscode from "vscode";
 import * as stream from "stream";
 import * as crypto from "crypto";
