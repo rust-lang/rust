@@ -1,4 +1,4 @@
-use crate::raw::{AllocRef, Bucket, Global, RawDrain, RawIntoIter, RawIter, RawTable};
+use crate::raw::{Allocator, Bucket, Global, RawDrain, RawIntoIter, RawIter, RawTable};
 use crate::TryReserveError;
 use core::borrow::Borrow;
 use core::fmt::{self, Debug};
@@ -185,7 +185,7 @@ pub enum DefaultHashBuilder {}
 ///     .iter().cloned().collect();
 /// // use the values stored in map
 /// ```
-pub struct HashMap<K, V, S = DefaultHashBuilder, A: AllocRef + Clone = Global> {
+pub struct HashMap<K, V, S = DefaultHashBuilder, A: Allocator + Clone = Global> {
     pub(crate) hash_builder: S,
     pub(crate) table: RawTable<(K, V), A>,
 }
@@ -280,7 +280,7 @@ impl<K, V> HashMap<K, V, DefaultHashBuilder> {
 }
 
 #[cfg(feature = "ahash")]
-impl<K, V, A: AllocRef + Clone> HashMap<K, V, DefaultHashBuilder, A> {
+impl<K, V, A: Allocator + Clone> HashMap<K, V, DefaultHashBuilder, A> {
     /// Creates an empty `HashMap` using the given allocator.
     ///
     /// The hash map is initially created with a capacity of 0, so it will not allocate until it
@@ -369,7 +369,7 @@ impl<K, V, S> HashMap<K, V, S> {
     }
 }
 
-impl<K, V, S, A: AllocRef + Clone> HashMap<K, V, S, A> {
+impl<K, V, S, A: Allocator + Clone> HashMap<K, V, S, A> {
     /// Creates an empty `HashMap` which will use the given hash builder to hash
     /// keys. It will be allocated with the given allocator.
     ///
@@ -754,7 +754,7 @@ impl<K, V, S, A> HashMap<K, V, S, A>
 where
     K: Eq + Hash,
     S: BuildHasher,
-    A: AllocRef + Clone,
+    A: Allocator + Clone,
 {
     /// Reserves capacity for at least `additional` more elements to be inserted
     /// in the `HashMap`. The collection may reserve more space to avoid
@@ -1172,7 +1172,7 @@ where
     }
 }
 
-impl<K, V, S, A: AllocRef + Clone> HashMap<K, V, S, A> {
+impl<K, V, S, A: Allocator + Clone> HashMap<K, V, S, A> {
     /// Creates a raw entry builder for the HashMap.
     ///
     /// Raw entries provide the lowest level of control for searching and
@@ -1235,7 +1235,7 @@ where
     K: Eq + Hash,
     V: PartialEq,
     S: BuildHasher,
-    A: AllocRef + Clone,
+    A: Allocator + Clone,
 {
     fn eq(&self, other: &Self) -> bool {
         if self.len() != other.len() {
@@ -1252,7 +1252,7 @@ where
     K: Eq + Hash,
     V: Eq,
     S: BuildHasher,
-    A: AllocRef + Clone,
+    A: Allocator + Clone,
 {
 }
 
@@ -1260,7 +1260,7 @@ impl<K, V, S, A> Debug for HashMap<K, V, S, A>
 where
     K: Debug,
     V: Debug,
-    A: AllocRef + Clone,
+    A: Allocator + Clone,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_map().entries(self.iter()).finish()
@@ -1270,7 +1270,7 @@ where
 impl<K, V, S, A> Default for HashMap<K, V, S, A>
 where
     S: Default,
-    A: Default + AllocRef + Clone,
+    A: Default + Allocator + Clone,
 {
     /// Creates an empty `HashMap<K, V, S, A>`, with the `Default` value for the hasher and allocator.
     #[cfg_attr(feature = "inline-more", inline)]
@@ -1284,7 +1284,7 @@ where
     K: Eq + Hash + Borrow<Q>,
     Q: Eq + Hash,
     S: BuildHasher,
-    A: AllocRef + Clone,
+    A: Allocator + Clone,
 {
     type Output = V;
 
@@ -1364,11 +1364,11 @@ impl<K, V> IterMut<'_, K, V> {
 ///
 /// [`into_iter`]: struct.HashMap.html#method.into_iter
 /// [`HashMap`]: struct.HashMap.html
-pub struct IntoIter<K, V, A: AllocRef + Clone = Global> {
+pub struct IntoIter<K, V, A: Allocator + Clone = Global> {
     inner: RawIntoIter<(K, V), A>,
 }
 
-impl<K, V, A: AllocRef + Clone> IntoIter<K, V, A> {
+impl<K, V, A: Allocator + Clone> IntoIter<K, V, A> {
     /// Returns a iterator of references over the remaining items.
     #[cfg_attr(feature = "inline-more", inline)]
     pub(super) fn iter(&self) -> Iter<'_, K, V> {
@@ -1440,11 +1440,11 @@ impl<K, V: Debug> fmt::Debug for Values<'_, K, V> {
 ///
 /// [`drain`]: struct.HashMap.html#method.drain
 /// [`HashMap`]: struct.HashMap.html
-pub struct Drain<'a, K, V, A: AllocRef + Clone = Global> {
+pub struct Drain<'a, K, V, A: Allocator + Clone = Global> {
     inner: RawDrain<'a, (K, V), A>,
 }
 
-impl<K, V, A: AllocRef + Clone> Drain<'_, K, V, A> {
+impl<K, V, A: Allocator + Clone> Drain<'_, K, V, A> {
     /// Returns a iterator of references over the remaining items.
     #[cfg_attr(feature = "inline-more", inline)]
     pub(super) fn iter(&self) -> Iter<'_, K, V> {
@@ -1462,7 +1462,7 @@ impl<K, V, A: AllocRef + Clone> Drain<'_, K, V, A> {
 ///
 /// [`drain_filter`]: struct.HashMap.html#method.drain_filter
 /// [`HashMap`]: struct.HashMap.html
-pub struct DrainFilter<'a, K, V, F, A: AllocRef + Clone = Global>
+pub struct DrainFilter<'a, K, V, F, A: Allocator + Clone = Global>
 where
     F: FnMut(&K, &mut V) -> bool,
 {
@@ -1473,7 +1473,7 @@ where
 impl<'a, K, V, F, A> Drop for DrainFilter<'a, K, V, F, A>
 where
     F: FnMut(&K, &mut V) -> bool,
-    A: AllocRef + Clone,
+    A: Allocator + Clone,
 {
     #[cfg_attr(feature = "inline-more", inline)]
     fn drop(&mut self) {
@@ -1497,7 +1497,7 @@ impl<T: Iterator> Drop for ConsumeAllOnDrop<'_, T> {
 impl<K, V, F, A> Iterator for DrainFilter<'_, K, V, F, A>
 where
     F: FnMut(&K, &mut V) -> bool,
-    A: AllocRef + Clone,
+    A: Allocator + Clone,
 {
     type Item = (K, V);
 
@@ -1515,12 +1515,12 @@ where
 impl<K, V, F> FusedIterator for DrainFilter<'_, K, V, F> where F: FnMut(&K, &mut V) -> bool {}
 
 /// Portions of `DrainFilter` shared with `set::DrainFilter`
-pub(super) struct DrainFilterInner<'a, K, V, A: AllocRef + Clone> {
+pub(super) struct DrainFilterInner<'a, K, V, A: Allocator + Clone> {
     pub iter: RawIter<(K, V)>,
     pub table: &'a mut RawTable<(K, V), A>,
 }
 
-impl<K, V, A: AllocRef + Clone> DrainFilterInner<'_, K, V, A> {
+impl<K, V, A: Allocator + Clone> DrainFilterInner<'_, K, V, A> {
     #[cfg_attr(feature = "inline-more", inline)]
     pub(super) fn next<F>(&mut self, f: &mut F) -> Option<(K, V)>
     where
@@ -1554,7 +1554,7 @@ pub struct ValuesMut<'a, K, V> {
 /// See the [`HashMap::raw_entry_mut`] docs for usage examples.
 ///
 /// [`HashMap::raw_entry_mut`]: struct.HashMap.html#method.raw_entry_mut
-pub struct RawEntryBuilderMut<'a, K, V, S, A: AllocRef + Clone = Global> {
+pub struct RawEntryBuilderMut<'a, K, V, S, A: Allocator + Clone = Global> {
     map: &'a mut HashMap<K, V, S, A>,
 }
 
@@ -1569,7 +1569,7 @@ pub struct RawEntryBuilderMut<'a, K, V, S, A: AllocRef + Clone = Global> {
 /// [`Entry`]: enum.Entry.html
 /// [`raw_entry_mut`]: struct.HashMap.html#method.raw_entry_mut
 /// [`RawEntryBuilderMut`]: struct.RawEntryBuilderMut.html
-pub enum RawEntryMut<'a, K, V, S, A: AllocRef + Clone> {
+pub enum RawEntryMut<'a, K, V, S, A: Allocator + Clone> {
     /// An occupied entry.
     Occupied(RawOccupiedEntryMut<'a, K, V, S, A>),
     /// A vacant entry.
@@ -1580,7 +1580,7 @@ pub enum RawEntryMut<'a, K, V, S, A: AllocRef + Clone> {
 /// It is part of the [`RawEntryMut`] enum.
 ///
 /// [`RawEntryMut`]: enum.RawEntryMut.html
-pub struct RawOccupiedEntryMut<'a, K, V, S, A: AllocRef + Clone = Global> {
+pub struct RawOccupiedEntryMut<'a, K, V, S, A: Allocator + Clone = Global> {
     elem: Bucket<(K, V)>,
     table: &'a mut RawTable<(K, V), A>,
     hash_builder: &'a S,
@@ -1590,14 +1590,14 @@ unsafe impl<K, V, S, A> Send for RawOccupiedEntryMut<'_, K, V, S, A>
 where
     K: Send,
     V: Send,
-    A: Send + AllocRef + Clone,
+    A: Send + Allocator + Clone,
 {
 }
 unsafe impl<K, V, S, A> Sync for RawOccupiedEntryMut<'_, K, V, S, A>
 where
     K: Sync,
     V: Sync,
-    A: Send + AllocRef + Clone,
+    A: Send + Allocator + Clone,
 {
 }
 
@@ -1605,7 +1605,7 @@ where
 /// It is part of the [`RawEntryMut`] enum.
 ///
 /// [`RawEntryMut`]: enum.RawEntryMut.html
-pub struct RawVacantEntryMut<'a, K, V, S, A: AllocRef + Clone = Global> {
+pub struct RawVacantEntryMut<'a, K, V, S, A: Allocator + Clone = Global> {
     table: &'a mut RawTable<(K, V), A>,
     hash_builder: &'a S,
 }
@@ -1615,11 +1615,11 @@ pub struct RawVacantEntryMut<'a, K, V, S, A: AllocRef + Clone = Global> {
 /// See the [`HashMap::raw_entry`] docs for usage examples.
 ///
 /// [`HashMap::raw_entry`]: struct.HashMap.html#method.raw_entry
-pub struct RawEntryBuilder<'a, K, V, S, A: AllocRef + Clone = Global> {
+pub struct RawEntryBuilder<'a, K, V, S, A: Allocator + Clone = Global> {
     map: &'a HashMap<K, V, S, A>,
 }
 
-impl<'a, K, V, S, A: AllocRef + Clone> RawEntryBuilderMut<'a, K, V, S, A> {
+impl<'a, K, V, S, A: Allocator + Clone> RawEntryBuilderMut<'a, K, V, S, A> {
     /// Creates a `RawEntryMut` from the given key.
     #[cfg_attr(feature = "inline-more", inline)]
     #[allow(clippy::wrong_self_convention)]
@@ -1646,7 +1646,7 @@ impl<'a, K, V, S, A: AllocRef + Clone> RawEntryBuilderMut<'a, K, V, S, A> {
     }
 }
 
-impl<'a, K, V, S, A: AllocRef + Clone> RawEntryBuilderMut<'a, K, V, S, A> {
+impl<'a, K, V, S, A: Allocator + Clone> RawEntryBuilderMut<'a, K, V, S, A> {
     /// Creates a `RawEntryMut` from the given hash.
     #[cfg_attr(feature = "inline-more", inline)]
     #[allow(clippy::wrong_self_convention)]
@@ -1676,7 +1676,7 @@ impl<'a, K, V, S, A: AllocRef + Clone> RawEntryBuilderMut<'a, K, V, S, A> {
     }
 }
 
-impl<'a, K, V, S, A: AllocRef + Clone> RawEntryBuilder<'a, K, V, S, A> {
+impl<'a, K, V, S, A: Allocator + Clone> RawEntryBuilder<'a, K, V, S, A> {
     /// Access an entry by key.
     #[cfg_attr(feature = "inline-more", inline)]
     #[allow(clippy::wrong_self_convention)]
@@ -1724,7 +1724,7 @@ impl<'a, K, V, S, A: AllocRef + Clone> RawEntryBuilder<'a, K, V, S, A> {
     }
 }
 
-impl<'a, K, V, S, A: AllocRef + Clone> RawEntryMut<'a, K, V, S, A> {
+impl<'a, K, V, S, A: Allocator + Clone> RawEntryMut<'a, K, V, S, A> {
     /// Sets the value of the entry, and returns a RawOccupiedEntryMut.
     ///
     /// # Examples
@@ -1918,7 +1918,7 @@ impl<'a, K, V, S, A: AllocRef + Clone> RawEntryMut<'a, K, V, S, A> {
     }
 }
 
-impl<'a, K, V, S, A: AllocRef + Clone> RawOccupiedEntryMut<'a, K, V, S, A> {
+impl<'a, K, V, S, A: Allocator + Clone> RawOccupiedEntryMut<'a, K, V, S, A> {
     /// Gets a reference to the key in the entry.
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn key(&self) -> &K {
@@ -2036,7 +2036,7 @@ impl<'a, K, V, S, A: AllocRef + Clone> RawOccupiedEntryMut<'a, K, V, S, A> {
     }
 }
 
-impl<'a, K, V, S, A: AllocRef + Clone> RawVacantEntryMut<'a, K, V, S, A> {
+impl<'a, K, V, S, A: Allocator + Clone> RawVacantEntryMut<'a, K, V, S, A> {
     /// Sets the value of the entry with the VacantEntry's key,
     /// and returns a mutable reference to it.
     #[cfg_attr(feature = "inline-more", inline)]
@@ -2105,13 +2105,13 @@ impl<'a, K, V, S, A: AllocRef + Clone> RawVacantEntryMut<'a, K, V, S, A> {
     }
 }
 
-impl<K, V, S, A: AllocRef + Clone> Debug for RawEntryBuilderMut<'_, K, V, S, A> {
+impl<K, V, S, A: Allocator + Clone> Debug for RawEntryBuilderMut<'_, K, V, S, A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("RawEntryBuilder").finish()
     }
 }
 
-impl<K: Debug, V: Debug, S, A: AllocRef + Clone> Debug for RawEntryMut<'_, K, V, S, A> {
+impl<K: Debug, V: Debug, S, A: Allocator + Clone> Debug for RawEntryMut<'_, K, V, S, A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             RawEntryMut::Vacant(ref v) => f.debug_tuple("RawEntry").field(v).finish(),
@@ -2120,7 +2120,7 @@ impl<K: Debug, V: Debug, S, A: AllocRef + Clone> Debug for RawEntryMut<'_, K, V,
     }
 }
 
-impl<K: Debug, V: Debug, S, A: AllocRef + Clone> Debug for RawOccupiedEntryMut<'_, K, V, S, A> {
+impl<K: Debug, V: Debug, S, A: Allocator + Clone> Debug for RawOccupiedEntryMut<'_, K, V, S, A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("RawOccupiedEntryMut")
             .field("key", self.key())
@@ -2129,13 +2129,13 @@ impl<K: Debug, V: Debug, S, A: AllocRef + Clone> Debug for RawOccupiedEntryMut<'
     }
 }
 
-impl<K, V, S, A: AllocRef + Clone> Debug for RawVacantEntryMut<'_, K, V, S, A> {
+impl<K, V, S, A: Allocator + Clone> Debug for RawVacantEntryMut<'_, K, V, S, A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("RawVacantEntryMut").finish()
     }
 }
 
-impl<K, V, S, A: AllocRef + Clone> Debug for RawEntryBuilder<'_, K, V, S, A> {
+impl<K, V, S, A: Allocator + Clone> Debug for RawEntryBuilder<'_, K, V, S, A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("RawEntryBuilder").finish()
     }
@@ -2149,7 +2149,7 @@ impl<K, V, S, A: AllocRef + Clone> Debug for RawEntryBuilder<'_, K, V, S, A> {
 /// [`entry`]: struct.HashMap.html#method.entry
 pub enum Entry<'a, K, V, S, A>
 where
-    A: AllocRef + Clone,
+    A: Allocator + Clone,
 {
     /// An occupied entry.
     Occupied(OccupiedEntry<'a, K, V, S, A>),
@@ -2158,7 +2158,7 @@ where
     Vacant(VacantEntry<'a, K, V, S, A>),
 }
 
-impl<K: Debug, V: Debug, S, A: AllocRef + Clone> Debug for Entry<'_, K, V, S, A> {
+impl<K: Debug, V: Debug, S, A: Allocator + Clone> Debug for Entry<'_, K, V, S, A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             Entry::Vacant(ref v) => f.debug_tuple("Entry").field(v).finish(),
@@ -2171,7 +2171,7 @@ impl<K: Debug, V: Debug, S, A: AllocRef + Clone> Debug for Entry<'_, K, V, S, A>
 /// It is part of the [`Entry`] enum.
 ///
 /// [`Entry`]: enum.Entry.html
-pub struct OccupiedEntry<'a, K, V, S, A: AllocRef + Clone = Global> {
+pub struct OccupiedEntry<'a, K, V, S, A: Allocator + Clone = Global> {
     hash: u64,
     key: Option<K>,
     elem: Bucket<(K, V)>,
@@ -2183,7 +2183,7 @@ where
     K: Send,
     V: Send,
     S: Send,
-    A: Send + AllocRef + Clone,
+    A: Send + Allocator + Clone,
 {
 }
 unsafe impl<K, V, S, A> Sync for OccupiedEntry<'_, K, V, S, A>
@@ -2191,11 +2191,11 @@ where
     K: Sync,
     V: Sync,
     S: Sync,
-    A: Sync + AllocRef + Clone,
+    A: Sync + Allocator + Clone,
 {
 }
 
-impl<K: Debug, V: Debug, S, A: AllocRef + Clone> Debug for OccupiedEntry<'_, K, V, S, A> {
+impl<K: Debug, V: Debug, S, A: Allocator + Clone> Debug for OccupiedEntry<'_, K, V, S, A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("OccupiedEntry")
             .field("key", self.key())
@@ -2208,19 +2208,19 @@ impl<K: Debug, V: Debug, S, A: AllocRef + Clone> Debug for OccupiedEntry<'_, K, 
 /// It is part of the [`Entry`] enum.
 ///
 /// [`Entry`]: enum.Entry.html
-pub struct VacantEntry<'a, K, V, S, A: AllocRef + Clone = Global> {
+pub struct VacantEntry<'a, K, V, S, A: Allocator + Clone = Global> {
     hash: u64,
     key: K,
     table: &'a mut HashMap<K, V, S, A>,
 }
 
-impl<K: Debug, V, S, A: AllocRef + Clone> Debug for VacantEntry<'_, K, V, S, A> {
+impl<K: Debug, V, S, A: Allocator + Clone> Debug for VacantEntry<'_, K, V, S, A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("VacantEntry").field(self.key()).finish()
     }
 }
 
-impl<'a, K, V, S, A: AllocRef + Clone> IntoIterator for &'a HashMap<K, V, S, A> {
+impl<'a, K, V, S, A: Allocator + Clone> IntoIterator for &'a HashMap<K, V, S, A> {
     type Item = (&'a K, &'a V);
     type IntoIter = Iter<'a, K, V>;
 
@@ -2230,7 +2230,7 @@ impl<'a, K, V, S, A: AllocRef + Clone> IntoIterator for &'a HashMap<K, V, S, A> 
     }
 }
 
-impl<'a, K, V, S, A: AllocRef + Clone> IntoIterator for &'a mut HashMap<K, V, S, A> {
+impl<'a, K, V, S, A: Allocator + Clone> IntoIterator for &'a mut HashMap<K, V, S, A> {
     type Item = (&'a K, &'a mut V);
     type IntoIter = IterMut<'a, K, V>;
 
@@ -2240,7 +2240,7 @@ impl<'a, K, V, S, A: AllocRef + Clone> IntoIterator for &'a mut HashMap<K, V, S,
     }
 }
 
-impl<K, V, S, A: AllocRef + Clone> IntoIterator for HashMap<K, V, S, A> {
+impl<K, V, S, A: Allocator + Clone> IntoIterator for HashMap<K, V, S, A> {
     type Item = (K, V);
     type IntoIter = IntoIter<K, V, A>;
 
@@ -2334,7 +2334,7 @@ where
     }
 }
 
-impl<K, V, A: AllocRef + Clone> Iterator for IntoIter<K, V, A> {
+impl<K, V, A: Allocator + Clone> Iterator for IntoIter<K, V, A> {
     type Item = (K, V);
 
     #[cfg_attr(feature = "inline-more", inline)]
@@ -2346,15 +2346,15 @@ impl<K, V, A: AllocRef + Clone> Iterator for IntoIter<K, V, A> {
         self.inner.size_hint()
     }
 }
-impl<K, V, A: AllocRef + Clone> ExactSizeIterator for IntoIter<K, V, A> {
+impl<K, V, A: Allocator + Clone> ExactSizeIterator for IntoIter<K, V, A> {
     #[cfg_attr(feature = "inline-more", inline)]
     fn len(&self) -> usize {
         self.inner.len()
     }
 }
-impl<K, V, A: AllocRef + Clone> FusedIterator for IntoIter<K, V, A> {}
+impl<K, V, A: Allocator + Clone> FusedIterator for IntoIter<K, V, A> {}
 
-impl<K: Debug, V: Debug, A: AllocRef + Clone> fmt::Debug for IntoIter<K, V, A> {
+impl<K: Debug, V: Debug, A: Allocator + Clone> fmt::Debug for IntoIter<K, V, A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().entries(self.iter()).finish()
     }
@@ -2442,7 +2442,7 @@ where
     }
 }
 
-impl<'a, K, V, A: AllocRef + Clone> Iterator for Drain<'a, K, V, A> {
+impl<'a, K, V, A: Allocator + Clone> Iterator for Drain<'a, K, V, A> {
     type Item = (K, V);
 
     #[cfg_attr(feature = "inline-more", inline)]
@@ -2454,26 +2454,26 @@ impl<'a, K, V, A: AllocRef + Clone> Iterator for Drain<'a, K, V, A> {
         self.inner.size_hint()
     }
 }
-impl<K, V, A: AllocRef + Clone> ExactSizeIterator for Drain<'_, K, V, A> {
+impl<K, V, A: Allocator + Clone> ExactSizeIterator for Drain<'_, K, V, A> {
     #[cfg_attr(feature = "inline-more", inline)]
     fn len(&self) -> usize {
         self.inner.len()
     }
 }
-impl<K, V, A: AllocRef + Clone> FusedIterator for Drain<'_, K, V, A> {}
+impl<K, V, A: Allocator + Clone> FusedIterator for Drain<'_, K, V, A> {}
 
 impl<K, V, A> fmt::Debug for Drain<'_, K, V, A>
 where
     K: fmt::Debug,
     V: fmt::Debug,
-    A: AllocRef + Clone,
+    A: Allocator + Clone,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().entries(self.iter()).finish()
     }
 }
 
-impl<'a, K, V, S, A: AllocRef + Clone> Entry<'a, K, V, S, A> {
+impl<'a, K, V, S, A: Allocator + Clone> Entry<'a, K, V, S, A> {
     /// Sets the value of the entry, and returns an OccupiedEntry.
     ///
     /// # Examples
@@ -2704,7 +2704,7 @@ impl<'a, K, V, S, A: AllocRef + Clone> Entry<'a, K, V, S, A> {
     }
 }
 
-impl<'a, K, V: Default, S, A: AllocRef + Clone> Entry<'a, K, V, S, A> {
+impl<'a, K, V: Default, S, A: Allocator + Clone> Entry<'a, K, V, S, A> {
     /// Ensures a value is in the entry by inserting the default value if empty,
     /// and returns a mutable reference to the value in the entry.
     ///
@@ -2731,7 +2731,7 @@ impl<'a, K, V: Default, S, A: AllocRef + Clone> Entry<'a, K, V, S, A> {
     }
 }
 
-impl<'a, K, V, S, A: AllocRef + Clone> OccupiedEntry<'a, K, V, S, A> {
+impl<'a, K, V, S, A: Allocator + Clone> OccupiedEntry<'a, K, V, S, A> {
     /// Gets a reference to the key in the entry.
     ///
     /// # Examples
@@ -3037,7 +3037,7 @@ impl<'a, K, V, S, A: AllocRef + Clone> OccupiedEntry<'a, K, V, S, A> {
     }
 }
 
-impl<'a, K, V, S, A: AllocRef + Clone> VacantEntry<'a, K, V, S, A> {
+impl<'a, K, V, S, A: Allocator + Clone> VacantEntry<'a, K, V, S, A> {
     /// Gets a reference to the key that would be used when inserting a value
     /// through the `VacantEntry`.
     ///
@@ -3128,7 +3128,7 @@ impl<K, V, S, A> FromIterator<(K, V)> for HashMap<K, V, S, A>
 where
     K: Eq + Hash,
     S: BuildHasher + Default,
-    A: Default + AllocRef + Clone,
+    A: Default + Allocator + Clone,
 {
     #[cfg_attr(feature = "inline-more", inline)]
     fn from_iter<T: IntoIterator<Item = (K, V)>>(iter: T) -> Self {
@@ -3148,7 +3148,7 @@ impl<K, V, S, A> Extend<(K, V)> for HashMap<K, V, S, A>
 where
     K: Eq + Hash,
     S: BuildHasher,
-    A: AllocRef + Clone,
+    A: Allocator + Clone,
 {
     #[cfg_attr(feature = "inline-more", inline)]
     fn extend<T: IntoIterator<Item = (K, V)>>(&mut self, iter: T) {
@@ -3195,7 +3195,7 @@ where
     K: Eq + Hash + Copy,
     V: Copy,
     S: BuildHasher,
-    A: AllocRef + Clone,
+    A: Allocator + Clone,
 {
     #[cfg_attr(feature = "inline-more", inline)]
     fn extend<T: IntoIterator<Item = (&'a K, &'a V)>>(&mut self, iter: T) {
@@ -3229,12 +3229,12 @@ fn assert_covariance() {
     fn iter_val<'a, 'new>(v: Iter<'a, u8, &'static str>) -> Iter<'a, u8, &'new str> {
         v
     }
-    fn into_iter_key<'new, A: AllocRef + Clone>(
+    fn into_iter_key<'new, A: Allocator + Clone>(
         v: IntoIter<&'static str, u8, A>,
     ) -> IntoIter<&'new str, u8, A> {
         v
     }
-    fn into_iter_val<'new, A: AllocRef + Clone>(
+    fn into_iter_val<'new, A: Allocator + Clone>(
         v: IntoIter<u8, &'static str, A>,
     ) -> IntoIter<u8, &'new str, A> {
         v
