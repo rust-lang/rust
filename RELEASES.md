@@ -119,7 +119,8 @@ related tools.
 [`slice::select_nth_unstable_by`]: https://doc.rust-lang.org/nightly/std/primitive.slice.html#method.select_nth_unstable_by
 [`slice::select_nth_unstable_by_key`]: https://doc.rust-lang.org/nightly/std/primitive.slice.html#method.select_nth_unstable_by_key
 [`hint::spin_loop`]: https://doc.rust-lang.org/stable/std/hint/fn.spin_loop.html
-
+[`Poll::is_ready`]: https://doc.rust-lang.org/stable/std/task/enum.Poll.html#method.is_ready
+[`Poll::is_pending`]: https://doc.rust-lang.org/stable/std/task/enum.Poll.html#method.is_pending
 
 Version 1.48.0 (2020-11-19)
 ==========================
