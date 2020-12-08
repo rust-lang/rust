@@ -134,3 +134,31 @@ fn f() {
       "#,
     );
 }
+
+#[test]
+fn dollar_crate_in_builtin_macro() {
+    check_diagnostics(
+        r#"
+#[macro_export]
+#[rustc_builtin_macro]
+macro_rules! format_args {}
+
+#[macro_export]
+macro_rules! arg {
+    () => {}
+}
+
+#[macro_export]
+macro_rules! outer {
+    () => {
+        $crate::format_args!( "", $crate::arg!(1) )
+    };
+}
+
+fn f() {
+    outer!();
+  //^^^^^^^^ leftover tokens
+}
+        "#,
+    )
+}
