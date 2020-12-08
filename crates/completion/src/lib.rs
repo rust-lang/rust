@@ -11,14 +11,17 @@ mod render;
 
 mod completions;
 
-use ide_db::base_db::FilePosition;
-use ide_db::RootDatabase;
+use ide_db::{
+    base_db::FilePosition, helpers::insert_use::ImportScope, imports_locator, RootDatabase,
+};
+use syntax::AstNode;
+use text_edit::TextEdit;
 
 use crate::{completions::Completions, context::CompletionContext, item::CompletionKind};
 
 pub use crate::{
-    config::CompletionConfig,
-    item::{CompletionItem, CompletionItemKind, CompletionScore, InsertTextFormat},
+    config::{CompletionConfig, CompletionResolveCapability},
+    item::{CompletionItem, CompletionItemKind, CompletionScore, ImportEdit, InsertTextFormat},
 };
 
 //FIXME: split the following feature into fine-grained features.
@@ -70,12 +73,9 @@ pub use crate::{
 // }
 // ```
 //
-// And experimental completions, enabled with the `rust-analyzer.completion.enableExperimental` setting.
-// This flag enables or disables:
-//
-// - Auto import: additional completion options with automatic `use` import and options from all project importable items, matched for the input
-//
-// Experimental completions might cause issues with performance and completion list look.
+// And the auto import completions, enabled with the `rust-analyzer.completion.autoimport.enable` setting and the corresponding LSP client capabilities.
+// Those are the additional completion options with automatic `use` import and options from all project importable items,
+// fuzzy matched agains the completion imput.
 
 /// Main entry point for completion. We run completion as a two-phase process.
 ///
@@ -129,6 +129,33 @@ pub fn completions(
     completions::mod_::complete_mod(&mut acc, &ctx);
 
     Some(acc)
+}
+
+/// Resolves additional completion data at the position given.
+pub fn resolve_completion_edits(
+    db: &RootDatabase,
+    config: &CompletionConfig,
+    position: FilePosition,
+    full_import_path: &str,
+    imported_name: &str,
+) -> Option<Vec<TextEdit>> {
+    let ctx = CompletionContext::new(db, position, config)?;
+    let anchor = ctx.name_ref_syntax.as_ref()?;
+    let import_scope = ImportScope::find_insert_use_container(anchor.syntax(), &ctx.sema)?;
+
+    let current_module = ctx.sema.scope(anchor.syntax()).module()?;
+    let current_crate = current_module.krate();
+
+    let import_path = imports_locator::find_exact_imports(&ctx.sema, current_crate, imported_name)
+        .filter_map(|candidate| {
+            let item: hir::ItemInNs = candidate.either(Into::into, Into::into);
+            current_module.find_use_path(db, item)
+        })
+        .find(|mod_path| mod_path.to_string() == full_import_path)?;
+
+    ImportEdit { import_path, import_scope, merge_behaviour: config.merge }
+        .to_text_edit()
+        .map(|edit| vec![edit])
 }
 
 #[cfg(test)]

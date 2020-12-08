@@ -129,9 +129,40 @@ pub(crate) fn apply_document_changes(
     }
 }
 
+/// Checks that the edits inside the completion and the additional edits do not overlap.
+/// LSP explicitly forbits the additional edits to overlap both with the main edit and themselves.
+pub(crate) fn all_edits_are_disjoint(
+    completion: &lsp_types::CompletionItem,
+    additional_edits: &[lsp_types::TextEdit],
+) -> bool {
+    let mut edit_ranges = Vec::new();
+    match completion.text_edit.as_ref() {
+        Some(lsp_types::CompletionTextEdit::Edit(edit)) => {
+            edit_ranges.push(edit.range);
+        }
+        Some(lsp_types::CompletionTextEdit::InsertAndReplace(edit)) => {
+            edit_ranges.push(edit.insert);
+            edit_ranges.push(edit.replace);
+        }
+        None => {}
+    }
+    if let Some(additional_changes) = completion.additional_text_edits.as_ref() {
+        edit_ranges.extend(additional_changes.iter().map(|edit| edit.range));
+    };
+    edit_ranges.extend(additional_edits.iter().map(|edit| edit.range));
+    edit_ranges.sort_by_key(|range| (range.start, range.end));
+    edit_ranges
+        .iter()
+        .zip(edit_ranges.iter().skip(1))
+        .all(|(previous, next)| previous.end <= next.start)
+}
+
 #[cfg(test)]
 mod tests {
-    use lsp_types::{Position, Range, TextDocumentContentChangeEvent};
+    use lsp_types::{
+        CompletionItem, CompletionTextEdit, InsertReplaceEdit, Position, Range,
+        TextDocumentContentChangeEvent,
+    };
 
     use super::*;
 
@@ -196,5 +227,136 @@ mod tests {
         text = String::from("a\nb");
         apply_document_changes(&mut text, c![0, 1; 1, 0 => "ț\nc", 0, 2; 0, 2 => "c"]);
         assert_eq!(text, "ațc\ncb");
+    }
+
+    #[test]
+    fn empty_completion_disjoint_tests() {
+        let empty_completion =
+            CompletionItem::new_simple("label".to_string(), "detail".to_string());
+
+        let disjoint_edit_1 = lsp_types::TextEdit::new(
+            Range::new(Position::new(2, 2), Position::new(3, 3)),
+            "new_text".to_string(),
+        );
+        let disjoint_edit_2 = lsp_types::TextEdit::new(
+            Range::new(Position::new(3, 3), Position::new(4, 4)),
+            "new_text".to_string(),
+        );
+
+        let joint_edit = lsp_types::TextEdit::new(
+            Range::new(Position::new(1, 1), Position::new(5, 5)),
+            "new_text".to_string(),
+        );
+
+        assert!(
+            all_edits_are_disjoint(&empty_completion, &[]),
+            "Empty completion has all its edits disjoint"
+        );
+        assert!(
+            all_edits_are_disjoint(
+                &empty_completion,
+                &[disjoint_edit_1.clone(), disjoint_edit_2.clone()]
+            ),
+            "Empty completion is disjoint to whatever disjoint extra edits added"
+        );
+
+        assert!(
+            !all_edits_are_disjoint(
+                &empty_completion,
+                &[disjoint_edit_1, disjoint_edit_2, joint_edit]
+            ),
+            "Empty completion does not prevent joint extra edits from failing the validation"
+        );
+    }
+
+    #[test]
+    fn completion_with_joint_edits_disjoint_tests() {
+        let disjoint_edit = lsp_types::TextEdit::new(
+            Range::new(Position::new(1, 1), Position::new(2, 2)),
+            "new_text".to_string(),
+        );
+        let disjoint_edit_2 = lsp_types::TextEdit::new(
+            Range::new(Position::new(2, 2), Position::new(3, 3)),
+            "new_text".to_string(),
+        );
+        let joint_edit = lsp_types::TextEdit::new(
+            Range::new(Position::new(1, 1), Position::new(5, 5)),
+            "new_text".to_string(),
+        );
+
+        let mut completion_with_joint_edits =
+            CompletionItem::new_simple("label".to_string(), "detail".to_string());
+        completion_with_joint_edits.additional_text_edits =
+            Some(vec![disjoint_edit.clone(), joint_edit.clone()]);
+        assert!(
+            !all_edits_are_disjoint(&completion_with_joint_edits, &[]),
+            "Completion with disjoint edits fails the validaton even with empty extra edits"
+        );
+
+        completion_with_joint_edits.text_edit =
+            Some(CompletionTextEdit::Edit(disjoint_edit.clone()));
+        completion_with_joint_edits.additional_text_edits = Some(vec![joint_edit.clone()]);
+        assert!(
+            !all_edits_are_disjoint(&completion_with_joint_edits, &[]),
+            "Completion with disjoint edits fails the validaton even with empty extra edits"
+        );
+
+        completion_with_joint_edits.text_edit =
+            Some(CompletionTextEdit::InsertAndReplace(InsertReplaceEdit {
+                new_text: "new_text".to_string(),
+                insert: disjoint_edit.range,
+                replace: joint_edit.range,
+            }));
+        completion_with_joint_edits.additional_text_edits = None;
+        assert!(
+            !all_edits_are_disjoint(&completion_with_joint_edits, &[]),
+            "Completion with disjoint edits fails the validaton even with empty extra edits"
+        );
+
+        completion_with_joint_edits.text_edit =
+            Some(CompletionTextEdit::InsertAndReplace(InsertReplaceEdit {
+                new_text: "new_text".to_string(),
+                insert: disjoint_edit.range,
+                replace: disjoint_edit_2.range,
+            }));
+        completion_with_joint_edits.additional_text_edits = Some(vec![joint_edit]);
+        assert!(
+            !all_edits_are_disjoint(&completion_with_joint_edits, &[]),
+            "Completion with disjoint edits fails the validaton even with empty extra edits"
+        );
+    }
+
+    #[test]
+    fn completion_with_disjoint_edits_disjoint_tests() {
+        let disjoint_edit = lsp_types::TextEdit::new(
+            Range::new(Position::new(1, 1), Position::new(2, 2)),
+            "new_text".to_string(),
+        );
+        let disjoint_edit_2 = lsp_types::TextEdit::new(
+            Range::new(Position::new(2, 2), Position::new(3, 3)),
+            "new_text".to_string(),
+        );
+        let joint_edit = lsp_types::TextEdit::new(
+            Range::new(Position::new(1, 1), Position::new(5, 5)),
+            "new_text".to_string(),
+        );
+
+        let mut completion_with_disjoint_edits =
+            CompletionItem::new_simple("label".to_string(), "detail".to_string());
+        completion_with_disjoint_edits.text_edit = Some(CompletionTextEdit::Edit(disjoint_edit));
+        let completion_with_disjoint_edits = completion_with_disjoint_edits;
+
+        assert!(
+            all_edits_are_disjoint(&completion_with_disjoint_edits, &[]),
+            "Completion with disjoint edits is valid"
+        );
+        assert!(
+            !all_edits_are_disjoint(&completion_with_disjoint_edits, &[joint_edit.clone()]),
+            "Completion with disjoint edits and joint extra edit is invalid"
+        );
+        assert!(
+            all_edits_are_disjoint(&completion_with_disjoint_edits, &[disjoint_edit_2.clone()]),
+            "Completion with disjoint edits and joint extra edit is valid"
+        );
     }
 }

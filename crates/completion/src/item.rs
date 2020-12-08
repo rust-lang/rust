@@ -15,6 +15,7 @@ use crate::config::SnippetCap;
 /// `CompletionItem` describes a single completion variant in the editor pop-up.
 /// It is basically a POD with various properties. To construct a
 /// `CompletionItem`, use `new` method and the `Builder` struct.
+#[derive(Clone)]
 pub struct CompletionItem {
     /// Used only internally in tests, to check only specific kind of
     /// completion (postfix, keyword, reference, etc).
@@ -65,6 +66,9 @@ pub struct CompletionItem {
     /// Indicates that a reference or mutable reference to this variable is a
     /// possible match.
     ref_match: Option<(Mutability, CompletionScore)>,
+
+    /// The import data to add to completion's edits.
+    import_to_add: Option<ImportEdit>,
 }
 
 // We use custom debug for CompletionItem to make snapshot tests more readable.
@@ -256,14 +260,37 @@ impl CompletionItem {
     pub fn ref_match(&self) -> Option<(Mutability, CompletionScore)> {
         self.ref_match
     }
+
+    pub fn import_to_add(&self) -> Option<&ImportEdit> {
+        self.import_to_add.as_ref()
+    }
 }
 
 /// An extra import to add after the completion is applied.
-#[derive(Clone)]
-pub(crate) struct ImportToAdd {
-    pub(crate) import_path: ModPath,
-    pub(crate) import_scope: ImportScope,
-    pub(crate) merge_behaviour: Option<MergeBehaviour>,
+#[derive(Debug, Clone)]
+pub struct ImportEdit {
+    pub import_path: ModPath,
+    pub import_scope: ImportScope,
+    pub merge_behaviour: Option<MergeBehaviour>,
+}
+
+impl ImportEdit {
+    /// Attempts to insert the import to the given scope, producing a text edit.
+    /// May return no edit in edge cases, such as scope already containing the import.
+    pub fn to_text_edit(&self) -> Option<TextEdit> {
+        let _p = profile::span("ImportEdit::to_text_edit");
+
+        let rewriter = insert_use::insert_use(
+            &self.import_scope,
+            mod_path_to_ast(&self.import_path),
+            self.merge_behaviour,
+        );
+        let old_ast = rewriter.rewrite_root()?;
+        let mut import_insert = TextEdit::builder();
+        algo::diff(&old_ast, &rewriter.rewrite(&old_ast)).into_text_edit(&mut import_insert);
+
+        Some(import_insert.finish())
+    }
 }
 
 /// A helper to make `CompletionItem`s.
@@ -272,7 +299,7 @@ pub(crate) struct ImportToAdd {
 pub(crate) struct Builder {
     source_range: TextRange,
     completion_kind: CompletionKind,
-    import_to_add: Option<ImportToAdd>,
+    import_to_add: Option<ImportEdit>,
     label: String,
     insert_text: Option<String>,
     insert_text_format: InsertTextFormat,
@@ -294,11 +321,9 @@ impl Builder {
         let mut label = self.label;
         let mut lookup = self.lookup;
         let mut insert_text = self.insert_text;
-        let mut text_edits = TextEdit::builder();
 
-        if let Some(import_data) = self.import_to_add {
-            let import = mod_path_to_ast(&import_data.import_path);
-            let mut import_path_without_last_segment = import_data.import_path;
+        if let Some(import_to_add) = self.import_to_add.as_ref() {
+            let mut import_path_without_last_segment = import_to_add.import_path.to_owned();
             let _ = import_path_without_last_segment.segments.pop();
 
             if !import_path_without_last_segment.segments.is_empty() {
@@ -310,32 +335,20 @@ impl Builder {
                 }
                 label = format!("{}::{}", import_path_without_last_segment, label);
             }
-
-            let rewriter = insert_use::insert_use(
-                &import_data.import_scope,
-                import,
-                import_data.merge_behaviour,
-            );
-            if let Some(old_ast) = rewriter.rewrite_root() {
-                algo::diff(&old_ast, &rewriter.rewrite(&old_ast)).into_text_edit(&mut text_edits);
-            }
         }
 
-        let original_edit = match self.text_edit {
+        let text_edit = match self.text_edit {
             Some(it) => it,
             None => {
                 TextEdit::replace(self.source_range, insert_text.unwrap_or_else(|| label.clone()))
             }
         };
 
-        let mut resulting_edit = text_edits.finish();
-        resulting_edit.union(original_edit).expect("Failed to unite text edits");
-
         CompletionItem {
             source_range: self.source_range,
             label,
             insert_text_format: self.insert_text_format,
-            text_edit: resulting_edit,
+            text_edit,
             detail: self.detail,
             documentation: self.documentation,
             lookup,
@@ -345,6 +358,7 @@ impl Builder {
             trigger_call_info: self.trigger_call_info.unwrap_or(false),
             score: self.score,
             ref_match: self.ref_match,
+            import_to_add: self.import_to_add,
         }
     }
     pub(crate) fn lookup_by(mut self, lookup: impl Into<String>) -> Builder {
@@ -407,7 +421,7 @@ impl Builder {
         self.trigger_call_info = Some(true);
         self
     }
-    pub(crate) fn add_import(mut self, import_to_add: Option<ImportToAdd>) -> Builder {
+    pub(crate) fn add_import(mut self, import_to_add: Option<ImportEdit>) -> Builder {
         self.import_to_add = import_to_add;
         self
     }

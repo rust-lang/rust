@@ -9,7 +9,7 @@ use test_utils::mark;
 
 use crate::{
     render::{render_resolution_with_import, RenderContext},
-    CompletionContext, Completions,
+    CompletionContext, Completions, ImportEdit,
 };
 
 pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionContext) {
@@ -44,7 +44,7 @@ pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
         acc.add_resolution(ctx, name.to_string(), &res)
     });
 
-    if ctx.config.enable_experimental_completions {
+    if ctx.config.enable_autoimport_completions && ctx.config.resolve_additional_edits_lazily() {
         fuzzy_completion(acc, ctx).unwrap_or_default()
     }
 }
@@ -73,19 +73,64 @@ fn complete_enum_variants(acc: &mut Completions, ctx: &CompletionContext, ty: &T
     }
 }
 
+// Feature: Fuzzy Completion and Autoimports
+//
+// When completing names in the current scope, proposes additional imports from other modules or crates,
+// if they can be qualified in the scope and their name contains all symbols from the completion input
+// (case-insensitive, in any order or places).
+//
+// ```
+// fn main() {
+//     pda<|>
+// }
+// # pub mod std { pub mod marker { pub struct PhantomData { } } }
+// ```
+// ->
+// ```
+// use std::marker::PhantomData;
+//
+// fn main() {
+//     PhantomData
+// }
+// # pub mod std { pub mod marker { pub struct PhantomData { } } }
+// ```
+//
+// .Fuzzy search details
+//
+// To avoid an excessive amount of the results returned, completion input is checked for inclusion in the identifiers only
+// (i.e. in `HashMap` in the `std::collections::HashMap` path), also not in the module indentifiers.
+//
+// .Merge Behaviour
+//
+// It is possible to configure how use-trees are merged with the `importMergeBehaviour` setting.
+// Mimics the corresponding behaviour of the `Auto Import` feature.
+//
+// .LSP and performance implications
+//
+// The feature is enabled only if the LSP client supports LSP protocol version 3.16+ and reports the `additionalTextEdits`
+// (case sensitive) resolve client capability in its client capabilities.
+// This way the server is able to defer the costly computations, doing them for a selected completion item only.
+// For clients with no such support, all edits have to be calculated on the completion request, including the fuzzy search completion ones,
+// which might be slow ergo the feature is automatically disabled.
+//
+// .Feature toggle
+//
+// The feature can be forcefully turned off in the settings with the `rust-analyzer.completion.enableAutoimportCompletions` flag.
+// Note that having this flag set to `true` does not guarantee that the feature is enabled: your client needs to have the corredponding
+// capability enabled.
 fn fuzzy_completion(acc: &mut Completions, ctx: &CompletionContext) -> Option<()> {
     let _p = profile::span("fuzzy_completion");
+    let potential_import_name = ctx.token.to_string();
+
     let current_module = ctx.scope.module()?;
     let anchor = ctx.name_ref_syntax.as_ref()?;
     let import_scope = ImportScope::find_insert_use_container(anchor.syntax(), &ctx.sema)?;
 
-    let potential_import_name = ctx.token.to_string();
-
     let possible_imports = imports_locator::find_similar_imports(
         &ctx.sema,
         ctx.krate?,
+        Some(100),
         &potential_import_name,
-        50,
         true,
     )
     .filter_map(|import_candidate| {
@@ -99,13 +144,14 @@ fn fuzzy_completion(acc: &mut Completions, ctx: &CompletionContext) -> Option<()
         })
     })
     .filter(|(mod_path, _)| mod_path.len() > 1)
-    .take(20)
     .filter_map(|(import_path, definition)| {
         render_resolution_with_import(
             RenderContext::new(ctx),
-            import_path.clone(),
-            import_scope.clone(),
-            ctx.config.merge,
+            ImportEdit {
+                import_path: import_path.clone(),
+                import_scope: import_scope.clone(),
+                merge_behaviour: ctx.config.merge,
+            },
             &definition,
         )
     });
@@ -120,8 +166,8 @@ mod tests {
     use test_utils::mark;
 
     use crate::{
-        test_utils::{check_edit, completion_list},
-        CompletionKind,
+        test_utils::{check_edit, check_edit_with_config, completion_list},
+        CompletionConfig, CompletionKind,
     };
 
     fn check(ra_fixture: &str, expect: Expect) {
@@ -730,7 +776,13 @@ impl My<|>
 
     #[test]
     fn function_fuzzy_completion() {
-        check_edit(
+        let mut completion_config = CompletionConfig::default();
+        completion_config
+            .active_resolve_capabilities
+            .insert(crate::CompletionResolveCapability::AdditionalTextEdits);
+
+        check_edit_with_config(
+            completion_config,
             "stdin",
             r#"
 //- /lib.rs crate:dep
@@ -755,7 +807,13 @@ fn main() {
 
     #[test]
     fn macro_fuzzy_completion() {
-        check_edit(
+        let mut completion_config = CompletionConfig::default();
+        completion_config
+            .active_resolve_capabilities
+            .insert(crate::CompletionResolveCapability::AdditionalTextEdits);
+
+        check_edit_with_config(
+            completion_config,
             "macro_with_curlies!",
             r#"
 //- /lib.rs crate:dep
@@ -782,7 +840,13 @@ fn main() {
 
     #[test]
     fn struct_fuzzy_completion() {
-        check_edit(
+        let mut completion_config = CompletionConfig::default();
+        completion_config
+            .active_resolve_capabilities
+            .insert(crate::CompletionResolveCapability::AdditionalTextEdits);
+
+        check_edit_with_config(
+            completion_config,
             "ThirdStruct",
             r#"
 //- /lib.rs crate:dep

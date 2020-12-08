@@ -9,14 +9,13 @@ pub(crate) mod type_alias;
 
 mod builder_ext;
 
-use hir::{Documentation, HasAttrs, HirDisplay, ModPath, Mutability, ScopeDef, Type};
-use ide_db::helpers::insert_use::{ImportScope, MergeBehaviour};
+use hir::{Documentation, HasAttrs, HirDisplay, Mutability, ScopeDef, Type};
 use ide_db::RootDatabase;
 use syntax::TextRange;
 use test_utils::mark;
 
 use crate::{
-    config::SnippetCap, item::ImportToAdd, CompletionContext, CompletionItem, CompletionItemKind,
+    config::SnippetCap, item::ImportEdit, CompletionContext, CompletionItem, CompletionItemKind,
     CompletionKind, CompletionScore,
 };
 
@@ -48,15 +47,12 @@ pub(crate) fn render_resolution<'a>(
 
 pub(crate) fn render_resolution_with_import<'a>(
     ctx: RenderContext<'a>,
-    import_path: ModPath,
-    import_scope: ImportScope,
-    merge_behaviour: Option<MergeBehaviour>,
+    import_edit: ImportEdit,
     resolution: &ScopeDef,
 ) -> Option<CompletionItem> {
-    let local_name = import_path.segments.last()?.to_string();
     Render::new(ctx).render_resolution(
-        local_name,
-        Some(ImportToAdd { import_path, import_scope, merge_behaviour }),
+        import_edit.import_path.segments.last()?.to_string(),
+        Some(import_edit),
         resolution,
     )
 }
@@ -147,7 +143,7 @@ impl<'a> Render<'a> {
     fn render_resolution(
         self,
         local_name: String,
-        import_to_add: Option<ImportToAdd>,
+        import_to_add: Option<ImportEdit>,
         resolution: &ScopeDef,
     ) -> Option<CompletionItem> {
         let _p = profile::span("render_resolution");
@@ -449,28 +445,6 @@ fn main() { let _: m::Spam = S<|> }
                         delete: 75..76,
                         insert: "m",
                         kind: Module,
-                    },
-                    CompletionItem {
-                        label: "m::Spam",
-                        source_range: 75..76,
-                        text_edit: TextEdit {
-                            indels: [
-                                Indel {
-                                    insert: "use m::Spam;",
-                                    delete: 0..0,
-                                },
-                                Indel {
-                                    insert: "\n\n",
-                                    delete: 0..0,
-                                },
-                                Indel {
-                                    insert: "Spam",
-                                    delete: 75..76,
-                                },
-                            ],
-                        },
-                        kind: Enum,
-                        lookup: "Spam",
                     },
                     CompletionItem {
                         label: "m::Spam::Foo",

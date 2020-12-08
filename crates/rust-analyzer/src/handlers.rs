@@ -8,8 +8,8 @@ use std::{
 };
 
 use ide::{
-    FileId, FilePosition, FileRange, HoverAction, HoverGotoTypeData, NavigationTarget, Query,
-    RangeInfo, Runnable, RunnableKind, SearchScope, TextEdit,
+    CompletionResolveCapability, FileId, FilePosition, FileRange, HoverAction, HoverGotoTypeData,
+    NavigationTarget, Query, RangeInfo, Runnable, RunnableKind, SearchScope, TextEdit,
 };
 use itertools::Itertools;
 use lsp_server::ErrorCode;
@@ -21,7 +21,7 @@ use lsp_types::{
     HoverContents, Location, NumberOrString, Position, PrepareRenameResponse, Range, RenameParams,
     SemanticTokensDeltaParams, SemanticTokensFullDeltaResult, SemanticTokensParams,
     SemanticTokensRangeParams, SemanticTokensRangeResult, SemanticTokensResult, SymbolInformation,
-    SymbolTag, TextDocumentIdentifier, Url, WorkspaceEdit,
+    SymbolTag, TextDocumentIdentifier, TextDocumentPositionParams, Url, WorkspaceEdit,
 };
 use project_model::TargetKind;
 use serde::{Deserialize, Serialize};
@@ -35,6 +35,7 @@ use crate::{
     from_json, from_proto,
     global_state::{GlobalState, GlobalStateSnapshot},
     lsp_ext::{self, InlayHint, InlayHintsParams},
+    lsp_utils::all_edits_are_disjoint,
     to_proto, LspError, Result,
 };
 
@@ -539,6 +540,7 @@ pub(crate) fn handle_completion(
     params: lsp_types::CompletionParams,
 ) -> Result<Option<lsp_types::CompletionResponse>> {
     let _p = profile::span("handle_completion");
+    let text_document_position = params.text_document_position.clone();
     let position = from_proto::file_position(&snap, params.text_document_position)?;
     let completion_triggered_after_single_colon = {
         let mut res = false;
@@ -568,13 +570,97 @@ pub(crate) fn handle_completion(
     };
     let line_index = snap.analysis.file_line_index(position.file_id)?;
     let line_endings = snap.file_line_endings(position.file_id);
+
     let items: Vec<CompletionItem> = items
         .into_iter()
-        .flat_map(|item| to_proto::completion_item(&line_index, line_endings, item))
+        .flat_map(|item| {
+            let mut new_completion_items =
+                to_proto::completion_item(&line_index, line_endings, item.clone());
+
+            if snap.config.completion.resolve_additional_edits_lazily() {
+                for new_item in &mut new_completion_items {
+                    let _ = fill_resolve_data(&mut new_item.data, &item, &text_document_position)
+                        .take();
+                }
+            }
+
+            new_completion_items
+        })
         .collect();
 
     let completion_list = lsp_types::CompletionList { is_incomplete: true, items };
     Ok(Some(completion_list.into()))
+}
+
+pub(crate) fn handle_completion_resolve(
+    snap: GlobalStateSnapshot,
+    mut original_completion: CompletionItem,
+) -> Result<CompletionItem> {
+    let _p = profile::span("handle_completion_resolve");
+
+    if !all_edits_are_disjoint(&original_completion, &[]) {
+        return Err(LspError::new(
+            ErrorCode::InvalidParams as i32,
+            "Received a completion with overlapping edits, this is not LSP-compliant".into(),
+        )
+        .into());
+    }
+
+    // FIXME resolve the other capabilities also?
+    if !snap
+        .config
+        .completion
+        .active_resolve_capabilities
+        .contains(&CompletionResolveCapability::AdditionalTextEdits)
+    {
+        return Ok(original_completion);
+    }
+
+    let resolve_data = match original_completion
+        .data
+        .take()
+        .map(|data| serde_json::from_value::<CompletionResolveData>(data))
+        .transpose()?
+    {
+        Some(data) => data,
+        None => return Ok(original_completion),
+    };
+
+    let file_id = from_proto::file_id(&snap, &resolve_data.position.text_document.uri)?;
+    let line_index = snap.analysis.file_line_index(file_id)?;
+    let line_endings = snap.file_line_endings(file_id);
+    let offset = from_proto::offset(&line_index, resolve_data.position.position);
+
+    let additional_edits = snap
+        .analysis
+        .resolve_completion_edits(
+            &snap.config.completion,
+            FilePosition { file_id, offset },
+            &resolve_data.full_import_path,
+            &resolve_data.imported_name,
+        )?
+        .into_iter()
+        .flat_map(|edit| {
+            edit.into_iter().map(|indel| to_proto::text_edit(&line_index, line_endings, indel))
+        })
+        .collect_vec();
+
+    if !all_edits_are_disjoint(&original_completion, &additional_edits) {
+        return Err(LspError::new(
+            ErrorCode::InternalError as i32,
+            "Import edit overlaps with the original completion edits, this is not LSP-compliant"
+                .into(),
+        )
+        .into());
+    }
+
+    if let Some(original_additional_edits) = original_completion.additional_text_edits.as_mut() {
+        original_additional_edits.extend(additional_edits.into_iter())
+    } else {
+        original_completion.additional_text_edits = Some(additional_edits);
+    }
+
+    Ok(original_completion)
 }
 
 pub(crate) fn handle_folding_range(
@@ -1533,4 +1619,31 @@ fn should_skip_target(runnable: &Runnable, cargo_spec: Option<&CargoTargetSpec>)
         }
         _ => false,
     }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct CompletionResolveData {
+    position: lsp_types::TextDocumentPositionParams,
+    full_import_path: String,
+    imported_name: String,
+}
+
+fn fill_resolve_data(
+    resolve_data: &mut Option<serde_json::Value>,
+    item: &ide::CompletionItem,
+    position: &TextDocumentPositionParams,
+) -> Option<()> {
+    let import_edit = item.import_to_add()?;
+    let full_import_path = import_edit.import_path.to_string();
+    let imported_name = import_edit.import_path.segments.clone().pop()?.to_string();
+
+    *resolve_data = Some(
+        to_value(CompletionResolveData {
+            position: position.to_owned(),
+            full_import_path,
+            imported_name,
+        })
+        .unwrap(),
+    );
+    Some(())
 }

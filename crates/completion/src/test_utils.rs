@@ -96,7 +96,16 @@ pub(crate) fn check_edit_with_config(
         .collect_tuple()
         .unwrap_or_else(|| panic!("can't find {:?} completion in {:#?}", what, completions));
     let mut actual = db.file_text(position.file_id).to_string();
-    completion.text_edit().apply(&mut actual);
+
+    let mut combined_edit = completion.text_edit().to_owned();
+    if let Some(import_text_edit) = completion.import_to_add().and_then(|edit| edit.to_text_edit())
+    {
+        combined_edit.union(import_text_edit).expect(
+            "Failed to apply completion resolve changes: change ranges overlap, but should not",
+        )
+    }
+
+    combined_edit.apply(&mut actual);
     assert_eq_text!(&ra_fixture_after, &actual)
 }
 

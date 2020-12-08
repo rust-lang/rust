@@ -460,10 +460,13 @@
                     "default": true,
                     "markdownDescription": "Whether to show postfix snippets like `dbg`, `if`, `not`, etc."
                 },
-                "rust-analyzer.completion.enableExperimental": {
+                "rust-analyzer.completion.autoimport.enable": {
                     "type": "boolean",
                     "default": true,
-                    "markdownDescription": "Display additional completions with potential false positives and performance issues"
+                    "markdownDescription": [
+                        "Toggles the additional completions that automatically add imports when completed.",
+                        "Note that your client have to specify the `additionalTextEdits` LSP client capability to truly have this feature enabled"
+                    ]
                 },
                 "rust-analyzer.callInfo.full": {
                     "type": "boolean",

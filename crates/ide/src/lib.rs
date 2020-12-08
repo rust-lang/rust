@@ -80,7 +80,8 @@ pub use crate::{
     },
 };
 pub use completion::{
-    CompletionConfig, CompletionItem, CompletionItemKind, CompletionScore, InsertTextFormat,
+    CompletionConfig, CompletionItem, CompletionItemKind, CompletionResolveCapability,
+    CompletionScore, ImportEdit, InsertTextFormat,
 };
 pub use ide_db::{
     call_info::CallInfo,
@@ -466,6 +467,27 @@ impl Analysis {
         position: FilePosition,
     ) -> Cancelable<Option<Vec<CompletionItem>>> {
         self.with_db(|db| completion::completions(db, config, position).map(Into::into))
+    }
+
+    /// Resolves additional completion data at the position given.
+    pub fn resolve_completion_edits(
+        &self,
+        config: &CompletionConfig,
+        position: FilePosition,
+        full_import_path: &str,
+        imported_name: &str,
+    ) -> Cancelable<Vec<TextEdit>> {
+        Ok(self
+            .with_db(|db| {
+                completion::resolve_completion_edits(
+                    db,
+                    config,
+                    position,
+                    full_import_path,
+                    imported_name,
+                )
+            })?
+            .unwrap_or_default())
     }
 
     /// Computes resolved assists with source changes for the given position.

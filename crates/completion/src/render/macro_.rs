@@ -5,13 +5,13 @@ use syntax::display::macro_label;
 use test_utils::mark;
 
 use crate::{
-    item::{CompletionItem, CompletionItemKind, CompletionKind, ImportToAdd},
+    item::{CompletionItem, CompletionItemKind, CompletionKind, ImportEdit},
     render::RenderContext,
 };
 
 pub(crate) fn render_macro<'a>(
     ctx: RenderContext<'a>,
-    import_to_add: Option<ImportToAdd>,
+    import_to_add: Option<ImportEdit>,
     name: String,
     macro_: hir::MacroDef,
 ) -> Option<CompletionItem> {
@@ -38,7 +38,7 @@ impl<'a> MacroRender<'a> {
         MacroRender { ctx, name, macro_, docs, bra, ket }
     }
 
-    fn render(&self, import_to_add: Option<ImportToAdd>) -> Option<CompletionItem> {
+    fn render(&self, import_to_add: Option<ImportEdit>) -> Option<CompletionItem> {
         // FIXME: Currently proc-macro do not have ast-node,
         // such that it does not have source
         if self.macro_.is_proc_macro() {
