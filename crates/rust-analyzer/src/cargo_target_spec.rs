@@ -14,6 +14,7 @@ use crate::{global_state::GlobalStateSnapshot, Result};
 #[derive(Clone)]
 pub(crate) struct CargoTargetSpec {
     pub(crate) workspace_root: AbsPathBuf,
+    pub(crate) cargo_toml: AbsPathBuf,
     pub(crate) package: String,
     pub(crate) target: String,
     pub(crate) target_kind: TargetKind,
@@ -115,12 +116,17 @@ impl CargoTargetSpec {
             Some(it) => it,
             None => return Ok(None),
         };
+
+        let target_data = &cargo_ws[target];
+        let package_data = &cargo_ws[target_data.package];
         let res = CargoTargetSpec {
             workspace_root: cargo_ws.workspace_root().to_path_buf(),
-            package: cargo_ws.package_flag(&cargo_ws[cargo_ws[target].package]),
-            target: cargo_ws[target].name.clone(),
-            target_kind: cargo_ws[target].kind,
+            cargo_toml: package_data.manifest.clone(),
+            package: cargo_ws.package_flag(&package_data),
+            target: target_data.name.clone(),
+            target_kind: target_data.kind,
         };
+
         Ok(Some(res))
     }
 
