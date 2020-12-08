@@ -1,6 +1,6 @@
 use hir::{
-    Adt, AsAssocItem, AssocItemContainer, Documentation, FieldSource, HasSource, HirDisplay,
-    Module, ModuleDef, ModuleSource, Semantics,
+    Adt, AsAssocItem, AssocItemContainer, FieldSource, HasAttrs, HasSource, HirDisplay, Module,
+    ModuleDef, ModuleSource, Semantics,
 };
 use ide_db::base_db::SourceDatabase;
 use ide_db::{
@@ -319,31 +319,27 @@ fn hover_for_definition(db: &RootDatabase, def: Definition) -> Option<Markup> {
     let mod_path = definition_mod_path(db, &def);
     return match def {
         Definition::Macro(it) => {
-            let src = it.source(db);
-            let docs = Documentation::from_ast(&src.value).map(Into::into);
-            hover_markup(docs, Some(macro_label(&src.value)), mod_path)
+            let label = macro_label(&it.source(db).value);
+            from_def_source_labeled(db, it, Some(label), mod_path)
         }
-        Definition::Field(it) => {
-            let src = it.source(db);
-            match src.value {
-                FieldSource::Named(it) => {
-                    let docs = Documentation::from_ast(&it).map(Into::into);
-                    hover_markup(docs, it.short_label(), mod_path)
-                }
-                _ => None,
+        Definition::Field(def) => {
+            let src = def.source(db).value;
+            if let FieldSource::Named(it) = src {
+                from_def_source_labeled(db, def, it.short_label(), mod_path)
+            } else {
+                None
             }
         }
         Definition::ModuleDef(it) => match it {
-            ModuleDef::Module(it) => match it.definition_source(db).value {
-                ModuleSource::Module(it) => {
-                    let docs = Documentation::from_ast(&it).map(Into::into);
-                    hover_markup(docs, it.short_label(), mod_path)
-                }
-                ModuleSource::SourceFile(it) => {
-                    let docs = Documentation::from_ast(&it).map(Into::into);
-                    hover_markup(docs, it.short_label(), mod_path)
-                }
-            },
+            ModuleDef::Module(it) => from_def_source_labeled(
+                db,
+                it,
+                match it.definition_source(db).value {
+                    ModuleSource::Module(it) => it.short_label(),
+                    ModuleSource::SourceFile(it) => it.short_label(),
+                },
+                mod_path,
+            ),
             ModuleDef::Function(it) => from_def_source(db, it, mod_path),
             ModuleDef::Adt(Adt::Struct(it)) => from_def_source(db, it, mod_path),
             ModuleDef::Adt(Adt::Union(it)) => from_def_source(db, it, mod_path),
@@ -371,12 +367,24 @@ fn hover_for_definition(db: &RootDatabase, def: Definition) -> Option<Markup> {
 
     fn from_def_source<A, D>(db: &RootDatabase, def: D, mod_path: Option<String>) -> Option<Markup>
     where
-        D: HasSource<Ast = A>,
-        A: ast::DocCommentsOwner + ast::NameOwner + ShortLabel + ast::AttrsOwner,
+        D: HasSource<Ast = A> + HasAttrs + Copy,
+        A: ShortLabel,
     {
-        let src = def.source(db);
-        let docs = Documentation::from_ast(&src.value).map(Into::into);
-        hover_markup(docs, src.value.short_label(), mod_path)
+        let short_label = def.source(db).value.short_label();
+        from_def_source_labeled(db, def, short_label, mod_path)
+    }
+
+    fn from_def_source_labeled<D>(
+        db: &RootDatabase,
+        def: D,
+        short_label: Option<String>,
+        mod_path: Option<String>,
+    ) -> Option<Markup>
+    where
+        D: HasAttrs,
+    {
+        let docs = def.attrs(db).docs().map(Into::into);
+        hover_markup(docs, short_label, mod_path)
     }
 }
 

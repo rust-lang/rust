@@ -44,10 +44,9 @@ pub use crate::{
 
 pub use hir_def::{
     adt::StructKind,
-    attr::Attrs,
+    attr::{Attrs, Documentation},
     body::scope::ExprScopes,
     builtin_type::BuiltinType,
-    docs::Documentation,
     find_path::PrefixKind,
     import_map,
     item_scope::ItemInNs,

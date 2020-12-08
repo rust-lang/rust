@@ -372,7 +372,7 @@ fn module_resolution_explicit_path_mod_rs_with_win_separator() {
     check(
         r#"
 //- /main.rs
-#[path = "module\bar\mod.rs"]
+#[path = r"module\bar\mod.rs"]
 mod foo;
 
 //- /module/bar/mod.rs
