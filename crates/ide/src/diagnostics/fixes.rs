@@ -13,7 +13,7 @@ use ide_db::{
     source_change::{FileSystemEdit, SourceFileEdit},
     RootDatabase,
 };
-use syntax::{AstNode, Direction, T, algo, ast::{self, ExprStmt, edit::IndentLevel, make}};
+use syntax::{AstNode, Direction, T, algo, ast::{self, edit::IndentLevel, make}};
 use text_edit::TextEdit;
 
 use crate::{diagnostics::Fix, references::rename::rename_with_semantics, FilePosition};
