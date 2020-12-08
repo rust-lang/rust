@@ -1,4 +1,4 @@
-Version 1.49.0 (2020-11-19)
+Version 1.49.0 (2020-12-31)
 ============================
 
 Language
@@ -6,7 +6,7 @@ Language
 
 - [Unions can now implement `Drop`, and you can now have a field in a union
   with `ManuallyDrop<T>`.][77547]
-- [You can now cast zero sized enums (0 or 1 variants) to integers.][76199]
+- [You can now cast uninhabited enums to integers.][76199]
 - [You can now bind by reference and by move in patterns.][76119] This
   allows you to selectively borrow individual components of a type. E.g.
   ```rust
