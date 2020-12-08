@@ -1057,7 +1057,7 @@ fn markdown_summary_with_limit(md: &str, length_limit: usize) -> (String, bool) 
         *text_length += text.len();
     };
 
-    'outer: for event in Parser::new_ext(md, Options::ENABLE_STRIKETHROUGH) {
+    'outer: for event in Parser::new_ext(md, summary_opts()) {
         match &event {
             Event::Text(text) => {
                 for word in text.split_inclusive(char::is_whitespace) {
