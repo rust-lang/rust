@@ -9,7 +9,7 @@ use itertools::Itertools;
 use mbe::ast_to_token_tree;
 use syntax::{
     ast::{self, AstNode, AttrsOwner},
-    AstToken, SmolStr,
+    match_ast, AstToken, SmolStr, SyntaxNode,
 };
 use tt::Subtree;
 
@@ -110,7 +110,7 @@ impl Attrs {
     }
 
     pub(crate) fn new(owner: &dyn AttrsOwner, hygiene: &Hygiene) -> Attrs {
-        let docs = ast::CommentIter::from_syntax_node(owner.syntax()).map(|docs_text| {
+        let outer_docs = ast::CommentIter::from_syntax_node(owner.syntax()).map(|docs_text| {
             (
                 docs_text.syntax().text_range().start(),
                 docs_text.doc_comment().map(|doc| Attr {
@@ -119,11 +119,13 @@ impl Attrs {
                 }),
             )
         });
-        let attrs = owner
-            .attrs()
+        let outer_attrs = owner.attrs().filter(|attr| attr.excl_token().is_none());
+        let inner_attrs = inner_attributes(owner.syntax()).into_iter().flatten();
+        let attrs = outer_attrs
+            .chain(inner_attrs)
             .map(|attr| (attr.syntax().text_range().start(), Attr::from_src(attr, hygiene)));
         // sort here by syntax node offset because the source can have doc attributes and doc strings be interleaved
-        let attrs: Vec<_> = docs.chain(attrs).sorted_by_key(|&(offset, _)| offset).collect();
+        let attrs: Vec<_> = outer_docs.chain(attrs).sorted_by_key(|&(offset, _)| offset).collect();
         let entries = if attrs.is_empty() {
             // Avoid heap allocation
             None
@@ -182,6 +184,38 @@ impl Attrs {
             Some(Documentation(docs.into()))
         }
     }
+}
+
+fn inner_attributes(syntax: &SyntaxNode) -> Option<impl Iterator<Item = ast::Attr>> {
+    let (attrs, _docs) = match_ast! {
+        match syntax {
+            ast::SourceFile(it) => (it.attrs(), None::<ast::Comment>),
+            ast::ExternBlock(it) => {
+                let extern_item_list = it.extern_item_list()?;
+                (extern_item_list.attrs(), None)
+            },
+            ast::Fn(it) => {
+                let body = it.body()?;
+                (body.attrs(), None)
+            },
+            ast::Impl(it) => {
+                let assoc_item_list = it.assoc_item_list()?;
+                (assoc_item_list.attrs(), None)
+            },
+            ast::Module(it) => {
+                let item_list = it.item_list()?;
+                (item_list.attrs(), None)
+            },
+            // FIXME: BlockExpr's only accept inner attributes in specific cases
+            // Excerpt from the reference:
+                // Block expressions accept outer and inner attributes, but only when they are the outer
+                // expression of an expression statement or the final expression of another block expression.
+            ast::BlockExpr(it) => return None,
+            _ => return None,
+        }
+    };
+    let attrs = attrs.filter(|attr| attr.excl_token().is_some());
+    Some(attrs)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
