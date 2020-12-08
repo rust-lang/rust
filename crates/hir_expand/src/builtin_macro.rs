@@ -287,23 +287,34 @@ fn concat_expand(
     _arg_id: EagerMacroId,
     tt: &tt::Subtree,
 ) -> ExpandResult<Option<(tt::Subtree, FragmentKind)>> {
+    let mut err = None;
     let mut text = String::new();
     for (i, t) in tt.token_trees.iter().enumerate() {
         match t {
             tt::TokenTree::Leaf(tt::Leaf::Literal(it)) if i % 2 == 0 => {
-                text += &match unquote_str(&it) {
-                    Some(s) => s,
-                    None => {
-                        return ExpandResult::only_err(mbe::ExpandError::ConversionError);
-                    }
-                };
+                // concat works with string and char literals, so remove any quotes.
+                // It also works with integer, float and boolean literals, so just use the rest
+                // as-is.
+
+                text += it
+                    .text
+                    .trim_start_matches(|c| match c {
+                        'r' | '#' | '\'' | '"' => true,
+                        _ => false,
+                    })
+                    .trim_end_matches(|c| match c {
+                        '#' | '\'' | '"' => true,
+                        _ => false,
+                    });
             }
             tt::TokenTree::Leaf(tt::Leaf::Punct(punct)) if i % 2 == 1 && punct.char == ',' => (),
-            _ => return ExpandResult::only_err(mbe::ExpandError::UnexpectedToken),
+            _ => {
+                err.get_or_insert(mbe::ExpandError::UnexpectedToken);
+            }
         }
     }
 
-    ExpandResult::ok(Some((quote!(#text), FragmentKind::Expr)))
+    ExpandResult { value: Some((quote!(#text), FragmentKind::Expr)), err }
 }
 
 fn relative_file(
@@ -685,5 +696,20 @@ mod tests {
         );
 
         assert_eq!(expanded, r#"b"""#);
+    }
+
+    #[test]
+    fn test_concat_expand() {
+        let expanded = expand_builtin_macro(
+            r##"
+            #[rustc_builtin_macro]
+            macro_rules! concat {}
+            concat!("foo", 0, r#"bar"#);
+            "##,
+        );
+
+        assert_eq!(expanded, r#""foo0bar""#);
+
+        // FIXME: `true`/`false` literals don't work.
     }
 }
