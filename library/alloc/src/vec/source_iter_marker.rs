@@ -1,4 +1,4 @@
-use core::iter::{InPlaceIterable, SourceIter};
+use core::iter::{InPlaceIterable, SourceIter, TrustedRandomAccess};
 use core::mem::{self, ManuallyDrop};
 use core::ptr::{self};
 
@@ -52,16 +52,7 @@ where
             )
         };
 
-        // use try-fold since
-        // - it vectorizes better for some iterator adapters
-        // - unlike most internal iteration methods, it only takes a &mut self
-        // - it lets us thread the write pointer through its innards and get it back in the end
-        let sink = InPlaceDrop { inner: dst_buf, dst: dst_buf };
-        let sink = iterator
-            .try_fold::<_, _, Result<_, !>>(sink, write_in_place_with_drop(dst_end))
-            .unwrap();
-        // iteration succeeded, don't drop head
-        let dst = ManuallyDrop::new(sink).dst;
+        let len = SpecInPlaceCollect::collect_in_place(&mut iterator, dst_buf, dst_end);
 
         let src = unsafe { iterator.as_inner().as_into_iter() };
         // check if SourceIter contract was upheld
@@ -72,7 +63,7 @@ where
         // then the source pointer will stay in its initial position and we can't use it as reference
         if src.ptr != src_ptr {
             debug_assert!(
-                dst as *const _ <= src.ptr,
+                unsafe { dst_buf.add(len) as *const _ } <= src.ptr,
                 "InPlaceIterable contract violation, write pointer advanced beyond read pointer"
             );
         }
@@ -82,10 +73,7 @@ where
         // but prevent drop of the allocation itself once IntoIter goes out of scope
         src.forget_allocation();
 
-        let vec = unsafe {
-            let len = dst.offset_from(dst_buf) as usize;
-            Vec::from_raw_parts(dst_buf, len, cap)
-        };
+        let vec = unsafe { Vec::from_raw_parts(dst_buf, len, cap) };
 
         vec
     }
@@ -104,5 +92,54 @@ fn write_in_place_with_drop<T>(
             sink.dst = sink.dst.add(1);
         }
         Ok(sink)
+    }
+}
+
+/// Helper trait to hold specialized implementations of the in-place iterate-collect loop
+trait SpecInPlaceCollect<T, I>: Iterator<Item = T> {
+    /// Collects an iterator (`self`) into the destination buffer (`dst`) and returns the number of items
+    /// collected. `end` is the last writable element of the allocation and used for bounds checks.
+    fn collect_in_place(&mut self, dst: *mut T, end: *const T) -> usize;
+}
+
+impl<T, I> SpecInPlaceCollect<T, I> for I
+where
+    I: Iterator<Item = T>,
+{
+    #[inline]
+    default fn collect_in_place(&mut self, dst_buf: *mut T, end: *const T) -> usize {
+        // use try-fold since
+        // - it vectorizes better for some iterator adapters
+        // - unlike most internal iteration methods, it only takes a &mut self
+        // - it lets us thread the write pointer through its innards and get it back in the end
+        let sink = InPlaceDrop { inner: dst_buf, dst: dst_buf };
+        let sink =
+            self.try_fold::<_, _, Result<_, !>>(sink, write_in_place_with_drop(end)).unwrap();
+        // iteration succeeded, don't drop head
+        unsafe { ManuallyDrop::new(sink).dst.offset_from(dst_buf) as usize }
+    }
+}
+
+impl<T, I> SpecInPlaceCollect<T, I> for I
+where
+    I: Iterator<Item = T> + TrustedRandomAccess,
+{
+    #[inline]
+    fn collect_in_place(&mut self, dst_buf: *mut T, end: *const T) -> usize {
+        let len = self.size();
+        let mut drop_guard = InPlaceDrop { inner: dst_buf, dst: dst_buf };
+        for i in 0..len {
+            // Safety: InplaceIterable contract guarantees that for every element we read
+            // one slot in the underlying storage will have been freed up and we can immediately
+            // write back the result.
+            unsafe {
+                let dst = dst_buf.offset(i as isize);
+                debug_assert!(dst as *const _ <= end, "InPlaceIterable contract violation");
+                ptr::write(dst, self.__iterator_get_unchecked(i));
+                drop_guard.dst = dst.add(1);
+            }
+        }
+        mem::forget(drop_guard);
+        len
     }
 }
