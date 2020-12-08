@@ -1469,6 +1469,8 @@ impl<T> VecDeque<T> {
 
     #[inline]
     fn is_contiguous(&self) -> bool {
+        // FIXME: Should we consider `head == 0` to mean
+        // that `self` is contiguous?
         self.tail <= self.head
     }
 
@@ -2198,7 +2200,7 @@ impl<T> VecDeque<T> {
         if self.is_contiguous() {
             let tail = self.tail;
             let head = self.head;
-            return unsafe { &mut self.buffer_as_mut_slice()[tail..head] };
+            return unsafe { RingSlices::ring_slices(self.buffer_as_mut_slice(), head, tail).0 };
         }
 
         let buf = self.buf.ptr();
@@ -2224,7 +2226,13 @@ impl<T> VecDeque<T> {
                 self.tail = 0;
                 self.head = len;
             }
-        } else if free >= self.head {
+        } else if free > self.head {
+            // FIXME: We currently do not consider ....ABCDEFGH
+            // to be contiguous because `head` would be `0` in this
+            // case. While we probably want to change this it
+            // isn't trivial as a few places expect `is_contiguous`
+            // to mean that we can just slice using `buf[tail..head]`.
+
             // there is enough free space to copy the head in one go,
             // this means that we first shift the tail forwards, and then
             // copy the head to the correct position.
@@ -2238,7 +2246,7 @@ impl<T> VecDeque<T> {
                 // ...ABCDEFGH.
 
                 self.tail = self.head;
-                self.head = self.tail + len;
+                self.head = self.wrap_add(self.tail, len);
             }
         } else {
             // free is smaller than both head and tail,
@@ -2278,7 +2286,7 @@ impl<T> VecDeque<T> {
 
         let tail = self.tail;
         let head = self.head;
-        unsafe { &mut self.buffer_as_mut_slice()[tail..head] }
+        unsafe { RingSlices::ring_slices(self.buffer_as_mut_slice(), head, tail).0 }
     }
 
     /// Rotates the double-ended queue `mid` places to the left.
@@ -2839,7 +2847,7 @@ impl<T> From<VecDeque<T>> for Vec<T> {
             let len = other.len();
             let cap = other.cap();
 
-            if other.head != 0 {
+            if other.tail != 0 {
                 ptr::copy(buf.add(other.tail), buf, len);
             }
             Vec::from_raw_parts(buf, len, cap)
