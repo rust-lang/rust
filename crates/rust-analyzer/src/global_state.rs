@@ -13,6 +13,7 @@ use lsp_types::{SemanticTokens, Url};
 use parking_lot::{Mutex, RwLock};
 use project_model::{CargoWorkspace, ProcMacroClient, ProjectWorkspace, Target};
 use rustc_hash::FxHashMap;
+use vfs::AnchoredPathBuf;
 
 use crate::{
     config::Config,
@@ -268,10 +269,10 @@ impl GlobalStateSnapshot {
         Some(self.mem_docs.get(&path)?.version)
     }
 
-    pub(crate) fn anchored_path(&self, file_id: FileId, path: &str) -> Url {
-        let mut base = self.vfs.read().0.file_path(file_id);
+    pub(crate) fn anchored_path(&self, path: &AnchoredPathBuf) -> Url {
+        let mut base = self.vfs.read().0.file_path(path.anchor);
         base.pop();
-        let path = base.join(path).unwrap();
+        let path = base.join(&path.path).unwrap();
         let path = path.as_path().unwrap();
         url_from_abs_path(&path)
     }

@@ -610,10 +610,12 @@ fn test_fn() {
                                     source_file_edits: [],
                                     file_system_edits: [
                                         CreateFile {
-                                            anchor: FileId(
-                                                0,
-                                            ),
-                                            dst: "foo.rs",
+                                            dst: AnchoredPathBuf {
+                                                anchor: FileId(
+                                                    0,
+                                                ),
+                                                path: "foo.rs",
+                                            },
                                         },
                                     ],
                                     is_snippet: false,

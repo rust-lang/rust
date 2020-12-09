@@ -36,6 +36,7 @@
 //! have a single `FileSet` which unions the two sources.
 mod vfs_path;
 mod path_interner;
+mod anchored_path;
 pub mod file_set;
 pub mod loader;
 
@@ -43,7 +44,10 @@ use std::{fmt, mem};
 
 use crate::path_interner::PathInterner;
 
-pub use crate::vfs_path::VfsPath;
+pub use crate::{
+    anchored_path::{AnchoredPath, AnchoredPathBuf},
+    vfs_path::VfsPath,
+};
 pub use paths::{AbsPath, AbsPathBuf};
 
 #[derive(Copy, Clone, Debug, Ord, PartialOrd, Eq, PartialEq, Hash)]

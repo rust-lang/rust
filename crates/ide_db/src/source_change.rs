@@ -3,7 +3,7 @@
 //!
 //! It can be viewed as a dual for `AnalysisChange`.
 
-use base_db::FileId;
+use base_db::{AnchoredPathBuf, FileId};
 use text_edit::TextEdit;
 
 #[derive(Default, Debug, Clone)]
@@ -44,8 +44,8 @@ impl From<Vec<SourceFileEdit>> for SourceChange {
 
 #[derive(Debug, Clone)]
 pub enum FileSystemEdit {
-    CreateFile { anchor: FileId, dst: String },
-    MoveFile { src: FileId, anchor: FileId, dst: String },
+    CreateFile { dst: AnchoredPathBuf },
+    MoveFile { src: FileId, dst: AnchoredPathBuf },
 }
 
 impl From<FileSystemEdit> for SourceChange {

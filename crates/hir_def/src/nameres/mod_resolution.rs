@@ -1,5 +1,5 @@
 //! This module resolves `mod foo;` declaration to file.
-use base_db::FileId;
+use base_db::{AnchoredPath, FileId};
 use hir_expand::name::Name;
 use syntax::SmolStr;
 use test_utils::mark;
@@ -77,7 +77,8 @@ impl ModDir {
         };
 
         for candidate in candidate_files.iter() {
-            if let Some(file_id) = db.resolve_path(file_id, candidate.as_str()) {
+            let path = AnchoredPath { anchor: file_id, path: candidate.as_str() };
+            if let Some(file_id) = db.resolve_path(path) {
                 let is_mod_rs = candidate.ends_with("mod.rs");
 
                 let (dir_path, root_non_dir_owner) = if is_mod_rs || attr_path.is_some() {

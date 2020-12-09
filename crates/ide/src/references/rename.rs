@@ -6,7 +6,7 @@ use std::{
 };
 
 use hir::{Module, ModuleDef, ModuleSource, Semantics};
-use ide_db::base_db::{FileRange, SourceDatabaseExt};
+use ide_db::base_db::{AnchoredPathBuf, FileRange, SourceDatabaseExt};
 use ide_db::{
     defs::{Definition, NameClass, NameRefClass},
     RootDatabase,
@@ -182,12 +182,13 @@ fn rename_mod(
     match src.value {
         ModuleSource::SourceFile(..) => {
             // mod is defined in path/to/dir/mod.rs
-            let dst = if module.is_mod_rs(sema.db) {
+            let path = if module.is_mod_rs(sema.db) {
                 format!("../{}/mod.rs", new_name)
             } else {
                 format!("{}.rs", new_name)
             };
-            let move_file = FileSystemEdit::MoveFile { src: file_id, anchor: file_id, dst };
+            let dst = AnchoredPathBuf { anchor: file_id, path };
+            let move_file = FileSystemEdit::MoveFile { src: file_id, dst };
             file_system_edits.push(move_file);
         }
         ModuleSource::Module(..) => {}
@@ -771,10 +772,12 @@ mod foo<|>;
                                 src: FileId(
                                     2,
                                 ),
-                                anchor: FileId(
-                                    2,
-                                ),
-                                dst: "foo2.rs",
+                                dst: AnchoredPathBuf {
+                                    anchor: FileId(
+                                        2,
+                                    ),
+                                    path: "foo2.rs",
+                                },
                             },
                         ],
                         is_snippet: false,
@@ -837,10 +840,12 @@ use crate::foo<|>::FooContent;
                                 src: FileId(
                                     1,
                                 ),
-                                anchor: FileId(
-                                    1,
-                                ),
-                                dst: "quux.rs",
+                                dst: AnchoredPathBuf {
+                                    anchor: FileId(
+                                        1,
+                                    ),
+                                    path: "quux.rs",
+                                },
                             },
                         ],
                         is_snippet: false,
@@ -884,10 +889,12 @@ mod fo<|>o;
                                 src: FileId(
                                     1,
                                 ),
-                                anchor: FileId(
-                                    1,
-                                ),
-                                dst: "../foo2/mod.rs",
+                                dst: AnchoredPathBuf {
+                                    anchor: FileId(
+                                        1,
+                                    ),
+                                    path: "../foo2/mod.rs",
+                                },
                             },
                         ],
                         is_snippet: false,
@@ -932,10 +939,12 @@ mod outer { mod fo<|>o; }
                                 src: FileId(
                                     1,
                                 ),
-                                anchor: FileId(
-                                    1,
-                                ),
-                                dst: "bar.rs",
+                                dst: AnchoredPathBuf {
+                                    anchor: FileId(
+                                        1,
+                                    ),
+                                    path: "bar.rs",
+                                },
                             },
                         ],
                         is_snippet: false,
@@ -1016,10 +1025,12 @@ pub mod foo<|>;
                                 src: FileId(
                                     2,
                                 ),
-                                anchor: FileId(
-                                    2,
-                                ),
-                                dst: "foo2.rs",
+                                dst: AnchoredPathBuf {
+                                    anchor: FileId(
+                                        2,
+                                    ),
+                                    path: "foo2.rs",
+                                },
                             },
                         ],
                         is_snippet: false,
