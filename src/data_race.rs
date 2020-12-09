@@ -9,6 +9,9 @@
 //! Relaxed stores now unconditionally block all currently active release sequences and so per-thread tracking of release
 //! sequences is not needed.
 //!
+//! The implementation also models races with memory allocation and deallocation via treating allocation and
+//! deallocation as a type of write internally for detecting data-races.
+//!
 //! This does not explore weak memory orders and so can still miss data-races
 //! but should not report false-positives
 //!
@@ -192,13 +195,22 @@ struct AtomicMemoryCellClocks {
     sync_vector: VClock,
 }
 
+/// Type of write operation: allocating memory
+/// non-atomic writes and deallocating memory
+/// are all treated as writes for the purpose
+/// of the data-race detector.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 enum WriteType {
     /// Allocate memory.
     Allocate,
+
     /// Standard unsynchronized write.
     Write,
-    /// Deallocate memory
+
+    /// Deallocate memory.
+    /// Some races with deallocation will be missed and instead
+    /// reported as invalid accesses of freed memory due to
+    /// the order of checks.
     Deallocate,
 }
 impl WriteType {
@@ -681,7 +693,7 @@ impl VClockAlloc {
             let (alloc_index, clocks) = global.current_thread_state();
             let alloc_timestamp = clocks.clock[alloc_index];
             (alloc_timestamp, alloc_index)
-        }else{
+        } else {
             (0, VectorIdx::MAX_INDEX)
         };
         VClockAlloc {
@@ -695,7 +707,7 @@ impl VClockAlloc {
     // Find an index, if one exists where the value
     // in `l` is greater than the value in `r`.
     fn find_gt_index(l: &VClock, r: &VClock) -> Option<VectorIdx> {
-        log::info!("Find index where not {:?} <= {:?}", l, r);
+        log::trace!("Find index where not {:?} <= {:?}", l, r);
         let l_slice = l.as_slice();
         let r_slice = r.as_slice();
         l_slice
@@ -1168,7 +1180,7 @@ impl GlobalState {
             vector_info.push(thread)
         };
 
-        log::info!("Creating thread = {:?} with vector index = {:?}", thread, created_index);
+        log::trace!("Creating thread = {:?} with vector index = {:?}", thread, created_index);
 
         // Mark the chosen vector index as in use by the thread.
         thread_info[thread].vector_index = Some(created_index);

@@ -1,6 +1,9 @@
 // ignore-windows: Concurrency on Windows is not supported yet.
 // compile-flags: -Zmiri-disable-isolation -Zmir-opt-level=0
 
+// Note: mir-opt-level set to 0 to prevent the read of stack_var in thread 1
+// from being optimized away and preventing the detection of the data-race.
+
 use std::thread::{spawn, sleep};
 use std::ptr::null_mut;
 use std::sync::atomic::{Ordering, AtomicPtr};
@@ -38,7 +41,7 @@ pub fn main() {
 
             pointer.store(&mut stack_var as *mut _, Ordering::Release);
             
-            sleep(Duration::from_millis(1000));
+            sleep(Duration::from_millis(200));
 
             stack_var //~ ERROR Data race detected between Read on Thread(id = 1) and Write on Thread(id = 2)
         });

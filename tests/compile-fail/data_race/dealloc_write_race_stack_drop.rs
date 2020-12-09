@@ -36,7 +36,7 @@ pub fn main() {
 
             pointer.store(&mut stack_var as *mut _, Ordering::Release);
             
-            sleep(Duration::from_millis(1000));
+            sleep(Duration::from_millis(200));
 
             // Note: Implicit read for drop(_) races with write, would detect race with deallocate after.
             drop(stack_var); //~ ERROR Data race detected between Read on Thread(id = 1) and Write on Thread(id = 2)

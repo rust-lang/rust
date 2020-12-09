@@ -3,6 +3,7 @@
 use std::thread::spawn;
 use std::ptr::null_mut;
 use std::sync::atomic::{Ordering, AtomicPtr};
+use std::mem::MaybeUninit;
 
 #[derive(Copy, Clone)]
 struct EvilSend<T>(pub T);
@@ -12,8 +13,8 @@ unsafe impl<T> Sync for EvilSend<T> {}
 
 pub fn main() {
     // Shared atomic pointer
-    let pointer = AtomicPtr::new(null_mut::<usize>());
-    let ptr = EvilSend(&pointer as *const AtomicPtr<usize>);
+    let pointer = AtomicPtr::new(null_mut::<MaybeUninit<usize>>());
+    let ptr = EvilSend(&pointer as *const AtomicPtr<MaybeUninit<usize>>);
 
     // Note: this is scheduler-dependent
     // the operations need to occur in
@@ -28,14 +29,14 @@ pub fn main() {
             // Uses relaxed semantics to not generate
             // a release sequence.
             let pointer = &*ptr.0;
-            pointer.store(Box::into_raw(Box::new(0usize)), Ordering::Relaxed);
+            pointer.store(Box::into_raw(Box::new(MaybeUninit::uninit())), Ordering::Relaxed);
         });
 
         let j2 = spawn(move || {
             let pointer = &*ptr.0;
 
-            //Note detects with write due to the initialization of memory
-            *pointer.load(Ordering::Relaxed) //~ ERROR Data race detected between Read on Thread(id = 2) and Write on Thread(id = 1)
+            // Note: could also error due to reading uninitialized memory, but the data-race detector triggers first.
+            *pointer.load(Ordering::Relaxed) //~ ERROR Data race detected between Read on Thread(id = 2) and Allocate on Thread(id = 1)
         });
 
         j1.join().unwrap();

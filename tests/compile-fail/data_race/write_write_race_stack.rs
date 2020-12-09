@@ -38,7 +38,7 @@ pub fn main() {
 
             pointer.store(&mut stack_var as *mut _, Ordering::Release);
             
-            sleep(Duration::from_millis(1000));
+            sleep(Duration::from_millis(200));
 
             stack_var = 1usize; //~ ERROR Data race detected between Write on Thread(id = 1) and Write on Thread(id = 2)
             

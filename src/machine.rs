@@ -480,7 +480,10 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
         let race_alloc = if let Some(data_race) = &memory_extra.data_race {
             match kind {
                 // V-Table generation is lazy and so racy, so do not track races.
-                // Also V-Tables are read only so no data races can be detected.
+                // Also V-Tables are read only so no data races can be occur.
+                // Must be disabled since V-Tables are initialized via interpreter
+                // writes on demand and can incorrectly cause the data-race detector
+                // to trigger.
                 MemoryKind::Vtable => None,
                 // User allocated and stack memory should track allocation.
                 MemoryKind::Machine(

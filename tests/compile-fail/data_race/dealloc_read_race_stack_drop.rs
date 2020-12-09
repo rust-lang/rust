@@ -36,7 +36,7 @@ pub fn main() {
 
             pointer.store(&mut stack_var as *mut _, Ordering::Release);
 
-            sleep(Duration::from_millis(1000));
+            sleep(Duration::from_millis(200));
 
             drop(stack_var);
         });  //~ ERROR Data race detected between Deallocate on Thread(id = 1) and Read on Thread(id = 2)
