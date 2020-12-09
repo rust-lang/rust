@@ -781,19 +781,13 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         debug!("init_from_succ(ln={}, succ={})", self.ln_str(ln), self.ln_str(succ_ln));
     }
 
-    fn merge_from_succ(&mut self, ln: LiveNode, succ_ln: LiveNode, first_merge: bool) -> bool {
+    fn merge_from_succ(&mut self, ln: LiveNode, succ_ln: LiveNode) -> bool {
         if ln == succ_ln {
             return false;
         }
 
         let changed = self.rwu_table.union(ln, succ_ln);
-        debug!(
-            "merge_from_succ(ln={:?}, succ={}, first_merge={}, changed={})",
-            ln,
-            self.ln_str(succ_ln),
-            first_merge,
-            changed
-        );
+        debug!("merge_from_succ(ln={:?}, succ={}, changed={})", ln, self.ln_str(succ_ln), changed);
         changed
     }
 
@@ -893,7 +887,6 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         };
 
         // Propagate through calls to the closure.
-        let mut first_merge = true;
         loop {
             self.init_from_succ(self.closure_ln, succ);
             for param in body.params {
@@ -903,10 +896,9 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 })
             }
 
-            if !self.merge_from_succ(self.exit_ln, self.closure_ln, first_merge) {
+            if !self.merge_from_succ(self.exit_ln, self.closure_ln) {
                 break;
             }
-            first_merge = false;
             assert_eq!(succ, self.propagate_through_expr(&body.value, self.exit_ln));
         }
 
@@ -1012,7 +1004,6 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 //
                 let ln = self.live_node(expr.hir_id, expr.span);
                 self.init_empty(ln, succ);
-                let mut first_merge = true;
                 for arm in arms {
                     let body_succ = self.propagate_through_expr(&arm.body, succ);
 
@@ -1021,8 +1012,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                         body_succ,
                     );
                     let arm_succ = self.define_bindings_in_pat(&arm.pat, guard_succ);
-                    self.merge_from_succ(ln, arm_succ, first_merge);
-                    first_merge = false;
+                    self.merge_from_succ(ln, arm_succ);
                 }
                 self.propagate_through_expr(&e, ln)
             }
@@ -1133,7 +1123,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
                 let ln = self.live_node(expr.hir_id, expr.span);
                 self.init_from_succ(ln, succ);
-                self.merge_from_succ(ln, r_succ, false);
+                self.merge_from_succ(ln, r_succ);
 
                 self.propagate_through_expr(&l, ln)
             }
@@ -1377,7 +1367,6 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         */
 
         // first iteration:
-        let mut first_merge = true;
         let ln = self.live_node(expr.hir_id, expr.span);
         self.init_empty(ln, succ);
         debug!("propagate_through_loop: using id for loop body {} {:?}", expr.hir_id, body);
@@ -1389,8 +1378,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         let body_ln = self.propagate_through_block(body, ln);
 
         // repeat until fixed point is reached:
-        while self.merge_from_succ(ln, body_ln, first_merge) {
-            first_merge = false;
+        while self.merge_from_succ(ln, body_ln) {
             assert_eq!(body_ln, self.propagate_through_block(body, ln));
         }
 
