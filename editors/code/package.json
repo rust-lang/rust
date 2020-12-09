@@ -21,7 +21,7 @@
         "Programming Languages"
     ],
     "engines": {
-        "vscode": "^1.51.0"
+        "vscode": "^1.52.0"
     },
     "enableProposedApi": true,
     "scripts": {
@@ -36,7 +36,7 @@
     },
     "dependencies": {
         "node-fetch": "^2.6.1",
-        "vscode-languageclient": "7.0.0-next.14"
+        "vscode-languageclient": "7.0.0"
     },
     "devDependencies": {
         "@rollup/plugin-commonjs": "^17.0.0",
@@ -45,7 +45,7 @@
         "@types/mocha": "^8.0.4",
         "@types/node": "~12.12.6",
         "@types/node-fetch": "^2.5.7",
-        "@types/vscode": "^1.51.0",
+        "@types/vscode": "^1.52.0",
         "@typescript-eslint/eslint-plugin": "^4.9.0",
         "@typescript-eslint/parser": "^4.9.0",
         "eslint": "^7.15.0",

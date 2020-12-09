@@ -633,7 +633,7 @@ pub(crate) fn resource_op(
             lsp_types::ResourceOp::Create(lsp_types::CreateFile {
                 uri,
                 options: None,
-                annotation: None,
+                annotation_id: None,
             })
         }
         FileSystemEdit::MoveFile { src, dst } => {
@@ -643,7 +643,7 @@ pub(crate) fn resource_op(
                 old_uri,
                 new_uri,
                 options: None,
-                annotation: None,
+                annotation_id: None,
             })
         }
     }
@@ -708,6 +708,7 @@ impl From<lsp_ext::SnippetWorkspaceEdit> for lsp_types::WorkspaceEdit {
                         .collect(),
                 )
             }),
+            change_annotations: None,
         }
     }
 }
