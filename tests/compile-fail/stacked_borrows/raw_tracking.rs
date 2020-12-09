@@ -1,5 +1,4 @@
 // compile-flags: -Zmiri-track-raw-pointers
-// ignore-windows (FIXME: tracking raw pointers does not work on Windows)
 //! This demonstrates a provenance problem that requires tracking of raw pointers to be detected.
 
 fn main() {

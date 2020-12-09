@@ -1,5 +1,4 @@
 // compile-flags: -Zmiri-track-raw-pointers
-// ignore-windows (FIXME: tracking raw pointers does not work on Windows)
 #![feature(btree_drain_filter)]
 use std::collections::{BTreeMap, BTreeSet};
 use std::mem;

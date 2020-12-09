@@ -1,5 +1,4 @@
 // compile-flags: -Zmiri-track-raw-pointers
-// ignore-windows (FIXME: tracking raw pointers does not work on Windows)
 #![feature(raw_ref_macros)]
 use std::ptr;
     
