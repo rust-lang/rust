@@ -411,9 +411,7 @@ crate fn run_core(
                 let hir = tcx.hir();
                 let body = hir.body(hir.body_owned_by(hir.local_def_id_to_hir_id(def_id)));
                 debug!("visiting body for {:?}", def_id);
-                tcx.sess.time("emit_ignored_resolution_errors", || {
-                    EmitIgnoredResolutionErrors::new(tcx).visit_body(body);
-                });
+                EmitIgnoredResolutionErrors::new(tcx).visit_body(body);
                 (rustc_interface::DEFAULT_QUERY_PROVIDERS.typeck)(tcx, def_id)
             };
         }),
