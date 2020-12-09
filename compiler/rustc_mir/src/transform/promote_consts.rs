@@ -22,7 +22,7 @@ use rustc_middle::ty::cast::CastTy;
 use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::{self, List, TyCtxt, TypeFoldable};
 use rustc_span::symbol::sym;
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::Span;
 
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_target::spec::abi::Abi;
@@ -326,39 +326,14 @@ impl<'tcx> Validator<'_, 'tcx> {
                         if place.projection.contains(&ProjectionElem::Deref) {
                             return Err(Unpromotable);
                         }
-
-                        let mut has_mut_interior =
-                            self.qualif_local::<qualifs::HasMutInterior>(place.local);
-                        // HACK(eddyb) this should compute the same thing as
-                        // `<HasMutInterior as Qualif>::in_projection` from
-                        // `check_consts::qualifs` but without recursion.
-                        if has_mut_interior {
-                            // This allows borrowing fields which don't have
-                            // `HasMutInterior`, from a type that does, e.g.:
-                            // `let _: &'static _ = &(Cell::new(1), 2).1;`
-                            let mut place_projection = &place.projection[..];
-                            // FIXME(eddyb) use a forward loop instead of a reverse one.
-                            while let &[ref proj_base @ .., elem] = place_projection {
-                                // FIXME(eddyb) this is probably excessive, with
-                                // the exception of `union` member accesses.
-                                let ty =
-                                    Place::ty_from(place.local, proj_base, self.body, self.tcx)
-                                        .projection_ty(self.tcx, elem)
-                                        .ty;
-                                if ty.is_freeze(self.tcx.at(DUMMY_SP), self.param_env) {
-                                    has_mut_interior = false;
-                                    break;
-                                }
-
-                                place_projection = proj_base;
-                            }
+                        if self.qualif_local::<qualifs::NeedsDrop>(place.local) {
+                            return Err(Unpromotable);
                         }
 
                         // FIXME(eddyb) this duplicates part of `validate_rvalue`.
+                        let has_mut_interior =
+                            self.qualif_local::<qualifs::HasMutInterior>(place.local);
                         if has_mut_interior {
-                            return Err(Unpromotable);
-                        }
-                        if self.qualif_local::<qualifs::NeedsDrop>(place.local) {
                             return Err(Unpromotable);
                         }
 
@@ -692,28 +667,7 @@ impl<'tcx> Validator<'_, 'tcx> {
 
                 self.validate_place(place)?;
 
-                // HACK(eddyb) this should compute the same thing as
-                // `<HasMutInterior as Qualif>::in_projection` from
-                // `check_consts::qualifs` but without recursion.
-                let mut has_mut_interior =
-                    self.qualif_local::<qualifs::HasMutInterior>(place.local);
-                if has_mut_interior {
-                    let mut place_projection = place.projection;
-                    // FIXME(eddyb) use a forward loop instead of a reverse one.
-                    while let &[ref proj_base @ .., elem] = place_projection {
-                        // FIXME(eddyb) this is probably excessive, with
-                        // the exception of `union` member accesses.
-                        let ty = Place::ty_from(place.local, proj_base, self.body, self.tcx)
-                            .projection_ty(self.tcx, elem)
-                            .ty;
-                        if ty.is_freeze(self.tcx.at(DUMMY_SP), self.param_env) {
-                            has_mut_interior = false;
-                            break;
-                        }
-
-                        place_projection = proj_base;
-                    }
-                }
+                let has_mut_interior = self.qualif_local::<qualifs::HasMutInterior>(place.local);
                 if has_mut_interior {
                     return Err(Unpromotable);
                 }
