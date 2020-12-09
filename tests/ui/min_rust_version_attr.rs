@@ -73,7 +73,11 @@ pub fn filter_map_next() {
         .next();
 }
 
+#[allow(clippy::no_effect)]
+#[allow(clippy::short_circuit_statement)]
+#[allow(clippy::unnecessary_operation)]
 pub fn manual_range_contains() {
+    let x = 5;
     x >= 8 && x < 12;
 }
 
@@ -92,7 +96,7 @@ pub fn use_self() {
 
 fn replace_with_default() {
     let mut s = String::from("foo");
-    let _ = std::mem::replace(s, String::default());
+    let _ = std::mem::replace(&mut s, String::default());
 }
 
 fn map_unwrap_or() {
@@ -104,6 +108,11 @@ fn map_unwrap_or() {
         .map(|x| x + 1)
         // Should lint even though this call is on a separate line.
         .unwrap_or(0);
+}
+
+// Could be const
+fn missing_const_for_fn() -> i32 {
+    1
 }
 
 fn main() {
@@ -120,6 +129,7 @@ fn main() {
     use_self();
     replace_with_default();
     map_unwrap_or();
+    missing_const_for_fn();
 }
 
 mod meets_msrv {
