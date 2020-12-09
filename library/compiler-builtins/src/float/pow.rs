@@ -1,5 +1,4 @@
 use float::Float;
-use int::Int;
 
 trait Pow: Float {
     /// Returns `a` raised to the power `b`
@@ -11,7 +10,7 @@ trait Pow: Float {
             if (b & 1) != 0 {
                 r *= a;
             }
-            b = b.aborting_div(2);
+            b = ((b as u32) >> 1) as i32;
             if b == 0 {
                 break;
             }

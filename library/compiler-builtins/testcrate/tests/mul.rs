@@ -86,7 +86,7 @@ macro_rules! float_mul {
                 let mul0 = x * y;
                 let mul1: $f = $fn(x, y);
                 // multiplication of subnormals is not currently handled
-                if !(Float::is_subnormal(&mul0) || Float::is_subnormal(&mul1)) {
+                if !(Float::is_subnormal(mul0) || Float::is_subnormal(mul1)) {
                     if !Float::eq_repr(mul0, mul1) {
                         panic!(
                             "{}({}, {}): std: {}, builtins: {}",

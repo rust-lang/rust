@@ -15,9 +15,11 @@ pub use self::leading_zeros::__clzsi2;
 #[doc(hidden)]
 pub trait Int:
     Copy
+    + core::fmt::Debug
     + PartialEq
     + PartialOrd
     + ops::AddAssign
+    + ops::SubAssign
     + ops::BitAndAssign
     + ops::BitOrAssign
     + ops::BitXorAssign
@@ -38,12 +40,16 @@ pub trait Int:
     /// Unsigned version of Self
     type UnsignedInt: Int;
 
+    /// If `Self` is a signed integer
+    const SIGNED: bool;
+
     /// The bitwidth of the int type
     const BITS: u32;
 
     const ZERO: Self;
     const ONE: Self;
     const MIN: Self;
+    const MAX: Self;
 
     /// LUT used for maximizing the space covered and minimizing the computational cost of fuzzing
     /// in `testcrate`. For example, Self = u128 produces [0,1,2,7,8,15,16,31,32,63,64,95,96,111,
@@ -51,18 +57,6 @@ pub trait Int:
     const FUZZ_LENGTHS: [u8; 20];
     /// The number of entries of `FUZZ_LENGTHS` actually used. The maximum is 20 for u128.
     const FUZZ_NUM: usize;
-
-    /// Extracts the sign from self and returns a tuple.
-    ///
-    /// # Examples
-    ///
-    /// ```rust,ignore
-    /// let i = -25_i32;
-    /// let (sign, u) = i.extract_sign();
-    /// assert_eq!(sign, true);
-    /// assert_eq!(u, 25_u32);
-    /// ```
-    fn extract_sign(self) -> (bool, Self::UnsignedInt);
 
     fn unsigned(self) -> Self::UnsignedInt;
     fn from_unsigned(unsigned: Self::UnsignedInt) -> Self;
@@ -77,8 +71,6 @@ pub trait Int:
 
     // copied from primitive integers, but put in a trait
     fn is_zero(self) -> bool;
-    fn max_value() -> Self;
-    fn min_value() -> Self;
     fn wrapping_neg(self) -> Self;
     fn wrapping_add(self, other: Self) -> Self;
     fn wrapping_mul(self, other: Self) -> Self;
@@ -87,25 +79,18 @@ pub trait Int:
     fn wrapping_shr(self, other: u32) -> Self;
     fn rotate_left(self, other: u32) -> Self;
     fn overflowing_add(self, other: Self) -> (Self, bool);
-    fn aborting_div(self, other: Self) -> Self;
-    fn aborting_rem(self, other: Self) -> Self;
     fn leading_zeros(self) -> u32;
-}
-
-fn unwrap<T>(t: Option<T>) -> T {
-    match t {
-        Some(t) => t,
-        None => ::abort(),
-    }
 }
 
 macro_rules! int_impl_common {
     ($ty:ty) => {
         const BITS: u32 = <Self>::BITS;
+        const SIGNED: bool = Self::MIN != Self::ZERO;
 
         const ZERO: Self = 0;
         const ONE: Self = 1;
         const MIN: Self = <Self>::MIN;
+        const MAX: Self = <Self>::MAX;
 
         const FUZZ_LENGTHS: [u8; 20] = {
             let bits = <Self as Int>::BITS;
@@ -177,14 +162,6 @@ macro_rules! int_impl_common {
             self == Self::ZERO
         }
 
-        fn max_value() -> Self {
-            <Self>::max_value()
-        }
-
-        fn min_value() -> Self {
-            <Self>::min_value()
-        }
-
         fn wrapping_neg(self) -> Self {
             <Self>::wrapping_neg(self)
         }
@@ -217,14 +194,6 @@ macro_rules! int_impl_common {
             <Self>::overflowing_add(self, other)
         }
 
-        fn aborting_div(self, other: Self) -> Self {
-            unwrap(<Self>::checked_div(self, other))
-        }
-
-        fn aborting_rem(self, other: Self) -> Self {
-            unwrap(<Self>::checked_rem(self, other))
-        }
-
         fn leading_zeros(self) -> u32 {
             <Self>::leading_zeros(self)
         }
@@ -236,10 +205,6 @@ macro_rules! int_impl {
         impl Int for $uty {
             type OtherSign = $ity;
             type UnsignedInt = $uty;
-
-            fn extract_sign(self) -> (bool, $uty) {
-                (false, self)
-            }
 
             fn unsigned(self) -> $uty {
                 self
@@ -263,14 +228,6 @@ macro_rules! int_impl {
         impl Int for $ity {
             type OtherSign = $uty;
             type UnsignedInt = $uty;
-
-            fn extract_sign(self) -> (bool, $uty) {
-                if self < 0 {
-                    (true, (!(self as $uty)).wrapping_add(1))
-                } else {
-                    (false, self as $uty)
-                }
-            }
 
             fn unsigned(self) -> $uty {
                 self as $uty
@@ -395,13 +352,14 @@ impl_h_int!(
 );
 
 /// Trait to express (possibly lossy) casting of integers
-pub(crate) trait CastInto<T: Copy>: Copy {
+#[doc(hidden)]
+pub trait CastInto<T: Copy>: Copy {
     fn cast(self) -> T;
 }
 
 macro_rules! cast_into {
     ($ty:ty) => {
-        cast_into!($ty; usize, isize, u32, i32, u64, i64, u128, i128);
+        cast_into!($ty; usize, isize, u8, i8, u16, i16, u32, i32, u64, i64, u128, i128);
     };
     ($ty:ty; $($into:ty),*) => {$(
         impl CastInto<$into> for $ty {
@@ -412,6 +370,12 @@ macro_rules! cast_into {
     )*};
 }
 
+cast_into!(usize);
+cast_into!(isize);
+cast_into!(u8);
+cast_into!(i8);
+cast_into!(u16);
+cast_into!(i16);
 cast_into!(u32);
 cast_into!(i32);
 cast_into!(u64);

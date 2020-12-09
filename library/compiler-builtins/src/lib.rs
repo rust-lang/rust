@@ -31,11 +31,6 @@
 #[cfg(test)]
 extern crate core;
 
-#[allow(unused_unsafe)]
-fn abort() -> ! {
-    unsafe { core::intrinsics::abort() }
-}
-
 #[macro_use]
 mod macros;
 

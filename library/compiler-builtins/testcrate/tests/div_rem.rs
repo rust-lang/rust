@@ -108,7 +108,7 @@ macro_rules! float {
                 let quo0 = x / y;
                 let quo1: $i = $fn(x, y);
                 // division of subnormals is not currently handled
-                if !(Float::is_subnormal(&quo0) || Float::is_subnormal(&quo1)) {
+                if !(Float::is_subnormal(quo0) || Float::is_subnormal(quo1)) {
                     if !Float::eq_repr(quo0, quo1) {
                         panic!(
                             "{}({}, {}): std: {}, builtins: {}",

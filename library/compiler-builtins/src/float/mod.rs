@@ -30,6 +30,9 @@ pub trait Float:
     /// A int of the same with as the float
     type SignedInt: Int;
 
+    /// An int capable of containing the exponent bits plus a sign bit. This is signed.
+    type ExpInt: Int;
+
     const ZERO: Self;
     const ONE: Self;
 
@@ -71,6 +74,18 @@ pub trait Float:
     /// compared.
     fn eq_repr(self, rhs: Self) -> bool;
 
+    /// Returns the sign bit
+    fn sign(self) -> bool;
+
+    /// Returns the exponent with bias
+    fn exp(self) -> Self::ExpInt;
+
+    /// Returns the significand with no implicit bit (or the "fractional" part)
+    fn frac(self) -> Self::Int;
+
+    /// Returns the significand with implicit bit
+    fn imp_frac(self) -> Self::Int;
+
     /// Returns a `Self::Int` transmuted back to `Self`
     fn from_repr(a: Self::Int) -> Self;
 
@@ -81,14 +96,16 @@ pub trait Float:
     fn normalize(significand: Self::Int) -> (i32, Self::Int);
 
     /// Returns if `self` is subnormal
-    fn is_subnormal(&self) -> bool;
+    fn is_subnormal(self) -> bool;
 }
 
 macro_rules! float_impl {
-    ($ty:ident, $ity:ident, $sity:ident, $bits:expr, $significand_bits:expr) => {
+    ($ty:ident, $ity:ident, $sity:ident, $expty:ident, $bits:expr, $significand_bits:expr) => {
         impl Float for $ty {
             type Int = $ity;
             type SignedInt = $sity;
+            type ExpInt = $expty;
+
             const ZERO: Self = 0.0;
             const ONE: Self = 1.0;
 
@@ -113,6 +130,18 @@ macro_rules! float_impl {
                     self.repr() == rhs.repr()
                 }
             }
+            fn sign(self) -> bool {
+                self.signed_repr() < Self::SignedInt::ZERO
+            }
+            fn exp(self) -> Self::ExpInt {
+                ((self.to_bits() & Self::EXPONENT_MASK) >> Self::SIGNIFICAND_BITS) as Self::ExpInt
+            }
+            fn frac(self) -> Self::Int {
+                self.to_bits() & Self::SIGNIFICAND_MASK
+            }
+            fn imp_frac(self) -> Self::Int {
+                self.frac() | Self::IMPLICIT_BIT
+            }
             fn from_repr(a: Self::Int) -> Self {
                 Self::from_bits(a)
             }
@@ -132,12 +161,12 @@ macro_rules! float_impl {
                     significand << shift as Self::Int,
                 )
             }
-            fn is_subnormal(&self) -> bool {
+            fn is_subnormal(self) -> bool {
                 (self.repr() & Self::EXPONENT_MASK) == Self::Int::ZERO
             }
         }
     };
 }
 
-float_impl!(f32, u32, i32, 32, 23);
-float_impl!(f64, u64, i64, 64, 52);
+float_impl!(f32, u32, i32, i16, 32, 23);
+float_impl!(f64, u64, i64, i16, 64, 52);
