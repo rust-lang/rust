@@ -70,8 +70,8 @@ But we can make it nest-less by using [if_chain] macro, [like this][nest-less].
 
 [`E-medium`] issues are generally pretty easy too, though it's recommended you work on an [`good first issue`]
 first. Sometimes they are only somewhat involved code wise, but not difficult per-se.
-Note that [`E-medium`] issues may require some knowledge of Clippy internals or some 
-debugging to find the actual problem behind the issue. 
+Note that [`E-medium`] issues may require some knowledge of Clippy internals or some
+debugging to find the actual problem behind the issue.
 
 [`T-middle`] issues can be more involved and require verifying types. The [`ty`] module contains a
 lot of methods that are useful, though one of the most useful would be `expr_ty` (gives the type of
@@ -182,7 +182,7 @@ That's why the `else_if_without_else` example uses the `register_early_pass` fun
 [early_lint_pass]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/trait.EarlyLintPass.html
 [late_lint_pass]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/trait.LateLintPass.html
 
-## Syncing changes from [`rust-lang/rust`] to Clippy
+## Syncing changes between Clippy and [`rust-lang/rust`]
 
 Clippy currently gets built with a pinned nightly version.
 
@@ -190,13 +190,18 @@ In the `rust-lang/rust` repository, where rustc resides, there's a copy of Clipp
 that compiler hackers modify from time to time to adapt to changes in the unstable
 API of the compiler.
 
-We need to sync these changes back to this repository periodically. If you want
-to help with that, you have to sync the `rust-lang/rust-clippy` repository with 
-the `subtree` copy of Clippy in the `rust-lang/rust` repository, and update
-the `rustc-toolchain` file accordingly.
+We need to sync these changes back to this repository periodically, and the changes
+made to this repository in the meantime also need to be synced to the `rust-lang/rust` repository.
 
-For general information about `subtree`s in the Rust repository
-see [Rust's `CONTRIBUTING.md`][subtree].
+To avoid flooding the `rust-lang/rust` PR queue, this two-way sync process is done
+in a bi-weekly basis if there's no urgent changes. This is done starting on the day of
+the Rust stable release and then every other week. That way we guarantee that we keep
+this repo up to date with the latest compiler API, and every feature in Clippy is available
+for 2 weeks in nightly, before it can get to beta. For reference, the first sync
+following this cadence was performed the 2020-08-27.
+
+This process is described in detail in the following sections. For general information
+about `subtree`s in the Rust repository see [Rust's `CONTRIBUTING.md`][subtree].
 
 ### Patching git-subtree to work with big repos
 
@@ -225,13 +230,14 @@ This shell has a hardcoded recursion limit set to 1000. In order to make this pr
 you need to force the script to run `bash` instead. You can do this by editing the first
 line of the `git-subtree` script and changing `sh` to `bash`.
 
-### Performing the sync
+### Performing the sync from [`rust-lang/rust`] to Clippy
 
 Here is a TL;DR version of the sync process (all of the following commands have
 to be run inside the `rust` directory):
 
-1. Clone the [`rust-lang/rust`] repository
-2. Sync the changes to the rust-copy of Clippy to your Clippy fork:
+1. Clone the [`rust-lang/rust`] repository or make sure it is up to date.
+2. Checkout the commit from the latest available nightly. You can get it using `rustup check`.
+3. Sync the changes to the rust-copy of Clippy to your Clippy fork:
     ```bash
     # Make sure to change `your-github-name` to your github name in the following command
     git subtree push -P src/tools/clippy git@github.com:your-github-name/rust-clippy sync-from-rust
@@ -249,17 +255,11 @@ to be run inside the `rust` directory):
     git checkout sync-from-rust
     git merge upstream/master
     ```
-3. Open a PR to `rust-lang/rust-clippy` and wait for it to get merged (to
+4. Open a PR to `rust-lang/rust-clippy` and wait for it to get merged (to
    accelerate the process ping the `@rust-lang/clippy` team in your PR and/or
    ~~annoy~~ ask them in the [Zulip] stream.)
-   
-### Syncing back changes in Clippy to [`rust-lang/rust`]
 
-To avoid flooding the [`rust-lang/rust`] PR queue, changes in Clippy's repo are synced back
-in a bi-weekly basis if there's no urgent changes. This is done starting on the day of
-the Rust stable release and then every other week. That way we guarantee that
-every feature in Clippy is available for 2 weeks in nightly, before it can get to beta.
-For reference, the first sync following this cadence was performed the 2020-08-27.
+### Performing the sync from Clippy to [`rust-lang/rust`]
 
 All of the following commands have to be run inside the `rust` directory.
 
