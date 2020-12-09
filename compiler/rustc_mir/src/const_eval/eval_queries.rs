@@ -30,6 +30,13 @@ fn eval_body_using_ecx<'mir, 'tcx>(
     body: &'mir mir::Body<'tcx>,
 ) -> InterpResult<'tcx, MPlaceTy<'tcx>> {
     debug!("eval_body_using_ecx: {:?}, {:?}", cid, ecx.param_env);
+    assert!(
+        cid.promoted.is_some()
+            || matches!(
+                ecx.tcx.hir().body_const_context(def_id),
+                Some(ConstContext::Const | ConstContext::Static(_))
+            )
+    );
     let tcx = *ecx.tcx;
     let layout = ecx.layout_of(body.return_ty().subst(tcx, cid.instance.substs))?;
     assert!(!layout.is_unsized());

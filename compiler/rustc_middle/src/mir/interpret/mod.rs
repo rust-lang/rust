@@ -132,7 +132,6 @@ pub use self::pointer::{Pointer, PointerArithmetic};
 /// Uniquely identifies one of the following:
 /// - A constant
 /// - A static
-/// - A const fn where all arguments (if any) are zero-sized types
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, TyEncodable, TyDecodable)]
 #[derive(HashStable, Lift)]
 pub struct GlobalId<'tcx> {
