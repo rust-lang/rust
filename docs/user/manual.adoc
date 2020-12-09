@@ -263,7 +263,7 @@ If you get an error saying `No such file or directory: 'rust-analyzer'`, see the
 
 GNOME Builder 3.37.1 and newer has native `rust-analyzer` support. If the LSP binary is not available, GNOME Builder can install it when opening a Rust file.
 
-== Configration
+== Configuration
 
 rust-analyzer is configured via LSP messages, which means that it's up to the editor to decide on the exact format and location of configuration files.
 Please consult your editor's documentation to learn how to configure LSP servers.
