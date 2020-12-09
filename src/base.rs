@@ -307,7 +307,9 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, impl Module>) {
             } => {
                 let discr = codegen_operand(fx, discr).load_scalar(fx);
 
-                if switch_ty.kind() == fx.tcx.types.bool.kind() {
+                let use_bool_opt = switch_ty.kind() == fx.tcx.types.bool.kind()
+                    || (targets.iter().count() == 1 && targets.iter().next().unwrap().0 == 0);
+                if use_bool_opt {
                     assert_eq!(targets.iter().count(), 1);
                     let (then_value, then_block) = targets.iter().next().unwrap();
                     let then_block = fx.get_block(then_block);
@@ -325,12 +327,22 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, impl Module>) {
                     let discr = crate::optimize::peephole::maybe_unwrap_bint(&mut fx.bcx, discr);
                     let discr =
                         crate::optimize::peephole::make_branchable_value(&mut fx.bcx, discr);
-                    if test_zero {
-                        fx.bcx.ins().brz(discr, then_block, &[]);
-                        fx.bcx.ins().jump(else_block, &[]);
+                    if let Some(taken) = crate::optimize::peephole::maybe_known_branch_taken(
+                        &fx.bcx, discr, test_zero,
+                    ) {
+                        if taken {
+                            fx.bcx.ins().jump(then_block, &[]);
+                        } else {
+                            fx.bcx.ins().jump(else_block, &[]);
+                        }
                     } else {
-                        fx.bcx.ins().brnz(discr, then_block, &[]);
-                        fx.bcx.ins().jump(else_block, &[]);
+                        if test_zero {
+                            fx.bcx.ins().brz(discr, then_block, &[]);
+                            fx.bcx.ins().jump(else_block, &[]);
+                        } else {
+                            fx.bcx.ins().brnz(discr, then_block, &[]);
+                            fx.bcx.ins().jump(else_block, &[]);
+                        }
                     }
                 } else {
                     let mut switch = ::cranelift_frontend::Switch::new();
