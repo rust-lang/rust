@@ -54,9 +54,10 @@ https://github.com/sponsors/rust-analyzer[GitHub Sponsors].
 
         for &adoc in [
             "manual.adoc",
-            "generated_features.adoc",
             "generated_assists.adoc",
+            "generated_config.adoc",
             "generated_diagnostic.adoc",
+            "generated_features.adoc",
         ]
         .iter()
         {

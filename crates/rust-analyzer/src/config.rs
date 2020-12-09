@@ -637,6 +637,17 @@ macro_rules! _config_data {
                     },)*
                 ])
             }
+
+            #[cfg(test)]
+            fn manual() -> String {
+                manual(&[
+                    $({
+                        let field = stringify!($field);
+                        let ty = stringify!($ty);
+                        (field, ty, &[$($doc),*], $default)
+                    },)*
+                ])
+            }
         }
     };
 }
@@ -753,26 +764,54 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
     map.into()
 }
 
-#[test]
-fn schema_in_sync_with_package_json() {
+#[cfg(test)]
+fn manual(fields: &[(&'static str, &'static str, &[&str], &str)]) -> String {
+    fields
+        .iter()
+        .map(|(field, _ty, doc, default)| {
+            let name = field.replace("_", ".");
+            let name = format!("rust-analyzer.{} (default: `{}`)", name, default);
+            format!("{}::\n{}\n", name, doc.join(" "))
+        })
+        .collect::<String>()
+}
+
+#[cfg(test)]
+mod tests {
+    use std::fs;
+
+    use test_utils::project_dir;
+
+    use super::*;
+
+    #[test]
+    fn schema_in_sync_with_package_json() {
+        let s = Config::json_schema();
+        let schema = format!("{:#}", s);
+        let schema = schema.trim_start_matches('{').trim_end_matches('}');
+
+        let package_json = project_dir().join("editors/code/package.json");
+        let package_json = fs::read_to_string(&package_json).unwrap();
+
+        let p = remove_ws(&package_json);
+        let s = remove_ws(&schema);
+
+        assert!(p.contains(&s), "update config in package.json. New config:\n{:#}", schema);
+    }
+
+    #[test]
+    fn schema_in_sync_with_docs() {
+        let docs_path = project_dir().join("docs/user/generated_config.adoc");
+        let current = fs::read_to_string(&docs_path).unwrap();
+        let expected = ConfigData::manual();
+
+        if remove_ws(&current) != remove_ws(&expected) {
+            fs::write(&docs_path, expected).unwrap();
+            panic!("updated config manual");
+        }
+    }
+
     fn remove_ws(text: &str) -> String {
         text.replace(char::is_whitespace, "")
     }
-
-    let s = Config::json_schema();
-    let schema = format!("{:#}", s);
-    let schema = schema.trim_start_matches('{').trim_end_matches('}');
-
-    let package_json = std::env::current_dir()
-        .unwrap()
-        .ancestors()
-        .nth(2)
-        .unwrap()
-        .join("editors/code/package.json");
-    let package_json = std::fs::read_to_string(&package_json).unwrap();
-
-    let p = remove_ws(&package_json);
-    let s = remove_ws(&schema);
-
-    assert!(p.contains(&s), "update config in package.json. New config:\n{:#}", schema);
 }
