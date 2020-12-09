@@ -121,7 +121,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
 
                 (Some(ret_span), _) => {
                     let sup_future = self.future_return_type(scope_def_id_sup);
-                    let (return_type, action) = if let Some(_) = sup_future {
+                    let (return_type, action) = if sup_future.is_some() {
                         ("returned future", "held across an await point")
                     } else {
                         ("return type", "returned")
@@ -140,7 +140,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                 }
                 (_, Some(ret_span)) => {
                     let sub_future = self.future_return_type(scope_def_id_sub);
-                    let (return_type, action) = if let Some(_) = sub_future {
+                    let (return_type, action) = if sub_future.is_some() {
                         ("returned future", "held across an await point")
                     } else {
                         ("return type", "returned")

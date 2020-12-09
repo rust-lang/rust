@@ -33,7 +33,7 @@ impl CoverageGraph {
         // Pre-transform MIR `BasicBlock` successors and predecessors into the BasicCoverageBlock
         // equivalents. Note that since the BasicCoverageBlock graph has been fully simplified, the
         // each predecessor of a BCB leader_bb should be in a unique BCB, and each successor of a
-        // BCB last_bb should bin in its own unique BCB. Therefore, collecting the BCBs using
+        // BCB last_bb should be in its own unique BCB. Therefore, collecting the BCBs using
         // `bb_to_bcb` should work without requiring a deduplication step.
 
         let successors = IndexVec::from_fn_n(
@@ -283,7 +283,9 @@ rustc_index::newtype_index! {
     }
 }
 
-/// A BasicCoverageBlockData (BCB) represents the maximal-length sequence of MIR BasicBlocks without
+/// `BasicCoverageBlockData` holds the data indexed by a `BasicCoverageBlock`.
+///
+/// A `BasicCoverageBlock` (BCB) represents the maximal-length sequence of MIR `BasicBlock`s without
 /// conditional branches, and form a new, simplified, coverage-specific Control Flow Graph, without
 /// altering the original MIR CFG.
 ///

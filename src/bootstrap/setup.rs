@@ -198,7 +198,7 @@ simply delete the `pre-commit` file from .git/hooks."
         };
     };
 
-    Ok(if should_install {
+    if should_install {
         let src = src_path.join("src").join("etc").join("pre-commit.sh");
         let git = t!(Command::new("git").args(&["rev-parse", "--git-common-dir"]).output().map(
             |output| {
@@ -217,5 +217,6 @@ simply delete the `pre-commit` file from .git/hooks."
         };
     } else {
         println!("Ok, skipping installation!");
-    })
+    }
+    Ok(())
 }

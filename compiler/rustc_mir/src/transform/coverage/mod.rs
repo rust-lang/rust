@@ -88,6 +88,7 @@ struct Instrumentor<'a, 'tcx> {
     pass_name: &'a str,
     tcx: TyCtxt<'tcx>,
     mir_body: &'a mut mir::Body<'tcx>,
+    source_file: Lrc<SourceFile>,
     fn_sig_span: Span,
     body_span: Span,
     basic_coverage_blocks: CoverageGraph,
@@ -96,9 +97,13 @@ struct Instrumentor<'a, 'tcx> {
 
 impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
     fn new(pass_name: &'a str, tcx: TyCtxt<'tcx>, mir_body: &'a mut mir::Body<'tcx>) -> Self {
+        let source_map = tcx.sess.source_map();
         let (some_fn_sig, hir_body) = fn_sig_and_body(tcx, mir_body.source.def_id());
         let body_span = hir_body.value.span;
-        let fn_sig_span = match some_fn_sig {
+        let source_file = source_map.lookup_source_file(body_span.lo());
+        let fn_sig_span = match some_fn_sig.filter(|fn_sig| {
+            Lrc::ptr_eq(&source_file, &source_map.lookup_source_file(fn_sig.span.hi()))
+        }) {
             Some(fn_sig) => fn_sig.span.with_hi(body_span.lo()),
             None => body_span.shrink_to_lo(),
         };
@@ -108,6 +113,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
             pass_name,
             tcx,
             mir_body,
+            source_file,
             fn_sig_span,
             body_span,
             basic_coverage_blocks,
@@ -268,8 +274,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         let tcx = self.tcx;
         let source_map = tcx.sess.source_map();
         let body_span = self.body_span;
-        let source_file = source_map.lookup_source_file(body_span.lo());
-        let file_name = Symbol::intern(&source_file.name.to_string());
+        let file_name = Symbol::intern(&self.source_file.name.to_string());
 
         let mut bcb_counters = IndexVec::from_elem_n(None, self.basic_coverage_blocks.num_nodes());
         for covspan in coverage_spans {
@@ -285,11 +290,20 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
                 bug!("Every BasicCoverageBlock should have a Counter or Expression");
             };
             graphviz_data.add_bcb_coverage_span_with_counter(bcb, &covspan, &counter_kind);
+
+            debug!(
+                "Calling make_code_region(file_name={}, source_file={:?}, span={}, body_span={})",
+                file_name,
+                self.source_file,
+                source_map.span_to_string(span),
+                source_map.span_to_string(body_span)
+            );
+
             inject_statement(
                 self.mir_body,
                 counter_kind,
                 self.bcb_last_bb(bcb),
-                Some(make_code_region(file_name, &source_file, span, body_span)),
+                Some(make_code_region(file_name, &self.source_file, span, body_span)),
             );
         }
     }

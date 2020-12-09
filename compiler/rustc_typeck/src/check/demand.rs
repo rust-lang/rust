@@ -548,11 +548,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // we may want to suggest removing a `&`.
                 if sm.is_imported(expr.span) {
                     if let Ok(src) = sm.span_to_snippet(sp) {
-                        if let Some(src) = self.replace_prefix(&src, "&", "") {
+                        if let Some(src) = src.strip_prefix('&') {
                             return Some((
                                 sp,
                                 "consider removing the borrow",
-                                src,
+                                src.to_string(),
                                 Applicability::MachineApplicable,
                             ));
                         }

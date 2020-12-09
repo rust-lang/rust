@@ -105,6 +105,8 @@ use std::io;
 use std::io::prelude::*;
 use std::rc::Rc;
 
+mod rwu_table;
+
 rustc_index::newtype_index! {
     pub struct Variable {
         DEBUG_FORMAT = "v({})",
@@ -468,149 +470,6 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
 // Actually we compute just a bit more than just liveness, but we use
 // the same basic propagation framework in all cases.
 
-#[derive(Clone, Copy)]
-struct RWU {
-    reader: bool,
-    writer: bool,
-    used: bool,
-}
-
-/// Conceptually, this is like a `Vec<Vec<RWU>>`. But the number of
-/// RWU`s can get very large, so it uses a more compact representation.
-struct RWUTable {
-    /// Total number of live nodes.
-    live_nodes: usize,
-    /// Total number of variables.
-    vars: usize,
-
-    /// A compressed representation of `RWU`s.
-    ///
-    /// Each word represents 2 different `RWU`s packed together. Each packed RWU
-    /// is stored in 4 bits: a reader bit, a writer bit, a used bit and a
-    /// padding bit.
-    ///
-    /// The data for each live node is contiguous and starts at a word boundary,
-    /// so there might be an unused space left.
-    words: Vec<u8>,
-    /// Number of words per each live node.
-    live_node_words: usize,
-}
-
-impl RWUTable {
-    const RWU_READER: u8 = 0b0001;
-    const RWU_WRITER: u8 = 0b0010;
-    const RWU_USED: u8 = 0b0100;
-    const RWU_MASK: u8 = 0b1111;
-
-    /// Size of packed RWU in bits.
-    const RWU_BITS: usize = 4;
-    /// Size of a word in bits.
-    const WORD_BITS: usize = std::mem::size_of::<u8>() * 8;
-    /// Number of packed RWUs that fit into a single word.
-    const WORD_RWU_COUNT: usize = Self::WORD_BITS / Self::RWU_BITS;
-
-    fn new(live_nodes: usize, vars: usize) -> RWUTable {
-        let live_node_words = (vars + Self::WORD_RWU_COUNT - 1) / Self::WORD_RWU_COUNT;
-        Self { live_nodes, vars, live_node_words, words: vec![0u8; live_node_words * live_nodes] }
-    }
-
-    fn word_and_shift(&self, ln: LiveNode, var: Variable) -> (usize, u32) {
-        assert!(ln.index() < self.live_nodes);
-        assert!(var.index() < self.vars);
-
-        let var = var.index();
-        let word = var / Self::WORD_RWU_COUNT;
-        let shift = Self::RWU_BITS * (var % Self::WORD_RWU_COUNT);
-        (ln.index() * self.live_node_words + word, shift as u32)
-    }
-
-    fn pick2_rows_mut(&mut self, a: LiveNode, b: LiveNode) -> (&mut [u8], &mut [u8]) {
-        assert!(a.index() < self.live_nodes);
-        assert!(b.index() < self.live_nodes);
-        assert!(a != b);
-
-        let a_start = a.index() * self.live_node_words;
-        let b_start = b.index() * self.live_node_words;
-
-        unsafe {
-            let ptr = self.words.as_mut_ptr();
-            (
-                std::slice::from_raw_parts_mut(ptr.add(a_start), self.live_node_words),
-                std::slice::from_raw_parts_mut(ptr.add(b_start), self.live_node_words),
-            )
-        }
-    }
-
-    fn copy(&mut self, dst: LiveNode, src: LiveNode) {
-        if dst == src {
-            return;
-        }
-
-        let (dst_row, src_row) = self.pick2_rows_mut(dst, src);
-        dst_row.copy_from_slice(src_row);
-    }
-
-    /// Sets `dst` to the union of `dst` and `src`, returns true if `dst` was
-    /// changed.
-    fn union(&mut self, dst: LiveNode, src: LiveNode) -> bool {
-        if dst == src {
-            return false;
-        }
-
-        let mut changed = false;
-        let (dst_row, src_row) = self.pick2_rows_mut(dst, src);
-        for (dst_word, src_word) in dst_row.iter_mut().zip(src_row.iter()) {
-            let old = *dst_word;
-            let new = *dst_word | src_word;
-            *dst_word = new;
-            changed |= old != new;
-        }
-        changed
-    }
-
-    fn get_reader(&self, ln: LiveNode, var: Variable) -> bool {
-        let (word, shift) = self.word_and_shift(ln, var);
-        (self.words[word] >> shift) & Self::RWU_READER != 0
-    }
-
-    fn get_writer(&self, ln: LiveNode, var: Variable) -> bool {
-        let (word, shift) = self.word_and_shift(ln, var);
-        (self.words[word] >> shift) & Self::RWU_WRITER != 0
-    }
-
-    fn get_used(&self, ln: LiveNode, var: Variable) -> bool {
-        let (word, shift) = self.word_and_shift(ln, var);
-        (self.words[word] >> shift) & Self::RWU_USED != 0
-    }
-
-    fn get(&self, ln: LiveNode, var: Variable) -> RWU {
-        let (word, shift) = self.word_and_shift(ln, var);
-        let rwu_packed = self.words[word] >> shift;
-        RWU {
-            reader: rwu_packed & Self::RWU_READER != 0,
-            writer: rwu_packed & Self::RWU_WRITER != 0,
-            used: rwu_packed & Self::RWU_USED != 0,
-        }
-    }
-
-    fn set(&mut self, ln: LiveNode, var: Variable, rwu: RWU) {
-        let mut packed = 0;
-        if rwu.reader {
-            packed |= Self::RWU_READER;
-        }
-        if rwu.writer {
-            packed |= Self::RWU_WRITER;
-        }
-        if rwu.used {
-            packed |= Self::RWU_USED;
-        }
-
-        let (word, shift) = self.word_and_shift(ln, var);
-        let word = &mut self.words[word];
-        *word = (*word & !(Self::RWU_MASK << shift)) | (packed << shift)
-    }
-}
-
 const ACC_READ: u32 = 1;
 const ACC_WRITE: u32 = 2;
 const ACC_USE: u32 = 4;
@@ -623,7 +482,7 @@ struct Liveness<'a, 'tcx> {
     upvars: Option<&'tcx FxIndexMap<hir::HirId, hir::Upvar>>,
     closure_captures: Option<&'tcx FxIndexMap<hir::HirId, ty::UpvarId>>,
     successors: IndexVec<LiveNode, Option<LiveNode>>,
-    rwu_table: RWUTable,
+    rwu_table: rwu_table::RWUTable,
 
     /// A live node representing a point of execution before closure entry &
     /// after closure exit. Used to calculate liveness of captured variables
@@ -661,7 +520,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             upvars,
             closure_captures,
             successors: IndexVec::from_elem_n(None, num_live_nodes),
-            rwu_table: RWUTable::new(num_live_nodes, num_vars),
+            rwu_table: rwu_table::RWUTable::new(num_live_nodes, num_vars),
             closure_ln,
             exit_ln,
             break_ln: Default::default(),
@@ -781,19 +640,13 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         debug!("init_from_succ(ln={}, succ={})", self.ln_str(ln), self.ln_str(succ_ln));
     }
 
-    fn merge_from_succ(&mut self, ln: LiveNode, succ_ln: LiveNode, first_merge: bool) -> bool {
+    fn merge_from_succ(&mut self, ln: LiveNode, succ_ln: LiveNode) -> bool {
         if ln == succ_ln {
             return false;
         }
 
         let changed = self.rwu_table.union(ln, succ_ln);
-        debug!(
-            "merge_from_succ(ln={:?}, succ={}, first_merge={}, changed={})",
-            ln,
-            self.ln_str(succ_ln),
-            first_merge,
-            changed
-        );
+        debug!("merge_from_succ(ln={:?}, succ={}, changed={})", ln, self.ln_str(succ_ln), changed);
         changed
     }
 
@@ -802,7 +655,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     // this) so we just clear out all the data.
     fn define(&mut self, writer: LiveNode, var: Variable) {
         let used = self.rwu_table.get_used(writer, var);
-        self.rwu_table.set(writer, var, RWU { reader: false, writer: false, used });
+        self.rwu_table.set(writer, var, rwu_table::RWU { reader: false, writer: false, used });
         debug!("{:?} defines {:?}: {}", writer, var, self.ln_str(writer));
     }
 
@@ -893,7 +746,6 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         };
 
         // Propagate through calls to the closure.
-        let mut first_merge = true;
         loop {
             self.init_from_succ(self.closure_ln, succ);
             for param in body.params {
@@ -903,10 +755,9 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 })
             }
 
-            if !self.merge_from_succ(self.exit_ln, self.closure_ln, first_merge) {
+            if !self.merge_from_succ(self.exit_ln, self.closure_ln) {
                 break;
             }
-            first_merge = false;
             assert_eq!(succ, self.propagate_through_expr(&body.value, self.exit_ln));
         }
 
@@ -1012,7 +863,6 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 //
                 let ln = self.live_node(expr.hir_id, expr.span);
                 self.init_empty(ln, succ);
-                let mut first_merge = true;
                 for arm in arms {
                     let body_succ = self.propagate_through_expr(&arm.body, succ);
 
@@ -1021,8 +871,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                         body_succ,
                     );
                     let arm_succ = self.define_bindings_in_pat(&arm.pat, guard_succ);
-                    self.merge_from_succ(ln, arm_succ, first_merge);
-                    first_merge = false;
+                    self.merge_from_succ(ln, arm_succ);
                 }
                 self.propagate_through_expr(&e, ln)
             }
@@ -1133,7 +982,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
                 let ln = self.live_node(expr.hir_id, expr.span);
                 self.init_from_succ(ln, succ);
-                self.merge_from_succ(ln, r_succ, false);
+                self.merge_from_succ(ln, r_succ);
 
                 self.propagate_through_expr(&l, ln)
             }
@@ -1377,7 +1226,6 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         */
 
         // first iteration:
-        let mut first_merge = true;
         let ln = self.live_node(expr.hir_id, expr.span);
         self.init_empty(ln, succ);
         debug!("propagate_through_loop: using id for loop body {} {:?}", expr.hir_id, body);
@@ -1389,8 +1237,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         let body_ln = self.propagate_through_block(body, ln);
 
         // repeat until fixed point is reached:
-        while self.merge_from_succ(ln, body_ln, first_merge) {
-            first_merge = false;
+        while self.merge_from_succ(ln, body_ln) {
             assert_eq!(body_ln, self.propagate_through_block(body, ln));
         }
 

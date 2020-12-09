@@ -1469,16 +1469,21 @@ function defocusSearchBar() {
                 });
 
                 if (e.which === 38) { // up
-                    if (!actives[currentTab].length ||
-                        !actives[currentTab][0].previousElementSibling) {
-                        return;
+                    if (e.ctrlKey) { // Going through result tabs.
+                        printTab(currentTab > 0 ? currentTab - 1 : 2);
+                    } else {
+                        if (!actives[currentTab].length ||
+                            !actives[currentTab][0].previousElementSibling) {
+                            return;
+                        }
+                        addClass(actives[currentTab][0].previousElementSibling, "highlighted");
+                        removeClass(actives[currentTab][0], "highlighted");
                     }
-
-                    addClass(actives[currentTab][0].previousElementSibling, "highlighted");
-                    removeClass(actives[currentTab][0], "highlighted");
                     e.preventDefault();
                 } else if (e.which === 40) { // down
-                    if (!actives[currentTab].length) {
+                    if (e.ctrlKey) { // Going through result tabs.
+                        printTab(currentTab > 1 ? 0 : currentTab + 1);
+                    } else if (!actives[currentTab].length) {
                         var results = document.getElementById("results").childNodes;
                         if (results.length > 0) {
                             var res = results[currentTab].getElementsByClassName("result");
@@ -1496,13 +1501,6 @@ function defocusSearchBar() {
                         document.location.href =
                             actives[currentTab][0].getElementsByTagName("a")[0].href;
                     }
-                } else if (e.which === 9) { // tab
-                    if (e.shiftKey) {
-                        printTab(currentTab > 0 ? currentTab - 1 : 2);
-                    } else {
-                        printTab(currentTab > 1 ? 0 : currentTab + 1);
-                    }
-                    e.preventDefault();
                 } else if (e.which === 16) { // shift
                     // Does nothing, it's just to avoid losing "focus" on the highlighted element.
                 } else if (actives[currentTab].length > 0) {
@@ -2898,11 +2896,14 @@ function defocusSearchBar() {
             ["T", "Focus the theme picker menu"],
             ["↑", "Move up in search results"],
             ["↓", "Move down in search results"],
-            ["↹", "Switch tab"],
+            ["ctrl + ↑ / ↓", "Switch result tab"],
             ["&#9166;", "Go to active search result"],
             ["+", "Expand all sections"],
             ["-", "Collapse all sections"],
-        ].map(x => "<dt><kbd>" + x[0] + "</kbd></dt><dd>" + x[1] + "</dd>").join("");
+        ].map(x => "<dt>" +
+            x[0].split(" ")
+                .map((y, index) => (index & 1) === 0 ? "<kbd>" + y + "</kbd>" : y)
+                .join("") + "</dt><dd>" + x[1] + "</dd>").join("");
         var div_shortcuts = document.createElement("div");
         addClass(div_shortcuts, "shortcuts");
         div_shortcuts.innerHTML = "<h2>Keyboard Shortcuts</h2><dl>" + shortcuts + "</dl></div>";

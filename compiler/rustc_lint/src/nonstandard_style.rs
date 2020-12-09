@@ -131,7 +131,7 @@ impl NonCamelCaseTypes {
                 let cc = to_camel_case(name);
                 // We cannot provide meaningful suggestions
                 // if the characters are in the category of "Lowercase Letter".
-                if name.to_string() != cc {
+                if *name != cc {
                     err.span_suggestion(
                         ident.span,
                         "convert the identifier to upper camel case",
@@ -271,7 +271,7 @@ impl NonSnakeCase {
                 let mut err = lint.build(&msg);
                 // We cannot provide meaningful suggestions
                 // if the characters are in the category of "Uppercase Letter".
-                if name.to_string() != sc {
+                if *name != sc {
                     // We have a valid span in almost all cases, but we don't have one when linting a crate
                     // name provided via the command line.
                     if !ident.span.is_dummy() {
@@ -455,7 +455,7 @@ impl NonUpperCaseGlobals {
                     lint.build(&format!("{} `{}` should have an upper case name", sort, name));
                 // We cannot provide meaningful suggestions
                 // if the characters are in the category of "Lowercase Letter".
-                if name.to_string() != uc {
+                if *name != uc {
                     err.span_suggestion(
                         ident.span,
                         "convert the identifier to upper case",
