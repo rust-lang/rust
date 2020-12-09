@@ -103,8 +103,7 @@ impl Expander {
         local_scope: Option<&ItemScope>,
         macro_call: ast::MacroCall,
     ) -> ExpandResult<Option<(Mark, T)>> {
-        self.recursion_limit += 1;
-        if self.recursion_limit > EXPANSION_RECURSION_LIMIT {
+        if self.recursion_limit + 1 > EXPANSION_RECURSION_LIMIT {
             mark::hit!(your_stack_belongs_to_me);
             return ExpandResult::str_err("reached recursion limit during macro expansion".into());
         }
@@ -165,6 +164,7 @@ impl Expander {
 
         log::debug!("macro expansion {:#?}", node.syntax());
 
+        self.recursion_limit += 1;
         let mark = Mark {
             file_id: self.current_file_id,
             ast_id_map: mem::take(&mut self.ast_id_map),
