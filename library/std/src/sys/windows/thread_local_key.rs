@@ -110,16 +110,6 @@ struct Node {
     next: *mut Node,
 }
 
-#[cfg(miri)]
-extern "Rust" {
-    /// Miri-provided extern function to mark the block `ptr` points to as a "root"
-    /// for some static memory. This memory and everything reachable by it is not
-    /// considered leaking even if it still exists when the program terminates.
-    ///
-    /// `ptr` has to point to the beginning of an allocated block.
-    fn miri_static_root(ptr: *const u8);
-}
-
 unsafe fn register_dtor(key: Key, dtor: Dtor) {
     let mut node = Box::new(Node { key, dtor, next: ptr::null_mut() });
 
@@ -128,9 +118,6 @@ unsafe fn register_dtor(key: Key, dtor: Dtor) {
         node.next = head;
         match DTORS.compare_exchange(head, &mut *node, SeqCst, SeqCst) {
             Ok(_) => {
-                #[cfg(miri)]
-                miri_static_root(&*node as *const _ as *const u8);
-
                 mem::forget(node);
                 return;
             }
