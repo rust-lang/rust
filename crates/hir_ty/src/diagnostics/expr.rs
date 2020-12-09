@@ -77,13 +77,11 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
             }
         }
         let body_expr = &body[body.body_expr];
-        if let Expr::Block { tail: Some(t), .. } = body_expr {
-            self.validate_results_in_tail_expr(body.body_expr, *t, db);
-        } else {
-            if let Expr::Block { statements, .. } = body_expr {
-                if let Some(Statement::Expr(id)) = statements.last() {
-                    self.validate_missing_tail_expr(body.body_expr, *id, db);
-                }
+        if let Expr::Block { statements, tail, .. } = body_expr {
+            if let Some(t) = tail {
+                self.validate_results_in_tail_expr(body.body_expr, *t, db);
+            } else if let Some(Statement::Expr(id)) = statements.last() {
+                self.validate_missing_tail_expr(body.body_expr, *id, db);
             }
         }
     }
@@ -336,17 +334,22 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
             None => return,
         };
 
-        if let Some(possible_tail_ty) = self.infer.type_of_expr.get(possible_tail_id) {
-            if mismatch.actual == Ty::unit() && mismatch.expected == *possible_tail_ty {
-                let (_, source_map) = db.body_with_source_map(self.owner.into());
+        let possible_tail_ty = if let Some(possible_tail_ty) = self.infer.type_of_expr.get(possible_tail_id) {
+            possible_tail_ty
+        } else {
+            return;
+        };
 
-                if let Ok(source_ptr) = source_map.expr_syntax(possible_tail_id) {
-                    self.sink.push(RemoveThisSemicolon {
-                        file: source_ptr.file_id,
-                        expr: source_ptr.value,
-                    });
-                }
-            }
+        if mismatch.actual != Ty::unit() || mismatch.expected != *possible_tail_ty {
+            return;
+        }
+
+        let (_, source_map) = db.body_with_source_map(self.owner.into());
+        if let Ok(source_ptr) = source_map.expr_syntax(possible_tail_id) {
+            self.sink.push(RemoveThisSemicolon {
+                file: source_ptr.file_id,
+                expr: source_ptr.value,
+            });
         }
     }
 }
