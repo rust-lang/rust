@@ -17,11 +17,12 @@
 //! # Smart pointers and `dyn Any`
 //!
 //! One piece of behavior to keep in mind when using `Any` as a trait object,
-//! especially with types like `Box<dyn Any>` or `Arc<dyn Any>` is that simply
+//! especially with types like `Box<dyn Any>` or `Arc<dyn Any>`, is that simply
 //! calling `.type_id()` on the value will produce the `TypeId` of the
-//! container, and not the underlying trait object. This can be avoided
+//! *container*, not the underlying trait object. This can be avoided by
 //! converting the smart pointer into a `&dyn Any` instead, which will return
-//! the object's type id. For example:
+//! the object's `TypeId`. For example:
+//!
 //! ```
 //! use std::any::{Any, TypeId};
 //!
@@ -32,7 +33,6 @@
 //! // ... than this:
 //! let boxed_id = boxed.type_id();
 //!
-//! // Both of these assertions pass
 //! assert_eq!(actual_id, TypeId::of::<i32>());
 //! assert_eq!(boxed_id, TypeId::of::<Box<dyn Any>>());
 //! ```
