@@ -1413,7 +1413,7 @@ impl String {
         self.len() == 0
     }
 
-    /// Splits the string into two at the given index.
+    /// Splits the string into two at the given byte index.
     ///
     /// Returns a newly allocated `String`. `self` contains bytes `[0, at)`, and
     /// the returned `String` contains bytes `[at, len)`. `at` must be on the
