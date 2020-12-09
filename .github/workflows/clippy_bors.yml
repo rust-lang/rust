@@ -101,7 +101,7 @@ jobs:
       uses: actions/cache@v2
       with:
         path: ~/.cargo
-        key: ${{ runner.os }}-${{ matrix.host }}-${{ hashFiles('Cargo.lock') }}
+        key: ${{ runner.os }}-${{ matrix.host }}-v2-${{ hashFiles('Cargo.lock') }}
         restore-keys: |
           ${{ runner.os }}-${{ matrix.host }}
 
@@ -183,7 +183,7 @@ jobs:
       uses: actions/cache@v2
       with:
         path: ~/.cargo
-        key: ${{ runner.os }}-x86_64-unknown-linux-gnu-${{ hashFiles('Cargo.lock') }}
+        key: ${{ runner.os }}-x86_64-unknown-linux-gnu-v2-${{ hashFiles('Cargo.lock') }}
         restore-keys: |
           ${{ runner.os }}-x86_64-unknown-linux-gnu
 
@@ -261,7 +261,7 @@ jobs:
       uses: actions/cache@v2
       with:
         path: ~/.cargo
-        key: ${{ runner.os }}-x86_64-unknown-linux-gnu-${{ hashFiles('Cargo.lock') }}
+        key: ${{ runner.os }}-x86_64-unknown-linux-gnu-v2-${{ hashFiles('Cargo.lock') }}
         restore-keys: |
           ${{ runner.os }}-x86_64-unknown-linux-gnu
 

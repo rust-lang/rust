@@ -52,7 +52,7 @@ jobs:
       uses: actions/cache@v2
       with:
         path: ~/.cargo
-        key: ${{ runner.os }}-x86_64-unknown-linux-gnu-${{ hashFiles('Cargo.lock') }}
+        key: ${{ runner.os }}-x86_64-unknown-linux-gnu-v2-${{ hashFiles('Cargo.lock') }}
         restore-keys: |
           ${{ runner.os }}-x86_64-unknown-linux-gnu
 
