@@ -85,7 +85,6 @@ use crate::build::matches::{ArmHasGuard, Candidate};
 use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder, CFG};
 use crate::thir::{Arm, Expr, ExprRef, LintLevel};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_hir as hir;
 use rustc_index::vec::IndexVec;
 use rustc_middle::middle::region;
 use rustc_middle::mir::*;
@@ -740,18 +739,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// We would allocate the box but then free it on the unwinding
     /// path; we would also emit a free on the 'success' path from
     /// panic, but that will turn out to be removed as dead-code.
-    ///
-    /// When building statics/constants, returns `None` since
-    /// intermediate values do not have to be dropped in that case.
-    crate fn local_scope(&self) -> Option<region::Scope> {
-        match self.hir.body_owner_kind {
-            hir::BodyOwnerKind::Const | hir::BodyOwnerKind::Static(_) =>
-            // No need to free storage in this context.
-            {
-                None
-            }
-            hir::BodyOwnerKind::Closure | hir::BodyOwnerKind::Fn => Some(self.scopes.topmost()),
-        }
+    crate fn local_scope(&self) -> region::Scope {
+        self.scopes.topmost()
     }
 
     // Scheduling drops
@@ -938,23 +927,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// not the `DROP(_X)` itself, but the (spurious) unwind pathways
     /// that it creates. See #64391 for an example.
     crate fn record_operands_moved(&mut self, operands: &[Operand<'tcx>]) {
-        let scope = match self.local_scope() {
-            None => {
-                // if there is no local scope, operands won't be dropped anyway
-                return;
-            }
+        let local_scope = self.local_scope();
+        let scope = self.scopes.scopes.last_mut().unwrap();
 
-            Some(local_scope) => {
-                let top_scope = self.scopes.scopes.last_mut().unwrap();
-                assert!(
-                    top_scope.region_scope == local_scope,
-                    "local scope ({:?}) is not the topmost scope!",
-                    local_scope
-                );
-
-                top_scope
-            }
-        };
+        assert_eq!(
+            scope.region_scope, local_scope,
+            "local scope is not the topmost scope!",
+        );
 
         // look for moves of a local variable, like `MOVE(_X)`
         let locals_moved = operands
@@ -993,9 +972,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         match cond {
             // Don't try to drop a constant
             Operand::Constant(_) => (),
-            // If constants and statics, we don't generate StorageLive for this
-            // temporary, so don't try to generate StorageDead for it either.
-            _ if self.local_scope().is_none() => (),
             Operand::Copy(place) | Operand::Move(place) => {
                 if let Some(cond_temp) = place.as_local() {
                     // Manually drop the condition on both branches.

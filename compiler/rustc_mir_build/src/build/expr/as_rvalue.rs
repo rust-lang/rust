@@ -25,7 +25,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         M: Mirror<'tcx, Output = Expr<'tcx>>,
     {
         let local_scope = self.local_scope();
-        self.as_rvalue(block, local_scope, expr)
+        self.as_rvalue(block, Some(local_scope), expr)
     }
 
     /// Compile `expr`, yielding an rvalue.
@@ -445,9 +445,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             Rvalue::Ref(this.hir.tcx().lifetimes.re_erased, borrow_kind, arg_place),
         );
 
-        // In constants, temp_lifetime is None. We should not need to drop
-        // anything because no values with a destructor can be created in
-        // a constant at this time, even if the type may need dropping.
+        // See the comment in `expr_as_temp` and on the `rvalue_scopes` field for why
+        // this can be `None`.
         if let Some(temp_lifetime) = temp_lifetime {
             this.schedule_drop_storage_and_value(upvar_span, temp_lifetime, temp);
         }

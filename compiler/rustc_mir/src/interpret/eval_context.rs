@@ -4,7 +4,7 @@ use std::mem;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_hir::{self as hir, def::DefKind, def_id::DefId, definitions::DefPathData};
+use rustc_hir::{self as hir, def_id::DefId, definitions::DefPathData};
 use rustc_index::vec::IndexVec;
 use rustc_macros::HashStable;
 use rustc_middle::ich::StableHashingContext;
@@ -700,21 +700,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let mut locals = IndexVec::from_elem(dummy, &body.local_decls);
 
         // Now mark those locals as dead that we do not want to initialize
-        match self.tcx.def_kind(instance.def_id()) {
-            // statics and constants don't have `Storage*` statements, no need to look for them
-            //
-            // FIXME: The above is likely untrue. See
-            // <https://github.com/rust-lang/rust/pull/70004#issuecomment-602022110>. Is it
-            // okay to ignore `StorageDead`/`StorageLive` annotations during CTFE?
-            DefKind::Static | DefKind::Const | DefKind::AssocConst => {}
-            _ => {
-                // Mark locals that use `Storage*` annotations as dead on function entry.
-                let always_live = AlwaysLiveLocals::new(self.body());
-                for local in locals.indices() {
-                    if !always_live.contains(local) {
-                        locals[local].value = LocalValue::Dead;
-                    }
-                }
+        // Mark locals that use `Storage*` annotations as dead on function entry.
+        let always_live = AlwaysLiveLocals::new(self.body());
+        for local in locals.indices() {
+            if !always_live.contains(local) {
+                locals[local].value = LocalValue::Dead;
             }
         }
         // done
