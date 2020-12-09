@@ -160,7 +160,6 @@ mod asm_syntax;
 mod assertions_on_constants;
 mod assign_ops;
 mod async_yields_async;
-mod atomic_ordering;
 mod attrs;
 mod await_holding_invalid;
 mod bit_mask;
@@ -496,6 +495,10 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         "clippy::panic_params",
         "this lint has been uplifted to rustc and is now called `panic_fmt`",
     );
+    store.register_removed(
+        "clippy::invalid_atomic_ordering",
+        "this lint has been uplifted to rustc and is now called `invalid_atomic_ordering`",
+    );
     // end deprecated lints, do not remove this comment, it’s used in `update_lints`
 
     // begin register lints, do not remove this comment, it’s used in `update_lints`
@@ -528,7 +531,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &assign_ops::ASSIGN_OP_PATTERN,
         &assign_ops::MISREFACTORED_ASSIGN_OP,
         &async_yields_async::ASYNC_YIELDS_ASYNC,
-        &atomic_ordering::INVALID_ATOMIC_ORDERING,
         &attrs::BLANKET_CLIPPY_RESTRICTION_LINTS,
         &attrs::DEPRECATED_CFG_ATTR,
         &attrs::DEPRECATED_SEMVER,
@@ -1156,7 +1158,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box floating_point_arithmetic::FloatingPointArithmetic);
     store.register_early_pass(|| box as_conversions::AsConversions);
     store.register_late_pass(|| box let_underscore::LetUnderscore);
-    store.register_late_pass(|| box atomic_ordering::AtomicOrdering);
     store.register_early_pass(|| box single_component_path_imports::SingleComponentPathImports);
     let max_fn_params_bools = conf.max_fn_params_bools;
     let max_struct_bools = conf.max_struct_bools;
@@ -1351,7 +1352,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&assign_ops::ASSIGN_OP_PATTERN),
         LintId::of(&assign_ops::MISREFACTORED_ASSIGN_OP),
         LintId::of(&async_yields_async::ASYNC_YIELDS_ASYNC),
-        LintId::of(&atomic_ordering::INVALID_ATOMIC_ORDERING),
         LintId::of(&attrs::BLANKET_CLIPPY_RESTRICTION_LINTS),
         LintId::of(&attrs::DEPRECATED_CFG_ATTR),
         LintId::of(&attrs::DEPRECATED_SEMVER),
@@ -1823,7 +1823,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_group(true, "clippy::correctness", Some("clippy_correctness"), vec![
         LintId::of(&approx_const::APPROX_CONSTANT),
         LintId::of(&async_yields_async::ASYNC_YIELDS_ASYNC),
-        LintId::of(&atomic_ordering::INVALID_ATOMIC_ORDERING),
         LintId::of(&attrs::DEPRECATED_SEMVER),
         LintId::of(&attrs::MISMATCHED_TARGET_OS),
         LintId::of(&attrs::USELESS_ATTRIBUTE),

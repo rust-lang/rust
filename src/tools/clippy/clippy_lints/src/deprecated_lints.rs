@@ -166,3 +166,12 @@ declare_deprecated_lint! {
     pub PANIC_PARAMS,
     "this lint has been uplifted to rustc and is now called `panic_fmt`"
 }
+
+declare_deprecated_lint! {
+    /// **What it does:** Nothing. This lint has been deprecated.
+    ///
+    /// **Deprecation reason:** This lint has been uplifted to rustc and is now called
+    /// `invalid_atomic_ordering`.
+    pub INVALID_ATOMIC_ORDERING,
+    "this lint has been uplifted to rustc and is now called `invalid_atomic_ordering`"
+}
