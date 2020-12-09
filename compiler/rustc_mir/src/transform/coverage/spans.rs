@@ -217,6 +217,27 @@ pub struct CoverageSpans<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> CoverageSpans<'a, 'tcx> {
+    /// Generate a minimal set of `CoverageSpan`s, each representing a contiguous code region to be
+    /// counted.
+    ///
+    /// The basic steps are:
+    ///
+    /// 1. Extract an initial set of spans from the `Statement`s and `Terminator`s of each
+    ///    `BasicCoverageBlockData`.
+    /// 2. Sort the spans by span.lo() (starting position). Spans that start at the same position
+    ///    are sorted with longer spans before shorter spans; and equal spans are sorted
+    ///    (deterministically) based on "dominator" relationship (if any).
+    /// 3. Traverse the spans in sorted order to identify spans that can be dropped (for instance,
+    ///    if another span or spans are already counting the same code region), or should be merged
+    ///    into a broader combined span (because it represents a contiguous, non-branching, and
+    ///    uninterrupted region of source code).
+    ///
+    ///    Closures are exposed in their enclosing functions as `Assign` `Rvalue`s, and since
+    ///    closures have their own MIR, their `Span` in their enclosing function should be left
+    ///    "uncovered".
+    ///
+    /// Note the resulting vector of `CoverageSpan`s may not be fully sorted (and does not need
+    /// to be).
     pub(super) fn generate_coverage_spans(
         mir_body: &'a mir::Body<'tcx>,
         fn_sig_span: Span,
@@ -247,27 +268,6 @@ impl<'a, 'tcx> CoverageSpans<'a, 'tcx> {
         coverage_spans.to_refined_spans()
     }
 
-    /// Generate a minimal set of `CoverageSpan`s, each representing a contiguous code region to be
-    /// counted.
-    ///
-    /// The basic steps are:
-    ///
-    /// 1. Extract an initial set of spans from the `Statement`s and `Terminator`s of each
-    ///    `BasicCoverageBlockData`.
-    /// 2. Sort the spans by span.lo() (starting position). Spans that start at the same position
-    ///    are sorted with longer spans before shorter spans; and equal spans are sorted
-    ///    (deterministically) based on "dominator" relationship (if any).
-    /// 3. Traverse the spans in sorted order to identify spans that can be dropped (for instance,
-    ///    if another span or spans are already counting the same code region), or should be merged
-    ///    into a broader combined span (because it represents a contiguous, non-branching, and
-    ///    uninterrupted region of source code).
-    ///
-    ///    Closures are exposed in their enclosing functions as `Assign` `Rvalue`s, and since
-    ///    closures have their own MIR, their `Span` in their enclosing function should be left
-    ///    "uncovered".
-    ///
-    /// Note the resulting vector of `CoverageSpan`s does may not be fully sorted (and does not need
-    /// to be).
     fn mir_to_initial_sorted_coverage_spans(&self) -> Vec<CoverageSpan> {
         let mut initial_spans = Vec::<CoverageSpan>::with_capacity(self.mir_body.num_nodes() * 2);
         for (bcb, bcb_data) in self.basic_coverage_blocks.iter_enumerated() {

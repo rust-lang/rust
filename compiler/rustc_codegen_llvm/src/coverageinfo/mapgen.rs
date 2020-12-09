@@ -241,7 +241,7 @@ fn save_function_record(
 /// (functions referenced by other "used" or public items). Any other functions considered unused,
 /// or "Unreachable" were still parsed and processed through the MIR stage.
 ///
-/// We can find the unreachable functions by the set different of all MIR `DefId`s (`tcx` query
+/// We can find the unreachable functions by the set difference of all MIR `DefId`s (`tcx` query
 /// `mir_keys`) minus the codegenned `DefId`s (`tcx` query `collect_and_partition_mono_items`).
 ///
 /// *HOWEVER* the codegenned `DefId`s are partitioned across multiple `CodegenUnit`s (CGUs), and

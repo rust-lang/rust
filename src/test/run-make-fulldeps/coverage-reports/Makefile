@@ -147,13 +147,19 @@ else
 	# Note `llvm-cov show` output for some programs can vary, but can be ignored
 	# by inserting `// ignore-llvm-cov-show-diffs` at the top of the source file.
 	#
-	# FIXME(richkadel): It looks like most past variations seem to have been mitigated. None of the
-	# Rust test source samples have the `// ignore-llvm-cov-show-diffs` anymore. The main variation
-	# I had seen (and is still present in the new `coverage/lib/used_crate.rs`) is the `llvm-cov show`
-	# reporting of multiple instantiations of a generic function with different type substitutions.
-	# For some reason, `llvm-cov show` can report these in a non-deterministic order, breaking the
-	# `diff` comparision. I was able to work around the problem with `diff --ignore-matching-lines=RE`
+	# FIXME(richkadel): None of the Rust test source samples have the
+	# `// ignore-llvm-cov-show-diffs` anymore. This directive exists to work around a limitation
+	# with `llvm-cov show`. When reporting coverage for multiple instantiations of a generic function,
+	# with different type substitutions, `llvm-cov show` prints these in a non-deterministic order,
+	# breaking the `diff` comparision.
+	#
+	# A partial workaround is implemented below, with `diff --ignore-matching-lines=RE`
 	# to ignore each line prefixing each generic instantiation coverage code region.
+	#
+	# This workaround only works if the coverage counts are identical across all reported
+	# instantiations. If there is no way to ensure this, you may need to apply the
+	# `// ignore-llvm-cov-show-diffs` directive, and rely on the `.json` and counter
+	# files for validating results have not changed.
 
 	$(DIFF) --ignore-matching-lines='::<.*>.*:$$' \
 		expected_show_coverage.$@.txt "$(TMPDIR)"/actual_show_coverage.$@.txt || \
@@ -190,10 +196,6 @@ endif
 			$(call BIN,"$(TMPDIR)"/$@) \
 		| "$(PYTHON)" $(BASEDIR)/prettify_json.py \
 		> "$(TMPDIR)"/actual_export_coverage.$@.json
-	# FIXME(richkadel): With the addition of `--ignore-matching-lines=RE` to ignore the
-	# non-deterministically-ordered coverage results for multiple instantiations of generics with
-	# differing type substitutions, I probably don't need the `.json` files anymore (and may not
-	# need `prettify_json.py` either).
 
 ifdef RUSTC_BLESS_TEST
 	cp "$(TMPDIR)"/actual_export_coverage.$@.json expected_export_coverage.$@.json

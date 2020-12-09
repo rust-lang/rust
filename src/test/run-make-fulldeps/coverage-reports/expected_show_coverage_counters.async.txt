@@ -35,9 +35,6 @@ Counter in file 0 11:1 -> 11:2, (#2 + (#1 - #2))
 Counter in file 0 21:1 -> 21:23, #1
 Counter in file 0 67:5 -> 67:23, #1
 Counter in file 0 38:1 -> 38:19, #1
-Counter in file 0 29:1 -> 29:22, #1
-Counter in file 0 93:1 -> 101:2, #1
-Counter in file 0 91:1 -> 91:25, #1
 Counter in file 0 38:19 -> 42:12, #1
 Counter in file 0 43:9 -> 43:10, #3
 Counter in file 0 43:14 -> 43:18, (#1 + 0)
@@ -49,11 +46,14 @@ Counter in file 0 44:27 -> 44:32, #8
 Counter in file 0 44:36 -> 44:38, (#6 + 0)
 Counter in file 0 45:14 -> 45:16, #7
 Counter in file 0 47:1 -> 47:2, (#5 + (#6 + #7))
+Counter in file 0 29:1 -> 29:22, #1
+Counter in file 0 93:1 -> 101:2, #1
+Counter in file 0 91:1 -> 91:25, #1
 Counter in file 0 51:5 -> 52:18, #1
 Counter in file 0 53:13 -> 53:14, #2
 Counter in file 0 63:13 -> 63:14, (#1 - #2)
 Counter in file 0 65:5 -> 65:6, (#2 + (#1 - #2))
-Counter in file 0 13:20 -> 13:21, #1
+Counter in file 0 17:20 -> 17:21, #1
 Counter in file 0 49:1 -> 68:12, #1
 Counter in file 0 69:9 -> 69:10, #2
 Counter in file 0 69:14 -> 69:27, (#1 + 0)
@@ -69,8 +69,8 @@ Counter in file 0 86:14 -> 86:16, #2
 Counter in file 0 87:14 -> 87:16, #3
 Counter in file 0 89:1 -> 89:2, (#3 + (#2 + (#1 - (#3 + #2))))
 Counter in file 0 17:1 -> 17:20, #1
-Counter in file 0 17:20 -> 17:21, #1
 Counter in file 0 66:5 -> 66:23, #1
+Counter in file 0 13:20 -> 13:21, #1
 Counter in file 0 17:9 -> 17:10, #1
 Counter in file 0 17:9 -> 17:10, #1
 Counter in file 0 117:17 -> 117:19, #1
