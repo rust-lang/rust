@@ -445,7 +445,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
             "highlight_if_we_cannot_match_hir_ty: type_name={:?} needle_fr={:?}",
             type_name, needle_fr
         );
-        if type_name.find(&format!("'{}", counter)).is_some() {
+        if type_name.contains(&format!("'{}", counter)) {
             // Only add a label if we can confirm that a region was labelled.
             RegionNameHighlight::CannotMatchHirTy(span, type_name)
         } else {
