@@ -7,7 +7,7 @@ use std::fmt;
 use fst::{IntoStreamer, Streamer};
 use rustc_hash::FxHashMap;
 
-use crate::{FileId, Vfs, VfsPath};
+use crate::{AnchoredPath, FileId, Vfs, VfsPath};
 
 #[derive(Default, Clone, Eq, PartialEq)]
 pub struct FileSet {
@@ -19,10 +19,10 @@ impl FileSet {
     pub fn len(&self) -> usize {
         self.files.len()
     }
-    pub fn resolve_path(&self, anchor: FileId, path: &str) -> Option<FileId> {
-        let mut base = self.paths[&anchor].clone();
+    pub fn resolve_path(&self, path: AnchoredPath<'_>) -> Option<FileId> {
+        let mut base = self.paths[&path.anchor].clone();
         base.pop();
-        let path = base.join(path)?;
+        let path = base.join(path.path)?;
         self.files.get(&path).copied()
     }
 

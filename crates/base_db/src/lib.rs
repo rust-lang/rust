@@ -18,7 +18,7 @@ pub use crate::{
     },
 };
 pub use salsa;
-pub use vfs::{file_set::FileSet, FileId, VfsPath};
+pub use vfs::{file_set::FileSet, AnchoredPath, AnchoredPathBuf, FileId, VfsPath};
 
 #[macro_export]
 macro_rules! impl_intern_key {
@@ -156,10 +156,11 @@ impl<T: SourceDatabaseExt> FileLoader for FileLoaderDelegate<&'_ T> {
         SourceDatabaseExt::file_text(self.0, file_id)
     }
     fn resolve_path(&self, anchor: FileId, path: &str) -> Option<FileId> {
+        let path = AnchoredPath { anchor, path };
         // FIXME: this *somehow* should be platform agnostic...
-        let source_root = self.0.file_source_root(anchor);
+        let source_root = self.0.file_source_root(path.anchor);
         let source_root = self.0.source_root(source_root);
-        source_root.file_set.resolve_path(anchor, path)
+        source_root.file_set.resolve_path(path)
     }
 
     fn relevant_crates(&self, file_id: FileId) -> Arc<FxHashSet<CrateId>> {
