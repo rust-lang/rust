@@ -14,6 +14,7 @@
       let mut _10: &str;                   // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
       let mut _11: &i32;                   // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
       let mut _12: &i32;                   // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+      let mut _13: std::option::Option<std::fmt::Arguments>; // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
       scope 1 {
           debug split => _1;               // in scope 1 at $DIR/issue-73223.rs:2:9: 2:14
           let _4: std::option::Option<i32>; // in scope 1 at $DIR/issue-73223.rs:7:9: 7:14
@@ -71,10 +72,12 @@
                                            // mir::Constant
                                            // + span: $SRC_DIR/core/src/macros/mod.rs:LL:COL
                                            // + literal: Const { ty: &str, val: Value(Slice { data: Allocation { bytes: [61, 61], relocations: Relocations(SortedMap { data: [] }), init_mask: InitMask { blocks: [3], len: Size { raw: 2 } }, size: Size { raw: 2 }, align: Align { pow2: 0 }, mutability: Not, extra: () }, start: 0, end: 2 }) }
-          core::macros::internals::assert_failed::<i32, i32>(move _10, move _11, move _12); // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          StorageLive(_13);                // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          discriminant(_13) = 0;           // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          core::macros::internals::assert_failed::<i32, i32>(move _10, move _11, move _12, move _13); // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
                                            // mir::Constant
                                            // + span: $SRC_DIR/core/src/macros/mod.rs:LL:COL
-                                           // + literal: Const { ty: for<'r, 's, 't0> fn(&'r str, &'s i32, &'t0 i32) -> ! {core::macros::internals::assert_failed::<i32, i32>}, val: Value(Scalar(<ZST>)) }
+                                           // + literal: Const { ty: for<'r, 's, 't0, 't1> fn(&'r str, &'s i32, &'t0 i32, std::option::Option<std::fmt::Arguments<'t1>>) -> ! {core::macros::internals::assert_failed::<i32, i32>}, val: Value(Scalar(<ZST>)) }
       }
   
       bb2: {

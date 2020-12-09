@@ -4,28 +4,7 @@ use crate::{fmt, panic};
 #[doc(hidden)]
 #[unstable(feature = "macros_internals", reason = "macros implementation detail", issue = "none")]
 #[track_caller]
-pub fn assert_failed<T, U>(op: &str, left: &T, right: &U) -> !
-where
-    T: fmt::Debug + ?Sized,
-    U: fmt::Debug + ?Sized,
-{
-    #[track_caller]
-    fn inner(op: &str, left: &dyn fmt::Debug, right: &dyn fmt::Debug) -> ! {
-        panic!(
-            r#"assertion failed: `(left {} right)`
-  left: `{:?}`,
- right: `{:?}`"#,
-            op, left, right
-        )
-    }
-    inner(op, &left, &right)
-}
-
-#[cold]
-#[doc(hidden)]
-#[unstable(feature = "macros_internals", reason = "macros implementation detail", issue = "none")]
-#[track_caller]
-pub fn assert_failed_args<T, U>(op: &str, left: &T, right: &U, args: fmt::Arguments<'_>) -> !
+pub fn assert_failed<T, U>(op: &str, left: &T, right: &U, args: Option<fmt::Arguments<'_>>) -> !
 where
     T: fmt::Debug + ?Sized,
     U: fmt::Debug + ?Sized,
@@ -35,14 +14,22 @@ where
         op: &str,
         left: &dyn fmt::Debug,
         right: &dyn fmt::Debug,
-        args: fmt::Arguments<'_>,
+        args: Option<fmt::Arguments<'_>>,
     ) -> ! {
-        panic!(
-            r#"assertion failed: `(left {} right)`
+        match args {
+            Some(args) => panic!(
+                r#"assertion failed: `(left {} right)`
   left: `{:?}`,
  right: `{:?}: {}`"#,
-            op, left, right, args
-        )
+                op, left, right, args
+            ),
+            None => panic!(
+                r#"assertion failed: `(left {} right)`
+  left: `{:?}`,
+ right: `{:?}`"#,
+                op, left, right,
+            ),
+        }
     }
     inner(op, &left, &right, args)
 }
