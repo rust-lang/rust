@@ -255,7 +255,7 @@ impl GlobalState {
                             for (path, contents) in files {
                                 let path = VfsPath::from(path);
                                 if !self.mem_docs.contains_key(&path) {
-                                    vfs.set_file_contents(path, contents)
+                                    vfs.set_file_contents(path, contents);
                                 }
                             }
                         }
@@ -503,11 +503,21 @@ impl GlobalState {
                     {
                         log::error!("duplicate DidOpenTextDocument: {}", path)
                     }
-                    this.vfs
+                    let changed = this
+                        .vfs
                         .write()
                         .0
                         .set_file_contents(path, Some(params.text_document.text.into_bytes()));
-                    this.maybe_update_diagnostics();
+
+                    // If the VFS contents are unchanged, update diagnostics, since `handle_event`
+                    // won't see any changes. This avoids missing diagnostics when opening a file.
+                    //
+                    // If the file *was* changed, `handle_event` will already recompute and send
+                    // diagnostics. We can't do it here, since the *current* file contents might be
+                    // unset in salsa, since the VFS change hasn't been applied to the database yet.
+                    if !changed {
+                        this.maybe_update_diagnostics();
+                    }
                 }
                 Ok(())
             })?

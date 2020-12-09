@@ -73,7 +73,7 @@ fn load(
             }
             vfs::loader::Message::Loaded { files } => {
                 for (path, contents) in files {
-                    vfs.set_file_contents(path.into(), contents)
+                    vfs.set_file_contents(path.into(), contents);
                 }
             }
         }
