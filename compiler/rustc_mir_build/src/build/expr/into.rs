@@ -79,7 +79,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 // (#66975) Source could be a const of type `!`, so has to
                 // exist in the generated MIR.
-                unpack!(block = this.as_temp(block, this.local_scope(), source, Mutability::Mut,));
+                unpack!(block = this.as_temp(block, Some(this.local_scope()), source, Mutability::Mut,));
 
                 // This is an optimization. If the expression was a call then we already have an
                 // unreachable block. Don't bother to terminate it and create a new one.
@@ -300,7 +300,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // (evaluating them in order given by user)
                 let fields_map: FxHashMap<_, _> = fields
                     .into_iter()
-                    .map(|f| (f.name, unpack!(block = this.as_operand(block, scope, f.expr))))
+                    .map(|f| (f.name, unpack!(block = this.as_operand(block, Some(scope), f.expr))))
                     .collect();
 
                 let field_names = this.hir.all_fields(adt_def, variant_index);
@@ -468,7 +468,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             ExprKind::Yield { value } => {
                 let scope = this.local_scope();
-                let value = unpack!(block = this.as_operand(block, scope, value));
+                let value = unpack!(block = this.as_operand(block, Some(scope), value));
                 let resume = this.cfg.start_new_block();
                 this.record_operands_moved(slice::from_ref(&value));
                 this.cfg.terminate(
