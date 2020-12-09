@@ -1,5 +1,5 @@
 // revisions:rpass1 rpass2
-// compile-flags: -Z query-dep-graph
+// compile-flags: -Z query-dep-graph -O
 // aux-build:cached_hygiene.rs
 
 // This tests the folllowing scenario
@@ -19,7 +19,12 @@
 // the metadata. Specifically, we were not resetting `orig_id`
 // for an `EpxnData` generate in the current crate, which would cause
 // us to serialize the `ExpnId` pointing to a garbage location in
-// the metadata.
+// the metadata.o
+
+// NOTE: We're explicitly passing the `-O` optimization flag because if optimizations are not
+// enabled, then rustc will ignore the `#[inline(always)]` attribute which means we do not load
+// the optimized mir for the unmodified function to be loaded and so the CGU containing that
+// function will be reused.
 
 #![feature(rustc_attrs)]
 
