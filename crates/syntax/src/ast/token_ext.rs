@@ -17,6 +17,14 @@ impl ast::Comment {
         CommentKind::from_text(self.text())
     }
 
+    pub fn is_inner(&self) -> bool {
+        self.kind().doc == Some(CommentPlacement::Inner)
+    }
+
+    pub fn is_outer(&self) -> bool {
+        self.kind().doc == Some(CommentPlacement::Outer)
+    }
+
     pub fn prefix(&self) -> &'static str {
         let &(prefix, _kind) = CommentKind::BY_PREFIX
             .iter()

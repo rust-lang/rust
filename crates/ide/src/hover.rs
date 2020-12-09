@@ -3357,4 +3357,66 @@ impl Foo {
             "#]],
         );
     }
+
+    #[test]
+    fn hover_doc_outer_inner() {
+        check(
+            r#"
+/// Be quick;
+mod Foo<|> {
+    //! time is mana
+
+    /// This comment belongs to the function
+    fn foo() {}
+}
+"#,
+            expect![[r#"
+                *Foo*
+
+                ```rust
+                test
+                ```
+
+                ```rust
+                mod Foo
+                ```
+
+                ---
+
+                Be quick;
+                time is mana
+            "#]],
+        );
+    }
+
+    #[test]
+    fn hover_doc_outer_inner_attribue() {
+        check(
+            r#"
+#[doc = "Be quick;"]
+mod Foo<|> {
+    #![doc = "time is mana"]
+
+    #[doc = "This comment belongs to the function"]
+    fn foo() {}
+}
+"#,
+            expect![[r#"
+                *Foo*
+
+                ```rust
+                test
+                ```
+
+                ```rust
+                mod Foo
+                ```
+
+                ---
+
+                Be quick;
+                time is mana
+            "#]],
+        );
+    }
 }
