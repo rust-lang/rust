@@ -198,6 +198,7 @@ pub struct Config {
     pub lens: LensConfig,
     pub hover: HoverConfig,
     pub semantic_tokens_refresh: bool,
+    pub code_lens_refresh: bool,
 
     pub linked_projects: Vec<LinkedProject>,
     pub root_path: AbsPathBuf,
@@ -340,6 +341,7 @@ impl Config {
             lens: LensConfig::default(),
             hover: HoverConfig::default(),
             semantic_tokens_refresh: false,
+            code_lens_refresh: false,
             linked_projects: Vec::new(),
             root_path,
         };
@@ -580,6 +582,12 @@ impl Config {
                 workspace_caps.semantic_tokens.as_ref().and_then(|it| it.refresh_support)
             {
                 self.semantic_tokens_refresh = refresh_support;
+            }
+
+            if let Some(refresh_support) =
+                workspace_caps.code_lens.as_ref().and_then(|it| it.refresh_support)
+            {
+                self.code_lens_refresh = refresh_support;
             }
         }
     }

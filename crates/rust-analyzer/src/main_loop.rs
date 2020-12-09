@@ -369,6 +369,11 @@ impl GlobalState {
                 self.semantic_tokens_cache.lock().clear();
                 self.send_request::<lsp_types::request::SemanticTokensRefesh>((), |_, _| ());
             }
+
+            // Refresh code lens if the client supports it.
+            if self.config.code_lens_refresh {
+                self.send_request::<lsp_types::request::CodeLensRefresh>((), |_, _| ());
+            }
         }
 
         if let Some(diagnostic_changes) = self.diagnostics.take_changes() {
