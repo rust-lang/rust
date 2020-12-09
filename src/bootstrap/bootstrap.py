@@ -192,8 +192,10 @@ def default_build_triple(verbose):
     # If the user already has a host build triple with an existing `rustc`
     # install, use their preference. This fixes most issues with Windows builds
     # being detected as GNU instead of MSVC.
+    default_encoding = sys.getdefaultencoding()
     try:
         version = subprocess.check_output(["rustc", "--version", "--verbose"])
+        version = version.decode(default_encoding)
         host = next(x for x in version.split('\n') if x.startswith("host: "))
         triple = host.split("host: ")[1]
         if verbose:
@@ -204,7 +206,6 @@ def default_build_triple(verbose):
             print("rustup not detected: {}".format(e))
             print("falling back to auto-detect")
 
-    default_encoding = sys.getdefaultencoding()
     required = sys.platform != 'win32'
     ostype = require(["uname", "-s"], exit=required)
     cputype = require(['uname', '-m'], exit=required)
@@ -794,7 +795,7 @@ class RustBuild(object):
         env.setdefault("RUSTFLAGS", "")
         env["RUSTFLAGS"] += " -Cdebuginfo=2"
 
-        build_section = "target.{}".format(self.build_triple())
+        build_section = "target.{}".format(self.build)
         target_features = []
         if self.get_toml("crt-static", build_section) == "true":
             target_features += ["+crt-static"]
@@ -825,7 +826,11 @@ class RustBuild(object):
         run(args, env=env, verbose=self.verbose)
 
     def build_triple(self):
-        """Build triple as in LLVM"""
+        """Build triple as in LLVM
+
+        Note that `default_build_triple` is moderately expensive,
+        so use `self.build` where possible.
+        """
         config = self.get_toml('build')
         if config:
             return config
