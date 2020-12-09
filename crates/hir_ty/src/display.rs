@@ -297,26 +297,7 @@ impl HirDisplay for ApplicationTy {
             }
             TypeCtor::FnPtr { is_varargs, .. } => {
                 let sig = FnSig::from_fn_ptr_substs(&self.parameters, is_varargs);
-                write!(f, "fn(")?;
-                f.write_joined(sig.params(), ", ")?;
-                if is_varargs {
-                    if sig.params().is_empty() {
-                        write!(f, "...")?;
-                    } else {
-                        write!(f, ", ...")?;
-                    }
-                }
-                write!(f, ")")?;
-                let ret = sig.ret();
-                if *ret != Ty::unit() {
-                    let ret_display = ret.into_displayable(
-                        f.db,
-                        f.max_size,
-                        f.omit_verbose_types,
-                        f.display_target,
-                    );
-                    write!(f, " -> {}", ret_display)?;
-                }
+                sig.hir_fmt(f)?;
             }
             TypeCtor::FnDef(def) => {
                 let sig = f.db.callable_item_signature(def).subst(&self.parameters);
@@ -579,6 +560,28 @@ impl HirDisplay for Ty {
             }
             Ty::Unknown => write!(f, "{{unknown}}")?,
             Ty::Infer(..) => write!(f, "_")?,
+        }
+        Ok(())
+    }
+}
+
+impl HirDisplay for FnSig {
+    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
+        write!(f, "fn(")?;
+        f.write_joined(self.params(), ", ")?;
+        if self.is_varargs {
+            if self.params().is_empty() {
+                write!(f, "...")?;
+            } else {
+                write!(f, ", ...")?;
+            }
+        }
+        write!(f, ")")?;
+        let ret = self.ret();
+        if *ret != Ty::unit() {
+            let ret_display =
+                ret.into_displayable(f.db, f.max_size, f.omit_verbose_types, f.display_target);
+            write!(f, " -> {}", ret_display)?;
         }
         Ok(())
     }
