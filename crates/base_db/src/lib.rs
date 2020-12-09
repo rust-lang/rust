@@ -91,12 +91,7 @@ pub const DEFAULT_LRU_CAP: usize = 128;
 pub trait FileLoader {
     /// Text of the file.
     fn file_text(&self, file_id: FileId) -> Arc<String>;
-    /// Note that we intentionally accept a `&str` and not a `&Path` here. This
-    /// method exists to handle `#[path = "/some/path.rs"] mod foo;` and such,
-    /// so the input is guaranteed to be utf-8 string. One might be tempted to
-    /// introduce some kind of "utf-8 path with / separators", but that's a bad idea. Behold
-    /// `#[path = "C://no/way"]`
-    fn resolve_path(&self, anchor: FileId, path: &str) -> Option<FileId>;
+    fn resolve_path(&self, path: AnchoredPath) -> Option<FileId>;
     fn relevant_crates(&self, file_id: FileId) -> Arc<FxHashSet<CrateId>>;
 }
 
@@ -155,8 +150,7 @@ impl<T: SourceDatabaseExt> FileLoader for FileLoaderDelegate<&'_ T> {
     fn file_text(&self, file_id: FileId) -> Arc<String> {
         SourceDatabaseExt::file_text(self.0, file_id)
     }
-    fn resolve_path(&self, anchor: FileId, path: &str) -> Option<FileId> {
-        let path = AnchoredPath { anchor, path };
+    fn resolve_path(&self, path: AnchoredPath) -> Option<FileId> {
         // FIXME: this *somehow* should be platform agnostic...
         let source_root = self.0.file_source_root(path.anchor);
         let source_root = self.0.source_root(source_root);

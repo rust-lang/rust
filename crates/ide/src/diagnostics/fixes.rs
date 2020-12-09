@@ -8,7 +8,7 @@ use hir::{
     },
     HasSource, HirDisplay, Semantics, VariantDef,
 };
-use ide_db::base_db::FileId;
+use ide_db::base_db::{AnchoredPathBuf, FileId};
 use ide_db::{
     source_change::{FileSystemEdit, SourceFileEdit},
     RootDatabase,
@@ -36,8 +36,10 @@ impl DiagnosticWithFix for UnresolvedModule {
         Some(Fix::new(
             "Create module",
             FileSystemEdit::CreateFile {
-                anchor: self.file.original_file(sema.db),
-                dst: self.candidate.clone(),
+                dst: AnchoredPathBuf {
+                    anchor: self.file.original_file(sema.db),
+                    path: self.candidate.clone(),
+                },
             }
             .into(),
             unresolved_module.syntax().text_range(),

@@ -19,8 +19,8 @@ use std::{fmt, sync::Arc};
 
 use base_db::{
     salsa::{self, Durability},
-    Canceled, CheckCanceled, CrateId, FileId, FileLoader, FileLoaderDelegate, SourceDatabase,
-    Upcast,
+    AnchoredPath, Canceled, CheckCanceled, CrateId, FileId, FileLoader, FileLoaderDelegate,
+    SourceDatabase, Upcast,
 };
 use hir::db::{AstDatabase, DefDatabase, HirDatabase};
 use rustc_hash::FxHashSet;
@@ -72,8 +72,8 @@ impl FileLoader for RootDatabase {
     fn file_text(&self, file_id: FileId) -> Arc<String> {
         FileLoaderDelegate(self).file_text(file_id)
     }
-    fn resolve_path(&self, anchor: FileId, path: &str) -> Option<FileId> {
-        FileLoaderDelegate(self).resolve_path(anchor, path)
+    fn resolve_path(&self, path: AnchoredPath) -> Option<FileId> {
+        FileLoaderDelegate(self).resolve_path(path)
     }
     fn relevant_crates(&self, file_id: FileId) -> Arc<FxHashSet<CrateId>> {
         FileLoaderDelegate(self).relevant_crates(file_id)

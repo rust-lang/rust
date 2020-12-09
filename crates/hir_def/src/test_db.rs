@@ -5,8 +5,8 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use base_db::SourceDatabase;
 use base_db::{salsa, CrateId, FileId, FileLoader, FileLoaderDelegate, Upcast};
+use base_db::{AnchoredPath, SourceDatabase};
 use hir_expand::db::AstDatabase;
 use hir_expand::diagnostics::Diagnostic;
 use hir_expand::diagnostics::DiagnosticSinkBuilder;
@@ -63,8 +63,8 @@ impl FileLoader for TestDB {
     fn file_text(&self, file_id: FileId) -> Arc<String> {
         FileLoaderDelegate(self).file_text(file_id)
     }
-    fn resolve_path(&self, anchor: FileId, path: &str) -> Option<FileId> {
-        FileLoaderDelegate(self).resolve_path(anchor, path)
+    fn resolve_path(&self, path: AnchoredPath) -> Option<FileId> {
+        FileLoaderDelegate(self).resolve_path(path)
     }
     fn relevant_crates(&self, file_id: FileId) -> Arc<FxHashSet<CrateId>> {
         FileLoaderDelegate(self).relevant_crates(file_id)

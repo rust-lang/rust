@@ -4,7 +4,7 @@ use crate::{
     MacroDefId, MacroDefKind, TextSize,
 };
 
-use base_db::FileId;
+use base_db::{AnchoredPath, FileId};
 use either::Either;
 use mbe::{parse_to_token_tree, ExpandResult};
 use parser::FragmentKind;
@@ -324,7 +324,8 @@ fn relative_file(
     allow_recursion: bool,
 ) -> Option<FileId> {
     let call_site = call_id.as_file().original_file(db);
-    let res = db.resolve_path(call_site, path)?;
+    let path = AnchoredPath { anchor: call_site, path };
+    let res = db.resolve_path(path)?;
     // Prevent include itself
     if res == call_site && !allow_recursion {
         None
