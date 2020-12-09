@@ -68,7 +68,8 @@ impl DiagnosticWithFix for MissingFields {
         }
 
         let root = sema.db.parse_or_expand(self.file)?;
-        let old_field_list = self.field_list_parent.to_node(&root).record_expr_field_list()?;
+        let field_list_parent = self.field_list_parent.to_node(&root);
+        let old_field_list = field_list_parent.record_expr_field_list()?;
         let mut new_field_list = old_field_list.clone();
         for f in self.missed_fields.iter() {
             let field =
@@ -85,7 +86,7 @@ impl DiagnosticWithFix for MissingFields {
         Some(Fix::new(
             "Fill struct fields",
             SourceFileEdit { file_id: self.file.original_file(sema.db), edit }.into(),
-            sema.original_range(&old_field_list.syntax()).range,
+            sema.original_range(&field_list_parent.syntax()).range,
         ))
     }
 }
