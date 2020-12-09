@@ -184,8 +184,7 @@ pub mod token_stream {
             let (subtree, _token_map) =
                 mbe::parse_to_token_tree(src).ok_or("Failed to parse from mbe")?;
 
-            let tt: tt::TokenTree = subtree.into();
-            Ok(tt.into())
+            Ok(TokenStream { subtree })
         }
     }
 
