@@ -99,18 +99,19 @@ impl Vfs {
                 (file_id, path)
             })
     }
-    pub fn set_file_contents(&mut self, path: VfsPath, contents: Option<Vec<u8>>) {
+    pub fn set_file_contents(&mut self, path: VfsPath, contents: Option<Vec<u8>>) -> bool {
         let file_id = self.alloc_file_id(path);
         let change_kind = match (&self.get(file_id), &contents) {
-            (None, None) => return,
+            (None, None) => return false,
             (None, Some(_)) => ChangeKind::Create,
             (Some(_), None) => ChangeKind::Delete,
-            (Some(old), Some(new)) if old == new => return,
+            (Some(old), Some(new)) if old == new => return false,
             (Some(_), Some(_)) => ChangeKind::Modify,
         };
 
         *self.get_mut(file_id) = contents;
-        self.changes.push(ChangedFile { file_id, change_kind })
+        self.changes.push(ChangedFile { file_id, change_kind });
+        true
     }
     pub fn has_changes(&self) -> bool {
         !self.changes.is_empty()
