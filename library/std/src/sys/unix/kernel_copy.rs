@@ -498,8 +498,8 @@ impl CopyResult {
 /// Thus -1 will never be overlap with a valid open file.
 const INVALID_FD: RawFd = -1;
 
-/// linux-specific implementation that will attempt to use copy_file_range for copy offloading
-/// as the name says, it only works on regular files
+/// Linux-specific implementation that will attempt to use copy_file_range for copy offloading.
+/// As the name says, it only works on regular files.
 ///
 /// Callers must handle fallback to a generic copy loop.
 /// `Fallback` may indicate non-zero number of bytes already written
