@@ -97,7 +97,7 @@ NOTE: Nightly extension should **only** be installed via the `Download now` acti
 
 ==== Building From Source
 
-Alternatively, both the server and the plugin can be installed from source:
+Alternatively, both the server and the Code plugin can be installed from source:
 
 [source]
 ----
@@ -108,6 +108,13 @@ $ cargo xtask install
 You'll need Cargo, nodejs and npm for this.
 
 Note that installing via `xtask install` does not work for VS Code Remote, instead you'll need to install the `.vsix` manually.
+
+If you're not using Code, you can compile and install only the LSP server:
+
+[source]
+----
+$ cargo xtask install --server
+----
 
 ==== Troubleshooting
 
