@@ -369,7 +369,7 @@ pub trait Extend<A> {
     /// which is likely optimal for many cases.
     ///
     /// You should override this, however, if you can take advantage of the array elements being contiguous in memory.
-    /// ([`Vec<T>`] does, for example, but there's no advantage of doing so in [`LinkedList<T>`].)
+    /// (`Vec<T>` does, for example, but there's no way to do so in `LinkedList<T>`.)
     #[unstable(feature = "extend_from_array", issue = "88888888")]
     fn extend_from_array<const N: usize>(&mut self, array: [A; N]) {
         self.extend(crate::array::IntoIter::new(array));
