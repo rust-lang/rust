@@ -110,6 +110,8 @@ pub use core::slice::{Chunks, Windows};
 pub use core::slice::{ChunksExact, ChunksExactMut};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::slice::{ChunksMut, Split, SplitMut};
+#[unstable(feature = "slice_group_by", issue = "none")]
+pub use core::slice::{GroupBy, GroupByMut};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::slice::{Iter, IterMut};
 #[stable(feature = "rchunks", since = "1.31.0")]
@@ -118,8 +120,6 @@ pub use core::slice::{RChunks, RChunksExact, RChunksExactMut, RChunksMut};
 pub use core::slice::{RSplit, RSplitMut};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::slice::{RSplitN, RSplitNMut, SplitN, SplitNMut};
-#[unstable(feature = "slice_group_by", issue = "none")]
-pub use core::slice::{GroupBy, GroupByMut};
 
 ////////////////////////////////////////////////////////////////////////////////
 // Basic slice extension methods

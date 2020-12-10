@@ -2991,7 +2991,8 @@ impl<'a, T: 'a, P> GroupBy<'a, T, P> {
 
 #[unstable(feature = "slice_group_by", issue = "none")]
 impl<'a, T: 'a, P> Iterator for GroupBy<'a, T, P>
-where P: FnMut(&T, &T) -> bool,
+where
+    P: FnMut(&T, &T) -> bool,
 {
     type Item = &'a [T];
 
@@ -3013,11 +3014,7 @@ where P: FnMut(&T, &T) -> bool,
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        if self.slice.is_empty() {
-            (0, Some(0))
-        } else {
-            (1, Some(self.slice.len()))
-        }
+        if self.slice.is_empty() { (0, Some(0)) } else { (1, Some(self.slice.len())) }
     }
 
     #[inline]
@@ -3028,7 +3025,8 @@ where P: FnMut(&T, &T) -> bool,
 
 #[unstable(feature = "slice_group_by", issue = "none")]
 impl<'a, T: 'a, P> DoubleEndedIterator for GroupBy<'a, T, P>
-where P: FnMut(&T, &T) -> bool,
+where
+    P: FnMut(&T, &T) -> bool,
 {
     #[inline]
     fn next_back(&mut self) -> Option<Self::Item> {
@@ -3048,9 +3046,7 @@ where P: FnMut(&T, &T) -> bool,
 }
 
 #[unstable(feature = "slice_group_by", issue = "none")]
-impl<'a, T: 'a, P> FusedIterator for GroupBy<'a, T, P>
-where P: FnMut(&T, &T) -> bool,
-{ }
+impl<'a, T: 'a, P> FusedIterator for GroupBy<'a, T, P> where P: FnMut(&T, &T) -> bool {}
 
 /// An iterator over slice in (non-overlapping) mutable chunks separated
 /// by a predicate.
@@ -3075,7 +3071,8 @@ impl<'a, T: 'a, P> GroupByMut<'a, T, P> {
 
 #[unstable(feature = "slice_group_by", issue = "none")]
 impl<'a, T: 'a, P> Iterator for GroupByMut<'a, T, P>
-where P: FnMut(&T, &T) -> bool,
+where
+    P: FnMut(&T, &T) -> bool,
 {
     type Item = &'a mut [T];
 
@@ -3098,11 +3095,7 @@ where P: FnMut(&T, &T) -> bool,
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        if self.slice.is_empty() {
-            (0, Some(0))
-        } else {
-            (1, Some(self.slice.len()))
-        }
+        if self.slice.is_empty() { (0, Some(0)) } else { (1, Some(self.slice.len())) }
     }
 
     #[inline]
@@ -3113,7 +3106,8 @@ where P: FnMut(&T, &T) -> bool,
 
 #[unstable(feature = "slice_group_by", issue = "none")]
 impl<'a, T: 'a, P> DoubleEndedIterator for GroupByMut<'a, T, P>
-where P: FnMut(&T, &T) -> bool,
+where
+    P: FnMut(&T, &T) -> bool,
 {
     #[inline]
     fn next_back(&mut self) -> Option<Self::Item> {
@@ -3132,3 +3126,6 @@ where P: FnMut(&T, &T) -> bool,
         }
     }
 }
+
+#[unstable(feature = "slice_group_by", issue = "none")]
+impl<'a, T: 'a, P> FusedIterator for GroupByMut<'a, T, P> where P: FnMut(&T, &T) -> bool {}

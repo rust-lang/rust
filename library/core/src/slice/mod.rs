@@ -1234,7 +1234,8 @@ impl<T> [T] {
     #[unstable(feature = "slice_group_by", issue = "none")]
     #[inline]
     pub fn group_by<F>(&self, pred: F) -> GroupBy<'_, T, F>
-    where F: FnMut(&T, &T) -> bool
+    where
+        F: FnMut(&T, &T) -> bool,
     {
         GroupBy::new(self, pred)
     }
@@ -1263,7 +1264,8 @@ impl<T> [T] {
     #[unstable(feature = "slice_group_by", issue = "none")]
     #[inline]
     pub fn group_by_mut<F>(&mut self, pred: F) -> GroupByMut<'_, T, F>
-    where F: FnMut(&T, &T) -> bool
+    where
+        F: FnMut(&T, &T) -> bool,
     {
         GroupByMut::new(self, pred)
     }
