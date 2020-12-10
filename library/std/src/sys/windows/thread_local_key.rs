@@ -1,4 +1,4 @@
-use crate::mem;
+use crate::mem::ManuallyDrop;
 use crate::ptr;
 use crate::sync::atomic::AtomicPtr;
 use crate::sync::atomic::Ordering::SeqCst;
@@ -111,16 +111,13 @@ struct Node {
 }
 
 unsafe fn register_dtor(key: Key, dtor: Dtor) {
-    let mut node = Box::new(Node { key, dtor, next: ptr::null_mut() });
+    let mut node = ManuallyDrop::new(Box::new(Node { key, dtor, next: ptr::null_mut() }));
 
     let mut head = DTORS.load(SeqCst);
     loop {
         node.next = head;
-        match DTORS.compare_exchange(head, &mut *node, SeqCst, SeqCst) {
-            Ok(_) => {
-                mem::forget(node);
-                return;
-            }
+        match DTORS.compare_exchange(head, &mut **node, SeqCst, SeqCst) {
+            Ok(_) => return, // nothing to drop, we successfully added the node to the list
             Err(cur) => head = cur,
         }
     }
