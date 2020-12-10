@@ -3020,7 +3020,7 @@ where P: FnMut(&T, &T) -> bool,
     }
 
     #[inline]
-    fn last(self) -> Option<Self::Item> {
+    fn last(mut self) -> Option<Self::Item> {
         self.next_back()
     }
 }
@@ -3105,7 +3105,7 @@ where P: FnMut(&T, &T) -> bool,
     }
 
     #[inline]
-    fn last(self) -> Option<Self::Item> {
+    fn last(mut self) -> Option<Self::Item> {
         self.next_back()
     }
 }
