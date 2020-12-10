@@ -45,7 +45,7 @@ pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
     });
 
     if ctx.config.enable_autoimport_completions && ctx.config.resolve_additional_edits_lazily() {
-        fuzzy_completion(acc, ctx).unwrap_or_default()
+        fuzzy_completion(acc, ctx);
     }
 }
 
@@ -100,10 +100,10 @@ fn complete_enum_variants(acc: &mut Completions, ctx: &CompletionContext, ty: &T
 // To avoid an excessive amount of the results returned, completion input is checked for inclusion in the identifiers only
 // (i.e. in `HashMap` in the `std::collections::HashMap` path), also not in the module indentifiers.
 //
-// .Merge Behaviour
+// .Merge Behavior
 //
-// It is possible to configure how use-trees are merged with the `importMergeBehaviour` setting.
-// Mimics the corresponding behaviour of the `Auto Import` feature.
+// It is possible to configure how use-trees are merged with the `importMergeBehavior` setting.
+// Mimics the corresponding behavior of the `Auto Import` feature.
 //
 // .LSP and performance implications
 //
@@ -150,7 +150,7 @@ fn fuzzy_completion(acc: &mut Completions, ctx: &CompletionContext) -> Option<()
             ImportEdit {
                 import_path: import_path.clone(),
                 import_scope: import_scope.clone(),
-                merge_behaviour: ctx.config.merge,
+                merge_behavior: ctx.config.merge,
             },
             &definition,
         )

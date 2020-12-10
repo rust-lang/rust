@@ -5,7 +5,7 @@
 //! assists if we are allowed to.
 
 use hir::PrefixKind;
-use ide_db::helpers::insert_use::MergeBehaviour;
+use ide_db::helpers::insert_use::MergeBehavior;
 
 use crate::AssistKind;
 
@@ -39,12 +39,12 @@ impl Default for AssistConfig {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct InsertUseConfig {
-    pub merge: Option<MergeBehaviour>,
+    pub merge: Option<MergeBehavior>,
     pub prefix_kind: PrefixKind,
 }
 
 impl Default for InsertUseConfig {
     fn default() -> Self {
-        InsertUseConfig { merge: Some(MergeBehaviour::Full), prefix_kind: PrefixKind::Plain }
+        InsertUseConfig { merge: Some(MergeBehavior::Full), prefix_kind: PrefixKind::Plain }
     }
 }

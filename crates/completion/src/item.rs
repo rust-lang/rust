@@ -4,7 +4,7 @@ use std::fmt;
 
 use hir::{Documentation, ModPath, Mutability};
 use ide_db::helpers::{
-    insert_use::{self, ImportScope, MergeBehaviour},
+    insert_use::{self, ImportScope, MergeBehavior},
     mod_path_to_ast,
 };
 use syntax::{algo, TextRange};
@@ -271,7 +271,7 @@ impl CompletionItem {
 pub struct ImportEdit {
     pub import_path: ModPath,
     pub import_scope: ImportScope,
-    pub merge_behaviour: Option<MergeBehaviour>,
+    pub merge_behavior: Option<MergeBehavior>,
 }
 
 impl ImportEdit {
@@ -283,7 +283,7 @@ impl ImportEdit {
         let rewriter = insert_use::insert_use(
             &self.import_scope,
             mod_path_to_ast(&self.import_path),
-            self.merge_behaviour,
+            self.merge_behavior,
         );
         let old_ast = rewriter.rewrite_root()?;
         let mut import_insert = TextEdit::builder();

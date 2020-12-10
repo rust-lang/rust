@@ -153,7 +153,7 @@ pub fn resolve_completion_edits(
         })
         .find(|mod_path| mod_path.to_string() == full_import_path)?;
 
-    ImportEdit { import_path, import_scope, merge_behaviour: config.merge }
+    ImportEdit { import_path, import_scope, merge_behavior: config.merge }
         .to_text_edit()
         .map(|edit| vec![edit])
 }

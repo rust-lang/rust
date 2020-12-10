@@ -93,7 +93,7 @@ fn is_inner_comment(token: SyntaxToken) -> bool {
 pub fn insert_use<'a>(
     scope: &ImportScope,
     path: ast::Path,
-    merge: Option<MergeBehaviour>,
+    merge: Option<MergeBehavior>,
 ) -> SyntaxRewriter<'a> {
     let _p = profile::span("insert_use");
     let mut rewriter = SyntaxRewriter::default();
@@ -183,7 +183,7 @@ fn eq_visibility(vis0: Option<ast::Visibility>, vis1: Option<ast::Visibility>) -
 pub fn try_merge_imports(
     lhs: &ast::Use,
     rhs: &ast::Use,
-    merge_behaviour: MergeBehaviour,
+    merge_behavior: MergeBehavior,
 ) -> Option<ast::Use> {
     // don't merge imports with different visibilities
     if !eq_visibility(lhs.visibility(), rhs.visibility()) {
@@ -191,14 +191,14 @@ pub fn try_merge_imports(
     }
     let lhs_tree = lhs.use_tree()?;
     let rhs_tree = rhs.use_tree()?;
-    let merged = try_merge_trees(&lhs_tree, &rhs_tree, merge_behaviour)?;
+    let merged = try_merge_trees(&lhs_tree, &rhs_tree, merge_behavior)?;
     Some(lhs.with_use_tree(merged))
 }
 
 pub fn try_merge_trees(
     lhs: &ast::UseTree,
     rhs: &ast::UseTree,
-    merge: MergeBehaviour,
+    merge: MergeBehavior,
 ) -> Option<ast::UseTree> {
     let lhs_path = lhs.path()?;
     let rhs_path = rhs.path()?;
@@ -220,7 +220,7 @@ pub fn try_merge_trees(
 fn recursive_merge(
     lhs: &ast::UseTree,
     rhs: &ast::UseTree,
-    merge: MergeBehaviour,
+    merge: MergeBehavior,
 ) -> Option<ast::UseTree> {
     let mut use_trees = lhs
         .use_tree_list()
@@ -301,7 +301,7 @@ fn recursive_merge(
                 }
             }
             Err(_)
-                if merge == MergeBehaviour::Last
+                if merge == MergeBehavior::Last
                     && use_trees.len() > 0
                     && rhs_t.use_tree_list().is_some() =>
             {
@@ -438,20 +438,20 @@ fn path_segment_cmp(a: &ast::PathSegment, b: &ast::PathSegment) -> Ordering {
 
 /// What type of merges are allowed.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum MergeBehaviour {
+pub enum MergeBehavior {
     /// Merge everything together creating deeply nested imports.
     Full,
     /// Only merge the last import level, doesn't allow import nesting.
     Last,
 }
 
-impl MergeBehaviour {
+impl MergeBehavior {
     #[inline]
     fn is_tree_allowed(&self, tree: &ast::UseTree) -> bool {
         match self {
-            MergeBehaviour::Full => true,
+            MergeBehavior::Full => true,
             // only simple single segment paths are allowed
-            MergeBehaviour::Last => {
+            MergeBehavior::Last => {
                 tree.use_tree_list().is_none() && tree.path().map(path_len) <= Some(1)
             }
         }

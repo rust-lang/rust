@@ -533,7 +533,7 @@ fn merge_last_fail() {
     check_merge_only_fail(
         r"use foo::bar::{baz::{Qux, Fez}};",
         r"use foo::bar::{baaz::{Quux, Feez}};",
-        MergeBehaviour::Last,
+        MergeBehavior::Last,
     );
 }
 
@@ -542,7 +542,7 @@ fn merge_last_fail1() {
     check_merge_only_fail(
         r"use foo::bar::{baz::{Qux, Fez}};",
         r"use foo::bar::baaz::{Quux, Feez};",
-        MergeBehaviour::Last,
+        MergeBehavior::Last,
     );
 }
 
@@ -551,7 +551,7 @@ fn merge_last_fail2() {
     check_merge_only_fail(
         r"use foo::bar::baz::{Qux, Fez};",
         r"use foo::bar::{baaz::{Quux, Feez}};",
-        MergeBehaviour::Last,
+        MergeBehavior::Last,
     );
 }
 
@@ -560,7 +560,7 @@ fn merge_last_fail3() {
     check_merge_only_fail(
         r"use foo::bar::baz::{Qux, Fez};",
         r"use foo::bar::baaz::{Quux, Feez};",
-        MergeBehaviour::Last,
+        MergeBehavior::Last,
     );
 }
 
@@ -568,7 +568,7 @@ fn check(
     path: &str,
     ra_fixture_before: &str,
     ra_fixture_after: &str,
-    mb: Option<MergeBehaviour>,
+    mb: Option<MergeBehavior>,
     module: bool,
 ) {
     let mut syntax = ast::SourceFile::parse(ra_fixture_before).tree().syntax().clone();
@@ -589,18 +589,18 @@ fn check(
 }
 
 fn check_full(path: &str, ra_fixture_before: &str, ra_fixture_after: &str) {
-    check(path, ra_fixture_before, ra_fixture_after, Some(MergeBehaviour::Full), false)
+    check(path, ra_fixture_before, ra_fixture_after, Some(MergeBehavior::Full), false)
 }
 
 fn check_last(path: &str, ra_fixture_before: &str, ra_fixture_after: &str) {
-    check(path, ra_fixture_before, ra_fixture_after, Some(MergeBehaviour::Last), false)
+    check(path, ra_fixture_before, ra_fixture_after, Some(MergeBehavior::Last), false)
 }
 
 fn check_none(path: &str, ra_fixture_before: &str, ra_fixture_after: &str) {
     check(path, ra_fixture_before, ra_fixture_after, None, false)
 }
 
-fn check_merge_only_fail(ra_fixture0: &str, ra_fixture1: &str, mb: MergeBehaviour) {
+fn check_merge_only_fail(ra_fixture0: &str, ra_fixture1: &str, mb: MergeBehavior) {
     let use0 = ast::SourceFile::parse(ra_fixture0)
         .tree()
         .syntax()

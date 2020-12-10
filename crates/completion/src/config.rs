@@ -4,7 +4,7 @@
 //! module, and we use to statically check that we only produce snippet
 //! completions if we are allowed to.
 
-use ide_db::helpers::insert_use::MergeBehaviour;
+use ide_db::helpers::insert_use::MergeBehavior;
 use rustc_hash::FxHashSet;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -14,7 +14,7 @@ pub struct CompletionConfig {
     pub add_call_parenthesis: bool,
     pub add_call_argument_snippets: bool,
     pub snippet_cap: Option<SnippetCap>,
-    pub merge: Option<MergeBehaviour>,
+    pub merge: Option<MergeBehavior>,
     /// A set of capabilities, enabled on the client and supported on the server.
     pub active_resolve_capabilities: FxHashSet<CompletionResolveCapability>,
 }
@@ -56,7 +56,7 @@ impl Default for CompletionConfig {
             add_call_parenthesis: true,
             add_call_argument_snippets: true,
             snippet_cap: Some(SnippetCap { _private: () }),
-            merge: Some(MergeBehaviour::Full),
+            merge: Some(MergeBehavior::Full),
             active_resolve_capabilities: FxHashSet::default(),
         }
     }
