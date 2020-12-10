@@ -117,7 +117,7 @@ impl<'a> Parser<'a> {
             }
 
             let expr = if this.eat(&token::OpenDelim(token::Brace)) {
-                this.parse_struct_expr(path, AttrVec::new(), true)?
+                this.parse_struct_expr(None, path, AttrVec::new(), true)?
             } else {
                 let hi = this.prev_token.span;
                 this.mk_expr(lo.to(hi), ExprKind::Path(None, path), AttrVec::new())

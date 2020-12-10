@@ -45,7 +45,7 @@ fn is_short_pattern_inner(pat: &ast::Pat) -> bool {
         | ast::PatKind::Path(..)
         | ast::PatKind::Range(..) => false,
         ast::PatKind::Tuple(ref subpats) => subpats.len() <= 1,
-        ast::PatKind::TupleStruct(ref path, ref subpats) => {
+        ast::PatKind::TupleStruct(_, ref path, ref subpats) => {
             path.segments.len() <= 1 && subpats.len() <= 1
         }
         ast::PatKind::Box(ref p) | ast::PatKind::Ref(ref p, _) | ast::PatKind::Paren(ref p) => {
@@ -226,7 +226,7 @@ impl Rewrite for Pat {
             PatKind::Path(ref q_self, ref path) => {
                 rewrite_path(context, PathContext::Expr, q_self.as_ref(), path, shape)
             }
-            PatKind::TupleStruct(ref path, ref pat_vec) => {
+            PatKind::TupleStruct(_, ref path, ref pat_vec) => {
                 let path_str = rewrite_path(context, PathContext::Expr, None, path, shape)?;
                 rewrite_tuple_pat(pat_vec, Some(path_str), self.span, context, shape)
             }
@@ -244,7 +244,7 @@ impl Rewrite for Pat {
                     .collect();
                 Some(format!("[{}]", rw.join(", ")))
             }
-            PatKind::Struct(ref path, ref fields, ellipsis) => {
+            PatKind::Struct(_, ref path, ref fields, ellipsis) => {
                 rewrite_struct_pat(path, fields, ellipsis, self.span, context, shape)
             }
             PatKind::MacCall(ref mac) => {

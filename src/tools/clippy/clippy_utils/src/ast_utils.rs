@@ -47,9 +47,9 @@ pub fn eq_pat(l: &Pat, r: &Pat) -> bool {
         | (Ref(l, Mutability::Mut), Ref(r, Mutability::Mut)) => eq_pat(l, r),
         (Tuple(l), Tuple(r)) | (Slice(l), Slice(r)) => over(l, r, |l, r| eq_pat(l, r)),
         (Path(lq, lp), Path(rq, rp)) => both(lq, rq, |l, r| eq_qself(l, r)) && eq_path(lp, rp),
-        (TupleStruct(lp, lfs), TupleStruct(rp, rfs)) => eq_path(lp, rp) && over(lfs, rfs, |l, r| eq_pat(l, r)),
-        (Struct(lp, lfs, lr), Struct(rp, rfs, rr)) => {
-            lr == rr && eq_path(lp, rp) && unordered_over(lfs, rfs, |lf, rf| eq_field_pat(lf, rf))
+        (TupleStruct(lqself, lp, lfs), TupleStruct(rqself, rp, rfs)) => eq_maybe_qself(lqself, rqself) && eq_path(lp, rp) && over(lfs, rfs, |l, r| eq_pat(l, r)),
+        (Struct(lqself, lp, lfs, lr), Struct(rqself, rp, rfs, rr)) => {
+            lr == rr && eq_maybe_qself(lqself, rqself) &&eq_path(lp, rp) && unordered_over(lfs, rfs, |lf, rf| eq_field_pat(lf, rf))
         },
         (Or(ls), Or(rs)) => unordered_over(ls, rs, |l, r| eq_pat(l, r)),
         (MacCall(l), MacCall(r)) => eq_mac_call(l, r),
@@ -76,6 +76,14 @@ pub fn eq_field_pat(l: &PatField, r: &PatField) -> bool {
 
 pub fn eq_qself(l: &QSelf, r: &QSelf) -> bool {
     l.position == r.position && eq_ty(&l.ty, &r.ty)
+}
+
+pub fn eq_maybe_qself(l: &Option<QSelf>, r: &Option<QSelf>) -> bool {
+    match (l, r) {
+        (Some(l), Some(r)) => eq_qself(l, r),
+        (None, None) => true,
+        _ => false
+    }
 }
 
 pub fn eq_path(l: &Path, r: &Path) -> bool {
@@ -170,7 +178,8 @@ pub fn eq_expr(l: &Expr, r: &Expr) -> bool {
         (Path(lq, lp), Path(rq, rp)) => both(lq, rq, |l, r| eq_qself(l, r)) && eq_path(lp, rp),
         (MacCall(l), MacCall(r)) => eq_mac_call(l, r),
         (Struct(lse), Struct(rse)) => {
-            eq_path(&lse.path, &rse.path)
+            eq_maybe_qself(&lse.qself, &rse.qself) 
+                && eq_path(&lse.path, &rse.path)
                 && eq_struct_rest(&lse.rest, &rse.rest)
                 && unordered_over(&lse.fields, &rse.fields, |l, r| eq_field(l, r))
         },

@@ -366,7 +366,7 @@ impl<'a> Parser<'a> {
             let mut snapshot = self.clone();
             let path =
                 Path { segments: vec![], span: self.prev_token.span.shrink_to_lo(), tokens: None };
-            let struct_expr = snapshot.parse_struct_expr(path, AttrVec::new(), false);
+            let struct_expr = snapshot.parse_struct_expr(None, path, AttrVec::new(), false);
             let block_tail = self.parse_block_tail(lo, s, AttemptLocalParseRecovery::No);
             return Some(match (struct_expr, block_tail) {
                 (Ok(expr), Err(mut err)) => {

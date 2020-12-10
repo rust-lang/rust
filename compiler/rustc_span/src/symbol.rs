@@ -756,6 +756,7 @@ symbols! {
         modifiers,
         module,
         module_path,
+        more_qualified_paths,
         more_struct_aliases,
         movbe_target_feature,
         move_ref_pattern,
