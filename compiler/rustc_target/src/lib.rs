@@ -15,6 +15,7 @@
 #![feature(never_type)]
 #![feature(associated_type_bounds)]
 #![feature(exhaustive_patterns)]
+#![feature(str_split_once)]
 
 #[macro_use]
 extern crate rustc_macros;
