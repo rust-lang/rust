@@ -245,6 +245,12 @@ fn format_args_expand(
     if args.is_empty() {
         return ExpandResult::only_err(mbe::ExpandError::NoMatchingRule);
     }
+    for arg in &mut args {
+        // Remove `key =`.
+        if matches!(arg.get(1), Some(tt::TokenTree::Leaf(tt::Leaf::Punct(p))) if p.char == '=') {
+            arg.drain(..2);
+        }
+    }
     let _format_string = args.remove(0);
     let arg_tts = args.into_iter().flat_map(|arg| {
         quote! { std::fmt::ArgumentV1::new(&(##arg), std::fmt::Display::fmt), }
