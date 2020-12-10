@@ -12,7 +12,7 @@ use std::{convert::TryFrom, ffi::OsString, path::PathBuf};
 use flycheck::FlycheckConfig;
 use hir::PrefixKind;
 use ide::{AssistConfig, CompletionConfig, DiagnosticsConfig, HoverConfig, InlayHintsConfig};
-use ide_db::helpers::insert_use::MergeBehaviour;
+use ide_db::helpers::insert_use::MergeBehavior;
 use itertools::Itertools;
 use lsp_types::{ClientCapabilities, MarkupKind};
 use project_model::{CargoConfig, ProjectJson, ProjectJsonData, ProjectManifest};
@@ -25,7 +25,7 @@ use crate::{caps::enabled_completions_resolve_capabilities, diagnostics::Diagnos
 config_data! {
     struct ConfigData {
         /// The strategy to use when inserting new imports or merging imports.
-        assist_importMergeBehaviour: MergeBehaviourDef = "\"full\"",
+        assist_importMergeBehaviour: MergeBehaviorDef = "\"full\"",
         /// The path structure for newly inserted paths to use.
         assist_importPrefix: ImportPrefixDef           = "\"plain\"",
 
@@ -447,9 +447,9 @@ impl Config {
         };
 
         self.assist.insert_use.merge = match data.assist_importMergeBehaviour {
-            MergeBehaviourDef::None => None,
-            MergeBehaviourDef::Full => Some(MergeBehaviour::Full),
-            MergeBehaviourDef::Last => Some(MergeBehaviour::Last),
+            MergeBehaviorDef::None => None,
+            MergeBehaviorDef::Full => Some(MergeBehavior::Full),
+            MergeBehaviorDef::Last => Some(MergeBehavior::Last),
         };
         self.assist.insert_use.prefix_kind = match data.assist_importPrefix {
             ImportPrefixDef::Plain => PrefixKind::Plain,
@@ -606,7 +606,7 @@ enum ManifestOrProjectJson {
 
 #[derive(Deserialize)]
 #[serde(rename_all = "snake_case")]
-enum MergeBehaviourDef {
+enum MergeBehaviorDef {
     None,
     Full,
     Last,
@@ -740,7 +740,7 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
             "type": ["null", "array"],
             "items": { "type": "string" },
         },
-        "MergeBehaviourDef" => set! {
+        "MergeBehaviorDef" => set! {
             "type": "string",
             "enum": ["none", "full", "last"],
             "enumDescriptions": [

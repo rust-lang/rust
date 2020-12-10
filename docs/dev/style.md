@@ -514,6 +514,7 @@ impl Parent {
 Use boring and long names for local variables ([yay code completion](https://github.com/rust-analyzer/rust-analyzer/pull/4162#discussion_r417130973)).
 The default name is a lowercased name of the type: `global_state: GlobalState`.
 Avoid ad-hoc acronyms and contractions, but use the ones that exist consistently (`db`, `ctx`, `acc`).
+Prefer American spelling (color, behavior).
 
 Default names:
 
