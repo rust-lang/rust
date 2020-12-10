@@ -1,6 +1,7 @@
 // check-pass
 // aux-build:external_extern_fn.rs
 #![crate_type = "lib"]
+#![feature(no_niche)]
 #![warn(clashing_extern_declarations)]
 
 mod redeclared_different_signature {
@@ -380,6 +381,39 @@ mod unknown_layout {
         pub struct Link<T> {
             pub item: T,
             pub next: *const Link<T>,
+        }
+    }
+}
+
+mod hidden_niche {
+    mod a {
+        extern "C" {
+            fn hidden_niche_transparent() -> usize;
+            fn hidden_niche_transparent_no_niche() -> usize;
+            fn hidden_niche_unsafe_cell() -> usize;
+        }
+    }
+    mod b {
+        use std::cell::UnsafeCell;
+        use std::num::NonZeroUsize;
+
+        #[repr(transparent)]
+        struct Transparent { x: NonZeroUsize }
+
+        #[repr(no_niche)]
+        #[repr(transparent)]
+        struct TransparentNoNiche { y: NonZeroUsize }
+
+        extern "C" {
+            fn hidden_niche_transparent() -> Option<Transparent>;
+
+            fn hidden_niche_transparent_no_niche() -> Option<TransparentNoNiche>;
+            //~^ WARN redeclared with a different signature
+            //~| WARN block uses type `Option<TransparentNoNiche>`, which is not FFI-safe
+
+            fn hidden_niche_unsafe_cell() -> Option<UnsafeCell<NonZeroUsize>>;
+            //~^ WARN redeclared with a different signature
+            //~| WARN block uses type `Option<UnsafeCell<NonZeroUsize>>`, which is not FFI-safe
         }
     }
 }
