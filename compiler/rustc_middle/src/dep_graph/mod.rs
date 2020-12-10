@@ -93,7 +93,7 @@ impl<'tcx> DepContext for TyCtxt<'tcx> {
 
     fn register_reused_dep_path_hash(&self, hash: DefPathHash) {
         if let Some(cache) = self.queries.on_disk_cache.as_ref() {
-            cache.register_reused_dep_path_hash(hash)
+            cache.register_reused_dep_path_hash(*self, hash)
         }
     }
 
