@@ -1,8 +1,6 @@
 //! A simplified AST that only contains items.
 
 mod lower;
-#[cfg(test)]
-mod tests;
 
 use std::{
     any::type_name,
