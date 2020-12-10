@@ -145,15 +145,13 @@ fn fuzzy_completion(acc: &mut Completions, ctx: &CompletionContext) -> Option<()
     })
     .filter(|(mod_path, _)| mod_path.len() > 1)
     .filter_map(|(import_path, definition)| {
-        render_resolution_with_import(
-            RenderContext::new(ctx),
-            ImportEdit {
-                import_path: import_path.clone(),
-                import_scope: import_scope.clone(),
-                merge_behavior: ctx.config.merge,
-            },
-            &definition,
-        )
+        let ie =
+            ImportEdit { import_path: import_path.clone(), import_scope: import_scope.clone() };
+        {
+            let _p = profile::span("totextedit");
+            ie.to_text_edit(ctx.config.merge);
+        }
+        render_resolution_with_import(RenderContext::new(ctx), ie, &definition)
     });
 
     acc.add_all(possible_imports);

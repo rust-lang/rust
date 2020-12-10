@@ -271,19 +271,18 @@ impl CompletionItem {
 pub struct ImportEdit {
     pub import_path: ModPath,
     pub import_scope: ImportScope,
-    pub merge_behavior: Option<MergeBehavior>,
 }
 
 impl ImportEdit {
     /// Attempts to insert the import to the given scope, producing a text edit.
     /// May return no edit in edge cases, such as scope already containing the import.
-    pub fn to_text_edit(&self) -> Option<TextEdit> {
+    pub fn to_text_edit(&self, merge_behavior: Option<MergeBehavior>) -> Option<TextEdit> {
         let _p = profile::span("ImportEdit::to_text_edit");
 
         let rewriter = insert_use::insert_use(
             &self.import_scope,
             mod_path_to_ast(&self.import_path),
-            self.merge_behavior,
+            merge_behavior,
         );
         let old_ast = rewriter.rewrite_root()?;
         let mut import_insert = TextEdit::builder();
