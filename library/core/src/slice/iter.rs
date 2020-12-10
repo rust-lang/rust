@@ -3009,6 +3009,15 @@ where P: FnMut(&T, &T) -> bool,
             Some(head)
         }
     }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        if self.slice.is_empty() {
+            (0, Some(0))
+        } else {
+            (1, Some(self.slice.len()))
+        }
+    }
 }
 
 #[unstable(feature = "slice_group_by", issue = "0")]
@@ -3078,6 +3087,15 @@ where P: FnMut(&T, &T) -> bool,
             let (head, tail) = slice.split_at_mut(len);
             self.slice = tail;
             Some(head)
+        }
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        if self.slice.is_empty() {
+            (0, Some(0))
+        } else {
+            (1, Some(self.slice.len()))
         }
     }
 }
