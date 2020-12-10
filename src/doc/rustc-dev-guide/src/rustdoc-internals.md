@@ -213,3 +213,13 @@ $ python3 -m http.server -d build/[YOUR ARCH]/doc
 
 Now you can browse your documentation just like you would if it was hosted
 on the internet. For example, the url for `std` will be `/std/".
+
+## See also
+
+- The [`rustdoc` api docs]
+- [An overview of `rustdoc`](./rustdoc.md)
+- [The rustdoc user guide]
+
+[`rustdoc` api docs]: https://doc.rust-lang.org/nightly/nightly-rustc/rustdoc/
+[The rustdoc user guide]: https://doc.rust-lang.org/nightly/rustdoc/
+
