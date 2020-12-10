@@ -16,6 +16,7 @@ cargo_metadata = "=0.12.0"
 serde = { version = "1.0.106", features = ["derive"] }
 serde_json = "1.0.48"
 anyhow = "1.0.26"
+itertools = "0.9.0"
 
 arena = { path = "../arena", version = "0.0.0" }
 cfg = { path = "../cfg", version = "0.0.0" }

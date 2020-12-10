@@ -11,6 +11,7 @@ use anyhow::{Context, Result};
 use arena::{Arena, Idx};
 use base_db::Edition;
 use cargo_metadata::{BuildScript, CargoOpt, Message, MetadataCommand, PackageId};
+use itertools::Itertools;
 use paths::{AbsPath, AbsPathBuf};
 use rustc_hash::FxHashMap;
 
@@ -407,9 +408,8 @@ fn inject_cargo_env(package: &cargo_metadata::Package, env: &mut Vec<(String, St
     env.push(("CARGO_PKG_VERSION_MINOR".into(), package.version.minor.to_string()));
     env.push(("CARGO_PKG_VERSION_PATCH".into(), package.version.patch.to_string()));
 
-    let pre = package.version.pre.iter().map(|id| id.to_string()).collect::<Vec<_>>();
-    let pre = pre.join(".");
-    env.push(("CARGO_PKG_VERSION_PRE".into(), pre));
+    let pre = package.version.pre.iter().map(|id| id.to_string()).format(".");
+    env.push(("CARGO_PKG_VERSION_PRE".into(), pre.to_string()));
 
     let authors = package.authors.join(";");
     env.push(("CARGO_PKG_AUTHORS".into(), authors));
