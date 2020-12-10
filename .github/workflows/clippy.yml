@@ -41,14 +41,6 @@ jobs:
     - name: Install toolchain
       run: rustup show active-toolchain
 
-    - name: Cache cargo dir
-      uses: actions/cache@v2
-      with:
-        path: ~/.cargo
-        key: ${{ runner.os }}-x86_64-unknown-linux-gnu-v2-${{ hashFiles('Cargo.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-x86_64-unknown-linux-gnu
-
     # Run
     - name: Set LD_LIBRARY_PATH (Linux)
       run: |
@@ -88,9 +80,3 @@ jobs:
         cargo dev new_lint --name new_late_pass --pass late
         cargo check
         git reset --hard HEAD
-
-    # Cleanup
-    - name: Run cargo-cache --autoclean
-      run: |
-        cargo install cargo-cache --no-default-features --features ci-autoclean cargo-cache
-        cargo cache

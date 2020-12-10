@@ -91,14 +91,6 @@ jobs:
     - name: Install toolchain
       run: rustup show active-toolchain
 
-    - name: Cache cargo dir
-      uses: actions/cache@v2
-      with:
-        path: ~/.cargo
-        key: ${{ runner.os }}-${{ matrix.host }}-v2-${{ hashFiles('Cargo.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-${{ matrix.host }}
-
     # Run
     - name: Set LD_LIBRARY_PATH (Linux)
       if: runner.os == 'Linux'
@@ -144,12 +136,6 @@ jobs:
       env:
         OS: ${{ runner.os }}
 
-    # Cleanup
-    - name: Run cargo-cache --autoclean
-      run: |
-        cargo install cargo-cache --no-default-features --features ci-autoclean cargo-cache
-        cargo cache
-
   integration_build:
     needs: changelog
     runs-on: ubuntu-latest
@@ -165,14 +151,6 @@ jobs:
 
     - name: Install toolchain
       run: rustup show active-toolchain
-
-    - name: Cache cargo dir
-      uses: actions/cache@v2
-      with:
-        path: ~/.cargo
-        key: ${{ runner.os }}-x86_64-unknown-linux-gnu-v2-${{ hashFiles('Cargo.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-x86_64-unknown-linux-gnu
 
     # Run
     - name: Build Integration Test
@@ -193,11 +171,6 @@ jobs:
         name: target
         path: target
 
-    # Cleanup
-    - name: Run cargo-cache --autoclean
-      run: |
-        cargo install cargo-cache --no-default-features --features ci-autoclean cargo-cache
-        cargo cache
   integration:
     needs: integration_build
     strategy:
@@ -237,14 +210,6 @@ jobs:
     - name: Install toolchain
       run: rustup show active-toolchain
 
-    - name: Cache cargo dir
-      uses: actions/cache@v2
-      with:
-        path: ~/.cargo
-        key: ${{ runner.os }}-x86_64-unknown-linux-gnu-v2-${{ hashFiles('Cargo.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-x86_64-unknown-linux-gnu
-
     # Download
     - name: Download target dir
       uses: actions/download-artifact@v1
@@ -261,12 +226,6 @@ jobs:
       env:
         INTEGRATION: ${{ matrix.integration }}
         RUSTUP_TOOLCHAIN: master
-
-    # Cleanup
-    - name: Run cargo-cache --autoclean
-      run: |
-        cargo install cargo-cache --no-default-features --features ci-autoclean cargo-cache
-        cargo cache
 
   # These jobs doesn't actually test anything, but they're only used to tell
   # bors the build completed, as there is no practical way to detect when a
