@@ -355,7 +355,7 @@ fn copy_sanitizers(
         let dst = libdir.join(&runtime.name);
         builder.copy(&runtime.path, &dst);
 
-        if target == "x86_64-apple-darwin" {
+        if target == "x86_64-apple-darwin" || target == "aarch64-apple-darwin" {
             // Update the library install name reflect the fact it has been renamed.
             let status = Command::new("install_name_tool")
                 .arg("-id")
