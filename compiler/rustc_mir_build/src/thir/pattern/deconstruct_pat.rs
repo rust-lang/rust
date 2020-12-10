@@ -24,7 +24,7 @@ use rustc_target::abi::{Integer, Size, VariantIdx};
 
 use smallvec::{smallvec, SmallVec};
 use std::cmp::{self, max, min, Ordering};
-use std::iter::IntoIterator;
+use std::iter::{once, IntoIterator};
 use std::ops::RangeInclusive;
 
 /// An inclusive interval, used for precise integer exhaustiveness checking.
@@ -183,77 +183,24 @@ impl IntRange {
         Pat { ty, span: DUMMY_SP, kind: Box::new(kind) }
     }
 
-    /// For exhaustive integer matching, some constructors are grouped within other constructors
-    /// (namely integer typed values are grouped within ranges). However, when specialising these
-    /// constructors, we want to be specialising for the underlying constructors (the integers), not
-    /// the groups (the ranges). Thus we need to split the groups up. Splitting them up naïvely would
-    /// mean creating a separate constructor for every single value in the range, which is clearly
-    /// impractical. However, observe that for some ranges of integers, the specialisation will be
-    /// identical across all values in that range (i.e., there are equivalence classes of ranges of
-    /// constructors based on their `U(S(c, P), S(c, p))` outcome). These classes are grouped by
-    /// the patterns that apply to them (in the matrix `P`). We can split the range whenever the
-    /// patterns that apply to that range (specifically: the patterns that *intersect* with that range)
-    /// change.
-    /// Our solution, therefore, is to split the range constructor into subranges at every single point
-    /// the group of intersecting patterns changes (using the method described below).
-    /// And voilà! We're testing precisely those ranges that we need to, without any exhaustive matching
-    /// on actual integers. The nice thing about this is that the number of subranges is linear in the
-    /// number of rows in the matrix (i.e., the number of cases in the `match` statement), so we don't
-    /// need to be worried about matching over gargantuan ranges.
-    ///
-    /// Essentially, given the first column of a matrix representing ranges, looking like the following:
-    ///
-    /// |------|  |----------| |-------|    ||
-    ///    |-------| |-------|            |----| ||
-    ///       |---------|
-    ///
-    /// We split the ranges up into equivalence classes so the ranges are no longer overlapping:
-    ///
-    /// |--|--|||-||||--||---|||-------|  |-|||| ||
-    ///
-    /// The logic for determining how to split the ranges is fairly straightforward: we calculate
-    /// boundaries for each interval range, sort them, then create constructors for each new interval
-    /// between every pair of boundary points. (This essentially sums up to performing the intuitive
-    /// merging operation depicted above.)
+    /// Split this range, as described at the top of the file.
     fn split<'p, 'tcx>(
         &self,
         pcx: PatCtxt<'_, 'p, 'tcx>,
         hir_id: Option<HirId>,
     ) -> SmallVec<[Constructor<'tcx>; 1]> {
-        /// Represents a border between 2 integers. Because the intervals spanning borders
-        /// must be able to cover every integer, we need to be able to represent
-        /// 2^128 + 1 such borders.
-        #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
-        enum Border {
-            JustBefore(u128),
-            AfterMax,
-        }
-
-        // A function for extracting the borders of an integer interval.
-        fn range_borders(r: IntRange) -> impl Iterator<Item = Border> {
-            let (lo, hi) = r.range.into_inner();
-            let from = Border::JustBefore(lo);
-            let to = match hi.checked_add(1) {
-                Some(m) => Border::JustBefore(m),
-                None => Border::AfterMax,
-            };
-            vec![from, to].into_iter()
-        }
-
-        // Collect the span and range of all the intersecting ranges to lint on likely
-        // incorrect range patterns. (#63987)
+        // We collect the span and range of all the intersecting ranges to lint on likely incorrect
+        // range patterns. (#63987)
         let mut overlaps = vec![];
+        let mut split_range = SplitIntRange::new(self.clone());
         let row_len = pcx.matrix.column_count().unwrap_or(0);
-        // `borders` is the set of borders between equivalence classes: each equivalence
-        // class lies between 2 borders.
-        let row_borders = pcx
+        let intranges = pcx
             .matrix
             .head_ctors_and_spans(pcx.cx)
-            .filter_map(|(ctor, span)| Some((ctor.as_int_range()?, span)))
-            .filter_map(|(range, span)| {
-                let intersection = self.intersection(&range);
-                let should_lint = self.suspicious_intersection(&range);
-                if let (Some(range), 1, true) = (&intersection, row_len, should_lint) {
+            .filter_map(|(ctor, span)| Some((ctor.as_int_range()?, span)));
+        let intranges = intranges.inspect(|(range, span)| {
+            if let Some(intersection) = self.intersection(&range) {
+                if row_len == 1 && self.suspicious_intersection(&range) {
                     // FIXME: for now, only check for overlapping ranges on simple range
                     // patterns. Otherwise with the current logic the following is detected
                     // as overlapping:
@@ -264,36 +211,15 @@ impl IntRange {
                     //   _ => {}
                     // }
                     // ```
-                    overlaps.push((range.clone(), span));
+                    overlaps.push((intersection.clone(), *span));
                 }
-                intersection
-            })
-            .flat_map(range_borders);
-        let self_borders = range_borders(self.clone());
-        let mut borders: Vec<_> = row_borders.chain(self_borders).collect();
-        borders.sort_unstable();
+            }
+        });
+        split_range.split(intranges.map(|(range, _)| range).cloned());
 
         self.lint_overlapping_range_endpoints(pcx, hir_id, overlaps);
 
-        // We're going to iterate through every adjacent pair of borders, making sure that
-        // each represents an interval of nonnegative length, and convert each such
-        // interval into a constructor.
-        borders
-            .array_windows()
-            .filter_map(|&pair| match pair {
-                [Border::JustBefore(n), Border::JustBefore(m)] => {
-                    if n < m {
-                        Some(n..=(m - 1))
-                    } else {
-                        None
-                    }
-                }
-                [Border::JustBefore(n), Border::AfterMax] => Some(n..=u128::MAX),
-                [Border::AfterMax, _] => None,
-            })
-            .map(|range| IntRange { range })
-            .map(IntRange)
-            .collect()
+        split_range.iter().map(IntRange).collect()
     }
 
     fn lint_overlapping_range_endpoints(
@@ -336,6 +262,101 @@ impl IntRange {
         } else {
             false
         }
+    }
+}
+
+/// Represents a border between 2 integers. Because the intervals spanning borders must be able to
+/// cover every integer, we need to be able to represent 2^128 + 1 such borders.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+enum IntBorder {
+    JustBefore(u128),
+    AfterMax,
+}
+
+/// A range of integers that is partitioned into disjoint subranges.
+///
+/// This is fed an input of multiple ranges, and returns an output that covers the union of the
+/// inputs but is split so that an output range only intersects an input range by being a subrange
+/// of it. No output range straddles the boundary of one of the inputs. This does constructor
+/// splitting for integer ranges as explained at the top of the file.
+///
+/// The following input:
+/// ```
+///   |-------------------------| // `self`
+/// |------|  |----------|   |----|
+///    |-------| |-------|
+/// ```
+/// would be iterated over as follows:
+/// ```
+///   ||---|--||-|---|---|---|--|
+/// ```
+#[derive(Debug, Clone)]
+struct SplitIntRange {
+    /// The range we are splitting
+    range: IntRange,
+    /// The borders of ranges we have seen. They are all contained within `range`. This is kept
+    /// sorted.
+    borders: Vec<IntBorder>,
+}
+
+impl SplitIntRange {
+    fn new(r: IntRange) -> Self {
+        SplitIntRange { range: r.clone(), borders: Vec::new() }
+    }
+
+    /// Internal use
+    fn to_borders(r: IntRange) -> [IntBorder; 2] {
+        use IntBorder::*;
+        let (lo, hi) = r.boundaries();
+        let lo = JustBefore(lo);
+        let hi = match hi.checked_add(1) {
+            Some(m) => JustBefore(m),
+            None => AfterMax,
+        };
+        [lo, hi]
+    }
+
+    /// Add ranges relative to which we split.
+    fn split(&mut self, ranges: impl Iterator<Item = IntRange>) {
+        let this_range = &self.range;
+        let included_ranges = ranges.filter_map(|r| this_range.intersection(&r));
+        let included_borders = included_ranges.flat_map(|r| {
+            let borders = Self::to_borders(r);
+            once(borders[0]).chain(once(borders[1]))
+        });
+        self.borders.extend(included_borders);
+        self.borders.sort_unstable();
+    }
+
+    /// Iterate over the contained ranges.
+    fn iter<'a>(&'a self) -> impl Iterator<Item = IntRange> + Captures<'a> {
+        use IntBorder::*;
+
+        let self_range = Self::to_borders(self.range.clone());
+        // Start with the start of the range.
+        let mut prev_border = self_range[0];
+        self.borders
+            .iter()
+            .copied()
+            // End with the end of the range.
+            .chain(once(self_range[1]))
+            // List pairs of adjacent borders.
+            .map(move |border| {
+                let ret = (prev_border, border);
+                prev_border = border;
+                ret
+            })
+            // Skip duplicates.
+            .filter(|(prev_border, border)| prev_border != border)
+            // Finally, convert to ranges.
+            .map(|(prev_border, border)| {
+                let range = match (prev_border, border) {
+                    (JustBefore(n), JustBefore(m)) if n < m => n..=(m - 1),
+                    (JustBefore(n), AfterMax) => n..=u128::MAX,
+                    _ => unreachable!(), // Ruled out by the sorting and filtering we did
+                };
+                IntRange { range }
+            })
     }
 }
 
