@@ -2274,7 +2274,7 @@ impl<T, A: Allocator> Extend<T> for Vec<T, A> {
     /// ```
     /// just simpler to type and easier on the optimizer.
     ///
-    /// You should continue to use [`push`] if you only have one element;
+    /// You should continue to use [`push`](Self::push) if you only have one element;
     /// There's no advantage to doing `.extend_from_array([x])` instead.
     #[inline]
     fn extend_from_array<const N: usize>(&mut self, array: [T; N]) {
