@@ -241,6 +241,20 @@ impl<W: Write> BufWriter<W> {
         &self.buf
     }
 
+    /// FIXME Document.
+    #[inline]
+    #[unstable(feature = "bufwriter_raw_buffer", issue = "79916")]
+    pub fn as_ptr(&mut self) -> *const u8 {
+        self.buf.as_ptr()
+    }
+
+    /// FIXME Document.
+    #[inline]
+    #[unstable(feature = "bufwriter_raw_buffer", issue = "79916")]
+    pub fn as_mut_ptr(&mut self) -> *mut u8 {
+        self.buf.as_mut_ptr()
+    }
+
     /// Returns the number of bytes the internal buffer can hold without flushing.
     ///
     /// # Examples
@@ -259,6 +273,20 @@ impl<W: Write> BufWriter<W> {
     #[stable(feature = "buffered_io_capacity", since = "1.46.0")]
     pub fn capacity(&self) -> usize {
         self.buf.capacity()
+    }
+
+    /// FIXME Document.
+    #[inline]
+    #[unstable(feature = "bufwriter_raw_buffer", issue = "79916")]
+    pub fn len(&self) -> usize {
+        self.buf.len()
+    }
+
+    /// FIXME Document.
+    #[inline]
+    #[unstable(feature = "bufwriter_raw_buffer", issue = "79916")]
+    pub unsafe fn set_len(&mut self, new_len: usize) {
+        self.buf.set_len(new_len);
     }
 
     /// Unwraps this `BufWriter<W>`, returning the underlying writer.
