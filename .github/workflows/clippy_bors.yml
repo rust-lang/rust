@@ -123,13 +123,13 @@ jobs:
         SYSROOT=$(rustc --print sysroot)
         echo "$SYSROOT/bin" >> $GITHUB_PATH
 
-    - name: Build with internal lints
+    - name: Build
       run: cargo build --features deny-warnings,internal-lints
 
-    - name: Test with internal lints
+    - name: Test
       run: cargo test --features deny-warnings,internal-lints
 
-    - name: Test clippy_lints with internal lints
+    - name: Test clippy_lints
       run: cargo test --features deny-warnings,internal-lints
       working-directory: clippy_lints
 
