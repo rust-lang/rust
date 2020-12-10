@@ -16,7 +16,7 @@ use ide_db::{
 use syntax::{
     algo,
     ast::{self, edit::IndentLevel, make},
-    AstNode, Direction, T,
+    AstNode,
 };
 use text_edit::TextEdit;
 
@@ -110,9 +110,9 @@ impl DiagnosticWithFix for RemoveThisSemicolon {
             .expr
             .to_node(&root)
             .syntax()
-            .siblings_with_tokens(Direction::Next)
-            .filter_map(|it| it.into_token())
-            .find(|it| it.kind() == T![;])?
+            .parent()
+            .and_then(ast::ExprStmt::cast)
+            .and_then(|expr| expr.semicolon_token())?
             .text_range();
 
         let edit = TextEdit::delete(semicolon);

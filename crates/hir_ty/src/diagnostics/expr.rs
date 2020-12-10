@@ -334,18 +334,17 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
             None => return,
         };
 
-        let possible_tail_ty =
-            if let Some(possible_tail_ty) = self.infer.type_of_expr.get(possible_tail_id) {
-                possible_tail_ty
-            } else {
-                return;
-            };
+        let possible_tail_ty = match self.infer.type_of_expr.get(possible_tail_id) {
+            Some(ty) => ty,
+            None => return,
+        };
 
         if mismatch.actual != Ty::unit() || mismatch.expected != *possible_tail_ty {
             return;
         }
 
         let (_, source_map) = db.body_with_source_map(self.owner.into());
+
         if let Ok(source_ptr) = source_map.expr_syntax(possible_tail_id) {
             self.sink
                 .push(RemoveThisSemicolon { file: source_ptr.file_id, expr: source_ptr.value });
