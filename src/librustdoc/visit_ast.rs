@@ -62,7 +62,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
 
     crate fn visit(mut self, krate: &'tcx hir::Crate<'_>) -> Module<'tcx> {
         let mut module = self.visit_mod_contents(
-            krate.item.span,
+            self.cx.tcx.hir().span(hir::CRATE_HIR_ID),
             &Spanned { span: rustc_span::DUMMY_SP, node: hir::VisibilityKind::Public },
             hir::CRATE_HIR_ID,
             &krate.item.module,

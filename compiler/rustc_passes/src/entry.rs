@@ -2,7 +2,7 @@ use rustc_ast::entry::EntryPointType;
 use rustc_errors::struct_span_err;
 use rustc_hir::def_id::{CrateNum, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
-use rustc_hir::{ForeignItem, HirId, ImplItem, Item, ItemKind, TraitItem};
+use rustc_hir::{ForeignItem, HirId, ImplItem, Item, ItemKind, TraitItem, CRATE_HIR_ID};
 use rustc_middle::hir::map::Map;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
@@ -170,7 +170,7 @@ fn configure_main(
 }
 
 fn no_main_err(tcx: TyCtxt<'_>, visitor: &EntryContext<'_, '_>) {
-    let sp = tcx.hir().krate().item.span;
+    let sp = tcx.hir().span(CRATE_HIR_ID);
     if *tcx.sess.parse_sess.reached_eof.borrow() {
         // There's an unclosed brace that made the parser reach `Eof`, we shouldn't complain about
         // the missing `fn main()` then as it might have been hidden inside an unclosed block.

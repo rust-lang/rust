@@ -517,7 +517,14 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
     }
 
     fn check_crate(&mut self, cx: &LateContext<'_>, krate: &hir::Crate<'_>) {
-        self.check_missing_docs_attrs(cx, None, &krate.item.attrs, krate.item.span, "the", "crate");
+        self.check_missing_docs_attrs(
+            cx,
+            None,
+            &krate.item.attrs,
+            cx.tcx.hir().span(hir::CRATE_HIR_ID),
+            "the",
+            "crate",
+        );
 
         for macro_def in krate.exported_macros {
             let has_doc = macro_def.attrs.iter().any(|a| has_doc(cx.sess(), a));

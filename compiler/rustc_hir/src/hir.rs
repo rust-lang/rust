@@ -580,7 +580,6 @@ pub struct ModuleItems {
 pub struct CrateItem<'hir> {
     pub module: Mod<'hir>,
     pub attrs: &'hir [Attribute],
-    pub span: Span,
 }
 
 /// The top-level data structure that stores the entire contents of
