@@ -10,6 +10,7 @@ use crate::{
     mem::MaybeUninit,
     ops::{Deref, Drop},
     panic::{RefUnwindSafe, UnwindSafe},
+    pin::Pin,
     sync::Once,
 };
 
@@ -295,6 +296,60 @@ impl<T> SyncOnceCell<T> {
 
         // SAFETY: The inner value has been initialized
         Ok(unsafe { self.get_unchecked() })
+    }
+
+    /// Internal-only API that gets the contents of the cell, initializing it
+    /// in two steps with `f` and `g` if the cell was empty.
+    ///
+    /// `f` is called to construct the value, which is then moved into the cell
+    /// and given as a (pinned) mutable reference to `g` to finish
+    /// initialization.
+    ///
+    /// This allows `g` to inspect an manipulate the value after it has been
+    /// moved into its final place in the cell, but before the cell is
+    /// considered initialized.
+    ///
+    /// # Panics
+    ///
+    /// If `f` or `g` panics, the panic is propagated to the caller, and the
+    /// cell remains uninitialized.
+    ///
+    /// With the current implementation, if `g` panics, the value from `f` will
+    /// not be dropped. This should probably be fixed if this is ever used for
+    /// a type where this matters.
+    ///
+    /// It is an error to reentrantly initialize the cell from `f`. The exact
+    /// outcome is unspecified. Current implementation deadlocks, but this may
+    /// be changed to a panic in the future.
+    pub(crate) fn get_or_init_pin<F, G>(self: Pin<&Self>, f: F, g: G) -> Pin<&T>
+    where
+        F: FnOnce() -> T,
+        G: FnOnce(Pin<&mut T>),
+    {
+        if let Some(value) = self.get_ref().get() {
+            // SAFETY: The inner value was already initialized, and will not be
+            // moved anymore.
+            return unsafe { Pin::new_unchecked(value) };
+        }
+
+        let slot = &self.value;
+
+        // Ignore poisoning from other threads
+        // If another thread panics, then we'll be able to run our closure
+        self.once.call_once_force(|_| {
+            let value = f();
+            // SAFETY: We use the Once (self.once) to guarantee unique access
+            // to the UnsafeCell (slot).
+            let value: &mut T = unsafe { (&mut *slot.get()).write(value) };
+            // SAFETY: The value has been written to its final place in
+            // self.value. We do not to move it anymore, which we promise here
+            // with a Pin<&mut T>.
+            g(unsafe { Pin::new_unchecked(value) });
+        });
+
+        // SAFETY: The inner value has been initialized, and will not be moved
+        // anymore.
+        unsafe { Pin::new_unchecked(self.get_ref().get_unchecked()) }
     }
 
     /// Consumes the `SyncOnceCell`, returning the wrapped value. Returns
