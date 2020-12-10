@@ -1067,13 +1067,23 @@ impl fmt::Debug for Duration {
         }
 
         if self.secs > 0 {
-            fmt_decimal(f, self.secs, self.nanos, 100_000_000)?;
+            fmt_decimal(f, self.secs, self.nanos, NANOS_PER_SEC / 10)?;
             f.write_str("s")
-        } else if self.nanos >= 1_000_000 {
-            fmt_decimal(f, self.nanos as u64 / 1_000_000, self.nanos % 1_000_000, 100_000)?;
+        } else if self.nanos >= NANOS_PER_MILLI {
+            fmt_decimal(
+                f,
+                (self.nanos / NANOS_PER_MILLI) as u64,
+                self.nanos % NANOS_PER_MILLI,
+                NANOS_PER_MILLI / 10,
+            )?;
             f.write_str("ms")
-        } else if self.nanos >= 1_000 {
-            fmt_decimal(f, self.nanos as u64 / 1_000, self.nanos % 1_000, 100)?;
+        } else if self.nanos >= NANOS_PER_MICRO {
+            fmt_decimal(
+                f,
+                (self.nanos / NANOS_PER_MICRO) as u64,
+                self.nanos % NANOS_PER_MICRO,
+                NANOS_PER_MICRO / 10,
+            )?;
             f.write_str("µs")
         } else {
             fmt_decimal(f, self.nanos as u64, 0, 1)?;
