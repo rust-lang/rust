@@ -98,7 +98,8 @@ pub(crate) fn check_edit_with_config(
     let mut actual = db.file_text(position.file_id).to_string();
 
     let mut combined_edit = completion.text_edit().to_owned();
-    if let Some(import_text_edit) = completion.import_to_add().and_then(|edit| edit.to_text_edit())
+    if let Some(import_text_edit) =
+        completion.import_to_add().and_then(|edit| edit.to_text_edit(config.merge))
     {
         combined_edit.union(import_text_edit).expect(
             "Failed to apply completion resolve changes: change ranges overlap, but should not",
