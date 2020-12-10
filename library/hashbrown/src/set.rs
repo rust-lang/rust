@@ -8,7 +8,7 @@ use core::mem;
 use core::ops::{BitAnd, BitOr, BitXor, Sub};
 
 use super::map::{self, ConsumeAllOnDrop, DefaultHashBuilder, DrainFilterInner, HashMap, Keys};
-use crate::raw::{AllocRef, Global};
+use crate::raw::{Allocator, Global};
 
 // Future Optimization (FIXME!)
 // =============================
@@ -112,7 +112,7 @@ use crate::raw::{AllocRef, Global};
 /// [`HashMap`]: struct.HashMap.html
 /// [`PartialEq`]: https://doc.rust-lang.org/std/cmp/trait.PartialEq.html
 /// [`RefCell`]: https://doc.rust-lang.org/std/cell/struct.RefCell.html
-pub struct HashSet<T, S = DefaultHashBuilder, A: AllocRef + Clone = Global> {
+pub struct HashSet<T, S = DefaultHashBuilder, A: Allocator + Clone = Global> {
     pub(crate) map: HashMap<T, (), S, A>,
 }
 
@@ -169,7 +169,7 @@ impl<T> HashSet<T, DefaultHashBuilder> {
 }
 
 #[cfg(feature = "ahash")]
-impl<T: Hash + Eq, A: AllocRef + Clone> HashSet<T, DefaultHashBuilder, A> {
+impl<T: Hash + Eq, A: Allocator + Clone> HashSet<T, DefaultHashBuilder, A> {
     /// Creates an empty `HashSet`.
     ///
     /// The hash set is initially created with a capacity of 0, so it will not allocate until it
@@ -208,7 +208,7 @@ impl<T: Hash + Eq, A: AllocRef + Clone> HashSet<T, DefaultHashBuilder, A> {
     }
 }
 
-impl<T, S, A: AllocRef + Clone> HashSet<T, S, A> {
+impl<T, S, A: Allocator + Clone> HashSet<T, S, A> {
     /// Returns the number of elements the set can hold without reallocating.
     ///
     /// # Examples
@@ -454,7 +454,7 @@ impl<T, S, A> HashSet<T, S, A>
 where
     T: Eq + Hash,
     S: BuildHasher,
-    A: AllocRef + Clone,
+    A: Allocator + Clone,
 {
     /// Creates a new empty hash set which will use the given hasher to hash
     /// keys.
@@ -535,7 +535,7 @@ impl<T, S, A> HashSet<T, S, A>
 where
     T: Eq + Hash,
     S: BuildHasher,
-    A: AllocRef + Clone,
+    A: Allocator + Clone,
 {
     /// Reserves capacity for at least `additional` more elements to be inserted
     /// in the `HashSet`. The collection may reserve more space to avoid
@@ -1077,7 +1077,7 @@ impl<T, S, A> PartialEq for HashSet<T, S, A>
 where
     T: Eq + Hash,
     S: BuildHasher,
-    A: AllocRef + Clone,
+    A: Allocator + Clone,
 {
     fn eq(&self, other: &Self) -> bool {
         if self.len() != other.len() {
@@ -1092,7 +1092,7 @@ impl<T, S, A> Eq for HashSet<T, S, A>
 where
     T: Eq + Hash,
     S: BuildHasher,
-    A: AllocRef + Clone,
+    A: Allocator + Clone,
 {
 }
 
@@ -1100,7 +1100,7 @@ impl<T, S, A> fmt::Debug for HashSet<T, S, A>
 where
     T: Eq + Hash + fmt::Debug,
     S: BuildHasher,
-    A: AllocRef + Clone,
+    A: Allocator + Clone,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_set().entries(self.iter()).finish()
@@ -1111,7 +1111,7 @@ impl<T, S, A> FromIterator<T> for HashSet<T, S, A>
 where
     T: Eq + Hash,
     S: BuildHasher + Default,
-    A: Default + AllocRef + Clone,
+    A: Default + Allocator + Clone,
 {
     #[cfg_attr(feature = "inline-more", inline)]
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
@@ -1125,7 +1125,7 @@ impl<T, S, A> Extend<T> for HashSet<T, S, A>
 where
     T: Eq + Hash,
     S: BuildHasher,
-    A: AllocRef + Clone,
+    A: Allocator + Clone,
 {
     #[cfg_attr(feature = "inline-more", inline)]
     fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
@@ -1149,7 +1149,7 @@ impl<'a, T, S, A> Extend<&'a T> for HashSet<T, S, A>
 where
     T: 'a + Eq + Hash + Copy,
     S: BuildHasher,
-    A: AllocRef + Clone,
+    A: Allocator + Clone,
 {
     #[cfg_attr(feature = "inline-more", inline)]
     fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {
@@ -1172,7 +1172,7 @@ where
 impl<T, S, A> Default for HashSet<T, S, A>
 where
     S: Default,
-    A: Default + AllocRef + Clone,
+    A: Default + Allocator + Clone,
 {
     /// Creates an empty `HashSet<T, S>` with the `Default` value for the hasher.
     #[cfg_attr(feature = "inline-more", inline)]
@@ -1187,7 +1187,7 @@ impl<T, S, A> BitOr<&HashSet<T, S, A>> for &HashSet<T, S, A>
 where
     T: Eq + Hash + Clone,
     S: BuildHasher + Default,
-    A: AllocRef + Clone,
+    A: Allocator + Clone,
 {
     type Output = HashSet<T, S>;
 
@@ -1220,7 +1220,7 @@ impl<T, S, A> BitAnd<&HashSet<T, S, A>> for &HashSet<T, S, A>
 where
     T: Eq + Hash + Clone,
     S: BuildHasher + Default,
-    A: AllocRef + Clone,
+    A: Allocator + Clone,
 {
     type Output = HashSet<T, S>;
 
@@ -1331,7 +1331,7 @@ pub struct Iter<'a, K> {
 ///
 /// [`HashSet`]: struct.HashSet.html
 /// [`into_iter`]: struct.HashSet.html#method.into_iter
-pub struct IntoIter<K, A: AllocRef + Clone = Global> {
+pub struct IntoIter<K, A: Allocator + Clone = Global> {
     iter: map::IntoIter<K, (), A>,
 }
 
@@ -1342,7 +1342,7 @@ pub struct IntoIter<K, A: AllocRef + Clone = Global> {
 ///
 /// [`HashSet`]: struct.HashSet.html
 /// [`drain`]: struct.HashSet.html#method.drain
-pub struct Drain<'a, K, A: AllocRef + Clone = Global> {
+pub struct Drain<'a, K, A: Allocator + Clone = Global> {
     iter: map::Drain<'a, K, (), A>,
 }
 
@@ -1353,7 +1353,7 @@ pub struct Drain<'a, K, A: AllocRef + Clone = Global> {
 ///
 /// [`drain_filter`]: struct.HashSet.html#method.drain_filter
 /// [`HashSet`]: struct.HashSet.html
-pub struct DrainFilter<'a, K, F, A: AllocRef + Clone = Global>
+pub struct DrainFilter<'a, K, F, A: Allocator + Clone = Global>
 where
     F: FnMut(&K) -> bool,
 {
@@ -1368,7 +1368,7 @@ where
 ///
 /// [`HashSet`]: struct.HashSet.html
 /// [`intersection`]: struct.HashSet.html#method.intersection
-pub struct Intersection<'a, T, S, A: AllocRef + Clone = Global> {
+pub struct Intersection<'a, T, S, A: Allocator + Clone = Global> {
     // iterator of the first set
     iter: Iter<'a, T>,
     // the second set
@@ -1382,7 +1382,7 @@ pub struct Intersection<'a, T, S, A: AllocRef + Clone = Global> {
 ///
 /// [`HashSet`]: struct.HashSet.html
 /// [`difference`]: struct.HashSet.html#method.difference
-pub struct Difference<'a, T, S, A: AllocRef + Clone = Global> {
+pub struct Difference<'a, T, S, A: Allocator + Clone = Global> {
     // iterator of the first set
     iter: Iter<'a, T>,
     // the second set
@@ -1396,7 +1396,7 @@ pub struct Difference<'a, T, S, A: AllocRef + Clone = Global> {
 ///
 /// [`HashSet`]: struct.HashSet.html
 /// [`symmetric_difference`]: struct.HashSet.html#method.symmetric_difference
-pub struct SymmetricDifference<'a, T, S, A: AllocRef + Clone = Global> {
+pub struct SymmetricDifference<'a, T, S, A: Allocator + Clone = Global> {
     iter: Chain<Difference<'a, T, S, A>, Difference<'a, T, S, A>>,
 }
 
@@ -1407,11 +1407,11 @@ pub struct SymmetricDifference<'a, T, S, A: AllocRef + Clone = Global> {
 ///
 /// [`HashSet`]: struct.HashSet.html
 /// [`union`]: struct.HashSet.html#method.union
-pub struct Union<'a, T, S, A: AllocRef + Clone = Global> {
+pub struct Union<'a, T, S, A: Allocator + Clone = Global> {
     iter: Chain<Iter<'a, T>, Difference<'a, T, S, A>>,
 }
 
-impl<'a, T, S, A: AllocRef + Clone> IntoIterator for &'a HashSet<T, S, A> {
+impl<'a, T, S, A: Allocator + Clone> IntoIterator for &'a HashSet<T, S, A> {
     type Item = &'a T;
     type IntoIter = Iter<'a, T>;
 
@@ -1421,7 +1421,7 @@ impl<'a, T, S, A: AllocRef + Clone> IntoIterator for &'a HashSet<T, S, A> {
     }
 }
 
-impl<T, S, A: AllocRef + Clone> IntoIterator for HashSet<T, S, A> {
+impl<T, S, A: Allocator + Clone> IntoIterator for HashSet<T, S, A> {
     type Item = T;
     type IntoIter = IntoIter<T, A>;
 
@@ -1487,7 +1487,7 @@ impl<K: fmt::Debug> fmt::Debug for Iter<'_, K> {
     }
 }
 
-impl<K, A: AllocRef + Clone> Iterator for IntoIter<K, A> {
+impl<K, A: Allocator + Clone> Iterator for IntoIter<K, A> {
     type Item = K;
 
     #[cfg_attr(feature = "inline-more", inline)]
@@ -1503,22 +1503,22 @@ impl<K, A: AllocRef + Clone> Iterator for IntoIter<K, A> {
         self.iter.size_hint()
     }
 }
-impl<K, A: AllocRef + Clone> ExactSizeIterator for IntoIter<K, A> {
+impl<K, A: Allocator + Clone> ExactSizeIterator for IntoIter<K, A> {
     #[cfg_attr(feature = "inline-more", inline)]
     fn len(&self) -> usize {
         self.iter.len()
     }
 }
-impl<K, A: AllocRef + Clone> FusedIterator for IntoIter<K, A> {}
+impl<K, A: Allocator + Clone> FusedIterator for IntoIter<K, A> {}
 
-impl<K: fmt::Debug, A: AllocRef + Clone> fmt::Debug for IntoIter<K, A> {
+impl<K: fmt::Debug, A: Allocator + Clone> fmt::Debug for IntoIter<K, A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let entries_iter = self.iter.iter().map(|(k, _)| k);
         f.debug_list().entries(entries_iter).finish()
     }
 }
 
-impl<K, A: AllocRef + Clone> Iterator for Drain<'_, K, A> {
+impl<K, A: Allocator + Clone> Iterator for Drain<'_, K, A> {
     type Item = K;
 
     #[cfg_attr(feature = "inline-more", inline)]
@@ -1534,22 +1534,22 @@ impl<K, A: AllocRef + Clone> Iterator for Drain<'_, K, A> {
         self.iter.size_hint()
     }
 }
-impl<K, A: AllocRef + Clone> ExactSizeIterator for Drain<'_, K, A> {
+impl<K, A: Allocator + Clone> ExactSizeIterator for Drain<'_, K, A> {
     #[cfg_attr(feature = "inline-more", inline)]
     fn len(&self) -> usize {
         self.iter.len()
     }
 }
-impl<K, A: AllocRef + Clone> FusedIterator for Drain<'_, K, A> {}
+impl<K, A: Allocator + Clone> FusedIterator for Drain<'_, K, A> {}
 
-impl<K: fmt::Debug, A: AllocRef + Clone> fmt::Debug for Drain<'_, K, A> {
+impl<K: fmt::Debug, A: Allocator + Clone> fmt::Debug for Drain<'_, K, A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let entries_iter = self.iter.iter().map(|(k, _)| k);
         f.debug_list().entries(entries_iter).finish()
     }
 }
 
-impl<'a, K, F, A: AllocRef + Clone> Drop for DrainFilter<'a, K, F, A>
+impl<'a, K, F, A: Allocator + Clone> Drop for DrainFilter<'a, K, F, A>
 where
     F: FnMut(&K) -> bool,
 {
@@ -1563,7 +1563,7 @@ where
     }
 }
 
-impl<K, F, A: AllocRef + Clone> Iterator for DrainFilter<'_, K, F, A>
+impl<K, F, A: Allocator + Clone> Iterator for DrainFilter<'_, K, F, A>
 where
     F: FnMut(&K) -> bool,
 {
@@ -1582,10 +1582,12 @@ where
     }
 }
 
-impl<K, F, A: AllocRef + Clone> FusedIterator for DrainFilter<'_, K, F, A> where F: FnMut(&K) -> bool
-{}
+impl<K, F, A: Allocator + Clone> FusedIterator for DrainFilter<'_, K, F, A> where
+    F: FnMut(&K) -> bool
+{
+}
 
-impl<T, S, A: AllocRef + Clone> Clone for Intersection<'_, T, S, A> {
+impl<T, S, A: Allocator + Clone> Clone for Intersection<'_, T, S, A> {
     #[cfg_attr(feature = "inline-more", inline)]
     fn clone(&self) -> Self {
         Intersection {
@@ -1599,7 +1601,7 @@ impl<'a, T, S, A> Iterator for Intersection<'a, T, S, A>
 where
     T: Eq + Hash,
     S: BuildHasher,
-    A: AllocRef + Clone,
+    A: Allocator + Clone,
 {
     type Item = &'a T;
 
@@ -1624,7 +1626,7 @@ impl<T, S, A> fmt::Debug for Intersection<'_, T, S, A>
 where
     T: fmt::Debug + Eq + Hash,
     S: BuildHasher,
-    A: AllocRef + Clone,
+    A: Allocator + Clone,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().entries(self.clone()).finish()
@@ -1635,11 +1637,11 @@ impl<T, S, A> FusedIterator for Intersection<'_, T, S, A>
 where
     T: Eq + Hash,
     S: BuildHasher,
-    A: AllocRef + Clone,
+    A: Allocator + Clone,
 {
 }
 
-impl<T, S, A: AllocRef + Clone> Clone for Difference<'_, T, S, A> {
+impl<T, S, A: Allocator + Clone> Clone for Difference<'_, T, S, A> {
     #[cfg_attr(feature = "inline-more", inline)]
     fn clone(&self) -> Self {
         Difference {
@@ -1653,7 +1655,7 @@ impl<'a, T, S, A> Iterator for Difference<'a, T, S, A>
 where
     T: Eq + Hash,
     S: BuildHasher,
-    A: AllocRef + Clone,
+    A: Allocator + Clone,
 {
     type Item = &'a T;
 
@@ -1678,7 +1680,7 @@ impl<T, S, A> FusedIterator for Difference<'_, T, S, A>
 where
     T: Eq + Hash,
     S: BuildHasher,
-    A: AllocRef + Clone,
+    A: Allocator + Clone,
 {
 }
 
@@ -1686,14 +1688,14 @@ impl<T, S, A> fmt::Debug for Difference<'_, T, S, A>
 where
     T: fmt::Debug + Eq + Hash,
     S: BuildHasher,
-    A: AllocRef + Clone,
+    A: Allocator + Clone,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().entries(self.clone()).finish()
     }
 }
 
-impl<T, S, A: AllocRef + Clone> Clone for SymmetricDifference<'_, T, S, A> {
+impl<T, S, A: Allocator + Clone> Clone for SymmetricDifference<'_, T, S, A> {
     #[cfg_attr(feature = "inline-more", inline)]
     fn clone(&self) -> Self {
         SymmetricDifference {
@@ -1706,7 +1708,7 @@ impl<'a, T, S, A> Iterator for SymmetricDifference<'a, T, S, A>
 where
     T: Eq + Hash,
     S: BuildHasher,
-    A: AllocRef + Clone,
+    A: Allocator + Clone,
 {
     type Item = &'a T;
 
@@ -1724,7 +1726,7 @@ impl<T, S, A> FusedIterator for SymmetricDifference<'_, T, S, A>
 where
     T: Eq + Hash,
     S: BuildHasher,
-    A: AllocRef + Clone,
+    A: Allocator + Clone,
 {
 }
 
@@ -1732,14 +1734,14 @@ impl<T, S, A> fmt::Debug for SymmetricDifference<'_, T, S, A>
 where
     T: fmt::Debug + Eq + Hash,
     S: BuildHasher,
-    A: AllocRef + Clone,
+    A: Allocator + Clone,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().entries(self.clone()).finish()
     }
 }
 
-impl<T, S, A: AllocRef + Clone> Clone for Union<'_, T, S, A> {
+impl<T, S, A: Allocator + Clone> Clone for Union<'_, T, S, A> {
     #[cfg_attr(feature = "inline-more", inline)]
     fn clone(&self) -> Self {
         Union {
@@ -1752,7 +1754,7 @@ impl<T, S, A> FusedIterator for Union<'_, T, S, A>
 where
     T: Eq + Hash,
     S: BuildHasher,
-    A: AllocRef + Clone,
+    A: Allocator + Clone,
 {
 }
 
@@ -1760,7 +1762,7 @@ impl<T, S, A> fmt::Debug for Union<'_, T, S, A>
 where
     T: fmt::Debug + Eq + Hash,
     S: BuildHasher,
-    A: AllocRef + Clone,
+    A: Allocator + Clone,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().entries(self.clone()).finish()
@@ -1771,7 +1773,7 @@ impl<'a, T, S, A> Iterator for Union<'a, T, S, A>
 where
     T: Eq + Hash,
     S: BuildHasher,
-    A: AllocRef + Clone,
+    A: Allocator + Clone,
 {
     type Item = &'a T;
 
@@ -1793,32 +1795,32 @@ fn assert_covariance() {
     fn iter<'a, 'new>(v: Iter<'a, &'static str>) -> Iter<'a, &'new str> {
         v
     }
-    fn into_iter<'new, A: AllocRef + Clone>(
+    fn into_iter<'new, A: Allocator + Clone>(
         v: IntoIter<&'static str, A>,
     ) -> IntoIter<&'new str, A> {
         v
     }
-    fn difference<'a, 'new, A: AllocRef + Clone>(
+    fn difference<'a, 'new, A: Allocator + Clone>(
         v: Difference<'a, &'static str, DefaultHashBuilder, A>,
     ) -> Difference<'a, &'new str, DefaultHashBuilder, A> {
         v
     }
-    fn symmetric_difference<'a, 'new, A: AllocRef + Clone>(
+    fn symmetric_difference<'a, 'new, A: Allocator + Clone>(
         v: SymmetricDifference<'a, &'static str, DefaultHashBuilder, A>,
     ) -> SymmetricDifference<'a, &'new str, DefaultHashBuilder, A> {
         v
     }
-    fn intersection<'a, 'new, A: AllocRef + Clone>(
+    fn intersection<'a, 'new, A: Allocator + Clone>(
         v: Intersection<'a, &'static str, DefaultHashBuilder, A>,
     ) -> Intersection<'a, &'new str, DefaultHashBuilder, A> {
         v
     }
-    fn union<'a, 'new, A: AllocRef + Clone>(
+    fn union<'a, 'new, A: Allocator + Clone>(
         v: Union<'a, &'static str, DefaultHashBuilder, A>,
     ) -> Union<'a, &'new str, DefaultHashBuilder, A> {
         v
     }
-    fn drain<'new, A: AllocRef + Clone>(
+    fn drain<'new, A: Allocator + Clone>(
         d: Drain<'static, &'static str, A>,
     ) -> Drain<'new, &'new str, A> {
         d

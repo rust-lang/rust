@@ -1,5 +1,5 @@
 use crate::raw::Bucket;
-use crate::raw::{AllocRef, RawIter, RawIterRange, RawTable};
+use crate::raw::{Allocator, RawIter, RawIterRange, RawTable};
 use crate::scopeguard::guard;
 use alloc::alloc::dealloc;
 use core::marker::PhantomData;
@@ -60,11 +60,11 @@ impl<T> UnindexedProducer for ParIterProducer<T> {
 }
 
 /// Parallel iterator which consumes a table and returns elements.
-pub struct RawIntoParIter<T, A: AllocRef + Clone> {
+pub struct RawIntoParIter<T, A: Allocator + Clone> {
     table: RawTable<T, A>,
 }
 
-impl<T: Send, A: AllocRef + Clone> ParallelIterator for RawIntoParIter<T, A> {
+impl<T: Send, A: Allocator + Clone> ParallelIterator for RawIntoParIter<T, A> {
     type Item = T;
 
     #[cfg_attr(feature = "inline-more", inline)]
@@ -86,16 +86,16 @@ impl<T: Send, A: AllocRef + Clone> ParallelIterator for RawIntoParIter<T, A> {
 }
 
 /// Parallel iterator which consumes elements without freeing the table storage.
-pub struct RawParDrain<'a, T, A: AllocRef + Clone> {
+pub struct RawParDrain<'a, T, A: Allocator + Clone> {
     // We don't use a &'a mut RawTable<T> because we want RawParDrain to be
     // covariant over T.
     table: NonNull<RawTable<T, A>>,
     marker: PhantomData<&'a RawTable<T, A>>,
 }
 
-unsafe impl<T, A: AllocRef + Clone> Send for RawParDrain<'_, T, A> {}
+unsafe impl<T, A: Allocator + Clone> Send for RawParDrain<'_, T, A> {}
 
-impl<T: Send, A: AllocRef + Clone> ParallelIterator for RawParDrain<'_, T, A> {
+impl<T: Send, A: Allocator + Clone> ParallelIterator for RawParDrain<'_, T, A> {
     type Item = T;
 
     #[cfg_attr(feature = "inline-more", inline)]
@@ -113,7 +113,7 @@ impl<T: Send, A: AllocRef + Clone> ParallelIterator for RawParDrain<'_, T, A> {
     }
 }
 
-impl<T, A: AllocRef + Clone> Drop for RawParDrain<'_, T, A> {
+impl<T, A: Allocator + Clone> Drop for RawParDrain<'_, T, A> {
     fn drop(&mut self) {
         // If drive_unindexed is not called then simply clear the table.
         unsafe { self.table.as_mut().clear() }
@@ -172,7 +172,7 @@ impl<T> Drop for ParDrainProducer<T> {
     }
 }
 
-impl<T, A: AllocRef + Clone> RawTable<T, A> {
+impl<T, A: Allocator + Clone> RawTable<T, A> {
     /// Returns a parallel iterator over the elements in a `RawTable`.
     #[cfg_attr(feature = "inline-more", inline)]
     pub unsafe fn par_iter(&self) -> RawParIter<T> {
