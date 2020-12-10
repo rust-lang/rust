@@ -414,7 +414,13 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 if layout.abi.is_uninhabited() {
                     // The run-time intrinsic panics just to get a good backtrace; here we abort
                     // since there is no problem showing a backtrace even for aborts.
-                    M::abort(self, format!("attempted to instantiate uninhabited type `{}`", ty))?;
+                    M::abort(
+                        self,
+                        format!(
+                            "aborted execution: attempted to instantiate uninhabited type `{}`",
+                            ty
+                        ),
+                    )?;
                 }
             }
             sym::simd_insert => {
