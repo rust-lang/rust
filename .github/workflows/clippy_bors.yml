@@ -23,6 +23,7 @@ jobs:
     - uses: rust-lang/simpleinfra/github-actions/cancel-outdated-builds@master
       with:
         github_token: "${{ secrets.github_token }}"
+
     - name: Checkout
       uses: actions/checkout@v2.3.3
       with:
@@ -84,18 +85,11 @@ jobs:
         sudo apt-get install gcc-multilib libssl-dev:i386 libgit2-dev:i386
       if: matrix.host == 'i686-unknown-linux-gnu'
 
-    - name: rust-toolchain
-      uses: actions-rs/toolchain@v1.0.6
-      with:
-        toolchain: nightly
-        target: ${{ matrix.host }}
-        profile: minimal
-
     - name: Checkout
       uses: actions/checkout@v2.3.3
 
-    - name: Run cargo update
-      run: cargo update
+    - name: Install toolchain
+      run: rustup show active-toolchain
 
     - name: Cache cargo dir
       uses: actions/cache@v2
@@ -153,7 +147,7 @@ jobs:
     # Cleanup
     - name: Run cargo-cache --autoclean
       run: |
-        cargo +nightly install cargo-cache --no-default-features --features ci-autoclean cargo-cache
+        cargo install cargo-cache --no-default-features --features ci-autoclean cargo-cache
         cargo cache
 
   integration_build:
@@ -166,18 +160,11 @@ jobs:
       with:
         github_token: "${{ secrets.github_token }}"
 
-    - name: rust-toolchain
-      uses: actions-rs/toolchain@v1.0.6
-      with:
-        toolchain: nightly
-        target: x86_64-unknown-linux-gnu
-        profile: minimal
-
     - name: Checkout
       uses: actions/checkout@v2.3.3
 
-    - name: Run cargo update
-      run: cargo update
+    - name: Install toolchain
+      run: rustup show active-toolchain
 
     - name: Cache cargo dir
       uses: actions/cache@v2
@@ -209,7 +196,7 @@ jobs:
     # Cleanup
     - name: Run cargo-cache --autoclean
       run: |
-        cargo +nightly install cargo-cache --no-default-features --features ci-autoclean cargo-cache
+        cargo install cargo-cache --no-default-features --features ci-autoclean cargo-cache
         cargo cache
   integration:
     needs: integration_build
@@ -244,18 +231,11 @@ jobs:
       with:
         github_token: "${{ secrets.github_token }}"
 
-    - name: rust-toolchain
-      uses: actions-rs/toolchain@v1.0.6
-      with:
-        toolchain: nightly
-        target: x86_64-unknown-linux-gnu
-        profile: minimal
-
     - name: Checkout
       uses: actions/checkout@v2.3.3
 
-    - name: Run cargo update
-      run: cargo update
+    - name: Install toolchain
+      run: rustup show active-toolchain
 
     - name: Cache cargo dir
       uses: actions/cache@v2
@@ -285,7 +265,7 @@ jobs:
     # Cleanup
     - name: Run cargo-cache --autoclean
       run: |
-        cargo +nightly install cargo-cache --no-default-features --features ci-autoclean cargo-cache
+        cargo install cargo-cache --no-default-features --features ci-autoclean cargo-cache
         cargo cache
 
   # These jobs doesn't actually test anything, but they're only used to tell
