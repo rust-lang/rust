@@ -359,8 +359,8 @@ impl AstConv<'tcx> for ItemCtxt<'tcx> {
                 self.tcx().sess,
                 span,
                 E0212,
-                "cannot extract an associated type from a higher-ranked trait bound \
-                 in this context"
+                "cannot use the associated type of a trait \
+                 with uninferred generic parameters"
             );
 
             match self.node() {

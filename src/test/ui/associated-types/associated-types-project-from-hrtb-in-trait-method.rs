@@ -11,7 +11,7 @@ pub trait Foo<T> {
 
 trait SomeTrait<I : for<'x> Foo<&'x isize>> {
     fn some_method(&self, arg: I::A);
-    //~^ ERROR cannot extract an associated type from a higher-ranked trait bound in this context
+    //~^ ERROR cannot use the associated type of a trait with uninferred generic parameters
 }
 
 trait AnotherTrait<I : for<'x> Foo<&'x isize>> {
@@ -30,7 +30,7 @@ struct Peach<X>(std::marker::PhantomData<X>);
 
 impl<X: for<'a> Banana<'a>> Peach<X> {
     fn mango(&self) -> X::Assoc {
-    //~^ ERROR cannot extract an associated type from a higher-ranked trait bound in this context
+    //~^ ERROR cannot use the associated type of a trait with uninferred generic parameters
         Default::default()
     }
 }
