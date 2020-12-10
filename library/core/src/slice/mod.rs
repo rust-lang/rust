@@ -1233,12 +1233,7 @@ impl<T> [T] {
     pub fn group_by<F>(&self, pred: F) -> GroupBy<T, F>
     where F: FnMut(&T, &T) -> bool
     {
-        GroupBy {
-            ptr: self.as_ptr(),
-            end: unsafe { self.as_ptr().add(self.len()) },
-            predicate: pred,
-            _phantom: marker::PhantomData,
-        }
+        GroupBy::new(self, pred)
     }
 
     /// Returns an iterator over the slice producing non-overlapping mutable
@@ -1267,12 +1262,7 @@ impl<T> [T] {
     pub fn group_by_mut<F>(&mut self, pred: F) -> GroupByMut<T, F>
     where F: FnMut(&T, &T) -> bool
     {
-        GroupByMut {
-            ptr: self.as_mut_ptr(),
-            end: unsafe { self.as_mut_ptr().add(self.len()) },
-            predicate: pred,
-            _phantom: marker::PhantomData,
-        }
+        GroupByMut::new(self, pred)
     }
 
     /// Divides one slice into two at an index.
