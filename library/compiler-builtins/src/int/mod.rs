@@ -250,7 +250,11 @@ macro_rules! int_impl {
             }
 
             fn abs_diff(self, other: Self) -> Self {
-                (self.wrapping_sub(other) as $ity).wrapping_abs() as $uty
+                if self < other {
+                    other.wrapping_sub(self)
+                } else {
+                    self.wrapping_sub(other)
+                }
             }
 
             int_impl_common!($uty);
