@@ -541,23 +541,28 @@ impl Cursor<'_> {
                 // might have stuff after the ., and if it does, it needs to start
                 // with a number
                 self.bump();
-                let mut empty_exponent = false;
-                if self.first().is_digit(10) {
-                    self.eat_decimal_digits();
-                    match self.first() {
-                        'e' | 'E' => {
-                            self.bump();
-                            empty_exponent = !self.eat_float_exponent();
-                        }
-                        _ => (),
+                self.eat_decimal_digits();
+                if matches!(self.first(), 'e' | 'E') {
+                    if self.is_next_exponent() {
+                        self.bump(); // 'e'
+                        let empty_exponent = !self.eat_float_exponent();
+                        Float { base, empty_exponent }
+                    } else {
+                        // the 'e' should be part of the suffix, don't consume.
+                        Float { base, empty_exponent: false }
                     }
+                } else {
+                    Float { base, empty_exponent: false }
                 }
-                Float { base, empty_exponent }
             }
             'e' | 'E' => {
-                self.bump();
-                let empty_exponent = !self.eat_float_exponent();
-                Float { base, empty_exponent }
+                if self.is_next_exponent() {
+                    self.bump();
+                    let empty_exponent = !self.eat_float_exponent();
+                    Float { base, empty_exponent }
+                } else {
+                    Int { base, empty_int: false }
+                }
             }
             _ => Int { base, empty_int: false },
         }
@@ -780,6 +785,30 @@ impl Cursor<'_> {
             }
         }
         has_digits
+    }
+
+    /// Is an exponent the first thing after the cursor? It might be empty. Includes the `'e' | 'E'`
+    fn is_next_exponent(&mut self) -> bool {
+        debug_assert!(self.first() == 'e' || self.first() == 'E'); // checked elsewhere
+        if self.second() == '-' || self.second() == '+' {
+            // + and - are only allowed in an exponential
+            true
+        } else {
+            let mut found_exponent = false;
+            // After we've seen 3 sequential underscores, assume it is text and
+            // not a number. We do this to avoid unbounded lookahead.
+            for nth in 1..=3 {
+                match self.nth_char(nth) {
+                    '0'..='9' => {
+                        found_exponent = true;
+                        break;
+                    }
+                    '_' => (), // continue
+                    _ => break,
+                }
+            }
+            found_exponent
+        }
     }
 
     /// Eats the float exponent. Returns true if at least one digit was met,
