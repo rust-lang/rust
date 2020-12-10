@@ -84,14 +84,14 @@
 use self::LiveNodeKind::*;
 use self::VarKind::*;
 
-use rustc_ast::InlineAsmOptions;
+use rustc_ast::{InlineAsmOptions, LitKind, StrStyle};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::def::*;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
-use rustc_hir::{Expr, HirId, HirIdMap, HirIdSet};
+use rustc_hir::{Expr, ExprKind, QPath, HirId, HirIdMap, HirIdSet};
 use rustc_index::vec::IndexVec;
 use rustc_middle::hir::map::Map;
 use rustc_middle::ty::query::Providers;
@@ -328,7 +328,44 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
                 }
             }
         }
-
+        
+        // Allow todo! macro
+        /* 
+            Skips checking for unused variables when the trailing expression
+            of the body is core::panicking::panic("not yet implemented"), ie
+            as emitted by todo!().
+            
+            # Example 
+            
+            fn foo(x: i32) {
+                // arbitrary code
+                todo!()
+            }
+        */
+        if let ExprKind::Block(block, _) = &body.value.kind {
+            if let Some(expr) = block.expr {
+                if let ExprKind::Call(call, [arg]) = expr.kind {
+                    if let ExprKind::Path(QPath::Resolved(_, path)) = call.kind {
+                        if matches!(&path.res, Res::Def(DefKind::Fn, _)) {
+                            // FIXME: Better way of extracting literal
+                            let debug = format!("{:?}", &path.res);
+                            if (debug.contains("std[") || debug.contains("core["))
+                                && debug.contains("]::panicking::panic)") {
+                                if let ExprKind::Lit(spanned) = &arg.kind {
+                                    if let LitKind::Str(symbol, StrStyle::Cooked) = spanned.node {
+                                        // FIXME: Better way of matching symbol
+                                        if &*symbol.as_str() == "not yet implemented" {
+                                            return;
+                                        }
+                                    }
+                                }
+                            } 
+                        }
+                    }
+                }
+            }
+        }   
+        
         if let Some(captures) = maps.tcx.typeck(local_def_id).closure_captures.get(&def_id) {
             for &var_hir_id in captures.keys() {
                 let var_name = maps.tcx.hir().name(var_hir_id);
@@ -1665,7 +1702,7 @@ impl<'tcx> Liveness<'_, 'tcx> {
                     hir_ids_and_spans.iter().map(|(_, sp)| *sp).collect::<Vec<_>>(),
                     |lint| {
                         let mut err = lint.build(&format!("unused variable: `{}`", name));
-
+                        
                         let (shorthands, non_shorthands): (Vec<_>, Vec<_>) =
                             hir_ids_and_spans.into_iter().partition(|(hir_id, span)| {
                                 let var = self.variable(*hir_id, *span);
@@ -1703,7 +1740,7 @@ impl<'tcx> Liveness<'_, 'tcx> {
                                 Applicability::MachineApplicable,
                             );
                         }
-
+                        
                         err.emit()
                     },
                 );

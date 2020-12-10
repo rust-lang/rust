@@ -647,8 +647,8 @@ macro_rules! unimplemented {
 #[macro_export]
 #[stable(feature = "todo_macro", since = "1.40.0")]
 macro_rules! todo {
-    () => (#![allow(unused_variables)] $crate::panic!("not yet implemented"));
-    ($($arg:tt)+) => (#![allow(unused_variables)] $crate::panic!("not yet implemented: {}", $crate::format_args!($($arg)+)));
+    () => ($crate::panic!("not yet implemented"));
+    ($($arg:tt)+) => ($crate::panic!("not yet implemented: {}", $crate::format_args!($($arg)+)));
 }
 
 /// Definitions of built-in macros.
