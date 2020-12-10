@@ -1207,6 +1207,74 @@ impl<T> [T] {
         RChunksExactMut::new(self, chunk_size)
     }
 
+    /// Returns an iterator over the slice producing non-overlapping runs
+    /// of elements using the predicate to separate them.
+    ///
+    /// The predicate is called on two elements following themselves,
+    /// it means the predicate is called on `slice[0]` and `slice[1]`
+    /// then on `slice[1]` and `slice[2]` and so on.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_group_by)]
+    ///
+    /// let slice = &[1, 1, 1, 3, 3, 2, 2, 2];
+    ///
+    /// let mut iter = slice.group_by(|a, b| a == b);
+    ///
+    /// assert_eq!(iter.next(), Some(&[1, 1, 1][..]));
+    /// assert_eq!(iter.next(), Some(&[3, 3][..]));
+    /// assert_eq!(iter.next(), Some(&[2, 2, 2][..]));
+    /// assert_eq!(iter.next(), None);
+    /// ```
+    #[unstable(feature = "slice_group_by", issue = "0")]
+    #[inline]
+    pub fn group_by<F>(&self, pred: F) -> GroupBy<T, F>
+    where F: FnMut(&T, &T) -> bool
+    {
+        GroupBy {
+            ptr: self.as_ptr(),
+            end: unsafe { self.as_ptr().add(self.len()) },
+            predicate: pred,
+            _phantom: marker::PhantomData,
+        }
+    }
+
+    /// Returns an iterator over the slice producing non-overlapping mutable
+    /// runs of elements using the predicate to separate them.
+    ///
+    /// The predicate is called on two elements following themselves,
+    /// it means the predicate is called on `slice[0]` and `slice[1]`
+    /// then on `slice[1]` and `slice[2]` and so on.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_group_by)]
+    ///
+    /// let slice = &mut [1, 1, 1, 3, 3, 2, 2, 2];
+    ///
+    /// let mut iter = slice.group_by_mut(|a, b| a == b);
+    ///
+    /// assert_eq!(iter.next(), Some(&mut [1, 1, 1][..]));
+    /// assert_eq!(iter.next(), Some(&mut [3, 3][..]));
+    /// assert_eq!(iter.next(), Some(&mut [2, 2, 2][..]));
+    /// assert_eq!(iter.next(), None);
+    /// ```
+    #[unstable(feature = "slice_group_by", issue = "0")]
+    #[inline]
+    pub fn group_by_mut<F>(&mut self, pred: F) -> GroupByMut<T, F>
+    where F: FnMut(&T, &T) -> bool
+    {
+        GroupByMut {
+            ptr: self.as_mut_ptr(),
+            end: unsafe { self.as_mut_ptr().add(self.len()) },
+            predicate: pred,
+            _phantom: marker::PhantomData,
+        }
+    }
+
     /// Divides one slice into two at an index.
     ///
     /// The first will contain all indices from `[0, mid)` (excluding

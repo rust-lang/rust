@@ -118,6 +118,8 @@ pub use core::slice::{RChunks, RChunksExact, RChunksExactMut, RChunksMut};
 pub use core::slice::{RSplit, RSplitMut};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::slice::{RSplitN, RSplitNMut, SplitN, SplitNMut};
+#[unstable(feature = "slice_group_by", issue = "0")]
+pub use core::slice::{GroupBy, GroupByMut};
 
 ////////////////////////////////////////////////////////////////////////////////
 // Basic slice extension methods
