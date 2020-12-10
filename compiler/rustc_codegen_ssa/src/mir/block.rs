@@ -1395,6 +1395,25 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         dst: PlaceRef<'tcx, Bx::Value>,
     ) {
         let src = self.codegen_operand(bx, src);
+
+        // Special-case transmutes between scalars as simple bitcasts.
+        match (&src.layout.abi, &dst.layout.abi) {
+            (abi::Abi::Scalar(src_scalar), abi::Abi::Scalar(dst_scalar)) => {
+                // HACK(eddyb) LLVM doesn't like `bitcast`s between pointers and non-pointers.
+                if (src_scalar.value == abi::Pointer) == (dst_scalar.value == abi::Pointer) {
+                    assert_eq!(src.layout.size, dst.layout.size);
+
+                    // NOTE(eddyb) the `from_immediate` and `to_immediate_scalar`
+                    // conversions allow handling `bool`s the same as `u8`s.
+                    let src = bx.from_immediate(src.immediate());
+                    let src_as_dst = bx.bitcast(src, bx.backend_type(dst.layout));
+                    Immediate(bx.to_immediate_scalar(src_as_dst, dst_scalar)).store(bx, dst);
+                    return;
+                }
+            }
+            _ => {}
+        }
+
         let llty = bx.backend_type(src.layout);
         let cast_ptr = bx.pointercast(dst.llval, bx.type_ptr_to(llty));
         let align = src.layout.align.abi.min(dst.align);
