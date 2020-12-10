@@ -1954,3 +1954,17 @@ fn test_vec_swap() {
     assert_eq!(a[0], 42);
     assert_eq!(n, 0);
 }
+
+#[test]
+fn test_vec_extend_from_array() {
+    let mut v = Vec::from("Hello");
+    v.extend_from_array(*b" ");
+    v.extend_from_array(*b"World");
+    v.push(b'!');
+    assert_eq!(v, b"Hello World!");
+
+    // And use a Drop type to check for obvious use-after-free or similar
+    let mut v = vec![String::from("Hello")];
+    v.extend_from_array([String::from(" "), String::from("world")]);
+    assert_eq!(v.concat(), "Hello world");
+}

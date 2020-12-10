@@ -2738,6 +2738,52 @@ impl<A> Extend<A> for VecDeque<A> {
     }
 
     #[inline]
+    fn extend_from_array<const N: usize>(&mut self, array: [A; N]) {
+        self.reserve(N);
+
+        // Pre-leak the items in the array, since we'll duplicate them below.
+        // They'll never *actually* leak since nothing in the rest of the method can fail.
+        let array = ManuallyDrop::new(array);
+
+        let available_at_head = self.cap() - self.head;
+        if available_at_head >= N {
+            // The easy case; we can copy it all at once.
+
+            // SAFETY: We just checked we have enough space without overrunning capacity.
+            // Thus the additions are in-bounds and cannot wrap.
+            // The copy is non-overlapping since the input array is owned.
+            // Duplicating the items is fine as we've already kept them from being dropped.
+            unsafe {
+                let end = self.ptr().add(self.head);
+                ptr::copy_nonoverlapping(array.as_ptr(), end, N);
+            }
+        } else {
+            // The harder case; we need to copy some of the items to the end and some to the beginning.
+
+            // SAFETY: We're copying exactly the number to go up to the capacity but not over.
+            // Thus the additions are in-bounds and cannot wrap.
+            // The copy is non-overlapping since the input array is owned.
+            // Duplicating the items is fine as we've already kept them from being dropped.
+            unsafe {
+                let end = self.ptr().add(self.head);
+                ptr::copy_nonoverlapping(array.as_ptr(), end, available_at_head);
+            }
+
+            // SAFETY: The reserve ensured that we have space for N, and we're copying less than that.
+            // Thus the additions are in-bounds and cannot wrap.
+            // The copy is non-overlapping since the input array is owned.
+            // Duplicating the items is fine as we've already kept them from being dropped.
+            unsafe {
+                let remaining_to_copy = N - available_at_head;
+                let array_ptr = array.as_ptr().add(available_at_head);
+                ptr::copy_nonoverlapping(array_ptr, self.ptr(), remaining_to_copy);
+            }
+        }
+
+        self.head = self.wrap_add(self.head, N);
+    }
+
+    #[inline]
     fn extend_reserve(&mut self, additional: usize) {
         self.reserve(additional);
     }

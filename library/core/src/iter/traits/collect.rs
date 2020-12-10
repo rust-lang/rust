@@ -341,6 +341,40 @@ pub trait Extend<A> {
         self.extend(Some(item));
     }
 
+    /// Extends a collection by moving the elements from the array.
+    ///
+    /// You should call this if you have multiple elements to add and have them all already,
+    /// as it allows the container to optimize that where possible.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// #![feature(extend_from_array)]
+    /// let mut v = vec![0; 3];
+    /// v.extend_from_array([1, 1, 2, 3, 5]);
+    /// assert_eq!(v, [0, 0, 0, 1, 1, 2, 3, 5]);
+    /// ```
+    ///
+    /// Extending from an empty array is allowed, but of course doesn't affect the collection:
+    /// ```rust
+    /// #![feature(extend_from_array)]
+    /// let mut v = vec![3, 5, 4];
+    /// v.extend_from_array([] as [i32; 0]);
+    /// assert_eq!(v, [3, 5, 4]);
+    /// ```
+    ///
+    /// # Note to Implementors
+    ///
+    /// The default implementation of this will pass the array iterator to your `extend` implementation,
+    /// which is likely optimal for many cases.
+    ///
+    /// You should override this, however, if you can take advantage of the array elements being contiguous in memory.
+    /// ([`Vec<T>`] does, for example, but there's no advantage of doing so in [`LinkedList<T>`].)
+    #[unstable(feature = "extend_from_array", issue = "88888888")]
+    fn extend_from_array<const N: usize>(&mut self, array: [A; N]) {
+        self.extend(crate::array::IntoIter::new(array));
+    }
+
     /// Reserves capacity in a collection for the given number of additional elements.
     ///
     /// The default implementation does nothing.

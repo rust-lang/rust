@@ -4,6 +4,7 @@
 #![feature(const_cow_is_borrowed)]
 #![feature(drain_filter)]
 #![feature(exact_size_is_empty)]
+#![feature(extend_from_array)]
 #![feature(new_uninit)]
 #![feature(pattern)]
 #![feature(str_split_once)]

@@ -2256,6 +2256,45 @@ impl<T, A: Allocator> Extend<T> for Vec<T, A> {
         self.push(item);
     }
 
+    /// Extends this vector by moving the elements of the array to the end of the vector.
+    ///
+    /// You can think of a call to
+    /// ```rust
+    /// #![feature(extend_from_array)]
+    /// # let mut v = vec![];
+    /// v.extend_from_array([7, 13, 42]);
+    /// ```
+    /// as though it were
+    /// ```rust
+    /// # let mut v = vec![];
+    /// v.reserve(3);
+    /// v.push(7);
+    /// v.push(13);
+    /// v.push(42);
+    /// ```
+    /// just simpler to type and easier on the optimizer.
+    ///
+    /// You should continue to use [`push`] if you only have one element;
+    /// There's no advantage to doing `.extend_from_array([x])` instead.
+    #[inline]
+    fn extend_from_array<const N: usize>(&mut self, array: [T; N]) {
+        self.reserve(N);
+
+        // Pre-leak the items in the array, since we'll duplicate them below.
+        // They'll never *actually* leak since nothing in the rest of the method can fail.
+        let array = ManuallyDrop::new(array);
+
+        // SAFETY: The reserve has guaranteed that we have enough space available.
+        // Thus the additions are in-bounds and cannot wrap.
+        // The copy is non-overlapping since the input array is owned.
+        // Duplicating the items is fine as we've already kept them from being dropped.
+        unsafe {
+            let end = self.as_mut_ptr().add(self.len);
+            ptr::copy_nonoverlapping(array.as_ptr(), end, N);
+            self.len += N;
+        }
+    }
+
     #[inline]
     fn extend_reserve(&mut self, additional: usize) {
         self.reserve(additional);

@@ -1728,3 +1728,34 @@ fn test_zero_sized_push() {
         }
     }
 }
+
+#[test]
+fn test_vecdeque_extend_from_array() {
+    // Easy case where it's just adding to the end
+    let mut v = VecDeque::with_capacity(15);
+    v.extend_from_array(*b"12345");
+    v.extend_from_array(*b"67890");
+    v.extend_from_array(*b"abcde");
+    assert_eq!(v, b"1234567890abcde");
+
+    // Check that the head hitting the end wraps it back to the correct place
+    let mut v = VecDeque::with_capacity(7);
+    v.extend_from_array(*b"1234");
+    v.pop_front();
+    v.extend_from_array(*b"5678");
+    assert_eq!(v.as_slices(), (&b"2345678"[..], &b""[..]));
+    v.pop_front();
+    v.push_back(b'!');
+    assert_eq!(v.as_slices(), (&b"345678"[..], &b"!"[..]));
+
+    // The version that needs two copies because it wraps around
+    let mut v = VecDeque::with_capacity(15);
+    v.extend_from_array(*b"1234567890");
+    for _ in 0..5 {
+        v.pop_front().unwrap();
+    }
+    v.extend_from_array(*b"ABCDEFGHIJ");
+    assert_eq!(v, b"67890ABCDEFGHIJ");
+    assert_eq!(v.capacity(), 15);
+    assert_eq!(v.as_slices(), (&b"67890ABCDEF"[..], &b"GHIJ"[..]));
+}
