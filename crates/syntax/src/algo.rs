@@ -476,7 +476,8 @@ impl<'a> SyntaxRewriter<'a> {
         if self.f.is_none() && self.replacements.is_empty() && self.insertions.is_empty() {
             return node.clone();
         }
-        self.rewrite_children(node)
+        let green = self.rewrite_children(node);
+        with_green(node, green)
     }
 
     pub fn rewrite_ast<N: AstNode>(self, node: &N) -> N {
@@ -523,7 +524,7 @@ impl<'a> SyntaxRewriter<'a> {
         self.insertions.get(pos).map(|insertions| insertions.iter().cloned())
     }
 
-    fn rewrite_children(&self, node: &SyntaxNode) -> SyntaxNode {
+    fn rewrite_children(&self, node: &SyntaxNode) -> rowan::GreenNode {
         let _p = profile::span("rewrite_children");
 
         //  FIXME: this could be made much faster.
@@ -534,7 +535,8 @@ impl<'a> SyntaxRewriter<'a> {
         for child in node.children_with_tokens() {
             self.rewrite_self(&mut new_children, &child);
         }
-        with_children(node, new_children)
+
+        rowan::GreenNode::new(rowan::SyntaxKind(node.kind() as u16), new_children)
     }
 
     fn rewrite_self(
@@ -556,7 +558,7 @@ impl<'a> SyntaxRewriter<'a> {
             match element {
                 NodeOrToken::Token(it) => acc.push(NodeOrToken::Token(it.green().clone())),
                 NodeOrToken::Node(it) => {
-                    acc.push(NodeOrToken::Node(self.rewrite_children(it).green().clone()));
+                    acc.push(NodeOrToken::Node(self.rewrite_children(it)));
                 }
             }
         }
@@ -601,14 +603,18 @@ fn with_children(
 ) -> SyntaxNode {
     let _p = profile::span("with_children");
 
-    let len = new_children.iter().map(|it| it.text_len()).sum::<TextSize>();
-    let new_node = rowan::GreenNode::new(rowan::SyntaxKind(parent.kind() as u16), new_children);
-    let new_root_node = parent.replace_with(new_node);
+    let new_green = rowan::GreenNode::new(rowan::SyntaxKind(parent.kind() as u16), new_children);
+    with_green(parent, new_green)
+}
+
+fn with_green(syntax_node: &SyntaxNode, green: rowan::GreenNode) -> SyntaxNode {
+    let len = green.children().map(|it| it.text_len()).sum::<TextSize>();
+    let new_root_node = syntax_node.replace_with(green);
     let new_root_node = SyntaxNode::new_root(new_root_node);
 
     // FIXME: use a more elegant way to re-fetch the node (#1185), make
     // `range` private afterwards
-    let mut ptr = SyntaxNodePtr::new(parent);
+    let mut ptr = SyntaxNodePtr::new(syntax_node);
     ptr.range = TextRange::at(ptr.range.start(), len);
     ptr.to_node(&new_root_node)
 }
