@@ -208,9 +208,9 @@ enum WriteType {
     Write,
 
     /// Deallocate memory.
-    /// Some races with deallocation will be missed and instead
-    /// reported as invalid accesses of freed memory due to
-    /// the order of checks.
+    /// Note that when memory is deallocated first, later non-atomic accesses
+    /// will be reported as use-after-free, not as data races.
+    /// (Same for `Allocate` above.)
     Deallocate,
 }
 impl WriteType {
