@@ -1,4 +1,4 @@
-//! `bless` updates the 'expected output' files in the repo with changed output files
+//! `bless` updates the reference files in the repo with changed output files
 //! from the last test run.
 
 use std::env;
@@ -28,35 +28,35 @@ pub fn bless() {
             .filter_map(Result::ok)
             .filter(|f| f.path().extension() == Some(OsStr::new("rs")))
             .for_each(|f| {
-                update_test_file(f.path().with_extension("stdout"));
-                update_test_file(f.path().with_extension("stderr"));
-                update_test_file(f.path().with_extension("fixed"));
+                update_reference_file(f.path().with_extension("stdout"));
+                update_reference_file(f.path().with_extension("stderr"));
+                update_reference_file(f.path().with_extension("fixed"));
             });
     }
 }
 
-fn update_test_file(test_file_path: PathBuf) {
-    let build_output_path = build_dir().join(PathBuf::from(test_file_path.file_name().unwrap()));
-    let relative_test_file_path = test_file_path.strip_prefix(clippy_project_root()).unwrap();
+fn update_reference_file(reference_file_path: PathBuf) {
+    let test_output_path = build_dir().join(PathBuf::from(reference_file_path.file_name().unwrap()));
+    let relative_reference_file_path = reference_file_path.strip_prefix(clippy_project_root()).unwrap();
 
     // If compiletest did not write any changes during the test run,
     // we don't have to update anything
-    if !build_output_path.exists() {
+    if !test_output_path.exists() {
         return;
     }
 
-    let build_output = fs::read(&build_output_path).expect("Unable to read build output file");
-    let test_file = fs::read(&test_file_path).expect("Unable to read test file");
+    let test_output_file = fs::read(&test_output_path).expect("Unable to read test output file");
+    let reference_file = fs::read(&reference_file_path).expect("Unable to read reference file");
 
-    if build_output != test_file {
-        // If a test run caused an output file to change, update the test file
-        println!("updating {}", &relative_test_file_path.display());
-        fs::copy(build_output_path, &test_file_path).expect("Could not update test file");
+    if test_output_file != reference_file {
+        // If a test run caused an output file to change, update the reference file
+        println!("updating {}", &relative_reference_file_path.display());
+        fs::copy(test_output_path, &reference_file_path).expect("Could not update reference file");
 
-        if test_file.is_empty() {
-            // If we copied over an empty output file, we remove it
-            println!("removing {}", &relative_test_file_path.display());
-            fs::remove_file(test_file_path).expect("Could not remove test file");
+        if reference_file.is_empty() {
+            // If we copied over an empty output file, we remove the now empty reference file
+            println!("removing {}", &relative_reference_file_path.display());
+            fs::remove_file(reference_file_path).expect("Could not remove reference file");
         }
     }
 }
