@@ -612,7 +612,6 @@ pub struct ModuleItems {
 #[derive(Encodable, Debug, HashStable_Generic)]
 pub struct CrateItem<'hir> {
     pub module: Mod<'hir>,
-    pub span: Span,
 }
 
 /// The top-level data structure that stores the entire contents of
