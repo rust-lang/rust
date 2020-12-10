@@ -4,7 +4,7 @@ use hir::{
     db::AstDatabase,
     diagnostics::{
         Diagnostic, IncorrectCase, MissingFields, MissingOkInTailExpr, NoSuchField,
-        UnresolvedModule,
+        RemoveThisSemicolon, UnresolvedModule,
     },
     HasSource, HirDisplay, InFile, Semantics, VariantDef,
 };
@@ -102,6 +102,27 @@ impl DiagnosticWithFix for MissingOkInTailExpr {
         let source_change =
             SourceFileEdit { file_id: self.file.original_file(sema.db), edit }.into();
         Some(Fix::new("Wrap with ok", source_change, tail_expr_range))
+    }
+}
+
+impl DiagnosticWithFix for RemoveThisSemicolon {
+    fn fix(&self, sema: &Semantics<RootDatabase>) -> Option<Fix> {
+        let root = sema.db.parse_or_expand(self.file)?;
+
+        let semicolon = self
+            .expr
+            .to_node(&root)
+            .syntax()
+            .parent()
+            .and_then(ast::ExprStmt::cast)
+            .and_then(|expr| expr.semicolon_token())?
+            .text_range();
+
+        let edit = TextEdit::delete(semicolon);
+        let source_change =
+            SourceFileEdit { file_id: self.file.original_file(sema.db), edit }.into();
+
+        Some(Fix::new("Remove this semicolon", source_change, semicolon))
     }
 }
 
