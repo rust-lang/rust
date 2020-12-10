@@ -283,7 +283,7 @@ impl<'a, 'tcx> Helper<'a, 'tcx> {
                 return None;
             }
 
-            // when one place is the projection of the other, it's not safe to calculate their discriminant values sequentially.
+            // when the second place is a projection of the first one, it's not safe to calculate their discriminant values sequentially.
             // for example, this should not be optimized:
             //
             // ```rust
@@ -294,18 +294,17 @@ impl<'a, 'tcx> Helper<'a, 'tcx> {
             // ```mir
             // bb0: {
             //   _2 = discriminant(*_1)
-            //   switchInt(move _2) -> [...]
+            //   switchInt(_2) -> [...]
             // }
             // bb1: {
             //   _3 = discriminant(*(((*_1) as Some).0: &E))
-            //   switchInt(move _3) -> [...]
+            //   switchInt(_3) -> [...]
             // }
             // ```
             let discr_place = discr_info.place_of_adt_discr_read;
             let this_discr_place = this_bb_discr_info.place_of_adt_discr_read;
             if discr_place.local == this_discr_place.local
-                && (discr_place.projection.starts_with(this_discr_place.projection)
-                    || this_discr_place.projection.starts_with(discr_place.projection))
+                && this_discr_place.projection.starts_with(discr_place.projection)
             {
                 trace!("NO: one target is the projection of another");
                 return None;
