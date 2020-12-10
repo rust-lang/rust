@@ -72,6 +72,8 @@ fn integration_test() {
         panic!("incompatible crate versions");
     } else if stderr.contains("failed to run `rustc` to learn about target-specific information") {
         panic!("couldn't find librustc_driver, consider setting `LD_LIBRARY_PATH`");
+    } else if stderr.contains("toolchain") && stderr.contains("is not installed") {
+        panic!("missing required toolchain");
     }
 
     match output.status.code() {
