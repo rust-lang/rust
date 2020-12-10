@@ -13,6 +13,12 @@ use crate::{
     MacroFile, ProcMacroExpander,
 };
 
+/// Total limit on the number of tokens produced by any macro invocation.
+///
+/// If an invocation produces more tokens than this limit, it will not be stored in the database and
+/// an error will be emitted.
+const TOKEN_LIMIT: usize = 524288;
+
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum TokenExpander {
     MacroRules(mbe::MacroRules),
@@ -227,10 +233,10 @@ fn macro_expand_with_arg(
     let ExpandResult { value: tt, err } = macro_rules.0.expand(db, lazy_id, &macro_arg.0);
     // Set a hard limit for the expanded tt
     let count = tt.count();
-    if count > 262144 {
+    if count > TOKEN_LIMIT {
         return ExpandResult::str_err(format!(
-            "Total tokens count exceed limit : count = {}",
-            count
+            "macro invocation exceeds token limit: produced {} tokens, limit is {}",
+            count, TOKEN_LIMIT,
         ));
     }
 
