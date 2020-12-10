@@ -57,6 +57,9 @@ pub use iter::{ArrayChunks, ArrayChunksMut};
 #[unstable(feature = "array_windows", issue = "75027")]
 pub use iter::ArrayWindows;
 
+#[unstable(feature = "slice_group_by", issue = "none")]
+pub use iter::{GroupBy, GroupByMut};
+
 #[unstable(feature = "split_inclusive", issue = "72360")]
 pub use iter::{SplitInclusive, SplitInclusiveMut};
 
