@@ -7,7 +7,7 @@ use crate::interpret::{
 };
 
 use rustc_errors::ErrorReported;
-use rustc_hir::def::DefKind;
+use rustc_hir::{ConstContext, def::DefKind};
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::traits::Reveal;
@@ -30,14 +30,14 @@ fn eval_body_using_ecx<'mir, 'tcx>(
     body: &'mir mir::Body<'tcx>,
 ) -> InterpResult<'tcx, MPlaceTy<'tcx>> {
     debug!("eval_body_using_ecx: {:?}, {:?}", cid, ecx.param_env);
+    let tcx = *ecx.tcx;
     assert!(
         cid.promoted.is_some()
             || matches!(
-                ecx.tcx.hir().body_const_context(def_id),
+                ecx.tcx.hir().body_const_context(cid.instance.def_id().expect_local()),
                 Some(ConstContext::Const | ConstContext::Static(_))
             )
     );
-    let tcx = *ecx.tcx;
     let layout = ecx.layout_of(body.return_ty().subst(tcx, cid.instance.substs))?;
     assert!(!layout.is_unsized());
     let ret = ecx.allocate(layout, MemoryKind::Stack);
@@ -47,14 +47,7 @@ fn eval_body_using_ecx<'mir, 'tcx>(
     let prom = cid.promoted.map_or(String::new(), |p| format!("::promoted[{:?}]", p));
     trace!("eval_body_using_ecx: pushing stack frame for global: {}{}", name, prom);
 
-    // Assert all args (if any) are zero-sized types; `eval_body_using_ecx` doesn't
-    // make sense if the body is expecting nontrivial arguments.
-    // (The alternative would be to use `eval_fn_call` with an args slice.)
-    for arg in body.args_iter() {
-        let decl = body.local_decls.get(arg).expect("arg missing from local_decls");
-        let layout = ecx.layout_of(decl.ty.subst(tcx, cid.instance.substs))?;
-        assert!(layout.is_zst())
-    }
+
 
     ecx.push_stack_frame(
         cid.instance,
