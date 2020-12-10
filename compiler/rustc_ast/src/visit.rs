@@ -906,7 +906,6 @@ pub fn walk_mac_args<'a, V: Visitor<'a>>(visitor: &mut V, args: &'a MacArgs) {
                     token::NtExpr(expr) => visitor.visit_expr(expr),
                     t => panic!("unexpected token in key-value attribute: {:?}", t),
                 },
-                token::Literal(..) | token::Ident(..) => {}
                 t => panic!("unexpected token in key-value attribute: {:?}", t),
             },
             t => panic!("unexpected token in key-value attribute: {:?}", t),

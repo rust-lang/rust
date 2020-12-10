@@ -23,6 +23,7 @@ use rustc_ast::{self as ast, AnonConst, AttrStyle, AttrVec, Const, CrateSugar, E
 use rustc_ast::{Async, Expr, ExprKind, MacArgs, MacDelimiter, Mutability, StrLit};
 use rustc_ast::{Visibility, VisibilityKind};
 use rustc_ast_pretty::pprust;
+use rustc_data_structures::sync::Lrc;
 use rustc_errors::PResult;
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, FatalError};
 use rustc_session::parse::ParseSess;
@@ -935,16 +936,24 @@ impl<'a> Parser<'a> {
                             is_interpolated_expr = true;
                         }
                     }
-                    let token_tree = if is_interpolated_expr {
-                        // We need to accept arbitrary interpolated expressions to continue
-                        // supporting things like `doc = $expr` that work on stable.
-                        // Non-literal interpolated expressions are rejected after expansion.
-                        self.parse_token_tree()
-                    } else {
-                        self.parse_unsuffixed_lit()?.token_tree()
-                    };
 
-                    MacArgs::Eq(eq_span, token_tree.into())
+                    // The value here is never passed to macros as tokens by itself (not as a part
+                    // of the whole attribute), so we don't collect tokens here. If this changes,
+                    // then token will need to be collected. One catch here is that we are using
+                    // a nonterminal for keeping the expression, but this nonterminal should not
+                    // be wrapped into a group when converting to token stream.
+                    let expr = self.parse_expr()?;
+                    let span = expr.span;
+
+                    match &expr.kind {
+                        // Not gated to supporte things like `doc = $expr` that work on stable.
+                        _ if is_interpolated_expr => {}
+                        ExprKind::Lit(lit) if lit.kind.is_unsuffixed() => {}
+                        _ => self.sess.gated_spans.gate(sym::extended_key_value_attributes, span),
+                    }
+
+                    let token = token::Interpolated(Lrc::new(token::NtExpr(expr)));
+                    MacArgs::Eq(eq_span, TokenTree::token(token, span).into())
                 } else {
                     MacArgs::Empty
                 }

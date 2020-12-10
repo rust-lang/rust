@@ -24,7 +24,7 @@ pub use UnsafeSource::*;
 
 use crate::ptr::P;
 use crate::token::{self, CommentKind, DelimToken};
-use crate::tokenstream::{DelimSpan, LazyTokenStream, TokenStream, TokenTree};
+use crate::tokenstream::{DelimSpan, LazyTokenStream, TokenStream};
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::stack::ensure_sufficient_stack;
@@ -39,7 +39,6 @@ use rustc_span::{Span, DUMMY_SP};
 use std::cmp::Ordering;
 use std::convert::TryFrom;
 use std::fmt;
-use std::iter;
 
 #[cfg(test)]
 mod tests;
@@ -1511,20 +1510,6 @@ impl MacArgs {
         match self {
             MacArgs::Empty => TokenStream::default(),
             MacArgs::Delimited(.., tokens) | MacArgs::Eq(.., tokens) => tokens.clone(),
-        }
-    }
-
-    /// Tokens together with the delimiters or `=`.
-    /// Use of this method generally means that something suboptimal or hacky is happening.
-    pub fn outer_tokens(&self) -> TokenStream {
-        match *self {
-            MacArgs::Empty => TokenStream::default(),
-            MacArgs::Delimited(dspan, delim, ref tokens) => {
-                TokenTree::Delimited(dspan, delim.to_token(), tokens.clone()).into()
-            }
-            MacArgs::Eq(eq_span, ref tokens) => {
-                iter::once(TokenTree::token(token::Eq, eq_span)).chain(tokens.trees()).collect()
-            }
         }
     }
 

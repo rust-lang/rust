@@ -371,20 +371,15 @@ pub fn visit_mac_args<T: MutVisitor>(args: &mut MacArgs, vis: &mut T) {
             // The value in `#[key = VALUE]` must be visited as an expression for backward
             // compatibility, so that macros can be expanded in that position.
             if !vis.token_visiting_enabled() {
-                if let Some(TokenTree::Token(token)) = tokens.trees_ref().next() {
-                    if let token::Interpolated(..) = token.kind {
-                        // ^^ Do not `make_mut` unless we have to.
-                        match Lrc::make_mut(&mut tokens.0).get_mut(0) {
-                            Some((TokenTree::Token(token), _spacing)) => match &mut token.kind {
-                                token::Interpolated(nt) => match Lrc::make_mut(nt) {
-                                    token::NtExpr(expr) => vis.visit_expr(expr),
-                                    t => panic!("unexpected token in key-value attribute: {:?}", t),
-                                },
-                                t => panic!("unexpected token in key-value attribute: {:?}", t),
-                            },
+                match Lrc::make_mut(&mut tokens.0).get_mut(0) {
+                    Some((TokenTree::Token(token), _spacing)) => match &mut token.kind {
+                        token::Interpolated(nt) => match Lrc::make_mut(nt) {
+                            token::NtExpr(expr) => vis.visit_expr(expr),
                             t => panic!("unexpected token in key-value attribute: {:?}", t),
-                        }
-                    }
+                        },
+                        t => panic!("unexpected token in key-value attribute: {:?}", t),
+                    },
+                    t => panic!("unexpected token in key-value attribute: {:?}", t),
                 }
             }
         }
