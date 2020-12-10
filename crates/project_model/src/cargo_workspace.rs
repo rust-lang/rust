@@ -11,6 +11,7 @@ use anyhow::{Context, Result};
 use arena::{Arena, Idx};
 use base_db::Edition;
 use cargo_metadata::{BuildScript, CargoOpt, Message, MetadataCommand, PackageId};
+use itertools::Itertools;
 use paths::{AbsPath, AbsPathBuf};
 use rustc_hash::FxHashMap;
 
@@ -192,6 +193,9 @@ impl CargoWorkspace {
 
         meta.packages.sort_by(|a, b| a.id.cmp(&b.id));
         for meta_pkg in meta.packages {
+            let id = meta_pkg.id.clone();
+            inject_cargo_env(&meta_pkg, envs.entry(id).or_default());
+
             let cargo_metadata::Package { id, edition, name, manifest_path, version, .. } =
                 meta_pkg;
             let is_member = ws_members.contains(&id);
@@ -384,4 +388,39 @@ fn is_dylib(path: &Path) -> bool {
         None => false,
         Some(ext) => matches!(ext.as_str(), "dll" | "dylib" | "so"),
     }
+}
+
+/// Recreates the compile-time environment variables that Cargo sets.
+///
+/// Should be synced with <https://doc.rust-lang.org/cargo/reference/environment-variables.html#environment-variables-cargo-sets-for-crates>
+fn inject_cargo_env(package: &cargo_metadata::Package, env: &mut Vec<(String, String)>) {
+    // FIXME: Missing variables:
+    // CARGO, CARGO_PKG_HOMEPAGE, CARGO_CRATE_NAME, CARGO_BIN_NAME, CARGO_BIN_EXE_<name>
+
+    let mut manifest_dir = package.manifest_path.clone();
+    manifest_dir.pop();
+    if let Some(cargo_manifest_dir) = manifest_dir.to_str() {
+        env.push(("CARGO_MANIFEST_DIR".into(), cargo_manifest_dir.into()));
+    }
+
+    env.push(("CARGO_PKG_VERSION".into(), package.version.to_string()));
+    env.push(("CARGO_PKG_VERSION_MAJOR".into(), package.version.major.to_string()));
+    env.push(("CARGO_PKG_VERSION_MINOR".into(), package.version.minor.to_string()));
+    env.push(("CARGO_PKG_VERSION_PATCH".into(), package.version.patch.to_string()));
+
+    let pre = package.version.pre.iter().map(|id| id.to_string()).format(".");
+    env.push(("CARGO_PKG_VERSION_PRE".into(), pre.to_string()));
+
+    let authors = package.authors.join(";");
+    env.push(("CARGO_PKG_AUTHORS".into(), authors));
+
+    env.push(("CARGO_PKG_NAME".into(), package.name.clone()));
+    env.push(("CARGO_PKG_DESCRIPTION".into(), package.description.clone().unwrap_or_default()));
+    //env.push(("CARGO_PKG_HOMEPAGE".into(), package.homepage.clone().unwrap_or_default()));
+    env.push(("CARGO_PKG_REPOSITORY".into(), package.repository.clone().unwrap_or_default()));
+    env.push(("CARGO_PKG_LICENSE".into(), package.license.clone().unwrap_or_default()));
+
+    let license_file =
+        package.license_file.as_ref().map(|buf| buf.display().to_string()).unwrap_or_default();
+    env.push(("CARGO_PKG_LICENSE_FILE".into(), license_file));
 }
