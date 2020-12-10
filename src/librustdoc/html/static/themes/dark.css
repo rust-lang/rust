@@ -352,16 +352,17 @@ pre.ignore:hover, .information:hover + pre.ignore {
 	border-color: #777;
 }
 
-#titles > div:not(.selected) {
+#titles > button:not(.selected) {
 	background-color: #252525;
 	border-top-color: #252525;
 }
 
-#titles > div:hover, #titles > div.selected {
+#titles > button:hover, #titles > button.selected {
 	border-top-color: #0089ff;
+	background-color: #353535;
 }
 
-#titles > div > div.count {
+#titles > button > div.count {
 	color: #888;
 }
 
