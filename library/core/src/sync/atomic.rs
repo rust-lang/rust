@@ -213,6 +213,7 @@ unsafe impl<T> Sync for AtomicPtr<T> {}
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 #[non_exhaustive]
+#[allow(unused_attributes)]
 pub enum Ordering {
     /// No ordering constraints, only atomic operations.
     ///
@@ -220,6 +221,7 @@ pub enum Ordering {
     ///
     /// [`memory_order_relaxed`]: https://en.cppreference.com/w/cpp/atomic/memory_order#Relaxed_ordering
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_diagnostic_item = "atomic_ordering_relaxed"]
     Relaxed,
     /// When coupled with a store, all previous operations become ordered
     /// before any load of this value with [`Acquire`] (or stronger) ordering.
@@ -235,6 +237,7 @@ pub enum Ordering {
     ///
     /// [`memory_order_release`]: https://en.cppreference.com/w/cpp/atomic/memory_order#Release-Acquire_ordering
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_diagnostic_item = "atomic_ordering_release"]
     Release,
     /// When coupled with a load, if the loaded value was written by a store operation with
     /// [`Release`] (or stronger) ordering, then all subsequent operations
@@ -250,6 +253,7 @@ pub enum Ordering {
     ///
     /// [`memory_order_acquire`]: https://en.cppreference.com/w/cpp/atomic/memory_order#Release-Acquire_ordering
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_diagnostic_item = "atomic_ordering_acquire"]
     Acquire,
     /// Has the effects of both [`Acquire`] and [`Release`] together:
     /// For loads it uses [`Acquire`] ordering. For stores it uses the [`Release`] ordering.
@@ -264,6 +268,7 @@ pub enum Ordering {
     ///
     /// [`memory_order_acq_rel`]: https://en.cppreference.com/w/cpp/atomic/memory_order#Release-Acquire_ordering
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_diagnostic_item = "atomic_ordering_acqrel"]
     AcqRel,
     /// Like [`Acquire`]/[`Release`]/[`AcqRel`] (for load, store, and load-with-store
     /// operations, respectively) with the additional guarantee that all threads see all
@@ -273,6 +278,7 @@ pub enum Ordering {
     ///
     /// [`memory_order_seq_cst`]: https://en.cppreference.com/w/cpp/atomic/memory_order#Sequentially-consistent_ordering
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_diagnostic_item = "atomic_ordering_seqcst"]
     SeqCst,
 }
 
