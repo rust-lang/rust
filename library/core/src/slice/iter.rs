@@ -2976,7 +2976,6 @@ unsafe impl<'a, T> TrustedRandomAccess for IterMut<'a, T> {
 /// [`group_by`]: ../../std/primitive.slice.html#method.group_by
 /// [slices]: ../../std/primitive.slice.html
 #[unstable(feature = "slice_group_by", issue = "none")]
-#[derive(Debug)] // FIXME implement Debug to be more user friendly
 pub struct GroupBy<'a, T: 'a, P> {
     slice: &'a [T],
     predicate: P,
@@ -3048,6 +3047,13 @@ where
 #[unstable(feature = "slice_group_by", issue = "none")]
 impl<'a, T: 'a, P> FusedIterator for GroupBy<'a, T, P> where P: FnMut(&T, &T) -> bool {}
 
+#[unstable(feature = "slice_group_by", issue = "none")]
+impl<'a, T: 'a + fmt::Debug, P> fmt::Debug for GroupBy<'a, T, P> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("GroupBy").field("slice", &self.slice).finish()
+    }
+}
+
 /// An iterator over slice in (non-overlapping) mutable chunks separated
 /// by a predicate.
 ///
@@ -3056,7 +3062,6 @@ impl<'a, T: 'a, P> FusedIterator for GroupBy<'a, T, P> where P: FnMut(&T, &T) ->
 /// [`group_by_mut`]: ../../std/primitive.slice.html#method.group_by_mut
 /// [slices]: ../../std/primitive.slice.html
 #[unstable(feature = "slice_group_by", issue = "none")]
-#[derive(Debug)] // FIXME implement Debug to be more user friendly
 pub struct GroupByMut<'a, T: 'a, P> {
     slice: &'a mut [T],
     predicate: P,
@@ -3129,3 +3134,10 @@ where
 
 #[unstable(feature = "slice_group_by", issue = "none")]
 impl<'a, T: 'a, P> FusedIterator for GroupByMut<'a, T, P> where P: FnMut(&T, &T) -> bool {}
+
+#[unstable(feature = "slice_group_by", issue = "none")]
+impl<'a, T: 'a + fmt::Debug, P> fmt::Debug for GroupByMut<'a, T, P> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("GroupByMut").field("slice", &self.slice).finish()
+    }
+}
