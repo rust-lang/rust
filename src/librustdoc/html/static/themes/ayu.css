@@ -403,22 +403,22 @@ pre.ignore:hover, .information:hover + pre.ignore {
 	border-color: #5c6773;
 }
 
-#titles > div.selected {
+#titles > button.selected {
 	background-color: #141920 !important;
 	border-bottom: 1px solid #ffb44c !important;
 	border-top: none;
 }
 
-#titles > div:not(.selected) {
+#titles > button:not(.selected) {
 	background-color: transparent !important;
 	border: none;
 }
 
-#titles > div:hover {
+#titles > button:hover {
 	border-bottom: 1px solid rgba(242, 151, 24, 0.3);
 }
 
-#titles > div > div.count {
+#titles > button > div.count {
 	color: #888;
 }
 
@@ -434,7 +434,7 @@ above the `@media (max-width: 700px)` rules due to a bug in the css checker */
 .block a.current.derive,.content span.macro,.content a.macro,.block a.current.macro {}
 .content .highlighted.trait {}
 .content span.struct,.content a.struct,.block a.current.struct {}
-#titles>div:hover,#titles>div.selected {}
+#titles>button:hover,#titles>button.selected {}
 .content .highlighted.traitalias {}
 .content span.type,.content a.type,.block a.current.type {}
 .content span.union,.content a.union,.block a.current.union {}
