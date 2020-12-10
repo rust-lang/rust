@@ -149,7 +149,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     throw_machine_stop!(TerminationInfo::Exit(code.into()));
                 }
                 "abort" => {
-                    throw_machine_stop!(TerminationInfo::Abort(None))
+                    throw_machine_stop!(TerminationInfo::Abort("the program aborted execution".to_owned()))
                 }
                 _ => throw_unsup_format!("can't call (diverging) foreign function: {}", link_name),
             },

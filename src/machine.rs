@@ -391,8 +391,8 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
     }
 
     #[inline(always)]
-    fn abort(_ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx, !> {
-        throw_machine_stop!(TerminationInfo::Abort(None))
+    fn abort(_ecx: &mut InterpCx<'mir, 'tcx, Self>, msg: String) -> InterpResult<'tcx, !> {
+        throw_machine_stop!(TerminationInfo::Abort(msg))
     }
 
     #[inline(always)]

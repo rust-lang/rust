@@ -12,7 +12,7 @@ use crate::*;
 /// Details of premature program termination.
 pub enum TerminationInfo {
     Exit(i64),
-    Abort(Option<String>),
+    Abort(String),
     UnsupportedInIsolation(String),
     ExperimentalUb { msg: String, url: String },
     Deadlock,
@@ -24,10 +24,8 @@ impl fmt::Display for TerminationInfo {
         match self {
             Exit(code) =>
                 write!(f, "the evaluated program completed with exit code {}", code),
-            Abort(None) =>
-                write!(f, "the evaluated program aborted execution"),
-            Abort(Some(msg)) =>
-                write!(f, "the evaluated program aborted execution: {}", msg),
+            Abort(msg) =>
+                write!(f, "{}", msg),
             UnsupportedInIsolation(msg) =>
                 write!(f, "{}", msg),
             ExperimentalUb { msg, .. } =>

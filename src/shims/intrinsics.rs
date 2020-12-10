@@ -419,7 +419,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
 
             // Query type information
-            "assert_inhabited" |
             "assert_zero_valid" |
             "assert_uninit_valid" => {
                 let &[] = check_arg_count(args)?;
@@ -427,13 +426,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let layout = this.layout_of(ty)?;
                 // Abort here because the caller might not be panic safe.
                 if layout.abi.is_uninhabited() {
-                    throw_machine_stop!(TerminationInfo::Abort(Some(format!("attempted to instantiate uninhabited type `{}`", ty))))
+                    // Use this message even for the other intrinsics, as that's what codegen does
+                    throw_machine_stop!(TerminationInfo::Abort(format!("aborted execution: attempted to instantiate uninhabited type `{}`", ty)))
                 }
                 if intrinsic_name == "assert_zero_valid" && !layout.might_permit_raw_init(this, /*zero:*/ true).unwrap() {
-                    throw_machine_stop!(TerminationInfo::Abort(Some(format!("attempted to zero-initialize type `{}`, which is invalid", ty))))
+                    throw_machine_stop!(TerminationInfo::Abort(format!("aborted execution: attempted to zero-initialize type `{}`, which is invalid", ty)))
                 }
                 if intrinsic_name == "assert_uninit_valid" && !layout.might_permit_raw_init(this, /*zero:*/ false).unwrap() {
-                    throw_machine_stop!(TerminationInfo::Abort(Some(format!("attempted to leave type `{}` uninitialized, which is invalid", ty))))
+                    throw_machine_stop!(TerminationInfo::Abort(format!("aborted execution: attempted to leave type `{}` uninitialized, which is invalid", ty)))
                 }
             }
 

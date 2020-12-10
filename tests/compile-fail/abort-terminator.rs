@@ -1,4 +1,4 @@
-// error-pattern: the evaluated program aborted
+// error-pattern: the program aborted
 #![feature(unwind_attributes)]
 
 #[unwind(aborts)]

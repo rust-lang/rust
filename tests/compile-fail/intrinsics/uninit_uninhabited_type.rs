@@ -1,4 +1,4 @@
-// error-pattern: the evaluated program aborted execution: attempted to instantiate uninhabited type `!`
+// error-pattern: attempted to instantiate uninhabited type `!`
 #![feature(never_type)]
 
 #[allow(deprecated, invalid_value)]
