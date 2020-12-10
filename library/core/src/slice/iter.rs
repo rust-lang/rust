@@ -3018,6 +3018,11 @@ where P: FnMut(&T, &T) -> bool,
             (1, Some(self.slice.len()))
         }
     }
+
+    #[inline]
+    fn last(self) -> Option<Self::Item> {
+        self.next_back()
+    }
 }
 
 #[unstable(feature = "slice_group_by", issue = "0")]
@@ -3097,6 +3102,11 @@ where P: FnMut(&T, &T) -> bool,
         } else {
             (1, Some(self.slice.len()))
         }
+    }
+
+    #[inline]
+    fn last(self) -> Option<Self::Item> {
+        self.next_back()
     }
 }
 
