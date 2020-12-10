@@ -6,7 +6,7 @@ use hir::{
         Diagnostic, IncorrectCase, MissingFields, MissingOkInTailExpr, NoSuchField,
         UnresolvedModule,
     },
-    HasSource, HirDisplay, Semantics, VariantDef,
+    HasSource, HirDisplay, InFile, Semantics, VariantDef,
 };
 use ide_db::base_db::{AnchoredPathBuf, FileId};
 use ide_db::{
@@ -110,9 +110,9 @@ impl DiagnosticWithFix for IncorrectCase {
         let root = sema.db.parse_or_expand(self.file)?;
         let name_node = self.ident.to_node(&root);
 
-        let file_id = self.file.original_file(sema.db);
-        let offset = name_node.syntax().text_range().start();
-        let file_position = FilePosition { file_id, offset };
+        let name_node = InFile::new(self.file, name_node.syntax());
+        let frange = name_node.original_file_range(sema.db);
+        let file_position = FilePosition { file_id: frange.file_id, offset: frange.range.start() };
 
         let rename_changes =
             rename_with_semantics(sema, file_position, &self.suggested_text).ok()?;
