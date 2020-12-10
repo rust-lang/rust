@@ -28,6 +28,12 @@ struct DiagnosticItemCollector<'tcx> {
 impl<'v, 'tcx> ItemLikeVisitor<'v> for DiagnosticItemCollector<'tcx> {
     fn visit_item(&mut self, item: &hir::Item<'_>) {
         self.observe_item(&item.attrs, item.hir_id);
+
+        if let hir::ItemKind::Enum(e, _) = &item.kind {
+            for variant in e.variants {
+                self.observe_item(variant.attrs, variant.id);
+            }
+        }
     }
 
     fn visit_trait_item(&mut self, trait_item: &hir::TraitItem<'_>) {
