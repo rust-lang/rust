@@ -1,4 +1,4 @@
-// error-pattern: the evaluated program aborted execution: attempted to zero-initialize type `fn()`, which is invalid
+// error-pattern: attempted to zero-initialize type `fn()`, which is invalid
 
 #[allow(deprecated, invalid_value)]
 fn main() {

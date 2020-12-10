@@ -1,4 +1,4 @@
-// error-pattern: the evaluated program aborted
+// error-pattern: the program aborted
 
 struct Foo;
 impl Drop for Foo {
