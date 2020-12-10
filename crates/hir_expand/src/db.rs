@@ -17,7 +17,7 @@ use crate::{
 ///
 /// If an invocation produces more tokens than this limit, it will not be stored in the database and
 /// an error will be emitted.
-const TOKEN_LIMIT: usize = 262144;
+const TOKEN_LIMIT: usize = 0x80000;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum TokenExpander {
