@@ -1,8 +1,6 @@
 //! A simplified AST that only contains items.
 
 mod lower;
-#[cfg(test)]
-mod tests;
 
 use std::{
     any::type_name,
@@ -507,6 +505,9 @@ pub struct Function {
     pub has_self_param: bool,
     pub has_body: bool,
     pub is_unsafe: bool,
+    /// Whether the function is located in an `extern` block (*not* whether it is an
+    /// `extern "abi" fn`).
+    pub is_extern: bool,
     pub params: Box<[TypeRef]>,
     pub is_varargs: bool,
     pub ret_type: TypeRef,
@@ -565,6 +566,8 @@ pub struct Static {
     pub name: Name,
     pub visibility: RawVisibilityId,
     pub mutable: bool,
+    /// Whether the static is in an `extern` block.
+    pub is_extern: bool,
     pub type_ref: TypeRef,
     pub ast_id: FileAstId<ast::Static>,
 }

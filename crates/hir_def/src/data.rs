@@ -28,6 +28,7 @@ pub struct FunctionData {
     pub has_body: bool,
     pub is_unsafe: bool,
     pub is_varargs: bool,
+    pub is_extern: bool,
     pub visibility: RawVisibility,
 }
 
@@ -46,6 +47,7 @@ impl FunctionData {
             has_body: func.has_body,
             is_unsafe: func.is_unsafe,
             is_varargs: func.is_varargs,
+            is_extern: func.is_extern,
             visibility: item_tree[func.visibility].clone(),
         })
     }
@@ -191,6 +193,7 @@ pub struct StaticData {
     pub type_ref: TypeRef,
     pub visibility: RawVisibility,
     pub mutable: bool,
+    pub is_extern: bool,
 }
 
 impl StaticData {
@@ -204,6 +207,7 @@ impl StaticData {
             type_ref: statik.type_ref.clone(),
             visibility: item_tree[statik.visibility].clone(),
             mutable: statik.mutable,
+            is_extern: statik.is_extern,
         })
     }
 }

@@ -26,6 +26,7 @@ use syntax::{
     ast::{self, NameOwner},
     AstNode, AstPtr,
 };
+use test_utils::mark;
 
 use crate::{
     db::HirDatabase,
@@ -87,6 +88,11 @@ impl<'a, 'b> DeclValidator<'a, 'b> {
 
     fn validate_func(&mut self, db: &dyn HirDatabase, func: FunctionId) {
         let data = db.function_data(func);
+        if data.is_extern {
+            mark::hit!(extern_func_incorrect_case_ignored);
+            return;
+        }
+
         let body = db.body(func.into());
 
         // Recursively validate inner scope items, such as static variables and constants.
@@ -648,6 +654,10 @@ impl<'a, 'b> DeclValidator<'a, 'b> {
 
     fn validate_static(&mut self, db: &dyn HirDatabase, static_id: StaticId) {
         let data = db.static_data(static_id);
+        if data.is_extern {
+            mark::hit!(extern_static_incorrect_case_ignored);
+            return;
+        }
 
         if self.allowed(db, static_id.into(), allow::NON_UPPER_CASE_GLOBAL) {
             return;
@@ -709,6 +719,8 @@ fn pat_equals_to_name(pat: Option<ast::Pat>, name: &Name) -> bool {
 
 #[cfg(test)]
 mod tests {
+    use test_utils::mark;
+
     use crate::diagnostics::tests::check_diagnostics;
 
     #[test]
@@ -918,6 +930,20 @@ fn main() {
     #[allow(non_upper_case_globals)]
     pub static SomeStatic: u8 = 10;
     "#,
+        );
+    }
+
+    #[test]
+    fn ignores_extern_items() {
+        mark::check!(extern_func_incorrect_case_ignored);
+        mark::check!(extern_static_incorrect_case_ignored);
+        check_diagnostics(
+            r#"
+extern {
+    fn NonSnakeCaseName(SOME_VAR: u8) -> u8;
+    pub static SomeStatic: u8 = 10;
+}
+            "#,
         );
     }
 }

@@ -340,6 +340,7 @@ impl Ctx {
             has_self_param,
             has_body,
             is_unsafe: func.unsafe_token().is_some(),
+            is_extern: false,
             params: params.into_boxed_slice(),
             is_varargs,
             ret_type,
@@ -378,7 +379,7 @@ impl Ctx {
         let visibility = self.lower_visibility(static_);
         let mutable = static_.mut_token().is_some();
         let ast_id = self.source_ast_id_map.ast_id(static_);
-        let res = Static { name, visibility, mutable, type_ref, ast_id };
+        let res = Static { name, visibility, mutable, type_ref, ast_id, is_extern: false };
         Some(id(self.data().statics.alloc(res)))
     }
 
@@ -554,13 +555,15 @@ impl Ctx {
                     let attrs = Attrs::new(&item, &self.hygiene);
                     let id: ModItem = match item {
                         ast::ExternItem::Fn(ast) => {
-                            let func = self.lower_function(&ast)?;
-                            self.data().functions[func.index].is_unsafe =
-                                is_intrinsic_fn_unsafe(&self.data().functions[func.index].name);
-                            func.into()
+                            let func_id = self.lower_function(&ast)?;
+                            let func = &mut self.data().functions[func_id.index];
+                            func.is_unsafe = is_intrinsic_fn_unsafe(&func.name);
+                            func.is_extern = true;
+                            func_id.into()
                         }
                         ast::ExternItem::Static(ast) => {
                             let statik = self.lower_static(&ast)?;
+                            self.data().statics[statik.index].is_extern = true;
                             statik.into()
                         }
                         ast::ExternItem::TypeAlias(ty) => {
