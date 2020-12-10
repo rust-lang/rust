@@ -87,6 +87,10 @@ impl<'a, 'b> DeclValidator<'a, 'b> {
 
     fn validate_func(&mut self, db: &dyn HirDatabase, func: FunctionId) {
         let data = db.function_data(func);
+        if data.is_extern {
+            return;
+        }
+
         let body = db.body(func.into());
 
         // Recursively validate inner scope items, such as static variables and constants.
@@ -648,6 +652,9 @@ impl<'a, 'b> DeclValidator<'a, 'b> {
 
     fn validate_static(&mut self, db: &dyn HirDatabase, static_id: StaticId) {
         let data = db.static_data(static_id);
+        if data.is_extern {
+            return;
+        }
 
         if self.allowed(db, static_id.into(), allow::NON_UPPER_CASE_GLOBAL) {
             return;
@@ -918,6 +925,18 @@ fn main() {
     #[allow(non_upper_case_globals)]
     pub static SomeStatic: u8 = 10;
     "#,
+        );
+    }
+
+    #[test]
+    fn ignores_extern_items() {
+        check_diagnostics(
+            r#"
+extern {
+    fn NonSnakeCaseName(SOME_VAR: u8) -> u8;
+    pub static SomeStatic: u8 = 10;
+}
+            "#,
         );
     }
 }
