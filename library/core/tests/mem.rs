@@ -129,3 +129,11 @@ fn test_discriminant_send_sync() {
     is_send_sync::<Discriminant<Regular>>();
     is_send_sync::<Discriminant<NotSendSync>>();
 }
+
+#[test]
+#[cfg(not(bootstrap))]
+fn assume_init_good() {
+    const TRUE: bool = unsafe { MaybeUninit::<bool>::new(true).assume_init() };
+
+    assert!(TRUE);
+}

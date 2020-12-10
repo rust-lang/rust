@@ -384,6 +384,10 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         Err(ConstEvalErrKind::AssertFailure(err).into())
     }
 
+    fn abort(_ecx: &mut InterpCx<'mir, 'tcx, Self>, msg: String) -> InterpResult<'tcx, !> {
+        Err(ConstEvalErrKind::Abort(msg).into())
+    }
+
     fn ptr_to_int(_mem: &Memory<'mir, 'tcx, Self>, _ptr: Pointer) -> InterpResult<'tcx, u64> {
         Err(ConstEvalErrKind::NeedsRfc("pointer-to-integer cast".to_string()).into())
     }

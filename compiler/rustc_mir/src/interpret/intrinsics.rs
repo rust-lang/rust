@@ -126,7 +126,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             None => match intrinsic_name {
                 sym::transmute => throw_ub_format!("transmuting to uninhabited type"),
                 sym::unreachable => throw_ub!(Unreachable),
-                sym::abort => M::abort(self)?,
+                sym::abort => M::abort(self, "the program aborted execution".to_owned())?,
                 // Unsupported diverging intrinsic.
                 _ => return Ok(false),
             },
@@ -406,6 +406,16 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
             sym::transmute => {
                 self.copy_op_transmute(args[0], dest)?;
+            }
+            sym::assert_inhabited => {
+                let ty = instance.substs.type_at(0);
+                let layout = self.layout_of(ty)?;
+
+                if layout.abi.is_uninhabited() {
+                    // The run-time intrinsic panics just to get a good backtrace; here we abort
+                    // since there is no problem showing a backtrace even for aborts.
+                    M::abort(self, format!("attempted to instantiate uninhabited type `{}`", ty))?;
+                }
             }
             sym::simd_insert => {
                 let index = u64::from(self.read_scalar(args[1])?.to_u32()?);

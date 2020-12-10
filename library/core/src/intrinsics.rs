@@ -815,6 +815,7 @@ extern "rust-intrinsic" {
     /// This will statically either panic, or do nothing.
     ///
     /// This intrinsic does not have a stable counterpart.
+    #[rustc_const_unstable(feature = "const_assert_type", issue = "none")]
     pub fn assert_inhabited<T>();
 
     /// A guard for unsafe functions that cannot ever be executed if `T` does not permit
