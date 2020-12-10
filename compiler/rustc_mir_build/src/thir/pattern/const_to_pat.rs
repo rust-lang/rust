@@ -18,6 +18,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
     /// Converts an evaluated constant to a pattern (if possible).
     /// This means aggregate values (like structs and enums) are converted
     /// to a pattern that matches the value (as if you'd compared via structural equality).
+    #[instrument(skip(self))]
     pub(super) fn const_to_pat(
         &self,
         cv: &'tcx ty::Const<'tcx>,
@@ -25,15 +26,12 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         span: Span,
         mir_structural_match_violation: bool,
     ) -> Pat<'tcx> {
-        debug!("const_to_pat: cv={:#?} id={:?}", cv, id);
-        debug!("const_to_pat: cv.ty={:?} span={:?}", cv.ty, span);
-
         let pat = self.tcx.infer_ctxt().enter(|infcx| {
             let mut convert = ConstToPat::new(self, id, span, infcx);
             convert.to_pat(cv, mir_structural_match_violation)
         });
 
-        debug!("const_to_pat: pat={:?}", pat);
+        debug!(?pat);
         pat
     }
 }
@@ -61,6 +59,8 @@ struct ConstToPat<'a, 'tcx> {
     infcx: InferCtxt<'a, 'tcx>,
 
     include_lint_checks: bool,
+
+    treat_byte_string_as_slice: bool,
 }
 
 mod fallback_to_const_ref {
@@ -88,6 +88,7 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
         span: Span,
         infcx: InferCtxt<'a, 'tcx>,
     ) -> Self {
+        trace!(?pat_ctxt.typeck_results.hir_owner);
         ConstToPat {
             id,
             span,
@@ -97,6 +98,10 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
             saw_const_match_error: Cell::new(false),
             saw_const_match_lint: Cell::new(false),
             behind_reference: Cell::new(false),
+            treat_byte_string_as_slice: pat_ctxt
+                .typeck_results
+                .treat_byte_string_as_slice
+                .contains(&id.local_id),
         }
     }
 
@@ -153,6 +158,7 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
         cv: &'tcx ty::Const<'tcx>,
         mir_structural_match_violation: bool,
     ) -> Pat<'tcx> {
+        trace!(self.treat_byte_string_as_slice);
         // This method is just a wrapper handling a validity check; the heavy lifting is
         // performed by the recursive `recur` method, which is not meant to be
         // invoked except by this method.
@@ -384,7 +390,7 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                     }
                     PatKind::Wild
                 }
-                // `&str` and `&[u8]` are represented as `ConstValue::Slice`, let's keep using this
+                // `&str` is represented as `ConstValue::Slice`, let's keep using this
                 // optimization for now.
                 ty::Str => PatKind::Constant { value: cv },
                 // `b"foo"` produces a `&[u8; 3]`, but you can't use constants of array type when
@@ -393,11 +399,33 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                 // as slices. This means we turn `&[T; N]` constants into slice patterns, which
                 // has no negative effects on pattern matching, even if we're actually matching on
                 // arrays.
-                ty::Array(..) |
+                ty::Array(..) if !self.treat_byte_string_as_slice => {
+                    let old = self.behind_reference.replace(true);
+                    let array = tcx.deref_const(self.param_env.and(cv));
+                    let val = PatKind::Deref {
+                        subpattern: Pat {
+                            kind: Box::new(PatKind::Array {
+                                prefix: tcx
+                                    .destructure_const(param_env.and(array))
+                                    .fields
+                                    .iter()
+                                    .map(|val| self.recur(val, false))
+                                    .collect::<Result<_, _>>()?,
+                                slice: None,
+                                suffix: vec![],
+                            }),
+                            span,
+                            ty: pointee_ty,
+                        },
+                    };
+                    self.behind_reference.set(old);
+                    val
+                }
+                ty::Array(elem_ty, _) |
                 // Cannot merge this with the catch all branch below, because the `const_deref`
                 // changes the type from slice to array, we need to keep the original type in the
                 // pattern.
-                ty::Slice(..) => {
+                ty::Slice(elem_ty) => {
                     let old = self.behind_reference.replace(true);
                     let array = tcx.deref_const(self.param_env.and(cv));
                     let val = PatKind::Deref {
@@ -413,7 +441,7 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                                 suffix: vec![],
                             }),
                             span,
-                            ty: pointee_ty,
+                            ty: tcx.mk_slice(elem_ty),
                         },
                     };
                     self.behind_reference.set(old);

@@ -211,6 +211,20 @@ fn make_contiguous_small_free() {
 }
 
 #[test]
+fn make_contiguous_head_to_end() {
+    let mut dq = VecDeque::with_capacity(3);
+    dq.push_front('B');
+    dq.push_front('A');
+    dq.push_back('C');
+    dq.make_contiguous();
+    let expected_tail = 0;
+    let expected_head = 3;
+    assert_eq!(expected_tail, dq.tail);
+    assert_eq!(expected_head, dq.head);
+    assert_eq!((&['A', 'B', 'C'] as &[_], &[] as &[_]), dq.as_slices());
+}
+
+#[test]
 fn test_remove() {
     // This test checks that every single combination of tail position, length, and
     // removal position is tested. Capacity 15 should be large enough to cover every case.

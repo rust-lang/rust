@@ -70,6 +70,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         debug!("used_trait_imports({:?}) = {:?}", item_def_id, used_trait_imports);
         wbcx.typeck_results.used_trait_imports = used_trait_imports;
 
+        wbcx.typeck_results.treat_byte_string_as_slice =
+            mem::take(&mut self.typeck_results.borrow_mut().treat_byte_string_as_slice);
+
         wbcx.typeck_results.closure_captures =
             mem::take(&mut self.typeck_results.borrow_mut().closure_captures);
 
