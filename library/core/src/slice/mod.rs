@@ -1228,7 +1228,7 @@ impl<T> [T] {
     /// assert_eq!(iter.next(), Some(&[2, 2, 2][..]));
     /// assert_eq!(iter.next(), None);
     /// ```
-    #[unstable(feature = "slice_group_by", issue = "0")]
+    #[unstable(feature = "slice_group_by", issue = "none")]
     #[inline]
     pub fn group_by<F>(&self, pred: F) -> GroupBy<T, F>
     where F: FnMut(&T, &T) -> bool
@@ -1257,7 +1257,7 @@ impl<T> [T] {
     /// assert_eq!(iter.next(), Some(&mut [2, 2, 2][..]));
     /// assert_eq!(iter.next(), None);
     /// ```
-    #[unstable(feature = "slice_group_by", issue = "0")]
+    #[unstable(feature = "slice_group_by", issue = "none")]
     #[inline]
     pub fn group_by_mut<F>(&mut self, pred: F) -> GroupByMut<T, F>
     where F: FnMut(&T, &T) -> bool

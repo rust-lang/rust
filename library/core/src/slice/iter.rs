@@ -2974,21 +2974,21 @@ unsafe impl<'a, T> TrustedRandomAccess for IterMut<'a, T> {
 ///
 /// [`group_by`]: ../../std/primitive.slice.html#method.group_by
 /// [slices]: ../../std/primitive.slice.html
-#[unstable(feature = "slice_group_by", issue = "0")]
+#[unstable(feature = "slice_group_by", issue = "none")]
 #[derive(Debug)] // FIXME implement Debug to be more user friendly
 pub struct GroupBy<'a, T: 'a, P> {
     slice: &'a [T],
     predicate: P,
 }
 
-#[unstable(feature = "slice_group_by", issue = "0")]
+#[unstable(feature = "slice_group_by", issue = "none")]
 impl<'a, T: 'a, P> GroupBy<'a, T, P> {
     pub(super) fn new(slice: &'a [T], predicate: P) -> Self {
         GroupBy { slice, predicate }
     }
 }
 
-#[unstable(feature = "slice_group_by", issue = "0")]
+#[unstable(feature = "slice_group_by", issue = "none")]
 impl<'a, T: 'a, P> Iterator for GroupBy<'a, T, P>
 where P: FnMut(&T, &T) -> bool,
 {
@@ -3025,7 +3025,7 @@ where P: FnMut(&T, &T) -> bool,
     }
 }
 
-#[unstable(feature = "slice_group_by", issue = "0")]
+#[unstable(feature = "slice_group_by", issue = "none")]
 impl<'a, T: 'a, P> DoubleEndedIterator for GroupBy<'a, T, P>
 where P: FnMut(&T, &T) -> bool,
 {
@@ -3046,7 +3046,7 @@ where P: FnMut(&T, &T) -> bool,
     }
 }
 
-#[unstable(feature = "slice_group_by", issue = "0")]
+#[unstable(feature = "slice_group_by", issue = "none")]
 impl<'a, T: 'a, P> FusedIterator for GroupBy<'a, T, P>
 where P: FnMut(&T, &T) -> bool,
 { }
@@ -3058,21 +3058,21 @@ where P: FnMut(&T, &T) -> bool,
 ///
 /// [`group_by_mut`]: ../../std/primitive.slice.html#method.group_by_mut
 /// [slices]: ../../std/primitive.slice.html
-#[unstable(feature = "slice_group_by", issue = "0")]
+#[unstable(feature = "slice_group_by", issue = "none")]
 #[derive(Debug)] // FIXME implement Debug to be more user friendly
 pub struct GroupByMut<'a, T: 'a, P> {
     slice: &'a mut [T],
     predicate: P,
 }
 
-#[unstable(feature = "slice_group_by", issue = "0")]
+#[unstable(feature = "slice_group_by", issue = "none")]
 impl<'a, T: 'a, P> GroupByMut<'a, T, P> {
     pub(super) fn new(slice: &'a mut [T], predicate: P) -> Self {
         GroupByMut { slice, predicate }
     }
 }
 
-#[unstable(feature = "slice_group_by", issue = "0")]
+#[unstable(feature = "slice_group_by", issue = "none")]
 impl<'a, T: 'a, P> Iterator for GroupByMut<'a, T, P>
 where P: FnMut(&T, &T) -> bool,
 {
@@ -3110,7 +3110,7 @@ where P: FnMut(&T, &T) -> bool,
     }
 }
 
-#[unstable(feature = "slice_group_by", issue = "0")]
+#[unstable(feature = "slice_group_by", issue = "none")]
 impl<'a, T: 'a, P> DoubleEndedIterator for GroupByMut<'a, T, P>
 where P: FnMut(&T, &T) -> bool,
 {
