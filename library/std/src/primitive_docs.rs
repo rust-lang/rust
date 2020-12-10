@@ -489,6 +489,9 @@ mod prim_pointer {}
 /// * A repeat expression `[x; N]`, which produces an array with `N` copies of `x`.
 ///   The type of `x` must be [`Copy`].
 ///
+/// Note that `[x; 0]` is a valid repeat expression. This will produce an empty array
+/// but will also initialize (or call) `x`, which may produce side effects.
+///
 /// Arrays of *any* size implement the following traits if the element type allows it:
 ///
 /// - [`Copy`]

@@ -29,6 +29,9 @@
 /// to the same boxed integer value, not five references pointing to independently
 /// boxed integers.
 ///
+/// Also, note that `[T; 0]` is a valid initializer. This will initialize (or call)
+/// `T` but not populate the vector with it, so be mindful of side effects.
+///
 /// [`Vec`]: crate::vec::Vec
 #[cfg(not(test))]
 #[macro_export]
