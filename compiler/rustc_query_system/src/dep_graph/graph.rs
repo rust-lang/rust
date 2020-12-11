@@ -596,9 +596,9 @@ impl<K: DepKind> DepGraph<K> {
                     // an eval_always node, let's try to mark it green recursively.
                     if !dep_dep_node.kind.is_eval_always() {
                         debug!(
-                            "try_mark_previous_green({:?}) --- state of dependency {:?} \
+                            "try_mark_previous_green({:?}) --- state of dependency {:?} ({}) \
                                  is unknown, trying to mark it green",
-                            dep_node, dep_dep_node
+                            dep_node, dep_dep_node, dep_dep_node.hash,
                         );
 
                         let node_index = self.try_mark_previous_green(
