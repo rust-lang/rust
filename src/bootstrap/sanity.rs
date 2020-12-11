@@ -162,7 +162,7 @@ pub fn check(build: &mut Build) {
         build
             .config
             .target_config
-            .entry(target.clone())
+            .entry(*target)
             .or_insert(Target::from_triple(&target.triple));
 
         if target.contains("-none-") || target.contains("nvptx") {
@@ -176,7 +176,7 @@ pub fn check(build: &mut Build) {
             // If this is a native target (host is also musl) and no musl-root is given,
             // fall back to the system toolchain in /usr before giving up
             if build.musl_root(*target).is_none() && build.config.build == *target {
-                let target = build.config.target_config.entry(target.clone()).or_default();
+                let target = build.config.target_config.entry(*target).or_default();
                 target.musl_root = Some("/usr".into());
             }
             match build.musl_libdir(*target) {

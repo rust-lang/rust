@@ -303,7 +303,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // upvar_capture_map only stores the UpvarCapture (CaptureKind),
                         // so we create a fake capture info with no expression.
                         let fake_capture_info =
-                            ty::CaptureInfo { expr_id: None, capture_kind: capture_kind.clone() };
+                            ty::CaptureInfo { expr_id: None, capture_kind: *capture_kind };
                         determine_capture_info(fake_capture_info, capture_info).capture_kind
                     } else {
                         capture_info.capture_kind

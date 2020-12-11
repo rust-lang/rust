@@ -217,7 +217,7 @@ impl<'a, 'tcx> Helper<'a, 'tcx> {
 
         // go through each target, finding a discriminant read, and a switch
         let results = discr.targets_with_values.iter().map(|(value, target)| {
-            self.find_discriminant_switch_pairing(&discr, target.clone(), value.clone())
+            self.find_discriminant_switch_pairing(&discr, *target, *value)
         });
 
         // if the optimization did not apply for one of the targets, then abort
