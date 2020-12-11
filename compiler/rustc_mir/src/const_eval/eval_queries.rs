@@ -7,7 +7,7 @@ use crate::interpret::{
 };
 
 use rustc_errors::ErrorReported;
-use rustc_hir::{ConstContext, def::DefKind};
+use rustc_hir::def::DefKind;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::traits::Reveal;
@@ -34,9 +34,15 @@ fn eval_body_using_ecx<'mir, 'tcx>(
     assert!(
         cid.promoted.is_some()
             || matches!(
-                ecx.tcx.hir().body_const_context(cid.instance.def_id().expect_local()),
-                Some(ConstContext::Const | ConstContext::Static(_))
-            )
+                ecx.tcx.def_kind(cid.instance.def_id()),
+                DefKind::Const
+                    | DefKind::Static
+                    | DefKind::ConstParam
+                    | DefKind::AnonConst
+                    | DefKind::AssocConst
+            ),
+        "Unexpected DefKind: {:?}",
+        ecx.tcx.def_kind(cid.instance.def_id())
     );
     let layout = ecx.layout_of(body.return_ty().subst(tcx, cid.instance.substs))?;
     assert!(!layout.is_unsized());
@@ -46,8 +52,6 @@ fn eval_body_using_ecx<'mir, 'tcx>(
         with_no_trimmed_paths(|| ty::tls::with(|tcx| tcx.def_path_str(cid.instance.def_id())));
     let prom = cid.promoted.map_or(String::new(), |p| format!("::promoted[{:?}]", p));
     trace!("eval_body_using_ecx: pushing stack frame for global: {}{}", name, prom);
-
-
 
     ecx.push_stack_frame(
         cid.instance,
