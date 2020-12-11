@@ -9,14 +9,14 @@ pub trait Foo<T> {
 
 struct SomeStruct<I: for<'x> Foo<&'x isize>> {
     field: I::A
-    //~^ ERROR cannot extract an associated type from a higher-ranked trait bound in this context
+    //~^ ERROR cannot use the associated type of a trait with uninferred generic parameters
 }
 
 enum SomeEnum<'b, I: for<'a> Foo<&'a isize>> {
     TupleVariant(I::A),
-    //~^ ERROR cannot extract an associated type from a higher-ranked trait bound in this context
+    //~^ ERROR cannot use the associated type of a trait with uninferred generic parameters
     StructVariant { field: I::A },
-    //~^ ERROR cannot extract an associated type from a higher-ranked trait bound in this context
+    //~^ ERROR cannot use the associated type of a trait with uninferred generic parameters
     OkVariant(&'b usize),
 }
 
@@ -33,7 +33,7 @@ struct YetAnotherStruct<'a, I: for<'x> Foo<&'x isize>> {
 struct Why<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j, 'k, 'n, 'o, 'p, 'q, 'r, 's, 't, 'u, 'v, 'w, 'x,
     'y, 'z, 'aa, I: for<'l, 'm> Foo<&'l &'m isize>> {
     field: I::A,
-    //~^ ERROR cannot extract an associated type from a higher-ranked trait bound in this context
+    //~^ ERROR cannot use the associated type of a trait with uninferred generic parameters
 }
 
 pub fn main() {}

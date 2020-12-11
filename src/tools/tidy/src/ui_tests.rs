@@ -19,14 +19,11 @@ pub fn check(path: &Path, bad: &mut bool) {
                     //
                     // For now, just make sure that there is a corresponding
                     // `$testname.rs` file.
-                    let testname = file_path
-                        .file_name()
-                        .unwrap()
-                        .to_str()
-                        .unwrap()
-                        .splitn(2, '.')
-                        .next()
-                        .unwrap();
+                    //
+                    // NB: We do not use file_stem() as some file names have multiple `.`s and we
+                    // must strip all of them.
+                    let testname =
+                        file_path.file_name().unwrap().to_str().unwrap().split_once('.').unwrap().0;
                     if !file_path.with_file_name(testname).with_extension("rs").exists() {
                         println!("Stray file with UI testing output: {:?}", file_path);
                         *bad = true;

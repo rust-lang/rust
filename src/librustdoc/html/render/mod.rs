@@ -167,10 +167,8 @@ impl Context {
         // `style-suffix.min.css`.  Path::extension would just return `css`
         // which would result in `style.min-suffix.css` which isn't what we
         // want.
-        let mut iter = filename.splitn(2, '.');
-        let base = iter.next().unwrap();
-        let ext = iter.next().unwrap();
-        let filename = format!("{}{}.{}", base, self.shared.resource_suffix, ext,);
+        let (base, ext) = filename.split_once('.').unwrap();
+        let filename = format!("{}{}.{}", base, self.shared.resource_suffix, ext);
         self.dst.join(&filename)
     }
 }

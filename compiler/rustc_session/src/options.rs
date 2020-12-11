@@ -179,9 +179,10 @@ macro_rules! options {
     {
         let mut op = $defaultfn();
         for option in matches.opt_strs($prefix) {
-            let mut iter = option.splitn(2, '=');
-            let key = iter.next().unwrap();
-            let value = iter.next();
+            let (key, value) = match option.split_once('=') {
+                None => (option, None),
+                Some((k, v)) => (k.to_string(), Some(v)),
+            };
             let option_to_lookup = key.replace("-", "_");
             let mut found = false;
             for &(candidate, setter, type_desc, _) in $stat {

@@ -1,4 +1,4 @@
-error[E0212]: cannot extract an associated type from a higher-ranked trait bound in this context
+error[E0212]: cannot use the associated type of a trait with uninferred generic parameters
   --> $DIR/associated-types-project-from-hrtb-in-fn.rs:13:8
    |
 LL |     x: I::A)
@@ -6,3 +6,4 @@ LL |     x: I::A)
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0212`.

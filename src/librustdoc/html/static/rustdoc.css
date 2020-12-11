@@ -1176,21 +1176,22 @@ pre.rust {
 	height: 35px;
 }
 
-#titles > div {
+#titles > button {
 	float: left;
 	width: 33.3%;
 	text-align: center;
 	font-size: 18px;
 	cursor: pointer;
+	border: 0;
 	border-top: 2px solid;
 }
 
-#titles > div:not(:last-child) {
+#titles > button:not(:last-child) {
 	margin-right: 1px;
 	width: calc(33.3% - 1px);
 }
 
-#titles > div > div.count {
+#titles > button > div.count {
 	display: inline-block;
 	font-size: 16px;
 }
@@ -1459,7 +1460,7 @@ h4 > .notable-traits {
 		top: 24px;
 	}
 
-	#titles > div > div.count {
+	#titles > button > div.count {
 		float: left;
 		width: 100%;
 	}
@@ -1565,7 +1566,7 @@ h4 > .notable-traits {
 }
 
 @media (max-width: 416px) {
-	#titles, #titles > div {
+	#titles, #titles > button {
 		height: 73px;
 	}
 

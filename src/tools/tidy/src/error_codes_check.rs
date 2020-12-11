@@ -85,47 +85,61 @@ fn extract_error_codes(
     for line in f.lines() {
         let s = line.trim();
         if !reached_no_explanation && s.starts_with('E') && s.contains("include_str!(\"") {
-            if let Some(err_code) = s.splitn(2, ':').next() {
-                let err_code = err_code.to_owned();
-                if !error_codes.contains_key(&err_code) {
-                    error_codes.insert(err_code.clone(), false);
+            let err_code = s
+                .split_once(':')
+                .expect(
+                    format!(
+                        "Expected a line with the format `E0xxx: include_str!(\"..\")`, but got {} without a `:` delimiter",
+                        s,
+                    ).as_str()
+                )
+                .0
+                .to_owned();
+            if !error_codes.contains_key(&err_code) {
+                error_codes.insert(err_code.clone(), false);
+            }
+            // Now we extract the tests from the markdown file!
+            let md_file_name = match s.split_once("include_str!(\"") {
+                None => continue,
+                Some((_, md)) => match md.split_once("\")") {
+                    None => continue,
+                    Some((file_name, _)) => file_name,
+                },
+            };
+            let path = some_or_continue!(path.parent())
+                .join(md_file_name)
+                .canonicalize()
+                .expect("failed to canonicalize error explanation file path");
+            match read_to_string(&path) {
+                Ok(content) => {
+                    if !IGNORE_EXPLANATION_CHECK.contains(&err_code.as_str())
+                        && !check_if_error_code_is_test_in_explanation(&content, &err_code)
+                    {
+                        errors.push(format!(
+                            "`{}` doesn't use its own error code in compile_fail example",
+                            path.display(),
+                        ));
+                    }
+                    if check_error_code_explanation(&content, error_codes, err_code) {
+                        errors.push(format!(
+                            "`{}` uses invalid tag `compile-fail` instead of `compile_fail`",
+                            path.display(),
+                        ));
+                    }
                 }
-                // Now we extract the tests from the markdown file!
-                let md = some_or_continue!(s.splitn(2, "include_str!(\"").nth(1));
-                let md_file_name = some_or_continue!(md.splitn(2, "\")").next());
-                let path = some_or_continue!(path.parent())
-                    .join(md_file_name)
-                    .canonicalize()
-                    .expect("failed to canonicalize error explanation file path");
-                match read_to_string(&path) {
-                    Ok(content) => {
-                        if !IGNORE_EXPLANATION_CHECK.contains(&err_code.as_str())
-                            && !check_if_error_code_is_test_in_explanation(&content, &err_code)
-                        {
-                            errors.push(format!(
-                                "`{}` doesn't use its own error code in compile_fail example",
-                                path.display(),
-                            ));
-                        }
-                        if check_error_code_explanation(&content, error_codes, err_code) {
-                            errors.push(format!(
-                                "`{}` uses invalid tag `compile-fail` instead of `compile_fail`",
-                                path.display(),
-                            ));
-                        }
-                    }
-                    Err(e) => {
-                        eprintln!("Couldn't read `{}`: {}", path.display(), e);
-                    }
+                Err(e) => {
+                    eprintln!("Couldn't read `{}`: {}", path.display(), e);
                 }
             }
         } else if reached_no_explanation && s.starts_with('E') {
-            if let Some(err_code) = s.splitn(2, ',').next() {
-                let err_code = err_code.to_owned();
-                if !error_codes.contains_key(&err_code) {
-                    // this check should *never* fail!
-                    error_codes.insert(err_code, false);
-                }
+            let err_code = match s.split_once(',') {
+                None => s,
+                Some((err_code, _)) => err_code,
+            }
+            .to_string();
+            if !error_codes.contains_key(&err_code) {
+                // this check should *never* fail!
+                error_codes.insert(err_code, false);
             }
         } else if s == ";" {
             reached_no_explanation = true;
@@ -137,12 +151,15 @@ fn extract_error_codes_from_tests(f: &str, error_codes: &mut HashMap<String, boo
     for line in f.lines() {
         let s = line.trim();
         if s.starts_with("error[E") || s.starts_with("warning[E") {
-            if let Some(err_code) = s.splitn(2, ']').next() {
-                if let Some(err_code) = err_code.splitn(2, '[').nth(1) {
-                    let nb = error_codes.entry(err_code.to_owned()).or_insert(false);
-                    *nb = true;
-                }
-            }
+            let err_code = match s.split_once(']') {
+                None => continue,
+                Some((err_code, _)) => match err_code.split_once('[') {
+                    None => continue,
+                    Some((_, err_code)) => err_code,
+                },
+            };
+            let nb = error_codes.entry(err_code.to_owned()).or_insert(false);
+            *nb = true;
         }
     }
 }

@@ -435,8 +435,10 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
 
         // Try looking for methods and associated items.
         let mut split = path_str.rsplitn(2, "::");
-        // this can be an `unwrap()` because we ensure the link is never empty
-        let (item_str, item_name) = split.next().map(|i| (i, Symbol::intern(i))).unwrap();
+        // NB: `split`'s first element is always defined, even if the delimiter was not present.
+        let item_str = split.next().unwrap();
+        assert!(!item_str.is_empty());
+        let item_name = Symbol::intern(item_str);
         let path_root = split
             .next()
             .map(|f| f.to_owned())
