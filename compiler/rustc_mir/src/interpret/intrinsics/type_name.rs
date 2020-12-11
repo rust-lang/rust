@@ -74,7 +74,7 @@ impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
 
     fn print_dyn_existential(
         mut self,
-        predicates: &'tcx ty::List<ty::ExistentialPredicate<'tcx>>,
+        predicates: &'tcx ty::List<ty::Binder<ty::ExistentialPredicate<'tcx>>>,
     ) -> Result<Self::DynExistential, Self::Error> {
         let mut first = true;
         for p in predicates {

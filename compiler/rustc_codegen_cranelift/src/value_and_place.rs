@@ -480,17 +480,19 @@ impl<'tcx> CPlace<'tcx> {
                     // fn(&T) -> for<'l> fn(&'l T) is allowed
                 }
                 (&ty::Dynamic(from_traits, _), &ty::Dynamic(to_traits, _)) => {
-                    let from_traits = fx
-                        .tcx
-                        .normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), from_traits);
-                    let to_traits = fx
-                        .tcx
-                        .normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), to_traits);
-                    assert_eq!(
-                        from_traits, to_traits,
-                        "Can't write trait object of incompatible traits {:?} to place with traits {:?}\n\n{:#?}",
-                        from_traits, to_traits, fx,
-                    );
+                    for (from, to) in from_traits.iter().zip(to_traits) {
+                        let from = fx
+                            .tcx
+                            .normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), from);
+                        let to = fx
+                            .tcx
+                            .normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), to);
+                        assert_eq!(
+                            from, to,
+                            "Can't write trait object of incompatible traits {:?} to place with traits {:?}\n\n{:#?}",
+                            from_traits, to_traits, fx,
+                        );
+                    }
                     // dyn for<'r> Trait<'r> -> dyn Trait<'_> is allowed
                 }
                 _ => {

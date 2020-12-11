@@ -375,24 +375,22 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let self_ty = self.infcx.shallow_resolve(trait_predicate.self_ty());
         let obligation_trait_ref = ty::Binder::dummy(trait_predicate.trait_ref);
         let data = match *self_ty.kind() {
-            ty::Dynamic(data, ..) => {
-                self.infcx
-                    .replace_bound_vars_with_fresh_vars(
-                        obligation.cause.span,
-                        HigherRankedType,
-                        data,
-                    )
-                    .0
-            }
+            ty::Dynamic(data, ..) => data,
             _ => span_bug!(obligation.cause.span, "object candidate with non-object"),
         };
 
-        let object_trait_ref = data
-            .principal()
-            .unwrap_or_else(|| {
-                span_bug!(obligation.cause.span, "object candidate with no principal")
-            })
-            .with_self_ty(self.tcx(), self_ty);
+        let object_trait_ref = data.principal().unwrap_or_else(|| {
+            span_bug!(obligation.cause.span, "object candidate with no principal")
+        });
+        let object_trait_ref = self
+            .infcx
+            .replace_bound_vars_with_fresh_vars(
+                obligation.cause.span,
+                HigherRankedType,
+                object_trait_ref,
+            )
+            .0;
+        let object_trait_ref = object_trait_ref.with_self_ty(self.tcx(), self_ty);
 
         let mut nested = vec![];
 
@@ -711,15 +709,22 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // Trait+Kx+'a -> Trait+Ky+'b (upcasts).
             (&ty::Dynamic(ref data_a, r_a), &ty::Dynamic(ref data_b, r_b)) => {
                 // See `assemble_candidates_for_unsizing` for more info.
-                let existential_predicates = data_a.map_bound(|data_a| {
-                    let iter = data_a
-                        .principal()
-                        .map(ty::ExistentialPredicate::Trait)
-                        .into_iter()
-                        .chain(data_a.projection_bounds().map(ty::ExistentialPredicate::Projection))
-                        .chain(data_b.auto_traits().map(ty::ExistentialPredicate::AutoTrait));
-                    tcx.mk_existential_predicates(iter)
-                });
+                let iter = data_a
+                    .principal()
+                    .map(|b| b.map_bound(ty::ExistentialPredicate::Trait))
+                    .into_iter()
+                    .chain(
+                        data_a
+                            .projection_bounds()
+                            .map(|b| b.map_bound(ty::ExistentialPredicate::Projection)),
+                    )
+                    .chain(
+                        data_b
+                            .auto_traits()
+                            .map(ty::ExistentialPredicate::AutoTrait)
+                            .map(ty::Binder::dummy),
+                    );
+                let existential_predicates = tcx.mk_poly_existential_predicates(iter);
                 let source_trait = tcx.mk_dynamic(existential_predicates, r_b);
 
                 // Require that the traits involved in this upcast are **equal**;
