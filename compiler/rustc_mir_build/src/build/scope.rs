@@ -616,8 +616,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 debug!("stmt_expr Break val block_context.push(SubExpr)");
                 self.block_context.push(BlockFrame::SubExpr);
                 unpack!(block = self.into(destination, dest_scope, block, value));
-                dest_scope
-                    .map(|scope| self.unschedule_drop(scope, destination.as_local().unwrap()));
+                if let Some(scope) = dest_scope {
+                    self.unschedule_drop(scope, destination.as_local().unwrap())
+                };
                 self.block_context.pop();
             } else {
                 self.cfg.push_assign_unit(block, source_info, destination, self.hir.tcx())
