@@ -17,17 +17,17 @@ struct EntryContext<'a, 'tcx> {
     map: Map<'tcx>,
 
     /// The top-level function called `main`.
-    main_fn: Option<(HirId, Span)>,
+    main_fn: Option<HirId>,
 
     /// The function that has attribute named `main`.
-    attr_main_fn: Option<(HirId, Span)>,
+    attr_main_fn: Option<HirId>,
 
     /// The function that has the attribute 'start' on it.
-    start_fn: Option<(HirId, Span)>,
+    start_fn: Option<HirId>,
 
     /// The functions that one might think are `main` but aren't, e.g.
     /// main functions not defined at the top level. For diagnostics.
-    non_main_fns: Vec<(HirId, Span)>,
+    non_main_fns: Vec<HirId>,
 }
 
 impl<'a, 'tcx> ItemLikeVisitor<'tcx> for EntryContext<'a, 'tcx> {
@@ -117,37 +117,42 @@ fn find_item(item: &Item<'_>, ctxt: &mut EntryContext<'_, '_>, at_root: bool) {
         }
         EntryPointType::MainNamed => {
             if ctxt.main_fn.is_none() {
-                ctxt.main_fn = Some((item.hir_id(), item.span));
+                ctxt.main_fn = Some(item.hir_id());
             } else {
-                struct_span_err!(ctxt.session, item.span, E0136, "multiple `main` functions")
+                let item_span = ctxt.map.span_with_body(item.hir_id());
+                struct_span_err!(ctxt.session, item_span, E0136, "multiple `main` functions")
                     .emit();
             }
         }
         EntryPointType::OtherMain => {
-            ctxt.non_main_fns.push((item.hir_id(), item.span));
+            ctxt.non_main_fns.push(item.hir_id());
         }
         EntryPointType::MainAttr => {
             if ctxt.attr_main_fn.is_none() {
-                ctxt.attr_main_fn = Some((item.hir_id(), item.span));
+                ctxt.attr_main_fn = Some(item.hir_id());
             } else {
+                let item_span = ctxt.map.span_with_body(item.hir_id());
+                let old_span = ctxt.map.span_with_body(ctxt.attr_main_fn.unwrap());
                 struct_span_err!(
                     ctxt.session,
-                    item.span,
+                    item_span,
                     E0137,
                     "multiple functions with a `#[main]` attribute"
                 )
-                .span_label(item.span, "additional `#[main]` function")
-                .span_label(ctxt.attr_main_fn.unwrap().1, "first `#[main]` function")
+                .span_label(item_span, "additional `#[main]` function")
+                .span_label(old_span, "first `#[main]` function")
                 .emit();
             }
         }
         EntryPointType::Start => {
             if ctxt.start_fn.is_none() {
-                ctxt.start_fn = Some((item.hir_id(), item.span));
+                ctxt.start_fn = Some(item.hir_id());
             } else {
-                struct_span_err!(ctxt.session, item.span, E0138, "multiple `start` functions")
-                    .span_label(ctxt.start_fn.unwrap().1, "previous `#[start]` function here")
-                    .span_label(item.span, "multiple `start` functions")
+                let item_span = ctxt.map.span_with_body(item.hir_id());
+                let old_span = ctxt.map.span_with_body(ctxt.start_fn.unwrap());
+                struct_span_err!(ctxt.session, item_span, E0138, "multiple `start` functions")
+                    .span_label(old_span, "previous `#[start]` function here")
+                    .span_label(item_span, "multiple `start` functions")
                     .emit();
             }
         }
@@ -158,11 +163,11 @@ fn configure_main(
     tcx: TyCtxt<'_>,
     visitor: &EntryContext<'_, '_>,
 ) -> Option<(LocalDefId, EntryFnType)> {
-    if let Some((hir_id, _)) = visitor.start_fn {
+    if let Some(hir_id) = visitor.start_fn {
         Some((tcx.hir().local_def_id(hir_id), EntryFnType::Start))
-    } else if let Some((hir_id, _)) = visitor.attr_main_fn {
+    } else if let Some(hir_id) = visitor.attr_main_fn {
         Some((tcx.hir().local_def_id(hir_id), EntryFnType::Main))
-    } else if let Some((hir_id, _)) = visitor.main_fn {
+    } else if let Some(hir_id) = visitor.main_fn {
         Some((tcx.hir().local_def_id(hir_id), EntryFnType::Main))
     } else {
         no_main_err(tcx, visitor);
@@ -171,7 +176,7 @@ fn configure_main(
 }
 
 fn no_main_err(tcx: TyCtxt<'_>, visitor: &EntryContext<'_, '_>) {
-    let sp = tcx.hir().span(CRATE_HIR_ID);
+    let sp = tcx.hir().span_with_body(CRATE_HIR_ID);
     if *tcx.sess.parse_sess.reached_eof.borrow() {
         // There's an unclosed brace that made the parser reach `Eof`, we shouldn't complain about
         // the missing `fn main()` then as it might have been hidden inside an unclosed block.
@@ -189,7 +194,8 @@ fn no_main_err(tcx: TyCtxt<'_>, visitor: &EntryContext<'_, '_>) {
     );
     let filename = &tcx.sess.local_crate_source_file;
     let note = if !visitor.non_main_fns.is_empty() {
-        for &(_, span) in &visitor.non_main_fns {
+        for &hir_id in &visitor.non_main_fns {
+            let span = tcx.hir().span_with_body(hir_id);
             err.span_note(span, "here is a function named `main`");
         }
         err.note("you have one or more functions named `main` not defined at the crate level");
