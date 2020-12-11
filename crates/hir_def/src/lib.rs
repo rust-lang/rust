@@ -18,6 +18,7 @@ pub mod attr;
 pub mod path;
 pub mod type_ref;
 pub mod builtin_type;
+pub mod builtin_attr;
 pub mod diagnostics;
 pub mod per_ns;
 pub mod item_scope;
