@@ -357,9 +357,9 @@ impl<'a> TtIter<'a> {
         }
     }
 
-    pub(crate) fn eat_char(&mut self) -> Option<tt::TokenTree> {
+    pub(crate) fn eat_char(&mut self, c: char) -> Option<tt::TokenTree> {
         let mut fork = self.clone();
-        match fork.expect_char('-') {
+        match fork.expect_char(c) {
             Ok(_) => {
                 let tt = self.next().cloned();
                 *self = fork;
@@ -460,7 +460,7 @@ fn match_meta_var(kind: &str, input: &mut TtIter) -> ExpandResult<Option<Fragmen
                     .map(|tt| Some(tt))
                     .map_err(|()| err!("expected lifetime")),
                 "literal" => {
-                    let neg = input.eat_char();
+                    let neg = input.eat_char('-');
                     input
                         .expect_literal()
                         .map(|literal| {
