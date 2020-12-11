@@ -431,13 +431,14 @@ impl DirtyCleanVisitor<'tcx> {
         }
     }
 
-    fn check_item(&mut self, item_id: LocalDefId, item_span: Span) {
+    fn check_item(&mut self, item_id: LocalDefId) {
         for attr in self.tcx.get_attrs(item_id.to_def_id()).iter() {
             let assertion = match self.assertion_maybe(item_id, attr) {
                 Some(a) => a,
                 None => continue,
             };
             self.checked_attrs.insert(attr.id);
+            let item_span = self.tcx.def_span(item_id);
             for dep_node in self.dep_nodes(&assertion.clean, item_id.to_def_id()) {
                 self.assert_clean(item_span, dep_node);
             }
@@ -450,19 +451,19 @@ impl DirtyCleanVisitor<'tcx> {
 
 impl ItemLikeVisitor<'tcx> for DirtyCleanVisitor<'tcx> {
     fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
-        self.check_item(item.def_id, item.span);
+        self.check_item(item.def_id);
     }
 
     fn visit_trait_item(&mut self, item: &hir::TraitItem<'_>) {
-        self.check_item(item.def_id, item.span);
+        self.check_item(item.def_id);
     }
 
     fn visit_impl_item(&mut self, item: &hir::ImplItem<'_>) {
-        self.check_item(item.def_id, item.span);
+        self.check_item(item.def_id);
     }
 
     fn visit_foreign_item(&mut self, item: &hir::ForeignItem<'_>) {
-        self.check_item(item.def_id, item.span);
+        self.check_item(item.def_id);
     }
 }
 
