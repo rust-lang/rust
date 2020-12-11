@@ -84,7 +84,7 @@ impl Metrics {
         eprintln!("\nMeasuring analysis-stats/{}", name);
         let output = Command::new("./target/release/rust-analyzer")
             .args(&["analysis-stats", "--quiet", "--memory-usage", path])
-            .stdout(Stdio::inherit())
+            .stderr(Stdio::inherit())
             .output()?;
         let output = String::from_utf8(output.stdout)?;
         for (metric, value, unit) in parse_metrics(&output) {
