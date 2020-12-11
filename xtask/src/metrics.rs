@@ -3,6 +3,7 @@ use std::{
     env,
     io::Write as _,
     path::Path,
+    process::{Command, Stdio},
     time::{Instant, SystemTime, UNIX_EPOCH},
 };
 
@@ -81,7 +82,11 @@ impl Metrics {
     }
     fn measure_analysis_stats_path(&mut self, name: &str, path: &str) -> Result<()> {
         eprintln!("\nMeasuring analysis-stats/{}", name);
-        let output = cmd!("./target/release/rust-analyzer analysis-stats --quiet {path}").read()?;
+        let output = Command::new("./target/release/rust-analyzer")
+            .args(&["analysis-stats", "--quiet", "--memory-usage", path])
+            .stdout(Stdio::inherit())
+            .output()?;
+        let output = String::from_utf8(output.stdout)?;
         for (metric, value, unit) in parse_metrics(&output) {
             self.report(&format!("analysis-stats/{}/{}", name, metric), value, unit.into());
         }
