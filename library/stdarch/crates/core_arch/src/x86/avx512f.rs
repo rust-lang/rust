@@ -9410,7 +9410,7 @@ pub unsafe fn _mm512_mask_i32gather_epi32(
             vpgatherdd(src, slice, offsets, mask, $imm8)
         };
     }
-    let r = constify_imm8!(scale, call);
+    let r = constify_imm8_gather!(scale, call);
     transmute(r)
 }
 

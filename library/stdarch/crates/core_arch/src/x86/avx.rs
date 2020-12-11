@@ -1623,7 +1623,7 @@ pub unsafe fn _mm256_insert_epi32(a: __m256i, i: i32, index: i32) -> __m256i {
             simd_insert(a, $index, i)
         };
     }
-    transmute(constify_imm8!((index & 7), call))
+    transmute(constify_imm3!(index, call))
 }
 
 /// Loads 256-bits (composed of 4 packed double-precision (64-bit)

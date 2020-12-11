@@ -1080,7 +1080,7 @@ pub unsafe fn _mm256_hsubs_epi16(a: __m256i, b: __m256i) -> __m256i {
 
 /// Returns values from `slice` at offsets determined by `offsets * scale`,
 /// where
-/// `scale` is between 1 and 8.
+/// `scale` should be 1, 2, 4 or 8.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_i32gather_epi32)
 #[inline]
@@ -1098,13 +1098,13 @@ pub unsafe fn _mm_i32gather_epi32(slice: *const i32, offsets: __m128i, scale: i3
             pgatherdd(zero, slice, offsets, neg_one, $imm8)
         };
     }
-    let r = constify_imm8!(scale, call);
+    let r = constify_imm8_gather!(scale, call);
     transmute(r)
 }
 
 /// Returns values from `slice` at offsets determined by `offsets * scale`,
 /// where
-/// `scale` is between 1 and 8. If mask is set, load the value from `src` in
+/// `scale` should be 1, 2, 4 or 8. If mask is set, load the value from `src` in
 /// that position instead.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_i32gather_epi32)
@@ -1129,13 +1129,13 @@ pub unsafe fn _mm_mask_i32gather_epi32(
             pgatherdd(src, slice, offsets, mask, $imm8)
         };
     }
-    let r = constify_imm8!(scale, call);
+    let r = constify_imm8_gather!(scale, call);
     transmute(r)
 }
 
 /// Returns values from `slice` at offsets determined by `offsets * scale`,
 /// where
-/// `scale` is between 1 and 8.
+/// `scale` should be 1, 2, 4 or 8.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_i32gather_epi32)
 #[inline]
@@ -1153,13 +1153,13 @@ pub unsafe fn _mm256_i32gather_epi32(slice: *const i32, offsets: __m256i, scale:
             vpgatherdd(zero, slice, offsets, neg_one, $imm8)
         };
     }
-    let r = constify_imm8!(scale, call);
+    let r = constify_imm8_gather!(scale, call);
     transmute(r)
 }
 
 /// Returns values from `slice` at offsets determined by `offsets * scale`,
 /// where
-/// `scale` is between 1 and 8. If mask is set, load the value from `src` in
+/// `scale` should be 1, 2, 4 or 8. If mask is set, load the value from `src` in
 /// that position instead.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_i32gather_epi32)
@@ -1184,13 +1184,13 @@ pub unsafe fn _mm256_mask_i32gather_epi32(
             vpgatherdd(src, slice, offsets, mask, $imm8)
         };
     }
-    let r = constify_imm8!(scale, call);
+    let r = constify_imm8_gather!(scale, call);
     transmute(r)
 }
 
 /// Returns values from `slice` at offsets determined by `offsets * scale`,
 /// where
-/// `scale` is between 1 and 8.
+/// `scale` should be 1, 2, 4 or 8.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_i32gather_ps)
 #[inline]
@@ -1208,12 +1208,12 @@ pub unsafe fn _mm_i32gather_ps(slice: *const f32, offsets: __m128i, scale: i32) 
             pgatherdps(zero, slice, offsets, neg_one, $imm8)
         };
     }
-    constify_imm8!(scale, call)
+    constify_imm8_gather!(scale, call)
 }
 
 /// Returns values from `slice` at offsets determined by `offsets * scale`,
 /// where
-/// `scale` is between 1 and 8. If mask is set, load the value from `src` in
+/// `scale` should be 1, 2, 4 or 8. If mask is set, load the value from `src` in
 /// that position instead.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_i32gather_ps)
@@ -1236,12 +1236,12 @@ pub unsafe fn _mm_mask_i32gather_ps(
             pgatherdps(src, slice, offsets, mask, $imm8)
         };
     }
-    constify_imm8!(scale, call)
+    constify_imm8_gather!(scale, call)
 }
 
 /// Returns values from `slice` at offsets determined by `offsets * scale`,
 /// where
-/// `scale` is between 1 and 8.
+/// `scale` should be 1, 2, 4 or 8.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_i32gather_ps)
 #[inline]
@@ -1259,12 +1259,12 @@ pub unsafe fn _mm256_i32gather_ps(slice: *const f32, offsets: __m256i, scale: i3
             vpgatherdps(zero, slice, offsets, neg_one, $imm8)
         };
     }
-    constify_imm8!(scale, call)
+    constify_imm8_gather!(scale, call)
 }
 
 /// Returns values from `slice` at offsets determined by `offsets * scale`,
 /// where
-/// `scale` is between 1 and 8. If mask is set, load the value from `src` in
+/// `scale` should be 1, 2, 4 or 8. If mask is set, load the value from `src` in
 /// that position instead.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_i32gather_ps)
@@ -1287,12 +1287,12 @@ pub unsafe fn _mm256_mask_i32gather_ps(
             vpgatherdps(src, slice, offsets, mask, $imm8)
         };
     }
-    constify_imm8!(scale, call)
+    constify_imm8_gather!(scale, call)
 }
 
 /// Returns values from `slice` at offsets determined by `offsets * scale`,
 /// where
-/// `scale` is between 1 and 8.
+/// `scale` should be 1, 2, 4 or 8.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_i32gather_epi64)
 #[inline]
@@ -1310,13 +1310,13 @@ pub unsafe fn _mm_i32gather_epi64(slice: *const i64, offsets: __m128i, scale: i3
             pgatherdq(zero, slice, offsets, neg_one, $imm8)
         };
     }
-    let r = constify_imm8!(scale, call);
+    let r = constify_imm8_gather!(scale, call);
     transmute(r)
 }
 
 /// Returns values from `slice` at offsets determined by `offsets * scale`,
 /// where
-/// `scale` is between 1 and 8. If mask is set, load the value from `src` in
+/// `scale` should be 1, 2, 4 or 8. If mask is set, load the value from `src` in
 /// that position instead.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_i32gather_epi64)
@@ -1341,13 +1341,13 @@ pub unsafe fn _mm_mask_i32gather_epi64(
             pgatherdq(src, slice, offsets, mask, $imm8)
         };
     }
-    let r = constify_imm8!(scale, call);
+    let r = constify_imm8_gather!(scale, call);
     transmute(r)
 }
 
 /// Returns values from `slice` at offsets determined by `offsets * scale`,
 /// where
-/// `scale` is between 1 and 8.
+/// `scale` should be 1, 2, 4 and 8.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_i32gather_epi64)
 #[inline]
@@ -1365,13 +1365,13 @@ pub unsafe fn _mm256_i32gather_epi64(slice: *const i64, offsets: __m128i, scale:
             vpgatherdq(zero, slice, offsets, neg_one, $imm8)
         };
     }
-    let r = constify_imm8!(scale, call);
+    let r = constify_imm8_gather!(scale, call);
     transmute(r)
 }
 
 /// Returns values from `slice` at offsets determined by `offsets * scale`,
 /// where
-/// `scale` is between 1 and 8. If mask is set, load the value from `src` in
+/// `scale` should be 1, 2, 4 or 8. If mask is set, load the value from `src` in
 /// that position instead.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_i32gather_epi64)
@@ -1396,13 +1396,13 @@ pub unsafe fn _mm256_mask_i32gather_epi64(
             vpgatherdq(src, slice, offsets, mask, $imm8)
         };
     }
-    let r = constify_imm8!(scale, call);
+    let r = constify_imm8_gather!(scale, call);
     transmute(r)
 }
 
 /// Returns values from `slice` at offsets determined by `offsets * scale`,
 /// where
-/// `scale` is between 1 and 8.
+/// `scale` should be 1, 2, 4 or 8.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_i32gather_pd)
 #[inline]
@@ -1420,12 +1420,12 @@ pub unsafe fn _mm_i32gather_pd(slice: *const f64, offsets: __m128i, scale: i32) 
             pgatherdpd(zero, slice, offsets, neg_one, $imm8)
         };
     }
-    constify_imm8!(scale, call)
+    constify_imm8_gather!(scale, call)
 }
 
 /// Returns values from `slice` at offsets determined by `offsets * scale`,
 /// where
-/// `scale` is between 1 and 8. If mask is set, load the value from `src` in
+/// `scale` should be 1, 2, 4 or 8. If mask is set, load the value from `src` in
 /// that position instead.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_i32gather_pd)
@@ -1448,12 +1448,12 @@ pub unsafe fn _mm_mask_i32gather_pd(
             pgatherdpd(src, slice, offsets, mask, $imm8)
         };
     }
-    constify_imm8!(scale, call)
+    constify_imm8_gather!(scale, call)
 }
 
 /// Returns values from `slice` at offsets determined by `offsets * scale`,
 /// where
-/// `scale` is between 1 and 8.
+/// `scale` should be 1, 2, 4 or 8.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_i32gather_pd)
 #[inline]
@@ -1471,12 +1471,12 @@ pub unsafe fn _mm256_i32gather_pd(slice: *const f64, offsets: __m128i, scale: i3
             vpgatherdpd(zero, slice, offsets, neg_one, $imm8)
         };
     }
-    constify_imm8!(scale, call)
+    constify_imm8_gather!(scale, call)
 }
 
 /// Returns values from `slice` at offsets determined by `offsets * scale`,
 /// where
-/// `scale` is between 1 and 8. If mask is set, load the value from `src` in
+/// `scale` should be 1, 2, 4 or 8. If mask is set, load the value from `src` in
 /// that position instead.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_i32gather_pd)
@@ -1499,12 +1499,12 @@ pub unsafe fn _mm256_mask_i32gather_pd(
             vpgatherdpd(src, slice, offsets, mask, $imm8)
         };
     }
-    constify_imm8!(scale, call)
+    constify_imm8_gather!(scale, call)
 }
 
 /// Returns values from `slice` at offsets determined by `offsets * scale`,
 /// where
-/// `scale` is between 1 and 8.
+/// `scale` should be 1, 2, 4 or 8.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_i64gather_epi32)
 #[inline]
@@ -1522,13 +1522,13 @@ pub unsafe fn _mm_i64gather_epi32(slice: *const i32, offsets: __m128i, scale: i3
             pgatherqd(zero, slice, offsets, neg_one, $imm8)
         };
     }
-    let r = constify_imm8!(scale, call);
+    let r = constify_imm8_gather!(scale, call);
     transmute(r)
 }
 
 /// Returns values from `slice` at offsets determined by `offsets * scale`,
 /// where
-/// `scale` is between 1 and 8. If mask is set, load the value from `src` in
+/// `scale` should be 1, 2, 4 or 8. If mask is set, load the value from `src` in
 /// that position instead.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_i64gather_epi32)
@@ -1553,13 +1553,13 @@ pub unsafe fn _mm_mask_i64gather_epi32(
             pgatherqd(src, slice, offsets, mask, $imm8)
         };
     }
-    let r = constify_imm8!(scale, call);
+    let r = constify_imm8_gather!(scale, call);
     transmute(r)
 }
 
 /// Returns values from `slice` at offsets determined by `offsets * scale`,
 /// where
-/// `scale` is between 1 and 8.
+/// `scale` should be 1, 2, 4 or 8.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_i64gather_epi32)
 #[inline]
@@ -1577,13 +1577,13 @@ pub unsafe fn _mm256_i64gather_epi32(slice: *const i32, offsets: __m256i, scale:
             vpgatherqd(zero, slice, offsets, neg_one, $imm8)
         };
     }
-    let r = constify_imm8!(scale, call);
+    let r = constify_imm8_gather!(scale, call);
     transmute(r)
 }
 
 /// Returns values from `slice` at offsets determined by `offsets * scale`,
 /// where
-/// `scale` is between 1 and 8. If mask is set, load the value from `src` in
+/// `scale` should be 1, 2, 4 or 8. If mask is set, load the value from `src` in
 /// that position instead.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_i64gather_epi32)
@@ -1608,13 +1608,13 @@ pub unsafe fn _mm256_mask_i64gather_epi32(
             vpgatherqd(src, slice, offsets, mask, $imm8)
         };
     }
-    let r = constify_imm8!(scale, call);
+    let r = constify_imm8_gather!(scale, call);
     transmute(r)
 }
 
 /// Returns values from `slice` at offsets determined by `offsets * scale`,
 /// where
-/// `scale` is between 1 and 8.
+/// `scale` should be 1, 2, 4 or 8.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_i64gather_ps)
 #[inline]
@@ -1632,12 +1632,12 @@ pub unsafe fn _mm_i64gather_ps(slice: *const f32, offsets: __m128i, scale: i32) 
             pgatherqps(zero, slice, offsets, neg_one, $imm8)
         };
     }
-    constify_imm8!(scale, call)
+    constify_imm8_gather!(scale, call)
 }
 
 /// Returns values from `slice` at offsets determined by `offsets * scale`,
 /// where
-/// `scale` is between 1 and 8. If mask is set, load the value from `src` in
+/// `scale` should be 1, 2, 4 or 8. If mask is set, load the value from `src` in
 /// that position instead.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_i64gather_ps)
@@ -1660,12 +1660,12 @@ pub unsafe fn _mm_mask_i64gather_ps(
             pgatherqps(src, slice, offsets, mask, $imm8)
         };
     }
-    constify_imm8!(scale, call)
+    constify_imm8_gather!(scale, call)
 }
 
 /// Returns values from `slice` at offsets determined by `offsets * scale`,
 /// where
-/// `scale` is between 1 and 8.
+/// `scale` should be 1, 2, 4 or 8.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_i64gather_ps)
 #[inline]
@@ -1683,12 +1683,12 @@ pub unsafe fn _mm256_i64gather_ps(slice: *const f32, offsets: __m256i, scale: i3
             vpgatherqps(zero, slice, offsets, neg_one, $imm8)
         };
     }
-    constify_imm8!(scale, call)
+    constify_imm8_gather!(scale, call)
 }
 
 /// Returns values from `slice` at offsets determined by `offsets * scale`,
 /// where
-/// `scale` is between 1 and 8. If mask is set, load the value from `src` in
+/// `scale` should be 1, 2, 4 or 8. If mask is set, load the value from `src` in
 /// that position instead.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_i64gather_ps)
@@ -1711,12 +1711,12 @@ pub unsafe fn _mm256_mask_i64gather_ps(
             vpgatherqps(src, slice, offsets, mask, $imm8)
         };
     }
-    constify_imm8!(scale, call)
+    constify_imm8_gather!(scale, call)
 }
 
 /// Returns values from `slice` at offsets determined by `offsets * scale`,
 /// where
-/// `scale` is between 1 and 8.
+/// `scale` should be 1, 2, 4 or 8.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_i64gather_epi64)
 #[inline]
@@ -1734,13 +1734,13 @@ pub unsafe fn _mm_i64gather_epi64(slice: *const i64, offsets: __m128i, scale: i3
             pgatherqq(zero, slice, offsets, neg_one, $imm8)
         };
     }
-    let r = constify_imm8!(scale, call);
+    let r = constify_imm8_gather!(scale, call);
     transmute(r)
 }
 
 /// Returns values from `slice` at offsets determined by `offsets * scale`,
 /// where
-/// `scale` is between 1 and 8. If mask is set, load the value from `src` in
+/// `scale` should be 1, 2, 4 or 8. If mask is set, load the value from `src` in
 /// that position instead.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_i64gather_epi64)
@@ -1765,13 +1765,13 @@ pub unsafe fn _mm_mask_i64gather_epi64(
             pgatherqq(src, slice, offsets, mask, $imm8)
         };
     }
-    let r = constify_imm8!(scale, call);
+    let r = constify_imm8_gather!(scale, call);
     transmute(r)
 }
 
 /// Returns values from `slice` at offsets determined by `offsets * scale`,
 /// where
-/// `scale` is between 1 and 8.
+/// `scale` should be 1, 2, 4 or 8.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_i64gather_epi64)
 #[inline]
@@ -1789,13 +1789,13 @@ pub unsafe fn _mm256_i64gather_epi64(slice: *const i64, offsets: __m256i, scale:
             vpgatherqq(zero, slice, offsets, neg_one, $imm8)
         };
     }
-    let r = constify_imm8!(scale, call);
+    let r = constify_imm8_gather!(scale, call);
     transmute(r)
 }
 
 /// Returns values from `slice` at offsets determined by `offsets * scale`,
 /// where
-/// `scale` is between 1 and 8. If mask is set, load the value from `src` in
+/// `scale` should be 1, 2, 4 or 8. If mask is set, load the value from `src` in
 /// that position instead.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_i64gather_epi64)
@@ -1820,13 +1820,13 @@ pub unsafe fn _mm256_mask_i64gather_epi64(
             vpgatherqq(src, slice, offsets, mask, $imm8)
         };
     }
-    let r = constify_imm8!(scale, call);
+    let r = constify_imm8_gather!(scale, call);
     transmute(r)
 }
 
 /// Returns values from `slice` at offsets determined by `offsets * scale`,
 /// where
-/// `scale` is between 1 and 8.
+/// `scale` should be 1, 2, 4 or 8.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_i64gather_pd)
 #[inline]
@@ -1844,12 +1844,12 @@ pub unsafe fn _mm_i64gather_pd(slice: *const f64, offsets: __m128i, scale: i32) 
             pgatherqpd(zero, slice, offsets, neg_one, $imm8)
         };
     }
-    constify_imm8!(scale, call)
+    constify_imm8_gather!(scale, call)
 }
 
 /// Returns values from `slice` at offsets determined by `offsets * scale`,
 /// where
-/// `scale` is between 1 and 8. If mask is set, load the value from `src` in
+/// `scale` should be 1, 2, 4 or 8. If mask is set, load the value from `src` in
 /// that position instead.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_i64gather_pd)
@@ -1872,12 +1872,12 @@ pub unsafe fn _mm_mask_i64gather_pd(
             pgatherqpd(src, slice, offsets, mask, $imm8)
         };
     }
-    constify_imm8!(scale, call)
+    constify_imm8_gather!(scale, call)
 }
 
 /// Returns values from `slice` at offsets determined by `offsets * scale`,
 /// where
-/// `scale` is between 1 and 8.
+/// `scale` should be 1, 2, 4 or 8.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_i64gather_pd)
 #[inline]
@@ -1895,12 +1895,12 @@ pub unsafe fn _mm256_i64gather_pd(slice: *const f64, offsets: __m256i, scale: i3
             vpgatherqpd(zero, slice, offsets, neg_one, $imm8)
         };
     }
-    constify_imm8!(scale, call)
+    constify_imm8_gather!(scale, call)
 }
 
 /// Returns values from `slice` at offsets determined by `offsets * scale`,
 /// where
-/// `scale` is between 1 and 8. If mask is set, load the value from `src` in
+/// `scale` should be 1, 2, 4 or 8. If mask is set, load the value from `src` in
 /// that position instead.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_i64gather_pd)
@@ -1923,7 +1923,7 @@ pub unsafe fn _mm256_mask_i64gather_pd(
             vpgatherqpd(src, slice, offsets, mask, $imm8)
         };
     }
-    constify_imm8!(scale, call)
+    constify_imm8_gather!(scale, call)
 }
 
 /// Copies `a` to `dst`, then insert 128 bits (of integer data) from `b` at the
