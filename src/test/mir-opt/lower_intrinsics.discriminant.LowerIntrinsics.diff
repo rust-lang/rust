@@ -1,0 +1,124 @@
+- // MIR for `discriminant` before LowerIntrinsics
++ // MIR for `discriminant` after LowerIntrinsics
+  
+  fn discriminant(_1: T) -> () {
+      debug t => _1;                       // in scope 0 at $DIR/lower_intrinsics.rs:68:24: 68:25
+      let mut _0: ();                      // return place in scope 0 at $DIR/lower_intrinsics.rs:68:30: 68:30
+      let _2: <T as std::marker::DiscriminantKind>::Discriminant; // in scope 0 at $DIR/lower_intrinsics.rs:69:5: 69:45
+      let mut _3: &T;                      // in scope 0 at $DIR/lower_intrinsics.rs:69:42: 69:44
+      let _4: &T;                          // in scope 0 at $DIR/lower_intrinsics.rs:69:42: 69:44
+      let _5: u8;                          // in scope 0 at $DIR/lower_intrinsics.rs:70:5: 70:45
+      let mut _6: &i32;                    // in scope 0 at $DIR/lower_intrinsics.rs:70:42: 70:44
+      let _7: &i32;                        // in scope 0 at $DIR/lower_intrinsics.rs:70:42: 70:44
+      let _8: i32;                         // in scope 0 at $DIR/lower_intrinsics.rs:70:43: 70:44
+      let _9: u8;                          // in scope 0 at $DIR/lower_intrinsics.rs:71:5: 71:46
+      let mut _10: &();                    // in scope 0 at $DIR/lower_intrinsics.rs:71:42: 71:45
+      let _11: &();                        // in scope 0 at $DIR/lower_intrinsics.rs:71:42: 71:45
+      let _12: ();                         // in scope 0 at $DIR/lower_intrinsics.rs:71:43: 71:45
+      let _13: isize;                      // in scope 0 at $DIR/lower_intrinsics.rs:72:5: 72:48
+      let mut _14: &E;                     // in scope 0 at $DIR/lower_intrinsics.rs:72:42: 72:47
+      let _15: &E;                         // in scope 0 at $DIR/lower_intrinsics.rs:72:42: 72:47
+      let _16: E;                          // in scope 0 at $DIR/lower_intrinsics.rs:72:43: 72:47
+      let mut _17: &E;                     // in scope 0 at $DIR/lower_intrinsics.rs:72:42: 72:47
+      let mut _18: &();                    // in scope 0 at $DIR/lower_intrinsics.rs:71:42: 71:45
+      let mut _19: &i32;                   // in scope 0 at $DIR/lower_intrinsics.rs:70:42: 70:44
+  
+      bb0: {
+          StorageLive(_2);                 // scope 0 at $DIR/lower_intrinsics.rs:69:5: 69:45
+          StorageLive(_3);                 // scope 0 at $DIR/lower_intrinsics.rs:69:42: 69:44
+          StorageLive(_4);                 // scope 0 at $DIR/lower_intrinsics.rs:69:42: 69:44
+          _4 = &_1;                        // scope 0 at $DIR/lower_intrinsics.rs:69:42: 69:44
+          _3 = &(*_4);                     // scope 0 at $DIR/lower_intrinsics.rs:69:42: 69:44
+-         _2 = discriminant_value::<T>(move _3) -> bb1; // scope 0 at $DIR/lower_intrinsics.rs:69:5: 69:45
+-                                          // mir::Constant
+-                                          // + span: $DIR/lower_intrinsics.rs:69:5: 69:41
+-                                          // + literal: Const { ty: for<'r> extern "rust-intrinsic" fn(&'r T) -> <T as std::marker::DiscriminantKind>::Discriminant {std::intrinsics::discriminant_value::<T>}, val: Value(Scalar(<ZST>)) }
++         _2 = discriminant((*_3));        // scope 0 at $DIR/lower_intrinsics.rs:69:5: 69:45
++         goto -> bb1;                     // scope 0 at $DIR/lower_intrinsics.rs:69:5: 69:45
+      }
+  
+      bb1: {
+          StorageDead(_3);                 // scope 0 at $DIR/lower_intrinsics.rs:69:44: 69:45
+          StorageDead(_4);                 // scope 0 at $DIR/lower_intrinsics.rs:69:45: 69:46
+          StorageDead(_2);                 // scope 0 at $DIR/lower_intrinsics.rs:69:45: 69:46
+          StorageLive(_5);                 // scope 0 at $DIR/lower_intrinsics.rs:70:5: 70:45
+          StorageLive(_6);                 // scope 0 at $DIR/lower_intrinsics.rs:70:42: 70:44
+          StorageLive(_7);                 // scope 0 at $DIR/lower_intrinsics.rs:70:42: 70:44
+          _19 = const discriminant::<T>::promoted[2]; // scope 0 at $DIR/lower_intrinsics.rs:70:42: 70:44
+                                           // ty::Const
+                                           // + ty: &i32
+                                           // + val: Unevaluated(WithOptConstParam { did: DefId(0:27 ~ lower_intrinsics[8787]::discriminant), const_param_did: None }, [T], Some(promoted[2]))
+                                           // mir::Constant
+                                           // + span: $DIR/lower_intrinsics.rs:70:42: 70:44
+                                           // + literal: Const { ty: &i32, val: Unevaluated(WithOptConstParam { did: DefId(0:27 ~ lower_intrinsics[8787]::discriminant), const_param_did: None }, [T], Some(promoted[2])) }
+          _7 = &(*_19);                    // scope 0 at $DIR/lower_intrinsics.rs:70:42: 70:44
+          _6 = &(*_7);                     // scope 0 at $DIR/lower_intrinsics.rs:70:42: 70:44
+-         _5 = discriminant_value::<i32>(move _6) -> bb2; // scope 0 at $DIR/lower_intrinsics.rs:70:5: 70:45
+-                                          // mir::Constant
+-                                          // + span: $DIR/lower_intrinsics.rs:70:5: 70:41
+-                                          // + literal: Const { ty: for<'r> extern "rust-intrinsic" fn(&'r i32) -> <i32 as std::marker::DiscriminantKind>::Discriminant {std::intrinsics::discriminant_value::<i32>}, val: Value(Scalar(<ZST>)) }
++         _5 = discriminant((*_6));        // scope 0 at $DIR/lower_intrinsics.rs:70:5: 70:45
++         goto -> bb2;                     // scope 0 at $DIR/lower_intrinsics.rs:70:5: 70:45
+      }
+  
+      bb2: {
+          StorageDead(_6);                 // scope 0 at $DIR/lower_intrinsics.rs:70:44: 70:45
+          StorageDead(_7);                 // scope 0 at $DIR/lower_intrinsics.rs:70:45: 70:46
+          StorageDead(_5);                 // scope 0 at $DIR/lower_intrinsics.rs:70:45: 70:46
+          StorageLive(_9);                 // scope 0 at $DIR/lower_intrinsics.rs:71:5: 71:46
+          StorageLive(_10);                // scope 0 at $DIR/lower_intrinsics.rs:71:42: 71:45
+          StorageLive(_11);                // scope 0 at $DIR/lower_intrinsics.rs:71:42: 71:45
+          _18 = const discriminant::<T>::promoted[1]; // scope 0 at $DIR/lower_intrinsics.rs:71:42: 71:45
+                                           // ty::Const
+                                           // + ty: &()
+                                           // + val: Unevaluated(WithOptConstParam { did: DefId(0:27 ~ lower_intrinsics[8787]::discriminant), const_param_did: None }, [T], Some(promoted[1]))
+                                           // mir::Constant
+                                           // + span: $DIR/lower_intrinsics.rs:71:42: 71:45
+                                           // + literal: Const { ty: &(), val: Unevaluated(WithOptConstParam { did: DefId(0:27 ~ lower_intrinsics[8787]::discriminant), const_param_did: None }, [T], Some(promoted[1])) }
+          _11 = &(*_18);                   // scope 0 at $DIR/lower_intrinsics.rs:71:42: 71:45
+          _10 = &(*_11);                   // scope 0 at $DIR/lower_intrinsics.rs:71:42: 71:45
+-         _9 = discriminant_value::<()>(move _10) -> bb3; // scope 0 at $DIR/lower_intrinsics.rs:71:5: 71:46
+-                                          // mir::Constant
+-                                          // + span: $DIR/lower_intrinsics.rs:71:5: 71:41
+-                                          // + literal: Const { ty: for<'r> extern "rust-intrinsic" fn(&'r ()) -> <() as std::marker::DiscriminantKind>::Discriminant {std::intrinsics::discriminant_value::<()>}, val: Value(Scalar(<ZST>)) }
++         _9 = discriminant((*_10));       // scope 0 at $DIR/lower_intrinsics.rs:71:5: 71:46
++         goto -> bb3;                     // scope 0 at $DIR/lower_intrinsics.rs:71:5: 71:46
+      }
+  
+      bb3: {
+          StorageDead(_10);                // scope 0 at $DIR/lower_intrinsics.rs:71:45: 71:46
+          StorageDead(_11);                // scope 0 at $DIR/lower_intrinsics.rs:71:46: 71:47
+          StorageDead(_9);                 // scope 0 at $DIR/lower_intrinsics.rs:71:46: 71:47
+          StorageLive(_13);                // scope 0 at $DIR/lower_intrinsics.rs:72:5: 72:48
+          StorageLive(_14);                // scope 0 at $DIR/lower_intrinsics.rs:72:42: 72:47
+          StorageLive(_15);                // scope 0 at $DIR/lower_intrinsics.rs:72:42: 72:47
+          _17 = const discriminant::<T>::promoted[0]; // scope 0 at $DIR/lower_intrinsics.rs:72:42: 72:47
+                                           // ty::Const
+                                           // + ty: &E
+                                           // + val: Unevaluated(WithOptConstParam { did: DefId(0:27 ~ lower_intrinsics[8787]::discriminant), const_param_did: None }, [T], Some(promoted[0]))
+                                           // mir::Constant
+                                           // + span: $DIR/lower_intrinsics.rs:72:42: 72:47
+                                           // + literal: Const { ty: &E, val: Unevaluated(WithOptConstParam { did: DefId(0:27 ~ lower_intrinsics[8787]::discriminant), const_param_did: None }, [T], Some(promoted[0])) }
+          _15 = &(*_17);                   // scope 0 at $DIR/lower_intrinsics.rs:72:42: 72:47
+          _14 = &(*_15);                   // scope 0 at $DIR/lower_intrinsics.rs:72:42: 72:47
+-         _13 = discriminant_value::<E>(move _14) -> bb4; // scope 0 at $DIR/lower_intrinsics.rs:72:5: 72:48
+-                                          // mir::Constant
+-                                          // + span: $DIR/lower_intrinsics.rs:72:5: 72:41
+-                                          // + literal: Const { ty: for<'r> extern "rust-intrinsic" fn(&'r E) -> <E as std::marker::DiscriminantKind>::Discriminant {std::intrinsics::discriminant_value::<E>}, val: Value(Scalar(<ZST>)) }
++         _13 = discriminant((*_14));      // scope 0 at $DIR/lower_intrinsics.rs:72:5: 72:48
++         goto -> bb4;                     // scope 0 at $DIR/lower_intrinsics.rs:72:5: 72:48
+      }
+  
+      bb4: {
+          StorageDead(_14);                // scope 0 at $DIR/lower_intrinsics.rs:72:47: 72:48
+          StorageDead(_15);                // scope 0 at $DIR/lower_intrinsics.rs:72:48: 72:49
+          StorageDead(_13);                // scope 0 at $DIR/lower_intrinsics.rs:72:48: 72:49
+          _0 = const ();                   // scope 0 at $DIR/lower_intrinsics.rs:68:30: 73:2
+          drop(_1) -> bb5;                 // scope 0 at $DIR/lower_intrinsics.rs:73:1: 73:2
+      }
+  
+      bb5: {
+          return;                          // scope 0 at $DIR/lower_intrinsics.rs:73:2: 73:2
+      }
+  }
+  

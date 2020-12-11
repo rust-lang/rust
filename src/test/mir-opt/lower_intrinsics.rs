@@ -45,15 +45,29 @@ pub fn f_dispatch<T>(t: T) {
 }
 
 #[inline(never)]
-pub fn f_zst<T>(t: T) {
+pub fn f_zst<T>(_t: T) {
 }
 
 #[inline(never)]
-pub fn f_non_zst<T>(t: T) {}
+pub fn f_non_zst<T>(_t: T) {}
 
 // EMIT_MIR lower_intrinsics.non_const.LowerIntrinsics.diff
 pub fn non_const<T>() -> usize {
     // Check that lowering works with non-const operand as a func.
     let size_of_t = core::intrinsics::size_of::<T>;
     size_of_t()
+}
+
+pub enum E {
+    A,
+    B,
+    C,
+}
+
+// EMIT_MIR lower_intrinsics.discriminant.LowerIntrinsics.diff
+pub fn discriminant<T>(t: T) {
+    core::intrinsics::discriminant_value(&t);
+    core::intrinsics::discriminant_value(&0);
+    core::intrinsics::discriminant_value(&());
+    core::intrinsics::discriminant_value(&E::B);
 }
