@@ -3,6 +3,7 @@
 //! This module uses a bit of static metadata to provide completions
 //! for built-in attributes.
 
+use itertools::Itertools;
 use rustc_hash::FxHashSet;
 use syntax::{ast, AstNode, SyntaxKind};
 
@@ -162,19 +163,20 @@ const ATTRIBUTES: &[AttrCompletion] = &[
 fn complete_derive(acc: &mut Completions, ctx: &CompletionContext, derive_input: ast::TokenTree) {
     if let Ok(existing_derives) = parse_comma_sep_input(derive_input) {
         for derive_completion in DEFAULT_DERIVE_COMPLETIONS
-            .into_iter()
+            .iter()
             .filter(|completion| !existing_derives.contains(completion.label))
         {
-            let mut label = derive_completion.label.to_owned();
-            for dependency in derive_completion
-                .dependencies
-                .into_iter()
-                .filter(|&&dependency| !existing_derives.contains(dependency))
-            {
-                label.push_str(", ");
-                label.push_str(dependency);
-            }
+            let mut components = vec![derive_completion.label];
+            components.extend(
+                derive_completion
+                    .dependencies
+                    .iter()
+                    .filter(|&&dependency| !existing_derives.contains(dependency)),
+            );
+            let lookup = components.join(", ");
+            let label = components.iter().rev().join(", ");
             CompletionItem::new(CompletionKind::Attribute, ctx.source_range(), label)
+                .lookup_by(lookup)
                 .kind(CompletionItemKind::Attribute)
                 .add_to(acc)
         }
@@ -264,7 +266,6 @@ struct DeriveCompletion {
 
 /// Standard Rust derives and the information about their dependencies
 /// (the dependencies are needed so that the main derive don't break the compilation when added)
-#[rustfmt::skip]
 const DEFAULT_DERIVE_COMPLETIONS: &[DeriveCompletion] = &[
     DeriveCompletion { label: "Clone", dependencies: &[] },
     DeriveCompletion { label: "Copy", dependencies: &["Clone"] },
@@ -421,14 +422,14 @@ struct Test {}
         "#,
             expect![[r#"
                 at Clone
-                at Copy, Clone
+                at Clone, Copy
                 at Debug
                 at Default
-                at Eq, PartialEq
                 at Hash
-                at Ord, PartialOrd, Eq, PartialEq
                 at PartialEq
-                at PartialOrd, PartialEq
+                at PartialEq, Eq
+                at PartialEq, Eq, PartialOrd, Ord
+                at PartialEq, PartialOrd
             "#]],
         );
     }
@@ -453,12 +454,12 @@ struct Test {}
 "#,
             expect![[r#"
                 at Clone
-                at Copy, Clone
+                at Clone, Copy
                 at Debug
                 at Default
                 at Eq
+                at Eq, PartialOrd, Ord
                 at Hash
-                at Ord, PartialOrd, Eq
                 at PartialOrd
             "#]],
         )
