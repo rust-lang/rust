@@ -835,7 +835,12 @@ pub fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, it: &'tcx hir::Item<'tcx>) {
                     let item = tcx.hir().foreign_item(item.id);
                     match item.kind {
                         hir::ForeignItemKind::Fn(ref fn_decl, _, _) => {
-                            require_c_abi_if_c_variadic(tcx, fn_decl, abi, item.span);
+                            require_c_abi_if_c_variadic(
+                                tcx,
+                                fn_decl,
+                                abi,
+                                tcx.hir().span(item.hir_id()),
+                            );
                         }
                         hir::ForeignItemKind::Static(..) => {
                             check_static_inhabited(tcx, item.def_id);

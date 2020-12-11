@@ -1075,7 +1075,8 @@ impl<'a, 'hir, 'tcx> intravisit::Visitor<'hir> for HirCollector<'a, 'hir, 'tcx> 
     }
 
     fn visit_foreign_item(&mut self, item: &'hir hir::ForeignItem<'_>) {
-        self.visit_testable(item.ident.to_string(), item.hir_id(), item.span, |this| {
+        let item_span = self.tcx.hir().span(item.hir_id());
+        self.visit_testable(item.ident.to_string(), item.hir_id(), item_span, |this| {
             intravisit::walk_foreign_item(this, item);
         });
     }

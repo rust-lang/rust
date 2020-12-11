@@ -2927,11 +2927,13 @@ impl<'tcx> LateLintPass<'tcx> for ClashingExternDeclarations {
 
                     // We want to ensure that we use spans for both decls that include where the
                     // name was defined, whether that was from the link_name attribute or not.
-                    let get_relevant_span =
-                        |fi: &hir::ForeignItem<'_>| match Self::name_of_extern_decl(tcx, fi) {
-                            SymbolName::Normal(_) => fi.span,
-                            SymbolName::Link(_, annot_span) => fi.span.to(annot_span),
-                        };
+                    let get_relevant_span = |fi: &hir::ForeignItem<'_>| {
+                        let fi_span = tcx.hir().span(fi.hir_id());
+                        match Self::name_of_extern_decl(tcx, fi) {
+                            SymbolName::Normal(_) => fi_span,
+                            SymbolName::Link(_, annot_span) => fi_span.to(annot_span),
+                        }
+                    };
                     // Finally, emit the diagnostic.
                     tcx.struct_span_lint_hir(
                         CLASHING_EXTERN_DECLARATIONS,

@@ -646,7 +646,12 @@ impl Visitor<'tcx> for DeadVisitor<'tcx> {
 
     fn visit_foreign_item(&mut self, fi: &'tcx hir::ForeignItem<'tcx>) {
         if self.should_warn_about_foreign_item(fi) {
-            self.warn_dead_code(fi.hir_id(), fi.span, fi.ident.name, "used");
+            self.warn_dead_code(
+                fi.hir_id(),
+                self.tcx.hir().span(fi.hir_id()),
+                fi.ident.name,
+                "used",
+            );
         }
         intravisit::walk_foreign_item(self, fi);
     }

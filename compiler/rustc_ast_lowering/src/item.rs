@@ -728,7 +728,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ForeignItemKind::MacCall(_) => panic!("macro shouldn't exist here"),
             },
             vis: self.lower_visibility(&i.vis, None),
-            span: i.span,
         }
     }
 

@@ -99,7 +99,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for Context<'a, 'tcx> {
         let check_name = |attr, sym| self.tcx.sess.check_name(attr, sym);
         let attrs = self.tcx.hir().attrs(i.hir_id());
         if let Some((lang_item, _)) = lang_items::extract(check_name, attrs) {
-            self.register(lang_item, i.span);
+            self.register(lang_item, self.tcx.hir().span(i.hir_id()));
         }
         intravisit::walk_foreign_item(self, i)
     }

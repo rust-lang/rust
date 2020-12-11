@@ -23,11 +23,12 @@ fn equate_intrinsic_type<'tcx>(
     n_tps: usize,
     sig: ty::PolyFnSig<'tcx>,
 ) {
+    let it_span = tcx.hir().span(it.hir_id());
     match it.kind {
         hir::ForeignItemKind::Fn(..) => {}
         _ => {
-            struct_span_err!(tcx.sess, it.span, E0622, "intrinsic must be a function")
-                .span_label(it.span, "expected a function")
+            struct_span_err!(tcx.sess, it_span, E0622, "intrinsic must be a function")
+                .span_label(it_span, "expected a function")
                 .emit();
             return;
         }
@@ -49,7 +50,7 @@ fn equate_intrinsic_type<'tcx>(
     }
 
     let fty = tcx.mk_fn_ptr(sig);
-    let cause = ObligationCause::new(it.span, it.hir_id(), ObligationCauseCode::IntrinsicType);
+    let cause = ObligationCause::new(it_span, it.hir_id(), ObligationCauseCode::IntrinsicType);
     require_same_types(tcx, &cause, tcx.mk_fn_ptr(tcx.fn_sig(it.def_id)), fty);
 }
 
@@ -130,7 +131,8 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
             | "umin" => (1, vec![tcx.mk_mut_ptr(param(0)), param(0)], param(0)),
             "fence" | "singlethreadfence" => (0, Vec::new(), tcx.mk_unit()),
             op => {
-                tcx.sess.emit_err(UnrecognizedAtomicOperation { span: it.span, op });
+                let it_span = tcx.hir().span(it.hir_id());
+                tcx.sess.emit_err(UnrecognizedAtomicOperation { span: it_span, op });
                 return;
             }
         };
@@ -359,7 +361,8 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
             sym::nontemporal_store => (1, vec![tcx.mk_mut_ptr(param(0)), param(0)], tcx.mk_unit()),
 
             other => {
-                tcx.sess.emit_err(UnrecognizedIntrinsicFunction { span: it.span, name: other });
+                let it_span = tcx.hir().span(it.hir_id());
+                tcx.sess.emit_err(UnrecognizedIntrinsicFunction { span: it_span, name: other });
                 return;
             }
         };
@@ -440,14 +443,16 @@ pub fn check_platform_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>)
                     (2, params, param(1))
                 }
                 Err(_) => {
-                    tcx.sess.emit_err(SimdShuffleMissingLength { span: it.span, name });
+                    let it_span = tcx.hir().span(it.hir_id());
+                    tcx.sess.emit_err(SimdShuffleMissingLength { span: it_span, name });
                     return;
                 }
             }
         }
         _ => {
             let msg = format!("unrecognized platform-specific intrinsic function: `{}`", name);
-            tcx.sess.struct_span_err(it.span, &msg).emit();
+            let it_span = tcx.hir().span(it.hir_id());
+            tcx.sess.struct_span_err(it_span, &msg).emit();
             return;
         }
     };
