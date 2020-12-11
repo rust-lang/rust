@@ -57,11 +57,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // `get_vtable` in `rust_codegen_llvm/meth.rs`.
         // /////////////////////////////////////////////////////////////////////////////////////////
         let vtable_size = ptr_size * u64::try_from(methods.len()).unwrap().checked_add(3).unwrap();
-        let vtable = self.memory.allocate(
-            vtable_size,
-            ptr_align,
-            MemoryKind::Vtable,
-        );
+        let vtable = self.memory.allocate(vtable_size, ptr_align, MemoryKind::Vtable);
 
         let drop = Instance::resolve_drop_in_place(tcx, ty);
         let drop = self.memory.create_fn_alloc(FnVal::Instance(drop));
