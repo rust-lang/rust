@@ -1,3 +1,5 @@
+#![allow(unused_macros)]
+
 use testcrate::*;
 
 macro_rules! mul {
@@ -110,5 +112,19 @@ fn float_mul() {
     float_mul!(
         f32, __mulsf3;
         f64, __muldf3;
+    );
+}
+
+#[cfg(target_arch = "arm")]
+#[test]
+fn float_mul_arm() {
+    use compiler_builtins::float::{
+        mul::{__muldf3vfp, __mulsf3vfp},
+        Float,
+    };
+
+    float_mul!(
+        f32, __mulsf3vfp;
+        f64, __muldf3vfp;
     );
 }

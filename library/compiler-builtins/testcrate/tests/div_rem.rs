@@ -1,3 +1,5 @@
+#![allow(unused_macros)]
+
 use compiler_builtins::int::sdiv::{__divmoddi4, __divmodsi4, __divmodti4};
 use compiler_builtins::int::udiv::{__udivmoddi4, __udivmodsi4, __udivmodti4, u128_divide_sparc};
 use testcrate::*;
@@ -132,5 +134,19 @@ fn float_div() {
     float!(
         f32, __divsf3;
         f64, __divdf3;
+    );
+}
+
+#[cfg(target_arch = "arm")]
+#[test]
+fn float_div_arm() {
+    use compiler_builtins::float::{
+        div::{__divdf3vfp, __divsf3vfp},
+        Float,
+    };
+
+    float!(
+        f32, __divsf3vfp;
+        f64, __divdf3vfp;
     );
 }
