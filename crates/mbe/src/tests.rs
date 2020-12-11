@@ -1008,11 +1008,20 @@ fn test_literal() {
     parse_macro(
         r#"
         macro_rules! foo {
-              ($ type:ty $ lit:literal) => { const VALUE: $ type = $ lit;};
+              ($ type:ty , $ lit:literal) => { const VALUE: $ type = $ lit;};
         }
 "#,
     )
-    .assert_expand_items(r#"foo!(u8 0);"#, r#"const VALUE : u8 = 0 ;"#);
+    .assert_expand_items(r#"foo!(u8,0);"#, r#"const VALUE : u8 = 0 ;"#);
+
+    parse_macro(
+        r#"
+        macro_rules! foo {
+              ($ type:ty , $ lit:literal) => { const VALUE: $ type = $ lit;};
+        }
+"#,
+    )
+    .assert_expand_items(r#"foo!(i32,-1);"#, r#"const VALUE : i32 = - 1 ;"#);
 }
 
 #[test]
