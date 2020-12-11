@@ -1332,7 +1332,7 @@ pub trait Iterator {
     /// assert_eq!(merged, "alphabetagamma");
     /// ```
     ///
-    /// Flattening once only removes one level of nesting:
+    /// Flattening only removes one level of nesting at a time:
     ///
     /// ```
     /// let d3 = [[[1, 2], [3, 4]], [[5, 6], [7, 8]]];
@@ -1346,7 +1346,7 @@ pub trait Iterator {
     ///
     /// Here we see that `flatten()` does not perform a "deep" flatten.
     /// Instead, only one level of nesting is removed. That is, if you
-    /// `flatten()` a three-dimensional array the result will be
+    /// `flatten()` a three-dimensional array, the result will be
     /// two-dimensional and not one-dimensional. To get a one-dimensional
     /// structure, you have to `flatten()` again.
     ///
