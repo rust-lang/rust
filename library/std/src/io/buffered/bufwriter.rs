@@ -331,6 +331,52 @@ impl<W: Write> BufWriter<W> {
         let buf = if !self.panicked { Ok(buf) } else { Err(WriterPanicked { buf }) };
         (self.inner.take().unwrap(), buf)
     }
+
+    // Ensure this function does not get inlined into `write`, so that it
+    // remains inlineable and its common path remains as short as possible.
+    // If this function ends up being called frequently relative to `write`,
+    // it's likely a sign that the client is using an improperly sized buffer.
+    #[inline(never)]
+    fn flush_and_write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        self.flush_buf()?;
+
+        // Why not len > capacity? To avoid a needless trip through the buffer when the
+        // input exactly fills. We'd just need to flush it to the underlying writer anyway.
+        if buf.len() >= self.buf.capacity() {
+            self.panicked = true;
+            let r = self.get_mut().write(buf);
+            self.panicked = false;
+            r
+        } else {
+            self.buf.extend_from_slice(buf);
+            Ok(buf.len())
+        }
+    }
+
+    // Ensure this function does not get inlined into `write_all`, so that it
+    // remains inlineable and its common path remains as short as possible.
+    // If this function ends up being called frequently relative to `write_all`,
+    // it's likely a sign that the client is using an improperly sized buffer.
+    #[inline(never)]
+    fn flush_and_write_all(&mut self, buf: &[u8]) -> io::Result<()> {
+        // Normally, `write_all` just calls `write` in a loop. We can do better
+        // by calling `self.get_mut().write_all()` directly, which avoids
+        // round trips through the buffer in the event of a series of partial
+        // writes in some circumstances.
+        self.flush_buf()?;
+
+        // Why not len > capacity? To avoid a needless trip through the buffer when the
+        // input exactly fills. We'd just need to flush it to the underlying writer anyway.
+        if buf.len() >= self.buf.capacity() {
+            self.panicked = true;
+            let r = self.get_mut().write_all(buf);
+            self.panicked = false;
+            r
+        } else {
+            self.buf.extend_from_slice(buf);
+            Ok(())
+        }
+    }
 }
 
 #[unstable(feature = "bufwriter_into_raw_parts", issue = "80690")]
@@ -402,43 +448,39 @@ impl fmt::Debug for WriterPanicked {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<W: Write> Write for BufWriter<W> {
+    #[inline]
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        if self.buf.len() + buf.len() > self.buf.capacity() {
-            self.flush_buf()?;
-        }
-        // FIXME: Why no len > capacity? Why not buffer len == capacity? #72919
-        if buf.len() >= self.buf.capacity() {
-            self.panicked = true;
-            let r = self.get_mut().write(buf);
-            self.panicked = false;
-            r
-        } else {
+        // The `buf.len() != self.buf.capacity()` check is done to avoid a needless trip through
+        // the buffer when the input is exactly the same size as it. For many clients, that is a
+        // rare event, so it's unfortunate that the check is in the common code path. But it
+        // prevents pathological cases for other clients which *always* make writes of this size.
+        // See #72919 and #79930 for more info and a breadcrumb trail.
+        if self.buf.len() + buf.len() <= self.buf.capacity() && buf.len() != self.buf.capacity() {
             self.buf.extend_from_slice(buf);
             Ok(buf.len())
+        } else {
+            self.flush_and_write(buf)
         }
     }
 
+    #[inline]
     fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
-        // Normally, `write_all` just calls `write` in a loop. We can do better
-        // by calling `self.get_mut().write_all()` directly, which avoids
-        // round trips through the buffer in the event of a series of partial
-        // writes in some circumstances.
-        if self.buf.len() + buf.len() > self.buf.capacity() {
-            self.flush_buf()?;
-        }
-        // FIXME: Why no len > capacity? Why not buffer len == capacity? #72919
-        if buf.len() >= self.buf.capacity() {
-            self.panicked = true;
-            let r = self.get_mut().write_all(buf);
-            self.panicked = false;
-            r
-        } else {
+        // The `buf.len() != self.buf.capacity()` check is done to avoid a needless trip through
+        // the buffer when the input is exactly the same size as it. For many clients, that is a
+        // rare event, so it's unfortunate that the check is in the common code path. But it
+        // prevents pathological cases for other clients which *always* make writes of this size.
+        // See #72919 and #79930 for more info and a breadcrumb trail.
+        if self.buf.len() + buf.len() <= self.buf.capacity() && buf.len() != self.buf.capacity() {
             self.buf.extend_from_slice(buf);
             Ok(())
+        } else {
+            self.flush_and_write_all(buf)
         }
     }
 
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
+        // FIXME: Consider applying `#[inline]` / `#[inline(never)]` optimizations already applied
+        // to `write` and `write_all`. The performance benefits can be significant. See #79930.
         if self.get_ref().is_write_vectored() {
             let total_len = bufs.iter().map(|b| b.len()).sum::<usize>();
             if self.buf.len() + total_len > self.buf.capacity() {
