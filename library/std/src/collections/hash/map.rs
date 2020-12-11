@@ -860,6 +860,7 @@ where
     /// assert_eq!(map.remove(&1), None);
     /// ```
     #[doc(alias = "delete")]
+    #[doc(alias = "take")]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn remove<Q: ?Sized>(&mut self, k: &Q) -> Option<V>
@@ -889,6 +890,7 @@ where
     /// assert_eq!(map.remove(&1), None);
     /// # }
     /// ```
+    #[doc(alias = "take_entry")]
     #[inline]
     #[stable(feature = "hash_map_remove_entry", since = "1.27.0")]
     pub fn remove_entry<Q: ?Sized>(&mut self, k: &Q) -> Option<(K, V)>
@@ -1717,6 +1719,7 @@ impl<'a, K, V, S> RawOccupiedEntryMut<'a, K, V, S> {
 
     /// Takes the value out of the entry, and returns it.
     #[inline]
+    #[doc(alias = "take")]
     #[unstable(feature = "hash_raw_entry", issue = "56167")]
     pub fn remove(self) -> V {
         self.base.remove()
@@ -1724,6 +1727,7 @@ impl<'a, K, V, S> RawOccupiedEntryMut<'a, K, V, S> {
 
     /// Take the ownership of the key and value from the map.
     #[inline]
+    #[doc(alias = "take_entry")]
     #[unstable(feature = "hash_raw_entry", issue = "56167")]
     pub fn remove_entry(self) -> (K, V) {
         self.base.remove_entry()
@@ -2541,6 +2545,7 @@ impl<'a, K, V> OccupiedEntry<'a, K, V> {
     /// assert_eq!(map.contains_key("poneyland"), false);
     /// ```
     #[inline]
+    #[doc(alias = "take")]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn remove(self) -> V {
         self.base.remove()

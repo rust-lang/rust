@@ -909,6 +909,7 @@ impl<T> LinkedList<T> {
     /// assert_eq!(d.remove(0), 3);
     /// assert_eq!(d.remove(0), 1);
     /// ```
+    #[doc(alias = "take")]
     #[unstable(feature = "linked_list_remove", issue = "69210")]
     pub fn remove(&mut self, at: usize) -> T {
         let len = self.len();
@@ -1406,6 +1407,7 @@ impl<'a, T> CursorMut<'a, T> {
     ///
     /// If the cursor is currently pointing to the "ghost" non-element then no element
     /// is removed and `None` is returned.
+    #[doc(alias = "take_current")]
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn remove_current(&mut self) -> Option<T> {
         let unlinked_node = self.current?;
@@ -1424,6 +1426,7 @@ impl<'a, T> CursorMut<'a, T> {
     ///
     /// If the cursor is currently pointing to the "ghost" non-element then no element
     /// is removed and `None` is returned.
+    #[doc(alias = "take_current_as_list")]
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn remove_current_as_list(&mut self) -> Option<LinkedList<T>> {
         let mut unlinked_node = self.current?;

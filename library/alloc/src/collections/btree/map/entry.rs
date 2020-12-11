@@ -336,6 +336,7 @@ impl<'a, K: Ord, V> OccupiedEntry<'a, K, V> {
     /// // println!("{}", map["poneyland"]);
     /// ```
     #[stable(feature = "map_entry_recover_keys2", since = "1.12.0")]
+    #[doc(alias = "take_entry")]
     pub fn remove_entry(self) -> (K, V) {
         self.remove_kv()
     }
@@ -457,6 +458,7 @@ impl<'a, K: Ord, V> OccupiedEntry<'a, K, V> {
     /// // println!("{}", map["poneyland"]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[doc(alias = "take")]
     pub fn remove(self) -> V {
         self.remove_kv().1
     }

@@ -1783,6 +1783,7 @@ impl<T> VecDeque<T> {
     /// assert_eq!(buf.remove(1), Some(2));
     /// assert_eq!(buf, [1, 3]);
     /// ```
+    #[doc(alias = "take")]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn remove(&mut self, index: usize) -> Option<T> {
         if self.is_empty() || self.len() <= index {
