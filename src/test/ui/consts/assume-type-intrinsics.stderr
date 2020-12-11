@@ -4,7 +4,7 @@ error: any use of this value will cause an error
 LL |               intrinsics::assert_inhabited::<T>();
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |               |
-   |               attempted to instantiate uninhabited type `!`
+   |               aborted execution: attempted to instantiate uninhabited type `!`
    |               inside `MaybeUninit::<!>::assume_init` at $SRC_DIR/core/src/mem/maybe_uninit.rs:LL:COL
    |               inside `_BAD` at $DIR/assume-type-intrinsics.rs:11:9
    | 
