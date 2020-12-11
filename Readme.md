@@ -13,7 +13,7 @@ double grad_foo(double x) {
 }
 ```
 
-Enzyme is highly-efficient and its ability perform AD on optimized code allows Enzyme to meet or exceed the performance of state-of-the-art AD tools.
+Enzyme is highly-efficient and its ability to perform AD on optimized code allows Enzyme to meet or exceed the performance of state-of-the-art AD tools.
 
 <div style="padding:2em">
 <img src="https://enzyme.mit.edu/all_top.png" width="500" align=center>
