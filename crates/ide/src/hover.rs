@@ -139,6 +139,11 @@ pub(crate) fn hover(
         }
     }
 
+    if token.kind() == syntax::SyntaxKind::COMMENT {
+        // don't highlight the entire parent node on comment hover
+        return None;
+    }
+
     let node = token.ancestors().find(|n| {
         ast::Expr::can_cast(n.kind())
             || ast::Pat::can_cast(n.kind())
@@ -3417,6 +3422,17 @@ mod Foo<|> {
                 Be quick;
                 time is mana
             "#]],
+        );
+    }
+
+    #[test]
+    fn hover_comments_dont_highlight_parent() {
+        check_hover_no_result(
+            r#"
+fn no_hover() {
+    // no<|>hover
+}
+"#,
         );
     }
 }
