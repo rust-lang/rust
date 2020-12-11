@@ -2,6 +2,8 @@
 //!
 //! The actual definitions were copied from rustc's `compiler/rustc_feature/src/builtin_attrs.rs`.
 //!
+//! It was last synchronized with upstream commit 2225ee1b62ff089917434aefd9b2bf509cfa087f.
+//!
 //! The macros were adjusted to only expand to the attribute name, since that is all we need to do
 //! name resolution, and `BUILTIN_ATTRIBUTES` is almost entirely unchanged from the original, to
 //! ease updating.
