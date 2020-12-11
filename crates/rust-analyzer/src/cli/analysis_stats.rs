@@ -23,11 +23,9 @@ use rustc_hash::FxHashSet;
 use stdx::format_to;
 use syntax::AstNode;
 
-use crate::{
-    cli::{
-        load_cargo::load_cargo, progress_report::ProgressReport, report_metric, Result, Verbosity,
-    },
-    print_memory_usage,
+use crate::cli::{
+    load_cargo::load_cargo, print_memory_usage, progress_report::ProgressReport, report_metric,
+    Result, Verbosity,
 };
 use profile::StopWatch;
 
