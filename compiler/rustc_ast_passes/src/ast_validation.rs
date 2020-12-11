@@ -400,7 +400,7 @@ impl<'a> AstValidator<'a> {
         if let Defaultness::Default(def_span) = defaultness {
             let span = self.session.source_map().guess_head_span(span);
             self.err_handler()
-                .struct_span_err(span, "`default` is only allowed on items in `impl` definitions")
+                .struct_span_err(span, "`default` is only allowed on items in trait impls")
                 .span_label(def_span, "`default` because of this")
                 .emit();
         }
