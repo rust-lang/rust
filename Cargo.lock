@@ -80,7 +80,7 @@ dependencies = [
  "cfg-if",
  "libc",
  "miniz_oxide",
- "object",
+ "object 0.23.0",
  "rustc-demangle",
 ]
 
@@ -1010,6 +1010,16 @@ dependencies = [
 
 [[package]]
 name = "object"
+version = "0.22.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8d3b63360ec3cb337817c2dbd47ab4a0f170d285d8e5a2064600f3def1402397"
+dependencies = [
+ "flate2",
+ "wasmparser",
+]
+
+[[package]]
+name = "object"
 version = "0.23.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a9a7ab5d64814df0fe4a4b5ead45ed6c5f181ee3ff04ba344313a6c80446c5d4"
@@ -1154,8 +1164,10 @@ dependencies = [
  "crossbeam-channel",
  "jod-thread",
  "log",
+ "object 0.22.0",
  "serde",
  "serde_json",
+ "snap",
  "stdx",
  "tt",
 ]
@@ -1168,7 +1180,7 @@ dependencies = [
  "libloading",
  "mbe",
  "memmap2",
- "object",
+ "object 0.23.0",
  "proc_macro_api",
  "proc_macro_test",
  "serde_derive",
@@ -1541,6 +1553,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "snap"
+version = "1.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dc725476a1398f0480d56cd0ad381f6f32acf2642704456f8f59a35df464b59a"
+
+[[package]]
 name = "socket2"
 version = "0.3.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1879,6 +1897,12 @@ dependencies = [
  "winapi",
  "winapi-util",
 ]
+
+[[package]]
+name = "wasmparser"
+version = "0.57.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "32fddd575d477c6e9702484139cf9f23dcd554b06d185ed0f56c857dd3a47aa6"
 
 [[package]]
 name = "winapi"
