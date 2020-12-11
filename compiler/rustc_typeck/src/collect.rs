@@ -2141,13 +2141,8 @@ fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicat
             // * It must be an associated type for this trait (*not* a
             //   supertrait).
             if let ty::Projection(projection) = ty.kind() {
-                if projection.substs == trait_identity_substs
+                projection.substs == trait_identity_substs
                     && tcx.associated_item(projection.item_def_id).container.id() == def_id
-                {
-                    true
-                } else {
-                    false
-                }
             } else {
                 false
             }
