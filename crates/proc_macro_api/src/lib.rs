@@ -39,7 +39,7 @@ impl PartialEq for ProcMacroProcessExpander {
     }
 }
 
-impl tt::TokenExpander for ProcMacroProcessExpander {
+impl base_db::ProcMacroExpander for ProcMacroProcessExpander {
     fn expand(
         &self,
         subtree: &Subtree,
@@ -90,7 +90,7 @@ impl ProcMacroClient {
                     ProcMacroKind::FuncLike => base_db::ProcMacroKind::FuncLike,
                     ProcMacroKind::Attr => base_db::ProcMacroKind::Attr,
                 };
-                let expander: Arc<dyn tt::TokenExpander> = Arc::new(ProcMacroProcessExpander {
+                let expander = Arc::new(ProcMacroProcessExpander {
                     process: self.process.clone(),
                     name: name.clone(),
                     dylib_path: dylib_path.into(),

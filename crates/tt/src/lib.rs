@@ -1,7 +1,7 @@
 //! `tt` crate defines a `TokenTree` data structure: this is the interface (both
 //! input and output) of macros. It closely mirrors `proc_macro` crate's
 //! `TokenTree`.
-use std::{fmt, panic::RefUnwindSafe};
+use std::fmt;
 
 use stdx::impl_from;
 
@@ -246,9 +246,4 @@ impl fmt::Display for ExpansionError {
             ExpansionError::ExpansionError(e) => write!(f, "proc macro returned error: {}", e),
         }
     }
-}
-
-pub trait TokenExpander: fmt::Debug + Send + Sync + RefUnwindSafe {
-    fn expand(&self, subtree: &Subtree, attrs: Option<&Subtree>)
-        -> Result<Subtree, ExpansionError>;
 }

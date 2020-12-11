@@ -6,12 +6,12 @@
 //! actual IO. See `vfs` and `project_model` in the `rust-analyzer` crate for how
 //! actual IO is done and lowered to input.
 
-use std::{fmt, iter::FromIterator, ops, str::FromStr, sync::Arc};
+use std::{fmt, iter::FromIterator, ops, panic::RefUnwindSafe, str::FromStr, sync::Arc};
 
 use cfg::CfgOptions;
 use rustc_hash::{FxHashMap, FxHashSet};
 use syntax::SmolStr;
-use tt::TokenExpander;
+use tt::{ExpansionError, Subtree};
 use vfs::{file_set::FileSet, FileId, VfsPath};
 
 /// Files are grouped into source roots. A source root is a directory on the
@@ -150,11 +150,16 @@ pub enum ProcMacroKind {
     Attr,
 }
 
+pub trait ProcMacroExpander: fmt::Debug + Send + Sync + RefUnwindSafe {
+    fn expand(&self, subtree: &Subtree, attrs: Option<&Subtree>)
+        -> Result<Subtree, ExpansionError>;
+}
+
 #[derive(Debug, Clone)]
 pub struct ProcMacro {
     pub name: SmolStr,
     pub kind: ProcMacroKind,
-    pub expander: Arc<dyn TokenExpander>,
+    pub expander: Arc<dyn ProcMacroExpander>,
 }
 
 impl Eq for ProcMacro {}
