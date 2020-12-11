@@ -4,6 +4,7 @@ use crate::io::{
     self, Error, ErrorKind, IntoInnerError, IoSlice, Seek, SeekFrom, Write, DEFAULT_BUF_SIZE,
 };
 use crate::mem;
+use crate::ptr;
 
 /// Wraps a writer and buffers its output.
 ///
@@ -68,6 +69,10 @@ use crate::mem;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct BufWriter<W: Write> {
     inner: Option<W>,
+    // The buffer. Avoid using this like a normal `Vec` in common code paths.
+    // That is, don't use `buf.push`, `buf.extend_from_slice`, or any other
+    // methods that require bounds checking or the like. This makes an enormous
+    // difference to performance (we may want to stop using a `Vec` entirely).
     buf: Vec<u8>,
     // #30888: If the inner writer panics in a call to write, we don't want to
     // write the buffered data a second time in BufWriter's destructor. This
@@ -150,7 +155,11 @@ impl<W: Write> BufWriter<W> {
         impl Drop for BufGuard<'_> {
             fn drop(&mut self) {
                 if self.written > 0 {
-                    self.buffer.drain(..self.written);
+                    if self.done() {
+                        self.buffer.clear();
+                    } else {
+                        self.buffer.drain(..self.written);
+                    }
                 }
             }
         }
@@ -183,7 +192,12 @@ impl<W: Write> BufWriter<W> {
     pub(super) fn write_to_buf(&mut self, buf: &[u8]) -> usize {
         let available = self.buf.capacity() - self.buf.len();
         let amt_to_buffer = available.min(buf.len());
-        self.buf.extend_from_slice(&buf[..amt_to_buffer]);
+
+        // SAFETY: `amt_to_buffer` is <= buffer's spare capacity by construction.
+        unsafe {
+            self.write_to_buffer_unchecked(&buf[..amt_to_buffer]);
+        }
+
         amt_to_buffer
     }
 
@@ -348,7 +362,13 @@ impl<W: Write> BufWriter<W> {
             self.panicked = false;
             r
         } else {
-            self.buf.extend_from_slice(buf);
+            // SAFETY: We just called `self.flush_buf()`, so `self.buf.len()` is 0, and
+            // we entered this else block because `buf.len() < self.buf.capacity()`.
+            // Therefore, `self.buf.len() + buf.len() <= self.buf.capacity()`.
+            unsafe {
+                self.write_to_buffer_unchecked(buf);
+            }
+
             Ok(buf.len())
         }
     }
@@ -373,9 +393,28 @@ impl<W: Write> BufWriter<W> {
             self.panicked = false;
             r
         } else {
-            self.buf.extend_from_slice(buf);
+            // SAFETY: We just called `self.flush_buf()`, so `self.buf.len()` is 0, and
+            // we entered this else block because `buf.len() < self.buf.capacity()`.
+            // Therefore, `self.buf.len() + buf.len() <= self.buf.capacity()`.
+            unsafe {
+                self.write_to_buffer_unchecked(buf);
+            }
+
             Ok(())
         }
+    }
+
+    // SAFETY: Requires `self.buf.len() + buf.len() <= self.buf.capacity()`,
+    // i.e., that input buffer length is less than or equal to spare capacity.
+    #[inline(always)]
+    unsafe fn write_to_buffer_unchecked(&mut self, buf: &[u8]) {
+        debug_assert!(self.buf.len() + buf.len() <= self.buf.capacity());
+        let old_len = self.buf.len();
+        let buf_len = buf.len();
+        let src = buf.as_ptr();
+        let dst = self.buf.as_mut_ptr().add(old_len);
+        ptr::copy_nonoverlapping(src, dst, buf_len);
+        self.buf.set_len(old_len + buf_len);
     }
 }
 
@@ -456,7 +495,11 @@ impl<W: Write> Write for BufWriter<W> {
         // prevents pathological cases for other clients which *always* make writes of this size.
         // See #72919 and #79930 for more info and a breadcrumb trail.
         if self.buf.len() + buf.len() <= self.buf.capacity() && buf.len() != self.buf.capacity() {
-            self.buf.extend_from_slice(buf);
+            // SAFETY: safe by above conditional.
+            unsafe {
+                self.write_to_buffer_unchecked(buf);
+            }
+
             Ok(buf.len())
         } else {
             self.flush_and_write(buf)
@@ -471,7 +514,11 @@ impl<W: Write> Write for BufWriter<W> {
         // prevents pathological cases for other clients which *always* make writes of this size.
         // See #72919 and #79930 for more info and a breadcrumb trail.
         if self.buf.len() + buf.len() <= self.buf.capacity() && buf.len() != self.buf.capacity() {
-            self.buf.extend_from_slice(buf);
+            // SAFETY: safe by above conditional.
+            unsafe {
+                self.write_to_buffer_unchecked(buf);
+            }
+
             Ok(())
         } else {
             self.flush_and_write_all(buf)
@@ -492,7 +539,13 @@ impl<W: Write> Write for BufWriter<W> {
                 self.panicked = false;
                 r
             } else {
-                bufs.iter().for_each(|b| self.buf.extend_from_slice(b));
+                // SAFETY: We checked whether or not the spare capacity was large enough above. If
+                // it was, then we're safe already. If it wasn't, we flushed, making sufficient
+                // room for any input <= the buffer size, which includes this input.
+                unsafe {
+                    bufs.iter().for_each(|b| self.write_to_buffer_unchecked(b));
+                };
+
                 Ok(total_len)
             }
         } else {
@@ -511,7 +564,13 @@ impl<W: Write> Write for BufWriter<W> {
                     self.panicked = false;
                     return r;
                 } else {
-                    self.buf.extend_from_slice(buf);
+                    // SAFETY: We checked whether or not the spare capacity was large enough above.
+                    // If it was, then we're safe already. If it wasn't, we flushed, making
+                    // sufficient room for any input <= the buffer size, which includes this input.
+                    unsafe {
+                        self.write_to_buffer_unchecked(buf);
+                    }
+
                     buf.len()
                 }
             } else {
@@ -519,11 +578,15 @@ impl<W: Write> Write for BufWriter<W> {
             };
             debug_assert!(total_written != 0);
             for buf in iter {
-                if self.buf.len() + buf.len() > self.buf.capacity() {
-                    break;
-                } else {
-                    self.buf.extend_from_slice(buf);
+                if self.buf.len() + buf.len() <= self.buf.capacity() {
+                    // SAFETY: safe by above conditional.
+                    unsafe {
+                        self.write_to_buffer_unchecked(buf);
+                    }
+
                     total_written += buf.len();
+                } else {
+                    break;
                 }
             }
             Ok(total_written)
