@@ -2075,6 +2075,62 @@ fn infer_labelled_break_with_val() {
 }
 
 #[test]
+fn infer_labelled_block_break_with_val() {
+    check_infer(
+        r#"
+        fn default<T>() -> T { loop {} }
+        fn foo() {
+            let _x = 'outer: {
+                let inner = 'inner: {
+                    let i = default();
+                    if (break 'outer i) {
+                        break 'inner 5i8;
+                    } else if true {
+                        break 'inner 6;
+                    }
+                    break 'inner 'innermost: { 0 };
+                    42
+                };
+                break 'outer inner < 8;
+            };
+        }
+        "#,
+        expect![[r#"
+            21..32 '{ loop {} }': T
+            23..30 'loop {}': !
+            28..30 '{}': ()
+            42..381 '{     ...  }; }': ()
+            52..54 '_x': bool
+            65..378 '{     ...     }': bool
+            79..84 'inner': i8
+            95..339 '{     ...     }': i8
+            113..114 'i': bool
+            117..124 'default': fn default<bool>() -> bool
+            117..126 'default()': bool
+            140..270 'if (br...     }': ()
+            144..158 'break 'outer i': !
+            157..158 'i': bool
+            160..209 '{     ...     }': ()
+            178..194 'break ...er 5i8': !
+            191..194 '5i8': i8
+            215..270 'if tru...     }': ()
+            218..222 'true': bool
+            223..270 '{     ...     }': ()
+            241..255 'break 'inner 6': !
+            254..255 '6': i8
+            283..313 'break ... { 0 }': !
+            308..313 '{ 0 }': i8
+            310..311 '0': i8
+            327..329 '42': i8
+            349..371 'break ...er < 8': !
+            362..367 'inner': i8
+            362..371 'inner < 8': bool
+            370..371 '8': i8
+        "#]],
+    );
+}
+
+#[test]
 fn generic_default() {
     check_infer(
         r#"
