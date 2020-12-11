@@ -304,7 +304,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
     fn after_static_mem_initialized(
         _ecx: &mut InterpCx<'mir, 'tcx, Self>,
         _ptr: Pointer<Self::PointerTag>,
-        _size: Size
+        _size: Size,
     ) -> InterpResult<'tcx> {
         Ok(())
     }
