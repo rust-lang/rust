@@ -16,7 +16,7 @@ use std::{
     sync::Arc,
 };
 
-use base_db::ProcMacro;
+use base_db::{Env, ProcMacro};
 use tt::{SmolStr, Subtree};
 
 use crate::process::{ProcMacroProcessSrv, ProcMacroProcessThread};
@@ -44,12 +44,14 @@ impl base_db::ProcMacroExpander for ProcMacroProcessExpander {
         &self,
         subtree: &Subtree,
         attr: Option<&Subtree>,
+        env: &Env,
     ) -> Result<Subtree, tt::ExpansionError> {
         let task = ExpansionTask {
             macro_body: subtree.clone(),
             macro_name: self.name.to_string(),
             attributes: attr.cloned(),
             lib: self.dylib_path.to_path_buf(),
+            env: env.iter().map(|(k, v)| (k.to_string(), v.to_string())).collect(),
         };
 
         let result: ExpansionResult = self.process.send_task(msg::Request::ExpansionMacro(task))?;

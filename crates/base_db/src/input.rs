@@ -151,8 +151,12 @@ pub enum ProcMacroKind {
 }
 
 pub trait ProcMacroExpander: fmt::Debug + Send + Sync + RefUnwindSafe {
-    fn expand(&self, subtree: &Subtree, attrs: Option<&Subtree>)
-        -> Result<Subtree, ExpansionError>;
+    fn expand(
+        &self,
+        subtree: &Subtree,
+        attrs: Option<&Subtree>,
+        env: &Env,
+    ) -> Result<Subtree, ExpansionError>;
 }
 
 #[derive(Debug, Clone)]
@@ -417,6 +421,10 @@ impl Env {
 
     pub fn get(&self, env: &str) -> Option<String> {
         self.entries.get(env).cloned()
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = (&str, &str)> {
+        self.entries.iter().map(|(k, v)| (k.as_str(), v.as_str()))
     }
 }
 

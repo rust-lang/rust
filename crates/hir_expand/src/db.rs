@@ -271,7 +271,7 @@ fn expand_proc_macro(
         _ => unreachable!(),
     };
 
-    expander.expand(db, lazy_id, &macro_arg.0)
+    expander.expand(db, loc.krate, &macro_arg.0)
 }
 
 fn parse_or_expand(db: &dyn AstDatabase, file_id: HirFileId) -> Option<SyntaxNode> {

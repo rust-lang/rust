@@ -1,6 +1,6 @@
 //! Proc Macro Expander stub
 
-use crate::{db::AstDatabase, LazyMacroId};
+use crate::db::AstDatabase;
 use base_db::{CrateId, ProcMacroId};
 use tt::buffer::{Cursor, TokenBuffer};
 
@@ -32,7 +32,7 @@ impl ProcMacroExpander {
     pub fn expand(
         self,
         db: &dyn AstDatabase,
-        _id: LazyMacroId,
+        calling_crate: CrateId,
         tt: &tt::Subtree,
     ) -> Result<tt::Subtree, mbe::ExpandError> {
         match self.proc_macro_id {
@@ -47,7 +47,10 @@ impl ProcMacroExpander {
                 let tt = remove_derive_attrs(tt)
                     .ok_or_else(|| err!("Fail to remove derive for custom derive"))?;
 
-                proc_macro.expander.expand(&tt, None).map_err(mbe::ExpandError::from)
+                // Proc macros have access to the environment variables of the invoking crate.
+                let env = &krate_graph[calling_crate].env;
+
+                proc_macro.expander.expand(&tt, None, &env).map_err(mbe::ExpandError::from)
             }
             None => Err(mbe::ExpandError::UnresolvedProcMacro),
         }
