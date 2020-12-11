@@ -1,11 +1,13 @@
 //! FIXME: write short doc here
 
 use either::Either;
-use hir::{AssocItem, FieldSource, HasSource, InFile, ModuleSource};
+use hir::{
+    AssocItem, Documentation, FieldSource, HasAttrs, HasSource, HirFileId, InFile, ModuleSource,
+};
 use ide_db::base_db::{FileId, SourceDatabase};
 use ide_db::{defs::Definition, RootDatabase};
 use syntax::{
-    ast::{self, DocCommentsOwner, NameOwner},
+    ast::{self, NameOwner},
     match_ast, AstNode, SmolStr,
     SyntaxKind::{self, IDENT_PAT, TYPE_PARAM},
     TextRange,
@@ -43,7 +45,7 @@ pub struct NavigationTarget {
     pub kind: SyntaxKind,
     pub container_name: Option<SmolStr>,
     pub description: Option<String>,
-    pub docs: Option<String>,
+    pub docs: Option<Documentation>,
 }
 
 pub(crate) trait ToNav {
@@ -71,7 +73,7 @@ impl NavigationTarget {
                 frange.range,
                 src.value.syntax().kind(),
             );
-            res.docs = src.value.doc_comment_text();
+            res.docs = module.attrs(db).docs();
             res.description = src.value.short_label();
             return res;
         }
@@ -214,14 +216,14 @@ impl ToNavFromAst for hir::Trait {}
 
 impl<D> ToNav for D
 where
-    D: HasSource + ToNavFromAst + Copy,
-    D::Ast: ast::DocCommentsOwner + ast::NameOwner + ShortLabel,
+    D: HasSource + ToNavFromAst + Copy + HasAttrs,
+    D::Ast: ast::NameOwner + ShortLabel,
 {
     fn to_nav(&self, db: &RootDatabase) -> NavigationTarget {
         let src = self.source(db);
         let mut res =
             NavigationTarget::from_named(db, src.as_ref().map(|it| it as &dyn ast::NameOwner));
-        res.docs = src.value.doc_comment_text();
+        res.docs = self.docs(db);
         res.description = src.value.short_label();
         res
     }
@@ -274,7 +276,7 @@ impl ToNav for hir::Field {
         match &src.value {
             FieldSource::Named(it) => {
                 let mut res = NavigationTarget::from_named(db, src.with_value(it));
-                res.docs = it.doc_comment_text();
+                res.docs = self.docs(db);
                 res.description = it.short_label();
                 res
             }
@@ -298,7 +300,7 @@ impl ToNav for hir::MacroDef {
         log::debug!("nav target {:#?}", src.value.syntax());
         let mut res =
             NavigationTarget::from_named(db, src.as_ref().map(|it| it as &dyn ast::NameOwner));
-        res.docs = src.value.doc_comment_text();
+        res.docs = self.docs(db);
         res
     }
 }
@@ -374,26 +376,28 @@ impl ToNav for hir::TypeParam {
     }
 }
 
-pub(crate) fn docs_from_symbol(db: &RootDatabase, symbol: &FileSymbol) -> Option<String> {
+pub(crate) fn docs_from_symbol(db: &RootDatabase, symbol: &FileSymbol) -> Option<Documentation> {
     let parse = db.parse(symbol.file_id);
     let node = symbol.ptr.to_node(parse.tree().syntax());
+    let file_id = HirFileId::from(symbol.file_id);
 
-    match_ast! {
+    let it = match_ast! {
         match node {
-            ast::Fn(it) => it.doc_comment_text(),
-            ast::Struct(it) => it.doc_comment_text(),
-            ast::Enum(it) => it.doc_comment_text(),
-            ast::Trait(it) => it.doc_comment_text(),
-            ast::Module(it) => it.doc_comment_text(),
-            ast::TypeAlias(it) => it.doc_comment_text(),
-            ast::Const(it) => it.doc_comment_text(),
-            ast::Static(it) => it.doc_comment_text(),
-            ast::RecordField(it) => it.doc_comment_text(),
-            ast::Variant(it) => it.doc_comment_text(),
-            ast::MacroCall(it) => it.doc_comment_text(),
-            _ => None,
+            ast::Fn(it) => hir::Attrs::from_attrs_owner(db, InFile::new(file_id, &it)),
+            ast::Struct(it) => hir::Attrs::from_attrs_owner(db, InFile::new(file_id, &it)),
+            ast::Enum(it) => hir::Attrs::from_attrs_owner(db, InFile::new(file_id, &it)),
+            ast::Trait(it) => hir::Attrs::from_attrs_owner(db, InFile::new(file_id, &it)),
+            ast::Module(it) => hir::Attrs::from_attrs_owner(db, InFile::new(file_id, &it)),
+            ast::TypeAlias(it) => hir::Attrs::from_attrs_owner(db, InFile::new(file_id, &it)),
+            ast::Const(it) => hir::Attrs::from_attrs_owner(db, InFile::new(file_id, &it)),
+            ast::Static(it) => hir::Attrs::from_attrs_owner(db, InFile::new(file_id, &it)),
+            ast::RecordField(it) => hir::Attrs::from_attrs_owner(db, InFile::new(file_id, &it)),
+            ast::Variant(it) => hir::Attrs::from_attrs_owner(db, InFile::new(file_id, &it)),
+            ast::MacroCall(it) => hir::Attrs::from_attrs_owner(db, InFile::new(file_id, &it)),
+            _ => return None,
         }
-    }
+    };
+    it.docs()
 }
 
 /// Get a description of a symbol.
