@@ -17,6 +17,8 @@
 // compiler on ABIs and such, so we should be "good enough" for now and changes
 // to the `u128` ABI will be reflected here.
 #![allow(improper_ctypes, improper_ctypes_definitions)]
+// `mem::swap` cannot be used because it may generate references to memcpy in unoptimized code.
+#![allow(clippy::manual_swap)]
 
 // We disable #[no_mangle] for tests so that we can verify the test results
 // against the native compiler-rt implementations of the builtins.

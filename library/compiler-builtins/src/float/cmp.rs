@@ -63,25 +63,22 @@ fn cmp<F: Float>(a: F, b: F) -> Result {
     // a and b as signed integers as we would with a fp_ting-point compare.
     if a_srep & b_srep >= szero {
         if a_srep < b_srep {
-            return Result::Less;
+            Result::Less
         } else if a_srep == b_srep {
-            return Result::Equal;
+            Result::Equal
         } else {
-            return Result::Greater;
+            Result::Greater
         }
-    }
     // Otherwise, both are negative, so we need to flip the sense of the
     // comparison to get the correct result.  (This assumes a twos- or ones-
     // complement integer representation; if integers are represented in a
     // sign-magnitude representation, then this flip is incorrect).
-    else {
-        if a_srep > b_srep {
-            return Result::Less;
-        } else if a_srep == b_srep {
-            return Result::Equal;
-        } else {
-            return Result::Greater;
-        }
+    } else if a_srep > b_srep {
+        Result::Less
+    } else if a_srep == b_srep {
+        Result::Equal
+    } else {
+        Result::Greater
     }
 }
 

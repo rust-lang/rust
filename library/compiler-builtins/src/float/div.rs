@@ -1,3 +1,7 @@
+// The functions are complex with many branches, and explicit
+// `return`s makes it clear where function exit points are
+#![allow(clippy::needless_return)]
+
 use float::Float;
 use int::{CastInto, DInt, HInt, Int};
 

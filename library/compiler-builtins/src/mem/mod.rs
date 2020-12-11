@@ -1,3 +1,6 @@
+// Trying to satisfy clippy here is hopeless
+#![allow(clippy::style)]
+
 #[allow(warnings)]
 #[cfg(target_pointer_width = "16")]
 type c_int = i16;
