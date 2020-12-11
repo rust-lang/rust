@@ -37,7 +37,7 @@ use base_db::CrateId;
 /// original source files. It should not be used inside the HIR itself.
 #[derive(Debug)]
 pub(crate) struct SourceAnalyzer {
-    file_id: HirFileId,
+    pub(crate) file_id: HirFileId,
     pub(crate) resolver: Resolver,
     body: Option<Arc<Body>>,
     body_source_map: Option<Arc<BodySourceMap>>,

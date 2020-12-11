@@ -294,9 +294,8 @@ impl<'db> SemanticsImpl<'db> {
     }
 
     fn expand(&self, macro_call: &ast::MacroCall) -> Option<SyntaxNode> {
-        let macro_call = self.find_file(macro_call.syntax().clone()).with_value(macro_call);
-        let sa = self.analyze2(macro_call.map(|it| it.syntax()), None);
-        let file_id = sa.expand(self.db, macro_call)?;
+        let sa = self.analyze(macro_call.syntax());
+        let file_id = sa.expand(self.db, InFile::new(sa.file_id, macro_call))?;
         let node = self.db.parse_or_expand(file_id)?;
         self.cache(node.clone(), file_id);
         Some(node)
@@ -308,9 +307,8 @@ impl<'db> SemanticsImpl<'db> {
         hypothetical_args: &ast::TokenTree,
         token_to_map: SyntaxToken,
     ) -> Option<(SyntaxNode, SyntaxToken)> {
-        let macro_call =
-            self.find_file(actual_macro_call.syntax().clone()).with_value(actual_macro_call);
-        let sa = self.analyze2(macro_call.map(|it| it.syntax()), None);
+        let sa = self.analyze(actual_macro_call.syntax());
+        let macro_call = InFile::new(sa.file_id, actual_macro_call);
         let krate = sa.resolver.krate()?;
         let macro_call_id = macro_call.as_call_id(self.db.upcast(), krate, |path| {
             sa.resolver.resolve_path_as_macro(self.db.upcast(), &path)
@@ -326,10 +324,9 @@ impl<'db> SemanticsImpl<'db> {
     fn descend_into_macros(&self, token: SyntaxToken) -> SyntaxToken {
         let _p = profile::span("descend_into_macros");
         let parent = token.parent();
-        let parent = self.find_file(parent);
-        let sa = self.analyze2(parent.as_ref(), None);
+        let sa = self.analyze(&parent);
 
-        let token = successors(Some(parent.with_value(token)), |token| {
+        let token = successors(Some(InFile::new(sa.file_id, token)), |token| {
             self.db.check_canceled();
             let macro_call = token.value.ancestors().find_map(ast::MacroCall::cast)?;
             let tt = macro_call.token_tree()?;
@@ -486,15 +483,13 @@ impl<'db> SemanticsImpl<'db> {
     }
 
     fn scope(&self, node: &SyntaxNode) -> SemanticsScope<'db> {
-        let node = self.find_file(node.clone());
-        let resolver = self.analyze2(node.as_ref(), None).resolver;
-        SemanticsScope { db: self.db, file_id: node.file_id, resolver }
+        let sa = self.analyze(node);
+        SemanticsScope { db: self.db, file_id: sa.file_id, resolver: sa.resolver }
     }
 
     fn scope_at_offset(&self, node: &SyntaxNode, offset: TextSize) -> SemanticsScope<'db> {
-        let node = self.find_file(node.clone());
-        let resolver = self.analyze2(node.as_ref(), Some(offset)).resolver;
-        SemanticsScope { db: self.db, file_id: node.file_id, resolver }
+        let sa = self.analyze_with_offset(node, offset);
+        SemanticsScope { db: self.db, file_id: sa.file_id, resolver: sa.resolver }
     }
 
     fn scope_for_def(&self, def: Trait) -> SemanticsScope<'db> {
@@ -504,21 +499,24 @@ impl<'db> SemanticsImpl<'db> {
     }
 
     fn analyze(&self, node: &SyntaxNode) -> SourceAnalyzer {
-        let src = self.find_file(node.clone());
-        self.analyze2(src.as_ref(), None)
+        self.analyze_impl(node, None)
     }
+    fn analyze_with_offset(&self, node: &SyntaxNode, offset: TextSize) -> SourceAnalyzer {
+        self.analyze_impl(node, Some(offset))
+    }
+    fn analyze_impl(&self, node: &SyntaxNode, offset: Option<TextSize>) -> SourceAnalyzer {
+        let _p = profile::span("Semantics::analyze_impl");
+        let node = self.find_file(node.clone());
+        let node = node.as_ref();
 
-    fn analyze2(&self, src: InFile<&SyntaxNode>, offset: Option<TextSize>) -> SourceAnalyzer {
-        let _p = profile::span("Semantics::analyze2");
-
-        let container = match self.with_ctx(|ctx| ctx.find_container(src)) {
+        let container = match self.with_ctx(|ctx| ctx.find_container(node)) {
             Some(it) => it,
-            None => return SourceAnalyzer::new_for_resolver(Resolver::default(), src),
+            None => return SourceAnalyzer::new_for_resolver(Resolver::default(), node),
         };
 
         let resolver = match container {
             ChildContainer::DefWithBodyId(def) => {
-                return SourceAnalyzer::new_for_body(self.db, def, src, offset)
+                return SourceAnalyzer::new_for_body(self.db, def, node, offset)
             }
             ChildContainer::TraitId(it) => it.resolver(self.db.upcast()),
             ChildContainer::ImplId(it) => it.resolver(self.db.upcast()),
@@ -528,7 +526,7 @@ impl<'db> SemanticsImpl<'db> {
             ChildContainer::TypeAliasId(it) => it.resolver(self.db.upcast()),
             ChildContainer::GenericDefId(it) => it.resolver(self.db.upcast()),
         };
-        SourceAnalyzer::new_for_resolver(resolver, src)
+        SourceAnalyzer::new_for_resolver(resolver, node)
     }
 
     fn cache(&self, root_node: SyntaxNode, file_id: HirFileId) {
