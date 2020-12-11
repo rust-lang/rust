@@ -88,6 +88,7 @@ fn print_memory_usage(mut host: AnalysisHost, vfs: Vfs) {
     mem.push(("Remaining".into(), profile::memory_usage().allocated));
 
     for (name, bytes) in mem {
-        eprintln!("{:>8} {}", bytes, name);
+        // NOTE: Not a debug print, so avoid going through the `eprintln` defined above.
+        std::eprintln!("{:>8} {}", bytes, name);
     }
 }
