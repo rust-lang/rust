@@ -2442,7 +2442,7 @@ impl<'test> TestCx<'test> {
             })
         };
         let mut diff = Command::new("diff");
-        diff.args(&["-u", "-r"]).args(&[out_dir, &compare_dir]);
+        diff.args(&["-u", "-r"]).args(&[&compare_dir, out_dir]);
 
         let output = if let Some(pager) = pager {
             let diff_pid = diff.stdout(Stdio::piped()).spawn().expect("failed to run `diff`");

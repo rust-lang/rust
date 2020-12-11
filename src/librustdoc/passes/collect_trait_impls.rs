@@ -5,6 +5,7 @@ use crate::fold::DocFolder;
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_middle::ty::DefIdTree;
 use rustc_span::symbol::sym;
 
 crate const COLLECT_TRAIT_IMPLS: Pass = Pass {
@@ -90,7 +91,32 @@ crate fn collect_trait_impls(krate: Crate, cx: &DocContext<'_>) -> Crate {
         for &impl_node in cx.tcx.hir().trait_impls(trait_did) {
             let impl_did = cx.tcx.hir().local_def_id(impl_node);
             cx.tcx.sess.time("build_local_trait_impl", || {
-                inline::build_impl(cx, None, impl_did.to_def_id(), None, &mut new_items);
+                let mut extra_attrs = Vec::new();
+                let mut parent = cx.tcx.parent(impl_did.to_def_id());
+                while let Some(did) = parent {
+                    extra_attrs.extend(
+                        cx.tcx
+                            .get_attrs(did)
+                            .iter()
+                            .filter(|attr| attr.has_name(sym::doc))
+                            .filter(|attr| {
+                                if let Some([attr]) = attr.meta_item_list().as_deref() {
+                                    attr.has_name(sym::cfg)
+                                } else {
+                                    false
+                                }
+                            })
+                            .cloned(),
+                    );
+                    parent = cx.tcx.parent(did);
+                }
+                inline::build_impl(
+                    cx,
+                    None,
+                    impl_did.to_def_id(),
+                    Some(&extra_attrs),
+                    &mut new_items,
+                );
             });
         }
     }

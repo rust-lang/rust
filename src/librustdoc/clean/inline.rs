@@ -339,9 +339,6 @@ crate fn build_impl(
         return;
     }
 
-    let attrs = merge_attrs(cx, parent_module.into(), load_attrs(cx, did), attrs);
-    debug!("merged_attrs={:?}", attrs);
-
     let tcx = cx.tcx;
     let associated_trait = tcx.impl_trait_ref(did);
 
@@ -435,7 +432,7 @@ crate fn build_impl(
 
     debug!("build_impl: impl {:?} for {:?}", trait_.def_id(), for_.def_id());
 
-    ret.push(clean::Item::from_def_id_and_parts(
+    let mut item = clean::Item::from_def_id_and_parts(
         did,
         None,
         clean::ImplItem(clean::Impl {
@@ -450,7 +447,10 @@ crate fn build_impl(
             blanket_impl: None,
         }),
         cx,
-    ));
+    );
+    item.attrs = merge_attrs(cx, parent_module.into(), load_attrs(cx, did), attrs);
+    debug!("merged_attrs={:?}", item.attrs);
+    ret.push(item);
 }
 
 fn build_module(cx: &DocContext<'_>, did: DefId, visited: &mut FxHashSet<DefId>) -> clean::Module {
