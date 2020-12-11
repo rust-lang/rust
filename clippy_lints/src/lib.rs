@@ -1005,6 +1005,14 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(move || box matches::Matches::new(msrv));
     store.register_early_pass(move || box manual_non_exhaustive::ManualNonExhaustive::new(msrv));
     store.register_late_pass(move || box manual_strip::ManualStrip::new(msrv));
+    store.register_early_pass(move || box redundant_static_lifetimes::RedundantStaticLifetimes::new(msrv));
+    store.register_early_pass(move || box redundant_field_names::RedundantFieldNames::new(msrv));
+    store.register_late_pass(move || box checked_conversions::CheckedConversions::new(msrv));
+    store.register_late_pass(move || box mem_replace::MemReplace::new(msrv));
+    store.register_late_pass(move || box ranges::Ranges::new(msrv));
+    store.register_late_pass(move || box use_self::UseSelf::new(msrv));
+    store.register_late_pass(move || box missing_const_for_fn::MissingConstForFn::new(msrv));
+
     store.register_late_pass(|| box size_of_in_element_count::SizeOfInElementCount);
     store.register_late_pass(|| box map_clone::MapClone);
     store.register_late_pass(|| box map_err_ignore::MapErrIgnore);
@@ -1015,7 +1023,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box main_recursion::MainRecursion::default());
     store.register_late_pass(|| box lifetimes::Lifetimes);
     store.register_late_pass(|| box entry::HashMapPass);
-    store.register_late_pass(|| box ranges::Ranges);
     store.register_late_pass(|| box types::Casts);
     let type_complexity_threshold = conf.type_complexity_threshold;
     store.register_late_pass(move || box types::TypeComplexity::new(type_complexity_threshold));
@@ -1060,7 +1067,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box neg_multiply::NegMultiply);
     store.register_late_pass(|| box mem_discriminant::MemDiscriminant);
     store.register_late_pass(|| box mem_forget::MemForget);
-    store.register_late_pass(|| box mem_replace::MemReplace);
     store.register_late_pass(|| box arithmetic::Arithmetic::default());
     store.register_late_pass(|| box assign_ops::AssignOps);
     store.register_late_pass(|| box let_if_seq::LetIfSeq);
@@ -1082,7 +1088,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(move || box pass_by_ref_or_value);
     store.register_late_pass(|| box ref_option_ref::RefOptionRef);
     store.register_late_pass(|| box try_err::TryErr);
-    store.register_late_pass(|| box use_self::UseSelf);
     store.register_late_pass(|| box bytecount::ByteCount);
     store.register_late_pass(|| box infinite_iter::InfiniteIter);
     store.register_late_pass(|| box inline_fn_without_body::InlineFnWithoutBody);
@@ -1108,10 +1113,8 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box unnecessary_wraps::UnnecessaryWraps);
     store.register_late_pass(|| box types::RefToMut);
     store.register_late_pass(|| box assertions_on_constants::AssertionsOnConstants);
-    store.register_late_pass(|| box missing_const_for_fn::MissingConstForFn);
     store.register_late_pass(|| box transmuting_null::TransmutingNull);
     store.register_late_pass(|| box path_buf_push_overwrite::PathBufPushOverwrite);
-    store.register_late_pass(|| box checked_conversions::CheckedConversions);
     store.register_late_pass(|| box integer_division::IntegerDivision);
     store.register_late_pass(|| box inherent_to_string::InherentToString);
     let max_trait_bounds = conf.max_trait_bounds;
@@ -1140,7 +1143,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_early_pass(|| box redundant_else::RedundantElse);
     store.register_late_pass(|| box create_dir::CreateDir);
     store.register_early_pass(|| box needless_arbitrary_self_type::NeedlessArbitrarySelfType);
-    store.register_early_pass(|| box redundant_static_lifetimes::RedundantStaticLifetimes);
     store.register_late_pass(|| box cargo_common_metadata::CargoCommonMetadata);
     store.register_late_pass(|| box multiple_crate_versions::MultipleCrateVersions);
     store.register_late_pass(|| box wildcard_dependencies::WildcardDependencies);
@@ -1180,7 +1182,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box mut_mutex_lock::MutMutexLock);
     store.register_late_pass(|| box match_on_vec_items::MatchOnVecItems);
     store.register_late_pass(|| box manual_async_fn::ManualAsyncFn);
-    store.register_early_pass(|| box redundant_field_names::RedundantFieldNames);
     store.register_late_pass(|| box vec_resize_to_zero::VecResizeToZero);
     store.register_late_pass(|| box panic_in_result_fn::PanicInResultFn);
     let single_char_binding_names_threshold = conf.single_char_binding_names_threshold;
