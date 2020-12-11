@@ -248,8 +248,7 @@ environment variable:
   help identify latent aliasing issues in code that Miri accepts by default. You
   can recognize false positives by "<untagged>" occurring in the message -- this
   indicates a pointer that was cast from an integer, so Miri was unable to track
-  this pointer. Make sure to use a non-Windows target with this flag, as the
-  Windows runtime makes use of integer-pointer casts.
+  this pointer.
 
 Some native rustc `-Z` flags are also very relevant for Miri:
 
