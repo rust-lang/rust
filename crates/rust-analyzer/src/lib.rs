@@ -37,10 +37,8 @@ mod document;
 pub mod lsp_ext;
 pub mod config;
 
-use ide::AnalysisHost;
 use serde::de::DeserializeOwned;
 use std::fmt;
-use vfs::Vfs;
 
 pub use crate::{caps::server_capabilities, main_loop::main_loop};
 
@@ -72,22 +70,3 @@ impl fmt::Display for LspError {
 }
 
 impl std::error::Error for LspError {}
-
-fn print_memory_usage(mut host: AnalysisHost, vfs: Vfs) {
-    let mut mem = host.per_query_memory_usage();
-
-    let before = profile::memory_usage();
-    drop(vfs);
-    let vfs = before.allocated - profile::memory_usage().allocated;
-    mem.push(("VFS".into(), vfs));
-
-    let before = profile::memory_usage();
-    drop(host);
-    mem.push(("Unaccounted".into(), before.allocated - profile::memory_usage().allocated));
-
-    mem.push(("Remaining".into(), profile::memory_usage().allocated));
-
-    for (name, bytes) in mem {
-        eprintln!("{:>8} {}", bytes, name);
-    }
-}

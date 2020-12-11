@@ -10,8 +10,9 @@ mod ssr;
 use std::io::Read;
 
 use anyhow::Result;
-use ide::Analysis;
+use ide::{Analysis, AnalysisHost};
 use syntax::{AstNode, SourceFile};
+use vfs::Vfs;
 
 pub use self::{
     analysis_bench::{BenchCmd, BenchWhat, Position},
@@ -81,4 +82,24 @@ fn report_metric(metric: &str, value: u64, unit: &str) {
         return;
     }
     println!("METRIC:{}:{}:{}", metric, value, unit)
+}
+
+fn print_memory_usage(mut host: AnalysisHost, vfs: Vfs) {
+    let mut mem = host.per_query_memory_usage();
+
+    let before = profile::memory_usage();
+    drop(vfs);
+    let vfs = before.allocated - profile::memory_usage().allocated;
+    mem.push(("VFS".into(), vfs));
+
+    let before = profile::memory_usage();
+    drop(host);
+    mem.push(("Unaccounted".into(), before.allocated - profile::memory_usage().allocated));
+
+    mem.push(("Remaining".into(), profile::memory_usage().allocated));
+
+    for (name, bytes) in mem {
+        // NOTE: Not a debug print, so avoid going through the `eprintln` defined above.
+        eprintln!("{:>8} {}", bytes, name);
+    }
 }

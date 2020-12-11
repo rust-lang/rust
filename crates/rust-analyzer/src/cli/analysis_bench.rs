@@ -12,10 +12,7 @@ use ide_db::base_db::{
 };
 use vfs::AbsPathBuf;
 
-use crate::{
-    cli::{load_cargo::load_cargo, Verbosity},
-    print_memory_usage,
-};
+use crate::cli::{load_cargo::load_cargo, print_memory_usage, Verbosity};
 
 pub struct BenchCmd {
     pub path: PathBuf,
