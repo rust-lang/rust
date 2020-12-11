@@ -6,7 +6,7 @@ use hir::{AsAssocItem, Attrs, HirFileId, InFile, Semantics};
 use ide_db::RootDatabase;
 use itertools::Itertools;
 use syntax::{
-    ast::{self, AstNode, AttrsOwner, DocCommentsOwner, ModuleItemOwner, NameOwner},
+    ast::{self, AstNode, AttrsOwner, ModuleItemOwner, NameOwner},
     match_ast, SyntaxNode,
 };
 
@@ -118,6 +118,7 @@ fn runnable_fn(
 ) -> Option<Runnable> {
     let name_string = fn_def.name()?.text().to_string();
 
+    let attrs = Attrs::from_attrs_owner(sema.db, InFile::new(HirFileId::from(file_id), &fn_def));
     let kind = if name_string == "main" {
         RunnableKind::Bin
     } else {
@@ -162,14 +163,13 @@ fn runnable_fn(
             RunnableKind::Test { test_id, attr }
         } else if fn_def.has_atom_attr("bench") {
             RunnableKind::Bench { test_id }
-        } else if has_runnable_doc_test(&fn_def) {
+        } else if has_runnable_doc_test(&attrs) {
             RunnableKind::DocTest { test_id }
         } else {
             return None;
         }
     };
 
-    let attrs = Attrs::from_attrs_owner(sema.db, InFile::new(HirFileId::from(file_id), &fn_def));
     let cfg = attrs.cfg();
 
     let nav = if let RunnableKind::DocTest { .. } = kind {
@@ -189,13 +189,13 @@ fn runnable_struct(
     struct_def: ast::Struct,
     file_id: FileId,
 ) -> Option<Runnable> {
-    if !has_runnable_doc_test(&struct_def) {
-        return None;
-    }
     let name_string = struct_def.name()?.text().to_string();
 
     let attrs =
         Attrs::from_attrs_owner(sema.db, InFile::new(HirFileId::from(file_id), &struct_def));
+    if !has_runnable_doc_test(&attrs) {
+        return None;
+    }
     let cfg = attrs.cfg();
 
     let test_id = match sema.to_def(&struct_def).map(|def| def.module(sema.db)) {
@@ -240,11 +240,11 @@ const RUSTDOC_FENCE: &str = "```";
 const RUSTDOC_CODE_BLOCK_ATTRIBUTES_RUNNABLE: &[&str] =
     &["", "rust", "should_panic", "edition2015", "edition2018"];
 
-fn has_runnable_doc_test(def: &dyn DocCommentsOwner) -> bool {
-    def.doc_comment_text().map_or(false, |comments_text| {
+fn has_runnable_doc_test(attrs: &hir::Attrs) -> bool {
+    attrs.docs().map_or(false, |doc| {
         let mut in_code_block = false;
 
-        for line in comments_text.lines() {
+        for line in String::from(doc).lines() {
             if let Some(header) = line.strip_prefix(RUSTDOC_FENCE) {
                 in_code_block = !in_code_block;
 

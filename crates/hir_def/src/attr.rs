@@ -32,9 +32,9 @@ impl Documentation {
     }
 }
 
-impl Into<String> for Documentation {
-    fn into(self) -> String {
-        self.0
+impl From<Documentation> for String {
+    fn from(Documentation(string): Documentation) -> Self {
+        string
     }
 }
 
