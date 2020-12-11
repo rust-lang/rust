@@ -2876,7 +2876,6 @@ pub struct ForeignItemRef<'hir> {
     pub id: ForeignItemId,
     #[stable_hasher(project(name))]
     pub ident: Ident,
-    pub span: Span,
     pub vis: Visibility<'hir>,
 }
 

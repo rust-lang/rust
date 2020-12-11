@@ -814,14 +814,15 @@ pub fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, it: &'tcx hir::Item<'tcx>) {
                             (0, _) => ("const", "consts", None),
                             _ => ("type or const", "types or consts", None),
                         };
+                        let item_span = tcx.hir().span(item.id.hir_id());
                         struct_span_err!(
                             tcx.sess,
-                            item.span,
+                            item_span,
                             E0044,
                             "foreign items may not have {} parameters",
                             kinds,
                         )
-                        .span_label(item.span, &format!("can't have {} parameters", kinds))
+                        .span_label(item_span, &format!("can't have {} parameters", kinds))
                         .help(
                             // FIXME: once we start storing spans for type arguments, turn this
                             // into a suggestion.

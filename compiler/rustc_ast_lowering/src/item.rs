@@ -738,7 +738,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
         hir::ForeignItemRef {
             id: hir::ForeignItemId { def_id: self.lower_node_id(i.id, i.span).expect_owner() },
             ident: i.ident,
-            span: i.span,
             vis: self.lower_visibility(&i.vis, Some(i.id)),
         }
     }

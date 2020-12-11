@@ -992,7 +992,7 @@ pub fn walk_foreign_item_ref<'v, V: Visitor<'v>>(
     foreign_item_ref: &'v ForeignItemRef<'v>,
 ) {
     // N.B., deliberately force a compilation error if/when new fields are added.
-    let ForeignItemRef { id, ident, span: _, ref vis } = *foreign_item_ref;
+    let ForeignItemRef { id, ident, ref vis } = *foreign_item_ref;
     visitor.visit_nested_foreign_item(id);
     visitor.visit_ident(ident);
     visitor.visit_vis(vis);
