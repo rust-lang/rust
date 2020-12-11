@@ -76,7 +76,7 @@ use rustc_target::abi::Size;
 use crate::{
     ImmTy, Immediate, InterpResult, MPlaceTy, MemPlaceMeta, MiriEvalContext, MiriEvalContextExt,
     OpTy, Pointer, RangeMap, ScalarMaybeUninit, Tag, ThreadId, VClock, VTimestamp,
-    VectorIdx,
+    VectorIdx, MemoryKind, MiriMemoryKind
 };
 
 pub type AllocExtra = VClockAlloc;
@@ -674,6 +674,21 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
             Ok(())
         }
     }
+
+    fn reset_vector_clocks(
+        &mut self,
+        ptr: Pointer<Tag>,
+        size: Size
+    ) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+        if let Some(data_race) = &mut this.memory.extra.data_race {
+            if data_race.multi_threaded.get() {
+                let alloc_meta = this.memory.get_raw_mut(ptr.alloc_id)?.extra.data_race.as_mut().unwrap();
+                alloc_meta.reset_clocks(ptr.offset, size);
+            }
+        }
+        Ok(())
+    }
 }
 
 /// Vector clock metadata for a logical memory allocation.
@@ -688,7 +703,18 @@ pub struct VClockAlloc {
 
 impl VClockAlloc {
     /// Create a new data-race detector for newly allocated memory.
-    pub fn new_allocation(global: &MemoryExtra, len: Size, track_alloc: bool) -> VClockAlloc {
+    pub fn new_allocation(global: &MemoryExtra, len: Size, kind: MemoryKind<MiriMemoryKind>) -> VClockAlloc {
+        let track_alloc = match kind {
+            // User allocated and stack memory should track allocation.
+            MemoryKind::Machine(
+                MiriMemoryKind::Rust | MiriMemoryKind::C | MiriMemoryKind::WinHeap
+            ) | MemoryKind::Stack => true,
+            // Other global memory should trace races but be allocated at the 0 timestamp.
+            MemoryKind::Machine(
+                MiriMemoryKind::Global | MiriMemoryKind::Machine | MiriMemoryKind::Env |
+                MiriMemoryKind::ExternStatic | MiriMemoryKind::Tls
+            ) | MemoryKind::CallerLocation | MemoryKind::Vtable => false
+        };
         let (alloc_timestamp, alloc_index) = if track_alloc {
             let (alloc_index, clocks) = global.current_thread_state();
             let alloc_timestamp = clocks.clock[alloc_index];
@@ -701,6 +727,14 @@ impl VClockAlloc {
             alloc_ranges: RefCell::new(RangeMap::new(
                 len, MemoryCellClocks::new(alloc_timestamp, alloc_index)
             )),
+        }
+    }
+
+    fn reset_clocks(&mut self, offset: Size, len: Size) {
+        let mut alloc_ranges = self.alloc_ranges.borrow_mut();
+        for (_, range) in alloc_ranges.iter_mut(offset, len) {
+            // Reset the portion of the range
+            *range = MemoryCellClocks::new(0, VectorIdx::MAX_INDEX);
         }
     }
 

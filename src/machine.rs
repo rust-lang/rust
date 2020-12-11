@@ -478,27 +478,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
                 (None, Tag::Untagged)
             };
         let race_alloc = if let Some(data_race) = &memory_extra.data_race {
-            match kind {
-                // V-Table generation is lazy and so racy, so do not track races.
-                // Also V-Tables are read only so no data races can be occur.
-                // Must be disabled since V-Tables are initialized via interpreter
-                // writes on demand and can incorrectly cause the data-race detector
-                // to trigger.
-                MemoryKind::Vtable => None,
-                // User allocated and stack memory should track allocation.
-                MemoryKind::Machine(
-                    MiriMemoryKind::Rust | MiriMemoryKind::C | MiriMemoryKind::WinHeap
-                ) | MemoryKind::Stack => Some(
-                    data_race::AllocExtra::new_allocation(&data_race, alloc.size, true)
-                ),
-                // Other global memory should trace races but be allocated at the 0 timestamp.
-                MemoryKind::Machine(
-                    MiriMemoryKind::Global | MiriMemoryKind::Machine | MiriMemoryKind::Env |
-                    MiriMemoryKind::ExternStatic | MiriMemoryKind::Tls
-                ) | MemoryKind::CallerLocation => Some(
-                    data_race::AllocExtra::new_allocation(&data_race, alloc.size, false)
-                )
-            }
+            Some(data_race::AllocExtra::new_allocation(&data_race, alloc.size, kind))
         } else {
             None
         };
@@ -527,6 +507,18 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
             register_diagnostic(NonHaltingDiagnostic::FreedAlloc(id));
         }
 
+        Ok(())
+    }
+
+    
+    fn after_static_mem_initialized(
+        ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        ptr: Pointer<Self::PointerTag>,
+        size: Size,
+    ) -> InterpResult<'tcx> {
+        if ecx.memory.extra.data_race.is_some() {
+            ecx.reset_vector_clocks(ptr, size)?;
+        }
         Ok(())
     }
 
