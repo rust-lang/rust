@@ -7,7 +7,7 @@ use std::{
     sync::Arc,
 };
 
-use crate::body::LowerCtx;
+use crate::{body::LowerCtx, type_ref::LifetimeRef};
 use base_db::CrateId;
 use hir_expand::{
     hygiene::Hygiene,
@@ -145,7 +145,7 @@ pub struct AssociatedTypeBinding {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum GenericArg {
     Type(TypeRef),
-    // or lifetime...
+    Lifetime(LifetimeRef),
 }
 
 impl Path {

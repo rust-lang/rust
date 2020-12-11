@@ -89,7 +89,7 @@ impl<'a> SubstituteTypeParams<'a> {
         let substs = get_syntactic_substs(impl_def).unwrap_or_default();
         let generic_def: hir::GenericDef = trait_.into();
         let substs_by_param: FxHashMap<_, _> = generic_def
-            .params(source_scope.db)
+            .type_params(source_scope.db)
             .into_iter()
             // this is a trait impl, so we need to skip the first type parameter -- this is a bit hacky
             .skip(1)

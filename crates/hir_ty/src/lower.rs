@@ -12,7 +12,7 @@ use base_db::CrateId;
 use hir_def::{
     adt::StructKind,
     builtin_type::BuiltinType,
-    generics::{TypeParamProvenance, WherePredicate, WherePredicateTarget},
+    generics::{TypeParamProvenance, WherePredicate, WherePredicateTypeTarget},
     path::{GenericArg, Path, PathSegment, PathSegments},
     resolver::{HasResolver, Resolver, TypeNs},
     type_ref::{TypeBound, TypeRef},
@@ -171,7 +171,7 @@ impl Ty {
                 let inner_ty = Ty::from_hir(ctx, inner);
                 Ty::apply_one(TypeCtor::Slice, inner_ty)
             }
-            TypeRef::Reference(inner, mutability) => {
+            TypeRef::Reference(inner, _, mutability) => {
                 let inner_ty = Ty::from_hir(ctx, inner);
                 Ty::apply_one(TypeCtor::Ref(*mutability), inner_ty)
             }
@@ -555,7 +555,7 @@ fn substs_from_path_segment(
 
     substs.extend(iter::repeat(Ty::Unknown).take(parent_params));
 
-    let mut had_explicit_args = false;
+    let mut had_explicit_type_args = false;
 
     if let Some(generic_args) = &segment.args_and_bindings {
         if !generic_args.has_self_type {
@@ -568,10 +568,11 @@ fn substs_from_path_segment(
         for arg in generic_args.args.iter().skip(skip).take(expected_num) {
             match arg {
                 GenericArg::Type(type_ref) => {
-                    had_explicit_args = true;
+                    had_explicit_type_args = true;
                     let ty = Ty::from_hir(ctx, type_ref);
                     substs.push(ty);
                 }
+                GenericArg::Lifetime(_) => {}
             }
         }
     }
@@ -579,7 +580,7 @@ fn substs_from_path_segment(
     // handle defaults. In expression or pattern path segments without
     // explicitly specified type arguments, missing type arguments are inferred
     // (i.e. defaults aren't used).
-    if !infer_args || had_explicit_args {
+    if !infer_args || had_explicit_type_args {
         if let Some(def_generic) = def_generic {
             let defaults = ctx.db.generic_defaults(def_generic);
             assert_eq!(total_len, defaults.len());
@@ -657,7 +658,7 @@ impl TraitRef {
     ) -> Option<TraitRef> {
         match bound {
             TypeBound::Path(path) => TraitRef::from_path(ctx, path, Some(self_ty)),
-            TypeBound::Error => None,
+            TypeBound::Lifetime(_) | TypeBound::Error => None,
         }
     }
 }
@@ -667,22 +668,30 @@ impl GenericPredicate {
         ctx: &'a TyLoweringContext<'a>,
         where_predicate: &'a WherePredicate,
     ) -> impl Iterator<Item = GenericPredicate> + 'a {
-        let self_ty = match &where_predicate.target {
-            WherePredicateTarget::TypeRef(type_ref) => Ty::from_hir(ctx, type_ref),
-            WherePredicateTarget::TypeParam(param_id) => {
-                let generic_def = ctx.resolver.generic_def().expect("generics in scope");
-                let generics = generics(ctx.db.upcast(), generic_def);
-                let param_id = hir_def::TypeParamId { parent: generic_def, local_id: *param_id };
-                match ctx.type_param_mode {
-                    TypeParamLoweringMode::Placeholder => Ty::Placeholder(param_id),
-                    TypeParamLoweringMode::Variable => {
-                        let idx = generics.param_idx(param_id).expect("matching generics");
-                        Ty::Bound(BoundVar::new(DebruijnIndex::INNERMOST, idx))
+        match where_predicate {
+            WherePredicate::TypeBound { target, bound } => {
+                let self_ty = match target {
+                    WherePredicateTypeTarget::TypeRef(type_ref) => Ty::from_hir(ctx, type_ref),
+                    WherePredicateTypeTarget::TypeParam(param_id) => {
+                        let generic_def = ctx.resolver.generic_def().expect("generics in scope");
+                        let generics = generics(ctx.db.upcast(), generic_def);
+                        let param_id =
+                            hir_def::TypeParamId { parent: generic_def, local_id: *param_id };
+                        match ctx.type_param_mode {
+                            TypeParamLoweringMode::Placeholder => Ty::Placeholder(param_id),
+                            TypeParamLoweringMode::Variable => {
+                                let idx = generics.param_idx(param_id).expect("matching generics");
+                                Ty::Bound(BoundVar::new(DebruijnIndex::INNERMOST, idx))
+                            }
+                        }
                     }
-                }
+                };
+                GenericPredicate::from_type_bound(ctx, bound, self_ty)
+                    .collect::<Vec<_>>()
+                    .into_iter()
             }
-        };
-        GenericPredicate::from_type_bound(ctx, &where_predicate.bound, self_ty)
+            WherePredicate::Lifetime { .. } => vec![].into_iter(),
+        }
     }
 
     pub(crate) fn from_type_bound<'a>(
@@ -707,7 +716,7 @@ fn assoc_type_bindings_from_type_bound<'a>(
 ) -> impl Iterator<Item = GenericPredicate> + 'a {
     let last_segment = match bound {
         TypeBound::Path(path) => path.segments().last(),
-        TypeBound::Error => None,
+        TypeBound::Error | TypeBound::Lifetime(_) => None,
     };
     last_segment
         .into_iter()
@@ -872,11 +881,16 @@ pub(crate) fn generic_predicates_for_param_query(
     resolver
         .where_predicates_in_scope()
         // we have to filter out all other predicates *first*, before attempting to lower them
-        .filter(|pred| match &pred.target {
-            WherePredicateTarget::TypeRef(type_ref) => {
-                Ty::from_hir_only_param(&ctx, type_ref) == Some(param_id)
-            }
-            WherePredicateTarget::TypeParam(local_id) => *local_id == param_id.local_id,
+        .filter(|pred| match pred {
+            WherePredicate::TypeBound {
+                target: WherePredicateTypeTarget::TypeRef(type_ref),
+                ..
+            } => Ty::from_hir_only_param(&ctx, type_ref) == Some(param_id),
+            WherePredicate::TypeBound {
+                target: WherePredicateTypeTarget::TypeParam(local_id),
+                ..
+            } => *local_id == param_id.local_id,
+            WherePredicate::Lifetime { .. } => false,
         })
         .flat_map(|pred| {
             GenericPredicate::from_where_predicate(&ctx, pred)

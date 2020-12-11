@@ -1,6 +1,7 @@
 //! HIR for references to types. Paths in these are not yet resolved. They can
 //! be directly created from an ast::TypeRef, without further queries.
-use syntax::ast::{self};
+use hir_expand::name::Name;
+use syntax::{ast, SyntaxToken};
 
 use crate::{body::LowerCtx, path::Path};
 
@@ -58,7 +59,7 @@ pub enum TypeRef {
     Tuple(Vec<TypeRef>),
     Path(Path),
     RawPtr(Box<TypeRef>, Mutability),
-    Reference(Box<TypeRef>, Mutability),
+    Reference(Box<TypeRef>, Option<LifetimeRef>, Mutability),
     Array(Box<TypeRef> /*, Expr*/),
     Slice(Box<TypeRef>),
     /// A fn pointer. Last element of the vector is the return type.
@@ -70,10 +71,29 @@ pub enum TypeRef {
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
+pub struct LifetimeRef {
+    pub name: Name,
+}
+
+impl LifetimeRef {
+    pub(crate) fn new_name(name: Name) -> Self {
+        LifetimeRef { name }
+    }
+
+    pub(crate) fn from_token(token: SyntaxToken) -> Self {
+        LifetimeRef { name: Name::new_lifetime(&token) }
+    }
+
+    pub fn missing() -> LifetimeRef {
+        LifetimeRef { name: Name::missing() }
+    }
+}
+
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub enum TypeBound {
     Path(Path),
-    // also for<> bounds
-    // also Lifetimes
+    // ForLifetime(Vec<LifetimeRef>, Path), FIXME ForLifetime
+    Lifetime(LifetimeRef),
     Error,
 }
 
@@ -107,8 +127,9 @@ impl TypeRef {
             }
             ast::Type::RefType(inner) => {
                 let inner_ty = TypeRef::from_ast_opt(&ctx, inner.ty());
+                let lifetime = inner.lifetime_token().map(|t| LifetimeRef::from_token(t));
                 let mutability = Mutability::from_mutable(inner.mut_token().is_some());
-                TypeRef::Reference(Box::new(inner_ty), mutability)
+                TypeRef::Reference(Box::new(inner_ty), lifetime, mutability)
             }
             ast::Type::InferType(_inner) => TypeRef::Placeholder,
             ast::Type::FnPtrType(inner) => {
@@ -163,14 +184,14 @@ impl TypeRef {
                     types.iter().for_each(|t| go(t, f))
                 }
                 TypeRef::RawPtr(type_ref, _)
-                | TypeRef::Reference(type_ref, _)
+                | TypeRef::Reference(type_ref, ..)
                 | TypeRef::Array(type_ref)
                 | TypeRef::Slice(type_ref) => go(&type_ref, f),
                 TypeRef::ImplTrait(bounds) | TypeRef::DynTrait(bounds) => {
                     for bound in bounds {
                         match bound {
                             TypeBound::Path(path) => go_path(path, f),
-                            TypeBound::Error => (),
+                            TypeBound::Lifetime(_) | TypeBound::Error => (),
                         }
                     }
                 }
@@ -186,8 +207,12 @@ impl TypeRef {
             for segment in path.segments().iter() {
                 if let Some(args_and_bindings) = segment.args_and_bindings {
                     for arg in &args_and_bindings.args {
-                        let crate::path::GenericArg::Type(type_ref) = arg;
-                        go(type_ref, f);
+                        match arg {
+                            crate::path::GenericArg::Type(type_ref) => {
+                                go(type_ref, f);
+                            }
+                            crate::path::GenericArg::Lifetime(_) => {}
+                        }
                     }
                     for binding in &args_and_bindings.bindings {
                         if let Some(type_ref) = &binding.type_ref {
@@ -196,7 +221,7 @@ impl TypeRef {
                         for bound in &binding.bounds {
                             match bound {
                                 TypeBound::Path(path) => go_path(path, f),
-                                TypeBound::Error => (),
+                                TypeBound::Lifetime(_) | TypeBound::Error => (),
                             }
                         }
                     }
@@ -232,7 +257,10 @@ impl TypeBound {
                 };
                 TypeBound::Path(path)
             }
-            ast::TypeBoundKind::ForType(_) | ast::TypeBoundKind::Lifetime(_) => TypeBound::Error,
+            ast::TypeBoundKind::ForType(_) => TypeBound::Error, // FIXME ForType
+            ast::TypeBoundKind::Lifetime(lifetime) => {
+                TypeBound::Lifetime(LifetimeRef::from_token(lifetime))
+            }
         }
     }
 

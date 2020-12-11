@@ -15,7 +15,7 @@ use super::AssociatedTypeBinding;
 use crate::{
     body::LowerCtx,
     path::{GenericArg, GenericArgs, ModPath, Path, PathKind},
-    type_ref::{TypeBound, TypeRef},
+    type_ref::{LifetimeRef, TypeBound, TypeRef},
 };
 
 pub(super) use lower_use::lower_use_tree;
@@ -170,8 +170,14 @@ pub(super) fn lower_generic_args(
                     bindings.push(AssociatedTypeBinding { name, type_ref, bounds });
                 }
             }
-            // Lifetimes and constants are ignored for now.
-            ast::GenericArg::LifetimeArg(_) | ast::GenericArg::ConstArg(_) => (),
+            ast::GenericArg::LifetimeArg(lifetime_arg) => {
+                if let Some(lifetime) = lifetime_arg.lifetime_token() {
+                    let lifetime_ref = LifetimeRef::from_token(lifetime);
+                    args.push(GenericArg::Lifetime(lifetime_ref))
+                }
+            }
+            // constants are ignored for now.
+            ast::GenericArg::ConstArg(_) => (),
         }
     }
 

@@ -848,6 +848,7 @@ impl<'a> InferenceContext<'a> {
                         let ty = self.make_ty(type_ref);
                         substs.push(ty);
                     }
+                    GenericArg::Lifetime(_) => {}
                 }
             }
         };

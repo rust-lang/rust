@@ -29,8 +29,8 @@ use base_db::{salsa, CrateId};
 use hir_def::{
     expr::ExprId,
     type_ref::{Mutability, Rawness},
-    AdtId, AssocContainerId, DefWithBodyId, GenericDefId, HasModule, Lookup, TraitId, TypeAliasId,
-    TypeParamId,
+    AdtId, AssocContainerId, DefWithBodyId, GenericDefId, HasModule, LifetimeParamId, Lookup,
+    TraitId, TypeAliasId, TypeParamId,
 };
 use itertools::Itertools;
 
@@ -51,6 +51,12 @@ pub use lower::{
 pub use traits::{InEnvironment, Obligation, ProjectionPredicate, TraitEnvironment};
 
 pub use chalk_ir::{BoundVar, DebruijnIndex};
+
+#[derive(Clone, PartialEq, Eq, Debug, Hash)]
+pub enum Lifetime {
+    Parameter(LifetimeParamId),
+    Static,
+}
 
 /// A type constructor or type name: this might be something like the primitive
 /// type `bool`, a struct like `Vec`, or things like function pointers or

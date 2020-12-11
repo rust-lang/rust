@@ -38,7 +38,7 @@ impl Name {
     }
 
     pub fn new_lifetime(lt: &syntax::SyntaxToken) -> Name {
-        assert!(lt.kind() == syntax::SyntaxKind::LIFETIME);
+        assert_eq!(lt.kind(), syntax::SyntaxKind::LIFETIME);
         Name(Repr::Text(lt.text().clone()))
     }
 
@@ -250,6 +250,8 @@ pub mod known {
     pub const SELF_PARAM: super::Name = super::Name::new_inline("self");
     pub const SELF_TYPE: super::Name = super::Name::new_inline("Self");
 
+    pub const STATIC_LIFETIME: super::Name = super::Name::new_inline("'static");
+
     #[macro_export]
     macro_rules! name {
         (self) => {
@@ -257,6 +259,9 @@ pub mod known {
         };
         (Self) => {
             $crate::name::known::SELF_TYPE
+        };
+        ('static) => {
+            $crate::name::known::STATIC_LIFETIME
         };
         ($ident:ident) => {
             $crate::name::known::$ident
