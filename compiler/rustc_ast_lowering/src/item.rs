@@ -732,7 +732,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
         hir::ForeignItemRef {
             id: hir::ForeignItemId { hir_id: self.lower_node_id(i.id, i.span) },
             ident: i.ident,
-            span: i.span,
             vis: self.lower_visibility(&i.vis, Some(i.id)),
         }
     }
