@@ -59,11 +59,10 @@ fn verify(tomlfile: &Path, libfile: &Path, bad: &mut bool) {
             break;
         }
 
-        let mut parts = line.splitn(2, '=');
-        let krate = parts.next().unwrap().trim();
-        if parts.next().is_none() {
-            continue;
-        }
+        let krate = match line.split_once('=') {
+            None => continue,
+            Some((krate, _)) => krate.trim(),
+        };
 
         // Don't worry about depending on core/std while not writing `extern crate
         // core/std` -- that's intentional.

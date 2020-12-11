@@ -397,12 +397,9 @@ impl Options {
             matches
                 .opt_strs("default-setting")
                 .iter()
-                .map(|s| {
-                    let mut kv = s.splitn(2, '=');
-                    // never panics because `splitn` always returns at least one element
-                    let k = kv.next().unwrap().to_string();
-                    let v = kv.next().unwrap_or("true").to_string();
-                    (k, v)
+                .map(|s| match s.split_once('=') {
+                    None => (s.clone(), "true".to_string()),
+                    Some((k, v)) => (k.to_string(), v.to_string()),
                 })
                 .collect(),
         ];
@@ -707,11 +704,9 @@ fn parse_extern_html_roots(
 ) -> Result<BTreeMap<String, String>, &'static str> {
     let mut externs = BTreeMap::new();
     for arg in &matches.opt_strs("extern-html-root-url") {
-        let mut parts = arg.splitn(2, '=');
-        let name = parts.next().ok_or("--extern-html-root-url must not be empty")?;
-        let url = parts.next().ok_or("--extern-html-root-url must be of the form name=url")?;
+        let (name, url) =
+            arg.split_once('=').ok_or("--extern-html-root-url must be of the form name=url")?;
         externs.insert(name.to_string(), url.to_string());
     }
-
     Ok(externs)
 }

@@ -23,7 +23,7 @@ pub fn check(root: &Path, bad: &mut bool) {
         }
 
         // Extract source value.
-        let source = line.splitn(2, '=').nth(1).unwrap().trim();
+        let source = line.split_once('=').unwrap().1.trim();
 
         // Ensure source is allowed.
         if !ALLOWED_SOURCES.contains(&&*source) {
