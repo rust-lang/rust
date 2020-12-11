@@ -15,6 +15,7 @@ pub mod sub;
 #[doc(hidden)]
 pub trait Float:
     Copy
+    + core::fmt::Debug
     + PartialEq
     + PartialOrd
     + ops::AddAssign

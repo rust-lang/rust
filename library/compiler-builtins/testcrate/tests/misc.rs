@@ -126,22 +126,39 @@ fn float_extend_arm() {
     extend!(f32, f64, __extendsfdf2vfp);
 }
 
-// This doesn't quite work because of issues related to
+// This is approximate because of issues related to
 // https://github.com/rust-lang/rust/issues/73920.
-// TODO how do we resolve this?
-/*
+// TODO how do we resolve this indeterminacy?
 macro_rules! pow {
-    ($($f:ty, $fn:ident);*;) => {
+    ($($f:ty, $tolerance:expr, $fn:ident);*;) => {
         $(
             fuzz_float_2(N, |x: $f, y: $f| {
-                if !(Float::is_subnormal(x) || Float::is_subnormal(y) || x < 0. || y < 0.) {
-                    let n = y as i32;
+                if !(Float::is_subnormal(x) || Float::is_subnormal(y) || x.is_nan()) {
+                    let n = y.to_bits() & !<$f as Float>::SIGNIFICAND_MASK;
+                    let n = (n as <$f as Float>::SignedInt) >> <$f as Float>::SIGNIFICAND_BITS;
+                    let n = n as i32;
                     let tmp0: $f = x.powi(n);
                     let tmp1: $f = $fn(x, n);
-                    if tmp0 != tmp1 {
+                    let (a, b) = if tmp0 < tmp1 {
+                        (tmp0, tmp1)
+                    } else {
+                        (tmp1, tmp0)
+                    };
+                    let good = {
+                        if a == b {
+                            // handles infinity equality
+                            true
+                        } else if a < $tolerance {
+                            b < $tolerance
+                        } else {
+                            let quo = b / a;
+                            (quo < (1. + $tolerance)) && (quo > (1. - $tolerance))
+                        }
+                    };
+                    if !good {
                         panic!(
                             "{}({}, {}): std: {}, builtins: {}",
-                            stringify!($fn), x, y, tmp0, tmp1
+                            stringify!($fn), x, n, tmp0, tmp1
                         );
                     }
                 }
@@ -150,21 +167,13 @@ macro_rules! pow {
     };
 }
 
+#[cfg(not(all(target_arch = "x86", not(target_feature = "sse"))))]
 #[test]
 fn float_pow() {
     use compiler_builtins::float::pow::{__powidf2, __powisf2};
 
     pow!(
-        f32, __powisf2;
-        f64, __powidf2;
+        f32, 1e-4, __powisf2;
+        f64, 1e-12, __powidf2;
     );
-}
-*/
-
-// placeholder test to make sure basic functionality works
-#[test]
-fn float_pow() {
-    use compiler_builtins::float::pow::{__powidf2, __powisf2};
-    assert_eq!(__powisf2(-3.0, 3), -27.0);
-    assert_eq!(__powidf2(-3.0, 3), -27.0);
 }
