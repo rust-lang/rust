@@ -19,12 +19,13 @@
 #[inline(always)]
 #[cfg(target_feature = "ermsb")]
 pub unsafe fn copy_forward(dest: *mut u8, src: *const u8, count: usize) {
+    // FIXME: Use the Intel syntax once we drop LLVM 9 support on rust-lang/rust.
     asm!(
-        "rep movsb [rdi], [rsi]",
+        "repe movsb (%rsi), (%rdi)",
         inout("rcx") count => _,
         inout("rdi") dest => _,
         inout("rsi") src => _,
-        options(nostack, preserves_flags)
+        options(att_syntax, nostack, preserves_flags)
     );
 }
 
@@ -33,15 +34,16 @@ pub unsafe fn copy_forward(dest: *mut u8, src: *const u8, count: usize) {
 pub unsafe fn copy_forward(dest: *mut u8, src: *const u8, count: usize) {
     let qword_count = count >> 3;
     let byte_count = count & 0b111;
+    // FIXME: Use the Intel syntax once we drop LLVM 9 support on rust-lang/rust.
     asm!(
-        "rep movsq [rdi], [rsi]",
-        "mov ecx, {byte_count:e}",
-        "rep movsb [rdi], [rsi]",
+        "repe movsq (%rsi), (%rdi)",
+        "mov {byte_count:e}, %ecx",
+        "repe movsb (%rsi), (%rdi)",
         byte_count = in(reg) byte_count,
         inout("rcx") qword_count => _,
         inout("rdi") dest => _,
         inout("rsi") src => _,
-        options(nostack, preserves_flags)
+        options(att_syntax, nostack, preserves_flags)
     );
 }
 
@@ -49,31 +51,33 @@ pub unsafe fn copy_forward(dest: *mut u8, src: *const u8, count: usize) {
 pub unsafe fn copy_backward(dest: *mut u8, src: *const u8, count: usize) {
     let qword_count = count >> 3;
     let byte_count = count & 0b111;
+    // FIXME: Use the Intel syntax once we drop LLVM 9 support on rust-lang/rust.
     asm!(
         "std",
-        "rep movsq [rdi], [rsi]",
-        "mov ecx, {byte_count:e}",
-        "add rdi, 7",
-        "add rsi, 7",
-        "rep movsb [rdi], [rsi]",
+        "repe movsq (%rsi), (%rdi)",
+        "movl {byte_count:e}, %ecx",
+        "addq $7, %rdi",
+        "addq $7, %rsi",
+        "repe movsb (%rsi), (%rdi)",
         "cld",
         byte_count = in(reg) byte_count,
         inout("rcx") qword_count => _,
         inout("rdi") dest.add(count).wrapping_sub(8) => _,
         inout("rsi") src.add(count).wrapping_sub(8) => _,
-        options(nostack)
+        options(att_syntax, nostack)
     );
 }
 
 #[inline(always)]
 #[cfg(target_feature = "ermsb")]
 pub unsafe fn set_bytes(dest: *mut u8, c: u8, count: usize) {
+    // FIXME: Use the Intel syntax once we drop LLVM 9 support on rust-lang/rust.
     asm!(
-        "rep stosb [rdi], al",
+        "repe stosb %al, (%rdi)",
         inout("rcx") count => _,
         inout("rdi") dest => _,
         inout("al") c => _,
-        options(nostack, preserves_flags)
+        options(att_syntax, nostack, preserves_flags)
     )
 }
 
@@ -82,14 +86,15 @@ pub unsafe fn set_bytes(dest: *mut u8, c: u8, count: usize) {
 pub unsafe fn set_bytes(dest: *mut u8, c: u8, count: usize) {
     let qword_count = count >> 3;
     let byte_count = count & 0b111;
+    // FIXME: Use the Intel syntax once we drop LLVM 9 support on rust-lang/rust.
     asm!(
-        "rep stosq [rdi], rax",
-        "mov ecx, {byte_count:e}",
-        "rep stosb [rdi], al",
+        "repe stosq %rax, (%rdi)",
+        "mov {byte_count:e}, %ecx",
+        "repe stosb %al, (%rdi)",
         byte_count = in(reg) byte_count,
         inout("rcx") qword_count => _,
         inout("rdi") dest => _,
         in("rax") (c as u64) * 0x0101010101010101,
-        options(nostack, preserves_flags)
+        options(att_syntax, nostack, preserves_flags)
     );
 }
