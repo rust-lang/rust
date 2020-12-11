@@ -356,6 +356,18 @@ impl<'a> TtIter<'a> {
             ExpandResult { value: _, err: Some(_) } => None,
         }
     }
+
+    pub(crate) fn eat_char(&mut self, c: char) -> Option<tt::TokenTree> {
+        let mut fork = self.clone();
+        match fork.expect_char(c) {
+            Ok(_) => {
+                let tt = self.next().cloned();
+                *self = fork;
+                tt
+            }
+            Err(_) => None,
+        }
+    }
 }
 
 pub(super) fn match_repeat(
@@ -447,10 +459,22 @@ fn match_meta_var(kind: &str, input: &mut TtIter) -> ExpandResult<Option<Fragmen
                     .expect_lifetime()
                     .map(|tt| Some(tt))
                     .map_err(|()| err!("expected lifetime")),
-                "literal" => input
-                    .expect_literal()
-                    .map(|literal| Some(tt::Leaf::from(literal.clone()).into()))
-                    .map_err(|()| err!()),
+                "literal" => {
+                    let neg = input.eat_char('-');
+                    input
+                        .expect_literal()
+                        .map(|literal| {
+                            let lit = tt::Leaf::from(literal.clone());
+                            match neg {
+                                None => Some(lit.into()),
+                                Some(neg) => Some(tt::TokenTree::Subtree(tt::Subtree {
+                                    delimiter: None,
+                                    token_trees: vec![neg, lit.into()],
+                                })),
+                            }
+                        })
+                        .map_err(|()| err!())
+                }
                 // `vis` is optional
                 "vis" => match input.eat_vis() {
                     Some(vis) => Ok(Some(vis)),
