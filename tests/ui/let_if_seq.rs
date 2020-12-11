@@ -2,7 +2,8 @@
     unused_variables,
     unused_assignments,
     clippy::similar_names,
-    clippy::blacklisted_name
+    clippy::blacklisted_name,
+    clippy::shared_code_in_if_blocks
 )]
 #![warn(clippy::useless_let_if_seq)]
 

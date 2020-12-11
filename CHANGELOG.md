@@ -2455,6 +2455,7 @@ Released 2018-09-13
 [`shadow_reuse`]: https://rust-lang.github.io/rust-clippy/master/index.html#shadow_reuse
 [`shadow_same`]: https://rust-lang.github.io/rust-clippy/master/index.html#shadow_same
 [`shadow_unrelated`]: https://rust-lang.github.io/rust-clippy/master/index.html#shadow_unrelated
+[`shared_code_in_if_blocks`]: https://rust-lang.github.io/rust-clippy/master/index.html#shared_code_in_if_blocks
 [`short_circuit_statement`]: https://rust-lang.github.io/rust-clippy/master/index.html#short_circuit_statement
 [`should_assert_eq`]: https://rust-lang.github.io/rust-clippy/master/index.html#should_assert_eq
 [`should_implement_trait`]: https://rust-lang.github.io/rust-clippy/master/index.html#should_implement_trait

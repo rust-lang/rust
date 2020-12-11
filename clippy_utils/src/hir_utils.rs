@@ -483,6 +483,15 @@ pub fn over<X>(left: &[X], right: &[X], mut eq_fn: impl FnMut(&X, &X) -> bool) -
     left.len() == right.len() && left.iter().zip(right).all(|(x, y)| eq_fn(x, y))
 }
 
+/// Counts how many elements of the slices are equal as per `eq_fn`.
+pub fn count_eq<X: Sized>(
+    left: &mut dyn Iterator<Item = X>,
+    right: &mut dyn Iterator<Item = X>,
+    mut eq_fn: impl FnMut(&X, &X) -> bool,
+) -> usize {
+    left.zip(right).take_while(|(l, r)| eq_fn(l, r)).count()
+}
+
 /// Checks if two expressions evaluate to the same value, and don't contain any side effects.
 pub fn eq_expr_value(cx: &LateContext<'_>, left: &Expr<'_>, right: &Expr<'_>) -> bool {
     SpanlessEq::new(cx).deny_side_effects().eq_expr(left, right)
