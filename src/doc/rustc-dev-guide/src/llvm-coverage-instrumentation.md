@@ -75,7 +75,7 @@ code branches, and injects additional [`Coverage`][coverage-statement]
 statements into the `BasicBlock`s.
 
 A MIR `Coverage` statement is a virtual instruction that indicates a counter
-should be incremented when its adjacent statemeents are executed, to count
+should be incremented when its adjacent statements are executed, to count
 a span of code ([`CodeRegion`][code-region]). It counts the number of times a
 branch is executed, and also specifies the exact location of that code span in
 the Rust source code.
@@ -181,7 +181,7 @@ MIR `Statement` into some backend-specific action or instruction.
             CoverageKind::Unreachable => {
                 ...
 ```
-_[code snippet trimmed for brevity]_
+_code snippet trimmed for brevity_
 
 > The function name `instrprof_increment()` is taken from the LLVM intrinsic
 call of the same name ([`llvm.instrprof.increment`][llvm-instrprof-increment]),
@@ -206,7 +206,7 @@ the last remaining step is to inject the LLVM IR variables that hold the
 static data for the coverage map.
 
 `rustc_codegen_llvm`'s [`compile_codegen_unit()`][compile-codegen-unit] calls
-[`coverageinfo_finalze()`][coverageinfo-finalize],
+[`coverageinfo_finalize()`][coverageinfo-finalize],
 which delegates its implementation to the
 [`rustc_codegen_llvm::coverageinfo::mapgen`][mapgen-finalize] module.
 
@@ -247,9 +247,9 @@ pub fn finalize<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>) {
             mapgen.write_coverage_mapping(expressions, counter_regions, coverage_mapping_buffer);
         });
 ```
-_[code snippet trimmed for brevity]_
+_code snippet trimmed for brevity_
 
-One noteable step, performed by `mapgen::finalize()` before processing the
+One notable step, performed by `mapgen::finalize()` before processing the
 `Instance`s and their `FunctionCoverage`s, is the call to
 [`add_unreachable_functions()`][add-unreachable-coverage].
 
@@ -262,7 +262,7 @@ The set of unreachable functions is computed via the set difference of all MIR
 `DefId`s (`tcx` query `mir_keys`) minus the codegenned `DefId`s
 (`tcx` query `collect_and_partition_mono_items`). `add_unreachable_functions()`
 computes the set of unreachable functions, queries the `tcx` for the
-previously-computed `CodeRegions`, for each unreachabe MIR, and adds those code
+previously-computed `CodeRegions`, for each unreachable MIR, and adds those code
 regions to one of the non-generic codegenned functions (non-generic avoids
 potentially injecting the unreachable coverage multiple times for multiple
 instantiations).
@@ -382,7 +382,7 @@ fundamental control flow, with many of the same
 For anyone that knows how to work with the [MIR, as a CFG][mir-dev-guide], the
 `CoverageGraph` will be familiar, and can be used in much the same way.
 The nodes of the `CoverageGraph` are `BasicCoverageBlock`s (BCBs), which
-index into an `IndexVec` of `BasicCoverageBlockData`. This is analagous
+index into an `IndexVec` of `BasicCoverageBlockData`. This is analogous
 to the MIR CFG of `BasicBlock`s that index `BasicBlockData`.
 
 Each `BasicCoverageBlockData` captures one or more MIR `BasicBlock`s,
@@ -450,7 +450,7 @@ The nodes contain information in sections:
 its `BasicCoverageBlockData`).
 2. The first content section shows the assigned `Counter` or `Expression` for
 each contiguous section of code. (There may be more than one `Expression`
-incremented by the same `Counter` for discontigous sections of code representing
+incremented by the same `Counter` for discontiguous sections of code representing
 the same sequential actions.) Note the code is represented by the line and
 column ranges (for example: `52:28-52:33`, representing the original source
 line 52, for columns 28-33). These are followed by the MIR `Statement` or
@@ -489,7 +489,7 @@ an initial set of `CoverageSpan`s from the `Span`s associated with each MIR
 
 The final stage of `generate_coverage_spans()` is handled by
 [`to_refined_spans()`][to-refined-spans], which iterates through the `CoverageSpan`s,
-merges and de-duplicates them, and returns an optimial, minimal set of `CoverageSpan`s
+merges and de-duplicates them, and returns an optimal, minimal set of `CoverageSpan`s
 that can be used to assign coverage `Counter`s or `Expression`s, one-for-one.
 
 An visual, interactive representation of the final `CoverageSpan`s can be
