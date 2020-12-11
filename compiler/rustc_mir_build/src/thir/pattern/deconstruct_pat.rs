@@ -403,129 +403,141 @@ impl Slice {
         self.kind.arity()
     }
 
-    /// The exhaustiveness-checking paper does not include any details on
-    /// checking variable-length slice patterns. However, they may be
-    /// matched by an infinite collection of fixed-length array patterns.
-    ///
-    /// Checking the infinite set directly would take an infinite amount
-    /// of time. However, it turns out that for each finite set of
-    /// patterns `P`, all sufficiently large array lengths are equivalent:
-    ///
-    /// Each slice `s` with a "sufficiently-large" length `l ≥ L` that applies
-    /// to exactly the subset `Pₜ` of `P` can be transformed to a slice
-    /// `sₘ` for each sufficiently-large length `m` that applies to exactly
-    /// the same subset of `P`.
-    ///
-    /// Because of that, each witness for reachability-checking of one
-    /// of the sufficiently-large lengths can be transformed to an
-    /// equally-valid witness of any other length, so we only have
-    /// to check slices of the "minimal sufficiently-large length"
-    /// and less.
-    ///
-    /// Note that the fact that there is a *single* `sₘ` for each `m`
-    /// not depending on the specific pattern in `P` is important: if
-    /// you look at the pair of patterns
-    ///     `[true, ..]`
-    ///     `[.., false]`
-    /// Then any slice of length ≥1 that matches one of these two
-    /// patterns can be trivially turned to a slice of any
-    /// other length ≥1 that matches them and vice-versa,
-    /// but the slice of length 2 `[false, true]` that matches neither
-    /// of these patterns can't be turned to a slice from length 1 that
-    /// matches neither of these patterns, so we have to consider
-    /// slices from length 2 there.
-    ///
-    /// Now, to see that that length exists and find it, observe that slice
-    /// patterns are either "fixed-length" patterns (`[_, _, _]`) or
-    /// "variable-length" patterns (`[_, .., _]`).
-    ///
-    /// For fixed-length patterns, all slices with lengths *longer* than
-    /// the pattern's length have the same outcome (of not matching), so
-    /// as long as `L` is greater than the pattern's length we can pick
-    /// any `sₘ` from that length and get the same result.
-    ///
-    /// For variable-length patterns, the situation is more complicated,
-    /// because as seen above the precise value of `sₘ` matters.
-    ///
-    /// However, for each variable-length pattern `p` with a prefix of length
-    /// `plₚ` and suffix of length `slₚ`, only the first `plₚ` and the last
-    /// `slₚ` elements are examined.
-    ///
-    /// Therefore, as long as `L` is positive (to avoid concerns about empty
-    /// types), all elements after the maximum prefix length and before
-    /// the maximum suffix length are not examined by any variable-length
-    /// pattern, and therefore can be added/removed without affecting
-    /// them - creating equivalent patterns from any sufficiently-large
-    /// length.
-    ///
-    /// Of course, if fixed-length patterns exist, we must be sure
-    /// that our length is large enough to miss them all, so
-    /// we can pick `L = max(max(FIXED_LEN)+1, max(PREFIX_LEN) + max(SUFFIX_LEN))`
-    ///
-    /// for example, with the above pair of patterns, all elements
-    /// but the first and last can be added/removed, so any
-    /// witness of length ≥2 (say, `[false, false, true]`) can be
-    /// turned to a witness from any other length ≥2.
+    /// Split this slice, as described at the top of the file.
     fn split<'p, 'tcx>(self, pcx: PatCtxt<'_, 'p, 'tcx>) -> SmallVec<[Constructor<'tcx>; 1]> {
         let (self_prefix, self_suffix) = match self.kind {
             VarLen(self_prefix, self_suffix) => (self_prefix, self_suffix),
             _ => return smallvec![Slice(self)],
         };
 
-        let head_ctors = pcx.matrix.head_ctors(pcx.cx).filter(|c| !c.is_wildcard());
-
-        let mut max_prefix_len = self_prefix;
-        let mut max_suffix_len = self_suffix;
-        let mut max_fixed_len = 0;
-
-        for ctor in head_ctors {
-            if let Slice(slice) = ctor {
-                match slice.kind {
-                    FixedLen(len) => {
-                        max_fixed_len = cmp::max(max_fixed_len, len);
-                    }
-                    VarLen(prefix, suffix) => {
-                        max_prefix_len = cmp::max(max_prefix_len, prefix);
-                        max_suffix_len = cmp::max(max_suffix_len, suffix);
-                    }
-                }
-            } else {
-                bug!("unexpected ctor for slice type: {:?}", ctor);
-            }
-        }
-
-        // For diagnostics, we keep the prefix and suffix lengths separate, so in the case
-        // where `max_fixed_len + 1` is the largest, we adapt `max_prefix_len` accordingly,
-        // so that `L = max_prefix_len + max_suffix_len`.
-        if max_fixed_len + 1 >= max_prefix_len + max_suffix_len {
-            // The subtraction can't overflow thanks to the above check.
-            // The new `max_prefix_len` is also guaranteed to be larger than its previous
-            // value.
-            max_prefix_len = max_fixed_len + 1 - max_suffix_len;
-        }
-
-        let final_slice = VarLen(max_prefix_len, max_suffix_len);
-        let final_slice = Slice::new(self.array_len, final_slice);
-        match self.array_len {
-            Some(_) => smallvec![Slice(final_slice)],
-            None => {
-                // `self` originally covered the range `(self.arity()..infinity)`. We split that
-                // range into two: lengths smaller than `final_slice.arity()` are treated
-                // independently as fixed-lengths slices, and lengths above are captured by
-                // `final_slice`.
-                let smaller_lengths = (self.arity()..final_slice.arity()).map(FixedLen);
-                smaller_lengths
-                    .map(|kind| Slice::new(self.array_len, kind))
-                    .chain(Some(final_slice))
-                    .map(Slice)
-                    .collect()
-            }
-        }
+        let mut split_self = SplitVarLenSlice::new(self_prefix, self_suffix, self.array_len);
+        let slices = pcx.matrix.head_ctors(pcx.cx).filter_map(|c| c.as_slice()).map(|s| s.kind);
+        split_self.split(slices);
+        split_self.iter().map(Slice).collect()
     }
 
     /// See `Constructor::is_covered_by`
     fn is_covered_by(self, other: Self) -> bool {
         other.kind.covers_length(self.arity())
+    }
+}
+
+/// The exhaustiveness-checking paper does not include any details on checking variable-length
+/// slice patterns. However, they may be matched by an infinite collection of fixed-length array
+/// patterns.
+///
+/// Checking the infinite set directly would take an infinite amount of time. However, it turns out
+/// that for each finite set of patterns `P`, all sufficiently large array lengths are equivalent:
+///
+/// Each slice `s` with a "sufficiently-large" length `l ≥ L` that applies to exactly the subset
+/// `Pₜ` of `P` can be transformed to a slice `sₘ` for each sufficiently-large length `m` that
+/// applies to exactly the same subset of `P`.
+///
+/// Because of that, each witness for reachability-checking of one of the sufficiently-large
+/// lengths can be transformed to an equally-valid witness of any other length, so we only have to
+/// check slices of the "minimal sufficiently-large length" and less.
+///
+/// Note that the fact that there is a *single* `sₘ` for each `m` not depending on the specific
+/// pattern in `P` is important: if you look at the pair of patterns `[true, ..]` `[.., false]`
+/// Then any slice of length ≥1 that matches one of these two patterns can be trivially turned to a
+/// slice of any other length ≥1 that matches them and vice-versa, but the slice of length 2
+/// `[false, true]` that matches neither of these patterns can't be turned to a slice from length 1
+/// that matches neither of these patterns, so we have to consider slices from length 2 there.
+///
+/// Now, to see that that length exists and find it, observe that slice patterns are either
+/// "fixed-length" patterns (`[_, _, _]`) or "variable-length" patterns (`[_, .., _]`).
+///
+/// For fixed-length patterns, all slices with lengths *longer* than the pattern's length have the
+/// same outcome (of not matching), so as long as `L` is greater than the pattern's length we can
+/// pick any `sₘ` from that length and get the same result.
+///
+/// For variable-length patterns, the situation is more complicated, because as seen above the
+/// precise value of `sₘ` matters.
+///
+/// However, for each variable-length pattern `p` with a prefix of length `plₚ` and suffix of
+/// length `slₚ`, only the first `plₚ` and the last `slₚ` elements are examined.
+///
+/// Therefore, as long as `L` is positive (to avoid concerns about empty types), all elements after
+/// the maximum prefix length and before the maximum suffix length are not examined by any
+/// variable-length pattern, and therefore can be added/removed without affecting them - creating
+/// equivalent patterns from any sufficiently-large length.
+///
+/// Of course, if fixed-length patterns exist, we must be sure that our length is large enough to
+/// miss them all, so we can pick `L = max(max(FIXED_LEN)+1, max(PREFIX_LEN) + max(SUFFIX_LEN))`
+///
+/// `max_slice` below will be made to have arity `L`.
+///
+/// For example, with the above pair of patterns, all elements but the first and last can be
+/// added/removed, so any witness of length ≥2 (say, `[false, false, true]`) can be turned to a
+/// witness from any other length ≥2.
+#[derive(Debug)]
+struct SplitVarLenSlice {
+    /// If the type is an array, this is its size.
+    array_len: Option<u64>,
+    /// The arity of the input slice.
+    arity: u64,
+    /// The smallest slice bigger than any slice seen. `max_slice.arity()` is the length `L`
+    /// described above.
+    max_slice: SliceKind,
+}
+
+impl SplitVarLenSlice {
+    fn new(prefix: u64, suffix: u64, array_len: Option<u64>) -> Self {
+        SplitVarLenSlice { array_len, arity: prefix + suffix, max_slice: VarLen(prefix, suffix) }
+    }
+
+    /// Pass a set of slices relative to which to split this one.
+    fn split(&mut self, slices: impl Iterator<Item = SliceKind>) {
+        let (max_prefix_len, max_suffix_len) = match &mut self.max_slice {
+            VarLen(prefix, suffix) => (prefix, suffix),
+            FixedLen(_) => return, // No need to split
+        };
+        // We grow `self.max_slice` to be larger than all slices encountered, as described above.
+        // For diagnostics, we keep the prefix and suffix lengths separate, but grow them so that
+        // `L = max_prefix_len + max_suffix_len`.
+        let mut max_fixed_len = 0;
+        for slice in slices {
+            match slice {
+                FixedLen(len) => {
+                    max_fixed_len = cmp::max(max_fixed_len, len);
+                }
+                VarLen(prefix, suffix) => {
+                    *max_prefix_len = cmp::max(*max_prefix_len, prefix);
+                    *max_suffix_len = cmp::max(*max_suffix_len, suffix);
+                }
+            }
+        }
+        // We want `L = max(L, max_fixed_len + 1)`, modulo the fact that we keep prefix and
+        // suffix separate.
+        if max_fixed_len + 1 >= *max_prefix_len + *max_suffix_len {
+            // The subtraction can't overflow thanks to the above check.
+            // The new `max_prefix_len` is larger than its previous value.
+            *max_prefix_len = max_fixed_len + 1 - *max_suffix_len;
+        }
+
+        // We cap the arity of `max_slice` at the array size.
+        match self.array_len {
+            Some(len) if self.max_slice.arity() >= len => self.max_slice = FixedLen(len),
+            _ => {}
+        }
+    }
+
+    /// Iterate over the partition of this slice.
+    fn iter<'a>(&'a self) -> impl Iterator<Item = Slice> + Captures<'a> {
+        let smaller_lengths = match self.array_len {
+            // The only admissible fixed-length slice is one of the array size. Whether `max_slice`
+            // is fixed-length or variable-length, it will be the only relevant slice to output
+            // here.
+            Some(_) => (0..0), // empty range
+            // We cover all arities in the range `(self.arity..infinity)`. We split that range into
+            // two: lengths smaller than `max_slice.arity()` are treated independently as
+            // fixed-lengths slices, and lengths above are captured by `max_slice`.
+            None => self.arity..self.max_slice.arity(),
+        };
+        smaller_lengths
+            .map(FixedLen)
+            .chain(once(self.max_slice))
+            .map(move |kind| Slice::new(self.array_len, kind))
     }
 }
 
