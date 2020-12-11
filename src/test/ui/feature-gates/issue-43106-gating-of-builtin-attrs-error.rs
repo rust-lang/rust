@@ -1,6 +1,3 @@
-//~ NOTE: not an `extern crate` item
-//~^ NOTE: not a function or static
-//~^^ NOTE: not a function or closure
 // This is testing whether various builtin attributes signals an
 // error or warning when put in "weird" places.
 //
@@ -12,6 +9,9 @@
 
 #![macro_export]
 //~^ ERROR: `macro_export` attribute cannot be used at crate level
+//~^^ NOTE: not an `extern crate` item
+//~^^^ NOTE: not a function or static
+//~^^^^ NOTE: not a function or closure
 #![main]
 //~^ ERROR: `main` attribute cannot be used at crate level
 #![start]

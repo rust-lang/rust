@@ -1,6 +1,3 @@
-//~ NOTE not a function
-//~^ NOTE not a foreign function or static
-//~^^ NOTE not a function or static
 // This test enumerates as many compiler-builtin ungated attributes as
 // possible (that is, all the mutually compatible ones), and checks
 // that we get "expected" (*) warnings for each in the various weird
@@ -37,6 +34,9 @@
 // ignore-tidy-linelength
 
 #![feature(test, plugin_registrar)]
+//~^ NOTE not a function
+//~^^ NOTE not a foreign function or static
+//~^^^ NOTE not a function or static
 #![warn(unused_attributes, unknown_lints)]
 //~^ NOTE the lint level is defined here
 //~| NOTE the lint level is defined here

@@ -35,8 +35,15 @@ LL |     fn f();
 error: attribute should be applied to a function definition
   --> $DIR/naked-invalid-attr.rs:6:1
    |
-LL | #![naked]
-   | ^^^^^^^^^
+LL | / #![feature(asm)]
+LL | | #![feature(naked_functions)]
+LL | | #![naked]
+   | | ^^^^^^^^^
+LL | |
+...  |
+LL | |     #[naked] || {};
+LL | | }
+   | |_- not a function definition
 
 error: aborting due to 5 previous errors
 

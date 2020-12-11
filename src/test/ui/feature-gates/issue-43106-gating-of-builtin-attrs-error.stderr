@@ -116,23 +116,50 @@ LL | | }
 error: attribute should be applied to an `extern crate` item
   --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:26:1
    |
-LL | #![no_link]
-   | ^^^^^^^^^^^
+LL | / #![macro_export]
+LL | |
+LL | |
+LL | |
+...  |
+LL | | #![no_link]
+   | | ^^^^^^^^^^^
+...  |
+LL | |
+LL | | fn main() {}
+   | |____________- not an `extern crate` item
 
 error: attribute should be applied to a function or static
   --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:28:1
    |
-LL | #![export_name = "2200"]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^
+LL | / #![macro_export]
+LL | |
+LL | |
+LL | |
+...  |
+LL | | #![export_name = "2200"]
+   | | ^^^^^^^^^^^^^^^^^^^^^^^^
+...  |
+LL | |
+LL | | fn main() {}
+   | |____________- not a function or static
 
 error[E0518]: attribute should be applied to function or closure
   --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:30:1
    |
-LL | #![inline]
-   | ^^^^^^^^^^
+LL | / #![macro_export]
+LL | |
+LL | |
+LL | |
+...  |
+LL | | #![inline]
+   | | ^^^^^^^^^^
+...  |
+LL | |
+LL | | fn main() {}
+   | |____________- not a function or closure
 
 error: `macro_export` attribute cannot be used at crate level
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:13:1
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:10:1
    |
 LL | #![macro_export]
    | ^^^^^^^^^^^^^^^^
