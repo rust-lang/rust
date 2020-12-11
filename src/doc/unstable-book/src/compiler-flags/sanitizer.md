@@ -31,7 +31,12 @@ with runtime flag `ASAN_OPTIONS=detect_leaks=1` on macOS.
 
 AddressSanitizer is supported on the following targets:
 
+* `aarch64-apple-darwin`
+* `aarch64-fuchsia`
+* `aarch64-unknown-linux-gnu`
 * `x86_64-apple-darwin`
+* `x86_64-fuchsia`
+* `x86_64-unknown-freebsd`
 * `x86_64-unknown-linux-gnu`
 
 AddressSanitizer works with non-instrumented code although it will impede its
@@ -169,10 +174,26 @@ Shadow byte legend (one shadow byte represents 8 application bytes):
 ==39249==ABORTING
 ```
 
+# LeakSanitizer
+
+LeakSanitizer is run-time memory leak detector.
+
+LeakSanitizer is supported on the following targets:
+
+* `aarch64-apple-darwin`
+* `aarch64-unknown-linux-gnu`
+* `x86_64-apple-darwin`
+* `x86_64-unknown-linux-gnu`
+
 # MemorySanitizer
 
-MemorySanitizer is detector of uninitialized reads. It is only supported on the
-`x86_64-unknown-linux-gnu` target.
+MemorySanitizer is detector of uninitialized reads.
+
+MemorySanitizer is supported on the following targets:
+
+* `aarch64-unknown-linux-gnu`
+* `x86_64-unknown-freebsd`
+* `x86_64-unknown-linux-gnu`
 
 MemorySanitizer requires all program code to be instrumented. C/C++ dependencies
 need to be recompiled using Clang with `-fsanitize=memory` option. Failing to
@@ -219,7 +240,10 @@ $ cargo run -Zbuild-std --target x86_64-unknown-linux-gnu
 ThreadSanitizer is a data race detection tool. It is supported on the following
 targets:
 
+* `aarch64-apple-darwin`
+* `aarch64-unknown-linux-gnu`
 * `x86_64-apple-darwin`
+* `x86_64-unknown-freebsd`
 * `x86_64-unknown-linux-gnu`
 
 To work correctly ThreadSanitizer needs to be "aware" of all synchronization
