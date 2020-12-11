@@ -1571,7 +1571,7 @@ h4 > .notable-traits {
 
 	#main > table:not(.table-display) td {
 		word-break: break-word;
-		min-width: 10%;
+		width: 50%;
 	}
 
 	.search-container > div {
