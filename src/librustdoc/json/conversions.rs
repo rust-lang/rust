@@ -175,7 +175,7 @@ impl From<clean::ItemKind> for ItemEnum {
             TraitAliasItem(t) => ItemEnum::TraitAliasItem(t.into()),
             MethodItem(m, _) => ItemEnum::MethodItem(m.into()),
             TyMethodItem(m) => ItemEnum::MethodItem(m.into()),
-            ImplItem(i) => ItemEnum::ImplItem(i.into()),
+            ImplItem(box i) => ItemEnum::ImplItem(i.into()),
             StaticItem(s) => ItemEnum::StaticItem(s.into()),
             ForeignStaticItem(s) => ItemEnum::StaticItem(s.into()),
             ForeignTypeItem => ItemEnum::ForeignTypeItem,

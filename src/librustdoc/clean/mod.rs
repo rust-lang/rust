@@ -2088,7 +2088,7 @@ fn clean_impl(impl_: &hir::Item<'_>, cx: &DocContext<'_>) -> Vec<Item> {
         _ => None,
     });
     let make_item = |trait_: Option<Type>, for_: Type, items: Vec<Item>| {
-        let kind = ImplItem(Impl {
+        let kind = ImplItem(box Impl {
             unsafety,
             generics: generics.clean(cx),
             provided_trait_methods: provided.clone(),

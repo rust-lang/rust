@@ -126,7 +126,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                     stability: None,
                     const_stability: None,
                     deprecation: None,
-                    kind: ImplItem(Impl {
+                    kind: ImplItem(box Impl {
                         unsafety: hir::Unsafety::Normal,
                         generics: new_generics,
                         provided_trait_methods: Default::default(),
