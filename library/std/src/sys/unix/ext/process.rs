@@ -180,6 +180,13 @@ pub trait ExitStatusExt {
     #[unstable(feature = "unix_process_wait_more", issue = "none")]
     fn core_dumped(&self) -> bool;
 
+    /// If the process was stopped by a signal, returns that signal.
+    ///
+    /// Ie, if `WIFSTOPPED`, this returns `WSTOPSIG`.  This is only possible if the status came from
+    /// a `wait` system call which was passed `WUNTRACED`, was then converted into an `ExitStatus`.
+    #[unstable(feature = "unix_process_wait_more", issue = "none")]
+    fn stopped_signal(&self) -> Option<i32>;
+
     /// Returns the underlying raw `wait` status.
     #[unstable(feature = "unix_process_wait_more", issue = "none")]
     fn into_raw(self) -> i32;
@@ -197,6 +204,10 @@ impl ExitStatusExt for process::ExitStatus {
 
     fn core_dumped(&self) -> bool {
         self.as_inner().core_dumped()
+    }
+
+    fn stopped_signal(&self) -> Option<i32> {
+        self.as_inner().stopped_signal()
     }
 
     fn into_raw(self) -> i32 {
