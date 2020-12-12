@@ -65,7 +65,6 @@ use std::ptr;
 use std::str;
 
 pub use self::sty::BoundRegionKind::*;
-pub use self::sty::InferTy::*;
 pub use self::sty::RegionKind;
 pub use self::sty::RegionKind::*;
 pub use self::sty::TyKind::*;
@@ -74,13 +73,14 @@ pub use self::sty::{BoundRegion, BoundRegionKind, EarlyBoundRegion, FreeRegion, 
 pub use self::sty::{CanonicalPolyFnSig, FnSig, GenSig, PolyFnSig, PolyGenSig};
 pub use self::sty::{ClosureSubsts, GeneratorSubsts, TypeAndMut, UpvarSubsts};
 pub use self::sty::{ClosureSubstsParts, GeneratorSubstsParts};
-pub use self::sty::{ConstVid, FloatVid, IntVid, RegionVid, TyVid};
-pub use self::sty::{ExistentialPredicate, InferTy, ParamConst, ParamTy, ProjectionTy};
+pub use self::sty::{ConstVid, RegionVid};
+pub use self::sty::{ExistentialPredicate, ParamConst, ParamTy, ProjectionTy};
 pub use self::sty::{ExistentialProjection, PolyExistentialProjection};
 pub use self::sty::{ExistentialTraitRef, PolyExistentialTraitRef};
 pub use self::sty::{PolyTraitRef, TraitRef, TyKind};
 pub use crate::ty::diagnostics::*;
-pub use rustc_type_ir::{DebruijnIndex, TypeFlags, INNERMOST};
+pub use rustc_type_ir::InferTy::*;
+pub use rustc_type_ir::*;
 
 pub use self::binding::BindingMode;
 pub use self::binding::BindingMode::*;
@@ -421,14 +421,6 @@ impl Visibility {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, TyDecodable, TyEncodable, HashStable)]
-pub enum Variance {
-    Covariant,     // T<A> <: T<B> iff A <: B -- e.g., function return type
-    Invariant,     // T<A> <: T<B> iff B == A -- e.g., type of mutable cell
-    Contravariant, // T<A> <: T<B> iff B <: A -- e.g., function param type
-    Bivariant,     // T<A> <: T<B>            -- e.g., unused type parameter
-}
-
 /// The crate variances map is computed during typeck and contains the
 /// variance of every item in the local crate. You should not use it
 /// directly, because to do so will make your pass dependent on the
@@ -441,66 +433,6 @@ pub struct CrateVariancesMap<'tcx> {
     /// of its generics. If an item has no generics, it will have no
     /// entry.
     pub variances: FxHashMap<DefId, &'tcx [ty::Variance]>,
-}
-
-impl Variance {
-    /// `a.xform(b)` combines the variance of a context with the
-    /// variance of a type with the following meaning. If we are in a
-    /// context with variance `a`, and we encounter a type argument in
-    /// a position with variance `b`, then `a.xform(b)` is the new
-    /// variance with which the argument appears.
-    ///
-    /// Example 1:
-    ///
-    ///     *mut Vec<i32>
-    ///
-    /// Here, the "ambient" variance starts as covariant. `*mut T` is
-    /// invariant with respect to `T`, so the variance in which the
-    /// `Vec<i32>` appears is `Covariant.xform(Invariant)`, which
-    /// yields `Invariant`. Now, the type `Vec<T>` is covariant with
-    /// respect to its type argument `T`, and hence the variance of
-    /// the `i32` here is `Invariant.xform(Covariant)`, which results
-    /// (again) in `Invariant`.
-    ///
-    /// Example 2:
-    ///
-    ///     fn(*const Vec<i32>, *mut Vec<i32)
-    ///
-    /// The ambient variance is covariant. A `fn` type is
-    /// contravariant with respect to its parameters, so the variance
-    /// within which both pointer types appear is
-    /// `Covariant.xform(Contravariant)`, or `Contravariant`. `*const
-    /// T` is covariant with respect to `T`, so the variance within
-    /// which the first `Vec<i32>` appears is
-    /// `Contravariant.xform(Covariant)` or `Contravariant`. The same
-    /// is true for its `i32` argument. In the `*mut T` case, the
-    /// variance of `Vec<i32>` is `Contravariant.xform(Invariant)`,
-    /// and hence the outermost type is `Invariant` with respect to
-    /// `Vec<i32>` (and its `i32` argument).
-    ///
-    /// Source: Figure 1 of "Taming the Wildcards:
-    /// Combining Definition- and Use-Site Variance" published in PLDI'11.
-    pub fn xform(self, v: ty::Variance) -> ty::Variance {
-        match (self, v) {
-            // Figure 1, column 1.
-            (ty::Covariant, ty::Covariant) => ty::Covariant,
-            (ty::Covariant, ty::Contravariant) => ty::Contravariant,
-            (ty::Covariant, ty::Invariant) => ty::Invariant,
-            (ty::Covariant, ty::Bivariant) => ty::Bivariant,
-
-            // Figure 1, column 2.
-            (ty::Contravariant, ty::Covariant) => ty::Contravariant,
-            (ty::Contravariant, ty::Contravariant) => ty::Covariant,
-            (ty::Contravariant, ty::Invariant) => ty::Invariant,
-            (ty::Contravariant, ty::Bivariant) => ty::Bivariant,
-
-            // Figure 1, column 3.
-            (ty::Invariant, _) => ty::Invariant,
-
-            // Figure 1, column 4.
-            (ty::Bivariant, _) => ty::Bivariant,
-        }
-    }
 }
 
 // Contains information needed to resolve types and (in the future) look up
@@ -803,15 +735,6 @@ pub struct CaptureInfo<'tcx> {
 
 pub type UpvarListMap = FxHashMap<DefId, FxIndexMap<hir::HirId, UpvarId>>;
 pub type UpvarCaptureMap<'tcx> = FxHashMap<UpvarId, UpvarCapture<'tcx>>;
-
-#[derive(Clone, Copy, PartialEq, Eq)]
-pub enum IntVarValue {
-    IntType(ast::IntTy),
-    UintType(ast::UintTy),
-}
-
-#[derive(Clone, Copy, PartialEq, Eq)]
-pub struct FloatVarValue(pub ast::FloatTy);
 
 impl ty::EarlyBoundRegion {
     /// Does this early bound region have a name? Early bound regions normally

@@ -4314,6 +4314,7 @@ dependencies = [
  "bitflags",
  "rustc_data_structures",
  "rustc_index",
+ "rustc_macros",
  "rustc_serialize",
 ]
 

@@ -4,8 +4,13 @@
 
 #[macro_use]
 extern crate bitflags;
+#[macro_use]
+extern crate rustc_macros;
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::unify::{EqUnifyValue, UnifyKey};
+use std::fmt;
+use std::mem::discriminant;
 
 bitflags! {
     /// Flags that we track on types. These flags are propagated upwards
@@ -197,8 +202,409 @@ impl DebruijnIndex {
     }
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive(Encodable, Decodable)]
+pub enum IntTy {
+    Isize,
+    I8,
+    I16,
+    I32,
+    I64,
+    I128,
+}
+
+impl IntTy {
+    pub fn name_str(&self) -> &'static str {
+        match *self {
+            IntTy::Isize => "isize",
+            IntTy::I8 => "i8",
+            IntTy::I16 => "i16",
+            IntTy::I32 => "i32",
+            IntTy::I64 => "i64",
+            IntTy::I128 => "i128",
+        }
+    }
+
+    pub fn bit_width(&self) -> Option<u64> {
+        Some(match *self {
+            IntTy::Isize => return None,
+            IntTy::I8 => 8,
+            IntTy::I16 => 16,
+            IntTy::I32 => 32,
+            IntTy::I64 => 64,
+            IntTy::I128 => 128,
+        })
+    }
+
+    pub fn normalize(&self, target_width: u32) -> Self {
+        match self {
+            IntTy::Isize => match target_width {
+                16 => IntTy::I16,
+                32 => IntTy::I32,
+                64 => IntTy::I64,
+                _ => unreachable!(),
+            },
+            _ => *self,
+        }
+    }
+}
+
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Copy, Debug)]
+#[derive(Encodable, Decodable)]
+pub enum UintTy {
+    Usize,
+    U8,
+    U16,
+    U32,
+    U64,
+    U128,
+}
+
+impl UintTy {
+    pub fn name_str(&self) -> &'static str {
+        match *self {
+            UintTy::Usize => "usize",
+            UintTy::U8 => "u8",
+            UintTy::U16 => "u16",
+            UintTy::U32 => "u32",
+            UintTy::U64 => "u64",
+            UintTy::U128 => "u128",
+        }
+    }
+
+    pub fn bit_width(&self) -> Option<u64> {
+        Some(match *self {
+            UintTy::Usize => return None,
+            UintTy::U8 => 8,
+            UintTy::U16 => 16,
+            UintTy::U32 => 32,
+            UintTy::U64 => 64,
+            UintTy::U128 => 128,
+        })
+    }
+
+    pub fn normalize(&self, target_width: u32) -> Self {
+        match self {
+            UintTy::Usize => match target_width {
+                16 => UintTy::U16,
+                32 => UintTy::U32,
+                64 => UintTy::U64,
+                _ => unreachable!(),
+            },
+            _ => *self,
+        }
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive(Encodable, Decodable)]
+pub enum FloatTy {
+    F32,
+    F64,
+}
+
+impl FloatTy {
+    pub fn name_str(self) -> &'static str {
+        match self {
+            FloatTy::F32 => "f32",
+            FloatTy::F64 => "f64",
+        }
+    }
+
+    pub fn bit_width(self) -> u64 {
+        match self {
+            FloatTy::F32 => 32,
+            FloatTy::F64 => 64,
+        }
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum IntVarValue {
+    IntType(IntTy),
+    UintType(UintTy),
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub struct FloatVarValue(pub FloatTy);
+
+/// A **ty**pe **v**ariable **ID**.
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Encodable, Decodable)]
+pub struct TyVid {
+    pub index: u32,
+}
+
+/// An **int**egral (`u32`, `i32`, `usize`, etc.) type **v**ariable **ID**.
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Encodable, Decodable)]
+pub struct IntVid {
+    pub index: u32,
+}
+
+/// An **float**ing-point (`f32` or `f64`) type **v**ariable **ID**.
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Encodable, Decodable)]
+pub struct FloatVid {
+    pub index: u32,
+}
+
+/// A placeholder for a type that hasn't been inferred yet.
+///
+/// E.g., if we have an empty array (`[]`), then we create a fresh
+/// type variable for the element type since we won't know until it's
+/// used what the element type is supposed to be.
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Encodable, Decodable)]
+pub enum InferTy {
+    /// A type variable.
+    TyVar(TyVid),
+    /// An integral type variable (`{integer}`).
+    ///
+    /// These are created when the compiler sees an integer literal like
+    /// `1` that could be several different types (`u8`, `i32`, `u32`, etc.).
+    /// We don't know until it's used what type it's supposed to be, so
+    /// we create a fresh type variable.
+    IntVar(IntVid),
+    /// A floating-point type variable (`{float}`).
+    ///
+    /// These are created when the compiler sees an float literal like
+    /// `1.0` that could be either an `f32` or an `f64`.
+    /// We don't know until it's used what type it's supposed to be, so
+    /// we create a fresh type variable.
+    FloatVar(FloatVid),
+
+    /// A [`FreshTy`][Self::FreshTy] is one that is generated as a replacement
+    /// for an unbound type variable. This is convenient for caching etc. See
+    /// `rustc_infer::infer::freshen` for more details.
+    ///
+    /// Compare with [`TyVar`][Self::TyVar].
+    FreshTy(u32),
+    /// Like [`FreshTy`][Self::FreshTy], but as a replacement for [`IntVar`][Self::IntVar].
+    FreshIntTy(u32),
+    /// Like [`FreshTy`][Self::FreshTy], but as a replacement for [`FloatVar`][Self::FloatVar].
+    FreshFloatTy(u32),
+}
+
+/// Raw `TyVid` are used as the unification key for `sub_relations`;
+/// they carry no values.
+impl UnifyKey for TyVid {
+    type Value = ();
+    fn index(&self) -> u32 {
+        self.index
+    }
+    fn from_index(i: u32) -> TyVid {
+        TyVid { index: i }
+    }
+    fn tag() -> &'static str {
+        "TyVid"
+    }
+}
+
+impl EqUnifyValue for IntVarValue {}
+
+impl UnifyKey for IntVid {
+    type Value = Option<IntVarValue>;
+    fn index(&self) -> u32 {
+        self.index
+    }
+    fn from_index(i: u32) -> IntVid {
+        IntVid { index: i }
+    }
+    fn tag() -> &'static str {
+        "IntVid"
+    }
+}
+
+impl EqUnifyValue for FloatVarValue {}
+
+impl UnifyKey for FloatVid {
+    type Value = Option<FloatVarValue>;
+    fn index(&self) -> u32 {
+        self.index
+    }
+    fn from_index(i: u32) -> FloatVid {
+        FloatVid { index: i }
+    }
+    fn tag() -> &'static str {
+        "FloatVid"
+    }
+}
+
+#[derive(Copy, Clone, PartialEq, Decodable, Encodable)]
+pub enum Variance {
+    Covariant,     // T<A> <: T<B> iff A <: B -- e.g., function return type
+    Invariant,     // T<A> <: T<B> iff B == A -- e.g., type of mutable cell
+    Contravariant, // T<A> <: T<B> iff B <: A -- e.g., function param type
+    Bivariant,     // T<A> <: T<B>            -- e.g., unused type parameter
+}
+
+impl Variance {
+    /// `a.xform(b)` combines the variance of a context with the
+    /// variance of a type with the following meaning. If we are in a
+    /// context with variance `a`, and we encounter a type argument in
+    /// a position with variance `b`, then `a.xform(b)` is the new
+    /// variance with which the argument appears.
+    ///
+    /// Example 1:
+    ///
+    ///     *mut Vec<i32>
+    ///
+    /// Here, the "ambient" variance starts as covariant. `*mut T` is
+    /// invariant with respect to `T`, so the variance in which the
+    /// `Vec<i32>` appears is `Covariant.xform(Invariant)`, which
+    /// yields `Invariant`. Now, the type `Vec<T>` is covariant with
+    /// respect to its type argument `T`, and hence the variance of
+    /// the `i32` here is `Invariant.xform(Covariant)`, which results
+    /// (again) in `Invariant`.
+    ///
+    /// Example 2:
+    ///
+    ///     fn(*const Vec<i32>, *mut Vec<i32)
+    ///
+    /// The ambient variance is covariant. A `fn` type is
+    /// contravariant with respect to its parameters, so the variance
+    /// within which both pointer types appear is
+    /// `Covariant.xform(Contravariant)`, or `Contravariant`. `*const
+    /// T` is covariant with respect to `T`, so the variance within
+    /// which the first `Vec<i32>` appears is
+    /// `Contravariant.xform(Covariant)` or `Contravariant`. The same
+    /// is true for its `i32` argument. In the `*mut T` case, the
+    /// variance of `Vec<i32>` is `Contravariant.xform(Invariant)`,
+    /// and hence the outermost type is `Invariant` with respect to
+    /// `Vec<i32>` (and its `i32` argument).
+    ///
+    /// Source: Figure 1 of "Taming the Wildcards:
+    /// Combining Definition- and Use-Site Variance" published in PLDI'11.
+    pub fn xform(self, v: Variance) -> Variance {
+        match (self, v) {
+            // Figure 1, column 1.
+            (Variance::Covariant, Variance::Covariant) => Variance::Covariant,
+            (Variance::Covariant, Variance::Contravariant) => Variance::Contravariant,
+            (Variance::Covariant, Variance::Invariant) => Variance::Invariant,
+            (Variance::Covariant, Variance::Bivariant) => Variance::Bivariant,
+
+            // Figure 1, column 2.
+            (Variance::Contravariant, Variance::Covariant) => Variance::Contravariant,
+            (Variance::Contravariant, Variance::Contravariant) => Variance::Covariant,
+            (Variance::Contravariant, Variance::Invariant) => Variance::Invariant,
+            (Variance::Contravariant, Variance::Bivariant) => Variance::Bivariant,
+
+            // Figure 1, column 3.
+            (Variance::Invariant, _) => Variance::Invariant,
+
+            // Figure 1, column 4.
+            (Variance::Bivariant, _) => Variance::Bivariant,
+        }
+    }
+}
+
 impl<CTX> HashStable<CTX> for DebruijnIndex {
     fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
         self.as_u32().hash_stable(ctx, hasher);
+    }
+}
+
+impl<CTX> HashStable<CTX> for IntTy {
+    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
+        discriminant(self).hash_stable(ctx, hasher);
+    }
+}
+
+impl<CTX> HashStable<CTX> for UintTy {
+    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
+        discriminant(self).hash_stable(ctx, hasher);
+    }
+}
+
+impl<CTX> HashStable<CTX> for FloatTy {
+    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
+        discriminant(self).hash_stable(ctx, hasher);
+    }
+}
+
+impl<CTX> HashStable<CTX> for InferTy {
+    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
+        use InferTy::*;
+        match self {
+            TyVar(v) => v.index.hash_stable(ctx, hasher),
+            IntVar(v) => v.index.hash_stable(ctx, hasher),
+            FloatVar(v) => v.index.hash_stable(ctx, hasher),
+            FreshTy(v) | FreshIntTy(v) | FreshFloatTy(v) => v.hash_stable(ctx, hasher),
+        }
+    }
+}
+
+impl<CTX> HashStable<CTX> for Variance {
+    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
+        discriminant(self).hash_stable(ctx, hasher);
+    }
+}
+
+impl fmt::Debug for IntVarValue {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match *self {
+            IntVarValue::IntType(ref v) => v.fmt(f),
+            IntVarValue::UintType(ref v) => v.fmt(f),
+        }
+    }
+}
+
+impl fmt::Debug for FloatVarValue {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+impl fmt::Debug for TyVid {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "_#{}t", self.index)
+    }
+}
+
+impl fmt::Debug for IntVid {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "_#{}i", self.index)
+    }
+}
+
+impl fmt::Debug for FloatVid {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "_#{}f", self.index)
+    }
+}
+
+impl fmt::Debug for InferTy {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use InferTy::*;
+        match *self {
+            TyVar(ref v) => v.fmt(f),
+            IntVar(ref v) => v.fmt(f),
+            FloatVar(ref v) => v.fmt(f),
+            FreshTy(v) => write!(f, "FreshTy({:?})", v),
+            FreshIntTy(v) => write!(f, "FreshIntTy({:?})", v),
+            FreshFloatTy(v) => write!(f, "FreshFloatTy({:?})", v),
+        }
+    }
+}
+
+impl fmt::Debug for Variance {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match *self {
+            Variance::Covariant => "+",
+            Variance::Contravariant => "-",
+            Variance::Invariant => "o",
+            Variance::Bivariant => "*",
+        })
+    }
+}
+
+impl fmt::Display for InferTy {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use InferTy::*;
+        match *self {
+            TyVar(_) => write!(f, "_"),
+            IntVar(_) => write!(f, "{}", "{integer}"),
+            FloatVar(_) => write!(f, "{}", "{float}"),
+            FreshTy(v) => write!(f, "FreshTy({})", v),
+            FreshIntTy(v) => write!(f, "FreshIntTy({})", v),
+            FreshFloatTy(v) => write!(f, "FreshFloatTy({})", v),
+        }
     }
 }

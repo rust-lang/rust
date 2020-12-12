@@ -1,8 +1,7 @@
 //! Diagnostics related methods for `TyS`.
 
-use crate::ty::sty::InferTy;
 use crate::ty::TyKind::*;
-use crate::ty::{TyCtxt, TyS};
+use crate::ty::{InferTy, TyCtxt, TyS};
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;

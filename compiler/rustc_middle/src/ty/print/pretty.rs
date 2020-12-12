@@ -557,14 +557,19 @@ pub trait PrettyPrinter<'tcx>:
             }
             ty::FnPtr(ref bare_fn) => p!(print(bare_fn)),
             ty::Infer(infer_ty) => {
+                let verbose = self.tcx().sess.verbose();
                 if let ty::TyVar(ty_vid) = infer_ty {
                     if let Some(name) = self.infer_ty_name(ty_vid) {
                         p!(write("{}", name))
                     } else {
-                        p!(write("{}", infer_ty))
+                        if verbose {
+                            p!(write("{:?}", infer_ty))
+                        } else {
+                            p!(write("{}", infer_ty))
+                        }
                     }
                 } else {
-                    p!(write("{}", infer_ty))
+                    if verbose { p!(write("{:?}", infer_ty)) } else { p!(write("{}", infer_ty)) }
                 }
             }
             ty::Error(_) => p!("[type error]"),
@@ -1246,7 +1251,7 @@ pub struct FmtPrinterData<'a, 'tcx, F> {
 
     pub region_highlight_mode: RegionHighlightMode,
 
-    pub name_resolver: Option<Box<&'a dyn Fn(ty::sty::TyVid) -> Option<String>>>,
+    pub name_resolver: Option<Box<&'a dyn Fn(ty::TyVid) -> Option<String>>>,
 }
 
 impl<F> Deref for FmtPrinter<'a, 'tcx, F> {
@@ -2005,21 +2010,6 @@ define_print_and_forward_display! {
         }
 
         p!("fn", pretty_fn_sig(self.inputs(), self.c_variadic, self.output()));
-    }
-
-    ty::InferTy {
-        if cx.tcx().sess.verbose() {
-            p!(write("{:?}", self));
-            return Ok(cx);
-        }
-        match *self {
-            ty::TyVar(_) => p!("_"),
-            ty::IntVar(_) => p!(write("{}", "{integer}")),
-            ty::FloatVar(_) => p!(write("{}", "{float}")),
-            ty::FreshTy(v) => p!(write("FreshTy({})", v)),
-            ty::FreshIntTy(v) => p!(write("FreshIntTy({})", v)),
-            ty::FreshFloatTy(v) => p!(write("FreshFloatTy({})", v))
-        }
     }
 
     ty::TraitRef<'tcx> {
