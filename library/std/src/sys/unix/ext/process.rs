@@ -175,6 +175,10 @@ pub trait ExitStatusExt {
     /// Ie, if `WIFSIGNALED`, this returns `WTERMSIG`.
     #[stable(feature = "rust1", since = "1.0.0")]
     fn signal(&self) -> Option<i32>;
+
+    /// Returns the underlying raw `wait` status.
+    #[unstable(feature = "unix_process_wait_more", issue = "none")]
+    fn into_raw(self) -> i32;
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -185,6 +189,10 @@ impl ExitStatusExt for process::ExitStatus {
 
     fn signal(&self) -> Option<i32> {
         self.as_inner().signal()
+    }
+
+    fn into_raw(self) -> i32 {
+        self.as_inner().into_raw().into()
     }
 }
 

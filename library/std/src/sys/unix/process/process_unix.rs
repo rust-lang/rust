@@ -481,6 +481,10 @@ impl ExitStatus {
     pub fn signal(&self) -> Option<i32> {
         if libc::WIFSIGNALED(self.0) { Some(libc::WTERMSIG(self.0)) } else { None }
     }
+
+    pub fn into_raw(&self) -> c_int {
+        self.0
+    }
 }
 
 /// Converts a raw `c_int` to a type-safe `ExitStatus` by wrapping it without copying.
