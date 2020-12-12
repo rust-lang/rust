@@ -179,7 +179,7 @@ impl From<clean::ItemKind> for ItemEnum {
             StaticItem(s) => ItemEnum::StaticItem(s.into()),
             ForeignStaticItem(s) => ItemEnum::StaticItem(s.into()),
             ForeignTypeItem => ItemEnum::ForeignTypeItem,
-            TypedefItem(t, _) => ItemEnum::TypedefItem(t.into()),
+            TypedefItem(box t, _) => ItemEnum::TypedefItem(t.into()),
             OpaqueTyItem(t) => ItemEnum::OpaqueTyItem(t.into()),
             ConstantItem(c) => ItemEnum::ConstantItem(c.into()),
             MacroItem(m) => ItemEnum::MacroItem(m.source),

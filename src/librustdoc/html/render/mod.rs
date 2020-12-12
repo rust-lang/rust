@@ -3559,7 +3559,7 @@ fn render_deref_methods(
         .items
         .iter()
         .find_map(|item| match item.kind {
-            clean::TypedefItem(ref t, true) => Some(match *t {
+            clean::TypedefItem(ref t, true) => Some(match **t {
                 clean::Typedef { item_type: Some(ref type_), .. } => (type_, &t.type_),
                 _ => (&t.type_, &t.type_),
             }),
@@ -4237,7 +4237,7 @@ fn sidebar_assoc_items(it: &clean::Item) -> String {
             {
                 if let Some((target, real_target)) =
                     impl_.inner_impl().items.iter().find_map(|item| match item.kind {
-                        clean::TypedefItem(ref t, true) => Some(match *t {
+                        clean::TypedefItem(ref t, true) => Some(match **t {
                             clean::Typedef { item_type: Some(ref type_), .. } => (type_, &t.type_),
                             _ => (&t.type_, &t.type_),
                         }),
