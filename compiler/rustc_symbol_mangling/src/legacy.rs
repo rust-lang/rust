@@ -55,6 +55,26 @@ pub(super) fn mangle(
 
     let hash = get_symbol_hash(tcx, instance, instance_ty, instantiating_crate);
 
+    if let ty::InstanceDef::DropGlue(_drop_in_place, ty) = instance.def {
+        // Use `{{drop}}::<$TYPE>::$hash` as name for the drop glue instead of
+        // `core::mem::drop_in_place::$hash`.
+        let mut printer =
+            SymbolPrinter { tcx, path: SymbolPath::new(), keep_within_component: false };
+        printer.write_str("{{drop}}").unwrap();
+        printer.path.finalize_pending_component();
+        let printer = printer
+            .generic_delimiters(|mut printer| {
+                if let Some(ty) = ty {
+                    printer.print_type(ty)
+                } else {
+                    printer.write_str("_")?;
+                    Ok(printer)
+                }
+            })
+            .unwrap();
+        return printer.path.finish(hash);
+    }
+
     let mut printer = SymbolPrinter { tcx, path: SymbolPath::new(), keep_within_component: false }
         .print_def_path(def_id, &[])
         .unwrap();
