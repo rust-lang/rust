@@ -479,7 +479,7 @@ fn build_module(cx: &DocContext<'_>, did: DefId, visited: &mut FxHashSet<DefId>)
                     items.push(clean::Item {
                         name: None,
                         attrs: clean::Attributes::default(),
-                        source: clean::Span::empty(),
+                        source: clean::Span::dummy(),
                         def_id: DefId::local(CRATE_DEF_INDEX),
                         visibility: clean::Public,
                         stability: None,

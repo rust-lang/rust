@@ -1610,31 +1610,36 @@ crate enum VariantKind {
     Struct(VariantStruct),
 }
 
-/// Small wrapper around `rustc_span::Span` that adds helper methods.
+/// Small wrapper around `rustc_span::Span` that adds helper methods and enforces calling `source_callsite`.
 #[derive(Clone, Debug)]
-crate struct Span {
-    crate original: rustc_span::Span,
-}
+crate struct Span(rustc_span::Span);
 
 impl Span {
-    crate fn empty() -> Self {
-        Self { original: rustc_span::DUMMY_SP }
+    crate fn from_rustc_span(sp: rustc_span::Span) -> Self {
+        // Get the macro invocation instead of the definition,
+        // in case the span is result of a macro expansion.
+        // (See rust-lang/rust#39726)
+        Self(sp.source_callsite())
+    }
+
+    crate fn dummy() -> Self {
+        Self(rustc_span::DUMMY_SP)
     }
 
     crate fn span(&self) -> rustc_span::Span {
-        self.original
+        self.0
     }
 
     crate fn filename(&self, sess: &Session) -> FileName {
-        sess.source_map().span_to_filename(self.original)
+        sess.source_map().span_to_filename(self.0)
     }
 
     crate fn lo(&self, sess: &Session) -> Loc {
-        sess.source_map().lookup_char_pos(self.original.lo())
+        sess.source_map().lookup_char_pos(self.0.lo())
     }
 
     crate fn hi(&self, sess: &Session) -> Loc {
-        sess.source_map().lookup_char_pos(self.original.hi())
+        sess.source_map().lookup_char_pos(self.0.hi())
     }
 
     crate fn cnum(&self, sess: &Session) -> CrateNum {

@@ -1882,10 +1882,7 @@ impl Clean<VariantKind> for hir::VariantData<'_> {
 
 impl Clean<Span> for rustc_span::Span {
     fn clean(&self, _cx: &DocContext<'_>) -> Span {
-        // Get the macro invocation instead of the definition,
-        // in case the span is result of a macro expansion.
-        // (See rust-lang/rust#39726)
-        Span { original: self.source_callsite() }
+        Span::from_rustc_span(*self)
     }
 }
 
