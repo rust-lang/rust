@@ -25,7 +25,6 @@ Language
   let Person { name, ref age } = person;
   println!("{} {}", name, age);
   ```
-- [Macros that end with a semi-colon are now treated as statements even if they expand to nothing.][78376]
 
 Compiler
 -----------------------
@@ -73,10 +72,10 @@ Cargo
 Compatibility Notes
 -------------------
 
-- [Demoted `i686-unknown-freebsd` to tier 2 support.][78746]
+- [Demoted `i686-unknown-freebsd` from host tier 2 to target tier 2 support.][78746]
+- [Macros that end with a semi-colon are now treated as statements even if they expand to nothing.][78376]
 - [Rustc will now check for the validity of some built-in attributes on enum variants.][77015]
   Previously such invalid or unused attributes could be ignored.
-  Previously invalid or unused attributes were ignored.
 
 Internal Only
 -------------
