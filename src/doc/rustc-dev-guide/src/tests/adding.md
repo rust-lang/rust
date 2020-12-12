@@ -207,6 +207,9 @@ source.
 * `needs-sanitizer-{address,leak,memory,thread}` - indicates that test
   requires a target with a support for AddressSanitizer, LeakSanitizer,
   MemorySanitizer or ThreadSanitizer respectively.
+* `error-pattern` checks the diagnostics just like the `ERROR` annotation
+  without specifying error line. This is useful when the error doesn't give
+  any span.
 
 [`header.rs`]: https://github.com/rust-lang/rust/tree/master/src/tools/compiletest/src/header.rs
 [bless]: ./running.md#editing-and-updating-the-reference-files
@@ -290,6 +293,36 @@ fn main() {
 //~^^^^ ERROR `_x @` is not allowed in a tuple struct
 //~| ERROR this pattern has 1 field, but the corresponding tuple struct has 3 fields [E0023]
 ```
+
+#### When error line cannot be specified
+
+Let's think about this test:
+
+```rust,ignore
+fn main() {
+    let a: *const [_] = &[1, 2, 3];
+    unsafe {
+        let _b = (*a)[3];
+    }
+}
+```
+
+We want to ensure this shows "index out of bounds" but we cannot use the `ERROR` annotation
+since the error doesn't have any span. Then it's time to use the `error-pattern`:
+
+```rust,ignore
+// error-pattern: index out of bounds
+fn main() {
+    let a: *const [_] = &[1, 2, 3];
+    unsafe {
+        let _b = (*a)[3];
+    }
+}
+```
+
+But for strict testing, try to use the `ERROR` annotation as much as possible.
+
+#### Error levels
 
 The error levels that you can have are:
 
