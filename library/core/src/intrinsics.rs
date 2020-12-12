@@ -838,8 +838,11 @@ extern "rust-intrinsic" {
 
     /// Moves a value out of scope without running drop glue.
     ///
-    /// This exists solely for [`mem::forget_unsized`]; normal `forget` uses
-    /// `ManuallyDrop` instead.
+    /// This is only strictly needed for [`mem::forget_unsized`]; normal [`mem::forget`]
+    /// compiles fine just using `ManuallyDrop` instead.
+    ///
+    /// As this does literally nothing, it's trivially const-safe.
+    #[rustc_const_stable(feature = "const_forget_intrinsic", since = "1.50")]
     pub fn forget<T: ?Sized>(_: T);
 
     /// Reinterprets the bits of a value of one type as another type.

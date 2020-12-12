@@ -141,7 +141,16 @@ pub use crate::intrinsics::transmute;
 #[rustc_const_stable(feature = "const_forget", since = "1.46.0")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const fn forget<T>(t: T) {
-    let _ = ManuallyDrop::new(t);
+    // Ideally this would just be
+    // ```
+    // let _ = ManuallyDrop::new(t);
+    // ```
+    // but as of 2020-12-12 that actually codegens the construction of the type,
+    // which there's no reason to do.  Please switch it back if things have changed and
+    // the forget-is-nop codegen test confirms the intrinsic is no longer needed here.
+
+    // SAFETY: Forgetting is safe; it's just the intrinsic that isn't.
+    unsafe { intrinsics::forget(t) }
 }
 
 /// Like [`forget`], but also accepts unsized values.
