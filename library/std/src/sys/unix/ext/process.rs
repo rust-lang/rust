@@ -171,6 +171,8 @@ pub trait ExitStatusExt {
     fn from_raw(raw: i32) -> Self;
 
     /// If the process was terminated by a signal, returns that signal.
+    ///
+    /// Ie, if `WIFSIGNALED`, this returns `WTERMSIG`.
     #[stable(feature = "rust1", since = "1.0.0")]
     fn signal(&self) -> Option<i32>;
 }
