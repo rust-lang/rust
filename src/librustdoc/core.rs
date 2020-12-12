@@ -11,7 +11,7 @@ use rustc_hir::{
     intravisit::{self, NestedVisitorMap, Visitor},
     Path,
 };
-use rustc_interface::interface;
+use rustc_interface::{interface, Queries};
 use rustc_middle::hir::map::Map;
 use rustc_middle::middle::privacy::AccessLevels;
 use rustc_middle::ty::{ParamEnv, Ty, TyCtxt};
@@ -409,16 +409,10 @@ fn create_config(
 crate fn run_core(
     options: RustdocOptions,
 ) -> (clean::Crate, RenderInfo, RenderOptions, Lrc<Session>) {
-    let extern_names: Vec<String> = options
-        .externs
-        .iter()
-        .filter(|(_, entry)| entry.add_prelude)
-        .map(|(name, _)| name)
-        .cloned()
-        .collect();
     let default_passes = options.default_passes;
     let output_format = options.output_format;
     // TODO: fix this clone (especially render_options)
+    let externs = options.externs.clone();
     let manual_passes = options.manual_passes.clone();
     let render_options = options.render_options.clone();
     let config = create_config(options);
@@ -430,34 +424,7 @@ crate fn run_core(
             // We need to hold on to the complete resolver, so we cause everything to be
             // cloned for the analysis passes to use. Suboptimal, but necessary in the
             // current architecture.
-            let resolver = {
-                let parts = abort_on_err(queries.expansion(), sess).peek();
-                let resolver = parts.1.borrow();
-
-                // Before we actually clone it, let's force all the extern'd crates to
-                // actually be loaded, just in case they're only referred to inside
-                // intra-doc-links
-                resolver.borrow_mut().access(|resolver| {
-                    sess.time("load_extern_crates", || {
-                        for extern_name in &extern_names {
-                            debug!("loading extern crate {}", extern_name);
-                            resolver
-                                .resolve_str_path_error(
-                                    DUMMY_SP,
-                                    extern_name,
-                                    TypeNS,
-                                    LocalDefId { local_def_index: CRATE_DEF_INDEX }.to_def_id(),
-                                )
-                                .unwrap_or_else(|()| {
-                                    panic!("Unable to resolve external crate {}", extern_name)
-                                });
-                        }
-                    });
-                });
-
-                // Now we're good to clone the resolver because everything should be loaded
-                resolver.clone()
-            };
+            let resolver = create_resolver(externs, queries, &sess);
 
             if sess.has_errors() {
                 sess.fatal("Compilation failed, aborting rustdoc");
@@ -480,6 +447,46 @@ crate fn run_core(
             (krate, render_info, opts, Lrc::clone(sess))
         })
     })
+}
+
+fn create_resolver<'a>(
+    externs: config::Externs,
+    queries: &Queries<'a>,
+    sess: &Session,
+) -> Lrc<RefCell<interface::BoxedResolver>> {
+    let extern_names: Vec<String> = externs
+        .iter()
+        .filter(|(_, entry)| entry.add_prelude)
+        .map(|(name, _)| name)
+        .cloned()
+        .collect();
+
+    let parts = abort_on_err(queries.expansion(), sess).peek();
+    let resolver = parts.1.borrow();
+
+    // Before we actually clone it, let's force all the extern'd crates to
+    // actually be loaded, just in case they're only referred to inside
+    // intra-doc-links
+    resolver.borrow_mut().access(|resolver| {
+        sess.time("load_extern_crates", || {
+            for extern_name in &extern_names {
+                debug!("loading extern crate {}", extern_name);
+                resolver
+                    .resolve_str_path_error(
+                        DUMMY_SP,
+                        extern_name,
+                        TypeNS,
+                        LocalDefId { local_def_index: CRATE_DEF_INDEX }.to_def_id(),
+                    )
+                    .unwrap_or_else(|()| {
+                        panic!("Unable to resolve external crate {}", extern_name)
+                    });
+            }
+        });
+    });
+
+    // Now we're good to clone the resolver because everything should be loaded
+    resolver.clone()
 }
 
 fn run_global_ctxt(
