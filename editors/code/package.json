@@ -734,6 +734,17 @@
                 "extensions": [
                     ".rast"
                 ]
+            },
+            {
+                "id": "rust",
+                "extensions": [
+                    ".rs"
+                ],
+                "aliases": [
+                    "Rust",
+                    "rs"
+                ],
+                "configuration": "language-configuration.json"
             }
         ],
         "grammars": [
