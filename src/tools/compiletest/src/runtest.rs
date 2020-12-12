@@ -2394,7 +2394,8 @@ impl<'test> TestCx<'test> {
 
         let proc_res = new_rustdoc.document(&compare_dir);
         if !proc_res.status.success() {
-            proc_res.fatal(Some("failed to run nightly rustdoc"), || ());
+            eprintln!("failed to run nightly rustdoc");
+            return;
         }
 
         #[rustfmt::skip]
@@ -2408,28 +2409,22 @@ impl<'test> TestCx<'test> {
             "-modify",
         ];
         let tidy_dir = |dir| {
-            let tidy = |file: &_| {
-                Command::new("tidy")
-                    .args(&tidy_args)
-                    .arg(file)
-                    .spawn()
-                    .unwrap_or_else(|err| {
-                        self.fatal(&format!("failed to run tidy - is it installed? - {}", err))
-                    })
-                    .wait()
-                    .unwrap()
-            };
             for entry in walkdir::WalkDir::new(dir) {
                 let entry = entry.expect("failed to read file");
                 if entry.file_type().is_file()
                     && entry.path().extension().and_then(|p| p.to_str()) == Some("html".into())
                 {
-                    tidy(entry.path());
+                    let status =
+                        Command::new("tidy").args(&tidy_args).arg(entry.path()).status().unwrap();
+                    // `tidy` returns 1 if it modified the file.
+                    assert!(status.success() || status.code() == Some(1));
                 }
             }
         };
-        tidy_dir(out_dir);
-        tidy_dir(&compare_dir);
+        if self.config.has_tidy {
+            tidy_dir(out_dir);
+            tidy_dir(&compare_dir);
+        }
 
         let pager = {
             let output = Command::new("git").args(&["config", "--get", "core.pager"]).output().ok();
@@ -2442,7 +2437,8 @@ impl<'test> TestCx<'test> {
             })
         };
         let mut diff = Command::new("diff");
-        diff.args(&["-u", "-r"]).args(&[&compare_dir, out_dir]);
+        // diff recursively, showing context, and excluding .css files
+        diff.args(&["-u", "-r", "-x", "*.css"]).args(&[&compare_dir, out_dir]);
 
         let output = if let Some(pager) = pager {
             let diff_pid = diff.stdout(Stdio::piped()).spawn().expect("failed to run `diff`");

@@ -14,7 +14,7 @@ use std::ffi::OsString;
 use std::fs;
 use std::io::{self, ErrorKind};
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, Stdio};
 use std::time::SystemTime;
 use test::ColorConfig;
 use tracing::*;
@@ -41,6 +41,10 @@ fn main() {
 
     if config.valgrind_path.is_none() && config.force_valgrind {
         panic!("Can't find Valgrind to run Valgrind tests");
+    }
+
+    if !config.has_tidy && config.mode == Mode::Rustdoc {
+        eprintln!("warning: `tidy` is not installed; generated diffs will be harder to read");
     }
 
     log_config(&config);
@@ -189,6 +193,11 @@ pub fn parse_config(args: Vec<String>) -> Config {
 
     let src_base = opt_path(matches, "src-base");
     let run_ignored = matches.opt_present("ignored");
+    let has_tidy = Command::new("tidy")
+        .arg("--version")
+        .stdout(Stdio::null())
+        .status()
+        .map_or(false, |status| status.success());
     Config {
         bless: matches.opt_present("bless"),
         compile_lib_path: make_absolute(opt_path(matches, "compile-lib-path")),
@@ -244,6 +253,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         remote_test_client: matches.opt_str("remote-test-client").map(PathBuf::from),
         compare_mode: matches.opt_str("compare-mode").map(CompareMode::parse),
         rustfix_coverage: matches.opt_present("rustfix-coverage"),
+        has_tidy,
 
         cc: matches.opt_str("cc").unwrap(),
         cxx: matches.opt_str("cxx").unwrap(),
