@@ -382,7 +382,7 @@ impl fmt::Display for WriterPanicked {
 #[unstable(feature = "bufwriter_into_raw_parts", issue = "none")]
 impl fmt::Debug for WriterPanicked {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt.debug_struct("WriterPanicked")
+        f.debug_struct("WriterPanicked")
             .field("buffer", &format_args!("{}/{}", self.buf.len(), self.buf.capacity()))
             .finish()
     }
