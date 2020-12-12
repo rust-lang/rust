@@ -5,7 +5,7 @@ use std::cmp::Ordering;
 use std::collections::BTreeMap;
 
 use if_chain::if_chain;
-use rustc_ast::{FloatTy, IntTy, LitFloatType, LitIntType, LitKind, UintTy};
+use rustc_ast::{LitFloatType, LitIntType, LitKind};
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::intravisit::{walk_body, walk_expr, walk_ty, FnKind, NestedVisitorMap, Visitor};
@@ -18,7 +18,7 @@ use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::hir::map::Map;
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::TypeFoldable;
-use rustc_middle::ty::{self, InferTy, Ty, TyCtxt, TyS, TypeAndMut, TypeckResults};
+use rustc_middle::ty::{self, FloatTy, InferTy, IntTy, Ty, TyCtxt, TyS, TypeAndMut, TypeckResults, UintTy};
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_lint_pass, declare_tool_lint, impl_lint_pass};
 use rustc_span::hygiene::{ExpnKind, MacroKind};
@@ -1106,9 +1106,7 @@ fn is_empty_block(expr: &Expr<'_>) -> bool {
         expr.kind,
         ExprKind::Block(
             Block {
-                stmts: &[],
-                expr: None,
-                ..
+                stmts: &[], expr: None, ..
             },
             _,
         )
