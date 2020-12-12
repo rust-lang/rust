@@ -766,7 +766,7 @@ impl<T: ?Sized> Arc<T> {
             Arc::from_raw(ptr)
         };
         
-        std::mem::forget(result.clone())
+        std::mem::forget(result.clone());
 
         result
     }
