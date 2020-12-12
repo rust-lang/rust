@@ -6,14 +6,16 @@ use std::convert::From;
 
 use rustc_ast::ast;
 use rustc_span::def_id::{DefId, CRATE_DEF_INDEX};
+use rustc_span::Pos;
 
 use crate::clean;
 use crate::doctree;
 use crate::formats::item_type::ItemType;
 use crate::json::types::*;
+use crate::json::JsonRenderer;
 
-impl From<clean::Item> for Option<Item> {
-    fn from(item: clean::Item) -> Self {
+impl JsonRenderer {
+    pub(super) fn convert_item(&self, item: clean::Item) -> Option<Item> {
         let item_type = ItemType::from(&item);
         let clean::Item {
             source,
@@ -32,7 +34,7 @@ impl From<clean::Item> for Option<Item> {
                 id: def_id.into(),
                 crate_id: def_id.krate.as_u32(),
                 name,
-                source: source.into(),
+                source: self.convert_span(source),
                 visibility: visibility.into(),
                 docs: attrs.collapsed_doc_value().unwrap_or_default(),
                 links: attrs
@@ -53,25 +55,23 @@ impl From<clean::Item> for Option<Item> {
             }),
         }
     }
-}
 
-impl From<clean::Span> for Option<Span> {
-    #[allow(unreachable_code)]
-    fn from(span: clean::Span) -> Self {
-        // TODO: this should actually work
-        // Unfortunately this requires rethinking the whole framework,
-        // since this now needs a context and not just .into().
-        match span.filename(todo!()) {
-            rustc_span::FileName::Real(name) => Some(Span {
-                filename: match name {
-                    rustc_span::RealFileName::Named(path) => path,
-                    rustc_span::RealFileName::Devirtualized { local_path, virtual_name: _ } => {
-                        local_path
-                    }
-                },
-                begin: todo!(),
-                end: todo!(),
-            }),
+    fn convert_span(&self, span: clean::Span) -> Option<Span> {
+        match span.filename(&self.sess) {
+            rustc_span::FileName::Real(name) => {
+                let hi = span.hi(&self.sess);
+                let lo = span.lo(&self.sess);
+                Some(Span {
+                    filename: match name {
+                        rustc_span::RealFileName::Named(path) => path,
+                        rustc_span::RealFileName::Devirtualized { local_path, virtual_name: _ } => {
+                            local_path
+                        }
+                    },
+                    begin: (lo.line, lo.col.to_usize()),
+                    end: (hi.line, hi.col.to_usize()),
+                })
+            }
             _ => None,
         }
     }
