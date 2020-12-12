@@ -62,9 +62,11 @@ use std::default::Default;
 use std::env;
 use std::process;
 
+use rustc_data_structures::sync::Lrc;
 use rustc_errors::ErrorReported;
 use rustc_session::config::{make_crate_type_option, ErrorOutputType, RustcOptGroup};
 use rustc_session::getopts;
+use rustc_session::Session;
 use rustc_session::{early_error, early_warn};
 
 #[macro_use]
@@ -484,8 +486,9 @@ fn run_renderer<T: formats::FormatRenderer>(
     render_info: config::RenderInfo,
     diag: &rustc_errors::Handler,
     edition: rustc_span::edition::Edition,
+    sess: Lrc<Session>,
 ) -> MainResult {
-    match formats::run_format::<T>(krate, renderopts, render_info, &diag, edition) {
+    match formats::run_format::<T>(krate, renderopts, render_info, &diag, edition, sess) {
         Ok(_) => Ok(()),
         Err(e) => {
             let mut msg = diag.struct_err(&format!("couldn't generate documentation: {}", e.error));
@@ -553,12 +556,15 @@ fn main_options(options: config::Options) -> MainResult {
     info!("going to format");
     let (error_format, edition, debugging_options) = diag_opts;
     let diag = core::new_handler(error_format, None, &debugging_options);
+    let sess_time = sess.clone();
     match output_format {
-        None | Some(config::OutputFormat::Html) => sess.time("render_html", || {
-            run_renderer::<html::render::Context>(krate, renderopts, renderinfo, &diag, edition)
+        None | Some(config::OutputFormat::Html) => sess_time.time("render_html", || {
+            run_renderer::<html::render::Context>(
+                krate, renderopts, renderinfo, &diag, edition, sess,
+            )
         }),
-        Some(config::OutputFormat::Json) => sess.time("render_json", || {
-            run_renderer::<json::JsonRenderer>(krate, renderopts, renderinfo, &diag, edition)
+        Some(config::OutputFormat::Json) => sess_time.time("render_json", || {
+            run_renderer::<json::JsonRenderer>(krate, renderopts, renderinfo, &diag, edition, sess)
         }),
     }
 }

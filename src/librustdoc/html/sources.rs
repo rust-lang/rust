@@ -7,6 +7,7 @@ use crate::html::highlight;
 use crate::html::layout;
 use crate::html::render::{SharedContext, BASIC_KEYWORDS};
 use rustc_hir::def_id::LOCAL_CRATE;
+use rustc_session::Session;
 use rustc_span::source_map::FileName;
 use std::ffi::OsStr;
 use std::fs;
@@ -34,37 +35,45 @@ struct SourceCollector<'a> {
 
 impl<'a> DocFolder for SourceCollector<'a> {
     fn fold_item(&mut self, item: clean::Item) -> Option<clean::Item> {
+        // If we're not rendering sources, there's nothing to do.
         // If we're including source files, and we haven't seen this file yet,
         // then we need to render it out to the filesystem.
         if self.scx.include_sources
             // skip all synthetic "files"
-            && item.source.filename.is_real()
+            && item.source.filename(self.sess()).is_real()
             // skip non-local files
-            && item.source.cnum == LOCAL_CRATE
+            && item.source.cnum(self.sess()) == LOCAL_CRATE
         {
+            let filename = item.source.filename(self.sess());
             // If it turns out that we couldn't read this file, then we probably
             // can't read any of the files (generating html output from json or
             // something like that), so just don't include sources for the
             // entire crate. The other option is maintaining this mapping on a
             // per-file basis, but that's probably not worth it...
-            self.scx.include_sources = match self.emit_source(&item.source.filename) {
+            self.scx.include_sources = match self.emit_source(&filename) {
                 Ok(()) => true,
                 Err(e) => {
                     println!(
                         "warning: source code was requested to be rendered, \
                          but processing `{}` had an error: {}",
-                        item.source.filename, e
+                        filename, e
                     );
                     println!("         skipping rendering of source code");
                     false
                 }
             };
         }
+        // FIXME: if `include_sources` isn't set and DocFolder didn't require consuming the crate by value,
+        // we could return None here without having to walk the rest of the crate.
         Some(self.fold_item_recur(item))
     }
 }
 
 impl<'a> SourceCollector<'a> {
+    fn sess(&self) -> &Session {
+        &self.scx.sess
+    }
+
     /// Renders the given filename into its corresponding HTML source file.
     fn emit_source(&mut self, filename: &FileName) -> Result<(), Error> {
         let p = match *filename {

@@ -52,10 +52,12 @@ use rustc_ast_pretty::pprust;
 use rustc_attr::StabilityLevel;
 use rustc_data_structures::flock;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::sync::Lrc;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::Mutability;
 use rustc_middle::middle::stability;
+use rustc_session::Session;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::FileName;
@@ -121,6 +123,7 @@ crate struct Context {
 }
 
 crate struct SharedContext {
+    crate sess: Lrc<Session>,
     /// The path to the crate root source minus the file name.
     /// Used for simplifying paths to the highlighted source code files.
     crate src_root: PathBuf,
@@ -170,6 +173,10 @@ impl Context {
         let (base, ext) = filename.split_once('.').unwrap();
         let filename = format!("{}{}.{}", base, self.shared.resource_suffix, ext);
         self.dst.join(&filename)
+    }
+
+    fn sess(&self) -> &Session {
+        &self.shared.sess
     }
 }
 
@@ -381,6 +388,7 @@ impl FormatRenderer for Context {
         _render_info: RenderInfo,
         edition: Edition,
         cache: &mut Cache,
+        sess: Lrc<Session>,
     ) -> Result<(Context, clean::Crate), Error> {
         // need to save a copy of the options for rendering the index page
         let md_opts = options.clone();
@@ -453,6 +461,7 @@ impl FormatRenderer for Context {
         }
         let (sender, receiver) = channel();
         let mut scx = SharedContext {
+            sess,
             collapsed: krate.collapsed,
             src_root,
             include_sources,
@@ -1629,24 +1638,24 @@ impl Context {
     /// of their crate documentation isn't known.
     fn src_href(&self, item: &clean::Item, cache: &Cache) -> Option<String> {
         let mut root = self.root_path();
-
         let mut path = String::new();
+        let cnum = item.source.cnum(self.sess());
 
         // We can safely ignore synthetic `SourceFile`s.
-        let file = match item.source.filename {
+        let file = match item.source.filename(self.sess()) {
             FileName::Real(ref path) => path.local_path().to_path_buf(),
             _ => return None,
         };
         let file = &file;
 
-        let (krate, path) = if item.source.cnum == LOCAL_CRATE {
+        let (krate, path) = if cnum == LOCAL_CRATE {
             if let Some(path) = self.shared.local_sources.get(file) {
                 (&self.shared.layout.krate, path)
             } else {
                 return None;
             }
         } else {
-            let (krate, src_root) = match *cache.extern_locations.get(&item.source.cnum)? {
+            let (krate, src_root) = match *cache.extern_locations.get(&cnum)? {
                 (ref name, ref src, ExternalLocation::Local) => (name, src),
                 (ref name, ref src, ExternalLocation::Remote(ref s)) => {
                     root = s.to_string();
@@ -1665,11 +1674,10 @@ impl Context {
             (krate, &path)
         };
 
-        let lines = if item.source.loline == item.source.hiline {
-            item.source.loline.to_string()
-        } else {
-            format!("{}-{}", item.source.loline, item.source.hiline)
-        };
+        let loline = item.source.lo(self.sess()).line;
+        let hiline = item.source.hi(self.sess()).line;
+        let lines =
+            if loline == hiline { loline.to_string() } else { format!("{}-{}", loline, hiline) };
         Some(format!(
             "{root}src/{krate}/{path}#{lines}",
             root = Escape(&root),

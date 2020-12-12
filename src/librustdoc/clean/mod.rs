@@ -25,7 +25,7 @@ use rustc_middle::ty::{self, AdtKind, Lift, Ty, TyCtxt};
 use rustc_mir::const_eval::{is_const_fn, is_min_const_fn, is_unstable_const_fn};
 use rustc_span::hygiene::{AstPass, MacroKind};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::{self, ExpnKind, Pos};
+use rustc_span::{self, ExpnKind};
 use rustc_typeck::hir_ty_to_ty;
 
 use std::collections::hash_map::Entry;
@@ -1881,29 +1881,8 @@ impl Clean<VariantKind> for hir::VariantData<'_> {
 }
 
 impl Clean<Span> for rustc_span::Span {
-    fn clean(&self, cx: &DocContext<'_>) -> Span {
-        if self.is_dummy() {
-            return Span::empty();
-        }
-
-        // Get the macro invocation instead of the definition,
-        // in case the span is result of a macro expansion.
-        // (See rust-lang/rust#39726)
-        let span = self.source_callsite();
-
-        let sm = cx.sess().source_map();
-        let filename = sm.span_to_filename(span);
-        let lo = sm.lookup_char_pos(span.lo());
-        let hi = sm.lookup_char_pos(span.hi());
-        Span {
-            filename,
-            cnum: lo.file.cnum,
-            loline: lo.line,
-            locol: lo.col.to_usize(),
-            hiline: hi.line,
-            hicol: hi.col.to_usize(),
-            original: span,
-        }
+    fn clean(&self, _cx: &DocContext<'_>) -> Span {
+        Span::from_rustc_span(*self)
     }
 }
 

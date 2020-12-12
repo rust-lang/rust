@@ -13,6 +13,8 @@ use std::path::PathBuf;
 use std::rc::Rc;
 
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::sync::Lrc;
+use rustc_session::Session;
 use rustc_span::edition::Edition;
 
 use crate::clean;
@@ -24,6 +26,7 @@ use crate::html::render::cache::ExternalLocation;
 
 #[derive(Clone)]
 crate struct JsonRenderer {
+    sess: Lrc<Session>,
     /// A mapping of IDs that contains all local items for this crate which gets output as a top
     /// level field of the JSON blob.
     index: Rc<RefCell<FxHashMap<types::Id, types::Item>>>,
@@ -124,10 +127,12 @@ impl FormatRenderer for JsonRenderer {
         _render_info: RenderInfo,
         _edition: Edition,
         _cache: &mut Cache,
+        sess: Lrc<Session>,
     ) -> Result<(Self, clean::Crate), Error> {
         debug!("Initializing json renderer");
         Ok((
             JsonRenderer {
+                sess,
                 index: Rc::new(RefCell::new(FxHashMap::default())),
                 out_path: options.output,
             },
@@ -143,7 +148,7 @@ impl FormatRenderer for JsonRenderer {
         item.kind.inner_items().for_each(|i| self.item(i.clone(), cache).unwrap());
 
         let id = item.def_id;
-        if let Some(mut new_item) = item.into(): Option<types::Item> {
+        if let Some(mut new_item) = self.convert_item(item) {
             if let types::ItemEnum::TraitItem(ref mut t) = new_item.inner {
                 t.implementors = self.get_trait_implementors(id, cache)
             } else if let types::ItemEnum::StructItem(ref mut s) = new_item.inner {
