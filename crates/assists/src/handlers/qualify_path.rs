@@ -150,7 +150,7 @@ impl QualifyCandidate<'_> {
                 import,
                 trait_method_name,
                 generics,
-                match arg_list.clone() {
+                match arg_list {
                     Some(args) => make::arg_list(iter::once(receiver).chain(args)),
                     None => make::arg_list(iter::once(receiver)),
                 }

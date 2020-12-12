@@ -134,7 +134,7 @@ r#####"
 
         buf.push_str(&test)
     }
-    let buf = reformat(&buf.to_string())?;
+    let buf = reformat(&buf)?;
     codegen::update(&project_root().join("crates/assists/src/tests/generated.rs"), &buf, mode)
 }
 
