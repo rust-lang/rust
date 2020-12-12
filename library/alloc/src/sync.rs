@@ -760,6 +760,7 @@ impl<T: ?Sized> Arc<T> {
         }
     }
     
+    /// Obtains a new reference to a raw [`Arc`] pointer, without taking ownership.
     pub fn clone_raw(ptr: *const T) -> Self {
         let result = unsafe {
             Arc::from_raw(ptr)
