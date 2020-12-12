@@ -119,7 +119,7 @@ rustc_index::newtype_index! {
     /// Bruijn index of 0, meaning "the innermost binder" (in this case, a
     /// fn). The region `'a` that appears in the second argument type (`&'a
     /// isize`) would then be assigned a De Bruijn index of 1, meaning "the
-    /// second-innermost binder". (These indices are written on the arrays
+    /// second-innermost binder". (These indices are written on the arrows
     /// in the diagram).
     ///
     /// What is interesting is that De Bruijn index attached to a particular
