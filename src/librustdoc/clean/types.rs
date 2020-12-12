@@ -307,7 +307,7 @@ crate enum ItemKind {
     EnumItem(Enum),
     FunctionItem(Box<Function>),
     ModuleItem(Module),
-    TypedefItem(Typedef, bool /* is associated type */),
+    TypedefItem(Box<Typedef>, bool /* is associated type */),
     OpaqueTyItem(OpaqueTy),
     StaticItem(Static),
     ConstantItem(Constant),

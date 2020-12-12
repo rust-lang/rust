@@ -1121,7 +1121,7 @@ impl Clean<Item> for hir::ImplItem<'_> {
                 hir::ImplItemKind::TyAlias(ref ty) => {
                     let type_ = ty.clean(cx);
                     let item_type = type_.def_id().and_then(|did| inline::build_ty(cx, did));
-                    TypedefItem(Typedef { type_, generics: Generics::default(), item_type }, true)
+                    TypedefItem(box Typedef { type_, generics: Generics::default(), item_type }, true)
                 }
             };
             Item::from_def_id_and_parts(local_did, Some(self.ident.name.clean(cx)), inner, cx)
@@ -1270,7 +1270,7 @@ impl Clean<Item> for ty::AssocItem {
                     let type_ = cx.tcx.type_of(self.def_id).clean(cx);
                     let item_type = type_.def_id().and_then(|did| inline::build_ty(cx, did));
                     TypedefItem(
-                        Typedef {
+                        box Typedef {
                             type_,
                             generics: Generics { params: Vec::new(), where_predicates: Vec::new() },
                             item_type,
@@ -1981,7 +1981,7 @@ impl Clean<Vec<Item>> for (&hir::Item<'_>, Option<Symbol>) {
                     let rustdoc_ty = ty.clean(cx);
                     let item_type = rustdoc_ty.def_id().and_then(|did| inline::build_ty(cx, did));
                     TypedefItem(
-                        Typedef { type_: rustdoc_ty, generics: generics.clean(cx), item_type },
+                        box Typedef { type_: rustdoc_ty, generics: generics.clean(cx), item_type },
                         false,
                     )
                 }
