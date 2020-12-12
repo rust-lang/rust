@@ -14,7 +14,7 @@ use core::hint;
 use core::intrinsics::abort;
 use core::iter;
 use core::marker::{PhantomData, Unpin, Unsize};
-use core::mem::{self, align_of_val, size_of_val};
+use core::mem::{self, align_of_val, forget, size_of_val};
 use core::ops::{CoerceUnsized, Deref, DispatchFromDyn, Receiver};
 use core::pin::Pin;
 use core::ptr::{self, NonNull};
@@ -766,7 +766,7 @@ impl<T: ?Sized> Arc<T> {
             Arc::from_raw(ptr)
         };
         
-        std::mem::forget(result.clone());
+        forget(result.clone());
 
         result
     }
