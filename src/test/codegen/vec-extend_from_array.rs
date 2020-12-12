@@ -1,4 +1,5 @@
 // compile-flags: -O -C panic=abort
+// ignore-debug: the debug assertions get in the way
 
 #![crate_type = "lib"]
 #![feature(extend_from_array)]
