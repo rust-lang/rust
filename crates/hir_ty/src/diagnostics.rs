@@ -624,4 +624,14 @@ fn foo() { break; }
 "#,
         );
     }
+
+    #[test]
+    fn missing_semicolon() {
+        check_diagnostics(
+            r#"
+                fn test() -> i32 { 123; }
+                                 //^^^ Remove this semicolon
+            "#,
+        );
+    }
 }
