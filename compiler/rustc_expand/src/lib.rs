@@ -36,16 +36,13 @@ crate mod mbe;
 mod tests;
 #[cfg(test)]
 mod parse {
-    #[cfg(test)]
     mod tests;
 }
 #[cfg(test)]
 mod tokenstream {
-    #[cfg(test)]
     mod tests;
 }
 #[cfg(test)]
 mod mut_visit {
-    #[cfg(test)]
     mod tests;
 }
