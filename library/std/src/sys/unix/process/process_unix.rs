@@ -490,6 +490,10 @@ impl ExitStatus {
         if libc::WIFSTOPPED(self.0) { Some(libc::WSTOPSIG(self.0)) } else { None }
     }
 
+    pub fn continued(&self) -> bool {
+        libc::WIFCONTINUED(self.0)
+    }
+
     pub fn into_raw(&self) -> c_int {
         self.0
     }

@@ -187,6 +187,13 @@ pub trait ExitStatusExt {
     #[unstable(feature = "unix_process_wait_more", issue = "none")]
     fn stopped_signal(&self) -> Option<i32>;
 
+    /// Whether the process was continued from a stopped status.
+    ///
+    /// Ie, `WIFCONTINUED`.  This is only possible if the status came from a `wait` system call
+    /// which was passed `WCONTINUED`, was then converted into an `ExitStatus`.
+    #[unstable(feature = "unix_process_wait_more", issue = "none")]
+    fn continued(&self) -> bool;
+
     /// Returns the underlying raw `wait` status.
     #[unstable(feature = "unix_process_wait_more", issue = "none")]
     fn into_raw(self) -> i32;
@@ -208,6 +215,10 @@ impl ExitStatusExt for process::ExitStatus {
 
     fn stopped_signal(&self) -> Option<i32> {
         self.as_inner().stopped_signal()
+    }
+
+    fn continued(&self) -> bool {
+        self.as_inner().continued()
     }
 
     fn into_raw(self) -> i32 {
