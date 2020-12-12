@@ -436,8 +436,8 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         // Try looking for methods and associated items.
         let mut split = path_str.rsplitn(2, "::");
         // NB: `split`'s first element is always defined, even if the delimiter was not present.
+        // NB: `item_str` could be empty when resolving in the root namespace (e.g. `::std`).
         let item_str = split.next().unwrap();
-        assert!(!item_str.is_empty());
         let item_name = Symbol::intern(item_str);
         let path_root = split
             .next()
