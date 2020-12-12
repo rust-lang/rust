@@ -447,7 +447,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 );
                 nested.push(Obligation::new(
                     obligation.cause.clone(),
-                    obligation.param_env.clone(),
+                    obligation.param_env,
                     normalized_super_trait,
                 ));
             }
@@ -485,7 +485,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 );
                 nested.push(Obligation::new(
                     obligation.cause.clone(),
-                    obligation.param_env.clone(),
+                    obligation.param_env,
                     normalized_bound,
                 ));
             }

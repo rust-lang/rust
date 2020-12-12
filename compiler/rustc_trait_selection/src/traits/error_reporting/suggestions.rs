@@ -1448,31 +1448,30 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             });
         };
 
-        typeck_results
+        if let Some(cause) = typeck_results
             .generator_interior_types
             .iter()
             .find(|ty::GeneratorInteriorTypeCause { ty, .. }| ty_matches(ty))
-            .map(|cause| {
-                // Check to see if any awaited expressions have the target type.
-                let from_awaited_ty = visitor
-                    .awaits
-                    .into_iter()
-                    .map(|id| hir.expect_expr(id))
-                    .find(|await_expr| {
-                        let ty = typeck_results.expr_ty_adjusted(&await_expr);
-                        debug!(
-                            "maybe_note_obligation_cause_for_async_await: await_expr={:?}",
-                            await_expr
-                        );
-                        ty_matches(ty)
-                    })
-                    .map(|expr| expr.span);
-                let ty::GeneratorInteriorTypeCause { span, scope_span, yield_span, expr, .. } =
-                    cause;
+        {
+            // Check to see if any awaited expressions have the target type.
+            let from_awaited_ty = visitor
+                .awaits
+                .into_iter()
+                .map(|id| hir.expect_expr(id))
+                .find(|await_expr| {
+                    let ty = typeck_results.expr_ty_adjusted(&await_expr);
+                    debug!(
+                        "maybe_note_obligation_cause_for_async_await: await_expr={:?}",
+                        await_expr
+                    );
+                    ty_matches(ty)
+                })
+                .map(|expr| expr.span);
+            let ty::GeneratorInteriorTypeCause { span, scope_span, yield_span, expr, .. } = cause;
 
-                interior_or_upvar_span = Some(GeneratorInteriorOrUpvar::Interior(*span));
-                interior_extra_info = Some((*scope_span, *yield_span, *expr, from_awaited_ty));
-            });
+            interior_or_upvar_span = Some(GeneratorInteriorOrUpvar::Interior(*span));
+            interior_extra_info = Some((*scope_span, *yield_span, *expr, from_awaited_ty));
+        };
 
         debug!(
             "maybe_note_obligation_cause_for_async_await: interior_or_upvar={:?} \

@@ -159,11 +159,7 @@ pub fn check(build: &mut Build) {
             panic!("the iOS target is only supported on macOS");
         }
 
-        build
-            .config
-            .target_config
-            .entry(target.clone())
-            .or_insert(Target::from_triple(&target.triple));
+        build.config.target_config.entry(*target).or_insert(Target::from_triple(&target.triple));
 
         if target.contains("-none-") || target.contains("nvptx") {
             if build.no_std(*target) == Some(false) {
@@ -176,7 +172,7 @@ pub fn check(build: &mut Build) {
             // If this is a native target (host is also musl) and no musl-root is given,
             // fall back to the system toolchain in /usr before giving up
             if build.musl_root(*target).is_none() && build.config.build == *target {
-                let target = build.config.target_config.entry(target.clone()).or_default();
+                let target = build.config.target_config.entry(*target).or_default();
                 target.musl_root = Some("/usr".into());
             }
             match build.musl_libdir(*target) {
