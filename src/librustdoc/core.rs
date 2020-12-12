@@ -274,7 +274,7 @@ where
 }
 
 /// Parse, resolve, and typecheck the given crate.
-fn create_config(
+crate fn create_config(
     RustdocOptions {
         input,
         crate_name,
@@ -406,50 +406,7 @@ fn create_config(
     }
 }
 
-crate fn run_core(
-    options: RustdocOptions,
-) -> (clean::Crate, RenderInfo, RenderOptions, Lrc<Session>) {
-    let default_passes = options.default_passes;
-    let output_format = options.output_format;
-    // TODO: fix this clone (especially render_options)
-    let externs = options.externs.clone();
-    let manual_passes = options.manual_passes.clone();
-    let render_options = options.render_options.clone();
-    let config = create_config(options);
-
-    interface::create_compiler_and_run(config, |compiler| {
-        compiler.enter(|queries| {
-            let sess = compiler.session();
-
-            // We need to hold on to the complete resolver, so we cause everything to be
-            // cloned for the analysis passes to use. Suboptimal, but necessary in the
-            // current architecture.
-            let resolver = create_resolver(externs, queries, &sess);
-
-            if sess.has_errors() {
-                sess.fatal("Compilation failed, aborting rustdoc");
-            }
-
-            let mut global_ctxt = abort_on_err(queries.global_ctxt(), sess).take();
-
-            let (krate, render_info, opts) = sess.time("run_global_ctxt", || {
-                global_ctxt.enter(|tcx| {
-                    run_global_ctxt(
-                        tcx,
-                        resolver,
-                        default_passes,
-                        manual_passes,
-                        render_options,
-                        output_format,
-                    )
-                })
-            });
-            (krate, render_info, opts, Lrc::clone(sess))
-        })
-    })
-}
-
-fn create_resolver<'a>(
+crate fn create_resolver<'a>(
     externs: config::Externs,
     queries: &Queries<'a>,
     sess: &Session,
@@ -489,7 +446,7 @@ fn create_resolver<'a>(
     resolver.clone()
 }
 
-fn run_global_ctxt(
+crate fn run_global_ctxt(
     tcx: TyCtxt<'_>,
     resolver: Rc<RefCell<interface::BoxedResolver>>,
     mut default_passes: passes::DefaultPassOption,
