@@ -62,7 +62,7 @@ fn update_reference_file(reference_file_path: PathBuf) {
 }
 
 fn build_dir() -> PathBuf {
-    let profile = format!("{}", env::var("PROFILE").unwrap_or("debug".to_string()));
+    let profile = env::var("PROFILE").unwrap_or_else(|_| "debug".to_string());
     let mut path = PathBuf::new();
     path.push(CARGO_TARGET_DIR.clone());
     path.push(profile);
