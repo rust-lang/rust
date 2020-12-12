@@ -784,4 +784,29 @@ impl Test for () {
 "#,
         )
     }
+
+    #[test]
+    fn missing_generic_type() {
+        check_assist(
+            add_missing_impl_members,
+            r#"
+trait Foo<BAR> {
+    fn foo(&self, bar: BAR);
+}
+impl Foo for () {
+    <|>
+}
+"#,
+            r#"
+trait Foo<BAR> {
+    fn foo(&self, bar: BAR);
+}
+impl Foo for () {
+    fn foo(&self, bar: BAR) {
+        ${0:todo!()}
+    }
+}
+"#,
+        )
+    }
 }

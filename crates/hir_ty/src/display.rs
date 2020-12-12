@@ -178,6 +178,7 @@ impl DisplayTarget {
 #[derive(Debug)]
 pub enum DisplaySourceCodeError {
     PathNotFound,
+    UnknownType,
 }
 
 pub enum HirDisplayError {
@@ -558,7 +559,14 @@ impl HirDisplay for Ty {
                     }
                 };
             }
-            Ty::Unknown => write!(f, "{{unknown}}")?,
+            Ty::Unknown => {
+                if f.display_target.is_source_code() {
+                    return Err(HirDisplayError::DisplaySourceCodeError(
+                        DisplaySourceCodeError::UnknownType,
+                    ));
+                }
+                write!(f, "{{unknown}}")?;
+            }
             Ty::Infer(..) => write!(f, "_")?,
         }
         Ok(())
