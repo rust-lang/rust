@@ -744,6 +744,7 @@ impl<T: ?Sized> Rc<T> {
     }
     
     /// Obtains a new reference two a raw [`Rc`] pointer, without taking ownership.
+    #[unstable(feature = "rc_clone_raw", issue = "48108")]
     pub unsafe fn clone_raw(ptr: *const T) -> Self {
         let result = unsafe {
             Rc::from_raw(ptr)
