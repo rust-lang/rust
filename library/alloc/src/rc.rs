@@ -742,6 +742,17 @@ impl<T: ?Sized> Rc<T> {
 
         unsafe { Self::from_ptr(rc_ptr) }
     }
+    
+    /// Obtains a new reference two a raw [`Rc`] pointer, without taking ownership.
+    pub unsafe fn clone_raw(ptr: *const T) -> Self {
+        let result = unsafe {
+            Rc::from_raw(ptr)
+        };
+        
+        std::mem::forget(result.clone())
+        
+        result
+    }
 
     /// Creates a new [`Weak`] pointer to this allocation.
     ///
