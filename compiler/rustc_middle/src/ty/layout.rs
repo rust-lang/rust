@@ -4,7 +4,7 @@ use crate::mir::{GeneratorLayout, GeneratorSavedLocal};
 use crate::ty::subst::Subst;
 use crate::ty::{self, subst::SubstsRef, ReprOptions, Ty, TyCtxt, TypeFoldable};
 
-use rustc_ast::{self as ast, IntTy, UintTy};
+use rustc_ast as ast;
 use rustc_attr as attr;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir as hir;
@@ -30,6 +30,8 @@ use std::ops::Bound;
 pub trait IntegerExt {
     fn to_ty<'tcx>(&self, tcx: TyCtxt<'tcx>, signed: bool) -> Ty<'tcx>;
     fn from_attr<C: HasDataLayout>(cx: &C, ity: attr::IntType) -> Integer;
+    fn from_int_ty<C: HasDataLayout>(cx: &C, ity: ty::IntTy) -> Integer;
+    fn from_uint_ty<C: HasDataLayout>(cx: &C, uty: ty::UintTy) -> Integer;
     fn repr_discr<'tcx>(
         tcx: TyCtxt<'tcx>,
         ty: Ty<'tcx>,
@@ -60,14 +62,35 @@ impl IntegerExt for Integer {
         let dl = cx.data_layout();
 
         match ity {
-            attr::SignedInt(IntTy::I8) | attr::UnsignedInt(UintTy::U8) => I8,
-            attr::SignedInt(IntTy::I16) | attr::UnsignedInt(UintTy::U16) => I16,
-            attr::SignedInt(IntTy::I32) | attr::UnsignedInt(UintTy::U32) => I32,
-            attr::SignedInt(IntTy::I64) | attr::UnsignedInt(UintTy::U64) => I64,
-            attr::SignedInt(IntTy::I128) | attr::UnsignedInt(UintTy::U128) => I128,
-            attr::SignedInt(IntTy::Isize) | attr::UnsignedInt(UintTy::Usize) => {
+            attr::SignedInt(ast::IntTy::I8) | attr::UnsignedInt(ast::UintTy::U8) => I8,
+            attr::SignedInt(ast::IntTy::I16) | attr::UnsignedInt(ast::UintTy::U16) => I16,
+            attr::SignedInt(ast::IntTy::I32) | attr::UnsignedInt(ast::UintTy::U32) => I32,
+            attr::SignedInt(ast::IntTy::I64) | attr::UnsignedInt(ast::UintTy::U64) => I64,
+            attr::SignedInt(ast::IntTy::I128) | attr::UnsignedInt(ast::UintTy::U128) => I128,
+            attr::SignedInt(ast::IntTy::Isize) | attr::UnsignedInt(ast::UintTy::Usize) => {
                 dl.ptr_sized_integer()
             }
+        }
+    }
+
+    fn from_int_ty<C: HasDataLayout>(cx: &C, ity: ty::IntTy) -> Integer {
+        match ity {
+            ty::IntTy::I8 => I8,
+            ty::IntTy::I16 => I16,
+            ty::IntTy::I32 => I32,
+            ty::IntTy::I64 => I64,
+            ty::IntTy::I128 => I128,
+            ty::IntTy::Isize => cx.data_layout().ptr_sized_integer(),
+        }
+    }
+    fn from_uint_ty<C: HasDataLayout>(cx: &C, ity: ty::UintTy) -> Integer {
+        match ity {
+            ty::UintTy::U8 => I8,
+            ty::UintTy::U16 => I16,
+            ty::UintTy::U32 => I32,
+            ty::UintTy::U64 => I64,
+            ty::UintTy::U128 => I128,
+            ty::UintTy::Usize => cx.data_layout().ptr_sized_integer(),
         }
     }
 
@@ -487,11 +510,11 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 self,
                 Scalar { value: Int(I32, false), valid_range: 0..=0x10FFFF },
             )),
-            ty::Int(ity) => scalar(Int(Integer::from_attr(dl, attr::SignedInt(ity)), true)),
-            ty::Uint(ity) => scalar(Int(Integer::from_attr(dl, attr::UnsignedInt(ity)), false)),
+            ty::Int(ity) => scalar(Int(Integer::from_int_ty(dl, ity), true)),
+            ty::Uint(ity) => scalar(Int(Integer::from_uint_ty(dl, ity), false)),
             ty::Float(fty) => scalar(match fty {
-                ast::FloatTy::F32 => F32,
-                ast::FloatTy::F64 => F64,
+                ty::FloatTy::F32 => F32,
+                ty::FloatTy::F64 => F64,
             }),
             ty::FnPtr(_) => {
                 let mut ptr = scalar_unit(Pointer);

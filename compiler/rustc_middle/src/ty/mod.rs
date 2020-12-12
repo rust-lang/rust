@@ -3045,6 +3045,57 @@ pub fn is_impl_trait_defn(tcx: TyCtxt<'_>, def_id: DefId) -> Option<DefId> {
     None
 }
 
+pub fn int_ty(ity: ast::IntTy) -> IntTy {
+    match ity {
+        ast::IntTy::Isize => IntTy::Isize,
+        ast::IntTy::I8 => IntTy::I8,
+        ast::IntTy::I16 => IntTy::I16,
+        ast::IntTy::I32 => IntTy::I32,
+        ast::IntTy::I64 => IntTy::I64,
+        ast::IntTy::I128 => IntTy::I128,
+    }
+}
+
+pub fn uint_ty(uty: ast::UintTy) -> UintTy {
+    match uty {
+        ast::UintTy::Usize => UintTy::Usize,
+        ast::UintTy::U8 => UintTy::U8,
+        ast::UintTy::U16 => UintTy::U16,
+        ast::UintTy::U32 => UintTy::U32,
+        ast::UintTy::U64 => UintTy::U64,
+        ast::UintTy::U128 => UintTy::U128,
+    }
+}
+
+pub fn float_ty(fty: ast::FloatTy) -> FloatTy {
+    match fty {
+        ast::FloatTy::F32 => FloatTy::F32,
+        ast::FloatTy::F64 => FloatTy::F64,
+    }
+}
+
+pub fn ast_int_ty(ity: IntTy) -> ast::IntTy {
+    match ity {
+        IntTy::Isize => ast::IntTy::Isize,
+        IntTy::I8 => ast::IntTy::I8,
+        IntTy::I16 => ast::IntTy::I16,
+        IntTy::I32 => ast::IntTy::I32,
+        IntTy::I64 => ast::IntTy::I64,
+        IntTy::I128 => ast::IntTy::I128,
+    }
+}
+
+pub fn ast_uint_ty(uty: UintTy) -> ast::UintTy {
+    match uty {
+        UintTy::Usize => ast::UintTy::Usize,
+        UintTy::U8 => ast::UintTy::U8,
+        UintTy::U16 => ast::UintTy::U16,
+        UintTy::U32 => ast::UintTy::U32,
+        UintTy::U64 => ast::UintTy::U64,
+        UintTy::U128 => ast::UintTy::U128,
+    }
+}
+
 pub fn provide(providers: &mut ty::query::Providers) {
     context::provide(providers);
     erase_regions::provide(providers);

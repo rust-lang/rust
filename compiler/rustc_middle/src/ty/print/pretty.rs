@@ -3,7 +3,6 @@ use crate::mir::interpret::{AllocId, ConstValue, GlobalAlloc, Pointer, Scalar};
 use crate::ty::subst::{GenericArg, GenericArgKind, Subst};
 use crate::ty::{self, ConstInt, DefIdTree, ParamConst, ScalarInt, Ty, TyCtxt, TypeFoldable};
 use rustc_apfloat::ieee::{Double, Single};
-use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_hir::def::{self, CtorKind, DefKind, Namespace};
@@ -973,7 +972,7 @@ pub trait PrettyPrinter<'tcx>:
                     ty::TyS {
                         kind:
                             ty::Array(
-                                ty::TyS { kind: ty::Uint(ast::UintTy::U8), .. },
+                                ty::TyS { kind: ty::Uint(ty::UintTy::U8), .. },
                                 ty::Const {
                                     val: ty::ConstKind::Value(ConstValue::Scalar(int)),
                                     ..
@@ -1002,10 +1001,10 @@ pub trait PrettyPrinter<'tcx>:
             (Scalar::Int(int), ty::Bool) if int == ScalarInt::FALSE => p!("false"),
             (Scalar::Int(int), ty::Bool) if int == ScalarInt::TRUE => p!("true"),
             // Float
-            (Scalar::Int(int), ty::Float(ast::FloatTy::F32)) => {
+            (Scalar::Int(int), ty::Float(ty::FloatTy::F32)) => {
                 p!(write("{}f32", Single::try_from(int).unwrap()))
             }
-            (Scalar::Int(int), ty::Float(ast::FloatTy::F64)) => {
+            (Scalar::Int(int), ty::Float(ty::FloatTy::F64)) => {
                 p!(write("{}f64", Double::try_from(int).unwrap()))
             }
             // Int

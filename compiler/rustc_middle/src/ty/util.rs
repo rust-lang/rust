@@ -34,7 +34,7 @@ impl<'tcx> fmt::Display for Discr<'tcx> {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self.ty.kind() {
             ty::Int(ity) => {
-                let size = ty::tls::with(|tcx| Integer::from_attr(&tcx, SignedInt(ity)).size());
+                let size = ty::tls::with(|tcx| Integer::from_int_ty(&tcx, ity).size());
                 let x = self.val;
                 // sign extend the raw representation to be an i128
                 let x = size.sign_extend(x) as i128;
@@ -59,8 +59,8 @@ fn unsigned_max(size: Size) -> u128 {
 
 fn int_size_and_signed<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> (Size, bool) {
     let (int, signed) = match *ty.kind() {
-        Int(ity) => (Integer::from_attr(&tcx, SignedInt(ity)), true),
-        Uint(uty) => (Integer::from_attr(&tcx, UnsignedInt(uty)), false),
+        Int(ity) => (Integer::from_int_ty(&tcx, ity), true),
+        Uint(uty) => (Integer::from_uint_ty(&tcx, uty), false),
         _ => bug!("non integer discriminant"),
     };
     (int.size(), signed)
@@ -642,8 +642,8 @@ impl<'tcx> ty::TyS<'tcx> {
             }
             ty::Char => Some(std::char::MAX as u128),
             ty::Float(fty) => Some(match fty {
-                ast::FloatTy::F32 => rustc_apfloat::ieee::Single::INFINITY.to_bits(),
-                ast::FloatTy::F64 => rustc_apfloat::ieee::Double::INFINITY.to_bits(),
+                ty::FloatTy::F32 => rustc_apfloat::ieee::Single::INFINITY.to_bits(),
+                ty::FloatTy::F64 => rustc_apfloat::ieee::Double::INFINITY.to_bits(),
             }),
             _ => None,
         };
@@ -661,8 +661,8 @@ impl<'tcx> ty::TyS<'tcx> {
             }
             ty::Char => Some(0),
             ty::Float(fty) => Some(match fty {
-                ast::FloatTy::F32 => (-::rustc_apfloat::ieee::Single::INFINITY).to_bits(),
-                ast::FloatTy::F64 => (-::rustc_apfloat::ieee::Double::INFINITY).to_bits(),
+                ty::FloatTy::F32 => (-::rustc_apfloat::ieee::Single::INFINITY).to_bits(),
+                ty::FloatTy::F64 => (-::rustc_apfloat::ieee::Double::INFINITY).to_bits(),
             }),
             _ => None,
         };

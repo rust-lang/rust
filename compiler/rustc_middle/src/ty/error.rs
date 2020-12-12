@@ -1,7 +1,6 @@
 use crate::traits::{ObligationCause, ObligationCauseCode};
 use crate::ty::diagnostics::suggest_constraining_type_param;
 use crate::ty::{self, BoundRegionKind, Region, Ty, TyCtxt};
-use rustc_ast as ast;
 use rustc_errors::Applicability::{MachineApplicable, MaybeIncorrect};
 use rustc_errors::{pluralize, DiagnosticBuilder};
 use rustc_hir as hir;
@@ -48,7 +47,7 @@ pub enum TypeError<'tcx> {
 
     Sorts(ExpectedFound<Ty<'tcx>>),
     IntMismatch(ExpectedFound<ty::IntVarValue>),
-    FloatMismatch(ExpectedFound<ast::FloatTy>),
+    FloatMismatch(ExpectedFound<ty::FloatTy>),
     Traits(ExpectedFound<DefId>),
     VariadicMismatch(ExpectedFound<bool>),
 

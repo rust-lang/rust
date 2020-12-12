@@ -12,7 +12,6 @@ use crate::ty::{
 };
 use crate::ty::{DelaySpanBugEmitted, List, ParamEnv, TyS};
 use polonius_engine::Atom;
-use rustc_ast as ast;
 use rustc_data_structures::captures::Captures;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -104,13 +103,13 @@ pub enum TyKind<'tcx> {
     Char,
 
     /// A primitive signed integer type. For example, `i32`.
-    Int(ast::IntTy),
+    Int(ty::IntTy),
 
     /// A primitive unsigned integer type. For example, `u32`.
-    Uint(ast::UintTy),
+    Uint(ty::UintTy),
 
     /// A primitive floating-point type. For example, `f64`.
-    Float(ast::FloatTy),
+    Float(ty::FloatTy),
 
     /// Algebraic data types (ADT). For example: structures, enumerations and unions.
     ///
@@ -1798,7 +1797,7 @@ impl<'tcx> TyS<'tcx> {
     pub fn sequence_element_type(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         match self.kind() {
             Array(ty, _) | Slice(ty) => ty,
-            Str => tcx.mk_mach_uint(ast::UintTy::U8),
+            Str => tcx.mk_mach_uint(ty::UintTy::U8),
             _ => bug!("`sequence_element_type` called on non-sequence value: {}", self),
         }
     }
@@ -1938,7 +1937,7 @@ impl<'tcx> TyS<'tcx> {
 
     #[inline]
     pub fn is_ptr_sized_integral(&self) -> bool {
-        matches!(self.kind(), Int(ast::IntTy::Isize) | Uint(ast::UintTy::Usize))
+        matches!(self.kind(), Int(ty::IntTy::Isize) | Uint(ty::UintTy::Usize))
     }
 
     #[inline]
@@ -2126,9 +2125,9 @@ impl<'tcx> TyS<'tcx> {
     pub fn to_opt_closure_kind(&self) -> Option<ty::ClosureKind> {
         match self.kind() {
             Int(int_ty) => match int_ty {
-                ast::IntTy::I8 => Some(ty::ClosureKind::Fn),
-                ast::IntTy::I16 => Some(ty::ClosureKind::FnMut),
-                ast::IntTy::I32 => Some(ty::ClosureKind::FnOnce),
+                ty::IntTy::I8 => Some(ty::ClosureKind::Fn),
+                ty::IntTy::I16 => Some(ty::ClosureKind::FnMut),
+                ty::IntTy::I32 => Some(ty::ClosureKind::FnOnce),
                 _ => bug!("cannot convert type `{:?}` to a closure kind", self),
             },
 
