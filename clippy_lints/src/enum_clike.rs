@@ -3,10 +3,9 @@
 
 use crate::consts::{miri_to_const, Constant};
 use crate::utils::span_lint;
-use rustc_ast::ast::{IntTy, UintTy};
 use rustc_hir::{Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty;
+use rustc_middle::ty::{self, IntTy, UintTy};
 use rustc_middle::ty::util::IntTypeExt;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use std::convert::TryFrom;

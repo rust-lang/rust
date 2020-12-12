@@ -443,7 +443,7 @@ impl<'tcx> LateLintPass<'tcx> for Transmute {
                             );
                         },
                     ),
-                    (ty::Int(ast::IntTy::I32) | ty::Uint(ast::UintTy::U32), &ty::Char) => {
+                    (ty::Int(ty::IntTy::I32) | ty::Uint(ty::UintTy::U32), &ty::Char) => {
                         span_lint_and_then(
                             cx,
                             TRANSMUTE_INT_TO_CHAR,
@@ -468,7 +468,7 @@ impl<'tcx> LateLintPass<'tcx> for Transmute {
                     (ty::Ref(_, ty_from, from_mutbl), ty::Ref(_, ty_to, to_mutbl)) => {
                         if_chain! {
                             if let (&ty::Slice(slice_ty), &ty::Str) = (&ty_from.kind(), &ty_to.kind());
-                            if let ty::Uint(ast::UintTy::U8) = slice_ty.kind();
+                            if let ty::Uint(ty::UintTy::U8) = slice_ty.kind();
                             if from_mutbl == to_mutbl;
                             then {
                                 let postfix = if *from_mutbl == Mutability::Mut {
@@ -536,7 +536,7 @@ impl<'tcx> LateLintPass<'tcx> for Transmute {
                             }
                         },
                     ),
-                    (ty::Int(ast::IntTy::I8) | ty::Uint(ast::UintTy::U8), ty::Bool) => {
+                    (ty::Int(ty::IntTy::I8) | ty::Uint(ty::UintTy::U8), ty::Bool) => {
                         span_lint_and_then(
                             cx,
                             TRANSMUTE_INT_TO_BOOL,

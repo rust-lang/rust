@@ -2,11 +2,10 @@ use crate::utils::{
     contains_name, get_pat_name, match_type, paths, single_segment_path, snippet_with_applicability, span_lint_and_sugg,
 };
 use if_chain::if_chain;
-use rustc_ast::ast::UintTy;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, BorrowKind, Expr, ExprKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty;
+use rustc_middle::ty::{self, UintTy};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::sym;
 use rustc_span::Symbol;
