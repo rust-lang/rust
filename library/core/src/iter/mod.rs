@@ -206,6 +206,51 @@
 //! 2. If you're creating a collection, implementing [`IntoIterator`] for it
 //!    will allow your collection to be used with the `for` loop.
 //!
+//! # Iterating by reference
+//!
+//! Since [`into_iter()`] takes `self` by value, using a `for` loop to iterate
+//! over a collection consumes that collection. Often, you may want to iterate
+//! over a collection without consuming it. Many collections offer methods that
+//! provide iterators over references, conventionally called `iter()` and
+//! `iter_mut()` respectively:
+//!
+//! ```
+//! let mut values = vec![41];
+//! for x in values.iter_mut() {
+//!     *x += 1;
+//! }
+//! for x in values.iter() {
+//!     assert_eq!(*x, 42);
+//! }
+//! assert_eq!(values.len(), 1); // `values` is still owned by this function.
+//! ```
+//!
+//! If a collection type `C` provides `iter()`, it usually also implements
+//! `IntoIterator` for `&C`, with an implementation that just calls `iter()`.
+//! Likewise, a collection `C` that provides `iter_mut()` generally implements
+//! `IntoIterator` for `&mut C` by delegating to `iter_mut()`. This enables a
+//! convenient shorthand:
+//!
+//! ```
+//! let mut values = vec![41];
+//! for x in &mut values { // same as `values.iter_mut()`
+//!     *x += 1;
+//! }
+//! for x in &values { // same as `values.iter()`
+//!     assert_eq!(*x, 42);
+//! }
+//! assert_eq!(values.len(), 1);
+//! ```
+//!
+//! While many collections offer `iter()`, not all offer `iter_mut()`. For
+//! example, mutating the keys of a [`HashSet<T>`] or [`HashMap<K, V>`] could
+//! put the collection into an inconsistent state if the key hashes change, so
+//! these collections only offer `iter()`.
+//!
+//! [`into_iter()`]: IntoIterator::into_iter
+//! [`HashSet<T>`]: ../../std/collections/struct.HashSet.html
+//! [`HashMap<K, V>`]: ../../std/collections/struct.HashMap.html
+//!
 //! # Adapters
 //!
 //! Functions which take an [`Iterator`] and return another [`Iterator`] are
