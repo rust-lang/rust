@@ -221,8 +221,8 @@ macro_rules! acquire {
 #[cfg_attr(not(test), rustc_diagnostic_item = "Arc")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Arc<T: ?Sized> {
-    ptr: NonNull<ArcInner<T>>,
-    phantom: PhantomData<ArcInner<T>>,
+    ptr: NonNull<ArcRepr<T>>,
+    phantom: PhantomData<ArcRepr<T>>,
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -237,11 +237,11 @@ impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Arc<U>> for Arc<T> {}
 impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<Arc<U>> for Arc<T> {}
 
 impl<T: ?Sized> Arc<T> {
-    fn from_inner(ptr: NonNull<ArcInner<T>>) -> Self {
+    fn from_inner(ptr: NonNull<ArcRepr<T>>) -> Self {
         Self { ptr, phantom: PhantomData }
     }
 
-    unsafe fn from_ptr(ptr: *mut ArcInner<T>) -> Self {
+    unsafe fn from_ptr(ptr: *mut ArcRepr<T>) -> Self {
         unsafe { Self::from_inner(NonNull::new_unchecked(ptr)) }
     }
 }
@@ -274,7 +274,7 @@ pub struct Weak<T: ?Sized> {
     // to allocate space on the heap.  That's not a value a real pointer
     // will ever have because RcBox has alignment at least 2.
     // This is only possible when `T: Sized`; unsized `T` never dangle.
-    ptr: NonNull<ArcInner<T>>,
+    ptr: NonNull<ArcRepr<T>>,
 }
 
 #[stable(feature = "arc_weak", since = "1.4.0")]
@@ -302,7 +302,7 @@ impl<T: ?Sized + fmt::Debug> fmt::Debug for Weak<T> {
 // be publicly accessible. Maybe `ArcRepr`?
 #[unstable(feature = "rc_stable_repr", issue = "none")]
 #[repr(C)]
-pub struct ArcInner<T: ?Sized> {
+pub struct ArcRepr<T: ?Sized> {
     strong: atomic::AtomicUsize,
 
     // the value usize::MAX acts as a sentinel for temporarily "locking" the
@@ -314,25 +314,25 @@ pub struct ArcInner<T: ?Sized> {
 }
 
 #[unstable(feature = "rc_stable_repr", issue = "none")]
-impl<T: ?Sized + fmt::Display> fmt::Display for ArcInner<T> {
+impl<T: ?Sized + fmt::Display> fmt::Display for ArcRepr<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(&self.data, f)
     }
 }
 
 #[unstable(feature = "rc_stable_repr", issue = "none")]
-impl<T: ?Sized + fmt::Debug> fmt::Debug for ArcInner<T> {
+impl<T: ?Sized + fmt::Debug> fmt::Debug for ArcRepr<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(&self.data, f)
     }
 }
 
-impl<T> ArcInner<T> {
+impl<T> ArcRepr<T> {
     // TODO
     #[inline]
     #[unstable(feature = "rc_stable_repr", issue = "none")]
-    pub fn new(data: T) -> ArcInner<T> {
-        ArcInner{
+    pub fn new(data: T) -> ArcRepr<T> {
+        ArcRepr{
             strong: atomic::AtomicUsize::new(1),
             weak: atomic::AtomicUsize::new(1),
             data,
@@ -341,9 +341,9 @@ impl<T> ArcInner<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-unsafe impl<T: ?Sized + Sync + Send> Send for ArcInner<T> {}
+unsafe impl<T: ?Sized + Sync + Send> Send for ArcRepr<T> {}
 #[stable(feature = "rust1", since = "1.0.0")]
-unsafe impl<T: ?Sized + Sync + Send> Sync for ArcInner<T> {}
+unsafe impl<T: ?Sized + Sync + Send> Sync for ArcRepr<T> {}
 
 impl<T> Arc<T> {
     /// Constructs a new `Arc<T>`.
@@ -360,7 +360,7 @@ impl<T> Arc<T> {
     pub fn new(data: T) -> Arc<T> {
         // Start the weak pointer count as 1 which is the weak pointer that's
         // held by all the strong pointers (kinda), see std/rc.rs for more info
-        let x = box ArcInner::new(data);
+        let x = box ArcRepr::new(data);
         Self::from_repr(x)
     }
 
@@ -389,13 +389,13 @@ impl<T> Arc<T> {
     pub fn new_cyclic(data_fn: impl FnOnce(&Weak<T>) -> T) -> Arc<T> {
         // Construct the inner in the "uninitialized" state with a single
         // weak reference.
-        let uninit_ptr: NonNull<_> = Box::leak(box ArcInner {
+        let uninit_ptr: NonNull<_> = Box::leak(box ArcRepr {
             strong: atomic::AtomicUsize::new(0),
             weak: atomic::AtomicUsize::new(1),
             data: mem::MaybeUninit::<T>::uninit(),
         })
         .into();
-        let init_ptr: NonNull<ArcInner<T>> = uninit_ptr.cast();
+        let init_ptr: NonNull<ArcRepr<T>> = uninit_ptr.cast();
 
         let weak = Weak { ptr: init_ptr };
 
@@ -464,7 +464,7 @@ impl<T> Arc<T> {
             Arc::from_ptr(Arc::allocate_for_layout(
                 Layout::new::<T>(),
                 |layout| Global.allocate(layout),
-                |mem| mem as *mut ArcInner<mem::MaybeUninit<T>>,
+                |mem| mem as *mut ArcRepr<mem::MaybeUninit<T>>,
             ))
         }
     }
@@ -495,7 +495,7 @@ impl<T> Arc<T> {
             Arc::from_ptr(Arc::allocate_for_layout(
                 Layout::new::<T>(),
                 |layout| Global.allocate_zeroed(layout),
-                |mem| mem as *mut ArcInner<mem::MaybeUninit<T>>,
+                |mem| mem as *mut ArcRepr<mem::MaybeUninit<T>>,
             ))
         }
     }
@@ -604,7 +604,7 @@ impl<T> Arc<[T]> {
                 |layout| Global.allocate_zeroed(layout),
                 |mem| {
                     ptr::slice_from_raw_parts_mut(mem as *mut T, len)
-                        as *mut ArcInner<[mem::MaybeUninit<T>]>
+                        as *mut ArcRepr<[mem::MaybeUninit<T>]>
                 },
             ))
         }
@@ -731,7 +731,7 @@ impl<T: ?Sized> Arc<T> {
     /// ```
     #[stable(feature = "rc_as_ptr", since = "1.45.0")]
     pub fn as_ptr(this: &Self) -> *const T {
-        let ptr: *mut ArcInner<T> = NonNull::as_ptr(this.ptr);
+        let ptr: *mut ArcRepr<T> = NonNull::as_ptr(this.ptr);
 
         // SAFETY: This cannot go through Deref::deref or RcBoxPtr::inner because
         // this is required to retain raw/mut provenance such that e.g. `get_mut` can
@@ -782,7 +782,7 @@ impl<T: ?Sized> Arc<T> {
             let offset = data_offset(ptr);
 
             // Reverse the offset to find the original ArcInner.
-            let fake_ptr = ptr as *mut ArcInner<T>;
+            let fake_ptr = ptr as *mut ArcRepr<T>;
             let arc_ptr = set_data_ptr(fake_ptr, (ptr as *mut u8).offset(-offset));
 
             Self::from_ptr(arc_ptr)
@@ -963,7 +963,7 @@ impl<T: ?Sized> Arc<T> {
     }
 
     #[inline]
-    fn inner(&self) -> &ArcInner<T> {
+    fn inner(&self) -> &ArcRepr<T> {
         // This unsafety is ok because while this arc is alive we're guaranteed
         // that the inner pointer is valid. Furthermore, we know that the
         // `ArcInner` structure itself is `Sync` because the inner data is
@@ -1008,7 +1008,7 @@ impl<T: ?Sized> Arc<T> {
 
     /// TODO: doc comment
     #[unstable(feature = "rc_stable_repr", issue = "none")]
-    pub fn from_repr(repr: Box<ArcInner<T>>) -> Self {
+    pub fn from_repr(repr: Box<ArcRepr<T>>) -> Self {
         Self::from_inner(Box::leak(repr).into())
     }
 }
@@ -1022,13 +1022,13 @@ impl<T: ?Sized> Arc<T> {
     unsafe fn allocate_for_layout(
         value_layout: Layout,
         allocate: impl FnOnce(Layout) -> Result<NonNull<[u8]>, AllocError>,
-        mem_to_arcinner: impl FnOnce(*mut u8) -> *mut ArcInner<T>,
-    ) -> *mut ArcInner<T> {
+        mem_to_arcinner: impl FnOnce(*mut u8) -> *mut ArcRepr<T>,
+    ) -> *mut ArcRepr<T> {
         // Calculate layout using the given value layout.
         // Previously, layout was calculated on the expression
         // `&*(ptr as *const ArcInner<T>)`, but this created a misaligned
         // reference (see #54908).
-        let layout = Layout::new::<ArcInner<()>>().extend(value_layout).unwrap().0.pad_to_align();
+        let layout = Layout::new::<ArcRepr<()>>().extend(value_layout).unwrap().0.pad_to_align();
 
         let ptr = allocate(layout).unwrap_or_else(|_| handle_alloc_error(layout));
 
@@ -1045,13 +1045,13 @@ impl<T: ?Sized> Arc<T> {
     }
 
     /// Allocates an `ArcInner<T>` with sufficient space for an unsized inner value.
-    unsafe fn allocate_for_ptr(ptr: *const T) -> *mut ArcInner<T> {
+    unsafe fn allocate_for_ptr(ptr: *const T) -> *mut ArcRepr<T> {
         // Allocate for the `ArcInner<T>` using the given value.
         unsafe {
             Self::allocate_for_layout(
                 Layout::for_value(&*ptr),
                 |layout| Global.allocate(layout),
-                |mem| set_data_ptr(ptr as *mut T, mem) as *mut ArcInner<T>,
+                |mem| set_data_ptr(ptr as *mut T, mem) as *mut ArcRepr<T>,
             )
         }
     }
@@ -1081,12 +1081,12 @@ impl<T: ?Sized> Arc<T> {
 
 impl<T> Arc<[T]> {
     /// Allocates an `ArcInner<[T]>` with the given length.
-    unsafe fn allocate_for_slice(len: usize) -> *mut ArcInner<[T]> {
+    unsafe fn allocate_for_slice(len: usize) -> *mut ArcRepr<[T]> {
         unsafe {
             Self::allocate_for_layout(
                 Layout::array::<T>(len).unwrap(),
                 |layout| Global.allocate(layout),
-                |mem| ptr::slice_from_raw_parts_mut(mem as *mut T, len) as *mut ArcInner<[T]>,
+                |mem| ptr::slice_from_raw_parts_mut(mem as *mut T, len) as *mut ArcRepr<[T]>,
             )
         }
     }
@@ -1534,7 +1534,7 @@ impl Arc<dyn Any + Send + Sync> {
         T: Any + Send + Sync + 'static,
     {
         if (*self).is::<T>() {
-            let ptr = self.ptr.cast::<ArcInner<T>>();
+            let ptr = self.ptr.cast::<ArcRepr<T>>();
             mem::forget(self);
             Ok(Arc::from_inner(ptr))
         } else {
@@ -1559,7 +1559,7 @@ impl<T> Weak<T> {
     /// ```
     #[stable(feature = "downgraded_weak", since = "1.10.0")]
     pub fn new() -> Weak<T> {
-        Weak { ptr: NonNull::new(usize::MAX as *mut ArcInner<T>).expect("MAX is not 0") }
+        Weak { ptr: NonNull::new(usize::MAX as *mut ArcRepr<T>).expect("MAX is not 0") }
     }
 }
 
@@ -1598,7 +1598,7 @@ impl<T: ?Sized> Weak<T> {
     /// [`null`]: core::ptr::null
     #[stable(feature = "weak_into_raw", since = "1.45.0")]
     pub fn as_ptr(&self) -> *const T {
-        let ptr: *mut ArcInner<T> = NonNull::as_ptr(self.ptr);
+        let ptr: *mut ArcRepr<T> = NonNull::as_ptr(self.ptr);
 
         // SAFETY: we must offset the pointer manually, and said pointer may be
         // a dangling weak (usize::MAX) if T is sized. data_offset is safe to call,
@@ -1697,7 +1697,7 @@ impl<T: ?Sized> Weak<T> {
         // Reverse the offset to find the original ArcInner.
         // SAFETY: we use wrapping_offset here because the pointer may be dangling (but only if T: Sized)
         let ptr = unsafe {
-            set_data_ptr(ptr as *mut ArcInner<T>, (ptr as *mut u8).wrapping_offset(-offset))
+            set_data_ptr(ptr as *mut ArcRepr<T>, (ptr as *mut u8).wrapping_offset(-offset))
         };
 
         // SAFETY: we now have recovered the original Weak pointer, so can create the Weak.
@@ -2404,6 +2404,6 @@ unsafe fn data_offset<T: ?Sized>(ptr: *const T) -> isize {
 
 #[inline]
 fn data_offset_align(align: usize) -> isize {
-    let layout = Layout::new::<ArcInner<()>>();
+    let layout = Layout::new::<ArcRepr<()>>();
     (layout.size() + layout.padding_needed_for(align)) as isize
 }
