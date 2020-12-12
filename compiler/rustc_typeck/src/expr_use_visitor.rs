@@ -15,7 +15,6 @@ use rustc_index::vec::Idx;
 use rustc_infer::infer::InferCtxt;
 use rustc_middle::hir::place::ProjectionKind;
 use rustc_middle::ty::{self, adjustment, TyCtxt};
-use rustc_span::Span;
 use rustc_target::abi::VariantIdx;
 
 use crate::mem_categorization as mc;
@@ -571,38 +570,6 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         }));
     }
 
-    /// Walk closure captures but using `closure_caputes` instead
-    /// of `closure_min_captures`.
-    ///
-    /// This is needed because clippy uses `ExprUseVisitor` after TypeckResults
-    /// are written back. We don't currently writeback min_captures to
-    /// TypeckResults.
-    fn walk_captures_closure_captures(&mut self, closure_expr: &hir::Expr<'_>) {
-        // FIXME(arora-aman): Remove this function once rust-lang/project-rfc-2229#18
-        // is completed.
-        debug!("walk_captures_closure_captures({:?}), ", closure_expr);
-
-        let closure_def_id = self.tcx().hir().local_def_id(closure_expr.hir_id).to_def_id();
-        let cl_span = self.tcx().hir().span(closure_expr.hir_id);
-
-        let captures = &self.mc.typeck_results.closure_captures[&closure_def_id];
-
-        for (&var_id, &upvar_id) in captures {
-            let upvar_capture = self.mc.typeck_results.upvar_capture(upvar_id);
-            let captured_place =
-                return_if_err!(self.cat_captured_var(closure_expr.hir_id, cl_span, var_id));
-            match upvar_capture {
-                ty::UpvarCapture::ByValue(_) => {
-                    let mode = copy_or_move(&self.mc, &captured_place);
-                    self.delegate.consume(&captured_place, captured_place.hir_id, mode);
-                }
-                ty::UpvarCapture::ByRef(upvar_borrow) => {
-                    self.delegate.borrow(&captured_place, captured_place.hir_id, upvar_borrow.kind);
-                }
-            }
-        }
-    }
-
     /// Handle the case where the current body contains a closure.
     ///
     /// When the current body being handled is a closure, then we must make sure that
@@ -646,16 +613,18 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                     let place = &captured_place.place;
                     let capture_info = captured_place.info;
 
-                    let upvar_id = if body_owner_is_closure {
+                    let place_base = if body_owner_is_closure {
                         // Mark the place to be captured by the enclosing closure
-                        ty::UpvarId::new(*var_hir_id, self.body_owner)
+                        PlaceBase::Upvar(ty::UpvarId::new(*var_hir_id, self.body_owner))
                     } else {
-                        ty::UpvarId::new(*var_hir_id, closure_def_id.expect_local())
+                        // If the body owner isn't a closure then the variable must
+                        // be a local variable
+                        PlaceBase::Local(*var_hir_id)
                     };
                     let place_with_id = PlaceWithHirId::new(
                         capture_info.expr_id.unwrap_or(closure_expr.hir_id),
                         place.base_ty,
-                        PlaceBase::Upvar(upvar_id),
+                        place_base,
                         place.projections.clone(),
                     );
 
@@ -674,22 +643,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                     }
                 }
             }
-        } else if self.mc.typeck_results.closure_captures.contains_key(&closure_def_id) {
-            // Handle the case where clippy calls ExprUseVisitor after
-            self.walk_captures_closure_captures(closure_expr)
         }
-    }
-
-    fn cat_captured_var(
-        &mut self,
-        closure_hir_id: hir::HirId,
-        closure_span: Span,
-        var_id: hir::HirId,
-    ) -> mc::McResult<PlaceWithHirId<'tcx>> {
-        // Create the place for the variable being borrowed, from the
-        // perspective of the creator (parent) of the closure.
-        let var_ty = self.mc.node_ty(var_id)?;
-        self.mc.cat_res(closure_hir_id, closure_span, var_ty, Res::Local(var_id))
     }
 }
 

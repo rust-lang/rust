@@ -1,0 +1,111 @@
+warning: the feature `capture_disjoint_fields` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/arrays.rs:3:12
+   |
+LL | #![feature(capture_disjoint_fields)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+   = note: see issue #53488 <https://github.com/rust-lang/rust/issues/53488> for more information
+
+error[E0503]: cannot use `arr` because it was mutably borrowed
+  --> $DIR/arrays.rs:15:5
+   |
+LL |     let mut c = || {
+   |                 -- borrow of `arr` occurs here
+LL |         arr[0] += 10;
+   |         --- borrow occurs due to use of `arr` in closure
+...
+LL |     arr[1] += 10;
+   |     ^^^^^^ use of borrowed `arr`
+...
+LL |     c();
+   |     - borrow later used here
+
+error[E0503]: cannot use `arr[_]` because it was mutably borrowed
+  --> $DIR/arrays.rs:15:5
+   |
+LL |     let mut c = || {
+   |                 -- borrow of `arr` occurs here
+LL |         arr[0] += 10;
+   |         --- borrow occurs due to use of `arr` in closure
+...
+LL |     arr[1] += 10;
+   |     ^^^^^^^^^^^^ use of borrowed `arr`
+...
+LL |     c();
+   |     - borrow later used here
+
+error[E0506]: cannot assign to `arr[_]` because it is borrowed
+  --> $DIR/arrays.rs:30:5
+   |
+LL |     let c = || {
+   |             -- borrow of `arr[_]` occurs here
+LL |         println!("{:#?}", &arr[3..4]);
+   |                            --- borrow occurs due to use in closure
+...
+LL |     arr[1] += 10;
+   |     ^^^^^^^^^^^^ assignment to borrowed `arr[_]` occurs here
+LL |
+LL |     c();
+   |     - borrow later used here
+
+error[E0506]: cannot assign to `arr[_]` because it is borrowed
+  --> $DIR/arrays.rs:44:5
+   |
+LL |     let c = || {
+   |             -- borrow of `arr[_]` occurs here
+LL |         println!("{}", arr[3]);
+   |                        --- borrow occurs due to use in closure
+...
+LL |     arr[1] += 10;
+   |     ^^^^^^^^^^^^ assignment to borrowed `arr[_]` occurs here
+LL |
+LL |     c();
+   |     - borrow later used here
+
+error[E0503]: cannot use `arr` because it was mutably borrowed
+  --> $DIR/arrays.rs:58:20
+   |
+LL |     let mut c = || {
+   |                 -- borrow of `arr` occurs here
+LL |         arr[1] += 10;
+   |         --- borrow occurs due to use of `arr` in closure
+...
+LL |     println!("{}", arr[3]);
+   |                    ^^^^^^ use of borrowed `arr`
+...
+LL |     c();
+   |     - borrow later used here
+
+error[E0502]: cannot borrow `arr[_]` as immutable because it is also borrowed as mutable
+  --> $DIR/arrays.rs:58:20
+   |
+LL |     let mut c = || {
+   |                 -- mutable borrow occurs here
+LL |         arr[1] += 10;
+   |         --- first borrow occurs due to use of `arr` in closure
+...
+LL |     println!("{}", arr[3]);
+   |                    ^^^^^^ immutable borrow occurs here
+...
+LL |     c();
+   |     - mutable borrow later used here
+
+error[E0502]: cannot borrow `arr` as immutable because it is also borrowed as mutable
+  --> $DIR/arrays.rs:74:24
+   |
+LL |     let mut c = || {
+   |                 -- mutable borrow occurs here
+LL |         arr[1] += 10;
+   |         --- first borrow occurs due to use of `arr` in closure
+...
+LL |     println!("{:#?}", &arr[3..2]);
+   |                        ^^^ immutable borrow occurs here
+...
+LL |     c();
+   |     - mutable borrow later used here
+
+error: aborting due to 7 previous errors; 1 warning emitted
+
+Some errors have detailed explanations: E0502, E0503, E0506.
+For more information about an error, try `rustc --explain E0502`.

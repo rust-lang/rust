@@ -749,7 +749,11 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                     (&adt_def.variants[VariantIdx::new(0)], substs)
                 }
                 ty::Closure(_, substs) => {
-                    return match substs.as_closure().upvar_tys().nth(field.index()) {
+                    return match substs
+                        .as_closure()
+                        .tupled_upvars_ty()
+                        .tuple_element_ty(field.index())
+                    {
                         Some(ty) => Ok(ty),
                         None => Err(FieldAccessError::OutOfRange {
                             field_count: substs.as_closure().upvar_tys().count(),

@@ -9,6 +9,7 @@ use rustc_hir::{HirId, Node};
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::IndexVec;
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
+use rustc_middle::hir::place::PlaceBase as HirPlaceBase;
 use rustc_middle::mir::{
     traversal, Body, ClearCrossCrate, Local, Location, Mutability, Operand, Place, PlaceElem,
     PlaceRef,
@@ -75,6 +76,7 @@ crate use region_infer::RegionInferenceContext;
 crate struct Upvar {
     name: Symbol,
 
+    // FIXME(project-rfc-2229#8): This should use Place or something similar
     var_hir_id: HirId,
 
     /// If true, the capture is behind a reference.
@@ -155,13 +157,13 @@ fn do_mir_borrowck<'a, 'tcx>(
         infcx.set_tainted_by_errors();
     }
     let upvars: Vec<_> = tables
-        .closure_captures
-        .get(&def.did.to_def_id())
-        .into_iter()
-        .flat_map(|v| v.values())
-        .map(|upvar_id| {
-            let var_hir_id = upvar_id.var_path.hir_id;
-            let capture = tables.upvar_capture(*upvar_id);
+        .closure_min_captures_flattened(def.did.to_def_id())
+        .map(|captured_place| {
+            let var_hir_id = match captured_place.place.base {
+                HirPlaceBase::Upvar(upvar_id) => upvar_id.var_path.hir_id,
+                _ => bug!("Expected upvar"),
+            };
+            let capture = captured_place.info.capture_kind;
             let by_ref = match capture {
                 ty::UpvarCapture::ByValue(_) => false,
                 ty::UpvarCapture::ByRef(..) => true,
