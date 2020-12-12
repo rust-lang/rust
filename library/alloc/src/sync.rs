@@ -759,6 +759,16 @@ impl<T: ?Sized> Arc<T> {
             Self::from_ptr(arc_ptr)
         }
     }
+    
+    pub fn clone_raw(ptr: *const T) -> Self {
+        let result = unsafe {
+            Arc::from_raw(ptr)
+        };
+        
+        std::mem::forget(result.clone())
+
+        result
+    }
 
     /// Creates a new [`Weak`] pointer to this allocation.
     ///
