@@ -212,7 +212,7 @@ fn update_reference(
         find_node_at_offset::<ast::PathExpr>(source_file.syntax(), offset)
     {
         // tuple variant
-        (path_expr.path()?.segment()?, path_expr.syntax().parent()?.clone())
+        (path_expr.path()?.segment()?, path_expr.syntax().parent()?)
     } else if let Some(record_expr) =
         find_node_at_offset::<ast::RecordExpr>(source_file.syntax(), offset)
     {

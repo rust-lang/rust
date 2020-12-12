@@ -475,7 +475,7 @@ fn add_target_crate_root(
         Some(display_name),
         cfg_options,
         env,
-        proc_macro.clone(),
+        proc_macro,
     );
 
     crate_id

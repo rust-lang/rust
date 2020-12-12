@@ -658,7 +658,6 @@ impl GlobalState {
         log::trace!("updating notifications for {:?}", subscriptions);
         if self.config.publish_diagnostics {
             let snapshot = self.snapshot();
-            let subscriptions = subscriptions.clone();
             self.task_pool.handle.spawn(move || {
                 let diagnostics = subscriptions
                     .into_iter()

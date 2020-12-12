@@ -55,7 +55,7 @@ impl ast::Attr {
         let key = self.simple_name()?;
         let value_token = lit.syntax().first_token()?;
 
-        let value: SmolStr = ast::String::cast(value_token.clone())?.value()?.into();
+        let value: SmolStr = ast::String::cast(value_token)?.value()?.into();
 
         Some((key, value))
     }

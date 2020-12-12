@@ -599,7 +599,7 @@ impl ast::IntNumber {
         text = &text[radix.prefix_len()..];
 
         let buf;
-        if text.contains("_") {
+        if text.contains('_') {
             buf = text.replace('_', "");
             text = buf.as_str();
         };

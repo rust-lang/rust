@@ -30,7 +30,7 @@ impl DnfExpr {
     pub fn new(expr: CfgExpr) -> Self {
         let builder = Builder { expr: DnfExpr { conjunctions: Vec::new() } };
 
-        builder.lower(expr.clone())
+        builder.lower(expr)
     }
 
     /// Computes a list of present or absent atoms in `opts` that cause this expression to evaluate

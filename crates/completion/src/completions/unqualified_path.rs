@@ -147,7 +147,7 @@ fn fuzzy_completion(acc: &mut Completions, ctx: &CompletionContext) -> Option<()
     .filter_map(|(import_path, definition)| {
         render_resolution_with_import(
             RenderContext::new(ctx),
-            ImportEdit { import_path: import_path.clone(), import_scope: import_scope.clone() },
+            ImportEdit { import_path, import_scope: import_scope.clone() },
             &definition,
         )
     });

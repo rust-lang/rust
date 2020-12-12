@@ -91,7 +91,7 @@ impl<'a> FunctionRender<'a> {
             .zip(params_ty)
             .flat_map(|(pat, param_ty)| {
                 let pat = pat?;
-                let name = pat.to_string();
+                let name = pat;
                 let arg = name.trim_start_matches("mut ").trim_start_matches('_');
                 Some(self.add_arg(arg, param_ty.ty()))
             })
