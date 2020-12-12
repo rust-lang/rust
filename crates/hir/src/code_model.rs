@@ -19,8 +19,9 @@ use hir_def::{
     src::HasSource as _,
     type_ref::{Mutability, TypeRef},
     AdtId, AssocContainerId, AssocItemId, AssocItemLoc, AttrDefId, ConstId, DefWithBodyId, EnumId,
-    FunctionId, GenericDefId, HasModule, ImplId, LocalEnumVariantId, LocalFieldId, LocalModuleId,
-    Lookup, ModuleId, StaticId, StructId, TraitId, TypeAliasId, TypeParamId, UnionId,
+    FunctionId, GenericDefId, HasModule, ImplId, LifetimeParamId, LocalEnumVariantId, LocalFieldId,
+    LocalModuleId, Lookup, ModuleId, StaticId, StructId, TraitId, TypeAliasId, TypeParamId,
+    UnionId,
 };
 use hir_def::{find_path::PrefixKind, item_scope::ItemInNs, visibility::Visibility};
 use hir_expand::{
@@ -831,7 +832,7 @@ impl SelfParam {
             .params
             .first()
             .map(|param| match *param {
-                TypeRef::Reference(_, mutability) => mutability.into(),
+                TypeRef::Reference(.., mutability) => mutability.into(),
                 _ => Access::Owned,
             })
             .unwrap_or(Access::Owned)
@@ -1098,8 +1099,25 @@ impl_from!(
 );
 
 impl GenericDef {
-    pub fn params(self, db: &dyn HirDatabase) -> Vec<TypeParam> {
-        let generics: Arc<hir_def::generics::GenericParams> = db.generic_params(self.into());
+    pub fn params(self, db: &dyn HirDatabase) -> Vec<GenericParam> {
+        let generics = db.generic_params(self.into());
+        let ty_params = generics
+            .types
+            .iter()
+            .map(|(local_id, _)| TypeParam { id: TypeParamId { parent: self.into(), local_id } })
+            .map(GenericParam::TypeParam);
+        let lt_params = generics
+            .lifetimes
+            .iter()
+            .map(|(local_id, _)| LifetimeParam {
+                id: LifetimeParamId { parent: self.into(), local_id },
+            })
+            .map(GenericParam::LifetimeParam);
+        ty_params.chain(lt_params).collect()
+    }
+
+    pub fn type_params(self, db: &dyn HirDatabase) -> Vec<TypeParam> {
+        let generics = db.generic_params(self.into());
         generics
             .types
             .iter()
@@ -1176,6 +1194,13 @@ impl Local {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum GenericParam {
+    TypeParam(TypeParam),
+    LifetimeParam(LifetimeParam),
+}
+impl_from!(TypeParam, LifetimeParam for GenericParam);
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct TypeParam {
     pub(crate) id: TypeParamId,
 }
@@ -1212,6 +1237,18 @@ impl TypeParam {
             krate: self.id.parent.module(db.upcast()).krate,
             ty: InEnvironment { value: ty, environment },
         })
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct LifetimeParam {
+    pub(crate) id: LifetimeParamId,
+}
+
+impl LifetimeParam {
+    pub fn name(self, db: &dyn HirDatabase) -> Name {
+        let params = db.generic_params(self.id.parent);
+        params.lifetimes[self.id.local_id].name.clone()
     }
 }
 

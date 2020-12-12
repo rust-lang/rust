@@ -21,7 +21,7 @@ use crate::{
     keys,
     src::HasChildSource,
     src::HasSource,
-    type_ref::{TypeBound, TypeRef},
+    type_ref::{LifetimeRef, TypeBound, TypeRef},
     AdtId, GenericDefId, LocalTypeParamId, Lookup, TypeParamId,
 };
 
@@ -31,6 +31,12 @@ pub struct TypeParamData {
     pub name: Option<Name>,
     pub default: Option<TypeRef>,
     pub provenance: TypeParamProvenance,
+}
+
+/// Data about a generic parameter (to a function, struct, impl, ...).
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct LifetimeParamData {
+    pub name: Name,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
@@ -44,7 +50,7 @@ pub enum TypeParamProvenance {
 #[derive(Clone, PartialEq, Eq, Debug, Default)]
 pub struct GenericParams {
     pub types: Arena<TypeParamData>,
-    // lifetimes: Arena<LocalLifetimeParamId, LifetimeParamData>,
+    pub lifetimes: Arena<LifetimeParamData>,
     pub where_predicates: Vec<WherePredicate>,
 }
 
@@ -53,16 +59,17 @@ pub struct GenericParams {
 /// It might still result in multiple actual predicates though, because of
 /// associated type bindings like `Iterator<Item = u32>`.
 #[derive(Clone, PartialEq, Eq, Debug)]
-pub struct WherePredicate {
-    pub target: WherePredicateTarget,
-    pub bound: TypeBound,
+pub enum WherePredicate {
+    TypeBound { target: WherePredicateTypeTarget, bound: TypeBound },
+    Lifetime { target: LifetimeRef, bound: LifetimeRef },
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]
-pub enum WherePredicateTarget {
+pub enum WherePredicateTypeTarget {
     TypeRef(TypeRef),
     /// For desugared where predicates that can directly refer to a type param.
     TypeParam(LocalTypeParamId),
+    // FIXME: ForLifetime(Vec<LifetimeParamId>, TypeRef)
 }
 
 type SourceMap = ArenaMap<LocalTypeParamId, Either<ast::Trait, ast::TypeParam>>;
@@ -123,7 +130,7 @@ impl GenericParams {
     }
 
     fn new(db: &dyn DefDatabase, def: GenericDefId) -> (GenericParams, InFile<SourceMap>) {
-        let mut generics = GenericParams { types: Arena::default(), where_predicates: Vec::new() };
+        let mut generics = GenericParams::default();
         let mut sm = ArenaMap::default();
 
         // FIXME: add `: Sized` bound for everything except for `Self` in traits
@@ -171,7 +178,7 @@ impl GenericParams {
                 // add super traits as bounds on Self
                 // i.e., trait Foo: Bar is equivalent to trait Foo where Self: Bar
                 let self_param = TypeRef::Path(name![Self].into());
-                generics.fill_bounds(&lower_ctx, &src.value, self_param);
+                generics.fill_bounds(&lower_ctx, &src.value, Either::Left(self_param));
 
                 generics.fill(&lower_ctx, &mut sm, &src.value);
                 src.file_id
@@ -218,12 +225,12 @@ impl GenericParams {
         &mut self,
         lower_ctx: &LowerCtx,
         node: &dyn ast::TypeBoundsOwner,
-        type_ref: TypeRef,
+        target: Either<TypeRef, LifetimeRef>,
     ) {
         for bound in
             node.type_bound_list().iter().flat_map(|type_bound_list| type_bound_list.bounds())
         {
-            self.add_where_predicate_from_bound(lower_ctx, bound, type_ref.clone());
+            self.add_where_predicate_from_bound(lower_ctx, bound, target.clone());
         }
     }
 
@@ -246,19 +253,30 @@ impl GenericParams {
             sm.insert(param_id, Either::Right(type_param.clone()));
 
             let type_ref = TypeRef::Path(name.into());
-            self.fill_bounds(&lower_ctx, &type_param, type_ref);
+            self.fill_bounds(&lower_ctx, &type_param, Either::Left(type_ref));
+        }
+        for lifetime_param in params.lifetime_params() {
+            let name = lifetime_param
+                .lifetime_token()
+                .map_or_else(Name::missing, |tok| Name::new_lifetime(&tok));
+            let param = LifetimeParamData { name: name.clone() };
+            let _param_id = self.lifetimes.alloc(param);
+            let lifetime_ref = LifetimeRef::new_name(name);
+            self.fill_bounds(&lower_ctx, &lifetime_param, Either::Right(lifetime_ref));
         }
     }
 
     fn fill_where_predicates(&mut self, lower_ctx: &LowerCtx, where_clause: ast::WhereClause) {
         for pred in where_clause.predicates() {
-            let type_ref = match pred.ty() {
-                Some(type_ref) => type_ref,
-                None => continue,
+            let target = if let Some(type_ref) = pred.ty() {
+                Either::Left(TypeRef::from_ast(lower_ctx, type_ref))
+            } else if let Some(lifetime_tok) = pred.lifetime_token() {
+                Either::Right(LifetimeRef::from_token(lifetime_tok))
+            } else {
+                continue;
             };
-            let type_ref = TypeRef::from_ast(lower_ctx, type_ref);
             for bound in pred.type_bound_list().iter().flat_map(|l| l.bounds()) {
-                self.add_where_predicate_from_bound(lower_ctx, bound, type_ref.clone());
+                self.add_where_predicate_from_bound(lower_ctx, bound, target.clone());
             }
         }
     }
@@ -267,15 +285,24 @@ impl GenericParams {
         &mut self,
         lower_ctx: &LowerCtx,
         bound: ast::TypeBound,
-        type_ref: TypeRef,
+        target: Either<TypeRef, LifetimeRef>,
     ) {
         if bound.question_mark_token().is_some() {
             // FIXME: remove this bound
             return;
         }
         let bound = TypeBound::from_ast(lower_ctx, bound);
-        self.where_predicates
-            .push(WherePredicate { target: WherePredicateTarget::TypeRef(type_ref), bound });
+        let predicate = match (target, bound) {
+            (Either::Left(type_ref), bound) => WherePredicate::TypeBound {
+                target: WherePredicateTypeTarget::TypeRef(type_ref),
+                bound,
+            },
+            (Either::Right(lifetime), TypeBound::Lifetime(bound)) => {
+                WherePredicate::Lifetime { target: lifetime, bound }
+            }
+            _ => return,
+        };
+        self.where_predicates.push(predicate);
     }
 
     pub(crate) fn fill_implicit_impl_trait_args(&mut self, type_ref: &TypeRef) {
@@ -288,8 +315,8 @@ impl GenericParams {
                 };
                 let param_id = self.types.alloc(param);
                 for bound in bounds {
-                    self.where_predicates.push(WherePredicate {
-                        target: WherePredicateTarget::TypeParam(param_id),
+                    self.where_predicates.push(WherePredicate::TypeBound {
+                        target: WherePredicateTypeTarget::TypeParam(param_id),
                         bound: bound.clone(),
                     });
                 }

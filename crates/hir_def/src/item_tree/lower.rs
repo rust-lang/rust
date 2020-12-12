@@ -13,6 +13,7 @@ use syntax::{
 use crate::{
     attr::Attrs,
     generics::{GenericParams, TypeParamData, TypeParamProvenance},
+    type_ref::LifetimeRef,
 };
 
 use super::*;
@@ -292,12 +293,16 @@ impl Ctx {
                         let self_type = TypeRef::Path(name![Self].into());
                         match self_param.kind() {
                             ast::SelfParamKind::Owned => self_type,
-                            ast::SelfParamKind::Ref => {
-                                TypeRef::Reference(Box::new(self_type), Mutability::Shared)
-                            }
-                            ast::SelfParamKind::MutRef => {
-                                TypeRef::Reference(Box::new(self_type), Mutability::Mut)
-                            }
+                            ast::SelfParamKind::Ref => TypeRef::Reference(
+                                Box::new(self_type),
+                                self_param.lifetime_token().map(LifetimeRef::from_token),
+                                Mutability::Shared,
+                            ),
+                            ast::SelfParamKind::MutRef => TypeRef::Reference(
+                                Box::new(self_type),
+                                self_param.lifetime_token().map(LifetimeRef::from_token),
+                                Mutability::Mut,
+                            ),
                         }
                     }
                 };
@@ -629,8 +634,7 @@ impl Ctx {
                 // add super traits as bounds on Self
                 // i.e., trait Foo: Bar is equivalent to trait Foo where Self: Bar
                 let self_param = TypeRef::Path(name![Self].into());
-                generics.fill_bounds(&self.body_ctx, trait_def, self_param);
-
+                generics.fill_bounds(&self.body_ctx, trait_def, Either::Left(self_param));
                 generics.fill(&self.body_ctx, &mut sm, node);
             }
             GenericsOwner::Impl => {

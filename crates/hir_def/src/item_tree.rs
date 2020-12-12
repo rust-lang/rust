@@ -255,7 +255,7 @@ impl GenericParamsStorage {
 }
 
 static EMPTY_GENERICS: GenericParams =
-    GenericParams { types: Arena::new(), where_predicates: Vec::new() };
+    GenericParams { types: Arena::new(), lifetimes: Arena::new(), where_predicates: Vec::new() };
 
 #[derive(Default, Debug, Eq, PartialEq)]
 struct ItemTreeData {

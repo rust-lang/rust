@@ -4,7 +4,7 @@ use std::fmt;
 
 use crate::{
     db::HirDatabase, utils::generics, ApplicationTy, CallableDefId, FnSig, GenericPredicate,
-    Obligation, OpaqueTyId, ProjectionTy, Substs, TraitRef, Ty, TypeCtor,
+    Lifetime, Obligation, OpaqueTyId, ProjectionTy, Substs, TraitRef, Ty, TypeCtor,
 };
 use hir_def::{
     find_path, generics::TypeParamProvenance, item_scope::ItemInNs, AdtId, AssocContainerId,
@@ -707,6 +707,19 @@ impl HirDisplay for GenericPredicate {
             GenericPredicate::Error => write!(f, "{{error}}")?,
         }
         Ok(())
+    }
+}
+
+impl HirDisplay for Lifetime {
+    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
+        match self {
+            Lifetime::Parameter(id) => {
+                let generics = generics(f.db.upcast(), id.parent);
+                let param_data = &generics.params.lifetimes[id.local_id];
+                write!(f, "{}", &param_data.name)
+            }
+            Lifetime::Static => write!(f, "'static"),
+        }
     }
 }
 

@@ -35,8 +35,8 @@ pub use crate::{
     code_model::{
         Access, Adt, AsAssocItem, AssocItem, AssocItemContainer, Callable, CallableKind, Const,
         Crate, CrateDependency, DefWithBody, Enum, EnumVariant, Field, FieldSource, Function,
-        GenericDef, HasVisibility, ImplDef, Local, MacroDef, Module, ModuleDef, ScopeDef, Static,
-        Struct, Trait, Type, TypeAlias, TypeParam, Union, VariantDef,
+        GenericDef, HasVisibility, ImplDef, LifetimeParam, Local, MacroDef, Module, ModuleDef,
+        ScopeDef, Static, Struct, Trait, Type, TypeAlias, TypeParam, Union, VariantDef,
     },
     has_source::HasSource,
     semantics::{PathResolution, Semantics, SemanticsScope},
@@ -56,8 +56,9 @@ pub use hir_def::{
     visibility::Visibility,
 };
 pub use hir_expand::{
-    name::known, name::AsName, name::Name, ExpandResult, HirFileId, InFile, MacroCallId,
-    MacroCallLoc, /* FIXME */ MacroDefId, MacroFile, Origin,
+    name::{known, AsName, Name},
+    ExpandResult, HirFileId, InFile, MacroCallId, MacroCallLoc, /* FIXME */ MacroDefId,
+    MacroFile, Origin,
 };
 pub use hir_ty::display::HirDisplay;
 
