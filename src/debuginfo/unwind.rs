@@ -80,7 +80,7 @@ impl<'tcx> UnwindContext<'tcx> {
     #[cfg(feature = "jit")]
     pub(crate) unsafe fn register_jit(
         self,
-        jit_module: &cranelift_simplejit::SimpleJITModule,
+        jit_module: &cranelift_jit::JITModule,
     ) -> Option<UnwindRegistry> {
         let mut eh_frame = EhFrame::from(super::emit::WriterRelocate::new(super::target_endian(
             self.tcx,

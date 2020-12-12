@@ -7,7 +7,7 @@ use std::os::raw::{c_char, c_int};
 use rustc_codegen_ssa::CrateInfo;
 use rustc_middle::mir::mono::MonoItem;
 
-use cranelift_simplejit::{SimpleJITBuilder, SimpleJITModule};
+use cranelift_jit::{JITBuilder, JITModule};
 
 use crate::prelude::*;
 
@@ -36,12 +36,12 @@ pub(super) fn run_jit(tcx: TyCtxt<'_>) -> ! {
 
     let imported_symbols = load_imported_symbols_for_jit(tcx);
 
-    let mut jit_builder = SimpleJITBuilder::with_isa(
+    let mut jit_builder = JITBuilder::with_isa(
         crate::build_isa(tcx.sess, false),
         cranelift_module::default_libcall_names(),
     );
     jit_builder.symbols(imported_symbols);
-    let mut jit_module = SimpleJITModule::new(jit_builder);
+    let mut jit_module = JITModule::new(jit_builder);
     assert_eq!(pointer_ty(tcx), jit_module.target_config().pointer_type());
 
     let sig = Signature {

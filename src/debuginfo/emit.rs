@@ -76,7 +76,7 @@ impl WriterRelocate {
     #[cfg(feature = "jit")]
     pub(super) fn relocate_for_jit(
         mut self,
-        jit_module: &cranelift_simplejit::SimpleJITModule,
+        jit_module: &cranelift_jit::JITModule,
     ) -> Vec<u8> {
         use std::convert::TryInto;
 
