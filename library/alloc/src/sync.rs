@@ -294,11 +294,15 @@ impl<T: ?Sized + fmt::Debug> fmt::Debug for Weak<T> {
     }
 }
 
+/// TODO: doc comment
 // This is repr(C) to future-proof against possible field-reordering, which
 // would interfere with otherwise safe [into|from]_raw() of transmutable
 // inner types.
+// TODO: Consider whether there is a better name for this type if it's going to
+// be publicly accessible. Maybe `ArcRepr`?
+#[unstable(feature = "rc_stable_repr", issue = "none")]
 #[repr(C)]
-struct ArcInner<T: ?Sized> {
+pub struct ArcInner<T: ?Sized> {
     strong: atomic::AtomicUsize,
 
     // the value usize::MAX acts as a sentinel for temporarily "locking" the
@@ -309,7 +313,36 @@ struct ArcInner<T: ?Sized> {
     data: T,
 }
 
+#[unstable(feature = "rc_stable_repr", issue = "none")]
+impl<T: ?Sized + fmt::Display> fmt::Display for ArcInner<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(&self.data, f)
+    }
+}
+
+#[unstable(feature = "rc_stable_repr", issue = "none")]
+impl<T: ?Sized + fmt::Debug> fmt::Debug for ArcInner<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Debug::fmt(&self.data, f)
+    }
+}
+
+impl<T> ArcInner<T> {
+    // TODO
+    #[inline]
+    #[unstable(feature = "rc_stable_repr", issue = "none")]
+    pub fn new(data: T) -> ArcInner<T> {
+        ArcInner{
+            strong: atomic::AtomicUsize::new(1),
+            weak: atomic::AtomicUsize::new(1),
+            data,
+        }
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<T: ?Sized + Sync + Send> Send for ArcInner<T> {}
+#[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<T: ?Sized + Sync + Send> Sync for ArcInner<T> {}
 
 impl<T> Arc<T> {
@@ -327,12 +360,8 @@ impl<T> Arc<T> {
     pub fn new(data: T) -> Arc<T> {
         // Start the weak pointer count as 1 which is the weak pointer that's
         // held by all the strong pointers (kinda), see std/rc.rs for more info
-        let x: Box<_> = box ArcInner {
-            strong: atomic::AtomicUsize::new(1),
-            weak: atomic::AtomicUsize::new(1),
-            data,
-        };
-        Self::from_inner(Box::leak(x).into())
+        let x = box ArcInner::new(data);
+        Self::from_repr(x)
     }
 
     /// Constructs a new `Arc<T>` using a weak reference to itself. Attempting
@@ -975,6 +1004,12 @@ impl<T: ?Sized> Arc<T> {
     /// [`ptr::eq`]: core::ptr::eq
     pub fn ptr_eq(this: &Self, other: &Self) -> bool {
         this.ptr.as_ptr() == other.ptr.as_ptr()
+    }
+
+    /// TODO: doc comment
+    #[unstable(feature = "rc_stable_repr", issue = "none")]
+    pub fn from_repr(repr: Box<ArcInner<T>>) -> Self {
+        Self::from_inner(Box::leak(repr).into())
     }
 }
 

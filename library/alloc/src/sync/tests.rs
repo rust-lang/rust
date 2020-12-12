@@ -601,3 +601,24 @@ fn test_arc_cyclic_two_refs() {
     assert_eq!(Arc::strong_count(&two_refs), 3);
     assert_eq!(Arc::weak_count(&two_refs), 2);
 }
+
+#[test]
+fn test_arc_from_repr() {
+    let repr = Box::new(ArcInner::new(42usize));
+    let mut x= Arc::from_repr(repr);
+
+    assert_eq!(Arc::strong_count(&x), 1);
+    assert_eq!(Arc::weak_count(&x), 0);
+    assert_eq!(Arc::get_mut(&mut x), Some(&mut 42));
+}
+
+#[test]
+fn test_arc_from_repr_unsized() {
+    let slice_repr: Box<ArcInner<[i32; 3]>> = Box::new(ArcInner::new([1, 2, 3]));
+    let slice: Arc<[i32]> = Arc::from_repr(slice_repr);
+    assert_eq!(format!("{:?}", slice), "[1, 2, 3]");
+
+    let debug_repr = Box::new(ArcInner::new(3));
+    let debug: Arc<dyn core::fmt::Debug> = Arc::from_repr(debug_repr);
+    assert_eq!(format!("{:?}", debug), "3");
+}
