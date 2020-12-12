@@ -482,6 +482,10 @@ impl ExitStatus {
         if libc::WIFSIGNALED(self.0) { Some(libc::WTERMSIG(self.0)) } else { None }
     }
 
+    pub fn core_dumped(&self) -> bool {
+        libc::WIFSIGNALED(self.0) && libc::WCOREDUMP(self.0)
+    }
+
     pub fn into_raw(&self) -> c_int {
         self.0
     }
