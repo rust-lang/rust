@@ -749,7 +749,7 @@ impl<T: ?Sized> Rc<T> {
             Rc::from_raw(ptr)
         };
         
-        std::mem::forget(result.clone());
+        forget(result.clone());
         
         result
     }
