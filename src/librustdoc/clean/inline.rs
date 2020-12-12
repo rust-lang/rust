@@ -62,7 +62,7 @@ crate fn try_inline(
         }
         Res::Def(DefKind::Fn, did) => {
             record_extern_fqn(cx, did, clean::TypeKind::Function);
-            clean::FunctionItem(build_external_function(cx, did))
+            clean::FunctionItem(box build_external_function(cx, did))
         }
         Res::Def(DefKind::Struct, did) => {
             record_extern_fqn(cx, did, clean::TypeKind::Struct);
