@@ -725,9 +725,6 @@ checksum = "9a21fa21941700a3cd8fcb4091f361a6a712fac632f85d9f487cc892045d55c6"
 [[package]]
 name = "coverage_test_macros"
 version = "0.0.0"
-dependencies = [
- "proc-macro2",
-]
 
 [[package]]
 name = "cpuid-bool"
