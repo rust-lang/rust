@@ -52,10 +52,12 @@ use rustc_ast_pretty::pprust;
 use rustc_attr::StabilityLevel;
 use rustc_data_structures::flock;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::sync::Lrc;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::Mutability;
 use rustc_middle::middle::stability;
+use rustc_session::Session;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::FileName;
@@ -101,6 +103,7 @@ crate fn ensure_trailing_slash(v: &str) -> impl fmt::Display + '_ {
 /// rustdoc tree).
 #[derive(Clone)]
 crate struct Context {
+    crate sess: Lrc<Session>,
     /// Current hierarchy of components leading down to what's currently being
     /// rendered
     crate current: Vec<String>,
@@ -383,6 +386,7 @@ impl FormatRenderer for Context {
         _render_info: RenderInfo,
         edition: Edition,
         cache: &mut Cache,
+        sess: Lrc<Session>,
     ) -> Result<(Context, clean::Crate), Error> {
         // need to save a copy of the options for rendering the index page
         let md_opts = options.clone();
@@ -494,6 +498,7 @@ impl FormatRenderer for Context {
 
         let cache = Arc::new(cache);
         let mut cx = Context {
+            sess,
             current: Vec::new(),
             dst,
             render_redirect_pages: false,

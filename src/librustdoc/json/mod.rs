@@ -13,6 +13,8 @@ use std::path::PathBuf;
 use std::rc::Rc;
 
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::sync::Lrc;
+use rustc_session::Session;
 use rustc_span::edition::Edition;
 
 use crate::clean;
@@ -124,6 +126,7 @@ impl FormatRenderer for JsonRenderer {
         _render_info: RenderInfo,
         _edition: Edition,
         _cache: &mut Cache,
+        _sess: Lrc<Session>,
     ) -> Result<(Self, clean::Crate), Error> {
         debug!("Initializing json renderer");
         Ok((
