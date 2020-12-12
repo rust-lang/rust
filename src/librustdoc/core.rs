@@ -273,12 +273,9 @@ where
     (lint_opts, lint_caps)
 }
 
-crate fn run_core(
-    options: RustdocOptions,
-) -> (clean::Crate, RenderInfo, RenderOptions, Lrc<Session>) {
-    // Parse, resolve, and typecheck the given crate.
-
-    let RustdocOptions {
+/// Parse, resolve, and typecheck the given crate.
+fn create_config(
+    RustdocOptions {
         input,
         crate_name,
         proc_macro_crate,
@@ -294,21 +291,10 @@ crate fn run_core(
         lint_opts,
         describe_lints,
         lint_cap,
-        default_passes,
-        manual_passes,
         display_warnings,
-        render_options,
-        output_format,
         ..
-    } = options;
-
-    let extern_names: Vec<String> = externs
-        .iter()
-        .filter(|(_, entry)| entry.add_prelude)
-        .map(|(name, _)| name)
-        .cloned()
-        .collect();
-
+    }: RustdocOptions,
+) -> rustc_interface::Config {
     // Add the doc cfg into the doc build.
     cfgs.push("doc".to_string());
 
@@ -374,7 +360,7 @@ crate fn run_core(
         ..Options::default()
     };
 
-    let config = interface::Config {
+    interface::Config {
         opts: sessopts,
         crate_cfg: interface::parse_cfgspecs(cfgs),
         input,
@@ -417,7 +403,25 @@ crate fn run_core(
         }),
         make_codegen_backend: None,
         registry: rustc_driver::diagnostics_registry(),
-    };
+    }
+}
+
+crate fn run_core(
+    options: RustdocOptions,
+) -> (clean::Crate, RenderInfo, RenderOptions, Lrc<Session>) {
+    let extern_names: Vec<String> = options
+        .externs
+        .iter()
+        .filter(|(_, entry)| entry.add_prelude)
+        .map(|(name, _)| name)
+        .cloned()
+        .collect();
+    let default_passes = options.default_passes;
+    let output_format = options.output_format;
+    // TODO: fix this clone (especially render_options)
+    let manual_passes = options.manual_passes.clone();
+    let render_options = options.render_options.clone();
+    let config = create_config(options);
 
     interface::create_compiler_and_run(config, |compiler| {
         compiler.enter(|queries| {
