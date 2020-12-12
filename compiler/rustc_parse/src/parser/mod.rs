@@ -17,7 +17,7 @@ pub use path::PathStyle;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, DelimToken, Token, TokenKind};
 use rustc_ast::tokenstream::{self, DelimSpan, LazyTokenStream, Spacing};
-use rustc_ast::tokenstream::{CreateTokenStream, TokenStream, TokenTree};
+use rustc_ast::tokenstream::{CreateTokenStream, TokenStream, TokenTree, TreeAndSpacing};
 use rustc_ast::DUMMY_NODE_ID;
 use rustc_ast::{self as ast, AnonConst, AttrStyle, AttrVec, Const, CrateSugar, Extern, Unsafe};
 use rustc_ast::{Async, Expr, ExprKind, MacArgs, MacDelimiter, Mutability, StrLit};
@@ -132,6 +132,28 @@ struct TokenCursor {
     // Counts the number of calls to `next` or `next_desugared`,
     // depending on whether `desugar_doc_comments` is set.
     num_next_calls: usize,
+    // During parsing, we may sometimes need to 'unglue' a
+    // glued token into two component tokens
+    // (e.g. '>>' into '>' and '>), so that the parser
+    // can consume them one at a time. This process
+    // bypasses the normal capturing mechanism
+    // (e.g. `num_next_calls` will not be incremented),
+    // since the 'unglued' tokens due not exist in
+    // the original `TokenStream`.
+    //
+    // If we end up consuming both unglued tokens,
+    // then this is not an issue - we'll end up
+    // capturing the single 'glued' token.
+    //
+    // However, in certain circumstances, we may
+    // want to capture just the first 'unglued' token.
+    // For example, capturing the `Vec<u8>`
+    // in `Option<Vec<u8>>` requires us to unglue
+    // the trailing `>>` token. The `append_unglued_token`
+    // field is used to track this token - it gets
+    // appended to the captured stream when
+    // we evaluate a `LazyTokenStream`
+    append_unglued_token: Option<TreeAndSpacing>,
 }
 
 #[derive(Clone)]
@@ -336,6 +358,7 @@ impl<'a> Parser<'a> {
                 stack: Vec::new(),
                 num_next_calls: 0,
                 desugar_doc_comments,
+                append_unglued_token: None,
             },
             desugar_doc_comments,
             unmatched_angle_bracket_count: 0,
@@ -359,6 +382,10 @@ impl<'a> Parser<'a> {
             self.token_cursor.next()
         };
         self.token_cursor.num_next_calls += 1;
+        // We've retrieved an token from the underlying
+        // cursor, so we no longer need to worry about
+        // an unglued token. See `break_and_eat` for more details
+        self.token_cursor.append_unglued_token = None;
         if next.span.is_dummy() {
             // Tweak the location for better diagnostics, but keep syntactic context intact.
             next.span = fallback_span.with_ctxt(next.span.ctxt());
@@ -555,6 +582,14 @@ impl<'a> Parser<'a> {
                 let first_span = self.sess.source_map().start_point(self.token.span);
                 let second_span = self.token.span.with_lo(first_span.hi());
                 self.token = Token::new(first, first_span);
+                // Keep track of this token - if we end token capturing now,
+                // we'll want to append this token to the captured stream.
+                //
+                // If we consume any additional tokens, then this token
+                // is not needed (we'll capture the entire 'glued' token),
+                // and `next_tok` will set this field to `None`
+                self.token_cursor.append_unglued_token =
+                    Some((TokenTree::Token(self.token.clone()), Spacing::Alone));
                 // Use the spacing of the glued token as the spacing
                 // of the unglued second token.
                 self.bump_with((Token::new(second, second_span), self.token_spacing));
@@ -1230,6 +1265,7 @@ impl<'a> Parser<'a> {
             num_calls: usize,
             desugar_doc_comments: bool,
             trailing_semi: bool,
+            append_unglued_token: Option<TreeAndSpacing>,
         }
         impl CreateTokenStream for LazyTokenStreamImpl {
             fn create_token_stream(&self) -> TokenStream {
@@ -1253,11 +1289,17 @@ impl<'a> Parser<'a> {
                     }))
                     .take(num_calls);
 
-                make_token_stream(tokens)
+                make_token_stream(tokens, self.append_unglued_token.clone())
             }
             fn add_trailing_semi(&self) -> Box<dyn CreateTokenStream> {
                 if self.trailing_semi {
                     panic!("Called `add_trailing_semi` twice!");
+                }
+                if self.append_unglued_token.is_some() {
+                    panic!(
+                        "Cannot call `add_trailing_semi` when we have an unglued token {:?}",
+                        self.append_unglued_token
+                    );
                 }
                 let mut new = self.clone();
                 new.trailing_semi = true;
@@ -1271,6 +1313,7 @@ impl<'a> Parser<'a> {
             cursor_snapshot,
             desugar_doc_comments: self.desugar_doc_comments,
             trailing_semi: false,
+            append_unglued_token: self.token_cursor.append_unglued_token.clone(),
         };
         Ok((ret, Some(LazyTokenStream::new(lazy_impl))))
     }
@@ -1325,7 +1368,10 @@ pub fn emit_unclosed_delims(unclosed_delims: &mut Vec<UnmatchedBrace>, sess: &Pa
 /// Converts a flattened iterator of tokens (including open and close delimiter tokens)
 /// into a `TokenStream`, creating a `TokenTree::Delimited` for each matching pair
 /// of open and close delims.
-fn make_token_stream(tokens: impl Iterator<Item = (Token, Spacing)>) -> TokenStream {
+fn make_token_stream(
+    tokens: impl Iterator<Item = (Token, Spacing)>,
+    append_unglued_token: Option<TreeAndSpacing>,
+) -> TokenStream {
     #[derive(Debug)]
     struct FrameData {
         open: Span,
@@ -1348,14 +1394,17 @@ fn make_token_stream(tokens: impl Iterator<Item = (Token, Spacing)>) -> TokenStr
                     .inner
                     .push((delimited, Spacing::Alone));
             }
-            token => stack
-                .last_mut()
-                .expect("Bottom token frame is missing!")
-                .inner
-                .push((TokenTree::Token(token), spacing)),
+            token => {
+                stack
+                    .last_mut()
+                    .expect("Bottom token frame is missing!")
+                    .inner
+                    .push((TokenTree::Token(token), spacing));
+            }
         }
     }
-    let final_buf = stack.pop().expect("Missing final buf!");
+    let mut final_buf = stack.pop().expect("Missing final buf!");
+    final_buf.inner.extend(append_unglued_token);
     assert!(stack.is_empty(), "Stack should be empty: final_buf={:?} stack={:?}", final_buf, stack);
     TokenStream::new(final_buf.inner)
 }
