@@ -3219,7 +3219,7 @@ impl<T> Default for &mut [T] {
     }
 }
 
-#[unstable(feature = "x", issue = "none")]
+#[unstable(feature = "slice_pattern", reason = "stopgap trait for slice patterns", issue = "56345")]
 /// Patterns in slices - currently, only used by `strip_prefix` and `strip_suffix`.  At a future
 /// point, we hope to generalise `core::str::Pattern` (which at the time of writing is limited to
 /// `str`) to slices, and then this trait will be replaced or abolished.
