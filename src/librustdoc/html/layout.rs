@@ -98,7 +98,7 @@ crate fn render<T: Print, S: Print>(
                            placeholder=\"Click or press ‘S’ to search, ‘?’ for more options…\" \
                            type=\"search\">\
                 </div>\
-                <button class=\"help-button\">?</button>
+                <button type=\"button\" class=\"help-button\">?</button>
                 <a id=\"settings-menu\" href=\"{root_path}settings.html\">\
                     <img src=\"{static_root_path}wheel{suffix}.svg\" \
                          width=\"18\" \
