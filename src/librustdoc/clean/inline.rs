@@ -62,7 +62,7 @@ crate fn try_inline(
         }
         Res::Def(DefKind::Fn, did) => {
             record_extern_fqn(cx, did, clean::TypeKind::Function);
-            clean::FunctionItem(build_external_function(cx, did))
+            clean::FunctionItem(box build_external_function(cx, did))
         }
         Res::Def(DefKind::Struct, did) => {
             record_extern_fqn(cx, did, clean::TypeKind::Struct);
@@ -77,7 +77,7 @@ crate fn try_inline(
         Res::Def(DefKind::TyAlias, did) => {
             record_extern_fqn(cx, did, clean::TypeKind::Typedef);
             ret.extend(build_impls(cx, Some(parent_module), did, attrs));
-            clean::TypedefItem(build_type_alias(cx, did), false)
+            clean::TypedefItem(box build_type_alias(cx, did), false)
         }
         Res::Def(DefKind::Enum, did) => {
             record_extern_fqn(cx, did, clean::TypeKind::Enum);

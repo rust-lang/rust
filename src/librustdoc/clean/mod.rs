@@ -919,7 +919,7 @@ fn clean_fn_or_proc_macro(
                 } else {
                     hir::Constness::NotConst
                 };
-            FunctionItem(func)
+            FunctionItem(box func)
         }
     }
 }
@@ -1076,7 +1076,7 @@ impl Clean<Item> for hir::TraitItem<'_> {
                     {
                         m.header.constness = hir::Constness::NotConst;
                     }
-                    MethodItem(m, None)
+                    MethodItem(box m, None)
                 }
                 hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Required(ref names)) => {
                     let (generics, decl) = enter_impl_trait(cx, || {
@@ -1090,7 +1090,7 @@ impl Clean<Item> for hir::TraitItem<'_> {
                     {
                         t.header.constness = hir::Constness::NotConst;
                     }
-                    TyMethodItem(t)
+                    TyMethodItem(box t)
                 }
                 hir::TraitItemKind::Type(ref bounds, ref default) => {
                     AssocTypeItem(bounds.clean(cx), default.clean(cx))
@@ -1116,12 +1116,12 @@ impl Clean<Item> for hir::ImplItem<'_> {
                     {
                         m.header.constness = hir::Constness::NotConst;
                     }
-                    MethodItem(m, Some(self.defaultness))
+                    MethodItem(box m, Some(self.defaultness))
                 }
                 hir::ImplItemKind::TyAlias(ref ty) => {
                     let type_ = ty.clean(cx);
                     let item_type = type_.def_id().and_then(|did| inline::build_ty(cx, did));
-                    TypedefItem(Typedef { type_, generics: Generics::default(), item_type }, true)
+                    TypedefItem(box Typedef { type_, generics: Generics::default(), item_type }, true)
                 }
             };
             Item::from_def_id_and_parts(local_did, Some(self.ident.name.clean(cx)), inner, cx)
@@ -1185,7 +1185,7 @@ impl Clean<Item> for ty::AssocItem {
                         ty::TraitContainer(_) => None,
                     };
                     MethodItem(
-                        Function {
+                        box Function {
                             generics,
                             decl,
                             header: hir::FnHeader {
@@ -1200,7 +1200,7 @@ impl Clean<Item> for ty::AssocItem {
                         defaultness,
                     )
                 } else {
-                    TyMethodItem(Function {
+                    TyMethodItem(box Function {
                         generics,
                         decl,
                         header: hir::FnHeader {
@@ -2263,7 +2263,7 @@ impl Clean<Item> for (&hir::ForeignItem<'_>, Option<Symbol>) {
                         (generics.clean(cx), (&**decl, &names[..]).clean(cx))
                     });
                     let (all_types, ret_types) = get_all_types(&generics, &decl, cx);
-                    ForeignFunctionItem(Function {
+                    ForeignFunctionItem(box Function {
                         decl,
                         generics,
                         header: hir::FnHeader {

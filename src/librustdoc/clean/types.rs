@@ -305,7 +305,7 @@ crate enum ItemKind {
     StructItem(Struct),
     UnionItem(Union),
     EnumItem(Enum),
-    FunctionItem(Function),
+    FunctionItem(Box<Function>),
     ModuleItem(Module),
     TypedefItem(Typedef, bool /* is associated type */),
     OpaqueTyItem(OpaqueTy),
@@ -318,13 +318,13 @@ crate enum ItemKind {
     ImplItem(Box<Impl>),
     /// A method signature only. Used for required methods in traits (ie,
     /// non-default-methods).
-    TyMethodItem(Function),
+    TyMethodItem(Box<Function>),
     /// A method with a body.
-    MethodItem(Function, Option<hir::Defaultness>),
+    MethodItem(Box<Function>, Option<hir::Defaultness>),
     StructFieldItem(Type),
     VariantItem(Variant),
     /// `fn`s from an extern block
-    ForeignFunctionItem(Function),
+    ForeignFunctionItem(Box<Function>),
     /// `static`s from an extern block
     ForeignStaticItem(Static),
     /// `type`s from an extern block
