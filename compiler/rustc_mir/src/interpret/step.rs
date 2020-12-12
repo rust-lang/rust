@@ -95,14 +95,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
             // Mark locals as alive
             StorageLive(local) => {
-                let old_val = self.storage_live(*local)?;
-                self.deallocate_local(old_val)?;
+                self.storage_live(*local)?;
             }
 
             // Mark locals as dead
             StorageDead(local) => {
-                let old_val = self.storage_dead(*local);
-                self.deallocate_local(old_val)?;
+                self.storage_dead(*local)?;
             }
 
             // No dynamic semantics attached to `FakeRead`; MIR
