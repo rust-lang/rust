@@ -17,15 +17,16 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_feature::UnstableFeatures;
 use rustc_hir as hir;
 use rustc_hir::def::Res;
-use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
+use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::Mutability;
 use rustc_index::vec::IndexVec;
 use rustc_middle::ty::{AssocKind, TyCtxt};
+use rustc_session::Session;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::DUMMY_SP;
 use rustc_span::symbol::{kw, sym, Ident, Symbol, SymbolStr};
-use rustc_span::{self, FileName};
+use rustc_span::{self, FileName, Loc};
 use rustc_target::abi::VariantIdx;
 use rustc_target::spec::abi::Abi;
 use smallvec::{smallvec, SmallVec};
@@ -1609,32 +1610,36 @@ crate enum VariantKind {
     Struct(VariantStruct),
 }
 
+/// Small wrapper around `rustc_span::Span` that adds helper methods.
 #[derive(Clone, Debug)]
 crate struct Span {
-    crate filename: FileName,
-    crate cnum: CrateNum,
-    crate loline: usize,
-    crate locol: usize,
-    crate hiline: usize,
-    crate hicol: usize,
     crate original: rustc_span::Span,
 }
 
 impl Span {
-    crate fn empty() -> Span {
-        Span {
-            filename: FileName::Anon(0),
-            cnum: LOCAL_CRATE,
-            loline: 0,
-            locol: 0,
-            hiline: 0,
-            hicol: 0,
-            original: rustc_span::DUMMY_SP,
-        }
+    crate fn empty() -> Self {
+        Self { original: rustc_span::DUMMY_SP }
     }
 
     crate fn span(&self) -> rustc_span::Span {
         self.original
+    }
+
+    crate fn filename(&self, sess: &Session) -> FileName {
+        sess.source_map().span_to_filename(self.original)
+    }
+
+    crate fn lo(&self, sess: &Session) -> Loc {
+        sess.source_map().lookup_char_pos(self.original.lo())
+    }
+
+    crate fn hi(&self, sess: &Session) -> Loc {
+        sess.source_map().lookup_char_pos(self.original.hi())
+    }
+
+    crate fn cnum(&self, sess: &Session) -> CrateNum {
+        // FIXME: is there a time when the lo and hi crate would be different?
+        self.lo(sess).file.cnum
     }
 }
 

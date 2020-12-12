@@ -56,9 +56,12 @@ impl From<clean::Item> for Option<Item> {
 }
 
 impl From<clean::Span> for Option<Span> {
+    #[allow(unreachable_code)]
     fn from(span: clean::Span) -> Self {
-        let clean::Span { loline, locol, hiline, hicol, .. } = span;
-        match span.filename {
+        // TODO: this should actually work
+        // Unfortunately this requires rethinking the whole framework,
+        // since this now needs a context and not just .into().
+        match span.filename(todo!()) {
             rustc_span::FileName::Real(name) => Some(Span {
                 filename: match name {
                     rustc_span::RealFileName::Named(path) => path,
@@ -66,8 +69,8 @@ impl From<clean::Span> for Option<Span> {
                         local_path
                     }
                 },
-                begin: (loline, locol),
-                end: (hiline, hicol),
+                begin: todo!(),
+                end: todo!(),
             }),
             _ => None,
         }

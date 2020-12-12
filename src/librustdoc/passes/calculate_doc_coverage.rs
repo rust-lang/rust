@@ -216,13 +216,9 @@ impl<'a, 'b> fold::DocFolder for CoverageCalculator<'a, 'b> {
                 return Some(i);
             }
             clean::ImplItem(ref impl_) => {
+                let filename = i.source.filename(self.ctx.sess());
                 if let Some(ref tr) = impl_.trait_ {
-                    debug!(
-                        "impl {:#} for {:#} in {}",
-                        tr.print(),
-                        impl_.for_.print(),
-                        i.source.filename
-                    );
+                    debug!("impl {:#} for {:#} in {}", tr.print(), impl_.for_.print(), filename,);
 
                     // don't count trait impls, the missing-docs lint doesn't so we shouldn't
                     // either
@@ -231,7 +227,7 @@ impl<'a, 'b> fold::DocFolder for CoverageCalculator<'a, 'b> {
                     // inherent impls *can* be documented, and those docs show up, but in most
                     // cases it doesn't make sense, as all methods on a type are in one single
                     // impl block
-                    debug!("impl {:#} in {}", impl_.for_.print(), i.source.filename);
+                    debug!("impl {:#} in {}", impl_.for_.print(), filename);
                 }
             }
             _ => {
@@ -251,6 +247,7 @@ impl<'a, 'b> fold::DocFolder for CoverageCalculator<'a, 'b> {
                     None,
                 );
 
+                let filename = i.source.filename(self.ctx.sess());
                 let has_doc_example = tests.found_tests != 0;
                 let hir_id = self.ctx.tcx.hir().local_def_id_to_hir_id(i.def_id.expect_local());
                 let (level, source) = self.ctx.tcx.lint_level_at_node(MISSING_DOCS, hir_id);
@@ -258,8 +255,8 @@ impl<'a, 'b> fold::DocFolder for CoverageCalculator<'a, 'b> {
                 // unless the user had an explicit `allow`
                 let should_have_docs =
                     level != lint::Level::Allow || matches!(source, LintSource::Default);
-                debug!("counting {:?} {:?} in {}", i.type_(), i.name, i.source.filename);
-                self.items.entry(i.source.filename.clone()).or_default().count_item(
+                debug!("counting {:?} {:?} in {}", i.type_(), i.name, filename);
+                self.items.entry(filename).or_default().count_item(
                     has_docs,
                     has_doc_example,
                     should_have_doc_example(self.ctx, &i),

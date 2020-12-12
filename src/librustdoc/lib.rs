@@ -555,13 +555,14 @@ fn main_options(options: config::Options) -> MainResult {
     info!("going to format");
     let (error_format, edition, debugging_options) = diag_opts;
     let diag = core::new_handler(error_format, None, &debugging_options);
+    let sess_time = sess.clone();
     match output_format {
-        None | Some(config::OutputFormat::Html) => sess.time("render_html", || {
+        None | Some(config::OutputFormat::Html) => sess_time.time("render_html", || {
             run_renderer::<html::render::Context>(
                 krate, renderopts, renderinfo, &diag, edition, sess,
             )
         }),
-        Some(config::OutputFormat::Json) => sess.time("render_json", || {
+        Some(config::OutputFormat::Json) => sess_time.time("render_json", || {
             run_renderer::<json::JsonRenderer>(krate, renderopts, renderinfo, &diag, edition, sess)
         }),
     }
