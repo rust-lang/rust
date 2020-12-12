@@ -55,7 +55,7 @@ crate fn collect_trait_impls(krate: Crate, cx: &DocContext<'_>) -> Crate {
 
     // scan through included items ahead of time to splice in Deref targets to the "valid" sets
     for it in &new_items {
-        if let ImplItem(Impl { ref for_, ref trait_, ref items, .. }) = it.kind {
+        if let ImplItem(box Impl { ref for_, ref trait_, ref items, .. }) = it.kind {
             if cleaner.keep_item(for_) && trait_.def_id() == cx.tcx.lang_items().deref_trait() {
                 let target = items
                     .iter()
@@ -75,7 +75,7 @@ crate fn collect_trait_impls(krate: Crate, cx: &DocContext<'_>) -> Crate {
     }
 
     new_items.retain(|it| {
-        if let ImplItem(Impl { ref for_, ref trait_, ref blanket_impl, .. }) = it.kind {
+        if let ImplItem(box Impl { ref for_, ref trait_, ref blanket_impl, .. }) = it.kind {
             cleaner.keep_item(for_)
                 || trait_.as_ref().map_or(false, |t| cleaner.keep_item(t))
                 || blanket_impl.is_some()

@@ -313,7 +313,9 @@ crate enum ItemKind {
     ConstantItem(Constant),
     TraitItem(Trait),
     TraitAliasItem(TraitAlias),
-    ImplItem(Impl),
+    // Impl is 400 bytes (!!), so box it to avoid penalizing other items
+    // FIXME(jyn514): calculate this information on demand instead
+    ImplItem(Box<Impl>),
     /// A method signature only. Used for required methods in traits (ie,
     /// non-default-methods).
     TyMethodItem(Function),

@@ -438,7 +438,7 @@ crate fn build_impl(
     ret.push(clean::Item::from_def_id_and_parts(
         did,
         None,
-        clean::ImplItem(clean::Impl {
+        clean::ImplItem(box clean::Impl {
             unsafety: hir::Unsafety::Normal,
             generics,
             provided_trait_methods: provided,

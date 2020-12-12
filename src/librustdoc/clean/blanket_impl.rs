@@ -115,7 +115,7 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                     stability: None,
                     const_stability: None,
                     deprecation: None,
-                    kind: ImplItem(Impl {
+                    kind: ImplItem(box Impl {
                         unsafety: hir::Unsafety::Normal,
                         generics: (
                             self.cx.tcx.generics_of(impl_def_id),
