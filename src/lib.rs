@@ -283,8 +283,6 @@ fn build_isa(sess: &Session, enable_pic: bool) -> Box<dyn isa::TargetIsa + 'stat
 
     flags_builder.set("enable_simd", "true").unwrap();
 
-    // FIXME(CraneStation/cranelift#732) fix LICM in presence of jump tables
-    /*
     use rustc_session::config::OptLevel;
     match sess.opts.optimize {
         OptLevel::No => {
@@ -297,7 +295,7 @@ fn build_isa(sess: &Session, enable_pic: bool) -> Box<dyn isa::TargetIsa + 'stat
         OptLevel::Size | OptLevel::SizeMin => {
             sess.warn("Optimizing for size is not supported. Just ignoring the request");
         }
-    }*/
+    }
 
     let flags = settings::Flags::new(flags_builder);
 
