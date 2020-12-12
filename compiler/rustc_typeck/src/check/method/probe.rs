@@ -8,7 +8,6 @@ use crate::errors::MethodCallOnUnknownType;
 use crate::hir::def::DefKind;
 use crate::hir::def_id::DefId;
 
-use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lrc;
 use rustc_hir as hir;
@@ -662,30 +661,30 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             }
             ty::Int(i) => {
                 let lang_def_id = match i {
-                    ast::IntTy::I8 => lang_items.i8_impl(),
-                    ast::IntTy::I16 => lang_items.i16_impl(),
-                    ast::IntTy::I32 => lang_items.i32_impl(),
-                    ast::IntTy::I64 => lang_items.i64_impl(),
-                    ast::IntTy::I128 => lang_items.i128_impl(),
-                    ast::IntTy::Isize => lang_items.isize_impl(),
+                    ty::IntTy::I8 => lang_items.i8_impl(),
+                    ty::IntTy::I16 => lang_items.i16_impl(),
+                    ty::IntTy::I32 => lang_items.i32_impl(),
+                    ty::IntTy::I64 => lang_items.i64_impl(),
+                    ty::IntTy::I128 => lang_items.i128_impl(),
+                    ty::IntTy::Isize => lang_items.isize_impl(),
                 };
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
             ty::Uint(i) => {
                 let lang_def_id = match i {
-                    ast::UintTy::U8 => lang_items.u8_impl(),
-                    ast::UintTy::U16 => lang_items.u16_impl(),
-                    ast::UintTy::U32 => lang_items.u32_impl(),
-                    ast::UintTy::U64 => lang_items.u64_impl(),
-                    ast::UintTy::U128 => lang_items.u128_impl(),
-                    ast::UintTy::Usize => lang_items.usize_impl(),
+                    ty::UintTy::U8 => lang_items.u8_impl(),
+                    ty::UintTy::U16 => lang_items.u16_impl(),
+                    ty::UintTy::U32 => lang_items.u32_impl(),
+                    ty::UintTy::U64 => lang_items.u64_impl(),
+                    ty::UintTy::U128 => lang_items.u128_impl(),
+                    ty::UintTy::Usize => lang_items.usize_impl(),
                 };
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
             ty::Float(f) => {
                 let (lang_def_id1, lang_def_id2) = match f {
-                    ast::FloatTy::F32 => (lang_items.f32_impl(), lang_items.f32_runtime_impl()),
-                    ast::FloatTy::F64 => (lang_items.f64_impl(), lang_items.f64_runtime_impl()),
+                    ty::FloatTy::F32 => (lang_items.f32_impl(), lang_items.f32_runtime_impl()),
+                    ty::FloatTy::F64 => (lang_items.f64_impl(), lang_items.f64_runtime_impl()),
                 };
                 self.assemble_inherent_impl_for_primitive(lang_def_id1);
                 self.assemble_inherent_impl_for_primitive(lang_def_id2);

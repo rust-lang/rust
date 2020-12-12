@@ -1,4 +1,4 @@
-use rustc_ast::{FloatTy, InlineAsmTemplatePiece, IntTy, UintTy};
+use rustc_ast::InlineAsmTemplatePiece;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -7,7 +7,7 @@ use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_index::vec::Idx;
 use rustc_middle::ty::layout::{LayoutError, SizeSkeleton};
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, FloatTy, IntTy, Ty, TyCtxt, UintTy};
 use rustc_session::lint;
 use rustc_span::{sym, Span, Symbol, DUMMY_SP};
 use rustc_target::abi::{Pointer, VariantIdx};

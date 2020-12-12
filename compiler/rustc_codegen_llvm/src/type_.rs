@@ -7,13 +7,12 @@ use crate::llvm;
 use crate::llvm::{Bool, False, True};
 use crate::type_of::LayoutLlvmExt;
 use crate::value::Value;
-use rustc_ast as ast;
 use rustc_codegen_ssa::common::TypeKind;
 use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_middle::bug;
 use rustc_middle::ty::layout::TyAndLayout;
-use rustc_middle::ty::Ty;
+use rustc_middle::ty::{self, Ty};
 use rustc_target::abi::call::{CastTarget, FnAbi, Reg};
 use rustc_target::abi::{AddressSpace, Align, Integer, Size};
 
@@ -80,32 +79,32 @@ impl CodegenCx<'ll, 'tcx> {
         self.type_i8()
     }
 
-    crate fn type_int_from_ty(&self, t: ast::IntTy) -> &'ll Type {
+    crate fn type_int_from_ty(&self, t: ty::IntTy) -> &'ll Type {
         match t {
-            ast::IntTy::Isize => self.type_isize(),
-            ast::IntTy::I8 => self.type_i8(),
-            ast::IntTy::I16 => self.type_i16(),
-            ast::IntTy::I32 => self.type_i32(),
-            ast::IntTy::I64 => self.type_i64(),
-            ast::IntTy::I128 => self.type_i128(),
+            ty::IntTy::Isize => self.type_isize(),
+            ty::IntTy::I8 => self.type_i8(),
+            ty::IntTy::I16 => self.type_i16(),
+            ty::IntTy::I32 => self.type_i32(),
+            ty::IntTy::I64 => self.type_i64(),
+            ty::IntTy::I128 => self.type_i128(),
         }
     }
 
-    crate fn type_uint_from_ty(&self, t: ast::UintTy) -> &'ll Type {
+    crate fn type_uint_from_ty(&self, t: ty::UintTy) -> &'ll Type {
         match t {
-            ast::UintTy::Usize => self.type_isize(),
-            ast::UintTy::U8 => self.type_i8(),
-            ast::UintTy::U16 => self.type_i16(),
-            ast::UintTy::U32 => self.type_i32(),
-            ast::UintTy::U64 => self.type_i64(),
-            ast::UintTy::U128 => self.type_i128(),
+            ty::UintTy::Usize => self.type_isize(),
+            ty::UintTy::U8 => self.type_i8(),
+            ty::UintTy::U16 => self.type_i16(),
+            ty::UintTy::U32 => self.type_i32(),
+            ty::UintTy::U64 => self.type_i64(),
+            ty::UintTy::U128 => self.type_i128(),
         }
     }
 
-    crate fn type_float_from_ty(&self, t: ast::FloatTy) -> &'ll Type {
+    crate fn type_float_from_ty(&self, t: ty::FloatTy) -> &'ll Type {
         match t {
-            ast::FloatTy::F32 => self.type_f32(),
-            ast::FloatTy::F64 => self.type_f64(),
+            ty::FloatTy::F32 => self.type_f32(),
+            ty::FloatTy::F64 => self.type_f64(),
         }
     }
 

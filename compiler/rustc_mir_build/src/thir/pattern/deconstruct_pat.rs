@@ -52,7 +52,6 @@ use super::{FieldPat, Pat, PatKind, PatRange};
 use rustc_data_structures::captures::Captures;
 use rustc_index::vec::Idx;
 
-use rustc_attr::{SignedInt, UnsignedInt};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{HirId, RangeEnd};
 use rustc_middle::mir::interpret::ConstValue;
@@ -103,10 +102,10 @@ impl IntRange {
             ty::Bool => Some((Size::from_bytes(1), 0)),
             ty::Char => Some((Size::from_bytes(4), 0)),
             ty::Int(ity) => {
-                let size = Integer::from_attr(&tcx, SignedInt(ity)).size();
+                let size = Integer::from_int_ty(&tcx, ity).size();
                 Some((size, 1u128 << (size.bits() as u128 - 1)))
             }
-            ty::Uint(uty) => Some((Integer::from_attr(&tcx, UnsignedInt(uty)).size(), 0)),
+            ty::Uint(uty) => Some((Integer::from_uint_ty(&tcx, uty).size(), 0)),
             _ => None,
         }
     }
@@ -167,7 +166,7 @@ impl IntRange {
     fn signed_bias(tcx: TyCtxt<'_>, ty: Ty<'_>) -> u128 {
         match *ty.kind() {
             ty::Int(ity) => {
-                let bits = Integer::from_attr(&tcx, SignedInt(ity)).size().bits() as u128;
+                let bits = Integer::from_int_ty(&tcx, ity).size().bits() as u128;
                 1u128 << (bits - 1)
             }
             _ => 0,
@@ -959,13 +958,13 @@ impl<'tcx> SplitWildcard<'tcx> {
                 smallvec![NonExhaustive]
             }
             &ty::Int(ity) => {
-                let bits = Integer::from_attr(&cx.tcx, SignedInt(ity)).size().bits() as u128;
+                let bits = Integer::from_int_ty(&cx.tcx, ity).size().bits() as u128;
                 let min = 1u128 << (bits - 1);
                 let max = min - 1;
                 smallvec![make_range(min, max)]
             }
             &ty::Uint(uty) => {
-                let size = Integer::from_attr(&cx.tcx, UnsignedInt(uty)).size();
+                let size = Integer::from_uint_ty(&cx.tcx, uty).size();
                 let max = size.truncate(u128::MAX);
                 smallvec![make_range(0, max)]
             }

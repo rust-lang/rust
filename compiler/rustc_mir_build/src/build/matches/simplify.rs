@@ -15,7 +15,6 @@
 use crate::build::matches::{Ascription, Binding, Candidate, MatchPair};
 use crate::build::Builder;
 use crate::thir::{self, *};
-use rustc_attr::{SignedInt, UnsignedInt};
 use rustc_hir::RangeEnd;
 use rustc_middle::mir::Place;
 use rustc_middle::ty;
@@ -203,13 +202,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         (Some(('\u{0000}' as u128, '\u{10FFFF}' as u128, Size::from_bits(32))), 0)
                     }
                     ty::Int(ity) => {
-                        let size = Integer::from_attr(&tcx, SignedInt(ity)).size();
+                        let size = Integer::from_int_ty(&tcx, ity).size();
                         let max = size.truncate(u128::MAX);
                         let bias = 1u128 << (size.bits() - 1);
                         (Some((0, max, size)), bias)
                     }
                     ty::Uint(uty) => {
-                        let size = Integer::from_attr(&tcx, UnsignedInt(uty)).size();
+                        let size = Integer::from_uint_ty(&tcx, uty).size();
                         let max = size.truncate(u128::MAX);
                         (Some((0, max, size)), 0)
                     }

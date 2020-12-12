@@ -34,7 +34,6 @@ use super::{InferCtxt, MiscVariable, TypeTrace};
 
 use crate::traits::{Obligation, PredicateObligations};
 
-use rustc_ast as ast;
 use rustc_data_structures::sso::SsoHashMap;
 use rustc_hir::def_id::DefId;
 use rustc_middle::traits::ObligationCause;
@@ -281,7 +280,7 @@ impl<'infcx, 'tcx> InferCtxt<'infcx, 'tcx> {
         &self,
         vid_is_expected: bool,
         vid: ty::FloatVid,
-        val: ast::FloatTy,
+        val: ty::FloatTy,
     ) -> RelateResult<'tcx, Ty<'tcx>> {
         self.inner
             .borrow_mut()

@@ -2059,9 +2059,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 match prim_ty {
                     hir::PrimTy::Bool => tcx.types.bool,
                     hir::PrimTy::Char => tcx.types.char,
-                    hir::PrimTy::Int(it) => tcx.mk_mach_int(it),
-                    hir::PrimTy::Uint(uit) => tcx.mk_mach_uint(uit),
-                    hir::PrimTy::Float(ft) => tcx.mk_mach_float(ft),
+                    hir::PrimTy::Int(it) => tcx.mk_mach_int(ty::int_ty(it)),
+                    hir::PrimTy::Uint(uit) => tcx.mk_mach_uint(ty::uint_ty(uit)),
+                    hir::PrimTy::Float(ft) => tcx.mk_mach_float(ty::float_ty(ft)),
                     hir::PrimTy::Str => tcx.types.str_,
                 }
             }
