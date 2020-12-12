@@ -331,18 +331,23 @@ fn lint_int_literal<'tcx>(
         }
 
         cx.struct_span_lint(OVERFLOWING_LITERALS, e.span, |lint| {
-            lint.build(&format!("literal out of range for `{}`", t.name_str()))
-                .note(&format!(
-                    "the literal `{}` does not fit into the type `{}` whose range is `{}..={}`",
-                    cx.sess()
-                        .source_map()
-                        .span_to_snippet(lit.span)
-                        .expect("must get snippet from literal"),
-                    t.name_str(),
-                    min,
-                    max,
-                ))
-                .emit();
+            let mut err = lint.build(&format!("literal out of range for `{}`", t.name_str()));
+            err.note(&format!(
+                "the literal `{}` does not fit into the type `{}` whose range is `{}..={}`",
+                cx.sess()
+                    .source_map()
+                    .span_to_snippet(lit.span)
+                    .expect("must get snippet from literal"),
+                t.name_str(),
+                min,
+                max,
+            ));
+            if let Some(sugg_ty) =
+                get_type_suggestion(&cx.typeck_results().node_type(e.hir_id), v, negative)
+            {
+                err.help(&format!("consider using `{}` instead", sugg_ty));
+            }
+            err.emit();
         });
     }
 }

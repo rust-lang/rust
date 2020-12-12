@@ -10,6 +10,7 @@ note: the lint level is defined here
 LL | #![warn(overflowing_literals)]
    |         ^^^^^^^^^^^^^^^^^^^^
    = note: the literal `255i8` does not fit into the type `i8` whose range is `-128..=127`
+   = help: consider using `u8` instead
 
 warning: literal out of range for i8
   --> $DIR/type-overflow.rs:10:16
