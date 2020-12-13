@@ -47,7 +47,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessBorrow {
             return;
         }
         if let ExprKind::AddrOf(BorrowKind::Ref, Mutability::Not, ref inner) = e.kind {
-            if let ty::Ref(..) = cx.typeck_results().expr_ty(inner).kind() {
+            if let ty::Ref(_, ty, _) = cx.typeck_results().expr_ty(inner).kind() {
                 for adj3 in cx.typeck_results().expr_adjustments(e).windows(3) {
                     if let [Adjustment {
                         kind: Adjust::Deref(_), ..
@@ -62,8 +62,11 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessBorrow {
                             cx,
                             NEEDLESS_BORROW,
                             e.span,
-                            "this expression borrows a reference that is immediately dereferenced \
+                            &format!(
+                                "this expression borrows a reference (`&{}`) that is immediately dereferenced \
                              by the compiler",
+                                ty
+                            ),
                             |diag| {
                                 if let Some(snippet) = snippet_opt(cx, inner.span) {
                                     diag.span_suggestion(
