@@ -2100,8 +2100,11 @@ fn lint_clone_on_copy(cx: &LateContext<'_>, expr: &hir::Expr<'_>, arg: &hir::Exp
                 cx,
                 CLONE_DOUBLE_REF,
                 expr.span,
-                "using `clone` on a double-reference; \
-                this will copy the reference instead of cloning the inner type",
+                &format!(
+                    "using `clone` on a double-reference; \
+                    this will copy the reference of type `{}` instead of cloning the inner type",
+                    ty
+                ),
                 |diag| {
                     if let Some(snip) = sugg::Sugg::hir_opt(cx, arg) {
                         let mut ty = innermost;

@@ -44,7 +44,7 @@ error: using `clone` on a `Copy` type
 LL |     Some(t).clone();
    |     ^^^^^^^^^^^^^^^ help: try removing the `clone` call: `Some(t)`
 
-error: using `clone` on a double-reference; this will copy the reference instead of cloning the inner type
+error: using `clone` on a double-reference; this will copy the reference of type `&std::vec::Vec<i32>` instead of cloning the inner type
   --> $DIR/unnecessary_clone.rs:48:22
    |
 LL |     let z: &Vec<_> = y.clone();
@@ -66,7 +66,7 @@ error: using `clone` on a `Copy` type
 LL |         let _: E = a.clone();
    |                    ^^^^^^^^^ help: try dereferencing it: `*****a`
 
-error: using `clone` on a double-reference; this will copy the reference instead of cloning the inner type
+error: using `clone` on a double-reference; this will copy the reference of type `&[u8]` instead of cloning the inner type
   --> $DIR/unnecessary_clone.rs:89:22
    |
 LL |         let _ = &mut encoded.clone();
@@ -81,7 +81,7 @@ help: or try being explicit if you are sure, that you want to clone a reference
 LL |         let _ = &mut <&[u8]>::clone(encoded);
    |                      ^^^^^^^^^^^^^^^^^^^^^^^
 
-error: using `clone` on a double-reference; this will copy the reference instead of cloning the inner type
+error: using `clone` on a double-reference; this will copy the reference of type `&[u8]` instead of cloning the inner type
   --> $DIR/unnecessary_clone.rs:90:18
    |
 LL |         let _ = &encoded.clone();
