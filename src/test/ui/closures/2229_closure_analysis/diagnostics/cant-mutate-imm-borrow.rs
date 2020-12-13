@@ -14,7 +14,6 @@ fn main() {
     let mut c = || {
     //~^ ERROR: cannot borrow `z.0.0.0` as mutable, as it is behind a `&` reference
         z.0.0.0 = format!("X1");
-        //~^ ERROR: cannot assign to `z`, as it is not declared as mutable
     };
 
     c();

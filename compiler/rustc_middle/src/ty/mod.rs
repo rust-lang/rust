@@ -7,6 +7,7 @@ pub use self::Variance::*;
 
 use crate::hir::exports::ExportMap;
 use crate::hir::place::Place as HirPlace;
+use crate::hir::place::PlaceBase as HirPlaceBase;
 use crate::ich::StableHashingContext;
 use crate::middle::cstore::CrateStoreDyn;
 use crate::middle::resolve_lifetime::ObjectLifetimeDefault;
@@ -811,6 +812,15 @@ pub struct CapturedPlace<'tcx> {
 
     /// Represents if `place` can be mutated or not.
     pub mutability: hir::Mutability,
+}
+
+impl CapturedPlace<'tcx> {
+    pub fn get_root_variable(&self) -> hir::HirId {
+        match self.place.base {
+            HirPlaceBase::Upvar(upvar_id) => upvar_id.var_path.hir_id,
+            base => bug!("Expected upvar, found={:?}", base),
+        }
+    }
 }
 
 /// Part of `MinCaptureInformationMap`; describes the capture kind (&, &mut, move)

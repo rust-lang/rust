@@ -5,11 +5,10 @@ use rustc_data_structures::graph::dominators::Dominators;
 use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, ErrorReported};
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
-use rustc_hir::{HirId, Node};
+use rustc_hir::Node;
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::IndexVec;
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
-use rustc_middle::hir::place::PlaceBase as HirPlaceBase;
 use rustc_middle::mir::{
     traversal, Body, ClearCrossCrate, Local, Location, Mutability, Operand, Place, PlaceElem,
     PlaceRef,
@@ -18,7 +17,7 @@ use rustc_middle::mir::{AggregateKind, BasicBlock, BorrowCheckResult, BorrowKind
 use rustc_middle::mir::{Field, ProjectionElem, Promoted, Rvalue, Statement, StatementKind};
 use rustc_middle::mir::{InlineAsmOperand, Terminator, TerminatorKind};
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::{self, ParamEnv, RegionVid, TyCtxt};
+use rustc_middle::ty::{self, CapturedPlace, ParamEnv, RegionVid, TyCtxt};
 use rustc_session::lint::builtin::{MUTABLE_BORROW_RESERVATION_CONFLICT, UNUSED_MUT};
 use rustc_span::{Span, Symbol, DUMMY_SP};
 
@@ -73,16 +72,15 @@ crate use region_infer::RegionInferenceContext;
 
 // FIXME(eddyb) perhaps move this somewhere more centrally.
 #[derive(Debug)]
-crate struct Upvar {
+crate struct Upvar<'tcx> {
+    // FIXME(project-rfc-2229#8): ty::CapturePlace should have a to_string(), or similar
+    //                           then this should not be needed.
     name: Symbol,
 
-    // FIXME(project-rfc-2229#8): This should use Place or something similar
-    var_hir_id: HirId,
+    place: CapturedPlace<'tcx>,
 
     /// If true, the capture is behind a reference.
     by_ref: bool,
-
-    mutability: Mutability,
 }
 
 const DEREF_PROJECTION: &[PlaceElem<'_>; 1] = &[ProjectionElem::Deref];
@@ -159,21 +157,13 @@ fn do_mir_borrowck<'a, 'tcx>(
     let upvars: Vec<_> = tables
         .closure_min_captures_flattened(def.did.to_def_id())
         .map(|captured_place| {
-            let var_hir_id = match captured_place.place.base {
-                HirPlaceBase::Upvar(upvar_id) => upvar_id.var_path.hir_id,
-                _ => bug!("Expected upvar"),
-            };
+            let var_hir_id = captured_place.get_root_variable();
             let capture = captured_place.info.capture_kind;
             let by_ref = match capture {
                 ty::UpvarCapture::ByValue(_) => false,
                 ty::UpvarCapture::ByRef(..) => true,
             };
-            Upvar {
-                name: tcx.hir().name(var_hir_id),
-                var_hir_id,
-                by_ref,
-                mutability: captured_place.mutability,
-            }
+            Upvar { name: tcx.hir().name(var_hir_id), place: captured_place.clone(), by_ref }
         })
         .collect();
 
@@ -542,7 +532,7 @@ crate struct MirBorrowckCtxt<'cx, 'tcx> {
     dominators: Dominators<BasicBlock>,
 
     /// Information about upvars not necessarily preserved in types or MIR
-    upvars: Vec<Upvar>,
+    upvars: Vec<Upvar<'tcx>>,
 
     /// Names of local (user) variables (extracted from `var_debug_info`).
     local_names: IndexVec<Local, Option<Symbol>>,
@@ -2245,7 +2235,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                  place={:?}",
                                 upvar, is_local_mutation_allowed, place
                             );
-                            match (upvar.mutability, is_local_mutation_allowed) {
+                            match (upvar.place.mutability, is_local_mutation_allowed) {
                                 (
                                     Mutability::Not,
                                     LocalMutationIsAllowed::No

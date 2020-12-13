@@ -132,7 +132,7 @@ pub(crate) fn type_check<'mir, 'tcx>(
     flow_inits: &mut ResultsCursor<'mir, 'tcx, MaybeInitializedPlaces<'mir, 'tcx>>,
     move_data: &MoveData<'tcx>,
     elements: &Rc<RegionValueElements>,
-    upvars: &[Upvar],
+    upvars: &[Upvar<'tcx>],
 ) -> MirTypeckResults<'tcx> {
     let implicit_region_bound = infcx.tcx.mk_region(ty::ReVar(universal_regions.fr_fn_body));
     let mut constraints = MirTypeckRegionConstraints {
@@ -821,7 +821,7 @@ struct BorrowCheckContext<'a, 'tcx> {
     all_facts: &'a mut Option<AllFacts>,
     borrow_set: &'a BorrowSet<'tcx>,
     constraints: &'a mut MirTypeckRegionConstraints<'tcx>,
-    upvars: &'a [Upvar],
+    upvars: &'a [Upvar<'tcx>],
 }
 
 crate struct MirTypeckResults<'tcx> {
@@ -2486,7 +2486,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             body,
         );
         let category = if let Some(field) = field {
-            ConstraintCategory::ClosureUpvar(self.borrowck_context.upvars[field.index()].var_hir_id)
+            let var_hir_id = self.borrowck_context.upvars[field.index()].place.get_root_variable();
+            // FIXME(project-rfc-2229#8): Use Place for better dianostics
+            ConstraintCategory::ClosureUpvar(var_hir_id)
         } else {
             ConstraintCategory::Boring
         };

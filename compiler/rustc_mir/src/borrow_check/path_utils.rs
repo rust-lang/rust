@@ -143,7 +143,7 @@ pub(super) fn borrow_of_local_data(place: Place<'_>) -> bool {
 /// of a closure type.
 pub(crate) fn is_upvar_field_projection(
     tcx: TyCtxt<'tcx>,
-    upvars: &[Upvar],
+    upvars: &[Upvar<'tcx>],
     place_ref: PlaceRef<'tcx>,
     body: &Body<'tcx>,
 ) -> Option<Field> {

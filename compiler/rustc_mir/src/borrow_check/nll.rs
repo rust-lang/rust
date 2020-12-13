@@ -165,7 +165,7 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
     flow_inits: &mut ResultsCursor<'cx, 'tcx, MaybeInitializedPlaces<'cx, 'tcx>>,
     move_data: &MoveData<'tcx>,
     borrow_set: &BorrowSet<'tcx>,
-    upvars: &[Upvar],
+    upvars: &[Upvar<'tcx>],
 ) -> NllOutput<'tcx> {
     let mut all_facts = AllFacts::enabled(infcx.tcx).then_some(AllFacts::default());
 

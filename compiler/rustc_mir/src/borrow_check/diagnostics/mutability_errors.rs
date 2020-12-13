@@ -61,12 +61,26 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     Place::ty_from(local, proj_base, self.body, self.infcx.tcx).ty
                 ));
 
-                item_msg = format!("`{}`", access_place_desc.unwrap());
-                if self.is_upvar_field_projection(access_place.as_ref()).is_some() {
-                    reason = ", as it is not declared as mutable".to_string();
+                // If the place is immutable then:
+                //
+                // - Either we deref a immutable ref to get to our final place.
+                //    - We don't capture derefs of raw ptrs
+                //    - If we derefed a mutable ref without deref-ing a immutable ref
+                //      to access this place then we will have mutability.
+                //    - So if we dereferenced something such that it resulted in the final
+                //      place being immutable, then we must have deref-ed a immut ref.
+                // - Or the final place is immut because the root variable of the capture
+                //   isn't marked mut and we should suggest that to the user.
+                if self.upvars[upvar_index.index()].place.place.deref_tys().next().is_none() {
+                    item_msg = format!("`{}`", access_place_desc.unwrap());
+                    if self.is_upvar_field_projection(access_place.as_ref()).is_some() {
+                        reason = ", as it is not declared as mutable".to_string();
+                    } else {
+                        let name = self.upvars[upvar_index.index()].name;
+                        reason = format!(", as `{}` is not declared as mutable", name);
+                    }
                 } else {
-                    let name = self.upvars[upvar_index.index()].name;
-                    reason = format!(", as `{}` is not declared as mutable", name);
+                    return;
                 }
             }
 
@@ -252,23 +266,38 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     Place::ty_from(local, proj_base, self.body, self.infcx.tcx).ty
                 ));
 
-                err.span_label(span, format!("cannot {ACT}", ACT = act));
+                let captured_place = &self.upvars[upvar_index.index()].place;
 
-                let upvar_hir_id = self.upvars[upvar_index.index()].var_hir_id;
-                if let Some(Node::Binding(pat)) = self.infcx.tcx.hir().find(upvar_hir_id) {
-                    if let hir::PatKind::Binding(
-                        hir::BindingAnnotation::Unannotated,
-                        _,
-                        upvar_ident,
-                        _,
-                    ) = pat.kind
-                    {
-                        err.span_suggestion(
-                            upvar_ident.span,
-                            "consider changing this to be mutable",
-                            format!("mut {}", upvar_ident.name),
-                            Applicability::MachineApplicable,
-                        );
+                // If the place is immutable then:
+                //
+                // - Either we deref a immutable ref to get to our final place.
+                //    - We don't capture derefs of raw ptrs
+                //    - If we derefed a mutable ref without deref-ing a immutable ref
+                //      to access this place then we will have mutability.
+                //    - So if we dereferenced something such that it resulted in the final
+                //      place being immutable, then we must have deref-ed a immut ref.
+                // - Or the final place is immut because the root variable of the capture
+                //   isn't marked mut and we should suggest that to the user.
+                if captured_place.place.deref_tys().next().is_none() {
+                    err.span_label(span, format!("cannot {ACT}", ACT = act));
+
+                    let upvar_hir_id = captured_place.get_root_variable();
+
+                    if let Some(Node::Binding(pat)) = self.infcx.tcx.hir().find(upvar_hir_id) {
+                        if let hir::PatKind::Binding(
+                            hir::BindingAnnotation::Unannotated,
+                            _,
+                            upvar_ident,
+                            _,
+                        ) = pat.kind
+                        {
+                            err.span_suggestion(
+                                upvar_ident.span,
+                                "consider changing this to be mutable",
+                                format!("mut {}", upvar_ident.name),
+                                Applicability::MachineApplicable,
+                            );
+                        }
                     }
                 }
             }
