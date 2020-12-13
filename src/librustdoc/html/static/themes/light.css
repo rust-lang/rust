@@ -349,8 +349,8 @@ pre.ignore:hover, .information:hover + pre.ignore {
 }
 
 #titles > button:hover, #titles > button.selected {
+	background-color: #ffffff;
 	border-top-color: #0089ff;
-	background-color: #353535;
 }
 
 #titles > button > div.count {
