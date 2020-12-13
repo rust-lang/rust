@@ -139,9 +139,9 @@ fn map_line(s: &str) -> Line<'_> {
     let trimmed = s.trim();
     if trimmed.starts_with("##") {
         Line::Shown(Cow::Owned(s.replacen("##", "#", 1)))
-    } else if trimmed.starts_with("# ") {
+    } else if let Some(stripped) = trimmed.strip_prefix("# ") {
         // # text
-        Line::Hidden(&trimmed[2..])
+        Line::Hidden(&stripped)
     } else if trimmed == "#" {
         // We cannot handle '#text' because it could be #[attr].
         Line::Hidden("")

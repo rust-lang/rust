@@ -597,10 +597,7 @@ impl<'a> TraitDef<'a> {
 
             let mut ty_params = params
                 .iter()
-                .filter_map(|param| match param.kind {
-                    ast::GenericParamKind::Type { .. } => Some(param),
-                    _ => None,
-                })
+                .filter(|param| matches!(param.kind,  ast::GenericParamKind::Type{..}))
                 .peekable();
 
             if ty_params.peek().is_some() {
