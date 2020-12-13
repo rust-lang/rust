@@ -1,4 +1,4 @@
-error[E0277]: `main` has invalid return type `std::result::Result<f32, ParseFloatError>`
+error[E0277]: `main` has invalid return type `Result<f32, ParseFloatError>`
   --> $DIR/termination-trait-test-wrong-type.rs:6:1
    |
 LL | / fn can_parse_zero_as_f32() -> Result<f32, ParseFloatError> {
@@ -11,7 +11,7 @@ LL | | }
 LL |   pub fn assert_test_result<T: Termination>(result: T) {
    |                                ----------- required by this bound in `assert_test_result`
    |
-   = help: the trait `Termination` is not implemented for `std::result::Result<f32, ParseFloatError>`
+   = help: the trait `Termination` is not implemented for `Result<f32, ParseFloatError>`
    = note: this error originates in an attribute macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error

@@ -8,13 +8,13 @@ pub fn main() {
         Ok(u) => u,
         //~^ ERROR mismatched types
         //~| expected enum `Option<{integer}>`
-        //~| found enum `std::result::Result<_, _>`
-        //~| expected enum `Option`, found enum `std::result::Result`
+        //~| found enum `Result<_, _>`
+        //~| expected enum `Option`, found enum `Result`
 
         Err(e) => panic!(e)
         //~^ ERROR mismatched types
         //~| expected enum `Option<{integer}>`
-        //~| found enum `std::result::Result<_, _>`
-        //~| expected enum `Option`, found enum `std::result::Result`
+        //~| found enum `Result<_, _>`
+        //~| expected enum `Option`, found enum `Result`
     };
 }

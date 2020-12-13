@@ -1,4 +1,4 @@
-error: unused `std::result::Result` in tuple element 0 that must be used
+error: unused `Result` in tuple element 0 that must be used
   --> $DIR/must_use-tuple.rs:8:6
    |
 LL |     (Ok::<(), ()>(()),);
@@ -11,7 +11,7 @@ LL | #![deny(unused_must_use)]
    |         ^^^^^^^^^^^^^^^
    = note: this `Result` may be an `Err` variant, which should be handled
 
-error: unused `std::result::Result` in tuple element 0 that must be used
+error: unused `Result` in tuple element 0 that must be used
   --> $DIR/must_use-tuple.rs:10:6
    |
 LL |     (Ok::<(), ()>(()), 0, Ok::<(), ()>(()), 5);
@@ -19,7 +19,7 @@ LL |     (Ok::<(), ()>(()), 0, Ok::<(), ()>(()), 5);
    |
    = note: this `Result` may be an `Err` variant, which should be handled
 
-error: unused `std::result::Result` in tuple element 2 that must be used
+error: unused `Result` in tuple element 2 that must be used
   --> $DIR/must_use-tuple.rs:10:27
    |
 LL |     (Ok::<(), ()>(()), 0, Ok::<(), ()>(()), 5);
@@ -27,7 +27,7 @@ LL |     (Ok::<(), ()>(()), 0, Ok::<(), ()>(()), 5);
    |
    = note: this `Result` may be an `Err` variant, which should be handled
 
-error: unused `std::result::Result` in tuple element 0 that must be used
+error: unused `Result` in tuple element 0 that must be used
   --> $DIR/must_use-tuple.rs:14:5
    |
 LL |     foo();
@@ -35,7 +35,7 @@ LL |     foo();
    |
    = note: this `Result` may be an `Err` variant, which should be handled
 
-error: unused `std::result::Result` in tuple element 0 that must be used
+error: unused `Result` in tuple element 0 that must be used
   --> $DIR/must_use-tuple.rs:16:6
    |
 LL |     ((Err::<(), ()>(()), ()), ());

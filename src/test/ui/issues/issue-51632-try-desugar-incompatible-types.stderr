@@ -2,9 +2,9 @@ error[E0308]: try expression alternatives have incompatible types
   --> $DIR/issue-51632-try-desugar-incompatible-types.rs:8:5
    |
 LL |     missing_discourses()?
-   |     ^^^^^^^^^^^^^^^^^^^^^ expected enum `std::result::Result`, found `isize`
+   |     ^^^^^^^^^^^^^^^^^^^^^ expected enum `Result`, found `isize`
    |
-   = note: expected enum `std::result::Result<isize, ()>`
+   = note: expected enum `Result<isize, ()>`
               found type `isize`
 help: try removing this `?`
    |
