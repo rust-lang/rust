@@ -58,10 +58,7 @@ fn check_dup_keywords() {
         }
         Symbols {}
     };
-    test_symbols_macro(
-        input,
-        &["Symbol `crate` is duplicated", "location of previous definition"],
-    );
+    test_symbols_macro(input, &["Symbol `crate` is duplicated", "location of previous definition"]);
 }
 
 #[test]
@@ -73,10 +70,7 @@ fn check_dup_symbol() {
             splat,
         }
     };
-    test_symbols_macro(
-        input,
-        &["Symbol `splat` is duplicated", "location of previous definition"],
-    );
+    test_symbols_macro(input, &["Symbol `splat` is duplicated", "location of previous definition"]);
 }
 
 #[test]
@@ -89,10 +83,7 @@ fn check_dup_symbol_and_keyword() {
             splat,
         }
     };
-    test_symbols_macro(
-        input,
-        &["Symbol `splat` is duplicated", "location of previous definition"],
-    );
+    test_symbols_macro(input, &["Symbol `splat` is duplicated", "location of previous definition"]);
 }
 
 #[test]
