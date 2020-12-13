@@ -349,19 +349,26 @@ impl<W: Write> BufWriter<W> {
     // Ensure this function does not get inlined into `write`, so that it
     // remains inlineable and its common path remains as short as possible.
     // If this function ends up being called frequently relative to `write`,
-    // it's likely a sign that the client is using an improperly sized buffer.
+    // it's likely a sign that the client is using an improperly sized buffer
+    // or their write patterns are somewhat pathological.
     #[inline(never)]
-    fn flush_and_write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        self.flush_buf()?;
+    fn write_cold(&mut self, buf: &[u8]) -> io::Result<usize> {
+        if self.buf.len() + buf.len() > self.buf.capacity() {
+            self.flush_buf()?;
+        }
 
-        // Why not len > capacity? To avoid a needless trip through the buffer when the
-        // input exactly fills. We'd just need to flush it to the underlying writer anyway.
+        // Why not len > capacity? To avoid a needless trip through the buffer when the input
+        // exactly fills it. We'd just need to flush it to the underlying writer anyway.
         if buf.len() >= self.buf.capacity() {
             self.panicked = true;
             let r = self.get_mut().write(buf);
             self.panicked = false;
             r
         } else {
+            // Write to the buffer. In this case, we write to the buffer even if it fills it
+            // exactly. Doing otherwise would mean flushing the buffer, then writing this
+            // input to the inner writer, which in many cases would be a worse strategy.
+
             // SAFETY: We just called `self.flush_buf()`, so `self.buf.len()` is 0, and
             // we entered this else block because `buf.len() < self.buf.capacity()`.
             // Therefore, `self.buf.len() + buf.len() <= self.buf.capacity()`.
@@ -376,23 +383,30 @@ impl<W: Write> BufWriter<W> {
     // Ensure this function does not get inlined into `write_all`, so that it
     // remains inlineable and its common path remains as short as possible.
     // If this function ends up being called frequently relative to `write_all`,
-    // it's likely a sign that the client is using an improperly sized buffer.
+    // it's likely a sign that the client is using an improperly sized buffer
+    // or their write patterns are somewhat pathological.
     #[inline(never)]
-    fn flush_and_write_all(&mut self, buf: &[u8]) -> io::Result<()> {
+    fn write_all_cold(&mut self, buf: &[u8]) -> io::Result<()> {
         // Normally, `write_all` just calls `write` in a loop. We can do better
         // by calling `self.get_mut().write_all()` directly, which avoids
         // round trips through the buffer in the event of a series of partial
         // writes in some circumstances.
-        self.flush_buf()?;
+        if self.buf.len() + buf.len() > self.buf.capacity() {
+            self.flush_buf()?;
+        }
 
-        // Why not len > capacity? To avoid a needless trip through the buffer when the
-        // input exactly fills. We'd just need to flush it to the underlying writer anyway.
+        // Why not len > capacity? To avoid a needless trip through the buffer when the input
+        // exactly fills it. We'd just need to flush it to the underlying writer anyway.
         if buf.len() >= self.buf.capacity() {
             self.panicked = true;
             let r = self.get_mut().write_all(buf);
             self.panicked = false;
             r
         } else {
+            // Write to the buffer. In this case, we write to the buffer even if it fills it
+            // exactly. Doing otherwise would mean flushing the buffer, then writing this
+            // input to the inner writer, which in many cases would be a worse strategy.
+
             // SAFETY: We just called `self.flush_buf()`, so `self.buf.len()` is 0, and
             // we entered this else block because `buf.len() < self.buf.capacity()`.
             // Therefore, `self.buf.len() + buf.len() <= self.buf.capacity()`.
@@ -489,12 +503,9 @@ impl fmt::Debug for WriterPanicked {
 impl<W: Write> Write for BufWriter<W> {
     #[inline]
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        // The `buf.len() != self.buf.capacity()` check is done to avoid a needless trip through
-        // the buffer when the input is exactly the same size as it. For many clients, that is a
-        // rare event, so it's unfortunate that the check is in the common code path. But it
-        // prevents pathological cases for other clients which *always* make writes of this size.
-        // See #72919 and #79930 for more info and a breadcrumb trail.
-        if self.buf.len() + buf.len() <= self.buf.capacity() && buf.len() != self.buf.capacity() {
+        // Use < instead of <= to avoid a needless trip through the buffer in some cases.
+        // See `write_cold` for details.
+        if self.buf.len() + buf.len() < self.buf.capacity() {
             // SAFETY: safe by above conditional.
             unsafe {
                 self.write_to_buffer_unchecked(buf);
@@ -502,18 +513,15 @@ impl<W: Write> Write for BufWriter<W> {
 
             Ok(buf.len())
         } else {
-            self.flush_and_write(buf)
+            self.write_cold(buf)
         }
     }
 
     #[inline]
     fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
-        // The `buf.len() != self.buf.capacity()` check is done to avoid a needless trip through
-        // the buffer when the input is exactly the same size as it. For many clients, that is a
-        // rare event, so it's unfortunate that the check is in the common code path. But it
-        // prevents pathological cases for other clients which *always* make writes of this size.
-        // See #72919 and #79930 for more info and a breadcrumb trail.
-        if self.buf.len() + buf.len() <= self.buf.capacity() && buf.len() != self.buf.capacity() {
+        // Use < instead of <= to avoid a needless trip through the buffer in some cases.
+        // See `write_all_cold` for details.
+        if self.buf.len() + buf.len() < self.buf.capacity() {
             // SAFETY: safe by above conditional.
             unsafe {
                 self.write_to_buffer_unchecked(buf);
@@ -521,7 +529,7 @@ impl<W: Write> Write for BufWriter<W> {
 
             Ok(())
         } else {
-            self.flush_and_write_all(buf)
+            self.write_all_cold(buf)
         }
     }
 
