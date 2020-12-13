@@ -17,7 +17,8 @@ use rustc_middle::mir::interpret::{
 };
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
-use rustc_middle::ty::{self, TyCtxt, TypeFoldable, TypeVisitor};
+use rustc_middle::ty::subst::GenericArgKind;
+use rustc_middle::ty::{self, TyCtxt, TyS, TypeFoldable, TypeVisitor};
 use rustc_target::abi::Size;
 use std::ops::ControlFlow;
 
@@ -408,6 +409,33 @@ impl ExtraComments<'tcx> {
     }
 }
 
+fn use_verbose(ty: &&TyS<'tcx>) -> bool {
+    match ty.kind() {
+        ty::Int(_) | ty::Uint(_) | ty::Bool | ty::Char | ty::Float(_) => false,
+        // Unit type
+        ty::Tuple(g_args) if g_args.is_empty() => false,
+        ty::Tuple(g_args) => {
+            // could have used `try_fold` here but it seems a bit silly that
+            // the accumulator is useless
+            let mut should_be_verbose = false;
+            for g_arg in g_args.iter() {
+                if match g_arg.unpack() {
+                    GenericArgKind::Type(ty) => use_verbose(&ty),
+                    GenericArgKind::Const(ty::Const { ty, val: _ }) => use_verbose(ty),
+                    _ => false,
+                } {
+                    should_be_verbose = true;
+                    break;
+                }
+            }
+            should_be_verbose
+        }
+        ty::Array(ty, _) => use_verbose(ty),
+        ty::FnDef(..) => false,
+        _ => true,
+    }
+}
+
 impl Visitor<'tcx> for ExtraComments<'tcx> {
     fn visit_constant(&mut self, constant: &Constant<'tcx>, location: Location) {
         self.super_constant(constant, location);
@@ -430,16 +458,10 @@ impl Visitor<'tcx> for ExtraComments<'tcx> {
     fn visit_const(&mut self, constant: &&'tcx ty::Const<'tcx>, _: Location) {
         self.super_const(constant);
         let ty::Const { ty, val, .. } = constant;
-        match ty.kind() {
-            ty::Int(_) | ty::Uint(_) | ty::Bool | ty::Char | ty::Float(_) => {}
-            // Unit type
-            ty::Tuple(tys) if tys.is_empty() => {}
-            ty::FnDef(..) => {}
-            _ => {
-                self.push("ty::Const");
-                self.push(&format!("+ ty: {:?}", ty));
-                self.push(&format!("+ val: {:?}", val));
-            }
+        if use_verbose(ty) {
+            self.push("ty::Const");
+            self.push(&format!("+ ty: {:?}", ty));
+            self.push(&format!("+ val: {:?}", val));
         }
     }
 
