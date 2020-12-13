@@ -268,6 +268,14 @@ class TypeAnalysis {
 public:
   llvm::TargetLibraryInfo &TLI;
   TypeAnalysis(llvm::TargetLibraryInfo &TLI) : TLI(TLI) {}
+  /// Map of custom function call handlers
+  std::map<std::string,
+           std::function<bool(int /*direction*/, TypeTree & /*returnTree*/,
+                              std::vector<TypeTree> & /*argTrees*/,
+                              std::vector<std::set<int64_t>> & /*knownValues*/,
+                              llvm::CallInst * /*call*/)>>
+      CustomRules;
+
   /// Map of possible query states to TypeAnalyzer intermediate results
   std::map<FnTypeInfo, TypeAnalyzer> analyzedFunctions;
 

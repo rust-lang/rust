@@ -74,6 +74,9 @@ public:
     }
   }
 
+  /// Utility helper to lookup the mapping
+  const ConcreteTypeMapType &getMapping() const { return mapping; }
+
   /// Lookup the underlying ConcreteType at a given offset sequence
   /// or Unknown if none exists
   ConcreteType operator[](const std::vector<int> Seq) const {

@@ -34,6 +34,7 @@
 #include <utility>
 
 #include "SCEV/ScalarEvolutionExpander.h"
+#include "SCEV/TargetLibraryInfo.h"
 
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Module.h"
@@ -41,7 +42,6 @@
 #include "llvm/Support/CommandLine.h"
 
 #include "llvm/Analysis/AliasAnalysis.h"
-#include "llvm/Analysis/TargetLibraryInfo.h"
 
 #include "ActivityAnalysis.h"
 #include "TypeAnalysis/TypeAnalysis.h"
@@ -121,6 +121,18 @@ public:
         can_modref_map(can_modref_map) {}
 };
 
+/// Create an augmented forward pass.
+///  \p todiff is the function to differentiate
+///  \p retType is the activity info of the return
+///  \p constant_args is the activity info of the arguments
+///  \p returnUsed is whether the primal's return should also be returned
+///  \p typeInfo is the type info information about the calling context
+///  \p _uncacheable_args marks whether an argument may be rewritten before
+///  loads in the generated function (and thus cannot be cached). \p
+///  forceAnonymousTape forces the tape to be an i8* rather than the true tape
+///  structure \p AtomicAdd is whether to perform all adjoint updates to memory
+///  in an atomic way \p PostOpt is whether to perform basic optimization of the
+///  function after synthesis
 const AugmentedReturn &CreateAugmentedPrimal(
     llvm::Function *todiff, DIFFE_TYPE retType,
     const std::vector<DIFFE_TYPE> &constant_args, llvm::TargetLibraryInfo &TLI,
@@ -129,6 +141,20 @@ const AugmentedReturn &CreateAugmentedPrimal(
     const std::map<llvm::Argument *, bool> _uncacheable_args,
     bool forceAnonymousTape, bool AtomicAdd, bool PostOpt = false);
 
+/// Create the derivative function itself.
+///  \p todiff is the function to differentiate
+///  \p retType is the activity info of the return
+///  \p constant_args is the activity info of the arguments
+///  \p returnValue is whether the primal's return should also be returned
+///  \p dretUsed is whether the shadow return value should also be returned
+///  \p additionalArg is the type (or null) of an additional type in the
+///  signature to hold the tape. \p typeInfo is the type info information about
+///  the calling context \p _uncacheable_args marks whether an argument may be
+///  rewritten before loads in the generated function (and thus cannot be
+///  cached). \p augmented is the data structure created by prior call to an
+///  augmented forward pass \p AtomicAdd is whether to perform all adjoint
+///  updates to memory in an atomic way \p PostOpt is whether to perform basic
+///  optimization of the function after synthesis
 llvm::Function *CreatePrimalAndGradient(
     llvm::Function *todiff, DIFFE_TYPE retType,
     const std::vector<DIFFE_TYPE> &constant_args, llvm::TargetLibraryInfo &TLI,

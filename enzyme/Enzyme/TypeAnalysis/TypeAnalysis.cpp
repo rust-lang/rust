@@ -2071,6 +2071,30 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
         ci->getName().startswith("_ZN4core3fmt")) {
       return;
     }
+    auto customrule = interprocedural.CustomRules.find(ci->getName().str());
+    if (customrule != interprocedural.CustomRules.end()) {
+      auto returnAnalysis = getAnalysis(&call);
+      std::vector<TypeTree> args;
+      std::vector<std::set<int64_t>> knownValues;
+      for (auto &arg : call.arg_operands()) {
+        args.push_back(getAnalysis(arg));
+        knownValues.push_back(
+            fntypeinfo.knownIntegralValues((Value *)arg, DT, intseen));
+      }
+      bool err = customrule->second(direction, returnAnalysis, args,
+                                    knownValues, &call);
+      if (err) {
+        Invalid = true;
+        return;
+      }
+      updateAnalysis(&call, returnAnalysis, &call);
+      size_t argnum = 0;
+      for (auto &arg : call.arg_operands()) {
+        updateAnalysis(arg, args[argnum], &call);
+        argnum++;
+      }
+      return;
+    }
     if (ci->getName() == "posix_memalign") {
       TypeTree ptrptr;
       ptrptr.insert({-1}, BaseType::Pointer);
