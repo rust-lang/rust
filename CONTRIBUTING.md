@@ -19,10 +19,10 @@ All contributors are expected to follow the [Rust Code of Conduct].
   - [Writing code](#writing-code)
   - [Getting code-completion for rustc internals to work](#getting-code-completion-for-rustc-internals-to-work)
   - [How Clippy works](#how-clippy-works)
-  - [Fixing build failures caused by Rust](#fixing-build-failures-caused-by-rust)
+  - [Syncing changes between Clippy and [`rust-lang/rust`]](#syncing-changes-between-clippy-and-rust-langrust)
     - [Patching git-subtree to work with big repos](#patching-git-subtree-to-work-with-big-repos)
-    - [Performing the sync](#performing-the-sync)
-    - [Syncing back changes in Clippy to [`rust-lang/rust`]](#syncing-back-changes-in-clippy-to-rust-langrust)
+    - [Performing the sync from [`rust-lang/rust`] to Clippy](#performing-the-sync-from-rust-langrust-to-clippy)
+    - [Performing the sync from Clippy to [`rust-lang/rust`]](#performing-the-sync-from-clippy-to-rust-langrust)
     - [Defining remotes](#defining-remotes)
   - [Issue and PR triage](#issue-and-pr-triage)
   - [Bors and Homu](#bors-and-homu)
@@ -111,7 +111,7 @@ To work around this, you need to have a copy of the [rustc-repo][rustc_repo] ava
 `git clone https://github.com/rust-lang/rust/`.
 Then you can run a `cargo dev` command to automatically make Clippy use the rustc-repo via path-dependencies
 which rust-analyzer will be able to understand.
-Run `cargo dev ra-setup --repo-path <repo-path>` where `<repo-path>` is an absolute path to the rustc repo
+Run `cargo dev ra_setup --repo-path <repo-path>` where `<repo-path>` is an absolute path to the rustc repo
 you just cloned.
 The command will add path-dependencies pointing towards rustc-crates inside the rustc repo to
 Clippys `Cargo.toml`s and should allow rust-analyzer to understand most of the types that Clippy uses.

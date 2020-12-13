@@ -8,7 +8,7 @@ the codebase take a look at [Adding Lints] or [Common Tools].
 [Common Tools]: https://github.com/rust-lang/rust-clippy/blob/master/doc/common_tools_writing_lints.md
 
 - [Basics for hacking on Clippy](#basics-for-hacking-on-clippy)
-  - [Get the code](#get-the-code)
+  - [Get the Code](#get-the-code)
   - [Building and Testing](#building-and-testing)
   - [`cargo dev`](#cargo-dev)
   - [PR](#pr)
@@ -87,7 +87,7 @@ cargo dev update_lints
 # create a new lint and register it
 cargo dev new_lint
 # (experimental) Setup Clippy to work with rust-analyzer
-cargo dev ra-setup
+cargo dev ra_setup
 ```
 
 ## PR

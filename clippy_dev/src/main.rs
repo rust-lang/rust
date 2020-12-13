@@ -35,7 +35,7 @@ fn main() {
         ("limit_stderr_length", _) => {
             stderr_length_check::check();
         },
-        ("ra-setup", Some(matches)) => ra_setup::run(matches.value_of("rustc-repo-path")),
+        ("ra_setup", Some(matches)) => ra_setup::run(matches.value_of("rustc-repo-path")),
         ("serve", Some(matches)) => {
             let port = matches.value_of("port").unwrap().parse().unwrap();
             let lint = matches.value_of("lint");
@@ -131,7 +131,7 @@ fn get_clap_config<'a>() -> ArgMatches<'a> {
                 .about("Ensures that stderr files do not grow longer than a certain amount of lines."),
         )
         .subcommand(
-            SubCommand::with_name("ra-setup")
+            SubCommand::with_name("ra_setup")
                 .about("Alter dependencies so rust-analyzer can find rustc internals")
                 .arg(
                     Arg::with_name("rustc-repo-path")
