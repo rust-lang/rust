@@ -1408,7 +1408,7 @@ impl<'tcx> Liveness<'_, 'tcx> {
                 };
 
                 if self.used_on_entry(entry_ln, var) {
-                    if self.live_on_entry(entry_ln, var).is_none() {
+                    if !self.live_on_entry(entry_ln, var) {
                         if let Some(name) = self.should_warn(var) {
                             self.ir.tcx.struct_span_lint_hir(
                                 lint::builtin::UNUSED_ASSIGNMENTS,

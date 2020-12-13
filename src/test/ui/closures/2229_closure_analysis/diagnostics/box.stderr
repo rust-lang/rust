@@ -13,7 +13,7 @@ error[E0506]: cannot assign to `e.0.0.m.x` because it is borrowed
 LL |     let mut c = || {
    |                 -- borrow of `e.0.0.m.x` occurs here
 LL |         e.0.0.m.x = format!("not-x");
-   |         - borrow occurs due to use in closure
+   |         --------- borrow occurs due to use in closure
 ...
 LL |     e.0.0.m.x = format!("not-x");
    |     ^^^^^^^^^ assignment to borrowed `e.0.0.m.x` occurs here
@@ -27,7 +27,7 @@ error[E0502]: cannot borrow `e.0.0.m.x` as immutable because it is also borrowed
 LL |     let mut c = || {
    |                 -- mutable borrow occurs here
 LL |         e.0.0.m.x = format!("not-x");
-   |         - first borrow occurs due to use of `e.0.0.m.x` in closure
+   |         --------- first borrow occurs due to use of `e.0.0.m.x` in closure
 ...
 LL |     println!("{}", e.0.0.m.x);
    |                    ^^^^^^^^^ immutable borrow occurs here
@@ -41,7 +41,7 @@ error[E0506]: cannot assign to `e.0.0.m.x` because it is borrowed
 LL |     let c = || {
    |             -- borrow of `e.0.0.m.x` occurs here
 LL |         println!("{}", e.0.0.m.x);
-   |                        - borrow occurs due to use in closure
+   |                        --------- borrow occurs due to use in closure
 ...
 LL |     e.0.0.m.x = format!("not-x");
    |     ^^^^^^^^^ assignment to borrowed `e.0.0.m.x` occurs here
