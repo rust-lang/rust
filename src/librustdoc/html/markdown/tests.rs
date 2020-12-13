@@ -51,82 +51,77 @@ fn test_unique_id() {
 
 #[test]
 fn test_lang_string_parse() {
-    fn t(
-        s: &str,
-        should_panic: bool,
-        no_run: bool,
-        ignore: Ignore,
-        rust: bool,
-        test_harness: bool,
-        compile_fail: bool,
-        allow_fail: bool,
-        error_codes: Vec<String>,
-        edition: Option<Edition>,
-    ) {
-        assert_eq!(
-            LangString::parse(s, ErrorCodes::Yes, true, None),
-            LangString {
-                should_panic,
-                no_run,
-                ignore,
-                rust,
-                test_harness,
-                compile_fail,
-                error_codes,
-                original: s.to_owned(),
-                allow_fail,
-                edition,
-            }
-        )
-    }
-    let ignore_foo = Ignore::Some(vec!["foo".to_string()]);
-
-    fn v() -> Vec<String> {
-        Vec::new()
+    fn t(lg: LangString) {
+        let s = &lg.original;
+        assert_eq!(LangString::parse(s, ErrorCodes::Yes, true, None), lg)
     }
 
-    // marker                | should_panic | no_run | ignore | rust | test_harness
-    //                       | compile_fail | allow_fail | error_codes | edition
-    t("", false, false, Ignore::None, true, false, false, false, v(), None);
-    t("rust", false, false, Ignore::None, true, false, false, false, v(), None);
-    t("sh", false, false, Ignore::None, false, false, false, false, v(), None);
-    t("ignore", false, false, Ignore::All, true, false, false, false, v(), None);
-    t("ignore-foo", false, false, ignore_foo, true, false, false, false, v(), None);
-    t("should_panic", true, false, Ignore::None, true, false, false, false, v(), None);
-    t("no_run", false, true, Ignore::None, true, false, false, false, v(), None);
-    t("test_harness", false, false, Ignore::None, true, true, false, false, v(), None);
-    t("compile_fail", false, true, Ignore::None, true, false, true, false, v(), None);
-    t("allow_fail", false, false, Ignore::None, true, false, false, true, v(), None);
-    t("{.no_run .example}", false, true, Ignore::None, true, false, false, false, v(), None);
-    t("{.sh .should_panic}", true, false, Ignore::None, false, false, false, false, v(), None);
-    t("{.example .rust}", false, false, Ignore::None, true, false, false, false, v(), None);
-    t("{.test_harness .rust}", false, false, Ignore::None, true, true, false, false, v(), None);
-    t("text, no_run", false, true, Ignore::None, false, false, false, false, v(), None);
-    t("text,no_run", false, true, Ignore::None, false, false, false, false, v(), None);
-    t(
-        "edition2015",
-        false,
-        false,
-        Ignore::None,
-        true,
-        false,
-        false,
-        false,
-        v(),
-        Some(Edition::Edition2015),
-    );
-    t(
-        "edition2018",
-        false,
-        false,
-        Ignore::None,
-        true,
-        false,
-        false,
-        false,
-        v(),
-        Some(Edition::Edition2018),
-    );
+    t(LangString::all_false());
+    t(LangString { original: "rust".into(), ..LangString::all_false() });
+    t(LangString { original: "sh".into(), rust: false, ..LangString::all_false() });
+    t(LangString { original: "ignore".into(), ignore: Ignore::All, ..LangString::all_false() });
+    t(LangString {
+        original: "ignore-foo".into(),
+        ignore: Ignore::Some(vec!["foo".to_string()]),
+        ..LangString::all_false()
+    });
+    t(LangString {
+        original: "should_panic".into(),
+        should_panic: true,
+        ..LangString::all_false()
+    });
+    t(LangString { original: "no_run".into(), no_run: true, ..LangString::all_false() });
+    t(LangString {
+        original: "test_harness".into(),
+        test_harness: true,
+        ..LangString::all_false()
+    });
+    t(LangString {
+        original: "compile_fail".into(),
+        no_run: true,
+        compile_fail: true,
+        ..LangString::all_false()
+    });
+    t(LangString { original: "allow_fail".into(), allow_fail: true, ..LangString::all_false() });
+    t(LangString {
+        original: "{.no_run .example}".into(),
+        no_run: true,
+        ..LangString::all_false()
+    });
+    t(LangString {
+        original: "{.sh .should_panic}".into(),
+        should_panic: true,
+        rust: false,
+        ..LangString::all_false()
+    });
+    t(LangString { original: "{.example .rust}".into(), ..LangString::all_false() });
+    t(LangString {
+        original: "{.test_harness .rust}".into(),
+        test_harness: true,
+        ..LangString::all_false()
+    });
+    t(LangString {
+        original: "text, no_run".into(),
+        no_run: true,
+        rust: false,
+        ..LangString::all_false()
+    });
+    t(LangString {
+        original: "text,no_run".into(),
+        no_run: true,
+        rust: false,
+        ..LangString::all_false()
+    });
+    t(LangString {
+        original: "edition2015".into(),
+        edition: Some(Edition::Edition2015),
+        ..LangString::all_false()
+    });
+    t(LangString {
+        original: "edition2018".into(),
+        edition: Some(Edition::Edition2018),
+        ..LangString::all_false()
+    });
 }
 
 #[test]
