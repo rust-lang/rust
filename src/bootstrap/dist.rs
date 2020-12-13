@@ -1186,7 +1186,7 @@ pub fn sanitize_sh(path: &Path) -> String {
     return change_drive(unc_to_lfs(&path)).unwrap_or(path);
 
     fn unc_to_lfs(s: &str) -> &str {
-        if s.starts_with("//?/") { &s[4..] } else { s }
+        s.strip_prefix("//?/").unwrap_or(s)
     }
 
     fn change_drive(s: &str) -> Option<String> {

@@ -732,10 +732,13 @@ impl<'a> Builder<'a> {
             .env("CFG_RELEASE_CHANNEL", &self.config.channel)
             .env("RUSTDOC_REAL", self.rustdoc(compiler))
             .env("RUSTC_BOOTSTRAP", "1")
-            .arg("-Znormalize_docs")
             .arg("-Winvalid_codeblock_attributes");
         if self.config.deny_warnings {
             cmd.arg("-Dwarnings");
+        }
+        // cfg(not(bootstrap)), can be removed on the next beta bump
+        if compiler.stage != 0 {
+            cmd.arg("-Znormalize-docs");
         }
 
         // Remove make-related flags that can cause jobserver problems.

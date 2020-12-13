@@ -1012,7 +1012,6 @@ impl LinkCollector<'_, '_> {
         } else {
             // This is a bug.
             debug!("attempting to resolve item without parent module: {}", path_str);
-            let err_kind = ResolutionFailure::NoParentItem.into();
             resolution_failure(
                 self,
                 &item,
@@ -1020,7 +1019,7 @@ impl LinkCollector<'_, '_> {
                 disambiguator,
                 dox,
                 link_range,
-                smallvec![err_kind],
+                smallvec![ResolutionFailure::NoParentItem],
             );
             return None;
         };

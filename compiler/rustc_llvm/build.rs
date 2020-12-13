@@ -201,10 +201,10 @@ fn main() {
     cmd.args(&components);
 
     for lib in output(&mut cmd).split_whitespace() {
-        let name = if lib.starts_with("-l") {
-            &lib[2..]
-        } else if lib.starts_with('-') {
-            &lib[1..]
+        let name = if let Some(stripped) = lib.strip_prefix("-l") {
+            stripped
+        } else if let Some(stripped) = lib.strip_prefix('-') {
+            stripped
         } else if Path::new(lib).exists() {
             // On MSVC llvm-config will print the full name to libraries, but
             // we're only interested in the name part
@@ -241,17 +241,17 @@ fn main() {
     cmd.arg(llvm_link_arg).arg("--ldflags");
     for lib in output(&mut cmd).split_whitespace() {
         if is_crossed {
-            if lib.starts_with("-LIBPATH:") {
-                println!("cargo:rustc-link-search=native={}", lib[9..].replace(&host, &target));
-            } else if lib.starts_with("-L") {
-                println!("cargo:rustc-link-search=native={}", lib[2..].replace(&host, &target));
+            if let Some(stripped) = lib.strip_prefix("-LIBPATH:") {
+                println!("cargo:rustc-link-search=native={}", stripped.replace(&host, &target));
+            } else if let Some(stripped) = lib.strip_prefix("-L") {
+                println!("cargo:rustc-link-search=native={}", stripped.replace(&host, &target));
             }
-        } else if lib.starts_with("-LIBPATH:") {
-            println!("cargo:rustc-link-search=native={}", &lib[9..]);
-        } else if lib.starts_with("-l") {
-            println!("cargo:rustc-link-lib={}", &lib[2..]);
-        } else if lib.starts_with("-L") {
-            println!("cargo:rustc-link-search=native={}", &lib[2..]);
+        } else if let Some(stripped) = lib.strip_prefix("-LIBPATH:") {
+            println!("cargo:rustc-link-search=native={}", stripped);
+        } else if let Some(stripped) = lib.strip_prefix("-l") {
+            println!("cargo:rustc-link-lib={}", stripped);
+        } else if let Some(stripped) = lib.strip_prefix("-L") {
+            println!("cargo:rustc-link-search=native={}", stripped);
         }
     }
 
@@ -262,10 +262,10 @@ fn main() {
     let llvm_linker_flags = tracked_env_var_os("LLVM_LINKER_FLAGS");
     if let Some(s) = llvm_linker_flags {
         for lib in s.into_string().unwrap().split_whitespace() {
-            if lib.starts_with("-l") {
-                println!("cargo:rustc-link-lib={}", &lib[2..]);
-            } else if lib.starts_with("-L") {
-                println!("cargo:rustc-link-search=native={}", &lib[2..]);
+            if let Some(stripped) = lib.strip_prefix("-l") {
+                println!("cargo:rustc-link-lib={}", stripped);
+            } else if let Some(stripped) = lib.strip_prefix("-L") {
+                println!("cargo:rustc-link-search=native={}", stripped);
             }
         }
     }

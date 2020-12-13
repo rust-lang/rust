@@ -285,7 +285,7 @@ impl DebugCounters {
                 ),
             };
             counters
-                .insert(id.into(), DebugCounter::new(counter_kind.clone(), some_block_label))
+                .insert(id, DebugCounter::new(counter_kind.clone(), some_block_label))
                 .expect_none(
                     "attempt to add the same counter_kind to DebugCounters more than once",
                 );
@@ -340,7 +340,7 @@ impl DebugCounters {
         if self.some_counters.is_some() && (counter_format.block || !counter_format.id) {
             let counters = self.some_counters.as_ref().unwrap();
             if let Some(DebugCounter { some_block_label: Some(block_label), .. }) =
-                counters.get(&id.into())
+                counters.get(&id)
             {
                 return if counter_format.id {
                     format!("{}#{}", block_label, id.index())

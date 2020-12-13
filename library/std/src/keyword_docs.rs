@@ -565,8 +565,12 @@ mod fn_keyword {}
 ///
 /// For more information on for-loops, see the [Rust book] or the [Reference].
 ///
+/// See also, [`loop`], [`while`].
+///
 /// [`in`]: keyword.in.html
 /// [`impl`]: keyword.impl.html
+/// [`loop`]: keyword.loop.html
+/// [`while`]: keyword.while.html
 /// [higher-ranked trait bounds]: ../reference/trait-bounds.html#higher-ranked-trait-bounds
 /// [Rust book]:
 /// ../book/ch03-05-control-flow.html#looping-through-a-collection-with-for
@@ -842,6 +846,8 @@ mod let_keyword {}
 ///
 /// For more information on `while` and loops in general, see the [reference].
 ///
+/// See also, [`for`], [`loop`].
+///
 /// [`for`]: keyword.for.html
 /// [`loop`]: keyword.loop.html
 /// [reference]: ../reference/expressions/loop-expr.html#predicate-loops
@@ -890,6 +896,10 @@ mod while_keyword {}
 ///
 /// For more information on `loop` and loops in general, see the [Reference].
 ///
+/// See also, [`for`], [`while`].
+///
+/// [`for`]: keyword.for.html
+/// [`while`]: keyword.while.html
 /// [Reference]: ../reference/expressions/loop-expr.html
 mod loop_keyword {}
 

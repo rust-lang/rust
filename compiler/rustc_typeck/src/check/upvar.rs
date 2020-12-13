@@ -294,17 +294,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                     closure_captures.insert(*var_hir_id, upvar_id);
 
-                    let new_capture_kind = if let Some(capture_kind) =
-                        upvar_capture_map.get(&upvar_id)
-                    {
-                        // upvar_capture_map only stores the UpvarCapture (CaptureKind),
-                        // so we create a fake capture info with no expression.
-                        let fake_capture_info =
-                            ty::CaptureInfo { expr_id: None, capture_kind: capture_kind.clone() };
-                        determine_capture_info(fake_capture_info, capture_info).capture_kind
-                    } else {
-                        capture_info.capture_kind
-                    };
+                    let new_capture_kind =
+                        if let Some(capture_kind) = upvar_capture_map.get(&upvar_id) {
+                            // upvar_capture_map only stores the UpvarCapture (CaptureKind),
+                            // so we create a fake capture info with no expression.
+                            let fake_capture_info =
+                                ty::CaptureInfo { expr_id: None, capture_kind: *capture_kind };
+                            determine_capture_info(fake_capture_info, capture_info).capture_kind
+                        } else {
+                            capture_info.capture_kind
+                        };
                     upvar_capture_map.insert(upvar_id, new_capture_kind);
                 }
             }
