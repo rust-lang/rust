@@ -143,7 +143,7 @@ fn discover_sysroot_src_dir(current_dir: &AbsPath) -> Result<AbsPathBuf> {
 can't load standard library from sysroot
 {}
 (discovered via `rustc --print sysroot`)
-try running `rustup component add rust-src` or set `RUST_SRC_PATH`",
+try installing the Rust source the same way you installed rustc",
                 sysroot_path.display(),
             )
         })
