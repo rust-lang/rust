@@ -282,7 +282,7 @@ impl<I: Iterator> Peekable<I> {
     /// // The next value returned will be 10
     /// assert_eq!(iter.next(), Some(10));
     /// ```
-    #[stable(feature = "peekable_next_if", since = "1.49.0")]
+    #[stable(feature = "peekable_next_if", since = "1.50.0")]
     pub fn next_if(&mut self, func: impl FnOnce(&I::Item) -> bool) -> Option<I::Item> {
         match self.next() {
             Some(matched) if func(&matched) => Some(matched),
@@ -308,7 +308,7 @@ impl<I: Iterator> Peekable<I> {
     /// // `next_if_eq` saves the value of the next item if it was not equal to `expected`.
     /// assert_eq!(iter.next(), Some(1));
     /// ```
-    #[stable(feature = "peekable_next_if", since = "1.49.0")]
+    #[stable(feature = "peekable_next_if", since = "1.50.0")]
     pub fn next_if_eq<T>(&mut self, expected: &T) -> Option<I::Item>
     where
         T: ?Sized,
