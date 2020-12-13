@@ -20,7 +20,7 @@ fn lots_and_lots() {
     const J: u32 = 1000;
     const K: u32 = 3;
 
-    let m = Arc::new(Mutex::new(0));
+    let m = Mutex::arc(0);
 
     fn inc(m: &Mutex<u32>) {
         for _ in 0..J {
@@ -83,7 +83,7 @@ fn test_into_inner_drop() {
 
 #[test]
 fn test_into_inner_poison() {
-    let m = Arc::new(Mutex::new(NonCopy(10)));
+    let m = Mutex::arc(NonCopy(10));
     let m2 = m.clone();
     let _ = thread::spawn(move || {
         let _lock = m2.lock().unwrap();
@@ -107,7 +107,7 @@ fn test_get_mut() {
 
 #[test]
 fn test_get_mut_poison() {
-    let m = Arc::new(Mutex::new(NonCopy(10)));
+    let m = Mutex::arc(NonCopy(10));
     let m2 = m.clone();
     let _ = thread::spawn(move || {
         let _lock = m2.lock().unwrap();
@@ -176,7 +176,7 @@ fn test_arc_condvar_poison() {
 
 #[test]
 fn test_mutex_arc_poison() {
-    let arc = Arc::new(Mutex::new(1));
+    let arc = Mutex::arc(1);
     assert!(!arc.is_poisoned());
     let arc2 = arc.clone();
     let _ = thread::spawn(move || {
@@ -192,8 +192,8 @@ fn test_mutex_arc_poison() {
 fn test_mutex_arc_nested() {
     // Tests nested mutexes and access
     // to underlying data.
-    let arc = Arc::new(Mutex::new(1));
-    let arc2 = Arc::new(Mutex::new(arc));
+    let arc = Mutex::arc(1);
+    let arc2 = Mutex::arc(arc);
     let (tx, rx) = channel();
     let _t = thread::spawn(move || {
         let lock = arc2.lock().unwrap();
@@ -206,7 +206,7 @@ fn test_mutex_arc_nested() {
 
 #[test]
 fn test_mutex_arc_access_in_unwind() {
-    let arc = Arc::new(Mutex::new(1));
+    let arc = Mutex::arc(1);
     let arc2 = arc.clone();
     let _ = thread::spawn(move || -> () {
         struct Unwinder {

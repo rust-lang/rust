@@ -14,7 +14,7 @@ fn smoke() {
 #[test]
 #[cfg_attr(target_os = "emscripten", ignore)]
 fn notify_one() {
-    let m = Arc::new(Mutex::new(()));
+    let m = Mutex::arc(());
     let m2 = m.clone();
     let c = Arc::new(Condvar::new());
     let c2 = c.clone();
@@ -89,7 +89,7 @@ fn wait_while() {
 #[test]
 #[cfg_attr(target_os = "emscripten", ignore)]
 fn wait_timeout_wait() {
-    let m = Arc::new(Mutex::new(()));
+    let m = Mutex::arc(());
     let c = Arc::new(Condvar::new());
 
     loop {
@@ -108,7 +108,7 @@ fn wait_timeout_wait() {
 #[test]
 #[cfg_attr(target_os = "emscripten", ignore)]
 fn wait_timeout_while_wait() {
-    let m = Arc::new(Mutex::new(()));
+    let m = Mutex::arc(());
     let c = Arc::new(Condvar::new());
 
     let g = m.lock().unwrap();
@@ -120,7 +120,7 @@ fn wait_timeout_while_wait() {
 #[test]
 #[cfg_attr(target_os = "emscripten", ignore)]
 fn wait_timeout_while_instant_satisfy() {
-    let m = Arc::new(Mutex::new(()));
+    let m = Mutex::arc(());
     let c = Arc::new(Condvar::new());
 
     let g = m.lock().unwrap();
@@ -155,7 +155,7 @@ fn wait_timeout_while_wake() {
 #[test]
 #[cfg_attr(target_os = "emscripten", ignore)]
 fn wait_timeout_wake() {
-    let m = Arc::new(Mutex::new(()));
+    let m = Mutex::arc(());
     let c = Arc::new(Condvar::new());
 
     loop {
@@ -193,7 +193,7 @@ fn wait_timeout_wake() {
 #[should_panic]
 #[cfg_attr(not(unix), ignore)]
 fn two_mutexes() {
-    let m = Arc::new(Mutex::new(()));
+    let m = Mutex::arc(());
     let m2 = m.clone();
     let c = Arc::new(Condvar::new());
     let c2 = c.clone();

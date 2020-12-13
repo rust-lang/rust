@@ -21,7 +21,7 @@ fn frob() {
     const N: u32 = 10;
     const M: usize = 1000;
 
-    let r = Arc::new(RwLock::new(()));
+    let r = RwLock::arc(());
 
     let (tx, rx) = channel::<()>();
     for _ in 0..N {
@@ -45,7 +45,7 @@ fn frob() {
 
 #[test]
 fn test_rw_arc_poison_wr() {
-    let arc = Arc::new(RwLock::new(1));
+    let arc = RwLock::arc(1);
     let arc2 = arc.clone();
     let _: Result<(), _> = thread::spawn(move || {
         let _lock = arc2.write().unwrap();
@@ -57,7 +57,7 @@ fn test_rw_arc_poison_wr() {
 
 #[test]
 fn test_rw_arc_poison_ww() {
-    let arc = Arc::new(RwLock::new(1));
+    let arc = RwLock::arc(1);
     assert!(!arc.is_poisoned());
     let arc2 = arc.clone();
     let _: Result<(), _> = thread::spawn(move || {
@@ -71,7 +71,7 @@ fn test_rw_arc_poison_ww() {
 
 #[test]
 fn test_rw_arc_no_poison_rr() {
-    let arc = Arc::new(RwLock::new(1));
+    let arc = RwLock::arc(1);
     let arc2 = arc.clone();
     let _: Result<(), _> = thread::spawn(move || {
         let _lock = arc2.read().unwrap();
@@ -83,7 +83,7 @@ fn test_rw_arc_no_poison_rr() {
 }
 #[test]
 fn test_rw_arc_no_poison_rw() {
-    let arc = Arc::new(RwLock::new(1));
+    let arc = RwLock::arc(1);
     let arc2 = arc.clone();
     let _: Result<(), _> = thread::spawn(move || {
         let _lock = arc2.read().unwrap();
@@ -96,7 +96,7 @@ fn test_rw_arc_no_poison_rw() {
 
 #[test]
 fn test_rw_arc() {
-    let arc = Arc::new(RwLock::new(0));
+    let arc = RwLock::arc(0);
     let arc2 = arc.clone();
     let (tx, rx) = channel();
 
@@ -134,7 +134,7 @@ fn test_rw_arc() {
 
 #[test]
 fn test_rw_arc_access_in_unwind() {
-    let arc = Arc::new(RwLock::new(1));
+    let arc = RwLock::arc(1);
     let arc2 = arc.clone();
     let _ = thread::spawn(move || -> () {
         struct Unwinder {
@@ -207,7 +207,7 @@ fn test_into_inner_drop() {
 
 #[test]
 fn test_into_inner_poison() {
-    let m = Arc::new(RwLock::new(NonCopy(10)));
+    let m = RwLock::arc(NonCopy(10));
     let m2 = m.clone();
     let _ = thread::spawn(move || {
         let _lock = m2.write().unwrap();
@@ -231,7 +231,7 @@ fn test_get_mut() {
 
 #[test]
 fn test_get_mut_poison() {
-    let m = Arc::new(RwLock::new(NonCopy(10)));
+    let m = RwLock::arc(NonCopy(10));
     let m2 = m.clone();
     let _ = thread::spawn(move || {
         let _lock = m2.write().unwrap();

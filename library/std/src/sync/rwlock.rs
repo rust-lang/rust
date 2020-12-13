@@ -6,6 +6,7 @@ use crate::fmt;
 use crate::mem;
 use crate::ops::{Deref, DerefMut};
 use crate::ptr;
+use crate::sync::Arc;
 use crate::sys_common::poison::{self, LockResult, TryLockError, TryLockResult};
 use crate::sys_common::rwlock as sys;
 
@@ -132,6 +133,23 @@ impl<T> RwLock<T> {
             poison: poison::Flag::new(),
             data: UnsafeCell::new(t),
         }
+    }
+
+    /// Constructs a new `Arc<RwLock<T>>`.
+    ///
+    /// This function is a shorthand for `Arc::new(RwLock::new(t))`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(mutex_arc)]
+    /// use std::sync::{Arc, RwLock};
+    ///
+    /// let mutex: Arc<RwLock<_>> = RwLock::arc(0);
+    /// ```
+    #[unstable(feature = "mutex_arc", issue = "74866")]
+    pub fn arc(t: T) -> Arc<RwLock<T>> {
+        Arc::new(RwLock::new(t))
     }
 }
 
