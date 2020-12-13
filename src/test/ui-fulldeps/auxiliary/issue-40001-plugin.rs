@@ -40,7 +40,6 @@ impl<'tcx> LateLintPass<'tcx> for MissingAllowedAttrPass {
         _: intravisit::FnKind<'tcx>,
         _: &'tcx hir::FnDecl,
         _: &'tcx hir::Body,
-        span: source_map::Span,
         id: hir::HirId,
     ) {
         let item = match cx.tcx.hir().get(id) {
@@ -51,6 +50,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingAllowedAttrPass {
         let allowed = |attr| pprust::attribute_to_string(attr).contains("allowed_attr");
         if !cx.tcx.hir().attrs(item.hir_id()).iter().any(allowed) {
             cx.lint(MISSING_ALLOWED_ATTR, |lint| {
+                let span = cx.tcx.hir().span(id);
                 lint.build("Missing 'allowed_attr' attribute").set_span(span).emit()
             });
         }
