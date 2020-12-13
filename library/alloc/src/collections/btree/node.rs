@@ -1475,6 +1475,7 @@ impl<'a, K: 'a, V: 'a> BalancingContext<'a, K, V> {
 
     /// This does stealing similar to `steal_left` but steals multiple elements at once.
     pub fn bulk_steal_left(&mut self, count: usize) {
+        assert!(count > 0);
         unsafe {
             let left_node = &mut self.left_child;
             let old_left_len = left_node.len();
@@ -1532,6 +1533,7 @@ impl<'a, K: 'a, V: 'a> BalancingContext<'a, K, V> {
 
     /// The symmetric clone of `bulk_steal_left`.
     pub fn bulk_steal_right(&mut self, count: usize) {
+        assert!(count > 0);
         unsafe {
             let left_node = &mut self.left_child;
             let old_left_len = left_node.len();
