@@ -137,6 +137,7 @@ mod handlers {
     mod flip_comma;
     mod flip_trait_bound;
     mod generate_derive;
+    mod generate_default_from_enum_variant;
     mod generate_from_impl_for_enum;
     mod generate_function;
     mod generate_impl;
@@ -186,6 +187,7 @@ mod handlers {
             flip_comma::flip_comma,
             flip_trait_bound::flip_trait_bound,
             generate_derive::generate_derive,
+            generate_default_from_enum_variant::generate_default_from_enum_variant,
             generate_from_impl_for_enum::generate_from_impl_for_enum,
             generate_function::generate_function,
             generate_impl::generate_impl,

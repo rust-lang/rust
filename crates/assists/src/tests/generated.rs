@@ -365,6 +365,33 @@ fn foo<T: Copy + Clone>() { }
 }
 
 #[test]
+fn doctest_generate_default_from_enum_variant() {
+    check_doc_test(
+        "generate_default_from_enum_variant",
+        r#####"
+enum Version {
+ Undefined,
+ Minor<|>,
+ Major,
+}
+"#####,
+        r#####"
+enum Version {
+ Undefined,
+ Minor,
+ Major,
+}
+
+impl Default for Version {
+    fn default() -> Self {
+        Self::Minor
+    }
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_generate_derive() {
     check_doc_test(
         "generate_derive",
