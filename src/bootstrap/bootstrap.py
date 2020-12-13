@@ -897,13 +897,17 @@ class RustBuild(object):
         filtered_submodules = []
         submodules_names = []
         llvm_checked_out = os.path.exists(os.path.join(self.rust_root, "src/llvm-project/.git"))
+        external_llvm_provided = self.get_toml('llvm-config') or self.downloading_llvm()
+        llvm_needed = not self.get_toml('codegen-backends', 'rust') \
+            or "llvm" in self.get_toml('codegen-backends', 'rust')
         for module in submodules:
             if module.endswith("llvm-project"):
-                # Don't sync the llvm-project submodule either if an external LLVM
-                # was provided, or if we are downloading LLVM. Also, if the
-                # submodule has been initialized already, sync it anyways so that
-                # it doesn't mess up contributor pull requests.
-                if self.get_toml('llvm-config') or self.downloading_llvm():
+                # Don't sync the llvm-project submodule if an external LLVM was
+                # provided, if we are downloading LLVM or if the LLVM backend is
+                # not being built. Also, if the submodule has been initialized
+                # already, sync it anyways so that it doesn't mess up contributor
+                # pull requests.
+                if external_llvm_provided or not llvm_needed:
                     if self.get_toml('lld') != 'true' and not llvm_checked_out:
                         continue
             check = self.check_submodule(module, slow_submodules)
