@@ -1,12 +1,16 @@
 error[E0435]: attempt to use a non-constant value in a constant
   --> $DIR/issue-42060.rs:3:23
    |
+LL |     let thing = ();
+   |         ----- help: consider using `const` instead of `let`
 LL |     let other: typeof(thing) = thing;
    |                       ^^^^^ non-constant value
 
 error[E0435]: attempt to use a non-constant value in a constant
   --> $DIR/issue-42060.rs:9:13
    |
+LL |     let q = 1;
+   |         - help: consider using `const` instead of `let`
 LL |     <typeof(q)>::N
    |             ^ non-constant value
 
