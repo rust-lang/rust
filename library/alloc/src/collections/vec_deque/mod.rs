@@ -2796,7 +2796,7 @@ impl<T> From<Vec<T>> for VecDeque<T> {
             // or doesn't have at least one free space.
             // We check if `T` is a ZST in the first condition,
             // because `usize::MAX` (the capacity returned by `capacity()` for ZST)
-            // is not a power of zero and thus it'll always try
+            // is not a power of two and thus it'll always try
             // to reserve more memory which will panic for ZST (rust-lang/rust#78532)
             if (!buf.capacity().is_power_of_two() && mem::size_of::<T>() != 0)
                 || (buf.capacity() < (MINIMUM_CAPACITY + 1))
