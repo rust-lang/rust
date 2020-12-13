@@ -95,6 +95,23 @@ If you don't want to be asked for `Download now` every day when the new nightly 
 
 NOTE: Nightly extension should **only** be installed via the `Download now` action from VS Code.
 
+==== Manual installation
+
+Alternatively, procure both `rust-analyzer.vsix` and your platform's matching `rust-analyzer-{platform}`, for example from the
+https://github.com/rust-analyzer/rust-analyzer/releases[releases] page.
+
+Install the extension with the `Extensions: Install from VSIX` command within VS Code, or from the command line via:
+[source]
+----
+$ code --install-extension /path/to/rust-analyzer.vsix
+----
+
+Copy the `rust-analyzer-{platform}` binary anywhere, then add the path to your settings.json, for example:
+[source,json]
+----
+{ "rust-analyzer.serverPath": "~/.local/bin/rust-analyzer-linux" }
+----
+
 ==== Building From Source
 
 Alternatively, both the server and the Code plugin can be installed from source:
