@@ -294,7 +294,16 @@ impl<T: ?Sized + fmt::Debug> fmt::Debug for Weak<T> {
     }
 }
 
-/// TODO: doc comment
+/// The underlying representation of an `Arc`.
+///
+/// It's possible to create an [`Arc<T>`][arc] from a `Box<ArcRepr<T>>` using
+/// [`Arc::from_repr(boxed_arc_repr)`][from_repr]. This is only necessary when
+/// needing to have more control over how the `Arc` is allocated. Most users
+/// should use [`Arc::new`][arc_new].
+///
+/// [arc]: ARc
+/// [from_repr]: Arc::from_repr
+/// [arc_new]: Arc::new
 // This is repr(C) to future-proof against possible field-reordering, which
 // would interfere with otherwise safe [into|from]_raw() of transmutable
 // inner types.
@@ -328,7 +337,15 @@ impl<T: ?Sized + fmt::Debug> fmt::Debug for ArcRepr<T> {
 }
 
 impl<T> ArcRepr<T> {
-    // TODO
+    /// Constructs a new ArcRepr<T>.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::ArcRepr;
+    ///
+    /// let five = ArcRepr::new(5);
+    /// ```
     #[inline]
     #[unstable(feature = "rc_stable_repr", issue = "none")]
     pub fn new(data: T) -> ArcRepr<T> {
@@ -1006,7 +1023,18 @@ impl<T: ?Sized> Arc<T> {
         this.ptr.as_ptr() == other.ptr.as_ptr()
     }
 
-    /// TODO: doc comment
+    /// Constructs a new Arc<T> from a Box<ArcRepr<T>>.
+    ///
+    /// The new Arc consumes the allocation from the Box. This method does not
+    /// allocate.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::{Arc, ArcRepr};
+    ///
+    /// let five = Arc::from_repr(Box::new(ArcRepr::new(5)));
+    /// ```
     #[unstable(feature = "rc_stable_repr", issue = "none")]
     pub fn from_repr(repr: Box<ArcRepr<T>>) -> Self {
         Self::from_inner(Box::leak(repr).into())

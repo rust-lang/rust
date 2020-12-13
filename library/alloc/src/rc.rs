@@ -270,7 +270,16 @@ use crate::vec::Vec;
 #[cfg(test)]
 mod tests;
 
-/// TODO: doc comments
+/// The underlying representation of an `Rc`.
+///
+/// It's possible to create an [`Rc<T>`][rc] from a `Box<RcRepr<T>>` using
+/// [`Rc::from_repr(boxed_rc_repr)`][from_repr]. This is only necessary when
+/// needing to have more control over how the `Rc` is allocated. Most users
+/// should use [`Rc::new`][rc_new].
+///
+/// [rc]: Rc
+/// [from_repr]: Rc::from_repr
+/// [rc_new]: Rc::new
 // This is repr(C) to future-proof against possible field-reordering, which
 // would interfere with otherwise safe [into|from]_raw() of transmutable
 // inner types.
@@ -283,7 +292,15 @@ pub struct RcRepr<T: ?Sized> {
 }
 
 impl<T> RcRepr<T> {
-    /// TODO: doc comments
+    /// Constructs a new RcRepr<T>.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::rc::RcRepr;
+    ///
+    /// let five = RcRepr::new(5);
+    /// ```
     #[unstable(feature = "rc_stable_repr", issue = "none")]
     pub fn new(value: T) -> Self {
         RcRepr { strong: Cell::new(1), weak: Cell::new(1), value }
@@ -916,7 +933,18 @@ impl<T: ?Sized> Rc<T> {
         this.ptr.as_ptr() == other.ptr.as_ptr()
     }
 
-    /// TODO: doc comments
+    /// Constructs a new Rc<T> from a Box<RcRepr<T>>.
+    ///
+    /// The new Rc consumes the allocation from the Box. This method does not
+    /// allocate.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::rc::{Rc, RcRepr};
+    ///
+    /// let five = Rc::from_repr(Box::new(RcRepr::new(5)));
+    /// ```
     #[unstable(feature = "rc_stable_repr", issue = "none")]
     pub fn from_repr(repr: Box<RcRepr<T>>) -> Self {
         Self::from_inner(Box::leak(repr).into())
