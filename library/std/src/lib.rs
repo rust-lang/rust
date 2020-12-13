@@ -282,7 +282,7 @@
 #![feature(maybe_uninit_ref)]
 #![feature(maybe_uninit_slice)]
 #![feature(min_specialization)]
-#![feature(mutex_arc)]
+#![cfg_attr(test, feature(mutex_arc))]
 #![feature(needs_panic_runtime)]
 #![feature(negative_impls)]
 #![feature(never_type)]
