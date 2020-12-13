@@ -565,7 +565,13 @@ fn substs_from_path_segment(
             if generic_args.has_self_type { self_params + type_params } else { type_params };
         let skip = if generic_args.has_self_type && self_params == 0 { 1 } else { 0 };
         // if args are provided, it should be all of them, but we can't rely on that
-        for arg in generic_args.args.iter().skip(skip).take(expected_num) {
+        for arg in generic_args
+            .args
+            .iter()
+            .filter(|arg| matches!(arg, GenericArg::Type(_)))
+            .skip(skip)
+            .take(expected_num)
+        {
             match arg {
                 GenericArg::Type(type_ref) => {
                     had_explicit_type_args = true;
