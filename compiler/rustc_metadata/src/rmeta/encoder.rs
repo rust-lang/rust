@@ -990,6 +990,9 @@ impl EncodeContext<'a, 'tcx> {
                     record!(self.tables.ty[def_id] <- ty);
                 }
             }
+            if let Ok(sig) = tcx.try_fn_sig(def_id) {
+                record!(self.tables.fn_sig[def_id] <- sig);
+            }
         }
         let inherent_impls = tcx.crate_inherent_impls(LOCAL_CRATE);
         for (def_id, implementations) in inherent_impls.inherent_impls.iter() {
@@ -1005,7 +1008,6 @@ impl EncodeContext<'a, 'tcx> {
     }
 
     fn encode_enum_variant_info(&mut self, def: &ty::AdtDef, index: VariantIdx) {
-        let tcx = self.tcx;
         let variant = &def.variants[index];
         let def_id = variant.def_id;
         debug!("EncodeContext::encode_enum_variant_info({:?})", def_id);
@@ -1023,16 +1025,9 @@ impl EncodeContext<'a, 'tcx> {
             f.did.index
         }));
         self.encode_ident_span(def_id, variant.ident);
-        if variant.ctor_kind == CtorKind::Fn {
-            // FIXME(eddyb) encode signature only in `encode_enum_variant_ctor`.
-            if let Some(ctor_def_id) = variant.ctor_def_id {
-                record!(self.tables.fn_sig[def_id] <- tcx.fn_sig(ctor_def_id));
-            }
-        }
     }
 
     fn encode_enum_variant_ctor(&mut self, def: &ty::AdtDef, index: VariantIdx) {
-        let tcx = self.tcx;
         let variant = &def.variants[index];
         let def_id = variant.ctor_def_id.unwrap();
         debug!("EncodeContext::encode_enum_variant_ctor({:?})", def_id);
@@ -1046,9 +1041,6 @@ impl EncodeContext<'a, 'tcx> {
         };
 
         record!(self.tables.kind[def_id] <- EntryKind::Variant(self.lazy(data)));
-        if variant.ctor_kind == CtorKind::Fn {
-            record!(self.tables.fn_sig[def_id] <- tcx.fn_sig(def_id));
-        }
     }
 
     fn encode_info_for_mod(&mut self, local_def_id: LocalDefId, md: &hir::Mod<'_>) {
@@ -1110,7 +1102,6 @@ impl EncodeContext<'a, 'tcx> {
 
     fn encode_struct_ctor(&mut self, adt_def: &ty::AdtDef, def_id: DefId) {
         debug!("EncodeContext::encode_struct_ctor({:?})", def_id);
-        let tcx = self.tcx;
         let variant = adt_def.non_enum_variant();
 
         let data = VariantData {
@@ -1121,9 +1112,6 @@ impl EncodeContext<'a, 'tcx> {
         };
 
         record!(self.tables.kind[def_id] <- EntryKind::Struct(self.lazy(data), adt_def.repr));
-        if variant.ctor_kind == CtorKind::Fn {
-            record!(self.tables.fn_sig[def_id] <- tcx.fn_sig(def_id));
-        }
     }
 
     fn encode_explicit_item_bounds(&mut self, def_id: DefId) {
@@ -1188,15 +1176,10 @@ impl EncodeContext<'a, 'tcx> {
             }
         }
         self.encode_ident_span(def_id, ast_item.ident);
-        if trait_item.kind == ty::AssocKind::Fn {
-            record!(self.tables.fn_sig[def_id] <- tcx.fn_sig(def_id));
-        }
     }
 
     fn encode_info_for_impl_item(&mut self, def_id: DefId) {
         debug!("EncodeContext::encode_info_for_impl_item({:?})", def_id);
-        let tcx = self.tcx;
-
         let hir_id = self.tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
         let ast_item = self.tcx.hir().expect_impl_item(hir_id);
         let impl_item = self.tcx.associated_item(def_id);
@@ -1244,9 +1227,6 @@ impl EncodeContext<'a, 'tcx> {
             }
         }
         self.encode_ident_span(def_id, impl_item.ident);
-        if impl_item.kind == ty::AssocKind::Fn {
-            record!(self.tables.fn_sig[def_id] <- tcx.fn_sig(def_id));
-        }
     }
 
     fn encode_fn_param_names_for_body(&mut self, body_id: hir::BodyId) -> Lazy<[Ident]> {
@@ -1343,8 +1323,6 @@ impl EncodeContext<'a, 'tcx> {
     }
 
     fn encode_info_for_item(&mut self, def_id: DefId, item: &'tcx hir::Item<'tcx>) {
-        let tcx = self.tcx;
-
         debug!("EncodeContext::encode_info_for_item({:?})", def_id);
 
         self.encode_ident_span(def_id, item.ident);
@@ -1491,9 +1469,6 @@ impl EncodeContext<'a, 'tcx> {
             }
             _ => {}
         }
-        if let hir::ItemKind::Fn(..) = item.kind {
-            record!(self.tables.fn_sig[def_id] <- tcx.fn_sig(def_id));
-        }
         if let hir::ItemKind::Impl { .. } = item.kind {
             if let Some(trait_ref) = self.tcx.impl_trait_ref(def_id) {
                 record!(self.tables.impl_trait_ref[def_id] <- trait_ref);
@@ -1531,9 +1506,6 @@ impl EncodeContext<'a, 'tcx> {
             }
 
             _ => bug!("closure that is neither generator nor closure"),
-        }
-        if let ty::Closure(def_id, substs) = *ty.kind() {
-            record!(self.tables.fn_sig[def_id] <- substs.as_closure().sig());
         }
     }
 
@@ -1792,8 +1764,6 @@ impl EncodeContext<'a, 'tcx> {
     }
 
     fn encode_info_for_foreign_item(&mut self, def_id: DefId, nitem: &hir::ForeignItem<'_>) {
-        let tcx = self.tcx;
-
         debug!("EncodeContext::encode_info_for_foreign_item({:?})", def_id);
 
         match nitem.kind {
@@ -1820,9 +1790,6 @@ impl EncodeContext<'a, 'tcx> {
             }
         }
         self.encode_ident_span(def_id, nitem.ident);
-        if let hir::ForeignItemKind::Fn(..) = nitem.kind {
-            record!(self.tables.fn_sig[def_id] <- tcx.fn_sig(def_id));
-        }
     }
 }
 
