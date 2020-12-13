@@ -258,7 +258,16 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                 Ok(ty::Visibility::Restricted(DefId::local(CRATE_DEF_INDEX)))
             }
             ast::VisibilityKind::Inherited => {
-                Ok(ty::Visibility::Restricted(parent_scope.module.normal_ancestor_id))
+                if matches!(self.parent_scope.module.kind, ModuleKind::Def(DefKind::Enum, _, _)) {
+                    // Any inherited visibility resolved directly inside an enum
+                    // (e.g. variants or fields) inherits from the visibility of the enum.
+                    let parent_enum = self.parent_scope.module.def_id().unwrap().expect_local();
+                    Ok(self.r.visibilities[&parent_enum])
+                } else {
+                    // If it's not in an enum, its visibility is restricted to the `mod` item
+                    // that it's defined in.
+                    Ok(ty::Visibility::Restricted(self.parent_scope.module.normal_ancestor_id))
+                }
             }
             ast::VisibilityKind::Restricted { ref path, id, .. } => {
                 // For visibilities we are not ready to provide correct implementation of "uniform

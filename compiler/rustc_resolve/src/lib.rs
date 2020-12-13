@@ -403,6 +403,7 @@ enum PathResult<'a> {
     },
 }
 
+#[derive(Debug)]
 enum ModuleKind {
     /// An anonymous module; e.g., just a block.
     ///
