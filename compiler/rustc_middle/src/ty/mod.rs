@@ -674,6 +674,15 @@ pub struct CapturedPlace<'tcx> {
     pub mutability: hir::Mutability,
 }
 
+impl CapturedPlace<'tcx> {
+    pub fn get_root_variable(&self) -> hir::HirId {
+        match self.place.base {
+            HirPlaceBase::Upvar(upvar_id) => upvar_id.var_path.hir_id,
+            base => bug!("Expected upvar, found={:?}", base),
+        }
+    }
+}
+
 pub fn place_to_string_for_capture(tcx: TyCtxt<'tcx>, place: &HirPlace<'tcx>) -> String {
     let name = match place.base {
         HirPlaceBase::Upvar(upvar_id) => tcx.hir().name(upvar_id.var_path.hir_id).to_string(),

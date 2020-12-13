@@ -13,7 +13,6 @@ fn imm_mut_ref() {
     let c = || {
     //~^ ERROR: cannot borrow `**ref_mref_x` as mutable, as it is behind a `&` reference
         **ref_mref_x = y;
-        //~^ERROR: cannot assign to `ref_mref_x`, as it is not declared as mutable
     };
 
     c();
@@ -28,7 +27,6 @@ fn mut_imm_ref() {
     let c = || {
     //~^ ERROR: cannot borrow `**mref_ref_x` as mutable, as it is behind a `&` reference
         **mref_ref_x = y;
-        //~^ERROR: cannot assign to `mref_ref_x`, as it is not declared as mutable
     };
 
     c();

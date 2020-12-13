@@ -7,15 +7,6 @@ LL | #![feature(capture_disjoint_fields)]
    = note: `#[warn(incomplete_features)]` on by default
    = note: see issue #53488 <https://github.com/rust-lang/rust/issues/53488> for more information
 
-error[E0594]: cannot assign to `z`, as it is not declared as mutable
-  --> $DIR/cant-mutate-imm-borrow.rs:16:9
-   |
-LL |     let z = (&mut y, "Z");
-   |         - help: consider changing this to be mutable: `mut z`
-...
-LL |         z.0.0.0 = format!("X1");
-   |         ^^^^^^^ cannot assign
-
 error[E0596]: cannot borrow `z.0.0.0` as mutable, as it is behind a `&` reference
   --> $DIR/cant-mutate-imm-borrow.rs:14:17
    |
@@ -25,7 +16,6 @@ LL |
 LL |         z.0.0.0 = format!("X1");
    |         - mutable borrow occurs due to use of `z.0.0.0` in closure
 
-error: aborting due to 2 previous errors; 1 warning emitted
+error: aborting due to previous error; 1 warning emitted
 
-Some errors have detailed explanations: E0594, E0596.
-For more information about an error, try `rustc --explain E0594`.
+For more information about this error, try `rustc --explain E0596`.
