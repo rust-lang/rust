@@ -704,23 +704,22 @@ pub struct VClockAlloc {
 impl VClockAlloc {
     /// Create a new data-race detector for newly allocated memory.
     pub fn new_allocation(global: &MemoryExtra, len: Size, kind: MemoryKind<MiriMemoryKind>) -> VClockAlloc {
-        let track_alloc = match kind {
+        let (alloc_timestamp, alloc_index) = match kind {
             // User allocated and stack memory should track allocation.
             MemoryKind::Machine(
                 MiriMemoryKind::Rust | MiriMemoryKind::C | MiriMemoryKind::WinHeap
-            ) | MemoryKind::Stack => true,
+            ) | MemoryKind::Stack => {
+                let (alloc_index, clocks) = global.current_thread_state();
+                let alloc_timestamp = clocks.clock[alloc_index];
+                (alloc_timestamp, alloc_index)
+            }
             // Other global memory should trace races but be allocated at the 0 timestamp.
             MemoryKind::Machine(
                 MiriMemoryKind::Global | MiriMemoryKind::Machine | MiriMemoryKind::Env |
                 MiriMemoryKind::ExternStatic | MiriMemoryKind::Tls
-            ) | MemoryKind::CallerLocation | MemoryKind::Vtable => false
-        };
-        let (alloc_timestamp, alloc_index) = if track_alloc {
-            let (alloc_index, clocks) = global.current_thread_state();
-            let alloc_timestamp = clocks.clock[alloc_index];
-            (alloc_timestamp, alloc_index)
-        } else {
-            (0, VectorIdx::MAX_INDEX)
+            ) | MemoryKind::CallerLocation | MemoryKind::Vtable => {
+                (0, VectorIdx::MAX_INDEX)
+            }
         };
         VClockAlloc {
             global: Rc::clone(global),
