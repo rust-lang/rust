@@ -246,7 +246,10 @@ struct GenericParamsStorage {
 
 impl GenericParamsStorage {
     fn alloc(&mut self, params: GenericParams) -> GenericParamsId {
-        if params.types.is_empty() && params.where_predicates.is_empty() {
+        if params.types.is_empty()
+            && params.lifetimes.is_empty()
+            && params.where_predicates.is_empty()
+        {
             return GenericParamsId::EMPTY;
         }
 
