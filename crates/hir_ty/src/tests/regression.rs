@@ -883,3 +883,40 @@ fn issue_6628() {
         "#]],
     );
 }
+
+#[test]
+fn issue_6852() {
+    check_infer(
+        r#"
+        #[lang = "deref"]
+        pub trait Deref {
+            type Target;
+        }
+
+        struct BufWriter {}
+
+        struct Mutex<T> {}
+        struct MutexGuard<'a, T> {}
+        impl<T> Mutex<T> {
+            fn lock(&self) -> MutexGuard<'_, T> {}
+        }
+        impl<'a, T: 'a> Deref for MutexGuard<'a, T> {
+            type Target = T;
+        }
+        fn flush(&self) {
+            let w: &Mutex<BufWriter>;
+            *(w.lock());
+        }
+        "#,
+        expect![[r#"
+            156..160 'self': &Mutex<T>
+            183..185 '{}': ()
+            267..271 'self': &{unknown}
+            273..323 '{     ...()); }': ()
+            283..284 'w': &Mutex<BufWriter>
+            309..320 '*(w.lock())': BufWriter
+            311..312 'w': &Mutex<BufWriter>
+            311..319 'w.lock()': MutexGuard<BufWriter>
+        "#]],
+    );
+}
