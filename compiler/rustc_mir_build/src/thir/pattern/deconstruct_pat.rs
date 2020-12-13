@@ -695,20 +695,9 @@ impl<'tcx> Constructor<'tcx> {
     /// Two constructors that are not in the matrix will either both be caught (by a wildcard), or
     /// both not be caught. Therefore we can keep the missing constructors grouped together.
     fn split_wildcard<'p>(pcx: PatCtxt<'_, 'p, 'tcx>) -> SmallVec<[Self; 1]> {
-        // Missing constructors are those that are not matched by any non-wildcard patterns in the
-        // current column. We only fully construct them on-demand, because they're rarely used and
-        // can be big.
-        let missing_ctors = MissingConstructors::new(pcx);
-        if missing_ctors.is_empty(pcx) {
-            // All the constructors are present in the matrix, so we just go through them all.
-            // We must also split them first.
-            missing_ctors.all_ctors
-        } else {
-            // Some constructors are missing, thus we can specialize with the wildcard constructor,
-            // which will stand for those constructors that are missing, and behaves like any of
-            // them.
-            smallvec![Wildcard]
-        }
+        let mut split_wildcard = SplitWildcard::new(pcx);
+        split_wildcard.split(pcx);
+        split_wildcard.into_ctors(pcx)
     }
 
     /// Returns whether `self` is covered by `other`, i.e. whether `self` is a subset of `other`.
@@ -811,7 +800,7 @@ impl<'tcx> Constructor<'tcx> {
 /// `Option<!>`, we do not include `Some(_)` in the returned list of constructors.
 /// Invariant: this returns an empty `Vec` if and only if the type is uninhabited (as determined by
 /// `cx.is_uninhabited()`).
-fn all_constructors<'p, 'tcx>(pcx: PatCtxt<'_, 'p, 'tcx>) -> Vec<Constructor<'tcx>> {
+fn all_constructors<'p, 'tcx>(pcx: PatCtxt<'_, 'p, 'tcx>) -> SmallVec<[Constructor<'tcx>; 1]> {
     debug!("all_constructors({:?})", pcx.ty);
     let cx = pcx.cx;
     let make_range = |start, end| {
@@ -821,19 +810,19 @@ fn all_constructors<'p, 'tcx>(pcx: PatCtxt<'_, 'p, 'tcx>) -> Vec<Constructor<'tc
         )
     };
     match pcx.ty.kind() {
-        ty::Bool => vec![make_range(0, 1)],
+        ty::Bool => smallvec![make_range(0, 1)],
         ty::Array(sub_ty, len) if len.try_eval_usize(cx.tcx, cx.param_env).is_some() => {
             let len = len.eval_usize(cx.tcx, cx.param_env);
             if len != 0 && cx.is_uninhabited(sub_ty) {
-                vec![]
+                smallvec![]
             } else {
-                vec![Slice(Slice::new(Some(len), VarLen(0, 0)))]
+                smallvec![Slice(Slice::new(Some(len), VarLen(0, 0)))]
             }
         }
         // Treat arrays of a constant but unknown length like slices.
         ty::Array(sub_ty, _) | ty::Slice(sub_ty) => {
             let kind = if cx.is_uninhabited(sub_ty) { FixedLen(0) } else { VarLen(0, 0) };
-            vec![Slice(Slice::new(None, kind))]
+            smallvec![Slice(Slice::new(None, kind))]
         }
         ty::Adt(def, substs) if def.is_enum() => {
             // If the enum is declared as `#[non_exhaustive]`, we treat it as if it had an
@@ -863,7 +852,7 @@ fn all_constructors<'p, 'tcx>(pcx: PatCtxt<'_, 'p, 'tcx>) -> Vec<Constructor<'tc
                 && !pcx.is_top_level;
 
             if is_secretly_empty || is_declared_nonexhaustive {
-                vec![NonExhaustive]
+                smallvec![NonExhaustive]
             } else if cx.tcx.features().exhaustive_patterns {
                 // If `exhaustive_patterns` is enabled, we exclude variants known to be
                 // uninhabited.
@@ -880,7 +869,7 @@ fn all_constructors<'p, 'tcx>(pcx: PatCtxt<'_, 'p, 'tcx>) -> Vec<Constructor<'tc
             }
         }
         ty::Char => {
-            vec![
+            smallvec![
                 // The valid Unicode Scalar Value ranges.
                 make_range('\u{0000}' as u128, '\u{D7FF}' as u128),
                 make_range('\u{E000}' as u128, '\u{10FFFF}' as u128),
@@ -893,66 +882,94 @@ fn all_constructors<'p, 'tcx>(pcx: PatCtxt<'_, 'p, 'tcx>) -> Vec<Constructor<'tc
             // `usize`/`isize` are not allowed to be matched exhaustively unless the
             // `precise_pointer_size_matching` feature is enabled. So we treat those types like
             // `#[non_exhaustive]` enums by returning a special unmatcheable constructor.
-            vec![NonExhaustive]
+            smallvec![NonExhaustive]
         }
         &ty::Int(ity) => {
             let bits = Integer::from_attr(&cx.tcx, SignedInt(ity)).size().bits() as u128;
             let min = 1u128 << (bits - 1);
             let max = min - 1;
-            vec![make_range(min, max)]
+            smallvec![make_range(min, max)]
         }
         &ty::Uint(uty) => {
             let size = Integer::from_attr(&cx.tcx, UnsignedInt(uty)).size();
             let max = size.truncate(u128::MAX);
-            vec![make_range(0, max)]
+            smallvec![make_range(0, max)]
         }
         // If `exhaustive_patterns` is disabled and our scrutinee is the never type, we cannot
         // expose its emptiness. The exception is if the pattern is at the top level, because we
         // want empty matches to be considered exhaustive.
         ty::Never if !cx.tcx.features().exhaustive_patterns && !pcx.is_top_level => {
-            vec![NonExhaustive]
+            smallvec![NonExhaustive]
         }
-        ty::Never => vec![],
-        _ if cx.is_uninhabited(pcx.ty) => vec![],
-        ty::Adt(..) | ty::Tuple(..) | ty::Ref(..) => vec![Single],
+        ty::Never => smallvec![],
+        _ if cx.is_uninhabited(pcx.ty) => smallvec![],
+        ty::Adt(..) | ty::Tuple(..) | ty::Ref(..) => smallvec![Single],
         // This type is one for which we cannot list constructors, like `str` or `f64`.
-        _ => vec![NonExhaustive],
+        _ => smallvec![NonExhaustive],
     }
 }
 
-// A struct to compute a set of constructors equivalent to `all_ctors \ used_ctors`.
+/// A wildcard constructor that we split relative to the constructors in the matrix, as explained
+/// at the top of the file.
+/// For splitting wildcards, there are two groups of constructors: there are the constructors
+/// actually present in the matrix (`matrix_ctors`), and the constructors not present. Two
+/// constructors that are not in the matrix will either both be covered (by a wildcard), or both
+/// not be covered by any given row. Therefore we can keep the missing constructors grouped
+/// together.
 #[derive(Debug)]
-pub(super) struct MissingConstructors<'tcx> {
+pub(super) struct SplitWildcard<'tcx> {
+    /// Constructors seen in the matrix.
+    matrix_ctors: Vec<Constructor<'tcx>>,
+    /// All the constructors for this type
     all_ctors: SmallVec<[Constructor<'tcx>; 1]>,
-    used_ctors: Vec<Constructor<'tcx>>,
 }
 
-impl<'tcx> MissingConstructors<'tcx> {
+impl<'tcx> SplitWildcard<'tcx> {
     pub(super) fn new<'p>(pcx: PatCtxt<'_, 'p, 'tcx>) -> Self {
-        let used_ctors: Vec<Constructor<'_>> =
+        let matrix_ctors = Vec::new();
+        let all_ctors = all_constructors(pcx);
+        SplitWildcard { matrix_ctors, all_ctors }
+    }
+
+    /// Pass a set of constructors relative to which to split this one. Don't call twice, it won't
+    /// do what you want.
+    pub(super) fn split(&mut self, pcx: PatCtxt<'_, '_, 'tcx>) {
+        self.matrix_ctors =
             pcx.matrix.head_ctors(pcx.cx).cloned().filter(|c| !c.is_wildcard()).collect();
         // Since `all_ctors` never contains wildcards, this won't recurse further.
-        let all_ctors =
-            all_constructors(pcx).into_iter().flat_map(|ctor| ctor.split(pcx)).collect();
-
-        MissingConstructors { all_ctors, used_ctors }
+        self.all_ctors = self.all_ctors.iter().flat_map(|ctor| ctor.split(pcx)).collect();
     }
 
-    fn is_empty<'p>(&self, pcx: PatCtxt<'_, 'p, 'tcx>) -> bool {
-        self.iter(pcx).next().is_none()
+    /// Whether there are any value constructors for this type that are not present in the matrix.
+    fn any_missing(&self, pcx: PatCtxt<'_, '_, 'tcx>) -> bool {
+        self.iter_missing(pcx).next().is_some()
     }
 
-    /// Iterate over all_ctors \ used_ctors
-    fn iter<'a, 'p>(
+    /// Iterate over the constructors for this type that are not present in the matrix.
+    fn iter_missing<'a, 'p>(
         &'a self,
         pcx: PatCtxt<'a, 'p, 'tcx>,
     ) -> impl Iterator<Item = &'a Constructor<'tcx>> + Captures<'p> {
-        self.all_ctors.iter().filter(move |ctor| !ctor.is_covered_by_any(pcx, &self.used_ctors))
+        self.all_ctors.iter().filter(move |ctor| !ctor.is_covered_by_any(pcx, &self.matrix_ctors))
+    }
+
+    /// Return the set of constructors resulting from splitting the wildcard. As explained at the
+    /// top of the file, if any constructors are missing we can ignore the present ones.
+    fn into_ctors(self, pcx: PatCtxt<'_, '_, 'tcx>) -> SmallVec<[Constructor<'tcx>; 1]> {
+        if self.any_missing(pcx) {
+            // Some constructors are missing, thus we can specialize with the wildcard constructor,
+            // which will stand for those constructors that are missing, and matches the same rows
+            // as any of them (namely the wildcard rows).
+            return smallvec![Wildcard];
+        }
+
+        // All the constructors are present in the matrix, so we just go through them all.
+        self.all_ctors
     }
 
     /// List the patterns corresponding to the missing constructors. In some cases, instead of
     /// listing all constructors of a given type, we prefer to simply report a wildcard.
-    pub(super) fn report_patterns<'p>(
+    pub(super) fn report_missing_patterns<'p>(
         &self,
         pcx: PatCtxt<'_, 'p, 'tcx>,
     ) -> SmallVec<[Pat<'tcx>; 1]> {
@@ -984,7 +1001,7 @@ impl<'tcx> MissingConstructors<'tcx> {
         // The exception is: if we are at the top-level, for example in an empty match, we
         // sometimes prefer reporting the list of constructors instead of just `_`.
         let report_when_all_missing = pcx.is_top_level && !IntRange::is_integral(pcx.ty);
-        if self.used_ctors.is_empty() && !report_when_all_missing {
+        if self.matrix_ctors.is_empty() && !report_when_all_missing {
             // All constructors are unused. Report only a wildcard
             // rather than each individual constructor.
             smallvec![Pat::wildcard_from_ty(pcx.ty)]
@@ -993,7 +1010,7 @@ impl<'tcx> MissingConstructors<'tcx> {
             // constructor, that matches everything that can be built with
             // it. For example, if `ctor` is a `Constructor::Variant` for
             // `Option::Some`, we get the pattern `Some(_)`.
-            self.iter(pcx)
+            self.iter_missing(pcx)
                 .map(|missing_ctor| Fields::wildcards(pcx, &missing_ctor).apply(pcx, missing_ctor))
                 .collect()
         }

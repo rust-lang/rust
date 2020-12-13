@@ -306,7 +306,7 @@
 use self::Usefulness::*;
 use self::WitnessPreference::*;
 
-use super::deconstruct_pat::{Constructor, Fields, MissingConstructors};
+use super::deconstruct_pat::{Constructor, Fields, SplitWildcard};
 use super::{Pat, PatKind};
 use super::{PatternFoldable, PatternFolder};
 
@@ -810,8 +810,9 @@ impl<'tcx> Usefulness<'tcx> {
         match self {
             UsefulWithWitness(witnesses) => {
                 let new_witnesses = if ctor.is_wildcard() {
-                    let missing_ctors = MissingConstructors::new(pcx);
-                    let new_patterns = missing_ctors.report_patterns(pcx);
+                    let mut split_wildcard = SplitWildcard::new(pcx);
+                    split_wildcard.split(pcx);
+                    let new_patterns = split_wildcard.report_missing_patterns(pcx);
                     witnesses
                         .into_iter()
                         .flat_map(|witness| {
