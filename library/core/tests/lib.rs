@@ -57,7 +57,6 @@
 #![feature(never_type)]
 #![feature(unwrap_infallible)]
 #![feature(option_unwrap_none)]
-#![feature(peekable_next_if)]
 #![feature(peekable_peek_mut)]
 #![feature(partition_point)]
 #![feature(once_cell)]
