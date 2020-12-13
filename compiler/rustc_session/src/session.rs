@@ -796,6 +796,14 @@ impl Session {
         self.opts.debugging_opts.tls_model.unwrap_or(self.target.tls_model)
     }
 
+    pub fn is_wasi_reactor(&self) -> bool {
+        self.target.options.os == "wasi"
+            && matches!(
+                self.opts.debugging_opts.wasi_exec_model,
+                Some(config::WasiExecModel::Reactor)
+            )
+    }
+
     pub fn must_not_eliminate_frame_pointers(&self) -> bool {
         // "mcount" function relies on stack pointer.
         // See <https://sourceware.org/binutils/docs/gprof/Implementation.html>.

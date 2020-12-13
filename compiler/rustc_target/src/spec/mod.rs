@@ -407,6 +407,8 @@ pub enum LinkOutputKind {
     DynamicDylib,
     /// Dynamic library with bundled libc ("statically linked").
     StaticDylib,
+    /// WASI module with a lifetime past the _initialize entry point
+    WasiReactorExe,
 }
 
 impl LinkOutputKind {
@@ -418,6 +420,7 @@ impl LinkOutputKind {
             LinkOutputKind::StaticPicExe => "static-pic-exe",
             LinkOutputKind::DynamicDylib => "dynamic-dylib",
             LinkOutputKind::StaticDylib => "static-dylib",
+            LinkOutputKind::WasiReactorExe => "wasi-reactor-exe",
         }
     }
 
@@ -429,6 +432,7 @@ impl LinkOutputKind {
             "static-pic-exe" => LinkOutputKind::StaticPicExe,
             "dynamic-dylib" => LinkOutputKind::DynamicDylib,
             "static-dylib" => LinkOutputKind::StaticDylib,
+            "wasi-reactor-exe" => LinkOutputKind::WasiReactorExe,
             _ => return None,
         })
     }
@@ -1377,7 +1381,7 @@ impl Target {
                         let kind = LinkOutputKind::from_str(&k).ok_or_else(|| {
                             format!("{}: '{}' is not a valid value for CRT object kind. \
                                      Use '(dynamic,static)-(nopic,pic)-exe' or \
-                                     '(dynamic,static)-dylib'", name, k)
+                                     '(dynamic,static)-dylib' or 'wasi-reactor-exe'", name, k)
                         })?;
 
                         let v = v.as_array().ok_or_else(||
