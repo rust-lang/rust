@@ -1733,5 +1733,5 @@ fn test_zero_sized_push() {
 fn test_from_zero_sized_vec() {
     let v = vec![(); 100];
     let queue = VecDeque::from(v);
-    assert!(queue.len(), 100);
+    assert_eq!(queue.len(), 100);
 }
