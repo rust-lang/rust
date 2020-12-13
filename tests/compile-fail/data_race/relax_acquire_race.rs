@@ -37,7 +37,7 @@ pub fn main() {
 
         let j3 = spawn(move || {
             if SYNC.load(Ordering::Acquire) == 2 {
-                *c.0 //~ ERROR Data race
+                *c.0 //~ ERROR Data race detected between Read on Thread(id = 3) and Write on Thread(id = 1)
             } else {
                 0
             }

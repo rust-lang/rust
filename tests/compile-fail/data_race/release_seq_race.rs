@@ -30,7 +30,7 @@ pub fn main() {
         let j1 = spawn(move || {
             *c.0 = 1;
             SYNC.store(1, Ordering::Release);
-            sleep(Duration::from_millis(100));
+            sleep(Duration::from_millis(200));
             SYNC.store(3, Ordering::Relaxed);
         });
 
@@ -40,9 +40,9 @@ pub fn main() {
         });
 
         let j3 = spawn(move || {
-            sleep(Duration::from_millis(1000));
+            sleep(Duration::from_millis(500));
             if SYNC.load(Ordering::Acquire) == 3 {
-                *c.0 //~ ERROR Data race
+                *c.0 //~ ERROR Data race detected between Read on Thread(id = 3) and Write on Thread(id = 1)
             } else {
                 0
             }

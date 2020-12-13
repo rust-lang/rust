@@ -24,9 +24,9 @@ fn main() {
         })
     };
 
-    // Detatch the thread and sleep until it terminates
+    // Detach the thread and sleep until it terminates
     mem::drop(join);
-    sleep(Duration::from_millis(100));
+    sleep(Duration::from_millis(200));
 
     // Spawn and immediately join a thread
     // to execute the join code-path
@@ -36,7 +36,7 @@ fn main() {
 
     let join2 = unsafe {
         spawn(move || {
-            *c.0 = 64; //~ ERROR Data race      
+            *c.0 = 64; //~ ERROR Data race detected between Write on Thread(id = 3) and Write on Thread(id = 1) 
         })
     };
 

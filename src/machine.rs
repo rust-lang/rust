@@ -478,7 +478,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
                 (None, Tag::Untagged)
             };
         let race_alloc = if let Some(data_race) = &memory_extra.data_race {
-            Some(data_race::AllocExtra::new_allocation(&data_race, alloc.size))
+            Some(data_race::AllocExtra::new_allocation(&data_race, alloc.size, kind))
         } else {
             None
         };
@@ -507,6 +507,18 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
             register_diagnostic(NonHaltingDiagnostic::FreedAlloc(id));
         }
 
+        Ok(())
+    }
+
+    
+    fn after_static_mem_initialized(
+        ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        ptr: Pointer<Self::PointerTag>,
+        size: Size,
+    ) -> InterpResult<'tcx> {
+        if ecx.memory.extra.data_race.is_some() {
+            ecx.reset_vector_clocks(ptr, size)?;
+        }
         Ok(())
     }
 
