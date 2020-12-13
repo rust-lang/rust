@@ -276,29 +276,29 @@ mod tests;
 // inner types.
 #[unstable(feature = "rc_stable_repr", issue = "none")]
 #[repr(C)]
-pub struct RcBox<T: ?Sized> {
+pub struct RcRepr<T: ?Sized> {
     strong: Cell<usize>,
     weak: Cell<usize>,
     value: T,
 }
 
-impl<T> RcBox<T> {
+impl<T> RcRepr<T> {
     /// TODO: doc comments
     #[unstable(feature = "rc_stable_repr", issue = "none")]
     pub fn new(value: T) -> Self {
-        RcBox { strong: Cell::new(1), weak: Cell::new(1), value }
+        RcRepr { strong: Cell::new(1), weak: Cell::new(1), value }
     }
 }
 
 #[unstable(feature = "rc_stable_repr", issue = "none")]
-impl<T: ?Sized + fmt::Display> fmt::Display for RcBox<T> {
+impl<T: ?Sized + fmt::Display> fmt::Display for RcRepr<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(&self.value, f)
     }
 }
 
 #[unstable(feature = "rc_stable_repr", issue = "none")]
-impl<T: ?Sized + fmt::Debug> fmt::Debug for RcBox<T> {
+impl<T: ?Sized + fmt::Debug> fmt::Debug for RcRepr<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(&self.value, f)
     }
@@ -318,8 +318,8 @@ impl<T: ?Sized + fmt::Debug> fmt::Debug for RcBox<T> {
 #[cfg_attr(not(test), rustc_diagnostic_item = "Rc")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Rc<T: ?Sized> {
-    ptr: NonNull<RcBox<T>>,
-    phantom: PhantomData<RcBox<T>>,
+    ptr: NonNull<RcRepr<T>>,
+    phantom: PhantomData<RcRepr<T>>,
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -335,17 +335,17 @@ impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<Rc<U>> for Rc<T> {}
 
 impl<T: ?Sized> Rc<T> {
     #[inline(always)]
-    fn inner(&self) -> &RcBox<T> {
+    fn inner(&self) -> &RcRepr<T> {
         // This unsafety is ok because while this Rc is alive we're guaranteed
         // that the inner pointer is valid.
         unsafe { self.ptr.as_ref() }
     }
 
-    fn from_inner(ptr: NonNull<RcBox<T>>) -> Self {
+    fn from_inner(ptr: NonNull<RcRepr<T>>) -> Self {
         Self { ptr, phantom: PhantomData }
     }
 
-    unsafe fn from_ptr(ptr: *mut RcBox<T>) -> Self {
+    unsafe fn from_ptr(ptr: *mut RcRepr<T>) -> Self {
         Self::from_inner(unsafe { NonNull::new_unchecked(ptr) })
     }
 }
@@ -366,7 +366,7 @@ impl<T> Rc<T> {
         // pointers, which ensures that the weak destructor never frees
         // the allocation while the strong destructor is running, even
         // if the weak pointer is stored inside the strong one.
-        Self::from_repr(box RcBox::new(value))
+        Self::from_repr(box RcRepr::new(value))
     }
 
     /// Constructs a new `Rc<T>` using a weak reference to itself. Attempting
@@ -377,14 +377,14 @@ impl<T> Rc<T> {
     pub fn new_cyclic(data_fn: impl FnOnce(&Weak<T>) -> T) -> Rc<T> {
         // Construct the inner in the "uninitialized" state with a single
         // weak reference.
-        let uninit_ptr: NonNull<_> = Box::leak(box RcBox {
+        let uninit_ptr: NonNull<_> = Box::leak(box RcRepr {
             strong: Cell::new(0),
             weak: Cell::new(1),
             value: mem::MaybeUninit::<T>::uninit(),
         })
         .into();
 
-        let init_ptr: NonNull<RcBox<T>> = uninit_ptr.cast();
+        let init_ptr: NonNull<RcRepr<T>> = uninit_ptr.cast();
 
         let weak = Weak { ptr: init_ptr };
 
@@ -440,7 +440,7 @@ impl<T> Rc<T> {
             Rc::from_ptr(Rc::allocate_for_layout(
                 Layout::new::<T>(),
                 |layout| Global.allocate(layout),
-                |mem| mem as *mut RcBox<mem::MaybeUninit<T>>,
+                |mem| mem as *mut RcRepr<mem::MaybeUninit<T>>,
             ))
         }
     }
@@ -471,7 +471,7 @@ impl<T> Rc<T> {
             Rc::from_ptr(Rc::allocate_for_layout(
                 Layout::new::<T>(),
                 |layout| Global.allocate_zeroed(layout),
-                |mem| mem as *mut RcBox<mem::MaybeUninit<T>>,
+                |mem| mem as *mut RcRepr<mem::MaybeUninit<T>>,
             ))
         }
     }
@@ -581,7 +581,7 @@ impl<T> Rc<[T]> {
                 |layout| Global.allocate_zeroed(layout),
                 |mem| {
                     ptr::slice_from_raw_parts_mut(mem as *mut T, len)
-                        as *mut RcBox<[mem::MaybeUninit<T>]>
+                        as *mut RcRepr<[mem::MaybeUninit<T>]>
                 },
             ))
         }
@@ -710,7 +710,7 @@ impl<T: ?Sized> Rc<T> {
     /// ```
     #[stable(feature = "weak_into_raw", since = "1.45.0")]
     pub fn as_ptr(this: &Self) -> *const T {
-        let ptr: *mut RcBox<T> = NonNull::as_ptr(this.ptr);
+        let ptr: *mut RcRepr<T> = NonNull::as_ptr(this.ptr);
 
         // SAFETY: This cannot go through Deref::deref or Rc::inner because
         // this is required to retain raw/mut provenance such that e.g. `get_mut` can
@@ -760,7 +760,7 @@ impl<T: ?Sized> Rc<T> {
         let offset = unsafe { data_offset(ptr) };
 
         // Reverse the offset to find the original RcBox.
-        let fake_ptr = ptr as *mut RcBox<T>;
+        let fake_ptr = ptr as *mut RcRepr<T>;
         let rc_ptr = unsafe { set_data_ptr(fake_ptr, (ptr as *mut u8).offset(-offset)) };
 
         unsafe { Self::from_ptr(rc_ptr) }
@@ -918,7 +918,7 @@ impl<T: ?Sized> Rc<T> {
 
     /// TODO: doc comments
     #[unstable(feature = "rc_stable_repr", issue = "none")]
-    pub fn from_repr(repr: Box<RcBox<T>>) -> Self {
+    pub fn from_repr(repr: Box<RcRepr<T>>) -> Self {
         Self::from_inner(Box::leak(repr).into())
     }
 }
@@ -1022,7 +1022,7 @@ impl Rc<dyn Any> {
     /// ```
     pub fn downcast<T: Any>(self) -> Result<Rc<T>, Rc<dyn Any>> {
         if (*self).is::<T>() {
-            let ptr = self.ptr.cast::<RcBox<T>>();
+            let ptr = self.ptr.cast::<RcRepr<T>>();
             forget(self);
             Ok(Rc::from_inner(ptr))
         } else {
@@ -1040,13 +1040,13 @@ impl<T: ?Sized> Rc<T> {
     unsafe fn allocate_for_layout(
         value_layout: Layout,
         allocate: impl FnOnce(Layout) -> Result<NonNull<[u8]>, AllocError>,
-        mem_to_rcbox: impl FnOnce(*mut u8) -> *mut RcBox<T>,
-    ) -> *mut RcBox<T> {
+        mem_to_rcbox: impl FnOnce(*mut u8) -> *mut RcRepr<T>,
+    ) -> *mut RcRepr<T> {
         // Calculate layout using the given value layout.
         // Previously, layout was calculated on the expression
         // `&*(ptr as *const RcBox<T>)`, but this created a misaligned
         // reference (see #54908).
-        let layout = Layout::new::<RcBox<()>>().extend(value_layout).unwrap().0.pad_to_align();
+        let layout = Layout::new::<RcRepr<()>>().extend(value_layout).unwrap().0.pad_to_align();
 
         // Allocate for the layout.
         let ptr = allocate(layout).unwrap_or_else(|_| handle_alloc_error(layout));
@@ -1064,13 +1064,13 @@ impl<T: ?Sized> Rc<T> {
     }
 
     /// Allocates an `RcBox<T>` with sufficient space for an unsized inner value
-    unsafe fn allocate_for_ptr(ptr: *const T) -> *mut RcBox<T> {
+    unsafe fn allocate_for_ptr(ptr: *const T) -> *mut RcRepr<T> {
         // Allocate for the `RcBox<T>` using the given value.
         unsafe {
             Self::allocate_for_layout(
                 Layout::for_value(&*ptr),
                 |layout| Global.allocate(layout),
-                |mem| set_data_ptr(ptr as *mut T, mem) as *mut RcBox<T>,
+                |mem| set_data_ptr(ptr as *mut T, mem) as *mut RcRepr<T>,
             )
         }
     }
@@ -1100,12 +1100,12 @@ impl<T: ?Sized> Rc<T> {
 
 impl<T> Rc<[T]> {
     /// Allocates an `RcBox<[T]>` with the given length.
-    unsafe fn allocate_for_slice(len: usize) -> *mut RcBox<[T]> {
+    unsafe fn allocate_for_slice(len: usize) -> *mut RcRepr<[T]> {
         unsafe {
             Self::allocate_for_layout(
                 Layout::array::<T>(len).unwrap(),
                 |layout| Global.allocate(layout),
-                |mem| ptr::slice_from_raw_parts_mut(mem as *mut T, len) as *mut RcBox<[T]>,
+                |mem| ptr::slice_from_raw_parts_mut(mem as *mut T, len) as *mut RcRepr<[T]>,
             )
         }
     }
@@ -1732,7 +1732,7 @@ pub struct Weak<T: ?Sized> {
     // to allocate space on the heap.  That's not a value a real pointer
     // will ever have because RcBox has alignment at least 2.
     // This is only possible when `T: Sized`; unsized `T` never dangle.
-    ptr: NonNull<RcBox<T>>,
+    ptr: NonNull<RcRepr<T>>,
 }
 
 #[stable(feature = "rc_weak", since = "1.4.0")]
@@ -1762,7 +1762,7 @@ impl<T> Weak<T> {
     /// ```
     #[stable(feature = "downgraded_weak", since = "1.10.0")]
     pub fn new() -> Weak<T> {
-        Weak { ptr: NonNull::new(usize::MAX as *mut RcBox<T>).expect("MAX is not 0") }
+        Weak { ptr: NonNull::new(usize::MAX as *mut RcRepr<T>).expect("MAX is not 0") }
     }
 }
 
@@ -1806,7 +1806,7 @@ impl<T: ?Sized> Weak<T> {
     /// [`null`]: core::ptr::null
     #[stable(feature = "rc_as_ptr", since = "1.45.0")]
     pub fn as_ptr(&self) -> *const T {
-        let ptr: *mut RcBox<T> = NonNull::as_ptr(self.ptr);
+        let ptr: *mut RcRepr<T> = NonNull::as_ptr(self.ptr);
 
         // SAFETY: we must offset the pointer manually, and said pointer may be
         // a dangling weak (usize::MAX) if T is sized. data_offset is safe to call,
@@ -1905,7 +1905,7 @@ impl<T: ?Sized> Weak<T> {
         // Reverse the offset to find the original RcBox.
         // SAFETY: we use wrapping_offset here because the pointer may be dangling (but only if T: Sized).
         let ptr = unsafe {
-            set_data_ptr(ptr as *mut RcBox<T>, (ptr as *mut u8).wrapping_offset(-offset))
+            set_data_ptr(ptr as *mut RcRepr<T>, (ptr as *mut u8).wrapping_offset(-offset))
         };
 
         // SAFETY: we now have recovered the original Weak pointer, so can create the Weak.
@@ -2188,7 +2188,7 @@ trait RcInnerPtr {
     }
 }
 
-impl<T: ?Sized> RcInnerPtr for RcBox<T> {
+impl<T: ?Sized> RcInnerPtr for RcRepr<T> {
     #[inline(always)]
     fn weak_ref(&self) -> &Cell<usize> {
         &self.weak
@@ -2249,6 +2249,6 @@ unsafe fn data_offset<T: ?Sized>(ptr: *const T) -> isize {
 
 #[inline]
 fn data_offset_align(align: usize) -> isize {
-    let layout = Layout::new::<RcBox<()>>();
+    let layout = Layout::new::<RcRepr<()>>();
     (layout.size() + layout.padding_needed_for(align)) as isize
 }
