@@ -5,9 +5,9 @@ crate struct StripItem(pub Item);
 impl StripItem {
     crate fn strip(self) -> Option<Item> {
         match self.0 {
-            Item { kind: StrippedItem(..), .. } => Some(self.0),
+            Item { kind: box StrippedItem(..), .. } => Some(self.0),
             mut i => {
-                i.kind = StrippedItem(box i.kind);
+                i.kind = box StrippedItem(i.kind);
                 Some(i)
             }
         }
@@ -72,9 +72,9 @@ crate trait DocFolder: Sized {
 
     /// don't override!
     fn fold_item_recur(&mut self, mut item: Item) -> Item {
-        item.kind = match item.kind {
+        item.kind = box match *item.kind {
             StrippedItem(box i) => StrippedItem(box self.fold_inner_recur(i)),
-            _ => self.fold_inner_recur(item.kind),
+            _ => self.fold_inner_recur(*item.kind),
         };
         item
     }

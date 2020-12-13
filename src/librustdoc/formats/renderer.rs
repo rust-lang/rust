@@ -89,7 +89,7 @@ crate fn run_format<'tcx, T: FormatRenderer<'tcx>>(
             }
 
             cx.mod_item_in(&item, &name, &cache)?;
-            let module = match item.kind {
+            let module = match *item.kind {
                 clean::StrippedItem(box clean::ModuleItem(m)) | clean::ModuleItem(m) => m,
                 _ => unreachable!(),
             };

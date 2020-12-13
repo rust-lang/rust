@@ -165,7 +165,7 @@ crate fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
 }
 
 crate fn get_index_search_type(item: &clean::Item) -> Option<IndexItemFunctionType> {
-    let (all_types, ret_types) = match item.kind {
+    let (all_types, ret_types) = match *item.kind {
         clean::FunctionItem(ref f) => (&f.all_types, &f.ret_types),
         clean::MethodItem(ref m, _) => (&m.all_types, &m.ret_types),
         clean::TyMethodItem(ref m) => (&m.all_types, &m.ret_types),

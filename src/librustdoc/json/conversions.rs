@@ -19,9 +19,9 @@ impl JsonRenderer<'_> {
         let item_type = ItemType::from(&item);
         let deprecation = item.deprecation(self.tcx);
         let clean::Item { source, name, attrs, kind, visibility, def_id } = item;
-        match kind {
+        match *kind {
             clean::StrippedItem(_) => None,
-            _ => Some(Item {
+            kind => Some(Item {
                 id: def_id.into(),
                 crate_id: def_id.krate.as_u32(),
                 name: name.map(|sym| sym.to_string()),

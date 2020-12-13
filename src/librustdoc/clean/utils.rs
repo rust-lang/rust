@@ -43,7 +43,7 @@ crate fn krate(mut cx: &mut DocContext<'_>) -> Crate {
     let mut module = module.clean(cx);
     let mut masked_crates = FxHashSet::default();
 
-    match module.kind {
+    match *module.kind {
         ItemKind::ModuleItem(ref module) => {
             for it in &module.items {
                 // `compiler_builtins` should be masked too, but we can't apply
@@ -61,7 +61,7 @@ crate fn krate(mut cx: &mut DocContext<'_>) -> Crate {
 
     let ExternalCrate { name, src, primitives, keywords, .. } = LOCAL_CRATE.clean(cx);
     {
-        let m = match module.kind {
+        let m = match *module.kind {
             ItemKind::ModuleItem(ref mut m) => m,
             _ => unreachable!(),
         };
@@ -338,7 +338,7 @@ crate fn build_deref_target_impls(cx: &DocContext<'_>, items: &[Item], ret: &mut
     let tcx = cx.tcx;
 
     for item in items {
-        let target = match item.kind {
+        let target = match *item.kind {
             ItemKind::TypedefItem(ref t, true) => &t.type_,
             _ => continue,
         };
