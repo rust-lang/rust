@@ -378,8 +378,10 @@ pub fn nt_to_tokenstream(nt: &Nonterminal, sess: &ParseSess, span: Span) -> Toke
 
         info!("cached   tokens debug: {:?}", tokens);
         info!("reparsed tokens debug: {:?}", reparsed_tokens_with_parens);
+        panic!("Mismatched tokens at {:?} : tokens: {:?}", span, tokens);
+    } else {
+        panic!("Missing tokens at {:?} : reparsed tokens: {:?}", span, reparsed_tokens);
     }
-    reparsed_tokens
 }
 
 // See comments in `Nonterminal::to_tokenstream` for why we care about
