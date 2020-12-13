@@ -19,10 +19,10 @@ use crate::{
     db::DefDatabase,
     dyn_map::DynMap,
     keys,
-    src::HasChildSource,
     src::HasSource,
     type_ref::{LifetimeRef, TypeBound, TypeRef},
-    AdtId, GenericDefId, LocalTypeParamId, Lookup, TypeParamId,
+    AdtId, GenericDefId, LifetimeParamId, LocalLifetimeParamId, LocalTypeParamId, Lookup,
+    TypeParamId,
 };
 
 /// Data about a generic parameter (to a function, struct, impl, ...).
@@ -72,7 +72,11 @@ pub enum WherePredicateTypeTarget {
     // FIXME: ForLifetime(Vec<LifetimeParamId>, TypeRef)
 }
 
-type SourceMap = ArenaMap<LocalTypeParamId, Either<ast::Trait, ast::TypeParam>>;
+#[derive(Default)]
+pub struct SourceMaps {
+    pub type_params: ArenaMap<LocalTypeParamId, Either<ast::Trait, ast::TypeParam>>,
+    pub lifetime_params: ArenaMap<LocalLifetimeParamId, ast::LifetimeParam>,
+}
 
 impl GenericParams {
     pub(crate) fn generic_params_query(
@@ -129,9 +133,9 @@ impl GenericParams {
         Arc::new(generics)
     }
 
-    fn new(db: &dyn DefDatabase, def: GenericDefId) -> (GenericParams, InFile<SourceMap>) {
+    fn new(db: &dyn DefDatabase, def: GenericDefId) -> (GenericParams, InFile<SourceMaps>) {
         let mut generics = GenericParams::default();
-        let mut sm = ArenaMap::default();
+        let mut sm = SourceMaps::default();
 
         // FIXME: add `: Sized` bound for everything except for `Self` in traits
         let file_id = match def {
@@ -174,7 +178,7 @@ impl GenericParams {
                     default: None,
                     provenance: TypeParamProvenance::TraitSelf,
                 });
-                sm.insert(self_param_id, Either::Left(src.value.clone()));
+                sm.type_params.insert(self_param_id, Either::Left(src.value.clone()));
                 // add super traits as bounds on Self
                 // i.e., trait Foo: Bar is equivalent to trait Foo where Self: Bar
                 let self_param = TypeRef::Path(name![Self].into());
@@ -210,7 +214,7 @@ impl GenericParams {
     pub(crate) fn fill(
         &mut self,
         lower_ctx: &LowerCtx,
-        sm: &mut SourceMap,
+        sm: &mut SourceMaps,
         node: &dyn GenericParamsOwner,
     ) {
         if let Some(params) = node.generic_param_list() {
@@ -237,7 +241,7 @@ impl GenericParams {
     fn fill_params(
         &mut self,
         lower_ctx: &LowerCtx,
-        sm: &mut SourceMap,
+        sm: &mut SourceMaps,
         params: ast::GenericParamList,
     ) {
         for type_param in params.type_params() {
@@ -250,7 +254,7 @@ impl GenericParams {
                 provenance: TypeParamProvenance::TypeParamList,
             };
             let param_id = self.types.alloc(param);
-            sm.insert(param_id, Either::Right(type_param.clone()));
+            sm.type_params.insert(param_id, Either::Right(type_param.clone()));
 
             let type_ref = TypeRef::Path(name.into());
             self.fill_bounds(&lower_ctx, &type_param, Either::Left(type_ref));
@@ -260,7 +264,8 @@ impl GenericParams {
                 .lifetime_token()
                 .map_or_else(Name::missing, |tok| Name::new_lifetime(&tok));
             let param = LifetimeParamData { name: name.clone() };
-            let _param_id = self.lifetimes.alloc(param);
+            let param_id = self.lifetimes.alloc(param);
+            sm.lifetime_params.insert(param_id, lifetime_param.clone());
             let lifetime_ref = LifetimeRef::new_name(name);
             self.fill_bounds(&lower_ctx, &lifetime_param, Either::Right(lifetime_ref));
         }
@@ -340,26 +345,28 @@ impl GenericParams {
         })
     }
 }
-
-impl HasChildSource for GenericDefId {
-    type ChildId = LocalTypeParamId;
-    type Value = Either<ast::Trait, ast::TypeParam>;
-    fn child_source(&self, db: &dyn DefDatabase) -> InFile<SourceMap> {
-        let (_, sm) = GenericParams::new(db, *self);
-        sm
+impl GenericDefId {
+    // FIXME: Change HasChildSource's ChildId AssocItem to be a generic parameter instead
+    pub fn child_source(&self, db: &dyn DefDatabase) -> InFile<SourceMaps> {
+        GenericParams::new(db, *self).1
     }
 }
 
 impl ChildBySource for GenericDefId {
     fn child_by_source(&self, db: &dyn DefDatabase) -> DynMap {
         let mut res = DynMap::default();
-        let arena_map = self.child_source(db);
-        let arena_map = arena_map.as_ref();
-        for (local_id, src) in arena_map.value.iter() {
+        let (_, sm) = GenericParams::new(db, *self);
+
+        let sm = sm.as_ref();
+        for (local_id, src) in sm.value.type_params.iter() {
             let id = TypeParamId { parent: *self, local_id };
             if let Either::Right(type_param) = src {
-                res[keys::TYPE_PARAM].insert(arena_map.with_value(type_param.clone()), id)
+                res[keys::TYPE_PARAM].insert(sm.with_value(type_param.clone()), id)
             }
+        }
+        for (local_id, src) in sm.value.lifetime_params.iter() {
+            let id = LifetimeParamId { parent: *self, local_id };
+            res[keys::LIFETIME_PARAM].insert(sm.with_value(src.clone()), id);
         }
         res
     }

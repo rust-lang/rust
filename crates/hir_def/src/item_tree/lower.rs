@@ -2,7 +2,6 @@
 
 use std::{collections::hash_map::Entry, mem, sync::Arc};
 
-use arena::map::ArenaMap;
 use hir_expand::{ast_id_map::AstIdMap, hygiene::Hygiene, name::known, HirFileId};
 use smallvec::SmallVec;
 use syntax::{
@@ -607,7 +606,7 @@ impl Ctx {
         owner: GenericsOwner<'_>,
         node: &impl ast::GenericParamsOwner,
     ) -> GenericParamsId {
-        let mut sm = &mut ArenaMap::default();
+        let mut sm = &mut Default::default();
         let mut generics = GenericParams::default();
         match owner {
             GenericsOwner::Function(func) => {
@@ -630,7 +629,7 @@ impl Ctx {
                     default: None,
                     provenance: TypeParamProvenance::TraitSelf,
                 });
-                sm.insert(self_param_id, Either::Left(trait_def.clone()));
+                sm.type_params.insert(self_param_id, Either::Left(trait_def.clone()));
                 // add super traits as bounds on Self
                 // i.e., trait Foo: Bar is equivalent to trait Foo where Self: Bar
                 let self_param = TypeRef::Path(name![Self].into());

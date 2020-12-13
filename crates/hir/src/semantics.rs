@@ -13,7 +13,11 @@ use hir_expand::{hygiene::Hygiene, name::AsName, ExpansionInfo};
 use hir_ty::associated_type_shorthand_candidates;
 use itertools::Itertools;
 use rustc_hash::{FxHashMap, FxHashSet};
-use syntax::{algo::find_node_at_offset, ast, AstNode, SyntaxNode, SyntaxToken, TextSize};
+use syntax::{
+    algo::find_node_at_offset,
+    ast::{self, GenericParamsOwner},
+    match_ast, AstNode, SyntaxNode, SyntaxToken, TextSize,
+};
 
 use crate::{
     code_model::Access,
@@ -21,8 +25,9 @@ use crate::{
     diagnostics::Diagnostic,
     semantics::source_to_def::{ChildContainer, SourceToDefCache, SourceToDefCtx},
     source_analyzer::{resolve_hir_path, SourceAnalyzer},
-    AssocItem, Callable, Crate, Field, Function, HirFileId, ImplDef, InFile, Local, MacroDef,
-    Module, ModuleDef, Name, Path, ScopeDef, Trait, Type, TypeAlias, TypeParam, VariantDef,
+    AssocItem, Callable, Crate, Field, Function, HirFileId, ImplDef, InFile, LifetimeParam, Local,
+    MacroDef, Module, ModuleDef, Name, Path, ScopeDef, Trait, Type, TypeAlias, TypeParam,
+    VariantDef,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -171,6 +176,11 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         }
 
         self.imp.descend_node_at_offset(node, offset).find_map(N::cast)
+    }
+
+    // FIXME: Replace the SyntaxToken with a typed ast Node/Token
+    pub fn resolve_lifetime_param(&self, lifetime_token: &SyntaxToken) -> Option<LifetimeParam> {
+        self.imp.resolve_lifetime_param(lifetime_token)
     }
 
     pub fn type_of_expr(&self, expr: &ast::Expr) -> Option<Type> {
@@ -392,16 +402,44 @@ impl<'db> SemanticsImpl<'db> {
             .kmerge_by(|node1, node2| node1.text_range().len() < node2.text_range().len())
     }
 
+    // FIXME: Replace the SyntaxToken with a typed ast Node/Token
+    fn resolve_lifetime_param(&self, lifetime_token: &SyntaxToken) -> Option<LifetimeParam> {
+        if lifetime_token.kind() != syntax::SyntaxKind::LIFETIME {
+            return None;
+        }
+        let lifetime_text = lifetime_token.text();
+        let lifetime_param = lifetime_token.parent().ancestors().find_map(|syn| {
+            let gpl = match_ast! {
+                match syn {
+                    ast::Fn(it) => it.generic_param_list()?,
+                    ast::TypeAlias(it) => it.generic_param_list()?,
+                    ast::Struct(it) => it.generic_param_list()?,
+                    ast::Enum(it) => it.generic_param_list()?,
+                    ast::Union(it) => it.generic_param_list()?,
+                    ast::Trait(it) => it.generic_param_list()?,
+                    ast::Impl(it) => it.generic_param_list()?,
+                    ast::WherePred(it) => it.generic_param_list()?,
+                    ast::ForType(it) => it.generic_param_list()?,
+                    _ => return None,
+                }
+            };
+            gpl.lifetime_params()
+                .find(|tp| tp.lifetime_token().as_ref().map(|lt| lt.text()) == Some(lifetime_text))
+        })?;
+        let src = self.find_file(lifetime_param.syntax().clone()).with_value(lifetime_param);
+        ToDef::to_def(self, src)
+    }
+
     fn type_of_expr(&self, expr: &ast::Expr) -> Option<Type> {
-        self.analyze(expr.syntax()).type_of_expr(self.db, &expr)
+        self.analyze(expr.syntax()).type_of_expr(self.db, expr)
     }
 
     fn type_of_pat(&self, pat: &ast::Pat) -> Option<Type> {
-        self.analyze(pat.syntax()).type_of_pat(self.db, &pat)
+        self.analyze(pat.syntax()).type_of_pat(self.db, pat)
     }
 
     fn type_of_self(&self, param: &ast::SelfParam) -> Option<Type> {
-        self.analyze(param.syntax()).type_of_self(self.db, &param)
+        self.analyze(param.syntax()).type_of_self(self.db, param)
     }
 
     fn resolve_method_call(&self, call: &ast::MethodCallExpr) -> Option<FunctionId> {
@@ -684,6 +722,7 @@ to_def_impls![
     (crate::Field, ast::TupleField, tuple_field_to_def),
     (crate::EnumVariant, ast::Variant, enum_variant_to_def),
     (crate::TypeParam, ast::TypeParam, type_param_to_def),
+    (crate::LifetimeParam, ast::LifetimeParam, lifetime_param_to_def),
     (crate::MacroDef, ast::MacroCall, macro_call_to_def), // this one is dubious, not all calls are macros
     (crate::Local, ast::IdentPat, bind_pat_to_def),
 ];

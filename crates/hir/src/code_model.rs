@@ -1250,6 +1250,14 @@ impl LifetimeParam {
         let params = db.generic_params(self.id.parent);
         params.lifetimes[self.id.local_id].name.clone()
     }
+
+    pub fn module(self, db: &dyn HirDatabase) -> Module {
+        self.id.parent.module(db.upcast()).into()
+    }
+
+    pub fn parent(self, _db: &dyn HirDatabase) -> GenericDef {
+        self.id.parent.into()
+    }
 }
 
 // FIXME: rename from `ImplDef` to `Impl`

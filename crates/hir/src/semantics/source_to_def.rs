@@ -7,7 +7,8 @@ use hir_def::{
     expr::PatId,
     keys::{self, Key},
     ConstId, DefWithBodyId, EnumId, EnumVariantId, FieldId, FunctionId, GenericDefId, ImplId,
-    ModuleId, StaticId, StructId, TraitId, TypeAliasId, TypeParamId, UnionId, VariantId,
+    LifetimeParamId, ModuleId, StaticId, StructId, TraitId, TypeAliasId, TypeParamId, UnionId,
+    VariantId,
 };
 use hir_expand::{name::AsName, AstId, MacroDefKind};
 use rustc_hash::FxHashMap;
@@ -128,11 +129,23 @@ impl SourceToDefCtx<'_, '_> {
 
     pub(super) fn type_param_to_def(&mut self, src: InFile<ast::TypeParam>) -> Option<TypeParamId> {
         let container: ChildContainer =
-            self.find_type_param_container(src.as_ref().map(|it| it.syntax()))?.into();
+            self.find_generic_param_container(src.as_ref().map(|it| it.syntax()))?.into();
         let db = self.db;
         let dyn_map =
             &*self.cache.entry(container).or_insert_with(|| container.child_by_source(db));
         dyn_map[keys::TYPE_PARAM].get(&src).copied()
+    }
+
+    pub(super) fn lifetime_param_to_def(
+        &mut self,
+        src: InFile<ast::LifetimeParam>,
+    ) -> Option<LifetimeParamId> {
+        let container: ChildContainer =
+            self.find_generic_param_container(src.as_ref().map(|it| it.syntax()))?.into();
+        let db = self.db;
+        let dyn_map =
+            &*self.cache.entry(container).or_insert_with(|| container.child_by_source(db));
+        dyn_map[keys::LIFETIME_PARAM].get(&src).copied()
     }
 
     // FIXME: use DynMap as well?
@@ -203,7 +216,7 @@ impl SourceToDefCtx<'_, '_> {
         Some(def.into())
     }
 
-    fn find_type_param_container(&mut self, src: InFile<&SyntaxNode>) -> Option<GenericDefId> {
+    fn find_generic_param_container(&mut self, src: InFile<&SyntaxNode>) -> Option<GenericDefId> {
         for container in src.cloned().ancestors_with_macros(self.db.upcast()).skip(1) {
             let res: GenericDefId = match_ast! {
                 match (container.value) {
@@ -247,7 +260,7 @@ pub(crate) enum ChildContainer {
     VariantId(VariantId),
     TypeAliasId(TypeAliasId),
     /// XXX: this might be the same def as, for example an `EnumId`. However,
-    /// here the children generic parameters, and not, eg enum variants.
+    /// here the children are generic parameters, and not, eg enum variants.
     GenericDefId(GenericDefId),
 }
 impl_from! {
