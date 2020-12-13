@@ -30,7 +30,7 @@ error: using `.clone()` on a ref-counted pointer
 LL |     let _: Arc<dyn SomeTrait> = x.clone();
    |                                 ^^^^^^^^^ help: try this: `Arc::<SomeImpl>::clone(&x)`
 
-error: using `clone` on a `Copy` type
+error: using `clone` on type `T` which implements the `Copy` trait
   --> $DIR/unnecessary_clone.rs:40:5
    |
 LL |     t.clone();
@@ -38,7 +38,7 @@ LL |     t.clone();
    |
    = note: `-D clippy::clone-on-copy` implied by `-D warnings`
 
-error: using `clone` on a `Copy` type
+error: using `clone` on type `std::option::Option<T>` which implements the `Copy` trait
   --> $DIR/unnecessary_clone.rs:42:5
    |
 LL |     Some(t).clone();
@@ -60,7 +60,7 @@ help: or try being explicit if you are sure, that you want to clone a reference
 LL |     let z: &Vec<_> = <&std::vec::Vec<i32>>::clone(y);
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: using `clone` on a `Copy` type
+error: using `clone` on type `many_derefs::E` which implements the `Copy` trait
   --> $DIR/unnecessary_clone.rs:84:20
    |
 LL |         let _: E = a.clone();
