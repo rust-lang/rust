@@ -1,0 +1,121 @@
+error[E0532]: expected unit struct, unit variant or constant, found tuple variant `E::S`
+  --> $DIR/pat-tuple-underfield.rs:45:9
+   |
+LL |     S(i32, f32),
+   |     ----------- `E::S` defined here
+...
+LL |         E::S => {}
+   |         ^^^^ help: use the tuple variant pattern syntax instead: `E::S(_, _)`
+
+error[E0023]: this pattern has 1 field, but the corresponding tuple struct has 2 fields
+  --> $DIR/pat-tuple-underfield.rs:8:9
+   |
+LL | struct S(i32, f32);
+   | ------------------- tuple struct defined here
+...
+LL |         S(x) => {}
+   |         ^^^^ expected 2 fields, found 1
+   |
+help: use `_` to explicitly ignore each field
+   |
+LL |         S(x, _) => {}
+   |            ^^^
+help: use `..` to ignore all unmentioned fields
+   |
+LL |         S(x, ..) => {}
+   |            ^^^^
+
+error[E0023]: this pattern has 1 field, but the corresponding tuple struct has 2 fields
+  --> $DIR/pat-tuple-underfield.rs:14:9
+   |
+LL | struct S(i32, f32);
+   | ------------------- tuple struct defined here
+...
+LL |         S(_) => {}
+   |         ^^^^ expected 2 fields, found 1
+   |
+help: use `_` to explicitly ignore each field
+   |
+LL |         S(_, _) => {}
+   |            ^^^
+help: use `..` to ignore all unmentioned fields
+   |
+LL |         S(_, ..) => {}
+   |            ^^^^
+
+error[E0023]: this pattern has 0 fields, but the corresponding tuple struct has 2 fields
+  --> $DIR/pat-tuple-underfield.rs:20:9
+   |
+LL | struct S(i32, f32);
+   | ------------------- tuple struct defined here
+...
+LL |         S() => {}
+   |         ^^^ expected 2 fields, found 0
+   |
+help: use `_` to explicitly ignore each field
+   |
+LL |         S(_, _) => {}
+   |           ^^^^
+help: use `..` to ignore all unmentioned fields
+   |
+LL |         S(..) => {}
+   |           ^^
+
+error[E0023]: this pattern has 1 field, but the corresponding tuple variant has 2 fields
+  --> $DIR/pat-tuple-underfield.rs:27:9
+   |
+LL |     S(i32, f32),
+   |     ----------- tuple variant defined here
+...
+LL |         E::S(x) => {}
+   |         ^^^^^^^ expected 2 fields, found 1
+   |
+help: use `_` to explicitly ignore each field
+   |
+LL |         E::S(x, _) => {}
+   |               ^^^
+help: use `..` to ignore all unmentioned fields
+   |
+LL |         E::S(x, ..) => {}
+   |               ^^^^
+
+error[E0023]: this pattern has 1 field, but the corresponding tuple variant has 2 fields
+  --> $DIR/pat-tuple-underfield.rs:33:9
+   |
+LL |     S(i32, f32),
+   |     ----------- tuple variant defined here
+...
+LL |         E::S(_) => {}
+   |         ^^^^^^^ expected 2 fields, found 1
+   |
+help: use `_` to explicitly ignore each field
+   |
+LL |         E::S(_, _) => {}
+   |               ^^^
+help: use `..` to ignore all unmentioned fields
+   |
+LL |         E::S(_, ..) => {}
+   |               ^^^^
+
+error[E0023]: this pattern has 0 fields, but the corresponding tuple variant has 2 fields
+  --> $DIR/pat-tuple-underfield.rs:39:9
+   |
+LL |     S(i32, f32),
+   |     ----------- tuple variant defined here
+...
+LL |         E::S() => {}
+   |         ^^^^^^ expected 2 fields, found 0
+   |
+help: use `_` to explicitly ignore each field
+   |
+LL |         E::S(_, _) => {}
+   |              ^^^^
+help: use `..` to ignore all unmentioned fields
+   |
+LL |         E::S(..) => {}
+   |              ^^
+
+error: aborting due to 7 previous errors
+
+Some errors have detailed explanations: E0023, E0532.
+For more information about an error, try `rustc --explain E0023`.

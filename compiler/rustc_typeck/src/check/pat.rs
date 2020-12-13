@@ -15,10 +15,12 @@ use rustc_span::hygiene::DesugaringKind;
 use rustc_span::lev_distance::find_best_match_for_name;
 use rustc_span::source_map::{Span, Spanned};
 use rustc_span::symbol::Ident;
+use rustc_span::{BytePos, DUMMY_SP};
 use rustc_trait_selection::traits::{ObligationCause, Pattern};
 
 use std::cmp;
 use std::collections::hash_map::Entry::{Occupied, Vacant};
+use std::iter;
 
 use super::report_unexpected_variant_res;
 
@@ -1039,6 +1041,33 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 "missing parenthesis",
                 vec![(left, "(".to_string()), (right.shrink_to_hi(), ")".to_string())],
                 Applicability::MachineApplicable,
+            );
+        } else if fields.len() > subpats.len() {
+            let after_fields_span = if pat_span == DUMMY_SP {
+                pat_span
+            } else {
+                pat_span.with_hi(pat_span.hi() - BytePos(1)).shrink_to_hi()
+            };
+
+            let mut wildcard_sugg =
+                iter::repeat("_").take(fields.len() - subpats.len()).collect::<Vec<_>>().join(", ");
+            if !subpats.is_empty() {
+                wildcard_sugg = String::from(", ") + &wildcard_sugg;
+            }
+
+            let rest_sugg = if subpats.is_empty() { "..".to_owned() } else { ", ..".to_owned() };
+
+            err.span_suggestion(
+                after_fields_span,
+                "use `_` to explicitly ignore each field",
+                wildcard_sugg,
+                Applicability::MaybeIncorrect,
+            );
+            err.span_suggestion(
+                after_fields_span,
+                "use `..` to ignore all unmentioned fields",
+                rest_sugg,
+                Applicability::MaybeIncorrect,
             );
         }
 
