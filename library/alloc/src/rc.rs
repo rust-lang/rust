@@ -270,15 +270,40 @@ use crate::vec::Vec;
 #[cfg(test)]
 mod tests;
 
+/// TODO: doc comments
 // This is repr(C) to future-proof against possible field-reordering, which
 // would interfere with otherwise safe [into|from]_raw() of transmutable
 // inner types.
+#[unstable(feature = "rc_stable_repr", issue = "none")]
 #[repr(C)]
-struct RcBox<T: ?Sized> {
+pub struct RcBox<T: ?Sized> {
     strong: Cell<usize>,
     weak: Cell<usize>,
     value: T,
 }
+
+impl<T> RcBox<T> {
+    /// TODO: doc comments
+    #[unstable(feature = "rc_stable_repr", issue = "none")]
+    pub fn new(value: T) -> Self {
+        RcBox { strong: Cell::new(1), weak: Cell::new(1), value }
+    }
+}
+
+#[unstable(feature = "rc_stable_repr", issue = "none")]
+impl<T: ?Sized + fmt::Display> fmt::Display for RcBox<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(&self.value, f)
+    }
+}
+
+#[unstable(feature = "rc_stable_repr", issue = "none")]
+impl<T: ?Sized + fmt::Debug> fmt::Debug for RcBox<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Debug::fmt(&self.value, f)
+    }
+}
+
 
 /// A single-threaded reference-counting pointer. 'Rc' stands for 'Reference
 /// Counted'.
@@ -341,9 +366,7 @@ impl<T> Rc<T> {
         // pointers, which ensures that the weak destructor never frees
         // the allocation while the strong destructor is running, even
         // if the weak pointer is stored inside the strong one.
-        Self::from_inner(
-            Box::leak(box RcBox { strong: Cell::new(1), weak: Cell::new(1), value }).into(),
-        )
+        Self::from_repr(box RcBox::new(value))
     }
 
     /// Constructs a new `Rc<T>` using a weak reference to itself. Attempting
@@ -891,6 +914,12 @@ impl<T: ?Sized> Rc<T> {
     /// [`ptr::eq`]: core::ptr::eq
     pub fn ptr_eq(this: &Self, other: &Self) -> bool {
         this.ptr.as_ptr() == other.ptr.as_ptr()
+    }
+
+    /// TODO: doc comments
+    #[unstable(feature = "rc_stable_repr", issue = "none")]
+    pub fn from_repr(repr: Box<RcBox<T>>) -> Self {
+        Self::from_inner(Box::leak(repr).into())
     }
 }
 

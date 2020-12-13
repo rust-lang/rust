@@ -542,3 +542,21 @@ fn test_rc_cyclic_with_two_ref() {
     assert_eq!(Rc::strong_count(&two_refs), 3);
     assert_eq!(Rc::weak_count(&two_refs), 2);
 }
+
+#[test]
+fn test_rc_from_repr() {
+    let rc_repr = Box::new(RcBox::new(5));
+    let x = Rc::from_repr(rc_repr);
+    assert_eq!(*x, 5);
+}
+
+#[test]
+fn test_rc_from_repr_unsized() {
+    let slice_repr = Box::new(RcBox::new([1, 2, 3]));
+    let slice: Rc<[i32]> = Rc::from_repr(slice_repr);
+    assert_eq!(format!("{:?}", slice), "[1, 2, 3]");
+
+    let debug_repr = Box::new(RcBox::new(3));
+    let debug: Rc<dyn core::fmt::Debug> = Rc::from_repr(debug_repr);
+    assert_eq!(format!("{:?}", debug), "3");
+}
