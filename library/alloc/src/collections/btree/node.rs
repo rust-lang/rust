@@ -150,7 +150,7 @@ impl<K, V, Type> NodeRef<marker::Owned, K, V, Type> {
     /// Mutably borrows the owned node. Unlike `reborrow_mut`, this is safe,
     /// because the return value cannot be used to destroy the node itself,
     /// and there cannot be other references to the tree (except during the
-    /// process of `into_iter` or `drop`, but that is a horrific already).
+    /// process of `into_iter` or `drop`, but that is horrific already).
     pub fn borrow_mut(&mut self) -> NodeRef<marker::Mut<'_>, K, V, Type> {
         NodeRef { height: self.height, node: self.node, _marker: PhantomData }
     }
@@ -192,7 +192,7 @@ impl<K, V> NodeRef<marker::Owned, K, V, marker::LeafOrInternal> {
 
         let internal_node = NodeRef { height: self.height, node: top, _marker: PhantomData };
         *self = internal_node.first_edge().descend();
-        self.borrow_mut().clear_parent_link();
+        self.clear_parent_link();
 
         unsafe {
             Global.deallocate(top.cast(), Layout::new::<InternalNode<K, V>>());
@@ -611,18 +611,19 @@ impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
 }
 
 impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
-    /// Set or clear the node's link to its parent edge,
+    /// Sets the node's link to its parent edge,
     /// without invalidating other references to the node.
     fn set_parent_link(&mut self, parent: NonNull<InternalNode<K, V>>, parent_idx: usize) {
         let leaf = Self::as_leaf_ptr(self);
         unsafe { (*leaf).parent = Some(parent) };
         unsafe { (*leaf).parent_idx.write(parent_idx as u16) };
     }
+}
 
-    /// Clear the node's link to its parent edge.
-    /// This only makes sense when there are no other references to the node.
+impl<K, V> NodeRef<marker::Owned, K, V, marker::LeafOrInternal> {
+    /// Clears the root's link to its parent edge.
     fn clear_parent_link(&mut self) {
-        let leaf = Self::as_leaf_mut(self);
+        let leaf = NodeRef::as_leaf_mut(&mut self.borrow_mut());
         leaf.parent = None;
     }
 }
@@ -720,9 +721,9 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
                 ForceResult::Internal(internal) => {
                     let node = ptr::read(internal.reborrow().edge_at(idx + 1));
                     let mut edge = Root { node, height: internal.height - 1, _marker: PhantomData };
-                    // In practice, clearing the parent is a waste of time, because we will
+                    // Currently, clearing the parent link is superfluous, because we will
                     // insert the node elsewhere and set its parent link again.
-                    edge.borrow_mut().clear_parent_link();
+                    edge.clear_parent_link();
                     Some(edge)
                 }
             };
@@ -748,9 +749,9 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
                 ForceResult::Internal(mut internal) => {
                     let node = slice_remove(internal.reborrow_mut().into_edge_area_slice(), 0);
                     let mut edge = Root { node, height: internal.height - 1, _marker: PhantomData };
-                    // In practice, clearing the parent is a waste of time, because we will
+                    // Currently, clearing the parent link is superfluous, because we will
                     // insert the node elsewhere and set its parent link again.
-                    edge.borrow_mut().clear_parent_link();
+                    edge.clear_parent_link();
 
                     internal.correct_childrens_parent_links(0..old_len);
 
