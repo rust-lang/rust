@@ -1288,10 +1288,12 @@ impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
     /// Chooses a balancing context involving the node as a child, thus between
     /// the KV immediately to the left or to the right in the parent node.
     /// Returns an `Err` if there is no parent.
+    /// Panics if the parent is empty.
     ///
-    /// This method optimizes for a node that has fewer elements than its left
-    /// and right siblings, if they exist, by preferring the left parent KV.
-    /// Merging with the left sibling is faster, since we only need to move
+    /// Prefers the left side, to be optimal if the given node is somehow
+    /// underfull, meaning here only that it has fewer elements than its left
+    /// sibling and than its right sibling, if they exist. In that case,
+    /// merging with the left sibling is faster, since we only need to move
     /// the node's N elements, instead of shifting them to the right and moving
     /// more than N elements in front. Stealing from the left sibling is also
     /// typically faster, since we only need to shift the node's N elements to
@@ -1299,19 +1301,19 @@ impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
     /// the left.
     pub fn choose_parent_kv(self) -> Result<LeftOrRight<BalancingContext<'a, K, V>>, Self> {
         match unsafe { ptr::read(&self) }.ascend() {
-            Ok(parent) => match parent.left_kv() {
+            Ok(parent_edge) => match parent_edge.left_kv() {
                 Ok(left_parent_kv) => Ok(LeftOrRight::Left(BalancingContext {
                     parent: unsafe { ptr::read(&left_parent_kv) },
                     left_child: left_parent_kv.left_edge().descend(),
                     right_child: self,
                 })),
-                Err(parent) => match parent.right_kv() {
+                Err(parent_edge) => match parent_edge.right_kv() {
                     Ok(right_parent_kv) => Ok(LeftOrRight::Right(BalancingContext {
                         parent: unsafe { ptr::read(&right_parent_kv) },
                         left_child: self,
                         right_child: right_parent_kv.right_edge().descend(),
                     })),
-                    Err(_) => unreachable!("empty non-root node"),
+                    Err(_) => unreachable!("empty internal node"),
                 },
             },
             Err(root) => Err(root),

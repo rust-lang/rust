@@ -54,12 +54,12 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, mark
             pos = unsafe { new_pos.cast_to_leaf_unchecked() };
 
             // Only if we merged, the parent (if any) has shrunk, but skipping
-            // the following step does not pay off in benchmarks.
+            // the following step otherwise does not pay off in benchmarks.
             //
             // SAFETY: We won't destroy or rearrange the leaf where `pos` is at
             // by handling its parent recursively; at worst we will destroy or
             // rearrange the parent through the grandparent, thus change the
-            // leaf's parent pointer.
+            // link to the parent inside the leaf.
             if let Ok(parent) = unsafe { pos.reborrow_mut() }.into_node().ascend() {
                 parent.into_node().handle_shrunk_node_recursively(handle_emptied_internal_root);
             }
@@ -90,8 +90,8 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, 
 }
 
 impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {
-    /// Stocks up a possibly underfull internal node, recursively.
-    /// Climbs up until it reaches an ancestor that has elements to spare or the root.
+    /// Stocks up a possibly underfull internal node and its ancestors,
+    /// until it reaches an ancestor that has elements to spare or is the root.
     fn handle_shrunk_node_recursively<F: FnOnce()>(mut self, handle_emptied_internal_root: F) {
         loop {
             self = match self.len() {
@@ -122,7 +122,7 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {
     ) -> Option<NodeRef<marker::Mut<'a>, K, V, marker::Internal>> {
         match self.forget_type().choose_parent_kv() {
             Ok(Left(left_parent_kv)) => {
-                debug_assert!(left_parent_kv.right_child_len() == MIN_LEN - 1);
+                debug_assert_eq!(left_parent_kv.right_child_len(), MIN_LEN - 1);
                 if left_parent_kv.can_merge() {
                     let pos = left_parent_kv.merge(None);
                     let parent_edge = unsafe { unwrap_unchecked(pos.into_node().ascend().ok()) };
@@ -134,7 +134,7 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {
                 }
             }
             Ok(Right(right_parent_kv)) => {
-                debug_assert!(right_parent_kv.left_child_len() == MIN_LEN - 1);
+                debug_assert_eq!(right_parent_kv.left_child_len(), MIN_LEN - 1);
                 if right_parent_kv.can_merge() {
                     let pos = right_parent_kv.merge(None);
                     let parent_edge = unsafe { unwrap_unchecked(pos.into_node().ascend().ok()) };
