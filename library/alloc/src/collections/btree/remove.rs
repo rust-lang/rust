@@ -1,7 +1,6 @@
 use super::map::MIN_LEN;
 use super::node::{marker, ForceResult::*, Handle, LeftOrRight::*, NodeRef};
 use super::unwrap_unchecked;
-use core::mem;
 
 impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>, marker::KV> {
     /// Removes a key-value pair from the tree, and returns that pair, as well as
@@ -84,10 +83,9 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, 
         // The internal node may have been stolen from or merged. Go back right
         // to find where the original KV ended up.
         let mut internal = unsafe { unwrap_unchecked(left_hole.next_kv().ok()) };
-        let old_key = mem::replace(internal.kv_mut().0, left_kv.0);
-        let old_val = mem::replace(internal.kv_mut().1, left_kv.1);
+        let old_kv = internal.replace_kv(left_kv.0, left_kv.1);
         let pos = internal.next_leaf_edge();
-        ((old_key, old_val), pos)
+        (old_kv, pos)
     }
 }
 

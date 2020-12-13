@@ -1159,6 +1159,12 @@ impl<'a, K: 'a, V: 'a, NodeType> Handle<NodeRef<marker::Mut<'a>, K, V, NodeType>
             (key, val)
         }
     }
+
+    /// Replace the key and value that the KV handle refers to.
+    pub fn replace_kv(&mut self, k: K, v: V) -> (K, V) {
+        let (key, val) = self.kv_mut();
+        (mem::replace(key, k), mem::replace(val, v))
+    }
 }
 
 impl<'a, K: 'a, V: 'a, NodeType> Handle<NodeRef<marker::Mut<'a>, K, V, NodeType>, marker::KV> {
@@ -1432,8 +1438,7 @@ impl<'a, K: 'a, V: 'a> BalancingContext<'a, K, V> {
         unsafe {
             let (k, v, edge) = self.left_child.pop();
 
-            let k = mem::replace(self.parent.kv_mut().0, k);
-            let v = mem::replace(self.parent.kv_mut().1, v);
+            let (k, v) = self.parent.replace_kv(k, v);
 
             match self.right_child.reborrow_mut().force() {
                 ForceResult::Leaf(mut leaf) => leaf.push_front(k, v),
@@ -1455,8 +1460,7 @@ impl<'a, K: 'a, V: 'a> BalancingContext<'a, K, V> {
         unsafe {
             let (k, v, edge) = self.right_child.pop_front();
 
-            let k = mem::replace(self.parent.kv_mut().0, k);
-            let v = mem::replace(self.parent.kv_mut().1, v);
+            let (k, v) = self.parent.replace_kv(k, v);
 
             match self.left_child.reborrow_mut().force() {
                 ForceResult::Leaf(mut leaf) => leaf.push(k, v),
