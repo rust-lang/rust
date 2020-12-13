@@ -513,6 +513,8 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         #[cfg(feature = "internal-lints")]
         &utils::internal_lints::INVALID_PATHS,
         #[cfg(feature = "internal-lints")]
+        &utils::internal_lints::INTERNING_DEFINED_SYMBOL,
+        #[cfg(feature = "internal-lints")]
         &utils::internal_lints::LINT_WITHOUT_LINT_PASS,
         #[cfg(feature = "internal-lints")]
         &utils::internal_lints::MATCH_TYPE_ON_DIAGNOSTIC_ITEM,
@@ -958,6 +960,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         store.register_late_pass(|| box utils::internal_lints::CollapsibleCalls);
         store.register_late_pass(|| box utils::internal_lints::CompilerLintFunctions::new());
         store.register_late_pass(|| box utils::internal_lints::InvalidPaths);
+        store.register_late_pass(|| box utils::internal_lints::InterningDefinedSymbol::default());
         store.register_late_pass(|| box utils::internal_lints::LintWithoutLintPass::default());
         store.register_late_pass(|| box utils::internal_lints::MatchTypeOnDiagItem);
         store.register_late_pass(|| box utils::internal_lints::OuterExpnDataPass);
@@ -1350,6 +1353,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&utils::internal_lints::COMPILER_LINT_FUNCTIONS),
         LintId::of(&utils::internal_lints::DEFAULT_LINT),
         LintId::of(&utils::internal_lints::INVALID_PATHS),
+        LintId::of(&utils::internal_lints::INTERNING_DEFINED_SYMBOL),
         LintId::of(&utils::internal_lints::LINT_WITHOUT_LINT_PASS),
         LintId::of(&utils::internal_lints::MATCH_TYPE_ON_DIAGNOSTIC_ITEM),
         LintId::of(&utils::internal_lints::OUTER_EXPN_EXPN_DATA),
