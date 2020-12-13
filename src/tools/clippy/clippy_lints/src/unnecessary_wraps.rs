@@ -108,11 +108,10 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryWraps {
         });
 
         if can_sugg && !suggs.is_empty() {
-            let span = cx.tcx.hir().span(hir_id);
             span_lint_and_then(
                 cx,
                 UNNECESSARY_WRAPS,
-                span,
+                cx.tcx.hir().span_with_body(hir_id),
                 format!(
                     "this function's return value is unnecessarily wrapped by `{}`",
                     return_type
