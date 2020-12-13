@@ -20,7 +20,6 @@ publish = false
 
 [[bin]]
 name = "cargo-clippy"
-test = false
 path = "src/main.rs"
 
 [[bin]]
