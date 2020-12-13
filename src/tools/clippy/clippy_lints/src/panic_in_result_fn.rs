@@ -43,7 +43,7 @@ impl<'tcx> LateLintPass<'tcx> for PanicInResultFn {
         hir_id: hir::HirId,
     ) {
         if !matches!(fn_kind, FnKind::Closure) && is_type_diagnostic_item(cx, return_ty(cx, hir_id), sym::result_type) {
-            let span = cx.tcx.hir().span(hir_id);
+            let span = cx.tcx.hir().span_with_body(hir_id);
             lint_impl_body(cx, span, body);
         }
     }

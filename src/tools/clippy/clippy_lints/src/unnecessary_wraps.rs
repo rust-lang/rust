@@ -148,7 +148,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryWraps {
                 )
             };
 
-            let span = cx.tcx.hir().span(hir_id);
+            let span = cx.tcx.hir().span_with_body(hir_id);
             span_lint_and_then(cx, UNNECESSARY_WRAPS, span, lint_msg.as_str(), |diag| {
                 diag.span_suggestion(
                     fn_decl.output.span(),

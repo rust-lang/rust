@@ -255,7 +255,7 @@ impl<'tcx> LateLintPass<'tcx> for Functions {
             intravisit::FnKind::Closure => return,
         };
 
-        let span = cx.tcx.hir().span(hir_id);
+        let span = cx.tcx.hir().span_with_body(hir_id);
 
         // don't warn for implementations, it's not their fault
         if !is_trait_impl_item(cx, hir_id) {
