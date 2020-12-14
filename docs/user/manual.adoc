@@ -289,6 +289,8 @@ GNOME Builder 3.37.1 and newer has native `rust-analyzer` support. If the LSP bi
 
 == Configuration
 
+**Source:** https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/rust-analyzer/src/config.rs[config.rs]
+
 rust-analyzer is configured via LSP messages, which means that it's up to the editor to decide on the exact format and location of configuration files.
 Please consult your editor's documentation to learn how to configure LSP servers.
 
