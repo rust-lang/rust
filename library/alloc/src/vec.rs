@@ -2665,6 +2665,13 @@ impl<T> AsRef<[T]> for IntoIter<T> {
     }
 }
 
+#[stable(feature = "vec_intoiter_as_mut", since = "1.50.0")]
+impl<T> AsMut<[T]> for IntoIter<T> {
+    fn as_mut(&mut self) -> &mut [T] {
+        self.as_mut_slice()
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<T: Send> Send for IntoIter<T> {}
 #[stable(feature = "rust1", since = "1.0.0")]
