@@ -44,16 +44,3 @@ mod vectors_f32;
 pub use vectors_f32::*;
 mod vectors_f64;
 pub use vectors_f64::*;
-
-//mod vectors_mask8;
-//pub use vectors_mask8::*;
-//mod vectors_mask16;
-//pub use vectors_mask16::*;
-//mod vectors_mask32;
-//pub use vectors_mask32::*;
-//mod vectors_mask64;
-//pub use vectors_mask64::*;
-//mod vectors_mask128;
-//pub use vectors_mask128::*;
-//mod vectors_masksize;
-//pub use vectors_masksize::*;
