@@ -501,6 +501,41 @@ impl Step for Rustc {
         let mut cargo = builder.cargo(compiler, Mode::Rustc, SourceType::InTree, target, "build");
         rustc_cargo(builder, &mut cargo, target);
 
+        if builder.config.rust_profile_use.is_some()
+            && builder.config.rust_profile_generate.is_some()
+        {
+            panic!("Cannot use and generate PGO profiles at the same time");
+        }
+
+        let is_collecting = if let Some(path) = &builder.config.rust_profile_generate {
+            if compiler.stage == 1 {
+                cargo.rustflag(&format!("-Cprofile-generate={}", path));
+                // Apparently necessary to avoid overflowing the counters during
+                // a Cargo build profile
+                cargo.rustflag("-Cllvm-args=-vp-counters-per-site=4");
+                true
+            } else {
+                false
+            }
+        } else if let Some(path) = &builder.config.rust_profile_use {
+            if compiler.stage == 1 {
+                cargo.rustflag(&format!("-Cprofile-use={}", path));
+                cargo.rustflag("-Cllvm-args=-pgo-warn-missing-function");
+                true
+            } else {
+                false
+            }
+        } else {
+            false
+        };
+        if is_collecting {
+            // Ensure paths to Rust sources are relative, not absolute.
+            cargo.rustflag(&format!(
+                "-Cllvm-args=-static-func-strip-dirname-prefix={}",
+                builder.config.src.components().count()
+            ));
+        }
+
         builder.info(&format!(
             "Building stage{} compiler artifacts ({} -> {})",
             compiler.stage, &compiler.host, target
@@ -752,7 +787,7 @@ fn copy_codegen_backends_to_sysroot(
     // Here we're looking for the output dylib of the `CodegenBackend` step and
     // we're copying that into the `codegen-backends` folder.
     let dst = builder.sysroot_codegen_backends(target_compiler);
-    t!(fs::create_dir_all(&dst));
+    t!(fs::create_dir_all(&dst), dst);
 
     if builder.config.dry_run {
         return;

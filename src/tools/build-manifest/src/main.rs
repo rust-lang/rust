@@ -299,6 +299,7 @@ impl Builder {
         let mut package = |name, targets| self.package(name, &mut manifest.pkg, targets);
         package("rustc", HOSTS);
         package("rustc-dev", HOSTS);
+        package("reproducible-artifacts", HOSTS);
         package("rustc-docs", HOSTS);
         package("cargo", HOSTS);
         package("rust-mingw", MINGW);
