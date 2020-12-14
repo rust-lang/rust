@@ -3059,7 +3059,7 @@ fn lint_filter_map_map<'tcx>(
     _filter_args: &'tcx [hir::Expr<'_>],
     _map_args: &'tcx [hir::Expr<'_>],
 ) {
-    // lint if caller of `.filter().map()` is an Iterator
+    // lint if caller of `.filter_map().map()` is an Iterator
     if match_trait_method(cx, expr, &paths::ITERATOR) {
         let msg = "called `filter_map(..).map(..)` on an `Iterator`";
         let hint = "this is more succinctly expressed by only calling `.filter_map(..)` instead";
