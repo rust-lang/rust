@@ -36,8 +36,7 @@ impl<N: ItemTreeNode> HasSource for ItemLoc<N> {
     }
 }
 
-pub trait HasChildSource {
-    type ChildId;
+pub trait HasChildSource<ChildId> {
     type Value;
-    fn child_source(&self, db: &dyn DefDatabase) -> InFile<ArenaMap<Self::ChildId, Self::Value>>;
+    fn child_source(&self, db: &dyn DefDatabase) -> InFile<ArenaMap<ChildId, Self::Value>>;
 }

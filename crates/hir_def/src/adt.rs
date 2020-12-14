@@ -145,10 +145,12 @@ impl EnumData {
     }
 }
 
-impl HasChildSource for EnumId {
-    type ChildId = LocalEnumVariantId;
+impl HasChildSource<LocalEnumVariantId> for EnumId {
     type Value = ast::Variant;
-    fn child_source(&self, db: &dyn DefDatabase) -> InFile<ArenaMap<Self::ChildId, Self::Value>> {
+    fn child_source(
+        &self,
+        db: &dyn DefDatabase,
+    ) -> InFile<ArenaMap<LocalEnumVariantId, Self::Value>> {
         let src = self.lookup(db).source(db);
         let mut trace = Trace::new_for_map();
         lower_enum(db, &mut trace, &src, self.lookup(db).container.module(db));
@@ -212,11 +214,10 @@ impl VariantData {
     }
 }
 
-impl HasChildSource for VariantId {
-    type ChildId = LocalFieldId;
+impl HasChildSource<LocalFieldId> for VariantId {
     type Value = Either<ast::TupleField, ast::RecordField>;
 
-    fn child_source(&self, db: &dyn DefDatabase) -> InFile<ArenaMap<Self::ChildId, Self::Value>> {
+    fn child_source(&self, db: &dyn DefDatabase) -> InFile<ArenaMap<LocalFieldId, Self::Value>> {
         let (src, module_id) = match self {
             VariantId::EnumVariantId(it) => {
                 // I don't really like the fact that we call into parent source

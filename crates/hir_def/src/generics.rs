@@ -19,7 +19,7 @@ use crate::{
     db::DefDatabase,
     dyn_map::DynMap,
     keys,
-    src::HasSource,
+    src::{HasChildSource, HasSource},
     type_ref::{LifetimeRef, TypeBound, TypeRef},
     AdtId, GenericDefId, LifetimeParamId, LocalLifetimeParamId, LocalTypeParamId, Lookup,
     TypeParamId,
@@ -73,9 +73,9 @@ pub enum WherePredicateTypeTarget {
 }
 
 #[derive(Default)]
-pub struct SourceMaps {
-    pub type_params: ArenaMap<LocalTypeParamId, Either<ast::Trait, ast::TypeParam>>,
-    pub lifetime_params: ArenaMap<LocalLifetimeParamId, ast::LifetimeParam>,
+pub(crate) struct SourceMap {
+    pub(crate) type_params: ArenaMap<LocalTypeParamId, Either<ast::Trait, ast::TypeParam>>,
+    lifetime_params: ArenaMap<LocalLifetimeParamId, ast::LifetimeParam>,
 }
 
 impl GenericParams {
@@ -133,9 +133,9 @@ impl GenericParams {
         Arc::new(generics)
     }
 
-    fn new(db: &dyn DefDatabase, def: GenericDefId) -> (GenericParams, InFile<SourceMaps>) {
+    fn new(db: &dyn DefDatabase, def: GenericDefId) -> (GenericParams, InFile<SourceMap>) {
         let mut generics = GenericParams::default();
-        let mut sm = SourceMaps::default();
+        let mut sm = SourceMap::default();
 
         // FIXME: add `: Sized` bound for everything except for `Self` in traits
         let file_id = match def {
@@ -214,7 +214,7 @@ impl GenericParams {
     pub(crate) fn fill(
         &mut self,
         lower_ctx: &LowerCtx,
-        sm: &mut SourceMaps,
+        sm: &mut SourceMap,
         node: &dyn GenericParamsOwner,
     ) {
         if let Some(params) = node.generic_param_list() {
@@ -241,7 +241,7 @@ impl GenericParams {
     fn fill_params(
         &mut self,
         lower_ctx: &LowerCtx,
-        sm: &mut SourceMaps,
+        sm: &mut SourceMap,
         params: ast::GenericParamList,
     ) {
         for type_param in params.type_params() {
@@ -345,10 +345,24 @@ impl GenericParams {
         })
     }
 }
-impl GenericDefId {
-    // FIXME: Change HasChildSource's ChildId AssocItem to be a generic parameter instead
-    pub fn child_source(&self, db: &dyn DefDatabase) -> InFile<SourceMaps> {
-        GenericParams::new(db, *self).1
+
+impl HasChildSource<LocalTypeParamId> for GenericDefId {
+    type Value = Either<ast::Trait, ast::TypeParam>;
+    fn child_source(
+        &self,
+        db: &dyn DefDatabase,
+    ) -> InFile<ArenaMap<LocalTypeParamId, Self::Value>> {
+        GenericParams::new(db, *self).1.map(|source_maps| source_maps.type_params)
+    }
+}
+
+impl HasChildSource<LocalLifetimeParamId> for GenericDefId {
+    type Value = ast::LifetimeParam;
+    fn child_source(
+        &self,
+        db: &dyn DefDatabase,
+    ) -> InFile<ArenaMap<LocalLifetimeParamId, Self::Value>> {
+        GenericParams::new(db, *self).1.map(|source_maps| source_maps.lifetime_params)
     }
 }
 
