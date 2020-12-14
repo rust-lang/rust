@@ -41,6 +41,7 @@ from_id![
     (hir_def::FunctionId, crate::Function),
     (hir_def::ImplId, crate::ImplDef),
     (hir_def::TypeParamId, crate::TypeParam),
+    (hir_def::LifetimeParamId, crate::LifetimeParam),
     (hir_expand::MacroDefId, crate::MacroDef)
 ];
 
@@ -150,6 +151,22 @@ impl From<GenericDef> for GenericDefId {
                 GenericDefId::EnumVariantId(EnumVariantId { parent: it.parent.id, local_id: it.id })
             }
             GenericDef::Const(it) => GenericDefId::ConstId(it.id),
+        }
+    }
+}
+
+impl From<GenericDefId> for GenericDef {
+    fn from(def: GenericDefId) -> Self {
+        match def {
+            GenericDefId::FunctionId(it) => GenericDef::Function(it.into()),
+            GenericDefId::AdtId(it) => GenericDef::Adt(it.into()),
+            GenericDefId::TraitId(it) => GenericDef::Trait(it.into()),
+            GenericDefId::TypeAliasId(it) => GenericDef::TypeAlias(it.into()),
+            GenericDefId::ImplId(it) => GenericDef::ImplDef(it.into()),
+            GenericDefId::EnumVariantId(it) => {
+                GenericDef::EnumVariant(EnumVariant { parent: it.parent.into(), id: it.local_id })
+            }
+            GenericDefId::ConstId(it) => GenericDef::Const(it.into()),
         }
     }
 }
