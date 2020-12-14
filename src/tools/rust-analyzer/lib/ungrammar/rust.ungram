@@ -101,7 +101,7 @@ Item =
 MacroRules =
   Attr* Visibility?
   'macro_rules' '!' Name
-  '{' MacroArm (';' MacroArm)* ';'? '}'
+  '{' (MacroArm (';' MacroArm)* ';'?)? '}'
 
 MacroArm =
   TokenTree '=>' TokenTree
