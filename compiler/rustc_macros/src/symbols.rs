@@ -126,7 +126,6 @@ fn symbols_with_errors(input: TokenStream) -> (TokenStream, Vec<syn::Error>) {
 
     let mut keyword_stream = quote! {};
     let mut symbols_stream = quote! {};
-    let mut digits_stream = quote! {};
     let mut prefill_stream = quote! {};
     let mut counter = 0u32;
     let mut keys =
@@ -162,7 +161,6 @@ fn symbols_with_errors(input: TokenStream) -> (TokenStream, Vec<syn::Error>) {
             #value,
         });
         keyword_stream.extend(quote! {
-            #[allow(non_upper_case_globals)]
             pub const #name: Symbol = Symbol::new(#counter);
         });
         counter += 1;
@@ -182,42 +180,39 @@ fn symbols_with_errors(input: TokenStream) -> (TokenStream, Vec<syn::Error>) {
             #value,
         });
         symbols_stream.extend(quote! {
-            #[allow(rustc::default_hash_types)]
-            #[allow(non_upper_case_globals)]
             pub const #name: Symbol = Symbol::new(#counter);
         });
         counter += 1;
     }
 
     // Generate symbols for the strings "0", "1", ..., "9".
+    let digits_base = counter;
+    counter += 10;
     for n in 0..10 {
         let n = n.to_string();
         check_dup(Span::call_site(), &n, &mut errors);
         prefill_stream.extend(quote! {
             #n,
         });
-        digits_stream.extend(quote! {
-            Symbol::new(#counter),
-        });
-        counter += 1;
     }
+    let _ = counter; // for future use
 
     let output = quote! {
-        macro_rules! keywords {
-            () => {
-                #keyword_stream
-            }
+        const SYMBOL_DIGITS_BASE: u32 = #digits_base;
+
+        #[doc(hidden)]
+        #[allow(non_upper_case_globals)]
+        mod kw_generated {
+            use super::Symbol;
+            #keyword_stream
         }
 
-        macro_rules! define_symbols {
-            () => {
-                #symbols_stream
-
-                #[allow(non_upper_case_globals)]
-                pub const digits_array: &[Symbol; 10] = &[
-                    #digits_stream
-                ];
-            }
+        #[allow(rustc::default_hash_types)]
+        #[allow(non_upper_case_globals)]
+        #[doc(hidden)]
+        pub mod sym_generated {
+            use super::Symbol;
+            #symbols_stream
         }
 
         impl Interner {

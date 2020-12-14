@@ -1577,8 +1577,7 @@ impl Interner {
 /// Given that `kw` is imported, use them like `kw::keyword_name`.
 /// For example `kw::Loop` or `kw::Break`.
 pub mod kw {
-    use super::Symbol;
-    keywords!();
+    pub use super::kw_generated::*;
 }
 
 // This module has a very short name because it's used a lot.
@@ -1586,22 +1585,23 @@ pub mod kw {
 ///
 /// Given that `sym` is imported, use them like `sym::symbol_name`.
 /// For example `sym::rustfmt` or `sym::u8`.
-#[allow(rustc::default_hash_types)]
 pub mod sym {
     use super::Symbol;
     use std::convert::TryInto;
 
-    define_symbols!();
+    pub use super::sym_generated::*;
 
     // Used from a macro in `librustc_feature/accepted.rs`
     pub use super::kw::MacroRules as macro_rules;
 
-    // Get the symbol for an integer. The first few non-negative integers each
-    // have a static symbol and therefore are fast.
+    /// Get the symbol for an integer.
+    ///
+    /// The first few non-negative integers each have a static symbol and therefore
+    /// are fast.
     pub fn integer<N: TryInto<usize> + Copy + ToString>(n: N) -> Symbol {
         if let Result::Ok(idx) = n.try_into() {
-            if let Option::Some(&sym_) = digits_array.get(idx) {
-                return sym_;
+            if idx < 10 {
+                return Symbol::new(super::SYMBOL_DIGITS_BASE + idx as u32);
             }
         }
         Symbol::intern(&n.to_string())
