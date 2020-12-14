@@ -605,7 +605,7 @@ fn test_arc_cyclic_two_refs() {
 #[test]
 fn test_arc_from_repr() {
     let repr = Box::new(ArcRepr::new(42usize));
-    let mut x= Arc::from_repr(repr);
+    let mut x = Arc::from_repr(repr);
 
     assert_eq!(Arc::strong_count(&x), 1);
     assert_eq!(Arc::weak_count(&x), 0);

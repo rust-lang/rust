@@ -321,7 +321,6 @@ impl<T: ?Sized + fmt::Debug> fmt::Debug for RcRepr<T> {
     }
 }
 
-
 /// A single-threaded reference-counting pointer. 'Rc' stands for 'Reference
 /// Counted'.
 ///

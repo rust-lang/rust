@@ -348,11 +348,7 @@ impl<T> ArcRepr<T> {
     #[inline]
     #[unstable(feature = "rc_stable_repr", issue = "none")]
     pub fn new(data: T) -> ArcRepr<T> {
-        ArcRepr{
-            strong: atomic::AtomicUsize::new(1),
-            weak: atomic::AtomicUsize::new(1),
-            data,
-        }
+        ArcRepr { strong: atomic::AtomicUsize::new(1), weak: atomic::AtomicUsize::new(1), data }
     }
 }
 
