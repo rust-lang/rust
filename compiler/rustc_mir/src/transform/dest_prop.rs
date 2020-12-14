@@ -115,7 +115,6 @@ use rustc_middle::mir::{
     Rvalue, Statement, StatementKind, Terminator, TerminatorKind,
 };
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_session::config::MIR_OPT_LEVEL_DEFAULT;
 
 // Empirical measurements have resulted in some observations:
 // - Running on a body with a single block and 500 locals takes barely any time
@@ -130,7 +129,7 @@ impl<'tcx> MirPass<'tcx> for DestinationPropagation {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         // Only run at mir-opt-level=2 or higher for now (we don't fix up debuginfo and remove
         // storage statements at the moment).
-        if tcx.sess.opts.debugging_opts.mir_opt_level.unwrap_or(MIR_OPT_LEVEL_DEFAULT) <= 1 {
+        if tcx.sess.opts.debugging_opts.mir_opt_level <= 1 {
             return;
         }
 

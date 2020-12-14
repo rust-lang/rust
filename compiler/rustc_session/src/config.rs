@@ -174,8 +174,6 @@ pub enum MirSpanview {
     Block,
 }
 
-pub const MIR_OPT_LEVEL_DEFAULT: usize = 1;
-
 #[derive(Clone, PartialEq, Hash)]
 pub enum LinkerPluginLto {
     LinkerPlugin(PathBuf),
@@ -212,12 +210,6 @@ impl SwitchWithOptPath {
 pub enum SymbolManglingVersion {
     Legacy,
     V0,
-}
-
-impl SymbolManglingVersion {
-    pub fn default() -> Self {
-        SymbolManglingVersion::Legacy
-    }
 }
 
 impl_stable_hash_via_hash!(SymbolManglingVersion);
@@ -699,6 +691,10 @@ impl DebuggingOptions {
             macro_backtrace: self.macro_backtrace,
             deduplicate_diagnostics: self.deduplicate_diagnostics,
         }
+    }
+
+    pub fn get_symbol_mangling_version(&self) -> SymbolManglingVersion {
+        self.symbol_mangling_version.unwrap_or(SymbolManglingVersion::Legacy)
     }
 }
 
@@ -1779,18 +1775,15 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
             Some(SymbolManglingVersion::V0) => {}
         }
 
-        match debugging_opts.mir_opt_level {
-            Some(level) if level > 1 => {
-                early_warn(
-                    error_format,
-                    &format!(
-                        "`-Z mir-opt-level={}` (any level > 1) enables function inlining, which \
-                        limits the effectiveness of `-Z instrument-coverage`.",
-                        level,
-                    ),
-                );
-            }
-            _ => {}
+        if debugging_opts.mir_opt_level > 1 {
+            early_warn(
+                error_format,
+                &format!(
+                    "`-Z mir-opt-level={}` (any level > 1) enables function inlining, which \
+                    limits the effectiveness of `-Z instrument-coverage`.",
+                    debugging_opts.mir_opt_level,
+                ),
+            );
         }
     }
 

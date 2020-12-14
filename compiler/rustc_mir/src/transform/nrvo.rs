@@ -5,7 +5,6 @@ use rustc_index::bit_set::HybridBitSet;
 use rustc_middle::mir::visit::{MutVisitor, NonUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::{self, BasicBlock, Local, Location};
 use rustc_middle::ty::TyCtxt;
-use rustc_session::config::MIR_OPT_LEVEL_DEFAULT;
 
 use crate::transform::MirPass;
 
@@ -35,7 +34,7 @@ pub struct RenameReturnPlace;
 
 impl<'tcx> MirPass<'tcx> for RenameReturnPlace {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut mir::Body<'tcx>) {
-        if tcx.sess.opts.debugging_opts.mir_opt_level.unwrap_or(MIR_OPT_LEVEL_DEFAULT) == 0 {
+        if tcx.sess.opts.debugging_opts.mir_opt_level == 0 {
             return;
         }
 
