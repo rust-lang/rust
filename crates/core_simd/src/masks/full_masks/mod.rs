@@ -22,7 +22,13 @@ macro_rules! define_mask {
         impl<const $lanes: usize> $name<$lanes> {
             /// Construct a mask by setting all lanes to the given value.
             pub fn splat(value: bool) -> Self {
-                Self(<$type>::splat(value.into()))
+                Self(<$type>::splat(
+                    if value {
+                        -1
+                    } else {
+                        0
+                    }
+                ))
             }
 
             /// Tests the value of the specified lane.
@@ -31,7 +37,7 @@ macro_rules! define_mask {
             /// Panics if `lane` is greater than or equal to the number of lanes in the vector.
             #[inline]
             pub fn test(&self, lane: usize) -> bool {
-                self.0[lane] > 0
+                self.0[lane] == -1
             }
 
             /// Sets the value of the specified lane.
@@ -41,7 +47,7 @@ macro_rules! define_mask {
             #[inline]
             pub fn set(&mut self, lane: usize, value: bool) {
                 self.0[lane] = if value {
-                    !0
+                    -1
                 } else {
                     0
                 }
@@ -57,7 +63,7 @@ macro_rules! define_mask {
         impl<const $lanes: usize> core::convert::TryFrom<$type> for $name<$lanes> {
             type Error = TryFromMaskError;
             fn try_from(value: $type) -> Result<Self, Self::Error> {
-                if value.as_slice().iter().all(|x| *x == 0 || !*x == 0) {
+                if value.as_slice().iter().all(|x| *x == 0 || *x == -1) {
                     Ok(Self(value))
                 } else {
                     Err(TryFromMaskError(()))
