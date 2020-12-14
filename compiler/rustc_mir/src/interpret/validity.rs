@@ -104,7 +104,7 @@ pub enum PathElem {
     Field(Symbol),
     Variant(Symbol),
     GeneratorState(VariantIdx),
-    CapturedVar(Symbol),
+    CapturedPlace(Symbol),
     ArrayElem(usize),
     TupleElem(usize),
     Deref,
@@ -162,7 +162,7 @@ fn write_path(out: &mut String, path: &Vec<PathElem>) {
             Variant(name) => write!(out, ".<enum-variant({})>", name),
             GeneratorTag => write!(out, ".<generator-tag>"),
             GeneratorState(idx) => write!(out, ".<generator-state({})>", idx.index()),
-            CapturedVar(name) => write!(out, ".<captured-var({})>", name),
+            CapturedPlace(name) => write!(out, ".<captured-var({})>", name),
             TupleElem(idx) => write!(out, ".{}", idx),
             ArrayElem(idx) => write!(out, "[{}]", idx),
             // `.<deref>` does not match Rust syntax, but it is more readable for long paths -- and
@@ -257,7 +257,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                     }
                 }
 
-                PathElem::CapturedVar(name.unwrap_or_else(|| {
+                PathElem::CapturedPlace(name.unwrap_or_else(|| {
                     // Fall back to showing the field index.
                     sym::integer(field)
                 }))
