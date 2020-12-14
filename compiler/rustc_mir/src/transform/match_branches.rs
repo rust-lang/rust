@@ -1,6 +1,7 @@
 use crate::transform::MirPass;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
+use rustc_session::config::MIR_OPT_LEVEL_DEFAULT;
 
 pub struct MatchBranchSimplification;
 
@@ -38,7 +39,7 @@ pub struct MatchBranchSimplification;
 
 impl<'tcx> MirPass<'tcx> for MatchBranchSimplification {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-        if tcx.sess.opts.debugging_opts.mir_opt_level <= 1 {
+        if tcx.sess.opts.debugging_opts.mir_opt_level.unwrap_or(MIR_OPT_LEVEL_DEFAULT) <= 1 {
             return;
         }
 

@@ -174,6 +174,8 @@ pub enum MirSpanview {
     Block,
 }
 
+pub const MIR_OPT_LEVEL_DEFAULT: usize = 1;
+
 #[derive(Clone, PartialEq, Hash)]
 pub enum LinkerPluginLto {
     LinkerPlugin(PathBuf),
@@ -210,6 +212,12 @@ impl SwitchWithOptPath {
 pub enum SymbolManglingVersion {
     Legacy,
     V0,
+}
+
+impl SymbolManglingVersion {
+    pub fn default() -> Self {
+        SymbolManglingVersion::Legacy
+    }
 }
 
 impl_stable_hash_via_hash!(SymbolManglingVersion);
@@ -1757,7 +1765,33 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         // and reversible name mangling. Note, LLVM coverage tools can analyze coverage over
         // multiple runs, including some changes to source code; so mangled names must be consistent
         // across compilations.
-        debugging_opts.symbol_mangling_version = SymbolManglingVersion::V0;
+        match debugging_opts.symbol_mangling_version {
+            None => {
+                debugging_opts.symbol_mangling_version = Some(SymbolManglingVersion::V0);
+            }
+            Some(SymbolManglingVersion::Legacy) => {
+                early_warn(
+                    error_format,
+                    "-Z instrument-coverage requires symbol mangling version `v0`, \
+                    but `-Z symbol-mangling-version=legacy` was specified",
+                );
+            }
+            Some(SymbolManglingVersion::V0) => {}
+        }
+
+        match debugging_opts.mir_opt_level {
+            Some(level) if level > 1 => {
+                early_warn(
+                    error_format,
+                    &format!(
+                        "`-Z mir-opt-level={}` (any level > 1) enables function inlining, which \
+                        limits the effectiveness of `-Z instrument-coverage`.",
+                        level,
+                    ),
+                );
+            }
+            _ => {}
+        }
     }
 
     if let Ok(graphviz_font) = std::env::var("RUSTC_GRAPHVIZ_FONT") {
@@ -2162,7 +2196,7 @@ crate mod dep_tracking {
     impl_dep_tracking_hash_via_hash!(Edition);
     impl_dep_tracking_hash_via_hash!(LinkerPluginLto);
     impl_dep_tracking_hash_via_hash!(SwitchWithOptPath);
-    impl_dep_tracking_hash_via_hash!(SymbolManglingVersion);
+    impl_dep_tracking_hash_via_hash!(Option<SymbolManglingVersion>);
     impl_dep_tracking_hash_via_hash!(Option<SourceFileHashAlgorithm>);
     impl_dep_tracking_hash_via_hash!(TrimmedDefPaths);
 

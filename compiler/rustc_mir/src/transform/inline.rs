@@ -9,6 +9,7 @@ use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::{self, ConstKind, Instance, InstanceDef, ParamEnv, Ty, TyCtxt};
+use rustc_session::config::MIR_OPT_LEVEL_DEFAULT;
 use rustc_span::{hygiene::ExpnKind, ExpnData, Span};
 use rustc_target::spec::abi::Abi;
 
@@ -37,15 +38,7 @@ struct CallSite<'tcx> {
 
 impl<'tcx> MirPass<'tcx> for Inline {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-        if tcx.sess.opts.debugging_opts.mir_opt_level < 2 {
-            return;
-        }
-
-        if tcx.sess.opts.debugging_opts.instrument_coverage {
-            // The current implementation of source code coverage injects code region counters
-            // into the MIR, and assumes a 1-to-1 correspondence between MIR and source-code-
-            // based function.
-            debug!("function inlining is disabled when compiling with `instrument_coverage`");
+        if tcx.sess.opts.debugging_opts.mir_opt_level.unwrap_or(MIR_OPT_LEVEL_DEFAULT) < 2 {
             return;
         }
 

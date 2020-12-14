@@ -245,7 +245,11 @@ fn compute_symbol_name(
     // 2. we favor `instantiating_crate` where possible (i.e. when `Some`)
     let mangling_version_crate = instantiating_crate.unwrap_or(def_id.krate);
     let mangling_version = if mangling_version_crate == LOCAL_CRATE {
-        tcx.sess.opts.debugging_opts.symbol_mangling_version
+        tcx.sess
+            .opts
+            .debugging_opts
+            .symbol_mangling_version
+            .unwrap_or(SymbolManglingVersion::default())
     } else {
         tcx.symbol_mangling_version(mangling_version_crate)
     };

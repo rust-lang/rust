@@ -22,6 +22,7 @@ use rustc_middle::ty::subst::{InternalSubsts, Subst};
 use rustc_middle::ty::{
     self, ConstInt, ConstKind, Instance, ParamEnv, ScalarInt, Ty, TyCtxt, TypeFoldable,
 };
+use rustc_session::config::MIR_OPT_LEVEL_DEFAULT;
 use rustc_session::lint;
 use rustc_span::{def_id::DefId, Span};
 use rustc_target::abi::{HasDataLayout, LayoutOf, Size, TargetDataLayout};
@@ -708,7 +709,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             return None;
         }
 
-        if self.tcx.sess.opts.debugging_opts.mir_opt_level >= 3 {
+        if self.tcx.sess.opts.debugging_opts.mir_opt_level.unwrap_or(MIR_OPT_LEVEL_DEFAULT) >= 3 {
             self.eval_rvalue_with_identities(rvalue, place)
         } else {
             self.use_ecx(|this| this.ecx.eval_rvalue_into_place(rvalue, place))
@@ -886,7 +887,8 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
 
     /// Returns `true` if and only if this `op` should be const-propagated into.
     fn should_const_prop(&mut self, op: OpTy<'tcx>) -> bool {
-        let mir_opt_level = self.tcx.sess.opts.debugging_opts.mir_opt_level;
+        let mir_opt_level =
+            self.tcx.sess.opts.debugging_opts.mir_opt_level.unwrap_or(MIR_OPT_LEVEL_DEFAULT);
 
         if mir_opt_level == 0 {
             return false;
@@ -1056,7 +1058,7 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
 
         // Only const prop copies and moves on `mir_opt_level=2` as doing so
         // currently slightly increases compile time in some cases.
-        if self.tcx.sess.opts.debugging_opts.mir_opt_level >= 2 {
+        if self.tcx.sess.opts.debugging_opts.mir_opt_level.unwrap_or(MIR_OPT_LEVEL_DEFAULT) >= 2 {
             self.propagate_operand(operand)
         }
     }

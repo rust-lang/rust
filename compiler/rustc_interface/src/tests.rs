@@ -561,7 +561,7 @@ fn test_debugging_options_tracking_hash() {
     tracked!(link_only, true);
     tracked!(merge_functions, Some(MergeFunctions::Disabled));
     tracked!(mir_emit_retag, true);
-    tracked!(mir_opt_level, 3);
+    tracked!(mir_opt_level, Some(3));
     tracked!(mutable_noalias, true);
     tracked!(new_llvm_pass_manager, true);
     tracked!(no_codegen, true);
@@ -587,7 +587,7 @@ fn test_debugging_options_tracking_hash() {
     tracked!(share_generics, Some(true));
     tracked!(show_span, Some(String::from("abc")));
     tracked!(src_hash_algorithm, Some(SourceFileHashAlgorithm::Sha1));
-    tracked!(symbol_mangling_version, SymbolManglingVersion::V0);
+    tracked!(symbol_mangling_version, Some(SymbolManglingVersion::V0));
     tracked!(teach, true);
     tracked!(thinlto, Some(true));
     tracked!(tune_cpu, Some(String::from("abc")));
