@@ -10,7 +10,7 @@ edition = "2018"
 doctest = false
 
 [dependencies]
-goblin = "0.2.1"
+object = { version = "0.23", default-features = false, features = ["std", "read_core", "elf", "macho", "pe", "unaligned"] }
 libloading = "0.6.0"
 memmap = "0.7"
 

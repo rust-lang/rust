@@ -1,14 +1,17 @@
 //! Handles dynamic library loading for proc macro
 
-use crate::{proc_macro::bridge, rustc_server::TokenStream};
-use std::fs::File;
-use std::path::{Path, PathBuf};
+use std::{
+    fs::File,
+    io,
+    path::{Path, PathBuf},
+};
 
-use goblin::{mach::Mach, Object};
 use libloading::Library;
 use memmap::Mmap;
+use object::Object;
 use proc_macro_api::ProcMacroKind;
-use std::io;
+
+use crate::{proc_macro::bridge, rustc_server::TokenStream};
 
 const NEW_REGISTRAR_SYMBOL: &str = "_rustc_proc_macro_decls_";
 
@@ -23,40 +26,26 @@ fn is_derive_registrar_symbol(symbol: &str) -> bool {
 fn find_registrar_symbol(file: &Path) -> io::Result<Option<String>> {
     let file = File::open(file)?;
     let buffer = unsafe { Mmap::map(&file)? };
-    let object = Object::parse(&buffer).map_err(invalid_data_err)?;
 
-    let name = match object {
-        Object::Elf(elf) => {
-            let symbols = elf.dynstrtab.to_vec().map_err(invalid_data_err)?;
-            symbols.into_iter().find(|s| is_derive_registrar_symbol(s)).map(&str::to_owned)
-        }
-        Object::PE(pe) => pe
-            .exports
-            .iter()
-            .flat_map(|s| s.name)
-            .find(|s| is_derive_registrar_symbol(s))
-            .map(&str::to_owned),
-        Object::Mach(Mach::Binary(binary)) => {
-            let exports = binary.exports().map_err(invalid_data_err)?;
-            exports
-                .iter()
-                .map(|s| {
-                    // In macos doc:
-                    // https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man3/dlsym.3.html
-                    // Unlike other dyld API's, the symbol name passed to dlsym() must NOT be
-                    // prepended with an underscore.
-                    if s.name.starts_with('_') {
-                        &s.name[1..]
-                    } else {
-                        &s.name
-                    }
-                })
-                .find(|s| is_derive_registrar_symbol(s))
-                .map(&str::to_owned)
-        }
-        _ => return Ok(None),
-    };
-    return Ok(name);
+    Ok(object::File::parse(&buffer)
+        .map_err(invalid_data_err)?
+        .exports()
+        .map_err(invalid_data_err)?
+        .into_iter()
+        .map(|export| export.name())
+        .filter_map(|sym| String::from_utf8(sym.into()).ok())
+        .find(|sym| is_derive_registrar_symbol(sym))
+        .map(|sym| {
+            // From MacOS docs:
+            // https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man3/dlsym.3.html
+            // Unlike other dyld API's, the symbol name passed to dlsym() must NOT be
+            // prepended with an underscore.
+            if cfg!(target_os = "macos") && sym.starts_with('_') {
+                sym[1..].to_owned()
+            } else {
+                sym
+            }
+        }))
 }
 
 /// Loads dynamic library in platform dependent manner.
