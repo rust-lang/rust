@@ -19,3 +19,6 @@ define_mask_vector! {
     /// Vector of 64 `m8` values
     struct m8x64([i8 as m8; 64]);
 }
+
+#[repr(transparent)]
+struct VectorMask8<const LANES: usize>(crate::SimdI8<LANES>);

@@ -1,7 +1,7 @@
 //! This module contains the LLVM intrinsics bindings that provide the functionality for this
 //! crate.
 //!
-//! The LLVM assembly language is documented here: https://llvm.org/docs/LangRef.html
+//! The LLVM assembly language is documented here: <https://llvm.org/docs/LangRef.html>
 
 /// These intrinsics aren't linked directly from LLVM and are mostly undocumented, however they are
 /// simply lowered to the matching LLVM instructions by the compiler.  The associated instruction

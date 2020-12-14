@@ -11,8 +11,8 @@ mod intrinsics;
 mod ops;
 //mod round;
 
-//pub mod masks;
-//pub use masks::opaque::*;
+mod masks;
+pub use masks::*;
 
 mod vectors_u8;
 pub use vectors_u8::*;
