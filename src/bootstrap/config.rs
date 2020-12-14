@@ -148,6 +148,7 @@ pub struct Config {
     pub dist_sign_folder: Option<PathBuf>,
     pub dist_upload_addr: Option<String>,
     pub dist_gpg_password_file: Option<PathBuf>,
+    pub dist_compression_formats: Option<Vec<String>>,
 
     // libstd features
     pub backtrace: bool, // support for RUST_BACKTRACE
@@ -438,6 +439,7 @@ struct Dist {
     upload_addr: Option<String>,
     src_tarball: Option<bool>,
     missing_tools: Option<bool>,
+    compression_formats: Option<Vec<String>>,
 }
 
 #[derive(Deserialize)]
@@ -936,6 +938,7 @@ impl Config {
             config.dist_sign_folder = t.sign_folder.map(PathBuf::from);
             config.dist_gpg_password_file = t.gpg_password_file.map(PathBuf::from);
             config.dist_upload_addr = t.upload_addr;
+            config.dist_compression_formats = t.compression_formats;
             set(&mut config.rust_dist_src, t.src_tarball);
             set(&mut config.missing_tools, t.missing_tools);
         }
