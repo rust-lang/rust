@@ -137,3 +137,16 @@ fn assume_init_good() {
 
     assert!(TRUE);
 }
+
+#[test]
+#[cfg(not(bootstrap))]
+fn forget_works_in_const_fn() {
+    const fn forget_arg_and_return_4(x: Vec<i32>) -> i32 {
+        std::mem::forget(x);
+        4
+    }
+
+    const FOUR_THE_HARD_WAY: i32 = forget_arg_and_return_4(Vec::new());
+
+    assert_eq!(FOUR_THE_HARD_WAY, 4);
+}
