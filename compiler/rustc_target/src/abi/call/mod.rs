@@ -605,12 +605,7 @@ impl<'a, Ty> FnAbi<'a, Ty> {
             "nvptx64" => nvptx64::compute_abi_info(self),
             "hexagon" => hexagon::compute_abi_info(self),
             "riscv32" | "riscv64" => riscv::compute_abi_info(cx, self),
-            "wasm32"
-                if cx.target_spec().os != "emscripten"
-                    && std::env::var("RUSTC_USE_WASM32_BINDGEN_COMPAT_ABI")
-                        .map(|x| &x != "0")
-                        .unwrap_or(false) =>
-            {
+            "wasm32" if cx.target_spec().os == "bindgen" => {
                 wasm32_bindgen_compat::compute_abi_info(self)
             }
             "wasm32" | "asmjs" => wasm32::compute_abi_info(cx, self),

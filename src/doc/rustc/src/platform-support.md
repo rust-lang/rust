@@ -126,6 +126,7 @@ target | std | host | notes
 `thumbv8m.base-none-eabi` | * |  | ARMv8-M Baseline
 `thumbv8m.main-none-eabi` | * |  | ARMv8-M Mainline
 `thumbv8m.main-none-eabihf` | * |  | ARMv8-M Mainline, hardfloat
+`wasm32-unknown-bindgen` | ✓ |  | WebAssembly via wasm-bindgen
 `wasm32-unknown-emscripten` | ✓ |  | WebAssembly via Emscripten
 `wasm32-unknown-unknown` | ✓ |  | WebAssembly
 `wasm32-wasi` | ✓ |  | WebAssembly with WASI
