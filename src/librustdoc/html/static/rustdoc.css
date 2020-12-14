@@ -1570,9 +1570,13 @@ h4 > .notable-traits {
 		height: 73px;
 	}
 
+	#main {
+		margin-top: 100px;
+	}
+
 	#main > table:not(.table-display) td {
 		word-break: break-word;
-		min-width: 10%;
+		width: 50%;
 	}
 
 	.search-container > div {
