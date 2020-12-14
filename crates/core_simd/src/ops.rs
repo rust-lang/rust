@@ -262,21 +262,6 @@ macro_rules! impl_float_ops {
     };
 }
 
-/// Implements mask operators for the provided types.
-macro_rules! impl_mask_ops {
-    { $($scalar:ty => $($vector:ident),*;)* } => {
-        $( // scalar
-            $( // vector
-                impl_op! { impl BitAnd for $vector, $scalar }
-                impl_op! { impl BitOr  for $vector, $scalar }
-                impl_op! { impl BitXor for $vector, $scalar }
-                impl_op! { impl Not for $vector, $scalar }
-                impl_op! { impl Index for $vector, $scalar }
-            )*
-        )*
-    };
-}
-
 /// Implements unsigned integer operators for the provided types.
 macro_rules! impl_unsigned_int_ops {
     { $($scalar:ty => $($vector:ident),*;)* } => {

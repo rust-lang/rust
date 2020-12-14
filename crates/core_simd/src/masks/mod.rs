@@ -1,6 +1,7 @@
 //! Types and traits associated with masking lanes of vectors.
 #![allow(non_camel_case_types)]
 
+/// Implements bitwise ops on mask types by delegating the operators to the inner type.
 macro_rules! delegate_ops_to_inner {
     { $name:ident } => {
         impl<const LANES: usize> core::ops::BitAnd for $name<LANES> {
