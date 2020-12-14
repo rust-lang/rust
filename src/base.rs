@@ -118,6 +118,8 @@ pub(crate) fn codegen_fn<'tcx>(
     context.eliminate_unreachable_code(cx.module.isa()).unwrap();
     context.dce(cx.module.isa()).unwrap();
 
+    context.want_disasm = crate::pretty_clif::should_write_ir(tcx);
+
     // Define function
     let module = &mut cx.module;
     tcx.sess.time("define function", || {
@@ -139,6 +141,14 @@ pub(crate) fn codegen_fn<'tcx>(
         &context,
         &clif_comments,
     );
+
+    if let Some(mach_compile_result) = &context.mach_compile_result {
+        if let Some(disasm) = &mach_compile_result.disasm {
+            crate::pretty_clif::write_ir_file(tcx, &format!("{}.vcode", tcx.symbol_name(instance).name), |file| {
+                file.write_all(disasm.as_bytes())
+            })
+        }
+    }
 
     // Define debuginfo for function
     let isa = cx.module.isa();
