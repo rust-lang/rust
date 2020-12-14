@@ -1,20 +1,13 @@
-error[E0277]: `?` couldn't convert the error to `()`
-  --> $DIR/try-on-option.rs:7:6
+error[E0277]: the trait bound `(): From<result::sadness::PleaseCallTheOkOrMethodToUseQuestionMarkOnOptionsInAMethodThatReturnsResult>` is not satisfied
+  --> $DIR/try-on-option.rs:7:5
    |
-LL | fn foo() -> Result<u32, ()> {
-   |             --------------- expected `()` because of this
-LL |     let x: Option<u32> = None;
 LL |     x?;
-   |      ^ the trait `From<NoneError>` is not implemented for `()`
+   |     ^^ the trait `From<result::sadness::PleaseCallTheOkOrMethodToUseQuestionMarkOnOptionsInAMethodThatReturnsResult>` is not implemented for `()`
    |
-   = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
-   = note: required by `from`
-help: consider converting the `Option<T>` into a `Result<T, _>` using `Option::ok_or` or `Option::ok_or_else`
-   |
-LL |     x.ok_or_else(|| /* error value */)?;
-   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: required because of the requirements on the impl of `Try2021<Option<!>>` for `std::result::Result<u32, ()>`
+   = note: required by `from_holder`
 
-error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `Try`)
+error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `Try2021`)
   --> $DIR/try-on-option.rs:13:5
    |
 LL | / fn bar() -> u32 {
@@ -25,8 +18,8 @@ LL | |     22
 LL | | }
    | |_- this function should return `Result` or `Option` to accept `?`
    |
-   = help: the trait `Try` is not implemented for `u32`
-   = note: required by `from_error`
+   = help: the trait `Try2021<Option<!>>` is not implemented for `u32`
+   = note: required by `from_holder`
 
 error: aborting due to 2 previous errors
 

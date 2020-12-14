@@ -1,31 +1,23 @@
-error[E0277]: the `?` operator can only be applied to values that implement `Try`
+error[E0277]: the `?` operator can only be applied to values that implement `TryCore`
   --> $DIR/issue-61076.rs:42:5
    |
 LL |     foo()?;
    |     ^^^^^^ the `?` operator cannot be applied to type `impl Future`
    |
-   = help: the trait `Try` is not implemented for `impl Future`
-   = note: required by `into_result`
-help: consider `await`ing on the `Future`
-   |
-LL |     foo().await?;
-   |          ^^^^^^
+   = help: the trait `TryCore` is not implemented for `impl Future`
+   = note: required by `branch`
 
-error[E0277]: the `?` operator can only be applied to values that implement `Try`
-  --> $DIR/issue-61076.rs:65:5
+error[E0277]: the `?` operator can only be applied to values that implement `TryCore`
+  --> $DIR/issue-61076.rs:63:5
    |
 LL |     t?;
    |     ^^ the `?` operator cannot be applied to type `T`
    |
-   = help: the trait `Try` is not implemented for `T`
-   = note: required by `into_result`
-help: consider `await`ing on the `Future`
-   |
-LL |     t.await?;
-   |      ^^^^^^
+   = help: the trait `TryCore` is not implemented for `T`
+   = note: required by `branch`
 
 error[E0609]: no field `0` on type `impl Future`
-  --> $DIR/issue-61076.rs:76:26
+  --> $DIR/issue-61076.rs:71:26
    |
 LL |     let _: i32 = tuple().0;
    |                          ^ field not available in `impl Future`, but it is available in its `Output`
@@ -36,7 +28,7 @@ LL |     let _: i32 = tuple().await.0;
    |                         ^^^^^^
 
 error[E0609]: no field `a` on type `impl Future`
-  --> $DIR/issue-61076.rs:80:28
+  --> $DIR/issue-61076.rs:75:28
    |
 LL |     let _: i32 = struct_().a;
    |                            ^ field not available in `impl Future`, but it is available in its `Output`
@@ -47,7 +39,7 @@ LL |     let _: i32 = struct_().await.a;
    |                           ^^^^^^
 
 error[E0599]: no method named `method` found for opaque type `impl Future` in the current scope
-  --> $DIR/issue-61076.rs:84:15
+  --> $DIR/issue-61076.rs:79:15
    |
 LL |     struct_().method();
    |               ^^^^^^ method not found in `impl Future`
@@ -58,7 +50,7 @@ LL |     struct_().await.method();
    |               ^^^^^^
 
 error[E0308]: mismatched types
-  --> $DIR/issue-61076.rs:92:9
+  --> $DIR/issue-61076.rs:87:9
    |
 LL | async fn tuple() -> Tuple {
    |                     ----- the `Output` of this `async fn`'s expected opaque type

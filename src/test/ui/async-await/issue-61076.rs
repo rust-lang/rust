@@ -39,12 +39,10 @@ async fn foo() -> Result<(), ()> {
 }
 
 async fn bar() -> Result<(), ()> {
-    foo()?; //~ ERROR the `?` operator can only be applied to values that implement `Try`
+    foo()?; //~ ERROR the `?` operator can only be applied to values that implement `TryCore`
     //~^ NOTE the `?` operator cannot be applied to type `impl Future`
-    //~| HELP the trait `Try` is not implemented for `impl Future`
-    //~| NOTE required by `into_result`
-    //~| HELP consider `await`ing on the `Future`
-    //~| NOTE in this expansion of desugaring of operator `?`
+    //~| HELP the trait `TryCore` is not implemented for `impl Future`
+    //~| NOTE required by `branch`
     //~| NOTE in this expansion of desugaring of operator `?`
     //~| NOTE in this expansion of desugaring of operator `?`
     //~| NOTE in this expansion of desugaring of operator `?`
@@ -62,16 +60,13 @@ async fn tuple() -> Tuple {
 
 async fn baz() -> Result<(), ()> {
     let t = T;
-    t?; //~ ERROR the `?` operator can only be applied to values that implement `Try`
+    t?; //~ ERROR the `?` operator can only be applied to values that implement `TryCore`
     //~^ NOTE the `?` operator cannot be applied to type `T`
-    //~| HELP the trait `Try` is not implemented for `T`
-    //~| NOTE required by `into_result`
-    //~| HELP consider `await`ing on the `Future`
+    //~| HELP the trait `TryCore` is not implemented for `T`
+    //~| NOTE required by `branch`
     //~| NOTE in this expansion of desugaring of operator `?`
     //~| NOTE in this expansion of desugaring of operator `?`
     //~| NOTE in this expansion of desugaring of operator `?`
-    //~| NOTE in this expansion of desugaring of operator `?`
-
 
     let _: i32 = tuple().0; //~ ERROR no field `0`
     //~^ HELP consider `await`ing on the `Future`

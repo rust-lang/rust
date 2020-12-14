@@ -306,6 +306,9 @@ language_item_table! {
     TryFromError,            sym::from_error,          from_error_fn,              Target::Method(MethodKind::Trait { body: false });
     TryFromOk,               sym::from_ok,             from_ok_fn,                 Target::Method(MethodKind::Trait { body: false });
     TryIntoResult,           sym::into_result,         into_result_fn,             Target::Method(MethodKind::Trait { body: false });
+    TryContinueWith,         sym::continue_with,       continue_with_fn,           Target::Method(MethodKind::Trait { body: false });
+    TryBranch,               sym::branch,              branch_fn,                  Target::Method(MethodKind::Trait { body: false });
+    FromHolder,              sym::from_holder,         from_holder_fn,             Target::Method(MethodKind::Trait { body: false });
 
     PollReady,               sym::Ready,               poll_ready_variant,         Target::Variant;
     PollPending,             sym::Pending,             poll_pending_variant,       Target::Variant;
@@ -322,6 +325,9 @@ language_item_table! {
 
     ResultOk,                sym::Ok,                  result_ok_variant,          Target::Variant;
     ResultErr,               sym::Err,                 result_err_variant,         Target::Variant;
+
+    ControlFlowBreak,        sym::Break,               cf_break_variant,           Target::Variant;
+    ControlFlowContinue,     sym::Continue,            cf_continue_variant,        Target::Variant;
 
     IntoIterIntoIter,        sym::into_iter,           into_iter_fn,               Target::Method(MethodKind::Trait { body: false });
     IteratorNext,            sym::next,                next_fn,                    Target::Method(MethodKind::Trait { body: false});

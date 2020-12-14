@@ -3,7 +3,7 @@
 // can't split that into multiple files.
 
 use crate::cmp::{self, Ordering};
-use crate::ops::{Add, ControlFlow, Try};
+use crate::ops::{self, Add, ControlFlow, Try};
 
 use super::super::TrustedRandomAccess;
 use super::super::{Chain, Cloned, Copied, Cycle, Enumerate, Filter, FilterMap, Fuse};
@@ -2388,13 +2388,14 @@ pub trait Iterator {
     /// let result = a.iter().try_find(|&&s| is_my_num(s, 5));
     /// assert!(result.is_err());
     /// ```
+    #[cfg(bootstrap)]
     #[inline]
     #[unstable(feature = "try_find", reason = "new API", issue = "63178")]
     fn try_find<F, R>(&mut self, f: F) -> Result<Option<Self::Item>, R::Error>
     where
         Self: Sized,
         F: FnMut(&Self::Item) -> R,
-        R: Try<Ok = bool>,
+        R: ops::Try<Ok = bool>,
     {
         #[inline]
         fn check<F, T, R>(mut f: F) -> impl FnMut((), T) -> ControlFlow<Result<T, R::Error>>
@@ -2410,6 +2411,59 @@ pub trait Iterator {
         }
 
         self.try_fold((), check(f)).break_value().transpose()
+    }
+
+    /// Applies function to the elements of iterator and returns
+    /// the first true result or the first error.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(try_find)]
+    ///
+    /// let a = ["1", "2", "lol", "NaN", "5"];
+    ///
+    /// let is_my_num = |s: &str, search: i32| -> Result<bool, std::num::ParseIntError> {
+    ///     Ok(s.parse::<i32>()?  == search)
+    /// };
+    ///
+    /// let result = a.iter().try_find(|&&s| is_my_num(s, 2));
+    /// assert_eq!(result, Ok(Some(&"2")));
+    ///
+    /// let result = a.iter().try_find(|&&s| is_my_num(s, 5));
+    /// assert!(result.is_err());
+    /// ```
+    #[cfg(not(bootstrap))]
+    #[inline]
+    #[unstable(feature = "try_find", reason = "new API", issue = "63178")]
+    fn try_find<F, R>(
+        &mut self,
+        f: F,
+    ) -> <R::Holder as ops::BreakHolder<Option<Self::Item>>>::Output
+    where
+        Self: Sized,
+        F: FnMut(&Self::Item) -> R,
+        R: ops::Try<Ok = bool>,
+        R::Holder: ops::BreakHolder<Option<Self::Item>>,
+    {
+        #[inline]
+        fn check<F, T, R>(mut f: F) -> impl FnMut((), T) -> ControlFlow<Result<T, R::Holder>>
+        where
+            F: FnMut(&T) -> R,
+            R: Try<Ok = bool>,
+        {
+            move |(), x| match f(&x).branch() {
+                ControlFlow::Continue(false) => ControlFlow::CONTINUE,
+                ControlFlow::Continue(true) => ControlFlow::Break(Ok(x)),
+                ControlFlow::Break(h) => ControlFlow::Break(Err(h)),
+            }
+        }
+
+        match self.try_fold((), check(f)) {
+            ControlFlow::Continue(()) => ops::TryCore::continue_with(None),
+            ControlFlow::Break(Ok(x)) => ops::TryCore::continue_with(Some(x)),
+            ControlFlow::Break(Err(h)) => Try::from_holder(h),
+        }
     }
 
     /// Searches for an element in an iterator, returning its index.

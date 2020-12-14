@@ -1,15 +1,19 @@
 // run-pass
 
+#![feature(control_flow_enum)]
+#![feature(never_type)]
 #![feature(try_trait)]
+#![feature(try_trait_v2)]
 
-use std::ops::Try;
+use std::convert::Infallible;
+use std::ops::{BreakHolder, ControlFlow, Try2015, Try2021, TryCore};
 
 enum MyResult<T, U> {
     Awesome(T),
     Terrible(U)
 }
 
-impl<U, V> Try for MyResult<U, V> {
+impl<U, V> Try2015 for MyResult<U, V> {
     type Ok = U;
     type Error = V;
 
@@ -25,6 +29,52 @@ impl<U, V> Try for MyResult<U, V> {
         match self {
             MyResult::Awesome(u) => Ok(u),
             MyResult::Terrible(e) => Err(e),
+        }
+    }
+}
+
+impl<U, V> TryCore for MyResult<U, V> {
+    //type Continue = U;
+    type Ok = U;
+    type Holder = MyResult<Infallible, V>;
+    fn continue_with(x: U) -> Self {
+        MyResult::Awesome(x)
+    }
+    fn branch(self) -> ControlFlow<Self::Holder, U> {
+        match self {
+            MyResult::Awesome(u) => ControlFlow::Continue(u),
+            MyResult::Terrible(e) => ControlFlow::Break(MyResult::Terrible(e)),
+        }
+    }
+}
+
+impl<U, V> BreakHolder<U> for MyResult<Infallible, V> {
+    type Output = MyResult<U, V>;
+}
+
+impl<U, V, W: From<V>> Try2021<MyResult<Infallible, V>> for MyResult<U, W> {
+    fn from_holder(x: MyResult<Infallible, V>) -> Self {
+        match x {
+            MyResult::Terrible(e) => MyResult::Terrible(From::from(e)),
+            MyResult::Awesome(infallible) => match infallible {}
+        }
+    }
+}
+
+impl<U, V, W: From<V>> Try2021<Result<!, V>> for MyResult<U, W> {
+    fn from_holder(x: Result<!, V>) -> Self {
+        match x {
+            Err(e) => MyResult::Terrible(From::from(e)),
+            Ok(infallible) => match infallible {}
+        }
+    }
+}
+
+impl<U, V, W: From<V>> Try2021<MyResult<Infallible, V>> for Result<U, W> {
+    fn from_holder(x: MyResult<Infallible, V>) -> Self {
+        match x {
+            MyResult::Terrible(e) => Err(From::from(e)),
+            MyResult::Awesome(infallible) => match infallible {}
         }
     }
 }
@@ -60,4 +110,6 @@ fn main() {
     assert!(f(10) == Err("Hello".to_owned()));
     let _ = h();
     let _ = i();
+    let mapped = MyResult::<_, ()>::Awesome(4_i32).map(|x| x as i64);
+    assert!(matches!(mapped, MyResult::Awesome(4_i64)));
 }

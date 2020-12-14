@@ -182,7 +182,17 @@ pub use self::range::{Range, RangeFrom, RangeFull, RangeTo};
 pub use self::range::{Bound, RangeBounds, RangeInclusive, RangeToInclusive};
 
 #[unstable(feature = "try_trait", issue = "42327")]
-pub use self::r#try::Try;
+pub use self::r#try::Try2015;
+
+#[unstable(feature = "try_trait_v2", issue = "42327")]
+pub use self::r#try::{BreakHolder, Try2021, TryCore};
+
+#[cfg(bootstrap)]
+#[unstable(feature = "try_trait_v2", issue = "42327")]
+pub use self::Try2015 as Try;
+#[cfg(not(bootstrap))]
+#[unstable(feature = "try_trait_v2", issue = "42327")]
+pub use self::Try2021 as Try;
 
 #[unstable(feature = "generator_trait", issue = "43122")]
 pub use self::generator::{Generator, GeneratorState};

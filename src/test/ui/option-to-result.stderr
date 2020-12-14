@@ -1,34 +1,25 @@
-error[E0277]: `?` couldn't convert the error to `()`
-  --> $DIR/option-to-result.rs:5:6
+error[E0277]: the trait bound `(): From<result::sadness::PleaseCallTheOkOrMethodToUseQuestionMarkOnOptionsInAMethodThatReturnsResult>` is not satisfied
+  --> $DIR/option-to-result.rs:5:5
    |
-LL | fn test_result() -> Result<(),()> {
-   |                     ------------- expected `()` because of this
-LL |     let a:Option<()> = Some(());
 LL |     a?;
-   |      ^ the trait `From<NoneError>` is not implemented for `()`
+   |     ^^ the trait `From<result::sadness::PleaseCallTheOkOrMethodToUseQuestionMarkOnOptionsInAMethodThatReturnsResult>` is not implemented for `()`
    |
-   = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
-   = note: required by `from`
-help: consider converting the `Option<T>` into a `Result<T, _>` using `Option::ok_or` or `Option::ok_or_else`
-   |
-LL |     a.ok_or_else(|| /* error value */)?;
-   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: required because of the requirements on the impl of `Try2021<Option<!>>` for `std::result::Result<(), ()>`
+   = note: required by `from_holder`
 
-error[E0277]: `?` couldn't convert the error to `NoneError`
-  --> $DIR/option-to-result.rs:11:6
+error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `Try2021`)
+  --> $DIR/option-to-result.rs:11:5
    |
-LL | fn test_option() -> Option<i32>{
-   |                     ----------- expected `NoneError` because of this
-LL |     let a:Result<i32, i32> = Ok(5);
-LL |     a?;
-   |      ^ the trait `From<i32>` is not implemented for `NoneError`
+LL | / fn test_option() -> Option<i32>{
+LL | |     let a:Result<i32, i32> = Ok(5);
+LL | |     a?;
+   | |     ^^ cannot use the `?` operator in a function that returns `Option<i32>`
+LL | |     Some(5)
+LL | | }
+   | |_- this function should return `Result` or `Option` to accept `?`
    |
-   = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
-   = note: required by `from`
-help: consider converting the `Result<T, _>` into an `Option<T>` using `Result::ok`
-   |
-LL |     a.ok()?;
-   |      ^^^^^
+   = help: the trait `Try2021<std::result::Result<!, i32>>` is not implemented for `Option<i32>`
+   = note: required by `from_holder`
 
 error: aborting due to 2 previous errors
 

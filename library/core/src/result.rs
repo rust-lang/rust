@@ -228,7 +228,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::iter::{self, FromIterator, FusedIterator, TrustedLen};
-use crate::ops::{self, Deref, DerefMut};
+use crate::ops::{self, ControlFlow, Deref, DerefMut};
 use crate::{convert, fmt, hint};
 
 /// `Result` is a type that represents either success ([`Ok`]) or failure ([`Err`]).
@@ -1591,7 +1591,7 @@ impl<A, E, V: FromIterator<A>> FromIterator<Result<A, E>> for Result<V, E> {
 }
 
 #[unstable(feature = "try_trait", issue = "42327")]
-impl<T, E> ops::Try for Result<T, E> {
+impl<T, E> ops::Try2015 for Result<T, E> {
     type Ok = T;
     type Error = E;
 
@@ -1608,5 +1608,70 @@ impl<T, E> ops::Try for Result<T, E> {
     #[inline]
     fn from_error(v: E) -> Self {
         Err(v)
+    }
+}
+
+#[unstable(feature = "try_trait_v2", issue = "42327")]
+impl<T, E> ops::TryCore for Result<T, E> {
+    //type Continue = T;
+    type Ok = T;
+    type Holder = Result<!, E>;
+
+    #[inline]
+    fn continue_with(c: T) -> Self {
+        Ok(c)
+    }
+
+    #[inline]
+    fn branch(self) -> ControlFlow<Self::Holder, T> {
+        match self {
+            Ok(c) => ControlFlow::Continue(c),
+            Err(e) => ControlFlow::Break(Err(e)),
+        }
+    }
+}
+
+#[unstable(feature = "try_trait_v2", issue = "42327")]
+impl<T, E> ops::BreakHolder<T> for Result<!, E> {
+    type Output = Result<T, E>;
+
+    // fn expand(x: Self) -> Self::Output {
+    //     match x {
+    //         Err(e) => Err(e),
+    //     }
+    // }
+}
+
+#[unstable(feature = "try_trait_v2", issue = "42327")]
+impl<T, E, F: From<E>> ops::Try2021<Result<!, E>> for Result<T, F> {
+    fn from_holder(x: Result<!, E>) -> Self {
+        match x {
+            Err(e) => Err(From::from(e)),
+        }
+    }
+}
+
+mod sadness {
+    use super::*;
+
+    /// This is a remnant of the old `NoneError` which is never going to be stabilized.
+    /// It's here as a snapshot of an oversight that allowed this to work in the past,
+    /// so we're stuck supporting it even though we'd really rather not.
+    #[unstable(feature = "legacy_try_trait", issue = "none")]
+    #[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
+    pub struct PleaseCallTheOkOrMethodToUseQuestionMarkOnOptionsInAMethodThatReturnsResult;
+
+    #[unstable(feature = "try_trait_v2", issue = "42327")]
+    impl<T, E> ops::Try2021<Option<!>> for Result<T, E>
+    where
+        E: From<PleaseCallTheOkOrMethodToUseQuestionMarkOnOptionsInAMethodThatReturnsResult>,
+    {
+        fn from_holder(x: Option<!>) -> Self {
+            match x {
+                None => Err(From::from(
+                    PleaseCallTheOkOrMethodToUseQuestionMarkOnOptionsInAMethodThatReturnsResult,
+                )),
+            }
+        }
     }
 }

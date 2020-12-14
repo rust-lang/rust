@@ -4,7 +4,7 @@
 
 pub fn main() {
     let res: Result<u32, std::array::TryFromSliceError> = try {
-        Err("")?; //~ ERROR `?` couldn't convert the error
+        Err("")?; //~ ERROR the trait bound `std::array::TryFromSliceError: From<&str>` is not satisfied
         5
     };
 
@@ -15,8 +15,8 @@ pub fn main() {
     let res: Result<i32, i32> = try { }; //~ ERROR type mismatch
 
     let res: () = try { };
-    //~^ ERROR the trait bound `(): Try` is not satisfied
-    //~| ERROR the trait bound `(): Try` is not satisfied
+    //~^ ERROR the trait bound `(): TryCore` is not satisfied
+    //~| ERROR the trait bound `(): TryCore` is not satisfied
 
-    let res: i32 = try { 5 }; //~ ERROR the trait bound `i32: Try` is not satisfied
+    let res: i32 = try { 5 }; //~ ERROR the trait bound `i32: TryCore` is not satisfied
 }

@@ -151,7 +151,7 @@ use crate::iter::{FromIterator, FusedIterator, TrustedLen};
 use crate::pin::Pin;
 use crate::{
     convert, fmt, hint, mem,
-    ops::{self, Deref, DerefMut},
+    ops::{self, ControlFlow, Deref, DerefMut},
 };
 
 /// The `Option` type. See [the module level documentation](self) for more.
@@ -1703,7 +1703,7 @@ impl<A, V: FromIterator<A>> FromIterator<Option<A>> for Option<V> {
 pub struct NoneError;
 
 #[unstable(feature = "try_trait", issue = "42327")]
-impl<T> ops::Try for Option<T> {
+impl<T> ops::Try2015 for Option<T> {
     type Ok = T;
     type Error = NoneError;
 
@@ -1720,6 +1720,46 @@ impl<T> ops::Try for Option<T> {
     #[inline]
     fn from_error(_: NoneError) -> Self {
         None
+    }
+}
+
+#[unstable(feature = "try_trait_v2", issue = "42327")]
+impl<T> ops::TryCore for Option<T> {
+    //type Continue = T;
+    type Ok = T;
+    type Holder = Option<!>;
+
+    #[inline]
+    fn continue_with(c: T) -> Self {
+        Some(c)
+    }
+
+    #[inline]
+    fn branch(self) -> ControlFlow<Self::Holder, T> {
+        match self {
+            Some(c) => ControlFlow::Continue(c),
+            None => ControlFlow::Break(None),
+        }
+    }
+}
+
+#[unstable(feature = "try_trait_v2", issue = "42327")]
+impl<T> ops::BreakHolder<T> for Option<!> {
+    type Output = Option<T>;
+
+    // fn expand(x: Self) -> Self::Output {
+    //     match x {
+    //         None => None,
+    //     }
+    // }
+}
+
+#[unstable(feature = "try_trait_v2", issue = "42327")]
+impl<T> ops::Try2021<Option<!>> for Option<T> {
+    fn from_holder(x: Self::Holder) -> Self {
+        match x {
+            None => None,
+        }
     }
 }
 

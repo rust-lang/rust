@@ -1,6 +1,6 @@
 #![stable(feature = "futures_api", since = "1.36.0")]
 
-use crate::ops::Try;
+use crate::ops::{self, ControlFlow};
 use crate::result::Result;
 
 /// Indicates whether a value is available or if the current task has been
@@ -128,7 +128,7 @@ impl<T> From<T> for Poll<T> {
 }
 
 #[stable(feature = "futures_api", since = "1.36.0")]
-impl<T, E> Try for Poll<Result<T, E>> {
+impl<T, E> ops::Try2015 for Poll<Result<T, E>> {
     type Ok = Poll<T>;
     type Error = E;
 
@@ -152,8 +152,60 @@ impl<T, E> Try for Poll<Result<T, E>> {
     }
 }
 
+#[unstable(feature = "try_trait_v2", issue = "42327")]
+impl<T, E> ops::TryCore for Poll<Result<T, E>> {
+    //type Continue = Poll<T>;
+    type Ok = Poll<T>;
+    //type Holder = PollResultHolder<E>;
+    type Holder = <Result<T, E> as ops::TryCore>::Holder;
+
+    #[inline]
+    fn continue_with(c: Self::Ok) -> Self {
+        c.map(Ok)
+    }
+
+    #[inline]
+    fn branch(self) -> ControlFlow<Self::Holder, Self::Ok> {
+        match self {
+            Poll::Ready(Ok(x)) => ControlFlow::Continue(Poll::Ready(x)),
+            Poll::Ready(Err(e)) => ControlFlow::Break(Err(e)),
+            Poll::Pending => ControlFlow::Continue(Poll::Pending),
+        }
+    }
+}
+
+/* This is needed if the Try::Holder bound gets tighter again
+
+#[unstable(feature = "try_trait_v2_never_stable", issue = "42327")]
+#[allow(missing_debug_implementations)]
+/// This type is *only* useful for `expand`ing,
+/// so it's intentional that it implements no traits.
+pub struct PollResultHolder<E>(E);
+
+#[unstable(feature = "try_trait_v2", issue = "42327")]
+impl<T, E> BreakHolder<Poll<T>> for PollResultHolder<E> {
+    type Output = Poll<Result<T, E>>;
+
+    fn expand(x: Self) -> Self::Output {
+        match x {
+            PollResultHolder(e) => Poll::Ready(Err(e)),
+        }
+    }
+}
+
+*/
+
+#[unstable(feature = "try_trait_v2", issue = "42327")]
+impl<T, E, F: From<E>> ops::Try2021<Result<!, E>> for Poll<Result<T, F>> {
+    fn from_holder(x: Result<!, E>) -> Self {
+        match x {
+            Err(e) => Poll::Ready(Err(From::from(e))),
+        }
+    }
+}
+
 #[stable(feature = "futures_api", since = "1.36.0")]
-impl<T, E> Try for Poll<Option<Result<T, E>>> {
+impl<T, E> ops::Try2015 for Poll<Option<Result<T, E>>> {
     type Ok = Poll<Option<T>>;
     type Error = E;
 
@@ -175,5 +227,58 @@ impl<T, E> Try for Poll<Option<Result<T, E>>> {
     #[inline]
     fn from_ok(x: Self::Ok) -> Self {
         x.map(|x| x.map(Ok))
+    }
+}
+
+#[unstable(feature = "try_trait_v2", issue = "42327")]
+impl<T, E> ops::TryCore for Poll<Option<Result<T, E>>> {
+    //type Continue = Poll<Option<T>>;
+    type Ok = Poll<Option<T>>;
+    //type Holder = PollOptionResultHolder<E>;
+    type Holder = <Result<T, E> as ops::TryCore>::Holder;
+
+    #[inline]
+    fn continue_with(c: Self::Ok) -> Self {
+        c.map(|x| x.map(Ok))
+    }
+
+    #[inline]
+    fn branch(self) -> ControlFlow<Self::Holder, Self::Ok> {
+        match self {
+            Poll::Ready(Some(Ok(x))) => ControlFlow::Continue(Poll::Ready(Some(x))),
+            Poll::Ready(Some(Err(e))) => ControlFlow::Break(Err(e)),
+            Poll::Ready(None) => ControlFlow::Continue(Poll::Ready(None)),
+            Poll::Pending => ControlFlow::Continue(Poll::Pending),
+        }
+    }
+}
+
+/* This is needed if the Try::Holder bound gets tighter again
+
+#[unstable(feature = "try_trait_v2_never_stable", issue = "42327")]
+#[allow(missing_debug_implementations)]
+/// This type is *only* useful for `expand`ing,
+/// so it's intentional that it implements no traits.
+pub struct PollOptionResultHolder<E>(E);
+
+#[unstable(feature = "try_trait_v2", issue = "42327")]
+impl<T, E> BreakHolder<Poll<Option<T>>> for PollOptionResultHolder<E> {
+    type Output = Poll<Option<Result<T, E>>>;
+
+    fn expand(x: Self) -> Self::Output {
+        match x {
+            PollOptionResultHolder(e) => Poll::Ready(Some(Err(e))),
+        }
+    }
+}
+
+*/
+
+#[unstable(feature = "try_trait_v2", issue = "42327")]
+impl<T, E, F: From<E>> ops::Try2021<Result<!, E>> for Poll<Option<Result<T, F>>> {
+    fn from_holder(x: Result<!, E>) -> Self {
+        match x {
+            Err(e) => Poll::Ready(Some(Err(From::from(e)))),
+        }
     }
 }

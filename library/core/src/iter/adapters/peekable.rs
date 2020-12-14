@@ -129,6 +129,7 @@ where
         }
     }
 
+    #[cfg(bootstrap)]
     #[inline]
     fn try_rfold<B, F, R>(&mut self, init: B, mut f: F) -> R
     where
@@ -143,6 +144,29 @@ where
                 Err(e) => {
                     self.peeked = Some(Some(v));
                     Try::from_error(e)
+                }
+            },
+            None => self.iter.try_rfold(init, f),
+        }
+    }
+
+    #[cfg(not(bootstrap))]
+    #[inline]
+    fn try_rfold<B, F, R>(&mut self, init: B, mut f: F) -> R
+    where
+        Self: Sized,
+        F: FnMut(B, Self::Item) -> R,
+        R: Try<Ok = B>,
+    {
+        use crate::ops::ControlFlow;
+
+        match self.peeked.take() {
+            Some(None) => try { init },
+            Some(Some(v)) => match self.iter.try_rfold(init, &mut f).branch() {
+                ControlFlow::Continue(acc) => f(acc, v),
+                ControlFlow::Break(h) => {
+                    self.peeked = Some(Some(v));
+                    R::from_holder(h)
                 }
             },
             None => self.iter.try_rfold(init, f),

@@ -405,7 +405,7 @@ impl<'sess> OnDiskCache<'sess> {
 
             // Encode the position of the footer as the last 8 bytes of the
             // file so we know where to look for it.
-            IntEncodedWithFixedSize(footer_pos).encode(encoder.encoder)?;
+            IntEncodedWithFixedSize(footer_pos).encode(encoder.encoder).map_err(|x| x)?;
 
             // DO NOT WRITE ANYTHING TO THE ENCODER AFTER THIS POINT! The address
             // of the footer must be the last thing in the data stream.

@@ -8,8 +8,8 @@ fn make_unit() -> Result<(), Error> {
 
 fn main() {
     let fut = async {
-        make_unit()?; //~ ERROR type annotations needed
+        make_unit()?;
 
-        Ok(())
+        Ok(()) //~ ERROR type annotations needed
     };
 }

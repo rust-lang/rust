@@ -8,14 +8,13 @@ LL | #![feature(impl_trait_in_bindings)]
    = note: see issue #63065 <https://github.com/rust-lang/rust/issues/63065> for more information
 
 error[E0282]: type annotations needed for `impl Future`
-  --> $DIR/cannot-infer-async-enabled-impl-trait-bindings.rs:13:20
+  --> $DIR/cannot-infer-async-enabled-impl-trait-bindings.rs:15:9
    |
 LL |     let fut = async {
-   |         --- consider giving `fut` the explicit type `impl Future`, with the type parameters specified
-LL |         make_unit()?;
-   |                    ^ cannot infer type of error for `?` operator
-   |
-   = note: `?` implicitly converts the error value into a type implementing `From<std::io::Error>`
+   |         --- consider giving `fut` the explicit type `impl Future`, where the type parameter `E` is specified
+...
+LL |         Ok(())
+   |         ^^ cannot infer type for type parameter `E` declared on the enum `Result`
 
 error: aborting due to previous error; 1 warning emitted
 

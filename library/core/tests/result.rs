@@ -227,18 +227,6 @@ pub fn test_into_ok() {
 
 #[test]
 fn test_try() {
-    fn try_result_some() -> Option<u8> {
-        let val = Ok(1)?;
-        Some(val)
-    }
-    assert_eq!(try_result_some(), Some(1));
-
-    fn try_result_none() -> Option<u8> {
-        let val = Err(NoneError)?;
-        Some(val)
-    }
-    assert_eq!(try_result_none(), None);
-
     fn try_result_ok() -> Result<u8, u8> {
         let result: Result<u8, u8> = Ok(1);
         let val = result?;
