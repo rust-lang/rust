@@ -307,7 +307,6 @@ impl<T: ?Sized + fmt::Debug> fmt::Debug for Weak<T> {
 // This is repr(C) to future-proof against possible field-reordering, which
 // would interfere with otherwise safe [into|from]_raw() of transmutable
 // inner types.
-// TODO: Consider whether there is a better name for this type if it's going to
 // be publicly accessible. Maybe `ArcRepr`?
 #[unstable(feature = "rc_stable_repr", issue = "none")]
 #[repr(C)]
