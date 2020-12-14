@@ -29,6 +29,10 @@
 /// to the same boxed integer value, not five references pointing to independently
 /// boxed integers.
 ///
+/// Also, note that `vec![expr; 0]` is allowed, and produces an empty vector.
+/// This will still evaluate `expr`, however, and immediately drop the resulting value, so
+/// be mindful of side effects.
+///
 /// [`Vec`]: crate::vec::Vec
 #[cfg(not(test))]
 #[macro_export]
