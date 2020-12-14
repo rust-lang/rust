@@ -791,124 +791,6 @@ impl<'tcx> Constructor<'tcx> {
     }
 }
 
-/// This determines the set of all possible constructors of a pattern matching
-/// values of type `left_ty`. For vectors, this would normally be an infinite set
-/// but is instead bounded by the maximum fixed length of slice patterns in
-/// the column of patterns being analyzed.
-///
-/// We make sure to omit constructors that are statically impossible. E.g., for
-/// `Option<!>`, we do not include `Some(_)` in the returned list of constructors.
-/// Invariant: this returns an empty `Vec` if and only if the type is uninhabited (as determined by
-/// `cx.is_uninhabited()`).
-fn all_constructors<'p, 'tcx>(pcx: PatCtxt<'_, 'p, 'tcx>) -> SmallVec<[Constructor<'tcx>; 1]> {
-    debug!("all_constructors({:?})", pcx.ty);
-    let cx = pcx.cx;
-    let make_range = |start, end| {
-        IntRange(
-            // `unwrap()` is ok because we know the type is an integer.
-            IntRange::from_range(cx.tcx, start, end, pcx.ty, &RangeEnd::Included).unwrap(),
-        )
-    };
-    match pcx.ty.kind() {
-        ty::Bool => smallvec![make_range(0, 1)],
-        ty::Array(sub_ty, len) if len.try_eval_usize(cx.tcx, cx.param_env).is_some() => {
-            let len = len.eval_usize(cx.tcx, cx.param_env);
-            if len != 0 && cx.is_uninhabited(sub_ty) {
-                smallvec![]
-            } else {
-                smallvec![Slice(Slice::new(Some(len), VarLen(0, 0)))]
-            }
-        }
-        // Treat arrays of a constant but unknown length like slices.
-        ty::Array(sub_ty, _) | ty::Slice(sub_ty) => {
-            let kind = if cx.is_uninhabited(sub_ty) { FixedLen(0) } else { VarLen(0, 0) };
-            smallvec![Slice(Slice::new(None, kind))]
-        }
-        ty::Adt(def, substs) if def.is_enum() => {
-            // If the enum is declared as `#[non_exhaustive]`, we treat it as if it had an
-            // additional "unknown" constructor.
-            // There is no point in enumerating all possible variants, because the user can't
-            // actually match against them all themselves. So we always return only the fictitious
-            // constructor.
-            // E.g., in an example like:
-            //
-            // ```
-            //     let err: io::ErrorKind = ...;
-            //     match err {
-            //         io::ErrorKind::NotFound => {},
-            //     }
-            // ```
-            //
-            // we don't want to show every possible IO error, but instead have only `_` as the
-            // witness.
-            let is_declared_nonexhaustive = cx.is_foreign_non_exhaustive_enum(pcx.ty);
-
-            // If `exhaustive_patterns` is disabled and our scrutinee is an empty enum, we treat it
-            // as though it had an "unknown" constructor to avoid exposing its emptiness. The
-            // exception is if the pattern is at the top level, because we want empty matches to be
-            // considered exhaustive.
-            let is_secretly_empty = def.variants.is_empty()
-                && !cx.tcx.features().exhaustive_patterns
-                && !pcx.is_top_level;
-
-            if is_secretly_empty || is_declared_nonexhaustive {
-                smallvec![NonExhaustive]
-            } else if cx.tcx.features().exhaustive_patterns {
-                // If `exhaustive_patterns` is enabled, we exclude variants known to be
-                // uninhabited.
-                def.variants
-                    .iter()
-                    .filter(|v| {
-                        !v.uninhabited_from(cx.tcx, substs, def.adt_kind(), cx.param_env)
-                            .contains(cx.tcx, cx.module)
-                    })
-                    .map(|v| Variant(v.def_id))
-                    .collect()
-            } else {
-                def.variants.iter().map(|v| Variant(v.def_id)).collect()
-            }
-        }
-        ty::Char => {
-            smallvec![
-                // The valid Unicode Scalar Value ranges.
-                make_range('\u{0000}' as u128, '\u{D7FF}' as u128),
-                make_range('\u{E000}' as u128, '\u{10FFFF}' as u128),
-            ]
-        }
-        ty::Int(_) | ty::Uint(_)
-            if pcx.ty.is_ptr_sized_integral()
-                && !cx.tcx.features().precise_pointer_size_matching =>
-        {
-            // `usize`/`isize` are not allowed to be matched exhaustively unless the
-            // `precise_pointer_size_matching` feature is enabled. So we treat those types like
-            // `#[non_exhaustive]` enums by returning a special unmatcheable constructor.
-            smallvec![NonExhaustive]
-        }
-        &ty::Int(ity) => {
-            let bits = Integer::from_attr(&cx.tcx, SignedInt(ity)).size().bits() as u128;
-            let min = 1u128 << (bits - 1);
-            let max = min - 1;
-            smallvec![make_range(min, max)]
-        }
-        &ty::Uint(uty) => {
-            let size = Integer::from_attr(&cx.tcx, UnsignedInt(uty)).size();
-            let max = size.truncate(u128::MAX);
-            smallvec![make_range(0, max)]
-        }
-        // If `exhaustive_patterns` is disabled and our scrutinee is the never type, we cannot
-        // expose its emptiness. The exception is if the pattern is at the top level, because we
-        // want empty matches to be considered exhaustive.
-        ty::Never if !cx.tcx.features().exhaustive_patterns && !pcx.is_top_level => {
-            smallvec![NonExhaustive]
-        }
-        ty::Never => smallvec![],
-        _ if cx.is_uninhabited(pcx.ty) => smallvec![],
-        ty::Adt(..) | ty::Tuple(..) | ty::Ref(..) => smallvec![Single],
-        // This type is one for which we cannot list constructors, like `str` or `f64`.
-        _ => smallvec![NonExhaustive],
-    }
-}
-
 /// A wildcard constructor that we split relative to the constructors in the matrix, as explained
 /// at the top of the file.
 /// For splitting wildcards, there are two groups of constructors: there are the constructors
@@ -926,9 +808,121 @@ pub(super) struct SplitWildcard<'tcx> {
 
 impl<'tcx> SplitWildcard<'tcx> {
     pub(super) fn new<'p>(pcx: PatCtxt<'_, 'p, 'tcx>) -> Self {
-        let matrix_ctors = Vec::new();
-        let all_ctors = all_constructors(pcx);
-        SplitWildcard { matrix_ctors, all_ctors }
+        debug!("SplitWildcard::new({:?})", pcx.ty);
+        let cx = pcx.cx;
+        let make_range = |start, end| {
+            IntRange(
+                // `unwrap()` is ok because we know the type is an integer.
+                IntRange::from_range(cx.tcx, start, end, pcx.ty, &RangeEnd::Included).unwrap(),
+            )
+        };
+        // This determines the set of all possible constructors for the type `pcx.ty`. For numbers,
+        // arrays and slices we use ranges and variable-length slices when appropriate.
+        //
+        // If the `exhaustive_patterns` feature is enabled, we make sure to omit constructors that
+        // are statically impossible. E.g., for `Option<!>`, we do not include `Some(_)` in the
+        // returned list of constructors.
+        // Invariant: this is empty if and only if the type is uninhabited (as determined by
+        // `cx.is_uninhabited()`).
+        let all_ctors = match pcx.ty.kind() {
+            ty::Bool => smallvec![make_range(0, 1)],
+            ty::Array(sub_ty, len) if len.try_eval_usize(cx.tcx, cx.param_env).is_some() => {
+                let len = len.eval_usize(cx.tcx, cx.param_env);
+                if len != 0 && cx.is_uninhabited(sub_ty) {
+                    smallvec![]
+                } else {
+                    smallvec![Slice(Slice::new(Some(len), VarLen(0, 0)))]
+                }
+            }
+            // Treat arrays of a constant but unknown length like slices.
+            ty::Array(sub_ty, _) | ty::Slice(sub_ty) => {
+                let kind = if cx.is_uninhabited(sub_ty) { FixedLen(0) } else { VarLen(0, 0) };
+                smallvec![Slice(Slice::new(None, kind))]
+            }
+            ty::Adt(def, substs) if def.is_enum() => {
+                // If the enum is declared as `#[non_exhaustive]`, we treat it as if it had an
+                // additional "unknown" constructor.
+                // There is no point in enumerating all possible variants, because the user can't
+                // actually match against them all themselves. So we always return only the fictitious
+                // constructor.
+                // E.g., in an example like:
+                //
+                // ```
+                //     let err: io::ErrorKind = ...;
+                //     match err {
+                //         io::ErrorKind::NotFound => {},
+                //     }
+                // ```
+                //
+                // we don't want to show every possible IO error, but instead have only `_` as the
+                // witness.
+                let is_declared_nonexhaustive = cx.is_foreign_non_exhaustive_enum(pcx.ty);
+
+                // If `exhaustive_patterns` is disabled and our scrutinee is an empty enum, we treat it
+                // as though it had an "unknown" constructor to avoid exposing its emptiness. The
+                // exception is if the pattern is at the top level, because we want empty matches to be
+                // considered exhaustive.
+                let is_secretly_empty = def.variants.is_empty()
+                    && !cx.tcx.features().exhaustive_patterns
+                    && !pcx.is_top_level;
+
+                if is_secretly_empty || is_declared_nonexhaustive {
+                    smallvec![NonExhaustive]
+                } else if cx.tcx.features().exhaustive_patterns {
+                    // If `exhaustive_patterns` is enabled, we exclude variants known to be
+                    // uninhabited.
+                    def.variants
+                        .iter()
+                        .filter(|v| {
+                            !v.uninhabited_from(cx.tcx, substs, def.adt_kind(), cx.param_env)
+                                .contains(cx.tcx, cx.module)
+                        })
+                        .map(|v| Variant(v.def_id))
+                        .collect()
+                } else {
+                    def.variants.iter().map(|v| Variant(v.def_id)).collect()
+                }
+            }
+            ty::Char => {
+                smallvec![
+                    // The valid Unicode Scalar Value ranges.
+                    make_range('\u{0000}' as u128, '\u{D7FF}' as u128),
+                    make_range('\u{E000}' as u128, '\u{10FFFF}' as u128),
+                ]
+            }
+            ty::Int(_) | ty::Uint(_)
+                if pcx.ty.is_ptr_sized_integral()
+                    && !cx.tcx.features().precise_pointer_size_matching =>
+            {
+                // `usize`/`isize` are not allowed to be matched exhaustively unless the
+                // `precise_pointer_size_matching` feature is enabled. So we treat those types like
+                // `#[non_exhaustive]` enums by returning a special unmatcheable constructor.
+                smallvec![NonExhaustive]
+            }
+            &ty::Int(ity) => {
+                let bits = Integer::from_attr(&cx.tcx, SignedInt(ity)).size().bits() as u128;
+                let min = 1u128 << (bits - 1);
+                let max = min - 1;
+                smallvec![make_range(min, max)]
+            }
+            &ty::Uint(uty) => {
+                let size = Integer::from_attr(&cx.tcx, UnsignedInt(uty)).size();
+                let max = size.truncate(u128::MAX);
+                smallvec![make_range(0, max)]
+            }
+            // If `exhaustive_patterns` is disabled and our scrutinee is the never type, we cannot
+            // expose its emptiness. The exception is if the pattern is at the top level, because we
+            // want empty matches to be considered exhaustive.
+            ty::Never if !cx.tcx.features().exhaustive_patterns && !pcx.is_top_level => {
+                smallvec![NonExhaustive]
+            }
+            ty::Never => smallvec![],
+            _ if cx.is_uninhabited(pcx.ty) => smallvec![],
+            ty::Adt(..) | ty::Tuple(..) | ty::Ref(..) => smallvec![Single],
+            // This type is one for which we cannot list constructors, like `str` or `f64`.
+            _ => smallvec![NonExhaustive],
+        };
+        SplitWildcard { matrix_ctors: Vec::new(), all_ctors }
     }
 
     /// Pass a set of constructors relative to which to split this one. Don't call twice, it won't
