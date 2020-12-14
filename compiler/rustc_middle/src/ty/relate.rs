@@ -616,6 +616,7 @@ impl<'tcx> Relate<'tcx> for &'tcx ty::List<ty::Binder<ty::ExistentialPredicate<'
         // in `a`.
         let mut a_v: Vec<_> = a.into_iter().collect();
         let mut b_v: Vec<_> = b.into_iter().collect();
+        // `skip_binder` here is okay because `stable_cmp` doesn't look at binders
         a_v.sort_by(|a, b| a.skip_binder().stable_cmp(tcx, &b.skip_binder()));
         a_v.dedup();
         b_v.sort_by(|a, b| a.skip_binder().stable_cmp(tcx, &b.skip_binder()));
