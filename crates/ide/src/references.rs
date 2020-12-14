@@ -97,6 +97,9 @@ pub(crate) fn find_all_refs(
         get_struct_def_name_for_struct_literal_search(&sema, &syntax, position)
     {
         (Some(name), ReferenceKind::StructLiteral)
+    } else if let Some(name) = get_enum_def_name_for_struct_literal_search(&sema, &syntax, position)
+    {
+        (Some(name), ReferenceKind::EnumLiteral)
     } else {
         (
             sema.find_node_at_offset_with_descend::<ast::Name>(&syntax, position.offset),
@@ -193,6 +196,33 @@ fn get_struct_def_name_for_struct_literal_search(
             .is_some()
         {
             return left.ancestors().find_map(ast::Struct::cast).and_then(|l| l.name());
+        }
+    }
+    None
+}
+
+fn get_enum_def_name_for_struct_literal_search(
+    sema: &Semantics<RootDatabase>,
+    syntax: &SyntaxNode,
+    position: FilePosition,
+) -> Option<ast::Name> {
+    if let TokenAtOffset::Between(ref left, ref right) = syntax.token_at_offset(position.offset) {
+        if right.kind() != SyntaxKind::L_CURLY && right.kind() != SyntaxKind::L_PAREN {
+            return None;
+        }
+        if let Some(name) =
+            sema.find_node_at_offset_with_descend::<ast::Name>(&syntax, left.text_range().start())
+        {
+            return name.syntax().ancestors().find_map(ast::Enum::cast).and_then(|l| l.name());
+        }
+        if sema
+            .find_node_at_offset_with_descend::<ast::GenericParamList>(
+                &syntax,
+                left.text_range().start(),
+            )
+            .is_some()
+        {
+            return left.ancestors().find_map(ast::Enum::cast).and_then(|l| l.name());
         }
     }
     None
@@ -352,6 +382,91 @@ fn main() {
                 Foo STRUCT FileId(0) 0..16 7..10 Other
 
                 FileId(0) 54..57 StructLiteral
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_enum_after_space() {
+        check(
+            r#"
+enum Foo <|>{
+    A,
+    B,
+}
+fn main() {
+    let f: Foo;
+    f = Foo::A;
+}
+"#,
+            expect![[r#"
+                Foo ENUM FileId(0) 0..26 5..8 Other
+
+                FileId(0) 63..66 EnumLiteral
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_enum_before_space() {
+        check(
+            r#"
+enum Foo<|> {
+    A,
+    B,
+}
+fn main() {
+    let f: Foo;
+    f = Foo::A;
+}
+"#,
+            expect![[r#"
+                Foo ENUM FileId(0) 0..26 5..8 Other
+
+                FileId(0) 50..53 Other
+                FileId(0) 63..66 EnumLiteral
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_enum_with_generic_type() {
+        check(
+            r#"
+enum Foo<T> <|>{
+    A(T),
+    B,
+}
+fn main() {
+    let f: Foo<i8>;
+    f = Foo::A(1);
+}
+"#,
+            expect![[r#"
+                Foo ENUM FileId(0) 0..32 5..8 Other
+
+                FileId(0) 73..76 EnumLiteral
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_enum_for_tuple() {
+        check(
+            r#"
+enum Foo<|>{
+    A(i8),
+    B(i8),
+}
+fn main() {
+    let f: Foo;
+    f = Foo::A(1);
+}
+"#,
+            expect![[r#"
+                Foo ENUM FileId(0) 0..33 5..8 Other
+
+                FileId(0) 70..73 EnumLiteral
             "#]],
         );
     }

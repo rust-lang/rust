@@ -32,6 +32,7 @@ pub enum ReferenceKind {
     StructLiteral,
     RecordFieldExprOrPat,
     SelfKw,
+    EnumLiteral,
     Other,
 }
 
@@ -284,6 +285,8 @@ impl<'a> FindUsages<'a> {
                     ReferenceKind::RecordFieldExprOrPat
                 } else if is_record_lit_name_ref(&name_ref) || is_call_expr_name_ref(&name_ref) {
                     ReferenceKind::StructLiteral
+                } else if is_enum_lit_name_ref(&name_ref) {
+                    ReferenceKind::EnumLiteral
                 } else {
                     ReferenceKind::Other
                 };
@@ -401,4 +404,16 @@ fn is_record_field_expr_or_pat(name_ref: &ast::NameRef) -> bool {
     } else {
         false
     }
+}
+
+fn is_enum_lit_name_ref(name_ref: &ast::NameRef) -> bool {
+    name_ref
+        .syntax()
+        .ancestors()
+        .find_map(ast::PathExpr::cast)
+        .and_then(|p| p.path())
+        .and_then(|p| p.qualifier())
+        .and_then(|p| p.segment())
+        .map(|p| p.name_ref().as_ref() == Some(name_ref))
+        .unwrap_or(false)
 }
