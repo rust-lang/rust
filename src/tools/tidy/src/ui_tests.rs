@@ -67,14 +67,12 @@ pub fn check(path: &Path, bad: &mut bool) {
                     let testname =
                         file_path.file_name().unwrap().to_str().unwrap().split_once('.').unwrap().0;
                     if !file_path.with_file_name(testname).with_extension("rs").exists() {
-                        println!("Stray file with UI testing output: {:?}", file_path);
-                        *bad = true;
+                        tidy_error!(bad, "Stray file with UI testing output: {:?}", file_path);
                     }
 
                     if let Ok(metadata) = fs::metadata(file_path) {
                         if metadata.len() == 0 {
-                            println!("Empty file with UI testing output: {:?}", file_path);
-                            *bad = true;
+                            tidy_error!(bad, "Empty file with UI testing output: {:?}", file_path);
                         }
                     }
                 }
