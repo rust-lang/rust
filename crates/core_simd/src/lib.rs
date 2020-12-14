@@ -9,7 +9,7 @@ mod macros;
 mod fmt;
 mod intrinsics;
 mod ops;
-//mod round;
+mod round;
 
 mod masks;
 pub use masks::*;

@@ -335,8 +335,6 @@ macro_rules! float_tests {
                 }
             }
 
-            // TODO reenable after converting float ops to platform intrinsics
-            /*
             #[test]
             #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
             fn ceil_odd_floats() {
@@ -415,7 +413,6 @@ macro_rules! float_tests {
                     assert_biteq!(core_simd::$vector::round_from_int(v), expected);
                 }
             }
-            */
         }
     }
 }
