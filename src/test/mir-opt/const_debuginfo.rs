@@ -1,4 +1,4 @@
-// compile-flags: -C overflow-checks=no
+// compile-flags: -C overflow-checks=no -Zunsound-mir-opts
 
 struct Point {
     x: u32,
