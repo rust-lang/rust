@@ -88,6 +88,7 @@ register_builtin! {
     (column, Column) => column_expand,
     (file, File) => file_expand,
     (line, Line) => line_expand,
+    (module_path, ModulePath) => module_path_expand,
     (assert, Assert) => assert_expand,
     (stringify, Stringify) => stringify_expand,
     (format_args, FormatArgs) => format_args_expand,
@@ -103,6 +104,15 @@ register_builtin! {
     (include_str, IncludeStr) => include_str_expand,
     (env, Env) => env_expand,
     (option_env, OptionEnv) => option_env_expand
+}
+
+fn module_path_expand(
+    _db: &dyn AstDatabase,
+    _id: LazyMacroId,
+    _tt: &tt::Subtree,
+) -> ExpandResult<tt::Subtree> {
+    // Just return a dummy result.
+    ExpandResult::ok(quote! { "module::path" })
 }
 
 fn line_expand(

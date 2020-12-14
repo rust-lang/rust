@@ -188,6 +188,7 @@ pub mod known {
         column,
         compile_error,
         line,
+        module_path,
         assert,
         stringify,
         concat,
