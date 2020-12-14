@@ -542,6 +542,26 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                 err.span_label(base_span, fallback_label);
             }
         }
+        if let Some(err_code) = &err.code {
+            if err_code == &rustc_errors::error_code!(E0425) {
+                for label_rib in &self.label_ribs {
+                    for (label_ident, _) in &label_rib.bindings {
+                        if format!("'{}", ident) == label_ident.to_string() {
+                            let msg = "a label with a similar name exists";
+                            // FIXME: consider only emitting this suggestion if a label would be valid here
+                            // which is pretty much only the case for `break` expressions.
+                            err.span_suggestion(
+                                span,
+                                &msg,
+                                label_ident.name.to_string(),
+                                Applicability::MaybeIncorrect,
+                            );
+                        }
+                    }
+                }
+            }
+        }
+
         (err, candidates)
     }
 
