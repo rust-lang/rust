@@ -128,6 +128,12 @@ fn bad_doctests() {}
 /// ```
 fn no_false_positives() {}
 
+/// Yields a parse error when interpreted as rust code:
+/// ```
+/// r#"hi"
+/// ```
+fn issue_6022() {}
+
 fn main() {
     bad_doctests();
     no_false_positives();

@@ -451,66 +451,72 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
 }
 
 fn check_code(cx: &LateContext<'_>, text: &str, span: Span) {
-    fn has_needless_main(code: &str) -> bool {
-        let filename = FileName::anon_source_code(code);
+    fn has_needless_main(cx: &LateContext<'_>, code: &str) -> bool {
+        rustc_driver::catch_fatal_errors(|| {
+            rustc_span::with_session_globals(cx.tcx.sess.edition(), || {
+                let filename = FileName::anon_source_code(code);
 
-        let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
-        let emitter = EmitterWriter::new(box io::sink(), None, false, false, false, None, false);
-        let handler = Handler::with_emitter(false, None, box emitter);
-        let sess = ParseSess::with_span_handler(handler, sm);
+                let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
+                let emitter = EmitterWriter::new(box io::sink(), None, false, false, false, None, false);
+                let handler = Handler::with_emitter(false, None, box emitter);
+                let sess = ParseSess::with_span_handler(handler, sm);
 
-        let mut parser = match maybe_new_parser_from_source_str(&sess, filename, code.into()) {
-            Ok(p) => p,
-            Err(errs) => {
-                for mut err in errs {
-                    err.cancel();
-                }
-                return false;
-            },
-        };
-
-        let mut relevant_main_found = false;
-        loop {
-            match parser.parse_item() {
-                Ok(Some(item)) => match &item.kind {
-                    // Tests with one of these items are ignored
-                    ItemKind::Static(..)
-                    | ItemKind::Const(..)
-                    | ItemKind::ExternCrate(..)
-                    | ItemKind::ForeignMod(..) => return false,
-                    // We found a main function ...
-                    ItemKind::Fn(_, sig, _, Some(block)) if item.ident.name == sym::main => {
-                        let is_async = matches!(sig.header.asyncness, Async::Yes { .. });
-                        let returns_nothing = match &sig.decl.output {
-                            FnRetTy::Default(..) => true,
-                            FnRetTy::Ty(ty) if ty.kind.is_unit() => true,
-                            _ => false,
-                        };
-
-                        if returns_nothing && !is_async && !block.stmts.is_empty() {
-                            // This main function should be linted, but only if there are no other functions
-                            relevant_main_found = true;
-                        } else {
-                            // This main function should not be linted, we're done
-                            return false;
+                let mut parser = match maybe_new_parser_from_source_str(&sess, filename, code.into()) {
+                    Ok(p) => p,
+                    Err(errs) => {
+                        for mut err in errs {
+                            err.cancel();
                         }
+                        return false;
                     },
-                    // Another function was found; this case is ignored too
-                    ItemKind::Fn(..) => return false,
-                    _ => {},
-                },
-                Ok(None) => break,
-                Err(mut e) => {
-                    e.cancel();
-                    return false;
-                },
-            }
-        }
+                };
 
-        relevant_main_found
+                let mut relevant_main_found = false;
+                loop {
+                    match parser.parse_item() {
+                        Ok(Some(item)) => match &item.kind {
+                            // Tests with one of these items are ignored
+                            ItemKind::Static(..)
+                            | ItemKind::Const(..)
+                            | ItemKind::ExternCrate(..)
+                            | ItemKind::ForeignMod(..) => return false,
+                            // We found a main function ...
+                            ItemKind::Fn(_, sig, _, Some(block)) if item.ident.name == sym::main => {
+                                let is_async = matches!(sig.header.asyncness, Async::Yes { .. });
+                                let returns_nothing = match &sig.decl.output {
+                                    FnRetTy::Default(..) => true,
+                                    FnRetTy::Ty(ty) if ty.kind.is_unit() => true,
+                                    _ => false,
+                                };
+
+                                if returns_nothing && !is_async && !block.stmts.is_empty() {
+                                    // This main function should be linted, but only if there are no other functions
+                                    relevant_main_found = true;
+                                } else {
+                                    // This main function should not be linted, we're done
+                                    return false;
+                                }
+                            },
+                            // Another function was found; this case is ignored too
+                            ItemKind::Fn(..) => return false,
+                            _ => {},
+                        },
+                        Ok(None) => break,
+                        Err(mut e) => {
+                            e.cancel();
+                            return false;
+                        },
+                    }
+                }
+
+                relevant_main_found
+            })
+        })
+        .ok()
+        .unwrap_or_default()
     }
 
-    if has_needless_main(text) {
+    if has_needless_main(cx, text) {
         span_lint(cx, NEEDLESS_DOCTEST_MAIN, span, "needless `fn main` in doctest");
     }
 }
