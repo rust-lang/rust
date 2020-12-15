@@ -14,6 +14,7 @@ use rustc_middle::ty;
 use rustc_parse::maybe_new_parser_from_source_str;
 use rustc_session::parse::ParseSess;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
+use rustc_span::edition::Edition;
 use rustc_span::source_map::{BytePos, FilePathMapping, MultiSpan, SourceMap, Span};
 use rustc_span::{sym, FileName, Pos};
 use std::io;
@@ -377,7 +378,7 @@ fn check_attrs<'a>(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs
     check_doc(cx, valid_idents, events, &spans)
 }
 
-const RUST_CODE: &[&str] = &["rust", "no_run", "should_panic", "compile_fail", "edition2018"];
+const RUST_CODE: &[&str] = &["rust", "no_run", "should_panic", "compile_fail"];
 
 fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize>)>>(
     cx: &LateContext<'_>,
@@ -400,13 +401,21 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
     let mut in_link = None;
     let mut in_heading = false;
     let mut is_rust = false;
+    let mut edition = None;
     for (event, range) in events {
         match event {
             Start(CodeBlock(ref kind)) => {
                 in_code = true;
                 if let CodeBlockKind::Fenced(lang) = kind {
-                    is_rust =
-                        lang.is_empty() || !lang.contains("ignore") && lang.split(',').any(|i| RUST_CODE.contains(&i));
+                    let infos = lang.split(',').collect::<Vec<_>>();
+                    is_rust = !infos.iter().any(|&i| i == "ignore")
+                        && infos
+                            .iter()
+                            .any(|i| i.is_empty() || i.starts_with("edition") || RUST_CODE.contains(&i));
+                    edition = infos
+                        .iter()
+                        .find_map(|i| i.starts_with("edition").then(|| i[7..].parse::<Edition>().ok()))
+                        .flatten();
                 }
             },
             End(CodeBlock(_)) => {
@@ -436,7 +445,8 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                 let (begin, span) = spans[index];
                 if in_code {
                     if is_rust {
-                        check_code(cx, &text, span);
+                        let edition = edition.unwrap_or_else(|| cx.tcx.sess.edition());
+                        check_code(cx, &text, edition, span);
                     }
                 } else {
                     // Adjust for the beginning of the current `Event`
@@ -450,10 +460,10 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
     headers
 }
 
-fn check_code(cx: &LateContext<'_>, text: &str, span: Span) {
-    fn has_needless_main(cx: &LateContext<'_>, code: &str) -> bool {
+fn check_code(cx: &LateContext<'_>, text: &str, edition: Edition, span: Span) {
+    fn has_needless_main(code: &str, edition: Edition) -> bool {
         rustc_driver::catch_fatal_errors(|| {
-            rustc_span::with_session_globals(cx.tcx.sess.edition(), || {
+            rustc_span::with_session_globals(edition, || {
                 let filename = FileName::anon_source_code(code);
 
                 let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
@@ -516,7 +526,7 @@ fn check_code(cx: &LateContext<'_>, text: &str, span: Span) {
         .unwrap_or_default()
     }
 
-    if has_needless_main(cx, text) {
+    if has_needless_main(text, edition) {
         span_lint(cx, NEEDLESS_DOCTEST_MAIN, span, "needless `fn main` in doctest");
     }
 }

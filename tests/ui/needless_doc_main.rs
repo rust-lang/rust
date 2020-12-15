@@ -10,7 +10,7 @@
 /// ```
 ///
 /// With an explicit return type it should lint too
-/// ```
+/// ```edition2015
 /// fn main() -> () {
 ///     unimplemented!();
 /// }
@@ -39,7 +39,7 @@ fn bad_doctests() {}
 /// ```
 ///
 /// This shouldn't lint either, because main is async:
-/// ```
+/// ```edition2018
 /// async fn main() {
 ///     assert_eq!(42, ANSWER);
 /// }
