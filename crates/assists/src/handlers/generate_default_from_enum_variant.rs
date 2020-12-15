@@ -106,15 +106,15 @@ mod tests {
         check_assist(
             generate_default_from_enum_variant,
             r#"enum Variant {
-                Undefined,
-                Minor<|>,
-                Major,
-            }"#,
+    Undefined,
+    Minor<|>,
+    Major,
+}"#,
             r#"enum Variant {
-                Undefined,
-                Minor,
-                Major,
-            }
+    Undefined,
+    Minor,
+    Major,
+}
 
 impl Default for Variant {
     fn default() -> Self {
@@ -129,16 +129,16 @@ impl Default for Variant {
         mark::check!(test_gen_default_impl_already_exists);
         check_not_applicable(
             r#"enum Variant {
-                Undefined,
-                Minor<|>,
-                Major,
-            }
+    Undefined,
+    Minor<|>,
+    Major,
+}
 
-            impl Default for Variant {
-                fn default() -> Self {
-                    Self::Minor
-                }
-            }"#,
+impl Default for Variant {
+    fn default() -> Self {
+        Self::Minor
+    }
+}"#,
         );
     }
 
@@ -147,10 +147,10 @@ impl Default for Variant {
         mark::check!(test_gen_default_on_non_unit_variant_not_implemented);
         check_not_applicable(
             r#"enum Variant {
-            Undefined,
-            Minor(u32)<|>,
-            Major,
-        }"#,
+    Undefined,
+    Minor(u32)<|>,
+    Major,
+}"#,
         );
     }
 
