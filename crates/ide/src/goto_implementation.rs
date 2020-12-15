@@ -221,6 +221,8 @@ struct Foo<|>;
 mod marker {
     trait Copy {}
 }
+#[rustc_builtin_macro]
+macro Copy {}
 "#,
         );
     }

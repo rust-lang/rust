@@ -69,13 +69,13 @@ pub fn find_builtin_macro(
 
     match kind {
         Either::Left(kind) => Some(MacroDefId {
-            krate: Some(krate),
+            krate,
             ast_id: Some(ast_id),
             kind: MacroDefKind::BuiltIn(kind),
             local_inner: false,
         }),
         Either::Right(kind) => Some(MacroDefId {
-            krate: Some(krate),
+            krate,
             ast_id: Some(ast_id),
             kind: MacroDefKind::BuiltInEager(kind),
             local_inner: false,
@@ -534,7 +534,7 @@ mod tests {
             Either::Left(expander) => {
                 // the first one should be a macro_rules
                 let def = MacroDefId {
-                    krate: Some(CrateId(0)),
+                    krate: CrateId(0),
                     ast_id: Some(AstId::new(file_id.into(), ast_id_map.ast_id(&macro_rules))),
                     kind: MacroDefKind::BuiltIn(expander),
                     local_inner: false,
@@ -555,7 +555,7 @@ mod tests {
             Either::Right(expander) => {
                 // the first one should be a macro_rules
                 let def = MacroDefId {
-                    krate: Some(krate),
+                    krate,
                     ast_id: Some(AstId::new(file_id.into(), ast_id_map.ast_id(&macro_rules))),
                     kind: MacroDefKind::BuiltInEager(expander),
                     local_inner: false,

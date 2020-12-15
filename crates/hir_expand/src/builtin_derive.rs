@@ -8,7 +8,7 @@ use syntax::{
     match_ast,
 };
 
-use crate::{db::AstDatabase, name, quote, LazyMacroId, MacroDefId, MacroDefKind};
+use crate::{db::AstDatabase, name, quote, AstId, CrateId, LazyMacroId, MacroDefId, MacroDefKind};
 
 macro_rules! register_builtin {
     ( $($trait:ident => $expand:ident),* ) => {
@@ -29,16 +29,15 @@ macro_rules! register_builtin {
                 };
                 expander(db, id, tt)
             }
+
+            fn find_by_name(name: &name::Name) -> Option<Self> {
+                match name {
+                    $( id if id == &name::name![$trait] => Some(BuiltinDeriveExpander::$trait), )*
+                     _ => None,
+                }
+            }
         }
 
-        pub fn find_builtin_derive(ident: &name::Name) -> Option<MacroDefId> {
-            let kind = match ident {
-                $( id if id == &name::name![$trait] => BuiltinDeriveExpander::$trait, )*
-                 _ => return None,
-            };
-
-            Some(MacroDefId { krate: None, ast_id: None, kind: MacroDefKind::BuiltInDerive(kind), local_inner: false })
-        }
     };
 }
 
@@ -52,6 +51,20 @@ register_builtin! {
     PartialOrd => partial_ord_expand,
     Eq => eq_expand,
     PartialEq => partial_eq_expand
+}
+
+pub fn find_builtin_derive(
+    ident: &name::Name,
+    krate: CrateId,
+    ast_id: AstId<ast::Macro>,
+) -> Option<MacroDefId> {
+    let expander = BuiltinDeriveExpander::find_by_name(ident)?;
+    Some(MacroDefId {
+        krate,
+        ast_id: Some(ast_id),
+        kind: MacroDefKind::BuiltInDerive(expander),
+        local_inner: false,
+    })
 }
 
 struct BasicAdtInfo {
@@ -261,7 +274,7 @@ mod tests {
     use super::*;
 
     fn expand_builtin_derive(s: &str, name: Name) -> String {
-        let def = find_builtin_derive(&name).unwrap();
+        let expander = BuiltinDeriveExpander::find_by_name(&name).unwrap();
         let fixture = format!(
             r#"//- /main.rs crate:main deps:core
 <|>
@@ -283,7 +296,12 @@ mod tests {
         let attr_id = AstId::new(file_id.into(), ast_id_map.ast_id(&items[0]));
 
         let loc = MacroCallLoc {
-            def,
+            def: MacroDefId {
+                krate: CrateId(0),
+                ast_id: None,
+                kind: MacroDefKind::BuiltInDerive(expander),
+                local_inner: false,
+            },
             krate: CrateId(0),
             kind: MacroCallKind::Attr(attr_id, name.to_string()),
         };

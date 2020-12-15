@@ -309,13 +309,13 @@ impl DefCollector<'_> {
         let macro_def = match self.proc_macros.iter().find(|(n, _)| n == name) {
             Some((_, expander)) => MacroDefId {
                 ast_id: None,
-                krate: Some(self.def_map.krate),
+                krate: self.def_map.krate,
                 kind: MacroDefKind::ProcMacro(*expander),
                 local_inner: false,
             },
             None => MacroDefId {
                 ast_id: None,
-                krate: Some(self.def_map.krate),
+                krate: self.def_map.krate,
                 kind: MacroDefKind::ProcMacro(ProcMacroExpander::dummy(self.def_map.krate)),
                 local_inner: false,
             },
@@ -784,14 +784,6 @@ impl DefCollector<'_> {
         directive: &DeriveDirective,
         path: &ModPath,
     ) -> Option<MacroDefId> {
-        if let Some(name) = path.as_ident() {
-            // FIXME this should actually be handled with the normal name
-            // resolution; the std lib defines built-in stubs for the derives,
-            // but these are new-style `macro`s, which we don't support yet
-            if let Some(def_id) = find_builtin_derive(name) {
-                return Some(def_id);
-            }
-        }
         let resolved_res = self.def_map.resolve_path_fp_with_macro(
             self.db,
             ResolveMode::Other,
@@ -984,7 +976,9 @@ impl ModCollector<'_, '_> {
                     // to define builtin macros, so we support at least that part.
                     if mac.is_builtin {
                         let krate = self.def_collector.def_map.krate;
-                        if let Some(macro_id) = find_builtin_macro(&mac.name, krate, ast_id) {
+                        let macro_id = find_builtin_macro(&mac.name, krate, ast_id)
+                            .or_else(|| find_builtin_derive(&mac.name, krate, ast_id));
+                        if let Some(macro_id) = macro_id {
                             let vis = self
                                 .def_collector
                                 .def_map
@@ -1326,7 +1320,7 @@ impl ModCollector<'_, '_> {
         // Case 2: normal `macro_rules!` macro
         let macro_id = MacroDefId {
             ast_id: Some(ast_id),
-            krate: Some(self.def_collector.def_map.krate),
+            krate: self.def_collector.def_map.krate,
             kind: MacroDefKind::Declarative,
             local_inner: mac.is_local_inner,
         };

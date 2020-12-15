@@ -158,7 +158,7 @@ impl SourceToDefCtx<'_, '_> {
         let krate = self.file_to_def(file_id)?.krate;
         let file_ast_id = self.db.ast_id_map(src.file_id).ast_id(&src.value);
         let ast_id = Some(AstId::new(src.file_id, file_ast_id.upcast()));
-        Some(MacroDefId { krate: Some(krate), ast_id, kind, local_inner: false })
+        Some(MacroDefId { krate, ast_id, kind, local_inner: false })
     }
 
     pub(super) fn find_container(&mut self, src: InFile<&SyntaxNode>) -> Option<ChildContainer> {

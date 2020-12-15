@@ -686,6 +686,8 @@ mod clone {
     trait Clone {
         fn clone(&self) -> Self;
     }
+    #[rustc_builtin_macro]
+    macro Clone {}
 }
 "#,
     );
@@ -702,6 +704,8 @@ mod clone {
     trait Clone {
         fn clone(&self) -> Self;
     }
+    #[rustc_builtin_macro]
+    macro Clone {}
 }
 #[derive(Clone)]
 pub struct S;
@@ -737,6 +741,8 @@ mod clone {
     trait Clone {
         fn clone(&self) -> Self;
     }
+    #[rustc_builtin_macro]
+    macro Clone {}
 }
 "#,
     );

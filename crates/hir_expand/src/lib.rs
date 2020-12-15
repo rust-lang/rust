@@ -224,13 +224,7 @@ impl From<EagerMacroId> for MacroCallId {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct MacroDefId {
-    // FIXME: krate and ast_id are currently optional because we don't have a
-    // definition location for built-in derives. There is one, though: the
-    // standard library defines them. The problem is that it uses the new
-    // `macro` syntax for this, which we don't support yet. As soon as we do
-    // (which will probably require touching this code), we can instead use
-    // that (and also remove the hacks for resolving built-in derives).
-    pub krate: Option<CrateId>,
+    pub krate: CrateId,
     pub ast_id: Option<AstId<ast::Macro>>,
     pub kind: MacroDefKind,
 
