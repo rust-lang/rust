@@ -2327,7 +2327,10 @@ where
     I: TrustedLen<Item = T>,
 {
     fn from_iter(iterator: I) -> Self {
-        let mut vector = Vec::new();
+        let mut vector = match iterator.size_hint() {
+            (_, Some(upper)) => Vec::with_capacity(upper),
+            _ => Vec::new(),
+        };
         // must delegate to spec_extend() since extend() itself delegates
         // to spec_from for empty Vecs
         vector.spec_extend(iterator);
