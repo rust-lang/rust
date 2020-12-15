@@ -25,7 +25,15 @@
           StorageDead(_3);                 // scope 1 at $DIR/lower_intrinsics.rs:19:40: 19:41
           StorageDead(_2);                 // scope 0 at $DIR/lower_intrinsics.rs:19:43: 19:44
           _0 = const ();                   // scope 0 at $DIR/lower_intrinsics.rs:18:24: 20:2
+          goto -> bb2;                     // scope 0 at $DIR/lower_intrinsics.rs:20:1: 20:2
+      }
+  
+      bb2: {
           return;                          // scope 0 at $DIR/lower_intrinsics.rs:20:2: 20:2
+      }
+  
+      bb3 (cleanup): {
+          resume;                          // scope 0 at $DIR/lower_intrinsics.rs:18:1: 20:2
       }
   }
   
