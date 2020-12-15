@@ -186,7 +186,7 @@ use rustc_ast::{self as ast, BinOpKind, EnumDef, Expr, Generics, PatKind};
 use rustc_ast::{GenericArg, GenericParamKind, VariantData};
 use rustc_attr as attr;
 use rustc_data_structures::map_in_place::MapInPlace;
-use rustc_expand::base::{Annotatable, ExtCtxt};
+use rustc_expand::base::{Annotatable, BuiltinDerive, ExtCtxt};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::Span;
 
@@ -410,7 +410,8 @@ impl<'a> TraitDef<'a> {
                     _ => unreachable!(),
                 };
                 let container_id = cx.current_expansion.id.expn_data().parent;
-                let always_copy = has_no_type_params && cx.resolver.has_derive_copy(container_id);
+                let always_copy =
+                    has_no_type_params && cx.resolver.has_derive(container_id, BuiltinDerive::Copy);
                 let use_temporaries = is_packed && always_copy;
 
                 let newitem = match item.kind {

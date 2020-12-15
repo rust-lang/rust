@@ -6,7 +6,7 @@ use crate::deriving::{path_local, path_std, pathvec_std};
 
 use rustc_ast::ptr::P;
 use rustc_ast::{self as ast, BinOpKind, Expr, MetaItem};
-use rustc_expand::base::{Annotatable, ExtCtxt};
+use rustc_expand::base::{Annotatable, BuiltinDerive, ExtCtxt};
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::Span;
 
@@ -63,9 +63,12 @@ pub fn expand_deriving_partial_ord(
     };
 
     // avoid defining extra methods if we can
-    // c-like enums, enums without any fields and structs without fields
-    // can safely define only `partial_cmp`.
-    let methods = if is_type_without_fields(item) {
+    // c-like enums, enums without any fields, structs without fields,
+    // as well as types that derive `PartialEq` can safely define only `partial_cmp`.
+    let container_id = cx.current_expansion.id.expn_data().parent;
+    let methods = if is_type_without_fields(item)
+        || cx.resolver.has_derive(container_id, BuiltinDerive::PartialEq)
+    {
         vec![partial_cmp_def]
     } else {
         vec![

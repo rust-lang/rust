@@ -14,7 +14,9 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::ptr_key::PtrKey;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::struct_span_err;
-use rustc_expand::base::{Indeterminate, InvocationRes, ResolverExpand, SyntaxExtension};
+use rustc_expand::base::{
+    BuiltinDerive, Indeterminate, InvocationRes, ResolverExpand, SyntaxExtension,
+};
 use rustc_expand::compile_declarative_macro;
 use rustc_expand::expand::{AstFragment, Invocation, InvocationKind};
 use rustc_feature::is_builtin_attr_name;
@@ -285,8 +287,11 @@ impl<'a> ResolverExpand for Resolver<'a> {
                                 helper_attrs.extend(
                                     ext.helper_attrs.iter().map(|name| Ident::new(*name, span)),
                                 );
-                                if ext.is_derive_copy {
-                                    self.containers_deriving_copy.insert(invoc_id);
+                                if let Some(derive) = ext.derive {
+                                    self.containers_derives
+                                        .entry(invoc_id)
+                                        .or_default()
+                                        .insert(derive);
                                 }
                                 ext
                             }
@@ -347,8 +352,8 @@ impl<'a> ResolverExpand for Resolver<'a> {
             .map_or(ast::CRATE_NODE_ID, |id| self.def_id_to_node_id[*id])
     }
 
-    fn has_derive_copy(&self, expn_id: ExpnId) -> bool {
-        self.containers_deriving_copy.contains(&expn_id)
+    fn has_derive(&self, expn_id: ExpnId, derive: BuiltinDerive) -> bool {
+        self.containers_derives.get(&expn_id).map(|d| d.contains(&derive)).unwrap_or(false)
     }
 
     // The function that implements the resolution logic of `#[cfg_accessible(path)]`.

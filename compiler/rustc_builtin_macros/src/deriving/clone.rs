@@ -4,7 +4,7 @@ use crate::deriving::path_std;
 
 use rustc_ast::ptr::P;
 use rustc_ast::{self as ast, Expr, GenericArg, Generics, ItemKind, MetaItem, VariantData};
-use rustc_expand::base::{Annotatable, ExtCtxt};
+use rustc_expand::base::{Annotatable, BuiltinDerive, ExtCtxt};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::Span;
 
@@ -37,7 +37,7 @@ pub fn expand_deriving_clone(
             ItemKind::Struct(_, Generics { ref params, .. })
             | ItemKind::Enum(_, Generics { ref params, .. }) => {
                 let container_id = cx.current_expansion.id.expn_data().parent;
-                if cx.resolver.has_derive_copy(container_id)
+                if cx.resolver.has_derive(container_id, BuiltinDerive::Copy)
                     && !params.iter().any(|param| match param.kind {
                         ast::GenericParamKind::Type { .. } => true,
                         _ => false,

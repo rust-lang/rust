@@ -726,8 +726,8 @@ pub struct SyntaxExtension {
     /// Built-in macros have a couple of special properties like availability
     /// in `#[no_implicit_prelude]` modules, so we have to keep this flag.
     pub is_builtin: bool,
-    /// We have to identify macros providing a `Copy` impl early for compatibility reasons.
-    pub is_derive_copy: bool,
+    /// Keeps track of which builtin derives (if any) this is
+    pub derive: Option<BuiltinDerive>,
 }
 
 impl SyntaxExtension {
@@ -756,7 +756,7 @@ impl SyntaxExtension {
             helper_attrs: Vec::new(),
             edition,
             is_builtin: false,
-            is_derive_copy: false,
+            derive: None,
             kind,
         }
     }
@@ -789,6 +789,7 @@ impl SyntaxExtension {
                 .span_diagnostic
                 .span_err(span, "macros cannot have const stability attributes");
         }
+        let derive = if is_builtin { BuiltinDerive::from_name(name) } else { None };
 
         SyntaxExtension {
             kind,
@@ -801,7 +802,7 @@ impl SyntaxExtension {
             helper_attrs,
             edition,
             is_builtin,
-            is_derive_copy: is_builtin && name == sym::Copy,
+            derive,
         }
     }
 
@@ -855,6 +856,25 @@ impl SyntaxExtension {
     }
 }
 
+/// Built-in derives
+/// Only derives that are being used for special casing expansion are represented here
+#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq)]
+pub enum BuiltinDerive {
+    Copy,
+    PartialEq,
+}
+
+impl BuiltinDerive {
+    /// Possibly turn a symbol into a built-in derive
+    fn from_name(name: Symbol) -> Option<Self> {
+        match name {
+            sym::Copy => Some(Self::Copy),
+            sym::PartialEq => Some(Self::PartialEq),
+            _ => None,
+        }
+    }
+}
+
 /// Result of resolving a macro invocation.
 pub enum InvocationRes {
     Single(Lrc<SyntaxExtension>),
@@ -894,8 +914,8 @@ pub trait ResolverExpand {
     fn lint_node_id(&mut self, expn_id: ExpnId) -> NodeId;
 
     // Resolver interfaces for specific built-in macros.
-    /// Does `#[derive(...)]` attribute with the given `ExpnId` have built-in `Copy` inside it?
-    fn has_derive_copy(&self, expn_id: ExpnId) -> bool;
+    /// Does `#[derive(...)]` attribute with the given `ExpnId` have the given built-in derive inside it?
+    fn has_derive(&self, expn_id: ExpnId, derive: BuiltinDerive) -> bool;
     /// Path resolution logic for `#[cfg_accessible(path)]`.
     fn cfg_accessible(&mut self, expn_id: ExpnId, path: &ast::Path) -> Result<bool, Indeterminate>;
 }

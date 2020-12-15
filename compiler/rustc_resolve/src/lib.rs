@@ -33,7 +33,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_data_structures::ptr_key::PtrKey;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
-use rustc_expand::base::SyntaxExtension;
+use rustc_expand::base::{BuiltinDerive, SyntaxExtension};
 use rustc_hir::def::Namespace::*;
 use rustc_hir::def::{self, CtorOf, DefKind, NonMacroAttrKind, PartialRes};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, CRATE_DEF_INDEX};
@@ -967,10 +967,10 @@ pub struct Resolver<'a> {
     multi_segment_macro_resolutions:
         Vec<(Vec<Segment>, Span, MacroKind, ParentScope<'a>, Option<Res>)>,
     builtin_attrs: Vec<(Ident, ParentScope<'a>)>,
-    /// `derive(Copy)` marks items they are applied to so they are treated specially later.
+    /// built-in derives mark items they are applied to so they are treated specially later.
     /// Derive macros cannot modify the item themselves and have to store the markers in the global
     /// context, so they attach the markers to derive container IDs using this resolver table.
-    containers_deriving_copy: FxHashSet<ExpnId>,
+    containers_derives: FxHashMap<ExpnId, FxHashSet<BuiltinDerive>>,
     /// Parent scopes in which the macros were invoked.
     /// FIXME: `derives` are missing in these parent scopes and need to be taken from elsewhere.
     invocation_parent_scopes: FxHashMap<ExpnId, ParentScope<'a>>,
@@ -1318,7 +1318,7 @@ impl<'a> Resolver<'a> {
             single_segment_macro_resolutions: Default::default(),
             multi_segment_macro_resolutions: Default::default(),
             builtin_attrs: Default::default(),
-            containers_deriving_copy: Default::default(),
+            containers_derives: Default::default(),
             active_features: features
                 .declared_lib_features
                 .iter()
