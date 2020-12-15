@@ -82,32 +82,28 @@ SOURCE_FILE@0..167
           L_CURLY@102..103 "{"
           R_CURLY@103..104 "}"
       WHITESPACE@104..109 "\n    "
-      EXPR_STMT@109..152
-        MACRO_CALL@109..152
-          PATH@109..120
-            PATH_SEGMENT@109..120
-              NAME_REF@109..120
-                IDENT@109..120 "macro_rules"
-          BANG@120..121 "!"
-          WHITESPACE@121..122 " "
-          NAME@122..126
-            IDENT@122..126 "test"
-          WHITESPACE@126..127 " "
-          TOKEN_TREE@127..152
-            L_CURLY@127..128 "{"
-            WHITESPACE@128..138 "\n         "
-            TOKEN_TREE@138..140
-              L_PAREN@138..139 "("
-              R_PAREN@139..140 ")"
-            WHITESPACE@140..141 " "
-            EQ@141..142 "="
-            R_ANGLE@142..143 ">"
-            WHITESPACE@143..144 " "
-            TOKEN_TREE@144..146
-              L_CURLY@144..145 "{"
-              R_CURLY@145..146 "}"
-            WHITESPACE@146..151 "\n    "
-            R_CURLY@151..152 "}"
+      MACRO_RULES@109..152
+        MACRO_RULES_KW@109..120 "macro_rules"
+        BANG@120..121 "!"
+        WHITESPACE@121..122 " "
+        NAME@122..126
+          IDENT@122..126 "test"
+        WHITESPACE@126..127 " "
+        TOKEN_TREE@127..152
+          L_CURLY@127..128 "{"
+          WHITESPACE@128..138 "\n         "
+          TOKEN_TREE@138..140
+            L_PAREN@138..139 "("
+            R_PAREN@139..140 ")"
+          WHITESPACE@140..141 " "
+          EQ@141..142 "="
+          R_ANGLE@142..143 ">"
+          WHITESPACE@143..144 " "
+          TOKEN_TREE@144..146
+            L_CURLY@144..145 "{"
+            R_CURLY@145..146 "}"
+          WHITESPACE@146..151 "\n    "
+          R_CURLY@151..152 "}"
       WHITESPACE@152..157 "\n    "
       MACRO_CALL@157..164
         PATH@157..161

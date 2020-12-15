@@ -382,21 +382,6 @@ impl ast::Visibility {
     }
 }
 
-impl ast::MacroCall {
-    pub fn is_macro_rules(&self) -> Option<ast::Name> {
-        let name_ref = self.path()?.segment()?.name_ref()?;
-        if name_ref.text() == "macro_rules" {
-            self.name()
-        } else {
-            None
-        }
-    }
-
-    pub fn is_bang(&self) -> bool {
-        self.is_macro_rules().is_none()
-    }
-}
-
 impl ast::LifetimeParam {
     pub fn lifetime_bounds(&self) -> impl Iterator<Item = SyntaxToken> {
         self.syntax()
@@ -476,5 +461,5 @@ impl ast::DocCommentsOwner for ast::Static {}
 impl ast::DocCommentsOwner for ast::Const {}
 impl ast::DocCommentsOwner for ast::TypeAlias {}
 impl ast::DocCommentsOwner for ast::Impl {}
-impl ast::DocCommentsOwner for ast::MacroCall {}
+impl ast::DocCommentsOwner for ast::MacroRules {}
 impl ast::DocCommentsOwner for ast::Use {}

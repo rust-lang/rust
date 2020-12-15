@@ -228,7 +228,7 @@ pub struct MacroDefId {
     // (which will probably require touching this code), we can instead use
     // that (and also remove the hacks for resolving built-in derives).
     pub krate: Option<CrateId>,
-    pub ast_id: Option<AstId<ast::MacroCall>>,
+    pub ast_id: Option<AstId<ast::MacroRules>>,
     pub kind: MacroDefKind,
 
     pub local_inner: bool,

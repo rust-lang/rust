@@ -723,7 +723,7 @@ to_def_impls![
     (crate::EnumVariant, ast::Variant, enum_variant_to_def),
     (crate::TypeParam, ast::TypeParam, type_param_to_def),
     (crate::LifetimeParam, ast::LifetimeParam, lifetime_param_to_def),
-    (crate::MacroDef, ast::MacroCall, macro_call_to_def), // this one is dubious, not all calls are macros
+    (crate::MacroDef, ast::MacroRules, macro_rules_to_def),
     (crate::Local, ast::IdentPat, bind_pat_to_def),
 ];
 

@@ -566,66 +566,52 @@ impl ExprCollector<'_> {
         syntax_ptr: AstPtr<ast::Expr>,
         mut collector: F,
     ) {
-        if let Some(name) = e.is_macro_rules().map(|it| it.as_name()) {
-            let mac = MacroDefId {
-                krate: Some(self.expander.module.krate),
-                ast_id: Some(self.expander.ast_id(&e)),
-                kind: MacroDefKind::Declarative,
-                local_inner: false,
-            };
-            self.body.item_scope.define_legacy_macro(name, mac);
+        // File containing the macro call. Expansion errors will be attached here.
+        let outer_file = self.expander.current_file_id;
 
-            // FIXME: do we still need to allocate this as missing ?
-            collector(self, None);
-        } else {
-            // File containing the macro call. Expansion errors will be attached here.
-            let outer_file = self.expander.current_file_id;
+        let macro_call = self.expander.to_source(AstPtr::new(&e));
+        let res = self.expander.enter_expand(self.db, Some(&self.body.item_scope), e);
 
-            let macro_call = self.expander.to_source(AstPtr::new(&e));
-            let res = self.expander.enter_expand(self.db, Some(&self.body.item_scope), e);
-
-            match &res.err {
-                Some(ExpandError::UnresolvedProcMacro) => {
-                    self.source_map.diagnostics.push(BodyDiagnostic::UnresolvedProcMacro(
-                        UnresolvedProcMacro {
-                            file: outer_file,
-                            node: syntax_ptr.into(),
-                            precise_location: None,
-                            macro_name: None,
-                        },
-                    ));
-                }
-                Some(err) => {
-                    self.source_map.diagnostics.push(BodyDiagnostic::MacroError(MacroError {
+        match &res.err {
+            Some(ExpandError::UnresolvedProcMacro) => {
+                self.source_map.diagnostics.push(BodyDiagnostic::UnresolvedProcMacro(
+                    UnresolvedProcMacro {
                         file: outer_file,
                         node: syntax_ptr.into(),
-                        message: err.to_string(),
-                    }));
-                }
-                None => {}
+                        precise_location: None,
+                        macro_name: None,
+                    },
+                ));
             }
-
-            match res.value {
-                Some((mark, expansion)) => {
-                    // FIXME: Statements are too complicated to recover from error for now.
-                    // It is because we don't have any hygenine for local variable expansion right now.
-                    if T::can_cast(syntax::SyntaxKind::MACRO_STMTS) && res.err.is_some() {
-                        self.expander.exit(self.db, mark);
-                        collector(self, None);
-                    } else {
-                        self.source_map
-                            .expansions
-                            .insert(macro_call, self.expander.current_file_id);
-
-                        let item_tree = self.db.item_tree(self.expander.current_file_id);
-                        self.item_trees.insert(self.expander.current_file_id, item_tree);
-
-                        collector(self, Some(expansion));
-                        self.expander.exit(self.db, mark);
-                    }
-                }
-                None => collector(self, None),
+            Some(err) => {
+                self.source_map.diagnostics.push(BodyDiagnostic::MacroError(MacroError {
+                    file: outer_file,
+                    node: syntax_ptr.into(),
+                    message: err.to_string(),
+                }));
             }
+            None => {}
+        }
+
+        match res.value {
+            Some((mark, expansion)) => {
+                // FIXME: Statements are too complicated to recover from error for now.
+                // It is because we don't have any hygenine for local variable expansion right now.
+                if T::can_cast(syntax::SyntaxKind::MACRO_STMTS) && res.err.is_some() {
+                    self.expander.exit(self.db, mark);
+                    collector(self, None);
+                } else {
+                    self.source_map.expansions.insert(macro_call, self.expander.current_file_id);
+
+                    let item_tree = self.db.item_tree(self.expander.current_file_id);
+                    self.item_trees.insert(self.expander.current_file_id, item_tree);
+
+                    let id = collector(self, Some(expansion));
+                    self.expander.exit(self.db, mark);
+                    id
+                }
+            }
+            None => collector(self, None),
         }
     }
 
@@ -785,26 +771,44 @@ impl ExprCollector<'_> {
                     | ast::Item::ExternCrate(_)
                     | ast::Item::Module(_)
                     | ast::Item::MacroCall(_) => return None,
+                    ast::Item::MacroRules(def) => {
+                        return Some(Either::Right(def));
+                    }
                 };
 
-                Some((def, name))
+                Some(Either::Left((def, name)))
             })
             .collect::<Vec<_>>();
 
-        for (def, name) in items {
-            self.body.item_scope.define_def(def);
-            if let Some(name) = name {
-                let vis = crate::visibility::Visibility::Public; // FIXME determine correctly
-                let has_constructor = match def {
-                    ModuleDefId::AdtId(AdtId::StructId(s)) => {
-                        self.db.struct_data(s).variant_data.kind() != StructKind::Record
+        for either in items {
+            match either {
+                Either::Left((def, name)) => {
+                    self.body.item_scope.define_def(def);
+                    if let Some(name) = name {
+                        let vis = crate::visibility::Visibility::Public; // FIXME determine correctly
+                        let has_constructor = match def {
+                            ModuleDefId::AdtId(AdtId::StructId(s)) => {
+                                self.db.struct_data(s).variant_data.kind() != StructKind::Record
+                            }
+                            _ => true,
+                        };
+                        self.body.item_scope.push_res(
+                            name.as_name(),
+                            crate::per_ns::PerNs::from_def(def, vis, has_constructor),
+                        );
                     }
-                    _ => true,
-                };
-                self.body.item_scope.push_res(
-                    name.as_name(),
-                    crate::per_ns::PerNs::from_def(def, vis, has_constructor),
-                );
+                }
+                Either::Right(e) => {
+                    let mac = MacroDefId {
+                        krate: Some(self.expander.module.krate),
+                        ast_id: Some(self.expander.ast_id(&e)),
+                        kind: MacroDefKind::Declarative,
+                        local_inner: false,
+                    };
+                    if let Some(name) = e.name() {
+                        self.body.item_scope.define_legacy_macro(name.as_name(), mac);
+                    }
+                }
             }
         }
     }

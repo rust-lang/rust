@@ -144,7 +144,7 @@ mod tests {
 use foo::<|>;
 //- /foo/lib.rs crate:foo
 #[macro_export]
-macro_rules frobnicate { () => () }
+macro_rules! frobnicate { () => () }
 "#,
             r#"
 use foo::frobnicate;
@@ -154,11 +154,11 @@ use foo::frobnicate;
         check_edit(
             "frobnicate!",
             r#"
-macro_rules frobnicate { () => () }
+macro_rules! frobnicate { () => () }
 fn main() { frob<|>!(); }
 "#,
             r#"
-macro_rules frobnicate { () => () }
+macro_rules! frobnicate { () => () }
 fn main() { frobnicate!(); }
 "#,
         );

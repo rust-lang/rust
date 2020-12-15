@@ -48,7 +48,7 @@ mod rule_parsing {
         let macro_definition = format!(" macro_rules! m {{ {} }} ", arm_definition);
         let source_file = ast::SourceFile::parse(&macro_definition).ok().unwrap();
         let macro_definition =
-            source_file.syntax().descendants().find_map(ast::MacroCall::cast).unwrap();
+            source_file.syntax().descendants().find_map(ast::MacroRules::cast).unwrap();
 
         let (definition_tt, _) =
             ast_to_token_tree(&macro_definition.token_tree().unwrap()).unwrap();
@@ -1668,7 +1668,7 @@ impl MacroFixture {
 fn parse_macro_to_tt(ra_fixture: &str) -> tt::Subtree {
     let source_file = ast::SourceFile::parse(ra_fixture).ok().unwrap();
     let macro_definition =
-        source_file.syntax().descendants().find_map(ast::MacroCall::cast).unwrap();
+        source_file.syntax().descendants().find_map(ast::MacroRules::cast).unwrap();
 
     let (definition_tt, _) = ast_to_token_tree(&macro_definition.token_tree().unwrap()).unwrap();
 

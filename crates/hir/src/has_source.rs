@@ -110,8 +110,8 @@ impl HasSource for TypeAlias {
     }
 }
 impl HasSource for MacroDef {
-    type Ast = ast::MacroCall;
-    fn source(self, db: &dyn HirDatabase) -> InFile<ast::MacroCall> {
+    type Ast = ast::MacroRules;
+    fn source(self, db: &dyn HirDatabase) -> InFile<ast::MacroRules> {
         InFile {
             file_id: self.id.ast_id.expect("MacroDef without ast_id").file_id,
             value: self.id.ast_id.expect("MacroDef without ast_id").to_node(db.upcast()),

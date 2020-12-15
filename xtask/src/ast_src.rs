@@ -70,7 +70,7 @@ pub(crate) const KINDS_SRC: KindsSrc = KindsSrc {
         "match", "mod", "move", "mut", "pub", "ref", "return", "self", "static", "struct", "super",
         "trait", "true", "try", "type", "unsafe", "use", "where", "while",
     ],
-    contextual_keywords: &["auto", "default", "existential", "union", "raw"],
+    contextual_keywords: &["auto", "default", "existential", "union", "raw", "macro_rules"],
     literals: &["INT_NUMBER", "FLOAT_NUMBER", "CHAR", "BYTE", "STRING", "BYTE_STRING"],
     tokens: &[
         "ERROR",
@@ -98,6 +98,8 @@ pub(crate) const KINDS_SRC: KindsSrc = KindsSrc {
         "IMPL",
         "TYPE_ALIAS",
         "MACRO_CALL",
+        "MACRO_RULES",
+        "MACRO_ARM",
         "TOKEN_TREE",
         "MACRO_DEF",
         "PAREN_TYPE",

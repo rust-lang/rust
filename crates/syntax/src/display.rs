@@ -76,7 +76,7 @@ pub fn type_label(node: &ast::TypeAlias) -> String {
     label.trim().to_owned()
 }
 
-pub fn macro_label(node: &ast::MacroCall) -> String {
+pub fn macro_label(node: &ast::MacroRules) -> String {
     let name = node.name().map(|name| name.syntax().text().to_string()).unwrap_or_default();
     let vis = if node.has_atom_attr("macro_export") { "#[macro_export]\n" } else { "" };
     format!("{}macro_rules! {}", vis, name)

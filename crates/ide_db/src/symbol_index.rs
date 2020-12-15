@@ -404,13 +404,7 @@ fn to_symbol(node: &SyntaxNode) -> Option<(SmolStr, SyntaxNodePtr, TextRange)> {
             ast::TypeAlias(it) => decl(it),
             ast::Const(it) => decl(it),
             ast::Static(it) => decl(it),
-            ast::MacroCall(it) => {
-                if it.is_macro_rules().is_some() {
-                    decl(it)
-                } else {
-                    None
-                }
-            },
+            ast::MacroRules(it) => decl(it),
             _ => None,
         }
     }

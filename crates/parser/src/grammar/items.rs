@@ -232,6 +232,9 @@ fn items_without_modifiers(p: &mut Parser, m: Marker) -> Result<(), Marker> {
         T![macro] => {
             macro_def(p, m);
         }
+        IDENT if p.at_contextual_kw("macro_rules") && p.nth(1) == BANG => {
+            macro_rules(p, m);
+        }
         IDENT if p.at_contextual_kw("union") && p.nth(1) == IDENT => {
             // test union_items
             // union Foo {}
@@ -363,6 +366,34 @@ pub(crate) fn item_list(p: &mut Parser) {
     m.complete(p, ITEM_LIST);
 }
 
+fn macro_rules(p: &mut Parser, m: Marker) {
+    assert!(p.at_contextual_kw("macro_rules"));
+    p.bump_remap(T![macro_rules]);
+    p.expect(T![!]);
+
+    if p.at(IDENT) {
+        name(p);
+    }
+    // Special-case `macro_rules! try`.
+    // This is a hack until we do proper edition support
+
+    // test try_macro_rules
+    // macro_rules! try { () => {} }
+    if p.at(T![try]) {
+        let m = p.start();
+        p.bump_remap(IDENT);
+        m.complete(p, NAME);
+    }
+
+    match p.current() {
+        T!['{'] => {
+            token_tree(p);
+        }
+        _ => p.error("expected `{`"),
+    }
+    m.complete(p, MACRO_RULES);
+}
+
 // test macro_def
 // macro m { ($i:ident) => {} }
 // macro m($i:ident) {}
@@ -394,19 +425,6 @@ fn macro_call(p: &mut Parser) -> BlockLike {
 
 pub(super) fn macro_call_after_excl(p: &mut Parser) -> BlockLike {
     p.expect(T![!]);
-    if p.at(IDENT) {
-        name(p);
-    }
-    // Special-case `macro_rules! try`.
-    // This is a hack until we do proper edition support
-
-    // test try_macro_rules
-    // macro_rules! try { () => {} }
-    if p.at(T![try]) {
-        let m = p.start();
-        p.bump_remap(IDENT);
-        m.complete(p, NAME);
-    }
 
     match p.current() {
         T!['{'] => {

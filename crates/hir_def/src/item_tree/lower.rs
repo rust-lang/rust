@@ -84,8 +84,7 @@ impl Ctx {
             | ast::Item::Fn(_)
             | ast::Item::TypeAlias(_)
             | ast::Item::Const(_)
-            | ast::Item::Static(_)
-            | ast::Item::MacroCall(_) => {
+            | ast::Item::Static(_) => {
                 // Skip this if we're already collecting inner items. We'll descend into all nodes
                 // already.
                 if !inner {
@@ -98,7 +97,11 @@ impl Ctx {
             ast::Item::Trait(_) | ast::Item::Impl(_) | ast::Item::ExternBlock(_) => {}
 
             // These don't have inner items.
-            ast::Item::Module(_) | ast::Item::ExternCrate(_) | ast::Item::Use(_) => {}
+            ast::Item::Module(_)
+            | ast::Item::ExternCrate(_)
+            | ast::Item::Use(_)
+            | ast::Item::MacroCall(_)
+            | ast::Item::MacroRules(_) => {}
         };
 
         let attrs = Attrs::new(item, &self.hygiene);
@@ -118,6 +121,7 @@ impl Ctx {
             )),
             ast::Item::ExternCrate(ast) => self.lower_extern_crate(ast).map(Into::into),
             ast::Item::MacroCall(ast) => self.lower_macro_call(ast).map(Into::into),
+            ast::Item::MacroRules(ast) => self.lower_macro_rules(ast).map(Into::into),
             ast::Item::ExternBlock(ast) => {
                 Some(ModItems(self.lower_extern_block(ast).into_iter().collect::<SmallVec<_>>()))
             }
@@ -525,9 +529,15 @@ impl Ctx {
     }
 
     fn lower_macro_call(&mut self, m: &ast::MacroCall) -> Option<FileItemTreeId<MacroCall>> {
-        let name = m.name().map(|it| it.as_name());
-        let attrs = Attrs::new(m, &self.hygiene);
         let path = ModPath::from_src(m.path()?, &self.hygiene)?;
+        let ast_id = self.source_ast_id_map.ast_id(m);
+        let res = MacroCall { path, ast_id };
+        Some(id(self.data().macro_calls.alloc(res)))
+    }
+
+    fn lower_macro_rules(&mut self, m: &ast::MacroRules) -> Option<FileItemTreeId<MacroRules>> {
+        let name = m.name().map(|it| it.as_name())?;
+        let attrs = Attrs::new(m, &self.hygiene);
 
         let ast_id = self.source_ast_id_map.ast_id(m);
 
@@ -547,8 +557,8 @@ impl Ctx {
         };
 
         let is_builtin = attrs.by_key("rustc_builtin_macro").exists();
-        let res = MacroCall { name, path, is_export, is_builtin, is_local_inner, ast_id };
-        Some(id(self.data().macro_calls.alloc(res)))
+        let res = MacroRules { name, is_export, is_builtin, is_local_inner, ast_id };
+        Some(id(self.data().macro_rules.alloc(res)))
     }
 
     fn lower_extern_block(&mut self, block: &ast::ExternBlock) -> Vec<ModItem> {

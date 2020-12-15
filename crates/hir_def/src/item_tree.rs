@@ -142,6 +142,7 @@ impl ItemTree {
                 type_aliases,
                 mods,
                 macro_calls,
+                macro_rules,
                 exprs,
                 vis,
                 generics,
@@ -162,6 +163,7 @@ impl ItemTree {
             type_aliases.shrink_to_fit();
             mods.shrink_to_fit();
             macro_calls.shrink_to_fit();
+            macro_rules.shrink_to_fit();
             exprs.shrink_to_fit();
 
             vis.arena.shrink_to_fit();
@@ -280,6 +282,7 @@ struct ItemTreeData {
     type_aliases: Arena<TypeAlias>,
     mods: Arena<Mod>,
     macro_calls: Arena<MacroCall>,
+    macro_rules: Arena<MacroRules>,
     exprs: Arena<Expr>,
 
     vis: ItemVisibilities,
@@ -427,6 +430,7 @@ mod_items! {
     TypeAlias in type_aliases -> ast::TypeAlias,
     Mod in mods -> ast::Module,
     MacroCall in macro_calls -> ast::MacroCall,
+    MacroRules in macro_rules -> ast::MacroRules,
 }
 
 macro_rules! impl_index {
@@ -629,17 +633,22 @@ pub enum ModKind {
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct MacroCall {
-    /// For `macro_rules!` declarations, this is the name of the declared macro.
-    pub name: Option<Name>,
     /// Path to the called macro.
     pub path: ModPath,
+    pub ast_id: FileAstId<ast::MacroCall>,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct MacroRules {
+    /// For `macro_rules!` declarations, this is the name of the declared macro.
+    pub name: Name,
     /// Has `#[macro_export]`.
     pub is_export: bool,
     /// Has `#[macro_export(local_inner_macros)]`.
     pub is_local_inner: bool,
     /// Has `#[rustc_builtin_macro]`.
     pub is_builtin: bool,
-    pub ast_id: FileAstId<ast::MacroCall>,
+    pub ast_id: FileAstId<ast::MacroRules>,
 }
 
 // NB: There's no `FileAstId` for `Expr`. The only case where this would be useful is for array
@@ -670,7 +679,8 @@ impl ModItem {
             | ModItem::Static(_)
             | ModItem::Trait(_)
             | ModItem::Impl(_)
-            | ModItem::Mod(_) => None,
+            | ModItem::Mod(_)
+            | ModItem::MacroRules(_) => None,
             ModItem::MacroCall(call) => Some(AssocItem::MacroCall(*call)),
             ModItem::Const(konst) => Some(AssocItem::Const(*konst)),
             ModItem::TypeAlias(alias) => Some(AssocItem::TypeAlias(*alias)),
@@ -697,6 +707,7 @@ impl ModItem {
             ModItem::TypeAlias(it) => tree[it.index].ast_id().upcast(),
             ModItem::Mod(it) => tree[it.index].ast_id().upcast(),
             ModItem::MacroCall(it) => tree[it.index].ast_id().upcast(),
+            ModItem::MacroRules(it) => tree[it.index].ast_id().upcast(),
         }
     }
 }
