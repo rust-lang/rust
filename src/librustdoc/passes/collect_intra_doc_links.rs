@@ -696,7 +696,7 @@ fn resolve_associated_trait_item(
                     // Give precedence to methods that were overridden
                     if !impl_.provided_trait_methods.contains(&*item_name.as_str()) {
                         let mut items = impl_.items.into_iter().filter_map(|assoc| {
-                            if assoc.name.as_deref() != Some(&*item_name.as_str()) {
+                            if assoc.name != Some(item_name) {
                                 return None;
                             }
                             let kind = assoc
@@ -2015,7 +2015,14 @@ fn privacy_error(
     dox: &str,
     link_range: Option<Range<usize>>,
 ) {
-    let item_name = item.name.as_deref().unwrap_or("<unknown>");
+    let sym;
+    let item_name = match item.name {
+        Some(name) => {
+            sym = name.as_str();
+            &*sym
+        }
+        None => "<unknown>",
+    };
     let msg =
         format!("public documentation for `{}` links to private item `{}`", item_name, path_str);
 

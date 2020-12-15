@@ -61,7 +61,7 @@ use rustc_session::Session;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::FileName;
-use rustc_span::symbol::{sym, Symbol};
+use rustc_span::symbol::{kw, sym, Symbol};
 use serde::ser::SerializeSeq;
 use serde::{Serialize, Serializer};
 
@@ -665,7 +665,7 @@ impl FormatRenderer for Context {
         if !buf.is_empty() {
             let name = item.name.as_ref().unwrap();
             let item_type = item.type_();
-            let file_name = &item_path(item_type, name);
+            let file_name = &item_path(item_type, &name.as_str());
             self.shared.ensure_dir(&self.dst)?;
             let joint_dst = self.dst.join(file_name);
             self.shared.fs.write(&joint_dst, buf.as_bytes())?;
@@ -1543,7 +1543,7 @@ impl Context {
             if !title.is_empty() {
                 title.push_str("::");
             }
-            title.push_str(it.name.as_ref().unwrap());
+            title.push_str(&it.name.unwrap().as_str());
         }
         title.push_str(" - Rust");
         let tyname = it.type_();
@@ -1815,7 +1815,7 @@ fn item_path(ty: ItemType, name: &str) -> String {
 fn full_path(cx: &Context, item: &clean::Item) -> String {
     let mut s = cx.current.join("::");
     s.push_str("::");
-    s.push_str(item.name.as_ref().unwrap());
+    s.push_str(&item.name.unwrap().as_str());
     s
 }
 
@@ -2065,9 +2065,9 @@ fn item_module(w: &mut Buffer, cx: &Context, item: &clean::Item, items: &[clean:
                 (true, false) => return Ordering::Greater,
             }
         }
-        let lhs = i1.name.as_ref().map_or("", |s| &**s);
-        let rhs = i2.name.as_ref().map_or("", |s| &**s);
-        compare_names(lhs, rhs)
+        let lhs = i1.name.unwrap_or(kw::Invalid).as_str();
+        let rhs = i2.name.unwrap_or(kw::Invalid).as_str();
+        compare_names(&lhs, &rhs)
     }
 
     if cx.shared.sort_modules_alphabetically {
@@ -2191,7 +2191,7 @@ fn item_module(w: &mut Buffer, cx: &Context, item: &clean::Item, items: &[clean:
                     add = add,
                     stab = stab.unwrap_or_else(String::new),
                     unsafety_flag = unsafety_flag,
-                    href = item_path(myitem.type_(), myitem.name.as_ref().unwrap()),
+                    href = item_path(myitem.type_(), &myitem.name.unwrap().as_str()),
                     title = [full_path(cx, myitem), myitem.type_().to_string()]
                         .iter()
                         .filter_map(|s| if !s.is_empty() { Some(s.as_str()) } else { None })
@@ -2623,7 +2623,7 @@ fn item_trait(w: &mut Buffer, cx: &Context, it: &clean::Item, t: &clean::Trait, 
 
     fn trait_item(w: &mut Buffer, cx: &Context, m: &clean::Item, t: &clean::Item, cache: &Cache) {
         let name = m.name.as_ref().unwrap();
-        info!("Documenting {} on {}", name, t.name.as_deref().unwrap_or_default());
+        info!("Documenting {} on {:?}", name, t.name);
         let item_type = m.type_();
         let id = cx.derive_id(format!("{}.{}", item_type, name));
         write!(w, "<h3 id=\"{id}\" class=\"method\"><code>", id = id,);
@@ -2951,7 +2951,7 @@ fn render_assoc_item(
             AssocItemLink::GotoSource(did, provided_methods) => {
                 // We're creating a link from an impl-item to the corresponding
                 // trait-item and need to map the anchored type accordingly.
-                let ty = if provided_methods.contains(name) {
+                let ty = if provided_methods.contains(&*name.as_str()) {
                     ItemType::Method
                 } else {
                     ItemType::TyMethod
@@ -3434,10 +3434,7 @@ fn render_assoc_items(
     what: AssocItemRender<'_>,
     cache: &Cache,
 ) {
-    info!(
-        "Documenting associated items of {}",
-        containing_item.name.as_deref().unwrap_or_default()
-    );
+    info!("Documenting associated items of {:?}", containing_item.name);
     let v = match cache.impls.get(&it) {
         Some(v) => v,
         None => return,
@@ -4139,7 +4136,7 @@ fn print_sidebar(cx: &Context, it: &clean::Item, buffer: &mut Buffer, cache: &Ca
                 ty: \"{ty}\", \
                 relpath: \"{path}\"\
             }};</script>",
-        name = it.name.as_ref().map(|x| &x[..]).unwrap_or(""),
+        name = it.name.unwrap_or(kw::Invalid),
         ty = it.type_(),
         path = relpath
     );

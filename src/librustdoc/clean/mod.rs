@@ -169,7 +169,7 @@ impl Clean<ExternalCrate> for CrateNum {
                 for attr in attrs.lists(sym::doc) {
                     if attr.has_name(sym::keyword) {
                         if let Some(v) = attr.value_str() {
-                            keyword = Some(v.to_string());
+                            keyword = Some(v);
                             break;
                         }
                     }
@@ -253,12 +253,7 @@ impl Clean<Item> for doctree::Module<'_> {
             ModuleItem(Module { is_crate: self.is_crate, items }),
             cx,
         );
-        Item {
-            name: Some(what_rustc_thinks.name.unwrap_or_default()),
-            attrs,
-            source: span.clean(cx),
-            ..what_rustc_thinks
-        }
+        Item { attrs, source: span.clean(cx), ..what_rustc_thinks }
     }
 }
 
@@ -1096,7 +1091,7 @@ impl Clean<Item> for hir::TraitItem<'_> {
                     AssocTypeItem(bounds.clean(cx), default.clean(cx))
                 }
             };
-            Item::from_def_id_and_parts(local_did, Some(self.ident.name.clean(cx)), inner, cx)
+            Item::from_def_id_and_parts(local_did, Some(self.ident.name), inner, cx)
         })
     }
 }
@@ -1124,7 +1119,7 @@ impl Clean<Item> for hir::ImplItem<'_> {
                     TypedefItem(Typedef { type_, generics: Generics::default(), item_type }, true)
                 }
             };
-            Item::from_def_id_and_parts(local_did, Some(self.ident.name.clean(cx)), inner, cx)
+            Item::from_def_id_and_parts(local_did, Some(self.ident.name), inner, cx)
         })
     }
 }
@@ -1281,7 +1276,7 @@ impl Clean<Item> for ty::AssocItem {
             }
         };
 
-        Item::from_def_id_and_parts(self.def_id, Some(self.ident.name.clean(cx)), kind, cx)
+        Item::from_def_id_and_parts(self.def_id, Some(self.ident.name), kind, cx)
     }
 }
 
@@ -1771,7 +1766,7 @@ impl Clean<Item> for ty::FieldDef {
     fn clean(&self, cx: &DocContext<'_>) -> Item {
         let what_rustc_thinks = Item::from_def_id_and_parts(
             self.did,
-            Some(self.ident.name.clean(cx)),
+            Some(self.ident.name),
             StructFieldItem(cx.tcx.type_of(self.did).clean(cx)),
             cx,
         );
@@ -1847,7 +1842,7 @@ impl Clean<Item> for ty::VariantDef {
                     .fields
                     .iter()
                     .map(|field| {
-                        let name = Some(field.ident.name.clean(cx));
+                        let name = Some(field.ident.name);
                         let kind = StructFieldItem(cx.tcx.type_of(field.did).clean(cx));
                         let what_rustc_thinks =
                             Item::from_def_id_and_parts(field.did, name, kind, cx);
@@ -1859,7 +1854,7 @@ impl Clean<Item> for ty::VariantDef {
         };
         let what_rustc_thinks = Item::from_def_id_and_parts(
             self.def_id,
-            Some(self.ident.name.clean(cx)),
+            Some(self.ident.name),
             VariantItem(Variant { kind }),
             cx,
         );
@@ -2033,7 +2028,7 @@ impl Clean<Vec<Item>> for (&hir::Item<'_>, Option<Symbol>) {
                 _ => unreachable!("not yet converted"),
             };
 
-            vec![Item::from_def_id_and_parts(def_id, Some(name.clean(cx)), kind, cx)]
+            vec![Item::from_def_id_and_parts(def_id, Some(name), kind, cx)]
         })
     }
 }

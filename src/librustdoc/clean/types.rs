@@ -70,7 +70,7 @@ crate struct ExternalCrate {
     crate src: FileName,
     crate attrs: Attributes,
     crate primitives: Vec<(DefId, PrimitiveType)>,
-    crate keywords: Vec<(DefId, String)>,
+    crate keywords: Vec<(DefId, Symbol)>,
 }
 
 /// Anything with a source location and set of attributes and, optionally, a
@@ -81,7 +81,7 @@ crate struct Item {
     /// Stringified span
     crate source: Span,
     /// Not everything has a name. E.g., impls
-    crate name: Option<String>,
+    crate name: Option<Symbol>,
     crate attrs: Attributes,
     crate visibility: Visibility,
     crate kind: ItemKind,
@@ -123,17 +123,12 @@ impl Item {
         kind: ItemKind,
         cx: &DocContext<'_>,
     ) -> Item {
-        Item::from_def_id_and_parts(
-            cx.tcx.hir().local_def_id(hir_id).to_def_id(),
-            name.clean(cx),
-            kind,
-            cx,
-        )
+        Item::from_def_id_and_parts(cx.tcx.hir().local_def_id(hir_id).to_def_id(), name, kind, cx)
     }
 
     pub fn from_def_id_and_parts(
         def_id: DefId,
-        name: Option<String>,
+        name: Option<Symbol>,
         kind: ItemKind,
         cx: &DocContext<'_>,
     ) -> Item {
@@ -334,7 +329,7 @@ crate enum ItemKind {
     AssocTypeItem(Vec<GenericBound>, Option<Type>),
     /// An item that has been stripped by a rustdoc pass
     StrippedItem(Box<ItemKind>),
-    KeywordItem(String),
+    KeywordItem(Symbol),
 }
 
 impl ItemKind {
@@ -1163,6 +1158,8 @@ crate enum Type {
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Copy, Debug)]
+/// N.B. this has to be different from `hir::PrimTy` because it also includes types that aren't
+/// paths, like `Unit`.
 crate enum PrimitiveType {
     Isize,
     I8,
@@ -1501,6 +1498,37 @@ impl PrimitiveType {
 
     crate fn to_url_str(&self) -> &'static str {
         self.as_str()
+    }
+
+    crate fn as_sym(&self) -> Symbol {
+        use PrimitiveType::*;
+        match self {
+            Isize => sym::isize,
+            I8 => sym::i8,
+            I16 => sym::i16,
+            I32 => sym::i32,
+            I64 => sym::i64,
+            I128 => sym::i128,
+            Usize => sym::usize,
+            U8 => sym::u8,
+            U16 => sym::u16,
+            U32 => sym::u32,
+            U64 => sym::u64,
+            U128 => sym::u128,
+            F32 => sym::f32,
+            F64 => sym::f64,
+            Str => sym::str,
+            Bool => sym::bool,
+            Char => sym::char,
+            Array => sym::array,
+            Slice => sym::slice,
+            Tuple => sym::tuple,
+            Unit => sym::unit,
+            RawPointer => sym::pointer,
+            Reference => sym::reference,
+            Fn => kw::Fn,
+            Never => sym::never,
+        }
     }
 }
 
