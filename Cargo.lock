@@ -1346,6 +1346,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "gsgdt"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a0d876ce7262df96262a2a19531da6ff9a86048224d49580a585fc5c04617825"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "handlebars"
 version = "3.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3940,6 +3949,7 @@ version = "0.0.0"
 dependencies = [
  "coverage_test_macros",
  "either",
+ "gsgdt",
  "itertools 0.9.0",
  "polonius-engine",
  "regex",
