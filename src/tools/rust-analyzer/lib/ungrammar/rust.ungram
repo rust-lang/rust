@@ -90,6 +90,7 @@ Item =
 | Impl
 | MacroCall
 | MacroRules
+| MacroDef
 | Module
 | Static
 | Struct
@@ -102,6 +103,11 @@ MacroRules =
   Attr* Visibility?
   'macro_rules' '!' Name
   TokenTree
+
+MacroDef =
+  Attr* Visibility?
+  'macro' Name args:TokenTree?
+  body:TokenTree
 
 Module =
   Attr* Visibility?
