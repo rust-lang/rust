@@ -143,6 +143,7 @@ impl ItemTree {
                 mods,
                 macro_calls,
                 macro_rules,
+                macro_defs,
                 exprs,
                 vis,
                 generics,
@@ -164,6 +165,7 @@ impl ItemTree {
             mods.shrink_to_fit();
             macro_calls.shrink_to_fit();
             macro_rules.shrink_to_fit();
+            macro_defs.shrink_to_fit();
             exprs.shrink_to_fit();
 
             vis.arena.shrink_to_fit();
@@ -283,6 +285,7 @@ struct ItemTreeData {
     mods: Arena<Mod>,
     macro_calls: Arena<MacroCall>,
     macro_rules: Arena<MacroRules>,
+    macro_defs: Arena<MacroDef>,
     exprs: Arena<Expr>,
 
     vis: ItemVisibilities,
@@ -431,6 +434,7 @@ mod_items! {
     Mod in mods -> ast::Module,
     MacroCall in macro_calls -> ast::MacroCall,
     MacroRules in macro_rules -> ast::MacroRules,
+    MacroDef in macro_defs -> ast::MacroDef,
 }
 
 macro_rules! impl_index {
@@ -640,7 +644,7 @@ pub struct MacroCall {
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct MacroRules {
-    /// For `macro_rules!` declarations, this is the name of the declared macro.
+    /// The name of the declared macro.
     pub name: Name,
     /// Has `#[macro_export]`.
     pub is_export: bool,
@@ -649,6 +653,16 @@ pub struct MacroRules {
     /// Has `#[rustc_builtin_macro]`.
     pub is_builtin: bool,
     pub ast_id: FileAstId<ast::MacroRules>,
+}
+
+/// "Macros 2.0" macro definition.
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct MacroDef {
+    pub name: Name,
+    pub visibility: RawVisibilityId,
+    /// Has `#[rustc_builtin_macro]`.
+    pub is_builtin: bool,
+    pub ast_id: FileAstId<ast::MacroDef>,
 }
 
 // NB: There's no `FileAstId` for `Expr`. The only case where this would be useful is for array
@@ -680,7 +694,8 @@ impl ModItem {
             | ModItem::Trait(_)
             | ModItem::Impl(_)
             | ModItem::Mod(_)
-            | ModItem::MacroRules(_) => None,
+            | ModItem::MacroRules(_)
+            | ModItem::MacroDef(_) => None,
             ModItem::MacroCall(call) => Some(AssocItem::MacroCall(*call)),
             ModItem::Const(konst) => Some(AssocItem::Const(*konst)),
             ModItem::TypeAlias(alias) => Some(AssocItem::TypeAlias(*alias)),
@@ -708,6 +723,7 @@ impl ModItem {
             ModItem::Mod(it) => tree[it.index].ast_id().upcast(),
             ModItem::MacroCall(it) => tree[it.index].ast_id().upcast(),
             ModItem::MacroRules(it) => tree[it.index].ast_id().upcast(),
+            ModItem::MacroDef(it) => tree[it.index].ast_id().upcast(),
         }
     }
 }

@@ -101,7 +101,8 @@ impl Ctx {
             | ast::Item::ExternCrate(_)
             | ast::Item::Use(_)
             | ast::Item::MacroCall(_)
-            | ast::Item::MacroRules(_) => {}
+            | ast::Item::MacroRules(_)
+            | ast::Item::MacroDef(_) => {}
         };
 
         let attrs = Attrs::new(item, &self.hygiene);
@@ -122,6 +123,7 @@ impl Ctx {
             ast::Item::ExternCrate(ast) => self.lower_extern_crate(ast).map(Into::into),
             ast::Item::MacroCall(ast) => self.lower_macro_call(ast).map(Into::into),
             ast::Item::MacroRules(ast) => self.lower_macro_rules(ast).map(Into::into),
+            ast::Item::MacroDef(ast) => self.lower_macro_def(ast).map(Into::into),
             ast::Item::ExternBlock(ast) => {
                 Some(ModItems(self.lower_extern_block(ast).into_iter().collect::<SmallVec<_>>()))
             }
@@ -559,6 +561,18 @@ impl Ctx {
         let is_builtin = attrs.by_key("rustc_builtin_macro").exists();
         let res = MacroRules { name, is_export, is_builtin, is_local_inner, ast_id };
         Some(id(self.data().macro_rules.alloc(res)))
+    }
+
+    fn lower_macro_def(&mut self, m: &ast::MacroDef) -> Option<FileItemTreeId<MacroDef>> {
+        let name = m.name().map(|it| it.as_name())?;
+        let attrs = Attrs::new(m, &self.hygiene);
+
+        let ast_id = self.source_ast_id_map.ast_id(m);
+        let visibility = self.lower_visibility(m);
+
+        let is_builtin = attrs.by_key("rustc_builtin_macro").exists();
+        let res = MacroDef { name, is_builtin, ast_id, visibility };
+        Some(id(self.data().macro_defs.alloc(res)))
     }
 
     fn lower_extern_block(&mut self, block: &ast::ExternBlock) -> Vec<ModItem> {

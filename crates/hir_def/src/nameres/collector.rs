@@ -976,6 +976,33 @@ impl ModCollector<'_, '_> {
                 }
                 ModItem::MacroCall(mac) => self.collect_macro_call(&self.item_tree[mac]),
                 ModItem::MacroRules(mac) => self.collect_macro_rules(&self.item_tree[mac]),
+                ModItem::MacroDef(id) => {
+                    let mac = &self.item_tree[id];
+                    let ast_id = InFile::new(self.file_id, mac.ast_id.upcast());
+
+                    // "Macro 2.0" is not currently supported by rust-analyzer, but libcore uses it
+                    // to define builtin macros, so we support at least that part.
+                    if mac.is_builtin {
+                        let krate = self.def_collector.def_map.krate;
+                        if let Some(macro_id) = find_builtin_macro(&mac.name, krate, ast_id) {
+                            let vis = self
+                                .def_collector
+                                .def_map
+                                .resolve_visibility(
+                                    self.def_collector.db,
+                                    self.module_id,
+                                    &self.item_tree[mac.visibility],
+                                )
+                                .unwrap_or(Visibility::Public);
+                            self.def_collector.update(
+                                self.module_id,
+                                &[(Some(mac.name.clone()), PerNs::macros(macro_id, vis))],
+                                vis,
+                                ImportType::Named,
+                            );
+                        }
+                    }
+                }
                 ModItem::Impl(imp) => {
                     let module = ModuleId {
                         krate: self.def_collector.def_map.krate,
@@ -1280,7 +1307,7 @@ impl ModCollector<'_, '_> {
     }
 
     fn collect_macro_rules(&mut self, mac: &MacroRules) {
-        let ast_id = InFile::new(self.file_id, mac.ast_id);
+        let ast_id = InFile::new(self.file_id, mac.ast_id.upcast());
 
         // Case 1: builtin macros
         if mac.is_builtin {

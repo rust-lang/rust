@@ -3,6 +3,7 @@
 
 use std::fmt;
 
+use ast::AttrsOwner;
 use itertools::Itertools;
 use parser::SyntaxKind;
 
@@ -30,6 +31,57 @@ impl ast::NameRef {
 fn text_of_first_token(node: &SyntaxNode) -> &SmolStr {
     node.green().children().next().and_then(|it| it.into_token()).unwrap().text()
 }
+
+pub enum Macro {
+    MacroRules(ast::MacroRules),
+    MacroDef(ast::MacroDef),
+}
+
+impl From<ast::MacroRules> for Macro {
+    fn from(it: ast::MacroRules) -> Self {
+        Macro::MacroRules(it)
+    }
+}
+
+impl From<ast::MacroDef> for Macro {
+    fn from(it: ast::MacroDef) -> Self {
+        Macro::MacroDef(it)
+    }
+}
+
+impl AstNode for Macro {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        match kind {
+            SyntaxKind::MACRO_RULES | SyntaxKind::MACRO_DEF => true,
+            _ => false,
+        }
+    }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        let res = match syntax.kind() {
+            SyntaxKind::MACRO_RULES => Macro::MacroRules(ast::MacroRules { syntax }),
+            SyntaxKind::MACRO_DEF => Macro::MacroDef(ast::MacroDef { syntax }),
+            _ => return None,
+        };
+        Some(res)
+    }
+    fn syntax(&self) -> &SyntaxNode {
+        match self {
+            Macro::MacroRules(it) => it.syntax(),
+            Macro::MacroDef(it) => it.syntax(),
+        }
+    }
+}
+
+impl NameOwner for Macro {
+    fn name(&self) -> Option<ast::Name> {
+        match self {
+            Macro::MacroRules(mac) => mac.name(),
+            Macro::MacroDef(mac) => mac.name(),
+        }
+    }
+}
+
+impl AttrsOwner for Macro {}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AttrKind {
@@ -462,4 +514,6 @@ impl ast::DocCommentsOwner for ast::Const {}
 impl ast::DocCommentsOwner for ast::TypeAlias {}
 impl ast::DocCommentsOwner for ast::Impl {}
 impl ast::DocCommentsOwner for ast::MacroRules {}
+impl ast::DocCommentsOwner for ast::MacroDef {}
+impl ast::DocCommentsOwner for ast::Macro {}
 impl ast::DocCommentsOwner for ast::Use {}

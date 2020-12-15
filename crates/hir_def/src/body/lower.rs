@@ -772,7 +772,10 @@ impl ExprCollector<'_> {
                     | ast::Item::Module(_)
                     | ast::Item::MacroCall(_) => return None,
                     ast::Item::MacroRules(def) => {
-                        return Some(Either::Right(def));
+                        return Some(Either::Right(ast::Macro::from(def)));
+                    }
+                    ast::Item::MacroDef(def) => {
+                        return Some(Either::Right(ast::Macro::from(def)));
                     }
                 };
 
