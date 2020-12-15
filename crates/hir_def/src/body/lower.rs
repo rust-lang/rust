@@ -548,62 +548,83 @@ impl ExprCollector<'_> {
                 }
             }
             ast::Expr::MacroCall(e) => {
-                if let Some(name) = e.is_macro_rules().map(|it| it.as_name()) {
-                    let mac = MacroDefId {
-                        krate: Some(self.expander.module.krate),
-                        ast_id: Some(self.expander.ast_id(&e)),
-                        kind: MacroDefKind::Declarative,
-                        local_inner: false,
-                    };
-                    self.body.item_scope.define_legacy_macro(name, mac);
+                let mut ids = vec![];
+                self.collect_macro_call(e, syntax_ptr.clone(), |this, expansion| {
+                    ids.push(match expansion {
+                        Some(it) => this.collect_expr(it),
+                        None => this.alloc_expr(Expr::Missing, syntax_ptr.clone()),
+                    })
+                });
+                ids[0]
+            }
+        }
+    }
 
-                    // FIXME: do we still need to allocate this as missing ?
-                    self.alloc_expr(Expr::Missing, syntax_ptr)
-                } else {
-                    // File containing the macro call. Expansion errors will be attached here.
-                    let outer_file = self.expander.current_file_id;
+    fn collect_macro_call<F: FnMut(&mut Self, Option<T>), T: ast::AstNode>(
+        &mut self,
+        e: ast::MacroCall,
+        syntax_ptr: AstPtr<ast::Expr>,
+        mut collector: F,
+    ) {
+        if let Some(name) = e.is_macro_rules().map(|it| it.as_name()) {
+            let mac = MacroDefId {
+                krate: Some(self.expander.module.krate),
+                ast_id: Some(self.expander.ast_id(&e)),
+                kind: MacroDefKind::Declarative,
+                local_inner: false,
+            };
+            self.body.item_scope.define_legacy_macro(name, mac);
 
-                    let macro_call = self.expander.to_source(AstPtr::new(&e));
-                    let res = self.expander.enter_expand(self.db, Some(&self.body.item_scope), e);
+            // FIXME: do we still need to allocate this as missing ?
+            collector(self, None);
+        } else {
+            // File containing the macro call. Expansion errors will be attached here.
+            let outer_file = self.expander.current_file_id;
 
-                    match res.err {
-                        Some(ExpandError::UnresolvedProcMacro) => {
-                            self.source_map.diagnostics.push(BodyDiagnostic::UnresolvedProcMacro(
-                                UnresolvedProcMacro {
-                                    file: outer_file,
-                                    node: syntax_ptr.clone().into(),
-                                    precise_location: None,
-                                    macro_name: None,
-                                },
-                            ));
-                        }
-                        Some(err) => {
-                            self.source_map.diagnostics.push(BodyDiagnostic::MacroError(
-                                MacroError {
-                                    file: outer_file,
-                                    node: syntax_ptr.clone().into(),
-                                    message: err.to_string(),
-                                },
-                            ));
-                        }
-                        None => {}
-                    }
+            let macro_call = self.expander.to_source(AstPtr::new(&e));
+            let res = self.expander.enter_expand(self.db, Some(&self.body.item_scope), e);
 
-                    match res.value {
-                        Some((mark, expansion)) => {
-                            self.source_map
-                                .expansions
-                                .insert(macro_call, self.expander.current_file_id);
+            match &res.err {
+                Some(ExpandError::UnresolvedProcMacro) => {
+                    self.source_map.diagnostics.push(BodyDiagnostic::UnresolvedProcMacro(
+                        UnresolvedProcMacro {
+                            file: outer_file,
+                            node: syntax_ptr.into(),
+                            precise_location: None,
+                            macro_name: None,
+                        },
+                    ));
+                }
+                Some(err) => {
+                    self.source_map.diagnostics.push(BodyDiagnostic::MacroError(MacroError {
+                        file: outer_file,
+                        node: syntax_ptr.into(),
+                        message: err.to_string(),
+                    }));
+                }
+                None => {}
+            }
 
-                            let item_tree = self.db.item_tree(self.expander.current_file_id);
-                            self.item_trees.insert(self.expander.current_file_id, item_tree);
-                            let id = self.collect_expr(expansion);
-                            self.expander.exit(self.db, mark);
-                            id
-                        }
-                        None => self.alloc_expr(Expr::Missing, syntax_ptr),
+            match res.value {
+                Some((mark, expansion)) => {
+                    // FIXME: Statements are too complicated to recover from error for now.
+                    // It is because we don't have any hygenine for local variable expansion right now.
+                    if T::can_cast(syntax::SyntaxKind::MACRO_STMTS) && res.err.is_some() {
+                        self.expander.exit(self.db, mark);
+                        collector(self, None);
+                    } else {
+                        self.source_map
+                            .expansions
+                            .insert(macro_call, self.expander.current_file_id);
+
+                        let item_tree = self.db.item_tree(self.expander.current_file_id);
+                        self.item_trees.insert(self.expander.current_file_id, item_tree);
+
+                        collector(self, Some(expansion));
+                        self.expander.exit(self.db, mark);
                     }
                 }
+                None => collector(self, None),
             }
         }
     }
@@ -642,44 +663,75 @@ impl ExprCollector<'_> {
         }
     }
 
+    fn collect_stmt(&mut self, s: ast::Stmt) -> Option<Vec<Statement>> {
+        let stmt =
+            match s {
+                ast::Stmt::LetStmt(stmt) => {
+                    self.check_cfg(&stmt)?;
+
+                    let pat = self.collect_pat_opt(stmt.pat());
+                    let type_ref = stmt.ty().map(|it| TypeRef::from_ast(&self.ctx(), it));
+                    let initializer = stmt.initializer().map(|e| self.collect_expr(e));
+                    vec![Statement::Let { pat, type_ref, initializer }]
+                }
+                ast::Stmt::ExprStmt(stmt) => {
+                    self.check_cfg(&stmt)?;
+
+                    // Note that macro could be expended to multiple statements
+                    if let Some(ast::Expr::MacroCall(m)) = stmt.expr() {
+                        let syntax_ptr = AstPtr::new(&stmt.expr().unwrap());
+                        let mut stmts = vec![];
+
+                        self.collect_macro_call(m, syntax_ptr.clone(), |this, expansion| {
+                            match expansion {
+                                Some(expansion) => {
+                                    let statements: ast::MacroStmts = expansion;
+                                    this.collect_stmts_items(statements.statements());
+
+                                    statements.statements().for_each(|stmt| {
+                                        if let Some(mut r) = this.collect_stmt(stmt) {
+                                            stmts.append(&mut r);
+                                        }
+                                    });
+                                    if let Some(expr) = statements.expr() {
+                                        stmts.push(Statement::Expr(this.collect_expr(expr)));
+                                    }
+                                }
+                                None => {
+                                    stmts.push(Statement::Expr(
+                                        this.alloc_expr(Expr::Missing, syntax_ptr.clone()),
+                                    ));
+                                }
+                            }
+                        });
+                        stmts
+                    } else {
+                        vec![Statement::Expr(self.collect_expr_opt(stmt.expr()))]
+                    }
+                }
+                ast::Stmt::Item(item) => {
+                    self.check_cfg(&item)?;
+
+                    return None;
+                }
+            };
+
+        Some(stmt)
+    }
+
     fn collect_block(&mut self, block: ast::BlockExpr) -> ExprId {
         let syntax_node_ptr = AstPtr::new(&block.clone().into());
-        self.collect_block_items(&block);
-        let statements = block
-            .statements()
-            .filter_map(|s| {
-                let stmt = match s {
-                    ast::Stmt::LetStmt(stmt) => {
-                        self.check_cfg(&stmt)?;
-
-                        let pat = self.collect_pat_opt(stmt.pat());
-                        let type_ref = stmt.ty().map(|it| TypeRef::from_ast(&self.ctx(), it));
-                        let initializer = stmt.initializer().map(|e| self.collect_expr(e));
-                        Statement::Let { pat, type_ref, initializer }
-                    }
-                    ast::Stmt::ExprStmt(stmt) => {
-                        self.check_cfg(&stmt)?;
-
-                        Statement::Expr(self.collect_expr_opt(stmt.expr()))
-                    }
-                    ast::Stmt::Item(item) => {
-                        self.check_cfg(&item)?;
-
-                        return None;
-                    }
-                };
-                Some(stmt)
-            })
-            .collect();
+        self.collect_stmts_items(block.statements());
+        let statements =
+            block.statements().filter_map(|s| self.collect_stmt(s)).flatten().collect();
         let tail = block.expr().map(|e| self.collect_expr(e));
         self.alloc_expr(Expr::Block { statements, tail, label: None }, syntax_node_ptr)
     }
 
-    fn collect_block_items(&mut self, block: &ast::BlockExpr) {
+    fn collect_stmts_items(&mut self, stmts: ast::AstChildren<ast::Stmt>) {
         let container = ContainerId::DefWithBodyId(self.def);
 
-        let items = block
-            .statements()
+        let items = stmts
             .filter_map(|stmt| match stmt {
                 ast::Stmt::Item(it) => Some(it),
                 ast::Stmt::LetStmt(_) | ast::Stmt::ExprStmt(_) => None,

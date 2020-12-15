@@ -94,6 +94,9 @@ impl ItemTree {
                 ast::MacroItems(items) => {
                     ctx.lower_module_items(&items)
                 },
+                ast::MacroStmts(stmts) => {
+                    ctx.lower_inner_items(stmts.syntax())
+                },
                 // Macros can expand to expressions. We return an empty item tree in this case, but
                 // still need to collect inner items.
                 ast::Expr(e) => {

@@ -593,6 +593,30 @@ fn issue_4465_dollar_crate_at_type() {
 }
 
 #[test]
+fn issue_6811() {
+    check_infer(
+        r#"
+        macro_rules! profile_function {
+            () => {
+                let _a = 1;
+                let _b = 1;
+            };
+        }
+        fn main() {
+            profile_function!();
+        }
+        "#,
+        expect![[r#"
+            !3..5 '_a': i32
+            !6..7 '1': i32
+            !11..13 '_b': i32
+            !14..15 '1': i32
+            103..131 '{     ...!(); }': ()
+        "#]],
+    );
+}
+
+#[test]
 fn issue_4053_diesel_where_clauses() {
     check_infer(
         r#"
