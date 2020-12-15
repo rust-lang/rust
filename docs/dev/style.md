@@ -96,19 +96,19 @@ When using multiline fixtures, use unindented raw string literals:
     fn inline_field_shorthand() {
         check_assist(
             inline_local_variable,
-            r"
+            r#"
 struct S { foo: i32}
 fn main() {
     let <|>foo = 92;
     S { foo }
 }
-",
-            r"
+"#,
+            r#"
 struct S { foo: i32}
 fn main() {
     S { foo: 92 }
 }
-",
+"#,
         );
     }
 ```
