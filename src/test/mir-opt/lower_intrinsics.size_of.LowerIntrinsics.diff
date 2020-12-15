@@ -16,5 +16,9 @@
       bb1: {
           return;                          // scope 0 at $DIR/lower_intrinsics.rs:15:2: 15:2
       }
+  
+      bb2 (cleanup): {
+          resume;                          // scope 0 at $DIR/lower_intrinsics.rs:13:1: 15:2
+      }
   }
   
