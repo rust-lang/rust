@@ -118,7 +118,7 @@ LLVM's supplies two tools—`llvm-profdata` and `llvm-cov`—that process covera
 * If you are building the Rust compiler from source, you can optionally use the bundled LLVM tools, built from source. Those tool binaries can typically be found in your build platform directory at something like: `rust/build/x86_64-unknown-linux-gnu/llvm/bin/llvm-*`.
 * You can install compatible versions of these tools via `rustup`.
 
-The `rustup` option is guaranteed to install a compatible version of the LLVM tools, but they can be hard to find. We recommend [`cargo-bintools`], which installs Rust-specific wrappers around these and other LLVM tools, so you can invoke them via `cargo` commands!
+The `rustup` option is guaranteed to install a compatible version of the LLVM tools, but they can be hard to find. We recommend [`cargo-binutils`], which installs Rust-specific wrappers around these and other LLVM tools, so you can invoke them via `cargo` commands!
 
 ```shell
 $ rustup component add llvm-tools-preview
@@ -320,7 +320,7 @@ Rust's implementation and workflow for source-based code coverage is based on th
 [rustc-dev-guide-how-to-build-and-run]: https://rustc-dev-guide.rust-lang.org/building/how-to-build-and-run.html
 [`rustfilt`]: https://crates.io/crates/rustfilt
 [`json5format`]: https://crates.io/crates/json5format
-[`cargo-bintools`]: https://crates.io/crates/cargo-bintools
+[`cargo-binutils`]: https://crates.io/crates/cargo-binutils
 [`llvm-profdata merge`]: https://llvm.org/docs/CommandGuide/llvm-profdata.html#profdata-merge
 [`llvm-cov report`]: https://llvm.org/docs/CommandGuide/llvm-cov.html#llvm-cov-report
 [`llvm-cov show`]: https://llvm.org/docs/CommandGuide/llvm-cov.html#llvm-cov-show
