@@ -196,6 +196,9 @@ pub fn expr_method_call(receiver: ast::Expr, method: &str, arg_list: ast::ArgLis
 pub fn expr_ref(expr: ast::Expr, exclusive: bool) -> ast::Expr {
     expr_from_text(&if exclusive { format!("&mut {}", expr) } else { format!("&{}", expr) })
 }
+pub fn expr_paren(expr: ast::Expr) -> ast::Expr {
+    expr_from_text(&format!("({})", expr))
+}
 fn expr_from_text(text: &str) -> ast::Expr {
     ast_from_text(&format!("const C: () = {};", text))
 }

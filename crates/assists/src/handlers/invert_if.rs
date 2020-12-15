@@ -69,6 +69,15 @@ mod tests {
     use crate::tests::{check_assist, check_assist_not_applicable};
 
     #[test]
+    fn invert_if_composite_condition() {
+        check_assist(
+            invert_if,
+            "fn f() { i<|>f x == 3 || x == 4 || x == 5 { 1 } else { 3 * 2 } }",
+            "fn f() { if !(x == 3 || x == 4 || x == 5) { 3 * 2 } else { 1 } }",
+        )
+    }
+
+    #[test]
     fn invert_if_remove_inequality() {
         check_assist(
             invert_if,
