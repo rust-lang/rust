@@ -11,7 +11,7 @@ use super::FunctionCx;
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     pub fn eval_mir_constant_to_operand(
-        &mut self,
+        &self,
         bx: &mut Bx,
         constant: &mir::Constant<'tcx>,
     ) -> Result<OperandRef<'tcx, Bx::Value>, ErrorHandled> {
@@ -21,7 +21,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     }
 
     pub fn eval_mir_constant(
-        &mut self,
+        &self,
         constant: &mir::Constant<'tcx>,
     ) -> Result<ConstValue<'tcx>, ErrorHandled> {
         match self.monomorphize(constant.literal).val {

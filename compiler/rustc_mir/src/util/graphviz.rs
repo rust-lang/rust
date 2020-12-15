@@ -220,7 +220,7 @@ fn write_graph_label<'tcx, W: Write>(
             w,
             r#"debug {} =&gt; {};<br align="left"/>"#,
             var_debug_info.name,
-            escape(&var_debug_info.place)
+            escape(&var_debug_info.value),
         )?;
     }
 

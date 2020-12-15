@@ -12,7 +12,7 @@ use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_middle::hir::place::PlaceBase as HirPlaceBase;
 use rustc_middle::mir::{
     traversal, Body, ClearCrossCrate, Local, Location, Mutability, Operand, Place, PlaceElem,
-    PlaceRef,
+    PlaceRef, VarDebugInfoContents,
 };
 use rustc_middle::mir::{AggregateKind, BasicBlock, BorrowCheckResult, BorrowKind};
 use rustc_middle::mir::{Field, ProjectionElem, Promoted, Rvalue, Statement, StatementKind};
@@ -135,19 +135,21 @@ fn do_mir_borrowck<'a, 'tcx>(
 
     let mut local_names = IndexVec::from_elem(None, &input_body.local_decls);
     for var_debug_info in &input_body.var_debug_info {
-        if let Some(local) = var_debug_info.place.as_local() {
-            if let Some(prev_name) = local_names[local] {
-                if var_debug_info.name != prev_name {
-                    span_bug!(
-                        var_debug_info.source_info.span,
-                        "local {:?} has many names (`{}` vs `{}`)",
-                        local,
-                        prev_name,
-                        var_debug_info.name
-                    );
+        if let VarDebugInfoContents::Place(place) = var_debug_info.value {
+            if let Some(local) = place.as_local() {
+                if let Some(prev_name) = local_names[local] {
+                    if var_debug_info.name != prev_name {
+                        span_bug!(
+                            var_debug_info.source_info.span,
+                            "local {:?} has many names (`{}` vs `{}`)",
+                            local,
+                            prev_name,
+                            var_debug_info.name
+                        );
+                    }
                 }
+                local_names[local] = Some(var_debug_info.name);
             }
-            local_names[local] = Some(var_debug_info.name);
         }
     }
 

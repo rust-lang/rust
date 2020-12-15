@@ -8,7 +8,7 @@ use rustc_span::symbol::{kw, Symbol};
 use rustc_span::{BytePos, Span};
 use rustc_target::abi::{LayoutOf, Size};
 
-use super::operand::OperandValue;
+use super::operand::{OperandRef, OperandValue};
 use super::place::PlaceRef;
 use super::{FunctionCx, LocalRef};
 
@@ -114,6 +114,24 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         }
 
         span
+    }
+
+    fn spill_operand_to_stack(
+        operand: &OperandRef<'tcx, Bx::Value>,
+        name: Option<String>,
+        bx: &mut Bx,
+    ) -> PlaceRef<'tcx, Bx::Value> {
+        // "Spill" the value onto the stack, for debuginfo,
+        // without forcing non-debuginfo uses of the local
+        // to also load from the stack every single time.
+        // FIXME(#68817) use `llvm.dbg.value` instead,
+        // at least for the cases which LLVM handles correctly.
+        let spill_slot = PlaceRef::alloca(bx, operand.layout);
+        if let Some(name) = name {
+            bx.set_var_name(spill_slot.llval, &(name + ".dbg.spill"));
+        }
+        operand.val.store(bx, spill_slot);
+        spill_slot
     }
 
     /// Apply debuginfo and/or name, after creating the `alloca` for a local,
@@ -226,17 +244,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     return;
                 }
 
-                // "Spill" the value onto the stack, for debuginfo,
-                // without forcing non-debuginfo uses of the local
-                // to also load from the stack every single time.
-                // FIXME(#68817) use `llvm.dbg.value` instead,
-                // at least for the cases which LLVM handles correctly.
-                let spill_slot = PlaceRef::alloca(bx, operand.layout);
-                if let Some(name) = name {
-                    bx.set_var_name(spill_slot.llval, &(name + ".dbg.spill"));
-                }
-                operand.val.store(bx, spill_slot);
-                spill_slot
+                Self::spill_operand_to_stack(operand, name, bx)
             }
 
             LocalRef::Place(place) => *place,
@@ -308,6 +316,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     /// Partition all `VarDebugInfo` in `self.mir`, by their base `Local`.
     pub fn compute_per_local_var_debug_info(
         &self,
+        bx: &mut Bx,
     ) -> Option<IndexVec<mir::Local, Vec<PerLocalVarDebugInfo<'tcx, Bx::DIVariable>>>> {
         let full_debug_info = self.cx.sess().opts.debuginfo == DebugInfo::Full;
 
@@ -322,31 +331,63 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             } else {
                 None
             };
-            let dbg_var = dbg_scope_and_span.map(|(dbg_scope, _, span)| {
-                let place = var.place;
-                let var_ty = self.monomorphized_place_ty(place.as_ref());
-                let var_kind = if self.mir.local_kind(place.local) == mir::LocalKind::Arg
-                    && place.projection.is_empty()
-                    && var.source_info.scope == mir::OUTERMOST_SOURCE_SCOPE
-                {
-                    let arg_index = place.local.index() - 1;
 
-                    // FIXME(eddyb) shouldn't `ArgumentVariable` indices be
-                    // offset in closures to account for the hidden environment?
-                    // Also, is this `+ 1` needed at all?
-                    VariableKind::ArgumentVariable(arg_index + 1)
-                } else {
-                    VariableKind::LocalVariable
+            let dbg_var = dbg_scope_and_span.map(|(dbg_scope, _, span)| {
+                let (var_ty, var_kind) = match var.value {
+                    mir::VarDebugInfoContents::Place(place) => {
+                        let var_ty = self.monomorphized_place_ty(place.as_ref());
+                        let var_kind = if self.mir.local_kind(place.local) == mir::LocalKind::Arg
+                            && place.projection.is_empty()
+                            && var.source_info.scope == mir::OUTERMOST_SOURCE_SCOPE
+                        {
+                            let arg_index = place.local.index() - 1;
+
+                            // FIXME(eddyb) shouldn't `ArgumentVariable` indices be
+                            // offset in closures to account for the hidden environment?
+                            // Also, is this `+ 1` needed at all?
+                            VariableKind::ArgumentVariable(arg_index + 1)
+                        } else {
+                            VariableKind::LocalVariable
+                        };
+                        (var_ty, var_kind)
+                    }
+                    mir::VarDebugInfoContents::Const(c) => {
+                        let ty = self.monomorphize(c.literal.ty);
+                        (ty, VariableKind::LocalVariable)
+                    }
                 };
+
                 self.cx.create_dbg_var(var.name, var_ty, dbg_scope, var_kind, span)
             });
 
-            per_local[var.place.local].push(PerLocalVarDebugInfo {
-                name: var.name,
-                source_info: var.source_info,
-                dbg_var,
-                projection: var.place.projection,
-            });
+            match var.value {
+                mir::VarDebugInfoContents::Place(place) => {
+                    per_local[place.local].push(PerLocalVarDebugInfo {
+                        name: var.name,
+                        source_info: var.source_info,
+                        dbg_var,
+                        projection: place.projection,
+                    });
+                }
+                mir::VarDebugInfoContents::Const(c) => {
+                    if let Some(dbg_var) = dbg_var {
+                        let dbg_loc = match self.dbg_loc(var.source_info) {
+                            Some(dbg_loc) => dbg_loc,
+                            None => continue,
+                        };
+
+                        if let Ok(operand) = self.eval_mir_constant_to_operand(bx, &c) {
+                            let base = Self::spill_operand_to_stack(
+                                &operand,
+                                Some(var.name.to_string()),
+                                bx,
+                            );
+
+                            bx.dbg_var_addr(dbg_var, dbg_loc, base.llval, Size::ZERO, &[]);
+                        }
+                    }
+                }
+            }
         }
         Some(per_local)
     }

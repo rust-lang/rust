@@ -1060,6 +1060,23 @@ impl<'tcx> LocalDecl<'tcx> {
     }
 }
 
+#[derive(Clone, TyEncodable, TyDecodable, HashStable, TypeFoldable)]
+pub enum VarDebugInfoContents<'tcx> {
+    /// NOTE(eddyb) There's an unenforced invariant that this `Place` is
+    /// based on a `Local`, not a `Static`, and contains no indexing.
+    Place(Place<'tcx>),
+    Const(Constant<'tcx>),
+}
+
+impl<'tcx> Debug for VarDebugInfoContents<'tcx> {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            VarDebugInfoContents::Const(c) => write!(fmt, "{}", c),
+            VarDebugInfoContents::Place(p) => write!(fmt, "{:?}", p),
+        }
+    }
+}
+
 /// Debug information pertaining to a user variable.
 #[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable, TypeFoldable)]
 pub struct VarDebugInfo<'tcx> {
@@ -1071,9 +1088,7 @@ pub struct VarDebugInfo<'tcx> {
     pub source_info: SourceInfo,
 
     /// Where the data for this user variable is to be found.
-    /// NOTE(eddyb) There's an unenforced invariant that this `Place` is
-    /// based on a `Local`, not a `Static`, and contains no indexing.
-    pub place: Place<'tcx>,
+    pub value: VarDebugInfoContents<'tcx>,
 }
 
 ///////////////////////////////////////////////////////////////////////////

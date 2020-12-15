@@ -809,7 +809,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     self.var_debug_info.push(VarDebugInfo {
                         name: ident.name,
                         source_info,
-                        place: arg_local.into(),
+                        value: VarDebugInfoContents::Place(arg_local.into()),
                     });
                 }
             }
@@ -882,10 +882,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     self.var_debug_info.push(VarDebugInfo {
                         name,
                         source_info: SourceInfo::outermost(tcx_hir.span(var_id)),
-                        place: Place {
+                        value: VarDebugInfoContents::Place(Place {
                             local: closure_env_arg,
                             projection: tcx.intern_place_elems(&projs),
-                        },
+                        }),
                     });
 
                     mutability

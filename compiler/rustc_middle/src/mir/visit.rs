@@ -829,16 +829,20 @@ macro_rules! make_mir_visitor {
                 let VarDebugInfo {
                     name: _,
                     source_info,
-                    place,
+                    value,
                 } = var_debug_info;
 
                 self.visit_source_info(source_info);
                 let location = START_BLOCK.start_location();
-                self.visit_place(
-                    place,
-                    PlaceContext::NonUse(NonUseContext::VarDebugInfo),
-                    location,
-                );
+                match value {
+                    VarDebugInfoContents::Const(c) => self.visit_constant(c, location),
+                    VarDebugInfoContents::Place(place) =>
+                        self.visit_place(
+                            place,
+                            PlaceContext::NonUse(NonUseContext::VarDebugInfo),
+                            location
+                        ),
+                }
             }
 
             fn super_source_scope(&mut self,

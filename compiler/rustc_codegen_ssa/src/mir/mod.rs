@@ -186,7 +186,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         caller_location: None,
     };
 
-    fx.per_local_var_debug_info = fx.compute_per_local_var_debug_info();
+    fx.per_local_var_debug_info = fx.compute_per_local_var_debug_info(&mut bx);
 
     for const_ in &mir.required_consts {
         if let Err(err) = fx.eval_mir_constant(const_) {
