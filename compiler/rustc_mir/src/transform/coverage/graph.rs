@@ -32,24 +32,28 @@ impl CoverageGraph {
 
         // Pre-transform MIR `BasicBlock` successors and predecessors into the BasicCoverageBlock
         // equivalents. Note that since the BasicCoverageBlock graph has been fully simplified, the
-        // each predecessor of a BCB leader_bb should be in a unique BCB, and each successor of a
-        // BCB last_bb should be in its own unique BCB. Therefore, collecting the BCBs using
-        // `bb_to_bcb` should work without requiring a deduplication step.
+        // each predecessor of a BCB leader_bb should be in a unique BCB. It is possible for a
+        // `SwitchInt` to have multiple targets to the same destination `BasicBlock`, so
+        // de-duplication is required. This is done without reordering the successors.
 
+        let bcbs_len = bcbs.len();
+        let mut seen = IndexVec::from_elem_n(false, bcbs_len);
         let successors = IndexVec::from_fn_n(
             |bcb| {
+                for b in seen.iter_mut() {
+                    *b = false;
+                }
                 let bcb_data = &bcbs[bcb];
-                let bcb_successors =
+                let mut bcb_successors = Vec::new();
+                for successor in
                     bcb_filtered_successors(&mir_body, &bcb_data.terminator(mir_body).kind)
                         .filter_map(|&successor_bb| bb_to_bcb[successor_bb])
-                        .collect::<Vec<_>>();
-                debug_assert!({
-                    let mut sorted = bcb_successors.clone();
-                    sorted.sort_unstable();
-                    let initial_len = sorted.len();
-                    sorted.dedup();
-                    sorted.len() == initial_len
-                });
+                {
+                    if !seen[successor] {
+                        seen[successor] = true;
+                        bcb_successors.push(successor);
+                    }
+                }
                 bcb_successors
             },
             bcbs.len(),

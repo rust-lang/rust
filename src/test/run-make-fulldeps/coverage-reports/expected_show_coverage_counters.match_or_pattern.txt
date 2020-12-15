@@ -1,0 +1,98 @@
+Counter in file 0 3:1 -> 11:15, #1
+Counter in file 0 11:16 -> 14:6, #2
+Counter in file 0 14:6 -> 14:7, (#1 - #2)
+Counter in file 0 15:11 -> 15:17, (#2 + (#1 - #2))
+Counter in file 0 18:27 -> 18:29, #5
+Counter in file 0 19:14 -> 19:16, (#3 + #4)
+Counter in file 0 21:8 -> 21:15, ((#3 + #4) + #5)
+Counter in file 0 21:16 -> 24:6, #6
+Counter in file 0 24:6 -> 24:7, (((#3 + #4) + #5) - #6)
+Counter in file 0 25:11 -> 25:17, (#6 + (((#3 + #4) + #5) - #6))
+Counter in file 0 26:27 -> 26:29, #9
+Counter in file 0 27:14 -> 27:16, (#7 + #8)
+Counter in file 0 29:8 -> 29:15, ((#7 + #8) + #9)
+Counter in file 0 29:16 -> 32:6, #10
+Counter in file 0 32:6 -> 32:7, (((#7 + #8) + #9) - #10)
+Counter in file 0 33:11 -> 33:17, (#10 + (((#7 + #8) + #9) - #10))
+Counter in file 0 34:27 -> 34:29, #13
+Counter in file 0 35:14 -> 35:16, (#11 + #12)
+Counter in file 0 37:8 -> 37:15, ((#11 + #12) + #13)
+Counter in file 0 37:16 -> 40:6, #14
+Counter in file 0 40:6 -> 40:7, (((#11 + #12) + #13) - #14)
+Counter in file 0 41:11 -> 41:17, (#14 + (((#11 + #12) + #13) - #14))
+Counter in file 0 42:27 -> 42:29, #17
+Counter in file 0 43:14 -> 43:16, (#15 + #16)
+Counter in file 0 45:1 -> 45:2, ((#15 + #16) + #17)
+Emitting segments for file: ../coverage/match_or_pattern.rs
+Combined regions:
+  3:1 -> 11:15 (count=1)
+  11:16 -> 14:6 (count=1)
+  14:6 -> 14:7 (count=0)
+  15:11 -> 15:17 (count=1)
+  18:27 -> 18:29 (count=0)
+  19:14 -> 19:16 (count=1)
+  21:8 -> 21:15 (count=1)
+  21:16 -> 24:6 (count=1)
+  24:6 -> 24:7 (count=0)
+  25:11 -> 25:17 (count=1)
+  26:27 -> 26:29 (count=0)
+  27:14 -> 27:16 (count=1)
+  29:8 -> 29:15 (count=1)
+  29:16 -> 32:6 (count=1)
+  32:6 -> 32:7 (count=0)
+  33:11 -> 33:17 (count=1)
+  34:27 -> 34:29 (count=0)
+  35:14 -> 35:16 (count=1)
+  37:8 -> 37:15 (count=1)
+  37:16 -> 40:6 (count=1)
+  40:6 -> 40:7 (count=0)
+  41:11 -> 41:17 (count=1)
+  42:27 -> 42:29 (count=1)
+  43:14 -> 43:16 (count=0)
+  45:1 -> 45:2 (count=1)
+Segment at 3:1 (count = 1), RegionEntry
+Segment at 11:15 (count = 0), Skipped
+Segment at 11:16 (count = 1), RegionEntry
+Segment at 14:6 (count = 0), RegionEntry
+Segment at 14:7 (count = 0), Skipped
+Segment at 15:11 (count = 1), RegionEntry
+Segment at 15:17 (count = 0), Skipped
+Segment at 18:27 (count = 0), RegionEntry
+Segment at 18:29 (count = 0), Skipped
+Segment at 19:14 (count = 1), RegionEntry
+Segment at 19:16 (count = 0), Skipped
+Segment at 21:8 (count = 1), RegionEntry
+Segment at 21:15 (count = 0), Skipped
+Segment at 21:16 (count = 1), RegionEntry
+Segment at 24:6 (count = 0), RegionEntry
+Segment at 24:7 (count = 0), Skipped
+Segment at 25:11 (count = 1), RegionEntry
+Segment at 25:17 (count = 0), Skipped
+Segment at 26:27 (count = 0), RegionEntry
+Segment at 26:29 (count = 0), Skipped
+Segment at 27:14 (count = 1), RegionEntry
+Segment at 27:16 (count = 0), Skipped
+Segment at 29:8 (count = 1), RegionEntry
+Segment at 29:15 (count = 0), Skipped
+Segment at 29:16 (count = 1), RegionEntry
+Segment at 32:6 (count = 0), RegionEntry
+Segment at 32:7 (count = 0), Skipped
+Segment at 33:11 (count = 1), RegionEntry
+Segment at 33:17 (count = 0), Skipped
+Segment at 34:27 (count = 0), RegionEntry
+Segment at 34:29 (count = 0), Skipped
+Segment at 35:14 (count = 1), RegionEntry
+Segment at 35:16 (count = 0), Skipped
+Segment at 37:8 (count = 1), RegionEntry
+Segment at 37:15 (count = 0), Skipped
+Segment at 37:16 (count = 1), RegionEntry
+Segment at 40:6 (count = 0), RegionEntry
+Segment at 40:7 (count = 0), Skipped
+Segment at 41:11 (count = 1), RegionEntry
+Segment at 41:17 (count = 0), Skipped
+Segment at 42:27 (count = 1), RegionEntry
+Segment at 42:29 (count = 0), Skipped
+Segment at 43:14 (count = 0), RegionEntry
+Segment at 43:16 (count = 0), Skipped
+Segment at 45:1 (count = 1), RegionEntry
+Segment at 45:2 (count = 0), Skipped

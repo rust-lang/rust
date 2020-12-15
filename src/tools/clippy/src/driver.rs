@@ -41,7 +41,7 @@ fn arg_value<'a, T: Deref<Target = str>>(
 
         match arg.next().or_else(|| args.next()) {
             Some(v) if pred(v) => return Some(v),
-            _ => {},
+            _ => {}
         }
     }
     None
@@ -121,11 +121,12 @@ You can use tool lints to allow or deny lints from your code, eg.:
 
 const BUG_REPORT_URL: &str = "https://github.com/rust-lang/rust-clippy/issues/new";
 
-static ICE_HOOK: SyncLazy<Box<dyn Fn(&panic::PanicInfo<'_>) + Sync + Send + 'static>> = SyncLazy::new(|| {
-    let hook = panic::take_hook();
-    panic::set_hook(Box::new(|info| report_clippy_ice(info, BUG_REPORT_URL)));
-    hook
-});
+static ICE_HOOK: SyncLazy<Box<dyn Fn(&panic::PanicInfo<'_>) + Sync + Send + 'static>> =
+    SyncLazy::new(|| {
+        let hook = panic::take_hook();
+        panic::set_hook(Box::new(|info| report_clippy_ice(info, BUG_REPORT_URL)));
+        hook
+    });
 
 fn report_clippy_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str) {
     // Invoke our ICE handler, which prints the actual panic message and optionally a backtrace
@@ -257,14 +258,17 @@ pub fn main() {
 
         // Setting RUSTC_WRAPPER causes Cargo to pass 'rustc' as the first argument.
         // We're invoking the compiler programmatically, so we ignore this/
-        let wrapper_mode = orig_args.get(1).map(Path::new).and_then(Path::file_stem) == Some("rustc".as_ref());
+        let wrapper_mode =
+            orig_args.get(1).map(Path::new).and_then(Path::file_stem) == Some("rustc".as_ref());
 
         if wrapper_mode {
             // we still want to be able to invoke it normally though
             orig_args.remove(1);
         }
 
-        if !wrapper_mode && (orig_args.iter().any(|a| a == "--help" || a == "-h") || orig_args.len() == 1) {
+        if !wrapper_mode
+            && (orig_args.iter().any(|a| a == "--help" || a == "-h") || orig_args.len() == 1)
+        {
             display_help();
             exit(0);
         }
@@ -285,13 +289,11 @@ pub fn main() {
         if clippy_enabled {
             args.extend(vec!["--cfg".into(), r#"feature="cargo-clippy""#.into()]);
             if let Ok(extra_args) = env::var("CLIPPY_ARGS") {
-                args.extend(extra_args.split("__CLIPPY_HACKERY__").filter_map(|s| {
-                    if s.is_empty() {
-                        None
-                    } else {
-                        Some(s.to_string())
-                    }
-                }));
+                args.extend(
+                    extra_args
+                        .split("__CLIPPY_HACKERY__")
+                        .filter_map(|s| if s.is_empty() { None } else { Some(s.to_string()) }),
+                );
             }
         }
         let mut clippy = ClippyCallbacks;
