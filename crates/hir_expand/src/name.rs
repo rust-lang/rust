@@ -199,6 +199,8 @@ pub mod known {
         format_args_nl,
         env,
         option_env,
+        llvm_asm,
+        asm,
         // Builtin derives
         Copy,
         Clone,

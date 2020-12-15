@@ -95,6 +95,8 @@ register_builtin! {
     // format_args_nl only differs in that it adds a newline in the end,
     // so we use the same stub expansion for now
     (format_args_nl, FormatArgsNl) => format_args_expand,
+    (llvm_asm, LlvmAsm) => asm_expand,
+    (asm, Asm) => asm_expand,
 
     EAGER:
     (compile_error, CompileError) => compile_error_expand,
@@ -267,6 +269,19 @@ fn format_args_expand(
     }.token_trees).collect::<Vec<_>>();
     let expanded = quote! {
         std::fmt::Arguments::new_v1(&[], &[##arg_tts])
+    };
+    ExpandResult::ok(expanded)
+}
+
+fn asm_expand(
+    _db: &dyn AstDatabase,
+    _id: LazyMacroId,
+    _tt: &tt::Subtree,
+) -> ExpandResult<tt::Subtree> {
+    // both asm and llvm_asm don't return anything, so we can expand them to nothing,
+    // for now
+    let expanded = quote! {
+        ()
     };
     ExpandResult::ok(expanded)
 }
