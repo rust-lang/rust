@@ -209,6 +209,17 @@ pub trait PrettyPrinter<'tcx>:
         value.as_ref().skip_binder().print(self)
     }
 
+    fn wrap_binder<T, F: Fn(&T, Self) -> Result<Self, fmt::Error>>(
+        self,
+        value: &ty::Binder<T>,
+        f: F,
+    ) -> Result<Self, Self::Error>
+    where
+        T: Print<'tcx, Self, Output = Self, Error = Self::Error> + TypeFoldable<'tcx>,
+    {
+        f(value.as_ref().skip_binder(), self)
+    }
+
     /// Prints comma-separated elements.
     fn comma_sep<T>(mut self, mut elems: impl Iterator<Item = T>) -> Result<Self, Self::Error>
     where
@@ -753,71 +764,76 @@ pub trait PrettyPrinter<'tcx>:
 
     fn pretty_print_dyn_existential(
         mut self,
-        predicates: &'tcx ty::List<ty::ExistentialPredicate<'tcx>>,
+        predicates: &'tcx ty::List<ty::Binder<ty::ExistentialPredicate<'tcx>>>,
     ) -> Result<Self::DynExistential, Self::Error> {
-        define_scoped_cx!(self);
-
         // Generate the main trait ref, including associated types.
         let mut first = true;
 
         if let Some(principal) = predicates.principal() {
-            p!(print_def_path(principal.def_id, &[]));
+            self = self.wrap_binder(&principal, |principal, mut cx| {
+                define_scoped_cx!(cx);
+                p!(print_def_path(principal.def_id, &[]));
 
-            let mut resugared = false;
+                let mut resugared = false;
 
-            // Special-case `Fn(...) -> ...` and resugar it.
-            let fn_trait_kind = self.tcx().fn_trait_kind_from_lang_item(principal.def_id);
-            if !self.tcx().sess.verbose() && fn_trait_kind.is_some() {
-                if let ty::Tuple(ref args) = principal.substs.type_at(0).kind() {
-                    let mut projections = predicates.projection_bounds();
-                    if let (Some(proj), None) = (projections.next(), projections.next()) {
-                        let tys: Vec<_> = args.iter().map(|k| k.expect_ty()).collect();
-                        p!(pretty_fn_sig(&tys, false, proj.ty));
-                        resugared = true;
+                // Special-case `Fn(...) -> ...` and resugar it.
+                let fn_trait_kind = cx.tcx().fn_trait_kind_from_lang_item(principal.def_id);
+                if !cx.tcx().sess.verbose() && fn_trait_kind.is_some() {
+                    if let ty::Tuple(ref args) = principal.substs.type_at(0).kind() {
+                        let mut projections = predicates.projection_bounds();
+                        if let (Some(proj), None) = (projections.next(), projections.next()) {
+                            let tys: Vec<_> = args.iter().map(|k| k.expect_ty()).collect();
+                            p!(pretty_fn_sig(&tys, false, proj.skip_binder().ty));
+                            resugared = true;
+                        }
                     }
                 }
-            }
 
-            // HACK(eddyb) this duplicates `FmtPrinter`'s `path_generic_args`,
-            // in order to place the projections inside the `<...>`.
-            if !resugared {
-                // Use a type that can't appear in defaults of type parameters.
-                let dummy_self = self.tcx().mk_ty_infer(ty::FreshTy(0));
-                let principal = principal.with_self_ty(self.tcx(), dummy_self);
+                // HACK(eddyb) this duplicates `FmtPrinter`'s `path_generic_args`,
+                // in order to place the projections inside the `<...>`.
+                if !resugared {
+                    // Use a type that can't appear in defaults of type parameters.
+                    let dummy_cx = cx.tcx().mk_ty_infer(ty::FreshTy(0));
+                    let principal = principal.with_self_ty(cx.tcx(), dummy_cx);
 
-                let args = self.generic_args_to_print(
-                    self.tcx().generics_of(principal.def_id),
-                    principal.substs,
-                );
+                    let args = cx.generic_args_to_print(
+                        cx.tcx().generics_of(principal.def_id),
+                        principal.substs,
+                    );
 
-                // Don't print `'_` if there's no unerased regions.
-                let print_regions = args.iter().any(|arg| match arg.unpack() {
-                    GenericArgKind::Lifetime(r) => *r != ty::ReErased,
-                    _ => false,
-                });
-                let mut args = args.iter().cloned().filter(|arg| match arg.unpack() {
-                    GenericArgKind::Lifetime(_) => print_regions,
-                    _ => true,
-                });
-                let mut projections = predicates.projection_bounds();
+                    // Don't print `'_` if there's no unerased regions.
+                    let print_regions = args.iter().any(|arg| match arg.unpack() {
+                        GenericArgKind::Lifetime(r) => *r != ty::ReErased,
+                        _ => false,
+                    });
+                    let mut args = args.iter().cloned().filter(|arg| match arg.unpack() {
+                        GenericArgKind::Lifetime(_) => print_regions,
+                        _ => true,
+                    });
+                    let mut projections = predicates.projection_bounds();
 
-                let arg0 = args.next();
-                let projection0 = projections.next();
-                if arg0.is_some() || projection0.is_some() {
-                    let args = arg0.into_iter().chain(args);
-                    let projections = projection0.into_iter().chain(projections);
+                    let arg0 = args.next();
+                    let projection0 = projections.next();
+                    if arg0.is_some() || projection0.is_some() {
+                        let args = arg0.into_iter().chain(args);
+                        let projections = projection0.into_iter().chain(projections);
 
-                    p!(generic_delimiters(|mut cx| {
-                        cx = cx.comma_sep(args)?;
-                        if arg0.is_some() && projection0.is_some() {
-                            write!(cx, ", ")?;
-                        }
-                        cx.comma_sep(projections)
-                    }));
+                        p!(generic_delimiters(|mut cx| {
+                            cx = cx.comma_sep(args)?;
+                            if arg0.is_some() && projection0.is_some() {
+                                write!(cx, ", ")?;
+                            }
+                            cx.comma_sep(projections)
+                        }));
+                    }
                 }
-            }
+                Ok(cx)
+            })?;
+
             first = false;
         }
+
+        define_scoped_cx!(self);
 
         // Builtin bounds.
         // FIXME(eddyb) avoid printing twice (needed to ensure
@@ -1391,7 +1407,7 @@ impl<F: fmt::Write> Printer<'tcx> for FmtPrinter<'_, 'tcx, F> {
 
     fn print_dyn_existential(
         self,
-        predicates: &'tcx ty::List<ty::ExistentialPredicate<'tcx>>,
+        predicates: &'tcx ty::List<ty::Binder<ty::ExistentialPredicate<'tcx>>>,
     ) -> Result<Self::DynExistential, Self::Error> {
         self.pretty_print_dyn_existential(predicates)
     }
@@ -1535,6 +1551,17 @@ impl<F: fmt::Write> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx, F> {
         T: Print<'tcx, Self, Output = Self, Error = Self::Error> + TypeFoldable<'tcx>,
     {
         self.pretty_in_binder(value)
+    }
+
+    fn wrap_binder<T, C: Fn(&T, Self) -> Result<Self, Self::Error>>(
+        self,
+        value: &ty::Binder<T>,
+        f: C,
+    ) -> Result<Self, Self::Error>
+    where
+        T: Print<'tcx, Self, Output = Self, Error = Self::Error> + TypeFoldable<'tcx>,
+    {
+        self.pretty_wrap_binder(value, f)
     }
 
     fn typed_value(
@@ -1790,6 +1817,22 @@ impl<F: fmt::Write> FmtPrinter<'_, 'tcx, F> {
         Ok(inner)
     }
 
+    pub fn pretty_wrap_binder<T, C: Fn(&T, Self) -> Result<Self, fmt::Error>>(
+        self,
+        value: &ty::Binder<T>,
+        f: C,
+    ) -> Result<Self, fmt::Error>
+    where
+        T: Print<'tcx, Self, Output = Self, Error = fmt::Error> + TypeFoldable<'tcx>,
+    {
+        let old_region_index = self.region_index;
+        let (new, new_value) = self.name_all_regions(value)?;
+        let mut inner = f(&new_value.0, new)?;
+        inner.region_index = old_region_index;
+        inner.binder_depth -= 1;
+        Ok(inner)
+    }
+
     fn prepare_late_bound_region_info<T>(&mut self, value: &ty::Binder<T>)
     where
         T: TypeFoldable<'tcx>,
@@ -1906,12 +1949,12 @@ impl ty::Binder<ty::TraitRef<'tcx>> {
 
 forward_display_to_print! {
     Ty<'tcx>,
-    &'tcx ty::List<ty::ExistentialPredicate<'tcx>>,
+    &'tcx ty::List<ty::Binder<ty::ExistentialPredicate<'tcx>>>,
     &'tcx ty::Const<'tcx>,
 
     // HACK(eddyb) these are exhaustive instead of generic,
     // because `for<'tcx>` isn't possible yet.
-    ty::Binder<&'tcx ty::List<ty::ExistentialPredicate<'tcx>>>,
+    ty::Binder<ty::ExistentialPredicate<'tcx>>,
     ty::Binder<ty::TraitRef<'tcx>>,
     ty::Binder<TraitRefPrintOnlyTraitPath<'tcx>>,
     ty::Binder<ty::FnSig<'tcx>>,

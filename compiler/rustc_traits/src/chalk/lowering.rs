@@ -615,7 +615,7 @@ impl<'tcx> LowerInto<'tcx, Option<chalk_ir::QuantifiedWhereClause<RustInterner<'
 }
 
 impl<'tcx> LowerInto<'tcx, chalk_ir::Binders<chalk_ir::QuantifiedWhereClauses<RustInterner<'tcx>>>>
-    for Binder<&'tcx ty::List<ty::ExistentialPredicate<'tcx>>>
+    for &'tcx ty::List<ty::Binder<ty::ExistentialPredicate<'tcx>>>
 {
     fn lower_into(
         self,
@@ -627,48 +627,53 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Binders<chalk_ir::QuantifiedWhereClauses<Ru
         // Binders<&[Binders<WhereClause<I>>]>
         // This means that any variables that are escaping `self` need to be
         // shifted in by one so that they are still escaping.
-        let shifted_predicates = ty::fold::shift_vars(interner.tcx, self, 1);
+        let predicates = ty::fold::shift_vars(interner.tcx, self, 1);
 
-        let (predicates, binders, _named_regions) =
-            collect_bound_vars(interner, interner.tcx, shifted_predicates);
         let self_ty = interner.tcx.mk_ty(ty::Bound(
             // This is going to be wrapped in a binder
             ty::DebruijnIndex::from_usize(1),
             ty::BoundTy { var: ty::BoundVar::from_usize(0), kind: ty::BoundTyKind::Anon },
         ));
-        let where_clauses = predicates.into_iter().map(|predicate| match predicate {
-            ty::ExistentialPredicate::Trait(ty::ExistentialTraitRef { def_id, substs }) => {
-                chalk_ir::Binders::new(
+        let where_clauses = predicates.into_iter().map(|predicate| {
+            let (predicate, binders, _named_regions) =
+                collect_bound_vars(interner, interner.tcx, predicate);
+            match predicate {
+                ty::ExistentialPredicate::Trait(ty::ExistentialTraitRef { def_id, substs }) => {
+                    chalk_ir::Binders::new(
+                        binders.clone(),
+                        chalk_ir::WhereClause::Implemented(chalk_ir::TraitRef {
+                            trait_id: chalk_ir::TraitId(def_id),
+                            substitution: interner
+                                .tcx
+                                .mk_substs_trait(self_ty, substs)
+                                .lower_into(interner),
+                        }),
+                    )
+                }
+                ty::ExistentialPredicate::Projection(predicate) => chalk_ir::Binders::new(
+                    binders.clone(),
+                    chalk_ir::WhereClause::AliasEq(chalk_ir::AliasEq {
+                        alias: chalk_ir::AliasTy::Projection(chalk_ir::ProjectionTy {
+                            associated_ty_id: chalk_ir::AssocTypeId(predicate.item_def_id),
+                            substitution: interner
+                                .tcx
+                                .mk_substs_trait(self_ty, predicate.substs)
+                                .lower_into(interner),
+                        }),
+                        ty: predicate.ty.lower_into(interner),
+                    }),
+                ),
+                ty::ExistentialPredicate::AutoTrait(def_id) => chalk_ir::Binders::new(
                     binders.clone(),
                     chalk_ir::WhereClause::Implemented(chalk_ir::TraitRef {
                         trait_id: chalk_ir::TraitId(def_id),
                         substitution: interner
                             .tcx
-                            .mk_substs_trait(self_ty, substs)
+                            .mk_substs_trait(self_ty, &[])
                             .lower_into(interner),
                     }),
-                )
+                ),
             }
-            ty::ExistentialPredicate::Projection(predicate) => chalk_ir::Binders::new(
-                binders.clone(),
-                chalk_ir::WhereClause::AliasEq(chalk_ir::AliasEq {
-                    alias: chalk_ir::AliasTy::Projection(chalk_ir::ProjectionTy {
-                        associated_ty_id: chalk_ir::AssocTypeId(predicate.item_def_id),
-                        substitution: interner
-                            .tcx
-                            .mk_substs_trait(self_ty, predicate.substs)
-                            .lower_into(interner),
-                    }),
-                    ty: predicate.ty.lower_into(interner),
-                }),
-            ),
-            ty::ExistentialPredicate::AutoTrait(def_id) => chalk_ir::Binders::new(
-                binders.clone(),
-                chalk_ir::WhereClause::Implemented(chalk_ir::TraitRef {
-                    trait_id: chalk_ir::TraitId(def_id),
-                    substitution: interner.tcx.mk_substs_trait(self_ty, &[]).lower_into(interner),
-                }),
-            ),
         });
 
         // Binder for the bound variable representing the concrete underlying type.
