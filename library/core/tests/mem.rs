@@ -1,5 +1,7 @@
 use core::mem::*;
 
+use std::rc::Rc;
+
 #[test]
 fn size_of_basic() {
     assert_eq!(size_of::<u8>(), 1);
@@ -136,4 +138,126 @@ fn assume_init_good() {
     const TRUE: bool = unsafe { MaybeUninit::<bool>::new(true).assume_init() };
 
     assert!(TRUE);
+}
+
+#[test]
+fn uninit_write_slice() {
+    let mut dst = [MaybeUninit::new(255); 64];
+    let src = [0; 64];
+
+    assert_eq!(MaybeUninit::write_slice(&mut dst, &src), &src);
+}
+
+#[test]
+#[should_panic(expected = "source slice length (32) does not match destination slice length (64)")]
+fn uninit_write_slice_panic_lt() {
+    let mut dst = [MaybeUninit::uninit(); 64];
+    let src = [0; 32];
+
+    MaybeUninit::write_slice(&mut dst, &src);
+}
+
+#[test]
+#[should_panic(expected = "source slice length (128) does not match destination slice length (64)")]
+fn uninit_write_slice_panic_gt() {
+    let mut dst = [MaybeUninit::uninit(); 64];
+    let src = [0; 128];
+
+    MaybeUninit::write_slice(&mut dst, &src);
+}
+
+#[test]
+fn uninit_clone_from_slice() {
+    let mut dst = [MaybeUninit::new(255); 64];
+    let src = [0; 64];
+
+    assert_eq!(MaybeUninit::write_slice_cloned(&mut dst, &src), &src);
+}
+
+#[test]
+#[should_panic(expected = "destination and source slices have different lengths")]
+fn uninit_write_slice_cloned_panic_lt() {
+    let mut dst = [MaybeUninit::uninit(); 64];
+    let src = [0; 32];
+
+    MaybeUninit::write_slice_cloned(&mut dst, &src);
+}
+
+#[test]
+#[should_panic(expected = "destination and source slices have different lengths")]
+fn uninit_write_slice_cloned_panic_gt() {
+    let mut dst = [MaybeUninit::uninit(); 64];
+    let src = [0; 128];
+
+    MaybeUninit::write_slice_cloned(&mut dst, &src);
+}
+
+#[test]
+#[cfg(panic = "unwind")]
+fn uninit_write_slice_cloned_mid_panic() {
+    use std::panic;
+
+    enum IncrementOrPanic {
+        Increment(Rc<()>),
+        ExpectedPanic,
+        UnexpectedPanic,
+    }
+
+    impl Clone for IncrementOrPanic {
+        fn clone(&self) -> Self {
+            match self {
+                Self::Increment(rc) => Self::Increment(rc.clone()),
+                Self::ExpectedPanic => panic!("expected panic on clone"),
+                Self::UnexpectedPanic => panic!("unexpected panic on clone"),
+            }
+        }
+    }
+
+    let rc = Rc::new(());
+
+    let mut dst = [
+        MaybeUninit::uninit(),
+        MaybeUninit::uninit(),
+        MaybeUninit::uninit(),
+        MaybeUninit::uninit(),
+    ];
+
+    let src = [
+        IncrementOrPanic::Increment(rc.clone()),
+        IncrementOrPanic::Increment(rc.clone()),
+        IncrementOrPanic::ExpectedPanic,
+        IncrementOrPanic::UnexpectedPanic,
+    ];
+
+    let err = panic::catch_unwind(panic::AssertUnwindSafe(|| {
+        MaybeUninit::write_slice_cloned(&mut dst, &src);
+    }));
+
+    drop(src);
+
+    match err {
+        Ok(_) => unreachable!(),
+        Err(payload) => {
+            payload
+                .downcast::<&'static str>()
+                .and_then(|s| if *s == "expected panic on clone" { Ok(s) } else { Err(s) })
+                .unwrap_or_else(|p| panic::resume_unwind(p));
+
+            assert_eq!(Rc::strong_count(&rc), 1)
+        }
+    }
+}
+
+#[test]
+fn uninit_write_slice_cloned_no_drop() {
+    let rc = Rc::new(());
+
+    let mut dst = [MaybeUninit::uninit()];
+    let src = [rc.clone()];
+
+    MaybeUninit::write_slice_cloned(&mut dst, &src);
+
+    drop(src);
+
+    assert_eq!(Rc::strong_count(&rc), 2);
 }
