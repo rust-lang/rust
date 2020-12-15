@@ -333,4 +333,12 @@ void EnzymeTypeTreeShiftIndiciesEq(CTypeTreeRef CTT, const char *datalayout,
   *(TypeTree *)CTT =
       ((TypeTree *)CTT)->ShiftIndices(DL, offset, maxSize, addOffset);
 }
+const char *EnzymeTypeTreeToString(CTypeTreeRef src) {
+  std::string tmp = ((TypeTree *)src)->str();
+  char *cstr = new char[tmp.length() + 1];
+  std::strcpy(cstr, tmp.c_str());
+
+  return cstr;
+}
+void EnzymeTypeTreeToStringFree(const char *cstr) { delete[] cstr; }
 }

@@ -86,6 +86,8 @@ void EnzymeTypeTreeOnlyEq(CTypeTreeRef dst, int64_t x);
 void EnzymeTypeTreeShiftIndiciesEq(CTypeTreeRef dst, const char *datalayout,
                                    int64_t offset, int64_t maxSize,
                                    uint64_t addOffset);
+const char *EnzymeTypeTreeToString(CTypeTreeRef src);
+void EnzymeTypeTreeToStringFree(const char *cstr);
 
 struct CFnTypeInfo {
   /// Types of arguments, assumed of size len(Arguments)
