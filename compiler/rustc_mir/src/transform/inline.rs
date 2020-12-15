@@ -41,14 +41,6 @@ impl<'tcx> MirPass<'tcx> for Inline {
             return;
         }
 
-        if tcx.sess.opts.debugging_opts.instrument_coverage {
-            // The current implementation of source code coverage injects code region counters
-            // into the MIR, and assumes a 1-to-1 correspondence between MIR and source-code-
-            // based function.
-            debug!("function inlining is disabled when compiling with `instrument_coverage`");
-            return;
-        }
-
         if inline(tcx, body) {
             debug!("running simplify cfg on {:?}", body.source);
             CfgSimplifier::new(body).simplify();

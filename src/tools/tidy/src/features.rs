@@ -330,7 +330,6 @@ fn collect_lang_features_in(base: &Path, file: &str, bad: &mut bool) -> Features
             let issue_str = parts.next().unwrap().trim();
             let tracking_issue = if issue_str.starts_with("None") {
                 if level == Status::Unstable && !next_feature_omits_tracking_issue {
-                    *bad = true;
                     tidy_error!(
                         bad,
                         "{}:{}: no tracking issue for feature {}",
