@@ -1622,7 +1622,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     }
                 }
                 (TypeError::ObjectUnsafeCoercion(_), _) => {
-                    diag.note_unsuccessfull_coercion(found, expected);
+                    diag.note_unsuccessful_coercion(found, expected);
                 }
                 (_, _) => {
                     debug!(
