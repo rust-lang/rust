@@ -117,21 +117,9 @@ fn get_args() -> Option<Vec<String>> {
         .collect()
 }
 
-fn stable<F>(name: &'static str, f: F) -> RustcOptGroup
-where
-    F: Fn(&mut getopts::Options) -> &mut getopts::Options + 'static,
-{
-    RustcOptGroup::stable(name, f)
-}
-
-fn unstable<F>(name: &'static str, f: F) -> RustcOptGroup
-where
-    F: Fn(&mut getopts::Options) -> &mut getopts::Options + 'static,
-{
-    RustcOptGroup::unstable(name, f)
-}
-
 fn opts() -> Vec<RustcOptGroup> {
+    let stable: fn(_, fn(&mut getopts::Options) -> &mut _) -> _ = RustcOptGroup::stable;
+    let unstable: fn(_, fn(&mut getopts::Options) -> &mut _) -> _ = RustcOptGroup::unstable;
     vec![
         stable("h", |o| o.optflag("h", "help", "show this help message")),
         stable("V", |o| o.optflag("V", "version", "print rustdoc's version")),
