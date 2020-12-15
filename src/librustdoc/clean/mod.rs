@@ -254,7 +254,6 @@ impl Clean<Item> for doctree::Module<'_> {
             cx,
         );
         Item {
-            name: Some(what_rustc_thinks.name.unwrap_or_default()),
             attrs,
             source: span.clean(cx),
             ..what_rustc_thinks
