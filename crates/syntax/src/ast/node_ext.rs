@@ -12,6 +12,12 @@ use crate::{
     SmolStr, SyntaxElement, SyntaxToken, T,
 };
 
+impl ast::Lifetime {
+    pub fn text(&self) -> &SmolStr {
+        text_of_first_token(self.syntax())
+    }
+}
+
 impl ast::Name {
     pub fn text(&self) -> &SmolStr {
         text_of_first_token(self.syntax())
@@ -393,7 +399,7 @@ pub enum TypeBoundKind {
     /// for<'a> ...
     ForType(ast::ForType),
     /// 'a
-    Lifetime(SyntaxToken),
+    Lifetime(ast::Lifetime),
 }
 
 impl ast::TypeBound {
@@ -402,7 +408,7 @@ impl ast::TypeBound {
             TypeBoundKind::PathType(path_type)
         } else if let Some(for_type) = support::children(self.syntax()).next() {
             TypeBoundKind::ForType(for_type)
-        } else if let Some(lifetime) = self.lifetime_token() {
+        } else if let Some(lifetime) = self.lifetime() {
             TypeBoundKind::Lifetime(lifetime)
         } else {
             unreachable!()
@@ -440,7 +446,7 @@ impl ast::LifetimeParam {
             .children_with_tokens()
             .filter_map(|it| it.into_token())
             .skip_while(|x| x.kind() != T![:])
-            .filter(|it| it.kind() == T![lifetime])
+            .filter(|it| it.kind() == T![lifetime_ident])
     }
 }
 

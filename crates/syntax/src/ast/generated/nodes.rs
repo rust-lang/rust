@@ -20,6 +20,15 @@ impl NameRef {
     pub fn ident_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![ident]) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Lifetime {
+    pub(crate) syntax: SyntaxNode,
+}
+impl Lifetime {
+    pub fn lifetime_ident_token(&self) -> Option<SyntaxToken> {
+        support::token(&self.syntax, T![lifetime_ident])
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Path {
     pub(crate) syntax: SyntaxNode,
 }
@@ -105,9 +114,7 @@ pub struct LifetimeArg {
     pub(crate) syntax: SyntaxNode,
 }
 impl LifetimeArg {
-    pub fn lifetime_token(&self) -> Option<SyntaxToken> {
-        support::token(&self.syntax, T![lifetime])
-    }
+    pub fn lifetime(&self) -> Option<Lifetime> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ConstArg {
@@ -487,9 +494,7 @@ pub struct SelfParam {
 impl ast::AttrsOwner for SelfParam {}
 impl SelfParam {
     pub fn amp_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![&]) }
-    pub fn lifetime_token(&self) -> Option<SyntaxToken> {
-        support::token(&self.syntax, T![lifetime])
-    }
+    pub fn lifetime(&self) -> Option<Lifetime> { support::child(&self.syntax) }
     pub fn mut_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![mut]) }
     pub fn self_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![self]) }
     pub fn colon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![:]) }
@@ -605,9 +610,7 @@ pub struct LifetimeParam {
 impl ast::AttrsOwner for LifetimeParam {}
 impl ast::TypeBoundsOwner for LifetimeParam {}
 impl LifetimeParam {
-    pub fn lifetime_token(&self) -> Option<SyntaxToken> {
-        support::token(&self.syntax, T![lifetime])
-    }
+    pub fn lifetime(&self) -> Option<Lifetime> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TypeParam {
@@ -628,9 +631,7 @@ impl ast::TypeBoundsOwner for WherePred {}
 impl WherePred {
     pub fn for_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![for]) }
     pub fn generic_param_list(&self) -> Option<GenericParamList> { support::child(&self.syntax) }
-    pub fn lifetime_token(&self) -> Option<SyntaxToken> {
-        support::token(&self.syntax, T![lifetime])
-    }
+    pub fn lifetime(&self) -> Option<Lifetime> { support::child(&self.syntax) }
     pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -706,9 +707,7 @@ pub struct BreakExpr {
 impl ast::AttrsOwner for BreakExpr {}
 impl BreakExpr {
     pub fn break_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![break]) }
-    pub fn lifetime_token(&self) -> Option<SyntaxToken> {
-        support::token(&self.syntax, T![lifetime])
-    }
+    pub fn lifetime(&self) -> Option<Lifetime> { support::child(&self.syntax) }
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -752,9 +751,7 @@ impl ContinueExpr {
     pub fn continue_token(&self) -> Option<SyntaxToken> {
         support::token(&self.syntax, T![continue])
     }
-    pub fn lifetime_token(&self) -> Option<SyntaxToken> {
-        support::token(&self.syntax, T![lifetime])
-    }
+    pub fn lifetime(&self) -> Option<Lifetime> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct EffectExpr {
@@ -937,9 +934,8 @@ pub struct Label {
     pub(crate) syntax: SyntaxNode,
 }
 impl Label {
-    pub fn lifetime_token(&self) -> Option<SyntaxToken> {
-        support::token(&self.syntax, T![lifetime])
-    }
+    pub fn lifetime(&self) -> Option<Lifetime> { support::child(&self.syntax) }
+    pub fn colon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![:]) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RecordExprFieldList {
@@ -1100,9 +1096,7 @@ pub struct RefType {
 }
 impl RefType {
     pub fn amp_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![&]) }
-    pub fn lifetime_token(&self) -> Option<SyntaxToken> {
-        support::token(&self.syntax, T![lifetime])
-    }
+    pub fn lifetime(&self) -> Option<Lifetime> { support::child(&self.syntax) }
     pub fn mut_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![mut]) }
     pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
 }
@@ -1129,9 +1123,7 @@ pub struct TypeBound {
     pub(crate) syntax: SyntaxNode,
 }
 impl TypeBound {
-    pub fn lifetime_token(&self) -> Option<SyntaxToken> {
-        support::token(&self.syntax, T![lifetime])
-    }
+    pub fn lifetime(&self) -> Option<Lifetime> { support::child(&self.syntax) }
     pub fn question_mark_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![?]) }
     pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
 }
@@ -1429,6 +1421,17 @@ impl AstNode for Name {
 }
 impl AstNode for NameRef {
     fn can_cast(kind: SyntaxKind) -> bool { kind == NAME_REF }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl AstNode for Lifetime {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == LIFETIME }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -3520,6 +3523,11 @@ impl std::fmt::Display for Name {
     }
 }
 impl std::fmt::Display for NameRef {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for Lifetime {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }

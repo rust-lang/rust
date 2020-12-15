@@ -33,7 +33,8 @@ SOURCE_FILE@0..35
                               GENERIC_ARG_LIST@24..28
                                 L_ANGLE@24..25 "<"
                                 LIFETIME_ARG@25..27
-                                  LIFETIME@25..27 "\'a"
+                                  LIFETIME@25..27
+                                    LIFETIME_IDENT@25..27 "\'a"
                                 R_ANGLE@27..28 ">"
                     R_PAREN@28..29 ")"
       R_ANGLE@29..30 ">"

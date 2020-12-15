@@ -175,7 +175,8 @@ SOURCE_FILE@0..519
                               GENERIC_ARG_LIST@162..166
                                 L_ANGLE@162..163 "<"
                                 LIFETIME_ARG@163..165
-                                  LIFETIME@163..165 "\'a"
+                                  LIFETIME@163..165
+                                    LIFETIME_IDENT@163..165 "\'a"
                                 R_ANGLE@165..166 ">"
                     R_PAREN@166..167 ")"
       R_ANGLE@167..168 ">"
@@ -344,7 +345,8 @@ SOURCE_FILE@0..519
         GENERIC_PARAM_LIST@345..349
           L_ANGLE@345..346 "<"
           LIFETIME_PARAM@346..348
-            LIFETIME@346..348 "\'a"
+            LIFETIME@346..348
+              LIFETIME_IDENT@346..348 "\'a"
           R_ANGLE@348..349 ">"
         PARAM_LIST@349..368
           L_PAREN@349..350 "("
@@ -376,7 +378,8 @@ SOURCE_FILE@0..519
         GENERIC_PARAM_LIST@382..386
           L_ANGLE@382..383 "<"
           LIFETIME_PARAM@383..385
-            LIFETIME@383..385 "\'a"
+            LIFETIME@383..385
+              LIFETIME_IDENT@383..385 "\'a"
           R_ANGLE@385..386 ">"
         PARAM_LIST@386..404
           L_PAREN@386..387 "("
@@ -391,7 +394,8 @@ SOURCE_FILE@0..519
           WHITESPACE@394..395 " "
           SELF_PARAM@395..403
             AMP@395..396 "&"
-            LIFETIME@396..398 "\'a"
+            LIFETIME@396..398
+              LIFETIME_IDENT@396..398 "\'a"
             WHITESPACE@398..399 " "
             SELF_KW@399..403 "self"
           R_PAREN@403..404 ")"
@@ -408,7 +412,8 @@ SOURCE_FILE@0..519
         GENERIC_PARAM_LIST@418..422
           L_ANGLE@418..419 "<"
           LIFETIME_PARAM@419..421
-            LIFETIME@419..421 "\'a"
+            LIFETIME@419..421
+              LIFETIME_IDENT@419..421 "\'a"
           R_ANGLE@421..422 ">"
         PARAM_LIST@422..444
           L_PAREN@422..423 "("
@@ -423,7 +428,8 @@ SOURCE_FILE@0..519
           WHITESPACE@430..431 " "
           SELF_PARAM@431..443
             AMP@431..432 "&"
-            LIFETIME@432..434 "\'a"
+            LIFETIME@432..434
+              LIFETIME_IDENT@432..434 "\'a"
             WHITESPACE@434..435 " "
             MUT_KW@435..438 "mut"
             WHITESPACE@438..439 " "

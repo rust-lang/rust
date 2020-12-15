@@ -146,9 +146,9 @@ fn rustc_token_kind_to_syntax_kind(
             rustc_lexer::TokenKind::RawIdent => IDENT,
             rustc_lexer::TokenKind::Literal { kind, .. } => return match_literal_kind(&kind),
 
-            rustc_lexer::TokenKind::Lifetime { starts_with_number: false } => LIFETIME,
+            rustc_lexer::TokenKind::Lifetime { starts_with_number: false } => LIFETIME_IDENT,
             rustc_lexer::TokenKind::Lifetime { starts_with_number: true } => {
-                return (LIFETIME, Some("Lifetime name cannot start with a number"))
+                return (LIFETIME_IDENT, Some("Lifetime name cannot start with a number"))
             }
 
             rustc_lexer::TokenKind::Semi => T![;],

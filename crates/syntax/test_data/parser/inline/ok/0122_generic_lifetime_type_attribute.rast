@@ -20,7 +20,8 @@ SOURCE_FILE@0..64
             R_PAREN@24..25 ")"
           R_BRACK@25..26 "]"
         WHITESPACE@26..27 " "
-        LIFETIME@27..29 "\'a"
+        LIFETIME@27..29
+          LIFETIME_IDENT@27..29 "\'a"
       COMMA@29..30 ","
       WHITESPACE@30..31 " "
       TYPE_PARAM@31..48
@@ -49,7 +50,8 @@ SOURCE_FILE@0..64
         WHITESPACE@52..53 " "
         REF_TYPE@53..58
           AMP@53..54 "&"
-          LIFETIME@54..56 "\'a"
+          LIFETIME@54..56
+            LIFETIME_IDENT@54..56 "\'a"
           WHITESPACE@56..57 " "
           PATH_TYPE@57..58
             PATH@57..58

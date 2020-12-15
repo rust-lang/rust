@@ -178,9 +178,8 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.imp.descend_node_at_offset(node, offset).find_map(N::cast)
     }
 
-    // FIXME: Replace the SyntaxToken with a typed ast Node/Token
-    pub fn resolve_lifetime_param(&self, lifetime_token: &SyntaxToken) -> Option<LifetimeParam> {
-        self.imp.resolve_lifetime_param(lifetime_token)
+    pub fn resolve_lifetime_param(&self, lifetime: &ast::Lifetime) -> Option<LifetimeParam> {
+        self.imp.resolve_lifetime_param(lifetime)
     }
 
     pub fn type_of_expr(&self, expr: &ast::Expr) -> Option<Type> {
@@ -402,13 +401,9 @@ impl<'db> SemanticsImpl<'db> {
             .kmerge_by(|node1, node2| node1.text_range().len() < node2.text_range().len())
     }
 
-    // FIXME: Replace the SyntaxToken with a typed ast Node/Token
-    fn resolve_lifetime_param(&self, lifetime_token: &SyntaxToken) -> Option<LifetimeParam> {
-        if lifetime_token.kind() != syntax::SyntaxKind::LIFETIME {
-            return None;
-        }
-        let lifetime_text = lifetime_token.text();
-        let lifetime_param = lifetime_token.parent().ancestors().find_map(|syn| {
+    fn resolve_lifetime_param(&self, lifetime: &ast::Lifetime) -> Option<LifetimeParam> {
+        let text = lifetime.text();
+        let lifetime_param = lifetime.syntax().ancestors().find_map(|syn| {
             let gpl = match_ast! {
                 match syn {
                     ast::Fn(it) => it.generic_param_list()?,
@@ -424,7 +419,7 @@ impl<'db> SemanticsImpl<'db> {
                 }
             };
             gpl.lifetime_params()
-                .find(|tp| tp.lifetime_token().as_ref().map(|lt| lt.text()) == Some(lifetime_text))
+                .find(|tp| tp.lifetime().as_ref().map(|lt| lt.text()) == Some(text))
         })?;
         let src = self.find_file(lifetime_param.syntax().clone()).with_value(lifetime_param);
         ToDef::to_def(self, src)

@@ -48,7 +48,7 @@ pub(super) const ATOM_EXPR_FIRST: TokenSet =
         T![try],
         T![loop],
         T![for],
-        LIFETIME,
+        LIFETIME_IDENT,
     ]));
 
 const EXPR_RECOVERY_SET: TokenSet = TokenSet::new(&[LET_KW, R_DOLLAR]);
@@ -75,7 +75,7 @@ pub(super) fn atom_expr(p: &mut Parser, r: Restrictions) -> Option<(CompletedMar
         T![for] => for_expr(p, None),
         T![while] => while_expr(p, None),
         T![try] => try_block_expr(p, None),
-        LIFETIME if la == T![:] => {
+        LIFETIME_IDENT if la == T![:] => {
             let m = p.start();
             label(p);
             match p.current() {
@@ -275,9 +275,9 @@ fn if_expr(p: &mut Parser) -> CompletedMarker {
 //     'c: for x in () {}
 // }
 fn label(p: &mut Parser) {
-    assert!(p.at(LIFETIME) && p.nth(1) == T![:]);
+    assert!(p.at(LIFETIME_IDENT) && p.nth(1) == T![:]);
     let m = p.start();
-    p.bump(LIFETIME);
+    lifetime(p);
     p.bump_any();
     m.complete(p, LABEL);
 }
@@ -501,7 +501,9 @@ fn continue_expr(p: &mut Parser) -> CompletedMarker {
     assert!(p.at(T![continue]));
     let m = p.start();
     p.bump(T![continue]);
-    p.eat(LIFETIME);
+    if p.at(LIFETIME_IDENT) {
+        lifetime(p);
+    }
     m.complete(p, CONTINUE_EXPR)
 }
 
@@ -518,7 +520,9 @@ fn break_expr(p: &mut Parser, r: Restrictions) -> CompletedMarker {
     assert!(p.at(T![break]));
     let m = p.start();
     p.bump(T![break]);
-    p.eat(LIFETIME);
+    if p.at(LIFETIME_IDENT) {
+        lifetime(p);
+    }
     // test break_ambiguity
     // fn foo(){
     //     if break {}

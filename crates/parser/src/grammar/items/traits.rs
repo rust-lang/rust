@@ -98,10 +98,10 @@ fn choose_type_params_over_qpath(p: &Parser) -> bool {
     //     `<` `>` - empty generic parameters
     //     `<` `#` - generic parameters with attributes
     //     `<` `const` - const generic parameters
-    //     `<` (LIFETIME|IDENT) `>` - single generic parameter
-    //     `<` (LIFETIME|IDENT) `,` - first generic parameter in a list
-    //     `<` (LIFETIME|IDENT) `:` - generic parameter with bounds
-    //     `<` (LIFETIME|IDENT) `=` - generic parameter with a default
+    //     `<` (LIFETIME_IDENT|IDENT) `>` - single generic parameter
+    //     `<` (LIFETIME_IDENT|IDENT) `,` - first generic parameter in a list
+    //     `<` (LIFETIME_IDENT|IDENT) `:` - generic parameter with bounds
+    //     `<` (LIFETIME_IDENT|IDENT) `=` - generic parameter with a default
     // The only truly ambiguous case is
     //     `<` IDENT `>` `::` IDENT ...
     // we disambiguate it in favor of generics (`impl<T> ::absolute::Path<T> { ... }`)
@@ -113,7 +113,7 @@ fn choose_type_params_over_qpath(p: &Parser) -> bool {
     if p.nth(1) == T![#] || p.nth(1) == T![>] || p.nth(1) == CONST_KW {
         return true;
     }
-    (p.nth(1) == LIFETIME || p.nth(1) == IDENT)
+    (p.nth(1) == LIFETIME_IDENT || p.nth(1) == IDENT)
         && (p.nth(2) == T![>] || p.nth(2) == T![,] || p.nth(2) == T![:] || p.nth(2) == T![=])
 }
 

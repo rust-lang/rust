@@ -260,9 +260,8 @@ impl GenericParams {
             self.fill_bounds(&lower_ctx, &type_param, Either::Left(type_ref));
         }
         for lifetime_param in params.lifetime_params() {
-            let name = lifetime_param
-                .lifetime_token()
-                .map_or_else(Name::missing, |tok| Name::new_lifetime(&tok));
+            let name =
+                lifetime_param.lifetime().map_or_else(Name::missing, |lt| Name::new_lifetime(&lt));
             let param = LifetimeParamData { name: name.clone() };
             let param_id = self.lifetimes.alloc(param);
             sm.lifetime_params.insert(param_id, lifetime_param.clone());
@@ -275,8 +274,8 @@ impl GenericParams {
         for pred in where_clause.predicates() {
             let target = if let Some(type_ref) = pred.ty() {
                 Either::Left(TypeRef::from_ast(lower_ctx, type_ref))
-            } else if let Some(lifetime_tok) = pred.lifetime_token() {
-                Either::Right(LifetimeRef::from_token(lifetime_tok))
+            } else if let Some(lifetime) = pred.lifetime() {
+                Either::Right(LifetimeRef::new(&lifetime))
             } else {
                 continue;
             };

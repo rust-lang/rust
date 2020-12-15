@@ -42,7 +42,8 @@ SOURCE_FILE@0..240
               GENERIC_PARAM_LIST@32..36
                 L_ANGLE@32..33 "<"
                 LIFETIME_PARAM@33..35
-                  LIFETIME@33..35 "\'a"
+                  LIFETIME@33..35
+                    LIFETIME_IDENT@33..35 "\'a"
                 R_ANGLE@35..36 ">"
               WHITESPACE@36..37 " "
               PATH_TYPE@37..46
@@ -53,7 +54,8 @@ SOURCE_FILE@0..240
                     GENERIC_ARG_LIST@42..46
                       L_ANGLE@42..43 "<"
                       LIFETIME_ARG@43..45
-                        LIFETIME@43..45 "\'a"
+                        LIFETIME@43..45
+                          LIFETIME_IDENT@43..45 "\'a"
                       R_ANGLE@45..46 ">"
             R_PAREN@46..47 ")"
       R_ANGLE@47..48 ">"
@@ -125,7 +127,8 @@ SOURCE_FILE@0..240
                 GENERIC_PARAM_LIST@106..110
                   L_ANGLE@106..107 "<"
                   LIFETIME_PARAM@107..109
-                    LIFETIME@107..109 "\'a"
+                    LIFETIME@107..109
+                      LIFETIME_IDENT@107..109 "\'a"
                   R_ANGLE@109..110 ">"
                 WHITESPACE@110..111 " "
                 PATH_TYPE@111..120
@@ -136,7 +139,8 @@ SOURCE_FILE@0..240
                       GENERIC_ARG_LIST@116..120
                         L_ANGLE@116..117 "<"
                         LIFETIME_ARG@117..119
-                          LIFETIME@117..119 "\'a"
+                          LIFETIME@117..119
+                            LIFETIME_IDENT@117..119 "\'a"
                         R_ANGLE@119..120 ">"
               R_PAREN@120..121 ")"
       EXPR_STMT@121..123
@@ -187,7 +191,7 @@ SOURCE_FILE@0..240
                 PATH_SEGMENT@154..158
                   L_ANGLE@154..155 "<"
                   ERROR@155..157
-                    LIFETIME@155..157 "\'a"
+                    LIFETIME_IDENT@155..157 "\'a"
                   R_ANGLE@157..158 ">"
             WHITESPACE@158..159 " "
             BIN_EXPR@159..180
@@ -201,7 +205,7 @@ SOURCE_FILE@0..240
                             IDENT@159..164 "Trait"
                     L_ANGLE@164..165 "<"
                     ERROR@165..167
-                      LIFETIME@165..167 "\'a"
+                      LIFETIME_IDENT@165..167 "\'a"
                   R_ANGLE@167..168 ">"
                   ERROR@168..169
                     R_PAREN@168..169 ")"
@@ -245,7 +249,8 @@ SOURCE_FILE@0..240
                             GENERIC_PARAM_LIST@200..204
                               L_ANGLE@200..201 "<"
                               LIFETIME_PARAM@201..203
-                                LIFETIME@201..203 "\'a"
+                                LIFETIME@201..203
+                                  LIFETIME_IDENT@201..203 "\'a"
                               R_ANGLE@203..204 ">"
                             WHITESPACE@204..205 " "
                             PATH_TYPE@205..214
@@ -256,7 +261,8 @@ SOURCE_FILE@0..240
                                   GENERIC_ARG_LIST@210..214
                                     L_ANGLE@210..211 "<"
                                     LIFETIME_ARG@211..213
-                                      LIFETIME@211..213 "\'a"
+                                      LIFETIME@211..213
+                                        LIFETIME_IDENT@211..213 "\'a"
                                     R_ANGLE@213..214 ">"
                           R_PAREN@214..215 ")"
             WHITESPACE@215..216 " "

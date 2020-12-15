@@ -169,15 +169,20 @@ fn opt_self_param(p: &mut Parser) {
         let la1 = p.nth(1);
         let la2 = p.nth(2);
         let la3 = p.nth(3);
-        let n_toks = match (p.current(), la1, la2, la3) {
+        let mut n_toks = match (p.current(), la1, la2, la3) {
             (T![&], T![self], _, _) => 2,
             (T![&], T![mut], T![self], _) => 3,
-            (T![&], LIFETIME, T![self], _) => 3,
-            (T![&], LIFETIME, T![mut], T![self]) => 4,
+            (T![&], LIFETIME_IDENT, T![self], _) => 3,
+            (T![&], LIFETIME_IDENT, T![mut], T![self]) => 4,
             _ => return,
         };
         m = p.start();
-        for _ in 0..n_toks {
+        p.bump_any();
+        if p.at(LIFETIME_IDENT) {
+            lifetime(p);
+            n_toks -= 1;
+        }
+        for _ in 1..n_toks {
             p.bump_any();
         }
     }

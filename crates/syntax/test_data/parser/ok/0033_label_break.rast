@@ -16,7 +16,8 @@ SOURCE_FILE@0..506
       EXPR_STMT@50..66
         EFFECT_EXPR@50..66
           LABEL@50..63
-            LIFETIME@50..62 "\'empty_block"
+            LIFETIME@50..62
+              LIFETIME_IDENT@50..62 "\'empty_block"
             COLON@62..63 ":"
           WHITESPACE@63..64 " "
           BLOCK_EXPR@64..66
@@ -26,7 +27,8 @@ SOURCE_FILE@0..506
       EXPR_STMT@72..295
         EFFECT_EXPR@72..295
           LABEL@72..79
-            LIFETIME@72..78 "\'block"
+            LIFETIME@72..78
+              LIFETIME_IDENT@72..78 "\'block"
             COLON@78..79 ":"
           WHITESPACE@79..80 " "
           BLOCK_EXPR@80..295
@@ -66,7 +68,8 @@ SOURCE_FILE@0..506
                     BREAK_EXPR@147..159
                       BREAK_KW@147..152 "break"
                       WHITESPACE@152..153 " "
-                      LIFETIME@153..159 "\'block"
+                      LIFETIME@153..159
+                        LIFETIME_IDENT@153..159 "\'block"
                     SEMICOLON@159..160 ";"
                   WHITESPACE@160..169 "\n        "
                   R_CURLY@169..170 "}"
@@ -105,7 +108,8 @@ SOURCE_FILE@0..506
                     BREAK_EXPR@241..253
                       BREAK_KW@241..246 "break"
                       WHITESPACE@246..247 " "
-                      LIFETIME@247..253 "\'block"
+                      LIFETIME@247..253
+                        LIFETIME_IDENT@247..253 "\'block"
                     SEMICOLON@253..254 ";"
                   WHITESPACE@254..263 "\n        "
                   R_CURLY@263..264 "}"
@@ -135,7 +139,8 @@ SOURCE_FILE@0..506
         WHITESPACE@313..314 " "
         EFFECT_EXPR@314..502
           LABEL@314..321
-            LIFETIME@314..320 "\'block"
+            LIFETIME@314..320
+              LIFETIME_IDENT@314..320 "\'block"
             COLON@320..321 ":"
           WHITESPACE@321..322 " "
           BLOCK_EXPR@322..502
@@ -165,7 +170,8 @@ SOURCE_FILE@0..506
                     BREAK_EXPR@378..392
                       BREAK_KW@378..383 "break"
                       WHITESPACE@383..384 " "
-                      LIFETIME@384..390 "\'block"
+                      LIFETIME@384..390
+                        LIFETIME_IDENT@384..390 "\'block"
                       WHITESPACE@390..391 " "
                       LITERAL@391..392
                         INT_NUMBER@391..392 "1"
@@ -197,7 +203,8 @@ SOURCE_FILE@0..506
                     BREAK_EXPR@461..475
                       BREAK_KW@461..466 "break"
                       WHITESPACE@466..467 " "
-                      LIFETIME@467..473 "\'block"
+                      LIFETIME@467..473
+                        LIFETIME_IDENT@467..473 "\'block"
                       WHITESPACE@473..474 " "
                       LITERAL@474..475
                         INT_NUMBER@474..475 "2"

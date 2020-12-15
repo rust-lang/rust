@@ -31,7 +31,8 @@ SOURCE_FILE@0..58
                     PLUS@18..19 "+"
                     WHITESPACE@19..20 " "
                     TYPE_BOUND@20..22
-                      LIFETIME@20..22 "\'f"
+                      LIFETIME@20..22
+                        LIFETIME_IDENT@20..22 "\'f"
               R_ANGLE@22..23 ">"
     WHITESPACE@23..24 " "
     BLOCK_EXPR@24..26
@@ -72,7 +73,8 @@ SOURCE_FILE@0..58
                     PLUS@49..50 "+"
                     WHITESPACE@50..51 " "
                     TYPE_BOUND@51..53
-                      LIFETIME@51..53 "\'f"
+                      LIFETIME@51..53
+                        LIFETIME_IDENT@51..53 "\'f"
               R_ANGLE@53..54 ">"
     WHITESPACE@54..55 " "
     BLOCK_EXPR@55..57

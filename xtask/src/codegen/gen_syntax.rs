@@ -380,7 +380,7 @@ fn generate_syntax_kinds(grammar: KindsSrc<'_>) -> Result<String> {
         macro_rules! T {
             #([#punctuation_values] => { $crate::SyntaxKind::#punctuation };)*
             #([#all_keywords_idents] => { $crate::SyntaxKind::#all_keywords };)*
-            [lifetime] => { $crate::SyntaxKind::LIFETIME };
+            [lifetime_ident] => { $crate::SyntaxKind::LIFETIME_IDENT };
             [ident] => { $crate::SyntaxKind::IDENT };
             [shebang] => { $crate::SyntaxKind::SHEBANG };
         }
