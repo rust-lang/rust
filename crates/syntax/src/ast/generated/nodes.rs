@@ -128,7 +128,6 @@ pub struct MacroCall {
     pub(crate) syntax: SyntaxNode,
 }
 impl ast::AttrsOwner for MacroCall {}
-impl ast::NameOwner for MacroCall {}
 impl MacroCall {
     pub fn path(&self) -> Option<Path> { support::child(&self.syntax) }
     pub fn excl_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![!]) }
@@ -271,6 +270,20 @@ impl Impl {
     pub fn excl_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![!]) }
     pub fn for_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![for]) }
     pub fn assoc_item_list(&self) -> Option<AssocItemList> { support::child(&self.syntax) }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct MacroRules {
+    pub(crate) syntax: SyntaxNode,
+}
+impl ast::AttrsOwner for MacroRules {}
+impl ast::NameOwner for MacroRules {}
+impl ast::VisibilityOwner for MacroRules {}
+impl MacroRules {
+    pub fn macro_rules_token(&self) -> Option<SyntaxToken> {
+        support::token(&self.syntax, T![macro_rules])
+    }
+    pub fn excl_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![!]) }
+    pub fn token_tree(&self) -> Option<TokenTree> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Module {
@@ -1318,6 +1331,7 @@ pub enum Item {
     Fn(Fn),
     Impl(Impl),
     MacroCall(MacroCall),
+    MacroRules(MacroRules),
     Module(Module),
     Static(Static),
     Struct(Struct),
@@ -1374,7 +1388,6 @@ pub enum AssocItem {
     TypeAlias(TypeAlias),
 }
 impl ast::AttrsOwner for AssocItem {}
-impl ast::NameOwner for AssocItem {}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ExternItem {
     Fn(Fn),
@@ -1383,7 +1396,6 @@ pub enum ExternItem {
     TypeAlias(TypeAlias),
 }
 impl ast::AttrsOwner for ExternItem {}
-impl ast::NameOwner for ExternItem {}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum GenericParam {
     ConstParam(ConstParam),
@@ -1657,6 +1669,17 @@ impl AstNode for Fn {
 }
 impl AstNode for Impl {
     fn can_cast(kind: SyntaxKind) -> bool { kind == IMPL }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl AstNode for MacroRules {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == MACRO_RULES }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -3060,6 +3083,9 @@ impl From<Impl> for Item {
 impl From<MacroCall> for Item {
     fn from(node: MacroCall) -> Item { Item::MacroCall(node) }
 }
+impl From<MacroRules> for Item {
+    fn from(node: MacroRules) -> Item { Item::MacroRules(node) }
+}
 impl From<Module> for Item {
     fn from(node: Module) -> Item { Item::Module(node) }
 }
@@ -3084,8 +3110,8 @@ impl From<Use> for Item {
 impl AstNode for Item {
     fn can_cast(kind: SyntaxKind) -> bool {
         match kind {
-            CONST | ENUM | EXTERN_BLOCK | EXTERN_CRATE | FN | IMPL | MACRO_CALL | MODULE
-            | STATIC | STRUCT | TRAIT | TYPE_ALIAS | UNION | USE => true,
+            CONST | ENUM | EXTERN_BLOCK | EXTERN_CRATE | FN | IMPL | MACRO_CALL | MACRO_RULES
+            | MODULE | STATIC | STRUCT | TRAIT | TYPE_ALIAS | UNION | USE => true,
             _ => false,
         }
     }
@@ -3098,6 +3124,7 @@ impl AstNode for Item {
             FN => Item::Fn(Fn { syntax }),
             IMPL => Item::Impl(Impl { syntax }),
             MACRO_CALL => Item::MacroCall(MacroCall { syntax }),
+            MACRO_RULES => Item::MacroRules(MacroRules { syntax }),
             MODULE => Item::Module(Module { syntax }),
             STATIC => Item::Static(Static { syntax }),
             STRUCT => Item::Struct(Struct { syntax }),
@@ -3118,6 +3145,7 @@ impl AstNode for Item {
             Item::Fn(it) => &it.syntax,
             Item::Impl(it) => &it.syntax,
             Item::MacroCall(it) => &it.syntax,
+            Item::MacroRules(it) => &it.syntax,
             Item::Module(it) => &it.syntax,
             Item::Static(it) => &it.syntax,
             Item::Struct(it) => &it.syntax,
@@ -3578,6 +3606,11 @@ impl std::fmt::Display for Fn {
     }
 }
 impl std::fmt::Display for Impl {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for MacroRules {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }

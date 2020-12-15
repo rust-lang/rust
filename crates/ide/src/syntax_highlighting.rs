@@ -74,6 +74,7 @@ pub(crate) fn highlight(
     let mut stack = HighlightedRangeStack::new();
 
     let mut current_macro_call: Option<ast::MacroCall> = None;
+    let mut current_macro_rules: Option<ast::MacroRules> = None;
     let mut format_string_highlighter = FormatStringHighlighter::default();
     let mut macro_rules_highlighter = MacroRulesHighlighter::default();
     let mut inside_attribute = false;
@@ -106,28 +107,26 @@ pub(crate) fn highlight(
                         binding_hash: None,
                     });
                 }
-                if let Some(name) = mc.is_macro_rules() {
-                    macro_rules_highlighter.init();
-                    if let Some((highlight, binding_hash)) = highlight_element(
-                        &sema,
-                        &mut bindings_shadow_count,
-                        syntactic_name_ref_highlighting,
-                        name.syntax().clone().into(),
-                    ) {
-                        stack.add(HighlightedRange {
-                            range: name.syntax().text_range(),
-                            highlight,
-                            binding_hash,
-                        });
-                    }
-                }
                 current_macro_call = Some(mc.clone());
                 continue;
             }
             WalkEvent::Leave(Some(mc)) => {
-                assert!(current_macro_call == Some(mc));
+                assert_eq!(current_macro_call, Some(mc));
                 current_macro_call = None;
                 format_string_highlighter = FormatStringHighlighter::default();
+            }
+            _ => (),
+        }
+
+        match event.clone().map(|it| it.into_node().and_then(ast::MacroRules::cast)) {
+            WalkEvent::Enter(Some(mac)) => {
+                macro_rules_highlighter.init();
+                current_macro_rules = Some(mac);
+                continue;
+            }
+            WalkEvent::Leave(Some(mac)) => {
+                assert_eq!(current_macro_rules, Some(mac));
+                current_macro_rules = None;
                 macro_rules_highlighter = MacroRulesHighlighter::default();
             }
             _ => (),
@@ -163,6 +162,12 @@ pub(crate) fn highlight(
 
         let range = element.text_range();
 
+        if current_macro_rules.is_some() {
+            if let Some(tok) = element.as_token() {
+                macro_rules_highlighter.advance(tok);
+            }
+        }
+
         let element_to_highlight = if current_macro_call.is_some() && element.kind() != COMMENT {
             // Inside a macro -- expand it first
             let token = match element.clone().into_token() {
@@ -173,9 +178,6 @@ pub(crate) fn highlight(
             let parent = token.parent();
 
             format_string_highlighter.check_for_format_string(&parent);
-            if let Some(tok) = element.as_token() {
-                macro_rules_highlighter.advance(tok);
-            }
 
             // We only care Name and Name_ref
             match (token.kind(), parent.kind()) {
@@ -386,10 +388,14 @@ impl HighlightedRangeStack {
         let mut res = self.stack.pop().unwrap();
         res.sort_by_key(|range| range.range.start());
         // Check that ranges are sorted and disjoint
-        assert!(res
-            .iter()
-            .zip(res.iter().skip(1))
-            .all(|(left, right)| left.range.end() <= right.range.start()));
+        for (left, right) in res.iter().zip(res.iter().skip(1)) {
+            assert!(
+                left.range.end() <= right.range.start(),
+                "left: {:#?}, right: {:#?}",
+                left,
+                right
+            );
+        }
         res
     }
 }

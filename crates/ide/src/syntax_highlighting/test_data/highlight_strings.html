@@ -35,13 +35,13 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 
 .unresolved_reference { color: #FC5555; text-decoration: wavy underline; }
 </style>
-<pre><code><span class="macro">macro_rules!</span> <span class="macro declaration">println</span> <span class="punctuation">{</span>
+<pre><code><span class="keyword">macro_rules</span><span class="punctuation">!</span> <span class="macro declaration">println</span> <span class="punctuation">{</span>
     <span class="punctuation">(</span><span class="punctuation">$</span><span class="punctuation">(</span><span class="punctuation">$</span>arg<span class="punctuation">:</span>tt<span class="punctuation">)</span><span class="punctuation">*</span><span class="punctuation">)</span> <span class="operator">=</span><span class="punctuation">&gt;</span> <span class="punctuation">(</span><span class="punctuation">{</span>
         <span class="punctuation">$</span>crate<span class="punctuation">:</span><span class="punctuation">:</span>io<span class="punctuation">:</span><span class="punctuation">:</span>_print<span class="punctuation">(</span><span class="punctuation">$</span>crate<span class="punctuation">:</span><span class="punctuation">:</span>format_args_nl<span class="punctuation">!</span><span class="punctuation">(</span><span class="punctuation">$</span><span class="punctuation">(</span><span class="punctuation">$</span>arg<span class="punctuation">)</span><span class="punctuation">*</span><span class="punctuation">)</span><span class="punctuation">)</span><span class="punctuation">;</span>
     <span class="punctuation">}</span><span class="punctuation">)</span>
 <span class="punctuation">}</span>
-#[rustc_builtin_macro]
-<span class="macro">macro_rules!</span> <span class="macro declaration">format_args_nl</span> <span class="punctuation">{</span>
+<span class="attribute attribute">#</span><span class="attribute attribute">[</span><span class="function attribute">rustc_builtin_macro</span><span class="attribute attribute">]</span>
+<span class="keyword">macro_rules</span><span class="punctuation">!</span> <span class="macro declaration">format_args_nl</span> <span class="punctuation">{</span>
     <span class="punctuation">(</span><span class="punctuation">$</span>fmt<span class="punctuation">:</span>expr<span class="punctuation">)</span> <span class="operator">=</span><span class="punctuation">&gt;</span> <span class="punctuation">{</span><span class="punctuation">{</span> <span class="comment">/* compiler built-in */</span> <span class="punctuation">}</span><span class="punctuation">}</span><span class="punctuation">;</span>
     <span class="punctuation">(</span><span class="punctuation">$</span>fmt<span class="punctuation">:</span>expr<span class="punctuation">,</span> <span class="punctuation">$</span><span class="punctuation">(</span><span class="punctuation">$</span>args<span class="punctuation">:</span>tt<span class="punctuation">)</span><span class="punctuation">*</span><span class="punctuation">)</span> <span class="operator">=</span><span class="punctuation">&gt;</span> <span class="punctuation">{</span><span class="punctuation">{</span> <span class="comment">/* compiler built-in */</span> <span class="punctuation">}</span><span class="punctuation">}</span><span class="punctuation">;</span>
 <span class="punctuation">}</span>

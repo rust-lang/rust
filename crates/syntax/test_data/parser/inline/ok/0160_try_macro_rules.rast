@@ -1,9 +1,6 @@
 SOURCE_FILE@0..30
-  MACRO_CALL@0..29
-    PATH@0..11
-      PATH_SEGMENT@0..11
-        NAME_REF@0..11
-          IDENT@0..11 "macro_rules"
+  MACRO_RULES@0..29
+    MACRO_RULES_KW@0..11 "macro_rules"
     BANG@11..12 "!"
     WHITESPACE@12..13 " "
     NAME@13..16

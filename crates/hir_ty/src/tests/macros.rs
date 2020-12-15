@@ -413,7 +413,6 @@ fn infer_local_macro() {
         expect![[r#"
             !0..6 '1usize': usize
             10..89 '{     ...!(); }': ()
-            16..65 'macro_...     }': {unknown}
             74..76 '_a': usize
         "#]],
     );

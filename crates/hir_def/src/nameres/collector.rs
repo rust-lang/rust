@@ -11,7 +11,7 @@ use hir_expand::{
     ast_id_map::FileAstId,
     builtin_derive::find_builtin_derive,
     builtin_macro::find_builtin_macro,
-    name::{name, AsName, Name},
+    name::{AsName, Name},
     proc_macro::ProcMacroExpander,
     HirFileId, MacroCallId, MacroDefId, MacroDefKind,
 };
@@ -25,7 +25,9 @@ use crate::{
     attr::Attrs,
     db::DefDatabase,
     item_scope::{ImportType, PerNsGlobImports},
-    item_tree::{self, ItemTree, ItemTreeId, MacroCall, Mod, ModItem, ModKind, StructDefKind},
+    item_tree::{
+        self, ItemTree, ItemTreeId, MacroCall, MacroRules, Mod, ModItem, ModKind, StructDefKind,
+    },
     nameres::{
         diagnostics::DefDiagnostic, mod_resolution::ModDir, path_resolution::ReachedFixedPoint,
         BuiltinShadowMode, CrateDefMap, ModuleData, ModuleOrigin, ResolveMode,
@@ -972,7 +974,8 @@ impl ModCollector<'_, '_> {
                         status: PartialResolvedImport::Unresolved,
                     })
                 }
-                ModItem::MacroCall(mac) => self.collect_macro(&self.item_tree[mac]),
+                ModItem::MacroCall(mac) => self.collect_macro_call(&self.item_tree[mac]),
+                ModItem::MacroRules(mac) => self.collect_macro_rules(&self.item_tree[mac]),
                 ModItem::Impl(imp) => {
                     let module = ModuleId {
                         krate: self.def_collector.def_map.krate,
@@ -1276,45 +1279,37 @@ impl ModCollector<'_, '_> {
         self.def_collector.resolve_proc_macro(&macro_name);
     }
 
-    fn collect_macro(&mut self, mac: &MacroCall) {
-        let mut ast_id = AstIdWithPath::new(self.file_id, mac.ast_id, mac.path.clone());
+    fn collect_macro_rules(&mut self, mac: &MacroRules) {
+        let ast_id = InFile::new(self.file_id, mac.ast_id);
 
-        // Case 0: builtin macros
+        // Case 1: builtin macros
         if mac.is_builtin {
-            if let Some(name) = &mac.name {
-                let krate = self.def_collector.def_map.krate;
-                if let Some(macro_id) = find_builtin_macro(name, krate, ast_id.ast_id) {
-                    self.def_collector.define_macro(
-                        self.module_id,
-                        name.clone(),
-                        macro_id,
-                        mac.is_export,
-                    );
-                    return;
-                }
-            }
-        }
-
-        // Case 1: macro rules, define a macro in crate-global mutable scope
-        if is_macro_rules(&mac.path) {
-            if let Some(name) = &mac.name {
-                let macro_id = MacroDefId {
-                    ast_id: Some(ast_id.ast_id),
-                    krate: Some(self.def_collector.def_map.krate),
-                    kind: MacroDefKind::Declarative,
-                    local_inner: mac.is_local_inner,
-                };
+            let krate = self.def_collector.def_map.krate;
+            if let Some(macro_id) = find_builtin_macro(&mac.name, krate, ast_id) {
                 self.def_collector.define_macro(
                     self.module_id,
-                    name.clone(),
+                    mac.name.clone(),
                     macro_id,
                     mac.is_export,
                 );
+                return;
             }
-            return;
         }
 
-        // Case 2: try to resolve in legacy scope and expand macro_rules
+        // Case 2: normal `macro_rules!` macro
+        let macro_id = MacroDefId {
+            ast_id: Some(ast_id),
+            krate: Some(self.def_collector.def_map.krate),
+            kind: MacroDefKind::Declarative,
+            local_inner: mac.is_local_inner,
+        };
+        self.def_collector.define_macro(self.module_id, mac.name.clone(), macro_id, mac.is_export);
+    }
+
+    fn collect_macro_call(&mut self, mac: &MacroCall) {
+        let mut ast_id = AstIdWithPath::new(self.file_id, mac.ast_id, mac.path.clone());
+
+        // Case 1: try to resolve in legacy scope and expand macro_rules
         if let Some(macro_call_id) =
             ast_id.as_call_id(self.def_collector.db, self.def_collector.def_map.krate, |path| {
                 path.as_ident().and_then(|name| {
@@ -1332,7 +1327,7 @@ impl ModCollector<'_, '_> {
             return;
         }
 
-        // Case 3: resolve in module scope, expand during name resolution.
+        // Case 2: resolve in module scope, expand during name resolution.
         // We rewrite simple path `macro_name` to `self::macro_name` to force resolve in module scope only.
         if ast_id.path.is_ident() {
             ast_id.path.kind = PathKind::Super(0);
@@ -1368,10 +1363,6 @@ impl ModCollector<'_, '_> {
             self.def_collector.cfg_options.clone(),
         ));
     }
-}
-
-fn is_macro_rules(path: &ModPath) -> bool {
-    path.as_ident() == Some(&name![macro_rules])
 }
 
 #[cfg(test)]

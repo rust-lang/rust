@@ -149,7 +149,10 @@ impl SourceToDefCtx<'_, '_> {
     }
 
     // FIXME: use DynMap as well?
-    pub(super) fn macro_call_to_def(&mut self, src: InFile<ast::MacroCall>) -> Option<MacroDefId> {
+    pub(super) fn macro_rules_to_def(
+        &mut self,
+        src: InFile<ast::MacroRules>,
+    ) -> Option<MacroDefId> {
         let kind = MacroDefKind::Declarative;
         let file_id = src.file_id.original_file(self.db.upcast());
         let krate = self.file_to_def(file_id)?.krate;

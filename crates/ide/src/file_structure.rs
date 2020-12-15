@@ -150,13 +150,7 @@ fn structure_node(node: &SyntaxNode) -> Option<StructureNode> {
                 };
                 Some(node)
             },
-            ast::MacroCall(it) => {
-                match it.path().and_then(|it| it.segment()).and_then(|it| it.name_ref()) {
-                    Some(path_segment) if path_segment.text() == "macro_rules"
-                    => decl(it),
-                    _ => None,
-                }
-            },
+            ast::MacroRules(it) => decl(it),
             _ => None,
         }
     }
@@ -380,7 +374,7 @@ fn very_obsolete() {}
                         label: "mc",
                         navigation_range: 284..286,
                         node_range: 271..303,
-                        kind: MACRO_CALL,
+                        kind: MACRO_RULES,
                         detail: None,
                         deprecated: false,
                     },
@@ -389,7 +383,7 @@ fn very_obsolete() {}
                         label: "mcexp",
                         navigation_range: 334..339,
                         node_range: 305..356,
-                        kind: MACRO_CALL,
+                        kind: MACRO_RULES,
                         detail: None,
                         deprecated: false,
                     },
@@ -398,7 +392,7 @@ fn very_obsolete() {}
                         label: "mcexp",
                         navigation_range: 387..392,
                         node_range: 358..409,
-                        kind: MACRO_CALL,
+                        kind: MACRO_RULES,
                         detail: None,
                         deprecated: false,
                     },

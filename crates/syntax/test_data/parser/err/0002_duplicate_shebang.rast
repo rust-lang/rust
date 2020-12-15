@@ -17,14 +17,17 @@ SOURCE_FILE@0..42
           IDENT@28..31 "bin"
   ERROR@31..32
     SLASH@31..32 "/"
-  MACRO_CALL@32..41
+  MACRO_CALL@32..35
     PATH@32..35
       PATH_SEGMENT@32..35
         NAME_REF@32..35
           IDENT@32..35 "env"
-    WHITESPACE@35..36 " "
-    NAME@36..41
-      IDENT@36..41 "rusti"
+  WHITESPACE@35..36 " "
+  MACRO_CALL@36..41
+    PATH@36..41
+      PATH_SEGMENT@36..41
+        NAME_REF@36..41
+          IDENT@36..41 "rusti"
   WHITESPACE@41..42 "\n"
 error 23..23: expected `[`
 error 23..23: expected an item
@@ -35,5 +38,8 @@ error 31..31: expected `{`, `[`, `(`
 error 31..31: expected SEMICOLON
 error 31..31: expected an item
 error 35..35: expected BANG
+error 35..35: expected `{`, `[`, `(`
+error 35..35: expected SEMICOLON
+error 41..41: expected BANG
 error 41..41: expected `{`, `[`, `(`
 error 41..41: expected SEMICOLON

@@ -770,7 +770,7 @@ fn foo() {
 }
 "#,
             expect![[r#"
-                m1 MACRO_CALL FileId(0) 0..46 29..31 Other
+                m1 MACRO_RULES FileId(0) 0..46 29..31 Other
 
                 FileId(0) 63..65 StructLiteral
                 FileId(0) 73..75 StructLiteral

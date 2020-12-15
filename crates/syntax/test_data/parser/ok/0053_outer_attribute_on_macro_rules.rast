@@ -1,5 +1,5 @@
 SOURCE_FILE@0..65
-  MACRO_CALL@0..64
+  MACRO_RULES@0..64
     COMMENT@0..13 "/// Some docs"
     WHITESPACE@13..14 "\n"
     ATTR@14..29
@@ -11,10 +11,7 @@ SOURCE_FILE@0..65
             IDENT@16..28 "macro_export"
       R_BRACK@28..29 "]"
     WHITESPACE@29..30 "\n"
-    PATH@30..41
-      PATH_SEGMENT@30..41
-        NAME_REF@30..41
-          IDENT@30..41 "macro_rules"
+    MACRO_RULES_KW@30..41 "macro_rules"
     BANG@41..42 "!"
     WHITESPACE@42..43 " "
     NAME@43..46

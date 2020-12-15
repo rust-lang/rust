@@ -63,7 +63,7 @@ macro_rules! register_builtin {
 pub fn find_builtin_macro(
     ident: &name::Name,
     krate: CrateId,
-    ast_id: AstId<ast::MacroCall>,
+    ast_id: AstId<ast::MacroRules>,
 ) -> Option<MacroDefId> {
     let kind = find_by_name(ident)?;
 
@@ -515,12 +515,16 @@ mod tests {
     fn expand_builtin_macro(ra_fixture: &str) -> String {
         let (db, file_id) = TestDB::with_single_file(&ra_fixture);
         let parsed = db.parse(file_id);
+        let macro_rules: Vec<_> =
+            parsed.syntax_node().descendants().filter_map(ast::MacroRules::cast).collect();
         let macro_calls: Vec<_> =
             parsed.syntax_node().descendants().filter_map(ast::MacroCall::cast).collect();
 
         let ast_id_map = db.ast_id_map(file_id.into());
 
-        let expander = find_by_name(&macro_calls[0].name().unwrap().as_name()).unwrap();
+        assert_eq!(macro_rules.len(), 1, "test must contain exactly 1 `macro_rules!`");
+        assert_eq!(macro_calls.len(), 1, "test must contain exactly 1 macro call");
+        let expander = find_by_name(&macro_rules[0].name().unwrap().as_name()).unwrap();
 
         let krate = CrateId(0);
         let file_id = match expander {
@@ -528,7 +532,7 @@ mod tests {
                 // the first one should be a macro_rules
                 let def = MacroDefId {
                     krate: Some(CrateId(0)),
-                    ast_id: Some(AstId::new(file_id.into(), ast_id_map.ast_id(&macro_calls[0]))),
+                    ast_id: Some(AstId::new(file_id.into(), ast_id_map.ast_id(&macro_rules[0]))),
                     kind: MacroDefKind::BuiltIn(expander),
                     local_inner: false,
                 };
@@ -538,7 +542,7 @@ mod tests {
                     krate,
                     kind: MacroCallKind::FnLike(AstId::new(
                         file_id.into(),
-                        ast_id_map.ast_id(&macro_calls[1]),
+                        ast_id_map.ast_id(&macro_calls[0]),
                     )),
                 };
 
@@ -549,12 +553,12 @@ mod tests {
                 // the first one should be a macro_rules
                 let def = MacroDefId {
                     krate: Some(krate),
-                    ast_id: Some(AstId::new(file_id.into(), ast_id_map.ast_id(&macro_calls[0]))),
+                    ast_id: Some(AstId::new(file_id.into(), ast_id_map.ast_id(&macro_rules[0]))),
                     kind: MacroDefKind::BuiltInEager(expander),
                     local_inner: false,
                 };
 
-                let args = macro_calls[1].token_tree().unwrap();
+                let args = macro_calls[0].token_tree().unwrap();
                 let parsed_args = mbe::ast_to_token_tree(&args).unwrap().0;
 
                 let arg_id = db.intern_eager_expansion({
