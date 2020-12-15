@@ -30,6 +30,7 @@
 //! then mean that all later passes would have to check for these figments
 //! and report an error, and it just seems like more mess in the end.)
 
+use super::writeback::Resolver;
 use super::FnCtxt;
 
 use crate::expr_use_visitor as euv;
@@ -40,7 +41,9 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_infer::infer::UpvarRegion;
 use rustc_middle::hir::place::{Place, PlaceBase, PlaceWithHirId, ProjectionKind};
+use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeckResults, UpvarSubsts};
+use rustc_session::lint;
 use rustc_span::sym;
 use rustc_span::{MultiSpan, Span, Symbol};
 
@@ -97,7 +100,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         closure_hir_id: hir::HirId,
         span: Span,
-        body: &hir::Body<'_>,
+        body: &'tcx hir::Body<'tcx>,
         capture_clause: hir::CaptureBy,
     ) {
         debug!("analyze_closure(id={:?}, body.id={:?})", closure_hir_id, body.id());
@@ -156,6 +159,38 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.log_capture_analysis_first_pass(closure_def_id, &delegate.capture_information, span);
 
         self.compute_min_captures(closure_def_id, delegate.capture_information);
+
+        let closure_hir_id = self.tcx.hir().local_def_id_to_hir_id(local_def_id);
+        if should_do_migration_analysis(self.tcx, closure_hir_id) {
+            let need_migrations = self.compute_2229_migrations_first_pass(
+                closure_def_id,
+                span,
+                capture_clause,
+                body,
+                self.typeck_results.borrow().closure_min_captures.get(&closure_def_id),
+            );
+
+            if !need_migrations.is_empty() {
+                let need_migrations_hir_id =
+                    need_migrations.iter().map(|m| m.0).collect::<Vec<_>>();
+
+                let migrations_text =
+                    migration_suggestion_for_2229(self.tcx, &need_migrations_hir_id);
+
+                self.tcx.struct_span_lint_hir(
+                    lint::builtin::DISJOINT_CAPTURE_DROP_REORDER,
+                    closure_hir_id,
+                    span,
+                    |lint| {
+                        let mut diagnostics_builder = lint.build(
+                            "drop order affected for closure because of `capture_disjoint_fields`",
+                        );
+                        diagnostics_builder.note(&migrations_text);
+                        diagnostics_builder.emit();
+                    },
+                );
+            }
+        }
 
         // We now fake capture information for all variables that are mentioned within the closure
         // We do this after handling migrations so that min_captures computes before
@@ -518,6 +553,86 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         debug!("For closure={:?}, min_captures={:#?}", closure_def_id, root_var_min_capture_list);
         typeck_results.closure_min_captures.insert(closure_def_id, root_var_min_capture_list);
+    }
+
+    /// Figures out the list of root variables (and their types) that aren't completely
+    /// captured by the closure when `capture_disjoint_fields` is enabled and drop order of
+    /// some path starting at that root variable **might** be affected.
+    ///
+    /// The output list would include a root variable if:
+    /// - It would have been moved into the closure when `capture_disjoint_fields` wasn't
+    ///   enabled, **and**
+    /// - It wasn't completely captured by the closure, **and**
+    /// - The type of the root variable needs Drop.
+    fn compute_2229_migrations_first_pass(
+        &self,
+        closure_def_id: DefId,
+        closure_span: Span,
+        closure_clause: hir::CaptureBy,
+        body: &'tcx hir::Body<'tcx>,
+        min_captures: Option<&ty::RootVariableMinCaptureList<'tcx>>,
+    ) -> Vec<(hir::HirId, Ty<'tcx>)> {
+        fn resolve_ty<T: TypeFoldable<'tcx>>(
+            fcx: &FnCtxt<'_, 'tcx>,
+            span: Span,
+            body: &'tcx hir::Body<'tcx>,
+            ty: T,
+        ) -> T {
+            let mut resolver = Resolver::new(fcx, &span, body);
+            ty.fold_with(&mut resolver)
+        }
+
+        let upvars = if let Some(upvars) = self.tcx.upvars_mentioned(closure_def_id) {
+            upvars
+        } else {
+            return vec![];
+        };
+
+        let mut need_migrations = Vec::new();
+
+        for (&var_hir_id, _) in upvars.iter() {
+            let ty = resolve_ty(self, closure_span, body, self.node_ty(var_hir_id));
+
+            if !ty.needs_drop(self.tcx, self.tcx.param_env(closure_def_id.expect_local())) {
+                continue;
+            }
+
+            let root_var_min_capture_list = if let Some(root_var_min_capture_list) =
+                min_captures.and_then(|m| m.get(&var_hir_id))
+            {
+                root_var_min_capture_list
+            } else {
+                // The upvar is mentioned within the closure but no path starting from it is
+                // used.
+
+                match closure_clause {
+                    // Only migrate if closure is a move closure
+                    hir::CaptureBy::Value => need_migrations.push((var_hir_id, ty)),
+
+                    hir::CaptureBy::Ref => {}
+                }
+
+                continue;
+            };
+
+            let is_moved = root_var_min_capture_list
+                .iter()
+                .find(|capture| matches!(capture.info.capture_kind, ty::UpvarCapture::ByValue(_)))
+                .is_some();
+
+            // 1. If we capture more than one path starting at the root variabe then the root variable
+            //    isn't being captured in its entirety
+            // 2. If we only capture one path starting at the root variable, it's still possible
+            //    that it isn't the root variable completely.
+            if is_moved
+                && ((root_var_min_capture_list.len() > 1)
+                    || (root_var_min_capture_list[0].place.projections.len() > 0))
+            {
+                need_migrations.push((var_hir_id, ty));
+            }
+        }
+
+        need_migrations
     }
 
     fn init_capture_kind(
@@ -1134,6 +1249,21 @@ fn construct_capture_info_string(
 
 fn var_name(tcx: TyCtxt<'_>, var_hir_id: hir::HirId) -> Symbol {
     tcx.hir().name(var_hir_id)
+}
+
+fn should_do_migration_analysis(tcx: TyCtxt<'_>, closure_id: hir::HirId) -> bool {
+    let (level, _) =
+        tcx.lint_level_at_node(lint::builtin::DISJOINT_CAPTURE_DROP_REORDER, closure_id);
+
+    !matches!(level, lint::Level::Allow)
+}
+
+fn migration_suggestion_for_2229(tcx: TyCtxt<'_>, need_migrations: &Vec<hir::HirId>) -> String {
+    let need_migrations_strings =
+        need_migrations.iter().map(|v| format!("{}", var_name(tcx, *v))).collect::<Vec<_>>();
+    let migrations_list_concat = need_migrations_strings.join(", ");
+
+    format!("let ({}) = ({});", migrations_list_concat, migrations_list_concat)
 }
 
 /// Helper function to determine if we need to escalate CaptureKind from
