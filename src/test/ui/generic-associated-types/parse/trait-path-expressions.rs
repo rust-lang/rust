@@ -17,7 +17,7 @@ mod error2 {
   }
 
   fn f2<'a>(arg : Box<dyn X< { 1 } = 32 >>) {}
-    //~^ ERROR: only types can be used in associated type constraints
+    //~^ ERROR: expected one of
 }
 
 fn main() {}
