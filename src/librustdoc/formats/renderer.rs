@@ -3,6 +3,7 @@ use std::sync::Arc;
 use rustc_data_structures::sync::Lrc;
 use rustc_session::Session;
 use rustc_span::edition::Edition;
+use rustc_span::Symbol;
 
 use crate::clean;
 use crate::config::{RenderInfo, RenderOptions};
@@ -75,7 +76,7 @@ crate fn run_format<T: FormatRenderer>(
         None => return Ok(()),
     };
 
-    item.name = Some(krate.name.clone());
+    item.name = Some(Symbol::intern(&krate.name));
 
     // Render the crate documentation
     let mut work = vec![(format_renderer.clone(), item)];

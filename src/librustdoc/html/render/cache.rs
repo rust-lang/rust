@@ -76,7 +76,7 @@ crate fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
         if let Some(&(ref fqp, _)) = paths.get(&did) {
             search_index.push(IndexItem {
                 ty: item.type_(),
-                name: item.name.clone().unwrap(),
+                name: item.name.unwrap().to_string(),
                 path: fqp[..fqp.len() - 1].join("::"),
                 desc: item.doc_value().map_or_else(|| String::new(), short_markdown_summary),
                 parent: Some(did),

@@ -1469,6 +1469,10 @@ impl Symbol {
         self.0.as_u32()
     }
 
+    pub fn is_empty(self) -> bool {
+        self == kw::Invalid
+    }
+
     /// This method is supposed to be used in error messages, so it's expected to be
     /// identical to printing the original identifier token written in source code
     /// (`token_to_string`, `Ident::to_string`), except that symbols don't keep the rawness flag

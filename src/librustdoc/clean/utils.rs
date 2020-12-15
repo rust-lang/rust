@@ -68,7 +68,7 @@ crate fn krate(mut cx: &mut DocContext<'_>) -> Crate {
         m.items.extend(primitives.iter().map(|&(def_id, prim)| {
             Item::from_def_id_and_parts(
                 def_id,
-                Some(prim.to_url_str().to_owned()),
+                Some(prim.as_sym()),
                 ItemKind::PrimitiveItem(prim),
                 cx,
             )
