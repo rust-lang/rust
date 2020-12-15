@@ -1848,6 +1848,18 @@ declare_lint! {
 }
 
 declare_lint! {
+    /// The `invalid_rust_codeblock` lint detects Rust code blocks in
+    /// documentation examples that are invalid (e.g. empty, not parsable as
+    /// Rust code). This is a `rustdoc` only lint, see the documentation in the
+    /// [rustdoc book].
+    ///
+    /// [rustdoc book]: ../../../rustdoc/lints.html#invalid_rust_codeblock
+    pub INVALID_RUST_CODEBLOCK,
+    Warn,
+    "codeblock could not be parsed as valid Rust or is empty"
+}
+
+declare_lint! {
     /// The `missing_crate_level_docs` lint detects if documentation is
     /// missing at the crate root. This is a `rustdoc` only lint, see the
     /// documentation in the [rustdoc book].
@@ -2803,6 +2815,7 @@ declare_lint_pass! {
         BROKEN_INTRA_DOC_LINKS,
         PRIVATE_INTRA_DOC_LINKS,
         INVALID_CODEBLOCK_ATTRIBUTES,
+        INVALID_RUST_CODEBLOCK,
         MISSING_CRATE_LEVEL_DOCS,
         MISSING_DOC_CODE_EXAMPLES,
         INVALID_HTML_TAGS,

@@ -285,6 +285,41 @@ warning: unclosed HTML tag `h1`
 
 warning: 2 warnings emitted
 ```
+                
+## invalid_rust_codeblock
+
+This lint **warns by default**. It detects Rust code blocks in documentation
+examples that are invalid (e.g. empty, not parsable as Rust). For example:
+
+```rust
+/// Empty code block, with and without Rust:
+///
+/// ```rust
+/// ```
+///
+/// Unclosed code block:
+///
+/// ```rust
+fn main() {}
+```
+
+Which will give:
+
+```text
+warning: Rust code block is empty
+ --> src/lib.rs:3:5
+  |
+3 |   /// ```rust
+  |  _____^
+4 | | /// ```
+  | |_______^
+
+warning: Rust code block is empty
+ --> src/lib.rs:8:5
+  |
+8 | /// ```rust
+  |     ^^^^^^^
+```
 
 ## non_autolinks
 
