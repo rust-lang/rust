@@ -3,7 +3,9 @@
 mod block;
 
 use crate::{
-    algo, ast, match_ast, AstNode, SyntaxError,
+    algo,
+    ast::{self, VisibilityOwner},
+    match_ast, AstNode, SyntaxError,
     SyntaxKind::{CONST, FN, INT_NUMBER, TYPE_ALIAS},
     SyntaxNode, SyntaxToken, TextSize, T,
 };
@@ -99,6 +101,7 @@ pub(crate) fn validate(root: &SyntaxNode) -> Vec<SyntaxError> {
                 ast::RefType(it) => validate_trait_object_ref_ty(it, &mut errors),
                 ast::PtrType(it) => validate_trait_object_ptr_ty(it, &mut errors),
                 ast::FnPtrType(it) => validate_trait_object_fn_ptr_ret_ty(it, &mut errors),
+                ast::MacroRules(it) => validate_macro_rules(it, &mut errors),
                 _ => (),
             }
         }
@@ -349,4 +352,13 @@ fn validate_trait_object_ty(ty: ast::DynTraitType) -> Option<SyntaxError> {
         }
     }
     None
+}
+
+fn validate_macro_rules(mac: ast::MacroRules, errors: &mut Vec<SyntaxError>) {
+    if let Some(vis) = mac.visibility() {
+        errors.push(SyntaxError::new(
+            "visibilities are not allowed on `macro_rules!` items",
+            vis.syntax().text_range(),
+        ));
+    }
 }
