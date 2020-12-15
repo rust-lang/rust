@@ -4,6 +4,7 @@ use rustc_hash::FxHashMap;
 use hir::{Adt, ModuleDef, PathResolution, Semantics, Struct};
 use ide_db::RootDatabase;
 use syntax::{algo, ast, match_ast, AstNode, SyntaxKind, SyntaxKind::*, SyntaxNode};
+use test_utils::mark;
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
 
@@ -38,6 +39,7 @@ fn reorder<R: AstNode>(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     });
 
     if sorted_fields == fields {
+        mark::hit!(reorder_sorted_fields);
         return None;
     }
 
@@ -107,22 +109,25 @@ fn compute_fields_ranks(path: &ast::Path, ctx: &AssistContext) -> Option<FxHashM
 
 #[cfg(test)]
 mod tests {
+    use test_utils::mark;
+
     use crate::tests::{check_assist, check_assist_not_applicable};
 
     use super::*;
 
     #[test]
-    fn not_applicable_if_sorted() {
+    fn reorder_sorted_fields() {
+        mark::check!(reorder_sorted_fields);
         check_assist_not_applicable(
             reorder_fields,
             r#"
-        struct Foo {
-            foo: i32,
-            bar: i32,
-        }
+struct Foo {
+    foo: i32,
+    bar: i32,
+}
 
-        const test: Foo = <|>Foo { foo: 0, bar: 0 };
-        "#,
+const test: Foo = <|>Foo { foo: 0, bar: 0 };
+"#,
         )
     }
 
@@ -131,9 +136,9 @@ mod tests {
         check_assist_not_applicable(
             reorder_fields,
             r#"
-        struct Foo {};
-        const test: Foo = <|>Foo {}
-        "#,
+struct Foo {};
+const test: Foo = <|>Foo {}
+"#,
         )
     }
 
@@ -142,13 +147,13 @@ mod tests {
         check_assist(
             reorder_fields,
             r#"
-        struct Foo {foo: i32, bar: i32};
-        const test: Foo = <|>Foo {bar: 0, foo: 1}
-        "#,
+struct Foo {foo: i32, bar: i32};
+const test: Foo = <|>Foo {bar: 0, foo: 1}
+"#,
             r#"
-        struct Foo {foo: i32, bar: i32};
-        const test: Foo = Foo {foo: 1, bar: 0}
-        "#,
+struct Foo {foo: i32, bar: i32};
+const test: Foo = Foo {foo: 1, bar: 0}
+"#,
         )
     }
 
@@ -157,25 +162,25 @@ mod tests {
         check_assist(
             reorder_fields,
             r#"
-        struct Foo { foo: i64, bar: i64, baz: i64 }
+struct Foo { foo: i64, bar: i64, baz: i64 }
 
-        fn f(f: Foo) -> {
-            match f {
-                <|>Foo { baz: 0, ref mut bar, .. } => (),
-                _ => ()
-            }
-        }
-        "#,
+fn f(f: Foo) -> {
+    match f {
+        <|>Foo { baz: 0, ref mut bar, .. } => (),
+        _ => ()
+    }
+}
+"#,
             r#"
-        struct Foo { foo: i64, bar: i64, baz: i64 }
+struct Foo { foo: i64, bar: i64, baz: i64 }
 
-        fn f(f: Foo) -> {
-            match f {
-                Foo { ref mut bar, baz: 0, .. } => (),
-                _ => ()
-            }
-        }
-        "#,
+fn f(f: Foo) -> {
+    match f {
+        Foo { ref mut bar, baz: 0, .. } => (),
+        _ => ()
+    }
+}
+"#,
         )
     }
 
@@ -184,39 +189,39 @@ mod tests {
         check_assist(
             reorder_fields,
             r#"
-            struct Foo {
-                foo: String,
-                bar: String,
-            }
+struct Foo {
+    foo: String,
+    bar: String,
+}
 
-            impl Foo {
-                fn new() -> Foo {
-                    let foo = String::new();
-                    <|>Foo {
-                        bar: foo.clone(),
-                        extra: "Extra field",
-                        foo,
-                    }
-                }
-            }
-            "#,
+impl Foo {
+    fn new() -> Foo {
+        let foo = String::new();
+        <|>Foo {
+            bar: foo.clone(),
+            extra: "Extra field",
+            foo,
+        }
+    }
+}
+"#,
             r#"
-            struct Foo {
-                foo: String,
-                bar: String,
-            }
+struct Foo {
+    foo: String,
+    bar: String,
+}
 
-            impl Foo {
-                fn new() -> Foo {
-                    let foo = String::new();
-                    Foo {
-                        foo,
-                        bar: foo.clone(),
-                        extra: "Extra field",
-                    }
-                }
-            }
-            "#,
+impl Foo {
+    fn new() -> Foo {
+        let foo = String::new();
+        Foo {
+            foo,
+            bar: foo.clone(),
+            extra: "Extra field",
+        }
+    }
+}
+"#,
         )
     }
 }
