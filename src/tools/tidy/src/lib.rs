@@ -28,6 +28,10 @@ macro_rules! t {
 }
 
 macro_rules! tidy_error {
+    ($bad:expr, $fmt:expr) => ({
+        *$bad = true;
+        eprintln!("tidy error: {}", $fmt);
+    });
     ($bad:expr, $fmt:expr, $($arg:tt)*) => ({
         *$bad = true;
         eprint!("tidy error: ");
