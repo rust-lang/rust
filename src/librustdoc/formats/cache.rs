@@ -8,6 +8,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX};
 use rustc_middle::middle::privacy::AccessLevels;
 use rustc_span::source_map::FileName;
+use rustc_span::Symbol;
 
 use crate::clean::{self, GetDefId};
 use crate::config::RenderInfo;
@@ -74,7 +75,7 @@ crate struct Cache {
     crate implementors: FxHashMap<DefId, Vec<Impl>>,
 
     /// Cache of where external crate documentation can be found.
-    crate extern_locations: FxHashMap<CrateNum, (String, PathBuf, ExternalLocation)>,
+    crate extern_locations: FxHashMap<CrateNum, (Symbol, PathBuf, ExternalLocation)>,
 
     /// Cache of where documentation for primitives can be found.
     crate primitive_locations: FxHashMap<clean::PrimitiveType, DefId>,
@@ -173,10 +174,10 @@ impl Cache {
                 },
                 _ => PathBuf::new(),
             };
-            let extern_url = extern_html_root_urls.get(&e.name).map(|u| &**u);
+            let extern_url = extern_html_root_urls.get(&*e.name.as_str()).map(|u| &**u);
             cache
                 .extern_locations
-                .insert(n, (e.name.clone(), src_root, extern_location(e, extern_url, &dst)));
+                .insert(n, (e.name, src_root, extern_location(e, extern_url, &dst)));
 
             let did = DefId { krate: n, index: CRATE_DEF_INDEX };
             cache.external_paths.insert(did, (vec![e.name.to_string()], ItemType::Module));
@@ -195,7 +196,7 @@ impl Cache {
             cache.primitive_locations.insert(prim, def_id);
         }
 
-        cache.stack.push(krate.name.clone());
+        cache.stack.push(krate.name.to_string());
         krate = cache.fold_crate(krate);
 
         for (trait_did, dids, impl_) in cache.orphan_trait_impls.drain(..) {
@@ -340,7 +341,7 @@ impl DocFolder for Cache {
 
         // Keep track of the fully qualified path for this item.
         let pushed = match item.name {
-            Some(ref n) if !n.is_empty() => {
+            Some(n) if !n.is_empty() => {
                 self.stack.push(n.to_string());
                 true
             }

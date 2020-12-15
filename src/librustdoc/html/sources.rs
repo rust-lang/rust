@@ -19,7 +19,7 @@ crate fn render(
     krate: clean::Crate,
 ) -> Result<clean::Crate, Error> {
     info!("emitting source files");
-    let dst = dst.join("src").join(&krate.name);
+    let dst = dst.join("src").join(&*krate.name.as_str());
     scx.ensure_dir(&dst)?;
     let mut folder = SourceCollector { dst, scx };
     Ok(folder.fold_crate(krate))

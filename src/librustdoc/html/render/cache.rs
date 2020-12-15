@@ -31,7 +31,7 @@ crate fn extern_location(
 ) -> ExternalLocation {
     use ExternalLocation::*;
     // See if there's documentation generated into the local directory
-    let local_location = dst.join(&e.name);
+    let local_location = dst.join(&*e.name.as_str());
     if local_location.is_dir() {
         return Local;
     }

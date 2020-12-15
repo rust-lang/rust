@@ -418,14 +418,15 @@ impl FormatRenderer for Context {
         // If user passed in `--playground-url` arg, we fill in crate name here
         let mut playground = None;
         if let Some(url) = playground_url {
-            playground = Some(markdown::Playground { crate_name: Some(krate.name.clone()), url });
+            playground =
+                Some(markdown::Playground { crate_name: Some(krate.name.to_string()), url });
         }
         let mut layout = layout::Layout {
             logo: String::new(),
             favicon: String::new(),
             external_html,
             default_settings,
-            krate: krate.name.clone(),
+            krate: krate.name.to_string(),
             css_file_extension: extension_css,
             generate_search_filter,
         };
@@ -445,7 +446,7 @@ impl FormatRenderer for Context {
                     }
                     (sym::html_playground_url, Some(s)) => {
                         playground = Some(markdown::Playground {
-                            crate_name: Some(krate.name.clone()),
+                            crate_name: Some(krate.name.to_string()),
                             url: s.to_string(),
                         });
                     }
@@ -530,7 +531,7 @@ impl FormatRenderer for Context {
     }
 
     fn after_krate(&mut self, krate: &clean::Crate, cache: &Cache) -> Result<(), Error> {
-        let final_file = self.dst.join(&krate.name).join("all.html");
+        let final_file = self.dst.join(&*krate.name.as_str()).join("all.html");
         let settings_file = self.dst.join("settings.html");
         let crate_name = krate.name.clone();
 
@@ -1019,7 +1020,8 @@ themePicker.onblur = handleThemeButtonsBlur;
         }
 
         let dst = cx.dst.join(&format!("source-files{}.js", cx.shared.resource_suffix));
-        let (mut all_sources, _krates) = try_err!(collect(&dst, &krate.name, "sourcesIndex"), &dst);
+        let (mut all_sources, _krates) =
+            try_err!(collect(&dst, &krate.name.as_str(), "sourcesIndex"), &dst);
         all_sources.push(format!(
             "sourcesIndex[\"{}\"] = {};",
             &krate.name,
@@ -1035,7 +1037,7 @@ themePicker.onblur = handleThemeButtonsBlur;
 
     // Update the search index
     let dst = cx.dst.join(&format!("search-index{}.js", cx.shared.resource_suffix));
-    let (mut all_indexes, mut krates) = try_err!(collect_json(&dst, &krate.name), &dst);
+    let (mut all_indexes, mut krates) = try_err!(collect_json(&dst, &krate.name.as_str()), &dst);
     all_indexes.push(search_index);
 
     // Sort the indexes by crate so the file will be generated identically even
@@ -1070,7 +1072,7 @@ themePicker.onblur = handleThemeButtonsBlur;
                 extra_scripts: &[],
                 static_extra_scripts: &[],
             };
-            krates.push(krate.name.clone());
+            krates.push(krate.name.to_string());
             krates.sort();
             krates.dedup();
 
@@ -1162,7 +1164,7 @@ themePicker.onblur = handleThemeButtonsBlur;
         mydst.push(&format!("{}.{}.js", remote_item_type, remote_path[remote_path.len() - 1]));
 
         let (mut all_implementors, _) =
-            try_err!(collect(&mydst, &krate.name, "implementors"), &mydst);
+            try_err!(collect(&mydst, &krate.name.as_str(), "implementors"), &mydst);
         all_implementors.push(implementors);
         // Sort the implementors by crate so the file will be generated
         // identically even with rustdoc running in parallel.
@@ -1648,16 +1650,17 @@ impl Context {
         };
         let file = &file;
 
+        let symbol;
         let (krate, path) = if cnum == LOCAL_CRATE {
             if let Some(path) = self.shared.local_sources.get(file) {
-                (&self.shared.layout.krate, path)
+                (self.shared.layout.krate.as_str(), path)
             } else {
                 return None;
             }
         } else {
             let (krate, src_root) = match *cache.extern_locations.get(&cnum)? {
-                (ref name, ref src, ExternalLocation::Local) => (name, src),
-                (ref name, ref src, ExternalLocation::Remote(ref s)) => {
+                (name, ref src, ExternalLocation::Local) => (name, src),
+                (name, ref src, ExternalLocation::Remote(ref s)) => {
                     root = s.to_string();
                     (name, src)
                 }
@@ -1671,7 +1674,8 @@ impl Context {
             let mut fname = file.file_name().expect("source has no filename").to_os_string();
             fname.push(".html");
             path.push_str(&fname.to_string_lossy());
-            (krate, &path)
+            symbol = krate.as_str();
+            (&*symbol, &path)
         };
 
         let loline = item.source.lo(self.sess()).line;
