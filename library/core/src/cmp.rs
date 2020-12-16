@@ -1236,7 +1236,7 @@ mod impls {
     impl PartialOrd for bool {
         #[inline]
         fn partial_cmp(&self, other: &bool) -> Option<Ordering> {
-            (*self as u8).partial_cmp(&(*other as u8))
+            Some(self.cmp(other))
         }
     }
 
