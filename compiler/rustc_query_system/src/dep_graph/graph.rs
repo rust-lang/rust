@@ -548,7 +548,6 @@ impl<K: DepKind> DepGraph<K> {
         }
     }
 
-    #[inline]
     fn edge_count(&self) -> usize {
         let data = self.data.as_ref().unwrap();
         let previous = &data.previous;
