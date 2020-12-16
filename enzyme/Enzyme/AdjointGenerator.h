@@ -2074,8 +2074,10 @@ public:
             }
             if (auto ci = dyn_cast<CallInst>(alloc)) {
               if (auto F = ci->getCalledFunction()) {
-                // TODO free
+                // Store cached values
                 if (F->getName() == "malloc") {
+                  const_cast<AugmentedReturn *>(subdata)
+                      ->tapeIndiciesToFree.emplace(pair.first);
                   Value *Idxs[] = {
                       ConstantInt::get(Type::getInt64Ty(tapeArg->getContext()),
                                        0),
@@ -2167,8 +2169,6 @@ public:
             tape ? PointerType::getUnqual(tape->getType()) : nullptr,
             nextTypeInfo, uncacheable_args, subdata, /*AtomicAdd*/ true,
             /*postopt*/ false, /*omp*/ true);
-        if (!newcalled)
-          return;
 
         auto numargs = ConstantInt::get(Type::getInt32Ty(call.getContext()),
                                         args.size() - 3);
@@ -2183,6 +2183,19 @@ public:
         diffes->setCallingConv(call.getCallingConv());
         diffes->setDebugLoc(gutils->getNewFromOriginal(call.getDebugLoc()));
 
+        if (tape) {
+          for (auto idx : subdata->tapeIndiciesToFree) {
+            auto ci = cast<CallInst>(CallInst::CreateFree(
+                Builder2.CreatePointerCast(
+                    Builder2.CreateExtractValue(tape, idx),
+                    Type::getInt8PtrTy(Builder2.getContext())),
+                Builder2.GetInsertBlock()));
+            ci->addAttribute(AttributeList::FirstArgIndex, Attribute::NonNull);
+            if (ci->getParent() == nullptr) {
+              Builder2.Insert(ci);
+            }
+          }
+        }
       } else {
         assert(0 && "openmp indirect unhandled");
       }
