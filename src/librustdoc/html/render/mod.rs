@@ -2279,7 +2279,11 @@ fn short_item_info(item: &clean::Item, cx: &Context, parent: Option<&clean::Item
         let mut message = if let Some(since) = since {
             let since = &since.as_str();
             if !stability::deprecation_in_effect(is_since_rustc_version, Some(since)) {
-                format!("Deprecating in {}", Escape(since))
+                if *since == "TBD" {
+                    format!("Deprecating in a future Rust version")
+                } else {
+                    format!("Deprecating in {}", Escape(since))
+                }
             } else {
                 format!("Deprecated since {}", Escape(since))
             }

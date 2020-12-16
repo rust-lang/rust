@@ -96,19 +96,25 @@ error[E0544]: multiple stability levels
 LL | #[rustc_const_unstable(feature = "d", issue = "none")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: Invalid stability or deprecation version found
+error: Invalid stability version found
   --> $DIR/stability-attribute-sanity.rs:65:1
    |
 LL | pub const fn multiple4() { }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+error: Invalid deprecation version found
+  --> $DIR/stability-attribute-sanity.rs:70:1
+   |
+LL | fn invalid_deprecation_version() {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 error[E0549]: rustc_deprecated attribute must be paired with either stable or unstable attribute
-  --> $DIR/stability-attribute-sanity.rs:68:1
+  --> $DIR/stability-attribute-sanity.rs:72:1
    |
 LL | #[rustc_deprecated(since = "a", reason = "text")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 18 previous errors
+error: aborting due to 19 previous errors
 
 Some errors have detailed explanations: E0539, E0541, E0546, E0550.
 For more information about an error, try `rustc --explain E0539`.

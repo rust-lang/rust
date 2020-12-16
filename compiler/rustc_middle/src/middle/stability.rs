@@ -132,37 +132,37 @@ pub fn report_unstable(
 /// Checks whether an item marked with `deprecated(since="X")` is currently
 /// deprecated (i.e., whether X is not greater than the current rustc version).
 pub fn deprecation_in_effect(is_since_rustc_version: bool, since: Option<&str>) -> bool {
-    let since = if let Some(since) = since {
-        if is_since_rustc_version {
-            since
-        } else {
-            // We assume that the deprecation is in effect if it's not a
-            // rustc version.
-            return true;
-        }
-    } else {
-        // If since attribute is not set, then we're definitely in effect.
-        return true;
-    };
     fn parse_version(ver: &str) -> Vec<u32> {
         // We ignore non-integer components of the version (e.g., "nightly").
         ver.split(|c| c == '.' || c == '-').flat_map(|s| s.parse()).collect()
     }
 
-    if let Some(rustc) = option_env!("CFG_RELEASE") {
-        let since: Vec<u32> = parse_version(&since);
-        let rustc: Vec<u32> = parse_version(rustc);
-        // We simply treat invalid `since` attributes as relating to a previous
-        // Rust version, thus always displaying the warning.
-        if since.len() != 3 {
-            return true;
-        }
-        since <= rustc
-    } else {
-        // By default, a deprecation warning applies to
-        // the current version of the compiler.
-        true
+    if !is_since_rustc_version {
+        // The `since` field doesn't have semantic purpose in the stable `deprecated`
+        // attribute, only in `rustc_deprecated`.
+        return true;
     }
+
+    if let Some(since) = since {
+        if since == "TBD" {
+            return false;
+        }
+
+        if let Some(rustc) = option_env!("CFG_RELEASE") {
+            let since: Vec<u32> = parse_version(&since);
+            let rustc: Vec<u32> = parse_version(rustc);
+            // We simply treat invalid `since` attributes as relating to a previous
+            // Rust version, thus always displaying the warning.
+            if since.len() != 3 {
+                return true;
+            }
+            return since <= rustc;
+        }
+    };
+
+    // Assume deprecation is in effect if "since" field is missing
+    // or if we can't determine the current Rust version.
+    true
 }
 
 pub fn deprecation_suggestion(
@@ -182,19 +182,24 @@ pub fn deprecation_suggestion(
 }
 
 pub fn deprecation_message(depr: &Deprecation, kind: &str, path: &str) -> (String, &'static Lint) {
-    let (message, lint) = if deprecation_in_effect(
-        depr.is_since_rustc_version,
-        depr.since.map(Symbol::as_str).as_deref(),
-    ) {
+    let since = depr.since.map(Symbol::as_str);
+    let (message, lint) = if deprecation_in_effect(depr.is_since_rustc_version, since.as_deref()) {
         (format!("use of deprecated {} `{}`", kind, path), DEPRECATED)
     } else {
         (
-            format!(
-                "use of {} `{}` that will be deprecated in future version {}",
-                kind,
-                path,
-                depr.since.unwrap()
-            ),
+            if since.as_deref() == Some("TBD") {
+                format!(
+                    "use of {} `{}` that will be deprecated in a future Rust version",
+                    kind, path
+                )
+            } else {
+                format!(
+                    "use of {} `{}` that will be deprecated in future version {}",
+                    kind,
+                    path,
+                    since.unwrap()
+                )
+            },
             DEPRECATED_IN_FUTURE,
         )
     };
