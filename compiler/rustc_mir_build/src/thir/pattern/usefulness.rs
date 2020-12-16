@@ -648,6 +648,81 @@ impl<'tcx> Usefulness<'tcx> {
         !matches!(*self, NotUseful)
     }
 
+    /// When trying several branches and each returns a `Usefulness`, we need to combine the
+    /// results together.
+    fn merge(usefulnesses: impl Iterator<Item = (Self, Span)>, column_count: usize) -> Self {
+        // If two branches have detected some unreachable sub-branches, we need to be careful. If
+        // they were detected in columns that are not the current one, we want to keep only the
+        // sub-branches that were unreachable in _all_ branches. Eg. in the following, the last
+        // `true` is unreachable in the second branch of the first or-pattern, but not otherwise.
+        // Therefore we don't want to lint that it is unreachable.
+        //
+        // ```
+        // match (true, true) {
+        //     (true, true) => {}
+        //     (false | true, false | true) => {}
+        // }
+        // ```
+        // If however the sub-branches come from the current column, they come from the inside of
+        // the current or-pattern, and we want to keep them all. Eg. in the following, we _do_ want
+        // to lint that the last `false` is unreachable.
+        // ```
+        // match None {
+        //     Some(false) => {}
+        //     None | Some(true | false) => {}
+        // }
+        // ```
+
+        // We keep track of sub-branches separately depending on whether they come from this column
+        // or from others.
+        let mut unreachables_this_column: FxHashSet<Span> = FxHashSet::default();
+        let mut unreachables_other_columns: Vec<FxHashSet<Span>> = Vec::default();
+        // Whether at least one branch is reachable.
+        let mut any_is_useful = false;
+
+        for (u, span) in usefulnesses {
+            match u {
+                Useful(unreachables) => {
+                    if let Some((this_column, other_columns)) = unreachables.split_last() {
+                        // We keep the union of unreachables found in the first column.
+                        unreachables_this_column.extend(this_column);
+                        // We keep the intersection of unreachables found in other columns.
+                        if unreachables_other_columns.is_empty() {
+                            unreachables_other_columns = other_columns.to_vec();
+                        } else {
+                            unreachables_other_columns = unreachables_other_columns
+                                .into_iter()
+                                .zip(other_columns)
+                                .map(|(x, y)| x.intersection(&y).copied().collect())
+                                .collect();
+                        }
+                    }
+                    any_is_useful = true;
+                }
+                NotUseful => {
+                    unreachables_this_column.insert(span);
+                }
+                UsefulWithWitness(_) => {
+                    bug!(
+                        "encountered or-pat in the expansion of `_` during exhaustiveness checking"
+                    )
+                }
+            }
+        }
+
+        if any_is_useful {
+            let mut unreachables = if unreachables_other_columns.is_empty() {
+                (0..column_count - 1).map(|_| FxHashSet::default()).collect()
+            } else {
+                unreachables_other_columns
+            };
+            unreachables.push(unreachables_this_column);
+            Useful(unreachables)
+        } else {
+            NotUseful
+        }
+    }
+
     fn apply_constructor<'p>(
         self,
         pcx: PatCtxt<'_, 'p, 'tcx>,
@@ -833,85 +908,19 @@ fn is_useful<'p, 'tcx>(
     if let Some(vs) = v.expand_or_pat() {
         // We expand the or pattern, trying each of its branches in turn and keeping careful track
         // of possible unreachable sub-branches.
-        //
-        // If two branches have detected some unreachable sub-branches, we need to be careful. If
-        // they were detected in columns that are not the current one, we want to keep only the
-        // sub-branches that were unreachable in _all_ branches. Eg. in the following, the last
-        // `true` is unreachable in the second branch of the first or-pattern, but not otherwise.
-        // Therefore we don't want to lint that it is unreachable.
-        //
-        // ```
-        // match (true, true) {
-        //     (true, true) => {}
-        //     (false | true, false | true) => {}
-        // }
-        // ```
-        // If however the sub-branches come from the current column, they come from the inside of
-        // the current or-pattern, and we want to keep them all. Eg. in the following, we _do_ want
-        // to lint that the last `false` is unreachable.
-        // ```
-        // match None {
-        //     Some(false) => {}
-        //     None | Some(true | false) => {}
-        // }
-        // ```
-
         let mut matrix = matrix.clone();
-        // We keep track of sub-branches separately depending on whether they come from this column
-        // or from others.
-        let mut unreachables_this_column: FxHashSet<Span> = FxHashSet::default();
-        let mut unreachables_other_columns: Vec<FxHashSet<Span>> = Vec::default();
-        // Whether at least one branch is reachable.
-        let mut any_is_useful = false;
-
-        for v in vs {
-            let res = is_useful(cx, &matrix, &v, witness_preference, hir_id, is_under_guard, false);
-            match res {
-                Useful(unreachables) => {
-                    if let Some((this_column, other_columns)) = unreachables.split_last() {
-                        // We keep the union of unreachables found in the first column.
-                        unreachables_this_column.extend(this_column);
-                        // We keep the intersection of unreachables found in other columns.
-                        if unreachables_other_columns.is_empty() {
-                            unreachables_other_columns = other_columns.to_vec();
-                        } else {
-                            unreachables_other_columns = unreachables_other_columns
-                                .into_iter()
-                                .zip(other_columns)
-                                .map(|(x, y)| x.intersection(&y).copied().collect())
-                                .collect();
-                        }
-                    }
-                    any_is_useful = true;
-                }
-                NotUseful => {
-                    unreachables_this_column.insert(v.head().span);
-                }
-                UsefulWithWitness(_) => bug!(
-                    "encountered or-pat in the expansion of `_` during exhaustiveness checking"
-                ),
-            }
-
+        let usefulnesses = vs.into_iter().map(|v| {
+            let span = v.head().span;
+            let u = is_useful(cx, &matrix, &v, witness_preference, hir_id, is_under_guard, false);
             // If pattern has a guard don't add it to the matrix.
             if !is_under_guard {
                 // We push the already-seen patterns into the matrix in order to detect redundant
                 // branches like `Some(_) | Some(0)`.
                 matrix.push(v);
             }
-        }
-
-        return if any_is_useful {
-            let mut unreachables = if unreachables_other_columns.is_empty() {
-                let n_columns = v.len();
-                (0..n_columns - 1).map(|_| FxHashSet::default()).collect()
-            } else {
-                unreachables_other_columns
-            };
-            unreachables.push(unreachables_this_column);
-            Useful(unreachables)
-        } else {
-            NotUseful
-        };
+            (u, span)
+        });
+        return Usefulness::merge(usefulnesses, v.len());
     }
 
     // FIXME(Nadrieril): Hack to work around type normalization issues (see #72476).
