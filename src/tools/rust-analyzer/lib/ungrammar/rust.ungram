@@ -26,6 +26,9 @@ Name =
 NameRef =
   'ident' | 'int_number'
 
+Lifetime =
+  'lifetime_ident'
+
 Path =
   (qualifier:Path '::')? segment:PathSegment
 
@@ -52,7 +55,7 @@ AssocTypeArg =
   NameRef (':' TypeBoundList | '=' Type)
 
 LifetimeArg =
-  'lifetime'
+  Lifetime
 
 ConstArg =
   Expr
@@ -153,7 +156,7 @@ ParamList =
 
 SelfParam =
   Attr* (
-    ('&' 'lifetime'?)? 'mut'? 'self'
+    ('&' Lifetime?)? 'mut'? 'self'
   | 'mut'? 'self' ':' Type
   )
 
@@ -281,13 +284,13 @@ ConstParam =
   ('=' default_val:Expr)?
 
 LifetimeParam =
-  Attr* 'lifetime' (':' TypeBoundList?)?
+  Attr* Lifetime (':' TypeBoundList?)?
 
 WhereClause =
   'where' predicates:(WherePred (',' WherePred)* ','?)
 
 WherePred =
-  ('for' GenericParamList)?  ('lifetime' | Type) ':' TypeBoundList
+  ('for' GenericParamList)?  (Lifetime | Type) ':' TypeBoundList
 
 Visibility =
   'pub' ('('
@@ -459,13 +462,13 @@ WhileExpr =
   loop_body:BlockExpr
 
 Label =
-  'lifetime'
+  Lifetime ':'
 
 BreakExpr =
-  Attr* 'break' 'lifetime'? Expr?
+  Attr* 'break' Lifetime? Expr?
 
 ContinueExpr =
-  Attr* 'continue' 'lifetime'?
+  Attr* 'continue' Lifetime?
 
 RangeExpr =
   Attr* start:Expr? op:('..' | '..=') end:Expr?
@@ -529,7 +532,7 @@ PtrType =
   '*' ('const' | 'mut') Type
 
 RefType =
-  '&' 'lifetime'? 'mut'? Type
+  '&' Lifetime? 'mut'? Type
 
 ArrayType =
   '[' Type ';' Expr ']'
@@ -556,7 +559,7 @@ TypeBoundList =
   bounds:(TypeBound ('+' TypeBound)* '+'?)
 
 TypeBound =
-  'lifetime'
+  Lifetime
 | '?'? Type
 
 //************************//
