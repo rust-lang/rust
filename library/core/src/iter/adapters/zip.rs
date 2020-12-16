@@ -28,14 +28,9 @@ where
         ZipNew::new(a, b)
     }
 
-    fn super_nth(&mut self, mut n: usize) -> Option<(A::Item, B::Item)> {
-        while let Some(x) = Iterator::next(self) {
-            if n == 0 {
-                return Some(x);
-            }
-            n -= 1;
-        }
-        None
+    fn super_nth(&mut self, n: usize) -> Option<(A::Item, B::Item)> {
+        self.advance_by(n).ok()?;
+        self.next()
     }
 }
 
