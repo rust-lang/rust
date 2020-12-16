@@ -84,7 +84,10 @@ bool is_value_needed_in_reverse(
 
       if (auto CI = dyn_cast<CallInst>(use)) {
         if (auto F = CI->getCalledFunction()) {
-          if (F->getName() == "__kmpc_for_static_init_4") {
+          if (F->getName() == "__kmpc_for_static_init_4" ||
+              F->getName() == "__kmpc_for_static_init_4u" ||
+              F->getName() == "__kmpc_for_static_init_8" ||
+              F->getName() == "__kmpc_for_static_init_8u") {
             return seen[idx] = true;
           }
         }

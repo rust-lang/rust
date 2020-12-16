@@ -31,7 +31,8 @@ void omp(float& a, int N) {
 */
 void omp(float* a, int N, int M) {
   #pragma omp parallel for
-  for (int i=M; i<N; i++) {
+  #pragma nounroll
+  for (unsigned int i=M; i<N; i++) {
     //a[i] *= a[i];
     a[i] *= a[i];
   }

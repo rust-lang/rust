@@ -122,7 +122,10 @@ public:
       for (auto &I : BB) {
         if (CallInst *call = dyn_cast<CallInst>(&I)) {
           if (Function *F = call->getCalledFunction()) {
-            if (F->getName() == "__kmpc_for_static_init_4") {
+            if (F->getName() == "__kmpc_for_static_init_4" ||
+                F->getName() == "__kmpc_for_static_init_4u" ||
+                F->getName() == "__kmpc_for_static_init_8" ||
+                F->getName() == "__kmpc_for_static_init_8u") {
               // todo what if bounds change between fwd/reverse
               IRBuilder<> pre(getNewFromOriginal(call));
               IntegerType *i64 = IntegerType::getInt64Ty(oldFunc->getContext());

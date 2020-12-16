@@ -188,7 +188,10 @@ public:
     for (auto U : LI.getPointerOperand()->users()) {
       if (auto CI = dyn_cast<CallInst>(U)) {
         if (auto F = CI->getCalledFunction()) {
-          if (F->getName() == "__kmpc_for_static_init_4") {
+          if (F->getName() == "__kmpc_for_static_init_4" ||
+              F->getName() == "__kmpc_for_static_init_4u" ||
+              F->getName() == "__kmpc_for_static_init_8" ||
+              F->getName() == "__kmpc_for_static_init_8u") {
             eraseIfUnused(LI);
             return;
           }
@@ -366,7 +369,10 @@ public:
     for (auto U : orig_ptr->users()) {
       if (auto CI = dyn_cast<CallInst>(U)) {
         if (auto F = CI->getCalledFunction()) {
-          if (F->getName() == "__kmpc_for_static_init_4") {
+          if (F->getName() == "__kmpc_for_static_init_4" ||
+              F->getName() == "__kmpc_for_static_init_4u" ||
+              F->getName() == "__kmpc_for_static_init_8" ||
+              F->getName() == "__kmpc_for_static_init_8u") {
             return;
           }
         }
@@ -2223,8 +2229,11 @@ public:
 
     Function *called = orig->getCalledFunction();
 
-    if (Mode != DerivativeMode::Forward) {
-      if (called && called->getName() == "__kmpc_for_static_init_4") {
+    if (Mode != DerivativeMode::Forward && called) {
+      if (called->getName() == "__kmpc_for_static_init_4" ||
+          called->getName() == "__kmpc_for_static_init_4u" ||
+          called->getName() == "__kmpc_for_static_init_8" ||
+          called->getName() == "__kmpc_for_static_init_8u") {
         IRBuilder<> Builder2(call.getParent());
         getReverseBuilder(Builder2);
         auto fini = called->getParent()->getFunction("__kmpc_for_static_fini");

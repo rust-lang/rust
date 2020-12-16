@@ -186,7 +186,10 @@ static inline bool OnlyUsedInOMP(AllocaInst *AI) {
       continue;
     if (auto CI = dyn_cast<CallInst>(U)) {
       if (auto F = CI->getCalledFunction()) {
-        if (F->getName() == "__kmpc_for_static_init_4") {
+        if (F->getName() == "__kmpc_for_static_init_4" ||
+            F->getName() == "__kmpc_for_static_init_4u" ||
+            F->getName() == "__kmpc_for_static_init_8" ||
+            F->getName() == "__kmpc_for_static_init_8u") {
           ompUse = true;
         }
       }
