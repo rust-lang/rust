@@ -107,8 +107,71 @@ where
     B: DoubleEndedIterator + ExactSizeIterator,
 {
     #[inline]
+    default fn next_back(&mut self) -> Option<(A::Item, B::Item)> {
+        let a_sz = self.a.len();
+        let b_sz = self.b.len();
+        if a_sz != b_sz {
+            // Adjust a, b to equal length
+            if a_sz > b_sz {
+                for _ in 0..a_sz - b_sz {
+                    self.a.next_back();
+                }
+            } else {
+                for _ in 0..b_sz - a_sz {
+                    self.b.next_back();
+                }
+            }
+        }
+        match (self.a.next_back(), self.b.next_back()) {
+            (Some(x), Some(y)) => Some((x, y)),
+            (None, None) => None,
+            _ => unreachable!(),
+        }
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<A, B> DoubleEndedIterator for Zip<A, B>
+where
+    A: TrustedRandomAccess + DoubleEndedIterator + ExactSizeIterator,
+    B: TrustedRandomAccess + DoubleEndedIterator + ExactSizeIterator,
+{
+    #[inline]
     fn next_back(&mut self) -> Option<(A::Item, B::Item)> {
-        ZipImpl::next_back(self)
+        let a_side_effect = A::may_have_side_effect();
+        let b_side_effect = B::may_have_side_effect();
+        if a_side_effect || b_side_effect {
+            let sz_a = self.a.size();
+            let sz_b = self.b.size();
+            // Adjust a, b to equal length, make sure that only the first call
+            // of `next_back` does this, otherwise we will break the restriction
+            // on calls to `self.next_back()` after calling `get_unchecked()`.
+            if sz_a != sz_b {
+                let sz_a = self.a.size();
+                if a_side_effect && sz_a > self.len {
+                    for _ in 0..sz_a - cmp::max(self.len, self.index) {
+                        self.a.next_back();
+                    }
+                }
+                let sz_b = self.b.size();
+                if b_side_effect && sz_b > self.len {
+                    for _ in 0..sz_b - self.len {
+                        self.b.next_back();
+                    }
+                }
+            }
+        }
+        if self.index < self.len {
+            self.len -= 1;
+            let i = self.len;
+            // SAFETY: `i` is smaller than the previous value of `self.len`,
+            // which is also smaller than or equal to `self.a.len()` and `self.b.len()`
+            unsafe {
+                Some((self.a.__iterator_get_unchecked(i), self.b.__iterator_get_unchecked(i)))
+            }
+        } else {
+            None
+        }
     }
 }
 
@@ -119,10 +182,6 @@ trait ZipImpl<A, B> {
     fn next(&mut self) -> Option<Self::Item>;
     fn size_hint(&self) -> (usize, Option<usize>);
     fn nth(&mut self, n: usize) -> Option<Self::Item>;
-    fn next_back(&mut self) -> Option<Self::Item>
-    where
-        A: DoubleEndedIterator + ExactSizeIterator,
-        B: DoubleEndedIterator + ExactSizeIterator;
     // This has the same safety requirements as `Iterator::__iterator_get_unchecked`
     unsafe fn get_unchecked(&mut self, idx: usize) -> <Self as Iterator>::Item
     where
@@ -148,33 +207,6 @@ where
     #[inline]
     default fn nth(&mut self, n: usize) -> Option<Self::Item> {
         self.super_nth(n)
-    }
-
-    #[inline]
-    default fn next_back(&mut self) -> Option<(A::Item, B::Item)>
-    where
-        A: DoubleEndedIterator + ExactSizeIterator,
-        B: DoubleEndedIterator + ExactSizeIterator,
-    {
-        let a_sz = self.a.len();
-        let b_sz = self.b.len();
-        if a_sz != b_sz {
-            // Adjust a, b to equal length
-            if a_sz > b_sz {
-                for _ in 0..a_sz - b_sz {
-                    self.a.next_back();
-                }
-            } else {
-                for _ in 0..b_sz - a_sz {
-                    self.b.next_back();
-                }
-            }
-        }
-        match (self.a.next_back(), self.b.next_back()) {
-            (Some(x), Some(y)) => Some((x, y)),
-            (None, None) => None,
-            _ => unreachable!(),
-        }
     }
 
     #[inline]
@@ -260,48 +292,6 @@ where
         }
 
         self.super_nth(n - delta)
-    }
-
-    #[inline]
-    fn next_back(&mut self) -> Option<(A::Item, B::Item)>
-    where
-        A: DoubleEndedIterator + ExactSizeIterator,
-        B: DoubleEndedIterator + ExactSizeIterator,
-    {
-        let a_side_effect = A::may_have_side_effect();
-        let b_side_effect = B::may_have_side_effect();
-        if a_side_effect || b_side_effect {
-            let sz_a = self.a.size();
-            let sz_b = self.b.size();
-            // Adjust a, b to equal length, make sure that only the first call
-            // of `next_back` does this, otherwise we will break the restriction
-            // on calls to `self.next_back()` after calling `get_unchecked()`.
-            if sz_a != sz_b {
-                let sz_a = self.a.size();
-                if a_side_effect && sz_a > self.len {
-                    for _ in 0..sz_a - cmp::max(self.len, self.index) {
-                        self.a.next_back();
-                    }
-                }
-                let sz_b = self.b.size();
-                if b_side_effect && sz_b > self.len {
-                    for _ in 0..sz_b - self.len {
-                        self.b.next_back();
-                    }
-                }
-            }
-        }
-        if self.index < self.len {
-            self.len -= 1;
-            let i = self.len;
-            // SAFETY: `i` is smaller than the previous value of `self.len`,
-            // which is also smaller than or equal to `self.a.len()` and `self.b.len()`
-            unsafe {
-                Some((self.a.__iterator_get_unchecked(i), self.b.__iterator_get_unchecked(i)))
-            }
-        } else {
-            None
-        }
     }
 
     #[inline]
