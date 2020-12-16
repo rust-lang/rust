@@ -12,13 +12,13 @@
    12|       |
    13|      1|fn main() -> Result<(), u8> {
    14|      1|    let mut countdown = 10;
-   15|     10|    while countdown > 0 {
-   16|     10|        if countdown == 1 {
-   17|      0|            might_panic(true);
+   15|     11|    while countdown > 0 {
+   16|     11|        if countdown == 1 {
+   17|      1|            might_panic(true);
    18|     10|        } else if countdown < 5 {
    19|      3|            might_panic(false);
    20|      6|        }
-   21|      9|        countdown -= 1;
+   21|     10|        countdown -= 1;
    22|       |    }
    23|      0|    Ok(())
    24|      0|}
