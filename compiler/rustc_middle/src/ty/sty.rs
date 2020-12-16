@@ -152,7 +152,7 @@ pub enum TyKind<'tcx> {
     FnPtr(PolyFnSig<'tcx>),
 
     /// A trait, defined with `trait`.
-    Dynamic(Binder<&'tcx List<ExistentialPredicate<'tcx>>>, ty::Region<'tcx>),
+    Dynamic(&'tcx List<Binder<ExistentialPredicate<'tcx>>>, ty::Region<'tcx>),
 
     /// The anonymous type of a closure. Used to represent the type of
     /// `|a| a`.
@@ -762,7 +762,7 @@ impl<'tcx> Binder<ExistentialPredicate<'tcx>> {
     }
 }
 
-impl<'tcx> List<ExistentialPredicate<'tcx>> {
+impl<'tcx> List<ty::Binder<ExistentialPredicate<'tcx>>> {
     /// Returns the "principal `DefId`" of this set of existential predicates.
     ///
     /// A Rust trait object type consists (in addition to a lifetime bound)
@@ -788,61 +788,39 @@ impl<'tcx> List<ExistentialPredicate<'tcx>> {
     /// is `{Send, Sync}`, while there is no principal. These trait objects
     /// have a "trivial" vtable consisting of just the size, alignment,
     /// and destructor.
-    pub fn principal(&self) -> Option<ExistentialTraitRef<'tcx>> {
-        match self[0] {
-            ExistentialPredicate::Trait(tr) => Some(tr),
-            _ => None,
-        }
+    pub fn principal(&self) -> Option<ty::Binder<ExistentialTraitRef<'tcx>>> {
+        self[0]
+            .map_bound(|this| match this {
+                ExistentialPredicate::Trait(tr) => Some(tr),
+                _ => None,
+            })
+            .transpose()
     }
 
     pub fn principal_def_id(&self) -> Option<DefId> {
-        self.principal().map(|trait_ref| trait_ref.def_id)
+        self.principal().map(|trait_ref| trait_ref.skip_binder().def_id)
     }
 
     #[inline]
     pub fn projection_bounds<'a>(
         &'a self,
-    ) -> impl Iterator<Item = ExistentialProjection<'tcx>> + 'a {
-        self.iter().filter_map(|predicate| match predicate {
-            ExistentialPredicate::Projection(projection) => Some(projection),
-            _ => None,
+    ) -> impl Iterator<Item = ty::Binder<ExistentialProjection<'tcx>>> + 'a {
+        self.iter().filter_map(|predicate| {
+            predicate
+                .map_bound(|pred| match pred {
+                    ExistentialPredicate::Projection(projection) => Some(projection),
+                    _ => None,
+                })
+                .transpose()
         })
     }
 
     #[inline]
     pub fn auto_traits<'a>(&'a self) -> impl Iterator<Item = DefId> + 'a {
-        self.iter().filter_map(|predicate| match predicate {
+        self.iter().filter_map(|predicate| match predicate.skip_binder() {
             ExistentialPredicate::AutoTrait(did) => Some(did),
             _ => None,
         })
-    }
-}
-
-impl<'tcx> Binder<&'tcx List<ExistentialPredicate<'tcx>>> {
-    pub fn principal(&self) -> Option<ty::Binder<ExistentialTraitRef<'tcx>>> {
-        self.map_bound(|b| b.principal()).transpose()
-    }
-
-    pub fn principal_def_id(&self) -> Option<DefId> {
-        self.skip_binder().principal_def_id()
-    }
-
-    #[inline]
-    pub fn projection_bounds<'a>(
-        &'a self,
-    ) -> impl Iterator<Item = PolyExistentialProjection<'tcx>> + 'a {
-        self.skip_binder().projection_bounds().map(Binder::bind)
-    }
-
-    #[inline]
-    pub fn auto_traits<'a>(&'a self) -> impl Iterator<Item = DefId> + 'a {
-        self.skip_binder().auto_traits()
-    }
-
-    pub fn iter<'a>(
-        &'a self,
-    ) -> impl DoubleEndedIterator<Item = Binder<ExistentialPredicate<'tcx>>> + 'tcx {
-        self.skip_binder().iter().map(Binder::bind)
     }
 }
 
