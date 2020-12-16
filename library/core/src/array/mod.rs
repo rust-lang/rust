@@ -481,8 +481,8 @@ impl<T, const N: usize> [T; N] {
         use crate::mem::MaybeUninit;
 
         let mut dst = MaybeUninit::uninit_array::<N>();
-        for ((lhs, rhs), dst) in IntoIter::new(self).zip(IntoIter::new(rhs)).zip(&mut dst) {
-            dst.write((lhs, rhs));
+        for (i, (lhs, rhs)) in IntoIter::new(self).zip(IntoIter::new(rhs)).enumerate() {
+            dst[i].write((lhs, rhs));
         }
         // FIXME: Convert to crate::mem::transmute once it works with generics.
         // unsafe { crate::mem::transmute::<[MaybeUninit<U>; N], [U; N]>(dst) }
