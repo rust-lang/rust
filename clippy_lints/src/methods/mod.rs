@@ -1568,7 +1568,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                 lint_expect_fun_call(cx, expr, *method_span, &method_call.ident.as_str(), args);
 
                 let self_ty = cx.typeck_results().expr_ty_adjusted(&args[0]);
-                if args.len() == 1 && method_call.ident.name == sym!(clone) {
+                if args.len() == 1 && method_call.ident.name == sym::clone {
                     lint_clone_on_copy(cx, expr, &args[0], self_ty);
                     lint_clone_on_ref_ptr(cx, expr, &args[0]);
                 }
@@ -1592,7 +1592,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                             }
                         }
                     },
-                    ty::Ref(..) if method_call.ident.name == sym!(into_iter) => {
+                    ty::Ref(..) if method_call.ident.name == sym::into_iter => {
                         lint_into_iter(cx, expr, self_ty, *method_span);
                     },
                     _ => (),
@@ -2647,9 +2647,9 @@ fn lint_unwrap(cx: &LateContext<'_>, expr: &hir::Expr<'_>, unwrap_args: &[hir::E
 fn lint_expect(cx: &LateContext<'_>, expr: &hir::Expr<'_>, expect_args: &[hir::Expr<'_>]) {
     let obj_ty = cx.typeck_results().expr_ty(&expect_args[0]).peel_refs();
 
-    let mess = if is_type_diagnostic_item(cx, obj_ty, sym!(option_type)) {
+    let mess = if is_type_diagnostic_item(cx, obj_ty, sym::option_type) {
         Some((EXPECT_USED, "an Option", "None"))
-    } else if is_type_diagnostic_item(cx, obj_ty, sym!(result_type)) {
+    } else if is_type_diagnostic_item(cx, obj_ty, sym::result_type) {
         Some((EXPECT_USED, "a Result", "Err"))
     } else {
         None
@@ -3142,7 +3142,7 @@ fn lint_search_is_some<'tcx>(
     else if search_method == "find" {
         let is_string_or_str_slice = |e| {
             let self_ty = cx.typeck_results().expr_ty(e).peel_refs();
-            if is_type_diagnostic_item(cx, self_ty, sym!(string_type)) {
+            if is_type_diagnostic_item(cx, self_ty, sym::string_type) {
                 true
             } else {
                 *self_ty.kind() == ty::Str
