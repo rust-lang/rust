@@ -1280,15 +1280,35 @@ if (AtomicAdd) {
   } else {
 #if LLVM_VERSION_MAJOR >= 9
     AtomicRMWInst::BinOp op = AtomicRMWInst::FAdd;
-#if LLVM_VERSION_MAJOR >= 11
-    AtomicRMWInst *rmw = BuilderM.CreateAtomicRMW(
-        op, ptr, dif, AtomicOrdering::Monotonic, SyncScope::System);
-    if (align)
-      rmw->setAlignment(align.getValue());
-#else
-    BuilderM.CreateAtomicRMW(op, ptr, dif, AtomicOrdering::Monotonic,
-                             SyncScope::System);
-#endif
+    if (auto vt = dyn_cast<VectorType>(dif->getType())) {
+      for(size_t i=0; i<vt->getNumElements(); ++i) {
+        auto vdif = BuilderM.CreateExtractElement(dif, i);
+        Value *Idxs[] = {
+          ConstantInt::get(Type::getInt64Ty(vt->getContext()), 0),
+          ConstantInt::get(Type::getInt32Ty(vt->getContext()), i)
+        };
+        auto vptr  = BuilderM.CreateGEP(ptr, Idxs);
+        #if LLVM_VERSION_MAJOR >= 11
+            AtomicRMWInst *rmw = BuilderM.CreateAtomicRMW(
+                op, vptr, vdif, AtomicOrdering::Monotonic, SyncScope::System);
+            if (align)
+              rmw->setAlignment(align.getValue());
+        #else
+            BuilderM.CreateAtomicRMW(op, vptr, vdif, AtomicOrdering::Monotonic,
+                                    SyncScope::System);
+        #endif
+      }
+    } else {
+      #if LLVM_VERSION_MAJOR >= 11
+          AtomicRMWInst *rmw = BuilderM.CreateAtomicRMW(
+              op, ptr, dif, AtomicOrdering::Monotonic, SyncScope::System);
+          if (align)
+            rmw->setAlignment(align.getValue());
+      #else
+          BuilderM.CreateAtomicRMW(op, ptr, dif, AtomicOrdering::Monotonic,
+                                  SyncScope::System);
+      #endif
+    }
 #else
         llvm::errs() << "unhandled atomic fadd on llvm version " << *ptr << " "
                      << *dif << "\n";

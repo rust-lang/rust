@@ -1473,7 +1473,9 @@ CreateAugmentedPrimal(Function *todiff, DIFFE_TYPE retType,
   }
 
   if (omp && !noTape) {
-    ArgTypes.push_back(tapeType);
+    // see lack of struct type for openmp
+    ArgTypes.push_back(PointerType::getUnqual(tapeType));
+    //ArgTypes.push_back(tapeType);
   }
 
   // Create a new function type...
@@ -1548,9 +1550,11 @@ CreateAugmentedPrimal(Function *todiff, DIFFE_TYPE retType,
       ib.CreateStore(malloccall, gep);
     } else if (omp) {
       j->setName("tape");
-      IRBuilder<> B(NewF->getEntryBlock().getFirstNonPHI());
-      tapeMemory = B.CreateAlloca(j->getType());
-      B.CreateStore(j, tapeMemory);
+      tapeMemory = j;
+      // if structs were supported by openmp we could do this, but alas, no
+      //IRBuilder<> B(NewF->getEntryBlock().getFirstNonPHI());
+      //tapeMemory = B.CreateAlloca(j->getType());
+      //B.CreateStore(j, tapeMemory);
     } else {
       std::vector<Value *> Idxs = {
           ib.getInt32(0),
@@ -1706,7 +1710,7 @@ CreateAugmentedPrimal(Function *todiff, DIFFE_TYPE retType,
     optimizeIntermediate(gutils, /*topLevel*/ false, NewF);
 
   cachedfunctions.find(tup)->second.fn = NewF;
-  if (recursive)
+  if (recursive || (omp && !noTape))
     cachedfunctions.find(tup)->second.tapeType = tapeType;
   insert_or_assign(cachedfinished, tup, true);
 
@@ -2260,10 +2264,12 @@ Function *CreatePrimalAndGradient(
       truetape->setMetadata("enzyme_mustcache",
                             MDNode::get(truetape->getContext(), {}));
 
-      CallInst *ci = cast<CallInst>(CallInst::CreateFree(
-          additionalValue, truetape)); //&*BuilderZ.GetInsertPoint()));
-      ci->moveAfter(truetape);
-      ci->addAttribute(AttributeList::FirstArgIndex, Attribute::NonNull);
+      if (!omp) {
+        CallInst *ci = cast<CallInst>(CallInst::CreateFree(
+            additionalValue, truetape)); //&*BuilderZ.GetInsertPoint()));
+        ci->moveAfter(truetape);
+        ci->addAttribute(AttributeList::FirstArgIndex, Attribute::NonNull);
+      }
       additionalValue = truetape;
     }
 

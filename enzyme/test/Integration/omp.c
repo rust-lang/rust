@@ -1,13 +1,13 @@
 //   note not doing O0 below as to ensure we get tbaa
-// TODO: %clang -fopenmp -std=c11 -O1 -disable-llvm-optzns %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -S | %lli - 
-// RUN: %clang++ -x c++ -fopenmp -std=c++11 -O1 %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -S | %lli - 
-// RUN: %clang -fopenmp -std=c11 -O2 %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -S | %lli - 
-// RUN: %clang -fopenmp -std=c11 -O3 %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -S | %lli - 
+// TODO: %clang -fopenmp -std=c11 -fno-vectorize -fno-unroll-loops -O1 -disable-llvm-optzns %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -S | %clang -fopenmp -x ir - && ./a.out
+// RUN: %clang -fopenmp -std=c11 -fno-vectorize -fno-unroll-loops -O1 %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -S | %clang -fopenmp -x ir - && ./a.out
+// RUN: %clang -fopenmp -std=c11 -fno-vectorize -fno-unroll-loops -O2 %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -S | %clang -fopenmp -x ir - && ./a.out
+// RUN: %clang -fopenmp -std=c11 -fno-vectorize -fno-unroll-loops -O3 %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -S | %clang -fopenmp -x ir - && ./a.out
 //   note not doing O0 below as to ensure we get tbaa
-// RUN: %clang -fopenmp -std=c11 -O1 -Xclang -disable-llvm-optzns %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -enzyme-inline=1 -S | %lli - 
-// RUN: %clang -fopenmp -std=c11 -O1 %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -enzyme-inline=1 -S | %lli - 
-// RUN: %clang -fopenmp -std=c11 -O2 %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -enzyme-inline=1 -S | %lli - 
-// RUN: %clang -fopenmp -std=c11 -O3 %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -enzyme-inline=1 -S | %lli - 
+// TODO: %clang -fopenmp -std=c11 -fno-vectorize -fno-unroll-loops -O1 -Xclang -disable-llvm-optzns %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -enzyme-inline=1 -S | %clang -fopenmp -x ir - && ./a.out
+// RUN: %clang -fopenmp -std=c11 -fno-vectorize -fno-unroll-loops -O1 %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -enzyme-inline=1 -S | %clang -fopenmp -x ir - && ./a.out
+// RUN: %clang -fopenmp -std=c11 -fno-vectorize -fno-unroll-loops -O2 %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -enzyme-inline=1 -S | %clang -fopenmp -x ir - && ./a.out 
+// RUN: %clang -fopenmp -std=c11 -fno-vectorize -fno-unroll-loops -O3 %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -enzyme-inline=1 -S | %clang -fopenmp -x ir - && ./a.out 
 
 #include <stdio.h>
 #include <math.h>
@@ -30,13 +30,11 @@ void omp(float& a, int N) {
 }
 */
 void omp(float* a, int N) {
-  #define N 20
   #pragma omp parallel for
   for (int i=0; i<N; i++) {
     //a[i] *= a[i];
     a[i] *= a[i];
   }
-  #undef N
   a[0] = 0;
 }
 
@@ -63,5 +61,9 @@ int main(int argc, char** argv) {
   //APPROX_EQ(da, 17711.0*2, 1e-10);
   //APPROX_EQ(db, 17711.0*2, 1e-10);
   //printf("hello! %f, res2 %f, da: %f, db: %f\n", ret, ret, da,db);
+  APPROX_EQ(d_a[0], 0.0f, 1e-10);
+  for(int i=1; i<N; i++) {
+    APPROX_EQ(d_a[i], 2.0f*(i+1), 1e-10);
+  }
   return 0;
 }
