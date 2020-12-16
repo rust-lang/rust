@@ -172,7 +172,7 @@ impl clean::GenericParamDef {
         display_fn(move |f| match self.kind {
             clean::GenericParamDefKind::Lifetime => write!(f, "{}", self.name),
             clean::GenericParamDefKind::Type { ref bounds, ref default, .. } => {
-                f.write_str(&self.name)?;
+                f.write_str(&*self.name.as_str())?;
 
                 if !bounds.is_empty() {
                     if f.alternate() {
@@ -193,13 +193,10 @@ impl clean::GenericParamDef {
                 Ok(())
             }
             clean::GenericParamDefKind::Const { ref ty, .. } => {
-                f.write_str("const ")?;
-                f.write_str(&self.name)?;
-
                 if f.alternate() {
-                    write!(f, ": {:#}", ty.print())
+                    write!(f, "const {}: {:#}", self.name, ty.print())
                 } else {
-                    write!(f, ":&nbsp;{}", ty.print())
+                    write!(f, "const {}:&nbsp;{}", self.name, ty.print())
                 }
             }
         })
@@ -638,7 +635,7 @@ crate fn anchor(did: DefId, text: &str) -> impl fmt::Display + '_ {
 
 fn fmt_type(t: &clean::Type, f: &mut fmt::Formatter<'_>, use_absolute: bool) -> fmt::Result {
     match *t {
-        clean::Generic(ref name) => f.write_str(name),
+        clean::Generic(name) => write!(f, "{}", name),
         clean::ResolvedPath { did, ref param_names, ref path, is_generic } => {
             if param_names.is_some() {
                 f.write_str("dyn ")?;
@@ -1203,7 +1200,7 @@ impl clean::ImportSource {
 impl clean::TypeBinding {
     crate fn print(&self) -> impl fmt::Display + '_ {
         display_fn(move |f| {
-            f.write_str(&self.name)?;
+            f.write_str(&*self.name.as_str())?;
             match self.kind {
                 clean::TypeBindingKind::Equality { ref ty } => {
                     if f.alternate() {

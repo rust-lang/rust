@@ -753,11 +753,14 @@ fn traits_implemented_by(cx: &DocContext<'_>, type_: DefId, module: DefId) -> Fx
 ///
 /// These are common and we should just resolve to the trait in that case.
 fn is_derive_trait_collision<T>(ns: &PerNS<Result<(Res, T), ResolutionFailure<'_>>>) -> bool {
-    matches!(*ns, PerNS {
-        type_ns: Ok((Res::Def(DefKind::Trait, _), _)),
-        macro_ns: Ok((Res::Def(DefKind::Macro(MacroKind::Derive), _), _)),
-        ..
-    })
+    matches!(
+        *ns,
+        PerNS {
+            type_ns: Ok((Res::Def(DefKind::Trait, _), _)),
+            macro_ns: Ok((Res::Def(DefKind::Macro(MacroKind::Derive), _), _)),
+            ..
+        }
+    )
 }
 
 impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {

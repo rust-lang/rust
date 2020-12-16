@@ -58,18 +58,19 @@ impl crate::doctest::Tester for Tests {
 }
 
 crate fn should_have_doc_example(cx: &DocContext<'_>, item: &clean::Item) -> bool {
-    if matches!(item.kind,
+    if matches!(
+        item.kind,
         clean::StructFieldItem(_)
-        | clean::VariantItem(_)
-        | clean::AssocConstItem(_, _)
-        | clean::AssocTypeItem(_, _)
-        | clean::TypedefItem(_, _)
-        | clean::StaticItem(_)
-        | clean::ConstantItem(_)
-        | clean::ExternCrateItem(_, _)
-        | clean::ImportItem(_)
-        | clean::PrimitiveItem(_)
-        | clean::KeywordItem(_)
+            | clean::VariantItem(_)
+            | clean::AssocConstItem(_, _)
+            | clean::AssocTypeItem(_, _)
+            | clean::TypedefItem(_, _)
+            | clean::StaticItem(_)
+            | clean::ConstantItem(_)
+            | clean::ExternCrateItem(_, _)
+            | clean::ImportItem(_)
+            | clean::PrimitiveItem(_)
+            | clean::KeywordItem(_)
     ) {
         return false;
     }

@@ -48,8 +48,6 @@ crate use self::types::Type::*;
 crate use self::types::Visibility::{Inherited, Public};
 crate use self::types::*;
 
-const FN_OUTPUT_NAME: &str = "Output";
-
 crate trait Clean<T> {
     fn clean(&self, cx: &DocContext<'_>) -> T;
 }
@@ -329,10 +327,9 @@ impl Clean<GenericBound> for (ty::PolyTraitRef<'_>, &[TypeBinding]) {
             .collect_referenced_late_bound_regions(&poly_trait_ref)
             .into_iter()
             .filter_map(|br| match br {
-                ty::BrNamed(_, name) => Some(GenericParamDef {
-                    name: name.to_string(),
-                    kind: GenericParamDefKind::Lifetime,
-                }),
+                ty::BrNamed(_, name) => {
+                    Some(GenericParamDef { name, kind: GenericParamDefKind::Lifetime })
+                }
                 _ => None,
             })
             .collect();
@@ -546,7 +543,7 @@ impl<'tcx> Clean<Type> for ty::ProjectionTy<'tcx> {
             GenericBound::Outlives(_) => panic!("cleaning a trait got a lifetime"),
         };
         Type::QPath {
-            name: cx.tcx.associated_item(self.item_def_id).ident.name.clean(cx),
+            name: cx.tcx.associated_item(self.item_def_id).ident.name,
             self_type: box self.self_ty().clean(cx),
             trait_: box trait_,
         }
@@ -556,14 +553,12 @@ impl<'tcx> Clean<Type> for ty::ProjectionTy<'tcx> {
 impl Clean<GenericParamDef> for ty::GenericParamDef {
     fn clean(&self, cx: &DocContext<'_>) -> GenericParamDef {
         let (name, kind) = match self.kind {
-            ty::GenericParamDefKind::Lifetime => {
-                (self.name.to_string(), GenericParamDefKind::Lifetime)
-            }
+            ty::GenericParamDefKind::Lifetime => (self.name, GenericParamDefKind::Lifetime),
             ty::GenericParamDefKind::Type { has_default, synthetic, .. } => {
                 let default =
                     if has_default { Some(cx.tcx.type_of(self.def_id).clean(cx)) } else { None };
                 (
-                    self.name.clean(cx),
+                    self.name,
                     GenericParamDefKind::Type {
                         did: self.def_id,
                         bounds: vec![], // These are filled in from the where-clauses.
@@ -573,7 +568,7 @@ impl Clean<GenericParamDef> for ty::GenericParamDef {
                 )
             }
             ty::GenericParamDefKind::Const { .. } => (
-                self.name.clean(cx),
+                self.name,
                 GenericParamDefKind::Const {
                     did: self.def_id,
                     ty: cx.tcx.type_of(self.def_id).clean(cx),
@@ -599,14 +594,14 @@ impl Clean<GenericParamDef> for hir::GenericParam<'_> {
                     for bound in bounds {
                         s.push_str(&format!(" + {}", bound.name.ident()));
                     }
-                    s
+                    Symbol::intern(&s)
                 } else {
-                    self.name.ident().to_string()
+                    self.name.ident().name
                 };
                 (name, GenericParamDefKind::Lifetime)
             }
             hir::GenericParamKind::Type { ref default, synthetic } => (
-                self.name.ident().name.clean(cx),
+                self.name.ident().name,
                 GenericParamDefKind::Type {
                     did: cx.tcx.hir().local_def_id(self.hir_id).to_def_id(),
                     bounds: self.bounds.clean(cx),
@@ -615,7 +610,7 @@ impl Clean<GenericParamDef> for hir::GenericParam<'_> {
                 },
             ),
             hir::GenericParamKind::Const { ref ty } => (
-                self.name.ident().name.clean(cx),
+                self.name.ident().name,
                 GenericParamDefKind::Const {
                     did: cx.tcx.hir().local_def_id(self.hir_id).to_def_id(),
                     ty: ty.clean(cx),
@@ -730,7 +725,7 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics, ty::GenericPredicates<'tcx
             .collect::<Vec<GenericParamDef>>();
 
         // param index -> [(DefId of trait, associated type name, type)]
-        let mut impl_trait_proj = FxHashMap::<u32, Vec<(DefId, String, Ty<'tcx>)>>::default();
+        let mut impl_trait_proj = FxHashMap::<u32, Vec<(DefId, Symbol, Ty<'tcx>)>>::default();
 
         let where_predicates = preds
             .predicates
@@ -778,11 +773,10 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics, ty::GenericPredicates<'tcx
                         if let Some(((_, trait_did, name), rhs)) =
                             proj.as_ref().and_then(|(lhs, rhs)| Some((lhs.projection()?, rhs)))
                         {
-                            impl_trait_proj.entry(param_idx).or_default().push((
-                                trait_did,
-                                name.to_string(),
-                                rhs,
-                            ));
+                            impl_trait_proj
+                                .entry(param_idx)
+                                .or_default()
+                                .push((trait_did, name, rhs));
                         }
 
                         return None;
@@ -800,7 +794,7 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics, ty::GenericPredicates<'tcx
             if let crate::core::ImplTraitParam::ParamIndex(idx) = param {
                 if let Some(proj) = impl_trait_proj.remove(&idx) {
                     for (trait_did, name, rhs) in proj {
-                        simplify::merge_bounds(cx, &mut bounds, trait_did, &name, &rhs.clean(cx));
+                        simplify::merge_bounds(cx, &mut bounds, trait_did, name, &rhs.clean(cx));
                     }
                 }
             } else {
@@ -936,9 +930,9 @@ impl<'a> Clean<Arguments> for (&'a [hir::Ty<'a>], &'a [Ident]) {
                 .iter()
                 .enumerate()
                 .map(|(i, ty)| {
-                    let mut name = self.1.get(i).map(|ident| ident.to_string()).unwrap_or_default();
+                    let mut name = self.1.get(i).map(|ident| ident.name).unwrap_or(kw::Invalid);
                     if name.is_empty() {
-                        name = "_".to_string();
+                        name = kw::Underscore;
                     }
                     Argument { name, type_: ty.clean(cx) }
                 })
@@ -995,7 +989,7 @@ impl<'tcx> Clean<FnDecl> for (DefId, ty::PolyFnSig<'tcx>) {
                     .iter()
                     .map(|t| Argument {
                         type_: t.clean(cx),
-                        name: names.next().map_or_else(|| String::new(), |name| name.to_string()),
+                        name: names.next().map(|i| i.name).unwrap_or(kw::Invalid),
                     })
                     .collect(),
             },
@@ -1150,12 +1144,12 @@ impl Clean<Item> for ty::AssocItem {
                     };
                     let self_arg_ty = sig.input(0).skip_binder();
                     if self_arg_ty == self_ty {
-                        decl.inputs.values[0].type_ = Generic(String::from("Self"));
+                        decl.inputs.values[0].type_ = Generic(kw::SelfUpper);
                     } else if let ty::Ref(_, ty, _) = *self_arg_ty.kind() {
                         if ty == self_ty {
                             match decl.inputs.values[0].type_ {
                                 BorrowedRef { ref mut type_, .. } => {
-                                    **type_ = Generic(String::from("Self"))
+                                    **type_ = Generic(kw::SelfUpper)
                                 }
                                 _ => unreachable!(),
                             }
@@ -1210,7 +1204,7 @@ impl Clean<Item> for ty::AssocItem {
                 }
             }
             ty::AssocKind::Type => {
-                let my_name = self.ident.name.clean(cx);
+                let my_name = self.ident.name;
 
                 if let ty::TraitContainer(_) = self.container {
                     let bounds = cx.tcx.explicit_item_bounds(self.def_id);
@@ -1235,7 +1229,7 @@ impl Clean<Item> for ty::AssocItem {
                                 _ => return None,
                             }
                             match **self_type {
-                                Generic(ref s) if *s == "Self" => {}
+                                Generic(ref s) if *s == kw::SelfUpper => {}
                                 _ => return None,
                             }
                             Some(bounds)
@@ -1408,7 +1402,7 @@ fn clean_qpath(hir_ty: &hir::Ty<'_>, cx: &DocContext<'_>) -> Type {
                 segments: trait_segments.clean(cx),
             };
             Type::QPath {
-                name: p.segments.last().expect("segments were empty").ident.name.clean(cx),
+                name: p.segments.last().expect("segments were empty").ident.name,
                 self_type: box qself.clean(cx),
                 trait_: box resolve_type(cx, trait_path, hir_id),
             }
@@ -1422,7 +1416,7 @@ fn clean_qpath(hir_ty: &hir::Ty<'_>, cx: &DocContext<'_>) -> Type {
             };
             let trait_path = hir::Path { span, res, segments: &[] };
             Type::QPath {
-                name: segment.ident.name.clean(cx),
+                name: segment.ident.name,
                 self_type: box qself.clean(cx),
                 trait_: box resolve_type(cx, trait_path.clean(cx), hir_id),
             }
@@ -1625,7 +1619,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                 let mut bindings = vec![];
                 for pb in obj.projection_bounds() {
                     bindings.push(TypeBinding {
-                        name: cx.tcx.associated_item(pb.item_def_id()).ident.name.clean(cx),
+                        name: cx.tcx.associated_item(pb.item_def_id()).ident.name,
                         kind: TypeBindingKind::Equality { ty: pb.skip_binder().ty.clean(cx) },
                     });
                 }
@@ -1644,7 +1638,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                 if let Some(bounds) = cx.impl_trait_bounds.borrow_mut().remove(&p.index.into()) {
                     ImplTrait(bounds)
                 } else {
-                    Generic(p.name.to_string())
+                    Generic(p.name)
                 }
             }
 
@@ -1702,8 +1696,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                                                 .tcx
                                                 .associated_item(proj.projection_ty.item_def_id)
                                                 .ident
-                                                .name
-                                                .clean(cx),
+                                                .name,
                                             kind: TypeBindingKind::Equality {
                                                 ty: proj.ty.clean(cx),
                                             },
@@ -2339,7 +2332,7 @@ impl Clean<Item> for (&hir::MacroDef<'_>, Option<Symbol>) {
 
 impl Clean<TypeBinding> for hir::TypeBinding<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> TypeBinding {
-        TypeBinding { name: self.ident.name.clean(cx), kind: self.kind.clean(cx) }
+        TypeBinding { name: self.ident.name, kind: self.kind.clean(cx) }
     }
 }
 

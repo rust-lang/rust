@@ -12,7 +12,7 @@ use rustc_metadata::creader::LoadedMacro;
 use rustc_middle::ty;
 use rustc_mir::const_eval::is_min_const_fn;
 use rustc_span::hygiene::MacroKind;
-use rustc_span::symbol::{sym, Symbol};
+use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
 
 use crate::clean::{self, Attributes, GetDefId, ToSource, TypeKind};
@@ -583,7 +583,7 @@ fn filter_non_trait_generics(trait_did: DefId, mut g: clean::Generics) -> clean:
     for pred in &mut g.where_predicates {
         match *pred {
             clean::WherePredicate::BoundPredicate { ty: clean::Generic(ref s), ref mut bounds }
-                if *s == "Self" =>
+                if *s == kw::SelfUpper =>
             {
                 bounds.retain(|bound| match *bound {
                     clean::GenericBound::TraitBound(
@@ -606,7 +606,7 @@ fn filter_non_trait_generics(trait_did: DefId, mut g: clean::Generics) -> clean:
                     name: ref _name,
                 },
             ref bounds,
-        } => !(bounds.is_empty() || *s == "Self" && did == trait_did),
+        } => !(bounds.is_empty() || *s == kw::SelfUpper && did == trait_did),
         _ => true,
     });
     g
@@ -621,7 +621,7 @@ fn separate_supertrait_bounds(
     let mut ty_bounds = Vec::new();
     g.where_predicates.retain(|pred| match *pred {
         clean::WherePredicate::BoundPredicate { ty: clean::Generic(ref s), ref bounds }
-            if *s == "Self" =>
+            if *s == kw::SelfUpper =>
         {
             ty_bounds.extend(bounds.iter().cloned());
             false

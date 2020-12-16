@@ -333,10 +333,9 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                 match br {
                     // We only care about named late bound regions, as we need to add them
                     // to the 'for<>' section
-                    ty::BrNamed(_, name) => Some(GenericParamDef {
-                        name: name.to_string(),
-                        kind: GenericParamDefKind::Lifetime,
-                    }),
+                    ty::BrNamed(_, name) => {
+                        Some(GenericParamDef { name, kind: GenericParamDefKind::Lifetime })
+                    }
                     _ => None,
                 }
             })
@@ -569,7 +568,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                 }
                 WherePredicate::EqPredicate { lhs, rhs } => {
                     match lhs {
-                        Type::QPath { name: ref left_name, ref self_type, ref trait_ } => {
+                        Type::QPath { name: left_name, ref self_type, ref trait_ } => {
                             let ty = &*self_type;
                             match **trait_ {
                                 Type::ResolvedPath {
@@ -580,7 +579,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                                 } => {
                                     let mut new_trait_path = trait_path.clone();
 
-                                    if self.is_fn_ty(tcx, trait_) && left_name == FN_OUTPUT_NAME {
+                                    if self.is_fn_ty(tcx, trait_) && left_name == sym::Output {
                                         ty_to_fn
                                             .entry(*ty.clone())
                                             .and_modify(|e| *e = (e.0.clone(), Some(rhs.clone())))
