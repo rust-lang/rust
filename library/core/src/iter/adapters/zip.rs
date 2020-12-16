@@ -20,8 +20,9 @@ pub struct Zip<A, B> {
 }
 impl<A: Iterator, B: Iterator> Zip<A, B> {
     pub(in crate::iter) fn new(a: A, b: B) -> Zip<A, B> {
-        ZipImpl::new(a, b)
+        ZipNew::new(a, b)
     }
+
     fn super_nth(&mut self, mut n: usize) -> Option<(A::Item, B::Item)> {
         while let Some(x) = Iterator::next(self) {
             if n == 0 {
@@ -61,7 +62,42 @@ where
     A: IntoIterator,
     B: IntoIterator,
 {
-    ZipImpl::new(a.into_iter(), b.into_iter())
+    ZipNew::new(a.into_iter(), b.into_iter())
+}
+
+#[doc(hidden)]
+trait ZipNew<A, B> {
+    fn new(a: A, b: B) -> Self;
+}
+
+#[doc(hidden)]
+impl<A, B> ZipNew<A, B> for Zip<A, B>
+where
+    A: Iterator,
+    B: Iterator,
+{
+    default fn new(a: A, b: B) -> Self {
+        Zip {
+            a,
+            b,
+            index: 0, // unused
+            len: 0,   // unused
+            a_len: 0, // unused
+        }
+    }
+}
+
+#[doc(hidden)]
+impl<A, B> ZipNew<A, B> for Zip<A, B>
+where
+    A: TrustedRandomAccess + Iterator,
+    B: TrustedRandomAccess + Iterator,
+{
+    fn new(a: A, b: B) -> Self {
+        let a_len = a.size();
+        let len = cmp::min(a_len, b.size());
+        Zip { a, b, index: 0, len, a_len }
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -114,7 +150,6 @@ where
 #[doc(hidden)]
 trait ZipImpl<A, B> {
     type Item;
-    fn new(a: A, b: B) -> Self;
     fn next(&mut self) -> Option<Self::Item>;
     fn size_hint(&self) -> (usize, Option<usize>);
     fn nth(&mut self, n: usize) -> Option<Self::Item>;
@@ -136,15 +171,6 @@ where
     B: Iterator,
 {
     type Item = (A::Item, B::Item);
-    default fn new(a: A, b: B) -> Self {
-        Zip {
-            a,
-            b,
-            index: 0, // unused
-            len: 0,   // unused
-            a_len: 0, // unused
-        }
-    }
 
     #[inline]
     default fn next(&mut self) -> Option<(A::Item, B::Item)> {
@@ -216,12 +242,6 @@ where
     A: TrustedRandomAccess + Iterator,
     B: TrustedRandomAccess + Iterator,
 {
-    fn new(a: A, b: B) -> Self {
-        let a_len = a.size();
-        let len = cmp::min(a_len, b.size());
-        Zip { a, b, index: 0, len, a_len }
-    }
-
     #[inline]
     fn next(&mut self) -> Option<(A::Item, B::Item)> {
         if self.index < self.len {
