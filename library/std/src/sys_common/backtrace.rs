@@ -71,7 +71,6 @@ unsafe fn _print_fmt(fmt: &mut fmt::Formatter<'_>, print_fmt: PrintFmt) -> fmt::
 
         let mut hit = false;
         let mut stop = false;
-        let mut frame_fmt = bt_fmt.frame();
         backtrace_rs::resolve_frame_unsynchronized(frame, |symbol| {
             hit = true;
             if print_fmt == PrintFmt::Short {
@@ -88,7 +87,7 @@ unsafe fn _print_fmt(fmt: &mut fmt::Formatter<'_>, print_fmt: PrintFmt) -> fmt::
             }
 
             if start {
-                res = frame_fmt.symbol(frame, symbol);
+                res = bt_fmt.frame().symbol(frame, symbol);
             }
         });
         if stop {
@@ -96,7 +95,7 @@ unsafe fn _print_fmt(fmt: &mut fmt::Formatter<'_>, print_fmt: PrintFmt) -> fmt::
         }
         if !hit {
             if start {
-                res = frame_fmt.print_raw(frame.ip(), None, None, None);
+                res = bt_fmt.frame().print_raw(frame.ip(), None, None, None);
             }
         }
 
