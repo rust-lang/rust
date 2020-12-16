@@ -2158,7 +2158,7 @@ impl<'v> Visitor<'v> for FindTypeParam {
 pub fn recursive_type_with_infinite_size_error(
     tcx: TyCtxt<'tcx>,
     type_def_id: DefId,
-    spans: Vec<Span>,
+    spans: Vec<hir::HirId>,
 ) {
     assert!(type_def_id.is_local());
     let span = tcx.hir().span_if_local(type_def_id).unwrap();
@@ -2167,7 +2167,8 @@ pub fn recursive_type_with_infinite_size_error(
     let mut err =
         struct_span_err!(tcx.sess, span, E0072, "recursive type `{}` has infinite size", path);
     err.span_label(span, "recursive type has infinite size");
-    for &span in &spans {
+    for &span_id in &spans {
+        let span = tcx.hir().span(span_id);
         err.span_label(span, "recursive without indirection");
     }
     let msg = format!(
@@ -2179,7 +2180,8 @@ pub fn recursive_type_with_infinite_size_error(
             &msg,
             spans
                 .iter()
-                .flat_map(|&span| {
+                .flat_map(|&span_id| {
+                    let span = tcx.hir().span(span_id);
                     vec![
                         (span.shrink_to_lo(), "Box<".to_string()),
                         (span.shrink_to_hi(), ">".to_string()),

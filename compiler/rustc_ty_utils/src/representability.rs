@@ -17,7 +17,7 @@ use std::cmp;
 pub enum Representability {
     Representable,
     ContainsRecursive,
-    SelfRecursive(Vec<Span>),
+    SelfRecursive(Vec<HirId>),
 }
 
 /// Check whether a type is representable. This means it cannot contain unboxed
