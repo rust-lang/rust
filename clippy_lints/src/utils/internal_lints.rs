@@ -868,8 +868,8 @@ impl<'tcx> LateLintPass<'tcx> for InvalidPaths {
 
 #[derive(Default)]
 pub struct InterningDefinedSymbol {
-    // Maps the symbol to the constant name.
-    symbol_map: FxHashMap<String, String>,
+    // Maps the symbol value to the constant name.
+    symbol_map: FxHashMap<u32, String>,
 }
 
 impl_lint_pass!(InterningDefinedSymbol => [INTERNING_DEFINED_SYMBOL]);
@@ -889,10 +889,7 @@ impl<'tcx> LateLintPass<'tcx> for InterningDefinedSymbol {
                     if let Ok(ConstValue::Scalar(value)) = cx.tcx.const_eval_poly(item_def_id);
                     if let Ok(value) = value.to_u32();
                     then {
-                        // SAFETY: We're converting the raw bytes of the symbol value back
-                        // into a Symbol instance.
-                        let symbol = unsafe { std::mem::transmute::<u32, Symbol>(value) };
-                        self.symbol_map.insert(symbol.to_string(), item.ident.to_string());
+                        self.symbol_map.insert(value, item.ident.to_string());
                     }
                 }
             }
@@ -905,7 +902,8 @@ impl<'tcx> LateLintPass<'tcx> for InterningDefinedSymbol {
             if let ty::FnDef(def_id, _) = cx.typeck_results().expr_ty(func).kind();
             if match_def_path(cx, *def_id, &paths::SYMBOL_INTERN);
             if let Some(Constant::Str(arg)) = constant_simple(cx, cx.typeck_results(), arg);
-            if let Some(symbol_const) = self.symbol_map.get(&arg);
+            let value = Symbol::intern(&arg).as_u32();
+            if let Some(symbol_const) = self.symbol_map.get(&value);
             then {
                 span_lint_and_sugg(
                     cx,
