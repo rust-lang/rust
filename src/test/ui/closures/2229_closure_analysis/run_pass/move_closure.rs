@@ -29,13 +29,29 @@ fn struct_contains_ref_to_another_struct() {
     c();
 }
 
-fn no_ref() {
-    struct S(String);
-    struct T(S);
+#[derive(Debug)]
+struct S(String);
 
-    let t = T(S("s".into()));
+#[derive(Debug)]
+struct T(S);
+
+fn no_ref() {
+    let mut t = T(S("s".into()));
     let mut c = move || {
         t.0.0 = "new S".into();
+    };
+    c();
+}
+
+fn no_ref_nested() {
+    let mut t = T(S("s".into()));
+    let c = || {
+        println!("{:?}", t.0);
+        let mut c = move || {
+            t.0.0 = "new S".into();
+            println!("{:?}", t.0.0);
+        };
+        c();
     };
     c();
 }
@@ -44,4 +60,5 @@ fn main() {
     simple_ref();
     struct_contains_ref_to_another_struct();
     no_ref();
+    no_ref_nested();
 }

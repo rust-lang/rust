@@ -1369,13 +1369,38 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
     fn propagate_closure_used_mut_upvar(&mut self, operand: &Operand<'tcx>) {
         let propagate_closure_used_mut_place = |this: &mut Self, place: Place<'tcx>| {
-            if !place.projection.is_empty() {
-                if let Some(field) = this.is_upvar_field_projection(place.as_ref()) {
-                    this.used_mut_upvars.push(field);
-                }
-            } else {
-                this.used_mut.insert(place.local);
+            // We have three possiblities here:
+            // a. We are modifying something through a mut-ref
+            // b. We are modifying something that is local to our parent
+            // c. Current body is a nested clsoure, and we are modifying path starting from
+            //    a Place captured by our parent closure.
+
+            // Handle (c), the path being modified is exactly the path captured by our parent
+            if let Some(field) = this.is_upvar_field_projection(place.as_ref()) {
+                this.used_mut_upvars.push(field);
+                return;
             }
+
+            for (place_ref, proj) in place.iter_projections().rev() {
+                // Handle (a)
+                if proj == ProjectionElem::Deref {
+                    match place_ref.ty(this.body(), this.infcx.tcx).ty.kind() {
+                        // We aren't modifying a variable directly
+                        ty::Ref(_, _, hir::Mutability::Mut) => return,
+
+                        _ => {}
+                    }
+                }
+
+                // Handle (c)
+                if let Some(field) = this.is_upvar_field_projection(place_ref) {
+                    this.used_mut_upvars.push(field);
+                    return;
+                }
+            }
+
+            // Handle(b)
+            this.used_mut.insert(place.local);
         };
 
         // This relies on the current way that by-value
