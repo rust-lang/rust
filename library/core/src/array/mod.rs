@@ -464,8 +464,11 @@ impl<T, const N: usize> [T; N] {
     }
 
     /// 'Zips up' two arrays into a single array of pairs.
-    /// `zip()` returns a new array where every element is a tuple where the first element comes from the first array, and the second element comes from the second array.
-    /// In other words, it zips two arrays together, into a single one.
+    ///
+    /// `zip()` returns a new array where every element is a tuple where the
+    /// first element comes from the first array, and the second element comes
+    /// from the second array. In other words, it zips two arrays together,
+    /// into a single one.
     ///
     /// # Examples
     ///
