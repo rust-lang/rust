@@ -33,6 +33,7 @@ pub enum ReferenceKind {
     RecordFieldExprOrPat,
     SelfKw,
     EnumLiteral,
+    Lifetime,
     Other,
 }
 
@@ -123,6 +124,25 @@ impl Definition {
                 DefWithBody::Function(f) => f.source(db).value.syntax().text_range(),
                 DefWithBody::Const(c) => c.source(db).value.syntax().text_range(),
                 DefWithBody::Static(s) => s.source(db).value.syntax().text_range(),
+            };
+            let mut res = FxHashMap::default();
+            res.insert(file_id, Some(range));
+            return SearchScope::new(res);
+        }
+
+        if let Definition::LifetimeParam(param) = self {
+            let range = match param.parent(db) {
+                hir::GenericDef::Function(it) => it.source(db).value.syntax().text_range(),
+                hir::GenericDef::Adt(it) => match it {
+                    hir::Adt::Struct(it) => it.source(db).value.syntax().text_range(),
+                    hir::Adt::Union(it) => it.source(db).value.syntax().text_range(),
+                    hir::Adt::Enum(it) => it.source(db).value.syntax().text_range(),
+                },
+                hir::GenericDef::Trait(it) => it.source(db).value.syntax().text_range(),
+                hir::GenericDef::TypeAlias(it) => it.source(db).value.syntax().text_range(),
+                hir::GenericDef::ImplDef(it) => it.source(db).value.syntax().text_range(),
+                hir::GenericDef::EnumVariant(it) => it.source(db).value.syntax().text_range(),
+                hir::GenericDef::Const(it) => it.source(db).value.syntax().text_range(),
             };
             let mut res = FxHashMap::default();
             res.insert(file_id, Some(range));
@@ -255,22 +275,39 @@ impl<'a> FindUsages<'a> {
                     continue;
                 }
 
-                match sema.find_node_at_offset_with_descend(&tree, offset) {
-                    Some(name_ref) => {
-                        if self.found_name_ref(&name_ref, sink) {
-                            return;
-                        }
+                if let Some(name_ref) = sema.find_node_at_offset_with_descend(&tree, offset) {
+                    if self.found_name_ref(&name_ref, sink) {
+                        return;
                     }
-                    None => match sema.find_node_at_offset_with_descend(&tree, offset) {
-                        Some(name) => {
-                            if self.found_name(&name, sink) {
-                                return;
-                            }
-                        }
-                        None => {}
-                    },
+                } else if let Some(name) = sema.find_node_at_offset_with_descend(&tree, offset) {
+                    if self.found_name(&name, sink) {
+                        return;
+                    }
+                } else if let Some(lifetime) = sema.find_node_at_offset_with_descend(&tree, offset)
+                {
+                    if self.found_lifetime(&lifetime, sink) {
+                        return;
+                    }
                 }
             }
+        }
+    }
+
+    fn found_lifetime(
+        &self,
+        lifetime: &ast::Lifetime,
+        sink: &mut dyn FnMut(Reference) -> bool,
+    ) -> bool {
+        match NameRefClass::classify_lifetime(self.sema, lifetime) {
+            Some(NameRefClass::Definition(def)) if &def == self.def => {
+                let reference = Reference {
+                    file_range: self.sema.original_range(lifetime.syntax()),
+                    kind: ReferenceKind::Lifetime,
+                    access: None,
+                };
+                sink(reference)
+            }
+            _ => false, // not a usage
         }
     }
 

@@ -130,6 +130,8 @@ pub(crate) fn find_all_refs(
                 kind = ReferenceKind::FieldShorthandForLocal;
             }
         }
+    } else if let Definition::LifetimeParam(_) = def {
+        kind = ReferenceKind::Lifetime;
     };
 
     let declaration = Declaration { nav, kind, access: decl_access(&def, &syntax, decl_range) };
@@ -148,11 +150,29 @@ fn find_name(
         let range = name.syntax().text_range();
         return Some(RangeInfo::new(range, def));
     }
-    let name_ref =
-        sema.find_node_at_offset_with_descend::<ast::NameRef>(&syntax, position.offset)?;
-    let def = NameRefClass::classify(sema, &name_ref)?.referenced(sema.db);
-    let range = name_ref.syntax().text_range();
-    Some(RangeInfo::new(range, def))
+
+    let (text_range, def) = if let Some(lifetime) =
+        sema.find_node_at_offset_with_descend::<ast::Lifetime>(&syntax, position.offset)
+    {
+        if let Some(def) = NameRefClass::classify_lifetime(sema, &lifetime)
+            .map(|class| NameRefClass::referenced(class, sema.db))
+        {
+            (lifetime.syntax().text_range(), def)
+        } else {
+            (
+                lifetime.syntax().text_range(),
+                NameClass::classify_lifetime(sema, &lifetime)?.referenced_or_defined(sema.db),
+            )
+        }
+    } else {
+        let name_ref =
+            sema.find_node_at_offset_with_descend::<ast::NameRef>(&syntax, position.offset)?;
+        (
+            name_ref.syntax().text_range(),
+            NameRefClass::classify(sema, &name_ref)?.referenced(sema.db),
+        )
+    };
+    Some(RangeInfo::new(text_range, def))
 }
 
 fn decl_access(def: &Definition, syntax: &SyntaxNode, range: TextRange) -> Option<ReferenceAccess> {
@@ -1004,5 +1024,66 @@ impl Foo {
             actual += "\n";
         }
         expect.assert_eq(&actual)
+    }
+
+    #[test]
+    fn test_find_lifetimes_function() {
+        check(
+            r#"
+trait Foo<'a> {}
+impl<'a> Foo<'a> for &'a () {}
+fn foo<'a, 'b: 'a>(x: &'a<|> ()) -> &'a () where &'a (): Foo<'a> {
+    fn bar<'a>(_: &'a ()) {}
+    x
+}
+"#,
+            expect![[r#"
+                'a LIFETIME_PARAM FileId(0) 55..57 55..57 Lifetime
+
+                FileId(0) 63..65 Lifetime
+                FileId(0) 71..73 Lifetime
+                FileId(0) 82..84 Lifetime
+                FileId(0) 95..97 Lifetime
+                FileId(0) 106..108 Lifetime
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_find_lifetimes_type_alias() {
+        check(
+            r#"
+type Foo<'a, T> where T: 'a<|> = &'a T;
+"#,
+            expect![[r#"
+                'a LIFETIME_PARAM FileId(0) 9..11 9..11 Lifetime
+
+                FileId(0) 25..27 Lifetime
+                FileId(0) 31..33 Lifetime
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_find_lifetimes_trait_impl() {
+        check(
+            r#"
+trait Foo<'a> {
+    fn foo() -> &'a ();
+}
+impl<'a> Foo<'a> for &'a () {
+    fn foo() -> &'a<|> () {
+        unimplemented!()
+    }
+}
+"#,
+            expect![[r#"
+                'a LIFETIME_PARAM FileId(0) 47..49 47..49 Lifetime
+
+                FileId(0) 55..57 Lifetime
+                FileId(0) 64..66 Lifetime
+                FileId(0) 89..91 Lifetime
+            "#]],
+        );
     }
 }

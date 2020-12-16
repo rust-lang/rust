@@ -9,7 +9,7 @@ use ide_db::{defs::Definition, RootDatabase};
 use syntax::{
     ast::{self, NameOwner},
     match_ast, AstNode, SmolStr,
-    SyntaxKind::{self, IDENT_PAT, TYPE_PARAM},
+    SyntaxKind::{self, IDENT_PAT, LIFETIME_PARAM, TYPE_PARAM},
     TextRange,
 };
 
@@ -182,6 +182,7 @@ impl TryToNav for Definition {
             Definition::SelfType(it) => Some(it.to_nav(db)),
             Definition::Local(it) => Some(it.to_nav(db)),
             Definition::TypeParam(it) => Some(it.to_nav(db)),
+            Definition::LifetimeParam(it) => Some(it.to_nav(db)),
         }
     }
 }
@@ -369,6 +370,23 @@ impl ToNav for hir::TypeParam {
             kind: TYPE_PARAM,
             full_range,
             focus_range,
+            container_name: None,
+            description: None,
+            docs: None,
+        }
+    }
+}
+
+impl ToNav for hir::LifetimeParam {
+    fn to_nav(&self, db: &RootDatabase) -> NavigationTarget {
+        let src = self.source(db);
+        let full_range = src.value.syntax().text_range();
+        NavigationTarget {
+            file_id: src.file_id.original_file(db),
+            name: self.name(db).to_string().into(),
+            kind: LIFETIME_PARAM,
+            full_range,
+            focus_range: Some(full_range),
             container_name: None,
             description: None,
             docs: None,

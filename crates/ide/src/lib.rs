@@ -528,6 +528,13 @@ impl Analysis {
         self.with_db(|db| references::rename::rename(db, position, new_name))
     }
 
+    pub fn prepare_rename(
+        &self,
+        position: FilePosition,
+    ) -> Cancelable<Result<RangeInfo<()>, RenameError>> {
+        self.with_db(|db| references::rename::prepare_rename(db, position))
+    }
+
     pub fn structural_search_replace(
         &self,
         query: &str,

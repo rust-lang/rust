@@ -733,7 +733,7 @@ pub(crate) fn handle_prepare_rename(
     let _p = profile::span("handle_prepare_rename");
     let position = from_proto::file_position(&snap, params)?;
 
-    let change = snap.analysis.rename(position, "dummy")??;
+    let change = snap.analysis.prepare_rename(position)??;
     let line_index = snap.analysis.file_line_index(position.file_id)?;
     let range = to_proto::range(&line_index, change.range);
     Ok(Some(PrepareRenameResponse::Range(range)))

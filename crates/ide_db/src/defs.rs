@@ -6,12 +6,12 @@
 // FIXME: this badly needs rename/rewrite (matklad, 2020-02-06).
 
 use hir::{
-    db::HirDatabase, Crate, Field, HasVisibility, ImplDef, Local, MacroDef, Module, ModuleDef,
-    Name, PathResolution, Semantics, TypeParam, Visibility,
+    db::HirDatabase, Crate, Field, HasVisibility, ImplDef, LifetimeParam, Local, MacroDef, Module,
+    ModuleDef, Name, PathResolution, Semantics, TypeParam, Visibility,
 };
 use syntax::{
     ast::{self, AstNode},
-    match_ast, SyntaxNode,
+    match_ast, SyntaxKind, SyntaxNode,
 };
 
 use crate::RootDatabase;
@@ -25,6 +25,8 @@ pub enum Definition {
     SelfType(ImplDef),
     Local(Local),
     TypeParam(TypeParam),
+    LifetimeParam(LifetimeParam),
+    // FIXME: Label
 }
 
 impl Definition {
@@ -36,6 +38,7 @@ impl Definition {
             Definition::SelfType(it) => Some(it.module(db)),
             Definition::Local(it) => Some(it.module(db)),
             Definition::TypeParam(it) => Some(it.module(db)),
+            Definition::LifetimeParam(it) => Some(it.module(db)),
         }
     }
 
@@ -47,6 +50,7 @@ impl Definition {
             Definition::SelfType(_) => None,
             Definition::Local(_) => None,
             Definition::TypeParam(_) => None,
+            Definition::LifetimeParam(_) => None,
         }
     }
 
@@ -72,6 +76,7 @@ impl Definition {
             Definition::SelfType(_) => return None,
             Definition::Local(it) => it.name(db)?,
             Definition::TypeParam(it) => it.name(db),
+            Definition::LifetimeParam(it) => it.name(db),
         };
         Some(name)
     }
@@ -229,6 +234,25 @@ impl NameClass {
             }
         }
     }
+
+    pub fn classify_lifetime(
+        sema: &Semantics<RootDatabase>,
+        lifetime: &ast::Lifetime,
+    ) -> Option<NameClass> {
+        let _p = profile::span("classify_lifetime").detail(|| lifetime.to_string());
+        let parent = lifetime.syntax().parent()?;
+
+        match_ast! {
+            match parent {
+                ast::LifetimeParam(it) => {
+                    let def = sema.to_def(&it)?;
+                    Some(NameClass::Definition(Definition::LifetimeParam(def)))
+                },
+                ast::Label(_it) => None,
+                _ => None,
+            }
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -337,6 +361,35 @@ impl NameRefClass {
         let extern_crate = ast::ExternCrate::cast(parent)?;
         let resolved = sema.resolve_extern_crate(&extern_crate)?;
         Some(NameRefClass::ExternCrate(resolved))
+    }
+
+    pub fn classify_lifetime(
+        sema: &Semantics<RootDatabase>,
+        lifetime: &ast::Lifetime,
+    ) -> Option<NameRefClass> {
+        let _p = profile::span("classify_lifetime_ref").detail(|| lifetime.to_string());
+        let parent = lifetime.syntax().parent()?;
+        match parent.kind() {
+            SyntaxKind::LIFETIME_ARG
+            | SyntaxKind::SELF_PARAM
+            | SyntaxKind::TYPE_BOUND
+            | SyntaxKind::WHERE_PRED
+            | SyntaxKind::REF_TYPE => sema
+                .resolve_lifetime_param(lifetime)
+                .map(Definition::LifetimeParam)
+                .map(NameRefClass::Definition),
+            // lifetime bounds, as in the 'b in 'a: 'b aren't wrapped in TypeBound nodes so we gotta check
+            // if our lifetime is in a LifetimeParam without being the constrained lifetime
+            _ if ast::LifetimeParam::cast(parent).and_then(|param| param.lifetime()).as_ref()
+                != Some(lifetime) =>
+            {
+                sema.resolve_lifetime_param(lifetime)
+                    .map(Definition::LifetimeParam)
+                    .map(NameRefClass::Definition)
+            }
+            SyntaxKind::BREAK_EXPR | SyntaxKind::CONTINUE_EXPR => None,
+            _ => None,
+        }
     }
 }
 

@@ -190,7 +190,10 @@ fn rewrite_intra_doc_link(
         },
         Definition::Macro(it) => it.resolve_doc_path(db, link, ns),
         Definition::Field(it) => it.resolve_doc_path(db, link, ns),
-        Definition::SelfType(_) | Definition::Local(_) | Definition::TypeParam(_) => return None,
+        Definition::SelfType(_)
+        | Definition::Local(_)
+        | Definition::TypeParam(_)
+        | Definition::LifetimeParam(_) => return None,
     }?;
     let krate = resolved.module(db)?.krate();
     let canonical_path = resolved.canonical_path(db)?;
