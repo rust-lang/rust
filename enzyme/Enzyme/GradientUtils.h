@@ -118,37 +118,41 @@ public:
   }
 
   void setupOMPFor() {
-    for(auto &BB: *oldFunc) {
-      for(auto &I: BB) {
-        if (CallInst* call = dyn_cast<CallInst>(&I)) {
-          if (Function* F = call->getCalledFunction()) {
+    for (auto &BB : *oldFunc) {
+      for (auto &I : BB) {
+        if (CallInst *call = dyn_cast<CallInst>(&I)) {
+          if (Function *F = call->getCalledFunction()) {
             if (F->getName() == "__kmpc_for_static_init_4") {
               // todo what if bounds change between fwd/reverse
-              IRBuilder <> pre(getNewFromOriginal(call));
-              IntegerType* i64 = IntegerType::getInt64Ty(oldFunc->getContext());
-              Value* lb = nullptr;
+              IRBuilder<> pre(getNewFromOriginal(call));
+              IntegerType *i64 = IntegerType::getInt64Ty(oldFunc->getContext());
+              Value *lb = nullptr;
               for (auto u : call->getArgOperand(4)->users()) {
                 if (auto si = dyn_cast<StoreInst>(u)) {
                   if (OrigDT.dominates(si, call)) {
-                    lb = pre.CreateSExtOrTrunc(getNewFromOriginal(si->getValueOperand()), i64);
+                    lb = pre.CreateSExtOrTrunc(
+                        getNewFromOriginal(si->getValueOperand()), i64);
                     break;
                   }
                 }
               }
               assert(lb);
-              Value* ub = nullptr;
+              Value *ub = nullptr;
               for (auto u : call->getArgOperand(5)->users()) {
                 if (auto si = dyn_cast<StoreInst>(u)) {
                   if (OrigDT.dominates(si, call)) {
-                    ub = pre.CreateSExtOrTrunc(getNewFromOriginal(si->getValueOperand()), i64);
+                    ub = pre.CreateSExtOrTrunc(
+                        getNewFromOriginal(si->getValueOperand()), i64);
                     break;
                   }
                 }
               }
               assert(ub);
-              IRBuilder <> post(getNewFromOriginal(call)->getNextNode());
-              auto lb_post = post.CreateSExtOrTrunc(post.CreateLoad(getNewFromOriginal(call->getArgOperand(4))), i64);
-              ompOffset = lb_post;
+              IRBuilder<> post(getNewFromOriginal(call)->getNextNode());
+              auto lb_post = post.CreateSExtOrTrunc(
+                  post.CreateLoad(getNewFromOriginal(call->getArgOperand(4))),
+                  i64);
+              ompOffset = post.CreateSub(lb_post, lb, "", true, true);
               ompTrueLimit = pre.CreateSub(ub, lb);
               return;
             }
@@ -156,9 +160,10 @@ public:
         }
       }
     }
+    llvm::errs() << *oldFunc << "\n";
     assert(0 && "could not find openmp init");
-    //ompOffset;
-    //ompTrueLimit;
+    // ompOffset;
+    // ompTrueLimit;
   }
 
   llvm::DebugLoc getNewFromOriginal(const llvm::DebugLoc L) const {
@@ -1281,33 +1286,32 @@ if (AtomicAdd) {
 #if LLVM_VERSION_MAJOR >= 9
     AtomicRMWInst::BinOp op = AtomicRMWInst::FAdd;
     if (auto vt = dyn_cast<VectorType>(dif->getType())) {
-      for(size_t i=0; i<vt->getNumElements(); ++i) {
+      for (size_t i = 0; i < vt->getNumElements(); ++i) {
         auto vdif = BuilderM.CreateExtractElement(dif, i);
         Value *Idxs[] = {
-          ConstantInt::get(Type::getInt64Ty(vt->getContext()), 0),
-          ConstantInt::get(Type::getInt32Ty(vt->getContext()), i)
-        };
-        auto vptr  = BuilderM.CreateGEP(ptr, Idxs);
-        #if LLVM_VERSION_MAJOR >= 11
-            AtomicRMWInst *rmw = BuilderM.CreateAtomicRMW(
-                op, vptr, vdif, AtomicOrdering::Monotonic, SyncScope::System);
-            if (align)
-              rmw->setAlignment(align.getValue());
-        #else
-            BuilderM.CreateAtomicRMW(op, vptr, vdif, AtomicOrdering::Monotonic,
-                                    SyncScope::System);
-        #endif
+            ConstantInt::get(Type::getInt64Ty(vt->getContext()), 0),
+            ConstantInt::get(Type::getInt32Ty(vt->getContext()), i)};
+        auto vptr = BuilderM.CreateGEP(ptr, Idxs);
+#if LLVM_VERSION_MAJOR >= 11
+        AtomicRMWInst *rmw = BuilderM.CreateAtomicRMW(
+            op, vptr, vdif, AtomicOrdering::Monotonic, SyncScope::System);
+        if (align)
+          rmw->setAlignment(align.getValue());
+#else
+        BuilderM.CreateAtomicRMW(op, vptr, vdif, AtomicOrdering::Monotonic,
+                                 SyncScope::System);
+#endif
       }
     } else {
-      #if LLVM_VERSION_MAJOR >= 11
-          AtomicRMWInst *rmw = BuilderM.CreateAtomicRMW(
-              op, ptr, dif, AtomicOrdering::Monotonic, SyncScope::System);
-          if (align)
-            rmw->setAlignment(align.getValue());
-      #else
-          BuilderM.CreateAtomicRMW(op, ptr, dif, AtomicOrdering::Monotonic,
-                                  SyncScope::System);
-      #endif
+#if LLVM_VERSION_MAJOR >= 11
+      AtomicRMWInst *rmw = BuilderM.CreateAtomicRMW(
+          op, ptr, dif, AtomicOrdering::Monotonic, SyncScope::System);
+      if (align)
+        rmw->setAlignment(align.getValue());
+#else
+      BuilderM.CreateAtomicRMW(op, ptr, dif, AtomicOrdering::Monotonic,
+                               SyncScope::System);
+#endif
     }
 #else
         llvm::errs() << "unhandled atomic fadd on llvm version " << *ptr << " "

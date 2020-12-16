@@ -116,7 +116,8 @@ public:
 protected:
   CacheUtility(llvm::TargetLibraryInfo &TLI, llvm::Function *newFunc)
       : newFunc(newFunc), TLI(TLI), DT(*newFunc), LI(DT), AC(*newFunc),
-        SE(*newFunc, TLI, AC, DT, LI), ompOffset(nullptr), ompTrueLimit(nullptr) {
+        SE(*newFunc, TLI, AC, DT, LI), ompOffset(nullptr),
+        ompTrueLimit(nullptr) {
     inversionAllocs = llvm::BasicBlock::Create(newFunc->getContext(),
                                                "allocsForInversion", newFunc);
   }
@@ -171,8 +172,8 @@ public:
         : Block(Block), ForceSingleIteration(ForceSingleIteration) {}
   };
 
-  llvm::Value* ompOffset;
-  llvm::Value* ompTrueLimit;
+  llvm::Value *ompOffset;
+  llvm::Value *ompTrueLimit;
 
   /// Given a LimitContext ctx, representing a location inside a loop nest,
   /// break each of the loops up into chunks of loops where each chunk's number
@@ -210,7 +211,7 @@ private:
   llvm::Value *computeIndexOfChunk(
       bool inForwardPass, llvm::IRBuilder<> &v,
       const std::vector<std::pair<LoopContext, llvm::Value *>> &containedloops,
-      llvm::Value* outerOffset);
+      llvm::Value *outerOffset);
 
 private:
   /// Given a cache allocation and an index denoting how many Chunks deep the

@@ -1016,15 +1016,13 @@ bool legalCombinedForwardReverse(
 }
 
 //! return structtype if recursive function
-const AugmentedReturn &
-CreateAugmentedPrimal(Function *todiff, DIFFE_TYPE retType,
-                      const std::vector<DIFFE_TYPE> &constant_args,
-                      TargetLibraryInfo &TLI, TypeAnalysis &TA,
-                      AAResults &global_AA, bool returnUsed,
-                      const FnTypeInfo &oldTypeInfo_,
-                      const std::map<Argument *, bool> _uncacheable_args,
-                      bool forceAnonymousTape, bool AtomicAdd, bool PostOpt,
-                      bool omp) {
+const AugmentedReturn &CreateAugmentedPrimal(
+    Function *todiff, DIFFE_TYPE retType,
+    const std::vector<DIFFE_TYPE> &constant_args, TargetLibraryInfo &TLI,
+    TypeAnalysis &TA, AAResults &global_AA, bool returnUsed,
+    const FnTypeInfo &oldTypeInfo_,
+    const std::map<Argument *, bool> _uncacheable_args, bool forceAnonymousTape,
+    bool AtomicAdd, bool PostOpt, bool omp) {
   if (returnUsed)
     assert(!todiff->getReturnType()->isEmptyTy() &&
            !todiff->getReturnType()->isVoidTy());
@@ -1056,19 +1054,18 @@ CreateAugmentedPrimal(Function *todiff, DIFFE_TYPE retType,
     }
   }
   assert(constant_args.size() == todiff->getFunctionType()->getNumParams());
-  using CacheKey = std::tuple<Function *, DIFFE_TYPE /*retType*/,
-                              std::vector<DIFFE_TYPE> /*constant_args*/,
-                              std::map<Argument *, bool> /*uncacheable_args*/,
-                              bool /*returnUsed*/, const FnTypeInfo, bool, bool,
-                              bool, bool>;
+  using CacheKey =
+      std::tuple<Function *, DIFFE_TYPE /*retType*/,
+                 std::vector<DIFFE_TYPE> /*constant_args*/,
+                 std::map<Argument *, bool> /*uncacheable_args*/,
+                 bool /*returnUsed*/, const FnTypeInfo, bool, bool, bool, bool>;
   static std::map<CacheKey, AugmentedReturn> cachedfunctions;
   static std::map<CacheKey, bool> cachedfinished;
-  CacheKey tup =
-      std::make_tuple(todiff, retType, constant_args,
-                      std::map<Argument *, bool>(_uncacheable_args.begin(),
-                                                 _uncacheable_args.end()),
-                      returnUsed, oldTypeInfo, forceAnonymousTape, AtomicAdd, PostOpt,
-                      omp);
+  CacheKey tup = std::make_tuple(
+      todiff, retType, constant_args,
+      std::map<Argument *, bool>(_uncacheable_args.begin(),
+                                 _uncacheable_args.end()),
+      returnUsed, oldTypeInfo, forceAnonymousTape, AtomicAdd, PostOpt, omp);
   auto found = cachedfunctions.find(tup);
   if (found != cachedfunctions.end()) {
     return found->second;
@@ -1161,7 +1158,8 @@ CreateAugmentedPrimal(Function *todiff, DIFFE_TYPE retType,
   GradientUtils *gutils = GradientUtils::CreateFromClone(
       todiff, TLI, TA, AA, retType, constant_args, /*returnUsed*/ returnUsed,
       returnMapping);
-  if (omp) gutils->setupOMPFor();
+  if (omp)
+    gutils->setupOMPFor();
   gutils->AtomicAdd = AtomicAdd;
   const SmallPtrSet<BasicBlock *, 4> guaranteedUnreachable =
       getGuaranteedUnreachable(gutils->oldFunc);
@@ -1423,8 +1421,10 @@ CreateAugmentedPrimal(Function *todiff, DIFFE_TYPE retType,
 
   if (noTape || omp) {
     auto tidx = returnMapping.find(AugmentedStruct::Tape)->second;
-    if (noTape) returnMapping.erase(AugmentedStruct::Tape);
-    if (noTape) cachedfunctions.find(tup)->second.returns.erase(AugmentedStruct::Tape);
+    if (noTape)
+      returnMapping.erase(AugmentedStruct::Tape);
+    if (noTape)
+      cachedfunctions.find(tup)->second.returns.erase(AugmentedStruct::Tape);
     if (returnMapping.find(AugmentedStruct::Return) != returnMapping.end()) {
       cachedfunctions.find(tup)->second.returns[AugmentedStruct::Return] -=
           (returnMapping[AugmentedStruct::Return] > tidx) ? 1 : 0;
@@ -1475,7 +1475,7 @@ CreateAugmentedPrimal(Function *todiff, DIFFE_TYPE retType,
   if (omp && !noTape) {
     // see lack of struct type for openmp
     ArgTypes.push_back(PointerType::getUnqual(tapeType));
-    //ArgTypes.push_back(tapeType);
+    // ArgTypes.push_back(tapeType);
   }
 
   // Create a new function type...
@@ -1503,7 +1503,6 @@ CreateAugmentedPrimal(Function *todiff, DIFFE_TYPE retType,
     ++i;
     ++ii;
   }
-
 
   SmallVector<ReturnInst *, 4> Returns;
   CloneFunctionInto(NewF, nf, VMap, nf->getSubprogram() != nullptr, Returns, "",
@@ -1552,9 +1551,9 @@ CreateAugmentedPrimal(Function *todiff, DIFFE_TYPE retType,
       j->setName("tape");
       tapeMemory = j;
       // if structs were supported by openmp we could do this, but alas, no
-      //IRBuilder<> B(NewF->getEntryBlock().getFirstNonPHI());
-      //tapeMemory = B.CreateAlloca(j->getType());
-      //B.CreateStore(j, tapeMemory);
+      // IRBuilder<> B(NewF->getEntryBlock().getFirstNonPHI());
+      // tapeMemory = B.CreateAlloca(j->getType());
+      // B.CreateStore(j, tapeMemory);
     } else {
       std::vector<Value *> Idxs = {
           ib.getInt32(0),
@@ -1951,7 +1950,8 @@ Function *CreatePrimalAndGradient(
     TypeAnalysis &TA, AAResults &global_AA, bool returnUsed, bool dretPtr,
     bool topLevel, llvm::Type *additionalArg, const FnTypeInfo &oldTypeInfo_,
     const std::map<Argument *, bool> _uncacheable_args,
-    const AugmentedReturn *augmenteddata, bool AtomicAdd, bool PostOpt, bool omp) {
+    const AugmentedReturn *augmenteddata, bool AtomicAdd, bool PostOpt,
+    bool omp) {
 
   FnTypeInfo oldTypeInfo = oldTypeInfo_;
   for (auto &pair : oldTypeInfo.KnownValues) {
@@ -2117,7 +2117,8 @@ Function *CreatePrimalAndGradient(
                              : ReturnType::ArgsWithReturn)
                   : (dretPtr ? ReturnType::ArgsWithReturn : ReturnType::Args),
       additionalArg);
-  if (omp) gutils->setupOMPFor();
+  if (omp)
+    gutils->setupOMPFor();
   gutils->AtomicAdd = AtomicAdd;
   insert_or_assign2<CacheKey, Function *>(cachedfunctions, tup,
                                           gutils->newFunc);

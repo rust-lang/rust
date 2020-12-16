@@ -1,0 +1,74 @@
+//   note not doing O0 below as to ensure we get tbaa
+// TODO: %clang -fopenmp -std=c11 -fno-vectorize -fno-unroll-loops -O1 -disable-llvm-optzns %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -S | %clang -fopenmp -x ir - -o %s.out && %s.out
+// RUN: %clang -fopenmp -std=c11 -fno-vectorize -fno-unroll-loops -O1 %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -S | %clang -fopenmp -x ir - -o %s.out && %s.out
+// RUN: %clang -fopenmp -std=c11 -fno-vectorize -fno-unroll-loops -O2 %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -S | %clang -fopenmp -x ir - -o %s.out && %s.out
+// RUN: %clang -fopenmp -std=c11 -fno-vectorize -fno-unroll-loops -O3 %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -S | %clang -fopenmp -x ir - -o %s.out && %s.out
+//   note not doing O0 below as to ensure we get tbaa
+// TODO: %clang -fopenmp -std=c11 -fno-vectorize -fno-unroll-loops -O1 -Xclang -disable-llvm-optzns %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -enzyme-inline=1 -S | %clang -fopenmp -x ir - -o %s.out && %s.out
+// RUN: %clang -fopenmp -std=c11 -fno-vectorize -fno-unroll-loops -O1 %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -enzyme-inline=1 -S | %clang -fopenmp -x ir - -o %s.out && %s.out
+// RUN: %clang -fopenmp -std=c11 -fno-vectorize -fno-unroll-loops -O2 %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -enzyme-inline=1 -S | %clang -fopenmp -x ir - -o %s.out && %s.out
+// RUN: %clang -fopenmp -std=c11 -fno-vectorize -fno-unroll-loops -O3 %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -enzyme-inline=1 -S | %clang -fopenmp -x ir - -o %s.out && %s.out
+
+#include <stdio.h>
+#include <math.h>
+#include <assert.h>
+
+#include "test_utils.h"
+
+double __enzyme_autodiff(void*, ...);
+
+/*
+void omp(float& a, int N) {
+  #define N 20
+  #pragma omp parallel for
+  for (int i=0; i<N; i++) {
+    //a[i] *= a[i];
+    (&a)[i] *= (&a)[i];
+  }
+  #undef N
+  (&a)[0] = 0;
+}
+*/
+void omp(float* a, int N, int M) {
+  #pragma omp parallel for
+  for (int i=M; i<N; i++) {
+    //a[i] *= a[i];
+    a[i] *= a[i];
+  }
+  a[0] = 0;
+}
+
+int main(int argc, char** argv) {
+
+  int N = 20;
+  int M = 10;
+  float a[N];
+  for(int i=0; i<N; i++) {
+    a[i] = i+1;
+  }
+
+  float d_a[N];
+  for(int i=0; i<N; i++)
+    d_a[i] = 1.0f;
+  
+  //omp(*a, N);
+  printf("ran omp\n");
+  __enzyme_autodiff((void*)omp, a, d_a, N, M);
+
+  for(int i=0; i<N; i++) {
+    printf("a[%d]=%f  d_a[%d]=%f\n", i, a[i], i, d_a[i]);
+  }
+
+  //APPROX_EQ(da, 17711.0*2, 1e-10);
+  //APPROX_EQ(db, 17711.0*2, 1e-10);
+  //printf("hello! %f, res2 %f, da: %f, db: %f\n", ret, ret, da,db);
+  APPROX_EQ(d_a[0], 0.0f, 1e-10);
+  for(int i=1; i<N; i++) {
+    if (i < M) {
+      APPROX_EQ(d_a[i], 1.0f, 1e-10);
+    } else {
+      APPROX_EQ(d_a[i], 2.0f*(i+1), 1e-10);
+    }
+  }
+  return 0;
+}

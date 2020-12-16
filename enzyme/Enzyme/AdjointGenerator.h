@@ -2000,8 +2000,8 @@ public:
         subdata = &CreateAugmentedPrimal(
             cast<Function>(called), subretType, argsInverted, gutils->TLI,
             TR.analysis, gutils->AA, /*return is used*/ false, nextTypeInfo,
-            uncacheable_args, false, /*AtomicAdd*/ true, /*PostOpt*/false,
-            /*OpenMP*/true);
+            uncacheable_args, false, /*AtomicAdd*/ true, /*PostOpt*/ false,
+            /*OpenMP*/ true);
         if (Mode == DerivativeMode::Forward) {
           assert(augmentedReturn);
           auto subaugmentations =
@@ -2014,24 +2014,25 @@ public:
         assert(subdata);
         auto newcalled = subdata->fn;
 
-        if (subdata->returns.find(AugmentedStruct::Tape) != subdata->returns.end()) {
+        if (subdata->returns.find(AugmentedStruct::Tape) !=
+            subdata->returns.end()) {
           ValueToValueMapTy VMap;
           newcalled = CloneFunction(newcalled, VMap);
-          //llvm::errs() << *newcalled << "\n";
+          // llvm::errs() << *newcalled << "\n";
           auto tapeArg = newcalled->arg_end();
           tapeArg--;
-          std::vector<std::pair<ssize_t, Value*>> geps;
-          SmallPtrSet<Instruction*, 4> gepsToErase;
-          for(auto a : tapeArg->users()) {
+          std::vector<std::pair<ssize_t, Value *>> geps;
+          SmallPtrSet<Instruction *, 4> gepsToErase;
+          for (auto a : tapeArg->users()) {
             if (auto gep = dyn_cast<GetElementPtrInst>(a)) {
               auto idx = gep->idx_begin();
               idx++;
               auto cidx = cast<ConstantInt>(idx->get());
               assert(gep->getNumIndices() == 2);
-              SmallPtrSet<StoreInst*, 1> storesToErase;
-              for(auto st : gep->users()) {
+              SmallPtrSet<StoreInst *, 1> storesToErase;
+              for (auto st : gep->users()) {
                 auto SI = cast<StoreInst>(st);
-                Value* op = SI->getValueOperand();
+                Value *op = SI->getValueOperand();
                 storesToErase.insert(SI);
                 geps.emplace_back(cidx->getLimitedValue(), op);
               }
@@ -2040,29 +2041,34 @@ public:
               gepsToErase.insert(gep);
             }
             if (auto SI = dyn_cast<StoreInst>(a)) {
-              Value* op = SI->getValueOperand();
+              Value *op = SI->getValueOperand();
               gepsToErase.insert(SI);
               geps.emplace_back(-1, op);
             }
           }
           for (auto gep : gepsToErase)
             gep->eraseFromParent();
-          IRBuilder <> ph(&*newcalled->getEntryBlock().begin());
-          tape = UndefValue::get(cast<PointerType>(tapeArg->getType())->getElementType());
+          IRBuilder<> ph(&*newcalled->getEntryBlock().begin());
+          tape = UndefValue::get(
+              cast<PointerType>(tapeArg->getType())->getElementType());
           ValueToValueMapTy available;
           auto subarg = newcalled->arg_begin();
           subarg++;
           subarg++;
-          for(size_t i=3; i<pre_args.size(); ++i) {
+          for (size_t i = 3; i < pre_args.size(); ++i) {
             available[&*subarg] = pre_args[i];
             subarg++;
           }
-          for(auto pair : geps) {
-            Value* op = pair.second;
-            Value* alloc = op;
-            //llvm::errs() << "op: " << *op << "\n";
-            Value* replacement = gutils->unwrapM(op, BuilderZ, available, UnwrapMode::LegalFullUnwrap);
-            tape = pair.first == -1 ? replacement : BuilderZ.CreateInsertValue(tape, replacement, pair.first);
+          for (auto pair : geps) {
+            Value *op = pair.second;
+            Value *alloc = op;
+            // llvm::errs() << "op: " << *op << "\n";
+            Value *replacement = gutils->unwrapM(op, BuilderZ, available,
+                                                 UnwrapMode::LegalFullUnwrap);
+            tape =
+                pair.first == -1
+                    ? replacement
+                    : BuilderZ.CreateInsertValue(tape, replacement, pair.first);
             if (auto ci = dyn_cast<CastInst>(alloc)) {
               alloc = ci->getOperand(0);
             }
@@ -2071,28 +2077,37 @@ public:
                 // TODO free
                 if (F->getName() == "malloc") {
                   Value *Idxs[] = {
-                    ConstantInt::get(Type::getInt64Ty(tapeArg->getContext()), 0),
-                    ConstantInt::get(Type::getInt32Ty(tapeArg->getContext()), pair.first)
-                  };
-                  op->replaceAllUsesWith(ph.CreateLoad(pair.first == -1 ? tapeArg : ph.CreateInBoundsGEP(tapeArg, Idxs)));
+                      ConstantInt::get(Type::getInt64Ty(tapeArg->getContext()),
+                                       0),
+                      ConstantInt::get(Type::getInt32Ty(tapeArg->getContext()),
+                                       pair.first)};
+                  op->replaceAllUsesWith(ph.CreateLoad(
+                      pair.first == -1 ? tapeArg
+                                       : ph.CreateInBoundsGEP(tapeArg, Idxs)));
                   cast<Instruction>(op)->eraseFromParent();
-                  if (op != alloc) ci->eraseFromParent();
+                  if (op != alloc)
+                    ci->eraseFromParent();
                   continue;
                 }
               }
             }
             Value *Idxs[] = {
-              ConstantInt::get(Type::getInt64Ty(tapeArg->getContext()), 0),
-              ConstantInt::get(Type::getInt32Ty(tapeArg->getContext()), pair.first)
-            };
-            op->replaceAllUsesWith(ph.CreateLoad(pair.first == -1 ? tapeArg : ph.CreateInBoundsGEP(tapeArg, Idxs)));
+                ConstantInt::get(Type::getInt64Ty(tapeArg->getContext()), 0),
+                ConstantInt::get(Type::getInt32Ty(tapeArg->getContext()),
+                                 pair.first)};
+            op->replaceAllUsesWith(ph.CreateLoad(
+                pair.first == -1 ? tapeArg
+                                 : ph.CreateInBoundsGEP(tapeArg, Idxs)));
             cast<Instruction>(op)->eraseFromParent();
           }
-          auto alloc = IRBuilder<>(gutils->inversionAllocs).CreateAlloca(cast<PointerType>(tapeArg->getType())->getElementType());
+          auto alloc =
+              IRBuilder<>(gutils->inversionAllocs)
+                  .CreateAlloca(
+                      cast<PointerType>(tapeArg->getType())->getElementType());
           BuilderZ.CreateStore(tape, alloc);
           pre_args.push_back(alloc);
           gutils->cacheForReverse(BuilderZ, tape,
-                                         getIndex(&call, CacheType::Tape));
+                                  getIndex(&call, CacheType::Tape));
         }
 
         auto numargs = ConstantInt::get(Type::getInt32Ty(call.getContext()),
@@ -2127,19 +2142,20 @@ public:
     found = subdata->returns.find(AugmentedStruct::Return);
     assert(found == subdata->returns.end());
 
-
     if (Mode == DerivativeMode::Reverse || Mode == DerivativeMode::Both) {
       IRBuilder<> Builder2(call.getParent());
       getReverseBuilder(Builder2);
 
       Value *newcalled = nullptr;
       if (called) {
-        if(subdata->returns.find(AugmentedStruct::Tape) != subdata->returns.end()) {
+        if (subdata->returns.find(AugmentedStruct::Tape) !=
+            subdata->returns.end()) {
           if (Mode == DerivativeMode::Reverse) {
             tape = gutils->cacheForReverse(Builder2, tape,
-                                         getIndex(&call, CacheType::Tape));
+                                           getIndex(&call, CacheType::Tape));
           }
-          auto alloc = IRBuilder<>(gutils->inversionAllocs).CreateAlloca(tape->getType());
+          auto alloc = IRBuilder<>(gutils->inversionAllocs)
+                           .CreateAlloca(tape->getType());
           Builder2.CreateStore(tape, alloc);
           args.push_back(alloc);
         }
@@ -2148,8 +2164,9 @@ public:
             cast<Function>(called), subretType, argsInverted, gutils->TLI,
             TR.analysis, gutils->AA, /*returnValue*/ false,
             /*subdretptr*/ false, /*topLevel*/ false,
-            tape ? PointerType::getUnqual(tape->getType()) : nullptr, nextTypeInfo, uncacheable_args,
-            subdata, /*AtomicAdd*/ true, /*postopt*/false, /*omp*/true);
+            tape ? PointerType::getUnqual(tape->getType()) : nullptr,
+            nextTypeInfo, uncacheable_args, subdata, /*AtomicAdd*/ true,
+            /*postopt*/ false, /*omp*/ true);
         if (!newcalled)
           return;
 
@@ -2713,7 +2730,8 @@ public:
           subdata = &CreateAugmentedPrimal(
               cast<Function>(called), subretType, argsInverted, gutils->TLI,
               TR.analysis, gutils->AA, /*return is used*/ subretused,
-              nextTypeInfo, uncacheable_args, false, gutils->AtomicAdd, /*PostOpt*/false);
+              nextTypeInfo, uncacheable_args, false, gutils->AtomicAdd,
+              /*PostOpt*/ false);
           if (Mode == DerivativeMode::Forward) {
             assert(augmentedReturn);
             auto subaugmentations =

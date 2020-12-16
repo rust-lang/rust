@@ -139,7 +139,7 @@ const AugmentedReturn &CreateAugmentedPrimal(
     TypeAnalysis &TA, llvm::AAResults &global_AA, bool returnUsed,
     const FnTypeInfo &typeInfo,
     const std::map<llvm::Argument *, bool> _uncacheable_args,
-    bool forceAnonymousTape, bool AtomicAdd, bool PostOpt, bool omp=false);
+    bool forceAnonymousTape, bool AtomicAdd, bool PostOpt, bool omp = false);
 
 /// Create the derivative function itself.
 ///  \p todiff is the function to differentiate
@@ -162,7 +162,8 @@ llvm::Function *CreatePrimalAndGradient(
     bool dretUsed, bool topLevel, llvm::Type *additionalArg,
     const FnTypeInfo &typeInfo,
     const std::map<llvm::Argument *, bool> _uncacheable_args,
-    const AugmentedReturn *augmented, bool AtomicAdd, bool PostOpt = false, bool omp=false);
+    const AugmentedReturn *augmented, bool AtomicAdd, bool PostOpt = false,
+    bool omp = false);
 
 extern llvm::cl::opt<bool> looseTypeAnalysis;
 
