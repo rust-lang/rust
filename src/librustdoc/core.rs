@@ -410,7 +410,7 @@ crate fn create_resolver<'a>(
     externs: config::Externs,
     queries: &Queries<'a>,
     sess: &Session,
-) -> Lrc<RefCell<interface::BoxedResolver>> {
+) -> Rc<RefCell<interface::BoxedResolver>> {
     let extern_names: Vec<String> = externs
         .iter()
         .filter(|(_, entry)| entry.add_prelude)
