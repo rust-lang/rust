@@ -163,7 +163,6 @@ impl RootDatabase {
             hir::db::ExprScopesQuery
             hir::db::GenericParamsQuery
             hir::db::AttrsQuery
-            hir::db::ModuleLangItemsQuery
             hir::db::CrateLangItemsQuery
             hir::db::LangItemQuery
             hir::db::ImportMapQuery
