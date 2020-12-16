@@ -539,39 +539,19 @@ impl Ctx {
 
     fn lower_macro_rules(&mut self, m: &ast::MacroRules) -> Option<FileItemTreeId<MacroRules>> {
         let name = m.name().map(|it| it.as_name())?;
-        let attrs = Attrs::new(m, &self.hygiene);
-
         let ast_id = self.source_ast_id_map.ast_id(m);
 
-        // FIXME: cfg_attr
-        let export_attr = attrs.by_key("macro_export");
-
-        let is_export = export_attr.exists();
-        let is_local_inner = if is_export {
-            export_attr.tt_values().map(|it| &it.token_trees).flatten().any(|it| match it {
-                tt::TokenTree::Leaf(tt::Leaf::Ident(ident)) => {
-                    ident.text.contains("local_inner_macros")
-                }
-                _ => false,
-            })
-        } else {
-            false
-        };
-
-        let is_builtin = attrs.by_key("rustc_builtin_macro").exists();
-        let res = MacroRules { name, is_export, is_builtin, is_local_inner, ast_id };
+        let res = MacroRules { name, ast_id };
         Some(id(self.data().macro_rules.alloc(res)))
     }
 
     fn lower_macro_def(&mut self, m: &ast::MacroDef) -> Option<FileItemTreeId<MacroDef>> {
         let name = m.name().map(|it| it.as_name())?;
-        let attrs = Attrs::new(m, &self.hygiene);
 
         let ast_id = self.source_ast_id_map.ast_id(m);
         let visibility = self.lower_visibility(m);
 
-        let is_builtin = attrs.by_key("rustc_builtin_macro").exists();
-        let res = MacroDef { name, is_builtin, ast_id, visibility };
+        let res = MacroDef { name, ast_id, visibility };
         Some(id(self.data().macro_defs.alloc(res)))
     }
 
