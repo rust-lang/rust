@@ -5,7 +5,6 @@
 //! The crate also contains other misc AST visitors, e.g. `node_count` and `show_span`.
 
 #![feature(bindings_after_at)]
-#![feature(iter_is_partitioned)]
 #![recursion_limit = "256"]
 
 pub mod ast_validation;
