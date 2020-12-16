@@ -64,6 +64,7 @@ use std::process;
 
 use rustc_driver::abort_on_err;
 use rustc_errors::ErrorReported;
+use rustc_interface::interface;
 use rustc_middle::ty;
 use rustc_session::config::{make_crate_type_option, ErrorOutputType, RustcOptGroup};
 use rustc_session::getopts;
@@ -468,13 +469,13 @@ fn wrap_return(diag: &rustc_errors::Handler, res: Result<(), String>) -> MainRes
     }
 }
 
-fn run_renderer<T: formats::FormatRenderer>(
+fn run_renderer<'tcx, T: formats::FormatRenderer<'tcx>>(
     krate: clean::Crate,
     renderopts: config::RenderOptions,
     render_info: config::RenderInfo,
     diag: &rustc_errors::Handler,
     edition: rustc_span::edition::Edition,
-    tcx: ty::TyCtxt<'_>,
+    tcx: ty::TyCtxt<'tcx>,
 ) -> MainResult {
     match formats::run_format::<T>(krate, renderopts, render_info, &diag, edition, tcx) {
         Ok(_) => Ok(()),
@@ -577,7 +578,7 @@ fn main_options(options: config::Options) -> MainResult {
                 let diag = core::new_handler(error_format, None, &debugging_options);
                 match output_format {
                     None | Some(config::OutputFormat::Html) => sess.time("render_html", || {
-                        run_renderer::<html::render::Context>(
+                        run_renderer::<html::render::Context<'_>>(
                             krate,
                             render_opts,
                             render_info,
@@ -587,7 +588,7 @@ fn main_options(options: config::Options) -> MainResult {
                         )
                     }),
                     Some(config::OutputFormat::Json) => sess.time("render_json", || {
-                        run_renderer::<json::JsonRenderer>(
+                        run_renderer::<json::JsonRenderer<'_>>(
                             krate,
                             render_opts,
                             render_info,

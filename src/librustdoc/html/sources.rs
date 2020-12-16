@@ -15,7 +15,7 @@ use std::path::{Component, Path, PathBuf};
 
 crate fn render(
     dst: &Path,
-    scx: &mut SharedContext,
+    scx: &mut SharedContext<'_>,
     krate: clean::Crate,
 ) -> Result<clean::Crate, Error> {
     info!("emitting source files");
@@ -26,14 +26,14 @@ crate fn render(
 }
 
 /// Helper struct to render all source code to HTML pages
-struct SourceCollector<'a> {
-    scx: &'a mut SharedContext,
+struct SourceCollector<'a, 'tcx> {
+    scx: &'a mut SharedContext<'tcx>,
 
     /// Root destination to place all HTML output into
     dst: PathBuf,
 }
 
-impl<'a> DocFolder for SourceCollector<'a> {
+impl DocFolder for SourceCollector<'_, '_> {
     fn fold_item(&mut self, item: clean::Item) -> Option<clean::Item> {
         // If we're not rendering sources, there's nothing to do.
         // If we're including source files, and we haven't seen this file yet,
@@ -69,9 +69,9 @@ impl<'a> DocFolder for SourceCollector<'a> {
     }
 }
 
-impl<'a> SourceCollector<'a> {
+impl SourceCollector<'_, '_> {
     fn sess(&self) -> &Session {
-        &self.scx.sess
+        &self.scx.tcx.sess
     }
 
     /// Renders the given filename into its corresponding HTML source file.

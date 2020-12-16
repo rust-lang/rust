@@ -11,7 +11,7 @@ use crate::formats::cache::{Cache, CACHE_KEY};
 /// Allows for different backends to rustdoc to be used with the `run_format()` function. Each
 /// backend renderer has hooks for initialization, documenting an item, entering and exiting a
 /// module, and cleanup/finalizing output.
-crate trait FormatRenderer: Clone {
+crate trait FormatRenderer<'tcx>: Clone {
     /// Sets up any state required for the renderer. When this is called the cache has already been
     /// populated.
     fn init(
@@ -20,7 +20,7 @@ crate trait FormatRenderer: Clone {
         render_info: RenderInfo,
         edition: Edition,
         cache: &mut Cache,
-        tcx: ty::TyCtxt<'_>,
+        tcx: ty::TyCtxt<'tcx>,
     ) -> Result<(Self, clean::Crate), Error>;
 
     /// Renders a single non-module item. This means no recursive sub-item rendering is required.
@@ -45,13 +45,13 @@ crate trait FormatRenderer: Clone {
 }
 
 /// Main method for rendering a crate.
-crate fn run_format<T: FormatRenderer>(
+crate fn run_format<'tcx, T: FormatRenderer<'tcx>>(
     krate: clean::Crate,
     options: RenderOptions,
     render_info: RenderInfo,
     diag: &rustc_errors::Handler,
     edition: Edition,
-    tcx: ty::TyCtxt<'_>,
+    tcx: ty::TyCtxt<'tcx>,
 ) -> Result<(), Error> {
     let (krate, mut cache) = Cache::from_krate(
         render_info.clone(),
