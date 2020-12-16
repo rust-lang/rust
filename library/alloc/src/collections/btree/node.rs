@@ -1355,66 +1355,65 @@ impl<'a, K: 'a, V: 'a> BalancingContext<'a, K, V> {
     ///
     /// Panics unless we `.can_merge()`.
     pub fn merge(
-        mut self,
+        self,
         track_edge_idx: Option<LeftOrRight<usize>>,
     ) -> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>, marker::Edge> {
+        let Handle { node: mut parent_node, idx: parent_idx, _marker } = self.parent;
+        let old_parent_len = parent_node.len();
         let mut left_node = self.left_child;
-        let left_len = left_node.len();
+        let old_left_len = left_node.len();
         let right_node = self.right_child;
         let right_len = right_node.len();
+        let new_left_len = old_left_len + 1 + right_len;
 
-        assert!(left_len + right_len < CAPACITY);
+        assert!(new_left_len <= CAPACITY);
         assert!(match track_edge_idx {
             None => true,
-            Some(LeftOrRight::Left(idx)) => idx <= left_len,
+            Some(LeftOrRight::Left(idx)) => idx <= old_left_len,
             Some(LeftOrRight::Right(idx)) => idx <= right_len,
         });
 
         unsafe {
-            *left_node.reborrow_mut().into_len_mut() += right_len as u16 + 1;
+            *left_node.reborrow_mut().into_len_mut() = new_left_len as u16;
 
-            let parent_key = slice_remove(
-                self.parent.node.reborrow_mut().into_key_area_slice(),
-                self.parent.idx,
-            );
-            left_node.reborrow_mut().into_key_area_mut_at(left_len).write(parent_key);
+            let parent_key =
+                slice_remove(parent_node.reborrow_mut().into_key_area_slice(), parent_idx);
+            left_node.reborrow_mut().into_key_area_mut_at(old_left_len).write(parent_key);
             ptr::copy_nonoverlapping(
                 right_node.reborrow().key_area().as_ptr(),
-                left_node.reborrow_mut().into_key_area_slice().as_mut_ptr().add(left_len + 1),
+                left_node.reborrow_mut().into_key_area_slice().as_mut_ptr().add(old_left_len + 1),
                 right_len,
             );
 
-            let parent_val = slice_remove(
-                self.parent.node.reborrow_mut().into_val_area_slice(),
-                self.parent.idx,
-            );
-            left_node.reborrow_mut().into_val_area_mut_at(left_len).write(parent_val);
+            let parent_val =
+                slice_remove(parent_node.reborrow_mut().into_val_area_slice(), parent_idx);
+            left_node.reborrow_mut().into_val_area_mut_at(old_left_len).write(parent_val);
             ptr::copy_nonoverlapping(
                 right_node.reborrow().val_area().as_ptr(),
-                left_node.reborrow_mut().into_val_area_slice().as_mut_ptr().add(left_len + 1),
+                left_node.reborrow_mut().into_val_area_slice().as_mut_ptr().add(old_left_len + 1),
                 right_len,
             );
 
-            slice_remove(
-                &mut self.parent.node.reborrow_mut().into_edge_area_slice(),
-                self.parent.idx + 1,
-            );
-            let parent_old_len = self.parent.node.len();
-            self.parent.node.correct_childrens_parent_links(self.parent.idx + 1..parent_old_len);
-            *self.parent.node.reborrow_mut().into_len_mut() -= 1;
+            slice_remove(&mut parent_node.reborrow_mut().into_edge_area_slice(), parent_idx + 1);
+            parent_node.correct_childrens_parent_links(parent_idx + 1..old_parent_len);
+            *parent_node.reborrow_mut().into_len_mut() -= 1;
 
-            if self.parent.node.height > 1 {
+            if parent_node.height > 1 {
                 // SAFETY: the height of the nodes being merged is one below the height
                 // of the node of this edge, thus above zero, so they are internal.
                 let mut left_node = left_node.reborrow_mut().cast_to_internal_unchecked();
                 let right_node = right_node.cast_to_internal_unchecked();
                 ptr::copy_nonoverlapping(
                     right_node.reborrow().edge_area().as_ptr(),
-                    left_node.reborrow_mut().into_edge_area_slice().as_mut_ptr().add(left_len + 1),
+                    left_node
+                        .reborrow_mut()
+                        .into_edge_area_slice()
+                        .as_mut_ptr()
+                        .add(old_left_len + 1),
                     right_len + 1,
                 );
 
-                left_node.correct_childrens_parent_links(left_len + 1..=left_len + 1 + right_len);
+                left_node.correct_childrens_parent_links(old_left_len + 1..new_left_len + 1);
 
                 Global.deallocate(right_node.node.cast(), Layout::new::<InternalNode<K, V>>());
             } else {
@@ -1424,7 +1423,7 @@ impl<'a, K: 'a, V: 'a> BalancingContext<'a, K, V> {
             let new_idx = match track_edge_idx {
                 None => 0,
                 Some(LeftOrRight::Left(idx)) => idx,
-                Some(LeftOrRight::Right(idx)) => left_len + 1 + idx,
+                Some(LeftOrRight::Right(idx)) => old_left_len + 1 + idx,
             };
             Handle::new_edge(left_node, new_idx)
         }
