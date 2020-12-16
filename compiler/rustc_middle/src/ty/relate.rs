@@ -603,7 +603,7 @@ pub fn super_relate_consts<R: TypeRelation<'tcx>>(
     new_const_val.map(|val| tcx.mk_const(ty::Const { val, ty: a.ty }))
 }
 
-impl<'tcx> Relate<'tcx> for &'tcx ty::List<ty::ExistentialPredicate<'tcx>> {
+impl<'tcx> Relate<'tcx> for &'tcx ty::List<ty::Binder<ty::ExistentialPredicate<'tcx>>> {
     fn relate<R: TypeRelation<'tcx>>(
         relation: &mut R,
         a: Self,
@@ -616,9 +616,10 @@ impl<'tcx> Relate<'tcx> for &'tcx ty::List<ty::ExistentialPredicate<'tcx>> {
         // in `a`.
         let mut a_v: Vec<_> = a.into_iter().collect();
         let mut b_v: Vec<_> = b.into_iter().collect();
-        a_v.sort_by(|a, b| a.stable_cmp(tcx, b));
+        // `skip_binder` here is okay because `stable_cmp` doesn't look at binders
+        a_v.sort_by(|a, b| a.skip_binder().stable_cmp(tcx, &b.skip_binder()));
         a_v.dedup();
-        b_v.sort_by(|a, b| a.stable_cmp(tcx, b));
+        b_v.sort_by(|a, b| a.skip_binder().stable_cmp(tcx, &b.skip_binder()));
         b_v.dedup();
         if a_v.len() != b_v.len() {
             return Err(TypeError::ExistentialMismatch(expected_found(relation, a, b)));
@@ -626,14 +627,18 @@ impl<'tcx> Relate<'tcx> for &'tcx ty::List<ty::ExistentialPredicate<'tcx>> {
 
         let v = a_v.into_iter().zip(b_v.into_iter()).map(|(ep_a, ep_b)| {
             use crate::ty::ExistentialPredicate::*;
-            match (ep_a, ep_b) {
-                (Trait(a), Trait(b)) => Ok(Trait(relation.relate(a, b)?)),
-                (Projection(a), Projection(b)) => Ok(Projection(relation.relate(a, b)?)),
-                (AutoTrait(a), AutoTrait(b)) if a == b => Ok(AutoTrait(a)),
+            match (ep_a.skip_binder(), ep_b.skip_binder()) {
+                (Trait(a), Trait(b)) => Ok(ty::Binder::bind(Trait(
+                    relation.relate(ep_a.rebind(a), ep_b.rebind(b))?.skip_binder(),
+                ))),
+                (Projection(a), Projection(b)) => Ok(ty::Binder::bind(Projection(
+                    relation.relate(ep_a.rebind(a), ep_b.rebind(b))?.skip_binder(),
+                ))),
+                (AutoTrait(a), AutoTrait(b)) if a == b => Ok(ep_a.rebind(AutoTrait(a))),
                 _ => Err(TypeError::ExistentialMismatch(expected_found(relation, a, b))),
             }
         });
-        Ok(tcx.mk_existential_predicates(v)?)
+        Ok(tcx.mk_poly_existential_predicates(v)?)
     }
 }
 
