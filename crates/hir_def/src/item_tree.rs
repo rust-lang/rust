@@ -646,12 +646,6 @@ pub struct MacroCall {
 pub struct MacroRules {
     /// The name of the declared macro.
     pub name: Name,
-    /// Has `#[macro_export]`.
-    pub is_export: bool,
-    /// Has `#[macro_export(local_inner_macros)]`.
-    pub is_local_inner: bool,
-    /// Has `#[rustc_builtin_macro]`.
-    pub is_builtin: bool,
     pub ast_id: FileAstId<ast::MacroRules>,
 }
 
@@ -660,8 +654,6 @@ pub struct MacroRules {
 pub struct MacroDef {
     pub name: Name,
     pub visibility: RawVisibilityId,
-    /// Has `#[rustc_builtin_macro]`.
-    pub is_builtin: bool,
     pub ast_id: FileAstId<ast::MacroDef>,
 }
 

@@ -26,7 +26,8 @@ use crate::{
     db::DefDatabase,
     item_scope::{ImportType, PerNsGlobImports},
     item_tree::{
-        self, ItemTree, ItemTreeId, MacroCall, MacroRules, Mod, ModItem, ModKind, StructDefKind,
+        self, FileItemTreeId, ItemTree, ItemTreeId, MacroCall, MacroRules, Mod, ModItem, ModKind,
+        StructDefKind,
     },
     nameres::{
         diagnostics::DefDiagnostic, mod_resolution::ModDir, path_resolution::ReachedFixedPoint,
@@ -967,14 +968,15 @@ impl ModCollector<'_, '_> {
                     })
                 }
                 ModItem::MacroCall(mac) => self.collect_macro_call(&self.item_tree[mac]),
-                ModItem::MacroRules(mac) => self.collect_macro_rules(&self.item_tree[mac]),
+                ModItem::MacroRules(id) => self.collect_macro_rules(id),
                 ModItem::MacroDef(id) => {
                     let mac = &self.item_tree[id];
                     let ast_id = InFile::new(self.file_id, mac.ast_id.upcast());
 
                     // "Macro 2.0" is not currently supported by rust-analyzer, but libcore uses it
                     // to define builtin macros, so we support at least that part.
-                    if mac.is_builtin {
+                    let attrs = self.item_tree.attrs(ModItem::from(id).into());
+                    if attrs.by_key("rustc_builtin_macro").exists() {
                         let krate = self.def_collector.def_map.krate;
                         let macro_id = find_builtin_macro(&mac.name, krate, ast_id)
                             .or_else(|| find_builtin_derive(&mac.name, krate, ast_id));
@@ -1300,18 +1302,34 @@ impl ModCollector<'_, '_> {
         self.def_collector.resolve_proc_macro(&macro_name);
     }
 
-    fn collect_macro_rules(&mut self, mac: &MacroRules) {
+    fn collect_macro_rules(&mut self, id: FileItemTreeId<MacroRules>) {
+        let mac = &self.item_tree[id];
+        let attrs = self.item_tree.attrs(ModItem::from(id).into());
         let ast_id = InFile::new(self.file_id, mac.ast_id.upcast());
 
+        let export_attr = attrs.by_key("macro_export");
+
+        let is_export = export_attr.exists();
+        let is_local_inner = if is_export {
+            export_attr.tt_values().map(|it| &it.token_trees).flatten().any(|it| match it {
+                tt::TokenTree::Leaf(tt::Leaf::Ident(ident)) => {
+                    ident.text.contains("local_inner_macros")
+                }
+                _ => false,
+            })
+        } else {
+            false
+        };
+
         // Case 1: builtin macros
-        if mac.is_builtin {
+        if attrs.by_key("rustc_builtin_macro").exists() {
             let krate = self.def_collector.def_map.krate;
             if let Some(macro_id) = find_builtin_macro(&mac.name, krate, ast_id) {
                 self.def_collector.define_macro(
                     self.module_id,
                     mac.name.clone(),
                     macro_id,
-                    mac.is_export,
+                    is_export,
                 );
                 return;
             }
@@ -1322,9 +1340,9 @@ impl ModCollector<'_, '_> {
             ast_id: Some(ast_id),
             krate: self.def_collector.def_map.krate,
             kind: MacroDefKind::Declarative,
-            local_inner: mac.is_local_inner,
+            local_inner: is_local_inner,
         };
-        self.def_collector.define_macro(self.module_id, mac.name.clone(), macro_id, mac.is_export);
+        self.def_collector.define_macro(self.module_id, mac.name.clone(), macro_id, is_export);
     }
 
     fn collect_macro_call(&mut self, mac: &MacroCall) {
