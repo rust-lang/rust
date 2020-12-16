@@ -16,13 +16,13 @@ crate const COLLECT_TRAIT_IMPLS: Pass = Pass {
 
 crate fn collect_trait_impls(krate: Crate, cx: &DocContext<'_>) -> Crate {
     let mut synth = SyntheticImplCollector::new(cx);
-    let mut krate = synth.fold_crate(krate);
+    let mut krate = cx.sess().time("collect_synthetic_impls", || synth.fold_crate(krate));
 
     let prims: FxHashSet<PrimitiveType> = krate.primitives.iter().map(|p| p.1).collect();
 
     let crate_items = {
         let mut coll = ItemCollector::new();
-        krate = coll.fold_crate(krate);
+        krate = cx.sess().time("collect_items_for_trait_impls", || coll.fold_crate(krate));
         coll.items
     };
 
@@ -39,16 +39,18 @@ crate fn collect_trait_impls(krate: Crate, cx: &DocContext<'_>) -> Crate {
     // Also try to inline primitive impls from other crates.
     for &def_id in PrimitiveType::all_impls(cx.tcx).values().flatten() {
         if !def_id.is_local() {
-            inline::build_impl(cx, None, def_id, None, &mut new_items);
+            cx.sess().time("build_primitive_trait_impl", || {
+                inline::build_impl(cx, None, def_id, None, &mut new_items);
 
-            // FIXME(eddyb) is this `doc(hidden)` check needed?
-            if !cx.tcx.get_attrs(def_id).lists(sym::doc).has_word(sym::hidden) {
-                let self_ty = cx.tcx.type_of(def_id);
-                let impls = get_auto_trait_and_blanket_impls(cx, self_ty, def_id);
-                let mut renderinfo = cx.renderinfo.borrow_mut();
+                // FIXME(eddyb) is this `doc(hidden)` check needed?
+                if !cx.tcx.get_attrs(def_id).lists(sym::doc).has_word(sym::hidden) {
+                    let self_ty = cx.tcx.type_of(def_id);
+                    let impls = get_auto_trait_and_blanket_impls(cx, self_ty, def_id);
+                    let mut renderinfo = cx.renderinfo.borrow_mut();
 
-                new_items.extend(impls.filter(|i| renderinfo.inlined.insert(i.def_id)));
-            }
+                    new_items.extend(impls.filter(|i| renderinfo.inlined.insert(i.def_id)));
+                }
+            })
         }
     }
 
@@ -151,11 +153,13 @@ impl<'a, 'tcx> DocFolder for SyntheticImplCollector<'a, 'tcx> {
         if i.is_struct() || i.is_enum() || i.is_union() {
             // FIXME(eddyb) is this `doc(hidden)` check needed?
             if !self.cx.tcx.get_attrs(i.def_id).lists(sym::doc).has_word(sym::hidden) {
-                self.impls.extend(get_auto_trait_and_blanket_impls(
-                    self.cx,
-                    self.cx.tcx.type_of(i.def_id),
-                    i.def_id,
-                ));
+                self.cx.sess().time("get_auto_trait_and_blanket_synthetic_impls", || {
+                    self.impls.extend(get_auto_trait_and_blanket_impls(
+                        self.cx,
+                        self.cx.tcx.type_of(i.def_id),
+                        i.def_id,
+                    ));
+                });
             }
         }
 
