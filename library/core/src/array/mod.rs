@@ -479,7 +479,7 @@ impl<T, const N: usize> [T; N] {
     /// let z = x.zip(y);
     /// assert_eq!(z, [(1, 4), (2, 5), (3, 6)]);
     /// ```
-    #[unstable(feature = "array_zip", issue = "none")]
+    #[unstable(feature = "array_zip", issue = "80094")]
     pub fn zip<U>(self, rhs: [U; N]) -> [(T, U); N] {
         use crate::mem::MaybeUninit;
 
