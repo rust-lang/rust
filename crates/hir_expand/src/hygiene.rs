@@ -29,8 +29,8 @@ impl Hygiene {
                 MacroCallId::LazyMacro(id) => {
                     let loc = db.lookup_intern_macro(id);
                     match loc.def.kind {
-                        MacroDefKind::Declarative => (loc.def.krate, loc.def.local_inner),
-                        MacroDefKind::BuiltIn(_) => (loc.def.krate, false),
+                        MacroDefKind::Declarative => (Some(loc.def.krate), loc.def.local_inner),
+                        MacroDefKind::BuiltIn(_) => (Some(loc.def.krate), false),
                         MacroDefKind::BuiltInDerive(_) => (None, false),
                         MacroDefKind::BuiltInEager(_) => (None, false),
                         MacroDefKind::ProcMacro(_) => (None, false),

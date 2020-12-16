@@ -772,7 +772,10 @@ impl ExprCollector<'_> {
                     | ast::Item::Module(_)
                     | ast::Item::MacroCall(_) => return None,
                     ast::Item::MacroRules(def) => {
-                        return Some(Either::Right(def));
+                        return Some(Either::Right(ast::Macro::from(def)));
+                    }
+                    ast::Item::MacroDef(def) => {
+                        return Some(Either::Right(ast::Macro::from(def)));
                     }
                 };
 
@@ -800,7 +803,7 @@ impl ExprCollector<'_> {
                 }
                 Either::Right(e) => {
                     let mac = MacroDefId {
-                        krate: Some(self.expander.module.krate),
+                        krate: self.expander.module.krate,
                         ast_id: Some(self.expander.ast_id(&e)),
                         kind: MacroDefKind::Declarative,
                         local_inner: false,

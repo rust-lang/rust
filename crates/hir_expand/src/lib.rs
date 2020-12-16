@@ -145,7 +145,10 @@ impl HirFileId {
                 let arg_tt = loc.kind.arg(db)?;
 
                 let def = loc.def.ast_id.and_then(|id| {
-                    let def_tt = id.to_node(db).token_tree()?;
+                    let def_tt = match id.to_node(db) {
+                        ast::Macro::MacroRules(mac) => mac.token_tree()?,
+                        ast::Macro::MacroDef(_) => return None,
+                    };
                     Some(InFile::new(id.file_id, def_tt))
                 });
 
@@ -221,14 +224,8 @@ impl From<EagerMacroId> for MacroCallId {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct MacroDefId {
-    // FIXME: krate and ast_id are currently optional because we don't have a
-    // definition location for built-in derives. There is one, though: the
-    // standard library defines them. The problem is that it uses the new
-    // `macro` syntax for this, which we don't support yet. As soon as we do
-    // (which will probably require touching this code), we can instead use
-    // that (and also remove the hacks for resolving built-in derives).
-    pub krate: Option<CrateId>,
-    pub ast_id: Option<AstId<ast::MacroRules>>,
+    pub krate: CrateId,
+    pub ast_id: Option<AstId<ast::Macro>>,
     pub kind: MacroDefKind,
 
     pub local_inner: bool,

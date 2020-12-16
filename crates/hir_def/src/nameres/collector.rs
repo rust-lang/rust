@@ -309,13 +309,13 @@ impl DefCollector<'_> {
         let macro_def = match self.proc_macros.iter().find(|(n, _)| n == name) {
             Some((_, expander)) => MacroDefId {
                 ast_id: None,
-                krate: Some(self.def_map.krate),
+                krate: self.def_map.krate,
                 kind: MacroDefKind::ProcMacro(*expander),
                 local_inner: false,
             },
             None => MacroDefId {
                 ast_id: None,
-                krate: Some(self.def_map.krate),
+                krate: self.def_map.krate,
                 kind: MacroDefKind::ProcMacro(ProcMacroExpander::dummy(self.def_map.krate)),
                 local_inner: false,
             },
@@ -784,14 +784,6 @@ impl DefCollector<'_> {
         directive: &DeriveDirective,
         path: &ModPath,
     ) -> Option<MacroDefId> {
-        if let Some(name) = path.as_ident() {
-            // FIXME this should actually be handled with the normal name
-            // resolution; the std lib defines built-in stubs for the derives,
-            // but these are new-style `macro`s, which we don't support yet
-            if let Some(def_id) = find_builtin_derive(name) {
-                return Some(def_id);
-            }
-        }
         let resolved_res = self.def_map.resolve_path_fp_with_macro(
             self.db,
             ResolveMode::Other,
@@ -976,6 +968,35 @@ impl ModCollector<'_, '_> {
                 }
                 ModItem::MacroCall(mac) => self.collect_macro_call(&self.item_tree[mac]),
                 ModItem::MacroRules(mac) => self.collect_macro_rules(&self.item_tree[mac]),
+                ModItem::MacroDef(id) => {
+                    let mac = &self.item_tree[id];
+                    let ast_id = InFile::new(self.file_id, mac.ast_id.upcast());
+
+                    // "Macro 2.0" is not currently supported by rust-analyzer, but libcore uses it
+                    // to define builtin macros, so we support at least that part.
+                    if mac.is_builtin {
+                        let krate = self.def_collector.def_map.krate;
+                        let macro_id = find_builtin_macro(&mac.name, krate, ast_id)
+                            .or_else(|| find_builtin_derive(&mac.name, krate, ast_id));
+                        if let Some(macro_id) = macro_id {
+                            let vis = self
+                                .def_collector
+                                .def_map
+                                .resolve_visibility(
+                                    self.def_collector.db,
+                                    self.module_id,
+                                    &self.item_tree[mac.visibility],
+                                )
+                                .unwrap_or(Visibility::Public);
+                            self.def_collector.update(
+                                self.module_id,
+                                &[(Some(mac.name.clone()), PerNs::macros(macro_id, vis))],
+                                vis,
+                                ImportType::Named,
+                            );
+                        }
+                    }
+                }
                 ModItem::Impl(imp) => {
                     let module = ModuleId {
                         krate: self.def_collector.def_map.krate,
@@ -1280,7 +1301,7 @@ impl ModCollector<'_, '_> {
     }
 
     fn collect_macro_rules(&mut self, mac: &MacroRules) {
-        let ast_id = InFile::new(self.file_id, mac.ast_id);
+        let ast_id = InFile::new(self.file_id, mac.ast_id.upcast());
 
         // Case 1: builtin macros
         if mac.is_builtin {
@@ -1299,7 +1320,7 @@ impl ModCollector<'_, '_> {
         // Case 2: normal `macro_rules!` macro
         let macro_id = MacroDefId {
             ast_id: Some(ast_id),
-            krate: Some(self.def_collector.def_map.krate),
+            krate: self.def_collector.def_map.krate,
             kind: MacroDefKind::Declarative,
             local_inner: mac.is_local_inner,
         };

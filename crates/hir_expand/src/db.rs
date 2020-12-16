@@ -129,7 +129,10 @@ fn ast_id_map(db: &dyn AstDatabase, file_id: HirFileId) -> Arc<AstIdMap> {
 fn macro_def(db: &dyn AstDatabase, id: MacroDefId) -> Option<Arc<(TokenExpander, mbe::TokenMap)>> {
     match id.kind {
         MacroDefKind::Declarative => {
-            let macro_call = id.ast_id?.to_node(db);
+            let macro_call = match id.ast_id?.to_node(db) {
+                syntax::ast::Macro::MacroRules(mac) => mac,
+                syntax::ast::Macro::MacroDef(_) => return None,
+            };
             let arg = macro_call.token_tree()?;
             let (tt, tmap) = mbe::ast_to_token_tree(&arg).or_else(|| {
                 log::warn!("fail on macro_def to token tree: {:#?}", arg);

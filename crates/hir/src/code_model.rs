@@ -970,7 +970,7 @@ impl MacroDef {
     /// defines this macro. The reasons for this is that macros are expanded
     /// early, in `hir_expand`, where modules simply do not exist yet.
     pub fn module(self, db: &dyn HirDatabase) -> Option<Module> {
-        let krate = self.id.krate?;
+        let krate = self.id.krate;
         let module_id = db.crate_def_map(krate).root;
         Some(Module::new(Crate { id: krate }, module_id))
     }

@@ -12,6 +12,9 @@ fn test_highlighting() {
 use inner::{self as inner_mod};
 mod inner {}
 
+#[rustc_builtin_macro]
+macro Copy {}
+
 // Needed for function consuming vs normal
 pub mod marker {
     #[lang = "copy"]

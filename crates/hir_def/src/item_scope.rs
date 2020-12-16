@@ -363,7 +363,7 @@ impl ItemInNs {
                 ModuleDefId::TypeAliasId(id) => id.lookup(db).module(db).krate,
                 ModuleDefId::BuiltinType(_) => return None,
             },
-            ItemInNs::Macros(id) => return id.krate,
+            ItemInNs::Macros(id) => return Some(id.krate),
         })
     }
 }

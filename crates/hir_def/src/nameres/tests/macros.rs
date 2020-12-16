@@ -633,12 +633,41 @@ pub struct bar;
 fn expand_derive() {
     let map = compute_crate_def_map(
         "
-        //- /main.rs
+        //- /main.rs crate:main deps:core
+        use core::*;
+
         #[derive(Copy, Clone)]
         struct Foo;
+
+        //- /core.rs crate:core
+        #[rustc_builtin_macro]
+        pub macro Copy {}
+
+        #[rustc_builtin_macro]
+        pub macro Clone {}
         ",
     );
     assert_eq!(map.modules[map.root].scope.impls().len(), 2);
+}
+
+#[test]
+fn resolve_builtin_derive() {
+    check(
+        r#"
+//- /main.rs crate:main deps:core
+use core::*;
+
+//- /core.rs crate:core
+#[rustc_builtin_macro]
+pub macro Clone {}
+
+pub trait Clone {}
+"#,
+        expect![[r#"
+            crate
+            Clone: t m
+        "#]],
+    );
 }
 
 #[test]
