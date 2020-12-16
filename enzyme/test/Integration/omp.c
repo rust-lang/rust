@@ -1,6 +1,6 @@
 //   note not doing O0 below as to ensure we get tbaa
-// RUN: %clang -fopenmp -std=c11 -O1 -disable-llvm-optzns %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -S | %lli - 
-// RUN: %clang -fopenmp -std=c11 -O1 %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -S | %lli - 
+// TODO: %clang -fopenmp -std=c11 -O1 -disable-llvm-optzns %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -S | %lli - 
+// RUN: %clang++ -x c++ -fopenmp -std=c++11 -O1 %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -S | %lli - 
 // RUN: %clang -fopenmp -std=c11 -O2 %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -S | %lli - 
 // RUN: %clang -fopenmp -std=c11 -O3 %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -S | %lli - 
 //   note not doing O0 below as to ensure we get tbaa
@@ -17,11 +17,26 @@
 
 double __enzyme_autodiff(void*, ...);
 
-void omp(float* a, int N) {
+/*
+void omp(float& a, int N) {
+  #define N 20
   #pragma omp parallel for
   for (int i=0; i<N; i++) {
+    //a[i] *= a[i];
+    (&a)[i] *= (&a)[i];
+  }
+  #undef N
+  (&a)[0] = 0;
+}
+*/
+void omp(float* a, int N) {
+  #define N 20
+  #pragma omp parallel for
+  for (int i=0; i<N; i++) {
+    //a[i] *= a[i];
     a[i] *= a[i];
   }
+  #undef N
   a[0] = 0;
 }
 
@@ -36,8 +51,14 @@ int main(int argc, char** argv) {
   float d_a[N];
   for(int i=0; i<N; i++)
     d_a[i] = 1.0f;
-    
-  __enzyme_autodiff(omp, a, d_a, N);
+  
+  //omp(*a, N);
+  printf("ran omp\n");
+  __enzyme_autodiff((void*)omp, a, d_a, N);
+
+  for(int i=0; i<N; i++) {
+    printf("a[%d]=%f  d_a[%d]=%f\n", i, a[i], i, d_a[i]);
+  }
 
   //APPROX_EQ(da, 17711.0*2, 1e-10);
   //APPROX_EQ(db, 17711.0*2, 1e-10);

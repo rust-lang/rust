@@ -2019,12 +2019,13 @@ public:
           newcalled = CloneFunction(newcalled, VMap);
           auto tapeArg = newcalled->arg_end();
           tapeArg--;
-          std::vector<std::pair<size_t, Value*>> geps;
+          std::vector<std::pair<ssize_t, Value*>> geps;
           AllocaInst* tmpalloca = nullptr;
           for(auto aa : tapeArg->users()) {
             auto oSI = cast<StoreInst>(aa);
-            SmallPtrSet<GetElementPtrInst*, 1> gepsToErase;
+            SmallPtrSet<Instruction*, 1> gepsToErase;
             for(auto a : oSI->getPointerOperand()->users()) {
+              if (a == oSI) continue;
               if (auto gep = dyn_cast<GetElementPtrInst>(a)) {
                 auto idx = gep->idx_begin();
                 idx++;
@@ -2040,6 +2041,11 @@ public:
                 for (auto SI : storesToErase)
                   SI->eraseFromParent();
                 gepsToErase.insert(gep);
+              }
+              if (auto SI = dyn_cast<StoreInst>(a)) {
+                Value* op = SI->getValueOperand();
+                gepsToErase.insert(SI);
+                geps.emplace_back(-1, op);
               }
             }
             for (auto gep : gepsToErase)
@@ -2061,7 +2067,7 @@ public:
             Value* op = pair.second;
             Value* alloc = op;
             Value* replacement = gutils->unwrapM(op, BuilderZ, available, UnwrapMode::LegalFullUnwrap);
-            tape = BuilderZ.CreateInsertValue(tape, replacement, pair.first);
+            tape = pair.first == -1 ? replacement : BuilderZ.CreateInsertValue(tape, replacement, pair.first);
             if (auto ci = dyn_cast<CastInst>(alloc)) {
               alloc = ci->getOperand(0);
             }
@@ -2069,16 +2075,17 @@ public:
               if (auto F = ci->getCalledFunction()) {
                 // TODO free
                 if (F->getName() == "malloc") {
-                  op->replaceAllUsesWith(ph.CreateExtractValue(tapeArg, pair.first));
+                  op->replaceAllUsesWith(pair.first == -1 ? tapeArg : ph.CreateExtractValue(tapeArg, pair.first));
                   cast<Instruction>(op)->eraseFromParent();
                   if (op != alloc) ci->eraseFromParent();
                   continue;
                 }
               }
             }
-            op->replaceAllUsesWith(ph.CreateExtractValue(tapeArg, pair.first));
+            op->replaceAllUsesWith(pair.first == -1 ? tapeArg : ph.CreateExtractValue(tapeArg, pair.first));
             cast<Instruction>(op)->eraseFromParent();
           }
+          llvm::errs() << *newcalled << "\n";
           tmpalloca->eraseFromParent();
           pre_args.push_back(tape);
           gutils->cacheForReverse(BuilderZ, tape,

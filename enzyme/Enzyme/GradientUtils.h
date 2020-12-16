@@ -149,7 +149,7 @@ public:
               IRBuilder <> post(getNewFromOriginal(call)->getNextNode());
               auto lb_post = post.CreateSExtOrTrunc(post.CreateLoad(getNewFromOriginal(call->getArgOperand(4))), i64);
               ompOffset = lb_post;
-              ompTrueLimit = pre.CreateSub(pre.CreateSub(ub, lb), ConstantInt::get(i64, 1));
+              ompTrueLimit = pre.CreateSub(ub, lb);
               return;
             }
           }
