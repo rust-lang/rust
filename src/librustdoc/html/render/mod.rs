@@ -49,7 +49,7 @@ use std::sync::Arc;
 
 use itertools::Itertools;
 use rustc_ast_pretty::pprust;
-use rustc_attr::StabilityLevel;
+use rustc_attr::{Deprecation, StabilityLevel};
 use rustc_data_structures::flock;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::Lrc;
@@ -65,7 +65,7 @@ use rustc_span::symbol::{kw, sym, Symbol};
 use serde::ser::SerializeSeq;
 use serde::{Serialize, Serializer};
 
-use crate::clean::{self, AttributesExt, Deprecation, GetDefId, RenderedLink, SelfTy, TypeKind};
+use crate::clean::{self, AttributesExt, GetDefId, RenderedLink, SelfTy, TypeKind};
 use crate::config::{RenderInfo, RenderOptions};
 use crate::docfs::{DocFS, PathError};
 use crate::doctree;
@@ -2219,7 +2219,10 @@ fn extra_info_tags(item: &clean::Item, parent: &clean::Item) -> String {
     // The trailing space after each tag is to space it properly against the rest of the docs.
     if let Some(depr) = &item.deprecation {
         let mut message = "Deprecated";
-        if !stability::deprecation_in_effect(depr.is_since_rustc_version, depr.since.as_deref()) {
+        if !stability::deprecation_in_effect(
+            depr.is_since_rustc_version,
+            depr.since.map(|s| s.as_str()).as_deref(),
+        ) {
             message = "Deprecation planned";
         }
         tags += &tag_html("deprecated", "", message);
@@ -2268,20 +2271,24 @@ fn short_item_info(item: &clean::Item, cx: &Context, parent: Option<&clean::Item
     let mut extra_info = vec![];
     let error_codes = cx.shared.codes;
 
-    if let Some(Deprecation { ref note, ref since, is_since_rustc_version }) = item.deprecation {
+    if let Some(Deprecation { note, since, is_since_rustc_version, suggestion: _ }) =
+        item.deprecation
+    {
         // We display deprecation messages for #[deprecated] and #[rustc_deprecated]
         // but only display the future-deprecation messages for #[rustc_deprecated].
         let mut message = if let Some(since) = since {
+            let since = &since.as_str();
             if !stability::deprecation_in_effect(is_since_rustc_version, Some(since)) {
-                format!("Deprecating in {}", Escape(&since))
+                format!("Deprecating in {}", Escape(since))
             } else {
-                format!("Deprecated since {}", Escape(&since))
+                format!("Deprecated since {}", Escape(since))
             }
         } else {
             String::from("Deprecated")
         };
 
         if let Some(note) = note {
+            let note = note.as_str();
             let mut ids = cx.id_map.borrow_mut();
             let html = MarkdownHtml(
                 &note,

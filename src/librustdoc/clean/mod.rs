@@ -2337,16 +2337,6 @@ impl Clean<Item> for (&hir::MacroDef<'_>, Option<Symbol>) {
     }
 }
 
-impl Clean<Deprecation> for attr::Deprecation {
-    fn clean(&self, _: &DocContext<'_>) -> Deprecation {
-        Deprecation {
-            since: self.since.map(|s| s.to_string()).filter(|s| !s.is_empty()),
-            note: self.note.map(|n| n.to_string()).filter(|n| !n.is_empty()),
-            is_since_rustc_version: self.is_since_rustc_version,
-        }
-    }
-}
-
 impl Clean<TypeBinding> for hir::TypeBinding<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> TypeBinding {
         TypeBinding { name: self.ident.name.clean(cx), kind: self.kind.clean(cx) }

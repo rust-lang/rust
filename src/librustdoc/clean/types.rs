@@ -12,7 +12,7 @@ use rustc_ast::attr;
 use rustc_ast::util::comments::beautify_doc_string;
 use rustc_ast::{self as ast, AttrStyle};
 use rustc_ast::{FloatTy, IntTy, UintTy};
-use rustc_attr::{ConstStability, Stability, StabilityLevel};
+use rustc_attr::{ConstStability, Deprecation, Stability, StabilityLevel};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_feature::UnstableFeatures;
 use rustc_hir as hir;
@@ -151,7 +151,7 @@ impl Item {
             attrs: cx.tcx.get_attrs(def_id).clean(cx),
             visibility: cx.tcx.visibility(def_id).clean(cx),
             stability: cx.tcx.lookup_stability(def_id).cloned(),
-            deprecation: cx.tcx.lookup_deprecation(def_id).clean(cx),
+            deprecation: cx.tcx.lookup_deprecation(def_id),
             const_stability: cx.tcx.lookup_const_stability(def_id).cloned(),
         }
     }
@@ -1819,13 +1819,6 @@ crate struct Macro {
 crate struct ProcMacro {
     crate kind: MacroKind,
     crate helpers: Vec<String>,
-}
-
-#[derive(Clone, Debug)]
-crate struct Deprecation {
-    crate since: Option<String>,
-    crate note: Option<String>,
-    crate is_since_rustc_version: bool,
 }
 
 /// An type binding on an associated type (e.g., `A = Bar` in `Foo<A = Bar>` or
