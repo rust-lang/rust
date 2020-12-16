@@ -64,9 +64,11 @@ create_config! {
     // Imports
     imports_indent: IndentStyle, IndentStyle::Block, false, "Indent of imports";
     imports_layout: ListTactic, ListTactic::Mixed, false, "Item layout inside a import block";
-    merge_imports: bool, false, false, "Merge imports";
+    imports_granularity: ImportGranularity, ImportGranularity::Preserve, false,
+        "Merge or split imports to the provided granularity";
     group_imports: GroupImportsTactic, GroupImportsTactic::Preserve, false,
         "Controls the strategy for how imports are grouped together";
+    merge_imports: bool, false, false, "(deprecated: use imports_granularity instead)";
 
     // Ordering
     reorder_imports: bool, true, true, "Reorder import and extern crate statements alphabetically";
@@ -174,6 +176,7 @@ impl PartialConfig {
         cloned.verbose = None;
         cloned.width_heuristics = None;
         cloned.print_misformatted_file_names = None;
+        cloned.merge_imports = None;
 
         ::toml::to_string(&cloned).map_err(ToTomlError)
     }
@@ -407,6 +410,10 @@ mod test {
                     via the --file-lines option";
             width_heuristics: WidthHeuristics, WidthHeuristics::scaled(100), false,
                 "'small' heuristic values";
+            // merge_imports deprecation
+            imports_granularity: ImportGranularity, ImportGranularity::Preserve, false,
+                "Merge imports";
+            merge_imports: bool, false, false, "(deprecated: use imports_granularity instead)";
 
             // Options that are used by the tests
             stable_option: bool, false, true, "A stable option";
@@ -529,7 +536,7 @@ fn_single_line = false
 where_single_line = false
 imports_indent = "Block"
 imports_layout = "Mixed"
-merge_imports = false
+imports_granularity = "Preserve"
 group_imports = "Preserve"
 reorder_imports = true
 reorder_modules = true
@@ -615,4 +622,53 @@ make_backup = false
     //     assert_eq!(config.unstable_features(), true);
     //     ::std::env::set_var("CFG_RELEASE_CHANNEL", v);
     // }
+
+    #[cfg(test)]
+    mod deprecated_option_merge_imports {
+        use super::*;
+
+        #[test]
+        fn test_old_option_set() {
+            let toml = r#"
+                unstable_features = true
+                merge_imports = true
+            "#;
+            let config = Config::from_toml(toml, Path::new("")).unwrap();
+            assert_eq!(config.imports_granularity(), ImportGranularity::Crate);
+        }
+
+        #[test]
+        fn test_both_set() {
+            let toml = r#"
+                unstable_features = true
+                merge_imports = true
+                imports_granularity = "Preserve"
+            "#;
+            let config = Config::from_toml(toml, Path::new("")).unwrap();
+            assert_eq!(config.imports_granularity(), ImportGranularity::Preserve);
+        }
+
+        #[test]
+        fn test_new_overridden() {
+            let toml = r#"
+                unstable_features = true
+                merge_imports = true
+            "#;
+            let mut config = Config::from_toml(toml, Path::new("")).unwrap();
+            config.override_value("imports_granularity", "Preserve");
+            assert_eq!(config.imports_granularity(), ImportGranularity::Preserve);
+        }
+
+        #[test]
+        fn test_old_overridden() {
+            let toml = r#"
+                unstable_features = true
+                imports_granularity = "Module"
+            "#;
+            let mut config = Config::from_toml(toml, Path::new("")).unwrap();
+            config.override_value("merge_imports", "true");
+            // no effect: the new option always takes precedence
+            assert_eq!(config.imports_granularity(), ImportGranularity::Module);
+        }
+    }
 }

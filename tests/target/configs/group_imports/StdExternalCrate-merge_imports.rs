@@ -1,5 +1,5 @@
 // rustfmt-group_imports: StdExternalCrate
-// rustfmt-merge_imports: true
+// rustfmt-imports_granularity: Crate
 use alloc::{alloc::Layout, vec::Vec};
 use core::f32;
 use std::sync::Arc;

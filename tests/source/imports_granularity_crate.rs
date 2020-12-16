@@ -1,4 +1,4 @@
-// rustfmt-merge_imports: true
+// rustfmt-imports_granularity: Crate
 
 use a::{c,d,b};
 use a::{d, e, b, a, f};
@@ -32,3 +32,6 @@ use g::{self, b};
 use h::{a};
 use i::a::{self};
 use j::{a::{self}};
+
+use {k::{a, b}, l::{a, b}};
+use {k::{c, d}, l::{c, d}};

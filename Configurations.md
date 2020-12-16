@@ -1615,13 +1615,56 @@ pub enum Foo {}
 pub enum Foo {}
 ```
 
+## `imports_granularity`
+
+Merge together related imports based on their paths.
+
+- **Default value**: `Preserve`
+- **Possible values**: `Preserve`, `Crate`, `Module`
+- **Stable**: No
+
+#### `Preserve` (default):
+
+Do not perform any merging and preserve the original structure written by the developer.
+
+```rust
+use foo::b;
+use foo::b::{f, g};
+use foo::{a, c, d::e};
+use qux::{h, i};
+```
+
+#### `Crate`:
+
+Merge imports from the same crate into a single `use` statement. Conversely, imports from different crates are split into separate statements.
+
+```rust
+use foo::{
+    a, b,
+    b::{f, g},
+    c,
+    d::e,
+};
+use qux::{h, i};
+```
+
+#### `Module`:
+
+Merge imports from the same module into a single `use` statement. Conversely, imports from different modules are split into separate statements.
+
+```rust
+use foo::b::{f, g};
+use foo::d::e;
+use foo::{a, b, c};
+use qux::{h, i};
+```
+
 ## `merge_imports`
 
-Merge multiple imports into a single nested import.
+This option is deprecated. Use `imports_granularity = "Crate"` instead.
 
 - **Default value**: `false`
 - **Possible values**: `true`, `false`
-- **Stable**: No (tracking issue: #3362)
 
 #### `false` (default):
 

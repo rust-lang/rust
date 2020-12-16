@@ -1,6 +1,7 @@
 use std::collections::{hash_set, HashSet};
 use std::fmt;
 use std::path::{Path, PathBuf};
+use std::str::FromStr;
 
 use itertools::Itertools;
 use rustfmt_config_proc_macro::config_type;
@@ -109,6 +110,17 @@ pub enum GroupImportsTactic {
     ///  2. other imports
     ///  3. `self` / `crate` / `super` imports
     StdExternalCrate,
+}
+
+#[config_type]
+/// How to merge imports.
+pub enum ImportGranularity {
+    /// Do not merge imports.
+    Preserve,
+    /// Use one `use` statement per crate.
+    Crate,
+    /// Use one `use` statement per module.
+    Module,
 }
 
 #[config_type]
@@ -362,7 +374,7 @@ impl IgnoreList {
     }
 }
 
-impl ::std::str::FromStr for IgnoreList {
+impl FromStr for IgnoreList {
     type Err = &'static str;
 
     fn from_str(_: &str) -> Result<Self, Self::Err> {

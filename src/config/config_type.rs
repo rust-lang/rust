@@ -97,6 +97,7 @@ macro_rules! create_config {
                 match stringify!($i) {
                     "max_width" | "use_small_heuristics" => self.0.set_heuristics(),
                     "license_template_path" => self.0.set_license_template(),
+                    "merge_imports" => self.0.set_merge_imports(),
                     &_ => (),
                 }
             }
@@ -156,6 +157,7 @@ macro_rules! create_config {
                 self.set_heuristics();
                 self.set_license_template();
                 self.set_ignore(dir);
+                self.set_merge_imports();
                 self
             }
 
@@ -230,14 +232,15 @@ macro_rules! create_config {
                 match key {
                     "max_width" | "use_small_heuristics" => self.set_heuristics(),
                     "license_template_path" => self.set_license_template(),
+                    "merge_imports" => self.set_merge_imports(),
                     &_ => (),
                 }
             }
 
             #[allow(unreachable_pub)]
             pub fn is_hidden_option(name: &str) -> bool {
-                const HIDE_OPTIONS: [&str; 4] =
-                    ["verbose", "verbose_diff", "file_lines", "width_heuristics"];
+                const HIDE_OPTIONS: [&str; 5] =
+                    ["verbose", "verbose_diff", "file_lines", "width_heuristics", "merge_imports"];
                 HIDE_OPTIONS.contains(&name)
             }
 
@@ -307,6 +310,22 @@ macro_rules! create_config {
 
             fn set_ignore(&mut self, dir: &Path) {
                 self.ignore.2.add_prefix(dir);
+            }
+
+            fn set_merge_imports(&mut self) {
+                if self.was_set().merge_imports() {
+                    eprintln!(
+                        "Warning: the `merge_imports` option is deprecated. \
+                        Use `imports_granularity=Crate` instead"
+                    );
+                    if !self.was_set().imports_granularity() {
+                        self.imports_granularity.2 = if self.merge_imports() {
+                            ImportGranularity::Crate
+                        } else {
+                            ImportGranularity::Preserve
+                        };
+                    }
+                }
             }
 
             #[allow(unreachable_pub)]
