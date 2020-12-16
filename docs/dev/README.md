@@ -304,5 +304,5 @@ There are three sets of people with extra permissions:
   They also have direct commit access, but all changes should via bors queue.
   It's ok to self-approve if you think you know what you are doing!
   bors should automatically sync the permissions.
-* **triage** tam in the organization.
+* **triage** team in the organization.
   This team can label and close issues.
