@@ -467,6 +467,7 @@ pub fn test_opts(config: &Config) -> test::TestOpts {
         filter_exact: config.filter_exact,
         run_ignored: if config.run_ignored { test::RunIgnored::Yes } else { test::RunIgnored::No },
         format: if config.quiet { test::OutputFormat::Terse } else { test::OutputFormat::Pretty },
+        output_location: None,
         logfile: config.logfile.clone(),
         run_tests: true,
         bench_benchmarks: true,

@@ -1,8 +1,9 @@
 //! Module providing interface for running tests in the console.
 
-use std::fs::File;
+use std::fs::{File, OpenOptions};
 use std::io;
 use std::io::prelude::Write;
+use std::io::LineWriter;
 use std::time::Instant;
 
 use super::{
@@ -252,9 +253,15 @@ fn on_test_event(
 /// A simple console test runner.
 /// Runs provided tests reporting process and results to the stdout.
 pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Result<bool> {
-    let output = match term::stdout() {
-        None => OutputLocation::Raw(io::stdout()),
-        Some(t) => OutputLocation::Pretty(t),
+    let output: OutputLocation<Box<dyn Write>> = match &opts.output_location {
+        None => match term::stdout() {
+            None => OutputLocation::Raw(Box::new(io::stdout())),
+            Some(t) => OutputLocation::Pretty(t),
+        },
+        Some(l) => {
+            let w = Box::new(LineWriter::new(OpenOptions::new().write(true).create(true).open(l)?));
+            OutputLocation::Raw(w)
+        }
     };
 
     let max_name_len = tests

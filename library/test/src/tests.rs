@@ -46,6 +46,7 @@ impl TestOpts {
             nocapture: false,
             color: AutoColor,
             format: OutputFormat::Pretty,
+            output_location: None,
             test_threads: None,
             skip: vec![],
             time_options: None,

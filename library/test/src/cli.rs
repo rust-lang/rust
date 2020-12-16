@@ -21,6 +21,7 @@ pub struct TestOpts {
     pub nocapture: bool,
     pub color: ColorConfig,
     pub format: OutputFormat,
+    pub output_location: Option<PathBuf>,
     pub test_threads: Option<usize>,
     pub skip: Vec<String>,
     pub time_options: Option<TestTimeOptions>,
@@ -104,6 +105,7 @@ fn optgroups() -> getopts::Options {
             json   = Output a json document",
             "pretty|terse|json",
         )
+        .optopt("", "output-location", "Configure location of output", "PATH")
         .optflag("", "show-output", "Show captured stdout of successful tests")
         .optopt(
             "Z",
@@ -248,6 +250,7 @@ fn parse_opts_impl(matches: getopts::Matches) -> OptRes {
     let test_threads = get_test_threads(&matches)?;
     let color = get_color_config(&matches)?;
     let format = get_format(&matches, quiet, allow_unstable)?;
+    let output_location = get_output_location(&matches, allow_unstable)?;
 
     let options = Options::new().display_output(matches.opt_present("show-output"));
 
@@ -264,6 +267,7 @@ fn parse_opts_impl(matches: getopts::Matches) -> OptRes {
         nocapture,
         color,
         format,
+        output_location,
         test_threads,
         skip,
         time_options,
@@ -324,6 +328,19 @@ fn get_test_threads(matches: &getopts::Matches) -> OptPartRes<Option<usize>> {
     };
 
     Ok(test_threads)
+}
+
+fn get_output_location(
+    matches: &getopts::Matches,
+    allow_unstable: bool,
+) -> OptPartRes<Option<PathBuf>> {
+    match matches.opt_str("output-location").as_deref() {
+        None => Ok(None),
+        Some(_) if !allow_unstable => {
+            Err("The output-location option is only accepted on the nightly compiler".into())
+        }
+        Some(v) => Ok(Some(v.into())),
+    }
 }
 
 fn get_format(
