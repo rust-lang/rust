@@ -31,7 +31,7 @@ use std::cell::Cell;
 use std::mem;
 use std::ops::Range;
 
-use crate::clean::{self, Crate, GetDefId, Item, ItemLink, PrimitiveType};
+use crate::clean::{self, Crate, Item, ItemLink, PrimitiveType};
 use crate::core::DocContext;
 use crate::fold::DocFolder;
 use crate::html::markdown::markdown_links;
@@ -685,78 +685,23 @@ fn resolve_associated_trait_item(
     ns: Namespace,
     cx: &DocContext<'_>,
 ) -> Option<(ty::AssocKind, DefId)> {
-    let ty = cx.tcx.type_of(did);
-    // First consider blanket impls: `impl From<T> for T`
-    let implicit_impls = crate::clean::get_auto_trait_and_blanket_impls(cx, ty, did);
-    let mut candidates: Vec<_> = implicit_impls
-        .flat_map(|impl_outer| {
-            match impl_outer.kind {
-                clean::ImplItem(impl_) => {
-                    debug!("considering auto or blanket impl for trait {:?}", impl_.trait_);
-                    // Give precedence to methods that were overridden
-                    if !impl_.provided_trait_methods.contains(&*item_name.as_str()) {
-                        let mut items = impl_.items.into_iter().filter_map(|assoc| {
-                            if assoc.name != Some(item_name) {
-                                return None;
-                            }
-                            let kind = assoc
-                                .kind
-                                .as_assoc_kind()
-                                .expect("inner items for a trait should be associated items");
-                            if kind.namespace() != ns {
-                                return None;
-                            }
-
-                            trace!("considering associated item {:?}", assoc.kind);
-                            // We have a slight issue: normal methods come from `clean` types,
-                            // but provided methods come directly from `tcx`.
-                            // Fortunately, we don't need the whole method, we just need to know
-                            // what kind of associated item it is.
-                            Some((kind, assoc.def_id))
-                        });
-                        let assoc = items.next();
-                        debug_assert_eq!(items.count(), 0);
-                        assoc
-                    } else {
-                        // These are provided methods or default types:
-                        // ```
-                        // trait T {
-                        //   type A = usize;
-                        //   fn has_default() -> A { 0 }
-                        // }
-                        // ```
-                        let trait_ = impl_.trait_.unwrap().def_id().unwrap();
-                        cx.tcx
-                            .associated_items(trait_)
-                            .find_by_name_and_namespace(
-                                cx.tcx,
-                                Ident::with_dummy_span(item_name),
-                                ns,
-                                trait_,
-                            )
-                            .map(|assoc| (assoc.kind, assoc.def_id))
-                    }
-                }
-                _ => panic!("get_impls returned something that wasn't an impl"),
-            }
-        })
-        .collect();
+    // FIXME: this should also consider blanket impls (`impl<T> X for T`). Unfortunately
+    // `get_auto_trait_and_blanket_impls` is broken because the caching behavior is wrong. In the
+    // meantime, just don't look for these blanket impls.
 
     // Next consider explicit impls: `impl MyTrait for MyType`
     // Give precedence to inherent impls.
-    if candidates.is_empty() {
-        let traits = traits_implemented_by(cx, did, module);
-        debug!("considering traits {:?}", traits);
-        candidates.extend(traits.iter().filter_map(|&trait_| {
-            cx.tcx
-                .associated_items(trait_)
-                .find_by_name_and_namespace(cx.tcx, Ident::with_dummy_span(item_name), ns, trait_)
-                .map(|assoc| (assoc.kind, assoc.def_id))
-        }));
-    }
+    let traits = traits_implemented_by(cx, did, module);
+    debug!("considering traits {:?}", traits);
+    let mut candidates = traits.iter().filter_map(|&trait_| {
+        cx.tcx
+            .associated_items(trait_)
+            .find_by_name_and_namespace(cx.tcx, Ident::with_dummy_span(item_name), ns, trait_)
+            .map(|assoc| (assoc.kind, assoc.def_id))
+    });
     // FIXME(#74563): warn about ambiguity
-    debug!("the candidates were {:?}", candidates);
-    candidates.pop()
+    debug!("the candidates were {:?}", candidates.clone().collect::<Vec<_>>());
+    candidates.next()
 }
 
 /// Given a type, return all traits in scope in `module` implemented by that type.

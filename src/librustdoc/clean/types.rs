@@ -21,7 +21,7 @@ use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::Mutability;
 use rustc_index::vec::IndexVec;
-use rustc_middle::ty::{AssocKind, TyCtxt};
+use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::DUMMY_SP;
@@ -373,15 +373,6 @@ impl ItemKind {
         match *self {
             ItemKind::TypedefItem(_, _) | ItemKind::AssocTypeItem(_, _) => true,
             _ => false,
-        }
-    }
-
-    crate fn as_assoc_kind(&self) -> Option<AssocKind> {
-        match *self {
-            ItemKind::AssocConstItem(..) => Some(AssocKind::Const),
-            ItemKind::AssocTypeItem(..) => Some(AssocKind::Type),
-            ItemKind::TyMethodItem(..) | ItemKind::MethodItem(..) => Some(AssocKind::Fn),
-            _ => None,
         }
     }
 }
