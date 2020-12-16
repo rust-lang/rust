@@ -62,13 +62,11 @@ use std::default::Default;
 use std::env;
 use std::process;
 
-use rustc_data_structures::sync::Lrc;
 use rustc_driver::abort_on_err;
 use rustc_errors::ErrorReported;
-use rustc_interface::interface;
+use rustc_middle::ty;
 use rustc_session::config::{make_crate_type_option, ErrorOutputType, RustcOptGroup};
 use rustc_session::getopts;
-use rustc_session::Session;
 use rustc_session::{early_error, early_warn};
 
 #[macro_use]
@@ -476,9 +474,9 @@ fn run_renderer<T: formats::FormatRenderer>(
     render_info: config::RenderInfo,
     diag: &rustc_errors::Handler,
     edition: rustc_span::edition::Edition,
-    sess: Lrc<Session>,
+    tcx: ty::TyCtxt<'_>,
 ) -> MainResult {
-    match formats::run_format::<T>(krate, renderopts, render_info, &diag, edition, sess) {
+    match formats::run_format::<T>(krate, renderopts, render_info, &diag, edition, tcx) {
         Ok(_) => Ok(()),
         Err(e) => {
             let mut msg = diag.struct_err(&format!("couldn't generate documentation: {}", e.error));
@@ -577,7 +575,6 @@ fn main_options(options: config::Options) -> MainResult {
                 info!("going to format");
                 let (error_format, edition, debugging_options) = diag_opts;
                 let diag = core::new_handler(error_format, None, &debugging_options);
-                let sess_format = sess.clone();
                 match output_format {
                     None | Some(config::OutputFormat::Html) => sess.time("render_html", || {
                         run_renderer::<html::render::Context>(
@@ -586,7 +583,7 @@ fn main_options(options: config::Options) -> MainResult {
                             render_info,
                             &diag,
                             edition,
-                            sess_format,
+                            tcx,
                         )
                     }),
                     Some(config::OutputFormat::Json) => sess.time("render_json", || {
@@ -596,7 +593,7 @@ fn main_options(options: config::Options) -> MainResult {
                             render_info,
                             &diag,
                             edition,
-                            sess_format,
+                            tcx,
                         )
                     }),
                 }

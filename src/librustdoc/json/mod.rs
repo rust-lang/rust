@@ -14,6 +14,7 @@ use std::rc::Rc;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
+use rustc_middle::ty;
 use rustc_session::Session;
 use rustc_span::edition::Edition;
 
@@ -127,12 +128,12 @@ impl FormatRenderer for JsonRenderer {
         _render_info: RenderInfo,
         _edition: Edition,
         _cache: &mut Cache,
-        sess: Lrc<Session>,
+        tcx: ty::TyCtxt<'_>,
     ) -> Result<(Self, clean::Crate), Error> {
         debug!("Initializing json renderer");
         Ok((
             JsonRenderer {
-                sess,
+                sess: tcx.sess,
                 index: Rc::new(RefCell::new(FxHashMap::default())),
                 out_path: options.output,
             },

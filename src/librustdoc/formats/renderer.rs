@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
-use rustc_data_structures::sync::Lrc;
-use rustc_session::Session;
+use rustc_middle::ty;
 use rustc_span::edition::Edition;
 
 use crate::clean;
@@ -21,7 +20,7 @@ crate trait FormatRenderer: Clone {
         render_info: RenderInfo,
         edition: Edition,
         cache: &mut Cache,
-        sess: Lrc<Session>,
+        tcx: ty::TyCtxt<'_>,
     ) -> Result<(Self, clean::Crate), Error>;
 
     /// Renders a single non-module item. This means no recursive sub-item rendering is required.
@@ -52,7 +51,7 @@ crate fn run_format<T: FormatRenderer>(
     render_info: RenderInfo,
     diag: &rustc_errors::Handler,
     edition: Edition,
-    sess: Lrc<Session>,
+    tcx: ty::TyCtxt<'_>,
 ) -> Result<(), Error> {
     let (krate, mut cache) = Cache::from_krate(
         render_info.clone(),
@@ -63,7 +62,7 @@ crate fn run_format<T: FormatRenderer>(
     );
 
     let (mut format_renderer, mut krate) =
-        T::init(krate, options, render_info, edition, &mut cache, sess)?;
+        T::init(krate, options, render_info, edition, &mut cache, tcx)?;
 
     let cache = Arc::new(cache);
     // Freeze the cache now that the index has been built. Put an Arc into TLS for future

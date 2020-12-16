@@ -57,6 +57,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::Mutability;
 use rustc_middle::middle::stability;
+use rustc_middle::ty;
 use rustc_session::Session;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::MacroKind;
@@ -388,7 +389,7 @@ impl FormatRenderer for Context {
         _render_info: RenderInfo,
         edition: Edition,
         cache: &mut Cache,
-        sess: Lrc<Session>,
+        tcx: ty::TyCtxt<'_>,
     ) -> Result<(Context, clean::Crate), Error> {
         // need to save a copy of the options for rendering the index page
         let md_opts = options.clone();
@@ -462,7 +463,7 @@ impl FormatRenderer for Context {
         }
         let (sender, receiver) = channel();
         let mut scx = SharedContext {
-            sess,
+            tcx,
             collapsed: krate.collapsed,
             src_root,
             include_sources,
