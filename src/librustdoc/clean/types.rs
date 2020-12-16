@@ -86,9 +86,6 @@ crate struct Item {
     crate visibility: Visibility,
     crate kind: ItemKind,
     crate def_id: DefId,
-    crate stability: Option<Stability>,
-    crate deprecation: Option<Deprecation>,
-    crate const_stability: Option<ConstStability>,
 }
 
 impl fmt::Debug for Item {
@@ -102,13 +99,23 @@ impl fmt::Debug for Item {
             .field("kind", &self.kind)
             .field("visibility", &self.visibility)
             .field("def_id", def_id)
-            .field("stability", &self.stability)
-            .field("deprecation", &self.deprecation)
             .finish()
     }
 }
 
 impl Item {
+    crate fn stability<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Option<&'tcx Stability> {
+        if self.is_fake() { None } else { tcx.lookup_stability(self.def_id) }
+    }
+
+    crate fn const_stability<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Option<&'tcx ConstStability> {
+        if self.is_fake() { None } else { tcx.lookup_const_stability(self.def_id) }
+    }
+
+    crate fn deprecation(&self, tcx: TyCtxt<'_>) -> Option<Deprecation> {
+        if self.is_fake() { None } else { tcx.lookup_deprecation(self.def_id) }
+    }
+
     /// Finds the `doc` attribute as a NameValue and returns the corresponding
     /// value found.
     crate fn doc_value(&self) -> Option<&str> {
@@ -150,9 +157,6 @@ impl Item {
             source: source.clean(cx),
             attrs: cx.tcx.get_attrs(def_id).clean(cx),
             visibility: cx.tcx.visibility(def_id).clean(cx),
-            stability: cx.tcx.lookup_stability(def_id).cloned(),
-            deprecation: cx.tcx.lookup_deprecation(def_id),
-            const_stability: cx.tcx.lookup_const_stability(def_id).cloned(),
         }
     }
 
@@ -236,8 +240,8 @@ impl Item {
         }
     }
 
-    crate fn stability_class(&self) -> Option<String> {
-        self.stability.as_ref().and_then(|ref s| {
+    crate fn stability_class(&self, tcx: TyCtxt<'_>) -> Option<String> {
+        self.stability(tcx).as_ref().and_then(|ref s| {
             let mut classes = Vec::with_capacity(2);
 
             if s.level.is_unstable() {
@@ -245,7 +249,7 @@ impl Item {
             }
 
             // FIXME: what about non-staged API items that are deprecated?
-            if self.deprecation.is_some() {
+            if self.deprecation(tcx).is_some() {
                 classes.push("deprecated");
             }
 
@@ -253,15 +257,15 @@ impl Item {
         })
     }
 
-    crate fn stable_since(&self) -> Option<SymbolStr> {
-        match self.stability?.level {
+    crate fn stable_since(&self, tcx: TyCtxt<'_>) -> Option<SymbolStr> {
+        match self.stability(tcx)?.level {
             StabilityLevel::Stable { since, .. } => Some(since.as_str()),
             StabilityLevel::Unstable { .. } => None,
         }
     }
 
-    crate fn const_stable_since(&self) -> Option<SymbolStr> {
-        match self.const_stability?.level {
+    crate fn const_stable_since(&self, tcx: TyCtxt<'_>) -> Option<SymbolStr> {
+        match self.const_stability(tcx)?.level {
             StabilityLevel::Stable { since, .. } => Some(since.as_str()),
             StabilityLevel::Unstable { .. } => None,
         }

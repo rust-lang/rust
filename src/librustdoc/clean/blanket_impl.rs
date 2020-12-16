@@ -112,9 +112,6 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                     attrs: Default::default(),
                     visibility: Inherited,
                     def_id: self.cx.next_def_id(impl_def_id.krate),
-                    stability: None,
-                    const_stability: None,
-                    deprecation: None,
                     kind: ImplItem(Impl {
                         unsafety: hir::Unsafety::Normal,
                         generics: (

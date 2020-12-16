@@ -17,17 +17,8 @@ use crate::json::JsonRenderer;
 impl JsonRenderer<'_> {
     pub(super) fn convert_item(&self, item: clean::Item) -> Option<Item> {
         let item_type = ItemType::from(&item);
-        let clean::Item {
-            source,
-            name,
-            attrs,
-            kind,
-            visibility,
-            def_id,
-            stability: _,
-            const_stability: _,
-            deprecation,
-        } = item;
+        let deprecation = item.deprecation(self.tcx);
+        let clean::Item { source, name, attrs, kind, visibility, def_id } = item;
         match kind {
             clean::StrippedItem(_) => None,
             _ => Some(Item {
