@@ -16,8 +16,8 @@ use crate::{
     lang_item::{LangItemTarget, LangItems},
     nameres::CrateDefMap,
     AttrDefId, ConstId, ConstLoc, DefWithBodyId, EnumId, EnumLoc, FunctionId, FunctionLoc,
-    GenericDefId, ImplId, ImplLoc, ModuleId, StaticId, StaticLoc, StructId, StructLoc, TraitId,
-    TraitLoc, TypeAliasId, TypeAliasLoc, UnionId, UnionLoc,
+    GenericDefId, ImplId, ImplLoc, StaticId, StaticLoc, StructId, StructLoc, TraitId, TraitLoc,
+    TypeAliasId, TypeAliasLoc, UnionId, UnionLoc,
 };
 
 #[salsa::query_group(InternDatabaseStorage)]
@@ -94,9 +94,6 @@ pub trait DefDatabase: InternDatabase + AstDatabase + Upcast<dyn AstDatabase> {
 
     #[salsa::invoke(Attrs::attrs_query)]
     fn attrs(&self, def: AttrDefId) -> Attrs;
-
-    #[salsa::invoke(LangItems::module_lang_items_query)]
-    fn module_lang_items(&self, module: ModuleId) -> Option<Arc<LangItems>>;
 
     #[salsa::invoke(LangItems::crate_lang_items_query)]
     fn crate_lang_items(&self, krate: CrateId) -> Arc<LangItems>;
