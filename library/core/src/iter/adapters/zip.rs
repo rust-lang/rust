@@ -17,7 +17,12 @@ pub struct Zip<A, B> {
     index: usize,
     len: usize,
 }
-impl<A: Iterator, B: Iterator> Zip<A, B> {
+
+impl<A, B> Zip<A, B>
+where
+    A: Iterator,
+    B: Iterator,
+{
     pub(in crate::iter) fn new(a: A, b: B) -> Zip<A, B> {
         ZipNew::new(a, b)
     }
@@ -63,40 +68,6 @@ where
     fn new(a: A, b: B) -> Self {
         let len = cmp::min(a.size(), b.size());
         Zip { a, b, index: 0, len }
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<A, B> Iterator for Zip<A, B>
-where
-    A: Iterator,
-    B: Iterator,
-{
-    type Item = (A::Item, B::Item);
-
-    #[inline]
-    fn next(&mut self) -> Option<Self::Item> {
-        ZipImpl::next(self)
-    }
-
-    #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        ZipImpl::size_hint(self)
-    }
-
-    #[inline]
-    fn nth(&mut self, n: usize) -> Option<Self::Item> {
-        ZipImpl::nth(self, n)
-    }
-
-    #[inline]
-    unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item
-    where
-        Self: TrustedRandomAccess,
-    {
-        // SAFETY: `ZipImpl::__iterator_get_unchecked` has same safety
-        // requirements as `Iterator::__iterator_get_unchecked`.
-        unsafe { ZipImpl::get_unchecked(self, idx) }
     }
 }
 
@@ -175,22 +146,8 @@ where
     }
 }
 
-// Zip specialization trait
-#[doc(hidden)]
-trait ZipImpl<A, B> {
-    type Item;
-    fn next(&mut self) -> Option<Self::Item>;
-    fn size_hint(&self) -> (usize, Option<usize>);
-    fn nth(&mut self, n: usize) -> Option<Self::Item>;
-    // This has the same safety requirements as `Iterator::__iterator_get_unchecked`
-    unsafe fn get_unchecked(&mut self, idx: usize) -> <Self as Iterator>::Item
-    where
-        Self: Iterator + TrustedRandomAccess;
-}
-
-// General Zip impl
-#[doc(hidden)]
-impl<A, B> ZipImpl<A, B> for Zip<A, B>
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<A, B> Iterator for Zip<A, B>
 where
     A: Iterator,
     B: Iterator,
@@ -226,7 +183,7 @@ where
         (lower, upper)
     }
 
-    default unsafe fn get_unchecked(&mut self, _idx: usize) -> <Self as Iterator>::Item
+    default unsafe fn __iterator_get_unchecked(&mut self, _idx: usize) -> <Self as Iterator>::Item
     where
         Self: TrustedRandomAccess,
     {
@@ -234,8 +191,8 @@ where
     }
 }
 
-#[doc(hidden)]
-impl<A, B> ZipImpl<A, B> for Zip<A, B>
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<A, B> Iterator for Zip<A, B>
 where
     A: TrustedRandomAccess + Iterator,
     B: TrustedRandomAccess + Iterator,
@@ -295,7 +252,7 @@ where
     }
 
     #[inline]
-    unsafe fn get_unchecked(&mut self, idx: usize) -> <Self as Iterator>::Item {
+    unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> <Self as Iterator>::Item {
         let idx = self.index + idx;
         // SAFETY: the caller must uphold the contract for
         // `Iterator::__iterator_get_unchecked`.
