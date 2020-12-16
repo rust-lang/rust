@@ -1,6 +1,4 @@
 use rustc_middle::mir;
-use rustc_middle::ty::layout::HasTyCtxt;
-use rustc_middle::ty::InstanceDef;
 use rustc_middle::ty::{self, Ty};
 use std::borrow::Borrow;
 use std::collections::hash_map::Entry;
@@ -17,60 +15,13 @@ use rustc_span::symbol::{sym, Symbol};
 use rustc_target::abi::{Align, Size};
 
 use crate::interpret::{
-    self, compile_time_machine, AllocId, Allocation, Frame, GlobalId, ImmTy, InterpCx,
-    InterpResult, Memory, OpTy, PlaceTy, Pointer, Scalar,
+    self, compile_time_machine, AllocId, Allocation, Frame, ImmTy, InterpCx, InterpResult, Memory,
+    OpTy, PlaceTy, Pointer, Scalar,
 };
 
 use super::error::*;
 
 impl<'mir, 'tcx> InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>> {
-    /// Evaluate a const function where all arguments (if any) are zero-sized types.
-    /// The evaluation is memoized thanks to the query system.
-    ///
-    /// Returns `true` if the call has been evaluated.
-    fn try_eval_const_fn_call(
-        &mut self,
-        instance: ty::Instance<'tcx>,
-        ret: Option<(PlaceTy<'tcx>, mir::BasicBlock)>,
-        args: &[OpTy<'tcx>],
-    ) -> InterpResult<'tcx, bool> {
-        trace!("try_eval_const_fn_call: {:?}", instance);
-        // Because `#[track_caller]` adds an implicit non-ZST argument, we also cannot
-        // perform this optimization on items tagged with it.
-        if instance.def.requires_caller_location(self.tcx()) {
-            return Ok(false);
-        }
-        // Only memoize instrinsics. This was added in #79594 while adding the `const_allocate` intrinsic.
-        // We only memoize intrinsics because it would be unsound to memoize functions
-        // which might interact with the heap.
-        // Additionally, const_allocate intrinsic is impure and thus should not be memoized;
-        // it will not be memoized because it has non-ZST args
-        if !matches!(instance.def, InstanceDef::Intrinsic(_)) {
-            return Ok(false);
-        }
-        // For the moment we only do this for functions which take no arguments
-        // (or all arguments are ZSTs) so that we don't memoize too much.
-        if args.iter().any(|a| !a.layout.is_zst()) {
-            return Ok(false);
-        }
-
-        let dest = match ret {
-            Some((dest, _)) => dest,
-            // Don't memoize diverging function calls.
-            None => return Ok(false),
-        };
-
-        let gid = GlobalId { instance, promoted: None };
-
-        let place = self.eval_to_allocation(gid)?;
-
-        self.copy_op(place.into(), dest)?;
-
-        self.return_to_block(ret.map(|r| r.1))?;
-        trace!("{:?}", self.dump_place(*dest));
-        Ok(true)
-    }
-
     /// "Intercept" a function call to a panic-related function
     /// because we have something special to do for it.
     /// If this returns successfully (`Ok`), the function should just be evaluated normally.
@@ -253,7 +204,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx>],
-        ret: Option<(PlaceTy<'tcx>, mir::BasicBlock)>,
+        _ret: Option<(PlaceTy<'tcx>, mir::BasicBlock)>,
         _unwind: Option<mir::BasicBlock>, // unwinding is not supported in consts
     ) -> InterpResult<'tcx, Option<&'mir mir::Body<'tcx>>> {
         debug!("find_mir_or_eval_fn: {:?}", instance);
@@ -263,13 +214,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
             // Execution might have wandered off into other crates, so we cannot do a stability-
             // sensitive check here.  But we can at least rule out functions that are not const
             // at all.
-            if ecx.tcx.is_const_fn_raw(def.did) {
-                // If this function is a `const fn` then under certain circumstances we
-                // can evaluate call via the query system, thus memoizing all future calls.
-                if ecx.try_eval_const_fn_call(instance, ret, args)? {
-                    return Ok(None);
-                }
-            } else {
+            if !ecx.tcx.is_const_fn_raw(def.did) {
                 // Some functions we support even if they are non-const -- but avoid testing
                 // that for const fn!
                 ecx.hook_panic_fn(instance, args)?;
