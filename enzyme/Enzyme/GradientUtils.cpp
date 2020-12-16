@@ -703,12 +703,17 @@ Value *GradientUtils::cacheForReverse(IRBuilder<> &BuilderQ, Value *malloc,
     assert(found2 != scopeMap.end());
     assert(found2->second.first);
 
-    Instruction *toadd = scopeAllocs[found2->second.first][0];
-    for (auto u : toadd->users()) {
-      if (auto ci = dyn_cast<CastInst>(u)) {
-        toadd = ci;
+    Value *toadd;
+    //if (ompOffset) {
+    //  toadd = UndefValue::get(found2->second.first->getAllocatedType());
+    //} else {
+      toadd = scopeAllocs[found2->second.first][0];
+      for (auto u : toadd->users()) {
+        if (auto ci = dyn_cast<CastInst>(u)) {
+          toadd = ci;
+        }
       }
-    }
+    //}
 
     // llvm::errs() << " malloc: " << *malloc << "\n";
     // llvm::errs() << " toadd: " << *toadd << "\n";
@@ -1245,7 +1250,7 @@ Value *GradientUtils::invertPointerM(Value *oval, IRBuilder<> &BuilderM) {
         fn, retType, /*constant_args*/ types, TLI, TA, AA,
         /*returnUsed*/ !fn->getReturnType()->isEmptyTy() &&
             !fn->getReturnType()->isVoidTy(),
-        type_args, uncacheable_args, /*forceAnonymousTape*/ true, AtomicAdd);
+        type_args, uncacheable_args, /*forceAnonymousTape*/ true, AtomicAdd, /*PostOpt*/false);
     Constant *newf = CreatePrimalAndGradient(
         fn, retType, /*constant_args*/ types, TLI, TA, AA,
         /*returnValue*/ false, /*dretPtr*/ false, /*topLevel*/ false,
@@ -1860,7 +1865,7 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
                 start = unwrapM(start0, v,
                                 /*available*/ ValueToValueMapTy(),
                                 UnwrapMode::AttemptFullUnwrapWithLookup);
-                l1.header->dump();
+                llvm::errs() << *l1.header << "\n";
                 std::set<Value *> todo = {start0};
                 while (todo.size()) {
                   Value *now = *todo.begin();
@@ -1951,7 +1956,7 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
 
                 auto memcpyF = Intrinsic::getDeclaration(
                     newFunc->getParent(), Intrinsic::memcpy, tys);
-                memcpyF->dump();
+                llvm::errs() << *memcpyF << "\n";
 
                 auto mem = cast<CallInst>(v.CreateCall(memcpyF, nargs));
                 // memset->addParamAttr(0, Attribute::getWithAlignment(Context,

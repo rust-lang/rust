@@ -26,6 +26,7 @@
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/Analysis/ValueTracking.h"
 #include "llvm/IR/Value.h"
+#include "llvm/Transforms/Utils/Cloning.h"
 
 #include "DifferentialUseAnalysis.h"
 #include "EnzymeLogic.h"
@@ -1999,7 +2000,8 @@ public:
         subdata = &CreateAugmentedPrimal(
             cast<Function>(called), subretType, argsInverted, gutils->TLI,
             TR.analysis, gutils->AA, /*return is used*/ false, nextTypeInfo,
-            uncacheable_args, false, /*AtomicAdd*/ true);
+            uncacheable_args, false, /*AtomicAdd*/ true, /*PostOpt*/false,
+            /*OpenMP*/true);
         if (Mode == DerivativeMode::Forward) {
           assert(augmentedReturn);
           auto subaugmentations =
@@ -2010,9 +2012,81 @@ public:
         }
 
         assert(subdata);
+        auto newcalled = subdata->fn;
+
+        if (subdata->returns.find(AugmentedStruct::Tape) != subdata->returns.end()) {
+          ValueToValueMapTy VMap;
+          newcalled = CloneFunction(newcalled, VMap);
+          auto tapeArg = newcalled->arg_end();
+          tapeArg--;
+          std::vector<std::pair<size_t, Value*>> geps;
+          AllocaInst* tmpalloca = nullptr;
+          for(auto aa : tapeArg->users()) {
+            auto oSI = cast<StoreInst>(aa);
+            SmallPtrSet<GetElementPtrInst*, 1> gepsToErase;
+            for(auto a : oSI->getPointerOperand()->users()) {
+              if (auto gep = dyn_cast<GetElementPtrInst>(a)) {
+                auto idx = gep->idx_begin();
+                idx++;
+                auto cidx = cast<ConstantInt>(idx->get());
+                assert(gep->getNumIndices() == 2);
+                SmallPtrSet<StoreInst*, 1> storesToErase;
+                for(auto st : gep->users()) {
+                  auto SI = cast<StoreInst>(st);
+                  Value* op = SI->getValueOperand();
+                  storesToErase.insert(SI);
+                  geps.emplace_back(cidx->getLimitedValue(), op);
+                }
+                for (auto SI : storesToErase)
+                  SI->eraseFromParent();
+                gepsToErase.insert(gep);
+              }
+            }
+            for (auto gep : gepsToErase)
+              gep->eraseFromParent();
+            oSI->eraseFromParent();
+            tmpalloca = cast<AllocaInst>(oSI->getPointerOperand());
+          }
+          IRBuilder <> ph(&*newcalled->getEntryBlock().begin());
+          tape = UndefValue::get(tapeArg->getType());
+          ValueToValueMapTy available;
+          auto subarg = newcalled->arg_begin();
+          subarg++;
+          subarg++;
+          for(size_t i=3; i<pre_args.size(); ++i) {
+            available[&*subarg] = pre_args[i];
+            subarg++;
+          }
+          for(auto pair : geps) {
+            Value* op = pair.second;
+            Value* alloc = op;
+            Value* replacement = gutils->unwrapM(op, BuilderZ, available, UnwrapMode::LegalFullUnwrap);
+            tape = BuilderZ.CreateInsertValue(tape, replacement, pair.first);
+            if (auto ci = dyn_cast<CastInst>(alloc)) {
+              alloc = ci->getOperand(0);
+            }
+            if (auto ci = dyn_cast<CallInst>(alloc)) {
+              if (auto F = ci->getCalledFunction()) {
+                // TODO free
+                if (F->getName() == "malloc") {
+                  op->replaceAllUsesWith(ph.CreateExtractValue(tapeArg, pair.first));
+                  cast<Instruction>(op)->eraseFromParent();
+                  if (op != alloc) ci->eraseFromParent();
+                  continue;
+                }
+              }
+            }
+            op->replaceAllUsesWith(ph.CreateExtractValue(tapeArg, pair.first));
+            cast<Instruction>(op)->eraseFromParent();
+          }
+          tmpalloca->eraseFromParent();
+          pre_args.push_back(tape);
+          gutils->cacheForReverse(BuilderZ, tape,
+                                         getIndex(&call, CacheType::Tape));
+        }
+
         auto numargs = ConstantInt::get(Type::getInt32Ty(call.getContext()),
                                         pre_args.size() - 3);
-        auto newcalled = subdata->fn;
         pre_args[0] = gutils->getNewFromOriginal(call.getArgOperand(0));
         pre_args[1] = numargs;
         pre_args[2] = BuilderZ.CreatePointerCast(
@@ -2022,22 +2096,7 @@ public:
         augmentcall->setCallingConv(call.getCallingConv());
         augmentcall->setDebugLoc(
             gutils->getNewFromOriginal(call.getDebugLoc()));
-        if (tapeIdx.hasValue()) {
-          tape = (tapeIdx.getValue() == -1)
-                     ? augmentcall
-                     : BuilderZ.CreateExtractValue(
-                           augmentcall, {(unsigned)tapeIdx.getValue()},
-                           "subcache");
-          if (tape->getType()->isEmptyTy()) {
-            auto tt = tape->getType();
-            gutils->erase(cast<Instruction>(tape));
-            tape = UndefValue::get(tt);
-          }
-          tape = gutils->cacheForReverse(BuilderZ, tape,
-                                         getIndex(&call, CacheType::Tape));
-        }
         gutils->getNewFromOriginal(&call)->eraseFromParent();
-
       } else {
         assert(0 && "unhandled unknown outline");
       }
@@ -2058,11 +2117,6 @@ public:
     found = subdata->returns.find(AugmentedStruct::Return);
     assert(found == subdata->returns.end());
 
-    found = subdata->returns.find(AugmentedStruct::Tape);
-    if (found != subdata->returns.end()) {
-      assert(0 && "openmp tape is unhandled");
-      tapeIdx = found->second;
-    }
 
     if (Mode == DerivativeMode::Reverse || Mode == DerivativeMode::Both) {
       IRBuilder<> Builder2(call.getParent());
@@ -2070,12 +2124,20 @@ public:
 
       Value *newcalled = nullptr;
       if (called) {
+        if(subdata->returns.find(AugmentedStruct::Tape) != subdata->returns.end()) {
+          if (Mode == DerivativeMode::Reverse) {
+            tape = gutils->cacheForReverse(Builder2, tape,
+                                         getIndex(&call, CacheType::Tape));
+          }
+          args.push_back(tape);
+        }
+
         newcalled = CreatePrimalAndGradient(
             cast<Function>(called), subretType, argsInverted, gutils->TLI,
             TR.analysis, gutils->AA, /*returnValue*/ false,
             /*subdretptr*/ false, /*topLevel*/ false,
             tape ? tape->getType() : nullptr, nextTypeInfo, uncacheable_args,
-            subdata, /*AtomicAdd*/ true);
+            subdata, /*AtomicAdd*/ true, /*postopt*/false, /*omp*/true);
         if (!newcalled)
           return;
 
@@ -2086,6 +2148,7 @@ public:
         args[1] = numargs;
         args[2] = Builder2.CreatePointerCast(
             newcalled, kmpc->getFunctionType()->getParamType(2));
+
         CallInst *diffes =
             Builder2.CreateCall(kmpc->getFunctionType(), kmpc, args);
         diffes->setCallingConv(call.getCallingConv());
@@ -2638,7 +2701,7 @@ public:
           subdata = &CreateAugmentedPrimal(
               cast<Function>(called), subretType, argsInverted, gutils->TLI,
               TR.analysis, gutils->AA, /*return is used*/ subretused,
-              nextTypeInfo, uncacheable_args, false, gutils->AtomicAdd);
+              nextTypeInfo, uncacheable_args, false, gutils->AtomicAdd, /*PostOpt*/false);
           if (Mode == DerivativeMode::Forward) {
             assert(augmentedReturn);
             auto subaugmentations =

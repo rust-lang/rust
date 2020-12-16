@@ -582,6 +582,7 @@ AllocaInst *CacheUtility::createCacheForScope(LimitContext ctx, Type *T,
         newFunc->getParent()->getDataLayout().getTypeAllocSizeInBits(myType) /
             8);
 
+    //if (i != sublimits.size() -1 || !ompOffset)
     // Allocate and store the required memory
     if (allocateInternal) {
 
@@ -713,6 +714,7 @@ AllocaInst *CacheUtility::createCacheForScope(LimitContext ctx, Type *T,
     }
 
     // Free the memory, if requested
+    if (i != sublimits.size() -1 || !ompOffset)
     if (shouldFree) {
       if (CachePointerInvariantGroups.find(std::make_pair((Value *)alloc, i)) ==
           CachePointerInvariantGroups.end()) {
@@ -731,7 +733,8 @@ AllocaInst *CacheUtility::createCacheForScope(LimitContext ctx, Type *T,
       IRBuilder<> v(&sublimits[i - 1].second.back().first.preheader->back());
 
       Value *idx =
-          computeIndexOfChunk(/*inForwardPass*/ true, v, containedloops);
+          computeIndexOfChunk(/*inForwardPass*/ true, v, containedloops,
+          (i == sublimits.size() -1) ? ompOffset : nullptr);
 
       storeInto = v.CreateGEP(v.CreateLoad(storeInto), idx);
       cast<GetElementPtrInst>(storeInto)->setIsInBounds(true);
@@ -742,7 +745,8 @@ AllocaInst *CacheUtility::createCacheForScope(LimitContext ctx, Type *T,
 
 Value *CacheUtility::computeIndexOfChunk(
     bool inForwardPass, IRBuilder<> &v,
-    const std::vector<std::pair<LoopContext, llvm::Value *>> &containedloops) {
+    const std::vector<std::pair<LoopContext, llvm::Value *>> &containedloops,
+    Value* outerOffset) {
   // List of loop indices in chunk from innermost to outermost
   SmallVector<Value *, 3> indices;
   // List of cumulative indices in chunk from innermost to outermost
@@ -754,7 +758,9 @@ Value *CacheUtility::computeIndexOfChunk(
   ValueToValueMapTy available;
 
   // Iterate from innermost loop to outermost loop within a chunk
-  for (const auto &pair : containedloops) {
+  for (size_t i=0; i<containedloops.size(); ++i) {
+    const auto &pair = containedloops[i];
+
     const auto &idx = pair.first;
     Value *var = idx.var;
 
@@ -768,6 +774,11 @@ Value *CacheUtility::computeIndexOfChunk(
     } else {
       var = idx.var;
       available[idx.var] = var;
+    }
+    if (i == containedloops.size() -1 && outerOffset) {
+      var = v.CreateAdd(var,
+                        lookupM(outerOffset, v),
+                        "", /*NUW*/ true, /*NSW*/ true);
     }
 
     indices.push_back(var);
@@ -839,6 +850,9 @@ CacheUtility::SubLimitType CacheUtility::getSubLimits(LimitContext ctx) {
     }
     contexts.emplace_back(idx);
     blk = idx.preheader;
+  }
+  if (ompTrueLimit && contexts.size()) {
+    contexts.back().limit = ompTrueLimit;
   }
 
   // Legal preheaders for loop i (indexed from inner => outer)
@@ -1164,7 +1178,8 @@ Value *CacheUtility::getCachePointer(bool inForwardPass, IRBuilder<> &BuilderM,
     const auto &containedloops = sublimits[i].second;
 
     if (containedloops.size() > 0) {
-      Value *idx = computeIndexOfChunk(inForwardPass, BuilderM, containedloops);
+      Value *idx = computeIndexOfChunk(inForwardPass, BuilderM, containedloops,
+                                       (i == sublimits.size() -1) ? ompOffset : nullptr);
       if (EfficientBoolCache && isi1 && i == 0)
         idx = BuilderM.CreateLShr(
             idx, ConstantInt::get(Type::getInt64Ty(newFunc->getContext()), 3));
