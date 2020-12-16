@@ -2553,6 +2553,7 @@ impl Step for RustDev {
         install_bin("llvm-profdata");
         install_bin("llvm-bcanalyzer");
         install_bin("llvm-cov");
+        install_bin("llvm-dwp");
         builder.install(&builder.llvm_filecheck(target), &dst_bindir, 0o755);
 
         // Copy the include directory as well; needed mostly to build
