@@ -30,8 +30,8 @@ pub(super) fn opt_generic_arg_list(p: &mut Parser, colon_colon_required: bool) {
 fn generic_arg(p: &mut Parser) {
     let m = p.start();
     match p.current() {
-        LIFETIME => {
-            p.bump(LIFETIME);
+        LIFETIME_IDENT => {
+            lifetime(p);
             m.complete(p, LIFETIME_ARG);
         }
         // test associated_type_bounds

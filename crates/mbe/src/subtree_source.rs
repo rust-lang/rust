@@ -84,7 +84,11 @@ impl<'a> SubtreeTokenSource<'a> {
                 }
 
                 if let Some((curr, text)) = is_lifetime(cursor) {
-                    cached.push(Some(TtToken { kind: LIFETIME, is_joint_to_next: false, text }));
+                    cached.push(Some(TtToken {
+                        kind: LIFETIME_IDENT,
+                        is_joint_to_next: false,
+                        text,
+                    }));
                     self.cached_cursor.set(curr);
                     continue;
                 }
@@ -172,7 +176,7 @@ fn convert_ident(ident: &tt::Ident) -> TtToken {
     let kind = match ident.text.as_ref() {
         "true" => T![true],
         "false" => T![false],
-        i if i.starts_with('\'') => LIFETIME,
+        i if i.starts_with('\'') => LIFETIME_IDENT,
         _ => SyntaxKind::from_keyword(ident.text.as_str()).unwrap_or(IDENT),
     };
 

@@ -80,7 +80,8 @@ SOURCE_FILE@0..290
     GENERIC_PARAM_LIST@80..84
       L_ANGLE@80..81 "<"
       LIFETIME_PARAM@81..83
-        LIFETIME@81..83 "\'a"
+        LIFETIME@81..83
+          LIFETIME_IDENT@81..83 "\'a"
       R_ANGLE@83..84 ">"
     SEMICOLON@84..85 ";"
   WHITESPACE@85..86 "\n"
@@ -92,7 +93,8 @@ SOURCE_FILE@0..290
     GENERIC_PARAM_LIST@95..100
       L_ANGLE@95..96 "<"
       LIFETIME_PARAM@96..99
-        LIFETIME@96..98 "\'a"
+        LIFETIME@96..98
+          LIFETIME_IDENT@96..98 "\'a"
         COLON@98..99 ":"
       R_ANGLE@99..100 ">"
     SEMICOLON@100..101 ";"
@@ -105,10 +107,12 @@ SOURCE_FILE@0..290
     GENERIC_PARAM_LIST@111..119
       L_ANGLE@111..112 "<"
       LIFETIME_PARAM@112..118
-        LIFETIME@112..114 "\'a"
+        LIFETIME@112..114
+          LIFETIME_IDENT@112..114 "\'a"
         COLON@114..115 ":"
         WHITESPACE@115..116 " "
-        LIFETIME@116..118 "\'b"
+        LIFETIME@116..118
+          LIFETIME_IDENT@116..118 "\'b"
       R_ANGLE@118..119 ">"
     SEMICOLON@119..120 ";"
   WHITESPACE@120..121 "\n"
@@ -120,10 +124,12 @@ SOURCE_FILE@0..290
     GENERIC_PARAM_LIST@130..141
       L_ANGLE@130..131 "<"
       LIFETIME_PARAM@131..139
-        LIFETIME@131..133 "\'a"
+        LIFETIME@131..133
+          LIFETIME_IDENT@131..133 "\'a"
         COLON@133..134 ":"
         WHITESPACE@134..135 " "
-        LIFETIME@135..137 "\'b"
+        LIFETIME@135..137
+          LIFETIME_IDENT@135..137 "\'b"
         WHITESPACE@137..138 " "
         PLUS@138..139 "+"
       WHITESPACE@139..140 " "
@@ -138,14 +144,17 @@ SOURCE_FILE@0..290
     GENERIC_PARAM_LIST@152..165
       L_ANGLE@152..153 "<"
       LIFETIME_PARAM@153..164
-        LIFETIME@153..155 "\'a"
+        LIFETIME@153..155
+          LIFETIME_IDENT@153..155 "\'a"
         COLON@155..156 ":"
         WHITESPACE@156..157 " "
-        LIFETIME@157..159 "\'b"
+        LIFETIME@157..159
+          LIFETIME_IDENT@157..159 "\'b"
         WHITESPACE@159..160 " "
         PLUS@160..161 "+"
         WHITESPACE@161..162 " "
-        LIFETIME@162..164 "\'c"
+        LIFETIME@162..164
+          LIFETIME_IDENT@162..164 "\'c"
       R_ANGLE@164..165 ">"
     SEMICOLON@165..166 ";"
   WHITESPACE@166..167 "\n"
@@ -157,7 +166,8 @@ SOURCE_FILE@0..290
     GENERIC_PARAM_LIST@177..182
       L_ANGLE@177..178 "<"
       LIFETIME_PARAM@178..180
-        LIFETIME@178..180 "\'a"
+        LIFETIME@178..180
+          LIFETIME_IDENT@178..180 "\'a"
       COMMA@180..181 ","
       R_ANGLE@181..182 ">"
     SEMICOLON@182..183 ";"
@@ -170,11 +180,13 @@ SOURCE_FILE@0..290
     GENERIC_PARAM_LIST@194..202
       L_ANGLE@194..195 "<"
       LIFETIME_PARAM@195..197
-        LIFETIME@195..197 "\'a"
+        LIFETIME@195..197
+          LIFETIME_IDENT@195..197 "\'a"
       COMMA@197..198 ","
       WHITESPACE@198..199 " "
       LIFETIME_PARAM@199..201
-        LIFETIME@199..201 "\'b"
+        LIFETIME@199..201
+          LIFETIME_IDENT@199..201 "\'b"
       R_ANGLE@201..202 ">"
     SEMICOLON@202..203 ";"
   WHITESPACE@203..204 "\n"
@@ -186,18 +198,22 @@ SOURCE_FILE@0..290
     GENERIC_PARAM_LIST@214..232
       L_ANGLE@214..215 "<"
       LIFETIME_PARAM@215..222
-        LIFETIME@215..217 "\'a"
+        LIFETIME@215..217
+          LIFETIME_IDENT@215..217 "\'a"
         COLON@217..218 ":"
         WHITESPACE@218..219 " "
-        LIFETIME@219..221 "\'b"
+        LIFETIME@219..221
+          LIFETIME_IDENT@219..221 "\'b"
         PLUS@221..222 "+"
       COMMA@222..223 ","
       WHITESPACE@223..224 " "
       LIFETIME_PARAM@224..230
-        LIFETIME@224..226 "\'b"
+        LIFETIME@224..226
+          LIFETIME_IDENT@224..226 "\'b"
         COLON@226..227 ":"
         WHITESPACE@227..228 " "
-        LIFETIME@228..230 "\'c"
+        LIFETIME@228..230
+          LIFETIME_IDENT@228..230 "\'c"
       COMMA@230..231 ","
       R_ANGLE@231..232 ">"
     SEMICOLON@232..233 ";"
@@ -241,7 +257,8 @@ SOURCE_FILE@0..290
     GENERIC_PARAM_LIST@278..288
       L_ANGLE@278..279 "<"
       LIFETIME_PARAM@279..281
-        LIFETIME@279..281 "\'a"
+        LIFETIME@279..281
+          LIFETIME_IDENT@279..281 "\'a"
       COMMA@281..282 ","
       WHITESPACE@282..283 " "
       TYPE_PARAM@283..284

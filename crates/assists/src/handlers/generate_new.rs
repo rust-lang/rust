@@ -99,7 +99,7 @@ fn generate_impl_text(strukt: &ast::Struct, code: &str) -> String {
     if let Some(type_params) = type_params {
         let lifetime_params = type_params
             .lifetime_params()
-            .filter_map(|it| it.lifetime_token())
+            .filter_map(|it| it.lifetime())
             .map(|it| it.text().clone());
         let type_params =
             type_params.type_params().filter_map(|it| it.name()).map(|it| it.text().clone());

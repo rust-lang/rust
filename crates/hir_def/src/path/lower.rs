@@ -169,8 +169,8 @@ pub(super) fn lower_generic_args(
                 }
             }
             ast::GenericArg::LifetimeArg(lifetime_arg) => {
-                if let Some(lifetime) = lifetime_arg.lifetime_token() {
-                    let lifetime_ref = LifetimeRef::from_token(lifetime);
+                if let Some(lifetime) = lifetime_arg.lifetime() {
+                    let lifetime_ref = LifetimeRef::new(&lifetime);
                     args.push(GenericArg::Lifetime(lifetime_ref))
                 }
             }

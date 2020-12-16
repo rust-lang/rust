@@ -14,7 +14,8 @@ SOURCE_FILE@0..30
       EXPR_STMT@16..22
         ERROR@16..22
           LABEL@16..22
-            LIFETIME@16..21 "\'loop"
+            LIFETIME@16..21
+              LIFETIME_IDENT@16..21 "\'loop"
             COLON@21..22 ":"
       WHITESPACE@22..23 " "
       IMPL@23..27

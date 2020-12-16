@@ -7,14 +7,16 @@ SOURCE_FILE@0..187
     GENERIC_PARAM_LIST@8..12
       L_ANGLE@8..9 "<"
       LIFETIME_PARAM@9..11
-        LIFETIME@9..11 "\'a"
+        LIFETIME@9..11
+          LIFETIME_IDENT@9..11 "\'a"
       R_ANGLE@11..12 ">"
     WHITESPACE@12..13 " "
     EQ@13..14 "="
     WHITESPACE@14..15 " "
     REF_TYPE@15..34
       AMP@15..16 "&"
-      LIFETIME@16..18 "\'a"
+      LIFETIME@16..18
+        LIFETIME_IDENT@16..18 "\'a"
       WHITESPACE@18..19 " "
       DYN_TRAIT_TYPE@19..34
         DYN_KW@19..22 "dyn"
@@ -101,7 +103,8 @@ SOURCE_FILE@0..187
             PLUS@99..100 "+"
             WHITESPACE@100..101 " "
             TYPE_BOUND@101..108
-              LIFETIME@101..108 "\'static"
+              LIFETIME@101..108
+                LIFETIME_IDENT@101..108 "\'static"
     SEMICOLON@108..109 ";"
   WHITESPACE@109..110 "\n"
   FN@110..186

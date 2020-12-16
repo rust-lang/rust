@@ -1373,14 +1373,14 @@ SOURCE_FILE@0..3813
                         WHITESPACE@2376..2377 " "
                         IDENT@2377..2379 "u8"
                         L_ANGLE@2379..2380 "<"
-                        LIFETIME@2380..2383 "\'u8"
+                        LIFETIME_IDENT@2380..2383 "\'u8"
                         COLON@2383..2384 ":"
                         WHITESPACE@2384..2385 " "
-                        LIFETIME@2385..2388 "\'u8"
+                        LIFETIME_IDENT@2385..2388 "\'u8"
                         WHITESPACE@2388..2389 " "
                         PLUS@2389..2390 "+"
                         WHITESPACE@2390..2391 " "
-                        LIFETIME@2391..2394 "\'u8"
+                        LIFETIME_IDENT@2391..2394 "\'u8"
                         R_ANGLE@2394..2395 ">"
                         TOKEN_TREE@2395..2408
                           L_PAREN@2395..2396 "("
@@ -1388,7 +1388,7 @@ SOURCE_FILE@0..3813
                           COLON@2398..2399 ":"
                           WHITESPACE@2399..2400 " "
                           AMP@2400..2401 "&"
-                          LIFETIME@2401..2404 "\'u8"
+                          LIFETIME_IDENT@2401..2404 "\'u8"
                           WHITESPACE@2404..2405 " "
                           IDENT@2405..2407 "u8"
                           R_PAREN@2407..2408 ")"
@@ -1397,7 +1397,7 @@ SOURCE_FILE@0..3813
                         R_ANGLE@2410..2411 ">"
                         WHITESPACE@2411..2412 " "
                         AMP@2412..2413 "&"
-                        LIFETIME@2413..2416 "\'u8"
+                        LIFETIME_IDENT@2413..2416 "\'u8"
                         WHITESPACE@2416..2417 " "
                         IDENT@2417..2419 "u8"
                         WHITESPACE@2419..2420 " "
@@ -1568,7 +1568,8 @@ SOURCE_FILE@0..3813
         GENERIC_PARAM_LIST@2862..2870
           L_ANGLE@2862..2863 "<"
           LIFETIME_PARAM@2863..2869
-            LIFETIME@2863..2869 "\'union"
+            LIFETIME@2863..2869
+              LIFETIME_IDENT@2863..2869 "\'union"
           R_ANGLE@2869..2870 ">"
         WHITESPACE@2870..2871 " "
         RECORD_FIELD_LIST@2871..2904
@@ -1581,7 +1582,8 @@ SOURCE_FILE@0..3813
             WHITESPACE@2879..2880 " "
             REF_TYPE@2880..2901
               AMP@2880..2881 "&"
-              LIFETIME@2881..2887 "\'union"
+              LIFETIME@2881..2887
+                LIFETIME_IDENT@2881..2887 "\'union"
               WHITESPACE@2887..2888 " "
               PATH_TYPE@2888..2901
                 PATH@2888..2901
@@ -1591,7 +1593,8 @@ SOURCE_FILE@0..3813
                     GENERIC_ARG_LIST@2893..2901
                       L_ANGLE@2893..2894 "<"
                       LIFETIME_ARG@2894..2900
-                        LIFETIME@2894..2900 "\'union"
+                        LIFETIME@2894..2900
+                          LIFETIME_IDENT@2894..2900 "\'union"
                       R_ANGLE@2900..2901 ">"
           COMMA@2901..2902 ","
           WHITESPACE@2902..2903 " "

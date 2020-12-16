@@ -37,9 +37,8 @@ impl Name {
         Name(Repr::TupleField(idx))
     }
 
-    pub fn new_lifetime(lt: &syntax::SyntaxToken) -> Name {
-        assert_eq!(lt.kind(), syntax::SyntaxKind::LIFETIME);
-        Name(Repr::Text(lt.text().clone()))
+    pub fn new_lifetime(lt: &ast::Lifetime) -> Name {
+        Self::new_text(lt.text().clone())
     }
 
     /// Shortcut to create inline plain text name

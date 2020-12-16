@@ -380,7 +380,7 @@ trait TokenConvertor {
                 IDENT => make_leaf!(Ident),
                 k if k.is_keyword() => make_leaf!(Ident),
                 k if k.is_literal() => make_leaf!(Literal),
-                LIFETIME => {
+                LIFETIME_IDENT => {
                     let char_unit = TextSize::of('\'');
                     let r = TextRange::at(range.start(), char_unit);
                     let apostrophe = tt::Leaf::from(tt::Punct {
@@ -620,7 +620,7 @@ impl<'a> TreeSink for TtTreeSink<'a> {
             self.cursor = self.cursor.bump_subtree();
             return;
         }
-        if kind == LIFETIME {
+        if kind == LIFETIME_IDENT {
             n_tokens = 2;
         }
 

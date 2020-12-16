@@ -300,12 +300,12 @@ impl Ctx {
                             ast::SelfParamKind::Owned => self_type,
                             ast::SelfParamKind::Ref => TypeRef::Reference(
                                 Box::new(self_type),
-                                self_param.lifetime_token().map(LifetimeRef::from_token),
+                                self_param.lifetime().as_ref().map(LifetimeRef::new),
                                 Mutability::Shared,
                             ),
                             ast::SelfParamKind::MutRef => TypeRef::Reference(
                                 Box::new(self_type),
-                                self_param.lifetime_token().map(LifetimeRef::from_token),
+                                self_param.lifetime().as_ref().map(LifetimeRef::new),
                                 Mutability::Mut,
                             ),
                         }

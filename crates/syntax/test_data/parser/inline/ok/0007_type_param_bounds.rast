@@ -13,7 +13,8 @@ SOURCE_FILE@0..35
         WHITESPACE@11..12 " "
         TYPE_BOUND_LIST@12..32
           TYPE_BOUND@12..14
-            LIFETIME@12..14 "\'a"
+            LIFETIME@12..14
+              LIFETIME_IDENT@12..14 "\'a"
           WHITESPACE@14..15 " "
           PLUS@15..16 "+"
           WHITESPACE@16..17 " "

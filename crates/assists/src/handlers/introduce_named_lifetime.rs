@@ -1,7 +1,7 @@
 use rustc_hash::FxHashSet;
 use syntax::{
     ast::{self, GenericParamsOwner, NameOwner},
-    AstNode, SyntaxKind, TextRange, TextSize,
+    AstNode, TextRange, TextSize,
 };
 
 use crate::{assist_context::AssistBuilder, AssistContext, AssistId, AssistKind, Assists};
@@ -35,13 +35,12 @@ static ASSIST_LABEL: &str = "Introduce named lifetime";
 // FIXME: How can we handle renaming any one of multiple anonymous lifetimes?
 // FIXME: should also add support for the case fun(f: &Foo) -> &<|>Foo
 pub(crate) fn introduce_named_lifetime(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
-    let lifetime_token = ctx
-        .find_token_syntax_at_offset(SyntaxKind::LIFETIME)
-        .filter(|lifetime| lifetime.text() == "'_")?;
-    if let Some(fn_def) = lifetime_token.ancestors().find_map(ast::Fn::cast) {
-        generate_fn_def_assist(acc, &fn_def, lifetime_token.text_range())
-    } else if let Some(impl_def) = lifetime_token.ancestors().find_map(ast::Impl::cast) {
-        generate_impl_def_assist(acc, &impl_def, lifetime_token.text_range())
+    let lifetime =
+        ctx.find_node_at_offset::<ast::Lifetime>().filter(|lifetime| lifetime.text() == "'_")?;
+    if let Some(fn_def) = lifetime.syntax().ancestors().find_map(ast::Fn::cast) {
+        generate_fn_def_assist(acc, &fn_def, lifetime.lifetime_ident_token()?.text_range())
+    } else if let Some(impl_def) = lifetime.syntax().ancestors().find_map(ast::Impl::cast) {
+        generate_impl_def_assist(acc, &impl_def, lifetime.lifetime_ident_token()?.text_range())
     } else {
         None
     }
@@ -58,7 +57,7 @@ fn generate_fn_def_assist(
     let end_of_fn_ident = fn_def.name()?.ident_token()?.text_range().end();
     let self_param =
         // use the self if it's a reference and has no explicit lifetime
-        param_list.self_param().filter(|p| p.lifetime_token().is_none() && p.amp_token().is_some());
+        param_list.self_param().filter(|p| p.lifetime().is_none() && p.amp_token().is_some());
     // compute the location which implicitly has the same lifetime as the anonymous lifetime
     let loc_needing_lifetime = if let Some(self_param) = self_param {
         // if we have a self reference, use that
@@ -68,9 +67,7 @@ fn generate_fn_def_assist(
         let fn_params_without_lifetime: Vec<_> = param_list
             .params()
             .filter_map(|param| match param.ty() {
-                Some(ast::Type::RefType(ascribed_type))
-                    if ascribed_type.lifetime_token() == None =>
-                {
+                Some(ast::Type::RefType(ascribed_type)) if ascribed_type.lifetime().is_none() => {
                     Some(ascribed_type.amp_token()?.text_range().end())
                 }
                 _ => None,

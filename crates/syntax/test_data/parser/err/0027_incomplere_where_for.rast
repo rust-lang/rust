@@ -16,7 +16,8 @@ SOURCE_FILE@0..30
         GENERIC_PARAM_LIST@22..26
           L_ANGLE@22..23 "<"
           LIFETIME_PARAM@23..25
-            LIFETIME@23..25 "\'a"
+            LIFETIME@23..25
+              LIFETIME_IDENT@23..25 "\'a"
           R_ANGLE@25..26 ">"
     WHITESPACE@26..27 "\n"
     BLOCK_EXPR@27..29

@@ -283,6 +283,13 @@ fn name_ref_or_index(p: &mut Parser) {
     m.complete(p, NAME_REF);
 }
 
+fn lifetime(p: &mut Parser) {
+    assert!(p.at(LIFETIME_IDENT));
+    let m = p.start();
+    p.bump(LIFETIME_IDENT);
+    m.complete(p, LIFETIME);
+}
+
 fn error_block(p: &mut Parser, message: &str) {
     assert!(p.at(T!['{']));
     let m = p.start();

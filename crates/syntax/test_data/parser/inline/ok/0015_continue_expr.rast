@@ -26,7 +26,8 @@ SOURCE_FILE@0..69
             CONTINUE_EXPR@48..59
               CONTINUE_KW@48..56 "continue"
               WHITESPACE@56..57 " "
-              LIFETIME@57..59 "\'l"
+              LIFETIME@57..59
+                LIFETIME_IDENT@57..59 "\'l"
             SEMICOLON@59..60 ";"
           WHITESPACE@60..65 "\n    "
           R_CURLY@65..66 "}"

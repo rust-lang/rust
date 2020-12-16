@@ -52,7 +52,8 @@ SOURCE_FILE@0..128
           L_PAREN@55..56 "("
           SELF_PARAM@56..64
             AMP@56..57 "&"
-            LIFETIME@57..59 "\'a"
+            LIFETIME@57..59
+              LIFETIME_IDENT@57..59 "\'a"
             WHITESPACE@59..60 " "
             SELF_KW@60..64 "self"
           COMMA@64..65 ","
@@ -71,7 +72,8 @@ SOURCE_FILE@0..128
           L_PAREN@78..79 "("
           SELF_PARAM@79..91
             AMP@79..80 "&"
-            LIFETIME@80..82 "\'a"
+            LIFETIME@80..82
+              LIFETIME_IDENT@80..82 "\'a"
             WHITESPACE@82..83 " "
             MUT_KW@83..86 "mut"
             WHITESPACE@86..87 " "

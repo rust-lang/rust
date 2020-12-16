@@ -311,7 +311,7 @@ where
     let pred = predicates.next().unwrap();
     let mut bounds = pred.type_bound_list().unwrap().bounds();
 
-    assert_eq!("'a", pred.lifetime_token().unwrap().text());
+    assert_eq!("'a", pred.lifetime().unwrap().lifetime_ident_token().unwrap().text());
 
     assert_bound("'b", bounds.next());
     assert_bound("'c", bounds.next());

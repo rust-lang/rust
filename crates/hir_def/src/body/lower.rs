@@ -233,8 +233,7 @@ impl ExprCollector<'_> {
                         let res = self.collect_block(block);
                         match &mut self.body.exprs[res] {
                             Expr::Block { label: block_label, .. } => {
-                                *block_label =
-                                    label.lifetime_token().map(|t| Name::new_lifetime(&t))
+                                *block_label = label.lifetime().map(|t| Name::new_lifetime(&t))
                             }
                             _ => unreachable!(),
                         }
@@ -254,10 +253,7 @@ impl ExprCollector<'_> {
                 self.alloc_expr(
                     Expr::Loop {
                         body,
-                        label: e
-                            .label()
-                            .and_then(|l| l.lifetime_token())
-                            .map(|l| Name::new_lifetime(&l)),
+                        label: e.label().and_then(|l| l.lifetime()).map(|l| Name::new_lifetime(&l)),
                     },
                     syntax_ptr,
                 )
@@ -288,7 +284,7 @@ impl ExprCollector<'_> {
                                     body: match_expr,
                                     label: e
                                         .label()
-                                        .and_then(|l| l.lifetime_token())
+                                        .and_then(|l| l.lifetime())
                                         .map(|l| Name::new_lifetime(&l)),
                                 },
                                 syntax_ptr,
@@ -301,10 +297,7 @@ impl ExprCollector<'_> {
                     Expr::While {
                         condition,
                         body,
-                        label: e
-                            .label()
-                            .and_then(|l| l.lifetime_token())
-                            .map(|l| Name::new_lifetime(&l)),
+                        label: e.label().and_then(|l| l.lifetime()).map(|l| Name::new_lifetime(&l)),
                     },
                     syntax_ptr,
                 )
@@ -318,10 +311,7 @@ impl ExprCollector<'_> {
                         iterable,
                         pat,
                         body,
-                        label: e
-                            .label()
-                            .and_then(|l| l.lifetime_token())
-                            .map(|l| Name::new_lifetime(&l)),
+                        label: e.label().and_then(|l| l.lifetime()).map(|l| Name::new_lifetime(&l)),
                     },
                     syntax_ptr,
                 )
@@ -380,13 +370,13 @@ impl ExprCollector<'_> {
                 self.alloc_expr(path, syntax_ptr)
             }
             ast::Expr::ContinueExpr(e) => self.alloc_expr(
-                Expr::Continue { label: e.lifetime_token().map(|l| Name::new_lifetime(&l)) },
+                Expr::Continue { label: e.lifetime().map(|l| Name::new_lifetime(&l)) },
                 syntax_ptr,
             ),
             ast::Expr::BreakExpr(e) => {
                 let expr = e.expr().map(|e| self.collect_expr(e));
                 self.alloc_expr(
-                    Expr::Break { expr, label: e.lifetime_token().map(|l| Name::new_lifetime(&l)) },
+                    Expr::Break { expr, label: e.lifetime().map(|l| Name::new_lifetime(&l)) },
                     syntax_ptr,
                 )
             }

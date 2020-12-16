@@ -26,7 +26,8 @@ SOURCE_FILE@0..102
             BREAK_EXPR@45..53
               BREAK_KW@45..50 "break"
               WHITESPACE@50..51 " "
-              LIFETIME@51..53 "\'l"
+              LIFETIME@51..53
+                LIFETIME_IDENT@51..53 "\'l"
             SEMICOLON@53..54 ";"
           WHITESPACE@54..63 "\n        "
           EXPR_STMT@63..72
@@ -41,7 +42,8 @@ SOURCE_FILE@0..102
             BREAK_EXPR@81..92
               BREAK_KW@81..86 "break"
               WHITESPACE@86..87 " "
-              LIFETIME@87..89 "\'l"
+              LIFETIME@87..89
+                LIFETIME_IDENT@87..89 "\'l"
               WHITESPACE@89..90 " "
               LITERAL@90..92
                 INT_NUMBER@90..92 "92"

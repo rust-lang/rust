@@ -237,7 +237,7 @@ fn pick_best(l: SyntaxToken, r: SyntaxToken) -> SyntaxToken {
     fn priority(n: &SyntaxToken) -> usize {
         match n.kind() {
             WHITESPACE => 0,
-            IDENT | T![self] | T![super] | T![crate] | LIFETIME => 2,
+            IDENT | T![self] | T![super] | T![crate] | LIFETIME_IDENT => 2,
             _ => 1,
         }
     }

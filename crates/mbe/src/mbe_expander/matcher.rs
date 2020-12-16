@@ -295,7 +295,7 @@ impl<'a> TtIter<'a> {
 
         impl<'a> TreeSink for OffsetTokenSink<'a> {
             fn token(&mut self, kind: SyntaxKind, mut n_tokens: u8) {
-                if kind == SyntaxKind::LIFETIME {
+                if kind == SyntaxKind::LIFETIME_IDENT {
                     n_tokens = 2;
                 }
                 for _ in 0..n_tokens {

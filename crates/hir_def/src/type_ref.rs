@@ -1,7 +1,7 @@
 //! HIR for references to types. Paths in these are not yet resolved. They can
 //! be directly created from an ast::TypeRef, without further queries.
 use hir_expand::name::Name;
-use syntax::{ast, SyntaxToken};
+use syntax::ast;
 
 use crate::{body::LowerCtx, path::Path};
 
@@ -80,8 +80,8 @@ impl LifetimeRef {
         LifetimeRef { name }
     }
 
-    pub(crate) fn from_token(token: SyntaxToken) -> Self {
-        LifetimeRef { name: Name::new_lifetime(&token) }
+    pub(crate) fn new(lifetime: &ast::Lifetime) -> Self {
+        LifetimeRef { name: Name::new_lifetime(lifetime) }
     }
 
     pub fn missing() -> LifetimeRef {
@@ -127,7 +127,7 @@ impl TypeRef {
             }
             ast::Type::RefType(inner) => {
                 let inner_ty = TypeRef::from_ast_opt(&ctx, inner.ty());
-                let lifetime = inner.lifetime_token().map(|t| LifetimeRef::from_token(t));
+                let lifetime = inner.lifetime().map(|lt| LifetimeRef::new(&lt));
                 let mutability = Mutability::from_mutable(inner.mut_token().is_some());
                 TypeRef::Reference(Box::new(inner_ty), lifetime, mutability)
             }
@@ -259,7 +259,7 @@ impl TypeBound {
             }
             ast::TypeBoundKind::ForType(_) => TypeBound::Error, // FIXME ForType
             ast::TypeBoundKind::Lifetime(lifetime) => {
-                TypeBound::Lifetime(LifetimeRef::from_token(lifetime))
+                TypeBound::Lifetime(LifetimeRef::new(&lifetime))
             }
         }
     }

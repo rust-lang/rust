@@ -167,7 +167,9 @@ fn ref_type(p: &mut Parser) {
     assert!(p.at(T![&]));
     let m = p.start();
     p.bump(T![&]);
-    p.eat(LIFETIME);
+    if p.at(LIFETIME_IDENT) {
+        lifetime(p);
+    }
     p.eat(T![mut]);
     type_no_bounds(p);
     m.complete(p, REF_TYPE);
