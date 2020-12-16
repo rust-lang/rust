@@ -450,7 +450,8 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
     bool AsmComments,
     bool EmitStackSizeSection,
     bool RelaxELFRelocations,
-    bool UseInitArray) {
+    bool UseInitArray,
+    const char *SplitDwarfFile) {
 
   auto OptLevel = fromRust(RustOptLevel);
   auto RM = fromRust(RustReloc);
@@ -476,6 +477,9 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
   Options.MCOptions.AsmVerbose = AsmComments;
   Options.MCOptions.PreserveAsmComments = AsmComments;
   Options.MCOptions.ABIName = ABIStr;
+  if (SplitDwarfFile) {
+      Options.MCOptions.SplitDwarfFile = SplitDwarfFile;
+  }
   Options.RelaxELFRelocations = RelaxELFRelocations;
   Options.UseInitArray = UseInitArray;
 
@@ -610,7 +614,7 @@ static TargetMachine::CodeGenFileType fromRust(LLVMRustFileType Type) {
 
 extern "C" LLVMRustResult
 LLVMRustWriteOutputFile(LLVMTargetMachineRef Target, LLVMPassManagerRef PMR,
-                        LLVMModuleRef M, const char *Path,
+                        LLVMModuleRef M, const char *Path, const char *DwoPath,
                         LLVMRustFileType RustFileType) {
   llvm::legacy::PassManager *PM = unwrap<llvm::legacy::PassManager>(PMR);
   auto FileType = fromRust(RustFileType);
@@ -626,8 +630,22 @@ LLVMRustWriteOutputFile(LLVMTargetMachineRef Target, LLVMPassManagerRef PMR,
   }
 
   buffer_ostream BOS(OS);
-  unwrap(Target)->addPassesToEmitFile(*PM, BOS, nullptr, FileType, false);
-  PM->run(*unwrap(M));
+  if (DwoPath) {
+    raw_fd_ostream DOS(DwoPath, EC, sys::fs::F_None);
+    EC.clear();
+    if (EC)
+        ErrorInfo = EC.message();
+    if (ErrorInfo != "") {
+      LLVMRustSetLastError(ErrorInfo.c_str());
+      return LLVMRustResult::Failure;
+    }
+    buffer_ostream DBOS(DOS);
+    unwrap(Target)->addPassesToEmitFile(*PM, BOS, &DBOS, FileType, false);
+    PM->run(*unwrap(M));
+  } else {
+    unwrap(Target)->addPassesToEmitFile(*PM, BOS, nullptr, FileType, false);
+    PM->run(*unwrap(M));
+  }
 
   // Apparently `addPassesToEmitFile` adds a pointer to our on-the-stack output
   // stream (OS), so the only real safe place to delete this is here? Don't we

@@ -19,7 +19,9 @@ use back::write::{create_informational_target_machine, create_target_machine};
 pub use llvm_util::target_features;
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_codegen_ssa::back::lto::{LtoModuleCodegen, SerializedModule, ThinModule};
-use rustc_codegen_ssa::back::write::{CodegenContext, FatLTOInput, ModuleConfig};
+use rustc_codegen_ssa::back::write::{
+    CodegenContext, FatLTOInput, ModuleConfig, TargetMachineFactoryConfig, TargetMachineFactoryFn,
+};
 use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::ModuleCodegen;
 use rustc_codegen_ssa::{CodegenResults, CompiledModule};
@@ -34,7 +36,6 @@ use rustc_span::symbol::Symbol;
 
 use std::any::Any;
 use std::ffi::CStr;
-use std::sync::Arc;
 
 mod back {
     pub mod archive;
@@ -109,7 +110,7 @@ impl ExtraBackendMethods for LlvmCodegenBackend {
         &self,
         sess: &Session,
         optlvl: OptLevel,
-    ) -> Arc<dyn Fn() -> Result<&'static mut llvm::TargetMachine, String> + Send + Sync> {
+    ) -> TargetMachineFactoryFn<Self> {
         back::write::target_machine_factory(sess, optlvl)
     }
     fn target_cpu<'b>(&self, sess: &'b Session) -> &'b str {
@@ -331,7 +332,7 @@ impl ModuleLlvm {
         unsafe {
             let llcx = llvm::LLVMRustContextCreate(tcx.sess.fewer_names());
             let llmod_raw = context::create_module(tcx, llcx, mod_name) as *const _;
-            ModuleLlvm { llmod_raw, llcx, tm: create_target_machine(tcx) }
+            ModuleLlvm { llmod_raw, llcx, tm: create_target_machine(tcx, mod_name) }
         }
     }
 
@@ -352,7 +353,13 @@ impl ModuleLlvm {
         unsafe {
             let llcx = llvm::LLVMRustContextCreate(cgcx.fewer_names);
             let llmod_raw = back::lto::parse_module(llcx, name, buffer, handler)?;
-            let tm = match (cgcx.tm_factory.0)() {
+
+            let split_dwarf_file = cgcx
+                .output_filenames
+                .split_dwarf_filename(cgcx.split_dwarf_kind, Some(name.to_str().unwrap()));
+            let tm_factory_config = TargetMachineFactoryConfig { split_dwarf_file };
+
+            let tm = match (cgcx.tm_factory)(tm_factory_config) {
                 Ok(m) => m,
                 Err(e) => {
                     handler.struct_err(&e).emit();

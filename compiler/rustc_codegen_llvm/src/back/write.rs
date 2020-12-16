@@ -11,7 +11,10 @@ use crate::llvm_util;
 use crate::type_::Type;
 use crate::LlvmCodegenBackend;
 use crate::ModuleLlvm;
-use rustc_codegen_ssa::back::write::{BitcodeSection, CodegenContext, EmitObj, ModuleConfig};
+use rustc_codegen_ssa::back::write::{
+    BitcodeSection, CodegenContext, EmitObj, ModuleConfig, TargetMachineFactoryConfig,
+    TargetMachineFactoryFn,
+};
 use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::{CompiledModule, ModuleCodegen};
 use rustc_data_structures::small_c_str::SmallCStr;
@@ -20,7 +23,9 @@ use rustc_fs_util::{link_or_copy, path_to_c_string};
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::bug;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::config::{self, Lto, OutputType, Passes, SanitizerSet, SwitchWithOptPath};
+use rustc_session::config::{
+    self, Lto, OutputType, Passes, SanitizerSet, SplitDwarfKind, SwitchWithOptPath,
+};
 use rustc_session::Session;
 use rustc_span::symbol::sym;
 use rustc_span::InnerSpan;
@@ -49,11 +54,31 @@ pub fn write_output_file(
     pm: &llvm::PassManager<'ll>,
     m: &'ll llvm::Module,
     output: &Path,
+    dwo_output: Option<&Path>,
     file_type: llvm::FileType,
 ) -> Result<(), FatalError> {
     unsafe {
         let output_c = path_to_c_string(output);
-        let result = llvm::LLVMRustWriteOutputFile(target, pm, m, output_c.as_ptr(), file_type);
+        let result = if let Some(dwo_output) = dwo_output {
+            let dwo_output_c = path_to_c_string(dwo_output);
+            llvm::LLVMRustWriteOutputFile(
+                target,
+                pm,
+                m,
+                output_c.as_ptr(),
+                dwo_output_c.as_ptr(),
+                file_type,
+            )
+        } else {
+            llvm::LLVMRustWriteOutputFile(
+                target,
+                pm,
+                m,
+                output_c.as_ptr(),
+                std::ptr::null(),
+                file_type,
+            )
+        };
         result.into_result().map_err(|()| {
             let msg = format!("could not write output to {}", output.display());
             llvm_err(handler, &msg)
@@ -62,12 +87,17 @@ pub fn write_output_file(
 }
 
 pub fn create_informational_target_machine(sess: &Session) -> &'static mut llvm::TargetMachine {
-    target_machine_factory(sess, config::OptLevel::No)()
+    let config = TargetMachineFactoryConfig { split_dwarf_file: None };
+    target_machine_factory(sess, config::OptLevel::No)(config)
         .unwrap_or_else(|err| llvm_err(sess.diagnostic(), &err).raise())
 }
 
-pub fn create_target_machine(tcx: TyCtxt<'_>) -> &'static mut llvm::TargetMachine {
-    target_machine_factory(&tcx.sess, tcx.backend_optimization_level(LOCAL_CRATE))()
+pub fn create_target_machine(tcx: TyCtxt<'_>, mod_name: &str) -> &'static mut llvm::TargetMachine {
+    let split_dwarf_file = tcx
+        .output_filenames(LOCAL_CRATE)
+        .split_dwarf_filename(tcx.sess.opts.debugging_opts.split_dwarf, Some(mod_name));
+    let config = TargetMachineFactoryConfig { split_dwarf_file };
+    target_machine_factory(&tcx.sess, tcx.backend_optimization_level(LOCAL_CRATE))(config)
         .unwrap_or_else(|err| llvm_err(tcx.sess.diagnostic(), &err).raise())
 }
 
@@ -122,7 +152,7 @@ fn to_llvm_code_model(code_model: Option<CodeModel>) -> llvm::CodeModel {
 pub fn target_machine_factory(
     sess: &Session,
     optlvl: config::OptLevel,
-) -> Arc<dyn Fn() -> Result<&'static mut llvm::TargetMachine, String> + Send + Sync> {
+) -> TargetMachineFactoryFn<LlvmCodegenBackend> {
     let reloc_model = to_llvm_relocation_model(sess.relocation_model());
 
     let (opt_level, _) = to_llvm_opt_settings(optlvl);
@@ -163,7 +193,10 @@ pub fn target_machine_factory(
     let use_init_array =
         !sess.opts.debugging_opts.use_ctors_section.unwrap_or(sess.target.use_ctors_section);
 
-    Arc::new(move || {
+    Arc::new(move |config: TargetMachineFactoryConfig| {
+        let split_dwarf_file = config.split_dwarf_file.unwrap_or_default();
+        let split_dwarf_file = CString::new(split_dwarf_file.to_str().unwrap()).unwrap();
+
         let tm = unsafe {
             llvm::LLVMRustCreateTargetMachine(
                 triple.as_ptr(),
@@ -182,6 +215,7 @@ pub fn target_machine_factory(
                 emit_stack_size_section,
                 relax_elf_relocations,
                 use_init_array,
+                split_dwarf_file.as_ptr(),
             )
         };
 
@@ -785,7 +819,15 @@ pub(crate) unsafe fn codegen(
                 llmod
             };
             with_codegen(tm, llmod, config.no_builtins, |cpm| {
-                write_output_file(diag_handler, tm, cpm, llmod, &path, llvm::FileType::AssemblyFile)
+                write_output_file(
+                    diag_handler,
+                    tm,
+                    cpm,
+                    llmod,
+                    &path,
+                    None,
+                    llvm::FileType::AssemblyFile,
+                )
             })?;
         }
 
@@ -794,6 +836,15 @@ pub(crate) unsafe fn codegen(
                 let _timer = cgcx
                     .prof
                     .generic_activity_with_arg("LLVM_module_codegen_emit_obj", &module.name[..]);
+
+                let dwo_out = cgcx.output_filenames.temp_path_dwo(module_name);
+                let dwo_out = match cgcx.split_dwarf_kind {
+                    // Don't change how DWARF is emitted in single mode (or when disabled).
+                    SplitDwarfKind::None | SplitDwarfKind::Single => None,
+                    // Emit (a subset of the) DWARF into a separate file in split mode.
+                    SplitDwarfKind::Split => Some(dwo_out.as_path()),
+                };
+
                 with_codegen(tm, llmod, config.no_builtins, |cpm| {
                     write_output_file(
                         diag_handler,
@@ -801,6 +852,7 @@ pub(crate) unsafe fn codegen(
                         cpm,
                         llmod,
                         &obj_out,
+                        dwo_out,
                         llvm::FileType::ObjectFile,
                     )
                 })?;
@@ -828,6 +880,7 @@ pub(crate) unsafe fn codegen(
 
     Ok(module.into_compiled_module(
         config.emit_obj != EmitObj::None,
+        cgcx.split_dwarf_kind == SplitDwarfKind::Split,
         config.emit_bc,
         &cgcx.output_filenames,
     ))

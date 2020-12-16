@@ -969,15 +969,25 @@ impl Step for Assemble {
 
         copy_codegen_backends_to_sysroot(builder, build_compiler, target_compiler);
 
+        // We prepend this bin directory to the user PATH when linking Rust binaries. To
+        // avoid shadowing the system LLD we rename the LLD we provide to `rust-lld`.
         let libdir = builder.sysroot_libdir(target_compiler, target_compiler.host);
+        let libdir_bin = libdir.parent().unwrap().join("bin");
+        t!(fs::create_dir_all(&libdir_bin));
+
         if let Some(lld_install) = lld_install {
             let src_exe = exe("lld", target_compiler.host);
             let dst_exe = exe("rust-lld", target_compiler.host);
-            // we prepend this bin directory to the user PATH when linking Rust binaries. To
-            // avoid shadowing the system LLD we rename the LLD we provide to `rust-lld`.
-            let dst = libdir.parent().unwrap().join("bin");
-            t!(fs::create_dir_all(&dst));
-            builder.copy(&lld_install.join("bin").join(&src_exe), &dst.join(&dst_exe));
+            builder.copy(&lld_install.join("bin").join(&src_exe), &libdir_bin.join(&dst_exe));
+        }
+
+        // Similarly, copy `llvm-dwp` into libdir for Split DWARF.
+        {
+            let src_exe = exe("llvm-dwp", target_compiler.host);
+            let dst_exe = exe("rust-llvm-dwp", target_compiler.host);
+            let llvm_config_bin = builder.ensure(native::Llvm { target: target_compiler.host });
+            let llvm_bin_dir = llvm_config_bin.parent().unwrap();
+            builder.copy(&llvm_bin_dir.join(&src_exe), &libdir_bin.join(&dst_exe));
         }
 
         // Ensure that `libLLVM.so` ends up in the newly build compiler directory,

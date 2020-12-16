@@ -6,7 +6,9 @@ use crate::llvm::{self, build_string, False, True};
 use crate::{LlvmCodegenBackend, ModuleLlvm};
 use rustc_codegen_ssa::back::lto::{LtoModuleCodegen, SerializedModule, ThinModule, ThinShared};
 use rustc_codegen_ssa::back::symbol_export;
-use rustc_codegen_ssa::back::write::{CodegenContext, FatLTOInput, ModuleConfig};
+use rustc_codegen_ssa::back::write::{
+    CodegenContext, FatLTOInput, ModuleConfig, TargetMachineFactoryConfig,
+};
 use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::{looks_like_rust_object_file, ModuleCodegen, ModuleKind};
 use rustc_data_structures::fx::FxHashMap;
@@ -728,7 +730,14 @@ pub unsafe fn optimize_thin_module(
     cgcx: &CodegenContext<LlvmCodegenBackend>,
 ) -> Result<ModuleCodegen<ModuleLlvm>, FatalError> {
     let diag_handler = cgcx.create_diag_handler();
-    let tm = (cgcx.tm_factory.0)().map_err(|e| write::llvm_err(&diag_handler, &e))?;
+
+    let module_name = &thin_module.shared.module_names[thin_module.idx];
+    let split_dwarf_file = cgcx
+        .output_filenames
+        .split_dwarf_filename(cgcx.split_dwarf_kind, Some(module_name.to_str().unwrap()));
+    let tm_factory_config = TargetMachineFactoryConfig { split_dwarf_file };
+    let tm =
+        (cgcx.tm_factory)(tm_factory_config).map_err(|e| write::llvm_err(&diag_handler, &e))?;
 
     // Right now the implementation we've got only works over serialized
     // modules, so we create a fresh new LLVM context and parse the module
@@ -736,12 +745,8 @@ pub unsafe fn optimize_thin_module(
     // crates but for locally codegened modules we may be able to reuse
     // that LLVM Context and Module.
     let llcx = llvm::LLVMRustContextCreate(cgcx.fewer_names);
-    let llmod_raw = parse_module(
-        llcx,
-        &thin_module.shared.module_names[thin_module.idx],
-        thin_module.data(),
-        &diag_handler,
-    )? as *const _;
+    let llmod_raw =
+        parse_module(llcx, &module_name, thin_module.data(), &diag_handler)? as *const _;
     let module = ModuleCodegen {
         module_llvm: ModuleLlvm { llmod_raw, llcx, tm },
         name: thin_module.name().to_string(),

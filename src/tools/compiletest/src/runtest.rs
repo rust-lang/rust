@@ -2017,6 +2017,12 @@ impl<'test> TestCx<'test> {
             Some(CompareMode::Chalk) => {
                 rustc.args(&["-Zchalk"]);
             }
+            Some(CompareMode::SplitDwarf) => {
+                rustc.args(&["-Zsplit-dwarf=split"]);
+            }
+            Some(CompareMode::SplitDwarfSingle) => {
+                rustc.args(&["-Zsplit-dwarf=single"]);
+            }
             None => {}
         }
 

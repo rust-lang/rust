@@ -221,6 +221,23 @@ pub enum DebugInfo {
     Full,
 }
 
+/// Some debuginfo requires link-time relocation and some does not. LLVM can partition the debuginfo
+/// into sections depending on whether or not it requires link-time relocation. Split DWARF
+/// provides a mechanism which allows the linker to skip the sections which don't require link-time
+/// relocation - either by putting those sections into DWARF object files, or keeping them in the
+/// object file in such a way that the linker will skip them.
+#[derive(Clone, Copy, Debug, PartialEq, Hash)]
+pub enum SplitDwarfKind {
+    /// Disabled.
+    None,
+    /// Sections which do not require relocation are written into the object file but ignored
+    /// by the linker.
+    Single,
+    /// Sections which do not require relocation are written into a DWARF object (`.dwo`) file,
+    /// which is skipped by the linker by virtue of being a different file.
+    Split,
+}
+
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
 #[derive(Encodable, Decodable)]
 pub enum OutputType {
@@ -533,6 +550,7 @@ impl_stable_hash_via_hash!(OutputFilenames);
 
 pub const RLINK_EXT: &str = "rlink";
 pub const RUST_CGU_EXT: &str = "rcgu";
+pub const DWARF_OBJECT_EXT: &str = "dwo";
 
 impl OutputFilenames {
     pub fn new(
@@ -566,7 +584,12 @@ impl OutputFilenames {
         self.temp_path_ext(extension, codegen_unit_name)
     }
 
-    /// Like temp_path, but also supports things where there is no corresponding
+    /// Like `temp_path`, but specifically for dwarf objects.
+    pub fn temp_path_dwo(&self, codegen_unit_name: Option<&str>) -> PathBuf {
+        self.temp_path_ext(DWARF_OBJECT_EXT, codegen_unit_name)
+    }
+
+    /// Like `temp_path`, but also supports things where there is no corresponding
     /// OutputType, like noopt-bitcode or lto-bitcode.
     pub fn temp_path_ext(&self, ext: &str, codegen_unit_name: Option<&str>) -> PathBuf {
         let mut extension = String::new();
@@ -592,6 +615,37 @@ impl OutputFilenames {
         let mut path = self.out_directory.join(&self.filestem);
         path.set_extension(extension);
         path
+    }
+
+    /// Returns the name of the Split DWARF file - this can differ depending on which Split DWARF
+    /// mode is being used, which is the logic that this function is intended to encapsulate.
+    pub fn split_dwarf_filename(
+        &self,
+        split_dwarf_kind: SplitDwarfKind,
+        cgu_name: Option<&str>,
+    ) -> Option<PathBuf> {
+        self.split_dwarf_path(split_dwarf_kind, cgu_name)
+            .map(|path| path.strip_prefix(&self.out_directory).unwrap_or(&path).to_path_buf())
+    }
+
+    /// Returns the path for the Split DWARF file - this can differ depending on which Split DWARF
+    /// mode is being used, which is the logic that this function is intended to encapsulate.
+    pub fn split_dwarf_path(
+        &self,
+        split_dwarf_kind: SplitDwarfKind,
+        cgu_name: Option<&str>,
+    ) -> Option<PathBuf> {
+        let obj_out = self.temp_path(OutputType::Object, cgu_name);
+        let dwo_out = self.temp_path_dwo(cgu_name);
+        match split_dwarf_kind {
+            SplitDwarfKind::None => None,
+            // Single mode doesn't change how DWARF is emitted, but does add Split DWARF attributes
+            // (pointing at the path which is being determined here). Use the path to the current
+            // object file.
+            SplitDwarfKind::Single => Some(obj_out),
+            // Split mode emits the DWARF into a different file, use that path.
+            SplitDwarfKind::Split => Some(dwo_out),
+        }
     }
 }
 
