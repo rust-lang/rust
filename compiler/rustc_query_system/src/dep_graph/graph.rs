@@ -136,9 +136,12 @@ impl<K: DepKind> DepGraph<K> {
 
     pub fn query(&self) -> DepGraphQuery<K> {
         // We call this before acquiring locks, since it also acquires them.
+        // The extra locking is not a big deal, as this gets called rarely.
         let edge_count = self.edge_count();
         let data = self.data.as_ref().unwrap();
         let previous = &data.previous;
+
+        // Note locking order: `prev_index_to_index`, then `data`.
         let prev_index_to_index = data.current.prev_index_to_index.lock();
         let data = data.current.data.lock();
         let node_count = data.hybrid_indices.len();
@@ -146,6 +149,9 @@ impl<K: DepKind> DepGraph<K> {
         let mut nodes = Vec::with_capacity(node_count);
         let mut edge_list_indices = Vec::with_capacity(node_count);
         let mut edge_list_data = Vec::with_capacity(edge_count);
+
+        // See `serialize` for notes on the approach used here.
+
         edge_list_data.extend(data.unshared_edges.iter().map(|i| i.index()));
 
         for &hybrid_index in data.hybrid_indices.iter() {
@@ -285,6 +291,8 @@ impl<K: DepKind> DepGraph<K> {
                             eprintln!("[task::green] {:?}", key);
                         }
 
+                        // This is a light green node: it existed in the previous compilation,
+                        // its query was re-executed, and it has the same result as before.
                         let dep_node_index =
                             data.current.intern_light_green_node(&data.previous, prev_index, edges);
 
@@ -294,6 +302,8 @@ impl<K: DepKind> DepGraph<K> {
                             eprintln!("[task::red] {:?}", key);
                         }
 
+                        // This is a red node: it existed in the previous compilation, its query
+                        // was re-executed, but it has a different result from before.
                         let dep_node_index = data.current.intern_red_node(
                             &data.previous,
                             prev_index,
@@ -308,6 +318,10 @@ impl<K: DepKind> DepGraph<K> {
                         eprintln!("[task::unknown] {:?}", key);
                     }
 
+                    // This is a red node, effectively: it existed in the previous compilation
+                    // session, its query was re-executed, but it doesn't compute a result hash
+                    // (i.e. it represents a `no_hash` query), so we have no way of determining
+                    // whether or not the result was the same as before.
                     let dep_node_index = data.current.intern_red_node(
                         &data.previous,
                         prev_index,
@@ -315,7 +329,6 @@ impl<K: DepKind> DepGraph<K> {
                         Fingerprint::ZERO,
                     );
 
-                    // Mark the node as Red if we can't hash the result
                     (DepNodeColor::Red, dep_node_index)
                 };
 
@@ -333,6 +346,7 @@ impl<K: DepKind> DepGraph<K> {
                     eprintln!("[task::new] {:?}", key);
                 }
 
+                // This is a new node: it didn't exist in the previous compilation session.
                 data.current.intern_new_node(
                     &data.previous,
                     key,
@@ -343,6 +357,10 @@ impl<K: DepKind> DepGraph<K> {
 
             (result, dep_node_index)
         } else {
+            // Incremental compilation is turned off. We just execute the task
+            // without tracking. We still provide a dep-node index that uniquely
+            // identifies the task so that we have a cheap way of referring to
+            // the query for self-profiling.
             (task(cx, arg), self.next_virtual_depnode_index())
         }
     }
@@ -568,9 +586,12 @@ impl<K: DepKind> DepGraph<K> {
         type SDNI = SerializedDepNodeIndex;
 
         // We call this before acquiring locks, since it also acquires them.
+        // The extra locking is not a big deal, as this only gets called once.
         let edge_count = self.edge_count();
         let data = self.data.as_ref().unwrap();
         let previous = &data.previous;
+
+        // Note locking order: `prev_index_to_index`, then `data`.
         let prev_index_to_index = data.current.prev_index_to_index.lock();
         let data = data.current.data.lock();
         let node_count = data.hybrid_indices.len();
@@ -579,6 +600,17 @@ impl<K: DepKind> DepGraph<K> {
         let mut fingerprints = IndexVec::with_capacity(node_count);
         let mut edge_list_indices = IndexVec::with_capacity(node_count);
         let mut edge_list_data = Vec::with_capacity(edge_count);
+
+        // `rustc_middle::ty::query::OnDiskCache` expects nodes to be in
+        // `DepNodeIndex` order. The edges in `edge_list_data`, on the other
+        // hand, don't need to be in a particular order, as long as each node
+        // can reference its edges as a contiguous range within it. This is why
+        // we're able to copy `unshared_edges` directly into `edge_list_data`.
+        // It meets the above requirements, and each non-dark-green node already
+        // knows the range of edges to reference within it, which they'll push
+        // onto `edge_list_indices`. Dark green nodes, however, don't have their
+        // edges in `unshared_edges`, so need to add them to `edge_list_data`.
+
         edge_list_data.extend(data.unshared_edges.iter().map(|i| SDNI::new(i.index())));
 
         for &hybrid_index in data.hybrid_indices.iter() {
