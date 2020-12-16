@@ -2002,6 +2002,15 @@ impl<'a> State<'a> {
                     self.print_expr(&e);
                     self.s.space();
                 }
+                hir::Guard::IfLet(pat, e) => {
+                    self.word_nbsp("if");
+                    self.word_nbsp("let");
+                    self.print_pat(&pat);
+                    self.s.space();
+                    self.word_space("=");
+                    self.print_expr(&e);
+                    self.s.space();
+                }
             }
         }
         self.word_space("=>");

@@ -344,6 +344,7 @@ crate struct Arm<'tcx> {
 #[derive(Clone, Debug)]
 crate enum Guard<'tcx> {
     If(ExprRef<'tcx>),
+    IfLet(Pat<'tcx>, ExprRef<'tcx>),
 }
 
 #[derive(Copy, Clone, Debug)]
