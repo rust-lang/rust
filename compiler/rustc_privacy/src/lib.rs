@@ -184,8 +184,8 @@ where
             ty::Dynamic(predicates, ..) => {
                 // All traits in the list are considered the "primary" part of the type
                 // and are visited by shallow visitors.
-                for predicate in predicates.skip_binder() {
-                    let trait_ref = match predicate {
+                for predicate in predicates {
+                    let trait_ref = match predicate.skip_binder() {
                         ty::ExistentialPredicate::Trait(trait_ref) => trait_ref,
                         ty::ExistentialPredicate::Projection(proj) => proj.trait_ref(tcx),
                         ty::ExistentialPredicate::AutoTrait(def_id) => {

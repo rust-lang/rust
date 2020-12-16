@@ -496,7 +496,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
             fn print_dyn_existential(
                 self,
-                _predicates: &'tcx ty::List<ty::ExistentialPredicate<'tcx>>,
+                _predicates: &'tcx ty::List<ty::Binder<ty::ExistentialPredicate<'tcx>>>,
             ) -> Result<Self::DynExistential, Self::Error> {
                 Err(NonTrivialPath)
             }
