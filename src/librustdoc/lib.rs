@@ -524,7 +524,7 @@ fn main_options(options: config::Options) -> MainResult {
 
     let default_passes = options.default_passes;
     let output_format = options.output_format;
-    // TODO: fix this clone (especially render_options)
+    // FIXME: fix this clone (especially render_options)
     let externs = options.externs.clone();
     let manual_passes = options.manual_passes.clone();
     let render_options = options.render_options.clone();
