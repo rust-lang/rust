@@ -333,7 +333,7 @@ impl<K: DepKind> DepGraph<K> {
                     eprintln!("[task::new] {:?}", key);
                 }
 
-                data.current.intern_node(
+                data.current.intern_new_node(
                     &data.previous,
                     key,
                     edges,
@@ -376,7 +376,7 @@ impl<K: DepKind> DepGraph<K> {
                 hash: data.current.anon_id_seed.combine(hasher.finish()).into(),
             };
 
-            let dep_node_index = data.current.intern_node(
+            let dep_node_index = data.current.intern_new_node(
                 &data.previous,
                 target_dep_node,
                 task_deps.reads,
@@ -1354,7 +1354,7 @@ impl<K: DepKind> CurrentDepGraph<K> {
         }
     }
 
-    fn intern_node(
+    fn intern_new_node(
         &self,
         prev_graph: &PreviousDepGraph<K>,
         dep_node: DepNode<K>,
