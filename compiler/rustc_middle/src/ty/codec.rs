@@ -69,7 +69,6 @@ impl OpaqueEncoder for rustc_serialize::opaque::Encoder {
 pub trait TyEncoder<'tcx>: Encoder {
     const CLEAR_CROSS_CRATE: bool;
 
-    fn tcx(&self) -> TyCtxt<'tcx>;
     fn position(&self) -> usize;
     fn type_shorthands(&mut self) -> &mut FxHashMap<Ty<'tcx>, usize>;
     fn predicate_shorthands(&mut self) -> &mut FxHashMap<ty::Predicate<'tcx>, usize>;

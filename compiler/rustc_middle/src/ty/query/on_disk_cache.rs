@@ -1044,9 +1044,6 @@ where
 {
     const CLEAR_CROSS_CRATE: bool = false;
 
-    fn tcx(&self) -> TyCtxt<'tcx> {
-        self.tcx
-    }
     fn position(&self) -> usize {
         self.encoder.encoder_position()
     }

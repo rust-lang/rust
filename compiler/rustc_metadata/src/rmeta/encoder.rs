@@ -319,10 +319,6 @@ impl<'a, 'tcx> TyEncoder<'tcx> for EncodeContext<'a, 'tcx> {
         self.opaque.position()
     }
 
-    fn tcx(&self) -> TyCtxt<'tcx> {
-        self.tcx
-    }
-
     fn type_shorthands(&mut self) -> &mut FxHashMap<Ty<'tcx>, usize> {
         &mut self.type_shorthands
     }
