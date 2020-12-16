@@ -90,6 +90,8 @@ assert_eq!(n.count_ones(), 3);", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
             #[rustc_const_stable(feature = "const_math", since = "1.32.0")]
+            #[doc(alias = "popcount")]
+            #[doc(alias = "popcnt")]
             #[inline]
             pub const fn count_ones(self) -> u32 {
                 intrinsics::ctpop(self as $ActualT) as u32
