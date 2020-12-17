@@ -61,12 +61,11 @@ crate fn eval_nullary_intrinsic<'tcx>(
             ConstValue::Slice { data: alloc, start: 0, end: alloc.len() }
         }
         sym::needs_drop => ConstValue::from_bool(tp_ty.needs_drop(tcx, param_env)),
-        sym::size_of | sym::min_align_of | sym::pref_align_of => {
+        sym::min_align_of | sym::pref_align_of => {
             let layout = tcx.layout_of(param_env.and(tp_ty)).map_err(|e| err_inval!(Layout(e)))?;
             let n = match name {
                 sym::pref_align_of => layout.align.pref.bytes(),
                 sym::min_align_of => layout.align.abi.bytes(),
-                sym::size_of => layout.size.bytes(),
                 _ => bug!(),
             };
             ConstValue::from_machine_usize(n, &tcx)
@@ -125,7 +124,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let (dest, ret) = match ret {
             None => match intrinsic_name {
                 sym::transmute => throw_ub_format!("transmuting to uninhabited type"),
-                sym::unreachable => throw_ub!(Unreachable),
                 sym::abort => M::abort(self, "the program aborted execution".to_owned())?,
                 // Unsupported diverging intrinsic.
                 _ => return Ok(false),
@@ -160,13 +158,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             sym::min_align_of
             | sym::pref_align_of
             | sym::needs_drop
-            | sym::size_of
             | sym::type_id
             | sym::type_name
             | sym::variant_count => {
                 let gid = GlobalId { instance, promoted: None };
                 let ty = match intrinsic_name {
-                    sym::min_align_of | sym::pref_align_of | sym::size_of | sym::variant_count => {
+                    sym::min_align_of | sym::pref_align_of | sym::variant_count => {
                         self.tcx.types.usize
                     }
                     sym::needs_drop => self.tcx.types.bool,
@@ -212,28 +209,16 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let out_val = numeric_intrinsic(intrinsic_name, bits, kind)?;
                 self.write_scalar(out_val, dest)?;
             }
-            sym::wrapping_add
-            | sym::wrapping_sub
-            | sym::wrapping_mul
-            | sym::add_with_overflow
-            | sym::sub_with_overflow
-            | sym::mul_with_overflow => {
+            sym::add_with_overflow | sym::sub_with_overflow | sym::mul_with_overflow => {
                 let lhs = self.read_immediate(args[0])?;
                 let rhs = self.read_immediate(args[1])?;
-                let (bin_op, ignore_overflow) = match intrinsic_name {
-                    sym::wrapping_add => (BinOp::Add, true),
-                    sym::wrapping_sub => (BinOp::Sub, true),
-                    sym::wrapping_mul => (BinOp::Mul, true),
-                    sym::add_with_overflow => (BinOp::Add, false),
-                    sym::sub_with_overflow => (BinOp::Sub, false),
-                    sym::mul_with_overflow => (BinOp::Mul, false),
+                let bin_op = match intrinsic_name {
+                    sym::add_with_overflow => BinOp::Add,
+                    sym::sub_with_overflow => BinOp::Sub,
+                    sym::mul_with_overflow => BinOp::Mul,
                     _ => bug!("Already checked for int ops"),
                 };
-                if ignore_overflow {
-                    self.binop_ignore_overflow(bin_op, lhs, rhs, dest)?;
-                } else {
-                    self.binop_with_overflow(bin_op, lhs, rhs, dest)?;
-                }
+                self.binop_with_overflow(bin_op, lhs, rhs, dest)?;
             }
             sym::saturating_add | sym::saturating_sub => {
                 let l = self.read_immediate(args[0])?;
