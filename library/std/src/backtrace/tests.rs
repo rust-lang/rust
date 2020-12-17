@@ -68,5 +68,5 @@ fn test_empty_frames_iterator() {
 
     let iter = empty_backtrace.frames(); 
 
-    assert_eq!(iter.next(), None);
+    assert_eq!(None, iter.next());
 }
