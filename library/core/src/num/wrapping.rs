@@ -453,6 +453,8 @@ let n = Wrapping(0b01001100", stringify!($t), ");
 assert_eq!(n.count_ones(), 3);
 ```"),
                 #[inline]
+                #[doc(alias = "popcount")]
+                #[doc(alias = "popcnt")]
                 #[unstable(feature = "wrapping_int_impl", issue = "32463")]
                 pub const fn count_ones(self) -> u32 {
                     self.0.count_ones()

@@ -92,6 +92,8 @@ $EndFeature, "
 "),
             #[stable(feature = "rust1", since = "1.0.0")]
             #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
+            #[doc(alias = "popcount")]
+            #[doc(alias = "popcnt")]
             #[inline]
             pub const fn count_ones(self) -> u32 { (self as $UnsignedT).count_ones() }
         }
