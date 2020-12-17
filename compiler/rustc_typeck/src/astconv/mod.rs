@@ -837,9 +837,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     .instantiate_lang_item_trait_ref(
                         lang_item, span, hir_id, args, param_ty, bounds,
                     ),
-                hir::GenericBound::Outlives(ref l) => {
-                    bounds.region_bounds.push((self.ast_region_to_region(l, None), l.span))
-                }
+                hir::GenericBound::Outlives(ref l) => bounds
+                    .region_bounds
+                    .push((ty::Binder::bind(self.ast_region_to_region(l, None)), l.span)),
             }
         }
     }

@@ -764,12 +764,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .pending_obligations()
             .into_iter()
             .filter_map(move |obligation| {
-                match obligation.predicate.skip_binders() {
+                let bound_predicate = obligation.predicate.bound_atom();
+                match bound_predicate.skip_binder() {
                     ty::PredicateAtom::Projection(data) => {
-                        Some((ty::Binder::bind(data).to_poly_trait_ref(self.tcx), obligation))
+                        Some((bound_predicate.rebind(data).to_poly_trait_ref(self.tcx), obligation))
                     }
                     ty::PredicateAtom::Trait(data, _) => {
-                        Some((ty::Binder::bind(data).to_poly_trait_ref(), obligation))
+                        Some((bound_predicate.rebind(data).to_poly_trait_ref(), obligation))
                     }
                     ty::PredicateAtom::Subtype(..) => None,
                     ty::PredicateAtom::RegionOutlives(..) => None,

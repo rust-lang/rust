@@ -418,11 +418,11 @@ fn virtual_call_violation_for_method<'tcx>(
     }
 
     for (i, &input_ty) in sig.skip_binder().inputs()[1..].iter().enumerate() {
-        if contains_illegal_self_type_reference(tcx, trait_def_id, input_ty) {
+        if contains_illegal_self_type_reference(tcx, trait_def_id, sig.rebind(input_ty)) {
             return Some(MethodViolationCode::ReferencesSelfInput(i));
         }
     }
-    if contains_illegal_self_type_reference(tcx, trait_def_id, sig.output().skip_binder()) {
+    if contains_illegal_self_type_reference(tcx, trait_def_id, sig.output()) {
         return Some(MethodViolationCode::ReferencesSelfOutput);
     }
 

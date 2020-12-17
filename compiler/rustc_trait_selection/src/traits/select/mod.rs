@@ -1276,7 +1276,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         // FIXME(generic_associated_types): Compare the whole projections
         let data_poly_trait_ref = projection_ty.map_bound(|proj| proj.trait_ref(self.tcx()));
-        let obligation_poly_trait_ref = obligation_trait_ref.to_poly_trait_ref();
+        let obligation_poly_trait_ref = ty::Binder::dummy(*obligation_trait_ref);
         self.infcx
             .at(&obligation.cause, obligation.param_env)
             .sup(obligation_poly_trait_ref, data_poly_trait_ref)
@@ -1648,8 +1648,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// Bar<i32> where struct Bar<T> { x: T, y: u32 } -> [i32, u32]
     /// Zed<i32> where enum Zed { A(T), B(u32) } -> [i32, u32]
     /// ```
-    fn constituent_types_for_ty(&self, t: Ty<'tcx>) -> Vec<Ty<'tcx>> {
-        match *t.kind() {
+    fn constituent_types_for_ty(&self, t: ty::Binder<Ty<'tcx>>) -> ty::Binder<Vec<Ty<'tcx>>> {
+        match *t.skip_binder().kind() {
             ty::Uint(_)
             | ty::Int(_)
             | ty::Bool
@@ -1660,7 +1660,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Error(_)
             | ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
             | ty::Never
-            | ty::Char => Vec::new(),
+            | ty::Char => ty::Binder::dummy(Vec::new()),
 
             ty::Placeholder(..)
             | ty::Dynamic(..)
@@ -1673,44 +1673,44 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             ty::RawPtr(ty::TypeAndMut { ty: element_ty, .. }) | ty::Ref(_, element_ty, _) => {
-                vec![element_ty]
+                t.rebind(vec![element_ty])
             }
 
-            ty::Array(element_ty, _) | ty::Slice(element_ty) => vec![element_ty],
+            ty::Array(element_ty, _) | ty::Slice(element_ty) => t.rebind(vec![element_ty]),
 
             ty::Tuple(ref tys) => {
                 // (T1, ..., Tn) -- meets any bound that all of T1...Tn meet
-                tys.iter().map(|k| k.expect_ty()).collect()
+                t.rebind(tys.iter().map(|k| k.expect_ty()).collect())
             }
 
             ty::Closure(_, ref substs) => {
                 let ty = self.infcx.shallow_resolve(substs.as_closure().tupled_upvars_ty());
-                vec![ty]
+                t.rebind(vec![ty])
             }
 
             ty::Generator(_, ref substs, _) => {
                 let ty = self.infcx.shallow_resolve(substs.as_generator().tupled_upvars_ty());
                 let witness = substs.as_generator().witness();
-                vec![ty].into_iter().chain(iter::once(witness)).collect()
+                t.rebind(vec![ty].into_iter().chain(iter::once(witness)).collect())
             }
 
             ty::GeneratorWitness(types) => {
-                // This is sound because no regions in the witness can refer to
-                // the binder outside the witness. So we'll effectivly reuse
-                // the implicit binder around the witness.
-                types.skip_binder().to_vec()
+                debug_assert!(!types.has_escaping_bound_vars());
+                types.map_bound(|types| types.to_vec())
             }
 
             // For `PhantomData<T>`, we pass `T`.
-            ty::Adt(def, substs) if def.is_phantom_data() => substs.types().collect(),
+            ty::Adt(def, substs) if def.is_phantom_data() => t.rebind(substs.types().collect()),
 
-            ty::Adt(def, substs) => def.all_fields().map(|f| f.ty(self.tcx(), substs)).collect(),
+            ty::Adt(def, substs) => {
+                t.rebind(def.all_fields().map(|f| f.ty(self.tcx(), substs)).collect())
+            }
 
             ty::Opaque(def_id, substs) => {
                 // We can resolve the `impl Trait` to its concrete type,
                 // which enforces a DAG between the functions requiring
                 // the auto trait bounds in question.
-                vec![self.tcx().type_of(def_id).subst(self.tcx(), substs)]
+                t.rebind(vec![self.tcx().type_of(def_id).subst(self.tcx(), substs)])
             }
         }
     }
@@ -1738,10 +1738,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // 3. Re-bind the regions back to `for<'a> &'a i32 : Copy`
 
         types
+            .as_ref()
             .skip_binder() // binder moved -\
             .iter()
             .flat_map(|ty| {
-                let ty: ty::Binder<Ty<'tcx>> = ty::Binder::bind(ty); // <----/
+                let ty: ty::Binder<Ty<'tcx>> = types.rebind(ty); // <----/
 
                 self.infcx.commit_unconditionally(|_| {
                     let placeholder_ty = self.infcx.replace_bound_vars_with_placeholders(ty);

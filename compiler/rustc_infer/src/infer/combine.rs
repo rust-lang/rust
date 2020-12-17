@@ -551,7 +551,7 @@ impl TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
     where
         T: Relate<'tcx>,
     {
-        Ok(ty::Binder::bind(self.relate(a.skip_binder(), b.skip_binder())?))
+        Ok(a.rebind(self.relate(a.skip_binder(), b.skip_binder())?))
     }
 
     fn relate_item_substs(
@@ -833,7 +833,7 @@ impl TypeRelation<'tcx> for ConstInferUnifier<'_, 'tcx> {
     where
         T: Relate<'tcx>,
     {
-        Ok(ty::Binder::bind(self.relate(a.skip_binder(), b.skip_binder())?))
+        Ok(a.rebind(self.relate(a.skip_binder(), b.skip_binder())?))
     }
 
     fn tys(&mut self, t: Ty<'tcx>, _t: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {

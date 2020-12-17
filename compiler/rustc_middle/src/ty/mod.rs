@@ -1252,7 +1252,7 @@ impl<'tcx> Predicate<'tcx> {
         let pred = self.skip_binders();
         let new = pred.subst(tcx, substs);
         if new != pred {
-            trait_ref.rebind(new).potentially_quantified(tcx, PredicateKind::ForAll)
+            ty::Binder::bind(new).potentially_quantified(tcx, PredicateKind::ForAll)
         } else {
             self
         }
@@ -1281,6 +1281,10 @@ impl<'tcx> PolyTraitPredicate<'tcx> {
     pub fn def_id(self) -> DefId {
         // Ok to skip binder since trait `DefId` does not care about regions.
         self.skip_binder().def_id()
+    }
+
+    pub fn self_ty(self) -> ty::Binder<Ty<'tcx>> {
+        self.map_bound(|trait_ref| trait_ref.self_ty())
     }
 }
 
@@ -1435,9 +1439,10 @@ impl<'tcx> ToPredicate<'tcx> for PolyProjectionPredicate<'tcx> {
 
 impl<'tcx> Predicate<'tcx> {
     pub fn to_opt_poly_trait_ref(self) -> Option<ConstnessAnd<PolyTraitRef<'tcx>>> {
-        match self.skip_binders() {
+        let predicate = self.bound_atom();
+        match predicate.skip_binder() {
             PredicateAtom::Trait(t, constness) => {
-                Some(ConstnessAnd { constness, value: ty::Binder::bind(t.trait_ref) })
+                Some(ConstnessAnd { constness, value: predicate.rebind(t.trait_ref) })
             }
             PredicateAtom::Projection(..)
             | PredicateAtom::Subtype(..)
@@ -1453,8 +1458,9 @@ impl<'tcx> Predicate<'tcx> {
     }
 
     pub fn to_opt_type_outlives(self) -> Option<PolyTypeOutlivesPredicate<'tcx>> {
-        match self.skip_binders() {
-            PredicateAtom::TypeOutlives(data) => Some(ty::Binder::bind(data)),
+        let predicate = self.bound_atom();
+        match predicate.skip_binder() {
+            PredicateAtom::TypeOutlives(data) => Some(predicate.rebind(data)),
             PredicateAtom::Trait(..)
             | PredicateAtom::Projection(..)
             | PredicateAtom::Subtype(..)
