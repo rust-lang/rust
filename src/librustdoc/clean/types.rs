@@ -51,7 +51,7 @@ thread_local!(crate static MAX_DEF_ID: RefCell<FxHashMap<CrateNum, DefId>> = Def
 
 #[derive(Clone, Debug)]
 crate struct Crate {
-    crate name: String,
+    crate name: Symbol,
     crate version: Option<String>,
     crate src: FileName,
     crate module: Option<Item>,
@@ -66,7 +66,7 @@ crate struct Crate {
 
 #[derive(Clone, Debug)]
 crate struct ExternalCrate {
-    crate name: String,
+    crate name: Symbol,
     crate src: FileName,
     crate attrs: Attributes,
     crate primitives: Vec<(DefId, PrimitiveType)>,

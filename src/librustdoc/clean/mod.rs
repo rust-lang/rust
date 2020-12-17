@@ -207,7 +207,7 @@ impl Clean<ExternalCrate> for CrateNum {
         };
 
         ExternalCrate {
-            name: cx.tcx.crate_name(*self).to_string(),
+            name: cx.tcx.crate_name(*self),
             src: krate_src,
             attrs: cx.tcx.get_attrs(root).clean(cx),
             primitives,
