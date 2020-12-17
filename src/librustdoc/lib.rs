@@ -558,10 +558,6 @@ fn main_options(options: config::Options) -> MainResult {
                 });
                 info!("finished with rustc");
 
-                if let Some(name) = crate_name {
-                    krate.name = name
-                }
-
                 krate.version = crate_version;
 
                 if show_coverage {
