@@ -366,16 +366,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         false
     }
 
-    crate fn hir_id_sole_block_element(
-        &self,
-        hir_id: hir::HirId,
-    ) -> Option<&'tcx rustc_hir::Expr<'tcx>> {
-        let node: Option<Node<'_>> = self.tcx.hir().find(hir_id);
-        match node {
-            Some(Node::Expr(rustc_hir::Expr {
-                kind: rustc_hir::ExprKind::Block(block, ..),
-                ..
-            })) if block.stmts.len() == 0 => block.expr,
+    /// If the given `HirId` corresponds to a block with a trailing expression, return that expression
+    crate fn maybe_get_block_expr(&self, hir_id: hir::HirId) -> Option<&'tcx hir::Expr<'tcx>> {
+        match self.tcx.hir().find(hir_id)? {
+            Node::Expr(hir::Expr { kind: hir::ExprKind::Block(block, ..), .. }) => block.expr,
             _ => None,
         }
     }
@@ -666,9 +660,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 };
                                 let suggestion = if is_struct_pat_shorthand_field {
                                     format!("{}: *{}", code, code)
-                                } else if let Some(expr) =
-                                    self.hir_id_sole_block_element(expr.hir_id)
-                                {
+                                } else if let Some(expr) = self.maybe_get_block_expr(expr.hir_id) {
                                     if let Ok(inner_code) = sm.span_to_snippet(expr.span) {
                                         format!("*{}", inner_code)
                                     } else {

@@ -55,4 +55,12 @@ fn main() {
         b
         //~^ ERROR mismatched types
     };
+    let val: i32 = if true {
+        let _ = 2;
+        a + 1
+    } else {
+        let _ = 2;
+        b
+        //~^ ERROR mismatched types
+    };
 }
