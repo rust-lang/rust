@@ -402,9 +402,9 @@ impl Module {
         def_map[self.id.local_id].scope.declarations().map(ModuleDef::from).collect()
     }
 
-    pub fn impl_defs(self, db: &dyn HirDatabase) -> Vec<ImplDef> {
+    pub fn impl_defs(self, db: &dyn HirDatabase) -> Vec<Impl> {
         let def_map = db.crate_def_map(self.id.krate);
-        def_map[self.id.local_id].scope.impls().map(ImplDef::from).collect()
+        def_map[self.id.local_id].scope.impls().map(Impl::from).collect()
     }
 
     pub(crate) fn with_module_id(self, module_id: LocalModuleId) -> Module {
@@ -1007,7 +1007,7 @@ pub enum AssocItem {
 }
 pub enum AssocItemContainer {
     Trait(Trait),
-    ImplDef(ImplDef),
+    Impl(Impl),
 }
 pub trait AsAssocItem {
     fn as_assoc_item(self, db: &dyn HirDatabase) -> Option<AssocItem>;
@@ -1064,7 +1064,7 @@ impl AssocItem {
         };
         match container {
             AssocContainerId::TraitId(id) => AssocItemContainer::Trait(id.into()),
-            AssocContainerId::ImplId(id) => AssocItemContainer::ImplDef(id.into()),
+            AssocContainerId::ImplId(id) => AssocItemContainer::Impl(id.into()),
             AssocContainerId::ContainerId(_) => panic!("invalid AssocItem"),
         }
     }
@@ -1086,7 +1086,7 @@ pub enum GenericDef {
     Adt(Adt),
     Trait(Trait),
     TypeAlias(TypeAlias),
-    ImplDef(ImplDef),
+    Impl(Impl),
     // enum variants cannot have generics themselves, but their parent enums
     // can, and this makes some code easier to write
     EnumVariant(EnumVariant),
@@ -1098,7 +1098,7 @@ impl_from!(
     Adt(Struct, Enum, Union),
     Trait,
     TypeAlias,
-    ImplDef,
+    Impl,
     EnumVariant,
     Const
     for GenericDef
@@ -1268,18 +1268,18 @@ impl LifetimeParam {
 
 // FIXME: rename from `ImplDef` to `Impl`
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct ImplDef {
+pub struct Impl {
     pub(crate) id: ImplId,
 }
 
-impl ImplDef {
-    pub fn all_in_crate(db: &dyn HirDatabase, krate: Crate) -> Vec<ImplDef> {
+impl Impl {
+    pub fn all_in_crate(db: &dyn HirDatabase, krate: Crate) -> Vec<Impl> {
         let inherent = db.inherent_impls_in_crate(krate.id);
         let trait_ = db.trait_impls_in_crate(krate.id);
 
         inherent.all_impls().chain(trait_.all_impls()).map(Self::from).collect()
     }
-    pub fn for_trait(db: &dyn HirDatabase, krate: Crate, trait_: Trait) -> Vec<ImplDef> {
+    pub fn for_trait(db: &dyn HirDatabase, krate: Crate, trait_: Trait) -> Vec<Impl> {
         let impls = db.trait_impls_in_crate(krate.id);
         impls.for_trait(trait_.id).map(Self::from).collect()
     }
@@ -1904,7 +1904,7 @@ pub enum ScopeDef {
     ModuleDef(ModuleDef),
     MacroDef(MacroDef),
     GenericParam(TypeParam),
-    ImplSelfType(ImplDef),
+    ImplSelfType(Impl),
     AdtSelfType(Adt),
     Local(Local),
     Unknown,

@@ -112,7 +112,7 @@ fn get_doc_link(db: &RootDatabase, definition: Definition) -> Option<String> {
                 .as_assoc_item(db)
                 .and_then(|assoc| match assoc.container(db) {
                     AssocItemContainer::Trait(t) => Some(t.into()),
-                    AssocItemContainer::ImplDef(impld) => {
+                    AssocItemContainer::Impl(impld) => {
                         impld.target_ty(db).as_adt().map(|adt| adt.into())
                     }
                 })

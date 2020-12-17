@@ -25,7 +25,7 @@ use crate::{
     diagnostics::Diagnostic,
     semantics::source_to_def::{ChildContainer, SourceToDefCache, SourceToDefCtx},
     source_analyzer::{resolve_hir_path, SourceAnalyzer},
-    AssocItem, Callable, Crate, Field, Function, HirFileId, ImplDef, InFile, LifetimeParam, Local,
+    AssocItem, Callable, Crate, Field, Function, HirFileId, Impl, InFile, LifetimeParam, Local,
     MacroDef, Module, ModuleDef, Name, Path, ScopeDef, Trait, Type, TypeAlias, TypeParam,
     VariantDef,
 };
@@ -38,7 +38,7 @@ pub enum PathResolution {
     Local(Local),
     /// A generic parameter
     TypeParam(TypeParam),
-    SelfType(ImplDef),
+    SelfType(Impl),
     Macro(MacroDef),
     AssocItem(AssocItem),
 }
@@ -708,7 +708,7 @@ to_def_impls![
     (crate::Enum, ast::Enum, enum_to_def),
     (crate::Union, ast::Union, union_to_def),
     (crate::Trait, ast::Trait, trait_to_def),
-    (crate::ImplDef, ast::Impl, impl_to_def),
+    (crate::Impl, ast::Impl, impl_to_def),
     (crate::TypeAlias, ast::TypeAlias, type_alias_to_def),
     (crate::Const, ast::Const, const_to_def),
     (crate::Static, ast::Static, static_to_def),

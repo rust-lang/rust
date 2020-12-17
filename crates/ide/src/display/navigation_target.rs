@@ -245,7 +245,7 @@ impl ToNav for hir::Module {
     }
 }
 
-impl ToNav for hir::ImplDef {
+impl ToNav for hir::Impl {
     fn to_nav(&self, db: &RootDatabase) -> NavigationTarget {
         let src = self.source(db);
         let derive_attr = self.is_builtin_derive(db);
