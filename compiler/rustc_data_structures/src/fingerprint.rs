@@ -4,7 +4,7 @@ use rustc_serialize::{
     Decodable, Encodable,
 };
 use std::hash::{Hash, Hasher};
-use std::mem;
+use std::mem::{self, MaybeUninit};
 
 #[derive(Eq, PartialEq, Ord, PartialOrd, Debug, Clone, Copy)]
 pub struct Fingerprint(u64, u64);
@@ -61,7 +61,7 @@ impl Fingerprint {
     }
 
     pub fn decode_opaque(decoder: &mut opaque::Decoder<'_>) -> Result<Fingerprint, String> {
-        let mut bytes = [0; 16];
+        let mut bytes: [MaybeUninit<u8>; 16] = MaybeUninit::uninit_array();
 
         decoder.read_raw_bytes(&mut bytes)?;
 

@@ -1,6 +1,8 @@
 use crate::leb128::{self, read_signed_leb128, write_signed_leb128};
 use crate::serialize;
 use std::borrow::Cow;
+use std::mem::MaybeUninit;
+use std::ptr;
 
 // -----------------------------------------------------------------------------
 // Encoder
@@ -179,11 +181,19 @@ impl<'a> Decoder<'a> {
     }
 
     #[inline]
-    pub fn read_raw_bytes(&mut self, s: &mut [u8]) -> Result<(), String> {
+    pub fn read_raw_bytes(&mut self, s: &mut [MaybeUninit<u8>]) -> Result<(), String> {
         let start = self.position;
         let end = start + s.len();
+        assert!(end <= self.data.len());
 
-        s.copy_from_slice(&self.data[start..end]);
+        // SAFETY: Both `src` and `dst` point to at least `s.len()` elements:
+        // `src` points to at least `s.len()` elements by above assert, and
+        // `dst` points to `s.len()` elements by derivation from `s`.
+        unsafe {
+            let src = self.data.as_ptr().add(start);
+            let dst = s.as_mut_ptr() as *mut u8;
+            ptr::copy_nonoverlapping(src, dst, s.len());
+        }
 
         self.position = end;
 
