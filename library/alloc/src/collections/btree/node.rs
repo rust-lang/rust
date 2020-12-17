@@ -489,7 +489,7 @@ impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
     ///
     /// # Safety
     /// `index` is in bounds of 0..CAPACITY
-    unsafe fn key_area_mut_at<I, Output: ?Sized>(&mut self, index: I) -> &mut Output
+    unsafe fn key_area_mut<I, Output: ?Sized>(&mut self, index: I) -> &mut Output
     where
         I: SliceIndex<[MaybeUninit<K>], Output = Output>,
     {
@@ -503,7 +503,7 @@ impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
     ///
     /// # Safety
     /// `index` is in bounds of 0..CAPACITY
-    unsafe fn val_area_mut_at<I, Output: ?Sized>(&mut self, index: I) -> &mut Output
+    unsafe fn val_area_mut<I, Output: ?Sized>(&mut self, index: I) -> &mut Output
     where
         I: SliceIndex<[MaybeUninit<V>], Output = Output>,
     {
@@ -519,7 +519,7 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {
     ///
     /// # Safety
     /// `index` is in bounds of 0..CAPACITY + 1
-    unsafe fn edge_area_mut_at<I, Output: ?Sized>(&mut self, index: I) -> &mut Output
+    unsafe fn edge_area_mut<I, Output: ?Sized>(&mut self, index: I) -> &mut Output
     where
         I: SliceIndex<[MaybeUninit<BoxedNode<K, V>>], Output = Output>,
     {
@@ -583,8 +583,8 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::Leaf> {
         assert!(idx < CAPACITY);
         *len += 1;
         unsafe {
-            self.key_area_mut_at(idx).write(key);
-            self.val_area_mut_at(idx).write(val);
+            self.key_area_mut(idx).write(key);
+            self.val_area_mut(idx).write(val);
         }
     }
 
@@ -593,8 +593,8 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::Leaf> {
         let new_len = self.len() + 1;
         assert!(new_len <= CAPACITY);
         unsafe {
-            slice_insert(self.key_area_mut_at(..new_len), 0, key);
-            slice_insert(self.val_area_mut_at(..new_len), 0, val);
+            slice_insert(self.key_area_mut(..new_len), 0, key);
+            slice_insert(self.val_area_mut(..new_len), 0, val);
             *self.len_mut() = new_len as u16;
         }
     }
@@ -627,9 +627,9 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {
         assert!(idx < CAPACITY);
         *len += 1;
         unsafe {
-            self.key_area_mut_at(idx).write(key);
-            self.val_area_mut_at(idx).write(val);
-            self.edge_area_mut_at(idx + 1).write(edge.node);
+            self.key_area_mut(idx).write(key);
+            self.val_area_mut(idx).write(val);
+            self.edge_area_mut(idx + 1).write(edge.node);
             Handle::new_edge(self.reborrow_mut(), idx + 1).correct_parent_link();
         }
     }
@@ -642,9 +642,9 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {
         assert!(new_len <= CAPACITY);
 
         unsafe {
-            slice_insert(self.key_area_mut_at(..new_len), 0, key);
-            slice_insert(self.val_area_mut_at(..new_len), 0, val);
-            slice_insert(self.edge_area_mut_at(..new_len + 1), 0, edge.node);
+            slice_insert(self.key_area_mut(..new_len), 0, key);
+            slice_insert(self.val_area_mut(..new_len), 0, val);
+            slice_insert(self.edge_area_mut(..new_len + 1), 0, edge.node);
             *self.len_mut() = new_len as u16;
         }
 
@@ -662,12 +662,12 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
         let idx = self.len() - 1;
 
         unsafe {
-            let key = self.key_area_mut_at(idx).assume_init_read();
-            let val = self.val_area_mut_at(idx).assume_init_read();
+            let key = self.key_area_mut(idx).assume_init_read();
+            let val = self.val_area_mut(idx).assume_init_read();
             let edge = match self.reborrow_mut().force() {
                 ForceResult::Leaf(_) => None,
                 ForceResult::Internal(mut internal) => {
-                    let node = internal.edge_area_mut_at(idx + 1).assume_init_read();
+                    let node = internal.edge_area_mut(idx + 1).assume_init_read();
                     let mut edge = Root { node, height: internal.height - 1, _marker: PhantomData };
                     // Currently, clearing the parent link is superfluous, because we will
                     // insert the node elsewhere and set its parent link again.
@@ -690,12 +690,12 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
         let old_len = self.len();
 
         unsafe {
-            let key = slice_remove(self.key_area_mut_at(..old_len), 0);
-            let val = slice_remove(self.val_area_mut_at(..old_len), 0);
+            let key = slice_remove(self.key_area_mut(..old_len), 0);
+            let val = slice_remove(self.val_area_mut(..old_len), 0);
             let edge = match self.reborrow_mut().force() {
                 ForceResult::Leaf(_) => None,
                 ForceResult::Internal(mut internal) => {
-                    let node = slice_remove(internal.edge_area_mut_at(..old_len + 1), 0);
+                    let node = slice_remove(internal.edge_area_mut(..old_len + 1), 0);
                     let mut edge = Root { node, height: internal.height - 1, _marker: PhantomData };
                     // Currently, clearing the parent link is superfluous, because we will
                     // insert the node elsewhere and set its parent link again.
@@ -919,11 +919,11 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, mark
         let new_len = self.node.len() + 1;
 
         unsafe {
-            slice_insert(self.node.key_area_mut_at(..new_len), self.idx, key);
-            slice_insert(self.node.val_area_mut_at(..new_len), self.idx, val);
+            slice_insert(self.node.key_area_mut(..new_len), self.idx, key);
+            slice_insert(self.node.val_area_mut(..new_len), self.idx, val);
             *self.node.len_mut() = new_len as u16;
 
-            self.node.val_area_mut_at(self.idx).assume_init_mut()
+            self.node.val_area_mut(self.idx).assume_init_mut()
         }
     }
 }
@@ -978,9 +978,9 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, 
         let new_len = self.node.len() + 1;
 
         unsafe {
-            slice_insert(self.node.key_area_mut_at(..new_len), self.idx, key);
-            slice_insert(self.node.val_area_mut_at(..new_len), self.idx, val);
-            slice_insert(self.node.edge_area_mut_at(..new_len + 1), self.idx + 1, edge.node);
+            slice_insert(self.node.key_area_mut(..new_len), self.idx, key);
+            slice_insert(self.node.val_area_mut(..new_len), self.idx, val);
+            slice_insert(self.node.edge_area_mut(..new_len + 1), self.idx + 1, edge.node);
             *self.node.len_mut() = new_len as u16;
 
             self.node.correct_childrens_parent_links(self.idx + 1..new_len + 1);
@@ -1085,7 +1085,7 @@ impl<'a, K: 'a, V: 'a, NodeType> Handle<NodeRef<marker::Immut<'a>, K, V, NodeTyp
 
 impl<'a, K: 'a, V: 'a, NodeType> Handle<NodeRef<marker::Mut<'a>, K, V, NodeType>, marker::KV> {
     pub fn key_mut(&mut self) -> &mut K {
-        unsafe { self.node.key_area_mut_at(self.idx).assume_init_mut() }
+        unsafe { self.node.key_area_mut(self.idx).assume_init_mut() }
     }
 
     pub fn into_val_mut(self) -> &'a mut V {
@@ -1127,16 +1127,16 @@ impl<'a, K: 'a, V: 'a, NodeType> Handle<NodeRef<marker::Mut<'a>, K, V, NodeType>
         let new_len = self.node.len() - self.idx - 1;
         new_node.len = new_len as u16;
         unsafe {
-            let k = self.node.key_area_mut_at(self.idx).assume_init_read();
-            let v = self.node.val_area_mut_at(self.idx).assume_init_read();
+            let k = self.node.key_area_mut(self.idx).assume_init_read();
+            let v = self.node.val_area_mut(self.idx).assume_init_read();
 
             ptr::copy_nonoverlapping(
-                self.node.key_area_mut_at(self.idx + 1..).as_ptr(),
+                self.node.key_area_mut(self.idx + 1..).as_ptr(),
                 new_node.keys.as_mut_ptr(),
                 new_len,
             );
             ptr::copy_nonoverlapping(
-                self.node.val_area_mut_at(self.idx + 1..).as_ptr(),
+                self.node.val_area_mut(self.idx + 1..).as_ptr(),
                 new_node.vals.as_mut_ptr(),
                 new_len,
             );
@@ -1173,8 +1173,8 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, mark
     ) -> ((K, V), Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge>) {
         let old_len = self.node.len();
         unsafe {
-            let k = slice_remove(self.node.key_area_mut_at(..old_len), self.idx);
-            let v = slice_remove(self.node.val_area_mut_at(..old_len), self.idx);
+            let k = slice_remove(self.node.key_area_mut(..old_len), self.idx);
+            let v = slice_remove(self.node.val_area_mut(..old_len), self.idx);
             *self.node.len_mut() = (old_len - 1) as u16;
             ((k, v), self.left_edge())
         }
@@ -1195,7 +1195,7 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, 
             let kv = self.split_leaf_data(&mut new_node.data);
             let new_len = usize::from(new_node.data.len);
             ptr::copy_nonoverlapping(
-                self.node.edge_area_mut_at(self.idx + 1..).as_ptr(),
+                self.node.edge_area_mut(self.idx + 1..).as_ptr(),
                 new_node.edges.as_mut_ptr(),
                 new_len + 1,
             );
@@ -1321,25 +1321,23 @@ impl<'a, K: 'a, V: 'a> BalancingContext<'a, K, V> {
         unsafe {
             *left_node.len_mut() = new_left_len as u16;
 
-            let parent_key =
-                slice_remove(parent_node.key_area_mut_at(..old_parent_len), parent_idx);
-            left_node.key_area_mut_at(old_left_len).write(parent_key);
+            let parent_key = slice_remove(parent_node.key_area_mut(..old_parent_len), parent_idx);
+            left_node.key_area_mut(old_left_len).write(parent_key);
             ptr::copy_nonoverlapping(
-                right_node.key_area_mut_at(..).as_ptr(),
-                left_node.key_area_mut_at(old_left_len + 1..).as_mut_ptr(),
+                right_node.key_area_mut(..).as_ptr(),
+                left_node.key_area_mut(old_left_len + 1..).as_mut_ptr(),
                 right_len,
             );
 
-            let parent_val =
-                slice_remove(parent_node.val_area_mut_at(..old_parent_len), parent_idx);
-            left_node.val_area_mut_at(old_left_len).write(parent_val);
+            let parent_val = slice_remove(parent_node.val_area_mut(..old_parent_len), parent_idx);
+            left_node.val_area_mut(old_left_len).write(parent_val);
             ptr::copy_nonoverlapping(
-                right_node.val_area_mut_at(..).as_ptr(),
-                left_node.val_area_mut_at(old_left_len + 1..).as_mut_ptr(),
+                right_node.val_area_mut(..).as_ptr(),
+                left_node.val_area_mut(old_left_len + 1..).as_mut_ptr(),
                 right_len,
             );
 
-            slice_remove(&mut parent_node.edge_area_mut_at(..old_parent_len + 1), parent_idx + 1);
+            slice_remove(&mut parent_node.edge_area_mut(..old_parent_len + 1), parent_idx + 1);
             parent_node.correct_childrens_parent_links(parent_idx + 1..old_parent_len);
             *parent_node.len_mut() -= 1;
 
@@ -1349,8 +1347,8 @@ impl<'a, K: 'a, V: 'a> BalancingContext<'a, K, V> {
                 let mut left_node = left_node.reborrow_mut().cast_to_internal_unchecked();
                 let mut right_node = right_node.cast_to_internal_unchecked();
                 ptr::copy_nonoverlapping(
-                    right_node.edge_area_mut_at(..).as_ptr(),
-                    left_node.edge_area_mut_at(old_left_len + 1..).as_mut_ptr(),
+                    right_node.edge_area_mut(..).as_ptr(),
+                    left_node.edge_area_mut(old_left_len + 1..).as_mut_ptr(),
                     right_len + 1,
                 );
 
@@ -1458,7 +1456,7 @@ impl<'a, K: 'a, V: 'a> BalancingContext<'a, K, V> {
             match (left_node.reborrow_mut().force(), right_node.reborrow_mut().force()) {
                 (ForceResult::Internal(left), ForceResult::Internal(mut right)) => {
                     // Make room for stolen edges.
-                    let right_edges = right.edge_area_mut_at(..).as_mut_ptr();
+                    let right_edges = right.edge_area_mut(..).as_mut_ptr();
                     ptr::copy(right_edges, right_edges.add(count), old_right_len + 1);
                     right.correct_childrens_parent_links(count..new_right_len + 1);
 
@@ -1518,7 +1516,7 @@ impl<'a, K: 'a, V: 'a> BalancingContext<'a, K, V> {
                     move_edges(right.reborrow_mut(), 0, left, old_left_len + 1, count);
 
                     // Fill gap where stolen edges used to be.
-                    let right_edges = right.edge_area_mut_at(..).as_mut_ptr();
+                    let right_edges = right.edge_area_mut(..).as_mut_ptr();
                     ptr::copy(right_edges.add(count), right_edges, new_right_len + 1);
                     right.correct_childrens_parent_links(0..=new_right_len);
                 }
@@ -1551,8 +1549,8 @@ unsafe fn move_edges<'a, K: 'a, V: 'a>(
     count: usize,
 ) {
     unsafe {
-        let source_ptr = source.edge_area_mut_at(..).as_ptr();
-        let dest_ptr = dest.edge_area_mut_at(dest_offset..).as_mut_ptr();
+        let source_ptr = source.edge_area_mut(..).as_ptr();
+        let dest_ptr = dest.edge_area_mut(dest_offset..).as_mut_ptr();
         ptr::copy_nonoverlapping(source_ptr.add(source_offset), dest_ptr, count);
         dest.correct_childrens_parent_links(dest_offset..dest_offset + count);
     }
