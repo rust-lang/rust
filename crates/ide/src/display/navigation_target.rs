@@ -117,25 +117,6 @@ impl NavigationTarget {
         )
     }
 
-    /// Allows `NavigationTarget` to be created from a `DocCommentsOwner` and a `NameOwner`
-    pub(crate) fn from_doc_commented(
-        db: &RootDatabase,
-        named: InFile<&dyn ast::NameOwner>,
-        node: InFile<&dyn ast::DocCommentsOwner>,
-    ) -> NavigationTarget {
-        let name =
-            named.value.name().map(|it| it.text().clone()).unwrap_or_else(|| SmolStr::new("_"));
-        let frange = node.map(|it| it.syntax()).original_file_range(db);
-
-        NavigationTarget::from_syntax(
-            frange.file_id,
-            name,
-            None,
-            frange.range,
-            node.value.syntax().kind(),
-        )
-    }
-
     fn from_syntax(
         file_id: FileId,
         name: SmolStr,
