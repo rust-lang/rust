@@ -37,7 +37,7 @@ pub(super) fn run_jit(tcx: TyCtxt<'_>) -> ! {
     let imported_symbols = load_imported_symbols_for_jit(tcx);
 
     let mut jit_builder = JITBuilder::with_isa(
-        crate::build_isa(tcx.sess, false),
+        crate::build_isa(tcx.sess),
         cranelift_module::default_libcall_names(),
     );
     jit_builder.symbols(imported_symbols);
@@ -67,7 +67,7 @@ pub(super) fn run_jit(tcx: TyCtxt<'_>) -> ! {
         .into_iter()
         .collect::<Vec<(_, (_, _))>>();
 
-    let mut cx = crate::CodegenCx::new(tcx, jit_module, false);
+    let mut cx = crate::CodegenCx::new(tcx, jit_module, false, false);
 
     let (mut jit_module, global_asm, _debug, mut unwind_context) =
         super::time(tcx, "codegen mono items", || {
