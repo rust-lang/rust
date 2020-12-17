@@ -64,6 +64,37 @@ fn main() {
             | 2, ..] => {}
         _ => {}
     }
+    // FIXME: incorrect
+    match &[][..] {
+        [true] => {}
+        [true //~ ERROR unreachable
+            | false, ..] => {}
+        _ => {}
+    }
+    match &[][..] {
+        [false] => {}
+        [true, ..] => {}
+        [true //~ ERROR unreachable
+            | false, ..] => {}
+        _ => {}
+    }
+    match (true, None) {
+        (true, Some(_)) => {}
+        (false, Some(true)) => {}
+        (true | false, None | Some(true // FIXME: should be unreachable
+                                   | false)) => {}
+    }
+    macro_rules! t_or_f {
+        () => {
+            (true // FIXME: should be unreachable
+                        | false)
+        };
+    }
+    match (true, None) {
+        (true, Some(_)) => {}
+        (false, Some(true)) => {}
+        (true | false, None | Some(t_or_f!())) => {}
+    }
     match Some(0) {
         Some(0) => {}
         Some(0 //~ ERROR unreachable
