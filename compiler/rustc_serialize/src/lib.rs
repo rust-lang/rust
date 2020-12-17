@@ -15,6 +15,7 @@ Core encoding and decoding interfaces.
 #![feature(associated_type_bounds)]
 #![cfg_attr(bootstrap, feature(min_const_generics))]
 #![feature(min_specialization)]
+#![feature(vec_spare_capacity)]
 #![cfg_attr(test, feature(test))]
 #![allow(rustc::internal)]
 

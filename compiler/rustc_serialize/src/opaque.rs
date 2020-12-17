@@ -327,14 +327,35 @@ impl<'a> serialize::Decoder for Decoder<'a> {
     }
 }
 
-// Specialize encoding byte slices. The default implementation for slices encodes and emits each
-// element individually. This isn't necessary for `u8` slices encoded with an `opaque::Encoder`,
-// because each `u8` is emitted as-is. Therefore, we can use a more efficient implementation. This
-// specialization applies to encoding `Vec<u8>`s, etc., since they call `encode` on their slices.
+// Specializations for contiguous byte sequences follow. The default implementations for slices
+// encode and decode each element individually. This isn't necessary for `u8` slices when using
+// opaque encoders and decoders, because each `u8` is unchanged by encoding and decoding.
+// Therefore, we can use more efficient implementations that process the entire sequence at once.
+
+// Specialize encoding byte slices. This specialization also applies to encoding `Vec<u8>`s, etc.,
+// since the default implementations call `encode` on their slices internally.
 impl serialize::Encodable<Encoder> for [u8] {
     fn encode(&self, e: &mut Encoder) -> EncodeResult {
         serialize::Encoder::emit_usize(e, self.len())?;
         e.emit_raw_bytes(self);
         Ok(())
+    }
+}
+
+// Specialize decoding `Vec<u8>`. This specialization also applies to decoding `Box<[u8]>`s, etc.,
+// since the default implementations call `decode` to produce a `Vec<u8>` internally.
+impl<'a> serialize::Decodable<Decoder<'a>> for Vec<u8> {
+    fn decode(d: &mut Decoder<'a>) -> Result<Self, String> {
+        let len = serialize::Decoder::read_usize(d)?;
+
+        let mut v = Vec::with_capacity(len);
+        let buf = &mut v.spare_capacity_mut()[..len];
+        d.read_raw_bytes(buf)?;
+
+        unsafe {
+            v.set_len(len);
+        }
+
+        Ok(v)
     }
 }

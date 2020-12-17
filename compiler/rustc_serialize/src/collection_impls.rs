@@ -295,13 +295,8 @@ impl<E: Encoder, T: Encodable<E>> Encodable<E> for Rc<[T]> {
 
 impl<D: Decoder, T: Decodable<D>> Decodable<D> for Rc<[T]> {
     fn decode(d: &mut D) -> Result<Rc<[T]>, D::Error> {
-        d.read_seq(|d, len| {
-            let mut vec = Vec::with_capacity(len);
-            for index in 0..len {
-                vec.push(d.read_seq_elt(index, |d| Decodable::decode(d))?);
-            }
-            Ok(vec.into())
-        })
+        let vec: Vec<T> = Decodable::decode(d)?;
+        Ok(vec.into())
     }
 }
 
@@ -314,12 +309,7 @@ impl<E: Encoder, T: Encodable<E>> Encodable<E> for Arc<[T]> {
 
 impl<D: Decoder, T: Decodable<D>> Decodable<D> for Arc<[T]> {
     fn decode(d: &mut D) -> Result<Arc<[T]>, D::Error> {
-        d.read_seq(|d, len| {
-            let mut vec = Vec::with_capacity(len);
-            for index in 0..len {
-                vec.push(d.read_seq_elt(index, |d| Decodable::decode(d))?);
-            }
-            Ok(vec.into())
-        })
+        let vec: Vec<T> = Decodable::decode(d)?;
+        Ok(vec.into())
     }
 }

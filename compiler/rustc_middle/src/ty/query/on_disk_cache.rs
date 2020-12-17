@@ -807,6 +807,15 @@ impl<'a, 'tcx> TyDecoder<'tcx> for CacheDecoder<'a, 'tcx> {
 
 crate::implement_ty_decoder!(CacheDecoder<'a, 'tcx>);
 
+// This ensures that the `Decodable<opaque::Decoder>::decode` specialization for `Vec<u8>` is used
+// when a `CacheDecoder` is passed to `Decodable::decode`. Unfortunately, we have to manually opt
+// into specializations this way, given how `CacheDecoder` and the decoding traits currently work.
+impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for Vec<u8> {
+    fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Result<Self, String> {
+        Decodable::decode(&mut d.opaque)
+    }
+}
+
 impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for SyntaxContext {
     fn decode(decoder: &mut CacheDecoder<'a, 'tcx>) -> Result<Self, String> {
         let syntax_contexts = decoder.syntax_contexts;
