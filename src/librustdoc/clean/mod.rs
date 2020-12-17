@@ -379,7 +379,7 @@ impl Clean<Lifetime> for hir::Lifetime {
             }
             _ => {}
         }
-        Lifetime(self.name.ident().to_string())
+        Lifetime(self.name.ident().name)
     }
 }
 
@@ -397,9 +397,9 @@ impl Clean<Lifetime> for hir::GenericParam<'_> {
                     for bound in bounds {
                         s.push_str(&format!(" + {}", bound.name.ident()));
                     }
-                    Lifetime(s)
+                    Lifetime(Symbol::intern(&s))
                 } else {
-                    Lifetime(self.name.ident().to_string())
+                    Lifetime(self.name.ident().name)
                 }
             }
             _ => panic!(),
@@ -423,16 +423,16 @@ impl Clean<Constant> for hir::ConstArg {
 
 impl Clean<Lifetime> for ty::GenericParamDef {
     fn clean(&self, _cx: &DocContext<'_>) -> Lifetime {
-        Lifetime(self.name.to_string())
+        Lifetime(self.name)
     }
 }
 
 impl Clean<Option<Lifetime>> for ty::RegionKind {
-    fn clean(&self, cx: &DocContext<'_>) -> Option<Lifetime> {
+    fn clean(&self, _cx: &DocContext<'_>) -> Option<Lifetime> {
         match *self {
             ty::ReStatic => Some(Lifetime::statik()),
-            ty::ReLateBound(_, ty::BrNamed(_, name)) => Some(Lifetime(name.to_string())),
-            ty::ReEarlyBound(ref data) => Some(Lifetime(data.name.clean(cx))),
+            ty::ReLateBound(_, ty::BrNamed(_, name)) => Some(Lifetime(name)),
+            ty::ReEarlyBound(ref data) => Some(Lifetime(data.name)),
 
             ty::ReLateBound(..)
             | ty::ReFree(..)
@@ -897,7 +897,7 @@ fn clean_fn_or_proc_macro(
                     }
                 }
             }
-            ProcMacroItem(ProcMacro { kind, helpers: helpers.clean(cx) })
+            ProcMacroItem(ProcMacro { kind, helpers })
         }
         None => {
             let mut func = (sig, generics, body_id).clean(cx);
@@ -1914,7 +1914,7 @@ impl Clean<GenericArgs> for hir::GenericArgs<'_> {
 
 impl Clean<PathSegment> for hir::PathSegment<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> PathSegment {
-        PathSegment { name: self.ident.name.clean(cx), args: self.generic_args().clean(cx) }
+        PathSegment { name: self.ident.name, args: self.generic_args().clean(cx) }
     }
 }
 
@@ -2132,7 +2132,6 @@ fn clean_extern_crate(
             return items;
         }
     }
-    let path = orig_name.map(|x| x.to_string());
     // FIXME: using `from_def_id_and_kind` breaks `rustdoc/masked` for some reason
     vec![Item {
         name: None,
@@ -2143,7 +2142,7 @@ fn clean_extern_crate(
         stability: None,
         const_stability: None,
         deprecation: None,
-        kind: ExternCrateItem(name.clean(cx), path),
+        kind: ExternCrateItem(name, orig_name),
     }]
 }
 
@@ -2215,7 +2214,7 @@ impl Clean<Vec<Item>> for doctree::Import<'_> {
                         const_stability: None,
                         deprecation: None,
                         kind: ImportItem(Import::new_simple(
-                            self.name.clean(cx),
+                            self.name,
                             resolve_use_source(cx, path),
                             false,
                         )),
@@ -2223,7 +2222,7 @@ impl Clean<Vec<Item>> for doctree::Import<'_> {
                     return items;
                 }
             }
-            Import::new_simple(name.clean(cx), resolve_use_source(cx, path), true)
+            Import::new_simple(name, resolve_use_source(cx, path), true)
         };
 
         vec![Item {

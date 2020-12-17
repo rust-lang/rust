@@ -308,7 +308,7 @@ impl<'a> fmt::Display for WhereClause<'a> {
 }
 
 impl clean::Lifetime {
-    crate fn print(&self) -> &str {
+    crate fn print(&self) -> impl fmt::Display + '_ {
         self.get_ref()
     }
 }
@@ -445,11 +445,10 @@ impl clean::GenericArgs {
 impl clean::PathSegment {
     crate fn print(&self) -> impl fmt::Display + '_ {
         display_fn(move |f| {
-            f.write_str(&self.name)?;
             if f.alternate() {
-                write!(f, "{:#}", self.args.print())
+                write!(f, "{}{:#}", self.name, self.args.print())
             } else {
-                write!(f, "{}", self.args.print())
+                write!(f, "{}{}", self.name, self.args.print())
             }
         })
     }
@@ -544,7 +543,7 @@ fn resolved_path(
                 last.name.to_string()
             }
         } else {
-            anchor(did, &last.name).to_string()
+            anchor(did, &*last.name.as_str()).to_string()
         };
         write!(w, "{}{}", path, last.args.print())?;
     }
@@ -1159,11 +1158,11 @@ impl PrintWithSpace for hir::Mutability {
 impl clean::Import {
     crate fn print(&self) -> impl fmt::Display + '_ {
         display_fn(move |f| match self.kind {
-            clean::ImportKind::Simple(ref name) => {
-                if *name == self.source.path.last_name() {
+            clean::ImportKind::Simple(name) => {
+                if name == self.source.path.last() {
                     write!(f, "use {};", self.source.print())
                 } else {
-                    write!(f, "use {} as {};", self.source.print(), *name)
+                    write!(f, "use {} as {};", self.source.print(), name)
                 }
             }
             clean::ImportKind::Glob => {
@@ -1187,7 +1186,7 @@ impl clean::ImportSource {
                 }
                 let name = self.path.last_name();
                 if let hir::def::Res::PrimTy(p) = self.path.res {
-                    primitive_link(f, PrimitiveType::from(p), name)?;
+                    primitive_link(f, PrimitiveType::from(p), &*name)?;
                 } else {
                     write!(f, "{}", name)?;
                 }

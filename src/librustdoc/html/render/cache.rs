@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use std::path::Path;
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_span::symbol::sym;
+use rustc_span::symbol::{sym, Symbol};
 use serde::Serialize;
 
 use crate::clean::types::GetDefId;
@@ -191,12 +191,12 @@ fn get_index_type(clean_type: &clean::Type) -> RenderType {
     RenderType {
         ty: clean_type.def_id(),
         idx: None,
-        name: get_index_type_name(clean_type, true).map(|s| s.to_ascii_lowercase()),
+        name: get_index_type_name(clean_type, true).map(|s| s.as_str().to_ascii_lowercase()),
         generics: get_generics(clean_type),
     }
 }
 
-fn get_index_type_name(clean_type: &clean::Type, accept_generic: bool) -> Option<String> {
+fn get_index_type_name(clean_type: &clean::Type, accept_generic: bool) -> Option<Symbol> {
     match *clean_type {
         clean::ResolvedPath { ref path, .. } => {
             let segments = &path.segments;
@@ -206,10 +206,10 @@ fn get_index_type_name(clean_type: &clean::Type, accept_generic: bool) -> Option
                 clean_type, accept_generic
             )
             });
-            Some(path_segment.name.clone())
+            Some(path_segment.name)
         }
-        clean::Generic(s) if accept_generic => Some(s.to_string()),
-        clean::Primitive(ref p) => Some(format!("{:?}", p)),
+        clean::Generic(s) if accept_generic => Some(s),
+        clean::Primitive(ref p) => Some(p.as_sym()),
         clean::BorrowedRef { ref type_, .. } => get_index_type_name(type_, accept_generic),
         // FIXME: add all from clean::Type.
         _ => None,
@@ -222,7 +222,7 @@ fn get_generics(clean_type: &clean::Type) -> Option<Vec<Generic>> {
             .iter()
             .filter_map(|t| {
                 get_index_type_name(t, false).map(|name| Generic {
-                    name: name.to_ascii_lowercase(),
+                    name: name.as_str().to_ascii_lowercase(),
                     defid: t.def_id(),
                     idx: None,
                 })

@@ -486,13 +486,13 @@ fn build_module(cx: &DocContext<'_>, did: DefId, visited: &mut FxHashSet<DefId>)
                         const_stability: None,
                         deprecation: None,
                         kind: clean::ImportItem(clean::Import::new_simple(
-                            item.ident.to_string(),
+                            item.ident.name,
                             clean::ImportSource {
                                 path: clean::Path {
                                     global: false,
                                     res: item.res,
                                     segments: vec![clean::PathSegment {
-                                        name: clean::PrimitiveType::from(p).as_str().to_string(),
+                                        name: clean::PrimitiveType::from(p).as_sym(),
                                         args: clean::GenericArgs::AngleBracketed {
                                             args: Vec::new(),
                                             bindings: Vec::new(),
@@ -562,11 +562,11 @@ fn build_macro(cx: &DocContext<'_>, did: DefId, name: Symbol) -> clean::ItemKind
                     .collect::<String>()
             );
 
-            clean::MacroItem(clean::Macro { source, imported_from: Some(imported_from).clean(cx) })
+            clean::MacroItem(clean::Macro { source, imported_from: Some(imported_from) })
         }
         LoadedMacro::ProcMacro(ext) => clean::ProcMacroItem(clean::ProcMacro {
             kind: ext.macro_kind(),
-            helpers: ext.helper_attrs.clean(cx),
+            helpers: ext.helper_attrs,
         }),
     }
 }
