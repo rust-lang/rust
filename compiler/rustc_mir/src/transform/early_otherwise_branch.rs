@@ -284,6 +284,33 @@ impl<'a, 'tcx> Helper<'a, 'tcx> {
                 return None;
             }
 
+            // when the second place is a projection of the first one, it's not safe to calculate their discriminant values sequentially.
+            // for example, this should not be optimized:
+            //
+            // ```rust
+            // enum E<'a> { Empty, Some(&'a E<'a>), }
+            // let Some(Some(_)) = e;
+            // ```
+            //
+            // ```mir
+            // bb0: {
+            //   _2 = discriminant(*_1)
+            //   switchInt(_2) -> [...]
+            // }
+            // bb1: {
+            //   _3 = discriminant(*(((*_1) as Some).0: &E))
+            //   switchInt(_3) -> [...]
+            // }
+            // ```
+            let discr_place = discr_info.place_of_adt_discr_read;
+            let this_discr_place = this_bb_discr_info.place_of_adt_discr_read;
+            if discr_place.local == this_discr_place.local
+                && this_discr_place.projection.starts_with(discr_place.projection)
+            {
+                trace!("NO: one target is the projection of another");
+                return None;
+            }
+
             // if we reach this point, the optimization applies, and we should be able to optimize this case
             // store the info that is needed to apply the optimization
 
