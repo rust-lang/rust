@@ -904,8 +904,14 @@ fn is_useful<'p, 'tcx>(
 
     assert!(rows.iter().all(|r| r.len() == v.len()));
 
+    // FIXME(Nadrieril): Hack to work around type normalization issues (see #72476).
+    let ty = matrix.heads().next().map(|r| r.ty).unwrap_or(v.head().ty);
+    let pcx = PatCtxt { cx, matrix, ty, span: v.head().span, is_top_level };
+
+    debug!("is_useful_expand_first_col: ty={:#?}, expanding {:#?}", pcx.ty, v.head());
+
     // If the first pattern is an or-pattern, expand it.
-    if let Some(vs) = v.expand_or_pat() {
+    let ret = if let Some(vs) = v.expand_or_pat() {
         // We expand the or pattern, trying each of its branches in turn and keeping careful track
         // of possible unreachable sub-branches.
         let mut matrix = matrix.clone();
@@ -920,30 +926,30 @@ fn is_useful<'p, 'tcx>(
             }
             (u, span)
         });
-        return Usefulness::merge(usefulnesses, v.len());
-    }
-
-    // FIXME(Nadrieril): Hack to work around type normalization issues (see #72476).
-    let ty = matrix.heads().next().map(|r| r.ty).unwrap_or(v.head().ty);
-    let pcx = PatCtxt { cx, matrix, ty, span: v.head().span, is_top_level };
-
-    debug!("is_useful_expand_first_col: ty={:#?}, expanding {:#?}", pcx.ty, v.head());
-
-    let ret = v
-        .head_ctor(cx)
-        .split(pcx, Some(hir_id))
-        .into_iter()
-        .map(|ctor| {
-            // We cache the result of `Fields::wildcards` because it is used a lot.
-            let ctor_wild_subpatterns = Fields::wildcards(pcx, &ctor);
-            let matrix = pcx.matrix.specialize_constructor(pcx, &ctor, &ctor_wild_subpatterns);
-            let v = v.pop_head_constructor(&ctor_wild_subpatterns);
-            let usefulness =
-                is_useful(pcx.cx, &matrix, &v, witness_preference, hir_id, is_under_guard, false);
-            usefulness.apply_constructor(pcx, &ctor, &ctor_wild_subpatterns)
-        })
-        .find(|result| result.is_useful())
-        .unwrap_or(NotUseful);
+        Usefulness::merge(usefulnesses, v.len())
+    } else {
+        v.head_ctor(cx)
+            .split(pcx, Some(hir_id))
+            .into_iter()
+            .map(|ctor| {
+                // We cache the result of `Fields::wildcards` because it is used a lot.
+                let ctor_wild_subpatterns = Fields::wildcards(pcx, &ctor);
+                let matrix = pcx.matrix.specialize_constructor(pcx, &ctor, &ctor_wild_subpatterns);
+                let v = v.pop_head_constructor(&ctor_wild_subpatterns);
+                let usefulness = is_useful(
+                    pcx.cx,
+                    &matrix,
+                    &v,
+                    witness_preference,
+                    hir_id,
+                    is_under_guard,
+                    false,
+                );
+                usefulness.apply_constructor(pcx, &ctor, &ctor_wild_subpatterns)
+            })
+            .find(|result| result.is_useful())
+            .unwrap_or(NotUseful)
+    };
     debug!("is_useful::returns({:#?}, {:#?}) = {:?}", matrix, v, ret);
     ret
 }
