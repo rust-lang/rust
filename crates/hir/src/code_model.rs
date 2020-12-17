@@ -1284,12 +1284,10 @@ impl Impl {
         impls.for_trait(trait_.id).map(Self::from).collect()
     }
 
+    // FIXME: the return type is wrong. This should be a hir version of
+    // `TraitRef` (ie, resolved `TypeRef`).
     pub fn target_trait(self, db: &dyn HirDatabase) -> Option<TypeRef> {
         db.impl_data(self.id).target_trait.clone()
-    }
-
-    pub fn target_type(self, db: &dyn HirDatabase) -> TypeRef {
-        db.impl_data(self.id).target_type.clone()
     }
 
     pub fn target_ty(self, db: &dyn HirDatabase) -> Type {
