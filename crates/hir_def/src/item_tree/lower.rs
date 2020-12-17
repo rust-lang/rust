@@ -10,7 +10,6 @@ use syntax::{
 };
 
 use crate::{
-    attr::Attrs,
     generics::{GenericParams, TypeParamData, TypeParamProvenance},
     type_ref::LifetimeRef,
 };
@@ -105,7 +104,7 @@ impl Ctx {
             | ast::Item::MacroDef(_) => {}
         };
 
-        let attrs = Attrs::new(item, &self.hygiene);
+        let attrs = RawAttrs::new(item, &self.hygiene);
         let items = match item {
             ast::Item::Struct(ast) => self.lower_struct(ast).map(Into::into),
             ast::Item::Union(ast) => self.lower_union(ast).map(Into::into),
@@ -138,7 +137,7 @@ impl Ctx {
         items
     }
 
-    fn add_attrs(&mut self, item: AttrOwner, attrs: Attrs) {
+    fn add_attrs(&mut self, item: AttrOwner, attrs: RawAttrs) {
         match self.tree.attrs.entry(item) {
             Entry::Occupied(mut entry) => {
                 *entry.get_mut() = entry.get().merge(attrs);
@@ -205,7 +204,7 @@ impl Ctx {
         for field in fields.fields() {
             if let Some(data) = self.lower_record_field(&field) {
                 let idx = self.data().fields.alloc(data);
-                self.add_attrs(idx.into(), Attrs::new(&field, &self.hygiene));
+                self.add_attrs(idx.into(), RawAttrs::new(&field, &self.hygiene));
             }
         }
         let end = self.next_field_idx();
@@ -225,7 +224,7 @@ impl Ctx {
         for (i, field) in fields.fields().enumerate() {
             let data = self.lower_tuple_field(i, &field);
             let idx = self.data().fields.alloc(data);
-            self.add_attrs(idx.into(), Attrs::new(&field, &self.hygiene));
+            self.add_attrs(idx.into(), RawAttrs::new(&field, &self.hygiene));
         }
         let end = self.next_field_idx();
         IdRange::new(start..end)
@@ -270,7 +269,7 @@ impl Ctx {
         for variant in variants.variants() {
             if let Some(data) = self.lower_variant(&variant) {
                 let idx = self.data().variants.alloc(data);
-                self.add_attrs(idx.into(), Attrs::new(&variant, &self.hygiene));
+                self.add_attrs(idx.into(), RawAttrs::new(&variant, &self.hygiene));
             }
         }
         let end = self.next_variant_idx();
@@ -438,7 +437,7 @@ impl Ctx {
             self.with_inherited_visibility(visibility, |this| {
                 list.assoc_items()
                     .filter_map(|item| {
-                        let attrs = Attrs::new(&item, &this.hygiene);
+                        let attrs = RawAttrs::new(&item, &this.hygiene);
                         this.collect_inner_items(item.syntax());
                         this.lower_assoc_item(&item).map(|item| {
                             this.add_attrs(ModItem::from(item).into(), attrs);
@@ -475,7 +474,7 @@ impl Ctx {
             .filter_map(|item| {
                 self.collect_inner_items(item.syntax());
                 let assoc = self.lower_assoc_item(&item)?;
-                let attrs = Attrs::new(&item, &self.hygiene);
+                let attrs = RawAttrs::new(&item, &self.hygiene);
                 self.add_attrs(ModItem::from(assoc).into(), attrs);
                 Some(assoc)
             })
@@ -560,7 +559,7 @@ impl Ctx {
             list.extern_items()
                 .filter_map(|item| {
                     self.collect_inner_items(item.syntax());
-                    let attrs = Attrs::new(&item, &self.hygiene);
+                    let attrs = RawAttrs::new(&item, &self.hygiene);
                     let id: ModItem = match item {
                         ast::ExternItem::Fn(ast) => {
                             let func_id = self.lower_function(&ast)?;

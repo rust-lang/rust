@@ -13,6 +13,7 @@ use std::{
 
 use arena::{Arena, Idx, RawId};
 use ast::{AstNode, AttrsOwner, NameOwner, StructKind};
+use base_db::CrateId;
 use either::Either;
 use hir_expand::{
     ast_id_map::FileAstId,
@@ -26,7 +27,7 @@ use syntax::{ast, match_ast};
 use test_utils::mark;
 
 use crate::{
-    attr::Attrs,
+    attr::{Attrs, RawAttrs},
     db::DefDatabase,
     generics::GenericParams,
     path::{path, AssociatedTypeBinding, GenericArgs, ImportAlias, ModPath, Path, PathKind},
@@ -67,7 +68,7 @@ impl GenericParamsId {
 #[derive(Debug, Eq, PartialEq)]
 pub struct ItemTree {
     top_level: SmallVec<[ModItem; 1]>,
-    attrs: FxHashMap<AttrOwner, Attrs>,
+    attrs: FxHashMap<AttrOwner, RawAttrs>,
     inner_items: FxHashMap<FileAstId<ast::Item>, SmallVec<[ModItem; 1]>>,
 
     data: Option<Box<ItemTreeData>>,
@@ -88,7 +89,7 @@ impl ItemTree {
         let mut item_tree = match_ast! {
             match syntax {
                 ast::SourceFile(file) => {
-                    top_attrs = Some(Attrs::new(&file, &hygiene));
+                    top_attrs = Some(RawAttrs::new(&file, &hygiene));
                     ctx.lower_module_items(&file)
                 },
                 ast::MacroItems(items) => {
@@ -180,12 +181,16 @@ impl ItemTree {
     }
 
     /// Returns the inner attributes of the source file.
-    pub fn top_level_attrs(&self) -> &Attrs {
-        self.attrs.get(&AttrOwner::TopLevel).unwrap_or(&Attrs::EMPTY)
+    pub fn top_level_attrs(&self, db: &dyn DefDatabase, krate: CrateId) -> Attrs {
+        self.attrs.get(&AttrOwner::TopLevel).unwrap_or(&RawAttrs::EMPTY).clone().filter(db, krate)
     }
 
-    pub fn attrs(&self, of: AttrOwner) -> &Attrs {
-        self.attrs.get(&of).unwrap_or(&Attrs::EMPTY)
+    pub(crate) fn raw_attrs(&self, of: AttrOwner) -> &RawAttrs {
+        self.attrs.get(&of).unwrap_or(&RawAttrs::EMPTY)
+    }
+
+    pub fn attrs(&self, db: &dyn DefDatabase, krate: CrateId, of: AttrOwner) -> Attrs {
+        self.raw_attrs(of).clone().filter(db, krate)
     }
 
     /// Returns the lowered inner items that `ast` corresponds to.

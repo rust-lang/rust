@@ -221,17 +221,20 @@ impl DefCollector<'_> {
         let item_tree = self.db.item_tree(file_id.into());
         let module_id = self.def_map.root;
         self.def_map.modules[module_id].origin = ModuleOrigin::CrateRoot { definition: file_id };
-        let mut root_collector = ModCollector {
-            def_collector: &mut *self,
-            macro_depth: 0,
-            module_id,
-            file_id: file_id.into(),
-            item_tree: &item_tree,
-            mod_dir: ModDir::root(),
-        };
-        if item_tree.top_level_attrs().cfg().map_or(true, |cfg| root_collector.is_cfg_enabled(&cfg))
+        if item_tree
+            .top_level_attrs(self.db, self.def_map.krate)
+            .cfg()
+            .map_or(true, |cfg| self.cfg_options.check(&cfg) != Some(false))
         {
-            root_collector.collect(item_tree.top_level_items());
+            ModCollector {
+                def_collector: &mut *self,
+                macro_depth: 0,
+                module_id,
+                file_id: file_id.into(),
+                item_tree: &item_tree,
+                mod_dir: ModDir::root(),
+            }
+            .collect(item_tree.top_level_items());
         }
 
         // main name resolution fixed-point loop.
@@ -905,6 +908,8 @@ struct ModCollector<'a, 'b> {
 
 impl ModCollector<'_, '_> {
     fn collect(&mut self, items: &[ModItem]) {
+        let krate = self.def_collector.def_map.krate;
+
         // Note: don't assert that inserted value is fresh: it's simply not true
         // for macros.
         self.def_collector.mod_dirs.insert(self.module_id, self.mod_dir.clone());
@@ -921,7 +926,7 @@ impl ModCollector<'_, '_> {
         // `#[macro_use] extern crate` is hoisted to imports macros before collecting
         // any other items.
         for item in items {
-            let attrs = self.item_tree.attrs((*item).into());
+            let attrs = self.item_tree.attrs(self.def_collector.db, krate, (*item).into());
             if attrs.cfg().map_or(true, |cfg| self.is_cfg_enabled(&cfg)) {
                 if let ModItem::ExternCrate(id) = item {
                     let import = self.item_tree[*id].clone();
@@ -933,7 +938,7 @@ impl ModCollector<'_, '_> {
         }
 
         for &item in items {
-            let attrs = self.item_tree.attrs(item.into());
+            let attrs = self.item_tree.attrs(self.def_collector.db, krate, item.into());
             if let Some(cfg) = attrs.cfg() {
                 if !self.is_cfg_enabled(&cfg) {
                     self.emit_unconfigured_diagnostic(item, &cfg);
@@ -946,7 +951,7 @@ impl ModCollector<'_, '_> {
 
             let mut def = None;
             match item {
-                ModItem::Mod(m) => self.collect_module(&self.item_tree[m], attrs),
+                ModItem::Mod(m) => self.collect_module(&self.item_tree[m], &attrs),
                 ModItem::Import(import_id) => {
                     self.def_collector.unresolved_imports.push(ImportDirective {
                         module_id: self.module_id,
@@ -975,7 +980,11 @@ impl ModCollector<'_, '_> {
 
                     // "Macro 2.0" is not currently supported by rust-analyzer, but libcore uses it
                     // to define builtin macros, so we support at least that part.
-                    let attrs = self.item_tree.attrs(ModItem::from(id).into());
+                    let attrs = self.item_tree.attrs(
+                        self.def_collector.db,
+                        krate,
+                        ModItem::from(id).into(),
+                    );
                     if attrs.by_key("rustc_builtin_macro").exists() {
                         let krate = self.def_collector.def_map.krate;
                         let macro_id = find_builtin_macro(&mac.name, krate, ast_id)
@@ -1012,7 +1021,7 @@ impl ModCollector<'_, '_> {
                 ModItem::Function(id) => {
                     let func = &self.item_tree[id];
 
-                    self.collect_proc_macro_def(&func.name, attrs);
+                    self.collect_proc_macro_def(&func.name, &attrs);
 
                     def = Some(DefData {
                         id: FunctionLoc {
@@ -1032,7 +1041,7 @@ impl ModCollector<'_, '_> {
                     // FIXME: check attrs to see if this is an attribute macro invocation;
                     // in which case we don't add the invocation, just a single attribute
                     // macro invocation
-                    self.collect_derives(attrs, it.ast_id.upcast());
+                    self.collect_derives(&attrs, it.ast_id.upcast());
 
                     def = Some(DefData {
                         id: StructLoc { container, id: ItemTreeId::new(self.file_id, id) }
@@ -1049,7 +1058,7 @@ impl ModCollector<'_, '_> {
                     // FIXME: check attrs to see if this is an attribute macro invocation;
                     // in which case we don't add the invocation, just a single attribute
                     // macro invocation
-                    self.collect_derives(attrs, it.ast_id.upcast());
+                    self.collect_derives(&attrs, it.ast_id.upcast());
 
                     def = Some(DefData {
                         id: UnionLoc { container, id: ItemTreeId::new(self.file_id, id) }
@@ -1066,7 +1075,7 @@ impl ModCollector<'_, '_> {
                     // FIXME: check attrs to see if this is an attribute macro invocation;
                     // in which case we don't add the invocation, just a single attribute
                     // macro invocation
-                    self.collect_derives(attrs, it.ast_id.upcast());
+                    self.collect_derives(&attrs, it.ast_id.upcast());
 
                     def = Some(DefData {
                         id: EnumLoc { container, id: ItemTreeId::new(self.file_id, id) }
@@ -1303,8 +1312,9 @@ impl ModCollector<'_, '_> {
     }
 
     fn collect_macro_rules(&mut self, id: FileItemTreeId<MacroRules>) {
+        let krate = self.def_collector.def_map.krate;
         let mac = &self.item_tree[id];
-        let attrs = self.item_tree.attrs(ModItem::from(id).into());
+        let attrs = self.item_tree.attrs(self.def_collector.db, krate, ModItem::from(id).into());
         let ast_id = InFile::new(self.file_id, mac.ast_id.upcast());
 
         let export_attr = attrs.by_key("macro_export");

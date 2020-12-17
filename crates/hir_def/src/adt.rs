@@ -3,6 +3,7 @@
 use std::sync::Arc;
 
 use arena::{map::ArenaMap, Arena};
+use base_db::CrateId;
 use either::Either;
 use hir_expand::{
     name::{AsName, Name},
@@ -66,8 +67,13 @@ pub enum ReprKind {
     Other,
 }
 
-fn repr_from_value(item_tree: &ItemTree, of: AttrOwner) -> Option<ReprKind> {
-    item_tree.attrs(of).by_key("repr").tt_values().find_map(parse_repr_tt)
+fn repr_from_value(
+    db: &dyn DefDatabase,
+    krate: CrateId,
+    item_tree: &ItemTree,
+    of: AttrOwner,
+) -> Option<ReprKind> {
+    item_tree.attrs(db, krate, of).by_key("repr").tt_values().find_map(parse_repr_tt)
 }
 
 fn parse_repr_tt(tt: &Subtree) -> Option<ReprKind> {
@@ -86,12 +92,13 @@ fn parse_repr_tt(tt: &Subtree) -> Option<ReprKind> {
 impl StructData {
     pub(crate) fn struct_data_query(db: &dyn DefDatabase, id: StructId) -> Arc<StructData> {
         let loc = id.lookup(db);
+        let krate = loc.container.module(db).krate;
         let item_tree = db.item_tree(loc.id.file_id);
-        let repr = repr_from_value(&item_tree, ModItem::from(loc.id.value).into());
+        let repr = repr_from_value(db, krate, &item_tree, ModItem::from(loc.id.value).into());
         let cfg_options = db.crate_graph()[loc.container.module(db).krate].cfg_options.clone();
 
         let strukt = &item_tree[loc.id.value];
-        let variant_data = lower_fields(&item_tree, &cfg_options, &strukt.fields, None);
+        let variant_data = lower_fields(db, krate, &item_tree, &cfg_options, &strukt.fields, None);
         Arc::new(StructData {
             name: strukt.name.clone(),
             variant_data: Arc::new(variant_data),
@@ -100,12 +107,13 @@ impl StructData {
     }
     pub(crate) fn union_data_query(db: &dyn DefDatabase, id: UnionId) -> Arc<StructData> {
         let loc = id.lookup(db);
+        let krate = loc.container.module(db).krate;
         let item_tree = db.item_tree(loc.id.file_id);
-        let repr = repr_from_value(&item_tree, ModItem::from(loc.id.value).into());
+        let repr = repr_from_value(db, krate, &item_tree, ModItem::from(loc.id.value).into());
         let cfg_options = db.crate_graph()[loc.container.module(db).krate].cfg_options.clone();
 
         let union = &item_tree[loc.id.value];
-        let variant_data = lower_fields(&item_tree, &cfg_options, &union.fields, None);
+        let variant_data = lower_fields(db, krate, &item_tree, &cfg_options, &union.fields, None);
 
         Arc::new(StructData {
             name: union.name.clone(),
@@ -118,16 +126,23 @@ impl StructData {
 impl EnumData {
     pub(crate) fn enum_data_query(db: &dyn DefDatabase, e: EnumId) -> Arc<EnumData> {
         let loc = e.lookup(db);
+        let krate = loc.container.module(db).krate;
         let item_tree = db.item_tree(loc.id.file_id);
-        let cfg_options = db.crate_graph()[loc.container.module(db).krate].cfg_options.clone();
+        let cfg_options = db.crate_graph()[krate].cfg_options.clone();
 
         let enum_ = &item_tree[loc.id.value];
         let mut variants = Arena::new();
         for var_id in enum_.variants.clone() {
-            if item_tree.attrs(var_id.into()).is_cfg_enabled(&cfg_options) {
+            if item_tree.attrs(db, krate, var_id.into()).is_cfg_enabled(&cfg_options) {
                 let var = &item_tree[var_id];
-                let var_data =
-                    lower_fields(&item_tree, &cfg_options, &var.fields, Some(enum_.visibility));
+                let var_data = lower_fields(
+                    db,
+                    krate,
+                    &item_tree,
+                    &cfg_options,
+                    &var.fields,
+                    Some(enum_.visibility),
+                );
 
                 variants.alloc(EnumVariantData {
                     name: var.name.clone(),
@@ -170,7 +185,7 @@ fn lower_enum(
         .variant_list()
         .into_iter()
         .flat_map(|it| it.variants())
-        .filter(|var| expander.is_cfg_enabled(var));
+        .filter(|var| expander.is_cfg_enabled(db, var));
     for var in variants {
         trace.alloc(
             || var.clone(),
@@ -262,7 +277,7 @@ fn lower_struct(
     match &ast.value {
         ast::StructKind::Tuple(fl) => {
             for (i, fd) in fl.fields().enumerate() {
-                if !expander.is_cfg_enabled(&fd) {
+                if !expander.is_cfg_enabled(db, &fd) {
                     continue;
                 }
 
@@ -279,7 +294,7 @@ fn lower_struct(
         }
         ast::StructKind::Record(fl) => {
             for fd in fl.fields() {
-                if !expander.is_cfg_enabled(&fd) {
+                if !expander.is_cfg_enabled(db, &fd) {
                     continue;
                 }
 
@@ -299,6 +314,8 @@ fn lower_struct(
 }
 
 fn lower_fields(
+    db: &dyn DefDatabase,
+    krate: CrateId,
     item_tree: &ItemTree,
     cfg_options: &CfgOptions,
     fields: &Fields,
@@ -308,7 +325,7 @@ fn lower_fields(
         Fields::Record(flds) => {
             let mut arena = Arena::new();
             for field_id in flds.clone() {
-                if item_tree.attrs(field_id.into()).is_cfg_enabled(cfg_options) {
+                if item_tree.attrs(db, krate, field_id.into()).is_cfg_enabled(cfg_options) {
                     arena.alloc(lower_field(item_tree, &item_tree[field_id], override_visibility));
                 }
             }
@@ -317,7 +334,7 @@ fn lower_fields(
         Fields::Tuple(flds) => {
             let mut arena = Arena::new();
             for field_id in flds.clone() {
-                if item_tree.attrs(field_id.into()).is_cfg_enabled(cfg_options) {
+                if item_tree.attrs(db, krate, field_id.into()).is_cfg_enabled(cfg_options) {
                     arena.alloc(lower_field(item_tree, &item_tree[field_id], override_visibility));
                 }
             }

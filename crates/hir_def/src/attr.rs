@@ -2,6 +2,7 @@
 
 use std::{ops, sync::Arc};
 
+use base_db::CrateId;
 use cfg::{CfgExpr, CfgOptions};
 use either::Either;
 use hir_expand::{hygiene::Hygiene, AstId, InFile};
@@ -38,12 +39,16 @@ impl From<Documentation> for String {
     }
 }
 
+/// Syntactical attributes, without filtering of `cfg_attr`s.
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
-pub struct Attrs {
+pub struct RawAttrs {
     entries: Option<Arc<[Attr]>>,
 }
 
-impl ops::Deref for Attrs {
+#[derive(Default, Debug, Clone, PartialEq, Eq)]
+pub struct Attrs(RawAttrs);
+
+impl ops::Deref for RawAttrs {
     type Target = [Attr];
 
     fn deref(&self) -> &[Attr] {
@@ -54,62 +59,21 @@ impl ops::Deref for Attrs {
     }
 }
 
-impl Attrs {
-    pub const EMPTY: Attrs = Attrs { entries: None };
+impl ops::Deref for Attrs {
+    type Target = [Attr];
 
-    pub(crate) fn attrs_query(db: &dyn DefDatabase, def: AttrDefId) -> Attrs {
-        match def {
-            AttrDefId::ModuleId(module) => {
-                let def_map = db.crate_def_map(module.krate);
-                let mod_data = &def_map[module.local_id];
-                match mod_data.declaration_source(db) {
-                    Some(it) => {
-                        Attrs::from_attrs_owner(db, it.as_ref().map(|it| it as &dyn AttrsOwner))
-                    }
-                    None => Attrs::from_attrs_owner(
-                        db,
-                        mod_data.definition_source(db).as_ref().map(|src| match src {
-                            ModuleSource::SourceFile(file) => file as &dyn AttrsOwner,
-                            ModuleSource::Module(module) => module as &dyn AttrsOwner,
-                        }),
-                    ),
-                }
-            }
-            AttrDefId::FieldId(it) => {
-                let src = it.parent.child_source(db);
-                match &src.value[it.local_id] {
-                    Either::Left(_tuple) => Attrs::default(),
-                    Either::Right(record) => Attrs::from_attrs_owner(db, src.with_value(record)),
-                }
-            }
-            AttrDefId::EnumVariantId(var_id) => {
-                let src = var_id.parent.child_source(db);
-                let src = src.as_ref().map(|it| &it[var_id.local_id]);
-                Attrs::from_attrs_owner(db, src.map(|it| it as &dyn AttrsOwner))
-            }
-            AttrDefId::AdtId(it) => match it {
-                AdtId::StructId(it) => attrs_from_item_tree(it.lookup(db).id, db),
-                AdtId::EnumId(it) => attrs_from_item_tree(it.lookup(db).id, db),
-                AdtId::UnionId(it) => attrs_from_item_tree(it.lookup(db).id, db),
-            },
-            AttrDefId::TraitId(it) => attrs_from_item_tree(it.lookup(db).id, db),
-            AttrDefId::MacroDefId(it) => {
-                it.ast_id.map_or_else(Default::default, |ast_id| attrs_from_ast(ast_id, db))
-            }
-            AttrDefId::ImplId(it) => attrs_from_item_tree(it.lookup(db).id, db),
-            AttrDefId::ConstId(it) => attrs_from_item_tree(it.lookup(db).id, db),
-            AttrDefId::StaticId(it) => attrs_from_item_tree(it.lookup(db).id, db),
-            AttrDefId::FunctionId(it) => attrs_from_item_tree(it.lookup(db).id, db),
-            AttrDefId::TypeAliasId(it) => attrs_from_item_tree(it.lookup(db).id, db),
+    fn deref(&self) -> &[Attr] {
+        match &self.0.entries {
+            Some(it) => &*it,
+            None => &[],
         }
     }
+}
 
-    fn from_attrs_owner(db: &dyn DefDatabase, owner: InFile<&dyn AttrsOwner>) -> Attrs {
-        let hygiene = Hygiene::new(db.upcast(), owner.file_id);
-        Attrs::new(owner.value, &hygiene)
-    }
+impl RawAttrs {
+    pub const EMPTY: Self = Self { entries: None };
 
-    pub(crate) fn new(owner: &dyn AttrsOwner, hygiene: &Hygiene) -> Attrs {
+    pub(crate) fn new(owner: &dyn AttrsOwner, hygiene: &Hygiene) -> Self {
         let (inner_attrs, inner_docs) = inner_attributes(owner.syntax())
             .map_or((None, None), |(attrs, docs)| ((Some(attrs), Some(docs))));
 
@@ -137,17 +101,93 @@ impl Attrs {
         } else {
             Some(attrs.into_iter().flat_map(|(_, attr)| attr).collect())
         };
-        Attrs { entries }
+        Self { entries }
+    }
+
+    fn from_attrs_owner(db: &dyn DefDatabase, owner: InFile<&dyn AttrsOwner>) -> Self {
+        let hygiene = Hygiene::new(db.upcast(), owner.file_id);
+        Self::new(owner.value, &hygiene)
+    }
+
+    pub(crate) fn merge(&self, other: Self) -> Self {
+        match (&self.entries, &other.entries) {
+            (None, None) => Self::EMPTY,
+            (Some(entries), None) | (None, Some(entries)) => {
+                Self { entries: Some(entries.clone()) }
+            }
+            (Some(a), Some(b)) => {
+                Self { entries: Some(a.iter().chain(b.iter()).cloned().collect()) }
+            }
+        }
+    }
+
+    /// Processes `cfg_attr`s, returning the resulting semantic `Attrs`.
+    pub(crate) fn filter(self, _db: &dyn DefDatabase, _krate: CrateId) -> Attrs {
+        // FIXME actually implement this
+        Attrs(self)
+    }
+}
+
+impl Attrs {
+    pub const EMPTY: Self = Self(RawAttrs::EMPTY);
+
+    pub(crate) fn attrs_query(db: &dyn DefDatabase, def: AttrDefId) -> Attrs {
+        let raw_attrs = match def {
+            AttrDefId::ModuleId(module) => {
+                let def_map = db.crate_def_map(module.krate);
+                let mod_data = &def_map[module.local_id];
+                match mod_data.declaration_source(db) {
+                    Some(it) => {
+                        RawAttrs::from_attrs_owner(db, it.as_ref().map(|it| it as &dyn AttrsOwner))
+                    }
+                    None => RawAttrs::from_attrs_owner(
+                        db,
+                        mod_data.definition_source(db).as_ref().map(|src| match src {
+                            ModuleSource::SourceFile(file) => file as &dyn AttrsOwner,
+                            ModuleSource::Module(module) => module as &dyn AttrsOwner,
+                        }),
+                    ),
+                }
+            }
+            AttrDefId::FieldId(it) => {
+                let src = it.parent.child_source(db);
+                match &src.value[it.local_id] {
+                    Either::Left(_tuple) => RawAttrs::default(),
+                    Either::Right(record) => RawAttrs::from_attrs_owner(db, src.with_value(record)),
+                }
+            }
+            AttrDefId::EnumVariantId(var_id) => {
+                let src = var_id.parent.child_source(db);
+                let src = src.as_ref().map(|it| &it[var_id.local_id]);
+                RawAttrs::from_attrs_owner(db, src.map(|it| it as &dyn AttrsOwner))
+            }
+            AttrDefId::AdtId(it) => match it {
+                AdtId::StructId(it) => attrs_from_item_tree(it.lookup(db).id, db),
+                AdtId::EnumId(it) => attrs_from_item_tree(it.lookup(db).id, db),
+                AdtId::UnionId(it) => attrs_from_item_tree(it.lookup(db).id, db),
+            },
+            AttrDefId::TraitId(it) => attrs_from_item_tree(it.lookup(db).id, db),
+            AttrDefId::MacroDefId(it) => {
+                it.ast_id.map_or_else(Default::default, |ast_id| attrs_from_ast(ast_id, db))
+            }
+            AttrDefId::ImplId(it) => attrs_from_item_tree(it.lookup(db).id, db),
+            AttrDefId::ConstId(it) => attrs_from_item_tree(it.lookup(db).id, db),
+            AttrDefId::StaticId(it) => attrs_from_item_tree(it.lookup(db).id, db),
+            AttrDefId::FunctionId(it) => attrs_from_item_tree(it.lookup(db).id, db),
+            AttrDefId::TypeAliasId(it) => attrs_from_item_tree(it.lookup(db).id, db),
+        };
+
+        raw_attrs.filter(db, def.krate(db))
     }
 
     pub fn merge(&self, other: Attrs) -> Attrs {
-        match (&self.entries, &other.entries) {
-            (None, None) => Attrs { entries: None },
+        match (&self.0.entries, &other.0.entries) {
+            (None, None) => Attrs::EMPTY,
             (Some(entries), None) | (None, Some(entries)) => {
-                Attrs { entries: Some(entries.clone()) }
+                Attrs(RawAttrs { entries: Some(entries.clone()) })
             }
             (Some(a), Some(b)) => {
-                Attrs { entries: Some(a.iter().chain(b.iter()).cloned().collect()) }
+                Attrs(RawAttrs { entries: Some(a.iter().chain(b.iter()).cloned().collect()) })
             }
         }
     }
@@ -291,16 +331,16 @@ impl<'a> AttrQuery<'a> {
     }
 }
 
-fn attrs_from_ast<N>(src: AstId<N>, db: &dyn DefDatabase) -> Attrs
+fn attrs_from_ast<N>(src: AstId<N>, db: &dyn DefDatabase) -> RawAttrs
 where
     N: ast::AttrsOwner,
 {
     let src = InFile::new(src.file_id, src.to_node(db.upcast()));
-    Attrs::from_attrs_owner(db, src.as_ref().map(|it| it as &dyn AttrsOwner))
+    RawAttrs::from_attrs_owner(db, src.as_ref().map(|it| it as &dyn AttrsOwner))
 }
 
-fn attrs_from_item_tree<N: ItemTreeNode>(id: ItemTreeId<N>, db: &dyn DefDatabase) -> Attrs {
+fn attrs_from_item_tree<N: ItemTreeNode>(id: ItemTreeId<N>, db: &dyn DefDatabase) -> RawAttrs {
     let tree = db.item_tree(id.file_id);
     let mod_item = N::id_to_mod_item(id.value);
-    tree.attrs(mod_item.into()).clone()
+    tree.raw_attrs(mod_item.into()).clone()
 }
