@@ -713,13 +713,9 @@ impl<'tcx> Usefulness<'tcx> {
         }
     }
 
-    fn is_useful(&self) -> bool {
-        !matches!(*self, NotUseful)
-    }
-
     /// When trying several branches and each returns a `Usefulness`, we need to combine the
     /// results together.
-    fn merge(usefulnesses: impl Iterator<Item = (Self, Span)>) -> Self {
+    fn merge_or_patterns(usefulnesses: impl Iterator<Item = (Self, Span)>) -> Self {
         // If we have detected some unreachable sub-branches, we only want to keep them when they
         // were unreachable in _all_ branches. Eg. in the following, the last `true` is unreachable
         // in the second branch of the first or-pattern, but not otherwise. Therefore we don't want
@@ -787,6 +783,27 @@ impl<'tcx> Usefulness<'tcx> {
         } else {
             NotUseful
         }
+    }
+
+    /// When trying several branches and each returns a `Usefulness`, we need to combine the
+    /// results together.
+    fn merge_split_constructors(usefulnesses: impl Iterator<Item = Self>) -> Self {
+        // Witnesses of usefulness, if any.
+        let mut witnesses = Vec::new();
+
+        for u in usefulnesses {
+            match u {
+                Useful(..) => {
+                    return u;
+                }
+                NotUseful => {}
+                UsefulWithWitness(wits) => {
+                    witnesses.extend(wits);
+                }
+            }
+        }
+
+        if !witnesses.is_empty() { UsefulWithWitness(witnesses) } else { NotUseful }
     }
 
     fn apply_constructor<'p>(
@@ -975,29 +992,22 @@ fn is_useful<'p, 'tcx>(
             }
             (u, span)
         });
-        Usefulness::merge(usefulnesses)
+        Usefulness::merge_or_patterns(usefulnesses)
     } else {
-        v.head_ctor(cx)
-            .split(pcx, Some(hir_id))
-            .into_iter()
-            .map(|ctor| {
-                // We cache the result of `Fields::wildcards` because it is used a lot.
-                let ctor_wild_subpatterns = Fields::wildcards(pcx, &ctor);
-                let matrix = pcx.matrix.specialize_constructor(pcx, &ctor, &ctor_wild_subpatterns);
-                let v = v.pop_head_constructor(&ctor_wild_subpatterns);
-                let usefulness = is_useful(
-                    pcx.cx,
-                    &matrix,
-                    &v,
-                    witness_preference,
-                    hir_id,
-                    is_under_guard,
-                    false,
-                );
-                usefulness.apply_constructor(pcx, &ctor, &ctor_wild_subpatterns)
-            })
-            .find(|result| result.is_useful())
-            .unwrap_or(NotUseful)
+        // We split the head constructor of `v`.
+        let ctors = v.head_ctor(cx).split(pcx, Some(hir_id));
+        // For each constructor, we compute whether there's a value that starts with it that would
+        // witness the usefulness of `v`.
+        let usefulnesses = ctors.into_iter().map(|ctor| {
+            // We cache the result of `Fields::wildcards` because it is used a lot.
+            let ctor_wild_subpatterns = Fields::wildcards(pcx, &ctor);
+            let matrix = pcx.matrix.specialize_constructor(pcx, &ctor, &ctor_wild_subpatterns);
+            let v = v.pop_head_constructor(&ctor_wild_subpatterns);
+            let usefulness =
+                is_useful(pcx.cx, &matrix, &v, witness_preference, hir_id, is_under_guard, false);
+            usefulness.apply_constructor(pcx, &ctor, &ctor_wild_subpatterns)
+        });
+        Usefulness::merge_split_constructors(usefulnesses)
     };
     debug!("is_useful::returns({:#?}, {:#?}) = {:?}", matrix, v, ret);
     ret
