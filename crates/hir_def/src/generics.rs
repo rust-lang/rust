@@ -62,6 +62,7 @@ pub struct GenericParams {
 pub enum WherePredicate {
     TypeBound { target: WherePredicateTypeTarget, bound: TypeBound },
     Lifetime { target: LifetimeRef, bound: LifetimeRef },
+    ForLifetime { lifetimes: Box<[Name]>, target: WherePredicateTypeTarget, bound: TypeBound },
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -69,7 +70,6 @@ pub enum WherePredicateTypeTarget {
     TypeRef(TypeRef),
     /// For desugared where predicates that can directly refer to a type param.
     TypeParam(LocalTypeParamId),
-    // FIXME: ForLifetime(Vec<LifetimeParamId>, TypeRef)
 }
 
 #[derive(Default)]
@@ -234,7 +234,7 @@ impl GenericParams {
         for bound in
             node.type_bound_list().iter().flat_map(|type_bound_list| type_bound_list.bounds())
         {
-            self.add_where_predicate_from_bound(lower_ctx, bound, target.clone());
+            self.add_where_predicate_from_bound(lower_ctx, bound, None, target.clone());
         }
     }
 
@@ -279,8 +279,25 @@ impl GenericParams {
             } else {
                 continue;
             };
+
+            let lifetimes: Option<Box<_>> = pred.generic_param_list().map(|param_list| {
+                // Higher-Ranked Trait Bounds
+                param_list
+                    .lifetime_params()
+                    .map(|lifetime_param| {
+                        lifetime_param
+                            .lifetime()
+                            .map_or_else(Name::missing, |lt| Name::new_lifetime(&lt))
+                    })
+                    .collect()
+            });
             for bound in pred.type_bound_list().iter().flat_map(|l| l.bounds()) {
-                self.add_where_predicate_from_bound(lower_ctx, bound, target.clone());
+                self.add_where_predicate_from_bound(
+                    lower_ctx,
+                    bound,
+                    lifetimes.as_ref(),
+                    target.clone(),
+                );
             }
         }
     }
@@ -289,6 +306,7 @@ impl GenericParams {
         &mut self,
         lower_ctx: &LowerCtx,
         bound: ast::TypeBound,
+        hrtb_lifetimes: Option<&Box<[Name]>>,
         target: Either<TypeRef, LifetimeRef>,
     ) {
         if bound.question_mark_token().is_some() {
@@ -297,9 +315,16 @@ impl GenericParams {
         }
         let bound = TypeBound::from_ast(lower_ctx, bound);
         let predicate = match (target, bound) {
-            (Either::Left(type_ref), bound) => WherePredicate::TypeBound {
-                target: WherePredicateTypeTarget::TypeRef(type_ref),
-                bound,
+            (Either::Left(type_ref), bound) => match hrtb_lifetimes {
+                Some(hrtb_lifetimes) => WherePredicate::ForLifetime {
+                    lifetimes: hrtb_lifetimes.clone(),
+                    target: WherePredicateTypeTarget::TypeRef(type_ref),
+                    bound,
+                },
+                None => WherePredicate::TypeBound {
+                    target: WherePredicateTypeTarget::TypeRef(type_ref),
+                    bound,
+                },
             },
             (Either::Right(lifetime), TypeBound::Lifetime(bound)) => {
                 WherePredicate::Lifetime { target: lifetime, bound }

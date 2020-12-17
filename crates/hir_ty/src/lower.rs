@@ -675,7 +675,8 @@ impl GenericPredicate {
         where_predicate: &'a WherePredicate,
     ) -> impl Iterator<Item = GenericPredicate> + 'a {
         match where_predicate {
-            WherePredicate::TypeBound { target, bound } => {
+            WherePredicate::ForLifetime { target, bound, .. }
+            | WherePredicate::TypeBound { target, bound } => {
                 let self_ty = match target {
                     WherePredicateTypeTarget::TypeRef(type_ref) => Ty::from_hir(ctx, type_ref),
                     WherePredicateTypeTarget::TypeParam(param_id) => {
@@ -888,14 +889,13 @@ pub(crate) fn generic_predicates_for_param_query(
         .where_predicates_in_scope()
         // we have to filter out all other predicates *first*, before attempting to lower them
         .filter(|pred| match pred {
-            WherePredicate::TypeBound {
-                target: WherePredicateTypeTarget::TypeRef(type_ref),
-                ..
-            } => Ty::from_hir_only_param(&ctx, type_ref) == Some(param_id),
-            WherePredicate::TypeBound {
-                target: WherePredicateTypeTarget::TypeParam(local_id),
-                ..
-            } => *local_id == param_id.local_id,
+            WherePredicate::ForLifetime { target, .. }
+            | WherePredicate::TypeBound { target, .. } => match target {
+                WherePredicateTypeTarget::TypeRef(type_ref) => {
+                    Ty::from_hir_only_param(&ctx, type_ref) == Some(param_id)
+                }
+                WherePredicateTypeTarget::TypeParam(local_id) => *local_id == param_id.local_id,
+            },
             WherePredicate::Lifetime { .. } => false,
         })
         .flat_map(|pred| {
