@@ -2,7 +2,7 @@ use std::fmt;
 
 use assists::utils::test_related_attribute;
 use cfg::CfgExpr;
-use hir::{AsAssocItem, Attrs, HirFileId, InFile, Semantics};
+use hir::{AsAssocItem, HasAttrs, InFile, Semantics};
 use ide_db::RootDatabase;
 use itertools::Itertools;
 use syntax::{
@@ -105,7 +105,7 @@ pub(crate) fn runnable(
         match item {
             ast::Struct(it) => runnable_struct(sema, it, file_id),
             ast::Fn(it) => runnable_fn(sema, it, file_id),
-            ast::Module(it) => runnable_mod(sema, it, file_id),
+            ast::Module(it) => runnable_mod(sema, it),
             _ => None,
         }
     }
@@ -116,9 +116,10 @@ fn runnable_fn(
     fn_def: ast::Fn,
     file_id: FileId,
 ) -> Option<Runnable> {
+    let def = sema.to_def(&fn_def)?;
     let name_string = fn_def.name()?.text().to_string();
 
-    let attrs = Attrs::from_attrs_owner(sema.db, InFile::new(HirFileId::from(file_id), &fn_def));
+    let attrs = def.attrs(sema.db);
     let kind = if name_string == "main" {
         RunnableKind::Bin
     } else {
@@ -189,10 +190,10 @@ fn runnable_struct(
     struct_def: ast::Struct,
     file_id: FileId,
 ) -> Option<Runnable> {
+    let def = sema.to_def(&struct_def)?;
     let name_string = struct_def.name()?.text().to_string();
 
-    let attrs =
-        Attrs::from_attrs_owner(sema.db, InFile::new(HirFileId::from(file_id), &struct_def));
+    let attrs = def.attrs(sema.db);
     if !has_runnable_doc_test(&attrs) {
         return None;
     }
@@ -262,11 +263,7 @@ fn has_runnable_doc_test(attrs: &hir::Attrs) -> bool {
     })
 }
 
-fn runnable_mod(
-    sema: &Semantics<RootDatabase>,
-    module: ast::Module,
-    file_id: FileId,
-) -> Option<Runnable> {
+fn runnable_mod(sema: &Semantics<RootDatabase>, module: ast::Module) -> Option<Runnable> {
     if !has_test_function_or_multiple_test_submodules(&module) {
         return None;
     }
@@ -279,7 +276,8 @@ fn runnable_mod(
         .filter_map(|it| it.name(sema.db))
         .join("::");
 
-    let attrs = Attrs::from_attrs_owner(sema.db, InFile::new(HirFileId::from(file_id), &module));
+    let def = sema.to_def(&module)?;
+    let attrs = def.attrs(sema.db);
     let cfg = attrs.cfg();
     let nav = module_def.to_nav(sema.db);
     Some(Runnable { nav, kind: RunnableKind::TestMod { path }, cfg })

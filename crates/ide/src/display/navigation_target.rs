@@ -1,9 +1,7 @@
 //! FIXME: write short doc here
 
 use either::Either;
-use hir::{
-    AssocItem, Documentation, FieldSource, HasAttrs, HasSource, HirFileId, InFile, ModuleSource,
-};
+use hir::{AssocItem, Documentation, FieldSource, HasAttrs, HasSource, InFile, ModuleSource};
 use ide_db::base_db::{FileId, SourceDatabase};
 use ide_db::{defs::Definition, RootDatabase};
 use syntax::{
@@ -168,7 +166,7 @@ impl ToNav for FileSymbol {
             focus_range: self.name_range,
             container_name: self.container_name.clone(),
             description: description_from_symbol(db, self),
-            docs: docs_from_symbol(db, self),
+            docs: None,
         }
     }
 }
@@ -392,30 +390,6 @@ impl ToNav for hir::LifetimeParam {
             docs: None,
         }
     }
-}
-
-pub(crate) fn docs_from_symbol(db: &RootDatabase, symbol: &FileSymbol) -> Option<Documentation> {
-    let parse = db.parse(symbol.file_id);
-    let node = symbol.ptr.to_node(parse.tree().syntax());
-    let file_id = HirFileId::from(symbol.file_id);
-
-    let it = match_ast! {
-        match node {
-            ast::Fn(it) => hir::Attrs::from_attrs_owner(db, InFile::new(file_id, &it)),
-            ast::Struct(it) => hir::Attrs::from_attrs_owner(db, InFile::new(file_id, &it)),
-            ast::Enum(it) => hir::Attrs::from_attrs_owner(db, InFile::new(file_id, &it)),
-            ast::Trait(it) => hir::Attrs::from_attrs_owner(db, InFile::new(file_id, &it)),
-            ast::Module(it) => hir::Attrs::from_attrs_owner(db, InFile::new(file_id, &it)),
-            ast::TypeAlias(it) => hir::Attrs::from_attrs_owner(db, InFile::new(file_id, &it)),
-            ast::Const(it) => hir::Attrs::from_attrs_owner(db, InFile::new(file_id, &it)),
-            ast::Static(it) => hir::Attrs::from_attrs_owner(db, InFile::new(file_id, &it)),
-            ast::RecordField(it) => hir::Attrs::from_attrs_owner(db, InFile::new(file_id, &it)),
-            ast::Variant(it) => hir::Attrs::from_attrs_owner(db, InFile::new(file_id, &it)),
-            ast::MacroCall(it) => hir::Attrs::from_attrs_owner(db, InFile::new(file_id, &it)),
-            _ => return None,
-        }
-    };
-    it.docs()
 }
 
 /// Get a description of a symbol.

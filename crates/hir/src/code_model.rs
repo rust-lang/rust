@@ -1325,6 +1325,7 @@ impl Impl {
         let item = src.file_id.is_builtin_derive(db.upcast())?;
         let hygenic = hir_expand::hygiene::Hygiene::new(db.upcast(), item.file_id);
 
+        // FIXME: handle `cfg_attr`
         let attr = item
             .value
             .attrs()
