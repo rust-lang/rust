@@ -525,10 +525,10 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
         result_subst: &'a CanonicalVarValues<'tcx>,
     ) -> impl Iterator<Item = PredicateObligation<'tcx>> + 'a + Captures<'tcx> {
         unsubstituted_region_constraints.iter().map(move |&constraint| {
-            let ty::OutlivesPredicate(k1, r2) =
-                substitute_value(self.tcx, result_subst, constraint).skip_binder();
+            let predicate = substitute_value(self.tcx, result_subst, constraint);
+            let ty::OutlivesPredicate(k1, r2) = predicate.skip_binder();
 
-            let predicate = match k1.unpack() {
+            let atom = match k1.unpack() {
                 GenericArgKind::Lifetime(r1) => {
                     ty::PredicateAtom::RegionOutlives(ty::OutlivesPredicate(r1, r2))
                 }
@@ -540,8 +540,9 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
                     // encounter this branch.
                     span_bug!(cause.span, "unexpected const outlives {:?}", constraint);
                 }
-            }
-            .potentially_quantified(self.tcx, ty::PredicateKind::ForAll);
+            };
+            let predicate =
+                predicate.rebind(atom).potentially_quantified(self.tcx, ty::PredicateKind::ForAll);
 
             Obligation::new(cause.clone(), param_env, predicate)
         })
