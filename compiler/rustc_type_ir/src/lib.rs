@@ -198,6 +198,7 @@ impl DebruijnIndex {
 }
 
 impl<CTX> HashStable<CTX> for DebruijnIndex {
+    #[inline]
     fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
         self.as_u32().hash_stable(ctx, hasher);
     }
