@@ -1043,30 +1043,6 @@ impl Step for Src {
             builder.copy(&builder.src.join(file), &dst_src.join(file));
         }
 
-        // libtest includes std and everything else, so vendoring it
-        // creates exactly what's needed for `cargo -Zbuild-std` or any
-        // other analysis of the stdlib's source. Cargo also needs help
-        // finding the lock, so we copy it to libtest temporarily.
-        //
-        // Note that this requires std to only have one version of each
-        // crate. e.g. two versions of getopts won't be patchable.
-        let dst_libtest = dst_src.join("library/test");
-        let dst_vendor = dst_src.join("vendor");
-        let root_lock = dst_src.join("Cargo.lock");
-        let temp_lock = dst_libtest.join("Cargo.lock");
-
-        // `cargo vendor` will delete everything from the lockfile that
-        // isn't used by libtest, so we need to not use any links!
-        builder.really_copy(&root_lock, &temp_lock);
-
-        let mut cmd = Command::new(&builder.initial_cargo);
-        cmd.arg("vendor").arg(dst_vendor).current_dir(&dst_libtest);
-        builder.info("Dist src");
-        let _time = timeit(builder);
-        builder.run(&mut cmd);
-
-        builder.remove(&temp_lock);
-
         // Create source tarball in rust-installer format
         let mut cmd = rust_installer(builder);
         cmd.arg("generate")
@@ -1083,6 +1059,8 @@ impl Step for Src {
             .arg("--component-name=rust-src")
             .arg("--legacy-manifest-dirs=rustlib,cargo");
 
+        builder.info("Dist src");
+        let _time = timeit(builder);
         builder.run(&mut cmd);
 
         builder.remove_dir(&image);
