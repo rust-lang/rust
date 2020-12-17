@@ -996,9 +996,12 @@ pub fn start_codegen<'tcx>(
         codegen_backend.codegen_crate(tcx, metadata, need_metadata_module)
     });
 
-    rustc_incremental::assert_module_sources::assert_module_sources(tcx);
-
-    rustc_symbol_mangling::test::report_symbol_names(tcx);
+    // Don't run these test assertions when not doing codegen. Compiletest tries to build
+    // build-fail tests in check mode first and expects it to not give an error in that case.
+    if tcx.sess.opts.output_types.should_codegen() {
+        rustc_incremental::assert_module_sources::assert_module_sources(tcx);
+        rustc_symbol_mangling::test::report_symbol_names(tcx);
+    }
 
     tcx.sess.time("assert_dep_graph", || rustc_incremental::assert_dep_graph(tcx));
     tcx.sess.time("serialize_dep_graph", || rustc_incremental::save_dep_graph(tcx));
