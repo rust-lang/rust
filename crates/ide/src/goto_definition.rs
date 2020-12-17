@@ -1,3 +1,4 @@
+use either::Either;
 use hir::Semantics;
 use ide_db::{
     base_db::FileId,
@@ -33,7 +34,7 @@ pub(crate) fn goto_definition(
     let nav_targets = match_ast! {
         match parent {
             ast::NameRef(name_ref) => {
-                reference_definition(&sema, &name_ref).to_vec()
+                reference_definition(&sema, Either::Right(&name_ref)).to_vec()
             },
             ast::Name(name) => {
                 let def = NameClass::classify(&sema, &name)?.referenced_or_defined(sema.db);
@@ -53,6 +54,13 @@ pub(crate) fn goto_definition(
                 let self_param = func.param_list()?.self_param()?;
                 vec![self_to_nav_target(self_param, position.file_id)?]
             },
+            ast::Lifetime(lt) => if let Some(name_class) = NameClass::classify_lifetime(&sema, &lt) {
+                let def = name_class.referenced_or_defined(sema.db);
+                let nav = def.try_to_nav(sema.db)?;
+                vec![nav]
+            } else {
+                reference_definition(&sema, Either::Left(&lt)).to_vec()
+            },
             _ => return None,
         }
     };
@@ -64,7 +72,7 @@ fn pick_best(tokens: TokenAtOffset<SyntaxToken>) -> Option<SyntaxToken> {
     return tokens.max_by_key(priority);
     fn priority(n: &SyntaxToken) -> usize {
         match n.kind() {
-            IDENT | INT_NUMBER | T![self] => 2,
+            IDENT | INT_NUMBER | LIFETIME_IDENT | T![self] => 2,
             kind if kind.is_trivia() => 0,
             _ => 1,
         }
@@ -102,9 +110,12 @@ impl ReferenceResult {
 
 pub(crate) fn reference_definition(
     sema: &Semantics<RootDatabase>,
-    name_ref: &ast::NameRef,
+    name_ref: Either<&ast::Lifetime, &ast::NameRef>,
 ) -> ReferenceResult {
-    let name_kind = NameRefClass::classify(sema, name_ref);
+    let name_kind = name_ref.either(
+        |lifetime| NameRefClass::classify_lifetime(sema, lifetime),
+        |name_ref| NameRefClass::classify(sema, name_ref),
+    );
     if let Some(def) = name_kind {
         let def = def.referenced(sema.db);
         return match def.try_to_nav(sema.db) {
@@ -114,10 +125,9 @@ pub(crate) fn reference_definition(
     }
 
     // Fallback index based approach:
-    let navs = symbol_index::index_resolve(sema.db, name_ref)
-        .into_iter()
-        .map(|s| s.to_nav(sema.db))
-        .collect();
+    let name = name_ref.either(ast::Lifetime::text, ast::NameRef::text);
+    let navs =
+        symbol_index::index_resolve(sema.db, name).into_iter().map(|s| s.to_nav(sema.db)).collect();
     ReferenceResult::Approximate(navs)
 }
 
@@ -1033,6 +1043,37 @@ impl Foo {
     fn bar(&self<|>) {
           //^^^^
     }
+}"#,
+        )
+    }
+
+    #[test]
+    fn goto_lifetime_param_on_decl() {
+        check(
+            r#"
+fn foo<'foobar<|>>(_: &'foobar ()) {
+     //^^^^^^^
+}"#,
+        )
+    }
+
+    #[test]
+    fn goto_lifetime_param_decl() {
+        check(
+            r#"
+fn foo<'foobar>(_: &'foobar<|> ()) {
+     //^^^^^^^
+}"#,
+        )
+    }
+
+    #[test]
+    fn goto_lifetime_param_decl_nested() {
+        check(
+            r#"
+fn foo<'foobar>(_: &'foobar ()) {
+    fn foo<'foobar>(_: &'foobar<|> ()) {}
+         //^^^^^^^
 }"#,
         )
     }

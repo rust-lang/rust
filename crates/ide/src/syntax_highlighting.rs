@@ -806,6 +806,7 @@ fn highlight_def(db: &RootDatabase, def: Definition) -> Highlight {
             }
             return h;
         }
+        Definition::LifetimeParam(_) => HighlightTag::Lifetime,
     }
     .into()
 }

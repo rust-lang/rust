@@ -209,8 +209,7 @@ pub fn crate_symbols(db: &RootDatabase, krate: CrateId, query: Query) -> Vec<Fil
     query.search(&buf)
 }
 
-pub fn index_resolve(db: &RootDatabase, name_ref: &ast::NameRef) -> Vec<FileSymbol> {
-    let name = name_ref.text();
+pub fn index_resolve(db: &RootDatabase, name: &SmolStr) -> Vec<FileSymbol> {
     let mut query = Query::new(name.to_string());
     query.exact();
     query.limit(4);
