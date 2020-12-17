@@ -1632,7 +1632,7 @@ impl Symbol {
         self == kw::True || self == kw::False
     }
 
-    /// This symbol can be a raw identifier.
+    /// Returns `true` if this symbol can be a raw identifier.
     pub fn can_be_raw(self) -> bool {
         self != kw::Invalid && self != kw::Underscore && !self.is_path_segment_keyword()
     }
