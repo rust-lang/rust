@@ -30,6 +30,15 @@ struct DiagnosticBuilderInner<'a> {
     allow_suggestions: bool,
 }
 
+/// This is a helper macro for [`forward!`] that allows automatically adding documentation
+/// that uses tokens from [`forward!`]'s input.
+macro_rules! forward_inner_docs {
+    ($e:expr => $i:item) => {
+        #[doc = $e]
+        $i
+    }
+}
+
 /// In general, the `DiagnosticBuilder` uses deref to allow access to
 /// the fields and methods of the embedded `diagnostic` in a
 /// transparent way. *However,* many of the methods are intended to
@@ -45,10 +54,11 @@ macro_rules! forward {
         pub fn $n:ident(&self, $($name:ident: $ty:ty),* $(,)?) -> &Self
     ) => {
         $(#[$attrs])*
+        forward_inner_docs!(concat!("See [`Diagnostic::", stringify!($n), "()`].") =>
         pub fn $n(&self, $($name: $ty),*) -> &Self {
             self.diagnostic.$n($($name),*);
             self
-        }
+        });
     };
 
     // Forward pattern for &mut self -> &mut Self
@@ -57,10 +67,11 @@ macro_rules! forward {
         pub fn $n:ident(&mut self, $($name:ident: $ty:ty),* $(,)?) -> &mut Self
     ) => {
         $(#[$attrs])*
+        forward_inner_docs!(concat!("See [`Diagnostic::", stringify!($n), "()`].") =>
         pub fn $n(&mut self, $($name: $ty),*) -> &mut Self {
             self.0.diagnostic.$n($($name),*);
             self
-        }
+        });
     };
 
     // Forward pattern for &mut self -> &mut Self, with S: Into<MultiSpan>
@@ -74,10 +85,11 @@ macro_rules! forward {
         ) -> &mut Self
     ) => {
         $(#[$attrs])*
+        forward_inner_docs!(concat!("See [`Diagnostic::", stringify!($n), "()`].") =>
         pub fn $n<S: Into<MultiSpan>>(&mut self, $($name: $ty),*) -> &mut Self {
             self.0.diagnostic.$n($($name),*);
             self
-        }
+        });
     };
 }
 
@@ -116,7 +128,7 @@ impl<'a> DiagnosticBuilder<'a> {
 
     /// Stashes diagnostic for possible later improvement in a different,
     /// later stage of the compiler. The diagnostic can be accessed with
-    /// the provided `span` and `key` through `.steal_diagnostic` on `Handler`.
+    /// the provided `span` and `key` through [`Handler::steal_diagnostic()`].
     ///
     /// As with `buffer`, this is unless the handler has disabled such buffering.
     pub fn stash(self, span: Span, key: StashKey) {
@@ -202,7 +214,7 @@ impl<'a> DiagnosticBuilder<'a> {
     }
 
     /// Labels all the given spans with the provided label.
-    /// See `span_label` for more information.
+    /// See [`Diagnostic::span_label()`] for more information.
     pub fn span_labels(
         &mut self,
         spans: impl IntoIterator<Item = Span>,
@@ -233,7 +245,7 @@ impl<'a> DiagnosticBuilder<'a> {
         found_extra: &dyn fmt::Display,
     ) -> &mut Self);
 
-    forward!(pub fn note_unsuccessfull_coercion(
+    forward!(pub fn note_unsuccessful_coercion(
         &mut self,
         expected: DiagnosticStyledString,
         found: DiagnosticStyledString,
@@ -254,6 +266,7 @@ impl<'a> DiagnosticBuilder<'a> {
         msg: &str,
     ) -> &mut Self);
 
+    /// See [`Diagnostic::multipart_suggestion()`].
     pub fn multipart_suggestion(
         &mut self,
         msg: &str,
@@ -267,6 +280,7 @@ impl<'a> DiagnosticBuilder<'a> {
         self
     }
 
+    /// See [`Diagnostic::multipart_suggestions()`].
     pub fn multipart_suggestions(
         &mut self,
         msg: &str,
@@ -280,6 +294,7 @@ impl<'a> DiagnosticBuilder<'a> {
         self
     }
 
+    /// See [`Diagnostic::tool_only_multipart_suggestion()`].
     pub fn tool_only_multipart_suggestion(
         &mut self,
         msg: &str,
@@ -293,6 +308,7 @@ impl<'a> DiagnosticBuilder<'a> {
         self
     }
 
+    /// See [`Diagnostic::span_suggestion()`].
     pub fn span_suggestion(
         &mut self,
         sp: Span,
@@ -307,6 +323,7 @@ impl<'a> DiagnosticBuilder<'a> {
         self
     }
 
+    /// See [`Diagnostic::span_suggestions()`].
     pub fn span_suggestions(
         &mut self,
         sp: Span,
@@ -321,6 +338,7 @@ impl<'a> DiagnosticBuilder<'a> {
         self
     }
 
+    /// See [`Diagnostic::span_suggestion_short()`].
     pub fn span_suggestion_short(
         &mut self,
         sp: Span,
@@ -335,6 +353,7 @@ impl<'a> DiagnosticBuilder<'a> {
         self
     }
 
+    /// See [`Diagnostic::span_suggestion_verbose()`].
     pub fn span_suggestion_verbose(
         &mut self,
         sp: Span,
@@ -349,6 +368,7 @@ impl<'a> DiagnosticBuilder<'a> {
         self
     }
 
+    /// See [`Diagnostic::span_suggestion_hidden()`].
     pub fn span_suggestion_hidden(
         &mut self,
         sp: Span,
@@ -363,6 +383,7 @@ impl<'a> DiagnosticBuilder<'a> {
         self
     }
 
+    /// See [`Diagnostic::tool_only_span_suggestion()`] for more information.
     pub fn tool_only_span_suggestion(
         &mut self,
         sp: Span,
@@ -380,19 +401,22 @@ impl<'a> DiagnosticBuilder<'a> {
     forward!(pub fn set_span<S: Into<MultiSpan>>(&mut self, sp: S) -> &mut Self);
     forward!(pub fn code(&mut self, s: DiagnosticId) -> &mut Self);
 
+    /// Allow attaching suggestions this diagnostic.
+    /// If this is set to `false`, then any suggestions attached with the `span_suggestion_*`
+    /// methods after this is set to `false` will be ignored.
     pub fn allow_suggestions(&mut self, allow: bool) -> &mut Self {
         self.0.allow_suggestions = allow;
         self
     }
 
     /// Convenience function for internal use, clients should use one of the
-    /// struct_* methods on Handler.
+    /// `struct_*` methods on [`Handler`].
     crate fn new(handler: &'a Handler, level: Level, message: &str) -> DiagnosticBuilder<'a> {
         DiagnosticBuilder::new_with_code(handler, level, None, message)
     }
 
     /// Convenience function for internal use, clients should use one of the
-    /// struct_* methods on Handler.
+    /// `struct_*` methods on [`Handler`].
     crate fn new_with_code(
         handler: &'a Handler,
         level: Level,
