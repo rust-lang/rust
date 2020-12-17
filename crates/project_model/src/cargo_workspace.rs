@@ -16,6 +16,7 @@ use paths::{AbsPath, AbsPathBuf};
 use rustc_hash::FxHashMap;
 
 use crate::cfg_flag::CfgFlag;
+use crate::utf8_stdout;
 
 /// `CargoWorkspace` represents the logical structure of, well, a Cargo
 /// workspace. It pretty closely mirrors `cargo metadata` output.
@@ -166,8 +167,35 @@ impl CargoWorkspace {
         if let Some(parent) = cargo_toml.parent() {
             meta.current_dir(parent.to_path_buf());
         }
-        if let Some(target) = config.target.as_ref() {
-            meta.other_options(vec![String::from("--filter-platform"), target.clone()]);
+        let target = if let Some(target) = config.target.as_ref() {
+            Some(target.clone())
+        } else {
+            // cargo metadata defaults to giving information for _all_ targets.
+            // In the absence of a preference from the user, we use the host platform.
+            let mut rustc = Command::new(toolchain::rustc());
+            rustc.current_dir(cargo_toml.parent().unwrap()).arg("-vV");
+            log::debug!("Discovering host platform by {:?}", rustc);
+            match utf8_stdout(rustc) {
+                Ok(stdout) => {
+                    let field = "host: ";
+                    let target =
+                        stdout.lines().find(|l| l.starts_with(field)).map(|l| &l[field.len()..]);
+                    if let Some(target) = target {
+                        Some(target.to_string())
+                    } else {
+                        // If we fail to resolve the host platform, it's not the end of the world.
+                        log::info!("rustc -vV did not report host platform, got:\n{}", stdout);
+                        None
+                    }
+                }
+                Err(e) => {
+                    log::warn!("Failed to discover host platform: {}", e);
+                    None
+                }
+            }
+        };
+        if let Some(target) = target {
+            meta.other_options(vec![String::from("--filter-platform"), target]);
         }
         let mut meta = meta.exec().with_context(|| {
             format!("Failed to run `cargo metadata --manifest-path {}`", cargo_toml.display())
