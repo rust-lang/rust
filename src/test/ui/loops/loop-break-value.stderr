@@ -1,3 +1,12 @@
+error[E0425]: cannot find value `LOOP` in this scope
+  --> $DIR/loop-break-value.rs:95:15
+   |
+LL |         break LOOP;
+   |               ^^^^
+   |               |
+   |               not found in this scope
+   |               help: a label with a similar name exists: `'LOOP`
+
 warning: denote infinite loops with `loop { ... }`
   --> $DIR/loop-break-value.rs:26:5
    |
@@ -94,6 +103,17 @@ help: instead, use `break` on its own without a value inside this `for` loop
 LL |             break;
    |             ^^^^^
 
+error[E0571]: `break` with value from a `for` loop
+  --> $DIR/loop-break-value.rs:95:9
+   |
+LL |         break LOOP;
+   |         ^^^^^^^^^^ can only break with a value inside `loop` or breakable block
+   |
+help: instead, use `break` on its own without a value inside this `for` loop
+   |
+LL |         break;
+   |         ^^^^^
+
 error[E0308]: mismatched types
   --> $DIR/loop-break-value.rs:4:31
    |
@@ -151,7 +171,7 @@ LL |         break;
    |         expected integer, found `()`
    |         help: give it a value of the expected type: `break value`
 
-error: aborting due to 16 previous errors; 1 warning emitted
+error: aborting due to 18 previous errors; 1 warning emitted
 
-Some errors have detailed explanations: E0308, E0571.
+Some errors have detailed explanations: E0308, E0425, E0571.
 For more information about an error, try `rustc --explain E0308`.
