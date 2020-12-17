@@ -43,6 +43,16 @@ pub(super) enum RecoverQPath {
     No,
 }
 
+/// Signals whether parsing a type should recover `->`.
+///
+/// More specifically, when parsing a function like:
+/// ```rust
+/// fn foo() => u8 { 0 }
+/// fn bar(): u8 { 0 }
+/// ```
+/// The compiler will try to recover interpreting `foo() => u8` as `foo() -> u8` when calling
+/// `parse_ty` with anything except `RecoverReturnSign::No`, and it will try to recover `bar(): u8`
+/// as `bar() -> u8` when passing `RecoverReturnSign::Yes` to `parse_ty`
 #[derive(Copy, Clone, PartialEq)]
 pub(super) enum RecoverReturnSign {
     Yes,
@@ -51,6 +61,10 @@ pub(super) enum RecoverReturnSign {
 }
 
 impl RecoverReturnSign {
+    /// [RecoverReturnSign::Yes] allows for recovering `fn foo() => u8` and `fn foo(): u8`,
+    /// [RecoverReturnSign::OnlyFatArrow] allows for recovering only `fn foo() => u8` (recovering
+    /// colons can cause problems when parsing where clauses), and
+    /// [RecoverReturnSign::No] doesn't allow for any recovery of the return type arrow
     fn can_recover(self, token: &TokenKind) -> bool {
         match self {
             Self::Yes => matches!(token, token::FatArrow | token::Colon),
@@ -81,8 +95,8 @@ impl<'a> Parser<'a> {
     pub fn parse_ty(&mut self) -> PResult<'a, P<Ty>> {
         self.parse_ty_common(
             AllowPlus::Yes,
-            RecoverQPath::Yes,
             AllowCVariadic::No,
+            RecoverQPath::Yes,
             RecoverReturnSign::Yes,
         )
     }
@@ -93,8 +107,8 @@ impl<'a> Parser<'a> {
     pub(super) fn parse_ty_for_param(&mut self) -> PResult<'a, P<Ty>> {
         self.parse_ty_common(
             AllowPlus::Yes,
-            RecoverQPath::Yes,
             AllowCVariadic::Yes,
+            RecoverQPath::Yes,
             RecoverReturnSign::Yes,
         )
     }
@@ -108,8 +122,8 @@ impl<'a> Parser<'a> {
     pub(super) fn parse_ty_no_plus(&mut self) -> PResult<'a, P<Ty>> {
         self.parse_ty_common(
             AllowPlus::No,
-            RecoverQPath::Yes,
             AllowCVariadic::No,
+            RecoverQPath::Yes,
             RecoverReturnSign::Yes,
         )
     }
@@ -118,8 +132,8 @@ impl<'a> Parser<'a> {
     pub(super) fn parse_ty_for_where_clause(&mut self) -> PResult<'a, P<Ty>> {
         self.parse_ty_common(
             AllowPlus::Yes,
-            RecoverQPath::Yes,
             AllowCVariadic::Yes,
+            RecoverQPath::Yes,
             RecoverReturnSign::OnlyFatArrow,
         )
     }
@@ -135,8 +149,8 @@ impl<'a> Parser<'a> {
             // FIXME(Centril): Can we unconditionally `allow_plus`?
             let ty = self.parse_ty_common(
                 allow_plus,
-                recover_qpath,
                 AllowCVariadic::No,
+                recover_qpath,
                 recover_return_sign,
             )?;
             FnRetTy::Ty(ty)
@@ -154,8 +168,8 @@ impl<'a> Parser<'a> {
                 .emit();
             let ty = self.parse_ty_common(
                 allow_plus,
-                recover_qpath,
                 AllowCVariadic::No,
+                recover_qpath,
                 recover_return_sign,
             )?;
             FnRetTy::Ty(ty)
@@ -167,8 +181,8 @@ impl<'a> Parser<'a> {
     fn parse_ty_common(
         &mut self,
         allow_plus: AllowPlus,
-        recover_qpath: RecoverQPath,
         allow_c_variadic: AllowCVariadic,
+        recover_qpath: RecoverQPath,
         recover_return_sign: RecoverReturnSign,
     ) -> PResult<'a, P<Ty>> {
         let allow_qpath_recovery = recover_qpath == RecoverQPath::Yes;
