@@ -519,16 +519,11 @@ fn main_options(options: config::Options) -> MainResult {
     // compiler all the way through the analysis passes. The rustdoc output is
     // then generated from the cleaned AST of the crate. This runs all the
     // plug/cleaning passes.
-    let crate_name = options.crate_name.clone();
     let crate_version = options.crate_version.clone();
     let output_format = options.output_format;
     let (mut krate, renderinfo, renderopts, sess) = core::run_core(options);
 
     info!("finished with rustc");
-
-    if let Some(name) = crate_name {
-        krate.name = name
-    }
 
     krate.version = crate_version;
 

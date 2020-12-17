@@ -223,7 +223,7 @@ impl FormatRenderer for JsonRenderer {
                     (
                         k.as_u32(),
                         types::ExternalCrate {
-                            name: v.0.clone(),
+                            name: v.0.to_string(),
                             html_root_url: match &v.2 {
                                 ExternalLocation::Remote(s) => Some(s.clone()),
                                 _ => None,
