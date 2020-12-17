@@ -5,14 +5,14 @@ use std::{
 };
 
 use ide::{
-    Assist, AssistKind, CallInfo, CompletionItem, CompletionItemKind, Documentation,
-    FileSystemEdit, Fold, FoldKind, Highlight, HighlightModifier, HighlightTag, HighlightedRange,
-    Indel, InlayHint, InlayKind, InsertTextFormat, LineIndex, Markup, NavigationTarget,
-    ReferenceAccess, ResolvedAssist, Runnable, Severity, SourceChange, SourceFileEdit, TextEdit,
+    Assist, AssistKind, CallInfo, CompletionItem, CompletionItemKind, Documentation, FileId,
+    FileRange, FileSystemEdit, Fold, FoldKind, Highlight, HighlightModifier, HighlightTag,
+    HighlightedRange, Indel, InlayHint, InlayKind, InsertTextFormat, LineIndex, Markup,
+    NavigationTarget, ReferenceAccess, ResolvedAssist, Runnable, Severity, SourceChange,
+    SourceFileEdit, TextEdit, TextRange, TextSize,
 };
-use ide_db::base_db::{FileId, FileRange};
 use itertools::Itertools;
-use syntax::{SyntaxKind, TextRange, TextSize};
+use syntax::SyntaxKind;
 
 use crate::{
     cargo_target_spec::CargoTargetSpec, global_state::GlobalStateSnapshot,
