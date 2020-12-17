@@ -372,6 +372,18 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
                                 self.current = if_expr_pat;
                                 self.visit_expr(if_expr);
                             },
+                            hir::Guard::IfLet(ref if_let_pat, ref if_let_expr) => {
+                                let if_let_pat_pat = self.next("pat");
+                                let if_let_expr_pat = self.next("expr");
+                                println!(
+                                    "    if let Guard::IfLet(ref {}, ref {}) = {};",
+                                    if_let_pat_pat, if_let_expr_pat, guard_pat
+                                );
+                                self.current = if_let_expr_pat;
+                                self.visit_expr(if_let_expr);
+                                self.current = if_let_pat_pat;
+                                self.visit_pat(if_let_pat);
+                            },
                         }
                     }
                     self.current = format!("{}[{}].pat", arms_pat, i);
@@ -730,6 +742,7 @@ fn desugaring_name(des: hir::MatchSource) -> String {
             "MatchSource::IfLetDesugar {{ contains_else_clause: {} }}",
             contains_else_clause
         ),
+        hir::MatchSource::IfLetGuardDesugar => "MatchSource::IfLetGuardDesugar".to_string(),
         hir::MatchSource::IfDesugar { contains_else_clause } => format!(
             "MatchSource::IfDesugar {{ contains_else_clause: {} }}",
             contains_else_clause
