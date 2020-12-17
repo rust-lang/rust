@@ -1266,7 +1266,6 @@ impl LifetimeParam {
     }
 }
 
-// FIXME: rename from `ImplDef` to `Impl`
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Impl {
     pub(crate) id: ImplId,
