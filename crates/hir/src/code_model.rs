@@ -267,7 +267,12 @@ impl ModuleDef {
             _ => return,
         };
 
-        hir_ty::diagnostics::validate_module_item(db, id, sink)
+        let module = match self.module(db) {
+            Some(it) => it,
+            None => return,
+        };
+
+        hir_ty::diagnostics::validate_module_item(db, module.id.krate, id, sink)
     }
 }
 
@@ -780,8 +785,9 @@ impl Function {
     }
 
     pub fn diagnostics(self, db: &dyn HirDatabase, sink: &mut DiagnosticSink) {
+        let krate = self.module(db).id.krate;
         hir_def::diagnostics::validate_body(db.upcast(), self.id.into(), sink);
-        hir_ty::diagnostics::validate_module_item(db, self.id.into(), sink);
+        hir_ty::diagnostics::validate_module_item(db, krate, self.id.into(), sink);
         hir_ty::diagnostics::validate_body(db, self.id.into(), sink);
     }
 
