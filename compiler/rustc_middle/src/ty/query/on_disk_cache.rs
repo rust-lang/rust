@@ -1149,6 +1149,16 @@ where
     }
 }
 
+// This ensures that the `Encodable<opaque::Encoder>::encode` specialization for byte slices
+// is used when a `CacheEncoder` having an `opaque::Encoder` is passed to `Encodable::encode`.
+// Unfortunately, we have to manually opt into specializations this way, given how `CacheEncoder`
+// and the encoding traits currently work.
+impl<'a, 'tcx> Encodable<CacheEncoder<'a, 'tcx, opaque::Encoder>> for [u8] {
+    fn encode(&self, e: &mut CacheEncoder<'a, 'tcx, opaque::Encoder>) -> opaque::EncodeResult {
+        self.encode(e.encoder)
+    }
+}
+
 // An integer that will always encode to 8 bytes.
 struct IntEncodedWithFixedSize(u64);
 

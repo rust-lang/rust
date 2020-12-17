@@ -527,7 +527,7 @@ impl<D: Decoder, T: Decodable<D>> Decodable<D> for Rc<T> {
 }
 
 impl<S: Encoder, T: Encodable<S>> Encodable<S> for [T] {
-    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
+    default fn encode(&self, s: &mut S) -> Result<(), S::Error> {
         s.emit_seq(self.len(), |s| {
             for (i, e) in self.iter().enumerate() {
                 s.emit_seq_elt(i, |s| e.encode(s))?

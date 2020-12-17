@@ -316,3 +316,15 @@ impl<'a> serialize::Decoder for Decoder<'a> {
         err.to_string()
     }
 }
+
+// Specialize encoding byte slices. The default implementation for slices encodes and emits each
+// element individually. This isn't necessary for `u8` slices encoded with an `opaque::Encoder`,
+// because each `u8` is emitted as-is. Therefore, we can use a more efficient implementation. This
+// specialization applies to encoding `Vec<u8>`s, etc., since they call `encode` on their slices.
+impl serialize::Encodable<Encoder> for [u8] {
+    fn encode(&self, e: &mut Encoder) -> EncodeResult {
+        serialize::Encoder::emit_usize(e, self.len())?;
+        e.emit_raw_bytes(self);
+        Ok(())
+    }
+}
