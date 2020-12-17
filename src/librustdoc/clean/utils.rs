@@ -84,12 +84,12 @@ crate fn krate(cx: &mut DocContext<'_>) -> Crate {
     }
 }
 
-fn external_generic_args<'tcx>(
-    cx: &mut DocContext<'tcx>,
+fn external_generic_args(
+    cx: &mut DocContext<'_>,
     trait_did: Option<DefId>,
     has_self: bool,
     bindings: Vec<TypeBinding>,
-    substs: SubstsRef<'tcx>,
+    substs: SubstsRef<'_>,
 ) -> GenericArgs {
     let mut skip_self = has_self;
     let mut ty_kind = None;
@@ -136,13 +136,13 @@ fn external_generic_args<'tcx>(
 
 // trait_did should be set to a trait's DefId if called on a TraitRef, in order to sugar
 // from Fn<(A, B,), C> to Fn(A, B) -> C
-pub(super) fn external_path<'tcx>(
-    cx: &mut DocContext<'tcx>,
+pub(super) fn external_path(
+    cx: &mut DocContext<'_>,
     name: Symbol,
     trait_did: Option<DefId>,
     has_self: bool,
     bindings: Vec<TypeBinding>,
-    substs: SubstsRef<'tcx>,
+    substs: SubstsRef<'_>,
 ) -> Path {
     Path {
         global: false,
