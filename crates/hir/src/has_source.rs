@@ -10,8 +10,8 @@ use hir_expand::InFile;
 use syntax::ast;
 
 use crate::{
-    db::HirDatabase, Const, Enum, EnumVariant, Field, FieldSource, Function, ImplDef,
-    LifetimeParam, MacroDef, Module, Static, Struct, Trait, TypeAlias, TypeParam, Union,
+    db::HirDatabase, Const, Enum, EnumVariant, Field, FieldSource, Function, Impl, LifetimeParam,
+    MacroDef, Module, Static, Struct, Trait, TypeAlias, TypeParam, Union,
 };
 
 pub trait HasSource {
@@ -118,7 +118,7 @@ impl HasSource for MacroDef {
         }
     }
 }
-impl HasSource for ImplDef {
+impl HasSource for Impl {
     type Ast = ast::Impl;
     fn source(self, db: &dyn HirDatabase) -> InFile<ast::Impl> {
         self.id.lookup(db.upcast()).source(db.upcast())

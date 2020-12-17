@@ -1,4 +1,4 @@
-use hir::{Crate, ImplDef, Semantics};
+use hir::{Crate, Impl, Semantics};
 use ide_db::RootDatabase;
 use syntax::{algo::find_node_at_offset, ast, AstNode};
 
@@ -49,7 +49,7 @@ fn impls_for_def(
         ast::AdtDef::Union(def) => sema.to_def(def)?.ty(sema.db),
     };
 
-    let impls = ImplDef::all_in_crate(sema.db, krate);
+    let impls = Impl::all_in_crate(sema.db, krate);
 
     Some(
         impls
@@ -67,7 +67,7 @@ fn impls_for_trait(
 ) -> Option<Vec<NavigationTarget>> {
     let tr = sema.to_def(node)?;
 
-    let impls = ImplDef::for_trait(sema.db, krate, tr);
+    let impls = Impl::for_trait(sema.db, krate, tr);
 
     Some(impls.into_iter().map(|imp| imp.to_nav(sema.db)).collect())
 }

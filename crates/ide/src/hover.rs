@@ -295,7 +295,7 @@ fn definition_owner_name(db: &RootDatabase, def: &Definition) -> Option<String> 
         Definition::ModuleDef(md) => match md {
             ModuleDef::Function(f) => match f.as_assoc_item(db)?.container(db) {
                 AssocItemContainer::Trait(t) => Some(t.name(db)),
-                AssocItemContainer::ImplDef(i) => i.target_ty(db).as_adt().map(|adt| adt.name(db)),
+                AssocItemContainer::Impl(i) => i.target_ty(db).as_adt().map(|adt| adt.name(db)),
             },
             ModuleDef::EnumVariant(e) => Some(e.parent_enum(db).name(db)),
             _ => None,

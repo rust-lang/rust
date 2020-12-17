@@ -130,7 +130,7 @@ fn runnable_fn(
                         hir::AssocItemContainer::Trait(trait_item) => {
                             Some(trait_item.name(sema.db).to_string())
                         }
-                        hir::AssocItemContainer::ImplDef(impl_def) => impl_def
+                        hir::AssocItemContainer::Impl(impl_def) => impl_def
                             .target_ty(sema.db)
                             .as_adt()
                             .map(|adt| adt.name(sema.db).to_string()),

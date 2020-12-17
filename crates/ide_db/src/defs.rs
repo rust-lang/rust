@@ -6,7 +6,7 @@
 // FIXME: this badly needs rename/rewrite (matklad, 2020-02-06).
 
 use hir::{
-    db::HirDatabase, Crate, Field, HasVisibility, ImplDef, LifetimeParam, Local, MacroDef, Module,
+    db::HirDatabase, Crate, Field, HasVisibility, Impl, LifetimeParam, Local, MacroDef, Module,
     ModuleDef, Name, PathResolution, Semantics, TypeParam, Visibility,
 };
 use syntax::{
@@ -22,7 +22,7 @@ pub enum Definition {
     Macro(MacroDef),
     Field(Field),
     ModuleDef(ModuleDef),
-    SelfType(ImplDef),
+    SelfType(Impl),
     Local(Local),
     TypeParam(TypeParam),
     LifetimeParam(LifetimeParam),
