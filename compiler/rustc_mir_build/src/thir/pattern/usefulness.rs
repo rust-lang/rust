@@ -632,7 +632,8 @@ impl<'p, 'tcx> FromIterator<PatStack<'p, 'tcx>> for Matrix<'p, 'tcx> {
 /// empty intersection.
 /// It is assumed that two spans don't overlap without one being contained in the other; in other
 /// words, that the inclusion structure forms a tree and not a DAG.
-/// Operations on this do not need to be fast since it's only nonempty in the diagnostic path.
+/// Intersection is not very efficient. It compares everything pairwise. If needed it could be made
+/// faster by sorting the `Span`s and merging cleverly.
 #[derive(Debug, Clone, Default)]
 pub(crate) struct SpanSet {
     /// The minimal set of `Span`s required to represent the whole set. If A and B are `Span`s in
@@ -715,7 +716,7 @@ impl<'tcx> Usefulness<'tcx> {
 
     /// When trying several branches and each returns a `Usefulness`, we need to combine the
     /// results together.
-    fn merge_or_patterns(usefulnesses: impl Iterator<Item = (Self, Span)>) -> Self {
+    fn merge(usefulnesses: impl Iterator<Item = Self>) -> Self {
         // If we have detected some unreachable sub-branches, we only want to keep them when they
         // were unreachable in _all_ branches. Eg. in the following, the last `true` is unreachable
         // in the second branch of the first or-pattern, but not otherwise. Therefore we don't want
@@ -737,62 +738,7 @@ impl<'tcx> Usefulness<'tcx> {
         // ```
 
         // Is `None` when no branch was useful. Will often be `Some(Spanset::new())` because the
-        // sets are only non-empty in the diagnostic path.
-        let mut unreachables: Option<SpanSet> = None;
-        // In case of or-patterns we don't want to intersect subpatterns that come from the first
-        // column. Invariant: contains a list of disjoint spans.
-        let mut unreachables_this_column = Vec::new();
-
-        for (u, branch_span) in usefulnesses {
-            match u {
-                Useful(spans) if spans.is_empty() => {
-                    // Hot path: `spans` is only non-empty in the diagnostic path.
-                    unreachables = Some(SpanSet::new());
-                }
-                Useful(spans) => {
-                    for span in spans.iter() {
-                        if branch_span.contains(span) {
-                            unreachables_this_column.push(span)
-                        }
-                    }
-                    if let Some(set) = &mut unreachables {
-                        if !set.is_empty() {
-                            set.intersection_mut(&spans);
-                        }
-                    } else {
-                        unreachables = Some(spans);
-                    }
-                }
-                NotUseful => unreachables_this_column.push(branch_span),
-                UsefulWithWitness(_) => {
-                    bug!(
-                        "encountered or-pat in the expansion of `_` during exhaustiveness checking"
-                    )
-                }
-            }
-        }
-
-        if let Some(mut unreachables) = unreachables {
-            for span in unreachables_this_column {
-                // `unreachables` contained no spans from the first column, and
-                // `unreachables_this_column` contains only disjoint spans. Therefore it is valid
-                // to call `push_nonintersecting`.
-                unreachables.push_nonintersecting(span);
-            }
-            Useful(unreachables)
-        } else {
-            NotUseful
-        }
-    }
-
-    /// When trying several branches and each returns a `Usefulness`, we need to combine the
-    /// results together.
-    fn merge_split_constructors(usefulnesses: impl Iterator<Item = Self>) -> Self {
-        // If we have detected some unreachable sub-branches, we only want to keep them when they
-        // were unreachable in _all_ branches. So we take a big intersection.
-
-        // Is `None` when no branch was useful. Will often be `Some(Spanset::new())` because the
-        // sets are only non-empty in the diagnostic path.
+        // sets are only non-empty in the presence of or-patterns.
         let mut unreachables: Option<SpanSet> = None;
         // Witnesses of usefulness, if any.
         let mut witnesses = Vec::new();
@@ -831,6 +777,30 @@ impl<'tcx> Usefulness<'tcx> {
         }
     }
 
+    /// After calculating the usefulness for a branch of an or-pattern, call this to make this
+    /// usefulness mergeable with those from the other branches.
+    fn unsplit_or_pat(self, this_span: Span, or_pat_spans: &[Span]) -> Self {
+        match self {
+            Useful(mut spans) => {
+                // We register the spans of the other branches of this or-pattern as being
+                // unreachable from this one. This ensures that intersecting together the sets of
+                // spans returns what we want.
+                // Until we optimize `SpanSet` however, intersecting this entails a number of
+                // comparisons quadratic in the number of branches.
+                for &span in or_pat_spans {
+                    if span != this_span {
+                        spans.push_nonintersecting(span);
+                    }
+                }
+                Useful(spans)
+            }
+            x => x,
+        }
+    }
+
+    /// After calculating usefulness after a specialization, call this to recontruct a usefulness
+    /// that makes sense for the matrix pre-specialization. This new usefulness can then be merged
+    /// with the results of specializing with the other constructors.
     fn apply_constructor<'p>(
         self,
         pcx: PatCtxt<'_, 'p, 'tcx>,
@@ -1003,21 +973,23 @@ fn is_useful<'p, 'tcx>(
 
     // If the first pattern is an or-pattern, expand it.
     let ret = if let Some(vs) = v.expand_or_pat() {
+        let subspans: Vec<_> = vs.iter().map(|v| v.head().span).collect();
         // We expand the or pattern, trying each of its branches in turn and keeping careful track
         // of possible unreachable sub-branches.
         let mut matrix = matrix.clone();
         let usefulnesses = vs.into_iter().map(|v| {
-            let span = v.head().span;
-            let u = is_useful(cx, &matrix, &v, witness_preference, hir_id, is_under_guard, false);
+            let v_span = v.head().span;
+            let usefulness =
+                is_useful(cx, &matrix, &v, witness_preference, hir_id, is_under_guard, false);
             // If pattern has a guard don't add it to the matrix.
             if !is_under_guard {
                 // We push the already-seen patterns into the matrix in order to detect redundant
                 // branches like `Some(_) | Some(0)`.
                 matrix.push(v);
             }
-            (u, span)
+            usefulness.unsplit_or_pat(v_span, &subspans)
         });
-        Usefulness::merge_or_patterns(usefulnesses)
+        Usefulness::merge(usefulnesses)
     } else {
         // We split the head constructor of `v`.
         let ctors = v.head_ctor(cx).split(pcx, Some(hir_id));
@@ -1032,7 +1004,7 @@ fn is_useful<'p, 'tcx>(
                 is_useful(pcx.cx, &matrix, &v, witness_preference, hir_id, is_under_guard, false);
             usefulness.apply_constructor(pcx, &ctor, &ctor_wild_subpatterns)
         });
-        Usefulness::merge_split_constructors(usefulnesses)
+        Usefulness::merge(usefulnesses)
     };
     debug!("is_useful::returns({:#?}, {:#?}) = {:?}", matrix, v, ret);
     ret
