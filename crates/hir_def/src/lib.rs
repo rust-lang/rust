@@ -425,6 +425,16 @@ impl HasModule for AdtId {
     }
 }
 
+impl HasModule for VariantId {
+    fn module(&self, db: &dyn db::DefDatabase) -> ModuleId {
+        match self {
+            VariantId::EnumVariantId(it) => it.parent.lookup(db).container.module(db),
+            VariantId::StructId(it) => it.lookup(db).container.module(db),
+            VariantId::UnionId(it) => it.lookup(db).container.module(db),
+        }
+    }
+}
+
 impl HasModule for DefWithBodyId {
     fn module(&self, db: &dyn db::DefDatabase) -> ModuleId {
         match self {
@@ -462,6 +472,26 @@ impl HasModule for GenericDefId {
 impl HasModule for StaticLoc {
     fn module(&self, db: &dyn db::DefDatabase) -> ModuleId {
         self.container.module(db)
+    }
+}
+
+impl AttrDefId {
+    pub fn krate(&self, db: &dyn db::DefDatabase) -> CrateId {
+        match self {
+            AttrDefId::ModuleId(it) => it.krate,
+            AttrDefId::FieldId(it) => it.parent.module(db).krate,
+            AttrDefId::AdtId(it) => it.module(db).krate,
+            AttrDefId::FunctionId(it) => it.lookup(db).module(db).krate,
+            AttrDefId::EnumVariantId(it) => it.parent.lookup(db).container.module(db).krate,
+            AttrDefId::StaticId(it) => it.lookup(db).module(db).krate,
+            AttrDefId::ConstId(it) => it.lookup(db).module(db).krate,
+            AttrDefId::TraitId(it) => it.lookup(db).container.module(db).krate,
+            AttrDefId::TypeAliasId(it) => it.lookup(db).module(db).krate,
+            AttrDefId::ImplId(it) => it.lookup(db).container.module(db).krate,
+            // FIXME: `MacroDefId` should store the defining module, then this can implement
+            // `HasModule`
+            AttrDefId::MacroDefId(it) => it.krate,
+        }
     }
 }
 
