@@ -136,7 +136,7 @@ impl From<clean::Constant> for Constant {
 
 impl From<clean::TypeBinding> for TypeBinding {
     fn from(binding: clean::TypeBinding) -> Self {
-        TypeBinding { name: binding.name, binding: binding.kind.into() }
+        TypeBinding { name: binding.name.to_string(), binding: binding.kind.into() }
     }
 }
 
@@ -275,7 +275,7 @@ impl From<clean::Generics> for Generics {
 
 impl From<clean::GenericParamDef> for GenericParamDef {
     fn from(generic_param: clean::GenericParamDef) -> Self {
-        GenericParamDef { name: generic_param.name, kind: generic_param.kind.into() }
+        GenericParamDef { name: generic_param.name.to_string(), kind: generic_param.kind.into() }
     }
 }
 
@@ -351,7 +351,7 @@ impl From<clean::Type> for Type {
                     .map(|v| v.into_iter().map(Into::into).collect())
                     .unwrap_or_default(),
             },
-            Generic(s) => Type::Generic(s),
+            Generic(s) => Type::Generic(s.to_string()),
             Primitive(p) => Type::Primitive(p.as_str().to_string()),
             BareFunction(f) => Type::FunctionPointer(Box::new((*f).into())),
             Tuple(t) => Type::Tuple(t.into_iter().map(Into::into).collect()),
@@ -370,7 +370,7 @@ impl From<clean::Type> for Type {
                 type_: Box::new((*type_).into()),
             },
             QPath { name, self_type, trait_ } => Type::QualifiedPath {
-                name,
+                name: name.to_string(),
                 self_type: Box::new((*self_type).into()),
                 trait_: Box::new((*trait_).into()),
             },
@@ -394,7 +394,11 @@ impl From<clean::FnDecl> for FnDecl {
     fn from(decl: clean::FnDecl) -> Self {
         let clean::FnDecl { inputs, output, c_variadic, attrs: _ } = decl;
         FnDecl {
-            inputs: inputs.values.into_iter().map(|arg| (arg.name, arg.type_.into())).collect(),
+            inputs: inputs
+                .values
+                .into_iter()
+                .map(|arg| (arg.name.to_string(), arg.type_.into()))
+                .collect(),
             output: match output {
                 clean::FnRetTy::Return(t) => Some(t.into()),
                 clean::FnRetTy::DefaultReturn => None,

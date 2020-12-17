@@ -949,7 +949,7 @@ impl GenericParamDefKind {
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 crate struct GenericParamDef {
-    crate name: String,
+    crate name: Symbol,
     crate kind: GenericParamDefKind,
 }
 
@@ -1037,7 +1037,7 @@ crate struct Arguments {
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 crate struct Argument {
     crate type_: Type,
-    crate name: String,
+    crate name: Symbol,
 }
 
 #[derive(Clone, PartialEq, Debug)]
@@ -1049,7 +1049,7 @@ crate enum SelfTy {
 
 impl Argument {
     crate fn to_self(&self) -> Option<SelfTy> {
-        if self.name != "self" {
+        if self.name != kw::SelfLower {
             return None;
         }
         if self.type_.is_self_type() {
@@ -1117,7 +1117,7 @@ crate enum Type {
     },
     /// For parameterized types, so the consumer of the JSON don't go
     /// looking for types which don't exist anywhere.
-    Generic(String),
+    Generic(Symbol),
     /// Primitives are the fixed-size numeric types (plus int/usize/float), char,
     /// arrays, slices, and tuples.
     Primitive(PrimitiveType),
@@ -1136,7 +1136,7 @@ crate enum Type {
 
     // `<Type as Trait>::Name`
     QPath {
-        name: String,
+        name: Symbol,
         self_type: Box<Type>,
         trait_: Box<Type>,
     },
@@ -1237,7 +1237,7 @@ impl Type {
 
     crate fn is_self_type(&self) -> bool {
         match *self {
-            Generic(ref name) => name == "Self",
+            Generic(name) => name == kw::SelfUpper,
             _ => false,
         }
     }
@@ -1282,16 +1282,16 @@ impl Type {
         }
     }
 
-    crate fn projection(&self) -> Option<(&Type, DefId, &str)> {
+    crate fn projection(&self) -> Option<(&Type, DefId, Symbol)> {
         let (self_, trait_, name) = match self {
-            QPath { ref self_type, ref trait_, ref name } => (self_type, trait_, name),
+            QPath { ref self_type, ref trait_, name } => (self_type, trait_, name),
             _ => return None,
         };
         let trait_did = match **trait_ {
             ResolvedPath { did, .. } => did,
             _ => return None,
         };
-        Some((&self_, trait_did, name))
+        Some((&self_, trait_did, *name))
     }
 }
 
@@ -1816,7 +1816,7 @@ crate struct ProcMacro {
 /// `A: Send + Sync` in `Foo<A: Send + Sync>`).
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 crate struct TypeBinding {
-    crate name: String,
+    crate name: Symbol,
     crate kind: TypeBindingKind,
 }
 
