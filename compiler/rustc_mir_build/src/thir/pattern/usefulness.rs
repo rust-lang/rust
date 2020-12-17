@@ -788,13 +788,32 @@ impl<'tcx> Usefulness<'tcx> {
     /// When trying several branches and each returns a `Usefulness`, we need to combine the
     /// results together.
     fn merge_split_constructors(usefulnesses: impl Iterator<Item = Self>) -> Self {
+        // If we have detected some unreachable sub-branches, we only want to keep them when they
+        // were unreachable in _all_ branches. So we take a big intersection.
+
+        // Is `None` when no branch was useful. Will often be `Some(Spanset::new())` because the
+        // sets are only non-empty in the diagnostic path.
+        let mut unreachables: Option<SpanSet> = None;
         // Witnesses of usefulness, if any.
         let mut witnesses = Vec::new();
 
         for u in usefulnesses {
             match u {
-                Useful(..) => {
-                    return u;
+                Useful(spans) if spans.is_empty() => {
+                    // Once we reach the empty set, more intersections won't change the result.
+                    return Useful(SpanSet::new());
+                }
+                Useful(spans) => {
+                    if let Some(unreachables) = &mut unreachables {
+                        if !unreachables.is_empty() {
+                            unreachables.intersection_mut(&spans);
+                        }
+                        if unreachables.is_empty() {
+                            return Useful(SpanSet::new());
+                        }
+                    } else {
+                        unreachables = Some(spans);
+                    }
                 }
                 NotUseful => {}
                 UsefulWithWitness(wits) => {
@@ -803,7 +822,13 @@ impl<'tcx> Usefulness<'tcx> {
             }
         }
 
-        if !witnesses.is_empty() { UsefulWithWitness(witnesses) } else { NotUseful }
+        if !witnesses.is_empty() {
+            UsefulWithWitness(witnesses)
+        } else if let Some(unreachables) = unreachables {
+            Useful(unreachables)
+        } else {
+            NotUseful
+        }
     }
 
     fn apply_constructor<'p>(

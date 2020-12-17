@@ -64,11 +64,9 @@ fn main() {
             | 2, ..] => {}
         _ => {}
     }
-    // FIXME: incorrect
     match &[][..] {
         [true] => {}
-        [true //~ ERROR unreachable
-            | false, ..] => {}
+        [true | false, ..] => {}
         _ => {}
     }
     match &[][..] {
