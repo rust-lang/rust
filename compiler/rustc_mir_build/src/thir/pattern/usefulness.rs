@@ -311,7 +311,6 @@ use super::{Pat, PatKind};
 use super::{PatternFoldable, PatternFolder};
 
 use rustc_data_structures::captures::Captures;
-use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::OnceCell;
 
 use rustc_arena::TypedArena;
@@ -626,11 +625,81 @@ impl<'p, 'tcx> FromIterator<PatStack<'p, 'tcx>> for Matrix<'p, 'tcx> {
     }
 }
 
+/// Represents a set of `Span`s closed under the containment relation. That is, if a `Span` is
+/// contained in the set then all `Span`s contained in it are also implicitly contained in the set.
+/// In particular this means that when intersecting two sets, taking the intersection of some span
+/// and one of its subspans returns the subspan, whereas a simple `HashSet` would have returned an
+/// empty intersection.
+/// It is assumed that two spans don't overlap without one being contained in the other; in other
+/// words, that the inclusion structure forms a tree and not a DAG.
+/// Operations on this do not need to be fast since it's only nonempty in the diagnostic path.
+#[derive(Debug, Clone, Default)]
+pub(crate) struct SpanSet {
+    /// The minimal set of `Span`s required to represent the whole set. If A and B are `Span`s in
+    /// the `SpanSet`, and A is a descendant of B, then only B will be in `root_spans`.
+    /// Invariant: the spans are disjoint.
+    root_spans: Vec<Span>,
+}
+
+impl SpanSet {
+    /// Creates an empty set.
+    fn new() -> Self {
+        Self::default()
+    }
+
+    /// Tests whether the set is empty.
+    pub(crate) fn is_empty(&self) -> bool {
+        self.root_spans.is_empty()
+    }
+
+    /// Iterate over the disjoint list of spans at the roots of this set.
+    pub(crate) fn iter<'a>(&'a self) -> impl Iterator<Item = Span> + Captures<'a> {
+        self.root_spans.iter().copied()
+    }
+
+    /// Tests whether the set contains a given Span.
+    fn contains(&self, span: Span) -> bool {
+        self.iter().any(|root_span| root_span.contains(span))
+    }
+
+    /// Add a span to the set if we know the span has no intersection in this set.
+    fn push_nonintersecting(&mut self, new_span: Span) {
+        self.root_spans.push(new_span);
+    }
+
+    fn intersection_mut(&mut self, other: &Self) {
+        if self.is_empty() || other.is_empty() {
+            *self = Self::new();
+            return;
+        }
+        // Those that were in `self` but not contained in `other`
+        let mut leftover = SpanSet::new();
+        // We keep the elements in `self` that are also in `other`.
+        self.root_spans.retain(|span| {
+            let retain = other.contains(*span);
+            if !retain {
+                leftover.root_spans.push(*span);
+            }
+            retain
+        });
+        // We keep the elements in `other` that are also in the original `self`. You might think
+        // this is not needed because `self` already contains the intersection. But those aren't
+        // just sets of things. If `self = [a]`, `other = [b]` and `a` contains `b`, then `b`
+        // belongs in the intersection but we didn't catch it in the filtering above. We look at
+        // `leftover` instead of the full original `self` to avoid duplicates.
+        for span in other.iter() {
+            if leftover.contains(span) {
+                self.root_spans.push(span);
+            }
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 crate enum Usefulness<'tcx> {
-    /// Carries, for each column in the matrix, a set of sub-branches that have been found to be
-    /// unreachable. Used only in the presence of or-patterns, otherwise it stays empty.
-    Useful(Vec<FxHashSet<Span>>),
+    /// Pontentially carries a set of sub-branches that have been found to be unreachable. Used
+    /// only in the presence of or-patterns, otherwise it stays empty.
+    Useful(SpanSet),
     /// Carries a list of witnesses of non-exhaustiveness.
     UsefulWithWitness(Vec<Witness<'tcx>>),
     NotUseful,
@@ -640,7 +709,7 @@ impl<'tcx> Usefulness<'tcx> {
     fn new_useful(preference: WitnessPreference) -> Self {
         match preference {
             ConstructWitness => UsefulWithWitness(vec![Witness(vec![])]),
-            LeaveOutWitness => Useful(vec![]),
+            LeaveOutWitness => Useful(Default::default()),
         }
     }
 
@@ -650,22 +719,20 @@ impl<'tcx> Usefulness<'tcx> {
 
     /// When trying several branches and each returns a `Usefulness`, we need to combine the
     /// results together.
-    fn merge(usefulnesses: impl Iterator<Item = (Self, Span)>, column_count: usize) -> Self {
-        // If two branches have detected some unreachable sub-branches, we need to be careful. If
-        // they were detected in columns that are not the current one, we want to keep only the
-        // sub-branches that were unreachable in _all_ branches. Eg. in the following, the last
-        // `true` is unreachable in the second branch of the first or-pattern, but not otherwise.
-        // Therefore we don't want to lint that it is unreachable.
-        //
+    fn merge(usefulnesses: impl Iterator<Item = (Self, Span)>) -> Self {
+        // If we have detected some unreachable sub-branches, we only want to keep them when they
+        // were unreachable in _all_ branches. Eg. in the following, the last `true` is unreachable
+        // in the second branch of the first or-pattern, but not otherwise. Therefore we don't want
+        // to lint that it is unreachable.
         // ```
         // match (true, true) {
         //     (true, true) => {}
         //     (false | true, false | true) => {}
         // }
         // ```
-        // If however the sub-branches come from the current column, they come from the inside of
-        // the current or-pattern, and we want to keep them all. Eg. in the following, we _do_ want
-        // to lint that the last `false` is unreachable.
+        // Here however we _do_ want to lint that the last `false` is unreachable. So we don't want
+        // to intersect the spans that come directly from the or-pattern, since each branch of the
+        // or-pattern brings a new disjoint pattern.
         // ```
         // match None {
         //     Some(false) => {}
@@ -673,35 +740,34 @@ impl<'tcx> Usefulness<'tcx> {
         // }
         // ```
 
-        // We keep track of sub-branches separately depending on whether they come from this column
-        // or from others.
-        let mut unreachables_this_column: FxHashSet<Span> = FxHashSet::default();
-        let mut unreachables_other_columns: Vec<FxHashSet<Span>> = Vec::default();
-        // Whether at least one branch is reachable.
-        let mut any_is_useful = false;
+        // Is `None` when no branch was useful. Will often be `Some(Spanset::new())` because the
+        // sets are only non-empty in the diagnostic path.
+        let mut unreachables: Option<SpanSet> = None;
+        // In case of or-patterns we don't want to intersect subpatterns that come from the first
+        // column. Invariant: contains a list of disjoint spans.
+        let mut unreachables_this_column = Vec::new();
 
-        for (u, span) in usefulnesses {
+        for (u, branch_span) in usefulnesses {
             match u {
-                Useful(unreachables) => {
-                    if let Some((this_column, other_columns)) = unreachables.split_last() {
-                        // We keep the union of unreachables found in the first column.
-                        unreachables_this_column.extend(this_column);
-                        // We keep the intersection of unreachables found in other columns.
-                        if unreachables_other_columns.is_empty() {
-                            unreachables_other_columns = other_columns.to_vec();
-                        } else {
-                            unreachables_other_columns = unreachables_other_columns
-                                .into_iter()
-                                .zip(other_columns)
-                                .map(|(x, y)| x.intersection(&y).copied().collect())
-                                .collect();
+                Useful(spans) if spans.is_empty() => {
+                    // Hot path: `spans` is only non-empty in the diagnostic path.
+                    unreachables = Some(SpanSet::new());
+                }
+                Useful(spans) => {
+                    for span in spans.iter() {
+                        if branch_span.contains(span) {
+                            unreachables_this_column.push(span)
                         }
                     }
-                    any_is_useful = true;
+                    if let Some(set) = &mut unreachables {
+                        if !set.is_empty() {
+                            set.intersection_mut(&spans);
+                        }
+                    } else {
+                        unreachables = Some(spans);
+                    }
                 }
-                NotUseful => {
-                    unreachables_this_column.insert(span);
-                }
+                NotUseful => unreachables_this_column.push(branch_span),
                 UsefulWithWitness(_) => {
                     bug!(
                         "encountered or-pat in the expansion of `_` during exhaustiveness checking"
@@ -710,13 +776,13 @@ impl<'tcx> Usefulness<'tcx> {
             }
         }
 
-        if any_is_useful {
-            let mut unreachables = if unreachables_other_columns.is_empty() {
-                (0..column_count - 1).map(|_| FxHashSet::default()).collect()
-            } else {
-                unreachables_other_columns
-            };
-            unreachables.push(unreachables_this_column);
+        if let Some(mut unreachables) = unreachables {
+            for span in unreachables_this_column {
+                // `unreachables` contained no spans from the first column, and
+                // `unreachables_this_column` contains only disjoint spans. Therefore it is valid
+                // to call `push_nonintersecting`.
+                unreachables.push_nonintersecting(span);
+            }
             Useful(unreachables)
         } else {
             NotUseful
@@ -751,23 +817,6 @@ impl<'tcx> Usefulness<'tcx> {
                         .collect()
                 };
                 UsefulWithWitness(new_witnesses)
-            }
-            Useful(mut unreachables) => {
-                if !unreachables.is_empty() {
-                    // When we apply a constructor, there are `arity` columns of the matrix that
-                    // corresponded to its arguments. All the unreachables found in these columns
-                    // will, after `apply`, come from the first column. So we take the union of all
-                    // the corresponding sets and put them in the first column.
-                    // Note that `arity` may be 0, in which case we just push a new empty set.
-                    let len = unreachables.len();
-                    let arity = ctor_wild_subpatterns.len();
-                    let mut unioned = FxHashSet::default();
-                    for set in unreachables.drain((len - arity)..) {
-                        unioned.extend(set)
-                    }
-                    unreachables.push(unioned);
-                }
-                Useful(unreachables)
             }
             x => x,
         }
@@ -926,7 +975,7 @@ fn is_useful<'p, 'tcx>(
             }
             (u, span)
         });
-        Usefulness::merge(usefulnesses, v.len())
+        Usefulness::merge(usefulnesses)
     } else {
         v.head_ctor(cx)
             .split(pcx, Some(hir_id))

@@ -107,6 +107,12 @@ LL |         [true
    |          ^^^^
 
 error: unreachable pattern
+  --> $DIR/exhaustiveness-unreachable-pattern.rs:84:36
+   |
+LL |         (true | false, None | Some(true
+   |                                    ^^^^
+
+error: unreachable pattern
   --> $DIR/exhaustiveness-unreachable-pattern.rs:100:14
    |
 LL |         Some(0
@@ -130,5 +136,5 @@ error: unreachable pattern
 LL |             | true,
    |               ^^^^
 
-error: aborting due to 21 previous errors
+error: aborting due to 22 previous errors
 

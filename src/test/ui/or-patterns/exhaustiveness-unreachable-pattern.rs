@@ -81,7 +81,7 @@ fn main() {
     match (true, None) {
         (true, Some(_)) => {}
         (false, Some(true)) => {}
-        (true | false, None | Some(true // FIXME: should be unreachable
+        (true | false, None | Some(true //~ ERROR unreachable
                                    | false)) => {}
     }
     macro_rules! t_or_f {
