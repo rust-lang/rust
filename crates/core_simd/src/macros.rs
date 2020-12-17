@@ -52,7 +52,23 @@ macro_rules! impl_vector {
 
             /// Converts a SIMD vector to an array.
             pub const fn to_array(self) -> [$type; LANES] {
-                self.0
+                // workaround for rust-lang/rust#80108
+                // TODO fix this
+                #[cfg(target_arch = "wasm32")]
+                {
+                    let mut arr = [self.0[0]; LANES];
+                    let mut i = 0;
+                    while i < LANES {
+                        arr[i] = self.0[i];
+                        i += 1;
+                    }
+                    arr
+                }
+
+                #[cfg(not(target_arch = "wasm32"))]
+                {
+                    self.0
+                }
             }
         }
 
