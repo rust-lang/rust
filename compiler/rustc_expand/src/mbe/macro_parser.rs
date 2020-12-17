@@ -1,4 +1,4 @@
-//! This is an NFA-based parser, which calls out to the main rust parser for named non-terminals
+//! This is an NFA-based parser, which calls out to the main Rust parser for named non-terminals
 //! (which it commits to fully when it hits one in a grammar). There's a set of current NFA threads
 //! and a set of next ones. Instead of NTs, we have a special case for Kleene star. The big-O, in
 //! pathological cases, is worse than traditional use of NFA or Earley parsing, but it's an easier
@@ -422,7 +422,6 @@ fn token_name_eq(t1: &Token, t2: &Token) -> bool {
 ///
 /// # Parameters
 ///
-/// - `sess`: the parsing session into which errors are emitted.
 /// - `cur_items`: the set of current items to be processed. This should be empty by the end of a
 ///   successful execution of this function.
 /// - `next_items`: the set of newly generated items. These are used to replenish `cur_items` in
@@ -430,8 +429,6 @@ fn token_name_eq(t1: &Token, t2: &Token) -> bool {
 /// - `eof_items`: the set of items that would be valid if this was the EOF.
 /// - `bb_items`: the set of items that are waiting for the black-box parser.
 /// - `token`: the current token of the parser.
-/// - `span`: the `Span` in the source code corresponding to the token trees we are trying to match
-///   against the matcher positions in `cur_items`.
 ///
 /// # Returns
 ///
