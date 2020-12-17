@@ -10,7 +10,10 @@ use syntax::{
     match_ast, SyntaxNode,
 };
 
-use crate::{display::ToNav, FileId, NavigationTarget};
+use crate::{
+    display::{ToNav, TryToNav},
+    FileId, NavigationTarget,
+};
 
 #[derive(Debug, Clone)]
 pub struct Runnable {
@@ -101,125 +104,109 @@ pub(crate) fn runnable(
     item: SyntaxNode,
     file_id: FileId,
 ) -> Option<Runnable> {
-    match_ast! {
-        match item {
-            ast::Struct(it) => runnable_struct(sema, it, file_id),
+    let runnable_item = match_ast! {
+        match (item.clone()) {
             ast::Fn(it) => runnable_fn(sema, it, file_id),
             ast::Module(it) => runnable_mod(sema, it),
             _ => None,
         }
-    }
+    };
+    runnable_item.or_else(|| runnable_doctest(sema, item))
 }
 
-fn runnable_fn(
-    sema: &Semantics<RootDatabase>,
-    fn_def: ast::Fn,
-    file_id: FileId,
-) -> Option<Runnable> {
-    let def = sema.to_def(&fn_def)?;
-    let name_string = fn_def.name()?.text().to_string();
+fn runnable_fn(sema: &Semantics<RootDatabase>, func: ast::Fn, file_id: FileId) -> Option<Runnable> {
+    let def = sema.to_def(&func)?;
+    let name_string = func.name()?.text().to_string();
 
-    let attrs = def.attrs(sema.db);
     let kind = if name_string == "main" {
         RunnableKind::Bin
     } else {
-        let test_id = match sema.to_def(&fn_def).map(|def| def.module(sema.db)) {
-            Some(module) => {
-                let def = sema.to_def(&fn_def)?;
-                let impl_trait_name = def.as_assoc_item(sema.db).and_then(|assoc_item| {
-                    match assoc_item.container(sema.db) {
-                        hir::AssocItemContainer::Trait(trait_item) => {
-                            Some(trait_item.name(sema.db).to_string())
-                        }
-                        hir::AssocItemContainer::Impl(impl_def) => impl_def
-                            .target_ty(sema.db)
-                            .as_adt()
-                            .map(|adt| adt.name(sema.db).to_string()),
-                    }
-                });
+        let canonical_path = sema.to_def(&func).and_then(|def| {
+            let def: hir::ModuleDef = def.into();
+            def.canonical_path(sema.db)
+        });
+        let test_id = canonical_path.map(TestId::Path).unwrap_or(TestId::Name(name_string));
 
-                let path_iter = module
-                    .path_to_root(sema.db)
-                    .into_iter()
-                    .rev()
-                    .filter_map(|it| it.name(sema.db))
-                    .map(|name| name.to_string());
-
-                let path = if let Some(impl_trait_name) = impl_trait_name {
-                    path_iter
-                        .chain(std::iter::once(impl_trait_name))
-                        .chain(std::iter::once(name_string))
-                        .join("::")
-                } else {
-                    path_iter.chain(std::iter::once(name_string)).join("::")
-                };
-
-                TestId::Path(path)
-            }
-            None => TestId::Name(name_string),
-        };
-
-        if test_related_attribute(&fn_def).is_some() {
-            let attr = TestAttr::from_fn(&fn_def);
+        if test_related_attribute(&func).is_some() {
+            let attr = TestAttr::from_fn(&func);
             RunnableKind::Test { test_id, attr }
-        } else if fn_def.has_atom_attr("bench") {
+        } else if func.has_atom_attr("bench") {
             RunnableKind::Bench { test_id }
-        } else if has_runnable_doc_test(&attrs) {
-            RunnableKind::DocTest { test_id }
         } else {
             return None;
         }
     };
 
-    let cfg = attrs.cfg();
-
-    let nav = if let RunnableKind::DocTest { .. } = kind {
-        NavigationTarget::from_doc_commented(
-            sema.db,
-            InFile::new(file_id.into(), &fn_def),
-            InFile::new(file_id.into(), &fn_def),
-        )
-    } else {
-        NavigationTarget::from_named(sema.db, InFile::new(file_id.into(), &fn_def))
-    };
+    let nav = NavigationTarget::from_named(sema.db, InFile::new(file_id.into(), &func));
+    let cfg = def.attrs(sema.db).cfg();
     Some(Runnable { nav, kind, cfg })
 }
 
-fn runnable_struct(
-    sema: &Semantics<RootDatabase>,
-    struct_def: ast::Struct,
-    file_id: FileId,
-) -> Option<Runnable> {
-    let def = sema.to_def(&struct_def)?;
-    let name_string = struct_def.name()?.text().to_string();
+fn runnable_doctest(sema: &Semantics<RootDatabase>, item: SyntaxNode) -> Option<Runnable> {
+    match_ast! {
+        match item {
+            ast::Fn(it) => module_def_doctest(sema, sema.to_def(&it)?.into()),
+            ast::Struct(it) => module_def_doctest(sema, sema.to_def(&it)?.into()),
+            ast::Enum(it) => module_def_doctest(sema, sema.to_def(&it)?.into()),
+            ast::Union(it) => module_def_doctest(sema, sema.to_def(&it)?.into()),
+            ast::Trait(it) => module_def_doctest(sema, sema.to_def(&it)?.into()),
+            ast::Const(it) => module_def_doctest(sema, sema.to_def(&it)?.into()),
+            ast::Static(it) => module_def_doctest(sema, sema.to_def(&it)?.into()),
+            ast::TypeAlias(it) => module_def_doctest(sema, sema.to_def(&it)?.into()),
+            _ => None,
+        }
+    }
+}
 
-    let attrs = def.attrs(sema.db);
+fn module_def_doctest(sema: &Semantics<RootDatabase>, def: hir::ModuleDef) -> Option<Runnable> {
+    let attrs = match def {
+        hir::ModuleDef::Module(it) => it.attrs(sema.db),
+        hir::ModuleDef::Function(it) => it.attrs(sema.db),
+        hir::ModuleDef::Adt(it) => it.attrs(sema.db),
+        hir::ModuleDef::EnumVariant(it) => it.attrs(sema.db),
+        hir::ModuleDef::Const(it) => it.attrs(sema.db),
+        hir::ModuleDef::Static(it) => it.attrs(sema.db),
+        hir::ModuleDef::Trait(it) => it.attrs(sema.db),
+        hir::ModuleDef::TypeAlias(it) => it.attrs(sema.db),
+        hir::ModuleDef::BuiltinType(_) => return None,
+    };
     if !has_runnable_doc_test(&attrs) {
         return None;
     }
-    let cfg = attrs.cfg();
+    let def_name = def.name(sema.db).map(|it| it.to_string());
+    let test_id = def
+        .canonical_path(sema.db)
+        // This probably belongs to canonical path?
+        .map(|path| {
+            let assoc_def = match def {
+                hir::ModuleDef::Function(it) => it.as_assoc_item(sema.db),
+                hir::ModuleDef::Const(it) => it.as_assoc_item(sema.db),
+                hir::ModuleDef::TypeAlias(it) => it.as_assoc_item(sema.db),
+                _ => None,
+            };
+            // FIXME: this also looks very wrong
+            if let Some(assoc_def) = assoc_def {
+                if let hir::AssocItemContainer::Impl(imp) = assoc_def.container(sema.db) {
+                    if let Some(adt) = imp.target_ty(sema.db).as_adt() {
+                        let name = adt.name(sema.db).to_string();
+                        let idx = path.rfind(':').unwrap_or(0);
+                        let (prefix, suffix) = path.split_at(idx);
+                        return format!("{}{}::{}", prefix, name, suffix);
+                    }
+                }
+            }
+            path
+        })
+        .map(TestId::Path)
+        .or_else(|| def_name.clone().map(TestId::Name))?;
 
-    let test_id = match sema.to_def(&struct_def).map(|def| def.module(sema.db)) {
-        Some(module) => {
-            let path_iter = module
-                .path_to_root(sema.db)
-                .into_iter()
-                .rev()
-                .filter_map(|it| it.name(sema.db))
-                .map(|name| name.to_string());
-            let path = path_iter.chain(std::iter::once(name_string)).join("::");
-
-            TestId::Path(path)
-        }
-        None => TestId::Name(name_string),
-    };
-
-    let nav = NavigationTarget::from_doc_commented(
-        sema.db,
-        InFile::new(file_id.into(), &struct_def),
-        InFile::new(file_id.into(), &struct_def),
-    );
-    Some(Runnable { nav, kind: RunnableKind::DocTest { test_id }, cfg })
+    let mut nav = def.try_to_nav(sema.db)?;
+    nav.focus_range = None;
+    nav.description = None;
+    nav.docs = None;
+    nav.kind = syntax::SyntaxKind::COMMENT;
+    let res = Runnable { nav, kind: RunnableKind::DocTest { test_id }, cfg: attrs.cfg() };
+    Some(res)
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -317,7 +304,7 @@ mod tests {
 
     use crate::fixture;
 
-    use super::{RunnableAction, BENCH, BIN, DOCTEST, TEST};
+    use super::*;
 
     fn check(
         ra_fixture: &str,
@@ -546,7 +533,7 @@ struct StructWithRunnable(String);
                             full_range: 15..74,
                             focus_range: None,
                             name: "should_have_runnable",
-                            kind: FN,
+                            kind: COMMENT,
                             container_name: None,
                             description: None,
                             docs: None,
@@ -566,7 +553,7 @@ struct StructWithRunnable(String);
                             full_range: 76..148,
                             focus_range: None,
                             name: "should_have_runnable_1",
-                            kind: FN,
+                            kind: COMMENT,
                             container_name: None,
                             description: None,
                             docs: None,
@@ -586,7 +573,7 @@ struct StructWithRunnable(String);
                             full_range: 150..254,
                             focus_range: None,
                             name: "should_have_runnable_2",
-                            kind: FN,
+                            kind: COMMENT,
                             container_name: None,
                             description: None,
                             docs: None,
@@ -606,7 +593,7 @@ struct StructWithRunnable(String);
                             full_range: 756..821,
                             focus_range: None,
                             name: "StructWithRunnable",
-                            kind: STRUCT,
+                            kind: COMMENT,
                             container_name: None,
                             description: None,
                             docs: None,
@@ -668,7 +655,7 @@ impl Data {
                             full_range: 44..98,
                             focus_range: None,
                             name: "foo",
-                            kind: FN,
+                            kind: COMMENT,
                             container_name: None,
                             description: None,
                             docs: None,
