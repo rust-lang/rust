@@ -2,18 +2,42 @@
 
 use either::Either;
 use hir::{AssocItem, Documentation, FieldSource, HasAttrs, HasSource, InFile, ModuleSource};
-use ide_db::base_db::{FileId, SourceDatabase};
+use ide_db::{
+    base_db::{FileId, SourceDatabase},
+    symbol_index::FileSymbolKind,
+};
 use ide_db::{defs::Definition, RootDatabase};
 use syntax::{
     ast::{self, NameOwner},
-    match_ast, AstNode, SmolStr,
-    SyntaxKind::{self, IDENT_PAT, LIFETIME_PARAM, TYPE_PARAM},
-    TextRange,
+    match_ast, AstNode, SmolStr, TextRange,
 };
 
 use crate::FileSymbol;
 
 use super::short_label::ShortLabel;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum SymbolKind {
+    Module,
+    Impl,
+    Field,
+    TypeParam,
+    LifetimeParam,
+    SelfParam,
+    Local,
+    Function,
+    Const,
+    Static,
+    Struct,
+    Enum,
+    Variant,
+    Union,
+    TypeAlias,
+    Trait,
+    Macro,
+    // Do we actually need this?
+    DocTest,
+}
 
 /// `NavigationTarget` represents and element in the editor's UI which you can
 /// click on to navigate to a particular piece of code.
@@ -40,7 +64,7 @@ pub struct NavigationTarget {
     /// Clients should place the cursor on this range when navigating to this target.
     pub focus_range: Option<TextRange>,
     pub name: SmolStr,
-    pub kind: SyntaxKind,
+    pub kind: SymbolKind,
     pub container_name: Option<SmolStr>,
     pub description: Option<String>,
     pub docs: Option<Documentation>,
@@ -69,7 +93,7 @@ impl NavigationTarget {
                 name,
                 None,
                 frange.range,
-                src.value.syntax().kind(),
+                SymbolKind::Module,
             );
             res.docs = module.attrs(db).docs();
             res.description = src.value.short_label();
@@ -101,6 +125,7 @@ impl NavigationTarget {
     pub(crate) fn from_named(
         db: &RootDatabase,
         node: InFile<&dyn ast::NameOwner>,
+        kind: SymbolKind,
     ) -> NavigationTarget {
         let name =
             node.value.name().map(|it| it.text().clone()).unwrap_or_else(|| SmolStr::new("_"));
@@ -108,13 +133,7 @@ impl NavigationTarget {
             node.value.name().map(|it| node.with_value(it.syntax()).original_file_range(db).range);
         let frange = node.map(|it| it.syntax()).original_file_range(db);
 
-        NavigationTarget::from_syntax(
-            frange.file_id,
-            name,
-            focus_range,
-            frange.range,
-            node.value.syntax().kind(),
-        )
+        NavigationTarget::from_syntax(frange.file_id, name, focus_range, frange.range, kind)
     }
 
     fn from_syntax(
@@ -122,7 +141,7 @@ impl NavigationTarget {
         name: SmolStr,
         focus_range: Option<TextRange>,
         full_range: TextRange,
-        kind: SyntaxKind,
+        kind: SymbolKind,
     ) -> NavigationTarget {
         NavigationTarget {
             file_id,
@@ -142,7 +161,17 @@ impl ToNav for FileSymbol {
         NavigationTarget {
             file_id: self.file_id,
             name: self.name.clone(),
-            kind: self.kind,
+            kind: match self.kind {
+                FileSymbolKind::Function => SymbolKind::Function,
+                FileSymbolKind::Struct => SymbolKind::Struct,
+                FileSymbolKind::Enum => SymbolKind::Enum,
+                FileSymbolKind::Trait => SymbolKind::Trait,
+                FileSymbolKind::Module => SymbolKind::Module,
+                FileSymbolKind::TypeAlias => SymbolKind::TypeAlias,
+                FileSymbolKind::Const => SymbolKind::Const,
+                FileSymbolKind::Static => SymbolKind::Static,
+                FileSymbolKind::Macro => SymbolKind::Macro,
+            },
             full_range: self.range,
             focus_range: self.name_range,
             container_name: self.container_name.clone(),
@@ -191,16 +220,36 @@ impl TryToNav for hir::ModuleDef {
     }
 }
 
-pub(crate) trait ToNavFromAst {}
-impl ToNavFromAst for hir::Function {}
-impl ToNavFromAst for hir::Const {}
-impl ToNavFromAst for hir::Static {}
-impl ToNavFromAst for hir::Struct {}
-impl ToNavFromAst for hir::Enum {}
-impl ToNavFromAst for hir::EnumVariant {}
-impl ToNavFromAst for hir::Union {}
-impl ToNavFromAst for hir::TypeAlias {}
-impl ToNavFromAst for hir::Trait {}
+pub(crate) trait ToNavFromAst {
+    const KIND: SymbolKind;
+}
+impl ToNavFromAst for hir::Function {
+    const KIND: SymbolKind = SymbolKind::Function;
+}
+impl ToNavFromAst for hir::Const {
+    const KIND: SymbolKind = SymbolKind::Const;
+}
+impl ToNavFromAst for hir::Static {
+    const KIND: SymbolKind = SymbolKind::Static;
+}
+impl ToNavFromAst for hir::Struct {
+    const KIND: SymbolKind = SymbolKind::Struct;
+}
+impl ToNavFromAst for hir::Enum {
+    const KIND: SymbolKind = SymbolKind::Enum;
+}
+impl ToNavFromAst for hir::EnumVariant {
+    const KIND: SymbolKind = SymbolKind::Variant;
+}
+impl ToNavFromAst for hir::Union {
+    const KIND: SymbolKind = SymbolKind::Union;
+}
+impl ToNavFromAst for hir::TypeAlias {
+    const KIND: SymbolKind = SymbolKind::TypeAlias;
+}
+impl ToNavFromAst for hir::Trait {
+    const KIND: SymbolKind = SymbolKind::Trait;
+}
 
 impl<D> ToNav for D
 where
@@ -209,8 +258,11 @@ where
 {
     fn to_nav(&self, db: &RootDatabase) -> NavigationTarget {
         let src = self.source(db);
-        let mut res =
-            NavigationTarget::from_named(db, src.as_ref().map(|it| it as &dyn ast::NameOwner));
+        let mut res = NavigationTarget::from_named(
+            db,
+            src.as_ref().map(|it| it as &dyn ast::NameOwner),
+            D::KIND,
+        );
         res.docs = self.docs(db);
         res.description = src.value.short_label();
         res
@@ -228,7 +280,7 @@ impl ToNav for hir::Module {
             }
         };
         let frange = src.with_value(syntax).original_file_range(db);
-        NavigationTarget::from_syntax(frange.file_id, name, focus, frange.range, syntax.kind())
+        NavigationTarget::from_syntax(frange.file_id, name, focus, frange.range, SymbolKind::Module)
     }
 }
 
@@ -252,7 +304,7 @@ impl ToNav for hir::Impl {
             "impl".into(),
             focus_range,
             frange.range,
-            src.value.syntax().kind(),
+            SymbolKind::Impl,
         )
     }
 }
@@ -263,7 +315,8 @@ impl ToNav for hir::Field {
 
         match &src.value {
             FieldSource::Named(it) => {
-                let mut res = NavigationTarget::from_named(db, src.with_value(it));
+                let mut res =
+                    NavigationTarget::from_named(db, src.with_value(it), SymbolKind::Field);
                 res.docs = self.docs(db);
                 res.description = it.short_label();
                 res
@@ -275,7 +328,7 @@ impl ToNav for hir::Field {
                     "".into(),
                     None,
                     frange.range,
-                    it.syntax().kind(),
+                    SymbolKind::Field,
                 )
             }
         }
@@ -286,8 +339,11 @@ impl ToNav for hir::MacroDef {
     fn to_nav(&self, db: &RootDatabase) -> NavigationTarget {
         let src = self.source(db);
         log::debug!("nav target {:#?}", src.value.syntax());
-        let mut res =
-            NavigationTarget::from_named(db, src.as_ref().map(|it| it as &dyn ast::NameOwner));
+        let mut res = NavigationTarget::from_named(
+            db,
+            src.as_ref().map(|it| it as &dyn ast::NameOwner),
+            SymbolKind::Macro,
+        );
         res.docs = self.docs(db);
         res
     }
@@ -330,7 +386,7 @@ impl ToNav for hir::Local {
         NavigationTarget {
             file_id: full_range.file_id,
             name,
-            kind: IDENT_PAT,
+            kind: SymbolKind::Local,
             full_range: full_range.range,
             focus_range: None,
             container_name: None,
@@ -354,7 +410,7 @@ impl ToNav for hir::TypeParam {
         NavigationTarget {
             file_id: src.file_id.original_file(db),
             name: self.name(db).to_string().into(),
-            kind: TYPE_PARAM,
+            kind: SymbolKind::TypeParam,
             full_range,
             focus_range,
             container_name: None,
@@ -371,7 +427,7 @@ impl ToNav for hir::LifetimeParam {
         NavigationTarget {
             file_id: src.file_id.original_file(db),
             name: self.name(db).to_string().into(),
-            kind: LIFETIME_PARAM,
+            kind: SymbolKind::LifetimeParam,
             full_range,
             focus_range: Some(full_range),
             container_name: None,
@@ -432,7 +488,7 @@ fn foo() { enum FooInner { } }
                         5..13,
                     ),
                     name: "FooInner",
-                    kind: ENUM,
+                    kind: Enum,
                     container_name: None,
                     description: Some(
                         "enum FooInner",
@@ -448,7 +504,7 @@ fn foo() { enum FooInner { } }
                         34..42,
                     ),
                     name: "FooInner",
-                    kind: ENUM,
+                    kind: Enum,
                     container_name: Some(
                         "foo",
                     ),

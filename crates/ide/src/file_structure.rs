@@ -1,7 +1,9 @@
 use syntax::{
     ast::{self, AttrsOwner, GenericParamsOwner, NameOwner},
-    match_ast, AstNode, SourceFile, SyntaxKind, SyntaxNode, TextRange, WalkEvent,
+    match_ast, AstNode, SourceFile, SyntaxNode, TextRange, WalkEvent,
 };
+
+use crate::SymbolKind;
 
 #[derive(Debug, Clone)]
 pub struct StructureNode {
@@ -9,7 +11,7 @@ pub struct StructureNode {
     pub label: String,
     pub navigation_range: TextRange,
     pub node_range: TextRange,
-    pub kind: SyntaxKind,
+    pub kind: SymbolKind,
     pub detail: Option<String>,
     pub deprecated: bool,
 }
@@ -51,25 +53,27 @@ pub(crate) fn file_structure(file: &SourceFile) -> Vec<StructureNode> {
 }
 
 fn structure_node(node: &SyntaxNode) -> Option<StructureNode> {
-    fn decl<N: NameOwner + AttrsOwner>(node: N) -> Option<StructureNode> {
-        decl_with_detail(&node, None)
+    fn decl<N: NameOwner + AttrsOwner>(node: N, kind: SymbolKind) -> Option<StructureNode> {
+        decl_with_detail(&node, None, kind)
     }
 
     fn decl_with_type_ref<N: NameOwner + AttrsOwner>(
         node: &N,
         type_ref: Option<ast::Type>,
+        kind: SymbolKind,
     ) -> Option<StructureNode> {
         let detail = type_ref.map(|type_ref| {
             let mut detail = String::new();
             collapse_ws(type_ref.syntax(), &mut detail);
             detail
         });
-        decl_with_detail(node, detail)
+        decl_with_detail(node, detail, kind)
     }
 
     fn decl_with_detail<N: NameOwner + AttrsOwner>(
         node: &N,
         detail: Option<String>,
+        kind: SymbolKind,
     ) -> Option<StructureNode> {
         let name = node.name()?;
 
@@ -78,7 +82,7 @@ fn structure_node(node: &SyntaxNode) -> Option<StructureNode> {
             label: name.text().to_string(),
             navigation_range: name.syntax().text_range(),
             node_range: node.syntax().text_range(),
-            kind: node.syntax().kind(),
+            kind,
             detail,
             deprecated: node.attrs().filter_map(|x| x.simple_name()).any(|x| x == "deprecated"),
         })
@@ -117,18 +121,18 @@ fn structure_node(node: &SyntaxNode) -> Option<StructureNode> {
                     collapse_ws(ret_type.syntax(), &mut detail);
                 }
 
-                decl_with_detail(&it, Some(detail))
+                decl_with_detail(&it, Some(detail), SymbolKind::Function)
             },
-            ast::Struct(it) => decl(it),
-            ast::Union(it) => decl(it),
-            ast::Enum(it) => decl(it),
-            ast::Variant(it) => decl(it),
-            ast::Trait(it) => decl(it),
-            ast::Module(it) => decl(it),
-            ast::TypeAlias(it) => decl_with_type_ref(&it, it.ty()),
-            ast::RecordField(it) => decl_with_type_ref(&it, it.ty()),
-            ast::Const(it) => decl_with_type_ref(&it, it.ty()),
-            ast::Static(it) => decl_with_type_ref(&it, it.ty()),
+            ast::Struct(it) => decl(it, SymbolKind::Struct),
+            ast::Union(it) => decl(it, SymbolKind::Union),
+            ast::Enum(it) => decl(it, SymbolKind::Enum),
+            ast::Variant(it) => decl(it, SymbolKind::Variant),
+            ast::Trait(it) => decl(it, SymbolKind::Trait),
+            ast::Module(it) => decl(it, SymbolKind::Module),
+            ast::TypeAlias(it) => decl_with_type_ref(&it, it.ty(), SymbolKind::TypeAlias),
+            ast::RecordField(it) => decl_with_type_ref(&it, it.ty(), SymbolKind::Field),
+            ast::Const(it) => decl_with_type_ref(&it, it.ty(), SymbolKind::Const),
+            ast::Static(it) => decl_with_type_ref(&it, it.ty(), SymbolKind::Static),
             ast::Impl(it) => {
                 let target_type = it.self_ty()?;
                 let target_trait = it.trait_();
@@ -144,13 +148,13 @@ fn structure_node(node: &SyntaxNode) -> Option<StructureNode> {
                     label,
                     navigation_range: target_type.syntax().text_range(),
                     node_range: it.syntax().text_range(),
-                    kind: it.syntax().kind(),
+                    kind: SymbolKind::Impl,
                     detail: None,
                     deprecated: false,
                 };
                 Some(node)
             },
-            ast::MacroRules(it) => decl(it),
+            ast::MacroRules(it) => decl(it, SymbolKind::Macro),
             _ => None,
         }
     }
@@ -222,7 +226,7 @@ fn very_obsolete() {}
                         label: "Foo",
                         navigation_range: 8..11,
                         node_range: 1..26,
-                        kind: STRUCT,
+                        kind: Struct,
                         detail: None,
                         deprecated: false,
                     },
@@ -233,7 +237,7 @@ fn very_obsolete() {}
                         label: "x",
                         navigation_range: 18..19,
                         node_range: 18..24,
-                        kind: RECORD_FIELD,
+                        kind: Field,
                         detail: Some(
                             "i32",
                         ),
@@ -244,7 +248,7 @@ fn very_obsolete() {}
                         label: "m",
                         navigation_range: 32..33,
                         node_range: 28..158,
-                        kind: MODULE,
+                        kind: Module,
                         detail: None,
                         deprecated: false,
                     },
@@ -255,7 +259,7 @@ fn very_obsolete() {}
                         label: "bar1",
                         navigation_range: 43..47,
                         node_range: 40..52,
-                        kind: FN,
+                        kind: Function,
                         detail: Some(
                             "fn()",
                         ),
@@ -268,7 +272,7 @@ fn very_obsolete() {}
                         label: "bar2",
                         navigation_range: 60..64,
                         node_range: 57..81,
-                        kind: FN,
+                        kind: Function,
                         detail: Some(
                             "fn<T>(t: T) -> T",
                         ),
@@ -281,7 +285,7 @@ fn very_obsolete() {}
                         label: "bar3",
                         navigation_range: 89..93,
                         node_range: 86..156,
-                        kind: FN,
+                        kind: Function,
                         detail: Some(
                             "fn<A, B>(a: A, b: B) -> Vec< u32 >",
                         ),
@@ -292,7 +296,7 @@ fn very_obsolete() {}
                         label: "E",
                         navigation_range: 165..166,
                         node_range: 160..180,
-                        kind: ENUM,
+                        kind: Enum,
                         detail: None,
                         deprecated: false,
                     },
@@ -303,7 +307,7 @@ fn very_obsolete() {}
                         label: "X",
                         navigation_range: 169..170,
                         node_range: 169..170,
-                        kind: VARIANT,
+                        kind: Variant,
                         detail: None,
                         deprecated: false,
                     },
@@ -314,7 +318,7 @@ fn very_obsolete() {}
                         label: "Y",
                         navigation_range: 172..173,
                         node_range: 172..178,
-                        kind: VARIANT,
+                        kind: Variant,
                         detail: None,
                         deprecated: false,
                     },
@@ -323,7 +327,7 @@ fn very_obsolete() {}
                         label: "T",
                         navigation_range: 186..187,
                         node_range: 181..193,
-                        kind: TYPE_ALIAS,
+                        kind: TypeAlias,
                         detail: Some(
                             "()",
                         ),
@@ -334,7 +338,7 @@ fn very_obsolete() {}
                         label: "S",
                         navigation_range: 201..202,
                         node_range: 194..213,
-                        kind: STATIC,
+                        kind: Static,
                         detail: Some(
                             "i32",
                         ),
@@ -345,7 +349,7 @@ fn very_obsolete() {}
                         label: "C",
                         navigation_range: 220..221,
                         node_range: 214..232,
-                        kind: CONST,
+                        kind: Const,
                         detail: Some(
                             "i32",
                         ),
@@ -356,7 +360,7 @@ fn very_obsolete() {}
                         label: "impl E",
                         navigation_range: 239..240,
                         node_range: 234..243,
-                        kind: IMPL,
+                        kind: Impl,
                         detail: None,
                         deprecated: false,
                     },
@@ -365,7 +369,7 @@ fn very_obsolete() {}
                         label: "impl fmt::Debug for E",
                         navigation_range: 265..266,
                         node_range: 245..269,
-                        kind: IMPL,
+                        kind: Impl,
                         detail: None,
                         deprecated: false,
                     },
@@ -374,7 +378,7 @@ fn very_obsolete() {}
                         label: "mc",
                         navigation_range: 284..286,
                         node_range: 271..303,
-                        kind: MACRO_RULES,
+                        kind: Macro,
                         detail: None,
                         deprecated: false,
                     },
@@ -383,7 +387,7 @@ fn very_obsolete() {}
                         label: "mcexp",
                         navigation_range: 334..339,
                         node_range: 305..356,
-                        kind: MACRO_RULES,
+                        kind: Macro,
                         detail: None,
                         deprecated: false,
                     },
@@ -392,7 +396,7 @@ fn very_obsolete() {}
                         label: "mcexp",
                         navigation_range: 387..392,
                         node_range: 358..409,
-                        kind: MACRO_RULES,
+                        kind: Macro,
                         detail: None,
                         deprecated: false,
                     },
@@ -401,7 +405,7 @@ fn very_obsolete() {}
                         label: "obsolete",
                         navigation_range: 428..436,
                         node_range: 411..441,
-                        kind: FN,
+                        kind: Function,
                         detail: Some(
                             "fn()",
                         ),
@@ -412,7 +416,7 @@ fn very_obsolete() {}
                         label: "very_obsolete",
                         navigation_range: 481..494,
                         node_range: 443..499,
-                        kind: FN,
+                        kind: Function,
                         detail: Some(
                             "fn()",
                         ),

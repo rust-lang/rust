@@ -9,7 +9,7 @@ use syntax::{ast, match_ast, AstNode, SyntaxKind::*, SyntaxToken, TokenAtOffset,
 
 use crate::{
     display::{ToNav, TryToNav},
-    FilePosition, NavigationTarget, RangeInfo,
+    FilePosition, NavigationTarget, RangeInfo, SymbolKind,
 };
 
 // Feature: Go to Definition
@@ -86,7 +86,7 @@ fn self_to_nav_target(self_param: ast::SelfParam, file_id: FileId) -> Option<Nav
         full_range: self_param.syntax().text_range(),
         focus_range: Some(self_token.text_range()),
         name: self_token.text().clone(),
-        kind: self_token.kind(),
+        kind: SymbolKind::SelfParam,
         container_name: None,
         description: None,
         docs: None,

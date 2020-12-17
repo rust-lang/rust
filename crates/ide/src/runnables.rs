@@ -12,7 +12,7 @@ use syntax::{
 
 use crate::{
     display::{ToNav, TryToNav},
-    FileId, NavigationTarget,
+    FileId, NavigationTarget, SymbolKind,
 };
 
 #[derive(Debug, Clone)]
@@ -137,7 +137,11 @@ fn runnable_fn(sema: &Semantics<RootDatabase>, func: ast::Fn, file_id: FileId) -
         }
     };
 
-    let nav = NavigationTarget::from_named(sema.db, InFile::new(file_id.into(), &func));
+    let nav = NavigationTarget::from_named(
+        sema.db,
+        InFile::new(file_id.into(), &func),
+        SymbolKind::Function,
+    );
     let cfg = def.attrs(sema.db).cfg();
     Some(Runnable { nav, kind, cfg })
 }
@@ -204,7 +208,7 @@ fn module_def_doctest(sema: &Semantics<RootDatabase>, def: hir::ModuleDef) -> Op
     nav.focus_range = None;
     nav.description = None;
     nav.docs = None;
-    nav.kind = syntax::SyntaxKind::COMMENT;
+    nav.kind = SymbolKind::DocTest;
     let res = Runnable { nav, kind: RunnableKind::DocTest { test_id }, cfg: attrs.cfg() };
     Some(res)
 }
@@ -352,7 +356,7 @@ fn bench() {}
                                 4..8,
                             ),
                             name: "main",
-                            kind: FN,
+                            kind: Function,
                             container_name: None,
                             description: None,
                             docs: None,
@@ -370,7 +374,7 @@ fn bench() {}
                                 26..34,
                             ),
                             name: "test_foo",
-                            kind: FN,
+                            kind: Function,
                             container_name: None,
                             description: None,
                             docs: None,
@@ -395,7 +399,7 @@ fn bench() {}
                                 62..70,
                             ),
                             name: "test_foo",
-                            kind: FN,
+                            kind: Function,
                             container_name: None,
                             description: None,
                             docs: None,
@@ -420,7 +424,7 @@ fn bench() {}
                                 89..94,
                             ),
                             name: "bench",
-                            kind: FN,
+                            kind: Function,
                             container_name: None,
                             description: None,
                             docs: None,
@@ -517,7 +521,7 @@ struct StructWithRunnable(String);
                                 4..8,
                             ),
                             name: "main",
-                            kind: FN,
+                            kind: Function,
                             container_name: None,
                             description: None,
                             docs: None,
@@ -533,7 +537,7 @@ struct StructWithRunnable(String);
                             full_range: 15..74,
                             focus_range: None,
                             name: "should_have_runnable",
-                            kind: COMMENT,
+                            kind: DocTest,
                             container_name: None,
                             description: None,
                             docs: None,
@@ -553,7 +557,7 @@ struct StructWithRunnable(String);
                             full_range: 76..148,
                             focus_range: None,
                             name: "should_have_runnable_1",
-                            kind: COMMENT,
+                            kind: DocTest,
                             container_name: None,
                             description: None,
                             docs: None,
@@ -573,7 +577,7 @@ struct StructWithRunnable(String);
                             full_range: 150..254,
                             focus_range: None,
                             name: "should_have_runnable_2",
-                            kind: COMMENT,
+                            kind: DocTest,
                             container_name: None,
                             description: None,
                             docs: None,
@@ -593,7 +597,7 @@ struct StructWithRunnable(String);
                             full_range: 756..821,
                             focus_range: None,
                             name: "StructWithRunnable",
-                            kind: COMMENT,
+                            kind: DocTest,
                             container_name: None,
                             description: None,
                             docs: None,
@@ -639,7 +643,7 @@ impl Data {
                                 4..8,
                             ),
                             name: "main",
-                            kind: FN,
+                            kind: Function,
                             container_name: None,
                             description: None,
                             docs: None,
@@ -655,7 +659,7 @@ impl Data {
                             full_range: 44..98,
                             focus_range: None,
                             name: "foo",
-                            kind: COMMENT,
+                            kind: DocTest,
                             container_name: None,
                             description: None,
                             docs: None,
@@ -696,7 +700,7 @@ mod test_mod {
                                 5..13,
                             ),
                             name: "test_mod",
-                            kind: MODULE,
+                            kind: Module,
                             container_name: None,
                             description: None,
                             docs: None,
@@ -716,7 +720,7 @@ mod test_mod {
                                 35..44,
                             ),
                             name: "test_foo1",
-                            kind: FN,
+                            kind: Function,
                             container_name: None,
                             description: None,
                             docs: None,
@@ -776,7 +780,7 @@ mod root_tests {
                                 26..40,
                             ),
                             name: "nested_tests_0",
-                            kind: MODULE,
+                            kind: Module,
                             container_name: None,
                             description: None,
                             docs: None,
@@ -796,7 +800,7 @@ mod root_tests {
                                 55..69,
                             ),
                             name: "nested_tests_1",
-                            kind: MODULE,
+                            kind: Module,
                             container_name: None,
                             description: None,
                             docs: None,
@@ -816,7 +820,7 @@ mod root_tests {
                                 107..121,
                             ),
                             name: "nested_test_11",
-                            kind: FN,
+                            kind: Function,
                             container_name: None,
                             description: None,
                             docs: None,
@@ -841,7 +845,7 @@ mod root_tests {
                                 163..177,
                             ),
                             name: "nested_test_12",
-                            kind: FN,
+                            kind: Function,
                             container_name: None,
                             description: None,
                             docs: None,
@@ -866,7 +870,7 @@ mod root_tests {
                                 206..220,
                             ),
                             name: "nested_tests_2",
-                            kind: MODULE,
+                            kind: Module,
                             container_name: None,
                             description: None,
                             docs: None,
@@ -886,7 +890,7 @@ mod root_tests {
                                 258..271,
                             ),
                             name: "nested_test_2",
-                            kind: FN,
+                            kind: Function,
                             container_name: None,
                             description: None,
                             docs: None,
@@ -929,7 +933,7 @@ fn test_foo1() {}
                                 36..45,
                             ),
                             name: "test_foo1",
-                            kind: FN,
+                            kind: Function,
                             container_name: None,
                             description: None,
                             docs: None,
@@ -979,7 +983,7 @@ fn test_foo1() {}
                                 58..67,
                             ),
                             name: "test_foo1",
-                            kind: FN,
+                            kind: Function,
                             container_name: None,
                             description: None,
                             docs: None,
