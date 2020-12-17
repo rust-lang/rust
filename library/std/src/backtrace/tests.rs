@@ -55,3 +55,18 @@ fn test_debug() {
 
     assert_eq!(format!("{:#?}", backtrace), expected);
 }
+
+#[test]
+fn test_empty_frames_iterator() {
+    let empty_backtrace = Backtrace {
+        inner: Inner::Captured(Mutex::new(Capture {
+            actual_start: 1,
+            resolved: true,
+            frames: vec![],
+        }))
+    };
+
+    let iter = empty_backtrace.frames(); 
+
+    assert_eq!(iter.next(), None);
+}
