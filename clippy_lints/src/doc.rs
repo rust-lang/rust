@@ -407,15 +407,18 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
             Start(CodeBlock(ref kind)) => {
                 in_code = true;
                 if let CodeBlockKind::Fenced(lang) = kind {
-                    let infos = lang.split(',').collect::<Vec<_>>();
-                    is_rust = !infos.iter().any(|&i| i == "ignore")
-                        && infos
-                            .iter()
-                            .any(|i| i.is_empty() || i.starts_with("edition") || RUST_CODE.contains(&i));
-                    edition = infos
-                        .iter()
-                        .find_map(|i| i.starts_with("edition").then(|| i[7..].parse::<Edition>().ok()))
-                        .flatten();
+                    for item in lang.split(',') {
+                        if item == "ignore" {
+                            is_rust = false;
+                            break;
+                        }
+                        if let Some(stripped) = item.strip_prefix("edition") {
+                            is_rust = true;
+                            edition = stripped.parse::<Edition>().ok();
+                        } else if item.is_empty() || RUST_CODE.contains(&item) {
+                            is_rust = true;
+                        }
+                    }
                 }
             },
             End(CodeBlock(_)) => {
