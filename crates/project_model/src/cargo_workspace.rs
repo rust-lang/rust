@@ -178,8 +178,7 @@ impl CargoWorkspace {
             match utf8_stdout(rustc) {
                 Ok(stdout) => {
                     let field = "host: ";
-                    let target =
-                        stdout.lines().find_map(|l| l.strip_prefix(field));
+                    let target = stdout.lines().find_map(|l| l.strip_prefix(field));
                     if let Some(target) = target {
                         Some(target.to_string())
                     } else {
