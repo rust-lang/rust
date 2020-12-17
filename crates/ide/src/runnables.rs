@@ -111,21 +111,17 @@ pub(crate) fn runnable(
     }
 }
 
-fn runnable_fn(
-    sema: &Semantics<RootDatabase>,
-    fn_def: ast::Fn,
-    file_id: FileId,
-) -> Option<Runnable> {
-    let def = sema.to_def(&fn_def)?;
-    let name_string = fn_def.name()?.text().to_string();
+fn runnable_fn(sema: &Semantics<RootDatabase>, func: ast::Fn, file_id: FileId) -> Option<Runnable> {
+    let def = sema.to_def(&func)?;
+    let name_string = func.name()?.text().to_string();
 
     let attrs = def.attrs(sema.db);
     let kind = if name_string == "main" {
         RunnableKind::Bin
     } else {
-        let test_id = match sema.to_def(&fn_def).map(|def| def.module(sema.db)) {
+        let test_id = match sema.to_def(&func).map(|def| def.module(sema.db)) {
             Some(module) => {
-                let def = sema.to_def(&fn_def)?;
+                let def = sema.to_def(&func)?;
                 let impl_trait_name = def.as_assoc_item(sema.db).and_then(|assoc_item| {
                     match assoc_item.container(sema.db) {
                         hir::AssocItemContainer::Trait(trait_item) => {
@@ -159,10 +155,10 @@ fn runnable_fn(
             None => TestId::Name(name_string),
         };
 
-        if test_related_attribute(&fn_def).is_some() {
-            let attr = TestAttr::from_fn(&fn_def);
+        if test_related_attribute(&func).is_some() {
+            let attr = TestAttr::from_fn(&func);
             RunnableKind::Test { test_id, attr }
-        } else if fn_def.has_atom_attr("bench") {
+        } else if func.has_atom_attr("bench") {
             RunnableKind::Bench { test_id }
         } else if has_runnable_doc_test(&attrs) {
             RunnableKind::DocTest { test_id }
@@ -171,35 +167,31 @@ fn runnable_fn(
         }
     };
 
-    let cfg = attrs.cfg();
-
     let nav = if let RunnableKind::DocTest { .. } = kind {
         NavigationTarget::from_doc_commented(
             sema.db,
-            InFile::new(file_id.into(), &fn_def),
-            InFile::new(file_id.into(), &fn_def),
+            InFile::new(file_id.into(), &func),
+            InFile::new(file_id.into(), &func),
         )
     } else {
-        NavigationTarget::from_named(sema.db, InFile::new(file_id.into(), &fn_def))
+        NavigationTarget::from_named(sema.db, InFile::new(file_id.into(), &func))
     };
-    Some(Runnable { nav, kind, cfg })
+    Some(Runnable { nav, kind, cfg: attrs.cfg() })
 }
 
 fn runnable_struct(
     sema: &Semantics<RootDatabase>,
-    struct_def: ast::Struct,
+    strukt: ast::Struct,
     file_id: FileId,
 ) -> Option<Runnable> {
-    let def = sema.to_def(&struct_def)?;
-    let name_string = struct_def.name()?.text().to_string();
+    let def = sema.to_def(&strukt)?;
+    let name_string = strukt.name()?.text().to_string();
 
     let attrs = def.attrs(sema.db);
     if !has_runnable_doc_test(&attrs) {
         return None;
     }
-    let cfg = attrs.cfg();
-
-    let test_id = match sema.to_def(&struct_def).map(|def| def.module(sema.db)) {
+    let test_id = match sema.to_def(&strukt).map(|def| def.module(sema.db)) {
         Some(module) => {
             let path_iter = module
                 .path_to_root(sema.db)
@@ -216,10 +208,10 @@ fn runnable_struct(
 
     let nav = NavigationTarget::from_doc_commented(
         sema.db,
-        InFile::new(file_id.into(), &struct_def),
-        InFile::new(file_id.into(), &struct_def),
+        InFile::new(file_id.into(), &strukt),
+        InFile::new(file_id.into(), &strukt),
     );
-    Some(Runnable { nav, kind: RunnableKind::DocTest { test_id }, cfg })
+    Some(Runnable { nav, kind: RunnableKind::DocTest { test_id }, cfg: attrs.cfg() })
 }
 
 #[derive(Debug, Copy, Clone)]
