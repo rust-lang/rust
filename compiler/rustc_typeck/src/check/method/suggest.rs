@@ -620,8 +620,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             ty::Adt(def, _) => bound_spans.push((def_span(def.did), msg)),
                             // Point at the trait object that couldn't satisfy the bound.
                             ty::Dynamic(preds, _) => {
-                                for pred in preds.skip_binder() {
-                                    match pred {
+                                for pred in preds.iter() {
+                                    match pred.skip_binder() {
                                         ty::ExistentialPredicate::Trait(tr) => {
                                             bound_spans.push((def_span(tr.def_id), msg.clone()))
                                         }
@@ -674,9 +674,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .iter()
                         .filter_map(|(pred, parent_pred)| {
                             format_pred(*pred).map(|(p, self_ty)| match parent_pred {
-                                None => format!("`{}`", p),
+                                None => format!("`{}`", &p),
                                 Some(parent_pred) => match format_pred(*parent_pred) {
-                                    None => format!("`{}`", p),
+                                    None => format!("`{}`", &p),
                                     Some((parent_p, _)) => {
                                         collect_type_param_suggestions(self_ty, parent_pred, &p);
                                         format!("`{}`\nwhich is required by `{}`", p, parent_p)

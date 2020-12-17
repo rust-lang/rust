@@ -1449,8 +1449,8 @@ pub fn is_must_use_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
             false
         },
         ty::Dynamic(binder, _) => {
-            for predicate in binder.skip_binder().iter() {
-                if let ty::ExistentialPredicate::Trait(ref trait_ref) = predicate {
+            for predicate in binder.iter() {
+                if let ty::ExistentialPredicate::Trait(ref trait_ref) = predicate.skip_binder() {
                     if must_use_attr(&cx.tcx.get_attrs(trait_ref.def_id)).is_some() {
                         return true;
                     }

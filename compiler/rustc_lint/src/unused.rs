@@ -218,8 +218,10 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                 }
                 ty::Dynamic(binder, _) => {
                     let mut has_emitted = false;
-                    for predicate in binder.skip_binder().iter() {
-                        if let ty::ExistentialPredicate::Trait(ref trait_ref) = predicate {
+                    for predicate in binder.iter() {
+                        if let ty::ExistentialPredicate::Trait(ref trait_ref) =
+                            predicate.skip_binder()
+                        {
                             let def_id = trait_ref.def_id;
                             let descr_post =
                                 &format!(" trait object{}{}", plural_suffix, descr_post,);
