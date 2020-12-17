@@ -5,8 +5,8 @@
       let mut _0: bool;                    // return place in scope 0 at /the/src/instrument_coverage.rs:19:13: 19:17
   
       bb0: {
-          _0 = const true;                 // scope 0 at /the/src/instrument_coverage.rs:20:5: 20:9
 +         Coverage::Counter(1) for /the/src/instrument_coverage.rs:19:1 - 21:2; // scope 0 at /the/src/instrument_coverage.rs:21:2: 21:2
+          _0 = const true;                 // scope 0 at /the/src/instrument_coverage.rs:20:5: 20:9
           return;                          // scope 0 at /the/src/instrument_coverage.rs:21:2: 21:2
       }
   }

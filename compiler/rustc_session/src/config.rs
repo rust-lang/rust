@@ -1491,7 +1491,7 @@ fn parse_target_triple(matches: &getopts::Matches, error_format: ErrorOutputType
                 early_error(error_format, &format!("target file {:?} does not exist", path))
             })
         }
-        Some(target) => TargetTriple::TargetTriple(target),
+        Some(target) => TargetTriple::from_alias(target),
         _ => TargetTriple::from_triple(host_triple()),
     }
 }

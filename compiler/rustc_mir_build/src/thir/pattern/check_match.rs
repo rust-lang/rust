@@ -164,9 +164,19 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
         for arm in arms {
             // Check the arm for some things unrelated to exhaustiveness.
             self.check_patterns(&arm.pat);
+            if let Some(hir::Guard::IfLet(ref pat, _)) = arm.guard {
+                self.check_patterns(pat);
+            }
         }
 
         let mut cx = self.new_cx(scrut.hir_id);
+
+        for arm in arms {
+            if let Some(hir::Guard::IfLet(ref pat, _)) = arm.guard {
+                let tpat = self.lower_pattern(&mut cx, pat, &mut false).0;
+                check_if_let_guard(&mut cx, &tpat, pat.hir_id);
+            }
+        }
 
         let mut have_errors = false;
 
@@ -360,10 +370,26 @@ fn irrefutable_let_pattern(tcx: TyCtxt<'_>, span: Span, id: HirId, source: hir::
         let msg = match source {
             hir::MatchSource::IfLetDesugar { .. } => "irrefutable if-let pattern",
             hir::MatchSource::WhileLetDesugar => "irrefutable while-let pattern",
+            hir::MatchSource::IfLetGuardDesugar => "irrefutable if-let guard",
             _ => bug!(),
         };
         lint.build(msg).emit()
     });
+}
+
+fn check_if_let_guard<'p, 'tcx>(
+    cx: &mut MatchCheckCtxt<'p, 'tcx>,
+    pat: &'p super::Pat<'tcx>,
+    pat_id: HirId,
+) {
+    let arms = [MatchArm { pat, hir_id: pat_id, has_guard: false }];
+    let report = compute_match_usefulness(&cx, &arms, pat_id, pat.ty);
+    report_arm_reachability(&cx, &report, hir::MatchSource::IfLetGuardDesugar);
+
+    if report.non_exhaustiveness_witnesses.is_empty() {
+        // The match is exhaustive, i.e. the if let pattern is irrefutable.
+        irrefutable_let_pattern(cx.tcx, pat.span, pat_id, hir::MatchSource::IfLetGuardDesugar)
+    }
 }
 
 /// Report unreachable arms, if any.
@@ -388,6 +414,11 @@ fn report_arm_reachability<'p, 'tcx>(
                             1 => irrefutable_let_pattern(cx.tcx, arm.pat.span, arm.hir_id, source),
                             _ => bug!(),
                         }
+                    }
+
+                    hir::MatchSource::IfLetGuardDesugar => {
+                        assert_eq!(arm_index, 0);
+                        unreachable_pattern(cx.tcx, arm.pat.span, arm.hir_id, None);
                     }
 
                     hir::MatchSource::ForLoopDesugar | hir::MatchSource::Normal => {

@@ -1160,6 +1160,7 @@ pub struct Arm<'hir> {
 #[derive(Debug, HashStable_Generic)]
 pub enum Guard<'hir> {
     If(&'hir Expr<'hir>),
+    IfLet(&'hir Pat<'hir>, &'hir Expr<'hir>),
 }
 
 #[derive(Debug, HashStable_Generic)]
@@ -1721,6 +1722,8 @@ pub enum MatchSource {
     IfDesugar { contains_else_clause: bool },
     /// An `if let _ = _ { .. }` (optionally with `else { .. }`).
     IfLetDesugar { contains_else_clause: bool },
+    /// An `if let _ = _ => { .. }` match guard.
+    IfLetGuardDesugar,
     /// A `while _ { .. }` (which was desugared to a `loop { match _ { .. } }`).
     WhileDesugar,
     /// A `while let _ = _ { .. }` (which was desugared to a
@@ -1739,7 +1742,7 @@ impl MatchSource {
         use MatchSource::*;
         match self {
             Normal => "match",
-            IfDesugar { .. } | IfLetDesugar { .. } => "if",
+            IfDesugar { .. } | IfLetDesugar { .. } | IfLetGuardDesugar => "if",
             WhileDesugar | WhileLetDesugar => "while",
             ForLoopDesugar => "for",
             TryDesugar => "?",
