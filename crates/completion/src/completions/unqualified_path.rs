@@ -126,7 +126,7 @@ fn fuzzy_completion(acc: &mut Completions, ctx: &CompletionContext) -> Option<()
     let anchor = ctx.name_ref_syntax.as_ref()?;
     let import_scope = ImportScope::find_insert_use_container(anchor.syntax(), &ctx.sema)?;
 
-    let possible_imports = imports_locator::find_similar_imports(
+    let mut all_mod_paths = imports_locator::find_similar_imports(
         &ctx.sema,
         ctx.krate?,
         Some(100),
@@ -144,15 +144,24 @@ fn fuzzy_completion(acc: &mut Completions, ctx: &CompletionContext) -> Option<()
         })
     })
     .filter(|(mod_path, _)| mod_path.len() > 1)
-    .filter_map(|(import_path, definition)| {
+    .collect::<Vec<_>>();
+
+    all_mod_paths.sort_by_cached_key(|(mod_path, _)| {
+        if let Some(name) = mod_path.segments.last().map(|name| name.to_string().to_lowercase()) {
+            if name.contains(&potential_import_name.to_lowercase()) {
+                return 0;
+            }
+        }
+        1
+    });
+
+    acc.add_all(all_mod_paths.into_iter().filter_map(|(import_path, definition)| {
         render_resolution_with_import(
             RenderContext::new(ctx),
             ImportEdit { import_path, import_scope: import_scope.clone() },
             &definition,
         )
-    });
-
-    acc.add_all(possible_imports);
+    }));
     Some(())
 }
 
