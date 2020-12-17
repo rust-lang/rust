@@ -44,7 +44,7 @@ impl From<Vec<SourceFileEdit>> for SourceChange {
 
 #[derive(Debug, Clone)]
 pub enum FileSystemEdit {
-    CreateFile { dst: AnchoredPathBuf },
+    CreateFile { dst: AnchoredPathBuf, initial_contents: String },
     MoveFile { src: FileId, dst: AnchoredPathBuf },
 }
 

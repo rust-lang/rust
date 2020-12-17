@@ -285,10 +285,9 @@ impl AssistBuilder {
         }
     }
     pub(crate) fn create_file(&mut self, dst: AnchoredPathBuf, content: impl Into<String>) {
-        let file_system_edit = FileSystemEdit::CreateFile { dst: dst.clone() };
+        let file_system_edit =
+            FileSystemEdit::CreateFile { dst: dst.clone(), initial_contents: content.into() };
         self.file_system_edits.push(file_system_edit);
-        self.edit_file(dst.anchor);
-        self.insert(TextSize::from(0), content)
     }
 
     fn finish(mut self) -> SourceChange {
