@@ -776,10 +776,10 @@ impl ToBorrowKind for hir::Mutability {
 fn convert_arm<'tcx>(cx: &mut Cx<'_, 'tcx>, arm: &'tcx hir::Arm<'tcx>) -> Arm<'tcx> {
     Arm {
         pattern: cx.pattern_from_hir(&arm.pat),
-        guard: match arm.guard {
-            Some(hir::Guard::If(ref e)) => Some(Guard::If(e.to_ref())),
-            _ => None,
-        },
+        guard: arm.guard.as_ref().map(|g| match g {
+            hir::Guard::If(ref e) => Guard::If(e.to_ref()),
+            hir::Guard::IfLet(ref pat, ref e) => Guard::IfLet(cx.pattern_from_hir(pat), e.to_ref()),
+        }),
         body: arm.body.to_ref(),
         lint_level: LintLevel::Explicit(arm.hir_id),
         scope: region::Scope { id: arm.hir_id.local_id, data: region::ScopeData::Node },

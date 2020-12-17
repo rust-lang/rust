@@ -6,7 +6,6 @@ fn _if_let_guard() {
     match () {
         () if let 0 = 1 => {}
         //~^ ERROR `if let` guard is not implemented
-        //~| ERROR `let` expressions are not supported here
 
         () if (let 0 = 1) => {}
         //~^ ERROR `let` expressions in this position are experimental
