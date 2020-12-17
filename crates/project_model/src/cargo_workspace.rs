@@ -179,7 +179,7 @@ impl CargoWorkspace {
                 Ok(stdout) => {
                     let field = "host: ";
                     let target =
-                        stdout.lines().find(|l| l.starts_with(field)).map(|l| &l[field.len()..]);
+                        stdout.lines().find_map(|l| l.strip_prefix(field));
                     if let Some(target) = target {
                         Some(target.to_string())
                     } else {
