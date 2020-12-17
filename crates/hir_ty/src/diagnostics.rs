@@ -6,6 +6,7 @@ mod decl_check;
 
 use std::{any::Any, fmt};
 
+use base_db::CrateId;
 use hir_def::{DefWithBodyId, ModuleDefId};
 use hir_expand::diagnostics::{Diagnostic, DiagnosticCode, DiagnosticSink};
 use hir_expand::{name::Name, HirFileId, InFile};
@@ -18,12 +19,13 @@ pub use crate::diagnostics::expr::{record_literal_missing_fields, record_pattern
 
 pub fn validate_module_item(
     db: &dyn HirDatabase,
+    krate: CrateId,
     owner: ModuleDefId,
     sink: &mut DiagnosticSink<'_>,
 ) {
     let _p = profile::span("validate_module_item");
-    let mut validator = decl_check::DeclValidator::new(owner, sink);
-    validator.validate_item(db);
+    let mut validator = decl_check::DeclValidator::new(db, krate, sink);
+    validator.validate_item(owner);
 }
 
 pub fn validate_body(db: &dyn HirDatabase, owner: DefWithBodyId, sink: &mut DiagnosticSink<'_>) {
@@ -407,7 +409,7 @@ mod tests {
                 for (module_id, _) in crate_def_map.modules.iter() {
                     for decl in crate_def_map[module_id].scope.declarations() {
                         let mut sink = DiagnosticSinkBuilder::new().build(&mut cb);
-                        validate_module_item(self, decl, &mut sink);
+                        validate_module_item(self, krate, decl, &mut sink);
 
                         if let ModuleDefId::FunctionId(f) = decl {
                             fns.push(f)
@@ -419,7 +421,12 @@ mod tests {
                         for item in impl_data.items.iter() {
                             if let AssocItemId::FunctionId(f) = item {
                                 let mut sink = DiagnosticSinkBuilder::new().build(&mut cb);
-                                validate_module_item(self, ModuleDefId::FunctionId(*f), &mut sink);
+                                validate_module_item(
+                                    self,
+                                    krate,
+                                    ModuleDefId::FunctionId(*f),
+                                    &mut sink,
+                                );
                                 fns.push(*f)
                             }
                         }
