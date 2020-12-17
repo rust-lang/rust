@@ -1,8 +1,7 @@
 use super::*;
 
-#[test]
-fn test_debug() {
-    let backtrace = Backtrace {
+fn generate_fake_backtrace() -> Backtrace {
+    Backtrace {
         inner: Inner::Captured(Mutex::new(Capture {
             actual_start: 1,
             resolved: true,
@@ -40,7 +39,12 @@ fn test_debug() {
                 },
             ],
         })),
-    };
+    }
+}
+
+#[test]
+fn test_debug() {
+    let backtrace = generate_fake_backtrace();
 
     #[rustfmt::skip]
     let expected = "Backtrace [\
