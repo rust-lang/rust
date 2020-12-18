@@ -155,7 +155,15 @@ impl ToNav for FileSymbol {
 impl TryToNav for Definition {
     fn try_to_nav(&self, db: &RootDatabase) -> Option<NavigationTarget> {
         match self {
-            Definition::Macro(it) => Some(it.to_nav(db)),
+            Definition::Macro(it) => {
+                // FIXME: Currently proc-macro do not have ast-node,
+                // such that it does not have source
+                // more discussion: https://github.com/rust-analyzer/rust-analyzer/issues/6913
+                if it.is_proc_macro() {
+                    return None;
+                }
+                Some(it.to_nav(db))
+            }
             Definition::Field(it) => Some(it.to_nav(db)),
             Definition::ModuleDef(it) => it.try_to_nav(db),
             Definition::SelfType(it) => Some(it.to_nav(db)),

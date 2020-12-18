@@ -983,6 +983,12 @@ impl MacroDef {
 
     /// XXX: this parses the file
     pub fn name(self, db: &dyn HirDatabase) -> Option<Name> {
+        // FIXME: Currently proc-macro do not have ast-node,
+        // such that it does not have source
+        // more discussion: https://github.com/rust-analyzer/rust-analyzer/issues/6913
+        if self.is_proc_macro() {
+            return None;
+        }
         self.source(db).value.name().map(|it| it.as_name())
     }
 

@@ -41,6 +41,7 @@ impl<'a> MacroRender<'a> {
     fn render(&self, import_to_add: Option<ImportEdit>) -> Option<CompletionItem> {
         // FIXME: Currently proc-macro do not have ast-node,
         // such that it does not have source
+        // more discussion: https://github.com/rust-analyzer/rust-analyzer/issues/6913
         if self.macro_.is_proc_macro() {
             return None;
         }
