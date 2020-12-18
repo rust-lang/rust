@@ -14,7 +14,7 @@ use crate::formats::item_type::ItemType;
 use crate::json::types::*;
 use crate::json::JsonRenderer;
 
-impl JsonRenderer {
+impl JsonRenderer<'_> {
     pub(super) fn convert_item(&self, item: clean::Item) -> Option<Item> {
         let item_type = ItemType::from(&item);
         let clean::Item {
@@ -57,10 +57,10 @@ impl JsonRenderer {
     }
 
     fn convert_span(&self, span: clean::Span) -> Option<Span> {
-        match span.filename(&self.sess) {
+        match span.filename(self.sess()) {
             rustc_span::FileName::Real(name) => {
-                let hi = span.hi(&self.sess);
-                let lo = span.lo(&self.sess);
+                let hi = span.hi(self.sess());
+                let lo = span.lo(self.sess());
                 Some(Span {
                     filename: match name {
                         rustc_span::RealFileName::Named(path) => path,

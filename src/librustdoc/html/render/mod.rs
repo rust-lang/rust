@@ -52,11 +52,12 @@ use rustc_ast_pretty::pprust;
 use rustc_attr::{Deprecation, StabilityLevel};
 use rustc_data_structures::flock;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_data_structures::sync::Lrc;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::Mutability;
 use rustc_middle::middle::stability;
+use rustc_middle::ty;
+use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::MacroKind;
@@ -102,7 +103,7 @@ crate fn ensure_trailing_slash(v: &str) -> impl fmt::Display + '_ {
 /// easily cloned because it is cloned per work-job (about once per item in the
 /// rustdoc tree).
 #[derive(Clone)]
-crate struct Context {
+crate struct Context<'tcx> {
     /// Current hierarchy of components leading down to what's currently being
     /// rendered
     crate current: Vec<String>,
@@ -115,15 +116,15 @@ crate struct Context {
     crate render_redirect_pages: bool,
     /// The map used to ensure all generated 'id=' attributes are unique.
     id_map: Rc<RefCell<IdMap>>,
-    crate shared: Arc<SharedContext>,
+    crate shared: Arc<SharedContext<'tcx>>,
     all: Rc<RefCell<AllTypes>>,
     /// Storage for the errors produced while generating documentation so they
     /// can be printed together at the end.
     crate errors: Rc<Receiver<String>>,
 }
 
-crate struct SharedContext {
-    crate sess: Lrc<Session>,
+crate struct SharedContext<'tcx> {
+    crate tcx: TyCtxt<'tcx>,
     /// The path to the crate root source minus the file name.
     /// Used for simplifying paths to the highlighted source code files.
     crate src_root: PathBuf,
@@ -163,7 +164,7 @@ crate struct SharedContext {
     playground: Option<markdown::Playground>,
 }
 
-impl Context {
+impl Context<'_> {
     fn path(&self, filename: &str) -> PathBuf {
         // We use splitn vs Path::extension here because we might get a filename
         // like `style.min.css` and we want to process that into
@@ -176,11 +177,11 @@ impl Context {
     }
 
     fn sess(&self) -> &Session {
-        &self.shared.sess
+        &self.shared.tcx.sess
     }
 }
 
-impl SharedContext {
+impl SharedContext<'_> {
     crate fn ensure_dir(&self, dst: &Path) -> Result<(), Error> {
         let mut dirs = self.created_dirs.borrow_mut();
         if !dirs.contains(dst) {
@@ -381,15 +382,15 @@ crate fn initial_ids() -> Vec<String> {
 }
 
 /// Generates the documentation for `crate` into the directory `dst`
-impl FormatRenderer for Context {
+impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
     fn init(
         mut krate: clean::Crate,
         options: RenderOptions,
         _render_info: RenderInfo,
         edition: Edition,
         cache: &mut Cache,
-        sess: Lrc<Session>,
-    ) -> Result<(Context, clean::Crate), Error> {
+        tcx: ty::TyCtxt<'tcx>,
+    ) -> Result<(Self, clean::Crate), Error> {
         // need to save a copy of the options for rendering the index page
         let md_opts = options.clone();
         let RenderOptions {
@@ -462,7 +463,7 @@ impl FormatRenderer for Context {
         }
         let (sender, receiver) = channel();
         let mut scx = SharedContext {
-            sess,
+            tcx,
             collapsed: krate.collapsed,
             src_root,
             include_sources,
@@ -688,7 +689,7 @@ impl FormatRenderer for Context {
 }
 
 fn write_shared(
-    cx: &Context,
+    cx: &Context<'_>,
     krate: &clean::Crate,
     search_index: String,
     options: &RenderOptions,
@@ -1205,7 +1206,7 @@ fn write_minify(
     }
 }
 
-fn write_srclink(cx: &Context, item: &clean::Item, buf: &mut Buffer, cache: &Cache) {
+fn write_srclink(cx: &Context<'_>, item: &clean::Item, buf: &mut Buffer, cache: &Cache) {
     if let Some(l) = cx.src_href(item, cache) {
         write!(
             buf,
@@ -1516,7 +1517,7 @@ fn settings(root_path: &str, suffix: &str, themes: &[StylePath]) -> Result<Strin
     ))
 }
 
-impl Context {
+impl Context<'_> {
     fn derive_id(&self, id: String) -> String {
         let mut map = self.id_map.borrow_mut();
         map.derive(id)
@@ -1701,7 +1702,7 @@ where
     write!(w, "</div>")
 }
 
-fn print_item(cx: &Context, item: &clean::Item, buf: &mut Buffer, cache: &Cache) {
+fn print_item(cx: &Context<'_>, item: &clean::Item, buf: &mut Buffer, cache: &Cache) {
     debug_assert!(!item.is_stripped());
     // Write the breadcrumb trail header for the top
     write!(buf, "<h1 class=\"fqn\"><span class=\"out-of-band\">");
@@ -1816,14 +1817,14 @@ fn item_path(ty: ItemType, name: &str) -> String {
     }
 }
 
-fn full_path(cx: &Context, item: &clean::Item) -> String {
+fn full_path(cx: &Context<'_>, item: &clean::Item) -> String {
     let mut s = cx.current.join("::");
     s.push_str("::");
     s.push_str(&item.name.unwrap().as_str());
     s
 }
 
-fn document(w: &mut Buffer, cx: &Context, item: &clean::Item, parent: Option<&clean::Item>) {
+fn document(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, parent: Option<&clean::Item>) {
     if let Some(ref name) = item.name {
         info!("Documenting {}", name);
     }
@@ -1834,7 +1835,7 @@ fn document(w: &mut Buffer, cx: &Context, item: &clean::Item, parent: Option<&cl
 /// Render md_text as markdown.
 fn render_markdown(
     w: &mut Buffer,
-    cx: &Context,
+    cx: &Context<'_>,
     md_text: &str,
     links: Vec<RenderedLink>,
     prefix: &str,
@@ -1863,7 +1864,7 @@ fn render_markdown(
 fn document_short(
     w: &mut Buffer,
     item: &clean::Item,
-    cx: &Context,
+    cx: &Context<'_>,
     link: AssocItemLink<'_>,
     prefix: &str,
     is_hidden: bool,
@@ -1904,7 +1905,13 @@ fn document_short(
     }
 }
 
-fn document_full(w: &mut Buffer, item: &clean::Item, cx: &Context, prefix: &str, is_hidden: bool) {
+fn document_full(
+    w: &mut Buffer,
+    item: &clean::Item,
+    cx: &Context<'_>,
+    prefix: &str,
+    is_hidden: bool,
+) {
     if let Some(s) = cx.shared.maybe_collapsed_doc_value(item) {
         debug!("Doc block: =====\n{}\n=====", s);
         render_markdown(w, cx, &*s, item.links(), prefix, is_hidden);
@@ -1925,7 +1932,7 @@ fn document_full(w: &mut Buffer, item: &clean::Item, cx: &Context, prefix: &str,
 /// * Required features (through the `doc_cfg` feature)
 fn document_item_info(
     w: &mut Buffer,
-    cx: &Context,
+    cx: &Context<'_>,
     item: &clean::Item,
     is_hidden: bool,
     parent: Option<&clean::Item>,
@@ -2029,7 +2036,7 @@ crate fn compare_names(mut lhs: &str, mut rhs: &str) -> Ordering {
     Ordering::Equal
 }
 
-fn item_module(w: &mut Buffer, cx: &Context, item: &clean::Item, items: &[clean::Item]) {
+fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[clean::Item]) {
     document(w, cx, item, None);
 
     let mut indices = (0..items.len()).filter(|i| !items[*i].is_stripped()).collect::<Vec<usize>>();
@@ -2271,7 +2278,11 @@ fn portability(item: &clean::Item, parent: Option<&clean::Item>) -> Option<Strin
 
 /// Render the stability, deprecation and portability information that is displayed at the top of
 /// the item's documentation.
-fn short_item_info(item: &clean::Item, cx: &Context, parent: Option<&clean::Item>) -> Vec<String> {
+fn short_item_info(
+    item: &clean::Item,
+    cx: &Context<'_>,
+    parent: Option<&clean::Item>,
+) -> Vec<String> {
     let mut extra_info = vec![];
     let error_codes = cx.shared.codes;
 
@@ -2361,7 +2372,7 @@ fn short_item_info(item: &clean::Item, cx: &Context, parent: Option<&clean::Item
     extra_info
 }
 
-fn item_constant(w: &mut Buffer, cx: &Context, it: &clean::Item, c: &clean::Constant) {
+fn item_constant(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, c: &clean::Constant) {
     write!(w, "<pre class=\"rust const\">");
     render_attributes(w, it, false);
 
@@ -2396,7 +2407,7 @@ fn item_constant(w: &mut Buffer, cx: &Context, it: &clean::Item, c: &clean::Cons
     document(w, cx, it, None)
 }
 
-fn item_static(w: &mut Buffer, cx: &Context, it: &clean::Item, s: &clean::Static) {
+fn item_static(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, s: &clean::Static) {
     write!(w, "<pre class=\"rust static\">");
     render_attributes(w, it, false);
     write!(
@@ -2410,7 +2421,7 @@ fn item_static(w: &mut Buffer, cx: &Context, it: &clean::Item, s: &clean::Static
     document(w, cx, it, None)
 }
 
-fn item_function(w: &mut Buffer, cx: &Context, it: &clean::Item, f: &clean::Function) {
+fn item_function(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, f: &clean::Function) {
     let header_len = format!(
         "{}{}{}{}{:#}fn {}{:#}",
         it.visibility.print_with_space(),
@@ -2444,7 +2455,7 @@ fn item_function(w: &mut Buffer, cx: &Context, it: &clean::Item, f: &clean::Func
 }
 
 fn render_implementor(
-    cx: &Context,
+    cx: &Context<'_>,
     implementor: &Impl,
     parent: &clean::Item,
     w: &mut Buffer,
@@ -2481,7 +2492,7 @@ fn render_implementor(
 }
 
 fn render_impls(
-    cx: &Context,
+    cx: &Context<'_>,
     w: &mut Buffer,
     traits: &[&&Impl],
     containing_item: &clean::Item,
@@ -2540,7 +2551,7 @@ fn compare_impl<'a, 'b>(lhs: &'a &&Impl, rhs: &'b &&Impl) -> Ordering {
     compare_names(&lhs, &rhs)
 }
 
-fn item_trait(w: &mut Buffer, cx: &Context, it: &clean::Item, t: &clean::Trait, cache: &Cache) {
+fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Trait, cache: &Cache) {
     let bounds = bounds(&t.bounds, false);
     let types = t.items.iter().filter(|m| m.is_associated_type()).collect::<Vec<_>>();
     let consts = t.items.iter().filter(|m| m.is_associated_const()).collect::<Vec<_>>();
@@ -2636,7 +2647,13 @@ fn item_trait(w: &mut Buffer, cx: &Context, it: &clean::Item, t: &clean::Trait, 
         write!(w, "{}<span class=\"loading-content\">Loading content...</span>", extra_content)
     }
 
-    fn trait_item(w: &mut Buffer, cx: &Context, m: &clean::Item, t: &clean::Item, cache: &Cache) {
+    fn trait_item(
+        w: &mut Buffer,
+        cx: &Context<'_>,
+        m: &clean::Item,
+        t: &clean::Item,
+        cache: &Cache,
+    ) {
         let name = m.name.as_ref().unwrap();
         info!("Documenting {} on {:?}", name, t.name);
         let item_type = m.type_();
@@ -3039,7 +3056,13 @@ fn render_assoc_item(
     }
 }
 
-fn item_struct(w: &mut Buffer, cx: &Context, it: &clean::Item, s: &clean::Struct, cache: &Cache) {
+fn item_struct(
+    w: &mut Buffer,
+    cx: &Context<'_>,
+    it: &clean::Item,
+    s: &clean::Struct,
+    cache: &Cache,
+) {
     wrap_into_docblock(w, |w| {
         write!(w, "<pre class=\"rust struct\">");
         render_attributes(w, it, true);
@@ -3089,7 +3112,7 @@ fn item_struct(w: &mut Buffer, cx: &Context, it: &clean::Item, s: &clean::Struct
     render_assoc_items(w, cx, it, it.def_id, AssocItemRender::All, cache)
 }
 
-fn item_union(w: &mut Buffer, cx: &Context, it: &clean::Item, s: &clean::Union, cache: &Cache) {
+fn item_union(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, s: &clean::Union, cache: &Cache) {
     wrap_into_docblock(w, |w| {
         write!(w, "<pre class=\"rust union\">");
         render_attributes(w, it, true);
@@ -3135,7 +3158,7 @@ fn item_union(w: &mut Buffer, cx: &Context, it: &clean::Item, s: &clean::Union, 
     render_assoc_items(w, cx, it, it.def_id, AssocItemRender::All, cache)
 }
 
-fn item_enum(w: &mut Buffer, cx: &Context, it: &clean::Item, e: &clean::Enum, cache: &Cache) {
+fn item_enum(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, e: &clean::Enum, cache: &Cache) {
     wrap_into_docblock(w, |w| {
         write!(w, "<pre class=\"rust enum\">");
         render_attributes(w, it, true);
@@ -3443,7 +3466,7 @@ impl<'a> AssocItemLink<'a> {
 
 fn render_assoc_items(
     w: &mut Buffer,
-    cx: &Context,
+    cx: &Context<'_>,
     containing_item: &clean::Item,
     it: DefId,
     what: AssocItemRender<'_>,
@@ -3559,7 +3582,7 @@ fn render_assoc_items(
 
 fn render_deref_methods(
     w: &mut Buffer,
-    cx: &Context,
+    cx: &Context<'_>,
     impl_: &Impl,
     container_item: &clean::Item,
     deref_mut: bool,
@@ -3675,7 +3698,7 @@ fn spotlight_decl(decl: &clean::FnDecl) -> String {
 
 fn render_impl(
     w: &mut Buffer,
-    cx: &Context,
+    cx: &Context<'_>,
     i: &Impl,
     parent: &clean::Item,
     link: AssocItemLink<'_>,
@@ -3769,7 +3792,7 @@ fn render_impl(
 
     fn doc_impl_item(
         w: &mut Buffer,
-        cx: &Context,
+        cx: &Context<'_>,
         item: &clean::Item,
         parent: &clean::Item,
         link: AssocItemLink<'_>,
@@ -3906,7 +3929,7 @@ fn render_impl(
 
     fn render_default_items(
         w: &mut Buffer,
-        cx: &Context,
+        cx: &Context<'_>,
         t: &clean::Trait,
         i: &clean::Impl,
         parent: &clean::Item,
@@ -3966,7 +3989,7 @@ fn render_impl(
 
 fn item_opaque_ty(
     w: &mut Buffer,
-    cx: &Context,
+    cx: &Context<'_>,
     it: &clean::Item,
     t: &clean::OpaqueTy,
     cache: &Cache,
@@ -3993,7 +4016,7 @@ fn item_opaque_ty(
 
 fn item_trait_alias(
     w: &mut Buffer,
-    cx: &Context,
+    cx: &Context<'_>,
     it: &clean::Item,
     t: &clean::TraitAlias,
     cache: &Cache,
@@ -4018,7 +4041,13 @@ fn item_trait_alias(
     render_assoc_items(w, cx, it, it.def_id, AssocItemRender::All, cache)
 }
 
-fn item_typedef(w: &mut Buffer, cx: &Context, it: &clean::Item, t: &clean::Typedef, cache: &Cache) {
+fn item_typedef(
+    w: &mut Buffer,
+    cx: &Context<'_>,
+    it: &clean::Item,
+    t: &clean::Typedef,
+    cache: &Cache,
+) {
     write!(w, "<pre class=\"rust typedef\">");
     render_attributes(w, it, false);
     write!(
@@ -4039,7 +4068,7 @@ fn item_typedef(w: &mut Buffer, cx: &Context, it: &clean::Item, t: &clean::Typed
     render_assoc_items(w, cx, it, it.def_id, AssocItemRender::All, cache)
 }
 
-fn item_foreign_type(w: &mut Buffer, cx: &Context, it: &clean::Item, cache: &Cache) {
+fn item_foreign_type(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, cache: &Cache) {
     writeln!(w, "<pre class=\"rust foreigntype\">extern {{");
     render_attributes(w, it, false);
     write!(
@@ -4054,7 +4083,7 @@ fn item_foreign_type(w: &mut Buffer, cx: &Context, it: &clean::Item, cache: &Cac
     render_assoc_items(w, cx, it, it.def_id, AssocItemRender::All, cache)
 }
 
-fn print_sidebar(cx: &Context, it: &clean::Item, buffer: &mut Buffer, cache: &Cache) {
+fn print_sidebar(cx: &Context<'_>, it: &clean::Item, buffer: &mut Buffer, cache: &Cache) {
     let parentlen = cx.current.len() - if it.is_mod() { 1 } else { 0 };
 
     if it.is_struct()
@@ -4685,7 +4714,7 @@ fn sidebar_foreign_type(buf: &mut Buffer, it: &clean::Item) {
     }
 }
 
-fn item_macro(w: &mut Buffer, cx: &Context, it: &clean::Item, t: &clean::Macro) {
+fn item_macro(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Macro) {
     wrap_into_docblock(w, |w| {
         w.write_str(&highlight::render_with_highlighting(
             t.source.clone(),
@@ -4697,7 +4726,7 @@ fn item_macro(w: &mut Buffer, cx: &Context, it: &clean::Item, t: &clean::Macro) 
     document(w, cx, it, None)
 }
 
-fn item_proc_macro(w: &mut Buffer, cx: &Context, it: &clean::Item, m: &clean::ProcMacro) {
+fn item_proc_macro(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, m: &clean::ProcMacro) {
     let name = it.name.as_ref().expect("proc-macros always have names");
     match m.kind {
         MacroKind::Bang => {
@@ -4727,12 +4756,12 @@ fn item_proc_macro(w: &mut Buffer, cx: &Context, it: &clean::Item, m: &clean::Pr
     document(w, cx, it, None)
 }
 
-fn item_primitive(w: &mut Buffer, cx: &Context, it: &clean::Item, cache: &Cache) {
+fn item_primitive(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, cache: &Cache) {
     document(w, cx, it, None);
     render_assoc_items(w, cx, it, it.def_id, AssocItemRender::All, cache)
 }
 
-fn item_keyword(w: &mut Buffer, cx: &Context, it: &clean::Item) {
+fn item_keyword(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item) {
     document(w, cx, it, None)
 }
 

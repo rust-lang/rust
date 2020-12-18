@@ -13,7 +13,7 @@ use std::path::PathBuf;
 use std::rc::Rc;
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::sync::Lrc;
+use rustc_middle::ty;
 use rustc_session::Session;
 use rustc_span::edition::Edition;
 
@@ -25,8 +25,8 @@ use crate::formats::FormatRenderer;
 use crate::html::render::cache::ExternalLocation;
 
 #[derive(Clone)]
-crate struct JsonRenderer {
-    sess: Lrc<Session>,
+crate struct JsonRenderer<'tcx> {
+    tcx: ty::TyCtxt<'tcx>,
     /// A mapping of IDs that contains all local items for this crate which gets output as a top
     /// level field of the JSON blob.
     index: Rc<RefCell<FxHashMap<types::Id, types::Item>>>,
@@ -34,7 +34,11 @@ crate struct JsonRenderer {
     out_path: PathBuf,
 }
 
-impl JsonRenderer {
+impl JsonRenderer<'_> {
+    fn sess(&self) -> &Session {
+        self.tcx.sess
+    }
+
     fn get_trait_implementors(
         &mut self,
         id: rustc_span::def_id::DefId,
@@ -120,19 +124,19 @@ impl JsonRenderer {
     }
 }
 
-impl FormatRenderer for JsonRenderer {
+impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
     fn init(
         krate: clean::Crate,
         options: RenderOptions,
         _render_info: RenderInfo,
         _edition: Edition,
         _cache: &mut Cache,
-        sess: Lrc<Session>,
+        tcx: ty::TyCtxt<'tcx>,
     ) -> Result<(Self, clean::Crate), Error> {
         debug!("Initializing json renderer");
         Ok((
             JsonRenderer {
-                sess,
+                tcx,
                 index: Rc::new(RefCell::new(FxHashMap::default())),
                 out_path: options.output,
             },
