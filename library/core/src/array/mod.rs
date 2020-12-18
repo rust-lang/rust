@@ -12,7 +12,7 @@ use crate::convert::{Infallible, TryFrom};
 use crate::fmt;
 use crate::hash::{self, Hash};
 use crate::marker::Unsize;
-use crate::ops::{Index, IndexMut, Try};
+use crate::ops::{Index, IndexMut};
 use crate::slice::{Iter, IterMut};
 
 mod iter;
@@ -480,10 +480,9 @@ impl<T, const N: usize> [T; N] {
     /// assert!(b.is_err());
     /// ```
     #[unstable(feature = "array_try_map", issue = "79711")]
-    pub fn try_map<F, R, E, U>(self, mut f: F) -> Result<[U; N], E>
+    pub fn try_map<F, E, U>(self, mut f: F) -> Result<[U; N], E>
     where
-        F: FnMut(T) -> R,
-        R: Try<Ok = U, Error = E>,
+        F: FnMut(T) -> Result<U, E>,
     {
         use crate::mem::MaybeUninit;
         struct Guard<T, const N: usize> {
