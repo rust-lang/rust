@@ -78,7 +78,16 @@ impl Krate {
         let all_output = std::process::Command::new(cargo_clippy_path)
             // lint warnings will look like this:
             // src/cargo/ops/cargo_compile.rs:127:35: warning: usage of `FromIterator::from_iter`
-            .args(&["--", "--message-format=short", "--", "--cap-lints=warn"])
+            .args(&[
+                "--",
+                "--message-format=short",
+                "--",
+                "--cap-lints=warn",
+            /*    "--",
+                "-Wclippy::pedantic",
+                "--",
+                "-Wclippy::cargo", */
+            ])
             .current_dir(&self.path)
             .output()
             .unwrap();
@@ -121,7 +130,28 @@ pub fn run() {
     let cargo_clippy_path: PathBuf = PathBuf::from("target/debug/cargo-clippy");
 
     // crates we want to check:
-    let krates: Vec<KrateSource> = vec![KrateSource::new("regex", "1.4.2"), KrateSource::new("cargo", "0.49.0")];
+    let krates: Vec<KrateSource> = vec![
+        // some of these are form cargotest
+        KrateSource::new("cargo", "0.49.0"),
+        KrateSource::new("iron", "0.6.1"),
+        KrateSource::new("ripgrep", "12.1.1"),
+        KrateSource::new("tokei", "12.0.4"),
+        KrateSource::new("xsv", "0.13.0"),
+        KrateSource::new("serde", "1.0.118"),
+        KrateSource::new("rayon", "1.5.0"),
+        // top 10 crates.io dls
+        KrateSource::new("rand", "0.7.3"),
+        KrateSource::new("syn", "1.0.54"),
+        KrateSource::new("libc", "0.2.81"),
+        KrateSource::new("quote", "1.0.7"),
+        KrateSource::new("rand_core", "0.6.0"),
+        KrateSource::new("unicode-xid", "0.2.1"),
+        KrateSource::new("proc-macro2", "1.0.24"),
+        KrateSource::new("bitflags", "1.2.1"),
+        KrateSource::new("log", "0.4.11"),
+        KrateSource::new("regex", "1.4.2")
+        //
+    ];
 
     println!("Compiling clippy...");
     build_clippy();

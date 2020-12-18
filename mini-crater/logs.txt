@@ -1,3 +1,252 @@
+cargo-0.49.0/src/bin/cargo/cli.rs:121:5: calling `push_str()` using a single-character string literal
+cargo-0.49.0/src/cargo/core/compiler/custom_build.rs:353:56: stripping a prefix manually
+cargo-0.49.0/src/cargo/core/compiler/custom_build.rs:762:5: this function's return value is unnecessarily wrapped by `Result`
+cargo-0.49.0/src/cargo/core/compiler/fingerprint.rs:1664:5: field assignment outside of initializer for an instance created with Default::default()
+cargo-0.49.0/src/cargo/core/compiler/fingerprint.rs:1795:5: field assignment outside of initializer for an instance created with Default::default()
+cargo-0.49.0/src/cargo/core/compiler/fingerprint.rs:1980:24: stripping a prefix manually
+cargo-0.49.0/src/cargo/core/compiler/mod.rs:1131:1: this function's return value is unnecessarily wrapped by `Result`
+cargo-0.49.0/src/cargo/core/compiler/mod.rs:364:5: this function's return value is unnecessarily wrapped by `Result`
+cargo-0.49.0/src/cargo/core/compiler/mod.rs:693:1: this function's return value is unnecessarily wrapped by `Result`
+cargo-0.49.0/src/cargo/core/package.rs:421:5: explicit lifetimes given in parameter types where they could be elided (or replaced with `'_` if needed by type declaration)
+cargo-0.49.0/src/cargo/core/profiles.rs:143:5: this function's return value is unnecessarily wrapped by `Result`
+cargo-0.49.0/src/cargo/core/profiles.rs:372:9: field assignment outside of initializer for an instance created with Default::default()
+cargo-0.49.0/src/cargo/core/resolver/errors.rs:305:17: calling `push_str()` using a single-character string literal
+cargo-0.49.0/src/cargo/core/resolver/resolve.rs:239:5: explicit lifetimes given in parameter types where they could be elided (or replaced with `'_` if needed by type declaration)
+cargo-0.49.0/src/cargo/core/resolver/types.rs:187:5: explicit lifetimes given in parameter types where they could be elided (or replaced with `'_` if needed by type declaration)
+cargo-0.49.0/src/cargo/core/resolver/types.rs:261:5: explicit lifetimes given in parameter types where they could be elided (or replaced with `'_` if needed by type declaration)
+cargo-0.49.0/src/cargo/core/workspace.rs:1056:5: this function's return value is unnecessarily wrapped by `Result`
+cargo-0.49.0/src/cargo/core/workspace.rs:440:9: this function's return value is unnecessarily wrapped by `Result`
+cargo-0.49.0/src/cargo/ops/cargo_compile.rs:127:35: usage of `FromIterator::from_iter`
+cargo-0.49.0/src/cargo/ops/common_for_install_and_uninstall.rs:233:21: calling `push_str()` using a single-character string literal
+cargo-0.49.0/src/cargo/ops/common_for_install_and_uninstall.rs:370:5: this function's return value is unnecessarily wrapped by `Result`
+cargo-0.49.0/src/cargo/ops/fix.rs:608:9: field assignment outside of initializer for an instance created with Default::default()
+cargo-0.49.0/src/cargo/ops/fix.rs:619:48: stripping a prefix manually
+cargo-0.49.0/src/cargo/ops/lockfile.rs:154:13: calling `push_str()` using a single-character string literal
+cargo-0.49.0/src/cargo/ops/lockfile.rs:217:9: calling `push_str()` using a single-character string literal
+cargo-0.49.0/src/cargo/ops/lockfile.rs:87:1: this function's return value is unnecessarily wrapped by `Result`
+cargo-0.49.0/src/cargo/sources/git/source.rs:69:20: comparison to empty slice
+cargo-0.49.0/src/cargo/sources/git/utils.rs:1158:9: stripping a suffix manually
+cargo-0.49.0/src/cargo/sources/git/utils.rs:758:9: calling `push_str()` using a single-character string literal
+cargo-0.49.0/src/cargo/sources/path.rs:339:9: this function's return value is unnecessarily wrapped by `Result`
+cargo-0.49.0/src/cargo/sources/registry/index.rs:736:1: explicit lifetimes given in parameter types where they could be elided (or replaced with `'_` if needed by type declaration)
+cargo-0.49.0/src/cargo/util/config/key.rs:69:9: calling `push_str()` using a single-character string literal
+cargo-0.49.0/src/cargo/util/config/value.rs:81:9: match expression looks like `matches!` macro
+cargo-0.49.0/src/cargo/util/errors.rs:473:5: manual `RangeInclusive::contains` implementation
+cargo-0.49.0/src/cargo/util/paths.rs:93:31: comparison to empty slice
+cargo-0.49.0/src/cargo/util/progress.rs:269:17: calling `push_str()` using a single-character string literal
+cargo-0.49.0/src/cargo/util/progress.rs:272:17: calling `push_str()` using a single-character string literal
+cargo-0.49.0/src/cargo/util/progress.rs:274:17: calling `push_str()` using a single-character string literal
+cargo-0.49.0/src/cargo/util/progress.rs:280:13: calling `push_str()` using a single-character string literal
+cargo-0.49.0/src/cargo/util/progress.rs:282:9: calling `push_str()` using a single-character string literal
+cargo-0.49.0/src/cargo/util/toml/mod.rs:1687:33: unnecessary closure used to substitute value for `Option::None`
+iron-0.6.1/src/error.rs:55:20: use of deprecated associated function `std::error::Error::description`: use the Display impl or to_string()
+iron-0.6.1/src/iron.rs:105:13: redundant field names in struct initialization
+iron-0.6.1/src/iron.rs:148:19: use of deprecated macro `try`: use the `?` operator instead
+iron-0.6.1/src/iron.rs:149:13: redundant field names in struct initialization
+iron-0.6.1/src/modifiers.rs:132:14: use of `expect` followed by a function call
+iron-0.6.1/src/request/mod.rs:121:13: redundant field names in struct initialization
+iron-0.6.1/src/request/mod.rs:123:13: redundant field names in struct initialization
+iron-0.6.1/src/request/mod.rs:124:13: redundant field names in struct initialization
+iron-0.6.1/src/request/mod.rs:126:13: redundant field names in struct initialization
+iron-0.6.1/src/request/mod.rs:128:13: redundant field names in struct initialization
+iron-0.6.1/src/request/mod.rs:32:1: this seems like a manual implementation of the non-exhaustive pattern
+iron-0.6.1/src/request/mod.rs:62:9: use of deprecated macro `try`: use the `?` operator instead
+iron-0.6.1/src/request/mod.rs:64:9: use of deprecated macro `try`: use the `?` operator instead
+iron-0.6.1/src/request/mod.rs:65:9: use of deprecated macro `try`: use the `?` operator instead
+iron-0.6.1/src/request/mod.rs:66:9: use of deprecated macro `try`: use the `?` operator instead
+iron-0.6.1/src/request/mod.rs:67:9: use of deprecated macro `try`: use the `?` operator instead
+iron-0.6.1/src/request/mod.rs:69:9: use of deprecated macro `try`: use the `?` operator instead
+iron-0.6.1/src/request/url.rs:124:9: use of deprecated macro `try`: use the `?` operator instead
+iron-0.6.1/src/response.rs:142:23: use of deprecated macro `try`: use the `?` operator instead
+iron-0.6.1/src/response.rs:143:5: use of deprecated macro `try`: use the `?` operator instead
+iron-0.6.1/src/response.rs:95:5: you should consider adding a `Default` implementation for `response::Response`
+ripgrep-12.1.1/build.rs:133:19: called `.as_ref().map(|x| &**x)` on an Option value. This can be done more directly by calling `githash.as_deref()` instead
+ripgrep-12.1.1/build.rs:92:19: called `.as_ref().map(|x| &**x)` on an Option value. This can be done more directly by calling `githash.as_deref()` instead
+ripgrep-12.1.1/crates/core/args.rs:11:1: this import is redundant
+ripgrep-12.1.1/crates/core/args.rs:1209:74: this `if` has identical blocks
+ripgrep-12.1.1/crates/core/args.rs:1209:74: this `if` has identical blocks
+ripgrep-12.1.1/crates/core/args.rs:1524:5: this function's return value is unnecessarily wrapped by `Result`
+ripgrep-12.1.1/crates/core/args.rs:33:1: this import is redundant
+ripgrep-12.1.1/crates/core/args.rs:34:1: this import is redundant
+ripgrep-12.1.1/crates/core/args.rs:35:1: this import is redundant
+ripgrep-12.1.1/crates/core/args.rs:549:16: methods called `to_*` usually take self by reference; consider choosing a less ambiguous name
+ripgrep-12.1.1/crates/core/config.rs:13:1: this import is redundant
+ripgrep-12.1.1/crates/core/config.rs:58:6: very complex type used. Consider factoring parts into `type` definitions
+ripgrep-12.1.1/crates/core/config.rs:79:6: very complex type used. Consider factoring parts into `type` definitions
+ripgrep-12.1.1/crates/core/logger.rs:15:16: constants have by default a `'static` lifetime
+ripgrep-12.1.1/crates/core/search.rs:292:9: using `write!()` with a format string that ends in a single newline
+ripgrep-12.1.1/crates/core/search.rs:377:12: this boolean expression can be simplified
+ripgrep-12.1.1/crates/core/search.rs:472:24: you are using an explicit closure for cloning elements
+ripgrep-12.1.1/crates/core/search.rs:480:24: you are using an explicit closure for cloning elements
+ripgrep-12.1.1/crates/core/search.rs:509:24: you are using an explicit closure for cloning elements
+ripgrep-12.1.1/crates/core/search.rs:517:24: you are using an explicit closure for cloning elements
+ripgrep-12.1.1/crates/core/subject.rs:4:1: this import is redundant
+tokei-12.0.4/src/cli_utils.rs:154:25: this lifetime isn't used in the function definition
+tokei-12.0.4/src/cli_utils.rs:154:29: this lifetime isn't used in the function definition
+tokei-12.0.4/src/cli_utils.rs:195:47: useless use of `format!`
+tokei-12.0.4/src/cli_utils.rs:306:47: useless use of `format!`
+tokei-12.0.4/src/config.rs:102:36: use of `or` followed by a function call
+tokei-12.0.4/src/config.rs:103:38: use of `or` followed by a function call
+tokei-12.0.4/src/config.rs:106:18: use of `or` followed by a function call
+tokei-12.0.4/src/config.rs:109:18: use of `or` followed by a function call
+tokei-12.0.4/src/config.rs:112:18: use of `or` followed by a function call
+tokei-12.0.4/src/config.rs:97:18: use of `or` followed by a function call
+tokei-12.0.4/src/config.rs:99:86: use of `or` followed by a function call
+tokei-12.0.4/src/language/language_type.rs:75:22: this `.into_iter()` call is equivalent to `.iter()` and will not consume the `slice`
+tokei-12.0.4/src/language/syntax.rs:334:45: this `if` has identical blocks
+tokei-12.0.4/src/language/syntax.rs:334:45: this `if` has identical blocks
+tokei-12.0.4/src/language/syntax.rs:336:39: this `if` has identical blocks
+tokei-12.0.4/src/language/syntax.rs:338:16: this if-then-else expression returns a bool literal
+tokei-12.0.4/src/language/syntax.rs:338:43: this `if` has identical blocks
+tokei-12.0.4/src/language/syntax.rs:446:74: trivial regex
+tokei-12.0.4/src/language/syntax.rs:449:73: trivial regex
+tokei-12.0.4/src/language/syntax.rs:453:45: trivial regex
+tokei-12.0.4/src/utils/fs.rs:105:26: called `.as_ref().map(|v| &**v)` on an Option value. This can be done more directly by calling `config.types.as_deref()` instead
+xsv-0.13.0/src/cmd/cat.rs:7:16: statics have by default a `'static` lifetime
+xsv-0.13.0/src/cmd/count.rs:50:5: passing a unit value to a function
+xsv-0.13.0/src/cmd/count.rs:7:16: statics have by default a `'static` lifetime
+xsv-0.13.0/src/cmd/fixlengths.rs:9:16: statics have by default a `'static` lifetime
+xsv-0.13.0/src/cmd/flatten.rs:10:16: statics have by default a `'static` lifetime
+xsv-0.13.0/src/cmd/fmt.rs:7:16: statics have by default a `'static` lifetime
+xsv-0.13.0/src/cmd/frequency.rs:15:16: statics have by default a `'static` lifetime
+xsv-0.13.0/src/cmd/frequency.rs:178:24: this `else { if .. }` block can be collapsed
+xsv-0.13.0/src/cmd/headers.rs:60:22: trait objects without an explicit `dyn` are deprecated
+xsv-0.13.0/src/cmd/headers.rs:9:16: statics have by default a `'static` lifetime
+xsv-0.13.0/src/cmd/index.rs:11:16: statics have by default a `'static` lifetime
+xsv-0.13.0/src/cmd/input.rs:7:16: statics have by default a `'static` lifetime
+xsv-0.13.0/src/cmd/join.rs:17:16: statics have by default a `'static` lifetime
+xsv-0.13.0/src/cmd/join.rs:281:44: trait objects without an explicit `dyn` are deprecated
+xsv-0.13.0/src/cmd/join.rs:297:13: redundant field names in struct initialization
+xsv-0.13.0/src/cmd/join.rs:298:13: redundant field names in struct initialization
+xsv-0.13.0/src/cmd/join.rs:299:13: redundant field names in struct initialization
+xsv-0.13.0/src/cmd/join.rs:300:13: redundant field names in struct initialization
+xsv-0.13.0/src/cmd/join.rs:392:13: redundant field names in struct initialization
+xsv-0.13.0/src/cmd/partition.rs:126:36: trait objects without an explicit `dyn` are deprecated
+xsv-0.13.0/src/cmd/partition.rs:139:13: redundant field names in struct initialization
+xsv-0.13.0/src/cmd/partition.rs:15:16: statics have by default a `'static` lifetime
+xsv-0.13.0/src/cmd/sample.rs:11:16: statics have by default a `'static` lifetime
+xsv-0.13.0/src/cmd/search.rs:9:16: statics have by default a `'static` lifetime
+xsv-0.13.0/src/cmd/select.rs:8:16: statics have by default a `'static` lifetime
+xsv-0.13.0/src/cmd/slice.rs:9:16: statics have by default a `'static` lifetime
+xsv-0.13.0/src/cmd/sort.rs:11:16: statics have by default a `'static` lifetime
+xsv-0.13.0/src/cmd/split.rs:131:36: trait objects without an explicit `dyn` are deprecated
+xsv-0.13.0/src/cmd/split.rs:14:16: statics have by default a `'static` lifetime
+xsv-0.13.0/src/cmd/split.rs:94:5: this function's return value is unnecessarily wrapped by `Result`
+xsv-0.13.0/src/cmd/stats.rs:22:16: statics have by default a `'static` lifetime
+xsv-0.13.0/src/cmd/stats.rs:269:13: redundant field names in struct initialization
+xsv-0.13.0/src/cmd/stats.rs:270:13: redundant field names in struct initialization
+xsv-0.13.0/src/cmd/stats.rs:271:13: redundant field names in struct initialization
+xsv-0.13.0/src/cmd/stats.rs:272:13: redundant field names in struct initialization
+xsv-0.13.0/src/cmd/stats.rs:273:13: redundant field names in struct initialization
+xsv-0.13.0/src/cmd/stats.rs:274:13: redundant field names in struct initialization
+xsv-0.13.0/src/cmd/stats.rs:283:9: called `map(f)` on an `Option` value where `f` is a closure that returns the unit type `()`
+xsv-0.13.0/src/cmd/stats.rs:284:9: called `map(f)` on an `Option` value where `f` is a closure that returns the unit type `()`
+xsv-0.13.0/src/cmd/stats.rs:285:9: called `map(f)` on an `Option` value where `f` is a closure that returns the unit type `()`
+xsv-0.13.0/src/cmd/stats.rs:290:21: called `map(f)` on an `Option` value where `f` is a closure that returns the unit type `()`
+xsv-0.13.0/src/cmd/stats.rs:297:25: called `map(f)` on an `Option` value where `f` is a closure that returns the unit type `()`
+xsv-0.13.0/src/cmd/stats.rs:301:21: called `map(f)` on an `Option` value where `f` is a closure that returns the unit type `()`
+xsv-0.13.0/src/cmd/stats.rs:302:21: called `map(f)` on an `Option` value where `f` is a closure that returns the unit type `()`
+xsv-0.13.0/src/cmd/stats.rs:308:18: methods called `to_*` usually take self by reference; consider choosing a less ambiguous name
+xsv-0.13.0/src/cmd/stats.rs:402:16: redundant pattern matching, consider using `is_ok()`
+xsv-0.13.0/src/cmd/stats.rs:403:16: redundant pattern matching, consider using `is_ok()`
+xsv-0.13.0/src/cmd/table.rs:10:16: statics have by default a `'static` lifetime
+xsv-0.13.0/src/config.rs:113:43: use of `unwrap_or` followed by a function call
+xsv-0.13.0/src/config.rs:197:48: trait objects without an explicit `dyn` are deprecated
+xsv-0.13.0/src/config.rs:202:48: trait objects without an explicit `dyn` are deprecated
+xsv-0.13.0/src/config.rs:263:47: trait objects without an explicit `dyn` are deprecated
+xsv-0.13.0/src/config.rs:293:47: trait objects without an explicit `dyn` are deprecated
+xsv-0.13.0/src/config.rs:90:13: redundant field names in struct initialization
+xsv-0.13.0/src/index.rs:31:13: redundant field names in struct initialization
+xsv-0.13.0/src/main.rs:164:49: redundant clone
+xsv-0.13.0/src/main.rs:75:16: statics have by default a `'static` lifetime
+xsv-0.13.0/src/select.rs:154:5: this function's return value is unnecessarily wrapped by `Result`
+xsv-0.13.0/src/select.rs:280:20: length comparison to zero
+xsv-0.13.0/src/select.rs:29:13: redundant field names in struct initialization
+xsv-0.13.0/src/select.rs:360:9: this function's return value is unnecessarily wrapped by `Option`
+xsv-0.13.0/src/select.rs:375:9: used sort instead of sort_unstable to sort primitive type `usize`
+xsv-0.13.0/src/select.rs:416:5: explicit lifetimes given in parameter types where they could be elided (or replaced with `'_` if needed by type declaration)
+xsv-0.13.0/src/select.rs:419:9: this function's return value is unnecessarily wrapped by `Option`
+xsv-0.13.0/src/util.rs:190:48: trait objects without an explicit `dyn` are deprecated
+xsv-0.13.0/src/util.rs:37:33: you are using an explicit closure for copying elements
+xsv-0.13.0/src/util.rs:90:1: explicit lifetimes given in parameter types where they could be elided (or replaced with `'_` if needed by type declaration)
+rayon-1.5.0/src/collections/mod.rs:59:32: replacing a value of type `T` with `T::default()` is better expressed using `std::mem::take`
+rayon-1.5.0/src/compile_fail/cannot_collect_filtermap_data.rs:2:1: needless `fn main` in doctest
+rayon-1.5.0/src/compile_fail/cannot_zip_filtered_data.rs:2:1: needless `fn main` in doctest
+rayon-1.5.0/src/compile_fail/cell_par_iter.rs:2:1: needless `fn main` in doctest
+rayon-1.5.0/src/compile_fail/no_send_par_iter.rs:25:1: needless `fn main` in doctest
+rayon-1.5.0/src/compile_fail/no_send_par_iter.rs:46:1: needless `fn main` in doctest
+rayon-1.5.0/src/compile_fail/no_send_par_iter.rs:4:1: needless `fn main` in doctest
+rayon-1.5.0/src/compile_fail/rc_par_iter.rs:2:1: needless `fn main` in doctest
+rayon-1.5.0/src/iter/interleave.rs:313:9: `if` chain can be rewritten with `match`
+rayon-1.5.0/src/iter/mod.rs:2171:1: trait `IndexedParallelIterator` has a `len` method but no (possibly inherited) `is_empty` method
+rayon-1.5.0/src/slice/quicksort.rs:588:17: the operation is ineffective. Consider reducing it to `len / 4`
+rayon-1.5.0/src/str.rs:715:9: stripping a suffix manually
+rayon-1.5.0/src/vec.rs:137:12: length comparison to zero
+rand-0.7.3/src/distributions/bernoulli.rs:96:13: manual `Range::contains` implementation
+rand-0.7.3/src/distributions/uniform.rs:146:4: needless `fn main` in doctest
+rand-0.7.3/src/distributions/uniform.rs:407:21: redundant field names in struct initialization
+rand-0.7.3/src/distributions/uniform.rs:407:21: redundant field names in struct initialization
+rand-0.7.3/src/distributions/uniform.rs:407:21: redundant field names in struct initialization
+rand-0.7.3/src/distributions/uniform.rs:407:21: redundant field names in struct initialization
+rand-0.7.3/src/distributions/uniform.rs:407:21: redundant field names in struct initialization
+rand-0.7.3/src/distributions/uniform.rs:407:21: redundant field names in struct initialization
+rand-0.7.3/src/distributions/uniform.rs:407:21: redundant field names in struct initialization
+rand-0.7.3/src/distributions/uniform.rs:407:21: redundant field names in struct initialization
+rand-0.7.3/src/distributions/uniform.rs:407:21: redundant field names in struct initialization
+rand-0.7.3/src/distributions/uniform.rs:407:21: redundant field names in struct initialization
+rand-0.7.3/src/distributions/uniform.rs:407:21: redundant field names in struct initialization
+rand-0.7.3/src/distributions/uniform.rs:407:21: redundant field names in struct initialization
+rand-0.7.3/src/distributions/weighted/alias_method.rs:259:28: using `clone` on type `distributions::uniform::Uniform<u32>` which implements the `Copy` trait
+rand-0.7.3/src/distributions/weighted/alias_method.rs:296:9: you are using an explicit closure for copying elements
+rand-0.7.3/src/distributions/weighted/alias_method.rs:321:9: you are using an explicit closure for copying elements
+rand-0.7.3/src/distributions/weighted/mod.rs:169:16: unnecessary `>= y + 1` or `x - 1 >=`
+rand-0.7.3/src/seq/index.rs:87:5: method `into_iter` can be confused for the standard trait method `std::iter::IntoIterator::into_iter`
+rand-0.7.3/src/seq/mod.rs:229:4: needless `fn main` in doctest
+rand-0.7.3/src/seq/mod.rs:45:4: needless `fn main` in doctest
+syn-1.0.54/src/lit.rs:1397:40: redundant else block
+syn-1.0.54/src/lit.rs:1405:28: redundant else block
+syn-1.0.54/src/lit.rs:1485:32: redundant else block
+libc-0.2.81/build.rs:124:5: this block may be rewritten with the `?` operator
+libc-0.2.81/build.rs:133:5: this block may be rewritten with the `?` operator
+libc-0.2.81/src/macros.rs:243:17: unsafe function's docs miss `# Safety` section
+libc-0.2.81/src/macros.rs:243:17: unsafe function's docs miss `# Safety` section
+libc-0.2.81/src/macros.rs:243:17: unsafe function's docs miss `# Safety` section
+libc-0.2.81/src/unix/linux_like/linux/gnu/mod.rs:291:5: unsafe function's docs miss `# Safety` section
+libc-0.2.81/src/unix/linux_like/linux/gnu/mod.rs:302:5: unsafe function's docs miss `# Safety` section
+libc-0.2.81/src/unix/linux_like/linux/gnu/mod.rs:355:13: unsafe function's docs miss `# Safety` section
+libc-0.2.81/src/unix/linux_like/linux/gnu/mod.rs:359:13: unsafe function's docs miss `# Safety` section
+libc-0.2.81/src/unix/linux_like/linux/gnu/mod.rs:363:13: unsafe function's docs miss `# Safety` section
+libc-0.2.81/src/unix/linux_like/linux/gnu/mod.rs:367:13: unsafe function's docs miss `# Safety` section
+libc-0.2.81/src/unix/linux_like/linux/gnu/mod.rs:371:13: unsafe function's docs miss `# Safety` section
+libc-0.2.81/src/unix/linux_like/linux/mod.rs:2572:9: unneeded `return` statement
+libc-0.2.81/src/unix/linux_like/linux/mod.rs:2578:20: `0 as *mut _` detected
+libc-0.2.81/src/unix/linux_like/linux/mod.rs:2588:13: `0 as *mut _` detected
+libc-0.2.81/src/unix/linux_like/linux/mod.rs:2611:9: unneeded unit expression
+libc-0.2.81/src/unix/linux_like/linux/mod.rs:2619:9: unneeded unit expression
+libc-0.2.81/src/unix/linux_like/linux/mod.rs:2654:18: the operation is ineffective. Consider reducing it to `(dev & 0x00000000000000ff)`
+libc-0.2.81/src/unix/linux_like/linux/mod.rs:2665:16: the operation is ineffective. Consider reducing it to `(minor & 0x000000ff)`
+libc-0.2.81/src/unix/linux_like/mod.rs:1218:27: the operation is ineffective. Consider reducing it to `IPOPT_CONTROL`
+libc-0.2.81/src/unix/linux_like/mod.rs:1314:9: operator precedence can trip the unwary
+libc-0.2.81/src/unix/linux_like/mod.rs:1323:13: `0 as *mut _` detected
+libc-0.2.81/src/unix/linux_like/mod.rs:1344:9: unneeded `return` statement
+libc-0.2.81/src/unix/linux_like/mod.rs:1350:9: unneeded `return` statement
+libc-0.2.81/src/unix/linux_like/mod.rs:1357:9: unneeded `return` statement
+libc-0.2.81/src/unix/mod.rs:201:35: casting integer literal to `usize` is unnecessary
+libc-0.2.81/src/unix/mod.rs:202:35: casting integer literal to `usize` is unnecessary
+quote-1.0.7/src/ident_fragment.rs:51:31: stripping a prefix manually
+proc-macro2-1.0.24/src/fallback.rs:654:5: manual `RangeInclusive::contains` implementation
+proc-macro2-1.0.24/src/fallback.rs:655:12: manual `RangeInclusive::contains` implementation
+proc-macro2-1.0.24/src/fallback.rs:661:5: manual `RangeInclusive::contains` implementation
+proc-macro2-1.0.24/src/fallback.rs:662:12: manual `RangeInclusive::contains` implementation
+proc-macro2-1.0.24/src/fallback.rs:664:12: manual `RangeInclusive::contains` implementation
+proc-macro2-1.0.24/src/fallback.rs:674:37: manual `RangeInclusive::contains` implementation
+proc-macro2-1.0.24/src/parse.rs:552:5: this loop could be written as a `for` loop
+proc-macro2-1.0.24/src/parse.rs:584:21: manual `RangeInclusive::contains` implementation
+log-0.4.11/src/lib.rs:1093:5: you should consider adding a `Default` implementation for `MetadataBuilder<'a>`
+log-0.4.11/src/lib.rs:329:27: you are deriving `Hash` but have implemented `PartialEq` explicitly
+log-0.4.11/src/lib.rs:448:12: manual `RangeInclusive::contains` implementation
+log-0.4.11/src/lib.rs:520:27: you are deriving `Hash` but have implemented `PartialEq` explicitly
+log-0.4.11/src/lib.rs:908:5: you should consider adding a `Default` implementation for `RecordBuilder<'a>`
 regex-1.4.2/src/backtrack.rs:100:13: redundant field names in struct initialization
 regex-1.4.2/src/backtrack.rs:133:17: it looks like the same item is being pushed into this Vec
 regex-1.4.2/src/backtrack.rs:223:29: redundant field names in struct initialization
@@ -137,44 +386,3 @@ regex-1.4.2/src/utf8.rs:80:16: digits of hex or binary literal not grouped by fo
 regex-1.4.2/src/utf8.rs:92:23: digits of hex or binary literal not grouped by four
 regex-1.4.2/src/utf8.rs:92:9: digits of hex or binary literal not grouped by four
 regex-1.4.2/src/utf8.rs:97:16: digits of hex or binary literal not grouped by four
-cargo-0.49.0/src/bin/cargo/cli.rs:121:5: calling `push_str()` using a single-character string literal
-cargo-0.49.0/src/cargo/core/compiler/custom_build.rs:353:56: stripping a prefix manually
-cargo-0.49.0/src/cargo/core/compiler/custom_build.rs:762:5: this function's return value is unnecessarily wrapped by `Result`
-cargo-0.49.0/src/cargo/core/compiler/fingerprint.rs:1664:5: field assignment outside of initializer for an instance created with Default::default()
-cargo-0.49.0/src/cargo/core/compiler/fingerprint.rs:1795:5: field assignment outside of initializer for an instance created with Default::default()
-cargo-0.49.0/src/cargo/core/compiler/fingerprint.rs:1980:24: stripping a prefix manually
-cargo-0.49.0/src/cargo/core/compiler/mod.rs:1131:1: this function's return value is unnecessarily wrapped by `Result`
-cargo-0.49.0/src/cargo/core/compiler/mod.rs:364:5: this function's return value is unnecessarily wrapped by `Result`
-cargo-0.49.0/src/cargo/core/compiler/mod.rs:693:1: this function's return value is unnecessarily wrapped by `Result`
-cargo-0.49.0/src/cargo/core/package.rs:421:5: explicit lifetimes given in parameter types where they could be elided (or replaced with `'_` if needed by type declaration)
-cargo-0.49.0/src/cargo/core/profiles.rs:143:5: this function's return value is unnecessarily wrapped by `Result`
-cargo-0.49.0/src/cargo/core/profiles.rs:372:9: field assignment outside of initializer for an instance created with Default::default()
-cargo-0.49.0/src/cargo/core/resolver/errors.rs:305:17: calling `push_str()` using a single-character string literal
-cargo-0.49.0/src/cargo/core/resolver/resolve.rs:239:5: explicit lifetimes given in parameter types where they could be elided (or replaced with `'_` if needed by type declaration)
-cargo-0.49.0/src/cargo/core/resolver/types.rs:187:5: explicit lifetimes given in parameter types where they could be elided (or replaced with `'_` if needed by type declaration)
-cargo-0.49.0/src/cargo/core/resolver/types.rs:261:5: explicit lifetimes given in parameter types where they could be elided (or replaced with `'_` if needed by type declaration)
-cargo-0.49.0/src/cargo/core/workspace.rs:1056:5: this function's return value is unnecessarily wrapped by `Result`
-cargo-0.49.0/src/cargo/core/workspace.rs:440:9: this function's return value is unnecessarily wrapped by `Result`
-cargo-0.49.0/src/cargo/ops/cargo_compile.rs:127:35: usage of `FromIterator::from_iter`
-cargo-0.49.0/src/cargo/ops/common_for_install_and_uninstall.rs:233:21: calling `push_str()` using a single-character string literal
-cargo-0.49.0/src/cargo/ops/common_for_install_and_uninstall.rs:370:5: this function's return value is unnecessarily wrapped by `Result`
-cargo-0.49.0/src/cargo/ops/fix.rs:608:9: field assignment outside of initializer for an instance created with Default::default()
-cargo-0.49.0/src/cargo/ops/fix.rs:619:48: stripping a prefix manually
-cargo-0.49.0/src/cargo/ops/lockfile.rs:154:13: calling `push_str()` using a single-character string literal
-cargo-0.49.0/src/cargo/ops/lockfile.rs:217:9: calling `push_str()` using a single-character string literal
-cargo-0.49.0/src/cargo/ops/lockfile.rs:87:1: this function's return value is unnecessarily wrapped by `Result`
-cargo-0.49.0/src/cargo/sources/git/source.rs:69:20: comparison to empty slice
-cargo-0.49.0/src/cargo/sources/git/utils.rs:1158:9: stripping a suffix manually
-cargo-0.49.0/src/cargo/sources/git/utils.rs:758:9: calling `push_str()` using a single-character string literal
-cargo-0.49.0/src/cargo/sources/path.rs:339:9: this function's return value is unnecessarily wrapped by `Result`
-cargo-0.49.0/src/cargo/sources/registry/index.rs:736:1: explicit lifetimes given in parameter types where they could be elided (or replaced with `'_` if needed by type declaration)
-cargo-0.49.0/src/cargo/util/config/key.rs:69:9: calling `push_str()` using a single-character string literal
-cargo-0.49.0/src/cargo/util/config/value.rs:81:9: match expression looks like `matches!` macro
-cargo-0.49.0/src/cargo/util/errors.rs:473:5: manual `RangeInclusive::contains` implementation
-cargo-0.49.0/src/cargo/util/paths.rs:93:31: comparison to empty slice
-cargo-0.49.0/src/cargo/util/progress.rs:269:17: calling `push_str()` using a single-character string literal
-cargo-0.49.0/src/cargo/util/progress.rs:272:17: calling `push_str()` using a single-character string literal
-cargo-0.49.0/src/cargo/util/progress.rs:274:17: calling `push_str()` using a single-character string literal
-cargo-0.49.0/src/cargo/util/progress.rs:280:13: calling `push_str()` using a single-character string literal
-cargo-0.49.0/src/cargo/util/progress.rs:282:9: calling `push_str()` using a single-character string literal
-cargo-0.49.0/src/cargo/util/toml/mod.rs:1687:33: unnecessary closure used to substitute value for `Option::None`
