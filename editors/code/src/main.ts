@@ -404,9 +404,9 @@ async function queryForGithubToken(state: PersistentState): Promise<void> {
 function warnAboutRustLangExtensionConflict() {
     const rustLangExt = vscode.extensions.getExtension("rust-lang.rust");
     if (rustLangExt !== undefined) {
-        vscode.window .showWarningMessage(
+        vscode.window.showWarningMessage(
             "You have both rust-analyzer (matklad.rust-analyzer) and Rust (rust-lang.rust) " +
             "plugins enabled. These are known to conflict and cause various functions of " +
-            "both plugins to not work correctly. You should disable one of them.", "Got it")
+            "both plugins to not work correctly. You should disable one of them.", "Got it");
     };
 }
