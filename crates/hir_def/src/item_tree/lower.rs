@@ -485,8 +485,6 @@ impl Ctx {
     }
 
     fn lower_use(&mut self, use_item: &ast::Use) -> Vec<FileItemTreeId<Import>> {
-        // FIXME: cfg_attr
-        let is_prelude = use_item.has_atom_attr("prelude_import");
         let visibility = self.lower_visibility(use_item);
         let ast_id = self.source_ast_id_map.ast_id(use_item);
 
@@ -502,7 +500,6 @@ impl Ctx {
                     alias,
                     visibility,
                     is_glob,
-                    is_prelude,
                     ast_id,
                     index: imports.len(),
                 })));
@@ -522,10 +519,8 @@ impl Ctx {
         });
         let visibility = self.lower_visibility(extern_crate);
         let ast_id = self.source_ast_id_map.ast_id(extern_crate);
-        // FIXME: cfg_attr
-        let is_macro_use = extern_crate.has_atom_attr("macro_use");
 
-        let res = ExternCrate { name, alias, visibility, is_macro_use, ast_id };
+        let res = ExternCrate { name, alias, visibility, ast_id };
         Some(id(self.data().extern_crates.alloc(res)))
     }
 

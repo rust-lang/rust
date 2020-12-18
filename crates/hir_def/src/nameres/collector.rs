@@ -136,23 +136,35 @@ struct Import {
 }
 
 impl Import {
-    fn from_use(tree: &ItemTree, id: ItemTreeId<item_tree::Import>) -> Self {
+    fn from_use(
+        db: &dyn DefDatabase,
+        krate: CrateId,
+        tree: &ItemTree,
+        id: ItemTreeId<item_tree::Import>,
+    ) -> Self {
         let it = &tree[id.value];
+        let attrs = &tree.attrs(db, krate, ModItem::from(id.value).into());
         let visibility = &tree[it.visibility];
         Self {
             path: it.path.clone(),
             alias: it.alias.clone(),
             visibility: visibility.clone(),
             is_glob: it.is_glob,
-            is_prelude: it.is_prelude,
+            is_prelude: attrs.by_key("prelude_import").exists(),
             is_extern_crate: false,
             is_macro_use: false,
             source: ImportSource::Import(id),
         }
     }
 
-    fn from_extern_crate(tree: &ItemTree, id: ItemTreeId<item_tree::ExternCrate>) -> Self {
+    fn from_extern_crate(
+        db: &dyn DefDatabase,
+        krate: CrateId,
+        tree: &ItemTree,
+        id: ItemTreeId<item_tree::ExternCrate>,
+    ) -> Self {
         let it = &tree[id.value];
+        let attrs = &tree.attrs(db, krate, ModItem::from(id.value).into());
         let visibility = &tree[it.visibility];
         Self {
             path: ModPath::from_segments(PathKind::Plain, iter::once(it.name.clone())),
@@ -161,7 +173,7 @@ impl Import {
             is_glob: false,
             is_prelude: false,
             is_extern_crate: true,
-            is_macro_use: it.is_macro_use,
+            is_macro_use: attrs.by_key("macro_use").exists(),
             source: ImportSource::ExternCrate(id),
         }
     }
@@ -930,7 +942,12 @@ impl ModCollector<'_, '_> {
             if attrs.cfg().map_or(true, |cfg| self.is_cfg_enabled(&cfg)) {
                 if let ModItem::ExternCrate(id) = item {
                     let import = self.item_tree[*id].clone();
-                    if import.is_macro_use {
+                    let attrs = self.item_tree.attrs(
+                        self.def_collector.db,
+                        krate,
+                        ModItem::from(*id).into(),
+                    );
+                    if attrs.by_key("macro_use").exists() {
                         self.def_collector.import_macros_from_extern_crate(self.module_id, &import);
                     }
                 }
@@ -956,6 +973,8 @@ impl ModCollector<'_, '_> {
                     self.def_collector.unresolved_imports.push(ImportDirective {
                         module_id: self.module_id,
                         import: Import::from_use(
+                            self.def_collector.db,
+                            krate,
                             &self.item_tree,
                             InFile::new(self.file_id, import_id),
                         ),
@@ -966,6 +985,8 @@ impl ModCollector<'_, '_> {
                     self.def_collector.unresolved_imports.push(ImportDirective {
                         module_id: self.module_id,
                         import: Import::from_extern_crate(
+                            self.def_collector.db,
+                            krate,
                             &self.item_tree,
                             InFile::new(self.file_id, import_id),
                         ),
