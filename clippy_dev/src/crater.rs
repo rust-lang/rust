@@ -57,22 +57,26 @@ impl KrateSource {
         Krate {
             version: self.version.clone(),
             name: self.name.clone(),
-            path: extract_dir.join(format!("{}-{}/", self.name, self.version))
+            path: extract_dir.join(format!("{}-{}/", self.name, self.version)),
         }
     }
 }
 
 impl Krate {
-    fn run_clippy_lints(&self, cargo_clippy_path:  &PathBuf) -> String {
+    fn run_clippy_lints(&self, cargo_clippy_path: &PathBuf) -> String {
         let cargo_clippy_path = std::fs::canonicalize(cargo_clippy_path).unwrap();
         let project_root = &self.path;
         dbg!(&cargo_clippy_path);
         dbg!(&project_root);
 
-        let output = std::process::Command::new(cargo_clippy_path).current_dir(project_root).output();
-        dbg!(&output);
-        let output = String::from_utf8_lossy(&output.unwrap().stderr).into_owned();
-        dbg!(&output);
+        let output = std::process::Command::new(cargo_clippy_path)
+            .args(&["--", "--message-format=short","--", "--cap-lints=warn",])
+            .current_dir(project_root)
+            .output();
+        let output: String = String::from_utf8_lossy(&output.unwrap().stderr).lines().filter(|line|line.contains(": warning: ")).collect();
+       // output.lines().for_each(|l| println!("{}", l));
+        //dbg!(&output);
+
         output
     }
 }
@@ -90,7 +94,7 @@ pub fn run() {
     let clippy_driver_path: PathBuf = PathBuf::from("target/debug/clippy-driver");
 
     // crates we want to check:
-    let krates: Vec<KrateSource> = vec![KrateSource::new("regex", "1.4.2"), KrateSource::new("cargo", "0.49.0"), ];
+    let krates: Vec<KrateSource> = vec![KrateSource::new("regex", "1.4.2"), KrateSource::new("cargo", "0.49.0")];
 
     println!("Compiling clippy...");
     build_clippy();
@@ -106,12 +110,13 @@ pub fn run() {
         clippy_driver_path.is_file(),
         "target/debug/clippy-driver binary not found! {}",
         clippy_driver_path.display()
-     );
+    );
 
     // download and extract the crates, then run clippy on them and collect clippys warnings
-    let _clippy_lint_results: Vec<String> = krates
+    let clippy_lint_results: Vec<String> = krates
         .into_iter()
         .map(|krate| krate.download_and_extract())
         .map(|krate| krate.run_clippy_lints(&cargo_clippy_path))
         .collect::<Vec<String>>();
+        dbg!(clippy_lint_results);
 }
