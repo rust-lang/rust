@@ -76,6 +76,8 @@ Compatibility Notes
 - [Macros that end with a semi-colon are now treated as statements even if they expand to nothing.][78376]
 - [Rustc will now check for the validity of some built-in attributes on enum variants.][77015]
   Previously such invalid or unused attributes could be ignored.
+- Leading whitespace is stripped more uniformly in documentation comments, which may change behavior. You
+  read [this post about the changes][rustdoc-ws-post] for more details.
 
 Internal Only
 -------------
@@ -120,6 +122,7 @@ related tools.
 [`hint::spin_loop`]: https://doc.rust-lang.org/stable/std/hint/fn.spin_loop.html
 [`Poll::is_ready`]: https://doc.rust-lang.org/stable/std/task/enum.Poll.html#method.is_ready
 [`Poll::is_pending`]: https://doc.rust-lang.org/stable/std/task/enum.Poll.html#method.is_pending
+[rustdoc-ws-post]: https://blog.guillaume-gomez.fr/articles/2020-11-11+New+doc+comment+handling+in+rustdoc
 
 Version 1.48.0 (2020-11-19)
 ==========================
