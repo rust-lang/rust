@@ -20,6 +20,9 @@ pub fn name_ref(text: &str) -> ast::NameRef {
 pub fn ty(text: &str) -> ast::Type {
     ast_from_text(&format!("impl {} for D {{}};", text))
 }
+pub fn ty_unit() -> ast::Type {
+    ty("()")
+}
 
 pub fn assoc_item_list() -> ast::AssocItemList {
     ast_from_text("impl C for D {};")
