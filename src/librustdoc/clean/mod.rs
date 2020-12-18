@@ -2065,9 +2065,9 @@ fn clean_impl(impl_: &hir::Item<'_>, cx: &DocContext<'_>) -> Vec<Item> {
         build_deref_target_impls(cx, &items, &mut ret);
     }
 
-    let provided: FxHashSet<String> = trait_
+    let provided: FxHashSet<Symbol> = trait_
         .def_id()
-        .map(|did| cx.tcx.provided_trait_methods(did).map(|meth| meth.ident.to_string()).collect())
+        .map(|did| cx.tcx.provided_trait_methods(did).map(|meth| meth.ident.name).collect())
         .unwrap_or_default();
 
     let for_ = for_.clean(cx);

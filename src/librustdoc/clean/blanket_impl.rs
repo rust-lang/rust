@@ -103,7 +103,7 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                     .cx
                     .tcx
                     .provided_trait_methods(trait_def_id)
-                    .map(|meth| meth.ident.to_string())
+                    .map(|meth| meth.ident.name)
                     .collect();
 
                 impls.push(Item {

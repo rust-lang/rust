@@ -427,7 +427,7 @@ crate fn build_impl(
 
     let provided = trait_
         .def_id()
-        .map(|did| tcx.provided_trait_methods(did).map(|meth| meth.ident.to_string()).collect())
+        .map(|did| tcx.provided_trait_methods(did).map(|meth| meth.ident.name).collect())
         .unwrap_or_default();
 
     debug!("build_impl: impl {:?} for {:?}", trait_.def_id(), for_.def_id());

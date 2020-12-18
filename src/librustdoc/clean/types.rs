@@ -1762,7 +1762,7 @@ crate enum ImplPolarity {
 crate struct Impl {
     crate unsafety: hir::Unsafety,
     crate generics: Generics,
-    crate provided_trait_methods: FxHashSet<String>,
+    crate provided_trait_methods: FxHashSet<Symbol>,
     crate trait_: Option<Type>,
     crate for_: Type,
     crate items: Vec<Item>,

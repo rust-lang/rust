@@ -2983,7 +2983,7 @@ fn render_assoc_item(
             AssocItemLink::GotoSource(did, provided_methods) => {
                 // We're creating a link from an impl-item to the corresponding
                 // trait-item and need to map the anchored type accordingly.
-                let ty = if provided_methods.contains(&*name.as_str()) {
+                let ty = if provided_methods.contains(&name) {
                     ItemType::Method
                 } else {
                     ItemType::TyMethod
@@ -3452,7 +3452,7 @@ fn render_union(
 #[derive(Copy, Clone)]
 enum AssocItemLink<'a> {
     Anchor(Option<&'a str>),
-    GotoSource(DefId, &'a FxHashSet<String>),
+    GotoSource(DefId, &'a FxHashSet<Symbol>),
 }
 
 impl<'a> AssocItemLink<'a> {
