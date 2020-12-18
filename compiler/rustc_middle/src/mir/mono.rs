@@ -78,14 +78,6 @@ impl<'tcx> MonoItem<'tcx> {
     }
 
     pub fn instantiation_mode(&self, tcx: TyCtxt<'tcx>) -> InstantiationMode {
-        let generate_cgu_internal_copies = tcx
-            .sess
-            .opts
-            .debugging_opts
-            .inline_in_all_cgus
-            .unwrap_or_else(|| tcx.sess.opts.optimize != OptLevel::No)
-            && !tcx.sess.link_dead_code();
-
         match *self {
             MonoItem::Fn(ref instance) => {
                 let entry_def_id = tcx.entry_fn(LOCAL_CRATE).map(|(id, _)| id);
@@ -98,9 +90,18 @@ impl<'tcx> MonoItem<'tcx> {
                     return InstantiationMode::GloballyShared { may_conflict: false };
                 }
 
+                let generate_cgu_internal_copies = tcx
+                    .sess
+                    .opts
+                    .debugging_opts
+                    .inline_in_all_cgus
+                    .unwrap_or_else(|| tcx.sess.opts.optimize != OptLevel::No)
+                    && !tcx.sess.link_dead_code();
+
                 // At this point we don't have explicit linkage and we're an
-                // inlined function. If we're inlining into all CGUs then we'll
-                // be creating a local copy per CGU.
+                // inlined function. If we should generate local copies for each CGU,
+                // then return `LocalCopy`, otherwise we'll just generate one copy
+                // and share it with all CGUs in this crate.
                 if generate_cgu_internal_copies {
                     InstantiationMode::LocalCopy
                 } else {
