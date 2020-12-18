@@ -17,7 +17,7 @@ struct Krate {
 }
 
 impl KrateSource {
-    fn new(version: &str, name: &str) -> Self {
+    fn new(name: &str, version: &str) -> Self {
         KrateSource {
             version: version.into(),
             name: name.into(),
@@ -33,19 +33,24 @@ impl KrateSource {
             "https://crates.io/api/v1/crates/{}/{}/download",
             self.name, self.version
         );
-        print!("Downloading {}, {}", self.name, self.version);
+        println!("Downloading {}, {} / {}", self.name, self.version, url);
+        std::fs::create_dir("target/crater/").unwrap();
 
-        let krate_name = format!("{}-{}.crate", &self.name, &self.version);
+        std::fs::create_dir(&krate_download_dir).unwrap();
+        std::fs::create_dir(&extract_dir).unwrap();
+
+        let krate_name = format!("{}-{}.crate.tar.gz", &self.name, &self.version);
         let mut krate_dest = std::fs::File::create(krate_download_dir.join(krate_name)).unwrap();
         let mut krate_req = ureq::get(&url).call().unwrap().into_reader();
         std::io::copy(&mut krate_req, &mut krate_dest).unwrap();
-
-        // extract
         let krate = krate_dest;
-        let tar = flate2::read::GzDecoder::new(krate);
+        dbg!(&krate);
+        let tar = flate2::read::GzDecoder::new(&krate);
         let mut archiv = tar::Archive::new(tar);
-        let extracted_path = extract_dir.join(format!("{}-{}/", self.name, self.version));
+        let extracted_path = extract_dir.join(format!("{}-{}", self.name, self.version));
+      // println!("ar:  p: {:?}", &krate, extracted_path);
         archiv.unpack(&extracted_path).expect("Failed to extract!");
+        // extract
 
         Krate {
             version: self.version.clone(),
@@ -71,20 +76,23 @@ fn build_clippy() {
 // the main fn
 pub fn run() {
     let cargo_clippy_path: PathBuf = PathBuf::from("target/debug/cargo-clippy");
-    let clippy_driver_path: PathBuf = PathBuf::from("target/debug/cargo-driver");
+    let clippy_driver_path: PathBuf = PathBuf::from("target/debug/clippy-driver");
 
     // crates we want to check:
     let krates: Vec<KrateSource> = vec![KrateSource::new("cargo", "0.49.0"), KrateSource::new("regex", "1.4.2")];
 
+    println!("Compiling clippy...");
     build_clippy();
+    println!("Done compiling");
+
     // assert that clippy is found
     assert!(
         cargo_clippy_path.is_file(),
-        "target/debug/cargo-clippy binary not found!"
+        "target/debug/cargo-clippy binary not found! {}", cargo_clippy_path.display()
     );
     assert!(
         clippy_driver_path.is_file(),
-        "target/debug/clippy-driver binary not found!"
+        "target/debug/clippy-driver binary not found! {}", clippy_driver_path.display()
     );
 
     // download and extract the crates, then run clippy on them and collect clippys warnings
