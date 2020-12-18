@@ -63,20 +63,26 @@ impl KrateSource {
 }
 
 impl Krate {
-    fn run_clippy_lints(&self, cargo_clippy_path: &PathBuf) -> String {
+    fn run_clippy_lints(&self, cargo_clippy_path: &PathBuf) -> Vec<String> {
         let cargo_clippy_path = std::fs::canonicalize(cargo_clippy_path).unwrap();
         let project_root = &self.path;
         dbg!(&cargo_clippy_path);
         dbg!(&project_root);
 
         let output = std::process::Command::new(cargo_clippy_path)
-            .args(&["--", "--message-format=short","--", "--cap-lints=warn",])
+            .args(&["--", "--message-format=short", "--", "--cap-lints=warn"])
             .current_dir(project_root)
-            .output();
-        let output: String = String::from_utf8_lossy(&output.unwrap().stderr).lines().filter(|line|line.contains(": warning: ")).collect();
-       // output.lines().for_each(|l| println!("{}", l));
-        //dbg!(&output);
+            .output()
+            .unwrap();
+        let mut output = String::from_utf8_lossy(&output.stderr);
+        let output: Vec<&str> = output.lines().collect();
+        let mut output: Vec<String> = output
+            .into_iter()
+            .filter(|line| line.contains(": warning: "))
+            .map(|l| l.to_string())
+            .collect();
 
+        output.sort();
         output
     }
 }
@@ -113,10 +119,13 @@ pub fn run() {
     );
 
     // download and extract the crates, then run clippy on them and collect clippys warnings
-    let clippy_lint_results: Vec<String> = krates
+    let clippy_lint_results: Vec<Vec<String>> = krates
         .into_iter()
         .map(|krate| krate.download_and_extract())
         .map(|krate| krate.run_clippy_lints(&cargo_clippy_path))
-        .collect::<Vec<String>>();
-        dbg!(clippy_lint_results);
+        .collect();
+
+    let results: Vec<String> = clippy_lint_results.into_iter().flatten().collect();
+
+    results.iter().for_each(|l| println!("{}", l));
 }
