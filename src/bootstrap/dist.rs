@@ -1228,6 +1228,12 @@ impl Step for Cargo {
         builder.create_dir(&image.join("etc/bash_completion.d"));
         let cargo = builder.ensure(tool::Cargo { compiler, target });
         builder.install(&cargo, &image.join("bin"), 0o755);
+        for dirent in fs::read_dir(cargo.parent().unwrap()).expect("read_dir") {
+            let dirent = dirent.expect("read dir entry");
+            if dirent.file_name().to_str().expect("utf8").starts_with("cargo-credential-") {
+                builder.install(&dirent.path(), &image.join("libexec"), 0o755);
+            }
+        }
         for man in t!(etc.join("man").read_dir()) {
             let man = t!(man);
             builder.install(&man.path(), &image.join("share/man/man1"), 0o644);
