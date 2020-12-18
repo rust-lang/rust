@@ -1145,8 +1145,24 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         for ur in self.scc_values.universal_regions_outlived_by(r_scc) {
             let new_lub = self.universal_region_relations.postdom_upper_bound(lub, ur);
             debug!("approx_universal_upper_bound: ur={:?} lub={:?} new_lub={:?}", ur, lub, new_lub);
+            // The upper bound of two non-static regions is static: this
+            // means we know nothing about the relationship between these
+            // two regions. Pick a 'better' one to use when constructing
+            // a diagnostic
             if ur != static_r && lub != static_r && new_lub == static_r {
-                lub = std::cmp::min(ur, lub);
+                // Prefer the region with an `external_name` - this
+                // indicates that the region is early-bound, so working with
+                // it can produce a nicer error.
+                if self.region_definition(ur).external_name.is_some() {
+                    lub = ur;
+                } else if self.region_definition(lub).external_name.is_some() {
+                    // Leave lub unchanged
+                } else {
+                    // If we get here, we don't have any reason to prefer
+                    // one region over the other. Just pick the
+                    // one with the lower index for now.
+                    lub = std::cmp::min(ur, lub);
+                }
             } else {
                 lub = new_lub;
             }

@@ -9,11 +9,13 @@
 BASEDIR=../coverage-reports
 SOURCEDIR=../coverage
 
-# The `llvm-cov show` flag `--debug`, used to generate the `counters` output files, is only enabled
-# if LLVM assertions are enabled. Requires Rust config `llvm/optimize` and not
+# The `llvm-cov show` flag `--debug`, used to generate the `counters` output files, is only
+# enabled if LLVM assertions are enabled. This requires Rust config `llvm/optimize` and not
 # `llvm/release_debuginfo`. Note that some CI builds disable debug assertions (by setting
-# `NO_LLVM_ASSERTIONS=1`), so it is not OK to fail the test, but `bless`ed test results cannot be
-# generated without debug assertions.
+# `NO_LLVM_ASSERTIONS=1`), so the tests must still pass even if the `--debug` flag is
+# not supported. (Note that `counters` files are only produced in the `$(TMPDIR)`
+# directory, for inspection and debugging support. They are *not* copied to `expected_*`
+# files when `--bless`ed.)
 LLVM_COV_DEBUG := $(shell \
 		"$(LLVM_BIN_DIR)"/llvm-cov show --debug 2>&1 | \
 		grep -q "Unknown command line argument '--debug'"; \
@@ -51,11 +53,10 @@ endif
 # Yes these `--ignore-filename-regex=` options are included in all invocations of `llvm-cov show`
 # for now, but it is effectively ignored for all tests that don't include this file anyway.
 #
-# Note that it's also possible the `_counters.<test>.txt` and `<test>.json` files may order
-# results from multiple files inconsistently, which might also have to be accomodated if and when
-# we allow `llvm-cov` to produce results for multiple files. (The path separators appear to be
-# normalized to `/` in those files, thankfully.) But since we are ignoring results for all but one
-# file, this workaround addresses those potential issues as well.
+# (Note that it's also possible the `_counters.<test>.txt` and `<test>.json` files (if generated)
+# may order results from multiple files inconsistently, which might also have to be accomodated
+# if and when we allow `llvm-cov` to produce results for multiple files. Note, the path separators
+# appear to be normalized to `/` in those files, thankfully.)
 LLVM_COV_IGNORE_FILES=\
 	--ignore-filename-regex=uses_crate.rs
 
@@ -77,9 +78,7 @@ endif
 .PHONY: clear_expected_if_blessed
 clear_expected_if_blessed:
 ifdef RUSTC_BLESS_TEST
-	rm -f expected_export_coverage.*.json
-	rm -f expected_show_coverage.*.txt
-	rm -f expected_show_coverage_counters.*.txt
+	rm -f expected_*
 endif
 
 -include clear_expected_if_blessed
@@ -140,12 +139,8 @@ endif
 ifdef RUSTC_BLESS_TEST
 	cp "$(TMPDIR)"/actual_show_coverage.$@.txt \
 			expected_show_coverage.$@.txt
-	cp "$(TMPDIR)"/actual_show_coverage_counters.$@.txt \
-			expected_show_coverage_counters.$@.txt
 else
-	# Compare the show coverage output (`--bless` refreshes `typical` files)
-	# Note `llvm-cov show` output for some programs can vary, but can be ignored
-	# by inserting `// ignore-llvm-cov-show-diffs` at the top of the source file.
+	# Compare the show coverage output (`--bless` refreshes `typical` files).
 	#
 	# FIXME(richkadel): None of the Rust test source samples have the
 	# `// ignore-llvm-cov-show-diffs` anymore. This directive exists to work around a limitation
@@ -158,8 +153,10 @@ else
 	#
 	# This workaround only works if the coverage counts are identical across all reported
 	# instantiations. If there is no way to ensure this, you may need to apply the
-	# `// ignore-llvm-cov-show-diffs` directive, and rely on the `.json` and counter
-	# files for validating results have not changed.
+	# `// ignore-llvm-cov-show-diffs` directive, and check for differences using the
+	# `.json` files to validate that results have not changed. (Until then, the JSON
+	# files are redundant, so there is no need to generate `expected_*.json` files or
+	# compare actual JSON results.)
 
 	$(DIFF) --ignore-matching-lines='::<.*>.*:$$' \
 		expected_show_coverage.$@.txt "$(TMPDIR)"/actual_show_coverage.$@.txt || \
@@ -169,37 +166,77 @@ else
 		( >&2 echo 'diff failed, and not suppressed without `// ignore-llvm-cov-show-diffs` in $(SOURCEDIR)/$@.rs'; \
 			false \
 		)
-
-ifdef DEBUG_FLAG
-	$(DIFF) expected_show_coverage_counters.$@.txt "$(TMPDIR)"/actual_show_coverage_counters.$@.txt || \
-		( grep -q '^\/\/ ignore-llvm-cov-show-diffs' $(SOURCEDIR)/$@.rs && \
-			>&2 echo 'diff failed, but suppressed with `// ignore-llvm-cov-show-diffs` in $(SOURCEDIR)/$@.rs' \
-		) || \
-		( >&2 echo 'diff failed, and not suppressed without `// ignore-llvm-cov-show-diffs` in $(SOURCEDIR)/$@.rs'; \
-			>&2 echo '(Ignore anyway until mangled function names in "counters" files are demangled.)' \
-		)
-
-		# FIXME(richkadel): Apply the demangler to the `*_show_coverage_counters.*.txt` files,
-		# so the crate disambiguator differences will be stripped away. At that point, these files
-		# will be less likely to vary, and the last `echo` above (starting with "Ignore anyway")
-		# can be replaced with `false` to fail the test.
 endif
 
-endif
+####################################################################################################
 
-	# Generate a coverage report in JSON, using `llvm-cov export`, and fail if
-	# there are differences from the expected output.
-	"$(LLVM_BIN_DIR)"/llvm-cov export \
-			$(LLVM_COV_IGNORE_FILES) \
-			--summary-only \
-			--instr-profile="$(TMPDIR)"/$@.profdata \
-			$(call BIN,"$(TMPDIR)"/$@) \
-		| "$(PYTHON)" $(BASEDIR)/prettify_json.py \
-		> "$(TMPDIR)"/actual_export_coverage.$@.json
+# The following Makefile content was used to copy the generated `counters` files
+# to `expected_` files (when `--bless`ed) and to compare them via `diff`; but for
+# multiple reasons, these files cannot easily be used for test validation:
+#
+#   * Output lines can be produced in non-deterministic order (depending on the
+#     target platform, and sometimes on unrelated codegen changes).
+#   * Some lines include demangled function names, making them more challenging
+#     to interpret and compare.
+#
+# The files are still generated (in `$(TMPDIR)`) to support developers wanting
+# to inspect the counters, for debugging purposes.
+#
+# ifdef RUSTC_BLESS_TEST
+# 	cp "$(TMPDIR)"/actual_show_coverage_counters.$@.txt \
+# 			expected_show_coverage_counters.$@.txt
+# else
+#
+# ifdef DEBUG_FLAG
+# 	$(DIFF) expected_show_coverage_counters.$@.txt "$(TMPDIR)"/actual_show_coverage_counters.$@.txt || \
+# 		( grep -q '^\/\/ ignore-llvm-cov-show-diffs' $(SOURCEDIR)/$@.rs && \
+# 			>&2 echo 'diff failed, but suppressed with `// ignore-llvm-cov-show-diffs` in $(SOURCEDIR)/$@.rs' \
+# 		) || \
+# 		( >&2 echo 'diff failed, and not suppressed without `// ignore-llvm-cov-show-diffs` in $(SOURCEDIR)/$@.rs'; \
+# 			>&2 echo '(Ignore anyway until mangled function names in "counters" files are demangled.)' \
+# 		)
+# endif
+#
+# endif
 
-ifdef RUSTC_BLESS_TEST
-	cp "$(TMPDIR)"/actual_export_coverage.$@.json expected_export_coverage.$@.json
-else
-	# Check that exported JSON coverage data matches what we expect (`--bless` refreshes `expected`)
-	$(DIFF) expected_export_coverage.$@.json "$(TMPDIR)"/actual_export_coverage.$@.json
-endif
+####################################################################################################
+
+# The following Makefile content, and short JSON script, were used to generate
+# coverage reports in JSON when the `llvm-cov show` reports were less reliable for
+# testing. At the present time, however, the `llvm-cov show` results, and methods
+# for comparing them, are working for all tests, making the JSON reports redundant.
+#
+# If this changes in the future, the scripts are left here, commented out, but can
+# be resurrected if desired. This could be used to compare *only* the JSON files;
+# and in that case, the `llvm-cov show` reports can be ignored by inserting
+# `// ignore-llvm-cov-show-diffs` at the top of the source file.
+#
+# 	# Generate a coverage report in JSON, using `llvm-cov export`, and fail if
+# 	# there are differences from the expected output.
+# 	"$(LLVM_BIN_DIR)"/llvm-cov export \
+# 			$(LLVM_COV_IGNORE_FILES) \
+# 			--summary-only \
+# 			--instr-profile="$(TMPDIR)"/$@.profdata \
+# 			$(call BIN,"$(TMPDIR)"/$@) \
+# 		| "$(PYTHON)" $(BASEDIR)/prettify_json.py \
+# 		> "$(TMPDIR)"/actual_export_coverage.$@.json
+#
+# ifdef RUSTC_BLESS_TEST
+# 	cp "$(TMPDIR)"/actual_export_coverage.$@.json expected_export_coverage.$@.json
+# else
+# 	# Check that exported JSON coverage data matches what we expect (`--bless` refreshes `expected`)
+# 	$(DIFF) expected_export_coverage.$@.json "$(TMPDIR)"/actual_export_coverage.$@.json
+# endif
+#
+# # # If generating coverage reports in JSON, this Makefile is accompanied by
+# # # a Python script, `prettify_json.py`, which is defined:
+# #
+# # #!/usr/bin/env python
+# #
+# # import sys
+# # import json
+# #
+# # # Try to decode line in order to ensure it is a valid JSON document
+# # for line in sys.stdin:
+# #     parsed = json.loads(line)
+# #     print (json.dumps(parsed, indent=2, separators=(',', ': '), sort_keys=True))
