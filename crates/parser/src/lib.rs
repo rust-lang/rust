@@ -99,6 +99,8 @@ pub enum FragmentKind {
     // FIXME: use separate fragment kinds for macro inputs and outputs?
     Items,
     Statements,
+
+    Attr,
 }
 
 pub fn parse_fragment(
@@ -118,6 +120,7 @@ pub fn parse_fragment(
         FragmentKind::Statement => grammar::fragments::stmt,
         FragmentKind::Items => grammar::fragments::macro_items,
         FragmentKind::Statements => grammar::fragments::macro_stmts,
+        FragmentKind::Attr => grammar::fragments::attr,
     };
     parse_from_tokens(token_source, tree_sink, parser)
 }
