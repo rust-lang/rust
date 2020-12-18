@@ -50,21 +50,30 @@ impl KrateSource {
         let ungz_tar = flate2::read::GzDecoder::new(dl);
         // extract the tar archive
         let mut archiv = tar::Archive::new(ungz_tar);
-        let extract_path = extract_dir.join(format!("{}-{}/", self.name, self.version));
+        let extract_path = extract_dir.clone();
         archiv.unpack(&extract_path).expect("Failed to extract!");
         // extracted
-
+        dbg!(&extract_path);
         Krate {
             version: self.version.clone(),
             name: self.name.clone(),
-            path: extract_path,
+            path: extract_dir.join(format!("{}-{}/", self.name, self.version))
         }
     }
 }
 
 impl Krate {
-    fn run_clippy_lints(&self) -> String {
-        todo!();
+    fn run_clippy_lints(&self, cargo_clippy_path:  &PathBuf) -> String {
+        let cargo_clippy_path = std::fs::canonicalize(cargo_clippy_path).unwrap();
+        let project_root = &self.path;
+        dbg!(&cargo_clippy_path);
+        dbg!(&project_root);
+
+        let output = std::process::Command::new(cargo_clippy_path).current_dir(project_root).output();
+        dbg!(&output);
+        let output = String::from_utf8_lossy(&output.unwrap().stderr).into_owned();
+        dbg!(&output);
+        output
     }
 }
 
@@ -81,7 +90,7 @@ pub fn run() {
     let clippy_driver_path: PathBuf = PathBuf::from("target/debug/clippy-driver");
 
     // crates we want to check:
-    let krates: Vec<KrateSource> = vec![KrateSource::new("cargo", "0.49.0"), KrateSource::new("regex", "1.4.2")];
+    let krates: Vec<KrateSource> = vec![KrateSource::new("regex", "1.4.2"), KrateSource::new("cargo", "0.49.0"), ];
 
     println!("Compiling clippy...");
     build_clippy();
@@ -97,12 +106,12 @@ pub fn run() {
         clippy_driver_path.is_file(),
         "target/debug/clippy-driver binary not found! {}",
         clippy_driver_path.display()
-    );
+     );
 
     // download and extract the crates, then run clippy on them and collect clippys warnings
     let _clippy_lint_results: Vec<String> = krates
         .into_iter()
         .map(|krate| krate.download_and_extract())
-        .map(|krate| krate.run_clippy_lints())
+        .map(|krate| krate.run_clippy_lints(&cargo_clippy_path))
         .collect::<Vec<String>>();
 }
