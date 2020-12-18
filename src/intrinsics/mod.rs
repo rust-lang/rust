@@ -444,9 +444,6 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
                 "abort" => {
                     trap_abort(fx, "Called intrinsic::abort.");
                 }
-                "unreachable" => {
-                    trap_unreachable(fx, "[corruption] Called intrinsic::unreachable.");
-                }
                 "transmute" => {
                     crate::base::codegen_panic(fx, "Transmuting to uninhabited type.", span);
                 }
@@ -559,12 +556,6 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
                 fx.bcx.call_memmove(fx.cx.module.target_config(), dst, src, byte_amount);
             }
         };
-        discriminant_value, (c ptr) {
-            let pointee_layout = fx.layout_of(ptr.layout().ty.builtin_deref(true).unwrap().ty);
-            let val = CValue::by_ref(Pointer::new(ptr.load_scalar(fx)), pointee_layout);
-            let discr = crate::discriminant::codegen_get_discriminant(fx, val, ret.layout());
-            ret.write_cvalue(fx, discr);
-        };
         size_of_val, <T> (c ptr) {
             let layout = fx.layout_of(T);
             let size = if layout.is_unsized() {
@@ -618,22 +609,6 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
             };
 
             let res = crate::num::codegen_checked_int_binop(
-                fx,
-                bin_op,
-                x,
-                y,
-            );
-            ret.write_cvalue(fx, res);
-        };
-        _ if intrinsic.starts_with("wrapping_"), (c x, c y) {
-            assert_eq!(x.layout().ty, y.layout().ty);
-            let bin_op = match intrinsic {
-                "wrapping_add" => BinOp::Add,
-                "wrapping_sub" => BinOp::Sub,
-                "wrapping_mul" => BinOp::Mul,
-                _ => unreachable!("intrinsic {}", intrinsic),
-            };
-            let res = crate::num::codegen_int_binop(
                 fx,
                 bin_op,
                 x,
@@ -900,7 +875,7 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
             dest.write_cvalue(fx, val);
         };
 
-        size_of | pref_align_of | min_align_of | needs_drop | type_id | type_name | variant_count, () {
+        pref_align_of | min_align_of | needs_drop | type_id | type_name | variant_count, () {
             let const_val =
                 fx.tcx.const_eval_instance(ParamEnv::reveal_all(), instance, None).unwrap();
             let val = crate::constant::codegen_const_value(
