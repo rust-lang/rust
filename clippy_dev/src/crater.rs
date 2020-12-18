@@ -1,6 +1,9 @@
+#![allow(clippy::filter_map)]
+
 use crate::clippy_project_root;
 use std::path::PathBuf;
 use std::process::Command;
+
 // represents an archive we download from crates.io
 #[derive(Debug)]
 struct KrateSource {
