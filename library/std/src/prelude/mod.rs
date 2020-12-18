@@ -28,35 +28,35 @@
 //! The current version of the prelude (version 1) lives in
 //! [`std::prelude::v1`], and re-exports the following:
 //!
-//! * [`std::marker`]::{[`Copy`], [`Send`], [`Sized`], [`Sync`], [`Unpin`]},
-//!   marker traits that indicate fundamental properties of types.
-//! * [`std::ops`]::{[`Drop`], [`Fn`], [`FnMut`], [`FnOnce`]}, various
+//! * [`std::marker`]::{[`Copy`], [`Send`], [`Sized`], [`Sync`], [`Unpin`]}:
+//!   Marker traits that indicate fundamental properties of types.
+//! * [`std::ops`]::{[`Drop`], [`Fn`], [`FnMut`], [`FnOnce`]}: Various
 //!   operations for both destructors and overloading `()`.
-//! * [`std::mem`]::[`drop`][`mem::drop`], a convenience function for explicitly
+//! * [`std::mem`]::[`drop`][`mem::drop`]: A convenience function for explicitly
 //!   dropping a value.
-//! * [`std::boxed`]::[`Box`], a way to allocate values on the heap.
-//! * [`std::borrow`]::[`ToOwned`], the conversion trait that defines
+//! * [`std::boxed`]::[`Box`]: A way to allocate values on the heap.
+//! * [`std::borrow`]::[`ToOwned`]: The conversion trait that defines
 //!   [`to_owned`], the generic method for creating an owned type from a
 //!   borrowed type.
-//! * [`std::clone`]::[`Clone`], the ubiquitous trait that defines
+//! * [`std::clone`]::[`Clone`]: The ubiquitous trait that defines
 //!   [`clone`][`Clone::clone`], the method for producing a copy of a value.
-//! * [`std::cmp`]::{[`PartialEq`], [`PartialOrd`], [`Eq`], [`Ord`] }, the
+//! * [`std::cmp`]::{[`PartialEq`], [`PartialOrd`], [`Eq`], [`Ord`]}: The
 //!   comparison traits, which implement the comparison operators and are often
 //!   seen in trait bounds.
-//! * [`std::convert`]::{[`AsRef`], [`AsMut`], [`Into`], [`From`]}, generic
+//! * [`std::convert`]::{[`AsRef`], [`AsMut`], [`Into`], [`From`]}: Generic
 //!   conversions, used by savvy API authors to create overloaded methods.
 //! * [`std::default`]::[`Default`], types that have default values.
-//! * [`std::iter`]::{[`Iterator`], [`Extend`], [`IntoIterator`]
-//!   [`DoubleEndedIterator`], [`ExactSizeIterator`]}, iterators of various
+//! * [`std::iter`]::{[`Iterator`], [`Extend`], [`IntoIterator`],
+//!   [`DoubleEndedIterator`], [`ExactSizeIterator`]}: Iterators of various
 //!   kinds.
 //! * [`std::option`]::[`Option`]::{[`self`][`Option`], [`Some`], [`None`]}, a
 //!   type which expresses the presence or absence of a value. This type is so
 //!   commonly used, its variants are also exported.
-//! * [`std::result`]::[`Result`]::{[`self`][`Result`], [`Ok`], [`Err`]}, a type
+//! * [`std::result`]::[`Result`]::{[`self`][`Result`], [`Ok`], [`Err`]}: A type
 //!   for functions that may succeed or fail. Like [`Option`], its variants are
 //!   exported as well.
-//! * [`std::string`]::{[`String`], [`ToString`]}, heap allocated strings.
-//! * [`std::vec`]::[`Vec`], a growable, heap-allocated vector.
+//! * [`std::string`]::{[`String`], [`ToString`]}: Heap-allocated strings.
+//! * [`std::vec`]::[`Vec`]: A growable, heap-allocated vector.
 //!
 //! [`mem::drop`]: crate::mem::drop
 //! [`std::borrow`]: crate::borrow
