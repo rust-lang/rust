@@ -23,7 +23,7 @@ use crate::{
     syntax_highlighting::{
         format::FormatStringHighlighter, macro_rules::MacroRulesHighlighter, tags::Highlight,
     },
-    FileId, HighlightModifier, HighlightTag,
+    FileId, HighlightModifier, HighlightTag, SymbolKind,
 };
 
 pub(crate) use html::highlight_as_html;
@@ -103,7 +103,7 @@ pub(crate) fn highlight(
                 if let Some(range) = macro_call_range(&mc) {
                     stack.add(HighlightedRange {
                         range,
-                        highlight: HighlightTag::Macro.into(),
+                        highlight: HighlightTag::Symbol(SymbolKind::Macro).into(),
                         binding_hash: None,
                     });
                 }
@@ -470,13 +470,13 @@ fn highlight_element(
             };
 
             match name_kind {
-                Some(NameClass::ExternCrate(_)) => HighlightTag::Module.into(),
+                Some(NameClass::ExternCrate(_)) => HighlightTag::Symbol(SymbolKind::Module).into(),
                 Some(NameClass::Definition(def)) => {
                     highlight_def(db, def) | HighlightModifier::Definition
                 }
                 Some(NameClass::ConstReference(def)) => highlight_def(db, def),
                 Some(NameClass::PatFieldShorthand { field_ref, .. }) => {
-                    let mut h = HighlightTag::Field.into();
+                    let mut h = HighlightTag::Symbol(SymbolKind::Field).into();
                     if let Definition::Field(field) = field_ref {
                         if let VariantDef::Union(_) = field.parent_def(db) {
                             h |= HighlightModifier::Unsafe;
@@ -493,14 +493,16 @@ fn highlight_element(
         NAME_REF if element.ancestors().any(|it| it.kind() == ATTR) => {
             // even though we track whether we are in an attribute or not we still need this special case
             // as otherwise we would emit unresolved references for name refs inside attributes
-            Highlight::from(HighlightTag::Function)
+            Highlight::from(HighlightTag::Symbol(SymbolKind::Function))
         }
         NAME_REF => {
             let name_ref = element.into_node().and_then(ast::NameRef::cast).unwrap();
             highlight_func_by_name_ref(sema, &name_ref).unwrap_or_else(|| {
                 match NameRefClass::classify(sema, &name_ref) {
                     Some(name_kind) => match name_kind {
-                        NameRefClass::ExternCrate(_) => HighlightTag::Module.into(),
+                        NameRefClass::ExternCrate(_) => {
+                            HighlightTag::Symbol(SymbolKind::Module).into()
+                        }
                         NameRefClass::Definition(def) => {
                             if let Definition::Local(local) = &def {
                                 if let Some(name) = local.name(db) {
@@ -530,7 +532,9 @@ fn highlight_element(
 
                             h
                         }
-                        NameRefClass::FieldShorthand { .. } => HighlightTag::Field.into(),
+                        NameRefClass::FieldShorthand { .. } => {
+                            HighlightTag::Symbol(SymbolKind::Field).into()
+                        }
                     },
                     None if syntactic_name_ref_highlighting => {
                         highlight_name_ref_by_syntax(name_ref, sema)
@@ -556,7 +560,7 @@ fn highlight_element(
         CHAR => HighlightTag::CharLiteral.into(),
         QUESTION => Highlight::new(HighlightTag::Operator) | HighlightModifier::ControlFlow,
         LIFETIME => {
-            let h = Highlight::new(HighlightTag::Lifetime);
+            let h = Highlight::new(HighlightTag::Symbol(SymbolKind::LifetimeParam));
             match element.parent().map(|it| it.kind()) {
                 Some(LIFETIME_PARAM) | Some(LABEL) => h | HighlightModifier::Definition,
                 _ => h,
@@ -580,7 +584,7 @@ fn highlight_element(
                 HighlightTag::Operator.into()
             }
             T![!] if element.parent().and_then(ast::MacroCall::cast).is_some() => {
-                HighlightTag::Macro.into()
+                HighlightTag::Symbol(SymbolKind::Macro).into()
             }
             T![!] if element.parent().and_then(ast::NeverType::cast).is_some() => {
                 HighlightTag::BuiltinType.into()
@@ -659,7 +663,7 @@ fn highlight_element(
                         .and_then(SyntaxNode::parent)
                         .and_then(ast::Path::cast)
                         .and_then(|p| sema.resolve_path(&p));
-                    let mut h = HighlightTag::SelfKeyword.into();
+                    let mut h = HighlightTag::Symbol(SymbolKind::SelfParam).into();
                     if self_param_is_mut
                         || matches!(self_path,
                             Some(hir::PathResolution::Local(local))
@@ -756,10 +760,10 @@ fn highlight_method_call(
 
 fn highlight_def(db: &RootDatabase, def: Definition) -> Highlight {
     match def {
-        Definition::Macro(_) => HighlightTag::Macro,
-        Definition::Field(_) => HighlightTag::Field,
+        Definition::Macro(_) => HighlightTag::Symbol(SymbolKind::Macro),
+        Definition::Field(_) => HighlightTag::Symbol(SymbolKind::Field),
         Definition::ModuleDef(def) => match def {
-            hir::ModuleDef::Module(_) => HighlightTag::Module,
+            hir::ModuleDef::Module(_) => HighlightTag::Symbol(SymbolKind::Module),
             hir::ModuleDef::Function(func) => {
                 let mut h = if func.as_assoc_item(db).is_some() {
                     if func.self_param(db).is_none() {
@@ -768,23 +772,23 @@ fn highlight_def(db: &RootDatabase, def: Definition) -> Highlight {
                         HighlightTag::Method.into()
                     }
                 } else {
-                    HighlightTag::Function.into()
+                    HighlightTag::Symbol(SymbolKind::Function).into()
                 };
                 if func.is_unsafe(db) {
                     h |= HighlightModifier::Unsafe;
                 }
                 return h;
             }
-            hir::ModuleDef::Adt(hir::Adt::Struct(_)) => HighlightTag::Struct,
-            hir::ModuleDef::Adt(hir::Adt::Enum(_)) => HighlightTag::Enum,
-            hir::ModuleDef::Adt(hir::Adt::Union(_)) => HighlightTag::Union,
-            hir::ModuleDef::EnumVariant(_) => HighlightTag::EnumVariant,
-            hir::ModuleDef::Const(_) => HighlightTag::Constant,
-            hir::ModuleDef::Trait(_) => HighlightTag::Trait,
-            hir::ModuleDef::TypeAlias(_) => HighlightTag::TypeAlias,
+            hir::ModuleDef::Adt(hir::Adt::Struct(_)) => HighlightTag::Symbol(SymbolKind::Struct),
+            hir::ModuleDef::Adt(hir::Adt::Enum(_)) => HighlightTag::Symbol(SymbolKind::Enum),
+            hir::ModuleDef::Adt(hir::Adt::Union(_)) => HighlightTag::Symbol(SymbolKind::Union),
+            hir::ModuleDef::EnumVariant(_) => HighlightTag::Symbol(SymbolKind::Variant),
+            hir::ModuleDef::Const(_) => HighlightTag::Symbol(SymbolKind::Const),
+            hir::ModuleDef::Trait(_) => HighlightTag::Symbol(SymbolKind::Trait),
+            hir::ModuleDef::TypeAlias(_) => HighlightTag::Symbol(SymbolKind::TypeAlias),
             hir::ModuleDef::BuiltinType(_) => HighlightTag::BuiltinType,
             hir::ModuleDef::Static(s) => {
-                let mut h = Highlight::new(HighlightTag::Static);
+                let mut h = Highlight::new(HighlightTag::Symbol(SymbolKind::Static));
                 if s.is_mut(db) {
                     h |= HighlightModifier::Mutable;
                     h |= HighlightModifier::Unsafe;
@@ -792,11 +796,14 @@ fn highlight_def(db: &RootDatabase, def: Definition) -> Highlight {
                 return h;
             }
         },
-        Definition::SelfType(_) => HighlightTag::SelfType,
-        Definition::TypeParam(_) => HighlightTag::TypeParam,
+        Definition::SelfType(_) => HighlightTag::Symbol(SymbolKind::Impl),
+        Definition::TypeParam(_) => HighlightTag::Symbol(SymbolKind::TypeParam),
         Definition::Local(local) => {
-            let tag =
-                if local.is_param(db) { HighlightTag::ValueParam } else { HighlightTag::Local };
+            let tag = if local.is_param(db) {
+                HighlightTag::Symbol(SymbolKind::ValueParam)
+            } else {
+                HighlightTag::Symbol(SymbolKind::Local)
+            };
             let mut h = Highlight::new(tag);
             if local.is_mut(db) || local.ty(db).is_mutable_reference() {
                 h |= HighlightModifier::Mutable;
@@ -806,7 +813,7 @@ fn highlight_def(db: &RootDatabase, def: Definition) -> Highlight {
             }
             return h;
         }
-        Definition::LifetimeParam(_) => HighlightTag::Lifetime,
+        Definition::LifetimeParam(_) => HighlightTag::Symbol(SymbolKind::LifetimeParam),
     }
     .into()
 }
@@ -820,19 +827,19 @@ fn highlight_name_by_syntax(name: ast::Name) -> Highlight {
     };
 
     let tag = match parent.kind() {
-        STRUCT => HighlightTag::Struct,
-        ENUM => HighlightTag::Enum,
-        UNION => HighlightTag::Union,
-        TRAIT => HighlightTag::Trait,
-        TYPE_ALIAS => HighlightTag::TypeAlias,
-        TYPE_PARAM => HighlightTag::TypeParam,
-        RECORD_FIELD => HighlightTag::Field,
-        MODULE => HighlightTag::Module,
-        FN => HighlightTag::Function,
-        CONST => HighlightTag::Constant,
-        STATIC => HighlightTag::Static,
-        VARIANT => HighlightTag::EnumVariant,
-        IDENT_PAT => HighlightTag::Local,
+        STRUCT => HighlightTag::Symbol(SymbolKind::Struct),
+        ENUM => HighlightTag::Symbol(SymbolKind::Enum),
+        VARIANT => HighlightTag::Symbol(SymbolKind::Variant),
+        UNION => HighlightTag::Symbol(SymbolKind::Union),
+        TRAIT => HighlightTag::Symbol(SymbolKind::Trait),
+        TYPE_ALIAS => HighlightTag::Symbol(SymbolKind::TypeAlias),
+        TYPE_PARAM => HighlightTag::Symbol(SymbolKind::TypeParam),
+        RECORD_FIELD => HighlightTag::Symbol(SymbolKind::Field),
+        MODULE => HighlightTag::Symbol(SymbolKind::Module),
+        FN => HighlightTag::Symbol(SymbolKind::Function),
+        CONST => HighlightTag::Symbol(SymbolKind::Const),
+        STATIC => HighlightTag::Symbol(SymbolKind::Static),
+        IDENT_PAT => HighlightTag::Symbol(SymbolKind::Local),
         _ => default,
     };
 
@@ -851,10 +858,10 @@ fn highlight_name_ref_by_syntax(name: ast::NameRef, sema: &Semantics<RootDatabas
         METHOD_CALL_EXPR => {
             return ast::MethodCallExpr::cast(parent)
                 .and_then(|method_call| highlight_method_call(sema, &method_call))
-                .unwrap_or_else(|| HighlightTag::Function.into());
+                .unwrap_or_else(|| HighlightTag::Symbol(SymbolKind::Function).into());
         }
         FIELD_EXPR => {
-            let h = HighlightTag::Field;
+            let h = HighlightTag::Symbol(SymbolKind::Field);
             let is_union = ast::FieldExpr::cast(parent)
                 .and_then(|field_expr| {
                     let field = sema.resolve_field(&field_expr)?;
@@ -881,9 +888,9 @@ fn highlight_name_ref_by_syntax(name: ast::NameRef, sema: &Semantics<RootDatabas
                 _ => {
                     // within path, decide whether it is module or adt by checking for uppercase name
                     return if name.text().chars().next().unwrap_or_default().is_uppercase() {
-                        HighlightTag::Struct
+                        HighlightTag::Symbol(SymbolKind::Struct)
                     } else {
-                        HighlightTag::Module
+                        HighlightTag::Symbol(SymbolKind::Module)
                     }
                     .into();
                 }
@@ -894,11 +901,11 @@ fn highlight_name_ref_by_syntax(name: ast::NameRef, sema: &Semantics<RootDatabas
             };
 
             match parent.kind() {
-                CALL_EXPR => HighlightTag::Function.into(),
+                CALL_EXPR => HighlightTag::Symbol(SymbolKind::Function).into(),
                 _ => if name.text().chars().next().unwrap_or_default().is_uppercase() {
-                    HighlightTag::Struct.into()
+                    HighlightTag::Symbol(SymbolKind::Struct)
                 } else {
-                    HighlightTag::Constant
+                    HighlightTag::Symbol(SymbolKind::Const)
                 }
                 .into(),
             }

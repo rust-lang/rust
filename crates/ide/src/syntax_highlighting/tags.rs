@@ -3,6 +3,8 @@
 
 use std::{fmt, ops};
 
+use crate::SymbolKind;
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Highlight {
     pub tag: HighlightTag,
@@ -14,40 +16,26 @@ pub struct HighlightModifiers(u32);
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum HighlightTag {
-    Attribute,
+    Symbol(SymbolKind),
+
     BoolLiteral,
     BuiltinType,
     ByteLiteral,
     CharLiteral,
-    Comment,
-    Constant,
-    Enum,
-    EnumVariant,
-    EscapeSequence,
-    Field,
-    Function,
-    Generic,
-    Keyword,
-    Lifetime,
-    Macro,
-    Method,
-    Module,
     NumericLiteral,
-    Punctuation,
-    SelfKeyword,
-    SelfType,
-    Static,
     StringLiteral,
-    Struct,
-    Trait,
-    TypeAlias,
-    TypeParam,
-    Union,
-    ValueParam,
-    Local,
-    UnresolvedReference,
+    Attribute,
+    Comment,
+    EscapeSequence,
     FormatSpecifier,
+    Keyword,
+    Punctuation,
     Operator,
+    UnresolvedReference,
+
+    // FIXME: this two are random and don't fit with the others
+    Method,
+    Generic,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -73,39 +61,41 @@ pub enum HighlightModifier {
 impl HighlightTag {
     fn as_str(self) -> &'static str {
         match self {
+            HighlightTag::Symbol(symbol) => match symbol {
+                SymbolKind::Const => "constant",
+                SymbolKind::Static => "static",
+                SymbolKind::Enum => "enum",
+                SymbolKind::Variant => "enum_variant",
+                SymbolKind::Struct => "struct",
+                SymbolKind::Union => "union",
+                SymbolKind::Field => "field",
+                SymbolKind::Module => "module",
+                SymbolKind::Trait => "trait",
+                SymbolKind::Function => "function",
+                SymbolKind::TypeAlias => "type_alias",
+                SymbolKind::TypeParam => "type_param",
+                SymbolKind::LifetimeParam => "lifetime",
+                SymbolKind::Macro => "macro",
+                SymbolKind::Local => "variable",
+                SymbolKind::ValueParam => "value_param",
+                SymbolKind::SelfParam => "self_keyword",
+                SymbolKind::Impl => "self_type",
+            },
             HighlightTag::Attribute => "attribute",
             HighlightTag::BoolLiteral => "bool_literal",
             HighlightTag::BuiltinType => "builtin_type",
             HighlightTag::ByteLiteral => "byte_literal",
             HighlightTag::CharLiteral => "char_literal",
             HighlightTag::Comment => "comment",
-            HighlightTag::Constant => "constant",
-            HighlightTag::Enum => "enum",
-            HighlightTag::EnumVariant => "enum_variant",
             HighlightTag::EscapeSequence => "escape_sequence",
-            HighlightTag::Field => "field",
             HighlightTag::FormatSpecifier => "format_specifier",
-            HighlightTag::Function => "function",
             HighlightTag::Generic => "generic",
             HighlightTag::Keyword => "keyword",
-            HighlightTag::Lifetime => "lifetime",
             HighlightTag::Punctuation => "punctuation",
-            HighlightTag::Macro => "macro",
             HighlightTag::Method => "method",
-            HighlightTag::Module => "module",
             HighlightTag::NumericLiteral => "numeric_literal",
             HighlightTag::Operator => "operator",
-            HighlightTag::SelfKeyword => "self_keyword",
-            HighlightTag::SelfType => "self_type",
-            HighlightTag::Static => "static",
             HighlightTag::StringLiteral => "string_literal",
-            HighlightTag::Struct => "struct",
-            HighlightTag::Trait => "trait",
-            HighlightTag::TypeAlias => "type_alias",
-            HighlightTag::TypeParam => "type_param",
-            HighlightTag::Union => "union",
-            HighlightTag::ValueParam => "value_param",
-            HighlightTag::Local => "variable",
             HighlightTag::UnresolvedReference => "unresolved_reference",
         }
     }

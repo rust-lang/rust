@@ -43,9 +43,10 @@ pub(crate) fn symbol_kind(symbol_kind: SymbolKind) -> lsp_types::SymbolKind {
         SymbolKind::Static => lsp_types::SymbolKind::Constant,
         SymbolKind::Const => lsp_types::SymbolKind::Constant,
         SymbolKind::Impl => lsp_types::SymbolKind::Object,
-        SymbolKind::Local | SymbolKind::SelfParam | SymbolKind::LifetimeParam => {
-            lsp_types::SymbolKind::Variable
-        }
+        SymbolKind::Local
+        | SymbolKind::SelfParam
+        | SymbolKind::LifetimeParam
+        | SymbolKind::ValueParam => lsp_types::SymbolKind::Variable,
         SymbolKind::Union => lsp_types::SymbolKind::Struct,
     }
 }
@@ -371,34 +372,36 @@ fn semantic_token_type_and_modifiers(
 ) -> (lsp_types::SemanticTokenType, semantic_tokens::ModifierSet) {
     let mut mods = semantic_tokens::ModifierSet::default();
     let type_ = match highlight.tag {
-        HighlightTag::Struct => lsp_types::SemanticTokenType::STRUCT,
-        HighlightTag::Enum => lsp_types::SemanticTokenType::ENUM,
-        HighlightTag::Union => semantic_tokens::UNION,
-        HighlightTag::TypeAlias => semantic_tokens::TYPE_ALIAS,
-        HighlightTag::Trait => lsp_types::SemanticTokenType::INTERFACE,
+        HighlightTag::Symbol(symbol) => match symbol {
+            SymbolKind::Module => lsp_types::SemanticTokenType::NAMESPACE,
+            SymbolKind::Impl => lsp_types::SemanticTokenType::TYPE,
+            SymbolKind::Field => lsp_types::SemanticTokenType::PROPERTY,
+            SymbolKind::TypeParam => lsp_types::SemanticTokenType::TYPE_PARAMETER,
+            SymbolKind::LifetimeParam => semantic_tokens::LIFETIME,
+            SymbolKind::ValueParam => lsp_types::SemanticTokenType::PARAMETER,
+            SymbolKind::SelfParam => semantic_tokens::SELF_KEYWORD,
+            SymbolKind::Local => lsp_types::SemanticTokenType::VARIABLE,
+            SymbolKind::Function => lsp_types::SemanticTokenType::FUNCTION,
+            SymbolKind::Const => {
+                mods |= semantic_tokens::CONSTANT;
+                mods |= lsp_types::SemanticTokenModifier::STATIC;
+                lsp_types::SemanticTokenType::VARIABLE
+            }
+            SymbolKind::Static => {
+                mods |= lsp_types::SemanticTokenModifier::STATIC;
+                lsp_types::SemanticTokenType::VARIABLE
+            }
+            SymbolKind::Struct => lsp_types::SemanticTokenType::STRUCT,
+            SymbolKind::Enum => lsp_types::SemanticTokenType::ENUM,
+            SymbolKind::Variant => lsp_types::SemanticTokenType::ENUM_MEMBER,
+            SymbolKind::Union => semantic_tokens::UNION,
+            SymbolKind::TypeAlias => semantic_tokens::TYPE_ALIAS,
+            SymbolKind::Trait => lsp_types::SemanticTokenType::INTERFACE,
+            SymbolKind::Macro => lsp_types::SemanticTokenType::MACRO,
+        },
         HighlightTag::BuiltinType => semantic_tokens::BUILTIN_TYPE,
-        HighlightTag::SelfKeyword => semantic_tokens::SELF_KEYWORD,
-        HighlightTag::SelfType => lsp_types::SemanticTokenType::TYPE,
-        HighlightTag::Field => lsp_types::SemanticTokenType::PROPERTY,
-        HighlightTag::Function => lsp_types::SemanticTokenType::FUNCTION,
         HighlightTag::Generic => semantic_tokens::GENERIC,
-        HighlightTag::Module => lsp_types::SemanticTokenType::NAMESPACE,
         HighlightTag::Method => lsp_types::SemanticTokenType::METHOD,
-        HighlightTag::Constant => {
-            mods |= semantic_tokens::CONSTANT;
-            mods |= lsp_types::SemanticTokenModifier::STATIC;
-            lsp_types::SemanticTokenType::VARIABLE
-        }
-        HighlightTag::Static => {
-            mods |= lsp_types::SemanticTokenModifier::STATIC;
-            lsp_types::SemanticTokenType::VARIABLE
-        }
-        HighlightTag::EnumVariant => lsp_types::SemanticTokenType::ENUM_MEMBER,
-        HighlightTag::Macro => lsp_types::SemanticTokenType::MACRO,
-        HighlightTag::ValueParam => lsp_types::SemanticTokenType::PARAMETER,
-        HighlightTag::Local => lsp_types::SemanticTokenType::VARIABLE,
-        HighlightTag::TypeParam => lsp_types::SemanticTokenType::TYPE_PARAMETER,
-        HighlightTag::Lifetime => semantic_tokens::LIFETIME,
         HighlightTag::ByteLiteral | HighlightTag::NumericLiteral => {
             lsp_types::SemanticTokenType::NUMBER
         }

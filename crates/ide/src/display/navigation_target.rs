@@ -18,13 +18,14 @@ use crate::FileSymbol;
 
 use super::short_label::ShortLabel;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum SymbolKind {
     Module,
     Impl,
     Field,
     TypeParam,
     LifetimeParam,
+    ValueParam,
     SelfParam,
     Local,
     Function,
@@ -406,10 +407,11 @@ impl ToNav for hir::Local {
             Some(it) => it.to_string().into(),
             None => "".into(),
         };
+        let kind = if self.is_param(db) { SymbolKind::ValueParam } else { SymbolKind::Local };
         NavigationTarget {
             file_id: full_range.file_id,
             name,
-            kind: Some(SymbolKind::Local),
+            kind: Some(kind),
             full_range: full_range.range,
             focus_range: None,
             container_name: None,
