@@ -70,3 +70,11 @@ fn test_empty_frames_iterator() {
 
     assert_eq!(iter.count(), 0);
 }
+
+#[test]
+fn test_frames_iterator() {
+    let backtrace = generate_fake_backtrace();
+    let iter = backtrace.frames();
+
+    assert_eq!(iter.count(), 3);
+}

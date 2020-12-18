@@ -508,11 +508,3 @@ impl<'a> Iterator for Frames<'a> {
     }
 }
 
-// #[unstable(feature = "backtrace_frames", issue = "79676")]
-// impl<'a> IntoIterator for Frames<'a> {
-//     type IntoIter = alloc_crate::vec::IntoIter<Self::Item>;
-    
-//     fn into_iter(self) -> Self::IntoIter {
-//         self.inner.into_iter()
-//     }
-// }
