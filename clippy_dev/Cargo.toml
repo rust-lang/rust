@@ -1,16 +1,19 @@
 [package]
-name = "clippy_dev"
-version = "0.0.1"
 authors = ["Philipp Hansch <dev@phansch.net>"]
 edition = "2018"
+name = "clippy_dev"
+version = "0.0.1"
 
 [dependencies]
 bytecount = "0.6"
 clap = "2.33"
+flate2 = "1.0.19"
 itertools = "0.9"
 opener = "0.4"
 regex = "1"
 shell-escape = "0.1"
+tar = "0.4.30"
+ureq = "2.0.0-rc3"
 walkdir = "2"
 
 [features]
