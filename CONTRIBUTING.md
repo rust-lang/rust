@@ -49,7 +49,7 @@ first read the [Basics docs](doc/basics.md).**
 All issues on Clippy are mentored, if you want help with a bug just ask
 @Manishearth, @flip1995, @phansch or @yaahc.
 
-Some issues are easier than others. The [`good first issue`] label can be used to find the easy issues.
+Some issues are easier than others. The [`good-first-issue`] label can be used to find the easy issues.
 If you want to work on an issue, please leave a comment so that we can assign it to you!
 
 There are also some abandoned PRs, marked with [`S-inactive-closed`].
@@ -68,7 +68,7 @@ To figure out how this syntax structure is encoded in the AST, it is recommended
 Usually the lint will end up to be a nested series of matches and ifs, [like so][deep-nesting].
 But we can make it nest-less by using [if_chain] macro, [like this][nest-less].
 
-[`E-medium`] issues are generally pretty easy too, though it's recommended you work on an [`good first issue`]
+[`E-medium`] issues are generally pretty easy too, though it's recommended you work on an [`good-first-issue`]
 first. Sometimes they are only somewhat involved code wise, but not difficult per-se.
 Note that [`E-medium`] issues may require some knowledge of Clippy internals or some
 debugging to find the actual problem behind the issue.
@@ -77,7 +77,7 @@ debugging to find the actual problem behind the issue.
 lot of methods that are useful, though one of the most useful would be `expr_ty` (gives the type of
 an AST expression). `match_def_path()` in Clippy's `utils` module can also be useful.
 
-[`good first issue`]: https://github.com/rust-lang/rust-clippy/labels/good%20first%20issue
+[`good-first-issue`]: https://github.com/rust-lang/rust-clippy/labels/good-first-issue
 [`S-inactive-closed`]: https://github.com/rust-lang/rust-clippy/pulls?q=is%3Aclosed+label%3AS-inactive-closed
 [`T-AST`]: https://github.com/rust-lang/rust-clippy/labels/T-AST
 [`T-middle`]: https://github.com/rust-lang/rust-clippy/labels/T-middle
