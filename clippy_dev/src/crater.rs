@@ -1,6 +1,6 @@
+use crate::clippy_project_root;
 use std::path::PathBuf;
 use std::process::Command;
-
 // represents an archive we download from crates.io
 #[derive(Debug)]
 struct KrateSource {
@@ -75,7 +75,10 @@ impl Krate {
         println!("Linting {} {}...", &self.name, &self.version);
         let cargo_clippy_path = std::fs::canonicalize(cargo_clippy_path).unwrap();
 
+        let shared_target_dir = clippy_project_root().join("target/crater/shared_target_dir/");
+
         let all_output = std::process::Command::new(cargo_clippy_path)
+            .env("CARGO_TARGET_DIR", shared_target_dir)
             // lint warnings will look like this:
             // src/cargo/ops/cargo_compile.rs:127:35: warning: usage of `FromIterator::from_iter`
             .args(&[
@@ -83,10 +86,8 @@ impl Krate {
                 "--message-format=short",
                 "--",
                 "--cap-lints=warn",
-            /*    "--",
                 "-Wclippy::pedantic",
-                "--",
-                "-Wclippy::cargo", */
+                "-Wclippy::cargo",
             ])
             .current_dir(&self.path)
             .output()
@@ -135,7 +136,7 @@ pub fn run() {
         KrateSource::new("cargo", "0.49.0"),
         KrateSource::new("iron", "0.6.1"),
         KrateSource::new("ripgrep", "12.1.1"),
-        KrateSource::new("tokei", "12.0.4"),
+        //KrateSource::new("tokei", "12.0.4"),
         KrateSource::new("xsv", "0.13.0"),
         KrateSource::new("serde", "1.0.118"),
         KrateSource::new("rayon", "1.5.0"),
@@ -149,8 +150,7 @@ pub fn run() {
         KrateSource::new("proc-macro2", "1.0.24"),
         KrateSource::new("bitflags", "1.2.1"),
         KrateSource::new("log", "0.4.11"),
-        KrateSource::new("regex", "1.4.2")
-        //
+        KrateSource::new("regex", "1.4.2"),
     ];
 
     println!("Compiling clippy...");
