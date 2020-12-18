@@ -24,7 +24,7 @@ use syntax::{
     match_ast, AstNode, SyntaxKind, SyntaxNode, TextRange, TokenAtOffset,
 };
 
-use crate::{display::TryToNav, FilePosition, FileRange, NavigationTarget, RangeInfo};
+use crate::{display::TryToNav, FilePosition, FileRange, NavigationTarget, RangeInfo, SymbolKind};
 
 #[derive(Debug, Clone)]
 pub struct ReferenceSearchResult {
@@ -278,7 +278,7 @@ fn try_find_self_references(
             full_range: self_param.syntax().text_range(),
             focus_range: Some(param_self_token.text_range()),
             name: param_self_token.text().clone(),
-            kind: param_self_token.kind(),
+            kind: SymbolKind::SelfParam,
             container_name: None,
             description: None,
             docs: None,
@@ -343,7 +343,7 @@ fn main() {
 }
 "#,
             expect![[r#"
-                Foo STRUCT FileId(0) 0..26 7..10 Other
+                Foo Struct FileId(0) 0..26 7..10 Other
 
                 FileId(0) 101..104 StructLiteral
             "#]],
@@ -361,7 +361,7 @@ struct Foo<|> {}
 }
 "#,
             expect![[r#"
-                Foo STRUCT FileId(0) 0..13 7..10 Other
+                Foo Struct FileId(0) 0..13 7..10 Other
 
                 FileId(0) 41..44 Other
                 FileId(0) 54..57 StructLiteral
@@ -380,7 +380,7 @@ struct Foo<T> <|>{}
 }
 "#,
             expect![[r#"
-                Foo STRUCT FileId(0) 0..16 7..10 Other
+                Foo Struct FileId(0) 0..16 7..10 Other
 
                 FileId(0) 64..67 StructLiteral
             "#]],
@@ -399,7 +399,7 @@ fn main() {
 }
 "#,
             expect![[r#"
-                Foo STRUCT FileId(0) 0..16 7..10 Other
+                Foo Struct FileId(0) 0..16 7..10 Other
 
                 FileId(0) 54..57 StructLiteral
             "#]],
@@ -420,7 +420,7 @@ fn main() {
 }
 "#,
             expect![[r#"
-                Foo ENUM FileId(0) 0..26 5..8 Other
+                Foo Enum FileId(0) 0..26 5..8 Other
 
                 FileId(0) 63..66 EnumLiteral
             "#]],
@@ -441,7 +441,7 @@ fn main() {
 }
 "#,
             expect![[r#"
-                Foo ENUM FileId(0) 0..26 5..8 Other
+                Foo Enum FileId(0) 0..26 5..8 Other
 
                 FileId(0) 50..53 Other
                 FileId(0) 63..66 EnumLiteral
@@ -463,7 +463,7 @@ fn main() {
 }
 "#,
             expect![[r#"
-                Foo ENUM FileId(0) 0..32 5..8 Other
+                Foo Enum FileId(0) 0..32 5..8 Other
 
                 FileId(0) 73..76 EnumLiteral
             "#]],
@@ -484,7 +484,7 @@ fn main() {
 }
 "#,
             expect![[r#"
-                Foo ENUM FileId(0) 0..33 5..8 Other
+                Foo Enum FileId(0) 0..33 5..8 Other
 
                 FileId(0) 70..73 EnumLiteral
             "#]],
@@ -507,7 +507,7 @@ fn main() {
     i = 5;
 }"#,
             expect![[r#"
-                i IDENT_PAT FileId(0) 24..25 Other Write
+                i Local FileId(0) 24..25 Other Write
 
                 FileId(0) 50..51 Other Write
                 FileId(0) 54..55 Other Read
@@ -531,7 +531,7 @@ fn bar() {
 }
 "#,
             expect![[r#"
-                spam IDENT_PAT FileId(0) 19..23 Other
+                spam Local FileId(0) 19..23 Other
 
                 FileId(0) 34..38 Other Read
                 FileId(0) 41..45 Other Read
@@ -546,7 +546,7 @@ fn bar() {
 fn foo(i : u32) -> u32 { i<|> }
 "#,
             expect![[r#"
-                i IDENT_PAT FileId(0) 7..8 Other
+                i Local FileId(0) 7..8 Other
 
                 FileId(0) 25..26 Other Read
             "#]],
@@ -560,7 +560,7 @@ fn foo(i : u32) -> u32 { i<|> }
 fn foo(i<|> : u32) -> u32 { i }
 "#,
             expect![[r#"
-                i IDENT_PAT FileId(0) 7..8 Other
+                i Local FileId(0) 7..8 Other
 
                 FileId(0) 25..26 Other Read
             "#]],
@@ -581,7 +581,7 @@ fn main(s: Foo) {
 }
 "#,
             expect![[r#"
-                spam RECORD_FIELD FileId(0) 17..30 21..25 Other
+                spam Field FileId(0) 17..30 21..25 Other
 
                 FileId(0) 67..71 Other Read
             "#]],
@@ -598,7 +598,7 @@ impl Foo {
 }
 "#,
             expect![[r#"
-                f FN FileId(0) 27..43 30..31 Other
+                f Function FileId(0) 27..43 30..31 Other
 
             "#]],
         );
@@ -615,7 +615,7 @@ enum Foo {
 }
 "#,
             expect![[r#"
-                B VARIANT FileId(0) 22..23 22..23 Other
+                B Variant FileId(0) 22..23 22..23 Other
 
             "#]],
         );
@@ -632,7 +632,7 @@ enum Foo {
 }
 "#,
             expect![[r#"
-                field RECORD_FIELD FileId(0) 26..35 26..31 Other
+                field Field FileId(0) 26..35 26..31 Other
 
             "#]],
         );
@@ -673,7 +673,7 @@ fn f() {
 }
 "#,
             expect![[r#"
-                Foo STRUCT FileId(1) 17..51 28..31 Other
+                Foo Struct FileId(1) 17..51 28..31 Other
 
                 FileId(0) 53..56 StructLiteral
                 FileId(2) 79..82 StructLiteral
@@ -703,7 +703,7 @@ pub struct Foo {
 }
 "#,
             expect![[r#"
-                foo SOURCE_FILE FileId(1) 0..35 Other
+                foo Module FileId(1) 0..35 Other
 
                 FileId(0) 14..17 Other
             "#]],
@@ -731,7 +731,7 @@ pub(super) struct Foo<|> {
 }
 "#,
             expect![[r#"
-                Foo STRUCT FileId(2) 0..41 18..21 Other
+                Foo Struct FileId(2) 0..41 18..21 Other
 
                 FileId(1) 20..23 Other
                 FileId(1) 47..50 StructLiteral
@@ -759,7 +759,7 @@ pub(super) struct Foo<|> {
             code,
             None,
             expect![[r#"
-                quux FN FileId(0) 19..35 26..30 Other
+                quux Function FileId(0) 19..35 26..30 Other
 
                 FileId(1) 16..20 StructLiteral
                 FileId(2) 16..20 StructLiteral
@@ -770,7 +770,7 @@ pub(super) struct Foo<|> {
             code,
             Some(SearchScope::single_file(FileId(2))),
             expect![[r#"
-                quux FN FileId(0) 19..35 26..30 Other
+                quux Function FileId(0) 19..35 26..30 Other
 
                 FileId(2) 16..20 StructLiteral
             "#]],
@@ -790,7 +790,7 @@ fn foo() {
 }
 "#,
             expect![[r#"
-                m1 MACRO_RULES FileId(0) 0..46 29..31 Other
+                m1 Macro FileId(0) 0..46 29..31 Other
 
                 FileId(0) 63..65 StructLiteral
                 FileId(0) 73..75 StructLiteral
@@ -808,7 +808,7 @@ fn foo() {
 }
 "#,
             expect![[r#"
-                i IDENT_PAT FileId(0) 23..24 Other Write
+                i Local FileId(0) 23..24 Other Write
 
                 FileId(0) 34..35 Other Write
                 FileId(0) 38..39 Other Read
@@ -830,7 +830,7 @@ fn foo() {
 }
 "#,
             expect![[r#"
-                f RECORD_FIELD FileId(0) 15..21 15..16 Other
+                f Field FileId(0) 15..21 15..16 Other
 
                 FileId(0) 55..56 RecordFieldExprOrPat Read
                 FileId(0) 68..69 Other Write
@@ -848,7 +848,7 @@ fn foo() {
 }
 "#,
             expect![[r#"
-                i IDENT_PAT FileId(0) 19..20 Other
+                i Local FileId(0) 19..20 Other
 
                 FileId(0) 26..27 Other Write
             "#]],
@@ -872,7 +872,7 @@ fn main() {
 }
 "#,
             expect![[r#"
-                new FN FileId(0) 54..81 61..64 Other
+                new Function FileId(0) 54..81 61..64 Other
 
                 FileId(0) 126..129 StructLiteral
             "#]],
@@ -894,7 +894,7 @@ use crate::f;
 fn g() { f(); }
 "#,
             expect![[r#"
-                f FN FileId(0) 22..31 25..26 Other
+                f Function FileId(0) 22..31 25..26 Other
 
                 FileId(1) 11..12 Other
                 FileId(1) 24..25 StructLiteral
@@ -917,7 +917,7 @@ fn f(s: S) {
 }
 "#,
             expect![[r#"
-                field RECORD_FIELD FileId(0) 15..24 15..20 Other
+                field Field FileId(0) 15..24 15..20 Other
 
                 FileId(0) 68..73 FieldShorthandForField Read
             "#]],
@@ -941,7 +941,7 @@ fn f(e: En) {
 }
 "#,
             expect![[r#"
-                field RECORD_FIELD FileId(0) 32..41 32..37 Other
+                field Field FileId(0) 32..41 32..37 Other
 
                 FileId(0) 102..107 FieldShorthandForField Read
             "#]],
@@ -965,7 +965,7 @@ fn f() -> m::En {
 }
 "#,
             expect![[r#"
-                field RECORD_FIELD FileId(0) 56..65 56..61 Other
+                field Field FileId(0) 56..65 56..61 Other
 
                 FileId(0) 125..130 RecordFieldExprOrPat Read
             "#]],
@@ -990,7 +990,7 @@ impl Foo {
 }
 "#,
             expect![[r#"
-                self SELF_KW FileId(0) 47..51 47..51 SelfKw Read
+                self SelfParam FileId(0) 47..51 47..51 SelfKw Read
 
                 FileId(0) 71..75 SelfKw Read
                 FileId(0) 152..156 SelfKw Read
@@ -1038,7 +1038,7 @@ fn foo<'a, 'b: 'a>(x: &'a<|> ()) -> &'a () where &'a (): Foo<'a> {
 }
 "#,
             expect![[r#"
-                'a LIFETIME_PARAM FileId(0) 55..57 55..57 Lifetime
+                'a LifetimeParam FileId(0) 55..57 55..57 Lifetime
 
                 FileId(0) 63..65 Lifetime
                 FileId(0) 71..73 Lifetime
@@ -1056,7 +1056,7 @@ fn foo<'a, 'b: 'a>(x: &'a<|> ()) -> &'a () where &'a (): Foo<'a> {
 type Foo<'a, T> where T: 'a<|> = &'a T;
 "#,
             expect![[r#"
-                'a LIFETIME_PARAM FileId(0) 9..11 9..11 Lifetime
+                'a LifetimeParam FileId(0) 9..11 9..11 Lifetime
 
                 FileId(0) 25..27 Lifetime
                 FileId(0) 31..33 Lifetime
@@ -1078,7 +1078,7 @@ impl<'a> Foo<'a> for &'a () {
 }
 "#,
             expect![[r#"
-                'a LIFETIME_PARAM FileId(0) 47..49 47..49 Lifetime
+                'a LifetimeParam FileId(0) 47..49 47..49 Lifetime
 
                 FileId(0) 55..57 Lifetime
                 FileId(0) 64..66 Lifetime

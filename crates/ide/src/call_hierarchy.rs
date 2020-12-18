@@ -181,8 +181,8 @@ fn caller() {
     call<|>ee();
 }
 "#,
-            "callee FN FileId(0) 0..14 3..9",
-            &["caller FN FileId(0) 15..44 18..24 : [33..39]"],
+            "callee Function FileId(0) 0..14 3..9",
+            &["caller Function FileId(0) 15..44 18..24 : [33..39]"],
             &[],
         );
     }
@@ -197,8 +197,8 @@ fn caller() {
     callee();
 }
 "#,
-            "callee FN FileId(0) 0..14 3..9",
-            &["caller FN FileId(0) 15..44 18..24 : [33..39]"],
+            "callee Function FileId(0) 0..14 3..9",
+            &["caller Function FileId(0) 15..44 18..24 : [33..39]"],
             &[],
         );
     }
@@ -214,8 +214,8 @@ fn caller() {
     callee();
 }
 "#,
-            "callee FN FileId(0) 0..14 3..9",
-            &["caller FN FileId(0) 15..58 18..24 : [33..39, 47..53]"],
+            "callee Function FileId(0) 0..14 3..9",
+            &["caller Function FileId(0) 15..58 18..24 : [33..39, 47..53]"],
             &[],
         );
     }
@@ -234,10 +234,10 @@ fn caller2() {
     callee();
 }
 "#,
-            "callee FN FileId(0) 0..14 3..9",
+            "callee Function FileId(0) 0..14 3..9",
             &[
-                "caller1 FN FileId(0) 15..45 18..25 : [34..40]",
-                "caller2 FN FileId(0) 47..77 50..57 : [66..72]",
+                "caller1 Function FileId(0) 15..45 18..25 : [34..40]",
+                "caller2 Function FileId(0) 47..77 50..57 : [66..72]",
             ],
             &[],
         );
@@ -263,10 +263,10 @@ mod tests {
     }
 }
 "#,
-            "callee FN FileId(0) 0..14 3..9",
+            "callee Function FileId(0) 0..14 3..9",
             &[
-                "caller1 FN FileId(0) 15..45 18..25 : [34..40]",
-                "test_caller FN FileId(0) 95..149 110..121 : [134..140]",
+                "caller1 Function FileId(0) 15..45 18..25 : [34..40]",
+                "test_caller Function FileId(0) 95..149 110..121 : [134..140]",
             ],
             &[],
         );
@@ -287,8 +287,8 @@ fn caller() {
 //- /foo/mod.rs
 pub fn callee() {}
 "#,
-            "callee FN FileId(1) 0..18 7..13",
-            &["caller FN FileId(0) 27..56 30..36 : [45..51]"],
+            "callee Function FileId(1) 0..18 7..13",
+            &["caller Function FileId(0) 27..56 30..36 : [45..51]"],
             &[],
         );
     }
@@ -304,9 +304,9 @@ fn call<|>er() {
     callee();
 }
 "#,
-            "caller FN FileId(0) 15..58 18..24",
+            "caller Function FileId(0) 15..58 18..24",
             &[],
-            &["callee FN FileId(0) 0..14 3..9 : [33..39, 47..53]"],
+            &["callee Function FileId(0) 0..14 3..9 : [33..39, 47..53]"],
         );
     }
 
@@ -325,9 +325,9 @@ fn call<|>er() {
 //- /foo/mod.rs
 pub fn callee() {}
 "#,
-            "caller FN FileId(0) 27..56 30..36",
+            "caller Function FileId(0) 27..56 30..36",
             &[],
-            &["callee FN FileId(1) 0..18 7..13 : [45..51]"],
+            &["callee Function FileId(1) 0..18 7..13 : [45..51]"],
         );
     }
 
@@ -348,9 +348,9 @@ fn caller3() {
 
 }
 "#,
-            "caller2 FN FileId(0) 33..64 36..43",
-            &["caller1 FN FileId(0) 0..31 3..10 : [19..26]"],
-            &["caller3 FN FileId(0) 66..83 69..76 : [52..59]"],
+            "caller2 Function FileId(0) 33..64 36..43",
+            &["caller1 Function FileId(0) 0..31 3..10 : [19..26]"],
+            &["caller3 Function FileId(0) 66..83 69..76 : [52..59]"],
         );
     }
 
@@ -368,9 +368,9 @@ fn main() {
     a<|>()
 }
 "#,
-            "a FN FileId(0) 0..18 3..4",
-            &["main FN FileId(0) 31..52 34..38 : [47..48]"],
-            &["b FN FileId(0) 20..29 23..24 : [13..14]"],
+            "a Function FileId(0) 0..18 3..4",
+            &["main Function FileId(0) 31..52 34..38 : [47..48]"],
+            &["b Function FileId(0) 20..29 23..24 : [13..14]"],
         );
 
         check_hierarchy(
@@ -385,8 +385,8 @@ fn main() {
     a()
 }
 "#,
-            "b FN FileId(0) 20..29 23..24",
-            &["a FN FileId(0) 0..18 3..4 : [13..14]"],
+            "b Function FileId(0) 20..29 23..24",
+            &["a Function FileId(0) 0..18 3..4 : [13..14]"],
             &[],
         );
     }

@@ -9,7 +9,7 @@ use std::{
 
 use ide::{
     CompletionResolveCapability, FileId, FilePosition, FileRange, HoverAction, HoverGotoTypeData,
-    NavigationTarget, Query, RangeInfo, Runnable, RunnableKind, SearchScope, TextEdit,
+    NavigationTarget, Query, RangeInfo, Runnable, RunnableKind, SearchScope, SymbolKind, TextEdit,
 };
 use itertools::Itertools;
 use lsp_server::ErrorCode;
@@ -27,7 +27,7 @@ use project_model::TargetKind;
 use serde::{Deserialize, Serialize};
 use serde_json::to_value;
 use stdx::{format_to, split_once};
-use syntax::{algo, ast, AstNode, SyntaxKind, TextRange, TextSize};
+use syntax::{algo, ast, AstNode, TextRange, TextSize};
 
 use crate::{
     cargo_target_spec::CargoTargetSpec,
@@ -1037,10 +1037,10 @@ pub(crate) fn handle_code_lens(
                 .filter(|it| {
                     matches!(
                         it.kind,
-                        SyntaxKind::TRAIT
-                            | SyntaxKind::STRUCT
-                            | SyntaxKind::ENUM
-                            | SyntaxKind::UNION
+                        SymbolKind::Trait
+                            | SymbolKind::Struct
+                            | SymbolKind::Enum
+                            | SymbolKind::Union
                     )
                 })
                 .map(|it| {
@@ -1263,7 +1263,7 @@ pub(crate) fn handle_call_hierarchy_prepare(
     let RangeInfo { range: _, info: navs } = nav_info;
     let res = navs
         .into_iter()
-        .filter(|it| it.kind == SyntaxKind::FN)
+        .filter(|it| it.kind == SymbolKind::Function)
         .map(|it| to_proto::call_hierarchy_item(&snap, it))
         .collect::<Result<Vec<_>>>()?;
 

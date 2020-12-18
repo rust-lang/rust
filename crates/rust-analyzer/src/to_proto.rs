@@ -5,14 +5,13 @@ use std::{
 };
 
 use ide::{
-    Assist, AssistKind, CallInfo, CompletionItem, CompletionItemKind, Documentation,
-    FileSystemEdit, Fold, FoldKind, Highlight, HighlightModifier, HighlightTag, HighlightedRange,
-    Indel, InlayHint, InlayKind, InsertTextFormat, LineIndex, Markup, NavigationTarget,
-    ReferenceAccess, ResolvedAssist, Runnable, Severity, SourceChange, SourceFileEdit, TextEdit,
+    Assist, AssistKind, CallInfo, CompletionItem, CompletionItemKind, Documentation, FileId,
+    FileRange, FileSystemEdit, Fold, FoldKind, Highlight, HighlightModifier, HighlightTag,
+    HighlightedRange, Indel, InlayHint, InlayKind, InsertTextFormat, LineIndex, Markup,
+    NavigationTarget, ReferenceAccess, ResolvedAssist, Runnable, Severity, SourceChange,
+    SourceFileEdit, SymbolKind, TextEdit, TextRange, TextSize,
 };
-use ide_db::base_db::{FileId, FileRange};
 use itertools::Itertools;
-use syntax::{SyntaxKind, TextRange, TextSize};
 
 use crate::{
     cargo_target_spec::CargoTargetSpec, global_state::GlobalStateSnapshot,
@@ -30,21 +29,25 @@ pub(crate) fn range(line_index: &LineIndex, range: TextRange) -> lsp_types::Rang
     lsp_types::Range::new(start, end)
 }
 
-pub(crate) fn symbol_kind(syntax_kind: SyntaxKind) -> lsp_types::SymbolKind {
-    match syntax_kind {
-        SyntaxKind::FN => lsp_types::SymbolKind::Function,
-        SyntaxKind::STRUCT => lsp_types::SymbolKind::Struct,
-        SyntaxKind::ENUM => lsp_types::SymbolKind::Enum,
-        SyntaxKind::VARIANT => lsp_types::SymbolKind::EnumMember,
-        SyntaxKind::TRAIT => lsp_types::SymbolKind::Interface,
-        SyntaxKind::MACRO_CALL => lsp_types::SymbolKind::Function,
-        SyntaxKind::MODULE => lsp_types::SymbolKind::Module,
-        SyntaxKind::TYPE_ALIAS => lsp_types::SymbolKind::TypeParameter,
-        SyntaxKind::RECORD_FIELD => lsp_types::SymbolKind::Field,
-        SyntaxKind::STATIC => lsp_types::SymbolKind::Constant,
-        SyntaxKind::CONST => lsp_types::SymbolKind::Constant,
-        SyntaxKind::IMPL => lsp_types::SymbolKind::Object,
-        _ => lsp_types::SymbolKind::Variable,
+pub(crate) fn symbol_kind(symbol_kind: SymbolKind) -> lsp_types::SymbolKind {
+    match symbol_kind {
+        SymbolKind::Function => lsp_types::SymbolKind::Function,
+        SymbolKind::Struct => lsp_types::SymbolKind::Struct,
+        SymbolKind::Enum => lsp_types::SymbolKind::Enum,
+        SymbolKind::Variant => lsp_types::SymbolKind::EnumMember,
+        SymbolKind::Trait => lsp_types::SymbolKind::Interface,
+        SymbolKind::Macro => lsp_types::SymbolKind::Function,
+        SymbolKind::Module => lsp_types::SymbolKind::Module,
+        SymbolKind::TypeAlias | SymbolKind::TypeParam => lsp_types::SymbolKind::TypeParameter,
+        SymbolKind::Field => lsp_types::SymbolKind::Field,
+        SymbolKind::Static => lsp_types::SymbolKind::Constant,
+        SymbolKind::Const => lsp_types::SymbolKind::Constant,
+        SymbolKind::Impl => lsp_types::SymbolKind::Object,
+        SymbolKind::Local
+        | SymbolKind::SelfParam
+        | SymbolKind::LifetimeParam
+        | SymbolKind::DocTest => lsp_types::SymbolKind::Variable,
+        SymbolKind::Union => lsp_types::SymbolKind::Struct,
     }
 }
 

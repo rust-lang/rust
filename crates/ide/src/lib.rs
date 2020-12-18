@@ -57,14 +57,14 @@ use ide_db::{
     symbol_index::{self, FileSymbol},
     LineIndexDatabase,
 };
-use syntax::{SourceFile, TextRange, TextSize};
+use syntax::SourceFile;
 
 use crate::display::ToNav;
 
 pub use crate::{
     call_hierarchy::CallItem,
     diagnostics::{Diagnostic, DiagnosticsConfig, Fix, Severity},
-    display::NavigationTarget,
+    display::navigation_target::{NavigationTarget, SymbolKind},
     expand_macro::ExpandedMacro,
     file_structure::StructureNode,
     folding_ranges::{Fold, FoldKind},
@@ -79,20 +79,19 @@ pub use crate::{
         HighlightedRange,
     },
 };
+pub use assists::{Assist, AssistConfig, AssistId, AssistKind, ResolvedAssist};
 pub use completion::{
     CompletionConfig, CompletionItem, CompletionItemKind, CompletionResolveCapability,
     CompletionScore, ImportEdit, InsertTextFormat,
 };
-pub use ide_db::{
-    call_info::CallInfo,
-    search::{Reference, ReferenceAccess, ReferenceKind},
-};
-
-pub use assists::{Assist, AssistConfig, AssistId, AssistKind, ResolvedAssist};
 pub use hir::{Documentation, Semantics};
 pub use ide_db::base_db::{
     Canceled, Change, CrateGraph, CrateId, Edition, FileId, FilePosition, FileRange, SourceRoot,
     SourceRootId,
+};
+pub use ide_db::{
+    call_info::CallInfo,
+    search::{Reference, ReferenceAccess, ReferenceKind},
 };
 pub use ide_db::{
     label::Label,
@@ -103,6 +102,7 @@ pub use ide_db::{
     RootDatabase,
 };
 pub use ssr::SsrError;
+pub use syntax::{TextRange, TextSize};
 pub use text_edit::{Indel, TextEdit};
 
 pub type Cancelable<T> = Result<T, Canceled>;

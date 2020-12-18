@@ -39,7 +39,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use syntax::{
     ast::{self, NameOwner},
     match_ast, AstNode, Parse, SmolStr, SourceFile,
-    SyntaxKind::{self, *},
+    SyntaxKind::*,
     SyntaxNode, SyntaxNodePtr, TextRange, WalkEvent,
 };
 
@@ -323,7 +323,7 @@ impl Query {
                 let (start, end) = SymbolIndex::map_value_to_range(indexed_value.value);
 
                 for symbol in &symbol_index.symbols[start..end] {
-                    if self.only_types && !is_type(symbol.kind) {
+                    if self.only_types && !symbol.kind.is_type() {
                         continue;
                     }
                     if self.exact && symbol.name != self.query {
@@ -341,21 +341,42 @@ impl Query {
     }
 }
 
-fn is_type(kind: SyntaxKind) -> bool {
-    matches!(kind, STRUCT | ENUM | TRAIT | TYPE_ALIAS)
-}
-
 /// The actual data that is stored in the index. It should be as compact as
 /// possible.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FileSymbol {
     pub file_id: FileId,
     pub name: SmolStr,
-    pub kind: SyntaxKind,
+    pub kind: FileSymbolKind,
     pub range: TextRange,
     pub ptr: SyntaxNodePtr,
     pub name_range: Option<TextRange>,
     pub container_name: Option<SmolStr>,
+}
+
+#[derive(PartialEq, Eq, Hash, Clone, Copy, Debug)]
+pub enum FileSymbolKind {
+    Function,
+    Struct,
+    Enum,
+    Trait,
+    Module,
+    TypeAlias,
+    Const,
+    Static,
+    Macro,
+}
+
+impl FileSymbolKind {
+    fn is_type(self: FileSymbolKind) -> bool {
+        matches!(
+            self,
+            FileSymbolKind::Struct
+                | FileSymbolKind::Enum
+                | FileSymbolKind::Trait
+                | FileSymbolKind::TypeAlias
+        )
+    }
 }
 
 fn source_file_to_file_symbols(source_file: &SourceFile, file_id: FileId) -> Vec<FileSymbol> {
@@ -412,7 +433,18 @@ fn to_symbol(node: &SyntaxNode) -> Option<(SmolStr, SyntaxNodePtr, TextRange)> {
 fn to_file_symbol(node: &SyntaxNode, file_id: FileId) -> Option<FileSymbol> {
     to_symbol(node).map(move |(name, ptr, name_range)| FileSymbol {
         name,
-        kind: node.kind(),
+        kind: match node.kind() {
+            FN => FileSymbolKind::Function,
+            STRUCT => FileSymbolKind::Struct,
+            ENUM => FileSymbolKind::Enum,
+            TRAIT => FileSymbolKind::Trait,
+            MODULE => FileSymbolKind::Module,
+            TYPE_ALIAS => FileSymbolKind::TypeAlias,
+            CONST => FileSymbolKind::Const,
+            STATIC => FileSymbolKind::Static,
+            MACRO_RULES => FileSymbolKind::Macro,
+            kind => unreachable!("{:?}", kind),
+        },
         range: node.text_range(),
         ptr,
         file_id,
