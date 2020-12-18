@@ -1,4 +1,4 @@
-//! Memory allocation APIs
+//! Memory allocation APIs.
 //!
 //! In a given program, the standard library has one “global” memory allocator
 //! that is used for example by `Box<T>` and `Vec<T>`.
