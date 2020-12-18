@@ -2187,16 +2187,9 @@ fn foo_<|>test() {}
                                     0,
                                 ),
                                 full_range: 0..24,
-                                focus_range: Some(
-                                    11..19,
-                                ),
+                                focus_range: 11..19,
                                 name: "foo_test",
-                                kind: Some(
-                                    Function,
-                                ),
-                                container_name: None,
-                                description: None,
-                                docs: None,
+                                kind: Function,
                             },
                             kind: Test {
                                 test_id: Path(
@@ -2232,16 +2225,9 @@ mod tests<|> {
                                     0,
                                 ),
                                 full_range: 0..46,
-                                focus_range: Some(
-                                    4..9,
-                                ),
+                                focus_range: 4..9,
                                 name: "tests",
-                                kind: Some(
-                                    Module,
-                                ),
-                                container_name: None,
-                                description: None,
-                                docs: None,
+                                kind: Module,
                             },
                             kind: TestMod {
                                 path: "tests",
@@ -2273,18 +2259,10 @@ fn main() { let s<|>t = S{ f1:0 }; }
                                         0,
                                     ),
                                     full_range: 0..19,
-                                    focus_range: Some(
-                                        7..8,
-                                    ),
+                                    focus_range: 7..8,
                                     name: "S",
-                                    kind: Some(
-                                        Struct,
-                                    ),
-                                    container_name: None,
-                                    description: Some(
-                                        "struct S",
-                                    ),
-                                    docs: None,
+                                    kind: Struct,
+                                    description: "struct S",
                                 },
                             },
                         ],
@@ -2314,18 +2292,10 @@ fn main() { let s<|>t = S{ f1:Arg(0) }; }
                                         0,
                                     ),
                                     full_range: 17..37,
-                                    focus_range: Some(
-                                        24..25,
-                                    ),
+                                    focus_range: 24..25,
                                     name: "S",
-                                    kind: Some(
-                                        Struct,
-                                    ),
-                                    container_name: None,
-                                    description: Some(
-                                        "struct S",
-                                    ),
-                                    docs: None,
+                                    kind: Struct,
+                                    description: "struct S",
                                 },
                             },
                             HoverGotoTypeData {
@@ -2335,18 +2305,10 @@ fn main() { let s<|>t = S{ f1:Arg(0) }; }
                                         0,
                                     ),
                                     full_range: 0..16,
-                                    focus_range: Some(
-                                        7..10,
-                                    ),
+                                    focus_range: 7..10,
                                     name: "Arg",
-                                    kind: Some(
-                                        Struct,
-                                    ),
-                                    container_name: None,
-                                    description: Some(
-                                        "struct Arg",
-                                    ),
-                                    docs: None,
+                                    kind: Struct,
+                                    description: "struct Arg",
                                 },
                             },
                         ],
@@ -2376,18 +2338,10 @@ fn main() { let s<|>t = S{ f1: S{ f1: Arg(0) } }; }
                                         0,
                                     ),
                                     full_range: 17..37,
-                                    focus_range: Some(
-                                        24..25,
-                                    ),
+                                    focus_range: 24..25,
                                     name: "S",
-                                    kind: Some(
-                                        Struct,
-                                    ),
-                                    container_name: None,
-                                    description: Some(
-                                        "struct S",
-                                    ),
-                                    docs: None,
+                                    kind: Struct,
+                                    description: "struct S",
                                 },
                             },
                             HoverGotoTypeData {
@@ -2397,18 +2351,10 @@ fn main() { let s<|>t = S{ f1: S{ f1: Arg(0) } }; }
                                         0,
                                     ),
                                     full_range: 0..16,
-                                    focus_range: Some(
-                                        7..10,
-                                    ),
+                                    focus_range: 7..10,
                                     name: "Arg",
-                                    kind: Some(
-                                        Struct,
-                                    ),
-                                    container_name: None,
-                                    description: Some(
-                                        "struct Arg",
-                                    ),
-                                    docs: None,
+                                    kind: Struct,
+                                    description: "struct Arg",
                                 },
                             },
                         ],
@@ -2441,18 +2387,10 @@ fn main() { let s<|>t = (A(1), B(2), M::C(3) ); }
                                         0,
                                     ),
                                     full_range: 0..14,
-                                    focus_range: Some(
-                                        7..8,
-                                    ),
+                                    focus_range: 7..8,
                                     name: "A",
-                                    kind: Some(
-                                        Struct,
-                                    ),
-                                    container_name: None,
-                                    description: Some(
-                                        "struct A",
-                                    ),
-                                    docs: None,
+                                    kind: Struct,
+                                    description: "struct A",
                                 },
                             },
                             HoverGotoTypeData {
@@ -2462,18 +2400,10 @@ fn main() { let s<|>t = (A(1), B(2), M::C(3) ); }
                                         0,
                                     ),
                                     full_range: 15..29,
-                                    focus_range: Some(
-                                        22..23,
-                                    ),
+                                    focus_range: 22..23,
                                     name: "B",
-                                    kind: Some(
-                                        Struct,
-                                    ),
-                                    container_name: None,
-                                    description: Some(
-                                        "struct B",
-                                    ),
-                                    docs: None,
+                                    kind: Struct,
+                                    description: "struct B",
                                 },
                             },
                             HoverGotoTypeData {
@@ -2483,18 +2413,10 @@ fn main() { let s<|>t = (A(1), B(2), M::C(3) ); }
                                         0,
                                     ),
                                     full_range: 42..60,
-                                    focus_range: Some(
-                                        53..54,
-                                    ),
+                                    focus_range: 53..54,
                                     name: "C",
-                                    kind: Some(
-                                        Struct,
-                                    ),
-                                    container_name: None,
-                                    description: Some(
-                                        "pub struct C",
-                                    ),
-                                    docs: None,
+                                    kind: Struct,
+                                    description: "pub struct C",
                                 },
                             },
                         ],
@@ -2524,18 +2446,10 @@ fn main() { let s<|>t = foo(); }
                                         0,
                                     ),
                                     full_range: 0..12,
-                                    focus_range: Some(
-                                        6..9,
-                                    ),
+                                    focus_range: 6..9,
                                     name: "Foo",
-                                    kind: Some(
-                                        Trait,
-                                    ),
-                                    container_name: None,
-                                    description: Some(
-                                        "trait Foo",
-                                    ),
-                                    docs: None,
+                                    kind: Trait,
+                                    description: "trait Foo",
                                 },
                             },
                         ],
@@ -2566,18 +2480,10 @@ fn main() { let s<|>t = foo(); }
                                         0,
                                     ),
                                     full_range: 0..15,
-                                    focus_range: Some(
-                                        6..9,
-                                    ),
+                                    focus_range: 6..9,
                                     name: "Foo",
-                                    kind: Some(
-                                        Trait,
-                                    ),
-                                    container_name: None,
-                                    description: Some(
-                                        "trait Foo",
-                                    ),
-                                    docs: None,
+                                    kind: Trait,
+                                    description: "trait Foo",
                                 },
                             },
                             HoverGotoTypeData {
@@ -2587,18 +2493,10 @@ fn main() { let s<|>t = foo(); }
                                         0,
                                     ),
                                     full_range: 16..25,
-                                    focus_range: Some(
-                                        23..24,
-                                    ),
+                                    focus_range: 23..24,
                                     name: "S",
-                                    kind: Some(
-                                        Struct,
-                                    ),
-                                    container_name: None,
-                                    description: Some(
-                                        "struct S",
-                                    ),
-                                    docs: None,
+                                    kind: Struct,
+                                    description: "struct S",
                                 },
                             },
                         ],
@@ -2629,18 +2527,10 @@ fn main() { let s<|>t = foo(); }
                                         0,
                                     ),
                                     full_range: 0..12,
-                                    focus_range: Some(
-                                        6..9,
-                                    ),
+                                    focus_range: 6..9,
                                     name: "Foo",
-                                    kind: Some(
-                                        Trait,
-                                    ),
-                                    container_name: None,
-                                    description: Some(
-                                        "trait Foo",
-                                    ),
-                                    docs: None,
+                                    kind: Trait,
+                                    description: "trait Foo",
                                 },
                             },
                             HoverGotoTypeData {
@@ -2650,18 +2540,10 @@ fn main() { let s<|>t = foo(); }
                                         0,
                                     ),
                                     full_range: 13..25,
-                                    focus_range: Some(
-                                        19..22,
-                                    ),
+                                    focus_range: 19..22,
                                     name: "Bar",
-                                    kind: Some(
-                                        Trait,
-                                    ),
-                                    container_name: None,
-                                    description: Some(
-                                        "trait Bar",
-                                    ),
-                                    docs: None,
+                                    kind: Trait,
+                                    description: "trait Bar",
                                 },
                             },
                         ],
@@ -2695,18 +2577,10 @@ fn main() { let s<|>t = foo(); }
                                         0,
                                     ),
                                     full_range: 0..15,
-                                    focus_range: Some(
-                                        6..9,
-                                    ),
+                                    focus_range: 6..9,
                                     name: "Foo",
-                                    kind: Some(
-                                        Trait,
-                                    ),
-                                    container_name: None,
-                                    description: Some(
-                                        "trait Foo",
-                                    ),
-                                    docs: None,
+                                    kind: Trait,
+                                    description: "trait Foo",
                                 },
                             },
                             HoverGotoTypeData {
@@ -2716,18 +2590,10 @@ fn main() { let s<|>t = foo(); }
                                         0,
                                     ),
                                     full_range: 16..31,
-                                    focus_range: Some(
-                                        22..25,
-                                    ),
+                                    focus_range: 22..25,
                                     name: "Bar",
-                                    kind: Some(
-                                        Trait,
-                                    ),
-                                    container_name: None,
-                                    description: Some(
-                                        "trait Bar",
-                                    ),
-                                    docs: None,
+                                    kind: Trait,
+                                    description: "trait Bar",
                                 },
                             },
                             HoverGotoTypeData {
@@ -2737,18 +2603,10 @@ fn main() { let s<|>t = foo(); }
                                         0,
                                     ),
                                     full_range: 32..44,
-                                    focus_range: Some(
-                                        39..41,
-                                    ),
+                                    focus_range: 39..41,
                                     name: "S1",
-                                    kind: Some(
-                                        Struct,
-                                    ),
-                                    container_name: None,
-                                    description: Some(
-                                        "struct S1",
-                                    ),
-                                    docs: None,
+                                    kind: Struct,
+                                    description: "struct S1",
                                 },
                             },
                             HoverGotoTypeData {
@@ -2758,18 +2616,10 @@ fn main() { let s<|>t = foo(); }
                                         0,
                                     ),
                                     full_range: 45..57,
-                                    focus_range: Some(
-                                        52..54,
-                                    ),
+                                    focus_range: 52..54,
                                     name: "S2",
-                                    kind: Some(
-                                        Struct,
-                                    ),
-                                    container_name: None,
-                                    description: Some(
-                                        "struct S2",
-                                    ),
-                                    docs: None,
+                                    kind: Struct,
+                                    description: "struct S2",
                                 },
                             },
                         ],
@@ -2797,18 +2647,10 @@ fn foo(ar<|>g: &impl Foo) {}
                                         0,
                                     ),
                                     full_range: 0..12,
-                                    focus_range: Some(
-                                        6..9,
-                                    ),
+                                    focus_range: 6..9,
                                     name: "Foo",
-                                    kind: Some(
-                                        Trait,
-                                    ),
-                                    container_name: None,
-                                    description: Some(
-                                        "trait Foo",
-                                    ),
-                                    docs: None,
+                                    kind: Trait,
+                                    description: "trait Foo",
                                 },
                             },
                         ],
@@ -2839,18 +2681,10 @@ fn foo(ar<|>g: &impl Foo + Bar<S>) {}
                                         0,
                                     ),
                                     full_range: 0..12,
-                                    focus_range: Some(
-                                        6..9,
-                                    ),
+                                    focus_range: 6..9,
                                     name: "Foo",
-                                    kind: Some(
-                                        Trait,
-                                    ),
-                                    container_name: None,
-                                    description: Some(
-                                        "trait Foo",
-                                    ),
-                                    docs: None,
+                                    kind: Trait,
+                                    description: "trait Foo",
                                 },
                             },
                             HoverGotoTypeData {
@@ -2860,18 +2694,10 @@ fn foo(ar<|>g: &impl Foo + Bar<S>) {}
                                         0,
                                     ),
                                     full_range: 13..28,
-                                    focus_range: Some(
-                                        19..22,
-                                    ),
+                                    focus_range: 19..22,
                                     name: "Bar",
-                                    kind: Some(
-                                        Trait,
-                                    ),
-                                    container_name: None,
-                                    description: Some(
-                                        "trait Bar",
-                                    ),
-                                    docs: None,
+                                    kind: Trait,
+                                    description: "trait Bar",
                                 },
                             },
                             HoverGotoTypeData {
@@ -2881,18 +2707,10 @@ fn foo(ar<|>g: &impl Foo + Bar<S>) {}
                                         0,
                                     ),
                                     full_range: 29..39,
-                                    focus_range: Some(
-                                        36..37,
-                                    ),
+                                    focus_range: 36..37,
                                     name: "S",
-                                    kind: Some(
-                                        Struct,
-                                    ),
-                                    container_name: None,
-                                    description: Some(
-                                        "struct S",
-                                    ),
-                                    docs: None,
+                                    kind: Struct,
+                                    description: "struct S",
                                 },
                             },
                         ],
@@ -2928,18 +2746,10 @@ mod future {
                                         0,
                                     ),
                                     full_range: 101..163,
-                                    focus_range: Some(
-                                        140..146,
-                                    ),
+                                    focus_range: 140..146,
                                     name: "Future",
-                                    kind: Some(
-                                        Trait,
-                                    ),
-                                    container_name: None,
-                                    description: Some(
-                                        "pub trait Future",
-                                    ),
-                                    docs: None,
+                                    kind: Trait,
+                                    description: "pub trait Future",
                                 },
                             },
                             HoverGotoTypeData {
@@ -2949,18 +2759,10 @@ mod future {
                                         0,
                                     ),
                                     full_range: 0..9,
-                                    focus_range: Some(
-                                        7..8,
-                                    ),
+                                    focus_range: 7..8,
                                     name: "S",
-                                    kind: Some(
-                                        Struct,
-                                    ),
-                                    container_name: None,
-                                    description: Some(
-                                        "struct S",
-                                    ),
-                                    docs: None,
+                                    kind: Struct,
+                                    description: "struct S",
                                 },
                             },
                         ],
@@ -2989,18 +2791,10 @@ fn foo(ar<|>g: &impl Foo<S>) {}
                                         0,
                                     ),
                                     full_range: 0..15,
-                                    focus_range: Some(
-                                        6..9,
-                                    ),
+                                    focus_range: 6..9,
                                     name: "Foo",
-                                    kind: Some(
-                                        Trait,
-                                    ),
-                                    container_name: None,
-                                    description: Some(
-                                        "trait Foo",
-                                    ),
-                                    docs: None,
+                                    kind: Trait,
+                                    description: "trait Foo",
                                 },
                             },
                             HoverGotoTypeData {
@@ -3010,18 +2804,10 @@ fn foo(ar<|>g: &impl Foo<S>) {}
                                         0,
                                     ),
                                     full_range: 16..27,
-                                    focus_range: Some(
-                                        23..24,
-                                    ),
+                                    focus_range: 23..24,
                                     name: "S",
-                                    kind: Some(
-                                        Struct,
-                                    ),
-                                    container_name: None,
-                                    description: Some(
-                                        "struct S",
-                                    ),
-                                    docs: None,
+                                    kind: Struct,
+                                    description: "struct S",
                                 },
                             },
                         ],
@@ -3055,18 +2841,10 @@ fn main() { let s<|>t = foo(); }
                                         0,
                                     ),
                                     full_range: 42..55,
-                                    focus_range: Some(
-                                        49..50,
-                                    ),
+                                    focus_range: 49..50,
                                     name: "B",
-                                    kind: Some(
-                                        Struct,
-                                    ),
-                                    container_name: None,
-                                    description: Some(
-                                        "struct B",
-                                    ),
-                                    docs: None,
+                                    kind: Struct,
+                                    description: "struct B",
                                 },
                             },
                             HoverGotoTypeData {
@@ -3076,18 +2854,10 @@ fn main() { let s<|>t = foo(); }
                                         0,
                                     ),
                                     full_range: 0..12,
-                                    focus_range: Some(
-                                        6..9,
-                                    ),
+                                    focus_range: 6..9,
                                     name: "Foo",
-                                    kind: Some(
-                                        Trait,
-                                    ),
-                                    container_name: None,
-                                    description: Some(
-                                        "trait Foo",
-                                    ),
-                                    docs: None,
+                                    kind: Trait,
+                                    description: "trait Foo",
                                 },
                             },
                         ],
@@ -3115,18 +2885,10 @@ fn foo(ar<|>g: &dyn Foo) {}
                                         0,
                                     ),
                                     full_range: 0..12,
-                                    focus_range: Some(
-                                        6..9,
-                                    ),
+                                    focus_range: 6..9,
                                     name: "Foo",
-                                    kind: Some(
-                                        Trait,
-                                    ),
-                                    container_name: None,
-                                    description: Some(
-                                        "trait Foo",
-                                    ),
-                                    docs: None,
+                                    kind: Trait,
+                                    description: "trait Foo",
                                 },
                             },
                         ],
@@ -3155,18 +2917,10 @@ fn foo(ar<|>g: &dyn Foo<S>) {}
                                         0,
                                     ),
                                     full_range: 0..15,
-                                    focus_range: Some(
-                                        6..9,
-                                    ),
+                                    focus_range: 6..9,
                                     name: "Foo",
-                                    kind: Some(
-                                        Trait,
-                                    ),
-                                    container_name: None,
-                                    description: Some(
-                                        "trait Foo",
-                                    ),
-                                    docs: None,
+                                    kind: Trait,
+                                    description: "trait Foo",
                                 },
                             },
                             HoverGotoTypeData {
@@ -3176,18 +2930,10 @@ fn foo(ar<|>g: &dyn Foo<S>) {}
                                         0,
                                     ),
                                     full_range: 16..27,
-                                    focus_range: Some(
-                                        23..24,
-                                    ),
+                                    focus_range: 23..24,
                                     name: "S",
-                                    kind: Some(
-                                        Struct,
-                                    ),
-                                    container_name: None,
-                                    description: Some(
-                                        "struct S",
-                                    ),
-                                    docs: None,
+                                    kind: Struct,
+                                    description: "struct S",
                                 },
                             },
                         ],
@@ -3219,18 +2965,10 @@ fn foo(a<|>rg: &impl ImplTrait<B<dyn DynTrait<B<S>>>>) {}
                                         0,
                                     ),
                                     full_range: 0..21,
-                                    focus_range: Some(
-                                        6..15,
-                                    ),
+                                    focus_range: 6..15,
                                     name: "ImplTrait",
-                                    kind: Some(
-                                        Trait,
-                                    ),
-                                    container_name: None,
-                                    description: Some(
-                                        "trait ImplTrait",
-                                    ),
-                                    docs: None,
+                                    kind: Trait,
+                                    description: "trait ImplTrait",
                                 },
                             },
                             HoverGotoTypeData {
@@ -3240,18 +2978,10 @@ fn foo(a<|>rg: &impl ImplTrait<B<dyn DynTrait<B<S>>>>) {}
                                         0,
                                     ),
                                     full_range: 43..57,
-                                    focus_range: Some(
-                                        50..51,
-                                    ),
+                                    focus_range: 50..51,
                                     name: "B",
-                                    kind: Some(
-                                        Struct,
-                                    ),
-                                    container_name: None,
-                                    description: Some(
-                                        "struct B",
-                                    ),
-                                    docs: None,
+                                    kind: Struct,
+                                    description: "struct B",
                                 },
                             },
                             HoverGotoTypeData {
@@ -3261,18 +2991,10 @@ fn foo(a<|>rg: &impl ImplTrait<B<dyn DynTrait<B<S>>>>) {}
                                         0,
                                     ),
                                     full_range: 22..42,
-                                    focus_range: Some(
-                                        28..36,
-                                    ),
+                                    focus_range: 28..36,
                                     name: "DynTrait",
-                                    kind: Some(
-                                        Trait,
-                                    ),
-                                    container_name: None,
-                                    description: Some(
-                                        "trait DynTrait",
-                                    ),
-                                    docs: None,
+                                    kind: Trait,
+                                    description: "trait DynTrait",
                                 },
                             },
                             HoverGotoTypeData {
@@ -3282,18 +3004,10 @@ fn foo(a<|>rg: &impl ImplTrait<B<dyn DynTrait<B<S>>>>) {}
                                         0,
                                     ),
                                     full_range: 58..69,
-                                    focus_range: Some(
-                                        65..66,
-                                    ),
+                                    focus_range: 65..66,
                                     name: "S",
-                                    kind: Some(
-                                        Struct,
-                                    ),
-                                    container_name: None,
-                                    description: Some(
-                                        "struct S",
-                                    ),
-                                    docs: None,
+                                    kind: Struct,
+                                    description: "struct S",
                                 },
                             },
                         ],
@@ -3332,18 +3046,10 @@ fn main() { let s<|>t = test().get(); }
                                         0,
                                     ),
                                     full_range: 0..62,
-                                    focus_range: Some(
-                                        6..9,
-                                    ),
+                                    focus_range: 6..9,
                                     name: "Foo",
-                                    kind: Some(
-                                        Trait,
-                                    ),
-                                    container_name: None,
-                                    description: Some(
-                                        "trait Foo",
-                                    ),
-                                    docs: None,
+                                    kind: Trait,
+                                    description: "trait Foo",
                                 },
                             },
                         ],

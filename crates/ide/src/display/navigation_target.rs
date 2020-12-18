@@ -1,5 +1,7 @@
 //! FIXME: write short doc here
 
+use std::fmt;
+
 use either::Either;
 use hir::{AssocItem, Documentation, FieldSource, HasAttrs, HasSource, InFile, ModuleSource};
 use ide_db::{
@@ -42,7 +44,7 @@ pub enum SymbolKind {
 ///
 /// Typically, a `NavigationTarget` corresponds to some element in the source
 /// code, like a function or a struct, but this is not strictly required.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct NavigationTarget {
     pub file_id: FileId,
     /// Range which encompasses the whole element.
@@ -66,6 +68,24 @@ pub struct NavigationTarget {
     pub container_name: Option<SmolStr>,
     pub description: Option<String>,
     pub docs: Option<Documentation>,
+}
+
+impl fmt::Debug for NavigationTarget {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut f = f.debug_struct("NavigationTarget");
+        macro_rules! opt {
+            ($($name:ident)*) => {$(
+                if let Some(it) = &self.$name {
+                    f.field(stringify!($name), it);
+                }
+            )*}
+        }
+        f.field("file_id", &self.file_id).field("full_range", &self.full_range);
+        opt!(focus_range);
+        f.field("name", &self.name);
+        opt!(kind container_name description docs);
+        f.finish()
+    }
 }
 
 pub(crate) trait ToNav {
@@ -487,38 +507,21 @@ fn foo() { enum FooInner { } }
                         0,
                     ),
                     full_range: 0..17,
-                    focus_range: Some(
-                        5..13,
-                    ),
+                    focus_range: 5..13,
                     name: "FooInner",
-                    kind: Some(
-                        Enum,
-                    ),
-                    container_name: None,
-                    description: Some(
-                        "enum FooInner",
-                    ),
-                    docs: None,
+                    kind: Enum,
+                    description: "enum FooInner",
                 },
                 NavigationTarget {
                     file_id: FileId(
                         0,
                     ),
                     full_range: 29..46,
-                    focus_range: Some(
-                        34..42,
-                    ),
+                    focus_range: 34..42,
                     name: "FooInner",
-                    kind: Some(
-                        Enum,
-                    ),
-                    container_name: Some(
-                        "foo",
-                    ),
-                    description: Some(
-                        "enum FooInner",
-                    ),
-                    docs: None,
+                    kind: Enum,
+                    container_name: "foo",
+                    description: "enum FooInner",
                 },
             ]
         "#]]

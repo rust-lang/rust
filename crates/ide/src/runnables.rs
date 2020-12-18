@@ -352,16 +352,9 @@ fn bench() {}
                                 0,
                             ),
                             full_range: 1..13,
-                            focus_range: Some(
-                                4..8,
-                            ),
+                            focus_range: 4..8,
                             name: "main",
-                            kind: Some(
-                                Function,
-                            ),
-                            container_name: None,
-                            description: None,
-                            docs: None,
+                            kind: Function,
                         },
                         kind: Bin,
                         cfg: None,
@@ -372,16 +365,9 @@ fn bench() {}
                                 0,
                             ),
                             full_range: 15..39,
-                            focus_range: Some(
-                                26..34,
-                            ),
+                            focus_range: 26..34,
                             name: "test_foo",
-                            kind: Some(
-                                Function,
-                            ),
-                            container_name: None,
-                            description: None,
-                            docs: None,
+                            kind: Function,
                         },
                         kind: Test {
                             test_id: Path(
@@ -399,16 +385,9 @@ fn bench() {}
                                 0,
                             ),
                             full_range: 41..75,
-                            focus_range: Some(
-                                62..70,
-                            ),
+                            focus_range: 62..70,
                             name: "test_foo",
-                            kind: Some(
-                                Function,
-                            ),
-                            container_name: None,
-                            description: None,
-                            docs: None,
+                            kind: Function,
                         },
                         kind: Test {
                             test_id: Path(
@@ -426,16 +405,9 @@ fn bench() {}
                                 0,
                             ),
                             full_range: 77..99,
-                            focus_range: Some(
-                                89..94,
-                            ),
+                            focus_range: 89..94,
                             name: "bench",
-                            kind: Some(
-                                Function,
-                            ),
-                            container_name: None,
-                            description: None,
-                            docs: None,
+                            kind: Function,
                         },
                         kind: Bench {
                             test_id: Path(
@@ -525,16 +497,9 @@ struct StructWithRunnable(String);
                                 0,
                             ),
                             full_range: 1..13,
-                            focus_range: Some(
-                                4..8,
-                            ),
+                            focus_range: 4..8,
                             name: "main",
-                            kind: Some(
-                                Function,
-                            ),
-                            container_name: None,
-                            description: None,
-                            docs: None,
+                            kind: Function,
                         },
                         kind: Bin,
                         cfg: None,
@@ -545,12 +510,7 @@ struct StructWithRunnable(String);
                                 0,
                             ),
                             full_range: 15..74,
-                            focus_range: None,
                             name: "should_have_runnable",
-                            kind: None,
-                            container_name: None,
-                            description: None,
-                            docs: None,
                         },
                         kind: DocTest {
                             test_id: Path(
@@ -565,12 +525,7 @@ struct StructWithRunnable(String);
                                 0,
                             ),
                             full_range: 76..148,
-                            focus_range: None,
                             name: "should_have_runnable_1",
-                            kind: None,
-                            container_name: None,
-                            description: None,
-                            docs: None,
                         },
                         kind: DocTest {
                             test_id: Path(
@@ -585,12 +540,7 @@ struct StructWithRunnable(String);
                                 0,
                             ),
                             full_range: 150..254,
-                            focus_range: None,
                             name: "should_have_runnable_2",
-                            kind: None,
-                            container_name: None,
-                            description: None,
-                            docs: None,
                         },
                         kind: DocTest {
                             test_id: Path(
@@ -605,12 +555,7 @@ struct StructWithRunnable(String);
                                 0,
                             ),
                             full_range: 756..821,
-                            focus_range: None,
                             name: "StructWithRunnable",
-                            kind: None,
-                            container_name: None,
-                            description: None,
-                            docs: None,
                         },
                         kind: DocTest {
                             test_id: Path(
@@ -649,16 +594,9 @@ impl Data {
                                 0,
                             ),
                             full_range: 1..13,
-                            focus_range: Some(
-                                4..8,
-                            ),
+                            focus_range: 4..8,
                             name: "main",
-                            kind: Some(
-                                Function,
-                            ),
-                            container_name: None,
-                            description: None,
-                            docs: None,
+                            kind: Function,
                         },
                         kind: Bin,
                         cfg: None,
@@ -669,12 +607,7 @@ impl Data {
                                 0,
                             ),
                             full_range: 44..98,
-                            focus_range: None,
                             name: "foo",
-                            kind: None,
-                            container_name: None,
-                            description: None,
-                            docs: None,
                         },
                         kind: DocTest {
                             test_id: Path(
@@ -708,16 +641,9 @@ mod test_mod {
                                 0,
                             ),
                             full_range: 1..51,
-                            focus_range: Some(
-                                5..13,
-                            ),
+                            focus_range: 5..13,
                             name: "test_mod",
-                            kind: Some(
-                                Module,
-                            ),
-                            container_name: None,
-                            description: None,
-                            docs: None,
+                            kind: Module,
                         },
                         kind: TestMod {
                             path: "test_mod",
@@ -730,16 +656,9 @@ mod test_mod {
                                 0,
                             ),
                             full_range: 20..49,
-                            focus_range: Some(
-                                35..44,
-                            ),
+                            focus_range: 35..44,
                             name: "test_foo1",
-                            kind: Some(
-                                Function,
-                            ),
-                            container_name: None,
-                            description: None,
-                            docs: None,
+                            kind: Function,
                         },
                         kind: Test {
                             test_id: Path(
@@ -792,16 +711,9 @@ mod root_tests {
                                 0,
                             ),
                             full_range: 22..323,
-                            focus_range: Some(
-                                26..40,
-                            ),
+                            focus_range: 26..40,
                             name: "nested_tests_0",
-                            kind: Some(
-                                Module,
-                            ),
-                            container_name: None,
-                            description: None,
-                            docs: None,
+                            kind: Module,
                         },
                         kind: TestMod {
                             path: "root_tests::nested_tests_0",
@@ -814,16 +726,9 @@ mod root_tests {
                                 0,
                             ),
                             full_range: 51..192,
-                            focus_range: Some(
-                                55..69,
-                            ),
+                            focus_range: 55..69,
                             name: "nested_tests_1",
-                            kind: Some(
-                                Module,
-                            ),
-                            container_name: None,
-                            description: None,
-                            docs: None,
+                            kind: Module,
                         },
                         kind: TestMod {
                             path: "root_tests::nested_tests_0::nested_tests_1",
@@ -836,16 +741,9 @@ mod root_tests {
                                 0,
                             ),
                             full_range: 84..126,
-                            focus_range: Some(
-                                107..121,
-                            ),
+                            focus_range: 107..121,
                             name: "nested_test_11",
-                            kind: Some(
-                                Function,
-                            ),
-                            container_name: None,
-                            description: None,
-                            docs: None,
+                            kind: Function,
                         },
                         kind: Test {
                             test_id: Path(
@@ -863,16 +761,9 @@ mod root_tests {
                                 0,
                             ),
                             full_range: 140..182,
-                            focus_range: Some(
-                                163..177,
-                            ),
+                            focus_range: 163..177,
                             name: "nested_test_12",
-                            kind: Some(
-                                Function,
-                            ),
-                            container_name: None,
-                            description: None,
-                            docs: None,
+                            kind: Function,
                         },
                         kind: Test {
                             test_id: Path(
@@ -890,16 +781,9 @@ mod root_tests {
                                 0,
                             ),
                             full_range: 202..286,
-                            focus_range: Some(
-                                206..220,
-                            ),
+                            focus_range: 206..220,
                             name: "nested_tests_2",
-                            kind: Some(
-                                Module,
-                            ),
-                            container_name: None,
-                            description: None,
-                            docs: None,
+                            kind: Module,
                         },
                         kind: TestMod {
                             path: "root_tests::nested_tests_0::nested_tests_2",
@@ -912,16 +796,9 @@ mod root_tests {
                                 0,
                             ),
                             full_range: 235..276,
-                            focus_range: Some(
-                                258..271,
-                            ),
+                            focus_range: 258..271,
                             name: "nested_test_2",
-                            kind: Some(
-                                Function,
-                            ),
-                            container_name: None,
-                            description: None,
-                            docs: None,
+                            kind: Function,
                         },
                         kind: Test {
                             test_id: Path(
@@ -957,16 +834,9 @@ fn test_foo1() {}
                                 0,
                             ),
                             full_range: 1..50,
-                            focus_range: Some(
-                                36..45,
-                            ),
+                            focus_range: 36..45,
                             name: "test_foo1",
-                            kind: Some(
-                                Function,
-                            ),
-                            container_name: None,
-                            description: None,
-                            docs: None,
+                            kind: Function,
                         },
                         kind: Test {
                             test_id: Path(
@@ -1009,16 +879,9 @@ fn test_foo1() {}
                                 0,
                             ),
                             full_range: 1..72,
-                            focus_range: Some(
-                                58..67,
-                            ),
+                            focus_range: 58..67,
                             name: "test_foo1",
-                            kind: Some(
-                                Function,
-                            ),
-                            container_name: None,
-                            description: None,
-                            docs: None,
+                            kind: Function,
                         },
                         kind: Test {
                             test_id: Path(
