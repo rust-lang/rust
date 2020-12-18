@@ -11,6 +11,7 @@ use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
 pub mod bless;
+pub mod crater;
 pub mod fmt;
 pub mod new_lint;
 pub mod ra_setup;
