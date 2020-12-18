@@ -98,6 +98,7 @@ impl Krate {
                     .expect("clippy output did not contain \"warning: \"");
                 let mut new = line[0..pos].to_string();
                 new.push_str(&line[pos + remove_pat.len()..]);
+                new.push('\n');
                 new
             })
             .collect();
@@ -142,6 +143,7 @@ pub fn run() {
 
     let all_warnings: Vec<String> = clippy_lint_results.into_iter().flatten().collect();
 
-    // TODO: save these into a file
-    all_warnings.iter().for_each(|l| println!("{}", l));
+    // save the text into mini-crater/logs.txt
+    let text = all_warnings.join("");
+    std::fs::write("mini-crater/logs.txt", text).unwrap();
 }
