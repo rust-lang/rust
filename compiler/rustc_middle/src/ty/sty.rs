@@ -40,12 +40,12 @@ pub struct TypeAndMut<'tcx> {
 /// at least as big as the scope `fr.scope`".
 pub struct FreeRegion {
     pub scope: DefId,
-    pub bound_region: BoundRegion,
+    pub bound_region: BoundRegionKind,
 }
 
 #[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash, TyEncodable, TyDecodable, Copy)]
 #[derive(HashStable)]
-pub enum BoundRegion {
+pub enum BoundRegionKind {
     /// An anonymous region parameter for a given fn (&T)
     BrAnon(u32),
 
@@ -60,22 +60,30 @@ pub enum BoundRegion {
     BrEnv,
 }
 
-impl BoundRegion {
-    pub fn is_named(&self) -> bool {
-        match *self {
-            BoundRegion::BrNamed(_, name) => name != kw::UnderscoreLifetime,
-            _ => false,
-        }
-    }
+#[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable, Debug, PartialOrd, Ord)]
+#[derive(HashStable)]
+pub struct BoundRegion {
+    pub kind: BoundRegionKind,
+}
 
+impl BoundRegion {
     /// When canonicalizing, we replace unbound inference variables and free
     /// regions with anonymous late bound regions. This method asserts that
     /// we have an anonymous late bound region, which hence may refer to
     /// a canonical variable.
     pub fn assert_bound_var(&self) -> BoundVar {
-        match *self {
-            BoundRegion::BrAnon(var) => BoundVar::from_u32(var),
+        match self.kind {
+            BoundRegionKind::BrAnon(var) => BoundVar::from_u32(var),
             _ => bug!("bound region is not anonymous"),
+        }
+    }
+}
+
+impl BoundRegionKind {
+    pub fn is_named(&self) -> bool {
+        match *self {
+            BoundRegionKind::BrNamed(_, name) => name != kw::UnderscoreLifetime,
+            _ => false,
         }
     }
 }
@@ -1551,7 +1559,7 @@ impl RegionKind {
     pub fn has_name(&self) -> bool {
         match *self {
             RegionKind::ReEarlyBound(ebr) => ebr.has_name(),
-            RegionKind::ReLateBound(_, br) => br.is_named(),
+            RegionKind::ReLateBound(_, br) => br.kind.is_named(),
             RegionKind::ReFree(fr) => fr.bound_region.is_named(),
             RegionKind::ReStatic => true,
             RegionKind::ReVar(..) => false,

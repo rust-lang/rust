@@ -1,6 +1,6 @@
 use crate::traits::{ObligationCause, ObligationCauseCode};
 use crate::ty::diagnostics::suggest_constraining_type_param;
-use crate::ty::{self, BoundRegion, Region, Ty, TyCtxt};
+use crate::ty::{self, BoundRegionKind, Region, Ty, TyCtxt};
 use rustc_ast as ast;
 use rustc_errors::Applicability::{MachineApplicable, MaybeIncorrect};
 use rustc_errors::{pluralize, DiagnosticBuilder};
@@ -42,8 +42,8 @@ pub enum TypeError<'tcx> {
     ArgCount,
 
     RegionsDoesNotOutlive(Region<'tcx>, Region<'tcx>),
-    RegionsInsufficientlyPolymorphic(BoundRegion, Region<'tcx>),
-    RegionsOverlyPolymorphic(BoundRegion, Region<'tcx>),
+    RegionsInsufficientlyPolymorphic(BoundRegionKind, Region<'tcx>),
+    RegionsOverlyPolymorphic(BoundRegionKind, Region<'tcx>),
     RegionsPlaceholderMismatch,
 
     Sorts(ExpectedFound<Ty<'tcx>>),
@@ -94,7 +94,7 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
             }
         }
 
-        let br_string = |br: ty::BoundRegion| match br {
+        let br_string = |br: ty::BoundRegionKind| match br {
             ty::BrNamed(_, name) => format!(" {}", name),
             _ => String::new(),
         };

@@ -44,7 +44,7 @@ crate fn evaluate_goal<'tcx>(
 
     let reempty_placeholder = tcx.mk_region(ty::RegionKind::RePlaceholder(ty::Placeholder {
         universe: ty::UniverseIndex::ROOT,
-        name: ty::BoundRegion::BrAnon(placeholders_collector.next_anon_region_placeholder + 1),
+        name: ty::BoundRegionKind::BrAnon(placeholders_collector.next_anon_region_placeholder + 1),
     }));
 
     let mut params_substitutor =
