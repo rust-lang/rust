@@ -1,0 +1,180 @@
+regex-1.4.2/src/backtrack.rs:100:13: redundant field names in struct initialization
+regex-1.4.2/src/backtrack.rs:133:17: it looks like the same item is being pushed into this Vec
+regex-1.4.2/src/backtrack.rs:223:29: redundant field names in struct initialization
+regex-1.4.2/src/backtrack.rs:230:66: redundant field names in struct initialization
+regex-1.4.2/src/backtrack.rs:97:13: redundant field names in struct initialization
+regex-1.4.2/src/backtrack.rs:98:13: redundant field names in struct initialization
+regex-1.4.2/src/backtrack.rs:99:13: redundant field names in struct initialization
+regex-1.4.2/src/compile.rs:1000:17: redundant field names in struct initialization
+regex-1.4.2/src/compile.rs:1089:44: redundant field names in struct initialization
+regex-1.4.2/src/compile.rs:1089:54: redundant field names in struct initialization
+regex-1.4.2/src/compile.rs:136:46: use of `unwrap_or` followed by a function call
+regex-1.4.2/src/compile.rs:172:42: use of `unwrap_or` followed by a function call
+regex-1.4.2/src/compile.rs:180:43: use of `unwrap_or` followed by a function call
+regex-1.4.2/src/compile.rs:188:5: this function's return value is unnecessarily wrapped by `Result`
+regex-1.4.2/src/compile.rs:375:39: use of `unwrap_or` followed by a function call
+regex-1.4.2/src/compile.rs:379:29: redundant field names in struct initialization
+regex-1.4.2/src/compile.rs:379:41: redundant field names in struct initialization
+regex-1.4.2/src/compile.rs:413:56: redundant field names in struct initialization
+regex-1.4.2/src/compile.rs:421:45: redundant field names in struct initialization
+regex-1.4.2/src/compile.rs:428:51: redundant field names in struct initialization
+regex-1.4.2/src/compile.rs:430:29: redundant field names in struct initialization
+regex-1.4.2/src/compile.rs:438:5: this function's return value is unnecessarily wrapped by `Result`
+regex-1.4.2/src/compile.rs:43:5: you should consider adding a `Default` implementation for `compile::Compiler`
+regex-1.4.2/src/compile.rs:468:5: this function's return value is unnecessarily wrapped by `Result`
+regex-1.4.2/src/compile.rs:469:57: redundant field names in struct initialization
+regex-1.4.2/src/compile.rs:470:25: redundant field names in struct initialization
+regex-1.4.2/src/compile.rs:494:25: redundant field names in struct initialization
+regex-1.4.2/src/compile.rs:494:37: redundant field names in struct initialization
+regex-1.4.2/src/compile.rs:637:14: use of `unwrap_or` followed by a function call
+regex-1.4.2/src/compile.rs:661:41: use of `unwrap_or` followed by a function call
+regex-1.4.2/src/compile.rs:786:5: this function's return value is unnecessarily wrapped by `Result`
+regex-1.4.2/src/compile.rs:838:21: redundant field names in struct initialization
+regex-1.4.2/src/compile.rs:845:21: redundant field names in struct initialization
+regex-1.4.2/src/compile.rs:860:41: redundant field names in struct initialization
+regex-1.4.2/src/compile.rs:860:55: redundant field names in struct initialization
+regex-1.4.2/src/compile.rs:920:39: redundant field names in struct initialization
+regex-1.4.2/src/compile.rs:920:51: redundant field names in struct initialization
+regex-1.4.2/src/compile.rs:923:49: redundant field names in struct initialization
+regex-1.4.2/src/compile.rs:923:61: redundant field names in struct initialization
+regex-1.4.2/src/compile.rs:925:59: redundant field names in struct initialization
+regex-1.4.2/src/compile.rs:925:71: redundant field names in struct initialization
+regex-1.4.2/src/compile.rs:927:43: redundant field names in struct initialization
+regex-1.4.2/src/compile.rs:930:41: redundant field names in struct initialization
+regex-1.4.2/src/compile.rs:930:53: redundant field names in struct initialization
+regex-1.4.2/src/compile.rs:930:67: redundant field names in struct initialization
+regex-1.4.2/src/compile.rs:991:5: this function's return value is unnecessarily wrapped by `Result`
+regex-1.4.2/src/dfa.rs:1380:14: the operation is ineffective. Consider reducing it to `(empty_flags.start as u8)`
+regex-1.4.2/src/dfa.rs:1614:13: redundant field names in struct initialization
+regex-1.4.2/src/dfa.rs:1651:38: redundant field names in struct initialization
+regex-1.4.2/src/dfa.rs:1701:18: digits of hex or binary literal not grouped by four
+regex-1.4.2/src/dfa.rs:1705:19: digits of hex or binary literal not grouped by four
+regex-1.4.2/src/dfa.rs:1709:18: digits of hex or binary literal not grouped by four
+regex-1.4.2/src/dfa.rs:1713:19: digits of hex or binary literal not grouped by four
+regex-1.4.2/src/dfa.rs:1717:18: digits of hex or binary literal not grouped by four
+regex-1.4.2/src/dfa.rs:1721:19: digits of hex or binary literal not grouped by four
+regex-1.4.2/src/dfa.rs:1741:9: match expression looks like `matches!` macro
+regex-1.4.2/src/dfa.rs:457:13: redundant field names in struct initialization
+regex-1.4.2/src/dfa.rs:459:13: redundant field names in struct initialization
+regex-1.4.2/src/dfa.rs:460:13: redundant field names in struct initialization
+regex-1.4.2/src/dfa.rs:487:13: redundant field names in struct initialization
+regex-1.4.2/src/dfa.rs:489:13: redundant field names in struct initialization
+regex-1.4.2/src/dfa.rs:490:13: redundant field names in struct initialization
+regex-1.4.2/src/dfa.rs:518:13: redundant field names in struct initialization
+regex-1.4.2/src/dfa.rs:520:13: redundant field names in struct initialization
+regex-1.4.2/src/error.rs:6:1: this seems like a manual implementation of the non-exhaustive pattern
+regex-1.4.2/src/exec.rs:1028:5: this function has too many arguments (9/7)
+regex-1.4.2/src/exec.rs:137:9: field assignment outside of initializer for an instance created with Default::default()
+regex-1.4.2/src/exec.rs:245:62: this `if` has identical blocks
+regex-1.4.2/src/exec.rs:262:60: this `if` has identical blocks
+regex-1.4.2/src/exec.rs:278:13: redundant field names in struct initialization
+regex-1.4.2/src/exec.rs:281:13: redundant field names in struct initialization
+regex-1.4.2/src/exec.rs:300:30: redundant field names in struct initialization
+regex-1.4.2/src/exec.rs:329:13: redundant field names in struct initialization
+regex-1.4.2/src/exec.rs:330:13: redundant field names in struct initialization
+regex-1.4.2/src/exec.rs:331:13: redundant field names in struct initialization
+regex-1.4.2/src/exec.rs:334:13: redundant field names in struct initialization
+regex-1.4.2/src/exec.rs:340:19: redundant field names in struct initialization
+regex-1.4.2/src/expand.rs:130:22: this call to `as_ref` does nothing
+regex-1.4.2/src/expand.rs:186:5: match expression looks like `matches!` macro
+regex-1.4.2/src/expand.rs:22:13: calling `push_str()` using a single-character string literal
+regex-1.4.2/src/expand.rs:30:17: calling `push_str()` using a single-character string literal
+regex-1.4.2/src/input.rs:165:31: redundant field names in struct initialization
+regex-1.4.2/src/input.rs:236:21: redundant field names in struct initialization
+regex-1.4.2/src/input.rs:236:33: redundant field names in struct initialization
+regex-1.4.2/src/literal/imp.rs:435:13: redundant field names in struct initialization
+regex-1.4.2/src/literal/imp.rs:436:13: redundant field names in struct initialization
+regex-1.4.2/src/literal/imp.rs:437:13: redundant field names in struct initialization
+regex-1.4.2/src/literal/imp.rs:438:13: redundant field names in struct initialization
+regex-1.4.2/src/literal/imp.rs:439:13: redundant field names in struct initialization
+regex-1.4.2/src/literal/imp.rs:440:13: redundant field names in struct initialization
+regex-1.4.2/src/literal/imp.rs:579:13: redundant field names in struct initialization
+regex-1.4.2/src/literal/imp.rs:580:13: redundant field names in struct initialization
+regex-1.4.2/src/literal/imp.rs:583:13: redundant field names in struct initialization
+regex-1.4.2/src/literal/imp.rs:648:9: unneeded `return` statement
+regex-1.4.2/src/literal/imp.rs:65:13: redundant field names in struct initialization
+regex-1.4.2/src/literal/imp.rs:68:13: redundant field names in struct initialization
+regex-1.4.2/src/literal/imp.rs:786:42: manual saturating arithmetic
+regex-1.4.2/src/pikevm.rs:103:15: redundant field names in struct initialization
+regex-1.4.2/src/pikevm.rs:103:52: redundant field names in struct initialization
+regex-1.4.2/src/pikevm.rs:114:5: this function has too many arguments (8/7)
+regex-1.4.2/src/pikevm.rs:224:5: this function has too many arguments (8/7)
+regex-1.4.2/src/pikevm.rs:88:5: this function has too many arguments (8/7)
+regex-1.4.2/src/prog.rs:120:9: match expression looks like `matches!` macro
+regex-1.4.2/src/prog.rs:236:13: using `write!()` with a format string that ends in a single newline
+regex-1.4.2/src/prog.rs:301:9: match expression looks like `matches!` macro
+regex-1.4.2/src/prog.rs:80:5: you should consider adding a `Default` implementation for `prog::Program`
+regex-1.4.2/src/re_bytes.rs:1100:5: explicit lifetimes given in parameter types where they could be elided (or replaced with `'_` if needed by type declaration)
+regex-1.4.2/src/re_bytes.rs:1125:5: explicit lifetimes given in parameter types where they could be elided (or replaced with `'_` if needed by type declaration)
+regex-1.4.2/src/re_bytes.rs:1140:5: explicit lifetimes given in parameter types where they could be elided (or replaced with `'_` if needed by type declaration)
+regex-1.4.2/src/re_bytes.rs:257:13: redundant field names in struct initialization
+regex-1.4.2/src/re_bytes.rs:55:33: redundant field names in struct initialization
+regex-1.4.2/src/re_bytes.rs:55:47: redundant field names in struct initialization
+regex-1.4.2/src/re_bytes.rs:721:13: redundant field names in struct initialization
+regex-1.4.2/src/re_bytes.rs:844:1: item `re_bytes::CaptureLocations` has a public `len` method but no corresponding `is_empty` method
+regex-1.4.2/src/re_bytes.rs:892:1: item `re_bytes::Captures<'t>` has a public `len` method but no corresponding `is_empty` method
+regex-1.4.2/src/re_set.rs:192:13: redundant field names in struct initialization
+regex-1.4.2/src/re_set.rs:192:13: redundant field names in struct initialization
+regex-1.4.2/src/re_trait.rs:137:29: redundant field names in struct initialization
+regex-1.4.2/src/re_unicode.rs:1095:13: redundant field names in struct initialization
+regex-1.4.2/src/re_unicode.rs:1142:5: explicit lifetimes given in parameter types where they could be elided (or replaced with `'_` if needed by type declaration)
+regex-1.4.2/src/re_unicode.rs:1167:5: explicit lifetimes given in parameter types where they could be elided (or replaced with `'_` if needed by type declaration)
+regex-1.4.2/src/re_unicode.rs:314:13: redundant field names in struct initialization
+regex-1.4.2/src/re_unicode.rs:64:33: redundant field names in struct initialization
+regex-1.4.2/src/re_unicode.rs:64:47: redundant field names in struct initialization
+regex-1.4.2/src/re_unicode.rs:861:1: item `re_unicode::CaptureLocations` has a public `len` method but no corresponding `is_empty` method
+regex-1.4.2/src/re_unicode.rs:909:1: item `re_unicode::Captures<'t>` has a public `len` method but no corresponding `is_empty` method
+regex-1.4.2/src/utf8.rs:100:16: digits of hex or binary literal not grouped by four
+regex-1.4.2/src/utf8.rs:103:16: digits of hex or binary literal not grouped by four
+regex-1.4.2/src/utf8.rs:143:24: digits of hex or binary literal not grouped by four
+regex-1.4.2/src/utf8.rs:143:9: digits of hex or binary literal not grouped by four
+regex-1.4.2/src/utf8.rs:30:20: digits of hex or binary literal not grouped by four
+regex-1.4.2/src/utf8.rs:58:23: digits of hex or binary literal not grouped by four
+regex-1.4.2/src/utf8.rs:58:9: digits of hex or binary literal not grouped by four
+regex-1.4.2/src/utf8.rs:63:16: digits of hex or binary literal not grouped by four
+regex-1.4.2/src/utf8.rs:77:16: digits of hex or binary literal not grouped by four
+regex-1.4.2/src/utf8.rs:80:16: digits of hex or binary literal not grouped by four
+regex-1.4.2/src/utf8.rs:92:23: digits of hex or binary literal not grouped by four
+regex-1.4.2/src/utf8.rs:92:9: digits of hex or binary literal not grouped by four
+regex-1.4.2/src/utf8.rs:97:16: digits of hex or binary literal not grouped by four
+cargo-0.49.0/src/bin/cargo/cli.rs:121:5: calling `push_str()` using a single-character string literal
+cargo-0.49.0/src/cargo/core/compiler/custom_build.rs:353:56: stripping a prefix manually
+cargo-0.49.0/src/cargo/core/compiler/custom_build.rs:762:5: this function's return value is unnecessarily wrapped by `Result`
+cargo-0.49.0/src/cargo/core/compiler/fingerprint.rs:1664:5: field assignment outside of initializer for an instance created with Default::default()
+cargo-0.49.0/src/cargo/core/compiler/fingerprint.rs:1795:5: field assignment outside of initializer for an instance created with Default::default()
+cargo-0.49.0/src/cargo/core/compiler/fingerprint.rs:1980:24: stripping a prefix manually
+cargo-0.49.0/src/cargo/core/compiler/mod.rs:1131:1: this function's return value is unnecessarily wrapped by `Result`
+cargo-0.49.0/src/cargo/core/compiler/mod.rs:364:5: this function's return value is unnecessarily wrapped by `Result`
+cargo-0.49.0/src/cargo/core/compiler/mod.rs:693:1: this function's return value is unnecessarily wrapped by `Result`
+cargo-0.49.0/src/cargo/core/package.rs:421:5: explicit lifetimes given in parameter types where they could be elided (or replaced with `'_` if needed by type declaration)
+cargo-0.49.0/src/cargo/core/profiles.rs:143:5: this function's return value is unnecessarily wrapped by `Result`
+cargo-0.49.0/src/cargo/core/profiles.rs:372:9: field assignment outside of initializer for an instance created with Default::default()
+cargo-0.49.0/src/cargo/core/resolver/errors.rs:305:17: calling `push_str()` using a single-character string literal
+cargo-0.49.0/src/cargo/core/resolver/resolve.rs:239:5: explicit lifetimes given in parameter types where they could be elided (or replaced with `'_` if needed by type declaration)
+cargo-0.49.0/src/cargo/core/resolver/types.rs:187:5: explicit lifetimes given in parameter types where they could be elided (or replaced with `'_` if needed by type declaration)
+cargo-0.49.0/src/cargo/core/resolver/types.rs:261:5: explicit lifetimes given in parameter types where they could be elided (or replaced with `'_` if needed by type declaration)
+cargo-0.49.0/src/cargo/core/workspace.rs:1056:5: this function's return value is unnecessarily wrapped by `Result`
+cargo-0.49.0/src/cargo/core/workspace.rs:440:9: this function's return value is unnecessarily wrapped by `Result`
+cargo-0.49.0/src/cargo/ops/cargo_compile.rs:127:35: usage of `FromIterator::from_iter`
+cargo-0.49.0/src/cargo/ops/common_for_install_and_uninstall.rs:233:21: calling `push_str()` using a single-character string literal
+cargo-0.49.0/src/cargo/ops/common_for_install_and_uninstall.rs:370:5: this function's return value is unnecessarily wrapped by `Result`
+cargo-0.49.0/src/cargo/ops/fix.rs:608:9: field assignment outside of initializer for an instance created with Default::default()
+cargo-0.49.0/src/cargo/ops/fix.rs:619:48: stripping a prefix manually
+cargo-0.49.0/src/cargo/ops/lockfile.rs:154:13: calling `push_str()` using a single-character string literal
+cargo-0.49.0/src/cargo/ops/lockfile.rs:217:9: calling `push_str()` using a single-character string literal
+cargo-0.49.0/src/cargo/ops/lockfile.rs:87:1: this function's return value is unnecessarily wrapped by `Result`
+cargo-0.49.0/src/cargo/sources/git/source.rs:69:20: comparison to empty slice
+cargo-0.49.0/src/cargo/sources/git/utils.rs:1158:9: stripping a suffix manually
+cargo-0.49.0/src/cargo/sources/git/utils.rs:758:9: calling `push_str()` using a single-character string literal
+cargo-0.49.0/src/cargo/sources/path.rs:339:9: this function's return value is unnecessarily wrapped by `Result`
+cargo-0.49.0/src/cargo/sources/registry/index.rs:736:1: explicit lifetimes given in parameter types where they could be elided (or replaced with `'_` if needed by type declaration)
+cargo-0.49.0/src/cargo/util/config/key.rs:69:9: calling `push_str()` using a single-character string literal
+cargo-0.49.0/src/cargo/util/config/value.rs:81:9: match expression looks like `matches!` macro
+cargo-0.49.0/src/cargo/util/errors.rs:473:5: manual `RangeInclusive::contains` implementation
+cargo-0.49.0/src/cargo/util/paths.rs:93:31: comparison to empty slice
+cargo-0.49.0/src/cargo/util/progress.rs:269:17: calling `push_str()` using a single-character string literal
+cargo-0.49.0/src/cargo/util/progress.rs:272:17: calling `push_str()` using a single-character string literal
+cargo-0.49.0/src/cargo/util/progress.rs:274:17: calling `push_str()` using a single-character string literal
+cargo-0.49.0/src/cargo/util/progress.rs:280:13: calling `push_str()` using a single-character string literal
+cargo-0.49.0/src/cargo/util/progress.rs:282:9: calling `push_str()` using a single-character string literal
+cargo-0.49.0/src/cargo/util/toml/mod.rs:1687:33: unnecessary closure used to substitute value for `Option::None`
