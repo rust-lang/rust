@@ -119,3 +119,19 @@ fn inactive_item() {
         "#,
     );
 }
+
+/// Tests that `cfg` attributes behind `cfg_attr` is handled properly.
+#[test]
+fn inactive_via_cfg_attr() {
+    check_diagnostics(
+        r#"
+        //- /lib.rs
+          #[cfg_attr(not(never), cfg(no))] fn f() {}
+        //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ code is inactive due to #[cfg] directives: no is disabled
+
+          #[cfg_attr(not(never), cfg(not(no)))] fn f() {}
+
+          #[cfg_attr(never, cfg(no))] fn g() {}
+        "#,
+    );
+}
