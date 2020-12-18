@@ -440,7 +440,10 @@ impl From<clean::Impl> for Impl {
         Impl {
             is_unsafe: unsafety == rustc_hir::Unsafety::Unsafe,
             generics: generics.into(),
-            provided_trait_methods: provided_trait_methods.into_iter().collect(),
+            provided_trait_methods: provided_trait_methods
+                .into_iter()
+                .map(|x| x.to_string())
+                .collect(),
             trait_: trait_.map(Into::into),
             for_: for_.into(),
             items: ids(items),
