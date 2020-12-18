@@ -1,7 +1,7 @@
 #![cfg_attr(feature = "deny-warnings", deny(warnings))]
 
 use clap::{App, Arg, ArgMatches, SubCommand};
-use clippy_dev::{bless, fmt, new_lint, ra_setup, serve, stderr_length_check, update_lints};
+use clippy_dev::{bless, crater, fmt, new_lint, ra_setup, serve, stderr_length_check, update_lints};
 
 fn main() {
     let matches = get_clap_config();
@@ -9,6 +9,9 @@ fn main() {
     match matches.subcommand() {
         ("bless", Some(matches)) => {
             bless::bless(matches.is_present("ignore-timestamp"));
+        },
+        ("crater", Some(_)) => {
+            crater::run();
         },
         ("fmt", Some(matches)) => {
             fmt::run(matches.is_present("check"), matches.is_present("verbose"));
@@ -56,6 +59,7 @@ fn get_clap_config<'a>() -> ArgMatches<'a> {
                         .help("Include files updated before clippy was built"),
                 ),
         )
+        .subcommand(SubCommand::with_name("crater").about("run clippy on a set of crates and check output"))
         .subcommand(
             SubCommand::with_name("fmt")
                 .about("Run rustfmt on all projects and tests")

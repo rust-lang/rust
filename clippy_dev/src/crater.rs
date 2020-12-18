@@ -69,7 +69,7 @@ fn build_clippy() {
 }
 
 // the main fn
-pub(crate) fn run() {
+pub fn run() {
     let cargo_clippy_path: PathBuf = PathBuf::from("target/debug/cargo-clippy");
     let clippy_driver_path: PathBuf = PathBuf::from("target/debug/cargo-driver");
 
@@ -88,7 +88,7 @@ pub(crate) fn run() {
     );
 
     // download and extract the crates, then run clippy on them and collect clippys warnings
-    let clippy_lint_results: Vec<String> = krates
+    let _clippy_lint_results: Vec<String> = krates
         .into_iter()
         .map(|krate| krate.download_and_extract())
         .map(|krate| krate.run_clippy_lints())
