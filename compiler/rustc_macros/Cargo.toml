@@ -12,3 +12,4 @@ synstructure = "0.12.1"
 syn = { version = "1", features = ["full"] }
 proc-macro2 = "1"
 quote = "1"
+phf_codegen = "0.8"

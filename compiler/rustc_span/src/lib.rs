@@ -90,7 +90,7 @@ pub struct SessionGlobals {
 impl SessionGlobals {
     pub fn new(edition: Edition) -> SessionGlobals {
         SessionGlobals {
-            symbol_interner: Lock::new(symbol::Interner::fresh()),
+            symbol_interner: Lock::new(symbol::Interner::default()),
             span_interner: Lock::new(span_encoding::SpanInterner::default()),
             hygiene_data: Lock::new(hygiene::HygieneData::new(edition)),
             source_map: Lock::new(None),
