@@ -9,7 +9,7 @@ use syntax::{
     ast::{
         self,
         edit::{AstNodeEdit, IndentLevel},
-        make, AstNode, PathSegmentKind, VisibilityOwner,
+        make, AstNode, AttrsOwner, PathSegmentKind, VisibilityOwner,
     },
     AstToken, InsertPosition, NodeOrToken, SyntaxElement, SyntaxNode, SyntaxToken,
 };
@@ -180,6 +180,15 @@ fn eq_visibility(vis0: Option<ast::Visibility>, vis1: Option<ast::Visibility>) -
     }
 }
 
+fn eq_attrs(
+    attrs0: impl Iterator<Item = ast::Attr>,
+    attrs1: impl Iterator<Item = ast::Attr>,
+) -> bool {
+    let attrs0 = attrs0.map(|attr| attr.to_string());
+    let attrs1 = attrs1.map(|attr| attr.to_string());
+    attrs0.eq(attrs1)
+}
+
 pub fn try_merge_imports(
     lhs: &ast::Use,
     rhs: &ast::Use,
@@ -189,6 +198,10 @@ pub fn try_merge_imports(
     if !eq_visibility(lhs.visibility(), rhs.visibility()) {
         return None;
     }
+    if !eq_attrs(lhs.attrs(), rhs.attrs()) {
+        return None;
+    }
+
     let lhs_tree = lhs.use_tree()?;
     let rhs_tree = rhs.use_tree()?;
     let merged = try_merge_trees(&lhs_tree, &rhs_tree, merge_behavior)?;
