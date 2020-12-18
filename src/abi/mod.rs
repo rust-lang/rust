@@ -64,7 +64,7 @@ pub(crate) fn fn_sig_for_fn_abi<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx
         ty::Generator(_, substs, _) => {
             let sig = substs.as_generator().poly_sig();
 
-            let env_region = ty::ReLateBound(ty::INNERMOST, ty::BrEnv);
+            let env_region = ty::ReLateBound(ty::INNERMOST, ty::BoundRegion { kind: ty::BrEnv });
             let env_ty = tcx.mk_mut_ref(tcx.mk_region(env_region), ty);
 
             let pin_did = tcx.require_lang_item(rustc_hir::LangItem::Pin, None);
