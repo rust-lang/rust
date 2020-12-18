@@ -6,7 +6,6 @@ use crate::os::windows::ffi::{OsStrExt, OsStringExt};
 use crate::path::PathBuf;
 use crate::time::Duration;
 
-pub use self::rand::hashmap_random_keys;
 pub use libc::strlen;
 
 #[macro_use]
@@ -30,7 +29,6 @@ pub mod os_str;
 pub mod path;
 pub mod pipe;
 pub mod process;
-pub mod rand;
 pub mod rwlock;
 pub mod thread;
 pub mod thread_local_dtor;
@@ -270,18 +268,4 @@ pub fn abort_internal() -> ! {
         }
     }
     crate::intrinsics::abort();
-}
-
-cfg_if::cfg_if! {
-    if #[cfg(target_vendor = "uwp")] {
-        #[link(name = "ws2_32")]
-        // For BCryptGenRandom
-        #[link(name = "bcrypt")]
-        extern "C" {}
-    } else {
-        #[link(name = "advapi32")]
-        #[link(name = "ws2_32")]
-        #[link(name = "userenv")]
-        extern "C" {}
-    }
 }

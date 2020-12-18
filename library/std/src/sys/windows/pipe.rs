@@ -11,7 +11,6 @@ use crate::sync::atomic::Ordering::SeqCst;
 use crate::sys::c;
 use crate::sys::fs::{File, OpenOptions};
 use crate::sys::handle::Handle;
-use crate::sys::hashmap_random_keys;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Anonymous pipes
@@ -161,8 +160,9 @@ fn random_number() -> usize {
         if N.load(SeqCst) != 0 {
             return N.fetch_add(1, SeqCst);
         }
-
-        N.store(hashmap_random_keys().0 as usize, SeqCst);
+        let mut buf = [0u8; 8];
+        getrandom::getrandom(&mut buf).expect("OS RNG failure");
+        N.store(u64::from_ne_bytes(buf) as usize, SeqCst);
     }
 }
 

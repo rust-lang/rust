@@ -3,7 +3,6 @@
 
 use crate::io::ErrorKind;
 
-pub use self::rand::hashmap_random_keys;
 pub use crate::os::vxworks as platform;
 pub use libc::strlen;
 
@@ -41,7 +40,6 @@ pub mod path;
 #[path = "../unix/pipe.rs"]
 pub mod pipe;
 pub mod process;
-pub mod rand;
 #[path = "../unix/rwlock.rs"]
 pub mod rwlock;
 #[path = "../unix/stack_overflow.rs"]

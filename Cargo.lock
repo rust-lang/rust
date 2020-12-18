@@ -1284,7 +1284,9 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ee8025cf36f917e6a52cce185b7c7177689b838b7ec138364e50cc2277a56cf4"
 dependencies = [
  "cfg-if 0.1.10",
+ "compiler_builtins",
  "libc",
+ "rustc-std-workspace-core",
  "wasi",
 ]
 
@@ -4692,6 +4694,7 @@ dependencies = [
  "core",
  "dlmalloc",
  "fortanix-sgx-abi",
+ "getrandom 0.2.0",
  "hashbrown",
  "hermit-abi",
  "libc",

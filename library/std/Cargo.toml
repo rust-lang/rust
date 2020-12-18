@@ -21,6 +21,11 @@ compiler_builtins = { version = "0.1.35" }
 profiler_builtins = { path = "../profiler_builtins", optional = true }
 unwind = { path = "../unwind" }
 hashbrown = { version = "0.9.0", default-features = false, features = ['rustc-dep-of-std'] }
+# RDRAND feature is needed for SGX targets, but will work on other x86(-64) targets
+# unsupported in `getrandom` by default
+# FIXME: remove the Hermit part after its support will be added to `getrandom`
+[target.'cfg(not(any(all(target_arch = "wasm32", target_vendor = "unknown", target_os = "unknown")), all(target_arch = "aarch64", target_os = "hermit")))'.dependencies]
+getrandom = { version = "0.2.0", features = ['rustc-dep-of-std', 'rdrand'] }
 
 # Dependencies of the `backtrace` crate
 addr2line = { version = "0.14.0", optional = true, default-features = false }

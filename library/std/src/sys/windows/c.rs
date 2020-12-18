@@ -689,9 +689,6 @@ if #[cfg(not(target_vendor = "uwp"))] {
     pub const TOKEN_READ: DWORD = 0x20008;
 
     extern "system" {
-        #[link_name = "SystemFunction036"]
-        pub fn RtlGenRandom(RandomBuffer: *mut u8, RandomBufferLength: ULONG) -> BOOLEAN;
-
         pub fn ReadConsoleW(hConsoleInput: HANDLE,
                             lpBuffer: LPVOID,
                             nNumberOfCharsToRead: DWORD,
@@ -749,8 +746,6 @@ if #[cfg(target_vendor = "uwp")] {
                                             fileInfoClass: FILE_INFO_BY_HANDLE_CLASS,
                                             lpFileInformation: LPVOID,
                                             dwBufferSize: DWORD) -> BOOL;
-        pub fn BCryptGenRandom(hAlgorithm: LPVOID, pBuffer: *mut u8,
-                               cbBuffer: ULONG, dwFlags: ULONG) -> LONG;
     }
 }
 }

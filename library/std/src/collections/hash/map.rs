@@ -13,7 +13,6 @@ use crate::fmt::{self, Debug};
 use crate::hash::{BuildHasher, Hash, Hasher, SipHasher13};
 use crate::iter::{FromIterator, FusedIterator};
 use crate::ops::Index;
-use crate::sys;
 
 /// A hash map implemented with quadratic probing and SIMD lookup.
 ///
@@ -2783,13 +2782,24 @@ impl RandomState {
         // iteration order allows a form of DOS attack. To counter that we
         // increment one of the seeds on every RandomState creation, giving
         // every corresponding HashMap a different iteration order.
-        thread_local!(static KEYS: Cell<(u64, u64)> = {
-            Cell::new(sys::hashmap_random_keys())
+        thread_local!(static KEYS: Cell<[u64; 2]> = {
+            let mut buf = [0u8; 16];
+            // Use a constant seed on `wasm32-unknown-unknown` and Hermit targets.
+            // FIXME: remove the Hermit part after its support will be added to `getrandom`
+            // TODO: replace the WASM part with `cfg(target = "..")`:
+            // https://github.com/rust-lang/rust/issues/63217
+            #[cfg(not(any(
+                all(target_arch = "wasm32", target_vendor = "unknown", target_os = "unknown"),
+                all(target_arch = "aarch64", target_os = "hermit"),
+            )))]
+            getrandom::getrandom(&mut buf).expect("failed to get system entropy");
+            let n = u128::from_ne_bytes(buf);
+            Cell::new([n as u64, (n >> 64) as u64])
         });
 
         KEYS.with(|keys| {
-            let (k0, k1) = keys.get();
-            keys.set((k0.wrapping_add(1), k1));
+            let [k0, k1] = keys.get();
+            keys.set([k0.wrapping_add(1), k1]);
             RandomState { k0, k1 }
         })
     }

@@ -83,11 +83,6 @@ pub fn abort_internal() -> ! {
     }
 }
 
-// FIXME: just a workaround to test the system
-pub fn hashmap_random_keys() -> (u64, u64) {
-    (1, 2)
-}
-
 // This function is needed by the panic runtime. The symbol is named in
 // pre-link args for the target specification, so keep that in sync.
 #[cfg(not(test))]

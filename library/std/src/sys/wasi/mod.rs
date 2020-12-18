@@ -86,16 +86,6 @@ pub fn abort_internal() -> ! {
     unsafe { libc::abort() }
 }
 
-pub fn hashmap_random_keys() -> (u64, u64) {
-    let mut ret = (0u64, 0u64);
-    unsafe {
-        let base = &mut ret as *mut (u64, u64) as *mut u8;
-        let len = mem::size_of_val(&ret);
-        wasi::random_get(base, len).expect("random_get failure");
-    }
-    return ret;
-}
-
 fn err2io(err: wasi::Error) -> std_io::Error {
     std_io::Error::from_raw_os_error(err.raw_error().into())
 }
