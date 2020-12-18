@@ -1,7 +1,3 @@
-<a href = "https://www.rust-lang.org/">
-<img width = "90%" height = "auto" src = "https://img.shields.io/badge/Rust-Programming%20Language-black?style=flat&logo=rust" alt = "The Rust Programming Language">
-</a>
-
 This is the main source code repository for [Rust]. It contains the compiler,
 standard library, and documentation.
 
