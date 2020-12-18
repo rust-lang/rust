@@ -153,7 +153,7 @@ pub(super) fn external_path(
         global: false,
         res: Res::Err,
         segments: vec![PathSegment {
-            name: name.to_string(),
+            name,
             args: external_generic_args(cx, trait_did, has_self, bindings, substs),
         }],
     }

@@ -2141,14 +2141,14 @@ fn item_module(w: &mut Buffer, cx: &Context, item: &clean::Item, items: &[clean:
                         w,
                         "<tr><td><code>{}extern crate {} as {};",
                         myitem.visibility.print_with_space(),
-                        anchor(myitem.def_id, src),
+                        anchor(myitem.def_id, &*src.as_str()),
                         name
                     ),
                     None => write!(
                         w,
                         "<tr><td><code>{}extern crate {};",
                         myitem.visibility.print_with_space(),
-                        anchor(myitem.def_id, name)
+                        anchor(myitem.def_id, &*name.as_str())
                     ),
                 }
                 write!(w, "</code></td></tr>");
@@ -2448,7 +2448,7 @@ fn render_implementor(
     implementor: &Impl,
     parent: &clean::Item,
     w: &mut Buffer,
-    implementor_dups: &FxHashMap<&str, (DefId, bool)>,
+    implementor_dups: &FxHashMap<Symbol, (DefId, bool)>,
     aliases: &[String],
     cache: &Cache,
 ) {
@@ -2459,7 +2459,7 @@ fn render_implementor(
         | clean::BorrowedRef {
             type_: box clean::ResolvedPath { ref path, is_generic: false, .. },
             ..
-        } => implementor_dups[path.last_name()].1,
+        } => implementor_dups[&path.last()].1,
         _ => false,
     };
     render_impl(
@@ -2708,7 +2708,7 @@ fn item_trait(w: &mut Buffer, cx: &Context, it: &clean::Item, t: &clean::Trait, 
     if let Some(implementors) = cache.implementors.get(&it.def_id) {
         // The DefId is for the first Type found with that name. The bool is
         // if any Types with the same name but different DefId have been found.
-        let mut implementor_dups: FxHashMap<&str, (DefId, bool)> = FxHashMap::default();
+        let mut implementor_dups: FxHashMap<Symbol, (DefId, bool)> = FxHashMap::default();
         for implementor in implementors {
             match implementor.inner_impl().for_ {
                 clean::ResolvedPath { ref path, did, is_generic: false, .. }
@@ -2717,7 +2717,7 @@ fn item_trait(w: &mut Buffer, cx: &Context, it: &clean::Item, t: &clean::Trait, 
                     ..
                 } => {
                     let &mut (prev_did, ref mut has_duplicates) =
-                        implementor_dups.entry(path.last_name()).or_insert((did, false));
+                        implementor_dups.entry(path.last()).or_insert((did, false));
                     if prev_did != did {
                         *has_duplicates = true;
                     }

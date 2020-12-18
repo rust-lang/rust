@@ -61,10 +61,10 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                             .params
                             .iter()
                             .filter_map(|param| match param.kind {
-                                ty::GenericParamDefKind::Lifetime => Some(param.name.to_string()),
+                                ty::GenericParamDefKind::Lifetime => Some(param.name),
                                 _ => None,
                             })
-                            .map(|name| (name.clone(), Lifetime(name)))
+                            .map(|name| (name, Lifetime(name)))
                             .collect();
                         let lifetime_predicates = self.handle_lifetimes(&region_data, &names_map);
                         let new_generics = self.param_env_to_generics(
@@ -145,21 +145,21 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
     fn get_lifetime(
         &self,
         region: Region<'_>,
-        names_map: &FxHashMap<String, Lifetime>,
+        names_map: &FxHashMap<Symbol, Lifetime>,
     ) -> Lifetime {
         self.region_name(region)
             .map(|name| {
                 names_map.get(&name).unwrap_or_else(|| {
-                    panic!("Missing lifetime with name {:?} for {:?}", name, region)
+                    panic!("Missing lifetime with name {:?} for {:?}", name.as_str(), region)
                 })
             })
             .unwrap_or(&Lifetime::statik())
             .clone()
     }
 
-    fn region_name(&self, region: Region<'_>) -> Option<String> {
+    fn region_name(&self, region: Region<'_>) -> Option<Symbol> {
         match region {
-            &ty::ReEarlyBound(r) => Some(r.name.to_string()),
+            &ty::ReEarlyBound(r) => Some(r.name),
             _ => None,
         }
     }
@@ -177,7 +177,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
     fn handle_lifetimes<'cx>(
         &self,
         regions: &RegionConstraintData<'cx>,
-        names_map: &FxHashMap<String, Lifetime>,
+        names_map: &FxHashMap<Symbol, Lifetime>,
     ) -> Vec<WherePredicate> {
         // Our goal is to 'flatten' the list of constraints by eliminating
         // all intermediate RegionVids. At the end, all constraints should

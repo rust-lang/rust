@@ -295,7 +295,7 @@ impl Item {
 
 #[derive(Clone, Debug)]
 crate enum ItemKind {
-    ExternCrateItem(String, Option<String>),
+    ExternCrateItem(Symbol, Option<Symbol>),
     ImportItem(Import),
     StructItem(Struct),
     UnionItem(Union),
@@ -877,21 +877,19 @@ impl GenericBound {
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
-crate struct Lifetime(pub String);
+crate struct Lifetime(pub Symbol);
 
 impl Lifetime {
-    crate fn get_ref<'a>(&'a self) -> &'a str {
-        let Lifetime(ref s) = *self;
-        let s: &'a str = s;
-        s
+    crate fn get_ref(&self) -> SymbolStr {
+        self.0.as_str()
     }
 
     crate fn statik() -> Lifetime {
-        Lifetime("'static".to_string())
+        Lifetime(kw::StaticLifetime)
     }
 
     crate fn elided() -> Lifetime {
-        Lifetime("'_".to_string())
+        Lifetime(kw::UnderscoreLifetime)
     }
 }
 
@@ -1675,13 +1673,17 @@ crate struct Path {
 }
 
 impl Path {
-    crate fn last_name(&self) -> &str {
+    crate fn last(&self) -> Symbol {
+        self.segments.last().expect("segments were empty").name
+    }
+
+    crate fn last_name(&self) -> SymbolStr {
         self.segments.last().expect("segments were empty").name.as_str()
     }
 
     crate fn whole_name(&self) -> String {
         String::from(if self.global { "::" } else { "" })
-            + &self.segments.iter().map(|s| s.name.clone()).collect::<Vec<_>>().join("::")
+            + &self.segments.iter().map(|s| s.name.to_string()).collect::<Vec<_>>().join("::")
     }
 }
 
@@ -1700,7 +1702,7 @@ crate enum GenericArgs {
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 crate struct PathSegment {
-    crate name: String,
+    crate name: Symbol,
     crate args: GenericArgs,
 }
 
@@ -1777,7 +1779,7 @@ crate struct Import {
 }
 
 impl Import {
-    crate fn new_simple(name: String, source: ImportSource, should_be_displayed: bool) -> Self {
+    crate fn new_simple(name: Symbol, source: ImportSource, should_be_displayed: bool) -> Self {
         Self { kind: ImportKind::Simple(name), source, should_be_displayed }
     }
 
@@ -1789,7 +1791,7 @@ impl Import {
 #[derive(Clone, Debug)]
 crate enum ImportKind {
     // use source as str;
-    Simple(String),
+    Simple(Symbol),
     // use source::*;
     Glob,
 }
@@ -1803,13 +1805,13 @@ crate struct ImportSource {
 #[derive(Clone, Debug)]
 crate struct Macro {
     crate source: String,
-    crate imported_from: Option<String>,
+    crate imported_from: Option<Symbol>,
 }
 
 #[derive(Clone, Debug)]
 crate struct ProcMacro {
     crate kind: MacroKind,
-    crate helpers: Vec<String>,
+    crate helpers: Vec<Symbol>,
 }
 
 /// An type binding on an associated type (e.g., `A = Bar` in `Foo<A = Bar>` or
