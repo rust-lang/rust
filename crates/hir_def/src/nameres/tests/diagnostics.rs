@@ -1,4 +1,5 @@
 use base_db::fixture::WithFixture;
+use test_utils::mark;
 
 use crate::test_db::TestDB;
 
@@ -123,6 +124,7 @@ fn inactive_item() {
 /// Tests that `cfg` attributes behind `cfg_attr` is handled properly.
 #[test]
 fn inactive_via_cfg_attr() {
+    mark::check!(cfg_attr_active);
     check_diagnostics(
         r#"
         //- /lib.rs
