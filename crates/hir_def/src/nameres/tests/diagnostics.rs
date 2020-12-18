@@ -1,4 +1,5 @@
 use base_db::fixture::WithFixture;
+use test_utils::mark;
 
 use crate::test_db::TestDB;
 
@@ -116,6 +117,23 @@ fn inactive_item() {
 
           #[cfg(feature = "std")] use std;
         //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ code is inactive due to #[cfg] directives: feature = "std" is disabled
+        "#,
+    );
+}
+
+/// Tests that `cfg` attributes behind `cfg_attr` is handled properly.
+#[test]
+fn inactive_via_cfg_attr() {
+    mark::check!(cfg_attr_active);
+    check_diagnostics(
+        r#"
+        //- /lib.rs
+          #[cfg_attr(not(never), cfg(no))] fn f() {}
+        //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ code is inactive due to #[cfg] directives: no is disabled
+
+          #[cfg_attr(not(never), cfg(not(no)))] fn f() {}
+
+          #[cfg_attr(never, cfg(no))] fn g() {}
         "#,
     );
 }

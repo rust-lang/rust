@@ -12,6 +12,7 @@ use syntax::{
     ast::{self, AstNode, AttrsOwner},
     match_ast, AstToken, SmolStr, SyntaxNode,
 };
+use test_utils::mark;
 use tt::Subtree;
 
 use crate::{
@@ -122,9 +123,69 @@ impl RawAttrs {
     }
 
     /// Processes `cfg_attr`s, returning the resulting semantic `Attrs`.
-    pub(crate) fn filter(self, _db: &dyn DefDatabase, _krate: CrateId) -> Attrs {
-        // FIXME actually implement this
-        Attrs(self)
+    pub(crate) fn filter(self, db: &dyn DefDatabase, krate: CrateId) -> Attrs {
+        let has_cfg_attrs = self.iter().any(|attr| {
+            attr.path.as_ident().map_or(false, |name| *name == hir_expand::name![cfg_attr])
+        });
+        if !has_cfg_attrs {
+            return Attrs(self);
+        }
+
+        let crate_graph = db.crate_graph();
+        let new_attrs = self
+            .iter()
+            .filter_map(|attr| {
+                let attr = attr.clone();
+                let is_cfg_attr =
+                    attr.path.as_ident().map_or(false, |name| *name == hir_expand::name![cfg_attr]);
+                if !is_cfg_attr {
+                    return Some(attr);
+                }
+
+                let subtree = match &attr.input {
+                    Some(AttrInput::TokenTree(it)) => it,
+                    _ => return Some(attr),
+                };
+
+                // Input subtree is: `(cfg, attr)`
+                // Split it up into a `cfg` and an `attr` subtree.
+                // FIXME: There should be a common API for this.
+                let mut saw_comma = false;
+                let (mut cfg, attr): (Vec<_>, Vec<_>) =
+                    subtree.clone().token_trees.into_iter().partition(|tree| {
+                        if saw_comma {
+                            return false;
+                        }
+
+                        match tree {
+                            tt::TokenTree::Leaf(tt::Leaf::Punct(p)) if p.char == ',' => {
+                                saw_comma = true;
+                            }
+                            _ => {}
+                        }
+
+                        true
+                    });
+                cfg.pop(); // `,` ends up in here
+
+                let attr = Subtree { delimiter: None, token_trees: attr };
+                let cfg = Subtree { delimiter: subtree.delimiter, token_trees: cfg };
+                let cfg = CfgExpr::parse(&cfg);
+
+                let cfg_options = &crate_graph[krate].cfg_options;
+                if cfg_options.check(&cfg) == Some(false) {
+                    None
+                } else {
+                    mark::hit!(cfg_attr_active);
+
+                    let attr = ast::Attr::parse(&format!("#[{}]", attr)).ok()?;
+                    let hygiene = Hygiene::new_unhygienic(); // FIXME
+                    Attr::from_src(attr, &hygiene)
+                }
+            })
+            .collect();
+
+        Attrs(RawAttrs { entries: Some(new_attrs) })
     }
 }
 

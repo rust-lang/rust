@@ -133,6 +133,10 @@ pub(crate) mod fragments {
 
         m.complete(p, MACRO_STMTS);
     }
+
+    pub(crate) fn attr(p: &mut Parser) {
+        attributes::outer_attrs(p)
+    }
 }
 
 pub(crate) fn reparser(
