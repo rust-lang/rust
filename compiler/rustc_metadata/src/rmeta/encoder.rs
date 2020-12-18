@@ -993,6 +993,7 @@ impl EncodeContext<'a, 'tcx> {
             if let Ok(sig) = tcx.try_fn_sig(def_id) {
                 record!(self.tables.fn_sig[def_id] <- sig);
             }
+            self.encode_explicit_item_bounds(def_id);
         }
         let inherent_impls = tcx.crate_inherent_impls(LOCAL_CRATE);
         for (def_id, implementations) in inherent_impls.inherent_impls.iter() {
@@ -1171,7 +1172,6 @@ impl EncodeContext<'a, 'tcx> {
                 })));
             }
             ty::AssocKind::Type => {
-                self.encode_explicit_item_bounds(def_id);
                 record!(self.tables.kind[def_id] <- EntryKind::AssocType(container));
             }
         }
@@ -1349,10 +1349,7 @@ impl EncodeContext<'a, 'tcx> {
             hir::ItemKind::ForeignMod { .. } => EntryKind::ForeignMod,
             hir::ItemKind::GlobalAsm(..) => EntryKind::GlobalAsm,
             hir::ItemKind::TyAlias(..) => EntryKind::Type,
-            hir::ItemKind::OpaqueTy(..) => {
-                self.encode_explicit_item_bounds(def_id);
-                EntryKind::OpaqueTy
-            }
+            hir::ItemKind::OpaqueTy(..) => EntryKind::OpaqueTy,
             hir::ItemKind::Enum(..) => EntryKind::Enum(self.tcx.adt_def(def_id).repr),
             hir::ItemKind::Struct(ref struct_def, _) => {
                 let adt_def = self.tcx.adt_def(def_id);
