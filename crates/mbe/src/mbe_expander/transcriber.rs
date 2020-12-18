@@ -97,7 +97,7 @@ fn expand_subtree(
                 err = err.or(e);
                 arena.push(tt.into());
             }
-            Op::Var { name, kind: _ } => {
+            Op::Var { name, .. } => {
                 let ExpandResult { value: fragment, err: e } = expand_var(ctx, name);
                 err = err.or(e);
                 push_fragment(arena, fragment);

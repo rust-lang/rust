@@ -992,6 +992,18 @@ fn test_tt_composite2() {
 }
 
 #[test]
+fn test_underscore() {
+    parse_macro(
+        r#"
+            macro_rules! foo {
+                 ($_:tt) => { 0 }
+            }
+    "#,
+    )
+    .assert_expand_items(r#"foo! { => }"#, r#"0"#);
+}
+
+#[test]
 fn test_lifetime() {
     parse_macro(
         r#"
