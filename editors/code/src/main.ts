@@ -132,6 +132,7 @@ async function tryActivate(context: vscode.ExtensionContext) {
     ctx.pushCleanup(activateTaskProvider(workspaceFolder, ctx.config));
 
     activateInlayHints(ctx);
+    warnAboutRustLangExtensionConflict();
 
     vscode.workspace.onDidChangeConfiguration(
         _ => ctx?.client?.sendNotification('workspace/didChangeConfiguration', { settings: "" }),
@@ -398,4 +399,14 @@ async function queryForGithubToken(state: PersistentState): Promise<void> {
         log.info("Storing new github token");
         await state.updateGithubToken(newToken);
     }
+}
+
+function warnAboutRustLangExtensionConflict() {
+    const rustLangExt = vscode.extensions.getExtension("rust-lang.rust");
+    if (rustLangExt !== undefined) {
+        vscode.window .showWarningMessage(
+            "You have both rust-analyzer (matklad.rust-analyzer) and Rust (rust-lang.rust) " +
+            "plugins enabled. These are known to conflict and cause various functions of " +
+            "both plugins to not work correctly. You should disable one of them.", "Got it")
+    };
 }
