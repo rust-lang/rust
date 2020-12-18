@@ -4,7 +4,9 @@ use syntax::{
     AstNode, AstToken, SyntaxElement, SyntaxKind, SyntaxNode, TextRange,
 };
 
-use crate::{syntax_highlighting::HighlightedRangeStack, HighlightTag, HighlightedRange};
+use crate::{
+    syntax_highlighting::HighlightedRangeStack, HighlightTag, HighlightedRange, SymbolKind,
+};
 
 #[derive(Default)]
 pub(super) struct FormatStringHighlighter {
@@ -71,6 +73,6 @@ fn highlight_format_specifier(kind: FormatSpecifier) -> Option<HighlightTag> {
         | FormatSpecifier::Asterisk
         | FormatSpecifier::QuestionMark => HighlightTag::FormatSpecifier,
         FormatSpecifier::Integer | FormatSpecifier::Zero => HighlightTag::NumericLiteral,
-        FormatSpecifier::Identifier => HighlightTag::Local,
+        FormatSpecifier::Identifier => HighlightTag::Symbol(SymbolKind::Local),
     })
 }

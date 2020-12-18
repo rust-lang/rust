@@ -546,7 +546,7 @@ fn bar() {
 fn foo(i : u32) -> u32 { i<|> }
 "#,
             expect![[r#"
-                i Local FileId(0) 7..8 Other
+                i ValueParam FileId(0) 7..8 Other
 
                 FileId(0) 25..26 Other Read
             "#]],
@@ -560,7 +560,7 @@ fn foo(i : u32) -> u32 { i<|> }
 fn foo(i<|> : u32) -> u32 { i }
 "#,
             expect![[r#"
-                i Local FileId(0) 7..8 Other
+                i ValueParam FileId(0) 7..8 Other
 
                 FileId(0) 25..26 Other Read
             "#]],
