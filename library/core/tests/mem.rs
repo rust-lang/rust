@@ -1,5 +1,6 @@
 use core::mem::*;
 
+#[cfg(panic = "unwind")]
 use std::rc::Rc;
 
 #[test]
