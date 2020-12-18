@@ -145,7 +145,7 @@ impl FunctionBuilder {
             self.type_params,
             self.params,
             fn_body,
-            Some(make::ret_type(make::ty("()"))),
+            Some(make::ret_type(make::ty_unit())),
         );
         let leading_ws;
         let trailing_ws;
