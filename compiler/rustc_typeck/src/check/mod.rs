@@ -270,7 +270,7 @@ fn adt_destructor(tcx: TyCtxt<'_>, def_id: DefId) -> Option<ty::Destructor> {
 
 /// If this `DefId` is a "primary tables entry", returns
 /// `Some((body_id, header, decl))` with information about
-/// it's body-id, fn-header and fn-decl (if any). Otherwise,
+/// its body-id, fn-header and fn-decl (if any). Otherwise,
 /// returns `None`.
 ///
 /// If this function returns `Some`, then `typeck_results(def_id)` will
