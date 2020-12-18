@@ -43,10 +43,9 @@ pub(crate) fn symbol_kind(symbol_kind: SymbolKind) -> lsp_types::SymbolKind {
         SymbolKind::Static => lsp_types::SymbolKind::Constant,
         SymbolKind::Const => lsp_types::SymbolKind::Constant,
         SymbolKind::Impl => lsp_types::SymbolKind::Object,
-        SymbolKind::Local
-        | SymbolKind::SelfParam
-        | SymbolKind::LifetimeParam
-        | SymbolKind::DocTest => lsp_types::SymbolKind::Variable,
+        SymbolKind::Local | SymbolKind::SelfParam | SymbolKind::LifetimeParam => {
+            lsp_types::SymbolKind::Variable
+        }
         SymbolKind::Union => lsp_types::SymbolKind::Struct,
     }
 }
@@ -722,7 +721,7 @@ pub(crate) fn call_hierarchy_item(
 ) -> Result<lsp_types::CallHierarchyItem> {
     let name = target.name.to_string();
     let detail = target.description.clone();
-    let kind = symbol_kind(target.kind);
+    let kind = target.kind.map(symbol_kind).unwrap_or(lsp_types::SymbolKind::Function);
     let (uri, range, selection_range) = location_info(snap, target)?;
     Ok(lsp_types::CallHierarchyItem {
         name,

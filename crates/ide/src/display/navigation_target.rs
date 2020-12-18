@@ -35,8 +35,6 @@ pub enum SymbolKind {
     TypeAlias,
     Trait,
     Macro,
-    // Do we actually need this?
-    DocTest,
 }
 
 /// `NavigationTarget` represents and element in the editor's UI which you can
@@ -64,7 +62,7 @@ pub struct NavigationTarget {
     /// Clients should place the cursor on this range when navigating to this target.
     pub focus_range: Option<TextRange>,
     pub name: SmolStr,
-    pub kind: SymbolKind,
+    pub kind: Option<SymbolKind>,
     pub container_name: Option<SmolStr>,
     pub description: Option<String>,
     pub docs: Option<Documentation>,
@@ -110,8 +108,13 @@ impl NavigationTarget {
 
     #[cfg(test)]
     pub(crate) fn debug_render(&self) -> String {
-        let mut buf =
-            format!("{} {:?} {:?} {:?}", self.name, self.kind, self.file_id, self.full_range);
+        let mut buf = format!(
+            "{} {:?} {:?} {:?}",
+            self.name,
+            self.kind.unwrap(),
+            self.file_id,
+            self.full_range
+        );
         if let Some(focus_range) = self.focus_range {
             buf.push_str(&format!(" {:?}", focus_range))
         }
@@ -146,7 +149,7 @@ impl NavigationTarget {
         NavigationTarget {
             file_id,
             name,
-            kind,
+            kind: Some(kind),
             full_range,
             focus_range,
             container_name: None,
@@ -161,7 +164,7 @@ impl ToNav for FileSymbol {
         NavigationTarget {
             file_id: self.file_id,
             name: self.name.clone(),
-            kind: match self.kind {
+            kind: Some(match self.kind {
                 FileSymbolKind::Function => SymbolKind::Function,
                 FileSymbolKind::Struct => SymbolKind::Struct,
                 FileSymbolKind::Enum => SymbolKind::Enum,
@@ -171,7 +174,7 @@ impl ToNav for FileSymbol {
                 FileSymbolKind::Const => SymbolKind::Const,
                 FileSymbolKind::Static => SymbolKind::Static,
                 FileSymbolKind::Macro => SymbolKind::Macro,
-            },
+            }),
             full_range: self.range,
             focus_range: self.name_range,
             container_name: self.container_name.clone(),
@@ -386,7 +389,7 @@ impl ToNav for hir::Local {
         NavigationTarget {
             file_id: full_range.file_id,
             name,
-            kind: SymbolKind::Local,
+            kind: Some(SymbolKind::Local),
             full_range: full_range.range,
             focus_range: None,
             container_name: None,
@@ -410,7 +413,7 @@ impl ToNav for hir::TypeParam {
         NavigationTarget {
             file_id: src.file_id.original_file(db),
             name: self.name(db).to_string().into(),
-            kind: SymbolKind::TypeParam,
+            kind: Some(SymbolKind::TypeParam),
             full_range,
             focus_range,
             container_name: None,
@@ -427,7 +430,7 @@ impl ToNav for hir::LifetimeParam {
         NavigationTarget {
             file_id: src.file_id.original_file(db),
             name: self.name(db).to_string().into(),
-            kind: SymbolKind::LifetimeParam,
+            kind: Some(SymbolKind::LifetimeParam),
             full_range,
             focus_range: Some(full_range),
             container_name: None,
@@ -488,7 +491,9 @@ fn foo() { enum FooInner { } }
                         5..13,
                     ),
                     name: "FooInner",
-                    kind: Enum,
+                    kind: Some(
+                        Enum,
+                    ),
                     container_name: None,
                     description: Some(
                         "enum FooInner",
@@ -504,7 +509,9 @@ fn foo() { enum FooInner { } }
                         34..42,
                     ),
                     name: "FooInner",
-                    kind: Enum,
+                    kind: Some(
+                        Enum,
+                    ),
                     container_name: Some(
                         "foo",
                     ),

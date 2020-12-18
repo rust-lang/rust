@@ -385,7 +385,10 @@ pub(crate) fn handle_workspace_symbol(
             #[allow(deprecated)]
             let info = SymbolInformation {
                 name: nav.name.to_string(),
-                kind: to_proto::symbol_kind(nav.kind),
+                kind: nav
+                    .kind
+                    .map(to_proto::symbol_kind)
+                    .unwrap_or(lsp_types::SymbolKind::Variable),
                 tags: None,
                 location: to_proto::location_from_nav(snap, nav)?,
                 container_name,
@@ -1263,7 +1266,7 @@ pub(crate) fn handle_call_hierarchy_prepare(
     let RangeInfo { range: _, info: navs } = nav_info;
     let res = navs
         .into_iter()
-        .filter(|it| it.kind == SymbolKind::Function)
+        .filter(|it| it.kind == Some(SymbolKind::Function))
         .map(|it| to_proto::call_hierarchy_item(&snap, it))
         .collect::<Result<Vec<_>>>()?;
 

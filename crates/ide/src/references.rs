@@ -278,7 +278,7 @@ fn try_find_self_references(
             full_range: self_param.syntax().text_range(),
             focus_range: Some(param_self_token.text_range()),
             name: param_self_token.text().clone(),
-            kind: SymbolKind::SelfParam,
+            kind: Some(SymbolKind::SelfParam),
             container_name: None,
             description: None,
             docs: None,

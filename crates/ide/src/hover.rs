@@ -2191,7 +2191,9 @@ fn foo_<|>test() {}
                                     11..19,
                                 ),
                                 name: "foo_test",
-                                kind: Function,
+                                kind: Some(
+                                    Function,
+                                ),
                                 container_name: None,
                                 description: None,
                                 docs: None,
@@ -2234,7 +2236,9 @@ mod tests<|> {
                                     4..9,
                                 ),
                                 name: "tests",
-                                kind: Module,
+                                kind: Some(
+                                    Module,
+                                ),
                                 container_name: None,
                                 description: None,
                                 docs: None,
@@ -2273,7 +2277,9 @@ fn main() { let s<|>t = S{ f1:0 }; }
                                         7..8,
                                     ),
                                     name: "S",
-                                    kind: Struct,
+                                    kind: Some(
+                                        Struct,
+                                    ),
                                     container_name: None,
                                     description: Some(
                                         "struct S",
@@ -2312,7 +2318,9 @@ fn main() { let s<|>t = S{ f1:Arg(0) }; }
                                         24..25,
                                     ),
                                     name: "S",
-                                    kind: Struct,
+                                    kind: Some(
+                                        Struct,
+                                    ),
                                     container_name: None,
                                     description: Some(
                                         "struct S",
@@ -2331,7 +2339,9 @@ fn main() { let s<|>t = S{ f1:Arg(0) }; }
                                         7..10,
                                     ),
                                     name: "Arg",
-                                    kind: Struct,
+                                    kind: Some(
+                                        Struct,
+                                    ),
                                     container_name: None,
                                     description: Some(
                                         "struct Arg",
@@ -2370,7 +2380,9 @@ fn main() { let s<|>t = S{ f1: S{ f1: Arg(0) } }; }
                                         24..25,
                                     ),
                                     name: "S",
-                                    kind: Struct,
+                                    kind: Some(
+                                        Struct,
+                                    ),
                                     container_name: None,
                                     description: Some(
                                         "struct S",
@@ -2389,7 +2401,9 @@ fn main() { let s<|>t = S{ f1: S{ f1: Arg(0) } }; }
                                         7..10,
                                     ),
                                     name: "Arg",
-                                    kind: Struct,
+                                    kind: Some(
+                                        Struct,
+                                    ),
                                     container_name: None,
                                     description: Some(
                                         "struct Arg",
@@ -2431,7 +2445,9 @@ fn main() { let s<|>t = (A(1), B(2), M::C(3) ); }
                                         7..8,
                                     ),
                                     name: "A",
-                                    kind: Struct,
+                                    kind: Some(
+                                        Struct,
+                                    ),
                                     container_name: None,
                                     description: Some(
                                         "struct A",
@@ -2450,7 +2466,9 @@ fn main() { let s<|>t = (A(1), B(2), M::C(3) ); }
                                         22..23,
                                     ),
                                     name: "B",
-                                    kind: Struct,
+                                    kind: Some(
+                                        Struct,
+                                    ),
                                     container_name: None,
                                     description: Some(
                                         "struct B",
@@ -2469,7 +2487,9 @@ fn main() { let s<|>t = (A(1), B(2), M::C(3) ); }
                                         53..54,
                                     ),
                                     name: "C",
-                                    kind: Struct,
+                                    kind: Some(
+                                        Struct,
+                                    ),
                                     container_name: None,
                                     description: Some(
                                         "pub struct C",
@@ -2508,7 +2528,9 @@ fn main() { let s<|>t = foo(); }
                                         6..9,
                                     ),
                                     name: "Foo",
-                                    kind: Trait,
+                                    kind: Some(
+                                        Trait,
+                                    ),
                                     container_name: None,
                                     description: Some(
                                         "trait Foo",
@@ -2548,7 +2570,9 @@ fn main() { let s<|>t = foo(); }
                                         6..9,
                                     ),
                                     name: "Foo",
-                                    kind: Trait,
+                                    kind: Some(
+                                        Trait,
+                                    ),
                                     container_name: None,
                                     description: Some(
                                         "trait Foo",
@@ -2567,7 +2591,9 @@ fn main() { let s<|>t = foo(); }
                                         23..24,
                                     ),
                                     name: "S",
-                                    kind: Struct,
+                                    kind: Some(
+                                        Struct,
+                                    ),
                                     container_name: None,
                                     description: Some(
                                         "struct S",
@@ -2607,7 +2633,9 @@ fn main() { let s<|>t = foo(); }
                                         6..9,
                                     ),
                                     name: "Foo",
-                                    kind: Trait,
+                                    kind: Some(
+                                        Trait,
+                                    ),
                                     container_name: None,
                                     description: Some(
                                         "trait Foo",
@@ -2626,7 +2654,9 @@ fn main() { let s<|>t = foo(); }
                                         19..22,
                                     ),
                                     name: "Bar",
-                                    kind: Trait,
+                                    kind: Some(
+                                        Trait,
+                                    ),
                                     container_name: None,
                                     description: Some(
                                         "trait Bar",
@@ -2669,7 +2699,9 @@ fn main() { let s<|>t = foo(); }
                                         6..9,
                                     ),
                                     name: "Foo",
-                                    kind: Trait,
+                                    kind: Some(
+                                        Trait,
+                                    ),
                                     container_name: None,
                                     description: Some(
                                         "trait Foo",
@@ -2688,7 +2720,9 @@ fn main() { let s<|>t = foo(); }
                                         22..25,
                                     ),
                                     name: "Bar",
-                                    kind: Trait,
+                                    kind: Some(
+                                        Trait,
+                                    ),
                                     container_name: None,
                                     description: Some(
                                         "trait Bar",
@@ -2707,7 +2741,9 @@ fn main() { let s<|>t = foo(); }
                                         39..41,
                                     ),
                                     name: "S1",
-                                    kind: Struct,
+                                    kind: Some(
+                                        Struct,
+                                    ),
                                     container_name: None,
                                     description: Some(
                                         "struct S1",
@@ -2726,7 +2762,9 @@ fn main() { let s<|>t = foo(); }
                                         52..54,
                                     ),
                                     name: "S2",
-                                    kind: Struct,
+                                    kind: Some(
+                                        Struct,
+                                    ),
                                     container_name: None,
                                     description: Some(
                                         "struct S2",
@@ -2763,7 +2801,9 @@ fn foo(ar<|>g: &impl Foo) {}
                                         6..9,
                                     ),
                                     name: "Foo",
-                                    kind: Trait,
+                                    kind: Some(
+                                        Trait,
+                                    ),
                                     container_name: None,
                                     description: Some(
                                         "trait Foo",
@@ -2803,7 +2843,9 @@ fn foo(ar<|>g: &impl Foo + Bar<S>) {}
                                         6..9,
                                     ),
                                     name: "Foo",
-                                    kind: Trait,
+                                    kind: Some(
+                                        Trait,
+                                    ),
                                     container_name: None,
                                     description: Some(
                                         "trait Foo",
@@ -2822,7 +2864,9 @@ fn foo(ar<|>g: &impl Foo + Bar<S>) {}
                                         19..22,
                                     ),
                                     name: "Bar",
-                                    kind: Trait,
+                                    kind: Some(
+                                        Trait,
+                                    ),
                                     container_name: None,
                                     description: Some(
                                         "trait Bar",
@@ -2841,7 +2885,9 @@ fn foo(ar<|>g: &impl Foo + Bar<S>) {}
                                         36..37,
                                     ),
                                     name: "S",
-                                    kind: Struct,
+                                    kind: Some(
+                                        Struct,
+                                    ),
                                     container_name: None,
                                     description: Some(
                                         "struct S",
@@ -2886,7 +2932,9 @@ mod future {
                                         140..146,
                                     ),
                                     name: "Future",
-                                    kind: Trait,
+                                    kind: Some(
+                                        Trait,
+                                    ),
                                     container_name: None,
                                     description: Some(
                                         "pub trait Future",
@@ -2905,7 +2953,9 @@ mod future {
                                         7..8,
                                     ),
                                     name: "S",
-                                    kind: Struct,
+                                    kind: Some(
+                                        Struct,
+                                    ),
                                     container_name: None,
                                     description: Some(
                                         "struct S",
@@ -2943,7 +2993,9 @@ fn foo(ar<|>g: &impl Foo<S>) {}
                                         6..9,
                                     ),
                                     name: "Foo",
-                                    kind: Trait,
+                                    kind: Some(
+                                        Trait,
+                                    ),
                                     container_name: None,
                                     description: Some(
                                         "trait Foo",
@@ -2962,7 +3014,9 @@ fn foo(ar<|>g: &impl Foo<S>) {}
                                         23..24,
                                     ),
                                     name: "S",
-                                    kind: Struct,
+                                    kind: Some(
+                                        Struct,
+                                    ),
                                     container_name: None,
                                     description: Some(
                                         "struct S",
@@ -3005,7 +3059,9 @@ fn main() { let s<|>t = foo(); }
                                         49..50,
                                     ),
                                     name: "B",
-                                    kind: Struct,
+                                    kind: Some(
+                                        Struct,
+                                    ),
                                     container_name: None,
                                     description: Some(
                                         "struct B",
@@ -3024,7 +3080,9 @@ fn main() { let s<|>t = foo(); }
                                         6..9,
                                     ),
                                     name: "Foo",
-                                    kind: Trait,
+                                    kind: Some(
+                                        Trait,
+                                    ),
                                     container_name: None,
                                     description: Some(
                                         "trait Foo",
@@ -3061,7 +3119,9 @@ fn foo(ar<|>g: &dyn Foo) {}
                                         6..9,
                                     ),
                                     name: "Foo",
-                                    kind: Trait,
+                                    kind: Some(
+                                        Trait,
+                                    ),
                                     container_name: None,
                                     description: Some(
                                         "trait Foo",
@@ -3099,7 +3159,9 @@ fn foo(ar<|>g: &dyn Foo<S>) {}
                                         6..9,
                                     ),
                                     name: "Foo",
-                                    kind: Trait,
+                                    kind: Some(
+                                        Trait,
+                                    ),
                                     container_name: None,
                                     description: Some(
                                         "trait Foo",
@@ -3118,7 +3180,9 @@ fn foo(ar<|>g: &dyn Foo<S>) {}
                                         23..24,
                                     ),
                                     name: "S",
-                                    kind: Struct,
+                                    kind: Some(
+                                        Struct,
+                                    ),
                                     container_name: None,
                                     description: Some(
                                         "struct S",
@@ -3159,7 +3223,9 @@ fn foo(a<|>rg: &impl ImplTrait<B<dyn DynTrait<B<S>>>>) {}
                                         6..15,
                                     ),
                                     name: "ImplTrait",
-                                    kind: Trait,
+                                    kind: Some(
+                                        Trait,
+                                    ),
                                     container_name: None,
                                     description: Some(
                                         "trait ImplTrait",
@@ -3178,7 +3244,9 @@ fn foo(a<|>rg: &impl ImplTrait<B<dyn DynTrait<B<S>>>>) {}
                                         50..51,
                                     ),
                                     name: "B",
-                                    kind: Struct,
+                                    kind: Some(
+                                        Struct,
+                                    ),
                                     container_name: None,
                                     description: Some(
                                         "struct B",
@@ -3197,7 +3265,9 @@ fn foo(a<|>rg: &impl ImplTrait<B<dyn DynTrait<B<S>>>>) {}
                                         28..36,
                                     ),
                                     name: "DynTrait",
-                                    kind: Trait,
+                                    kind: Some(
+                                        Trait,
+                                    ),
                                     container_name: None,
                                     description: Some(
                                         "trait DynTrait",
@@ -3216,7 +3286,9 @@ fn foo(a<|>rg: &impl ImplTrait<B<dyn DynTrait<B<S>>>>) {}
                                         65..66,
                                     ),
                                     name: "S",
-                                    kind: Struct,
+                                    kind: Some(
+                                        Struct,
+                                    ),
                                     container_name: None,
                                     description: Some(
                                         "struct S",
@@ -3264,7 +3336,9 @@ fn main() { let s<|>t = test().get(); }
                                         6..9,
                                     ),
                                     name: "Foo",
-                                    kind: Trait,
+                                    kind: Some(
+                                        Trait,
+                                    ),
                                     container_name: None,
                                     description: Some(
                                         "trait Foo",
