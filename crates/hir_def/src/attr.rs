@@ -167,6 +167,7 @@ impl RawAttrs {
                     });
                 cfg.pop(); // `,` ends up in here
 
+                let attr = Subtree { delimiter: None, token_trees: attr };
                 let cfg = Subtree { delimiter: subtree.delimiter, token_trees: cfg };
                 let cfg = CfgExpr::parse(&cfg);
 
@@ -174,8 +175,7 @@ impl RawAttrs {
                 if cfg_options.check(&cfg) == Some(false) {
                     None
                 } else {
-                    let attr = Subtree { delimiter: None, token_trees: attr };
-                    let attr = ast::Attr::parse(&attr.to_string()).ok()?;
+                    let attr = ast::Attr::parse(&format!("#[{}]", attr)).ok()?;
                     let hygiene = Hygiene::new_unhygienic(); // FIXME
                     Attr::from_src(attr, &hygiene)
                 }
