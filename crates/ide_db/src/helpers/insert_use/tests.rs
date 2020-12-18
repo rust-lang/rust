@@ -448,6 +448,20 @@ use std::io;",
 }
 
 #[test]
+fn merge_groups_skip_attributed() {
+    check_full(
+        "std::io",
+        r#"
+#[cfg(feature = "gated")] use std::fmt::{Result, Display};
+"#,
+        r#"
+#[cfg(feature = "gated")] use std::fmt::{Result, Display};
+use std::io;
+"#,
+    )
+}
+
+#[test]
 #[ignore] // FIXME: Support this
 fn split_out_merge() {
     check_last(
