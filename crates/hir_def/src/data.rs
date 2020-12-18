@@ -35,6 +35,7 @@ pub struct FunctionData {
 impl FunctionData {
     pub(crate) fn fn_data_query(db: &dyn DefDatabase, func: FunctionId) -> Arc<FunctionData> {
         let loc = func.lookup(db);
+        let krate = loc.container.module(db).krate;
         let item_tree = db.item_tree(loc.id.file_id);
         let func = &item_tree[loc.id.value];
 
@@ -42,7 +43,7 @@ impl FunctionData {
             name: func.name.clone(),
             params: func.params.to_vec(),
             ret_type: func.ret_type.clone(),
-            attrs: item_tree.attrs(ModItem::from(loc.id.value).into()).clone(),
+            attrs: item_tree.attrs(db, krate, ModItem::from(loc.id.value).into()).clone(),
             has_self_param: func.has_self_param,
             has_body: func.has_body,
             is_unsafe: func.is_unsafe,
@@ -233,7 +234,7 @@ fn collect_items(
         match item {
             AssocItem::Function(id) => {
                 let item = &item_tree[id];
-                let attrs = item_tree.attrs(ModItem::from(id).into());
+                let attrs = item_tree.attrs(db, module.krate, ModItem::from(id).into());
                 if !attrs.is_cfg_enabled(&cfg_options) {
                     continue;
                 }

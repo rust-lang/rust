@@ -963,7 +963,7 @@ impl ExprCollector<'_> {
     /// Returns `None` (and emits diagnostics) when `owner` if `#[cfg]`d out, and `Some(())` when
     /// not.
     fn check_cfg(&mut self, owner: &dyn ast::AttrsOwner) -> Option<()> {
-        match self.expander.parse_attrs(owner).cfg() {
+        match self.expander.parse_attrs(self.db, owner).cfg() {
             Some(cfg) => {
                 if self.expander.cfg_options().check(&cfg) != Some(false) {
                     return Some(());

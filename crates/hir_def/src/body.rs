@@ -24,7 +24,7 @@ use test_utils::mark;
 pub(crate) use lower::LowerCtx;
 
 use crate::{
-    attr::Attrs,
+    attr::{Attrs, RawAttrs},
     db::DefDatabase,
     expr::{Expr, ExprId, Pat, PatId},
     item_scope::BuiltinShadowMode,
@@ -40,6 +40,7 @@ use crate::{
 pub(crate) struct CfgExpander {
     cfg_options: CfgOptions,
     hygiene: Hygiene,
+    krate: CrateId,
 }
 
 pub(crate) struct Expander {
@@ -65,15 +66,15 @@ impl CfgExpander {
     ) -> CfgExpander {
         let hygiene = Hygiene::new(db.upcast(), current_file_id);
         let cfg_options = db.crate_graph()[krate].cfg_options.clone();
-        CfgExpander { cfg_options, hygiene }
+        CfgExpander { cfg_options, hygiene, krate }
     }
 
-    pub(crate) fn parse_attrs(&self, owner: &dyn ast::AttrsOwner) -> Attrs {
-        Attrs::new(owner, &self.hygiene)
+    pub(crate) fn parse_attrs(&self, db: &dyn DefDatabase, owner: &dyn ast::AttrsOwner) -> Attrs {
+        RawAttrs::new(owner, &self.hygiene).filter(db, self.krate)
     }
 
-    pub(crate) fn is_cfg_enabled(&self, owner: &dyn ast::AttrsOwner) -> bool {
-        let attrs = self.parse_attrs(owner);
+    pub(crate) fn is_cfg_enabled(&self, db: &dyn DefDatabase, owner: &dyn ast::AttrsOwner) -> bool {
+        let attrs = self.parse_attrs(db, owner);
         attrs.is_cfg_enabled(&self.cfg_options)
     }
 }
@@ -189,8 +190,8 @@ impl Expander {
         InFile { file_id: self.current_file_id, value }
     }
 
-    pub(crate) fn parse_attrs(&self, owner: &dyn ast::AttrsOwner) -> Attrs {
-        self.cfg_expander.parse_attrs(owner)
+    pub(crate) fn parse_attrs(&self, db: &dyn DefDatabase, owner: &dyn ast::AttrsOwner) -> Attrs {
+        self.cfg_expander.parse_attrs(db, owner)
     }
 
     pub(crate) fn cfg_options(&self) -> &CfgOptions {
