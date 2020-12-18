@@ -117,6 +117,7 @@ use self::Ordering::*;
 use crate::cell::UnsafeCell;
 use crate::fmt;
 use crate::intrinsics;
+use crate::ops::{AddAssign, SubAssign};
 
 use crate::hint::spin_loop;
 
@@ -2108,6 +2109,54 @@ let mut atomic = ", stringify!($atomic_type), "::new(1);
                        issue = "66893")]
                 pub fn as_mut_ptr(&self) -> *mut $int_type {
                     self.v.get()
+                }
+            }
+        }
+
+        #[$stable]
+        #[$cfg_cas]
+        impl AddAssign<$int_type> for $atomic_type {
+            doc_comment! {
+                concat!("A conventient alias for `", stringify!($atomic_type), ".fetch_add(op, Ordering::SeqCst)` that discards the old value.
+
+**Note**: This method is only available on platforms that support atomic
+operations on [`", $s_int_type, "`](", $int_ref, ").
+
+# Examples
+
+```
+", $extra_feature, "use std::sync::atomic::", stringify!($atomic_type), ";
+
+let atomic_forty_two = ", stringify!($atomic_type), "::new(42);
+atomic_forty_two += 42;
+```"),
+                #[inline]
+                fn add_assign(&mut self, other: $int_type) {
+                    self.fetch_add(other, Ordering::SeqCst);
+                }
+            }
+        }
+
+        #[$stable]
+        #[$cfg_cas]
+        impl SubAssign<$int_type> for $atomic_type {
+            doc_comment! {
+                concat!("A conventient alias for `", stringify!($atomic_type), ".fetch_sub(op, Ordering::SeqCst)` that discards the old value.
+
+**Note**: This method is only available on platforms that support atomic
+operations on [`", $s_int_type, "`](", $int_ref, ").
+
+# Examples
+
+```
+", $extra_feature, "use std::sync::atomic::", stringify!($atomic_type), ";
+
+let atomic_forty_two = ", stringify!($atomic_type), "::new(42);
+atomic_forty_two -= 42;
+```"),
+                #[inline]
+                fn sub_assign(&mut self, other: $int_type) {
+                    self.fetch_sub(other, Ordering::SeqCst);
                 }
             }
         }
