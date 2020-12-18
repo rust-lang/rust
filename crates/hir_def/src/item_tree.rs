@@ -12,7 +12,7 @@ use std::{
 };
 
 use arena::{Arena, Idx, RawId};
-use ast::{AstNode, AttrsOwner, NameOwner, StructKind};
+use ast::{AstNode, NameOwner, StructKind};
 use base_db::CrateId;
 use either::Either;
 use hir_expand::{
@@ -495,7 +495,6 @@ pub struct Import {
     pub alias: Option<ImportAlias>,
     pub visibility: RawVisibilityId,
     pub is_glob: bool,
-    pub is_prelude: bool,
     /// AST ID of the `use` or `extern crate` item this import was derived from. Note that many
     /// `Import`s can map to the same `use` item.
     pub ast_id: FileAstId<ast::Use>,
@@ -511,8 +510,6 @@ pub struct ExternCrate {
     pub name: Name,
     pub alias: Option<ImportAlias>,
     pub visibility: RawVisibilityId,
-    /// Whether this is a `#[macro_use] extern crate ...`.
-    pub is_macro_use: bool,
     pub ast_id: FileAstId<ast::ExternCrate>,
 }
 
