@@ -2786,7 +2786,7 @@ impl RandomState {
             let mut buf = [0u8; 16];
             // Use a constant seed on `wasm32-unknown-unknown` and Hermit targets.
             // FIXME: remove the Hermit part after its support will be added to `getrandom`
-            // TODO: replace the WASM part with `cfg(target = "..")`:
+            // FIXME: replace the WASM part with `cfg(target = "..")`:
             // https://github.com/rust-lang/rust/issues/63217
             #[cfg(not(any(
                 all(target_arch = "wasm32", target_vendor = "unknown", target_os = "unknown"),
