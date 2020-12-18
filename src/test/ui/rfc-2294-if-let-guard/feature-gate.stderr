@@ -7,7 +7,7 @@ LL |     macro_rules! use_expr {
 LL |     use_expr!(let 0 = 1);
    |               ^^^ no rules expected this token in macro call
 
-error[E0658]: `if let` guard is not implemented
+error[E0658]: `if let` guards are experimental
   --> $DIR/feature-gate.rs:7:12
    |
 LL |         () if let 0 = 1 => {}
@@ -16,7 +16,7 @@ LL |         () if let 0 = 1 => {}
    = note: see issue #51114 <https://github.com/rust-lang/rust/issues/51114> for more information
    = help: add `#![feature(if_let_guard)]` to the crate attributes to enable
 
-error[E0658]: `if let` guard is not implemented
+error[E0658]: `if let` guards are experimental
   --> $DIR/feature-gate.rs:76:12
    |
 LL |         () if let 0 = 1 => {}
