@@ -34,28 +34,30 @@ impl KrateSource {
             self.name, self.version
         );
         println!("Downloading {}, {} / {}", self.name, self.version, url);
-        std::fs::create_dir("target/crater/").unwrap();
+        let _ = std::fs::create_dir("target/crater/");
 
-        std::fs::create_dir(&krate_download_dir).unwrap();
-        std::fs::create_dir(&extract_dir).unwrap();
+        let _ = std::fs::create_dir(&krate_download_dir);
+        let _ = std::fs::create_dir(&extract_dir);
 
         let krate_name = format!("{}-{}.crate.tar.gz", &self.name, &self.version);
-        let mut krate_dest = std::fs::File::create(krate_download_dir.join(krate_name)).unwrap();
+        let krate_file_path = krate_download_dir.join(krate_name);
+        let mut krate_dest = std::fs::File::create(&krate_file_path).unwrap();
         let mut krate_req = ureq::get(&url).call().unwrap().into_reader();
         std::io::copy(&mut krate_req, &mut krate_dest).unwrap();
-        let krate = krate_dest;
-        dbg!(&krate);
-        let tar = flate2::read::GzDecoder::new(&krate);
-        let mut archiv = tar::Archive::new(tar);
-        let extracted_path = extract_dir.join(format!("{}-{}", self.name, self.version));
-      // println!("ar:  p: {:?}", &krate, extracted_path);
-        archiv.unpack(&extracted_path).expect("Failed to extract!");
-        // extract
+        // unzip the tarball
+        let dl = std::fs::File::open(krate_file_path).unwrap();
+
+        let ungz_tar = flate2::read::GzDecoder::new(dl);
+        // extract the tar archive
+        let mut archiv = tar::Archive::new(ungz_tar);
+        let extract_path = extract_dir.join(format!("{}-{}/", self.name, self.version));
+        archiv.unpack(&extract_path).expect("Failed to extract!");
+        // extracted
 
         Krate {
             version: self.version.clone(),
             name: self.name.clone(),
-            path: extracted_path,
+            path: extract_path,
         }
     }
 }
@@ -88,11 +90,13 @@ pub fn run() {
     // assert that clippy is found
     assert!(
         cargo_clippy_path.is_file(),
-        "target/debug/cargo-clippy binary not found! {}", cargo_clippy_path.display()
+        "target/debug/cargo-clippy binary not found! {}",
+        cargo_clippy_path.display()
     );
     assert!(
         clippy_driver_path.is_file(),
-        "target/debug/clippy-driver binary not found! {}", clippy_driver_path.display()
+        "target/debug/clippy-driver binary not found! {}",
+        clippy_driver_path.display()
     );
 
     // download and extract the crates, then run clippy on them and collect clippys warnings
