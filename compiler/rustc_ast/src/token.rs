@@ -434,7 +434,7 @@ impl Token {
             || self == &OpenDelim(Paren)
     }
 
-    /// Returns `true` if the token is any literal
+    /// Returns `true` if the token is any literal.
     pub fn is_lit(&self) -> bool {
         match self.kind {
             Literal(..) => true,
