@@ -1013,10 +1013,36 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             // This is an inert key-value attribute - it will never be visible to macros
             // after it gets lowered to HIR. Therefore, we can synthesize tokens with fake
             // spans to handle nonterminals in `#[doc]` (e.g. `#[doc = $e]`).
-            MacArgs::Eq(eq_span, ref tokens) => MacArgs::Eq(
-                eq_span,
-                self.lower_token_stream(tokens.clone(), CanSynthesizeMissingTokens::Yes),
-            ),
+            MacArgs::Eq(eq_span, ref token) => {
+                // In valid code the value is always representable as a single literal token.
+                fn unwrap_single_token(sess: &Session, tokens: TokenStream, span: Span) -> Token {
+                    if tokens.len() != 1 {
+                        sess.diagnostic()
+                            .delay_span_bug(span, "multiple tokens in key-value attribute's value");
+                    }
+                    match tokens.into_trees().next() {
+                        Some(TokenTree::Token(token)) => token,
+                        Some(TokenTree::Delimited(_, delim, tokens)) => {
+                            if delim != token::NoDelim {
+                                sess.diagnostic().delay_span_bug(
+                                    span,
+                                    "unexpected delimiter in key-value attribute's value",
+                                )
+                            }
+                            unwrap_single_token(sess, tokens, span)
+                        }
+                        None => Token::dummy(),
+                    }
+                }
+
+                let tokens = TokenStreamLowering {
+                    parse_sess: &self.sess.parse_sess,
+                    synthesize_tokens: CanSynthesizeMissingTokens::Yes,
+                    nt_to_tokenstream: self.nt_to_tokenstream,
+                }
+                .lower_token(token.clone());
+                MacArgs::Eq(eq_span, unwrap_single_token(self.sess, tokens, token.span))
+            }
         }
     }
 

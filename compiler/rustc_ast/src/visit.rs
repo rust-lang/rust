@@ -15,7 +15,6 @@
 
 use crate::ast::*;
 use crate::token;
-use crate::tokenstream::TokenTree;
 
 use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::Span;
@@ -905,12 +904,9 @@ pub fn walk_mac_args<'a, V: Visitor<'a>>(visitor: &mut V, args: &'a MacArgs) {
         MacArgs::Delimited(_dspan, _delim, _tokens) => {}
         // The value in `#[key = VALUE]` must be visited as an expression for backward
         // compatibility, so that macros can be expanded in that position.
-        MacArgs::Eq(_eq_span, tokens) => match tokens.trees_ref().next() {
-            Some(TokenTree::Token(token)) => match &token.kind {
-                token::Interpolated(nt) => match &**nt {
-                    token::NtExpr(expr) => visitor.visit_expr(expr),
-                    t => panic!("unexpected token in key-value attribute: {:?}", t),
-                },
+        MacArgs::Eq(_eq_span, token) => match &token.kind {
+            token::Interpolated(nt) => match &**nt {
+                token::NtExpr(expr) => visitor.visit_expr(expr),
                 t => panic!("unexpected token in key-value attribute: {:?}", t),
             },
             t => panic!("unexpected token in key-value attribute: {:?}", t),

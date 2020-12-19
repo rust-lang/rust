@@ -23,8 +23,8 @@ pub use GenericArgs::*;
 pub use UnsafeSource::*;
 
 use crate::ptr::P;
-use crate::token::{self, CommentKind, DelimToken};
-use crate::tokenstream::{DelimSpan, LazyTokenStream, TokenStream};
+use crate::token::{self, CommentKind, DelimToken, Token};
+use crate::tokenstream::{DelimSpan, LazyTokenStream, TokenStream, TokenTree};
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::stack::ensure_sufficient_stack;
@@ -1464,8 +1464,8 @@ pub enum MacArgs {
     Eq(
         /// Span of the `=` token.
         Span,
-        /// Token stream of the "value".
-        TokenStream,
+        /// "value" as a nonterminal token.
+        Token,
     ),
 }
 
@@ -1478,10 +1478,10 @@ impl MacArgs {
     }
 
     pub fn span(&self) -> Option<Span> {
-        match *self {
+        match self {
             MacArgs::Empty => None,
             MacArgs::Delimited(dspan, ..) => Some(dspan.entire()),
-            MacArgs::Eq(eq_span, ref tokens) => Some(eq_span.to(tokens.span().unwrap_or(eq_span))),
+            MacArgs::Eq(eq_span, token) => Some(eq_span.to(token.span)),
         }
     }
 
@@ -1490,7 +1490,8 @@ impl MacArgs {
     pub fn inner_tokens(&self) -> TokenStream {
         match self {
             MacArgs::Empty => TokenStream::default(),
-            MacArgs::Delimited(.., tokens) | MacArgs::Eq(.., tokens) => tokens.clone(),
+            MacArgs::Delimited(.., tokens) => tokens.clone(),
+            MacArgs::Eq(.., token) => TokenTree::Token(token.clone()).into(),
         }
     }
 

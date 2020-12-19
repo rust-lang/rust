@@ -983,8 +983,8 @@ impl<'a> Parser<'a> {
                         _ => self.sess.gated_spans.gate(sym::extended_key_value_attributes, span),
                     }
 
-                    let token = token::Interpolated(Lrc::new(token::NtExpr(expr)));
-                    MacArgs::Eq(eq_span, TokenTree::token(token, span).into())
+                    let token_kind = token::Interpolated(Lrc::new(token::NtExpr(expr)));
+                    MacArgs::Eq(eq_span, Token::new(token_kind, span))
                 } else {
                     MacArgs::Empty
                 }
