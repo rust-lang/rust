@@ -975,4 +975,39 @@ impl f64 {
 
         left.cmp(&right)
     }
+
+    /// Restrict a value to a certain interval unless it is NaN.
+    ///
+    /// Returns `max` if `self` is greater than `max`, and `min` if `self` is
+    /// less than `min`. Otherwise this returns `self`.
+    ///
+    /// Note that this function returns NaN if the initial value was NaN as
+    /// well.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `min > max`, `min` is NaN, or `max` is NaN.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// assert!((-3.0f64).clamp(-2.0, 1.0) == -2.0);
+    /// assert!((0.0f64).clamp(-2.0, 1.0) == 0.0);
+    /// assert!((2.0f64).clamp(-2.0, 1.0) == 1.0);
+    /// assert!((f64::NAN).clamp(-2.0, 1.0).is_nan());
+    /// ```
+    #[must_use = "method returns a new number and does not mutate the original value"]
+    #[stable(feature = "clamp", since = "1.50.0")]
+    #[inline]
+    pub fn clamp(self, min: f64, max: f64) -> f64 {
+        assert!(min <= max);
+        let mut x = self;
+        if x < min {
+            x = min;
+        }
+        if x > max {
+            x = max;
+        }
+        x
+    }
 }
