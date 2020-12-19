@@ -75,32 +75,31 @@ impl RawAttrs {
     pub(crate) const EMPTY: Self = Self { entries: None };
 
     pub(crate) fn new(owner: &dyn AttrsOwner, hygiene: &Hygiene) -> Self {
-        let (inner_attrs, inner_docs) = inner_attributes(owner.syntax())
-            .map_or((None, None), |(attrs, docs)| ((Some(attrs), Some(docs))));
-
-        let outer_attrs = owner.attrs().filter(|attr| attr.excl_token().is_none());
-        let attrs = outer_attrs
-            .chain(inner_attrs.into_iter().flatten())
-            .map(|attr| (attr.syntax().text_range().start(), Attr::from_src(attr, hygiene)));
-
-        let outer_docs =
-            ast::CommentIter::from_syntax_node(owner.syntax()).filter(ast::Comment::is_outer);
-        let docs = outer_docs.chain(inner_docs.into_iter().flatten()).map(|docs_text| {
-            (
-                docs_text.syntax().text_range().start(),
-                docs_text.doc_comment().map(|doc| Attr {
-                    input: Some(AttrInput::Literal(SmolStr::new(doc))),
-                    path: ModPath::from(hir_expand::name!(doc)),
-                }),
-            )
-        });
-        // sort here by syntax node offset because the source can have doc attributes and doc strings be interleaved
-        let attrs: Vec<_> = docs.chain(attrs).sorted_by_key(|&(offset, _)| offset).collect();
+        let attrs: Vec<_> = collect_attrs(owner).collect();
         let entries = if attrs.is_empty() {
             // Avoid heap allocation
             None
         } else {
-            Some(attrs.into_iter().flat_map(|(_, attr)| attr).collect())
+            Some(
+                attrs
+                    .into_iter()
+                    .enumerate()
+                    .flat_map(|(i, attr)| match attr {
+                        Either::Left(attr) => Attr::from_src(attr, hygiene).map(|attr| (i, attr)),
+                        Either::Right(comment) => comment.doc_comment().map(|doc| {
+                            (
+                                i,
+                                Attr {
+                                    index: 0,
+                                    input: Some(AttrInput::Literal(SmolStr::new(doc))),
+                                    path: ModPath::from(hir_expand::name!(doc)),
+                                },
+                            )
+                        }),
+                    })
+                    .map(|(i, attr)| Attr { index: i as u32, ..attr })
+                    .collect(),
+            )
         };
         Self { entries }
     }
@@ -316,6 +315,7 @@ fn inner_attributes(
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Attr {
+    index: u32,
     pub(crate) path: ModPath,
     pub(crate) input: Option<AttrInput>,
 }
@@ -342,7 +342,19 @@ impl Attr {
         } else {
             None
         };
-        Some(Attr { path, input })
+        Some(Attr { index: 0, path, input })
+    }
+
+    /// Maps this lowered `Attr` back to its original syntax node.
+    ///
+    /// `owner` must be the original owner of the attribute.
+    ///
+    /// Note that the returned syntax node might be a `#[cfg_attr]`, or a doc comment, instead of
+    /// the attribute represented by `Attr`.
+    pub fn to_src(&self, owner: &dyn AttrsOwner) -> Either<ast::Attr, ast::Comment> {
+        collect_attrs(owner).nth(self.index as usize).unwrap_or_else(|| {
+            panic!("cannot find `Attr` at index {} in {}", self.index, owner.syntax())
+        })
     }
 
     /// Parses this attribute as a `#[derive]`, returns an iterator that yields all contained paths
@@ -431,4 +443,24 @@ fn attrs_from_item_tree<N: ItemTreeNode>(id: ItemTreeId<N>, db: &dyn DefDatabase
     let tree = db.item_tree(id.file_id);
     let mod_item = N::id_to_mod_item(id.value);
     tree.raw_attrs(mod_item.into()).clone()
+}
+
+fn collect_attrs(owner: &dyn AttrsOwner) -> impl Iterator<Item = Either<ast::Attr, ast::Comment>> {
+    let (inner_attrs, inner_docs) = inner_attributes(owner.syntax())
+        .map_or((None, None), |(attrs, docs)| ((Some(attrs), Some(docs))));
+
+    let outer_attrs = owner.attrs().filter(|attr| attr.excl_token().is_none());
+    let attrs = outer_attrs
+        .chain(inner_attrs.into_iter().flatten())
+        .map(|attr| (attr.syntax().text_range().start(), Either::Left(attr)));
+
+    let outer_docs =
+        ast::CommentIter::from_syntax_node(owner.syntax()).filter(ast::Comment::is_outer);
+    let docs = outer_docs
+        .chain(inner_docs.into_iter().flatten())
+        .map(|docs_text| (docs_text.syntax().text_range().start(), Either::Right(docs_text)));
+    // sort here by syntax node offset because the source can have doc attributes and doc strings be interleaved
+    let attrs: Vec<_> = docs.chain(attrs).sorted_by_key(|&(offset, _)| offset).collect();
+
+    attrs.into_iter().map(|(_, attr)| attr)
 }
