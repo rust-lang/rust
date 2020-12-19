@@ -634,9 +634,9 @@ fn expand_derive() {
     let map = compute_crate_def_map(
         "
         //- /main.rs crate:main deps:core
-        use core::*;
+        use core::Copy;
 
-        #[derive(Copy, Clone)]
+        #[derive(Copy, core::Clone)]
         struct Foo;
 
         //- /core.rs crate:core
