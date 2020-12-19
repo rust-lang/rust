@@ -136,6 +136,11 @@ rustc_queries! {
             }
         }
 
+        /// Maps from the `DefId` to a list of substitutions that maps each generic parameter to itself.
+        query identity_substs_of(key: DefId) -> ty::subst::SubstsRef<'tcx> {
+            desc { |tcx| "computing identity substitutions of `{}`", tcx.def_path_str(key) }
+        }
+
         /// Maps from the `DefId` of an item (trait/struct/enum/fn) to the
         /// predicates (where-clauses) that must be proven true in order
         /// to reference it. This is almost always the "predicates query"

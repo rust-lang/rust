@@ -205,7 +205,7 @@ impl<'a, 'tcx> InternalSubsts<'tcx> {
 
     /// Creates a `InternalSubsts` that maps each generic parameter to itself.
     pub fn identity_for_item(tcx: TyCtxt<'tcx>, def_id: DefId) -> SubstsRef<'tcx> {
-        Self::for_item(tcx, def_id, |param, _| tcx.mk_param_from_def(param))
+        tcx.identity_substs_of(def_id)
     }
 
     /// Creates a `InternalSubsts` for generic parameter definitions,

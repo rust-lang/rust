@@ -84,6 +84,7 @@ pub fn provide(providers: &mut Providers) {
         trait_def,
         adt_def,
         fn_sig,
+        identity_substs_of,
         impl_trait_ref,
         impl_polarity,
         is_foreign_item,
@@ -1209,6 +1210,10 @@ impl<'v> Visitor<'v> for AnonConstInParamListDetector {
             intravisit::walk_anon_const(self, c)
         }
     }
+}
+
+fn identity_substs_of(tcx: TyCtxt<'tcx>, def_id: DefId) -> ty::subst::SubstsRef<'tcx> {
+    InternalSubsts::for_item(tcx, def_id, |param, _| tcx.mk_param_from_def(param))
 }
 
 fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
