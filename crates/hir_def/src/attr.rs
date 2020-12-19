@@ -258,7 +258,6 @@ impl Attrs {
     }
 
     pub fn cfg(&self) -> Option<CfgExpr> {
-        // FIXME: handle cfg_attr :-)
         let mut cfgs = self.by_key("cfg").tt_values().map(CfgExpr::parse).collect::<Vec<_>>();
         match cfgs.len() {
             0 => None,
