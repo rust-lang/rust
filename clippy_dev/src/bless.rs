@@ -46,12 +46,15 @@ fn update_reference_file(reference_file_path: PathBuf) {
     }
 
     let test_output_file = fs::read(&test_output_path).expect("Unable to read test output file");
-    let reference_file = fs::read(&reference_file_path).expect("Unable to read reference file");
+    let reference_file = fs::read(&reference_file_path).unwrap_or_default();
 
     if test_output_file != reference_file {
         // If a test run caused an output file to change, update the reference file
         println!("updating {}", &relative_reference_file_path.display());
         fs::copy(test_output_path, &reference_file_path).expect("Could not update reference file");
+
+        // We need to re-read the file now because it was potentially updated from copying
+        let reference_file = fs::read(&reference_file_path).unwrap_or_default();
 
         if reference_file.is_empty() {
             // If we copied over an empty output file, we remove the now empty reference file
