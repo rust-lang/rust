@@ -1,6 +1,6 @@
 //! A dynamically-sized view into a contiguous sequence, `[T]`.
 //!
-//! *[See also the slice primitive type](../../std/primitive.slice.html).*
+//! *[See also the slice primitive type](slice).*
 //!
 //! Slices are a view into a block of memory represented as a pointer and a
 //! length.
@@ -71,12 +71,12 @@
 //!   [`.chunks`], [`.windows`] and more.
 //!
 //! [`Hash`]: core::hash::Hash
-//! [`.iter`]: ../../std/primitive.slice.html#method.iter
-//! [`.iter_mut`]: ../../std/primitive.slice.html#method.iter_mut
-//! [`.split`]: ../../std/primitive.slice.html#method.split
-//! [`.splitn`]: ../../std/primitive.slice.html#method.splitn
-//! [`.chunks`]: ../../std/primitive.slice.html#method.chunks
-//! [`.windows`]: ../../std/primitive.slice.html#method.windows
+//! [`.iter`]: slice::iter
+//! [`.iter_mut`]: slice::iter_mut
+//! [`.split`]: slice::split
+//! [`.splitn`]: slice::splitn
+//! [`.chunks`]: slice::chunks
+//! [`.windows`]: slice::windows
 #![stable(feature = "rust1", since = "1.0.0")]
 // Many of the usings in this module are only used in the test configuration.
 // It's cleaner to just turn off the unused_imports warning than to fix them.
@@ -673,7 +673,7 @@ impl [u8] {
 // Extension traits for slices over specific kinds of data
 ////////////////////////////////////////////////////////////////////////////////
 
-/// Helper trait for [`[T]::concat`](../../std/primitive.slice.html#method.concat).
+/// Helper trait for [`[T]::concat`](slice::concat).
 ///
 /// Note: the `Item` type parameter is not used in this trait,
 /// but it allows impls to be more generic.
@@ -708,19 +708,19 @@ pub trait Concat<Item: ?Sized> {
     /// The resulting type after concatenation
     type Output;
 
-    /// Implementation of [`[T]::concat`](../../std/primitive.slice.html#method.concat)
+    /// Implementation of [`[T]::concat`](slice::concat)
     #[unstable(feature = "slice_concat_trait", issue = "27747")]
     fn concat(slice: &Self) -> Self::Output;
 }
 
-/// Helper trait for [`[T]::join`](../../std/primitive.slice.html#method.join)
+/// Helper trait for [`[T]::join`](slice::join)
 #[unstable(feature = "slice_concat_trait", issue = "27747")]
 pub trait Join<Separator> {
     #[unstable(feature = "slice_concat_trait", issue = "27747")]
     /// The resulting type after concatenation
     type Output;
 
-    /// Implementation of [`[T]::join`](../../std/primitive.slice.html#method.join)
+    /// Implementation of [`[T]::join`](slice::join)
     #[unstable(feature = "slice_concat_trait", issue = "27747")]
     fn join(slice: &Self, sep: Separator) -> Self::Output;
 }
