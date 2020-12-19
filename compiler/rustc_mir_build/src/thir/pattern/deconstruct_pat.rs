@@ -1058,41 +1058,30 @@ impl<'tcx> SplitWildcard<'tcx> {
 }
 
 /// Some fields need to be explicitly hidden away in certain cases; see the comment above the
-/// `Fields` struct. This struct represents such a potentially-hidden field. When a field is hidden
-/// we still keep its type around.
+/// `Fields` struct. This struct represents such a potentially-hidden field.
 #[derive(Debug, Copy, Clone)]
 pub(super) enum FilteredField<'p, 'tcx> {
     Kept(&'p Pat<'tcx>),
-    Hidden(Ty<'tcx>),
+    Hidden,
 }
 
 impl<'p, 'tcx> FilteredField<'p, 'tcx> {
     fn kept(self) -> Option<&'p Pat<'tcx>> {
         match self {
             FilteredField::Kept(p) => Some(p),
-            FilteredField::Hidden(_) => None,
-        }
-    }
-
-    fn to_pattern(self) -> Pat<'tcx> {
-        match self {
-            FilteredField::Kept(p) => p.clone(),
-            FilteredField::Hidden(ty) => Pat::wildcard_from_ty(ty),
+            FilteredField::Hidden => None,
         }
     }
 }
 
 /// A value can be decomposed into a constructor applied to some fields. This struct represents
 /// those fields, generalized to allow patterns in each field. See also `Constructor`.
+/// This is constructed from a constructor using [`Fields::wildcards()`].
 ///
 /// If a private or `non_exhaustive` field is uninhabited, the code mustn't observe that it is
-/// uninhabited. For that, we filter these fields out of the matrix. This is subtle because we
-/// still need to have those fields back when going to/from a `Pat`. Most of this is handled
-/// automatically in `Fields`, but when constructing or deconstructing `Fields` you need to be
-/// careful. As a rule, when going to/from the matrix, use the filtered field list; when going
-/// to/from `Pat`, use the full field list.
-/// This filtering is uncommon in practice, because uninhabited fields are rarely used, so we avoid
-/// it when possible to preserve performance.
+/// uninhabited. For that, we filter these fields out of the matrix. This is handled automatically
+/// in `Fields`. This filtering is uncommon in practice, because uninhabited fields are rare used,
+/// so we avoid it when possible to preserve performance.
 #[derive(Debug, Clone)]
 pub(super) enum Fields<'p, 'tcx> {
     /// Lists of patterns that don't contain any filtered fields.
@@ -1101,21 +1090,19 @@ pub(super) enum Fields<'p, 'tcx> {
     /// have not measured if it really made a difference.
     Slice(&'p [Pat<'tcx>]),
     Vec(SmallVec<[&'p Pat<'tcx>; 2]>),
-    /// Patterns where some of the fields need to be hidden. `kept_count` caches the number of
-    /// non-hidden fields.
+    /// Patterns where some of the fields need to be hidden. For all intents and purposes we only
+    /// care about the non-hidden fields. We need to keep the real field index for those fields;
+    /// we're morally storing a `Vec<(usize, &Pat)>` but what we do is more convenient.
+    /// `len` counts the number of non-hidden fields
     Filtered {
         fields: SmallVec<[FilteredField<'p, 'tcx>; 2]>,
-        kept_count: usize,
+        len: usize,
     },
 }
 
 impl<'p, 'tcx> Fields<'p, 'tcx> {
-    fn empty() -> Self {
-        Fields::Slice(&[])
-    }
-
-    /// Construct a new `Fields` from the given pattern. Must not be used if the pattern is a field
-    /// of a struct/tuple/variant.
+    /// Internal use. Use `Fields::wildcards()` instead.
+    /// Must not be used if the pattern is a field of a struct/tuple/variant.
     fn from_single_pattern(pat: &'p Pat<'tcx>) -> Self {
         Fields::Slice(std::slice::from_ref(pat))
     }
@@ -1160,7 +1147,7 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
                         if has_no_hidden_fields {
                             Fields::wildcards_from_tys(cx, field_tys)
                         } else {
-                            let mut kept_count = 0;
+                            let mut len = 0;
                             let fields = variant
                                 .fields
                                 .iter()
@@ -1175,14 +1162,14 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
                                     // order not to reveal the uninhabitedness of the whole
                                     // variant.
                                     if is_uninhabited && (!is_visible || is_non_exhaustive) {
-                                        FilteredField::Hidden(ty)
+                                        FilteredField::Hidden
                                     } else {
-                                        kept_count += 1;
+                                        len += 1;
                                         FilteredField::Kept(wildcard_from_ty(ty))
                                     }
                                 })
                                 .collect();
-                            Fields::Filtered { fields, kept_count }
+                            Fields::Filtered { fields, len }
                         }
                     }
                 }
@@ -1196,7 +1183,7 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
                 _ => bug!("bad slice pattern {:?} {:?}", constructor, ty),
             },
             Str(..) | FloatRange(..) | IntRange(..) | NonExhaustive | Opaque | Missing
-            | Wildcard => Fields::empty(),
+            | Wildcard => Fields::Slice(&[]),
         };
         debug!("Fields::wildcards({:?}, {:?}) = {:#?}", constructor, ty, ret);
         ret
@@ -1218,14 +1205,16 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
     /// `self`: `[false]`
     /// returns `Some(false)`
     pub(super) fn apply(self, pcx: PatCtxt<'_, 'p, 'tcx>, ctor: &Constructor<'tcx>) -> Pat<'tcx> {
-        let mut subpatterns = self.all_patterns();
+        let subpatterns_and_indices = self.patterns_and_indices();
+        let mut subpatterns = subpatterns_and_indices.iter().map(|&(_, p)| p).cloned();
 
         let pat = match ctor {
             Single | Variant(_) => match pcx.ty.kind() {
                 ty::Adt(..) | ty::Tuple(..) => {
-                    let subpatterns = subpatterns
-                        .enumerate()
-                        .map(|(i, p)| FieldPat { field: Field::new(i), pattern: p })
+                    // We want the real indices here.
+                    let subpatterns = subpatterns_and_indices
+                        .iter()
+                        .map(|&(field, p)| FieldPat { field, pattern: p.clone() })
                         .collect();
 
                     if let ty::Adt(adt, substs) = pcx.ty.kind() {
@@ -1290,39 +1279,42 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
         Pat { ty: pcx.ty, span: DUMMY_SP, kind: Box::new(pat) }
     }
 
-    /// Returns the number of patterns from the viewpoint of match-checking, i.e. excluding hidden
-    /// fields. This is what we want in most cases in this file, the only exception being
-    /// conversion to/from `Pat`.
+    /// Returns the number of patterns. This is the same as the arity of the constructor used to
+    /// construct `self`.
     pub(super) fn len(&self) -> usize {
         match self {
             Fields::Slice(pats) => pats.len(),
             Fields::Vec(pats) => pats.len(),
-            Fields::Filtered { kept_count, .. } => *kept_count,
+            Fields::Filtered { len, .. } => *len,
         }
     }
 
-    /// Returns the complete list of patterns, including hidden fields.
-    fn all_patterns(self) -> impl Iterator<Item = Pat<'tcx>> {
-        let pats: SmallVec<[_; 2]> = match self {
-            Fields::Slice(pats) => pats.iter().cloned().collect(),
-            Fields::Vec(pats) => pats.into_iter().cloned().collect(),
-            Fields::Filtered { fields, .. } => {
-                // We don't skip any fields here.
-                fields.into_iter().map(|p| p.to_pattern()).collect()
+    /// Returns the list of patterns along with the corresponding field indices.
+    fn patterns_and_indices(&self) -> SmallVec<[(Field, &'p Pat<'tcx>); 2]> {
+        match self {
+            Fields::Slice(pats) => {
+                pats.iter().enumerate().map(|(i, p)| (Field::new(i), p)).collect()
             }
-        };
-        pats.into_iter()
+            Fields::Vec(pats) => {
+                pats.iter().copied().enumerate().map(|(i, p)| (Field::new(i), p)).collect()
+            }
+            Fields::Filtered { fields, .. } => {
+                // Indices must be relative to the full list of patterns
+                fields
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(i, p)| Some((Field::new(i), p.kept()?)))
+                    .collect()
+            }
+        }
     }
 
-    /// Returns the filtered list of patterns, not including hidden fields.
-    pub(super) fn filtered_patterns(self) -> SmallVec<[&'p Pat<'tcx>; 2]> {
+    /// Returns the list of patterns.
+    pub(super) fn into_patterns(self) -> SmallVec<[&'p Pat<'tcx>; 2]> {
         match self {
             Fields::Slice(pats) => pats.iter().collect(),
             Fields::Vec(pats) => pats,
-            Fields::Filtered { fields, .. } => {
-                // We skip hidden fields here
-                fields.into_iter().filter_map(|p| p.kept()).collect()
-            }
+            Fields::Filtered { fields, .. } => fields.iter().filter_map(|p| p.kept()).collect(),
         }
     }
 
@@ -1338,10 +1330,10 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
     }
 
     /// Overrides some of the fields with the provided patterns. This is used when a pattern
-    /// defines some fields but not all, for example `Foo { field1: Some(_), .. }`: here we start with a
-    /// `Fields` that is just one wildcard per field of the `Foo` struct, and override the entry
-    /// corresponding to `field1` with the pattern `Some(_)`. This is also used for slice patterns
-    /// for the same reason.
+    /// defines some fields but not all, for example `Foo { field1: Some(_), .. }`: here we start
+    /// with a `Fields` that is just one wildcard per field of the `Foo` struct, and override the
+    /// entry corresponding to `field1` with the pattern `Some(_)`. This is also used for slice
+    /// patterns for the same reason.
     fn replace_fields_indexed(
         &self,
         new_pats: impl IntoIterator<Item = (usize, &'p Pat<'tcx>)>,
@@ -1369,8 +1361,8 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
         fields
     }
 
-    /// Replaces contained fields with the given filtered list of patterns, e.g. taken from the
-    /// matrix. There must be `len()` patterns in `pats`.
+    /// Replaces contained fields with the given list of patterns. There must be `len()` patterns
+    /// in `pats`.
     pub(super) fn replace_fields(
         &self,
         cx: &MatchCheckCtxt<'p, 'tcx>,
@@ -1379,7 +1371,7 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
         let pats: &[_] = cx.pattern_arena.alloc_from_iter(pats);
 
         match self {
-            Fields::Filtered { fields, kept_count } => {
+            Fields::Filtered { fields, len } => {
                 let mut pats = pats.iter();
                 let mut fields = fields.clone();
                 for f in &mut fields {
@@ -1388,7 +1380,7 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
                         *p = pats.next().unwrap();
                     }
                 }
-                Fields::Filtered { fields, kept_count: *kept_count }
+                Fields::Filtered { fields, len: *len }
             }
             _ => Fields::Slice(pats),
         }

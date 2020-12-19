@@ -447,7 +447,7 @@ impl<'p, 'tcx> PatStack<'p, 'tcx> {
         // We pop the head pattern and push the new fields extracted from the arguments of
         // `self.head()`.
         let mut new_fields =
-            ctor_wild_subpatterns.replace_with_pattern_arguments(self.head()).filtered_patterns();
+            ctor_wild_subpatterns.replace_with_pattern_arguments(self.head()).into_patterns();
         new_fields.extend_from_slice(&self.pats[1..]);
         PatStack::from_vec(new_fields)
     }
