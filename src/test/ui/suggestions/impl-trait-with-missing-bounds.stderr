@@ -73,6 +73,21 @@ help: introduce a type parameter with a trait bound instead of using `impl Trait
 LL | fn bak<I: Iterator + std::fmt::Debug>(constraints: I) where <I as Iterator>::Item: Debug {
    |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^              ^  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 5 previous errors
+error[E0277]: `<impl Iterator as Iterator>::Item` doesn't implement `Debug`
+  --> $DIR/impl-trait-with-missing-bounds.rs:45:13
+   |
+LL |         qux(constraint);
+   |             ^^^^^^^^^^ `<impl Iterator as Iterator>::Item` cannot be formatted using `{:?}` because it doesn't implement `Debug`
+...
+LL | fn qux(_: impl std::fmt::Debug) {}
+   |                --------------- required by this bound in `qux`
+   |
+   = help: the trait `Debug` is not implemented for `<impl Iterator as Iterator>::Item`
+help: introduce a type parameter with a trait bound instead of using `impl Trait`
+   |
+LL | fn baw<I: Iterator>(constraints: I) where <I as Iterator>::Item: Debug {
+   |       ^^^^^^^^^^^^^              ^  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 6 previous errors
 
 For more information about this error, try `rustc --explain E0277`.

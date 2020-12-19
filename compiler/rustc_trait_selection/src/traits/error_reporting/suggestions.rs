@@ -254,27 +254,21 @@ fn suggest_restriction(
         let pred = trait_ref.without_const().to_predicate(tcx).to_string();
         let pred = pred.replace(&impl_trait_str, &type_param_name);
         let mut sugg = vec![
+            // Find the last of the generic parameters contained within the span of
+            // the generics
             match generics
                 .params
                 .iter()
-                .filter(|p| match p.kind {
-                    hir::GenericParamKind::Type {
-                        synthetic: Some(hir::SyntheticTyParamKind::ImplTrait),
-                        ..
-                    } => false,
-                    _ => true,
-                })
-                .last()
+                .map(|p| p.bounds_span().unwrap_or(p.span))
+                .filter(|&span| generics.span.contains(span) && span.desugaring_kind().is_none())
+                .max_by_key(|span| span.hi())
             {
                 // `fn foo(t: impl Trait)`
                 //        ^ suggest `<T: Trait>` here
                 None => (generics.span, format!("<{}>", type_param)),
                 // `fn foo<A>(t: impl Trait)`
                 //        ^^^ suggest `<A, T: Trait>` here
-                Some(param) => (
-                    param.bounds_span().unwrap_or(param.span).shrink_to_hi(),
-                    format!(", {}", type_param),
-                ),
+                Some(span) => (span.shrink_to_hi(), format!(", {}", type_param)),
             },
             // `fn foo(t: impl Trait)`
             //                       ^ suggest `where <T as Trait>::A: Bound`
