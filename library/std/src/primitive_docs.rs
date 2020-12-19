@@ -924,6 +924,7 @@ mod prim_usize {}
 
 #[doc(primitive = "reference")]
 #[doc(alias = "&")]
+#[doc(alias = "&mut")]
 //
 /// References, both shared and mutable.
 ///
