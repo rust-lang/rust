@@ -1312,10 +1312,55 @@ pub fn init_env_logger(env: &str) {
     tracing::subscriber::set_global_default(subscriber).unwrap();
 }
 
+extern "C" {
+    // Only available in glibc
+    fn backtrace_symbols_fd(buffer: *const *mut libc::c_void, size: libc::c_int, fd: libc::c_int);
+}
+
+#[cfg(unix)]
+fn print_stack_trace(_: libc::c_int) {
+    unsafe {
+        static mut STACK_TRACE: [*mut libc::c_void; 256] = [std::ptr::null_mut(); 256];
+        let depth = libc::backtrace(STACK_TRACE.as_mut_ptr(), 256);
+        if depth == 0 {
+            return;
+        }
+        backtrace_symbols_fd(STACK_TRACE.as_ptr(), depth, 2);
+    }
+}
+
+#[cfg(unix)]
+// When an error signal (such as SIGABRT or SIGSEGV) is delivered to the
+// process, print a stack trace and then exit.
+fn print_stack_trace_on_error_signal() {
+    unsafe {
+        const ALT_STACK_SIZE: usize = libc::MINSIGSTKSZ + 64 * 1024;
+        let mut alt_stack: libc::stack_t = std::mem::zeroed();
+        alt_stack.ss_sp =
+            std::alloc::alloc(std::alloc::Layout::from_size_align_unchecked(ALT_STACK_SIZE, 1))
+                as *mut libc::c_void;
+        alt_stack.ss_size = ALT_STACK_SIZE;
+        libc::sigaltstack(&mut alt_stack, std::ptr::null_mut());
+
+        let mut sa: libc::sigaction = std::mem::zeroed();
+        sa.sa_sigaction =
+            print_stack_trace as fn(libc::c_int) as *mut libc::c_void as libc::sighandler_t;
+        sa.sa_flags = libc::SA_NODEFER | libc::SA_RESETHAND | libc::SA_ONSTACK;
+        libc::sigemptyset(&mut sa.sa_mask);
+        libc::sigaction(libc::SIGSEGV, &sa, std::ptr::null_mut());
+    }
+}
+
+#[cfg(windows)]
+// When an error signal (such as SIGABRT or SIGSEGV) is delivered to the
+// process, print a stack trace and then exit.
+fn print_stack_trace_on_error_signal() {}
+
 pub fn main() -> ! {
     let start_time = Instant::now();
     let start_rss = get_resident_set_size();
     init_rustc_env_logger();
+    print_stack_trace_on_error_signal();
     let mut callbacks = TimePassesCallbacks::default();
     install_ice_hook();
     let exit_code = catch_with_exit_code(|| {
