@@ -11,7 +11,7 @@ struct S {
     f: Vec<Vec<Box<(u32, u32, u32, u32)>>>,
 }
 
-struct TS(Vec<Vec<Box<(u32, u32, u32, u32)>>>);
+struct Ts(Vec<Vec<Box<(u32, u32, u32, u32)>>>);
 
 enum E {
     Tuple(Vec<Vec<Box<(u32, u32, u32, u32)>>>),

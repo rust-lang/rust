@@ -6,6 +6,7 @@
 #![feature(concat_idents)]
 #![feature(crate_visibility_modifier)]
 #![feature(drain_filter)]
+#![feature(split_inclusive)]
 #![feature(in_band_lifetimes)]
 #![feature(once_cell)]
 #![feature(or_patterns)]
@@ -169,7 +170,6 @@ mod blacklisted_name;
 mod blocks_in_if_conditions;
 mod booleans;
 mod bytecount;
-mod capitalized_acronyms;
 mod cargo_common_metadata;
 mod case_sensitive_file_extension_comparisons;
 mod checked_conversions;
@@ -342,6 +342,7 @@ mod unused_self;
 mod unused_unit;
 mod unwrap;
 mod unwrap_in_result;
+mod upper_case_acronyms;
 mod use_self;
 mod useless_conversion;
 mod vec;
@@ -560,7 +561,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &booleans::LOGIC_BUG,
         &booleans::NONMINIMAL_BOOL,
         &bytecount::NAIVE_BYTECOUNT,
-        &capitalized_acronyms::CAPITALIZED_ACRONYMS,
         &cargo_common_metadata::CARGO_COMMON_METADATA,
         &case_sensitive_file_extension_comparisons::CASE_SENSITIVE_FILE_EXTENSION_COMPARISONS,
         &checked_conversions::CHECKED_CONVERSIONS,
@@ -946,6 +946,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &unwrap::PANICKING_UNWRAP,
         &unwrap::UNNECESSARY_UNWRAP,
         &unwrap_in_result::UNWRAP_IN_RESULT,
+        &upper_case_acronyms::UPPER_CASE_ACRONYMS,
         &use_self::USE_SELF,
         &useless_conversion::USELESS_CONVERSION,
         &vec::USELESS_VEC,
@@ -985,7 +986,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     }
     store.register_late_pass(|| box utils::author::Author);
     store.register_late_pass(|| box await_holding_invalid::AwaitHolding);
-    store.register_late_pass(|| box serde_api::SerdeAPI);
+    store.register_late_pass(|| box serde_api::SerdeApi);
     let vec_box_size_threshold = conf.vec_box_size_threshold;
     store.register_late_pass(move || box types::Types::new(vec_box_size_threshold));
     store.register_late_pass(|| box booleans::NonminimalBool);
@@ -1176,6 +1177,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     let enum_variant_name_threshold = conf.enum_variant_name_threshold;
     store.register_early_pass(move || box enum_variants::EnumVariantNames::new(enum_variant_name_threshold));
     store.register_early_pass(|| box tabs_in_doc_comments::TabsInDocComments);
+    store.register_early_pass(|| box upper_case_acronyms::UpperCaseAcronyms);
     store.register_late_pass(|| box default::Default::default());
     store.register_late_pass(|| box unused_self::UnusedSelf);
     store.register_late_pass(|| box mutable_debug_assertion::DebugAssertWithMutCall);
@@ -1661,6 +1663,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&unused_unit::UNUSED_UNIT),
         LintId::of(&unwrap::PANICKING_UNWRAP),
         LintId::of(&unwrap::UNNECESSARY_UNWRAP),
+        LintId::of(&upper_case_acronyms::UPPER_CASE_ACRONYMS),
         LintId::of(&useless_conversion::USELESS_CONVERSION),
         LintId::of(&vec::USELESS_VEC),
         LintId::of(&vec_init_then_push::VEC_INIT_THEN_PUSH),
@@ -1778,6 +1781,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&types::FN_TO_NUMERIC_CAST_WITH_TRUNCATION),
         LintId::of(&unsafe_removed_from_name::UNSAFE_REMOVED_FROM_NAME),
         LintId::of(&unused_unit::UNUSED_UNIT),
+        LintId::of(&upper_case_acronyms::UPPER_CASE_ACRONYMS),
         LintId::of(&write::PRINTLN_EMPTY_STRING),
         LintId::of(&write::PRINT_LITERAL),
         LintId::of(&write::PRINT_WITH_NEWLINE),

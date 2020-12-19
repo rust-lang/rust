@@ -1877,7 +1877,6 @@ Released 2018-09-13
 [`box_vec`]: https://rust-lang.github.io/rust-clippy/master/index.html#box_vec
 [`boxed_local`]: https://rust-lang.github.io/rust-clippy/master/index.html#boxed_local
 [`builtin_type_shadow`]: https://rust-lang.github.io/rust-clippy/master/index.html#builtin_type_shadow
-[`capitalized_acronyms`]: https://rust-lang.github.io/rust-clippy/master/index.html#capitalized_acronyms
 [`cargo_common_metadata`]: https://rust-lang.github.io/rust-clippy/master/index.html#cargo_common_metadata
 [`case_sensitive_file_extension_comparisons`]: https://rust-lang.github.io/rust-clippy/master/index.html#case_sensitive_file_extension_comparisons
 [`cast_lossless`]: https://rust-lang.github.io/rust-clippy/master/index.html#cast_lossless
@@ -2275,6 +2274,7 @@ Released 2018-09-13
 [`unusual_byte_groupings`]: https://rust-lang.github.io/rust-clippy/master/index.html#unusual_byte_groupings
 [`unwrap_in_result`]: https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_in_result
 [`unwrap_used`]: https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used
+[`upper_case_acronyms`]: https://rust-lang.github.io/rust-clippy/master/index.html#upper_case_acronyms
 [`use_debug`]: https://rust-lang.github.io/rust-clippy/master/index.html#use_debug
 [`use_self`]: https://rust-lang.github.io/rust-clippy/master/index.html#use_self
 [`used_underscore_binding`]: https://rust-lang.github.io/rust-clippy/master/index.html#used_underscore_binding
