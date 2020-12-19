@@ -105,9 +105,9 @@ mod tests {
 }
 "#,
             expect![[r#"
-                sn macro_rules
-                sn tfn (Test function)
                 sn tmod (Test module)
+                sn tfn (Test function)
+                sn macro_rules
             "#]],
         )
     }

@@ -265,11 +265,11 @@ impl Test for T {
     t<|>
 }
 "#,
-            expect![["
-ct const TEST_CONST: u16 = \n\
-fn fn test()
-ta type TestType = \n\
-            "]],
+            expect![[r#"
+                ta type TestType = 
+                ct const TEST_CONST: u16 = 
+                fn fn test()
+            "#]],
         );
     }
 

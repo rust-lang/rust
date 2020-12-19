@@ -170,8 +170,8 @@ mod tests {
             fn ignored_bar() {}
         "#,
             expect![[r#"
-                md bar;
                 md foo;
+                md bar;
             "#]],
         );
     }
@@ -207,8 +207,8 @@ mod tests {
             fn ignored_bar() {}
         "#,
             expect![[r#"
-                md bar;
                 md foo;
+                md bar;
             "#]],
         );
     }

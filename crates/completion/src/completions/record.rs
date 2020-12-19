@@ -94,9 +94,9 @@ fn process(f: S) {
         check_snippet(
             test_code,
             expect![[r#"
-                fd ..Default::default()
                 sn pd
                 sn ppd
+                fd ..Default::default()
             "#]],
         );
     }
@@ -160,8 +160,8 @@ fn process(e: E) {
 }
 "#,
             expect![[r#"
-                fd bar ()
                 fd foo u32
+                fd bar ()
             "#]],
         );
     }

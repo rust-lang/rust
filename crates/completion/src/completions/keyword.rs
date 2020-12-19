@@ -223,21 +223,21 @@ mod tests {
         check(
             r"m<|>",
             expect![[r#"
-                kw const
-                kw enum
-                kw extern
                 kw fn
-                kw impl
-                kw mod
-                kw pub
-                kw pub(crate)
-                kw static
-                kw struct
-                kw trait
-                kw type
-                kw union
-                kw unsafe
                 kw use
+                kw impl
+                kw trait
+                kw enum
+                kw struct
+                kw union
+                kw mod
+                kw const
+                kw type
+                kw static
+                kw extern
+                kw unsafe
+                kw pub(crate)
+                kw pub
             "#]],
         );
     }
@@ -247,23 +247,23 @@ mod tests {
         check(
             r"fn quux() { <|> }",
             expect![[r#"
-                kw const
-                kw extern
                 kw fn
+                kw use
+                kw impl
+                kw trait
+                kw match
+                kw while
+                kw loop
                 kw if
                 kw if let
-                kw impl
                 kw let
-                kw loop
-                kw match
                 kw mod
-                kw return
-                kw static
-                kw trait
+                kw const
                 kw type
+                kw static
+                kw extern
                 kw unsafe
-                kw use
-                kw while
+                kw return
             "#]],
         );
     }
@@ -273,23 +273,23 @@ mod tests {
         check(
             r"fn quux() { if true { <|> } }",
             expect![[r#"
-                kw const
-                kw extern
                 kw fn
+                kw use
+                kw impl
+                kw trait
+                kw match
+                kw while
+                kw loop
                 kw if
                 kw if let
-                kw impl
                 kw let
-                kw loop
-                kw match
                 kw mod
-                kw return
-                kw static
-                kw trait
+                kw const
                 kw type
+                kw static
+                kw extern
                 kw unsafe
-                kw use
-                kw while
+                kw return
             "#]],
         );
     }
@@ -299,25 +299,25 @@ mod tests {
         check(
             r#"fn quux() { if true { () } <|> }"#,
             expect![[r#"
-                kw const
-                kw else
-                kw else if
-                kw extern
                 kw fn
+                kw use
+                kw impl
+                kw trait
+                kw match
+                kw while
+                kw loop
                 kw if
                 kw if let
-                kw impl
                 kw let
-                kw loop
-                kw match
+                kw else
+                kw else if
                 kw mod
-                kw return
-                kw static
-                kw trait
+                kw const
                 kw type
+                kw static
+                kw extern
                 kw unsafe
-                kw use
-                kw while
+                kw return
             "#]],
         );
         check_edit(
@@ -336,13 +336,13 @@ fn quux() -> i32 {
 }
 "#,
             expect![[r#"
+                kw match
+                kw while
+                kw loop
                 kw if
                 kw if let
-                kw loop
-                kw match
-                kw return
                 kw unsafe
-                kw while
+                kw return
             "#]],
         );
     }
@@ -352,8 +352,8 @@ fn quux() -> i32 {
         check(
             r"trait My { <|> }",
             expect![[r#"
-                kw const
                 kw fn
+                kw const
                 kw type
                 kw unsafe
             "#]],
@@ -365,12 +365,12 @@ fn quux() -> i32 {
         check(
             r"impl My { <|> }",
             expect![[r#"
-                kw const
                 kw fn
-                kw pub
-                kw pub(crate)
+                kw const
                 kw type
                 kw unsafe
+                kw pub(crate)
+                kw pub
             "#]],
         );
     }
@@ -380,25 +380,25 @@ fn quux() -> i32 {
         check(
             r"fn my() { loop { <|> } }",
             expect![[r#"
-                kw break
-                kw const
-                kw continue
-                kw extern
                 kw fn
+                kw use
+                kw impl
+                kw trait
+                kw match
+                kw while
+                kw loop
                 kw if
                 kw if let
-                kw impl
                 kw let
-                kw loop
-                kw match
                 kw mod
-                kw return
-                kw static
-                kw trait
+                kw const
                 kw type
+                kw static
+                kw extern
                 kw unsafe
-                kw use
-                kw while
+                kw continue
+                kw break
+                kw return
             "#]],
         );
     }
@@ -409,8 +409,8 @@ fn quux() -> i32 {
             r"unsafe <|>",
             expect![[r#"
                 kw fn
-                kw impl
                 kw trait
+                kw impl
             "#]],
         );
     }
@@ -421,8 +421,8 @@ fn quux() -> i32 {
             r"fn my_fn() { unsafe <|> }",
             expect![[r#"
                 kw fn
-                kw impl
                 kw trait
+                kw impl
             "#]],
         );
     }
@@ -542,12 +542,12 @@ pub mod future {
         check(
             r#"fn main() { let _ = <|> }"#,
             expect![[r#"
+                kw match
+                kw while
+                kw loop
                 kw if
                 kw if let
-                kw loop
-                kw match
                 kw return
-                kw while
             "#]],
         )
     }
@@ -562,8 +562,8 @@ struct Foo {
 }
 "#,
             expect![[r#"
-                kw pub
                 kw pub(crate)
+                kw pub
             "#]],
         )
     }
@@ -600,12 +600,12 @@ fn foo() {
 }
 "#,
             expect![[r#"
+                kw match
+                kw while
+                kw loop
                 kw if
                 kw if let
-                kw loop
-                kw match
                 kw return
-                kw while
             "#]],
         );
     }

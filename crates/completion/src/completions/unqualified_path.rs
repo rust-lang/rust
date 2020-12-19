@@ -268,9 +268,9 @@ fn quux(x: i32) {
 }
 "#,
             expect![[r#"
-                fn quux(…) fn quux(x: i32)
-                bn x       i32
                 bn y       i32
+                bn x       i32
+                fn quux(…) fn quux(x: i32)
             "#]],
         );
     }
@@ -290,8 +290,8 @@ fn quux() {
 }
 "#,
             expect![[r#"
-                bn a
                 bn b      i32
+                bn a
                 fn quux() fn quux()
             "#]],
         );
@@ -306,8 +306,8 @@ fn quux() {
 }
 "#,
             expect![[r#"
-                fn quux() fn quux()
                 bn x
+                fn quux() fn quux()
             "#]],
         );
     }
@@ -348,9 +348,9 @@ fn main() {
         check(
             r#"struct S<T> { x: <|>}"#,
             expect![[r#"
-                st S<…>
                 tp Self
                 tp T
+                st S<…>
             "#]],
         );
     }
@@ -375,9 +375,9 @@ enum E {}
 fn quux() { <|> }
 "#,
             expect![[r#"
-                en E
                 st S
                 fn quux() fn quux()
+                en E
             "#]],
         );
     }
@@ -429,8 +429,8 @@ mod m {
 }
 "#,
             expect![[r#"
-                st Bar
                 fn quux() fn quux()
+                st Bar
             "#]],
         );
     }
@@ -475,8 +475,8 @@ fn foo() {
         check(
             r#"impl S { fn foo(&self) { <|> } }"#,
             expect![[r#"
-                tp Self
                 bn self &{unknown}
+                tp Self
             "#]],
         );
     }
@@ -495,9 +495,9 @@ use prelude::*;
 mod prelude { struct Option; }
 "#,
             expect![[r#"
-                st Option
                 fn foo()  fn foo()
                 md std
+                st Option
             "#]],
         );
     }
@@ -522,10 +522,10 @@ use prelude::*;
 mod prelude { struct String; }
 "#,
             expect![[r#"
-                st String
-                md core
                 fn foo()  fn foo()
                 md std
+                md core
+                st String
             "#]],
         );
     }
@@ -551,13 +551,13 @@ mod m2 {
 fn main() { let v = <|> }
 "#,
             expect![[r##"
-                ma bar!(…) macro_rules! bar
+                md m1
                 ma baz!(…) #[macro_export]
                 macro_rules! baz
-                ma foo!(…) macro_rules! foo
-                md m1
-                md m2
                 fn main()  fn main()
+                md m2
+                ma bar!(…) macro_rules! bar
+                ma foo!(…) macro_rules! foo
             "##]],
         );
     }
@@ -570,8 +570,8 @@ macro_rules! foo { () => {} }
 fn foo() { <|> }
 "#,
             expect![[r#"
-                ma foo!(…) macro_rules! foo
                 fn foo()   fn foo()
+                ma foo!(…) macro_rules! foo
             "#]],
         );
     }
@@ -584,8 +584,8 @@ macro_rules! foo { () => {} }
 fn main() { let x: <|> }
 "#,
             expect![[r#"
-                ma foo!(…) macro_rules! foo
                 fn main()  fn main()
+                ma foo!(…) macro_rules! foo
             "#]],
         );
     }
@@ -598,8 +598,8 @@ macro_rules! foo { () => {} }
 fn main() { <|> }
 "#,
             expect![[r#"
-                ma foo!(…) macro_rules! foo
                 fn main()  fn main()
+                ma foo!(…) macro_rules! foo
             "#]],
         );
     }
@@ -631,10 +631,10 @@ fn quux(x: i32) {
 }
 "#,
             expect![[r#"
-                ma m!(…)   macro_rules! m
-                fn quux(…) fn quux(x: i32)
-                bn x       i32
                 bn y       i32
+                bn x       i32
+                fn quux(…) fn quux(x: i32)
+                ma m!(…)   macro_rules! m
             "#]],
         );
     }
@@ -650,10 +650,10 @@ fn quux(x: i32) {
 }
 ",
             expect![[r#"
-                ma m!(…)   macro_rules! m
-                fn quux(…) fn quux(x: i32)
-                bn x       i32
                 bn y       i32
+                bn x       i32
+                fn quux(…) fn quux(x: i32)
+                ma m!(…)   macro_rules! m
             "#]],
         );
     }
@@ -669,10 +669,10 @@ fn quux(x: i32) {
 }
 "#,
             expect![[r#"
-                ma m!(…)   macro_rules! m
-                fn quux(…) fn quux(x: i32)
-                bn x       i32
                 bn y       i32
+                bn x       i32
+                fn quux(…) fn quux(x: i32)
+                ma m!(…)   macro_rules! m
             "#]],
         );
     }
@@ -686,8 +686,8 @@ use spam::Quux;
 fn main() { <|> }
 "#,
             expect![[r#"
-                ?? Quux
                 fn main() fn main()
+                ?? Quux
             "#]],
         );
     }
@@ -703,10 +703,10 @@ fn main() {
 }
 "#,
             expect![[r#"
-                en Foo
                 ev Foo::Bar  ()
                 ev Foo::Baz  ()
                 ev Foo::Quux ()
+                en Foo
             "#]],
         )
     }
@@ -723,10 +723,10 @@ fn main() {
 }
 "#,
             expect![[r#"
-                en Foo
                 ev Foo::Bar  ()
                 ev Foo::Baz  ()
                 ev Foo::Quux ()
+                en Foo
             "#]],
         )
     }
@@ -739,10 +739,10 @@ enum Foo { Bar, Baz, Quux }
 fn main() { let foo: Foo = Q<|> }
 "#,
             expect![[r#"
-                en Foo
                 ev Foo::Bar  ()
                 ev Foo::Baz  ()
                 ev Foo::Quux ()
+                en Foo
                 fn main()    fn main()
             "#]],
         )
@@ -756,9 +756,9 @@ mod m { pub enum E { V } }
 fn f() -> m::E { V<|> }
 "#,
             expect![[r#"
-                fn f()     fn f() -> m::E
-                md m
                 ev m::E::V ()
+                md m
+                fn f()     fn f() -> m::E
             "#]],
         )
     }
@@ -785,9 +785,9 @@ struct MyStruct {}
 impl My<|>
 "#,
             expect![[r#"
-                st MyStruct
-                tt MyTrait
                 tp Self
+                tt MyTrait
+                st MyStruct
             "#]],
         )
     }
@@ -919,13 +919,13 @@ fn main() {
 }
 "#,
             expect![[r#"
-                st FirstStruct
+                fn main()           fn main()
                 st SecondStruct
+                st FirstStruct
                 md dep
                 st dep::some_module::ThirdStruct
                 st dep::some_module::AfterThirdStruct
                 st dep::some_module::ThiiiiiirdStruct
-                fn main()           fn main()
             "#]],
         );
     }

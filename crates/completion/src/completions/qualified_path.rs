@@ -199,22 +199,22 @@ use self::{foo::*, bar<|>};
         check_builtin(
             r#"fn main() { let _: <|> = 92; }"#,
             expect![[r#"
+                bt u32
                 bt bool
-                bt char
+                bt u8
+                bt isize
+                bt u16
+                bt u64
+                bt u128
                 bt f32
-                bt f64
                 bt i128
                 bt i16
-                bt i32
-                bt i64
-                bt i8
-                bt isize
                 bt str
-                bt u128
-                bt u16
-                bt u32
-                bt u64
-                bt u8
+                bt i64
+                bt char
+                bt f64
+                bt i32
+                bt i8
                 bt usize
             "#]],
         );
@@ -279,8 +279,8 @@ struct Spam;
 use crate::Sp<|>
 "#,
             expect![[r#"
-                st Spam
                 md foo
+                st Spam
             "#]],
         );
     }
@@ -296,8 +296,8 @@ struct Spam;
 use crate::{Sp<|>};
 "#,
             expect![[r#"
-                st Spam
                 md foo
+                st Spam
             "#]],
         );
     }
@@ -330,8 +330,8 @@ enum E { Foo, Bar(i32) }
 fn foo() { let _ = E::<|> }
 "#,
             expect![[r#"
-                ev Bar(…) (i32)
                 ev Foo    ()
+                ev Bar(…) (i32)
             "#]],
         );
     }
@@ -353,10 +353,10 @@ impl S {
 fn foo() { let _ = S::<|> }
 "#,
             expect![[r#"
-                ct C    const C: i32 = 42;
-                ta T    type T = i32;
                 fn a()  fn a()
                 me b(…) fn b(&self)
+                ct C    const C: i32 = 42;
+                ta T    type T = i32;
             "#]],
         );
     }
@@ -381,9 +381,9 @@ mod m {
 fn foo() { let _ = S::<|> }
 "#,
             expect![[r#"
+                fn public_method() pub(crate) fn public_method()
                 ct PUBLIC_CONST    pub(crate) const PUBLIC_CONST: u32 = 1;
                 ta PublicType      pub(crate) type PublicType = u32;
-                fn public_method() pub(crate) fn public_method()
             "#]],
         );
     }
@@ -503,14 +503,14 @@ trait Sub: Super {
 fn foo<T: Sub>() { T::<|> }
 "#,
             expect![[r#"
-                ct C2           const C2: ();
-                ct CONST        const CONST: u8;
                 ta SubTy        type SubTy;
                 ta Ty           type Ty;
-                fn func()       fn func()
-                me method(…)    fn method(&self)
+                ct C2           const C2: ();
                 fn subfunc()    fn subfunc()
                 me submethod(…) fn submethod(&self)
+                ct CONST        const CONST: u8;
+                fn func()       fn func()
+                me method(…)    fn method(&self)
             "#]],
         );
     }
@@ -543,12 +543,12 @@ impl<T> Sub for Wrap<T> {
 }
 "#,
             expect![[r#"
-                ct C2           const C2: () = ();
-                ct CONST        const CONST: u8 = 0;
                 ta SubTy        type SubTy;
                 ta Ty           type Ty;
+                ct CONST        const CONST: u8 = 0;
                 fn func()       fn func()
                 me method(…)    fn method(&self)
+                ct C2           const C2: () = ();
                 fn subfunc()    fn subfunc()
                 me submethod(…) fn submethod(&self)
             "#]],
@@ -567,8 +567,8 @@ impl T { fn bar() {} }
 fn main() { T::<|>; }
 "#,
             expect![[r#"
-                fn bar() fn bar()
                 fn foo() fn foo()
+                fn bar() fn bar()
             "#]],
         );
     }
@@ -583,9 +583,9 @@ macro_rules! foo { () => {} }
 fn main() { let _ = crate::<|> }
         "#,
             expect![[r##"
+                fn main()  fn main()
                 ma foo!(…) #[macro_export]
                 macro_rules! foo
-                fn main()  fn main()
             "##]],
         );
     }
@@ -603,8 +603,8 @@ mod a {
 }
 "#,
             expect![[r#"
-                ct A
                 md b
+                ct A
             "#]],
         );
     }
@@ -628,8 +628,8 @@ mod p {
 "#,
             expect![[r#"
                 ct RIGHT_CONST
-                st RightType
                 fn right_fn()  fn wrong_fn()
+                st RightType
             "#]],
         );
 
@@ -675,8 +675,8 @@ fn main() { m!(self::f<|>); }
 fn foo() {}
 "#,
             expect![[r#"
-                fn foo()  fn foo()
                 fn main() fn main()
+                fn foo()  fn foo()
             "#]],
         );
     }
@@ -747,8 +747,8 @@ fn main() {
 }
 "#,
             expect![[r#"
-                fn foo(…) fn foo(a: i32, b: i32)
                 fn main() fn main()
+                fn foo(…) fn foo(a: i32, b: i32)
             "#]],
         );
     }

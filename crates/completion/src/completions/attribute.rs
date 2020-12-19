@@ -428,8 +428,8 @@ struct Test {}
                 at Hash
                 at PartialEq
                 at PartialEq, Eq
-                at PartialEq, Eq, PartialOrd, Ord
                 at PartialEq, PartialOrd
+                at PartialEq, Eq, PartialOrd, Ord
             "#]],
         );
     }
@@ -457,10 +457,10 @@ struct Test {}
                 at Clone, Copy
                 at Debug
                 at Default
-                at Eq
-                at Eq, PartialOrd, Ord
                 at Hash
+                at Eq
                 at PartialOrd
+                at Eq, PartialOrd, Ord
             "#]],
         )
     }
@@ -472,14 +472,14 @@ struct Test {}
             expect![[r#"
                 at allow(…)
                 at automatically_derived
-                at cfg(…)
                 at cfg_attr(…)
+                at cfg(…)
                 at cold
                 at deny(…)
                 at deprecated = "…"
                 at derive(…)
-                at doc = "…"
                 at export_name = "…"
+                at doc = "…"
                 at forbid(…)
                 at ignore = "…"
                 at inline(…)
@@ -518,15 +518,15 @@ struct Test {}
             expect![[r#"
                 at allow(…)
                 at automatically_derived
-                at cfg(…)
                 at cfg_attr(…)
+                at cfg(…)
                 at cold
                 at crate_name = ""
                 at deny(…)
                 at deprecated = "…"
                 at derive(…)
-                at doc = "…"
                 at export_name = "…"
+                at doc = "…"
                 at feature(…)
                 at forbid(…)
                 at global_allocator
@@ -538,8 +538,8 @@ struct Test {}
                 at macro_export
                 at macro_use
                 at must_use = "…"
-                at no_implicit_prelude
                 at no_link
+                at no_implicit_prelude
                 at no_main
                 at no_mangle
                 at no_std
