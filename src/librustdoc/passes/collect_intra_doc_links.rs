@@ -475,9 +475,9 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         });
         debug!("{} resolved to {:?} in namespace {:?}", path_str, result, ns);
         match result {
-            // resolver doesn't know about true and false so we'll have to resolve them
+            // resolver doesn't know about true, false, and types that aren't paths (e.g. `()`)
             // manually as bool
-            Err(()) => is_bool_value(path_str, ns),
+            Err(()) => resolve_primitive(path_str, ns),
             Ok(res) => Some(res),
         }
     }
@@ -1020,7 +1020,7 @@ impl LinkCollector<'_, '_> {
             (link.trim(), None)
         };
 
-        if path_str.contains(|ch: char| !(ch.is_alphanumeric() || ":_<>, !".contains(ch))) {
+        if path_str.contains(|ch: char| !(ch.is_alphanumeric() || ":_<>, !*()[]&;".contains(ch))) {
             return None;
         }
 
@@ -1108,9 +1108,8 @@ impl LinkCollector<'_, '_> {
         // Sanity check to make sure we don't have any angle brackets after stripping generics.
         assert!(!path_str.contains(['<', '>'].as_slice()));
 
-        // The link is not an intra-doc link if it still contains commas or spaces after
-        // stripping generics.
-        if path_str.contains([',', ' '].as_slice()) {
+        // The link is not an intra-doc link if it still contains spaces after stripping generics.
+        if path_str.contains(' ') {
             return None;
         }
 
@@ -1476,8 +1475,11 @@ impl Disambiguator {
                 ("!", DefKind::Macro(MacroKind::Bang)),
             ];
             for &(suffix, kind) in &suffixes {
-                if link.ends_with(suffix) {
-                    return Ok((Kind(kind), link.trim_end_matches(suffix)));
+                if let Some(link) = link.strip_suffix(suffix) {
+                    // Avoid turning `!` or `()` into an empty string
+                    if !link.is_empty() {
+                        return Ok((Kind(kind), link));
+                    }
                 }
             }
             Err(())
@@ -2066,35 +2068,35 @@ fn resolve_primitive(path_str: &str, ns: Namespace) -> Option<Res> {
     }
     use PrimitiveType::*;
     let prim = match path_str {
-        "u8" => U8,
-        "u16" => U16,
-        "u32" => U32,
-        "u64" => U64,
-        "u128" => U128,
-        "usize" => Usize,
+        "isize" => Isize,
         "i8" => I8,
         "i16" => I16,
         "i32" => I32,
         "i64" => I64,
         "i128" => I128,
-        "isize" => Isize,
+        "usize" => Usize,
+        "u8" => U8,
+        "u16" => U16,
+        "u32" => U32,
+        "u64" => U64,
+        "u128" => U128,
         "f32" => F32,
         "f64" => F64,
-        "str" => Str,
-        "bool" | "true" | "false" => Bool,
         "char" => Char,
+        "bool" | "true" | "false" => Bool,
+        "str" => Str,
+        "slice" | "&[]" | "[T]" => Slice,
+        "array" | "[]" | "[T;N]" => Array,
+        "tuple" | "(,)" => Tuple,
+        "unit" | "()" => Unit,
+        "pointer" | "*" | "*const" | "*mut" => RawPointer,
+        "reference" | "&" | "&mut" => Reference,
+        "fn" => Fn,
+        "never" | "!" => Never,
         _ => return None,
     };
+    debug!("resolved primitives {:?}", prim);
     Some(Res::Primitive(prim))
-}
-
-/// Resolve a primitive value.
-fn is_bool_value(path_str: &str, ns: Namespace) -> Option<Res> {
-    if ns == TypeNS && (path_str == "true" || path_str == "false") {
-        Some(Res::Primitive(PrimitiveType::Bool))
-    } else {
-        None
-    }
 }
 
 fn strip_generics_from_path(path_str: &str) -> Result<String, ResolutionFailure<'static>> {
