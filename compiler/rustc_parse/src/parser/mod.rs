@@ -721,13 +721,9 @@ impl<'a> Parser<'a> {
                                 Ok(t) => {
                                     // Parsed successfully, therefore most probably the code only
                                     // misses a separator.
-                                    let mut exp_span = self.sess.source_map().next_point(sp);
-                                    if self.sess.source_map().is_multiline(exp_span) {
-                                        exp_span = sp;
-                                    }
                                     expect_err
                                         .span_suggestion_short(
-                                            exp_span,
+                                            sp,
                                             &format!("missing `{}`", token_str),
                                             token_str,
                                             Applicability::MaybeIncorrect,
