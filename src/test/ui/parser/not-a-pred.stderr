@@ -1,8 +1,34 @@
-error: expected one of `->`, `;`, `where`, or `{`, found `:`
+error: return types are denoted using `->`
   --> $DIR/not-a-pred.rs:1:26
    |
 LL | fn f(a: isize, b: isize) : lt(a, b) { }
-   |                          ^ expected one of `->`, `;`, `where`, or `{`
+   |                          ^ help: use `->` instead
 
-error: aborting due to previous error
+error[E0573]: expected type, found function `lt`
+  --> $DIR/not-a-pred.rs:1:28
+   |
+LL | fn f(a: isize, b: isize) : lt(a, b) { }
+   |                            ^^^^^^^^ not a type
 
+error[E0573]: expected type, found local variable `a`
+  --> $DIR/not-a-pred.rs:1:31
+   |
+LL | fn f(a: isize, b: isize) : lt(a, b) { }
+   |                               ^ not a type
+
+error[E0573]: expected type, found local variable `b`
+  --> $DIR/not-a-pred.rs:1:34
+   |
+LL | fn f(a: isize, b: isize) : lt(a, b) { }
+   |                                  ^ not a type
+
+error[E0425]: cannot find function `check` in this scope
+  --> $DIR/not-a-pred.rs:12:5
+   |
+LL |     check (lt(a, b));
+   |     ^^^^^ not found in this scope
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0425, E0573.
+For more information about an error, try `rustc --explain E0425`.

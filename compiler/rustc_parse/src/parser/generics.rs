@@ -240,7 +240,7 @@ impl<'a> Parser<'a> {
 
         // Parse type with mandatory colon and (possibly empty) bounds,
         // or with mandatory equality sign and the second type.
-        let ty = self.parse_ty()?;
+        let ty = self.parse_ty_for_where_clause()?;
         if self.eat(&token::Colon) {
             let bounds = self.parse_generic_bounds(Some(self.prev_token.span))?;
             Ok(ast::WherePredicate::BoundPredicate(ast::WhereBoundPredicate {
