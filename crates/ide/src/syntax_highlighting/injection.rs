@@ -179,6 +179,5 @@ pub(super) fn highlight_doc_comment(
         stack.add(comment);
     }
     stack.pop_and_inject(None);
-    stack
-        .pop_and_inject(Some(Highlight::from(HighlightTag::Generic) | HighlightModifier::Injected));
+    stack.pop_and_inject(Some(Highlight::from(HighlightTag::Dummy) | HighlightModifier::Injected));
 }

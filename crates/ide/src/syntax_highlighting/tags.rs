@@ -33,8 +33,8 @@ pub enum HighlightTag {
     Operator,
     UnresolvedReference,
 
-    // FIXME: this one is random and don't fit with the others
-    Generic,
+    // For things which don't have proper Tag, but want to use modifiers.
+    Dummy,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -90,7 +90,7 @@ impl HighlightTag {
             HighlightTag::Comment => "comment",
             HighlightTag::EscapeSequence => "escape_sequence",
             HighlightTag::FormatSpecifier => "format_specifier",
-            HighlightTag::Generic => "generic",
+            HighlightTag::Dummy => "dummy",
             HighlightTag::Keyword => "keyword",
             HighlightTag::Punctuation => "punctuation",
             HighlightTag::NumericLiteral => "numeric_literal",
