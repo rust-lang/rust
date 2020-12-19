@@ -66,12 +66,14 @@ impl<'a, 'tcx> ConstMutationChecker<'a, 'tcx> {
         location: Location,
         decorate: impl for<'b> FnOnce(LintDiagnosticBuilder<'b>) -> DiagnosticBuilder<'b>,
     ) {
-        // Don't lint on borrowing/assigning to a dereference
-        // e.g:
+        // Don't lint on borrowing/assigning when a dereference is involved.
+        // If we 'leave' the temporary via a dereference, we must
+        // be modifying something else
         //
         // `unsafe { *FOO = 0; *BAR.field = 1; }`
         // `unsafe { &mut *FOO }`
-        if !matches!(place.projection.last(), Some(PlaceElem::Deref)) {
+        // `unsafe { (*ARRAY)[0] = val; }
+        if !place.projection.iter().any(|p| matches!(p, PlaceElem::Deref)) {
             let source_info = self.body.source_info(location);
             let lint_root = self.body.source_scopes[source_info.scope]
                 .local_data
