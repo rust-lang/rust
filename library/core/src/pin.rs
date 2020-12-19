@@ -6,10 +6,10 @@
 //! as moving an object with pointers to itself will invalidate them, which could cause undefined
 //! behavior.
 //!
-//! At a high level, a [`Pin<P>`] ensures that the pointee of any pointer type
+//! At a high level, a [`Pin<P>`] ensures that the pointer of any pointer type
 //! `P` has a stable location in memory, meaning it cannot be moved elsewhere
 //! and its memory cannot be deallocated until it gets dropped. We say that the
-//! pointee is "pinned". Things get more subtle when discussing types that
+//! pointer is "pinned". Things get more subtle when discussing types that
 //! combine pinned with non-pinned data; [see below](#projections-and-structural-pinning)
 //! for more details.
 //!
@@ -527,7 +527,7 @@ impl<P: Deref> Pin<P> {
     /// fn move_pinned_ref<T>(mut a: T, mut b: T) {
     ///     unsafe {
     ///         let p: Pin<&mut T> = Pin::new_unchecked(&mut a);
-    ///         // This should mean the pointee `a` can never move again.
+    ///         // This should mean the pointer `a` can never move again.
     ///     }
     ///     mem::swap(&mut a, &mut b);
     ///     // The address of `a` changed to `b`'s stack slot, so `a` got moved even
@@ -546,7 +546,7 @@ impl<P: Deref> Pin<P> {
     ///     let pinned = unsafe { Pin::new_unchecked(Rc::clone(&x)) };
     ///     {
     ///         let p: Pin<&T> = pinned.as_ref();
-    ///         // This should mean the pointee can never move again.
+    ///         // This should mean the pointer can never move again.
     ///     }
     ///     drop(pinned);
     ///     let content = Rc::get_mut(&mut x).unwrap();
@@ -569,7 +569,7 @@ impl<P: Deref> Pin<P> {
     ///
     /// This is a generic method to go from `&Pin<Pointer<T>>` to `Pin<&T>`.
     /// It is safe because, as part of the contract of `Pin::new_unchecked`,
-    /// the pointee cannot move after `Pin<Pointer<T>>` got created.
+    /// the pointer cannot move after `Pin<Pointer<T>>` got created.
     /// "Malicious" implementations of `Pointer::Deref` are likewise
     /// ruled out by the contract of `Pin::new_unchecked`.
     #[stable(feature = "pin", since = "1.33.0")]
@@ -605,7 +605,7 @@ impl<P: DerefMut> Pin<P> {
     ///
     /// This is a generic method to go from `&mut Pin<Pointer<T>>` to `Pin<&mut T>`.
     /// It is safe because, as part of the contract of `Pin::new_unchecked`,
-    /// the pointee cannot move after `Pin<Pointer<T>>` got created.
+    /// the pointer cannot move after `Pin<Pointer<T>>` got created.
     /// "Malicious" implementations of `Pointer::DerefMut` are likewise
     /// ruled out by the contract of `Pin::new_unchecked`.
     ///
