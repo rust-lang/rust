@@ -309,9 +309,7 @@ impl IntRange {
                 pcx.span,
                 |lint| {
                     let mut err = lint.build("multiple patterns overlap on their endpoints");
-                    err.span_label(pcx.span, "... with this range");
                     for (int_range, span) in overlaps {
-                        // Use the real type for user display of the ranges:
                         err.span_label(
                             span,
                             &format!(
@@ -320,7 +318,8 @@ impl IntRange {
                             ),
                         );
                     }
-                    err.note("this is likely to be a mistake");
+                    err.span_label(pcx.span, "... with this range");
+                    err.note("you likely meant to write mutually exclusive ranges");
                     err.emit();
                 },
             );
