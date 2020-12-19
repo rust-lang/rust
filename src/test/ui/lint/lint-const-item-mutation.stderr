@@ -1,5 +1,5 @@
 warning: attempting to modify a `const` item
-  --> $DIR/lint-const-item-mutation.rs:35:5
+  --> $DIR/lint-const-item-mutation.rs:37:5
    |
 LL |     ARRAY[0] = 5;
    |     ^^^^^^^^^^^^
@@ -13,7 +13,7 @@ LL | const ARRAY: [u8; 1] = [25];
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: attempting to modify a `const` item
-  --> $DIR/lint-const-item-mutation.rs:36:5
+  --> $DIR/lint-const-item-mutation.rs:38:5
    |
 LL |     MY_STRUCT.field = false;
    |     ^^^^^^^^^^^^^^^^^^^^^^^
@@ -26,7 +26,7 @@ LL | const MY_STRUCT: MyStruct = MyStruct { field: true, inner_array: ['a'], raw
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: attempting to modify a `const` item
-  --> $DIR/lint-const-item-mutation.rs:37:5
+  --> $DIR/lint-const-item-mutation.rs:39:5
    |
 LL |     MY_STRUCT.inner_array[0] = 'b';
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -39,7 +39,7 @@ LL | const MY_STRUCT: MyStruct = MyStruct { field: true, inner_array: ['a'], raw
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: taking a mutable reference to a `const` item
-  --> $DIR/lint-const-item-mutation.rs:38:5
+  --> $DIR/lint-const-item-mutation.rs:40:5
    |
 LL |     MY_STRUCT.use_mut();
    |     ^^^^^^^^^^^^^^^^^^^
@@ -58,7 +58,7 @@ LL | const MY_STRUCT: MyStruct = MyStruct { field: true, inner_array: ['a'], raw
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: taking a mutable reference to a `const` item
-  --> $DIR/lint-const-item-mutation.rs:39:5
+  --> $DIR/lint-const-item-mutation.rs:41:5
    |
 LL |     &mut MY_STRUCT;
    |     ^^^^^^^^^^^^^^
@@ -72,7 +72,7 @@ LL | const MY_STRUCT: MyStruct = MyStruct { field: true, inner_array: ['a'], raw
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: taking a mutable reference to a `const` item
-  --> $DIR/lint-const-item-mutation.rs:40:5
+  --> $DIR/lint-const-item-mutation.rs:42:5
    |
 LL |     (&mut MY_STRUCT).use_mut();
    |     ^^^^^^^^^^^^^^^^
@@ -86,7 +86,7 @@ LL | const MY_STRUCT: MyStruct = MyStruct { field: true, inner_array: ['a'], raw
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: attempting to modify a `const` item
-  --> $DIR/lint-const-item-mutation.rs:52:5
+  --> $DIR/lint-const-item-mutation.rs:54:5
    |
 LL |     MUTABLE2.msg = "wow";
    |     ^^^^^^^^^^^^^^^^^^^^
@@ -99,7 +99,7 @@ LL | const MUTABLE2: Mutable2 = Mutable2 { msg: "", other: String::new() };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: taking a mutable reference to a `const` item
-  --> $DIR/lint-const-item-mutation.rs:53:5
+  --> $DIR/lint-const-item-mutation.rs:55:5
    |
 LL |     VEC.push(0);
    |     ^^^^^^^^^^^
