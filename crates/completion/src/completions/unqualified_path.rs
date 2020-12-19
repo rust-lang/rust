@@ -1,7 +1,7 @@
 //! Completion of names from the current scope, e.g. locals and imported items.
 
 use either::Either;
-use hir::{Adt, ModuleDef, ScopeDef, Type};
+use hir::{Adt, ModPath, ModuleDef, ScopeDef, Type};
 use ide_db::helpers::insert_use::ImportScope;
 use ide_db::imports_locator;
 use syntax::AstNode;
@@ -147,22 +147,31 @@ fn fuzzy_completion(acc: &mut Completions, ctx: &CompletionContext) -> Option<()
     .collect::<Vec<_>>();
 
     all_mod_paths.sort_by_cached_key(|(mod_path, _)| {
-        if let Some(name) = mod_path.segments.last().map(|name| name.to_string().to_lowercase()) {
-            if name.contains(&potential_import_name.to_lowercase()) {
-                return 0;
-            }
-        }
-        1
+        compute_fuzzy_completion_order_key(mod_path, &potential_import_name)
     });
 
     acc.add_all(all_mod_paths.into_iter().filter_map(|(import_path, definition)| {
         render_resolution_with_import(
             RenderContext::new(ctx),
-            ImportEdit { import_path, import_scope: import_scope.clone() },
+            ImportEdit { import_path: import_path, import_scope: import_scope.clone() },
             &definition,
         )
     }));
     Some(())
+}
+
+// todo kb add tet marks for the completion order test + the sotring description
+fn compute_fuzzy_completion_order_key(proposed_mod_path: &ModPath, user_input: &str) -> usize {
+    let proposed_import_name = match proposed_mod_path.segments.last() {
+        Some(name) => name.to_string().to_lowercase(),
+        None => return usize::MAX,
+    };
+    let user_input = user_input.to_lowercase();
+
+    match proposed_import_name.match_indices(&user_input).next() {
+        Some((first_matching_index, _)) => first_matching_index,
+        None => usize::MAX,
+    }
 }
 
 #[cfg(test)]
@@ -171,12 +180,16 @@ mod tests {
     use test_utils::mark;
 
     use crate::{
-        test_utils::{check_edit, check_edit_with_config, completion_list},
+        test_utils::{check_edit, check_edit_with_config, completion_list_with_config},
         CompletionConfig, CompletionKind,
     };
 
     fn check(ra_fixture: &str, expect: Expect) {
-        let actual = completion_list(ra_fixture, CompletionKind::Reference);
+        check_with_config(CompletionConfig::default(), ra_fixture, expect);
+    }
+
+    fn check_with_config(config: CompletionConfig, ra_fixture: &str, expect: Expect) {
+        let actual = completion_list_with_config(config, ra_fixture, CompletionKind::Reference);
         expect.assert_eq(&actual)
     }
 
@@ -875,6 +888,45 @@ fn main() {
     ThirdStruct
 }
 "#,
+        );
+    }
+
+    #[test]
+    fn fuzzy_completions_come_in_specific_order() {
+        let mut completion_config = CompletionConfig::default();
+        completion_config
+            .active_resolve_capabilities
+            .insert(crate::CompletionResolveCapability::AdditionalTextEdits);
+
+        check_with_config(
+            completion_config,
+            r#"
+//- /lib.rs crate:dep
+pub struct FirstStruct;
+pub mod some_module {
+    pub struct SecondStruct;
+
+    pub struct ThiiiiiirdStruct;
+    pub struct AfterThirdStruct;
+    pub struct ThirdStruct;
+}
+
+//- /main.rs crate:main deps:dep
+use dep::{FirstStruct, some_module::SecondStruct};
+
+fn main() {
+    hir<|>
+}
+"#,
+            expect![[r#"
+                st FirstStruct
+                st SecondStruct
+                md dep
+                st dep::some_module::ThirdStruct
+                st dep::some_module::AfterThirdStruct
+                st dep::some_module::ThiiiiiirdStruct
+                fn main()           fn main()
+            "#]],
         );
     }
 }
