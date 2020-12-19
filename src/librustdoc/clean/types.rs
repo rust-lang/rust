@@ -481,7 +481,7 @@ crate enum DocFragmentKind {
     RawDoc,
     /// A doc fragment created from a `#[doc(include="filename")]` attribute. Contains both the
     /// given filename and the file contents.
-    Include { filename: String },
+    Include { filename: Symbol },
 }
 
 impl<'a> FromIterator<&'a DocFragment> for String {
@@ -565,7 +565,7 @@ impl Attributes {
     /// Reads a `MetaItem` from within an attribute, looks for whether it is a
     /// `#[doc(include="file")]`, and returns the filename and contents of the file as loaded from
     /// its expansion.
-    crate fn extract_include(mi: &ast::MetaItem) -> Option<(String, String)> {
+    crate fn extract_include(mi: &ast::MetaItem) -> Option<(Symbol, String)> {
         mi.meta_item_list().and_then(|list| {
             for meta in list {
                 if meta.has_name(sym::include) {
@@ -573,13 +573,13 @@ impl Attributes {
                     // `#[doc(include(file="filename", contents="file contents")]` so we need to
                     // look for that instead
                     return meta.meta_item_list().and_then(|list| {
-                        let mut filename: Option<String> = None;
+                        let mut filename: Option<Symbol> = None;
                         let mut contents: Option<String> = None;
 
                         for it in list {
                             if it.has_name(sym::file) {
                                 if let Some(name) = it.value_str() {
-                                    filename = Some(name.to_string());
+                                    filename = Some(name);
                                 }
                             } else if it.has_name(sym::contents) {
                                 if let Some(docs) = it.value_str() {
