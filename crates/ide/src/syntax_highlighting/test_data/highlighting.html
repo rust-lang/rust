@@ -65,25 +65,25 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 <span class="punctuation">}</span>
 
 <span class="keyword">trait</span> <span class="trait declaration">Bar</span> <span class="punctuation">{</span>
-    <span class="keyword">fn</span> <span class="function declaration">bar</span><span class="punctuation">(</span><span class="operator">&</span><span class="self_keyword">self</span><span class="punctuation">)</span> <span class="operator">-&gt;</span> <span class="builtin_type">i32</span><span class="punctuation">;</span>
+    <span class="keyword">fn</span> <span class="function declaration associated">bar</span><span class="punctuation">(</span><span class="operator">&</span><span class="self_keyword">self</span><span class="punctuation">)</span> <span class="operator">-&gt;</span> <span class="builtin_type">i32</span><span class="punctuation">;</span>
 <span class="punctuation">}</span>
 
 <span class="keyword">impl</span> <span class="trait">Bar</span> <span class="keyword">for</span> <span class="struct">Foo</span> <span class="punctuation">{</span>
-    <span class="keyword">fn</span> <span class="function declaration">bar</span><span class="punctuation">(</span><span class="operator">&</span><span class="self_keyword">self</span><span class="punctuation">)</span> <span class="operator">-&gt;</span> <span class="builtin_type">i32</span> <span class="punctuation">{</span>
+    <span class="keyword">fn</span> <span class="function declaration associated">bar</span><span class="punctuation">(</span><span class="operator">&</span><span class="self_keyword">self</span><span class="punctuation">)</span> <span class="operator">-&gt;</span> <span class="builtin_type">i32</span> <span class="punctuation">{</span>
         <span class="self_keyword">self</span><span class="operator">.</span><span class="field">x</span>
     <span class="punctuation">}</span>
 <span class="punctuation">}</span>
 
 <span class="keyword">impl</span> <span class="struct">Foo</span> <span class="punctuation">{</span>
-    <span class="keyword">fn</span> <span class="function declaration">baz</span><span class="punctuation">(</span><span class="keyword">mut</span> <span class="self_keyword mutable">self</span><span class="punctuation">,</span> <span class="value_param declaration">f</span><span class="punctuation">:</span> <span class="struct">Foo</span><span class="punctuation">)</span> <span class="operator">-&gt;</span> <span class="builtin_type">i32</span> <span class="punctuation">{</span>
-        <span class="value_param">f</span><span class="operator">.</span><span class="function consuming">baz</span><span class="punctuation">(</span><span class="self_keyword mutable consuming">self</span><span class="punctuation">)</span>
+    <span class="keyword">fn</span> <span class="function declaration associated">baz</span><span class="punctuation">(</span><span class="keyword">mut</span> <span class="self_keyword mutable">self</span><span class="punctuation">,</span> <span class="value_param declaration">f</span><span class="punctuation">:</span> <span class="struct">Foo</span><span class="punctuation">)</span> <span class="operator">-&gt;</span> <span class="builtin_type">i32</span> <span class="punctuation">{</span>
+        <span class="value_param">f</span><span class="operator">.</span><span class="function consuming associated">baz</span><span class="punctuation">(</span><span class="self_keyword mutable consuming">self</span><span class="punctuation">)</span>
     <span class="punctuation">}</span>
 
-    <span class="keyword">fn</span> <span class="function declaration">qux</span><span class="punctuation">(</span><span class="operator">&</span><span class="keyword">mut</span> <span class="self_keyword mutable">self</span><span class="punctuation">)</span> <span class="punctuation">{</span>
+    <span class="keyword">fn</span> <span class="function declaration associated">qux</span><span class="punctuation">(</span><span class="operator">&</span><span class="keyword">mut</span> <span class="self_keyword mutable">self</span><span class="punctuation">)</span> <span class="punctuation">{</span>
         <span class="self_keyword mutable">self</span><span class="operator">.</span><span class="field">x</span> <span class="operator">=</span> <span class="numeric_literal">0</span><span class="punctuation">;</span>
     <span class="punctuation">}</span>
 
-    <span class="keyword">fn</span> <span class="function declaration">quop</span><span class="punctuation">(</span><span class="operator">&</span><span class="self_keyword">self</span><span class="punctuation">)</span> <span class="operator">-&gt;</span> <span class="builtin_type">i32</span> <span class="punctuation">{</span>
+    <span class="keyword">fn</span> <span class="function declaration associated">quop</span><span class="punctuation">(</span><span class="operator">&</span><span class="self_keyword">self</span><span class="punctuation">)</span> <span class="operator">-&gt;</span> <span class="builtin_type">i32</span> <span class="punctuation">{</span>
         <span class="self_keyword">self</span><span class="operator">.</span><span class="field">x</span>
     <span class="punctuation">}</span>
 <span class="punctuation">}</span>
@@ -94,15 +94,15 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 <span class="punctuation">}</span>
 
 <span class="keyword">impl</span> <span class="struct">FooCopy</span> <span class="punctuation">{</span>
-    <span class="keyword">fn</span> <span class="function declaration">baz</span><span class="punctuation">(</span><span class="self_keyword">self</span><span class="punctuation">,</span> <span class="value_param declaration">f</span><span class="punctuation">:</span> <span class="struct">FooCopy</span><span class="punctuation">)</span> <span class="operator">-&gt;</span> <span class="builtin_type">u32</span> <span class="punctuation">{</span>
-        <span class="value_param">f</span><span class="operator">.</span><span class="function">baz</span><span class="punctuation">(</span><span class="self_keyword">self</span><span class="punctuation">)</span>
+    <span class="keyword">fn</span> <span class="function declaration associated">baz</span><span class="punctuation">(</span><span class="self_keyword">self</span><span class="punctuation">,</span> <span class="value_param declaration">f</span><span class="punctuation">:</span> <span class="struct">FooCopy</span><span class="punctuation">)</span> <span class="operator">-&gt;</span> <span class="builtin_type">u32</span> <span class="punctuation">{</span>
+        <span class="value_param">f</span><span class="operator">.</span><span class="function associated">baz</span><span class="punctuation">(</span><span class="self_keyword">self</span><span class="punctuation">)</span>
     <span class="punctuation">}</span>
 
-    <span class="keyword">fn</span> <span class="function declaration">qux</span><span class="punctuation">(</span><span class="operator">&</span><span class="keyword">mut</span> <span class="self_keyword mutable">self</span><span class="punctuation">)</span> <span class="punctuation">{</span>
+    <span class="keyword">fn</span> <span class="function declaration associated">qux</span><span class="punctuation">(</span><span class="operator">&</span><span class="keyword">mut</span> <span class="self_keyword mutable">self</span><span class="punctuation">)</span> <span class="punctuation">{</span>
         <span class="self_keyword mutable">self</span><span class="operator">.</span><span class="field">x</span> <span class="operator">=</span> <span class="numeric_literal">0</span><span class="punctuation">;</span>
     <span class="punctuation">}</span>
 
-    <span class="keyword">fn</span> <span class="function declaration">quop</span><span class="punctuation">(</span><span class="operator">&</span><span class="self_keyword">self</span><span class="punctuation">)</span> <span class="operator">-&gt;</span> <span class="builtin_type">u32</span> <span class="punctuation">{</span>
+    <span class="keyword">fn</span> <span class="function declaration associated">quop</span><span class="punctuation">(</span><span class="operator">&</span><span class="self_keyword">self</span><span class="punctuation">)</span> <span class="operator">-&gt;</span> <span class="builtin_type">u32</span> <span class="punctuation">{</span>
         <span class="self_keyword">self</span><span class="operator">.</span><span class="field">x</span>
     <span class="punctuation">}</span>
 <span class="punctuation">}</span>
@@ -178,17 +178,17 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 
     <span class="keyword">let</span> <span class="keyword">mut</span> <span class="variable declaration mutable">foo</span> <span class="operator">=</span> <span class="struct">Foo</span> <span class="punctuation">{</span> <span class="field">x</span><span class="punctuation">,</span> <span class="field">y</span><span class="punctuation">:</span> <span class="variable mutable">x</span> <span class="punctuation">}</span><span class="punctuation">;</span>
     <span class="keyword">let</span> <span class="variable declaration">foo2</span> <span class="operator">=</span> <span class="struct">Foo</span> <span class="punctuation">{</span> <span class="field">x</span><span class="punctuation">,</span> <span class="field">y</span><span class="punctuation">:</span> <span class="variable mutable">x</span> <span class="punctuation">}</span><span class="punctuation">;</span>
-    <span class="variable mutable">foo</span><span class="operator">.</span><span class="function">quop</span><span class="punctuation">(</span><span class="punctuation">)</span><span class="punctuation">;</span>
-    <span class="variable mutable">foo</span><span class="operator">.</span><span class="function mutable">qux</span><span class="punctuation">(</span><span class="punctuation">)</span><span class="punctuation">;</span>
-    <span class="variable mutable">foo</span><span class="operator">.</span><span class="function consuming">baz</span><span class="punctuation">(</span><span class="variable consuming">foo2</span><span class="punctuation">)</span><span class="punctuation">;</span>
+    <span class="variable mutable">foo</span><span class="operator">.</span><span class="function associated">quop</span><span class="punctuation">(</span><span class="punctuation">)</span><span class="punctuation">;</span>
+    <span class="variable mutable">foo</span><span class="operator">.</span><span class="function mutable associated">qux</span><span class="punctuation">(</span><span class="punctuation">)</span><span class="punctuation">;</span>
+    <span class="variable mutable">foo</span><span class="operator">.</span><span class="function consuming associated">baz</span><span class="punctuation">(</span><span class="variable consuming">foo2</span><span class="punctuation">)</span><span class="punctuation">;</span>
 
     <span class="keyword">let</span> <span class="keyword">mut</span> <span class="variable declaration mutable">copy</span> <span class="operator">=</span> <span class="struct">FooCopy</span> <span class="punctuation">{</span> <span class="field">x</span> <span class="punctuation">}</span><span class="punctuation">;</span>
-    <span class="variable mutable">copy</span><span class="operator">.</span><span class="function">quop</span><span class="punctuation">(</span><span class="punctuation">)</span><span class="punctuation">;</span>
-    <span class="variable mutable">copy</span><span class="operator">.</span><span class="function mutable">qux</span><span class="punctuation">(</span><span class="punctuation">)</span><span class="punctuation">;</span>
-    <span class="variable mutable">copy</span><span class="operator">.</span><span class="function">baz</span><span class="punctuation">(</span><span class="variable mutable">copy</span><span class="punctuation">)</span><span class="punctuation">;</span>
+    <span class="variable mutable">copy</span><span class="operator">.</span><span class="function associated">quop</span><span class="punctuation">(</span><span class="punctuation">)</span><span class="punctuation">;</span>
+    <span class="variable mutable">copy</span><span class="operator">.</span><span class="function mutable associated">qux</span><span class="punctuation">(</span><span class="punctuation">)</span><span class="punctuation">;</span>
+    <span class="variable mutable">copy</span><span class="operator">.</span><span class="function associated">baz</span><span class="punctuation">(</span><span class="variable mutable">copy</span><span class="punctuation">)</span><span class="punctuation">;</span>
 
     <span class="keyword">let</span> <span class="variable declaration callable">a</span> <span class="operator">=</span> <span class="punctuation">|</span><span class="value_param declaration">x</span><span class="punctuation">|</span> <span class="value_param">x</span><span class="punctuation">;</span>
-    <span class="keyword">let</span> <span class="variable declaration callable">bar</span> <span class="operator">=</span> <span class="struct">Foo</span><span class="operator">::</span><span class="function">baz</span><span class="punctuation">;</span>
+    <span class="keyword">let</span> <span class="variable declaration callable">bar</span> <span class="operator">=</span> <span class="struct">Foo</span><span class="operator">::</span><span class="function associated">baz</span><span class="punctuation">;</span>
 
     <span class="keyword">let</span> <span class="variable declaration">baz</span> <span class="operator">=</span> <span class="numeric_literal">-</span><span class="numeric_literal">42</span><span class="punctuation">;</span>
     <span class="keyword">let</span> <span class="variable declaration">baz</span> <span class="operator">=</span> <span class="operator">-</span><span class="variable">baz</span><span class="punctuation">;</span>
@@ -203,7 +203,7 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 <span class="keyword">use</span> <span class="enum">Option</span><span class="operator">::</span><span class="punctuation">*</span><span class="punctuation">;</span>
 
 <span class="keyword">impl</span><span class="punctuation">&lt;</span><span class="type_param declaration">T</span><span class="punctuation">&gt;</span> <span class="enum">Option</span><span class="punctuation">&lt;</span><span class="type_param">T</span><span class="punctuation">&gt;</span> <span class="punctuation">{</span>
-    <span class="keyword">fn</span> <span class="function declaration">and</span><span class="punctuation">&lt;</span><span class="type_param declaration">U</span><span class="punctuation">&gt;</span><span class="punctuation">(</span><span class="self_keyword">self</span><span class="punctuation">,</span> <span class="value_param declaration">other</span><span class="punctuation">:</span> <span class="enum">Option</span><span class="punctuation">&lt;</span><span class="type_param">U</span><span class="punctuation">&gt;</span><span class="punctuation">)</span> <span class="operator">-&gt;</span> <span class="enum">Option</span><span class="punctuation">&lt;</span><span class="punctuation">(</span><span class="type_param">T</span><span class="punctuation">,</span> <span class="type_param">U</span><span class="punctuation">)</span><span class="punctuation">&gt;</span> <span class="punctuation">{</span>
+    <span class="keyword">fn</span> <span class="function declaration associated">and</span><span class="punctuation">&lt;</span><span class="type_param declaration">U</span><span class="punctuation">&gt;</span><span class="punctuation">(</span><span class="self_keyword">self</span><span class="punctuation">,</span> <span class="value_param declaration">other</span><span class="punctuation">:</span> <span class="enum">Option</span><span class="punctuation">&lt;</span><span class="type_param">U</span><span class="punctuation">&gt;</span><span class="punctuation">)</span> <span class="operator">-&gt;</span> <span class="enum">Option</span><span class="punctuation">&lt;</span><span class="punctuation">(</span><span class="type_param">T</span><span class="punctuation">,</span> <span class="type_param">U</span><span class="punctuation">)</span><span class="punctuation">&gt;</span> <span class="punctuation">{</span>
         <span class="keyword control">match</span> <span class="value_param">other</span> <span class="punctuation">{</span>
             <span class="enum_variant">None</span> <span class="operator">=&gt;</span> <span class="macro">unimplemented!</span><span class="punctuation">(</span><span class="punctuation">)</span><span class="punctuation">,</span>
             <span class="variable declaration">Nope</span> <span class="operator">=&gt;</span> <span class="variable">Nope</span><span class="punctuation">,</span>
