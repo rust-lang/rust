@@ -153,15 +153,15 @@ fn fuzzy_completion(acc: &mut Completions, ctx: &CompletionContext) -> Option<()
     acc.add_all(all_mod_paths.into_iter().filter_map(|(import_path, definition)| {
         render_resolution_with_import(
             RenderContext::new(ctx),
-            ImportEdit { import_path: import_path, import_scope: import_scope.clone() },
+            ImportEdit { import_path, import_scope: import_scope.clone() },
             &definition,
         )
     }));
     Some(())
 }
 
-// todo kb add tet marks for the completion order test + the sotring description
 fn compute_fuzzy_completion_order_key(proposed_mod_path: &ModPath, user_input: &str) -> usize {
+    mark::hit!(certain_fuzzy_order_test);
     let proposed_import_name = match proposed_mod_path.segments.last() {
         Some(name) => name.to_string().to_lowercase(),
         None => return usize::MAX,
@@ -191,6 +191,14 @@ mod tests {
     fn check_with_config(config: CompletionConfig, ra_fixture: &str, expect: Expect) {
         let actual = completion_list_with_config(config, ra_fixture, CompletionKind::Reference);
         expect.assert_eq(&actual)
+    }
+
+    fn fuzzy_completion_config() -> CompletionConfig {
+        let mut completion_config = CompletionConfig::default();
+        completion_config
+            .active_resolve_capabilities
+            .insert(crate::CompletionResolveCapability::AdditionalTextEdits);
+        completion_config
     }
 
     #[test]
@@ -794,13 +802,8 @@ impl My<|>
 
     #[test]
     fn function_fuzzy_completion() {
-        let mut completion_config = CompletionConfig::default();
-        completion_config
-            .active_resolve_capabilities
-            .insert(crate::CompletionResolveCapability::AdditionalTextEdits);
-
         check_edit_with_config(
-            completion_config,
+            fuzzy_completion_config(),
             "stdin",
             r#"
 //- /lib.rs crate:dep
@@ -825,13 +828,8 @@ fn main() {
 
     #[test]
     fn macro_fuzzy_completion() {
-        let mut completion_config = CompletionConfig::default();
-        completion_config
-            .active_resolve_capabilities
-            .insert(crate::CompletionResolveCapability::AdditionalTextEdits);
-
         check_edit_with_config(
-            completion_config,
+            fuzzy_completion_config(),
             "macro_with_curlies!",
             r#"
 //- /lib.rs crate:dep
@@ -858,13 +856,8 @@ fn main() {
 
     #[test]
     fn struct_fuzzy_completion() {
-        let mut completion_config = CompletionConfig::default();
-        completion_config
-            .active_resolve_capabilities
-            .insert(crate::CompletionResolveCapability::AdditionalTextEdits);
-
         check_edit_with_config(
-            completion_config,
+            fuzzy_completion_config(),
             "ThirdStruct",
             r#"
 //- /lib.rs crate:dep
@@ -893,21 +886,22 @@ fn main() {
 
     #[test]
     fn fuzzy_completions_come_in_specific_order() {
-        let mut completion_config = CompletionConfig::default();
-        completion_config
-            .active_resolve_capabilities
-            .insert(crate::CompletionResolveCapability::AdditionalTextEdits);
-
+        mark::check!(certain_fuzzy_order_test);
         check_with_config(
-            completion_config,
+            fuzzy_completion_config(),
             r#"
 //- /lib.rs crate:dep
 pub struct FirstStruct;
 pub mod some_module {
+    // already imported, omitted
     pub struct SecondStruct;
-
+    // does not contain all letters from the query, omitted
+    pub struct UnrelatedOne;
+    // contains all letters from the query, but not in sequence, displayed last
     pub struct ThiiiiiirdStruct;
+    // contains all letters from the query, but not in the beginning, displayed second
     pub struct AfterThirdStruct;
+    // contains all letters from the query in the begginning, displayed first
     pub struct ThirdStruct;
 }
 
