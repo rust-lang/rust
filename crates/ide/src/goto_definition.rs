@@ -1,14 +1,20 @@
 use either::Either;
-use hir::Semantics;
+use hir::{HasAttrs, ModuleDef, Semantics};
 use ide_db::{
     base_db::FileId,
-    defs::{NameClass, NameRefClass},
+    defs::{Definition, NameClass, NameRefClass},
     symbol_index, RootDatabase,
 };
-use syntax::{ast, match_ast, AstNode, SyntaxKind::*, SyntaxToken, TokenAtOffset, T};
+use syntax::{
+    ast::{self, NameOwner},
+    match_ast, AstNode, AstToken,
+    SyntaxKind::*,
+    SyntaxToken, TextSize, TokenAtOffset, T,
+};
 
 use crate::{
     display::{ToNav, TryToNav},
+    doc_links::extract_definitions_from_markdown,
     FilePosition, NavigationTarget, RangeInfo, SymbolKind,
 };
 
@@ -30,6 +36,10 @@ pub(crate) fn goto_definition(
     let original_token = pick_best(file.token_at_offset(position.offset))?;
     let token = sema.descend_into_macros(original_token.clone());
     let parent = token.parent();
+    if let Some(comment) = ast::Comment::cast(token.clone()) {
+        let nav = def_for_doc_comment(&sema, position, &comment)?.try_to_nav(db)?;
+        return Some(RangeInfo::new(original_token.text_range(), vec![nav]));
+    }
 
     let nav_targets = match_ast! {
         match parent {
@@ -68,11 +78,68 @@ pub(crate) fn goto_definition(
     Some(RangeInfo::new(original_token.text_range(), nav_targets))
 }
 
+fn def_for_doc_comment(
+    sema: &Semantics<RootDatabase>,
+    position: FilePosition,
+    doc_comment: &ast::Comment,
+) -> Option<hir::ModuleDef> {
+    let parent = doc_comment.syntax().parent();
+    let db = sema.db;
+    let (link, ns) = extract_positioned_link_from_comment(position, doc_comment)?;
+    let link = &link;
+    let name = match_ast! {
+        match parent {
+            ast::Name(name) => Some(name),
+            ast::Fn(func) => func.name(),
+            _ => None,
+        }
+    }?;
+    let definition = NameClass::classify(&sema, &name).and_then(|d| d.defined(sema.db))?;
+    match definition {
+        Definition::ModuleDef(def) => match def {
+            ModuleDef::Module(it) => it.resolve_doc_path(db, link, ns),
+            ModuleDef::Function(it) => it.resolve_doc_path(db, link, ns),
+            ModuleDef::Adt(it) => it.resolve_doc_path(db, link, ns),
+            ModuleDef::Variant(it) => it.resolve_doc_path(db, link, ns),
+            ModuleDef::Const(it) => it.resolve_doc_path(db, link, ns),
+            ModuleDef::Static(it) => it.resolve_doc_path(db, link, ns),
+            ModuleDef::Trait(it) => it.resolve_doc_path(db, link, ns),
+            ModuleDef::TypeAlias(it) => it.resolve_doc_path(db, link, ns),
+            ModuleDef::BuiltinType(_) => return None,
+        },
+        Definition::Macro(it) => it.resolve_doc_path(db, link, ns),
+        Definition::Field(it) => it.resolve_doc_path(db, link, ns),
+        Definition::SelfType(_)
+        | Definition::Local(_)
+        | Definition::TypeParam(_)
+        | Definition::LifetimeParam(_)
+        | Definition::ConstParam(_)
+        | Definition::Label(_) => return None,
+    }
+}
+
+fn extract_positioned_link_from_comment(
+    position: FilePosition,
+    comment: &ast::Comment,
+) -> Option<(String, Option<hir::Namespace>)> {
+    let comment_range = comment.syntax().text_range();
+    let doc_comment = comment.doc_comment()?;
+    let def_links = extract_definitions_from_markdown(doc_comment);
+    let (def_link, ns, _) = def_links.iter().min_by_key(|(_, _, def_link_range)| {
+        let matched_position = comment_range.start() + TextSize::from(def_link_range.start as u32);
+        match position.offset.checked_sub(matched_position) {
+            Some(distance) => distance,
+            None => comment_range.end(),
+        }
+    })?;
+    Some((def_link.to_string(), ns.clone()))
+}
+
 fn pick_best(tokens: TokenAtOffset<SyntaxToken>) -> Option<SyntaxToken> {
     return tokens.max_by_key(priority);
     fn priority(n: &SyntaxToken) -> usize {
         match n.kind() {
-            IDENT | INT_NUMBER | LIFETIME_IDENT | T![self] => 2,
+            IDENT | INT_NUMBER | LIFETIME_IDENT | T![self] | COMMENT => 2,
             kind if kind.is_trivia() => 0,
             _ => 1,
         }
@@ -1142,6 +1209,21 @@ fn foo<'foo>(_: &'foo ()) {
             break 'foo$0;
         }
     }
+}"#,
+        )
+    }
+
+    #[test]
+    fn goto_def_for_intra_rustdoc_link_same_file() {
+        check(
+            r#"
+/// Blah, [`bar`](bar) .. [`foo`](foo)$0 has [`bar`](bar)
+pub fn bar() { }
+
+/// You might want to see [`std::fs::read()`] too.
+pub fn foo() { }
+     //^^^
+
 }"#,
         )
     }

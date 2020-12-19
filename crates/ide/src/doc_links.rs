@@ -1,6 +1,6 @@
 //! Resolves and rewrites links in markdown documentation.
 
-use std::{convert::TryFrom, iter::once};
+use std::{convert::TryFrom, iter::once, ops::Range};
 
 use itertools::Itertools;
 use pulldown_cmark::{BrokenLink, CowStr, Event, InlineStr, LinkType, Options, Parser, Tag};
@@ -59,6 +59,30 @@ pub(crate) fn rewrite_links(db: &RootDatabase, markdown: &str, definition: &Defi
     options.code_block_backticks = 3;
     cmark_with_options(doc, &mut out, None, options).ok();
     out
+}
+
+pub(crate) fn extract_definitions_from_markdown(
+    markdown: &str,
+) -> Vec<(String, Option<hir::Namespace>, Range<usize>)> {
+    let mut res = vec![];
+    let mut cb = |link: BrokenLink| {
+        Some((
+            /*url*/ link.reference.to_owned().into(),
+            /*title*/ link.reference.to_owned().into(),
+        ))
+    };
+    let doc = Parser::new_with_broken_link_callback(markdown, Options::empty(), Some(&mut cb));
+    for (event, range) in doc.into_offset_iter() {
+        match event {
+            Event::Start(Tag::Link(_link_type, ref target, ref title)) => {
+                let link = if target.is_empty() { title } else { target };
+                let (link, ns) = parse_link(link);
+                res.push((link.to_string(), ns, range));
+            }
+            _ => {}
+        }
+    }
+    res
 }
 
 /// Remove all links in markdown documentation.
