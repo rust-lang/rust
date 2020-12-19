@@ -152,6 +152,7 @@ pub mod known {
         str,
         // Special names
         macro_rules,
+        derive,
         doc,
         cfg_attr,
         // Components of known path (value or mod name)

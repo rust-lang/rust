@@ -9,11 +9,8 @@ use std::{
 
 use crate::{body::LowerCtx, type_ref::LifetimeRef};
 use base_db::CrateId;
-use hir_expand::{
-    hygiene::Hygiene,
-    name::{AsName, Name},
-};
-use syntax::ast::{self};
+use hir_expand::{hygiene::Hygiene, name::Name};
+use syntax::ast;
 
 use crate::{
     type_ref::{TypeBound, TypeRef},
@@ -54,11 +51,6 @@ impl ModPath {
     pub fn from_segments(kind: PathKind, segments: impl IntoIterator<Item = Name>) -> ModPath {
         let segments = segments.into_iter().collect::<Vec<_>>();
         ModPath { kind, segments }
-    }
-
-    /// Converts an `tt::Ident` into a single-identifier `Path`.
-    pub(crate) fn from_tt_ident(ident: &tt::Ident) -> ModPath {
-        ident.as_name().into()
     }
 
     /// Calls `cb` with all paths, represented by this use item.

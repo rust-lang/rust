@@ -1289,20 +1289,20 @@ impl ModCollector<'_, '_> {
     }
 
     fn collect_derives(&mut self, attrs: &Attrs, ast_id: FileAstId<ast::Item>) {
-        for derive_subtree in attrs.by_key("derive").tt_values() {
-            // for #[derive(Copy, Clone)], `derive_subtree` is the `(Copy, Clone)` subtree
-            for tt in &derive_subtree.token_trees {
-                let ident = match &tt {
-                    tt::TokenTree::Leaf(tt::Leaf::Ident(ident)) => ident,
-                    tt::TokenTree::Leaf(tt::Leaf::Punct(_)) => continue, // , is ok
-                    _ => continue, // anything else would be an error (which we currently ignore)
-                };
-                let path = ModPath::from_tt_ident(ident);
-
-                let ast_id = AstIdWithPath::new(self.file_id, ast_id, path);
-                self.def_collector
-                    .unexpanded_attribute_macros
-                    .push(DeriveDirective { module_id: self.module_id, ast_id });
+        for derive in attrs.by_key("derive").attrs() {
+            match derive.parse_derive() {
+                Some(derive_macros) => {
+                    for path in derive_macros {
+                        let ast_id = AstIdWithPath::new(self.file_id, ast_id, path);
+                        self.def_collector
+                            .unexpanded_attribute_macros
+                            .push(DeriveDirective { module_id: self.module_id, ast_id });
+                    }
+                }
+                None => {
+                    // FIXME: diagnose
+                    log::debug!("malformed derive: {:?}", derive);
+                }
             }
         }
     }

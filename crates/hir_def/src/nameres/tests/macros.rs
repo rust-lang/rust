@@ -632,11 +632,11 @@ pub struct bar;
 #[test]
 fn expand_derive() {
     let map = compute_crate_def_map(
-        "
+        r#"
         //- /main.rs crate:main deps:core
-        use core::*;
+        use core::Copy;
 
-        #[derive(Copy, Clone)]
+        #[derive(Copy, core::Clone)]
         struct Foo;
 
         //- /core.rs crate:core
@@ -645,7 +645,7 @@ fn expand_derive() {
 
         #[rustc_builtin_macro]
         pub macro Clone {}
-        ",
+        "#,
     );
     assert_eq!(map.modules[map.root].scope.impls().len(), 2);
 }
