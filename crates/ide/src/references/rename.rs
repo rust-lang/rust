@@ -1488,4 +1488,39 @@ impl<'yeeee> Foo<'yeeee> for &'yeeee () {
 "#,
         )
     }
+
+    #[test]
+    fn test_rename_bind_pat() {
+        check(
+            "new_name",
+            r#"
+fn main() {
+    enum CustomOption<T> {
+        None,
+        Some(T),
+    }
+
+    let test_variable = CustomOption::Some(22);
+
+    match test_variable {
+        CustomOption::Some(foo<|>) if foo == 11 => {}
+        _ => (),
+    }
+}"#,
+            r#"
+fn main() {
+    enum CustomOption<T> {
+        None,
+        Some(T),
+    }
+
+    let test_variable = CustomOption::Some(22);
+
+    match test_variable {
+        CustomOption::Some(new_name) if new_name == 11 => {}
+        _ => (),
+    }
+}"#,
+        );
+    }
 }
