@@ -45,7 +45,7 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 <span class="keyword">struct</span> <span class="struct declaration">HasUnsafeFn</span><span class="punctuation">;</span>
 
 <span class="keyword">impl</span> <span class="struct">HasUnsafeFn</span> <span class="punctuation">{</span>
-    <span class="keyword unsafe">unsafe</span> <span class="keyword">fn</span> <span class="method declaration unsafe">unsafe_method</span><span class="punctuation">(</span><span class="operator">&</span><span class="self_keyword">self</span><span class="punctuation">)</span> <span class="punctuation">{</span><span class="punctuation">}</span>
+    <span class="keyword unsafe">unsafe</span> <span class="keyword">fn</span> <span class="function declaration unsafe">unsafe_method</span><span class="punctuation">(</span><span class="operator">&</span><span class="self_keyword">self</span><span class="punctuation">)</span> <span class="punctuation">{</span><span class="punctuation">}</span>
 <span class="punctuation">}</span>
 
 <span class="keyword">struct</span> <span class="struct declaration">TypeForStaticMut</span> <span class="punctuation">{</span>
@@ -60,11 +60,11 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 <span class="punctuation">}</span>
 
 <span class="keyword">trait</span> <span class="trait declaration">DoTheAutoref</span> <span class="punctuation">{</span>
-    <span class="keyword">fn</span> <span class="method declaration">calls_autoref</span><span class="punctuation">(</span><span class="operator">&</span><span class="self_keyword">self</span><span class="punctuation">)</span><span class="punctuation">;</span>
+    <span class="keyword">fn</span> <span class="function declaration">calls_autoref</span><span class="punctuation">(</span><span class="operator">&</span><span class="self_keyword">self</span><span class="punctuation">)</span><span class="punctuation">;</span>
 <span class="punctuation">}</span>
 
 <span class="keyword">impl</span> <span class="trait">DoTheAutoref</span> <span class="keyword">for</span> <span class="builtin_type">u16</span> <span class="punctuation">{</span>
-    <span class="keyword">fn</span> <span class="method declaration">calls_autoref</span><span class="punctuation">(</span><span class="operator">&</span><span class="self_keyword">self</span><span class="punctuation">)</span> <span class="punctuation">{</span><span class="punctuation">}</span>
+    <span class="keyword">fn</span> <span class="function declaration">calls_autoref</span><span class="punctuation">(</span><span class="operator">&</span><span class="self_keyword">self</span><span class="punctuation">)</span> <span class="punctuation">{</span><span class="punctuation">}</span>
 <span class="punctuation">}</span>
 
 <span class="keyword">fn</span> <span class="function declaration">main</span><span class="punctuation">(</span><span class="punctuation">)</span> <span class="punctuation">{</span>
@@ -78,7 +78,7 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
             <span class="union">Union</span> <span class="punctuation">{</span> <span class="field unsafe">b</span><span class="punctuation">:</span> <span class="numeric_literal">0</span> <span class="punctuation">}</span> <span class="operator">=&gt;</span> <span class="punctuation">(</span><span class="punctuation">)</span><span class="punctuation">,</span>
             <span class="union">Union</span> <span class="punctuation">{</span> <span class="field unsafe">a</span> <span class="punctuation">}</span> <span class="operator">=&gt;</span> <span class="punctuation">(</span><span class="punctuation">)</span><span class="punctuation">,</span>
         <span class="punctuation">}</span>
-        <span class="struct">HasUnsafeFn</span><span class="operator">.</span><span class="method unsafe">unsafe_method</span><span class="punctuation">(</span><span class="punctuation">)</span><span class="punctuation">;</span>
+        <span class="struct">HasUnsafeFn</span><span class="operator">.</span><span class="function unsafe">unsafe_method</span><span class="punctuation">(</span><span class="punctuation">)</span><span class="punctuation">;</span>
 
         <span class="comment">// unsafe deref</span>
         <span class="keyword">let</span> <span class="variable declaration">y</span> <span class="operator">=</span> <span class="operator unsafe">*</span><span class="variable">x</span><span class="punctuation">;</span>
@@ -94,6 +94,6 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
         <span class="keyword">let</span> <span class="struct">Packed</span> <span class="punctuation">{</span> <span class="field">a</span><span class="punctuation">:</span> <span class="keyword unsafe">ref</span> <span class="variable declaration">_a</span> <span class="punctuation">}</span> <span class="operator">=</span> <span class="variable">packed</span><span class="punctuation">;</span>
 
         <span class="comment">// unsafe auto ref of packed field</span>
-        <span class="variable">packed</span><span class="operator">.</span><span class="field">a</span><span class="operator">.</span><span class="method unsafe">calls_autoref</span><span class="punctuation">(</span><span class="punctuation">)</span><span class="punctuation">;</span>
+        <span class="variable">packed</span><span class="operator">.</span><span class="field">a</span><span class="operator">.</span><span class="function unsafe">calls_autoref</span><span class="punctuation">(</span><span class="punctuation">)</span><span class="punctuation">;</span>
     <span class="punctuation">}</span>
 <span class="punctuation">}</span></code></pre>

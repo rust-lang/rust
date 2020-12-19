@@ -33,8 +33,7 @@ pub enum HighlightTag {
     Operator,
     UnresolvedReference,
 
-    // FIXME: this two are random and don't fit with the others
-    Method,
+    // FIXME: this one is random and don't fit with the others
     Generic,
 }
 
@@ -56,6 +55,8 @@ pub enum HighlightModifier {
     Callable,
     /// Used for associated functions
     Static,
+    /// Used for items in impls&traits.
+    Associated,
 }
 
 impl HighlightTag {
@@ -92,7 +93,6 @@ impl HighlightTag {
             HighlightTag::Generic => "generic",
             HighlightTag::Keyword => "keyword",
             HighlightTag::Punctuation => "punctuation",
-            HighlightTag::Method => "method",
             HighlightTag::NumericLiteral => "numeric_literal",
             HighlightTag::Operator => "operator",
             HighlightTag::StringLiteral => "string_literal",
@@ -133,6 +133,7 @@ impl HighlightModifier {
             HighlightModifier::Unsafe => "unsafe",
             HighlightModifier::Callable => "callable",
             HighlightModifier::Static => "static",
+            HighlightModifier::Associated => "associated",
         }
     }
 
@@ -199,6 +200,10 @@ impl ops::BitOr<HighlightModifier> for Highlight {
 }
 
 impl HighlightModifiers {
+    pub fn contains(self, m: HighlightModifier) -> bool {
+        self.0 & m.mask() == m.mask()
+    }
+
     pub fn iter(self) -> impl Iterator<Item = HighlightModifier> {
         HighlightModifier::ALL.iter().copied().filter(move |it| self.0 & it.mask() == it.mask())
     }
