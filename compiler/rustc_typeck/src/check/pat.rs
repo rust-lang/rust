@@ -1002,7 +1002,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // More generally, the expected type wants a tuple variant with one field of an
         // N-arity-tuple, e.g., `V_i((p_0, .., p_N))`. Meanwhile, the user supplied a pattern
         // with the subpatterns directly in the tuple variant pattern, e.g., `V_i(p_0, .., p_N)`.
-        let missing_parenthesis = match (&expected.kind(), fields, had_err) {
+        let missing_parentheses = match (&expected.kind(), fields, had_err) {
             // #67037: only do this if we could successfully type-check the expected type against
             // the tuple struct pattern. Otherwise the substs could get out of range on e.g.,
             // `let P() = U;` where `P != U` with `struct P<T>(T);`.
@@ -1015,13 +1015,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             _ => false,
         };
-        if missing_parenthesis {
+        if missing_parentheses {
             let (left, right) = match subpats {
                 // This is the zero case; we aim to get the "hi" part of the `QPath`'s
                 // span as the "lo" and then the "hi" part of the pattern's span as the "hi".
                 // This looks like:
                 //
-                // help: missing parenthesis
+                // help: missing parentheses
                 //   |
                 // L |     let A(()) = A(());
                 //   |          ^  ^
@@ -1030,14 +1030,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // last sub-pattern. In the case of `A(x)` the first and last may coincide.
                 // This looks like:
                 //
-                // help: missing parenthesis
+                // help: missing parentheses
                 //   |
                 // L |     let A((x, y)) = A((1, 2));
                 //   |           ^    ^
                 [first, ..] => (first.span.shrink_to_lo(), subpats.last().unwrap().span),
             };
             err.multipart_suggestion(
-                "missing parenthesis",
+                "missing parentheses",
                 vec![(left, "(".to_string()), (right.shrink_to_hi(), ")".to_string())],
                 Applicability::MachineApplicable,
             );
