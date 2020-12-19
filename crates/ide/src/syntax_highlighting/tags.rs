@@ -51,12 +51,14 @@ pub enum HighlightModifier {
     Injected,
     Mutable,
     Consuming,
-    Unsafe,
     Callable,
     /// Used for associated functions
     Static,
     /// Used for items in impls&traits.
     Associated,
+
+    /// Keep this last!
+    Unsafe,
 }
 
 impl HighlightTag {
@@ -108,7 +110,7 @@ impl fmt::Display for HighlightTag {
 }
 
 impl HighlightModifier {
-    const ALL: &'static [HighlightModifier] = &[
+    const ALL: &'static [HighlightModifier; HighlightModifier::Unsafe as u8 as usize + 1] = &[
         HighlightModifier::Attribute,
         HighlightModifier::ControlFlow,
         HighlightModifier::Definition,
@@ -116,9 +118,10 @@ impl HighlightModifier {
         HighlightModifier::Injected,
         HighlightModifier::Mutable,
         HighlightModifier::Consuming,
-        HighlightModifier::Unsafe,
         HighlightModifier::Callable,
         HighlightModifier::Static,
+        HighlightModifier::Associated,
+        HighlightModifier::Unsafe,
     ];
 
     fn as_str(self) -> &'static str {
