@@ -42,7 +42,7 @@ impl From<Documentation> for String {
 
 /// Syntactical attributes, without filtering of `cfg_attr`s.
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
-pub struct RawAttrs {
+pub(crate) struct RawAttrs {
     entries: Option<Arc<[Attr]>>,
 }
 
@@ -72,7 +72,7 @@ impl ops::Deref for Attrs {
 }
 
 impl RawAttrs {
-    pub const EMPTY: Self = Self { entries: None };
+    pub(crate) const EMPTY: Self = Self { entries: None };
 
     pub(crate) fn new(owner: &dyn AttrsOwner, hygiene: &Hygiene) -> Self {
         let (inner_attrs, inner_docs) = inner_attributes(owner.syntax())
