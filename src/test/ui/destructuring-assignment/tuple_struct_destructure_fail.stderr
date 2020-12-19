@@ -36,7 +36,7 @@ help: use `_` to explicitly ignore each field
    |
 LL |     TupleStruct(_, _) = TupleStruct(1, 2);
    |                  ^^^
-help: use `..` to ignore all unmentioned fields
+help: use `..` to ignore all fields
    |
 LL |     TupleStruct(..) = TupleStruct(1, 2);
    |                 ^^
@@ -63,7 +63,7 @@ help: use `_` to explicitly ignore each field
    |
 LL |     Enum::SingleVariant(_, _) = Enum::SingleVariant(1, 2);
    |                          ^^^
-help: use `..` to ignore all unmentioned fields
+help: use `..` to ignore all fields
    |
 LL |     Enum::SingleVariant(..) = Enum::SingleVariant(1, 2);
    |                         ^^

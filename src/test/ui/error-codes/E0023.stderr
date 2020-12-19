@@ -11,7 +11,7 @@ help: use `_` to explicitly ignore each field
    |
 LL |         Fruit::Apple(a, _) => {},
    |                       ^^^
-help: use `..` to ignore all unmentioned fields
+help: use `..` to ignore the rest of the fields
    |
 LL |         Fruit::Apple(a, ..) => {},
    |                       ^^^^

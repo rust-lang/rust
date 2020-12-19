@@ -20,7 +20,7 @@ help: use `_` to explicitly ignore each field
    |
 LL |         S(x, _) => {}
    |            ^^^
-help: use `..` to ignore all unmentioned fields
+help: use `..` to ignore the rest of the fields
    |
 LL |         S(x, ..) => {}
    |            ^^^^
@@ -38,7 +38,7 @@ help: use `_` to explicitly ignore each field
    |
 LL |         S(_, _) => {}
    |            ^^^
-help: use `..` to ignore all unmentioned fields
+help: use `..` to ignore all fields
    |
 LL |         S(..) => {}
    |           ^^
@@ -56,7 +56,7 @@ help: use `_` to explicitly ignore each field
    |
 LL |         S(_, _) => {}
    |           ^^^^
-help: use `..` to ignore all unmentioned fields
+help: use `..` to ignore all fields
    |
 LL |         S(..) => {}
    |           ^^
@@ -74,7 +74,7 @@ help: use `_` to explicitly ignore each field
    |
 LL |         E::S(x, _) => {}
    |               ^^^
-help: use `..` to ignore all unmentioned fields
+help: use `..` to ignore the rest of the fields
    |
 LL |         E::S(x, ..) => {}
    |               ^^^^
@@ -92,7 +92,7 @@ help: use `_` to explicitly ignore each field
    |
 LL |         E::S(_, _) => {}
    |               ^^^
-help: use `..` to ignore all unmentioned fields
+help: use `..` to ignore all fields
    |
 LL |         E::S(..) => {}
    |              ^^
@@ -110,7 +110,7 @@ help: use `_` to explicitly ignore each field
    |
 LL |         E::S(_, _) => {}
    |              ^^^^
-help: use `..` to ignore all unmentioned fields
+help: use `..` to ignore all fields
    |
 LL |         E::S(..) => {}
    |              ^^

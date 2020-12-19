@@ -1071,14 +1071,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if subpats.is_empty() || all_wildcards {
                 err.span_suggestion(
                     all_fields_span,
-                    "use `..` to ignore all unmentioned fields",
+                    "use `..` to ignore all fields",
                     String::from(".."),
                     Applicability::MaybeIncorrect,
                 );
             } else {
                 err.span_suggestion(
                     after_fields_span,
-                    "use `..` to ignore all unmentioned fields",
+                    "use `..` to ignore the rest of the fields",
                     String::from(", .."),
                     Applicability::MaybeIncorrect,
                 );

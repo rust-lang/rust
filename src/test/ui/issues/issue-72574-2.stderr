@@ -31,7 +31,7 @@ help: use `_` to explicitly ignore each field
    |
 LL |         Binder(_a, _x @ .., _) => {}
    |                           ^^^
-help: use `..` to ignore all unmentioned fields
+help: use `..` to ignore the rest of the fields
    |
 LL |         Binder(_a, _x @ .., ..) => {}
    |                           ^^^^
