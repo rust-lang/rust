@@ -433,7 +433,7 @@ fn report_arm_reachability<'p, 'tcx>(
             Useful(unreachables) if unreachables.is_empty() => {}
             // The arm is reachable, but contains unreachable subpatterns (from or-patterns).
             Useful(unreachables) => {
-                let mut unreachables: Vec<_> = unreachables.iter().flatten().copied().collect();
+                let mut unreachables: Vec<_> = unreachables.iter().collect();
                 // Emit lints in the order in which they occur in the file.
                 unreachables.sort_unstable();
                 for span in unreachables {
