@@ -241,18 +241,6 @@ impl Attrs {
         raw_attrs.filter(db, def.krate(db))
     }
 
-    pub fn merge(&self, other: Attrs) -> Attrs {
-        match (&self.0.entries, &other.0.entries) {
-            (None, None) => Attrs::EMPTY,
-            (Some(entries), None) | (None, Some(entries)) => {
-                Attrs(RawAttrs { entries: Some(entries.clone()) })
-            }
-            (Some(a), Some(b)) => {
-                Attrs(RawAttrs { entries: Some(a.iter().chain(b.iter()).cloned().collect()) })
-            }
-        }
-    }
-
     pub fn by_key(&self, key: &'static str) -> AttrQuery<'_> {
         AttrQuery { attrs: self, key }
     }
