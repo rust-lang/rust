@@ -2196,6 +2196,7 @@ mod where_keyword {}
 
 // 2018 Edition keywords
 
+#[doc(alias = "promise")]
 #[doc(keyword = "async")]
 //
 /// Return a [`Future`] instead of blocking the current thread.
