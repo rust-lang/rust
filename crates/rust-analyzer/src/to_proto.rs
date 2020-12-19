@@ -381,7 +381,13 @@ fn semantic_token_type_and_modifiers(
             SymbolKind::ValueParam => lsp_types::SemanticTokenType::PARAMETER,
             SymbolKind::SelfParam => semantic_tokens::SELF_KEYWORD,
             SymbolKind::Local => lsp_types::SemanticTokenType::VARIABLE,
-            SymbolKind::Function => lsp_types::SemanticTokenType::FUNCTION,
+            SymbolKind::Function => {
+                if highlight.modifiers.contains(HighlightModifier::Associated) {
+                    lsp_types::SemanticTokenType::METHOD
+                } else {
+                    lsp_types::SemanticTokenType::FUNCTION
+                }
+            }
             SymbolKind::Const => {
                 mods |= semantic_tokens::CONSTANT;
                 mods |= lsp_types::SemanticTokenModifier::STATIC;
@@ -401,7 +407,6 @@ fn semantic_token_type_and_modifiers(
         },
         HighlightTag::BuiltinType => semantic_tokens::BUILTIN_TYPE,
         HighlightTag::Generic => semantic_tokens::GENERIC,
-        HighlightTag::Method => lsp_types::SemanticTokenType::METHOD,
         HighlightTag::ByteLiteral | HighlightTag::NumericLiteral => {
             lsp_types::SemanticTokenType::NUMBER
         }
@@ -431,6 +436,7 @@ fn semantic_token_type_and_modifiers(
             HighlightModifier::Unsafe => semantic_tokens::UNSAFE,
             HighlightModifier::Callable => semantic_tokens::CALLABLE,
             HighlightModifier::Static => lsp_types::SemanticTokenModifier::STATIC,
+            HighlightModifier::Associated => continue,
         };
         mods |= modifier;
     }

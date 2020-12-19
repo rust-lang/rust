@@ -736,7 +736,8 @@ fn highlight_method_call(
     method_call: &ast::MethodCallExpr,
 ) -> Option<Highlight> {
     let func = sema.resolve_method_call(&method_call)?;
-    let mut h = HighlightTag::Method.into();
+    let mut h = HighlightTag::Symbol(SymbolKind::Function).into();
+    h |= HighlightModifier::Associated;
     if func.is_unsafe(sema.db) || sema.is_unsafe_method_call(&method_call) {
         h |= HighlightModifier::Unsafe;
     }
@@ -765,15 +766,13 @@ fn highlight_def(db: &RootDatabase, def: Definition) -> Highlight {
         Definition::ModuleDef(def) => match def {
             hir::ModuleDef::Module(_) => HighlightTag::Symbol(SymbolKind::Module),
             hir::ModuleDef::Function(func) => {
-                let mut h = if func.as_assoc_item(db).is_some() {
+                let mut h = Highlight::new(HighlightTag::Symbol(SymbolKind::Function));
+                if func.as_assoc_item(db).is_some() {
+                    h |= HighlightModifier::Associated;
                     if func.self_param(db).is_none() {
-                        Highlight::from(HighlightTag::Method) | HighlightModifier::Static
-                    } else {
-                        HighlightTag::Method.into()
+                        h |= HighlightModifier::Static
                     }
-                } else {
-                    HighlightTag::Symbol(SymbolKind::Function).into()
-                };
+                }
                 if func.is_unsafe(db) {
                     h |= HighlightModifier::Unsafe;
                 }
@@ -783,9 +782,21 @@ fn highlight_def(db: &RootDatabase, def: Definition) -> Highlight {
             hir::ModuleDef::Adt(hir::Adt::Enum(_)) => HighlightTag::Symbol(SymbolKind::Enum),
             hir::ModuleDef::Adt(hir::Adt::Union(_)) => HighlightTag::Symbol(SymbolKind::Union),
             hir::ModuleDef::EnumVariant(_) => HighlightTag::Symbol(SymbolKind::Variant),
-            hir::ModuleDef::Const(_) => HighlightTag::Symbol(SymbolKind::Const),
+            hir::ModuleDef::Const(konst) => {
+                let mut h = Highlight::new(HighlightTag::Symbol(SymbolKind::Const));
+                if konst.as_assoc_item(db).is_some() {
+                    h |= HighlightModifier::Associated
+                }
+                return h;
+            }
             hir::ModuleDef::Trait(_) => HighlightTag::Symbol(SymbolKind::Trait),
-            hir::ModuleDef::TypeAlias(_) => HighlightTag::Symbol(SymbolKind::TypeAlias),
+            hir::ModuleDef::TypeAlias(type_) => {
+                let mut h = Highlight::new(HighlightTag::Symbol(SymbolKind::TypeAlias));
+                if type_.as_assoc_item(db).is_some() {
+                    h |= HighlightModifier::Associated
+                }
+                return h;
+            }
             hir::ModuleDef::BuiltinType(_) => HighlightTag::BuiltinType,
             hir::ModuleDef::Static(s) => {
                 let mut h = Highlight::new(HighlightTag::Symbol(SymbolKind::Static));
