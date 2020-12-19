@@ -40,8 +40,8 @@ LL |         S(_, _) => {}
    |            ^^^
 help: use `..` to ignore all unmentioned fields
    |
-LL |         S(_, ..) => {}
-   |            ^^^^
+LL |         S(..) => {}
+   |           ^^
 
 error[E0023]: this pattern has 0 fields, but the corresponding tuple struct has 2 fields
   --> $DIR/pat-tuple-underfield.rs:20:9
@@ -94,8 +94,8 @@ LL |         E::S(_, _) => {}
    |               ^^^
 help: use `..` to ignore all unmentioned fields
    |
-LL |         E::S(_, ..) => {}
-   |               ^^^^
+LL |         E::S(..) => {}
+   |              ^^
 
 error[E0023]: this pattern has 0 fields, but the corresponding tuple variant has 2 fields
   --> $DIR/pat-tuple-underfield.rs:39:9

@@ -20,7 +20,6 @@ use rustc_trait_selection::traits::{ObligationCause, Pattern};
 
 use std::cmp;
 use std::collections::hash_map::Entry::{Occupied, Vacant};
-use std::iter;
 
 use super::report_unexpected_variant_res;
 
@@ -1048,13 +1047,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             } else {
                 pat_span.with_hi(pat_span.hi() - BytePos(1)).shrink_to_hi()
             };
+            let all_fields_span = match subpats {
+                [] => after_fields_span,
+                [field] => field.span,
+                [first, .., last] => first.span.to(last.span),
+            };
+
+            // Check if all the fields in the pattern are wildcards.
+            let all_wildcards = subpats.iter().all(|pat| matches!(pat.kind, PatKind::Wild));
 
             let mut wildcard_sugg = vec!["_"; fields.len() - subpats.len()].join(", ");
             if !subpats.is_empty() {
                 wildcard_sugg = String::from(", ") + &wildcard_sugg;
             }
-
-            let rest_sugg = if subpats.is_empty() { "..".to_owned() } else { ", ..".to_owned() };
 
             err.span_suggestion(
                 after_fields_span,
@@ -1062,12 +1067,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 wildcard_sugg,
                 Applicability::MaybeIncorrect,
             );
-            err.span_suggestion(
-                after_fields_span,
-                "use `..` to ignore all unmentioned fields",
-                rest_sugg,
-                Applicability::MaybeIncorrect,
-            );
+
+            if subpats.is_empty() || all_wildcards {
+                err.span_suggestion(
+                    all_fields_span,
+                    "use `..` to ignore all unmentioned fields",
+                    String::from(".."),
+                    Applicability::MaybeIncorrect,
+                );
+            } else {
+                err.span_suggestion(
+                    after_fields_span,
+                    "use `..` to ignore all unmentioned fields",
+                    String::from(", .."),
+                    Applicability::MaybeIncorrect,
+                );
+            }
         }
 
         err.emit();
