@@ -47,9 +47,8 @@ pub(crate) fn completion_list_with_config(
     code: &str,
     kind: CompletionKind,
 ) -> String {
-    let mut kind_completions: Vec<CompletionItem> =
+    let kind_completions: Vec<CompletionItem> =
         get_all_items(config, code).into_iter().filter(|c| c.completion_kind == kind).collect();
-    kind_completions.sort_by_key(|c| c.label().to_owned());
     let label_width = kind_completions
         .iter()
         .map(|it| monospace_width(it.label()))

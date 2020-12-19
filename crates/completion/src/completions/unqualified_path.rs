@@ -1,7 +1,7 @@
 //! Completion of names from the current scope, e.g. locals and imported items.
 
 use either::Either;
-use hir::{Adt, ModuleDef, ScopeDef, Type};
+use hir::{Adt, ModPath, ModuleDef, ScopeDef, Type};
 use ide_db::helpers::insert_use::ImportScope;
 use ide_db::imports_locator;
 use syntax::AstNode;
@@ -146,13 +146,9 @@ fn fuzzy_completion(acc: &mut Completions, ctx: &CompletionContext) -> Option<()
     .filter(|(mod_path, _)| mod_path.len() > 1)
     .collect::<Vec<_>>();
 
+    let user_input_lowercased = potential_import_name.to_lowercase();
     all_mod_paths.sort_by_cached_key(|(mod_path, _)| {
-        if let Some(name) = mod_path.segments.last().map(|name| name.to_string().to_lowercase()) {
-            if name.contains(&potential_import_name.to_lowercase()) {
-                return 0;
-            }
-        }
-        1
+        compute_fuzzy_completion_order_key(mod_path, &user_input_lowercased)
     });
 
     acc.add_all(all_mod_paths.into_iter().filter_map(|(import_path, definition)| {
@@ -165,19 +161,46 @@ fn fuzzy_completion(acc: &mut Completions, ctx: &CompletionContext) -> Option<()
     Some(())
 }
 
+fn compute_fuzzy_completion_order_key(
+    proposed_mod_path: &ModPath,
+    user_input_lowercased: &str,
+) -> usize {
+    mark::hit!(certain_fuzzy_order_test);
+    let proposed_import_name = match proposed_mod_path.segments.last() {
+        Some(name) => name.to_string().to_lowercase(),
+        None => return usize::MAX,
+    };
+    match proposed_import_name.match_indices(user_input_lowercased).next() {
+        Some((first_matching_index, _)) => first_matching_index,
+        None => usize::MAX,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use expect_test::{expect, Expect};
     use test_utils::mark;
 
     use crate::{
-        test_utils::{check_edit, check_edit_with_config, completion_list},
+        test_utils::{check_edit, check_edit_with_config, completion_list_with_config},
         CompletionConfig, CompletionKind,
     };
 
     fn check(ra_fixture: &str, expect: Expect) {
-        let actual = completion_list(ra_fixture, CompletionKind::Reference);
+        check_with_config(CompletionConfig::default(), ra_fixture, expect);
+    }
+
+    fn check_with_config(config: CompletionConfig, ra_fixture: &str, expect: Expect) {
+        let actual = completion_list_with_config(config, ra_fixture, CompletionKind::Reference);
         expect.assert_eq(&actual)
+    }
+
+    fn fuzzy_completion_config() -> CompletionConfig {
+        let mut completion_config = CompletionConfig::default();
+        completion_config
+            .active_resolve_capabilities
+            .insert(crate::CompletionResolveCapability::AdditionalTextEdits);
+        completion_config
     }
 
     #[test]
@@ -255,9 +278,9 @@ fn quux(x: i32) {
 }
 "#,
             expect![[r#"
-                fn quux(…) fn quux(x: i32)
-                bn x       i32
                 bn y       i32
+                bn x       i32
+                fn quux(…) fn quux(x: i32)
             "#]],
         );
     }
@@ -277,8 +300,8 @@ fn quux() {
 }
 "#,
             expect![[r#"
-                bn a
                 bn b      i32
+                bn a
                 fn quux() fn quux()
             "#]],
         );
@@ -293,8 +316,8 @@ fn quux() {
 }
 "#,
             expect![[r#"
-                fn quux() fn quux()
                 bn x
+                fn quux() fn quux()
             "#]],
         );
     }
@@ -335,9 +358,9 @@ fn main() {
         check(
             r#"struct S<T> { x: <|>}"#,
             expect![[r#"
-                st S<…>
                 tp Self
                 tp T
+                st S<…>
             "#]],
         );
     }
@@ -362,9 +385,9 @@ enum E {}
 fn quux() { <|> }
 "#,
             expect![[r#"
-                en E
                 st S
                 fn quux() fn quux()
+                en E
             "#]],
         );
     }
@@ -416,8 +439,8 @@ mod m {
 }
 "#,
             expect![[r#"
-                st Bar
                 fn quux() fn quux()
+                st Bar
             "#]],
         );
     }
@@ -462,8 +485,8 @@ fn foo() {
         check(
             r#"impl S { fn foo(&self) { <|> } }"#,
             expect![[r#"
-                tp Self
                 bn self &{unknown}
+                tp Self
             "#]],
         );
     }
@@ -482,9 +505,9 @@ use prelude::*;
 mod prelude { struct Option; }
 "#,
             expect![[r#"
-                st Option
                 fn foo()  fn foo()
                 md std
+                st Option
             "#]],
         );
     }
@@ -509,10 +532,10 @@ use prelude::*;
 mod prelude { struct String; }
 "#,
             expect![[r#"
-                st String
-                md core
                 fn foo()  fn foo()
                 md std
+                md core
+                st String
             "#]],
         );
     }
@@ -538,13 +561,13 @@ mod m2 {
 fn main() { let v = <|> }
 "#,
             expect![[r##"
-                ma bar!(…) macro_rules! bar
+                md m1
                 ma baz!(…) #[macro_export]
                 macro_rules! baz
-                ma foo!(…) macro_rules! foo
-                md m1
-                md m2
                 fn main()  fn main()
+                md m2
+                ma bar!(…) macro_rules! bar
+                ma foo!(…) macro_rules! foo
             "##]],
         );
     }
@@ -557,8 +580,8 @@ macro_rules! foo { () => {} }
 fn foo() { <|> }
 "#,
             expect![[r#"
-                ma foo!(…) macro_rules! foo
                 fn foo()   fn foo()
+                ma foo!(…) macro_rules! foo
             "#]],
         );
     }
@@ -571,8 +594,8 @@ macro_rules! foo { () => {} }
 fn main() { let x: <|> }
 "#,
             expect![[r#"
-                ma foo!(…) macro_rules! foo
                 fn main()  fn main()
+                ma foo!(…) macro_rules! foo
             "#]],
         );
     }
@@ -585,8 +608,8 @@ macro_rules! foo { () => {} }
 fn main() { <|> }
 "#,
             expect![[r#"
-                ma foo!(…) macro_rules! foo
                 fn main()  fn main()
+                ma foo!(…) macro_rules! foo
             "#]],
         );
     }
@@ -618,10 +641,10 @@ fn quux(x: i32) {
 }
 "#,
             expect![[r#"
-                ma m!(…)   macro_rules! m
-                fn quux(…) fn quux(x: i32)
-                bn x       i32
                 bn y       i32
+                bn x       i32
+                fn quux(…) fn quux(x: i32)
+                ma m!(…)   macro_rules! m
             "#]],
         );
     }
@@ -637,10 +660,10 @@ fn quux(x: i32) {
 }
 ",
             expect![[r#"
-                ma m!(…)   macro_rules! m
-                fn quux(…) fn quux(x: i32)
-                bn x       i32
                 bn y       i32
+                bn x       i32
+                fn quux(…) fn quux(x: i32)
+                ma m!(…)   macro_rules! m
             "#]],
         );
     }
@@ -656,10 +679,10 @@ fn quux(x: i32) {
 }
 "#,
             expect![[r#"
-                ma m!(…)   macro_rules! m
-                fn quux(…) fn quux(x: i32)
-                bn x       i32
                 bn y       i32
+                bn x       i32
+                fn quux(…) fn quux(x: i32)
+                ma m!(…)   macro_rules! m
             "#]],
         );
     }
@@ -673,8 +696,8 @@ use spam::Quux;
 fn main() { <|> }
 "#,
             expect![[r#"
-                ?? Quux
                 fn main() fn main()
+                ?? Quux
             "#]],
         );
     }
@@ -690,10 +713,10 @@ fn main() {
 }
 "#,
             expect![[r#"
-                en Foo
                 ev Foo::Bar  ()
                 ev Foo::Baz  ()
                 ev Foo::Quux ()
+                en Foo
             "#]],
         )
     }
@@ -710,10 +733,10 @@ fn main() {
 }
 "#,
             expect![[r#"
-                en Foo
                 ev Foo::Bar  ()
                 ev Foo::Baz  ()
                 ev Foo::Quux ()
+                en Foo
             "#]],
         )
     }
@@ -726,10 +749,10 @@ enum Foo { Bar, Baz, Quux }
 fn main() { let foo: Foo = Q<|> }
 "#,
             expect![[r#"
-                en Foo
                 ev Foo::Bar  ()
                 ev Foo::Baz  ()
                 ev Foo::Quux ()
+                en Foo
                 fn main()    fn main()
             "#]],
         )
@@ -743,9 +766,9 @@ mod m { pub enum E { V } }
 fn f() -> m::E { V<|> }
 "#,
             expect![[r#"
-                fn f()     fn f() -> m::E
-                md m
                 ev m::E::V ()
+                md m
+                fn f()     fn f() -> m::E
             "#]],
         )
     }
@@ -772,22 +795,17 @@ struct MyStruct {}
 impl My<|>
 "#,
             expect![[r#"
-                st MyStruct
-                tt MyTrait
                 tp Self
+                tt MyTrait
+                st MyStruct
             "#]],
         )
     }
 
     #[test]
     fn function_fuzzy_completion() {
-        let mut completion_config = CompletionConfig::default();
-        completion_config
-            .active_resolve_capabilities
-            .insert(crate::CompletionResolveCapability::AdditionalTextEdits);
-
         check_edit_with_config(
-            completion_config,
+            fuzzy_completion_config(),
             "stdin",
             r#"
 //- /lib.rs crate:dep
@@ -812,13 +830,8 @@ fn main() {
 
     #[test]
     fn macro_fuzzy_completion() {
-        let mut completion_config = CompletionConfig::default();
-        completion_config
-            .active_resolve_capabilities
-            .insert(crate::CompletionResolveCapability::AdditionalTextEdits);
-
         check_edit_with_config(
-            completion_config,
+            fuzzy_completion_config(),
             "macro_with_curlies!",
             r#"
 //- /lib.rs crate:dep
@@ -845,13 +858,8 @@ fn main() {
 
     #[test]
     fn struct_fuzzy_completion() {
-        let mut completion_config = CompletionConfig::default();
-        completion_config
-            .active_resolve_capabilities
-            .insert(crate::CompletionResolveCapability::AdditionalTextEdits);
-
         check_edit_with_config(
-            completion_config,
+            fuzzy_completion_config(),
             "ThirdStruct",
             r#"
 //- /lib.rs crate:dep
@@ -875,6 +883,46 @@ fn main() {
     ThirdStruct
 }
 "#,
+        );
+    }
+
+    #[test]
+    fn fuzzy_completions_come_in_specific_order() {
+        mark::check!(certain_fuzzy_order_test);
+        check_with_config(
+            fuzzy_completion_config(),
+            r#"
+//- /lib.rs crate:dep
+pub struct FirstStruct;
+pub mod some_module {
+    // already imported, omitted
+    pub struct SecondStruct;
+    // does not contain all letters from the query, omitted
+    pub struct UnrelatedOne;
+    // contains all letters from the query, but not in sequence, displayed last
+    pub struct ThiiiiiirdStruct;
+    // contains all letters from the query, but not in the beginning, displayed second
+    pub struct AfterThirdStruct;
+    // contains all letters from the query in the begginning, displayed first
+    pub struct ThirdStruct;
+}
+
+//- /main.rs crate:main deps:dep
+use dep::{FirstStruct, some_module::SecondStruct};
+
+fn main() {
+    hir<|>
+}
+"#,
+            expect![[r#"
+                fn main()           fn main()
+                st SecondStruct
+                st FirstStruct
+                md dep
+                st dep::some_module::ThirdStruct
+                st dep::some_module::AfterThirdStruct
+                st dep::some_module::ThiiiiiirdStruct
+            "#]],
         );
     }
 }

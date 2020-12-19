@@ -315,20 +315,20 @@ fn main() {
 }
 "#,
             expect![[r#"
-                sn box   Box::new(expr)
-                sn call  function(expr)
-                sn dbg   dbg!(expr)
-                sn dbgr  dbg!(&expr)
                 sn if    if expr {}
-                sn let   let
-                sn letm  let mut
-                sn match match expr {}
+                sn while while expr {}
                 sn not   !expr
-                sn ok    Ok(expr)
                 sn ref   &expr
                 sn refm  &mut expr
+                sn match match expr {}
+                sn box   Box::new(expr)
+                sn ok    Ok(expr)
                 sn some  Some(expr)
-                sn while while expr {}
+                sn dbg   dbg!(expr)
+                sn dbgr  dbg!(&expr)
+                sn call  function(expr)
+                sn let   let
+                sn letm  let mut
             "#]],
         );
     }
@@ -347,18 +347,18 @@ fn main() {
 }
 "#,
             expect![[r#"
-                sn box   Box::new(expr)
-                sn call  function(expr)
-                sn dbg   dbg!(expr)
-                sn dbgr  dbg!(&expr)
                 sn if    if expr {}
-                sn match match expr {}
+                sn while while expr {}
                 sn not   !expr
-                sn ok    Ok(expr)
                 sn ref   &expr
                 sn refm  &mut expr
+                sn match match expr {}
+                sn box   Box::new(expr)
+                sn ok    Ok(expr)
                 sn some  Some(expr)
-                sn while while expr {}
+                sn dbg   dbg!(expr)
+                sn dbgr  dbg!(&expr)
+                sn call  function(expr)
             "#]],
         );
     }
@@ -373,17 +373,17 @@ fn main() {
 }
 "#,
             expect![[r#"
-                sn box   Box::new(expr)
-                sn call  function(expr)
-                sn dbg   dbg!(expr)
-                sn dbgr  dbg!(&expr)
-                sn let   let
-                sn letm  let mut
-                sn match match expr {}
-                sn ok    Ok(expr)
                 sn ref   &expr
                 sn refm  &mut expr
+                sn match match expr {}
+                sn box   Box::new(expr)
+                sn ok    Ok(expr)
                 sn some  Some(expr)
+                sn dbg   dbg!(expr)
+                sn dbgr  dbg!(&expr)
+                sn call  function(expr)
+                sn let   let
+                sn letm  let mut
             "#]],
         )
     }
@@ -398,20 +398,20 @@ fn main() {
 }
 "#,
             expect![[r#"
-                sn box   Box::new(expr)
-                sn call  function(expr)
-                sn dbg   dbg!(expr)
-                sn dbgr  dbg!(&expr)
                 sn if    if expr {}
-                sn let   let
-                sn letm  let mut
-                sn match match expr {}
+                sn while while expr {}
                 sn not   !expr
-                sn ok    Ok(expr)
                 sn ref   &expr
                 sn refm  &mut expr
+                sn match match expr {}
+                sn box   Box::new(expr)
+                sn ok    Ok(expr)
                 sn some  Some(expr)
-                sn while while expr {}
+                sn dbg   dbg!(expr)
+                sn dbgr  dbg!(&expr)
+                sn call  function(expr)
+                sn let   let
+                sn letm  let mut
             "#]],
         );
     }

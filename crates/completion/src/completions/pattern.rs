@@ -66,10 +66,10 @@ fn foo() {
 }
 "#,
             expect![[r#"
-                st Bar
                 en E
-                ev X   ()
                 ct Z
+                st Bar
+                ev X   ()
                 md m
             "#]],
         );
