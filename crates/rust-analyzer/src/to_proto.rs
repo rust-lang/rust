@@ -406,7 +406,7 @@ fn semantic_token_type_and_modifiers(
             SymbolKind::Macro => lsp_types::SemanticTokenType::MACRO,
         },
         HighlightTag::BuiltinType => semantic_tokens::BUILTIN_TYPE,
-        HighlightTag::Generic => semantic_tokens::GENERIC,
+        HighlightTag::Dummy => semantic_tokens::GENERIC,
         HighlightTag::ByteLiteral | HighlightTag::NumericLiteral => {
             lsp_types::SemanticTokenType::NUMBER
         }
