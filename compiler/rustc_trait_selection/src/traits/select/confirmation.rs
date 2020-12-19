@@ -334,7 +334,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn vtable_impl(
         &mut self,
         impl_def_id: DefId,
-        mut substs: Normalized<'tcx, SubstsRef<'tcx>>,
+        substs: Normalized<'tcx, SubstsRef<'tcx>>,
         cause: ObligationCause<'tcx>,
         recursion_depth: usize,
         param_env: ty::ParamEnv<'tcx>,
@@ -356,9 +356,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // relying on projections in the impl-trait-ref.
         //
         // e.g., `impl<U: Tr, V: Iterator<Item=U>> Foo<<U as Tr>::T> for V`
-        substs.obligations.append(&mut impl_obligations);
+        impl_obligations.extend(substs.obligations);
 
-        ImplSourceUserDefinedData { impl_def_id, substs: substs.value, nested: substs.obligations }
+        ImplSourceUserDefinedData { impl_def_id, substs: substs.value, nested: impl_obligations }
     }
 
     fn confirm_object_candidate(
