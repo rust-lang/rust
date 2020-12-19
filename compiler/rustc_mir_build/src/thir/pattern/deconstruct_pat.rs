@@ -19,7 +19,7 @@ use rustc_middle::mir::Field;
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::{self, Const, Ty, TyCtxt};
 use rustc_session::lint;
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::DUMMY_SP;
 use rustc_target::abi::{Integer, Size, VariantIdx};
 
 use smallvec::{smallvec, SmallVec};
@@ -184,51 +184,42 @@ impl IntRange {
     }
 
     /// Split this range, as described at the top of the file.
-    fn split<'p, 'tcx>(
-        &self,
-        pcx: PatCtxt<'_, 'p, 'tcx>,
-        hir_id: Option<HirId>,
-    ) -> SmallVec<[Constructor<'tcx>; 1]> {
-        // We collect the span and range of all the intersecting ranges to lint on likely incorrect
-        // range patterns. (#63987)
-        let mut overlaps = vec![];
+    fn split<'p, 'tcx>(&self, pcx: PatCtxt<'_, 'p, 'tcx>) -> SmallVec<[Constructor<'tcx>; 1]> {
         let mut split_range = SplitIntRange::new(self.clone());
-        let row_len = pcx.matrix.column_count().unwrap_or(0);
-        let intranges = pcx
-            .matrix
-            .head_ctors_and_spans(pcx.cx)
-            .filter_map(|(ctor, span)| Some((ctor.as_int_range()?, span)));
-        let intranges = intranges.inspect(|(range, span)| {
-            if let Some(intersection) = self.intersection(&range) {
-                if row_len == 1 && self.suspicious_intersection(&range) {
-                    // FIXME: for now, only check for overlapping ranges on simple range
-                    // patterns. Otherwise with the current logic the following is detected
-                    // as overlapping:
-                    // ```
-                    // match (0u8, true) {
-                    //   (0 ..= 125, false) => {}
-                    //   (125 ..= 255, true) => {}
-                    //   _ => {}
-                    // }
-                    // ```
-                    overlaps.push((intersection.clone(), *span));
-                }
-            }
-        });
-        split_range.split(intranges.map(|(range, _)| range).cloned());
-
-        self.lint_overlapping_range_endpoints(pcx, hir_id, overlaps);
-
+        let intranges = pcx.matrix.head_ctors(pcx.cx).filter_map(|ctor| ctor.as_int_range());
+        split_range.split(intranges.cloned());
         split_range.iter().map(IntRange).collect()
     }
 
-    fn lint_overlapping_range_endpoints(
-        &self,
-        pcx: PatCtxt<'_, '_, '_>,
-        hir_id: Option<HirId>,
-        overlaps: Vec<(IntRange, Span)>,
-    ) {
-        if let (true, Some(hir_id)) = (!overlaps.is_empty(), hir_id) {
+    /// Lint on likely incorrect range patterns (#63987)
+    pub(super) fn lint_overlapping_range_endpoints(&self, pcx: PatCtxt<'_, '_, '_>, hir_id: HirId) {
+        if self.is_singleton() {
+            return;
+        }
+
+        if pcx.matrix.column_count().unwrap_or(0) != 1 {
+            // FIXME: for now, only check for overlapping ranges on simple range
+            // patterns. Otherwise with the current logic the following is detected
+            // as overlapping:
+            // ```
+            // match (0u8, true) {
+            //   (0 ..= 125, false) => {}
+            //   (125 ..= 255, true) => {}
+            //   _ => {}
+            // }
+            // ```
+            return;
+        }
+
+        let overlaps: Vec<_> = pcx
+            .matrix
+            .head_ctors_and_spans(pcx.cx)
+            .filter_map(|(ctor, span)| Some((ctor.as_int_range()?, span)))
+            .filter(|(range, _)| self.suspicious_intersection(range))
+            .map(|(range, span)| (self.intersection(&range).unwrap(), span))
+            .collect();
+
+        if !overlaps.is_empty() {
             pcx.cx.tcx.struct_span_lint_hir(
                 lint::builtin::OVERLAPPING_RANGE_ENDPOINTS,
                 hir_id,
@@ -673,21 +664,14 @@ impl<'tcx> Constructor<'tcx> {
     /// This function may discard some irrelevant constructors if this preserves behavior and
     /// diagnostics. Eg. for the `_` case, we ignore the constructors already present in the
     /// matrix, unless all of them are.
-    ///
-    /// `hir_id` is `None` when we're evaluating the wildcard pattern. In that case we do not want
-    /// to lint for overlapping ranges.
-    pub(super) fn split<'p>(
-        &self,
-        pcx: PatCtxt<'_, 'p, 'tcx>,
-        hir_id: Option<HirId>,
-    ) -> SmallVec<[Self; 1]> {
+    pub(super) fn split<'p>(&self, pcx: PatCtxt<'_, 'p, 'tcx>) -> SmallVec<[Self; 1]> {
         debug!("Constructor::split({:#?}, {:#?})", self, pcx.matrix);
 
         match self {
             Wildcard => Constructor::split_wildcard(pcx),
             // Fast-track if the range is trivial. In particular, we don't do the overlapping
             // ranges check.
-            IntRange(ctor_range) if !ctor_range.is_singleton() => ctor_range.split(pcx, hir_id),
+            IntRange(ctor_range) if !ctor_range.is_singleton() => ctor_range.split(pcx),
             Slice(slice @ Slice { kind: VarLen(..), .. }) => slice.split(pcx),
             // Any other constructor can be used unchanged.
             _ => smallvec![self.clone()],
@@ -937,7 +921,7 @@ impl<'tcx> MissingConstructors<'tcx> {
             pcx.matrix.head_ctors(pcx.cx).cloned().filter(|c| !c.is_wildcard()).collect();
         // Since `all_ctors` never contains wildcards, this won't recurse further.
         let all_ctors =
-            all_constructors(pcx).into_iter().flat_map(|ctor| ctor.split(pcx, None)).collect();
+            all_constructors(pcx).into_iter().flat_map(|ctor| ctor.split(pcx)).collect();
 
         MissingConstructors { all_ctors, used_ctors }
     }

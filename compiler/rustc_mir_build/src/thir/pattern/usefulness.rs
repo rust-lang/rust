@@ -991,11 +991,16 @@ fn is_useful<'p, 'tcx>(
         });
         Usefulness::merge(usefulnesses)
     } else {
+        let v_ctor = v.head_ctor(cx);
+        if let Constructor::IntRange(ctor_range) = &v_ctor {
+            // Lint on likely incorrect range patterns (#63987)
+            ctor_range.lint_overlapping_range_endpoints(pcx, hir_id)
+        }
         // We split the head constructor of `v`.
-        let ctors = v.head_ctor(cx).split(pcx, Some(hir_id));
+        let split_ctors = v_ctor.split(pcx);
         // For each constructor, we compute whether there's a value that starts with it that would
         // witness the usefulness of `v`.
-        let usefulnesses = ctors.into_iter().map(|ctor| {
+        let usefulnesses = split_ctors.into_iter().map(|ctor| {
             // We cache the result of `Fields::wildcards` because it is used a lot.
             let ctor_wild_subpatterns = Fields::wildcards(pcx, &ctor);
             let matrix = pcx.matrix.specialize_constructor(pcx, &ctor, &ctor_wild_subpatterns);
