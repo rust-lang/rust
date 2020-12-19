@@ -401,7 +401,7 @@ pub fn compile_declarative_macro(
     let diag = &sess.parse_sess.span_diagnostic;
     let lhs_nm = Ident::new(sym::lhs, def.span);
     let rhs_nm = Ident::new(sym::rhs, def.span);
-    let tt_spec = NonterminalKind::TT;
+    let tt_spec = Some(NonterminalKind::TT);
 
     // Parse the macro_rules! invocation
     let (macro_rules, body) = match &def.kind {
@@ -578,7 +578,7 @@ fn check_lhs_no_empty_seq(sess: &ParseSess, tts: &[mbe::TokenTree]) -> bool {
             TokenTree::Sequence(span, ref seq) => {
                 if seq.separator.is_none()
                     && seq.tts.iter().all(|seq_tt| match *seq_tt {
-                        TokenTree::MetaVarDecl(_, _, NonterminalKind::Vis) => true,
+                        TokenTree::MetaVarDecl(_, _, Some(NonterminalKind::Vis)) => true,
                         TokenTree::Sequence(_, ref sub_seq) => {
                             sub_seq.kleene.op == mbe::KleeneOp::ZeroOrMore
                                 || sub_seq.kleene.op == mbe::KleeneOp::ZeroOrOne
@@ -961,7 +961,7 @@ fn check_matcher_core(
         // Now `last` holds the complete set of NT tokens that could
         // end the sequence before SUFFIX. Check that every one works with `suffix`.
         for token in &last.tokens {
-            if let TokenTree::MetaVarDecl(_, name, kind) = *token {
+            if let TokenTree::MetaVarDecl(_, name, Some(kind)) = *token {
                 for next_token in &suffix_first.tokens {
                     match is_in_follow(next_token, kind) {
                         IsInFollow::Yes => {}
@@ -1019,7 +1019,7 @@ fn check_matcher_core(
 }
 
 fn token_can_be_followed_by_any(tok: &mbe::TokenTree) -> bool {
-    if let mbe::TokenTree::MetaVarDecl(_, _, kind) = *tok {
+    if let mbe::TokenTree::MetaVarDecl(_, _, Some(kind)) = *tok {
         frag_can_be_followed_by_any(kind)
     } else {
         // (Non NT's can always be followed by anything in matchers.)
@@ -1123,7 +1123,7 @@ fn is_in_follow(tok: &mbe::TokenTree, kind: NonterminalKind) -> IsInFollow {
                         }
                         _ => IsInFollow::No(TOKENS),
                     },
-                    TokenTree::MetaVarDecl(_, _, NonterminalKind::Block) => IsInFollow::Yes,
+                    TokenTree::MetaVarDecl(_, _, Some(NonterminalKind::Block)) => IsInFollow::Yes,
                     _ => IsInFollow::No(TOKENS),
                 }
             }
@@ -1158,7 +1158,7 @@ fn is_in_follow(tok: &mbe::TokenTree, kind: NonterminalKind) -> IsInFollow {
                     TokenTree::MetaVarDecl(
                         _,
                         _,
-                        NonterminalKind::Ident | NonterminalKind::Ty | NonterminalKind::Path,
+                        Some(NonterminalKind::Ident | NonterminalKind::Ty | NonterminalKind::Path),
                     ) => IsInFollow::Yes,
                     _ => IsInFollow::No(TOKENS),
                 }
@@ -1171,7 +1171,8 @@ fn quoted_tt_to_string(tt: &mbe::TokenTree) -> String {
     match *tt {
         mbe::TokenTree::Token(ref token) => pprust::token_to_string(&token),
         mbe::TokenTree::MetaVar(_, name) => format!("${}", name),
-        mbe::TokenTree::MetaVarDecl(_, name, kind) => format!("${}:{}", name, kind),
+        mbe::TokenTree::MetaVarDecl(_, name, Some(kind)) => format!("${}:{}", name, kind),
+        mbe::TokenTree::MetaVarDecl(_, name, None) => format!("${}:", name),
         _ => panic!(
             "{}",
             "unexpected mbe::TokenTree::{Sequence or Delimited} \
