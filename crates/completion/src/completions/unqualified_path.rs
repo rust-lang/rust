@@ -146,8 +146,9 @@ fn fuzzy_completion(acc: &mut Completions, ctx: &CompletionContext) -> Option<()
     .filter(|(mod_path, _)| mod_path.len() > 1)
     .collect::<Vec<_>>();
 
+    let user_input_lowercased = potential_import_name.to_lowercase();
     all_mod_paths.sort_by_cached_key(|(mod_path, _)| {
-        compute_fuzzy_completion_order_key(mod_path, &potential_import_name)
+        compute_fuzzy_completion_order_key(mod_path, &user_input_lowercased)
     });
 
     acc.add_all(all_mod_paths.into_iter().filter_map(|(import_path, definition)| {
@@ -160,15 +161,16 @@ fn fuzzy_completion(acc: &mut Completions, ctx: &CompletionContext) -> Option<()
     Some(())
 }
 
-fn compute_fuzzy_completion_order_key(proposed_mod_path: &ModPath, user_input: &str) -> usize {
+fn compute_fuzzy_completion_order_key(
+    proposed_mod_path: &ModPath,
+    user_input_lowercased: &str,
+) -> usize {
     mark::hit!(certain_fuzzy_order_test);
     let proposed_import_name = match proposed_mod_path.segments.last() {
         Some(name) => name.to_string().to_lowercase(),
         None => return usize::MAX,
     };
-    let user_input = user_input.to_lowercase();
-
-    match proposed_import_name.match_indices(&user_input).next() {
+    match proposed_import_name.match_indices(user_input_lowercased).next() {
         Some((first_matching_index, _)) => first_matching_index,
         None => usize::MAX,
     }
