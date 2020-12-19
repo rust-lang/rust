@@ -1049,8 +1049,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 pat_span.with_hi(pat_span.hi() - BytePos(1)).shrink_to_hi()
             };
 
-            let mut wildcard_sugg =
-                iter::repeat("_").take(fields.len() - subpats.len()).collect::<Vec<_>>().join(", ");
+            let mut wildcard_sugg = vec!["_"; fields.len() - subpats.len()].join(", ");
             if !subpats.is_empty() {
                 wildcard_sugg = String::from(", ") + &wildcard_sugg;
             }
