@@ -169,6 +169,7 @@ mod blacklisted_name;
 mod blocks_in_if_conditions;
 mod booleans;
 mod bytecount;
+mod capitalized_acronyms;
 mod cargo_common_metadata;
 mod case_sensitive_file_extension_comparisons;
 mod checked_conversions;
@@ -559,6 +560,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &booleans::LOGIC_BUG,
         &booleans::NONMINIMAL_BOOL,
         &bytecount::NAIVE_BYTECOUNT,
+        &capitalized_acronyms::CAPITALIZED_ACRONYMS,
         &cargo_common_metadata::CARGO_COMMON_METADATA,
         &case_sensitive_file_extension_comparisons::CASE_SENSITIVE_FILE_EXTENSION_COMPARISONS,
         &checked_conversions::CHECKED_CONVERSIONS,

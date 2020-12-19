@@ -1877,6 +1877,7 @@ Released 2018-09-13
 [`box_vec`]: https://rust-lang.github.io/rust-clippy/master/index.html#box_vec
 [`boxed_local`]: https://rust-lang.github.io/rust-clippy/master/index.html#boxed_local
 [`builtin_type_shadow`]: https://rust-lang.github.io/rust-clippy/master/index.html#builtin_type_shadow
+[`capitalized_acronyms`]: https://rust-lang.github.io/rust-clippy/master/index.html#capitalized_acronyms
 [`cargo_common_metadata`]: https://rust-lang.github.io/rust-clippy/master/index.html#cargo_common_metadata
 [`case_sensitive_file_extension_comparisons`]: https://rust-lang.github.io/rust-clippy/master/index.html#case_sensitive_file_extension_comparisons
 [`cast_lossless`]: https://rust-lang.github.io/rust-clippy/master/index.html#cast_lossless
