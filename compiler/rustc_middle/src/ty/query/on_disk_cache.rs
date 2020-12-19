@@ -475,7 +475,7 @@ impl<'sess> OnDiskCache<'sess> {
     }
 
     /// If the given `dep_node`'s hash still exists in the current compilation,
-    /// calls `store_foreign_def_id` with its current `DefId`.
+    /// and its current `DefId` is foreign, calls `store_foreign_def_id` with it.
     ///
     /// Normally, `store_foreign_def_id_hash` can be called directly by
     /// the dependency graph when we construct a `DepNode`. However,
@@ -497,7 +497,9 @@ impl<'sess> OnDiskCache<'sess> {
             // changed in the current compilation session (e.g. we've added/removed crates,
             // or added/removed definitions before/after the target definition).
             if let Some(def_id) = self.def_path_hash_to_def_id(tcx, hash) {
-                self.store_foreign_def_id_hash(def_id, hash);
+                if !def_id.is_local() {
+                    self.store_foreign_def_id_hash(def_id, hash);
+                }
             }
         }
     }
