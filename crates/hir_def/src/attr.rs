@@ -5,7 +5,7 @@ use std::{ops, sync::Arc};
 use base_db::CrateId;
 use cfg::{CfgExpr, CfgOptions};
 use either::Either;
-use hir_expand::{hygiene::Hygiene, AstId, InFile};
+use hir_expand::{hygiene::Hygiene, name::AsName, AstId, InFile};
 use itertools::Itertools;
 use mbe::ast_to_token_tree;
 use syntax::{
@@ -19,7 +19,7 @@ use crate::{
     db::DefDatabase,
     item_tree::{ItemTreeId, ItemTreeNode},
     nameres::ModuleSource,
-    path::ModPath,
+    path::{ModPath, PathKind},
     src::HasChildSource,
     AdtId, AttrDefId, Lookup,
 };
@@ -357,6 +357,46 @@ impl Attr {
         };
         Some(Attr { path, input })
     }
+
+    /// Parses this attribute as a `#[derive]`, returns an iterator that yields all contained paths
+    /// to derive macros.
+    ///
+    /// Returns `None` when the attribute is not a well-formed `#[derive]` attribute.
+    pub(crate) fn parse_derive(&self) -> Option<impl Iterator<Item = ModPath>> {
+        if self.path.as_ident() != Some(&hir_expand::name![derive]) {
+            return None;
+        }
+
+        match &self.input {
+            Some(AttrInput::TokenTree(args)) => {
+                let mut counter = 0;
+                let paths = args
+                    .token_trees
+                    .iter()
+                    .group_by(move |tt| {
+                        match tt {
+                            tt::TokenTree::Leaf(tt::Leaf::Punct(p)) if p.char == ',' => {
+                                counter += 1;
+                            }
+                            _ => {}
+                        }
+                        counter
+                    })
+                    .into_iter()
+                    .map(|(_, tts)| {
+                        let segments = tts.filter_map(|tt| match tt {
+                            tt::TokenTree::Leaf(tt::Leaf::Ident(id)) => Some(id.as_name()),
+                            _ => None,
+                        });
+                        ModPath::from_segments(PathKind::Plain, segments)
+                    })
+                    .collect::<Vec<_>>();
+
+                Some(paths.into_iter())
+            }
+            _ => None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -384,7 +424,7 @@ impl<'a> AttrQuery<'a> {
         self.attrs().next().is_some()
     }
 
-    fn attrs(self) -> impl Iterator<Item = &'a Attr> {
+    pub(crate) fn attrs(self) -> impl Iterator<Item = &'a Attr> {
         let key = self.key;
         self.attrs
             .iter()
