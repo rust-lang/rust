@@ -238,7 +238,7 @@ impl<'a, 'b> fold::DocFolder for CoverageCalculator<'a, 'b> {
                     &i.attrs
                         .doc_strings
                         .iter()
-                        .map(|d| d.doc.as_str())
+                        .map(|d| d.doc.to_string())
                         .collect::<Vec<_>>()
                         .join("\n"),
                     &mut tests,

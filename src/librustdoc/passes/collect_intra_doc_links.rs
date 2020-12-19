@@ -891,37 +891,20 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
         // In the presence of re-exports, this is not the same as the module of the item.
         // Rather than merging all documentation into one, resolve it one attribute at a time
         // so we know which module it came from.
-        let mut attrs = item.attrs.doc_strings.iter().peekable();
-        while let Some(attr) = attrs.next() {
-            // `collapse_docs` does not have the behavior we want:
-            // we want `///` and `#[doc]` to count as the same attribute,
-            // but currently it will treat them as separate.
-            // As a workaround, combine all attributes with the same parent module into the same attribute.
-            let mut combined_docs = attr.doc.clone();
-            loop {
-                match attrs.peek() {
-                    Some(next) if next.parent_module == attr.parent_module => {
-                        combined_docs.push('\n');
-                        combined_docs.push_str(&attrs.next().unwrap().doc);
-                    }
-                    _ => break,
-                }
-            }
-            debug!("combined_docs={}", combined_docs);
+        for (parent_module, doc) in item.attrs.collapsed_doc_value_by_module_level() {
+            debug!("combined_docs={}", doc);
 
-            let (krate, parent_node) = if let Some(id) = attr.parent_module {
-                trace!("docs {:?} came from {:?}", attr.doc, id);
+            let (krate, parent_node) = if let Some(id) = parent_module {
                 (id.krate, Some(id))
             } else {
-                trace!("no parent found for {:?}", attr.doc);
                 (item.def_id.krate, parent_node)
             };
             // NOTE: if there are links that start in one crate and end in another, this will not resolve them.
             // This is a degenerate case and it's not supported by rustdoc.
-            for (ori_link, link_range) in markdown_links(&combined_docs) {
+            for (ori_link, link_range) in markdown_links(&doc) {
                 let link = self.resolve_link(
                     &item,
-                    &combined_docs,
+                    &doc,
                     &self_name,
                     parent_node,
                     krate,
