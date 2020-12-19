@@ -42,7 +42,7 @@ impl From<Documentation> for String {
 
 /// Syntactical attributes, without filtering of `cfg_attr`s.
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
-pub struct RawAttrs {
+pub(crate) struct RawAttrs {
     entries: Option<Arc<[Attr]>>,
 }
 
@@ -72,7 +72,7 @@ impl ops::Deref for Attrs {
 }
 
 impl RawAttrs {
-    pub const EMPTY: Self = Self { entries: None };
+    pub(crate) const EMPTY: Self = Self { entries: None };
 
     pub(crate) fn new(owner: &dyn AttrsOwner, hygiene: &Hygiene) -> Self {
         let (inner_attrs, inner_docs) = inner_attributes(owner.syntax())
@@ -239,18 +239,6 @@ impl Attrs {
         };
 
         raw_attrs.filter(db, def.krate(db))
-    }
-
-    pub fn merge(&self, other: Attrs) -> Attrs {
-        match (&self.0.entries, &other.0.entries) {
-            (None, None) => Attrs::EMPTY,
-            (Some(entries), None) | (None, Some(entries)) => {
-                Attrs(RawAttrs { entries: Some(entries.clone()) })
-            }
-            (Some(a), Some(b)) => {
-                Attrs(RawAttrs { entries: Some(a.iter().chain(b.iter()).cloned().collect()) })
-            }
-        }
     }
 
     pub fn by_key(&self, key: &'static str) -> AttrQuery<'_> {
