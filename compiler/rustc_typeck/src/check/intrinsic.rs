@@ -12,7 +12,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::subst::Subst;
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_target::spec::abi::Abi;
 
@@ -23,10 +23,7 @@ fn equate_intrinsic_type<'tcx>(
     it: &hir::ForeignItem<'_>,
     def_id: DefId,
     n_tps: usize,
-    abi: Abi,
-    safety: hir::Unsafety,
-    inputs: Vec<Ty<'tcx>>,
-    output: Ty<'tcx>,
+    sig: ty::PolyFnSig<'tcx>,
 ) {
     match it.kind {
         hir::ForeignItemKind::Fn(..) => {}
@@ -53,13 +50,7 @@ fn equate_intrinsic_type<'tcx>(
         return;
     }
 
-    let fty = tcx.mk_fn_ptr(ty::Binder::bind(tcx.mk_fn_sig(
-        inputs.into_iter(),
-        output,
-        false,
-        safety,
-        abi,
-    )));
+    let fty = tcx.mk_fn_ptr(sig);
     let cause = ObligationCause::new(it.span, it.hir_id, ObligationCauseCode::IntrinsicType);
     require_same_types(tcx, &cause, tcx.mk_fn_ptr(tcx.fn_sig(def_id)), fty);
 }
@@ -380,7 +371,9 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
         };
         (n_tps, inputs, output, unsafety)
     };
-    equate_intrinsic_type(tcx, it, def_id, n_tps, Abi::RustIntrinsic, unsafety, inputs, output)
+    let sig = tcx.mk_fn_sig(inputs.into_iter(), output, false, unsafety, Abi::RustIntrinsic);
+    let sig = ty::Binder::bind(sig);
+    equate_intrinsic_type(tcx, it, def_id, n_tps, sig)
 }
 
 /// Type-check `extern "platform-intrinsic" { ... }` functions.
@@ -466,14 +459,13 @@ pub fn check_platform_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>)
         }
     };
 
-    equate_intrinsic_type(
-        tcx,
-        it,
-        def_id,
-        n_tps,
-        Abi::PlatformIntrinsic,
-        hir::Unsafety::Unsafe,
-        inputs,
+    let sig = tcx.mk_fn_sig(
+        inputs.into_iter(),
         output,
-    )
+        false,
+        hir::Unsafety::Unsafe,
+        Abi::PlatformIntrinsic,
+    );
+    let sig = ty::Binder::dummy(sig);
+    equate_intrinsic_type(tcx, it, def_id, n_tps, sig)
 }

@@ -204,7 +204,8 @@ pub fn resolve_interior<'a, 'tcx>(
     let witness = fcx.tcx.mk_generator_witness(ty::Binder::bind(type_list));
 
     // Store the generator types and spans into the typeck results for this generator.
-    visitor.fcx.inh.typeck_results.borrow_mut().generator_interior_types = type_causes;
+    visitor.fcx.inh.typeck_results.borrow_mut().generator_interior_types =
+        ty::Binder::bind(type_causes);
 
     debug!(
         "types in generator after region replacement {:?}, span = {:?}",

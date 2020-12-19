@@ -1151,9 +1151,9 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
     ) -> DiagnosticBuilder<'tcx> {
         crate fn build_fn_sig_string<'tcx>(
             tcx: TyCtxt<'tcx>,
-            trait_ref: ty::TraitRef<'tcx>,
+            trait_ref: ty::PolyTraitRef<'tcx>,
         ) -> String {
-            let inputs = trait_ref.substs.type_at(1);
+            let inputs = trait_ref.skip_binder().substs.type_at(1);
             let sig = if let ty::Tuple(inputs) = inputs.kind() {
                 tcx.mk_fn_sig(
                     inputs.iter().map(|k| k.expect_ty()),
@@ -1171,7 +1171,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     abi::Abi::Rust,
                 )
             };
-            ty::Binder::bind(sig).to_string()
+            trait_ref.rebind(sig).to_string()
         }
 
         let argument_is_closure = expected_ref.skip_binder().substs.type_at(0).is_closure();
@@ -1183,17 +1183,12 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             if argument_is_closure { "closure" } else { "function" }
         );
 
-        let found_str = format!(
-            "expected signature of `{}`",
-            build_fn_sig_string(self.tcx, found.skip_binder())
-        );
+        let found_str = format!("expected signature of `{}`", build_fn_sig_string(self.tcx, found));
         err.span_label(span, found_str);
 
         let found_span = found_span.unwrap_or(span);
-        let expected_str = format!(
-            "found signature of `{}`",
-            build_fn_sig_string(self.tcx, expected_ref.skip_binder())
-        );
+        let expected_str =
+            format!("found signature of `{}`", build_fn_sig_string(self.tcx, expected_ref));
         err.span_label(found_span, expected_str);
 
         err
@@ -1422,7 +1417,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             // generator frame. Bound regions are preserved by
             // `erase_regions` and so we must also call
             // `erase_late_bound_regions`.
-            let ty_erased = self.tcx.erase_late_bound_regions(ty::Binder::bind(ty));
+            let ty_erased = self.tcx.erase_late_bound_regions(ty);
             let ty_erased = self.tcx.erase_regions(ty_erased);
             let eq = ty::TyS::same_type(ty_erased, target_ty_erased);
             debug!(
@@ -1440,7 +1435,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             interior_or_upvar_span = upvars.iter().find_map(|(upvar_id, upvar)| {
                 let upvar_ty = typeck_results.node_type(*upvar_id);
                 let upvar_ty = self.resolve_vars_if_possible(upvar_ty);
-                if ty_matches(&upvar_ty) {
+                if ty_matches(ty::Binder::dummy(upvar_ty)) {
                     Some(GeneratorInteriorOrUpvar::Upvar(upvar.span))
                 } else {
                     None
@@ -1448,10 +1443,13 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             });
         };
 
-        if let Some(cause) = typeck_results
-            .generator_interior_types
-            .iter()
-            .find(|ty::GeneratorInteriorTypeCause { ty, .. }| ty_matches(ty))
+        // The generator interior types share the same binders
+        if let Some(cause) =
+            typeck_results.generator_interior_types.as_ref().skip_binder().iter().find(
+                |ty::GeneratorInteriorTypeCause { ty, .. }| {
+                    ty_matches(typeck_results.generator_interior_types.rebind(ty))
+                },
+            )
         {
             // Check to see if any awaited expressions have the target type.
             let from_awaited_ty = visitor
@@ -1464,7 +1462,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         "maybe_note_obligation_cause_for_async_await: await_expr={:?}",
                         await_expr
                     );
-                    ty_matches(ty)
+                    ty_matches(ty::Binder::dummy(ty))
                 })
                 .map(|expr| expr.span);
             let ty::GeneratorInteriorTypeCause { span, scope_span, yield_span, expr, .. } = cause;

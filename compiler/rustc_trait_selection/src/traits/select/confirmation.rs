@@ -259,10 +259,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     ) -> ImplSourceAutoImplData<PredicateObligation<'tcx>> {
         debug!(?obligation, ?trait_def_id, "confirm_auto_impl_candidate");
 
-        let types = obligation.predicate.map_bound(|inner| {
-            let self_ty = self.infcx.shallow_resolve(inner.self_ty());
-            self.constituent_types_for_ty(self_ty)
-        });
+        let self_ty = self.infcx.shallow_resolve(obligation.predicate.self_ty());
+        let types = self.constituent_types_for_ty(self_ty);
         self.vtable_auto_impl(obligation, trait_def_id, types)
     }
 

@@ -1149,17 +1149,16 @@ pub enum PredicateAtom<'tcx> {
     TypeWellFormedFromEnv(Ty<'tcx>),
 }
 
-impl<'tcx> PredicateAtom<'tcx> {
+impl<'tcx> Binder<PredicateAtom<'tcx>> {
     /// Wraps `self` with the given qualifier if this predicate has any unbound variables.
     pub fn potentially_quantified(
         self,
         tcx: TyCtxt<'tcx>,
         qualifier: impl FnOnce(Binder<PredicateAtom<'tcx>>) -> PredicateKind<'tcx>,
     ) -> Predicate<'tcx> {
-        if self.has_escaping_bound_vars() {
-            qualifier(Binder::bind(self))
-        } else {
-            PredicateKind::Atom(self)
+        match self.no_bound_vars() {
+            Some(atom) => PredicateKind::Atom(atom),
+            None => qualifier(self),
         }
         .to_predicate(tcx)
     }
@@ -1252,7 +1251,11 @@ impl<'tcx> Predicate<'tcx> {
         let substs = trait_ref.skip_binder().substs;
         let pred = self.skip_binders();
         let new = pred.subst(tcx, substs);
-        if new != pred { new.potentially_quantified(tcx, PredicateKind::ForAll) } else { self }
+        if new != pred {
+            ty::Binder::bind(new).potentially_quantified(tcx, PredicateKind::ForAll)
+        } else {
+            self
+        }
     }
 }
 
@@ -1278,6 +1281,10 @@ impl<'tcx> PolyTraitPredicate<'tcx> {
     pub fn def_id(self) -> DefId {
         // Ok to skip binder since trait `DefId` does not care about regions.
         self.skip_binder().def_id()
+    }
+
+    pub fn self_ty(self) -> ty::Binder<Ty<'tcx>> {
+        self.map_bound(|trait_ref| trait_ref.self_ty())
     }
 }
 
@@ -1403,37 +1410,39 @@ impl<'tcx> ToPredicate<'tcx> for ConstnessAnd<PolyTraitRef<'tcx>> {
 
 impl<'tcx> ToPredicate<'tcx> for ConstnessAnd<PolyTraitPredicate<'tcx>> {
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
-        PredicateAtom::Trait(self.value.skip_binder(), self.constness)
+        self.value
+            .map_bound(|value| PredicateAtom::Trait(value, self.constness))
             .potentially_quantified(tcx, PredicateKind::ForAll)
     }
 }
 
 impl<'tcx> ToPredicate<'tcx> for PolyRegionOutlivesPredicate<'tcx> {
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
-        PredicateAtom::RegionOutlives(self.skip_binder())
+        self.map_bound(|value| PredicateAtom::RegionOutlives(value))
             .potentially_quantified(tcx, PredicateKind::ForAll)
     }
 }
 
 impl<'tcx> ToPredicate<'tcx> for PolyTypeOutlivesPredicate<'tcx> {
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
-        PredicateAtom::TypeOutlives(self.skip_binder())
+        self.map_bound(|value| PredicateAtom::TypeOutlives(value))
             .potentially_quantified(tcx, PredicateKind::ForAll)
     }
 }
 
 impl<'tcx> ToPredicate<'tcx> for PolyProjectionPredicate<'tcx> {
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
-        PredicateAtom::Projection(self.skip_binder())
+        self.map_bound(|value| PredicateAtom::Projection(value))
             .potentially_quantified(tcx, PredicateKind::ForAll)
     }
 }
 
 impl<'tcx> Predicate<'tcx> {
     pub fn to_opt_poly_trait_ref(self) -> Option<ConstnessAnd<PolyTraitRef<'tcx>>> {
-        match self.skip_binders() {
+        let predicate = self.bound_atom();
+        match predicate.skip_binder() {
             PredicateAtom::Trait(t, constness) => {
-                Some(ConstnessAnd { constness, value: ty::Binder::bind(t.trait_ref) })
+                Some(ConstnessAnd { constness, value: predicate.rebind(t.trait_ref) })
             }
             PredicateAtom::Projection(..)
             | PredicateAtom::Subtype(..)
@@ -1449,8 +1458,9 @@ impl<'tcx> Predicate<'tcx> {
     }
 
     pub fn to_opt_type_outlives(self) -> Option<PolyTypeOutlivesPredicate<'tcx>> {
-        match self.skip_binders() {
-            PredicateAtom::TypeOutlives(data) => Some(ty::Binder::bind(data)),
+        let predicate = self.bound_atom();
+        match predicate.skip_binder() {
+            PredicateAtom::TypeOutlives(data) => Some(predicate.rebind(data)),
             PredicateAtom::Trait(..)
             | PredicateAtom::Projection(..)
             | PredicateAtom::Subtype(..)

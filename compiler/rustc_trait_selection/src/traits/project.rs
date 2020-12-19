@@ -951,7 +951,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
 
     // If we are resolving `<T as TraitRef<...>>::Item == Type`,
     // start out by selecting the predicate `T as TraitRef<...>`:
-    let poly_trait_ref = obligation_trait_ref.to_poly_trait_ref();
+    let poly_trait_ref = ty::Binder::dummy(*obligation_trait_ref);
     let trait_obligation = obligation.with(poly_trait_ref.to_poly_trait_predicate());
     let _ = selcx.infcx().commit_if_ok(|_| {
         let impl_source = match selcx.select(&trait_obligation) {
@@ -1247,7 +1247,9 @@ fn confirm_discriminant_kind_candidate<'cx, 'tcx>(
         ty: self_ty.discriminant_ty(tcx),
     };
 
-    confirm_param_env_candidate(selcx, obligation, ty::Binder::bind(predicate), false)
+    // We get here from `poly_project_and_unify_type` which replaces bound vars
+    // with placeholders, so dummy is okay here.
+    confirm_param_env_candidate(selcx, obligation, ty::Binder::dummy(predicate), false)
 }
 
 fn confirm_fn_pointer_candidate<'cx, 'tcx>(

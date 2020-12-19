@@ -24,7 +24,7 @@ use std::iter;
 struct ExpectedSig<'tcx> {
     /// Span that gave us this expectation, if we know that.
     cause_span: Option<Span>,
-    sig: ty::FnSig<'tcx>,
+    sig: ty::PolyFnSig<'tcx>,
 }
 
 struct ClosureSignatures<'tcx> {
@@ -174,7 +174,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             ty::Infer(ty::TyVar(vid)) => self.deduce_expectations_from_obligations(vid),
             ty::FnPtr(sig) => {
-                let expected_sig = ExpectedSig { cause_span: None, sig: sig.skip_binder() };
+                let expected_sig = ExpectedSig { cause_span: None, sig };
                 (Some(expected_sig), Some(ty::ClosureKind::Fn))
             }
             _ => (None, None),
@@ -274,13 +274,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let ret_param_ty = self.resolve_vars_if_possible(ret_param_ty);
         debug!("deduce_sig_from_projection: ret_param_ty={:?}", ret_param_ty);
 
-        let sig = self.tcx.mk_fn_sig(
+        let sig = projection.rebind(self.tcx.mk_fn_sig(
             input_tys.iter(),
             &ret_param_ty,
             false,
             hir::Unsafety::Normal,
             Abi::Rust,
-        );
+        ));
         debug!("deduce_sig_from_projection: sig={:?}", sig);
 
         Some(ExpectedSig { cause_span, sig })
@@ -374,9 +374,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Watch out for some surprises and just ignore the
         // expectation if things don't see to match up with what we
         // expect.
-        if expected_sig.sig.c_variadic != decl.c_variadic {
+        if expected_sig.sig.c_variadic() != decl.c_variadic {
             return self.sig_of_closure_no_expectation(expr_def_id, decl, body);
-        } else if expected_sig.sig.inputs_and_output.len() != decl.inputs.len() + 1 {
+        } else if expected_sig.sig.skip_binder().inputs_and_output.len() != decl.inputs.len() + 1 {
             return self.sig_of_closure_with_mismatched_number_of_arguments(
                 expr_def_id,
                 decl,
@@ -388,14 +388,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Create a `PolyFnSig`. Note the oddity that late bound
         // regions appearing free in `expected_sig` are now bound up
         // in this binder we are creating.
-        assert!(!expected_sig.sig.has_vars_bound_above(ty::INNERMOST));
-        let bound_sig = ty::Binder::bind(self.tcx.mk_fn_sig(
-            expected_sig.sig.inputs().iter().cloned(),
-            expected_sig.sig.output(),
-            decl.c_variadic,
-            hir::Unsafety::Normal,
-            Abi::RustCall,
-        ));
+        assert!(!expected_sig.sig.skip_binder().has_vars_bound_above(ty::INNERMOST));
+        let bound_sig = expected_sig.sig.map_bound(|sig| {
+            self.tcx.mk_fn_sig(
+                sig.inputs().iter().cloned(),
+                sig.output(),
+                sig.c_variadic,
+                hir::Unsafety::Normal,
+                Abi::RustCall,
+            )
+        });
 
         // `deduce_expectations_from_expected_type` introduces
         // late-bound lifetimes defined elsewhere, which we now
@@ -428,6 +430,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let expr_map_node = hir.get_if_local(expr_def_id).unwrap();
         let expected_args: Vec<_> = expected_sig
             .sig
+            .skip_binder()
             .inputs()
             .iter()
             .map(|ty| ArgKind::from_expected_ty(ty, None))
@@ -500,7 +503,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let (supplied_ty, _) = self.infcx.replace_bound_vars_with_fresh_vars(
                     hir_ty.span,
                     LateBoundRegionConversionTime::FnCall,
-                    ty::Binder::bind(supplied_ty),
+                    supplied_sig.inputs().rebind(supplied_ty),
                 ); // recreated from (*) above
 
                 // Check that E' = S'.
@@ -619,12 +622,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // where R is the return type we are expecting. This type `T`
         // will be our output.
         let output_ty = self.obligations_for_self_ty(ret_vid).find_map(|(_, obligation)| {
-            if let ty::PredicateAtom::Projection(proj_predicate) =
-                obligation.predicate.skip_binders()
-            {
+            let bound_predicate = obligation.predicate.bound_atom();
+            if let ty::PredicateAtom::Projection(proj_predicate) = bound_predicate.skip_binder() {
                 self.deduce_future_output_from_projection(
                     obligation.cause.span,
-                    ty::Binder::bind(proj_predicate),
+                    bound_predicate.rebind(proj_predicate),
                 )
             } else {
                 None
@@ -704,7 +706,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             astconv.ast_ty_to_ty(&output);
         }
 
-        let result = ty::Binder::bind(self.tcx.mk_fn_sig(
+        let result = ty::Binder::dummy(self.tcx.mk_fn_sig(
             supplied_arguments,
             self.tcx.ty_error(),
             decl.c_variadic,
