@@ -201,7 +201,7 @@ fn scan_escape(first_char: char, chars: &mut Chars<'_>, mode: Mode) -> Result<ch
                 return Err(EscapeError::NoBraceInUnicodeEscape);
             }
 
-            // First characrer must be a hexadecimal digit.
+            // First character must be a hexadecimal digit.
             let mut n_digits = 1;
             let mut value: u32 = match chars.next().ok_or(EscapeError::UnclosedUnicodeEscape)? {
                 '_' => return Err(EscapeError::LeadingUnderscoreUnicodeEscape),
