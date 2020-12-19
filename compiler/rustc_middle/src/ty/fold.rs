@@ -534,8 +534,8 @@ impl<'tcx> TyCtxt<'tcx> {
     /// results returned by the closure; the closure is expected to
     /// return a free region (relative to this binder), and hence the
     /// binder is removed in the return type. The closure is invoked
-    /// once for each unique `BoundRegion`; multiple references to the
-    /// same `BoundRegion` will reuse the previous result. A map is
+    /// once for each unique `BoundRegionKind`; multiple references to the
+    /// same `BoundRegionKind` will reuse the previous result. A map is
     /// returned at the end with each bound region and the free region
     /// that replaced it.
     ///
@@ -544,7 +544,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn replace_late_bound_regions<T, F>(
         self,
         value: Binder<T>,
-        fld_r: F,
+        mut fld_r: F,
     ) -> (T, BTreeMap<ty::BoundRegion, ty::Region<'tcx>>)
     where
         F: FnMut(ty::BoundRegion) -> ty::Region<'tcx>,
@@ -555,7 +555,10 @@ impl<'tcx> TyCtxt<'tcx> {
         let fld_c = |bound_ct, ty| {
             self.mk_const(ty::Const { val: ty::ConstKind::Bound(ty::INNERMOST, bound_ct), ty })
         };
-        self.replace_escaping_bound_vars(value.skip_binder(), fld_r, fld_t, fld_c)
+        let mut region_map = BTreeMap::new();
+        let real_fld_r = |br: ty::BoundRegion| *region_map.entry(br).or_insert_with(|| fld_r(br));
+        let value = self.replace_escaping_bound_vars(value.skip_binder(), real_fld_r, fld_t, fld_c);
+        (value, region_map)
     }
 
     /// Replaces all escaping bound vars. The `fld_r` closure replaces escaping
@@ -567,34 +570,18 @@ impl<'tcx> TyCtxt<'tcx> {
         mut fld_r: F,
         mut fld_t: G,
         mut fld_c: H,
-    ) -> (T, BTreeMap<ty::BoundRegion, ty::Region<'tcx>>)
+    ) -> T
     where
         F: FnMut(ty::BoundRegion) -> ty::Region<'tcx>,
         G: FnMut(ty::BoundTy) -> Ty<'tcx>,
         H: FnMut(ty::BoundVar, Ty<'tcx>) -> &'tcx ty::Const<'tcx>,
         T: TypeFoldable<'tcx>,
     {
-        use rustc_data_structures::fx::FxHashMap;
-
-        let mut region_map = BTreeMap::new();
-        let mut type_map = FxHashMap::default();
-        let mut const_map = FxHashMap::default();
-
         if !value.has_escaping_bound_vars() {
-            (value, region_map)
+            value
         } else {
-            let mut real_fld_r = |br| *region_map.entry(br).or_insert_with(|| fld_r(br));
-
-            let mut real_fld_t =
-                |bound_ty| *type_map.entry(bound_ty).or_insert_with(|| fld_t(bound_ty));
-
-            let mut real_fld_c =
-                |bound_ct, ty| *const_map.entry(bound_ct).or_insert_with(|| fld_c(bound_ct, ty));
-
-            let mut replacer =
-                BoundVarReplacer::new(self, &mut real_fld_r, &mut real_fld_t, &mut real_fld_c);
-            let result = value.fold_with(&mut replacer);
-            (result, region_map)
+            let mut replacer = BoundVarReplacer::new(self, &mut fld_r, &mut fld_t, &mut fld_c);
+            value.fold_with(&mut replacer)
         }
     }
 
@@ -604,7 +591,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn replace_bound_vars<T, F, G, H>(
         self,
         value: Binder<T>,
-        fld_r: F,
+        mut fld_r: F,
         fld_t: G,
         fld_c: H,
     ) -> (T, BTreeMap<ty::BoundRegion, ty::Region<'tcx>>)
@@ -614,7 +601,10 @@ impl<'tcx> TyCtxt<'tcx> {
         H: FnMut(ty::BoundVar, Ty<'tcx>) -> &'tcx ty::Const<'tcx>,
         T: TypeFoldable<'tcx>,
     {
-        self.replace_escaping_bound_vars(value.skip_binder(), fld_r, fld_t, fld_c)
+        let mut region_map = BTreeMap::new();
+        let real_fld_r = |br: ty::BoundRegion| *region_map.entry(br).or_insert_with(|| fld_r(br));
+        let value = self.replace_escaping_bound_vars(value.skip_binder(), real_fld_r, fld_t, fld_c);
+        (value, region_map)
     }
 
     /// Replaces any late-bound regions bound in `value` with
@@ -626,7 +616,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self.replace_late_bound_regions(value, |br| {
             self.mk_region(ty::ReFree(ty::FreeRegion {
                 scope: all_outlive_scope,
-                bound_region: br,
+                bound_region: br.kind,
             }))
         })
         .0
@@ -639,7 +629,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn collect_constrained_late_bound_regions<T>(
         self,
         value: &Binder<T>,
-    ) -> FxHashSet<ty::BoundRegion>
+    ) -> FxHashSet<ty::BoundRegionKind>
     where
         T: TypeFoldable<'tcx>,
     {
@@ -650,7 +640,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn collect_referenced_late_bound_regions<T>(
         self,
         value: &Binder<T>,
-    ) -> FxHashSet<ty::BoundRegion>
+    ) -> FxHashSet<ty::BoundRegionKind>
     where
         T: TypeFoldable<'tcx>,
     {
@@ -661,7 +651,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         value: &Binder<T>,
         just_constraint: bool,
-    ) -> FxHashSet<ty::BoundRegion>
+    ) -> FxHashSet<ty::BoundRegionKind>
     where
         T: TypeFoldable<'tcx>,
     {
@@ -695,7 +685,8 @@ impl<'tcx> TyCtxt<'tcx> {
         let mut counter = 0;
         Binder::bind(
             self.replace_late_bound_regions(sig, |_| {
-                let r = self.mk_region(ty::ReLateBound(ty::INNERMOST, ty::BrAnon(counter)));
+                let br = ty::BoundRegion { kind: ty::BrAnon(counter) };
+                let r = self.mk_region(ty::ReLateBound(ty::INNERMOST, br));
                 counter += 1;
                 r
             })
@@ -955,7 +946,7 @@ impl<'tcx> TypeVisitor<'tcx> for HasTypeFlagsVisitor {
 /// into a hash set.
 struct LateBoundRegionsCollector {
     current_index: ty::DebruijnIndex,
-    regions: FxHashSet<ty::BoundRegion>,
+    regions: FxHashSet<ty::BoundRegionKind>,
 
     /// `true` if we only want regions that are known to be
     /// "constrained" when you equate this type with another type. In
@@ -1014,7 +1005,7 @@ impl<'tcx> TypeVisitor<'tcx> for LateBoundRegionsCollector {
     fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
         if let ty::ReLateBound(debruijn, br) = *r {
             if debruijn == self.current_index {
-                self.regions.insert(br);
+                self.regions.insert(br.kind);
             }
         }
         ControlFlow::CONTINUE
