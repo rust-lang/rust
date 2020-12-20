@@ -3,7 +3,10 @@
 use hir::{db::HirDatabase, HasVisibility, Name, StructKind};
 use itertools::Itertools;
 
-use crate::{item::CompletionKind, render::RenderContext, CompletionItem, CompletionItemKind};
+use crate::{
+    config::SnippetCap, item::CompletionKind, render::RenderContext, CompletionItem,
+    CompletionItemKind,
+};
 
 pub(crate) fn render_struct_pat<'a>(
     ctx: RenderContext<'a>,
@@ -31,7 +34,9 @@ pub(crate) fn render_struct_pat<'a>(
         StructKind::Tuple if ctx.snippet_cap().is_some() => {
             render_tuple_as_pat(&fields, &name, fields_omitted)
         }
-        StructKind::Record => render_record_as_pat(ctx.db(), &fields, &name, fields_omitted),
+        StructKind::Record => {
+            render_record_as_pat(ctx.db(), ctx.snippet_cap(), &fields, &name, fields_omitted)
+        }
         _ => return None,
     };
 
@@ -79,7 +84,9 @@ pub(crate) fn render_variant_pat<'a>(
         StructKind::Tuple if ctx.snippet_cap().is_some() => {
             render_tuple_as_pat(&fields, &name, fields_omitted)
         }
-        StructKind::Record => render_record_as_pat(ctx.db(), &fields, &name, fields_omitted),
+        StructKind::Record => {
+            render_record_as_pat(ctx.db(), ctx.snippet_cap(), &fields, &name, fields_omitted)
+        }
         _ => return None,
     };
 
@@ -106,22 +113,36 @@ pub(crate) fn render_variant_pat<'a>(
 
 fn render_record_as_pat(
     db: &dyn HirDatabase,
+    snippet_cap: Option<SnippetCap>,
     fields: &[hir::Field],
     name: &str,
     fields_omitted: bool,
 ) -> String {
-    format!(
-        "{name} {{ {}{} }}",
-        fields.into_iter().map(|field| field.name(db)).format(", "),
-        if fields_omitted { ", .." } else { "" },
-        name = name
-    )
+    let fields = fields.iter();
+    if snippet_cap.is_some() {
+        format!(
+            "{name} {{ {}{} }}",
+            fields
+                .enumerate()
+                .map(|(idx, field)| format!("${{{}:{}}}", idx + 1, field.name(db)))
+                .format(", "),
+            if fields_omitted { ", .." } else { "" },
+            name = name
+        )
+    } else {
+        format!(
+            "{name} {{ {}{} }}",
+            fields.map(|field| field.name(db)).format(", "),
+            if fields_omitted { ", .." } else { "" },
+            name = name
+        )
+    }
 }
 
 fn render_tuple_as_pat(fields: &[hir::Field], name: &str, fields_omitted: bool) -> String {
     format!(
         "{name}({}{})",
-        fields.into_iter().enumerate().map(|(idx, _)| format!("${}", idx + 1)).format(", "),
+        fields.iter().enumerate().map(|(idx, _)| format!("${}", idx + 1)).format(", "),
         if fields_omitted { ", .." } else { "" },
         name = name
     )
