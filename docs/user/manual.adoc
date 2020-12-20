@@ -160,7 +160,7 @@ $ chmod +x ~/.local/bin/rust-analyzer
 
 Ensure `~/.local/bin` is listed in the `$PATH` variable.
 
-Alternatively, you can install it from source using the following command:
+Alternatively, you can install it from source using the command below. You'll need the latest stable version of the Rust toolchain.
 
 [source,bash]
 ----
