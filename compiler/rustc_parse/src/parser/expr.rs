@@ -1,4 +1,4 @@
-use super::pat::{GateOr, PARAM_EXPECTED};
+use super::pat::{GateOr, RecoverComma, PARAM_EXPECTED};
 use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
 use super::{BlockMode, Parser, PathStyle, Restrictions, TokenType};
 use super::{SemiColonMode, SeqSep, TokenExpectType};
@@ -1729,7 +1729,7 @@ impl<'a> Parser<'a> {
     /// The `let` token has already been eaten.
     fn parse_let_expr(&mut self, attrs: AttrVec) -> PResult<'a, P<Expr>> {
         let lo = self.prev_token.span;
-        let pat = self.parse_top_pat(GateOr::No)?;
+        let pat = self.parse_top_pat(GateOr::No, RecoverComma::Yes)?;
         self.expect(&token::Eq)?;
         let expr = self.with_res(self.restrictions | Restrictions::NO_STRUCT_LITERAL, |this| {
             this.parse_assoc_expr_with(1 + prec_let_scrutinee_needs_par(), None.into())
@@ -1792,7 +1792,7 @@ impl<'a> Parser<'a> {
             _ => None,
         };
 
-        let pat = self.parse_top_pat(GateOr::Yes)?;
+        let pat = self.parse_top_pat(GateOr::Yes, RecoverComma::Yes)?;
         if !self.eat_keyword(kw::In) {
             self.error_missing_in_for_loop();
         }
@@ -1902,7 +1902,7 @@ impl<'a> Parser<'a> {
     pub(super) fn parse_arm(&mut self) -> PResult<'a, Arm> {
         let attrs = self.parse_outer_attributes()?;
         let lo = self.token.span;
-        let pat = self.parse_top_pat(GateOr::No)?;
+        let pat = self.parse_top_pat(GateOr::No, RecoverComma::Yes)?;
         let guard = if self.eat_keyword(kw::If) {
             let if_span = self.prev_token.span;
             let cond = self.parse_expr()?;

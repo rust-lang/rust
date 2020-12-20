@@ -1,7 +1,7 @@
 use super::attr::DEFAULT_INNER_ATTR_FORBIDDEN;
 use super::diagnostics::{AttemptLocalParseRecovery, Error};
 use super::expr::LhsExpr;
-use super::pat::GateOr;
+use super::pat::{GateOr, RecoverComma};
 use super::path::PathStyle;
 use super::{BlockMode, Parser, Restrictions, SemiColonMode};
 use crate::maybe_whole;
@@ -185,7 +185,7 @@ impl<'a> Parser<'a> {
     /// Parses a local variable declaration.
     fn parse_local(&mut self, attrs: AttrVec) -> PResult<'a, P<Local>> {
         let lo = self.prev_token.span;
-        let pat = self.parse_top_pat(GateOr::Yes)?;
+        let pat = self.parse_top_pat(GateOr::Yes, RecoverComma::Yes)?;
 
         let (err, ty) = if self.eat(&token::Colon) {
             // Save the state of the parser before parsing type normally, in case there is a `:`

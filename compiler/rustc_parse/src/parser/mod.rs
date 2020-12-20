@@ -12,6 +12,7 @@ mod ty;
 use crate::lexer::UnmatchedBrace;
 pub use diagnostics::AttemptLocalParseRecovery;
 use diagnostics::Error;
+pub use pat::OrPatNonterminalMode;
 pub use path::PathStyle;
 
 use rustc_ast::ptr::P;
