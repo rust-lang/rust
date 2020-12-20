@@ -141,7 +141,7 @@ impl Definition {
                 hir::GenericDef::Trait(it) => it.source(db).value.syntax().text_range(),
                 hir::GenericDef::TypeAlias(it) => it.source(db).value.syntax().text_range(),
                 hir::GenericDef::Impl(it) => it.source(db).value.syntax().text_range(),
-                hir::GenericDef::EnumVariant(it) => it.source(db).value.syntax().text_range(),
+                hir::GenericDef::Variant(it) => it.source(db).value.syntax().text_range(),
                 hir::GenericDef::Const(it) => it.source(db).value.syntax().text_range(),
             };
             let mut res = FxHashMap::default();

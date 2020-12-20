@@ -10,8 +10,8 @@ use hir_ty::db::HirDatabase;
 use syntax::ast;
 
 use crate::{
-    Adt, Const, Enum, EnumVariant, Field, Function, MacroDef, Module, ModuleDef, Static, Struct,
-    Trait, TypeAlias, Union,
+    Adt, Const, Enum, Field, Function, MacroDef, Module, ModuleDef, Static, Struct, Trait,
+    TypeAlias, Union, Variant,
 };
 
 pub trait HasAttrs {
@@ -53,7 +53,7 @@ macro_rules! impl_has_attrs {
 
 impl_has_attrs![
     (Field, FieldId),
-    (EnumVariant, EnumVariantId),
+    (Variant, EnumVariantId),
     (Static, StaticId),
     (Const, ConstId),
     (Trait, TraitId),

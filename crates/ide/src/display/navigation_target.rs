@@ -233,7 +233,7 @@ impl TryToNav for hir::ModuleDef {
             hir::ModuleDef::Module(it) => it.to_nav(db),
             hir::ModuleDef::Function(it) => it.to_nav(db),
             hir::ModuleDef::Adt(it) => it.to_nav(db),
-            hir::ModuleDef::EnumVariant(it) => it.to_nav(db),
+            hir::ModuleDef::Variant(it) => it.to_nav(db),
             hir::ModuleDef::Const(it) => it.to_nav(db),
             hir::ModuleDef::Static(it) => it.to_nav(db),
             hir::ModuleDef::Trait(it) => it.to_nav(db),
@@ -262,7 +262,7 @@ impl ToNavFromAst for hir::Struct {
 impl ToNavFromAst for hir::Enum {
     const KIND: SymbolKind = SymbolKind::Enum;
 }
-impl ToNavFromAst for hir::EnumVariant {
+impl ToNavFromAst for hir::Variant {
     const KIND: SymbolKind = SymbolKind::Variant;
 }
 impl ToNavFromAst for hir::Union {

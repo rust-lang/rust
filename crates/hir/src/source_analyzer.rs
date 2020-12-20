@@ -28,8 +28,8 @@ use syntax::{
 };
 
 use crate::{
-    db::HirDatabase, semantics::PathResolution, Adt, Const, EnumVariant, Field, Function, Local,
-    MacroDef, ModuleDef, Static, Struct, Trait, Type, TypeAlias, TypeParam,
+    db::HirDatabase, semantics::PathResolution, Adt, Const, Field, Function, Local, MacroDef,
+    ModuleDef, Static, Struct, Trait, Type, TypeAlias, TypeParam, Variant,
 };
 use base_db::CrateId;
 
@@ -230,7 +230,7 @@ impl SourceAnalyzer {
             if let Some(VariantId::EnumVariantId(variant)) =
                 self.infer.as_ref()?.variant_resolution_for_expr(expr_id)
             {
-                return Some(PathResolution::Def(ModuleDef::EnumVariant(variant.into())));
+                return Some(PathResolution::Def(ModuleDef::Variant(variant.into())));
             }
         }
 
@@ -242,7 +242,7 @@ impl SourceAnalyzer {
             if let Some(VariantId::EnumVariantId(variant)) =
                 self.infer.as_ref()?.variant_resolution_for_pat(pat_id)
             {
-                return Some(PathResolution::Def(ModuleDef::EnumVariant(variant.into())));
+                return Some(PathResolution::Def(ModuleDef::Variant(variant.into())));
             }
         }
 
@@ -251,7 +251,7 @@ impl SourceAnalyzer {
             if let Some(VariantId::EnumVariantId(variant)) =
                 self.infer.as_ref()?.variant_resolution_for_expr(expr_id)
             {
-                return Some(PathResolution::Def(ModuleDef::EnumVariant(variant.into())));
+                return Some(PathResolution::Def(ModuleDef::Variant(variant.into())));
             }
         }
 
@@ -260,7 +260,7 @@ impl SourceAnalyzer {
             if let Some(VariantId::EnumVariantId(variant)) =
                 self.infer.as_ref()?.variant_resolution_for_pat(pat_id)
             {
-                return Some(PathResolution::Def(ModuleDef::EnumVariant(variant.into())));
+                return Some(PathResolution::Def(ModuleDef::Variant(variant.into())));
             }
         }
 
@@ -459,7 +459,7 @@ pub(crate) fn resolve_hir_path(
             TypeNs::AdtSelfType(it) | TypeNs::AdtId(it) => {
                 PathResolution::Def(Adt::from(it).into())
             }
-            TypeNs::EnumVariantId(it) => PathResolution::Def(EnumVariant::from(it).into()),
+            TypeNs::EnumVariantId(it) => PathResolution::Def(Variant::from(it).into()),
             TypeNs::TypeAliasId(it) => PathResolution::Def(TypeAlias::from(it).into()),
             TypeNs::BuiltinType(it) => PathResolution::Def(it.into()),
             TypeNs::TraitId(it) => PathResolution::Def(Trait::from(it).into()),
@@ -477,7 +477,7 @@ pub(crate) fn resolve_hir_path(
                 ValueNs::ConstId(it) => PathResolution::Def(Const::from(it).into()),
                 ValueNs::StaticId(it) => PathResolution::Def(Static::from(it).into()),
                 ValueNs::StructId(it) => PathResolution::Def(Struct::from(it).into()),
-                ValueNs::EnumVariantId(it) => PathResolution::Def(EnumVariant::from(it).into()),
+                ValueNs::EnumVariantId(it) => PathResolution::Def(Variant::from(it).into()),
                 ValueNs::ImplSelf(impl_id) => PathResolution::SelfType(impl_id.into()),
             };
             Some(res)
@@ -526,7 +526,7 @@ fn resolve_hir_path_qualifier(
         TypeNs::SelfType(it) => PathResolution::SelfType(it.into()),
         TypeNs::GenericParam(id) => PathResolution::TypeParam(TypeParam { id }),
         TypeNs::AdtSelfType(it) | TypeNs::AdtId(it) => PathResolution::Def(Adt::from(it).into()),
-        TypeNs::EnumVariantId(it) => PathResolution::Def(EnumVariant::from(it).into()),
+        TypeNs::EnumVariantId(it) => PathResolution::Def(Variant::from(it).into()),
         TypeNs::TypeAliasId(it) => PathResolution::Def(TypeAlias::from(it).into()),
         TypeNs::BuiltinType(it) => PathResolution::Def(it.into()),
         TypeNs::TraitId(it) => PathResolution::Def(Trait::from(it).into()),

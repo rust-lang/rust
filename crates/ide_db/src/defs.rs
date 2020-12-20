@@ -66,7 +66,7 @@ impl Definition {
                     hir::Adt::Union(it) => it.name(db),
                     hir::Adt::Enum(it) => it.name(db),
                 },
-                hir::ModuleDef::EnumVariant(it) => it.name(db),
+                hir::ModuleDef::Variant(it) => it.name(db),
                 hir::ModuleDef::Const(it) => it.name(db)?,
                 hir::ModuleDef::Static(it) => it.name(db)?,
                 hir::ModuleDef::Trait(it) => it.name(db),
@@ -207,7 +207,7 @@ impl NameClass {
                     Some(NameClass::Definition(Definition::ModuleDef(def.into())))
                 },
                 ast::Variant(it) => {
-                    let def: hir::EnumVariant = sema.to_def(&it)?;
+                    let def: hir::Variant = sema.to_def(&it)?;
                     Some(NameClass::Definition(Definition::ModuleDef(def.into())))
                 },
                 ast::Fn(it) => {

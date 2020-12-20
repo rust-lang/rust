@@ -181,7 +181,7 @@ fn rewrite_intra_doc_link(
             ModuleDef::Module(it) => it.resolve_doc_path(db, link, ns),
             ModuleDef::Function(it) => it.resolve_doc_path(db, link, ns),
             ModuleDef::Adt(it) => it.resolve_doc_path(db, link, ns),
-            ModuleDef::EnumVariant(it) => it.resolve_doc_path(db, link, ns),
+            ModuleDef::Variant(it) => it.resolve_doc_path(db, link, ns),
             ModuleDef::Const(it) => it.resolve_doc_path(db, link, ns),
             ModuleDef::Static(it) => it.resolve_doc_path(db, link, ns),
             ModuleDef::Trait(it) => it.resolve_doc_path(db, link, ns),
@@ -390,7 +390,7 @@ fn get_symbol_filename(db: &dyn HirDatabase, definition: &ModuleDef) -> Option<S
         ModuleDef::TypeAlias(t) => format!("type.{}.html", t.name(db)),
         ModuleDef::BuiltinType(t) => format!("primitive.{}.html", t.as_name()),
         ModuleDef::Function(f) => format!("fn.{}.html", f.name(db)),
-        ModuleDef::EnumVariant(ev) => {
+        ModuleDef::Variant(ev) => {
             format!("enum.{}.html#variant.{}", ev.parent_enum(db).name(db), ev.name(db))
         }
         ModuleDef::Const(c) => format!("const.{}.html", c.name(db)?),

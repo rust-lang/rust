@@ -51,7 +51,7 @@ impl PathResolution {
                 Some(TypeNs::BuiltinType(*builtin))
             }
             PathResolution::Def(ModuleDef::Const(_))
-            | PathResolution::Def(ModuleDef::EnumVariant(_))
+            | PathResolution::Def(ModuleDef::Variant(_))
             | PathResolution::Def(ModuleDef::Function(_))
             | PathResolution::Def(ModuleDef::Module(_))
             | PathResolution::Def(ModuleDef::Static(_))
@@ -715,7 +715,7 @@ to_def_impls![
     (crate::Function, ast::Fn, fn_to_def),
     (crate::Field, ast::RecordField, record_field_to_def),
     (crate::Field, ast::TupleField, tuple_field_to_def),
-    (crate::EnumVariant, ast::Variant, enum_variant_to_def),
+    (crate::Variant, ast::Variant, enum_variant_to_def),
     (crate::TypeParam, ast::TypeParam, type_param_to_def),
     (crate::LifetimeParam, ast::LifetimeParam, lifetime_param_to_def),
     (crate::MacroDef, ast::MacroRules, macro_rules_to_def),
