@@ -8,8 +8,8 @@ use crate::{
     CompletionItemKind,
 };
 
-pub(crate) fn render_struct_pat<'a>(
-    ctx: RenderContext<'a>,
+pub(crate) fn render_struct_pat(
+    ctx: RenderContext<'_>,
     strukt: hir::Struct,
     local_name: Option<Name>,
 ) -> Option<CompletionItem> {
@@ -30,24 +30,7 @@ pub(crate) fn render_struct_pat<'a>(
     let fields_omitted = n_fields - fields.len() > 0;
 
     let name = local_name.unwrap_or_else(|| strukt.name(ctx.db())).to_string();
-    let mut pat = match strukt.kind(ctx.db()) {
-        StructKind::Tuple if ctx.snippet_cap().is_some() => {
-            render_tuple_as_pat(&fields, &name, fields_omitted)
-        }
-        StructKind::Record => {
-            render_record_as_pat(ctx.db(), ctx.snippet_cap(), &fields, &name, fields_omitted)
-        }
-        _ => return None,
-    };
-
-    if ctx.completion.is_param {
-        pat.push(':');
-        pat.push(' ');
-        pat.push_str(&name);
-    }
-    if ctx.snippet_cap().is_some() {
-        pat.push_str("$0");
-    }
+    let pat = render_pat(&ctx, &name, strukt.kind(ctx.db()), &fields, fields_omitted)?;
 
     let mut completion = CompletionItem::new(CompletionKind::Snippet, ctx.source_range(), name)
         .kind(CompletionItemKind::Binding)
@@ -62,8 +45,8 @@ pub(crate) fn render_struct_pat<'a>(
     Some(completion.build())
 }
 
-pub(crate) fn render_variant_pat<'a>(
-    ctx: RenderContext<'a>,
+pub(crate) fn render_variant_pat(
+    ctx: RenderContext<'_>,
     variant: hir::Variant,
     local_name: Option<Name>,
 ) -> Option<CompletionItem> {
@@ -80,7 +63,29 @@ pub(crate) fn render_variant_pat<'a>(
     let fields_omitted = n_fields - fields.len() > 0;
 
     let name = local_name.unwrap_or_else(|| variant.name(ctx.db())).to_string();
-    let mut pat = match variant.kind(ctx.db()) {
+    let pat = render_pat(&ctx, &name, variant.kind(ctx.db()), &fields, fields_omitted)?;
+
+    let mut completion = CompletionItem::new(CompletionKind::Snippet, ctx.source_range(), name)
+        .kind(CompletionItemKind::Binding)
+        .set_documentation(ctx.docs(variant))
+        .set_deprecated(ctx.is_deprecated(variant))
+        .detail(&pat);
+    if let Some(snippet_cap) = ctx.snippet_cap() {
+        completion = completion.insert_snippet(snippet_cap, pat);
+    } else {
+        completion = completion.insert_text(pat);
+    }
+    Some(completion.build())
+}
+
+fn render_pat(
+    ctx: &RenderContext<'_>,
+    name: &str,
+    kind: StructKind,
+    fields: &[hir::Field],
+    fields_omitted: bool,
+) -> Option<String> {
+    let mut pat = match kind {
         StructKind::Tuple if ctx.snippet_cap().is_some() => {
             render_tuple_as_pat(&fields, &name, fields_omitted)
         }
@@ -98,17 +103,7 @@ pub(crate) fn render_variant_pat<'a>(
     if ctx.snippet_cap().is_some() {
         pat.push_str("$0");
     }
-    let mut completion = CompletionItem::new(CompletionKind::Snippet, ctx.source_range(), name)
-        .kind(CompletionItemKind::Binding)
-        .set_documentation(ctx.docs(variant))
-        .set_deprecated(ctx.is_deprecated(variant))
-        .detail(&pat);
-    if let Some(snippet_cap) = ctx.snippet_cap() {
-        completion = completion.insert_snippet(snippet_cap, pat);
-    } else {
-        completion = completion.insert_text(pat);
-    }
-    Some(completion.build())
+    Some(pat)
 }
 
 fn render_record_as_pat(
