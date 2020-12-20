@@ -1160,6 +1160,8 @@ crate fn markdown_links(md: &str) -> Vec<(String, Range<usize>)> {
     }
 
     let mut links = vec![];
+    // Used to avoid mutable borrow issues in the `push` closure
+    // Probably it would be more efficient to use a `RefCell` but it doesn't seem worth the churn.
     let mut shortcut_links = vec![];
 
     let span_for_link = |link: &str, span: Range<usize>| {
