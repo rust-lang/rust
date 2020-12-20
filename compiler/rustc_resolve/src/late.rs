@@ -1987,7 +1987,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     }
                     partial_res => {
                         if fin_res.is_none() {
-                            fin_res = partial_res
+                            fin_res = partial_res;
                         }
                     }
                 }
