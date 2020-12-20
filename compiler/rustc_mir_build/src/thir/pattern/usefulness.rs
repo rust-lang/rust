@@ -784,10 +784,19 @@ impl<'tcx> Usefulness<'tcx> {
     ) -> Self {
         match self {
             UsefulWithWitness(witnesses) => {
-                let new_witnesses = if ctor.is_wildcard() {
+                let new_witnesses = if matches!(ctor, Constructor::Missing) {
                     let mut split_wildcard = SplitWildcard::new(pcx);
                     split_wildcard.split(pcx, matrix.head_ctors(pcx.cx));
-                    let new_patterns = split_wildcard.report_missing_patterns(pcx);
+                    // Construct for each missing constructor a "wild" version of this
+                    // constructor, that matches everything that can be built with
+                    // it. For example, if `ctor` is a `Constructor::Variant` for
+                    // `Option::Some`, we get the pattern `Some(_)`.
+                    let new_patterns: Vec<_> = split_wildcard
+                        .iter_missing(pcx)
+                        .map(|missing_ctor| {
+                            Fields::wildcards(pcx, missing_ctor).apply(pcx, missing_ctor)
+                        })
+                        .collect();
                     witnesses
                         .into_iter()
                         .flat_map(|witness| {
