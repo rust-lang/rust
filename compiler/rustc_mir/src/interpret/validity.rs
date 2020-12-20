@@ -117,11 +117,12 @@ pub enum PathElem {
 pub enum CtfeValidationMode {
     /// Regular validation, nothing special happening.
     Regular,
-    /// Validation of a `const`. `inner` says if this is an inner, indirect allocation (as opposed
-    /// to the top-level const allocation).
-    /// Being an inner allocation makes a difference because the top-level allocation of a `const`
-    /// is copied for each use, but the inner allocations are implicitly shared.
-    Const { inner: bool },
+    /// Validation of a `const`.
+    /// `inner` says if this is an inner, indirect allocation (as opposed to the top-level const
+    /// allocation). Being an inner allocation makes a difference because the top-level allocation
+    /// of a `const` is copied for each use, but the inner allocations are implicitly shared.
+    /// `allow_static_ptrs` says if pointers to statics are permitted (which is the case for promoteds in statics).
+    Const { inner: bool, allow_static_ptrs: bool },
 }
 
 /// State for tracking recursive validation of references
@@ -437,7 +438,10 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 if let Some(GlobalAlloc::Static(did)) = alloc_kind {
                     assert!(!self.ecx.tcx.is_thread_local_static(did));
                     assert!(self.ecx.tcx.is_static(did));
-                    if matches!(self.ctfe_mode, Some(CtfeValidationMode::Const { .. })) {
+                    if matches!(
+                        self.ctfe_mode,
+                        Some(CtfeValidationMode::Const { allow_static_ptrs: false, .. })
+                    ) {
                         // See const_eval::machine::MemoryExtra::can_access_statics for why
                         // this check is so important.
                         // This check is reachable when the const just referenced the static,
@@ -742,9 +746,9 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
         // Sanity check: `builtin_deref` does not know any pointers that are not primitive.
         assert!(op.layout.ty.builtin_deref(true).is_none());
 
-        // Special check preventing `UnsafeCell` in constants
+        // Special check preventing `UnsafeCell` in the inner part of constants
         if let Some(def) = op.layout.ty.ty_adt_def() {
-            if matches!(self.ctfe_mode, Some(CtfeValidationMode::Const { inner: true }))
+            if matches!(self.ctfe_mode, Some(CtfeValidationMode::Const { inner: true, .. }))
                 && Some(def.did) == self.ecx.tcx.lang_items().unsafe_cell_type()
             {
                 throw_validation_failure!(self.path, { "`UnsafeCell` in a `const`" });

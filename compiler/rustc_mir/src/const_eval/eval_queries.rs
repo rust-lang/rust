@@ -387,8 +387,12 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
                 let mut inner = false;
                 while let Some((mplace, path)) = ref_tracking.todo.pop() {
                     let mode = match tcx.static_mutability(cid.instance.def_id()) {
-                        Some(_) if cid.promoted.is_none() => CtfeValidationMode::Regular, // a `static`
-                        _ => CtfeValidationMode::Const { inner },
+                        Some(_) if cid.promoted.is_some() => {
+                            // Promoteds in statics are allowed to point to statics.
+                            CtfeValidationMode::Const { inner, allow_static_ptrs: true }
+                        }
+                        Some(_) => CtfeValidationMode::Regular, // a `static`
+                        None => CtfeValidationMode::Const { inner, allow_static_ptrs: false },
                     };
                     ecx.const_validate_operand(mplace.into(), path, &mut ref_tracking, mode)?;
                     inner = true;
