@@ -953,8 +953,8 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                             });
                         };
 
-                        for item in trait_items {
-                            this.with_trait_items(trait_items, |this| {
+                        this.with_trait_items(trait_items, |this| {
+                            for item in trait_items {
                                 match &item.kind {
                                     AssocItemKind::Const(_, ty, default) => {
                                         this.visit_ty(ty);
@@ -983,8 +983,8 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                                         panic!("unexpanded macro in resolve!")
                                     }
                                 };
-                            });
-                        }
+                            }
+                        });
                     });
                 });
             }
