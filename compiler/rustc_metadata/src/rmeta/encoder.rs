@@ -694,7 +694,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             println!("       lang item bytes: {}", lang_item_bytes);
             println!(" diagnostic item bytes: {}", diagnostic_item_bytes);
             println!("          native bytes: {}", native_lib_bytes);
-            println!("         source_map bytes: {}", source_map_bytes);
+            println!("      source_map bytes: {}", source_map_bytes);
             println!("            impl bytes: {}", impl_bytes);
             println!("    exp. symbols bytes: {}", exported_symbols_bytes);
             println!("  def-path table bytes: {}", def_path_table_bytes);
