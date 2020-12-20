@@ -1891,12 +1891,11 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     self.r.trait_map.insert(id, traits);
                 }
 
-                let mut std_path = Vec::with_capacity(1 + path.len());
-
-                std_path.push(Segment::from_ident(Ident::with_dummy_span(sym::std)));
-                std_path.extend(path);
-
                 if self.r.primitive_type_table.primitive_types.contains_key(&path[0].ident.name) {
+                    let mut std_path = Vec::with_capacity(1 + path.len());
+
+                    std_path.push(Segment::from_ident(Ident::with_dummy_span(sym::std)));
+                    std_path.extend(path);
                     if let PathResult::Module(_) | PathResult::NonModule(_) =
                         self.resolve_path(&std_path, Some(ns), false, span, CrateLint::No)
                     {
