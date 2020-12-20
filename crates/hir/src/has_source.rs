@@ -10,8 +10,8 @@ use hir_expand::InFile;
 use syntax::ast;
 
 use crate::{
-    db::HirDatabase, Const, Enum, EnumVariant, Field, FieldSource, Function, Impl, LifetimeParam,
-    MacroDef, Module, Static, Struct, Trait, TypeAlias, TypeParam, Union,
+    db::HirDatabase, Const, Enum, Field, FieldSource, Function, Impl, LifetimeParam, MacroDef,
+    Module, Static, Struct, Trait, TypeAlias, TypeParam, Union, Variant,
 };
 
 pub trait HasSource {
@@ -73,7 +73,7 @@ impl HasSource for Enum {
         self.id.lookup(db.upcast()).source(db.upcast())
     }
 }
-impl HasSource for EnumVariant {
+impl HasSource for Variant {
     type Ast = ast::Variant;
     fn source(self, db: &dyn HirDatabase) -> InFile<ast::Variant> {
         self.parent.id.child_source(db.upcast()).map(|map| map[self.id].clone())

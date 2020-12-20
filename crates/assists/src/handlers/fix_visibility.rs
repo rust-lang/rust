@@ -201,7 +201,7 @@ fn target_data_for_def(
             (vis_offset(syntax), in_file_source.value.visibility(), syntax.text_range(), file_id)
         }
         // Enum variants can't be private, we can't modify builtin types
-        hir::ModuleDef::EnumVariant(_) | hir::ModuleDef::BuiltinType(_) => return None,
+        hir::ModuleDef::Variant(_) | hir::ModuleDef::BuiltinType(_) => return None,
     };
 
     Some((offset, current_visibility, target, target_file, target_name))

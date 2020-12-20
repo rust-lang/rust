@@ -166,7 +166,7 @@ fn missing_record_expr_field_fix(
             def_file_id = source.file_id;
             source.value.record_field_list()?
         }
-        VariantDef::EnumVariant(e) => {
+        VariantDef::Variant(e) => {
             module = e.module(sema.db);
             let source = e.source(sema.db);
             def_file_id = source.file_id;

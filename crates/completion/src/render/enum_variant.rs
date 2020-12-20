@@ -9,35 +9,35 @@ use crate::{
     render::{builder_ext::Params, RenderContext},
 };
 
-pub(crate) fn render_enum_variant<'a>(
+pub(crate) fn render_variant<'a>(
     ctx: RenderContext<'a>,
     import_to_add: Option<ImportEdit>,
     local_name: Option<String>,
-    variant: hir::EnumVariant,
+    variant: hir::Variant,
     path: Option<ModPath>,
 ) -> CompletionItem {
     let _p = profile::span("render_enum_variant");
-    EnumVariantRender::new(ctx, local_name, variant, path).render(import_to_add)
+    EnumRender::new(ctx, local_name, variant, path).render(import_to_add)
 }
 
 #[derive(Debug)]
-struct EnumVariantRender<'a> {
+struct EnumRender<'a> {
     ctx: RenderContext<'a>,
     name: String,
-    variant: hir::EnumVariant,
+    variant: hir::Variant,
     path: Option<ModPath>,
     qualified_name: String,
     short_qualified_name: String,
     variant_kind: StructKind,
 }
 
-impl<'a> EnumVariantRender<'a> {
+impl<'a> EnumRender<'a> {
     fn new(
         ctx: RenderContext<'a>,
         local_name: Option<String>,
-        variant: hir::EnumVariant,
+        variant: hir::Variant,
         path: Option<ModPath>,
-    ) -> EnumVariantRender<'a> {
+    ) -> EnumRender<'a> {
         let name = local_name.unwrap_or_else(|| variant.name(ctx.db()).to_string());
         let variant_kind = variant.kind(ctx.db());
 
@@ -51,15 +51,7 @@ impl<'a> EnumVariantRender<'a> {
             None => (name.to_string(), name.to_string()),
         };
 
-        EnumVariantRender {
-            ctx,
-            name,
-            variant,
-            path,
-            qualified_name,
-            short_qualified_name,
-            variant_kind,
-        }
+        EnumRender { ctx, name, variant, path, qualified_name, short_qualified_name, variant_kind }
     }
 
     fn render(self, import_to_add: Option<ImportEdit>) -> CompletionItem {

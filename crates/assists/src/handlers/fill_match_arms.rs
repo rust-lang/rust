@@ -192,7 +192,7 @@ fn resolve_tuple_of_enum_def(
         .collect()
 }
 
-fn build_pat(db: &RootDatabase, module: hir::Module, var: hir::EnumVariant) -> Option<ast::Pat> {
+fn build_pat(db: &RootDatabase, module: hir::Module, var: hir::Variant) -> Option<ast::Pat> {
     let path = mod_path_to_ast(&module.find_use_path(db, ModuleDef::from(var))?);
 
     // FIXME: use HIR for this; it doesn't currently expose struct vs. tuple vs. unit variants though

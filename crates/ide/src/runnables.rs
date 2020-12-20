@@ -167,7 +167,7 @@ fn module_def_doctest(sema: &Semantics<RootDatabase>, def: hir::ModuleDef) -> Op
         hir::ModuleDef::Module(it) => it.attrs(sema.db),
         hir::ModuleDef::Function(it) => it.attrs(sema.db),
         hir::ModuleDef::Adt(it) => it.attrs(sema.db),
-        hir::ModuleDef::EnumVariant(it) => it.attrs(sema.db),
+        hir::ModuleDef::Variant(it) => it.attrs(sema.db),
         hir::ModuleDef::Const(it) => it.attrs(sema.db),
         hir::ModuleDef::Static(it) => it.attrs(sema.db),
         hir::ModuleDef::Trait(it) => it.attrs(sema.db),

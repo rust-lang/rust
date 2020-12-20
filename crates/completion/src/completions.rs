@@ -19,7 +19,7 @@ use hir::{ModPath, ScopeDef, Type};
 use crate::{
     item::Builder,
     render::{
-        const_::render_const, enum_variant::render_enum_variant, function::render_fn,
+        const_::render_const, enum_variant::render_variant, function::render_fn,
         macro_::render_macro, render_field, render_resolution, render_tuple_field,
         type_alias::render_type_alias, RenderContext,
     },
@@ -120,20 +120,20 @@ impl Completions {
     pub(crate) fn add_qualified_enum_variant(
         &mut self,
         ctx: &CompletionContext,
-        variant: hir::EnumVariant,
+        variant: hir::Variant,
         path: ModPath,
     ) {
-        let item = render_enum_variant(RenderContext::new(ctx), None, None, variant, Some(path));
+        let item = render_variant(RenderContext::new(ctx), None, None, variant, Some(path));
         self.add(item);
     }
 
     pub(crate) fn add_enum_variant(
         &mut self,
         ctx: &CompletionContext,
-        variant: hir::EnumVariant,
+        variant: hir::Variant,
         local_name: Option<String>,
     ) {
-        let item = render_enum_variant(RenderContext::new(ctx), None, local_name, variant, None);
+        let item = render_variant(RenderContext::new(ctx), None, local_name, variant, None);
         self.add(item);
     }
 }

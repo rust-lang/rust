@@ -781,7 +781,7 @@ fn highlight_def(db: &RootDatabase, def: Definition) -> Highlight {
             hir::ModuleDef::Adt(hir::Adt::Struct(_)) => HighlightTag::Symbol(SymbolKind::Struct),
             hir::ModuleDef::Adt(hir::Adt::Enum(_)) => HighlightTag::Symbol(SymbolKind::Enum),
             hir::ModuleDef::Adt(hir::Adt::Union(_)) => HighlightTag::Symbol(SymbolKind::Union),
-            hir::ModuleDef::EnumVariant(_) => HighlightTag::Symbol(SymbolKind::Variant),
+            hir::ModuleDef::Variant(_) => HighlightTag::Symbol(SymbolKind::Variant),
             hir::ModuleDef::Const(konst) => {
                 let mut h = Highlight::new(HighlightTag::Symbol(SymbolKind::Const));
                 if konst.as_assoc_item(db).is_some() {

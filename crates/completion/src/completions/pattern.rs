@@ -23,7 +23,7 @@ pub(crate) fn complete_pattern(acc: &mut Completions, ctx: &CompletionContext) {
                         def,
                         hir::ModuleDef::Adt(hir::Adt::Enum(..))
                             | hir::ModuleDef::Adt(hir::Adt::Struct(..))
-                            | hir::ModuleDef::EnumVariant(..)
+                            | hir::ModuleDef::Variant(..)
                             | hir::ModuleDef::Const(..)
                             | hir::ModuleDef::Module(..)
                     )

@@ -19,7 +19,7 @@ use crate::{
     CompletionKind, CompletionScore,
 };
 
-use crate::render::{enum_variant::render_enum_variant, function::render_fn, macro_::render_macro};
+use crate::render::{enum_variant::render_variant, function::render_fn, macro_::render_macro};
 
 pub(crate) fn render_field<'a>(
     ctx: RenderContext<'a>,
@@ -159,9 +159,8 @@ impl<'a> Render<'a> {
                 let item = render_fn(self.ctx, import_to_add, Some(local_name), *func);
                 return Some(item);
             }
-            ScopeDef::ModuleDef(EnumVariant(var)) => {
-                let item =
-                    render_enum_variant(self.ctx, import_to_add, Some(local_name), *var, None);
+            ScopeDef::ModuleDef(Variant(var)) => {
+                let item = render_variant(self.ctx, import_to_add, Some(local_name), *var, None);
                 return Some(item);
             }
             ScopeDef::MacroDef(mac) => {
@@ -257,7 +256,7 @@ impl<'a> Render<'a> {
         match resolution {
             ScopeDef::ModuleDef(Module(it)) => it.docs(self.ctx.db()),
             ScopeDef::ModuleDef(Adt(it)) => it.docs(self.ctx.db()),
-            ScopeDef::ModuleDef(EnumVariant(it)) => it.docs(self.ctx.db()),
+            ScopeDef::ModuleDef(Variant(it)) => it.docs(self.ctx.db()),
             ScopeDef::ModuleDef(Const(it)) => it.docs(self.ctx.db()),
             ScopeDef::ModuleDef(Static(it)) => it.docs(self.ctx.db()),
             ScopeDef::ModuleDef(Trait(it)) => it.docs(self.ctx.db()),

@@ -1,7 +1,7 @@
 use std::iter;
 
 use either::Either;
-use hir::{AsName, EnumVariant, Module, ModuleDef, Name};
+use hir::{AsName, Module, ModuleDef, Name, Variant};
 use ide_db::helpers::{
     insert_use::{insert_use, ImportScope},
     mod_path_to_ast,
@@ -53,7 +53,7 @@ pub(crate) fn extract_struct_from_enum_variant(
             let variant_hir_name = variant_hir.name(ctx.db());
             let enum_module_def = ModuleDef::from(enum_hir);
             let usages =
-                Definition::ModuleDef(ModuleDef::EnumVariant(variant_hir)).usages(&ctx.sema).all();
+                Definition::ModuleDef(ModuleDef::Variant(variant_hir)).usages(&ctx.sema).all();
 
             let mut visited_modules_set = FxHashSet::default();
             let current_module = enum_hir.module(ctx.db());
@@ -109,7 +109,7 @@ fn extract_field_list_if_applicable(
     }
 }
 
-fn existing_definition(db: &RootDatabase, variant_name: &ast::Name, variant: &EnumVariant) -> bool {
+fn existing_definition(db: &RootDatabase, variant_name: &ast::Name, variant: &Variant) -> bool {
     variant
         .parent_enum(db)
         .module(db)
@@ -119,7 +119,7 @@ fn existing_definition(db: &RootDatabase, variant_name: &ast::Name, variant: &En
             // only check type-namespace
             hir::ScopeDef::ModuleDef(def) => matches!(def,
                 ModuleDef::Module(_) | ModuleDef::Adt(_) |
-                ModuleDef::EnumVariant(_) | ModuleDef::Trait(_) |
+                ModuleDef::Variant(_) | ModuleDef::Trait(_) |
                 ModuleDef::TypeAlias(_) | ModuleDef::BuiltinType(_)
             ),
             _ => false,

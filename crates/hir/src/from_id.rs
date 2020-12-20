@@ -9,8 +9,7 @@ use hir_def::{
 };
 
 use crate::{
-    Adt, AssocItem, DefWithBody, EnumVariant, Field, GenericDef, Local, MacroDef, ModuleDef,
-    VariantDef,
+    Adt, AssocItem, DefWithBody, Field, GenericDef, Local, MacroDef, ModuleDef, Variant, VariantDef,
 };
 
 macro_rules! from_id {
@@ -65,14 +64,14 @@ impl From<Adt> for AdtId {
     }
 }
 
-impl From<EnumVariantId> for EnumVariant {
+impl From<EnumVariantId> for Variant {
     fn from(id: EnumVariantId) -> Self {
-        EnumVariant { parent: id.parent.into(), id: id.local_id }
+        Variant { parent: id.parent.into(), id: id.local_id }
     }
 }
 
-impl From<EnumVariant> for EnumVariantId {
-    fn from(def: EnumVariant) -> Self {
+impl From<Variant> for EnumVariantId {
+    fn from(def: Variant) -> Self {
         EnumVariantId { parent: def.parent.id, local_id: def.id }
     }
 }
@@ -83,7 +82,7 @@ impl From<ModuleDefId> for ModuleDef {
             ModuleDefId::ModuleId(it) => ModuleDef::Module(it.into()),
             ModuleDefId::FunctionId(it) => ModuleDef::Function(it.into()),
             ModuleDefId::AdtId(it) => ModuleDef::Adt(it.into()),
-            ModuleDefId::EnumVariantId(it) => ModuleDef::EnumVariant(it.into()),
+            ModuleDefId::EnumVariantId(it) => ModuleDef::Variant(it.into()),
             ModuleDefId::ConstId(it) => ModuleDef::Const(it.into()),
             ModuleDefId::StaticId(it) => ModuleDef::Static(it.into()),
             ModuleDefId::TraitId(it) => ModuleDef::Trait(it.into()),
@@ -99,7 +98,7 @@ impl From<ModuleDef> for ModuleDefId {
             ModuleDef::Module(it) => ModuleDefId::ModuleId(it.into()),
             ModuleDef::Function(it) => ModuleDefId::FunctionId(it.into()),
             ModuleDef::Adt(it) => ModuleDefId::AdtId(it.into()),
-            ModuleDef::EnumVariant(it) => ModuleDefId::EnumVariantId(it.into()),
+            ModuleDef::Variant(it) => ModuleDefId::EnumVariantId(it.into()),
             ModuleDef::Const(it) => ModuleDefId::ConstId(it.into()),
             ModuleDef::Static(it) => ModuleDefId::StaticId(it.into()),
             ModuleDef::Trait(it) => ModuleDefId::TraitId(it.into()),
@@ -147,7 +146,7 @@ impl From<GenericDef> for GenericDefId {
             GenericDef::Trait(it) => GenericDefId::TraitId(it.id),
             GenericDef::TypeAlias(it) => GenericDefId::TypeAliasId(it.id),
             GenericDef::Impl(it) => GenericDefId::ImplId(it.id),
-            GenericDef::EnumVariant(it) => {
+            GenericDef::Variant(it) => {
                 GenericDefId::EnumVariantId(EnumVariantId { parent: it.parent.id, local_id: it.id })
             }
             GenericDef::Const(it) => GenericDefId::ConstId(it.id),
@@ -164,7 +163,7 @@ impl From<GenericDefId> for GenericDef {
             GenericDefId::TypeAliasId(it) => GenericDef::TypeAlias(it.into()),
             GenericDefId::ImplId(it) => GenericDef::Impl(it.into()),
             GenericDefId::EnumVariantId(it) => {
-                GenericDef::EnumVariant(EnumVariant { parent: it.parent.into(), id: it.local_id })
+                GenericDef::Variant(Variant { parent: it.parent.into(), id: it.local_id })
             }
             GenericDefId::ConstId(it) => GenericDef::Const(it.into()),
         }
@@ -185,7 +184,7 @@ impl From<VariantId> for VariantDef {
     fn from(def: VariantId) -> Self {
         match def {
             VariantId::StructId(it) => VariantDef::Struct(it.into()),
-            VariantId::EnumVariantId(it) => VariantDef::EnumVariant(it.into()),
+            VariantId::EnumVariantId(it) => VariantDef::Variant(it.into()),
             VariantId::UnionId(it) => VariantDef::Union(it.into()),
         }
     }
@@ -195,7 +194,7 @@ impl From<VariantDef> for VariantId {
     fn from(def: VariantDef) -> Self {
         match def {
             VariantDef::Struct(it) => VariantId::StructId(it.id),
-            VariantDef::EnumVariant(it) => VariantId::EnumVariantId(it.into()),
+            VariantDef::Variant(it) => VariantId::EnumVariantId(it.into()),
             VariantDef::Union(it) => VariantId::UnionId(it.id),
         }
     }

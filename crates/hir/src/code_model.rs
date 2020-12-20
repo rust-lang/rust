@@ -161,7 +161,7 @@ pub enum ModuleDef {
     Function(Function),
     Adt(Adt),
     // Can't be directly declared, but can be imported.
-    EnumVariant(EnumVariant),
+    Variant(Variant),
     Const(Const),
     Static(Static),
     Trait(Trait),
@@ -172,7 +172,7 @@ impl_from!(
     Module,
     Function,
     Adt(Struct, Enum, Union),
-    EnumVariant,
+    Variant,
     Const,
     Static,
     Trait,
@@ -186,7 +186,7 @@ impl From<VariantDef> for ModuleDef {
         match var {
             VariantDef::Struct(t) => Adt::from(t).into(),
             VariantDef::Union(t) => Adt::from(t).into(),
-            VariantDef::EnumVariant(t) => t.into(),
+            VariantDef::Variant(t) => t.into(),
         }
     }
 }
@@ -197,7 +197,7 @@ impl ModuleDef {
             ModuleDef::Module(it) => it.parent(db),
             ModuleDef::Function(it) => Some(it.module(db)),
             ModuleDef::Adt(it) => Some(it.module(db)),
-            ModuleDef::EnumVariant(it) => Some(it.module(db)),
+            ModuleDef::Variant(it) => Some(it.module(db)),
             ModuleDef::Const(it) => Some(it.module(db)),
             ModuleDef::Static(it) => Some(it.module(db)),
             ModuleDef::Trait(it) => Some(it.module(db)),
@@ -221,7 +221,7 @@ impl ModuleDef {
             ModuleDef::Module(it) => it.parent(db)?,
             ModuleDef::Function(it) => return Some(it.visibility(db)),
             ModuleDef::Adt(it) => it.module(db),
-            ModuleDef::EnumVariant(it) => {
+            ModuleDef::Variant(it) => {
                 let parent = it.parent_enum(db);
                 let module = it.module(db);
                 return module.visibility_of(db, &ModuleDef::Adt(Adt::Enum(parent)));
@@ -241,7 +241,7 @@ impl ModuleDef {
             ModuleDef::Adt(it) => Some(it.name(db)),
             ModuleDef::Trait(it) => Some(it.name(db)),
             ModuleDef::Function(it) => Some(it.name(db)),
-            ModuleDef::EnumVariant(it) => Some(it.name(db)),
+            ModuleDef::Variant(it) => Some(it.name(db)),
             ModuleDef::TypeAlias(it) => Some(it.name(db)),
             ModuleDef::Module(it) => it.name(db),
             ModuleDef::Const(it) => it.name(db),
@@ -455,7 +455,7 @@ impl Field {
         let generic_def_id: GenericDefId = match self.parent {
             VariantDef::Struct(it) => it.id.into(),
             VariantDef::Union(it) => it.id.into(),
-            VariantDef::EnumVariant(it) => it.parent.id.into(),
+            VariantDef::Variant(it) => it.parent.id.into(),
         };
         let substs = Substs::type_params(db, generic_def_id);
         let ty = db.field_types(var_id)[self.id].clone().subst(&substs);
@@ -566,12 +566,8 @@ impl Enum {
         db.enum_data(self.id).name.clone()
     }
 
-    pub fn variants(self, db: &dyn HirDatabase) -> Vec<EnumVariant> {
-        db.enum_data(self.id)
-            .variants
-            .iter()
-            .map(|(id, _)| EnumVariant { parent: self, id })
-            .collect()
+    pub fn variants(self, db: &dyn HirDatabase) -> Vec<Variant> {
+        db.enum_data(self.id).variants.iter().map(|(id, _)| Variant { parent: self, id }).collect()
     }
 
     pub fn ty(self, db: &dyn HirDatabase) -> Type {
@@ -580,12 +576,12 @@ impl Enum {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct EnumVariant {
+pub struct Variant {
     pub(crate) parent: Enum,
     pub(crate) id: LocalEnumVariantId,
 }
 
-impl EnumVariant {
+impl Variant {
     pub fn module(self, db: &dyn HirDatabase) -> Module {
         self.parent.module(db)
     }
@@ -662,16 +658,16 @@ impl Adt {
 pub enum VariantDef {
     Struct(Struct),
     Union(Union),
-    EnumVariant(EnumVariant),
+    Variant(Variant),
 }
-impl_from!(Struct, Union, EnumVariant for VariantDef);
+impl_from!(Struct, Union, Variant for VariantDef);
 
 impl VariantDef {
     pub fn fields(self, db: &dyn HirDatabase) -> Vec<Field> {
         match self {
             VariantDef::Struct(it) => it.fields(db),
             VariantDef::Union(it) => it.fields(db),
-            VariantDef::EnumVariant(it) => it.fields(db),
+            VariantDef::Variant(it) => it.fields(db),
         }
     }
 
@@ -679,7 +675,7 @@ impl VariantDef {
         match self {
             VariantDef::Struct(it) => it.module(db),
             VariantDef::Union(it) => it.module(db),
-            VariantDef::EnumVariant(it) => it.module(db),
+            VariantDef::Variant(it) => it.module(db),
         }
     }
 
@@ -687,7 +683,7 @@ impl VariantDef {
         match self {
             VariantDef::Struct(s) => s.name(db),
             VariantDef::Union(u) => u.name(db),
-            VariantDef::EnumVariant(e) => e.name(db),
+            VariantDef::Variant(e) => e.name(db),
         }
     }
 
@@ -695,7 +691,7 @@ impl VariantDef {
         match self {
             VariantDef::Struct(it) => it.variant_data(db),
             VariantDef::Union(it) => it.variant_data(db),
-            VariantDef::EnumVariant(it) => it.variant_data(db),
+            VariantDef::Variant(it) => it.variant_data(db),
         }
     }
 }
@@ -1095,7 +1091,7 @@ pub enum GenericDef {
     Impl(Impl),
     // enum variants cannot have generics themselves, but their parent enums
     // can, and this makes some code easier to write
-    EnumVariant(EnumVariant),
+    Variant(Variant),
     // consts can have type parameters from their parents (i.e. associated consts of traits)
     Const(Const),
 }
@@ -1105,7 +1101,7 @@ impl_from!(
     Trait,
     TypeAlias,
     Impl,
-    EnumVariant,
+    Variant,
     Const
     for GenericDef
 );
@@ -1847,7 +1843,7 @@ pub struct Callable {
 pub enum CallableKind {
     Function(Function),
     TupleStruct(Struct),
-    TupleEnumVariant(EnumVariant),
+    TupleEnumVariant(Variant),
     Closure,
 }
 
