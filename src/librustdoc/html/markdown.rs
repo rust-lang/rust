@@ -474,12 +474,13 @@ impl<'a, 'b, 'ids, I: Iterator<Item = (Event<'a>, Range<usize>)>> Iterator
         if let Some((Event::Start(Tag::Heading(level)), _)) = event {
             let mut id = String::new();
             for event in &mut self.inner {
-                match event.0 {
+                match &event.0 {
                     Event::End(Tag::Heading(..)) => break,
+                    Event::Start(Tag::Link(_, _, _)) | Event::End(Tag::Link(..)) => {}
                     Event::Text(text) | Event::Code(text) => {
                         id.extend(text.chars().filter_map(slugify));
+                        self.buf.push_back(event);
                     }
-                    Event::Start(Tag::Link(_, _, _)) | Event::End(Tag::Link(..)) => {}
                     _ => self.buf.push_back(event),
                 }
             }
