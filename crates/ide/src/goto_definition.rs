@@ -1077,4 +1077,32 @@ fn foo<'foobar>(_: &'foobar ()) {
 }"#,
         )
     }
+
+    #[test]
+    #[ignore] // requires the HIR to somehow track these hrtb lifetimes
+    fn goto_lifetime_hrtb() {
+        check(
+            r#"trait Foo<T> {}
+fn foo<T>() where for<'a> T: Foo<&'a<|> (u8, u16)>, {}
+                    //^^
+"#,
+        );
+        check(
+            r#"trait Foo<T> {}
+fn foo<T>() where for<'a<|>> T: Foo<&'a (u8, u16)>, {}
+                    //^^
+"#,
+        );
+    }
+
+    #[test]
+    #[ignore] // requires ForTypes to be implemented
+    fn goto_lifetime_hrtb_for_type() {
+        check(
+            r#"trait Foo<T> {}
+fn foo<T>() where T: for<'a> Foo<&'a<|> (u8, u16)>, {}
+                       //^^
+"#,
+        );
+    }
 }

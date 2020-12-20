@@ -5,7 +5,9 @@ use std::sync::Arc;
 use hir_def::{
     adt::VariantData,
     db::DefDatabase,
-    generics::{GenericParams, TypeParamData, TypeParamProvenance, WherePredicateTypeTarget},
+    generics::{
+        GenericParams, TypeParamData, TypeParamProvenance, WherePredicate, WherePredicateTypeTarget,
+    },
     path::Path,
     resolver::{HasResolver, TypeNs},
     type_ref::TypeRef,
@@ -27,7 +29,8 @@ fn direct_super_traits(db: &dyn DefDatabase, trait_: TraitId) -> Vec<TraitId> {
         .where_predicates
         .iter()
         .filter_map(|pred| match pred {
-            hir_def::generics::WherePredicate::TypeBound { target, bound } => match target {
+            WherePredicate::ForLifetime { target, bound, .. }
+            | WherePredicate::TypeBound { target, bound } => match target {
                 WherePredicateTypeTarget::TypeRef(TypeRef::Path(p))
                     if p == &Path::from(name![Self]) =>
                 {
@@ -38,7 +41,7 @@ fn direct_super_traits(db: &dyn DefDatabase, trait_: TraitId) -> Vec<TraitId> {
                 }
                 _ => None,
             },
-            hir_def::generics::WherePredicate::Lifetime { .. } => None,
+            WherePredicate::Lifetime { .. } => None,
         })
         .filter_map(|path| match resolver.resolve_path_in_type_ns_fully(db, path.mod_path()) {
             Some(TypeNs::TraitId(t)) => Some(t),
