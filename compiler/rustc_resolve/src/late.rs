@@ -1771,7 +1771,6 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             path
         );
         let ns = source.namespace();
-        let is_expected = &|res| source.is_expected(res);
 
         let report_errors = |this: &mut Self, res: Option<Res>| {
             if this.should_report_errs() {
@@ -1874,7 +1873,8 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             crate_lint,
         ) {
             Ok(Some(partial_res)) if partial_res.unresolved_segments() == 0 => {
-                if is_expected(partial_res.base_res()) || partial_res.base_res() == Res::Err {
+                if source.is_expected(partial_res.base_res()) || partial_res.base_res() == Res::Err
+                {
                     partial_res
                 } else {
                     report_errors(self, Some(partial_res.base_res()))
