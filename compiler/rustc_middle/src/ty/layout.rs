@@ -2455,7 +2455,8 @@ impl<'tcx> ty::Instance<'tcx> {
             ty::Generator(_, substs, _) => {
                 let sig = substs.as_generator().poly_sig();
 
-                let env_region = ty::ReLateBound(ty::INNERMOST, ty::BrEnv);
+                let br = ty::BoundRegion { kind: ty::BrEnv };
+                let env_region = ty::ReLateBound(ty::INNERMOST, br);
                 let env_ty = tcx.mk_mut_ref(tcx.mk_region(env_region), ty);
 
                 let pin_did = tcx.require_lang_item(LangItem::Pin, None);

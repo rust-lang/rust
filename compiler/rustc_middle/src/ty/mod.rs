@@ -51,13 +51,13 @@ use std::ops::{ControlFlow, Range};
 use std::ptr;
 use std::str;
 
-pub use self::sty::BoundRegion::*;
+pub use self::sty::BoundRegionKind::*;
 pub use self::sty::InferTy::*;
 pub use self::sty::RegionKind;
 pub use self::sty::RegionKind::*;
 pub use self::sty::TyKind::*;
 pub use self::sty::{Binder, BoundTy, BoundTyKind, BoundVar};
-pub use self::sty::{BoundRegion, EarlyBoundRegion, FreeRegion, Region};
+pub use self::sty::{BoundRegion, BoundRegionKind, EarlyBoundRegion, FreeRegion, Region};
 pub use self::sty::{CanonicalPolyFnSig, FnSig, GenSig, PolyFnSig, PolyGenSig};
 pub use self::sty::{ClosureSubsts, GeneratorSubsts, TypeAndMut, UpvarSubsts};
 pub use self::sty::{ClosureSubstsParts, GeneratorSubstsParts};
@@ -1607,7 +1607,7 @@ where
     }
 }
 
-pub type PlaceholderRegion = Placeholder<BoundRegion>;
+pub type PlaceholderRegion = Placeholder<BoundRegionKind>;
 
 pub type PlaceholderType = Placeholder<BoundVar>;
 

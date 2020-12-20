@@ -10,7 +10,7 @@ LL | |         },
    |
    = note: defining type: supply::{closure#0} with closure substs [
                i16,
-               for<'r, 's> extern "rust-call" fn((std::cell::Cell<&'_#1r &ReLateBound(DebruijnIndex(0), BrNamed('r)) u32>, std::cell::Cell<&'_#2r &ReLateBound(DebruijnIndex(0), BrNamed('r)) u32>, std::cell::Cell<&ReLateBound(DebruijnIndex(0), BrNamed('s)) &'_#3r u32>, std::cell::Cell<&ReLateBound(DebruijnIndex(0), BrNamed('r)) u32>, std::cell::Cell<&ReLateBound(DebruijnIndex(0), BrNamed('s)) u32>)),
+               for<'r, 's> extern "rust-call" fn((std::cell::Cell<&'_#1r &ReLateBound(DebruijnIndex(0), BoundRegion { kind: BrNamed('r) }) u32>, std::cell::Cell<&'_#2r &ReLateBound(DebruijnIndex(0), BoundRegion { kind: BrNamed('r) }) u32>, std::cell::Cell<&ReLateBound(DebruijnIndex(0), BoundRegion { kind: BrNamed('s) }) &'_#3r u32>, std::cell::Cell<&ReLateBound(DebruijnIndex(0), BoundRegion { kind: BrNamed('r) }) u32>, std::cell::Cell<&ReLateBound(DebruijnIndex(0), BoundRegion { kind: BrNamed('s) }) u32>)),
                (),
            ]
    = note: late-bound region is '_#4r

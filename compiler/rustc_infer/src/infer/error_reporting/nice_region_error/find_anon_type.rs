@@ -25,7 +25,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
     pub(super) fn find_anon_type(
         &self,
         region: Region<'tcx>,
-        br: &ty::BoundRegion,
+        br: &ty::BoundRegionKind,
     ) -> Option<(&hir::Ty<'tcx>, &hir::FnDecl<'tcx>)> {
         if let Some(anon_reg) = self.tcx().is_suitable_region(region) {
             let hir_id = self.tcx().hir().local_def_id_to_hir_id(anon_reg.def_id);
@@ -56,7 +56,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
     fn find_component_for_bound_region(
         &self,
         arg: &'tcx hir::Ty<'tcx>,
-        br: &ty::BoundRegion,
+        br: &ty::BoundRegionKind,
     ) -> Option<&'tcx hir::Ty<'tcx>> {
         let mut nested_visitor = FindNestedTypeVisitor {
             tcx: self.tcx(),
@@ -80,7 +80,7 @@ struct FindNestedTypeVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
     // The bound_region corresponding to the Refree(freeregion)
     // associated with the anonymous region we are looking for.
-    bound_region: ty::BoundRegion,
+    bound_region: ty::BoundRegionKind,
     // The type where the anonymous lifetime appears
     // for e.g., Vec<`&u8`> and <`&u8`>
     found_type: Option<&'tcx hir::Ty<'tcx>>,
@@ -207,7 +207,7 @@ impl Visitor<'tcx> for FindNestedTypeVisitor<'tcx> {
 struct TyPathVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
     found_it: bool,
-    bound_region: ty::BoundRegion,
+    bound_region: ty::BoundRegionKind,
     current_index: ty::DebruijnIndex,
 }
 

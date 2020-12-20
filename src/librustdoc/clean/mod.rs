@@ -431,7 +431,9 @@ impl Clean<Option<Lifetime>> for ty::RegionKind {
     fn clean(&self, _cx: &DocContext<'_>) -> Option<Lifetime> {
         match *self {
             ty::ReStatic => Some(Lifetime::statik()),
-            ty::ReLateBound(_, ty::BrNamed(_, name)) => Some(Lifetime(name)),
+            ty::ReLateBound(_, ty::BoundRegion { kind: ty::BrNamed(_, name) }) => {
+                Some(Lifetime(name))
+            }
             ty::ReEarlyBound(ref data) => Some(Lifetime(data.name)),
 
             ty::ReLateBound(..)
