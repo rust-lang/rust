@@ -310,6 +310,7 @@ mod regex;
 mod repeat_once;
 mod returns;
 mod self_assignment;
+mod semicolon_if_nothing_returned;
 mod serde_api;
 mod shadow;
 mod single_component_path_imports;
@@ -876,6 +877,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &returns::LET_AND_RETURN,
         &returns::NEEDLESS_RETURN,
         &self_assignment::SELF_ASSIGNMENT,
+        &semicolon_if_nothing_returned::SEMICOLON_IF_NOTHING_RETURNED,
         &serde_api::SERDE_API_MISUSE,
         &shadow::SHADOW_REUSE,
         &shadow::SHADOW_SAME,
@@ -1237,6 +1239,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box manual_unwrap_or::ManualUnwrapOr);
     store.register_late_pass(|| box manual_ok_or::ManualOkOr);
     store.register_late_pass(|| box float_equality_without_abs::FloatEqualityWithoutAbs);
+    store.register_late_pass(|| box semicolon_if_nothing_returned::SemicolonIfNothingReturned);
     store.register_late_pass(|| box async_yields_async::AsyncYieldsAsync);
     let disallowed_methods = conf.disallowed_methods.iter().cloned().collect::<FxHashSet<_>>();
     store.register_late_pass(move || box disallowed_method::DisallowedMethod::new(&disallowed_methods));
@@ -1364,6 +1367,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&ranges::RANGE_PLUS_ONE),
         LintId::of(&redundant_else::REDUNDANT_ELSE),
         LintId::of(&ref_option_ref::REF_OPTION_REF),
+        LintId::of(&semicolon_if_nothing_returned::SEMICOLON_IF_NOTHING_RETURNED),
         LintId::of(&shadow::SHADOW_UNRELATED),
         LintId::of(&strings::STRING_ADD_ASSIGN),
         LintId::of(&trait_bounds::TRAIT_DUPLICATION_IN_BOUNDS),
