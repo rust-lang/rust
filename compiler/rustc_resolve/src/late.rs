@@ -1977,7 +1977,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
     ) -> Result<Option<PartialRes>, Spanned<ResolutionError<'a>>> {
         let mut fin_res = None;
 
-        for (i, ns) in [primary_ns, TypeNS, ValueNS].iter().cloned().enumerate() {
+        for (i, &ns) in [primary_ns, TypeNS, ValueNS].iter().enumerate() {
             if i == 0 || ns != primary_ns {
                 match self.resolve_qpath(id, qself, path, ns, span, crate_lint)? {
                     Some(partial_res)
