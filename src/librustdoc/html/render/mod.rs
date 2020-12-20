@@ -4721,6 +4721,7 @@ fn item_macro(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Mac
             Some("macro"),
             None,
             None,
+            it.source.span().edition(),
         ))
     });
     document(w, cx, it, None)
