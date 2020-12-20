@@ -25,16 +25,10 @@ LL |     A(u8, u8),
    |     --------- tuple variant defined here
 ...
 LL |         E::A(x @ ..) => {
-   |         ^^^^^^^^^^^^ expected 2 fields, found 1
-   |
-help: use `_` to explicitly ignore each field
-   |
-LL |         E::A(x @ .., _) => {
-   |                    ^^^
-help: use `..` to ignore the rest of the fields
-   |
-LL |         E::A(x @ .., ..) => {
-   |                    ^^^^
+   |         ^^^^^^^^^^^-
+   |         |          |
+   |         |          help: use `_` to explicitly ignore each field
+   |         expected 2 fields, found 1
 
 error: aborting due to 3 previous errors
 
