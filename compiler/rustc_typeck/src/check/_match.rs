@@ -31,7 +31,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             _ => (false, false, false),
         };
 
-        // Type check the descriminant and get its type.
+        // Type check the discriminant and get its type.
         let scrutinee_ty = if force_scrutinee_bool {
             // Here we want to ensure:
             //
