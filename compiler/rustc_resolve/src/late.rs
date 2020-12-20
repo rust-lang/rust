@@ -29,7 +29,7 @@ use rustc_span::Span;
 use smallvec::{smallvec, SmallVec};
 
 use rustc_span::source_map::{respan, Spanned};
-use std::collections::BTreeSet;
+use std::collections::{hash_map::Entry, BTreeSet};
 use std::mem::{replace, take};
 use tracing::debug;
 
@@ -1060,36 +1060,29 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 continue;
             }
 
-            let def_kind = match param.kind {
-                GenericParamKind::Type { .. } => DefKind::TyParam,
-                GenericParamKind::Const { .. } => DefKind::ConstParam,
-                _ => unreachable!(),
-            };
-
             let ident = param.ident.normalize_to_macros_2_0();
             debug!("with_generic_param_rib: {}", param.id);
 
-            if seen_bindings.contains_key(&ident) {
-                let span = seen_bindings.get(&ident).unwrap();
-                let err = ResolutionError::NameAlreadyUsedInParameterList(ident.name, *span);
-                self.report_error(param.ident.span, err);
+            match seen_bindings.entry(ident) {
+                Entry::Occupied(entry) => {
+                    let span = *entry.get();
+                    let err = ResolutionError::NameAlreadyUsedInParameterList(ident.name, span);
+                    self.report_error(param.ident.span, err);
+                }
+                Entry::Vacant(entry) => {
+                    entry.insert(param.ident.span);
+                }
             }
-            seen_bindings.entry(ident).or_insert(param.ident.span);
 
             // Plain insert (no renaming).
-            let res = Res::Def(def_kind, self.r.local_def_id(param.id).to_def_id());
-
-            match param.kind {
-                GenericParamKind::Type { .. } => {
-                    function_type_rib.bindings.insert(ident, res);
-                    self.r.record_partial_res(param.id, PartialRes::new(res));
-                }
-                GenericParamKind::Const { .. } => {
-                    function_value_rib.bindings.insert(ident, res);
-                    self.r.record_partial_res(param.id, PartialRes::new(res));
-                }
+            let (rib, def_kind) = match param.kind {
+                GenericParamKind::Type { .. } => (&mut function_type_rib, DefKind::TyParam),
+                GenericParamKind::Const { .. } => (&mut function_value_rib, DefKind::ConstParam),
                 _ => unreachable!(),
-            }
+            };
+            let res = Res::Def(def_kind, self.r.local_def_id(param.id).to_def_id());
+            self.r.record_partial_res(param.id, PartialRes::new(res));
+            rib.bindings.insert(ident, res);
         }
 
         self.ribs[ValueNS].push(function_value_rib);
