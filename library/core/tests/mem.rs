@@ -1,5 +1,6 @@
 use core::mem::*;
 
+#[cfg(panic = "unwind")]
 use std::rc::Rc;
 
 #[test]
@@ -250,14 +251,19 @@ fn uninit_write_slice_cloned_mid_panic() {
 
 #[test]
 fn uninit_write_slice_cloned_no_drop() {
-    let rc = Rc::new(());
+    #[derive(Clone)]
+    struct Bomb;
+
+    impl Drop for Bomb {
+        fn drop(&mut self) {
+            panic!("dropped a bomb! kaboom")
+        }
+    }
 
     let mut dst = [MaybeUninit::uninit()];
-    let src = [rc.clone()];
+    let src = [Bomb];
 
     MaybeUninit::write_slice_cloned(&mut dst, &src);
 
-    drop(src);
-
-    assert_eq!(Rc::strong_count(&rc), 2);
+    forget(src);
 }
