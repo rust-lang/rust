@@ -183,14 +183,6 @@ impl IntRange {
         Pat { ty, span: DUMMY_SP, kind: Box::new(kind) }
     }
 
-    /// Split this range, as described at the top of the file.
-    fn split<'p, 'tcx>(&self, pcx: PatCtxt<'_, 'p, 'tcx>) -> SmallVec<[Constructor<'tcx>; 1]> {
-        let mut split_range = SplitIntRange::new(self.clone());
-        let intranges = pcx.matrix.head_ctors(pcx.cx).filter_map(|ctor| ctor.as_int_range());
-        split_range.split(intranges.cloned());
-        split_range.iter().map(IntRange).collect()
-    }
-
     /// Lint on likely incorrect range patterns (#63987)
     pub(super) fn lint_overlapping_range_endpoints(&self, pcx: PatCtxt<'_, '_, '_>, hir_id: HirId) {
         if self.is_singleton() {
@@ -401,19 +393,6 @@ impl Slice {
 
     fn arity(self) -> u64 {
         self.kind.arity()
-    }
-
-    /// Split this slice, as described at the top of the file.
-    fn split<'p, 'tcx>(self, pcx: PatCtxt<'_, 'p, 'tcx>) -> SmallVec<[Constructor<'tcx>; 1]> {
-        let (self_prefix, self_suffix) = match self.kind {
-            VarLen(self_prefix, self_suffix) => (self_prefix, self_suffix),
-            _ => return smallvec![Slice(self)],
-        };
-
-        let mut split_self = SplitVarLenSlice::new(self_prefix, self_suffix, self.array_len);
-        let slices = pcx.matrix.head_ctors(pcx.cx).filter_map(|c| c.as_slice()).map(|s| s.kind);
-        split_self.split(slices);
-        split_self.iter().map(Slice).collect()
     }
 
     /// See `Constructor::is_covered_by`
@@ -680,24 +659,30 @@ impl<'tcx> Constructor<'tcx> {
         debug!("Constructor::split({:#?}, {:#?})", self, pcx.matrix);
 
         match self {
-            Wildcard => Constructor::split_wildcard(pcx),
+            Wildcard => {
+                let mut split_wildcard = SplitWildcard::new(pcx);
+                split_wildcard.split(pcx);
+                split_wildcard.into_ctors(pcx)
+            }
             // Fast-track if the range is trivial. In particular, we don't do the overlapping
             // ranges check.
-            IntRange(ctor_range) if !ctor_range.is_singleton() => ctor_range.split(pcx),
-            Slice(slice @ Slice { kind: VarLen(..), .. }) => slice.split(pcx),
+            IntRange(ctor_range) if !ctor_range.is_singleton() => {
+                let mut split_range = SplitIntRange::new(ctor_range.clone());
+                let intranges =
+                    pcx.matrix.head_ctors(pcx.cx).filter_map(|ctor| ctor.as_int_range());
+                split_range.split(intranges.cloned());
+                split_range.iter().map(IntRange).collect()
+            }
+            &Slice(Slice { kind: VarLen(self_prefix, self_suffix), array_len }) => {
+                let mut split_self = SplitVarLenSlice::new(self_prefix, self_suffix, array_len);
+                let slices =
+                    pcx.matrix.head_ctors(pcx.cx).filter_map(|c| c.as_slice()).map(|s| s.kind);
+                split_self.split(slices);
+                split_self.iter().map(Slice).collect()
+            }
             // Any other constructor can be used unchanged.
             _ => smallvec![self.clone()],
         }
-    }
-
-    /// For wildcards, there are two groups of constructors: there are the constructors actually
-    /// present in the matrix (`head_ctors`), and the constructors not present (`missing_ctors`).
-    /// Two constructors that are not in the matrix will either both be caught (by a wildcard), or
-    /// both not be caught. Therefore we can keep the missing constructors grouped together.
-    fn split_wildcard<'p>(pcx: PatCtxt<'_, 'p, 'tcx>) -> SmallVec<[Self; 1]> {
-        let mut split_wildcard = SplitWildcard::new(pcx);
-        split_wildcard.split(pcx);
-        split_wildcard.into_ctors(pcx)
     }
 
     /// Returns whether `self` is covered by `other`, i.e. whether `self` is a subset of `other`.
