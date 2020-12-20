@@ -12,7 +12,7 @@ error: redundant closure found
 LL |     meta(|a| foo(a));
    |          ^^^^^^^^^^ help: remove closure as shown: `foo`
 
-error: this expression borrows a reference that is immediately dereferenced by the compiler
+error: this expression borrows a reference (`&u8`) that is immediately dereferenced by the compiler
   --> $DIR/eta.rs:24:21
    |
 LL |     all(&[1, 2, 3], &&2, |x, y| below(x, y)); //is adjusted

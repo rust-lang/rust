@@ -89,7 +89,7 @@
             </div>
 
             <article class="panel panel-default" id="{{lint.id}}"
-                ng-repeat="lint in data | filter:byLevels | filter:byGroups | filter:search | orderBy:'id' track by lint.id" on-finish-render="ngRepeatFinished">
+                ng-repeat="lint in data | filter:byLevels | filter:byGroups | filter:bySearch | orderBy:'id' track by lint.id">
                 <header class="panel-heading" ng-click="open[lint.id] = !open[lint.id]">
                     <h2 class="panel-title">
                         <div class="panel-title-name">
@@ -214,6 +214,46 @@
             $scope.byGroups = function (lint) {
                 return $scope.groups[lint.group];
             };
+
+            $scope.bySearch = function (lint, index, array) {
+                let search_str = $scope.search;
+                // It can be `null` I haven't missed this value 
+                if (search_str == null || search_str.length == 0) {
+                    return true;
+                }
+                search_str = search_str.toLowerCase();
+
+                // Search by id
+                let id_search = search_str.trim().replace(/(\-| )/g, "_");
+                if (lint.id.includes(id_search)) {
+                    return true;
+                }
+
+                // Search the description
+                // The use of `for`-loops instead of `foreach` enables us to return early 
+                let search_lint = (lint, therm) => {
+                    for (const field in lint.docs) {
+                        // Continue if it's not a property
+                        if (!lint.docs.hasOwnProperty(field)) {
+                            continue;
+                        }
+
+                        // Return if not found
+                        if (lint.docs[field].toLowerCase().includes(therm)) {
+                            return true;
+                        }
+                    }
+                    return false;
+                };
+                let therms = search_str.split(" ");
+                for (index = 0; index < therms.length; index++) {
+                    if (!search_lint(lint, therms[index])) {
+                        return false;
+                    }
+                }
+
+                return true;
+            }
 
             // Get data
             $scope.open = {};

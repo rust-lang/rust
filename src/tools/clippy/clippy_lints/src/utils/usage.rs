@@ -116,20 +116,27 @@ pub struct ParamBindingIdCollector {
 }
 impl<'tcx> ParamBindingIdCollector {
     fn collect_binding_hir_ids(body: &'tcx hir::Body<'tcx>) -> Vec<hir::HirId> {
-        let mut finder = ParamBindingIdCollector {
-            binding_hir_ids: Vec::new(),
-        };
-        finder.visit_body(body);
-        finder.binding_hir_ids
+        let mut hir_ids: Vec<hir::HirId> = Vec::new();
+        for param in body.params.iter() {
+            let mut finder = ParamBindingIdCollector {
+                binding_hir_ids: Vec::new(),
+            };
+            finder.visit_param(param);
+            for hir_id in &finder.binding_hir_ids {
+                hir_ids.push(*hir_id);
+            }
+        }
+        hir_ids
     }
 }
 impl<'tcx> intravisit::Visitor<'tcx> for ParamBindingIdCollector {
     type Map = Map<'tcx>;
 
-    fn visit_param(&mut self, param: &'tcx hir::Param<'tcx>) {
-        if let hir::PatKind::Binding(_, hir_id, ..) = param.pat.kind {
+    fn visit_pat(&mut self, pat: &'tcx hir::Pat<'tcx>) {
+        if let hir::PatKind::Binding(_, hir_id, ..) = pat.kind {
             self.binding_hir_ids.push(hir_id);
         }
+        intravisit::walk_pat(self, pat);
     }
 
     fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<Self::Map> {

@@ -372,7 +372,7 @@ impl LateLintPass<'_> for StringToString {
             if let ExprKind::MethodCall(path, _, args, _) = &expr.kind;
             if path.ident.name == sym!(to_string);
             let ty = cx.typeck_results().expr_ty(&args[0]);
-            if is_type_diagnostic_item(cx, ty, sym!(string_type));
+            if is_type_diagnostic_item(cx, ty, sym::string_type);
             then {
                 span_lint_and_help(
                     cx,

@@ -1,0 +1,107 @@
+error: map with zero-sized value type
+  --> $DIR/zero_sized_btreemap_values.rs:5:28
+   |
+LL | const CONST_NOT_OK: Option<BTreeMap<String, ()>> = None;
+   |                            ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::zero-sized-map-values` implied by `-D warnings`
+   = help: consider using a set instead
+
+error: map with zero-sized value type
+  --> $DIR/zero_sized_btreemap_values.rs:8:30
+   |
+LL | static STATIC_NOT_OK: Option<BTreeMap<String, ()>> = None;
+   |                              ^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using a set instead
+
+error: map with zero-sized value type
+  --> $DIR/zero_sized_btreemap_values.rs:11:17
+   |
+LL | type NotOkMap = BTreeMap<String, ()>;
+   |                 ^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using a set instead
+
+error: map with zero-sized value type
+  --> $DIR/zero_sized_btreemap_values.rs:15:11
+   |
+LL |     NotOk(BTreeMap<String, ()>),
+   |           ^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using a set instead
+
+error: map with zero-sized value type
+  --> $DIR/zero_sized_btreemap_values.rs:20:13
+   |
+LL |     not_ok: BTreeMap<String, ()>,
+   |             ^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using a set instead
+
+error: map with zero-sized value type
+  --> $DIR/zero_sized_btreemap_values.rs:22:22
+   |
+LL |     also_not_ok: Vec<BTreeMap<usize, ()>>,
+   |                      ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using a set instead
+
+error: map with zero-sized value type
+  --> $DIR/zero_sized_btreemap_values.rs:30:30
+   |
+LL |     fn weird_map(&self, map: BTreeMap<usize, ()>);
+   |                              ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using a set instead
+
+error: map with zero-sized value type
+  --> $DIR/zero_sized_btreemap_values.rs:38:25
+   |
+LL |     fn not_ok(&self) -> BTreeMap<String, ()> {
+   |                         ^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using a set instead
+
+error: map with zero-sized value type
+  --> $DIR/zero_sized_btreemap_values.rs:55:14
+   |
+LL | fn test(map: BTreeMap<String, ()>, key: &str) -> BTreeMap<String, ()> {
+   |              ^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using a set instead
+
+error: map with zero-sized value type
+  --> $DIR/zero_sized_btreemap_values.rs:55:50
+   |
+LL | fn test(map: BTreeMap<String, ()>, key: &str) -> BTreeMap<String, ()> {
+   |                                                  ^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using a set instead
+
+error: map with zero-sized value type
+  --> $DIR/zero_sized_btreemap_values.rs:64:35
+   |
+LL |     let _: BTreeMap<String, ()> = BTreeMap::new();
+   |                                   ^^^^^^^^^^^^^
+   |
+   = help: consider using a set instead
+
+error: map with zero-sized value type
+  --> $DIR/zero_sized_btreemap_values.rs:64:12
+   |
+LL |     let _: BTreeMap<String, ()> = BTreeMap::new();
+   |            ^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using a set instead
+
+error: map with zero-sized value type
+  --> $DIR/zero_sized_btreemap_values.rs:67:12
+   |
+LL |     let _: BTreeMap<_, _> = std::iter::empty::<(String, ())>().collect();
+   |            ^^^^^^^^^^^^^^
+   |
+   = help: consider using a set instead
+
+error: aborting due to 13 previous errors
+
