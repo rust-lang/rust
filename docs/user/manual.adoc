@@ -46,8 +46,8 @@ You can install the latest release of the plugin from
 https://marketplace.visualstudio.com/items?itemName=matklad.rust-analyzer[the marketplace].
 
 Note that the plugin may cause conflicts with the
-https://marketplace.visualstudio.com/items?itemName=rust-lang.rust[official Rust plugin]. It is
-recommended to disable the Rust plugin when using the rust-analyzer extension.
+https://marketplace.visualstudio.com/items?itemName=rust-lang.rust[official Rust plugin].
+It is recommended to disable the Rust plugin when using the rust-analyzer extension.
 
 By default, the plugin will prompt you to download the matching version of the server as well:
 
@@ -74,18 +74,21 @@ Note that we only support two most recent versions of VS Code.
 
 ==== Updates
 
-The extension will be updated automatically as new versions become available. It will ask your permission to download the matching language server version binary if needed.
+The extension will be updated automatically as new versions become available.
+It will ask your permission to download the matching language server version binary if needed.
 
 ===== Nightly
 
-We ship nightly releases for VS Code. To help us out with testing the newest code and follow the bleeding edge of our `master`, please use the following config:
+We ship nightly releases for VS Code.
+To help us out with testing the newest code and follow the bleeding edge of our `master`, please use the following config:
 
 [source,json]
 ----
 { "rust-analyzer.updates.channel": "nightly" }
 ----
 
-You will be prompted to install the `nightly` extension version. Just click `Download now` and from that moment you will get automatic updates every 24 hours.
+You will be prompted to install the `nightly` extension version.
+Just click `Download now` and from that moment you will get automatic updates every 24 hours.
 
 If you don't want to be asked for `Download now` every day when the new nightly version is released add the following to your `settings.json`:
 [source,json]
@@ -160,7 +163,8 @@ $ chmod +x ~/.local/bin/rust-analyzer
 
 Ensure `~/.local/bin` is listed in the `$PATH` variable.
 
-Alternatively, you can install it from source using the command below. You'll need the latest stable version of the Rust toolchain.
+Alternatively, you can install it from source using the command below.
+You'll need the latest stable version of the Rust toolchain.
 
 [source,bash]
 ----
@@ -198,7 +202,8 @@ Emacs support is maintained as part of the https://github.com/emacs-lsp/lsp-mode
 
 === Vim/NeoVim
 
-Prerequisites: You have installed the <<rust-analyzer-language-server-binary,`rust-analyzer` binary>>. Not needed if the extension can install/update it on its own, coc-rust-analyzer is one example.
+Prerequisites: You have installed the <<rust-analyzer-language-server-binary,`rust-analyzer` binary>>.
+Not needed if the extension can install/update it on its own, coc-rust-analyzer is one example.
 
 The are several LSP client implementations for vim or neovim:
 
@@ -270,14 +275,16 @@ Once `neovim/nvim-lspconfig` is installed, use `+lua require'nvim_lsp'.rust_anal
 
 Prerequisites: You have installed the <<rust-analyzer-language-server-binary,`rust-analyzer` binary>>.
 
-You also need the `LSP` package. To install it:
+You also need the `LSP` package.
+To install it:
 
 1. If you've never installed a Sublime Text package, install Package Control:
    * Open the command palette (Win/Linux: `ctrl+shift+p`, Mac: `cmd+shift+p`)
    * Type `Install Package Control`, press enter
 2. In the command palette, run `Package control: Install package`, and in the list that pops up, type `LSP` and press enter.
 
-Finally, with your Rust project open, in the command palette, run `LSP: Enable Language Server In Project` or `LSP: Enable Language Server Globally`, then select `rust-analyzer` in the list that pops up to enable the rust-analyzer LSP. The latter means that rust-analyzer is enabled by default in Rust projects.
+Finally, with your Rust project open, in the command palette, run `LSP: Enable Language Server In Project` or `LSP: Enable Language Server Globally`, then select `rust-analyzer` in the list that pops up to enable the rust-analyzer LSP.
+The latter means that rust-analyzer is enabled by default in Rust projects.
 
 If it worked, you should see "rust-analyzer, Line X, Column Y" on the left side of the bottom bar, and after waiting a bit, functionality like tooltips on hovering over variables should become available.
 
@@ -285,7 +292,8 @@ If you get an error saying `No such file or directory: 'rust-analyzer'`, see the
 
 === GNOME Builder
 
-GNOME Builder 3.37.1 and newer has native `rust-analyzer` support. If the LSP binary is not available, GNOME Builder can install it when opening a Rust file.
+GNOME Builder 3.37.1 and newer has native `rust-analyzer` support.
+If the LSP binary is not available, GNOME Builder can install it when opening a Rust file.
 
 == Configuration
 
@@ -413,8 +421,8 @@ include::./generated_diagnostic.adoc[]
 
 ==== Color configurations
 
-It is possible to change the foreground/background color of inlay hints. Just add this to your
-`settings.json`:
+It is possible to change the foreground/background color of inlay hints.
+Just add this to your `settings.json`:
 
 [source,jsonc]
 ----
@@ -436,7 +444,8 @@ It is possible to change the foreground/background color of inlay hints. Just ad
 
 ==== Semantic style customizations
 
-You can customize the look of different semantic elements in the source code. For example, mutable bindings are underlined by default and you can override this behavior by adding the following section to your `settings.json`:
+You can customize the look of different semantic elements in the source code.
+For example, mutable bindings are underlined by default and you can override this behavior by adding the following section to your `settings.json`:
 
 [source,jsonc]
 ----
@@ -452,7 +461,9 @@ You can customize the look of different semantic elements in the source code. Fo
 ----
 
 ==== Special `when` clause context for keybindings.
-You may use `inRustProject` context to configure keybindings for rust projects only. For example:
+You may use `inRustProject` context to configure keybindings for rust projects only.
+For example:
+
 [source,json]
 ----
 {
@@ -491,7 +502,8 @@ Or it is possible to specify vars more granularly:
 ]
 ```
 
-You can use any valid RegExp as a mask. Also note that a full runnable name is something like *run bin_or_example_name*, *test some::mod::test_name* or *test-mod some::mod*, so it is possible to distinguish binaries, single tests, and test modules with this masks: `"^run"`, `"^test "` (the trailing space matters!), and `"^test-mod"` respectively.
+You can use any valid regular expression as a mask.
+Also note that a full runnable name is something like *run bin_or_example_name*, *test some::mod::test_name* or *test-mod some::mod*, so it is possible to distinguish binaries, single tests, and test modules with this masks: `"^run"`, `"^test "` (the trailing space matters!), and `"^test-mod"` respectively.
 
 ==== Compiler feedback from external commands
 
