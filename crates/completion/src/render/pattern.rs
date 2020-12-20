@@ -1,6 +1,6 @@
 //! Renderer for patterns.
 
-use hir::{db::HirDatabase, HasVisibility, Name, StructKind};
+use hir::{db::HirDatabase, HasAttrs, HasVisibility, Name, StructKind};
 use itertools::Itertools;
 
 use crate::{
@@ -27,7 +27,8 @@ pub(crate) fn render_struct_pat(
         // Matching a struct without matching its fields is pointless, unlike matching a Variant without its fields
         return None;
     }
-    let fields_omitted = n_fields - fields.len() > 0;
+    let fields_omitted =
+        n_fields - fields.len() > 0 || strukt.attrs(ctx.db()).by_key("non_exhaustive").exists();
 
     let name = local_name.unwrap_or_else(|| strukt.name(ctx.db())).to_string();
     let pat = render_pat(&ctx, &name, strukt.kind(ctx.db()), &fields, fields_omitted)?;
@@ -60,7 +61,8 @@ pub(crate) fn render_variant_pat(
         .filter(|field| field.is_visible_from(ctx.db(), module))
         .collect::<Vec<_>>();
 
-    let fields_omitted = n_fields - fields.len() > 0;
+    let fields_omitted =
+        n_fields - fields.len() > 0 || variant.attrs(ctx.db()).by_key("non_exhaustive").exists();
 
     let name = local_name.unwrap_or_else(|| variant.name(ctx.db())).to_string();
     let pat = render_pat(&ctx, &name, variant.kind(ctx.db()), &fields, fields_omitted)?;
