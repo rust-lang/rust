@@ -118,6 +118,12 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
                     _ => return,
                 };
 
+                if let Some(Adt::Enum(e)) = ty.as_adt() {
+                    for variant in e.variants(ctx.db) {
+                        acc.add_enum_variant(ctx, variant, None);
+                    }
+                }
+
                 let traits_in_scope = ctx.scope.traits_in_scope();
                 let mut seen = FxHashSet::default();
                 ty.iterate_path_candidates(ctx.db, krate, &traits_in_scope, None, |_ty, item| {
@@ -749,6 +755,29 @@ fn main() {
             expect![[r#"
                 fn main() fn main()
                 fn foo(…) fn foo(a: i32, b: i32)
+            "#]],
+        );
+    }
+
+    #[test]
+    fn completes_self_enum() {
+        check(
+            r#"
+enum Foo {
+    Bar,
+    Baz,
+}
+
+impl Foo {
+    fn foo(self) {
+        Self::<|>
+    }
+}
+"#,
+            expect![[r#"
+                ev Bar    ()
+                ev Baz    ()
+                me foo(…) fn foo(self)
             "#]],
         );
     }
