@@ -304,11 +304,11 @@ fn make_test_named_wrapper() {
     let opts = TestOptions::default();
     let input = "assert_eq!(2+2, 4);";
     let expected = "#![allow(unused)]
-fn main() { fn _doctest_main_some_unique_name() {
+fn main() { #[allow(non_snake_case)] fn _doctest_main__some_unique_name() {
 assert_eq!(2+2, 4);
-}; _doctest_main_some_unique_name() }"
+}; _doctest_main__some_unique_name() }"
         .to_string();
     let (output, len, _) =
-        make_test(input, None, false, &opts, DEFAULT_EDITION, Some("some_unique_name"));
+        make_test(input, None, false, &opts, DEFAULT_EDITION, Some("_some_unique_name"));
     assert_eq!((output, len), (expected, 2));
 }

@@ -551,17 +551,18 @@ crate fn make_test(
         } else {
             "_inner".into()
         };
+        let inner_attr = if test_id.is_some() { "#[allow(non_snake_case)] " } else { "" };
         let (main_pre, main_post) = if returns_result {
             (
                 format!(
-                    "fn main() {{ fn {}() -> Result<(), impl core::fmt::Debug> {{\n",
-                    inner_fn_name
+                    "fn main() {{ {}fn {}() -> Result<(), impl core::fmt::Debug> {{\n",
+                    inner_attr, inner_fn_name
                 ),
                 format!("\n}}; {}().unwrap() }}", inner_fn_name),
             )
         } else if test_id.is_some() {
             (
-                format!("fn main() {{ fn {}() {{\n", inner_fn_name),
+                format!("fn main() {{ {}fn {}() {{\n", inner_attr, inner_fn_name),
                 format!("\n}}; {}() }}", inner_fn_name),
             )
         } else {
