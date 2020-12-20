@@ -1,6 +1,47 @@
-//! This module provides functions to deconstruct and reconstruct patterns into a constructor
-//! applied to some fields. This is used by the `_match` module to compute pattern
-//! usefulness/exhaustiveness.
+//! [`super::usefulness`] explains most of what is happening in this file. As explained there,
+//! values and patterns are made from constructors applied to fields. This file defines a
+//! `Constructor` enum, a `Fields` struct, and various operations to manipulate them and convert
+//! them from/to patterns.
+//!
+//! There's one idea that is not detailed in [`super::usefulness`] because the details are not
+//! needed there: _constructor splitting_.
+//!
+//! # Constructor splitting
+//!
+//! The idea is as follows: given a constructor `c` and a matrix, we want to specialize in turn
+//! with all the value constructors that are covered by `c`, and compute usefulness for each.
+//! Instead of listing all those constructors (which is intractable), we group those value
+//! constructors together as much as possible. Example:
+//!
+//! ```
+//! match (0, false) {
+//!     (0 ..=100, true) => {} // `p_1`
+//!     (50..=150, false) => {} // `p_2`
+//!     (0 ..=200, _) => {} // `q`
+//! }
+//! ```
+//!
+//! The naive approach would try all numbers in the range `0..=200`. But we can be a lot more
+//! clever: `0` and `1` for example will match the exact same rows, and return equivalent
+//! witnesses. In fact all of `0..50` would. We can thus restrict our exploration to 4
+//! constructors: `0..50`, `50..=100`, `101..=150` and `151..=200`. That is enough and infinitely
+//! more tractable.
+//!
+//! We capture this idea in a function `split(p_1 ... p_n, c)` which returns a list of constructors
+//! `c'` covered by `c`. Given such a `c'`, we require that all value ctors `c''` covered by `c'`
+//! return an equivalent set of witnesses after specializing and computing usefulness.
+//! In the example above, witnesses for specializing by `c''` covered by `0..50` will only differ
+//! in their first element.
+//!
+//! We usually also ask that the `c'` together cover all of the original `c`. However we allow
+//! skipping some constructors as long as it doesn't change whether the resulting list of witnesses
+//! is empty of not. We use this in the wildcard `_` case.
+//!
+//! Splitting is implemented in the [`Constructor::split`] function. We don't do splitting for
+//! or-patterns; instead we just try the alternatives one-by-one. For details on splitting
+//! wildcards, see [`SplitWildcard`]; for integer ranges, see [`SplitIntRange`]; for slices, see
+//! [`SplitVarLenSlice`].
+
 use self::Constructor::*;
 use self::SliceKind::*;
 
@@ -260,12 +301,12 @@ enum IntBorder {
     AfterMax,
 }
 
-/// A range of integers that is partitioned into disjoint subranges.
-///
-/// This is fed an input of multiple ranges, and returns an output that covers the union of the
-/// inputs but is split so that an output range only intersects an input range by being a subrange
-/// of it. No output range straddles the boundary of one of the inputs. This does constructor
+/// A range of integers that is partitioned into disjoint subranges. This does constructor
 /// splitting for integer ranges as explained at the top of the file.
+///
+/// This is fed multiple ranges, and returns an output that covers the input, but is split so that
+/// the only intersections between an output range and a seen range are inclusions. No output range
+/// straddles the boundary of one of the inputs.
 ///
 /// The following input:
 /// ```
@@ -405,54 +446,67 @@ impl Slice {
     }
 }
 
-/// The exhaustiveness-checking paper does not include any details on checking variable-length
-/// slice patterns. However, they may be matched by an infinite collection of fixed-length array
-/// patterns.
+/// This computes constructor splitting for variable-length slices, as explained at the top of the
+/// file.
 ///
-/// Checking the infinite set directly would take an infinite amount of time. However, it turns out
-/// that for each finite set of patterns `P`, all sufficiently large array lengths are equivalent:
+/// A slice pattern `[x, .., y]` behaves like the infinite or-pattern `[x, y] | [x, _, y] | [x, _,
+/// _, y] | ...`. The corresponding value constructors are fixed-length array constructors above a
+/// given minimum length. We obviously can't list all of this infinity of constructors. Thankfully,
+/// it turns out that for each finite set of slice patterns, all sufficiently large array lengths
+/// are equivalent.
 ///
-/// Each slice `s` with a "sufficiently-large" length `l ≥ L` that applies to exactly the subset
-/// `Pₜ` of `P` can be transformed to a slice `sₘ` for each sufficiently-large length `m` that
-/// applies to exactly the same subset of `P`.
+/// Let's look at an example, where we are trying to split the last pattern:
+/// ```
+/// match x {
+///     [true, true, ..] => {}
+///     [.., false, false] => {}
+///     [..] => {}
+/// }
+/// ```
+/// Here are the results of specialization for the first few lengths:
+/// ```
+/// // length 0
+/// [] => {}
+/// // length 1
+/// [_] => {}
+/// // length 2
+/// [true, true] => {}
+/// [false, false] => {}
+/// [_, _] => {}
+/// // length 3
+/// [true, true,  _    ] => {}
+/// [_,    false, false] => {}
+/// [_,    _,     _    ] => {}
+/// // length 4
+/// [true, true, _,     _    ] => {}
+/// [_,    _,    false, false] => {}
+/// [_,    _,    _,     _    ] => {}
+/// // length 5
+/// [true, true, _, _,     _    ] => {}
+/// [_,    _,    _, false, false] => {}
+/// [_,    _,    _, _,     _    ] => {}
+/// ```
 ///
-/// Because of that, each witness for reachability-checking of one of the sufficiently-large
-/// lengths can be transformed to an equally-valid witness of any other length, so we only have to
-/// check slices of the "minimal sufficiently-large length" and less.
+/// If we went above length 5, we would simply be inserting more columns full of wildcards in the
+/// middle. This means that the set of witnesses for length `l >= 5` if equivalent to the set for
+/// any other `l' >= 5`: simply add or remove wildcards in the middle to convert between them.
 ///
-/// Note that the fact that there is a *single* `sₘ` for each `m` not depending on the specific
-/// pattern in `P` is important: if you look at the pair of patterns `[true, ..]` `[.., false]`
-/// Then any slice of length ≥1 that matches one of these two patterns can be trivially turned to a
-/// slice of any other length ≥1 that matches them and vice-versa, but the slice of length 2
-/// `[false, true]` that matches neither of these patterns can't be turned to a slice from length 1
-/// that matches neither of these patterns, so we have to consider slices from length 2 there.
+/// This applies to any set of slice patterns: there will be a length `L` above which all length
+/// behave the same. This is exactly what we need for constructor splitting. Therefore a
+/// variable-length slice can be split into a variable-length slice of minimal length `L`, and many
+/// fixed-length slices of lengths `< L`.
 ///
-/// Now, to see that that length exists and find it, observe that slice patterns are either
-/// "fixed-length" patterns (`[_, _, _]`) or "variable-length" patterns (`[_, .., _]`).
-///
-/// For fixed-length patterns, all slices with lengths *longer* than the pattern's length have the
-/// same outcome (of not matching), so as long as `L` is greater than the pattern's length we can
-/// pick any `sₘ` from that length and get the same result.
-///
-/// For variable-length patterns, the situation is more complicated, because as seen above the
-/// precise value of `sₘ` matters.
-///
-/// However, for each variable-length pattern `p` with a prefix of length `plₚ` and suffix of
-/// length `slₚ`, only the first `plₚ` and the last `slₚ` elements are examined.
-///
-/// Therefore, as long as `L` is positive (to avoid concerns about empty types), all elements after
-/// the maximum prefix length and before the maximum suffix length are not examined by any
-/// variable-length pattern, and therefore can be added/removed without affecting them - creating
-/// equivalent patterns from any sufficiently-large length.
+/// For each variable-length pattern `p` with a prefix of length `plₚ` and suffix of length `slₚ`,
+/// only the first `plₚ` and the last `slₚ` elements are examined. Therefore, as long as `L` is
+/// positive (to avoid concerns about empty types), all elements after the maximum prefix length
+/// and before the maximum suffix length are not examined by any variable-length pattern, and
+/// therefore can be added/removed without affecting them - creating equivalent patterns from any
+/// sufficiently-large length.
 ///
 /// Of course, if fixed-length patterns exist, we must be sure that our length is large enough to
 /// miss them all, so we can pick `L = max(max(FIXED_LEN)+1, max(PREFIX_LEN) + max(SUFFIX_LEN))`
 ///
 /// `max_slice` below will be made to have arity `L`.
-///
-/// For example, with the above pair of patterns, all elements but the first and last can be
-/// added/removed, so any witness of length ≥2 (say, `[false, false, true]`) can be turned to a
-/// witness from any other length ≥2.
 #[derive(Debug)]
 struct SplitVarLenSlice {
     /// If the type is an array, this is its size.
@@ -787,11 +841,19 @@ impl<'tcx> Constructor<'tcx> {
 
 /// A wildcard constructor that we split relative to the constructors in the matrix, as explained
 /// at the top of the file.
-/// For splitting wildcards, there are two groups of constructors: there are the constructors
-/// actually present in the matrix (`matrix_ctors`), and the constructors not present. Two
-/// constructors that are not in the matrix will either both be covered (by a wildcard), or both
-/// not be covered by any given row. Therefore we can keep the missing constructors grouped
-/// together.
+///
+/// A constructor that is not present in the matrix rows will only be covered by the rows that have
+/// wildcards. Thus we can group all of those constructors together; we call them "missing
+/// constructors". Splitting a wildcard would therefore list all present constructors individually
+/// (or grouped if they are integers or slices), and then all missing constructors together as a
+/// group.
+///
+/// However we can go further: since any constructor will match the wildcard rows, and having more
+/// rows can only reduce the amount of usefulness witnesses, we can skip the present constructors
+/// and only try the missing ones.
+/// This will not preserve the whole list of witnesses, but will preserve whether the list is empty
+/// or not. In fact this is quite natural from the point of view of diagnostics too. This is done
+/// in `to_ctors`: in some cases we only return `Missing`.
 #[derive(Debug)]
 pub(super) struct SplitWildcard<'tcx> {
     /// Constructors seen in the matrix.
