@@ -2,6 +2,19 @@
 
 ## [Unreleased]
 
+## [1.4.30] 2020-12-20
+
+### Fixed
+- Last character in derive no longer erroneously stripped when `indent_style` is overridden to `Visual`. ([#4584](https://github.com/rust-lang/rustfmt/issues/4584))
+- Brace wrapping of closure bodies maintained in cases where the closure has an explicit return type and the body consists of a single expression statement. ([#4577](https://github.com/rust-lang/rustfmt/issues/4577))
+- No more panics on invalid code with `err` and `typeof` types ([#4357](https://github.com/rust-lang/rustfmt/issues/4357), [#4586](https://github.com/rust-lang/rustfmt/issues/4586))
+
+### Install/Download Options
+- **crates.io package** - *pending*
+- **rustup (nightly)** - *pending*
+- **GitHub Release Binaries** - [Release v1.4.30](https://github.com/rust-lang/rustfmt/releases/tag/v1.4.30)
+- **Build from source** - [Tag v1.4.30](https://github.com/rust-lang/rustfmt/tree/v1.4.30), see instructions for how to [install rustfmt from source][install-from-source]
+
 ## [1.4.29] 2020-12-04
 
 ### Fixed
@@ -9,7 +22,7 @@
 
 ### Install/Download Options
 - **crates.io package** - *pending*
-- **rustup (nightly)** - *pending*
+- **rustup (nightly)** - Starting in `2020-12-07`
 - **GitHub Release Binaries** - [Release v1.4.29](https://github.com/rust-lang/rustfmt/releases/tag/v1.4.29)
 - **Build from source** - [Tag v1.4.29](https://github.com/rust-lang/rustfmt/tree/v1.4.29), see instructions for how to [install rustfmt from source][install-from-source]
 
