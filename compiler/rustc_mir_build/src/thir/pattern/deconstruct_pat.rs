@@ -19,7 +19,7 @@ use rustc_middle::mir::Field;
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::{self, Const, Ty, TyCtxt};
 use rustc_session::lint;
-use rustc_span::DUMMY_SP;
+use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::{Integer, Size, VariantIdx};
 
 use smallvec::{smallvec, SmallVec};
@@ -184,12 +184,18 @@ impl IntRange {
     }
 
     /// Lint on likely incorrect range patterns (#63987)
-    pub(super) fn lint_overlapping_range_endpoints(&self, pcx: PatCtxt<'_, '_, '_>, hir_id: HirId) {
+    pub(super) fn lint_overlapping_range_endpoints<'a, 'tcx: 'a>(
+        &self,
+        pcx: PatCtxt<'_, '_, 'tcx>,
+        ctors: impl Iterator<Item = (&'a Constructor<'tcx>, Span)>,
+        column_count: usize,
+        hir_id: HirId,
+    ) {
         if self.is_singleton() {
             return;
         }
 
-        if pcx.matrix.column_count().unwrap_or(0) != 1 {
+        if column_count != 1 {
             // FIXME: for now, only check for overlapping ranges on simple range
             // patterns. Otherwise with the current logic the following is detected
             // as overlapping:
@@ -203,9 +209,7 @@ impl IntRange {
             return;
         }
 
-        let overlaps: Vec<_> = pcx
-            .matrix
-            .head_ctors_and_spans(pcx.cx)
+        let overlaps: Vec<_> = ctors
             .filter_map(|(ctor, span)| Some((ctor.as_int_range()?, span)))
             .filter(|(range, _)| self.suspicious_intersection(range))
             .map(|(range, span)| (self.intersection(&range).unwrap(), span))
@@ -655,28 +659,33 @@ impl<'tcx> Constructor<'tcx> {
     /// This function may discard some irrelevant constructors if this preserves behavior and
     /// diagnostics. Eg. for the `_` case, we ignore the constructors already present in the
     /// matrix, unless all of them are.
-    pub(super) fn split<'p>(&self, pcx: PatCtxt<'_, 'p, 'tcx>) -> SmallVec<[Self; 1]> {
-        debug!("Constructor::split({:#?}, {:#?})", self, pcx.matrix);
+    pub(super) fn split<'a>(
+        &self,
+        pcx: PatCtxt<'_, '_, 'tcx>,
+        ctors: impl Iterator<Item = &'a Constructor<'tcx>> + Clone,
+    ) -> SmallVec<[Self; 1]>
+    where
+        'tcx: 'a,
+    {
+        debug!("Constructor::split({:#?})", self);
 
         match self {
             Wildcard => {
                 let mut split_wildcard = SplitWildcard::new(pcx);
-                split_wildcard.split(pcx);
+                split_wildcard.split(pcx, ctors);
                 split_wildcard.into_ctors(pcx)
             }
             // Fast-track if the range is trivial. In particular, we don't do the overlapping
             // ranges check.
             IntRange(ctor_range) if !ctor_range.is_singleton() => {
                 let mut split_range = SplitIntRange::new(ctor_range.clone());
-                let intranges =
-                    pcx.matrix.head_ctors(pcx.cx).filter_map(|ctor| ctor.as_int_range());
+                let intranges = ctors.filter_map(|ctor| ctor.as_int_range());
                 split_range.split(intranges.cloned());
                 split_range.iter().map(IntRange).collect()
             }
             &Slice(Slice { kind: VarLen(self_prefix, self_suffix), array_len }) => {
                 let mut split_self = SplitVarLenSlice::new(self_prefix, self_suffix, array_len);
-                let slices =
-                    pcx.matrix.head_ctors(pcx.cx).filter_map(|c| c.as_slice()).map(|s| s.kind);
+                let slices = ctors.filter_map(|c| c.as_slice()).map(|s| s.kind);
                 split_self.split(slices);
                 split_self.iter().map(Slice).collect()
             }
@@ -912,11 +921,17 @@ impl<'tcx> SplitWildcard<'tcx> {
 
     /// Pass a set of constructors relative to which to split this one. Don't call twice, it won't
     /// do what you want.
-    pub(super) fn split(&mut self, pcx: PatCtxt<'_, '_, 'tcx>) {
-        self.matrix_ctors =
-            pcx.matrix.head_ctors(pcx.cx).cloned().filter(|c| !c.is_wildcard()).collect();
+    pub(super) fn split<'a>(
+        &mut self,
+        pcx: PatCtxt<'_, '_, 'tcx>,
+        ctors: impl Iterator<Item = &'a Constructor<'tcx>> + Clone,
+    ) where
+        'tcx: 'a,
+    {
         // Since `all_ctors` never contains wildcards, this won't recurse further.
-        self.all_ctors = self.all_ctors.iter().flat_map(|ctor| ctor.split(pcx)).collect();
+        self.all_ctors =
+            self.all_ctors.iter().flat_map(|ctor| ctor.split(pcx, ctors.clone())).collect();
+        self.matrix_ctors = ctors.filter(|c| !c.is_wildcard()).cloned().collect();
     }
 
     /// Whether there are any value constructors for this type that are not present in the matrix.

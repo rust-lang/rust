@@ -358,8 +358,6 @@ impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
 #[derive(Copy, Clone)]
 pub(super) struct PatCtxt<'a, 'p, 'tcx> {
     pub(super) cx: &'a MatchCheckCtxt<'p, 'tcx>,
-    /// Current state of the matrix.
-    pub(super) matrix: &'a Matrix<'p, 'tcx>,
     /// Type of the current column under investigation.
     pub(super) ty: Ty<'tcx>,
     /// Span of the current pattern under investigation.
@@ -538,7 +536,7 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
     pub(super) fn head_ctors<'a>(
         &'a self,
         cx: &'a MatchCheckCtxt<'p, 'tcx>,
-    ) -> impl Iterator<Item = &'a Constructor<'tcx>> + Captures<'p> {
+    ) -> impl Iterator<Item = &'a Constructor<'tcx>> + Captures<'p> + Clone {
         self.patterns.iter().map(move |r| r.head_ctor(cx))
     }
 
@@ -804,6 +802,7 @@ impl<'tcx> Usefulness<'tcx> {
     fn apply_constructor<'p>(
         self,
         pcx: PatCtxt<'_, 'p, 'tcx>,
+        matrix: &Matrix<'p, 'tcx>, // used to compute missing ctors
         ctor: &Constructor<'tcx>,
         ctor_wild_subpatterns: &Fields<'p, 'tcx>,
     ) -> Self {
@@ -811,7 +810,7 @@ impl<'tcx> Usefulness<'tcx> {
             UsefulWithWitness(witnesses) => {
                 let new_witnesses = if ctor.is_wildcard() {
                     let mut split_wildcard = SplitWildcard::new(pcx);
-                    split_wildcard.split(pcx);
+                    split_wildcard.split(pcx, matrix.head_ctors(pcx.cx));
                     let new_patterns = split_wildcard.report_missing_patterns(pcx);
                     witnesses
                         .into_iter()
@@ -968,7 +967,7 @@ fn is_useful<'p, 'tcx>(
 
     // FIXME(Nadrieril): Hack to work around type normalization issues (see #72476).
     let ty = matrix.heads().next().map(|r| r.ty).unwrap_or(v.head().ty);
-    let pcx = PatCtxt { cx, matrix, ty, span: v.head().span, is_top_level };
+    let pcx = PatCtxt { cx, ty, span: v.head().span, is_top_level };
 
     debug!("is_useful_expand_first_col: ty={:#?}, expanding {:#?}", pcx.ty, v.head());
 
@@ -995,20 +994,27 @@ fn is_useful<'p, 'tcx>(
         let v_ctor = v.head_ctor(cx);
         if let Constructor::IntRange(ctor_range) = &v_ctor {
             // Lint on likely incorrect range patterns (#63987)
-            ctor_range.lint_overlapping_range_endpoints(pcx, hir_id)
+            ctor_range.lint_overlapping_range_endpoints(
+                pcx,
+                matrix.head_ctors_and_spans(cx),
+                matrix.column_count().unwrap_or(0),
+                hir_id,
+            )
         }
         // We split the head constructor of `v`.
-        let split_ctors = v_ctor.split(pcx);
+        let split_ctors = v_ctor.split(pcx, matrix.head_ctors(cx));
         // For each constructor, we compute whether there's a value that starts with it that would
         // witness the usefulness of `v`.
+        let start_matrix = &matrix;
         let usefulnesses = split_ctors.into_iter().map(|ctor| {
             // We cache the result of `Fields::wildcards` because it is used a lot.
             let ctor_wild_subpatterns = Fields::wildcards(pcx, &ctor);
-            let matrix = pcx.matrix.specialize_constructor(pcx, &ctor, &ctor_wild_subpatterns);
+            let spec_matrix =
+                start_matrix.specialize_constructor(pcx, &ctor, &ctor_wild_subpatterns);
             let v = v.pop_head_constructor(&ctor_wild_subpatterns);
             let usefulness =
-                is_useful(pcx.cx, &matrix, &v, witness_preference, hir_id, is_under_guard, false);
-            usefulness.apply_constructor(pcx, &ctor, &ctor_wild_subpatterns)
+                is_useful(cx, &spec_matrix, &v, witness_preference, hir_id, is_under_guard, false);
+            usefulness.apply_constructor(pcx, start_matrix, &ctor, &ctor_wild_subpatterns)
         });
         Usefulness::merge(usefulnesses)
     };
