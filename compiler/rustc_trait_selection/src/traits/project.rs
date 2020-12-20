@@ -496,12 +496,6 @@ fn opt_normalize_projection_type<'a, 'b, 'tcx>(
             return Ok(None);
         }
         Err(ProjectionCacheEntry::InProgress) => {
-            // If while normalized A::B, we are asked to normalize
-            // A::B, just return A::B itself. This is a conservative
-            // answer, in the sense that A::B *is* clearly equivalent
-            // to A::B, though there may be a better value we can
-            // find.
-
             // Under lazy normalization, this can arise when
             // bootstrapping.  That is, imagine an environment with a
             // where-clause like `A::B == u32`. Now, if we are asked
@@ -512,6 +506,14 @@ fn opt_normalize_projection_type<'a, 'b, 'tcx>(
 
             debug!("found cache entry: in-progress");
 
+            // Cache that normalizing this projection resulted in a cycle. This
+            // should ensure that, unless this happens within a snapshot that's
+            // rolled back, fulfillment or evaluation will notice the cycle.
+
+            infcx.inner.borrow_mut().projection_cache().recur(cache_key);
+            return Err(InProgress);
+        }
+        Err(ProjectionCacheEntry::Recur) => {
             return Err(InProgress);
         }
         Err(ProjectionCacheEntry::NormalizedTy(ty)) => {
