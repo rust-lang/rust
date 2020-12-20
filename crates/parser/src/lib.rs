@@ -112,7 +112,7 @@ pub fn parse_fragment(
         FragmentKind::Path => grammar::fragments::path,
         FragmentKind::Expr => grammar::fragments::expr,
         FragmentKind::Type => grammar::fragments::type_,
-        FragmentKind::Pattern => grammar::fragments::pattern,
+        FragmentKind::Pattern => grammar::fragments::pattern_single,
         FragmentKind::Item => grammar::fragments::item,
         FragmentKind::Block => grammar::fragments::block_expr,
         FragmentKind::Visibility => grammar::fragments::opt_visibility,
