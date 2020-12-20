@@ -290,6 +290,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         self.infcx.tcx
     }
 
+    pub(super) fn query_mode(&self) -> TraitQueryMode {
+        self.query_mode
+    }
+
     ///////////////////////////////////////////////////////////////////////////
     // Selection
     //
