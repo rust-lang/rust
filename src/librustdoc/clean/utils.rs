@@ -413,10 +413,7 @@ crate fn name_from_pat(p: &hir::Pat<'_>) -> Symbol {
             );
             return Symbol::intern("()");
         }
-        PatKind::Range(..) => panic!(
-            "tried to get argument name from PatKind::Range, \
-             which is not allowed in function arguments"
-        ),
+        PatKind::Range(..) => rustc_hir_pretty::pat_to_string(p),
         PatKind::Slice(ref begin, ref mid, ref end) => {
             let begin = begin.iter().map(|p| name_from_pat(&**p).to_string());
             let mid = mid.as_ref().map(|p| format!("..{}", name_from_pat(&**p))).into_iter();

@@ -249,6 +249,10 @@ pub fn enum_def_to_string(
     to_string(NO_ANN, |s| s.print_enum_def(enum_definition, generics, name, span, visibility))
 }
 
+pub fn pat_to_string(pat: &hir::Pat<'_>) -> String {
+    to_string(NO_ANN, |s| s.print_pat(pat))
+}
+
 impl<'a> State<'a> {
     pub fn cbox(&mut self, u: usize) {
         self.s.cbox(u);
