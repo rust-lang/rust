@@ -6,7 +6,7 @@ LL |     twice(cell, value, |a, b| invoke(a, b));
    |
    = note: defining type: generic::<T>::{closure#0} with closure substs [
                i16,
-               for<'r, 's> extern "rust-call" fn((std::option::Option<std::cell::Cell<&'_#1r &ReLateBound(DebruijnIndex(0), BrNamed('r)) ()>>, &ReLateBound(DebruijnIndex(0), BrNamed('s)) T)),
+               for<'r, 's> extern "rust-call" fn((std::option::Option<std::cell::Cell<&'_#1r &ReLateBound(DebruijnIndex(0), BoundRegion { kind: BrNamed('r) }) ()>>, &ReLateBound(DebruijnIndex(0), BoundRegion { kind: BrNamed('s) }) T)),
                (),
            ]
    = note: number of external vids: 2
@@ -31,7 +31,7 @@ LL |     twice(cell, value, |a, b| invoke(a, b));
    |
    = note: defining type: generic_fail::<T>::{closure#0} with closure substs [
                i16,
-               for<'r, 's> extern "rust-call" fn((std::option::Option<std::cell::Cell<&'_#1r &ReLateBound(DebruijnIndex(0), BrNamed('r)) ()>>, &ReLateBound(DebruijnIndex(0), BrNamed('s)) T)),
+               for<'r, 's> extern "rust-call" fn((std::option::Option<std::cell::Cell<&'_#1r &ReLateBound(DebruijnIndex(0), BoundRegion { kind: BrNamed('r) }) ()>>, &ReLateBound(DebruijnIndex(0), BoundRegion { kind: BrNamed('s) }) T)),
                (),
            ]
    = note: late-bound region is '_#2r

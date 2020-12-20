@@ -450,7 +450,7 @@ pub enum RegionVariableOrigin {
 
     /// Region variables created for bound regions
     /// in a function or method that is called
-    LateBoundRegion(Span, ty::BoundRegion, LateBoundRegionConversionTime),
+    LateBoundRegion(Span, ty::BoundRegionKind, LateBoundRegionConversionTime),
 
     UpvarRegion(ty::UpvarId, Span),
 
@@ -1421,7 +1421,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     where
         T: TypeFoldable<'tcx>,
     {
-        let fld_r = |br| self.next_region_var(LateBoundRegion(span, br, lbrct));
+        let fld_r =
+            |br: ty::BoundRegion| self.next_region_var(LateBoundRegion(span, br.kind, lbrct));
         let fld_t = |_| {
             self.next_ty_var(TypeVariableOrigin {
                 kind: TypeVariableOriginKind::MiscVariable,

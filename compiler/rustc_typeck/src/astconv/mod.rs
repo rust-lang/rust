@@ -196,11 +196,13 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
             Some(rl::Region::LateBound(debruijn, id, _)) => {
                 let name = lifetime_name(id.expect_local());
-                tcx.mk_region(ty::ReLateBound(debruijn, ty::BrNamed(id, name)))
+                let br = ty::BoundRegion { kind: ty::BrNamed(id, name) };
+                tcx.mk_region(ty::ReLateBound(debruijn, br))
             }
 
             Some(rl::Region::LateBoundAnon(debruijn, index)) => {
-                tcx.mk_region(ty::ReLateBound(debruijn, ty::BrAnon(index)))
+                let br = ty::BoundRegion { kind: ty::BrAnon(index) };
+                tcx.mk_region(ty::ReLateBound(debruijn, br))
             }
 
             Some(rl::Region::EarlyBound(index, id, _)) => {
@@ -2295,8 +2297,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
     fn validate_late_bound_regions(
         &self,
-        constrained_regions: FxHashSet<ty::BoundRegion>,
-        referenced_regions: FxHashSet<ty::BoundRegion>,
+        constrained_regions: FxHashSet<ty::BoundRegionKind>,
+        referenced_regions: FxHashSet<ty::BoundRegionKind>,
         generate_err: impl Fn(&str) -> rustc_errors::DiagnosticBuilder<'tcx>,
     ) {
         for br in referenced_regions.difference(&constrained_regions) {

@@ -890,7 +890,7 @@ pub struct FreeRegionInfo {
     // `LocalDefId` corresponding to FreeRegion
     pub def_id: LocalDefId,
     // the bound region corresponding to FreeRegion
-    pub boundregion: ty::BoundRegion,
+    pub boundregion: ty::BoundRegionKind,
     // checks if bound region is in Impl Item
     pub is_impl_item: bool,
 }
@@ -1412,7 +1412,7 @@ impl<'tcx> TyCtxt<'tcx> {
         })
     }
 
-    // Returns the `DefId` and the `BoundRegion` corresponding to the given region.
+    // Returns the `DefId` and the `BoundRegionKind` corresponding to the given region.
     pub fn is_suitable_region(self, region: Region<'tcx>) -> Option<FreeRegionInfo> {
         let (suitable_region_binding_scope, bound_region) = match *region {
             ty::ReFree(ref free_region) => {
@@ -1420,7 +1420,7 @@ impl<'tcx> TyCtxt<'tcx> {
             }
             ty::ReEarlyBound(ref ebr) => (
                 self.parent(ebr.def_id).unwrap().expect_local(),
-                ty::BoundRegion::BrNamed(ebr.def_id, ebr.name),
+                ty::BoundRegionKind::BrNamed(ebr.def_id, ebr.name),
             ),
             _ => return None, // not a free region
         };
