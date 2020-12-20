@@ -3,9 +3,10 @@ use if_chain::if_chain;
 use rustc_ast::ast::RangeLimits;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, PathSegment, QPath};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::ty;
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_semver::RustcVersion;
+use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::{Span, Spanned};
 use rustc_span::sym;
 use rustc_span::symbol::Ident;
@@ -13,8 +14,8 @@ use std::cmp::Ordering;
 
 use crate::utils::sugg::Sugg;
 use crate::utils::{
-    get_parent_expr, is_integer_const, single_segment_path, snippet, snippet_opt, snippet_with_applicability,
-    span_lint, span_lint_and_sugg, span_lint_and_then,
+    get_parent_expr, in_constant, is_integer_const, meets_msrv, single_segment_path, snippet, snippet_opt,
+    snippet_with_applicability, span_lint, span_lint_and_sugg, span_lint_and_then,
 };
 use crate::utils::{higher, SpanlessEq};
 
@@ -160,7 +161,20 @@ declare_clippy_lint! {
     "manually reimplementing {`Range`, `RangeInclusive`}`::contains`"
 }
 
-declare_lint_pass!(Ranges => [
+const MANUAL_RANGE_CONTAINS_MSRV: RustcVersion = RustcVersion::new(1, 35, 0);
+
+pub struct Ranges {
+    msrv: Option<RustcVersion>,
+}
+
+impl Ranges {
+    #[must_use]
+    pub fn new(msrv: Option<RustcVersion>) -> Self {
+        Self { msrv }
+    }
+}
+
+impl_lint_pass!(Ranges => [
     RANGE_ZIP_WITH_LEN,
     RANGE_PLUS_ONE,
     RANGE_MINUS_ONE,
@@ -175,7 +189,9 @@ impl<'tcx> LateLintPass<'tcx> for Ranges {
                 check_range_zip_with_len(cx, path, args, expr.span);
             },
             ExprKind::Binary(ref op, ref l, ref r) => {
-                check_possible_range_contains(cx, op.node, l, r, expr.span);
+                if meets_msrv(self.msrv.as_ref(), &MANUAL_RANGE_CONTAINS_MSRV) {
+                    check_possible_range_contains(cx, op.node, l, r, expr);
+                }
             },
             _ => {},
         }
@@ -184,9 +200,15 @@ impl<'tcx> LateLintPass<'tcx> for Ranges {
         check_inclusive_range_minus_one(cx, expr);
         check_reversed_empty_range(cx, expr);
     }
+    extract_msrv_attr!(LateContext);
 }
 
-fn check_possible_range_contains(cx: &LateContext<'_>, op: BinOpKind, l: &Expr<'_>, r: &Expr<'_>, span: Span) {
+fn check_possible_range_contains(cx: &LateContext<'_>, op: BinOpKind, l: &Expr<'_>, r: &Expr<'_>, expr: &Expr<'_>) {
+    if in_constant(cx, expr.hir_id) {
+        return;
+    }
+
+    let span = expr.span;
     let combine_and = match op {
         BinOpKind::And | BinOpKind::BitAnd => true,
         BinOpKind::Or | BinOpKind::BitOr => false,

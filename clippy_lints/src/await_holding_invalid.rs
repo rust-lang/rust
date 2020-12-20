@@ -99,7 +99,11 @@ impl LateLintPass<'_> for AwaitHolding {
             };
             let def_id = cx.tcx.hir().body_owner_def_id(body_id);
             let typeck_results = cx.tcx.typeck(def_id);
-            check_interior_types(cx, &typeck_results.generator_interior_types.as_ref().skip_binder(), body.value.span);
+            check_interior_types(
+                cx,
+                &typeck_results.generator_interior_types.as_ref().skip_binder(),
+                body.value.span,
+            );
         }
     }
 }

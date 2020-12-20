@@ -1,80 +1,5 @@
-error: this looks like an `else {..}` but the `else` is missing
-  --> $DIR/formatting.rs:15:6
-   |
-LL |     } {
-   |      ^
-   |
-   = note: `-D clippy::suspicious-else-formatting` implied by `-D warnings`
-   = note: to remove this lint, add the missing `else` or add a new line before the next block
-
-error: this looks like an `else if` but the `else` is missing
-  --> $DIR/formatting.rs:19:6
-   |
-LL |     } if foo() {
-   |      ^
-   |
-   = note: to remove this lint, add the missing `else` or add a new line before the second `if`
-
-error: this looks like an `else if` but the `else` is missing
-  --> $DIR/formatting.rs:26:10
-   |
-LL |         } if foo() {
-   |          ^
-   |
-   = note: to remove this lint, add the missing `else` or add a new line before the second `if`
-
-error: this looks like an `else if` but the `else` is missing
-  --> $DIR/formatting.rs:34:10
-   |
-LL |         } if foo() {
-   |          ^
-   |
-   = note: to remove this lint, add the missing `else` or add a new line before the second `if`
-
-error: this is an `else {..}` but the formatting might hide it
-  --> $DIR/formatting.rs:43:6
-   |
-LL |       } else
-   |  ______^
-LL | |     {
-   | |____^
-   |
-   = note: to remove this lint, remove the `else` or remove the new line between `else` and `{..}`
-
-error: this is an `else {..}` but the formatting might hide it
-  --> $DIR/formatting.rs:48:6
-   |
-LL |       }
-   |  ______^
-LL | |     else
-LL | |     {
-   | |____^
-   |
-   = note: to remove this lint, remove the `else` or remove the new line between `else` and `{..}`
-
-error: this is an `else if` but the formatting might hide it
-  --> $DIR/formatting.rs:54:6
-   |
-LL |       } else
-   |  ______^
-LL | |     if foo() { // the span of the above error should continue here
-   | |____^
-   |
-   = note: to remove this lint, remove the `else` or remove the new line between `else` and `if`
-
-error: this is an `else if` but the formatting might hide it
-  --> $DIR/formatting.rs:59:6
-   |
-LL |       }
-   |  ______^
-LL | |     else
-LL | |     if foo() { // the span of the above error should continue here
-   | |____^
-   |
-   = note: to remove this lint, remove the `else` or remove the new line between `else` and `if`
-
 error: this looks like you are trying to use `.. -= ..`, but you really are doing `.. = (- ..)`
-  --> $DIR/formatting.rs:100:6
+  --> $DIR/formatting.rs:15:6
    |
 LL |     a =- 35;
    |      ^^^^
@@ -83,7 +8,7 @@ LL |     a =- 35;
    = note: to remove this lint, use either `-=` or `= -`
 
 error: this looks like you are trying to use `.. *= ..`, but you really are doing `.. = (* ..)`
-  --> $DIR/formatting.rs:101:6
+  --> $DIR/formatting.rs:16:6
    |
 LL |     a =* &191;
    |      ^^^^
@@ -91,7 +16,7 @@ LL |     a =* &191;
    = note: to remove this lint, use either `*=` or `= *`
 
 error: this looks like you are trying to use `.. != ..`, but you really are doing `.. = (! ..)`
-  --> $DIR/formatting.rs:104:6
+  --> $DIR/formatting.rs:19:6
    |
 LL |     b =! false;
    |      ^^^^
@@ -99,7 +24,7 @@ LL |     b =! false;
    = note: to remove this lint, use either `!=` or `= !`
 
 error: possibly missing a comma here
-  --> $DIR/formatting.rs:113:19
+  --> $DIR/formatting.rs:28:19
    |
 LL |         -1, -2, -3 // <= no comma here
    |                   ^
@@ -108,7 +33,7 @@ LL |         -1, -2, -3 // <= no comma here
    = note: to remove this lint, add a comma or write the expr in a single line
 
 error: possibly missing a comma here
-  --> $DIR/formatting.rs:117:19
+  --> $DIR/formatting.rs:32:19
    |
 LL |         -1, -2, -3 // <= no comma here
    |                   ^
@@ -116,12 +41,12 @@ LL |         -1, -2, -3 // <= no comma here
    = note: to remove this lint, add a comma or write the expr in a single line
 
 error: possibly missing a comma here
-  --> $DIR/formatting.rs:154:11
+  --> $DIR/formatting.rs:69:11
    |
 LL |         -1
    |           ^
    |
    = note: to remove this lint, add a comma or write the expr in a single line
 
-error: aborting due to 14 previous errors
+error: aborting due to 6 previous errors
 
