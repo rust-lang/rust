@@ -68,7 +68,7 @@ const fn max_iov() -> usize {
 
 impl FileDesc {
     pub fn new(fd: c_int) -> FileDesc {
-        assert_ne!(fd, -1);
+        assert_ne!(fd, -1i32);
         // SAFETY: we just asserted that the value is in the valid range and isn't `-1` (the only value bigger than `0xFF_FF_FF_FE` unsigned)
         unsafe { FileDesc { fd } }
     }
