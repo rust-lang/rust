@@ -171,19 +171,19 @@
 //! [`Result<T, E>`]: result::Result
 //! [`Vec<T>`]: vec::Vec
 //! [`atomic`]: sync::atomic
-//! [`for`]: ../book/ch03-05-control-flow.html#looping-through-a-collection-with-for
+//! [`for`]: https://doc.rust-lang.org/book/ch03-05-control-flow.html#looping-through-a-collection-with-for
 //! [`str`]: prim@str
 //! [`mpsc`]: sync::mpsc
 //! [`std::cmp`]: cmp
 //! [`std::slice`]: slice
 //! [`use std::env`]: env/index.html
-//! [`use`]: ../book/ch07-02-defining-modules-to-control-scope-and-privacy.html
+//! [`use`]: https://doc.rust-lang.org/book/ch07-02-defining-modules-to-control-scope-and-privacy.html
 //! [crates.io]: https://crates.io
-//! [deref-coercions]: ../book/ch15-02-deref.html#implicit-deref-coercions-with-functions-and-methods
+//! [deref-coercions]: https://doc.rust-lang.org/book/ch15-02-deref.html#implicit-deref-coercions-with-functions-and-methods
 //! [files]: fs::File
 //! [multithreading]: thread
 //! [other]: #what-is-in-the-standard-library-documentation
-//! [primitive types]: ../book/ch03-02-data-types.html
+//! [primitive types]: https://doc.rust-lang.org/book/ch03-02-data-types.html
 //! [rust-discord]: https://discord.gg/rust-lang
 
 #![cfg_attr(not(feature = "restricted-std"), stable(feature = "rust1", since = "1.0.0"))]
