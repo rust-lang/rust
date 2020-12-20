@@ -123,6 +123,7 @@ pub struct Config {
     pub rust_debuginfo_level_std: u32,
     pub rust_debuginfo_level_tools: u32,
     pub rust_debuginfo_level_tests: u32,
+    pub rust_run_dsymutil: bool,
     pub rust_rpath: bool,
     pub rustc_parallel: bool,
     pub rustc_default_linker: Option<String>,
@@ -466,6 +467,7 @@ struct Rust {
     debuginfo_level_std: Option<u32>,
     debuginfo_level_tools: Option<u32>,
     debuginfo_level_tests: Option<u32>,
+    run_dsymutil: Option<bool>,
     backtrace: Option<bool>,
     incremental: Option<bool>,
     parallel_compiler: Option<bool>,
@@ -830,6 +832,7 @@ impl Config {
             debuginfo_level_std = rust.debuginfo_level_std;
             debuginfo_level_tools = rust.debuginfo_level_tools;
             debuginfo_level_tests = rust.debuginfo_level_tests;
+            config.rust_run_dsymutil = rust.run_dsymutil.unwrap_or(false);
             optimize = rust.optimize;
             ignore_git = rust.ignore_git;
             set(&mut config.rust_new_symbol_mangling, rust.new_symbol_mangling);

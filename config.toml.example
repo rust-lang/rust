@@ -426,6 +426,14 @@ changelog-seen = 2
 # FIXME(#61117): Some tests fail when this option is enabled.
 #debuginfo-level-tests = 0
 
+# Whether to run `dsymutil` on Apple platforms to gather debug info into .dSYM
+# bundles. `dsymutil` adds time to builds for no clear benefit, and also makes
+# it more difficult for debuggers to find debug info. The compiler currently
+# defaults to running `dsymutil` to preserve its historical default, but when
+# compiling the compiler itself, we skip it by default since we know it's safe
+# to do so in that case.
+#run-dsymutil = false
+
 # Whether or not `panic!`s generate backtraces (RUST_BACKTRACE)
 #backtrace = true
 
