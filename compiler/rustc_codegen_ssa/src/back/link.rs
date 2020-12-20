@@ -2197,8 +2197,13 @@ fn add_apple_sdk(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
             return;
         }
     };
-    let arch_name = llvm_target.split('-').next().expect("LLVM target must have a hyphen");
-    cmd.args(&["-arch", arch_name, "-isysroot", &sdk_root, "-Wl,-syslibroot", &sdk_root]);
+    if llvm_target.contains("macabi") {
+        cmd.args(&["-target", llvm_target])
+    } else {
+        let arch_name = llvm_target.split('-').next().expect("LLVM target must have a hyphen");
+        cmd.args(&["-arch", arch_name])
+    }
+    cmd.args(&["-isysroot", &sdk_root, "-Wl,-syslibroot", &sdk_root]);
 }
 
 fn get_apple_sdk_root(sdk_name: &str) -> Result<String, String> {
