@@ -511,6 +511,10 @@ impl Struct {
         db.struct_data(self.id).repr.clone()
     }
 
+    pub fn kind(self, db: &dyn HirDatabase) -> StructKind {
+        self.variant_data(db).kind()
+    }
+
     fn variant_data(self, db: &dyn HirDatabase) -> Arc<VariantData> {
         db.struct_data(self.id).variant_data.clone()
     }

@@ -5,6 +5,7 @@ pub(crate) mod macro_;
 pub(crate) mod function;
 pub(crate) mod enum_variant;
 pub(crate) mod const_;
+pub(crate) mod pattern;
 pub(crate) mod type_alias;
 
 mod builder_ext;
