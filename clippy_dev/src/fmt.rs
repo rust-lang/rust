@@ -1,9 +1,9 @@
 use crate::clippy_project_root;
 use shell_escape::escape;
 use std::ffi::OsStr;
-use std::io;
 use std::path::Path;
 use std::process::{self, Command};
+use std::{fs, io};
 use walkdir::WalkDir;
 
 #[derive(Debug)]
@@ -12,6 +12,7 @@ pub enum CliError {
     IoError(io::Error),
     RustfmtNotInstalled,
     WalkDirError(walkdir::Error),
+    RaSetupActive,
 }
 
 impl From<io::Error> for CliError {
@@ -31,11 +32,22 @@ struct FmtContext {
     verbose: bool,
 }
 
+// the "main" function of cargo dev fmt
 pub fn run(check: bool, verbose: bool) {
     fn try_run(context: &FmtContext) -> Result<bool, CliError> {
         let mut success = true;
 
         let project_root = clippy_project_root();
+
+        // if we added a local rustc repo as path dependency to clippy for rust analyzer, we do NOT want to
+        // format because rustfmt would also format the entire rustc repo as it is a local
+        // dependency
+        if fs::read_to_string(project_root.join("Cargo.toml"))
+            .expect("Failed to read clippy Cargo.toml")
+            .contains(&"[target.'cfg(NOT_A_PLATFORM)'.dependencies]")
+        {
+            return Err(CliError::RaSetupActive);
+        }
 
         rustfmt_test(context)?;
 
@@ -74,6 +86,13 @@ pub fn run(check: bool, verbose: bool) {
             },
             CliError::WalkDirError(err) => {
                 eprintln!("error: {}", err);
+            },
+            CliError::RaSetupActive => {
+                eprintln!(
+                    "error: a local rustc repo is enabled as path dependency via `cargo dev ra_setup`.
+Not formatting because that would format the local repo as well!
+Please revert the changes to Cargo.tomls first."
+                );
             },
         }
     }

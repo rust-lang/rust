@@ -1,3 +1,5 @@
+#![feature(bool_to_option)]
+#![feature(command_access)]
 #![cfg_attr(feature = "deny-warnings", deny(warnings))]
 // warn on lints, that are included in `rust-lang/rust`s bootstrap
 #![warn(rust_2018_idioms, unused_lifetimes)]
@@ -62,7 +64,7 @@ struct ClippyCmd {
     unstable_options: bool,
     cargo_subcommand: &'static str,
     args: Vec<String>,
-    clippy_args: String,
+    clippy_args: Option<String>,
 }
 
 impl ClippyCmd {
@@ -99,13 +101,17 @@ impl ClippyCmd {
             args.insert(0, "+nightly".to_string());
         }
 
-        let clippy_args: String = old_args.map(|arg| format!("{}__CLIPPY_HACKERY__", arg)).collect();
+        let mut clippy_args = old_args.collect::<Vec<String>>().join(" ");
+        if cargo_subcommand == "fix" && !clippy_args.contains("--no-deps") {
+            clippy_args = format!("{} --no-deps", clippy_args);
+        }
 
+        let has_args = !clippy_args.is_empty();
         ClippyCmd {
             unstable_options,
             cargo_subcommand,
             args,
-            clippy_args,
+            clippy_args: has_args.then_some(clippy_args),
         }
     }
 
@@ -145,14 +151,23 @@ impl ClippyCmd {
             .map(|p| ("CARGO_TARGET_DIR", p))
     }
 
-    fn into_std_cmd(self) -> Command {
+    fn into_std_cmd(self, rustflags: Option<String>) -> Command {
         let mut cmd = Command::new("cargo");
 
         cmd.env(self.path_env(), Self::path())
             .envs(ClippyCmd::target_dir())
-            .env("CLIPPY_ARGS", self.clippy_args)
             .arg(self.cargo_subcommand)
             .args(&self.args);
+
+        // HACK: pass Clippy args to the driver *also* through RUSTFLAGS.
+        // This guarantees that new builds will be triggered when Clippy flags change.
+        if let Some(clippy_args) = self.clippy_args {
+            cmd.env(
+                "RUSTFLAGS",
+                rustflags.map_or(clippy_args.clone(), |flags| format!("{} {}", clippy_args, flags)),
+            );
+            cmd.env("CLIPPY_ARGS", clippy_args);
+        }
 
         cmd
     }
@@ -164,7 +179,7 @@ where
 {
     let cmd = ClippyCmd::new(old_args);
 
-    let mut cmd = cmd.into_std_cmd();
+    let mut cmd = cmd.into_std_cmd(env::var("RUSTFLAGS").ok());
 
     let exit_status = cmd
         .spawn()
@@ -182,6 +197,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::ClippyCmd;
+    use std::ffi::OsStr;
 
     #[test]
     #[should_panic]
@@ -196,15 +212,37 @@ mod tests {
             .split_whitespace()
             .map(ToString::to_string);
         let cmd = ClippyCmd::new(args);
+
         assert_eq!("fix", cmd.cargo_subcommand);
         assert_eq!("RUSTC_WORKSPACE_WRAPPER", cmd.path_env());
         assert!(cmd.args.iter().any(|arg| arg.ends_with("unstable-options")));
     }
 
     #[test]
+    fn fix_implies_no_deps() {
+        let args = "cargo clippy --fix -Zunstable-options"
+            .split_whitespace()
+            .map(ToString::to_string);
+        let cmd = ClippyCmd::new(args);
+
+        assert!(cmd.clippy_args.unwrap().contains("--no-deps"));
+    }
+
+    #[test]
+    fn no_deps_not_duplicated_with_fix() {
+        let args = "cargo clippy --fix -Zunstable-options -- --no-deps"
+            .split_whitespace()
+            .map(ToString::to_string);
+        let cmd = ClippyCmd::new(args);
+
+        assert_eq!(1, cmd.clippy_args.unwrap().matches("--no-deps").count());
+    }
+
+    #[test]
     fn check() {
         let args = "cargo clippy".split_whitespace().map(ToString::to_string);
         let cmd = ClippyCmd::new(args);
+
         assert_eq!("check", cmd.cargo_subcommand);
         assert_eq!("RUSTC_WRAPPER", cmd.path_env());
     }
@@ -215,7 +253,63 @@ mod tests {
             .split_whitespace()
             .map(ToString::to_string);
         let cmd = ClippyCmd::new(args);
+
         assert_eq!("check", cmd.cargo_subcommand);
         assert_eq!("RUSTC_WORKSPACE_WRAPPER", cmd.path_env());
+    }
+
+    #[test]
+    fn clippy_args_into_rustflags() {
+        let args = "cargo clippy -- -W clippy::as_conversions"
+            .split_whitespace()
+            .map(ToString::to_string);
+        let cmd = ClippyCmd::new(args);
+
+        let rustflags = None;
+        let cmd = cmd.into_std_cmd(rustflags);
+
+        assert!(cmd
+            .get_envs()
+            .any(|(key, val)| key == "RUSTFLAGS" && val == Some(OsStr::new("-W clippy::as_conversions"))));
+    }
+
+    #[test]
+    fn clippy_args_respect_existing_rustflags() {
+        let args = "cargo clippy -- -D clippy::await_holding_lock"
+            .split_whitespace()
+            .map(ToString::to_string);
+        let cmd = ClippyCmd::new(args);
+
+        let rustflags = Some(r#"--cfg feature="some_feat""#.into());
+        let cmd = cmd.into_std_cmd(rustflags);
+
+        assert!(cmd.get_envs().any(|(key, val)| key == "RUSTFLAGS"
+            && val == Some(OsStr::new(r#"-D clippy::await_holding_lock --cfg feature="some_feat""#))));
+    }
+
+    #[test]
+    fn no_env_change_if_no_clippy_args() {
+        let args = "cargo clippy".split_whitespace().map(ToString::to_string);
+        let cmd = ClippyCmd::new(args);
+
+        let rustflags = Some(r#"--cfg feature="some_feat""#.into());
+        let cmd = cmd.into_std_cmd(rustflags);
+
+        assert!(!cmd
+            .get_envs()
+            .any(|(key, _)| key == "RUSTFLAGS" || key == "CLIPPY_ARGS"));
+    }
+
+    #[test]
+    fn no_env_change_if_no_clippy_args_nor_rustflags() {
+        let args = "cargo clippy".split_whitespace().map(ToString::to_string);
+        let cmd = ClippyCmd::new(args);
+
+        let rustflags = None;
+        let cmd = cmd.into_std_cmd(rustflags);
+
+        assert!(!cmd
+            .get_envs()
+            .any(|(key, _)| key == "RUSTFLAGS" || key == "CLIPPY_ARGS"))
     }
 }

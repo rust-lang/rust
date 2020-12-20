@@ -390,7 +390,10 @@ impl<'tcx> mir::visit::Visitor<'tcx> for LocalUseVisitor {
         let local = place.local;
 
         if local == self.used.0
-            && !matches!(ctx, PlaceContext::MutatingUse(MutatingUseContext::Drop) | PlaceContext::NonUse(_))
+            && !matches!(
+                ctx,
+                PlaceContext::MutatingUse(MutatingUseContext::Drop) | PlaceContext::NonUse(_)
+            )
         {
             self.used.1 = true;
         }

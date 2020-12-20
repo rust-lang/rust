@@ -1,16 +1,14 @@
 # Basics for hacking on Clippy
 
 This document explains the basics for hacking on Clippy. Besides others, this
-includes how to set-up the development environment, how to build and how to test
-Clippy. For a more in depth description on the codebase take a look at [Adding
-Lints] or [Common Tools].
+includes how to build and test Clippy. For a more in depth description on
+the codebase take a look at [Adding Lints] or [Common Tools].
 
 [Adding Lints]: https://github.com/rust-lang/rust-clippy/blob/master/doc/adding_lints.md
 [Common Tools]: https://github.com/rust-lang/rust-clippy/blob/master/doc/common_tools_writing_lints.md
 
 - [Basics for hacking on Clippy](#basics-for-hacking-on-clippy)
-  - [Get the code](#get-the-code)
-  - [Setup](#setup)
+  - [Get the Code](#get-the-code)
   - [Building and Testing](#building-and-testing)
   - [`cargo dev`](#cargo-dev)
   - [PR](#pr)
@@ -38,29 +36,9 @@ git rebase upstream/master
 git push
 ```
 
-## Setup
-
-Next we need to setup the toolchain to compile Clippy. Since Clippy heavily
-relies on compiler internals it is build with the latest rustc master. To get
-this toolchain, you can just use the `setup-toolchain.sh` script or use
-`rustup-toolchain-install-master`:
-
-```bash
-bash setup-toolchain.sh
-# OR
-cargo install rustup-toolchain-install-master
-# For better IDE integration also add `-c rustfmt -c rust-src` (optional)
-rustup-toolchain-install-master -f -n master -c rustc-dev -c llvm-tools
-rustup override set master
-```
-
-_Note:_ Sometimes you may get compiler errors when building Clippy, even if you
-didn't change anything. Normally those will be fixed by a maintainer in a few hours. 
-
 ## Building and Testing
 
-Once the `master` toolchain is installed, you can build and test Clippy like
-every other Rust project:
+You can build and test Clippy like every other Rust project:
 
 ```bash
 cargo build  # builds Clippy
@@ -83,7 +61,7 @@ If the output of a [UI test] differs from the expected output, you can update th
 reference file with:
 
 ```bash
-sh tests/ui/update-all-references.sh
+cargo dev bless
 ```
 
 For example, this is necessary, if you fix a typo in an error message of a lint
@@ -109,7 +87,7 @@ cargo dev update_lints
 # create a new lint and register it
 cargo dev new_lint
 # (experimental) Setup Clippy to work with rust-analyzer
-cargo dev ra-setup
+cargo dev ra_setup
 ```
 
 ## PR

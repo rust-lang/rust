@@ -82,6 +82,22 @@ Note that this is still experimental and only supported on the nightly channel:
 cargo clippy --fix -Z unstable-options
 ```
 
+#### Workspaces
+
+All the usual workspace options should work with Clippy. For example the following command
+will run Clippy on the `example` crate:
+
+```terminal
+cargo clippy -p example
+```
+
+As with `cargo check`, this includes dependencies that are members of the workspace, like path dependencies.
+If you want to run Clippy **only** on the given crate, use the `--no-deps` option like this:
+
+```terminal
+cargo clippy -p example -- --no-deps 
+```
+
 ### Running Clippy from the command line without installing it
 
 To have cargo compile your crate with Clippy without Clippy installation
@@ -192,7 +208,6 @@ the lint(s) you are interested in:
 ```terminal
 cargo clippy -- -A clippy::all -W clippy::useless_format -W clippy::...
 ```
-Note that if you've run clippy before, this may only take effect after you've modified a file or ran `cargo clean`.
 
 ### Specifying the minimum supported Rust version
 

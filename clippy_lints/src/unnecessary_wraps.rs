@@ -9,6 +9,7 @@ use rustc_hir::{Body, ExprKind, FnDecl, HirId, ItemKind, Node};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_span::symbol::sym;
 use rustc_span::Span;
 
 declare_clippy_lint! {
@@ -74,14 +75,17 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryWraps {
         }
 
         if let Some(Node::Item(item)) = cx.tcx.hir().find(cx.tcx.hir().get_parent_node(hir_id)) {
-            if matches!(item.kind, ItemKind::Impl{ of_trait: Some(_), ..} | ItemKind::Trait(..)) {
+            if matches!(
+                item.kind,
+                ItemKind::Impl { of_trait: Some(_), .. } | ItemKind::Trait(..)
+            ) {
                 return;
             }
         }
 
-        let (return_type, path) = if is_type_diagnostic_item(cx, return_ty(cx, hir_id), sym!(option_type)) {
+        let (return_type, path) = if is_type_diagnostic_item(cx, return_ty(cx, hir_id), sym::option_type) {
             ("Option", &paths::OPTION_SOME)
-        } else if is_type_diagnostic_item(cx, return_ty(cx, hir_id), sym!(result_type)) {
+        } else if is_type_diagnostic_item(cx, return_ty(cx, hir_id), sym::result_type) {
             ("Result", &paths::RESULT_OK)
         } else {
             return;
