@@ -1,9 +1,12 @@
 use crate::utils::paths::INTO;
-use crate::utils::{match_def_path, span_lint_and_help};
+use crate::utils::{match_def_path, meets_msrv, span_lint_and_help};
 use if_chain::if_chain;
 use rustc_hir as hir;
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_semver::RustcVersion;
+use rustc_session::{declare_tool_lint, impl_lint_pass};
+
+const FROM_OVER_INTO_MSRV: RustcVersion = RustcVersion::new(1, 41, 0);
 
 declare_clippy_lint! {
     /// **What it does:** Searches for implementations of the `Into<..>` trait and suggests to implement `From<..>` instead.
@@ -38,10 +41,25 @@ declare_clippy_lint! {
     "Warns on implementations of `Into<..>` to use `From<..>`"
 }
 
-declare_lint_pass!(FromOverInto => [FROM_OVER_INTO]);
+pub struct FromOverInto {
+    msrv: Option<RustcVersion>,
+}
+
+impl FromOverInto {
+    #[must_use]
+    pub fn new(msrv: Option<RustcVersion>) -> Self {
+        FromOverInto { msrv }
+    }
+}
+
+impl_lint_pass!(FromOverInto => [FROM_OVER_INTO]);
 
 impl LateLintPass<'_> for FromOverInto {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>) {
+        if !meets_msrv(self.msrv.as_ref(), &FROM_OVER_INTO_MSRV) {
+            return;
+        }
+
         let impl_def_id = cx.tcx.hir().local_def_id(item.hir_id);
         if_chain! {
             if let hir::ItemKind::Impl{ .. } = &item.kind;
@@ -55,9 +73,11 @@ impl LateLintPass<'_> for FromOverInto {
                     item.span,
                     "An implementation of From is preferred since it gives you Into<..> for free where the reverse isn't true.",
                     None,
-                    "consider implement From instead",
+                    "consider to implement From instead",
                 );
             }
         }
     }
+
+    extract_msrv_attr!(LateContext);
 }

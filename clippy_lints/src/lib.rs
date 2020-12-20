@@ -1016,6 +1016,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(move || box checked_conversions::CheckedConversions::new(msrv));
     store.register_late_pass(move || box mem_replace::MemReplace::new(msrv));
     store.register_late_pass(move || box ranges::Ranges::new(msrv));
+    store.register_late_pass(move || box from_over_into::FromOverInto::new(msrv));
     store.register_late_pass(move || box use_self::UseSelf::new(msrv));
     store.register_late_pass(move || box missing_const_for_fn::MissingConstForFn::new(msrv));
 
@@ -1205,7 +1206,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box manual_unwrap_or::ManualUnwrapOr);
     store.register_late_pass(|| box manual_ok_or::ManualOkOr);
     store.register_late_pass(|| box float_equality_without_abs::FloatEqualityWithoutAbs);
-    store.register_late_pass(|| box from_over_into::FromOverInto);
     store.register_late_pass(|| box async_yields_async::AsyncYieldsAsync);
     let disallowed_methods = conf.disallowed_methods.iter().cloned().collect::<FxHashSet<_>>();
     store.register_late_pass(move || box disallowed_method::DisallowedMethod::new(&disallowed_methods));

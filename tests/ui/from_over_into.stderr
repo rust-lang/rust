@@ -9,7 +9,7 @@ LL | | }
    | |_^
    |
    = note: `-D clippy::from-over-into` implied by `-D warnings`
-   = help: consider implement From instead
+   = help: consider to implement From instead
 
 error: aborting due to previous error
 
