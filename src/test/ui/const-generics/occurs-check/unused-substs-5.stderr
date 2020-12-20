@@ -1,0 +1,12 @@
+error[E0308]: mismatched types
+  --> $DIR/unused-substs-5.rs:15:9
+   |
+LL |     x = q::<_, N>(x);
+   |         ^^^^^^^^^^^^
+   |         |
+   |         cyclic type of infinite size
+   |         help: try using a conversion method: `q::<_, N>(x).to_vec()`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

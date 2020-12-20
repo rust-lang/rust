@@ -33,6 +33,15 @@ pub trait TypeRelation<'tcx>: Sized {
     /// relation. Just affects error messages.
     fn a_is_expected(&self) -> bool;
 
+    /// Whether we should look into the substs of unevaluated constants
+    /// even if `feature(const_evaluatable_checked)` is active.
+    ///
+    /// This is needed in `combine` to prevent accidentially creating
+    /// infinite types as we abuse `TypeRelation` to walk a type there.
+    fn visit_ct_substs(&self) -> bool {
+        false
+    }
+
     fn with_cause<F, R>(&mut self, _cause: Cause, f: F) -> R
     where
         F: FnOnce(&mut Self) -> R,
@@ -579,7 +588,7 @@ pub fn super_relate_consts<R: TypeRelation<'tcx>>(
         (
             ty::ConstKind::Unevaluated(a_def, a_substs, None),
             ty::ConstKind::Unevaluated(b_def, b_substs, None),
-        ) if tcx.features().const_evaluatable_checked => {
+        ) if tcx.features().const_evaluatable_checked && !relation.visit_ct_substs() => {
             if tcx.try_unify_abstract_consts(((a_def, a_substs), (b_def, b_substs))) {
                 Ok(a.val)
             } else {
