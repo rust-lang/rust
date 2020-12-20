@@ -44,7 +44,7 @@ fn type_with_bounds_cond(p: &mut Parser, allow_bounds: bool) {
         T![&] => ref_type(p),
         T![_] => infer_type(p),
         T![fn] | T![unsafe] | T![extern] => fn_ptr_type(p),
-        T![for] => for_type(p),
+        T![for] => for_type(p, allow_bounds),
         T![impl] => impl_trait_type(p),
         T![dyn] => dyn_trait_type(p),
         // Some path types are not allowed to have bounds (no plus)
@@ -227,7 +227,7 @@ pub(super) fn for_binder(p: &mut Parser) {
 // type A = for<'a> fn() -> ();
 // type B = for<'a> unsafe extern "C" fn(&'a ()) -> ();
 // type Obj = for<'a> PartialEq<&'a i32>;
-pub(super) fn for_type(p: &mut Parser) {
+pub(super) fn for_type(p: &mut Parser, allow_bounds: bool) {
     assert!(p.at(T![for]));
     let m = p.start();
     for_binder(p);
@@ -240,7 +240,13 @@ pub(super) fn for_type(p: &mut Parser) {
         }
     }
     type_no_bounds(p);
-    m.complete(p, FOR_TYPE);
+    let completed = m.complete(p, FOR_TYPE);
+
+    // test no_dyn_trait_leading_for
+    // type A = for<'a> Test<'a> + Send;
+    if allow_bounds {
+        opt_type_bounds_as_dyn_trait_type(p, completed);
+    }
 }
 
 // test impl_trait_type
@@ -290,7 +296,7 @@ fn path_or_macro_type_(p: &mut Parser, allow_bounds: bool) {
     let path = m.complete(p, kind);
 
     if allow_bounds {
-        opt_path_type_bounds_as_dyn_trait_type(p, path);
+        opt_type_bounds_as_dyn_trait_type(p, path);
     }
 }
 
@@ -304,19 +310,23 @@ pub(super) fn path_type_(p: &mut Parser, allow_bounds: bool) {
     // fn foo() -> Box<dyn T + 'f> {}
     let path = m.complete(p, PATH_TYPE);
     if allow_bounds {
-        opt_path_type_bounds_as_dyn_trait_type(p, path);
+        opt_type_bounds_as_dyn_trait_type(p, path);
     }
 }
 
-/// This turns a parsed PATH_TYPE optionally into a DYN_TRAIT_TYPE
+/// This turns a parsed PATH_TYPE or FOR_TYPE optionally into a DYN_TRAIT_TYPE
 /// with a TYPE_BOUND_LIST
-fn opt_path_type_bounds_as_dyn_trait_type(p: &mut Parser, path_type_marker: CompletedMarker) {
+fn opt_type_bounds_as_dyn_trait_type(p: &mut Parser, type_marker: CompletedMarker) {
+    assert!(matches!(
+        type_marker.kind(),
+        SyntaxKind::PATH_TYPE | SyntaxKind::FOR_TYPE | SyntaxKind::MACRO_CALL
+    ));
     if !p.at(T![+]) {
         return;
     }
 
     // First create a TYPE_BOUND from the completed PATH_TYPE
-    let m = path_type_marker.precede(p).complete(p, TYPE_BOUND);
+    let m = type_marker.precede(p).complete(p, TYPE_BOUND);
 
     // Next setup a marker for the TYPE_BOUND_LIST
     let m = m.precede(p);
