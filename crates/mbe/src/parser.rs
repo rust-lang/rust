@@ -101,7 +101,9 @@ fn next_op<'a>(
                     Op::Repeat { subtree, separator, kind }
                 }
                 tt::TokenTree::Leaf(leaf) => match leaf {
-                    tt::Leaf::Punct(..) => return Err(ExpandError::UnexpectedToken),
+                    tt::Leaf::Punct(_) => {
+                        return Err(ExpandError::UnexpectedToken);
+                    }
                     tt::Leaf::Ident(ident) => {
                         let name = &ident.text;
                         let kind = eat_fragment_kind(src, mode)?;
