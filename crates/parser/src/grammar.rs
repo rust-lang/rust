@@ -55,7 +55,7 @@ pub(crate) mod fragments {
     use super::*;
 
     pub(crate) use super::{
-        expressions::block_expr, paths::type_path as path, patterns::pattern, types::type_,
+        expressions::block_expr, paths::type_path as path, patterns::pattern_single, types::type_,
     };
 
     pub(crate) fn expr(p: &mut Parser) {

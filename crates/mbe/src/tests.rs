@@ -1004,6 +1004,18 @@ fn test_underscore() {
 }
 
 #[test]
+fn test_vertical_bar_with_pat() {
+    parse_macro(
+        r#"
+            macro_rules! foo {
+                 (| $pat:pat | ) => { 0 }
+            }
+    "#,
+    )
+    .assert_expand_items(r#"foo! { | x | }"#, r#"0"#);
+}
+
+#[test]
 fn test_lifetime() {
     parse_macro(
         r#"
