@@ -12,7 +12,7 @@ use std::iter::Peekable;
 
 use rustc_lexer::{LiteralKind, TokenKind};
 use rustc_span::edition::Edition;
-use rustc_span::symbol::Ident;
+use rustc_span::symbol::Symbol;
 use rustc_span::with_default_session_globals;
 
 /// Highlights `src`, returning the HTML output.
@@ -21,6 +21,7 @@ crate fn render_with_highlighting(
     class: Option<&str>,
     playground_button: Option<&str>,
     tooltip: Option<(Option<Edition>, &str)>,
+    edition: Edition,
 ) -> String {
     debug!("highlighting: ================\n{}\n==============", src);
     let mut out = String::with_capacity(src.len());
@@ -39,7 +40,7 @@ crate fn render_with_highlighting(
     }
 
     write_header(&mut out, class);
-    write_code(&mut out, &src);
+    write_code(&mut out, &src, edition);
     write_footer(&mut out, playground_button);
 
     out
@@ -50,10 +51,10 @@ fn write_header(out: &mut String, class: Option<&str>) {
         .unwrap()
 }
 
-fn write_code(out: &mut String, src: &str) {
+fn write_code(out: &mut String, src: &str, edition: Edition) {
     // This replace allows to fix how the code source with DOS backline characters is displayed.
     let src = src.replace("\r\n", "\n");
-    Classifier::new(&src).highlight(&mut |highlight| {
+    Classifier::new(&src, edition).highlight(&mut |highlight| {
         match highlight {
             Highlight::Token { text, class } => string(out, Escape(text), class),
             Highlight::EnterSpan { class } => enter_span(out, class),
@@ -144,12 +145,19 @@ struct Classifier<'a> {
     in_attribute: bool,
     in_macro: bool,
     in_macro_nonterminal: bool,
+    edition: Edition,
 }
 
 impl<'a> Classifier<'a> {
-    fn new(src: &str) -> Classifier<'_> {
+    fn new(src: &str, edition: Edition) -> Classifier<'_> {
         let tokens = TokenIter { src }.peekable();
-        Classifier { tokens, in_attribute: false, in_macro: false, in_macro_nonterminal: false }
+        Classifier {
+            tokens,
+            in_attribute: false,
+            in_macro: false,
+            in_macro_nonterminal: false,
+            edition,
+        }
     }
 
     /// Exhausts the `Classifier` writing the output into `sink`.
@@ -301,7 +309,7 @@ impl<'a> Classifier<'a> {
                 "Option" | "Result" => Class::PreludeTy,
                 "Some" | "None" | "Ok" | "Err" => Class::PreludeVal,
                 // Keywords are also included in the identifier set.
-                _ if Ident::from_str(text).is_reserved() => Class::KeyWord,
+                _ if Symbol::intern(text).is_reserved(|| self.edition) => Class::KeyWord,
                 _ if self.in_macro_nonterminal => {
                     self.in_macro_nonterminal = false;
                     Class::MacroNonTerminal
