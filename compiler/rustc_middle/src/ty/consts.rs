@@ -92,8 +92,7 @@ impl<'tcx> Const<'tcx> {
                 let item_id = tcx.hir().get_parent_node(hir_id);
                 let item_def_id = tcx.hir().local_def_id(item_id);
                 let generics = tcx.generics_of(item_def_id.to_def_id());
-                let index =
-                    generics.param_def_id_to_index[&tcx.hir().local_def_id(hir_id).to_def_id()];
+                let index = generics.param_def_id_to_index[&def_id];
                 let name = tcx.hir().name(hir_id);
                 ty::ConstKind::Param(ty::ParamConst::new(index, name))
             }
