@@ -169,6 +169,8 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
     fn eq_guard(&mut self, left: &Guard<'_>, right: &Guard<'_>) -> bool {
         match (left, right) {
             (Guard::If(l), Guard::If(r)) => self.eq_expr(l, r),
+            (Guard::IfLet(lp, le), Guard::IfLet(rp, re)) => self.eq_pat(lp, rp) && self.eq_expr(le, re),
+            _ => false,
         }
     }
 
@@ -669,7 +671,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
 
     pub fn hash_guard(&mut self, g: &Guard<'_>) {
         match g {
-            Guard::If(ref expr) => {
+            Guard::If(ref expr) | Guard::IfLet(_, ref expr) => {
                 self.hash_expr(expr);
             },
         }

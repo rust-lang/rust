@@ -342,6 +342,10 @@ fn check_expr<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, bindings: &mut
                 if let Some(ref guard) = arm.guard {
                     match guard {
                         Guard::If(if_expr) => check_expr(cx, if_expr, bindings),
+                        Guard::IfLet(guard_pat, guard_expr) => {
+                            check_pat(cx, guard_pat, Some(*guard_expr), guard_pat.span, bindings);
+                            check_expr(cx, guard_expr, bindings);
+                        },
                     }
                 }
                 check_expr(cx, &arm.body, bindings);
