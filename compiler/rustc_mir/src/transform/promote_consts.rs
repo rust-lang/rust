@@ -692,14 +692,9 @@ impl<'tcx> Validator<'_, 'tcx> {
     ) -> Result<(), Unpromotable> {
         let fn_ty = callee.ty(self.body, self.tcx);
 
-        // When doing explicit promotion and inside const/static items, we promote all (eligible) function calls.
+        // When doing explicit promotion, we promote all (eligible) function calls.
         // Everywhere else, we require `#[rustc_promotable]` on the callee.
-        let promote_all_const_fn = self.explicit
-            || matches!(
-                self.const_kind,
-                Some(hir::ConstContext::Static(_) | hir::ConstContext::Const)
-            );
-        if !promote_all_const_fn {
+        if !self.explicit {
             if let ty::FnDef(def_id, _) = *fn_ty.kind() {
                 // Never promote runtime `const fn` calls of
                 // functions without `#[rustc_promotable]`.
