@@ -35,11 +35,13 @@ use std::ops::{ControlFlow, Index, IndexMut};
 use std::slice;
 use std::{iter, mem, option};
 
+use self::graph_cyclic_cache::GraphIsCyclicCache;
 use self::predecessors::{PredecessorCache, Predecessors};
 pub use self::query::*;
 
 pub mod abstract_const;
 pub mod coverage;
+mod graph_cyclic_cache;
 pub mod interpret;
 pub mod mono;
 mod predecessors;
@@ -227,6 +229,7 @@ pub struct Body<'tcx> {
     pub is_polymorphic: bool,
 
     predecessor_cache: PredecessorCache,
+    is_cyclic: GraphIsCyclicCache,
 }
 
 impl<'tcx> Body<'tcx> {
@@ -267,6 +270,7 @@ impl<'tcx> Body<'tcx> {
             required_consts: Vec::new(),
             is_polymorphic: false,
             predecessor_cache: PredecessorCache::new(),
+            is_cyclic: GraphIsCyclicCache::new(),
         };
         body.is_polymorphic = body.has_param_types_or_consts();
         body
@@ -296,6 +300,7 @@ impl<'tcx> Body<'tcx> {
             var_debug_info: Vec::new(),
             is_polymorphic: false,
             predecessor_cache: PredecessorCache::new(),
+            is_cyclic: GraphIsCyclicCache::new(),
         };
         body.is_polymorphic = body.has_param_types_or_consts();
         body
@@ -309,11 +314,12 @@ impl<'tcx> Body<'tcx> {
     #[inline]
     pub fn basic_blocks_mut(&mut self) -> &mut IndexVec<BasicBlock, BasicBlockData<'tcx>> {
         // Because the user could mutate basic block terminators via this reference, we need to
-        // invalidate the predecessor cache.
+        // invalidate the caches.
         //
         // FIXME: Use a finer-grained API for this, so only transformations that alter terminators
-        // invalidate the predecessor cache.
+        // invalidate the caches.
         self.predecessor_cache.invalidate();
+        self.is_cyclic.invalidate();
         &mut self.basic_blocks
     }
 
@@ -322,6 +328,7 @@ impl<'tcx> Body<'tcx> {
         &mut self,
     ) -> (&mut IndexVec<BasicBlock, BasicBlockData<'tcx>>, &mut LocalDecls<'tcx>) {
         self.predecessor_cache.invalidate();
+        self.is_cyclic.invalidate();
         (&mut self.basic_blocks, &mut self.local_decls)
     }
 
@@ -334,13 +341,14 @@ impl<'tcx> Body<'tcx> {
         &mut Vec<VarDebugInfo<'tcx>>,
     ) {
         self.predecessor_cache.invalidate();
+        self.is_cyclic.invalidate();
         (&mut self.basic_blocks, &mut self.local_decls, &mut self.var_debug_info)
     }
 
     /// Returns `true` if a cycle exists in the control-flow graph that is reachable from the
     /// `START_BLOCK`.
     pub fn is_cfg_cyclic(&self) -> bool {
-        graph::is_cyclic(self)
+        self.is_cyclic.is_cyclic(self)
     }
 
     #[inline]
