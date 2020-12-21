@@ -123,8 +123,12 @@ fn check(handler: Handler, before: &str, expected: ExpectedResult, assist_label:
             for file_system_edit in source_change.file_system_edits.clone() {
                 match file_system_edit {
                     FileSystemEdit::CreateFile { dst, initial_contents } => {
-                        let target_dst = dst.path;
-                        format_to!(buf, "//- {}\n", target_dst);
+                        let sr = db.file_source_root(dst.anchor);
+                        let sr = db.source_root(sr);
+                        let mut base = sr.path_for_file(&dst.anchor).unwrap().clone();
+                        base.pop();
+                        let created_file_path = format!("{}{}", base.to_string(), &dst.path[1..]);
+                        format_to!(buf, "//- {}\n", created_file_path);
                         buf.push_str(&initial_contents);
                     }
                     _ => (),
