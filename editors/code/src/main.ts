@@ -19,9 +19,8 @@ let ctx: Ctx | undefined;
 const RUST_PROJECT_CONTEXT_NAME = "inRustProject";
 
 export async function activate(context: vscode.ExtensionContext) {
-    // For some reason vscode not always shows pop-up error notifications
-    // when an extension fails to activate, so we do it explicitly by ourselves.
-    // FIXME: remove this bit of code once vscode fixes this issue: https://github.com/microsoft/vscode/issues/101242
+    // VS Code doesn't show a notification when an extension fails to activate
+    // so we do it ourselves.
     await tryActivate(context).catch(err => {
         void vscode.window.showErrorMessage(`Cannot activate rust-analyzer: ${err.message}`);
         throw err;
