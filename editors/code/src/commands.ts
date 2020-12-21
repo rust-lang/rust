@@ -470,7 +470,7 @@ export function resolveCodeAction(ctx: Ctx): Cmd {
             return;
         }
         const edit = client.protocol2CodeConverter.asWorkspaceEdit(item.edit);
-        await applySnippetWorkspaceEdit(edit);
+        await vscode.workspace.applyEdit(edit);
     };
 }
 
