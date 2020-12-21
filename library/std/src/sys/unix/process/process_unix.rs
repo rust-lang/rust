@@ -1,6 +1,7 @@
 use crate::convert::TryInto;
 use crate::fmt;
 use crate::io::{self, Error, ErrorKind};
+use crate::panic;
 use crate::ptr;
 use crate::sys;
 use crate::sys::cvt;
@@ -53,7 +54,7 @@ impl Command {
 
         let pid = unsafe {
             match result {
-                0 => {
+                0 => match panic::catch_unwind(panic::AssertUnwindSafe(|| -> ! {
                     drop(input);
                     let Err(err) = self.do_exec(theirs, envp.as_ref());
                     let errno = err.raw_os_error().unwrap_or(libc::EINVAL) as u32;
@@ -73,7 +74,9 @@ impl Command {
                     // we're being torn down regardless
                     rtassert!(output.write(&bytes).is_ok());
                     libc::_exit(1)
-                }
+                })) {
+                    Err(_) => crate::process::abort(),
+                },
                 n => n,
             }
         };
@@ -533,3 +536,7 @@ impl fmt::Display for ExitStatus {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "process_unix/tests.rs"]
+mod tests;
