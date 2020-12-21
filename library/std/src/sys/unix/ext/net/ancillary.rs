@@ -360,7 +360,11 @@ impl<'a> AncillaryData<'a> {
     fn try_from_cmsghdr(cmsg: &'a libc::cmsghdr) -> Result<Self, AncillaryError> {
         unsafe {
             cfg_if::cfg_if! {
-                if #[cfg(any(target_os = "android", all(target_os = "linux", target_env = "gnu")))] {
+                if #[cfg(any(
+                        target_os = "android",
+                        all(target_os = "linux", target_env = "gnu"),
+                        all(target_os = "linux", target_env = "uclibc"),
+                   ))] {
                     let cmsg_len_zero = libc::CMSG_LEN(0) as libc::size_t;
                 } else if #[cfg(any(
                               target_os = "dragonfly",
