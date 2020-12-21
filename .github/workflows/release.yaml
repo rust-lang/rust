@@ -15,12 +15,9 @@ env:
   RUSTUP_MAX_RETRIES: 10
 
 jobs:
-  dist:
-    name: dist
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-16.04, windows-latest, macos-latest]
+  dist-windows:
+    name: dist (Windows)
+    runs-on: windows-latest
 
     steps:
     - name: Checkout repository
@@ -30,8 +27,7 @@ jobs:
     # which takes a long time. The fastest way to do this is to rename the
     # existing folder, as deleting it takes about as much time as not doing
     # anything and just updating rust-docs.
-    - name: Rename existing rust toolchain (Windows)
-      if: matrix.os == 'windows-latest'
+    - name: Rename existing rust toolchain
       run: Rename-Item C:\Users\runneradmin\.rustup\toolchains\stable-x86_64-pc-windows-msvc C:\Users\runneradmin\.rustup\toolchains\stable-x86_64-pc-windows-msvc.old
 
     - name: Install Rust toolchain
@@ -41,38 +37,116 @@ jobs:
         profile: minimal
         override: true
 
+    - name: Dist
+      run: cargo xtask dist
+      env:
+        RA_TARGET: x86_64-pc-windows-msvc
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v1
+      with:
+        name: dist-windows-latest
+        path: ./dist
+
+  dist-ubuntu:
+    name: dist (Ubuntu 16.04)
+    runs-on: ubuntu-16.04
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Install Rust toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        profile: minimal
+        override: true
+
     - name: Install Nodejs
-      if: matrix.os == 'ubuntu-16.04'
       uses: actions/setup-node@v1
       with:
         node-version: 12.x
 
     - name: Dist
-      if: matrix.os == 'ubuntu-16.04' && github.ref == 'refs/heads/release'
+      if: github.ref == 'refs/heads/release'
       run: cargo xtask dist --client 0.2.$GITHUB_RUN_NUMBER
+      env:
+        RA_TARGET: x86_64-unknown-linux-gnu
 
     - name: Dist
-      if: matrix.os == 'ubuntu-16.04' && github.ref != 'refs/heads/release'
+      if: github.ref != 'refs/heads/release'
       run: cargo xtask dist --nightly --client 0.3.$GITHUB_RUN_NUMBER-nightly
-
-    - name: Dist
-      if: matrix.os != 'ubuntu-16.04'
-      run: cargo xtask dist
+      env:
+        RA_TARGET: x86_64-unknown-linux-gnu
 
     - name: Nightly analysis-stats check
-      if: matrix.os == 'ubuntu-16.04' && github.ref != 'refs/heads/release'
-      run: ./dist/rust-analyzer-linux analysis-stats .
+      if: github.ref != 'refs/heads/release'
+      run: ./dist/rust-analyzer-x86_64-unknown-linux-gnu analysis-stats .
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v1
       with:
-        name: dist-${{ matrix.os }}
+        name: dist-ubuntu-16.04
+        path: ./dist
+
+  dist-macos-latest:
+    name: dist (MacOS latest)
+    runs-on: macos-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Install Rust toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        profile: minimal
+        override: true
+
+    - name: Dist
+      run: cargo xtask dist
+      env:
+        RA_TARGET: x86_64-apple-darwin
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v1
+      with:
+        name: dist-macos-latest
+        path: ./dist
+
+  dist-macos-11:
+    name: dist (MacOS 11.0)
+    runs-on: macos-11.0
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Install Rust toolchain (beta)
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: beta
+        target: aarch64-apple-darwin
+        profile: minimal
+        override: true
+
+    - name: Dist
+      run: cargo xtask dist
+      env:
+        RA_TARGET: aarch64-apple-darwin
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v1
+      with:
+        name: dist-macos-11.0
         path: ./dist
 
   publish:
     name: publish
     runs-on: ubuntu-16.04
-    needs: ['dist']
+    needs: ['dist-windows', 'dist-ubuntu', 'dist-macos-latest', 'dist-macos-11']
     steps:
     - name: Install Nodejs
       uses: actions/setup-node@v1
@@ -93,6 +167,10 @@ jobs:
 
     - uses: actions/download-artifact@v1
       with:
+        name: dist-macos-11.0
+        path: dist
+    - uses: actions/download-artifact@v1
+      with:
         name: dist-macos-latest
         path: dist
     - uses: actions/download-artifact@v1
@@ -103,7 +181,7 @@ jobs:
       with:
         name: dist-windows-latest
         path: dist
-    - run: ls -all ./dist
+    - run: ls -al ./dist
 
     - name: Publish Release
       uses: ./.github/actions/github-release
