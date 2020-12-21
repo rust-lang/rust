@@ -722,17 +722,16 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
     fn visit_statement(&mut self, statement: &Statement<'tcx>, location: Location) {
         trace!("visit_statement: statement={:?} location={:?}", statement, location);
 
-        match statement.kind {
-            StatementKind::Assign(..) | StatementKind::SetDiscriminant { .. } => {
-                self.super_statement(statement, location);
-            }
+        self.super_statement(statement, location);
 
+        match statement.kind {
             StatementKind::LlvmInlineAsm { .. } => {
-                self.super_statement(statement, location);
                 self.check_op(ops::InlineAsm);
             }
 
-            StatementKind::FakeRead(..)
+            StatementKind::Assign(..)
+            | StatementKind::SetDiscriminant { .. }
+            | StatementKind::FakeRead(..)
             | StatementKind::StorageLive(_)
             | StatementKind::StorageDead(_)
             | StatementKind::Retag { .. }
