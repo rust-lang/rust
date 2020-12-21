@@ -319,6 +319,10 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
                 message: "original diagnostic".to_string(),
             };
             for info in &related_information {
+                // Filter out empty/non-existent messages, as they greatly confuse VS Code.
+                if info.message.is_empty() {
+                    continue;
+                }
                 diagnostics.push(MappedRustDiagnostic {
                     url: info.location.uri.clone(),
                     fixes: fixes.clone(), // share fixes to make them easier to apply
