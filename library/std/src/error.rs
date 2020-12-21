@@ -506,7 +506,7 @@ impl<T: Error> Error for Box<T> {
     }
 }
 
-#[stable(feature = "error_by_ref", since = "1.49.0")]
+#[stable(feature = "error_by_ref", since = "1.51.0")]
 impl<'a, T: Error + ?Sized> Error for &'a T {
     #[allow(deprecated, deprecated_in_future)]
     fn description(&self) -> &str {
