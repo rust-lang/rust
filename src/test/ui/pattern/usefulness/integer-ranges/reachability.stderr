@@ -1,149 +1,149 @@
 error: unreachable pattern
-  --> $DIR/reachability.rs:16:17
+  --> $DIR/reachability.rs:17:17
    |
 LL |     m!(0u8, 42, 42);
    |                 ^^
    |
 note: the lint level is defined here
-  --> $DIR/reachability.rs:2:9
+  --> $DIR/reachability.rs:3:9
    |
 LL | #![deny(unreachable_patterns)]
    |         ^^^^^^^^^^^^^^^^^^^^
 
 error: unreachable pattern
-  --> $DIR/reachability.rs:20:22
+  --> $DIR/reachability.rs:21:22
    |
 LL |     m!(0u8, 20..=30, 20);
    |                      ^^
 
 error: unreachable pattern
-  --> $DIR/reachability.rs:21:22
+  --> $DIR/reachability.rs:22:22
    |
 LL |     m!(0u8, 20..=30, 21);
    |                      ^^
 
 error: unreachable pattern
-  --> $DIR/reachability.rs:22:22
+  --> $DIR/reachability.rs:23:22
    |
 LL |     m!(0u8, 20..=30, 25);
    |                      ^^
 
 error: unreachable pattern
-  --> $DIR/reachability.rs:23:22
+  --> $DIR/reachability.rs:24:22
    |
 LL |     m!(0u8, 20..=30, 29);
    |                      ^^
 
 error: unreachable pattern
-  --> $DIR/reachability.rs:24:22
+  --> $DIR/reachability.rs:25:22
    |
 LL |     m!(0u8, 20..=30, 30);
    |                      ^^
 
 error: unreachable pattern
-  --> $DIR/reachability.rs:27:21
+  --> $DIR/reachability.rs:28:21
    |
 LL |     m!(0u8, 20..30, 20);
    |                     ^^
 
 error: unreachable pattern
-  --> $DIR/reachability.rs:28:21
+  --> $DIR/reachability.rs:29:21
    |
 LL |     m!(0u8, 20..30, 21);
    |                     ^^
 
 error: unreachable pattern
-  --> $DIR/reachability.rs:29:21
+  --> $DIR/reachability.rs:30:21
    |
 LL |     m!(0u8, 20..30, 25);
    |                     ^^
 
 error: unreachable pattern
-  --> $DIR/reachability.rs:30:21
+  --> $DIR/reachability.rs:31:21
    |
 LL |     m!(0u8, 20..30, 29);
    |                     ^^
 
 error: unreachable pattern
-  --> $DIR/reachability.rs:34:22
+  --> $DIR/reachability.rs:35:22
    |
 LL |     m!(0u8, 20..=30, 20..=30);
    |                      ^^^^^^^
 
 error: unreachable pattern
-  --> $DIR/reachability.rs:35:22
+  --> $DIR/reachability.rs:36:22
    |
 LL |     m!(0u8, 20.. 30, 20.. 30);
    |                      ^^^^^^^
 
 error: unreachable pattern
-  --> $DIR/reachability.rs:36:22
+  --> $DIR/reachability.rs:37:22
    |
 LL |     m!(0u8, 20..=30, 20.. 30);
    |                      ^^^^^^^
 
 error: unreachable pattern
-  --> $DIR/reachability.rs:38:22
+  --> $DIR/reachability.rs:39:22
    |
 LL |     m!(0u8, 20..=30, 21..=30);
    |                      ^^^^^^^
 
 error: unreachable pattern
-  --> $DIR/reachability.rs:39:22
+  --> $DIR/reachability.rs:40:22
    |
 LL |     m!(0u8, 20..=30, 20..=29);
    |                      ^^^^^^^
 
 error: unreachable pattern
-  --> $DIR/reachability.rs:41:24
+  --> $DIR/reachability.rs:42:24
    |
 LL |     m!('a', 'A'..='z', 'a'..='z');
    |                        ^^^^^^^^^
 
 error: unreachable pattern
-  --> $DIR/reachability.rs:48:9
+  --> $DIR/reachability.rs:49:9
    |
 LL |         5..=8 => {},
    |         ^^^^^
 
 error: unreachable pattern
-  --> $DIR/reachability.rs:54:9
+  --> $DIR/reachability.rs:55:9
    |
 LL |         5..15 => {},
    |         ^^^^^
 
 error: unreachable pattern
-  --> $DIR/reachability.rs:61:9
+  --> $DIR/reachability.rs:62:9
    |
 LL |         5..25 => {},
    |         ^^^^^
 
 error: unreachable pattern
-  --> $DIR/reachability.rs:69:9
+  --> $DIR/reachability.rs:70:9
    |
 LL |         5..25 => {},
    |         ^^^^^
 
 error: unreachable pattern
-  --> $DIR/reachability.rs:75:9
+  --> $DIR/reachability.rs:76:9
    |
 LL |         5..15 => {},
    |         ^^^^^
 
 error: unreachable pattern
-  --> $DIR/reachability.rs:82:9
+  --> $DIR/reachability.rs:83:9
    |
 LL |         '\u{D7FF}'..='\u{E000}' => {},
    |         ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: unreachable pattern
-  --> $DIR/reachability.rs:103:9
+  --> $DIR/reachability.rs:104:9
    |
 LL |         &FOO => {}
    |         ^^^^
 
 error: unreachable pattern
-  --> $DIR/reachability.rs:104:9
+  --> $DIR/reachability.rs:105:9
    |
 LL |         BAR => {}
    |         ^^^
