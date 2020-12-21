@@ -1,0 +1,43 @@
+SOURCE_FILE@0..34
+  TYPE_ALIAS@0..33
+    TYPE_KW@0..4 "type"
+    WHITESPACE@4..5 " "
+    NAME@5..6
+      IDENT@5..6 "A"
+    WHITESPACE@6..7 " "
+    EQ@7..8 "="
+    WHITESPACE@8..9 " "
+    DYN_TRAIT_TYPE@9..32
+      TYPE_BOUND_LIST@9..32
+        TYPE_BOUND@9..25
+          FOR_TYPE@9..25
+            FOR_KW@9..12 "for"
+            GENERIC_PARAM_LIST@12..16
+              L_ANGLE@12..13 "<"
+              LIFETIME_PARAM@13..15
+                LIFETIME@13..15
+                  LIFETIME_IDENT@13..15 "\'a"
+              R_ANGLE@15..16 ">"
+            WHITESPACE@16..17 " "
+            PATH_TYPE@17..25
+              PATH@17..25
+                PATH_SEGMENT@17..25
+                  NAME_REF@17..21
+                    IDENT@17..21 "Test"
+                  GENERIC_ARG_LIST@21..25
+                    L_ANGLE@21..22 "<"
+                    LIFETIME_ARG@22..24
+                      LIFETIME@22..24
+                        LIFETIME_IDENT@22..24 "\'a"
+                    R_ANGLE@24..25 ">"
+        WHITESPACE@25..26 " "
+        PLUS@26..27 "+"
+        WHITESPACE@27..28 " "
+        TYPE_BOUND@28..32
+          PATH_TYPE@28..32
+            PATH@28..32
+              PATH_SEGMENT@28..32
+                NAME_REF@28..32
+                  IDENT@28..32 "Send"
+    SEMICOLON@32..33 ";"
+  WHITESPACE@33..34 "\n"
