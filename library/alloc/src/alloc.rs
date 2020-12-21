@@ -16,6 +16,8 @@ pub use core::alloc::*;
 
 #[cfg(test)]
 mod tests;
+#[macro_use]
+pub(crate) mod struct_alloc;
 
 extern "Rust" {
     // These are the magic symbols to call the global allocator.  rustc generates

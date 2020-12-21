@@ -155,6 +155,7 @@ mod macros;
 
 // Heaps provided for low-level allocation strategies
 
+#[macro_use]
 pub mod alloc;
 
 // Primitive types using the heaps above
