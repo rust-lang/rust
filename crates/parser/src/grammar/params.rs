@@ -47,20 +47,23 @@ fn list_(p: &mut Parser, flavor: Flavor) {
     if let FnDef = flavor {
         // test self_param_outer_attr
         // fn f(#[must_use] self) {}
+        let m = p.start();
         attributes::outer_attrs(p);
-        opt_self_param(p);
+        opt_self_param(p, m);
     }
 
     while !p.at(EOF) && !p.at(ket) {
         // test param_outer_arg
         // fn f(#[attr1] pat: Type) {}
+        let m = p.start();
         attributes::outer_attrs(p);
 
         if !p.at_ts(PARAM_FIRST) {
             p.error("expected value parameter");
+            m.abandon(p);
             break;
         }
-        let param = param(p, flavor);
+        let param = param(p, m, flavor);
         if !p.at(ket) {
             p.expect(T![,]);
         }
@@ -77,9 +80,8 @@ const PARAM_FIRST: TokenSet = patterns::PATTERN_FIRST.union(types::TYPE_FIRST);
 
 struct Variadic(bool);
 
-fn param(p: &mut Parser, flavor: Flavor) -> Variadic {
+fn param(p: &mut Parser, m: Marker, flavor: Flavor) -> Variadic {
     let mut res = Variadic(false);
-    let m = p.start();
     match flavor {
         // test param_list_vararg
         // extern "C" { fn printf(format: *const i8, ...) -> i32; }
@@ -151,10 +153,8 @@ fn variadic_param(p: &mut Parser) -> bool {
 //     fn d(&'a mut self, x: i32) {}
 //     fn e(mut self) {}
 // }
-fn opt_self_param(p: &mut Parser) {
-    let m;
+fn opt_self_param(p: &mut Parser, m: Marker) {
     if p.at(T![self]) || p.at(T![mut]) && p.nth(1) == T![self] {
-        m = p.start();
         p.eat(T![mut]);
         p.eat(T![self]);
         // test arb_self_types
@@ -174,9 +174,8 @@ fn opt_self_param(p: &mut Parser) {
             (T![&], T![mut], T![self], _) => 3,
             (T![&], LIFETIME_IDENT, T![self], _) => 3,
             (T![&], LIFETIME_IDENT, T![mut], T![self]) => 4,
-            _ => return,
+            _ => return m.abandon(p),
         };
-        m = p.start();
         p.bump_any();
         if p.at(LIFETIME_IDENT) {
             lifetime(p);

@@ -92,20 +92,20 @@ SOURCE_FILE@0..126
                       IDENT@88..90 "u8"
           COMMA@90..91 ","
           WHITESPACE@91..92 " "
-          ATTR@92..105
-            POUND@92..93 "#"
-            L_BRACK@93..94 "["
-            PATH@94..97
-              PATH_SEGMENT@94..97
-                NAME_REF@94..97
-                  IDENT@94..97 "cfg"
-            TOKEN_TREE@97..104
-              L_PAREN@97..98 "("
-              IDENT@98..103 "never"
-              R_PAREN@103..104 ")"
-            R_BRACK@104..105 "]"
-          WHITESPACE@105..106 " "
-          PARAM@106..120
+          PARAM@92..120
+            ATTR@92..105
+              POUND@92..93 "#"
+              L_BRACK@93..94 "["
+              PATH@94..97
+                PATH_SEGMENT@94..97
+                  NAME_REF@94..97
+                    IDENT@94..97 "cfg"
+              TOKEN_TREE@97..104
+                L_PAREN@97..98 "("
+                IDENT@98..103 "never"
+                R_PAREN@103..104 ")"
+              R_BRACK@104..105 "]"
+            WHITESPACE@105..106 " "
             SLICE_PAT@106..115
               L_BRACK@106..107 "["
               IDENT_PAT@107..108

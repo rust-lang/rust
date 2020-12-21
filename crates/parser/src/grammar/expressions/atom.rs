@@ -156,11 +156,13 @@ fn tuple_expr(p: &mut Parser) -> CompletedMarker {
     let mut saw_expr = false;
     while !p.at(EOF) && !p.at(T![')']) {
         saw_expr = true;
-        if !p.at_ts(EXPR_FIRST) {
-            p.error("expected expression");
+
+        // test tuple_attrs
+        // const A: (i64, i64) = (1, #[cfg(test)] 2);
+        if !expr_with_attrs(p) {
             break;
         }
-        expr(p);
+
         if !p.at(T![')']) {
             saw_comma = true;
             p.expect(T![,]);
