@@ -257,12 +257,13 @@ use core::hash::{Hash, Hasher};
 use core::intrinsics::abort;
 use core::iter;
 use core::marker::{self, PhantomData, Unpin, Unsize};
-use core::mem::{self, align_of_val_raw, forget, size_of_val};
+use core::mem::{self, forget, size_of_val};
 use core::ops::{CoerceUnsized, Deref, DispatchFromDyn, Receiver};
 use core::pin::Pin;
 use core::ptr::{self, NonNull};
 use core::slice::from_raw_parts_mut;
 
+use crate::alloc::struct_alloc::StructAlloc;
 use crate::alloc::{
     box_free, handle_alloc_error, AllocError, Allocator, Global, Layout, WriteCloneIntoRaw,
 };
@@ -273,13 +274,31 @@ use crate::vec::Vec;
 #[cfg(test)]
 mod tests;
 
-// This is repr(C) to future-proof against possible field-reordering, which
-// would interfere with otherwise safe [into|from]_raw() of transmutable
-// inner types.
-#[repr(C)]
-struct RcBox<T: ?Sized> {
+struct RcBoxMetadata {
     strong: Cell<usize>,
     weak: Cell<usize>,
+}
+
+impl RcBoxMetadata {
+    // There is an implicit weak pointer owned by all the strong
+    // pointers, which ensures that the weak destructor never frees
+    // the allocation while the strong destructor is running, even
+    // if the weak pointer is stored inside the strong one.
+    #[inline]
+    fn new_strong() -> Self {
+        Self { strong: Cell::new(1), weak: Cell::new(1) }
+    }
+
+    #[inline]
+    fn new_weak() -> Self {
+        Self { strong: Cell::new(0), weak: Cell::new(1) }
+    }
+}
+
+// This is repr(C) to support StructAlloc
+#[repr(C)]
+struct RcBox<T: ?Sized> {
+    meta: RcBoxMetadata,
     value: T,
 }
 
@@ -340,13 +359,7 @@ impl<T> Rc<T> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new(value: T) -> Rc<T> {
-        // There is an implicit weak pointer owned by all the strong
-        // pointers, which ensures that the weak destructor never frees
-        // the allocation while the strong destructor is running, even
-        // if the weak pointer is stored inside the strong one.
-        Self::from_inner(
-            Box::leak(box RcBox { strong: Cell::new(1), weak: Cell::new(1), value }).into(),
-        )
+        Self::from_inner(Box::leak(box RcBox { meta: RcBoxMetadata::new_strong(), value }).into())
     }
 
     /// Constructs a new `Rc<T>` using a weak reference to itself. Attempting
@@ -378,8 +391,7 @@ impl<T> Rc<T> {
         // Construct the inner in the "uninitialized" state with a single
         // weak reference.
         let uninit_ptr: NonNull<_> = Box::leak(box RcBox {
-            strong: Cell::new(0),
-            weak: Cell::new(1),
+            meta: RcBoxMetadata::new_weak(),
             value: mem::MaybeUninit::<T>::uninit(),
         })
         .into();
@@ -400,9 +412,9 @@ impl<T> Rc<T> {
             let inner = init_ptr.as_ptr();
             ptr::write(ptr::addr_of_mut!((*inner).value), data);
 
-            let prev_value = (*inner).strong.get();
+            let prev_value = (*inner).meta.strong.get();
             debug_assert_eq!(prev_value, 0, "No prior strong references should exist");
-            (*inner).strong.set(1);
+            (*inner).meta.strong.set(1);
         }
 
         let strong = Rc::from_inner(init_ptr);
@@ -489,13 +501,8 @@ impl<T> Rc<T> {
     /// ```
     #[unstable(feature = "allocator_api", issue = "32838")]
     pub fn try_new(value: T) -> Result<Rc<T>, AllocError> {
-        // There is an implicit weak pointer owned by all the strong
-        // pointers, which ensures that the weak destructor never frees
-        // the allocation while the strong destructor is running, even
-        // if the weak pointer is stored inside the strong one.
         Ok(Self::from_inner(
-            Box::leak(Box::try_new(RcBox { strong: Cell::new(1), weak: Cell::new(1), value })?)
-                .into(),
+            Box::leak(Box::try_new(RcBox { meta: RcBoxMetadata::new_strong(), value })?).into(),
         ))
     }
 
@@ -1170,8 +1177,8 @@ impl<T: ?Sized> Rc<T> {
         unsafe {
             debug_assert_eq!(Layout::for_value(&*inner), layout);
 
-            ptr::write(&mut (*inner).strong, Cell::new(1));
-            ptr::write(&mut (*inner).weak, Cell::new(1));
+            ptr::write(&mut (*inner).meta.strong, Cell::new(1));
+            ptr::write(&mut (*inner).meta.weak, Cell::new(1));
         }
 
         Ok(inner)
@@ -2087,7 +2094,7 @@ impl<T: ?Sized> Weak<T> {
             // is dropped, the data field will be dropped in-place).
             Some(unsafe {
                 let ptr = self.ptr.as_ptr();
-                WeakInner { strong: &(*ptr).strong, weak: &(*ptr).weak }
+                WeakInner { strong: &(*ptr).meta.strong, weak: &(*ptr).meta.weak }
             })
         }
     }
@@ -2296,12 +2303,12 @@ trait RcInnerPtr {
 impl<T: ?Sized> RcInnerPtr for RcBox<T> {
     #[inline(always)]
     fn weak_ref(&self) -> &Cell<usize> {
-        &self.weak
+        &self.meta.weak
     }
 
     #[inline(always)]
     fn strong_ref(&self) -> &Cell<usize> {
-        &self.strong
+        &self.meta.strong
     }
 }
 
@@ -2334,24 +2341,21 @@ impl<T: ?Sized> AsRef<T> for Rc<T> {
 #[stable(feature = "pin", since = "1.33.0")]
 impl<T: ?Sized> Unpin for Rc<T> {}
 
+type RcStructAlloc = StructAlloc<RcBoxMetadata>;
+
 /// Get the offset within an `RcBox` for the payload behind a pointer.
 ///
 /// # Safety
 ///
 /// The pointer must point to (and have valid metadata for) a previously
 /// valid instance of T, but the T is allowed to be dropped.
-unsafe fn data_offset<T: ?Sized>(ptr: *const T) -> isize {
-    // Align the unsized value to the end of the RcBox.
-    // Because RcBox is repr(C), it will always be the last field in memory.
-    // SAFETY: since the only unsized types possible are slices, trait objects,
-    // and extern types, the input safety requirement is currently enough to
-    // satisfy the requirements of align_of_val_raw; this is an implementation
-    // detail of the language that may not be relied upon outside of std.
-    unsafe { data_offset_align(align_of_val_raw(ptr)) }
-}
-
-#[inline]
-fn data_offset_align(align: usize) -> isize {
-    let layout = Layout::new::<RcBox<()>>();
-    (layout.size() + layout.padding_needed_for(align)) as isize
+unsafe fn data_offset<T: ?Sized>(data_ptr: *const T) -> isize {
+    unsafe {
+        // SAFETY: since the only unsized types possible are slices, trait objects,
+        // and extern types, the input safety requirement is currently enough to
+        // satisfy the requirements of for_value_raw; this is an implementation
+        // detail of the language that may not be relied upon outside of std.
+        let data_layout = Layout::for_value_raw(data_ptr);
+        RcStructAlloc::offset_of_data(data_layout) as isize
+    }
 }
