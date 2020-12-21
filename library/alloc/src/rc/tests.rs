@@ -559,3 +559,14 @@ fn test_rc_cyclic_with_two_ref() {
     assert_eq!(Rc::strong_count(&two_refs), 3);
     assert_eq!(Rc::weak_count(&two_refs), 2);
 }
+
+#[test]
+fn test_from_rc_alloc() {
+    let mut vec = Vec::new_in(RcAlloc::new());
+    vec.push(1i32);
+    let b = vec.into_boxed_slice();
+    let b_addr = &*b as *const _;
+    let rc = Rc::from(b);
+    let rc_addr = &*rc as *const _;
+    assert_eq!(b_addr, rc_addr);
+}

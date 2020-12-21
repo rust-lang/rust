@@ -257,7 +257,7 @@ use core::hash::{Hash, Hasher};
 use core::intrinsics::abort;
 use core::iter;
 use core::marker::{self, PhantomData, Unpin, Unsize};
-use core::mem::{self, forget, size_of_val};
+use core::mem::{self, forget, size_of_val, MaybeUninit};
 use core::ops::{CoerceUnsized, Deref, DispatchFromDyn, Receiver};
 use core::pin::Pin;
 use core::ptr::{self, NonNull};
@@ -853,13 +853,7 @@ impl<T: ?Sized> Rc<T> {
     /// ```
     #[stable(feature = "rc_raw", since = "1.17.0")]
     pub unsafe fn from_raw(ptr: *const T) -> Self {
-        let offset = unsafe { data_offset(ptr) };
-
-        // Reverse the offset to find the original RcBox.
-        let rc_ptr =
-            unsafe { (ptr as *mut RcBox<T>).set_ptr_value((ptr as *mut u8).offset(-offset)) };
-
-        unsafe { Self::from_ptr(rc_ptr) }
+        unsafe { Self::from_data_ptr(ptr).assume_init() }
     }
 
     /// Creates a new [`Weak`] pointer to this allocation.
@@ -1215,6 +1209,35 @@ impl<T: ?Sized> Rc<T> {
             box_free(box_unique, alloc);
 
             Self::from_ptr(ptr)
+        }
+    }
+
+    /// # Safety
+    ///
+    /// The caller must ensure that the pointer points to the `value` field of a `Global`
+    /// allocation of type `RcBox<T>`. Depending on how the pointer was created, the
+    /// `meta` field might or might not be uninitialized. It's up to the caller to ensure
+    /// that this field is set to the correct value before the return value is unwrapped.
+    #[inline]
+    unsafe fn from_data_ptr(ptr: *const T) -> MaybeUninit<Self> {
+        let offset = unsafe { data_offset(ptr) };
+
+        // Reverse the offset to find the original RcBox.
+        let rc_ptr =
+            unsafe { (ptr as *mut RcBox<T>).set_ptr_value((ptr as *mut u8).offset(-offset)) };
+
+        unsafe { MaybeUninit::new(Self::from_ptr(rc_ptr)) }
+    }
+
+    #[inline]
+    fn from_rc_alloc_box(v: Box<T, RcAlloc>) -> Rc<T> {
+        unsafe {
+            // SAFETY: RcAlloc allocations of `T` have the same layout as Global
+            // allocations of `RcBox<T>`. We use `Self::from_raw` as a shorthand
+            let data_ptr = Box::into_raw(v);
+            let mut rc = Self::from_data_ptr(data_ptr);
+            rc.assume_init_mut().ptr.as_mut().meta = RcBoxMetadata::new_strong();
+            rc.assume_init()
         }
     }
 }
@@ -2357,5 +2380,50 @@ unsafe fn data_offset<T: ?Sized>(data_ptr: *const T) -> isize {
         // detail of the language that may not be relied upon outside of std.
         let data_layout = Layout::for_value_raw(data_ptr);
         RcStructAlloc::offset_of_data(data_layout) as isize
+    }
+}
+
+/// A memory allocator for [`Rc`] objects.
+///
+/// This allocator behaves like the underlying allocator except that values of type
+/// [`Box<T, RcAlloc>`] can be converted to [`Rc<T>`] without copying the allocation.
+///
+/// # Example
+///
+/// ```
+/// #![feature(struct_alloc, allocator_api)]
+///
+/// use std::rc::{Rc, RcAlloc};
+///
+/// let mut contents = Vec::new_in(RcAlloc::new());
+/// contents.push(1u32);
+/// let contents: Rc<[u32]> = contents.into_boxed_slice().into();
+/// ```
+#[derive(Debug)]
+#[unstable(feature = "struct_alloc", issue = "none")]
+pub struct RcAlloc<A = Global>(StructAlloc<RcBoxMetadata, A>);
+
+#[unstable(feature = "struct_alloc", issue = "none")]
+impl RcAlloc<Global> {
+    /// Constructs a new `RcAlloc<Global>`.
+    pub fn new() -> Self {
+        Self::new_with(Global)
+    }
+}
+
+#[unstable(feature = "struct_alloc", issue = "none")]
+impl<A> RcAlloc<A> {
+    /// Constructs a new `RcAlloc<A>`.
+    pub fn new_with(alloc: A) -> Self {
+        RcAlloc(StructAlloc::new(alloc))
+    }
+}
+
+implement_struct_allocator!(RcAlloc);
+
+#[unstable(feature = "struct_alloc", issue = "none")]
+impl<T: ?Sized> From<Box<T, RcAlloc>> for Rc<T> {
+    fn from(v: Box<T, RcAlloc>) -> Self {
+        Self::from_rc_alloc_box(v)
     }
 }

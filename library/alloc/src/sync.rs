@@ -14,7 +14,7 @@ use core::hint;
 use core::intrinsics::abort;
 use core::iter;
 use core::marker::{PhantomData, Unpin, Unsize};
-use core::mem::{self, size_of_val};
+use core::mem::{self, size_of_val, MaybeUninit};
 use core::ops::{CoerceUnsized, Deref, DispatchFromDyn, Receiver};
 use core::pin::Pin;
 use core::ptr::{self, NonNull};
@@ -845,14 +845,7 @@ impl<T: ?Sized> Arc<T> {
     /// ```
     #[stable(feature = "rc_raw", since = "1.17.0")]
     pub unsafe fn from_raw(ptr: *const T) -> Self {
-        unsafe {
-            let offset = data_offset(ptr);
-
-            // Reverse the offset to find the original ArcInner.
-            let arc_ptr = (ptr as *mut ArcInner<T>).set_ptr_value((ptr as *mut u8).offset(-offset));
-
-            Self::from_ptr(arc_ptr)
-        }
+        unsafe { Self::from_data_ptr(ptr).assume_init() }
     }
 
     /// Creates a new [`Weak`] pointer to this allocation.
@@ -1153,6 +1146,34 @@ impl<T: ?Sized> Arc<T> {
             box_free(box_unique, alloc);
 
             Self::from_ptr(ptr)
+        }
+    }
+
+    /// # Safety
+    ///
+    /// The caller must ensure that the pointer points to the `data` field of a `Global`
+    /// allocation of type `ArcInner<T>`. Depending on how the pointer was created, the
+    /// `meta` field might or might not be uninitialized. It's up to the caller to ensure
+    /// that this field is set to the correct value before the return value is unwrapped.
+    #[inline]
+    unsafe fn from_data_ptr(ptr: *const T) -> MaybeUninit<Self> {
+        unsafe {
+            let offset = data_offset(ptr);
+
+            // Reverse the offset to find the original ArcInner.
+            let arc_ptr = (ptr as *mut ArcInner<T>).set_ptr_value((ptr as *mut u8).offset(-offset));
+
+            MaybeUninit::new(Self::from_ptr(arc_ptr))
+        }
+    }
+
+    #[inline]
+    fn from_arc_alloc_box(v: Box<T, ArcAlloc>) -> Arc<T> {
+        unsafe {
+            let data_ptr = Box::into_raw(v);
+            let mut rc = Self::from_data_ptr(data_ptr);
+            rc.assume_init_mut().ptr.as_mut().meta = ArcInnerMetadata::new_strong();
+            rc.assume_init()
         }
     }
 }
@@ -2474,5 +2495,50 @@ unsafe fn data_offset<T: ?Sized>(data_ptr: *const T) -> isize {
         // detail of the language that may not be relied upon outside of std.
         let data_layout = Layout::for_value_raw(data_ptr);
         ArcStructAlloc::offset_of_data(data_layout) as isize
+    }
+}
+
+/// A memory allocator for [`Arc`] objects.
+///
+/// This allocator behaves like the underlying allocator except that values of type
+/// [`Box<T, ArcAlloc>`] can be converted to [`Arc<T>`] without copying the allocation.
+///
+/// # Example
+///
+/// ```
+/// #![feature(struct_alloc, allocator_api)]
+///
+/// use alloc::sync::{Arc, ArcAlloc};
+///
+/// let mut contents = Vec::new_in(ArcAlloc::new());
+/// contents.push(1u32);
+/// let contents: Arc<[u32]> = contents.into_boxed_slice().into();
+/// ```
+#[derive(Debug)]
+#[unstable(feature = "struct_alloc", issue = "none")]
+pub struct ArcAlloc<A = Global>(StructAlloc<ArcInnerMetadata, A>);
+
+#[unstable(feature = "struct_alloc", issue = "none")]
+impl ArcAlloc<Global> {
+    /// Constructs a new `ArcAlloc<Global>`.
+    pub fn new() -> Self {
+        ArcAlloc(StructAlloc::new(Global))
+    }
+}
+
+#[unstable(feature = "struct_alloc", issue = "none")]
+impl<A> ArcAlloc<A> {
+    /// Constructs a new `ArcAlloc<A>`.
+    pub fn new_with(alloc: A) -> Self {
+        ArcAlloc(StructAlloc::new(alloc))
+    }
+}
+
+implement_struct_allocator!(ArcAlloc);
+
+#[unstable(feature = "struct_alloc", issue = "none")]
+impl<T: ?Sized> From<Box<T, ArcAlloc>> for Arc<T> {
+    fn from(v: Box<T, ArcAlloc>) -> Self {
+        Self::from_arc_alloc_box(v)
     }
 }

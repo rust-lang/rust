@@ -618,3 +618,14 @@ fn test_arc_cyclic_two_refs() {
     assert_eq!(Arc::strong_count(&two_refs), 3);
     assert_eq!(Arc::weak_count(&two_refs), 2);
 }
+
+#[test]
+fn test_from_arc_alloc() {
+    let mut vec = Vec::new_in(ArcAlloc::new());
+    vec.push(1i32);
+    let b = vec.into_boxed_slice();
+    let b_addr = &*b as *const _;
+    let rc = Arc::from(b);
+    let rc_addr = &*rc as *const _;
+    assert_eq!(b_addr, rc_addr);
+}
