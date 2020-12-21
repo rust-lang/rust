@@ -1040,8 +1040,16 @@ impl<T> AtomicPtr<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[cfg(target_has_atomic = "ptr")]
     pub fn swap(&self, ptr: *mut T, order: Ordering) -> *mut T {
+        #[cfg(bootstrap)]
         // SAFETY: data races are prevented by atomic intrinsics.
-        unsafe { atomic_swap(self.p.get() as *mut usize, ptr as usize, order) as *mut T }
+        unsafe {
+            atomic_swap(self.p.get() as *mut usize, ptr as usize, order) as *mut T
+        }
+        #[cfg(not(bootstrap))]
+        // SAFETY: data races are prevented by atomic intrinsics.
+        unsafe {
+            atomic_swap(self.p.get(), ptr, order)
+        }
     }
 
     /// Stores a value into the pointer if the current value is the same as the `current` value.
