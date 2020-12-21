@@ -4,11 +4,11 @@ use core::sync::atomic::*;
 #[test]
 fn bool_() {
     let a = AtomicBool::new(false);
-    assert_eq!(a.compare_and_swap(false, true, SeqCst), false);
-    assert_eq!(a.compare_and_swap(false, true, SeqCst), true);
+    assert_eq!(a.compare_exchange(false, true, SeqCst, SeqCst), Ok(false));
+    assert_eq!(a.compare_exchange(false, true, SeqCst, SeqCst), Err(true));
 
     a.store(false, SeqCst);
-    assert_eq!(a.compare_and_swap(false, true, SeqCst), false);
+    assert_eq!(a.compare_exchange(false, true, SeqCst, SeqCst), Ok(false));
 }
 
 #[test]
