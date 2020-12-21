@@ -29,7 +29,7 @@ use rustc_span::Span;
 use smallvec::{smallvec, SmallVec};
 
 use rustc_span::source_map::{respan, Spanned};
-use std::collections::BTreeSet;
+use std::collections::{hash_map::Entry, BTreeSet};
 use std::mem::{replace, take};
 use tracing::debug;
 
@@ -953,8 +953,8 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                             });
                         };
 
-                        for item in trait_items {
-                            this.with_trait_items(trait_items, |this| {
+                        this.with_trait_items(trait_items, |this| {
+                            for item in trait_items {
                                 match &item.kind {
                                     AssocItemKind::Const(_, ty, default) => {
                                         this.visit_ty(ty);
@@ -983,8 +983,8 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                                         panic!("unexpanded macro in resolve!")
                                     }
                                 };
-                            });
-                        }
+                            }
+                        });
                     });
                 });
             }
@@ -1060,36 +1060,29 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 continue;
             }
 
-            let def_kind = match param.kind {
-                GenericParamKind::Type { .. } => DefKind::TyParam,
-                GenericParamKind::Const { .. } => DefKind::ConstParam,
-                _ => unreachable!(),
-            };
-
             let ident = param.ident.normalize_to_macros_2_0();
             debug!("with_generic_param_rib: {}", param.id);
 
-            if seen_bindings.contains_key(&ident) {
-                let span = seen_bindings.get(&ident).unwrap();
-                let err = ResolutionError::NameAlreadyUsedInParameterList(ident.name, *span);
-                self.report_error(param.ident.span, err);
+            match seen_bindings.entry(ident) {
+                Entry::Occupied(entry) => {
+                    let span = *entry.get();
+                    let err = ResolutionError::NameAlreadyUsedInParameterList(ident.name, span);
+                    self.report_error(param.ident.span, err);
+                }
+                Entry::Vacant(entry) => {
+                    entry.insert(param.ident.span);
+                }
             }
-            seen_bindings.entry(ident).or_insert(param.ident.span);
 
             // Plain insert (no renaming).
-            let res = Res::Def(def_kind, self.r.local_def_id(param.id).to_def_id());
-
-            match param.kind {
-                GenericParamKind::Type { .. } => {
-                    function_type_rib.bindings.insert(ident, res);
-                    self.r.record_partial_res(param.id, PartialRes::new(res));
-                }
-                GenericParamKind::Const { .. } => {
-                    function_value_rib.bindings.insert(ident, res);
-                    self.r.record_partial_res(param.id, PartialRes::new(res));
-                }
+            let (rib, def_kind) = match param.kind {
+                GenericParamKind::Type { .. } => (&mut function_type_rib, DefKind::TyParam),
+                GenericParamKind::Const { .. } => (&mut function_value_rib, DefKind::ConstParam),
                 _ => unreachable!(),
-            }
+            };
+            let res = Res::Def(def_kind, self.r.local_def_id(param.id).to_def_id());
+            self.r.record_partial_res(param.id, PartialRes::new(res));
+            rib.bindings.insert(ident, res);
         }
 
         self.ribs[ValueNS].push(function_value_rib);
@@ -1778,7 +1771,6 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             path
         );
         let ns = source.namespace();
-        let is_expected = &|res| source.is_expected(res);
 
         let report_errors = |this: &mut Self, res: Option<Res>| {
             if this.should_report_errs() {
@@ -1881,7 +1873,8 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             crate_lint,
         ) {
             Ok(Some(partial_res)) if partial_res.unresolved_segments() == 0 => {
-                if is_expected(partial_res.base_res()) || partial_res.base_res() == Res::Err {
+                if source.is_expected(partial_res.base_res()) || partial_res.base_res() == Res::Err
+                {
                     partial_res
                 } else {
                     report_errors(self, Some(partial_res.base_res()))
@@ -1898,11 +1891,11 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     self.r.trait_map.insert(id, traits);
                 }
 
-                let mut std_path = vec![Segment::from_ident(Ident::with_dummy_span(sym::std))];
-
-                std_path.extend(path);
-
                 if self.r.primitive_type_table.primitive_types.contains_key(&path[0].ident.name) {
+                    let mut std_path = Vec::with_capacity(1 + path.len());
+
+                    std_path.push(Segment::from_ident(Ident::with_dummy_span(sym::std)));
+                    std_path.extend(path);
                     if let PathResult::Module(_) | PathResult::NonModule(_) =
                         self.resolve_path(&std_path, Some(ns), false, span, CrateLint::No)
                     {
@@ -1983,7 +1976,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
     ) -> Result<Option<PartialRes>, Spanned<ResolutionError<'a>>> {
         let mut fin_res = None;
 
-        for (i, ns) in [primary_ns, TypeNS, ValueNS].iter().cloned().enumerate() {
+        for (i, &ns) in [primary_ns, TypeNS, ValueNS].iter().enumerate() {
             if i == 0 || ns != primary_ns {
                 match self.resolve_qpath(id, qself, path, ns, span, crate_lint)? {
                     Some(partial_res)
@@ -1993,7 +1986,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     }
                     partial_res => {
                         if fin_res.is_none() {
-                            fin_res = partial_res
+                            fin_res = partial_res;
                         }
                     }
                 }
