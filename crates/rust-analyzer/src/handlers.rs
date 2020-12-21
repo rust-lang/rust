@@ -281,7 +281,7 @@ pub(crate) fn handle_document_symbol(
             detail: symbol.detail,
             kind: to_proto::symbol_kind(symbol.kind),
             tags: Some(tags),
-            deprecated: Some(symbol.deprecated),
+            deprecated: None,
             range: to_proto::range(&line_index, symbol.node_range),
             selection_range: to_proto::range(&line_index, symbol.navigation_range),
             children: None,
