@@ -1603,7 +1603,7 @@ impl<'a> Parser<'a> {
             self.sess.gated_spans.gate(sym::async_closure, span);
         }
 
-        let capture_clause = self.parse_capture_clause();
+        let capture_clause = self.parse_capture_clause()?;
         let decl = self.parse_fn_block_decl()?;
         let decl_hi = self.prev_token.span;
         let body = match decl.output {
@@ -1626,8 +1626,18 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses an optional `move` prefix to a closure-like construct.
-    fn parse_capture_clause(&mut self) -> CaptureBy {
-        if self.eat_keyword(kw::Move) { CaptureBy::Value } else { CaptureBy::Ref }
+    fn parse_capture_clause(&mut self) -> PResult<'a, CaptureBy> {
+        if self.eat_keyword(kw::Move) {
+            // Check for `move async` and recover
+            if self.check_keyword(kw::Async) {
+                let move_async_span = self.token.span.with_lo(self.prev_token.span.data().lo);
+                Err(self.incorrect_move_async_order_found(move_async_span))
+            } else {
+                Ok(CaptureBy::Value)
+            }
+        } else {
+            Ok(CaptureBy::Ref)
+        }
     }
 
     /// Parses the `|arg, arg|` header of a closure.
@@ -2019,7 +2029,7 @@ impl<'a> Parser<'a> {
     fn parse_async_block(&mut self, mut attrs: AttrVec) -> PResult<'a, P<Expr>> {
         let lo = self.token.span;
         self.expect_keyword(kw::Async)?;
-        let capture_clause = self.parse_capture_clause();
+        let capture_clause = self.parse_capture_clause()?;
         let (iattrs, body) = self.parse_inner_attrs_and_block()?;
         attrs.extend(iattrs);
         let kind = ExprKind::Async(capture_clause, DUMMY_NODE_ID, body);
