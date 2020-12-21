@@ -88,6 +88,8 @@ impl BoundRegionKind {
     }
 }
 
+/// Defines the kinds of types.
+///
 /// N.B., if you change this, you'll probably want to change the corresponding
 /// AST structure in `librustc_ast/ast.rs` as well.
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, TyEncodable, TyDecodable, Debug)]
@@ -110,7 +112,7 @@ pub enum TyKind<'tcx> {
     /// A primitive floating-point type. For example, `f64`.
     Float(ast::FloatTy),
 
-    /// Structures, enumerations and unions.
+    /// Algebraic data types (ADT). For example: structures, enumerations and unions.
     ///
     /// InternalSubsts here, possibly against intuition, *may* contain `Param`s.
     /// That is, even after substitution it is possible that there are type
@@ -170,11 +172,11 @@ pub enum TyKind<'tcx> {
     /// `|a| yield a`.
     Generator(DefId, SubstsRef<'tcx>, hir::Movability),
 
-    /// A type representin the types stored inside a generator.
+    /// A type representing the types stored inside a generator.
     /// This should only appear in GeneratorInteriors.
     GeneratorWitness(Binder<&'tcx List<Ty<'tcx>>>),
 
-    /// The never type `!`
+    /// The never type `!`.
     Never,
 
     /// A tuple type. For example, `(i32, bool)`.
