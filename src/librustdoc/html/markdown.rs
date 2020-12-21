@@ -447,21 +447,23 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for LinkReplacer<'a, I> {
 }
 
 /// Make headings links with anchor IDs and build up TOC.
-struct HeadingLinks<'a, 'b, 'ids, I: Iterator<Item = Event<'a>>> {
+struct HeadingLinks<'a, 'b, 'ids, I> {
     inner: I,
     toc: Option<&'b mut TocBuilder>,
-    buf: VecDeque<Event<'a>>,
+    buf: VecDeque<(Event<'a>, Range<usize>)>,
     id_map: &'ids mut IdMap,
 }
 
-impl<'a, 'b, 'ids, I: Iterator<Item = Event<'a>>> HeadingLinks<'a, 'b, 'ids, I> {
+impl<'a, 'b, 'ids, I> HeadingLinks<'a, 'b, 'ids, I> {
     fn new(iter: I, toc: Option<&'b mut TocBuilder>, ids: &'ids mut IdMap) -> Self {
         HeadingLinks { inner: iter, toc, buf: VecDeque::new(), id_map: ids }
     }
 }
 
-impl<'a, 'b, 'ids, I: Iterator<Item = Event<'a>>> Iterator for HeadingLinks<'a, 'b, 'ids, I> {
-    type Item = Event<'a>;
+impl<'a, 'b, 'ids, I: Iterator<Item = (Event<'a>, Range<usize>)>> Iterator
+    for HeadingLinks<'a, 'b, 'ids, I>
+{
+    type Item = (Event<'a>, Range<usize>);
 
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(e) = self.buf.pop_front() {
@@ -469,31 +471,29 @@ impl<'a, 'b, 'ids, I: Iterator<Item = Event<'a>>> Iterator for HeadingLinks<'a, 
         }
 
         let event = self.inner.next();
-        if let Some(Event::Start(Tag::Heading(level))) = event {
+        if let Some((Event::Start(Tag::Heading(level)), _)) = event {
             let mut id = String::new();
             for event in &mut self.inner {
-                match &event {
+                match &event.0 {
                     Event::End(Tag::Heading(..)) => break,
+                    Event::Start(Tag::Link(_, _, _)) | Event::End(Tag::Link(..)) => {}
                     Event::Text(text) | Event::Code(text) => {
                         id.extend(text.chars().filter_map(slugify));
+                        self.buf.push_back(event);
                     }
-                    _ => {}
-                }
-                match event {
-                    Event::Start(Tag::Link(_, _, _)) | Event::End(Tag::Link(..)) => {}
-                    event => self.buf.push_back(event),
+                    _ => self.buf.push_back(event),
                 }
             }
             let id = self.id_map.derive(id);
 
             if let Some(ref mut builder) = self.toc {
                 let mut html_header = String::new();
-                html::push_html(&mut html_header, self.buf.iter().cloned());
+                html::push_html(&mut html_header, self.buf.iter().map(|(ev, _)| ev.clone()));
                 let sec = builder.push(level as u32, html_header, id.clone());
-                self.buf.push_front(Event::Html(format!("{} ", sec).into()));
+                self.buf.push_front((Event::Html(format!("{} ", sec).into()), 0..0));
             }
 
-            self.buf.push_back(Event::Html(format!("</a></h{}>", level).into()));
+            self.buf.push_back((Event::Html(format!("</a></h{}>", level).into()), 0..0));
 
             let start_tags = format!(
                 "<h{level} id=\"{id}\" class=\"section-header\">\
@@ -501,7 +501,7 @@ impl<'a, 'b, 'ids, I: Iterator<Item = Event<'a>>> Iterator for HeadingLinks<'a, 
                 id = id,
                 level = level
             );
-            return Some(Event::Html(start_tags.into()));
+            return Some((Event::Html(start_tags.into()), 0..0));
         }
         event
     }
@@ -575,15 +575,16 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for SummaryLine<'a, I> {
 
 /// Moves all footnote definitions to the end and add back links to the
 /// references.
-struct Footnotes<'a, I: Iterator<Item = Event<'a>>> {
+struct Footnotes<'a, I> {
     inner: I,
     footnotes: FxHashMap<String, (Vec<Event<'a>>, u16)>,
 }
 
-impl<'a, I: Iterator<Item = Event<'a>>> Footnotes<'a, I> {
+impl<'a, I> Footnotes<'a, I> {
     fn new(iter: I) -> Self {
         Footnotes { inner: iter, footnotes: FxHashMap::default() }
     }
+
     fn get_entry(&mut self, key: &str) -> &mut (Vec<Event<'a>>, u16) {
         let new_id = self.footnotes.keys().count() + 1;
         let key = key.to_owned();
@@ -591,23 +592,23 @@ impl<'a, I: Iterator<Item = Event<'a>>> Footnotes<'a, I> {
     }
 }
 
-impl<'a, I: Iterator<Item = Event<'a>>> Iterator for Footnotes<'a, I> {
-    type Item = Event<'a>;
+impl<'a, I: Iterator<Item = (Event<'a>, Range<usize>)>> Iterator for Footnotes<'a, I> {
+    type Item = (Event<'a>, Range<usize>);
 
     fn next(&mut self) -> Option<Self::Item> {
         loop {
             match self.inner.next() {
-                Some(Event::FootnoteReference(ref reference)) => {
+                Some((Event::FootnoteReference(ref reference), range)) => {
                     let entry = self.get_entry(&reference);
                     let reference = format!(
                         "<sup id=\"fnref{0}\"><a href=\"#fn{0}\">{0}</a></sup>",
                         (*entry).1
                     );
-                    return Some(Event::Html(reference.into()));
+                    return Some((Event::Html(reference.into()), range));
                 }
-                Some(Event::Start(Tag::FootnoteDefinition(def))) => {
+                Some((Event::Start(Tag::FootnoteDefinition(def)), _)) => {
                     let mut content = Vec::new();
-                    for event in &mut self.inner {
+                    for (event, _) in &mut self.inner {
                         if let Event::End(Tag::FootnoteDefinition(..)) = event {
                             break;
                         }
@@ -638,7 +639,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for Footnotes<'a, I> {
                             ret.push_str("</li>");
                         }
                         ret.push_str("</ol></div>");
-                        return Some(Event::Html(ret.into()));
+                        return Some((Event::Html(ret.into()), 0..0));
                     } else {
                         return None;
                     }
@@ -946,13 +947,14 @@ impl Markdown<'_> {
         };
 
         let p = Parser::new_with_broken_link_callback(md, opts(), Some(&mut replacer));
+        let p = p.into_offset_iter();
 
         let mut s = String::with_capacity(md.len() * 3 / 2);
 
         let p = HeadingLinks::new(p, None, &mut ids);
-        let p = LinkReplacer::new(p, links);
-        let p = CodeBlocks::new(p, codes, edition, playground);
         let p = Footnotes::new(p);
+        let p = LinkReplacer::new(p.map(|(ev, _)| ev), links);
+        let p = CodeBlocks::new(p, codes, edition, playground);
         html::push_html(&mut s, p);
 
         s
@@ -963,7 +965,7 @@ impl MarkdownWithToc<'_> {
     crate fn into_string(self) -> String {
         let MarkdownWithToc(md, mut ids, codes, edition, playground) = self;
 
-        let p = Parser::new_ext(md, opts());
+        let p = Parser::new_ext(md, opts()).into_offset_iter();
 
         let mut s = String::with_capacity(md.len() * 3 / 2);
 
@@ -971,8 +973,8 @@ impl MarkdownWithToc<'_> {
 
         {
             let p = HeadingLinks::new(p, Some(&mut toc), &mut ids);
-            let p = CodeBlocks::new(p, codes, edition, playground);
             let p = Footnotes::new(p);
+            let p = CodeBlocks::new(p.map(|(ev, _)| ev), codes, edition, playground);
             html::push_html(&mut s, p);
         }
 
@@ -988,19 +990,19 @@ impl MarkdownHtml<'_> {
         if md.is_empty() {
             return String::new();
         }
-        let p = Parser::new_ext(md, opts());
+        let p = Parser::new_ext(md, opts()).into_offset_iter();
 
         // Treat inline HTML as plain text.
-        let p = p.map(|event| match event {
-            Event::Html(text) => Event::Text(text),
+        let p = p.map(|event| match event.0 {
+            Event::Html(text) => (Event::Text(text), event.1),
             _ => event,
         });
 
         let mut s = String::with_capacity(md.len() * 3 / 2);
 
         let p = HeadingLinks::new(p, None, &mut ids);
-        let p = CodeBlocks::new(p, codes, edition, playground);
         let p = Footnotes::new(p);
+        let p = CodeBlocks::new(p.map(|(ev, _)| ev), codes, edition, playground);
         html::push_html(&mut s, p);
 
         s
@@ -1153,50 +1155,45 @@ crate fn plain_text_summary(md: &str) -> String {
     s
 }
 
-crate fn markdown_links(md: &str) -> Vec<(String, Option<Range<usize>>)> {
+crate fn markdown_links(md: &str) -> Vec<(String, Range<usize>)> {
     if md.is_empty() {
         return vec![];
     }
 
     let mut links = vec![];
+    // Used to avoid mutable borrow issues in the `push` closure
+    // Probably it would be more efficient to use a `RefCell` but it doesn't seem worth the churn.
     let mut shortcut_links = vec![];
 
-    {
-        let locate = |s: &str| unsafe {
-            let s_start = s.as_ptr();
-            let s_end = s_start.add(s.len());
-            let md_start = md.as_ptr();
-            let md_end = md_start.add(md.len());
-            if md_start <= s_start && s_end <= md_end {
-                let start = s_start.offset_from(md_start) as usize;
-                let end = s_end.offset_from(md_start) as usize;
-                Some(start..end)
-            } else {
-                None
+    let span_for_link = |link: &str, span: Range<usize>| {
+        // Pulldown includes the `[]` as well as the URL. Only highlight the relevant span.
+        // NOTE: uses `rfind` in case the title and url are the same: `[Ok][Ok]`
+        match md[span.clone()].rfind(link) {
+            Some(start) => {
+                let start = span.start + start;
+                start..start + link.len()
             }
-        };
+            // This can happen for things other than intra-doc links, like `#1` expanded to `https://github.com/rust-lang/rust/issues/1`.
+            None => span,
+        }
+    };
+    let mut push = |link: BrokenLink<'_>| {
+        let span = span_for_link(link.reference, link.span);
+        shortcut_links.push((link.reference.to_owned(), span));
+        None
+    };
+    let p = Parser::new_with_broken_link_callback(md, opts(), Some(&mut push));
 
-        let mut push = |link: BrokenLink<'_>| {
-            // FIXME: use `link.span` instead of `locate`
-            // (doing it now includes the `[]` as well as the text)
-            shortcut_links.push((link.reference.to_owned(), locate(link.reference)));
-            None
-        };
-        let p = Parser::new_with_broken_link_callback(md, opts(), Some(&mut push));
+    // There's no need to thread an IdMap through to here because
+    // the IDs generated aren't going to be emitted anywhere.
+    let mut ids = IdMap::new();
+    let iter = Footnotes::new(HeadingLinks::new(p.into_offset_iter(), None, &mut ids));
 
-        // There's no need to thread an IdMap through to here because
-        // the IDs generated aren't going to be emitted anywhere.
-        let mut ids = IdMap::new();
-        let iter = Footnotes::new(HeadingLinks::new(p, None, &mut ids));
-
-        for ev in iter {
-            if let Event::Start(Tag::Link(_, dest, _)) = ev {
-                debug!("found link: {}", dest);
-                links.push(match dest {
-                    CowStr::Borrowed(s) => (s.to_owned(), locate(s)),
-                    s @ (CowStr::Boxed(..) | CowStr::Inlined(..)) => (s.into_string(), None),
-                });
-            }
+    for ev in iter {
+        if let Event::Start(Tag::Link(_, dest, _)) = ev.0 {
+            debug!("found link: {}", dest);
+            let span = span_for_link(&dest, ev.1);
+            links.push((dest.into_string(), span));
         }
     }
 
