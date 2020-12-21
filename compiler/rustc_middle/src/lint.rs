@@ -45,6 +45,7 @@ impl LintLevelSource {
     }
 }
 
+/// A tuple of a lint level and its source.
 pub type LevelSource = (Level, LintLevelSource);
 
 pub struct LintLevelSets {
