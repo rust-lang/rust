@@ -19,10 +19,10 @@ All contributors are expected to follow the [Rust Code of Conduct].
   - [Writing code](#writing-code)
   - [Getting code-completion for rustc internals to work](#getting-code-completion-for-rustc-internals-to-work)
   - [How Clippy works](#how-clippy-works)
-  - [Fixing build failures caused by Rust](#fixing-build-failures-caused-by-rust)
+  - [Syncing changes between Clippy and `rust-lang/rust`](#syncing-changes-between-clippy-and-rust-langrust)
     - [Patching git-subtree to work with big repos](#patching-git-subtree-to-work-with-big-repos)
-    - [Performing the sync](#performing-the-sync)
-    - [Syncing back changes in Clippy to [`rust-lang/rust`]](#syncing-back-changes-in-clippy-to-rust-langrust)
+    - [Performing the sync from `rust-lang/rust` to Clippy](#performing-the-sync-from-rust-langrust-to-clippy)
+    - [Performing the sync from Clippy to `rust-lang/rust`](#performing-the-sync-from-clippy-to-rust-langrust)
     - [Defining remotes](#defining-remotes)
   - [Issue and PR triage](#issue-and-pr-triage)
   - [Bors and Homu](#bors-and-homu)
@@ -49,7 +49,7 @@ first read the [Basics docs](doc/basics.md).**
 All issues on Clippy are mentored, if you want help with a bug just ask
 @Manishearth, @flip1995, @phansch or @yaahc.
 
-Some issues are easier than others. The [`good first issue`] label can be used to find the easy issues.
+Some issues are easier than others. The [`good-first-issue`] label can be used to find the easy issues.
 If you want to work on an issue, please leave a comment so that we can assign it to you!
 
 There are also some abandoned PRs, marked with [`S-inactive-closed`].
@@ -68,16 +68,16 @@ To figure out how this syntax structure is encoded in the AST, it is recommended
 Usually the lint will end up to be a nested series of matches and ifs, [like so][deep-nesting].
 But we can make it nest-less by using [if_chain] macro, [like this][nest-less].
 
-[`E-medium`] issues are generally pretty easy too, though it's recommended you work on an [`good first issue`]
+[`E-medium`] issues are generally pretty easy too, though it's recommended you work on an [`good-first-issue`]
 first. Sometimes they are only somewhat involved code wise, but not difficult per-se.
-Note that [`E-medium`] issues may require some knowledge of Clippy internals or some 
-debugging to find the actual problem behind the issue. 
+Note that [`E-medium`] issues may require some knowledge of Clippy internals or some
+debugging to find the actual problem behind the issue.
 
 [`T-middle`] issues can be more involved and require verifying types. The [`ty`] module contains a
 lot of methods that are useful, though one of the most useful would be `expr_ty` (gives the type of
 an AST expression). `match_def_path()` in Clippy's `utils` module can also be useful.
 
-[`good first issue`]: https://github.com/rust-lang/rust-clippy/labels/good%20first%20issue
+[`good-first-issue`]: https://github.com/rust-lang/rust-clippy/labels/good-first-issue
 [`S-inactive-closed`]: https://github.com/rust-lang/rust-clippy/pulls?q=is%3Aclosed+label%3AS-inactive-closed
 [`T-AST`]: https://github.com/rust-lang/rust-clippy/labels/T-AST
 [`T-middle`]: https://github.com/rust-lang/rust-clippy/labels/T-middle
@@ -111,7 +111,7 @@ To work around this, you need to have a copy of the [rustc-repo][rustc_repo] ava
 `git clone https://github.com/rust-lang/rust/`.
 Then you can run a `cargo dev` command to automatically make Clippy use the rustc-repo via path-dependencies
 which rust-analyzer will be able to understand.
-Run `cargo dev ra-setup --repo-path <repo-path>` where `<repo-path>` is an absolute path to the rustc repo
+Run `cargo dev ra_setup --repo-path <repo-path>` where `<repo-path>` is an absolute path to the rustc repo
 you just cloned.
 The command will add path-dependencies pointing towards rustc-crates inside the rustc repo to
 Clippys `Cargo.toml`s and should allow rust-analyzer to understand most of the types that Clippy uses.
@@ -182,18 +182,26 @@ That's why the `else_if_without_else` example uses the `register_early_pass` fun
 [early_lint_pass]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/trait.EarlyLintPass.html
 [late_lint_pass]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/trait.LateLintPass.html
 
-## Fixing build failures caused by Rust
+## Syncing changes between Clippy and [`rust-lang/rust`]
 
-Clippy currently gets built with `rustc` of the `rust-lang/rust` `master`
-branch. Most of the times we have to adapt to the changes and only very rarely
-there's an actual bug in Rust.
+Clippy currently gets built with a pinned nightly version.
 
-If you decide to make Clippy work again with a Rust commit that breaks it, you
-have to sync the `rust-lang/rust-clippy` repository with the `subtree` copy of
-Clippy in the `rust-lang/rust` repository.
+In the `rust-lang/rust` repository, where rustc resides, there's a copy of Clippy
+that compiler hackers modify from time to time to adapt to changes in the unstable
+API of the compiler.
 
-For general information about `subtree`s in the Rust repository see [Rust's
-`CONTRIBUTING.md`][subtree].
+We need to sync these changes back to this repository periodically, and the changes
+made to this repository in the meantime also need to be synced to the `rust-lang/rust` repository.
+
+To avoid flooding the `rust-lang/rust` PR queue, this two-way sync process is done
+in a bi-weekly basis if there's no urgent changes. This is done starting on the day of
+the Rust stable release and then every other week. That way we guarantee that we keep
+this repo up to date with the latest compiler API, and every feature in Clippy is available
+for 2 weeks in nightly, before it can get to beta. For reference, the first sync
+following this cadence was performed the 2020-08-27.
+
+This process is described in detail in the following sections. For general information
+about `subtree`s in the Rust repository see [Rust's `CONTRIBUTING.md`][subtree].
 
 ### Patching git-subtree to work with big repos
 
@@ -222,13 +230,14 @@ This shell has a hardcoded recursion limit set to 1000. In order to make this pr
 you need to force the script to run `bash` instead. You can do this by editing the first
 line of the `git-subtree` script and changing `sh` to `bash`.
 
-### Performing the sync
+### Performing the sync from [`rust-lang/rust`] to Clippy
 
 Here is a TL;DR version of the sync process (all of the following commands have
 to be run inside the `rust` directory):
 
-1. Clone the [`rust-lang/rust`] repository
-2. Sync the changes to the rust-copy of Clippy to your Clippy fork:
+1. Clone the [`rust-lang/rust`] repository or make sure it is up to date.
+2. Checkout the commit from the latest available nightly. You can get it using `rustup check`.
+3. Sync the changes to the rust-copy of Clippy to your Clippy fork:
     ```bash
     # Make sure to change `your-github-name` to your github name in the following command
     git subtree push -P src/tools/clippy git@github.com:your-github-name/rust-clippy sync-from-rust
@@ -246,17 +255,11 @@ to be run inside the `rust` directory):
     git checkout sync-from-rust
     git merge upstream/master
     ```
-3. Open a PR to `rust-lang/rust-clippy` and wait for it to get merged (to
+4. Open a PR to `rust-lang/rust-clippy` and wait for it to get merged (to
    accelerate the process ping the `@rust-lang/clippy` team in your PR and/or
    ~~annoy~~ ask them in the [Zulip] stream.)
-   
-### Syncing back changes in Clippy to [`rust-lang/rust`]
 
-To avoid flooding the [`rust-lang/rust`] PR queue, changes in Clippy's repo are synced back
-in a bi-weekly basis if there's no urgent changes. This is done starting on the day of
-the Rust stable release and then every other week. That way we guarantee that
-every feature in Clippy is available for 2 weeks in nightly, before it can get to beta.
-For reference, the first sync following this cadence was performed the 2020-08-27.
+### Performing the sync from Clippy to [`rust-lang/rust`]
 
 All of the following commands have to be run inside the `rust` directory.
 

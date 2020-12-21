@@ -23,6 +23,7 @@ jobs:
     - uses: rust-lang/simpleinfra/github-actions/cancel-outdated-builds@master
       with:
         github_token: "${{ secrets.github_token }}"
+
     - name: Checkout
       uses: actions/checkout@v2.3.3
       with:
@@ -84,31 +85,11 @@ jobs:
         sudo apt-get install gcc-multilib libssl-dev:i386 libgit2-dev:i386
       if: matrix.host == 'i686-unknown-linux-gnu'
 
-    - name: rust-toolchain
-      uses: actions-rs/toolchain@v1.0.6
-      with:
-        toolchain: nightly
-        target: ${{ matrix.host }}
-        profile: minimal
-
     - name: Checkout
       uses: actions/checkout@v2.3.3
 
-    - name: Run cargo update
-      run: cargo update
-
-    - name: Cache cargo dir
-      uses: actions/cache@v2
-      with:
-        path: ~/.cargo
-        key: ${{ runner.os }}-${{ matrix.host }}-${{ hashFiles('Cargo.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-${{ matrix.host }}
-
-    - name: Master Toolchain Setup
-      run: bash setup-toolchain.sh
-      env:
-        HOST_TOOLCHAIN: ${{ matrix.host }}
+    - name: Install toolchain
+      run: rustup show active-toolchain
 
     # Run
     - name: Set LD_LIBRARY_PATH (Linux)
@@ -128,13 +109,13 @@ jobs:
         SYSROOT=$(rustc --print sysroot)
         echo "$SYSROOT/bin" >> $GITHUB_PATH
 
-    - name: Build with internal lints
+    - name: Build
       run: cargo build --features deny-warnings,internal-lints
 
-    - name: Test with internal lints
+    - name: Test
       run: cargo test --features deny-warnings,internal-lints
 
-    - name: Test clippy_lints with internal lints
+    - name: Test clippy_lints
       run: cargo test --features deny-warnings,internal-lints
       working-directory: clippy_lints
 
@@ -155,12 +136,6 @@ jobs:
       env:
         OS: ${{ runner.os }}
 
-    # Cleanup
-    - name: Run cargo-cache --autoclean
-      run: |
-        cargo +nightly install cargo-cache --no-default-features --features ci-autoclean cargo-cache
-        cargo cache
-
   integration_build:
     needs: changelog
     runs-on: ubuntu-latest
@@ -171,29 +146,11 @@ jobs:
       with:
         github_token: "${{ secrets.github_token }}"
 
-    - name: rust-toolchain
-      uses: actions-rs/toolchain@v1.0.6
-      with:
-        toolchain: nightly
-        target: x86_64-unknown-linux-gnu
-        profile: minimal
-
     - name: Checkout
       uses: actions/checkout@v2.3.3
 
-    - name: Run cargo update
-      run: cargo update
-
-    - name: Cache cargo dir
-      uses: actions/cache@v2
-      with:
-        path: ~/.cargo
-        key: ${{ runner.os }}-x86_64-unknown-linux-gnu-${{ hashFiles('Cargo.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-x86_64-unknown-linux-gnu
-
-    - name: Master Toolchain Setup
-      run: bash setup-toolchain.sh
+    - name: Install toolchain
+      run: rustup show active-toolchain
 
     # Run
     - name: Build Integration Test
@@ -214,11 +171,6 @@ jobs:
         name: target
         path: target
 
-    # Cleanup
-    - name: Run cargo-cache --autoclean
-      run: |
-        cargo +nightly install cargo-cache --no-default-features --features ci-autoclean cargo-cache
-        cargo cache
   integration:
     needs: integration_build
     strategy:
@@ -252,29 +204,11 @@ jobs:
       with:
         github_token: "${{ secrets.github_token }}"
 
-    - name: rust-toolchain
-      uses: actions-rs/toolchain@v1.0.6
-      with:
-        toolchain: nightly
-        target: x86_64-unknown-linux-gnu
-        profile: minimal
-
     - name: Checkout
       uses: actions/checkout@v2.3.3
 
-    - name: Run cargo update
-      run: cargo update
-
-    - name: Cache cargo dir
-      uses: actions/cache@v2
-      with:
-        path: ~/.cargo
-        key: ${{ runner.os }}-x86_64-unknown-linux-gnu-${{ hashFiles('Cargo.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-x86_64-unknown-linux-gnu
-
-    - name: Master Toolchain Setup
-      run: bash setup-toolchain.sh
+    - name: Install toolchain
+      run: rustup show active-toolchain
 
     # Download
     - name: Download target dir
@@ -288,16 +222,11 @@ jobs:
 
     # Run
     - name: Test ${{ matrix.integration }}
-      run: $CARGO_TARGET_DIR/debug/integration
+      run: |
+        RUSTUP_TOOLCHAIN="$(rustup show active-toolchain | grep -o -E "nightly-[0-9]{4}-[0-9]{2}-[0-9]{2}")" \
+          $CARGO_TARGET_DIR/debug/integration
       env:
         INTEGRATION: ${{ matrix.integration }}
-        RUSTUP_TOOLCHAIN: master
-
-    # Cleanup
-    - name: Run cargo-cache --autoclean
-      run: |
-        cargo +nightly install cargo-cache --no-default-features --features ci-autoclean cargo-cache
-        cargo cache
 
   # These jobs doesn't actually test anything, but they're only used to tell
   # bors the build completed, as there is no practical way to detect when a

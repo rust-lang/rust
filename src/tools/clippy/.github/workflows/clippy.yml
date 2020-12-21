@@ -35,29 +35,11 @@ jobs:
       with:
         github_token: "${{ secrets.github_token }}"
 
-    - name: rust-toolchain
-      uses: actions-rs/toolchain@v1.0.6
-      with:
-        toolchain: nightly
-        target: x86_64-unknown-linux-gnu
-        profile: minimal
-
     - name: Checkout
       uses: actions/checkout@v2.3.3
 
-    - name: Run cargo update
-      run: cargo update
-
-    - name: Cache cargo dir
-      uses: actions/cache@v2
-      with:
-        path: ~/.cargo
-        key: ${{ runner.os }}-x86_64-unknown-linux-gnu-${{ hashFiles('Cargo.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-x86_64-unknown-linux-gnu
-
-    - name: Master Toolchain Setup
-      run: bash setup-toolchain.sh
+    - name: Install toolchain
+      run: rustup show active-toolchain
 
     # Run
     - name: Set LD_LIBRARY_PATH (Linux)
@@ -66,13 +48,13 @@ jobs:
         echo "LD_LIBRARY_PATH=${SYSROOT}/lib${LD_LIBRARY_PATH+:${LD_LIBRARY_PATH}}" >> $GITHUB_ENV
 
     - name: Build
-      run: cargo build --features deny-warnings
+      run: cargo build --features deny-warnings,internal-lints
 
     - name: Test
-      run: cargo test --features deny-warnings
+      run: cargo test --features deny-warnings,internal-lints
 
     - name: Test clippy_lints
-      run: cargo test --features deny-warnings
+      run: cargo test --features deny-warnings,internal-lints
       working-directory: clippy_lints
 
     - name: Test rustc_tools_util
@@ -98,9 +80,3 @@ jobs:
         cargo dev new_lint --name new_late_pass --pass late
         cargo check
         git reset --hard HEAD
-
-    # Cleanup
-    - name: Run cargo-cache --autoclean
-      run: |
-        cargo +nightly install cargo-cache --no-default-features --features ci-autoclean cargo-cache
-        cargo cache

@@ -146,6 +146,11 @@ help: skipping check that does not even have a feature gate
    |
 LL |     unsafe { match static_cross_crate::OPT_ZERO { Some(ref u) => u, None => panic!() } }
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: skipping check that does not even have a feature gate
+  --> $DIR/const_refers_to_static_cross_crate.rs:32:20
+   |
+LL |     unsafe { match static_cross_crate::OPT_ZERO { Some(ref u) => u, None => panic!() } }
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: skipping check for `const_panic` feature
   --> $DIR/const_refers_to_static_cross_crate.rs:32:77
    |

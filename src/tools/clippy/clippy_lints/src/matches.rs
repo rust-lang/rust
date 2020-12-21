@@ -4,8 +4,8 @@ use crate::utils::usage::is_unused;
 use crate::utils::{
     expr_block, get_arg_name, get_parent_expr, in_macro, indent_of, is_allowed, is_expn_of, is_refutable,
     is_type_diagnostic_item, is_wild, match_qpath, match_type, match_var, meets_msrv, multispan_sugg, remove_blocks,
-    snippet, snippet_block, snippet_with_applicability, span_lint_and_help, span_lint_and_note, span_lint_and_sugg,
-    span_lint_and_then,
+    snippet, snippet_block, snippet_opt, snippet_with_applicability, span_lint_and_help, span_lint_and_note,
+    span_lint_and_sugg, span_lint_and_then,
 };
 use crate::utils::{paths, search_same, SpanlessEq, SpanlessHash};
 use if_chain::if_chain;
@@ -689,10 +689,9 @@ fn check_single_match(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>], exp
             if stmts.len() == 1 && block_expr.is_none() || stmts.is_empty() && block_expr.is_some() {
                 // single statement/expr "else" block, don't lint
                 return;
-            } else {
-                // block with 2+ statements or 1 expr and 1+ statement
-                Some(els)
             }
+            // block with 2+ statements or 1 expr and 1+ statement
+            Some(els)
         } else {
             // not a block, don't lint
             return;
@@ -1238,6 +1237,24 @@ fn check_match_single_binding<'a>(cx: &LateContext<'a>, ex: &Expr<'a>, arms: &[A
     if in_macro(expr.span) || arms.len() != 1 || is_refutable(cx, arms[0].pat) {
         return;
     }
+
+    // HACK:
+    // This is a hack to deal with arms that are excluded by macros like `#[cfg]`. It is only used here
+    // to prevent false positives as there is currently no better way to detect if code was excluded by
+    // a macro. See PR #6435
+    if_chain! {
+        if let Some(match_snippet) = snippet_opt(cx, expr.span);
+        if let Some(arm_snippet) = snippet_opt(cx, arms[0].span);
+        if let Some(ex_snippet) = snippet_opt(cx, ex.span);
+        let rest_snippet = match_snippet.replace(&arm_snippet, "").replace(&ex_snippet, "");
+        if rest_snippet.contains("=>");
+        then {
+            // The code it self contains another thick arrow "=>"
+            // -> Either another arm or a comment
+            return;
+        }
+    }
+
     let matched_vars = ex.span;
     let bind_names = arms[0].pat.span;
     let match_body = remove_blocks(&arms[0].body);
