@@ -147,20 +147,20 @@ fn find_name(
 ) -> Option<RangeInfo<Definition>> {
     if let Some(name) = opt_name {
         let def = NameClass::classify(sema, &name)?.referenced_or_defined(sema.db);
-        let range = name.syntax().text_range();
+        let FileRange { range, .. } = sema.original_range(name.syntax());
         return Some(RangeInfo::new(range, def));
     }
 
-    let (text_range, def) = if let Some(lifetime) =
+    let (FileRange { range, .. }, def) = if let Some(lifetime) =
         sema.find_node_at_offset_with_descend::<ast::Lifetime>(&syntax, position.offset)
     {
         if let Some(def) = NameRefClass::classify_lifetime(sema, &lifetime)
             .map(|class| NameRefClass::referenced(class, sema.db))
         {
-            (lifetime.syntax().text_range(), def)
+            (sema.original_range(lifetime.syntax()), def)
         } else {
             (
-                lifetime.syntax().text_range(),
+                sema.original_range(lifetime.syntax()),
                 NameClass::classify_lifetime(sema, &lifetime)?.referenced_or_defined(sema.db),
             )
         }
@@ -168,11 +168,11 @@ fn find_name(
         let name_ref =
             sema.find_node_at_offset_with_descend::<ast::NameRef>(&syntax, position.offset)?;
         (
-            name_ref.syntax().text_range(),
+            sema.original_range(name_ref.syntax()),
             NameRefClass::classify(sema, &name_ref)?.referenced(sema.db),
         )
     };
-    Some(RangeInfo::new(text_range, def))
+    Some(RangeInfo::new(range, def))
 }
 
 fn decl_access(def: &Definition, syntax: &SyntaxNode, range: TextRange) -> Option<ReferenceAccess> {
@@ -1083,6 +1083,42 @@ impl<'a> Foo<'a> for &'a () {
                 FileId(0) 55..57 Lifetime
                 FileId(0) 64..66 Lifetime
                 FileId(0) 89..91 Lifetime
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_map_range_to_original() {
+        check(
+            r#"
+macro_rules! foo {($i:ident) => {$i} }
+fn main() {
+    let a<|> = "test";
+    foo!(a);
+}
+"#,
+            expect![[r#"
+                a Local FileId(0) 59..60 Other
+
+                FileId(0) 80..81 Other Read
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_map_range_to_original_ref() {
+        check(
+            r#"
+macro_rules! foo {($i:ident) => {$i} }
+fn main() {
+    let a = "test";
+    foo!(a<|>);
+}
+"#,
+            expect![[r#"
+                a Local FileId(0) 59..60 Other
+
+                FileId(0) 80..81 Other Read
             "#]],
         );
     }
