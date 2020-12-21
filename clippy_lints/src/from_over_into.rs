@@ -71,7 +71,7 @@ impl LateLintPass<'_> for FromOverInto {
                     cx,
                     FROM_OVER_INTO,
                     item.span,
-                    "An implementation of `From` is preferred since it gives you `Into<_>` for free where the reverse isn't true.",
+                    "an implementation of `From` is preferred since it gives you `Into<_>` for free where the reverse isn't true",
                     None,
                     "consider to implement `From` instead",
                 );
