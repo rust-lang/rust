@@ -51,7 +51,7 @@ def test(name, cmd, stdout_ref, stderr_ref, stdin=b'', env={}):
 def test_cargo_miri_run():
     test("`cargo miri run` (no isolation)",
         cargo_miri("run"),
-        "stdout.ref1", "stderr.ref1",
+        "run.default.stdout.ref", "run.default.stderr.ref",
         stdin=b'12\n21\n',
         env={
             'MIRIFLAGS': "-Zmiri-disable-isolation",
@@ -60,44 +60,49 @@ def test_cargo_miri_run():
     )
     test("`cargo miri run` (with arguments and target)",
         cargo_miri("run") + ["--bin", "cargo-miri-test", "--", "hello world", '"hello world"'],
-        "stdout.ref2", "stderr.ref2",
+        "run.args.stdout.ref", "run.args.stderr.ref",
     )
     test("`cargo miri run` (subcrate, no ioslation)",
         cargo_miri("run") + ["-p", "subcrate"],
-        "stdout.ref3", "stderr.ref3",
+        "run.subcrate.stdout.ref", "run.subcrate.stderr.ref",
         env={'MIRIFLAGS': "-Zmiri-disable-isolation"},
     )
 
 def test_cargo_miri_test():
     # rustdoc is not run on foreign targets
     is_foreign = 'MIRI_TEST_TARGET' in os.environ
-    rustdoc_ref = "test.stderr.ref2" if is_foreign else "test.stderr.ref1"
+    rustdoc_ref = "test.stderr-empty.ref" if is_foreign else "test.stderr-rustdoc.ref"
 
     test("`cargo miri test`",
         cargo_miri("test"),
-        "test.stdout.ref1", rustdoc_ref,
+        "test.default.stdout.ref", rustdoc_ref,
         env={'MIRIFLAGS': "-Zmiri-seed=feed"},
     )
     test("`cargo miri test` (no isolation)",
         cargo_miri("test"),
-        "test.stdout.ref1", rustdoc_ref,
+        "test.default.stdout.ref", rustdoc_ref,
         env={'MIRIFLAGS': "-Zmiri-disable-isolation"},
+    )
+    test("`cargo miri test` (raw-ptr tracking)",
+        cargo_miri("test") + ["--", "-Zunstable-options", "--exclude-should-panic"],
+        "test.raw-ptr-track.stdout.ref", rustdoc_ref,
+        env={'MIRIFLAGS': "-Zmiri-track-raw-pointers"},
     )
     test("`cargo miri test` (with filter)",
         cargo_miri("test") + ["--", "--format=pretty", "le1"],
-        "test.stdout.ref2", rustdoc_ref,
+        "test.filter.stdout.ref", rustdoc_ref,
     )
     test("`cargo miri test` (test target)",
         cargo_miri("test") + ["--test", "test", "--", "--format=pretty"],
-        "test.stdout.ref3", "test.stderr.ref2",
+        "test.test-target.stdout.ref", "test.stderr-empty.ref",
     )
     test("`cargo miri test` (bin target)",
         cargo_miri("test") + ["--bin", "cargo-miri-test", "--", "--format=pretty"],
-        "test.stdout.ref4", "test.stderr.ref2",
+        "test.bin-target.stdout.ref", "test.stderr-empty.ref",
     )
     test("`cargo miri test` (subcrate, no isolation)",
         cargo_miri("test") + ["-p", "subcrate"],
-        "test.stdout.ref5", "test.stderr.ref2",
+        "test.subcrate.stdout.ref", "test.stderr-empty.ref",
         env={'MIRIFLAGS': "-Zmiri-disable-isolation"},
     )
 
