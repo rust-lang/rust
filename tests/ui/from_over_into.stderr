@@ -1,4 +1,4 @@
-error: An implementation of `From` is preferred since it gives you `Into<_>` for free where the reverse isn't true.
+error: an implementation of `From` is preferred since it gives you `Into<_>` for free where the reverse isn't true
   --> $DIR/from_over_into.rs:6:1
    |
 LL | / impl Into<StringWrapper> for String {
