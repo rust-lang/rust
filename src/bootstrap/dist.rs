@@ -1283,8 +1283,7 @@ impl Step for Extended {
         let analysis_installer = builder.ensure(Analysis { compiler, target });
 
         let docs_installer = builder.ensure(Docs { host: target });
-        let std_installer =
-            builder.ensure(Std { compiler: builder.compiler(stage, target), target });
+        let std_installer = builder.ensure(Std { compiler, target });
 
         let etc = builder.src.join("src/etc/installer");
 
