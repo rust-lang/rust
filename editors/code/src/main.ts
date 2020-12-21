@@ -340,12 +340,21 @@ async function getServer(config: Config, state: PersistentState): Promise<string
     });
 
     // Patching executable if that's NixOS.
-    if (await fs.stat("/etc/nixos").then(_ => true).catch(_ => false)) {
+    if (await isNixOs()) {
         await patchelf(dest);
     }
 
     await state.updateServerVersion(config.package.version);
     return dest;
+}
+
+async function isNixOs(): Promise<boolean> {
+    try {
+        const contents = await fs.readFile("/etc/os-release");
+        return contents.indexOf("ID=nixos") !== -1;
+    } catch (e) {
+        return false;
+    }
 }
 
 async function downloadWithRetryDialog<T>(state: PersistentState, downloadFunc: () => Promise<T>): Promise<T> {
