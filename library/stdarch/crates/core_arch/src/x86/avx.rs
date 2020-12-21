@@ -1186,11 +1186,12 @@ pub unsafe fn _mm_permutevar_ps(a: __m128, b: __m128i) -> __m128 {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_permute_ps(a: __m256, imm8: i32) -> __m256 {
     let imm8 = (imm8 & 0xFF) as u8;
+    let undefined = _mm256_undefined_ps();
     macro_rules! shuffle4 {
         ($a:expr, $b:expr, $c:expr, $d:expr) => {
             simd_shuffle8(
                 a,
-                _mm256_undefined_ps(),
+                undefined,
                 [$a, $b, $c, $d, $a + 4, $b + 4, $c + 4, $d + 4],
             )
         };
@@ -1244,9 +1245,10 @@ pub unsafe fn _mm256_permute_ps(a: __m256, imm8: i32) -> __m256 {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_permute_ps(a: __m128, imm8: i32) -> __m128 {
     let imm8 = (imm8 & 0xFF) as u8;
+    let undefined = _mm_undefined_ps();
     macro_rules! shuffle4 {
         ($a:expr, $b:expr, $c:expr, $d:expr) => {
-            simd_shuffle4(a, _mm_undefined_ps(), [$a, $b, $c, $d])
+            simd_shuffle4(a, undefined, [$a, $b, $c, $d])
         };
     }
     macro_rules! shuffle3 {
@@ -1322,9 +1324,10 @@ pub unsafe fn _mm_permutevar_pd(a: __m128d, b: __m128i) -> __m128d {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_permute_pd(a: __m256d, imm8: i32) -> __m256d {
     let imm8 = (imm8 & 0xFF) as u8;
+    let undefined = _mm256_undefined_pd();
     macro_rules! shuffle4 {
         ($a:expr, $b:expr, $c:expr, $d:expr) => {
-            simd_shuffle4(a, _mm256_undefined_pd(), [$a, $b, $c, $d])
+            simd_shuffle4(a, undefined, [$a, $b, $c, $d])
         };
     }
     macro_rules! shuffle3 {
@@ -1368,9 +1371,10 @@ pub unsafe fn _mm256_permute_pd(a: __m256d, imm8: i32) -> __m256d {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_permute_pd(a: __m128d, imm8: i32) -> __m128d {
     let imm8 = (imm8 & 0xFF) as u8;
+    let undefined = _mm_undefined_pd();
     macro_rules! shuffle2 {
         ($a:expr, $b:expr) => {
-            simd_shuffle2(a, _mm_undefined_pd(), [$a, $b])
+            simd_shuffle2(a, undefined, [$a, $b])
         };
     }
     macro_rules! shuffle1 {

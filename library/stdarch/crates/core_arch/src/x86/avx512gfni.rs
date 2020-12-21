@@ -239,9 +239,11 @@ pub unsafe fn _mm_maskz_gf2p8mul_epi8(k: __mmask16, a: __m128i, b: __m128i) -> _
 #[rustc_args_required_const(2)]
 pub unsafe fn _mm512_gf2p8affine_epi64_epi8(x: __m512i, a: __m512i, b: i32) -> __m512i {
     assert!(0 <= b && b < 256);
+    let x = x.as_i8x64();
+    let a = a.as_i8x64();
     macro_rules! call {
         ($imm8:expr) => {
-            vgf2p8affineqb_512(x.as_i8x64(), a.as_i8x64(), $imm8)
+            vgf2p8affineqb_512(x, a, $imm8)
         };
     }
     let r = constify_imm8_sae!(b, call);
@@ -269,9 +271,11 @@ pub unsafe fn _mm512_maskz_gf2p8affine_epi64_epi8(
 ) -> __m512i {
     let zero = _mm512_setzero_si512().as_i8x64();
     assert!(0 <= b && b < 256);
+    let x = x.as_i8x64();
+    let a = a.as_i8x64();
     macro_rules! call {
         ($imm8:expr) => {
-            vgf2p8affineqb_512(x.as_i8x64(), a.as_i8x64(), $imm8)
+            vgf2p8affineqb_512(x, a, $imm8)
         };
     }
     let r = constify_imm8_sae!(b, call);
@@ -299,9 +303,11 @@ pub unsafe fn _mm512_mask_gf2p8affine_epi64_epi8(
     b: i32,
 ) -> __m512i {
     assert!(0 <= b && b < 256);
+    let x = x.as_i8x64();
+    let a = a.as_i8x64();
     macro_rules! call {
         ($imm8:expr) => {
-            vgf2p8affineqb_512(x.as_i8x64(), a.as_i8x64(), $imm8)
+            vgf2p8affineqb_512(x, a, $imm8)
         };
     }
     let r = constify_imm8_sae!(b, call);
@@ -320,9 +326,11 @@ pub unsafe fn _mm512_mask_gf2p8affine_epi64_epi8(
 #[rustc_args_required_const(2)]
 pub unsafe fn _mm256_gf2p8affine_epi64_epi8(x: __m256i, a: __m256i, b: i32) -> __m256i {
     assert!(0 <= b && b < 256);
+    let x = x.as_i8x32();
+    let a = a.as_i8x32();
     macro_rules! call {
         ($imm8:expr) => {
-            vgf2p8affineqb_256(x.as_i8x32(), a.as_i8x32(), $imm8)
+            vgf2p8affineqb_256(x, a, $imm8)
         };
     }
     let r = constify_imm8_sae!(b, call);
@@ -350,9 +358,11 @@ pub unsafe fn _mm256_maskz_gf2p8affine_epi64_epi8(
 ) -> __m256i {
     let zero = _mm256_setzero_si256().as_i8x32();
     assert!(0 <= b && b < 256);
+    let x = x.as_i8x32();
+    let a = a.as_i8x32();
     macro_rules! call {
         ($imm8:expr) => {
-            vgf2p8affineqb_256(x.as_i8x32(), a.as_i8x32(), $imm8)
+            vgf2p8affineqb_256(x, a, $imm8)
         };
     }
     let r = constify_imm8_sae!(b, call);
@@ -380,9 +390,11 @@ pub unsafe fn _mm256_mask_gf2p8affine_epi64_epi8(
     b: i32,
 ) -> __m256i {
     assert!(0 <= b && b < 256);
+    let x = x.as_i8x32();
+    let a = a.as_i8x32();
     macro_rules! call {
         ($imm8:expr) => {
-            vgf2p8affineqb_256(x.as_i8x32(), a.as_i8x32(), $imm8)
+            vgf2p8affineqb_256(x, a, $imm8)
         };
     }
     let r = constify_imm8_sae!(b, call);
@@ -401,9 +413,11 @@ pub unsafe fn _mm256_mask_gf2p8affine_epi64_epi8(
 #[rustc_args_required_const(2)]
 pub unsafe fn _mm_gf2p8affine_epi64_epi8(x: __m128i, a: __m128i, b: i32) -> __m128i {
     assert!(0 <= b && b < 256);
+    let x = x.as_i8x16();
+    let a = a.as_i8x16();
     macro_rules! call {
         ($imm8:expr) => {
-            vgf2p8affineqb_128(x.as_i8x16(), a.as_i8x16(), $imm8)
+            vgf2p8affineqb_128(x, a, $imm8)
         };
     }
     let r = constify_imm8_sae!(b, call);
@@ -431,9 +445,11 @@ pub unsafe fn _mm_maskz_gf2p8affine_epi64_epi8(
 ) -> __m128i {
     let zero = _mm_setzero_si128().as_i8x16();
     assert!(0 <= b && b < 256);
+    let x = x.as_i8x16();
+    let a = a.as_i8x16();
     macro_rules! call {
         ($imm8:expr) => {
-            vgf2p8affineqb_128(x.as_i8x16(), a.as_i8x16(), $imm8)
+            vgf2p8affineqb_128(x, a, $imm8)
         };
     }
     let r = constify_imm8_sae!(b, call);
@@ -461,9 +477,11 @@ pub unsafe fn _mm_mask_gf2p8affine_epi64_epi8(
     b: i32,
 ) -> __m128i {
     assert!(0 <= b && b < 256);
+    let x = x.as_i8x16();
+    let a = a.as_i8x16();
     macro_rules! call {
         ($imm8:expr) => {
-            vgf2p8affineqb_128(x.as_i8x16(), a.as_i8x16(), $imm8)
+            vgf2p8affineqb_128(x, a, $imm8)
         };
     }
     let r = constify_imm8_sae!(b, call);
@@ -484,9 +502,11 @@ pub unsafe fn _mm_mask_gf2p8affine_epi64_epi8(
 #[rustc_args_required_const(2)]
 pub unsafe fn _mm512_gf2p8affineinv_epi64_epi8(x: __m512i, a: __m512i, b: i32) -> __m512i {
     assert!(0 <= b && b < 256);
+    let x = x.as_i8x64();
+    let a = a.as_i8x64();
     macro_rules! call {
         ($imm8:expr) => {
-            vgf2p8affineinvqb_512(x.as_i8x64(), a.as_i8x64(), $imm8)
+            vgf2p8affineinvqb_512(x, a, $imm8)
         };
     }
     let r = constify_imm8_sae!(b, call);
@@ -516,9 +536,11 @@ pub unsafe fn _mm512_maskz_gf2p8affineinv_epi64_epi8(
 ) -> __m512i {
     assert!(0 <= b && b < 256);
     let zero = _mm512_setzero_si512().as_i8x64();
+    let x = x.as_i8x64();
+    let a = a.as_i8x64();
     macro_rules! call {
         ($imm8:expr) => {
-            vgf2p8affineinvqb_512(x.as_i8x64(), a.as_i8x64(), $imm8)
+            vgf2p8affineinvqb_512(x, a, $imm8)
         };
     }
     let r = constify_imm8_sae!(b, call);
@@ -548,9 +570,11 @@ pub unsafe fn _mm512_mask_gf2p8affineinv_epi64_epi8(
     b: i32,
 ) -> __m512i {
     assert!(0 <= b && b < 256);
+    let x = x.as_i8x64();
+    let a = a.as_i8x64();
     macro_rules! call {
         ($imm8:expr) => {
-            vgf2p8affineinvqb_512(x.as_i8x64(), a.as_i8x64(), $imm8)
+            vgf2p8affineinvqb_512(x, a, $imm8)
         };
     }
     let r = constify_imm8_sae!(b, call);
@@ -571,9 +595,11 @@ pub unsafe fn _mm512_mask_gf2p8affineinv_epi64_epi8(
 #[rustc_args_required_const(2)]
 pub unsafe fn _mm256_gf2p8affineinv_epi64_epi8(x: __m256i, a: __m256i, b: i32) -> __m256i {
     assert!(0 <= b && b < 256);
+    let x = x.as_i8x32();
+    let a = a.as_i8x32();
     macro_rules! call {
         ($imm8:expr) => {
-            vgf2p8affineinvqb_256(x.as_i8x32(), a.as_i8x32(), $imm8)
+            vgf2p8affineinvqb_256(x, a, $imm8)
         };
     }
     let r = constify_imm8_sae!(b, call);
@@ -603,9 +629,11 @@ pub unsafe fn _mm256_maskz_gf2p8affineinv_epi64_epi8(
 ) -> __m256i {
     assert!(0 <= b && b < 256);
     let zero = _mm256_setzero_si256().as_i8x32();
+    let x = x.as_i8x32();
+    let a = a.as_i8x32();
     macro_rules! call {
         ($imm8:expr) => {
-            vgf2p8affineinvqb_256(x.as_i8x32(), a.as_i8x32(), $imm8)
+            vgf2p8affineinvqb_256(x, a, $imm8)
         };
     }
     let r = constify_imm8_sae!(b, call);
@@ -635,9 +663,11 @@ pub unsafe fn _mm256_mask_gf2p8affineinv_epi64_epi8(
     b: i32,
 ) -> __m256i {
     assert!(0 <= b && b < 256);
+    let x = x.as_i8x32();
+    let a = a.as_i8x32();
     macro_rules! call {
         ($imm8:expr) => {
-            vgf2p8affineinvqb_256(x.as_i8x32(), a.as_i8x32(), $imm8)
+            vgf2p8affineinvqb_256(x, a, $imm8)
         };
     }
     let r = constify_imm8_sae!(b, call);
@@ -658,9 +688,11 @@ pub unsafe fn _mm256_mask_gf2p8affineinv_epi64_epi8(
 #[rustc_args_required_const(2)]
 pub unsafe fn _mm_gf2p8affineinv_epi64_epi8(x: __m128i, a: __m128i, b: i32) -> __m128i {
     assert!(0 <= b && b < 256);
+    let x = x.as_i8x16();
+    let a = a.as_i8x16();
     macro_rules! call {
         ($imm8:expr) => {
-            vgf2p8affineinvqb_128(x.as_i8x16(), a.as_i8x16(), $imm8)
+            vgf2p8affineinvqb_128(x, a, $imm8)
         };
     }
     let r = constify_imm8_sae!(b, call);
@@ -690,9 +722,11 @@ pub unsafe fn _mm_maskz_gf2p8affineinv_epi64_epi8(
 ) -> __m128i {
     assert!(0 <= b && b < 256);
     let zero = _mm_setzero_si128().as_i8x16();
+    let x = x.as_i8x16();
+    let a = a.as_i8x16();
     macro_rules! call {
         ($imm8:expr) => {
-            vgf2p8affineinvqb_128(x.as_i8x16(), a.as_i8x16(), $imm8)
+            vgf2p8affineinvqb_128(x, a, $imm8)
         };
     }
     let r = constify_imm8_sae!(b, call);
@@ -722,9 +756,11 @@ pub unsafe fn _mm_mask_gf2p8affineinv_epi64_epi8(
     b: i32,
 ) -> __m128i {
     assert!(0 <= b && b < 256);
+    let x = x.as_i8x16();
+    let a = a.as_i8x16();
     macro_rules! call {
         ($imm8:expr) => {
-            vgf2p8affineinvqb_128(x.as_i8x16(), a.as_i8x16(), $imm8)
+            vgf2p8affineinvqb_128(x, a, $imm8)
         };
     }
     let r = constify_imm8_sae!(b, call);
