@@ -1369,7 +1369,11 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
         generics.parent_count + generics.params.len()
     });
 
-    let mut params: Vec<_> = opt_self.into_iter().collect();
+    let mut params: Vec<_> = Vec::with_capacity(ast_generics.params.len() + has_self as usize);
+
+    if let Some(opt_self) = opt_self {
+        params.push(opt_self);
+    }
 
     let early_lifetimes = early_bound_lifetimes_from_generics(tcx, ast_generics);
     params.extend(early_lifetimes.enumerate().map(|(i, param)| ty::GenericParamDef {
