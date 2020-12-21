@@ -1,5 +1,6 @@
 #![feature(rustc_private)]
 #![feature(once_cell)]
+#![feature(bool_to_option)]
 #![cfg_attr(feature = "deny-warnings", deny(warnings))]
 // warn on lints, that are included in `rust-lang/rust`s bootstrap
 #![warn(rust_2018_idioms, unused_lifetimes)]
@@ -19,6 +20,7 @@ use rustc_tools_util::VersionInfo;
 
 use std::borrow::Cow;
 use std::env;
+use std::iter;
 use std::lazy::SyncLazy;
 use std::ops::Deref;
 use std::panic;
@@ -41,24 +43,10 @@ fn arg_value<'a, T: Deref<Target = str>>(
 
         match arg.next().or_else(|| args.next()) {
             Some(v) if pred(v) => return Some(v),
-            _ => {}
+            _ => {},
         }
     }
     None
-}
-
-#[test]
-fn test_arg_value() {
-    let args = &["--bar=bar", "--foobar", "123", "--foo"];
-
-    assert_eq!(arg_value(&[] as &[&str], "--foobar", |_| true), None);
-    assert_eq!(arg_value(args, "--bar", |_| false), None);
-    assert_eq!(arg_value(args, "--bar", |_| true), Some("bar"));
-    assert_eq!(arg_value(args, "--bar", |p| p == "bar"), Some("bar"));
-    assert_eq!(arg_value(args, "--bar", |p| p == "foo"), None);
-    assert_eq!(arg_value(args, "--foobar", |p| p == "foo"), None);
-    assert_eq!(arg_value(args, "--foobar", |p| p == "123"), Some("123"));
-    assert_eq!(arg_value(args, "--foo", |_| true), None);
 }
 
 struct DefaultCallbacks;
@@ -121,12 +109,11 @@ You can use tool lints to allow or deny lints from your code, eg.:
 
 const BUG_REPORT_URL: &str = "https://github.com/rust-lang/rust-clippy/issues/new";
 
-static ICE_HOOK: SyncLazy<Box<dyn Fn(&panic::PanicInfo<'_>) + Sync + Send + 'static>> =
-    SyncLazy::new(|| {
-        let hook = panic::take_hook();
-        panic::set_hook(Box::new(|info| report_clippy_ice(info, BUG_REPORT_URL)));
-        hook
-    });
+static ICE_HOOK: SyncLazy<Box<dyn Fn(&panic::PanicInfo<'_>) + Sync + Send + 'static>> = SyncLazy::new(|| {
+    let hook = panic::take_hook();
+    panic::set_hook(Box::new(|info| report_clippy_ice(info, BUG_REPORT_URL)));
+    hook
+});
 
 fn report_clippy_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str) {
     // Invoke our ICE handler, which prints the actual panic message and optionally a backtrace
@@ -183,6 +170,29 @@ fn toolchain_path(home: Option<String>, toolchain: Option<String>) -> Option<Pat
     })
 }
 
+fn remove_clippy_args<'a, T, U, I>(args: &mut Vec<T>, clippy_args: I)
+where
+    T: AsRef<str>,
+    U: AsRef<str> + ?Sized + 'a,
+    I: Iterator<Item = &'a U> + Clone,
+{
+    let args_iter = clippy_args.map(AsRef::as_ref);
+    let args_count = args_iter.clone().count();
+
+    if args_count > 0 {
+        if let Some(start) = args.windows(args_count).enumerate().find_map(|(current, window)| {
+            window
+                .iter()
+                .map(AsRef::as_ref)
+                .eq(args_iter.clone())
+                .then_some(current)
+        }) {
+            args.drain(start..start + args_count);
+        }
+    }
+}
+
+#[allow(clippy::too_many_lines)]
 pub fn main() {
     rustc_driver::init_rustc_env_logger();
     SyncLazy::force(&ICE_HOOK);
@@ -258,17 +268,14 @@ pub fn main() {
 
         // Setting RUSTC_WRAPPER causes Cargo to pass 'rustc' as the first argument.
         // We're invoking the compiler programmatically, so we ignore this/
-        let wrapper_mode =
-            orig_args.get(1).map(Path::new).and_then(Path::file_stem) == Some("rustc".as_ref());
+        let wrapper_mode = orig_args.get(1).map(Path::new).and_then(Path::file_stem) == Some("rustc".as_ref());
 
         if wrapper_mode {
             // we still want to be able to invoke it normally though
             orig_args.remove(1);
         }
 
-        if !wrapper_mode
-            && (orig_args.iter().any(|a| a == "--help" || a == "-h") || orig_args.len() == 1)
-        {
+        if !wrapper_mode && (orig_args.iter().any(|a| a == "--help" || a == "-h") || orig_args.len() == 1) {
             display_help();
             exit(0);
         }
@@ -281,25 +288,88 @@ pub fn main() {
             args.extend(vec!["--sysroot".into(), sys_root]);
         };
 
-        // this check ensures that dependencies are built but not linted and the final
-        // crate is linted but not built
-        let clippy_enabled = env::var("CLIPPY_TESTS").map_or(false, |val| val == "true")
-            || arg_value(&orig_args, "--cap-lints", |val| val == "allow").is_none();
+        let clippy_args = env::var("CLIPPY_ARGS").unwrap_or_default();
+        let clippy_args = clippy_args.split_whitespace();
+        let no_deps = clippy_args.clone().any(|flag| flag == "--no-deps");
 
+        // We enable Clippy if one of the following conditions is met
+        // - IF Clippy is run on its test suite OR
+        // - IF Clippy is run on the main crate, not on deps (`!cap_lints_allow`) THEN
+        //    - IF `--no-deps` is not set (`!no_deps`) OR
+        //    - IF `--no-deps` is set and Clippy is run on the specified primary package
+        let clippy_tests_set = env::var("CLIPPY_TESTS").map_or(false, |val| val == "true");
+        let cap_lints_allow = arg_value(&orig_args, "--cap-lints", |val| val == "allow").is_some();
+        let in_primary_package = env::var("CARGO_PRIMARY_PACKAGE").is_ok();
+
+        let clippy_enabled = clippy_tests_set || (!cap_lints_allow && (!no_deps || in_primary_package));
         if clippy_enabled {
+            remove_clippy_args(&mut args, iter::once("--no-deps"));
             args.extend(vec!["--cfg".into(), r#"feature="cargo-clippy""#.into()]);
-            if let Ok(extra_args) = env::var("CLIPPY_ARGS") {
-                args.extend(
-                    extra_args
-                        .split("__CLIPPY_HACKERY__")
-                        .filter_map(|s| if s.is_empty() { None } else { Some(s.to_string()) }),
-                );
-            }
+        } else {
+            // Remove all flags passed through RUSTFLAGS if Clippy is not enabled.
+            remove_clippy_args(&mut args, clippy_args);
         }
+
         let mut clippy = ClippyCallbacks;
         let mut default = DefaultCallbacks;
         let callbacks: &mut (dyn rustc_driver::Callbacks + Send) =
             if clippy_enabled { &mut clippy } else { &mut default };
+
         rustc_driver::RunCompiler::new(&args, callbacks).run()
     }))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_arg_value() {
+        let args = &["--bar=bar", "--foobar", "123", "--foo"];
+
+        assert_eq!(arg_value(&[] as &[&str], "--foobar", |_| true), None);
+        assert_eq!(arg_value(args, "--bar", |_| false), None);
+        assert_eq!(arg_value(args, "--bar", |_| true), Some("bar"));
+        assert_eq!(arg_value(args, "--bar", |p| p == "bar"), Some("bar"));
+        assert_eq!(arg_value(args, "--bar", |p| p == "foo"), None);
+        assert_eq!(arg_value(args, "--foobar", |p| p == "foo"), None);
+        assert_eq!(arg_value(args, "--foobar", |p| p == "123"), Some("123"));
+        assert_eq!(arg_value(args, "--foo", |_| true), None);
+    }
+
+    #[test]
+    fn removes_clippy_args_from_start() {
+        let mut args = vec!["-D", "clippy::await_holding_lock", "--cfg", r#"feature="some_feat""#];
+        let clippy_args = ["-D", "clippy::await_holding_lock"].iter();
+
+        remove_clippy_args(&mut args, clippy_args);
+        assert_eq!(args, &["--cfg", r#"feature="some_feat""#]);
+    }
+
+    #[test]
+    fn removes_clippy_args_from_end() {
+        let mut args = vec!["-Zui-testing", "-A", "clippy::empty_loop", "--no-deps"];
+        let clippy_args = ["-A", "clippy::empty_loop", "--no-deps"].iter();
+
+        remove_clippy_args(&mut args, clippy_args);
+        assert_eq!(args, &["-Zui-testing"]);
+    }
+
+    #[test]
+    fn removes_clippy_args_from_middle() {
+        let mut args = vec!["-Zui-testing", "-W", "clippy::filter_map", "-L", "serde"];
+        let clippy_args = ["-W", "clippy::filter_map"].iter();
+
+        remove_clippy_args(&mut args, clippy_args);
+        assert_eq!(args, &["-Zui-testing", "-L", "serde"]);
+    }
+
+    #[test]
+    fn no_clippy_args_to_remove() {
+        let mut args = vec!["-Zui-testing", "-L", "serde"];
+        let clippy_args: [&str; 0] = [];
+
+        remove_clippy_args(&mut args, clippy_args.iter());
+        assert_eq!(args, &["-Zui-testing", "-L", "serde"]);
+    }
 }

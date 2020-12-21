@@ -15,4 +15,8 @@ fn main() {
     }
     let _ = Ok(1).unwrap_or_else(|e::E| 2);
     let _ = Ok(1).unwrap_or_else(|SomeStruct { .. }| 2);
+
+    // Fix #6343
+    let arr = [(Some(1),)];
+    Some(&0).and_then(|&i| arr[i].0);
 }
