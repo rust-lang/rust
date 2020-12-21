@@ -287,10 +287,12 @@ async function getServer(config: Config, state: PersistentState): Promise<string
     if (config.package.releaseTag === null) return "rust-analyzer";
 
     let platform: string | undefined;
-    if (process.arch === "x64" || process.arch === "ia32" || process.arch === "arm64") {
+    if (process.arch === "x64" || process.arch === "ia32") {
         if (process.platform === "linux") platform = "linux";
         if (process.platform === "darwin") platform = "mac";
         if (process.platform === "win32") platform = "windows";
+    } else if (process.arch === "arm64" && process.platform === "darwin") {
+        platform = "mac";
     }
     if (platform === undefined) {
         vscode.window.showErrorMessage(
