@@ -204,7 +204,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
                 CodeBlockKind::Fenced(ref lang) => {
                     LangString::parse_without_check(&lang, self.check_error_codes, false)
                 }
-                CodeBlockKind::Indented => LangString::all_false(),
+                CodeBlockKind::Indented => Default::default(),
             };
             if !parse_result.rust {
                 return Some(Event::Start(Tag::CodeBlock(kind)));
@@ -666,7 +666,7 @@ crate fn find_testable_code<T: doctest::Tester>(
                 let block_info = match kind {
                     CodeBlockKind::Fenced(ref lang) => {
                         if lang.is_empty() {
-                            LangString::all_false()
+                            Default::default()
                         } else {
                             LangString::parse(
                                 lang,
@@ -676,7 +676,7 @@ crate fn find_testable_code<T: doctest::Tester>(
                             )
                         }
                     }
-                    CodeBlockKind::Indented => LangString::all_false(),
+                    CodeBlockKind::Indented => Default::default(),
                 };
                 if !block_info.rust {
                     continue;
@@ -779,14 +779,14 @@ crate enum Ignore {
     Some(Vec<String>),
 }
 
-impl LangString {
-    fn all_false() -> LangString {
-        LangString {
+impl Default for LangString {
+    fn default() -> Self {
+        Self {
             original: String::new(),
             should_panic: false,
             no_run: false,
             ignore: Ignore::None,
-            rust: true, // NB This used to be `notrust = false`
+            rust: true,
             test_harness: false,
             compile_fail: false,
             error_codes: Vec::new(),
@@ -794,7 +794,9 @@ impl LangString {
             edition: None,
         }
     }
+}
 
+impl LangString {
     fn parse_without_check(
         string: &str,
         allow_error_code_check: ErrorCodes,
@@ -812,7 +814,7 @@ impl LangString {
         let allow_error_code_check = allow_error_code_check.as_bool();
         let mut seen_rust_tags = false;
         let mut seen_other_tags = false;
-        let mut data = LangString::all_false();
+        let mut data = LangString::default();
         let mut ignores = vec![];
 
         data.original = string.to_owned();
@@ -1230,7 +1232,7 @@ crate fn rust_code_blocks(md: &str, extra_info: &ExtraInfo<'_, '_>) -> Vec<RustC
                 CodeBlockKind::Fenced(syntax) => {
                     let syntax = syntax.as_ref();
                     let lang_string = if syntax.is_empty() {
-                        LangString::all_false()
+                        Default::default()
                     } else {
                         LangString::parse(&*syntax, ErrorCodes::Yes, false, Some(extra_info))
                     };

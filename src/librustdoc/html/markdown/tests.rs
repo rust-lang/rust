@@ -56,71 +56,59 @@ fn test_lang_string_parse() {
         assert_eq!(LangString::parse(s, ErrorCodes::Yes, true, None), lg)
     }
 
-    t(LangString::all_false());
-    t(LangString { original: "rust".into(), ..LangString::all_false() });
-    t(LangString { original: "sh".into(), rust: false, ..LangString::all_false() });
-    t(LangString { original: "ignore".into(), ignore: Ignore::All, ..LangString::all_false() });
+    t(Default::default());
+    t(LangString { original: "rust".into(), ..Default::default() });
+    t(LangString { original: "sh".into(), rust: false, ..Default::default() });
+    t(LangString { original: "ignore".into(), ignore: Ignore::All, ..Default::default() });
     t(LangString {
         original: "ignore-foo".into(),
         ignore: Ignore::Some(vec!["foo".to_string()]),
-        ..LangString::all_false()
+        ..Default::default()
     });
-    t(LangString {
-        original: "should_panic".into(),
-        should_panic: true,
-        ..LangString::all_false()
-    });
-    t(LangString { original: "no_run".into(), no_run: true, ..LangString::all_false() });
-    t(LangString {
-        original: "test_harness".into(),
-        test_harness: true,
-        ..LangString::all_false()
-    });
+    t(LangString { original: "should_panic".into(), should_panic: true, ..Default::default() });
+    t(LangString { original: "no_run".into(), no_run: true, ..Default::default() });
+    t(LangString { original: "test_harness".into(), test_harness: true, ..Default::default() });
     t(LangString {
         original: "compile_fail".into(),
         no_run: true,
         compile_fail: true,
-        ..LangString::all_false()
+        ..Default::default()
     });
-    t(LangString { original: "allow_fail".into(), allow_fail: true, ..LangString::all_false() });
-    t(LangString {
-        original: "{.no_run .example}".into(),
-        no_run: true,
-        ..LangString::all_false()
-    });
+    t(LangString { original: "allow_fail".into(), allow_fail: true, ..Default::default() });
+    t(LangString { original: "{.no_run .example}".into(), no_run: true, ..Default::default() });
     t(LangString {
         original: "{.sh .should_panic}".into(),
         should_panic: true,
         rust: false,
-        ..LangString::all_false()
+        ..Default::default()
     });
-    t(LangString { original: "{.example .rust}".into(), ..LangString::all_false() });
+    t(LangString { original: "{.example .rust}".into(), ..Default::default() });
     t(LangString {
         original: "{.test_harness .rust}".into(),
         test_harness: true,
-        ..LangString::all_false()
+        ..Default::default()
     });
     t(LangString {
         original: "text, no_run".into(),
         no_run: true,
         rust: false,
-        ..LangString::all_false()
+        ..Default::default()
     });
     t(LangString {
         original: "text,no_run".into(),
         no_run: true,
         rust: false,
-        ..LangString::all_false()
+        ..Default::default()
     });
     t(LangString {
         original: "edition2015".into(),
         edition: Some(Edition::Edition2015),
-        ..LangString::all_false()
+        ..Default::default()
     });
     t(LangString {
         original: "edition2018".into(),
         edition: Some(Edition::Edition2018),
-        ..LangString::all_false()
+        ..Default::default()
     });
 }
 
