@@ -2171,7 +2171,8 @@ impl Clean<Vec<Item>> for doctree::Import<'_> {
                         }
                         None => false,
                     }
-            });
+            })
+            || (self.vis.node.is_pub() && self.name == kw::Underscore);
         // Also check whether imports were asked to be inlined, in case we're trying to re-export a
         // crate in Rust 2018+
         let please_inline = self.attrs.lists(sym::doc).has_word(sym::inline);
