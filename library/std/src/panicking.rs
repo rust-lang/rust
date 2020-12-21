@@ -48,7 +48,7 @@ extern "C" {
     /// It cannot be `Box<dyn BoxMeUp>` because the other end of this call does not depend
     /// on liballoc, and thus cannot use `Box`.
     #[unwind(allowed)]
-    fn __rust_start_panic(payload: usize) -> u32;
+    fn __rust_start_panic(payload: *mut &mut dyn BoxMeUp) -> u32;
 }
 
 /// This function is called by the panic runtime if FFI code catches a Rust
@@ -637,7 +637,7 @@ pub fn rust_panic_without_hook(payload: Box<dyn Any + Send>) -> ! {
 fn rust_panic(mut msg: &mut dyn BoxMeUp) -> ! {
     let code = unsafe {
         let obj = &mut msg as *mut &mut dyn BoxMeUp;
-        __rust_start_panic(obj as usize)
+        __rust_start_panic(obj)
     };
     rtabort!("failed to initiate panic, error {}", code)
 }
