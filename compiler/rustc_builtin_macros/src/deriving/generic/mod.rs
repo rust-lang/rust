@@ -212,15 +212,15 @@ pub struct TraitDef<'a> {
     /// Any extra lifetimes and/or bounds, e.g., `D: serialize::Decoder`
     pub generics: Bounds,
 
+    pub methods: Vec<MethodDef<'a>>,
+
+    pub associated_types: Vec<(Ident, Ty)>,
+
     /// Is it an `unsafe` trait?
     pub is_unsafe: bool,
 
     /// Can this trait be derived for unions?
     pub supports_unions: bool,
-
-    pub methods: Vec<MethodDef<'a>>,
-
-    pub associated_types: Vec<(Ident, Ty)>,
 }
 
 pub struct MethodDef<'a> {
@@ -237,18 +237,18 @@ pub struct MethodDef<'a> {
     /// Arguments other than the self argument
     pub args: Vec<(Ty, Symbol)>,
 
-    /// Returns type
+    /// Return type
     pub ret_ty: Ty,
 
     pub attributes: Vec<ast::Attribute>,
-
-    // Is it an `unsafe fn`?
-    pub is_unsafe: bool,
 
     /// Can we combine fieldless variants for enums into a single match arm?
     pub unify_fieldless_variants: bool,
 
     pub combine_substructure: RefCell<CombineSubstructureFunc<'a>>,
+
+    /// Is it an `unsafe fn`?
+    pub is_unsafe: bool,
 }
 
 /// All the data about the data structure/method being derived upon.
@@ -451,23 +451,27 @@ impl<'a> TraitDef<'a> {
                 };
                 // Keep the lint attributes of the previous item to control how the
                 // generated implementations are linted
-                let mut attrs = newitem.attrs.clone();
-                attrs.extend(
-                    item.attrs
-                        .iter()
-                        .filter(|a| {
-                            [
-                                sym::allow,
-                                sym::warn,
-                                sym::deny,
-                                sym::forbid,
-                                sym::stable,
-                                sym::unstable,
-                            ]
-                            .contains(&a.name_or_empty())
-                        })
-                        .cloned(),
-                );
+                let attrs = newitem
+                    .attrs
+                    .iter()
+                    .cloned()
+                    .chain(
+                        item.attrs
+                            .iter()
+                            .filter(|a| {
+                                [
+                                    sym::allow,
+                                    sym::warn,
+                                    sym::deny,
+                                    sym::forbid,
+                                    sym::stable,
+                                    sym::unstable,
+                                ]
+                                .contains(&a.name_or_empty())
+                            })
+                            .cloned(),
+                    )
+                    .collect();
                 push(Annotatable::Item(P(ast::Item { attrs, ..(*newitem).clone() })))
             }
             _ => unreachable!(),
@@ -542,7 +546,7 @@ impl<'a> TraitDef<'a> {
 
         // Create the generic parameters
         params.extend(generics.params.iter().map(|param| match param.kind {
-            GenericParamKind::Lifetime { .. } => param.clone(),
+            GenericParamKind::Lifetime { .. } | GenericParamKind::Const { .. } => param.clone(),
             GenericParamKind::Type { .. } => {
                 // I don't think this can be moved out of the loop, since
                 // a GenericBound requires an ast id
@@ -561,7 +565,6 @@ impl<'a> TraitDef<'a> {
 
                 cx.typaram(self.span, param.ident, vec![], bounds, None)
             }
-            GenericParamKind::Const { .. } => param.clone(),
         }));
 
         // and similarly for where clauses
@@ -605,38 +608,37 @@ impl<'a> TraitDef<'a> {
                 let ty_param_names: Vec<Symbol> =
                     ty_params.map(|ty_param| ty_param.ident.name).collect();
 
-                for field_ty in field_tys {
+                let bounds: Vec<_> = self
+                    .additional_bounds
+                    .iter()
+                    .map(|p| cx.trait_bound(p.to_path(cx, self.span, type_ident, generics)))
+                    // require the current trait
+                    .chain(iter::once(cx.trait_bound(trait_path.clone())))
+                    .collect();
+                let preds = field_tys.iter().flat_map(|field_ty| {
                     let tys = find_type_parameters(&field_ty, &ty_param_names, cx);
-
-                    for ty in tys {
+                    tys.into_iter().filter_map(|ty| {
                         // if we have already handled this type, skip it
                         if let ast::TyKind::Path(_, ref p) = ty.kind {
                             if p.segments.len() == 1
                                 && ty_param_names.contains(&p.segments[0].ident.name)
                             {
-                                continue;
-                            };
+                                return None;
+                            }
                         }
-                        let mut bounds: Vec<_> = self
-                            .additional_bounds
-                            .iter()
-                            .map(|p| cx.trait_bound(p.to_path(cx, self.span, type_ident, generics)))
-                            .collect();
-
-                        // require the current trait
-                        bounds.push(cx.trait_bound(trait_path.clone()));
 
                         let predicate = ast::WhereBoundPredicate {
                             span: self.span,
                             bound_generic_params: Vec::new(),
                             bounded_ty: ty,
-                            bounds,
+                            bounds: bounds.clone(),
                         };
 
                         let predicate = ast::WherePredicate::BoundPredicate(predicate);
-                        where_clause.predicates.push(predicate);
-                    }
-                }
+                        Some(predicate)
+                    })
+                });
+                where_clause.predicates.extend(preds);
             }
         }
 
@@ -678,11 +680,14 @@ impl<'a> TraitDef<'a> {
             cx.attribute(list)
         };
 
-        let mut a = vec![attr, unused_qual];
-        a.extend(self.attributes.iter().cloned());
+        let a = iter::once(attr)
+            .chain(iter::once(unused_qual))
+            .chain(self.attributes.iter().cloned())
+            .collect();
 
         let unsafety = if self.is_unsafe { ast::Unsafe::Yes(self.span) } else { ast::Unsafe::No };
-
+        let mut items = methods;
+        items.extend(associated_types);
         cx.item(
             self.span,
             Ident::invalid(),
@@ -695,7 +700,7 @@ impl<'a> TraitDef<'a> {
                 generics: trait_generics,
                 of_trait: opt_trait_ref,
                 self_ty: self_type,
-                items: methods.into_iter().chain(associated_types).collect(),
+                items,
             },
         )
     }
@@ -709,9 +714,6 @@ impl<'a> TraitDef<'a> {
         from_scratch: bool,
         use_temporaries: bool,
     ) -> P<ast::Item> {
-        let field_tys: Vec<P<ast::Ty>> =
-            struct_def.fields().iter().map(|field| field.ty.clone()).collect();
-
         let methods = self
             .methods
             .iter()
@@ -744,6 +746,8 @@ impl<'a> TraitDef<'a> {
             })
             .collect();
 
+        let field_tys: Vec<P<ast::Ty>> =
+            struct_def.fields().iter().map(|field| field.ty.clone()).collect();
         self.create_derived_impl(cx, type_ident, generics, field_tys, methods)
     }
 
@@ -755,11 +759,11 @@ impl<'a> TraitDef<'a> {
         generics: &Generics,
         from_scratch: bool,
     ) -> P<ast::Item> {
-        let mut field_tys = Vec::new();
-
-        for variant in &enum_def.variants {
-            field_tys.extend(variant.data.fields().iter().map(|field| field.ty.clone()));
-        }
+        let field_tys = enum_def
+            .variants
+            .iter()
+            .flat_map(|variant| variant.data.fields().iter().map(|field| field.ty.clone()))
+            .collect();
 
         let methods = self
             .methods
@@ -980,22 +984,22 @@ impl<'a> MethodDef<'a> {
         nonself_args: &[P<Expr>],
         use_temporaries: bool,
     ) -> P<Expr> {
-        let mut raw_fields = Vec::new(); // Vec<[fields of self],
-        // [fields of next Self arg], [etc]>
-        let mut patterns = Vec::new();
-        for i in 0..self_args.len() {
-            let struct_path = cx.path(trait_.span, vec![type_ident]);
-            let (pat, ident_expr) = trait_.create_struct_pattern(
-                cx,
-                struct_path,
-                struct_def,
-                &format!("__self_{}", i),
-                ast::Mutability::Not,
-                use_temporaries,
-            );
-            patterns.push(pat);
-            raw_fields.push(ident_expr);
-        }
+        // raw_fields: Vec<[fields of self],
+        // patterns: [fields of next Self arg], [etc]>
+        let (patterns, raw_fields): (Vec<_>, Vec<_>) = (0..self_args.len())
+            .map(|i| {
+                let struct_path = cx.path(trait_.span, vec![type_ident]);
+                let (pat, ident_expr) = trait_.create_struct_pattern(
+                    cx,
+                    struct_path,
+                    struct_def,
+                    &format!("__self_{}", i),
+                    ast::Mutability::Not,
+                    use_temporaries,
+                );
+                (pat, ident_expr)
+            })
+            .unzip();
 
         // transpose raw_fields
         let fields = if !raw_fields.is_empty() {
@@ -1555,18 +1559,21 @@ impl<'a> TraitDef<'a> {
         mutbl: ast::Mutability,
         use_temporaries: bool,
     ) -> (P<ast::Pat>, Vec<(Span, Option<Ident>, P<Expr>, &'a [ast::Attribute])>) {
-        let mut paths = Vec::new();
-        let mut ident_exprs = Vec::new();
-        for (i, struct_field) in struct_def.fields().iter().enumerate() {
-            let sp = struct_field.span.with_ctxt(self.span.ctxt());
-            let ident = Ident::from_str_and_span(&format!("{}_{}", prefix, i), self.span);
-            paths.push(ident.with_span_pos(sp));
-            let val = cx.expr_path(cx.path_ident(sp, ident));
-            let val = if use_temporaries { val } else { cx.expr_deref(sp, val) };
-            let val = cx.expr(sp, ast::ExprKind::Paren(val));
+        let (paths, ident_exprs): (Vec<_>, Vec<_>) = struct_def
+            .fields()
+            .iter()
+            .enumerate()
+            .map(|(i, struct_field)| {
+                let sp = struct_field.span.with_ctxt(self.span.ctxt());
+                let ident = Ident::from_str_and_span(&format!("{}_{}", prefix, i), self.span);
 
-            ident_exprs.push((sp, struct_field.ident, val, &struct_field.attrs[..]));
-        }
+                let val = cx.expr_path(cx.path_ident(sp, ident));
+                let val = if use_temporaries { val } else { cx.expr_deref(sp, val) };
+                let val = cx.expr(sp, ast::ExprKind::Paren(val));
+
+                (ident.with_span_pos(sp), (sp, struct_field.ident, val, &struct_field.attrs[..]))
+            })
+            .unzip();
 
         let subpats = self.create_subpatterns(cx, paths, mutbl, use_temporaries);
         let pattern = match *struct_def {
@@ -1575,11 +1582,13 @@ impl<'a> TraitDef<'a> {
                     .into_iter()
                     .zip(&ident_exprs)
                     .map(|(pat, &(sp, ident, ..))| {
-                        if ident.is_none() {
-                            cx.span_bug(sp, "a braced struct with unnamed fields in `derive`");
-                        }
+                        let ident = if let Some(ident) = ident {
+                            ident
+                        } else {
+                            cx.span_bug(sp, "a braced struct with unnamed fields in `derive`")
+                        };
                         ast::FieldPat {
-                            ident: ident.unwrap(),
+                            ident: ident,
                             is_shorthand: false,
                             attrs: ast::AttrVec::new(),
                             id: ast::DUMMY_NODE_ID,

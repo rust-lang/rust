@@ -38,12 +38,8 @@ pub fn expand_deriving_partial_ord(
     }
 
     let ordering_ty = Literal(path_std!(cmp::Ordering));
-    let ret_ty = Literal(Path::new_(
-        pathvec_std!(option::Option),
-        None,
-        vec![Box::new(ordering_ty)],
-        PathKind::Std,
-    ));
+    let ret_ty =
+        Literal(Path::new_(pathvec_std!(option::Option), None, vec![ordering_ty], PathKind::Std));
 
     let inline = cx.meta_word(span, sym::inline);
     let attrs = vec![cx.attribute(inline)];

@@ -164,16 +164,15 @@ fn inject_impl_of_structural_trait(
 
     // Keep the lint and stability attributes of the original item, to control
     // how the generated implementation is linted.
-    let mut attrs = Vec::new();
-    attrs.extend(
-        item.attrs
-            .iter()
-            .filter(|a| {
-                [sym::allow, sym::warn, sym::deny, sym::forbid, sym::stable, sym::unstable]
-                    .contains(&a.name_or_empty())
-            })
-            .cloned(),
-    );
+    let attrs: Vec<_> = item
+        .attrs
+        .iter()
+        .filter(|a| {
+            [sym::allow, sym::warn, sym::deny, sym::forbid, sym::stable, sym::unstable]
+                .contains(&a.name_or_empty())
+        })
+        .cloned()
+        .collect();
 
     let newitem = cx.item(
         span,

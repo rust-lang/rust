@@ -27,7 +27,7 @@ pub enum PtrTy {
 pub struct Path {
     path: Vec<Symbol>,
     lifetime: Option<Ident>,
-    params: Vec<Box<Ty>>,
+    params: Vec<Ty>,
     kind: PathKind,
 }
 
@@ -48,7 +48,7 @@ impl Path {
     pub fn new_(
         path: Vec<Symbol>,
         lifetime: Option<Ident>,
-        params: Vec<Box<Ty>>,
+        params: Vec<Ty>,
         kind: PathKind,
     ) -> Path {
         Path { path, lifetime, params, kind }
@@ -70,22 +70,18 @@ impl Path {
         self_ty: Ident,
         self_generics: &Generics,
     ) -> ast::Path {
-        let mut idents = self.path.iter().map(|s| Ident::new(*s, span)).collect();
+        let idents = self.path.iter().map(|s| Ident::new(*s, span));
         let lt = mk_lifetimes(cx, span, &self.lifetime);
-        let tys: Vec<P<ast::Ty>> =
-            self.params.iter().map(|t| t.to_ty(cx, span, self_ty, self_generics)).collect();
-        let params = lt
-            .into_iter()
-            .map(GenericArg::Lifetime)
-            .chain(tys.into_iter().map(GenericArg::Type))
-            .collect();
+        let tys = self.params.iter().map(|t| t.to_ty(cx, span, self_ty, self_generics));
+        let params = lt.map(GenericArg::Lifetime).chain(tys.map(GenericArg::Type)).collect();
 
         match self.kind {
-            PathKind::Global => cx.path_all(span, true, idents, params),
-            PathKind::Local => cx.path_all(span, false, idents, params),
+            PathKind::Global => cx.path_all(span, true, idents.collect(), params),
+            PathKind::Local => cx.path_all(span, false, idents.collect(), params),
             PathKind::Std => {
                 let def_site = cx.with_def_site_ctxt(DUMMY_SP);
-                idents.insert(0, Ident::new(kw::DollarCrate, def_site));
+                let idents =
+                    std::iter::once(Ident::new(kw::DollarCrate, def_site)).chain(idents).collect();
                 cx.path_all(span, false, idents, params)
             }
         }
@@ -128,8 +124,12 @@ fn mk_lifetime(cx: &ExtCtxt<'_>, span: Span, lt: &Option<Ident>) -> Option<ast::
     lt.map(|ident| cx.lifetime(span, ident))
 }
 
-fn mk_lifetimes(cx: &ExtCtxt<'_>, span: Span, lt: &Option<Ident>) -> Vec<ast::Lifetime> {
-    mk_lifetime(cx, span, lt).into_iter().collect()
+fn mk_lifetimes(
+    cx: &ExtCtxt<'_>,
+    span: Span,
+    lt: &Option<Ident>,
+) -> impl Iterator<Item = ast::Lifetime> {
+    mk_lifetime(cx, span, lt).into_iter()
 }
 
 impl Ty {
