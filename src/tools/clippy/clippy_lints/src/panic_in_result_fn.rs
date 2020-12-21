@@ -1,18 +1,16 @@
-use crate::utils::{is_expn_of, is_type_diagnostic_item, return_ty, span_lint_and_then};
+use crate::utils::{find_macro_calls, is_type_diagnostic_item, return_ty, span_lint_and_then};
 use rustc_hir as hir;
-use rustc_hir::intravisit::{self, FnKind, NestedVisitorMap, Visitor};
-use rustc_hir::Expr;
+use rustc_hir::intravisit::FnKind;
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::hir::map::Map;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::{sym, Span};
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for usage of `panic!`, `unimplemented!`, `todo!` or `unreachable!` in a function of type result.
+    /// **What it does:** Checks for usage of `panic!`, `unimplemented!`, `todo!`, `unreachable!` or assertions in a function of type result.
     ///
-    /// **Why is this bad?** For some codebases, it is desirable for functions of type result to return an error instead of crashing. Hence unimplemented, panic and unreachable should be avoided.
+    /// **Why is this bad?** For some codebases, it is desirable for functions of type result to return an error instead of crashing. Hence panicking macros should be avoided.
     ///
-    /// **Known problems:** None.
+    /// **Known problems:** Functions called from a function returning a `Result` may invoke a panicking macro. This is not checked.
     ///
     /// **Example:**
     ///
@@ -22,9 +20,15 @@ declare_clippy_lint! {
     ///     panic!("error");
     /// }
     /// ```
+    /// Use instead:
+    /// ```rust
+    /// fn result_without_panic() -> Result<bool, String> {
+    ///     Err(String::from("error"))
+    /// }
+    /// ```
     pub PANIC_IN_RESULT_FN,
     restriction,
-    "functions of type `Result<..>` that contain `panic!()`, `todo!()` or `unreachable()` or `unimplemented()` "
+    "functions of type `Result<..>` that contain `panic!()`, `todo!()`, `unreachable()`, `unimplemented()` or assertion"
 }
 
 declare_lint_pass!(PanicInResultFn  => [PANIC_IN_RESULT_FN]);
@@ -47,43 +51,33 @@ impl<'tcx> LateLintPass<'tcx> for PanicInResultFn {
     }
 }
 
-struct FindPanicUnimplementedUnreachable {
-    result: Vec<Span>,
-}
-
-impl<'tcx> Visitor<'tcx> for FindPanicUnimplementedUnreachable {
-    type Map = Map<'tcx>;
-
-    fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
-        if ["unimplemented", "unreachable", "panic", "todo"]
-            .iter()
-            .any(|fun| is_expn_of(expr.span, fun).is_some())
-        {
-            self.result.push(expr.span);
-        }
-        // and check sub-expressions
-        intravisit::walk_expr(self, expr);
-    }
-
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::None
-    }
-}
-
 fn lint_impl_body<'tcx>(cx: &LateContext<'tcx>, impl_span: Span, body: &'tcx hir::Body<'tcx>) {
-    let mut panics = FindPanicUnimplementedUnreachable { result: Vec::new() };
-    panics.visit_expr(&body.value);
-    if !panics.result.is_empty() {
+    let panics = find_macro_calls(
+        &[
+            "unimplemented",
+            "unreachable",
+            "panic",
+            "todo",
+            "assert",
+            "assert_eq",
+            "assert_ne",
+            "debug_assert",
+            "debug_assert_eq",
+            "debug_assert_ne",
+        ],
+        body,
+    );
+    if !panics.is_empty() {
         span_lint_and_then(
             cx,
             PANIC_IN_RESULT_FN,
             impl_span,
-            "used `unimplemented!()`, `unreachable!()`, `todo!()` or `panic!()` in a function that returns `Result`",
+            "used `unimplemented!()`, `unreachable!()`, `todo!()`, `panic!()` or assertion in a function that returns `Result`",
             move |diag| {
                 diag.help(
-                    "`unimplemented!()`, `unreachable!()`, `todo!()` or `panic!()` should not be used in a function that returns `Result` as `Result` is expected to return an error instead of crashing",
+                    "`unimplemented!()`, `unreachable!()`, `todo!()`, `panic!()` or assertions should not be used in a function that returns `Result` as `Result` is expected to return an error instead of crashing",
                 );
-                diag.span_note(panics.result, "return Err() instead of panicking");
+                diag.span_note(panics, "return Err() instead of panicking");
             },
         );
     }

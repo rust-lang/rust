@@ -1,0 +1,27 @@
+error: interning a defined symbol
+  --> $DIR/interning_defined_symbol.rs:17:13
+   |
+LL |     let _ = Symbol::intern("f32");
+   |             ^^^^^^^^^^^^^^^^^^^^^ help: try: `rustc_span::symbol::sym::f32`
+   |
+note: the lint level is defined here
+  --> $DIR/interning_defined_symbol.rs:2:9
+   |
+LL | #![deny(clippy::internal)]
+   |         ^^^^^^^^^^^^^^^^
+   = note: `#[deny(clippy::interning_defined_symbol)]` implied by `#[deny(clippy::internal)]`
+
+error: interning a defined symbol
+  --> $DIR/interning_defined_symbol.rs:20:13
+   |
+LL |     let _ = sym!(f32);
+   |             ^^^^^^^^^ help: try: `rustc_span::symbol::sym::f32`
+
+error: interning a defined symbol
+  --> $DIR/interning_defined_symbol.rs:23:13
+   |
+LL |     let _ = Symbol::intern("proc-macro");
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `rustc_span::symbol::sym::proc_dash_macro`
+
+error: aborting due to 3 previous errors
+
