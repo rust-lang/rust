@@ -156,7 +156,7 @@ fn foo() {
 }
 "#,
             expect![[r#"
-                bn Bar Bar { ${1:f} }$0
+                bn Bar Bar { f$1 }$0
             "#]],
         );
     }
@@ -171,7 +171,7 @@ struct Baz;
 fn outer(<|>) {}
 "#,
             expect![[r#"
-                bn Foo Foo { ${1:bar}, ${2:baz} }: Foo$0
+                bn Foo Foo { bar$1, baz$2 }: Foo$0
                 bn Bar Bar($1, $2): Bar$0
             "#]],
         )
@@ -189,7 +189,7 @@ fn outer() {
 }
 "#,
             expect![[r#"
-                bn Foo Foo { ${1:bar}, ${2:baz} }$0
+                bn Foo Foo { bar$1, baz$2 }$0
                 bn Bar Bar($1, $2)$0
             "#]],
         )
@@ -209,7 +209,7 @@ fn outer() {
 }
 "#,
             expect![[r#"
-                bn Foo Foo { ${1:bar}, ${2:baz} }$0
+                bn Foo Foo { bar$1, baz$2 }$0
                 bn Bar Bar($1, $2)$0
             "#]],
         )
@@ -233,7 +233,7 @@ fn outer() {
 }
 "#,
             expect![[r#"
-                bn Foo Foo { ${1:bar}, .. }$0
+                bn Foo Foo { bar$1, .. }$0
                 bn Bar Bar($1, ..)$0
             "#]],
         )

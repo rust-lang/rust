@@ -121,7 +121,7 @@ fn render_record_as_pat(
             "{name} {{ {}{} }}",
             fields
                 .enumerate()
-                .map(|(idx, field)| format!("${{{}:{}}}", idx + 1, field.name(db)))
+                .map(|(idx, field)| format!("{}${}", field.name(db), idx + 1))
                 .format(", "),
             if fields_omitted { ", .." } else { "" },
             name = name
