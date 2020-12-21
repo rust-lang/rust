@@ -696,9 +696,9 @@ impl<'tcx> Usefulness<'tcx> {
         }
     }
 
-    /// When trying several branches and each returns a `Usefulness`, we need to combine the
-    /// results together.
-    fn merge(usefulnesses: impl Iterator<Item = Self>) -> Self {
+    /// Combine usefulnesses from two branches. This is an associative operation and `NotUseful` is
+    /// a unit.
+    fn extend(&mut self, other: Self) {
         // If we have detected some unreachable sub-branches, we only want to keep them when they
         // were unreachable in _all_ branches. Eg. in the following, the last `true` is unreachable
         // in the second branch of the first or-pattern, but not otherwise. Therefore we don't want
@@ -709,54 +709,39 @@ impl<'tcx> Usefulness<'tcx> {
         //     (false | true, false | true) => {}
         // }
         // ```
-        // Here however we _do_ want to lint that the last `false` is unreachable. So we don't want
-        // to intersect the spans that come directly from the or-pattern, since each branch of the
-        // or-pattern brings a new disjoint pattern.
+        // Here however we _do_ want to lint that the last `false` is unreachable. In order to
+        // handle that correctly, each branch of an or-pattern marks the other branches as
+        // unreachable (see `unsplit_or_pat`). That way, intersecting the results will correctly
+        // identify unreachable sub-patterns.
         // ```
         // match None {
         //     Some(false) => {}
         //     None | Some(true | false) => {}
         // }
         // ```
+        match (&mut *self, other) {
+            (Useful(s), Useful(o)) => s.intersection_mut(&o),
+            (UsefulWithWitness(s), UsefulWithWitness(o)) => s.extend(o),
+            (_, NotUseful) => {}
+            (NotUseful, other) => *self = other,
+            (UsefulWithWitness(_), Useful(_)) | (Useful(_), UsefulWithWitness(_)) => unreachable!(),
+        }
+    }
 
-        // Is `None` when no branch was useful. Will often be `Some(Spanset::new())` because the
-        // sets are only non-empty in the presence of or-patterns.
-        let mut unreachables: Option<SpanSet> = None;
-        // Witnesses of usefulness, if any.
-        let mut witnesses = Vec::new();
-
+    /// When trying several branches and each returns a `Usefulness`, we need to combine the
+    /// results together.
+    fn merge(usefulnesses: impl Iterator<Item = Self>) -> Self {
+        let mut ret = NotUseful;
         for u in usefulnesses {
-            match u {
-                Useful(spans) if spans.is_empty() => {
+            ret.extend(u);
+            if let Useful(spans) = &ret {
+                if spans.is_empty() {
                     // Once we reach the empty set, more intersections won't change the result.
-                    return Useful(SpanSet::new());
-                }
-                Useful(spans) => {
-                    if let Some(unreachables) = &mut unreachables {
-                        if !unreachables.is_empty() {
-                            unreachables.intersection_mut(&spans);
-                        }
-                        if unreachables.is_empty() {
-                            return Useful(SpanSet::new());
-                        }
-                    } else {
-                        unreachables = Some(spans);
-                    }
-                }
-                NotUseful => {}
-                UsefulWithWitness(wits) => {
-                    witnesses.extend(wits);
+                    return ret;
                 }
             }
         }
-
-        if !witnesses.is_empty() {
-            UsefulWithWitness(witnesses)
-        } else if let Some(unreachables) = unreachables {
-            Useful(unreachables)
-        } else {
-            NotUseful
-        }
+        ret
     }
 
     /// After calculating the usefulness for a branch of an or-pattern, call this to make this
