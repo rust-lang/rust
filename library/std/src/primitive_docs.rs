@@ -478,8 +478,10 @@ mod prim_unit {}
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_pointer {}
 
+#[doc(alias = "[]")]
+#[doc(alias = "[T;N]")] // unfortunately, rustdoc doesn't have fuzzy search for aliases
+#[doc(alias = "[T; N]")]
 #[doc(primitive = "array")]
-//
 /// A fixed-size array, denoted `[T; N]`, for the element type, `T`, and the
 /// non-negative compile-time constant size, `N`.
 ///
