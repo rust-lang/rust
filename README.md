@@ -350,9 +350,9 @@ If you want to contribute to Miri, great!  Please check out our
 [contribution guide](CONTRIBUTING.md).
 
 For help with running Miri, you can open an issue here on
-GitHub or contact us (`oli-obk` and `RalfJ`) on the [Rust Zulip].
+GitHub or use the [Miri stream on the Rust Zulip][zulip].
 
-[Rust Zulip]: https://rust-lang.zulipchat.com
+[zulip]: https://rust-lang.zulipchat.com/#narrow/stream/269128-miri
 
 ## History
 
