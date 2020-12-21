@@ -1,0 +1,26 @@
+error[E0369]: binary operation `==` cannot be applied to type `for<'r> fn(&'r i32) -> &'r i32 {foo}`
+  --> $DIR/issue-77910-1.rs:8:5
+   |
+LL |     assert_eq!(foo, y);
+   |     ^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     for<'r> fn(&'r i32) -> &'r i32 {foo}
+   |     _
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: `for<'r> fn(&'r i32) -> &'r i32 {foo}` doesn't implement `Debug`
+  --> $DIR/issue-77910-1.rs:8:5
+   |
+LL |     assert_eq!(foo, y);
+   |     ^^^^^^^^^^^^^^^^^^^ `for<'r> fn(&'r i32) -> &'r i32 {foo}` cannot be formatted using `{:?}` because it doesn't implement `Debug`
+   |
+   = help: the trait `Debug` is not implemented for `for<'r> fn(&'r i32) -> &'r i32 {foo}`
+   = note: required because of the requirements on the impl of `Debug` for `&for<'r> fn(&'r i32) -> &'r i32 {foo}`
+   = note: required by `std::fmt::Debug::fmt`
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0277, E0369.
+For more information about an error, try `rustc --explain E0277`.

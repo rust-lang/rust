@@ -503,8 +503,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if !self.tcx.has_typeck_results(def_id) {
                 return false;
             }
-            // We're emitting a suggestion, so we can just ignore regions
-            let fn_sig = self.tcx.fn_sig(def_id).skip_binder();
+            // FIXME: Instead of exiting early when encountering bound vars in
+            // the function signature, consider keeping the binder here and
+            // propagating it downwards.
+            let fn_sig = if let Some(fn_sig) = self.tcx.fn_sig(def_id).no_bound_vars() {
+                fn_sig
+            } else {
+                return false;
+            };
 
             let other_ty = if let FnDef(def_id, _) = *other_ty.kind() {
                 if !self.tcx.has_typeck_results(def_id) {
