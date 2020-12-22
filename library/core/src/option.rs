@@ -1035,7 +1035,7 @@ impl<T> Option<&mut T> {
         }
     }
 
-    /// Converts from `Option<&mut T>` (or `&mut Option<&T>`) to `*mut T`.
+    /// Converts from `Option<&mut T>` (or `&mut Option<&mut T>`) to `*mut T`.
     ///
     /// This is the opposite of `<*mut T>::as_mut`.
     ///
