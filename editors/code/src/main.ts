@@ -131,7 +131,7 @@ async function tryActivate(context: vscode.ExtensionContext) {
     ctx.pushCleanup(activateTaskProvider(workspaceFolder, ctx.config));
 
     activateInlayHints(ctx);
-    warnAboutRustLangExtensionConflict();
+    warnAboutExtensionConflicts();
 
     vscode.workspace.onDidChangeConfiguration(
         _ => ctx?.client?.sendNotification('workspace/didChangeConfiguration', { settings: "" }),
@@ -411,11 +411,21 @@ async function queryForGithubToken(state: PersistentState): Promise<void> {
     }
 }
 
-function warnAboutRustLangExtensionConflict() {
-    const rustLangExt = vscode.extensions.getExtension("rust-lang.rust");
-    if (rustLangExt !== undefined) {
+function warnAboutExtensionConflicts() {
+    const conflicting = [
+        ["rust-analyzer", "matklad.rust-analyzer"],
+        ["Rust", "rust-lang.rust"],
+        ["Rust", "kalitaalexey.vscode-rust"],
+    ];
+
+    const found = conflicting.filter(
+        nameId => vscode.extensions.getExtension(nameId[1]) !== undefined);
+
+    if (found.length > 1) {
+        const fst = found[0];
+        const sec = found[1];
         vscode.window.showWarningMessage(
-            "You have both rust-analyzer (matklad.rust-analyzer) and Rust (rust-lang.rust) " +
+            `You have both ${fst[0]} (${fst[1]}) and ${sec[0]} (${sec[1]}) ` +
             "plugins enabled. These are known to conflict and cause various functions of " +
             "both plugins to not work correctly. You should disable one of them.", "Got it");
     };
