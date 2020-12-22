@@ -65,7 +65,7 @@
 //       must do so with Release ordering to make the result available.
 //     - `wait` inserts `Waiter` nodes as a pointer in `state_and_queue`, and
 //       needs to make the nodes available with Release ordering. The load in
-//       its `compare_and_swap` can be Relaxed because it only has to compare
+//       its `compare_exchange` can be Relaxed because it only has to compare
 //       the atomic, not to read other data.
 //     - `WaiterQueue::Drop` must see the `Waiter` nodes, so it must load
 //       `state_and_queue` with Acquire ordering.
@@ -110,7 +110,7 @@ use crate::thread::{self, Thread};
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Once {
-    // `state_and_queue` is actually an a pointer to a `Waiter` with extra state
+    // `state_and_queue` is actually a pointer to a `Waiter` with extra state
     // bits, so we add the `PhantomData` appropriately.
     state_and_queue: AtomicUsize,
     _marker: marker::PhantomData<*const Waiter>,
@@ -395,12 +395,13 @@ impl Once {
                 }
                 POISONED | INCOMPLETE => {
                     // Try to register this thread as the one RUNNING.
-                    let old = self.state_and_queue.compare_and_swap(
+                    let exchange_result = self.state_and_queue.compare_exchange(
                         state_and_queue,
                         RUNNING,
                         Ordering::Acquire,
+                        Ordering::Acquire,
                     );
-                    if old != state_and_queue {
+                    if let Err(old) = exchange_result {
                         state_and_queue = old;
                         continue;
                     }
@@ -452,8 +453,13 @@ fn wait(state_and_queue: &AtomicUsize, mut current_state: usize) {
 
         // Try to slide in the node at the head of the linked list, making sure
         // that another thread didn't just replace the head of the linked list.
-        let old = state_and_queue.compare_and_swap(current_state, me | RUNNING, Ordering::Release);
-        if old != current_state {
+        let exchange_result = state_and_queue.compare_exchange(
+            current_state,
+            me | RUNNING,
+            Ordering::Release,
+            Ordering::Relaxed,
+        );
+        if let Err(old) = exchange_result {
             current_state = old;
             continue;
         }

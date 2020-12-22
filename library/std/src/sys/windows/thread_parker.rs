@@ -113,7 +113,7 @@ impl Parker {
                 // Wait for something to happen, assuming it's still set to PARKED.
                 c::WaitOnAddress(self.ptr(), &PARKED as *const _ as c::LPVOID, 1, c::INFINITE);
                 // Change NOTIFIED=>EMPTY but leave PARKED alone.
-                if self.state.compare_and_swap(NOTIFIED, EMPTY, Acquire) == NOTIFIED {
+                if self.state.compare_exchange(NOTIFIED, EMPTY, Acquire, Acquire).is_ok() {
                     // Actually woken up by unpark().
                     return;
                 } else {
