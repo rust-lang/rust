@@ -679,7 +679,7 @@ impl SpanSet {
 }
 
 #[derive(Clone, Debug)]
-crate enum Usefulness<'tcx> {
+enum Usefulness<'tcx> {
     /// Pontentially carries a set of sub-branches that have been found to be unreachable. Used
     /// only in the presence of or-patterns, otherwise it stays empty.
     Useful(SpanSet),
@@ -1024,10 +1024,18 @@ crate struct MatchArm<'p, 'tcx> {
     crate has_guard: bool,
 }
 
+#[derive(Clone, Debug)]
+crate enum Reachability {
+    /// Potentially carries a set of sub-branches that have been found to be unreachable. Used only
+    /// in the presence of or-patterns, otherwise it stays empty.
+    Reachable(SpanSet),
+    Unreachable,
+}
+
 /// The output of checking a match for exhaustiveness and arm reachability.
 crate struct UsefulnessReport<'p, 'tcx> {
     /// For each arm of the input, whether that arm is reachable after the arms above it.
-    crate arm_usefulness: Vec<(MatchArm<'p, 'tcx>, Usefulness<'tcx>)>,
+    crate arm_usefulness: Vec<(MatchArm<'p, 'tcx>, Reachability)>,
     /// If the match is exhaustive, this is empty. If not, this contains witnesses for the lack of
     /// exhaustiveness.
     crate non_exhaustiveness_witnesses: Vec<super::Pat<'tcx>>,
@@ -1055,7 +1063,12 @@ crate fn compute_match_usefulness<'p, 'tcx>(
             if !arm.has_guard {
                 matrix.push(v);
             }
-            (arm, usefulness)
+            let reachability = match usefulness {
+                Useful(spans) => Reachability::Reachable(spans),
+                NotUseful => Reachability::Unreachable,
+                UsefulWithWitness(..) => bug!(),
+            };
+            (arm, reachability)
         })
         .collect();
 
