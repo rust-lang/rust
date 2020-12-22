@@ -115,13 +115,15 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
             .filter(|p| !p.is_global())
             .filter_map(|obligation| {
                 // Note that we do not want to deal with qualified predicates here.
-                if let ty::PredicateKind::Atom(ty::PredicateAtom::Trait(pred, _)) = obligation.predicate.kind() {
-                    if pred.def_id() == sized_trait {
-                        return None;
+                let ty::PredicateKind::ForAll(binder) = obligation.predicate.kind();
+                match binder.skip_binder() {
+                    ty::PredicateAtom::Trait(pred, _) if !binder.has_escaping_bound_vars() => {
+                        if pred.def_id() == sized_trait {
+                            return None;
+                        }
+                        Some(pred)
                     }
-                    Some(pred)
-                } else {
-                    None
+                    _ => None,
                 }
             })
             .collect::<Vec<_>>();
