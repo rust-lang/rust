@@ -160,6 +160,12 @@ impl<'a> Render<'a> {
                 let item = render_fn(self.ctx, import_to_add, Some(local_name), *func);
                 return Some(item);
             }
+            ScopeDef::ModuleDef(Variant(_))
+                if self.ctx.completion.is_pat_binding_or_const
+                    | self.ctx.completion.is_irrefutable_pat_binding =>
+            {
+                CompletionItemKind::EnumVariant
+            }
             ScopeDef::ModuleDef(Variant(var)) => {
                 let item = render_variant(self.ctx, import_to_add, Some(local_name), *var, None);
                 return Some(item);

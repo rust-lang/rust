@@ -8,6 +8,24 @@ use crate::{
     CompletionItemKind,
 };
 
+fn visible_fields(
+    ctx: &RenderContext<'_>,
+    fields: &[hir::Field],
+    item: impl HasAttrs,
+) -> Option<(Vec<hir::Field>, bool)> {
+    let module = ctx.completion.scope.module()?;
+    let n_fields = fields.len();
+    let fields = fields
+        .into_iter()
+        .filter(|field| field.is_visible_from(ctx.db(), module))
+        .copied()
+        .collect::<Vec<_>>();
+
+    let fields_omitted =
+        n_fields - fields.len() > 0 || item.attrs(ctx.db()).by_key("non_exhaustive").exists();
+    Some((fields, fields_omitted))
+}
+
 pub(crate) fn render_struct_pat(
     ctx: RenderContext<'_>,
     strukt: hir::Struct,
@@ -15,35 +33,18 @@ pub(crate) fn render_struct_pat(
 ) -> Option<CompletionItem> {
     let _p = profile::span("render_struct_pat");
 
-    let module = ctx.completion.scope.module()?;
     let fields = strukt.fields(ctx.db());
-    let n_fields = fields.len();
-    let fields = fields
-        .into_iter()
-        .filter(|field| field.is_visible_from(ctx.db(), module))
-        .collect::<Vec<_>>();
+    let (visible_fields, fields_omitted) = visible_fields(&ctx, &fields, strukt)?;
 
-    if fields.is_empty() {
+    if visible_fields.is_empty() {
         // Matching a struct without matching its fields is pointless, unlike matching a Variant without its fields
         return None;
     }
-    let fields_omitted =
-        n_fields - fields.len() > 0 || strukt.attrs(ctx.db()).by_key("non_exhaustive").exists();
 
     let name = local_name.unwrap_or_else(|| strukt.name(ctx.db())).to_string();
-    let pat = render_pat(&ctx, &name, strukt.kind(ctx.db()), &fields, fields_omitted)?;
+    let pat = render_pat(&ctx, &name, strukt.kind(ctx.db()), &visible_fields, fields_omitted)?;
 
-    let mut completion = CompletionItem::new(CompletionKind::Snippet, ctx.source_range(), name)
-        .kind(CompletionItemKind::Binding)
-        .set_documentation(ctx.docs(strukt))
-        .set_deprecated(ctx.is_deprecated(strukt))
-        .detail(&pat);
-    if let Some(snippet_cap) = ctx.snippet_cap() {
-        completion = completion.insert_snippet(snippet_cap, pat);
-    } else {
-        completion = completion.insert_text(pat);
-    }
-    Some(completion.build())
+    Some(build_completion(ctx, name, pat, strukt))
 }
 
 pub(crate) fn render_variant_pat(
@@ -53,31 +54,32 @@ pub(crate) fn render_variant_pat(
 ) -> Option<CompletionItem> {
     let _p = profile::span("render_variant_pat");
 
-    let module = ctx.completion.scope.module()?;
     let fields = variant.fields(ctx.db());
-    let n_fields = fields.len();
-    let fields = fields
-        .into_iter()
-        .filter(|field| field.is_visible_from(ctx.db(), module))
-        .collect::<Vec<_>>();
-
-    let fields_omitted =
-        n_fields - fields.len() > 0 || variant.attrs(ctx.db()).by_key("non_exhaustive").exists();
+    let (visible_fields, fields_omitted) = visible_fields(&ctx, &fields, variant)?;
 
     let name = local_name.unwrap_or_else(|| variant.name(ctx.db())).to_string();
-    let pat = render_pat(&ctx, &name, variant.kind(ctx.db()), &fields, fields_omitted)?;
+    let pat = render_pat(&ctx, &name, variant.kind(ctx.db()), &visible_fields, fields_omitted)?;
 
-    let mut completion = CompletionItem::new(CompletionKind::Snippet, ctx.source_range(), name)
+    Some(build_completion(ctx, name, pat, variant))
+}
+
+fn build_completion(
+    ctx: RenderContext<'_>,
+    name: String,
+    pat: String,
+    item: impl HasAttrs + Copy,
+) -> CompletionItem {
+    let completion = CompletionItem::new(CompletionKind::Snippet, ctx.source_range(), name)
         .kind(CompletionItemKind::Binding)
-        .set_documentation(ctx.docs(variant))
-        .set_deprecated(ctx.is_deprecated(variant))
+        .set_documentation(ctx.docs(item))
+        .set_deprecated(ctx.is_deprecated(item))
         .detail(&pat);
-    if let Some(snippet_cap) = ctx.snippet_cap() {
-        completion = completion.insert_snippet(snippet_cap, pat);
+    let completion = if let Some(snippet_cap) = ctx.snippet_cap() {
+        completion.insert_snippet(snippet_cap, pat)
     } else {
-        completion = completion.insert_text(pat);
-    }
-    Some(completion.build())
+        completion.insert_text(pat)
+    };
+    completion.build()
 }
 
 fn render_pat(

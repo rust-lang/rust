@@ -1,7 +1,5 @@
 //! Completes constats and paths in patterns.
 
-use hir::StructKind;
-
 use crate::{CompletionContext, Completions};
 
 /// Completes constants and paths in patterns.
@@ -22,11 +20,7 @@ pub(crate) fn complete_pattern(acc: &mut Completions, ctx: &CompletionContext) {
                     acc.add_struct_pat(ctx, strukt.clone(), Some(name.clone()));
                     true
                 }
-                hir::ModuleDef::Variant(variant)
-                    if !ctx.is_irrefutable_pat_binding
-                        // render_resolution already does some pattern completion tricks for tuple variants
-                        && variant.kind(ctx.db) == StructKind::Record =>
-                {
+                hir::ModuleDef::Variant(variant) if !ctx.is_irrefutable_pat_binding => {
                     acc.add_variant_pat(ctx, variant.clone(), Some(name.clone()));
                     true
                 }
@@ -49,7 +43,10 @@ pub(crate) fn complete_pattern(acc: &mut Completions, ctx: &CompletionContext) {
 mod tests {
     use expect_test::{expect, Expect};
 
-    use crate::{test_utils::completion_list, CompletionKind};
+    use crate::{
+        test_utils::{check_edit, completion_list},
+        CompletionKind,
+    };
 
     fn check(ra_fixture: &str, expect: Expect) {
         let actual = completion_list(ra_fixture, CompletionKind::Reference);
@@ -81,7 +78,7 @@ fn foo() {
                 en E
                 ct Z
                 st Bar
-                ev X   ()
+                ev X
                 md m
             "#]],
         );
@@ -237,5 +234,28 @@ fn outer() {
                 bn Bar Bar($1, ..)$0
             "#]],
         )
+    }
+
+    #[test]
+    fn only_shows_ident_completion() {
+        check_edit(
+            "Foo",
+            r#"
+struct Foo(i32);
+fn main() {
+    match Foo(92) {
+        <|>(92) => (),
+    }
+}
+"#,
+            r#"
+struct Foo(i32);
+fn main() {
+    match Foo(92) {
+        Foo(92) => (),
+    }
+}
+"#,
+        );
     }
 }
