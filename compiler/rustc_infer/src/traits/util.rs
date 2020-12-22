@@ -14,7 +14,6 @@ pub fn anonymize_predicate<'tcx>(
             let new = ty::PredicateKind::ForAll(tcx.anonymize_late_bound_regions(binder));
             tcx.reuse_or_mk_predicate(pred, new)
         }
-        ty::PredicateKind::Atom(_) => pred,
     }
 }
 

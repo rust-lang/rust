@@ -211,7 +211,6 @@ impl FlagComputation {
                     computation.add_predicate_atom(atom)
                 });
             }
-            ty::PredicateKind::Atom(atom) => self.add_predicate_atom(atom),
         }
     }
 

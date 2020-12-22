@@ -232,7 +232,6 @@ impl fmt::Debug for ty::PredicateKind<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             ty::PredicateKind::ForAll(binder) => write!(f, "ForAll({:?})", binder),
-            ty::PredicateKind::Atom(atom) => write!(f, "{:?}", atom),
         }
     }
 }
@@ -486,7 +485,6 @@ impl<'a, 'tcx> Lift<'tcx> for ty::PredicateKind<'a> {
     fn lift_to_tcx(self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
         match self {
             ty::PredicateKind::ForAll(binder) => tcx.lift(binder).map(ty::PredicateKind::ForAll),
-            ty::PredicateKind::Atom(atom) => tcx.lift(atom).map(ty::PredicateKind::Atom),
         }
     }
 }

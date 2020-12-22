@@ -31,13 +31,11 @@ fn inferred_outlives_of(tcx: TyCtxt<'_>, item_def_id: DefId) -> &[(ty::Predicate
                     let mut pred: Vec<String> = predicates
                         .iter()
                         .map(|(out_pred, _)| match out_pred.kind() {
-                            ty::PredicateKind::Atom(ty::PredicateAtom::RegionOutlives(p)) => {
-                                p.to_string()
-                            }
-                            ty::PredicateKind::Atom(ty::PredicateAtom::TypeOutlives(p)) => {
-                                p.to_string()
-                            }
-                            err => bug!("unexpected predicate {:?}", err),
+                            ty::PredicateKind::ForAll(binder) => match binder.skip_binder() {
+                                ty::PredicateAtom::RegionOutlives(p) => p.to_string(),
+                                ty::PredicateAtom::TypeOutlives(p) => p.to_string(),
+                                err => bug!("unexpected predicate {:?}", err),
+                            },
                         })
                         .collect();
                     pred.sort();

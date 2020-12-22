@@ -95,8 +95,12 @@ fn compute_implied_outlives_bounds<'tcx>(
         implied_bounds.extend(obligations.into_iter().flat_map(|obligation| {
             assert!(!obligation.has_escaping_bound_vars());
             match obligation.predicate.kind() {
-                &ty::PredicateKind::ForAll(..) => vec![],
-                &ty::PredicateKind::Atom(atom) => match atom {
+                &ty::PredicateKind::ForAll(binder)
+                    if binder.skip_binder().has_escaping_bound_vars() =>
+                {
+                    vec![]
+                }
+                &ty::PredicateKind::ForAll(binder) => match binder.skip_binder() {
                     ty::PredicateAtom::Trait(..)
                     | ty::PredicateAtom::Subtype(..)
                     | ty::PredicateAtom::Projection(..)

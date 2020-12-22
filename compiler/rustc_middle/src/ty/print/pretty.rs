@@ -2069,7 +2069,6 @@ define_print_and_forward_display! {
 
     ty::Predicate<'tcx> {
         match self.kind() {
-            &ty::PredicateKind::Atom(atom) => p!(print(atom)),
             ty::PredicateKind::ForAll(binder) => p!(print(binder)),
         }
     }
