@@ -27,6 +27,7 @@ in environments without `std`, such as embedded systems and kernels.
 
 - Drop-in replacement for the standard library `HashMap` and `HashSet` types.
 - Uses [AHash](https://github.com/tkaitchuck/aHash) as the default hasher, which is much faster than SipHash.
+  However, AHash does *not provide the same level of HashDoS resistance* as SipHash, so if that is important to you, you might want to consider using a different hasher.
 - Around 2x faster than the previous standard library `HashMap`.
 - Lower memory usage: only 1 byte of overhead per entry instead of 8.
 - Compatible with `#[no_std]` (but requires a global allocator with the `alloc` crate).
