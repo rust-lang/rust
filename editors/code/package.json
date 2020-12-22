@@ -250,12 +250,12 @@
                         }
                     ],
                     "default": null,
-                    "description": "Environment variables passed to the runnable launched using `Test ` or `Debug` lens or `rust-analyzer.run` command."
+                    "markdownDescription": "Environment variables passed to the runnable launched using `Test` or `Debug` lens or `rust-analyzer.run` command."
                 },
                 "rust-analyzer.inlayHints.enable": {
                     "type": "boolean",
                     "default": true,
-                    "description": "Whether to show inlay hints"
+                    "description": "Whether to show inlay hints."
                 },
                 "rust-analyzer.updates.channel": {
                     "type": "string",
@@ -265,15 +265,15 @@
                     ],
                     "default": "stable",
                     "markdownEnumDescriptions": [
-                        "`\"stable\"` updates are shipped weekly, they don't contain cutting-edge features from VSCode proposed APIs but have less bugs in general",
-                        "`\"nightly\"` updates are shipped daily (extension updates automatically by downloading artifacts directly from GitHub), they contain cutting-edge features and latest bug fixes. These releases help us get your feedback very quickly and speed up rust-analyzer development **drastically**"
+                        "`stable` updates are shipped weekly, they don't contain cutting-edge features from VSCode proposed APIs but have less bugs in general.",
+                        "`nightly` updates are shipped daily (extension updates automatically by downloading artifacts directly from GitHub), they contain cutting-edge features and latest bug fixes. These releases help us get your feedback very quickly and speed up rust-analyzer development **drastically**."
                     ],
-                    "markdownDescription": "Choose `\"nightly\"` updates to get the latest features and bug fixes every day. While `\"stable\"` releases occur weekly and don't contain cutting-edge features from VSCode proposed APIs"
+                    "markdownDescription": "Choose `nightly` updates to get the latest features and bug fixes every day. While `stable` releases occur weekly and don't contain cutting-edge features from VSCode proposed APIs."
                 },
                 "rust-analyzer.updates.askBeforeDownload": {
                     "type": "boolean",
                     "default": true,
-                    "description": "Whether to ask for permission before downloading any files from the Internet"
+                    "description": "Whether to ask for permission before downloading any files from the Internet."
                 },
                 "rust-analyzer.serverPath": {
                     "type": [
@@ -281,7 +281,7 @@
                         "string"
                     ],
                     "default": null,
-                    "description": "Path to rust-analyzer executable (points to bundled binary by default). If this is set, then \"rust-analyzer.updates.channel\" setting is not used"
+                    "markdownDescription": "Path to rust-analyzer executable (points to bundled binary by default). If this is set, then `#rust-analyzer.updates.channel#` setting is not used"
                 },
                 "rust-analyzer.trace.server": {
                     "type": "string",
@@ -297,10 +297,10 @@
                         "Full log"
                     ],
                     "default": "off",
-                    "description": "Trace requests to the rust-analyzer (this is usually overly verbose and not recommended for regular users)"
+                    "description": "Trace requests to the rust-analyzer (this is usually overly verbose and not recommended for regular users)."
                 },
                 "rust-analyzer.trace.extension": {
-                    "description": "Enable logging of VS Code extensions itself",
+                    "description": "Enable logging of VS Code extensions itself.",
                     "type": "boolean",
                     "default": false
                 },
@@ -327,14 +327,14 @@
                     }
                 },
                 "rust-analyzer.debug.openDebugPane": {
-                    "description": "Whether to open up the Debug Pane on debugging start.",
+                    "markdownDescription": "Whether to open up the `Debug Panel` on debugging start.",
                     "type": "boolean",
                     "default": false
                 },
                 "rust-analyzer.debug.engineSettings": {
                     "type": "object",
                     "default": {},
-                    "description": "Optional settings passed to the debug engine. Example:\n{ \"lldb\": { \"terminal\":\"external\"} }"
+                    "markdownDescription": "Optional settings passed to the debug engine. Example: `{ \"lldb\": { \"terminal\":\"external\"} }`"
                 },
                 "rust-analyzer.assist.importMergeBehaviour": {
                     "markdownDescription": "The strategy to use when inserting new imports or merging imports.",
@@ -362,7 +362,7 @@
                     ],
                     "enumDescriptions": [
                         "Insert import paths relative to the current module, using up to one `super` prefix if the parent module contains the requested item.",
-                        "Prefix all import paths with `self` if they don't begin with `self`, `super`, `crate` or a crate name",
+                        "Prefix all import paths with `self` if they don't begin with `self`, `super`, `crate` or a crate name.",
                         "Force import paths to be absolute by always starting them with `crate` or the crate name they refer to."
                     ]
                 },
@@ -372,7 +372,7 @@
                     "type": "boolean"
                 },
                 "rust-analyzer.cargo.autoreload": {
-                    "markdownDescription": "Automatically refresh project info via `cargo metadata` on Cargo.toml changes.",
+                    "markdownDescription": "Automatically refresh project info via `cargo metadata` on `Cargo.toml` changes.",
                     "default": true,
                     "type": "boolean"
                 },
@@ -418,7 +418,7 @@
                     "type": "boolean"
                 },
                 "rust-analyzer.checkOnSave.allFeatures": {
-                    "markdownDescription": "Check with all features (will be passed as `--all-features`). Defaults to `rust-analyzer.cargo.allFeatures`.",
+                    "markdownDescription": "Check with all features (will be passed as `--all-features`). Defaults to `#rust-analyzer.cargo.allFeatures#`.",
                     "default": null,
                     "type": [
                         "null",
@@ -444,7 +444,7 @@
                     ]
                 },
                 "rust-analyzer.checkOnSave.target": {
-                    "markdownDescription": "Check for a specific target. Defaults to `rust-analyzer.cargo.target`.",
+                    "markdownDescription": "Check for a specific target. Defaults to `#rust-analyzer.cargo.target#`.",
                     "default": null,
                     "type": [
                         "null",
@@ -460,7 +460,7 @@
                     }
                 },
                 "rust-analyzer.checkOnSave.features": {
-                    "markdownDescription": "List of features to activate. Defaults to `rust-analyzer.cargo.features`.",
+                    "markdownDescription": "List of features to activate. Defaults to `#rust-analyzer.cargo.features#`.",
                     "default": null,
                     "type": [
                         "null",
@@ -497,7 +497,7 @@
                     "type": "boolean"
                 },
                 "rust-analyzer.completion.autoimport.enable": {
-                    "markdownDescription": "Toggles the additional completions that automatically add imports when completed. Note that your client have to specify the `additionalTextEdits` LSP client capability to truly have this feature enabled.",
+                    "markdownDescription": "Toggles the additional completions that automatically add imports when completed. Note that your client must specify the `additionalTextEdits` LSP client capability to truly have this feature enabled.",
                     "default": true,
                     "type": "boolean"
                 },
@@ -521,7 +521,7 @@
                     "uniqueItems": true
                 },
                 "rust-analyzer.diagnostics.warningsAsHint": {
-                    "markdownDescription": "List of warnings that should be displayed with info severity.\\nThe warnings will be indicated by a blue squiggly underline in code and a blue icon in the problems panel.",
+                    "markdownDescription": "List of warnings that should be displayed with info severity.\\n\\nThe warnings will be indicated by a blue squiggly underline in code and a blue icon in the `Problems Panel`.",
                     "default": [],
                     "type": "array",
                     "items": {
@@ -529,7 +529,7 @@
                     }
                 },
                 "rust-analyzer.diagnostics.warningsAsInfo": {
-                    "markdownDescription": "List of warnings that should be displayed with hint severity.\\nThe warnings will be indicated by faded text or three dots in code and will not show up in the problems panel.",
+                    "markdownDescription": "List of warnings that should be displayed with hint severity.\\n\\nThe warnings will be indicated by faded text or three dots in code and will not show up in the `Problems Panel`.",
                     "default": [],
                     "type": "array",
                     "items": {
@@ -577,7 +577,7 @@
                     "type": "boolean"
                 },
                 "rust-analyzer.inlayHints.maxLength": {
-                    "markdownDescription": "Maximum length for inlay hints.",
+                    "markdownDescription": "Maximum length for inlay hints. Default is unlimited.",
                     "default": null,
                     "type": [
                         "null",
@@ -621,7 +621,7 @@
                     "type": "boolean"
                 },
                 "rust-analyzer.linkedProjects": {
-                    "markdownDescription": "Disable project auto-discovery in favor of explicitly specified set of projects.  \\nElements must be paths pointing to Cargo.toml, rust-project.json, or JSON objects in rust-project.json format.",
+                    "markdownDescription": "Disable project auto-discovery in favor of explicitly specified set of projects.\\n\\nElements must be paths pointing to `Cargo.toml`, `rust-project.json`, or JSON objects in `rust-project.json` format.",
                     "default": [],
                     "type": "array",
                     "items": {
@@ -632,7 +632,7 @@
                     }
                 },
                 "rust-analyzer.lruCapacity": {
-                    "markdownDescription": "Number of syntax trees rust-analyzer keeps in memory.",
+                    "markdownDescription": "Number of syntax trees rust-analyzer keeps in memory.  Defaults to 128.",
                     "default": null,
                     "type": [
                         "null",
@@ -646,7 +646,7 @@
                     "type": "boolean"
                 },
                 "rust-analyzer.procMacro.enable": {
-                    "markdownDescription": "Enable Proc macro support, cargo.loadOutDirsFromCheck must be enabled.",
+                    "markdownDescription": "Enable Proc macro support, `#rust-analyzer.cargo.loadOutDirsFromCheck#` must be enabled.",
                     "default": false,
                     "type": "boolean"
                 },
@@ -659,7 +659,7 @@
                     ]
                 },
                 "rust-analyzer.runnables.cargoExtraArgs": {
-                    "markdownDescription": "Additional arguments to be passed to cargo for runnables such as tests or binaries.\\nFor example, it may be '--release'.",
+                    "markdownDescription": "Additional arguments to be passed to cargo for runnables such as tests or binaries.\\nFor example, it may be `--release`.",
                     "default": [],
                     "type": "array",
                     "items": {
@@ -675,7 +675,7 @@
                     ]
                 },
                 "rust-analyzer.rustfmt.extraArgs": {
-                    "markdownDescription": "Additional arguments to rustfmt.",
+                    "markdownDescription": "Additional arguments to `rustfmt`.",
                     "default": [],
                     "type": "array",
                     "items": {
