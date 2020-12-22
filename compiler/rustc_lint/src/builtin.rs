@@ -2596,6 +2596,11 @@ declare_lint! {
 }
 
 pub struct ClashingExternDeclarations {
+    /// Map of function symbol name to the first-seen hir id for that symbol name.. If seen_decls
+    /// contains an entry for key K, it means a symbol with name K has been seen by this lint and
+    /// the symbol should be reported as a clashing declaration.
+    // FIXME: Technically, we could just store a &'tcx str here without issue; however, the
+    // `impl_lint_pass` macro doesn't currently support lints parametric over a lifetime.
     seen_decls: FxHashMap<String, HirId>,
 }
 
