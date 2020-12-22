@@ -788,8 +788,7 @@ pub fn indent_of<T: LintContext>(cx: &T, span: Span) -> Option<usize> {
 /// fn into3(self)   -> () {}
 ///               ^
 /// ```
-#[allow(clippy::needless_pass_by_value)]
-pub fn position_before_rarrow(s: String) -> Option<usize> {
+pub fn position_before_rarrow(s: &str) -> Option<usize> {
     s.rfind("->").map(|rpos| {
         let mut rpos = rpos;
         let chars: Vec<char> = s.chars().collect();
