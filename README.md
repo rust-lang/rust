@@ -98,17 +98,6 @@ If you want to run Clippy **only** on the given crate, use the `--no-deps` optio
 cargo clippy -p example -- --no-deps 
 ```
 
-### Running Clippy from the command line without installing it
-
-To have cargo compile your crate with Clippy without Clippy installation
-in your code, you can use:
-
-```terminal
-cargo run --bin cargo-clippy --manifest-path=path_to_clippys_Cargo.toml
-```
-
-*Note:* Be sure that Clippy was compiled with the same version of rustc that cargo invokes here!
-
 ### Travis CI
 
 You can add Clippy to Travis CI in the same way you use it locally:
