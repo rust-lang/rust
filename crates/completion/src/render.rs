@@ -5,6 +5,7 @@ pub(crate) mod macro_;
 pub(crate) mod function;
 pub(crate) mod enum_variant;
 pub(crate) mod const_;
+pub(crate) mod pattern;
 pub(crate) mod type_alias;
 
 mod builder_ext;
@@ -158,6 +159,12 @@ impl<'a> Render<'a> {
             ScopeDef::ModuleDef(Function(func)) => {
                 let item = render_fn(self.ctx, import_to_add, Some(local_name), *func);
                 return Some(item);
+            }
+            ScopeDef::ModuleDef(Variant(_))
+                if self.ctx.completion.is_pat_binding_or_const
+                    | self.ctx.completion.is_irrefutable_pat_binding =>
+            {
+                CompletionItemKind::EnumVariant
             }
             ScopeDef::ModuleDef(Variant(var)) => {
                 let item = render_variant(self.ctx, import_to_add, Some(local_name), *var, None);

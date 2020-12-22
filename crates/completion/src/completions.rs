@@ -19,9 +19,14 @@ use hir::{ModPath, ScopeDef, Type};
 use crate::{
     item::Builder,
     render::{
-        const_::render_const, enum_variant::render_variant, function::render_fn,
-        macro_::render_macro, render_field, render_resolution, render_tuple_field,
-        type_alias::render_type_alias, RenderContext,
+        const_::render_const,
+        enum_variant::render_variant,
+        function::render_fn,
+        macro_::render_macro,
+        pattern::{render_struct_pat, render_variant_pat},
+        render_field, render_resolution, render_tuple_field,
+        type_alias::render_type_alias,
+        RenderContext,
     },
     CompletionContext, CompletionItem,
 };
@@ -103,6 +108,28 @@ impl Completions {
     ) {
         let item = render_fn(RenderContext::new(ctx), None, local_name, func);
         self.add(item)
+    }
+
+    pub(crate) fn add_variant_pat(
+        &mut self,
+        ctx: &CompletionContext,
+        variant: hir::Variant,
+        local_name: Option<hir::Name>,
+    ) {
+        if let Some(item) = render_variant_pat(RenderContext::new(ctx), variant, local_name) {
+            self.add(item);
+        }
+    }
+
+    pub(crate) fn add_struct_pat(
+        &mut self,
+        ctx: &CompletionContext,
+        strukt: hir::Struct,
+        local_name: Option<hir::Name>,
+    ) {
+        if let Some(item) = render_struct_pat(RenderContext::new(ctx), strukt, local_name) {
+            self.add(item);
+        }
     }
 
     pub(crate) fn add_const(&mut self, ctx: &CompletionContext, constant: hir::Const) {

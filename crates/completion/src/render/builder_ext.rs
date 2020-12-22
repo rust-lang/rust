@@ -34,7 +34,6 @@ impl Builder {
             return false;
         }
         if ctx.is_pattern_call {
-            mark::hit!(dont_duplicate_pattern_parens);
             return false;
         }
         if ctx.is_call {
