@@ -257,7 +257,10 @@ pub struct Substructure<'a> {
     pub type_ident: Ident,
     /// ident of the method
     pub method_ident: Ident,
-    /// dereferenced access to any `Self_` or `Ptr(Self_, _)` arguments
+    /// dereferenced access to any [`Self_`] or [`Ptr(Self_, _)][ptr]` arguments
+    ///
+    /// [`Self_`]: ty::Ty::Self_
+    /// [ptr]: ty::Ty::Ptr
     pub self_args: &'a [P<Expr>],
     /// verbatim access to any other arguments
     pub nonself_args: &'a [P<Expr>],
