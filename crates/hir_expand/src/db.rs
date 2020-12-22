@@ -5,7 +5,7 @@ use std::sync::Arc;
 use base_db::{salsa, SourceDatabase};
 use mbe::{ExpandError, ExpandResult, MacroRules};
 use parser::FragmentKind;
-use syntax::{algo::diff, AstNode, GreenNode, Parse, SyntaxKind::*, SyntaxNode};
+use syntax::{algo::diff, ast::NameOwner, AstNode, GreenNode, Parse, SyntaxKind::*, SyntaxNode};
 
 use crate::{
     ast_id_map::AstIdMap, BuiltinDeriveExpander, BuiltinFnLikeExpander, EagerCallLoc, EagerMacroId,
@@ -129,11 +129,11 @@ fn ast_id_map(db: &dyn AstDatabase, file_id: HirFileId) -> Arc<AstIdMap> {
 fn macro_def(db: &dyn AstDatabase, id: MacroDefId) -> Option<Arc<(TokenExpander, mbe::TokenMap)>> {
     match id.kind {
         MacroDefKind::Declarative => {
-            let macro_call = match id.ast_id?.to_node(db) {
+            let macro_rules = match id.ast_id?.to_node(db) {
                 syntax::ast::Macro::MacroRules(mac) => mac,
                 syntax::ast::Macro::MacroDef(_) => return None,
             };
-            let arg = macro_call.token_tree()?;
+            let arg = macro_rules.token_tree()?;
             let (tt, tmap) = mbe::ast_to_token_tree(&arg).or_else(|| {
                 log::warn!("fail on macro_def to token tree: {:#?}", arg);
                 None
@@ -141,7 +141,8 @@ fn macro_def(db: &dyn AstDatabase, id: MacroDefId) -> Option<Arc<(TokenExpander,
             let rules = match MacroRules::parse(&tt) {
                 Ok(it) => it,
                 Err(err) => {
-                    log::warn!("fail on macro_def parse: error: {:#?} {:#?}", err, tt);
+                    let name = macro_rules.name().map(|n| n.to_string()).unwrap_or_default();
+                    log::warn!("fail on macro_def parse ({}): {:?} {:#?}", name, err, tt);
                     return None;
                 }
             };
