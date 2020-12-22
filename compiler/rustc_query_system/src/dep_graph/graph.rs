@@ -3,7 +3,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::profiling::QueryInvocationId;
 use rustc_data_structures::sharded::{self, Sharded};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_data_structures::sync::{AtomicU32, AtomicU64, Lock, Lrc, Ordering};
+use rustc_data_structures::sync::{AtomicU32, AtomicU64, Lock, LockGuard, Lrc, Ordering};
 use rustc_data_structures::unlikely;
 use rustc_errors::Diagnostic;
 use rustc_index::vec::{Idx, IndexVec};
@@ -135,9 +135,6 @@ impl<K: DepKind> DepGraph<K> {
     }
 
     pub fn query(&self) -> DepGraphQuery<K> {
-        // We call this before acquiring locks, since it also acquires them.
-        // The extra locking is not a big deal, as this gets called rarely.
-        let edge_count = self.edge_count();
         let data = self.data.as_ref().unwrap();
         let previous = &data.previous;
 
@@ -145,6 +142,7 @@ impl<K: DepKind> DepGraph<K> {
         let prev_index_to_index = data.current.prev_index_to_index.lock();
         let data = data.current.data.lock();
         let node_count = data.hybrid_indices.len();
+        let edge_count = self.edge_count(&data);
 
         let mut nodes = Vec::with_capacity(node_count);
         let mut edge_list_indices = Vec::with_capacity(node_count);
@@ -566,14 +564,13 @@ impl<K: DepKind> DepGraph<K> {
         }
     }
 
-    fn edge_count(&self) -> usize {
+    fn edge_count(&self, node_data: &LockGuard<'_, DepNodeData<K>>) -> usize {
         let data = self.data.as_ref().unwrap();
         let previous = &data.previous;
-        let data = data.current.data.lock();
 
-        let mut edge_count = data.unshared_edges.len();
+        let mut edge_count = node_data.unshared_edges.len();
 
-        for &hybrid_index in data.hybrid_indices.iter() {
+        for &hybrid_index in node_data.hybrid_indices.iter() {
             if let HybridIndex::DarkGreen(prev_index) = hybrid_index.into() {
                 edge_count += previous.edge_targets_from(prev_index).len()
             }
@@ -585,9 +582,6 @@ impl<K: DepKind> DepGraph<K> {
     pub fn serialize(&self) -> SerializedDepGraph<K> {
         type SDNI = SerializedDepNodeIndex;
 
-        // We call this before acquiring locks, since it also acquires them.
-        // The extra locking is not a big deal, as this only gets called once.
-        let edge_count = self.edge_count();
         let data = self.data.as_ref().unwrap();
         let previous = &data.previous;
 
@@ -595,6 +589,7 @@ impl<K: DepKind> DepGraph<K> {
         let prev_index_to_index = data.current.prev_index_to_index.lock();
         let data = data.current.data.lock();
         let node_count = data.hybrid_indices.len();
+        let edge_count = self.edge_count(&data);
 
         let mut nodes = IndexVec::with_capacity(node_count);
         let mut fingerprints = IndexVec::with_capacity(node_count);
