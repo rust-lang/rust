@@ -2161,14 +2161,14 @@ impl Clean<Vec<Item>> for doctree::Import<'_> {
         let pub_underscore = self.vis.node.is_pub() && self.name == kw::Underscore;
 
         if pub_underscore && inlined {
-          rustc_errors::struct_span_err!(
-            cx.tcx.sess,
-            self.attrs.lists(sym::doc).next().unwrap().span(),
-            E0780,
-            "inline with wildcard import"
-          )
-          .span_label(self.span, "wildcard import")
-          .emit();
+            rustc_errors::struct_span_err!(
+                cx.tcx.sess,
+                self.attrs.lists(sym::doc).next().unwrap().span(),
+                E0780,
+                "inline with wildcard import"
+            )
+            .span_label(self.span, "wildcard import")
+            .emit();
         }
 
         // We consider inlining the documentation of `pub use` statements, but we
