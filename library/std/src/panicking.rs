@@ -44,9 +44,8 @@ use realstd::io::set_output_capture;
 extern "C" {
     fn __rust_panic_cleanup(payload: *mut u8) -> *mut (dyn Any + Send + 'static);
 
-    /// `payload` is actually a `*mut &mut dyn BoxMeUp` but that would cause FFI warnings.
-    /// It cannot be `Box<dyn BoxMeUp>` because the other end of this call does not depend
-    /// on liballoc, and thus cannot use `Box`.
+    /// `payload` is actually a `Box<dyn BoxMeUp>`, but we pass this by-reference because the other
+    /// end of this call does not depend on liballoc, and thus cannot use `Box`.
     #[unwind(allowed)]
     fn __rust_start_panic(payload: *mut &mut dyn BoxMeUp) -> u32;
 }
