@@ -287,12 +287,14 @@ async function getServer(config: Config, state: PersistentState): Promise<string
     if (config.package.releaseTag === null) return "rust-analyzer";
 
     let platform: string | undefined;
-    if (process.arch === "x64" || process.arch === "ia32") {
-        if (process.platform === "linux") platform = "linux";
-        if (process.platform === "darwin") platform = "mac";
-        if (process.platform === "win32") platform = "windows";
+    if ((process.arch === "x64" || process.arch === "ia32") && process.platform === "win32") {
+        platform = "x86_64-pc-windows-msvc";
+    } else if (process.arch === "x64" && process.platform === "linux") {
+        platform = "x86_64-unknown-linux-gnu";
+    } else if (process.arch === "x64" && process.platform === "darwin") {
+        platform = "x86_64-apple-darwin";
     } else if (process.arch === "arm64" && process.platform === "darwin") {
-        platform = "mac";
+        platform = "aarch64-apple-darwin";
     }
     if (platform === undefined) {
         vscode.window.showErrorMessage(
@@ -305,7 +307,7 @@ async function getServer(config: Config, state: PersistentState): Promise<string
         );
         return undefined;
     }
-    const ext = platform === "windows" ? ".exe" : "";
+    const ext = platform.indexOf("-windows-") !== -1 ? ".exe" : "";
     const dest = path.join(config.globalStoragePath, `rust-analyzer-${platform}${ext}`);
     const exists = await fs.stat(dest).then(() => true, () => false);
     if (!exists) {
