@@ -98,7 +98,7 @@ endif
 	# Run it in order to generate some profiling data,
 	# with `LLVM_PROFILE_FILE=<profdata_file>` environment variable set to
 	# output the coverage stats for this run.
-	LLVM_PROFILE_FILE="$(TMPDIR)"/$@.profraw \
+	LLVM_PROFILE_FILE="$(TMPDIR)"/$@-%p.profraw \
 			$(call RUN,$@) || \
 			( \
 				status=$$?; \
@@ -108,9 +108,16 @@ endif
 				) \
 			)
 
+	# Run it through rustdoc as well to cover doctests
+	LLVM_PROFILE_FILE="$(TMPDIR)"/$@-%p.profraw \
+			$(RUSTDOC) --crate-name workaround_for_79771 --test $(SOURCEDIR)/$@.rs \
+			$$( grep -q '^\/\/ require-rust-edition-2018' $(SOURCEDIR)/$@.rs && echo "--edition=2018" ) \
+			-L "$(TMPDIR)" -Zinstrument-coverage \
+			-Z unstable-options --persist-doctests=$(TMPDIR)/rustdoc-$@
+
 	# Postprocess the profiling data so it can be used by the llvm-cov tool
 	"$(LLVM_BIN_DIR)"/llvm-profdata merge --sparse \
-			"$(TMPDIR)"/$@.profraw \
+			"$(TMPDIR)"/$@-*.profraw \
 			-o "$(TMPDIR)"/$@.profdata
 
 	# Generate a coverage report using `llvm-cov show`.
@@ -121,8 +128,15 @@ endif
 			--show-line-counts-or-regions \
 			--instr-profile="$(TMPDIR)"/$@.profdata \
 			$(call BIN,"$(TMPDIR)"/$@) \
-		> "$(TMPDIR)"/actual_show_coverage.$@.txt \
-		2> "$(TMPDIR)"/show_coverage_stderr.$@.txt || \
+			$$( \
+				for file in $(TMPDIR)/rustdoc-$@/*/rust_out; \
+				do \
+				[[ -x $$file ]] && printf "%s %s " -object $$file; \
+				done \
+			) \
+		2> "$(TMPDIR)"/show_coverage_stderr.$@.txt \
+		| "$(PYTHON)" $(BASEDIR)/normalize_paths.py \
+		> "$(TMPDIR)"/actual_show_coverage.$@.txt || \
 	( status=$$? ; \
 		>&2 cat "$(TMPDIR)"/show_coverage_stderr.$@.txt ; \
 		exit $$status \
