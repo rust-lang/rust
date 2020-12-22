@@ -161,7 +161,7 @@ impl IntRange {
         // 2       --------   // 2 -------
         let (lo, hi) = self.boundaries();
         let (other_lo, other_hi) = other.boundaries();
-        lo == other_hi || hi == other_lo
+        (lo == other_hi || hi == other_lo) && !self.is_singleton() && !other.is_singleton()
     }
 
     fn to_pat<'tcx>(&self, tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Pat<'tcx> {
@@ -273,7 +273,7 @@ impl IntRange {
         let mut borders: Vec<_> = row_borders.chain(self_borders).collect();
         borders.sort_unstable();
 
-        self.lint_overlapping_patterns(pcx, hir_id, overlaps);
+        self.lint_overlapping_range_endpoints(pcx, hir_id, overlaps);
 
         // We're going to iterate through every adjacent pair of borders, making sure that
         // each represents an interval of nonnegative length, and convert each such
@@ -296,7 +296,7 @@ impl IntRange {
             .collect()
     }
 
-    fn lint_overlapping_patterns(
+    fn lint_overlapping_range_endpoints(
         &self,
         pcx: PatCtxt<'_, '_, '_>,
         hir_id: Option<HirId>,
@@ -304,22 +304,22 @@ impl IntRange {
     ) {
         if let (true, Some(hir_id)) = (!overlaps.is_empty(), hir_id) {
             pcx.cx.tcx.struct_span_lint_hir(
-                lint::builtin::OVERLAPPING_PATTERNS,
+                lint::builtin::OVERLAPPING_RANGE_ENDPOINTS,
                 hir_id,
                 pcx.span,
                 |lint| {
-                    let mut err = lint.build("multiple patterns covering the same range");
-                    err.span_label(pcx.span, "overlapping patterns");
+                    let mut err = lint.build("multiple patterns overlap on their endpoints");
                     for (int_range, span) in overlaps {
-                        // Use the real type for user display of the ranges:
                         err.span_label(
                             span,
                             &format!(
-                                "this range overlaps on `{}`",
-                                int_range.to_pat(pcx.cx.tcx, pcx.ty),
+                                "this range overlaps on `{}`...",
+                                int_range.to_pat(pcx.cx.tcx, pcx.ty)
                             ),
                         );
                     }
+                    err.span_label(pcx.span, "... with this range");
+                    err.note("you likely meant to write mutually exclusive ranges");
                     err.emit();
                 },
             );
