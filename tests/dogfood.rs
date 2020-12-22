@@ -23,7 +23,7 @@ fn dogfood_clippy() {
         .current_dir(root_dir)
         .env("CLIPPY_DOGFOOD", "1")
         .env("CARGO_INCREMENTAL", "0")
-        .arg("clippy")
+        .arg("clippy-preview")
         .arg("--all-targets")
         .arg("--all-features")
         .arg("--")
