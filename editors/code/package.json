@@ -749,11 +749,6 @@
         ],
         "grammars": [
             {
-                "language": "rust",
-                "scopeName": "source.rust",
-                "path": "rust.tmGrammar.json"
-            },
-            {
                 "language": "ra_syntax_tree",
                 "scopeName": "source.ra_syntax_tree",
                 "path": "ra_syntax_tree.tmGrammar.json"
