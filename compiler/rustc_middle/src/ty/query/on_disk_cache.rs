@@ -1,4 +1,4 @@
-use crate::dep_graph::{DepNodeIndex, SerializedDepNodeIndex};
+use crate::dep_graph::{DepNode, DepNodeIndex, SerializedDepNodeIndex};
 use crate::mir::interpret::{AllocDecodingSession, AllocDecodingState};
 use crate::mir::{self, interpret};
 use crate::ty::codec::{OpaqueEncoder, RefDecodable, TyDecoder, TyEncoder};
@@ -264,6 +264,13 @@ impl<'sess> OnDiskCache<'sess> {
                 (file_to_file_index, file_index_to_stable_id)
             };
 
+            // Register any dep nodes that we reused from the previous session,
+            // but didn't `DepNode::construct` in this session. This ensures
+            // that their `DefPathHash` to `RawDefId` mappings are registered
+            // in 'latest_foreign_def_path_hashes' if necessary, since that
+            // normally happens in `DepNode::construct`.
+            tcx.dep_graph.register_reused_dep_nodes(tcx);
+
             // Load everything into memory so we can write it out to the on-disk
             // cache. The vast majority of cacheable query results should already
             // be in memory, so this should be a cheap operation.
@@ -467,8 +474,8 @@ impl<'sess> OnDiskCache<'sess> {
             .insert(hash, RawDefId { krate: def_id.krate.as_u32(), index: def_id.index.as_u32() });
     }
 
-    /// If the given `hash` still exists in the current compilation,
-    /// calls `store_foreign_def_id` with its current `DefId`.
+    /// If the given `dep_node`'s hash still exists in the current compilation,
+    /// and its current `DefId` is foreign, calls `store_foreign_def_id` with it.
     ///
     /// Normally, `store_foreign_def_id_hash` can be called directly by
     /// the dependency graph when we construct a `DepNode`. However,
@@ -476,13 +483,24 @@ impl<'sess> OnDiskCache<'sess> {
     /// session, we only have the `DefPathHash` available. This method is used
     /// to that any `DepNode` that we re-use has a `DefPathHash` -> `RawId` written
     /// out for usage in the next compilation session.
-    pub fn register_reused_dep_path_hash(&self, tcx: TyCtxt<'tcx>, hash: DefPathHash) {
-        // We can't simply copy the `RawDefId` from `foreign_def_path_hashes` to
-        // `latest_foreign_def_path_hashes`, since the `RawDefId` might have
-        // changed in the current compilation session (e.g. we've added/removed crates,
-        // or added/removed definitions before/after the target definition).
-        if let Some(def_id) = self.def_path_hash_to_def_id(tcx, hash) {
-            self.store_foreign_def_id_hash(def_id, hash);
+    pub fn register_reused_dep_node(&self, tcx: TyCtxt<'tcx>, dep_node: &DepNode) {
+        // For reused dep nodes, we only need to store the mapping if the node
+        // is one whose query key we can reconstruct from the hash. We use the
+        // mapping to aid that reconstruction in the next session. While we also
+        // use it to decode `DefId`s we encoded in the cache as `DefPathHashes`,
+        // they're already registered during `DefId` encoding.
+        if dep_node.kind.can_reconstruct_query_key() {
+            let hash = DefPathHash(dep_node.hash.into());
+
+            // We can't simply copy the `RawDefId` from `foreign_def_path_hashes` to
+            // `latest_foreign_def_path_hashes`, since the `RawDefId` might have
+            // changed in the current compilation session (e.g. we've added/removed crates,
+            // or added/removed definitions before/after the target definition).
+            if let Some(def_id) = self.def_path_hash_to_def_id(tcx, hash) {
+                if !def_id.is_local() {
+                    self.store_foreign_def_id_hash(def_id, hash);
+                }
+            }
         }
     }
 
