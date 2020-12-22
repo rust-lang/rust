@@ -443,11 +443,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.exact_div(this.read_immediate(num)?, this.read_immediate(denom)?, dest)?;
             }
 
-            "forget" => {
-                // We get an argument... and forget about it.
-                let &[_] = check_arg_count(args)?;
-            }
-
             "try" => return this.handle_try(args, dest, ret),
 
             name => throw_unsup_format!("unimplemented intrinsic: {}", name),
