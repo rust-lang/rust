@@ -11,8 +11,10 @@ flate2 = "1.0.19"
 itertools = "0.9"
 opener = "0.4"
 regex = "1"
+serde = {version = "1.0", features = ["derive"]}
 shell-escape = "0.1"
 tar = "0.4.30"
+toml = "0.5"
 ureq = "2.0.0-rc3"
 walkdir = "2"
 
