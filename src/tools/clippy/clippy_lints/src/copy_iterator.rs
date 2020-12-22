@@ -44,7 +44,7 @@ impl<'tcx> LateLintPass<'tcx> for CopyIterator {
                 span_lint_and_note(
                     cx,
                     COPY_ITERATOR,
-                    item.span,
+                    cx.tcx.hir().span_with_body(item.hir_id()),
                     "you are implementing `Iterator` on a `Copy` type",
                     None,
                     "consider implementing `IntoIterator` instead",

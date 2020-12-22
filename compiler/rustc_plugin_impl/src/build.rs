@@ -6,11 +6,10 @@ use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::sym;
-use rustc_span::Span;
 
 struct RegistrarFinder<'tcx> {
     tcx: TyCtxt<'tcx>,
-    registrars: Vec<(LocalDefId, Span)>,
+    registrars: Vec<LocalDefId>,
 }
 
 impl<'v, 'tcx> ItemLikeVisitor<'v> for RegistrarFinder<'tcx> {
@@ -18,7 +17,7 @@ impl<'v, 'tcx> ItemLikeVisitor<'v> for RegistrarFinder<'tcx> {
         if let hir::ItemKind::Fn(..) = item.kind {
             let attrs = self.tcx.hir().attrs(item.hir_id());
             if self.tcx.sess.contains_name(attrs, sym::plugin_registrar) {
-                self.registrars.push((item.def_id, item.span));
+                self.registrars.push(item.def_id);
             }
         }
     }
@@ -44,13 +43,14 @@ fn plugin_registrar_fn(tcx: TyCtxt<'_>, cnum: CrateNum) -> Option<DefId> {
     match finder.registrars.len() {
         0 => None,
         1 => {
-            let (def_id, _) = finder.registrars.pop().unwrap();
+            let def_id = finder.registrars.pop().unwrap();
             Some(def_id.to_def_id())
         }
         _ => {
             let diagnostic = tcx.sess.diagnostic();
             let mut e = diagnostic.struct_err("multiple plugin registration functions found");
-            for &(_, span) in &finder.registrars {
+            for &def_id in &finder.registrars {
+                let span = tcx.hir().span_with_body(tcx.hir().local_def_id_to_hir_id(def_id));
                 e.span_note(span, "one is here");
             }
             e.emit();

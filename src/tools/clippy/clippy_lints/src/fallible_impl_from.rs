@@ -57,7 +57,7 @@ impl<'tcx> LateLintPass<'tcx> for FallibleImplFrom {
             if let Some(impl_trait_ref) = cx.tcx.impl_trait_ref(item.def_id);
             if cx.tcx.is_diagnostic_item(sym::from_trait, impl_trait_ref.def_id);
             then {
-                lint_impl_body(cx, item.span, impl_.items);
+                lint_impl_body(cx, cx.tcx.hir().span_with_body(item.hir_id()), impl_.items);
             }
         }
     }

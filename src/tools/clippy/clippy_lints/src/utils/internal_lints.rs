@@ -342,6 +342,7 @@ impl<'tcx> LateLintPass<'tcx> for LintWithoutLintPass {
             return;
         }
 
+        let item_span = cx.tcx.hir().span(item.hir_id);
         if let hir::ItemKind::Static(ref ty, Mutability::Not, body_id) = item.kind {
             if is_lint_ref_type(cx, ty) {
                 let expr = &cx.tcx.hir().body(body_id).value;
@@ -362,15 +363,15 @@ impl<'tcx> LateLintPass<'tcx> for LintWithoutLintPass {
                         span_lint(
                             cx,
                             DEFAULT_LINT,
-                            item.span,
+                            item_span,
                             &format!("the lint `{}` has the default lint description", item.ident.name),
                         );
                     }
                 }
-                self.declared_lints.insert(item.ident.name, item.span);
+                self.declared_lints.insert(item.ident.name, item_span);
             }
-        } else if is_expn_of(item.span, "impl_lint_pass").is_some()
-            || is_expn_of(item.span, "declare_lint_pass").is_some()
+        } else if is_expn_of(item_span, "impl_lint_pass").is_some()
+            || is_expn_of(item_span, "declare_lint_pass").is_some()
         {
             if let hir::ItemKind::Impl(hir::Impl {
                 of_trait: None,
@@ -878,7 +879,8 @@ impl<'tcx> LateLintPass<'tcx> for InvalidPaths {
                 }).collect();
             if !check_path(cx, &path[..]);
             then {
-                span_lint(cx, CLIPPY_LINTS_INTERNAL, item.span, "invalid path");
+                let item_span = cx.tcx.hir().span(item.hir_id);
+                span_lint(cx, CLIPPY_LINTS_INTERNAL, item_span, "invalid path");
             }
         }
     }

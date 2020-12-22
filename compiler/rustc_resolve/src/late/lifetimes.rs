@@ -1268,7 +1268,8 @@ fn compute_object_lifetime_defaults(tcx: TyCtxt<'_>) -> HirIdMap<Vec<ObjectLifet
                         })
                         .collect::<Vec<Cow<'static, str>>>()
                         .join(",");
-                    tcx.sess.span_err(item.span, &object_lifetime_default_reprs);
+                    let item_span = tcx.hir().span_with_body(item.hir_id());
+                    tcx.sess.span_err(item_span, &object_lifetime_default_reprs);
                 }
 
                 map.insert(item.hir_id(), result);

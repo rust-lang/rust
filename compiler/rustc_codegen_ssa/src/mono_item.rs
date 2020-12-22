@@ -35,7 +35,8 @@ impl<'a, 'tcx: 'a> MonoItemExt<'a, 'tcx> for MonoItem<'tcx> {
                 if let hir::ItemKind::GlobalAsm(ref ga) = item.kind {
                     cx.codegen_global_asm(ga);
                 } else {
-                    span_bug!(item.span, "Mismatch between hir::Item type and MonoItem type")
+                    let item_span = cx.tcx().def_span(item.def_id);
+                    span_bug!(item_span, "Mismatch between hir::Item type and MonoItem type")
                 }
             }
             MonoItem::Fn(instance) => {

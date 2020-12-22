@@ -287,7 +287,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
             }
         }
 
-        if in_macro(expr.span) | !meets_msrv(self.msrv.as_ref(), &USE_SELF_MSRV) {
+        if in_macro(cx.tcx.hir().span(expr.hir_id)) | !meets_msrv(self.msrv.as_ref(), &USE_SELF_MSRV) {
             return;
         }
 

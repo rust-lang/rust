@@ -2132,7 +2132,7 @@ fn clean_extern_crate(
     vec![Item {
         name: Some(name),
         attrs: box attrs.clean(cx),
-        source: krate.span.clean(cx),
+        source: cx.tcx.hir().span(hir::CRATE_HIR_ID).clean(cx),
         def_id: crate_def_id,
         visibility: krate.vis.clean(cx),
         kind: box ExternCrateItem { src: orig_name },
@@ -2149,7 +2149,9 @@ fn clean_use_statement(
     // We need this comparison because some imports (for std types for example)
     // are "inserted" as well but directly by the compiler and they should not be
     // taken into account.
-    if import.span.ctxt().outer_expn_data().kind == ExpnKind::AstPass(AstPass::StdImports) {
+    if cx.tcx.hir().span_with_body(import.hir_id()).ctxt().outer_expn_data().kind
+        == ExpnKind::AstPass(AstPass::StdImports)
+    {
         return Vec::new();
     }
 
@@ -2165,7 +2167,7 @@ fn clean_use_statement(
                 E0780,
                 "anonymous imports cannot be inlined"
             )
-            .span_label(import.span, "anonymous import")
+            .span_label(cx.tcx.hir().span_with_body(import.hir_id()), "anonymous import")
             .emit();
         }
     }

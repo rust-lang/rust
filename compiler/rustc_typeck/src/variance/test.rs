@@ -18,7 +18,8 @@ impl ItemLikeVisitor<'tcx> for VarianceTest<'tcx> {
         // attribute and report an error with various results if found.
         if self.tcx.has_attr(item.def_id.to_def_id(), sym::rustc_variance) {
             let variances_of = self.tcx.variances_of(item.def_id);
-            struct_span_err!(self.tcx.sess, item.span, E0208, "{:?}", variances_of).emit();
+            let item_span = self.tcx.hir().span_with_body(item.hir_id());
+            struct_span_err!(self.tcx.sess, item_span, E0208, "{:?}", variances_of).emit();
         }
     }
 

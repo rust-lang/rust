@@ -154,8 +154,9 @@ fn associated_item(tcx: TyCtxt<'_>, def_id: DefId) -> ty::AssocItem {
         _ => {}
     }
 
+    let parent_item_span = tcx.hir().span_with_body(parent_item.hir_id());
     span_bug!(
-        parent_item.span,
+        parent_item_span,
         "unexpected parent of trait or impl item or item not found: {:?}",
         parent_item.kind
     )
@@ -206,7 +207,10 @@ fn associated_item_def_ids(tcx: TyCtxt<'_>, def_id: DefId) -> &[DefId] {
             impl_.items.iter().map(|impl_item_ref| impl_item_ref.id.def_id.to_def_id()),
         ),
         hir::ItemKind::TraitAlias(..) => &[],
-        _ => span_bug!(item.span, "associated_item_def_ids: not impl or trait"),
+        _ => {
+            let item_span = tcx.hir().span_with_body(item.hir_id());
+            span_bug!(item_span, "associated_item_def_ids: not impl or trait")
+        }
     }
 }
 

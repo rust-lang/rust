@@ -596,6 +596,7 @@ impl Visitor<'tcx> for DeadVisitor<'tcx> {
     fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
         if self.should_warn_about_item(item) {
             // For most items, we want to highlight its identifier
+            let item_span = self.tcx.hir().span_with_body(item.hir_id());
             let span = match item.kind {
                 hir::ItemKind::Fn(..)
                 | hir::ItemKind::Mod(..)
@@ -610,13 +611,13 @@ impl Visitor<'tcx> for DeadVisitor<'tcx> {
                     // (and thus has a source_callee set).
                     // We should probably annotate ident.span with the macro
                     // context, but that's a larger change.
-                    if item.span.source_callee().is_some() {
-                        self.tcx.sess.source_map().guess_head_span(item.span)
+                    if item_span.source_callee().is_some() {
+                        self.tcx.sess.source_map().guess_head_span(item_span)
                     } else {
                         item.ident.span
                     }
                 }
-                _ => item.span,
+                _ => item_span,
             };
             let participle = match item.kind {
                 hir::ItemKind::Struct(..) => "constructed", // Issue #52325
@@ -662,9 +663,10 @@ impl Visitor<'tcx> for DeadVisitor<'tcx> {
         match impl_item.kind {
             hir::ImplItemKind::Const(_, body_id) => {
                 if !self.symbol_is_live(impl_item.hir_id()) {
+                    let impl_item_span = self.tcx.hir().span_with_body(impl_item.hir_id());
                     self.warn_dead_code(
                         impl_item.hir_id(),
-                        impl_item.span,
+                        impl_item_span,
                         impl_item.ident.name,
                         "used",
                     );
@@ -679,8 +681,9 @@ impl Visitor<'tcx> for DeadVisitor<'tcx> {
                     // (and thus has a source_callee set).
                     // We should probably annotate ident.span with the macro
                     // context, but that's a larger change.
-                    let span = if impl_item.span.source_callee().is_some() {
-                        self.tcx.sess.source_map().guess_head_span(impl_item.span)
+                    let impl_item_span = self.tcx.hir().span_with_body(impl_item.hir_id());
+                    let span = if impl_item_span.source_callee().is_some() {
+                        self.tcx.sess.source_map().guess_head_span(impl_item_span)
                     } else {
                         impl_item.ident.span
                     };

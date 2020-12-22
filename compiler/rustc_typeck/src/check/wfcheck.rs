@@ -108,7 +108,8 @@ pub fn check_item_well_formed(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                 .impl_trait_ref(item.def_id)
                 .map_or(false, |trait_ref| tcx.trait_is_auto(trait_ref.def_id));
             if let (hir::Defaultness::Default { .. }, true) = (impl_.defaultness, is_auto) {
-                let sp = impl_.of_trait.as_ref().map_or(item.span, |t| t.path.span);
+                let item_span = tcx.hir().span_with_body(item.hir_id());
+                let sp = impl_.of_trait.as_ref().map_or(item_span, |t| t.path.span);
                 let mut err =
                     tcx.sess.struct_span_err(sp, "impls of auto traits cannot be default");
                 err.span_labels(impl_.defaultness_span, "default because of this");
@@ -141,7 +142,7 @@ pub fn check_item_well_formed(tcx: TyCtxt<'_>, def_id: LocalDefId) {
             }
         }
         hir::ItemKind::Fn(ref sig, ..) => {
-            check_item_fn(tcx, item.hir_id(), item.ident, item.span, sig.decl);
+            check_item_fn(tcx, item.hir_id(), item.ident, sig.decl);
         }
         hir::ItemKind::Static(ref ty, ..) => {
             check_item_type(tcx, item.hir_id(), ty.span, false);
@@ -154,7 +155,7 @@ pub fn check_item_well_formed(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                 let it = tcx.hir().foreign_item(it.id);
                 match it.kind {
                     hir::ForeignItemKind::Fn(ref decl, ..) => {
-                        check_item_fn(tcx, it.hir_id(), it.ident, it.span, decl)
+                        check_item_fn(tcx, it.hir_id(), it.ident, decl)
                     }
                     hir::ForeignItemKind::Static(ref ty, ..) => {
                         check_item_type(tcx, it.hir_id(), ty.span, true)
@@ -197,7 +198,7 @@ pub fn check_trait_item(tcx: TyCtxt<'_>, def_id: LocalDefId) {
         _ => None,
     };
     check_object_unsafe_self_trait_by_name(tcx, &trait_item);
-    check_associated_item(tcx, trait_item.hir_id(), trait_item.span, method_sig);
+    check_associated_item(tcx, trait_item.hir_id(), method_sig);
 }
 
 fn could_be_self(trait_def_id: LocalDefId, ty: &hir::Ty<'_>) -> bool {
@@ -271,7 +272,7 @@ pub fn check_impl_item(tcx: TyCtxt<'_>, def_id: LocalDefId) {
         _ => None,
     };
 
-    check_associated_item(tcx, impl_item.hir_id(), impl_item.span, method_sig);
+    check_associated_item(tcx, impl_item.hir_id(), method_sig);
 }
 
 fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) {
@@ -379,12 +380,12 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) {
 fn check_associated_item(
     tcx: TyCtxt<'_>,
     item_id: hir::HirId,
-    span: Span,
     sig_if_method: Option<&hir::FnSig<'_>>,
 ) {
     debug!("check_associated_item: {:?}", item_id);
 
     let code = ObligationCauseCode::MiscObligation;
+    let span = tcx.hir().span_with_body(item_id);
     for_id(tcx, item_id, span).with_fcx(|fcx, tcx| {
         let item = fcx.tcx.associated_item(fcx.tcx.hir().local_def_id(item_id));
 
@@ -433,7 +434,8 @@ fn check_associated_item(
 }
 
 fn for_item<'tcx>(tcx: TyCtxt<'tcx>, item: &hir::Item<'_>) -> CheckWfFcxBuilder<'tcx> {
-    for_id(tcx, item.hir_id(), item.span)
+    let item_span = tcx.hir().span_with_body(item.hir_id());
+    for_id(tcx, item.hir_id(), item_span)
 }
 
 fn for_id(tcx: TyCtxt<'_>, id: hir::HirId, span: Span) -> CheckWfFcxBuilder<'_> {
@@ -476,9 +478,10 @@ fn check_type_defn<'tcx, F>(
                     let ty = variant.fields.last().unwrap().ty;
                     let ty = fcx.tcx.erase_regions(ty);
                     if ty.needs_infer() {
+                        let item_span = tcx.hir().span_with_body(item.hir_id());
                         fcx_tcx
                             .sess
-                            .delay_span_bug(item.span, &format!("inference variables in {:?}", ty));
+                            .delay_span_bug(item_span, &format!("inference variables in {:?}", ty));
                         // Just treat unresolved type expression as if it needs drop.
                         true
                     } else {
@@ -541,7 +544,8 @@ fn check_type_defn<'tcx, F>(
             }
         }
 
-        check_where_clauses(tcx, fcx, item.span, item.def_id.to_def_id(), None);
+        let item_span = tcx.hir().span_with_body(item.hir_id());
+        check_where_clauses(tcx, fcx, item_span, item.def_id.to_def_id(), None);
 
         // No implied bounds in a struct definition.
         vec![]
@@ -567,7 +571,8 @@ fn check_trait(tcx: TyCtxt<'_>, item: &hir::Item<'_>) {
     }
 
     for_item(tcx, item).with_fcx(|fcx, _| {
-        check_where_clauses(tcx, fcx, item.span, item.def_id.to_def_id(), None);
+        let item_span = tcx.hir().span_with_body(item.hir_id());
+        check_where_clauses(tcx, fcx, item_span, item.def_id.to_def_id(), None);
 
         vec![]
     });
@@ -600,13 +605,8 @@ fn check_associated_type_bounds(fcx: &FnCtxt<'_, '_>, item: &ty::AssocItem, span
     }
 }
 
-fn check_item_fn(
-    tcx: TyCtxt<'_>,
-    item_id: hir::HirId,
-    ident: Ident,
-    span: Span,
-    decl: &hir::FnDecl<'_>,
-) {
+fn check_item_fn(tcx: TyCtxt<'_>, item_id: hir::HirId, ident: Ident, decl: &hir::FnDecl<'_>) {
+    let span = tcx.hir().span_with_body(item_id);
     for_id(tcx, item_id, span).with_fcx(|fcx, tcx| {
         let def_id = fcx.tcx.hir().local_def_id(item_id);
         let sig = fcx.tcx.fn_sig(def_id);
@@ -685,7 +685,8 @@ fn check_impl<'tcx>(
             }
             None => {
                 let self_ty = fcx.tcx.type_of(item.def_id);
-                let self_ty = fcx.normalize_associated_types_in(item.span, self_ty);
+                let item_span = tcx.hir().span_with_body(item.hir_id());
+                let self_ty = fcx.normalize_associated_types_in(item_span, self_ty);
                 fcx.register_wf_obligation(
                     self_ty.into(),
                     ast_self_ty.span,
@@ -694,9 +695,10 @@ fn check_impl<'tcx>(
             }
         }
 
-        check_where_clauses(tcx, fcx, item.span, item.def_id.to_def_id(), None);
+        let item_span = tcx.hir().span_with_body(item.hir_id());
+        check_where_clauses(tcx, fcx, item_span, item.def_id.to_def_id(), None);
 
-        fcx.impl_implied_bounds(item.def_id.to_def_id(), item.span)
+        fcx.impl_implied_bounds(item.def_id.to_def_id(), item_span)
     });
 }
 

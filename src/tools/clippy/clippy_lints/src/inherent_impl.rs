@@ -48,7 +48,7 @@ pub struct MultipleInherentImpl {
 impl_lint_pass!(MultipleInherentImpl => [MULTIPLE_INHERENT_IMPL]);
 
 impl<'tcx> LateLintPass<'tcx> for MultipleInherentImpl {
-    fn check_item(&mut self, _: &LateContext<'tcx>, item: &'tcx Item<'_>) {
+    fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
         if let ItemKind::Impl(Impl {
             ref generics,
             of_trait: None,
@@ -58,8 +58,9 @@ impl<'tcx> LateLintPass<'tcx> for MultipleInherentImpl {
             // Remember for each inherent implementation encountered its span and generics
             // but filter out implementations that have generic params (type or lifetime)
             // or are derived from a macro
-            if !in_macro(item.span) && generics.params.is_empty() {
-                self.impls.insert(item.def_id.to_def_id(), item.span);
+            let item_span = cx.tcx.hir().span_with_body(item.hir_id());
+            if !in_macro(item_span) && generics.params.is_empty() {
+                self.impls.insert(item.def_id.to_def_id(), item_span);
             }
         }
     }

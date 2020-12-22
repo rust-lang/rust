@@ -173,8 +173,9 @@ impl<'tcx> LateLintPass<'tcx> for Derive {
             let attrs = cx.tcx.hir().attrs(item.hir_id());
             let is_automatically_derived = is_automatically_derived(attrs);
 
-            check_hash_peq(cx, item.span, trait_ref, ty, is_automatically_derived);
-            check_ord_partial_ord(cx, item.span, trait_ref, ty, is_automatically_derived);
+            let item_span = cx.tcx.hir().span_with_body(item.hir_id());
+            check_hash_peq(cx, item_span, trait_ref, ty, is_automatically_derived);
+            check_ord_partial_ord(cx, item_span, trait_ref, ty, is_automatically_derived);
 
             if is_automatically_derived {
                 check_unsafe_derive_deserialize(cx, item, trait_ref, ty);
@@ -327,12 +328,13 @@ fn check_copy_clone<'tcx>(cx: &LateContext<'tcx>, item: &Item<'_>, trait_ref: &T
             _ => (),
         }
 
+        let item_span = cx.tcx.hir().span_with_body(item.hir_id());
         span_lint_and_note(
             cx,
             EXPL_IMPL_CLONE_ON_COPY,
-            item.span,
+            item_span,
             "you are implementing `Clone` explicitly on a `Copy` type",
-            Some(item.span),
+            Some(item_span),
             "consider deriving `Clone` or removing `Copy`",
         );
     }
@@ -371,7 +373,7 @@ fn check_unsafe_derive_deserialize<'tcx>(
             span_lint_and_help(
                 cx,
                 UNSAFE_DERIVE_DESERIALIZE,
-                item.span,
+                cx.tcx.hir().span_with_body(item.hir_id()),
                 "you are deriving `serde::Deserialize` on a type that has methods using `unsafe`",
                 None,
                 "consider implementing `serde::Deserialize` manually. See https://serde.rs/impl-deserialize.html"

@@ -1449,12 +1449,13 @@ impl intravisit::Visitor<'tcx> for UsePlacementFinder<'tcx> {
         // Find a `use` statement.
         for &item_id in module.item_ids {
             let item = self.tcx.hir().item(item_id);
+            let item_span = self.tcx.hir().span_with_body(item.hir_id());
             match item.kind {
                 hir::ItemKind::Use(..) => {
                     // Don't suggest placing a `use` before the prelude
                     // import or other generated ones.
-                    if !item.span.from_expansion() {
-                        self.span = Some(item.span.shrink_to_lo());
+                    if !item_span.from_expansion() {
+                        self.span = Some(item_span.shrink_to_lo());
                         self.found_use = true;
                         return;
                     }
@@ -1463,12 +1464,12 @@ impl intravisit::Visitor<'tcx> for UsePlacementFinder<'tcx> {
                 hir::ItemKind::ExternCrate(_) => {}
                 // ...but do place them before the first other item.
                 _ => {
-                    if self.span.map_or(true, |span| item.span < span) {
-                        if !item.span.from_expansion() {
+                    if self.span.map_or(true, |span| item_span < span) {
+                        if !item_span.from_expansion() {
                             // Don't insert between attributes and an item.
                             let attrs = self.tcx.hir().attrs(item.hir_id());
                             if attrs.is_empty() {
-                                self.span = Some(item.span.shrink_to_lo());
+                                self.span = Some(item_span.shrink_to_lo());
                             } else {
                                 // Find the first attribute on the item.
                                 for attr in attrs {

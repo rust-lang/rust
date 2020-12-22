@@ -194,7 +194,8 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: LocalDefId) {
                         error = true;
                     }
                     if let hir::IsAsync::Async = sig.header.asyncness {
-                        let span = tcx.sess.source_map().guess_head_span(it.span);
+                        let it_span = tcx.hir().span_with_body(it.hir_id());
+                        let span = tcx.sess.source_map().guess_head_span(it_span);
                         struct_span_err!(
                             tcx.sess,
                             span,
@@ -294,7 +295,8 @@ fn check_start_fn_ty(tcx: TyCtxt<'_>, start_def_id: LocalDefId) {
                         error = true;
                     }
                     if let hir::IsAsync::Async = sig.header.asyncness {
-                        let span = tcx.sess.source_map().guess_head_span(it.span);
+                        let it_span = tcx.hir().span_with_body(it.hir_id());
+                        let span = tcx.sess.source_map().guess_head_span(it_span);
                         struct_span_err!(
                             tcx.sess,
                             span,

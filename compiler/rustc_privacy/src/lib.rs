@@ -2065,7 +2065,10 @@ fn visibility(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Visibility {
                             },
                             |def_id| tcx.visibility(def_id),
                         ),
-                        _ => span_bug!(impl_item.span, "the parent is not a trait impl"),
+                        _ => {
+                            let impl_item_span = tcx.hir().span(impl_item.hir_id());
+                            span_bug!(impl_item_span, "the parent is not a trait impl")
+                        }
                     }
                 }
                 _ => span_bug!(

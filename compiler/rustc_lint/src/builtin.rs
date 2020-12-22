@@ -734,11 +734,12 @@ impl<'tcx> LateLintPass<'tcx> for MissingCopyImplementations {
             return;
         }
         let param_env = ty::ParamEnv::empty();
-        if ty.is_copy_modulo_regions(cx.tcx.at(item.span), param_env) {
+        let item_span = cx.tcx.hir().span_with_body(item.hir_id());
+        if ty.is_copy_modulo_regions(cx.tcx.at(item_span), param_env) {
             return;
         }
         if can_type_implement_copy(cx.tcx, param_env, ty).is_ok() {
-            cx.struct_span_lint(MISSING_COPY_IMPLEMENTATIONS, item.span, |lint| {
+            cx.struct_span_lint(MISSING_COPY_IMPLEMENTATIONS, item_span, |lint| {
                 lint.build(
                     "type could implement `Copy`; consider adding `impl \
                           Copy`",
@@ -819,7 +820,8 @@ impl<'tcx> LateLintPass<'tcx> for MissingDebugImplementations {
         }
 
         if !self.impling_types.as_ref().unwrap().contains(&item.def_id) {
-            cx.struct_span_lint(MISSING_DEBUG_IMPLEMENTATIONS, item.span, |lint| {
+            let item_span = cx.tcx.hir().span_with_body(item.hir_id());
+            cx.struct_span_lint(MISSING_DEBUG_IMPLEMENTATIONS, item_span, |lint| {
                 lint.build(&format!(
                     "type does not implement `{}`; consider adding `#[derive(Debug)]` \
                      or a manual implementation",
@@ -1103,7 +1105,8 @@ impl<'tcx> LateLintPass<'tcx> for InvalidNoMangleItems {
                         match param.kind {
                             GenericParamKind::Lifetime { .. } => {}
                             GenericParamKind::Type { .. } | GenericParamKind::Const { .. } => {
-                                cx.struct_span_lint(NO_MANGLE_GENERIC_ITEMS, it.span, |lint| {
+                                let it_span = cx.tcx.hir().span_with_body(it.hir_id());
+                                cx.struct_span_lint(NO_MANGLE_GENERIC_ITEMS, it_span, |lint| {
                                     lint.build(
                                         "functions generic over types or consts must be mangled",
                                     )
@@ -1127,7 +1130,8 @@ impl<'tcx> LateLintPass<'tcx> for InvalidNoMangleItems {
                 if cx.sess().contains_name(attrs, sym::no_mangle) {
                     // Const items do not refer to a particular location in memory, and therefore
                     // don't have anything to attach a symbol to
-                    cx.struct_span_lint(NO_MANGLE_CONST_ITEMS, it.span, |lint| {
+                    let it_span = cx.tcx.hir().span_with_body(it.hir_id());
+                    cx.struct_span_lint(NO_MANGLE_CONST_ITEMS, it_span, |lint| {
                         let msg = "const items should never be `#[no_mangle]`";
                         let mut err = lint.build(msg);
 
@@ -1136,11 +1140,11 @@ impl<'tcx> LateLintPass<'tcx> for InvalidNoMangleItems {
                             .tcx
                             .sess
                             .source_map()
-                            .span_to_snippet(it.span)
+                            .span_to_snippet(it_span)
                             .map(|snippet| snippet.find("const").unwrap_or(0))
                             .unwrap_or(0) as u32;
                         // `const` is 5 chars
-                        let const_span = it.span.with_hi(BytePos(it.span.lo().0 + start + 5));
+                        let const_span = it_span.with_hi(BytePos(it_span.lo().0 + start + 5));
                         err.span_suggestion(
                             const_span,
                             "try a static value",

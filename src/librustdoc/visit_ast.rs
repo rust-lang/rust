@@ -313,7 +313,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             }
             hir::ItemKind::Mod(ref m) => {
                 om.mods.push(self.visit_mod_contents(
-                    item.span,
+                    self.cx.tcx.hir().span_with_body(item.hir_id()),
                     &item.vis,
                     item.hir_id(),
                     m,

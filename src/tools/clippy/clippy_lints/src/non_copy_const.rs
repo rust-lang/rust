@@ -237,7 +237,7 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst {
             let ty = hir_ty_to_ty(cx.tcx, hir_ty);
 
             if is_unfrozen(cx, ty) && is_value_unfrozen_poly(cx, body_id, ty) {
-                lint(cx, Source::Item { item: it.span });
+                lint(cx, Source::Item { item: cx.tcx.hir().span(it.hir_id()) });
             }
         }
     }
@@ -264,7 +264,7 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst {
                 // re-implementing the trait predicate evaluation specific to `Freeze`.
                 && body_id_opt.map_or(true, |body_id| is_value_unfrozen_poly(cx, body_id, normalized))
             {
-                lint(cx, Source::Assoc { item: trait_item.span });
+                lint(cx, Source::Assoc { item: cx.tcx.hir().span(trait_item.hir_id()) });
             }
         }
     }
@@ -310,7 +310,7 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst {
                                 lint(
                                    cx,
                                    Source::Assoc {
-                                       item: impl_item.span,
+                                       item: cx.tcx.hir().span(impl_item.hir_id()),
                                     },
                                 );
                             }
@@ -323,7 +323,7 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst {
                     let normalized = cx.tcx.normalize_erasing_regions(cx.param_env, ty);
 
                     if is_unfrozen(cx, ty) && is_value_unfrozen_poly(cx, *body_id, normalized) {
-                        lint(cx, Source::Assoc { item: impl_item.span });
+                        lint(cx, Source::Assoc { item: cx.tcx.hir().span(impl_item.hir_id()) });
                     }
                 },
                 _ => (),

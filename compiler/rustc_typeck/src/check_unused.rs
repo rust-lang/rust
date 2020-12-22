@@ -24,7 +24,8 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
 
 impl ItemLikeVisitor<'v> for CheckVisitor<'tcx> {
     fn visit_item(&mut self, item: &hir::Item<'_>) {
-        if item.vis.node.is_pub() || item.span.is_dummy() {
+        let item_span = self.tcx.hir().span_with_body(item.hir_id());
+        if item.vis.node.is_pub() || item_span.is_dummy() {
             return;
         }
         if let hir::ItemKind::Use(ref path, _) = item.kind {
@@ -113,6 +114,7 @@ fn unused_crates_lint(tcx: TyCtxt<'_>) {
     // Collect all the extern crates (in a reliable order).
     let mut crates_to_lint = vec![];
     tcx.hir().krate().visit_all_item_likes(&mut CollectExternCrateVisitor {
+        tcx,
         crates_to_lint: &mut crates_to_lint,
     });
 
@@ -192,7 +194,8 @@ fn unused_crates_lint(tcx: TyCtxt<'_>) {
     }
 }
 
-struct CollectExternCrateVisitor<'a> {
+struct CollectExternCrateVisitor<'a, 'tcx> {
+    tcx: TyCtxt<'tcx>,
     crates_to_lint: &'a mut Vec<ExternCrateToLint>,
 }
 
@@ -213,12 +216,13 @@ struct ExternCrateToLint {
     warn_if_unused: bool,
 }
 
-impl<'a, 'v> ItemLikeVisitor<'v> for CollectExternCrateVisitor<'a> {
+impl<'a, 'v, 'tcx> ItemLikeVisitor<'v> for CollectExternCrateVisitor<'a, 'tcx> {
     fn visit_item(&mut self, item: &hir::Item<'_>) {
         if let hir::ItemKind::ExternCrate(orig_name) = item.kind {
+            let item_span = self.tcx.hir().span_with_body(item.hir_id());
             self.crates_to_lint.push(ExternCrateToLint {
                 def_id: item.def_id.to_def_id(),
-                span: item.span,
+                span: item_span,
                 orig_name,
                 warn_if_unused: !item.ident.as_str().starts_with('_'),
             });

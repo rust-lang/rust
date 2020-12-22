@@ -84,7 +84,8 @@ impl ItemLikeVisitor<'tcx> for ImplWfCheck<'tcx> {
             enforce_impl_params_are_constrained(self.tcx, item.def_id, impl_.items);
             enforce_impl_items_are_distinct(self.tcx, impl_.items);
             if self.min_specialization {
-                check_min_specialization(self.tcx, item.def_id.to_def_id(), item.span);
+                let item_span = self.tcx.hir().span_with_body(item.hir_id());
+                check_min_specialization(self.tcx, item.def_id.to_def_id(), item_span);
             }
         }
     }
@@ -239,11 +240,12 @@ fn enforce_impl_items_are_distinct(tcx: TyCtxt<'_>, impl_item_refs: &[hir::ImplI
             hir::ImplItemKind::TyAlias(_) => &mut seen_type_items,
             _ => &mut seen_value_items,
         };
+        let impl_item_span = tcx.hir().span_with_body(impl_item.hir_id());
         match seen_items.entry(impl_item.ident.normalize_to_macros_2_0()) {
             Occupied(entry) => {
                 let mut err = struct_span_err!(
                     tcx.sess,
-                    impl_item.span,
+                    impl_item_span,
                     E0201,
                     "duplicate definitions with name `{}`:",
                     impl_item.ident
@@ -252,11 +254,11 @@ fn enforce_impl_items_are_distinct(tcx: TyCtxt<'_>, impl_item_refs: &[hir::ImplI
                     *entry.get(),
                     format!("previous definition of `{}` here", impl_item.ident),
                 );
-                err.span_label(impl_item.span, "duplicate definition");
+                err.span_label(impl_item_span, "duplicate definition");
                 err.emit();
             }
             Vacant(entry) => {
-                entry.insert(impl_item.span);
+                entry.insert(impl_item_span);
             }
         }
     }

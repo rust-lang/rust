@@ -788,15 +788,16 @@ fn report_forbidden_specialization(
     impl_item: &hir::ImplItem<'_>,
     parent_impl: DefId,
 ) {
+    let impl_item_span = tcx.hir().span_with_body(impl_item.hir_id());
     let mut err = struct_span_err!(
         tcx.sess,
-        impl_item.span,
+        impl_item_span,
         E0520,
         "`{}` specializes an item from a parent `impl`, but \
          that item is not marked `default`",
         impl_item.ident
     );
-    err.span_label(impl_item.span, format!("cannot specialize default item `{}`", impl_item.ident));
+    err.span_label(impl_item_span, format!("cannot specialize default item `{}`", impl_item.ident));
 
     match tcx.span_of_impl(parent_impl) {
         Ok(span) => {

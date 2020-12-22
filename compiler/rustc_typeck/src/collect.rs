@@ -587,8 +587,9 @@ fn type_param_predicates(
                     // Implied `Self: Trait` and supertrait bounds.
                     if param_id == item_hir_id {
                         let identity_trait_ref = ty::TraitRef::identity(tcx, item_def_id);
+                        let item_span = tcx.hir().span_with_body(item.hir_id());
                         extend =
-                            Some((identity_trait_ref.without_const().to_predicate(tcx), item.span));
+                            Some((identity_trait_ref.without_const().to_predicate(tcx), item_span));
                     }
                     generics
                 }
@@ -752,12 +753,14 @@ fn convert_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
         hir::ItemKind::Trait(..) => {
             tcx.ensure().generics_of(def_id);
             tcx.ensure().trait_def(def_id);
-            tcx.at(it.span).super_predicates_of(def_id);
+            let it_span = tcx.hir().span_with_body(it.hir_id());
+            tcx.at(it_span).super_predicates_of(def_id);
             tcx.ensure().predicates_of(def_id);
         }
         hir::ItemKind::TraitAlias(..) => {
             tcx.ensure().generics_of(def_id);
-            tcx.at(it.span).super_predicates_of(def_id);
+            let it_span = tcx.hir().span_with_body(it.hir_id());
+            tcx.at(it_span).super_predicates_of(def_id);
             tcx.ensure().predicates_of(def_id);
         }
         hir::ItemKind::Struct(ref struct_def, _) | hir::ItemKind::Union(ref struct_def, _) => {
@@ -1086,11 +1089,14 @@ fn super_predicates_that_define_assoc_type(
             Node::Item(item) => item,
             _ => bug!("trait_node_id {} is not an item", trait_hir_id),
         };
+        let item_span = tcx.hir().span_with_body(item.hir_id());
 
         let (generics, bounds) = match item.kind {
             hir::ItemKind::Trait(.., ref generics, ref supertraits, _) => (generics, supertraits),
             hir::ItemKind::TraitAlias(ref generics, ref supertraits) => (generics, supertraits),
-            _ => span_bug!(item.span, "super_predicates invoked on non-trait"),
+            _ => {
+                span_bug!(item_span, "super_predicates invoked on non-trait")
+            }
         };
 
         let icx = ItemCtxt::new(tcx, trait_def_id);
@@ -1103,11 +1109,11 @@ fn super_predicates_that_define_assoc_type(
                 self_param_ty,
                 &bounds,
                 SizedByDefault::No,
-                item.span,
+                item_span,
                 assoc_name,
             )
         } else {
-            AstConv::compute_bounds(&icx, self_param_ty, &bounds, SizedByDefault::No, item.span)
+            AstConv::compute_bounds(&icx, self_param_ty, &bounds, SizedByDefault::No, item_span)
         };
 
         let superbounds1 = superbounds1.predicates(tcx, self_param_ty);
@@ -1158,14 +1164,18 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: DefId) -> ty::TraitDef {
     let (is_auto, unsafety) = match item.kind {
         hir::ItemKind::Trait(is_auto, unsafety, ..) => (is_auto == hir::IsAuto::Yes, unsafety),
         hir::ItemKind::TraitAlias(..) => (false, hir::Unsafety::Normal),
-        _ => span_bug!(item.span, "trait_def_of_item invoked on non-trait"),
+        _ => {
+            let item_span = tcx.hir().span_with_body(item.hir_id());
+            span_bug!(item_span, "trait_def_of_item invoked on non-trait")
+        }
     };
 
     let paren_sugar = tcx.has_attr(def_id, sym::rustc_paren_sugar);
     if paren_sugar && !tcx.features().unboxed_closures {
+        let item_span = tcx.hir().span_with_body(item.hir_id());
         tcx.sess
             .struct_span_err(
-                item.span,
+                item_span,
                 "the `#[rustc_paren_sugar]` attribute is a temporary means of controlling \
                  which traits can use parenthetical notation",
             )
@@ -1799,7 +1809,8 @@ fn impl_polarity(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ImplPolarity {
             ..
         }) => {
             if is_rustc_reservation {
-                tcx.sess.span_err(item.span, "reservation impls can't be inherent");
+                let item_span = tcx.hir().span_with_body(item.hir_id());
+                tcx.sess.span_err(item_span, "reservation impls can't be inherent");
             }
             ty::ImplPolarity::Positive
         }

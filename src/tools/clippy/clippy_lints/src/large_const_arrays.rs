@@ -47,8 +47,9 @@ impl_lint_pass!(LargeConstArrays => [LARGE_CONST_ARRAYS]);
 
 impl<'tcx> LateLintPass<'tcx> for LargeConstArrays {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
+        let item_span = cx.tcx.hir().span_with_body(item.hir_id());
         if_chain! {
-            if !item.span.from_expansion();
+            if !item_span.from_expansion();
             if let ItemKind::Const(hir_ty, _) = &item.kind;
             let ty = hir_ty_to_ty(cx.tcx, hir_ty);
             if let ty::Array(element_type, cst) = ty.kind();
@@ -62,12 +63,12 @@ impl<'tcx> LateLintPass<'tcx> for LargeConstArrays {
                 let sugg_span = Span::new(
                     hi_pos - BytePos::from_usize("const".len()),
                     hi_pos,
-                    item.span.ctxt(),
+                    item_span.ctxt(),
                 );
                 span_lint_and_then(
                     cx,
                     LARGE_CONST_ARRAYS,
-                    item.span,
+                    item_span,
                     "large array defined as const",
                     |diag| {
                         diag.span_suggestion(

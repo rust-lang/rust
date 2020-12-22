@@ -240,7 +240,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let hir_id = self.lower_node_id(i.id, i.span);
         let attrs = self.lower_attrs(hir_id, &i.attrs);
         let kind = self.lower_item_kind(i.span, i.id, hir_id, &mut ident, attrs, &mut vis, &i.kind);
-        Some(hir::Item { def_id: hir_id.expect_owner(), ident, kind, vis, span: i.span })
+        Some(hir::Item { def_id: hir_id.expect_owner(), ident, kind, vis })
     }
 
     fn lower_item_kind(
@@ -558,7 +558,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             ident,
                             kind,
                             vis,
-                            span,
                         });
                     });
                 }
@@ -632,7 +631,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             ident,
                             kind,
                             vis,
-                            span: use_tree.span,
                         });
                     });
                 }
@@ -849,7 +847,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         };
 
         self.lower_attrs(hir_id, &i.attrs);
-        hir::TraitItem { def_id: trait_item_def_id, ident: i.ident, generics, kind, span: i.span }
+        hir::TraitItem { def_id: trait_item_def_id, ident: i.ident, generics, kind }
     }
 
     fn lower_trait_item_ref(&mut self, i: &AssocItem) -> hir::TraitItemRef {
@@ -936,7 +934,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
             vis: self.lower_visibility(&i.vis, None),
             defaultness,
             kind,
-            span: i.span,
         }
     }
 

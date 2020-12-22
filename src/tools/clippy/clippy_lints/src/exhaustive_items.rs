@@ -85,12 +85,13 @@ impl LateLintPass<'_> for ExhaustiveItems {
                 } else {
                     (EXHAUSTIVE_ENUMS, "exported enums should not be exhaustive")
                 };
-                let suggestion_span = item.span.shrink_to_lo();
-                let indent = " ".repeat(indent_of(cx, item.span).unwrap_or(0));
+                let item_span = cx.tcx.hir().span_with_body(item.hir_id());
+                let suggestion_span = item_span.shrink_to_lo();
+                let indent = " ".repeat(indent_of(cx, item_span).unwrap_or(0));
                 span_lint_and_then(
                     cx,
                     lint,
-                    item.span,
+                    item_span,
                     msg,
                     |diag| {
                         let sugg = format!("#[non_exhaustive]\n{}", indent);

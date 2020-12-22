@@ -52,6 +52,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
 
         let self_ty = self.tcx.type_of(item.def_id);
         let lang_items = self.tcx.lang_items();
+        let item_span = self.tcx.hir().span_with_body(item.hir_id());
         match *self_ty.kind() {
             ty::Adt(def, _) => {
                 self.check_def_id(item, def.did);
@@ -69,7 +70,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                     None,
                     "bool",
                     "bool",
-                    item.span,
+                    item_span,
                     assoc_items,
                 );
             }
@@ -80,7 +81,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                     None,
                     "char",
                     "char",
-                    item.span,
+                    item_span,
                     assoc_items,
                 );
             }
@@ -91,7 +92,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                     lang_items.str_alloc_impl(),
                     "str",
                     "str",
-                    item.span,
+                    item_span,
                     assoc_items,
                 );
             }
@@ -102,7 +103,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                     lang_items.slice_u8_alloc_impl(),
                     "slice_u8",
                     "[u8]",
-                    item.span,
+                    item_span,
                     assoc_items,
                 );
             }
@@ -113,7 +114,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                     lang_items.slice_alloc_impl(),
                     "slice",
                     "[T]",
-                    item.span,
+                    item_span,
                     assoc_items,
                 );
             }
@@ -124,7 +125,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                     None,
                     "array",
                     "[T; N]",
-                    item.span,
+                    item_span,
                     assoc_items,
                 );
             }
@@ -137,7 +138,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                     None,
                     "const_slice_ptr",
                     "*const [T]",
-                    item.span,
+                    item_span,
                     assoc_items,
                 );
             }
@@ -150,7 +151,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                     None,
                     "mut_slice_ptr",
                     "*mut [T]",
-                    item.span,
+                    item_span,
                     assoc_items,
                 );
             }
@@ -161,7 +162,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                     None,
                     "const_ptr",
                     "*const T",
-                    item.span,
+                    item_span,
                     assoc_items,
                 );
             }
@@ -172,7 +173,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                     None,
                     "mut_ptr",
                     "*mut T",
-                    item.span,
+                    item_span,
                     assoc_items,
                 );
             }
@@ -183,7 +184,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                     None,
                     "i8",
                     "i8",
-                    item.span,
+                    item_span,
                     assoc_items,
                 );
             }
@@ -194,7 +195,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                     None,
                     "i16",
                     "i16",
-                    item.span,
+                    item_span,
                     assoc_items,
                 );
             }
@@ -205,7 +206,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                     None,
                     "i32",
                     "i32",
-                    item.span,
+                    item_span,
                     assoc_items,
                 );
             }
@@ -216,7 +217,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                     None,
                     "i64",
                     "i64",
-                    item.span,
+                    item_span,
                     assoc_items,
                 );
             }
@@ -227,7 +228,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                     None,
                     "i128",
                     "i128",
-                    item.span,
+                    item_span,
                     assoc_items,
                 );
             }
@@ -238,7 +239,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                     None,
                     "isize",
                     "isize",
-                    item.span,
+                    item_span,
                     assoc_items,
                 );
             }
@@ -249,7 +250,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                     None,
                     "u8",
                     "u8",
-                    item.span,
+                    item_span,
                     assoc_items,
                 );
             }
@@ -260,7 +261,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                     None,
                     "u16",
                     "u16",
-                    item.span,
+                    item_span,
                     assoc_items,
                 );
             }
@@ -271,7 +272,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                     None,
                     "u32",
                     "u32",
-                    item.span,
+                    item_span,
                     assoc_items,
                 );
             }
@@ -282,7 +283,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                     None,
                     "u64",
                     "u64",
-                    item.span,
+                    item_span,
                     assoc_items,
                 );
             }
@@ -293,7 +294,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                     None,
                     "u128",
                     "u128",
-                    item.span,
+                    item_span,
                     assoc_items,
                 );
             }
@@ -304,7 +305,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                     None,
                     "usize",
                     "usize",
-                    item.span,
+                    item_span,
                     assoc_items,
                 );
             }
@@ -315,7 +316,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                     lang_items.f32_runtime_impl(),
                     "f32",
                     "f32",
-                    item.span,
+                    item_span,
                     assoc_items,
                 );
             }
@@ -326,7 +327,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                     lang_items.f64_runtime_impl(),
                     "f64",
                     "f64",
-                    item.span,
+                    item_span,
                     assoc_items,
                 );
             }
@@ -371,14 +372,15 @@ impl InherentCollect<'tcx> {
             let vec = self.impls_map.inherent_impls.entry(def_id).or_default();
             vec.push(item.def_id.to_def_id());
         } else {
+            let item_span = self.tcx.hir().span_with_body(item.hir_id());
             struct_span_err!(
                 self.tcx.sess,
-                item.span,
+                item_span,
                 E0116,
                 "cannot define inherent `impl` for a type outside of the crate \
                               where the type is defined"
             )
-            .span_label(item.span, "impl for type defined outside of crate.")
+            .span_label(item_span, "impl for type defined outside of crate.")
             .note("define and implement a trait or new type instead")
             .emit();
         }

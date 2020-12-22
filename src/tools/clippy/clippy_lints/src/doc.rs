@@ -218,7 +218,8 @@ impl<'tcx> LateLintPass<'tcx> for DocMarkdown {
         let headers = check_attrs(cx, &self.valid_idents, attrs);
         match item.kind {
             hir::ItemKind::Fn(ref sig, _, body_id) => {
-                if !(is_entrypoint_fn(cx, item.def_id.to_def_id()) || in_external_macro(cx.tcx.sess, item.span)) {
+                let item_span = cx.tcx.hir().span_with_body(item.hir_id());
+                if !(is_entrypoint_fn(cx, item.def_id.to_def_id()) || in_external_macro(cx.tcx.sess, item_span)) {
                     let body = cx.tcx.hir().body(body_id);
                     let mut fpu = FindPanicUnwrap {
                         cx,
@@ -229,7 +230,7 @@ impl<'tcx> LateLintPass<'tcx> for DocMarkdown {
                     lint_for_missing_headers(
                         cx,
                         item.hir_id(),
-                        item.span,
+                        item_span,
                         sig,
                         headers,
                         Some(body_id),
@@ -254,16 +255,18 @@ impl<'tcx> LateLintPass<'tcx> for DocMarkdown {
         let attrs = cx.tcx.hir().attrs(item.hir_id());
         let headers = check_attrs(cx, &self.valid_idents, attrs);
         if let hir::TraitItemKind::Fn(ref sig, ..) = item.kind {
-            if !in_external_macro(cx.tcx.sess, item.span) {
-                lint_for_missing_headers(cx, item.hir_id(), item.span, sig, headers, None, None);
+            let item_span = cx.tcx.hir().span_with_body(item.hir_id());
+            if !in_external_macro(cx.tcx.sess, item_span) {
+                lint_for_missing_headers(cx, item.hir_id(), item_span, sig, headers, None, None);
             }
         }
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::ImplItem<'_>) {
         let attrs = cx.tcx.hir().attrs(item.hir_id());
+        let item_span = cx.tcx.hir().span_with_body(item.hir_id());
         let headers = check_attrs(cx, &self.valid_idents, attrs);
-        if self.in_trait_impl || in_external_macro(cx.tcx.sess, item.span) {
+        if self.in_trait_impl || in_external_macro(cx.tcx.sess, item_span) {
             return;
         }
         if let hir::ImplItemKind::Fn(ref sig, body_id) = item.kind {
@@ -277,7 +280,7 @@ impl<'tcx> LateLintPass<'tcx> for DocMarkdown {
             lint_for_missing_headers(
                 cx,
                 item.hir_id(),
-                item.span,
+                item_span,
                 sig,
                 headers,
                 Some(body_id),

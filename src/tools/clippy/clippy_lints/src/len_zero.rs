@@ -115,7 +115,7 @@ declare_lint_pass!(LenZero => [LEN_ZERO, LEN_WITHOUT_IS_EMPTY, COMPARISON_TO_EMP
 
 impl<'tcx> LateLintPass<'tcx> for LenZero {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
-        if item.span.from_expansion() {
+        if cx.tcx.hir().span_with_body(item.hir_id()).from_expansion() {
             return;
         }
 
@@ -222,7 +222,7 @@ fn check_trait_items(cx: &LateContext<'_>, visited_trait: &Item<'_>, trait_items
             span_lint(
                 cx,
                 LEN_WITHOUT_IS_EMPTY,
-                visited_trait.span,
+                cx.tcx.hir().span_with_body(visited_trait.hir_id()),
                 &format!(
                     "trait `{}` has a `len` method but no (possibly inherited) `is_empty` method",
                     visited_trait.ident.name

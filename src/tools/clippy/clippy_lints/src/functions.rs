@@ -285,12 +285,13 @@ impl<'tcx> LateLintPass<'tcx> for Functions {
         let attr = must_use_attr(attrs);
         if let hir::ItemKind::Fn(ref sig, ref _generics, ref body_id) = item.kind {
             let is_public = cx.access_levels.is_exported(item.hir_id());
-            let fn_header_span = item.span.with_hi(sig.decl.output.span().hi());
+            let item_span = cx.tcx.hir().span_with_body(item.hir_id());
+            let fn_header_span = item_span.with_hi(sig.decl.output.span().hi());
             if is_public {
-                check_result_unit_err(cx, &sig.decl, item.span, fn_header_span);
+                check_result_unit_err(cx, &sig.decl, item_span, fn_header_span);
             }
             if let Some(attr) = attr {
-                check_needless_must_use(cx, &sig.decl, item.hir_id(), item.span, fn_header_span, attr);
+                check_needless_must_use(cx, &sig.decl, item.hir_id(), item_span, fn_header_span, attr);
                 return;
             }
             if is_public && !is_proc_macro(cx.sess(), attrs) && attr_by_name(attrs, "no_mangle").is_none() {
@@ -298,9 +299,9 @@ impl<'tcx> LateLintPass<'tcx> for Functions {
                     cx,
                     &sig.decl,
                     cx.tcx.hir().body(*body_id),
-                    item.span,
+                    item_span,
                     item.hir_id(),
-                    item.span.with_hi(sig.decl.output.span().hi()),
+                    item_span.with_hi(sig.decl.output.span().hi()),
                     "this function could have a `#[must_use]` attribute",
                 );
             }
@@ -310,23 +311,31 @@ impl<'tcx> LateLintPass<'tcx> for Functions {
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::ImplItem<'_>) {
         if let hir::ImplItemKind::Fn(ref sig, ref body_id) = item.kind {
             let is_public = cx.access_levels.is_exported(item.hir_id());
-            let fn_header_span = item.span.with_hi(sig.decl.output.span().hi());
+            let item_span = cx.tcx.hir().span_with_body(item.hir_id());
+            let fn_header_span = item_span.with_hi(sig.decl.output.span().hi());
             if is_public && trait_ref_of_method(cx, item.hir_id()).is_none() {
-                check_result_unit_err(cx, &sig.decl, item.span, fn_header_span);
+                check_result_unit_err(cx, &sig.decl, item_span, fn_header_span);
             }
             let attrs = cx.tcx.hir().attrs(item.hir_id());
             let attr = must_use_attr(attrs);
             if let Some(attr) = attr {
-                check_needless_must_use(cx, &sig.decl, item.hir_id(), item.span, fn_header_span, attr);
+                check_needless_must_use(
+                    cx,
+                    &sig.decl,
+                    item.hir_id(),
+                    cx.tcx.hir().span_with_body(item.hir_id()),
+                    fn_header_span,
+                    attr,
+                );
             } else if is_public && !is_proc_macro(cx.sess(), attrs) && trait_ref_of_method(cx, item.hir_id()).is_none()
             {
                 check_must_use_candidate(
                     cx,
                     &sig.decl,
                     cx.tcx.hir().body(*body_id),
-                    item.span,
+                    item_span,
                     item.hir_id(),
-                    item.span.with_hi(sig.decl.output.span().hi()),
+                    item_span.with_hi(sig.decl.output.span().hi()),
                     "this method could have a `#[must_use]` attribute",
                 );
             }
@@ -335,20 +344,22 @@ impl<'tcx> LateLintPass<'tcx> for Functions {
 
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::TraitItem<'_>) {
         if let hir::TraitItemKind::Fn(ref sig, ref eid) = item.kind {
+            let item_span = cx.tcx.hir().span_with_body(item.hir_id());
+
             // don't lint extern functions decls, it's not their fault
             if sig.header.abi == Abi::Rust {
-                self.check_arg_number(cx, &sig.decl, item.span.with_hi(sig.decl.output.span().hi()));
+                self.check_arg_number(cx, &sig.decl, item_span.with_hi(sig.decl.output.span().hi()));
             }
             let is_public = cx.access_levels.is_exported(item.hir_id());
-            let fn_header_span = item.span.with_hi(sig.decl.output.span().hi());
+            let fn_header_span = item_span.with_hi(sig.decl.output.span().hi());
             if is_public {
-                check_result_unit_err(cx, &sig.decl, item.span, fn_header_span);
+                check_result_unit_err(cx, &sig.decl, item_span, fn_header_span);
             }
 
             let attrs = cx.tcx.hir().attrs(item.hir_id());
             let attr = must_use_attr(attrs);
             if let Some(attr) = attr {
-                check_needless_must_use(cx, &sig.decl, item.hir_id(), item.span, fn_header_span, attr);
+                check_needless_must_use(cx, &sig.decl, item.hir_id(), item_span, fn_header_span, attr);
             }
             if let hir::TraitFn::Provided(eid) = *eid {
                 let body = cx.tcx.hir().body(eid);
@@ -359,9 +370,9 @@ impl<'tcx> LateLintPass<'tcx> for Functions {
                         cx,
                         &sig.decl,
                         body,
-                        item.span,
+                        item_span,
                         item.hir_id(),
-                        item.span.with_hi(sig.decl.output.span().hi()),
+                        item_span.with_hi(sig.decl.output.span().hi()),
                         "this method could have a `#[must_use]` attribute",
                     );
                 }

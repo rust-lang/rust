@@ -750,11 +750,12 @@ pub fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, it: &'tcx hir::Item<'tcx>) {
                         let assoc_item = tcx.associated_item(item.def_id);
                         let trait_substs =
                             InternalSubsts::identity_for_item(tcx, it.def_id.to_def_id());
+                        let item_span = tcx.hir().span_with_body(item.hir_id());
                         let _: Result<_, rustc_errors::ErrorReported> = check_type_bounds(
                             tcx,
                             assoc_item,
                             assoc_item,
-                            item.span,
+                            item_span,
                             ty::TraitRef { def_id: it.def_id.to_def_id(), substs: trait_substs },
                         );
                     }
@@ -917,7 +918,7 @@ fn check_impl_items_against_trait<'tcx>(
     impl_trait_ref: ty::TraitRef<'tcx>,
     impl_item_refs: &[hir::ImplItemRef<'_>],
 ) {
-    let full_impl_span = tcx.def_span(impl_id);
+    let full_impl_span = tcx.hir().span_with_body(tcx.hir().local_def_id_to_hir_id(impl_id));
 
     // If the trait reference itself is erroneous (so the compilation is going
     // to fail), skip checking the items here -- the `impl_item` table in `tcx`
@@ -931,7 +932,7 @@ fn check_impl_items_against_trait<'tcx>(
         ty::ImplPolarity::Reservation | ty::ImplPolarity::Positive => {}
         ty::ImplPolarity::Negative => {
             if let [first_item_ref, ..] = impl_item_refs {
-                let first_item_span = tcx.hir().impl_item(first_item_ref.id).span;
+                let first_item_span = tcx.hir().span_with_body(first_item_ref.id.hir_id());
                 struct_span_err!(
                     tcx.sess,
                     first_item_span,
@@ -953,6 +954,7 @@ fn check_impl_items_against_trait<'tcx>(
     // and compatible with trait signature
     for impl_item in impl_items {
         let ty_impl_item = tcx.associated_item(impl_item.def_id);
+        let impl_item_span = tcx.hir().span_with_body(impl_item.hir_id());
 
         let mut items =
             associated_items.filter_by_name(tcx, ty_impl_item.ident, impl_trait_ref.def_id);
@@ -989,7 +991,7 @@ fn check_impl_items_against_trait<'tcx>(
                     compare_const_impl(
                         tcx,
                         &ty_impl_item,
-                        impl_item.span,
+                        impl_item_span,
                         &ty_trait_item,
                         impl_trait_ref,
                     );
@@ -999,7 +1001,7 @@ fn check_impl_items_against_trait<'tcx>(
                     compare_impl_method(
                         tcx,
                         &ty_impl_item,
-                        impl_item.span,
+                        impl_item_span,
                         &ty_trait_item,
                         impl_trait_ref,
                         opt_trait_span,
@@ -1010,7 +1012,7 @@ fn check_impl_items_against_trait<'tcx>(
                     compare_ty_impl(
                         tcx,
                         &ty_impl_item,
-                        impl_item.span,
+                        impl_item_span,
                         &ty_trait_item,
                         impl_trait_ref,
                         opt_trait_span,
@@ -1069,12 +1071,13 @@ fn report_mismatch_error<'tcx>(
     impl_item: &hir::ImplItem<'_>,
     ty_impl_item: &ty::AssocItem,
 ) {
+    let impl_item_span = tcx.hir().span_with_body(impl_item.hir_id());
     let mut err = match impl_item.kind {
         hir::ImplItemKind::Const(..) => {
             // Find associated const definition.
             struct_span_err!(
                 tcx.sess,
-                impl_item.span,
+                impl_item_span,
                 E0323,
                 "item `{}` is an associated const, which doesn't match its trait `{}`",
                 ty_impl_item.ident,
@@ -1085,7 +1088,7 @@ fn report_mismatch_error<'tcx>(
         hir::ImplItemKind::Fn(..) => {
             struct_span_err!(
                 tcx.sess,
-                impl_item.span,
+                impl_item_span,
                 E0324,
                 "item `{}` is an associated method, which doesn't match its trait `{}`",
                 ty_impl_item.ident,
@@ -1096,7 +1099,7 @@ fn report_mismatch_error<'tcx>(
         hir::ImplItemKind::TyAlias(_) => {
             struct_span_err!(
                 tcx.sess,
-                impl_item.span,
+                impl_item_span,
                 E0325,
                 "item `{}` is an associated type, which doesn't match its trait `{}`",
                 ty_impl_item.ident,
@@ -1105,7 +1108,7 @@ fn report_mismatch_error<'tcx>(
         }
     };
 
-    err.span_label(impl_item.span, "does not match trait");
+    err.span_label(impl_item_span, "does not match trait");
     if let Some(trait_span) = tcx.hir().span_if_local(trait_item_def_id) {
         err.span_label(trait_span, "item in trait");
     }

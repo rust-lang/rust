@@ -39,7 +39,7 @@ declare_lint_pass!(UnusedSelf => [UNUSED_SELF]);
 
 impl<'tcx> LateLintPass<'tcx> for UnusedSelf {
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, impl_item: &ImplItem<'_>) {
-        if impl_item.span.from_expansion() {
+        if cx.tcx.hir().span(impl_item.hir_id()).from_expansion() {
             return;
         }
         let parent = cx.tcx.hir().get_parent_item(impl_item.hir_id());

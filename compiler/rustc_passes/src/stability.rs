@@ -721,7 +721,8 @@ impl Visitor<'tcx> for Checker<'tcx> {
             hir::ItemKind::ExternCrate(_) => {
                 // compiler-generated `extern crate` items have a dummy span.
                 // `std` is still checked for the `restricted-std` feature.
-                if item.span.is_dummy() && item.ident.as_str() != "std" {
+                let item_span = self.tcx.hir().span_with_body(item.hir_id());
+                if item_span.is_dummy() && item.ident.as_str() != "std" {
                     return;
                 }
 
@@ -730,7 +731,7 @@ impl Visitor<'tcx> for Checker<'tcx> {
                     None => return,
                 };
                 let def_id = DefId { krate: cnum, index: CRATE_DEF_INDEX };
-                self.tcx.check_stability(def_id, Some(item.hir_id()), item.span);
+                self.tcx.check_stability(def_id, Some(item.hir_id()), item_span);
             }
 
             // For implementations of traits, check the stability of each item
@@ -743,8 +744,9 @@ impl Visitor<'tcx> for Checker<'tcx> {
                     // it will have no effect.
                     // See: https://github.com/rust-lang/rust/issues/55436
                     let attrs = self.tcx.hir().attrs(item.hir_id());
+                    let item_span = self.tcx.hir().span_with_body(item.hir_id());
                     if let (Some((Stability { level: attr::Unstable { .. }, .. }, span)), _) =
-                        attr::find_stability(&self.tcx.sess, attrs, item.span)
+                        attr::find_stability(&self.tcx.sess, attrs, item_span)
                     {
                         let mut c = CheckTraitImplStable { tcx: self.tcx, fully_stable: true };
                         c.visit_ty(self_ty);
@@ -774,7 +776,8 @@ impl Visitor<'tcx> for Checker<'tcx> {
                             .map(|item| item.def_id);
                         if let Some(def_id) = trait_item_def_id {
                             // Pass `None` to skip deprecation warnings.
-                            self.tcx.check_stability(def_id, None, impl_item.span);
+                            let impl_item_span = self.tcx.hir().span_with_body(impl_item.hir_id());
+                            self.tcx.check_stability(def_id, None, impl_item_span);
                         }
                     }
                 }
@@ -799,8 +802,9 @@ impl Visitor<'tcx> for Checker<'tcx> {
                         if field_ty.needs_drop(self.tcx, param_env) {
                             // Avoid duplicate error: This will error later anyway because fields
                             // that need drop are not allowed.
+                            let item_span = self.tcx.hir().span_with_body(item.hir_id());
                             self.tcx.sess.delay_span_bug(
-                                item.span,
+                                item_span,
                                 "union should have been rejected due to potentially dropping field",
                             );
                         } else {

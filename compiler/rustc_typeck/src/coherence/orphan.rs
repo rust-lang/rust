@@ -35,8 +35,9 @@ impl ItemLikeVisitor<'v> for OrphanChecker<'tcx> {
             );
             let trait_ref = self.tcx.impl_trait_ref(item.def_id).unwrap();
             let trait_def_id = trait_ref.def_id;
+            let item_span = self.tcx.hir().span_with_body(item.hir_id());
             let sm = self.tcx.sess.source_map();
-            let sp = sm.guess_head_span(item.span);
+            let sp = sm.guess_head_span(item_span);
             match traits::orphan_check(self.tcx, item.def_id.to_def_id()) {
                 Ok(()) => {}
                 Err(traits::OrphanCheckErr::NonLocalInputType(tys)) => {

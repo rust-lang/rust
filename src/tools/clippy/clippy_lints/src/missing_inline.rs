@@ -83,7 +83,9 @@ declare_lint_pass!(MissingInline => [MISSING_INLINE_IN_PUBLIC_ITEMS]);
 
 impl<'tcx> LateLintPass<'tcx> for MissingInline {
     fn check_item(&mut self, cx: &LateContext<'tcx>, it: &'tcx hir::Item<'_>) {
-        if rustc_middle::lint::in_external_macro(cx.sess(), it.span) || is_executable_or_proc_macro(cx) {
+        if rustc_middle::lint::in_external_macro(cx.sess(), cx.tcx.hir().span_with_body(it.hir_id()))
+            || is_executable_or_proc_macro(cx)
+        {
             return;
         }
 
@@ -94,7 +96,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingInline {
             hir::ItemKind::Fn(..) => {
                 let desc = "a function";
                 let attrs = cx.tcx.hir().attrs(it.hir_id());
-                check_missing_inline_attrs(cx, attrs, it.span, desc);
+                check_missing_inline_attrs(cx, attrs, cx.tcx.hir().span_with_body(it.hir_id()), desc);
             },
             hir::ItemKind::Trait(ref _is_auto, ref _unsafe, ref _generics, ref _bounds, trait_items) => {
                 // note: we need to check if the trait is exported so we can't use
@@ -110,7 +112,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingInline {
                                 let desc = "a default trait method";
                                 let item = cx.tcx.hir().trait_item(tit.id);
                                 let attrs = cx.tcx.hir().attrs(item.hir_id());
-                                check_missing_inline_attrs(cx, attrs, item.span, desc);
+                                check_missing_inline_attrs(cx, attrs, cx.tcx.hir().span_with_body(item.hir_id()), desc);
                             }
                         },
                     }
@@ -135,7 +137,9 @@ impl<'tcx> LateLintPass<'tcx> for MissingInline {
 
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, impl_item: &'tcx hir::ImplItem<'_>) {
         use rustc_middle::ty::{ImplContainer, TraitContainer};
-        if rustc_middle::lint::in_external_macro(cx.sess(), impl_item.span) || is_executable_or_proc_macro(cx) {
+        if rustc_middle::lint::in_external_macro(cx.sess(), cx.tcx.hir().span_with_body(impl_item.hir_id()))
+            || is_executable_or_proc_macro(cx)
+        {
             return;
         }
 
@@ -163,6 +167,6 @@ impl<'tcx> LateLintPass<'tcx> for MissingInline {
         }
 
         let attrs = cx.tcx.hir().attrs(impl_item.hir_id());
-        check_missing_inline_attrs(cx, attrs, impl_item.span, desc);
+        check_missing_inline_attrs(cx, attrs, cx.tcx.hir().span_with_body(impl_item.hir_id()), desc);
     }
 }

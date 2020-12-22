@@ -86,17 +86,15 @@ pub(super) fn explicit_item_bounds(
     def_id: DefId,
 ) -> &'_ [(ty::Predicate<'_>, Span)] {
     let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
+    let span = tcx.hir().span_with_body(hir_id);
     match tcx.hir().get(hir_id) {
         hir::Node::TraitItem(hir::TraitItem {
-            kind: hir::TraitItemKind::Type(bounds, _),
-            span,
-            ..
-        }) => associated_type_bounds(tcx, def_id, bounds, *span),
+            kind: hir::TraitItemKind::Type(bounds, _), ..
+        }) => associated_type_bounds(tcx, def_id, bounds, span),
         hir::Node::Item(hir::Item {
             kind: hir::ItemKind::OpaqueTy(hir::OpaqueTy { bounds, .. }),
-            span,
             ..
-        }) => opaque_type_bounds(tcx, def_id, bounds, *span),
+        }) => opaque_type_bounds(tcx, def_id, bounds, span),
         _ => bug!("item_bounds called on {:?}", def_id),
     }
 }

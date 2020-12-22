@@ -1622,7 +1622,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             ident: Ident::invalid(),
             kind: opaque_ty_item_kind,
             vis: respan(span.shrink_to_lo(), hir::VisibilityKind::Inherited),
-            span: opaque_ty_span,
         };
 
         // Insert the item into the global item list. This usually happens

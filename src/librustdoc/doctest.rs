@@ -1054,19 +1054,22 @@ impl<'a, 'hir, 'tcx> intravisit::Visitor<'hir> for HirCollector<'a, 'hir, 'tcx> 
             item.ident.to_string()
         };
 
-        self.visit_testable(name, item.hir_id(), item.span, |this| {
+        let item_span = self.tcx.hir().span(item.hir_id());
+        self.visit_testable(name, item.hir_id(), item_span, |this| {
             intravisit::walk_item(this, item);
         });
     }
 
     fn visit_trait_item(&mut self, item: &'hir hir::TraitItem<'_>) {
-        self.visit_testable(item.ident.to_string(), item.hir_id(), item.span, |this| {
+        let item_span = self.tcx.hir().span(item.hir_id());
+        self.visit_testable(item.ident.to_string(), item.hir_id(), item_span, |this| {
             intravisit::walk_trait_item(this, item);
         });
     }
 
     fn visit_impl_item(&mut self, item: &'hir hir::ImplItem<'_>) {
-        self.visit_testable(item.ident.to_string(), item.hir_id(), item.span, |this| {
+        let item_span = self.tcx.hir().span(item.hir_id());
+        self.visit_testable(item.ident.to_string(), item.hir_id(), item_span, |this| {
             intravisit::walk_impl_item(this, item);
         });
     }

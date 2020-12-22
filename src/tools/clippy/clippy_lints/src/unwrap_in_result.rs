@@ -60,7 +60,7 @@ impl<'tcx> LateLintPass<'tcx> for UnwrapInResult {
             if is_type_diagnostic_item(cx, return_ty(cx, impl_item.hir_id()), sym::result_type)
                 || is_type_diagnostic_item(cx, return_ty(cx, impl_item.hir_id()), sym::option_type);
             then {
-                lint_impl_body(cx, impl_item.span, impl_item);
+                lint_impl_body(cx, impl_item);
             }
         }
     }
@@ -108,9 +108,8 @@ impl<'a, 'tcx> Visitor<'tcx> for FindExpectUnwrap<'a, 'tcx> {
     }
 }
 
-fn lint_impl_body<'tcx>(cx: &LateContext<'tcx>, impl_span: Span, impl_item: &'tcx hir::ImplItem<'_>) {
+fn lint_impl_body<'tcx>(cx: &LateContext<'tcx>, impl_item: &'tcx hir::ImplItem<'_>) {
     if_chain! {
-
         if let ImplItemKind::Fn(_, body_id) = impl_item.kind;
         then {
             let body = cx.tcx.hir().body(body_id);
@@ -123,6 +122,7 @@ fn lint_impl_body<'tcx>(cx: &LateContext<'tcx>, impl_span: Span, impl_item: &'tc
 
             // if we've found one, lint
             if  !fpu.result.is_empty()  {
+                let impl_span = cx.tcx.hir().span_with_body(impl_item.hir_id());
                 span_lint_and_then(
                     cx,
                     UNWRAP_IN_RESULT,

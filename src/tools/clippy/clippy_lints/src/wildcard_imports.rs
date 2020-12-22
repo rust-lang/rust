@@ -112,7 +112,7 @@ impl LateLintPass<'_> for WildcardImports {
         }
         if_chain! {
             if let ItemKind::Use(use_path, UseKind::Glob) = &item.kind;
-            if self.warn_on_all || !self.check_exceptions(item, use_path.segments);
+            if self.warn_on_all || !self.check_exceptions(cx, item, use_path.segments);
             let used_imports = cx.tcx.names_imported_by_glob_use(item.def_id);
             if !used_imports.is_empty(); // Already handled by `unused_imports`
             then {
@@ -132,9 +132,10 @@ impl LateLintPass<'_> for WildcardImports {
                     // formattings like `use _ ::  *;`, we extend it up to, but not including the
                     // `;`. In nested imports, like `use _::{inner::*, _}` there is no `;` and we
                     // can just use the end of the item span
-                    let mut span = use_path.span.with_hi(item.span.hi());
+                    let item_span = cx.tcx.hir().span(item.hir_id());
+                    let mut span = use_path.span.with_hi(item_span.hi());
                     if snippet(cx, span, "").ends_with(';') {
-                        span = use_path.span.with_hi(item.span.hi() - BytePos(1));
+                        span = use_path.span.with_hi(item_span.hi() - BytePos(1));
                     }
                     (
                         span, false,
@@ -189,8 +190,9 @@ impl LateLintPass<'_> for WildcardImports {
 }
 
 impl WildcardImports {
-    fn check_exceptions(&self, item: &Item<'_>, segments: &[PathSegment<'_>]) -> bool {
-        in_macro(item.span)
+    fn check_exceptions(&self, cx: &LateContext<'_>, item: &Item<'_>, segments: &[PathSegment<'_>]) -> bool {
+        let item_span = cx.tcx.hir().span(item.hir_id());
+        in_macro(item_span)
             || is_prelude_import(segments)
             || (is_super_only_import(segments) && self.test_modules_deep > 0)
     }

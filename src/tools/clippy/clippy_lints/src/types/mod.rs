@@ -1407,21 +1407,23 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitHasher {
             return;
         }
 
+        let item_span = cx.tcx.hir().span(item.hir_id());
+
         match item.kind {
             ItemKind::Impl(ref impl_) => {
                 let mut vis = ImplicitHasherTypeVisitor::new(cx);
                 vis.visit_ty(impl_.self_ty);
 
                 for target in &vis.found {
-                    if differing_macro_contexts(item.span, target.span()) {
+                    if differing_macro_contexts(item_span, target.span()) {
                         return;
                     }
 
                     let generics_suggestion_span = impl_.generics.span.substitute_dummy({
-                        let pos = snippet_opt(cx, item.span.until(target.span()))
-                            .and_then(|snip| Some(item.span.lo() + BytePos(snip.find("impl")? as u32 + 4)));
+                        let pos = snippet_opt(cx, item_span.until(target.span()))
+                            .and_then(|snip| Some(item_span.lo() + BytePos(snip.find("impl")? as u32 + 4)));
                         if let Some(pos) = pos {
-                            Span::new(pos, pos, item.span.data().ctxt)
+                            Span::new(pos, pos, item_span.data().ctxt)
                         } else {
                             return;
                         }
@@ -1458,13 +1460,13 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitHasher {
                             continue;
                         }
                         let generics_suggestion_span = generics.span.substitute_dummy({
-                            let pos = snippet_opt(cx, item.span.until(cx.tcx.hir().span(body.params[0].pat.hir_id)))
+                            let pos = snippet_opt(cx, item_span.until(cx.tcx.hir().span(body.params[0].pat.hir_id)))
                                 .and_then(|snip| {
                                     let i = snip.find("fn")?;
-                                    Some(item.span.lo() + BytePos((i + (&snip[i..]).find('(')?) as u32))
+                                    Some(item_span.lo() + BytePos((i + (&snip[i..]).find('(')?) as u32))
                                 })
                                 .expect("failed to create span for type parameters");
-                            Span::new(pos, pos, item.span.data().ctxt)
+                            Span::new(pos, pos, item_span.data().ctxt)
                         });
 
                         let mut ctr_vis = ImplicitHasherConstructorVisitor::new(cx, target);

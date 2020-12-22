@@ -121,8 +121,9 @@ impl<'tcx> LateLintPass<'tcx> for MacroUseImports {
                     }
                 }
             } else {
-                if in_macro(item.span) {
-                    self.push_unique_macro_pat_ty(cx, item.span);
+                let item_span = cx.tcx.hir().span(item.hir_id());
+                if in_macro(item_span) {
+                    self.push_unique_macro_pat_ty(cx, item_span);
                 }
             }
         }

@@ -1058,11 +1058,14 @@ impl EncodeContext<'a, 'tcx> {
         let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
         let ast_item = tcx.hir().expect_trait_item(hir_id);
         let trait_item = tcx.associated_item(def_id);
+        let ast_item_span = tcx.hir().span_with_body(hir_id);
 
         let container = match trait_item.defaultness {
             hir::Defaultness::Default { has_value: true } => AssocContainer::TraitWithDefault,
             hir::Defaultness::Default { has_value: false } => AssocContainer::TraitRequired,
-            hir::Defaultness::Final => span_bug!(ast_item.span, "traits cannot have final items"),
+            hir::Defaultness::Final => {
+                span_bug!(ast_item_span, "traits cannot have final items")
+            }
         };
 
         match trait_item.kind {
@@ -1131,19 +1134,20 @@ impl EncodeContext<'a, 'tcx> {
         let hir_id = self.tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
         let ast_item = self.tcx.hir().expect_impl_item(hir_id);
         let impl_item = self.tcx.associated_item(def_id);
+        let ast_item_span = tcx.hir().span_with_body(hir_id);
 
         let container = match impl_item.defaultness {
             hir::Defaultness::Default { has_value: true } => AssocContainer::ImplDefault,
             hir::Defaultness::Final => AssocContainer::ImplFinal,
             hir::Defaultness::Default { has_value: false } => {
-                span_bug!(ast_item.span, "impl items always have values (currently)")
+                span_bug!(ast_item_span, "impl items always have values (currently)")
             }
         };
 
         match impl_item.kind {
             ty::AssocKind::Const => {
                 if let hir::ImplItemKind::Const(_, body_id) = ast_item.kind {
-                    let qualifs = self.tcx.at(ast_item.span).mir_const_qualif(def_id);
+                    let qualifs = self.tcx.at(ast_item_span).mir_const_qualif(def_id);
 
                     record!(self.tables.kind[def_id] <- EntryKind::AssocConst(
                         container,
@@ -1301,7 +1305,8 @@ impl EncodeContext<'a, 'tcx> {
             hir::ItemKind::Static(_, hir::Mutability::Mut, _) => EntryKind::MutStatic,
             hir::ItemKind::Static(_, hir::Mutability::Not, _) => EntryKind::ImmStatic,
             hir::ItemKind::Const(_, body_id) => {
-                let qualifs = self.tcx.at(item.span).mir_const_qualif(def_id);
+                let item_span = tcx.hir().span_with_body(item.hir_id());
+                let qualifs = self.tcx.at(item_span).mir_const_qualif(def_id);
                 EntryKind::Const(qualifs, self.encode_rendered_const_for_body(body_id))
             }
             hir::ItemKind::Fn(ref sig, .., body) => {
@@ -1378,7 +1383,8 @@ impl EncodeContext<'a, 'tcx> {
                 // "unsized info", else just store None
                 let coerce_unsized_info = trait_ref.and_then(|t| {
                     if Some(t.def_id) == self.tcx.lang_items().coerce_unsized_trait() {
-                        Some(self.tcx.at(item.span).coerce_unsized_info(def_id))
+                        let item_span = tcx.hir().span_with_body(item.hir_id());
+                        Some(self.tcx.at(item_span).coerce_unsized_info(def_id))
                     } else {
                         None
                     }

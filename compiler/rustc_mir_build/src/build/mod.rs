@@ -51,22 +51,20 @@ fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_
         }
         Node::Item(hir::Item {
             kind: hir::ItemKind::Fn(hir::FnSig { decl, .. }, _, body_id),
-            span,
             ..
         })
         | Node::ImplItem(hir::ImplItem {
             kind: hir::ImplItemKind::Fn(hir::FnSig { decl, .. }, body_id),
-            span,
             ..
         })
         | Node::TraitItem(hir::TraitItem {
             kind: hir::TraitItemKind::Fn(hir::FnSig { decl, .. }, hir::TraitFn::Provided(body_id)),
-            span,
             ..
         }) => {
             // Use the `Span` of the `Item/ImplItem/TraitItem` as the body span,
             // since the def span of a function does not include the body
-            (*body_id, decl.output.span(), Some(*span))
+            let span = tcx.hir().span_with_body(id);
+            (*body_id, decl.output.span(), Some(span))
         }
         Node::Item(hir::Item {
             kind: hir::ItemKind::Static(ty, _, body_id) | hir::ItemKind::Const(ty, body_id),

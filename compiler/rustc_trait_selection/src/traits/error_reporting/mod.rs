@@ -803,18 +803,20 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     })
                     .collect::<Option<Vec<ArgKind>>>()?,
             ),
-            Node::Item(&hir::Item { span, kind: hir::ItemKind::Fn(ref sig, ..), .. })
+            Node::Item(&hir::Item { def_id, kind: hir::ItemKind::Fn(ref sig, ..), .. })
             | Node::ImplItem(&hir::ImplItem {
-                span,
+                def_id,
                 kind: hir::ImplItemKind::Fn(ref sig, _),
                 ..
             })
             | Node::TraitItem(&hir::TraitItem {
-                span,
+                def_id,
                 kind: hir::TraitItemKind::Fn(ref sig, _),
                 ..
             }) => (
-                sm.guess_head_span(span),
+                sm.guess_head_span(
+                    self.tcx.hir().span_with_body(self.tcx.hir().local_def_id_to_hir_id(def_id)),
+                ),
                 sig.decl
                     .inputs
                     .iter()

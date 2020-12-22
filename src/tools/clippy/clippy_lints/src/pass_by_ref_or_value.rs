@@ -201,7 +201,8 @@ impl_lint_pass!(PassByRefOrValue => [TRIVIALLY_COPY_PASS_BY_REF, LARGE_TYPES_PAS
 
 impl<'tcx> LateLintPass<'tcx> for PassByRefOrValue {
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::TraitItem<'_>) {
-        if item.span.from_expansion() {
+        let item_span = cx.tcx.hir().span(item.hir_id());
+        if item_span.from_expansion() {
             return;
         }
 

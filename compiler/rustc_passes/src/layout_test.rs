@@ -46,6 +46,7 @@ impl LayoutTest<'tcx> {
         let tcx = self.tcx;
         let param_env = self.tcx.param_env(item_def_id);
         let ty = self.tcx.type_of(item_def_id);
+        let item_span = tcx.hir().span_with_body(item.hir_id());
         match self.tcx.layout_of(param_env.and(ty)) {
             Ok(ty_layout) => {
                 // Check out the `#[rustc_layout(..)]` attribute to tell what to dump.
@@ -54,24 +55,24 @@ impl LayoutTest<'tcx> {
                 for meta_item in meta_items {
                     match meta_item.name_or_empty() {
                         sym::abi => {
-                            self.tcx.sess.span_err(item.span, &format!("abi: {:?}", ty_layout.abi));
+                            self.tcx.sess.span_err(item_span, &format!("abi: {:?}", ty_layout.abi));
                         }
 
                         sym::align => {
                             self.tcx
                                 .sess
-                                .span_err(item.span, &format!("align: {:?}", ty_layout.align));
+                                .span_err(item_span, &format!("align: {:?}", ty_layout.align));
                         }
 
                         sym::size => {
                             self.tcx
                                 .sess
-                                .span_err(item.span, &format!("size: {:?}", ty_layout.size));
+                                .span_err(item_span, &format!("size: {:?}", ty_layout.size));
                         }
 
                         sym::homogeneous_aggregate => {
                             self.tcx.sess.span_err(
-                                item.span,
+                                item_span,
                                 &format!(
                                     "homogeneous_aggregate: {:?}",
                                     ty_layout
@@ -86,7 +87,7 @@ impl LayoutTest<'tcx> {
                                 ty,
                             );
                             self.tcx.sess.span_err(
-                                item.span,
+                                item_span,
                                 &format!("layout_of({:?}) = {:#?}", normalized_ty, *ty_layout),
                             );
                         }
@@ -102,7 +103,7 @@ impl LayoutTest<'tcx> {
             }
 
             Err(layout_error) => {
-                self.tcx.sess.span_err(item.span, &format!("layout error: {:?}", layout_error));
+                self.tcx.sess.span_err(item_span, &format!("layout error: {:?}", layout_error));
             }
         }
     }

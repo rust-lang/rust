@@ -44,7 +44,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantPubCrate {
         if let VisibilityKind::Crate { .. } = item.vis.node {
             if !cx.access_levels.is_exported(item.hir_id()) {
                 if let Some(false) = self.is_exported.last() {
-                    let span = item.span.with_hi(item.ident.span.hi());
+                    let span = cx.tcx.hir().span(item.hir_id()).with_hi(item.ident.span.hi());
                     let descr = cx.tcx.def_kind(item.def_id).descr(item.def_id.to_def_id());
                     span_lint_and_then(
                         cx,

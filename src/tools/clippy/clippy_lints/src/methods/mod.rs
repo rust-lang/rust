@@ -1826,7 +1826,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
 
     #[allow(clippy::too_many_lines)]
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, impl_item: &'tcx hir::ImplItem<'_>) {
-        if in_external_macro(cx.sess(), impl_item.span) {
+        if in_external_macro(cx.sess(), cx.tcx.hir().span_with_body(impl_item.hir_id())) {
             return;
         }
         let name = impl_item.ident.name.as_str();
@@ -1862,10 +1862,11 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                             fn_header_equals(method_config.fn_header, sig.header) &&
                             method_config.lifetime_param_cond(&impl_item)
                         {
+                            let impl_item_span = cx.tcx.hir().span_with_body(impl_item.hir_id());
                             span_lint_and_help(
                                 cx,
                                 SHOULD_IMPLEMENT_TRAIT,
-                                impl_item.span,
+                                impl_item_span,
                                 &format!(
                                     "method `{}` can be confused for the standard trait method `{}::{}`",
                                     method_config.method_name,
@@ -1918,7 +1919,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                 span_lint(
                     cx,
                     NEW_RET_NO_SELF,
-                    impl_item.span,
+                    cx.tcx.hir().span_with_body(impl_item.hir_id()),
                     "methods called `new` usually return `Self`",
                 );
             }
@@ -1926,7 +1927,8 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx TraitItem<'_>) {
-        if in_external_macro(cx.tcx.sess, item.span) {
+        let item_span = cx.tcx.hir().span_with_body(item.hir_id());
+        if in_external_macro(cx.tcx.sess, item_span) {
             return;
         }
 
@@ -1960,7 +1962,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                 span_lint(
                     cx,
                     NEW_RET_NO_SELF,
-                    item.span,
+                    item_span,
                     "methods called `new` usually return `Self`",
                 );
             }
