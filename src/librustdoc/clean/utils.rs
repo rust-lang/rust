@@ -558,10 +558,13 @@ crate fn get_auto_trait_and_blanket_impls(
     ty: Ty<'tcx>,
     param_env_def_id: DefId,
 ) -> impl Iterator<Item = Item> {
-    AutoTraitFinder::new(cx)
-        .get_auto_trait_impls(ty, param_env_def_id)
-        .into_iter()
-        .chain(BlanketImplFinder::new(cx).get_blanket_impls(ty, param_env_def_id))
+    let auto_impls = cx.sess().time("get_auto_trait_impls", || {
+        AutoTraitFinder::new(cx).get_auto_trait_impls(ty, param_env_def_id)
+    });
+    let blanket_impls = cx.sess().time("get_blanket_impls", || {
+        BlanketImplFinder::new(cx).get_blanket_impls(ty, param_env_def_id)
+    });
+    auto_impls.into_iter().chain(blanket_impls)
 }
 
 crate fn register_res(cx: &DocContext<'_>, res: Res) -> DefId {
