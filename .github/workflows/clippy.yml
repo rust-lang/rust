@@ -57,6 +57,10 @@ jobs:
       run: cargo test --features deny-warnings,internal-lints
       working-directory: clippy_lints
 
+    - name: Test --fix -Zunstable-options
+      run: cargo run --bin cargo-clippy -- clippy --fix -Zunstable-options
+      working-directory: clippy_lints
+
     - name: Test rustc_tools_util
       run: cargo test --features deny-warnings
       working-directory: rustc_tools_util
