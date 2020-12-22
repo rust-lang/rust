@@ -2,6 +2,7 @@ mod generated;
 
 use hir::Semantics;
 use ide_db::base_db::{fixture::WithFixture, FileId, FileRange, SourceDatabaseExt};
+use ide_db::source_change::FileSystemEdit;
 use ide_db::RootDatabase;
 use syntax::TextRange;
 use test_utils::{assert_eq_text, extract_offset, extract_range};
@@ -47,7 +48,7 @@ fn check_doc_test(assist_id: &str, before: &str, after: &str) {
     let before = db.file_text(file_id).to_string();
     let frange = FileRange { file_id, range: selection.into() };
 
-    let mut assist = Assist::resolved(&db, &AssistConfig::default(), frange)
+    let assist = Assist::resolved(&db, &AssistConfig::default(), frange)
         .into_iter()
         .find(|assist| assist.assist.id.0 == assist_id)
         .unwrap_or_else(|| {
@@ -63,9 +64,12 @@ fn check_doc_test(assist_id: &str, before: &str, after: &str) {
         });
 
     let actual = {
-        let change = assist.source_change.source_file_edits.pop().unwrap();
         let mut actual = before;
-        change.edit.apply(&mut actual);
+        for source_file_edit in assist.source_change.source_file_edits {
+            if source_file_edit.file_id == file_id {
+                source_file_edit.edit.apply(&mut actual)
+            }
+        }
         actual
     };
     assert_eq_text!(&after, &actual);
@@ -99,7 +103,8 @@ fn check(handler: Handler, before: &str, expected: ExpectedResult, assist_label:
         (Some(assist), ExpectedResult::After(after)) => {
             let mut source_change = assist.source_change;
             assert!(!source_change.source_file_edits.is_empty());
-            let skip_header = source_change.source_file_edits.len() == 1;
+            let skip_header = source_change.source_file_edits.len() == 1
+                && source_change.file_system_edits.len() == 0;
             source_change.source_file_edits.sort_by_key(|it| it.file_id);
 
             let mut buf = String::new();
@@ -113,6 +118,21 @@ fn check(handler: Handler, before: &str, expected: ExpectedResult, assist_label:
                     format_to!(buf, "//- {}\n", path)
                 }
                 buf.push_str(&text);
+            }
+
+            for file_system_edit in source_change.file_system_edits.clone() {
+                match file_system_edit {
+                    FileSystemEdit::CreateFile { dst, initial_contents } => {
+                        let sr = db.file_source_root(dst.anchor);
+                        let sr = db.source_root(sr);
+                        let mut base = sr.path_for_file(&dst.anchor).unwrap().clone();
+                        base.pop();
+                        let created_file_path = format!("{}{}", base.to_string(), &dst.path[1..]);
+                        format_to!(buf, "//- {}\n", created_file_path);
+                        buf.push_str(&initial_contents);
+                    }
+                    _ => (),
+                }
             }
 
             assert_eq_text!(after, &buf);

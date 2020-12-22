@@ -4,10 +4,10 @@ use std::mem;
 
 use algo::find_covering_element;
 use hir::Semantics;
-use ide_db::base_db::{FileId, FileRange};
+use ide_db::base_db::{AnchoredPathBuf, FileId, FileRange};
 use ide_db::{
     label::Label,
-    source_change::{SourceChange, SourceFileEdit},
+    source_change::{FileSystemEdit, SourceChange, SourceFileEdit},
     RootDatabase,
 };
 use syntax::{
@@ -209,6 +209,7 @@ pub(crate) struct AssistBuilder {
     file_id: FileId,
     is_snippet: bool,
     source_file_edits: Vec<SourceFileEdit>,
+    file_system_edits: Vec<FileSystemEdit>,
 }
 
 impl AssistBuilder {
@@ -218,6 +219,7 @@ impl AssistBuilder {
             file_id,
             is_snippet: false,
             source_file_edits: Vec::default(),
+            file_system_edits: Vec::default(),
         }
     }
 
@@ -282,12 +284,17 @@ impl AssistBuilder {
             algo::diff(&node, &new).into_text_edit(&mut self.edit);
         }
     }
+    pub(crate) fn create_file(&mut self, dst: AnchoredPathBuf, content: impl Into<String>) {
+        let file_system_edit =
+            FileSystemEdit::CreateFile { dst: dst.clone(), initial_contents: content.into() };
+        self.file_system_edits.push(file_system_edit);
+    }
 
     fn finish(mut self) -> SourceChange {
         self.commit();
         SourceChange {
             source_file_edits: mem::take(&mut self.source_file_edits),
-            file_system_edits: Default::default(),
+            file_system_edits: mem::take(&mut self.file_system_edits),
             is_snippet: self.is_snippet,
         }
     }

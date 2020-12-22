@@ -40,6 +40,7 @@ impl DiagnosticWithFix for UnresolvedModule {
                     anchor: self.file.original_file(sema.db),
                     path: self.candidate.clone(),
                 },
+                initial_contents: "".to_string(),
             }
             .into(),
             unresolved_module.syntax().text_range(),

@@ -619,6 +619,7 @@ fn test_fn() {
                                                 ),
                                                 path: "foo.rs",
                                             },
+                                            initial_contents: "",
                                         },
                                     ],
                                     is_snippet: false,

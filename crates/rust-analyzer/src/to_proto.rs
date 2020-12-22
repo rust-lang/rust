@@ -634,30 +634,47 @@ pub(crate) fn snippet_text_document_edit(
     Ok(lsp_ext::SnippetTextDocumentEdit { text_document, edits })
 }
 
-pub(crate) fn resource_op(
+pub(crate) fn snippet_text_document_ops(
     snap: &GlobalStateSnapshot,
     file_system_edit: FileSystemEdit,
-) -> lsp_types::ResourceOp {
+) -> Vec<lsp_ext::SnippetDocumentChangeOperation> {
+    let mut ops = Vec::new();
     match file_system_edit {
-        FileSystemEdit::CreateFile { dst } => {
+        FileSystemEdit::CreateFile { dst, initial_contents } => {
             let uri = snap.anchored_path(&dst);
-            lsp_types::ResourceOp::Create(lsp_types::CreateFile {
-                uri,
+            let create_file = lsp_types::ResourceOp::Create(lsp_types::CreateFile {
+                uri: uri.clone(),
                 options: None,
                 annotation_id: None,
-            })
+            });
+            ops.push(lsp_ext::SnippetDocumentChangeOperation::Op(create_file));
+            if !initial_contents.is_empty() {
+                let text_document =
+                    lsp_types::OptionalVersionedTextDocumentIdentifier { uri, version: None };
+                let range = range(&LineIndex::new(""), TextRange::empty(TextSize::from(0)));
+                let text_edit = lsp_ext::SnippetTextEdit {
+                    range,
+                    new_text: initial_contents,
+                    insert_text_format: Some(lsp_types::InsertTextFormat::PlainText),
+                };
+                let edit_file =
+                    lsp_ext::SnippetTextDocumentEdit { text_document, edits: vec![text_edit] };
+                ops.push(lsp_ext::SnippetDocumentChangeOperation::Edit(edit_file));
+            }
         }
         FileSystemEdit::MoveFile { src, dst } => {
             let old_uri = snap.file_id_to_url(src);
             let new_uri = snap.anchored_path(&dst);
-            lsp_types::ResourceOp::Rename(lsp_types::RenameFile {
+            let rename_file = lsp_types::ResourceOp::Rename(lsp_types::RenameFile {
                 old_uri,
                 new_uri,
                 options: None,
                 annotation_id: None,
-            })
+            });
+            ops.push(lsp_ext::SnippetDocumentChangeOperation::Op(rename_file))
         }
     }
+    ops
 }
 
 pub(crate) fn snippet_workspace_edit(
@@ -666,8 +683,8 @@ pub(crate) fn snippet_workspace_edit(
 ) -> Result<lsp_ext::SnippetWorkspaceEdit> {
     let mut document_changes: Vec<lsp_ext::SnippetDocumentChangeOperation> = Vec::new();
     for op in source_change.file_system_edits {
-        let op = resource_op(&snap, op);
-        document_changes.push(lsp_ext::SnippetDocumentChangeOperation::Op(op));
+        let ops = snippet_text_document_ops(snap, op);
+        document_changes.extend_from_slice(&ops);
     }
     for edit in source_change.source_file_edits {
         let edit = snippet_text_document_edit(&snap, source_change.is_snippet, edit)?;
