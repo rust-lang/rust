@@ -1660,10 +1660,19 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         // it's a actual definition. According to the comments (e.g. in
         // librustc_typeck/check/compare_method.rs:compare_predicate_entailment) the latter
         // is relied upon by some other code. This might (or might not) need cleanup.
-        let body_owner_def_id =
+        let mut body_owner_def_id =
             self.tcx.hir().opt_local_def_id(cause.body_id).unwrap_or_else(|| {
                 self.tcx.hir().body_owner_def_id(hir::BodyId { hir_id: cause.body_id })
             });
+
+        if let hir::def::DefKind::AnonConst = self.tcx.hir().def_kind(body_owner_def_id) {
+            // #80062: we need to pass the containing function to access the generics properly
+            body_owner_def_id = self
+                .tcx
+                .hir()
+                .get_parent_did(self.tcx.hir().local_def_id_to_hir_id(body_owner_def_id));
+        }
+
         self.check_and_note_conflicting_crates(diag, terr);
         self.tcx.note_and_explain_type_err(diag, terr, cause, span, body_owner_def_id.to_def_id());
 

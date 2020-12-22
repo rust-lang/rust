@@ -1,0 +1,41 @@
+error[E0277]: the size for values of type `T` cannot be known at compilation time
+  --> $DIR/issue-80062-mismatched-types-anon-const.rs:6:23
+   |
+LL | fn foo<Foo>() -> Foo { todo!() }
+   |        --- required by this bound in `foo`
+LL | 
+LL | fn bar<T>() {
+   |        - this type parameter needs to be `Sized`
+LL |     let _: [u8; foo::<T>()];
+   |                       ^ doesn't have a size known at compile-time
+   |
+help: consider relaxing the implicit `Sized` restriction
+   |
+LL | fn foo<Foo: ?Sized>() -> Foo { todo!() }
+   |           ^^^^^^^^
+
+error[E0308]: mismatched types
+  --> $DIR/issue-80062-mismatched-types-anon-const.rs:6:17
+   |
+LL | fn bar<T>() {
+   |        - this type parameter
+LL |     let _: [u8; foo::<T>()];
+   |                 ^^^^^^^^^^ expected `usize`, found type parameter `T`
+   |
+   = note:        expected type `usize`
+           found type parameter `T`
+
+error[E0277]: the size for values of type `T` cannot be known at compilation time
+  --> $DIR/issue-80062-mismatched-types-anon-const.rs:6:17
+   |
+LL | fn bar<T>() {
+   |        - this type parameter needs to be `Sized`
+LL |     let _: [u8; foo::<T>()];
+   |                 ^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = note: the return type of a function must have a statically known size
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0277, E0308.
+For more information about an error, try `rustc --explain E0277`.
