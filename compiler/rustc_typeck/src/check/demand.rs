@@ -360,10 +360,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         false
     }
 
-    fn replace_prefix(&self, s: &str, old: &str, new: &str) -> Option<String> {
-        s.strip_prefix(old).map(|stripped| new.to_string() + stripped)
-    }
-
     /// This function is used to determine potential "simple" improvements or users' errors and
     /// provide them useful help. For example:
     ///
@@ -394,6 +390,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return None;
         }
 
+        let replace_prefix = |s: &str, old: &str, new: &str| {
+            s.strip_prefix(old).map(|stripped| new.to_string() + stripped)
+        };
+
         let is_struct_pat_shorthand_field =
             self.is_hir_id_from_struct_pattern_shorthand_field(expr.hir_id, sp);
 
@@ -409,7 +409,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 (&ty::Str, &ty::Array(arr, _) | &ty::Slice(arr)) if arr == self.tcx.types.u8 => {
                     if let hir::ExprKind::Lit(_) = expr.kind {
                         if let Ok(src) = sm.span_to_snippet(sp) {
-                            if let Some(src) = self.replace_prefix(&src, "b\"", "\"") {
+                            if let Some(src) = replace_prefix(&src, "b\"", "\"") {
                                 return Some((
                                     sp,
                                     "consider removing the leading `b`",
@@ -423,7 +423,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 (&ty::Array(arr, _) | &ty::Slice(arr), &ty::Str) if arr == self.tcx.types.u8 => {
                     if let hir::ExprKind::Lit(_) = expr.kind {
                         if let Ok(src) = sm.span_to_snippet(sp) {
-                            if let Some(src) = self.replace_prefix(&src, "\"", "b\"") {
+                            if let Some(src) = replace_prefix(&src, "\"", "b\"") {
                                 return Some((
                                     sp,
                                     "consider adding a leading `b`",
@@ -583,23 +583,27 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 hir::Mutability::Mut => {
                                     let new_prefix = "&mut ".to_owned() + derefs;
                                     match mutbl_a {
-                                        hir::Mutability::Mut => self
-                                            .replace_prefix(&src, "&mut ", &new_prefix)
-                                            .map(|s| (s, Applicability::MachineApplicable)),
-                                        hir::Mutability::Not => self
-                                            .replace_prefix(&src, "&", &new_prefix)
-                                            .map(|s| (s, Applicability::Unspecified)),
+                                        hir::Mutability::Mut => {
+                                            replace_prefix(&src, "&mut ", &new_prefix)
+                                                .map(|s| (s, Applicability::MachineApplicable))
+                                        }
+                                        hir::Mutability::Not => {
+                                            replace_prefix(&src, "&", &new_prefix)
+                                                .map(|s| (s, Applicability::Unspecified))
+                                        }
                                     }
                                 }
                                 hir::Mutability::Not => {
                                     let new_prefix = "&".to_owned() + derefs;
                                     match mutbl_a {
-                                        hir::Mutability::Mut => self
-                                            .replace_prefix(&src, "&mut ", &new_prefix)
-                                            .map(|s| (s, Applicability::MachineApplicable)),
-                                        hir::Mutability::Not => self
-                                            .replace_prefix(&src, "&", &new_prefix)
-                                            .map(|s| (s, Applicability::MachineApplicable)),
+                                        hir::Mutability::Mut => {
+                                            replace_prefix(&src, "&mut ", &new_prefix)
+                                                .map(|s| (s, Applicability::MachineApplicable))
+                                        }
+                                        hir::Mutability::Not => {
+                                            replace_prefix(&src, "&", &new_prefix)
+                                                .map(|s| (s, Applicability::MachineApplicable))
+                                        }
                                     }
                                 }
                             } {
