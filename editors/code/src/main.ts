@@ -425,7 +425,7 @@ function warnAboutExtensionConflicts() {
         const fst = found[0];
         const sec = found[1];
         vscode.window.showWarningMessage(
-            `You have both ${fst[0]} (${fst[1]}) and ${sec[0]} (${sec[1]}) ` +
+            `You have both the ${fst[0]} (${fst[1]}) and ${sec[0]} (${sec[1]}) ` +
             "plugins enabled. These are known to conflict and cause various functions of " +
             "both plugins to not work correctly. You should disable one of them.", "Got it");
     };
