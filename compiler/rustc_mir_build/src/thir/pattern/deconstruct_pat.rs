@@ -451,7 +451,7 @@ impl Slice {
 ///
 /// A slice pattern `[x, .., y]` behaves like the infinite or-pattern `[x, y] | [x, _, y] | [x, _,
 /// _, y] | ...`. The corresponding value constructors are fixed-length array constructors above a
-/// given minimum length. We obviously can't list all of this infinity of constructors. Thankfully,
+/// given minimum length. We obviously can't list this infinitude of constructors. Thankfully,
 /// it turns out that for each finite set of slice patterns, all sufficiently large array lengths
 /// are equivalent.
 ///
@@ -491,7 +491,7 @@ impl Slice {
 /// middle. This means that the set of witnesses for length `l >= 5` if equivalent to the set for
 /// any other `l' >= 5`: simply add or remove wildcards in the middle to convert between them.
 ///
-/// This applies to any set of slice patterns: there will be a length `L` above which all length
+/// This applies to any set of slice patterns: there will be a length `L` above which all lengths
 /// behave the same. This is exactly what we need for constructor splitting. Therefore a
 /// variable-length slice can be split into a variable-length slice of minimal length `L`, and many
 /// fixed-length slices of lengths `< L`.
@@ -736,8 +736,8 @@ impl<'tcx> Constructor<'tcx> {
             // ranges check.
             IntRange(ctor_range) if !ctor_range.is_singleton() => {
                 let mut split_range = SplitIntRange::new(ctor_range.clone());
-                let intranges = ctors.filter_map(|ctor| ctor.as_int_range());
-                split_range.split(intranges.cloned());
+                let int_ranges = ctors.filter_map(|ctor| ctor.as_int_range());
+                split_range.split(int_ranges.cloned());
                 split_range.iter().map(IntRange).collect()
             }
             &Slice(Slice { kind: VarLen(self_prefix, self_suffix), array_len }) => {
@@ -1080,7 +1080,7 @@ impl<'p, 'tcx> FilteredField<'p, 'tcx> {
 ///
 /// If a private or `non_exhaustive` field is uninhabited, the code mustn't observe that it is
 /// uninhabited. For that, we filter these fields out of the matrix. This is handled automatically
-/// in `Fields`. This filtering is uncommon in practice, because uninhabited fields are rare used,
+/// in `Fields`. This filtering is uncommon in practice, because uninhabited fields are rarely used,
 /// so we avoid it when possible to preserve performance.
 #[derive(Debug, Clone)]
 pub(super) enum Fields<'p, 'tcx> {

@@ -19,7 +19,7 @@
 //!
 //! The algorithm implemented here is a modified version of the one described in [this
 //! paper](http://moscova.inria.fr/~maranget/papers/warn/index.html). We have however generalized
-//! it to accomodate the variety of patterns that rust supports. We thus explain our version here,
+//! it to accommodate the variety of patterns that Rust supports. We thus explain our version here,
 //! without being as rigorous.
 //!
 //!
@@ -27,13 +27,13 @@
 //!
 //! The core of the algorithm is the notion of "usefulness". A pattern `q` is said to be *useful*
 //! relative to another pattern `p` of the same type if there is a value that is matched by `q` and
-//! not matched by `p`. This generalizes to many `p`s: `q` is useful wrt a list of patterns `p_1 ..
-//! p_n` if there is a value that is matched by `q` and by none of the `p_i`. We write
+//! not matched by `p`. This generalizes to many `p`s: `q` is useful w.r.t. a list of patterns
+//! `p_1 .. p_n` if there is a value that is matched by `q` and by none of the `p_i`. We write
 //! `usefulness(p_1 .. p_n, q)` for a function that returns a list of such values. The aim of this
 //! file is to compute it efficiently.
 //!
 //! This is enough to compute reachability: a pattern in a `match` expression is reachable iff it
-//! is useful wrt the patterns above it:
+//! is useful w.r.t. the patterns above it:
 //! ```rust
 //! match x {
 //!     Some(_) => ...,
@@ -44,8 +44,8 @@
 //! ```
 //!
 //! This is also enough to compute exhaustiveness: a match is exhaustive iff the wildcard `_`
-//! pattern is _not_ useful wrt the patterns in the match. The values returned by `usefulness` are
-//! used to tell the user which values are missing.
+//! pattern is _not_ useful w.r.t. the patterns in the match. The values returned by `usefulness`
+//! are used to tell the user which values are missing.
 //! ```rust
 //! match x {
 //!     Some(0) => ...,
@@ -102,7 +102,7 @@
 //!
 //! Note: this constructors/fields distinction may not straightforwardly apply to every Rust type.
 //! For example a value of type `Rc<u64>` can't be deconstructed that way, and `&str` has an
-//! infinity of constructors. There are also subtleties with visibility of fields and
+//! infinitude of constructors. There are also subtleties with visibility of fields and
 //! uninhabitedness and various other things. The constructors idea can be extended to handle most
 //! of these subtleties though; caveats are documented where relevant throughout the code.
 //!
@@ -184,7 +184,8 @@
 //!
 //!   `specialize(c, p0 | p1) := specialize(c, p0) ++ specialize(c, p1)`
 //!
-//! - We treat the other pattern constructors lik big or-patterns of all the possibilities:
+//! - We treat the other pattern constructors as if they were a large or-pattern of all the
+//!   possibilities:
 //!
 //!   `specialize(c, _) := specialize(c, Variant1(_) | Variant2(_, _) | ...)`
 //!
@@ -193,7 +194,7 @@
 //!   `specialize(c, [p0, .., p1]) := specialize(c, [p0, p1] | [p0, _, p1] | [p0, _, _, p1] | ...)`
 //!
 //! - If `c` is a pattern-only constructor, `specialize` is defined on a case-by-case basis. See
-//!   the discussion abount constructor splitting in [`super::deconstruct_pat`].
+//!   the discussion about constructor splitting in [`super::deconstruct_pat`].
 //!
 //!
 //! We then extend this function to work with pattern-stacks as input, by acting on the first
