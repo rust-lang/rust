@@ -852,10 +852,10 @@ enum WitnessPreference {
 /// We'll perform the following steps:
 /// 1. Start with an empty witness
 ///     `Witness(vec![])`
-/// 2. Push a witness `Some(_)` against the `None`
-///     `Witness(vec![Some(_)])`
-/// 3. Push a witness `true` against the `false`
-///     `Witness(vec![Some(_), true])`
+/// 2. Push a witness `true` against the `false`
+///     `Witness(vec![true])`
+/// 3. Push a witness `Some(_)` against the `None`
+///     `Witness(vec![true, Some(_)])`
 /// 4. Apply the `Pair` constructor to the witnesses
 ///     `Witness(vec![Pair(Some(_), true)])`
 ///
