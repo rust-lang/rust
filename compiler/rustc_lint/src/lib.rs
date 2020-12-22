@@ -283,7 +283,6 @@ fn register_builtins(store: &mut LintStore, no_interleave_lints: bool) {
         UNUSED_MUT,
         UNREACHABLE_CODE,
         UNREACHABLE_PATTERNS,
-        OVERLAPPING_PATTERNS,
         UNUSED_MUST_USE,
         UNUSED_UNSAFE,
         PATH_STATEMENTS,
@@ -335,6 +334,7 @@ fn register_builtins(store: &mut LintStore, no_interleave_lints: bool) {
     store.register_renamed("exceeding_bitshifts", "arithmetic_overflow");
     store.register_renamed("redundant_semicolon", "redundant_semicolons");
     store.register_renamed("intra_doc_link_resolution_failure", "broken_intra_doc_links");
+    store.register_renamed("overlapping_patterns", "overlapping_range_endpoints");
     store.register_removed("unknown_features", "replaced by an error");
     store.register_removed("unsigned_negation", "replaced by negate_unsigned feature gate");
     store.register_removed("negate_unsigned", "cast a signed value instead");
