@@ -1,5 +1,5 @@
 use ast::edit::IndentLevel;
-use ide_db::base_db::{AnchoredPathBuf, SourceDatabaseExt};
+use ide_db::base_db::AnchoredPathBuf;
 use syntax::{
     ast::{self, edit::AstNodeEdit, NameOwner},
     AstNode,
@@ -21,43 +21,44 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 // mod foo;
 // ```
 pub(crate) fn extract_module_to_file(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
-    let assist_id = AssistId("extract_module_to_file", AssistKind::RefactorExtract);
-    let assist_label = "Extract module to file";
-    let db = ctx.db();
     let module_ast = ctx.find_node_at_offset::<ast::Module>()?;
-    let module_items = module_ast.item_list()?;
-    let dedent_module_items_text = module_items.dedent(IndentLevel(1)).to_string();
     let module_name = module_ast.name()?;
+
+    let module_def = ctx.sema.to_def(&module_ast)?;
+    let parent_module = module_def.parent(ctx.db())?;
+
+    let module_items = module_ast.item_list()?;
     let target = module_ast.syntax().text_range();
     let anchor_file_id = ctx.frange.file_id;
-    let sr = db.file_source_root(anchor_file_id);
-    let sr = db.source_root(sr);
-    let file_path = sr.path_for_file(&anchor_file_id)?;
-    let (file_name, file_ext) = file_path.name_and_extension()?;
-    acc.add(assist_id, assist_label, target, |builder| {
-        builder.replace(target, format!("mod {};", module_name));
-        let path = if is_main_or_lib(file_name) {
-            format!("./{}.{}", module_name, file_ext.unwrap())
-        } else {
-            format!("./{}/{}.{}", file_name, module_name, file_ext.unwrap())
-        };
-        let dst = AnchoredPathBuf { anchor: anchor_file_id, path };
-        let contents = update_module_items_string(dedent_module_items_text);
-        builder.create_file(dst, contents);
-    })
-}
-fn is_main_or_lib(file_name: &str) -> bool {
-    file_name == "main".to_string() || file_name == "lib".to_string()
-}
-fn update_module_items_string(items_str: String) -> String {
-    let mut items_string_lines: Vec<&str> = items_str.lines().collect();
-    items_string_lines.pop(); // Delete last line
-    items_string_lines.reverse();
-    items_string_lines.pop(); // Delete first line
-    items_string_lines.reverse();
 
-    let string = items_string_lines.join("\n");
-    format!("{}", string)
+    acc.add(
+        AssistId("extract_module_to_file", AssistKind::RefactorExtract),
+        "Extract module to file",
+        target,
+        |builder| {
+            let path = {
+                let dir = match parent_module.name(ctx.db()) {
+                    Some(name) if !parent_module.is_mod_rs(ctx.db()) => format!("{}/", name),
+                    _ => String::new(),
+                };
+                format!("./{}{}.rs", dir, module_name)
+            };
+            let contents = {
+                let items = module_items.dedent(IndentLevel(1)).to_string();
+                let mut items =
+                    items.trim_start_matches('{').trim_end_matches('}').trim().to_string();
+                if !items.is_empty() {
+                    items.push('\n');
+                }
+                items
+            };
+
+            builder.replace(target, format!("mod {};", module_name));
+
+            let dst = AnchoredPathBuf { anchor: anchor_file_id, path };
+            builder.create_file(dst, contents);
+        },
+    )
 }
 
 #[cfg(test)]
@@ -67,104 +68,66 @@ mod tests {
     use super::*;
 
     #[test]
-    fn extract_module_to_file_with_basic_module() {
+    fn extract_from_root() {
         check_assist(
             extract_module_to_file,
             r#"
-//- /foo.rs crate:foo
 mod tests {<|>
     #[test] fn t() {}
 }
 "#,
             r#"
-//- /foo.rs
+//- /main.rs
 mod tests;
-//- /foo/tests.rs
-#[test] fn t() {}"#,
-        )
-    }
-
-    #[test]
-    fn extract_module_to_file_with_file_path() {
-        check_assist(
-            extract_module_to_file,
-            r#"
-//- /src/foo.rs crate:foo
-mod bar {<|>
-    fn f() {
-
-    }
-}
-fn main() {
-    println!("Hello, world!");
-}
+//- /tests.rs
+#[test] fn t() {}
 "#,
-            r#"
-//- /src/foo.rs
-mod bar;
-fn main() {
-    println!("Hello, world!");
-}
-//- /src/foo/bar.rs
-fn f() {
-
-}"#,
-        )
+        );
     }
 
     #[test]
-    fn extract_module_to_file_with_main_filw() {
+    fn extract_from_submodule() {
         check_assist(
             extract_module_to_file,
             r#"
 //- /main.rs
-mod foo {<|>
-    fn f() {
-
-    }
+mod submodule;
+//- /submodule.rs
+mod inner<|> {
+    fn f() {}
 }
-fn main() {
-    println!("Hello, world!");
-}
+fn g() {}
 "#,
             r#"
-//- /main.rs
-mod foo;
-fn main() {
-    println!("Hello, world!");
-}
-//- /foo.rs
-fn f() {
-
-}"#,
-        )
+//- /submodule.rs
+mod inner;
+fn g() {}
+//- /submodule/inner.rs
+fn f() {}
+"#,
+        );
     }
 
     #[test]
-    fn extract_module_to_file_with_lib_file() {
+    fn extract_from_mod_rs() {
         check_assist(
             extract_module_to_file,
             r#"
-//- /lib.rs
-mod foo {<|>
-    fn f() {
-
-    }
+//- /main.rs
+mod submodule;
+//- /submodule/mod.rs
+mod inner<|> {
+    fn f() {}
 }
-fn main() {
-    println!("Hello, world!");
-}
+fn g() {}
 "#,
             r#"
-//- /lib.rs
-mod foo;
-fn main() {
-    println!("Hello, world!");
-}
-//- /foo.rs
-fn f() {
-
-}"#,
-        )
+//- /submodule/mod.rs
+mod inner;
+fn g() {}
+//- /submodule/inner.rs
+fn f() {}
+"#,
+        );
     }
 }
