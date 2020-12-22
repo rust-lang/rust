@@ -58,28 +58,72 @@ fn dist_client(version: &str, release_tag: &str) -> Result<()> {
 }
 
 fn dist_server() -> Result<()> {
-    if cfg!(target_os = "linux") {
+    let target = get_target();
+    if target.contains("-linux-gnu") {
         env::set_var("CC", "clang");
     }
-    cmd!("cargo build --manifest-path ./crates/rust-analyzer/Cargo.toml --bin rust-analyzer --release").run()?;
 
-    let (src, dst) = if cfg!(target_os = "linux") {
-        ("./target/release/rust-analyzer", "./dist/rust-analyzer-linux")
-    } else if cfg!(target_os = "windows") {
-        ("./target/release/rust-analyzer.exe", "./dist/rust-analyzer-windows.exe")
-    } else if cfg!(target_os = "macos") {
-        ("./target/release/rust-analyzer", "./dist/rust-analyzer-mac")
-    } else {
-        panic!("Unsupported OS")
-    };
+    let toolchain = toolchain(&target);
+    cmd!("cargo +{toolchain} build --manifest-path ./crates/rust-analyzer/Cargo.toml --bin rust-analyzer --target {target} --release").run()?;
 
-    let src = Path::new(src);
-    let dst = Path::new(dst);
-
+    let suffix = exe_suffix(&target);
+    let src =
+        Path::new("target").join(&target).join("release").join(format!("rust-analyzer{}", suffix));
+    let dst = Path::new("dist").join(format!("rust-analyzer-{}{}", target, suffix));
     cp(&src, &dst)?;
     gzip(&src, &dst.with_extension("gz"))?;
 
+    // FIXME: the old names are temporarily kept for client compatibility, but they should be removed
+    // Remove this block after a couple of releases
+    match target.as_ref() {
+        "x86_64-unknown-linux-gnu" => {
+            cp(&src, "dist/rust-analyzer-linux")?;
+            gzip(&src, Path::new("dist/rust-analyzer-linux.gz"))?;
+        }
+        "x86_64-pc-windows-msvc" => {
+            cp(&src, "dist/rust-analyzer-windows.exe")?;
+            gzip(&src, Path::new("dist/rust-analyzer-windows.gz"))?;
+        }
+        "x86_64-apple-darwin" => {
+            cp(&src, "dist/rust-analyzer-mac")?;
+            gzip(&src, Path::new("dist/rust-analyzer-mac.gz"))?;
+        }
+        _ => {}
+    }
+
     Ok(())
+}
+
+fn get_target() -> String {
+    match env::var("RA_TARGET") {
+        Ok(target) => target,
+        _ => {
+            if cfg!(target_os = "linux") {
+                "x86_64-unknown-linux-gnu".to_string()
+            } else if cfg!(target_os = "windows") {
+                "x86_64-pc-windows-msvc".to_string()
+            } else if cfg!(target_os = "macos") {
+                "x86_64-apple-darwin".to_string()
+            } else {
+                panic!("Unsupported OS, maybe try setting RA_TARGET")
+            }
+        }
+    }
+}
+
+fn exe_suffix(target: &str) -> String {
+    if target.contains("-windows-") {
+        ".exe".into()
+    } else {
+        "".into()
+    }
+}
+
+fn toolchain(target: &str) -> String {
+    match target {
+        "aarch64-apple-darwin" => "beta".to_string(),
+        _ => "stable".to_string(),
+    }
 }
 
 fn gzip(src_path: &Path, dest_path: &Path) -> Result<()> {
