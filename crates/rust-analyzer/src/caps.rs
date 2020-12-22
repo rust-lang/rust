@@ -5,12 +5,14 @@ use ide::CompletionResolveCapability;
 use lsp_types::{
     CallHierarchyServerCapability, ClientCapabilities, CodeActionKind, CodeActionOptions,
     CodeActionProviderCapability, CodeLensOptions, CompletionOptions,
-    DocumentOnTypeFormattingOptions, FoldingRangeProviderCapability, HoverProviderCapability,
-    ImplementationProviderCapability, OneOf, RenameOptions, SaveOptions,
+    DocumentOnTypeFormattingOptions, FileOperationFilter, FileOperationPattern,
+    FileOperationPatternKind, FileOperationRegistrationOptions, FoldingRangeProviderCapability,
+    HoverProviderCapability, ImplementationProviderCapability, OneOf, RenameOptions, SaveOptions,
     SelectionRangeProviderCapability, SemanticTokensFullOptions, SemanticTokensLegend,
     SemanticTokensOptions, ServerCapabilities, SignatureHelpOptions, TextDocumentSyncCapability,
     TextDocumentSyncKind, TextDocumentSyncOptions, TypeDefinitionProviderCapability,
-    WorkDoneProgressOptions,
+    WorkDoneProgressOptions, WorkspaceFileOperationsServerCapabilities,
+    WorkspaceServerCapabilities,
 };
 use rustc_hash::FxHashSet;
 use serde_json::json;
@@ -68,7 +70,26 @@ pub fn server_capabilities(client_caps: &ClientCapabilities) -> ServerCapabiliti
         document_link_provider: None,
         color_provider: None,
         execute_command_provider: None,
-        workspace: None,
+        workspace: Some(WorkspaceServerCapabilities {
+            workspace_folders: None,
+            file_operations: Some(WorkspaceFileOperationsServerCapabilities {
+                did_create: None,
+                will_create: None,
+                did_rename: None,
+                will_rename: Some(FileOperationRegistrationOptions {
+                    filters: vec![FileOperationFilter {
+                        scheme: Some(String::from("file")),
+                        pattern: FileOperationPattern {
+                            glob: String::from("**/*.rs"),
+                            matches: Some(FileOperationPatternKind::File),
+                            options: None,
+                        },
+                    }],
+                }),
+                did_delete: None,
+                will_delete: None,
+            }),
+        }),
         call_hierarchy_provider: Some(CallHierarchyServerCapability::Simple(true)),
         semantic_tokens_provider: Some(
             SemanticTokensOptions {

@@ -485,6 +485,7 @@ impl GlobalState {
             .on::<lsp_types::request::SemanticTokensRangeRequest>(
                 handlers::handle_semantic_tokens_range,
             )
+            .on::<lsp_types::request::WillRenameFiles>(handlers::handle_will_rename_files)
             .on::<lsp_ext::Ssr>(handlers::handle_ssr)
             .finish();
         Ok(())
