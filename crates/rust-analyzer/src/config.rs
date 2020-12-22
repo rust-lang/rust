@@ -33,7 +33,7 @@ config_data! {
         callInfo_full: bool = "true",
 
         /// Automatically refresh project info via `cargo metadata` on
-        /// Cargo.toml changes.
+        /// `Cargo.toml` changes.
         cargo_autoreload: bool           = "true",
         /// Activate all available features.
         cargo_allFeatures: bool          = "false",
@@ -52,7 +52,7 @@ config_data! {
         /// Run specified `cargo check` command for diagnostics on save.
         checkOnSave_enable: bool                         = "true",
         /// Check with all features (will be passed as `--all-features`).
-        /// Defaults to `rust-analyzer.cargo.allFeatures`.
+        /// Defaults to `#rust-analyzer.cargo.allFeatures#`.
         checkOnSave_allFeatures: Option<bool>            = "null",
         /// Check all targets and tests (will be passed as `--all-targets`).
         checkOnSave_allTargets: bool                     = "true",
@@ -61,12 +61,12 @@ config_data! {
         /// Do not activate the `default` feature.
         checkOnSave_noDefaultFeatures: Option<bool>      = "null",
         /// Check for a specific target. Defaults to
-        /// `rust-analyzer.cargo.target`.
+        /// `#rust-analyzer.cargo.target#`.
         checkOnSave_target: Option<String>               = "null",
         /// Extra arguments for `cargo check`.
         checkOnSave_extraArgs: Vec<String>               = "[]",
         /// List of features to activate. Defaults to
-        /// `rust-analyzer.cargo.features`.
+        /// `#rust-analyzer.cargo.features#`.
         checkOnSave_features: Option<Vec<String>>        = "null",
         /// Advanced option, fully override the command rust-analyzer uses for
         /// checking. The command should include `--message-format=json` or
@@ -80,7 +80,7 @@ config_data! {
         /// Whether to show postfix snippets like `dbg`, `if`, `not`, etc.
         completion_postfix_enable: bool          = "true",
         /// Toggles the additional completions that automatically add imports when completed.
-        /// Note that your client have to specify the `additionalTextEdits` LSP client capability to truly have this feature enabled.
+        /// Note that your client must specify the `additionalTextEdits` LSP client capability to truly have this feature enabled.
         completion_autoimport_enable: bool       = "true",
 
         /// Whether to show native rust-analyzer diagnostics.
@@ -90,13 +90,13 @@ config_data! {
         diagnostics_enableExperimental: bool    = "true",
         /// List of rust-analyzer diagnostics to disable.
         diagnostics_disabled: FxHashSet<String> = "[]",
-        /// List of warnings that should be displayed with info severity.\nThe
+        /// List of warnings that should be displayed with info severity.\n\nThe
         /// warnings will be indicated by a blue squiggly underline in code and
-        /// a blue icon in the problems panel.
+        /// a blue icon in the `Problems Panel`.
         diagnostics_warningsAsHint: Vec<String> = "[]",
-        /// List of warnings that should be displayed with hint severity.\nThe
+        /// List of warnings that should be displayed with hint severity.\n\nThe
         /// warnings will be indicated by faded text or three dots in code and
-        /// will not show up in the problems panel.
+        /// will not show up in the `Problems Panel`.
         diagnostics_warningsAsInfo: Vec<String> = "[]",
 
         /// Controls file watching implementation.
@@ -121,7 +121,7 @@ config_data! {
 
         /// Whether to show inlay type hints for method chains.
         inlayHints_chainingHints: bool      = "true",
-        /// Maximum length for inlay hints.
+        /// Maximum length for inlay hints. Default is unlimited.
         inlayHints_maxLength: Option<usize> = "null",
         /// Whether to show function parameter name inlay hints at the call
         /// site.
@@ -145,27 +145,27 @@ config_data! {
         lens_methodReferences: bool = "false",
 
         /// Disable project auto-discovery in favor of explicitly specified set
-        /// of projects.  \nElements must be paths pointing to Cargo.toml,
-        /// rust-project.json, or JSON objects in rust-project.json format.
+        /// of projects.\n\nElements must be paths pointing to `Cargo.toml`,
+        /// `rust-project.json`, or JSON objects in `rust-project.json` format.
         linkedProjects: Vec<ManifestOrProjectJson> = "[]",
-        /// Number of syntax trees rust-analyzer keeps in memory.
+        /// Number of syntax trees rust-analyzer keeps in memory.  Defaults to 128.
         lruCapacity: Option<usize>                 = "null",
         /// Whether to show `can't find Cargo.toml` error message.
         notifications_cargoTomlNotFound: bool      = "true",
-        /// Enable Proc macro support, cargo.loadOutDirsFromCheck must be
+        /// Enable Proc macro support, `#rust-analyzer.cargo.loadOutDirsFromCheck#` must be
         /// enabled.
         procMacro_enable: bool                     = "false",
 
         /// Command to be executed instead of 'cargo' for runnables.
         runnables_overrideCargo: Option<String> = "null",
         /// Additional arguments to be passed to cargo for runnables such as
-        /// tests or binaries.\nFor example, it may be '--release'.
+        /// tests or binaries.\nFor example, it may be `--release`.
         runnables_cargoExtraArgs: Vec<String>   = "[]",
 
         /// Path to the rust compiler sources, for usage in rustc_private projects.
         rustcSource : Option<String> = "null",
 
-        /// Additional arguments to rustfmt.
+        /// Additional arguments to `rustfmt`.
         rustfmt_extraArgs: Vec<String>               = "[]",
         /// Advanced option, fully override the command rust-analyzer uses for
         /// formatting.
@@ -758,7 +758,7 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
             ],
             "enumDescriptions": [
                 "Insert import paths relative to the current module, using up to one `super` prefix if the parent module contains the requested item.",
-                "Prefix all import paths with `self` if they don't begin with `self`, `super`, `crate` or a crate name",
+                "Prefix all import paths with `self` if they don't begin with `self`, `super`, `crate` or a crate name.",
                 "Force import paths to be absolute by always starting them with `crate` or the crate name they refer to."
             ],
         },
