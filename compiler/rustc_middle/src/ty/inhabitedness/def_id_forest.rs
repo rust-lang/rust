@@ -17,7 +17,7 @@ pub struct DefIdForest {
     /// If A and B are DefIds in the `DefIdForest`, and A is a descendant
     /// of B, then only B will be in `root_ids`.
     /// We use a `SmallVec` here because (for its use for caching inhabitedness)
-    /// its rare that this will contain even two IDs.
+    /// it's rare that this will contain even two IDs.
     root_ids: SmallVec<[DefId; 1]>,
 }
 
