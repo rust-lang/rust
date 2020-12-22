@@ -2162,6 +2162,7 @@ impl Clean<Vec<Item>> for doctree::Import<'_> {
         // #[doc(no_inline)] attribute is present.
         // Don't inline doc(hidden) imports so they can be stripped at a later stage.
         let mut denied = !self.vis.node.is_pub()
+            || (self.vis.node.is_pub() && self.name == kw::Underscore)
             || self.attrs.iter().any(|a| {
                 a.has_name(sym::doc)
                     && match a.meta_item_list() {
@@ -2171,8 +2172,7 @@ impl Clean<Vec<Item>> for doctree::Import<'_> {
                         }
                         None => false,
                     }
-            })
-            || (self.vis.node.is_pub() && self.name == kw::Underscore);
+            });
         // Also check whether imports were asked to be inlined, in case we're trying to re-export a
         // crate in Rust 2018+
         let please_inline = self.attrs.lists(sym::doc).has_word(sym::inline);
