@@ -181,7 +181,7 @@
             }
         }
 
-        function searchLint(lint, therm) {
+        function searchLint(lint, term) {
             for (const field in lint.docs) {
                 // Continue if it's not a property
                 if (!lint.docs.hasOwnProperty(field)) {
@@ -189,7 +189,7 @@
                 }
 
                 // Return if not found
-                if (lint.docs[field].toLowerCase().indexOf(therm) !== -1) {
+                if (lint.docs[field].toLowerCase().indexOf(term) !== -1) {
                     return true;
                 }
             }
@@ -247,13 +247,13 @@
 
                 // Search the description
                 // The use of `for`-loops instead of `foreach` enables us to return early 
-                let therms = searchStr.split(" ");
-                for (index = 0; index < therms.length; index++) {
-                    if (lint.id.indexOf(therms[index]) !== -1) {
+                let terms = searchStr.split(" ");
+                for (index = 0; index < terms.length; index++) {
+                    if (lint.id.indexOf(terms[index]) !== -1) {
                         continue;
                     }
 
-                    if (searchLint(lint, therms[index])) {
+                    if (searchLint(lint, terms[index])) {
                         continue;
                     }
 
