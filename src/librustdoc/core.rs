@@ -308,6 +308,7 @@ crate fn create_config(
     let private_doc_tests = rustc_lint::builtin::PRIVATE_DOC_TESTS.name;
     let no_crate_level_docs = rustc_lint::builtin::MISSING_CRATE_LEVEL_DOCS.name;
     let invalid_codeblock_attributes_name = rustc_lint::builtin::INVALID_CODEBLOCK_ATTRIBUTES.name;
+    let invalid_rust_codeblock = rustc_lint::builtin::INVALID_RUST_CODEBLOCK.name;
     let invalid_html_tags = rustc_lint::builtin::INVALID_HTML_TAGS.name;
     let renamed_and_removed_lints = rustc_lint::builtin::RENAMED_AND_REMOVED_LINTS.name;
     let non_autolinks = rustc_lint::builtin::NON_AUTOLINKS.name;
@@ -323,6 +324,7 @@ crate fn create_config(
         private_doc_tests.to_owned(),
         no_crate_level_docs.to_owned(),
         invalid_codeblock_attributes_name.to_owned(),
+        invalid_rust_codeblock.to_owned(),
         invalid_html_tags.to_owned(),
         renamed_and_removed_lints.to_owned(),
         unknown_lints.to_owned(),
