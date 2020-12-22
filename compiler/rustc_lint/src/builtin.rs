@@ -2630,14 +2630,14 @@ impl ClashingExternDeclarations {
         let local_did = tcx.hir().local_def_id(fi.hir_id);
         let did = local_did.to_def_id();
         let instance = Instance::new(did, ty::List::identity_for_item(tcx, did));
-        let name = tcx.symbol_name(instance).name.to_string();
-        if self.seen_decls.contains_key(&name) {
+        let name = tcx.symbol_name(instance).name;
+        if let Some(&hir_id) = self.seen_decls.get(name) {
             // Avoid updating the map with the new entry when we do find a collision. We want to
             // make sure we're always pointing to the first definition as the previous declaration.
             // This lets us avoid emitting "knock-on" diagnostics.
-            Some(*self.seen_decls.get(&name).unwrap())
+            Some(hir_id)
         } else {
-            self.seen_decls.insert(name, hid)
+            self.seen_decls.insert(name.to_owned(), hid)
         }
     }
 
