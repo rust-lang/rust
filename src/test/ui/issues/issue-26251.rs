@@ -1,5 +1,5 @@
 // run-pass
-#![allow(overlapping_patterns)]
+#![allow(overlapping_range_endpoints)]
 
 fn main() {
     let x = 'a';

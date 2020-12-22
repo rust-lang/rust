@@ -588,8 +588,8 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `overlapping_patterns` lint detects `match` arms that have
-    /// [range patterns] that overlap.
+    /// The `overlapping_range_endpoints` lint detects `match` arms that have [range patterns] that
+    /// overlap on their endpoints.
     ///
     /// [range patterns]: https://doc.rust-lang.org/nightly/reference/patterns.html#range-patterns
     ///
@@ -607,13 +607,12 @@ declare_lint! {
     ///
     /// ### Explanation
     ///
-    /// It is likely a mistake to have range patterns in a match expression
-    /// that overlap. Check that the beginning and end values are what you
-    /// expect, and keep in mind that with `..=` the left and right bounds are
-    /// inclusive.
-    pub OVERLAPPING_PATTERNS,
+    /// It is likely a mistake to have range patterns in a match expression that overlap in this
+    /// way. Check that the beginning and end values are what you expect, and keep in mind that
+    /// with `..=` the left and right bounds are inclusive.
+    pub OVERLAPPING_RANGE_ENDPOINTS,
     Warn,
-    "detects overlapping patterns"
+    "detects range patterns with overlapping endpoints"
 }
 
 declare_lint! {
@@ -2809,7 +2808,7 @@ declare_lint_pass! {
         DEAD_CODE,
         UNREACHABLE_CODE,
         UNREACHABLE_PATTERNS,
-        OVERLAPPING_PATTERNS,
+        OVERLAPPING_RANGE_ENDPOINTS,
         BINDINGS_WITH_VARIANT_NAME,
         UNUSED_MACROS,
         WARNINGS,
