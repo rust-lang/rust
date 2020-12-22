@@ -152,6 +152,7 @@ use crate::pin::Pin;
 use crate::{
     convert, fmt, hint, mem,
     ops::{self, Deref, DerefMut},
+    ptr,
 };
 
 /// The `Option` type. See [the module level documentation](self) for more.
@@ -982,6 +983,83 @@ impl<T> Option<T> {
         F: FnOnce(T, U) -> R,
     {
         Some(f(self?, other?))
+    }
+}
+
+impl<T> Option<&T> {
+    /// Converts from `Option<&T>` (or `&Option<&T>`) to `*const T`.
+    ///
+    /// This is the opposite of `<*const T>::as_ref`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(option_as_ptr)]
+    ///
+    /// let opt = Some(&3);
+    /// let ptr = opt.as_ptr();
+    ///
+    /// assert_eq!(opt, unsafe { ptr.as_ref() });
+    /// ```
+    #[unstable(feature = "option_as_ptr", issue = "none")]
+    #[inline]
+    pub const fn as_ptr(&self) -> *const T {
+        match self {
+            Some(x) => *x,
+            None => ptr::null(),
+        }
+    }
+}
+
+impl<T> Option<&mut T> {
+    /// Converts from `Option<&mut T>` (or `&Option<&mut T>`) to `*const T`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(option_as_ptr)]
+    ///
+    /// let mut x = 3;
+    /// let opt = Some(&mut x);
+    /// let ptr = opt.as_ptr();
+    ///
+    /// assert_eq!(x, unsafe { *ptr });
+    /// ```
+    #[unstable(feature = "option_as_ptr", issue = "none")]
+    #[rustc_const_unstable(feature = "option_as_ptr", issue = "none")]
+    #[inline]
+    pub const fn as_ptr(&self) -> *const T {
+        match self {
+            Some(x) => *x,
+            None => ptr::null(),
+        }
+    }
+
+    /// Converts from `Option<&mut T>` (or `&mut Option<&T>`) to `*mut T`.
+    ///
+    /// This is the opposite of `<*mut T>::as_mut`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(option_as_ptr)]
+    ///
+    /// let mut x = 3;
+    /// let mut opt = Some(&mut x);
+    ///
+    /// let ptr = opt.as_mut_ptr();
+    /// unsafe { *ptr = 4 };
+    ///
+    /// assert_eq!(x, 4);
+    /// ```
+    #[unstable(feature = "option_as_ptr", issue = "none")]
+    #[rustc_const_unstable(feature = "option_as_ptr", issue = "none")]
+    #[inline]
+    pub const fn as_mut_ptr(&mut self) -> *mut T {
+        match self {
+            Some(x) => *x,
+            None => ptr::null_mut(),
+        }
     }
 }
 
