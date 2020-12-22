@@ -22,8 +22,8 @@ pub enum LintSource {
     Node(Symbol, Span, Option<Symbol> /* RFC 2383 reason */),
 
     /// Lint level was set by a command-line flag.
-    /// The provided `Level` is the level specified on the command line -
-    /// the actual level may be lower due to `--cap-lints`
+    /// The provided `Level` is the level specified on the command line.
+    /// (The actual level may be lower due to `--cap-lints`.)
     CommandLine(Symbol, Level),
 }
 
