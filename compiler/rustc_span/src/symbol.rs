@@ -1681,7 +1681,7 @@ fn with_interner<T, F: FnOnce(&mut Interner) -> T>(f: F) -> T {
     SESSION_GLOBALS.with(|session_globals| f(&mut *session_globals.symbol_interner.lock()))
 }
 
-/// An alternative to `Symbol`, useful when the chars within the symbol need to
+/// An alternative to [`Symbol`], useful when the chars within the symbol need to
 /// be accessed. It deliberately has limited functionality and should only be
 /// used for temporary values.
 ///

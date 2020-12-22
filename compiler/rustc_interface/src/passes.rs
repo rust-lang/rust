@@ -95,7 +95,7 @@ declare_box_region_type!(
 /// harness if one is to be provided, injection of a dependency on the
 /// standard library and prelude, and name resolution.
 ///
-/// Returns `None` if we're aborting after handling -W help.
+/// Returns [`None`] if we're aborting after handling -W help.
 pub fn configure_and_expand(
     sess: Lrc<Session>,
     lint_store: Lrc<LintStore>,
