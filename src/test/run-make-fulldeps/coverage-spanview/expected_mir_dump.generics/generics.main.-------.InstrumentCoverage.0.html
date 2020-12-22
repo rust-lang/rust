@@ -190,7 +190,7 @@ For revisions in Pull Requests (PR):
 31:9-31:43: @6.Call: _14 = Arguments::new_v1(move _15, move _19) -&gt; [return: bb7, unwind: bb15]
 31:9-31:43: @7.Call: _13 = _print(move _14) -&gt; [return: bb8, unwind: bb15]
 31:9-31:43: @8[5]: _12 = const ()
-32:16-32:22: @8[7]: _0 = std::result::Result::&lt;(), u8&gt;::Err(const 1_u8)"><span class="annotation">@4,6,7,8,12,13⦊</span>println!("Exiting with error...");</span></span>
+32:16-32:22: @8[7]: _0 = Result::&lt;(), u8&gt;::Err(const 1_u8)"><span class="annotation">@4,6,7,8,12,13⦊</span>println!("Exiting with error...");</span></span>
 <span class="line"><span class="code odd" style="--layer: 1" title="31:18-31:41: @6[6]: _27 = const main::promoted[1]
 31:18-31:41: @6[7]: _17 = &amp;(*_27)
 31:18-31:41: @6[8]: _16 = &amp;(*_17)
@@ -204,43 +204,43 @@ For revisions in Pull Requests (PR):
 31:9-31:43: @6.Call: _14 = Arguments::new_v1(move _15, move _19) -&gt; [return: bb7, unwind: bb15]
 31:9-31:43: @7.Call: _13 = _print(move _14) -&gt; [return: bb8, unwind: bb15]
 31:9-31:43: @8[5]: _12 = const ()
-32:16-32:22: @8[7]: _0 = std::result::Result::&lt;(), u8&gt;::Err(const 1_u8)">        return Err(1)<span class="annotation">⦉@4,6,7,8,12,13</span></span></span><span class="code" style="--layer: 0">;</span></span>
+32:16-32:22: @8[7]: _0 = Result::&lt;(), u8&gt;::Err(const 1_u8)">        return Err(1)<span class="annotation">⦉@4,6,7,8,12,13</span></span></span><span class="code" style="--layer: 0">;</span></span>
 <span class="line"><span class="code" style="--layer: 0">    }</span><span><span class="code even" style="--layer: 1" title="33:6-33:6: @5[0]: _9 = const ()
 39:13-39:40: @5[4]: _24 = Firework::&lt;i32&gt; { strength: const 1000_i32 }
 41:8-41:10: @9[2]: _25 = ()
-41:5-41:11: @9[3]: _0 = std::result::Result::&lt;(), u8&gt;::Ok(move _25)"><span class="annotation">@5,9,10,11⦊</span> // The remaining lines below have no coverage because `if true` (with the constant literal</span></span>
+41:5-41:11: @9[3]: _0 = Result::&lt;(), u8&gt;::Ok(move _25)"><span class="annotation">@5,9,10,11⦊</span> // The remaining lines below have no coverage because `if true` (with the constant literal</span></span>
 <span class="line"><span class="code even" style="--layer: 1" title="33:6-33:6: @5[0]: _9 = const ()
 39:13-39:40: @5[4]: _24 = Firework::&lt;i32&gt; { strength: const 1000_i32 }
 41:8-41:10: @9[2]: _25 = ()
-41:5-41:11: @9[3]: _0 = std::result::Result::&lt;(), u8&gt;::Ok(move _25)">      // `true`) is guaranteed to execute the `then` block, which is also guaranteed to `return`.</span></span>
+41:5-41:11: @9[3]: _0 = Result::&lt;(), u8&gt;::Ok(move _25)">      // `true`) is guaranteed to execute the `then` block, which is also guaranteed to `return`.</span></span>
 <span class="line"><span class="code even" style="--layer: 1" title="33:6-33:6: @5[0]: _9 = const ()
 39:13-39:40: @5[4]: _24 = Firework::&lt;i32&gt; { strength: const 1000_i32 }
 41:8-41:10: @9[2]: _25 = ()
-41:5-41:11: @9[3]: _0 = std::result::Result::&lt;(), u8&gt;::Ok(move _25)">      // Thankfully, in the normal case, conditions are not guaranteed ahead of time, and as shown</span></span>
+41:5-41:11: @9[3]: _0 = Result::&lt;(), u8&gt;::Ok(move _25)">      // Thankfully, in the normal case, conditions are not guaranteed ahead of time, and as shown</span></span>
 <span class="line"><span class="code even" style="--layer: 1" title="33:6-33:6: @5[0]: _9 = const ()
 39:13-39:40: @5[4]: _24 = Firework::&lt;i32&gt; { strength: const 1000_i32 }
 41:8-41:10: @9[2]: _25 = ()
-41:5-41:11: @9[3]: _0 = std::result::Result::&lt;(), u8&gt;::Ok(move _25)">      // in other tests, the lines below would have coverage (which would show they had `0`</span></span>
+41:5-41:11: @9[3]: _0 = Result::&lt;(), u8&gt;::Ok(move _25)">      // in other tests, the lines below would have coverage (which would show they had `0`</span></span>
 <span class="line"><span class="code even" style="--layer: 1" title="33:6-33:6: @5[0]: _9 = const ()
 39:13-39:40: @5[4]: _24 = Firework::&lt;i32&gt; { strength: const 1000_i32 }
 41:8-41:10: @9[2]: _25 = ()
-41:5-41:11: @9[3]: _0 = std::result::Result::&lt;(), u8&gt;::Ok(move _25)">      // executions, assuming the condition still evaluated to `true`).</span></span>
+41:5-41:11: @9[3]: _0 = Result::&lt;(), u8&gt;::Ok(move _25)">      // executions, assuming the condition still evaluated to `true`).</span></span>
 <span class="line"><span class="code even" style="--layer: 1" title="33:6-33:6: @5[0]: _9 = const ()
 39:13-39:40: @5[4]: _24 = Firework::&lt;i32&gt; { strength: const 1000_i32 }
 41:8-41:10: @9[2]: _25 = ()
-41:5-41:11: @9[3]: _0 = std::result::Result::&lt;(), u8&gt;::Ok(move _25)"></span></span>
+41:5-41:11: @9[3]: _0 = Result::&lt;(), u8&gt;::Ok(move _25)"></span></span>
 <span class="line"><span class="code even" style="--layer: 1" title="33:6-33:6: @5[0]: _9 = const ()
 39:13-39:40: @5[4]: _24 = Firework::&lt;i32&gt; { strength: const 1000_i32 }
 41:8-41:10: @9[2]: _25 = ()
-41:5-41:11: @9[3]: _0 = std::result::Result::&lt;(), u8&gt;::Ok(move _25)">    let _ = Firework { strength: 1000 };</span></span>
+41:5-41:11: @9[3]: _0 = Result::&lt;(), u8&gt;::Ok(move _25)">    let _ = Firework { strength: 1000 };</span></span>
 <span class="line"><span class="code even" style="--layer: 1" title="33:6-33:6: @5[0]: _9 = const ()
 39:13-39:40: @5[4]: _24 = Firework::&lt;i32&gt; { strength: const 1000_i32 }
 41:8-41:10: @9[2]: _25 = ()
-41:5-41:11: @9[3]: _0 = std::result::Result::&lt;(), u8&gt;::Ok(move _25)"></span></span>
+41:5-41:11: @9[3]: _0 = Result::&lt;(), u8&gt;::Ok(move _25)"></span></span>
 <span class="line"><span class="code even" style="--layer: 1" title="33:6-33:6: @5[0]: _9 = const ()
 39:13-39:40: @5[4]: _24 = Firework::&lt;i32&gt; { strength: const 1000_i32 }
 41:8-41:10: @9[2]: _25 = ()
-41:5-41:11: @9[3]: _0 = std::result::Result::&lt;(), u8&gt;::Ok(move _25)">    Ok(())<span class="annotation">⦉@5,9,10,11</span></span></span><span class="code" style="--layer: 0"></span></span>
+41:5-41:11: @9[3]: _0 = Result::&lt;(), u8&gt;::Ok(move _25)">    Ok(())<span class="annotation">⦉@5,9,10,11</span></span></span><span class="code" style="--layer: 0"></span></span>
 <span class="line"><span class="code" style="--layer: 0">}</span><span><span class="code odd" style="--layer: 1" title="42:2-42:2: @14.Return: return"><span class="annotation">@14⦊</span>‸<span class="annotation">⦉@14</span></span></span></span></div>
 </body>
 </html>
