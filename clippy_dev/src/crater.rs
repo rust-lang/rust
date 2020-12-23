@@ -14,8 +14,14 @@ use std::{fs::write, path::PathBuf};
 
 use serde::{Deserialize, Serialize};
 
-// crate data we stored in the toml, can have multiple versions.
-// if so, one TomlKrate maps to several KrateSources
+// use this to store the crates when interacting with the crates.toml file
+#[derive(Debug, Serialize, Deserialize)]
+struct CrateList {
+    crates: HashMap<String, Vec<String>>,
+}
+
+// crate data we stored in the toml, can have multiple versions per crate
+// A single TomlCrate is laster mapped to several CrateSources in that case
 struct TomlCrate {
     name: String,
     versions: Vec<String>,
@@ -26,12 +32,6 @@ struct TomlCrate {
 struct CrateSource {
     name: String,
     version: String,
-}
-
-// use this to store the crates when interacting with the crates.toml file
-#[derive(Debug, Serialize, Deserialize)]
-struct CrateList {
-    crates: HashMap<String, Vec<String>>,
 }
 
 // represents the extracted sourcecode of a crate
@@ -70,14 +70,8 @@ impl CrateSource {
             // unzip the tarball
             let ungz_tar = flate2::read::GzDecoder::new(std::fs::File::open(&krate_file_path).unwrap());
             // extract the tar archive
-            let mut archiv = tar::Archive::new(ungz_tar);
-            archiv.unpack(&extract_dir).expect("Failed to extract!");
-
-            // unzip the tarball
-            let ungz_tar = flate2::read::GzDecoder::new(std::fs::File::open(&krate_file_path).unwrap());
-            // extract the tar archive
-            let mut archiv = tar::Archive::new(ungz_tar);
-            archiv.unpack(&extract_dir).expect("Failed to extract!");
+            let mut archive = tar::Archive::new(ungz_tar);
+            archive.unpack(&extract_dir).expect("Failed to extract!");
         }
         // crate is extracted, return a new Krate object which contains the path to the extracted
         // sources that clippy can check
@@ -132,7 +126,7 @@ impl Crate {
             })
             .collect();
 
-        // sort messages alphabtically to avoid noise in the logs
+        // sort messages alphabetically to avoid noise in the logs
         output.sort();
         output
     }

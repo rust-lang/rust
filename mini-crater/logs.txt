@@ -1423,6 +1423,7 @@ iron-0.6.1/src/request/mod.rs:85:24: binding's name is too similar to existing b
 iron-0.6.1/src/request/url.rs:109:5: this method could have a `#[must_use]` attribute
 iron-0.6.1/src/request/url.rs:117:5: this method could have a `#[must_use]` attribute
 iron-0.6.1/src/request/url.rs:124:9: use of deprecated macro `try`: use the `?` operator instead
+iron-0.6.1/src/request/url.rs:129:1: an implementation of `From` is preferred since it gives you `Into<_>` for free where the reverse isn't true
 iron-0.6.1/src/request/url.rs:21:14: you should put bare URLs between `<`/`>` or make a proper Markdown link
 iron-0.6.1/src/request/url.rs:22:5: docs for function returning `Result` missing `# Errors` section
 iron-0.6.1/src/request/url.rs:31:5: docs for function returning `Result` missing `# Errors` section
