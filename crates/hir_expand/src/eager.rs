@@ -110,6 +110,9 @@ pub fn expand_eager_macro(
         || err("malformed macro invocation"),
     )?;
 
+    let ast_map = db.ast_id_map(macro_call.file_id);
+    let call_id = InFile::new(macro_call.file_id, ast_map.ast_id(&macro_call.value));
+
     // Note:
     // When `lazy_expand` is called, its *parent* file must be already exists.
     // Here we store an eager macro id for the argument expanded subtree here
@@ -120,7 +123,7 @@ pub fn expand_eager_macro(
             fragment: FragmentKind::Expr,
             subtree: Arc::new(parsed_args.clone()),
             krate,
-            file_id: macro_call.file_id,
+            call: call_id,
         }
     });
     let arg_file_id: MacroCallId = arg_id.into();
@@ -141,13 +144,8 @@ pub fn expand_eager_macro(
         let res = eager.expand(db, arg_id, &subtree);
 
         let (subtree, fragment) = diagnostic_sink.expand_result_option(res)?;
-        let eager = EagerCallLoc {
-            def,
-            fragment,
-            subtree: Arc::new(subtree),
-            krate,
-            file_id: macro_call.file_id,
-        };
+        let eager =
+            EagerCallLoc { def, fragment, subtree: Arc::new(subtree), krate, call: call_id };
 
         Ok(db.intern_eager_expansion(eager))
     } else {

@@ -83,7 +83,7 @@ impl HirFileId {
                     }
                     MacroCallId::EagerMacro(id) => {
                         let loc = db.lookup_intern_eager_expansion(id);
-                        loc.file_id
+                        loc.call.file_id
                     }
                 };
                 file_id.original_file(db)
@@ -103,7 +103,7 @@ impl HirFileId {
                 }
                 MacroCallId::EagerMacro(id) => {
                     let loc = db.lookup_intern_eager_expansion(id);
-                    loc.file_id
+                    loc.call.file_id
                 }
             };
         }
@@ -114,17 +114,16 @@ impl HirFileId {
     pub fn call_node(self, db: &dyn db::AstDatabase) -> Option<InFile<SyntaxNode>> {
         match self.0 {
             HirFileIdRepr::FileId(_) => None,
-            HirFileIdRepr::MacroFile(macro_file) => {
-                let lazy_id = match macro_file.macro_call_id {
-                    MacroCallId::LazyMacro(id) => id,
-                    MacroCallId::EagerMacro(_id) => {
-                        // FIXME: handle call node for eager macro
-                        return None;
-                    }
-                };
-                let loc = db.lookup_intern_macro(lazy_id);
-                Some(loc.kind.node(db))
-            }
+            HirFileIdRepr::MacroFile(macro_file) => match macro_file.macro_call_id {
+                MacroCallId::LazyMacro(lazy_id) => {
+                    let loc: MacroCallLoc = db.lookup_intern_macro(lazy_id);
+                    Some(loc.kind.node(db))
+                }
+                MacroCallId::EagerMacro(id) => {
+                    let loc: EagerCallLoc = db.lookup_intern_eager_expansion(id);
+                    Some(loc.call.with_value(loc.call.to_node(db).syntax().clone()))
+                }
+            },
         }
     }
 
@@ -304,7 +303,7 @@ pub struct EagerCallLoc {
     pub(crate) fragment: FragmentKind,
     pub(crate) subtree: Arc<tt::Subtree>,
     pub(crate) krate: CrateId,
-    pub(crate) file_id: HirFileId,
+    pub(crate) call: AstId<ast::MacroCall>,
 }
 
 /// ExpansionInfo mainly describes how to map text range between src and expanded macro

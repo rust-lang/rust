@@ -563,6 +563,7 @@ mod tests {
 
                 let args = macro_call.token_tree().unwrap();
                 let parsed_args = mbe::ast_to_token_tree(&args).unwrap().0;
+                let call_id = AstId::new(file_id.into(), ast_id_map.ast_id(&macro_call));
 
                 let arg_id = db.intern_eager_expansion({
                     EagerCallLoc {
@@ -570,7 +571,7 @@ mod tests {
                         fragment: FragmentKind::Expr,
                         subtree: Arc::new(parsed_args.clone()),
                         krate,
-                        file_id: file_id.into(),
+                        call: call_id,
                     }
                 });
 
@@ -580,7 +581,7 @@ mod tests {
                     fragment,
                     subtree: Arc::new(subtree),
                     krate,
-                    file_id: file_id.into(),
+                    call: call_id,
                 };
 
                 let id: MacroCallId = db.intern_eager_expansion(eager).into();

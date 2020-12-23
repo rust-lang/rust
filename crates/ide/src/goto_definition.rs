@@ -750,6 +750,31 @@ fn test() {
     }
 
     #[test]
+    fn goto_through_included_file() {
+        check(
+            r#"
+//- /main.rs
+#[rustc_builtin_macro]
+macro_rules! include {}
+
+  include!("foo.rs");
+//^^^^^^^^^^^^^^^^^^^
+
+fn f() {
+    foo<|>();
+}
+
+mod confuse_index {
+    pub fn foo() {}
+}
+
+//- /foo.rs
+fn foo() {}
+        "#,
+        );
+    }
+
+    #[test]
     fn goto_for_type_param() {
         check(
             r#"
