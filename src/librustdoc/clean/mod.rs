@@ -2157,17 +2157,17 @@ impl Clean<Vec<Item>> for doctree::Import<'_> {
             return Vec::new();
         }
 
-        let inlined = self.attrs.lists(sym::doc).has_word(sym::inline);
+        let (doc_meta_item, inlined) = self.attrs.lists(sym::doc).get_word_attr(sym::inline);
         let pub_underscore = self.vis.node.is_pub() && self.name == kw::Underscore;
 
         if pub_underscore && inlined {
             rustc_errors::struct_span_err!(
                 cx.tcx.sess,
-                self.attrs.lists(sym::doc).next().unwrap().span(),
+                doc_meta_item.unwrap().span(),
                 E0780,
-                "inline with wildcard import"
+                "anonymous imports cannot be inlined"
             )
-            .span_label(self.span, "wildcard import")
+            .span_label(self.span, "anonymous import")
             .emit();
         }
 
@@ -2189,7 +2189,7 @@ impl Clean<Vec<Item>> for doctree::Import<'_> {
             });
         // Also check whether imports were asked to be inlined, in case we're trying to re-export a
         // crate in Rust 2018+
-        let please_inline = self.attrs.lists(sym::doc).has_word(sym::inline);
+        let please_inline = inlined;
         let path = self.path.clean(cx);
         let inner = if self.glob {
             if !denied {
