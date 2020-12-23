@@ -865,10 +865,52 @@ pub(crate) fn handle_formatting(
     }
 }
 
-fn handle_fixes(
+pub(crate) fn handle_code_action(
+    mut snap: GlobalStateSnapshot,
+    params: lsp_types::CodeActionParams,
+) -> Result<Option<Vec<lsp_ext::CodeAction>>> {
+    let _p = profile::span("handle_code_action");
+    // We intentionally don't support command-based actions, as those either
+    // requires custom client-code anyway, or requires server-initiated edits.
+    // Server initiated edits break causality, so we avoid those as well.
+    if !snap.config.client_caps.code_action_literals {
+        return Ok(None);
+    }
+
+    let file_id = from_proto::file_id(&snap, &params.text_document.uri)?;
+    let line_index = snap.analysis.file_line_index(file_id)?;
+    let range = from_proto::text_range(&line_index, params.range);
+    let frange = FileRange { file_id, range };
+
+    snap.config.assist.allowed = params
+        .clone()
+        .context
+        .only
+        .map(|it| it.into_iter().filter_map(from_proto::assist_kind).collect());
+
+    let mut res: Vec<lsp_ext::CodeAction> = Vec::new();
+
+    add_quick_fixes(&snap, &params, &mut res)?;
+
+    if snap.config.client_caps.code_action_resolve {
+        for (index, assist) in
+            snap.analysis.unresolved_assists(&snap.config.assist, frange)?.into_iter().enumerate()
+        {
+            res.push(to_proto::unresolved_code_action(&snap, params.clone(), assist, index)?);
+        }
+    } else {
+        for assist in snap.analysis.resolved_assists(&snap.config.assist, frange)?.into_iter() {
+            res.push(to_proto::resolved_code_action(&snap, assist)?);
+        }
+    }
+
+    Ok(Some(res))
+}
+
+fn add_quick_fixes(
     snap: &GlobalStateSnapshot,
     params: &lsp_types::CodeActionParams,
-    res: &mut Vec<lsp_ext::CodeAction>,
+    acc: &mut Vec<lsp_ext::CodeAction>,
 ) -> Result<()> {
     let file_id = from_proto::file_id(&snap, &params.text_document.uri)?;
     let line_index = snap.analysis.file_line_index(file_id)?;
@@ -902,7 +944,7 @@ fn handle_fixes(
             is_preferred: Some(false),
             data: None,
         };
-        res.push(action);
+        acc.push(action);
     }
 
     for fix in snap.check_fixes.get(&file_id).into_iter().flatten() {
@@ -910,51 +952,9 @@ fn handle_fixes(
         if fix_range.intersect(range).is_none() {
             continue;
         }
-        res.push(fix.action.clone());
+        acc.push(fix.action.clone());
     }
     Ok(())
-}
-
-pub(crate) fn handle_code_action(
-    mut snap: GlobalStateSnapshot,
-    params: lsp_types::CodeActionParams,
-) -> Result<Option<Vec<lsp_ext::CodeAction>>> {
-    let _p = profile::span("handle_code_action");
-    // We intentionally don't support command-based actions, as those either
-    // requires custom client-code anyway, or requires server-initiated edits.
-    // Server initiated edits break causality, so we avoid those as well.
-    if !snap.config.client_caps.code_action_literals {
-        return Ok(None);
-    }
-
-    let file_id = from_proto::file_id(&snap, &params.text_document.uri)?;
-    let line_index = snap.analysis.file_line_index(file_id)?;
-    let range = from_proto::text_range(&line_index, params.range);
-    let frange = FileRange { file_id, range };
-
-    snap.config.assist.allowed = params
-        .clone()
-        .context
-        .only
-        .map(|it| it.into_iter().filter_map(from_proto::assist_kind).collect());
-
-    let mut res: Vec<lsp_ext::CodeAction> = Vec::new();
-
-    handle_fixes(&snap, &params, &mut res)?;
-
-    if snap.config.client_caps.code_action_resolve {
-        for (index, assist) in
-            snap.analysis.unresolved_assists(&snap.config.assist, frange)?.into_iter().enumerate()
-        {
-            res.push(to_proto::unresolved_code_action(&snap, params.clone(), assist, index)?);
-        }
-    } else {
-        for assist in snap.analysis.resolved_assists(&snap.config.assist, frange)?.into_iter() {
-            res.push(to_proto::resolved_code_action(&snap, assist)?);
-        }
-    }
-
-    Ok(Some(res))
 }
 
 pub(crate) fn handle_code_action_resolve(
