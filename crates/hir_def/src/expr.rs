@@ -114,6 +114,9 @@ pub enum Expr {
     Async {
         body: ExprId,
     },
+    Const {
+        body: ExprId,
+    },
     Cast {
         expr: ExprId,
         type_ref: TypeRef,
@@ -253,7 +256,10 @@ impl Expr {
                     f(*expr);
                 }
             }
-            Expr::TryBlock { body } | Expr::Unsafe { body } | Expr::Async { body } => f(*body),
+            Expr::TryBlock { body }
+            | Expr::Unsafe { body }
+            | Expr::Async { body }
+            | Expr::Const { body } => f(*body),
             Expr::Loop { body, .. } => f(*body),
             Expr::While { condition, body, .. } => {
                 f(*condition);

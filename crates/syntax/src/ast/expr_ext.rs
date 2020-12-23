@@ -358,6 +358,7 @@ pub enum Effect {
     Async(SyntaxToken),
     Unsafe(SyntaxToken),
     Try(SyntaxToken),
+    Const(SyntaxToken),
     // Very much not an effect, but we stuff it into this node anyway
     Label(ast::Label),
 }
@@ -372,6 +373,9 @@ impl ast::EffectExpr {
         }
         if let Some(token) = self.try_token() {
             return Effect::Try(token);
+        }
+        if let Some(token) = self.const_token() {
+            return Effect::Const(token);
         }
         if let Some(label) = self.label() {
             return Effect::Label(label);

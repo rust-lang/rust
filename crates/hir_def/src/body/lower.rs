@@ -246,6 +246,10 @@ impl ExprCollector<'_> {
                     let body = self.collect_block_opt(e.block_expr());
                     self.alloc_expr(Expr::Async { body }, syntax_ptr)
                 }
+                ast::Effect::Const(_) => {
+                    let body = self.collect_block_opt(e.block_expr());
+                    self.alloc_expr(Expr::Const { body }, syntax_ptr)
+                }
             },
             ast::Expr::BlockExpr(e) => self.collect_block(e),
             ast::Expr::LoopExpr(e) => {
