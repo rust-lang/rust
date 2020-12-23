@@ -12,6 +12,7 @@ itertools = "0.9"
 opener = "0.4"
 regex = "1"
 serde = {version = "1.0", features = ["derive"]}
+serde_json = "1.0"
 shell-escape = "0.1"
 tar = "0.4.30"
 toml = "0.5"

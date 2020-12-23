@@ -10,9 +10,10 @@ use crate::clippy_project_root;
 
 use std::collections::HashMap;
 use std::process::Command;
-use std::{fs::write, path::PathBuf};
+use std::{fmt, fs::write, path::PathBuf};
 
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 // use this to store the crates when interacting with the crates.toml file
 #[derive(Debug, Serialize, Deserialize)]
@@ -41,6 +42,27 @@ struct Crate {
     name: String,
     // path to the extracted sources that clippy can check
     path: PathBuf,
+}
+
+#[derive(Debug)]
+struct ClippyWarning {
+    crate_name: String,
+    crate_version: String,
+    file: String,
+    line: String,
+    column: String,
+    linttype: String,
+    message: String,
+}
+
+impl std::fmt::Display for ClippyWarning {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(
+            f,
+            r#"{}/{}/{}:{}:{} {} "{}""#,
+            &self.crate_name, &self.crate_version, &self.file, &self.line, &self.column, &self.linttype, &self.message
+        )
+    }
 }
 
 impl CrateSource {
@@ -96,7 +118,7 @@ impl Crate {
             // src/cargo/ops/cargo_compile.rs:127:35: warning: usage of `FromIterator::from_iter`
             .args(&[
                 "--",
-                "--message-format=short",
+                "--message-format=json",
                 "--",
                 "--cap-lints=warn",
                 "-Wclippy::pedantic",
@@ -105,27 +127,17 @@ impl Crate {
             .current_dir(&self.path)
             .output()
             .unwrap();
-        let stderr = String::from_utf8_lossy(&all_output.stderr);
-        let output_lines = stderr.lines();
-        let mut output: Vec<String> = output_lines
+        let stdout = String::from_utf8_lossy(&all_output.stdout);
+        let output_lines = stdout.lines();
+        //dbg!(&output_lines);
+        let warnings: Vec<ClippyWarning> = output_lines
             .into_iter()
-            .filter(|line| line.contains(": warning: "))
-            // prefix with the crate name and version
-            // cargo-0.49.0/src/cargo/ops/cargo_compile.rs:127:35: warning: usage of `FromIterator::from_iter`
-            .map(|line| format!("{}-{}/{}", self.name, self.version, line))
-            // remove the "warning: "
-            .map(|line| {
-                let remove_pat = "warning: ";
-                let pos = line
-                    .find(&remove_pat)
-                    .expect("clippy output did not contain \"warning: \"");
-                let mut new = line[0..pos].to_string();
-                new.push_str(&line[pos + remove_pat.len()..]);
-                new.push('\n');
-                new
-            })
+            // get all clippy warnings
+            .filter(|line| line.contains("clippy::"))
+            .map(|json_msg| parse_json_message(json_msg, &self))
             .collect();
 
+        let mut output: Vec<String> = warnings.iter().map(|warning| warning.to_string()).collect();
         // sort messages alphabetically to avoid noise in the logs
         output.sort();
         output
@@ -165,6 +177,30 @@ fn read_crates() -> Vec<CrateSource> {
         })
     });
     crate_sources
+}
+
+// extract interesting data from a json lint message
+fn parse_json_message(json_message: &str, krate: &Crate) -> ClippyWarning {
+    let jmsg: Value = serde_json::from_str(&json_message).unwrap_or_else(|e| panic!("Failed to parse json:\n{:?}", e));
+
+    ClippyWarning {
+        crate_name: krate.name.to_string(),
+        crate_version: krate.version.to_string(),
+        file: jmsg["message"]["spans"][0]["file_name"]
+            .to_string()
+            .trim_matches('"')
+            .into(),
+        line: jmsg["message"]["spans"][0]["line_start"]
+            .to_string()
+            .trim_matches('"')
+            .into(),
+        column: jmsg["message"]["spans"][0]["text"][0]["highlight_start"]
+            .to_string()
+            .trim_matches('"')
+            .into(),
+        linttype: jmsg["message"]["code"]["code"].to_string().trim_matches('"').into(),
+        message: jmsg["message"]["message"].to_string().trim_matches('"').into(),
+    }
 }
 
 // the main fn
