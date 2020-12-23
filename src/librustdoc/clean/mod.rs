@@ -2157,10 +2157,10 @@ impl Clean<Vec<Item>> for doctree::Import<'_> {
             return Vec::new();
         }
 
-        let (doc_meta_item, inlined) = self.attrs.lists(sym::doc).get_word_attr(sym::inline);
+        let (doc_meta_item, please_inline) = self.attrs.lists(sym::doc).get_word_attr(sym::inline);
         let pub_underscore = self.vis.node.is_pub() && self.name == kw::Underscore;
 
-        if pub_underscore && inlined {
+        if pub_underscore && please_inline {
             rustc_errors::struct_span_err!(
                 cx.tcx.sess,
                 doc_meta_item.unwrap().span(),
@@ -2189,7 +2189,6 @@ impl Clean<Vec<Item>> for doctree::Import<'_> {
             });
         // Also check whether imports were asked to be inlined, in case we're trying to re-export a
         // crate in Rust 2018+
-        let please_inline = inlined;
         let path = self.path.clean(cx);
         let inner = if self.glob {
             if !denied {
