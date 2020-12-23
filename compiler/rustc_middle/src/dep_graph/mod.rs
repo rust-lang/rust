@@ -1,16 +1,18 @@
-//! This module defines the `DepNode` type which the compiler uses to represent
-//! nodes in the dependency graph.
+//! Nodes in the dependency graph.
 //!
-//! A `DepNode` consists of a `DepKind` (which
+//! A node in the dependency graph is represented by a [`DepNode`].[^1]
+//! A `DepNode` consists of a [`DepKind`] (which
 //! specifies the kind of thing it represents, like a piece of HIR, MIR, etc)
-//! and a `Fingerprint`, a 128-bit hash value the exact meaning of which
+//! and a [`Fingerprint`], a 128-bit hash value the exact meaning of which
 //! depends on the node's `DepKind`. Together, the kind and the fingerprint
 //! fully identify a dependency node, even across multiple compilation sessions.
 //! In other words, the value of the fingerprint does not depend on anything
 //! that is specific to a given compilation session, like an unpredictable
-//! interning key (e.g., NodeId, DefId, Symbol) or the numeric value of a
+//! interning key (e.g., `NodeId`, `DefId`, `Symbol`) or the numeric value of a
 //! pointer. The concept behind this could be compared to how git commit hashes
-//! uniquely identify a given commit and has a few advantages:
+//! uniquely identify a given commit.
+//!
+//! The fingerprinting approach and has some benefits:
 //!
 //! * A `DepNode` can simply be serialized to disk and loaded in another session
 //!   without the need to do any "rebasing" (like we have to do for Spans and
@@ -28,8 +30,12 @@
 //!   could not be instantiated because the current compilation session
 //!   contained no `DefId` for thing that had been removed.
 //!
+//! ## `DepNode` creation and "inference"
+//!
+// Where is the `define_dep_nodes!()` macro?
+// How much of this section is outdated?
 //! `DepNode` definition happens in the `define_dep_nodes!()` macro. This macro
-//! defines the `DepKind` enum and a corresponding `DepConstructor` enum. The
+//! defines the `DepKind` enum and a corresponding [`DepConstructor`] enum. The
 //! `DepConstructor` enum links a `DepKind` to the parameters that are needed at
 //! runtime in order to construct a valid `DepNode` fingerprint.
 //!
@@ -50,6 +56,12 @@
 //! than a zeroed out fingerprint. More generally speaking, it relieves the
 //! user of the `DepNode` API of having to know how to compute the expected
 //! fingerprint for a given set of node parameters.
+//!
+//! [^1]: For an overview of the dependency graph and its role in
+//!   the query system and incremental compilation, see
+//!   [the rustc-dev-guide](https://rustc-dev-guide.rust-lang.org/query.html).
+//!
+//! [`Fingerprint`]: rustc_data_structures::fingerprint::Fingerprint
 
 use crate::ich::StableHashingContext;
 use crate::ty::{self, TyCtxt};
