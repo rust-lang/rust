@@ -3,7 +3,7 @@
 // @has foo/fn.bar.html '//*[@class="tooltip compile_fail"]' "ⓘ"
 // @has foo/fn.bar.html '//*[@class="tooltip ignore"]' "ⓘ"
 // @has foo/fn.bar.html '//*[@class="tooltip should_panic"]' "ⓘ"
-// @has foo/fn.bar.html '//*[@edition="2018"]' "ⓘ"
+// @has foo/fn.bar.html '//*[@data-edition="2018"]' "ⓘ"
 
 /// foo
 ///

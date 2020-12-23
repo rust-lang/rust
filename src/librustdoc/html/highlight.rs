@@ -30,7 +30,7 @@ crate fn render_with_highlighting(
             "<div class='information'><div class='tooltip {}'{}>ⓘ</div></div>",
             class,
             if let Some(edition_info) = edition_info {
-                format!(" edition=\"{}\"", edition_info)
+                format!(" data-edition=\"{}\"", edition_info)
             } else {
                 String::new()
             },

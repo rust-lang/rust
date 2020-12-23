@@ -1098,7 +1098,7 @@ h3 > .collapse-toggle, h4 > .collapse-toggle {
 	content: "This example panics";
 }
 .tooltip.edition::after {
-	content: "This code runs with edition " attr(edition);
+	content: "This code runs with edition " attr(data-edition);
 }
 
 .tooltip::before {
