@@ -5,11 +5,13 @@
 use std::{
     io::Write as _,
     process::{self, Stdio},
+    sync::Arc,
 };
 
 use ide::{
-    CompletionResolveCapability, FileId, FilePosition, FileRange, HoverAction, HoverGotoTypeData,
-    NavigationTarget, Query, RangeInfo, Runnable, RunnableKind, SearchScope, SymbolKind, TextEdit,
+    AssistConfig, CompletionResolveCapability, FileId, FilePosition, FileRange, HoverAction,
+    HoverGotoTypeData, LineIndex, NavigationTarget, Query, RangeInfo, Runnable, RunnableKind,
+    SearchScope, SymbolKind, TextEdit,
 };
 use itertools::Itertools;
 use lsp_server::ErrorCode;
@@ -865,58 +867,8 @@ pub(crate) fn handle_formatting(
     }
 }
 
-fn handle_fixes(
-    snap: &GlobalStateSnapshot,
-    params: &lsp_types::CodeActionParams,
-    res: &mut Vec<lsp_ext::CodeAction>,
-) -> Result<()> {
-    let file_id = from_proto::file_id(&snap, &params.text_document.uri)?;
-    let line_index = snap.analysis.file_line_index(file_id)?;
-    let range = from_proto::text_range(&line_index, params.range);
-
-    match &params.context.only {
-        Some(v) => {
-            if !v.iter().any(|it| {
-                it == &lsp_types::CodeActionKind::EMPTY
-                    || it == &lsp_types::CodeActionKind::QUICKFIX
-            }) {
-                return Ok(());
-            }
-        }
-        None => {}
-    };
-
-    let diagnostics = snap.analysis.diagnostics(&snap.config.diagnostics, file_id)?;
-
-    for fix in diagnostics
-        .into_iter()
-        .filter_map(|d| d.fix)
-        .filter(|fix| fix.fix_trigger_range.intersect(range).is_some())
-    {
-        let edit = to_proto::snippet_workspace_edit(&snap, fix.source_change)?;
-        let action = lsp_ext::CodeAction {
-            title: fix.label.to_string(),
-            group: None,
-            kind: Some(CodeActionKind::QUICKFIX),
-            edit: Some(edit),
-            is_preferred: Some(false),
-            data: None,
-        };
-        res.push(action);
-    }
-
-    for fix in snap.check_fixes.get(&file_id).into_iter().flatten() {
-        let fix_range = from_proto::text_range(&line_index, fix.range);
-        if fix_range.intersect(range).is_none() {
-            continue;
-        }
-        res.push(fix.action.clone());
-    }
-    Ok(())
-}
-
 pub(crate) fn handle_code_action(
-    mut snap: GlobalStateSnapshot,
+    snap: GlobalStateSnapshot,
     params: lsp_types::CodeActionParams,
 ) -> Result<Option<Vec<lsp_ext::CodeAction>>> {
     let _p = profile::span("handle_code_action");
@@ -932,29 +884,74 @@ pub(crate) fn handle_code_action(
     let range = from_proto::text_range(&line_index, params.range);
     let frange = FileRange { file_id, range };
 
-    snap.config.assist.allowed = params
-        .clone()
-        .context
-        .only
-        .map(|it| it.into_iter().filter_map(from_proto::assist_kind).collect());
+    let assists_config = AssistConfig {
+        allowed: params
+            .clone()
+            .context
+            .only
+            .map(|it| it.into_iter().filter_map(from_proto::assist_kind).collect()),
+        ..snap.config.assist
+    };
 
     let mut res: Vec<lsp_ext::CodeAction> = Vec::new();
 
-    handle_fixes(&snap, &params, &mut res)?;
+    let include_quick_fixes = match &params.context.only {
+        Some(v) => v.iter().any(|it| {
+            it == &lsp_types::CodeActionKind::EMPTY || it == &lsp_types::CodeActionKind::QUICKFIX
+        }),
+        None => true,
+    };
+    if include_quick_fixes {
+        add_quick_fixes(&snap, frange, &line_index, &mut res)?;
+    }
 
     if snap.config.client_caps.code_action_resolve {
         for (index, assist) in
-            snap.analysis.unresolved_assists(&snap.config.assist, frange)?.into_iter().enumerate()
+            snap.analysis.unresolved_assists(&assists_config, frange)?.into_iter().enumerate()
         {
             res.push(to_proto::unresolved_code_action(&snap, params.clone(), assist, index)?);
         }
     } else {
-        for assist in snap.analysis.resolved_assists(&snap.config.assist, frange)?.into_iter() {
+        for assist in snap.analysis.resolved_assists(&assists_config, frange)?.into_iter() {
             res.push(to_proto::resolved_code_action(&snap, assist)?);
         }
     }
 
     Ok(Some(res))
+}
+
+fn add_quick_fixes(
+    snap: &GlobalStateSnapshot,
+    frange: FileRange,
+    line_index: &Arc<LineIndex>,
+    acc: &mut Vec<lsp_ext::CodeAction>,
+) -> Result<()> {
+    let diagnostics = snap.analysis.diagnostics(&snap.config.diagnostics, frange.file_id)?;
+
+    for fix in diagnostics
+        .into_iter()
+        .filter_map(|d| d.fix)
+        .filter(|fix| fix.fix_trigger_range.intersect(frange.range).is_some())
+    {
+        let edit = to_proto::snippet_workspace_edit(&snap, fix.source_change)?;
+        let action = lsp_ext::CodeAction {
+            title: fix.label.to_string(),
+            group: None,
+            kind: Some(CodeActionKind::QUICKFIX),
+            edit: Some(edit),
+            is_preferred: Some(false),
+            data: None,
+        };
+        acc.push(action);
+    }
+
+    for fix in snap.check_fixes.get(&frange.file_id).into_iter().flatten() {
+        let fix_range = from_proto::text_range(&line_index, fix.range);
+        if fix_range.intersect(frange.range).is_some() {
+            acc.push(fix.action.clone());
+        }
+    }
+    Ok(())
 }
 
 pub(crate) fn handle_code_action_resolve(
