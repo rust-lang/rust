@@ -70,7 +70,6 @@ fn dist_server() -> Result<()> {
     let src =
         Path::new("target").join(&target).join("release").join(format!("rust-analyzer{}", suffix));
     let dst = Path::new("dist").join(format!("rust-analyzer-{}{}", target, suffix));
-    cp(&src, &dst)?;
     gzip(&src, &dst.with_extension("gz"))?;
 
     // FIXME: the old names are temporarily kept for client compatibility, but they should be removed
