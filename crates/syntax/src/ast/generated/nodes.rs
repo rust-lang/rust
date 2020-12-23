@@ -763,6 +763,7 @@ impl EffectExpr {
     pub fn try_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![try]) }
     pub fn unsafe_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![unsafe]) }
     pub fn async_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![async]) }
+    pub fn const_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![const]) }
     pub fn block_expr(&self) -> Option<BlockExpr> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -1251,6 +1252,14 @@ impl TupleStructPat {
     pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct ConstBlockPat {
+    pub(crate) syntax: SyntaxNode,
+}
+impl ConstBlockPat {
+    pub fn const_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![const]) }
+    pub fn block_expr(&self) -> Option<BlockExpr> { support::child(&self.syntax) }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RecordPatFieldList {
     pub(crate) syntax: SyntaxNode,
 }
@@ -1369,6 +1378,7 @@ pub enum Pat {
     SlicePat(SlicePat),
     TuplePat(TuplePat),
     TupleStructPat(TupleStructPat),
+    ConstBlockPat(ConstBlockPat),
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum FieldList {
@@ -2772,6 +2782,17 @@ impl AstNode for TupleStructPat {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
+impl AstNode for ConstBlockPat {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == CONST_BLOCK_PAT }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
 impl AstNode for RecordPatFieldList {
     fn can_cast(kind: SyntaxKind) -> bool { kind == RECORD_PAT_FIELD_LIST }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -3242,12 +3263,15 @@ impl From<TuplePat> for Pat {
 impl From<TupleStructPat> for Pat {
     fn from(node: TupleStructPat) -> Pat { Pat::TupleStructPat(node) }
 }
+impl From<ConstBlockPat> for Pat {
+    fn from(node: ConstBlockPat) -> Pat { Pat::ConstBlockPat(node) }
+}
 impl AstNode for Pat {
     fn can_cast(kind: SyntaxKind) -> bool {
         match kind {
             IDENT_PAT | BOX_PAT | REST_PAT | LITERAL_PAT | MACRO_PAT | OR_PAT | PAREN_PAT
             | PATH_PAT | WILDCARD_PAT | RANGE_PAT | RECORD_PAT | REF_PAT | SLICE_PAT
-            | TUPLE_PAT | TUPLE_STRUCT_PAT => true,
+            | TUPLE_PAT | TUPLE_STRUCT_PAT | CONST_BLOCK_PAT => true,
             _ => false,
         }
     }
@@ -3268,6 +3292,7 @@ impl AstNode for Pat {
             SLICE_PAT => Pat::SlicePat(SlicePat { syntax }),
             TUPLE_PAT => Pat::TuplePat(TuplePat { syntax }),
             TUPLE_STRUCT_PAT => Pat::TupleStructPat(TupleStructPat { syntax }),
+            CONST_BLOCK_PAT => Pat::ConstBlockPat(ConstBlockPat { syntax }),
             _ => return None,
         };
         Some(res)
@@ -3289,6 +3314,7 @@ impl AstNode for Pat {
             Pat::SlicePat(it) => &it.syntax,
             Pat::TuplePat(it) => &it.syntax,
             Pat::TupleStructPat(it) => &it.syntax,
+            Pat::ConstBlockPat(it) => &it.syntax,
         }
     }
 }
@@ -4133,6 +4159,11 @@ impl std::fmt::Display for TuplePat {
     }
 }
 impl std::fmt::Display for TupleStructPat {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for ConstBlockPat {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }

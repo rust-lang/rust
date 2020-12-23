@@ -26,4 +26,4 @@ debug = 0 # Set this to 1 or 2 to get more useful backtraces in debugger.
 # chalk-ir = { path = "../chalk/chalk-ir" }
 # chalk-recursive = { path = "../chalk/chalk-recursive" }
 
-# ungrammar = { path = "../ungrammar" }
+ungrammar = { path = "../ungrammar" }
