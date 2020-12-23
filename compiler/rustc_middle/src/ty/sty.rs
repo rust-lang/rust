@@ -215,10 +215,7 @@ pub enum TyKind<'tcx> {
 impl TyKind<'tcx> {
     #[inline]
     pub fn is_primitive(&self) -> bool {
-        match self {
-            Bool | Char | Int(_) | Uint(_) | Float(_) => true,
-            _ => false,
-        }
+        matches!(self, Bool | Char | Int(_) | Uint(_) | Float(_))
     }
 
     /// Get the article ("a" or "an") to use with this type.
