@@ -413,9 +413,7 @@ fn use_verbose(ty: &&TyS<'tcx>) -> bool {
         ty::Int(_) | ty::Uint(_) | ty::Bool | ty::Char | ty::Float(_) => false,
         // Unit type
         ty::Tuple(g_args) if g_args.is_empty() => false,
-        ty::Tuple(g_args) => g_args.iter().any(|g_arg| {
-            use_verbose(&g_arg.expect_ty())
-        }),
+        ty::Tuple(g_args) => g_args.iter().any(|g_arg| use_verbose(&g_arg.expect_ty())),
         ty::Array(ty, _) => use_verbose(ty),
         ty::FnDef(..) => false,
         _ => true,
