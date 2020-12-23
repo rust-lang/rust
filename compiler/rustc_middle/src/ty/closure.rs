@@ -168,6 +168,56 @@ impl CapturedPlace<'tcx> {
             base => bug!("Expected upvar, found={:?}", base),
         }
     }
+
+    /// Returns the `LocalDefId` of the closure that captureed this Place
+    pub fn get_closure_local_def_id(&self) -> LocalDefId {
+        match self.place.base {
+            HirPlaceBase::Upvar(upvar_id) => upvar_id.closure_expr_id,
+            base => bug!("expected upvar, found={:?}", base),
+        }
+    }
+
+    /// Return span pointing to use that resulted in selecting the current capture kind
+    pub fn get_capture_kind_span(&self, tcx: TyCtxt<'tcx>) -> Span {
+        if let Some(capture_kind_expr_id) = self.info.capture_kind_expr_id {
+            tcx.hir().span(capture_kind_expr_id)
+        } else if let Some(path_expr_id) = self.info.path_expr_id {
+            tcx.hir().span(path_expr_id)
+        } else {
+            // Fallback on upvars mentioned if neither path or capture expr id is captured
+
+            // Safe to unwrap since we know this place is captured by the closure, therefore the closure must have upvars.
+            tcx.upvars_mentioned(self.get_closure_local_def_id()).unwrap()
+                [&self.get_root_variable()]
+                .span
+        }
+    }
+}
+
+/// Return true if the `proj_possible_ancestor` represents an ancestor path
+/// to `proj_capture` or `proj_possible_ancestor` is same as `proj_capture`,
+/// assuming they both start off of the same root variable.
+///
+/// **Note:** It's the caller's responsibility to ensure that both lists of projections
+///           start off of the same root variable.
+///
+/// Eg: 1. `foo.x` which is represented using `projections=[Field(x)]` is an ancestor of
+///        `foo.x.y` which is represented using `projections=[Field(x), Field(y)]`.
+///        Note both `foo.x` and `foo.x.y` start off of the same root variable `foo`.
+///     2. Since we only look at the projections here function will return `bar.x` as an a valid
+///        ancestor of `foo.x.y`. It's the caller's responsibility to ensure that both projections
+///        list are being applied to the same root variable.
+pub fn is_ancestor_or_same_capture(
+    proj_possible_ancestor: &[HirProjectionKind],
+    proj_capture: &[HirProjectionKind],
+) -> bool {
+    // We want to make sure `is_ancestor_or_same_capture("x.0.0", "x.0")` to return false.
+    // Therefore we can't just check if all projections are same in the zipped iterator below.
+    if proj_possible_ancestor.len() > proj_capture.len() {
+        return false;
+    }
+
+    proj_possible_ancestor.iter().zip(proj_capture).all(|(a, b)| a == b)
 }
 
 /// Part of `MinCaptureInformationMap`; describes the capture kind (&, &mut, move)

@@ -881,7 +881,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let hir_typeck_results = self.typeck_results;
 
         // In analyze_closure() in upvar.rs we gathered a list of upvars used by a
-        // indexed closure and we stored in a map called closure_captures in TypeckResults
+        // indexed closure and we stored in a map called closure_min_captures in TypeckResults
         // with the closure's DefId. Here, we run through that vec of UpvarIds for
         // the given closure and use the necessary information to create upvar
         // debuginfo and to fill `self.upvar_mutbls`.

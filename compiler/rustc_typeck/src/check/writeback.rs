@@ -61,7 +61,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         wbcx.visit_body(body);
         wbcx.visit_min_capture_map();
         wbcx.visit_fake_reads_map();
-        wbcx.visit_upvar_capture_map();
         wbcx.visit_closures();
         wbcx.visit_liberated_fn_sigs();
         wbcx.visit_fru_field_types();
@@ -78,9 +77,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         wbcx.typeck_results.treat_byte_string_as_slice =
             mem::take(&mut self.typeck_results.borrow_mut().treat_byte_string_as_slice);
-
-        wbcx.typeck_results.closure_captures =
-            mem::take(&mut self.typeck_results.borrow_mut().closure_captures);
 
         if self.is_tainted_by_errors() {
             // FIXME(eddyb) keep track of `ErrorReported` from where the error was emitted.
@@ -387,22 +383,6 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             resolved_closure_fake_reads.insert(*closure_def_id, resolved_fake_reads);
         }
         self.typeck_results.closure_fake_reads = resolved_closure_fake_reads;
-    }
-
-    fn visit_upvar_capture_map(&mut self) {
-        for (upvar_id, upvar_capture) in self.fcx.typeck_results.borrow().upvar_capture_map.iter() {
-            let new_upvar_capture = match *upvar_capture {
-                ty::UpvarCapture::ByValue(span) => ty::UpvarCapture::ByValue(span),
-                ty::UpvarCapture::ByRef(ref upvar_borrow) => {
-                    ty::UpvarCapture::ByRef(ty::UpvarBorrow {
-                        kind: upvar_borrow.kind,
-                        region: self.tcx().lifetimes.re_erased,
-                    })
-                }
-            };
-            debug!("Upvar capture for {:?} resolved to {:?}", upvar_id, new_upvar_capture);
-            self.typeck_results.upvar_capture_map.insert(*upvar_id, new_upvar_capture);
-        }
     }
 
     fn visit_closures(&mut self) {
