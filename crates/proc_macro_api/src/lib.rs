@@ -155,7 +155,7 @@ impl ProcMacroClient {
         let header = &dot_rustc[..8];
         const EXPECTED_HEADER: [u8; 8] = [b'r', b'u', b's', b't', 0, 0, 0, 5];
         // check if header is valid
-        if !(header == EXPECTED_HEADER) {
+        if header != EXPECTED_HEADER {
             return Err(io::Error::new(io::ErrorKind::InvalidData, format!(".rustc section should start with header {:?}; header {:?} is actually presented.",EXPECTED_HEADER ,header)));
         }
 
