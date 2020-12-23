@@ -106,7 +106,7 @@ impl CrateSource {
 }
 
 impl Crate {
-    fn run_clippy_lints(&self, cargo_clippy_path: &PathBuf) -> Vec<String> {
+    fn run_clippy_lints(&self, cargo_clippy_path: &PathBuf) -> Vec<ClippyWarning> {
         println!("Linting {} {}...", &self.name, &self.version);
         let cargo_clippy_path = std::fs::canonicalize(cargo_clippy_path).unwrap();
 
@@ -136,11 +136,7 @@ impl Crate {
             .filter(|line| line.contains("clippy::"))
             .map(|json_msg| parse_json_message(json_msg, &self))
             .collect();
-
-        let mut output: Vec<String> = warnings.iter().map(|warning| warning.to_string()).collect();
-        // sort messages alphabetically to avoid noise in the logs
-        output.sort();
-        output
+        warnings
     }
 }
 
@@ -219,17 +215,18 @@ pub fn run() {
     );
 
     // download and extract the crates, then run clippy on them and collect clippys warnings
+    // flatten into one big list of warnings
 
-    let clippy_lint_results: Vec<Vec<String>> = read_crates()
+    let clippy_warnings: Vec<ClippyWarning> = read_crates()
         .into_iter()
         .map(|krate| krate.download_and_extract())
         .map(|krate| krate.run_clippy_lints(&cargo_clippy_path))
+        .flatten()
         .collect();
 
-    let mut all_warnings: Vec<String> = clippy_lint_results.into_iter().flatten().collect();
-    all_warnings.sort();
+    let all_msgs: Vec<String> = clippy_warnings.iter().map(|warning| warning.to_string()).collect();
 
     // save the text into mini-crater/logs.txt
-    let text = all_warnings.join("");
+    let text = all_msgs.join("");
     write("mini-crater/logs.txt", text).unwrap();
 }
