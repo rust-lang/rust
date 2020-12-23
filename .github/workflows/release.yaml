@@ -18,6 +18,8 @@ jobs:
   dist-windows:
     name: dist (Windows)
     runs-on: windows-latest
+    env:
+      RA_TARGET: x86_64-pc-windows-msvc
 
     steps:
     - name: Checkout repository
@@ -39,8 +41,6 @@ jobs:
 
     - name: Dist
       run: cargo xtask dist
-      env:
-        RA_TARGET: x86_64-pc-windows-msvc
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v1
@@ -51,6 +51,8 @@ jobs:
   dist-ubuntu:
     name: dist (Ubuntu 16.04)
     runs-on: ubuntu-16.04
+    env:
+      RA_TARGET: x86_64-unknown-linux-gnu
 
     steps:
     - name: Checkout repository
@@ -71,18 +73,14 @@ jobs:
     - name: Dist
       if: github.ref == 'refs/heads/release'
       run: cargo xtask dist --client 0.2.$GITHUB_RUN_NUMBER
-      env:
-        RA_TARGET: x86_64-unknown-linux-gnu
 
     - name: Dist
       if: github.ref != 'refs/heads/release'
       run: cargo xtask dist --nightly --client 0.3.$GITHUB_RUN_NUMBER-nightly
-      env:
-        RA_TARGET: x86_64-unknown-linux-gnu
 
     - name: Nightly analysis-stats check
       if: github.ref != 'refs/heads/release'
-      run: target/x86_64-unknown-linux-gnu/release/rust-analyzer analysis-stats .
+      run: target/${{ env.RA_TARGET }}/release/rust-analyzer analysis-stats .
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v1
@@ -93,6 +91,8 @@ jobs:
   dist-macos-latest:
     name: dist (MacOS latest)
     runs-on: macos-latest
+    env:
+      RA_TARGET: x86_64-apple-darwin
 
     steps:
     - name: Checkout repository
@@ -107,8 +107,6 @@ jobs:
 
     - name: Dist
       run: cargo xtask dist
-      env:
-        RA_TARGET: x86_64-apple-darwin
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v1
@@ -119,6 +117,8 @@ jobs:
   dist-macos-11:
     name: dist (MacOS 11.0)
     runs-on: macos-11.0
+    env:
+      RA_TARGET: aarch64-apple-darwin
 
     steps:
     - name: Checkout repository
@@ -134,8 +134,6 @@ jobs:
 
     - name: Dist
       run: cargo xtask dist
-      env:
-        RA_TARGET: aarch64-apple-darwin
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v1
