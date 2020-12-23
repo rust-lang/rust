@@ -6,17 +6,24 @@ use std::collections::HashMap;
 use std::process::Command;
 use std::{fs::write, path::PathBuf};
 
+// crate data we stored in the toml, can have multiple versions.
+// if so, one TomlKrate maps to several KrateSources
+struct TomlKrate {
+    name: String,
+    versions: Vec<String>,
+}
+
 // represents an archive we download from crates.io
 #[derive(Debug, Serialize, Deserialize, Eq, Hash, PartialEq)]
 struct KrateSource {
-    version: String,
     name: String,
+    version: String,
 }
 
 // use this to store the crates when interacting with the crates.toml file
 #[derive(Debug, Serialize, Deserialize)]
 struct CrateList {
-    crates: HashMap<String, String>,
+    crates: HashMap<String, Vec<String>>,
 }
 
 // represents the extracted sourcecode of a crate
@@ -145,11 +152,24 @@ fn read_crates() -> Vec<KrateSource> {
     let crate_list: CrateList =
         toml::from_str(&toml_content).unwrap_or_else(|e| panic!("Failed to parse {}: \n{}", toml_path.display(), e));
     // parse the hashmap of the toml file into a list of crates
-    crate_list
+    let tomlkrates: Vec<TomlKrate> = crate_list
         .crates
-        .iter()
-        .map(|(name, version)| KrateSource::new(&name, &version))
-        .collect()
+        .into_iter()
+        .map(|(name, versions)| TomlKrate { name, versions })
+        .collect();
+
+    // flatten TomlKrates into KrateSources (one TomlKrates may represent several versions of a crate =>
+    // multiple kratesources)
+    let mut krate_sources = Vec::new();
+    tomlkrates.into_iter().for_each(|tk| {
+        tk.versions.iter().for_each(|ver| {
+            krate_sources.push(KrateSource {
+                name: tk.name.clone(),
+                version: ver.to_string(),
+            });
+        })
+    });
+    krate_sources
 }
 
 // the main fn
