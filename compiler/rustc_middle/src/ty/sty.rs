@@ -1572,17 +1572,11 @@ impl RegionKind {
     }
 
     pub fn is_late_bound(&self) -> bool {
-        match *self {
-            ty::ReLateBound(..) => true,
-            _ => false,
-        }
+        matches!(*self, ty::ReLateBound(..))
     }
 
     pub fn is_placeholder(&self) -> bool {
-        match *self {
-            ty::RePlaceholder(..) => true,
-            _ => false,
-        }
+        matches!(*self, ty::RePlaceholder(..))
     }
 
     pub fn bound_at_or_above_binder(&self, index: ty::DebruijnIndex) -> bool {

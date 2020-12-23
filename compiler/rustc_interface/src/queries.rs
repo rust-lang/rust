@@ -23,7 +23,11 @@ use std::cell::{Ref, RefCell, RefMut};
 use std::rc::Rc;
 
 /// Represent the result of a query.
-/// This result can be stolen with the `take` method and generated with the `compute` method.
+///
+/// This result can be stolen with the [`take`] method and generated with the [`compute`] method.
+///
+/// [`take`]: Self::take
+/// [`compute`]: Self::compute
 pub struct Query<T> {
     result: RefCell<Option<Result<T>>>,
 }

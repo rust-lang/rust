@@ -666,7 +666,7 @@ impl<'sess> OnDiskCache<'sess> {
 
 //- DECODING -------------------------------------------------------------------
 
-/// A decoder that can read from the incr. comp. cache. It is similar to the one
+/// A decoder that can read from the incremental compilation cache. It is similar to the one
 /// we use for crate metadata decoding in that it can rebase spans and eventually
 /// will also handle things that contain `Ty` instances.
 crate struct CacheDecoder<'a, 'tcx> {
@@ -954,7 +954,7 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for &'tcx [Span] {
 
 //- ENCODING -------------------------------------------------------------------
 
-/// An encoder that can write the incr. comp. cache.
+/// An encoder that can write to the incremental compilation cache.
 struct CacheEncoder<'a, 'tcx, E: OpaqueEncoder> {
     tcx: TyCtxt<'tcx>,
     encoder: &'a mut E,

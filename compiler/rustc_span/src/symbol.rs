@@ -13,7 +13,7 @@ use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::str;
 
-use crate::{Span, DUMMY_SP, SESSION_GLOBALS};
+use crate::{Edition, Span, DUMMY_SP, SESSION_GLOBALS};
 
 #[cfg(test)]
 mod tests;
@@ -1609,12 +1609,32 @@ pub mod sym {
 }
 
 impl Symbol {
-    fn is_used_keyword_2018(self) -> bool {
-        self >= kw::Async && self <= kw::Dyn
+    fn is_special(self) -> bool {
+        self <= kw::Underscore
     }
 
-    fn is_unused_keyword_2018(self) -> bool {
-        self == kw::Try
+    fn is_used_keyword_always(self) -> bool {
+        self >= kw::As && self <= kw::While
+    }
+
+    fn is_used_keyword_conditional(self, edition: impl FnOnce() -> Edition) -> bool {
+        (self >= kw::Async && self <= kw::Dyn) && edition() >= Edition::Edition2018
+    }
+
+    fn is_unused_keyword_always(self) -> bool {
+        self >= kw::Abstract && self <= kw::Yield
+    }
+
+    fn is_unused_keyword_conditional(self, edition: impl FnOnce() -> Edition) -> bool {
+        self == kw::Try && edition() >= Edition::Edition2018
+    }
+
+    pub fn is_reserved(self, edition: impl Copy + FnOnce() -> Edition) -> bool {
+        self.is_special()
+            || self.is_used_keyword_always()
+            || self.is_unused_keyword_always()
+            || self.is_used_keyword_conditional(edition)
+            || self.is_unused_keyword_conditional(edition)
     }
 
     /// A keyword or reserved identifier that can be used as a path segment.
@@ -1642,26 +1662,27 @@ impl Ident {
     // Returns `true` for reserved identifiers used internally for elided lifetimes,
     // unnamed method parameters, crate root module, error recovery etc.
     pub fn is_special(self) -> bool {
-        self.name <= kw::Underscore
+        self.name.is_special()
     }
 
     /// Returns `true` if the token is a keyword used in the language.
     pub fn is_used_keyword(self) -> bool {
         // Note: `span.edition()` is relatively expensive, don't call it unless necessary.
-        self.name >= kw::As && self.name <= kw::While
-            || self.name.is_used_keyword_2018() && self.span.rust_2018()
+        self.name.is_used_keyword_always()
+            || self.name.is_used_keyword_conditional(|| self.span.edition())
     }
 
     /// Returns `true` if the token is a keyword reserved for possible future use.
     pub fn is_unused_keyword(self) -> bool {
         // Note: `span.edition()` is relatively expensive, don't call it unless necessary.
-        self.name >= kw::Abstract && self.name <= kw::Yield
-            || self.name.is_unused_keyword_2018() && self.span.rust_2018()
+        self.name.is_unused_keyword_always()
+            || self.name.is_unused_keyword_conditional(|| self.span.edition())
     }
 
     /// Returns `true` if the token is either a special identifier or a keyword.
     pub fn is_reserved(self) -> bool {
-        self.is_special() || self.is_used_keyword() || self.is_unused_keyword()
+        // Note: `span.edition()` is relatively expensive, don't call it unless necessary.
+        self.name.is_reserved(|| self.span.edition())
     }
 
     /// A keyword or reserved identifier that can be used as a path segment.
@@ -1681,7 +1702,7 @@ fn with_interner<T, F: FnOnce(&mut Interner) -> T>(f: F) -> T {
     SESSION_GLOBALS.with(|session_globals| f(&mut *session_globals.symbol_interner.lock()))
 }
 
-/// An alternative to `Symbol`, useful when the chars within the symbol need to
+/// An alternative to [`Symbol`], useful when the chars within the symbol need to
 /// be accessed. It deliberately has limited functionality and should only be
 /// used for temporary values.
 ///
