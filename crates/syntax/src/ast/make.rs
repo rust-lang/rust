@@ -4,6 +4,11 @@
 //! Note that all functions here intended to be stupid constructors, which just
 //! assemble a finish node from immediate children. If you want to do something
 //! smarter than that, it probably doesn't belong in this module.
+//!
+//! Keep in mind that `from_text` functions should be kept private. The public
+//! API should require to assemble every node piecewise. The trick of
+//! `parse(format!())` we use internally is an implementation detail -- long
+//! term, it will be replaced with direct tree manipulation.
 use itertools::Itertools;
 use stdx::format_to;
 
@@ -16,7 +21,8 @@ pub fn name(text: &str) -> ast::Name {
 pub fn name_ref(text: &str) -> ast::NameRef {
     ast_from_text(&format!("fn f() {{ {}; }}", text))
 }
-
+// FIXME: replace stringly-typed constructor with a family of typed ctors, a-la
+// `expr_xxx`.
 pub fn ty(text: &str) -> ast::Type {
     ast_from_text(&format!("impl {} for D {{}};", text))
 }
