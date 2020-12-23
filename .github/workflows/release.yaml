@@ -82,7 +82,7 @@ jobs:
 
     - name: Nightly analysis-stats check
       if: github.ref != 'refs/heads/release'
-      run: ./dist/rust-analyzer-x86_64-unknown-linux-gnu analysis-stats .
+      run: target/x86_64-unknown-linux-gnu/release/rust-analyzer analysis-stats .
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v1
