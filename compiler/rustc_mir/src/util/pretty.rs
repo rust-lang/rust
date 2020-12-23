@@ -17,7 +17,6 @@ use rustc_middle::mir::interpret::{
 };
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
-use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::{self, TyCtxt, TyS, TypeFoldable, TypeVisitor};
 use rustc_target::abi::Size;
 use std::ops::ControlFlow;
@@ -414,22 +413,9 @@ fn use_verbose(ty: &&TyS<'tcx>) -> bool {
         ty::Int(_) | ty::Uint(_) | ty::Bool | ty::Char | ty::Float(_) => false,
         // Unit type
         ty::Tuple(g_args) if g_args.is_empty() => false,
-        ty::Tuple(g_args) => {
-            // could have used `try_fold` here but it seems a bit silly that
-            // the accumulator is useless
-            let mut should_be_verbose = false;
-            for g_arg in g_args.iter() {
-                if match g_arg.unpack() {
-                    GenericArgKind::Type(ty) => use_verbose(&ty),
-                    GenericArgKind::Const(ty::Const { ty, val: _ }) => use_verbose(ty),
-                    _ => false,
-                } {
-                    should_be_verbose = true;
-                    break;
-                }
-            }
-            should_be_verbose
-        }
+        ty::Tuple(g_args) => g_args.iter().any(|g_arg| {
+            use_verbose(&g_arg.expect_ty())
+        }),
         ty::Array(ty, _) => use_verbose(ty),
         ty::FnDef(..) => false,
         _ => true,

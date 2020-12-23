@@ -20,9 +20,6 @@
           StorageLive(_2);                 // scope 1 at $DIR/mutable_variable_aggregate.rs:7:9: 7:10
 -         _2 = _1;                         // scope 1 at $DIR/mutable_variable_aggregate.rs:7:13: 7:14
 +         _2 = const (42_i32, 99_i32);     // scope 1 at $DIR/mutable_variable_aggregate.rs:7:13: 7:14
-+                                          // ty::Const
-+                                          // + ty: (i32, i32)
-+                                          // + val: Value(ByRef { alloc: Allocation { bytes: [42, 0, 0, 0, 99, 0, 0, 0], relocations: Relocations(SortedMap { data: [] }), init_mask: InitMask { blocks: [255], len: Size { raw: 8 } }, size: Size { raw: 8 }, align: Align { pow2: 2 }, mutability: Not, extra: () }, offset: Size { raw: 0 } })
 +                                          // mir::Constant
 +                                          // + span: $DIR/mutable_variable_aggregate.rs:7:13: 7:14
 +                                          // + literal: Const { ty: (i32, i32), val: Value(ByRef { alloc: Allocation { bytes: [42, 0, 0, 0, 99, 0, 0, 0], relocations: Relocations(SortedMap { data: [] }), init_mask: InitMask { blocks: [255], len: Size { raw: 8 } }, size: Size { raw: 8 }, align: Align { pow2: 2 }, mutability: Not, extra: () }, offset: Size { raw: 0 } }) }
