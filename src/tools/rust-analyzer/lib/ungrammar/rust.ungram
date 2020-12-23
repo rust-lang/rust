@@ -372,13 +372,13 @@ BlockExpr =
   '}'
 
 RefExpr =
-  Attr* '&' ('raw' |'mut' | 'const') Expr
+  Attr* '&' ('raw' | 'mut' | 'const') Expr
 
 TryExpr =
   Attr* Expr '?'
 
 EffectExpr =
-  Attr* Label? ('try' | 'unsafe' | 'async') BlockExpr
+  Attr* Label? ('try' | 'unsafe' | 'async' | 'const') BlockExpr
 
 PrefixExpr =
   Attr* op:('-' | '!' | '*') Expr
@@ -582,6 +582,7 @@ Pat =
 | SlicePat
 | TuplePat
 | TupleStructPat
+| ConstBlockPat
 
 LiteralPat =
   Literal
@@ -636,3 +637,6 @@ RestPat =
 
 MacroPat =
   MacroCall
+
+ConstBlockPat =
+  'const' BlockExpr
