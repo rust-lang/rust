@@ -1448,7 +1448,7 @@ impl Clean<Type> for hir::Ty<'_> {
                 // There are two times a `Fresh` lifetime can be created:
                 // 1. For `&'_ x`, written by the user. This corresponds to `lower_lifetime` in `rustc_ast_lowering`.
                 // 2. For `&x` as a parameter to an `async fn`. This corresponds to `elided_ref_lifetime in `rustc_ast_lowering`.
-                //    See commit 749349fc9f7b12f212bca9ba2297e463328cb701 for more information.
+                //    See #59286 for more information.
                 // Ideally we would only hide the `'_` for case 2., but I don't know a way to distinguish it.
                 // Turning `fn f(&'_ self)` into `fn f(&self)` isn't the worst thing in the world, though;
                 // there's no case where it could cause the function to fail to compile.

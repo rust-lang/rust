@@ -49,6 +49,8 @@ impl Foo {
     pub async fn mut_self(mut self, mut first: usize) {}
 }
 
+pub trait Pattern<'a> {}
+
 pub trait Trait<const N: usize> {}
 // @has async_fn/fn.const_generics.html
 // @has - '//pre[@class="rust fn"]' 'pub async fn const_generics<const N: usize>(_: impl Trait<N>)'
@@ -70,6 +72,9 @@ pub async fn static_trait(foo: &str) -> Box<dyn Bar> {}
 // @has async_fn/fn.lifetime_for_trait.html
 // @has - '//pre[@class="rust fn"]' "pub async fn lifetime_for_trait(foo: &str) -> Box<dyn Bar + '_>"
 pub async fn lifetime_for_trait(foo: &str) -> Box<dyn Bar + '_> {}
+// @has async_fn/fn.elided_in_input_trait.html
+// @has - '//pre[@class="rust fn"]' "pub async fn elided_in_input_trait(t: impl Pattern<'_>)"
+pub async fn elided_in_input_trait(t: impl Pattern<'_>) {}
 
 struct AsyncFdReadyGuard<'a, T> { x: &'a T }
 
@@ -80,4 +85,14 @@ impl Foo {
     // taken from `tokio` as an example of a method that was particularly bad before
     // @has - '//h4[@class="method"]' "pub async fn readable<T>(&self) -> Result<AsyncFdReadyGuard<'_, T>, ()>"
     pub async fn readable<T>(&self) -> Result<AsyncFdReadyGuard<'_, T>, ()> {}
+    // @has - '//h4[@class="method"]' "pub async fn mut_self(&mut self)"
+    pub async fn mut_self(&mut self) {}
 }
+
+// test named lifetimes, just in case
+// @has async_fn/fn.named.html
+// @has - '//pre[@class="rust fn"]' "pub async fn named<'a, 'b>(foo: &'a str) -> &'b str"
+pub async fn named<'a, 'b>(foo: &'a str) -> &'b str {}
+// @has async_fn/fn.named_trait.html
+// @has - '//pre[@class="rust fn"]' "pub async fn named_trait<'a, 'b>(foo: impl Pattern<'a>) -> impl Pattern<'b>"
+pub async fn named_trait<'a, 'b>(foo: impl Pattern<'a>) -> impl Pattern<'b> {}
