@@ -11,7 +11,7 @@ use std::{
 use ide::{
     AssistConfig, CompletionResolveCapability, FileId, FilePosition, FileRange, HoverAction,
     HoverGotoTypeData, LineIndex, NavigationTarget, Query, RangeInfo, Runnable, RunnableKind,
-    SearchScope, SymbolKind, TextEdit,
+    SearchScope, SourceChange, SymbolKind, TextEdit,
 };
 use itertools::Itertools;
 use lsp_server::ErrorCode;
@@ -400,6 +400,45 @@ pub(crate) fn handle_workspace_symbol(
         }
         Ok(res)
     }
+}
+
+pub(crate) fn handle_will_rename_files(
+    snap: GlobalStateSnapshot,
+    params: lsp_types::RenameFilesParams,
+) -> Result<Option<lsp_types::WorkspaceEdit>> {
+    let _p = profile::span("handle_will_rename_files");
+
+    let source_changes: Vec<SourceChange> = params
+        .files
+        .into_iter()
+        .filter_map(|file_rename| {
+            let from = Url::parse(&file_rename.old_uri).ok()?;
+            let to = Url::parse(&file_rename.new_uri).ok()?;
+
+            let from_path = from.to_file_path().ok()?;
+            let to_path = to.to_file_path().ok()?;
+
+            // Limit to single-level moves for now.
+            match (from_path.parent(), to_path.parent()) {
+                (Some(p1), Some(p2)) if p1 == p2 => {
+                    let new_name = to_path.file_stem()?;
+                    let new_name = new_name.to_str()?;
+                    Some((snap.url_to_file_id(&from).ok()?, new_name.to_string()))
+                }
+                _ => None,
+            }
+        })
+        .filter_map(|(file_id, new_name)| {
+            snap.analysis.will_rename_file(file_id, &new_name).ok()?
+        })
+        .collect();
+
+    // Drop file system edits since we're just renaming things on the same level
+    let edits = source_changes.into_iter().map(|it| it.source_file_edits).flatten().collect();
+    let source_change = SourceChange::from_edits(edits, Vec::new());
+
+    let workspace_edit = to_proto::workspace_edit(&snap, source_change)?;
+    Ok(Some(workspace_edit))
 }
 
 pub(crate) fn handle_goto_definition(

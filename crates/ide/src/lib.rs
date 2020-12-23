@@ -535,6 +535,14 @@ impl Analysis {
         self.with_db(|db| references::rename::prepare_rename(db, position))
     }
 
+    pub fn will_rename_file(
+        &self,
+        file_id: FileId,
+        new_name_stem: &str,
+    ) -> Cancelable<Option<SourceChange>> {
+        self.with_db(|db| references::rename::will_rename_file(db, file_id, new_name_stem))
+    }
+
     pub fn structural_search_replace(
         &self,
         query: &str,

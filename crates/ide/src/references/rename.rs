@@ -6,7 +6,7 @@ use std::{
 };
 
 use hir::{Module, ModuleDef, ModuleSource, Semantics};
-use ide_db::base_db::{AnchoredPathBuf, FileRange, SourceDatabaseExt};
+use ide_db::base_db::{AnchoredPathBuf, FileId, FileRange, SourceDatabaseExt};
 use ide_db::{
     defs::{Definition, NameClass, NameRefClass},
     RootDatabase,
@@ -108,6 +108,23 @@ pub(crate) fn rename_with_semantics(
     } else {
         rename_reference(&sema, position, new_name, is_lifetime_name)
     }
+}
+
+pub(crate) fn will_rename_file(
+    db: &RootDatabase,
+    file_id: FileId,
+    new_name_stem: &str,
+) -> Option<SourceChange> {
+    let sema = Semantics::new(db);
+    let module = sema.to_module_def(file_id)?;
+
+    let decl = module.declaration_source(db)?;
+    let range = decl.value.name()?.syntax().text_range();
+
+    let position = FilePosition { file_id: decl.file_id.original_file(db), offset: range.start() };
+    let mut change = rename_mod(&sema, position, module, new_name_stem).ok()?.info;
+    change.file_system_edits.clear();
+    Some(change)
 }
 
 fn find_module_at_offset(
