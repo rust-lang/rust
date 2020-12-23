@@ -243,6 +243,9 @@ impl<'a> InferenceContext<'a> {
                 }
                 None => Ty::Unknown,
             },
+            Pat::ConstBlock(expr) => {
+                self.infer_expr(*expr, &Expectation::has_type(expected.clone()))
+            }
             Pat::Missing => Ty::Unknown,
         };
         // use a new type variable if we got Ty::Unknown here
@@ -264,8 +267,9 @@ fn is_non_ref_pat(body: &hir_def::body::Body, pat: PatId) -> bool {
         | Pat::Range { .. }
         | Pat::Slice { .. } => true,
         Pat::Or(pats) => pats.iter().all(|p| is_non_ref_pat(body, *p)),
-        // FIXME: Path/Lit might actually evaluate to ref, but inference is unimplemented.
+        // FIXME: ConstBlock/Path/Lit might actually evaluate to ref, but inference is unimplemented.
         Pat::Path(..) => true,
+        Pat::ConstBlock(..) => true,
         Pat::Lit(expr) => match body[*expr] {
             Expr::Literal(Literal::String(..)) => false,
             _ => true,

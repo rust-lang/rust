@@ -114,6 +114,9 @@ pub enum Expr {
     Async {
         body: ExprId,
     },
+    Const {
+        body: ExprId,
+    },
     Cast {
         expr: ExprId,
         type_ref: TypeRef,
@@ -253,7 +256,10 @@ impl Expr {
                     f(*expr);
                 }
             }
-            Expr::TryBlock { body } | Expr::Unsafe { body } | Expr::Async { body } => f(*body),
+            Expr::TryBlock { body }
+            | Expr::Unsafe { body }
+            | Expr::Async { body }
+            | Expr::Const { body } => f(*body),
             Expr::Loop { body, .. } => f(*body),
             Expr::While { condition, body, .. } => {
                 f(*condition);
@@ -399,12 +405,18 @@ pub enum Pat {
     TupleStruct { path: Option<Path>, args: Vec<PatId>, ellipsis: Option<usize> },
     Ref { pat: PatId, mutability: Mutability },
     Box { inner: PatId },
+    ConstBlock(ExprId),
 }
 
 impl Pat {
     pub fn walk_child_pats(&self, mut f: impl FnMut(PatId)) {
         match self {
-            Pat::Range { .. } | Pat::Lit(..) | Pat::Path(..) | Pat::Wild | Pat::Missing => {}
+            Pat::Range { .. }
+            | Pat::Lit(..)
+            | Pat::Path(..)
+            | Pat::ConstBlock(..)
+            | Pat::Wild
+            | Pat::Missing => {}
             Pat::Bind { subpat, .. } => {
                 subpat.iter().copied().for_each(f);
             }
