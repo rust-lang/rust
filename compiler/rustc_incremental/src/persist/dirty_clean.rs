@@ -42,7 +42,7 @@ const BASE_CONST: &[&str] = &[label_strs::try_type_of];
 /// DepNodes for functions + methods
 const BASE_FN: &[&str] = &[
     // Callers will depend on the signature of these items, so we better test
-    label_strs::fn_sig,
+    label_strs::try_fn_sig,
     label_strs::generics_of,
     label_strs::predicates_of,
     label_strs::try_type_of,

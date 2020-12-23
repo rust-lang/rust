@@ -173,7 +173,7 @@ pub mod change_constructor_path_indirectly_regular_struct {
 
     #[rustc_clean(
         cfg="cfail2",
-        except="fn_sig,hir_owner,hir_owner_nodes,optimized_mir,typeck"
+        except="try_fn_sig,hir_owner,hir_owner_nodes,optimized_mir,typeck"
     )]
     #[rustc_clean(cfg="cfail3")]
     pub fn function() -> Struct {
@@ -230,7 +230,7 @@ pub mod change_constructor_path_indirectly_tuple_struct {
 
     #[rustc_clean(
         cfg="cfail2",
-        except="fn_sig,hir_owner,hir_owner_nodes,optimized_mir,typeck"
+        except="try_fn_sig,hir_owner,hir_owner_nodes,optimized_mir,typeck"
     )]
     #[rustc_clean(cfg="cfail3")]
     pub fn function() -> Struct {

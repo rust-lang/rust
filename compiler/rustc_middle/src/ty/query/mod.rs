@@ -313,6 +313,12 @@ impl TyCtxt<'tcx> {
             .unwrap_or_else(|| bug!("def_kind: unsupported node: {:?}", def_id))
     }
 
+    pub fn fn_sig(self, def_id: impl IntoQueryParam<DefId>) -> ty::PolyFnSig<'tcx> {
+        let def_id = def_id.into_query_param();
+        self.try_fn_sig(def_id)
+            .unwrap_or_else(|s| span_bug!(self.def_span(def_id), "fn_sig: {}", s))
+    }
+
     pub fn type_of(self, def_id: impl IntoQueryParam<DefId>) -> Ty<'tcx> {
         let def_id = def_id.into_query_param();
         self.try_type_of(def_id).unwrap_or_else(|msg| {
@@ -327,6 +333,12 @@ impl TyCtxtAt<'tcx> {
         let def_id = def_id.into_query_param();
         self.opt_def_kind(def_id)
             .unwrap_or_else(|| bug!("def_kind: unsupported node: {:?}", def_id))
+    }
+
+    pub fn fn_sig(self, def_id: impl IntoQueryParam<DefId>) -> ty::PolyFnSig<'tcx> {
+        let def_id = def_id.into_query_param();
+        self.try_fn_sig(def_id)
+            .unwrap_or_else(|s| span_bug!(self.def_span(def_id), "fn_sig: {}", s))
     }
 
     pub fn type_of(self, def_id: impl IntoQueryParam<DefId>) -> Ty<'tcx> {

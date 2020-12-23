@@ -83,7 +83,7 @@ pub fn provide(providers: &mut Providers) {
         type_param_predicates,
         trait_def,
         adt_def,
-        fn_sig,
+        try_fn_sig,
         impl_trait_ref,
         impl_polarity,
         is_foreign_item,
@@ -730,7 +730,7 @@ fn convert_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
                 tcx.ensure().try_type_of(item.def_id);
                 tcx.ensure().predicates_of(item.def_id);
                 if let hir::ForeignItemKind::Fn(..) = item.kind {
-                    tcx.ensure().fn_sig(item.def_id);
+                    tcx.ensure().try_fn_sig(item.def_id);
                 }
             }
         }
@@ -793,7 +793,7 @@ fn convert_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
             tcx.ensure().try_type_of(def_id);
             tcx.ensure().predicates_of(def_id);
             match it.kind {
-                hir::ItemKind::Fn(..) => tcx.ensure().fn_sig(def_id),
+                hir::ItemKind::Fn(..) => tcx.ensure().try_fn_sig(def_id),
                 hir::ItemKind::OpaqueTy(..) => tcx.ensure().item_bounds(def_id),
                 _ => (),
             }
@@ -808,7 +808,7 @@ fn convert_trait_item(tcx: TyCtxt<'_>, trait_item_id: hir::TraitItemId) {
     match trait_item.kind {
         hir::TraitItemKind::Fn(..) => {
             tcx.ensure().try_type_of(trait_item_id.def_id);
-            tcx.ensure().fn_sig(trait_item_id.def_id);
+            tcx.ensure().try_fn_sig(trait_item_id.def_id);
         }
 
         hir::TraitItemKind::Const(.., Some(_)) => {
@@ -854,7 +854,7 @@ fn convert_impl_item(tcx: TyCtxt<'_>, impl_item_id: hir::ImplItemId) {
     let impl_item = tcx.hir().impl_item(impl_item_id);
     match impl_item.kind {
         hir::ImplItemKind::Fn(..) => {
-            tcx.ensure().fn_sig(def_id);
+            tcx.ensure().try_fn_sig(def_id);
         }
         hir::ImplItemKind::TyAlias(_) => {
             // Account for `type T = _;`
@@ -1631,7 +1631,7 @@ pub fn get_infer_ret_ty(output: &'hir hir::FnRetTy<'hir>) -> Option<&'hir hir::T
     None
 }
 
-fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
+fn try_fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> Result<ty::PolyFnSig<'_>, String> {
     use rustc_hir::Node::*;
     use rustc_hir::*;
 
@@ -1640,7 +1640,8 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
 
     let icx = ItemCtxt::new(tcx, def_id.to_def_id());
 
-    match tcx.hir().get(hir_id) {
+    let node = tcx.hir().find(hir_id).ok_or_else(|| "not found in HIR map".to_owned())?;
+    let sig = match node {
         TraitItem(hir::TraitItem {
             kind: TraitItemKind::Fn(sig, TraitFn::Provided(_)),
             ident,
@@ -1749,15 +1750,17 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
             // `sig` method on the `ClosureSubsts`:
             //
             //    substs.as_closure().sig(def_id, tcx)
-            bug!(
-                "to get the signature of a closure, use `substs.as_closure().sig()` not `fn_sig()`",
+            return Err(
+                "to get the signature of a closure, use `substs.as_closure().sig()` not `fn_sig()`"
+                    .to_owned(),
             );
         }
 
-        x => {
-            bug!("unexpected sort of node in fn_sig(): {:?}", x);
+        _ => {
+            return Err(format!("unexpected sort of node in fn_sig()"));
         }
-    }
+    };
+    Ok(sig)
 }
 
 fn impl_trait_ref(tcx: TyCtxt<'_>, def_id: DefId) -> Option<ty::TraitRef<'_>> {

@@ -600,7 +600,7 @@ rustc_queries! {
     }
 
     /// The signature of functions.
-    query fn_sig(key: DefId) -> ty::PolyFnSig<'tcx> {
+    query try_fn_sig(key: DefId) -> Result<ty::PolyFnSig<'tcx>, String> {
         desc { |tcx| "computing function signature of `{}`", tcx.def_path_str(key) }
     }
 

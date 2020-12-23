@@ -43,8 +43,8 @@ LL | #[rustc_then_this_would_need(try_type_of)]
 error: OK
   --> $DIR/dep-graph-type-alias.rs:51:1
    |
-LL | #[rustc_then_this_would_need(fn_sig)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #[rustc_then_this_would_need(try_fn_sig)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: OK
   --> $DIR/dep-graph-type-alias.rs:52:1
@@ -55,14 +55,14 @@ LL | #[rustc_then_this_would_need(typeck)]
 error: OK
   --> $DIR/dep-graph-type-alias.rs:35:5
    |
-LL |     #[rustc_then_this_would_need(fn_sig)]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     #[rustc_then_this_would_need(try_fn_sig)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: OK
   --> $DIR/dep-graph-type-alias.rs:43:5
    |
-LL |     #[rustc_then_this_would_need(fn_sig)]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     #[rustc_then_this_would_need(try_fn_sig)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: OK
   --> $DIR/dep-graph-type-alias.rs:44:5

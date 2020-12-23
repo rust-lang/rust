@@ -19,8 +19,8 @@ LL |     #[rustc_then_this_would_need(trait_def)]
 error: OK
   --> $DIR/dep-graph-struct-signature.rs:35:5
    |
-LL |     #[rustc_then_this_would_need(fn_sig)]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     #[rustc_then_this_would_need(try_fn_sig)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: OK
   --> $DIR/dep-graph-struct-signature.rs:36:5
@@ -31,8 +31,8 @@ LL |     #[rustc_then_this_would_need(typeck)]
 error: OK
   --> $DIR/dep-graph-struct-signature.rs:39:5
    |
-LL |     #[rustc_then_this_would_need(fn_sig)]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     #[rustc_then_this_would_need(try_fn_sig)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: OK
   --> $DIR/dep-graph-struct-signature.rs:40:5
@@ -76,17 +76,17 @@ error: no path from `WillChange` to `try_type_of`
 LL |     #[rustc_then_this_would_need(try_type_of)]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: no path from `WillChange` to `fn_sig`
+error: no path from `WillChange` to `try_fn_sig`
   --> $DIR/dep-graph-struct-signature.rs:80:5
    |
-LL |     #[rustc_then_this_would_need(fn_sig)]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     #[rustc_then_this_would_need(try_fn_sig)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: no path from `WillChange` to `fn_sig`
+error: no path from `WillChange` to `try_fn_sig`
   --> $DIR/dep-graph-struct-signature.rs:83:5
    |
-LL |     #[rustc_then_this_would_need(fn_sig)]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     #[rustc_then_this_would_need(try_fn_sig)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: no path from `WillChange` to `typeck`
   --> $DIR/dep-graph-struct-signature.rs:84:5
@@ -97,20 +97,20 @@ LL |     #[rustc_then_this_would_need(typeck)]
 error: OK
   --> $DIR/dep-graph-struct-signature.rs:31:9
    |
-LL |         #[rustc_then_this_would_need(fn_sig)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |         #[rustc_then_this_would_need(try_fn_sig)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: no path from `WillChange` to `fn_sig`
+error: no path from `WillChange` to `try_fn_sig`
   --> $DIR/dep-graph-struct-signature.rs:76:9
    |
-LL |         #[rustc_then_this_would_need(fn_sig)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |         #[rustc_then_this_would_need(try_fn_sig)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: OK
   --> $DIR/dep-graph-struct-signature.rs:47:9
    |
-LL |         #[rustc_then_this_would_need(fn_sig)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |         #[rustc_then_this_would_need(try_fn_sig)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: OK
   --> $DIR/dep-graph-struct-signature.rs:48:9
@@ -121,8 +121,8 @@ LL |         #[rustc_then_this_would_need(typeck)]
 error: OK
   --> $DIR/dep-graph-struct-signature.rs:54:9
    |
-LL |         #[rustc_then_this_would_need(fn_sig)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |         #[rustc_then_this_would_need(try_fn_sig)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: OK
   --> $DIR/dep-graph-struct-signature.rs:55:9

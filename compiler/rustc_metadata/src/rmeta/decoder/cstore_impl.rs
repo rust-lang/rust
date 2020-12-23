@@ -123,7 +123,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     mir_abstract_const => { cdata.get_mir_abstract_const(tcx, def_id.index) }
     unused_generic_params => { cdata.get_unused_generic_params(def_id.index) }
     mir_const_qualif => { cdata.mir_const_qualif(def_id.index) }
-    fn_sig => { cdata.fn_sig(def_id.index, tcx) }
+    try_fn_sig => { Ok(cdata.fn_sig(def_id.index, tcx)) }
     inherent_impls => { cdata.get_inherent_implementations_for_type(tcx, def_id.index) }
     is_const_fn_raw => { cdata.is_const_fn_raw(def_id.index) }
     asyncness => { cdata.asyncness(def_id.index) }
