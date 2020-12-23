@@ -9,12 +9,8 @@ pub fn anonymize_predicate<'tcx>(
     tcx: TyCtxt<'tcx>,
     pred: ty::Predicate<'tcx>,
 ) -> ty::Predicate<'tcx> {
-    match *pred.kind() {
-        ty::PredicateKind::ForAll(binder) => {
-            let new = ty::PredicateKind::ForAll(tcx.anonymize_late_bound_regions(binder));
-            tcx.reuse_or_mk_predicate(pred, new)
-        }
-    }
+    let new = tcx.anonymize_late_bound_regions(pred.kind());
+    tcx.reuse_or_mk_predicate(pred, new)
 }
 
 struct PredicateSet<'tcx> {

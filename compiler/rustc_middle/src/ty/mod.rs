@@ -1030,7 +1030,7 @@ impl<'tcx> GenericPredicates<'tcx> {
 
 #[derive(Debug)]
 crate struct PredicateInner<'tcx> {
-    kind: PredicateKind<'tcx>,
+    kind: Binder<PredicateAtom<'tcx>>,
     flags: TypeFlags,
     /// See the comment for the corresponding field of [TyS].
     outer_exclusive_binder: ty::DebruijnIndex,
@@ -1061,7 +1061,12 @@ impl<'tcx> Eq for Predicate<'tcx> {}
 
 impl<'tcx> Predicate<'tcx> {
     #[inline(always)]
-    pub fn kind(self) -> &'tcx PredicateKind<'tcx> {
+    pub fn kind(self) -> Binder<PredicateAtom<'tcx>> {
+        self.inner.kind
+    }
+
+    #[inline(always)]
+    pub fn kind_ref(&self) -> &Binder<PredicateAtom<'tcx>> {
         &self.inner.kind
     }
 
@@ -1072,7 +1077,7 @@ impl<'tcx> Predicate<'tcx> {
     ///
     /// Note that this method panics in case this predicate has unbound variables.
     pub fn skip_binders(self) -> PredicateAtom<'tcx> {
-        let &PredicateKind::ForAll(binder) = self.kind();
+        let binder = self.kind();
         binder.skip_binder()
     }
 
@@ -1083,21 +1088,21 @@ impl<'tcx> Predicate<'tcx> {
     /// Rebinding the returned atom can causes the previously bound variables
     /// to end up at the wrong binding level.
     pub fn skip_binders_unchecked(self) -> PredicateAtom<'tcx> {
-        let &PredicateKind::ForAll(binder) = self.kind();
+        let binder = self.kind();
         binder.skip_binder()
     }
 
     /// Converts this to a `Binder<PredicateAtom<'tcx>>`. If the value was an
     /// `Atom`, then it is not allowed to contain escaping bound vars.
     pub fn bound_atom(self) -> Binder<PredicateAtom<'tcx>> {
-        let &PredicateKind::ForAll(binder) = self.kind();
+        let binder = self.kind();
         binder
     }
 
     /// Allows using a `Binder<PredicateAtom<'tcx>>` even if the given predicate previously
     /// contained unbound variables by shifting these variables outwards.
     pub fn bound_atom_with_opt_escaping(self, _tcx: TyCtxt<'tcx>) -> Binder<PredicateAtom<'tcx>> {
-        let &PredicateKind::ForAll(binder) = self.kind();
+        let binder = self.kind();
         binder
     }
 }
@@ -1115,13 +1120,6 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for Predicate<'tcx> {
 
         kind.hash_stable(hcx, hasher);
     }
-}
-
-#[derive(Clone, Copy, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
-#[derive(HashStable, TypeFoldable)]
-pub enum PredicateKind<'tcx> {
-    /// `for<'a>: ...`
-    ForAll(Binder<PredicateAtom<'tcx>>),
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
@@ -1175,7 +1173,7 @@ pub enum PredicateAtom<'tcx> {
 impl<'tcx> Binder<PredicateAtom<'tcx>> {
     /// Wraps `self` with the given qualifier if this predicate has any unbound variables.
     pub fn potentially_quantified(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
-        PredicateKind::ForAll(self).to_predicate(tcx)
+        self.to_predicate(tcx)
     }
 }
 
@@ -1387,7 +1385,7 @@ pub trait ToPredicate<'tcx> {
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx>;
 }
 
-impl ToPredicate<'tcx> for PredicateKind<'tcx> {
+impl ToPredicate<'tcx> for Binder<PredicateAtom<'tcx>> {
     #[inline(always)]
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
         tcx.mk_predicate(self)
@@ -1398,7 +1396,7 @@ impl ToPredicate<'tcx> for PredicateAtom<'tcx> {
     #[inline(always)]
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
         debug_assert!(!self.has_escaping_bound_vars(), "escaping bound vars for {:?}", self);
-        tcx.mk_predicate(PredicateKind::ForAll(Binder::dummy(self)))
+        tcx.mk_predicate(Binder::dummy(self))
     }
 }
 

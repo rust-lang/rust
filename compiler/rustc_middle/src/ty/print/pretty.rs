@@ -2068,7 +2068,7 @@ define_print_and_forward_display! {
     }
 
     ty::Predicate<'tcx> {
-        let ty::PredicateKind::ForAll(binder) = self.kind();
+        let binder = self.kind();
         p!(print(binder))
     }
 

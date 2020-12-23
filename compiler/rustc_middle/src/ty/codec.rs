@@ -44,9 +44,9 @@ impl<'tcx, E: TyEncoder<'tcx>> EncodableWithShorthand<'tcx, E> for Ty<'tcx> {
 }
 
 impl<'tcx, E: TyEncoder<'tcx>> EncodableWithShorthand<'tcx, E> for ty::Predicate<'tcx> {
-    type Variant = ty::PredicateKind<'tcx>;
+    type Variant = ty::Binder<ty::PredicateAtom<'tcx>>;
     fn variant(&self) -> &Self::Variant {
-        self.kind()
+        self.kind_ref()
     }
 }
 
@@ -226,9 +226,9 @@ impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for ty::Predicate<'tcx> {
             assert!(pos >= SHORTHAND_OFFSET);
             let shorthand = pos - SHORTHAND_OFFSET;
 
-            decoder.with_position(shorthand, ty::PredicateKind::decode)
+            decoder.with_position(shorthand, ty::Binder::<ty::PredicateAtom<'tcx>>::decode)
         } else {
-            ty::PredicateKind::decode(decoder)
+            ty::Binder::<ty::PredicateAtom<'tcx>>::decode(decoder)
         }?;
         let predicate = decoder.tcx().mk_predicate(predicate_kind);
         Ok(predicate)

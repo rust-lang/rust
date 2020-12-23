@@ -228,14 +228,6 @@ impl fmt::Debug for ty::Predicate<'tcx> {
     }
 }
 
-impl fmt::Debug for ty::PredicateKind<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match *self {
-            ty::PredicateKind::ForAll(binder) => write!(f, "ForAll({:?})", binder),
-        }
-    }
-}
-
 impl fmt::Debug for ty::PredicateAtom<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
@@ -477,15 +469,6 @@ impl<'a, 'tcx> Lift<'tcx> for ty::ExistentialProjection<'a> {
             ty: tcx.lift(self.ty).expect("type must lift when substs do"),
             item_def_id: self.item_def_id,
         })
-    }
-}
-
-impl<'a, 'tcx> Lift<'tcx> for ty::PredicateKind<'a> {
-    type Lifted = ty::PredicateKind<'tcx>;
-    fn lift_to_tcx(self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
-        match self {
-            ty::PredicateKind::ForAll(binder) => tcx.lift(binder).map(ty::PredicateKind::ForAll),
-        }
     }
 }
 
