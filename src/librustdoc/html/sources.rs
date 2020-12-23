@@ -8,6 +8,7 @@ use crate::html::layout;
 use crate::html::render::{SharedContext, BASIC_KEYWORDS};
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_session::Session;
+use rustc_span::edition::Edition;
 use rustc_span::source_map::FileName;
 use std::ffi::OsStr;
 use std::fs;
@@ -132,7 +133,7 @@ impl SourceCollector<'_, '_> {
             &self.scx.layout,
             &page,
             "",
-            |buf: &mut _| print_src(buf, contents),
+            |buf: &mut _| print_src(buf, contents, self.scx.edition),
             &self.scx.style_files,
         );
         self.scx.fs.write(&cur, v.as_bytes())?;
@@ -170,7 +171,7 @@ where
 
 /// Wrapper struct to render the source code of a file. This will do things like
 /// adding line numbers to the left-hand side.
-fn print_src(buf: &mut Buffer, s: String) {
+fn print_src(buf: &mut Buffer, s: String, edition: Edition) {
     let lines = s.lines().count();
     let mut cols = 0;
     let mut tmp = lines;
@@ -183,5 +184,5 @@ fn print_src(buf: &mut Buffer, s: String) {
         write!(buf, "<span id=\"{0}\">{0:1$}</span>\n", i, cols);
     }
     write!(buf, "</pre>");
-    write!(buf, "{}", highlight::render_with_highlighting(s, None, None, None));
+    write!(buf, "{}", highlight::render_with_highlighting(s, None, None, None, edition));
 }

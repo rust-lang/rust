@@ -314,6 +314,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
                 )),
                 playground_button.as_deref(),
                 Some((s1.as_str(), s2)),
+                edition,
             ));
             Some(Event::Html(s.into()))
         } else {
@@ -335,6 +336,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
                 )),
                 playground_button.as_deref(),
                 None,
+                edition,
             ));
             Some(Event::Html(s.into()))
         }
