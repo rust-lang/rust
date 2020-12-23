@@ -932,10 +932,16 @@ impl ExprCollector<'_> {
                 let inner = self.collect_pat_opt(boxpat.pat());
                 Pat::Box { inner }
             }
-            // FIXME: implement
-            ast::Pat::RangePat(_) | ast::Pat::MacroPat(_) | ast::Pat::ConstBlockPat(_) => {
-                Pat::Missing
+            ast::Pat::ConstBlockPat(const_block_pat) => {
+                if let Some(expr) = const_block_pat.block_expr() {
+                    let expr_id = self.collect_block(expr);
+                    Pat::ConstBlock(expr_id)
+                } else {
+                    Pat::Missing
+                }
             }
+            // FIXME: implement
+            ast::Pat::RangePat(_) | ast::Pat::MacroPat(_) => Pat::Missing,
         };
         let ptr = AstPtr::new(&pat);
         self.alloc_pat(pattern, Either::Left(ptr))

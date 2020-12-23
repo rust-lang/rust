@@ -399,12 +399,18 @@ pub enum Pat {
     TupleStruct { path: Option<Path>, args: Vec<PatId>, ellipsis: Option<usize> },
     Ref { pat: PatId, mutability: Mutability },
     Box { inner: PatId },
+    ConstBlock(ExprId),
 }
 
 impl Pat {
     pub fn walk_child_pats(&self, mut f: impl FnMut(PatId)) {
         match self {
-            Pat::Range { .. } | Pat::Lit(..) | Pat::Path(..) | Pat::Wild | Pat::Missing => {}
+            Pat::Range { .. }
+            | Pat::Lit(..)
+            | Pat::Path(..)
+            | Pat::ConstBlock(..)
+            | Pat::Wild
+            | Pat::Missing => {}
             Pat::Bind { subpat, .. } => {
                 subpat.iter().copied().for_each(f);
             }

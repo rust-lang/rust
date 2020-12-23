@@ -774,3 +774,33 @@ fn foo(tuple: Tuple) {
         "#]],
     );
 }
+
+#[test]
+fn const_block_pattern() {
+    check_infer(
+        r#"
+struct Foo(usize);
+fn foo(foo: Foo) {
+    match foo {
+        const { Foo(15 + 32) } => {},
+        _ => {}
+    }
+}"#,
+        expect![[r#"
+            26..29 'foo': Foo
+            36..115 '{     ...   } }': ()
+            42..113 'match ...     }': ()
+            48..51 'foo': Foo
+            62..84 'const ... 32) }': Foo
+            68..84 '{ Foo(... 32) }': Foo
+            70..73 'Foo': Foo(usize) -> Foo
+            70..82 'Foo(15 + 32)': Foo
+            74..76 '15': usize
+            74..81 '15 + 32': usize
+            79..81 '32': usize
+            88..90 '{}': ()
+            100..101 '_': Foo
+            105..107 '{}': ()
+        "#]],
+    );
+}
