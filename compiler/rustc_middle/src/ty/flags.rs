@@ -205,13 +205,8 @@ impl FlagComputation {
     }
 
     fn add_predicate_kind(&mut self, kind: ty::PredicateKind<'_>) {
-        match kind {
-            ty::PredicateKind::ForAll(binder) => {
-                self.bound_computation(binder, |computation, atom| {
-                    computation.add_predicate_atom(atom)
-                });
-            }
-        }
+        let ty::PredicateKind::ForAll(binder) = kind;
+        self.bound_computation(binder, |computation, atom| computation.add_predicate_atom(atom));
     }
 
     fn add_predicate_atom(&mut self, atom: ty::PredicateAtom<'_>) {

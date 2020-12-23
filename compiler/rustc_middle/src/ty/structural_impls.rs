@@ -1034,12 +1034,12 @@ impl<'tcx> TypeFoldable<'tcx> for ty::Region<'tcx> {
 
 impl<'tcx> TypeFoldable<'tcx> for ty::Predicate<'tcx> {
     fn super_fold_with<F: TypeFolder<'tcx>>(self, folder: &mut F) -> Self {
-        let new = ty::PredicateKind::super_fold_with(self.inner.kind, folder);
+        let new = self.inner.kind.super_fold_with(folder);
         folder.tcx().reuse_or_mk_predicate(self, new)
     }
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
-        ty::PredicateKind::super_visit_with(&self.inner.kind, visitor)
+        self.inner.kind.super_visit_with(visitor)
     }
 
     fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {

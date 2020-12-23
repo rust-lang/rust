@@ -345,48 +345,48 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
 
         let infcx = self.selcx.infcx();
 
-        match *obligation.predicate.kind() {
-            ty::PredicateKind::ForAll(binder) if binder.skip_binder().has_escaping_bound_vars() => {
-                match binder.skip_binder() {
-                    // Evaluation will discard candidates using the leak check.
-                    // This means we need to pass it the bound version of our
-                    // predicate.
-                    ty::PredicateAtom::Trait(trait_ref, _constness) => {
-                        let trait_obligation = obligation.with(binder.rebind(trait_ref));
+        let ty::PredicateKind::ForAll(binder) = *obligation.predicate.kind();
+        if binder.skip_binder().has_escaping_bound_vars() {
+            match binder.skip_binder() {
+                // Evaluation will discard candidates using the leak check.
+                // This means we need to pass it the bound version of our
+                // predicate.
+                ty::PredicateAtom::Trait(trait_ref, _constness) => {
+                    let trait_obligation = obligation.with(binder.rebind(trait_ref));
 
-                        self.process_trait_obligation(
-                            obligation,
-                            trait_obligation,
-                            &mut pending_obligation.stalled_on,
-                        )
-                    }
-                    ty::PredicateAtom::Projection(data) => {
-                        let project_obligation = obligation.with(binder.rebind(data));
+                    self.process_trait_obligation(
+                        obligation,
+                        trait_obligation,
+                        &mut pending_obligation.stalled_on,
+                    )
+                }
+                ty::PredicateAtom::Projection(data) => {
+                    let project_obligation = obligation.with(binder.rebind(data));
 
-                        self.process_projection_obligation(
-                            project_obligation,
-                            &mut pending_obligation.stalled_on,
-                        )
-                    }
-                    ty::PredicateAtom::RegionOutlives(_)
-                    | ty::PredicateAtom::TypeOutlives(_)
-                    | ty::PredicateAtom::WellFormed(_)
-                    | ty::PredicateAtom::ObjectSafe(_)
-                    | ty::PredicateAtom::ClosureKind(..)
-                    | ty::PredicateAtom::Subtype(_)
-                    | ty::PredicateAtom::ConstEvaluatable(..)
-                    | ty::PredicateAtom::ConstEquate(..) => {
-                        let pred = infcx.replace_bound_vars_with_placeholders(binder);
-                        ProcessResult::Changed(mk_pending(vec![
-                            obligation.with(pred.to_predicate(self.selcx.tcx())),
-                        ]))
-                    }
-                    ty::PredicateAtom::TypeWellFormedFromEnv(..) => {
-                        bug!("TypeWellFormedFromEnv is only used for Chalk")
-                    }
+                    self.process_projection_obligation(
+                        project_obligation,
+                        &mut pending_obligation.stalled_on,
+                    )
+                }
+                ty::PredicateAtom::RegionOutlives(_)
+                | ty::PredicateAtom::TypeOutlives(_)
+                | ty::PredicateAtom::WellFormed(_)
+                | ty::PredicateAtom::ObjectSafe(_)
+                | ty::PredicateAtom::ClosureKind(..)
+                | ty::PredicateAtom::Subtype(_)
+                | ty::PredicateAtom::ConstEvaluatable(..)
+                | ty::PredicateAtom::ConstEquate(..) => {
+                    let pred = infcx.replace_bound_vars_with_placeholders(binder);
+                    ProcessResult::Changed(mk_pending(vec![
+                        obligation.with(pred.to_predicate(self.selcx.tcx())),
+                    ]))
+                }
+                ty::PredicateAtom::TypeWellFormedFromEnv(..) => {
+                    bug!("TypeWellFormedFromEnv is only used for Chalk")
                 }
             }
-            ty::PredicateKind::ForAll(binder) => match binder.skip_binder() {
+        } else {
+            match binder.skip_binder() {
                 ty::PredicateAtom::Trait(data, _) => {
                     let trait_obligation = obligation.with(Binder::dummy(data));
 
@@ -598,7 +598,7 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                 ty::PredicateAtom::TypeWellFormedFromEnv(..) => {
                     bug!("TypeWellFormedFromEnv is only used for Chalk")
                 }
-            },
+            }
         }
     }
 

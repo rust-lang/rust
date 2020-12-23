@@ -1072,9 +1072,8 @@ impl<'tcx> Predicate<'tcx> {
     ///
     /// Note that this method panics in case this predicate has unbound variables.
     pub fn skip_binders(self) -> PredicateAtom<'tcx> {
-        match self.kind() {
-            &PredicateKind::ForAll(binder) => binder.skip_binder(),
-        }
+        let &PredicateKind::ForAll(binder) = self.kind();
+        binder.skip_binder()
     }
 
     /// Returns the inner `PredicateAtom`.
@@ -1084,25 +1083,22 @@ impl<'tcx> Predicate<'tcx> {
     /// Rebinding the returned atom can causes the previously bound variables
     /// to end up at the wrong binding level.
     pub fn skip_binders_unchecked(self) -> PredicateAtom<'tcx> {
-        match self.kind() {
-            &PredicateKind::ForAll(binder) => binder.skip_binder(),
-        }
+        let &PredicateKind::ForAll(binder) = self.kind();
+        binder.skip_binder()
     }
 
     /// Converts this to a `Binder<PredicateAtom<'tcx>>`. If the value was an
     /// `Atom`, then it is not allowed to contain escaping bound vars.
     pub fn bound_atom(self) -> Binder<PredicateAtom<'tcx>> {
-        match self.kind() {
-            &PredicateKind::ForAll(binder) => binder,
-        }
+        let &PredicateKind::ForAll(binder) = self.kind();
+        binder
     }
 
     /// Allows using a `Binder<PredicateAtom<'tcx>>` even if the given predicate previously
     /// contained unbound variables by shifting these variables outwards.
     pub fn bound_atom_with_opt_escaping(self, _tcx: TyCtxt<'tcx>) -> Binder<PredicateAtom<'tcx>> {
-        match self.kind() {
-            &PredicateKind::ForAll(binder) => binder,
-        }
+        let &PredicateKind::ForAll(binder) = self.kind();
+        binder
     }
 }
 
