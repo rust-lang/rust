@@ -118,7 +118,7 @@ For revisions in Pull Requests (PR):
 20:9-20:43: @3.Call: _8 = Arguments::new_v1(move _9, move _13) -&gt; [return: bb4, unwind: bb12]
 20:9-20:43: @4.Call: _7 = _print(move _8) -&gt; [return: bb5, unwind: bb12]
 20:9-20:43: @5[5]: _6 = const ()
-21:16-21:22: @5[7]: _0 = std::result::Result::&lt;(), u8&gt;::Err(const 1_u8)"><span class="annotation">@1,3,4,5,9,10⦊</span>println!("Exiting with error...");</span></span>
+21:16-21:22: @5[7]: _0 = Result::&lt;(), u8&gt;::Err(const 1_u8)"><span class="annotation">@1,3,4,5,9,10⦊</span>println!("Exiting with error...");</span></span>
 <span class="line"><span class="code odd" style="--layer: 1" title="20:18-20:41: @3[6]: _21 = const main::promoted[1]
 20:18-20:41: @3[7]: _11 = &amp;(*_21)
 20:18-20:41: @3[8]: _10 = &amp;(*_11)
@@ -132,27 +132,27 @@ For revisions in Pull Requests (PR):
 20:9-20:43: @3.Call: _8 = Arguments::new_v1(move _9, move _13) -&gt; [return: bb4, unwind: bb12]
 20:9-20:43: @4.Call: _7 = _print(move _8) -&gt; [return: bb5, unwind: bb12]
 20:9-20:43: @5[5]: _6 = const ()
-21:16-21:22: @5[7]: _0 = std::result::Result::&lt;(), u8&gt;::Err(const 1_u8)">        return Err(1)<span class="annotation">⦉@1,3,4,5,9,10</span></span></span><span class="code" style="--layer: 0">;</span></span>
+21:16-21:22: @5[7]: _0 = Result::&lt;(), u8&gt;::Err(const 1_u8)">        return Err(1)<span class="annotation">⦉@1,3,4,5,9,10</span></span></span><span class="code" style="--layer: 0">;</span></span>
 <span class="line"><span class="code" style="--layer: 0">    }</span><span><span class="code even" style="--layer: 1" title="22:6-22:6: @2[0]: _3 = const ()
 24:13-24:40: @2[4]: _18 = Firework { strength: const 1000_i32 }
 26:8-26:10: @6[2]: _19 = ()
-26:5-26:11: @6[3]: _0 = std::result::Result::&lt;(), u8&gt;::Ok(move _19)"><span class="annotation">@2,6,7,8⦊</span></span></span>
+26:5-26:11: @6[3]: _0 = Result::&lt;(), u8&gt;::Ok(move _19)"><span class="annotation">@2,6,7,8⦊</span></span></span>
 <span class="line"><span class="code even" style="--layer: 1" title="22:6-22:6: @2[0]: _3 = const ()
 24:13-24:40: @2[4]: _18 = Firework { strength: const 1000_i32 }
 26:8-26:10: @6[2]: _19 = ()
-26:5-26:11: @6[3]: _0 = std::result::Result::&lt;(), u8&gt;::Ok(move _19)"></span></span>
+26:5-26:11: @6[3]: _0 = Result::&lt;(), u8&gt;::Ok(move _19)"></span></span>
 <span class="line"><span class="code even" style="--layer: 1" title="22:6-22:6: @2[0]: _3 = const ()
 24:13-24:40: @2[4]: _18 = Firework { strength: const 1000_i32 }
 26:8-26:10: @6[2]: _19 = ()
-26:5-26:11: @6[3]: _0 = std::result::Result::&lt;(), u8&gt;::Ok(move _19)">    let _ = Firework { strength: 1000 };</span></span>
+26:5-26:11: @6[3]: _0 = Result::&lt;(), u8&gt;::Ok(move _19)">    let _ = Firework { strength: 1000 };</span></span>
 <span class="line"><span class="code even" style="--layer: 1" title="22:6-22:6: @2[0]: _3 = const ()
 24:13-24:40: @2[4]: _18 = Firework { strength: const 1000_i32 }
 26:8-26:10: @6[2]: _19 = ()
-26:5-26:11: @6[3]: _0 = std::result::Result::&lt;(), u8&gt;::Ok(move _19)"></span></span>
+26:5-26:11: @6[3]: _0 = Result::&lt;(), u8&gt;::Ok(move _19)"></span></span>
 <span class="line"><span class="code even" style="--layer: 1" title="22:6-22:6: @2[0]: _3 = const ()
 24:13-24:40: @2[4]: _18 = Firework { strength: const 1000_i32 }
 26:8-26:10: @6[2]: _19 = ()
-26:5-26:11: @6[3]: _0 = std::result::Result::&lt;(), u8&gt;::Ok(move _19)">    Ok(())<span class="annotation">⦉@2,6,7,8</span></span></span><span class="code" style="--layer: 0"></span></span>
+26:5-26:11: @6[3]: _0 = Result::&lt;(), u8&gt;::Ok(move _19)">    Ok(())<span class="annotation">⦉@2,6,7,8</span></span></span><span class="code" style="--layer: 0"></span></span>
 <span class="line"><span class="code" style="--layer: 0">}</span><span><span class="code odd" style="--layer: 1" title="27:2-27:2: @11.Return: return"><span class="annotation">@11⦊</span>‸<span class="annotation">⦉@11</span></span></span></span></div>
 </body>
 </html>

@@ -2,13 +2,13 @@ error[E0308]: mismatched types
   --> $DIR/issue-6458-4.rs:1:20
    |
 LL | fn foo(b: bool) -> Result<bool,String> {
-   |    ---             ^^^^^^^^^^^^^^^^^^^ expected enum `std::result::Result`, found `()`
+   |    ---             ^^^^^^^^^^^^^^^^^^^ expected enum `Result`, found `()`
    |    |
    |    implicitly returns `()` as its body has no tail or `return` expression
 LL |     Err("bar".to_string());
    |                           - help: consider removing this semicolon
    |
-   = note:   expected enum `std::result::Result<bool, String>`
+   = note:   expected enum `Result<bool, String>`
            found unit type `()`
 
 error: aborting due to previous error

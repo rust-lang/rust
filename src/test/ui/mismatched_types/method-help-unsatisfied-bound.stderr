@@ -1,11 +1,11 @@
-error[E0599]: no method named `unwrap` found for enum `std::result::Result<(), Foo>` in the current scope
+error[E0599]: no method named `unwrap` found for enum `Result<(), Foo>` in the current scope
   --> $DIR/method-help-unsatisfied-bound.rs:5:7
    |
 LL | struct Foo;
    | ----------- doesn't satisfy `Foo: Debug`
 ...
 LL |     a.unwrap();
-   |       ^^^^^^ method not found in `std::result::Result<(), Foo>`
+   |       ^^^^^^ method not found in `Result<(), Foo>`
    |
    = note: the method `unwrap` exists but the following trait bounds were not satisfied:
            `Foo: Debug`

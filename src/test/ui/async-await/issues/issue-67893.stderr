@@ -13,9 +13,9 @@ LL | pub async fn run() {
    |                    - within this `impl Future`
    |
    = help: within `impl Future`, the trait `Send` is not implemented for `MutexGuard<'_, ()>`
-   = note: required because it appears within the type `for<'r, 's, 't0, 't1, 't2, 't3> {ResumeTy, Arc<Mutex<()>>, &'r Mutex<()>, std::result::Result<MutexGuard<'s, ()>, PoisonError<MutexGuard<'t0, ()>>>, &'t1 MutexGuard<'t2, ()>, MutexGuard<'t3, ()>, (), impl Future}`
-   = note: required because it appears within the type `[static generator@run::{closure#0} for<'r, 's, 't0, 't1, 't2, 't3> {ResumeTy, Arc<Mutex<()>>, &'r Mutex<()>, std::result::Result<MutexGuard<'s, ()>, PoisonError<MutexGuard<'t0, ()>>>, &'t1 MutexGuard<'t2, ()>, MutexGuard<'t3, ()>, (), impl Future}]`
-   = note: required because it appears within the type `from_generator::GenFuture<[static generator@run::{closure#0} for<'r, 's, 't0, 't1, 't2, 't3> {ResumeTy, Arc<Mutex<()>>, &'r Mutex<()>, std::result::Result<MutexGuard<'s, ()>, PoisonError<MutexGuard<'t0, ()>>>, &'t1 MutexGuard<'t2, ()>, MutexGuard<'t3, ()>, (), impl Future}]>`
+   = note: required because it appears within the type `for<'r, 's, 't0, 't1, 't2, 't3> {ResumeTy, Arc<Mutex<()>>, &'r Mutex<()>, Result<MutexGuard<'s, ()>, PoisonError<MutexGuard<'t0, ()>>>, &'t1 MutexGuard<'t2, ()>, MutexGuard<'t3, ()>, (), impl Future}`
+   = note: required because it appears within the type `[static generator@run::{closure#0} for<'r, 's, 't0, 't1, 't2, 't3> {ResumeTy, Arc<Mutex<()>>, &'r Mutex<()>, Result<MutexGuard<'s, ()>, PoisonError<MutexGuard<'t0, ()>>>, &'t1 MutexGuard<'t2, ()>, MutexGuard<'t3, ()>, (), impl Future}]`
+   = note: required because it appears within the type `from_generator::GenFuture<[static generator@run::{closure#0} for<'r, 's, 't0, 't1, 't2, 't3> {ResumeTy, Arc<Mutex<()>>, &'r Mutex<()>, Result<MutexGuard<'s, ()>, PoisonError<MutexGuard<'t0, ()>>>, &'t1 MutexGuard<'t2, ()>, MutexGuard<'t3, ()>, (), impl Future}]>`
    = note: required because it appears within the type `impl Future`
    = note: required because it appears within the type `impl Future`
 

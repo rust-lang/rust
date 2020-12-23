@@ -38,13 +38,13 @@ LL |     5 < String::new();
    |
    = help: the trait `PartialOrd<String>` is not implemented for `{integer}`
 
-error[E0277]: can't compare `{integer}` with `std::result::Result<{integer}, _>`
+error[E0277]: can't compare `{integer}` with `Result<{integer}, _>`
   --> $DIR/binops.rs:7:7
    |
 LL |     6 == Ok(1);
-   |       ^^ no implementation for `{integer} == std::result::Result<{integer}, _>`
+   |       ^^ no implementation for `{integer} == Result<{integer}, _>`
    |
-   = help: the trait `PartialEq<std::result::Result<{integer}, _>>` is not implemented for `{integer}`
+   = help: the trait `PartialEq<Result<{integer}, _>>` is not implemented for `{integer}`
 
 error: aborting due to 6 previous errors
 
