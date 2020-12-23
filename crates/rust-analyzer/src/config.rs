@@ -349,12 +349,12 @@ impl Config {
         res
     }
     pub fn update(&mut self, json: serde_json::Value) {
-        log::info!("Config::update({:#})", json);
+        log::info!("updating config from JSON: {:#}", json);
         if json.is_null() || json.as_object().map_or(false, |it| it.is_empty()) {
             return;
         }
         self.do_update(json);
-        log::info!("Config::update() = {:#?}", self);
+        log::info!("updated config: {:#?}", self);
     }
     fn do_update(&mut self, json: serde_json::Value) {
         let data = ConfigData::from_json(json);
