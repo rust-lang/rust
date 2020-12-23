@@ -1573,11 +1573,11 @@ impl From<hir::PrimTy> for PrimitiveType {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Copy, Clone, Debug)]
 crate enum Visibility {
     Public,
     Inherited,
-    Restricted(DefId, rustc_hir::definitions::DefPath),
+    Restricted(DefId),
 }
 
 impl Visibility {

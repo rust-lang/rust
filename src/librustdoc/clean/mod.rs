@@ -1777,25 +1777,28 @@ impl Clean<Visibility> for hir::Visibility<'_> {
             hir::VisibilityKind::Inherited => Visibility::Inherited,
             hir::VisibilityKind::Crate(_) => {
                 let krate = DefId::local(CRATE_DEF_INDEX);
-                Visibility::Restricted(krate, cx.tcx.def_path(krate))
+                Visibility::Restricted(krate)
             }
             hir::VisibilityKind::Restricted { ref path, .. } => {
                 let path = path.clean(cx);
                 let did = register_res(cx, path.res);
-                Visibility::Restricted(did, cx.tcx.def_path(did))
+                Visibility::Restricted(did)
             }
         }
     }
 }
 
 impl Clean<Visibility> for ty::Visibility {
-    fn clean(&self, cx: &DocContext<'_>) -> Visibility {
+    fn clean(&self, _cx: &DocContext<'_>) -> Visibility {
         match *self {
             ty::Visibility::Public => Visibility::Public,
+            // NOTE: this is not quite right: `ty` uses `Invisible` to mean 'private',
+            // while rustdoc really does mean inherited. That means that for enum variants, such as
+            // `pub enum E { V }`, `V` will be marked as `Public` by `ty`, but as `Inherited` by rustdoc.
+            // This is the main reason `impl Clean for hir::Visibility` still exists; various parts of clean
+            // override `tcx.visibility` explicitly to make sure this distinction is captured.
             ty::Visibility::Invisible => Visibility::Inherited,
-            ty::Visibility::Restricted(module) => {
-                Visibility::Restricted(module, cx.tcx.def_path(module))
-            }
+            ty::Visibility::Restricted(module) => Visibility::Restricted(module),
         }
     }
 }
@@ -2296,14 +2299,14 @@ impl Clean<Item> for (&hir::MacroDef<'_>, Option<Symbol>) {
             if matchers.len() <= 1 {
                 format!(
                     "{}macro {}{} {{\n    ...\n}}",
-                    vis.print_with_space(),
+                    vis.print_with_space(cx.tcx),
                     name,
                     matchers.iter().map(|span| span.to_src(cx)).collect::<String>(),
                 )
             } else {
                 format!(
                     "{}macro {} {{\n{}}}",
-                    vis.print_with_space(),
+                    vis.print_with_space(cx.tcx),
                     name,
                     matchers
                         .iter()

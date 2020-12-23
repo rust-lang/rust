@@ -26,7 +26,7 @@ impl JsonRenderer<'_> {
                 crate_id: def_id.krate.as_u32(),
                 name: name.map(|sym| sym.to_string()),
                 source: self.convert_span(source),
-                visibility: visibility.into(),
+                visibility: self.convert_visibility(visibility),
                 docs: attrs.collapsed_doc_value().unwrap_or_default(),
                 links: attrs
                     .links
@@ -66,6 +66,19 @@ impl JsonRenderer<'_> {
             _ => None,
         }
     }
+
+    fn convert_visibility(&self, v: clean::Visibility) -> Visibility {
+        use clean::Visibility::*;
+        match v {
+            Public => Visibility::Public,
+            Inherited => Visibility::Default,
+            Restricted(did) if did.index == CRATE_DEF_INDEX => Visibility::Crate,
+            Restricted(did) => Visibility::Restricted {
+                parent: did.into(),
+                path: self.tcx.def_path(did).to_string_no_crate_verbose(),
+            },
+        }
+    }
 }
 
 impl From<rustc_attr::Deprecation> for Deprecation {
@@ -73,21 +86,6 @@ impl From<rustc_attr::Deprecation> for Deprecation {
         #[rustfmt::skip]
         let rustc_attr::Deprecation { since, note, is_since_rustc_version: _, suggestion: _ } = deprecation;
         Deprecation { since: since.map(|s| s.to_string()), note: note.map(|s| s.to_string()) }
-    }
-}
-
-impl From<clean::Visibility> for Visibility {
-    fn from(v: clean::Visibility) -> Self {
-        use clean::Visibility::*;
-        match v {
-            Public => Visibility::Public,
-            Inherited => Visibility::Default,
-            Restricted(did, _) if did.index == CRATE_DEF_INDEX => Visibility::Crate,
-            Restricted(did, path) => Visibility::Restricted {
-                parent: did.into(),
-                path: path.to_string_no_crate_verbose(),
-            },
-        }
     }
 }
 

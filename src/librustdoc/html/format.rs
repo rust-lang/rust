@@ -11,6 +11,7 @@ use std::fmt;
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
+use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc_target::spec::abi::Abi;
 
@@ -1084,18 +1085,18 @@ impl Function<'_> {
 }
 
 impl clean::Visibility {
-    crate fn print_with_space(&self) -> impl fmt::Display + '_ {
+    crate fn print_with_space<'tcx>(self, tcx: TyCtxt<'tcx>) -> impl fmt::Display + 'tcx {
         use rustc_span::symbol::kw;
 
-        display_fn(move |f| match *self {
+        display_fn(move |f| match self {
             clean::Public => f.write_str("pub "),
             clean::Inherited => Ok(()),
-            // If this is `pub(crate)`, `path` will be empty.
-            clean::Visibility::Restricted(did, _) if did.index == CRATE_DEF_INDEX => {
+            clean::Visibility::Restricted(did) if did.index == CRATE_DEF_INDEX => {
                 write!(f, "pub(crate) ")
             }
-            clean::Visibility::Restricted(did, ref path) => {
+            clean::Visibility::Restricted(did) => {
                 f.write_str("pub(")?;
+                let path = tcx.def_path(did);
                 debug!("path={:?}", path);
                 let first_name =
                     path.data[0].data.get_opt_name().expect("modules are always named");
