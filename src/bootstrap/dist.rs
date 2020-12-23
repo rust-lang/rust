@@ -2034,47 +2034,10 @@ impl Step for ReproducibleArtifacts {
     }
 
     fn run(self, builder: &Builder<'_>) -> Self::Output {
-        let name = pkgname(builder, "reproducible-artifacts");
-        let tmp = tmpdir(builder);
+        let path = builder.config.rust_profile_use.as_ref()?;
 
-        // Prepare the image.
-        let image = tmp.join("reproducible-artifacts-image");
-        let _ = fs::remove_dir_all(&image);
-
-        if let Some(path) = &builder.config.rust_profile_use {
-            builder.install(std::path::Path::new(path), &image, 0o644);
-        } else {
-            return None;
-        }
-
-        // Prepare the overlay.
-        let overlay = tmp.join("reproducible-artifacts-overlay");
-        let _ = fs::remove_dir_all(&overlay);
-        builder.create_dir(&overlay);
-        builder.create(&overlay.join("version"), &builder.rust_version());
-        for file in &["COPYRIGHT", "LICENSE-APACHE", "LICENSE-MIT", "README.md"] {
-            builder.install(&builder.src.join(file), &overlay, 0o644);
-        }
-
-        // Create the final tarball.
-        let mut cmd = rust_installer(builder);
-        cmd.arg("generate")
-            .arg("--product-name=Rust")
-            .arg("--rel-manifest-dir=rustlib")
-            .arg("--success-message=reproducible-artifacts installed.")
-            .arg("--image-dir")
-            .arg(&image)
-            .arg("--work-dir")
-            .arg(&tmpdir(builder))
-            .arg("--output-dir")
-            .arg(&distdir(builder))
-            .arg("--non-installed-overlay")
-            .arg(&overlay)
-            .arg(format!("--package-name={}-{}", name, self.target.triple))
-            .arg("--legacy-manifest-dirs=rustlib,cargo")
-            .arg("--component-name=reproducible-artifacts");
-
-        builder.run(&mut cmd);
-        Some(distdir(builder).join(format!("{}-{}.tar.gz", name, self.target.triple)))
+        let tarball = Tarball::new(builder, "reproducible-artifacts", &self.target.triple);
+        tarball.add_file(path, ".", 0o644);
+        Some(tarball.generate())
     }
 }
