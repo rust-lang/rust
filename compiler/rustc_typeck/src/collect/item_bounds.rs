@@ -97,7 +97,7 @@ pub(super) fn explicit_item_bounds(
             span,
             ..
         }) => opaque_type_bounds(tcx, def_id, bounds, *span),
-        _ => bug!("item_bounds called on {:?}", def_id),
+        _ => &[],
     }
 }
 
