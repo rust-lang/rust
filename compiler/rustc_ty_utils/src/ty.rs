@@ -218,10 +218,6 @@ fn associated_items(tcx: TyCtxt<'_>, def_id: DefId) -> ty::AssociatedItems<'_> {
     ty::AssociatedItems::new(items)
 }
 
-fn def_span(tcx: TyCtxt<'_>, def_id: DefId) -> Span {
-    tcx.hir().span_if_local(def_id).unwrap()
-}
-
 fn def_ident_span(tcx: TyCtxt<'_>, def_id: DefId) -> Option<Span> {
     tcx.hir().get_if_local(def_id).and_then(|node| node.ident()).map(|ident| ident.span)
 }
@@ -495,7 +491,6 @@ pub fn provide(providers: &mut ty::query::Providers) {
         associated_item_def_ids,
         associated_items,
         adt_sized_constraint,
-        def_span,
         def_ident_span,
         param_env,
         param_env_reveal_all_normalized,

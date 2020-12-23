@@ -848,50 +848,55 @@ impl<'hir> Map<'hir> {
     /// Gets the span of the definition of the specified HIR node.
     /// This is used by `tcx.get_span`
     pub fn span(&self, hir_id: HirId) -> Span {
-        match self.find_entry(hir_id).map(|entry| entry.node) {
-            Some(Node::Param(param)) => param.span,
-            Some(Node::Item(item)) => match &item.kind {
+        self.opt_span(hir_id)
+            .unwrap_or_else(|| bug!("hir::map::Map::span: id not in map: {:?}", hir_id))
+    }
+
+    pub fn opt_span(&self, hir_id: HirId) -> Option<Span> {
+        let span = match self.find_entry(hir_id)?.node {
+            Node::Param(param) => param.span,
+            Node::Item(item) => match &item.kind {
                 ItemKind::Fn(sig, _, _) => sig.span,
                 _ => item.span,
             },
-            Some(Node::ForeignItem(foreign_item)) => foreign_item.span,
-            Some(Node::TraitItem(trait_item)) => match &trait_item.kind {
+            Node::ForeignItem(foreign_item) => foreign_item.span,
+            Node::TraitItem(trait_item) => match &trait_item.kind {
                 TraitItemKind::Fn(sig, _) => sig.span,
                 _ => trait_item.span,
             },
-            Some(Node::ImplItem(impl_item)) => match &impl_item.kind {
+            Node::ImplItem(impl_item) => match &impl_item.kind {
                 ImplItemKind::Fn(sig, _) => sig.span,
                 _ => impl_item.span,
             },
-            Some(Node::Variant(variant)) => variant.span,
-            Some(Node::Field(field)) => field.span,
-            Some(Node::AnonConst(constant)) => self.body(constant.body).value.span,
-            Some(Node::Expr(expr)) => expr.span,
-            Some(Node::Stmt(stmt)) => stmt.span,
-            Some(Node::PathSegment(seg)) => seg.ident.span,
-            Some(Node::Ty(ty)) => ty.span,
-            Some(Node::TraitRef(tr)) => tr.path.span,
-            Some(Node::Binding(pat)) => pat.span,
-            Some(Node::Pat(pat)) => pat.span,
-            Some(Node::Arm(arm)) => arm.span,
-            Some(Node::Block(block)) => block.span,
-            Some(Node::Ctor(..)) => match self.find(self.get_parent_node(hir_id)) {
-                Some(Node::Item(item)) => item.span,
-                Some(Node::Variant(variant)) => variant.span,
+            Node::Variant(variant) => variant.span,
+            Node::Field(field) => field.span,
+            Node::AnonConst(constant) => self.body(constant.body).value.span,
+            Node::Expr(expr) => expr.span,
+            Node::Stmt(stmt) => stmt.span,
+            Node::PathSegment(seg) => seg.ident.span,
+            Node::Ty(ty) => ty.span,
+            Node::TraitRef(tr) => tr.path.span,
+            Node::Binding(pat) => pat.span,
+            Node::Pat(pat) => pat.span,
+            Node::Arm(arm) => arm.span,
+            Node::Block(block) => block.span,
+            Node::Ctor(..) => match self.find(self.get_parent_node(hir_id))? {
+                Node::Item(item) => item.span,
+                Node::Variant(variant) => variant.span,
                 _ => unreachable!(),
             },
-            Some(Node::Lifetime(lifetime)) => lifetime.span,
-            Some(Node::GenericParam(param)) => param.span,
-            Some(Node::Visibility(&Spanned {
+            Node::Lifetime(lifetime) => lifetime.span,
+            Node::GenericParam(param) => param.span,
+            Node::Visibility(&Spanned {
                 node: VisibilityKind::Restricted { ref path, .. },
                 ..
-            })) => path.span,
-            Some(Node::Visibility(v)) => bug!("unexpected Visibility {:?}", v),
-            Some(Node::Local(local)) => local.span,
-            Some(Node::MacroDef(macro_def)) => macro_def.span,
-            Some(Node::Crate(item)) => item.span,
-            None => bug!("hir::map::Map::span: id not in map: {:?}", hir_id),
-        }
+            }) => path.span,
+            Node::Visibility(v) => bug!("unexpected Visibility {:?}", v),
+            Node::Local(local) => local.span,
+            Node::MacroDef(macro_def) => macro_def.span,
+            Node::Crate(item) => item.span,
+        };
+        Some(span)
     }
 
     /// Like `hir.span()`, but includes the body of function items
@@ -907,7 +912,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn span_if_local(&self, id: DefId) -> Option<Span> {
-        id.as_local().map(|id| self.span(self.local_def_id_to_hir_id(id)))
+        id.as_local().and_then(|id| self.opt_span(self.local_def_id_to_hir_id(id)))
     }
 
     pub fn res_span(&self, res: Res) -> Option<Span> {
