@@ -3079,21 +3079,22 @@ fn item_struct(
             _ => None,
         })
         .peekable();
-    if let doctree::Plain = s.struct_type {
+    if let doctree::Plain | doctree::Tuple = s.struct_type {
         if fields.peek().is_some() {
+            let field_string =
+                if let doctree::Plain = s.struct_type { "Fields" } else { "Tuple Fields" };
             write!(
                 w,
                 "<h2 id=\"fields\" class=\"fields small-section-header\">
-                       Fields{}<a href=\"#fields\" class=\"anchor\"></a></h2>",
+                       {}{}<a href=\"#fields\" class=\"anchor\"></a></h2>",
+                field_string,
                 document_non_exhaustive_header(it)
             );
             document_non_exhaustive(w, it);
-            for (field, ty) in fields {
-                let id = cx.derive_id(format!(
-                    "{}.{}",
-                    ItemType::StructField,
-                    field.name.as_ref().unwrap()
-                ));
+            for (idx, (field, ty)) in fields.enumerate() {
+                let field_name =
+                    field.name.map_or_else(|| idx.to_string(), |sym| (*sym.as_str()).to_string());
+                let id = cx.derive_id(format!("{}.{}", ItemType::StructField, field_name));
                 write!(
                     w,
                     "<span id=\"{id}\" class=\"{item_type} small-section-header\">\
@@ -3102,7 +3103,7 @@ fn item_struct(
                      </span>",
                     item_type = ItemType::StructField,
                     id = id,
-                    name = field.name.as_ref().unwrap(),
+                    name = field_name,
                     ty = ty.print()
                 );
                 document(w, cx, field, Some(it));
