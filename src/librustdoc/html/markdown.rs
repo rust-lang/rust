@@ -284,60 +284,27 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
         });
 
         let tooltip = if ignore != Ignore::None {
-            Some(("This example is not tested".to_owned(), "ignore"))
+            Some((None, "ignore"))
         } else if compile_fail {
-            Some(("This example deliberately fails to compile".to_owned(), "compile_fail"))
+            Some((None, "compile_fail"))
         } else if should_panic {
-            Some(("This example panics".to_owned(), "should_panic"))
+            Some((None, "should_panic"))
         } else if explicit_edition {
-            Some((format!("This code runs with edition {}", edition), "edition"))
+            Some((Some(edition), "edition"))
         } else {
             None
         };
 
-        if let Some((s1, s2)) = tooltip {
-            s.push_str(&highlight::render_with_highlighting(
-                text,
-                Some(&format!(
-                    "rust-example-rendered{}",
-                    if ignore != Ignore::None {
-                        " ignore"
-                    } else if compile_fail {
-                        " compile_fail"
-                    } else if should_panic {
-                        " should_panic"
-                    } else if explicit_edition {
-                        " edition "
-                    } else {
-                        ""
-                    }
-                )),
-                playground_button.as_deref(),
-                Some((s1.as_str(), s2)),
-            ));
-            Some(Event::Html(s.into()))
-        } else {
-            s.push_str(&highlight::render_with_highlighting(
-                text,
-                Some(&format!(
-                    "rust-example-rendered{}",
-                    if ignore != Ignore::None {
-                        " ignore"
-                    } else if compile_fail {
-                        " compile_fail"
-                    } else if should_panic {
-                        " should_panic"
-                    } else if explicit_edition {
-                        " edition "
-                    } else {
-                        ""
-                    }
-                )),
-                playground_button.as_deref(),
-                None,
-            ));
-            Some(Event::Html(s.into()))
-        }
+        s.push_str(&highlight::render_with_highlighting(
+            text,
+            Some(&format!(
+                "rust-example-rendered{}",
+                if let Some((_, class)) = tooltip { format!(" {}", class) } else { String::new() }
+            )),
+            playground_button.as_deref(),
+            tooltip,
+        ));
+        Some(Event::Html(s.into()))
     }
 }
 

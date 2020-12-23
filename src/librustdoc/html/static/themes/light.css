@@ -329,12 +329,12 @@ pre.ignore:hover, .information:hover + pre.ignore {
 	color: #0089ff;
 }
 
-.tooltip .tooltiptext {
+.tooltip::after {
 	background-color: #000;
 	color: #fff;
 }
 
-.tooltip .tooltiptext::after {
+.tooltip::before {
 	border-color: transparent black transparent transparent;
 }
 

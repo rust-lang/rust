@@ -1079,20 +1079,29 @@ h3 > .collapse-toggle, h4 > .collapse-toggle {
 	cursor: pointer;
 }
 
-.tooltip .tooltiptext {
-	width: 120px;
+.tooltip::after {
 	display: none;
 	text-align: center;
 	padding: 5px 3px 3px 3px;
 	border-radius: 6px;
 	margin-left: 5px;
-	top: -5px;
-	left: 105%;
-	z-index: 10;
 	font-size: 16px;
 }
 
-.tooltip .tooltiptext::after {
+.tooltip.ignore::after {
+	content: "This example is not tested";
+}
+.tooltip.compile_fail::after {
+	content: "This example deliberately fails to compile";
+}
+.tooltip.should_panic::after {
+	content: "This example panics";
+}
+.tooltip.edition::after {
+	content: "This code runs with edition " attr(data-edition);
+}
+
+.tooltip::before {
 	content: " ";
 	position: absolute;
 	top: 50%;
@@ -1100,9 +1109,10 @@ h3 > .collapse-toggle, h4 > .collapse-toggle {
 	margin-top: -5px;
 	border-width: 5px;
 	border-style: solid;
+	display: none;
 }
 
-.tooltip:hover .tooltiptext {
+.tooltip:hover::before, .tooltip:hover::after {
 	display: inline;
 }
 
