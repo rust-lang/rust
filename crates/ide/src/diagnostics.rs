@@ -895,4 +895,17 @@ impl TestStruct {
 "#,
         );
     }
+
+    #[test]
+    fn test_single_incorrect_case_diagnostic_in_function_name_issue_6970() {
+        let input = r#"fn FOO<|>() {}"#;
+        let expected = r#"fn foo() {}"#;
+
+        let (analysis, file_position) = fixture::position(input);
+        let diagnostics =
+            analysis.diagnostics(&DiagnosticsConfig::default(), file_position.file_id).unwrap();
+        assert_eq!(diagnostics.len(), 1);
+
+        check_fixes(input, expected);
+    }
 }
