@@ -24,7 +24,7 @@ struct WontChange {
 mod signatures {
     use WillChange;
 
-    #[rustc_then_this_would_need(type_of)] //~ ERROR no path
+    #[rustc_then_this_would_need(try_type_of)] //~ ERROR no path
     #[rustc_then_this_would_need(associated_item)] //~ ERROR no path
     #[rustc_then_this_would_need(trait_def)] //~ ERROR no path
     trait Bar {
@@ -42,14 +42,14 @@ mod signatures {
         WillChange { x: x, y: y }
     }
 
-    #[rustc_then_this_would_need(type_of)] //~ ERROR OK
+    #[rustc_then_this_would_need(try_type_of)] //~ ERROR OK
     impl WillChange {
         #[rustc_then_this_would_need(fn_sig)] //~ ERROR OK
         #[rustc_then_this_would_need(typeck)] //~ ERROR OK
         fn new(x: u32, y: u32) -> WillChange { loop { } }
     }
 
-    #[rustc_then_this_would_need(type_of)] //~ ERROR OK
+    #[rustc_then_this_would_need(try_type_of)] //~ ERROR OK
     impl WillChange {
         #[rustc_then_this_would_need(fn_sig)] //~ ERROR OK
         #[rustc_then_this_would_need(typeck)] //~ ERROR OK
@@ -57,21 +57,21 @@ mod signatures {
     }
 
     struct WillChanges {
-        #[rustc_then_this_would_need(type_of)] //~ ERROR OK
+        #[rustc_then_this_would_need(try_type_of)] //~ ERROR OK
         x: WillChange,
-        #[rustc_then_this_would_need(type_of)] //~ ERROR OK
+        #[rustc_then_this_would_need(try_type_of)] //~ ERROR OK
         y: WillChange
     }
 
     // The fields change, not the type itself.
-    #[rustc_then_this_would_need(type_of)] //~ ERROR no path
+    #[rustc_then_this_would_need(try_type_of)] //~ ERROR no path
     fn indirect(x: WillChanges) { }
 }
 
 mod invalid_signatures {
     use WontChange;
 
-    #[rustc_then_this_would_need(type_of)] //~ ERROR no path
+    #[rustc_then_this_would_need(try_type_of)] //~ ERROR no path
     trait A {
         #[rustc_then_this_would_need(fn_sig)] //~ ERROR no path
         fn do_something_else_twice(x: WontChange);

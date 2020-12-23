@@ -312,6 +312,14 @@ impl TyCtxt<'tcx> {
         self.opt_def_kind(def_id)
             .unwrap_or_else(|| bug!("def_kind: unsupported node: {:?}", def_id))
     }
+
+    pub fn type_of(self, def_id: impl IntoQueryParam<DefId>) -> Ty<'tcx> {
+        let def_id = def_id.into_query_param();
+        self.try_type_of(def_id).unwrap_or_else(|msg| {
+            let hir_id = self.hir().local_def_id_to_hir_id(def_id.expect_local());
+            span_bug!(self.def_span(def_id), "type_of: {}: {:?}", msg, self.hir().find(hir_id));
+        })
+    }
 }
 
 impl TyCtxtAt<'tcx> {
@@ -319,5 +327,13 @@ impl TyCtxtAt<'tcx> {
         let def_id = def_id.into_query_param();
         self.opt_def_kind(def_id)
             .unwrap_or_else(|| bug!("def_kind: unsupported node: {:?}", def_id))
+    }
+
+    pub fn type_of(self, def_id: impl IntoQueryParam<DefId>) -> Ty<'tcx> {
+        let def_id = def_id.into_query_param();
+        self.try_type_of(def_id).unwrap_or_else(|msg| {
+            let hir_id = self.hir().local_def_id_to_hir_id(def_id.expect_local());
+            span_bug!(self.def_span(def_id), "type_of: {}: {:?}", msg, self.hir().find(hir_id));
+        })
     }
 }

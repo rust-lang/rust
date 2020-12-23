@@ -69,7 +69,7 @@ fn collect_mod_item_types(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
 pub fn provide(providers: &mut Providers) {
     *providers = Providers {
         opt_const_param_of: type_of::opt_const_param_of,
-        type_of: type_of::type_of,
+        try_type_of: type_of::try_type_of,
         item_bounds: item_bounds::item_bounds,
         explicit_item_bounds: item_bounds::explicit_item_bounds,
         generics_of,
@@ -251,12 +251,12 @@ impl Visitor<'tcx> for CollectItemTypesVisitor<'tcx> {
                 hir::GenericParamKind::Lifetime { .. } => {}
                 hir::GenericParamKind::Type { default: Some(_), .. } => {
                     let def_id = self.tcx.hir().local_def_id(param.hir_id);
-                    self.tcx.ensure().type_of(def_id);
+                    self.tcx.ensure().try_type_of(def_id);
                 }
                 hir::GenericParamKind::Type { .. } => {}
                 hir::GenericParamKind::Const { .. } => {
                     let def_id = self.tcx.hir().local_def_id(param.hir_id);
-                    self.tcx.ensure().type_of(def_id);
+                    self.tcx.ensure().try_type_of(def_id);
                     // FIXME(const_generics_defaults)
                 }
             }
@@ -268,7 +268,7 @@ impl Visitor<'tcx> for CollectItemTypesVisitor<'tcx> {
         if let hir::ExprKind::Closure(..) = expr.kind {
             let def_id = self.tcx.hir().local_def_id(expr.hir_id);
             self.tcx.ensure().generics_of(def_id);
-            self.tcx.ensure().type_of(def_id);
+            self.tcx.ensure().try_type_of(def_id);
         }
         intravisit::walk_expr(self, expr);
     }
@@ -727,7 +727,7 @@ fn convert_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
             for item in items {
                 let item = tcx.hir().foreign_item(item.id);
                 tcx.ensure().generics_of(item.def_id);
-                tcx.ensure().type_of(item.def_id);
+                tcx.ensure().try_type_of(item.def_id);
                 tcx.ensure().predicates_of(item.def_id);
                 if let hir::ForeignItemKind::Fn(..) = item.kind {
                     tcx.ensure().fn_sig(item.def_id);
@@ -736,13 +736,13 @@ fn convert_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
         }
         hir::ItemKind::Enum(ref enum_definition, _) => {
             tcx.ensure().generics_of(def_id);
-            tcx.ensure().type_of(def_id);
+            tcx.ensure().try_type_of(def_id);
             tcx.ensure().predicates_of(def_id);
             convert_enum_variant_types(tcx, def_id.to_def_id(), &enum_definition.variants);
         }
         hir::ItemKind::Impl { .. } => {
             tcx.ensure().generics_of(def_id);
-            tcx.ensure().type_of(def_id);
+            tcx.ensure().try_type_of(def_id);
             tcx.ensure().impl_trait_ref(def_id);
             tcx.ensure().predicates_of(def_id);
         }
@@ -759,13 +759,13 @@ fn convert_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
         }
         hir::ItemKind::Struct(ref struct_def, _) | hir::ItemKind::Union(ref struct_def, _) => {
             tcx.ensure().generics_of(def_id);
-            tcx.ensure().type_of(def_id);
+            tcx.ensure().try_type_of(def_id);
             tcx.ensure().predicates_of(def_id);
 
             for f in struct_def.fields() {
                 let def_id = tcx.hir().local_def_id(f.hir_id);
                 tcx.ensure().generics_of(def_id);
-                tcx.ensure().type_of(def_id);
+                tcx.ensure().try_type_of(def_id);
                 tcx.ensure().predicates_of(def_id);
             }
 
@@ -790,7 +790,7 @@ fn convert_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
         | hir::ItemKind::Const(..)
         | hir::ItemKind::Fn(..) => {
             tcx.ensure().generics_of(def_id);
-            tcx.ensure().type_of(def_id);
+            tcx.ensure().try_type_of(def_id);
             tcx.ensure().predicates_of(def_id);
             match it.kind {
                 hir::ItemKind::Fn(..) => tcx.ensure().fn_sig(def_id),
@@ -807,16 +807,16 @@ fn convert_trait_item(tcx: TyCtxt<'_>, trait_item_id: hir::TraitItemId) {
 
     match trait_item.kind {
         hir::TraitItemKind::Fn(..) => {
-            tcx.ensure().type_of(trait_item_id.def_id);
+            tcx.ensure().try_type_of(trait_item_id.def_id);
             tcx.ensure().fn_sig(trait_item_id.def_id);
         }
 
         hir::TraitItemKind::Const(.., Some(_)) => {
-            tcx.ensure().type_of(trait_item_id.def_id);
+            tcx.ensure().try_type_of(trait_item_id.def_id);
         }
 
         hir::TraitItemKind::Const(..) => {
-            tcx.ensure().type_of(trait_item_id.def_id);
+            tcx.ensure().try_type_of(trait_item_id.def_id);
             // Account for `const C: _;`.
             let mut visitor = PlaceholderHirTyCollector::default();
             visitor.visit_trait_item(trait_item);
@@ -825,7 +825,7 @@ fn convert_trait_item(tcx: TyCtxt<'_>, trait_item_id: hir::TraitItemId) {
 
         hir::TraitItemKind::Type(_, Some(_)) => {
             tcx.ensure().item_bounds(trait_item_id.def_id);
-            tcx.ensure().type_of(trait_item_id.def_id);
+            tcx.ensure().try_type_of(trait_item_id.def_id);
             // Account for `type T = _;`.
             let mut visitor = PlaceholderHirTyCollector::default();
             visitor.visit_trait_item(trait_item);
@@ -849,7 +849,7 @@ fn convert_trait_item(tcx: TyCtxt<'_>, trait_item_id: hir::TraitItemId) {
 fn convert_impl_item(tcx: TyCtxt<'_>, impl_item_id: hir::ImplItemId) {
     let def_id = impl_item_id.def_id;
     tcx.ensure().generics_of(def_id);
-    tcx.ensure().type_of(def_id);
+    tcx.ensure().try_type_of(def_id);
     tcx.ensure().predicates_of(def_id);
     let impl_item = tcx.hir().impl_item(impl_item_id);
     match impl_item.kind {
@@ -870,7 +870,7 @@ fn convert_impl_item(tcx: TyCtxt<'_>, impl_item_id: hir::ImplItemId) {
 fn convert_variant_ctor(tcx: TyCtxt<'_>, ctor_id: hir::HirId) {
     let def_id = tcx.hir().local_def_id(ctor_id);
     tcx.ensure().generics_of(def_id);
-    tcx.ensure().type_of(def_id);
+    tcx.ensure().try_type_of(def_id);
     tcx.ensure().predicates_of(def_id);
 }
 
@@ -908,7 +908,7 @@ fn convert_enum_variant_types(tcx: TyCtxt<'_>, def_id: DefId, variants: &[hir::V
         for f in variant.data.fields() {
             let def_id = tcx.hir().local_def_id(f.hir_id);
             tcx.ensure().generics_of(def_id);
-            tcx.ensure().type_of(def_id);
+            tcx.ensure().try_type_of(def_id);
             tcx.ensure().predicates_of(def_id);
         }
 

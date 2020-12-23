@@ -103,7 +103,7 @@ impl Foo {
 #[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes")]
 #[rustc_clean(cfg="cfail3")]
 impl Foo {
-    #[rustc_dirty(cfg="cfail2", except="type_of,predicates_of,promoted_mir")]
+    #[rustc_dirty(cfg="cfail2", except="try_type_of,predicates_of,promoted_mir")]
     #[rustc_clean(cfg="cfail3")]
     pub fn method_selfness(&self) { }
 }
@@ -340,7 +340,7 @@ impl Foo {
     // appear dirty, that might be the cause. -nmatsakis
     #[rustc_clean(
         cfg="cfail2",
-        except="hir_owner,hir_owner_nodes,generics_of,predicates_of,type_of",
+        except="hir_owner,hir_owner_nodes,generics_of,predicates_of,try_type_of",
     )]
     #[rustc_clean(cfg="cfail3")]
     pub fn add_type_parameter_to_method<T>(&self) { }
@@ -360,7 +360,7 @@ impl Foo {
 impl Foo {
     #[rustc_clean(
         cfg="cfail2",
-        except="hir_owner,hir_owner_nodes,generics_of,predicates_of,type_of"
+        except="hir_owner,hir_owner_nodes,generics_of,predicates_of,try_type_of"
     )]
     #[rustc_clean(cfg="cfail3")]
     pub fn add_lifetime_bound_to_lifetime_param_of_method<'a, 'b: 'a>(&self) { }
@@ -388,7 +388,7 @@ impl Foo {
     // body will be affected. So if you start to see `typeck`
     // appear dirty, that might be the cause. -nmatsakis
     #[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes,generics_of,predicates_of,\
-                                        type_of")]
+                                        try_type_of")]
     #[rustc_clean(cfg="cfail3")]
     pub fn add_lifetime_bound_to_type_param_of_method<'a, T: 'a>(&self) { }
 }
@@ -453,7 +453,7 @@ impl Bar<u32> {
 impl<T> Bar<T> {
     #[rustc_clean(
         cfg="cfail2",
-        except="generics_of,fn_sig,typeck,type_of,optimized_mir"
+        except="generics_of,fn_sig,typeck,try_type_of,optimized_mir"
     )]
     #[rustc_clean(cfg="cfail3")]
     pub fn add_type_parameter_to_impl(&self) { }

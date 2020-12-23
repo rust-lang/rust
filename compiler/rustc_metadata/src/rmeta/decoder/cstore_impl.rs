@@ -90,7 +90,7 @@ impl IntoArgs for (CrateNum, DefId) {
 }
 
 provide! { <'tcx> tcx, def_id, other, cdata,
-    type_of => { cdata.get_type(def_id.index, tcx) }
+    try_type_of => { Ok(cdata.get_type(def_id.index, tcx)) }
     generics_of => { cdata.get_generics(def_id.index, tcx.sess) }
     explicit_predicates_of => { cdata.get_explicit_predicates(def_id.index, tcx) }
     inferred_outlives_of => { cdata.get_inferred_outlives(def_id.index, tcx) }

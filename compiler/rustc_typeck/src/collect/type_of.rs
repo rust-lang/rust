@@ -250,7 +250,7 @@ fn get_path_containing_arg_in_pat<'hir>(
     arg_path
 }
 
-pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
+pub(super) fn try_type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Result<Ty<'_>, String> {
     let def_id = def_id.expect_local();
     use rustc_hir::*;
 
@@ -258,7 +258,8 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
 
     let icx = ItemCtxt::new(tcx, def_id.to_def_id());
 
-    match tcx.hir().get(hir_id) {
+    let node = tcx.hir().find(hir_id).ok_or_else(|| format!("Not found in HIR: {:?}", hir_id))?;
+    let ty = match node {
         Node::TraitItem(item) => match item.kind {
             TraitItemKind::Fn(..) => {
                 let substs = InternalSubsts::identity_for_item(tcx, def_id.to_def_id());
@@ -275,7 +276,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                 .unwrap_or_else(|| icx.to_ty(ty)),
             TraitItemKind::Type(_, Some(ref ty)) => icx.to_ty(ty),
             TraitItemKind::Type(_, None) => {
-                span_bug!(item.span, "associated type missing default");
+                return Err("associated type missing default".to_owned());
             }
         },
 
@@ -368,11 +369,10 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                 | ItemKind::GlobalAsm(..)
                 | ItemKind::ExternCrate(..)
                 | ItemKind::Use(..) => {
-                    span_bug!(
-                        item.span,
+                    return Err(format!(
                         "compute_type_of_item: unexpected item type: {:?}",
                         item.kind
-                    );
+                    ));
                 }
             }
         }
@@ -388,7 +388,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
 
         Node::Ctor(&ref def) | Node::Variant(Variant { data: ref def, .. }) => match *def {
             VariantData::Unit(..) | VariantData::Struct(..) => {
-                tcx.type_of(tcx.hir().get_parent_did(hir_id).to_def_id())
+                return tcx.try_type_of(tcx.hir().get_parent_did(hir_id).to_def_id());
             }
             VariantData::Tuple(..) => {
                 let substs = InternalSubsts::identity_for_item(tcx, def_id.to_def_id());
@@ -411,7 +411,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
             if let Some(param) = tcx.opt_const_param_of(def_id) {
                 // We defer to `type_of` of the corresponding parameter
                 // for generic arguments.
-                return tcx.type_of(param);
+                return tcx.try_type_of(param);
             }
 
             let parent_node = tcx.hir().get(tcx.hir().get_parent_node(hir_id));
@@ -446,13 +446,14 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
         Node::GenericParam(param) => match &param.kind {
             GenericParamKind::Type { default: Some(ty), .. }
             | GenericParamKind::Const { ty, .. } => icx.to_ty(ty),
-            x => bug!("unexpected non-type Node::GenericParam: {:?}", x),
+            x => return Err(format!("unexpected non-type Node::GenericParam: {:?}", x)),
         },
 
         x => {
-            bug!("unexpected sort of node in type_of_def_id(): {:?}", x);
+            return Err(format!("unexpected sort of node in type_of_def_id(): {:?}", x));
         }
-    }
+    };
+    Ok(ty)
 }
 
 fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Ty<'_> {

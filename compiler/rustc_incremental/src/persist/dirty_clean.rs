@@ -37,7 +37,7 @@ const CFG: Symbol = sym::cfg;
 // Base and Extra labels to build up the labels
 
 /// For typedef, constants, and statics
-const BASE_CONST: &[&str] = &[label_strs::type_of];
+const BASE_CONST: &[&str] = &[label_strs::try_type_of];
 
 /// DepNodes for functions + methods
 const BASE_FN: &[&str] = &[
@@ -45,7 +45,7 @@ const BASE_FN: &[&str] = &[
     label_strs::fn_sig,
     label_strs::generics_of,
     label_strs::predicates_of,
-    label_strs::type_of,
+    label_strs::try_type_of,
     // And a big part of compilation (that we eventually want to cache) is type inference
     // information:
     label_strs::typeck,
@@ -71,7 +71,7 @@ const BASE_MIR: &[&str] = &[label_strs::optimized_mir, label_strs::promoted_mir]
 /// Note that changing the type of a field does not change the type of the struct or enum, but
 /// adding/removing fields or changing a fields name or visibility does.
 const BASE_STRUCT: &[&str] =
-    &[label_strs::generics_of, label_strs::predicates_of, label_strs::type_of];
+    &[label_strs::generics_of, label_strs::predicates_of, label_strs::try_type_of];
 
 /// Trait definition `DepNode`s.
 const BASE_TRAIT_DEF: &[&str] = &[
