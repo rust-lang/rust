@@ -385,8 +385,15 @@ impl<T> Packet<T> {
         self.port_dropped.store(true, Ordering::SeqCst);
         let mut steals = unsafe { *self.steals.get() };
         while {
-            let cnt = self.cnt.compare_and_swap(steals, DISCONNECTED, Ordering::SeqCst);
-            cnt != DISCONNECTED && cnt != steals
+            match self.cnt.compare_exchange(
+                steals,
+                DISCONNECTED,
+                Ordering::SeqCst,
+                Ordering::SeqCst,
+            ) {
+                Ok(_) => false,
+                Err(old) => old != DISCONNECTED,
+            }
         } {
             // See the discussion in 'try_recv' for why we yield
             // control of this thread.
