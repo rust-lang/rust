@@ -1,21 +1,29 @@
+// Run clippy on a fixed set of crates and collect the warnings.
+// This helps observing the impact clippy changs have on a set of real-world code.
+//
+// When a new lint is introduced, we can search the results for new warnings and check for false
+// positives.
+
 #![allow(clippy::filter_map)]
 
 use crate::clippy_project_root;
-use serde::{Deserialize, Serialize};
+
 use std::collections::HashMap;
 use std::process::Command;
 use std::{fs::write, path::PathBuf};
 
+use serde::{Deserialize, Serialize};
+
 // crate data we stored in the toml, can have multiple versions.
 // if so, one TomlKrate maps to several KrateSources
-struct TomlKrate {
+struct TomlCrate {
     name: String,
     versions: Vec<String>,
 }
 
 // represents an archive we download from crates.io
 #[derive(Debug, Serialize, Deserialize, Eq, Hash, PartialEq)]
-struct KrateSource {
+struct CrateSource {
     name: String,
     version: String,
 }
@@ -28,22 +36,15 @@ struct CrateList {
 
 // represents the extracted sourcecode of a crate
 #[derive(Debug)]
-struct Krate {
+struct Crate {
     version: String,
     name: String,
     // path to the extracted sources that clippy can check
     path: PathBuf,
 }
 
-impl KrateSource {
-    fn new(name: &str, version: &str) -> Self {
-        KrateSource {
-            version: version.into(),
-            name: name.into(),
-        }
-    }
-
-    fn download_and_extract(&self) -> Krate {
+impl CrateSource {
+    fn download_and_extract(&self) -> Crate {
         let extract_dir = PathBuf::from("target/crater/crates");
         let krate_download_dir = PathBuf::from("target/crater/downloads");
 
@@ -80,7 +81,7 @@ impl KrateSource {
         }
         // crate is extracted, return a new Krate object which contains the path to the extracted
         // sources that clippy can check
-        Krate {
+        Crate {
             version: self.version.clone(),
             name: self.name.clone(),
             path: extract_dir.join(format!("{}-{}/", self.name, self.version)),
@@ -88,7 +89,7 @@ impl KrateSource {
     }
 }
 
-impl Krate {
+impl Crate {
     fn run_clippy_lints(&self, cargo_clippy_path: &PathBuf) -> Vec<String> {
         println!("Linting {} {}...", &self.name, &self.version);
         let cargo_clippy_path = std::fs::canonicalize(cargo_clippy_path).unwrap();
@@ -144,32 +145,32 @@ fn build_clippy() {
         .expect("Failed to build clippy!");
 }
 
-// get a list of KrateSources we want to check from a "crater_crates.toml" file.
-fn read_crates() -> Vec<KrateSource> {
+// get a list of CrateSources we want to check from a "crater_crates.toml" file.
+fn read_crates() -> Vec<CrateSource> {
     let toml_path = PathBuf::from("clippy_dev/crater_crates.toml");
     let toml_content: String =
         std::fs::read_to_string(&toml_path).unwrap_or_else(|_| panic!("Failed to read {}", toml_path.display()));
     let crate_list: CrateList =
         toml::from_str(&toml_content).unwrap_or_else(|e| panic!("Failed to parse {}: \n{}", toml_path.display(), e));
     // parse the hashmap of the toml file into a list of crates
-    let tomlkrates: Vec<TomlKrate> = crate_list
+    let tomlcrates: Vec<TomlCrate> = crate_list
         .crates
         .into_iter()
-        .map(|(name, versions)| TomlKrate { name, versions })
+        .map(|(name, versions)| TomlCrate { name, versions })
         .collect();
 
-    // flatten TomlKrates into KrateSources (one TomlKrates may represent several versions of a crate =>
-    // multiple kratesources)
-    let mut krate_sources = Vec::new();
-    tomlkrates.into_iter().for_each(|tk| {
+    // flatten TomlCrates into CrateSources (one TomlCrates may represent several versions of a crate =>
+    // multiple Cratesources)
+    let mut crate_sources = Vec::new();
+    tomlcrates.into_iter().for_each(|tk| {
         tk.versions.iter().for_each(|ver| {
-            krate_sources.push(KrateSource {
+            crate_sources.push(CrateSource {
                 name: tk.name.clone(),
                 version: ver.to_string(),
             });
         })
     });
-    krate_sources
+    crate_sources
 }
 
 // the main fn
