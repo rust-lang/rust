@@ -142,6 +142,7 @@ mod native;
 mod run;
 mod sanity;
 mod setup;
+mod tarball;
 mod test;
 mod tool;
 mod toolstate;
@@ -1066,10 +1067,6 @@ impl Build {
     /// Returns the value of `package_vers` above for Rust itself.
     fn rust_package_vers(&self) -> String {
         self.package_vers(&self.version)
-    }
-
-    fn llvm_tools_vers(&self) -> String {
-        self.rust_version()
     }
 
     fn llvm_link_tools_dynamically(&self, target: TargetSelection) -> bool {
