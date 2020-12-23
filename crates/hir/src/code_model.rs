@@ -374,8 +374,6 @@ impl Module {
         let crate_def_map = db.crate_def_map(self.id.krate);
         crate_def_map.add_diagnostics(db.upcast(), self.id.local_id, sink);
         for decl in self.declarations(db) {
-            decl.diagnostics(db, sink);
-
             match decl {
                 crate::ModuleDef::Function(f) => f.diagnostics(db, sink),
                 crate::ModuleDef::Module(m) => {
@@ -384,7 +382,9 @@ impl Module {
                         m.diagnostics(db, sink)
                     }
                 }
-                _ => (),
+                _ => {
+                    decl.diagnostics(db, sink);
+                }
             }
         }
 
