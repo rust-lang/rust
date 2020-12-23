@@ -152,7 +152,16 @@ note: this function consumes the receiver `self` by taking ownership of it, whic
 LL |     fn custom_into_iter(self) -> impl Iterator<Item = bool> {
    |                         ^^^^
 
-error: aborting due to 11 previous errors
+error[E0382]: use of moved value: `foo2`
+  --> $DIR/move-fn-self-receiver.rs:75:9
+   |
+LL |     let foo2 = Foo;
+   |         ---- move occurs because `foo2` has type `Foo`, which does not implement the `Copy` trait
+LL |     loop {
+LL |         foo2.use_self();
+   |         ^^^^ ---------- `foo2` moved due to this method call, in previous iteration of loop
+
+error: aborting due to 12 previous errors
 
 Some errors have detailed explanations: E0382, E0505.
 For more information about an error, try `rustc --explain E0382`.
