@@ -35,7 +35,7 @@ declare_clippy_lint! {
     /// ```
     pub CASE_SENSITIVE_FILE_EXTENSION_COMPARISONS,
     pedantic,
-    "default lint description"
+    "Checks for calls to ends_with with case-sensitive file extensions"
 }
 
 declare_lint_pass!(CaseSensitiveFileExtensionComparisons => [CASE_SENSITIVE_FILE_EXTENSION_COMPARISONS]);
