@@ -1,5 +1,7 @@
 //! Completion of names from the current scope, e.g. locals and imported items.
 
+use std::iter;
+
 use either::Either;
 use hir::{Adt, ModPath, ModuleDef, ScopeDef, Type};
 use ide_db::helpers::insert_use::ImportScope;
@@ -50,7 +52,9 @@ pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
 }
 
 fn complete_enum_variants(acc: &mut Completions, ctx: &CompletionContext, ty: &Type) {
-    if let Some(Adt::Enum(enum_data)) = ty.as_adt() {
+    if let Some(Adt::Enum(enum_data)) =
+        iter::successors(Some(ty.clone()), |ty| ty.remove_ref()).last().and_then(|ty| ty.as_adt())
+    {
         let variants = enum_data.variants(ctx.db);
 
         let module = if let Some(module) = ctx.scope.module() {
@@ -701,6 +705,7 @@ fn main() { <|> }
             "#]],
         );
     }
+
     #[test]
     fn completes_enum_variant_matcharm() {
         check(
@@ -710,6 +715,26 @@ enum Foo { Bar, Baz, Quux }
 fn main() {
     let foo = Foo::Quux;
     match foo { Qu<|> }
+}
+"#,
+            expect![[r#"
+                ev Foo::Bar  ()
+                ev Foo::Baz  ()
+                ev Foo::Quux ()
+                en Foo
+            "#]],
+        )
+    }
+
+    #[test]
+    fn completes_enum_variant_matcharm_ref() {
+        check(
+            r#"
+enum Foo { Bar, Baz, Quux }
+
+fn main() {
+    let foo = Foo::Quux;
+    match &foo { Qu<|> }
 }
 "#,
             expect![[r#"
