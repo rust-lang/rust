@@ -46,6 +46,7 @@ pub(super) const ATOM_EXPR_FIRST: TokenSet =
         T![continue],
         T![async],
         T![try],
+        T![const],
         T![loop],
         T![for],
         LIFETIME_IDENT,
@@ -112,6 +113,14 @@ pub(super) fn atom_expr(p: &mut Parser, r: Restrictions) -> Option<(CompletedMar
         T![unsafe] if la == T!['{'] => {
             let m = p.start();
             p.bump(T![unsafe]);
+            block_expr(p);
+            m.complete(p, EFFECT_EXPR)
+        }
+        // test const_block
+        // fn f() { const { } }
+        T![const] if la == T!['{'] => {
+            let m = p.start();
+            p.bump(T![const]);
             block_expr(p);
             m.complete(p, EFFECT_EXPR)
         }

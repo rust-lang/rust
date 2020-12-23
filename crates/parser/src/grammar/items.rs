@@ -96,7 +96,10 @@ pub(super) fn maybe_item(p: &mut Parser, m: Marker) -> Result<(), Marker> {
     let mut has_mods = false;
 
     // modifiers
-    has_mods |= p.eat(T![const]);
+    if p.at(T![const]) && p.nth(1) != T!['{'] {
+        p.eat(T![const]);
+        has_mods = true;
+    }
 
     // test_err async_without_semicolon
     // fn foo() { let _ = async {} }
@@ -167,7 +170,7 @@ pub(super) fn maybe_item(p: &mut Parser, m: Marker) -> Result<(), Marker> {
             m.complete(p, TRAIT);
         }
 
-        T![const] => {
+        T![const] if p.nth(1) != T!['{'] => {
             consts::konst(p, m);
         }
 
