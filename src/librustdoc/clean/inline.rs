@@ -482,9 +482,6 @@ fn build_module(cx: &DocContext<'_>, did: DefId, visited: &mut FxHashSet<DefId>)
                         source: clean::Span::dummy(),
                         def_id: DefId::local(CRATE_DEF_INDEX),
                         visibility: clean::Public,
-                        stability: None,
-                        const_stability: None,
-                        deprecation: None,
                         kind: clean::ImportItem(clean::Import::new_simple(
                             item.ident.name,
                             clean::ImportSource {

@@ -164,7 +164,7 @@ crate struct SharedContext<'tcx> {
     playground: Option<markdown::Playground>,
 }
 
-impl Context<'_> {
+impl<'tcx> Context<'tcx> {
     fn path(&self, filename: &str) -> PathBuf {
         // We use splitn vs Path::extension here because we might get a filename
         // like `style.min.css` and we want to process that into
@@ -174,6 +174,10 @@ impl Context<'_> {
         let (base, ext) = filename.split_once('.').unwrap();
         let filename = format!("{}{}.{}", base, self.shared.resource_suffix, ext);
         self.dst.join(&filename)
+    }
+
+    fn tcx(&self) -> TyCtxt<'tcx> {
+        self.shared.tcx
     }
 
     fn sess(&self) -> &Session {
@@ -1708,8 +1712,8 @@ fn print_item(cx: &Context<'_>, item: &clean::Item, buf: &mut Buffer, cache: &Ca
     write!(buf, "<h1 class=\"fqn\"><span class=\"out-of-band\">");
     render_stability_since_raw(
         buf,
-        item.stable_since().as_deref(),
-        item.const_stable_since().as_deref(),
+        item.stable_since(cx.tcx()).as_deref(),
+        item.const_stable_since(cx.tcx()).as_deref(),
         None,
         None,
     );
@@ -2061,14 +2065,20 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
         }
     }
 
-    fn cmp(i1: &clean::Item, i2: &clean::Item, idx1: usize, idx2: usize) -> Ordering {
+    fn cmp(
+        i1: &clean::Item,
+        i2: &clean::Item,
+        idx1: usize,
+        idx2: usize,
+        tcx: TyCtxt<'_>,
+    ) -> Ordering {
         let ty1 = i1.type_();
         let ty2 = i2.type_();
         if ty1 != ty2 {
             return (reorder(ty1), idx1).cmp(&(reorder(ty2), idx2));
         }
-        let s1 = i1.stability.as_ref().map(|s| s.level);
-        let s2 = i2.stability.as_ref().map(|s| s.level);
+        let s1 = i1.stability(tcx).as_ref().map(|s| s.level);
+        let s2 = i2.stability(tcx).as_ref().map(|s| s.level);
         if let (Some(a), Some(b)) = (s1, s2) {
             match (a.is_stable(), b.is_stable()) {
                 (true, true) | (false, false) => {}
@@ -2082,7 +2092,7 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
     }
 
     if cx.shared.sort_modules_alphabetically {
-        indices.sort_by(|&i1, &i2| cmp(&items[i1], &items[i2], i1, i2));
+        indices.sort_by(|&i1, &i2| cmp(&items[i1], &items[i2], i1, i2, cx.tcx()));
     }
     // This call is to remove re-export duplicates in cases such as:
     //
@@ -2184,7 +2194,7 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
                     _ => "",
                 };
 
-                let stab = myitem.stability_class();
+                let stab = myitem.stability_class(cx.tcx());
                 let add = if stab.is_some() { " " } else { "" };
 
                 let doc_value = myitem.doc_value().unwrap_or("");
@@ -2196,7 +2206,7 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
                          <td class=\"docblock-short\">{stab_tags}{docs}</td>\
                      </tr>",
                     name = *myitem.name.as_ref().unwrap(),
-                    stab_tags = extra_info_tags(myitem, item),
+                    stab_tags = extra_info_tags(myitem, item, cx.tcx()),
                     docs = MarkdownSummaryLine(doc_value, &myitem.links()).into_string(),
                     class = myitem.type_(),
                     add = add,
@@ -2220,7 +2230,7 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
 
 /// Render the stability, deprecation and portability tags that are displayed in the item's summary
 /// at the module level.
-fn extra_info_tags(item: &clean::Item, parent: &clean::Item) -> String {
+fn extra_info_tags(item: &clean::Item, parent: &clean::Item, tcx: TyCtxt<'_>) -> String {
     let mut tags = String::new();
 
     fn tag_html(class: &str, title: &str, contents: &str) -> String {
@@ -2228,7 +2238,7 @@ fn extra_info_tags(item: &clean::Item, parent: &clean::Item) -> String {
     }
 
     // The trailing space after each tag is to space it properly against the rest of the docs.
-    if let Some(depr) = &item.deprecation {
+    if let Some(depr) = &item.deprecation(tcx) {
         let mut message = "Deprecated";
         if !stability::deprecation_in_effect(
             depr.is_since_rustc_version,
@@ -2241,7 +2251,10 @@ fn extra_info_tags(item: &clean::Item, parent: &clean::Item) -> String {
 
     // The "rustc_private" crates are permanently unstable so it makes no sense
     // to render "unstable" everywhere.
-    if item.stability.as_ref().map(|s| s.level.is_unstable() && s.feature != sym::rustc_private)
+    if item
+        .stability(tcx)
+        .as_ref()
+        .map(|s| s.level.is_unstable() && s.feature != sym::rustc_private)
         == Some(true)
     {
         tags += &tag_html("unstable", "", "Experimental");
@@ -2287,7 +2300,7 @@ fn short_item_info(
     let error_codes = cx.shared.codes;
 
     if let Some(Deprecation { note, since, is_since_rustc_version, suggestion: _ }) =
-        item.deprecation
+        item.deprecation(cx.tcx())
     {
         // We display deprecation messages for #[deprecated] and #[rustc_deprecated]
         // but only display the future-deprecation messages for #[rustc_deprecated].
@@ -2327,7 +2340,7 @@ fn short_item_info(
     // Render unstable items. But don't render "rustc_private" crates (internal compiler crates).
     // Those crates are permanently unstable so it makes no sense to render "unstable" everywhere.
     if let Some((StabilityLevel::Unstable { reason, issue, .. }, feature)) = item
-        .stability
+        .stability(cx.tcx())
         .as_ref()
         .filter(|stab| stab.feature != sym::rustc_private)
         .map(|stab| (stab.level, stab.feature))
@@ -2480,8 +2493,8 @@ fn render_implementor(
         parent,
         AssocItemLink::Anchor(None),
         RenderMode::Normal,
-        implementor.impl_item.stable_since().as_deref(),
-        implementor.impl_item.const_stable_since().as_deref(),
+        implementor.impl_item.stable_since(cx.tcx()).as_deref(),
+        implementor.impl_item.const_stable_since(cx.tcx()).as_deref(),
         false,
         Some(use_absolute),
         false,
@@ -2511,8 +2524,8 @@ fn render_impls(
                 containing_item,
                 assoc_link,
                 RenderMode::Normal,
-                containing_item.stable_since().as_deref(),
-                containing_item.const_stable_since().as_deref(),
+                containing_item.stable_since(cx.tcx()).as_deref(),
+                containing_item.const_stable_since(cx.tcx()).as_deref(),
                 true,
                 None,
                 false,
@@ -2661,7 +2674,7 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
         write!(w, "<h3 id=\"{id}\" class=\"method\"><code>", id = id,);
         render_assoc_item(w, m, AssocItemLink::Anchor(Some(&id)), ItemType::Impl);
         write!(w, "</code>");
-        render_stability_since(w, m, t);
+        render_stability_since(w, m, t, cx.tcx());
         write_srclink(cx, m, w, cache);
         write!(w, "</h3>");
         document(w, cx, m, Some(t));
@@ -2768,8 +2781,8 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
                     it,
                     assoc_link,
                     RenderMode::Normal,
-                    implementor.impl_item.stable_since().as_deref(),
-                    implementor.impl_item.const_stable_since().as_deref(),
+                    implementor.impl_item.stable_since(cx.tcx()).as_deref(),
+                    implementor.impl_item.const_stable_since(cx.tcx()).as_deref(),
                     false,
                     None,
                     true,
@@ -2950,13 +2963,18 @@ fn render_stability_since_raw(
     }
 }
 
-fn render_stability_since(w: &mut Buffer, item: &clean::Item, containing_item: &clean::Item) {
+fn render_stability_since(
+    w: &mut Buffer,
+    item: &clean::Item,
+    containing_item: &clean::Item,
+    tcx: TyCtxt<'_>,
+) {
     render_stability_since_raw(
         w,
-        item.stable_since().as_deref(),
-        item.const_stable_since().as_deref(),
-        containing_item.stable_since().as_deref(),
-        containing_item.const_stable_since().as_deref(),
+        item.stable_since(tcx).as_deref(),
+        item.const_stable_since(tcx).as_deref(),
+        containing_item.stable_since(tcx).as_deref(),
+        containing_item.const_stable_since(tcx).as_deref(),
     )
 }
 
@@ -3149,7 +3167,7 @@ fn item_union(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, s: &clean::Uni
                 shortty = ItemType::StructField,
                 ty = ty.print()
             );
-            if let Some(stability_class) = field.stability_class() {
+            if let Some(stability_class) = field.stability_class(cx.tcx()) {
                 write!(w, "<span class=\"stab {stab}\"></span>", stab = stability_class);
             }
             document(w, cx, field, Some(it));
@@ -3279,7 +3297,7 @@ fn item_enum(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, e: &clean::Enum
                 }
                 write!(w, "</div></div>");
             }
-            render_stability_since(w, variant, it);
+            render_stability_since(w, variant, it, cx.tcx());
         }
     }
     render_assoc_items(w, cx, it, it.def_id, AssocItemRender::All, cache)
@@ -3510,8 +3528,8 @@ fn render_assoc_items(
                 containing_item,
                 AssocItemLink::Anchor(None),
                 render_mode,
-                containing_item.stable_since().as_deref(),
-                containing_item.const_stable_since().as_deref(),
+                containing_item.stable_since(cx.tcx()).as_deref(),
+                containing_item.const_stable_since(cx.tcx()).as_deref(),
                 true,
                 None,
                 false,
@@ -3758,8 +3776,8 @@ fn render_impl(
         write!(w, "<a href=\"#{}\" class=\"anchor\"></a>", id);
         render_stability_since_raw(
             w,
-            i.impl_item.stable_since().as_deref(),
-            i.impl_item.const_stable_since().as_deref(),
+            i.impl_item.stable_since(cx.tcx()).as_deref(),
+            i.impl_item.const_stable_since(cx.tcx()).as_deref(),
             outer_version,
             outer_const_version,
         );
@@ -3831,8 +3849,8 @@ fn render_impl(
                     write!(w, "</code>");
                     render_stability_since_raw(
                         w,
-                        item.stable_since().as_deref(),
-                        item.const_stable_since().as_deref(),
+                        item.stable_since(cx.tcx()).as_deref(),
+                        item.const_stable_since(cx.tcx()).as_deref(),
                         outer_version,
                         outer_const_version,
                     );
@@ -3853,8 +3871,8 @@ fn render_impl(
                 write!(w, "</code>");
                 render_stability_since_raw(
                     w,
-                    item.stable_since().as_deref(),
-                    item.const_stable_since().as_deref(),
+                    item.stable_since(cx.tcx()).as_deref(),
+                    item.const_stable_since(cx.tcx()).as_deref(),
                     outer_version,
                     outer_const_version,
                 );
