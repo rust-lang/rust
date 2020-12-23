@@ -9,15 +9,22 @@ pub mod msg;
 mod process;
 mod rpc;
 
-use std::{ffi::OsStr, fs::read as fsread, io::{self, Read}, path::{Path, PathBuf}, sync::Arc};
-
 use base_db::{Env, ProcMacro};
+use std::{
+    ffi::OsStr,
+    fs::File,
+    io::{self, Read},
+    path::{Path, PathBuf},
+    sync::Arc,
+};
+
 use tt::{SmolStr, Subtree};
 
 use crate::process::{ProcMacroProcessSrv, ProcMacroProcessThread};
 
 pub use rpc::{ExpansionResult, ExpansionTask, ListMacrosResult, ListMacrosTask, ProcMacroKind};
 
+use memmap::Mmap;
 use object::read::{File as BinaryFile, Object, ObjectSection};
 use snap::read::FrameDecoder as SnapDecoder;
 
@@ -110,13 +117,13 @@ impl ProcMacroClient {
 
     // This is used inside self.read_version() to locate the ".rustc" section
     // from a proc macro crate's binary file.
-    fn read_section<'a>(&self, dylib_binary: &'a [u8], section_name: &str) -> &'a [u8] {
+    fn read_section<'a>(&self, dylib_binary: &'a [u8], section_name: &str) -> io::Result<&'a [u8]> {
         BinaryFile::parse(dylib_binary)
-            .unwrap()
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?
             .section_by_name(section_name)
-            .unwrap()
+            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "section read error"))?
             .data()
-            .unwrap()
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
     }
 
     // Check the version of rustc that was used to compile a proc macro crate's
@@ -138,10 +145,19 @@ impl ProcMacroClient {
     // * [some more bytes that we don really care but still there] :-)
     // Check this issue for more about the bytes layout:
     // https://github.com/rust-analyzer/rust-analyzer/issues/6174
-    fn read_version(&self, dylib_path: &Path) -> String {
-        let dylib_binary = fsread(dylib_path).unwrap();
+    #[allow(unused)]
+    fn read_version(&self, dylib_path: &Path) -> io::Result<String> {
+        let dylib_file = File::open(dylib_path)?;
+        let dylib_mmaped = unsafe { Mmap::map(&dylib_file) }?;
 
-        let dot_rustc = self.read_section(&dylib_binary, ".rustc");
+        let dot_rustc = self.read_section(&dylib_mmaped, ".rustc")?;
+
+        let header = &dot_rustc[..8];
+        const EXPECTED_HEADER: [u8; 8] = [b'r', b'u', b's', b't', 0, 0, 0, 5];
+        // check if header is valid
+        if !(header == EXPECTED_HEADER) {
+            return Err(io::Error::new(io::ErrorKind::InvalidData, format!(".rustc section should start with header {:?}; header {:?} is actually presented.",EXPECTED_HEADER ,header)));
+        }
 
         let snappy_portion = &dot_rustc[8..];
 
@@ -154,14 +170,12 @@ impl ProcMacroClient {
         // so 13 bytes in total, and we should check the 13th byte
         // to know the length
         let mut bytes_before_version = [0u8; 13];
-        snappy_decoder
-            .read_exact(&mut bytes_before_version)
-            .unwrap();
+        snappy_decoder.read_exact(&mut bytes_before_version)?;
         let length = bytes_before_version[12]; // what? can't use -1 indexing?
 
         let mut version_string_utf8 = vec![0u8; length as usize];
-        snappy_decoder.read_exact(&mut version_string_utf8).unwrap();
-        let version_string = String::from_utf8(version_string_utf8).unwrap();
-        version_string
+        snappy_decoder.read_exact(&mut version_string_utf8)?;
+        let version_string = String::from_utf8(version_string_utf8);
+        version_string.map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
     }
 }
