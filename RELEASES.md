@@ -78,6 +78,7 @@ Compatibility Notes
   Previously such invalid or unused attributes could be ignored.
 - Leading whitespace is stripped more uniformly in documentation comments, which may change behavior. You
   read [this post about the changes][rustdoc-ws-post] for more details.
+- [Trait bounds are no longer inferred for associated types.][79904]
 
 Internal Only
 -------------
@@ -112,6 +113,7 @@ related tools.
 [74989]: https://github.com/rust-lang/rust/pull/74989
 [79004]: https://github.com/rust-lang/rust/pull/79004
 [78676]: https://github.com/rust-lang/rust/pull/78676
+[79904]: https://github.com/rust-lang/rust/issues/79904
 [cargo/8864]: https://github.com/rust-lang/cargo/pull/8864
 [cargo/8765]: https://github.com/rust-lang/cargo/pull/8765
 [cargo/8758]: https://github.com/rust-lang/cargo/pull/8758
