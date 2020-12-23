@@ -208,6 +208,7 @@ the lint(s) you are interested in:
 ```terminal
 cargo clippy -- -A clippy::all -W clippy::useless_format -W clippy::...
 ```
+Note that if you've run clippy before, this may only take effect after you've modified a file or ran `cargo clean`.
 
 ### Specifying the minimum supported Rust version
 
