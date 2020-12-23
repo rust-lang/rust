@@ -224,7 +224,30 @@ pub fn run() {
         .flatten()
         .collect();
 
-    let all_msgs: Vec<String> = clippy_warnings.iter().map(|warning| warning.to_string()).collect();
+    // generate some stats:
+
+    // count lint type occurrences
+    let mut counter: HashMap<&String, usize> = HashMap::new();
+    clippy_warnings
+        .iter()
+        .for_each(|wrn| *counter.entry(&wrn.linttype).or_insert(0) += 1);
+
+    // collect into a tupled list for sorting
+    let mut stats: Vec<(&&String, &usize)> = counter.iter().map(|(lint, count)| (lint, count)).collect();
+    // sort by number of lint occurences
+    stats.sort_by_key(|(_, count)| *count);
+    // biggest number first
+    stats.reverse();
+
+    let stats_formatted: String = stats
+        .iter()
+        .map(|(lint, count)| format!("{} {}\n", lint, count))
+        .collect::<String>();
+
+    let mut all_msgs: Vec<String> = clippy_warnings.iter().map(|warning| warning.to_string()).collect();
+    all_msgs.sort();
+    all_msgs.push("\n\n\n\nStats\n\n".into());
+    all_msgs.push(stats_formatted);
 
     // save the text into mini-crater/logs.txt
     let text = all_msgs.join("");
