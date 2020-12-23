@@ -132,6 +132,7 @@ pub(crate) const KINDS_SRC: KindsSrc = KindsSrc {
         "RANGE_PAT",
         "LITERAL_PAT",
         "MACRO_PAT",
+        "CONST_BLOCK_PAT",
         // atoms
         "TUPLE_EXPR",
         "ARRAY_EXPR",

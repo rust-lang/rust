@@ -933,7 +933,9 @@ impl ExprCollector<'_> {
                 Pat::Box { inner }
             }
             // FIXME: implement
-            ast::Pat::RangePat(_) | ast::Pat::MacroPat(_) => Pat::Missing,
+            ast::Pat::RangePat(_) | ast::Pat::MacroPat(_) | ast::Pat::ConstBlockPat(_) => {
+                Pat::Missing
+            }
         };
         let ptr = AstPtr::new(&pat);
         self.alloc_pat(pattern, Either::Left(ptr))

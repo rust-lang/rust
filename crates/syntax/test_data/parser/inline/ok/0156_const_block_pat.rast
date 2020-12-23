@@ -1,0 +1,76 @@
+SOURCE_FILE@0..78
+  FN@0..77
+    FN_KW@0..2 "fn"
+    WHITESPACE@2..3 " "
+    NAME@3..7
+      IDENT@3..7 "main"
+    PARAM_LIST@7..9
+      L_PAREN@7..8 "("
+      R_PAREN@8..9 ")"
+    WHITESPACE@9..10 " "
+    BLOCK_EXPR@10..77
+      L_CURLY@10..11 "{"
+      WHITESPACE@11..16 "\n    "
+      LET_STMT@16..38
+        LET_KW@16..19 "let"
+        WHITESPACE@19..20 " "
+        CONST_BLOCK_PAT@20..32
+          CONST_KW@20..25 "const"
+          WHITESPACE@25..26 " "
+          BLOCK_EXPR@26..32
+            L_CURLY@26..27 "{"
+            WHITESPACE@27..28 " "
+            LITERAL@28..30
+              INT_NUMBER@28..30 "15"
+            WHITESPACE@30..31 " "
+            R_CURLY@31..32 "}"
+        WHITESPACE@32..33 " "
+        EQ@33..34 "="
+        WHITESPACE@34..35 " "
+        TUPLE_EXPR@35..37
+          L_PAREN@35..36 "("
+          R_PAREN@36..37 ")"
+        SEMICOLON@37..38 ";"
+      WHITESPACE@38..43 "\n    "
+      LET_STMT@43..75
+        LET_KW@43..46 "let"
+        WHITESPACE@46..47 " "
+        CONST_BLOCK_PAT@47..69
+          CONST_KW@47..52 "const"
+          WHITESPACE@52..53 " "
+          BLOCK_EXPR@53..69
+            L_CURLY@53..54 "{"
+            WHITESPACE@54..55 " "
+            EXPR_STMT@55..61
+              CALL_EXPR@55..60
+                PATH_EXPR@55..58
+                  PATH@55..58
+                    PATH_SEGMENT@55..58
+                      NAME_REF@55..58
+                        IDENT@55..58 "foo"
+                ARG_LIST@58..60
+                  L_PAREN@58..59 "("
+                  R_PAREN@59..60 ")"
+              SEMICOLON@60..61 ";"
+            WHITESPACE@61..62 " "
+            CALL_EXPR@62..67
+              PATH_EXPR@62..65
+                PATH@62..65
+                  PATH_SEGMENT@62..65
+                    NAME_REF@62..65
+                      IDENT@62..65 "bar"
+              ARG_LIST@65..67
+                L_PAREN@65..66 "("
+                R_PAREN@66..67 ")"
+            WHITESPACE@67..68 " "
+            R_CURLY@68..69 "}"
+        WHITESPACE@69..70 " "
+        EQ@70..71 "="
+        WHITESPACE@71..72 " "
+        TUPLE_EXPR@72..74
+          L_PAREN@72..73 "("
+          R_PAREN@73..74 ")"
+        SEMICOLON@74..75 ";"
+      WHITESPACE@75..76 "\n"
+      R_CURLY@76..77 "}"
+  WHITESPACE@77..78 "\n"

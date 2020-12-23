@@ -89,6 +89,7 @@ fn atom_pat(p: &mut Parser, recovery_set: TokenSet) -> Option<CompletedMarker> {
     let m = match p.nth(0) {
         T![box] => box_pat(p),
         T![ref] | T![mut] => ident_pat(p, true),
+        T![const] => const_block_pat(p),
         IDENT => match p.nth(1) {
             // Checks the token after an IDENT to see if a pattern is a path (Struct { .. }) or macro
             // (T![x]).
@@ -385,4 +386,17 @@ fn box_pat(p: &mut Parser) -> CompletedMarker {
     p.bump(T![box]);
     pattern_single(p);
     m.complete(p, BOX_PAT)
+}
+
+// test const_block_pat
+// fn main() {
+//     let const { 15 } = ();
+//     let const { foo(); bar() } = ();
+// }
+fn const_block_pat(p: &mut Parser) -> CompletedMarker {
+    assert!(p.at(T![const]));
+    let m = p.start();
+    p.bump(T![const]);
+    expressions::block_expr(p);
+    m.complete(p, CONST_BLOCK_PAT)
 }
