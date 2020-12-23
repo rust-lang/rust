@@ -170,6 +170,7 @@ mod blocks_in_if_conditions;
 mod booleans;
 mod bytecount;
 mod cargo_common_metadata;
+mod case_sensitive_file_extension_comparisons;
 mod checked_conversions;
 mod cognitive_complexity;
 mod collapsible_if;
@@ -556,6 +557,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &booleans::NONMINIMAL_BOOL,
         &bytecount::NAIVE_BYTECOUNT,
         &cargo_common_metadata::CARGO_COMMON_METADATA,
+        &case_sensitive_file_extension_comparisons::CASE_SENSITIVE_FILE_EXTENSION_COMPARISONS,
         &checked_conversions::CHECKED_CONVERSIONS,
         &cognitive_complexity::COGNITIVE_COMPLEXITY,
         &collapsible_if::COLLAPSIBLE_ELSE_IF,
@@ -1224,6 +1226,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box zero_sized_map_values::ZeroSizedMapValues);
     store.register_late_pass(|| box vec_init_then_push::VecInitThenPush::default());
     store.register_late_pass(move || box types::PtrAsPtr::new(msrv));
+    store.register_late_pass(|| box case_sensitive_file_extension_comparisons::CaseSensitiveFileExtensionComparisons);
 
     store.register_group(true, "clippy::restriction", Some("clippy_restriction"), vec![
         LintId::of(&arithmetic::FLOAT_ARITHMETIC),
@@ -1281,6 +1284,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&await_holding_invalid::AWAIT_HOLDING_LOCK),
         LintId::of(&await_holding_invalid::AWAIT_HOLDING_REFCELL_REF),
         LintId::of(&bit_mask::VERBOSE_BIT_MASK),
+        LintId::of(&case_sensitive_file_extension_comparisons::CASE_SENSITIVE_FILE_EXTENSION_COMPARISONS),
         LintId::of(&checked_conversions::CHECKED_CONVERSIONS),
         LintId::of(&copies::SAME_FUNCTIONS_IN_IF_CONDITION),
         LintId::of(&copy_iterator::COPY_ITERATOR),
