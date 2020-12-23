@@ -9,7 +9,7 @@ use hir_def::{
     adt::StructKind,
     adt::VariantData,
     builtin_type::BuiltinType,
-    expr::{BindingAnnotation, Pat, PatId},
+    expr::{BindingAnnotation, LabelId, Pat, PatId},
     import_map,
     item_tree::ItemTreeNode,
     lang_item::LangItemTarget,
@@ -1202,6 +1202,34 @@ impl Local {
         src.map(|ast| {
             ast.map_left(|it| it.cast().unwrap().to_node(&root)).map_right(|it| it.to_node(&root))
         })
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct Label {
+    pub(crate) parent: DefWithBodyId,
+    pub(crate) label_id: LabelId,
+}
+
+impl Label {
+    pub fn module(self, db: &dyn HirDatabase) -> Module {
+        self.parent(db).module(db)
+    }
+
+    pub fn parent(self, _db: &dyn HirDatabase) -> DefWithBody {
+        self.parent.into()
+    }
+
+    pub fn name(self, db: &dyn HirDatabase) -> Name {
+        let body = db.body(self.parent.into());
+        body[self.label_id].name.clone()
+    }
+
+    pub fn source(self, db: &dyn HirDatabase) -> InFile<ast::Label> {
+        let (_body, source_map) = db.body_with_source_map(self.parent.into());
+        let src = source_map.label_syntax(self.label_id);
+        let root = src.file_syntax(db.upcast());
+        src.map(|ast| ast.to_node(&root))
     }
 }
 

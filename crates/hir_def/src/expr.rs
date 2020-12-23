@@ -30,6 +30,12 @@ pub(crate) fn dummy_expr_id() -> ExprId {
 pub type PatId = Idx<Pat>;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
+pub struct Label {
+    pub name: Name,
+}
+pub type LabelId = Idx<Label>;
+
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Literal {
     String(String),
     ByteString(Vec<u8>),
@@ -52,22 +58,22 @@ pub enum Expr {
     Block {
         statements: Vec<Statement>,
         tail: Option<ExprId>,
-        label: Option<Name>,
+        label: Option<LabelId>,
     },
     Loop {
         body: ExprId,
-        label: Option<Name>,
+        label: Option<LabelId>,
     },
     While {
         condition: ExprId,
         body: ExprId,
-        label: Option<Name>,
+        label: Option<LabelId>,
     },
     For {
         iterable: ExprId,
         pat: PatId,
         body: ExprId,
-        label: Option<Name>,
+        label: Option<LabelId>,
     },
     Call {
         callee: ExprId,

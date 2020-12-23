@@ -143,7 +143,7 @@ impl<'a> InferenceContext<'a> {
                     self.breakables.push(BreakableContext {
                         may_break: false,
                         break_ty: break_ty.clone(),
-                        label: label.clone(),
+                        label: label.map(|label| self.body[label].name.clone()),
                     });
                     let ty = self.infer_block(statements, *tail, &Expectation::has_type(break_ty));
                     let ctxt = self.breakables.pop().expect("breakable stack broken");
@@ -172,7 +172,7 @@ impl<'a> InferenceContext<'a> {
                 self.breakables.push(BreakableContext {
                     may_break: false,
                     break_ty: self.table.new_type_var(),
-                    label: label.clone(),
+                    label: label.map(|label| self.body[label].name.clone()),
                 });
                 self.infer_expr(*body, &Expectation::has_type(Ty::unit()));
 
@@ -191,7 +191,7 @@ impl<'a> InferenceContext<'a> {
                 self.breakables.push(BreakableContext {
                     may_break: false,
                     break_ty: Ty::Unknown,
-                    label: label.clone(),
+                    label: label.map(|label| self.body[label].name.clone()),
                 });
                 // while let is desugared to a match loop, so this is always simple while
                 self.infer_expr(*condition, &Expectation::has_type(Ty::simple(TypeCtor::Bool)));
@@ -207,7 +207,7 @@ impl<'a> InferenceContext<'a> {
                 self.breakables.push(BreakableContext {
                     may_break: false,
                     break_ty: Ty::Unknown,
-                    label: label.clone(),
+                    label: label.map(|label| self.body[label].name.clone()),
                 });
                 let pat_ty =
                     self.resolve_associated_type(iterable_ty, self.resolve_into_iter_item());
