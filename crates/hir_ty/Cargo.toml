@@ -17,9 +17,9 @@ ena = "0.14.0"
 log = "0.4.8"
 rustc-hash = "1.1.0"
 scoped-tls = "1"
-chalk-solve = { version = "0.43", default-features = false }
-chalk-ir = "0.43"
-chalk-recursive = "0.43"
+chalk-solve = { version = "0.45", default-features = false }
+chalk-ir = "0.45"
+chalk-recursive = "0.45"
 
 stdx = { path = "../stdx", version = "0.0.0" }
 hir_def = { path = "../hir_def", version = "0.0.0" }
