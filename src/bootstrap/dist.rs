@@ -2648,3 +2648,72 @@ impl Step for BuildManifest {
         distdir(builder).join(format!("{}-{}.tar.gz", name, self.target.triple))
     }
 }
+
+/// Tarball containing artifacts necessary to reproduce the build of rustc.
+///
+/// Currently this is the PGO profile data.
+///
+/// Should not be considered stable by end users.
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub struct ReproducibleArtifacts {
+    pub target: TargetSelection,
+}
+
+impl Step for ReproducibleArtifacts {
+    type Output = Option<PathBuf>;
+    const DEFAULT: bool = true;
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("reproducible")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(ReproducibleArtifacts { target: run.target });
+    }
+
+    fn run(self, builder: &Builder<'_>) -> Self::Output {
+        let name = pkgname(builder, "reproducible-artifacts");
+        let tmp = tmpdir(builder);
+
+        // Prepare the image.
+        let image = tmp.join("reproducible-artifacts-image");
+        let _ = fs::remove_dir_all(&image);
+
+        if let Some(path) = &builder.config.rust_profile_use {
+            builder.install(std::path::Path::new(path), &image, 0o644);
+        } else {
+            return None;
+        }
+
+        // Prepare the overlay.
+        let overlay = tmp.join("reproducible-artifacts-overlay");
+        let _ = fs::remove_dir_all(&overlay);
+        builder.create_dir(&overlay);
+        builder.create(&overlay.join("version"), &builder.rust_version());
+        for file in &["COPYRIGHT", "LICENSE-APACHE", "LICENSE-MIT", "README.md"] {
+            builder.install(&builder.src.join(file), &overlay, 0o644);
+        }
+
+        // Create the final tarball.
+        let mut cmd = rust_installer(builder);
+        cmd.arg("generate")
+            .arg("--product-name=Rust")
+            .arg("--rel-manifest-dir=rustlib")
+            .arg("--success-message=reproducible-artifacts installed.")
+            .arg("--image-dir")
+            .arg(&image)
+            .arg("--work-dir")
+            .arg(&tmpdir(builder))
+            .arg("--output-dir")
+            .arg(&distdir(builder))
+            .arg("--non-installed-overlay")
+            .arg(&overlay)
+            .arg(format!("--package-name={}-{}", name, self.target.triple))
+            .arg("--legacy-manifest-dirs=rustlib,cargo")
+            .arg("--component-name=reproducible-artifacts");
+
+        builder.run(&mut cmd);
+        Some(distdir(builder).join(format!("{}-{}.tar.gz", name, self.target.triple)))
+    }
+}

@@ -134,6 +134,8 @@ pub struct Config {
     pub rust_thin_lto_import_instr_limit: Option<u32>,
     pub rust_remap_debuginfo: bool,
     pub rust_new_symbol_mangling: bool,
+    pub rust_profile_use: Option<String>,
+    pub rust_profile_generate: Option<String>,
 
     pub build: TargetSelection,
     pub hosts: Vec<TargetSelection>,
@@ -496,6 +498,8 @@ struct Rust {
     llvm_libunwind: Option<String>,
     control_flow_guard: Option<bool>,
     new_symbol_mangling: Option<bool>,
+    profile_generate: Option<String>,
+    profile_use: Option<String>,
 }
 
 /// TOML representation of how each build target is configured.
@@ -874,6 +878,11 @@ impl Config {
 
             config.rust_codegen_units = rust.codegen_units.map(threads_from_config);
             config.rust_codegen_units_std = rust.codegen_units_std.map(threads_from_config);
+            config.rust_profile_use = flags.rust_profile_use.or(rust.profile_use);
+            config.rust_profile_generate = flags.rust_profile_generate.or(rust.profile_generate);
+        } else {
+            config.rust_profile_use = flags.rust_profile_use;
+            config.rust_profile_generate = flags.rust_profile_generate;
         }
 
         if let Some(t) = toml.target {
