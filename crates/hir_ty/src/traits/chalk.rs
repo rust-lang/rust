@@ -56,8 +56,13 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
     fn adt_datum(&self, struct_id: AdtId) -> Arc<StructDatum> {
         self.db.struct_datum(self.krate, struct_id)
     }
-    fn adt_repr(&self, _struct_id: AdtId) -> rust_ir::AdtRepr {
-        rust_ir::AdtRepr { repr_c: false, repr_packed: false }
+    fn adt_repr(&self, _struct_id: AdtId) -> Arc<rust_ir::AdtRepr<Interner>> {
+        // FIXME: keep track of these
+        Arc::new(rust_ir::AdtRepr { c: false, packed: false, int: None })
+    }
+    fn discriminant_type(&self, _ty: chalk_ir::Ty<Interner>) -> chalk_ir::Ty<Interner> {
+        // FIXME: keep track of this
+        chalk_ir::TyKind::Scalar(chalk_ir::Scalar::Uint(chalk_ir::UintTy::U32)).intern(&Interner)
     }
     fn impl_datum(&self, impl_id: ImplId) -> Arc<ImplDatum> {
         self.db.impl_datum(self.krate, impl_id)
@@ -457,6 +462,7 @@ fn well_known_trait_from_lang_attr(name: &str) -> Option<WellKnownTrait> {
         "fn" => WellKnownTrait::Fn,
         "unsize" => WellKnownTrait::Unsize,
         "coerce_unsized" => WellKnownTrait::CoerceUnsized,
+        "discriminant_kind" => WellKnownTrait::DiscriminantKind,
         _ => return None,
     })
 }
@@ -473,6 +479,7 @@ fn lang_attr_from_well_known_trait(attr: WellKnownTrait) -> &'static str {
         WellKnownTrait::Unsize => "unsize",
         WellKnownTrait::Unpin => "unpin",
         WellKnownTrait::CoerceUnsized => "coerce_unsized",
+        WellKnownTrait::DiscriminantKind => "discriminant_kind",
     }
 }
 
