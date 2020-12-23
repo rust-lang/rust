@@ -132,7 +132,7 @@ impl ProcMacroClient {
     // * [b'r',b'u',b's',b't',0,0,0,5] is the first 8 bytes
     // * ff060000 734e6150 is followed, it's the snappy format magic bytes,
     //   means bytes from here(including this sequence) are compressed in
-    //   snappy compression format. Version info is here inside, so decompress
+    //   snappy compression format. Version info is inside here, so decompress
     //   this.
     // The bytes you get after decompressing the snappy format portion has
     // following layout:
