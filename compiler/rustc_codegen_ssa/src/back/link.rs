@@ -2,7 +2,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_fs_util::fix_windows_verbatim_for_gcc;
 use rustc_hir::def_id::CrateNum;
-use rustc_middle::middle::cstore::{EncodedMetadata, LibSource, NativeLib};
+use rustc_middle::middle::cstore::{EncodedMetadata, LibSource};
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_session::config::{self, CFGuard, CrateType, DebugInfo};
 use rustc_session::config::{OutputFilenames, OutputType, PrintRequest, SanitizerSet};
@@ -22,7 +22,8 @@ use super::command::Command;
 use super::linker::{self, Linker};
 use super::rpath::{self, RPathConfig};
 use crate::{
-    looks_like_rust_object_file, CodegenResults, CompiledModule, CrateInfo, METADATA_FILENAME,
+    looks_like_rust_object_file, CodegenResults, CompiledModule, CrateInfo, NativeLib,
+    METADATA_FILENAME,
 };
 
 use cc::windows_registry;
