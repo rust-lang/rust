@@ -6,8 +6,8 @@
 // FIXME: this badly needs rename/rewrite (matklad, 2020-02-06).
 
 use hir::{
-    db::HirDatabase, Crate, Field, HasVisibility, Impl, LifetimeParam, Local, MacroDef, Module,
-    ModuleDef, Name, PathResolution, Semantics, TypeParam, Visibility,
+    db::HirDatabase, Crate, Field, HasVisibility, Impl, Label, LifetimeParam, Local, MacroDef,
+    Module, ModuleDef, Name, PathResolution, Semantics, TypeParam, Visibility,
 };
 use syntax::{
     ast::{self, AstNode},
@@ -26,7 +26,7 @@ pub enum Definition {
     Local(Local),
     TypeParam(TypeParam),
     LifetimeParam(LifetimeParam),
-    // FIXME: Label
+    Label(Label),
 }
 
 impl Definition {
@@ -39,6 +39,7 @@ impl Definition {
             Definition::Local(it) => Some(it.module(db)),
             Definition::TypeParam(it) => Some(it.module(db)),
             Definition::LifetimeParam(it) => Some(it.module(db)),
+            Definition::Label(it) => Some(it.module(db)),
         }
     }
 
@@ -51,6 +52,7 @@ impl Definition {
             Definition::Local(_) => None,
             Definition::TypeParam(_) => None,
             Definition::LifetimeParam(_) => None,
+            Definition::Label(_) => None,
         }
     }
 
@@ -77,6 +79,7 @@ impl Definition {
             Definition::Local(it) => it.name(db)?,
             Definition::TypeParam(it) => it.name(db),
             Definition::LifetimeParam(it) => it.name(db),
+            Definition::Label(it) => it.name(db),
         };
         Some(name)
     }
@@ -248,7 +251,10 @@ impl NameClass {
                     let def = sema.to_def(&it)?;
                     Some(NameClass::Definition(Definition::LifetimeParam(def)))
                 },
-                ast::Label(_it) => None,
+                ast::Label(it) => {
+                    let def = sema.to_def(&it)?;
+                    Some(NameClass::Definition(Definition::Label(def)))
+                },
                 _ => None,
             }
         }
@@ -370,6 +376,9 @@ impl NameRefClass {
         let _p = profile::span("classify_lifetime_ref").detail(|| lifetime.to_string());
         let parent = lifetime.syntax().parent()?;
         match parent.kind() {
+            SyntaxKind::BREAK_EXPR | SyntaxKind::CONTINUE_EXPR => {
+                sema.resolve_label(lifetime).map(Definition::Label).map(NameRefClass::Definition)
+            }
             SyntaxKind::LIFETIME_ARG
             | SyntaxKind::SELF_PARAM
             | SyntaxKind::TYPE_BOUND
@@ -387,7 +396,6 @@ impl NameRefClass {
                     .map(Definition::LifetimeParam)
                     .map(NameRefClass::Definition)
             }
-            SyntaxKind::BREAK_EXPR | SyntaxKind::CONTINUE_EXPR => None,
             _ => None,
         }
     }

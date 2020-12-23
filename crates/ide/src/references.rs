@@ -130,7 +130,7 @@ pub(crate) fn find_all_refs(
                 kind = ReferenceKind::FieldShorthandForLocal;
             }
         }
-    } else if let Definition::LifetimeParam(_) = def {
+    } else if matches!(def, Definition::LifetimeParam(_) | Definition::Label(_)) {
         kind = ReferenceKind::Lifetime;
     };
 
@@ -1119,6 +1119,28 @@ fn main() {
                 a Local FileId(0) 59..60 Other
 
                 FileId(0) 80..81 Other Read
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_find_labels() {
+        check(
+            r#"
+fn foo<'a>() -> &'a () {
+    'a: loop {
+        'b: loop {
+            continue 'a<|>;
+        }
+        break 'a;
+    }
+}
+"#,
+            expect![[r#"
+                'a Label FileId(0) 29..32 29..31 Lifetime
+
+                FileId(0) 80..82 Lifetime
+                FileId(0) 108..110 Lifetime
             "#]],
         );
     }

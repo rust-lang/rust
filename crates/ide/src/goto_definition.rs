@@ -1105,4 +1105,19 @@ fn foo<T>() where T: for<'a> Foo<&'a<|> (u8, u16)>, {}
 "#,
         );
     }
+
+    #[test]
+    fn goto_label() {
+        check(
+            r#"
+fn foo<'foo>(_: &'foo ()) {
+    'foo: {
+  //^^^^
+        'bar: loop {
+            break 'foo<|>;
+        }
+    }
+}"#,
+        )
+    }
 }

@@ -1523,4 +1523,29 @@ fn main() {
 }"#,
         );
     }
+
+    #[test]
+    fn test_rename_label() {
+        check(
+            "'foo",
+            r#"
+fn foo<'a>() -> &'a () {
+    'a: {
+        'b: loop {
+            break 'a<|>;
+        }
+    }
+}
+"#,
+            r#"
+fn foo<'a>() -> &'a () {
+    'foo: {
+        'b: loop {
+            break 'foo;
+        }
+    }
+}
+"#,
+        )
+    }
 }

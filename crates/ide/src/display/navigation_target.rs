@@ -5,7 +5,7 @@ use std::fmt;
 use either::Either;
 use hir::{AssocItem, Documentation, FieldSource, HasAttrs, HasSource, InFile, ModuleSource};
 use ide_db::{
-    base_db::{FileId, SourceDatabase},
+    base_db::{FileId, FileRange, SourceDatabase},
     symbol_index::FileSymbolKind,
 };
 use ide_db::{defs::Definition, RootDatabase};
@@ -28,6 +28,7 @@ pub enum SymbolKind {
     ValueParam,
     SelfParam,
     Local,
+    Label,
     Function,
     Const,
     Static,
@@ -223,6 +224,7 @@ impl TryToNav for Definition {
             Definition::Local(it) => Some(it.to_nav(db)),
             Definition::TypeParam(it) => Some(it.to_nav(db)),
             Definition::LifetimeParam(it) => Some(it.to_nav(db)),
+            Definition::Label(it) => Some(it.to_nav(db)),
         }
     }
 }
@@ -414,6 +416,27 @@ impl ToNav for hir::Local {
             kind: Some(kind),
             full_range: full_range.range,
             focus_range: None,
+            container_name: None,
+            description: None,
+            docs: None,
+        }
+    }
+}
+
+impl ToNav for hir::Label {
+    fn to_nav(&self, db: &RootDatabase) -> NavigationTarget {
+        let src = self.source(db);
+        let node = src.value.syntax();
+        let FileRange { file_id, range } = src.with_value(node).original_file_range(db);
+        let focus_range =
+            src.value.lifetime().and_then(|lt| lt.lifetime_ident_token()).map(|lt| lt.text_range());
+        let name = self.name(db).to_string().into();
+        NavigationTarget {
+            file_id,
+            name,
+            kind: Some(SymbolKind::Label),
+            full_range: range,
+            focus_range,
             container_name: None,
             description: None,
             docs: None,

@@ -193,7 +193,8 @@ fn rewrite_intra_doc_link(
         Definition::SelfType(_)
         | Definition::Local(_)
         | Definition::TypeParam(_)
-        | Definition::LifetimeParam(_) => return None,
+        | Definition::LifetimeParam(_)
+        | Definition::Label(_) => return None,
     }?;
     let krate = resolved.module(db)?.krate();
     let canonical_path = resolved.canonical_path(db)?;
