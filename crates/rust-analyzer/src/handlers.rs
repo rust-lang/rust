@@ -8,8 +8,9 @@ use std::{
 };
 
 use ide::{
-    CompletionResolveCapability, FileId, FilePosition, FileRange, HoverAction, HoverGotoTypeData,
-    NavigationTarget, Query, RangeInfo, Runnable, RunnableKind, SearchScope, SymbolKind, TextEdit,
+    AssistConfig, CompletionResolveCapability, FileId, FilePosition, FileRange, HoverAction,
+    HoverGotoTypeData, NavigationTarget, Query, RangeInfo, Runnable, RunnableKind, SearchScope,
+    SymbolKind, TextEdit,
 };
 use itertools::Itertools;
 use lsp_server::ErrorCode;
@@ -882,11 +883,14 @@ pub(crate) fn handle_code_action(
     let range = from_proto::text_range(&line_index, params.range);
     let frange = FileRange { file_id, range };
 
-    snap.config.assist.allowed = params
-        .clone()
-        .context
-        .only
-        .map(|it| it.into_iter().filter_map(from_proto::assist_kind).collect());
+    let assists_config = AssistConfig {
+        allowed: params
+            .clone()
+            .context
+            .only
+            .map(|it| it.into_iter().filter_map(from_proto::assist_kind).collect()),
+        ..snap.config.assist
+    };
 
     let mut res: Vec<lsp_ext::CodeAction> = Vec::new();
 
@@ -894,12 +898,12 @@ pub(crate) fn handle_code_action(
 
     if snap.config.client_caps.code_action_resolve {
         for (index, assist) in
-            snap.analysis.unresolved_assists(&snap.config.assist, frange)?.into_iter().enumerate()
+            snap.analysis.unresolved_assists(&assists_config, frange)?.into_iter().enumerate()
         {
             res.push(to_proto::unresolved_code_action(&snap, params.clone(), assist, index)?);
         }
     } else {
-        for assist in snap.analysis.resolved_assists(&snap.config.assist, frange)?.into_iter() {
+        for assist in snap.analysis.resolved_assists(&assists_config, frange)?.into_iter() {
             res.push(to_proto::resolved_code_action(&snap, assist)?);
         }
     }
