@@ -218,11 +218,6 @@ impl Clean<ExternalCrate> for CrateNum {
 
 impl Clean<Item> for doctree::Module<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> Item {
-        // maintain a stack of mod ids, for doc comment path resolution
-        // but we also need to resolve the module's own docs based on whether its docs were written
-        // inside or outside the module, so check for that
-        let attrs = self.attrs.clean(cx);
-
         let mut items: Vec<Item> = vec![];
         items.extend(self.imports.iter().flat_map(|x| x.clean(cx)));
         items.extend(self.foreigns.iter().map(|x| x.clean(cx)));
@@ -251,7 +246,7 @@ impl Clean<Item> for doctree::Module<'_> {
             ModuleItem(Module { is_crate: self.is_crate, items }),
             cx,
         );
-        Item { attrs, source: span.clean(cx), ..what_rustc_thinks }
+        Item { source: span.clean(cx), ..what_rustc_thinks }
     }
 }
 

@@ -1,7 +1,6 @@
 //! The Rust AST Visitor. Extracts useful information and massages it into a form
 //! usable for `clean`.
 
-use rustc_ast as ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -64,7 +63,6 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
     crate fn visit(mut self, krate: &'tcx hir::Crate<'_>) -> Module<'tcx> {
         let mut module = self.visit_mod_contents(
             krate.item.span,
-            krate.item.attrs,
             &Spanned { span: rustc_span::DUMMY_SP, node: hir::VisibilityKind::Public },
             hir::CRATE_HIR_ID,
             &krate.item.module,
@@ -82,13 +80,12 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
     fn visit_mod_contents(
         &mut self,
         span: Span,
-        attrs: &'tcx [ast::Attribute],
         vis: &'tcx hir::Visibility<'_>,
         id: hir::HirId,
         m: &'tcx hir::Mod<'tcx>,
         name: Option<Symbol>,
     ) -> Module<'tcx> {
-        let mut om = Module::new(name, attrs);
+        let mut om = Module::new(name);
         om.where_outer = span;
         om.where_inner = m.inner;
         om.id = id;
@@ -292,7 +289,6 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             hir::ItemKind::Mod(ref m) => {
                 om.mods.push(self.visit_mod_contents(
                     item.span,
-                    &item.attrs,
                     &item.vis,
                     item.hir_id,
                     m,
