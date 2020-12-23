@@ -65,6 +65,8 @@ byteorder = { version = "1", features = ['default', 'std'] }
 curl-sys = { version = "0.4.13", features = ["http2", "libnghttp2-sys"], optional = true }
 crossbeam-utils = { version = "0.7.2", features = ["nightly"] }
 libc = { version = "0.2.79", features = ["align"] }
+# Ensure default features of libz-sys, which are disabled in some scenarios.
+libz-sys = { version = "1.1.2" }
 proc-macro2 = { version = "1", features = ["default"] }
 quote = { version = "1", features = ["default"] }
 serde = { version = "1.0.82", features = ['derive'] }

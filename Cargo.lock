@@ -3435,6 +3435,7 @@ dependencies = [
  "byteorder",
  "crossbeam-utils 0.7.2",
  "libc",
+ "libz-sys",
  "proc-macro2",
  "quote",
  "serde",
