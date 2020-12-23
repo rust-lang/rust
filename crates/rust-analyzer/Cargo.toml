@@ -28,6 +28,7 @@ oorandom = "11.1.2"
 rustc-hash = "1.1.0"
 serde = { version = "1.0.106", features = ["derive"] }
 serde_json = { version = "1.0.48", features = ["preserve_order"] }
+serde_path_to_error = "0.1"
 threadpool = "1.7.1"
 rayon = "1.5"
 mimalloc = { version = "0.1.19", default-features = false, optional = true }
