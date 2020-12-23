@@ -248,7 +248,7 @@ where
         let (map, dormant_map) = DormantMutRef::new(self);
         let root_node = Self::ensure_is_owned(&mut map.root).borrow_mut();
         match search::search_tree::<marker::Mut<'_>, K, (), K>(root_node, &key) {
-            Found(handle) => Some(mem::replace(handle.into_key_mut(), key)),
+            Found(mut kv) => Some(mem::replace(kv.key_mut(), key)),
             GoDown(handle) => {
                 VacantEntry { key, handle, dormant_map, _marker: PhantomData }.insert(());
                 None
