@@ -91,18 +91,18 @@ mod tests;
             extract_module_to_file,
             r#"
 //- /main.rs
-mod submodule;
-//- /submodule.rs
+mod submod;
+//- /submod.rs
 mod inner<|> {
     fn f() {}
 }
 fn g() {}
 "#,
             r#"
-//- /submodule.rs
+//- /submod.rs
 mod inner;
 fn g() {}
-//- /submodule/inner.rs
+//- /submod/inner.rs
 fn f() {}
 "#,
         );

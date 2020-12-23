@@ -79,7 +79,7 @@ impl ModDir {
         for candidate in candidate_files.iter() {
             let path = AnchoredPath { anchor: file_id, path: candidate.as_str() };
             if let Some(file_id) = db.resolve_path(path) {
-                let is_mod_rs = candidate.ends_with("mod.rs");
+                let is_mod_rs = candidate.ends_with("/mod.rs");
 
                 let (dir_path, root_non_dir_owner) = if is_mod_rs || attr_path.is_some() {
                     (DirPath::empty(), false)
