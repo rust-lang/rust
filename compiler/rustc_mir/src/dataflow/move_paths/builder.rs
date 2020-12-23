@@ -1,4 +1,4 @@
-use rustc_index::vec::IndexVec;
+use rustc_index::{bit_set::GrowableBitSet, vec::IndexVec};
 use rustc_middle::mir::tcx::RvalueInitializationState;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, TyCtxt};
@@ -63,7 +63,7 @@ impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
     fn new_move_path(
         move_paths: &mut IndexVec<MovePathIndex, MovePath<'tcx>>,
         path_map: &mut IndexVec<MovePathIndex, SmallVec<[MoveOutIndex; 4]>>,
-        init_path_map: &mut IndexVec<MovePathIndex, SmallVec<[InitIndex; 4]>>,
+        init_path_map: &mut IndexVec<MovePathIndex, GrowableBitSet<InitIndex>>,
         parent: Option<MovePathIndex>,
         place: Place<'tcx>,
     ) -> MovePathIndex {
@@ -78,7 +78,7 @@ impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
         let path_map_ent = path_map.push(smallvec![]);
         assert_eq!(path_map_ent, move_path);
 
-        let init_path_map_ent = init_path_map.push(smallvec![]);
+        let init_path_map_ent = init_path_map.push(GrowableBitSet::with_capacity(4));
         assert_eq!(init_path_map_ent, move_path);
 
         move_path
@@ -256,7 +256,7 @@ impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
 
             debug!("gather_args: adding init {:?} of {:?} for argument {:?}", init, path, arg);
 
-            self.data.init_path_map[path].push(init);
+            self.data.init_path_map[path].insert(init);
         }
     }
 
@@ -542,7 +542,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                 self.loc, place, init, path
             );
 
-            self.builder.data.init_path_map[path].push(init);
+            self.builder.data.init_path_map[path].insert(init);
             self.builder.data.init_loc_map[self.loc].push(init);
         }
     }

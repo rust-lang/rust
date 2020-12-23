@@ -712,6 +712,18 @@ impl<T: Idx> GrowableBitSet<T> {
         let (word_index, mask) = word_index_and_mask(elem);
         if let Some(word) = self.bit_set.words.get(word_index) { (word & mask) != 0 } else { false }
     }
+
+    /// Count the number of set bits in the set.
+    #[inline]
+    pub fn count(&self) -> usize {
+        self.bit_set.count()
+    }
+
+    /// Iterates over the indices of set bits in a sorted order.
+    #[inline]
+    pub fn iter(&self) -> BitIter<'_, T> {
+        self.bit_set.iter()
+    }
 }
 
 /// A fixed-size 2D bit matrix type with a dense representation.

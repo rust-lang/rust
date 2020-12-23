@@ -1,6 +1,9 @@
 use core::slice::Iter;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_index::vec::{Enumerated, IndexVec};
+use rustc_index::{
+    bit_set::GrowableBitSet,
+    vec::{Enumerated, IndexVec},
+};
 use rustc_middle::mir::*;
 use rustc_middle::ty::{ParamEnv, Ty, TyCtxt};
 use rustc_span::Span;
@@ -177,7 +180,7 @@ pub struct MoveData<'tcx> {
     /// Each Location `l` is mapped to the Inits that are effects
     /// of executing the code at `l`.
     pub init_loc_map: LocationMap<SmallVec<[InitIndex; 4]>>,
-    pub init_path_map: IndexVec<MovePathIndex, SmallVec<[InitIndex; 4]>>,
+    pub init_path_map: IndexVec<MovePathIndex, GrowableBitSet<InitIndex>>,
 }
 
 pub trait HasMoveData<'tcx> {

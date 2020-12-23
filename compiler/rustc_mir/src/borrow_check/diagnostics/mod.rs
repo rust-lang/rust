@@ -436,8 +436,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             LookupResult::Exact(mpi) | LookupResult::Parent(Some(mpi)) => {
                 debug!("borrowed_content_source: mpi={:?}", mpi);
 
-                for i in &self.move_data.init_path_map[mpi] {
-                    let init = &self.move_data.inits[*i];
+                for i in self.move_data.init_path_map[mpi].iter() {
+                    let init = &self.move_data.inits[i];
                     debug!("borrowed_content_source: init={:?}", init);
                     // We're only interested in statements that initialized a value, not the
                     // initializations from arguments.

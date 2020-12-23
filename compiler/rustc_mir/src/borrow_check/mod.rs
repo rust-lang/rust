@@ -1410,8 +1410,11 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         // capture comes from and mark it as being used as mut.
 
                         let temp_mpi = self.move_data.rev_lookup.find_local(local);
-                        let init = if let [init_index] = *self.move_data.init_path_map[temp_mpi] {
-                            &self.move_data.inits[init_index]
+                        let mut iter = self.move_data.init_path_map[temp_mpi].iter();
+                        let first = iter.next();
+                        let next = iter.next();
+                        let init = if first.is_some() && next.is_none() {
+                            &self.move_data.inits[first.unwrap()]
                         } else {
                             bug!("temporary should be initialized exactly once")
                         };
@@ -2114,11 +2117,22 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     ) -> Option<InitIndex> {
         let mpi = self.move_data.rev_lookup.find_local(local);
         let ii = &self.move_data.init_path_map[mpi];
-        for &index in ii {
-            if flow_state.ever_inits.contains(index) {
-                return Some(index);
+        let ii_count = ii.count();
+        let ever_inits = flow_state.ever_inits.count();
+        if ii_count < ever_inits {
+            for index in ii.iter() {
+                if flow_state.ever_inits.contains(index) {
+                    return Some(index);
+                }
+            }
+        } else {
+            for index in flow_state.ever_inits.iter() {
+                if ii.contains(index) {
+                    return Some(index);
+                }
             }
         }
+
         None
     }
 

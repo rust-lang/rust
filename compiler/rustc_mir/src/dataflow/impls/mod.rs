@@ -632,7 +632,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for EverInitializedPlaces<'_, 'tcx> {
                 "stmt {:?} at loc {:?} clears the ever initialized status of {:?}",
                 stmt, location, &init_path_map[move_path_index]
             );
-            trans.kill_all(init_path_map[move_path_index].iter().copied());
+            trans.kill_all(init_path_map[move_path_index].iter());
         }
     }
 
