@@ -1,7 +1,5 @@
 //! FIXME: write short doc here
 
-use expressions::block_expr;
-
 use super::*;
 
 pub(super) const PATTERN_FIRST: TokenSet =
@@ -399,6 +397,6 @@ fn const_block_pat(p: &mut Parser) -> CompletedMarker {
     assert!(p.at(T![const]));
     let m = p.start();
     p.bump(T![const]);
-    block_expr(p);
+    expressions::block_expr(p);
     m.complete(p, CONST_BLOCK_PAT)
 }
