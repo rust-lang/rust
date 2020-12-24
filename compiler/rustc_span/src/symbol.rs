@@ -920,6 +920,7 @@ symbols! {
         rust,
         rust_2015_preview,
         rust_2018_preview,
+        rust_2021_preview,
         rust_begin_unwind,
         rust_eh_catch_typeinfo,
         rust_eh_personality,
