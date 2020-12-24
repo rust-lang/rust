@@ -946,12 +946,12 @@ pub(crate) fn handle_code_action(
 
     if snap.config.client_caps.code_action_resolve {
         for (index, assist) in
-            snap.analysis.unresolved_assists(&assists_config, frange)?.into_iter().enumerate()
+            snap.analysis.assists(&assists_config, frange)?.into_iter().enumerate()
         {
             res.push(to_proto::unresolved_code_action(&snap, params.clone(), assist, index)?);
         }
     } else {
-        for assist in snap.analysis.resolved_assists(&assists_config, frange)?.into_iter() {
+        for assist in snap.analysis.resolve_assists(&assists_config, frange)?.into_iter() {
             res.push(to_proto::resolved_code_action(&snap, assist)?);
         }
     }
@@ -1014,7 +1014,7 @@ pub(crate) fn handle_code_action_resolve(
         .only
         .map(|it| it.into_iter().filter_map(from_proto::assist_kind).collect());
 
-    let assists = snap.analysis.resolved_assists(&snap.config.assist, frange)?;
+    let assists = snap.analysis.resolve_assists(&snap.config.assist, frange)?;
     let (id, index) = split_once(&params.id, ':').unwrap();
     let index = index.parse::<usize>().unwrap();
     let assist = &assists[index];
