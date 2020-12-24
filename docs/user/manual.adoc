@@ -218,7 +218,7 @@ The are several LSP client implementations for vim or neovim:
    * automatically install and upgrade stable/nightly releases
    * same configurations as VSCode extension, `rust-analyzer.serverPath`, `rust-analyzer.cargo.features` etc.
    * same commands too, `rust-analyzer.analyzerStatus`, `rust-analyzer.ssr` etc.
-   * inlay hints for method chaining support, _Neovim Only_
+   * inlay hints for variables and method chaining, _Neovim Only_
    * semantic highlighting is not implemented yet
 
 ==== LanguageClient-neovim
