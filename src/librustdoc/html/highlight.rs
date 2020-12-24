@@ -11,6 +11,7 @@ use std::fmt::{Display, Write};
 use std::iter::Peekable;
 
 use rustc_lexer::{LiteralKind, TokenKind};
+use rustc_span::edition::Edition;
 use rustc_span::symbol::Ident;
 use rustc_span::with_default_session_globals;
 
@@ -19,16 +20,20 @@ crate fn render_with_highlighting(
     src: String,
     class: Option<&str>,
     playground_button: Option<&str>,
-    tooltip: Option<(&str, &str)>,
+    tooltip: Option<(Option<Edition>, &str)>,
 ) -> String {
     debug!("highlighting: ================\n{}\n==============", src);
     let mut out = String::with_capacity(src.len());
-    if let Some((tooltip, class)) = tooltip {
+    if let Some((edition_info, class)) = tooltip {
         write!(
             out,
-            "<div class='information'><div class='tooltip {}'>ⓘ<span \
-                  class='tooltiptext'>{}</span></div></div>",
-            class, tooltip
+            "<div class='information'><div class='tooltip {}'{}>ⓘ</div></div>",
+            class,
+            if let Some(edition_info) = edition_info {
+                format!(" data-edition=\"{}\"", edition_info)
+            } else {
+                String::new()
+            },
         )
         .unwrap();
     }
