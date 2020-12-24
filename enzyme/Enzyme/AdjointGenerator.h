@@ -33,6 +33,18 @@
 #include "GradientUtils.h"
 #include "LibraryFuncs.h"
 
+llvm::Value* MPI_TYPE_SIZE(llvm::Value* DT, IRBuilder<>& B) {
+  Type* intType = Type::getIntNTy(DT->getContext(), sizeof(int)*8);
+  Type* pargs[] = {Type::getInt8PtrTy(DT->getContext()), PointerType::getUnqual(intType)};
+  auto FT = FunctionType::get(intType, pargs, false);
+  auto alloc = B.CreateAlloca(intType);
+  llvm::Value* args[] = {DT, alloc};
+  if (DT->getType() != pargs[0])
+    args[0] = B.CreateBitCast(args[0], pargs[0]);
+  B.CreateCall(B.GetInsertBlock()->getParent()->getParent()->getOrInsertFunction("MPI_Type_size", FT), args);
+  return B.CreateLoad(alloc);
+}
+
 #define DEBUG_TYPE "enzyme"
 using namespace llvm;
 
@@ -1038,7 +1050,7 @@ public:
                          Intrinsic::ID intrinsic, unsigned dstalign,
                          unsigned srcalign, unsigned offset, Value *orig_dst,
                          Value *orig_src, Value *length, Value *isVolatile,
-                         llvm::MemTransferInst &MTI) {
+                         llvm::CallInst *MTI, bool allowForward=true) {
     // TODO offset
     if (secretty) {
       // no change to forward pass if represents floats
@@ -1108,7 +1120,7 @@ public:
 
       // if represents pointer or integer type then only need to modify forward
       // pass with the copy
-      if (Mode == DerivativeMode::Forward || Mode == DerivativeMode::Both) {
+      if (allowForward && (Mode == DerivativeMode::Forward || Mode == DerivativeMode::Both)) {
 
         // It is questionable how the following case would even occur, but if
         // the dst is constant, we shouldn't do anything extra
@@ -1117,7 +1129,7 @@ public:
         }
 
         SmallVector<Value *, 4> args;
-        IRBuilder<> BuilderZ(gutils->getNewFromOriginal(&MTI));
+        IRBuilder<> BuilderZ(gutils->getNewFromOriginal(MTI));
 
         // If src is inactive, then we should copy from the regular pointer
         // (i.e. suppose we are copying constant memory representing dimensions
@@ -1154,9 +1166,9 @@ public:
         auto memtransIntr = Intrinsic::getDeclaration(
             gutils->newFunc->getParent(), intrinsic, tys);
         auto cal = BuilderZ.CreateCall(memtransIntr, args);
-        cal->setAttributes(MTI.getAttributes());
+        cal->setAttributes(MTI->getAttributes());
         cal->setCallingConv(memtransIntr->getCallingConv());
-        cal->setTailCallKind(MTI.getTailCallKind());
+        cal->setTailCallKind(MTI->getTailCallKind());
 
         if (dstalign != 0) {
 #if LLVM_VERSION_MAJOR >= 10
@@ -1306,7 +1318,7 @@ public:
       subTransferHelper(dt.isFloat(), MTI.getParent(), MTI.getIntrinsicID(),
                         subdstalign, subsrcalign, /*offset*/ start, orig_op0,
                         orig_op1, /*length*/ length, /*volatile*/ isVolatile,
-                        MTI);
+                        &MTI);
 
       if (nextStart == size)
         break;
@@ -2283,6 +2295,205 @@ public:
         fcall->setCallingConv(fini->getCallingConv());
         return;
       }
+    }
+
+    // MPI send / recv can only send float/integers
+    if (called && called->getName() == "MPI_Send") {
+      if (Mode == DerivativeMode::Reverse || Mode == DerivativeMode::Both) {
+        IRBuilder<> Builder2(call.getParent());
+        getReverseBuilder(Builder2);
+        Value* shadow = gutils->invertPointerM(call.getOperand(0), Builder2);
+        auto statusArg = called->getParent()->getFunction("MPI_Recv")->arg_end();
+        statusArg--;
+        Value *args[] = {
+          /*buf*/NULL,
+          /*count*/lookup(gutils->getNewFromOriginal(call.getOperand(1)), Builder2),
+          /*datatype*/lookup(gutils->getNewFromOriginal(call.getOperand(2)), Builder2),
+          /*src*/lookup(gutils->getNewFromOriginal(call.getOperand(3)), Builder2),
+          /*tag*/lookup(gutils->getNewFromOriginal(call.getOperand(4)), Builder2),
+          /*comm*/lookup(gutils->getNewFromOriginal(call.getOperand(5)), Builder2),
+          /*status*/Builder2.CreateAlloca(cast<PointerType>(statusArg->getType())->getElementType())
+        };
+
+        Value* tysize = MPI_TYPE_SIZE(args[2], Builder2);
+
+        auto len_arg = Builder2.CreateZExtOrTrunc(
+            args[1],
+            Type::getInt64Ty(call.getContext()));
+        len_arg = Builder2.CreateMul(len_arg, Builder2.CreateZExtOrTrunc(tysize, Type::getInt64Ty(call.getContext())), "", true, true);
+
+        Value* firstallocation = CallInst::CreateMalloc(
+            Builder2.GetInsertBlock(), len_arg->getType(),
+            cast<PointerType>(shadow->getType())->getElementType(), ConstantInt::get(
+        Type::getInt64Ty(len_arg->getContext()), 1), len_arg, nullptr, "mpirecv_malloccache");
+        if (cast<Instruction>(firstallocation)->getParent() == nullptr) {
+          Builder2.Insert(cast<Instruction>(firstallocation));
+        }
+        args[0] = firstallocation;
+
+        Builder2.SetInsertPoint(Builder2.GetInsertBlock());
+        auto fcall = Builder2.CreateCall(called->getParent()->getFunction("MPI_Recv"), args);
+        fcall->setCallingConv(call.getCallingConv());
+
+
+        size_t size = 1;
+        if (auto ci = dyn_cast<ConstantInt>(len_arg)) {
+          size = ci->getLimitedValue();
+        }
+        auto vd = TR.query(call.getOperand(0)).Data0().AtMost(size);
+        if (!vd.isKnownPastPointer()) {
+          if (looseTypeAnalysis) {
+            if (isa<CastInst>(call.getOperand(0)) &&
+                cast<CastInst>(call.getOperand(0))->getSrcTy()->isPointerTy() &&
+                cast<PointerType>(cast<CastInst>(call.getOperand(0))->getSrcTy())
+                    ->getElementType()
+                    ->isFPOrFPVectorTy()) {
+              vd = TypeTree(ConcreteType(cast<PointerType>(
+                                            cast<CastInst>(call.getOperand(0))->getSrcTy())
+                                            ->getElementType()
+                                            ->getScalarType()))
+                      .Only(0);
+              goto known;
+            }
+          }
+          EmitFailure("CannotDeduceType", call.getDebugLoc(), &call,
+                      "failed to deduce type of copy ", call);
+
+          TR.firstPointer(size, call.getOperand(0), /*errifnotfound*/ true,
+                          /*pointerIntSame*/ true);
+          llvm_unreachable("bad mti");
+        }
+        known:;
+        unsigned dstalign = 0;
+        unsigned srcalign = 0;
+        unsigned start = 0;
+        while (1) {
+          unsigned nextStart = size;
+
+          auto dt = vd[{-1}];
+          for (size_t i = start; i < size; ++i) {
+            bool Legal = true;
+            dt.checkedOrIn(vd[{(int)i}], /*PointerIntSame*/ true, Legal);
+            if (!Legal) {
+              nextStart = i;
+              break;
+            }
+          }
+          if (!dt.isKnown()) {
+            TR.dump();
+            llvm::errs() << " vd:" << vd.str() << " start:" << start
+                        << " size: " << size << " dt:" << dt.str() << "\n";
+          }
+          assert(dt.isKnown());
+
+          Value *length = len_arg;
+          if (nextStart != size) {
+            length = ConstantInt::get(len_arg->getType(), nextStart);
+          }
+          if (start != 0)
+            length =
+                BuilderZ.CreateSub(length, ConstantInt::get(len_arg->getType(), start));
+
+          unsigned subdstalign = dstalign;
+          // todo make better alignment calculation
+          if (dstalign != 0) {
+            if (start % dstalign != 0) {
+              dstalign = 1;
+            }
+          }
+          unsigned subsrcalign = srcalign;
+          // todo make better alignment calculation
+          if (srcalign != 0) {
+            if (start % srcalign != 0) {
+              srcalign = 1;
+            }
+          }
+          if(auto secretty = dt.isFloat()) {
+            auto offset = start;
+            SmallVector<Value *, 4> args;
+            auto secretpt = PointerType::getUnqual(secretty);
+            auto dsto = firstallocation;
+            if (offset != 0)
+              dsto = Builder2.CreateConstInBoundsGEP1_64(dsto, offset);
+            args.push_back(Builder2.CreatePointerCast(dsto, secretpt));
+            auto srco = shadow;
+            if (offset != 0)
+              srco = Builder2.CreateConstInBoundsGEP1_64(srco, offset);
+            args.push_back(Builder2.CreatePointerCast(srco, secretpt));
+            args.push_back(Builder2.CreateUDiv(
+                lookup(length, Builder2),
+
+                ConstantInt::get(length->getType(),
+                                Builder2.GetInsertBlock()
+                                        ->getParent()
+                                        ->getParent()
+                                        ->getDataLayout()
+                                        .getTypeAllocSizeInBits(secretty) /
+                                    8)));
+
+            auto dmemcpy = getOrInsertDifferentialFloatMemcpy(
+                *Builder2.GetInsertBlock()->getParent()->getParent(), secretpt, dstalign, srcalign);
+            Builder2.CreateCall(dmemcpy, args);
+
+          }
+
+          if (nextStart == size)
+            break;
+          start = nextStart;
+        }
+
+        auto ci = cast<CallInst>(CallInst::CreateFree(firstallocation,
+            Builder2.GetInsertBlock()));
+        ci->addAttribute(AttributeList::FirstArgIndex, Attribute::NonNull);
+        if (ci->getParent() == nullptr) {
+          Builder2.Insert(ci);
+        }
+      }
+      return;
+    }
+
+    if (called && called->getName() == "MPI_Recv") {
+      if (Mode == DerivativeMode::Reverse || Mode == DerivativeMode::Both) {
+        IRBuilder<> Builder2(call.getParent());
+        getReverseBuilder(Builder2);
+        Value *args[] = {
+          gutils->invertPointerM(call.getOperand(0), Builder2),
+          lookup(gutils->getNewFromOriginal(call.getOperand(1)), Builder2),
+          lookup(gutils->getNewFromOriginal(call.getOperand(2)), Builder2),
+          lookup(gutils->getNewFromOriginal(call.getOperand(3)), Builder2),
+          lookup(gutils->getNewFromOriginal(call.getOperand(4)), Builder2),
+          lookup(gutils->getNewFromOriginal(call.getOperand(5)), Builder2),
+        };
+        auto fcall = Builder2.CreateCall(called->getParent()->getFunction("MPI_Send"), args);
+        fcall->setCallingConv(call.getCallingConv());
+
+        auto dst_arg = Builder2.CreateBitCast(
+            args[0], Type::getInt8PtrTy(call.getContext()));
+        auto val_arg =
+            ConstantInt::get(Type::getInt8Ty(call.getContext()), 0);
+        auto len_arg = Builder2.CreateZExtOrTrunc(
+            args[1],
+            Type::getInt64Ty(call.getContext()));
+        auto tysize = MPI_TYPE_SIZE(args[2], Builder2);
+        len_arg = Builder2.CreateMul(len_arg, Builder2.CreateZExtOrTrunc(tysize, Type::getInt64Ty(call.getContext())), "", true, true);
+        auto volatile_arg = ConstantInt::getFalse(call.getContext());
+
+#if LLVM_VERSION_MAJOR == 6
+        auto align_arg =
+            ConstantInt::get(Type::getInt32Ty(call.getContext()), 1);
+        Value *nargs[] = {dst_arg, val_arg, len_arg, align_arg, volatile_arg};
+#else
+        Value *nargs[] = {dst_arg, val_arg, len_arg, volatile_arg};
+#endif
+
+        Type *tys[] = {dst_arg->getType(), len_arg->getType()};
+
+        auto memset = cast<CallInst>(Builder2.CreateCall(
+            Intrinsic::getDeclaration(gutils->newFunc->getParent(),
+                                      Intrinsic::memset, tys),
+            nargs));
+      }
+      return;
     }
 
 #if LLVM_VERSION_MAJOR >= 11

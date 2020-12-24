@@ -138,6 +138,11 @@ const char *KnownInactiveFunctions[] = {"__assert_fail",
                                         "__kmpc_dispatch_fini_8u",
                                         "malloc_usable_size",
                                         "malloc_size",
+                                        "MPI_Init",
+                                        "MPI_Comm_size",
+                                        "MPI_Comm_rank",
+                                        "MPI_Get_processor_name",
+                                        "MPI_Finalize",
                                         "_msize"};
 
 /// Is the use of value val as an argument of call CI known to be inactive
