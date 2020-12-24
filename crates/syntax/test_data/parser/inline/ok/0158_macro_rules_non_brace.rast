@@ -1,0 +1,57 @@
+SOURCE_FILE@0..74
+  MACRO_RULES@0..36
+    MACRO_RULES_KW@0..11 "macro_rules"
+    BANG@11..12 "!"
+    WHITESPACE@12..13 " "
+    NAME@13..14
+      IDENT@13..14 "m"
+    WHITESPACE@14..15 " "
+    TOKEN_TREE@15..35
+      L_PAREN@15..16 "("
+      WHITESPACE@16..17 " "
+      TOKEN_TREE@17..27
+        L_PAREN@17..18 "("
+        DOLLAR@18..19 "$"
+        IDENT@19..20 "i"
+        COLON@20..21 ":"
+        IDENT@21..26 "ident"
+        R_PAREN@26..27 ")"
+      WHITESPACE@27..28 " "
+      EQ@28..29 "="
+      R_ANGLE@29..30 ">"
+      WHITESPACE@30..31 " "
+      TOKEN_TREE@31..33
+        L_CURLY@31..32 "{"
+        R_CURLY@32..33 "}"
+      WHITESPACE@33..34 " "
+      R_PAREN@34..35 ")"
+    SEMICOLON@35..36 ";"
+  WHITESPACE@36..37 "\n"
+  MACRO_RULES@37..73
+    MACRO_RULES_KW@37..48 "macro_rules"
+    BANG@48..49 "!"
+    WHITESPACE@49..50 " "
+    NAME@50..51
+      IDENT@50..51 "m"
+    WHITESPACE@51..52 " "
+    TOKEN_TREE@52..72
+      L_BRACK@52..53 "["
+      WHITESPACE@53..54 " "
+      TOKEN_TREE@54..64
+        L_PAREN@54..55 "("
+        DOLLAR@55..56 "$"
+        IDENT@56..57 "i"
+        COLON@57..58 ":"
+        IDENT@58..63 "ident"
+        R_PAREN@63..64 ")"
+      WHITESPACE@64..65 " "
+      EQ@65..66 "="
+      R_ANGLE@66..67 ">"
+      WHITESPACE@67..68 " "
+      TOKEN_TREE@68..70
+        L_CURLY@68..69 "{"
+        R_CURLY@69..70 "}"
+      WHITESPACE@70..71 " "
+      R_BRACK@71..72 "]"
+    SEMICOLON@72..73 ";"
+  WHITESPACE@73..74 "\n"

@@ -389,10 +389,15 @@ fn macro_rules(p: &mut Parser, m: Marker) {
     }
 
     match p.current() {
-        T!['{'] => {
+        // test macro_rules_non_brace
+        // macro_rules! m ( ($i:ident) => {} );
+        // macro_rules! m [ ($i:ident) => {} ];
+        T!['['] | T!['('] => {
             token_tree(p);
+            p.expect(T![;]);
         }
-        _ => p.error("expected `{`"),
+        T!['{'] => token_tree(p),
+        _ => p.error("expected `{`, `[`, `(`"),
     }
     m.complete(p, MACRO_RULES);
 }
