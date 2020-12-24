@@ -14,9 +14,6 @@
 -         _2 = CheckedAdd(const 1_u32, const 1_u32); // scope 0 at $DIR/checked_add.rs:5:18: 5:23
 -         assert(!move (_2.1: bool), "attempt to compute `{} + {}`, which would overflow", const 1_u32, const 1_u32) -> bb1; // scope 0 at $DIR/checked_add.rs:5:18: 5:23
 +         _2 = const (2_u32, false);       // scope 0 at $DIR/checked_add.rs:5:18: 5:23
-+                                          // ty::Const
-+                                          // + ty: (u32, bool)
-+                                          // + val: Value(ByRef { alloc: Allocation { bytes: [2, 0, 0, 0, 0, 0, 0, 0], relocations: Relocations(SortedMap { data: [] }), init_mask: InitMask { blocks: [31], len: Size { raw: 8 } }, size: Size { raw: 8 }, align: Align { pow2: 2 }, mutability: Not, extra: () }, offset: Size { raw: 0 } })
 +                                          // mir::Constant
 +                                          // + span: $DIR/checked_add.rs:5:18: 5:23
 +                                          // + literal: Const { ty: (u32, bool), val: Value(ByRef { alloc: Allocation { bytes: [2, 0, 0, 0, 0, 0, 0, 0], relocations: Relocations(SortedMap { data: [] }), init_mask: InitMask { blocks: [31], len: Size { raw: 8 } }, size: Size { raw: 8 }, align: Align { pow2: 2 }, mutability: Not, extra: () }, offset: Size { raw: 0 } }) }
