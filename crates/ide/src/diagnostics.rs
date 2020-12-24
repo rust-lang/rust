@@ -258,10 +258,12 @@ mod tests {
             .pop()
             .unwrap();
         let fix = diagnostic.fix.unwrap();
-        let target_file_contents = analysis.file_text(file_position.file_id).unwrap();
         let actual = {
-            let mut actual = target_file_contents.to_string();
+            let file_id = fix.source_change.source_file_edits.first().unwrap().file_id;
+            let mut actual = analysis.file_text(file_id).unwrap().to_string();
+
             // Go from the last one to the first one, so that ranges won't be affected by previous edits.
+            // FIXME: https://github.com/rust-analyzer/rust-analyzer/issues/4901#issuecomment-644675309
             for edit in fix.source_change.source_file_edits.iter().rev() {
                 edit.edit.apply(&mut actual);
             }
@@ -275,29 +277,6 @@ mod tests {
             fix.fix_trigger_range,
             file_position.offset
         );
-    }
-
-    /// Checks that a diagnostic applies to the file containing the `<|>` cursor marker
-    /// which has a fix that can apply to other files.
-    fn check_apply_diagnostic_fix_in_other_file(ra_fixture_before: &str, ra_fixture_after: &str) {
-        let ra_fixture_after = &trim_indent(ra_fixture_after);
-        let (analysis, file_pos) = fixture::position(ra_fixture_before);
-        let current_file_id = file_pos.file_id;
-        let diagnostic = analysis
-            .diagnostics(&DiagnosticsConfig::default(), current_file_id)
-            .unwrap()
-            .pop()
-            .unwrap();
-        let mut fix = diagnostic.fix.unwrap();
-        let edit = fix.source_change.source_file_edits.pop().unwrap();
-        let changed_file_id = edit.file_id;
-        let before = analysis.file_text(changed_file_id).unwrap();
-        let actual = {
-            let mut actual = before.to_string();
-            edit.edit.apply(&mut actual);
-            actual
-        };
-        assert_eq_text!(ra_fixture_after, &actual);
     }
 
     /// Takes a multi-file input fixture with annotated cursor position and checks that no diagnostics
@@ -736,25 +715,25 @@ struct Foo {
 
     #[test]
     fn test_add_field_in_other_file_from_usage() {
-        check_apply_diagnostic_fix_in_other_file(
-            r"
-            //- /main.rs
-            mod foo;
+        check_fix(
+            r#"
+//- /main.rs
+mod foo;
 
-            fn main() {
-                <|>foo::Foo { bar: 3, baz: false};
-            }
-            //- /foo.rs
-            struct Foo {
-                bar: i32
-            }
-            ",
-            r"
-            struct Foo {
-                bar: i32,
-                pub(crate) baz: bool
-            }
-            ",
+fn main() {
+    foo::Foo { bar: 3, <|>baz: false};
+}
+//- /foo.rs
+struct Foo {
+    bar: i32
+}
+"#,
+            r#"
+struct Foo {
+    bar: i32,
+    pub(crate) baz: bool
+}
+"#,
         )
     }
 
