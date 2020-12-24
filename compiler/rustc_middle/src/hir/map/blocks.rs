@@ -42,37 +42,25 @@ trait MaybeFnLike {
 
 impl MaybeFnLike for hir::Item<'_> {
     fn is_fn_like(&self) -> bool {
-        match self.kind {
-            hir::ItemKind::Fn(..) => true,
-            _ => false,
-        }
+        matches!(self.kind, hir::ItemKind::Fn(..))
     }
 }
 
 impl MaybeFnLike for hir::ImplItem<'_> {
     fn is_fn_like(&self) -> bool {
-        match self.kind {
-            hir::ImplItemKind::Fn(..) => true,
-            _ => false,
-        }
+        matches!(self.kind, hir::ImplItemKind::Fn(..))
     }
 }
 
 impl MaybeFnLike for hir::TraitItem<'_> {
     fn is_fn_like(&self) -> bool {
-        match self.kind {
-            hir::TraitItemKind::Fn(_, hir::TraitFn::Provided(_)) => true,
-            _ => false,
-        }
+        matches!(self.kind, hir::TraitItemKind::Fn(_, hir::TraitFn::Provided(_)))
     }
 }
 
 impl MaybeFnLike for hir::Expr<'_> {
     fn is_fn_like(&self) -> bool {
-        match self.kind {
-            hir::ExprKind::Closure(..) => true,
-            _ => false,
-        }
+        matches!(self.kind, hir::ExprKind::Closure(..))
     }
 }
 

@@ -118,17 +118,11 @@ impl CoverageKind {
     }
 
     pub fn is_counter(&self) -> bool {
-        match self {
-            Self::Counter { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Counter { .. })
     }
 
     pub fn is_expression(&self) -> bool {
-        match self {
-            Self::Expression { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Expression { .. })
     }
 
     pub fn is_unreachable(&self) -> bool {

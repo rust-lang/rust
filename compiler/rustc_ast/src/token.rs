@@ -130,10 +130,7 @@ impl LitKind {
     }
 
     crate fn may_have_suffix(self) -> bool {
-        match self {
-            Integer | Float | Err => true,
-            _ => false,
-        }
+        matches!(self, Integer | Float | Err)
     }
 }
 
@@ -305,10 +302,7 @@ impl TokenKind {
     }
 
     pub fn should_end_const_arg(&self) -> bool {
-        match self {
-            Gt | Ge | BinOp(Shr) | BinOpEq(Shr) => true,
-            _ => false,
-        }
+        matches!(self, Gt | Ge | BinOp(Shr) | BinOpEq(Shr))
     }
 }
 
@@ -346,18 +340,21 @@ impl Token {
     }
 
     pub fn is_op(&self) -> bool {
-        match self.kind {
-            OpenDelim(..) | CloseDelim(..) | Literal(..) | DocComment(..) | Ident(..)
-            | Lifetime(..) | Interpolated(..) | Eof => false,
-            _ => true,
-        }
+        !matches!(
+            self.kind,
+            OpenDelim(..)
+                | CloseDelim(..)
+                | Literal(..)
+                | DocComment(..)
+                | Ident(..)
+                | Lifetime(..)
+                | Interpolated(..)
+                | Eof
+        )
     }
 
     pub fn is_like_plus(&self) -> bool {
-        match self.kind {
-            BinOp(Plus) | BinOpEq(Plus) => true,
-            _ => false,
-        }
+        matches!(self.kind, BinOp(Plus) | BinOpEq(Plus))
     }
 
     /// Returns `true` if the token can appear at the start of an expression.
@@ -379,13 +376,10 @@ impl Token {
             ModSep                            | // global path
             Lifetime(..)                      | // labeled loop
             Pound                             => true, // expression attributes
-            Interpolated(ref nt) => match **nt {
-                NtLiteral(..) |
+            Interpolated(ref nt) => matches!(**nt, NtLiteral(..) |
                 NtExpr(..)    |
                 NtBlock(..)   |
-                NtPath(..) => true,
-                _ => false,
-            },
+                NtPath(..)),
             _ => false,
         }
     }
@@ -405,10 +399,7 @@ impl Token {
             Lifetime(..)                | // lifetime bound in trait object
             Lt | BinOp(Shl)             | // associated path
             ModSep                      => true, // global path
-            Interpolated(ref nt) => match **nt {
-                NtTy(..) | NtPath(..) => true,
-                _ => false,
-            },
+            Interpolated(ref nt) => matches!(**nt, NtTy(..) | NtPath(..)),
             _ => false,
         }
     }
@@ -417,10 +408,7 @@ impl Token {
     pub fn can_begin_const_arg(&self) -> bool {
         match self.kind {
             OpenDelim(Brace) => true,
-            Interpolated(ref nt) => match **nt {
-                NtExpr(..) | NtBlock(..) | NtLiteral(..) => true,
-                _ => false,
-            },
+            Interpolated(ref nt) => matches!(**nt, NtExpr(..) | NtBlock(..) | NtLiteral(..)),
             _ => self.can_begin_literal_maybe_minus(),
         }
     }
@@ -436,10 +424,7 @@ impl Token {
 
     /// Returns `true` if the token is any literal.
     pub fn is_lit(&self) -> bool {
-        match self.kind {
-            Literal(..) => true,
-            _ => false,
-        }
+        matches!(self.kind, Literal(..))
     }
 
     /// Returns `true` if the token is any literal, a minus (which can prefix a literal,

@@ -543,10 +543,9 @@ pub(super) fn check_opaque_for_inheriting_lifetimes(
 
         if let Some(ty) = prohibit_opaque.break_value() {
             let is_async = match item.kind {
-                ItemKind::OpaqueTy(hir::OpaqueTy { origin, .. }) => match origin {
-                    hir::OpaqueTyOrigin::AsyncFn => true,
-                    _ => false,
-                },
+                ItemKind::OpaqueTy(hir::OpaqueTy { origin, .. }) => {
+                    matches!(origin, hir::OpaqueTyOrigin::AsyncFn)
+                }
                 _ => unreachable!(),
             };
 
@@ -1321,10 +1320,7 @@ pub fn check_enum<'tcx>(
     }
 
     if tcx.adt_def(def_id).repr.int.is_none() && tcx.features().arbitrary_enum_discriminant {
-        let is_unit = |var: &hir::Variant<'_>| match var.data {
-            hir::VariantData::Unit(..) => true,
-            _ => false,
-        };
+        let is_unit = |var: &hir::Variant<'_>| matches!(var.data, hir::VariantData::Unit(..));
 
         let has_disr = |var: &hir::Variant<'_>| var.disr_expr.is_some();
         let has_non_units = vs.iter().any(|var| !is_unit(var));

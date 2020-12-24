@@ -647,14 +647,11 @@ impl<T> Trait<T> for X {
         let current_method_ident = body_owner.and_then(|n| n.ident()).map(|i| i.name);
 
         // We don't want to suggest calling an assoc fn in a scope where that isn't feasible.
-        let callable_scope = match body_owner {
-            Some(
+        let callable_scope = matches!(body_owner, Some(
                 hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(..), .. })
                 | hir::Node::TraitItem(hir::TraitItem { kind: hir::TraitItemKind::Fn(..), .. })
                 | hir::Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Fn(..), .. }),
-            ) => true,
-            _ => false,
-        };
+            ));
         let impl_comparison = matches!(
             cause_code,
             ObligationCauseCode::CompareImplMethodObligation { .. }

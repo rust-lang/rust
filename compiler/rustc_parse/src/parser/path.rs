@@ -501,10 +501,9 @@ impl<'a> Parser<'a> {
     pub(super) fn expr_is_valid_const_arg(&self, expr: &P<rustc_ast::Expr>) -> bool {
         match &expr.kind {
             ast::ExprKind::Block(_, _) | ast::ExprKind::Lit(_) => true,
-            ast::ExprKind::Unary(ast::UnOp::Neg, expr) => match &expr.kind {
-                ast::ExprKind::Lit(_) => true,
-                _ => false,
-            },
+            ast::ExprKind::Unary(ast::UnOp::Neg, expr) => {
+                matches!(expr.kind, ast::ExprKind::Lit(_))
+            }
             // We can only resolve single-segment paths at the moment, because multi-segment paths
             // require type-checking: see `visit_generic_arg` in `src/librustc_resolve/late.rs`.
             ast::ExprKind::Path(None, path)

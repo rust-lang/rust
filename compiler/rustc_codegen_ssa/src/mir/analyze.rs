@@ -112,12 +112,12 @@ impl<Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'tcx, Bx> {
             };
 
             // Allow uses of projections that are ZSTs or from scalar fields.
-            let is_consume = match context {
+            let is_consume = matches!(
+                context,
                 PlaceContext::NonMutatingUse(
                     NonMutatingUseContext::Copy | NonMutatingUseContext::Move,
-                ) => true,
-                _ => false,
-            };
+                )
+            );
             if is_consume {
                 let base_ty =
                     mir::Place::ty_from(place_ref.local, proj_base, self.fx.mir, cx.tcx());

@@ -167,10 +167,7 @@ pub enum GenericArgs {
 
 impl GenericArgs {
     pub fn is_angle_bracketed(&self) -> bool {
-        match *self {
-            AngleBracketed(..) => true,
-            _ => false,
-        }
+        matches!(self, AngleBracketed(..))
     }
 
     pub fn span(&self) -> Span {
@@ -629,10 +626,7 @@ impl Pat {
 
     /// Is this a `..` pattern?
     pub fn is_rest(&self) -> bool {
-        match self.kind {
-            PatKind::Rest => true,
-            _ => false,
-        }
+        matches!(self.kind, PatKind::Rest)
     }
 }
 
@@ -852,10 +846,7 @@ impl BinOpKind {
         }
     }
     pub fn lazy(&self) -> bool {
-        match *self {
-            BinOpKind::And | BinOpKind::Or => true,
-            _ => false,
-        }
+        matches!(self, BinOpKind::And | BinOpKind::Or)
     }
 
     pub fn is_comparison(&self) -> bool {
@@ -963,17 +954,11 @@ impl Stmt {
     }
 
     pub fn is_item(&self) -> bool {
-        match self.kind {
-            StmtKind::Item(_) => true,
-            _ => false,
-        }
+        matches!(self.kind, StmtKind::Item(_))
     }
 
     pub fn is_expr(&self) -> bool {
-        match self.kind {
-            StmtKind::Expr(_) => true,
-            _ => false,
-        }
+        matches!(self.kind, StmtKind::Expr(_))
     }
 }
 
@@ -1652,26 +1637,17 @@ pub enum LitKind {
 impl LitKind {
     /// Returns `true` if this literal is a string.
     pub fn is_str(&self) -> bool {
-        match *self {
-            LitKind::Str(..) => true,
-            _ => false,
-        }
+        matches!(self, LitKind::Str(..))
     }
 
     /// Returns `true` if this literal is byte literal string.
     pub fn is_bytestr(&self) -> bool {
-        match self {
-            LitKind::ByteStr(_) => true,
-            _ => false,
-        }
+        matches!(self, LitKind::ByteStr(_))
     }
 
     /// Returns `true` if this is a numeric literal.
     pub fn is_numeric(&self) -> bool {
-        match *self {
-            LitKind::Int(..) | LitKind::Float(..) => true,
-            _ => false,
-        }
+        matches!(self, LitKind::Int(..) | LitKind::Float(..))
     }
 
     /// Returns `true` if this literal has no suffix.
@@ -2237,10 +2213,7 @@ impl FnDecl {
         self.inputs.get(0).map_or(false, Param::is_self)
     }
     pub fn c_variadic(&self) -> bool {
-        self.inputs.last().map_or(false, |arg| match arg.ty.kind {
-            TyKind::CVarArgs => true,
-            _ => false,
-        })
+        self.inputs.last().map_or(false, |arg| matches!(arg.ty.kind, TyKind::CVarArgs))
     }
 }
 
