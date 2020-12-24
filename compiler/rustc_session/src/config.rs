@@ -1308,12 +1308,11 @@ fn parse_crate_edition(matches: &getopts::Matches) -> Edition {
         None => DEFAULT_EDITION,
     };
 
-    if !edition.is_stable() && !nightly_options::match_is_nightly_build(matches) {
+    if !edition.is_stable() && !nightly_options::is_unstable_enabled(matches) {
         early_error(
             ErrorOutputType::default(),
             &format!(
-                "edition {} is unstable and only \
-                     available for nightly builds of rustc.",
+                "edition {} is unstable and only available with -Z unstable-options.",
                 edition,
             ),
         )
