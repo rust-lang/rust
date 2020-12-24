@@ -1,0 +1,79 @@
+../coverage/doctest.rs:
+    1|       |//! This test ensures that code from doctests is properly re-mapped.
+    2|       |//! See <https://github.com/rust-lang/rust/issues/79417> for more info.
+    3|       |//!
+    4|       |//! Just some random code:
+    5|      1|//! ```
+    6|      1|//! if true {
+    7|       |//!     // this is executed!
+    8|      1|//!     assert_eq!(1, 1);
+    9|       |//! } else {
+   10|       |//!     // this is not!
+   11|       |//!     assert_eq!(1, 2);
+   12|       |//! }
+   13|      1|//! ```
+   14|       |//!
+   15|       |//! doctest testing external code:
+   16|       |//! ```
+   17|      1|//! extern crate doctest_crate;
+   18|      1|//! doctest_crate::fn_run_in_doctests(1);
+   19|      1|//! ```
+   20|       |//!
+   21|       |//! doctest returning a result:
+   22|      1|//! ```
+   23|      1|//! #[derive(Debug)]
+   24|      1|//! struct SomeError;
+   25|      1|//! let mut res = Err(SomeError);
+   26|      1|//! if res.is_ok() {
+   27|      0|//!   res?;
+   28|      1|//! } else {
+   29|      1|//!   res = Ok(0);
+   30|      1|//! }
+   31|       |//! // need to be explicit because rustdoc cant infer the return type
+   32|      1|//! Ok::<(), SomeError>(())
+   33|      1|//! ```
+   34|       |//!
+   35|       |//! doctest with custom main:
+   36|       |//! ```
+   37|       |//! #[derive(Debug)]
+   38|       |//! struct SomeError;
+   39|       |//!
+   40|       |//! extern crate doctest_crate;
+   41|       |//!
+   42|      1|//! fn doctest_main() -> Result<(), SomeError> {
+   43|      1|//!     doctest_crate::fn_run_in_doctests(2);
+   44|      1|//!     Ok(())
+   45|      1|//! }
+   46|       |//!
+   47|       |//! // this `main` is not shown as covered, as it clashes with all the other
+   48|       |//! // `main` functions that were automatically generated for doctests
+   49|       |//! fn main() -> Result<(), SomeError> {
+   50|       |//!     doctest_main()
+   51|       |//! }
+   52|       |//! ```
+   53|       |
+   54|       |/// doctest attached to fn testing external code:
+   55|       |/// ```
+   56|      1|/// extern crate doctest_crate;
+   57|      1|/// doctest_crate::fn_run_in_doctests(3);
+   58|      1|/// ```
+   59|       |///
+   60|      1|fn main() {
+   61|      1|    if true {
+   62|      1|        assert_eq!(1, 1);
+   63|       |    } else {
+   64|       |        assert_eq!(1, 2);
+   65|       |    }
+   66|      1|}
+
+../coverage/lib/doctest_crate.rs:
+    1|       |/// A function run only from within doctests
+    2|      3|pub fn fn_run_in_doctests(conditional: usize) {
+    3|      3|    match conditional {
+    4|      1|        1 => assert_eq!(1, 1), // this is run,
+    5|      1|        2 => assert_eq!(1, 1), // this,
+    6|      1|        3 => assert_eq!(1, 1), // and this too
+    7|      0|        _ => assert_eq!(1, 2), // however this is not
+    8|       |    }
+    9|      3|}
+
