@@ -22,13 +22,14 @@ use test_utils::mark;
 
 use crate::{
     adt::StructKind,
-    body::{Body, BodySourceMap, Expander, PatPtr, SyntheticSyntax},
+    body::{Body, BodySourceMap, Expander, LabelSource, PatPtr, SyntheticSyntax},
     builtin_type::{BuiltinFloat, BuiltinInt},
     db::DefDatabase,
     diagnostics::{InactiveCode, MacroError, UnresolvedProcMacro},
     expr::{
-        dummy_expr_id, ArithOp, Array, BinaryOp, BindingAnnotation, CmpOp, Expr, ExprId, Literal,
-        LogicOp, MatchArm, Ordering, Pat, PatId, RecordFieldPat, RecordLitField, Statement,
+        dummy_expr_id, ArithOp, Array, BinaryOp, BindingAnnotation, CmpOp, Expr, ExprId, Label,
+        LabelId, Literal, LogicOp, MatchArm, Ordering, Pat, PatId, RecordFieldPat, RecordLitField,
+        Statement,
     },
     item_scope::BuiltinShadowMode,
     item_tree::{ItemTree, ItemTreeId, ItemTreeNode},
@@ -72,6 +73,7 @@ pub(super) fn lower(
         body: Body {
             exprs: Arena::default(),
             pats: Arena::default(),
+            labels: Arena::default(),
             params: Vec::new(),
             body_expr: dummy_expr_id(),
             item_scope: Default::default(),
@@ -175,6 +177,18 @@ impl ExprCollector<'_> {
         id
     }
 
+    fn alloc_label(&mut self, label: Label, ptr: AstPtr<ast::Label>) -> LabelId {
+        let src = self.expander.to_source(ptr);
+        let id = self.make_label(label, src.clone());
+        self.source_map.label_map.insert(src, id);
+        id
+    }
+    fn make_label(&mut self, label: Label, src: LabelSource) -> LabelId {
+        let id = self.body.labels.alloc(label);
+        self.source_map.label_map_back.insert(id, src);
+        id
+    }
+
     fn collect_expr(&mut self, expr: ast::Expr) -> ExprId {
         let syntax_ptr = AstPtr::new(&expr);
         if self.check_cfg(&expr).is_none() {
@@ -228,19 +242,22 @@ impl ExprCollector<'_> {
                     self.alloc_expr(Expr::Unsafe { body }, syntax_ptr)
                 }
                 // FIXME: we need to record these effects somewhere...
-                ast::Effect::Label(label) => match e.block_expr() {
-                    Some(block) => {
-                        let res = self.collect_block(block);
-                        match &mut self.body.exprs[res] {
-                            Expr::Block { label: block_label, .. } => {
-                                *block_label = label.lifetime().map(|t| Name::new_lifetime(&t))
+                ast::Effect::Label(label) => {
+                    let label = self.collect_label(label);
+                    match e.block_expr() {
+                        Some(block) => {
+                            let res = self.collect_block(block);
+                            match &mut self.body.exprs[res] {
+                                Expr::Block { label: block_label, .. } => {
+                                    *block_label = Some(label);
+                                }
+                                _ => unreachable!(),
                             }
-                            _ => unreachable!(),
+                            res
                         }
-                        res
+                        None => self.missing_expr(),
                     }
-                    None => self.missing_expr(),
-                },
+                }
                 // FIXME: we need to record these effects somewhere...
                 ast::Effect::Async(_) => {
                     let body = self.collect_block_opt(e.block_expr());
@@ -253,16 +270,12 @@ impl ExprCollector<'_> {
             },
             ast::Expr::BlockExpr(e) => self.collect_block(e),
             ast::Expr::LoopExpr(e) => {
+                let label = e.label().map(|label| self.collect_label(label));
                 let body = self.collect_block_opt(e.loop_body());
-                self.alloc_expr(
-                    Expr::Loop {
-                        body,
-                        label: e.label().and_then(|l| l.lifetime()).map(|l| Name::new_lifetime(&l)),
-                    },
-                    syntax_ptr,
-                )
+                self.alloc_expr(Expr::Loop { body, label }, syntax_ptr)
             }
             ast::Expr::WhileExpr(e) => {
+                let label = e.label().map(|label| self.collect_label(label));
                 let body = self.collect_block_opt(e.loop_body());
 
                 let condition = match e.condition() {
@@ -283,42 +296,20 @@ impl ExprCollector<'_> {
                             ];
                             let match_expr =
                                 self.alloc_expr_desugared(Expr::Match { expr: match_expr, arms });
-                            return self.alloc_expr(
-                                Expr::Loop {
-                                    body: match_expr,
-                                    label: e
-                                        .label()
-                                        .and_then(|l| l.lifetime())
-                                        .map(|l| Name::new_lifetime(&l)),
-                                },
-                                syntax_ptr,
-                            );
+                            return self
+                                .alloc_expr(Expr::Loop { body: match_expr, label }, syntax_ptr);
                         }
                     },
                 };
 
-                self.alloc_expr(
-                    Expr::While {
-                        condition,
-                        body,
-                        label: e.label().and_then(|l| l.lifetime()).map(|l| Name::new_lifetime(&l)),
-                    },
-                    syntax_ptr,
-                )
+                self.alloc_expr(Expr::While { condition, body, label }, syntax_ptr)
             }
             ast::Expr::ForExpr(e) => {
+                let label = e.label().map(|label| self.collect_label(label));
                 let iterable = self.collect_expr_opt(e.iterable());
                 let pat = self.collect_pat_opt(e.pat());
                 let body = self.collect_block_opt(e.loop_body());
-                self.alloc_expr(
-                    Expr::For {
-                        iterable,
-                        pat,
-                        body,
-                        label: e.label().and_then(|l| l.lifetime()).map(|l| Name::new_lifetime(&l)),
-                    },
-                    syntax_ptr,
-                )
+                self.alloc_expr(Expr::For { iterable, pat, body, label }, syntax_ptr)
             }
             ast::Expr::CallExpr(e) => {
                 let callee = self.collect_expr_opt(e.expr());
@@ -816,6 +807,13 @@ impl ExprCollector<'_> {
         } else {
             self.missing_expr()
         }
+    }
+
+    fn collect_label(&mut self, ast_label: ast::Label) -> LabelId {
+        let label = Label {
+            name: ast_label.lifetime().as_ref().map_or_else(Name::missing, Name::new_lifetime),
+        };
+        self.alloc_label(label, AstPtr::new(&ast_label))
     }
 
     fn collect_pat(&mut self, pat: ast::Pat) -> PatId {

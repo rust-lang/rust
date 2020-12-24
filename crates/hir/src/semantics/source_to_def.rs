@@ -4,7 +4,7 @@ use base_db::FileId;
 use hir_def::{
     child_by_source::ChildBySource,
     dyn_map::DynMap,
-    expr::PatId,
+    expr::{LabelId, PatId},
     keys::{self, Key},
     ConstId, DefWithBodyId, EnumId, EnumVariantId, FieldId, FunctionId, GenericDefId, ImplId,
     LifetimeParamId, ModuleId, StaticId, StructId, TraitId, TypeAliasId, TypeParamId, UnionId,
@@ -108,11 +108,20 @@ impl SourceToDefCtx<'_, '_> {
         &mut self,
         src: InFile<ast::IdentPat>,
     ) -> Option<(DefWithBodyId, PatId)> {
-        let container = self.find_pat_container(src.as_ref().map(|it| it.syntax()))?;
+        let container = self.find_pat_or_label_container(src.as_ref().map(|it| it.syntax()))?;
         let (_body, source_map) = self.db.body_with_source_map(container);
         let src = src.map(ast::Pat::from);
         let pat_id = source_map.node_pat(src.as_ref())?;
         Some((container, pat_id))
+    }
+    pub(super) fn label_to_def(
+        &mut self,
+        src: InFile<ast::Label>,
+    ) -> Option<(DefWithBodyId, LabelId)> {
+        let container = self.find_pat_or_label_container(src.as_ref().map(|it| it.syntax()))?;
+        let (_body, source_map) = self.db.body_with_source_map(container);
+        let label_id = source_map.node_label(src.as_ref())?;
+        Some((container, label_id))
     }
 
     fn to_def<Ast: AstNode + 'static, ID: Copy + 'static>(
@@ -237,7 +246,7 @@ impl SourceToDefCtx<'_, '_> {
         None
     }
 
-    fn find_pat_container(&mut self, src: InFile<&SyntaxNode>) -> Option<DefWithBodyId> {
+    fn find_pat_or_label_container(&mut self, src: InFile<&SyntaxNode>) -> Option<DefWithBodyId> {
         for container in src.cloned().ancestors_with_macros(self.db.upcast()).skip(1) {
             let res: DefWithBodyId = match_ast! {
                 match (container.value) {

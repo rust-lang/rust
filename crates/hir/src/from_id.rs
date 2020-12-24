@@ -4,12 +4,15 @@
 //! are splitting the hir.
 
 use hir_def::{
-    expr::PatId, item_scope::ItemInNs, AdtId, AssocItemId, DefWithBodyId, EnumVariantId, FieldId,
-    GenericDefId, ModuleDefId, VariantId,
+    expr::{LabelId, PatId},
+    item_scope::ItemInNs,
+    AdtId, AssocItemId, DefWithBodyId, EnumVariantId, FieldId, GenericDefId, ModuleDefId,
+    VariantId,
 };
 
 use crate::{
-    Adt, AssocItem, DefWithBody, Field, GenericDef, Local, MacroDef, ModuleDef, Variant, VariantDef,
+    Adt, AssocItem, DefWithBody, Field, GenericDef, Label, Local, MacroDef, ModuleDef, Variant,
+    VariantDef,
 };
 
 macro_rules! from_id {
@@ -225,6 +228,12 @@ impl From<AssocItem> for GenericDefId {
 impl From<(DefWithBodyId, PatId)> for Local {
     fn from((parent, pat_id): (DefWithBodyId, PatId)) -> Self {
         Local { parent, pat_id }
+    }
+}
+
+impl From<(DefWithBodyId, LabelId)> for Label {
+    fn from((parent, label_id): (DefWithBodyId, LabelId)) -> Self {
+        Label { parent, label_id }
     }
 }
 

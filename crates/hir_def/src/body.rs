@@ -26,7 +26,7 @@ pub(crate) use lower::LowerCtx;
 use crate::{
     attr::{Attrs, RawAttrs},
     db::DefDatabase,
-    expr::{Expr, ExprId, Pat, PatId},
+    expr::{Expr, ExprId, Label, LabelId, Pat, PatId},
     item_scope::BuiltinShadowMode,
     item_scope::ItemScope,
     nameres::CrateDefMap,
@@ -226,6 +226,7 @@ pub(crate) struct Mark {
 pub struct Body {
     pub exprs: Arena<Expr>,
     pub pats: Arena<Pat>,
+    pub labels: Arena<Label>,
     /// The patterns for the function's parameters. While the parameter types are
     /// part of the function signature, the patterns are not (they don't change
     /// the external type of the function).
@@ -244,6 +245,8 @@ pub type ExprSource = InFile<ExprPtr>;
 pub type PatPtr = Either<AstPtr<ast::Pat>, AstPtr<ast::SelfParam>>;
 pub type PatSource = InFile<PatPtr>;
 
+pub type LabelPtr = AstPtr<ast::Label>;
+pub type LabelSource = InFile<LabelPtr>;
 /// An item body together with the mapping from syntax nodes to HIR expression
 /// IDs. This is needed to go from e.g. a position in a file to the HIR
 /// expression containing it; but for type inference etc., we want to operate on
@@ -261,6 +264,8 @@ pub struct BodySourceMap {
     expr_map_back: ArenaMap<ExprId, Result<ExprSource, SyntheticSyntax>>,
     pat_map: FxHashMap<PatSource, PatId>,
     pat_map_back: ArenaMap<PatId, Result<PatSource, SyntheticSyntax>>,
+    label_map: FxHashMap<LabelSource, LabelId>,
+    label_map_back: ArenaMap<LabelId, LabelSource>,
     field_map: FxHashMap<(ExprId, usize), InFile<AstPtr<ast::RecordExprField>>>,
     expansions: FxHashMap<InFile<AstPtr<ast::MacroCall>>, HirFileId>,
 
@@ -334,6 +339,14 @@ impl Index<PatId> for Body {
     }
 }
 
+impl Index<LabelId> for Body {
+    type Output = Label;
+
+    fn index(&self, label: LabelId) -> &Label {
+        &self.labels[label]
+    }
+}
+
 impl BodySourceMap {
     pub fn expr_syntax(&self, expr: ExprId) -> Result<ExprSource, SyntheticSyntax> {
         self.expr_map_back[expr].clone()
@@ -361,6 +374,15 @@ impl BodySourceMap {
     pub fn node_self_param(&self, node: InFile<&ast::SelfParam>) -> Option<PatId> {
         let src = node.map(|it| Either::Right(AstPtr::new(it)));
         self.pat_map.get(&src).cloned()
+    }
+
+    pub fn label_syntax(&self, label: LabelId) -> LabelSource {
+        self.label_map_back[label].clone()
+    }
+
+    pub fn node_label(&self, node: InFile<&ast::Label>) -> Option<LabelId> {
+        let src = node.map(|it| AstPtr::new(it));
+        self.label_map.get(&src).cloned()
     }
 
     pub fn field_syntax(&self, expr: ExprId, field: usize) -> InFile<AstPtr<ast::RecordExprField>> {

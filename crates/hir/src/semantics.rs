@@ -15,7 +15,7 @@ use itertools::Itertools;
 use rustc_hash::{FxHashMap, FxHashSet};
 use syntax::{
     algo::find_node_at_offset,
-    ast::{self, GenericParamsOwner},
+    ast::{self, GenericParamsOwner, LoopBodyOwner},
     match_ast, AstNode, SyntaxNode, SyntaxToken, TextSize,
 };
 
@@ -25,8 +25,8 @@ use crate::{
     diagnostics::Diagnostic,
     semantics::source_to_def::{ChildContainer, SourceToDefCache, SourceToDefCtx},
     source_analyzer::{resolve_hir_path, SourceAnalyzer},
-    AssocItem, Callable, Crate, Field, Function, HirFileId, Impl, InFile, LifetimeParam, Local,
-    MacroDef, Module, ModuleDef, Name, Path, ScopeDef, Trait, Type, TypeAlias, TypeParam,
+    AssocItem, Callable, Crate, Field, Function, HirFileId, Impl, InFile, Label, LifetimeParam,
+    Local, MacroDef, Module, ModuleDef, Name, Path, ScopeDef, Trait, Type, TypeAlias, TypeParam,
     VariantDef,
 };
 
@@ -180,6 +180,10 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
 
     pub fn resolve_lifetime_param(&self, lifetime: &ast::Lifetime) -> Option<LifetimeParam> {
         self.imp.resolve_lifetime_param(lifetime)
+    }
+
+    pub fn resolve_label(&self, lifetime: &ast::Lifetime) -> Option<Label> {
+        self.imp.resolve_label(lifetime)
     }
 
     pub fn type_of_expr(&self, expr: &ast::Expr) -> Option<Type> {
@@ -422,6 +426,28 @@ impl<'db> SemanticsImpl<'db> {
                 .find(|tp| tp.lifetime().as_ref().map(|lt| lt.text()) == Some(text))
         })?;
         let src = self.find_file(lifetime_param.syntax().clone()).with_value(lifetime_param);
+        ToDef::to_def(self, src)
+    }
+
+    fn resolve_label(&self, lifetime: &ast::Lifetime) -> Option<Label> {
+        let text = lifetime.text();
+        let label = lifetime.syntax().ancestors().find_map(|syn| {
+            let label = match_ast! {
+                match syn {
+                    ast::ForExpr(it) => it.label(),
+                    ast::WhileExpr(it) => it.label(),
+                    ast::LoopExpr(it) => it.label(),
+                    ast::EffectExpr(it) => it.label(),
+                    _ => None,
+                }
+            };
+            label.filter(|l| {
+                l.lifetime()
+                    .and_then(|lt| lt.lifetime_ident_token())
+                    .map_or(false, |lt| lt.text() == text)
+            })
+        })?;
+        let src = self.find_file(label.syntax().clone()).with_value(label);
         ToDef::to_def(self, src)
     }
 
@@ -720,6 +746,7 @@ to_def_impls![
     (crate::LifetimeParam, ast::LifetimeParam, lifetime_param_to_def),
     (crate::MacroDef, ast::MacroRules, macro_rules_to_def),
     (crate::Local, ast::IdentPat, bind_pat_to_def),
+    (crate::Label, ast::Label, label_to_def),
 ];
 
 fn find_root(node: &SyntaxNode) -> SyntaxNode {
