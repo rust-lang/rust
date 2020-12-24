@@ -1,4 +1,13 @@
-//! The source positions and related helper functions.
+//! Source positions and related helper functions.
+//!
+//! Important concepts in this module include:
+//!
+//! - the *span*, represented by [`SpanData`] and related types;
+//! - source code as represented by a [`SourceMap`]; and
+//! - interned strings, represented by [`Symbol`]s, with some common symbols available statically in the [`sym`] module.
+//!
+//! Unlike most compilers, the span contains not only the position in the source code, but also various other metadata,
+//! such as the edition and macro hygiene. This metadata is stored in [`SyntaxContext`] and [`ExpnData`].
 //!
 //! ## Note
 //!
@@ -124,7 +133,7 @@ pub enum RealFileName {
 
 impl RealFileName {
     /// Returns the path suitable for reading from the file system on the local host.
-    /// Avoid embedding this in build artifacts; see `stable_name` for that.
+    /// Avoid embedding this in build artifacts; see `stable_name()` for that.
     pub fn local_path(&self) -> &Path {
         match self {
             RealFileName::Named(p)
@@ -133,7 +142,7 @@ impl RealFileName {
     }
 
     /// Returns the path suitable for reading from the file system on the local host.
-    /// Avoid embedding this in build artifacts; see `stable_name` for that.
+    /// Avoid embedding this in build artifacts; see `stable_name()` for that.
     pub fn into_local_path(self) -> PathBuf {
         match self {
             RealFileName::Named(p)
@@ -143,7 +152,7 @@ impl RealFileName {
 
     /// Returns the path suitable for embedding into build artifacts. Note that
     /// a virtualized path will not correspond to a valid file system path; see
-    /// `local_path` for something that is more likely to return paths into the
+    /// `local_path()` for something that is more likely to return paths into the
     /// local host file system.
     pub fn stable_name(&self) -> &Path {
         match self {
@@ -173,7 +182,7 @@ pub enum FileName {
     /// Custom sources for explicit parser calls from plugins and drivers.
     Custom(String),
     DocTest(PathBuf, isize),
-    /// Post-substitution inline assembly from LLVM
+    /// Post-substitution inline assembly from LLVM.
     InlineAsm(u64),
 }
 
@@ -266,14 +275,17 @@ impl FileName {
     }
 }
 
+/// Represents a span.
+///
 /// Spans represent a region of code, used for error reporting. Positions in spans
-/// are *absolute* positions from the beginning of the source_map, not positions
-/// relative to `SourceFile`s. Methods on the `SourceMap` can be used to relate spans back
+/// are *absolute* positions from the beginning of the [`SourceMap`], not positions
+/// relative to [`SourceFile`]s. Methods on the `SourceMap` can be used to relate spans back
 /// to the original source.
-/// You must be careful if the span crosses more than one file - you will not be
+///
+/// You must be careful if the span crosses more than one file, since you will not be
 /// able to use many of the functions on spans in source_map and you cannot assume
-/// that the length of the `span = hi - lo`; there may be space in the `BytePos`
-/// range between files.
+/// that the length of the span is equal to `span.hi - span.lo`; there may be space in the
+/// [`BytePos`] range between files.
 ///
 /// `SpanData` is public because `Span` uses a thread-local interner and can't be
 /// sent to other threads, but some pieces of performance infra run in a separate thread.
@@ -384,7 +396,7 @@ impl Span {
         Span::new(lo, hi, SyntaxContext::root())
     }
 
-    /// Returns a new span representing an empty span at the beginning of this span
+    /// Returns a new span representing an empty span at the beginning of this span.
     #[inline]
     pub fn shrink_to_lo(self) -> Span {
         let span = self.data();
@@ -398,7 +410,7 @@ impl Span {
     }
 
     #[inline]
-    /// Returns true if hi == lo
+    /// Returns `true` if `hi == lo`.
     pub fn is_empty(&self) -> bool {
         let span = self.data();
         span.hi == span.lo
@@ -512,7 +524,7 @@ impl Span {
     }
 
     /// Checks if a span is "internal" to a macro in which `unsafe`
-    /// can be used without triggering the `unsafe_code` lint
+    /// can be used without triggering the `unsafe_code` lint.
     //  (that is, a macro marked with `#[allow_internal_unsafe]`).
     pub fn allows_unsafe(&self) -> bool {
         self.ctxt().outer_expn_data().allow_internal_unsafe
@@ -700,6 +712,7 @@ impl Span {
     }
 }
 
+/// A span together with some additional data.
 #[derive(Clone, Debug)]
 pub struct SpanLabel {
     /// The span we are going to include in the final snippet.
@@ -743,7 +756,7 @@ impl<D: Decoder> Decodable<D> for Span {
 /// any spans that are debug-printed during the closure's execution.
 ///
 /// Normally, the global `TyCtxt` is used to retrieve the `SourceMap`
-/// (see `rustc_interface::callbacks::span_debug1). However, some parts
+/// (see `rustc_interface::callbacks::span_debug1`). However, some parts
 /// of the compiler (e.g. `rustc_parse`) may debug-print `Span`s before
 /// a `TyCtxt` is available. In this case, we fall back to
 /// the `SourceMap` provided to this function. If that is not available,
@@ -994,9 +1007,9 @@ pub enum ExternalSource {
     Unneeded,
     Foreign {
         kind: ExternalSourceKind,
-        /// This SourceFile's byte-offset within the source_map of its original crate
+        /// This SourceFile's byte-offset within the source_map of its original crate.
         original_start_pos: BytePos,
-        /// The end of this SourceFile within the source_map of its original crate
+        /// The end of this SourceFile within the source_map of its original crate.
         original_end_pos: BytePos,
     },
 }
@@ -1099,7 +1112,7 @@ impl SourceFileHash {
     }
 }
 
-/// A single source in the `SourceMap`.
+/// A single source in the [`SourceMap`].
 #[derive(Clone)]
 pub struct SourceFile {
     /// The name of the file that the source came from. Source that doesn't
@@ -1580,7 +1593,7 @@ fn remove_bom(src: &mut String, normalized_pos: &mut Vec<NormalizedPos>) {
 
 /// Replaces `\r\n` with `\n` in-place in `src`.
 ///
-/// Returns error if there's a lone `\r` in the string
+/// Returns error if there's a lone `\r` in the string.
 fn normalize_newlines(src: &mut String, normalized_pos: &mut Vec<NormalizedPos>) {
     if !src.as_bytes().contains(&b'\r') {
         return;
@@ -1705,13 +1718,16 @@ macro_rules! impl_pos {
 }
 
 impl_pos! {
-    /// A byte offset. Keep this small (currently 32-bits), as AST contains
-    /// a lot of them.
+    /// A byte offset.
+    ///
+    /// Keep this small (currently 32-bits), as AST contains a lot of them.
     #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Debug)]
     pub struct BytePos(pub u32);
 
-    /// A character offset. Because of multibyte UTF-8 characters, a byte offset
-    /// is not equivalent to a character offset. The `SourceMap` will convert `BytePos`
+    /// A character offset.
+    ///
+    /// Because of multibyte UTF-8 characters, a byte offset
+    /// is not equivalent to a character offset. The [`SourceMap`] will convert [`BytePos`]
     /// values to `CharPos` values as necessary.
     #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
     pub struct CharPos(pub usize);
@@ -1835,8 +1851,9 @@ fn lookup_line(lines: &[BytePos], pos: BytePos) -> isize {
 }
 
 /// Requirements for a `StableHashingContext` to be used in this crate.
-/// This is a hack to allow using the `HashStable_Generic` derive macro
-/// instead of implementing everything in librustc_middle.
+///
+/// This is a hack to allow using the [`HashStable_Generic`] derive macro
+/// instead of implementing everything in rustc_middle.
 pub trait HashStableContext {
     fn hash_def_id(&mut self, _: DefId, hasher: &mut StableHasher);
     fn hash_crate_num(&mut self, _: CrateNum, hasher: &mut StableHasher);
@@ -1856,6 +1873,7 @@ where
     /// offsets into the `SourceMap`). Instead, we hash the (file name, line, column)
     /// triple, which stays the same even if the containing `SourceFile` has moved
     /// within the `SourceMap`.
+    ///
     /// Also note that we are hashing byte offsets for the column, not unicode
     /// codepoint offsets. For the purpose of the hash that's sufficient.
     /// Also, hashing filenames is expensive so we avoid doing it twice when the
