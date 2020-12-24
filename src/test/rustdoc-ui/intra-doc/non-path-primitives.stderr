@@ -1,0 +1,69 @@
+error: unresolved link to `T`
+  --> $DIR/non-path-primitives.rs:11:7
+   |
+LL | //! [[T]::rotate_left]
+   |       ^ no item named `T` in scope
+   |
+note: the lint level is defined here
+  --> $DIR/non-path-primitives.rs:1:9
+   |
+LL | #![deny(broken_intra_doc_links)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+   = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
+error: unresolved link to `Z`
+  --> $DIR/non-path-primitives.rs:13:5
+   |
+LL | //![Z]([T; N]::map)
+   |     ^ no item named `Z` in scope
+   |
+   = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
+error: unresolved link to `Z`
+  --> $DIR/non-path-primitives.rs:16:6
+   |
+LL | //! [Z][]
+   |      ^ no item named `Z` in scope
+   |
+   = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
+error: unresolved link to `Z`
+  --> $DIR/non-path-primitives.rs:18:6
+   |
+LL | //! [Z]: [T; N]::map
+   |      ^ no item named `Z` in scope
+   |
+   = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
+error: unresolved link to `unit::eq`
+  --> $DIR/non-path-primitives.rs:27:6
+   |
+LL | //! [unit::eq]
+   |      ^^^^^^^^ the builtin type `unit` has no associated item named `eq`
+
+error: unresolved link to `tuple::eq`
+  --> $DIR/non-path-primitives.rs:28:6
+   |
+LL | //! [tuple::eq]
+   |      ^^^^^^^^^ the builtin type `tuple` has no associated item named `eq`
+
+error: unresolved link to `fn::eq`
+  --> $DIR/non-path-primitives.rs:29:6
+   |
+LL | //! [fn::eq]
+   |      ^^^^^^ the builtin type `fn` has no associated item named `eq`
+
+error: unresolved link to `never::eq`
+  --> $DIR/non-path-primitives.rs:30:6
+   |
+LL | //! [never::eq]
+   |      ^^^^^^^^^ the builtin type `never` has no associated item named `eq`
+
+error: unresolved link to `reference::deref`
+  --> $DIR/non-path-primitives.rs:34:6
+   |
+LL | //! [reference::deref]
+   |      ^^^^^^^^^^^^^^^^ the builtin type `reference` has no associated item named `deref`
+
+error: aborting due to 9 previous errors
+

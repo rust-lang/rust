@@ -1020,7 +1020,7 @@ impl LinkCollector<'_, '_> {
             (link.trim(), None)
         };
 
-        if path_str.contains(|ch: char| !(ch.is_alphanumeric() || ":_<>, !*()[]&;".contains(ch))) {
+        if path_str.contains(|ch: char| !(ch.is_alphanumeric() || ":_<>, !*&;".contains(ch))) {
             return None;
         }
 
@@ -2085,10 +2085,11 @@ fn resolve_primitive(path_str: &str, ns: Namespace) -> Option<Res> {
         "char" => Char,
         "bool" | "true" | "false" => Bool,
         "str" => Str,
-        "slice" | "&[]" | "[T]" => Slice,
-        "array" | "[]" | "[T;N]" => Array,
-        "tuple" | "(,)" => Tuple,
-        "unit" | "()" => Unit,
+        // See #80181 for why these don't have symbols associated.
+        "slice" => Slice,
+        "array" => Array,
+        "tuple" => Tuple,
+        "unit" => Unit,
         "pointer" | "*" | "*const" | "*mut" => RawPointer,
         "reference" | "&" | "&mut" => Reference,
         "fn" => Fn,
