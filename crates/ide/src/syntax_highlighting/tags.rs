@@ -80,6 +80,7 @@ impl HighlightTag {
                 SymbolKind::LifetimeParam => "lifetime",
                 SymbolKind::Macro => "macro",
                 SymbolKind::Local => "variable",
+                SymbolKind::Label => "label",
                 SymbolKind::ValueParam => "value_param",
                 SymbolKind::SelfParam => "self_keyword",
                 SymbolKind::Impl => "self_type",

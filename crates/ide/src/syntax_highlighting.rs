@@ -560,10 +560,20 @@ fn highlight_element(
         CHAR => HighlightTag::CharLiteral.into(),
         QUESTION => Highlight::new(HighlightTag::Operator) | HighlightModifier::ControlFlow,
         LIFETIME => {
-            let h = Highlight::new(HighlightTag::Symbol(SymbolKind::LifetimeParam));
-            match element.parent().map(|it| it.kind()) {
-                Some(LIFETIME_PARAM) | Some(LABEL) => h | HighlightModifier::Definition,
-                _ => h,
+            let lifetime = element.into_node().and_then(ast::Lifetime::cast).unwrap();
+
+            match NameClass::classify_lifetime(sema, &lifetime) {
+                Some(NameClass::Definition(def)) => {
+                    highlight_def(db, def) | HighlightModifier::Definition
+                }
+                None => match NameRefClass::classify_lifetime(sema, &lifetime) {
+                    Some(NameRefClass::Definition(def)) => highlight_def(db, def),
+                    _ => Highlight::new(HighlightTag::Symbol(SymbolKind::LifetimeParam)),
+                },
+                _ => {
+                    Highlight::new(HighlightTag::Symbol(SymbolKind::LifetimeParam))
+                        | HighlightModifier::Definition
+                }
             }
         }
         p if p.is_punct() => match p {
@@ -825,6 +835,7 @@ fn highlight_def(db: &RootDatabase, def: Definition) -> Highlight {
             return h;
         }
         Definition::LifetimeParam(_) => HighlightTag::Symbol(SymbolKind::LifetimeParam),
+        Definition::Label(_) => HighlightTag::Symbol(SymbolKind::Label),
     }
     .into()
 }

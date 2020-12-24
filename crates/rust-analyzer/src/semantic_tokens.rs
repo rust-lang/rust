@@ -45,6 +45,7 @@ define_semantic_token_types![
     (FORMAT_SPECIFIER, "formatSpecifier"),
     (GENERIC, "generic"),
     (LIFETIME, "lifetime"),
+    (LABEL, "label"),
     (PUNCTUATION, "punctuation"),
     (SELF_KEYWORD, "selfKeyword"),
     (TYPE_ALIAS, "typeAlias"),

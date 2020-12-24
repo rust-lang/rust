@@ -168,6 +168,11 @@ fn main() {
     let baz = -baz;
 
     let _ = !true;
+
+    'foo: loop {
+        break 'foo;
+        continue 'foo;
+    }
 }
 
 enum Option<T> {

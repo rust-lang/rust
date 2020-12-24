@@ -4,6 +4,7 @@ body                { margin: 0; }
 pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padding: 0.4em; }
 
 .lifetime           { color: #DFAF8F; font-style: italic; }
+.label              { color: #DFAF8F; font-style: italic; }
 .comment            { color: #7F9F7F; }
 .documentation      { color: #629755; }
 .injected           { opacity: 0.65 ; }
@@ -194,6 +195,11 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
     <span class="keyword">let</span> <span class="variable declaration">baz</span> <span class="operator">=</span> <span class="operator">-</span><span class="variable">baz</span><span class="punctuation">;</span>
 
     <span class="keyword">let</span> <span class="punctuation">_</span> <span class="operator">=</span> <span class="operator">!</span><span class="bool_literal">true</span><span class="punctuation">;</span>
+
+    <span class="label declaration">'foo</span><span class="punctuation">:</span> <span class="keyword control">loop</span> <span class="punctuation">{</span>
+        <span class="keyword control">break</span> <span class="label">'foo</span><span class="punctuation">;</span>
+        <span class="keyword control">continue</span> <span class="label">'foo</span><span class="punctuation">;</span>
+    <span class="punctuation">}</span>
 <span class="punctuation">}</span>
 
 <span class="keyword">enum</span> <span class="enum declaration">Option</span><span class="punctuation">&lt;</span><span class="type_param declaration">T</span><span class="punctuation">&gt;</span> <span class="punctuation">{</span>
