@@ -29,6 +29,7 @@ use rustc_passes::{self, hir_stats, layout_test};
 use rustc_plugin_impl as plugin;
 use rustc_resolve::{Resolver, ResolverArenas};
 use rustc_session::config::{CrateType, Input, OutputFilenames, OutputType, PpMode, PpSourceMode};
+use rustc_session::lint;
 use rustc_session::output::{filename_for_input, filename_for_metadata};
 use rustc_session::search_paths::PathKind;
 use rustc_session::Session;
@@ -306,11 +307,27 @@ fn configure_and_expand_inner<'a>(
             ecx.check_unused_macros();
         });
 
+        let mut missing_fragment_specifiers: Vec<_> = ecx
+            .sess
+            .parse_sess
+            .missing_fragment_specifiers
+            .borrow()
+            .iter()
+            .map(|(span, node_id)| (*span, *node_id))
+            .collect();
+        missing_fragment_specifiers.sort_unstable_by_key(|(span, _)| *span);
+
+        let recursion_limit_hit = ecx.reduced_recursion_limit.is_some();
+
+        for (span, node_id) in missing_fragment_specifiers {
+            let lint = lint::builtin::MISSING_FRAGMENT_SPECIFIER;
+            let msg = "missing fragment specifier";
+            resolver.lint_buffer().buffer_lint(lint, node_id, span, msg);
+        }
         if cfg!(windows) {
             env::set_var("PATH", &old_path);
         }
 
-        let recursion_limit_hit = ecx.reduced_recursion_limit.is_some();
         if recursion_limit_hit {
             // If we hit a recursion limit, exit early to avoid later passes getting overwhelmed
             // with a large AST
