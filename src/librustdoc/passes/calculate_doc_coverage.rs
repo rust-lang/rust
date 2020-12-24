@@ -5,7 +5,7 @@ use crate::html::markdown::{find_testable_code, ErrorCodes};
 use crate::passes::doc_test_lints::{should_have_doc_example, Tests};
 use crate::passes::Pass;
 use rustc_lint::builtin::MISSING_DOCS;
-use rustc_middle::lint::LintSource;
+use rustc_middle::lint::LintLevelSource;
 use rustc_session::lint;
 use rustc_span::symbol::sym;
 use rustc_span::FileName;
@@ -254,7 +254,7 @@ impl<'a, 'b> fold::DocFolder for CoverageCalculator<'a, 'b> {
                 // `missing_docs` is allow-by-default, so don't treat this as ignoring the item
                 // unless the user had an explicit `allow`
                 let should_have_docs =
-                    level != lint::Level::Allow || matches!(source, LintSource::Default);
+                    level != lint::Level::Allow || matches!(source, LintLevelSource::Default);
                 debug!("counting {:?} {:?} in {}", i.type_(), i.name, filename);
                 self.items.entry(filename).or_default().count_item(
                     has_docs,
