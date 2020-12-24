@@ -1336,6 +1336,14 @@ public:
 
     if (Mode == DerivativeMode::Forward) {
       switch (II.getIntrinsicID()) {
+      case Intrinsic::nvvm_barrier0:    
+      case Intrinsic::nvvm_barrier0_popc:
+      case Intrinsic::nvvm_barrier0_and:
+      case Intrinsic::nvvm_barrier0_or:
+      case Intrinsic::nvvm_membar_cta:
+      case Intrinsic::nvvm_membar_gl:
+      case Intrinsic::nvvm_membar_sys:  
+
       case Intrinsic::prefetch:
       case Intrinsic::dbg_declare:
       case Intrinsic::dbg_value:
@@ -1399,6 +1407,35 @@ public:
       }
 
       switch (II.getIntrinsicID()) {
+      case Intrinsic::nvvm_barrier0_popc:
+      case Intrinsic::nvvm_barrier0_and:
+      case Intrinsic::nvvm_barrier0_or:{
+        SmallVector<Value *, 1> args = {};
+        auto cal = cast<CallInst>(Builder2.CreateCall(Intrinsic::getDeclaration(M, Intrinsic::nvvm_barrier0)
+            , args));
+        cal->copyIRFlags(&II);
+        cal->setAttributes(II.getAttributes());
+        cal->setCallingConv(II.getCallingConv());
+        cal->setTailCallKind(II.getTailCallKind());
+        cal->setDebugLoc(gutils->getNewFromOriginal(II.getDebugLoc()));
+        return;
+      }
+
+      case Intrinsic::nvvm_barrier0:    
+      case Intrinsic::nvvm_membar_cta:
+      case Intrinsic::nvvm_membar_gl:
+      case Intrinsic::nvvm_membar_sys: {
+        SmallVector<Value *, 1> args = {};
+        auto cal = cast<CallInst>(Builder2.CreateCall(II.getCalledFunction()
+            , args));
+        cal->copyIRFlags(&II);
+        cal->setAttributes(II.getAttributes());
+        cal->setCallingConv(II.getCallingConv());
+        cal->setTailCallKind(II.getTailCallKind());
+        cal->setDebugLoc(gutils->getNewFromOriginal(II.getDebugLoc()));
+        return;
+      }
+
       case Intrinsic::assume:
       case Intrinsic::prefetch:
       case Intrinsic::dbg_declare:

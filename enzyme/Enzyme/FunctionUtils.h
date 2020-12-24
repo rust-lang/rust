@@ -318,4 +318,6 @@ static inline void calculateUnusedStores(
     unnecessaryStores.insert(inst);
   }
 }
+
+void ReplaceReallocs(llvm::Function *NewF, bool mem2reg=false);
 #endif

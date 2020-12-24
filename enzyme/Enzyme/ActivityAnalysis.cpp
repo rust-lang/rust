@@ -113,6 +113,7 @@ const char *KnownInactiveFunctions[] = {"__assert_fail",
                                         "__cxa_guard_abort",
                                         "posix_memalign",
                                         "printf",
+                                        "vprintf",
                                         "puts",
                                         "__enzyme_float",
                                         "__enzyme_double",
@@ -455,6 +456,13 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
 
   if (auto II = dyn_cast<IntrinsicInst>(Val)) {
     switch (II->getIntrinsicID()) {
+    case Intrinsic::nvvm_barrier0:    
+    case Intrinsic::nvvm_barrier0_popc:
+    case Intrinsic::nvvm_barrier0_and:
+    case Intrinsic::nvvm_barrier0_or:
+    case Intrinsic::nvvm_membar_cta:
+    case Intrinsic::nvvm_membar_gl:
+    case Intrinsic::nvvm_membar_sys:
     case Intrinsic::assume:
     case Intrinsic::stacksave:
     case Intrinsic::stackrestore:
@@ -775,6 +783,13 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
 
             bool noUse = true;
             switch (F->getIntrinsicID()) {
+            case Intrinsic::nvvm_barrier0:    
+            case Intrinsic::nvvm_barrier0_popc:
+            case Intrinsic::nvvm_barrier0_and:
+            case Intrinsic::nvvm_barrier0_or:
+            case Intrinsic::nvvm_membar_cta:
+            case Intrinsic::nvvm_membar_gl:
+            case Intrinsic::nvvm_membar_sys:
             case Intrinsic::assume:
             case Intrinsic::stacksave:
             case Intrinsic::stackrestore:
@@ -1173,6 +1188,13 @@ bool ActivityAnalyzer::isInstructionInactiveFromOrigin(TypeResults &TR,
   // Intrinsics known always to be inactive
   if (auto II = dyn_cast<IntrinsicInst>(inst)) {
     switch (II->getIntrinsicID()) {
+    case Intrinsic::nvvm_barrier0:    
+    case Intrinsic::nvvm_barrier0_popc:
+    case Intrinsic::nvvm_barrier0_and:
+    case Intrinsic::nvvm_barrier0_or:
+    case Intrinsic::nvvm_membar_cta:
+    case Intrinsic::nvvm_membar_gl:
+    case Intrinsic::nvvm_membar_sys:
     case Intrinsic::assume:
     case Intrinsic::stacksave:
     case Intrinsic::stackrestore:

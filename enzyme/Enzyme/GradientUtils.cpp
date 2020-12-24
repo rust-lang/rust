@@ -1169,7 +1169,7 @@ Value *GradientUtils::invertPointerM(Value *oval, IRBuilder<> &BuilderM) {
                Triple::nvptx64) &&
           cast<PointerType>(arg->getType())->getAddressSpace() == 3) {
         llvm::errs() << "warning found shared memory\n";
-#if LLVM_VERSION_MAJOR >= 11
+//#if LLVM_VERSION_MAJOR >= 11
         Type *type = cast<PointerType>(arg->getType())->getElementType();
         auto shadow = new GlobalVariable(
             *arg->getParent(), type, arg->isConstant(), arg->getLinkage(),
@@ -1177,7 +1177,7 @@ Value *GradientUtils::invertPointerM(Value *oval, IRBuilder<> &BuilderM) {
             arg->getThreadLocalMode(), arg->getAddressSpace(),
             arg->isExternallyInitialized());
         return invertedPointers[oval] = shadow;
-#endif
+//#endif
       }
 
       llvm::errs() << *oldFunc << "\n";

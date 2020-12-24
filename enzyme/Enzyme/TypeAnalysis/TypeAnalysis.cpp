@@ -1631,6 +1631,14 @@ void TypeAnalyzer::visitIntrinsicInst(llvm::IntrinsicInst &I) {
     updateAnalysis(&I, TypeTree(BaseType::Integer).Only(-1), &I);
     return;
 
+  case Intrinsic::nvvm_barrier0_popc:
+  case Intrinsic::nvvm_barrier0_and:
+  case Intrinsic::nvvm_barrier0_or:
+    // No direction check as always valid
+    updateAnalysis(&I, TypeTree(BaseType::Integer).Only(-1), &I);
+    updateAnalysis(I.getOperand(0), TypeTree(BaseType::Integer).Only(-1), &I);
+    return;
+
   case Intrinsic::log:
   case Intrinsic::log2:
   case Intrinsic::log10:
@@ -2457,6 +2465,7 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
     }
 
     if (ci->getName() == "__cxa_guard_acquire" || ci->getName() == "printf" ||
+        ci->getName() == "vprintf" ||  
         ci->getName() == "puts") {
       updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1), &call);
     }

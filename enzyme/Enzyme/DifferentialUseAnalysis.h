@@ -127,7 +127,10 @@ bool is_value_needed_in_reverse(
           if (II->getIntrinsicID() == Intrinsic::lifetime_start ||
               II->getIntrinsicID() == Intrinsic::lifetime_end ||
               II->getIntrinsicID() == Intrinsic::stacksave ||
-              II->getIntrinsicID() == Intrinsic::stackrestore) {
+              II->getIntrinsicID() == Intrinsic::stackrestore ||
+              II->getIntrinsicID() == Intrinsic::nvvm_barrier0_popc ||
+              II->getIntrinsicID() == Intrinsic::nvvm_barrier0_and ||
+              II->getIntrinsicID() == Intrinsic::nvvm_barrier0_or) {
             continue;
           }
         }

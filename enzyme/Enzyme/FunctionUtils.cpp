@@ -427,7 +427,12 @@ OldAllocationSize(Value *Ptr, CallInst *Loc, Function *NewF, IntegerType *T,
 }
 
 /// Calls to realloc with an appropriate implementation
-static inline void ReplaceReallocs(Function *NewF) {
+void ReplaceReallocs(Function *NewF, bool mem2reg) {
+  if (mem2reg) {
+    DominatorTree DT(*NewF);
+    PromoteMemoryToRegister(*NewF, DT);
+  }
+  
   std::vector<CallInst *> ToConvert;
   std::map<CallInst *, Value *> reallocSizes;
   IntegerType *T;
