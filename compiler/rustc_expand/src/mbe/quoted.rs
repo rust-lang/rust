@@ -3,7 +3,7 @@ use crate::mbe::{Delimited, KleeneOp, KleeneToken, SequenceRepetition, TokenTree
 
 use rustc_ast::token::{self, Token};
 use rustc_ast::tokenstream;
-use rustc_ast::NodeId;
+use rustc_ast::{NodeId, DUMMY_NODE_ID};
 use rustc_ast_pretty::pprust;
 use rustc_session::parse::ParseSess;
 use rustc_span::symbol::{kw, Ident};
@@ -73,7 +73,7 @@ pub(super) fn parse(
                                                 .emit();
                                             token::NonterminalKind::Ident
                                         });
-                                    result.push(TokenTree::MetaVarDecl(span, ident, kind));
+                                    result.push(TokenTree::MetaVarDecl(span, ident, Some(kind)));
                                     continue;
                                 }
                                 _ => token.span,
@@ -83,8 +83,11 @@ pub(super) fn parse(
                     }
                     tree => tree.as_ref().map(tokenstream::TokenTree::span).unwrap_or(start_sp),
                 };
-                sess.span_diagnostic.struct_span_err(span, "missing fragment specifier").emit();
-                continue;
+                if node_id != DUMMY_NODE_ID {
+                    // Macros loaded from other crates have dummy node ids.
+                    sess.missing_fragment_specifiers.borrow_mut().insert(span, node_id);
+                }
+                result.push(TokenTree::MetaVarDecl(span, ident, None));
             }
 
             // Not a metavar or no matchers allowed, so just return the tree
