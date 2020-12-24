@@ -68,9 +68,10 @@ impl<'cx, 'tcx> crate::borrow_check::MirBorrowckCtxt<'cx, 'tcx> {
             err.span_label(
                 new_loan_span,
                 format!(
-                    "mutable borrow starts here in previous \
-                     iteration of loop{}",
-                    opt_via
+                    "{}{} was mutably borrowed here in the previous iteration of the loop{}",
+                    desc,
+                    via(opt_via),
+                    opt_via,
                 ),
             );
             if let Some(old_load_end_span) = old_load_end_span {

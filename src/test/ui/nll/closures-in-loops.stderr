@@ -15,7 +15,7 @@ error[E0499]: cannot borrow `x` as mutable more than once at a time
 LL |         v.push(|| x = String::new());
    |                ^^ - borrows occur due to use of `x` in closure
    |                |
-   |                mutable borrow starts here in previous iteration of loop
+   |                `x` was mutably borrowed here in the previous iteration of the loop
 
 error[E0524]: two closures require unique access to `x` at the same time
   --> $DIR/closures-in-loops.rs:20:16
