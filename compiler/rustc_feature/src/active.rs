@@ -643,7 +643,6 @@ pub const INCOMPLETE_FEATURES: &[Symbol] = &[
     sym::const_trait_bound_opt_out,
     sym::lazy_normalization_consts,
     sym::specialization,
-    sym::inline_const,
     sym::repr128,
     sym::unsized_locals,
     sym::capture_disjoint_fields,

@@ -1,6 +1,5 @@
 // run-pass
 
-#![allow(incomplete_features)]
 #![feature(inline_const)]
 fn foo() -> i32 {
     const {
