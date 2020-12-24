@@ -76,10 +76,7 @@ impl ProcMacroClient {
         args: impl IntoIterator<Item = impl AsRef<OsStr>>,
     ) -> io::Result<ProcMacroClient> {
         let (thread, process) = ProcMacroProcessSrv::run(process_path, args)?;
-        Ok(ProcMacroClient {
-            process: Arc::new(process),
-            thread,
-        })
+        Ok(ProcMacroClient { process: Arc::new(process), thread })
     }
 
     pub fn by_dylib_path(&self, dylib_path: &Path) -> Vec<ProcMacro> {
@@ -106,11 +103,7 @@ impl ProcMacroClient {
                     dylib_path: dylib_path.into(),
                 });
 
-                ProcMacro {
-                    name,
-                    kind,
-                    expander,
-                }
+                ProcMacro { name, kind, expander }
             })
             .collect()
     }
@@ -156,7 +149,10 @@ impl ProcMacroClient {
         const EXPECTED_HEADER: [u8; 8] = [b'r', b'u', b's', b't', 0, 0, 0, 5];
         // check if header is valid
         if header != EXPECTED_HEADER {
-            return Err(io::Error::new(io::ErrorKind::InvalidData, format!(".rustc section should start with header {:?}; header {:?} is actually presented.",EXPECTED_HEADER ,header)));
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                format!("only metadata version 5 is supported, section header was: {:?}", header),
+            ));
         }
 
         let snappy_portion = &dot_rustc[8..];
