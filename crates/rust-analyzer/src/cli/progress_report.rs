@@ -1,7 +1,7 @@
 //! A simple progress bar
 //!
 //! A single thread non-optimized progress bar
-use std::io::Write;
+use std::io::{self, Write};
 
 /// A Simple ASCII Progress Bar
 pub(crate) struct ProgressReport {
@@ -97,8 +97,8 @@ impl ProgressReport {
             }
         }
 
-        let _ = std::io::stdout().write(output.as_bytes());
-        let _ = std::io::stdout().flush();
+        let _ = io::stdout().write(output.as_bytes());
+        let _ = io::stdout().flush();
         self.text = text.to_string();
     }
 
@@ -115,6 +115,8 @@ impl ProgressReport {
         let spaces = " ".repeat(self.text.len());
         let backspaces = "\x08".repeat(self.text.len());
         print!("{}{}{}", backspaces, spaces, backspaces);
+        let _ = io::stdout().flush();
+
         self.text = String::new();
     }
 }
