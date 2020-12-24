@@ -490,23 +490,23 @@ impl Analysis {
             .unwrap_or_default())
     }
 
+    /// Computes assists (aka code actions aka intentions) for the given
+    /// position. Computes enough info to show the lightbulb list in the editor,
+    /// but doesn't compute actual edits, to improve performance.
+    ///
+    /// When the user clicks on the assist, call `resolve_assists` to get the
+    /// edit.
+    pub fn assists(&self, config: &AssistConfig, frange: FileRange) -> Cancelable<Vec<Assist>> {
+        self.with_db(|db| Assist::unresolved(db, config, frange))
+    }
+
     /// Computes resolved assists with source changes for the given position.
-    pub fn resolved_assists(
+    pub fn resolve_assists(
         &self,
         config: &AssistConfig,
         frange: FileRange,
     ) -> Cancelable<Vec<ResolvedAssist>> {
         self.with_db(|db| assists::Assist::resolved(db, config, frange))
-    }
-
-    /// Computes unresolved assists (aka code actions aka intentions) for the given
-    /// position.
-    pub fn unresolved_assists(
-        &self,
-        config: &AssistConfig,
-        frange: FileRange,
-    ) -> Cancelable<Vec<Assist>> {
-        self.with_db(|db| Assist::unresolved(db, config, frange))
     }
 
     /// Computes the set of diagnostics for the given file.
