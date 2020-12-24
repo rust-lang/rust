@@ -5,7 +5,7 @@ LL |     println!("{:?}", x.map_err(|_| Errors::Ignored));
    |                                ^^^
    |
    = note: `-D clippy::map-err-ignore` implied by `-D warnings`
-   = help: Consider storing the original error as a source in the new error, or silence this warning using an ignored identifier (`.map_err(|_foo| ...`)
+   = help: consider storing the original error as a source in the new error, or silence this warning using an ignored identifier (`.map_err(|_foo| ...`)
 
 error: aborting due to previous error
 
