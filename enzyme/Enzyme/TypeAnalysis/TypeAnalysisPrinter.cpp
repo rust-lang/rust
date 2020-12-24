@@ -89,9 +89,9 @@ public:
       } else if (a.getType()->isPointerTy()) {
         auto et = cast<PointerType>(a.getType())->getElementType();
         if (et->isFPOrFPVectorTy()) {
-          dt = TypeTree(ConcreteType(et->getScalarType())).Only({-1});
+          dt = TypeTree(ConcreteType(et->getScalarType())).Only(-1);
         } else if (et->isPointerTy()) {
-          dt = TypeTree(ConcreteType(BaseType::Pointer)).Only({-1});
+          dt = TypeTree(ConcreteType(BaseType::Pointer)).Only(-1);
         }
       } else if (a.getType()->isIntOrIntVectorTy()) {
         dt = ConcreteType(BaseType::Integer);

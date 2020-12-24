@@ -1958,7 +1958,6 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
                 auto memcpyF = Intrinsic::getDeclaration(
                     newFunc->getParent(), Intrinsic::memcpy, tys);
                 llvm::errs() << *memcpyF << "\n";
-
                 auto mem = cast<CallInst>(v.CreateCall(memcpyF, nargs));
                 // memset->addParamAttr(0, Attribute::getWithAlignment(Context,
                 // inst->getAlignment()));

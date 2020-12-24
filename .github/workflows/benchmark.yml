@@ -38,7 +38,7 @@ jobs:
           cd enzyme/build 
           cmake .. -DLLVM_EXTERNAL_LIT=/usr/lib/llvm-${{ matrix.llvm }}/build/utils/lit/lit.py -DCMAKE_BUILD_TYPE=${{ matrix.build }} -DLLVM_DIR=/usr/lib/llvm-${{ matrix.llvm }}/lib/cmake/llvm
     - name: make
-      run: cd enzyme/build && make -j
+      run: cd enzyme/build && make -j`nproc`
     - name: make bench-enzyme
       run: cd enzyme/build && make bench-enzyme
     - name: results
