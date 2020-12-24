@@ -247,9 +247,10 @@ fn run_test(
     edition: Edition,
     outdir: DirState,
     path: PathBuf,
+    test_id: &str,
 ) -> Result<(), TestFailure> {
     let (test, line_offset, supports_color) =
-        make_test(test, Some(cratename), as_test_harness, opts, edition);
+        make_test(test, Some(cratename), as_test_harness, opts, edition, Some(test_id));
 
     let output_file = outdir.path().join("rust_out");
 
@@ -387,6 +388,7 @@ crate fn make_test(
     dont_insert_main: bool,
     opts: &TestOptions,
     edition: Edition,
+    test_id: Option<&str>,
 ) -> (String, usize, bool) {
     let (crate_attrs, everything_else, crates) = partition_source(s);
     let everything_else = everything_else.trim();
@@ -542,16 +544,41 @@ crate fn make_test(
         prog.push_str(everything_else);
     } else {
         let returns_result = everything_else.trim_end().ends_with("(())");
+        // Give each doctest main function a unique name.
+        // This is for example needed for the tooling around `-Z instrument-coverage`.
+        let inner_fn_name = if let Some(test_id) = test_id {
+            format!("_doctest_main_{}", test_id)
+        } else {
+            "_inner".into()
+        };
+        let inner_attr = if test_id.is_some() { "#[allow(non_snake_case)] " } else { "" };
         let (main_pre, main_post) = if returns_result {
             (
-                "fn main() { fn _inner() -> Result<(), impl core::fmt::Debug> {",
-                "}\n_inner().unwrap() }",
+                format!(
+                    "fn main() {{ {}fn {}() -> Result<(), impl core::fmt::Debug> {{\n",
+                    inner_attr, inner_fn_name
+                ),
+                format!("\n}}; {}().unwrap() }}", inner_fn_name),
+            )
+        } else if test_id.is_some() {
+            (
+                format!("fn main() {{ {}fn {}() {{\n", inner_attr, inner_fn_name),
+                format!("\n}}; {}() }}", inner_fn_name),
             )
         } else {
-            ("fn main() {\n", "\n}")
+            ("fn main() {\n".into(), "\n}".into())
         };
-        prog.extend([main_pre, everything_else, main_post].iter().cloned());
+        // Note on newlines: We insert a line/newline *before*, and *after*
+        // the doctest and adjust the `line_offset` accordingly.
+        // In the case of `-Z instrument-coverage`, this means that the generated
+        // inner `main` function spans from the doctest opening codeblock to the
+        // closing one. For example
+        // /// ``` <- start of the inner main
+        // /// <- code under doctest
+        // /// ``` <- end of the inner main
         line_offset += 1;
+
+        prog.extend([&main_pre, everything_else, &main_post].iter().cloned());
     }
 
     debug!("final doctest:\n{}", prog);
@@ -749,28 +776,24 @@ impl Tester for Collector {
             _ => PathBuf::from(r"doctest.rs"),
         };
 
+        // For example `module/file.rs` would become `module_file_rs`
+        let file = filename
+            .to_string()
+            .chars()
+            .map(|c| if c.is_ascii_alphanumeric() { c } else { '_' })
+            .collect::<String>();
+        let test_id = format!(
+            "{file}_{line}_{number}",
+            file = file,
+            line = line,
+            number = {
+                // Increases the current test number, if this file already
+                // exists or it creates a new entry with a test number of 0.
+                self.visited_tests.entry((file.clone(), line)).and_modify(|v| *v += 1).or_insert(0)
+            },
+        );
         let outdir = if let Some(mut path) = options.persist_doctests.clone() {
-            // For example `module/file.rs` would become `module_file_rs`
-            let folder_name = filename
-                .to_string()
-                .chars()
-                .map(|c| if c == '\\' || c == '/' || c == '.' { '_' } else { c })
-                .collect::<String>();
-
-            path.push(format!(
-                "{krate}_{file}_{line}_{number}",
-                krate = cratename,
-                file = folder_name,
-                line = line,
-                number = {
-                    // Increases the current test number, if this file already
-                    // exists or it creates a new entry with a test number of 0.
-                    self.visited_tests
-                        .entry((folder_name.clone(), line))
-                        .and_modify(|v| *v += 1)
-                        .or_insert(0)
-                },
-            ));
+            path.push(&test_id);
 
             std::fs::create_dir_all(&path)
                 .expect("Couldn't create directory for doctest executables");
@@ -817,6 +840,7 @@ impl Tester for Collector {
                     edition,
                     outdir,
                     path,
+                    &test_id,
                 );
 
                 if let Err(err) = res {
