@@ -89,6 +89,7 @@ add_library( Enzyme-${LLVM_VERSION_MAJOR}
     ${ENZYME_SRC}    
 )
 target_link_libraries(Enzyme-${LLVM_VERSION_MAJOR} LLVM)
+install(TARGETS Enzyme-${LLVM_VERSION_MAJOR} DESTINATION lib)
 
 if (APPLE)
 # Darwin-specific linker flags for loadable modules.
