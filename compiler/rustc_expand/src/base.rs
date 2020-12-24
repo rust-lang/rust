@@ -1071,26 +1071,25 @@ impl<'a> ExtCtxt<'a> {
     ) -> Result<PathBuf, DiagnosticBuilder<'a>> {
         let path = path.into();
 
+        if path.is_absolute() {
+            return Ok(path);
+        }
         // Relative paths are resolved relative to the file in which they are found
         // after macro expansion (that is, they are unhygienic).
-        if !path.is_absolute() {
-            let callsite = span.source_callsite();
-            let mut result = match self.source_map().span_to_unmapped_path(callsite) {
-                FileName::Real(name) => name.into_local_path(),
-                FileName::DocTest(path, _) => path,
-                other => {
-                    return Err(self.struct_span_err(
-                        span,
-                        &format!("cannot resolve relative path in non-file source `{}`", other),
-                    ));
-                }
-            };
-            result.pop();
-            result.push(path);
-            Ok(result)
-        } else {
-            Ok(path)
-        }
+        let callsite = span.source_callsite();
+        let mut result = match self.source_map().span_to_unmapped_path(callsite) {
+            FileName::Real(name) => name.into_local_path(),
+            FileName::DocTest(path, _) => path,
+            other => {
+                return Err(self.struct_span_err(
+                    span,
+                    &format!("cannot resolve relative path in non-file source `{}`", other),
+                ));
+            }
+        };
+        result.pop();
+        result.push(path);
+        Ok(result)
     }
 }
 

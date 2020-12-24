@@ -347,13 +347,12 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         seg: &hir::PathSegment<'_>,
         is_method_call: bool,
     ) -> GenericArgCountResult {
-        let empty_args = hir::GenericArgs::none();
         let suppress_mismatch = Self::check_impl_trait(tcx, seg, &def);
         Self::check_generic_arg_count(
             tcx,
             span,
             def,
-            if let Some(ref args) = seg.args { args } else { &empty_args },
+            seg.args.unwrap_or(&hir::GenericArgs::none()),
             if is_method_call { GenericArgPosition::MethodCall } else { GenericArgPosition::Value },
             def.parent.is_none() && def.has_self, // `has_self`
             seg.infer_args || suppress_mismatch,  // `infer_args`

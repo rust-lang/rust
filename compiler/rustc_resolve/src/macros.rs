@@ -263,10 +263,10 @@ impl<'a> ResolverExpand for Resolver<'a> {
                 //   than by individual derives.
                 // - Derives in the container need to know whether one of them is a built-in `Copy`.
                 // FIXME: Try to avoid repeated resolutions for derives here and in expansion.
-                let mut exts = Vec::new();
                 let mut helper_attrs = Vec::new();
-                for path in derives {
-                    exts.push(
+                let exts = derives
+                    .iter()
+                    .map(|path| {
                         match self.resolve_macro_path(
                             path,
                             Some(MacroKind::Derive),
@@ -288,15 +288,15 @@ impl<'a> ResolverExpand for Resolver<'a> {
                                 if ext.is_derive_copy {
                                     self.containers_deriving_copy.insert(invoc_id);
                                 }
-                                ext
+                                Ok(ext)
                             }
                             Ok(_) | Err(Determinacy::Determined) => {
-                                self.dummy_ext(MacroKind::Derive)
+                                Ok(self.dummy_ext(MacroKind::Derive))
                             }
-                            Err(Determinacy::Undetermined) => return Err(Indeterminate),
-                        },
-                    )
-                }
+                            Err(Determinacy::Undetermined) => Err(Indeterminate),
+                        }
+                    })
+                    .collect::<Result<Vec<_>, _>>()?;
                 self.helper_attrs.insert(invoc_id, helper_attrs);
                 return Ok(InvocationRes::DeriveContainer(exts));
             }
