@@ -5,7 +5,7 @@ use crate::dep_graph::{self, DepGraph, DepKind, DepNode, DepNodeExt};
 use crate::hir::exports::ExportMap;
 use crate::ich::{NodeIdHashingMode, StableHashingContext};
 use crate::infer::canonical::{Canonical, CanonicalVarInfo, CanonicalVarInfos};
-use crate::lint::{struct_lint_level, LintDiagnosticBuilder, LintSource};
+use crate::lint::{struct_lint_level, LintDiagnosticBuilder, LintLevelSource};
 use crate::middle;
 use crate::middle::cstore::{CrateStoreDyn, EncodedMetadata};
 use crate::middle::resolve_lifetime::{self, ObjectLifetimeDefault};
@@ -2559,7 +2559,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         lint: &'static Lint,
         mut id: hir::HirId,
-    ) -> (Level, LintSource) {
+    ) -> (Level, LintLevelSource) {
         let sets = self.lint_levels(LOCAL_CRATE);
         loop {
             if let Some(pair) = sets.level_and_source(lint, id, self.sess) {
