@@ -421,8 +421,7 @@ fn token_name_eq(t1: &Token, t2: &Token) -> bool {
 fn or_pat_mode(edition: Edition) -> OrPatNonterminalMode {
     match edition {
         Edition::Edition2015 | Edition::Edition2018 => OrPatNonterminalMode::NoTopAlt,
-        // FIXME(mark-i-m): uncomment this when edition 2021 machinery is added.
-        // Edition::Edition2021 =>  OrPatNonterminalMode::TopPat,
+        Edition::Edition2021 => OrPatNonterminalMode::TopPat,
     }
 }
 
