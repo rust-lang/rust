@@ -248,35 +248,7 @@ mod tests {
     ///  * a diagnostic is produced
     ///  * this diagnostic fix trigger range touches the input cursor position
     ///  * that the contents of the file containing the cursor match `after` after the diagnostic fix is applied
-    pub(super) fn check_fix(ra_fixture_before: &str, ra_fixture_after: &str) {
-        let after = trim_indent(ra_fixture_after);
-
-        let (analysis, file_position) = fixture::position(ra_fixture_before);
-        let diagnostic = analysis
-            .diagnostics(&DiagnosticsConfig::default(), file_position.file_id)
-            .unwrap()
-            .pop()
-            .unwrap();
-        let mut fix = diagnostic.fix.unwrap();
-        let edit = fix.source_change.source_file_edits.pop().unwrap().edit;
-        let target_file_contents = analysis.file_text(file_position.file_id).unwrap();
-        let actual = {
-            let mut actual = target_file_contents.to_string();
-            edit.apply(&mut actual);
-            actual
-        };
-
-        assert_eq_text!(&after, &actual);
-        assert!(
-            fix.fix_trigger_range.contains_inclusive(file_position.offset),
-            "diagnostic fix range {:?} does not touch cursor position {:?}",
-            fix.fix_trigger_range,
-            file_position.offset
-        );
-    }
-
-    /// Similar to `check_fix`, but applies all the available fixes.
-    fn check_fixes(ra_fixture_before: &str, ra_fixture_after: &str) {
+    pub(crate) fn check_fix(ra_fixture_before: &str, ra_fixture_after: &str) {
         let after = trim_indent(ra_fixture_after);
 
         let (analysis, file_position) = fixture::position(ra_fixture_before);
@@ -802,7 +774,7 @@ struct Foo {
 
     #[test]
     fn test_rename_incorrect_case() {
-        check_fixes(
+        check_fix(
             r#"
 pub struct test_struct<|> { one: i32 }
 
@@ -819,7 +791,7 @@ pub fn some_fn(val: TestStruct) -> TestStruct {
 "#,
         );
 
-        check_fixes(
+        check_fix(
             r#"
 pub fn some_fn(NonSnakeCase<|>: u8) -> u8 {
     NonSnakeCase
@@ -832,7 +804,7 @@ pub fn some_fn(non_snake_case: u8) -> u8 {
 "#,
         );
 
-        check_fixes(
+        check_fix(
             r#"
 pub fn SomeFn<|>(val: u8) -> u8 {
     if val != 0 { SomeFn(val - 1) } else { val }
@@ -845,7 +817,7 @@ pub fn some_fn(val: u8) -> u8 {
 "#,
         );
 
-        check_fixes(
+        check_fix(
             r#"
 fn some_fn() {
     let whatAWeird_Formatting<|> = 10;
@@ -874,7 +846,7 @@ fn foo() {
 
     #[test]
     fn test_rename_incorrect_case_struct_method() {
-        check_fixes(
+        check_fix(
             r#"
 pub struct TestStruct;
 
@@ -906,6 +878,6 @@ impl TestStruct {
             analysis.diagnostics(&DiagnosticsConfig::default(), file_position.file_id).unwrap();
         assert_eq!(diagnostics.len(), 1);
 
-        check_fixes(input, expected);
+        check_fix(input, expected);
     }
 }
