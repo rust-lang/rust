@@ -383,25 +383,19 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
         Ok(mplace) => {
             // Since evaluation had no errors, valiate the resulting constant:
             let validation = try {
-                // FIXME do not validate promoteds until a decision on
-                // https://github.com/rust-lang/rust/issues/67465 and
-                // https://github.com/rust-lang/rust/issues/67534 is made.
-                // Promoteds can contain unexpected `UnsafeCell` and reference `static`s, but their
-                // otherwise restricted form ensures that this is still sound. We just lose the
-                // extra safety net of some of the dynamic checks. They can also contain invalid
-                // values, but since we do not usually check intermediate results of a computation
-                // for validity, it might be surprising to do that here.
-                if cid.promoted.is_none() {
-                    let mut ref_tracking = RefTracking::new(mplace);
-                    let mut inner = false;
-                    while let Some((mplace, path)) = ref_tracking.todo.pop() {
-                        let mode = match tcx.static_mutability(cid.instance.def_id()) {
-                            Some(_) => CtfeValidationMode::Regular, // a `static`
-                            None => CtfeValidationMode::Const { inner },
-                        };
-                        ecx.const_validate_operand(mplace.into(), path, &mut ref_tracking, mode)?;
-                        inner = true;
-                    }
+                let mut ref_tracking = RefTracking::new(mplace);
+                let mut inner = false;
+                while let Some((mplace, path)) = ref_tracking.todo.pop() {
+                    let mode = match tcx.static_mutability(cid.instance.def_id()) {
+                        Some(_) if cid.promoted.is_some() => {
+                            // Promoteds in statics are allowed to point to statics.
+                            CtfeValidationMode::Const { inner, allow_static_ptrs: true }
+                        }
+                        Some(_) => CtfeValidationMode::Regular, // a `static`
+                        None => CtfeValidationMode::Const { inner, allow_static_ptrs: false },
+                    };
+                    ecx.const_validate_operand(mplace.into(), path, &mut ref_tracking, mode)?;
+                    inner = true;
                 }
             };
             if let Err(error) = validation {
