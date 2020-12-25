@@ -29,8 +29,8 @@
 //!   contained no `DefId` for thing that had been removed.
 //!
 //! `DepNode` definition happens in the `define_dep_nodes!()` macro. This macro
-//! defines the `DepKind` enum and a corresponding `DepConstructor` enum. The
-//! `DepConstructor` enum links a `DepKind` to the parameters that are needed at
+//! defines the `DepKind` enum and a corresponding `dep_constructor` module. The
+//! `dep_constructor` module links a `DepKind` to the parameters that are needed at
 //! runtime in order to construct a valid `DepNode` fingerprint.
 //!
 //! Because the macro sees what parameters a given `DepKind` requires, it can
@@ -44,7 +44,7 @@
 //!   `DefId` it was computed from. In other cases, too much information gets
 //!   lost during fingerprint computation.
 //!
-//! The `DepConstructor` enum, together with `DepNode::new()`, ensures that only
+//! The `dep_constructor` module, together with `DepNode::new()`, ensures that only
 //! valid `DepNode` instances can be constructed. For example, the API does not
 //! allow for constructing parameterless `DepNode`s with anything other
 //! than a zeroed out fingerprint. More generally speaking, it relieves the
@@ -331,10 +331,10 @@ macro_rules! define_dep_nodes {
             $($variant),*
         }
 
-        pub struct DepConstructor;
-
         #[allow(non_camel_case_types)]
-        impl DepConstructor {
+        pub mod dep_constructor {
+            use super::*;
+
             $(
                 #[inline(always)]
                 #[allow(unreachable_code, non_snake_case)]
