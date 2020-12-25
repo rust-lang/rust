@@ -13,7 +13,7 @@ use rustc_span::{symbol, Span, Symbol, DUMMY_SP};
 
 /// How a lint level was set.
 #[derive(Clone, Copy, PartialEq, Eq, HashStable)]
-pub enum LintSource {
+pub enum LintLevelSource {
     /// Lint is at the default level as declared
     /// in rustc or a plugin.
     Default,
@@ -27,25 +27,26 @@ pub enum LintSource {
     CommandLine(Symbol, Level),
 }
 
-impl LintSource {
+impl LintLevelSource {
     pub fn name(&self) -> Symbol {
         match *self {
-            LintSource::Default => symbol::kw::Default,
-            LintSource::Node(name, _, _) => name,
-            LintSource::CommandLine(name, _) => name,
+            LintLevelSource::Default => symbol::kw::Default,
+            LintLevelSource::Node(name, _, _) => name,
+            LintLevelSource::CommandLine(name, _) => name,
         }
     }
 
     pub fn span(&self) -> Span {
         match *self {
-            LintSource::Default => DUMMY_SP,
-            LintSource::Node(_, span, _) => span,
-            LintSource::CommandLine(_, _) => DUMMY_SP,
+            LintLevelSource::Default => DUMMY_SP,
+            LintLevelSource::Node(_, span, _) => span,
+            LintLevelSource::CommandLine(_, _) => DUMMY_SP,
         }
     }
 }
 
-pub type LevelSource = (Level, LintSource);
+/// A tuple of a lint level and its source.
+pub type LevelSource = (Level, LintLevelSource);
 
 pub struct LintLevelSets {
     pub list: Vec<LintSet>,
@@ -113,7 +114,7 @@ impl LintLevelSets {
         id: LintId,
         mut idx: u32,
         aux: Option<&FxHashMap<LintId, LevelSource>>,
-    ) -> (Option<Level>, LintSource) {
+    ) -> (Option<Level>, LintLevelSource) {
         if let Some(specs) = aux {
             if let Some(&(level, src)) = specs.get(&id) {
                 return (Some(level), src);
@@ -125,7 +126,7 @@ impl LintLevelSets {
                     if let Some(&(level, src)) = specs.get(&id) {
                         return (Some(level), src);
                     }
-                    return (None, LintSource::Default);
+                    return (None, LintLevelSource::Default);
                 }
                 LintSet::Node { ref specs, parent } => {
                     if let Some(&(level, src)) = specs.get(&id) {
@@ -213,7 +214,7 @@ pub fn struct_lint_level<'s, 'd>(
     sess: &'s Session,
     lint: &'static Lint,
     level: Level,
-    src: LintSource,
+    src: LintLevelSource,
     span: Option<MultiSpan>,
     decorate: impl for<'a> FnOnce(LintDiagnosticBuilder<'a>) + 'd,
 ) {
@@ -223,7 +224,7 @@ pub fn struct_lint_level<'s, 'd>(
         sess: &'s Session,
         lint: &'static Lint,
         level: Level,
-        src: LintSource,
+        src: LintLevelSource,
         span: Option<MultiSpan>,
         decorate: Box<dyn for<'b> FnOnce(LintDiagnosticBuilder<'b>) + 'd>,
     ) {
@@ -274,14 +275,14 @@ pub fn struct_lint_level<'s, 'd>(
 
         let name = lint.name_lower();
         match src {
-            LintSource::Default => {
+            LintLevelSource::Default => {
                 sess.diag_note_once(
                     &mut err,
                     DiagnosticMessageId::from(lint),
                     &format!("`#[{}({})]` on by default", level.as_str(), name),
                 );
             }
-            LintSource::CommandLine(lint_flag_val, orig_level) => {
+            LintLevelSource::CommandLine(lint_flag_val, orig_level) => {
                 let flag = match orig_level {
                     Level::Warn => "-W",
                     Level::Deny => "-D",
@@ -310,7 +311,7 @@ pub fn struct_lint_level<'s, 'd>(
                     );
                 }
             }
-            LintSource::Node(lint_attr_name, src, reason) => {
+            LintLevelSource::Node(lint_attr_name, src, reason) => {
                 if let Some(rationale) = reason {
                     err.note(&rationale.as_str());
                 }
