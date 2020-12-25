@@ -15,7 +15,7 @@ use crate::{
 //
 // ```
 // trait Trait<T> {
-//     Type X;
+//     type X;
 //     fn foo(&self) -> T;
 //     fn bar(&self) {}
 // }
@@ -27,14 +27,16 @@ use crate::{
 // ->
 // ```
 // trait Trait<T> {
-//     Type X;
+//     type X;
 //     fn foo(&self) -> T;
 //     fn bar(&self) {}
 // }
 //
 // impl Trait<u32> for () {
+//     $0type X;
+//
 //     fn foo(&self) -> u32 {
-//         ${0:todo!()}
+//         todo!()
 //     }
 // }
 // ```
@@ -54,13 +56,13 @@ pub(crate) fn add_missing_impl_members(acc: &mut Assists, ctx: &AssistContext) -
 //
 // ```
 // trait Trait {
-//     Type X;
+//     type X;
 //     fn foo(&self);
 //     fn bar(&self) {}
 // }
 //
 // impl Trait for () {
-//     Type X = ();
+//     type X = ();
 //     fn foo(&self) {}<|>
 //
 // }
@@ -68,13 +70,13 @@ pub(crate) fn add_missing_impl_members(acc: &mut Assists, ctx: &AssistContext) -
 // ->
 // ```
 // trait Trait {
-//     Type X;
+//     type X;
 //     fn foo(&self);
 //     fn bar(&self) {}
 // }
 //
 // impl Trait for () {
-//     Type X = ();
+//     type X = ();
 //     fn foo(&self) {}
 //
 //     $0fn bar(&self) {}
