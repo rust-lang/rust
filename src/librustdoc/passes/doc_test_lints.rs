@@ -9,7 +9,7 @@ use crate::clean::*;
 use crate::core::DocContext;
 use crate::fold::DocFolder;
 use crate::html::markdown::{find_testable_code, ErrorCodes, Ignore, LangString};
-use rustc_middle::lint::LintSource;
+use rustc_middle::lint::LintLevelSource;
 use rustc_session::lint;
 
 crate const CHECK_PRIVATE_ITEMS_DOC_TESTS: Pass = Pass {
@@ -77,7 +77,7 @@ crate fn should_have_doc_example(cx: &DocContext<'_>, item: &clean::Item) -> boo
     let hir_id = cx.tcx.hir().local_def_id_to_hir_id(item.def_id.expect_local());
     let (level, source) =
         cx.tcx.lint_level_at_node(lint::builtin::MISSING_DOC_CODE_EXAMPLES, hir_id);
-    level != lint::Level::Allow || matches!(source, LintSource::Default)
+    level != lint::Level::Allow || matches!(source, LintLevelSource::Default)
 }
 
 crate fn look_for_tests<'tcx>(cx: &DocContext<'tcx>, dox: &str, item: &Item) {

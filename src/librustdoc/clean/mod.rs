@@ -218,11 +218,6 @@ impl Clean<ExternalCrate> for CrateNum {
 
 impl Clean<Item> for doctree::Module<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> Item {
-        // maintain a stack of mod ids, for doc comment path resolution
-        // but we also need to resolve the module's own docs based on whether its docs were written
-        // inside or outside the module, so check for that
-        let attrs = self.attrs.clean(cx);
-
         let mut items: Vec<Item> = vec![];
         items.extend(self.imports.iter().flat_map(|x| x.clean(cx)));
         items.extend(self.foreigns.iter().map(|x| x.clean(cx)));
@@ -251,7 +246,7 @@ impl Clean<Item> for doctree::Module<'_> {
             ModuleItem(Module { is_crate: self.is_crate, items }),
             cx,
         );
-        Item { attrs, source: span.clean(cx), ..what_rustc_thinks }
+        Item { source: span.clean(cx), ..what_rustc_thinks }
     }
 }
 
@@ -638,6 +633,18 @@ impl Clean<Generics> for hir::Generics<'_> {
                 _ => false,
             }
         }
+        /// This can happen for `async fn`, e.g. `async fn f<'_>(&'_ self)`.
+        ///
+        /// See [`lifetime_to_generic_param`] in [`rustc_ast_lowering`] for more information.
+        ///
+        /// [`lifetime_to_generic_param`]: rustc_ast_lowering::LoweringContext::lifetime_to_generic_param
+        fn is_elided_lifetime(param: &hir::GenericParam<'_>) -> bool {
+            match param.kind {
+                hir::GenericParamKind::Lifetime { kind: hir::LifetimeParamKind::Elided } => true,
+                _ => false,
+            }
+        }
+
         let impl_trait_params = self
             .params
             .iter()
@@ -656,7 +663,7 @@ impl Clean<Generics> for hir::Generics<'_> {
             .collect::<Vec<_>>();
 
         let mut params = Vec::with_capacity(self.params.len());
-        for p in self.params.iter().filter(|p| !is_impl_trait(p)) {
+        for p in self.params.iter().filter(|p| !is_impl_trait(p) && !is_elided_lifetime(p)) {
             let p = p.clean(cx);
             params.push(p);
         }
@@ -1437,7 +1444,16 @@ impl Clean<Type> for hir::Ty<'_> {
             TyKind::Never => Never,
             TyKind::Ptr(ref m) => RawPointer(m.mutbl, box m.ty.clean(cx)),
             TyKind::Rptr(ref l, ref m) => {
-                let lifetime = if l.is_elided() { None } else { Some(l.clean(cx)) };
+                // There are two times a `Fresh` lifetime can be created:
+                // 1. For `&'_ x`, written by the user. This corresponds to `lower_lifetime` in `rustc_ast_lowering`.
+                // 2. For `&x` as a parameter to an `async fn`. This corresponds to `elided_ref_lifetime in `rustc_ast_lowering`.
+                //    See #59286 for more information.
+                // Ideally we would only hide the `'_` for case 2., but I don't know a way to distinguish it.
+                // Turning `fn f(&'_ self)` into `fn f(&self)` isn't the worst thing in the world, though;
+                // there's no case where it could cause the function to fail to compile.
+                let elided =
+                    l.is_elided() || matches!(l.name, LifetimeName::Param(ParamName::Fresh(_)));
+                let lifetime = if elided { None } else { Some(l.clean(cx)) };
                 BorrowedRef { lifetime, mutability: m.mutbl, type_: box m.ty.clean(cx) }
             }
             TyKind::Slice(ref ty) => Slice(box ty.clean(cx)),

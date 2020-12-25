@@ -9,7 +9,6 @@ use rustc_hir as hir;
 
 crate struct Module<'hir> {
     crate name: Option<Symbol>,
-    crate attrs: &'hir [ast::Attribute],
     crate where_outer: Span,
     crate where_inner: Span,
     crate imports: Vec<Import<'hir>>,
@@ -23,13 +22,12 @@ crate struct Module<'hir> {
 }
 
 impl Module<'hir> {
-    crate fn new(name: Option<Symbol>, attrs: &'hir [ast::Attribute]) -> Module<'hir> {
+    crate fn new(name: Option<Symbol>) -> Module<'hir> {
         Module {
             name,
             id: hir::CRATE_HIR_ID,
             where_outer: rustc_span::DUMMY_SP,
             where_inner: rustc_span::DUMMY_SP,
-            attrs,
             imports: Vec::new(),
             mods: Vec::new(),
             items: Vec::new(),

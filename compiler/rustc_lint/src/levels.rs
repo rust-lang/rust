@@ -12,7 +12,9 @@ use rustc_hir::{intravisit, HirId};
 use rustc_middle::hir::map::Map;
 use rustc_middle::lint::LevelSource;
 use rustc_middle::lint::LintDiagnosticBuilder;
-use rustc_middle::lint::{struct_lint_level, LintLevelMap, LintLevelSets, LintSet, LintSource};
+use rustc_middle::lint::{
+    struct_lint_level, LintLevelMap, LintLevelSets, LintLevelSource, LintSet,
+};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::lint::{builtin, Level, Lint, LintId};
@@ -91,7 +93,7 @@ impl<'s> LintLevelsBuilder<'s> {
             };
             for id in ids {
                 self.check_gated_lint(id, DUMMY_SP);
-                let src = LintSource::CommandLine(lint_flag_val, orig_level);
+                let src = LintLevelSource::CommandLine(lint_flag_val, orig_level);
                 specs.insert(id, (level, src));
             }
         }
@@ -128,19 +130,19 @@ impl<'s> LintLevelsBuilder<'s> {
                 );
                 diag_builder.span_label(src.span(), "overruled by previous forbid");
                 match old_src {
-                    LintSource::Default => {
+                    LintLevelSource::Default => {
                         diag_builder.note(&format!(
                             "`forbid` lint level is the default for {}",
                             id.to_string()
                         ));
                     }
-                    LintSource::Node(_, forbid_source_span, reason) => {
+                    LintLevelSource::Node(_, forbid_source_span, reason) => {
                         diag_builder.span_label(forbid_source_span, "`forbid` level set here");
                         if let Some(rationale) = reason {
                             diag_builder.note(&rationale.as_str());
                         }
                     }
-                    LintSource::CommandLine(_, _) => {
+                    LintLevelSource::CommandLine(_, _) => {
                         diag_builder.note("`forbid` lint level was set on command line");
                     }
                 }
@@ -276,7 +278,7 @@ impl<'s> LintLevelsBuilder<'s> {
                 let name = meta_item.path.segments.last().expect("empty lint name").ident.name;
                 match store.check_lint_name(&name.as_str(), tool_name) {
                     CheckLintNameResult::Ok(ids) => {
-                        let src = LintSource::Node(name, li.span(), reason);
+                        let src = LintLevelSource::Node(name, li.span(), reason);
                         for &id in ids {
                             self.check_gated_lint(id, attr.span);
                             self.insert_spec(&mut specs, id, (level, src));
@@ -287,7 +289,7 @@ impl<'s> LintLevelsBuilder<'s> {
                         match result {
                             Ok(ids) => {
                                 let complete_name = &format!("{}::{}", tool_name.unwrap(), name);
-                                let src = LintSource::Node(
+                                let src = LintLevelSource::Node(
                                     Symbol::intern(complete_name),
                                     li.span(),
                                     reason,
@@ -324,7 +326,7 @@ impl<'s> LintLevelsBuilder<'s> {
                                     },
                                 );
 
-                                let src = LintSource::Node(
+                                let src = LintLevelSource::Node(
                                     Symbol::intern(&new_lint_name),
                                     li.span(),
                                     reason,
@@ -403,7 +405,7 @@ impl<'s> LintLevelsBuilder<'s> {
                 }
 
                 let (lint_attr_name, lint_attr_span) = match *src {
-                    LintSource::Node(name, span, _) => (name, span),
+                    LintLevelSource::Node(name, span, _) => (name, span),
                     _ => continue,
                 };
 
@@ -460,7 +462,7 @@ impl<'s> LintLevelsBuilder<'s> {
     }
 
     /// Find the lint level for a lint.
-    pub fn lint_level(&self, lint: &'static Lint) -> (Level, LintSource) {
+    pub fn lint_level(&self, lint: &'static Lint) -> (Level, LintLevelSource) {
         self.sets.get_lint_level(lint, self.cur, None, self.sess)
     }
 
