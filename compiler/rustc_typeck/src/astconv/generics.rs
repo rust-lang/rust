@@ -334,6 +334,28 @@ pub fn create_substs_for_generic_args<'a, 'tcx>(
 }
 
 /// Checks that the correct number of generic arguments have been provided.
+/// Used specifically for function calls.
+pub fn check_generic_arg_count_for_call(
+    tcx: TyCtxt<'_>,
+    span: Span,
+    def: &ty::Generics,
+    seg: &hir::PathSegment<'_>,
+    is_method_call: bool,
+) -> GenericArgCountResult {
+    let empty_args = hir::GenericArgs::none();
+    let suppress_mismatch = check_impl_trait(tcx, seg, &def);
+    check_generic_arg_count(
+        tcx,
+        span,
+        def,
+        if let Some(ref args) = seg.args { args } else { &empty_args },
+        if is_method_call { GenericArgPosition::MethodCall } else { GenericArgPosition::Value },
+        def.parent.is_none() && def.has_self, // `has_self`
+        seg.infer_args || suppress_mismatch,  // `infer_args`
+    )
+}
+
+/// Checks that the correct number of generic arguments have been provided.
 /// This is used both for datatypes and function calls.
 pub(crate) fn check_generic_arg_count(
     tcx: TyCtxt<'_>,

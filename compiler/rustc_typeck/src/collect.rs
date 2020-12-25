@@ -583,27 +583,27 @@ impl ItemCtxt<'tcx> {
         param_id: hir::HirId,
         ty: Ty<'tcx>,
         only_self_bounds: OnlySelfBounds,
-    ) -> Vec<(ty::Predicate<'tcx>, Span)> {
+    ) -> impl Iterator<Item = (ty::Predicate<'tcx>, Span)> + '_ {
         let constness = self.default_constness_for_trait_bounds();
         let from_ty_params = ast_generics
             .params
             .iter()
-            .filter_map(|param| match param.kind {
+            .filter_map(move |param| match param.kind {
                 GenericParamKind::Type { .. } if param.hir_id == param_id => Some(&param.bounds),
                 _ => None,
             })
-            .flat_map(|bounds| bounds.iter())
-            .flat_map(|b| predicates_from_bound(self, ty, b, constness));
+            .flat_map(move |bounds| bounds.iter())
+            .flat_map(move |b| predicates_from_bound(self, ty, b, constness));
 
         let from_where_clauses = ast_generics
             .where_clause
             .predicates
             .iter()
-            .filter_map(|wp| match *wp {
+            .filter_map(move |wp| match *wp {
                 hir::WherePredicate::BoundPredicate(ref bp) => Some(bp),
                 _ => None,
             })
-            .flat_map(|bp| {
+            .flat_map(move |bp| {
                 let bt = if is_param(self.tcx, &bp.bounded_ty, param_id) {
                     Some(ty)
                 } else if !only_self_bounds.0 {
@@ -613,9 +613,9 @@ impl ItemCtxt<'tcx> {
                 };
                 bp.bounds.iter().filter_map(move |b| bt.map(|bt| (bt, b)))
             })
-            .flat_map(|(bt, b)| predicates_from_bound(self, bt, b, constness));
+            .flat_map(move |(bt, b)| predicates_from_bound(self, bt, b, constness));
 
-        from_ty_params.chain(from_where_clauses).collect()
+        from_ty_params.chain(from_where_clauses)
     }
 }
 
