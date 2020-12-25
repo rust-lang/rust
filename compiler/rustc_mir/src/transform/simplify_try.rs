@@ -306,7 +306,7 @@ fn optimization_applies<'tcx>(
         return false;
     }
 
-    // Verify the assigment chain consists of the form b = a; c = b; d = c; etc...
+    // Verify the assignment chain consists of the form b = a; c = b; d = c; etc...
     if opt_info.field_tmp_assignments.is_empty() {
         trace!("NO: no assignments found");
         return false;
