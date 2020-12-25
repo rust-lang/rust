@@ -23,7 +23,7 @@ pub(crate) fn codegen_crate(
 
     match config.codegen_mode {
         CodegenMode::Aot => aot::run_aot(tcx, metadata, need_metadata_module),
-        CodegenMode::Jit => {
+        CodegenMode::Jit | CodegenMode::JitLazy => {
             let is_executable = tcx
                 .sess
                 .crate_types()
@@ -33,7 +33,7 @@ pub(crate) fn codegen_crate(
             }
 
             #[cfg(feature = "jit")]
-            let _: ! = jit::run_jit(tcx);
+            let _: ! = jit::run_jit(tcx, config.codegen_mode);
 
             #[cfg(not(feature = "jit"))]
             tcx.sess

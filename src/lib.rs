@@ -177,6 +177,7 @@ impl<'tcx, M: Module> CodegenCx<'tcx, M> {
 pub enum CodegenMode {
     Aot,
     Jit,
+    JitLazy,
 }
 
 impl Default for CodegenMode {
@@ -192,6 +193,7 @@ impl FromStr for CodegenMode {
         match s {
             "aot" => Ok(CodegenMode::Aot),
             "jit" => Ok(CodegenMode::Jit),
+            "jit-lazy" => Ok(CodegenMode::JitLazy),
             _ => Err(format!("Unknown codegen mode `{}`", s)),
         }
     }

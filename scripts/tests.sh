@@ -16,6 +16,9 @@ function no_sysroot_tests() {
     if [[ "$JIT_SUPPORTED" = "1" ]]; then
         echo "[JIT] mini_core_hello_world"
         CG_CLIF_JIT_ARGS="abc bcd" $MY_RUSTC -Cllvm-args=mode=jit -Cprefer-dynamic example/mini_core_hello_world.rs --cfg jit --target "$HOST_TRIPLE"
+
+        echo "[JIT-lazy] mini_core_hello_world"
+        CG_CLIF_JIT_ARGS="abc bcd" $MY_RUSTC -Cllvm-args=mode=jit-lazy -Cprefer-dynamic example/mini_core_hello_world.rs --cfg jit --target "$HOST_TRIPLE"
     else
         echo "[JIT] mini_core_hello_world (skipped)"
     fi
@@ -38,6 +41,9 @@ function base_sysroot_tests() {
     if [[ "$JIT_SUPPORTED" = "1" ]]; then
         echo "[JIT] std_example"
         $MY_RUSTC -Cllvm-args=mode=jit -Cprefer-dynamic example/std_example.rs --target "$HOST_TRIPLE"
+
+        echo "[JIT-lazy] std_example"
+        $MY_RUSTC -Cllvm-args=mode=jit-lazy -Cprefer-dynamic example/std_example.rs --cfg lazy_jit --target "$HOST_TRIPLE"
     else
         echo "[JIT] std_example (skipped)"
     fi

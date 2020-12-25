@@ -1,6 +1,7 @@
 //! The JIT driver uses [`cranelift_simplejit`] to JIT execute programs without writing any object
 //! files.
 
+use std::cell::RefCell;
 use std::ffi::CString;
 use std::os::raw::{c_char, c_int};
 
@@ -10,8 +11,13 @@ use rustc_middle::mir::mono::MonoItem;
 use cranelift_jit::{JITBuilder, JITModule};
 
 use crate::prelude::*;
+use crate::{CodegenCx, CodegenMode};
 
-pub(super) fn run_jit(tcx: TyCtxt<'_>) -> ! {
+thread_local! {
+    pub static CURRENT_MODULE: RefCell<Option<JITModule>> = RefCell::new(None);
+}
+
+pub(super) fn run_jit(tcx: TyCtxt<'_>, codegen_mode: CodegenMode) -> ! {
     if !tcx.sess.opts.output_types.should_codegen() {
         tcx.sess.fatal("JIT mode doesn't work with `cargo check`.");
     }
@@ -40,6 +46,7 @@ pub(super) fn run_jit(tcx: TyCtxt<'_>) -> ! {
         crate::build_isa(tcx.sess),
         cranelift_module::default_libcall_names(),
     );
+    jit_builder.hotswap(matches!(codegen_mode, CodegenMode::JitLazy));
     jit_builder.symbols(imported_symbols);
     let mut jit_module = JITModule::new(jit_builder);
     assert_eq!(pointer_ty(tcx), jit_module.target_config().pointer_type());
@@ -74,13 +81,17 @@ pub(super) fn run_jit(tcx: TyCtxt<'_>) -> ! {
         for (mono_item, (linkage, visibility)) in mono_items {
             let linkage = crate::linkage::get_clif_linkage(mono_item, linkage, visibility);
             match mono_item {
-                MonoItem::Fn(inst) => {
-                    cx.tcx.sess.time("codegen fn", || {
-                        crate::base::codegen_fn(&mut cx, inst, linkage)
-                    });
-                }
+                MonoItem::Fn(inst) => match codegen_mode {
+                    CodegenMode::Aot => unreachable!(),
+                    CodegenMode::Jit => {
+                        cx.tcx.sess.time("codegen fn", || {
+                            crate::base::codegen_fn(&mut cx, inst, linkage)
+                        });
+                    }
+                    CodegenMode::JitLazy => codegen_shim(&mut cx, inst),
+                },
                 MonoItem::Static(def_id) => {
-                    crate::constant::codegen_static(&mut cx.constants_cx, def_id)
+                    crate::constant::codegen_static(&mut cx.constants_cx, def_id);
                 }
                 MonoItem::GlobalAsm(hir_id) => {
                     let item = cx.tcx.hir().expect_item(hir_id);
@@ -126,9 +137,48 @@ pub(super) fn run_jit(tcx: TyCtxt<'_>) -> ! {
     // useful as some dynamic linkers use it as a marker to jump over.
     argv.push(std::ptr::null());
 
+    CURRENT_MODULE
+        .with(|current_module| assert!(current_module.borrow_mut().replace(jit_module).is_none()));
+
     let ret = f(args.len() as c_int, argv.as_ptr());
 
     std::process::exit(ret);
+}
+
+#[no_mangle]
+extern "C" fn __clif_jit_fn(instance_ptr: *const Instance<'static>) -> *const u8 {
+    rustc_middle::ty::tls::with(|tcx| {
+        // lift is used to ensure the correct lifetime for instance.
+        let instance = tcx.lift(unsafe { *instance_ptr }).unwrap();
+
+        CURRENT_MODULE.with(|jit_module| {
+            let mut jit_module = jit_module.borrow_mut();
+            let jit_module = jit_module.as_mut().unwrap();
+            let mut cx = crate::CodegenCx::new(tcx, jit_module, false, false);
+
+            let (name, sig) = crate::abi::get_function_name_and_sig(
+                tcx,
+                cx.module.isa().triple(),
+                instance,
+                true,
+            );
+            let func_id = cx
+                .module
+                .declare_function(&name, Linkage::Export, &sig)
+                .unwrap();
+            cx.module.prepare_for_function_redefine(func_id).unwrap();
+
+            tcx.sess.time("codegen fn", || {
+                crate::base::codegen_fn(&mut cx, instance, Linkage::Export)
+            });
+
+            let (jit_module, global_asm, _debug_context, unwind_context) = cx.finalize();
+            assert!(global_asm.is_empty());
+            jit_module.finalize_definitions();
+            std::mem::forget(unsafe { unwind_context.register_jit(&jit_module) });
+            jit_module.get_finalized_function(func_id)
+        })
+    })
 }
 
 fn load_imported_symbols_for_jit(tcx: TyCtxt<'_>) -> Vec<(String, *const u8)> {
@@ -189,4 +239,69 @@ fn load_imported_symbols_for_jit(tcx: TyCtxt<'_>) -> Vec<(String, *const u8)> {
     tcx.sess.abort_if_errors();
 
     imported_symbols
+}
+
+pub(super) fn codegen_shim<'tcx>(cx: &mut CodegenCx<'tcx, impl Module>, inst: Instance<'tcx>) {
+    let tcx = cx.tcx;
+
+    let pointer_type = cx.module.target_config().pointer_type();
+
+    let (name, sig) =
+        crate::abi::get_function_name_and_sig(tcx, cx.module.isa().triple(), inst, true);
+    let func_id = cx
+        .module
+        .declare_function(&name, Linkage::Export, &sig)
+        .unwrap();
+
+    let instance_ptr = Box::into_raw(Box::new(inst));
+
+    let jit_fn = cx
+        .module
+        .declare_function(
+            "__clif_jit_fn",
+            Linkage::Import,
+            &Signature {
+                call_conv: cx.module.target_config().default_call_conv,
+                params: vec![AbiParam::new(pointer_type)],
+                returns: vec![AbiParam::new(pointer_type)],
+            },
+        )
+        .unwrap();
+
+    let mut trampoline = Function::with_name_signature(ExternalName::default(), sig.clone());
+    let mut builder_ctx = FunctionBuilderContext::new();
+    let mut trampoline_builder = FunctionBuilder::new(&mut trampoline, &mut builder_ctx);
+
+    let jit_fn = cx
+        .module
+        .declare_func_in_func(jit_fn, trampoline_builder.func);
+    let sig_ref = trampoline_builder.func.import_signature(sig);
+
+    let entry_block = trampoline_builder.create_block();
+    trampoline_builder.append_block_params_for_function_params(entry_block);
+    let fn_args = trampoline_builder
+        .func
+        .dfg
+        .block_params(entry_block)
+        .to_vec();
+
+    trampoline_builder.switch_to_block(entry_block);
+    let instance_ptr = trampoline_builder
+        .ins()
+        .iconst(pointer_type, instance_ptr as u64 as i64);
+    let jitted_fn = trampoline_builder.ins().call(jit_fn, &[instance_ptr]);
+    let jitted_fn = trampoline_builder.func.dfg.inst_results(jitted_fn)[0];
+    let call_inst = trampoline_builder
+        .ins()
+        .call_indirect(sig_ref, jitted_fn, &fn_args);
+    let ret_vals = trampoline_builder.func.dfg.inst_results(call_inst).to_vec();
+    trampoline_builder.ins().return_(&ret_vals);
+
+    cx.module
+        .define_function(
+            func_id,
+            &mut Context::for_function(trampoline),
+            &mut cranelift_codegen::binemit::NullTrapSink {},
+        )
+        .unwrap();
 }
