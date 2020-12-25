@@ -1,5 +1,5 @@
 use crate::astconv::{
-    AstConv, CreateSubstsForGenericArgsCtxt, ExplicitLateBound, GenericArgCountMismatch,
+    self, AstConv, CreateSubstsForGenericArgsCtxt, ExplicitLateBound, GenericArgCountMismatch,
     GenericArgCountResult, PathSeg,
 };
 use crate::check::callee::{self, DeferredCallResolution};
@@ -454,7 +454,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     pub fn to_ty(&self, ast_t: &hir::Ty<'_>) -> Ty<'tcx> {
-        let t = AstConv::ast_ty_to_ty(self, ast_t);
+        let t = astconv::ast_ty_to_ty(self, ast_t);
         self.register_wf_obligation(t.into(), ast_t.span, traits::MiscObligation);
         t
     }
@@ -1144,7 +1144,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let path_segs = match res {
             Res::Local(_) | Res::SelfCtor(_) => vec![],
             Res::Def(kind, def_id) => {
-                AstConv::def_ids_for_value_path_segments(self, segments, self_ty, kind, def_id)
+                astconv::def_ids_for_value_path_segments(self, segments, self_ty, kind, def_id)
             }
             _ => bug!("instantiate_value_path on {:?}", res),
         };
@@ -1188,7 +1188,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // errors if type parameters are provided in an inappropriate place.
 
         let generic_segs: FxHashSet<_> = path_segs.iter().map(|PathSeg(_, index)| index).collect();
-        let generics_has_err = AstConv::prohibit_generics(
+        let generics_has_err = astconv::prohibit_generics(
             self,
             segments.iter().enumerate().filter_map(|(index, seg)| {
                 if !generic_segs.contains(&index) || is_alias_variant_ctor {
@@ -1229,7 +1229,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if let GenericArgCountResult {
                 correct: Err(GenericArgCountMismatch { reported: Some(ErrorReported), .. }),
                 ..
-            } = AstConv::check_generic_arg_count_for_call(
+            } = astconv::generics::check_generic_arg_count_for_call(
                 tcx, span, &generics, &seg, false, // `is_method_call`
             ) {
                 infer_args_for_err.insert(index);
@@ -1332,7 +1332,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ) -> subst::GenericArg<'tcx> {
                 match (&param.kind, arg) {
                     (GenericParamDefKind::Lifetime, GenericArg::Lifetime(lt)) => {
-                        AstConv::ast_region_to_region(self.fcx, lt, Some(param)).into()
+                        astconv::ast_region_to_region(self.fcx, lt, Some(param)).into()
                     }
                     (GenericParamDefKind::Type { .. }, GenericArg::Type(ty)) => {
                         self.fcx.to_ty(ty).into()
@@ -1385,7 +1385,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         let substs = self_ctor_substs.unwrap_or_else(|| {
-            AstConv::create_substs_for_generic_args(
+            astconv::generics::create_substs_for_generic_args(
                 tcx,
                 def_id,
                 &[][..],

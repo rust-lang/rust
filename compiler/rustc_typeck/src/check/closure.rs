@@ -2,7 +2,7 @@
 
 use super::{check_fn, Expectation, FnCtxt, GeneratorTypes};
 
-use crate::astconv::AstConv;
+use crate::astconv::{self, AstConv};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
@@ -538,17 +538,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         decl: &hir::FnDecl<'_>,
         body: &hir::Body<'_>,
     ) -> ty::PolyFnSig<'tcx> {
-        let astconv: &dyn AstConv<'_> = self;
-
         debug!(
             "supplied_sig_of_closure(decl={:?}, body.generator_kind={:?})",
             decl, body.generator_kind,
         );
 
         // First, convert the types that the user supplied (if any).
-        let supplied_arguments = decl.inputs.iter().map(|a| astconv.ast_ty_to_ty(a));
+        let supplied_arguments = decl.inputs.iter().map(|a| astconv::ast_ty_to_ty(self, a));
         let supplied_return = match decl.output {
-            hir::FnRetTy::Return(ref output) => astconv.ast_ty_to_ty(&output),
+            hir::FnRetTy::Return(ref output) => astconv::ast_ty_to_ty(self, &output),
             hir::FnRetTy::DefaultReturn(_) => match body.generator_kind {
                 // In the case of the async block that we create for a function body,
                 // we expect the return type of the block to match that of the enclosing
@@ -563,11 +561,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // easily (and locally) prove that we
                         // *have* reported an
                         // error. --nikomatsakis
-                        astconv.ty_infer(None, decl.output.span())
+                        self.ty_infer(None, decl.output.span())
                     })
                 }
 
-                _ => astconv.ty_infer(None, decl.output.span()),
+                _ => self.ty_infer(None, decl.output.span()),
             },
         };
 
@@ -694,16 +692,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// so should yield an error, but returns back a signature where
     /// all parameters are of type `TyErr`.
     fn error_sig_of_closure(&self, decl: &hir::FnDecl<'_>) -> ty::PolyFnSig<'tcx> {
-        let astconv: &dyn AstConv<'_> = self;
-
         let supplied_arguments = decl.inputs.iter().map(|a| {
             // Convert the types that the user supplied (if any), but ignore them.
-            astconv.ast_ty_to_ty(a);
+            astconv::ast_ty_to_ty(self, a);
             self.tcx.ty_error()
         });
 
         if let hir::FnRetTy::Return(ref output) = decl.output {
-            astconv.ast_ty_to_ty(&output);
+            astconv::ast_ty_to_ty(self, &output);
         }
 
         let result = ty::Binder::dummy(self.tcx.mk_fn_sig(

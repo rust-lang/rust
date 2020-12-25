@@ -1,5 +1,5 @@
 use super::FnCtxt;
-use crate::astconv::AstConv;
+use crate::astconv;
 
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_span::{self, Span};
@@ -419,7 +419,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // are not, the expectation must have been caused by something else.
                 debug!("suggest_missing_return_type: return type {:?} node {:?}", ty, ty.kind);
                 let sp = ty.span;
-                let ty = AstConv::ast_ty_to_ty(self, ty);
+                let ty = astconv::ast_ty_to_ty(self, ty);
                 debug!("suggest_missing_return_type: return type {:?}", ty);
                 debug!("suggest_missing_return_type: expected type {:?}", ty);
                 if ty.kind() == expected.kind() {

@@ -113,7 +113,6 @@ use rustc_trait_selection::traits::{
 
 use std::iter;
 
-use astconv::AstConv;
 use bounds::Bounds;
 
 fn require_c_abi_if_c_variadic(tcx: TyCtxt<'_>, decl: &hir::FnDecl<'_>, abi: Abi, span: Span) {
@@ -422,7 +421,7 @@ pub fn hir_ty_to_ty<'tcx>(tcx: TyCtxt<'tcx>, hir_ty: &hir::Ty<'_>) -> Ty<'tcx> {
     let env_def_id = tcx.hir().local_def_id(env_node_id);
     let item_cx = self::collect::ItemCtxt::new(tcx, env_def_id.to_def_id());
 
-    astconv::AstConv::ast_ty_to_ty(&item_cx, hir_ty)
+    astconv::ast_ty_to_ty(&item_cx, hir_ty)
 }
 
 pub fn hir_trait_to_predicates<'tcx>(
@@ -437,7 +436,7 @@ pub fn hir_trait_to_predicates<'tcx>(
     let env_def_id = tcx.hir().local_def_id(env_hir_id);
     let item_cx = self::collect::ItemCtxt::new(tcx, env_def_id.to_def_id());
     let mut bounds = Bounds::default();
-    let _ = AstConv::instantiate_poly_trait_ref_inner(
+    let _ = astconv::instantiate_poly_trait_ref_inner(
         &item_cx,
         hir_trait,
         DUMMY_SP,

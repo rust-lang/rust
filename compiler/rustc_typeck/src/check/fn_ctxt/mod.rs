@@ -6,7 +6,7 @@ pub use _impl::*;
 pub use checks::*;
 pub use suggestions::*;
 
-use crate::astconv::AstConv;
+use crate::astconv::{self, AstConv};
 use crate::check::coercion::DynamicCoerceMany;
 use crate::check::{Diverges, EnclosingBreakables, Inherited, UnsafetyState};
 
@@ -265,7 +265,7 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
             poly_trait_ref,
         );
 
-        let item_substs = <dyn AstConv<'tcx>>::create_substs_for_associated_item(
+        let item_substs = astconv::create_substs_for_associated_item(
             self,
             self.tcx,
             span,

@@ -99,7 +99,7 @@ pub use expectation::Expectation;
 pub use fn_ctxt::*;
 pub use inherited::{Inherited, InheritedBuilder};
 
-use crate::astconv::AstConv;
+use crate::astconv::{self, AstConv};
 use crate::check::gather_locals::GatherLocalsVisitor;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{pluralize, struct_span_err, Applicability};
@@ -495,7 +495,7 @@ fn typeck_with_fallback<'tcx>(
         let fcx = if let (Some(header), Some(decl)) = (fn_header, fn_decl) {
             let fn_sig = if crate::collect::get_infer_ret_ty(&decl.output).is_some() {
                 let fcx = FnCtxt::new(&inh, param_env, body.value.hir_id);
-                AstConv::ty_of_fn(
+                astconv::ty_of_fn(
                     &fcx,
                     header.unsafety,
                     header.abi,
@@ -526,7 +526,7 @@ fn typeck_with_fallback<'tcx>(
             let fcx = FnCtxt::new(&inh, param_env, body.value.hir_id);
             let expected_type = body_ty
                 .and_then(|ty| match ty.kind {
-                    hir::TyKind::Infer => Some(AstConv::ast_ty_to_ty(&fcx, ty)),
+                    hir::TyKind::Infer => Some(astconv::ast_ty_to_ty(&fcx, ty)),
                     _ => None,
                 })
                 .unwrap_or_else(|| match tcx.hir().get(id) {

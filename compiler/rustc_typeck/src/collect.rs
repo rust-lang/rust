@@ -14,7 +14,7 @@
 //! At present, however, we do run collection across all items in the
 //! crate as a kind of pass. This should eventually be factored away.
 
-use crate::astconv::{AstConv, SizedByDefault};
+use crate::astconv::{self, AstConv, SizedByDefault};
 use crate::bounds::Bounds;
 use crate::check::intrinsic::intrinsic_operation_unsafety;
 use crate::constrained_generic_params as cgp;
@@ -281,7 +281,7 @@ impl ItemCtxt<'tcx> {
     }
 
     pub fn to_ty(&self, ast_ty: &'tcx hir::Ty<'tcx>) -> Ty<'tcx> {
-        AstConv::ast_ty_to_ty(self, ast_ty)
+        astconv::ast_ty_to_ty(self, ast_ty)
     }
 
     pub fn hir_id(&self) -> hir::HirId {
@@ -344,7 +344,7 @@ impl AstConv<'tcx> for ItemCtxt<'tcx> {
         poly_trait_ref: ty::PolyTraitRef<'tcx>,
     ) -> Ty<'tcx> {
         if let Some(trait_ref) = poly_trait_ref.no_bound_vars() {
-            let item_substs = <dyn AstConv<'tcx>>::create_substs_for_associated_item(
+            let item_substs = astconv::create_substs_for_associated_item(
                 self,
                 self.tcx,
                 span,
@@ -1003,7 +1003,7 @@ fn super_predicates_of(tcx: TyCtxt<'_>, trait_def_id: DefId) -> ty::GenericPredi
     // Convert the bounds that follow the colon, e.g., `Bar + Zed` in `trait Foo: Bar + Zed`.
     let self_param_ty = tcx.types.self_param;
     let superbounds1 =
-        AstConv::compute_bounds(&icx, self_param_ty, bounds, SizedByDefault::No, item.span);
+        astconv::compute_bounds(&icx, self_param_ty, bounds, SizedByDefault::No, item.span);
 
     let superbounds1 = superbounds1.predicates(tcx, self_param_ty);
 
@@ -1569,7 +1569,7 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
                     diag.emit();
                     ty::Binder::bind(fn_sig)
                 }
-                None => AstConv::ty_of_fn(
+                None => astconv::ty_of_fn(
                     &icx,
                     sig.header.unsafety,
                     sig.header.abi,
@@ -1586,7 +1586,7 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
             generics,
             ..
         }) => {
-            AstConv::ty_of_fn(&icx, header.unsafety, header.abi, decl, &generics, Some(ident.span))
+            astconv::ty_of_fn(&icx, header.unsafety, header.abi, decl, &generics, Some(ident.span))
         }
 
         ForeignItem(&hir::ForeignItem {
@@ -1640,7 +1640,7 @@ fn impl_trait_ref(tcx: TyCtxt<'_>, def_id: DefId) -> Option<ty::TraitRef<'_>> {
     match tcx.hir().expect_item(hir_id).kind {
         hir::ItemKind::Impl { ref of_trait, .. } => of_trait.as_ref().map(|ast_trait_ref| {
             let selfty = tcx.type_of(def_id);
-            AstConv::instantiate_mono_trait_ref(&icx, ast_trait_ref, selfty)
+            astconv::instantiate_mono_trait_ref(&icx, ast_trait_ref, selfty)
         }),
         _ => bug!(),
     }
@@ -1881,7 +1881,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
             GenericParamKind::Lifetime { .. } => {
                 param.bounds.iter().for_each(|bound| match bound {
                     hir::GenericBound::Outlives(lt) => {
-                        let bound = AstConv::ast_region_to_region(&icx, &lt, None);
+                        let bound = astconv::ast_region_to_region(&icx, &lt, None);
                         let outlives = ty::Binder::bind(ty::OutlivesPredicate(region, bound));
                         predicates.insert((outlives.to_predicate(tcx), lt.span));
                     }
@@ -1905,7 +1905,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
 
                 let sized = SizedByDefault::Yes;
                 let bounds =
-                    AstConv::compute_bounds(&icx, param_ty, &param.bounds, sized, param.span);
+                    astconv::compute_bounds(&icx, param_ty, &param.bounds, sized, param.span);
                 predicates.extend(bounds.predicates(tcx, param_ty));
             }
             GenericParamKind::Const { .. } => {
@@ -1957,7 +1957,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
                             };
 
                             let mut bounds = Bounds::default();
-                            let _ = AstConv::instantiate_poly_trait_ref(
+                            let _ = astconv::instantiate_poly_trait_ref(
                                 &icx,
                                 poly_trait_ref,
                                 constness,
@@ -1969,7 +1969,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
 
                         &hir::GenericBound::LangItemTrait(lang_item, span, hir_id, args) => {
                             let mut bounds = Bounds::default();
-                            AstConv::instantiate_lang_item_trait_ref(
+                            astconv::instantiate_lang_item_trait_ref(
                                 &icx,
                                 lang_item,
                                 span,
@@ -1982,7 +1982,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
                         }
 
                         &hir::GenericBound::Outlives(ref lifetime) => {
-                            let region = AstConv::ast_region_to_region(&icx, lifetime, None);
+                            let region = astconv::ast_region_to_region(&icx, lifetime, None);
                             predicates.insert((
                                 ty::Binder::bind(ty::PredicateAtom::TypeOutlives(
                                     ty::OutlivesPredicate(ty, region),
@@ -1996,11 +1996,11 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
             }
 
             &hir::WherePredicate::RegionPredicate(ref region_pred) => {
-                let r1 = AstConv::ast_region_to_region(&icx, &region_pred.lifetime, None);
+                let r1 = astconv::ast_region_to_region(&icx, &region_pred.lifetime, None);
                 predicates.extend(region_pred.bounds.iter().map(|bound| {
                     let (r2, span) = match bound {
                         hir::GenericBound::Outlives(lt) => {
-                            (AstConv::ast_region_to_region(&icx, lt, None), lt.span)
+                            (astconv::ast_region_to_region(&icx, lt, None), lt.span)
                         }
                         _ => bug!(),
                     };
@@ -2224,11 +2224,12 @@ fn projection_ty_from_predicates(
 /// predicates) to one (`T: Foo`) to many (`T: Bar<X = i32>` adds `T: Bar`
 /// and `<T as Bar>::X == i32`).
 fn predicates_from_bound<'tcx>(
-    astconv: &dyn AstConv<'tcx>,
+    astconv_inst: &impl AstConv<'tcx>,
     param_ty: Ty<'tcx>,
     bound: &'tcx hir::GenericBound<'tcx>,
     constness: hir::Constness,
 ) -> Vec<(ty::Predicate<'tcx>, Span)> {
+    let tcx = astconv_inst.tcx();
     match *bound {
         hir::GenericBound::Trait(ref tr, modifier) => {
             let constness = match modifier {
@@ -2238,12 +2239,19 @@ fn predicates_from_bound<'tcx>(
             };
 
             let mut bounds = Bounds::default();
-            let _ = astconv.instantiate_poly_trait_ref(tr, constness, param_ty, &mut bounds);
-            bounds.predicates(astconv.tcx(), param_ty)
+            let _ = astconv::instantiate_poly_trait_ref(
+                astconv_inst,
+                tr,
+                constness,
+                param_ty,
+                &mut bounds,
+            );
+            bounds.predicates(tcx, param_ty)
         }
         hir::GenericBound::LangItemTrait(lang_item, span, hir_id, args) => {
             let mut bounds = Bounds::default();
-            astconv.instantiate_lang_item_trait_ref(
+            astconv::instantiate_lang_item_trait_ref(
+                astconv_inst,
                 lang_item,
                 span,
                 hir_id,
@@ -2251,12 +2259,12 @@ fn predicates_from_bound<'tcx>(
                 param_ty,
                 &mut bounds,
             );
-            bounds.predicates(astconv.tcx(), param_ty)
+            bounds.predicates(tcx, param_ty)
         }
         hir::GenericBound::Outlives(ref lifetime) => {
-            let region = astconv.ast_region_to_region(lifetime, None);
+            let region = astconv::ast_region_to_region(astconv_inst, lifetime, None);
             let pred = ty::PredicateAtom::TypeOutlives(ty::OutlivesPredicate(param_ty, region))
-                .to_predicate(astconv.tcx());
+                .to_predicate(tcx);
             vec![(pred, lifetime.span)]
         }
     }
@@ -2274,7 +2282,7 @@ fn compute_sig_of_foreign_fn_decl<'tcx>(
     } else {
         hir::Unsafety::Unsafe
     };
-    let fty = AstConv::ty_of_fn(
+    let fty = astconv::ty_of_fn(
         &ItemCtxt::new(tcx, def_id),
         unsafety,
         abi,
