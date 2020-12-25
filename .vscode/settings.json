@@ -1,6 +1,7 @@
 {
     // source for rustc_* is not included in the rust-src component; disable the errors about this
     "rust-analyzer.diagnostics.disabled": ["unresolved-extern-crate"],
+    "rust-analyzer.assist.importMergeBehaviour": "last",
     "rust-analyzer.cargo.loadOutDirsFromCheck": true,
     "rust-analyzer.linkedProjects": [
         "./Cargo.toml",
