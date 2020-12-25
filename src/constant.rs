@@ -100,7 +100,10 @@ fn codegen_static_ref<'tcx>(
     let global_ptr = fx.bcx.ins().global_value(fx.pointer_type, local_data_id);
     assert!(!layout.is_unsized(), "unsized statics aren't supported");
     assert!(
-        matches!(fx.bcx.func.global_values[local_data_id], GlobalValueData::Symbol { tls: false, ..}),
+        matches!(
+            fx.bcx.func.global_values[local_data_id],
+            GlobalValueData::Symbol { tls: false, .. }
+        ),
         "tls static referenced without Rvalue::ThreadLocalRef"
     );
     CPlace::for_ptr(crate::pointer::Pointer::new(global_ptr), layout)

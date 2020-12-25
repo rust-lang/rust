@@ -144,9 +144,11 @@ pub(crate) fn codegen_fn<'tcx>(
 
     if let Some(mach_compile_result) = &context.mach_compile_result {
         if let Some(disasm) = &mach_compile_result.disasm {
-            crate::pretty_clif::write_ir_file(tcx, &format!("{}.vcode", tcx.symbol_name(instance).name), |file| {
-                file.write_all(disasm.as_bytes())
-            })
+            crate::pretty_clif::write_ir_file(
+                tcx,
+                &format!("{}.vcode", tcx.symbol_name(instance).name),
+                |file| file.write_all(disasm.as_bytes()),
+            )
         }
     }
 

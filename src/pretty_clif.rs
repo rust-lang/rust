@@ -246,37 +246,37 @@ pub(crate) fn write_clif_file<'tcx>(
     context: &cranelift_codegen::Context,
     mut clif_comments: &CommentWriter,
 ) {
-    write_ir_file(tcx, &format!(
-        "{}.{}.clif",
-        tcx.symbol_name(instance).name,
-        postfix
-    ), |file| {
-        let value_ranges = isa.map(|isa| {
-            context
-                .build_value_labels_ranges(isa)
-                .expect("value location ranges")
-        });
+    write_ir_file(
+        tcx,
+        &format!("{}.{}.clif", tcx.symbol_name(instance).name, postfix),
+        |file| {
+            let value_ranges = isa.map(|isa| {
+                context
+                    .build_value_labels_ranges(isa)
+                    .expect("value location ranges")
+            });
 
-        let mut clif = String::new();
-        cranelift_codegen::write::decorate_function(
-            &mut clif_comments,
-            &mut clif,
-            &context.func,
-            &DisplayFunctionAnnotations {
-                isa: Some(&*crate::build_isa(tcx.sess)),
-                value_ranges: value_ranges.as_ref(),
-            },
-        )
-        .unwrap();
+            let mut clif = String::new();
+            cranelift_codegen::write::decorate_function(
+                &mut clif_comments,
+                &mut clif,
+                &context.func,
+                &DisplayFunctionAnnotations {
+                    isa: Some(&*crate::build_isa(tcx.sess)),
+                    value_ranges: value_ranges.as_ref(),
+                },
+            )
+            .unwrap();
 
-        writeln!(file, "test compile")?;
-        writeln!(file, "set is_pic")?;
-        writeln!(file, "set enable_simd")?;
-        writeln!(file, "target {} haswell", crate::target_triple(tcx.sess))?;
-        writeln!(file)?;
-        file.write_all(clif.as_bytes())?;
-        Ok(())
-    });
+            writeln!(file, "test compile")?;
+            writeln!(file, "set is_pic")?;
+            writeln!(file, "set enable_simd")?;
+            writeln!(file, "target {} haswell", crate::target_triple(tcx.sess))?;
+            writeln!(file)?;
+            file.write_all(clif.as_bytes())?;
+            Ok(())
+        },
+    );
 }
 
 impl<M: Module> fmt::Debug for FunctionCx<'_, '_, M> {
