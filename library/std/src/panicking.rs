@@ -44,8 +44,9 @@ use realstd::io::set_output_capture;
 extern "C" {
     fn __rust_panic_cleanup(payload: *mut u8) -> *mut (dyn Any + Send + 'static);
 
-    /// `payload` is actually a `Box<dyn BoxMeUp>`, but we pass this by-reference because the other
-    /// end of this call does not depend on liballoc, and thus cannot use `Box`.
+    /// `payload` is passed through another layer of raw pointers as `&mut dyn Trait` is not
+    /// FFI-safe. `BoxMeUp` lazily performs allocation only when needed (this avoids allocations
+    /// when using the "abort" panic runtime).
     #[unwind(allowed)]
     fn __rust_start_panic(payload: *mut &mut dyn BoxMeUp) -> u32;
 }
