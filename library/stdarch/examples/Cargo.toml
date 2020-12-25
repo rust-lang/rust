@@ -8,6 +8,7 @@ authors = [
 ]
 description = "Examples of the stdarch crate."
 edition = "2018"
+default-run = "hex"
 
 [dependencies]
 core_arch = { path = "../crates/core_arch" }
@@ -18,6 +19,10 @@ rand = "0.7"
 [[bin]]
 name = "hex"
 path = "hex.rs"
+
+[[bin]]
+name = "connect5"
+path = "connect5.rs"
 
 [[example]]
 name = "wasm"
