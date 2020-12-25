@@ -12,7 +12,7 @@ use std::fmt;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_middle::ty::TyCtxt;
-use rustc_span::def_id::{DefId, CRATE_DEF_INDEX};
+use rustc_span::def_id::{DefId, LocalDefId, CRATE_DEF_INDEX};
 use rustc_target::spec::abi::Abi;
 
 use crate::clean::{self, PrimitiveType};
@@ -1085,12 +1085,21 @@ impl Function<'_> {
 }
 
 impl clean::Visibility {
-    crate fn print_with_space<'tcx>(self, tcx: TyCtxt<'tcx>) -> impl fmt::Display + 'tcx {
+    crate fn print_with_space<'tcx>(
+        self,
+        tcx: TyCtxt<'tcx>,
+        item_did: LocalDefId,
+    ) -> impl fmt::Display + 'tcx {
         use rustc_span::symbol::kw;
 
         display_fn(move |f| match self {
             clean::Public => f.write_str("pub "),
             clean::Inherited => Ok(()),
+            clean::Visibility::Restricted(did)
+                if did.index == tcx.parent_module_from_def_id(item_did).local_def_index =>
+            {
+                Ok(())
+            }
             clean::Visibility::Restricted(did) if did.index == CRATE_DEF_INDEX => {
                 write!(f, "pub(crate) ")
             }
