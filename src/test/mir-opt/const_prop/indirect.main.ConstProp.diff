@@ -18,9 +18,6 @@
 -         assert(!move (_3.1: bool), "attempt to compute `{} + {}`, which would overflow", move _2, const 1_u8) -> bb1; // scope 0 at $DIR/indirect.rs:5:13: 5:29
 +         _2 = const 2_u8;                 // scope 0 at $DIR/indirect.rs:5:13: 5:25
 +         _3 = const (3_u8, false);        // scope 0 at $DIR/indirect.rs:5:13: 5:29
-+                                          // ty::Const
-+                                          // + ty: (u8, bool)
-+                                          // + val: Value(ByRef { alloc: Allocation { bytes: [3, 0], relocations: Relocations(SortedMap { data: [] }), init_mask: InitMask { blocks: [3], len: Size { raw: 2 } }, size: Size { raw: 2 }, align: Align { pow2: 0 }, mutability: Not, extra: () }, offset: Size { raw: 0 } })
 +                                          // mir::Constant
 +                                          // + span: $DIR/indirect.rs:5:13: 5:29
 +                                          // + literal: Const { ty: (u8, bool), val: Value(ByRef { alloc: Allocation { bytes: [3, 0], relocations: Relocations(SortedMap { data: [] }), init_mask: InitMask { blocks: [3], len: Size { raw: 2 } }, size: Size { raw: 2 }, align: Align { pow2: 0 }, mutability: Not, extra: () }, offset: Size { raw: 0 } }) }
