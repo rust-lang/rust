@@ -1097,12 +1097,20 @@ impl clean::Visibility {
             clean::Inherited => Ok(()),
 
             clean::Visibility::Restricted(vis_did) => {
-                if find_closest_parent_module(tcx, item_did) == Some(vis_did) {
+                let parent_module = find_closest_parent_module(tcx, item_did);
+
+                if parent_module == Some(vis_did) {
                     // `pub(in foo)` where `foo` is the parent module
                     // is the same as no visibility modifier
                     Ok(())
                 } else if vis_did.index == CRATE_DEF_INDEX {
                     write!(f, "pub(crate) ")
+                } else if parent_module
+                    .map(|parent| find_closest_parent_module(tcx, parent))
+                    .flatten()
+                    == Some(vis_did)
+                {
+                    write!(f, "pub(super) ")
                 } else {
                     f.write_str("pub(")?;
                     let path = tcx.def_path(vis_did);
