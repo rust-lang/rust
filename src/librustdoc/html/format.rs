@@ -12,10 +12,10 @@ use std::fmt;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_middle::ty::TyCtxt;
-use rustc_span::def_id::{DefId, LocalDefId, CRATE_DEF_INDEX};
+use rustc_span::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc_target::spec::abi::Abi;
 
-use crate::clean::{self, PrimitiveType};
+use crate::clean::{self, utils::find_closest_parent_module, PrimitiveType};
 use crate::formats::cache::cache;
 use crate::formats::item_type::ItemType;
 use crate::html::escape::Escape;
@@ -1088,38 +1088,40 @@ impl clean::Visibility {
     crate fn print_with_space<'tcx>(
         self,
         tcx: TyCtxt<'tcx>,
-        item_did: LocalDefId,
+        item_did: DefId,
     ) -> impl fmt::Display + 'tcx {
         use rustc_span::symbol::kw;
 
         display_fn(move |f| match self {
             clean::Public => f.write_str("pub "),
             clean::Inherited => Ok(()),
-            clean::Visibility::Restricted(did)
-                if did.index == tcx.parent_module_from_def_id(item_did).local_def_index =>
-            {
-                Ok(())
-            }
-            clean::Visibility::Restricted(did) if did.index == CRATE_DEF_INDEX => {
-                write!(f, "pub(crate) ")
-            }
-            clean::Visibility::Restricted(did) => {
-                f.write_str("pub(")?;
-                let path = tcx.def_path(did);
-                debug!("path={:?}", path);
-                let first_name =
-                    path.data[0].data.get_opt_name().expect("modules are always named");
-                if path.data.len() != 1 || (first_name != kw::SelfLower && first_name != kw::Super)
-                {
-                    f.write_str("in ")?;
+
+            clean::Visibility::Restricted(vis_did) => {
+                if find_closest_parent_module(tcx, item_did) == Some(vis_did) {
+                    // `pub(in foo)` where `foo` is the parent module
+                    // is the same as no visibility modifier
+                    Ok(())
+                } else if vis_did.index == CRATE_DEF_INDEX {
+                    write!(f, "pub(crate) ")
+                } else {
+                    f.write_str("pub(")?;
+                    let path = tcx.def_path(vis_did);
+                    debug!("path={:?}", path);
+                    let first_name =
+                        path.data[0].data.get_opt_name().expect("modules are always named");
+                    if path.data.len() != 1
+                        || (first_name != kw::SelfLower && first_name != kw::Super)
+                    {
+                        f.write_str("in ")?;
+                    }
+                    // modified from `resolved_path()` to work with `DefPathData`
+                    let last_name = path.data.last().unwrap().data.get_opt_name().unwrap();
+                    for seg in &path.data[..path.data.len() - 1] {
+                        write!(f, "{}::", seg.data.get_opt_name().unwrap())?;
+                    }
+                    let path = anchor(vis_did, &last_name.as_str()).to_string();
+                    write!(f, "{}) ", path)
                 }
-                // modified from `resolved_path()` to work with `DefPathData`
-                let last_name = path.data.last().unwrap().data.get_opt_name().unwrap();
-                for seg in &path.data[..path.data.len() - 1] {
-                    write!(f, "{}::", seg.data.get_opt_name().unwrap())?;
-                }
-                let path = anchor(did, &last_name.as_str()).to_string();
-                write!(f, "{}) ", path)
             }
         })
     }

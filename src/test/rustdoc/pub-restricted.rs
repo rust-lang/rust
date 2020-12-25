@@ -6,27 +6,27 @@
 
 // @has 'foo/struct.FooPublic.html' '//pre' 'pub struct FooPublic'
 pub struct FooPublic;
-// @has 'foo/struct.FooJustCrate.html' '//pre' 'pub(crate) struct FooJustCrate'
+// @has 'foo/struct.FooJustCrate.html' '//pre' 'struct FooJustCrate'
 crate struct FooJustCrate;
-// @has 'foo/struct.FooPubCrate.html' '//pre' 'pub(crate) struct FooPubCrate'
+// @has 'foo/struct.FooPubCrate.html' '//pre' 'struct FooPubCrate'
 pub(crate) struct FooPubCrate;
-// @has 'foo/struct.FooSelf.html' '//pre' 'pub(crate) struct FooSelf'
+// @has 'foo/struct.FooSelf.html' '//pre' 'struct FooSelf'
 pub(self) struct FooSelf;
-// @has 'foo/struct.FooInSelf.html' '//pre' 'pub(crate) struct FooInSelf'
+// @has 'foo/struct.FooInSelf.html' '//pre' 'struct FooInSelf'
 pub(in self) struct FooInSelf;
 mod a {
-    // @has 'foo/a/struct.FooSuper.html' '//pre' 'pub(crate) struct FooSuper'
-    pub(super) struct FooSuper;
-    // @has 'foo/a/struct.FooInSuper.html' '//pre' 'pub(crate) struct FooInSuper'
-    pub(in super) struct FooInSuper;
-    // @has 'foo/a/struct.FooInA.html' '//pre' 'pub(in a) struct FooInA'
-    pub(in a) struct FooInA;
+    // @has 'foo/a/struct.FooASuper.html' '//pre' 'pub(crate) struct FooASuper'
+    pub(super) struct FooASuper;
+    // @has 'foo/a/struct.FooAInSuper.html' '//pre' 'pub(crate) struct FooAInSuper'
+    pub(in super) struct FooAInSuper;
+    // @has 'foo/a/struct.FooAInA.html' '//pre' 'struct FooAInA'
+    pub(in a) struct FooAInA;
     mod b {
-        // @has 'foo/a/b/struct.FooInSelfSuperB.html' '//pre' 'pub(in a::b) struct FooInSelfSuperB'
-        pub(in a::b) struct FooInSelfSuperB;
-        // @has 'foo/a/b/struct.FooInSuperSuper.html' '//pre' 'pub(crate) struct FooInSuperSuper'
-        pub(in super::super) struct FooInSuperSuper;
-        // @has 'foo/a/b/struct.FooInAB.html' '//pre' 'pub(in a::b) struct FooInAB'
-        pub(in a::b) struct FooInAB;
+        // @has 'foo/a/b/struct.FooBSuper.html' '//pre' 'pub(super) struct FooBSuper'
+        pub(super) struct FooBSuper;
+        // @has 'foo/a/b/struct.FooBInSuperSuper.html' '//pre' 'pub(crate) struct FooBInSuperSuper'
+        pub(in super::super) struct FooBInSuperSuper;
+        // @has 'foo/a/b/struct.FooBInAB.html' '//pre' 'struct FooBInAB'
+        pub(in a::b) struct FooBInAB;
     }
 }
