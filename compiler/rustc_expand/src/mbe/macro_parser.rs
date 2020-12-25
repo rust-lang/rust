@@ -378,6 +378,11 @@ fn nameize<I: Iterator<Item = NamedMatch>>(
                     n_rec(sess, next_m, res.by_ref(), ret_val)?;
                 }
             }
+            TokenTree::MetaVarDecl(span, _, None) => {
+                if sess.missing_fragment_specifiers.borrow_mut().remove(&span).is_some() {
+                    return Err((span, "missing fragment specifier".to_string()));
+                }
+            }
             TokenTree::MetaVarDecl(sp, bind_name, _) => match ret_val
                 .entry(MacroRulesNormalizedIdent::new(bind_name))
             {
@@ -446,6 +451,7 @@ fn or_pat_mode(edition: Edition) -> OrPatNonterminalMode {
 ///
 /// A `ParseResult`. Note that matches are kept track of through the items generated.
 fn inner_parse_loop<'root, 'tt>(
+    sess: &ParseSess,
     cur_items: &mut SmallVec<[MatcherPosHandle<'root, 'tt>; 1]>,
     next_items: &mut Vec<MatcherPosHandle<'root, 'tt>>,
     eof_items: &mut SmallVec<[MatcherPosHandle<'root, 'tt>; 1]>,
@@ -563,9 +569,16 @@ fn inner_parse_loop<'root, 'tt>(
                     })));
                 }
 
+                // We need to match a metavar (but the identifier is invalid)... this is an error
+                TokenTree::MetaVarDecl(span, _, None) => {
+                    if sess.missing_fragment_specifiers.borrow_mut().remove(&span).is_some() {
+                        return Error(span, "missing fragment specifier".to_string());
+                    }
+                }
+
                 // We need to match a metavar with a valid ident... call out to the black-box
                 // parser by adding an item to `bb_items`.
-                TokenTree::MetaVarDecl(span, _, kind) => {
+                TokenTree::MetaVarDecl(span, _, Some(kind)) => {
                     // Built-in nonterminals never start with these tokens, so we can eliminate
                     // them from consideration.
                     //
@@ -640,6 +653,7 @@ pub(super) fn parse_tt(parser: &mut Cow<'_, Parser<'_>>, ms: &[TokenTree]) -> Na
         // parsing from the black-box parser done. The result is that `next_items` will contain a
         // bunch of possible next matcher positions in `next_items`.
         match inner_parse_loop(
+            parser.sess,
             &mut cur_items,
             &mut next_items,
             &mut eof_items,
@@ -701,7 +715,7 @@ pub(super) fn parse_tt(parser: &mut Cow<'_, Parser<'_>>, ms: &[TokenTree]) -> Na
             let nts = bb_items
                 .iter()
                 .map(|item| match item.top_elts.get_tt(item.idx) {
-                    TokenTree::MetaVarDecl(_, bind, kind) => format!("{} ('{}')", kind, bind),
+                    TokenTree::MetaVarDecl(_, bind, Some(kind)) => format!("{} ('{}')", kind, bind),
                     _ => panic!(),
                 })
                 .collect::<Vec<String>>()
@@ -731,7 +745,7 @@ pub(super) fn parse_tt(parser: &mut Cow<'_, Parser<'_>>, ms: &[TokenTree]) -> Na
             assert_eq!(bb_items.len(), 1);
 
             let mut item = bb_items.pop().unwrap();
-            if let TokenTree::MetaVarDecl(span, _, kind) = item.top_elts.get_tt(item.idx) {
+            if let TokenTree::MetaVarDecl(span, _, Some(kind)) = item.top_elts.get_tt(item.idx) {
                 let match_cur = item.match_cur;
                 // We use the span of the metavariable declaration to determine any
                 // edition-specific matching behavior for non-terminals.

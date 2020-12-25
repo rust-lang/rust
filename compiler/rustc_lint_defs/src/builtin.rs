@@ -1228,6 +1228,50 @@ declare_lint! {
 }
 
 declare_lint! {
+    /// The `missing_fragment_specifier` lint is issued when an unused pattern in a
+    /// `macro_rules!` macro definition has a meta-variable (e.g. `$e`) that is not
+    /// followed by a fragment specifier (e.g. `:expr`).
+    ///
+    /// This warning can always be fixed by removing the unused pattern in the
+    /// `macro_rules!` macro definition.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// macro_rules! foo {
+    ///    () => {};
+    ///    ($name) => { };
+    /// }
+    ///
+    /// fn main() {
+    ///    foo!();
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// To fix this, remove the unused pattern from the `macro_rules!` macro definition:
+    ///
+    /// ```rust
+    /// macro_rules! foo {
+    ///     () => {};
+    /// }
+    /// fn main() {
+    ///     foo!();
+    /// }
+    /// ```
+    pub MISSING_FRAGMENT_SPECIFIER,
+    Deny,
+    "detects missing fragment specifiers in unused `macro_rules!` patterns",
+    @future_incompatible = FutureIncompatibleInfo {
+        reference: "issue #40107 <https://github.com/rust-lang/rust/issues/40107>",
+        edition: None,
+    };
+}
+
+declare_lint! {
     /// The `late_bound_lifetime_arguments` lint detects generic lifetime
     /// arguments in path segments with late bound lifetime parameters.
     ///
@@ -2827,6 +2871,7 @@ declare_lint_pass! {
         CONST_ITEM_MUTATION,
         SAFE_PACKED_BORROWS,
         PATTERNS_IN_FNS_WITHOUT_BODY,
+        MISSING_FRAGMENT_SPECIFIER,
         LATE_BOUND_LIFETIME_ARGUMENTS,
         ORDER_DEPENDENT_TRAIT_OBJECTS,
         COHERENCE_LEAK_CHECK,
