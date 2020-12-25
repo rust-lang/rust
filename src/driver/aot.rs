@@ -146,7 +146,12 @@ fn module_codegen(tcx: TyCtxt<'_>, cgu_name: rustc_span::Symbol) -> ModuleCodege
         }
     }
 
-    let mut cx = crate::CodegenCx::new(tcx, module, tcx.sess.opts.debuginfo != DebugInfo::None);
+    let mut cx = crate::CodegenCx::new(
+        tcx,
+        module,
+        tcx.sess.opts.debuginfo != DebugInfo::None,
+        true,
+    );
     super::predefine_mono_items(&mut cx, &mono_items);
     for (mono_item, (linkage, visibility)) in mono_items {
         let linkage = crate::linkage::get_clif_linkage(mono_item, linkage, visibility);
@@ -254,7 +259,7 @@ pub(super) fn run_aot(
     tcx.sess.abort_if_errors();
 
     let mut allocator_module = new_module(tcx, "allocator_shim".to_string());
-    let mut allocator_unwind_context = UnwindContext::new(tcx, allocator_module.isa());
+    let mut allocator_unwind_context = UnwindContext::new(tcx, allocator_module.isa(), true);
     let created_alloc_shim =
         crate::allocator::codegen(tcx, &mut allocator_module, &mut allocator_unwind_context);
 

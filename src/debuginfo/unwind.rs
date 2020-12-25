@@ -15,11 +15,11 @@ pub(crate) struct UnwindContext<'tcx> {
 }
 
 impl<'tcx> UnwindContext<'tcx> {
-    pub(crate) fn new(tcx: TyCtxt<'tcx>, isa: &dyn TargetIsa) -> Self {
+    pub(crate) fn new(tcx: TyCtxt<'tcx>, isa: &dyn TargetIsa, pic_eh_frame: bool) -> Self {
         let mut frame_table = FrameTable::default();
 
         let cie_id = if let Some(mut cie) = isa.create_systemv_cie() {
-            if isa.flags().is_pic() {
+            if pic_eh_frame {
                 cie.fde_address_encoding =
                     gimli::DwEhPe(gimli::DW_EH_PE_pcrel.0 | gimli::DW_EH_PE_sdata4.0);
             }

@@ -68,7 +68,15 @@ $ $cg_clif_dir/build/cargo.sh jit
 or
 
 ```bash
-$ $cg_clif_dir/build/bin/cg_clif --jit my_crate.rs
+$ $cg_clif_dir/build/bin/cg_clif -Cllvm-args=mode=jit -Cprefer-dynamic my_crate.rs
+```
+
+There is also an experimental lazy jit mode. In this mode functions are only compiled once they are
+first called. It currently does not work with multi-threaded programs. When a not yet compiled
+function is called from another thread than the main thread, you will get an ICE.
+
+```bash
+$ $cg_clif_dir/build/cargo.sh lazy-jit
 ```
 
 ### Shell
@@ -77,7 +85,7 @@ These are a few functions that allow you to easily run rust code from the shell 
 
 ```bash
 function jit_naked() {
-    echo "$@" | $cg_clif_dir/build/bin/cg_clif - --jit
+    echo "$@" | $cg_clif_dir/build/bin/cg_clif - -Cllvm-args=mode=jit -Cprefer-dynamic
 }
 
 function jit() {

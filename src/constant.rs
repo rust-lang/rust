@@ -447,7 +447,8 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut impl Module, cx: &mut Constan
             data_ctx.write_data_addr(offset.bytes() as u32, global_value, addend as i64);
         }
 
-        module.define_data(data_id, &data_ctx).unwrap();
+        // FIXME don't duplicate definitions in lazy jit mode
+        let _ = module.define_data(data_id, &data_ctx);
         cx.done.insert(data_id);
     }
 

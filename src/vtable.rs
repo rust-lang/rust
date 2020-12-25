@@ -158,7 +158,8 @@ fn build_vtable<'tcx>(
         )
         .unwrap();
 
-    fx.cx.module.define_data(data_id, &data_ctx).unwrap();
+    // FIXME don't duplicate definitions in lazy jit mode
+    let _ = fx.cx.module.define_data(data_id, &data_ctx);
 
     data_id
 }
