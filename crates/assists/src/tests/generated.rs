@@ -42,26 +42,26 @@ fn doctest_add_impl_default_members() {
         "add_impl_default_members",
         r#####"
 trait Trait {
-    Type X;
+    type X;
     fn foo(&self);
     fn bar(&self) {}
 }
 
 impl Trait for () {
-    Type X = ();
+    type X = ();
     fn foo(&self) {}<|>
 
 }
 "#####,
         r#####"
 trait Trait {
-    Type X;
+    type X;
     fn foo(&self);
     fn bar(&self) {}
 }
 
 impl Trait for () {
-    Type X = ();
+    type X = ();
     fn foo(&self) {}
 
     $0fn bar(&self) {}
@@ -76,7 +76,7 @@ fn doctest_add_impl_missing_members() {
         "add_impl_missing_members",
         r#####"
 trait Trait<T> {
-    Type X;
+    type X;
     fn foo(&self) -> T;
     fn bar(&self) {}
 }
@@ -87,14 +87,16 @@ impl Trait<u32> for () {<|>
 "#####,
         r#####"
 trait Trait<T> {
-    Type X;
+    type X;
     fn foo(&self) -> T;
     fn bar(&self) {}
 }
 
 impl Trait<u32> for () {
+    $0type X;
+
     fn foo(&self) -> u32 {
-        ${0:todo!()}
+        todo!()
     }
 }
 "#####,
