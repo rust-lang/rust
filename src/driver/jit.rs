@@ -106,7 +106,7 @@ pub(super) fn run_jit(tcx: TyCtxt<'_>) -> ! {
 
     let finalized_main: *const u8 = jit_module.get_finalized_function(main_func_id);
 
-    println!("Rustc codegen cranelift will JIT run the executable, because --jit was passed");
+    println!("Rustc codegen cranelift will JIT run the executable, because -Cllvm-args=mode=jit was passed");
 
     let f: extern "C" fn(c_int, *const *const c_char) -> c_int =
         unsafe { ::std::mem::transmute(finalized_main) };

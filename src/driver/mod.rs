@@ -7,6 +7,7 @@ use rustc_middle::middle::cstore::EncodedMetadata;
 use rustc_middle::mir::mono::{Linkage as RLinkage, MonoItem, Visibility};
 
 use crate::prelude::*;
+use crate::CodegenMode;
 
 mod aot;
 #[cfg(feature = "jit")]
@@ -20,24 +21,25 @@ pub(crate) fn codegen_crate(
 ) -> Box<dyn Any> {
     tcx.sess.abort_if_errors();
 
-    if config.use_jit {
-        let is_executable = tcx
-            .sess
-            .crate_types()
-            .contains(&rustc_session::config::CrateType::Executable);
-        if !is_executable {
-            tcx.sess.fatal("can't jit non-executable crate");
+    match config.codegen_mode {
+        CodegenMode::Aot => aot::run_aot(tcx, metadata, need_metadata_module),
+        CodegenMode::Jit => {
+            let is_executable = tcx
+                .sess
+                .crate_types()
+                .contains(&rustc_session::config::CrateType::Executable);
+            if !is_executable {
+                tcx.sess.fatal("can't jit non-executable crate");
+            }
+
+            #[cfg(feature = "jit")]
+            let _: ! = jit::run_jit(tcx);
+
+            #[cfg(not(feature = "jit"))]
+            tcx.sess
+                .fatal("jit support was disabled when compiling rustc_codegen_cranelift");
         }
-
-        #[cfg(feature = "jit")]
-        let _: ! = jit::run_jit(tcx);
-
-        #[cfg(not(feature = "jit"))]
-        tcx.sess
-            .fatal("jit support was disabled when compiling rustc_codegen_cranelift");
     }
-
-    aot::run_aot(tcx, metadata, need_metadata_module)
 }
 
 fn predefine_mono_items<'tcx>(

@@ -10,7 +10,7 @@ cmd=$1
 shift || true
 
 if [[ "$cmd" = "jit" ]]; then
-cargo "+${TOOLCHAIN}" rustc "$@" -- --jit
+cargo "+${TOOLCHAIN}" rustc "$@" -- -Cllvm-args=mode=jit -Cprefer-dynamic
 else
 cargo "+${TOOLCHAIN}" "$cmd" "$@"
 fi
