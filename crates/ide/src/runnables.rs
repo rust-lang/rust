@@ -193,7 +193,7 @@ fn module_def_doctest(sema: &Semantics<RootDatabase>, def: hir::ModuleDef) -> Op
                 if let hir::AssocItemContainer::Impl(imp) = assoc_def.container(sema.db) {
                     if let Some(adt) = imp.target_ty(sema.db).as_adt() {
                         let name = adt.name(sema.db).to_string();
-                        let idx = path.rfind(':').unwrap_or(0);
+                        let idx = path.rfind(':').map_or(0, |idx| idx + 1);
                         let (prefix, suffix) = path.split_at(idx);
                         return format!("{}{}::{}", prefix, name, suffix);
                     }
@@ -928,6 +928,44 @@ mod test_mod {
             &[],
             expect![[r#"
                 []
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_doc_runnables_impl_mod() {
+        check(
+            r#"
+//- /lib.rs
+mod foo;
+//- /foo.rs
+struct Foo;<|>
+impl Foo {
+    /// ```
+    /// let x = 5;
+    /// ```
+    fn foo() {}
+}
+        "#,
+            &[&DOCTEST],
+            expect![[r#"
+                [
+                    Runnable {
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                1,
+                            ),
+                            full_range: 27..81,
+                            name: "foo",
+                        },
+                        kind: DocTest {
+                            test_id: Path(
+                                "foo::Foo::foo",
+                            ),
+                        },
+                        cfg: None,
+                    },
+                ]
             "#]],
         );
     }
