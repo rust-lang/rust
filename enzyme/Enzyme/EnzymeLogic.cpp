@@ -1708,8 +1708,8 @@ const AugmentedReturn &CreateAugmentedPrimal(
   if (llvm::Triple(NewF->getParent()->getTargetTriple()).getArch() ==
           Triple::nvptx ||
       llvm::Triple(NewF->getParent()->getTargetTriple()).getArch() ==
-          Triple::nvptx64) 
-    ReplaceReallocs(NewF, /*mem2reg*/true);
+          Triple::nvptx64)
+    ReplaceReallocs(NewF, /*mem2reg*/ true);
   if (PostOpt)
     optimizeIntermediate(gutils, /*topLevel*/ false, NewF);
 
@@ -2517,8 +2517,8 @@ Function *CreatePrimalAndGradient(
   if (llvm::Triple(gutils->newFunc->getParent()->getTargetTriple()).getArch() ==
           Triple::nvptx ||
       llvm::Triple(gutils->newFunc->getParent()->getTargetTriple()).getArch() ==
-          Triple::nvptx64) 
-    ReplaceReallocs(gutils->newFunc, /*mem2reg*/true);
+          Triple::nvptx64)
+    ReplaceReallocs(gutils->newFunc, /*mem2reg*/ true);
   if (PostOpt)
     optimizeIntermediate(gutils, topLevel, gutils->newFunc);
 

@@ -178,3 +178,94 @@ llvm::Value *nextPowerOfTwo(llvm::IRBuilder<> &B, llvm::Value *V) {
   V = B.CreateAdd(V, ConstantInt::get(T, 1));
   return V;
 }
+
+llvm::Function *getOrInsertDifferentialMPI_Wait(llvm::Module &M,
+                                                ArrayRef<llvm::Type *> T,
+                                                Type *reqType) {
+  std::vector<llvm::Type *> types(T.begin(), T.end());
+  types.push_back(reqType);
+  std::string name = "__enzyme_differential_mpi_wait";
+  FunctionType *FT =
+      FunctionType::get(Type::getVoidTy(M.getContext()), types, false);
+
+#if LLVM_VERSION_MAJOR >= 9
+  Function *F = cast<Function>(M.getOrInsertFunction(name, FT).getCallee());
+#else
+  Function *F = cast<Function>(M.getOrInsertFunction(name, FT));
+#endif
+
+  if (!F->empty())
+    return F;
+
+  BasicBlock *entry = BasicBlock::Create(M.getContext(), "entry", F);
+  BasicBlock *isend = BasicBlock::Create(M.getContext(), "invertISend", F);
+  BasicBlock *irecv = BasicBlock::Create(M.getContext(), "invertIRecv", F);
+
+#if 0
+    /*0 */Type::getInt8PtrTy(call.getContext())
+    /*1 */i64
+    /*2 */Type::getInt8PtrTy(call.getContext())
+    /*3 */i64
+    /*4 */i64
+    /*5 */Type::getInt8PtrTy(call.getContext())
+    /*6 */Type::getInt8Ty(call.getContext())
+#endif
+
+  auto buf = F->arg_begin();
+  buf->setName("buf");
+  Value *count = buf + 1;
+  count->setName("count");
+  Value *datatype = buf + 2;
+  datatype->setName("datatype");
+  Value *source = buf + 3;
+  source->setName("source");
+  Value *tag = buf + 4;
+  tag->setName("tag");
+  Value *comm = buf + 5;
+  comm->setName("comm");
+  Value *fn = buf + 6;
+  fn->setName("fn");
+  Value *d_req = buf + 7;
+  d_req->setName("d_req");
+
+  auto isendfn = M.getFunction("MPI_Isend");
+  assert(isendfn);
+  auto irecvfn = M.getFunction("MPI_Irecv");
+  assert(irecvfn);
+
+  IRBuilder<> B(entry);
+  auto arg = isendfn->arg_begin();
+  arg++;
+  count = B.CreateZExtOrTrunc(count, arg->getType());
+  arg++;
+  datatype = B.CreatePointerCast(datatype, arg->getType());
+  arg++;
+  source = B.CreateZExtOrTrunc(source, arg->getType());
+  arg++;
+  tag = B.CreateZExtOrTrunc(tag, arg->getType());
+  arg++;
+  comm = B.CreatePointerCast(comm, arg->getType());
+
+  Value *args[] = {
+      buf, count, datatype, source, tag, comm, d_req,
+  };
+
+  B.CreateCondBr(B.CreateICmpEQ(fn, ConstantInt::get(fn->getType(),
+                                                     (int)MPI_CallType::ISEND)),
+                 isend, irecv);
+
+  {
+    B.SetInsertPoint(isend);
+    auto fcall = B.CreateCall(irecvfn, args);
+    fcall->setCallingConv(isendfn->getCallingConv());
+    B.CreateRetVoid();
+  }
+
+  {
+    B.SetInsertPoint(irecv);
+    auto fcall = B.CreateCall(isendfn, args);
+    fcall->setCallingConv(isendfn->getCallingConv());
+    B.CreateRetVoid();
+  }
+  return F;
+}

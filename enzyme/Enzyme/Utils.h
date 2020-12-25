@@ -462,6 +462,11 @@ llvm::Function *getOrInsertDifferentialFloatMemmove(llvm::Module &M,
                                                     unsigned dstalign,
                                                     unsigned srcalign);
 
+/// Create function for type that performs the derivative MPI_Wait
+llvm::Function *getOrInsertDifferentialMPI_Wait(llvm::Module &M,
+                                                llvm::ArrayRef<llvm::Type *> T,
+                                                llvm::Type *reqType);
+
 /// Create function to computer nearest power of two
 llvm::Value *nextPowerOfTwo(llvm::IRBuilder<> &B, llvm::Value *V);
 
@@ -622,5 +627,10 @@ allInstructionsBetween(llvm::LoopInfo &LI, llvm::Instruction *inst1,
     return f(I);
   });
 }
+
+enum class MPI_CallType {
+  ISEND = 1,
+  IRECV = 2,
+};
 
 #endif

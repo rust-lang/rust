@@ -213,7 +213,8 @@ TypeTree getConstantAnalysis(Constant *Val, const FnTypeInfo &nfti,
     if (GV->getName() == "__cxa_thread_atexit_impl") {
       return TypeTree(BaseType::Pointer).Only(-1);
     }
-    if (!isa<StructType>(GV->getValueType()) || !cast<StructType>(GV->getValueType())->isOpaque()) {
+    if (!isa<StructType>(GV->getValueType()) ||
+        !cast<StructType>(GV->getValueType())->isOpaque()) {
       auto globalSize = DL.getTypeSizeInBits(GV->getValueType()) / 8;
       // Since halfs are 16bit (2 byte) and pointers are >=32bit (4 byte) any
       // Single byte object must be integral
@@ -2116,200 +2117,181 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
       ptrptrptr.insert({-1, -1}, BaseType::Pointer);
       ptrptrptr.insert({-1, -1, 0}, BaseType::Pointer);
       updateAnalysis(call.getOperand(1), ptrptrptr, &call);
-      updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1),
-                     &call);
+      updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1), &call);
       return;
     }
-    if (ci->getName() == "MPI_Comm_size" || 
-        ci->getName() == "MPI_Comm_rank" || 
+    if (ci->getName() == "MPI_Comm_size" || ci->getName() == "MPI_Comm_rank" ||
         ci->getName() == "MPI_Get_processor_name") {
       TypeTree ptrint;
       ptrint.insert({-1}, BaseType::Pointer);
       ptrint.insert({-1, 0}, BaseType::Integer);
       updateAnalysis(call.getOperand(1), ptrint, &call);
-      updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1),
-                     &call);
+      updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1), &call);
       return;
     }
-    if (ci->getName() == "MPI_Barrier" || 
-        ci->getName() == "MPI_Finalize") {
-      updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1),
-                     &call);
+    if (ci->getName() == "MPI_Barrier" || ci->getName() == "MPI_Finalize") {
+      updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1), &call);
       return;
     }
-    if (ci->getName() == "MPI_Send" || 
+    if (ci->getName() == "MPI_Send" || ci->getName() == "MPI_Ssend" ||
         ci->getName() == "MPI_Bsend") {
-      updateAnalysis(call.getOperand(0),
-                     TypeTree(BaseType::Pointer).Only(-1), &call);
-      updateAnalysis(call.getOperand(1),
-                     TypeTree(BaseType::Integer).Only(-1), &call);
-      updateAnalysis(call.getOperand(3),
-                     TypeTree(BaseType::Integer).Only(-1), &call);
-      updateAnalysis(call.getOperand(4),
-                     TypeTree(BaseType::Integer).Only(-1), &call);
-      updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1),
+      updateAnalysis(call.getOperand(0), TypeTree(BaseType::Pointer).Only(-1),
                      &call);
+      updateAnalysis(call.getOperand(1), TypeTree(BaseType::Integer).Only(-1),
+                     &call);
+      updateAnalysis(call.getOperand(3), TypeTree(BaseType::Integer).Only(-1),
+                     &call);
+      updateAnalysis(call.getOperand(4), TypeTree(BaseType::Integer).Only(-1),
+                     &call);
+      updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1), &call);
       return;
     }
-    if (ci->getName() == "MPI_Recv" || 
-        ci->getName() == "MPI_Brecv") {
-      updateAnalysis(call.getOperand(0),
-                     TypeTree(BaseType::Pointer).Only(-1), &call);
-      updateAnalysis(call.getOperand(1),
-                     TypeTree(BaseType::Integer).Only(-1), &call);
-      updateAnalysis(call.getOperand(3),
-                     TypeTree(BaseType::Integer).Only(-1), &call);
-      updateAnalysis(call.getOperand(4),
-                     TypeTree(BaseType::Integer).Only(-1), &call);
-      updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1),
+    if (ci->getName() == "MPI_Recv" || ci->getName() == "MPI_Brecv") {
+      updateAnalysis(call.getOperand(0), TypeTree(BaseType::Pointer).Only(-1),
                      &call);
+      updateAnalysis(call.getOperand(1), TypeTree(BaseType::Integer).Only(-1),
+                     &call);
+      updateAnalysis(call.getOperand(3), TypeTree(BaseType::Integer).Only(-1),
+                     &call);
+      updateAnalysis(call.getOperand(4), TypeTree(BaseType::Integer).Only(-1),
+                     &call);
+      updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1), &call);
       return;
     }
-    if (ci->getName() == "MPI_Isend" ||
-        ci->getName() == "MPI_Irecv") {
-      updateAnalysis(call.getOperand(0),
-                     TypeTree(BaseType::Pointer).Only(-1), &call);
-      updateAnalysis(call.getOperand(1),
-                     TypeTree(BaseType::Integer).Only(-1), &call);
-      updateAnalysis(call.getOperand(3),
-                     TypeTree(BaseType::Integer).Only(-1), &call);
-      updateAnalysis(call.getOperand(4),
-                     TypeTree(BaseType::Integer).Only(-1), &call);
-      updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1),
+    if (ci->getName() == "MPI_Isend" || ci->getName() == "MPI_Irecv") {
+      updateAnalysis(call.getOperand(0), TypeTree(BaseType::Pointer).Only(-1),
                      &call);
-      updateAnalysis(call.getOperand(6),
-                     TypeTree(BaseType::Pointer).Only(-1), &call);
+      updateAnalysis(call.getOperand(1), TypeTree(BaseType::Integer).Only(-1),
+                     &call);
+      updateAnalysis(call.getOperand(3), TypeTree(BaseType::Integer).Only(-1),
+                     &call);
+      updateAnalysis(call.getOperand(4), TypeTree(BaseType::Integer).Only(-1),
+                     &call);
+      updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1), &call);
+      updateAnalysis(call.getOperand(6), TypeTree(BaseType::Pointer).Only(-1),
+                     &call);
       return;
     }
     if (ci->getName() == "MPI_Wait") {
-      updateAnalysis(call.getOperand(0),
-                     TypeTree(BaseType::Pointer).Only(-1), &call);
-      updateAnalysis(call.getOperand(1),
-                     TypeTree(BaseType::Pointer).Only(-1), &call);
-      updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1),
+      updateAnalysis(call.getOperand(0), TypeTree(BaseType::Pointer).Only(-1),
                      &call);
+      updateAnalysis(call.getOperand(1), TypeTree(BaseType::Pointer).Only(-1),
+                     &call);
+      updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1), &call);
       return;
     }
     if (ci->getName() == "MPI_Waitany") {
-      updateAnalysis(call.getOperand(0),
-                     TypeTree(BaseType::Integer).Only(-1), &call);
-      updateAnalysis(call.getOperand(1),
-                     TypeTree(BaseType::Pointer).Only(-1), &call);
-      updateAnalysis(call.getOperand(2),
-                     TypeTree(BaseType::Pointer).Only(-1), &call);
-      updateAnalysis(call.getOperand(3),
-                     TypeTree(BaseType::Pointer).Only(-1), &call);
-      updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1),
+      updateAnalysis(call.getOperand(0), TypeTree(BaseType::Integer).Only(-1),
                      &call);
+      updateAnalysis(call.getOperand(1), TypeTree(BaseType::Pointer).Only(-1),
+                     &call);
+      updateAnalysis(call.getOperand(2), TypeTree(BaseType::Pointer).Only(-1),
+                     &call);
+      updateAnalysis(call.getOperand(3), TypeTree(BaseType::Pointer).Only(-1),
+                     &call);
+      updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1), &call);
       return;
     }
     if (ci->getName() == "MPI_Waitall") {
-      updateAnalysis(call.getOperand(0),
-                     TypeTree(BaseType::Integer).Only(-1), &call);
-      updateAnalysis(call.getOperand(1),
-                     TypeTree(BaseType::Pointer).Only(-1), &call);
-      updateAnalysis(call.getOperand(2),
-                     TypeTree(BaseType::Pointer).Only(-1), &call);
-      updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1),
+      updateAnalysis(call.getOperand(0), TypeTree(BaseType::Integer).Only(-1),
                      &call);
+      updateAnalysis(call.getOperand(1), TypeTree(BaseType::Pointer).Only(-1),
+                     &call);
+      updateAnalysis(call.getOperand(2), TypeTree(BaseType::Pointer).Only(-1),
+                     &call);
+      updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1), &call);
       return;
     }
     if (ci->getName() == "MPI_Bcast") {
-      updateAnalysis(call.getOperand(0),
-                     TypeTree(BaseType::Pointer).Only(-1), &call);
-      updateAnalysis(call.getOperand(1),
-                     TypeTree(BaseType::Integer).Only(-1), &call);
-      updateAnalysis(call.getOperand(3),
-                     TypeTree(BaseType::Integer).Only(-1), &call);
-      updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1),
+      updateAnalysis(call.getOperand(0), TypeTree(BaseType::Pointer).Only(-1),
                      &call);
+      updateAnalysis(call.getOperand(1), TypeTree(BaseType::Integer).Only(-1),
+                     &call);
+      updateAnalysis(call.getOperand(3), TypeTree(BaseType::Integer).Only(-1),
+                     &call);
+      updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1), &call);
       return;
     }
     if (ci->getName() == "MPI_Reduce") {
-      updateAnalysis(call.getOperand(0),
-                     TypeTree(BaseType::Pointer).Only(-1), &call);
-      updateAnalysis(call.getOperand(1),
-                     TypeTree(BaseType::Pointer).Only(-1), &call);
-      updateAnalysis(call.getOperand(2),
-                     TypeTree(BaseType::Integer).Only(-1), &call);
-      updateAnalysis(call.getOperand(4),
-                     TypeTree(BaseType::Integer).Only(-1), &call);
-      updateAnalysis(call.getOperand(5),
-                     TypeTree(BaseType::Integer).Only(-1), &call);
-      updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1),
+      updateAnalysis(call.getOperand(0), TypeTree(BaseType::Pointer).Only(-1),
                      &call);
+      updateAnalysis(call.getOperand(1), TypeTree(BaseType::Pointer).Only(-1),
+                     &call);
+      updateAnalysis(call.getOperand(2), TypeTree(BaseType::Integer).Only(-1),
+                     &call);
+      updateAnalysis(call.getOperand(4), TypeTree(BaseType::Integer).Only(-1),
+                     &call);
+      updateAnalysis(call.getOperand(5), TypeTree(BaseType::Integer).Only(-1),
+                     &call);
+      updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1), &call);
       return;
     }
     if (ci->getName() == "MPI_Allreduce") {
-      updateAnalysis(call.getOperand(0),
-                     TypeTree(BaseType::Pointer).Only(-1), &call);
-      updateAnalysis(call.getOperand(1),
-                     TypeTree(BaseType::Pointer).Only(-1), &call);
-      updateAnalysis(call.getOperand(2),
-                     TypeTree(BaseType::Integer).Only(-1), &call);
-      updateAnalysis(call.getOperand(4),
-                     TypeTree(BaseType::Integer).Only(-1), &call);
-      updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1),
+      updateAnalysis(call.getOperand(0), TypeTree(BaseType::Pointer).Only(-1),
                      &call);
+      updateAnalysis(call.getOperand(1), TypeTree(BaseType::Pointer).Only(-1),
+                     &call);
+      updateAnalysis(call.getOperand(2), TypeTree(BaseType::Integer).Only(-1),
+                     &call);
+      updateAnalysis(call.getOperand(4), TypeTree(BaseType::Integer).Only(-1),
+                     &call);
+      updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1), &call);
       return;
     }
     if (ci->getName() == "MPI_Sendrecv_replace") {
-      updateAnalysis(call.getOperand(0),
-                     TypeTree(BaseType::Pointer).Only(-1), &call);
-      updateAnalysis(call.getOperand(1),
-                     TypeTree(BaseType::Integer).Only(-1), &call);
-      updateAnalysis(call.getOperand(3),
-                     TypeTree(BaseType::Integer).Only(-1), &call);
-      updateAnalysis(call.getOperand(4),
-                     TypeTree(BaseType::Integer).Only(-1), &call);
-      updateAnalysis(call.getOperand(5),
-                     TypeTree(BaseType::Integer).Only(-1), &call);
-      updateAnalysis(call.getOperand(6),
-                     TypeTree(BaseType::Integer).Only(-1), &call);
-      updateAnalysis(call.getOperand(8),
-                     TypeTree(BaseType::Pointer).Only(-1), &call);
-      updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1),
+      updateAnalysis(call.getOperand(0), TypeTree(BaseType::Pointer).Only(-1),
                      &call);
+      updateAnalysis(call.getOperand(1), TypeTree(BaseType::Integer).Only(-1),
+                     &call);
+      updateAnalysis(call.getOperand(3), TypeTree(BaseType::Integer).Only(-1),
+                     &call);
+      updateAnalysis(call.getOperand(4), TypeTree(BaseType::Integer).Only(-1),
+                     &call);
+      updateAnalysis(call.getOperand(5), TypeTree(BaseType::Integer).Only(-1),
+                     &call);
+      updateAnalysis(call.getOperand(6), TypeTree(BaseType::Integer).Only(-1),
+                     &call);
+      updateAnalysis(call.getOperand(8), TypeTree(BaseType::Pointer).Only(-1),
+                     &call);
+      updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1), &call);
       return;
     }
     if (ci->getName() == "MPI_Sendrecv") {
-      updateAnalysis(call.getOperand(0),
-                     TypeTree(BaseType::Pointer).Only(-1), &call);
-      updateAnalysis(call.getOperand(1),
-                     TypeTree(BaseType::Integer).Only(-1), &call);
-      updateAnalysis(call.getOperand(3),
-                     TypeTree(BaseType::Integer).Only(-1), &call);
-      updateAnalysis(call.getOperand(4),
-                     TypeTree(BaseType::Integer).Only(-1), &call);
-      updateAnalysis(call.getOperand(5),
-                     TypeTree(BaseType::Pointer).Only(-1), &call);
-      updateAnalysis(call.getOperand(6),
-                     TypeTree(BaseType::Integer).Only(-1), &call);
-      updateAnalysis(call.getOperand(7),
-                     TypeTree(BaseType::Integer).Only(-1), &call);
-      updateAnalysis(call.getOperand(8),
-                     TypeTree(BaseType::Integer).Only(-1), &call);
-      updateAnalysis(call.getOperand(9),
-                     TypeTree(BaseType::Integer).Only(-1), &call);
-      updateAnalysis(call.getOperand(11),
-                     TypeTree(BaseType::Pointer).Only(-1), &call);
-      updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1),
+      updateAnalysis(call.getOperand(0), TypeTree(BaseType::Pointer).Only(-1),
                      &call);
+      updateAnalysis(call.getOperand(1), TypeTree(BaseType::Integer).Only(-1),
+                     &call);
+      updateAnalysis(call.getOperand(3), TypeTree(BaseType::Integer).Only(-1),
+                     &call);
+      updateAnalysis(call.getOperand(4), TypeTree(BaseType::Integer).Only(-1),
+                     &call);
+      updateAnalysis(call.getOperand(5), TypeTree(BaseType::Pointer).Only(-1),
+                     &call);
+      updateAnalysis(call.getOperand(6), TypeTree(BaseType::Integer).Only(-1),
+                     &call);
+      updateAnalysis(call.getOperand(7), TypeTree(BaseType::Integer).Only(-1),
+                     &call);
+      updateAnalysis(call.getOperand(8), TypeTree(BaseType::Integer).Only(-1),
+                     &call);
+      updateAnalysis(call.getOperand(9), TypeTree(BaseType::Integer).Only(-1),
+                     &call);
+      updateAnalysis(call.getOperand(11), TypeTree(BaseType::Pointer).Only(-1),
+                     &call);
+      updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1), &call);
       return;
     }
     if (ci->getName() == "MPI_Gather" || ci->getName() == "MPI_Scatter") {
-      updateAnalysis(call.getOperand(0),
-                     TypeTree(BaseType::Pointer).Only(-1), &call);
-      updateAnalysis(call.getOperand(1),
-                     TypeTree(BaseType::Integer).Only(-1), &call);
-      updateAnalysis(call.getOperand(3),
-                     TypeTree(BaseType::Pointer).Only(-1), &call);
-      updateAnalysis(call.getOperand(4),
-                     TypeTree(BaseType::Integer).Only(-1), &call);
-      updateAnalysis(call.getOperand(6),
-                     TypeTree(BaseType::Integer).Only(-1), &call);
-      updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1),
+      updateAnalysis(call.getOperand(0), TypeTree(BaseType::Pointer).Only(-1),
                      &call);
+      updateAnalysis(call.getOperand(1), TypeTree(BaseType::Integer).Only(-1),
+                     &call);
+      updateAnalysis(call.getOperand(3), TypeTree(BaseType::Pointer).Only(-1),
+                     &call);
+      updateAnalysis(call.getOperand(4), TypeTree(BaseType::Integer).Only(-1),
+                     &call);
+      updateAnalysis(call.getOperand(6), TypeTree(BaseType::Integer).Only(-1),
+                     &call);
+      updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1), &call);
       return;
     }
     /// END MPI
@@ -2675,8 +2657,7 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
     }
 
     if (ci->getName() == "__cxa_guard_acquire" || ci->getName() == "printf" ||
-        ci->getName() == "vprintf" ||  
-        ci->getName() == "puts") {
+        ci->getName() == "vprintf" || ci->getName() == "puts") {
       updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1), &call);
     }
 

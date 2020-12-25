@@ -432,7 +432,7 @@ void ReplaceReallocs(Function *NewF, bool mem2reg) {
     DominatorTree DT(*NewF);
     PromoteMemoryToRegister(*NewF, DT);
   }
-  
+
   std::vector<CallInst *> ToConvert;
   std::map<CallInst *, Value *> reallocSizes;
   IntegerType *T;

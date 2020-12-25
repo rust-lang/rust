@@ -461,7 +461,7 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
 
   if (auto II = dyn_cast<IntrinsicInst>(Val)) {
     switch (II->getIntrinsicID()) {
-    case Intrinsic::nvvm_barrier0:    
+    case Intrinsic::nvvm_barrier0:
     case Intrinsic::nvvm_barrier0_popc:
     case Intrinsic::nvvm_barrier0_and:
     case Intrinsic::nvvm_barrier0_or:
@@ -788,7 +788,7 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
 
             bool noUse = true;
             switch (F->getIntrinsicID()) {
-            case Intrinsic::nvvm_barrier0:    
+            case Intrinsic::nvvm_barrier0:
             case Intrinsic::nvvm_barrier0_popc:
             case Intrinsic::nvvm_barrier0_and:
             case Intrinsic::nvvm_barrier0_or:
@@ -1193,7 +1193,7 @@ bool ActivityAnalyzer::isInstructionInactiveFromOrigin(TypeResults &TR,
   // Intrinsics known always to be inactive
   if (auto II = dyn_cast<IntrinsicInst>(inst)) {
     switch (II->getIntrinsicID()) {
-    case Intrinsic::nvvm_barrier0:    
+    case Intrinsic::nvvm_barrier0:
     case Intrinsic::nvvm_barrier0_popc:
     case Intrinsic::nvvm_barrier0_and:
     case Intrinsic::nvvm_barrier0_or:
