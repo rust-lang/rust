@@ -2,7 +2,7 @@
 
 #![feature(decl_macro)]
 
-// @has decl_macro_priv/macro.crate_macro.html //pre 'macro crate_macro() {'
+// @has decl_macro_priv/macro.crate_macro.html //pre 'pub(crate) macro crate_macro() {'
 // @has - //pre '...'
 // @has - //pre '}'
 pub(crate) macro crate_macro() {}
