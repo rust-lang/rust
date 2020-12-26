@@ -99,9 +99,8 @@ pub unsafe trait AllocRef {
     /// eliminate entirely or move to the stack and thus never invoke the allocator. The
     /// optimizer may further assume that allocation is infallible, so code that used to fail due
     /// to allocator failures may now suddenly work because the optimizer worked around the
-    /// need for an allocation.
-    /// More concretely, the following code example is unsound, irrespective of whether your
-    /// custom allocator allows counting how many allocations have happened.
+    /// need for an allocation. More concretely, the following code example is unsound, irrespective
+    /// of whether your custom allocator allows counting how many allocations have happened.
     ///
     /// ```rust,ignore (unsound and has placeholders)
     /// Global::dealloc(Global::alloc(some_layout));

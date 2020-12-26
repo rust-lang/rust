@@ -55,14 +55,12 @@ use crate::ptr;
 ///   and implementors must ensure such contracts remain true.
 ///
 /// * You may not rely on allocations actually happening, even if there are explicit
-///   heap allocations in the source.
-///   The optimizer may detect unused allocations that it can either
+///   heap allocations in the source. The optimizer may detect unused allocations that it can either
 ///   eliminate entirely or move to the stack and thus never invoke the allocator. The
 ///   optimizer may further assume that allocation is infallible, so code that used to fail due
 ///   to allocator failures may now suddenly work because the optimizer worked around the
-///   need for an allocation.
-///   More concretely, the following code example is unsound, irrespective of whether your
-///   custom allocator allows counting how many allocations have happened.
+///   need for an allocation. More concretely, the following code example is unsound, irrespective
+///   of whether your custom allocator allows counting how many allocations have happened.
 ///
 ///   ```rust,ignore (unsound and has placeholders)
 ///   drop(Box::new(42));
