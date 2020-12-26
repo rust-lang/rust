@@ -6,13 +6,13 @@
 
 // @has 'foo/struct.FooPublic.html' '//pre' 'pub struct FooPublic'
 pub struct FooPublic;
-// @has 'foo/struct.FooJustCrate.html' '//pre' 'struct FooJustCrate'
+// @has 'foo/struct.FooJustCrate.html' '//pre' 'pub(crate) struct FooJustCrate'
 crate struct FooJustCrate;
-// @has 'foo/struct.FooPubCrate.html' '//pre' 'struct FooPubCrate'
+// @has 'foo/struct.FooPubCrate.html' '//pre' 'pub(crate) struct FooPubCrate'
 pub(crate) struct FooPubCrate;
-// @has 'foo/struct.FooSelf.html' '//pre' 'struct FooSelf'
+// @has 'foo/struct.FooSelf.html' '//pre' 'pub(crate) struct FooSelf'
 pub(self) struct FooSelf;
-// @has 'foo/struct.FooInSelf.html' '//pre' 'struct FooInSelf'
+// @has 'foo/struct.FooInSelf.html' '//pre' 'pub(crate) struct FooInSelf'
 pub(in self) struct FooInSelf;
 mod a {
     // @has 'foo/a/struct.FooASuper.html' '//pre' 'pub(crate) struct FooASuper'
