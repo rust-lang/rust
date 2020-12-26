@@ -94,6 +94,7 @@
 #![feature(const_precise_live_drops)]
 #![feature(const_ptr_offset)]
 #![feature(const_ptr_offset_from)]
+#![feature(const_ptr_read)]
 #![feature(const_raw_ptr_comparison)]
 #![feature(const_raw_ptr_deref)]
 #![feature(const_slice_from_raw_parts)]
