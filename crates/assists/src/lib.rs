@@ -73,45 +73,32 @@ pub struct Assist {
     /// Target ranges are used to sort assists: the smaller the target range,
     /// the more specific assist is, and so it should be sorted first.
     pub target: TextRange,
-}
-
-#[derive(Debug, Clone)]
-pub struct ResolvedAssist {
-    pub assist: Assist,
-    pub source_change: SourceChange,
+    /// Computing source change sometimes is much more costly then computing the
+    /// other fields. Additionally, the actual change is not required to show
+    /// the lightbulb UI, it only is needed when the user tries to apply an
+    /// assist. So, we compute it lazily: the API allow requesting assists with
+    /// or without source change. We could (and in fact, used to) distinguish
+    /// between resolved and unresolved assists at the type level, but this is
+    /// cumbersome, especially if you want to embed an assist into another data
+    /// structure, such as a diagnostic.
+    pub source_change: Option<SourceChange>,
 }
 
 impl Assist {
     /// Return all the assists applicable at the given position.
-    ///
-    /// Assists are returned in the "unresolved" state, that is only labels are
-    /// returned, without actual edits.
-    pub fn unresolved(db: &RootDatabase, config: &AssistConfig, range: FileRange) -> Vec<Assist> {
-        let sema = Semantics::new(db);
-        let ctx = AssistContext::new(sema, config, range);
-        let mut acc = Assists::new_unresolved(&ctx);
-        handlers::all().iter().for_each(|handler| {
-            handler(&mut acc, &ctx);
-        });
-        acc.finish_unresolved()
-    }
-
-    /// Return all the assists applicable at the given position.
-    ///
-    /// Assists are returned in the "resolved" state, that is with edit fully
-    /// computed.
-    pub fn resolved(
+    pub fn get(
         db: &RootDatabase,
         config: &AssistConfig,
+        resolve: bool,
         range: FileRange,
-    ) -> Vec<ResolvedAssist> {
+    ) -> Vec<Assist> {
         let sema = Semantics::new(db);
         let ctx = AssistContext::new(sema, config, range);
-        let mut acc = Assists::new_resolved(&ctx);
+        let mut acc = Assists::new(&ctx, resolve);
         handlers::all().iter().for_each(|handler| {
             handler(&mut acc, &ctx);
         });
-        acc.finish_resolved()
+        acc.finish()
     }
 }
 
