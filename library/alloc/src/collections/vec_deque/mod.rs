@@ -1080,8 +1080,6 @@ impl<T> VecDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(deque_range)]
-    ///
     /// use std::collections::VecDeque;
     ///
     /// let v: VecDeque<_> = vec![1, 2, 3].into_iter().collect();
@@ -1093,7 +1091,7 @@ impl<T> VecDeque<T> {
     /// assert_eq!(all.len(), 3);
     /// ```
     #[inline]
-    #[unstable(feature = "deque_range", issue = "74217")]
+    #[stable(feature = "deque_range", since = "1.50.0")]
     pub fn range<R>(&self, range: R) -> Iter<'_, T>
     where
         R: RangeBounds<usize>,
@@ -1117,8 +1115,6 @@ impl<T> VecDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(deque_range)]
-    ///
     /// use std::collections::VecDeque;
     ///
     /// let mut v: VecDeque<_> = vec![1, 2, 3].into_iter().collect();
@@ -1134,7 +1130,7 @@ impl<T> VecDeque<T> {
     /// assert_eq!(v, vec![2, 4, 12]);
     /// ```
     #[inline]
-    #[unstable(feature = "deque_range", issue = "74217")]
+    #[stable(feature = "deque_range", since = "1.50.0")]
     pub fn range_mut<R>(&mut self, range: R) -> IterMut<'_, T>
     where
         R: RangeBounds<usize>,
