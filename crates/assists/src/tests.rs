@@ -48,24 +48,25 @@ fn check_doc_test(assist_id: &str, before: &str, after: &str) {
     let before = db.file_text(file_id).to_string();
     let frange = FileRange { file_id, range: selection.into() };
 
-    let assist = Assist::resolved(&db, &AssistConfig::default(), frange)
+    let assist = Assist::get(&db, &AssistConfig::default(), true, frange)
         .into_iter()
-        .find(|assist| assist.assist.id.0 == assist_id)
+        .find(|assist| assist.id.0 == assist_id)
         .unwrap_or_else(|| {
             panic!(
                 "\n\nAssist is not applicable: {}\nAvailable assists: {}",
                 assist_id,
-                Assist::resolved(&db, &AssistConfig::default(), frange)
+                Assist::get(&db, &AssistConfig::default(), false, frange)
                     .into_iter()
-                    .map(|assist| assist.assist.id.0)
+                    .map(|assist| assist.id.0)
                     .collect::<Vec<_>>()
                     .join(", ")
             )
         });
 
     let actual = {
+        let source_change = assist.source_change.unwrap();
         let mut actual = before;
-        for source_file_edit in assist.source_change.source_file_edits {
+        for source_file_edit in source_change.source_file_edits {
             if source_file_edit.file_id == file_id {
                 source_file_edit.edit.apply(&mut actual)
             }
@@ -90,18 +91,18 @@ fn check(handler: Handler, before: &str, expected: ExpectedResult, assist_label:
     let sema = Semantics::new(&db);
     let config = AssistConfig::default();
     let ctx = AssistContext::new(sema, &config, frange);
-    let mut acc = Assists::new_resolved(&ctx);
+    let mut acc = Assists::new(&ctx, true);
     handler(&mut acc, &ctx);
-    let mut res = acc.finish_resolved();
+    let mut res = acc.finish();
 
     let assist = match assist_label {
-        Some(label) => res.into_iter().find(|resolved| resolved.assist.label == label),
+        Some(label) => res.into_iter().find(|resolved| resolved.label == label),
         None => res.pop(),
     };
 
     match (assist, expected) {
         (Some(assist), ExpectedResult::After(after)) => {
-            let mut source_change = assist.source_change;
+            let mut source_change = assist.source_change.unwrap();
             assert!(!source_change.source_file_edits.is_empty());
             let skip_header = source_change.source_file_edits.len() == 1
                 && source_change.file_system_edits.len() == 0;
@@ -138,7 +139,7 @@ fn check(handler: Handler, before: &str, expected: ExpectedResult, assist_label:
             assert_eq_text!(after, &buf);
         }
         (Some(assist), ExpectedResult::Target(target)) => {
-            let range = assist.assist.target;
+            let range = assist.target;
             assert_eq_text!(&text_without_caret[range], target);
         }
         (Some(_), ExpectedResult::NotApplicable) => panic!("assist should not be applicable!"),
@@ -155,14 +156,11 @@ fn assist_order_field_struct() {
     let (before_cursor_pos, before) = extract_offset(before);
     let (db, file_id) = with_single_file(&before);
     let frange = FileRange { file_id, range: TextRange::empty(before_cursor_pos) };
-    let assists = Assist::resolved(&db, &AssistConfig::default(), frange);
+    let assists = Assist::get(&db, &AssistConfig::default(), false, frange);
     let mut assists = assists.iter();
 
-    assert_eq!(
-        assists.next().expect("expected assist").assist.label,
-        "Change visibility to pub(crate)"
-    );
-    assert_eq!(assists.next().expect("expected assist").assist.label, "Add `#[derive]`");
+    assert_eq!(assists.next().expect("expected assist").label, "Change visibility to pub(crate)");
+    assert_eq!(assists.next().expect("expected assist").label, "Add `#[derive]`");
 }
 
 #[test]
@@ -178,11 +176,11 @@ fn assist_order_if_expr() {
     let (range, before) = extract_range(before);
     let (db, file_id) = with_single_file(&before);
     let frange = FileRange { file_id, range };
-    let assists = Assist::resolved(&db, &AssistConfig::default(), frange);
+    let assists = Assist::get(&db, &AssistConfig::default(), false, frange);
     let mut assists = assists.iter();
 
-    assert_eq!(assists.next().expect("expected assist").assist.label, "Extract into variable");
-    assert_eq!(assists.next().expect("expected assist").assist.label, "Replace with match");
+    assert_eq!(assists.next().expect("expected assist").label, "Extract into variable");
+    assert_eq!(assists.next().expect("expected assist").label, "Replace with match");
 }
 
 #[test]
@@ -203,27 +201,27 @@ fn assist_filter_works() {
         let mut cfg = AssistConfig::default();
         cfg.allowed = Some(vec![AssistKind::Refactor]);
 
-        let assists = Assist::resolved(&db, &cfg, frange);
+        let assists = Assist::get(&db, &cfg, false, frange);
         let mut assists = assists.iter();
 
-        assert_eq!(assists.next().expect("expected assist").assist.label, "Extract into variable");
-        assert_eq!(assists.next().expect("expected assist").assist.label, "Replace with match");
+        assert_eq!(assists.next().expect("expected assist").label, "Extract into variable");
+        assert_eq!(assists.next().expect("expected assist").label, "Replace with match");
     }
 
     {
         let mut cfg = AssistConfig::default();
         cfg.allowed = Some(vec![AssistKind::RefactorExtract]);
-        let assists = Assist::resolved(&db, &cfg, frange);
+        let assists = Assist::get(&db, &cfg, false, frange);
         assert_eq!(assists.len(), 1);
 
         let mut assists = assists.iter();
-        assert_eq!(assists.next().expect("expected assist").assist.label, "Extract into variable");
+        assert_eq!(assists.next().expect("expected assist").label, "Extract into variable");
     }
 
     {
         let mut cfg = AssistConfig::default();
         cfg.allowed = Some(vec![AssistKind::QuickFix]);
-        let assists = Assist::resolved(&db, &cfg, frange);
+        let assists = Assist::get(&db, &cfg, false, frange);
         assert!(assists.is_empty(), "All asserts but quickfixes should be filtered out");
     }
 }

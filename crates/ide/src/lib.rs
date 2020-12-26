@@ -79,7 +79,7 @@ pub use crate::{
         HighlightedRange,
     },
 };
-pub use assists::{Assist, AssistConfig, AssistId, AssistKind, ResolvedAssist};
+pub use assists::{Assist, AssistConfig, AssistId, AssistKind};
 pub use completion::{
     CompletionConfig, CompletionItem, CompletionItemKind, CompletionResolveCapability,
     CompletionScore, ImportEdit, InsertTextFormat,
@@ -491,22 +491,16 @@ impl Analysis {
     }
 
     /// Computes assists (aka code actions aka intentions) for the given
-    /// position. Computes enough info to show the lightbulb list in the editor,
-    /// but doesn't compute actual edits, to improve performance.
-    ///
-    /// When the user clicks on the assist, call `resolve_assists` to get the
-    /// edit.
-    pub fn assists(&self, config: &AssistConfig, frange: FileRange) -> Cancelable<Vec<Assist>> {
-        self.with_db(|db| Assist::unresolved(db, config, frange))
-    }
-
-    /// Computes resolved assists with source changes for the given position.
-    pub fn resolve_assists(
+    /// position. If `resolve == false`, computes enough info to show the
+    /// lightbulb list in the editor, but doesn't compute actual edits, to
+    /// improve performance.
+    pub fn assists(
         &self,
         config: &AssistConfig,
+        resolve: bool,
         frange: FileRange,
-    ) -> Cancelable<Vec<ResolvedAssist>> {
-        self.with_db(|db| assists::Assist::resolved(db, config, frange))
+    ) -> Cancelable<Vec<Assist>> {
+        self.with_db(|db| Assist::get(db, config, resolve, frange))
     }
 
     /// Computes the set of diagnostics for the given file.

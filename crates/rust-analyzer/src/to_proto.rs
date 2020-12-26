@@ -8,8 +8,8 @@ use ide::{
     Assist, AssistKind, CallInfo, CompletionItem, CompletionItemKind, Documentation, FileId,
     FileRange, FileSystemEdit, Fold, FoldKind, Highlight, HighlightModifier, HighlightTag,
     HighlightedRange, Indel, InlayHint, InlayKind, InsertTextFormat, LineIndex, Markup,
-    NavigationTarget, ReferenceAccess, ResolvedAssist, Runnable, Severity, SourceChange,
-    SourceFileEdit, SymbolKind, TextEdit, TextRange, TextSize,
+    NavigationTarget, ReferenceAccess, Runnable, Severity, SourceChange, SourceFileEdit,
+    SymbolKind, TextEdit, TextRange, TextSize,
 };
 use itertools::Itertools;
 
@@ -780,6 +780,7 @@ pub(crate) fn unresolved_code_action(
     assist: Assist,
     index: usize,
 ) -> Result<lsp_ext::CodeAction> {
+    assert!(assist.source_change.is_none());
     let res = lsp_ext::CodeAction {
         title: assist.label.to_string(),
         group: assist.group.filter(|_| snap.config.client_caps.code_action_group).map(|gr| gr.0),
@@ -796,18 +797,14 @@ pub(crate) fn unresolved_code_action(
 
 pub(crate) fn resolved_code_action(
     snap: &GlobalStateSnapshot,
-    assist: ResolvedAssist,
+    assist: Assist,
 ) -> Result<lsp_ext::CodeAction> {
-    let change = assist.source_change;
+    let change = assist.source_change.unwrap();
     let res = lsp_ext::CodeAction {
         edit: Some(snippet_workspace_edit(snap, change)?),
-        title: assist.assist.label.to_string(),
-        group: assist
-            .assist
-            .group
-            .filter(|_| snap.config.client_caps.code_action_group)
-            .map(|gr| gr.0),
-        kind: Some(code_action_kind(assist.assist.id.1)),
+        title: assist.label.to_string(),
+        group: assist.group.filter(|_| snap.config.client_caps.code_action_group).map(|gr| gr.0),
+        kind: Some(code_action_kind(assist.id.1)),
         is_preferred: None,
         data: None,
     };
