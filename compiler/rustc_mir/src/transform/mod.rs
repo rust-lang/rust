@@ -542,6 +542,9 @@ fn inner_optimized_mir(tcx: TyCtxt<'_>, did: LocalDefId) -> Body<'_> {
     }
 
     match tcx.hir().body_const_context(did) {
+        /// Run the `mir_for_ctfe` query, which depends on `mir_drops_elaborated_and_const_checked`
+        /// which we are going to steal below. Thus we need to run `mir_for_ctfe` first, so it
+        /// computes and caches its result.
         Some(hir::ConstContext::ConstFn) => tcx.ensure().mir_for_ctfe(did),
         None => {}
         Some(other) => panic!("do not use `optimized_mir` for constants: {:?}", other),

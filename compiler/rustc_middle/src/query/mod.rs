@@ -935,7 +935,6 @@ rustc_queries! {
     }
 
     Codegen {
-        // FIXME: remove after figuring out how to make miri able to detect non-Rust function calls
         query is_ctfe_mir_available(key: DefId) -> bool {
             desc { |tcx| "checking if item has ctfe mir available: `{}`", tcx.def_path_str(key) }
         }
