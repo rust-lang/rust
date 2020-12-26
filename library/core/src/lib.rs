@@ -73,6 +73,7 @@
 #![feature(const_assert_type)]
 #![feature(const_discriminant)]
 #![feature(const_cell_into_inner)]
+#![feature(const_intrinsic_copy)]
 #![feature(const_checked_int_methods)]
 #![feature(const_euclidean_int_methods)]
 #![feature(const_float_classify)]
