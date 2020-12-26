@@ -623,6 +623,9 @@ crate fn run_global_ctxt(
 
     ctxt.sess().abort_if_errors();
 
+    // The main crate doc comments are always collapsed.
+    krate.collapsed = true;
+
     (krate, ctxt.renderinfo.into_inner(), ctxt.render_options)
 }
 
