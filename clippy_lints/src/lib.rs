@@ -271,6 +271,7 @@ mod needless_borrow;
 mod needless_borrowed_ref;
 mod needless_continue;
 mod needless_pass_by_value;
+mod needless_question_mark;
 mod needless_update;
 mod neg_cmp_op_on_partial_ord;
 mod neg_multiply;
@@ -799,6 +800,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &needless_borrowed_ref::NEEDLESS_BORROWED_REFERENCE,
         &needless_continue::NEEDLESS_CONTINUE,
         &needless_pass_by_value::NEEDLESS_PASS_BY_VALUE,
+        &needless_question_mark::NEEDLESS_QUESTION_MARK,
         &needless_update::NEEDLESS_UPDATE,
         &neg_cmp_op_on_partial_ord::NEG_CMP_OP_ON_PARTIAL_ORD,
         &neg_multiply::NEG_MULTIPLY,
@@ -1019,6 +1021,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(move || box from_over_into::FromOverInto::new(msrv));
     store.register_late_pass(move || box use_self::UseSelf::new(msrv));
     store.register_late_pass(move || box missing_const_for_fn::MissingConstForFn::new(msrv));
+    store.register_late_pass(move || box needless_question_mark::NeedlessQuestionMark::new(msrv));
 
     store.register_late_pass(|| box size_of_in_element_count::SizeOfInElementCount);
     store.register_late_pass(|| box map_clone::MapClone);
@@ -1545,6 +1548,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&needless_bool::BOOL_COMPARISON),
         LintId::of(&needless_bool::NEEDLESS_BOOL),
         LintId::of(&needless_borrowed_ref::NEEDLESS_BORROWED_REFERENCE),
+        LintId::of(&needless_question_mark::NEEDLESS_QUESTION_MARK),
         LintId::of(&needless_update::NEEDLESS_UPDATE),
         LintId::of(&neg_cmp_op_on_partial_ord::NEG_CMP_OP_ON_PARTIAL_ORD),
         LintId::of(&neg_multiply::NEG_MULTIPLY),
@@ -1803,6 +1807,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&needless_bool::BOOL_COMPARISON),
         LintId::of(&needless_bool::NEEDLESS_BOOL),
         LintId::of(&needless_borrowed_ref::NEEDLESS_BORROWED_REFERENCE),
+        LintId::of(&needless_question_mark::NEEDLESS_QUESTION_MARK),
         LintId::of(&needless_update::NEEDLESS_UPDATE),
         LintId::of(&neg_cmp_op_on_partial_ord::NEG_CMP_OP_ON_PARTIAL_ORD),
         LintId::of(&no_effect::NO_EFFECT),
