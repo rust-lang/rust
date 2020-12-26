@@ -1664,6 +1664,21 @@ function defocusSearchBar() {
             var ret_in_args = addTab(results.in_args, query, false);
             var ret_returned = addTab(results.returned, query, false);
 
+            // Navigate to the relevant tab if the current tab is empty, like in case users search
+            // for "-> String". If they had selected another tab previously, they have to click on
+            // it again.
+            if ((currentTab === 0 && ret_others[1] === 0) ||
+                    (currentTab === 1 && ret_in_args[1] === 0) ||
+                    (currentTab === 2 && ret_returned[1] === 0)) {
+                if (ret_others[1] !== 0) {
+                    currentTab = 0;
+                } else if (ret_in_args[1] !== 0) {
+                    currentTab = 1;
+                } else if (ret_returned[1] !== 0) {
+                    currentTab = 2;
+                }
+            }
+
             var output = "<h1>Results for " + escape(query.query) +
                 (query.type ? " (type: " + escape(query.type) + ")" : "") + "</h1>" +
                 "<div id=\"titles\">" +
