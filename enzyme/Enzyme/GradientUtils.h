@@ -809,6 +809,7 @@ public:
         // llvm::errs() << "manually performing lcssa for instruction" << *inst
         // << " in block " << BuilderM.GetInsertBlock()->getName() << "\n";
         if (!DT.dominates(inst, forwardBlock)) {
+          llvm::errs() << *this->newFunc->getParent() << "\n";
           llvm::errs() << *this->newFunc << "\n";
           llvm::errs() << *forwardBlock << "\n";
           llvm::errs() << *BuilderM.GetInsertBlock() << "\n";

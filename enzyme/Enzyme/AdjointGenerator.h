@@ -562,15 +562,14 @@ public:
       if (I.getOpcode() == CastInst::CastOps::FPTrunc ||
           I.getOpcode() == CastInst::CastOps::FPExt) {
         addToDiffe(orig_op0, Builder2.CreateFPCast(dif, op0->getType()),
-                   Builder2, TR.intType(size, orig_op0, false).isFloat());
+                   Builder2, TR.addingType(size, orig_op0));
       } else if (I.getOpcode() == CastInst::CastOps::BitCast) {
         addToDiffe(orig_op0, Builder2.CreateBitCast(dif, op0->getType()),
-                   Builder2, TR.intType(size, orig_op0, false).isFloat());
+                   Builder2, TR.addingType(size, orig_op0));
       } else if (I.getOpcode() == CastInst::CastOps::Trunc) {
         // TODO CHECK THIS
         auto trunced = Builder2.CreateZExt(dif, op0->getType());
-        addToDiffe(orig_op0, trunced, Builder2,
-                   TR.intType(size, orig_op0, false).isFloat());
+        addToDiffe(orig_op0, trunced, Builder2, TR.addingType(size, orig_op0));
       } else {
         llvm::errs() << *I.getParent()->getParent() << "\n"
                      << *I.getParent() << "\n";
@@ -622,11 +621,9 @@ public:
 
     setDiffe(&SI, Constant::getNullValue(SI.getType()), Builder2);
     if (dif1)
-      addToDiffe(orig_op1, dif1, Builder2,
-                 TR.intType(size, orig_op1, false).isFloat());
+      addToDiffe(orig_op1, dif1, Builder2, TR.addingType(size, orig_op1));
     if (dif2)
-      addToDiffe(orig_op2, dif2, Builder2,
-                 TR.intType(size, orig_op2, false).isFloat());
+      addToDiffe(orig_op2, dif2, Builder2, TR.addingType(size, orig_op2));
   }
 
   void visitExtractElementInst(llvm::ExtractElementInst &EEI) {
@@ -685,12 +682,12 @@ public:
                  Builder2.CreateInsertElement(
                      dif1, Constant::getNullValue(op1->getType()),
                      lookup(op2, Builder2)),
-                 Builder2, TR.intType(size0, orig_op0, false).isFloat());
+                 Builder2, TR.addingType(size0, orig_op0));
 
     if (!gutils->isConstantValue(orig_op1))
       addToDiffe(orig_op1,
                  Builder2.CreateExtractElement(dif1, lookup(op2, Builder2)),
-                 Builder2, TR.intType(size1, orig_op1, false).isFloat());
+                 Builder2, TR.addingType(size1, orig_op1));
 
     setDiffe(&IEI, Constant::getNullValue(IEI.getType()), Builder2);
   }
@@ -841,10 +838,7 @@ public:
       auto dindex = Builder2.CreateInsertValue(
           prediff, Constant::getNullValue(orig_inserted->getType()),
           IVI.getIndices());
-      llvm::errs() << "orig:" << IVI
-                   << " query(orig_agg):" << TR.query(orig_agg).str() << "\n";
-      addToDiffe(orig_agg, dindex, Builder2,
-                 TR.intType(size1, orig_agg, false).isFloat());
+      addToDiffe(orig_agg, dindex, Builder2, TR.addingType(size1, orig_agg));
     }
 
     setDiffe(&IVI, Constant::getNullValue(IVI.getType()), Builder2);
@@ -978,8 +972,7 @@ public:
                     7) /
                    8;
 
-          if (Type *flt =
-                  TR.intType(size, orig_op0, /*necessary*/ false).isFloat()) {
+          if (Type *flt = TR.addingType(size, orig_op0)) {
             auto bits = gutils->newFunc->getParent()
                             ->getDataLayout()
                             .getTypeAllocSizeInBits(flt);
@@ -3747,7 +3740,7 @@ public:
               8;
 
         addToDiffe(orig->getArgOperand(i), diffeadd, Builder2,
-                   TR.intType(size, orig->getArgOperand(i), false).isFloat());
+                   TR.addingType(size, orig->getArgOperand(i)));
       }
     }
 

@@ -2998,6 +2998,25 @@ ConcreteType TypeAnalysis::intType(size_t num, Value *val, const FnTypeInfo &fn,
   return dt;
 }
 
+Type *TypeAnalysis::addingType(size_t num, Value *val, const FnTypeInfo &fn) {
+  assert(val);
+  assert(val->getType());
+  auto q = query(val, fn).PurgeAnything();
+  auto dt = q[{0}];
+  /*
+  size_t ObjSize = 1;
+  if (val->getType()->isSized())
+    ObjSize = (fn.Function->getParent()->getDataLayout().getTypeSizeInBits(
+        val->getType()) +7) / 8;
+  */
+  dt.orIn(q[{-1}], /*pointerIntSame*/ false);
+  for (size_t i = 1; i < num; ++i) {
+    dt.orIn(q[{(int)i}], /*pointerIntSame*/ false);
+  }
+
+  return dt.isFloat();
+}
+
 ConcreteType TypeAnalysis::firstPointer(size_t num, Value *val,
                                         const FnTypeInfo &fn,
                                         bool errIfNotFound,
@@ -3103,6 +3122,10 @@ void TypeResults::dump() {
 ConcreteType TypeResults::intType(size_t num, Value *val, bool errIfNotFound,
                                   bool pointerIntSame) {
   return analysis.intType(num, val, info, errIfNotFound, pointerIntSame);
+}
+
+Type *TypeResults::addingType(size_t num, Value *val) {
+  return analysis.addingType(num, val, info);
 }
 
 ConcreteType TypeResults::firstPointer(size_t num, Value *val,
