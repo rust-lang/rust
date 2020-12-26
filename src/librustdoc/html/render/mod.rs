@@ -198,11 +198,7 @@ impl SharedContext<'_> {
     /// Based on whether the `collapse-docs` pass was run, return either the `doc_value` or the
     /// `collapsed_doc_value` of the given item.
     crate fn maybe_collapsed_doc_value<'a>(&self, item: &'a clean::Item) -> Option<String> {
-        if self.collapsed {
-            item.collapsed_doc_value().map(|s| s.to_string())
-        } else {
-            item.doc_value().map(|s| s.to_string())
-        }
+        if self.collapsed { item.collapsed_doc_value() } else { item.doc_value() }
     }
 }
 
@@ -2196,7 +2192,7 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
                 let stab = myitem.stability_class(cx.tcx());
                 let add = if stab.is_some() { " " } else { "" };
 
-                let doc_value = myitem.doc_value().unwrap_or_else(String::new);
+                let doc_value = myitem.doc_value().unwrap_or_default();
                 write!(
                     w,
                     "<tr class=\"{stab}{add}module-item\">\

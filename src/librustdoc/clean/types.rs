@@ -486,6 +486,13 @@ crate enum DocFragmentKind {
     Include { filename: Symbol },
 }
 
+// The goal of this function is to apply the `DocFragment` transformations that are required when
+// transforming into the final markdown. So the transformations in here are:
+//
+// * Applying the computed indent to each lines in each doc fragment (a `DocFragment` can contain
+//   multiple lines in case of `#[doc = ""]`).
+// * Adding backlines between `DocFragment`s and adding an extra one if required (stored in the
+//   `need_backline` field).
 fn add_doc_fragment(out: &mut String, frag: &DocFragment) {
     let s = frag.doc.as_str();
     let mut iter = s.lines().peekable();
@@ -792,11 +799,14 @@ impl Attributes {
         if out.is_empty() { None } else { Some(out) }
     }
 
+    /// Return the doc-comments on this item, grouped by the module they came from.
+    ///
+    /// The module can be different if this is a re-export with added documentation.
     crate fn collapsed_doc_value_by_module_level(&self) -> FxHashMap<Option<DefId>, String> {
         let mut ret = FxHashMap::default();
 
         for new_frag in self.doc_strings.iter() {
-            let out = ret.entry(new_frag.parent_module).or_insert_with(|| String::new());
+            let out = ret.entry(new_frag.parent_module).or_default();
             add_doc_fragment(out, &new_frag);
         }
         ret
@@ -805,8 +815,7 @@ impl Attributes {
     /// Finds all `doc` attributes as NameValues and returns their corresponding values, joined
     /// with newlines.
     crate fn collapsed_doc_value(&self) -> Option<String> {
-        let s: String = self.doc_strings.iter().collect();
-        if s.is_empty() { None } else { Some(s) }
+        if self.doc_strings.is_empty() { None } else { Some(self.doc_strings.iter().collect()) }
     }
 
     /// Gets links as a vector
