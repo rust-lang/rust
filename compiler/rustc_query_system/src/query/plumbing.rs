@@ -119,10 +119,11 @@ where
         shards.iter().all(|shard| shard.active.is_empty())
     }
 
-    pub fn try_collect_active_jobs(
+    pub fn try_collect_active_jobs<CTX: Copy>(
         &self,
+        tcx: CTX,
         kind: D,
-        make_query: fn(K) -> Q,
+        make_query: fn(CTX, K) -> Q,
         jobs: &mut QueryMap<D, Q>,
     ) -> Option<()> {
         // We use try_lock_shards here since we are called from the
@@ -133,7 +134,7 @@ where
             shard.active.iter().filter_map(move |(k, v)| {
                 if let QueryResult::Started(ref job) = *v {
                     let id = QueryJobId::new(job.id, shard_id, kind);
-                    let info = QueryInfo { span: job.span, query: make_query(k.clone()) };
+                    let info = QueryInfo { span: job.span, query: make_query(tcx, k.clone()) };
                     Some((id, QueryJobInfo { info, job: job.clone() }))
                 } else {
                     None

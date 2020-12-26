@@ -45,7 +45,7 @@ impl HasDepContext for QueryCtxt<'tcx> {
 }
 
 impl QueryContext for QueryCtxt<'tcx> {
-    type Query = Query<'tcx>;
+    type Query = Query;
 
     fn def_path_str(&self, def_id: DefId) -> String {
         self.tcx.def_path_str(def_id)
@@ -59,7 +59,7 @@ impl QueryContext for QueryCtxt<'tcx> {
         &self,
     ) -> Option<FxHashMap<QueryJobId<Self::DepKind>, QueryJobInfo<Self::DepKind, Self::Query>>>
     {
-        self.queries.try_collect_active_jobs()
+        self.queries.try_collect_active_jobs(**self)
     }
 
     fn try_load_from_on_disk_cache(&self, dep_node: &DepNode) {
@@ -185,12 +185,12 @@ impl<'tcx> QueryCtxt<'tcx> {
     #[cold]
     pub(super) fn report_cycle(
         self,
-        CycleError { usage, cycle: stack }: CycleError<Query<'tcx>>,
+        CycleError { usage, cycle: stack }: CycleError<Query>,
     ) -> DiagnosticBuilder<'tcx> {
         assert!(!stack.is_empty());
 
-        let fix_span = |span: Span, query: &Query<'tcx>| {
-            self.sess.source_map().guess_head_span(query.default_span(*self, span))
+        let fix_span = |span: Span, query: &Query| {
+            self.sess.source_map().guess_head_span(query.default_span(span))
         };
 
         // Disable naming impls with types in this path, since that
@@ -204,24 +204,24 @@ impl<'tcx> QueryCtxt<'tcx> {
                 span,
                 E0391,
                 "cycle detected when {}",
-                stack[0].query.describe(self)
+                stack[0].query.description
             );
 
             for i in 1..stack.len() {
                 let query = &stack[i].query;
                 let span = fix_span(stack[(i + 1) % stack.len()].span, query);
-                err.span_note(span, &format!("...which requires {}...", query.describe(self)));
+                err.span_note(span, &format!("...which requires {}...", query.description));
             }
 
             err.note(&format!(
                 "...which again requires {}, completing the cycle",
-                stack[0].query.describe(self)
+                stack[0].query.description
             ));
 
             if let Some((span, query)) = usage {
                 err.span_note(
                     fix_span(span, &query),
-                    &format!("cycle used when {}", query.describe(self)),
+                    &format!("cycle used when {}", query.description),
                 );
             }
 
@@ -371,54 +371,58 @@ macro_rules! define_queries {
             input: ($(([$($modifiers)*] [$($attr)*] [$name]))*)
         }
 
-        #[allow(nonstandard_style)]
         #[derive(Clone, Debug)]
-        pub enum Query<$tcx> {
-            $($(#[$attr])* $name(query_keys::$name<$tcx>)),*
+        pub struct Query {
+            pub name: &'static str,
+            hash: Fingerprint,
+            description: String,
+            span: Option<Span>,
         }
 
-        impl<$tcx> Query<$tcx> {
-            pub fn name(&self) -> &'static str {
-                match *self {
-                    $(Query::$name(_) => stringify!($name),)*
-                }
-            }
-
-            pub(crate) fn describe(&self, tcx: QueryCtxt<$tcx>) -> String {
-                let (r, name) = match *self {
-                    $(Query::$name(key) => {
-                        (queries::$name::describe(tcx, key), stringify!($name))
-                    })*
-                };
-                if tcx.sess.verbose() {
-                    format!("{} [{}]", r, name)
+        impl Query {
+            $(#[allow(nonstandard_style)] $(#[$attr])*
+            pub fn $name<$tcx>(tcx: QueryCtxt<$tcx>, key: query_keys::$name<$tcx>) -> Self {
+                let kind = dep_graph::DepKind::$name;
+                let name = stringify!($name);
+                let description = ty::print::with_forced_impl_filename_line(
+                    // Force filename-line mode to avoid invoking `type_of` query.
+                    || queries::$name::describe(tcx, key)
+                );
+                let description = if tcx.sess.verbose() {
+                    format!("{} [{}]", description, name)
                 } else {
-                    r
-                }
-            }
+                    description
+                };
+                let span = if kind == dep_graph::DepKind::def_span {
+                    // The `def_span` query is used to calculate `default_span`,
+                    // so exit to avoid infinite recursion.
+                    None
+                } else {
+                    Some(key.default_span(*tcx))
+                };
+                let hash = {
+                    let mut hcx = tcx.create_stable_hashing_context();
+                    let mut hasher = StableHasher::new();
+                    std::mem::discriminant(&kind).hash_stable(&mut hcx, &mut hasher);
+                    key.hash_stable(&mut hcx, &mut hasher);
+                    hasher.finish()
+                };
+
+                Self { name, description, span, hash }
+            })*
 
             // FIXME(eddyb) Get more valid `Span`s on queries.
-            pub fn default_span(&self, tcx: TyCtxt<$tcx>, span: Span) -> Span {
+            pub fn default_span(&self, span: Span) -> Span {
                 if !span.is_dummy() {
                     return span;
                 }
-                // The `def_span` query is used to calculate `default_span`,
-                // so exit to avoid infinite recursion.
-                if let Query::def_span(..) = *self {
-                    return span
-                }
-                match *self {
-                    $(Query::$name(key) => key.default_span(tcx),)*
-                }
+                self.span.unwrap_or(span)
             }
         }
 
-        impl<'a, $tcx> HashStable<StableHashingContext<'a>> for Query<$tcx> {
+        impl<'a> HashStable<StableHashingContext<'a>> for Query {
             fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-                mem::discriminant(self).hash_stable(hcx, hasher);
-                match *self {
-                    $(Query::$name(key) => key.hash_stable(hcx, hasher),)*
-                }
+                self.hash.hash_stable(hcx, hasher)
             }
         }
 
@@ -446,7 +450,9 @@ macro_rules! define_queries {
             type Cache = query_storage::$name<$tcx>;
 
             #[inline(always)]
-            fn query_state<'a>(tcx: QueryCtxt<$tcx>) -> &'a QueryState<crate::dep_graph::DepKind, Query<$tcx>, Self::Key> {
+            fn query_state<'a>(tcx: QueryCtxt<$tcx>) -> &'a QueryState<crate::dep_graph::DepKind, Query, Self::Key>
+                where QueryCtxt<$tcx>: 'a
+            {
                 &tcx.queries.$name
             }
 
@@ -478,7 +484,7 @@ macro_rules! define_queries {
 
             fn handle_cycle_error(
                 tcx: QueryCtxt<'tcx>,
-                error: CycleError<Query<'tcx>>
+                error: CycleError<Query>
             ) -> Self::Value {
                 handle_cycle_error!([$($modifiers)*][tcx, error])
             }
@@ -581,7 +587,7 @@ macro_rules! define_queries_struct {
 
             $($(#[$attr])*  $name: QueryState<
                 crate::dep_graph::DepKind,
-                Query<$tcx>,
+                Query,
                 query_keys::$name<$tcx>,
             >,)*
         }
@@ -599,13 +605,16 @@ macro_rules! define_queries_struct {
             }
 
             pub(crate) fn try_collect_active_jobs(
-                &self
-            ) -> Option<FxHashMap<QueryJobId<crate::dep_graph::DepKind>, QueryJobInfo<crate::dep_graph::DepKind, Query<$tcx>>>> {
+                &$tcx self,
+                tcx: TyCtxt<$tcx>,
+            ) -> Option<FxHashMap<QueryJobId<crate::dep_graph::DepKind>, QueryJobInfo<crate::dep_graph::DepKind, Query>>> {
+                let tcx = QueryCtxt { tcx, queries: self };
                 let mut jobs = FxHashMap::default();
 
                 $(
                     self.$name.try_collect_active_jobs(
-                        <queries::$name<'tcx> as QueryAccessors<QueryCtxt<'tcx>>>::DEP_KIND,
+                        tcx,
+                        dep_graph::DepKind::$name,
                         Query::$name,
                         &mut jobs,
                     )?;
@@ -651,7 +660,7 @@ macro_rules! define_queries_struct {
                 handler: &Handler,
                 num_frames: Option<usize>,
             ) -> usize {
-                let query_map = self.try_collect_active_jobs();
+                let query_map = self.try_collect_active_jobs(tcx);
 
                 let mut current_query = query;
                 let mut i = 0;
@@ -671,8 +680,8 @@ macro_rules! define_queries_struct {
                         &format!(
                             "#{} [{}] {}",
                             i,
-                            query_info.info.query.name(),
-                            query_info.info.query.describe(QueryCtxt { tcx, queries: self })
+                            query_info.info.query.name,
+                            query_info.info.query.description,
                         ),
                     );
                     diag.span = tcx.sess.source_map().guess_head_span(query_info.info.span).into();

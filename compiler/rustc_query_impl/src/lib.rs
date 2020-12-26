@@ -26,10 +26,9 @@ use rustc_middle::dep_graph;
 use rustc_middle::ich::StableHashingContext;
 use rustc_middle::ty::query::{query_keys, query_storage, query_stored, query_values};
 use rustc_middle::ty::query::{Providers, QueryEngine};
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::{self, TyCtxt};
 use rustc_serialize::opaque;
 use rustc_span::{Span, DUMMY_SP};
-use std::mem;
 
 #[macro_use]
 mod plumbing;
