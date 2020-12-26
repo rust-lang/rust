@@ -725,8 +725,9 @@ impl<T: ?Sized> *const T {
     ///
     /// [`ptr::read`]: crate::ptr::read()
     #[stable(feature = "pointer_methods", since = "1.26.0")]
+    #[rustc_const_unstable(feature = "const_ptr_read", issue = "none")]
     #[inline]
-    pub unsafe fn read(self) -> T
+    pub const unsafe fn read(self) -> T
     where
         T: Sized,
     {
@@ -763,8 +764,9 @@ impl<T: ?Sized> *const T {
     ///
     /// [`ptr::read_unaligned`]: crate::ptr::read_unaligned()
     #[stable(feature = "pointer_methods", since = "1.26.0")]
+    #[rustc_const_unstable(feature = "const_ptr_read", issue = "none")]
     #[inline]
-    pub unsafe fn read_unaligned(self) -> T
+    pub const unsafe fn read_unaligned(self) -> T
     where
         T: Sized,
     {
