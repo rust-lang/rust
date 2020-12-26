@@ -37,11 +37,11 @@ entry:
   ret void
 }
 
-declare dso_local i32 @MPI_Isend(i8*, i32, %struct.ompi_datatype_t*, i32, i32, %struct.ompi_communicator_t*, %struct.ompi_request_t**) local_unnamed_addr #2
+declare dso_local i32 @MPI_Isend(i8*, i32, %struct.ompi_datatype_t*, i32, i32, %struct.ompi_communicator_t*, %struct.ompi_request_t**)
 
-declare dso_local i32 @MPI_Wait(%struct.ompi_request_t**, %struct.ompi_status_public_t*) local_unnamed_addr #2
+declare dso_local i32 @MPI_Wait(%struct.ompi_request_t**, %struct.ompi_status_public_t*) 
 
-declare dso_local i32 @MPI_Irecv(i8*, i32, %struct.ompi_datatype_t*, i32, i32, %struct.ompi_communicator_t*, %struct.ompi_request_t**) local_unnamed_addr #2
+declare dso_local i32 @MPI_Irecv(i8*, i32, %struct.ompi_datatype_t*, i32, i32, %struct.ompi_communicator_t*, %struct.ompi_request_t**)
 
 ; Function Attrs: nounwind uwtable
 define dso_local void @msg2(float* %val1, float* %val2, i32 %numprocprec, i32 %numprocsuiv, i32 %etiquette) #0 {
@@ -55,9 +55,9 @@ entry:
   ret void
 }
 
-declare dso_local i32 @MPI_Recv(i8*, i32, %struct.ompi_datatype_t*, i32, i32, %struct.ompi_communicator_t*, %struct.ompi_status_public_t*) local_unnamed_addr #2
+declare dso_local i32 @MPI_Recv(i8*, i32, %struct.ompi_datatype_t*, i32, i32, %struct.ompi_communicator_t*, %struct.ompi_status_public_t*)
 
-declare dso_local i32 @MPI_Send(i8*, i32, %struct.ompi_datatype_t*, i32, i32, %struct.ompi_communicator_t*) local_unnamed_addr #2
+declare dso_local i32 @MPI_Send(i8*, i32, %struct.ompi_datatype_t*, i32, i32, %struct.ompi_communicator_t*)
 
 ; Function Attrs: nounwind uwtable
 define dso_local i32 @main(i32 %argc, i8** %argv) local_unnamed_addr #0 {
@@ -113,23 +113,20 @@ entry:
   ret i32 0
 }
 
-declare dso_local i32 @MPI_Init(i32*, i8***) local_unnamed_addr #2
+declare dso_local i32 @MPI_Init(i32*, i8***)
 
-declare dso_local i32 @MPI_Comm_rank(%struct.ompi_communicator_t*, i32*) local_unnamed_addr #2
+declare dso_local i32 @MPI_Comm_rank(%struct.ompi_communicator_t*, i32*)
 
-declare dso_local i32 @MPI_Comm_size(%struct.ompi_communicator_t*, i32*) local_unnamed_addr #2
+declare dso_local i32 @MPI_Comm_size(%struct.ompi_communicator_t*, i32*)
 
-declare dso_local void @__enzyme_autodiff(i8*, ...) local_unnamed_addr #2
+declare dso_local void @__enzyme_autodiff(i8*, ...) 
 
 ; Function Attrs: nofree nounwind
-declare dso_local i32 @printf(i8* nocapture readonly, ...) local_unnamed_addr #3
+declare dso_local i32 @printf(i8* nocapture readonly, ...) 
 
-declare dso_local i32 @MPI_Finalize() local_unnamed_addr #2
+declare dso_local i32 @MPI_Finalize() 
 
-attributes #0 = { nounwind uwtable "correctly-rounded-divide-sqrt-fp-math"="false" "disable-tail-calls"="false" "frame-pointer"="none" "less-precise-fpmad"="false" "min-legal-vector-width"="0" "no-infs-fp-math"="false" "no-jump-tables"="false" "no-nans-fp-math"="false" "no-signed-zeros-fp-math"="false" "no-trapping-math"="false" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+cx8,+fxsr,+mmx,+sse,+sse2,+x87" "unsafe-fp-math"="false" "use-soft-float"="false" }
-attributes #1 = { argmemonly nounwind willreturn }
-attributes #2 = { "correctly-rounded-divide-sqrt-fp-math"="false" "disable-tail-calls"="false" "frame-pointer"="none" "less-precise-fpmad"="false" "no-infs-fp-math"="false" "no-nans-fp-math"="false" "no-signed-zeros-fp-math"="false" "no-trapping-math"="false" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+cx8,+fxsr,+mmx,+sse,+sse2,+x87" "unsafe-fp-math"="false" "use-soft-float"="false" }
-attributes #3 = { nofree nounwind "correctly-rounded-divide-sqrt-fp-math"="false" "disable-tail-calls"="false" "frame-pointer"="none" "less-precise-fpmad"="false" "no-infs-fp-math"="false" "no-nans-fp-math"="false" "no-signed-zeros-fp-math"="false" "no-trapping-math"="false" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+cx8,+fxsr,+mmx,+sse,+sse2,+x87" "unsafe-fp-math"="false" "use-soft-float"="false" }
+attributes #0 = { nounwind uwtable }
 attributes #4 = { nounwind }
 
 !llvm.module.flags = !{!0}
@@ -146,8 +143,13 @@ attributes #4 = { nounwind }
 !8 = !{!9, !9, i64 0}
 !9 = !{!"float", !4, i64 0}
 
-; CHECK: define internal void @diffemsg1(float* %val1, float* %"val1'", float* %val2, float* %"val2'", i32 %numprocprec, i32 %numprocsuiv, i32 %etiquette) 
+; CHECK: define internal void @diffemsg1(float* %val1, float* %"val1'", float* %val2, float* %"val2'", i32 %numprocprec, i32 %numprocsuiv, i32 %etiquette)
 ; CHECK-NEXT: entry:
+; CHECK-NEXT:   %0 = alloca %struct.ompi_status_public_t
+; CHECK-NEXT:   %1 = alloca i32
+; CHECK-NEXT:   %2 = alloca i32
+; CHECK-NEXT:   %3 = alloca %struct.ompi_status_public_t
+; CHECK-NEXT:   %4 = alloca i32
 ; CHECK-NEXT:   %"r1'ipa" = alloca %struct.ompi_request_t*, align 8
 ; CHECK-NEXT:   store %struct.ompi_request_t* null, %struct.ompi_request_t** %"r1'ipa", align 8
 ; CHECK-NEXT:   %r1 = alloca %struct.ompi_request_t*, align 8
@@ -156,97 +158,92 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   store %struct.ompi_request_t* null, %struct.ompi_request_t** %"r2'ipa", align 8
 ; CHECK-NEXT:   %r2 = alloca %struct.ompi_request_t*, align 8
 ; CHECK-NEXT:   %s2 = alloca %struct.ompi_status_public_t, align 8
-; CHECK-NEXT:   %0 = bitcast float* %val1 to i8*
+; CHECK-NEXT:   %5 = bitcast float* %val1 to i8*
 ; CHECK-NEXT:   %malloccall3 = tail call i8* @malloc(i64 56)
-; CHECK-NEXT:   %1 = bitcast i8* %malloccall3 to { i8*, i64, i8*, i64, i64, i8*, i8 }*
-; CHECK-NEXT:   %2 = bitcast %struct.ompi_request_t** %"r1'ipa" to { i8*, i64, i8*, i64, i64, i8*, i8 }**
-; CHECK-NEXT:   store { i8*, i64, i8*, i64, i64, i8*, i8 }* %1, { i8*, i64, i8*, i64, i64, i8*, i8 }** %2
-; CHECK-NEXT:   %3 = alloca i32
-; CHECK-NEXT:   %4 = call i32 @MPI_Type_size(i8* bitcast (%struct.ompi_predefined_datatype_t* @ompi_mpi_real to i8*), i32* %3)
-; CHECK-NEXT:   %5 = load i32, i32* %3
-; CHECK-NEXT:   %6 = zext i32 %5 to i64
-; CHECK-NEXT:   %malloccall4 = tail call i8* @malloc(i64 %6)
-; CHECK-NEXT:   %7 = getelementptr inbounds { i8*, i64, i8*, i64, i64, i8*, i8 }, { i8*, i64, i8*, i64, i64, i8*, i8 }* %1, i64 0, i32 0
-; CHECK-NEXT:   store i8* %malloccall4, i8** %7
-; CHECK-NEXT:   %8 = getelementptr inbounds { i8*, i64, i8*, i64, i64, i8*, i8 }, { i8*, i64, i8*, i64, i64, i8*, i8 }* %1, i64 0, i32 1
-; CHECK-NEXT:   store i64 1, i64* %8
-; CHECK-NEXT:   %9 = getelementptr inbounds { i8*, i64, i8*, i64, i64, i8*, i8 }, { i8*, i64, i8*, i64, i64, i8*, i8 }* %1, i64 0, i32 2
-; CHECK-NEXT:   store i8* bitcast (%struct.ompi_predefined_datatype_t* @ompi_mpi_real to i8*), i8** %9
-; CHECK-NEXT:   %10 = getelementptr inbounds { i8*, i64, i8*, i64, i64, i8*, i8 }, { i8*, i64, i8*, i64, i64, i8*, i8 }* %1, i64 0, i32 3
-; CHECK-NEXT:   %11 = zext i32 %numprocsuiv to i64
-; CHECK-NEXT:   store i64 %11, i64* %10
-; CHECK-NEXT:   %12 = getelementptr inbounds { i8*, i64, i8*, i64, i64, i8*, i8 }, { i8*, i64, i8*, i64, i64, i8*, i8 }* %1, i64 0, i32 4
-; CHECK-NEXT:   %13 = zext i32 %etiquette to i64
-; CHECK-NEXT:   store i64 %13, i64* %12
-; CHECK-NEXT:   %14 = getelementptr inbounds { i8*, i64, i8*, i64, i64, i8*, i8 }, { i8*, i64, i8*, i64, i64, i8*, i8 }* %1, i64 0, i32 5
-; CHECK-NEXT:   store i8* bitcast (%struct.ompi_predefined_communicator_t* @ompi_mpi_comm_world to i8*), i8** %14
-; CHECK-NEXT:   %15 = getelementptr inbounds { i8*, i64, i8*, i64, i64, i8*, i8 }, { i8*, i64, i8*, i64, i64, i8*, i8 }* %1, i64 0, i32 6
-; CHECK-NEXT:   store i8 1, i8* %15
-; CHECK-NEXT:   %call = call i32 @MPI_Isend(i8* %0, i32 1, %struct.ompi_datatype_t* bitcast (%struct.ompi_predefined_datatype_t* @ompi_mpi_real to %struct.ompi_datatype_t*), i32 %numprocsuiv, i32 %etiquette, %struct.ompi_communicator_t* bitcast (%struct.ompi_predefined_communicator_t* @ompi_mpi_comm_world to %struct.ompi_communicator_t*), %struct.ompi_request_t** nonnull %r1)
+; CHECK-NEXT:   %6 = bitcast i8* %malloccall3 to { i8*, i64, i8*, i64, i64, i8*, i8 }*
+; CHECK-NEXT:   %7 = bitcast %struct.ompi_request_t** %"r1'ipa" to { i8*, i64, i8*, i64, i64, i8*, i8 }**
+; CHECK-NEXT:   store { i8*, i64, i8*, i64, i64, i8*, i8 }* %6, { i8*, i64, i8*, i64, i64, i8*, i8 }** %7
+; CHECK-NEXT:   %8 = call i32 @MPI_Type_size(i8* bitcast (%struct.ompi_predefined_datatype_t* @ompi_mpi_real to i8*), i32* %2)
+; CHECK-NEXT:   %9 = load i32, i32* %2
+; CHECK-NEXT:   %10 = zext i32 %9 to i64
+; CHECK-NEXT:   %malloccall4 = tail call i8* @malloc(i64 %10)
+; CHECK-NEXT:   %11 = getelementptr inbounds { i8*, i64, i8*, i64, i64, i8*, i8 }, { i8*, i64, i8*, i64, i64, i8*, i8 }* %6, i64 0, i32 0
+; CHECK-NEXT:   store i8* %malloccall4, i8** %11
+; CHECK-NEXT:   %12 = getelementptr inbounds { i8*, i64, i8*, i64, i64, i8*, i8 }, { i8*, i64, i8*, i64, i64, i8*, i8 }* %6, i64 0, i32 1
+; CHECK-NEXT:   store i64 1, i64* %12
+; CHECK-NEXT:   %13 = getelementptr inbounds { i8*, i64, i8*, i64, i64, i8*, i8 }, { i8*, i64, i8*, i64, i64, i8*, i8 }* %6, i64 0, i32 2
+; CHECK-NEXT:   store i8* bitcast (%struct.ompi_predefined_datatype_t* @ompi_mpi_real to i8*), i8** %13
+; CHECK-DAG:   %[[ptr15:.+]] = zext i32 %numprocsuiv to i64
+; CHECK-DAG:   %[[ptr14:.+]] = getelementptr inbounds { i8*, i64, i8*, i64, i64, i8*, i8 }, { i8*, i64, i8*, i64, i64, i8*, i8 }* %6, i64 0, i32 3
+; CHECK-NEXT:   store i64 %[[ptr15]], i64* %[[ptr14]]
+; CHECK-DAG:   %[[ptr16:.+]] = getelementptr inbounds { i8*, i64, i8*, i64, i64, i8*, i8 }, { i8*, i64, i8*, i64, i64, i8*, i8 }* %6, i64 0, i32 4
+; CHECK-DAG:   %[[ptr17:.+]] = zext i32 %etiquette to i64
+; CHECK-NEXT:   store i64 %[[ptr17]], i64* %[[ptr16]]
+; CHECK-NEXT:   %18 = getelementptr inbounds { i8*, i64, i8*, i64, i64, i8*, i8 }, { i8*, i64, i8*, i64, i64, i8*, i8 }* %6, i64 0, i32 5
+; CHECK-NEXT:   store i8* bitcast (%struct.ompi_predefined_communicator_t* @ompi_mpi_comm_world to i8*), i8** %18
+; CHECK-NEXT:   %19 = getelementptr inbounds { i8*, i64, i8*, i64, i64, i8*, i8 }, { i8*, i64, i8*, i64, i64, i8*, i8 }* %6, i64 0, i32 6
+; CHECK-NEXT:   store i8 1, i8* %19
+; CHECK-NEXT:   %call = call i32 @MPI_Isend(i8* %5, i32 1, %struct.ompi_datatype_t* bitcast (%struct.ompi_predefined_datatype_t* @ompi_mpi_real to %struct.ompi_datatype_t*), i32 %numprocsuiv, i32 %etiquette, %struct.ompi_communicator_t* bitcast (%struct.ompi_predefined_communicator_t* @ompi_mpi_comm_world to %struct.ompi_communicator_t*), %struct.ompi_request_t** nonnull %r1)
 ; CHECK-NEXT:   %call1 = call i32 @MPI_Wait(%struct.ompi_request_t** nonnull %r1, %struct.ompi_status_public_t* nonnull %s1)
 ; CHECK-NEXT:   %"'ipc" = bitcast float* %"val2'" to i8*
-; CHECK-NEXT:   %16 = bitcast float* %val2 to i8*
+; CHECK-NEXT:   %20 = bitcast float* %val2 to i8*
 ; CHECK-NEXT:   %malloccall = tail call i8* @malloc(i64 56)
-; CHECK-NEXT:   %17 = bitcast i8* %malloccall to { i8*, i64, i8*, i64, i64, i8*, i8 }*
-; CHECK-NEXT:   %18 = bitcast %struct.ompi_request_t** %"r2'ipa" to { i8*, i64, i8*, i64, i64, i8*, i8 }**
-; CHECK-NEXT:   store { i8*, i64, i8*, i64, i64, i8*, i8 }* %17, { i8*, i64, i8*, i64, i64, i8*, i8 }** %18
-; CHECK-NEXT:   %19 = getelementptr inbounds { i8*, i64, i8*, i64, i64, i8*, i8 }, { i8*, i64, i8*, i64, i64, i8*, i8 }* %17, i64 0, i32 0
-; CHECK-NEXT:   store i8* %"'ipc", i8** %19
-; CHECK-NEXT:   %20 = getelementptr inbounds { i8*, i64, i8*, i64, i64, i8*, i8 }, { i8*, i64, i8*, i64, i64, i8*, i8 }* %17, i64 0, i32 1
-; CHECK-NEXT:   store i64 1, i64* %20
-; CHECK-NEXT:   %21 = getelementptr inbounds { i8*, i64, i8*, i64, i64, i8*, i8 }, { i8*, i64, i8*, i64, i64, i8*, i8 }* %17, i64 0, i32 2
-; CHECK-NEXT:   store i8* bitcast (%struct.ompi_predefined_datatype_t* @ompi_mpi_real to i8*), i8** %21
-; CHECK-NEXT:   %22 = getelementptr inbounds { i8*, i64, i8*, i64, i64, i8*, i8 }, { i8*, i64, i8*, i64, i64, i8*, i8 }* %17, i64 0, i32 3
-; CHECK-NEXT:   %23 = zext i32 %numprocprec to i64
-; CHECK-NEXT:   store i64 %23, i64* %22
-; CHECK-NEXT:   %24 = getelementptr inbounds { i8*, i64, i8*, i64, i64, i8*, i8 }, { i8*, i64, i8*, i64, i64, i8*, i8 }* %17, i64 0, i32 4
-; CHECK-NEXT:   %25 = zext i32 %etiquette to i64
-; CHECK-NEXT:   store i64 %25, i64* %24
-; CHECK-NEXT:   %26 = getelementptr inbounds { i8*, i64, i8*, i64, i64, i8*, i8 }, { i8*, i64, i8*, i64, i64, i8*, i8 }* %17, i64 0, i32 5
-; CHECK-NEXT:   store i8* bitcast (%struct.ompi_predefined_communicator_t* @ompi_mpi_comm_world to i8*), i8** %26
-; CHECK-NEXT:   %27 = getelementptr inbounds { i8*, i64, i8*, i64, i64, i8*, i8 }, { i8*, i64, i8*, i64, i64, i8*, i8 }* %17, i64 0, i32 6
-; CHECK-NEXT:   store i8 2, i8* %27
-; CHECK-NEXT:   %call2 = call i32 @MPI_Irecv(i8* %16, i32 1, %struct.ompi_datatype_t* bitcast (%struct.ompi_predefined_datatype_t* @ompi_mpi_real to %struct.ompi_datatype_t*), i32 %numprocprec, i32 %etiquette, %struct.ompi_communicator_t* bitcast (%struct.ompi_predefined_communicator_t* @ompi_mpi_comm_world to %struct.ompi_communicator_t*), %struct.ompi_request_t** nonnull %r2)
-; CHECK-NEXT:   %call3 = call i32 @MPI_Wait(%struct.ompi_request_t** nonnull %r2, %struct.ompi_status_public_t* nonnull %s2) #5
-; CHECK-NEXT:   %28 = bitcast %struct.ompi_request_t** %"r2'ipa" to { i8*, i64, i8*, i64, i64, i8*, i8 }**
-; CHECK-NEXT:   %29 = load { i8*, i64, i8*, i64, i64, i8*, i8 }*, { i8*, i64, i8*, i64, i64, i8*, i8 }** %28
-; CHECK-NEXT:   %30 = load { i8*, i64, i8*, i64, i64, i8*, i8 }, { i8*, i64, i8*, i64, i64, i8*, i8 }* %29
-; CHECK-NEXT:   %31 = bitcast { i8*, i64, i8*, i64, i64, i8*, i8 }* %29 to i8*
-; CHECK-NEXT:   tail call void @free(i8* nonnull %31)
-; CHECK-NEXT:   %32 = extractvalue { i8*, i64, i8*, i64, i64, i8*, i8 } %30, 0
-; CHECK-NEXT:   %33 = extractvalue { i8*, i64, i8*, i64, i64, i8*, i8 } %30, 1
-; CHECK-NEXT:   %34 = extractvalue { i8*, i64, i8*, i64, i64, i8*, i8 } %30, 2
-; CHECK-NEXT:   %35 = extractvalue { i8*, i64, i8*, i64, i64, i8*, i8 } %30, 3
-; CHECK-NEXT:   %36 = extractvalue { i8*, i64, i8*, i64, i64, i8*, i8 } %30, 4
-; CHECK-NEXT:   %37 = extractvalue { i8*, i64, i8*, i64, i64, i8*, i8 } %30, 5
-; CHECK-NEXT:   %38 = extractvalue { i8*, i64, i8*, i64, i64, i8*, i8 } %30, 6
-; CHECK-NEXT:   call void @__enzyme_differential_mpi_wait(i8* %32, i64 %33, i8* %34, i64 %35, i64 %36, i8* %37, i8 %38, %struct.ompi_request_t** %"r2'ipa")
-; CHECK-NEXT:   %39 = alloca %struct.ompi_status_public_t
-; CHECK-NEXT:   %40 = call i32 @MPI_Wait(%struct.ompi_request_t** %"r2'ipa", %struct.ompi_status_public_t* %39)
-; CHECK-NEXT:   %41 = alloca i32
-; CHECK-NEXT:   %42 = call i32 @MPI_Type_size(i8* bitcast (%struct.ompi_predefined_datatype_t* @ompi_mpi_real to i8*), i32* %41)
-; CHECK-NEXT:   %43 = load i32, i32* %41
-; CHECK-NEXT:   %44 = zext i32 %43 to i64
-; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* %"'ipc", i8 0, i64 %44, i1 false)
-; CHECK-NEXT:   %45 = bitcast %struct.ompi_request_t** %"r1'ipa" to { i8*, i64, i8*, i64, i64, i8*, i8 }**
-; CHECK-NEXT:   %46 = load { i8*, i64, i8*, i64, i64, i8*, i8 }*, { i8*, i64, i8*, i64, i64, i8*, i8 }** %45
-; CHECK-NEXT:   %47 = load { i8*, i64, i8*, i64, i64, i8*, i8 }, { i8*, i64, i8*, i64, i64, i8*, i8 }* %46
-; CHECK-NEXT:   %48 = bitcast { i8*, i64, i8*, i64, i64, i8*, i8 }* %46 to i8*
-; CHECK-NEXT:   tail call void @free(i8* nonnull %48)
-; CHECK-NEXT:   %49 = extractvalue { i8*, i64, i8*, i64, i64, i8*, i8 } %47, 0
-; CHECK-NEXT:   %50 = extractvalue { i8*, i64, i8*, i64, i64, i8*, i8 } %47, 1
-; CHECK-NEXT:   %51 = extractvalue { i8*, i64, i8*, i64, i64, i8*, i8 } %47, 2
-; CHECK-NEXT:   %52 = extractvalue { i8*, i64, i8*, i64, i64, i8*, i8 } %47, 3
-; CHECK-NEXT:   %53 = extractvalue { i8*, i64, i8*, i64, i64, i8*, i8 } %47, 4
-; CHECK-NEXT:   %54 = extractvalue { i8*, i64, i8*, i64, i64, i8*, i8 } %47, 5
-; CHECK-NEXT:   %55 = extractvalue { i8*, i64, i8*, i64, i64, i8*, i8 } %47, 6
-; CHECK-NEXT:   call void @__enzyme_differential_mpi_wait(i8* %49, i64 %50, i8* %51, i64 %52, i64 %53, i8* %54, i8 %55, %struct.ompi_request_t** %"r1'ipa")
-; CHECK-NEXT:   %56 = alloca %struct.ompi_status_public_t
-; CHECK-NEXT:   %57 = call i32 @MPI_Wait(%struct.ompi_request_t** %"r1'ipa", %struct.ompi_status_public_t* %56)
-; CHECK-NEXT:   %58 = alloca i32
-; CHECK-NEXT:   %59 = call i32 @MPI_Type_size(i8* bitcast (%struct.ompi_predefined_datatype_t* @ompi_mpi_real to i8*), i32* %58)
+; CHECK-NEXT:   %21 = bitcast i8* %malloccall to { i8*, i64, i8*, i64, i64, i8*, i8 }*
+; CHECK-NEXT:   %22 = bitcast %struct.ompi_request_t** %"r2'ipa" to { i8*, i64, i8*, i64, i64, i8*, i8 }**
+; CHECK-NEXT:   store { i8*, i64, i8*, i64, i64, i8*, i8 }* %21, { i8*, i64, i8*, i64, i64, i8*, i8 }** %22
+; CHECK-NEXT:   %23 = getelementptr inbounds { i8*, i64, i8*, i64, i64, i8*, i8 }, { i8*, i64, i8*, i64, i64, i8*, i8 }* %21, i64 0, i32 0
+; CHECK-NEXT:   store i8* %"'ipc", i8** %23
+; CHECK-NEXT:   %24 = getelementptr inbounds { i8*, i64, i8*, i64, i64, i8*, i8 }, { i8*, i64, i8*, i64, i64, i8*, i8 }* %21, i64 0, i32 1
+; CHECK-NEXT:   store i64 1, i64* %24
+; CHECK-NEXT:   %25 = getelementptr inbounds { i8*, i64, i8*, i64, i64, i8*, i8 }, { i8*, i64, i8*, i64, i64, i8*, i8 }* %21, i64 0, i32 2
+; CHECK-NEXT:   store i8* bitcast (%struct.ompi_predefined_datatype_t* @ompi_mpi_real to i8*), i8** %25
+; CHECK-DAG:   %[[ptr26:.+]] = getelementptr inbounds { i8*, i64, i8*, i64, i64, i8*, i8 }, { i8*, i64, i8*, i64, i64, i8*, i8 }* %21, i64 0, i32 3
+; CHECK-DAG:   %[[ptr27:.+]] = zext i32 %numprocprec to i64
+; CHECK-NEXT:   store i64 %[[ptr27]], i64* %[[ptr26]]
+; CHECK-DAG:   %[[ptr28:.+]] = getelementptr inbounds { i8*, i64, i8*, i64, i64, i8*, i8 }, { i8*, i64, i8*, i64, i64, i8*, i8 }* %21, i64 0, i32 4
+; CHECK-DAG:   %[[ptr29:.+]] = zext i32 %etiquette to i64
+; CHECK-NEXT:   store i64 %[[ptr29]], i64* %[[ptr28]]
+; CHECK-NEXT:   %30 = getelementptr inbounds { i8*, i64, i8*, i64, i64, i8*, i8 }, { i8*, i64, i8*, i64, i64, i8*, i8 }* %21, i64 0, i32 5
+; CHECK-NEXT:   store i8* bitcast (%struct.ompi_predefined_communicator_t* @ompi_mpi_comm_world to i8*), i8** %30
+; CHECK-NEXT:   %31 = getelementptr inbounds { i8*, i64, i8*, i64, i64, i8*, i8 }, { i8*, i64, i8*, i64, i64, i8*, i8 }* %21, i64 0, i32 6
+; CHECK-NEXT:   store i8 2, i8* %31
+; CHECK-NEXT:   %call2 = call i32 @MPI_Irecv(i8* %20, i32 1, %struct.ompi_datatype_t* bitcast (%struct.ompi_predefined_datatype_t* @ompi_mpi_real to %struct.ompi_datatype_t*), i32 %numprocprec, i32 %etiquette, %struct.ompi_communicator_t* bitcast (%struct.ompi_predefined_communicator_t* @ompi_mpi_comm_world to %struct.ompi_communicator_t*), %struct.ompi_request_t** nonnull %r2)
+; CHECK-NEXT:   %call3 = call i32 @MPI_Wait(%struct.ompi_request_t** nonnull %r2, %struct.ompi_status_public_t* nonnull %s2)
+; CHECK-NEXT:   %32 = bitcast %struct.ompi_request_t** %"r2'ipa" to { i8*, i64, i8*, i64, i64, i8*, i8 }**
+; CHECK-NEXT:   %33 = load { i8*, i64, i8*, i64, i64, i8*, i8 }*, { i8*, i64, i8*, i64, i64, i8*, i8 }** %32
+; CHECK-NEXT:   %34 = load { i8*, i64, i8*, i64, i64, i8*, i8 }, { i8*, i64, i8*, i64, i64, i8*, i8 }* %33
+; CHECK-NEXT:   %35 = bitcast { i8*, i64, i8*, i64, i64, i8*, i8 }* %33 to i8*
+; CHECK-NEXT:   tail call void @free(i8* nonnull %35)
+; CHECK-NEXT:   %36 = extractvalue { i8*, i64, i8*, i64, i64, i8*, i8 } %34, 0
+; CHECK-NEXT:   %37 = extractvalue { i8*, i64, i8*, i64, i64, i8*, i8 } %34, 1
+; CHECK-NEXT:   %38 = extractvalue { i8*, i64, i8*, i64, i64, i8*, i8 } %34, 2
+; CHECK-NEXT:   %39 = extractvalue { i8*, i64, i8*, i64, i64, i8*, i8 } %34, 3
+; CHECK-NEXT:   %40 = extractvalue { i8*, i64, i8*, i64, i64, i8*, i8 } %34, 4
+; CHECK-NEXT:   %41 = extractvalue { i8*, i64, i8*, i64, i64, i8*, i8 } %34, 5
+; CHECK-NEXT:   %42 = extractvalue { i8*, i64, i8*, i64, i64, i8*, i8 } %34, 6
+; CHECK-NEXT:   call void @__enzyme_differential_mpi_wait(i8* %36, i64 %37, i8* %38, i64 %39, i64 %40, i8* %41, i8 %42, %struct.ompi_request_t** %"r2'ipa")
+; CHECK-NEXT:   %43 = call i32 @MPI_Wait(%struct.ompi_request_t** %"r2'ipa", %struct.ompi_status_public_t* %0)
+; CHECK-NEXT:   %44 = call i32 @MPI_Type_size(i8* bitcast (%struct.ompi_predefined_datatype_t* @ompi_mpi_real to i8*), i32* %1)
+; CHECK-NEXT:   %45 = load i32, i32* %1
+; CHECK-NEXT:   %46 = zext i32 %45 to i64
+; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull %"'ipc", i8 0, i64 %46, i1 false)
+; CHECK-NEXT:   %47 = bitcast %struct.ompi_request_t** %"r1'ipa" to { i8*, i64, i8*, i64, i64, i8*, i8 }**
+; CHECK-NEXT:   %48 = load { i8*, i64, i8*, i64, i64, i8*, i8 }*, { i8*, i64, i8*, i64, i64, i8*, i8 }** %47
+; CHECK-NEXT:   %49 = load { i8*, i64, i8*, i64, i64, i8*, i8 }, { i8*, i64, i8*, i64, i64, i8*, i8 }* %48
+; CHECK-NEXT:   %50 = bitcast { i8*, i64, i8*, i64, i64, i8*, i8 }* %48 to i8*
+; CHECK-NEXT:   tail call void @free(i8* nonnull %50)
+; CHECK-NEXT:   %51 = extractvalue { i8*, i64, i8*, i64, i64, i8*, i8 } %49, 0
+; CHECK-NEXT:   %52 = extractvalue { i8*, i64, i8*, i64, i64, i8*, i8 } %49, 1
+; CHECK-NEXT:   %53 = extractvalue { i8*, i64, i8*, i64, i64, i8*, i8 } %49, 2
+; CHECK-NEXT:   %54 = extractvalue { i8*, i64, i8*, i64, i64, i8*, i8 } %49, 3
+; CHECK-NEXT:   %55 = extractvalue { i8*, i64, i8*, i64, i64, i8*, i8 } %49, 4
+; CHECK-NEXT:   %56 = extractvalue { i8*, i64, i8*, i64, i64, i8*, i8 } %49, 5
+; CHECK-NEXT:   %57 = extractvalue { i8*, i64, i8*, i64, i64, i8*, i8 } %49, 6
+; CHECK-NEXT:   call void @__enzyme_differential_mpi_wait(i8* %51, i64 %52, i8* %53, i64 %54, i64 %55, i8* %56, i8 %57, %struct.ompi_request_t** %"r1'ipa")
+; CHECK-NEXT:   %58 = call i32 @MPI_Wait(%struct.ompi_request_t** %"r1'ipa", %struct.ompi_status_public_t* %3)
+; CHECK-NEXT:   %59 = call i32 @MPI_Type_size(i8* bitcast (%struct.ompi_predefined_datatype_t* @ompi_mpi_real to i8*), i32* %4)
 ; CHECK-NEXT:   %60 = bitcast i8* %malloccall4 to float*
-; CHECK-NEXT:   %_unwrap = load i32, i32* %58
+; CHECK-NEXT:   %_unwrap = load i32, i32* %4
 ; CHECK-NEXT:   %_unwrap6 = zext i32 %_unwrap to i64
 ; CHECK-NEXT:   %61 = udiv i64 %_unwrap6, 4
 ; CHECK-NEXT:   call void @__enzyme_memcpyadd_floatda1sa1(float* %60, float* %"val1'", i64 %61)

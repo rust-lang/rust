@@ -23,12 +23,12 @@ jobs:
     steps:
     - name: add llvm 
       run: |
-          #sudo apt-get remove  -y llvm-${{ matrix.llvm }}-dev llvm-${{ matrix.llvm }}-tools 
           wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key|sudo apt-key add -
           sudo apt-add-repository "deb http://apt.llvm.org/xenial/ llvm-toolchain-xenial-${{ matrix.llvm }} main" || true
-          sudo apt-get install -y autoconf cmake gcc g++ libtool gfortran libblas-dev llvm-${{ matrix.llvm }}-dev llvm-${{ matrix.llvm }}-tools clang-${{ matrix.llvm }} libeigen3-dev libboost-dev
+          sudo apt-get install -y python-pip autoconf cmake gcc g++ libtool gfortran libblas-dev llvm-${{ matrix.llvm }}-dev clang-${{ matrix.llvm }} libeigen3-dev libboost-dev
+          sudo pip install lit
           sudo touch /usr/lib/llvm-${{ matrix.llvm }}/bin/yaml-bench
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v2
       with:
           fetch-depth: 1
     - name: mkdir
@@ -36,9 +36,9 @@ jobs:
     - name: cmake
       run: |
           cd enzyme/build 
-          cmake .. -DLLVM_EXTERNAL_LIT=/usr/lib/llvm-${{ matrix.llvm }}/build/utils/lit/lit.py -DCMAKE_BUILD_TYPE=${{ matrix.build }} -DLLVM_DIR=/usr/lib/llvm-${{ matrix.llvm }}/lib/cmake/llvm
+          cmake .. -DLLVM_EXTERNAL_LIT=`which lit` -DCMAKE_BUILD_TYPE=${{ matrix.build }} -DLLVM_DIR=/usr/lib/llvm-${{ matrix.llvm }}/lib/cmake/llvm
     - name: make
-      run: cd enzyme/build && make -j`nproc`
+      run: cd enzyme/build && make -j`nproc` LLVMEnzyme-${{ matrix.llvm }}
     - name: make bench-enzyme
       run: cd enzyme/build && make bench-enzyme
     - name: results

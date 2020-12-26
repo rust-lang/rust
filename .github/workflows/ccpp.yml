@@ -10,7 +10,7 @@ on:
 
 jobs:
   build:
-    name: Integration Test on os ${{ matrix.os }} and llvm ${{ matrix.llvm }} mode ${{ matrix.build }} 
+    name: Integration CI LLVM ${{ matrix.llvm }} ${{ matrix.build }} ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     
     strategy:
@@ -18,18 +18,18 @@ jobs:
       matrix:
         llvm: ["7", "8", "9", "10", "11"]
         build: ["Release"] # "RelWithDebInfo"
-        os: [self-hosted]
+        os: [ubuntu-20.04, ubuntu-18.04]
     
     timeout-minutes: 45 
     steps:
     - name: add llvm 
       run: |
-          #sudo apt-get remove  -y llvm-${{ matrix.llvm }}-dev llvm-${{ matrix.llvm }}-tools 
           wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key|sudo apt-key add -
-          sudo apt-add-repository "deb http://apt.llvm.org/xenial/ llvm-toolchain-xenial-${{ matrix.llvm }} main" || true
-          sudo apt-get install -y autoconf cmake gcc g++ libtool gfortran llvm-${{ matrix.llvm }}-dev llvm-${{ matrix.llvm }}-tools clang-${{ matrix.llvm }} libeigen3-dev libboost-dev
+          sudo apt-add-repository "deb http://apt.llvm.org/`lsb_release -c | cut -f2`/ llvm-toolchain-`lsb_release -c | cut -f2`-${{ matrix.llvm }} main" || true
+          sudo apt-get install -y autoconf cmake gcc g++ libtool gfortran llvm-${{ matrix.llvm }}-dev libomp-${{ matrix.llvm }}-dev clang-${{ matrix.llvm }} libeigen3-dev libboost-dev
+          sudo pip install lit
           sudo touch /usr/lib/llvm-${{ matrix.llvm }}/bin/yaml-bench
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v2
       with:
           fetch-depth: 1
     - name: mkdir
@@ -37,8 +37,8 @@ jobs:
     - name: cmake
       run: |
           cd enzyme/build 
-          cmake .. -DLLVM_EXTERNAL_LIT=/usr/lib/llvm-${{ matrix.llvm }}/build/utils/lit/lit.py -DCMAKE_BUILD_TYPE=${{ matrix.build }} -DLLVM_DIR=/usr/lib/llvm-${{ matrix.llvm }}/lib/cmake/llvm
+          cmake .. -DLLVM_EXTERNAL_LIT=`which lit` -DCMAKE_BUILD_TYPE=${{ matrix.build }} -DLLVM_DIR=/usr/lib/llvm-${{ matrix.llvm }}/lib/cmake/llvm
     - name: make
-      run: cd enzyme/build && make -j`nproc`
+      run: cd enzyme/build && make -j`nproc` LLVMEnzyme-${{ matrix.llvm }}
     - name: make check-enzyme-integration
       run: cd enzyme/build && make check-enzyme-integration -j`nproc`

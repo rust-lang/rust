@@ -28,9 +28,9 @@ entry:
   ret void
 }
 
-declare dso_local i32 @MPI_Send(i8*, i32, %struct.ompi_datatype_t*, i32, i32, %struct.ompi_communicator_t*) local_unnamed_addr #2
+declare dso_local i32 @MPI_Send(i8*, i32, %struct.ompi_datatype_t*, i32, i32, %struct.ompi_communicator_t*)
 
-declare dso_local i32 @MPI_Recv(i8*, i32, %struct.ompi_datatype_t*, i32, i32, %struct.ompi_communicator_t*, %struct.ompi_status_public_t*) local_unnamed_addr #2
+declare dso_local i32 @MPI_Recv(i8*, i32, %struct.ompi_datatype_t*, i32, i32, %struct.ompi_communicator_t*, %struct.ompi_status_public_t*)
 
 ; Function Attrs: nounwind uwtable
 define dso_local void @msg2(float* %val1, float* %val2, i32 %numprocprec, i32 %numprocsuiv, i32 %etiquette) #0 {
@@ -98,23 +98,20 @@ entry:
   ret i32 0
 }
 
-declare dso_local i32 @MPI_Init(i32*, i8***) local_unnamed_addr #2
+declare dso_local i32 @MPI_Init(i32*, i8***)
 
-declare dso_local i32 @MPI_Comm_rank(%struct.ompi_communicator_t*, i32*) local_unnamed_addr #2
+declare dso_local i32 @MPI_Comm_rank(%struct.ompi_communicator_t*, i32*)
 
-declare dso_local i32 @MPI_Comm_size(%struct.ompi_communicator_t*, i32*) local_unnamed_addr #2
+declare dso_local i32 @MPI_Comm_size(%struct.ompi_communicator_t*, i32*)
 
-declare dso_local void @__enzyme_autodiff(i8*, ...) local_unnamed_addr #2
+declare dso_local void @__enzyme_autodiff(i8*, ...)
 
 ; Function Attrs: nofree nounwind
-declare dso_local i32 @printf(i8* nocapture readonly, ...) local_unnamed_addr #3
+declare dso_local i32 @printf(i8* nocapture readonly, ...)
 
-declare dso_local i32 @MPI_Finalize() local_unnamed_addr #2
+declare dso_local i32 @MPI_Finalize()
 
-attributes #0 = { nounwind uwtable "correctly-rounded-divide-sqrt-fp-math"="false" "disable-tail-calls"="false" "frame-pointer"="none" "less-precise-fpmad"="false" "min-legal-vector-width"="0" "no-infs-fp-math"="false" "no-jump-tables"="false" "no-nans-fp-math"="false" "no-signed-zeros-fp-math"="false" "no-trapping-math"="false" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+cx8,+fxsr,+mmx,+sse,+sse2,+x87" "unsafe-fp-math"="false" "use-soft-float"="false" }
-attributes #1 = { argmemonly nounwind willreturn }
-attributes #2 = { "correctly-rounded-divide-sqrt-fp-math"="false" "disable-tail-calls"="false" "frame-pointer"="none" "less-precise-fpmad"="false" "no-infs-fp-math"="false" "no-nans-fp-math"="false" "no-signed-zeros-fp-math"="false" "no-trapping-math"="false" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+cx8,+fxsr,+mmx,+sse,+sse2,+x87" "unsafe-fp-math"="false" "use-soft-float"="false" }
-attributes #3 = { nofree nounwind "correctly-rounded-divide-sqrt-fp-math"="false" "disable-tail-calls"="false" "frame-pointer"="none" "less-precise-fpmad"="false" "no-infs-fp-math"="false" "no-nans-fp-math"="false" "no-signed-zeros-fp-math"="false" "no-trapping-math"="false" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+cx8,+fxsr,+mmx,+sse,+sse2,+x87" "unsafe-fp-math"="false" "use-soft-float"="false" }
+attributes #0 = { nounwind uwtable }
 attributes #4 = { nounwind }
 
 !llvm.module.flags = !{!0}
@@ -133,27 +130,27 @@ attributes #4 = { nounwind }
 
 ; CHECK: define internal void @diffemsg1(float* %val1, float* %"val1'", float* %val2, float* %"val2'", i32 %numprocprec, i32 %numprocsuiv, i32 %etiquette)
 ; CHECK-NEXT: entry:
+; CHECK-NEXT:   %0 = alloca i32
+; CHECK-NEXT:   %1 = alloca %struct.ompi_status_public_t
+; CHECK-NEXT:   %2 = alloca i32
 ; CHECK-NEXT:   %statut = alloca %struct.ompi_status_public_t, align 8
-; CHECK-NEXT:   %0 = bitcast float* %val1 to i8*
-; CHECK-NEXT:   %call = call i32 @MPI_Send(i8* %0, i32 1, %struct.ompi_datatype_t* bitcast (%struct.ompi_predefined_datatype_t* @ompi_mpi_real to %struct.ompi_datatype_t*), i32 %numprocsuiv, i32 %etiquette, %struct.ompi_communicator_t* bitcast (%struct.ompi_predefined_communicator_t* @ompi_mpi_comm_world to %struct.ompi_communicator_t*))
+; CHECK-NEXT:   %3 = bitcast float* %val1 to i8*
+; CHECK-NEXT:   %call = call i32 @MPI_Send(i8* %3, i32 1, %struct.ompi_datatype_t* bitcast (%struct.ompi_predefined_datatype_t* @ompi_mpi_real to %struct.ompi_datatype_t*), i32 %numprocsuiv, i32 %etiquette, %struct.ompi_communicator_t* bitcast (%struct.ompi_predefined_communicator_t* @ompi_mpi_comm_world to %struct.ompi_communicator_t*))
 ; CHECK-NEXT:   %"'ipc" = bitcast float* %"val2'" to i8*
-; CHECK-NEXT:   %1 = bitcast float* %val2 to i8*
-; CHECK-NEXT:   %call1 = call i32 @MPI_Recv(i8* %1, i32 1, %struct.ompi_datatype_t* bitcast (%struct.ompi_predefined_datatype_t* @ompi_mpi_real to %struct.ompi_datatype_t*), i32 %numprocprec, i32 %etiquette, %struct.ompi_communicator_t* bitcast (%struct.ompi_predefined_communicator_t* @ompi_mpi_comm_world to %struct.ompi_communicator_t*), %struct.ompi_status_public_t* nonnull %statut)
-; CHECK-NEXT:   %2 = call i32 @MPI_Send(i8* %"'ipc", i32 1, %struct.ompi_datatype_t* bitcast (%struct.ompi_predefined_datatype_t* @ompi_mpi_real to %struct.ompi_datatype_t*), i32 %numprocprec, i32 %etiquette, %struct.ompi_communicator_t* bitcast (%struct.ompi_predefined_communicator_t* @ompi_mpi_comm_world to %struct.ompi_communicator_t*))
-; CHECK-NEXT:   %3 = alloca i32
-; CHECK-NEXT:   %4 = call i32 @MPI_Type_size(i8* bitcast (%struct.ompi_predefined_datatype_t* @ompi_mpi_real to i8*), i32* %3)
-; CHECK-NEXT:   %5 = load i32, i32* %3
-; CHECK-NEXT:   %6 = zext i32 %5 to i64
-; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* %"'ipc", i8 0, i64 %6, i1 false)
-; CHECK-NEXT:   %7 = alloca %struct.ompi_status_public_t
-; CHECK-NEXT:   %8 = alloca i32
-; CHECK-NEXT:   %9 = call i32 @MPI_Type_size(i8* bitcast (%struct.ompi_predefined_datatype_t* @ompi_mpi_real to i8*), i32* %8)
-; CHECK-NEXT:   %10 = load i32, i32* %8
+; CHECK-NEXT:   %4 = bitcast float* %val2 to i8*
+; CHECK-NEXT:   %call1 = call i32 @MPI_Recv(i8* %4, i32 1, %struct.ompi_datatype_t* bitcast (%struct.ompi_predefined_datatype_t* @ompi_mpi_real to %struct.ompi_datatype_t*), i32 %numprocprec, i32 %etiquette, %struct.ompi_communicator_t* bitcast (%struct.ompi_predefined_communicator_t* @ompi_mpi_comm_world to %struct.ompi_communicator_t*), %struct.ompi_status_public_t* nonnull %statut)
+; CHECK-NEXT:   %5 = call i32 @MPI_Send(i8* %"'ipc", i32 1, %struct.ompi_datatype_t* bitcast (%struct.ompi_predefined_datatype_t* @ompi_mpi_real to %struct.ompi_datatype_t*), i32 %numprocprec, i32 %etiquette, %struct.ompi_communicator_t* bitcast (%struct.ompi_predefined_communicator_t* @ompi_mpi_comm_world to %struct.ompi_communicator_t*))
+; CHECK-NEXT:   %6 = call i32 @MPI_Type_size(i8* bitcast (%struct.ompi_predefined_datatype_t* @ompi_mpi_real to i8*), i32* %0)
+; CHECK-NEXT:   %7 = load i32, i32* %0
+; CHECK-NEXT:   %8 = zext i32 %7 to i64
+; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull %"'ipc", i8 0, i64 %8, i1 false)
+; CHECK-NEXT:   %9 = call i32 @MPI_Type_size(i8* bitcast (%struct.ompi_predefined_datatype_t* @ompi_mpi_real to i8*), i32* %2)
+; CHECK-NEXT:   %10 = load i32, i32* %2
 ; CHECK-NEXT:   %11 = zext i32 %10 to i64
 ; CHECK-NEXT:   %12 = tail call i8* @malloc(i64 %11)
-; CHECK-NEXT:   %13 = call i32 @MPI_Recv(i8* %12, i32 1, %struct.ompi_datatype_t* bitcast (%struct.ompi_predefined_datatype_t* @ompi_mpi_real to %struct.ompi_datatype_t*), i32 %numprocsuiv, i32 %etiquette, %struct.ompi_communicator_t* bitcast (%struct.ompi_predefined_communicator_t* @ompi_mpi_comm_world to %struct.ompi_communicator_t*), %struct.ompi_status_public_t* %7)
+; CHECK-NEXT:   %13 = call i32 @MPI_Recv(i8* %12, i32 1, %struct.ompi_datatype_t* bitcast (%struct.ompi_predefined_datatype_t* @ompi_mpi_real to %struct.ompi_datatype_t*), i32 %numprocsuiv, i32 %etiquette, %struct.ompi_communicator_t* bitcast (%struct.ompi_predefined_communicator_t* @ompi_mpi_comm_world to %struct.ompi_communicator_t*), %struct.ompi_status_public_t* %1)
 ; CHECK-NEXT:   %14 = bitcast i8* %12 to float*
-; CHECK-NEXT:   %_unwrap = load i32, i32* %8
+; CHECK-NEXT:   %_unwrap = load i32, i32* %2
 ; CHECK-NEXT:   %_unwrap2 = zext i32 %_unwrap to i64
 ; CHECK-NEXT:   %15 = udiv i64 %_unwrap2, 4
 ; CHECK-NEXT:   call void @__enzyme_memcpyadd_floatda1sa1(float* %14, float* %"val1'", i64 %15)

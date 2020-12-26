@@ -33,22 +33,6 @@
 #include "GradientUtils.h"
 #include "LibraryFuncs.h"
 
-llvm::Value *MPI_TYPE_SIZE(llvm::Value *DT, IRBuilder<> &B) {
-  Type *intType = Type::getIntNTy(DT->getContext(), sizeof(int) * 8);
-  Type *pargs[] = {Type::getInt8PtrTy(DT->getContext()),
-                   PointerType::getUnqual(intType)};
-  auto FT = FunctionType::get(intType, pargs, false);
-  auto alloc = B.CreateAlloca(intType);
-  llvm::Value *args[] = {DT, alloc};
-  if (DT->getType() != pargs[0])
-    args[0] = B.CreateBitCast(args[0], pargs[0]);
-  B.CreateCall(
-      B.GetInsertBlock()->getParent()->getParent()->getOrInsertFunction(
-          "MPI_Type_size", FT),
-      args);
-  return B.CreateLoad(alloc);
-}
-
 #define DEBUG_TYPE "enzyme"
 using namespace llvm;
 
@@ -150,6 +134,55 @@ public:
         gutils->replaceAWithB(iload, pn);
       gutils->erase(iload);
     }
+  }
+
+  llvm::Value *MPI_TYPE_SIZE(llvm::Value *DT, IRBuilder<> &B) {
+    Type *intType = Type::getIntNTy(DT->getContext(), sizeof(int) * 8);
+    Type *pargs[] = {Type::getInt8PtrTy(DT->getContext()),
+                     PointerType::getUnqual(intType)};
+    auto FT = FunctionType::get(intType, pargs, false);
+    auto alloc = IRBuilder<>(gutils->inversionAllocs).CreateAlloca(intType);
+    llvm::Value *args[] = {DT, alloc};
+    if (DT->getType() != pargs[0])
+      args[0] = B.CreateBitCast(args[0], pargs[0]);
+    AttributeList AL;
+    AL = AL.addParamAttribute(DT->getContext(), 0,
+                              Attribute::AttrKind::ReadOnly);
+    AL = AL.addParamAttribute(DT->getContext(), 0,
+                              Attribute::AttrKind::NoCapture);
+    AL =
+        AL.addParamAttribute(DT->getContext(), 0, Attribute::AttrKind::NoAlias);
+    AL =
+        AL.addParamAttribute(DT->getContext(), 0, Attribute::AttrKind::NonNull);
+    AL = AL.addParamAttribute(DT->getContext(), 1,
+                              Attribute::AttrKind::WriteOnly);
+    AL = AL.addParamAttribute(DT->getContext(), 1,
+                              Attribute::AttrKind::NoCapture);
+    AL =
+        AL.addParamAttribute(DT->getContext(), 1, Attribute::AttrKind::NoAlias);
+    AL =
+        AL.addParamAttribute(DT->getContext(), 1, Attribute::AttrKind::NonNull);
+    AL = AL.addAttribute(DT->getContext(), AttributeList::FunctionIndex,
+                         Attribute::AttrKind::ArgMemOnly);
+    AL = AL.addAttribute(DT->getContext(), AttributeList::FunctionIndex,
+                         Attribute::AttrKind::NoUnwind);
+#if LLVM_VERSION_MAJOR >= 9
+    AL = AL.addAttribute(DT->getContext(), AttributeList::FunctionIndex,
+                         Attribute::AttrKind::NoFree);
+#endif
+#if LLVM_VERSION_MAJOR >= 9
+    AL = AL.addAttribute(DT->getContext(), AttributeList::FunctionIndex,
+                         Attribute::AttrKind::NoSync);
+#endif
+#if LLVM_VERSION_MAJOR >= 9
+    AL = AL.addAttribute(DT->getContext(), AttributeList::FunctionIndex,
+                         Attribute::AttrKind::WillReturn);
+#endif
+    B.CreateCall(
+        B.GetInsertBlock()->getParent()->getParent()->getOrInsertFunction(
+            "MPI_Type_size", FT, AL),
+        args);
+    return B.CreateLoad(alloc);
   }
 
   void visitInstruction(llvm::Instruction &inst) {
@@ -1912,16 +1945,12 @@ public:
       ++in_arg;
       ++in_arg;
 
-      for (auto &a : uncacheable_argsAbove) {
-        llvm::errs() << "- " << *a.first << "\n";
-      }
       for (; pp_arg != task->arg_end();) {
         // If var-args then we may still have args even though outermost
         // has no more
         if (in_arg == call.getCalledFunction()->arg_end()) {
           uncacheable_args[pp_arg] = true;
         } else {
-          llvm::errs() << *in_arg << "\n";
           assert(uncacheable_argsAbove.find(in_arg) !=
                  uncacheable_argsAbove.end());
           uncacheable_args[pp_arg] = uncacheable_argsAbove.find(in_arg)->second;
@@ -2078,7 +2107,7 @@ public:
             subdata->returns.end()) {
           ValueToValueMapTy VMap;
           newcalled = CloneFunction(newcalled, VMap);
-          // llvm::errs() << *newcalled << "\n";
+          llvm::errs() << *newcalled << "\n";
           auto tapeArg = newcalled->arg_end();
           tapeArg--;
           std::vector<std::pair<ssize_t, Value *>> geps;
@@ -2122,7 +2151,7 @@ public:
           for (auto pair : geps) {
             Value *op = pair.second;
             Value *alloc = op;
-            // llvm::errs() << "op: " << *op << "\n";
+            llvm::errs() << "op: " << *op << "\n";
             Value *replacement = gutils->unwrapM(op, BuilderZ, available,
                                                  UnwrapMode::LegalFullUnwrap);
             tape =
@@ -2419,8 +2448,9 @@ public:
         Value *d_req = gutils->invertPointerM(call.getOperand(6), BuilderZ);
         Value *args[] = {
             /*req*/ d_req,
-            /*status*/ Builder2.CreateAlloca(
-                cast<PointerType>(statusArg->getType())->getElementType())};
+            /*status*/ IRBuilder<>(gutils->inversionAllocs)
+                .CreateAlloca(
+                    cast<PointerType>(statusArg->getType())->getElementType())};
         auto fcall = Builder2.CreateCall(waitFunc, args);
         fcall->setCallingConv(waitFunc->getCallingConv());
 
@@ -2454,6 +2484,7 @@ public:
               Intrinsic::getDeclaration(called->getParent(), Intrinsic::memset,
                                         tys),
               nargs));
+          memset->addParamAttr(0, Attribute::NonNull);
         } else if (called->getName() == "MPI_Isend") {
           Value *shadow = gutils->invertPointerM(call.getOperand(0), Builder2);
           if (Mode == DerivativeMode::Both)
@@ -2636,8 +2667,9 @@ public:
             /*comm*/
             lookup(gutils->getNewFromOriginal(call.getOperand(5)), Builder2),
             /*status*/
-            Builder2.CreateAlloca(
-                cast<PointerType>(statusArg->getType())->getElementType())};
+            IRBuilder<>(gutils->inversionAllocs)
+                .CreateAlloca(
+                    cast<PointerType>(statusArg->getType())->getElementType())};
 
         Value *tysize = MPI_TYPE_SIZE(args[2], Builder2);
 
@@ -2810,6 +2842,7 @@ public:
             Intrinsic::getDeclaration(gutils->newFunc->getParent(),
                                       Intrinsic::memset, tys),
             nargs));
+        memset->addParamAttr(0, Attribute::NonNull);
       }
       return;
     }

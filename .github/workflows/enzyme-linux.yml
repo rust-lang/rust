@@ -1,0 +1,50 @@
+name: Linux Enzyme CI
+
+on: [push]
+
+jobs:
+  build:
+    name: Enzyme CI LLVM ${{ matrix.llvm }} ${{ matrix.build }} ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        llvm: ["7", "8", "9", "10", "11"]
+        build: ["Release", "Debug"] # "RelWithDebInfo"
+        os: [ubuntu-20.04, ubuntu-18.04] #self-hosted]
+  
+        exclude:
+          # excludes node 4 on macOS
+          - os: ubuntu-20.04
+            llvm: 7
+          - os: ubuntu-20.04
+            llvm: 8
+    timeout-minutes: 30 
+    steps:
+    - name: add llvm 
+      run: |
+          wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key|sudo apt-key add -
+          sudo apt-add-repository "deb http://apt.llvm.org/`lsb_release -c | cut -f2`/ llvm-toolchain-`lsb_release -c | cut -f2`-${{ matrix.llvm }} main" || true
+          sudo apt-get install -y autoconf cmake gcc g++ libtool gfortran llvm-${{ matrix.llvm }}-dev
+          if [ ${{matrix.llvm}} -lt 9 ]; then
+            sudo apt-get install -y llvm-7-tools;
+            echo /usr/lib/llvm-7/bin >> $GITHUB_PATH;
+          fi
+          sudo pip install lit
+          sudo touch /usr/lib/llvm-${{ matrix.llvm }}/bin/yaml-bench
+    - uses: actions/checkout@v2
+      with:
+          fetch-depth: 1
+    - name: mkdir
+      run: cd enzyme && rm -rf build && mkdir build
+    - name: cmake
+      run: |
+          cd enzyme/build 
+          cmake .. -DCMAKE_BUILD_TYPE=${{ matrix.build }} -DLLVM_EXTERNAL_LIT=`which lit` -DLLVM_DIR=/usr/lib/llvm-${{ matrix.llvm }}/lib/cmake/llvm
+    - name: make
+      run: cd enzyme/build && make -j`nproc`
+    - name: make check-typeanalysis
+      run: cd enzyme/build && make check-typeanalysis -j`nproc`
+    - name: make check-enzyme
+      run: cd enzyme/build && make check-enzyme -j`nproc`
