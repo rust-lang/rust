@@ -10,7 +10,9 @@ uint32_t
 rust_dbg_extern_identity_u32(uint32_t u) {
     return u;
 }
-
+rust_dbg_identitiy_callback(dbg_callback cb, void *data) {
+    return cb(data);
+}
 uint64_t
 rust_dbg_extern_identity_u64(uint64_t u) {
     return u;
