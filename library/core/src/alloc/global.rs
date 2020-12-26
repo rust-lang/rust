@@ -57,7 +57,7 @@ use crate::ptr;
 /// * You may not rely on allocations actually happening, even if there are explicit
 ///   heap allocations in the source.
 ///   The optimizer may detect unused allocations that it can either
-///   eliminate entirely or move to the stack and thus never invoke the allocator here. The
+///   eliminate entirely or move to the stack and thus never invoke the allocator. The
 ///   optimizer may further assume that allocation is infallible, so code that used to fail due
 ///   to allocator failures may now suddenly work because the optimizer worked around the
 ///   need for an allocation.
