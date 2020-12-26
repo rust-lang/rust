@@ -315,7 +315,7 @@ rustc_queries! {
         query mir_for_ctfe(
             key: DefId
         ) -> &'tcx mir::Body<'tcx> {
-            desc { |tcx| "caching mir for `{}` for CTFE", tcx.def_path_str(key) }
+            desc { |tcx| "caching mir of `{}` for CTFE", tcx.def_path_str(key) }
             cache_on_disk_if { key.is_local() }
         }
 
