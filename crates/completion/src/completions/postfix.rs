@@ -502,7 +502,7 @@ fn main() {
     #[test]
     fn postfix_completion_for_format_like_strings() {
         check_edit(
-            "fmt",
+            "format",
             r#"fn main() { "{some_var:?}".<|> }"#,
             r#"fn main() { format!("{:?}", some_var) }"#,
         );

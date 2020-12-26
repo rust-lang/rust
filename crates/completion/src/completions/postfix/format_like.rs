@@ -22,7 +22,7 @@ use syntax::ast::{self, AstToken};
 
 /// Mapping ("postfix completion item" => "macro to use")
 static KINDS: &[(&str, &str)] = &[
-    ("fmt", "format!"),
+    ("format", "format!"),
     ("panic", "panic!"),
     ("println", "println!"),
     ("eprintln", "eprintln!"),
