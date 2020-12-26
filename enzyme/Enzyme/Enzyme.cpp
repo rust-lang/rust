@@ -392,7 +392,8 @@ public:
 
     bool Changed = false;
 
-    std::vector<CallInst *> toLower;
+    std::set<CallInst *> toLower;
+  retry:;
     for (BasicBlock &BB : F) {
       for (Instruction &I : BB) {
         CallInst *CI = dyn_cast<CallInst>(&I);
@@ -415,7 +416,7 @@ public:
         if (Fn && (Fn->getName() == "__enzyme_autodiff" ||
                    Fn->getName().startswith("__enzyme_autodiff") ||
                    Fn->getName().contains("__enzyme_autodiff"))) {
-          toLower.push_back(CI);
+          toLower.insert(CI);
 
           Value *fn = CI->getArgOperand(0);
           while (auto ci = dyn_cast<CastInst>(fn)) {
@@ -426,6 +427,31 @@ public:
           }
           while (auto ci = dyn_cast<ConstantExpr>(fn)) {
             fn = ci->getOperand(0);
+          }
+          if (auto si = dyn_cast<SelectInst>(fn)) {
+            BasicBlock *post = BB.splitBasicBlock(CI);
+            BasicBlock *sel1 = BasicBlock::Create(BB.getContext(), "sel1", &F);
+            BasicBlock *sel2 = BasicBlock::Create(BB.getContext(), "sel2", &F);
+            BB.getTerminator()->eraseFromParent();
+            IRBuilder<> PB(&BB);
+            PB.CreateCondBr(si->getCondition(), sel1, sel2);
+            IRBuilder<> S1(sel1);
+            auto B1 = S1.CreateBr(post);
+            CallInst *cloned = cast<CallInst>(CI->clone());
+            cloned->insertBefore(B1);
+            cloned->setOperand(0, si->getTrueValue());
+            IRBuilder<> S2(sel2);
+            auto B2 = S2.CreateBr(post);
+            CI->moveBefore(B2);
+            CI->setOperand(0, si->getFalseValue());
+            if (CI->getNumUses() != 0) {
+              IRBuilder<> P(post->getFirstNonPHI());
+              auto merge = P.CreatePHI(CI->getType(), 2);
+              merge->addIncoming(cloned, sel1);
+              merge->addIncoming(CI, sel2);
+              CI->replaceAllUsesWith(merge);
+            }
+            goto retry;
           }
           if (auto dc = dyn_cast<Function>(fn))
             Changed |=

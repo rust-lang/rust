@@ -2695,8 +2695,6 @@ public:
           llvm_unreachable("bad mti");
         }
       knownF:;
-        unsigned dstalign = 0;
-        unsigned srcalign = 0;
         unsigned start = 0;
         while (1) {
           unsigned nextStart = size;
