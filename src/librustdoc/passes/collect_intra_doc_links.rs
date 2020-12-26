@@ -767,15 +767,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
     fn fold_item(&mut self, mut item: Item) -> Option<Item> {
         use rustc_middle::ty::DefIdTree;
 
-        let parent_node = if item.is_fake() {
-            // FIXME: is this correct?
-            None
-        // If we're documenting the crate root itself, it has no parent. Use the root instead.
-        } else if item.def_id.is_top_level_module() {
-            Some(item.def_id)
-        } else {
-            find_closest_parent_module(self.cx.tcx, item.def_id)
-        };
+        let parent_node = find_closest_parent_module(self.cx.tcx, item.def_id);
 
         if parent_node.is_some() {
             trace!("got parent node for {:?} {:?}, id {:?}", item.type_(), item.name, item.def_id);

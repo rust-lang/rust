@@ -626,23 +626,31 @@ where
 }
 
 crate fn find_closest_parent_module(tcx: TyCtxt<'_>, def_id: DefId) -> Option<DefId> {
-    let mut current = def_id;
-    // The immediate parent might not always be a module.
-    // Find the first parent which is.
-    loop {
-        if let Some(parent) = tcx.parent(current) {
-            if tcx.def_kind(parent) == DefKind::Mod {
-                break Some(parent);
+    if item.is_fake() {
+        // FIXME: is this correct?
+        None
+    // If we're documenting the crate root itself, it has no parent. Use the root instead.
+    } else if item.def_id.is_top_level_module() {
+        Some(item.def_id)
+    } else {
+        let mut current = def_id;
+        // The immediate parent might not always be a module.
+        // Find the first parent which is.
+        loop {
+            if let Some(parent) = tcx.parent(current) {
+                if tcx.def_kind(parent) == DefKind::Mod {
+                    break Some(parent);
+                }
+                current = parent;
+            } else {
+                debug!(
+                    "{:?} has no parent (kind={:?}, original was {:?})",
+                    current,
+                    tcx.def_kind(current),
+                    def_id
+                );
+                break None;
             }
-            current = parent;
-        } else {
-            debug!(
-                "{:?} has no parent (kind={:?}, original was {:?})",
-                current,
-                tcx.def_kind(current),
-                def_id
-            );
-            break None;
         }
     }
 }
