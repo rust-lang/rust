@@ -685,7 +685,7 @@ pub unsafe fn replace<T>(dst: *mut T, mut src: T) -> T {
 /// [valid]: self#safety
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_ptr_read", issue = "none")]
+#[rustc_const_unstable(feature = "const_ptr_read", issue = "80377")]
 pub const unsafe fn read<T>(src: *const T) -> T {
     // `copy_nonoverlapping` takes care of debug_assert.
     let mut tmp = MaybeUninit::<T>::uninit();
@@ -785,7 +785,7 @@ pub const unsafe fn read<T>(src: *const T) -> T {
 /// ```
 #[inline]
 #[stable(feature = "ptr_unaligned", since = "1.17.0")]
-#[rustc_const_unstable(feature = "const_ptr_read", issue = "none")]
+#[rustc_const_unstable(feature = "const_ptr_read", issue = "80377")]
 pub const unsafe fn read_unaligned<T>(src: *const T) -> T {
     // `copy_nonoverlapping` takes care of debug_assert.
     let mut tmp = MaybeUninit::<T>::uninit();
