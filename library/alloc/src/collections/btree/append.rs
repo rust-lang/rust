@@ -30,7 +30,7 @@ impl<K, V> Root<K, V> {
     /// Pushes all key-value pairs to the end of the tree, incrementing a
     /// `length` variable along the way. The latter makes it easier for the
     /// caller to avoid a leak when the iterator panicks.
-    fn bulk_push<I>(&mut self, iter: I, length: &mut usize)
+    pub fn bulk_push<I>(&mut self, iter: I, length: &mut usize)
     where
         I: Iterator<Item = (K, V)>,
     {
