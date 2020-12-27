@@ -1528,6 +1528,8 @@ end:;
   assert(BuilderM.GetInsertBlock());
   assert(BuilderM.GetInsertBlock()->getParent());
   assert(oval);
+
+  llvm::errs() << *BuilderM.GetInsertBlock()->getParent()->getParent() << "\n";
   llvm::errs() << "fn:" << *BuilderM.GetInsertBlock()->getParent()
                << "\noval=" << *oval << "\n";
   for (auto z : invertedPointers) {

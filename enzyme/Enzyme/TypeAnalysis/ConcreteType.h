@@ -118,12 +118,8 @@ public:
   /// Whether this ConcreteType has information (is not unknown)
   bool isKnown() const { return SubTypeEnum != BaseType::Unknown; }
 
-  /// Whether this ConcreteType can be used as an integer (SubTypeEnum is
-  /// Integer or Anything)
-  bool isIntegral() const {
-    return SubTypeEnum == BaseType::Integer ||
-           SubTypeEnum == BaseType::Anything;
-  }
+  /// Whether this ConcreteType must an integer
+  bool isIntegral() const { return SubTypeEnum == BaseType::Integer; }
 
   /// Whether this ConcreteType could be a pointer (SubTypeEnum is unknown or a
   /// pointer)
@@ -134,7 +130,8 @@ public:
   /// Whether this ConcreteType could be a float (SubTypeEnum is unknown or a
   /// float)
   bool isPossibleFloat() const {
-    return !isKnown() || SubTypeEnum == BaseType::Float;
+    return !isKnown() || SubTypeEnum == BaseType::Float ||
+           SubTypeEnum == BaseType::Anything;
   }
 
   /// Return the floating point type, if this is a float

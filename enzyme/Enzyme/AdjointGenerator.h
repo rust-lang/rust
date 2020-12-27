@@ -32,6 +32,7 @@
 #include "EnzymeLogic.h"
 #include "GradientUtils.h"
 #include "LibraryFuncs.h"
+#include "TypeAnalysis/TBAA.h"
 
 #define DEBUG_TYPE "enzyme"
 using namespace llvm;
@@ -250,7 +251,10 @@ public:
       }
     }
 
-    bool constantval = gutils->isConstantValue(&LI);
+    auto &DL = gutils->newFunc->getParent()->getDataLayout();
+
+    bool constantval =
+        gutils->isConstantValue(&LI) || parseTBAA(LI, DL).Inner0().isIntegral();
     // even if this is an active value if it has no active users
     // (e.g. potential but unused active pointer), it does not
     // need an adjoint here
@@ -417,6 +421,7 @@ public:
     Value *val = gutils->getNewFromOriginal(orig_val);
     Type *valType = orig_val->getType();
 
+    auto &DL = gutils->newFunc->getParent()->getDataLayout();
     // If a store of an omp init argument, don't delete in reverse
     // and don't do any adjoint propagation (assumed integral)
     for (auto U : orig_ptr->users()) {
@@ -442,14 +447,14 @@ public:
       return;
     }
 
+    bool constantval = gutils->isConstantValue(orig_val) ||
+                       parseTBAA(SI, DL).Inner0().isIntegral();
+
     // TODO allow recognition of other types that could contain pointers [e.g.
     // {void*, void*} or <2 x i64> ]
     StoreInst *ts = nullptr;
 
-    auto storeSize =
-        gutils->newFunc->getParent()->getDataLayout().getTypeSizeInBits(
-            valType) /
-        8;
+    auto storeSize = DL.getTypeSizeInBits(valType) / 8;
 
     //! Storing a floating point value
     Type *FT = nullptr;
@@ -483,7 +488,7 @@ public:
         IRBuilder<> Builder2(SI.getParent());
         getReverseBuilder(Builder2);
 
-        if (gutils->isConstantValue(orig_val)) {
+        if (constantval) {
           ts = setPtrDiffe(orig_ptr, Constant::getNullValue(valType), Builder2);
         } else {
           auto dif1 =
@@ -506,10 +511,8 @@ public:
 
         Value *valueop = nullptr;
 
-        // Fallback mechanism, TODO check
-        if (gutils->isConstantValue(orig_val)) {
-          valueop =
-              val; // Constant::getNullValue(op->getValueOperand()->getType());
+        if (constantval) {
+          valueop = val;
         } else {
           valueop = gutils->invertPointerM(orig_val, storeBuilder);
         }
