@@ -1451,12 +1451,6 @@ impl Symbol {
         with_interner(|interner| interner.intern(string))
     }
 
-    /// Access the symbol's chars. This is a slowish operation because it
-    /// requires locking the symbol interner.
-    pub fn with<F: FnOnce(&str) -> R, R>(self, f: F) -> R {
-        with_interner(|interner| f(interner.get(self)))
-    }
-
     /// Convert to a `SymbolStr`. This is a slowish operation because it
     /// requires locking the symbol interner.
     pub fn as_str(self) -> SymbolStr {
@@ -1484,19 +1478,19 @@ impl Symbol {
 
 impl fmt::Debug for Symbol {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.with(|str| fmt::Debug::fmt(&str, f))
+        fmt::Debug::fmt(&self.as_str(), f)
     }
 }
 
 impl fmt::Display for Symbol {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.with(|str| fmt::Display::fmt(&str, f))
+        fmt::Display::fmt(&self.as_str(), f)
     }
 }
 
 impl<S: Encoder> Encodable<S> for Symbol {
     fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        self.with(|string| s.emit_str(string))
+        s.emit_str(&self.as_str())
     }
 }
 

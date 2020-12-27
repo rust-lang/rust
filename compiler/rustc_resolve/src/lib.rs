@@ -2416,7 +2416,10 @@ impl<'a> Resolver<'a> {
                     } else if i == 0 {
                         if ident
                             .name
-                            .with(|n| n.chars().next().map_or(false, |c| c.is_ascii_uppercase()))
+                            .as_str()
+                            .chars()
+                            .next()
+                            .map_or(false, |c| c.is_ascii_uppercase())
                         {
                             (format!("use of undeclared type `{}`", ident), None)
                         } else {
