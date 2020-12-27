@@ -7,6 +7,7 @@
 //! goes along from the output of the previous stage.
 
 use std::borrow::Cow;
+use std::collections::HashSet;
 use std::env;
 use std::fs;
 use std::io::prelude::*;
@@ -991,13 +992,26 @@ impl Step for Assemble {
         builder.info(&format!("Assembling stage{} compiler ({})", stage, host));
 
         // Link in all dylibs to the libdir
+        let stamp = librustc_stamp(builder, build_compiler, target_compiler.host);
+        let proc_macros = builder
+            .read_stamp_file(&stamp)
+            .into_iter()
+            .filter_map(|(path, dependency_type)| {
+                if dependency_type == DependencyType::Host {
+                    Some(path.file_name().unwrap().to_owned().into_string().unwrap())
+                } else {
+                    None
+                }
+            })
+            .collect::<HashSet<_>>();
+
         let sysroot = builder.sysroot(target_compiler);
         let rustc_libdir = builder.rustc_libdir(target_compiler);
         t!(fs::create_dir_all(&rustc_libdir));
         let src_libdir = builder.sysroot_libdir(build_compiler, host);
         for f in builder.read_dir(&src_libdir) {
             let filename = f.file_name().into_string().unwrap();
-            if is_dylib(&filename) {
+            if is_dylib(&filename) && !proc_macros.contains(&filename) {
                 builder.copy(&f.path(), &rustc_libdir.join(&filename));
             }
         }
