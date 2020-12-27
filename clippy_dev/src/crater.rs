@@ -12,6 +12,7 @@ use std::collections::HashMap;
 use std::process::Command;
 use std::{fmt, fs::write, path::PathBuf};
 
+use clap::ArgMatches;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -200,7 +201,7 @@ fn parse_json_message(json_message: &str, krate: &Crate) -> ClippyWarning {
 }
 
 // the main fn
-pub fn run() {
+pub fn run(clap_config: &ArgMatches) {
     let cargo_clippy_path: PathBuf = PathBuf::from("target/debug/cargo-clippy");
 
     println!("Compiling clippy...");
@@ -217,12 +218,23 @@ pub fn run() {
     // download and extract the crates, then run clippy on them and collect clippys warnings
     // flatten into one big list of warnings
 
-    let clippy_warnings: Vec<ClippyWarning> = read_crates()
-        .into_iter()
-        .map(|krate| krate.download_and_extract())
-        .map(|krate| krate.run_clippy_lints(&cargo_clippy_path))
-        .flatten()
-        .collect();
+    let clippy_warnings: Vec<ClippyWarning> = if let Some(only_one_crate) = clap_config.value_of("only") {
+        // only check a single
+        read_crates()
+            .into_iter()
+            .map(|krate| krate.download_and_extract())
+            .filter(|krate| krate.name == only_one_crate)
+            .map(|krate| krate.run_clippy_lints(&cargo_clippy_path))
+            .flatten()
+            .collect()
+    } else {
+        read_crates()
+            .into_iter()
+            .map(|krate| krate.download_and_extract())
+            .map(|krate| krate.run_clippy_lints(&cargo_clippy_path))
+            .flatten()
+            .collect()
+    };
 
     // generate some stats:
 

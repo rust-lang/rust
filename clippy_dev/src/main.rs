@@ -10,8 +10,8 @@ fn main() {
         ("bless", Some(matches)) => {
             bless::bless(matches.is_present("ignore-timestamp"));
         },
-        ("crater", Some(_)) => {
-            crater::run();
+        ("crater", Some(matches)) => {
+            crater::run(&matches);
         },
         ("fmt", Some(matches)) => {
             fmt::run(matches.is_present("check"), matches.is_present("verbose"));
@@ -59,7 +59,17 @@ fn get_clap_config<'a>() -> ArgMatches<'a> {
                         .help("Include files updated before clippy was built"),
                 ),
         )
-        .subcommand(SubCommand::with_name("crater").about("run clippy on a set of crates and check output"))
+        .subcommand(
+            SubCommand::with_name("crater")
+                .about("run clippy on a set of crates and check output")
+                .arg(
+                    Arg::with_name("only")
+                        .takes_value(true)
+                        .value_name("CRATE")
+                        .long("only")
+                        .help("only process a single crate of the list"),
+                ),
+        )
         .subcommand(
             SubCommand::with_name("fmt")
                 .about("Run rustfmt on all projects and tests")
