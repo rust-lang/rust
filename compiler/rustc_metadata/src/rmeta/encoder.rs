@@ -1185,11 +1185,24 @@ impl EncodeContext<'a, 'tcx> {
         if self.is_proc_macro {
             return;
         }
-        for &def_id in self.tcx.mir_keys(LOCAL_CRATE).iter() {
-            let (encode_const, encode_opt) = should_encode_mir(self.tcx, def_id);
-            if !encode_const && !encode_opt {
-                continue;
-            }
+
+        let mut keys_and_jobs = self
+            .tcx
+            .mir_keys(LOCAL_CRATE)
+            .iter()
+            .filter_map(|&def_id| {
+                let (encode_const, encode_opt) = should_encode_mir(self.tcx, def_id);
+                if encode_const || encode_opt {
+                    Some((def_id, encode_const, encode_opt))
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>();
+        // Sort everything to ensure a stable order for diagnotics.
+        keys_and_jobs.sort_by_key(|&(def_id, _, _)| def_id);
+        for (def_id, encode_const, encode_opt) in keys_and_jobs.into_iter() {
+            debug_assert!(encode_const || encode_opt);
 
             debug!("EntryBuilder::encode_mir({:?})", def_id);
             if encode_opt {
