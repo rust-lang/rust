@@ -1792,7 +1792,7 @@ impl<T> [T] {
     {
         // This function will need rewriting if and when SlicePattern becomes more sophisticated.
         let prefix = prefix.as_slice();
-        let n = prefix.as_slice().len();
+        let n = prefix.len();
         if n <= self.len() {
             let (head, tail) = self.split_at(n);
             if head == prefix {
