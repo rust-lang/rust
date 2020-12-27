@@ -20,20 +20,7 @@ fn run_test(input: &str, expected: &str) {
     with_default_session_globals(|| {
         let mut s = create_doc_fragment(input);
         unindent_fragments(&mut s);
-        assert_eq!(
-            &s[0]
-                .doc
-                .as_str()
-                .lines()
-                .map(|l| if l.len() > s[0].indent {
-                    l[s[0].indent..].to_string()
-                } else {
-                    String::new()
-                })
-                .collect::<Vec<_>>()
-                .join("\n"),
-            expected
-        );
+        assert_eq!(&s.iter().collect::<String>(), expected);
     });
 }
 
