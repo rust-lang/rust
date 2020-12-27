@@ -273,7 +273,6 @@ pub struct Weak<T: ?Sized> {
     // `Weak::new` sets this to `usize::MAX` so that it doesn’t need
     // to allocate space on the heap.  That's not a value a real pointer
     // will ever have because RcBox has alignment at least 2.
-    // This is only possible when `T: Sized`; unsized `T` never dangle.
     ptr: NonNull<ArcInner<T>>,
 }
 
@@ -1566,11 +1565,11 @@ impl<T: ?Sized> Weak<T> {
         let ptr: *mut ArcInner<T> = NonNull::as_ptr(self.ptr);
 
         // SAFETY: we must offset the pointer manually, and said pointer may be
-        // a dangling weak (usize::MAX) if T is sized. data_offset is safe to call,
-        // because we know that a pointer to unsized T was derived from a real
-        // unsized T, as dangling weaks are only created for sized T. wrapping_offset
-        // is used so that we can use the same code path for the non-dangling
-        // unsized case and the potentially dangling sized case.
+        // a dangling weak (usize::MAX). data_offset is safe to call, because we know
+        // that a pointer to unsized T was acquired by unsize coercion from an Rc/Weak
+        // of sized T. (Weak::new can only construct dangling pointers for sized T).
+        // wrapping_offset is used so that we can use the same code path for the
+        // dangling and non-dangling cases.
         unsafe {
             let offset = data_offset(ptr as *mut T);
             set_data_ptr(ptr as *mut T, (ptr as *mut u8).wrapping_offset(offset))
@@ -1628,6 +1627,7 @@ impl<T: ?Sized> Weak<T> {
     /// takes ownership of one weak reference currently represented as a raw pointer (the weak
     /// count is not modified by this operation) and therefore it must be paired with a previous
     /// call to [`into_raw`].
+    ///
     /// # Examples
     ///
     /// ```
@@ -1660,7 +1660,7 @@ impl<T: ?Sized> Weak<T> {
         let offset = unsafe { data_offset(ptr) };
 
         // Reverse the offset to find the original ArcInner.
-        // SAFETY: we use wrapping_offset here because the pointer may be dangling (but only if T: Sized)
+        // SAFETY: we use wrapping_offset here because the pointer may be dangling.
         let ptr = unsafe {
             set_data_ptr(ptr as *mut ArcInner<T>, (ptr as *mut u8).wrapping_offset(-offset))
         };

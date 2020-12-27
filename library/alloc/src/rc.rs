@@ -1780,11 +1780,11 @@ impl<T: ?Sized> Weak<T> {
         let ptr: *mut RcBox<T> = NonNull::as_ptr(self.ptr);
 
         // SAFETY: we must offset the pointer manually, and said pointer may be
-        // a dangling weak (usize::MAX) if T is sized. data_offset is safe to call,
-        // because we know that a pointer to unsized T was derived from a real
-        // unsized T, as dangling weaks are only created for sized T. wrapping_offset
-        // is used so that we can use the same code path for the non-dangling
-        // unsized case and the potentially dangling sized case.
+        // a dangling weak (usize::MAX). data_offset is safe to call, because we know
+        // that a pointer to unsized T was acquired by unsize coercion from an Rc/Weak
+        // of sized T. (Weak::new can only construct dangling pointers for sized T).
+        // wrapping_offset is used so that we can use the same code path for the
+        // dangling and non-dangling cases.
         unsafe {
             let offset = data_offset(ptr as *mut T);
             set_data_ptr(ptr as *mut T, (ptr as *mut u8).wrapping_offset(offset))
@@ -1874,7 +1874,7 @@ impl<T: ?Sized> Weak<T> {
         let offset = unsafe { data_offset(ptr) };
 
         // Reverse the offset to find the original RcBox.
-        // SAFETY: we use wrapping_offset here because the pointer may be dangling (but only if T: Sized).
+        // SAFETY: we use wrapping_offset here because the pointer may be dangling.
         let ptr = unsafe {
             set_data_ptr(ptr as *mut RcBox<T>, (ptr as *mut u8).wrapping_offset(-offset))
         };
@@ -2208,13 +2208,11 @@ impl<T: ?Sized> Unpin for Rc<T> {}
 /// This has the same safety requirements as `align_of_val_raw`. In effect:
 ///
 /// - This function is safe for any argument if `T` is sized, and
-/// - if `T` is unsized, the pointer must have appropriate pointer metadata
-///   acquired from the real instance that you are getting this offset for.
+/// - if `T` is unsized, the pointer must have been acquired from an unsize
+///   coercion (but may be invalid, such as from Weak::new).
 unsafe fn data_offset<T: ?Sized>(ptr: *const T) -> isize {
     // Align the unsized value to the end of the `RcBox`.
-    // Because it is ?Sized, it will always be the last field in memory.
-    // Note: This is a detail of the current implementation of the compiler,
-    // and is not a guaranteed language detail. Do not rely on it outside of std.
+    // As RcBox is #[repr(C)], it will always be the last field in memory.
     unsafe { data_offset_align(align_of_val_raw(ptr)) }
 }
 
