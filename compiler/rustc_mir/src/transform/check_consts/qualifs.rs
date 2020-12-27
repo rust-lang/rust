@@ -2,14 +2,14 @@
 //!
 //! See the `Qualif` trait for more info.
 
+use crate::dataflow::{fmt::DebugWithContext, JoinSemiLattice};
 use rustc_errors::ErrorReported;
+use rustc_index::bit_set::BitSet;
+use rustc_index::vec::IndexVec;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, subst::SubstsRef, AdtDef, Ty};
 use rustc_span::DUMMY_SP;
 use rustc_trait_selection::traits;
-use rustc_index::vec::IndexVec;
-use rustc_index::bit_set::BitSet;
-use crate::dataflow::{JoinSemiLattice, fmt::DebugWithContext};
 
 use super::ConstCx;
 
@@ -64,7 +64,11 @@ pub(crate) trait Qualif {
 
     /// Sometimes const fn calls cannot possibly contain the qualif, so we can treat function
     /// calls special here.
-    fn in_any_function_call(cx: &ConstCx<'_, 'tcx>, ty: Ty<'tcx>, _args: Option<Self::Result>) -> Option<Self::Result> {
+    fn in_any_function_call(
+        cx: &ConstCx<'_, 'tcx>,
+        ty: Ty<'tcx>,
+        _args: Option<Self::Result>,
+    ) -> Option<Self::Result> {
         Self::in_any_value_of_ty(cx, ty)
     }
 
@@ -159,7 +163,11 @@ impl Qualif for HasMutInterior {
         (!ty.is_freeze(cx.tcx.at(DUMMY_SP), cx.param_env)).then_some(())
     }
 
-    fn in_adt_inherently(cx: &ConstCx<'_, 'tcx>, adt: &'tcx AdtDef, _: SubstsRef<'tcx>) -> Option<()> {
+    fn in_adt_inherently(
+        cx: &ConstCx<'_, 'tcx>,
+        adt: &'tcx AdtDef,
+        _: SubstsRef<'tcx>,
+    ) -> Option<()> {
         // Exactly one type, `UnsafeCell`, has the `HasMutInterior` qualif inherently.
         // It arises structurally for all other types.
         (Some(adt.did) == cx.tcx.lang_items().unsafe_cell_type()).then_some(())
@@ -190,7 +198,7 @@ impl JoinSemiLattice for HasMutInteriorBehindRefState {
             (Self::OnlyHasMutInterior, Self::Yes) => {
                 *self = Self::Yes;
                 true
-            },
+            }
             (Self::OnlyHasMutInterior, Self::OnlyHasMutInterior) => false,
         }
     }
@@ -201,27 +209,47 @@ impl Qualif for HasMutInteriorBehindRef {
     type Result = HasMutInteriorBehindRefState;
 
     fn in_qualifs(qualifs: &ConstQualifs) -> Option<HasMutInteriorBehindRefState> {
-        HasMutInterior::in_qualifs(qualifs).map(|()| HasMutInteriorBehindRefState::OnlyHasMutInterior)
+        HasMutInterior::in_qualifs(qualifs)
+            .map(|()| HasMutInteriorBehindRefState::OnlyHasMutInterior)
     }
 
-    fn in_any_value_of_ty(cx: &ConstCx<'_, 'tcx>, ty: Ty<'tcx>) -> Option<HasMutInteriorBehindRefState> {
+    fn in_any_value_of_ty(
+        cx: &ConstCx<'_, 'tcx>,
+        ty: Ty<'tcx>,
+    ) -> Option<HasMutInteriorBehindRefState> {
         match ty.builtin_deref(false) {
-            None => HasMutInterior::in_any_value_of_ty(cx, ty).map(|()| HasMutInteriorBehindRefState::OnlyHasMutInterior),
-            Some(tam) => HasMutInterior::in_any_value_of_ty(cx, tam.ty).map(|()| HasMutInteriorBehindRefState::Yes),
+            None => HasMutInterior::in_any_value_of_ty(cx, ty)
+                .map(|()| HasMutInteriorBehindRefState::OnlyHasMutInterior),
+            Some(tam) => HasMutInterior::in_any_value_of_ty(cx, tam.ty)
+                .map(|()| HasMutInteriorBehindRefState::Yes),
         }
     }
 
     #[instrument(skip(cx))]
-    fn in_any_function_call(cx: &ConstCx<'_, 'tcx>, ty: Ty<'tcx>, mut args: Option<Self::Result>) -> Option<Self::Result> {
-        args.join(&HasMutInterior::in_any_value_of_ty(cx, ty).map(|()| HasMutInteriorBehindRefState::OnlyHasMutInterior));
+    fn in_any_function_call(
+        cx: &ConstCx<'_, 'tcx>,
+        ty: Ty<'tcx>,
+        mut args: Option<Self::Result>,
+    ) -> Option<Self::Result> {
+        args.join(
+            &HasMutInterior::in_any_value_of_ty(cx, ty)
+                .map(|()| HasMutInteriorBehindRefState::OnlyHasMutInterior),
+        );
         args
     }
 
-    fn in_adt_inherently(cx: &ConstCx<'_, 'tcx>, adt: &'tcx AdtDef, substs: SubstsRef<'tcx>) -> Option<HasMutInteriorBehindRefState> {
-        HasMutInterior::in_adt_inherently(cx, adt, substs).map(|()| HasMutInteriorBehindRefState::OnlyHasMutInterior)
+    fn in_adt_inherently(
+        cx: &ConstCx<'_, 'tcx>,
+        adt: &'tcx AdtDef,
+        substs: SubstsRef<'tcx>,
+    ) -> Option<HasMutInteriorBehindRefState> {
+        HasMutInterior::in_adt_inherently(cx, adt, substs)
+            .map(|()| HasMutInteriorBehindRefState::OnlyHasMutInterior)
     }
 
-    fn in_value_behind_ref(qualif: Option<HasMutInteriorBehindRefState>) -> Option<HasMutInteriorBehindRefState> {
+    fn in_value_behind_ref(
+        qualif: Option<HasMutInteriorBehindRefState>,
+    ) -> Option<HasMutInteriorBehindRefState> {
         qualif.map(|_| HasMutInteriorBehindRefState::Yes)
     }
 }
@@ -244,7 +272,11 @@ impl Qualif for NeedsDrop {
         ty.needs_drop(cx.tcx, cx.param_env).then_some(())
     }
 
-    fn in_adt_inherently(cx: &ConstCx<'_, 'tcx>, adt: &'tcx AdtDef, _: SubstsRef<'tcx>) -> Option<()> {
+    fn in_adt_inherently(
+        cx: &ConstCx<'_, 'tcx>,
+        adt: &'tcx AdtDef,
+        _: SubstsRef<'tcx>,
+    ) -> Option<()> {
         adt.has_dtor(cx.tcx).then_some(())
     }
 }
@@ -283,7 +315,11 @@ impl Qualif for CustomEq {
 
 /// Returns `true` if this `Rvalue` contains qualif `Q`.
 #[instrument(skip(cx, in_local), fields(Q=std::any::type_name::<Q>()))]
-pub(crate) fn in_rvalue<Q, F>(cx: &ConstCx<'_, 'tcx>, in_local: &mut F, rvalue: &Rvalue<'tcx>) -> Option<Q::Result>
+pub(crate) fn in_rvalue<Q, F>(
+    cx: &ConstCx<'_, 'tcx>,
+    in_local: &mut F,
+    rvalue: &Rvalue<'tcx>,
+) -> Option<Q::Result>
 where
     Q: Qualif,
     F: FnMut(Local) -> Option<Q::Result>,
@@ -342,7 +378,11 @@ where
 
 /// Returns `true` if this `Place` contains qualif `Q`.
 #[instrument(skip(cx, in_local), fields(Q=std::any::type_name::<Q>()))]
-pub(crate) fn in_place<Q, F>(cx: &ConstCx<'_, 'tcx>, in_local: &mut F, place: PlaceRef<'tcx>) -> Option<Q::Result>
+pub(crate) fn in_place<Q, F>(
+    cx: &ConstCx<'_, 'tcx>,
+    in_local: &mut F,
+    place: PlaceRef<'tcx>,
+) -> Option<Q::Result>
 where
     Q: Qualif,
     F: FnMut(Local) -> Option<Q::Result>,
@@ -353,7 +393,7 @@ where
         match proj_elem {
             ProjectionElem::Index(index) => {
                 result.join(&in_local(index));
-            },
+            }
 
             ProjectionElem::Deref
             | ProjectionElem::Field(_, _)
@@ -378,7 +418,11 @@ where
 
 /// Returns `true` if this `Operand` contains qualif `Q`.
 #[instrument(skip(cx, in_local), fields(Q=std::any::type_name::<Q>()))]
-pub(crate) fn in_operand<Q, F>(cx: &ConstCx<'_, 'tcx>, in_local: &mut F, operand: &Operand<'tcx>) -> Option<Q::Result>
+pub(crate) fn in_operand<Q, F>(
+    cx: &ConstCx<'_, 'tcx>,
+    in_local: &mut F,
+    operand: &Operand<'tcx>,
+) -> Option<Q::Result>
 where
     Q: Qualif,
     F: FnMut(Local) -> Option<Q::Result>,

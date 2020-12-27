@@ -139,18 +139,16 @@ where
     V: DebugWithContext<C> + Eq,
 {
     fn fmt_with(&self, ctxt: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_set().entries(self.iter_enumerated().map(|this| DebugWithAdapter { this, ctxt })).finish()
+        f.debug_set()
+            .entries(self.iter_enumerated().map(|this| DebugWithAdapter { this, ctxt }))
+            .finish()
     }
 
     fn fmt_diff_with(&self, old: &Self, ctxt: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         assert_eq!(self.len(), old.len());
 
         for (new, old) in self.iter_enumerated().zip(old.iter_enumerated()) {
-            write!(f, "{:?}", DebugDiffWithAdapter {
-                new,
-                old,
-                ctxt,
-            })?;
+            write!(f, "{:?}", DebugDiffWithAdapter { new, old, ctxt })?;
         }
 
         Ok(())
@@ -201,7 +199,8 @@ impl<T, U, C> DebugWithContext<C> for (T, U)
 where
     T: DebugWithContext<C>,
     U: DebugWithContext<C>,
-{}
+{
+}
 
 impl<C> DebugWithContext<C> for rustc_middle::mir::Local {}
 impl<C> DebugWithContext<C> for crate::dataflow::move_paths::InitIndex {}

@@ -7,9 +7,9 @@ use rustc_middle::mir::{self, BasicBlock, Location};
 
 use std::marker::PhantomData;
 
+use super::qualifs::QualifsPerLocal;
 use super::{qualifs, ConstCx, Qualif};
 use crate::dataflow::{self, JoinSemiLattice};
-use super::qualifs::QualifsPerLocal;
 
 /// A `Visitor` that propagates qualifs between locals. This defines the transfer function of
 /// `FlowSensitiveAnalysis`.
@@ -78,11 +78,8 @@ where
         // Though some qualifs merge the call arguments' qualifs into the result qualif.
         let mut args_qualif = None;
         for arg in args {
-            let arg = qualifs::in_operand::<Q, _>(
-                self.ccx,
-                &mut |l| self.qualifs_per_local.get(l),
-                arg,
-            );
+            let arg =
+                qualifs::in_operand::<Q, _>(self.ccx, &mut |l| self.qualifs_per_local.get(l), arg);
             args_qualif.join(&arg);
         }
 
@@ -120,11 +117,8 @@ where
         rvalue: &mir::Rvalue<'tcx>,
         location: Location,
     ) {
-        let qualif = qualifs::in_rvalue::<Q, _>(
-            self.ccx,
-            &mut |l| self.qualifs_per_local.get(l),
-            rvalue,
-        );
+        let qualif =
+            qualifs::in_rvalue::<Q, _>(self.ccx, &mut |l| self.qualifs_per_local.get(l), rvalue);
         if !place.is_indirect() {
             self.assign_qualif_direct(place, qualif);
         }
@@ -170,10 +164,7 @@ where
         FlowSensitiveAnalysis { ccx, _qualif: PhantomData }
     }
 
-    fn transfer_function(
-        &self,
-        state: &'a mut Q::Set,
-    ) -> TransferFunction<'a, 'mir, 'tcx, Q> {
+    fn transfer_function(&self, state: &'a mut Q::Set) -> TransferFunction<'a, 'mir, 'tcx, Q> {
         TransferFunction::<Q>::new(self.ccx, state)
     }
 }

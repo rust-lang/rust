@@ -21,12 +21,15 @@ use std::mem;
 use std::ops::Deref;
 
 use super::ops::{self, NonConstOp, Status};
-use super::qualifs::{self, CustomEq, HasMutInterior, NeedsDrop, QualifsPerLocal, HasMutInteriorBehindRef, HasMutInteriorBehindRefState};
+use super::qualifs::{
+    self, CustomEq, HasMutInterior, HasMutInteriorBehindRef, HasMutInteriorBehindRefState,
+    NeedsDrop, QualifsPerLocal,
+};
 use super::resolver::FlowSensitiveAnalysis;
 use super::{is_lang_panic_fn, ConstCx, Qualif};
 use crate::const_eval::is_unstable_const_fn;
 use crate::dataflow::impls::MaybeMutBorrowedLocals;
-use crate::dataflow::{self, Analysis, lattice::JoinSemiLattice};
+use crate::dataflow::{self, lattice::JoinSemiLattice, Analysis};
 
 // We are using `MaybeMutBorrowedLocals` as a proxy for whether an item may have been mutated
 // through a pointer prior to the given point. This is okay even though `MaybeMutBorrowedLocals`
@@ -290,7 +293,9 @@ impl Validator<'mir, 'tcx> {
 
         if let hir::ConstContext::Const = self.const_kind() {
             // Ensure that we do not produce references with interior mutability behind them
-            if let Some(HasMutInteriorBehindRefState::Yes) = self.qualifs.return_place_has_mut_interior_behind_ref(self.ccx) {
+            if let Some(HasMutInteriorBehindRefState::Yes) =
+                self.qualifs.return_place_has_mut_interior_behind_ref(self.ccx)
+            {
                 // FIXME: Trace the source of the `Yes` in dataflow
                 self.span = body.local_decls[RETURN_PLACE].source_info.span;
                 self.check_op(ops::CellBorrow)

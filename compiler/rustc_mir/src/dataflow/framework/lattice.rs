@@ -107,8 +107,7 @@ impl JoinSemiLattice for () {
 impl<T: JoinSemiLattice + Clone> JoinSemiLattice for Option<T> {
     fn join(&mut self, other: &Self) -> bool {
         match (self, other) {
-            (None, None) |
-            (Some(_), None) => false,
+            (None, None) | (Some(_), None) => false,
             (this @ None, Some(val)) => {
                 *this = Some(val.clone());
                 true
