@@ -782,15 +782,13 @@ public:
     storeInstructionInCache(inst->getParent(), inst, cache);
   }
 
-  std::map<Instruction *, std::map<BasicBlock *, Instruction *>> lcssaFixes;
-  Instruction *fixLCSSA(Instruction *inst, const IRBuilder<> &BuilderM) {
+  std::map<Instruction *, std::map<BasicBlock *, Value *>> lcssaFixes;
+  Value *fixLCSSA(Instruction *inst, BasicBlock *forwardBlock) {
     assert(inst->getName() != "<badref>");
     LoopContext lc;
     bool inLoop = getContext(inst->getParent(), lc);
     if (inLoop) {
       bool isChildLoop = false;
-
-      BasicBlock *forwardBlock = BuilderM.GetInsertBlock();
 
       if (!isOriginalBlock(*forwardBlock)) {
         forwardBlock = originalForReverseBlock(*forwardBlock);
@@ -808,6 +806,7 @@ public:
       if (!isChildLoop) {
         // llvm::errs() << "manually performing lcssa for instruction" << *inst
         // << " in block " << BuilderM.GetInsertBlock()->getName() << "\n";
+        /*
         if (!DT.dominates(inst, forwardBlock)) {
           llvm::errs() << *this->newFunc->getParent() << "\n";
           llvm::errs() << *this->newFunc << "\n";
@@ -816,9 +815,11 @@ public:
           llvm::errs() << *inst << "\n";
         }
         assert(DT.dominates(inst, forwardBlock));
+        */
 
         for (auto pair : lcssaFixes[inst]) {
-          if (DT.dominates(pair.first, forwardBlock)) {
+          if (pair.first == forwardBlock ||
+              DT.dominates(pair.first, forwardBlock)) {
             return pair.second;
           }
         }
@@ -831,8 +832,24 @@ public:
         IRBuilder<> lcssa(&toplace->front());
         auto lcssaPHI = lcssa.CreatePHI(inst->getType(), 1,
                                         inst->getName() + "!manual_lcssa");
-        for (auto pred : predecessors(toplace))
-          lcssaPHI->addIncoming(inst, pred);
+        bool allUndef = true;
+        lcssaFixes[inst][toplace] = UndefValue::get(inst->getType());
+        for (auto pred : predecessors(toplace)) {
+          Value *val;
+          if (inst->getParent() == pred || DT.dominates(inst, pred)) {
+            val = inst;
+          } else {
+            val = fixLCSSA(inst, pred);
+          }
+          if (!isa<UndefValue>(val))
+            allUndef = false;
+          lcssaPHI->addIncoming(val, pred);
+        }
+
+        if (allUndef) {
+          lcssaPHI->eraseFromParent();
+          return lcssaFixes[inst][toplace] = UndefValue::get(inst->getType());
+        }
 
         lcssaFixes[inst][toplace] = lcssaPHI;
         return lcssaPHI;

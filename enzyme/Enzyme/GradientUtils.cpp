@@ -1653,7 +1653,8 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
   Instruction *prelcssaInst = inst;
 
   assert(inst->getName() != "<badref>");
-  val = inst = fixLCSSA(inst, BuilderM);
+  val = fixLCSSA(inst, BuilderM.GetInsertBlock());
+  inst = cast<Instruction>(val);
 
   assert(!this->isOriginalBlock(*BuilderM.GetInsertBlock()));
 
