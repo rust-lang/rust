@@ -263,13 +263,13 @@ fn opts() -> Vec<RustcOptGroup> {
                 "sort modules by where they appear in the program, rather than alphabetically",
             )
         }),
-        unstable("default-theme", |o| {
+        stable("default-theme", |o| {
             o.optopt(
                 "",
                 "default-theme",
                 "Set the default theme. THEME should be the theme name, generally lowercase. \
                  If an unknown default theme is specified, the builtin default is used. \
-                 The set of themes, and the rustdoc built-in default is not stable.",
+                 The set of themes, and the rustdoc built-in default, are not stable.",
                 "THEME",
             )
         }),
