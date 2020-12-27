@@ -136,6 +136,7 @@ impl Expander {
                         &crate::proc_macro::bridge::server::SameThread,
                         crate::rustc_server::Rustc::default(),
                         parsed_body,
+                        false,
                     );
                     return res.map(|it| it.subtree);
                 }
@@ -144,6 +145,7 @@ impl Expander {
                         &crate::proc_macro::bridge::server::SameThread,
                         crate::rustc_server::Rustc::default(),
                         parsed_body,
+                        false,
                     );
                     return res.map(|it| it.subtree);
                 }
@@ -153,6 +155,7 @@ impl Expander {
                         crate::rustc_server::Rustc::default(),
                         parsed_attributes,
                         parsed_body,
+                        false,
                     );
                     return res.map(|it| it.subtree);
                 }
