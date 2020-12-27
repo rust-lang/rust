@@ -439,7 +439,10 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
     }
 
     pub fn make_indirect(&mut self) {
-        assert_eq!(self.mode, PassMode::Direct(ArgAttributes::new()));
+        match self.mode {
+            PassMode::Direct(_) | PassMode::Pair(_, _) => {}
+            _ => panic!("Tried to make {:?} indirect", self.mode),
+        }
 
         // Start with fresh attributes for the pointer.
         let mut attrs = ArgAttributes::new();
@@ -486,7 +489,10 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
     }
 
     pub fn cast_to<T: Into<CastTarget>>(&mut self, target: T) {
-        assert_eq!(self.mode, PassMode::Direct(ArgAttributes::new()));
+        match self.mode {
+            PassMode::Direct(_) | PassMode::Pair(_, _) => {}
+            _ => panic!("Tried to cast {:?} to {:?}", self.mode, target.into()),
+        }
         self.mode = PassMode::Cast(target.into());
     }
 

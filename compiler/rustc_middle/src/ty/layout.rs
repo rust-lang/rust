@@ -2794,22 +2794,19 @@ where
                 }
             }
 
-            // FIXME(eddyb) other ABIs don't have logic for scalar pairs.
-            if !is_return && rust_abi {
-                if let Abi::ScalarPair(ref a, ref b) = arg.layout.abi {
-                    let mut a_attrs = ArgAttributes::new();
-                    let mut b_attrs = ArgAttributes::new();
-                    adjust_for_rust_scalar(&mut a_attrs, a, arg.layout, Size::ZERO, false);
-                    adjust_for_rust_scalar(
-                        &mut b_attrs,
-                        b,
-                        arg.layout,
-                        a.value.size(cx).align_to(b.value.align(cx).abi),
-                        false,
-                    );
-                    arg.mode = PassMode::Pair(a_attrs, b_attrs);
-                    return arg;
-                }
+            if let Abi::ScalarPair(ref a, ref b) = arg.layout.abi {
+                let mut a_attrs = ArgAttributes::new();
+                let mut b_attrs = ArgAttributes::new();
+                adjust_for_rust_scalar(&mut a_attrs, a, arg.layout, Size::ZERO, is_return);
+                adjust_for_rust_scalar(
+                    &mut b_attrs,
+                    b,
+                    arg.layout,
+                    a.value.size(cx).align_to(b.value.align(cx).abi),
+                    is_return,
+                );
+                arg.mode = PassMode::Pair(a_attrs, b_attrs);
+                return arg;
             }
 
             if let Abi::Scalar(ref scalar) = arg.layout.abi {
