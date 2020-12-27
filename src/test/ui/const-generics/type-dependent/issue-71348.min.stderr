@@ -1,5 +1,5 @@
 error: `&'static str` is forbidden as the type of a const generic parameter
-  --> $DIR/issue-71348.rs:11:24
+  --> $DIR/issue-71348.rs:10:24
    |
 LL | trait Get<'a, const N: &'static str> {
    |                        ^^^^^^^^^^^^
@@ -8,7 +8,7 @@ LL | trait Get<'a, const N: &'static str> {
    = help: more complex types are supported with `#[feature(const_generics)]`
 
 error: `&'static str` is forbidden as the type of a const generic parameter
-  --> $DIR/issue-71348.rs:19:25
+  --> $DIR/issue-71348.rs:18:25
    |
 LL |     fn ask<'a, const N: &'static str>(&'a self) -> &'a <Self as Get<N>>::Target
    |                         ^^^^^^^^^^^^

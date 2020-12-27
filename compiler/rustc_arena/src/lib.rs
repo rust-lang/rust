@@ -16,7 +16,7 @@
 #![feature(new_uninit)]
 #![feature(maybe_uninit_slice)]
 #![feature(array_value_iter)]
-#![feature(min_const_generics)]
+#![cfg_attr(bootstrap, feature(min_const_generics))]
 #![feature(min_specialization)]
 #![cfg_attr(test, feature(test))]
 

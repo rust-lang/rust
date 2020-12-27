@@ -1,5 +1,5 @@
 error: `&'static str` is forbidden as the type of a const generic parameter
-  --> $DIR/issue-66596-impl-trait-for-str-const-arg.rs:9:25
+  --> $DIR/issue-66596-impl-trait-for-str-const-arg.rs:8:25
    |
 LL | trait Trait<const NAME: &'static str> {
    |                         ^^^^^^^^^^^^

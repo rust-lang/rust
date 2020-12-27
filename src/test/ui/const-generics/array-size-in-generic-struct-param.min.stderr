@@ -1,5 +1,5 @@
 error: generic parameters may not be used in const operations
-  --> $DIR/array-size-in-generic-struct-param.rs:9:48
+  --> $DIR/array-size-in-generic-struct-param.rs:8:48
    |
 LL | struct ArithArrayLen<const N: usize>([u32; 0 + N]);
    |                                                ^ cannot perform const operation using `N`
@@ -8,7 +8,7 @@ LL | struct ArithArrayLen<const N: usize>([u32; 0 + N]);
    = help: use `#![feature(const_generics)]` and `#![feature(const_evaluatable_checked)]` to allow generic const expressions
 
 error: generic parameters may not be used in const operations
-  --> $DIR/array-size-in-generic-struct-param.rs:20:15
+  --> $DIR/array-size-in-generic-struct-param.rs:19:15
    |
 LL |     arr: [u8; CFG.arr_size],
    |               ^^^ cannot perform const operation using `CFG`
@@ -17,7 +17,7 @@ LL |     arr: [u8; CFG.arr_size],
    = help: use `#![feature(const_generics)]` and `#![feature(const_evaluatable_checked)]` to allow generic const expressions
 
 error: `Config` is forbidden as the type of a const generic parameter
-  --> $DIR/array-size-in-generic-struct-param.rs:18:21
+  --> $DIR/array-size-in-generic-struct-param.rs:17:21
    |
 LL | struct B<const CFG: Config> {
    |                     ^^^^^^

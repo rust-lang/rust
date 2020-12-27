@@ -1,5 +1,5 @@
 error[E0747]: type provided when a constant was expected
-  --> $DIR/const-param-shadowing.rs:5:34
+  --> $DIR/const-param-shadowing.rs:3:34
    |
 LL | fn test<const N: usize>() -> Foo<N> {
    |                                  ^

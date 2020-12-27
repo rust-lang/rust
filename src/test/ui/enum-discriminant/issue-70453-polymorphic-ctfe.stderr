@@ -1,12 +1,11 @@
-warning: cannot use constants which depend on generic parameters in types
-  --> $DIR/issue-70453-polymorphic-ctfe.rs:10:15
+error: generic parameters may not be used in const operations
+  --> $DIR/issue-70453-polymorphic-ctfe.rs:9:41
    |
 LL |     Some(T) = core::mem::size_of::<*mut T>(),
-   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                         ^ cannot perform const operation using `T`
    |
-   = note: `#[warn(const_evaluatable_unchecked)]` on by default
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #76200 <https://github.com/rust-lang/rust/issues/76200>
+   = note: type parameters may not be used in const expressions
+   = help: use `#![feature(const_generics)]` and `#![feature(const_evaluatable_checked)]` to allow generic const expressions
 
-warning: 1 warning emitted
+error: aborting due to previous error
 

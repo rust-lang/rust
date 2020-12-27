@@ -1,5 +1,5 @@
 error: generic parameters may not be used in const operations
-  --> $DIR/issue-72819-generic-in-const-eval.rs:9:17
+  --> $DIR/issue-72819-generic-in-const-eval.rs:8:17
    |
 LL | where Assert::<{N < usize::MAX / 2}>: IsTrue,
    |                 ^ cannot perform const operation using `N`

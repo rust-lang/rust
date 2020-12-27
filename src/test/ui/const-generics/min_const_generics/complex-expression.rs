@@ -1,5 +1,3 @@
-#![feature(min_const_generics)]
-
 use std::mem::size_of;
 
 fn test<const N: usize>() {}

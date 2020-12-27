@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/generic-param-mismatch.rs:7:5
+  --> $DIR/generic-param-mismatch.rs:6:5
    |
 LL | fn test<const N: usize, const M: usize>() -> [u8; M] {
    |                                              ------- expected `[u8; M]` because of return type

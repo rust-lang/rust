@@ -273,6 +273,8 @@ declare_features! (
     /// Allows patterns with concurrent by-move and by-ref bindings.
     /// For example, you can write `Foo(a, ref b)` where `a` is by-move and `b` is by-ref.
     (accepted, move_ref_pattern, "1.48.0", Some(68354), None),
+    /// The smallest useful subset of `const_generics`.
+    (accepted, min_const_generics, "1.51.0", Some(74878), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: accepted features

@@ -1,5 +1,5 @@
 error: constant expression depends on a generic parameter
-  --> $DIR/issue-72819-generic-in-const-eval.rs:9:39
+  --> $DIR/issue-72819-generic-in-const-eval.rs:8:39
    |
 LL | where Assert::<{N < usize::MAX / 2}>: IsTrue,
    |                                       ^^^^^^

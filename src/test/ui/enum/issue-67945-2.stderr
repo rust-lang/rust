@@ -1,25 +1,20 @@
-error[E0308]: mismatched types
-  --> $DIR/issue-67945-2.rs:4:11
+error: generic parameters may not be used in const operations
+  --> $DIR/issue-67945-2.rs:4:14
    |
-LL | enum Bug<S> {
-   |          - this type parameter
 LL |     Var = 0: S,
-   |           ^ expected type parameter `S`, found integer
+   |              ^ cannot perform const operation using `S`
    |
-   = note: expected type parameter `S`
-                        found type `{integer}`
+   = note: type parameters may not be used in const expressions
+   = help: use `#![feature(const_generics)]` and `#![feature(const_evaluatable_checked)]` to allow generic const expressions
 
-error[E0308]: mismatched types
-  --> $DIR/issue-67945-2.rs:4:11
+error[E0392]: parameter `S` is never used
+  --> $DIR/issue-67945-2.rs:3:10
    |
 LL | enum Bug<S> {
-   |          - this type parameter
-LL |     Var = 0: S,
-   |           ^^^^ expected `isize`, found type parameter `S`
+   |          ^ unused parameter
    |
-   = note:        expected type `isize`
-           found type parameter `S`
+   = help: consider removing `S`, referring to it in a field, or using a marker such as `PhantomData`
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0308`.
+For more information about this error, try `rustc --explain E0392`.

@@ -1,5 +1,5 @@
 error: generic `Self` types are currently not permitted in anonymous constants
-  --> $DIR/issue-67945-3.rs:10:27
+  --> $DIR/issue-67945-3.rs:9:27
    |
 LL |         let x: Option<Box<Self>> = None;
    |                           ^^^^

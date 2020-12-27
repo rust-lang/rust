@@ -1,5 +1,3 @@
-#![feature(min_const_generics)]
-
 struct Example<const N: usize>;
 
 macro_rules! external_macro {

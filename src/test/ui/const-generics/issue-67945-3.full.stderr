@@ -1,5 +1,5 @@
 error: constant expression depends on a generic parameter
-  --> $DIR/issue-67945-3.rs:8:8
+  --> $DIR/issue-67945-3.rs:7:8
    |
 LL |       A: [(); {
    |  ________^

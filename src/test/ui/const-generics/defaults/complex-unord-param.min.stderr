@@ -1,5 +1,5 @@
 error: type parameters must be declared prior to const parameters
-  --> $DIR/complex-unord-param.rs:9:41
+  --> $DIR/complex-unord-param.rs:8:41
    |
 LL | struct NestedArrays<'a, const N: usize, A: 'a, const M: usize, T:'a =u32> {
    |                    ---------------------^----------------------^--------- help: reorder the parameters: lifetimes, then types, then consts: `<'a, A: 'a, T: 'a, const N: usize, const M: usize>`

@@ -1,7 +1,5 @@
 // ignore-tidy-linelength
 // edition:2018
-#![feature(min_const_generics)]
-
 // @has async_fn/fn.foo.html '//pre[@class="rust fn"]' 'pub async fn foo() -> Option<Foo>'
 pub async fn foo() -> Option<Foo> {
     None

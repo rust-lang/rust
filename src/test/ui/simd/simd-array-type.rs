@@ -3,7 +3,7 @@
 
 // pretty-expanded FIXME #23616
 
-#![feature(repr_simd, platform_intrinsics, min_const_generics)]
+#![feature(repr_simd, platform_intrinsics)]
 
 #[repr(simd)]
 #[derive(Copy, Clone)]
