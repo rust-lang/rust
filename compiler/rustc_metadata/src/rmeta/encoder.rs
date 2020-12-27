@@ -785,6 +785,43 @@ fn should_encode_stability(def_kind: DefKind) -> bool {
     }
 }
 
+/// Whether we should encode MIR.
+///
+/// Return a pair, resp. for CTFE and for LLVM.
+fn should_encode_mir(tcx: TyCtxt<'_>, def_id: LocalDefId) -> (bool, bool) {
+    match tcx.def_kind(def_id) {
+        // Constructors
+        DefKind::Ctor(_, _) => {
+            let mir_opt_base = tcx.sess.opts.output_types.should_codegen()
+                || tcx.sess.opts.debugging_opts.always_encode_mir;
+            (true, mir_opt_base)
+        }
+        // Constants
+        DefKind::AnonConst | DefKind::AssocConst | DefKind::Static | DefKind::Const => {
+            (true, false)
+        }
+        // Closures and functions
+        DefKind::Closure | DefKind::AssocFn | DefKind::Fn => {
+            let generics = tcx.generics_of(def_id);
+            let needs_inline = (generics.requires_monomorphization(tcx)
+                || tcx.codegen_fn_attrs(def_id).requests_inline())
+                && tcx.sess.opts.output_types.should_codegen();
+            // Only check the presence of the `const` modifier.
+            let is_const_fn = tcx.is_const_fn_raw(def_id.to_def_id());
+            let always_encode_mir = tcx.sess.opts.debugging_opts.always_encode_mir;
+            (is_const_fn, needs_inline || is_const_fn || always_encode_mir)
+        }
+        // Generators require optimized MIR to compute layout.
+        DefKind::Generator => {
+            // Only check the presence of the `const` modifier.
+            let is_const_fn = tcx.is_const_fn_raw(def_id.to_def_id());
+            (is_const_fn, true)
+        }
+        // The others don't have MIR.
+        _ => (false, false),
+    }
+}
+
 impl EncodeContext<'a, 'tcx> {
     fn encode_def_ids(&mut self) {
         if self.is_proc_macro {
