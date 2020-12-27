@@ -1,7 +1,10 @@
 #![cfg_attr(feature = "deny-warnings", deny(warnings))]
 
 use clap::{App, Arg, ArgMatches, SubCommand};
-use clippy_dev::{bless, crater, fmt, new_lint, ra_setup, serve, stderr_length_check, update_lints};
+use clippy_dev::{bless, fmt, new_lint, ra_setup, serve, stderr_length_check, update_lints};
+
+#[cfg(feature = "crater")]
+use clippy_dev::crater;
 
 fn main() {
     let matches = get_clap_config();
@@ -10,6 +13,7 @@ fn main() {
         ("bless", Some(matches)) => {
             bless::bless(matches.is_present("ignore-timestamp"));
         },
+        #[cfg(feature = "crater")]
         ("crater", Some(matches)) => {
             crater::run(&matches);
         },
@@ -49,25 +53,25 @@ fn main() {
 }
 
 fn get_clap_config<'a>() -> ArgMatches<'a> {
-    App::new("Clippy developer tooling")
-        .subcommand(
+    #[cfg(feature = "crater")]
+    let crater_sbcmd = SubCommand::with_name("crater")
+        .about("run clippy on a set of crates and check output")
+        .arg(
+            Arg::with_name("only")
+                .takes_value(true)
+                .value_name("CRATE")
+                .long("only")
+                .help("only process a single crate of the list"),
+        );
+
+    let app = App::new("Clippy developer tooling")
+            .subcommand(
             SubCommand::with_name("bless")
                 .about("bless the test output changes")
                 .arg(
                     Arg::with_name("ignore-timestamp")
                         .long("ignore-timestamp")
                         .help("Include files updated before clippy was built"),
-                ),
-        )
-        .subcommand(
-            SubCommand::with_name("crater")
-                .about("run clippy on a set of crates and check output")
-                .arg(
-                    Arg::with_name("only")
-                        .takes_value(true)
-                        .value_name("CRATE")
-                        .long("only")
-                        .help("only process a single crate of the list"),
                 ),
         )
         .subcommand(
@@ -177,6 +181,10 @@ fn get_clap_config<'a>() -> ArgMatches<'a> {
                         .validator_os(serve::validate_port),
                 )
                 .arg(Arg::with_name("lint").help("Which lint's page to load initially (optional)")),
-        )
-        .get_matches()
+        );
+
+    #[cfg(feature = "crater")]
+    let app = app.subcommand(crater_sbcmd);
+
+    app.get_matches()
 }

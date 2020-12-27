@@ -4,6 +4,7 @@
 // When a new lint is introduced, we can search the results for new warnings and check for false
 // positives.
 
+#![cfg(feature = "crater")]
 #![allow(clippy::filter_map)]
 
 use crate::clippy_project_root;
@@ -218,9 +219,20 @@ pub fn run(clap_config: &ArgMatches) {
     // download and extract the crates, then run clippy on them and collect clippys warnings
     // flatten into one big list of warnings
 
+    let crates = read_crates();
+
     let clippy_warnings: Vec<ClippyWarning> = if let Some(only_one_crate) = clap_config.value_of("only") {
-        // only check a single
-        read_crates()
+        // if we don't have the specified crated in the .toml, throw an error
+        if !crates.iter().any(|krate| krate.name == only_one_crate) {
+            eprintln!(
+                "ERROR: could not find crate '{}' in clippy_dev/crater_crates.toml",
+                only_one_crate
+            );
+            std::process::exit(1);
+        }
+
+        // only check a single crate that was passed via cmdline
+        crates
             .into_iter()
             .map(|krate| krate.download_and_extract())
             .filter(|krate| krate.name == only_one_crate)
@@ -228,7 +240,8 @@ pub fn run(clap_config: &ArgMatches) {
             .flatten()
             .collect()
     } else {
-        read_crates()
+        // check all crates (default)
+        crates
             .into_iter()
             .map(|krate| krate.download_and_extract())
             .map(|krate| krate.run_clippy_lints(&cargo_clippy_path))
