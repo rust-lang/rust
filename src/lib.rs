@@ -5,7 +5,8 @@
     associated_type_bounds,
     never_type,
     try_blocks,
-    hash_drain_filter
+    hash_drain_filter,
+    str_split_once
 )]
 #![warn(rust_2018_idioms)]
 #![warn(unused_lifetimes)]
@@ -34,6 +35,7 @@ extern crate rustc_target;
 extern crate rustc_driver;
 
 use std::any::Any;
+use std::str::FromStr;
 
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_codegen_ssa::CodegenResults;
@@ -141,8 +143,8 @@ struct CodegenCx<'tcx, M: Module> {
 }
 
 impl<'tcx, M: Module> CodegenCx<'tcx, M> {
-    fn new(tcx: TyCtxt<'tcx>, module: M, debug_info: bool) -> Self {
-        let unwind_context = UnwindContext::new(tcx, module.isa());
+    fn new(tcx: TyCtxt<'tcx>, module: M, debug_info: bool, pic_eh_frame: bool) -> Self {
+        let unwind_context = UnwindContext::new(tcx, module.isa(), pic_eh_frame);
         let debug_context = if debug_info {
             Some(DebugContext::new(tcx, module.isa()))
         } else {
@@ -172,12 +174,55 @@ impl<'tcx, M: Module> CodegenCx<'tcx, M> {
 }
 
 #[derive(Copy, Clone, Debug)]
+pub enum CodegenMode {
+    Aot,
+    Jit,
+    JitLazy,
+}
+
+impl Default for CodegenMode {
+    fn default() -> Self {
+        CodegenMode::Aot
+    }
+}
+
+impl FromStr for CodegenMode {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "aot" => Ok(CodegenMode::Aot),
+            "jit" => Ok(CodegenMode::Jit),
+            "jit-lazy" => Ok(CodegenMode::JitLazy),
+            _ => Err(format!("Unknown codegen mode `{}`", s)),
+        }
+    }
+}
+
+#[derive(Copy, Clone, Debug, Default)]
 pub struct BackendConfig {
-    pub use_jit: bool,
+    pub codegen_mode: CodegenMode,
+}
+
+impl BackendConfig {
+    fn from_opts(opts: &[String]) -> Result<Self, String> {
+        let mut config = BackendConfig::default();
+        for opt in opts {
+            if let Some((name, value)) = opt.split_once('=') {
+                match name {
+                    "mode" => config.codegen_mode = value.parse()?,
+                    _ => return Err(format!("Unknown option `{}`", name)),
+                }
+            } else {
+                return Err(format!("Invalid option `{}`", opt));
+            }
+        }
+        Ok(config)
+    }
 }
 
 pub struct CraneliftCodegenBackend {
-    pub config: BackendConfig,
+    pub config: Option<BackendConfig>,
 }
 
 impl CodegenBackend for CraneliftCodegenBackend {
@@ -204,7 +249,13 @@ impl CodegenBackend for CraneliftCodegenBackend {
         metadata: EncodedMetadata,
         need_metadata_module: bool,
     ) -> Box<dyn Any> {
-        let res = driver::codegen_crate(tcx, metadata, need_metadata_module, self.config);
+        let config = if let Some(config) = self.config {
+            config
+        } else {
+            BackendConfig::from_opts(&tcx.sess.opts.cg.llvm_args)
+                .unwrap_or_else(|err| tcx.sess.fatal(&err))
+        };
+        let res = driver::codegen_crate(tcx, metadata, need_metadata_module, config);
 
         rustc_symbol_mangling::test::report_symbol_names(tcx);
 
@@ -250,17 +301,13 @@ fn target_triple(sess: &Session) -> target_lexicon::Triple {
     sess.target.llvm_target.parse().unwrap()
 }
 
-fn build_isa(sess: &Session, enable_pic: bool) -> Box<dyn isa::TargetIsa + 'static> {
+fn build_isa(sess: &Session) -> Box<dyn isa::TargetIsa + 'static> {
     use target_lexicon::BinaryFormat;
 
     let target_triple = crate::target_triple(sess);
 
     let mut flags_builder = settings::builder();
-    if enable_pic {
-        flags_builder.enable("is_pic").unwrap();
-    } else {
-        flags_builder.set("is_pic", "false").unwrap();
-    }
+    flags_builder.enable("is_pic").unwrap();
     flags_builder.set("enable_probestack", "false").unwrap(); // __cranelift_probestack is not provided
     flags_builder
         .set(
@@ -283,8 +330,6 @@ fn build_isa(sess: &Session, enable_pic: bool) -> Box<dyn isa::TargetIsa + 'stat
 
     flags_builder.set("enable_simd", "true").unwrap();
 
-    // FIXME(CraneStation/cranelift#732) fix LICM in presence of jump tables
-    /*
     use rustc_session::config::OptLevel;
     match sess.opts.optimize {
         OptLevel::No => {
@@ -297,7 +342,7 @@ fn build_isa(sess: &Session, enable_pic: bool) -> Box<dyn isa::TargetIsa + 'stat
         OptLevel::Size | OptLevel::SizeMin => {
             sess.warn("Optimizing for size is not supported. Just ignoring the request");
         }
-    }*/
+    }
 
     let flags = settings::Flags::new(flags_builder);
 
@@ -311,7 +356,5 @@ fn build_isa(sess: &Session, enable_pic: bool) -> Box<dyn isa::TargetIsa + 'stat
 /// This is the entrypoint for a hot plugged rustc_codegen_cranelift
 #[no_mangle]
 pub fn __rustc_codegen_backend() -> Box<dyn CodegenBackend> {
-    Box::new(CraneliftCodegenBackend {
-        config: BackendConfig { use_jit: false },
-    })
+    Box::new(CraneliftCodegenBackend { config: None })
 }

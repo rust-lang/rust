@@ -74,10 +74,7 @@ impl WriterRelocate {
 
     /// Perform the collected relocations to be usable for JIT usage.
     #[cfg(feature = "jit")]
-    pub(super) fn relocate_for_jit(
-        mut self,
-        jit_module: &cranelift_simplejit::SimpleJITModule,
-    ) -> Vec<u8> {
+    pub(super) fn relocate_for_jit(mut self, jit_module: &cranelift_jit::JITModule) -> Vec<u8> {
         use std::convert::TryInto;
 
         for reloc in self.relocs.drain(..) {
