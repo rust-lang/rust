@@ -209,8 +209,28 @@ impl NonConstOp for LiveDrop {
 }
 
 #[derive(Debug)]
+pub struct CellBorrowBehindRef;
+impl NonConstOp for CellBorrowBehindRef {
+    fn status_in_item(&self, _: &ConstCx<'_, '_>) -> Status {
+        Status::Unstable(sym::const_refs_to_cell)
+    }
+    fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
+        feature_err(
+            &ccx.tcx.sess.parse_sess,
+            sym::const_refs_to_cell,
+            span,
+            "cannot borrow here, since the borrowed element may contain interior mutability",
+        )
+    }
+}
+
+#[derive(Debug)]
 pub struct CellBorrow;
 impl NonConstOp for CellBorrow {
+    fn importance(&self) -> DiagnosticImportance {
+        // The problematic cases will already emit a `CellBorrowBehindRef`
+        DiagnosticImportance::Secondary
+    }
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
         struct_span_err!(
             ccx.tcx.sess,

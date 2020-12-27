@@ -3,6 +3,7 @@
 use rustc_errors::{struct_span_err, Applicability, Diagnostic, ErrorReported};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, HirId, LangItem};
+use rustc_index::bit_set::BitSet;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::{ImplSource, Obligation, ObligationCause};
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
@@ -188,6 +189,9 @@ pub struct Validator<'mir, 'tcx> {
     /// The span of the current statement.
     span: Span,
 
+    /// A set that stores for each local whether it has a `StorageDead` for it somewhere.
+    local_has_storage_dead: Option<BitSet<Local>>,
+
     error_emitted: Option<ErrorReported>,
     secondary_errors: Vec<Diagnostic>,
 }
@@ -206,6 +210,7 @@ impl Validator<'mir, 'tcx> {
             span: ccx.body.span,
             ccx,
             qualifs: Default::default(),
+            local_has_storage_dead: None,
             error_emitted: None,
             secondary_errors: Vec::new(),
         }
@@ -280,6 +285,27 @@ impl Validator<'mir, 'tcx> {
         } else {
             assert!(self.tcx.sess.has_errors());
         }
+    }
+
+    fn local_has_storage_dead(&mut self, local: Local) -> bool {
+        let ccx = self.ccx;
+        self.local_has_storage_dead
+            .get_or_insert_with(|| {
+                struct StorageDeads {
+                    locals: BitSet<Local>,
+                }
+                impl Visitor<'tcx> for StorageDeads {
+                    fn visit_statement(&mut self, stmt: &Statement<'tcx>, _: Location) {
+                        if let StatementKind::StorageDead(l) = stmt.kind {
+                            self.locals.insert(l);
+                        }
+                    }
+                }
+                let mut v = StorageDeads { locals: BitSet::new_empty(ccx.body.local_decls.len()) };
+                v.visit_body(ccx.body);
+                v.locals
+            })
+            .contains(local)
     }
 
     pub fn qualifs_in_return_place(&mut self) -> ConstQualifs {
@@ -556,7 +582,13 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
                 );
 
                 if borrowed_place_has_mut_interior {
-                    self.check_op(ops::CellBorrow);
+                    // Locals without StorageDead follow the "trailing expression" rule, meaning
+                    // they are essentially anonymous static items themselves.
+                    if self.local_has_storage_dead(place.local) {
+                        self.check_op(ops::CellBorrowBehindRef);
+                    } else {
+                        self.check_op(ops::CellBorrow);
+                    }
                 }
             }
 

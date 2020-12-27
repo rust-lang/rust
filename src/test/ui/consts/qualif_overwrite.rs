@@ -1,3 +1,5 @@
+#![feature(const_refs_to_cell)]
+
 use std::cell::Cell;
 
 // this is overly conservative. The reset to `None` should clear `a` of all qualifications
@@ -7,7 +9,7 @@ use std::cell::Cell;
 const FOO: &Option<Cell<usize>> = {
     let mut a = Some(Cell::new(0));
     a = None; // sets `qualif(a)` to `qualif(a) | qualif(None)`
-    &{a} //~ ERROR cannot borrow a constant which may contain interior mutability
+    &{a}//~ ERROR cannot borrow a constant which may contain interior mutability
 };
 
 fn main() {}
