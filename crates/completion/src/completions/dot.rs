@@ -373,20 +373,20 @@ fn foo(a: A) {
     fn macro_expansion_resilient() {
         check(
             r#"
-macro_rules! dbg {
+macro_rules! d {
     () => {};
     ($val:expr) => {
         match $val { tmp => { tmp } }
     };
     // Trailing comma with single argument is ignored
-    ($val:expr,) => { $crate::dbg!($val) };
+    ($val:expr,) => { $crate::d!($val) };
     ($($val:expr),+ $(,)?) => {
-        ($($crate::dbg!($val)),+,)
+        ($($crate::d!($val)),+,)
     };
 }
 struct A { the_field: u32 }
 fn foo(a: A) {
-    dbg!(a.$0)
+    d!(a.$0)
 }
 "#,
             expect![[r#"
