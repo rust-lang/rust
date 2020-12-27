@@ -34,8 +34,11 @@
 
 class MustExitScalarEvolution : public llvm::ScalarEvolution {
 public:
+  llvm::SmallPtrSet<llvm::BasicBlock*, 4> GuaranteedUnreachable;
   using ScalarEvolution::ScalarEvolution;
 
+  MustExitScalarEvolution(llvm::Function& F, llvm::TargetLibraryInfo &TLI, llvm::AssumptionCache &AC,
+                          llvm::DominatorTree &DT, llvm::LoopInfo &LI);
   ScalarEvolution::ExitLimit computeExitLimit(const llvm::Loop *L,
                                               llvm::BasicBlock *ExitingBlock,
                                               bool AllowPredicates);

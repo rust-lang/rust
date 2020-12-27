@@ -26,6 +26,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "MustExitScalarEvolution.h"
+#include "FunctionUtils.h"
 #include "llvm/Analysis/LoopInfo.h"
 #include "llvm/Analysis/ScalarEvolution.h"
 
@@ -49,8 +50,31 @@ ScalarEvolution::ExitLimit MustExitScalarEvolution::computeExitLimitFromCond(
 }
 #endif
 
+MustExitScalarEvolution::MustExitScalarEvolution(llvm::Function& F, llvm::TargetLibraryInfo &TLI, llvm::AssumptionCache &AC,
+                          llvm::DominatorTree &DT, llvm::LoopInfo &LI) :
+  ScalarEvolution(F, TLI, AC, DT, LI), GuaranteedUnreachable(getGuaranteedUnreachable(&F)) {
+  }
+
 ScalarEvolution::ExitLimit MustExitScalarEvolution::computeExitLimit(
     const Loop *L, BasicBlock *ExitingBlock, bool AllowPredicates) {
+
+  SmallVector<BasicBlock *, 8> ExitingBlocks;
+  L->getExitingBlocks(ExitingBlocks);
+  for(auto &ExitingBlock : ExitingBlocks) {
+    BasicBlock *Exit = nullptr;
+    for (auto *SBB : successors(ExitingBlock)) {
+      if (!L->contains(SBB)) {
+        if (GuaranteedUnreachable.count(SBB)) continue;
+        Exit = SBB;
+        break;
+      }
+    }
+    if (!Exit) ExitingBlock = nullptr;
+  }
+  ExitingBlocks.erase(
+    std::remove(ExitingBlocks.begin(), ExitingBlocks.end(), nullptr),
+    ExitingBlocks.end());
+
   assert(L->contains(ExitingBlock) && "Exit count for non-loop block?");
   // If our exiting block does not dominate the latch, then its connection with
   // loop's exit limit may be far from trivial.
@@ -58,7 +82,7 @@ ScalarEvolution::ExitLimit MustExitScalarEvolution::computeExitLimit(
   if (!Latch || !DT.dominates(ExitingBlock, Latch))
     return getCouldNotCompute();
 
-  bool IsOnlyExit = (L->getExitingBlock() != nullptr);
+  bool IsOnlyExit = ExitingBlocks.size() == 1;
   auto *Term = ExitingBlock->getTerminator();
   if (BranchInst *BI = dyn_cast<BranchInst>(Term)) {
     assert(BI->isConditional() && "If unconditional, it can't be in loop!");
@@ -82,6 +106,7 @@ ScalarEvolution::ExitLimit MustExitScalarEvolution::computeExitLimit(
     BasicBlock *Exit = nullptr;
     for (auto *SBB : successors(ExitingBlock))
       if (!L->contains(SBB)) {
+        if (GuaranteedUnreachable.count(SBB)) continue;
         if (Exit) // Multiple exit successors.
           return getCouldNotCompute();
         Exit = SBB;

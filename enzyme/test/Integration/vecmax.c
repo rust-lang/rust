@@ -9,6 +9,7 @@
 
 #include <stdio.h>
 #include <math.h>
+#include <assert.h>
 
 #include "test_utils.h"
 
@@ -21,6 +22,7 @@ double reduce_max(double* vec, int size) {
   double ret = -INFINITY;
   for (int i = 0; i < size; i++) {
     ret = (ret > vec[i]) ? ret : vec[i];
+    if (i >= 6) assert(0 && "bad");
   }
   return ret;
 }

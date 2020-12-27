@@ -37,6 +37,7 @@
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Transforms/Utils/ValueMapper.h"
 
+#include "FunctionUtils.h"
 #include "MustExitScalarEvolution.h"
 
 /// Container for all loop information to synthesize gradients
