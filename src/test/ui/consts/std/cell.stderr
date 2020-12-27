@@ -1,15 +1,21 @@
 error[E0492]: cannot borrow a constant which may contain interior mutability, create a static instead
-  --> $DIR/cell.rs:5:35
+  --> $DIR/cell.rs:7:18
    |
-LL | static FOO: Wrap<*mut u32> = Wrap(Cell::new(42).as_ptr());
-   |                                   ^^^^^^^^^^^^^
+LL | const FOO_CONST: Wrap<*mut u32> = Wrap(Cell::new(42).as_ptr());
+   |                  ^^^^^^^^^^^^^^
 
 error[E0492]: cannot borrow a constant which may contain interior mutability, create a static instead
-  --> $DIR/cell.rs:14:24
+  --> $DIR/cell.rs:15:19
+   |
+LL | const FOO4_CONST: Wrap<*mut u32> = Wrap(FOO3_CONST.0.as_ptr());
+   |                   ^^^^^^^^^^^^^^
+
+error[E0492]: cannot borrow a constant which may contain interior mutability, create a static instead
+  --> $DIR/cell.rs:20:13
    |
 LL | const FOO2: *mut u32 = Cell::new(42).as_ptr();
-   |                        ^^^^^^^^^^^^^
+   |             ^^^^^^^^
 
-error: aborting due to 2 previous errors
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0492`.

@@ -1,8 +1,8 @@
 error[E0492]: cannot borrow a constant which may contain interior mutability, create a static instead
-  --> $DIR/qualif_overwrite_2.rs:8:5
+  --> $DIR/qualif_overwrite_2.rs:7:12
    |
-LL |     &{a.0}
-   |     ^^^^^^
+LL | const FOO: &Option<Cell<usize>> = {
+   |            ^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

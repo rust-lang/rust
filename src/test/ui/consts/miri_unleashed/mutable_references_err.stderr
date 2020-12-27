@@ -27,11 +27,21 @@ LL | const BLUNT: &mut i32 = &mut 42;
 warning: skipping const checks
    |
 help: skipping check that does not even have a feature gate
+  --> $DIR/mutable_references_err.rs:16:12
+   |
+LL | const MUH: Meh = Meh {
+   |            ^^^
+help: skipping check for `const_refs_to_cell` feature
   --> $DIR/mutable_references_err.rs:17:8
    |
 LL |     x: &UnsafeCell::new(42),
    |        ^^^^^^^^^^^^^^^^^^^^
 help: skipping check that does not even have a feature gate
+  --> $DIR/mutable_references_err.rs:26:15
+   |
+LL | const SNEAKY: &dyn Sync = &Synced { x: UnsafeCell::new(42) };
+   |               ^^^^^^^^^
+help: skipping check for `const_refs_to_cell` feature
   --> $DIR/mutable_references_err.rs:26:27
    |
 LL | const SNEAKY: &dyn Sync = &Synced { x: UnsafeCell::new(42) };

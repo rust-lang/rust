@@ -19,6 +19,11 @@ LL |     READ_MUT;
 warning: skipping const checks
    |
 help: skipping check that does not even have a feature gate
+  --> $DIR/const_refers_to_static.rs:11:28
+   |
+LL | const MUTATE_INTERIOR_MUT: usize = {
+   |                            ^^^^^
+help: skipping check that does not even have a feature gate
   --> $DIR/const_refers_to_static.rs:13:5
    |
 LL |     FOO.fetch_add(1, Ordering::Relaxed)

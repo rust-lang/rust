@@ -1,20 +1,20 @@
 error[E0492]: cannot borrow a constant which may contain interior mutability, create a static instead
-  --> $DIR/issue-17718-const-borrow.rs:4:39
+  --> $DIR/issue-17718-const-borrow.rs:6:10
    |
 LL | const B: &'static UnsafeCell<usize> = &A;
-   |                                       ^^
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0492]: cannot borrow a constant which may contain interior mutability, create a static instead
-  --> $DIR/issue-17718-const-borrow.rs:9:39
+  --> $DIR/issue-17718-const-borrow.rs:11:10
    |
 LL | const E: &'static UnsafeCell<usize> = &D.a;
-   |                                       ^^^^
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0492]: cannot borrow a constant which may contain interior mutability, create a static instead
-  --> $DIR/issue-17718-const-borrow.rs:11:23
+  --> $DIR/issue-17718-const-borrow.rs:13:10
    |
 LL | const F: &'static C = &D;
-   |                       ^^
+   |          ^^^^^^^^^^
 
 error: aborting due to 3 previous errors
 

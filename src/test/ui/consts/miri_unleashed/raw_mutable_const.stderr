@@ -7,6 +7,11 @@ LL | const MUTABLE_BEHIND_RAW: *mut i32 = &UnsafeCell::new(42) as *const _ as *m
 warning: skipping const checks
    |
 help: skipping check that does not even have a feature gate
+  --> $DIR/raw_mutable_const.rs:7:27
+   |
+LL | const MUTABLE_BEHIND_RAW: *mut i32 = &UnsafeCell::new(42) as *const _ as *mut _;
+   |                           ^^^^^^^^
+help: skipping check for `const_refs_to_cell` feature
   --> $DIR/raw_mutable_const.rs:7:38
    |
 LL | const MUTABLE_BEHIND_RAW: *mut i32 = &UnsafeCell::new(42) as *const _ as *mut _;

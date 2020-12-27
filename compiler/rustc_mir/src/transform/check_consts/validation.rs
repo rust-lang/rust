@@ -21,7 +21,7 @@ use std::mem;
 use std::ops::Deref;
 
 use super::ops::{self, NonConstOp, Status};
-use super::qualifs::{self, CustomEq, HasMutInterior, NeedsDrop, QualifsPerLocal};
+use super::qualifs::{self, CustomEq, HasMutInterior, NeedsDrop, QualifsPerLocal, HasMutInteriorBehindRef, HasMutInteriorBehindRefState};
 use super::resolver::FlowSensitiveAnalysis;
 use super::{is_lang_panic_fn, ConstCx, Qualif};
 use crate::const_eval::is_unstable_const_fn;
@@ -40,6 +40,7 @@ type QualifResults<'mir, 'tcx, Q> =
 #[derive(Default)]
 pub struct Qualifs<'mir, 'tcx> {
     has_mut_interior: Option<QualifResults<'mir, 'tcx, HasMutInterior>>,
+    has_mut_interior_behind_ref: Option<QualifResults<'mir, 'tcx, HasMutInteriorBehindRef>>,
     needs_drop: Option<QualifResults<'mir, 'tcx, NeedsDrop>>,
     indirectly_mutable: Option<IndirectlyMutableResults<'mir, 'tcx>>,
 }
@@ -98,6 +99,33 @@ impl Qualifs<'mir, 'tcx> {
         result
     }
 
+    /// Returns `true` if `RETURN_PLACE` is `HasMutInteriorBehindRef`
+    ///
+    /// Only updates the cursor if absolutely necessary.
+    pub fn return_place_has_mut_interior_behind_ref(
+        &mut self,
+        ccx: &'mir ConstCx<'mir, 'tcx>,
+    ) -> Option<HasMutInteriorBehindRefState> {
+        let location = match self.return_loc(ccx) {
+            Some(location) => location,
+            // Diverging constants do not have any relevant qualifs.
+            None => return None,
+        };
+
+        let has_mut_interior_behind_ref =
+            self.has_mut_interior_behind_ref.get_or_insert_with(|| {
+                let ConstCx { tcx, body, .. } = *ccx;
+
+                FlowSensitiveAnalysis::new(HasMutInteriorBehindRef, ccx)
+                    .into_engine(tcx, &body)
+                    .iterate_to_fixpoint()
+                    .into_results_cursor(&body)
+            });
+
+        has_mut_interior_behind_ref.seek_before_primary_effect(location);
+        has_mut_interior_behind_ref.get()[RETURN_PLACE].clone()
+    }
+
     /// Returns `true` if `local` is `HasMutInterior` at the given `Location`.
     ///
     /// Only updates the cursor if absolutely necessary.
@@ -125,15 +153,11 @@ impl Qualifs<'mir, 'tcx> {
         result
     }
 
-    fn in_return_place(
-        &mut self,
-        ccx: &'mir ConstCx<'mir, 'tcx>,
-        error_occured: Option<ErrorReported>,
-    ) -> ConstQualifs {
-        // Find the `Return` terminator if one exists.
-        //
-        // If no `Return` terminator exists, this MIR is divergent. Just return the conservative
-        // qualifs for the return type.
+    /// Find the `Return` terminator if one exists.
+    ///
+    /// If no `Return` terminator exists, this MIR is divergent. Just return the conservative
+    /// qualifs for the return type.
+    fn return_loc(&self, ccx: &'mir ConstCx<'mir, 'tcx>) -> Option<Location> {
         let return_block = ccx
             .body
             .basic_blocks()
@@ -141,15 +165,21 @@ impl Qualifs<'mir, 'tcx> {
             .find(|(_, block)| match block.terminator().kind {
                 TerminatorKind::Return => true,
                 _ => false,
-            })
-            .map(|(bb, _)| bb);
+            })?
+            .0;
 
-        let return_block = match return_block {
+        Some(ccx.body.terminator_loc(return_block))
+    }
+
+    fn in_return_place(
+        &mut self,
+        ccx: &'mir ConstCx<'mir, 'tcx>,
+        error_occured: Option<ErrorReported>,
+    ) -> ConstQualifs {
+        let return_loc = match self.return_loc(ccx) {
             None => return qualifs::in_any_value_of_ty(ccx, ccx.body.return_ty(), error_occured),
-            Some(bb) => bb,
+            Some(loc) => loc,
         };
-
-        let return_loc = ccx.body.terminator_loc(return_block);
 
         let custom_eq = match ccx.const_kind() {
             // We don't care whether a `const fn` returns a value that is not structurally
@@ -256,6 +286,15 @@ impl Validator<'mir, 'tcx> {
             self.span = body.local_decls[RETURN_PLACE].source_info.span;
             let return_ty = tcx.fn_sig(def_id).output();
             self.check_local_or_return_ty(return_ty.skip_binder(), RETURN_PLACE);
+        }
+
+        if let hir::ConstContext::Const = self.const_kind() {
+            // Ensure that we do not produce references with interior mutability behind them
+            if let Some(HasMutInteriorBehindRefState::Yes) = self.qualifs.return_place_has_mut_interior_behind_ref(self.ccx) {
+                // FIXME: Trace the source of the `Yes` in dataflow
+                self.span = body.local_decls[RETURN_PLACE].source_info.span;
+                self.check_op(ops::CellBorrow)
+            }
         }
 
         self.visit_body(&body);
@@ -556,7 +595,7 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
                 );
 
                 if borrowed_place_has_mut_interior.is_some() {
-                    self.check_op(ops::CellBorrow);
+                    self.check_op(ops::CellBorrowBehindRef);
                 }
             }
 

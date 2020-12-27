@@ -21,7 +21,7 @@ help: skipping check that does not even have a feature gate
    |
 LL | static BOO: &mut Foo<()> = &mut Foo(());
    |                            ^^^^^^^^^^^^
-help: skipping check that does not even have a feature gate
+help: skipping check for `const_refs_to_cell` feature
   --> $DIR/mutable_references.rs:26:8
    |
 LL |     x: &UnsafeCell::new(42),

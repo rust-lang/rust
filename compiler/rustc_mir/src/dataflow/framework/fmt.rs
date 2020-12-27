@@ -33,7 +33,7 @@ pub trait DebugWithContext<C>: Eq + fmt::Debug {
         }
 
         write!(f, "\u{001f}-")?;
-        self.fmt_with(ctxt, f)
+        old.fmt_with(ctxt, f)
     }
 }
 
@@ -133,6 +133,30 @@ where
     }
 }
 
+impl<T, C, V> DebugWithContext<C> for rustc_index::vec::IndexVec<T, V>
+where
+    T: Idx + DebugWithContext<C>,
+    V: DebugWithContext<C> + Eq,
+{
+    fn fmt_with(&self, ctxt: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_set().entries(self.iter_enumerated().map(|this| DebugWithAdapter { this, ctxt })).finish()
+    }
+
+    fn fmt_diff_with(&self, old: &Self, ctxt: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        assert_eq!(self.len(), old.len());
+
+        for (new, old) in self.iter_enumerated().zip(old.iter_enumerated()) {
+            write!(f, "{:?}", DebugDiffWithAdapter {
+                new,
+                old,
+                ctxt,
+            })?;
+        }
+
+        Ok(())
+    }
+}
+
 impl<T, C> DebugWithContext<C> for &'_ T
 where
     T: DebugWithContext<C>,
@@ -145,6 +169,39 @@ where
         (*self).fmt_diff_with(*old, ctxt, f)
     }
 }
+
+impl<T, C> DebugWithContext<C> for Option<T>
+where
+    T: DebugWithContext<C>,
+{
+    fn fmt_with(&self, ctxt: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            None => Ok(()),
+            Some(v) => v.fmt_with(ctxt, f),
+        }
+    }
+
+    fn fmt_diff_with(&self, old: &Self, ctxt: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match (self, old) {
+            (None, None) => Ok(()),
+            (Some(a), Some(b)) => a.fmt_diff_with(b, ctxt, f),
+            (Some(a), None) => {
+                write!(f, "\u{001f}+")?;
+                a.fmt_with(ctxt, f)
+            }
+            (None, Some(b)) => {
+                write!(f, "\u{001f}-")?;
+                b.fmt_with(ctxt, f)
+            }
+        }
+    }
+}
+
+impl<T, U, C> DebugWithContext<C> for (T, U)
+where
+    T: DebugWithContext<C>,
+    U: DebugWithContext<C>,
+{}
 
 impl<C> DebugWithContext<C> for rustc_middle::mir::Local {}
 impl<C> DebugWithContext<C> for crate::dataflow::move_paths::InitIndex {}

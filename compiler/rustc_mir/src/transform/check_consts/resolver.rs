@@ -8,7 +8,7 @@ use rustc_middle::mir::{self, BasicBlock, Location};
 use std::marker::PhantomData;
 
 use super::{qualifs, ConstCx, Qualif};
-use crate::dataflow;
+use crate::dataflow::{self, JoinSemiLattice};
 use super::qualifs::QualifsPerLocal;
 
 /// A `Visitor` that propagates qualifs between locals. This defines the transfer function of
@@ -43,6 +43,7 @@ where
         }
     }
 
+    #[instrument(skip(self))]
     fn assign_qualif_direct(&mut self, place: &mir::Place<'tcx>, value: Option<Q::Result>) {
         debug_assert!(!place.is_indirect());
 
@@ -67,13 +68,25 @@ where
         &mut self,
         _block: BasicBlock,
         _func: &mir::Operand<'tcx>,
-        _args: &[mir::Operand<'tcx>],
+        args: &[mir::Operand<'tcx>],
         return_place: mir::Place<'tcx>,
     ) {
         // We cannot reason about another function's internals, so use conservative type-based
         // qualification for the result of a function call.
         let return_ty = return_place.ty(self.ccx.body, self.ccx.tcx).ty;
-        let qualif = Q::in_any_value_of_ty(self.ccx, return_ty);
+
+        // Though some qualifs merge the call arguments' qualifs into the result qualif.
+        let mut args_qualif = None;
+        for arg in args {
+            let arg = qualifs::in_operand::<Q, _>(
+                self.ccx,
+                &mut |l| self.qualifs_per_local.get(l),
+                arg,
+            );
+            args_qualif.join(&arg);
+        }
+
+        let qualif = Q::in_any_function_call(self.ccx, return_ty, args_qualif);
 
         if !return_place.is_indirect() {
             self.assign_qualif_direct(&return_place, qualif);

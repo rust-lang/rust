@@ -9,7 +9,7 @@ use rustc_span::DUMMY_SP;
 use rustc_trait_selection::traits;
 use rustc_index::vec::IndexVec;
 use rustc_index::bit_set::BitSet;
-use crate::dataflow::JoinSemiLattice;
+use crate::dataflow::{JoinSemiLattice, fmt::DebugWithContext};
 
 use super::ConstCx;
 
@@ -44,7 +44,7 @@ pub(crate) trait Qualif {
     /// The dataflow result type. If it's just qualified/not qualified, then
     /// you can just use a `()` (most qualifs do that). But if you need more state, use a
     /// custom enum.
-    type Result: SetChoice = ();
+    type Result: SetChoice + std::fmt::Debug = ();
     type Set: QualifsPerLocal<Self::Result> = <Self::Result as SetChoice>::Set;
 
     /// Whether this `Qualif` is cleared when a local is moved from.
@@ -62,6 +62,12 @@ pub(crate) trait Qualif {
     /// It also determines the `Qualif`s for primitive types.
     fn in_any_value_of_ty(cx: &ConstCx<'_, 'tcx>, ty: Ty<'tcx>) -> Option<Self::Result>;
 
+    /// Sometimes const fn calls cannot possibly contain the qualif, so we can treat function
+    /// calls special here.
+    fn in_any_function_call(cx: &ConstCx<'_, 'tcx>, ty: Ty<'tcx>, _args: Option<Self::Result>) -> Option<Self::Result> {
+        Self::in_any_value_of_ty(cx, ty)
+    }
+
     /// Returns `true` if this `Qualif` is inherent to the given struct or enum.
     ///
     /// By default, `Qualif`s propagate into ADTs in a structural way: An ADT only becomes
@@ -75,6 +81,10 @@ pub(crate) trait Qualif {
         adt: &'tcx AdtDef,
         substs: SubstsRef<'tcx>,
     ) -> Option<Self::Result>;
+
+    fn in_value_behind_ref(qualif: Option<Self::Result>) -> Option<Self::Result> {
+        qualif
+    }
 }
 
 pub(crate) trait SetChoice: Sized + Clone + JoinSemiLattice {
@@ -116,7 +126,7 @@ impl<T: Clone + Eq + JoinSemiLattice> QualifsPerLocal<T> for IndexVec<Local, Opt
         IndexVec::from_elem_n(None, n)
     }
     fn insert(&mut self, local: Local, val: T) {
-        self[local] = Some(val);
+        self[local].join(&Some(val));
     }
     fn remove(&mut self, local: Local) {
         self[local] = None;
@@ -153,6 +163,66 @@ impl Qualif for HasMutInterior {
         // Exactly one type, `UnsafeCell`, has the `HasMutInterior` qualif inherently.
         // It arises structurally for all other types.
         (Some(adt.did) == cx.tcx.lang_items().unsafe_cell_type()).then_some(())
+    }
+}
+
+/// Constant containing interior mutability (`UnsafeCell<T>`) behind a reference.
+/// This must be ruled out to make sure that evaluating the constant at compile-time
+/// and at *any point* during the run-time would produce the same result. In particular,
+/// promotion of temporaries must not change program behavior; if the promoted could be
+/// written to, that would be a problem.
+pub struct HasMutInteriorBehindRef;
+
+#[derive(Clone, Eq, PartialEq, Debug)]
+pub enum HasMutInteriorBehindRefState {
+    Yes,
+    /// As long as we haven't encountered a reference yet, we use this state
+    /// which is equivalent to the `HasMutInterior` qualif.
+    OnlyHasMutInterior,
+}
+impl SetChoice for HasMutInteriorBehindRefState {}
+impl<C> DebugWithContext<C> for HasMutInteriorBehindRefState {}
+
+impl JoinSemiLattice for HasMutInteriorBehindRefState {
+    fn join(&mut self, other: &Self) -> bool {
+        match (&self, other) {
+            (Self::Yes, _) => false,
+            (Self::OnlyHasMutInterior, Self::Yes) => {
+                *self = Self::Yes;
+                true
+            },
+            (Self::OnlyHasMutInterior, Self::OnlyHasMutInterior) => false,
+        }
+    }
+}
+
+impl Qualif for HasMutInteriorBehindRef {
+    const ANALYSIS_NAME: &'static str = "flow_has_mut_interior_behind_ref";
+    type Result = HasMutInteriorBehindRefState;
+
+    fn in_qualifs(qualifs: &ConstQualifs) -> Option<HasMutInteriorBehindRefState> {
+        HasMutInterior::in_qualifs(qualifs).map(|()| HasMutInteriorBehindRefState::OnlyHasMutInterior)
+    }
+
+    fn in_any_value_of_ty(cx: &ConstCx<'_, 'tcx>, ty: Ty<'tcx>) -> Option<HasMutInteriorBehindRefState> {
+        match ty.builtin_deref(false) {
+            None => HasMutInterior::in_any_value_of_ty(cx, ty).map(|()| HasMutInteriorBehindRefState::OnlyHasMutInterior),
+            Some(tam) => HasMutInterior::in_any_value_of_ty(cx, tam.ty).map(|()| HasMutInteriorBehindRefState::Yes),
+        }
+    }
+
+    #[instrument(skip(cx))]
+    fn in_any_function_call(cx: &ConstCx<'_, 'tcx>, ty: Ty<'tcx>, mut args: Option<Self::Result>) -> Option<Self::Result> {
+        args.join(&HasMutInterior::in_any_value_of_ty(cx, ty).map(|()| HasMutInteriorBehindRefState::OnlyHasMutInterior));
+        args
+    }
+
+    fn in_adt_inherently(cx: &ConstCx<'_, 'tcx>, adt: &'tcx AdtDef, substs: SubstsRef<'tcx>) -> Option<HasMutInteriorBehindRefState> {
+        HasMutInterior::in_adt_inherently(cx, adt, substs).map(|()| HasMutInteriorBehindRefState::OnlyHasMutInterior)
+    }
+
+    fn in_value_behind_ref(qualif: Option<HasMutInteriorBehindRefState>) -> Option<HasMutInteriorBehindRefState> {
+        qualif.map(|_| HasMutInteriorBehindRefState::Yes)
     }
 }
 
@@ -212,6 +282,7 @@ impl Qualif for CustomEq {
 // FIXME: Use `mir::visit::Visitor` for the `in_*` functions if/when it supports early return.
 
 /// Returns `true` if this `Rvalue` contains qualif `Q`.
+#[instrument(skip(cx, in_local), fields(Q=std::any::type_name::<Q>()))]
 pub(crate) fn in_rvalue<Q, F>(cx: &ConstCx<'_, 'tcx>, in_local: &mut F, rvalue: &Rvalue<'tcx>) -> Option<Q::Result>
 where
     Q: Qualif,
@@ -250,7 +321,7 @@ where
                 }
             }
 
-            in_place::<Q, _>(cx, in_local, place.as_ref())
+            Q::in_value_behind_ref(in_place::<Q, _>(cx, in_local, place.as_ref()))
         }
 
         Rvalue::Aggregate(kind, operands) => {
@@ -270,6 +341,7 @@ where
 }
 
 /// Returns `true` if this `Place` contains qualif `Q`.
+#[instrument(skip(cx, in_local), fields(Q=std::any::type_name::<Q>()))]
 pub(crate) fn in_place<Q, F>(cx: &ConstCx<'_, 'tcx>, in_local: &mut F, place: PlaceRef<'tcx>) -> Option<Q::Result>
 where
     Q: Qualif,
@@ -305,6 +377,7 @@ where
 }
 
 /// Returns `true` if this `Operand` contains qualif `Q`.
+#[instrument(skip(cx, in_local), fields(Q=std::any::type_name::<Q>()))]
 pub(crate) fn in_operand<Q, F>(cx: &ConstCx<'_, 'tcx>, in_local: &mut F, operand: &Operand<'tcx>) -> Option<Q::Result>
 where
     Q: Qualif,
