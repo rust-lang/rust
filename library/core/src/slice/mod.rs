@@ -1786,7 +1786,7 @@ impl<T> [T] {
     /// ```
     #[must_use = "returns the subslice without modifying the original"]
     #[stable(feature = "slice_strip", since = "1.50.0")]
-    pub fn strip_prefix<P: SlicePattern<Item = T>>(&self, prefix: &P) -> Option<&[T]>
+    pub fn strip_prefix<P: SlicePattern<Item = T> + ?Sized>(&self, prefix: &P) -> Option<&[T]>
     where
         T: PartialEq,
     {
@@ -1820,7 +1820,7 @@ impl<T> [T] {
     /// ```
     #[must_use = "returns the subslice without modifying the original"]
     #[stable(feature = "slice_strip", since = "1.50.0")]
-    pub fn strip_suffix<P: SlicePattern<Item = T>>(&self, suffix: &P) -> Option<&[T]>
+    pub fn strip_suffix<P: SlicePattern<Item = T> + ?Sized>(&self, suffix: &P) -> Option<&[T]>
     where
         T: PartialEq,
     {
