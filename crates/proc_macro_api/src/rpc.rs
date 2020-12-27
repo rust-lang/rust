@@ -51,6 +51,9 @@ pub struct ExpansionTask {
     pub attributes: Option<Subtree>,
 
     pub lib: PathBuf,
+
+    /// Environment variables to set during macro expansion.
+    pub env: Vec<(String, String)>,
 }
 
 #[derive(Clone, Eq, PartialEq, Debug, Default, Serialize, Deserialize)]
@@ -251,6 +254,7 @@ mod tests {
             macro_name: Default::default(),
             attributes: None,
             lib: Default::default(),
+            env: Default::default(),
         };
 
         let json = serde_json::to_string(&task).unwrap();

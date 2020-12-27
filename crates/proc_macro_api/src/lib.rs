@@ -16,7 +16,7 @@ use std::{
     sync::Arc,
 };
 
-use base_db::ProcMacro;
+use base_db::{Env, ProcMacro};
 use tt::{SmolStr, Subtree};
 
 use crate::process::{ProcMacroProcessSrv, ProcMacroProcessThread};
@@ -39,17 +39,19 @@ impl PartialEq for ProcMacroProcessExpander {
     }
 }
 
-impl tt::TokenExpander for ProcMacroProcessExpander {
+impl base_db::ProcMacroExpander for ProcMacroProcessExpander {
     fn expand(
         &self,
         subtree: &Subtree,
         attr: Option<&Subtree>,
+        env: &Env,
     ) -> Result<Subtree, tt::ExpansionError> {
         let task = ExpansionTask {
             macro_body: subtree.clone(),
             macro_name: self.name.to_string(),
             attributes: attr.cloned(),
             lib: self.dylib_path.to_path_buf(),
+            env: env.iter().map(|(k, v)| (k.to_string(), v.to_string())).collect(),
         };
 
         let result: ExpansionResult = self.process.send_task(msg::Request::ExpansionMacro(task))?;
@@ -90,7 +92,7 @@ impl ProcMacroClient {
                     ProcMacroKind::FuncLike => base_db::ProcMacroKind::FuncLike,
                     ProcMacroKind::Attr => base_db::ProcMacroKind::Attr,
                 };
-                let expander: Arc<dyn tt::TokenExpander> = Arc::new(ProcMacroProcessExpander {
+                let expander = Arc::new(ProcMacroProcessExpander {
                     process: self.process.clone(),
                     name: name.clone(),
                     dylib_path: dylib_path.into(),
