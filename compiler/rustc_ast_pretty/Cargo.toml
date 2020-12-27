@@ -11,4 +11,3 @@ doctest = false
 tracing = "0.1"
 rustc_span = { path = "../rustc_span" }
 rustc_ast = { path = "../rustc_ast" }
-rustc_target = { path = "../rustc_target" }
