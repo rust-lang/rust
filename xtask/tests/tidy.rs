@@ -94,10 +94,9 @@ fn rust_files_are_tidy() {
 
 #[test]
 fn check_merge_commits() {
-    let stdout =
-        dbg!(cmd!("git rev-list --merges --invert-grep --author 'bors\\[bot\\]' HEAD~19.."))
-            .read()
-            .unwrap();
+    let stdout = cmd!("git rev-list --merges --invert-grep --author 'bors\\[bot\\]' HEAD~19..")
+        .read()
+        .unwrap();
     if !stdout.is_empty() {
         panic!(
             "
