@@ -3910,6 +3910,7 @@ dependencies = [
 name = "rustc_macros"
 version = "0.1.0"
 dependencies = [
+ "phf_codegen",
  "proc-macro2",
  "quote",
  "syn",
@@ -4197,6 +4198,7 @@ version = "0.0.0"
 dependencies = [
  "cfg-if 0.1.10",
  "md-5",
+ "phf",
  "rustc_arena",
  "rustc_data_structures",
  "rustc_index",

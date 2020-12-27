@@ -127,6 +127,7 @@ fn symbols_with_errors(input: TokenStream) -> (TokenStream, Vec<syn::Error>) {
     let mut keyword_stream = quote! {};
     let mut symbols_stream = quote! {};
     let mut prefill_stream = quote! {};
+    let mut symbol_strings = Vec::new();
     let mut counter = 0u32;
     let mut keys =
         HashMap::<String, Span>::with_capacity(input.keywords.len() + input.symbols.len() + 10);
@@ -163,6 +164,7 @@ fn symbols_with_errors(input: TokenStream) -> (TokenStream, Vec<syn::Error>) {
         keyword_stream.extend(quote! {
             pub const #name: Symbol = Symbol::new(#counter);
         });
+        symbol_strings.push(value_string);
         counter += 1;
     }
 
@@ -182,6 +184,7 @@ fn symbols_with_errors(input: TokenStream) -> (TokenStream, Vec<syn::Error>) {
         symbols_stream.extend(quote! {
             pub const #name: Symbol = Symbol::new(#counter);
         });
+        symbol_strings.push(value);
         counter += 1;
     }
 
@@ -194,8 +197,18 @@ fn symbols_with_errors(input: TokenStream) -> (TokenStream, Vec<syn::Error>) {
         prefill_stream.extend(quote! {
             #n,
         });
+        symbol_strings.push(n);
     }
     let _ = counter; // for future use
+
+    // Build the PHF map. This translates from strings to Symbol values.
+    let mut phf_map = phf_codegen::Map::<&str>::new();
+    for (symbol_index, symbol) in symbol_strings.iter().enumerate() {
+        phf_map.entry(symbol, format!("Symbol::new({})", symbol_index as u32).as_str());
+    }
+    let phf_map_built = phf_map.build();
+    let phf_map_text = phf_map_built.to_string();
+    let phf_map_expr = syn::parse_str::<syn::Expr>(&phf_map_text).unwrap();
 
     let output = quote! {
         const SYMBOL_DIGITS_BASE: u32 = #digits_base;
@@ -222,6 +235,8 @@ fn symbols_with_errors(input: TokenStream) -> (TokenStream, Vec<syn::Error>) {
                 ])
             }
         }
+
+        static STATIC_SYMBOLS_PHF: ::phf::Map<&'static str, Symbol> = #phf_map_expr;
     };
 
     (output, errors.list)

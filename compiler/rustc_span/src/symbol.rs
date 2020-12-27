@@ -1453,7 +1453,11 @@ impl Symbol {
 
     /// Maps a string to its interned representation.
     pub fn intern(string: &str) -> Self {
-        with_interner(|interner| interner.intern(string))
+        if let Some(symbol) = STATIC_SYMBOLS_PHF.get(string) {
+            *symbol
+        } else {
+            with_interner(|interner| interner.intern(string))
+        }
     }
 
     /// Convert to a `SymbolStr`. This is a slowish operation because it
