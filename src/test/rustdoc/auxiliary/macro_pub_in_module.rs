@@ -8,6 +8,6 @@ pub mod some_module {
     mod private {
         pub macro external_macro() {}
     }
-    // @has external_crate/some_module/macro.external_macro.html
+
     pub use private::external_macro;
 }
