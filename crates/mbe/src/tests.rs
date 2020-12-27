@@ -992,6 +992,22 @@ fn test_tt_composite2() {
 }
 
 #[test]
+fn test_tt_with_composite_without_space() {
+    parse_macro(
+        r#"
+        macro_rules! foo {
+            ($ op:tt, $j:path) => (
+                0
+            )
+        }
+"#,
+    )
+    // Test macro input without any spaces
+    // See https://github.com/rust-analyzer/rust-analyzer/issues/6692
+    .assert_expand_items("foo!(==,Foo::Bool)", "0");
+}
+
+#[test]
 fn test_underscore() {
     parse_macro(
         r#"
