@@ -1,7 +1,7 @@
 //! Definitions of integer that is known not to equal zero.
 
 use crate::fmt;
-use crate::ops::{BitOr, BitOrAssign};
+use crate::ops::{BitOr, BitOrAssign, Div, Rem};
 use crate::str::FromStr;
 
 use super::from_str_radix;
@@ -262,4 +262,44 @@ nonzero_leading_trailing_zeros! {
     NonZeroI64(u64), -1i64;
     NonZeroI128(u128), -1i128;
     NonZeroIsize(usize), -1isize;
+}
+
+macro_rules! nonzero_integers_div {
+    ( $( $Ty: ident($Int: ty); )+ ) => {
+        $(
+            #[stable(feature = "nonzero_div", since = "1.51.0")]
+            impl Div<$Ty> for $Int {
+                type Output = $Int;
+                /// This operation rounds towards zero,
+                /// truncating any fractional part of the exact result, and cannot panic.
+                #[inline]
+                fn div(self, other: $Ty) -> $Int {
+                    // SAFETY: div by zero is checked because `other` is a nonzero,
+                    // and MIN/-1 is checked because `self` is an unsigned int.
+                    unsafe { crate::intrinsics::unchecked_div(self, other.get()) }
+                }
+            }
+
+            #[stable(feature = "nonzero_div", since = "1.51.0")]
+            impl Rem<$Ty> for $Int {
+                type Output = $Int;
+                /// This operation satisfies `n % d == n - (n / d) * d`, and cannot panic.
+                #[inline]
+                fn rem(self, other: $Ty) -> $Int {
+                    // SAFETY: rem by zero is checked because `other` is a nonzero,
+                    // and MIN/-1 is checked because `self` is an unsigned int.
+                    unsafe { crate::intrinsics::unchecked_rem(self, other.get()) }
+                }
+            }
+        )+
+    }
+}
+
+nonzero_integers_div! {
+    NonZeroU8(u8);
+    NonZeroU16(u16);
+    NonZeroU32(u32);
+    NonZeroU64(u64);
+    NonZeroU128(u128);
+    NonZeroUsize(usize);
 }
