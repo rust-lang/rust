@@ -21,12 +21,12 @@ use std::mem;
 use std::ops::Deref;
 
 use super::ops::{self, NonConstOp, Status};
-use super::qualifs::{self, CustomEq, HasMutInterior, NeedsDrop};
+use super::qualifs::{self, CustomEq, HasMutInterior, NeedsDrop, QualifsPerLocal};
 use super::resolver::FlowSensitiveAnalysis;
 use super::{is_lang_panic_fn, ConstCx, Qualif};
 use crate::const_eval::is_unstable_const_fn;
 use crate::dataflow::impls::MaybeMutBorrowedLocals;
-use crate::dataflow::{self, Analysis};
+use crate::dataflow::{self, Analysis, lattice::JoinSemiLattice};
 
 // We are using `MaybeMutBorrowedLocals` as a proxy for whether an item may have been mutated
 // through a pointer prior to the given point. This is okay even though `MaybeMutBorrowedLocals`
@@ -45,7 +45,7 @@ pub struct Qualifs<'mir, 'tcx> {
 }
 
 impl Qualifs<'mir, 'tcx> {
-    pub fn indirectly_mutable(
+    fn indirectly_mutable(
         &mut self,
         ccx: &'mir ConstCx<'mir, 'tcx>,
         local: Local,
@@ -79,11 +79,9 @@ impl Qualifs<'mir, 'tcx> {
         ccx: &'mir ConstCx<'mir, 'tcx>,
         local: Local,
         location: Location,
-    ) -> bool {
+    ) -> Option<()> {
         let ty = ccx.body.local_decls[local].ty;
-        if !NeedsDrop::in_any_value_of_ty(ccx, ty) {
-            return false;
-        }
+        NeedsDrop::in_any_value_of_ty(ccx, ty)?;
 
         let needs_drop = self.needs_drop.get_or_insert_with(|| {
             let ConstCx { tcx, body, .. } = *ccx;
@@ -95,7 +93,9 @@ impl Qualifs<'mir, 'tcx> {
         });
 
         needs_drop.seek_before_primary_effect(location);
-        needs_drop.get().contains(local) || self.indirectly_mutable(ccx, local, location)
+        let mut result = needs_drop.get().get(local);
+        result.join(&self.indirectly_mutable(ccx, local, location).then_some(()));
+        result
     }
 
     /// Returns `true` if `local` is `HasMutInterior` at the given `Location`.
@@ -106,11 +106,9 @@ impl Qualifs<'mir, 'tcx> {
         ccx: &'mir ConstCx<'mir, 'tcx>,
         local: Local,
         location: Location,
-    ) -> bool {
+    ) -> Option<()> {
         let ty = ccx.body.local_decls[local].ty;
-        if !HasMutInterior::in_any_value_of_ty(ccx, ty) {
-            return false;
-        }
+        HasMutInterior::in_any_value_of_ty(ccx, ty)?;
 
         let has_mut_interior = self.has_mut_interior.get_or_insert_with(|| {
             let ConstCx { tcx, body, .. } = *ccx;
@@ -122,7 +120,9 @@ impl Qualifs<'mir, 'tcx> {
         });
 
         has_mut_interior.seek_before_primary_effect(location);
-        has_mut_interior.get().contains(local) || self.indirectly_mutable(ccx, local, location)
+        let mut result = has_mut_interior.get().get(local);
+        result.join(&self.indirectly_mutable(ccx, local, location).then_some(()));
+        result
     }
 
     fn in_return_place(
@@ -159,7 +159,7 @@ impl Qualifs<'mir, 'tcx> {
 
             // If we know that all values of the return type are structurally matchable, there's no
             // need to run dataflow.
-            _ if !CustomEq::in_any_value_of_ty(ccx, ccx.body.return_ty()) => false,
+            _ if CustomEq::in_any_value_of_ty(ccx, ccx.body.return_ty()).is_none() => false,
 
             hir::ConstContext::Const | hir::ConstContext::Static(_) => {
                 let mut cursor = FlowSensitiveAnalysis::new(CustomEq, ccx)
@@ -173,8 +173,8 @@ impl Qualifs<'mir, 'tcx> {
         };
 
         ConstQualifs {
-            needs_drop: self.needs_drop(ccx, RETURN_PLACE, return_loc),
-            has_mut_interior: self.has_mut_interior(ccx, RETURN_PLACE, return_loc),
+            needs_drop: self.needs_drop(ccx, RETURN_PLACE, return_loc).is_some(),
+            has_mut_interior: self.has_mut_interior(ccx, RETURN_PLACE, return_loc).is_some(),
             custom_eq,
             error_occured,
         }
@@ -555,7 +555,7 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
                     place.as_ref(),
                 );
 
-                if borrowed_place_has_mut_interior {
+                if borrowed_place_has_mut_interior.is_some() {
                     self.check_op(ops::CellBorrow);
                 }
             }
@@ -907,10 +907,10 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
                     err_span = self.body.local_decls[local].source_info.span;
                     self.qualifs.needs_drop(self.ccx, local, location)
                 } else {
-                    true
+                    Some(())
                 };
 
-                if needs_drop {
+                if needs_drop.is_some() {
                     self.check_op_spanned(
                         ops::LiveDrop { dropped_at: Some(terminator.source_info.span) },
                         err_span,

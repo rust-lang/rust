@@ -2,14 +2,14 @@
 //!
 //! This contains the dataflow analysis used to track `Qualif`s on complex control-flow graphs.
 
-use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::visit::Visitor;
-use rustc_middle::mir::{self, BasicBlock, Local, Location};
+use rustc_middle::mir::{self, BasicBlock, Location};
 
 use std::marker::PhantomData;
 
 use super::{qualifs, ConstCx, Qualif};
 use crate::dataflow;
+use super::qualifs::QualifsPerLocal;
 
 /// A `Visitor` that propagates qualifs between locals. This defines the transfer function of
 /// `FlowSensitiveAnalysis`.
@@ -17,9 +17,9 @@ use crate::dataflow;
 /// This transfer does nothing when encountering an indirect assignment. Consumers should rely on
 /// the `MaybeMutBorrowedLocals` dataflow pass to see if a `Local` may have become qualified via
 /// an indirect assignment or function call.
-struct TransferFunction<'a, 'mir, 'tcx, Q> {
+struct TransferFunction<'a, 'mir, 'tcx, Q: Qualif> {
     ccx: &'a ConstCx<'mir, 'tcx>,
-    qualifs_per_local: &'a mut BitSet<Local>,
+    qualifs_per_local: &'a mut Q::Set,
 
     _qualif: PhantomData<Q>,
 }
@@ -28,7 +28,7 @@ impl<Q> TransferFunction<'a, 'mir, 'tcx, Q>
 where
     Q: Qualif,
 {
-    fn new(ccx: &'a ConstCx<'mir, 'tcx>, qualifs_per_local: &'a mut BitSet<Local>) -> Self {
+    fn new(ccx: &'a ConstCx<'mir, 'tcx>, qualifs_per_local: &'a mut Q::Set) -> Self {
         TransferFunction { ccx, qualifs_per_local, _qualif: PhantomData }
     }
 
@@ -37,25 +37,25 @@ where
 
         for arg in self.ccx.body.args_iter() {
             let arg_ty = self.ccx.body.local_decls[arg].ty;
-            if Q::in_any_value_of_ty(self.ccx, arg_ty) {
-                self.qualifs_per_local.insert(arg);
+            if let Some(val) = Q::in_any_value_of_ty(self.ccx, arg_ty) {
+                self.qualifs_per_local.insert(arg, val);
             }
         }
     }
 
-    fn assign_qualif_direct(&mut self, place: &mir::Place<'tcx>, value: bool) {
+    fn assign_qualif_direct(&mut self, place: &mir::Place<'tcx>, value: Option<Q::Result>) {
         debug_assert!(!place.is_indirect());
 
         match (value, place.as_ref()) {
-            (true, mir::PlaceRef { local, .. }) => {
-                self.qualifs_per_local.insert(local);
+            (Some(value), mir::PlaceRef { local, .. }) => {
+                self.qualifs_per_local.insert(local, value);
             }
 
             // For now, we do not clear the qualif if a local is overwritten in full by
             // an unqualified rvalue (e.g. `y = 5`). This is to be consistent
             // with aggregates where we overwrite all fields with assignments, which would not
             // get this feature.
-            (false, mir::PlaceRef { local: _, projection: &[] }) => {
+            (None, mir::PlaceRef { local: _, projection: &[] }) => {
                 // self.qualifs_per_local.remove(*local);
             }
 
@@ -109,7 +109,7 @@ where
     ) {
         let qualif = qualifs::in_rvalue::<Q, _>(
             self.ccx,
-            &mut |l| self.qualifs_per_local.contains(l),
+            &mut |l| self.qualifs_per_local.get(l),
             rvalue,
         );
         if !place.is_indirect() {
@@ -128,7 +128,7 @@ where
         if let mir::TerminatorKind::DropAndReplace { value, place, .. } = &terminator.kind {
             let qualif = qualifs::in_operand::<Q, _>(
                 self.ccx,
-                &mut |l| self.qualifs_per_local.contains(l),
+                &mut |l| self.qualifs_per_local.get(l),
                 value,
             );
 
@@ -159,7 +159,7 @@ where
 
     fn transfer_function(
         &self,
-        state: &'a mut BitSet<Local>,
+        state: &'a mut Q::Set,
     ) -> TransferFunction<'a, 'mir, 'tcx, Q> {
         TransferFunction::<Q>::new(self.ccx, state)
     }
@@ -169,12 +169,12 @@ impl<Q> dataflow::AnalysisDomain<'tcx> for FlowSensitiveAnalysis<'_, '_, 'tcx, Q
 where
     Q: Qualif,
 {
-    type Domain = BitSet<Local>;
+    type Domain = Q::Set;
 
     const NAME: &'static str = Q::ANALYSIS_NAME;
 
     fn bottom_value(&self, body: &mir::Body<'tcx>) -> Self::Domain {
-        BitSet::new_empty(body.local_decls.len())
+        Q::Set::new_empty(body.local_decls.len())
     }
 
     fn initialize_start_block(&self, _body: &mir::Body<'tcx>, state: &mut Self::Domain) {

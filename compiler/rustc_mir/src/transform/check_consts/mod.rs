@@ -11,7 +11,7 @@ use rustc_middle::mir;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::Symbol;
 
-pub use self::qualifs::Qualif;
+pub(super) use self::qualifs::Qualif;
 
 mod ops;
 pub mod post_drop_elaboration;

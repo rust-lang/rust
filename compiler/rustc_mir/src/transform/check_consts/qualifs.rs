@@ -7,6 +7,9 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::{self, subst::SubstsRef, AdtDef, Ty};
 use rustc_span::DUMMY_SP;
 use rustc_trait_selection::traits;
+use rustc_index::vec::IndexVec;
+use rustc_index::bit_set::BitSet;
+use crate::dataflow::JoinSemiLattice;
 
 use super::ConstCx;
 
@@ -16,9 +19,9 @@ pub fn in_any_value_of_ty(
     error_occured: Option<ErrorReported>,
 ) -> ConstQualifs {
     ConstQualifs {
-        has_mut_interior: HasMutInterior::in_any_value_of_ty(cx, ty),
-        needs_drop: NeedsDrop::in_any_value_of_ty(cx, ty),
-        custom_eq: CustomEq::in_any_value_of_ty(cx, ty),
+        has_mut_interior: HasMutInterior::in_any_value_of_ty(cx, ty).is_some(),
+        needs_drop: NeedsDrop::in_any_value_of_ty(cx, ty).is_some(),
+        custom_eq: CustomEq::in_any_value_of_ty(cx, ty).is_some(),
         error_occured,
     }
 }
@@ -34,15 +37,21 @@ pub fn in_any_value_of_ty(
 /// To accomplish this, const-checking and promotion use a value-based analysis (as opposed to a
 /// type-based one). Qualifications propagate structurally across variables: If a local (or a
 /// projection of a local) is assigned a qualifed value, that local itself becomes qualifed.
-pub trait Qualif {
+pub(crate) trait Qualif {
     /// The name of the file used to debug the dataflow analysis that computes this qualif.
     const ANALYSIS_NAME: &'static str;
+
+    /// The dataflow result type. If it's just qualified/not qualified, then
+    /// you can just use a `()` (most qualifs do that). But if you need more state, use a
+    /// custom enum.
+    type Result: SetChoice = ();
+    type Set: QualifsPerLocal<Self::Result> = <Self::Result as SetChoice>::Set;
 
     /// Whether this `Qualif` is cleared when a local is moved from.
     const IS_CLEARED_ON_MOVE: bool = false;
 
     /// Extracts the field of `ConstQualifs` that corresponds to this `Qualif`.
-    fn in_qualifs(qualifs: &ConstQualifs) -> bool;
+    fn in_qualifs(qualifs: &ConstQualifs) -> Option<Self::Result>;
 
     /// Returns `true` if *any* value of the given type could possibly have this `Qualif`.
     ///
@@ -51,7 +60,7 @@ pub trait Qualif {
     /// from a call to another function.
     ///
     /// It also determines the `Qualif`s for primitive types.
-    fn in_any_value_of_ty(cx: &ConstCx<'_, 'tcx>, ty: Ty<'tcx>) -> bool;
+    fn in_any_value_of_ty(cx: &ConstCx<'_, 'tcx>, ty: Ty<'tcx>) -> Option<Self::Result>;
 
     /// Returns `true` if this `Qualif` is inherent to the given struct or enum.
     ///
@@ -65,7 +74,61 @@ pub trait Qualif {
         cx: &ConstCx<'_, 'tcx>,
         adt: &'tcx AdtDef,
         substs: SubstsRef<'tcx>,
-    ) -> bool;
+    ) -> Option<Self::Result>;
+}
+
+pub(crate) trait SetChoice: Sized + Clone + JoinSemiLattice {
+    type Set: QualifsPerLocal<Self> = IndexVec<Local, Option<Self>>;
+}
+
+impl SetChoice for () {
+    type Set = BitSet<Local>;
+}
+
+pub(crate) trait QualifsPerLocal<Value>: Sized + Clone + JoinSemiLattice {
+    fn new_empty(n: usize) -> Self;
+    fn insert(&mut self, local: Local, val: Value);
+    fn remove(&mut self, local: Local);
+    fn clear(&mut self);
+    fn get(&self, local: Local) -> Option<Value>;
+}
+
+impl QualifsPerLocal<()> for BitSet<Local> {
+    fn new_empty(n: usize) -> Self {
+        BitSet::new_empty(n)
+    }
+    fn insert(&mut self, local: Local, _: ()) {
+        BitSet::insert(self, local);
+    }
+    fn remove(&mut self, local: Local) {
+        BitSet::remove(self, local);
+    }
+    fn clear(&mut self) {
+        BitSet::clear(self)
+    }
+    fn get(&self, local: Local) -> Option<()> {
+        self.contains(local).then_some(())
+    }
+}
+
+impl<T: Clone + Eq + JoinSemiLattice> QualifsPerLocal<T> for IndexVec<Local, Option<T>> {
+    fn new_empty(n: usize) -> Self {
+        IndexVec::from_elem_n(None, n)
+    }
+    fn insert(&mut self, local: Local, val: T) {
+        self[local] = Some(val);
+    }
+    fn remove(&mut self, local: Local) {
+        self[local] = None;
+    }
+    fn clear(&mut self) {
+        for elem in self.iter_mut() {
+            *elem = None;
+        }
+    }
+    fn get(&self, local: Local) -> Option<T> {
+        self[local].clone()
+    }
 }
 
 /// Constant containing interior mutability (`UnsafeCell<T>`).
@@ -78,18 +141,18 @@ pub struct HasMutInterior;
 impl Qualif for HasMutInterior {
     const ANALYSIS_NAME: &'static str = "flow_has_mut_interior";
 
-    fn in_qualifs(qualifs: &ConstQualifs) -> bool {
-        qualifs.has_mut_interior
+    fn in_qualifs(qualifs: &ConstQualifs) -> Option<()> {
+        qualifs.has_mut_interior.then_some(())
     }
 
-    fn in_any_value_of_ty(cx: &ConstCx<'_, 'tcx>, ty: Ty<'tcx>) -> bool {
-        !ty.is_freeze(cx.tcx.at(DUMMY_SP), cx.param_env)
+    fn in_any_value_of_ty(cx: &ConstCx<'_, 'tcx>, ty: Ty<'tcx>) -> Option<()> {
+        (!ty.is_freeze(cx.tcx.at(DUMMY_SP), cx.param_env)).then_some(())
     }
 
-    fn in_adt_inherently(cx: &ConstCx<'_, 'tcx>, adt: &'tcx AdtDef, _: SubstsRef<'tcx>) -> bool {
+    fn in_adt_inherently(cx: &ConstCx<'_, 'tcx>, adt: &'tcx AdtDef, _: SubstsRef<'tcx>) -> Option<()> {
         // Exactly one type, `UnsafeCell`, has the `HasMutInterior` qualif inherently.
         // It arises structurally for all other types.
-        Some(adt.did) == cx.tcx.lang_items().unsafe_cell_type()
+        (Some(adt.did) == cx.tcx.lang_items().unsafe_cell_type()).then_some(())
     }
 }
 
@@ -103,16 +166,16 @@ impl Qualif for NeedsDrop {
     const ANALYSIS_NAME: &'static str = "flow_needs_drop";
     const IS_CLEARED_ON_MOVE: bool = true;
 
-    fn in_qualifs(qualifs: &ConstQualifs) -> bool {
-        qualifs.needs_drop
+    fn in_qualifs(qualifs: &ConstQualifs) -> Option<()> {
+        qualifs.needs_drop.then_some(())
     }
 
-    fn in_any_value_of_ty(cx: &ConstCx<'_, 'tcx>, ty: Ty<'tcx>) -> bool {
-        ty.needs_drop(cx.tcx, cx.param_env)
+    fn in_any_value_of_ty(cx: &ConstCx<'_, 'tcx>, ty: Ty<'tcx>) -> Option<()> {
+        ty.needs_drop(cx.tcx, cx.param_env).then_some(())
     }
 
-    fn in_adt_inherently(cx: &ConstCx<'_, 'tcx>, adt: &'tcx AdtDef, _: SubstsRef<'tcx>) -> bool {
-        adt.has_dtor(cx.tcx)
+    fn in_adt_inherently(cx: &ConstCx<'_, 'tcx>, adt: &'tcx AdtDef, _: SubstsRef<'tcx>) -> Option<()> {
+        adt.has_dtor(cx.tcx).then_some(())
     }
 }
 
@@ -122,37 +185,37 @@ pub struct CustomEq;
 impl Qualif for CustomEq {
     const ANALYSIS_NAME: &'static str = "flow_custom_eq";
 
-    fn in_qualifs(qualifs: &ConstQualifs) -> bool {
-        qualifs.custom_eq
+    fn in_qualifs(qualifs: &ConstQualifs) -> Option<()> {
+        qualifs.custom_eq.then_some(())
     }
 
-    fn in_any_value_of_ty(cx: &ConstCx<'_, 'tcx>, ty: Ty<'tcx>) -> bool {
+    fn in_any_value_of_ty(cx: &ConstCx<'_, 'tcx>, ty: Ty<'tcx>) -> Option<()> {
         // If *any* component of a composite data type does not implement `Structural{Partial,}Eq`,
         // we know that at least some values of that type are not structural-match. I say "some"
         // because that component may be part of an enum variant (e.g.,
         // `Option::<NonStructuralMatchTy>::Some`), in which case some values of this type may be
         // structural-match (`Option::None`).
         let id = cx.tcx.hir().local_def_id_to_hir_id(cx.def_id());
-        traits::search_for_structural_match_violation(id, cx.body.span, cx.tcx, ty).is_some()
+        traits::search_for_structural_match_violation(id, cx.body.span, cx.tcx, ty).map(drop)
     }
 
     fn in_adt_inherently(
         cx: &ConstCx<'_, 'tcx>,
         adt: &'tcx AdtDef,
         substs: SubstsRef<'tcx>,
-    ) -> bool {
+    ) -> Option<()> {
         let ty = cx.tcx.mk_ty(ty::Adt(adt, substs));
-        !ty.is_structural_eq_shallow(cx.tcx)
+        (!ty.is_structural_eq_shallow(cx.tcx)).then_some(())
     }
 }
 
 // FIXME: Use `mir::visit::Visitor` for the `in_*` functions if/when it supports early return.
 
 /// Returns `true` if this `Rvalue` contains qualif `Q`.
-pub fn in_rvalue<Q, F>(cx: &ConstCx<'_, 'tcx>, in_local: &mut F, rvalue: &Rvalue<'tcx>) -> bool
+pub(crate) fn in_rvalue<Q, F>(cx: &ConstCx<'_, 'tcx>, in_local: &mut F, rvalue: &Rvalue<'tcx>) -> Option<Q::Result>
 where
     Q: Qualif,
-    F: FnMut(Local) -> bool,
+    F: FnMut(Local) -> Option<Q::Result>,
 {
     match rvalue {
         Rvalue::ThreadLocalRef(_) | Rvalue::NullaryOp(..) => {
@@ -169,7 +232,9 @@ where
         | Rvalue::Cast(_, operand, _) => in_operand::<Q, _>(cx, in_local, operand),
 
         Rvalue::BinaryOp(_, lhs, rhs) | Rvalue::CheckedBinaryOp(_, lhs, rhs) => {
-            in_operand::<Q, _>(cx, in_local, lhs) || in_operand::<Q, _>(cx, in_local, rhs)
+            let mut res = in_operand::<Q, _>(cx, in_local, lhs);
+            res.join(&in_operand::<Q, _>(cx, in_local, rhs));
+            res
         }
 
         Rvalue::Ref(_, _, place) | Rvalue::AddressOf(_, place) => {
@@ -189,57 +254,61 @@ where
         }
 
         Rvalue::Aggregate(kind, operands) => {
-            // Return early if we know that the struct or enum being constructed is always
-            // qualified.
+            // Check if we know that the struct or enum being constructed is always qualified.
+            let mut result = None;
             if let AggregateKind::Adt(def, _, substs, ..) = **kind {
-                if Q::in_adt_inherently(cx, def, substs) {
-                    return true;
-                }
+                result.join(&Q::in_adt_inherently(cx, def, substs));
             }
 
             // Otherwise, proceed structurally...
-            operands.iter().any(|o| in_operand::<Q, _>(cx, in_local, o))
+            for o in operands {
+                result.join(&in_operand::<Q, _>(cx, in_local, o));
+            }
+            result
         }
     }
 }
 
 /// Returns `true` if this `Place` contains qualif `Q`.
-pub fn in_place<Q, F>(cx: &ConstCx<'_, 'tcx>, in_local: &mut F, place: PlaceRef<'tcx>) -> bool
+pub(crate) fn in_place<Q, F>(cx: &ConstCx<'_, 'tcx>, in_local: &mut F, place: PlaceRef<'tcx>) -> Option<Q::Result>
 where
     Q: Qualif,
-    F: FnMut(Local) -> bool,
+    F: FnMut(Local) -> Option<Q::Result>,
 {
     let mut projection = place.projection;
+    let mut result = None;
     while let &[ref proj_base @ .., proj_elem] = projection {
         match proj_elem {
-            ProjectionElem::Index(index) if in_local(index) => return true,
+            ProjectionElem::Index(index) => {
+                result.join(&in_local(index));
+            },
 
             ProjectionElem::Deref
             | ProjectionElem::Field(_, _)
             | ProjectionElem::ConstantIndex { .. }
             | ProjectionElem::Subslice { .. }
-            | ProjectionElem::Downcast(_, _)
-            | ProjectionElem::Index(_) => {}
+            | ProjectionElem::Downcast(_, _) => {}
         }
 
         let base_ty = Place::ty_from(place.local, proj_base, cx.body, cx.tcx);
         let proj_ty = base_ty.projection_ty(cx.tcx, proj_elem).ty;
-        if !Q::in_any_value_of_ty(cx, proj_ty) {
-            return false;
+        if Q::in_any_value_of_ty(cx, proj_ty).is_none() {
+            return result;
         }
 
         projection = proj_base;
     }
 
     assert!(projection.is_empty());
-    in_local(place.local)
+    result.join(&in_local(place.local));
+    result
 }
 
 /// Returns `true` if this `Operand` contains qualif `Q`.
-pub fn in_operand<Q, F>(cx: &ConstCx<'_, 'tcx>, in_local: &mut F, operand: &Operand<'tcx>) -> bool
+pub(crate) fn in_operand<Q, F>(cx: &ConstCx<'_, 'tcx>, in_local: &mut F, operand: &Operand<'tcx>) -> Option<Q::Result>
 where
     Q: Qualif,
-    F: FnMut(Local) -> bool,
+    F: FnMut(Local) -> Option<Q::Result>,
 {
     let constant = match operand {
         Operand::Copy(place) | Operand::Move(place) => {
@@ -260,9 +329,10 @@ where
                 cx.tcx.at(constant.span).mir_const_qualif(def.did)
             };
 
-            if !Q::in_qualifs(&qualifs) {
-                return false;
-            }
+            // Since this comes from a constant's qualifs, there can only
+            // be `Option<()>` style qualifs, so we are allowed to early
+            // return here and not try to join the results.
+            Q::in_qualifs(&qualifs)?;
 
             // Just in case the type is more specific than
             // the definition, e.g., impl associated const

@@ -326,14 +326,14 @@ impl<'tcx> Validator<'_, 'tcx> {
                         if place.projection.contains(&ProjectionElem::Deref) {
                             return Err(Unpromotable);
                         }
-                        if self.qualif_local::<qualifs::NeedsDrop>(place.local) {
+                        if self.qualif_local::<qualifs::NeedsDrop>(place.local).is_some() {
                             return Err(Unpromotable);
                         }
 
                         // FIXME(eddyb) this duplicates part of `validate_rvalue`.
                         let has_mut_interior =
                             self.qualif_local::<qualifs::HasMutInterior>(place.local);
-                        if has_mut_interior {
+                        if has_mut_interior.is_some() {
                             return Err(Unpromotable);
                         }
 
@@ -398,7 +398,7 @@ impl<'tcx> Validator<'_, 'tcx> {
     }
 
     // FIXME(eddyb) maybe cache this?
-    fn qualif_local<Q: qualifs::Qualif>(&self, local: Local) -> bool {
+    fn qualif_local<Q: qualifs::Qualif>(&self, local: Local) -> Option<Q::Result> {
         if let TempState::Defined { location: loc, .. } = self.temps[local] {
             let num_stmts = self.body[loc.block].statements.len();
 
@@ -668,7 +668,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                 self.validate_place(place)?;
 
                 let has_mut_interior = self.qualif_local::<qualifs::HasMutInterior>(place.local);
-                if has_mut_interior {
+                if has_mut_interior.is_some() {
                     return Err(Unpromotable);
                 }
 

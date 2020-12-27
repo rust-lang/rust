@@ -89,6 +89,35 @@ impl JoinSemiLattice for bool {
     }
 }
 
+/// Just for completion, we implement `JoinSemiLattice` for `()`, where top and bottom are
+/// the same value.
+impl JoinSemiLattice for () {
+    fn join(&mut self, _: &Self) -> bool {
+        false
+    }
+}
+
+/// An `Option` is a "two-point" lattice with `Some as the top element and `None` as the bottom:
+///
+/// ```text
+///      Some(T)
+///        |
+///      None
+/// ```
+impl<T: JoinSemiLattice + Clone> JoinSemiLattice for Option<T> {
+    fn join(&mut self, other: &Self) -> bool {
+        match (self, other) {
+            (None, None) |
+            (Some(_), None) => false,
+            (this @ None, Some(val)) => {
+                *this = Some(val.clone());
+                true
+            }
+            (Some(a), Some(b)) => a.join(b),
+        }
+    }
+}
+
 impl MeetSemiLattice for bool {
     fn meet(&mut self, other: &Self) -> bool {
         if let (true, false) = (*self, *other) {

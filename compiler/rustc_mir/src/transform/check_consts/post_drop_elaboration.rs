@@ -78,7 +78,7 @@ impl Visitor<'tcx> for CheckLiveDrops<'mir, 'tcx> {
         match &terminator.kind {
             mir::TerminatorKind::Drop { place: dropped_place, .. } => {
                 let dropped_ty = dropped_place.ty(self.body, self.tcx).ty;
-                if !NeedsDrop::in_any_value_of_ty(self.ccx, dropped_ty) {
+                if NeedsDrop::in_any_value_of_ty(self.ccx, dropped_ty).is_none() {
                     return;
                 }
 
@@ -87,7 +87,7 @@ impl Visitor<'tcx> for CheckLiveDrops<'mir, 'tcx> {
                     return;
                 }
 
-                if self.qualifs.needs_drop(self.ccx, dropped_place.local, location) {
+                if self.qualifs.needs_drop(self.ccx, dropped_place.local, location).is_some() {
                     // Use the span where the dropped local was declared for the error.
                     let span = self.body.local_decls[dropped_place.local].source_info.span;
                     self.check_live_drop(span);
