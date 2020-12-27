@@ -73,11 +73,48 @@ pub(crate) fn make_branchable_value(bcx: &mut FunctionBuilder<'_>, arg: Value) -
     })()
     .unwrap_or_else(|| {
         match bcx.func.dfg.value_type(arg) {
-            types::I8 | types::I32 => {
+            types::I8 | types::I16 => {
                 // WORKAROUND for brz.i8 and brnz.i8 not yet being implemented
                 bcx.ins().uextend(types::I32, arg)
             }
             _ => arg,
         }
     })
+}
+
+/// Returns whether the branch is statically known to be taken or `None` if it isn't statically known.
+pub(crate) fn maybe_known_branch_taken(
+    bcx: &FunctionBuilder<'_>,
+    arg: Value,
+    test_zero: bool,
+) -> Option<bool> {
+    let arg_inst = if let ValueDef::Result(arg_inst, 0) = bcx.func.dfg.value_def(arg) {
+        arg_inst
+    } else {
+        return None;
+    };
+
+    match bcx.func.dfg[arg_inst] {
+        InstructionData::UnaryBool {
+            opcode: Opcode::Bconst,
+            imm,
+        } => {
+            if test_zero {
+                Some(!imm)
+            } else {
+                Some(imm)
+            }
+        }
+        InstructionData::UnaryImm {
+            opcode: Opcode::Iconst,
+            imm,
+        } => {
+            if test_zero {
+                Some(imm.bits() == 0)
+            } else {
+                Some(imm.bits() != 0)
+            }
+        }
+        _ => None,
+    }
 }

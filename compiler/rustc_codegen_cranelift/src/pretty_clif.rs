@@ -53,6 +53,7 @@
 //! ```
 
 use std::fmt;
+use std::io::Write;
 
 use cranelift_codegen::{
     entity::SecondaryMap,
@@ -200,31 +201,23 @@ impl<M: Module> FunctionCx<'_, '_, M> {
     }
 }
 
-pub(crate) fn write_clif_file<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    postfix: &str,
-    isa: Option<&dyn cranelift_codegen::isa::TargetIsa>,
-    instance: Instance<'tcx>,
-    context: &cranelift_codegen::Context,
-    mut clif_comments: &CommentWriter,
-) {
-    use std::io::Write;
-
-    if !cfg!(debug_assertions)
-        && !tcx
+pub(crate) fn should_write_ir(tcx: TyCtxt<'_>) -> bool {
+    cfg!(debug_assertions)
+        || tcx
             .sess
             .opts
             .output_types
             .contains_key(&OutputType::LlvmAssembly)
-    {
+}
+
+pub(crate) fn write_ir_file<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    name: &str,
+    write: impl FnOnce(&mut dyn Write) -> std::io::Result<()>,
+) {
+    if !should_write_ir(tcx) {
         return;
     }
-
-    let value_ranges = isa.map(|isa| {
-        context
-            .build_value_labels_ranges(isa)
-            .expect("value location ranges")
-    });
 
     let clif_output_dir = tcx.output_filenames(LOCAL_CRATE).with_extension("clif");
 
@@ -234,39 +227,56 @@ pub(crate) fn write_clif_file<'tcx>(
         res @ Err(_) => res.unwrap(),
     }
 
-    let clif_file_name = clif_output_dir.join(format!(
-        "{}.{}.clif",
-        tcx.symbol_name(instance).name,
-        postfix
-    ));
-
-    let mut clif = String::new();
-    cranelift_codegen::write::decorate_function(
-        &mut clif_comments,
-        &mut clif,
-        &context.func,
-        &DisplayFunctionAnnotations {
-            isa: Some(&*crate::build_isa(
-                tcx.sess, true, /* PIC doesn't matter here */
-            )),
-            value_ranges: value_ranges.as_ref(),
-        },
-    )
-    .unwrap();
+    let clif_file_name = clif_output_dir.join(name);
 
     let res: std::io::Result<()> = try {
         let mut file = std::fs::File::create(clif_file_name)?;
-        let target_triple = crate::target_triple(tcx.sess);
-        writeln!(file, "test compile")?;
-        writeln!(file, "set is_pic")?;
-        writeln!(file, "set enable_simd")?;
-        writeln!(file, "target {} haswell", target_triple)?;
-        writeln!(file)?;
-        file.write_all(clif.as_bytes())?;
+        write(&mut file)?;
     };
     if let Err(err) = res {
-        tcx.sess.warn(&format!("err writing clif file: {}", err));
+        tcx.sess.warn(&format!("error writing ir file: {}", err));
     }
+}
+
+pub(crate) fn write_clif_file<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    postfix: &str,
+    isa: Option<&dyn cranelift_codegen::isa::TargetIsa>,
+    instance: Instance<'tcx>,
+    context: &cranelift_codegen::Context,
+    mut clif_comments: &CommentWriter,
+) {
+    write_ir_file(
+        tcx,
+        &format!("{}.{}.clif", tcx.symbol_name(instance).name, postfix),
+        |file| {
+            let value_ranges = isa.map(|isa| {
+                context
+                    .build_value_labels_ranges(isa)
+                    .expect("value location ranges")
+            });
+
+            let mut clif = String::new();
+            cranelift_codegen::write::decorate_function(
+                &mut clif_comments,
+                &mut clif,
+                &context.func,
+                &DisplayFunctionAnnotations {
+                    isa: Some(&*crate::build_isa(tcx.sess)),
+                    value_ranges: value_ranges.as_ref(),
+                },
+            )
+            .unwrap();
+
+            writeln!(file, "test compile")?;
+            writeln!(file, "set is_pic")?;
+            writeln!(file, "set enable_simd")?;
+            writeln!(file, "target {} haswell", crate::target_triple(tcx.sess))?;
+            writeln!(file)?;
+            file.write_all(clif.as_bytes())?;
+            Ok(())
+        },
+    );
 }
 
 impl<M: Module> fmt::Debug for FunctionCx<'_, '_, M> {
