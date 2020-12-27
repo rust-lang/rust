@@ -267,7 +267,7 @@ nonzero_leading_trailing_zeros! {
 macro_rules! nonzero_integers_div {
     ( $( $Ty: ident($Int: ty); )+ ) => {
         $(
-            #[stable(feature = "nonzero_div", since = "1.50.0")]
+            #[stable(feature = "nonzero_div", since = "1.51.0")]
             impl Div<$Ty> for $Int {
                 type Output = $Int;
                 /// This operation rounds towards zero,
@@ -280,7 +280,7 @@ macro_rules! nonzero_integers_div {
                 }
             }
 
-            #[stable(feature = "nonzero_div", since = "1.50.0")]
+            #[stable(feature = "nonzero_div", since = "1.51.0")]
             impl Rem<$Ty> for $Int {
                 type Output = $Int;
                 /// This operation satisfies `n % d == n - (n / d) * d`, and cannot panic.
