@@ -1032,7 +1032,11 @@ fn super_predicates_of(tcx: TyCtxt<'_>, trait_def_id: DefId) -> ty::GenericPredi
         }
     }
 
-    ty::GenericPredicates { parent: None, predicates: superbounds }
+    ty::GenericPredicates {
+        parent: None,
+        predicates: superbounds,
+        constness: hir::Constness::NotConst,
+    }
 }
 
 fn trait_def(tcx: TyCtxt<'_>, def_id: DefId) -> ty::TraitDef {
@@ -1748,6 +1752,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
 
     let icx = ItemCtxt::new(tcx, def_id);
     let constness = icx.default_constness_for_trait_bounds();
+    debug!("gather_explicit_predicates_of: constness={:?}, node={:?}", constness, node);
 
     const NO_GENERICS: &hir::Generics<'_> = &hir::Generics::empty();
 
@@ -1804,7 +1809,11 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
                         // is from the return type of the containing function,
                         // which will ensure that the function's predicates
                         // hold.
-                        return ty::GenericPredicates { parent: None, predicates: &[] };
+                        return ty::GenericPredicates {
+                            parent: None,
+                            predicates: &[],
+                            constness: hir::Constness::NotConst,
+                        };
                     } else {
                         // type-alias impl trait
                         generics
@@ -2028,6 +2037,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
     let result = ty::GenericPredicates {
         parent: generics.parent,
         predicates: tcx.arena.alloc_from_iter(predicates),
+        constness,
     };
     debug!("explicit_predicates_of(def_id={:?}) = {:?}", def_id, result);
     result
@@ -2175,6 +2185,7 @@ fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicat
             ty::GenericPredicates {
                 parent: predicates_and_bounds.parent,
                 predicates: tcx.arena.alloc_slice(&predicates),
+                constness: hir::Constness::NotConst,
             }
         }
     } else {

@@ -204,6 +204,7 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
                     }
                 }),
             ),
+            constness: hir::Constness::NotConst,
         }
     }
 

@@ -789,6 +789,7 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
 
                     // If the method is provided via a where-clause that does not use the `?const`
                     // opt-out, the call is allowed.
+                    debug!("cconst_trait_impl: implsc={:?}", implsrc);
                     if let Some(ImplSource::Param(_, hir::Constness::Const)) = implsrc {
                         debug!(
                             "const_trait_impl: provided {:?} via where-clause in {:?}",

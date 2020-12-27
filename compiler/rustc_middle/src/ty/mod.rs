@@ -941,10 +941,21 @@ impl<'tcx> Generics {
 }
 
 /// Bounds on generics.
-#[derive(Copy, Clone, Default, Debug, TyEncodable, TyDecodable, HashStable)]
+#[derive(Copy, Clone, Debug, TyEncodable, TyDecodable, HashStable)]
 pub struct GenericPredicates<'tcx> {
     pub parent: Option<DefId>,
     pub predicates: &'tcx [(Predicate<'tcx>, Span)],
+    pub constness: hir::Constness,
+}
+
+impl<'tcx> Default for GenericPredicates<'tcx> {
+    fn default() -> Self {
+        GenericPredicates {
+            parent: Default::default(),
+            predicates: Default::default(),
+            constness: hir::Constness::NotConst,
+        }
+    }
 }
 
 impl<'tcx> GenericPredicates<'tcx> {
@@ -984,7 +995,7 @@ impl<'tcx> GenericPredicates<'tcx> {
 
     pub fn instantiate_identity(&self, tcx: TyCtxt<'tcx>) -> InstantiatedPredicates<'tcx> {
         let mut instantiated = InstantiatedPredicates::empty();
-        self.instantiate_identity_into(tcx, &mut instantiated);
+        self.instantiate_identity_into(tcx, &mut instantiated, self.constness);
         instantiated
     }
 
@@ -992,11 +1003,19 @@ impl<'tcx> GenericPredicates<'tcx> {
         &self,
         tcx: TyCtxt<'tcx>,
         instantiated: &mut InstantiatedPredicates<'tcx>,
+        constness: hir::Constness,
     ) {
         if let Some(def_id) = self.parent {
-            tcx.predicates_of(def_id).instantiate_identity_into(tcx, instantiated);
+            tcx.predicates_of(def_id).instantiate_identity_into(tcx, instantiated, constness);
         }
-        instantiated.predicates.extend(self.predicates.iter().map(|(p, _)| p));
+        instantiated.predicates.extend(self.predicates.iter().map(|(p, _)| {
+            if let Some(mut t) = p.to_opt_poly_trait_ref() {
+                t.constness = constness;
+                t.to_predicate(tcx)
+            } else {
+                *p
+            }
+        }));
         instantiated.spans.extend(self.predicates.iter().map(|(_, s)| s));
     }
 }

@@ -129,7 +129,7 @@ where
         &mut self,
         predicates: ty::GenericPredicates<'tcx>,
     ) -> ControlFlow<V::BreakTy> {
-        let ty::GenericPredicates { parent: _, predicates } = predicates;
+        let ty::GenericPredicates { parent: _, predicates, .. } = predicates;
         predicates.iter().try_for_each(|&(predicate, _span)| self.visit_predicate(predicate))
     }
 }
@@ -209,6 +209,7 @@ where
                     self.visit_predicates(ty::GenericPredicates {
                         parent: None,
                         predicates: tcx.explicit_item_bounds(def_id),
+                        constness: hir::Constness::NotConst,
                     })?;
                 }
             }
@@ -1714,6 +1715,7 @@ impl SearchInterfaceForPrivateItemsVisitor<'tcx> {
         self.visit_predicates(ty::GenericPredicates {
             parent: None,
             predicates: self.tcx.explicit_item_bounds(self.item_def_id),
+            constness: hir::Constness::NotConst,
         });
         self
     }
