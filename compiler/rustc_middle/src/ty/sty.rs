@@ -1472,14 +1472,14 @@ impl Atom for RegionVid {
 pub enum InferTy {
     /// A type variable.
     TyVar(TyVid),
-    /// An integral type variable.
+    /// An integral type variable (`{integer}`).
     ///
     /// These are created when the compiler sees an integer literal like
     /// `1` that could be several different types (`u8`, `i32`, `u32`, etc.).
     /// We don't know until it's used what type it's supposed to be, so
     /// we create a fresh type variable.
     IntVar(IntVid),
-    /// A floating-point type variable.
+    /// A floating-point type variable (`{float}`).
     ///
     /// These are created when the compiler sees an float literal like
     /// `1.0` that could be either an `f32` or an `f64`.
