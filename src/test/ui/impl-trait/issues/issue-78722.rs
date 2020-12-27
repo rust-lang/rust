@@ -5,6 +5,7 @@
 //~^ WARN the feature `impl_trait_in_bindings` is incomplete
 
 type F = impl core::future::Future<Output = u8>;
+//~^ ERROR type mismatch
 
 struct Bug {
     V1: [(); {

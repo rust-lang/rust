@@ -697,6 +697,7 @@ impl<'hir> Map<'hir> {
             | Node::ForeignItem(ForeignItem { kind: ForeignItemKind::Fn(..), .. })
             | Node::TraitItem(TraitItem { kind: TraitItemKind::Fn(..), .. })
             | Node::ImplItem(ImplItem { kind: ImplItemKind::Fn(..), .. })
+            | Node::AnonConst(..)
             | Node::Block(_) = node
             {
                 return Some(hir_id);
