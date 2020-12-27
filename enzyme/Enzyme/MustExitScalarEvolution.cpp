@@ -50,30 +50,35 @@ ScalarEvolution::ExitLimit MustExitScalarEvolution::computeExitLimitFromCond(
 }
 #endif
 
-MustExitScalarEvolution::MustExitScalarEvolution(llvm::Function& F, llvm::TargetLibraryInfo &TLI, llvm::AssumptionCache &AC,
-                          llvm::DominatorTree &DT, llvm::LoopInfo &LI) :
-  ScalarEvolution(F, TLI, AC, DT, LI), GuaranteedUnreachable(getGuaranteedUnreachable(&F)) {
-  }
+MustExitScalarEvolution::MustExitScalarEvolution(llvm::Function &F,
+                                                 llvm::TargetLibraryInfo &TLI,
+                                                 llvm::AssumptionCache &AC,
+                                                 llvm::DominatorTree &DT,
+                                                 llvm::LoopInfo &LI)
+    : ScalarEvolution(F, TLI, AC, DT, LI),
+      GuaranteedUnreachable(getGuaranteedUnreachable(&F)) {}
 
 ScalarEvolution::ExitLimit MustExitScalarEvolution::computeExitLimit(
     const Loop *L, BasicBlock *ExitingBlock, bool AllowPredicates) {
 
   SmallVector<BasicBlock *, 8> ExitingBlocks;
   L->getExitingBlocks(ExitingBlocks);
-  for(auto &ExitingBlock : ExitingBlocks) {
+  for (auto &ExitingBlock : ExitingBlocks) {
     BasicBlock *Exit = nullptr;
     for (auto *SBB : successors(ExitingBlock)) {
       if (!L->contains(SBB)) {
-        if (GuaranteedUnreachable.count(SBB)) continue;
+        if (GuaranteedUnreachable.count(SBB))
+          continue;
         Exit = SBB;
         break;
       }
     }
-    if (!Exit) ExitingBlock = nullptr;
+    if (!Exit)
+      ExitingBlock = nullptr;
   }
   ExitingBlocks.erase(
-    std::remove(ExitingBlocks.begin(), ExitingBlocks.end(), nullptr),
-    ExitingBlocks.end());
+      std::remove(ExitingBlocks.begin(), ExitingBlocks.end(), nullptr),
+      ExitingBlocks.end());
 
   assert(L->contains(ExitingBlock) && "Exit count for non-loop block?");
   // If our exiting block does not dominate the latch, then its connection with
@@ -106,7 +111,8 @@ ScalarEvolution::ExitLimit MustExitScalarEvolution::computeExitLimit(
     BasicBlock *Exit = nullptr;
     for (auto *SBB : successors(ExitingBlock))
       if (!L->contains(SBB)) {
-        if (GuaranteedUnreachable.count(SBB)) continue;
+        if (GuaranteedUnreachable.count(SBB))
+          continue;
         if (Exit) // Multiple exit successors.
           return getCouldNotCompute();
         Exit = SBB;

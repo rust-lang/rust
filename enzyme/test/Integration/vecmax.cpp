@@ -38,7 +38,7 @@ int main() {
       printf("d_reduce_max(%i)=%f\n", i, d_vec[i]);
     }
 
-    double ans[] = {0, 0, 0, 2, 0};
+    double ans[] = {0, 0, 0, 1, 0};
     for(int i=0; i<5; i++) {
       printf("i=%d d_vec=%f ans=%f\n", i, d_vec[i], ans[i]);
       APPROX_EQ(d_vec[i], ans[i], 1e-7);

@@ -258,30 +258,11 @@ public:
   bool shouldRecompute(const Value *val,
                        const ValueToValueMapTy &available) const;
 
-  void replaceAWithB(Value *A, Value *B, bool storeInCache = false) {
+  void replaceAWithB(Value *A, Value *B, bool storeInCache = false) override {
     for (unsigned i = 0; i < addedTapeVals.size(); ++i) {
       if (addedTapeVals[i] == A) {
         addedTapeVals[i] = B;
       }
-    }
-
-    auto found = scopeMap.find(A);
-    if (found != scopeMap.end()) {
-      insert_or_assign2(scopeMap, B, found->second);
-
-      llvm::AllocaInst *cache = found->second.first;
-      if (storeInCache) {
-        assert(isa<Instruction>(B));
-        if (scopeInstructions.find(cache) != scopeInstructions.end()) {
-          for (auto st : scopeInstructions[cache])
-            cast<StoreInst>(st)->eraseFromParent();
-          scopeInstructions.erase(cache);
-          storeInstructionInCache(found->second.second, cast<Instruction>(B),
-                                  cache);
-        }
-      }
-
-      scopeMap.erase(A);
     }
 
     if (invertedPointers.find(A) != invertedPointers.end()) {
@@ -292,7 +273,7 @@ public:
       originalToNewFn[orig] = B;
     }
 
-    A->replaceAllUsesWith(B);
+    CacheUtility::replaceAWithB(A, B, storeInCache);
   }
 
   void erase(Instruction *I) override {

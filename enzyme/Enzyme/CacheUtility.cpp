@@ -113,6 +113,35 @@ void CacheUtility::erase(Instruction *I) {
   I->eraseFromParent();
 }
 
+/// Replace this instruction both in LLVM modules and any local data-structures
+void CacheUtility::replaceAWithB(Value *A, Value *B, bool storeInCache) {
+  for (auto &ctx : loopContexts) {
+    if (ctx.second.limit == A) {
+      ctx.second.limit = B;
+    }
+  }
+
+  auto found = scopeMap.find(A);
+  if (found != scopeMap.end()) {
+    insert_or_assign2(scopeMap, B, found->second);
+
+    llvm::AllocaInst *cache = found->second.first;
+    if (storeInCache) {
+      assert(isa<Instruction>(B));
+      if (scopeInstructions.find(cache) != scopeInstructions.end()) {
+        for (auto st : scopeInstructions[cache])
+          cast<StoreInst>(st)->eraseFromParent();
+        scopeInstructions.erase(cache);
+        storeInstructionInCache(found->second.second, cast<Instruction>(B),
+                                cache);
+      }
+    }
+
+    scopeMap.erase(A);
+  }
+  A->replaceAllUsesWith(B);
+}
+
 // Create a new canonical induction variable of Type Ty for Loop L
 // Return the variable and the increment instruction
 std::pair<PHINode *, Instruction *> InsertNewCanonicalIV(Loop *L, Type *Ty,
@@ -442,27 +471,30 @@ bool CacheUtility::getContext(BasicBlock *BB, LoopContext &loopContext) {
 
     // Remove all exiting blocks that are guaranteed
     // to result in unreachable
-    for(auto &ExitingBlock : ExitingBlocks) {
+    for (auto &ExitingBlock : ExitingBlocks) {
       BasicBlock *Exit = nullptr;
       for (auto *SBB : successors(ExitingBlock)) {
         if (!L->contains(SBB)) {
-          if (SE.GuaranteedUnreachable.count(SBB)) continue;
+          if (SE.GuaranteedUnreachable.count(SBB))
+            continue;
           Exit = SBB;
           break;
         }
       }
-      if (!Exit) ExitingBlock = nullptr;
+      if (!Exit)
+        ExitingBlock = nullptr;
     }
     ExitingBlocks.erase(
-      std::remove(ExitingBlocks.begin(), ExitingBlocks.end(), nullptr),
-      ExitingBlocks.end());
+        std::remove(ExitingBlocks.begin(), ExitingBlocks.end(), nullptr),
+        ExitingBlocks.end());
 
     // Compute the exit in the scenarios where an unreachable
     // is not hit
     for (BasicBlock *ExitingBlock : ExitingBlocks) {
       assert(L->contains(ExitingBlock));
 
-      ScalarEvolution::ExitLimit EL = SE.computeExitLimit(L, ExitingBlock, /*AllowPredicates*/ true);
+      ScalarEvolution::ExitLimit EL =
+          SE.computeExitLimit(L, ExitingBlock, /*AllowPredicates*/ true);
       if (MayExitMaxBECount != SE.getCouldNotCompute()) {
         if (!MayExitMaxBECount || EL.ExactNotTaken == SE.getCouldNotCompute())
           MayExitMaxBECount = EL.ExactNotTaken;

@@ -3482,7 +3482,6 @@ public:
             gutils->cacheForReverse(BuilderZ, dcall,
                                     getIndex(orig, CacheType::Self));
           }
-
           BuilderZ.SetInsertPoint(op->getNextNode());
           gutils->erase(op);
         } else {

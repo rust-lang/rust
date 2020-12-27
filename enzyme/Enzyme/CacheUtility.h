@@ -161,6 +161,10 @@ public:
   /// Erase this instruction both from LLVM modules and any local
   /// data-structures
   virtual void erase(llvm::Instruction *I);
+  /// Replace this instruction both in LLVM modules and any local
+  /// data-structures
+  virtual void replaceAWithB(llvm::Value *A, llvm::Value *B,
+                             bool storeInCache = false);
 
   // Context information to request calculation of loop limit information
   struct LimitContext {
