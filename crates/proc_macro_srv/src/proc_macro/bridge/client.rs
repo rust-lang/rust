@@ -303,17 +303,21 @@ impl BridgeState<'_> {
 
 impl Bridge<'_> {
     fn enter<R>(self, f: impl FnOnce() -> R) -> R {
+        let force_show_panics = self.force_show_panics;
+
         // Hide the default panic output within `proc_macro` expansions.
         // NB. the server can't do this because it may use a different libstd.
         static HIDE_PANICS_DURING_EXPANSION: Once = Once::new();
         HIDE_PANICS_DURING_EXPANSION.call_once(|| {
             let prev = panic::take_hook();
             panic::set_hook(Box::new(move |info| {
-                let hide = BridgeState::with(|state| match state {
-                    BridgeState::NotConnected => false,
-                    BridgeState::Connected(_) | BridgeState::InUse => true,
+                let show = BridgeState::with(|state| match state {
+                    BridgeState::NotConnected => true,
+                    // Something weird is going on, so don't suppress any backtraces
+                    BridgeState::InUse => true,
+                    BridgeState::Connected(bridge) => force_show_panics,
                 });
-                if !hide {
+                if show {
                     prev(info)
                 }
             }));
