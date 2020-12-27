@@ -10,17 +10,16 @@ use rustc_hir as hir;
 use rustc_hir::def::{
     DefKind,
     Namespace::{self, *},
-    PerNS, Res,
+    PerNS,
 };
 use rustc_hir::def_id::{CrateNum, DefId};
-use rustc_middle::ty;
+use rustc_middle::{bug, ty};
 use rustc_resolve::ParentScope;
 use rustc_session::lint::{
     builtin::{BROKEN_INTRA_DOC_LINKS, PRIVATE_INTRA_DOC_LINKS},
     Lint,
 };
 use rustc_span::hygiene::MacroKind;
-use rustc_span::symbol::sym;
 use rustc_span::symbol::Ident;
 use rustc_span::symbol::Symbol;
 use rustc_span::DUMMY_SP;
@@ -28,6 +27,7 @@ use smallvec::{smallvec, SmallVec};
 
 use std::borrow::Cow;
 use std::cell::Cell;
+use std::convert::{TryFrom, TryInto};
 use std::mem;
 use std::ops::Range;
 
@@ -58,6 +58,71 @@ enum ErrorKind<'a> {
 impl<'a> From<ResolutionFailure<'a>> for ErrorKind<'a> {
     fn from(err: ResolutionFailure<'a>) -> Self {
         ErrorKind::Resolve(box err)
+    }
+}
+
+#[derive(Copy, Clone, Debug, Hash)]
+enum Res {
+    Def(DefKind, DefId),
+    Primitive(PrimitiveType),
+}
+
+type ResolveRes = rustc_hir::def::Res<rustc_ast::NodeId>;
+
+impl Res {
+    fn descr(self) -> &'static str {
+        match self {
+            Res::Def(kind, id) => ResolveRes::Def(kind, id).descr(),
+            Res::Primitive(_) => "builtin type",
+        }
+    }
+
+    fn article(self) -> &'static str {
+        match self {
+            Res::Def(kind, id) => ResolveRes::Def(kind, id).article(),
+            Res::Primitive(_) => "a",
+        }
+    }
+
+    fn name(self, tcx: ty::TyCtxt<'_>) -> String {
+        match self {
+            Res::Def(_, id) => tcx.item_name(id).to_string(),
+            Res::Primitive(prim) => prim.as_str().to_string(),
+        }
+    }
+
+    fn def_id(self) -> DefId {
+        self.opt_def_id().expect("called def_id() on a primitive")
+    }
+
+    fn opt_def_id(self) -> Option<DefId> {
+        match self {
+            Res::Def(_, id) => Some(id),
+            Res::Primitive(_) => None,
+        }
+    }
+
+    fn as_hir_res(self) -> Option<rustc_hir::def::Res> {
+        match self {
+            Res::Def(kind, id) => Some(rustc_hir::def::Res::Def(kind, id)),
+            // FIXME: maybe this should handle the subset of PrimitiveType that fits into hir::PrimTy?
+            Res::Primitive(_) => None,
+        }
+    }
+}
+
+impl TryFrom<ResolveRes> for Res {
+    type Error = ();
+
+    fn try_from(res: ResolveRes) -> Result<Self, ()> {
+        use rustc_hir::def::Res::*;
+        match res {
+            Def(kind, id) => Ok(Res::Def(kind, id)),
+            PrimTy(prim) => Ok(Res::Primitive(PrimitiveType::from_hir(prim))),
+            // e.g. `#[derive]`
+            NonMacroAttr(..) | Err => Result::Err(()),
+            other => bug!("unrecognized res {:?}", other),
+        }
     }
 }
 
@@ -253,12 +318,9 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
             .enter_resolver(|resolver| {
                 resolver.resolve_str_path_error(DUMMY_SP, &path, TypeNS, module_id)
             })
-            .map(|(_, res)| res)
-            .unwrap_or(Res::Err);
-        if let Res::Err = ty_res {
-            return Err(no_res().into());
-        }
-        let ty_res = ty_res.map_id(|_| panic!("unexpected node_id"));
+            .and_then(|(_, res)| res.try_into())
+            .map_err(|()| no_res())?;
+
         match ty_res {
             Res::Def(DefKind::Enum, did) => {
                 if cx
@@ -309,7 +371,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
     /// lifetimes on `&'path` will work.
     fn resolve_primitive_associated_item(
         &self,
-        prim_ty: hir::PrimTy,
+        prim_ty: PrimitiveType,
         ns: Namespace,
         module_id: DefId,
         item_name: Symbol,
@@ -317,7 +379,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
     ) -> Result<(Res, Option<String>), ErrorKind<'path>> {
         let cx = self.cx;
 
-        PrimitiveType::from_hir(prim_ty)
+        prim_ty
             .impls(cx.tcx)
             .into_iter()
             .find_map(|&impl_| {
@@ -336,21 +398,21 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                     })
                     .map(|out| {
                         (
-                            Res::PrimTy(prim_ty),
-                            Some(format!("{}#{}.{}", prim_ty.name(), out, item_str)),
+                            Res::Primitive(prim_ty),
+                            Some(format!("{}#{}.{}", prim_ty.as_str(), out, item_str)),
                         )
                     })
             })
             .ok_or_else(|| {
                 debug!(
                     "returning primitive error for {}::{} in {} namespace",
-                    prim_ty.name(),
+                    prim_ty.as_str(),
                     item_name,
                     ns.descr()
                 );
                 ResolutionFailure::NotResolved {
                     module_id,
-                    partial_res: Some(Res::PrimTy(prim_ty)),
+                    partial_res: Some(Res::Primitive(prim_ty)),
                     unresolved: item_str.into(),
                 }
                 .into()
@@ -377,19 +439,18 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                 false,
             ) {
                 if let SyntaxExtensionKind::LegacyBang { .. } = ext.kind {
-                    return Ok(res.map_id(|_| panic!("unexpected id")));
+                    return Ok(res.try_into().unwrap());
                 }
             }
-            if let Some(res) = resolver.all_macros().get(&Symbol::intern(path_str)) {
-                return Ok(res.map_id(|_| panic!("unexpected id")));
+            if let Some(&res) = resolver.all_macros().get(&Symbol::intern(path_str)) {
+                return Ok(res.try_into().unwrap());
             }
             debug!("resolving {} as a macro in the module {:?}", path_str, module_id);
             if let Ok((_, res)) =
                 resolver.resolve_str_path_error(DUMMY_SP, path_str, MacroNS, module_id)
             {
                 // don't resolve builtins like `#[derive]`
-                if let Res::Def(..) = res {
-                    let res = res.map_id(|_| panic!("unexpected node_id"));
+                if let Ok(res) = res.try_into() {
                     return Ok(res);
                 }
             }
@@ -408,14 +469,16 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
     /// Associated items will never be resolved by this function.
     fn resolve_path(&self, path_str: &str, ns: Namespace, module_id: DefId) -> Option<Res> {
         let result = self.cx.enter_resolver(|resolver| {
-            resolver.resolve_str_path_error(DUMMY_SP, &path_str, ns, module_id)
+            resolver
+                .resolve_str_path_error(DUMMY_SP, &path_str, ns, module_id)
+                .and_then(|(_, res)| res.try_into())
         });
         debug!("{} resolved to {:?} in namespace {:?}", path_str, result, ns);
-        match result.map(|(_, res)| res) {
-            // resolver doesn't know about true and false so we'll have to resolve them
+        match result {
+            // resolver doesn't know about true, false, and types that aren't paths (e.g. `()`)
             // manually as bool
-            Ok(Res::Err) | Err(()) => is_bool_value(path_str, ns).map(|(_, res)| res),
-            Ok(res) => Some(res.map_id(|_| panic!("unexpected node_id"))),
+            Err(()) => resolve_primitive(path_str, ns),
+            Ok(res) => Some(res),
         }
     }
 
@@ -444,13 +507,13 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                     return handle_variant(cx, res, extra_fragment);
                 }
                 // Not a trait item; just return what we found.
-                Res::PrimTy(ty) => {
+                Res::Primitive(ty) => {
                     if extra_fragment.is_some() {
                         return Err(ErrorKind::AnchorFailure(
                             AnchorFailure::RustdocAnchorConflict(res),
                         ));
                     }
-                    return Ok((res, Some(ty.name_str().to_owned())));
+                    return Ok((res, Some(ty.as_str().to_owned())));
                 }
                 Res::Def(DefKind::Mod, _) => {
                     return Ok((res, extra_fragment.clone()));
@@ -483,7 +546,6 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
 
         // FIXME: are these both necessary?
         let ty_res = if let Some(ty_res) = resolve_primitive(&path_root, TypeNS)
-            .map(|(_, res)| res)
             .or_else(|| self.resolve_path(&path_root, TypeNS, module_id))
         {
             ty_res
@@ -502,7 +564,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         };
 
         let res = match ty_res {
-            Res::PrimTy(prim) => Some(
+            Res::Primitive(prim) => Some(
                 self.resolve_primitive_associated_item(prim, ns, module_id, item_name, item_str),
             ),
             Res::Def(
@@ -958,7 +1020,7 @@ impl LinkCollector<'_, '_> {
             (link.trim(), None)
         };
 
-        if path_str.contains(|ch: char| !(ch.is_alphanumeric() || ":_<>, !".contains(ch))) {
+        if path_str.contains(|ch: char| !(ch.is_alphanumeric() || ":_<>, !*&;".contains(ch))) {
             return None;
         }
 
@@ -1046,9 +1108,8 @@ impl LinkCollector<'_, '_> {
         // Sanity check to make sure we don't have any angle brackets after stripping generics.
         assert!(!path_str.contains(['<', '>'].as_slice()));
 
-        // The link is not an intra-doc link if it still contains commas or spaces after
-        // stripping generics.
-        if path_str.contains([',', ' '].as_slice()) {
+        // The link is not an intra-doc link if it still contains spaces after stripping generics.
+        if path_str.contains(' ') {
             return None;
         }
 
@@ -1068,9 +1129,9 @@ impl LinkCollector<'_, '_> {
         if matches!(
             disambiguator,
             None | Some(Disambiguator::Namespace(Namespace::TypeNS) | Disambiguator::Primitive)
-        ) && !matches!(res, Res::PrimTy(_))
+        ) && !matches!(res, Res::Primitive(_))
         {
-            if let Some((path, prim)) = resolve_primitive(path_str, TypeNS) {
+            if let Some(prim) = resolve_primitive(path_str, TypeNS) {
                 // `prim@char`
                 if matches!(disambiguator, Some(Disambiguator::Primitive)) {
                     if fragment.is_some() {
@@ -1085,7 +1146,7 @@ impl LinkCollector<'_, '_> {
                         return None;
                     }
                     res = prim;
-                    fragment = Some(path.as_str().to_string());
+                    fragment = Some(prim.name(self.cx.tcx));
                 } else {
                     // `[char]` when a `char` module is in scope
                     let candidates = vec![res, prim];
@@ -1111,8 +1172,8 @@ impl LinkCollector<'_, '_> {
             };
             report_diagnostic(cx, BROKEN_INTRA_DOC_LINKS, &msg, &item, dox, &link_range, callback);
         };
-        if let Res::PrimTy(..) = res {
-            match disambiguator {
+        match res {
+            Res::Primitive(_) => match disambiguator {
                 Some(Disambiguator::Primitive | Disambiguator::Namespace(_)) | None => {
                     Some(ItemLink { link: ori_link, link_text, did: None, fragment })
                 }
@@ -1120,12 +1181,11 @@ impl LinkCollector<'_, '_> {
                     report_mismatch(other, Disambiguator::Primitive);
                     None
                 }
-            }
-        } else {
-            debug!("intra-doc link to {} resolved to {:?}", path_str, res);
+            },
+            Res::Def(kind, id) => {
+                debug!("intra-doc link to {} resolved to {:?}", path_str, res);
 
-            // Disallow e.g. linking to enums with `struct@`
-            if let Res::Def(kind, _) = res {
+                // Disallow e.g. linking to enums with `struct@`
                 debug!("saw kind {:?} with disambiguator {:?}", kind, disambiguator);
                 match (self.kind_side_channel.take().map(|(kind, _)| kind).unwrap_or(kind), disambiguator) {
                     | (DefKind::Const | DefKind::ConstParam | DefKind::AssocConst | DefKind::AnonConst, Some(Disambiguator::Kind(DefKind::Const)))
@@ -1144,27 +1204,26 @@ impl LinkCollector<'_, '_> {
                         return None;
                     }
                 }
-            }
 
-            // item can be non-local e.g. when using #[doc(primitive = "pointer")]
-            if let Some((src_id, dst_id)) = res
-                .opt_def_id()
-                .and_then(|def_id| def_id.as_local())
-                .and_then(|dst_id| item.def_id.as_local().map(|src_id| (src_id, dst_id)))
-            {
-                use rustc_hir::def_id::LOCAL_CRATE;
-
-                let hir_src = self.cx.tcx.hir().local_def_id_to_hir_id(src_id);
-                let hir_dst = self.cx.tcx.hir().local_def_id_to_hir_id(dst_id);
-
-                if self.cx.tcx.privacy_access_levels(LOCAL_CRATE).is_exported(hir_src)
-                    && !self.cx.tcx.privacy_access_levels(LOCAL_CRATE).is_exported(hir_dst)
+                // item can be non-local e.g. when using #[doc(primitive = "pointer")]
+                if let Some((src_id, dst_id)) = id
+                    .as_local()
+                    .and_then(|dst_id| item.def_id.as_local().map(|src_id| (src_id, dst_id)))
                 {
-                    privacy_error(cx, &item, &path_str, dox, link_range);
+                    use rustc_hir::def_id::LOCAL_CRATE;
+
+                    let hir_src = self.cx.tcx.hir().local_def_id_to_hir_id(src_id);
+                    let hir_dst = self.cx.tcx.hir().local_def_id_to_hir_id(dst_id);
+
+                    if self.cx.tcx.privacy_access_levels(LOCAL_CRATE).is_exported(hir_src)
+                        && !self.cx.tcx.privacy_access_levels(LOCAL_CRATE).is_exported(hir_dst)
+                    {
+                        privacy_error(cx, &item, &path_str, dox, link_range);
+                    }
                 }
+                let id = clean::register_res(cx, rustc_hir::def::Res::Def(kind, id));
+                Some(ItemLink { link: ori_link, link_text, did: Some(id), fragment })
             }
-            let id = clean::register_res(cx, res);
-            Some(ItemLink { link: ori_link, link_text, did: Some(id), fragment })
         }
     }
 
@@ -1296,16 +1355,18 @@ impl LinkCollector<'_, '_> {
                     .and_then(|(res, fragment)| {
                         // Constructors are picked up in the type namespace.
                         match res {
-                            Res::Def(DefKind::Ctor(..), _) | Res::SelfCtor(..) => {
+                            Res::Def(DefKind::Ctor(..), _) => {
                                 Err(ResolutionFailure::WrongNamespace(res, TypeNS))
                             }
-                            _ => match (fragment, extra_fragment.clone()) {
-                                (Some(fragment), Some(_)) => {
-                                    // Shouldn't happen but who knows?
-                                    Ok((res, Some(fragment)))
+                            _ => {
+                                match (fragment, extra_fragment.clone()) {
+                                    (Some(fragment), Some(_)) => {
+                                        // Shouldn't happen but who knows?
+                                        Ok((res, Some(fragment)))
+                                    }
+                                    (fragment, None) | (None, fragment) => Ok((res, fragment)),
                                 }
-                                (fragment, None) | (None, fragment) => Ok((res, fragment)),
-                            },
+                            }
                         }
                     }),
                 };
@@ -1414,8 +1475,11 @@ impl Disambiguator {
                 ("!", DefKind::Macro(MacroKind::Bang)),
             ];
             for &(suffix, kind) in &suffixes {
-                if link.ends_with(suffix) {
-                    return Ok((Kind(kind), link.trim_end_matches(suffix)));
+                if let Some(link) = link.strip_suffix(suffix) {
+                    // Avoid turning `!` or `()` into an empty string
+                    if !link.is_empty() {
+                        return Ok((Kind(kind), link));
+                    }
                 }
             }
             Err(())
@@ -1445,12 +1509,10 @@ impl Disambiguator {
         }
     }
 
-    /// WARNING: panics on `Res::Err`
     fn from_res(res: Res) -> Self {
         match res {
             Res::Def(kind, _) => Disambiguator::Kind(kind),
-            Res::PrimTy(_) => Disambiguator::Primitive,
-            _ => Disambiguator::Namespace(res.ns().expect("can't call `from_res` on Res::err")),
+            Res::Primitive(_) => Disambiguator::Primitive,
         }
     }
 
@@ -1626,6 +1688,7 @@ fn resolution_failure(
     link_range: Range<usize>,
     kinds: SmallVec<[ResolutionFailure<'_>; 3]>,
 ) {
+    let tcx = collector.cx.tcx;
     report_diagnostic(
         collector.cx,
         BROKEN_INTRA_DOC_LINKS,
@@ -1634,16 +1697,9 @@ fn resolution_failure(
         dox,
         &link_range,
         |diag, sp| {
-            let item = |res: Res| {
-                format!(
-                    "the {} `{}`",
-                    res.descr(),
-                    collector.cx.tcx.item_name(res.def_id()).to_string()
-                )
-            };
+            let item = |res: Res| format!("the {} `{}`", res.descr(), res.name(tcx),);
             let assoc_item_not_allowed = |res: Res| {
-                let def_id = res.def_id();
-                let name = collector.cx.tcx.item_name(def_id);
+                let name = res.name(tcx);
                 format!(
                     "`{}` is {} {}, not a module or type, and cannot have associated items",
                     name,
@@ -1709,7 +1765,7 @@ fn resolution_failure(
                     if let Some(module) = last_found_module {
                         let note = if partial_res.is_some() {
                             // Part of the link resolved; e.g. `std::io::nonexistent`
-                            let module_name = collector.cx.tcx.item_name(module);
+                            let module_name = tcx.item_name(module);
                             format!("no item named `{}` in module `{}`", unresolved, module_name)
                         } else {
                             // None of the link resolved; e.g. `Notimported`
@@ -1733,14 +1789,10 @@ fn resolution_failure(
 
                     // Otherwise, it must be an associated item or variant
                     let res = partial_res.expect("None case was handled by `last_found_module`");
-                    let diagnostic_name;
-                    let (kind, name) = match res {
-                        Res::Def(kind, def_id) => {
-                            diagnostic_name = collector.cx.tcx.item_name(def_id).as_str();
-                            (Some(kind), &*diagnostic_name)
-                        }
-                        Res::PrimTy(ty) => (None, ty.name_str()),
-                        _ => unreachable!("only ADTs and primitives are in scope at module level"),
+                    let name = res.name(tcx);
+                    let kind = match res {
+                        Res::Def(kind, _) => Some(kind),
+                        Res::Primitive(_) => None,
                     };
                     let path_description = if let Some(kind) = kind {
                         match kind {
@@ -1997,53 +2049,49 @@ fn handle_variant(
         .parent(res.def_id())
         .map(|parent| {
             let parent_def = Res::Def(DefKind::Enum, parent);
-            let variant = cx.tcx.expect_variant_res(res);
+            let variant = cx.tcx.expect_variant_res(res.as_hir_res().unwrap());
             (parent_def, Some(format!("variant.{}", variant.ident.name)))
         })
         .ok_or_else(|| ResolutionFailure::NoParentItem.into())
 }
 
-// FIXME: At this point, this is basically a copy of the PrimitiveTypeTable
-const PRIMITIVES: &[(Symbol, Res)] = &[
-    (sym::u8, Res::PrimTy(hir::PrimTy::Uint(rustc_ast::UintTy::U8))),
-    (sym::u16, Res::PrimTy(hir::PrimTy::Uint(rustc_ast::UintTy::U16))),
-    (sym::u32, Res::PrimTy(hir::PrimTy::Uint(rustc_ast::UintTy::U32))),
-    (sym::u64, Res::PrimTy(hir::PrimTy::Uint(rustc_ast::UintTy::U64))),
-    (sym::u128, Res::PrimTy(hir::PrimTy::Uint(rustc_ast::UintTy::U128))),
-    (sym::usize, Res::PrimTy(hir::PrimTy::Uint(rustc_ast::UintTy::Usize))),
-    (sym::i8, Res::PrimTy(hir::PrimTy::Int(rustc_ast::IntTy::I8))),
-    (sym::i16, Res::PrimTy(hir::PrimTy::Int(rustc_ast::IntTy::I16))),
-    (sym::i32, Res::PrimTy(hir::PrimTy::Int(rustc_ast::IntTy::I32))),
-    (sym::i64, Res::PrimTy(hir::PrimTy::Int(rustc_ast::IntTy::I64))),
-    (sym::i128, Res::PrimTy(hir::PrimTy::Int(rustc_ast::IntTy::I128))),
-    (sym::isize, Res::PrimTy(hir::PrimTy::Int(rustc_ast::IntTy::Isize))),
-    (sym::f32, Res::PrimTy(hir::PrimTy::Float(rustc_ast::FloatTy::F32))),
-    (sym::f64, Res::PrimTy(hir::PrimTy::Float(rustc_ast::FloatTy::F64))),
-    (sym::str, Res::PrimTy(hir::PrimTy::Str)),
-    (sym::bool, Res::PrimTy(hir::PrimTy::Bool)),
-    (sym::char, Res::PrimTy(hir::PrimTy::Char)),
-];
-
 /// Resolve a primitive type or value.
-fn resolve_primitive(path_str: &str, ns: Namespace) -> Option<(Symbol, Res)> {
-    is_bool_value(path_str, ns).or_else(|| {
-        if ns == TypeNS {
-            // FIXME: this should be replaced by a lookup in PrimitiveTypeTable
-            let maybe_primitive = Symbol::intern(path_str);
-            PRIMITIVES.iter().find(|x| x.0 == maybe_primitive).copied()
-        } else {
-            None
-        }
-    })
-}
-
-/// Resolve a primitive value.
-fn is_bool_value(path_str: &str, ns: Namespace) -> Option<(Symbol, Res)> {
-    if ns == TypeNS && (path_str == "true" || path_str == "false") {
-        Some((sym::bool, Res::PrimTy(hir::PrimTy::Bool)))
-    } else {
-        None
+fn resolve_primitive(path_str: &str, ns: Namespace) -> Option<Res> {
+    if ns != TypeNS {
+        return None;
     }
+    use PrimitiveType::*;
+    let prim = match path_str {
+        "isize" => Isize,
+        "i8" => I8,
+        "i16" => I16,
+        "i32" => I32,
+        "i64" => I64,
+        "i128" => I128,
+        "usize" => Usize,
+        "u8" => U8,
+        "u16" => U16,
+        "u32" => U32,
+        "u64" => U64,
+        "u128" => U128,
+        "f32" => F32,
+        "f64" => F64,
+        "char" => Char,
+        "bool" | "true" | "false" => Bool,
+        "str" => Str,
+        // See #80181 for why these don't have symbols associated.
+        "slice" => Slice,
+        "array" => Array,
+        "tuple" => Tuple,
+        "unit" => Unit,
+        "pointer" | "*" | "*const" | "*mut" => RawPointer,
+        "reference" | "&" | "&mut" => Reference,
+        "fn" => Fn,
+        "never" | "!" => Never,
+        _ => return None,
+    };
+    debug!("resolved primitives {:?}", prim);
+    Some(Res::Primitive(prim))
 }
 
 fn strip_generics_from_path(path_str: &str) -> Result<String, ResolutionFailure<'static>> {
