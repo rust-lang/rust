@@ -32,7 +32,8 @@ enum ValueType { Primal, Shadow };
 template <ValueType VT>
 bool is_value_needed_in_reverse(
     TypeResults &TR, const GradientUtils *gutils, const Value *inst,
-    bool topLevel, std::map<std::pair<const Value *, bool>, bool> &seen) {
+    bool topLevel, std::map<std::pair<const Value *, bool>, bool> &seen,
+    const SmallPtrSetImpl<BasicBlock *> &oldUnreachable) {
   auto idx = std::make_pair(inst, topLevel);
   if (seen.find(idx) != seen.end())
     return seen[idx];
@@ -56,7 +57,8 @@ bool is_value_needed_in_reverse(
       if (user)
         if (!gutils->isConstantInstruction(const_cast<Instruction *>(user)))
           return true;
-      if (is_value_needed_in_reverse<Shadow>(TR, gutils, use, topLevel, seen)) {
+      if (is_value_needed_in_reverse<Shadow>(TR, gutils, use, topLevel, seen,
+                                             oldUnreachable)) {
         return true;
       }
       continue;
@@ -79,6 +81,14 @@ bool is_value_needed_in_reverse(
 
       // TODO make this more aggressive and dont need to save loop latch
       if (isa<BranchInst>(use) || isa<SwitchInst>(use)) {
+        size_t num = 0;
+        for (auto suc : successors(cast<Instruction>(use)->getParent())) {
+          if (!oldUnreachable.count(suc)) {
+            num++;
+          }
+        }
+        if (num <= 1)
+          continue;
         return seen[idx] = true;
       }
 
@@ -93,7 +103,8 @@ bool is_value_needed_in_reverse(
         }
       }
 
-      if (is_value_needed_in_reverse<VT>(TR, gutils, user, topLevel, seen)) {
+      if (is_value_needed_in_reverse<VT>(TR, gutils, user, topLevel, seen,
+                                         oldUnreachable)) {
         return seen[idx] = true;
       }
     }
@@ -117,7 +128,8 @@ bool is_value_needed_in_reverse(
         }
 
         if (isa<LoadInst>(zu) || isa<CastInst>(zu) || isa<PHINode>(zu)) {
-          if (is_value_needed_in_reverse<VT>(TR, gutils, zu, topLevel, seen)) {
+          if (is_value_needed_in_reverse<VT>(TR, gutils, zu, topLevel, seen,
+                                             oldUnreachable)) {
             return seen[idx] = true;
           }
           continue;
@@ -147,8 +159,8 @@ bool is_value_needed_in_reverse(
                   const_cast<Value *>((const Value *)ci)) ||
               (ci->mayWriteToMemory() && topLevel) ||
               (gutils->legalRecompute(ci, ValueToValueMapTy()) &&
-               is_value_needed_in_reverse<VT>(TR, gutils, ci, topLevel,
-                                              seen))) {
+               is_value_needed_in_reverse<VT>(TR, gutils, ci, topLevel, seen,
+                                              oldUnreachable))) {
             return seen[idx] = true;
           }
           continue;
@@ -163,7 +175,8 @@ bool is_value_needed_in_reverse(
     }
 
     if (isa<LoadInst>(user) || isa<CastInst>(user) || isa<PHINode>(user)) {
-      if (!is_value_needed_in_reverse<VT>(TR, gutils, user, topLevel, seen)) {
+      if (!is_value_needed_in_reverse<VT>(TR, gutils, user, topLevel, seen,
+                                          oldUnreachable)) {
         continue;
       }
     }
@@ -275,7 +288,8 @@ bool is_value_needed_in_reverse(
           !gutils->isConstantValue(const_cast<Value *>((const Value *)ci)) ||
           (ci->mayWriteToMemory() && topLevel) ||
           (gutils->legalRecompute(ci, ValueToValueMapTy()) &&
-           is_value_needed_in_reverse<VT>(TR, gutils, ci, topLevel, seen))) {
+           is_value_needed_in_reverse<VT>(TR, gutils, ci, topLevel, seen,
+                                          oldUnreachable))) {
         return seen[idx] = true;
       }
       continue;
@@ -292,8 +306,10 @@ bool is_value_needed_in_reverse(
 }
 
 template <ValueType VT>
-bool is_value_needed_in_reverse(TypeResults &TR, const GradientUtils *gutils,
-                                const Value *inst, bool topLevel) {
+bool is_value_needed_in_reverse(
+    TypeResults &TR, const GradientUtils *gutils, const Value *inst,
+    bool topLevel, const SmallPtrSetImpl<BasicBlock *> &oldUnreachable) {
   std::map<std::pair<const Value *, bool>, bool> seen;
-  return is_value_needed_in_reverse<VT>(TR, gutils, inst, topLevel, seen);
+  return is_value_needed_in_reverse<VT>(TR, gutils, inst, topLevel, seen,
+                                        oldUnreachable);
 }

@@ -57,7 +57,7 @@ private:
   const SmallPtrSetImpl<const Value *> &unnecessaryValues;
   const SmallPtrSetImpl<const Instruction *> &unnecessaryInstructions;
   const SmallPtrSetImpl<const Instruction *> &unnecessaryStores;
-
+  const SmallPtrSetImpl<BasicBlock *> &oldUnreachable;
   AllocaInst *dretAlloca;
 
 public:
@@ -73,13 +73,15 @@ public:
       const SmallPtrSetImpl<const Value *> &unnecessaryValues,
       const SmallPtrSetImpl<const Instruction *> &unnecessaryInstructions,
       const SmallPtrSetImpl<const Instruction *> &unnecessaryStores,
+      const SmallPtrSetImpl<BasicBlock *> &oldUnreachable,
       AllocaInst *dretAlloca)
       : Mode(Mode), gutils(gutils), constant_args(constant_args), TR(TR),
         getIndex(getIndex), uncacheable_args_map(uncacheable_args_map),
         returnuses(returnuses), augmentedReturn(augmentedReturn),
         replacedReturns(replacedReturns), unnecessaryValues(unnecessaryValues),
         unnecessaryInstructions(unnecessaryInstructions),
-        unnecessaryStores(unnecessaryStores), dretAlloca(dretAlloca) {
+        unnecessaryStores(unnecessaryStores), oldUnreachable(oldUnreachable),
+        dretAlloca(dretAlloca) {
 
     assert(TR.info.Function == gutils->oldFunc);
     for (auto &pair :
@@ -279,7 +281,8 @@ public:
         Value *newip = nullptr;
 
         bool needShadow = is_value_needed_in_reverse<Shadow>(
-            TR, gutils, &LI, /*toplevel*/ Mode == DerivativeMode::Both);
+            TR, gutils, &LI, /*toplevel*/ Mode == DerivativeMode::Both,
+            oldUnreachable);
 
         switch (Mode) {
 
@@ -335,7 +338,8 @@ public:
     if (cache_reads_always ||
         (!cache_reads_never && gutils->can_modref_map->find(&LI)->second &&
          is_value_needed_in_reverse<Primal>(
-             TR, gutils, &LI, /*toplevel*/ Mode == DerivativeMode::Both))) {
+             TR, gutils, &LI, /*toplevel*/ Mode == DerivativeMode::Both,
+             oldUnreachable))) {
       IRBuilder<> BuilderZ(gutils->getNewFromOriginal(&LI)->getNextNode());
       // auto tbaa = inst->getMetadata(LLVMContext::MD_tbaa);
 
@@ -2964,7 +2968,8 @@ public:
       // TO FREE'ing
       if (Mode != DerivativeMode::Both) {
         if (is_value_needed_in_reverse<Primal>(
-                TR, gutils, orig, /*topLevel*/ Mode == DerivativeMode::Both)) {
+                TR, gutils, orig, /*topLevel*/ Mode == DerivativeMode::Both,
+                oldUnreachable)) {
 
           gutils->cacheForReverse(BuilderZ, op,
                                   getIndex(orig, CacheType::Self));
@@ -3258,7 +3263,7 @@ public:
     if (Mode == DerivativeMode::Both && !foreignFunction) {
       replaceFunction = legalCombinedForwardReverse(
           orig, *replacedReturns, postCreate, userReplace, gutils, TR,
-          unnecessaryInstructions, subretused);
+          unnecessaryInstructions, oldUnreachable, subretused);
       if (replaceFunction)
         modifyPrimal = false;
     }
@@ -3476,9 +3481,9 @@ public:
           }
 
           if (Mode == DerivativeMode::Forward &&
-              is_value_needed_in_reverse<Primal>(TR, gutils, orig,
-                                                 /*topLevel*/ Mode ==
-                                                     DerivativeMode::Both)) {
+              is_value_needed_in_reverse<Primal>(
+                  TR, gutils, orig,
+                  /*topLevel*/ Mode == DerivativeMode::Both, oldUnreachable)) {
             gutils->cacheForReverse(BuilderZ, dcall,
                                     getIndex(orig, CacheType::Self));
           }
@@ -3509,8 +3514,9 @@ public:
         }
 
         if (subretused) {
-          if (is_value_needed_in_reverse<Primal>(
-                  TR, gutils, orig, Mode == DerivativeMode::Both)) {
+          if (is_value_needed_in_reverse<Primal>(TR, gutils, orig,
+                                                 Mode == DerivativeMode::Both,
+                                                 oldUnreachable)) {
             cachereplace = BuilderZ.CreatePHI(orig->getType(), 1,
                                               orig->getName() + "_tmpcacheB");
             cachereplace = gutils->cacheForReverse(
@@ -3596,7 +3602,8 @@ public:
       if (/*!topLevel*/ Mode != DerivativeMode::Both && subretused &&
           !orig->doesNotAccessMemory()) {
         if (is_value_needed_in_reverse<Primal>(TR, gutils, orig,
-                                               Mode == DerivativeMode::Both)) {
+                                               Mode == DerivativeMode::Both,
+                                               oldUnreachable)) {
           assert(!replaceFunction);
           cachereplace = BuilderZ.CreatePHI(orig->getType(), 1,
                                             orig->getName() + "_cachereplace2");

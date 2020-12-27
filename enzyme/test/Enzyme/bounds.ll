@@ -279,8 +279,6 @@ attributes #10 = { cold }
 
 ; CHECK: define internal void @diffelookup(float* nocapture readonly %data, float* nocapture %"data'", i32 %i, i32 %bound, float %differeturn)
 ; CHECK-NEXT: invertentry:
-; CHECK-NEXT:   %cmp = icmp slt i32 %i, %bound
-; CHECK-NEXT:   call void @llvm.assume(i1 %cmp)
 ; CHECK-NEXT:   %[[idxprom:.+]] = sext i32 %i to i64
 ; CHECK-NEXT:   %[[arrayidxipg:.+]] = getelementptr inbounds float, float* %"data'", i64 %[[idxprom]]
 ; CHECK-NEXT:   %0 = load float, float* %[[arrayidxipg]], align 4

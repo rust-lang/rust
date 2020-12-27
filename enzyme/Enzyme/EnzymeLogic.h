@@ -187,6 +187,7 @@ bool legalCombinedForwardReverse(
     TypeResults &TR,
     const llvm::SmallPtrSetImpl<const llvm::Instruction *>
         &unnecessaryInstructions,
+    const llvm::SmallPtrSetImpl<llvm::BasicBlock *> &oldUnreachable,
     const bool subretused);
 
 std::pair<llvm::SmallVector<llvm::Type *, 4>,

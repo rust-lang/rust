@@ -245,9 +245,7 @@ static inline void calculateUnusedValues(
       if (unnecessaryInstructions.count(val))
         continue;
 
-      if (llvm::isa<llvm::ReturnInst>(val) ||
-          llvm::isa<llvm::BranchInst>(val) ||
-          llvm::isa<llvm::SwitchInst>(val) || instneeded(val)) {
+      if (instneeded(val)) {
         necessaryUse = true;
         break;
       }

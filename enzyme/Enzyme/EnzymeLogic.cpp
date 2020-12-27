@@ -359,14 +359,15 @@ void calculateUnusedValuesInFunction(
     llvm::SmallPtrSetImpl<const Instruction *> &unnecessaryInstructions,
     bool returnValue, DerivativeMode mode, TypeResults &TR,
     GradientUtils *gutils, TargetLibraryInfo &TLI,
-    const std::vector<DIFFE_TYPE> &constant_args) {
+    const std::vector<DIFFE_TYPE> &constant_args,
+    const llvm::SmallPtrSetImpl<BasicBlock *> &oldUnreachable) {
   std::map<std::pair<const Value *, bool>, bool> PrimalSeen;
   calculateUnusedValues(
       func, unnecessaryValues, unnecessaryInstructions, returnValue,
       [&](const Value *val) {
         return is_value_needed_in_reverse<Primal>(
             TR, gutils, val, /*topLevel*/ mode == DerivativeMode::Both,
-            PrimalSeen);
+            PrimalSeen, oldUnreachable);
       },
       [&](const Instruction *inst) {
         if (auto II = dyn_cast<IntrinsicInst>(inst)) {
@@ -376,6 +377,21 @@ void calculateUnusedValuesInFunction(
               II->getIntrinsicID() == Intrinsic::stackrestore) {
             return false;
           }
+        }
+
+        if (llvm::isa<llvm::ReturnInst>(inst) && returnValue) {
+          return true;
+        }
+        if (llvm::isa<llvm::BranchInst>(inst) ||
+            llvm::isa<llvm::SwitchInst>(inst)) {
+          size_t num = 0;
+          for (auto suc : successors(inst->getParent())) {
+            if (!oldUnreachable.count(suc)) {
+              num++;
+            }
+          }
+          if (num > 1 || mode != DerivativeMode::Reverse)
+            return true;
         }
 
         // We still need this value if used as increment/induction variable for
@@ -505,9 +521,10 @@ void calculateUnusedValuesInFunction(
         return ((mode == DerivativeMode::Forward ||
                  mode == DerivativeMode::Both) &&
                 inst->mayWriteToMemory()) ||
-               is_value_needed_in_reverse<Primal>(
-                   TR, gutils, inst,
-                   /*topLevel*/ mode == DerivativeMode::Both, PrimalSeen);
+               is_value_needed_in_reverse<Primal>(TR, gutils, inst,
+                                                  /*topLevel*/ mode ==
+                                                      DerivativeMode::Both,
+                                                  PrimalSeen, oldUnreachable);
       });
 #if 0
       llvm::errs() << "unnecessaryValues:\n";
@@ -743,6 +760,7 @@ bool legalCombinedForwardReverse(
     std::vector<Instruction *> &userReplace, GradientUtils *gutils,
     TypeResults &TR,
     const SmallPtrSetImpl<const Instruction *> &unnecessaryInstructions,
+    const SmallPtrSetImpl<BasicBlock *> &oldUnreachable,
     const bool subretused) {
   Function *called = origop->getCalledFunction();
 #if LLVM_VERSION_MAJOR >= 11
@@ -845,7 +863,8 @@ bool legalCombinedForwardReverse(
       }
       return;
     }
-    if (is_value_needed_in_reverse<Primal>(TR, gutils, I, /*topLevel*/ true)) {
+    if (is_value_needed_in_reverse<Primal>(TR, gutils, I, /*topLevel*/ true,
+                                           oldUnreachable)) {
       legal = false;
       if (EnzymePrintPerf) {
         if (called)
@@ -1210,9 +1229,10 @@ const AugmentedReturn &CreateAugmentedPrimal(
 
   SmallPtrSet<const Value *, 4> unnecessaryValues;
   SmallPtrSet<const Instruction *, 4> unnecessaryInstructions;
-  calculateUnusedValuesInFunction(
-      *gutils->oldFunc, unnecessaryValues, unnecessaryInstructions, returnUsed,
-      DerivativeMode::Forward, TR, gutils, TLI, constant_args);
+  calculateUnusedValuesInFunction(*gutils->oldFunc, unnecessaryValues,
+                                  unnecessaryInstructions, returnUsed,
+                                  DerivativeMode::Forward, TR, gutils, TLI,
+                                  constant_args, guaranteedUnreachable);
 
   SmallPtrSet<const Instruction *, 4> unnecessaryStores;
   calculateUnusedStoresInFunction(*gutils->oldFunc, unnecessaryStores,
@@ -1275,7 +1295,7 @@ const AugmentedReturn &CreateAugmentedPrimal(
       DerivativeMode::Forward, gutils, constant_args, TR, getIndex,
       uncacheable_args_map, &returnuses, &cachedfunctions.find(tup)->second,
       nullptr, unnecessaryValues, unnecessaryInstructions, unnecessaryStores,
-      nullptr);
+      guaranteedUnreachable, nullptr);
 
   for (BasicBlock &oBB : *gutils->oldFunc) {
     auto term = oBB.getTerminator();
@@ -2112,7 +2132,6 @@ Function *CreatePrimalAndGradient(
   }
 
   assert(!todiff->empty());
-  auto M = todiff->getParent();
 
   AAResults AA(TLI);
   // AA.addAAResult(global_AA);
@@ -2130,46 +2149,6 @@ Function *CreatePrimalAndGradient(
 
   const SmallPtrSet<BasicBlock *, 4> guaranteedUnreachable =
       getGuaranteedUnreachable(gutils->oldFunc);
-
-  SmallPtrSet<Value *, 4> assumeTrue;
-  SmallPtrSet<Value *, 4> assumeFalse;
-
-  if (!topLevel) {
-    // TODO also can consider switch instance as well
-    // TODO can also insert to topLevel as well [note this requires putting the
-    // intrinsic at the correct location]
-    for (auto &BB : *gutils->oldFunc) {
-      std::vector<BasicBlock *> unreachables;
-      std::vector<BasicBlock *> reachables;
-      for (auto Succ : successors(&BB)) {
-        if (guaranteedUnreachable.find(Succ) != guaranteedUnreachable.end()) {
-          unreachables.push_back(Succ);
-        } else {
-          reachables.push_back(Succ);
-        }
-      }
-
-      if (unreachables.size() == 0 || reachables.size() == 0)
-        continue;
-
-      if (auto bi = dyn_cast<BranchInst>(BB.getTerminator())) {
-        IRBuilder<> B(&gutils->newFunc->getEntryBlock().front());
-
-        if (auto inst = dyn_cast<Instruction>(bi->getCondition())) {
-          B.SetInsertPoint(gutils->getNewFromOriginal(inst)->getNextNode());
-        }
-
-        Value *vals[1] = {gutils->getNewFromOriginal(bi->getCondition())};
-        if (bi->getSuccessor(0) == unreachables[0]) {
-          assumeFalse.insert(vals[0]);
-          vals[0] = B.CreateNot(vals[0]);
-        } else {
-          assumeTrue.insert(vals[0]);
-        }
-        B.CreateCall(Intrinsic::getDeclaration(M, Intrinsic::assume), vals);
-      }
-    }
-  }
 
   gutils->forceContexts();
 
@@ -2228,7 +2207,7 @@ Function *CreatePrimalAndGradient(
   calculateUnusedValuesInFunction(
       *gutils->oldFunc, unnecessaryValues, unnecessaryInstructions, returnValue,
       topLevel ? DerivativeMode::Both : DerivativeMode::Reverse, TR, gutils,
-      TLI, constant_args);
+      TLI, constant_args, guaranteedUnreachable);
 
   SmallPtrSet<const Instruction *, 4> unnecessaryStores;
   calculateUnusedStoresInFunction(*gutils->oldFunc, unnecessaryStores,
@@ -2352,7 +2331,8 @@ Function *CreatePrimalAndGradient(
       topLevel ? DerivativeMode::Both : DerivativeMode::Reverse, gutils,
       constant_args, TR, getIndex, uncacheable_args_map, /*returnuses*/ nullptr,
       augmenteddata, &replacedReturns, unnecessaryValues,
-      unnecessaryInstructions, unnecessaryStores, dretAlloca);
+      unnecessaryInstructions, unnecessaryStores, guaranteedUnreachable,
+      dretAlloca);
 
   for (BasicBlock &oBB : *gutils->oldFunc) {
     // Don't create derivatives for code that results in termination
@@ -2412,50 +2392,45 @@ Function *CreatePrimalAndGradient(
                                       : 0));
   }
 
+  if (!topLevel) {
+    // TODO also can consider switch instance as well
+    // TODO can also insert to topLevel as well [note this requires putting the
+    // intrinsic at the correct location]
+    for (auto &BB : *gutils->oldFunc) {
+      std::vector<BasicBlock *> unreachables;
+      std::vector<BasicBlock *> reachables;
+      for (auto Succ : successors(&BB)) {
+        if (guaranteedUnreachable.find(Succ) != guaranteedUnreachable.end()) {
+          unreachables.push_back(Succ);
+        } else {
+          reachables.push_back(Succ);
+        }
+      }
+
+      if (unreachables.size() == 0 || reachables.size() == 0)
+        continue;
+
+      if (auto bi = dyn_cast<BranchInst>(BB.getTerminator())) {
+        IRBuilder<> B(&gutils->newFunc->getEntryBlock().front());
+
+        if (auto inst = dyn_cast<Instruction>(bi->getCondition())) {
+          B.SetInsertPoint(gutils->getNewFromOriginal(inst)->getNextNode());
+        }
+
+        Value *vals[1] = {gutils->getNewFromOriginal(bi->getCondition())};
+        if (bi->getSuccessor(0) == unreachables[0]) {
+          gutils->replaceAWithB(vals[0],
+                                ConstantInt::getFalse(vals[0]->getContext()));
+        } else {
+          gutils->replaceAWithB(vals[0],
+                                ConstantInt::getTrue(vals[0]->getContext()));
+        }
+        // B.CreateCall(Intrinsic::getDeclaration(M, Intrinsic::assume), vals);
+      }
+    }
+  }
+
   gutils->eraseFictiousPHIs();
-
-  for (auto val : assumeTrue) {
-    bool changed;
-    do {
-      changed = false;
-      for (auto &use : val->uses()) {
-        assert(use.getUser());
-        if (auto user = dyn_cast<IntrinsicInst>(use.getUser())) {
-          if (user->getIntrinsicID() == Intrinsic::assume)
-            continue;
-        }
-        use.set(ConstantInt::getTrue(val->getContext()));
-        changed = true;
-        break;
-      }
-    } while (!changed);
-  }
-
-  for (auto val : assumeFalse) {
-    bool changed;
-    do {
-      changed = false;
-      for (auto &use : val->uses()) {
-        assert(use.getUser());
-        if (auto notu = dyn_cast<BinaryOperator>(use.getUser())) {
-          if (notu->getNumUses() == 1 &&
-              notu->getOpcode() == BinaryOperator::Xor &&
-              notu->getOperand(0) == val &&
-              isa<ConstantInt>(notu->getOperand(1)) &&
-              cast<ConstantInt>(notu->getOperand(1))->isOne()) {
-            if (auto user = dyn_cast<IntrinsicInst>(*notu->user_begin())) {
-              if (user->getIntrinsicID() == Intrinsic::assume) {
-                continue;
-              }
-            }
-          }
-        }
-        use.set(ConstantInt::getFalse(val->getContext()));
-        changed = true;
-        break;
-      }
-    } while (!changed);
-  }
 
   while (gutils->inversionAllocs->size() > 0) {
     gutils->inversionAllocs->back().moveBefore(

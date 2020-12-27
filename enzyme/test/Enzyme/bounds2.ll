@@ -279,13 +279,10 @@ attributes #10 = { cold }
 
 ; CHECK: define internal void @diffelookup(float* nocapture readonly %data, float* nocapture %"data'", i32 %i, i32 %bound, float %differeturn)
 ; CHECK-NEXT: invertentry:
-; CHECK-NEXT:   %cmp = icmp sge i32 %i, %bound
-; CHECK-NEXT:   %0 = xor i1 %cmp, true
-; CHECK-NEXT:   call void @llvm.assume(i1 %0)
 ; CHECK-NEXT:   %[[idxprom:.+]] = sext i32 %i to i64
 ; CHECK-NEXT:   %[[arrayidxipg:.+]] = getelementptr inbounds float, float* %"data'", i64 %[[idxprom]]
-; CHECK-NEXT:   %1 = load float, float* %[[arrayidxipg]], align 4
-; CHECK-NEXT:   %2 = fadd fast float %1, %differeturn
-; CHECK-NEXT:   store float %2, float* %[[arrayidxipg]], align 4
+; CHECK-NEXT:   %[[l1:.+]] = load float, float* %[[arrayidxipg]], align 4
+; CHECK-NEXT:   %[[a1:.+]] = fadd fast float %[[l1]], %differeturn
+; CHECK-NEXT:   store float %[[a1]], float* %[[arrayidxipg]], align 4
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
