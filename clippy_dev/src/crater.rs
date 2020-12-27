@@ -234,10 +234,9 @@ pub fn run() {
 
     // collect into a tupled list for sorting
     let mut stats: Vec<(&&String, &usize)> = counter.iter().map(|(lint, count)| (lint, count)).collect();
-    // sort by number of lint occurences
-    stats.sort_by_key(|(_, count)| *count);
-    // biggest number first
-    stats.reverse();
+    // sort by "000{count} {clippy::lintname}"
+    // to not have a lint with 200 and 2 warnings take the same spot
+    stats.sort_by_key(|(lint, count)| format!("{:0>4}, {}", count, lint));
 
     let stats_formatted: String = stats
         .iter()
