@@ -7,7 +7,8 @@
 #![crate_name = "krate"]
 #![no_core]
 
-// @has external_crate/some_module/macro.external_macro.html
+ // @has external_crate/some_module/macro.external_macro.html
+  // @!has external_crate/macro.external_macro.html
 extern crate external_crate;
 
 pub mod inner {
