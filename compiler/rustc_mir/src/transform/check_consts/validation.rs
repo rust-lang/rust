@@ -582,7 +582,7 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
                 );
 
                 if borrowed_place_has_mut_interior {
-                    // Locals without StorageDead follow the "trailing expression" rule, meaning
+                    // Locals without StorageDead follow the "enclosing scope" rule, meaning
                     // they are essentially anonymous static items themselves.
                     if self.local_has_storage_dead(place.local) {
                         self.check_op(ops::CellBorrowBehindRef);
