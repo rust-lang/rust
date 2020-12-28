@@ -72,7 +72,6 @@ impl<'a, 'tcx> Visitor<'tcx> for PtrCloneVisitor<'a, 'tcx> {
                     }
                 }
             }
-            return;
         }
         walk_expr(self, expr);
     }

@@ -136,3 +136,22 @@ mod issue_5644 {
         }
     }
 }
+
+mod issue6509 {
+    use std::path::PathBuf;
+
+    fn foo_vec(vec: &Vec<u8>) {
+        let _ = vec.clone().pop();
+        let _ = vec.clone().clone();
+    }
+
+    fn foo_path(path: &PathBuf) {
+        let _ = path.clone().pop();
+        let _ = path.clone().clone();
+    }
+
+    fn foo_str(str: &PathBuf) {
+        let _ = str.clone().pop();
+        let _ = str.clone().clone();
+    }
+}
