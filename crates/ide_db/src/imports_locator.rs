@@ -27,7 +27,12 @@ pub fn find_exact_imports<'a>(
             local_query.limit(40);
             local_query
         },
-        import_map::Query::new(name_to_import).anchor_end().case_sensitive().limit(40),
+        import_map::Query::new(name_to_import)
+            .limit(40)
+            .name_only()
+            .name_end()
+            .strict_include()
+            .case_sensitive(),
     )
 }
 
@@ -36,11 +41,12 @@ pub fn find_similar_imports<'a>(
     krate: Crate,
     limit: Option<usize>,
     name_to_import: &str,
+    // TODO kb change it to search across the whole path or not?
     ignore_modules: bool,
 ) -> impl Iterator<Item = Either<ModuleDef, MacroDef>> {
     let _p = profile::span("find_similar_imports");
 
-    let mut external_query = import_map::Query::new(name_to_import);
+    let mut external_query = import_map::Query::new(name_to_import).name_only();
     if ignore_modules {
         external_query = external_query.exclude_import_kind(import_map::ImportKind::Module);
     }

@@ -156,8 +156,7 @@ impl ImportMap {
             let start = last_batch_start;
             last_batch_start = idx + 1;
 
-            let key = fst_path(&importables[start].1.path);
-
+            let key = fst_string(&importables[start].1.path);
             builder.insert(key, start as u64).unwrap();
         }
 
@@ -213,15 +212,15 @@ impl fmt::Debug for ImportMap {
     }
 }
 
-fn fst_path(path: &ImportPath) -> String {
-    let mut s = path.to_string();
+fn fst_string<T: ToString>(t: &T) -> String {
+    let mut s = t.to_string();
     s.make_ascii_lowercase();
     s
 }
 
 fn cmp((_, lhs): &(&ItemInNs, &ImportInfo), (_, rhs): &(&ItemInNs, &ImportInfo)) -> Ordering {
-    let lhs_str = fst_path(&lhs.path);
-    let rhs_str = fst_path(&rhs.path);
+    let lhs_str = fst_string(&lhs.path);
+    let rhs_str = fst_string(&rhs.path);
     lhs_str.cmp(&rhs_str)
 }
 
@@ -242,7 +241,10 @@ pub enum ImportKind {
 pub struct Query {
     query: String,
     lowercased: String,
-    anchor_end: bool,
+    // TODO kb use enums instead?
+    name_only: bool,
+    name_end: bool,
+    strict_include: bool,
     case_sensitive: bool,
     limit: usize,
     exclude_import_kinds: FxHashSet<ImportKind>,
@@ -253,17 +255,27 @@ impl Query {
         Self {
             lowercased: query.to_lowercase(),
             query: query.to_string(),
-            anchor_end: false,
+            name_only: false,
+            name_end: false,
+            strict_include: false,
             case_sensitive: false,
             limit: usize::max_value(),
             exclude_import_kinds: FxHashSet::default(),
         }
     }
 
-    /// Only returns items whose paths end with the (case-insensitive) query string as their last
-    /// segment.
-    pub fn anchor_end(self) -> Self {
-        Self { anchor_end: true, ..self }
+    pub fn name_end(self) -> Self {
+        Self { name_end: true, ..self }
+    }
+
+    /// todo kb
+    pub fn name_only(self) -> Self {
+        Self { name_only: true, ..self }
+    }
+
+    /// todo kb
+    pub fn strict_include(self) -> Self {
+        Self { strict_include: true, ..self }
     }
 
     /// Limits the returned number of items to `limit`.
@@ -280,6 +292,35 @@ impl Query {
     pub fn exclude_import_kind(mut self, import_kind: ImportKind) -> Self {
         self.exclude_import_kinds.insert(import_kind);
         self
+    }
+}
+
+// TODO kb: ugly with a special `return true` case and the `enforce_lowercase` one.
+fn contains_query(query: &Query, input_path: &ImportPath, enforce_lowercase: bool) -> bool {
+    let mut input = if query.name_only {
+        input_path.segments.last().unwrap().to_string()
+    } else {
+        input_path.to_string()
+    };
+    if enforce_lowercase || !query.case_sensitive {
+        input.make_ascii_lowercase();
+    }
+
+    let query_string =
+        if !enforce_lowercase && query.case_sensitive { &query.query } else { &query.lowercased };
+
+    if query.strict_include {
+        if query.name_end {
+            &input == query_string
+        } else {
+            input.contains(query_string)
+        }
+    } else if query.name_end {
+        input.ends_with(query_string)
+    } else {
+        let input_chars = input.chars().collect::<FxHashSet<_>>();
+        // TODO kb actually check for the order and the quantity
+        query_string.chars().all(|query_char| input_chars.contains(&query_char))
     }
 }
 
@@ -312,39 +353,26 @@ pub fn search_dependencies<'a>(
             let importables = &import_map.importables[indexed_value.value as usize..];
 
             // Path shared by the importable items in this group.
-            let path = &import_map.map[&importables[0]].path;
-
-            if query.anchor_end {
-                // Last segment must match query.
-                let last = path.segments.last().unwrap().to_string();
-                if last.to_lowercase() != query.lowercased {
-                    continue;
-                }
+            let common_importables_path = &import_map.map[&importables[0]].path;
+            if !contains_query(&query, common_importables_path, true) {
+                continue;
             }
 
+            let common_importables_path_fst = fst_string(common_importables_path);
             // Add the items from this `ModPath` group. Those are all subsequent items in
             // `importables` whose paths match `path`.
             let iter = importables
                 .iter()
                 .copied()
                 .take_while(|item| {
-                    let item_path = &import_map.map[item].path;
-                    fst_path(item_path) == fst_path(path)
+                    common_importables_path_fst == fst_string(&import_map.map[item].path)
                 })
                 .filter(|&item| match item_import_kind(item) {
                     Some(import_kind) => !query.exclude_import_kinds.contains(&import_kind),
                     None => true,
-                });
-
-            if query.case_sensitive {
-                // FIXME: This does not do a subsequence match.
-                res.extend(iter.filter(|item| {
-                    let item_path = &import_map.map[item].path;
-                    item_path.to_string().contains(&query.query)
-                }));
-            } else {
-                res.extend(iter);
-            }
+                })
+                .filter(|item| contains_query(&query, &import_map.map[item].path, false));
+            res.extend(iter);
 
             if res.len() >= query.limit {
                 res.truncate(query.limit);
@@ -728,7 +756,7 @@ mod tests {
         check_search(
             ra_fixture,
             "main",
-            Query::new("fmt").anchor_end(),
+            Query::new("fmt").name_only().strict_include(),
             expect![[r#"
                 dep::fmt (t)
                 dep::Fmt (t)
