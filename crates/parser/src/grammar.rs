@@ -59,7 +59,7 @@ pub(crate) mod fragments {
     };
 
     pub(crate) fn expr(p: &mut Parser) {
-        let _ = expressions::expr(p);
+        let _ = expressions::expr_with_attrs(p);
     }
 
     pub(crate) fn stmt(p: &mut Parser) {
