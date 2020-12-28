@@ -23,8 +23,8 @@ pub(crate) fn codegen_llvm_intrinsic_call<'tcx>(
 
         // Used by `_mm_movemask_epi8` and `_mm256_movemask_epi8`
         llvm.x86.sse2.pmovmskb.128 | llvm.x86.avx2.pmovmskb | llvm.x86.sse2.movmsk.pd, (c a) {
-            let (lane_layout, lane_count) = lane_type_and_count(fx.tcx, a.layout());
-            let lane_ty = fx.clif_type(lane_layout.ty).unwrap();
+            let (lane_count, lane_ty) = a.layout().ty.simd_size_and_type(fx.tcx);
+            let lane_ty = fx.clif_type(lane_ty).unwrap();
             assert!(lane_count <= 32);
 
             let mut res = fx.bcx.ins().iconst(types::I32, 0);

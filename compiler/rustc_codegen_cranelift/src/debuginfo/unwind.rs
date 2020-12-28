@@ -15,11 +15,11 @@ pub(crate) struct UnwindContext<'tcx> {
 }
 
 impl<'tcx> UnwindContext<'tcx> {
-    pub(crate) fn new(tcx: TyCtxt<'tcx>, isa: &dyn TargetIsa) -> Self {
+    pub(crate) fn new(tcx: TyCtxt<'tcx>, isa: &dyn TargetIsa, pic_eh_frame: bool) -> Self {
         let mut frame_table = FrameTable::default();
 
         let cie_id = if let Some(mut cie) = isa.create_systemv_cie() {
-            if isa.flags().is_pic() {
+            if pic_eh_frame {
                 cie.fde_address_encoding =
                     gimli::DwEhPe(gimli::DW_EH_PE_pcrel.0 | gimli::DW_EH_PE_sdata4.0);
             }
@@ -80,7 +80,7 @@ impl<'tcx> UnwindContext<'tcx> {
     #[cfg(feature = "jit")]
     pub(crate) unsafe fn register_jit(
         self,
-        jit_module: &cranelift_simplejit::SimpleJITModule,
+        jit_module: &cranelift_jit::JITModule,
     ) -> Option<UnwindRegistry> {
         let mut eh_frame = EhFrame::from(super::emit::WriterRelocate::new(super::target_endian(
             self.tcx,
