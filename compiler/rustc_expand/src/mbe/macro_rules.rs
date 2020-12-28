@@ -476,10 +476,15 @@ pub fn compile_declarative_macro(
             .map(|m| {
                 if let MatchedNonterminal(ref nt) = *m {
                     if let NtTT(ref tt) = **nt {
-                        let tt =
-                            mbe::quoted::parse(tt.clone().into(), true, &sess.parse_sess, def.id)
-                                .pop()
-                                .unwrap();
+                        let tt = mbe::quoted::parse(
+                            tt.clone().into(),
+                            true,
+                            &sess.parse_sess,
+                            def.id,
+                            features,
+                        )
+                        .pop()
+                        .unwrap();
                         valid &= check_lhs_nt_follows(&sess.parse_sess, features, &def.attrs, &tt);
                         return tt;
                     }
@@ -501,6 +506,7 @@ pub fn compile_declarative_macro(
                             false,
                             &sess.parse_sess,
                             def.id,
+                            features,
                         )
                         .pop()
                         .unwrap();
@@ -1090,7 +1096,7 @@ fn is_in_follow(tok: &mbe::TokenTree, kind: NonterminalKind) -> IsInFollow {
                     _ => IsInFollow::No(TOKENS),
                 }
             }
-            NonterminalKind::Pat => {
+            NonterminalKind::Pat2018 { .. } | NonterminalKind::Pat2021 { .. } => {
                 const TOKENS: &[&str] = &["`=>`", "`,`", "`=`", "`|`", "`if`", "`in`"];
                 match tok {
                     TokenTree::Token(token) => match token.kind {
