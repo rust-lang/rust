@@ -432,7 +432,7 @@ mod tests {
     use base_db::{fixture::WithFixture, SourceDatabase, Upcast};
     use expect_test::{expect, Expect};
 
-    use crate::{test_db::TestDB, AssocContainerId, Lookup};
+    use crate::{data::FunctionData, test_db::TestDB, AssocContainerId, Lookup};
 
     use super::*;
 
@@ -451,14 +451,31 @@ mod tests {
             .into_iter()
             .filter_map(|item| {
                 let mark = match item {
+                    ItemInNs::Types(ModuleDefId::FunctionId(_))
+                    | ItemInNs::Values(ModuleDefId::FunctionId(_)) => "f",
                     ItemInNs::Types(_) => "t",
                     ItemInNs::Values(_) => "v",
                     ItemInNs::Macros(_) => "m",
                 };
-                let item = assoc_to_trait(&db, item);
                 item.krate(db.upcast()).map(|krate| {
                     let map = db.import_map(krate);
-                    let path = map.path_of(item).unwrap();
+
+                    let path = match assoc_to_trait(&db, item) {
+                        Some(trait_) => {
+                            let mut full_path = map.path_of(trait_).unwrap().to_string();
+                            if let ItemInNs::Types(ModuleDefId::FunctionId(function_id))
+                            | ItemInNs::Values(ModuleDefId::FunctionId(function_id)) = item
+                            {
+                                full_path += &format!(
+                                    "::{}",
+                                    FunctionData::fn_data_query(&db, function_id).name
+                                );
+                            }
+                            full_path
+                        }
+                        None => map.path_of(item).unwrap().to_string(),
+                    };
+
                     format!(
                         "{}::{} ({})\n",
                         crate_graph[krate].display_name.as_ref().unwrap(),
@@ -471,15 +488,15 @@ mod tests {
         expect.assert_eq(&actual)
     }
 
-    fn assoc_to_trait(db: &dyn DefDatabase, item: ItemInNs) -> ItemInNs {
+    fn assoc_to_trait(db: &dyn DefDatabase, item: ItemInNs) -> Option<ItemInNs> {
         let assoc: AssocItemId = match item {
             ItemInNs::Types(it) | ItemInNs::Values(it) => match it {
                 ModuleDefId::TypeAliasId(it) => it.into(),
                 ModuleDefId::FunctionId(it) => it.into(),
                 ModuleDefId::ConstId(it) => it.into(),
-                _ => return item,
+                _ => return None,
             },
-            _ => return item,
+            _ => return None,
         };
 
         let container = match assoc {
@@ -489,8 +506,8 @@ mod tests {
         };
 
         match container {
-            AssocContainerId::TraitId(it) => ItemInNs::Types(it.into()),
-            _ => item,
+            AssocContainerId::TraitId(it) => Some(ItemInNs::Types(it.into())),
+            _ => None,
         }
     }
 
@@ -764,8 +781,8 @@ mod tests {
                 dep::Fmt (v)
                 dep::Fmt (m)
                 dep::fmt::Display (t)
-                dep::format (v)
-                dep::fmt::Display (t)
+                dep::format (f)
+                dep::fmt::Display::fmt (f)
             "#]],
         );
 
@@ -778,7 +795,7 @@ mod tests {
                 dep::Fmt (t)
                 dep::Fmt (v)
                 dep::Fmt (m)
-                dep::fmt::Display (t)
+                dep::fmt::Display::fmt (f)
             "#]],
         );
 
@@ -792,7 +809,7 @@ mod tests {
                 dep::Fmt (v)
                 dep::Fmt (m)
                 dep::fmt::Display (t)
-                dep::fmt::Display (t)
+                dep::fmt::Display::fmt (f)
             "#]],
         );
     }
@@ -833,11 +850,10 @@ mod tests {
                 dep::Fmt (v)
                 dep::Fmt (m)
                 dep::fmt::Display (t)
-                dep::fmt::Display (t)
+                dep::fmt::Display::fmt (f)
             "#]],
         );
 
-        // TODO kb where does this duplicate `dep::fmt::Display (t)` come from?
         check_search(
             ra_fixture,
             "main",
@@ -847,7 +863,7 @@ mod tests {
                 dep::Fmt (t)
                 dep::Fmt (v)
                 dep::Fmt (m)
-                dep::fmt::Display (t)
+                dep::fmt::Display::fmt (f)
             "#]],
         );
     }
