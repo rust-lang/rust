@@ -2,3 +2,6 @@
 authors = ["The Rust Project Developers"]
 src = "src"
 title = "The rustdoc book"
+
+[output.html]
+git-repository-url = "https://github.com/rust-lang/rust/tree/master/src/doc/rustdoc"
