@@ -1038,6 +1038,7 @@ impl<T> VecDeque<T> {
     /// v.push_back(1);
     /// assert_eq!(v.len(), 1);
     /// ```
+    #[doc(alias = "length")]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn len(&self) -> usize {
         count(self.tail, self.head, self.cap())
