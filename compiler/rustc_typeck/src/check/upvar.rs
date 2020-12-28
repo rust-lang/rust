@@ -347,7 +347,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ///
     /// InferBorrowKind results in a structure like this:
     ///
-    /// ```
+    /// ```text
     /// {
     ///       Place(base: hir_id_s, projections: [], ....) -> (hir_id_L5, ByValue),
     ///       Place(base: hir_id_p, projections: [Field(0, 0)], ...) -> (hir_id_L2, ByRef(MutBorrow))
@@ -356,7 +356,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// ```
     ///
     /// After the min capture analysis, we get:
-    /// ```
+    /// ```text
     /// {
     ///       hir_id_s -> [
     ///            Place(base: hir_id_s, projections: [], ....) -> (hir_id_L4, ByValue)
