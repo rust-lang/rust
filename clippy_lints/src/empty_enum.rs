@@ -44,7 +44,9 @@ impl<'tcx> LateLintPass<'tcx> for EmptyEnum {
         if let ItemKind::Enum(..) = item.kind {
             let ty = cx.tcx.type_of(did);
             let adt = ty.ty_adt_def().expect("already checked whether this is an enum");
-            if adt.variants.is_empty() {
+
+            // Only suggest the never type if the feature is enabled
+            if adt.variants.is_empty() && cx.tcx.features().never_type {
                 span_lint_and_help(
                     cx,
                     EMPTY_ENUM,
