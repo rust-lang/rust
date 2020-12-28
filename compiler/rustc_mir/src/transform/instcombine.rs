@@ -301,9 +301,18 @@ struct OptimizationList<'tcx> {
 
 impl<'tcx> OptimizationList<'tcx> {
     fn is_empty(&self) -> bool {
-        self.and_stars.is_empty()
-            && self.arrays_lengths.is_empty()
-            && self.unneeded_equality_comparison.is_empty()
-            && self.unneeded_deref.is_empty()
+        match self {
+            OptimizationList {
+                and_stars,
+                arrays_lengths,
+                unneeded_equality_comparison,
+                unneeded_deref,
+            } => {
+                and_stars.is_empty()
+                    && arrays_lengths.is_empty()
+                    && unneeded_equality_comparison.is_empty()
+                    && unneeded_deref.is_empty()
+            }
+        }
     }
 }
