@@ -869,12 +869,6 @@ default_test_with_compare_mode!(Ui {
     compare_mode: "nll"
 });
 
-default_test!(CompileFail {
-    path: "src/test/compile-fail",
-    mode: "compile-fail",
-    suite: "compile-fail"
-});
-
 default_test!(RunPassValgrind {
     path: "src/test/run-pass-valgrind",
     mode: "run-pass-valgrind",

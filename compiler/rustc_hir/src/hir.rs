@@ -607,7 +607,7 @@ pub struct Crate<'hir> {
     // over the ids in increasing order. In principle it should not
     // matter what order we visit things in, but in *practice* it
     // does, because it can affect the order in which errors are
-    // detected, which in turn can make compile-fail tests yield
+    // detected, which in turn can make UI tests yield
     // slightly different results.
     pub items: BTreeMap<HirId, Item<'hir>>,
 

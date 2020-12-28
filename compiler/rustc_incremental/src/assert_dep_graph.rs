@@ -12,7 +12,7 @@
 //! In this code, we report errors on each `rustc_if_this_changed`
 //! annotation. If a path exists in all cases, then we would report
 //! "all path(s) exist". Otherwise, we report: "no path to `foo`" for
-//! each case where no path exists. `compile-fail` tests can then be
+//! each case where no path exists. `ui` tests can then be
 //! used to check when paths exist or do not.
 //!
 //! The full form of the `rustc_if_this_changed` annotation is

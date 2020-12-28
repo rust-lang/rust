@@ -85,11 +85,7 @@ pub fn check(
     assert!(!lib_features.is_empty());
 
     super::walk_many(
-        &[
-            &src_path.join("test/ui"),
-            &src_path.join("test/ui-fulldeps"),
-            &src_path.join("test/compile-fail"),
-        ],
+        &[&src_path.join("test/ui"), &src_path.join("test/ui-fulldeps")],
         &mut |path| super::filter_dirs(path),
         &mut |entry, contents| {
             let file = entry.path();

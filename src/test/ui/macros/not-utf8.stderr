@@ -1,0 +1,10 @@
+error: couldn't read $DIR/not-utf8.bin: stream did not contain valid UTF-8
+  --> $DIR/not-utf8.rs:4:5
+   |
+LL |     include!("not-utf8.bin")
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to previous error
+

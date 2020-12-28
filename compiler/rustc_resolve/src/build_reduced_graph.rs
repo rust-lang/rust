@@ -525,7 +525,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                             ModuleKind::Block(..) => unreachable!(),
                         };
                         // HACK(eddyb) unclear how good this is, but keeping `$crate`
-                        // in `source` breaks `src/test/compile-fail/import-crate-var.rs`,
+                        // in `source` breaks `src/test/ui/imports/import-crate-var.rs`,
                         // while the current crate doesn't have a valid `crate_name`.
                         if crate_name != kw::Invalid {
                             // `crate_name` should not be interpreted as relative.

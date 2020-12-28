@@ -29,34 +29,52 @@ LL |         eprint!("{}",);
    |                  ^^
 
 error: 1 positional argument in format string, but no arguments were given
-  --> $DIR/macro-comma-behavior.rs:50:18
+  --> $DIR/macro-comma-behavior.rs:43:20
+   |
+LL |         eprintln!("{}",);
+   |                    ^^
+
+error: 1 positional argument in format string, but no arguments were given
+  --> $DIR/macro-comma-behavior.rs:48:18
    |
 LL |         format!("{}",);
    |                  ^^
 
 error: 1 positional argument in format string, but no arguments were given
-  --> $DIR/macro-comma-behavior.rs:54:19
+  --> $DIR/macro-comma-behavior.rs:52:19
    |
 LL |     format_args!("{}",);
    |                   ^^
 
 error: 1 positional argument in format string, but no arguments were given
-  --> $DIR/macro-comma-behavior.rs:61:17
+  --> $DIR/macro-comma-behavior.rs:59:17
    |
 LL |         print!("{}",);
    |                 ^^
 
 error: 1 positional argument in format string, but no arguments were given
-  --> $DIR/macro-comma-behavior.rs:72:21
+  --> $DIR/macro-comma-behavior.rs:64:19
+   |
+LL |         println!("{}",);
+   |                   ^^
+
+error: 1 positional argument in format string, but no arguments were given
+  --> $DIR/macro-comma-behavior.rs:68:21
    |
 LL |     unimplemented!("{}",);
    |                     ^^
 
 error: 1 positional argument in format string, but no arguments were given
-  --> $DIR/macro-comma-behavior.rs:81:24
+  --> $DIR/macro-comma-behavior.rs:77:24
    |
 LL |             write!(f, "{}",)?;
    |                        ^^
 
-error: aborting due to 10 previous errors
+error: 1 positional argument in format string, but no arguments were given
+  --> $DIR/macro-comma-behavior.rs:81:26
+   |
+LL |             writeln!(f, "{}",)?;
+   |                          ^^
+
+error: aborting due to 13 previous errors
 

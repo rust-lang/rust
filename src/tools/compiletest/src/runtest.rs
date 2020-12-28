@@ -5,8 +5,8 @@ use crate::common::{output_base_dir, output_base_name, output_testname_unique};
 use crate::common::{Assembly, Incremental, JsDocTest, MirOpt, RunMake, RustdocJson, Ui};
 use crate::common::{Codegen, CodegenUnits, DebugInfo, Debugger, Rustdoc};
 use crate::common::{CompareMode, FailMode, PassMode};
-use crate::common::{CompileFail, Pretty, RunFail, RunPassValgrind};
 use crate::common::{Config, TestPaths};
+use crate::common::{Pretty, RunPassValgrind};
 use crate::common::{UI_RUN_STDERR, UI_RUN_STDOUT};
 use crate::errors::{self, Error, ErrorKind};
 use crate::header::TestProps;
@@ -330,13 +330,11 @@ impl<'test> TestCx<'test> {
     /// revisions, exactly once, with revision == None).
     fn run_revision(&self) {
         if self.props.should_ice {
-            if self.config.mode != CompileFail && self.config.mode != Incremental {
+            if self.config.mode != Incremental {
                 self.fatal("cannot use should-ice in a test that is not cfail");
             }
         }
         match self.config.mode {
-            CompileFail => self.run_cfail_test(),
-            RunFail => self.run_rfail_test(),
             RunPassValgrind => self.run_valgrind_test(),
             Pretty => self.run_pretty_test(),
             DebugInfo => self.run_debuginfo_test(),
@@ -377,7 +375,6 @@ impl<'test> TestCx<'test> {
 
     fn should_compile_successfully(&self, pm: Option<PassMode>) -> bool {
         match self.config.mode {
-            CompileFail => false,
             JsDocTest => true,
             Ui => pm.is_some() || self.props.fail_mode > Some(FailMode::Build),
             Incremental => {
@@ -1537,8 +1534,8 @@ impl<'test> TestCx<'test> {
         };
 
         let allow_unused = match self.config.mode {
-            CompileFail | Ui => {
-                // compile-fail and ui tests tend to have tons of unused code as
+            Ui => {
+                // UI tests tend to have tons of unused code as
                 // it's just testing various pieces of the compile, but we don't
                 // want to actually assert warnings about all this code. Instead
                 // let's just ignore unused code warnings by defaults and tests
@@ -1940,7 +1937,7 @@ impl<'test> TestCx<'test> {
         }
 
         match self.config.mode {
-            CompileFail | Incremental => {
+            Incremental => {
                 // If we are extracting and matching errors in the new
                 // fashion, then you want JSON mode. Old-skool error
                 // patterns still match the raw compiler output.
@@ -1975,8 +1972,8 @@ impl<'test> TestCx<'test> {
 
                 rustc.arg(dir_opt);
             }
-            RunFail | RunPassValgrind | Pretty | DebugInfo | Codegen | Rustdoc | RustdocJson
-            | RunMake | CodegenUnits | JsDocTest | Assembly => {
+            RunPassValgrind | Pretty | DebugInfo | Codegen | Rustdoc | RustdocJson | RunMake
+            | CodegenUnits | JsDocTest | Assembly => {
                 // do not use JSON output
             }
         }

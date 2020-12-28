@@ -71,7 +71,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
             "",
             "mode",
             "which sort of compile tests to run",
-            "compile-fail | run-fail | run-pass-valgrind | pretty | debug-info | codegen | rustdoc \
+            "run-pass-valgrind | pretty | debug-info | codegen | rustdoc \
             | rustdoc-json | codegen-units | incremental | run-make | ui | js-doc-test | mir-opt | assembly",
         )
         .reqopt(

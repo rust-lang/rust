@@ -3,7 +3,7 @@
 // the trait definition if there is no default method and for every impl,
 // `Self` does implement `Get`.
 //
-// See also compile-fail tests associated-types-no-suitable-supertrait
+// See also tests associated-types-no-suitable-supertrait
 // and associated-types-no-suitable-supertrait-2, which show how small
 // variants of the code below can fail.
 

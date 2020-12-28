@@ -6,7 +6,7 @@
 // aux-build:svh-uta-change-use-trait.rs
 // normalize-stderr-test: "(crate `(\w+)`:) .*" -> "$1 $$PATH_$2"
 
-//! "compile-fail/svh-uta-trait.rs" is checking that we detect a
+//! "svh-uta-trait.rs" is checking that we detect a
 //! change from `use foo::TraitB` to use `foo::TraitB` in the hash
 //! (SVH) computation (#14132), since that will affect method
 //! resolution.

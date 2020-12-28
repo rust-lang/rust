@@ -558,7 +558,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     // where-clause or, in the case of an object type,
                     // it could be that the object type lists the
                     // trait (e.g., `Foo+Send : Send`). See
-                    // `compile-fail/typeck-default-trait-impl-send-param.rs`
+                    // `ui/typeck/typeck-default-trait-impl-send-param.rs`
                     // for an example of a test case that exercises
                     // this path.
                 }

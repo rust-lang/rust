@@ -10,8 +10,6 @@ use test::ColorConfig;
 
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum Mode {
-    CompileFail,
-    RunFail,
     RunPassValgrind,
     Pretty,
     DebugInfo,
@@ -42,8 +40,6 @@ impl FromStr for Mode {
     type Err = ();
     fn from_str(s: &str) -> Result<Mode, ()> {
         match s {
-            "compile-fail" => Ok(CompileFail),
-            "run-fail" => Ok(RunFail),
             "run-pass-valgrind" => Ok(RunPassValgrind),
             "pretty" => Ok(Pretty),
             "debuginfo" => Ok(DebugInfo),
@@ -65,8 +61,6 @@ impl FromStr for Mode {
 impl fmt::Display for Mode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let s = match *self {
-            CompileFail => "compile-fail",
-            RunFail => "run-fail",
             RunPassValgrind => "run-pass-valgrind",
             Pretty => "pretty",
             DebugInfo => "debuginfo",
@@ -230,7 +224,7 @@ pub struct Config {
     /// The name of the stage being built (stage1, etc)
     pub stage_id: String,
 
-    /// The test mode, compile-fail, run-fail, ui
+    /// The test mode, e.g. ui or debuginfo.
     pub mode: Mode,
 
     /// The test suite (essentially which directory is running, but without the
