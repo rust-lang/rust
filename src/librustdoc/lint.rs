@@ -105,6 +105,18 @@ declare_rustdoc_lint! {
 }
 
 declare_rustdoc_lint! {
+   /// The `invalid_rust_codeblock` lint detects Rust code blocks in
+   /// documentation examples that are invalid (e.g. empty, not parsable as
+   /// Rust code). This is a `rustdoc` only lint, see the documentation in the
+   /// [rustdoc book].
+   ///
+   /// [rustdoc book]: ../../../rustdoc/lints.html#invalid_rust_codeblock
+   INVALID_RUST_CODEBLOCK,
+   Warn,
+   "codeblock could not be parsed as valid Rust or is empty"
+}
+
+declare_rustdoc_lint! {
     /// The `missing_crate_level_docs` lint detects if documentation is
     /// missing at the crate root. This is a `rustdoc` only lint, see the
     /// documentation in the [rustdoc book].
@@ -165,6 +177,7 @@ crate static RUSTDOC_LINTS: Lazy<Vec<&'static Lint>> = Lazy::new(|| {
         MISSING_DOC_CODE_EXAMPLES,
         PRIVATE_DOC_TESTS,
         INVALID_CODEBLOCK_ATTRIBUTES,
+        INVALID_RUST_CODEBLOCK,
         INVALID_HTML_TAGS,
         NON_AUTOLINKS,
         MISSING_CRATE_LEVEL_DOCS,

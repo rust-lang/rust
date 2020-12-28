@@ -1,6 +1,8 @@
 use rustc_data_structures::sync::{Lock, Lrc};
 use rustc_errors::{emitter::Emitter, Applicability, Diagnostic, Handler};
+use rustc_middle::lint::LintDiagnosticBuilder;
 use rustc_parse::parse_stream_from_source_str;
+use rustc_session::lint;
 use rustc_session::parse::ParseSess;
 use rustc_span::source_map::{FilePathMapping, SourceMap};
 use rustc_span::{FileName, InnerSpan};
@@ -47,50 +49,65 @@ impl<'a, 'tcx> SyntaxChecker<'a, 'tcx> {
         .unwrap_or(false);
         let buffer = buffer.borrow();
 
-        if buffer.has_errors || is_empty {
-            let mut diag = if let Some(sp) = super::source_span_for_markdown_range(
-                self.cx.tcx,
-                &dox,
-                &code_block.range,
-                &item.attrs,
-            ) {
-                let (warning_message, suggest_using_text) = if buffer.has_errors {
-                    ("could not parse code block as Rust code", true)
+        if !(buffer.has_errors || is_empty) {
+            // No errors in a non-empty program.
+            return;
+        }
+
+        let local_id = match item.def_id.as_local() {
+            Some(id) => id,
+            // We don't need to check the syntax for other crates so returning
+            // without doing anything should not be a problem.
+            None => return,
+        };
+
+        let hir_id = self.cx.tcx.hir().local_def_id_to_hir_id(local_id);
+        let suggest_using_text = code_block.syntax.is_none() && code_block.is_fenced;
+        let is_ignore = code_block.is_ignore;
+
+        // The span and whether it is precise or not.
+        let (sp, precise_span) = match super::source_span_for_markdown_range(
+            self.cx.tcx,
+            &dox,
+            &code_block.range,
+            &item.attrs,
+        ) {
+            Some(sp) => (sp, true),
+            None => (super::span_of_attrs(&item.attrs).unwrap_or(item.source.span()), false),
+        };
+
+        // lambda that will use the lint to start a new diagnostic and add
+        // a suggestion to it when needed.
+        let diag_builder = |lint: LintDiagnosticBuilder<'_>| {
+            let mut diag = if precise_span {
+                let msg = if buffer.has_errors {
+                    "could not parse code block as Rust code"
                 } else {
-                    ("Rust code block is empty", false)
+                    "Rust code block is empty"
                 };
 
-                let mut diag = self.cx.sess().struct_span_warn(sp, warning_message);
+                let mut diag = lint.build(msg);
 
-                if code_block.syntax.is_none() && code_block.is_fenced {
-                    let sp = sp.from_inner(InnerSpan::new(0, 3));
-                    diag.span_suggestion(
-                        sp,
-                        "mark blocks that do not contain Rust code as text",
-                        String::from("```text"),
-                        Applicability::MachineApplicable,
-                    );
-                } else if suggest_using_text && code_block.is_ignore {
-                    let sp = sp.from_inner(InnerSpan::new(0, 3));
-                    diag.span_suggestion(
-                        sp,
+                if suggest_using_text {
+                    let extended_msg = if is_ignore {
                         "`ignore` code blocks require valid Rust code for syntax highlighting. \
-                         Mark blocks that do not contain Rust code as text",
-                        String::from("```text,"),
+                         Mark blocks that do not contain Rust code as text"
+                    } else {
+                        "mark blocks that do not contain Rust code as text"
+                    };
+
+                    diag.span_suggestion(
+                        sp.from_inner(InnerSpan::new(0, 3)),
+                        extended_msg,
+                        String::from("```text"),
                         Applicability::MachineApplicable,
                     );
                 }
 
                 diag
             } else {
-                // We couldn't calculate the span of the markdown block that had the error, so our
-                // diagnostics are going to be a bit lacking.
-                let mut diag = self.cx.sess().struct_span_warn(
-                    super::span_of_attrs(&item.attrs).unwrap_or(item.source.span()),
-                    "doc comment contains an invalid Rust code block",
-                );
-
-                if code_block.syntax.is_none() && code_block.is_fenced {
+                let mut diag = lint.build("doc comment contains an invalid Rust code block");
+                if suggest_using_text {
                     diag.help("mark blocks that do not contain Rust code as text: ```text");
                 }
 
@@ -103,7 +120,17 @@ impl<'a, 'tcx> SyntaxChecker<'a, 'tcx> {
             }
 
             diag.emit();
-        }
+        };
+
+        // Finally build and emit the completed diagnostic.
+        // All points of divergence have been handled earlier so this can be
+        // done the same way whether the span is precise or not.
+        self.cx.tcx.struct_span_lint_hir(
+            lint::builtin::INVALID_RUST_CODEBLOCK,
+            hir_id,
+            sp,
+            diag_builder,
+        );
     }
 }
 
