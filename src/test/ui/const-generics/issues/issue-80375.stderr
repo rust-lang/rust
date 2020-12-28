@@ -1,0 +1,11 @@
+error: generic parameters may not be used in const operations
+  --> $DIR/issue-80375.rs:1:41
+   |
+LL | struct MyArray<const COUNT: usize>([u8; COUNT + 1]);
+   |                                         ^^^^^ cannot perform const operation using `COUNT`
+   |
+   = help: const parameters may only be used as standalone arguments, i.e. `COUNT`
+   = help: use `#![feature(const_generics)]` and `#![feature(const_evaluatable_checked)]` to allow generic const expressions
+
+error: aborting due to previous error
+
