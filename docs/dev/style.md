@@ -63,6 +63,18 @@ After you are happy with the state of the code, please use [interactive rebase](
 Avoid @mentioning people in commit messages and pull request descriptions(they are added to commit message by bors).
 Such messages create a lot of duplicate notification traffic during rebases.
 
+If possible, write commit messages from user's perspective:
+
+```
+# Good
+Goto definition works inside macros
+
+# Not as good
+Use original span for FileId
+```
+
+This makes it easier to prepare a changelog.
+
 ## Clippy
 
 We don't enforce Clippy.
