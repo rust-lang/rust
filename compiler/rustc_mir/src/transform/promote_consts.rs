@@ -583,11 +583,15 @@ impl<'tcx> Validator<'_, 'tcx> {
 
     fn validate_rvalue(&self, rvalue: &Rvalue<'tcx>) -> Result<(), Unpromotable> {
         match rvalue {
-            Rvalue::Use(operand) | Rvalue::Repeat(operand, _) | Rvalue::UnaryOp(_, operand) => {
+            Rvalue::Use(operand)
+            | Rvalue::Repeat(operand, _)
+            | Rvalue::UnaryOp(UnOp::Not | UnOp::Neg, operand) => {
                 self.validate_operand(operand)?;
             }
 
-            Rvalue::Discriminant(place) | Rvalue::Len(place) => self.validate_place(place.as_ref())?,
+            Rvalue::Discriminant(place) | Rvalue::Len(place) => {
+                self.validate_place(place.as_ref())?
+            }
 
             Rvalue::ThreadLocalRef(_) => return Err(Unpromotable),
 
@@ -606,35 +610,52 @@ impl<'tcx> Validator<'_, 'tcx> {
                 self.validate_operand(operand)?;
             }
 
-            Rvalue::BinaryOp(op, lhs, rhs)
-            | Rvalue::CheckedBinaryOp(op, lhs, rhs) => {
+            Rvalue::BinaryOp(op, lhs, rhs) | Rvalue::CheckedBinaryOp(op, lhs, rhs) => {
                 let op = *op;
                 if let ty::RawPtr(_) | ty::FnPtr(..) = lhs.ty(self.body, self.tcx).kind() {
-                    assert!(
-                        op == BinOp::Eq
-                            || op == BinOp::Ne
-                            || op == BinOp::Le
-                            || op == BinOp::Lt
-                            || op == BinOp::Ge
-                            || op == BinOp::Gt
-                            || op == BinOp::Offset
-                    );
-
                     // raw pointer operations are not allowed inside consts and thus not promotable
+                    assert!(matches!(
+                        op,
+                        BinOp::Eq
+                            | BinOp::Ne
+                            | BinOp::Le
+                            | BinOp::Lt
+                            | BinOp::Ge
+                            | BinOp::Gt
+                            | BinOp::Offset
+                    ));
                     return Err(Unpromotable);
                 }
 
-                // FIXME: reject operations that can fail -- namely, division and modulo.
+                match op {
+                    // FIXME: reject operations that can fail -- namely, division and modulo.
+                    BinOp::Eq
+                    | BinOp::Ne
+                    | BinOp::Le
+                    | BinOp::Lt
+                    | BinOp::Ge
+                    | BinOp::Gt
+                    | BinOp::Offset
+                    | BinOp::Add
+                    | BinOp::Sub
+                    | BinOp::Mul
+                    | BinOp::Div
+                    | BinOp::Rem
+                    | BinOp::BitXor
+                    | BinOp::BitAnd
+                    | BinOp::BitOr
+                    | BinOp::Shl
+                    | BinOp::Shr => {}
+                }
 
                 self.validate_operand(lhs)?;
                 self.validate_operand(rhs)?;
             }
 
-            Rvalue::NullaryOp(op, _) => {
-                if matches!(op, NullOp::Box) {
-                    return Err(Unpromotable);
-                }
-            }
+            Rvalue::NullaryOp(op, _) => match op {
+                NullOp::Box => return Err(Unpromotable),
+                NullOp::SizeOf => {}
+            },
 
             Rvalue::AddressOf(_, place) => {
                 // We accept `&raw *`, i.e., raw reborrows -- creating a raw pointer is
