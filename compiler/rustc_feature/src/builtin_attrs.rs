@@ -252,15 +252,19 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // Modules, prelude, and resolution:
     ungated!(path, Normal, template!(NameValueStr: "file")),
     ungated!(no_std, CrateLevel, template!(Word)),
-    (sym:no_implicit_prelude, Normal, template!(Word), Gated(
+    (sym::no_implicit_prelude, Normal, template!(Word), Gated(
         Stability::Deprecated(
             "https://github.com/rust-lang/rust/issues/20561",
             Some("may be removed in a future compiler version"),
         ),
-        sym::no_prelude,
-        "to be replaced by no_prelude",
+        sym::no_implicit_prelude,
+        "deprecated in favor of no_prelude",
         |_|true
     )),
+    gated!(
+        no_prelude, Normal, template!(Word),
+        "replacement for #![no_implicit_prelude] that is not inherited by descendants"
+    ),
     ungated!(non_exhaustive, AssumedUsed, template!(Word)),
 
     // Runtime
@@ -598,10 +602,6 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     gated!(
         omit_gdb_pretty_printer_section, AssumedUsed, template!(Word),
         "the `#[omit_gdb_pretty_printer_section]` attribute is just used for the Rust test suite",
-    ),
-    gated!(
-        no_prelude, Normal, template!(Word), 
-        "replacement for #![no_implicit_prelude] that is not inherited by descendants"
     ),
 ];
 

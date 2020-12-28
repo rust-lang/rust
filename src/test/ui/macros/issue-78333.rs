@@ -1,6 +1,7 @@
 // build-pass
 
-#![no_implicit_prelude]
+#![feature(no_prelude)]
+#![no_prelude]
 
 fn main() {
     ::std::panic!();

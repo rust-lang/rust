@@ -493,11 +493,11 @@ pub struct ModuleData<'a> {
     unexpanded_invocations: RefCell<FxHashSet<ExpnId>>,
 
     /// Whether `#[no_implicit_prelude]` is active.
-    /// And therefore the current modul and all decendents should use no prelude
-    no_implicit_prelude: bool,
+    /// And should therefore be active in decendant modules
+    pass_on_no_prelude: bool,
 
-    // wheter the current module should use the prelude
-    // no_implicit_prelude => no_prelude
+    /// Whether `#[no_prelude]` or `#[no_implicit_prelude]` is active.
+    /// And therefore the current modul should use no prelude
     no_prelude: bool,
 
     glob_importers: RefCell<Vec<&'a Import<'a>>>,
@@ -529,7 +529,7 @@ impl<'a> ModuleData<'a> {
             lazy_resolutions: Default::default(),
             populate_on_access: Cell::new(!nearest_parent_mod.is_local()),
             unexpanded_invocations: Default::default(),
-            no_implicit_prelude: false,
+            pass_on_no_prelude: false,
             no_prelude: false,
             glob_importers: RefCell::new(Vec::new()),
             globs: RefCell::new(Vec::new()),
@@ -1216,13 +1216,13 @@ impl<'a> Resolver<'a> {
         let inheritable_no_prelude = session.contains_name(&krate.attrs, sym::no_implicit_prelude);
         let local_no_prelude = session.contains_name(&krate.attrs, sym::no_prelude);
         let graph_root = arenas.alloc_module(ModuleData {
-            no_implicit_prelude: inheritable_no_prelude,
+            pass_on_no_prelude: inheritable_no_prelude,
             no_prelude: local_no_prelude || inheritable_no_prelude,
             ..ModuleData::new(None, root_module_kind, root_def_id, ExpnId::root(), krate.span)
         });
         let empty_module_kind = ModuleKind::Def(DefKind::Mod, root_def_id, kw::Empty);
         let empty_module = arenas.alloc_module(ModuleData {
-            no_implicit_prelude: true,
+            pass_on_no_prelude: true,
             no_prelude: true,
             ..ModuleData::new(
                 Some(graph_root),

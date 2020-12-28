@@ -1,7 +1,8 @@
 // check-pass
 // pretty-expanded FIXME #23616
 
-#![no_implicit_prelude]
+#![feature(no_prelude)]
+#![no_prelude]
 
 trait Iterator {
     type Item;
