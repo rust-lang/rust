@@ -595,10 +595,10 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         let upvars = self.tcx().upvars_mentioned(self.body_owner);
 
         // For purposes of this function, generator and closures are equivalent.
-        let body_owner_is_closure = match self.tcx().type_of(self.body_owner.to_def_id()).kind() {
-            ty::Closure(..) | ty::Generator(..) => true,
-            _ => false,
-        };
+        let body_owner_is_closure = matches!(
+            self.tcx().type_of(self.body_owner.to_def_id()).kind(),
+            ty::Closure(..) | ty::Generator(..)
+        );
 
         if let Some(min_captures) = self.mc.typeck_results.closure_min_captures.get(&closure_def_id)
         {

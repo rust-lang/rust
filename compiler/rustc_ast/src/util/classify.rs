@@ -12,14 +12,14 @@ use crate::ast;
 ///      |x| 5
 /// isn't parsed as (if true {...} else {...} | x) | 5
 pub fn expr_requires_semi_to_be_stmt(e: &ast::Expr) -> bool {
-    match e.kind {
+    !matches!(
+        e.kind,
         ast::ExprKind::If(..)
-        | ast::ExprKind::Match(..)
-        | ast::ExprKind::Block(..)
-        | ast::ExprKind::While(..)
-        | ast::ExprKind::Loop(..)
-        | ast::ExprKind::ForLoop(..)
-        | ast::ExprKind::TryBlock(..) => false,
-        _ => true,
-    }
+            | ast::ExprKind::Match(..)
+            | ast::ExprKind::Block(..)
+            | ast::ExprKind::While(..)
+            | ast::ExprKind::Loop(..)
+            | ast::ExprKind::ForLoop(..)
+            | ast::ExprKind::TryBlock(..)
+    )
 }
