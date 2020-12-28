@@ -1,5 +1,5 @@
 error[E0405]: cannot find trait `Add` in this scope
-  --> $DIR/no-implicit-prelude.rs:11:6
+  --> $DIR/no-implicit-prelude.rs:10:6
    |
 LL | impl Add for Test {}
    |      ^^^ not found in this scope
@@ -10,7 +10,7 @@ LL | use std::ops::Add;
    |
 
 error[E0404]: expected trait, found derive macro `Clone`
-  --> $DIR/no-implicit-prelude.rs:12:6
+  --> $DIR/no-implicit-prelude.rs:11:6
    |
 LL | impl Clone for Test {}
    |      ^^^^^ not a trait
@@ -21,7 +21,7 @@ LL | use std::clone::Clone;
    |
 
 error[E0405]: cannot find trait `Iterator` in this scope
-  --> $DIR/no-implicit-prelude.rs:13:6
+  --> $DIR/no-implicit-prelude.rs:12:6
    |
 LL | impl Iterator for Test {}
    |      ^^^^^^^^ not found in this scope
@@ -32,7 +32,7 @@ LL | use std::iter::Iterator;
    |
 
 error[E0405]: cannot find trait `ToString` in this scope
-  --> $DIR/no-implicit-prelude.rs:14:6
+  --> $DIR/no-implicit-prelude.rs:13:6
    |
 LL | impl ToString for Test {}
    |      ^^^^^^^^ not found in this scope
@@ -43,13 +43,13 @@ LL | use std::string::ToString;
    |
 
 error[E0405]: cannot find trait `Writer` in this scope
-  --> $DIR/no-implicit-prelude.rs:15:6
+  --> $DIR/no-implicit-prelude.rs:14:6
    |
 LL | impl Writer for Test {}
    |      ^^^^^^ not found in this scope
 
 error[E0425]: cannot find function `drop` in this scope
-  --> $DIR/no-implicit-prelude.rs:18:5
+  --> $DIR/no-implicit-prelude.rs:17:5
    |
 LL |     drop(2)
    |     ^^^^ not found in this scope
@@ -59,15 +59,7 @@ help: consider importing this function
 LL | use std::mem::drop;
    |
 
-warning: use of deprecated attribute `no_implicit_prelude`: deprecated in favor of no_prelude. See https://github.com/rust-lang/rust/issues/20561
-  --> $DIR/no-implicit-prelude.rs:1:1
-   |
-LL | #![no_implicit_prelude]
-   | ^^^^^^^^^^^^^^^^^^^^^^^ help: may be removed in a future compiler version
-   |
-   = note: `#[warn(deprecated)]` on by default
-
-error: aborting due to 6 previous errors; 1 warning emitted
+error: aborting due to 6 previous errors
 
 Some errors have detailed explanations: E0404, E0405, E0425.
 For more information about an error, try `rustc --explain E0404`.

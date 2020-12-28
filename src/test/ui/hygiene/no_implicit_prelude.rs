@@ -6,7 +6,6 @@ mod foo {
 }
 
 #[no_implicit_prelude]
-//~^ WARNING: deprecated
 mod bar {
     pub macro m() {
         Vec::new(); //~ ERROR failed to resolve

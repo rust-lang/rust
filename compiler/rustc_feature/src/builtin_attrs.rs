@@ -252,15 +252,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // Modules, prelude, and resolution:
     ungated!(path, Normal, template!(NameValueStr: "file")),
     ungated!(no_std, CrateLevel, template!(Word)),
-    (sym::no_implicit_prelude, Normal, template!(Word), Gated(
-        Stability::Deprecated(
-            "https://github.com/rust-lang/rust/issues/20561",
-            Some("may be removed in a future compiler version"),
-        ),
-        sym::no_implicit_prelude,
-        "deprecated in favor of no_prelude",
-        |_|true
-    )),
+    ungated!(no_implicit_prelude, Normal, template!(Word)),
     gated!(
         no_prelude, Normal, template!(Word),
         "experimental feature: replacement for #![no_implicit_prelude] that is not inherited by descendants"

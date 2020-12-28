@@ -1,5 +1,5 @@
 error: cannot find macro `print` in this scope
-  --> $DIR/no_implicit_prelude-2018.rs:8:9
+  --> $DIR/no_implicit_prelude-2018.rs:7:9
    |
 LL |         print!();
    |         ^^^^^
@@ -7,13 +7,5 @@ LL |         print!();
    = note: consider importing this macro:
            std::print
 
-warning: use of deprecated attribute `no_implicit_prelude`: deprecated in favor of no_prelude. See https://github.com/rust-lang/rust/issues/20561
-  --> $DIR/no_implicit_prelude-2018.rs:3:1
-   |
-LL | #[no_implicit_prelude]
-   | ^^^^^^^^^^^^^^^^^^^^^^ help: may be removed in a future compiler version
-   |
-   = note: `#[warn(deprecated)]` on by default
-
-error: aborting due to previous error; 1 warning emitted
+error: aborting due to previous error
 

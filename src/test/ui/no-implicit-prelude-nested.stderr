@@ -1,5 +1,5 @@
 error[E0405]: cannot find trait `Add` in this scope
-  --> $DIR/no-implicit-prelude-nested.rs:12:14
+  --> $DIR/no-implicit-prelude-nested.rs:11:14
    |
 LL |         impl Add for Test {}
    |              ^^^ not found in this scope
@@ -10,7 +10,7 @@ LL |         use std::ops::Add;
    |
 
 error[E0404]: expected trait, found derive macro `Clone`
-  --> $DIR/no-implicit-prelude-nested.rs:13:14
+  --> $DIR/no-implicit-prelude-nested.rs:12:14
    |
 LL |         impl Clone for Test {}
    |              ^^^^^ not a trait
@@ -21,7 +21,7 @@ LL |         use std::clone::Clone;
    |
 
 error[E0405]: cannot find trait `Iterator` in this scope
-  --> $DIR/no-implicit-prelude-nested.rs:14:14
+  --> $DIR/no-implicit-prelude-nested.rs:13:14
    |
 LL |         impl Iterator for Test {}
    |              ^^^^^^^^ not found in this scope
@@ -32,7 +32,7 @@ LL |         use std::iter::Iterator;
    |
 
 error[E0405]: cannot find trait `ToString` in this scope
-  --> $DIR/no-implicit-prelude-nested.rs:15:14
+  --> $DIR/no-implicit-prelude-nested.rs:14:14
    |
 LL |         impl ToString for Test {}
    |              ^^^^^^^^ not found in this scope
@@ -43,13 +43,13 @@ LL |         use std::string::ToString;
    |
 
 error[E0405]: cannot find trait `Writer` in this scope
-  --> $DIR/no-implicit-prelude-nested.rs:16:14
+  --> $DIR/no-implicit-prelude-nested.rs:15:14
    |
 LL |         impl Writer for Test {}
    |              ^^^^^^ not found in this scope
 
 error[E0425]: cannot find function `drop` in this scope
-  --> $DIR/no-implicit-prelude-nested.rs:19:13
+  --> $DIR/no-implicit-prelude-nested.rs:18:13
    |
 LL |             drop(2)
    |             ^^^^ not found in this scope
@@ -60,7 +60,7 @@ LL |         use std::mem::drop;
    |
 
 error[E0405]: cannot find trait `Add` in this scope
-  --> $DIR/no-implicit-prelude-nested.rs:24:10
+  --> $DIR/no-implicit-prelude-nested.rs:23:10
    |
 LL |     impl Add for Test {}
    |          ^^^ not found in this scope
@@ -71,7 +71,7 @@ LL |     use std::ops::Add;
    |
 
 error[E0404]: expected trait, found derive macro `Clone`
-  --> $DIR/no-implicit-prelude-nested.rs:25:10
+  --> $DIR/no-implicit-prelude-nested.rs:24:10
    |
 LL |     impl Clone for Test {}
    |          ^^^^^ not a trait
@@ -82,7 +82,7 @@ LL |     use std::clone::Clone;
    |
 
 error[E0405]: cannot find trait `Iterator` in this scope
-  --> $DIR/no-implicit-prelude-nested.rs:26:10
+  --> $DIR/no-implicit-prelude-nested.rs:25:10
    |
 LL |     impl Iterator for Test {}
    |          ^^^^^^^^ not found in this scope
@@ -93,7 +93,7 @@ LL |     use std::iter::Iterator;
    |
 
 error[E0405]: cannot find trait `ToString` in this scope
-  --> $DIR/no-implicit-prelude-nested.rs:27:10
+  --> $DIR/no-implicit-prelude-nested.rs:26:10
    |
 LL |     impl ToString for Test {}
    |          ^^^^^^^^ not found in this scope
@@ -104,13 +104,13 @@ LL |     use std::string::ToString;
    |
 
 error[E0405]: cannot find trait `Writer` in this scope
-  --> $DIR/no-implicit-prelude-nested.rs:28:10
+  --> $DIR/no-implicit-prelude-nested.rs:27:10
    |
 LL |     impl Writer for Test {}
    |          ^^^^^^ not found in this scope
 
 error[E0425]: cannot find function `drop` in this scope
-  --> $DIR/no-implicit-prelude-nested.rs:31:9
+  --> $DIR/no-implicit-prelude-nested.rs:30:9
    |
 LL |         drop(2)
    |         ^^^^ not found in this scope
@@ -121,7 +121,7 @@ LL |     use std::mem::drop;
    |
 
 error[E0405]: cannot find trait `Add` in this scope
-  --> $DIR/no-implicit-prelude-nested.rs:40:14
+  --> $DIR/no-implicit-prelude-nested.rs:38:14
    |
 LL |         impl Add for Test {}
    |              ^^^ not found in this scope
@@ -132,7 +132,7 @@ LL |         use std::ops::Add;
    |
 
 error[E0404]: expected trait, found derive macro `Clone`
-  --> $DIR/no-implicit-prelude-nested.rs:41:14
+  --> $DIR/no-implicit-prelude-nested.rs:39:14
    |
 LL |         impl Clone for Test {}
    |              ^^^^^ not a trait
@@ -143,7 +143,7 @@ LL |         use std::clone::Clone;
    |
 
 error[E0405]: cannot find trait `Iterator` in this scope
-  --> $DIR/no-implicit-prelude-nested.rs:42:14
+  --> $DIR/no-implicit-prelude-nested.rs:40:14
    |
 LL |         impl Iterator for Test {}
    |              ^^^^^^^^ not found in this scope
@@ -154,7 +154,7 @@ LL |         use std::iter::Iterator;
    |
 
 error[E0405]: cannot find trait `ToString` in this scope
-  --> $DIR/no-implicit-prelude-nested.rs:43:14
+  --> $DIR/no-implicit-prelude-nested.rs:41:14
    |
 LL |         impl ToString for Test {}
    |              ^^^^^^^^ not found in this scope
@@ -165,13 +165,13 @@ LL |         use std::string::ToString;
    |
 
 error[E0405]: cannot find trait `Writer` in this scope
-  --> $DIR/no-implicit-prelude-nested.rs:44:14
+  --> $DIR/no-implicit-prelude-nested.rs:42:14
    |
 LL |         impl Writer for Test {}
    |              ^^^^^^ not found in this scope
 
 error[E0425]: cannot find function `drop` in this scope
-  --> $DIR/no-implicit-prelude-nested.rs:47:13
+  --> $DIR/no-implicit-prelude-nested.rs:45:13
    |
 LL |             drop(2)
    |             ^^^^ not found in this scope
@@ -181,21 +181,7 @@ help: consider importing this function
 LL |         use std::mem::drop;
    |
 
-warning: use of deprecated attribute `no_implicit_prelude`: deprecated in favor of no_prelude. See https://github.com/rust-lang/rust/issues/20561
-  --> $DIR/no-implicit-prelude-nested.rs:7:1
-   |
-LL | #[no_implicit_prelude]
-   | ^^^^^^^^^^^^^^^^^^^^^^ help: may be removed in a future compiler version
-   |
-   = note: `#[warn(deprecated)]` on by default
-
-warning: use of deprecated attribute `no_implicit_prelude`: deprecated in favor of no_prelude. See https://github.com/rust-lang/rust/issues/20561
-  --> $DIR/no-implicit-prelude-nested.rs:36:5
-   |
-LL |     #[no_implicit_prelude]
-   |     ^^^^^^^^^^^^^^^^^^^^^^ help: may be removed in a future compiler version
-
-error: aborting due to 18 previous errors; 2 warnings emitted
+error: aborting due to 18 previous errors
 
 Some errors have detailed explanations: E0404, E0405, E0425.
 For more information about an error, try `rustc --explain E0404`.

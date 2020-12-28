@@ -1,5 +1,5 @@
 error[E0433]: failed to resolve: use of undeclared type `Vec`
-  --> $DIR/no_implicit_prelude.rs:12:9
+  --> $DIR/no_implicit_prelude.rs:11:9
    |
 LL |     fn f() { ::bar::m!(); }
    |              ------------ in this macro invocation
@@ -13,16 +13,8 @@ help: consider importing this struct
 LL |     use std::vec::Vec;
    |
 
-warning: use of deprecated attribute `no_implicit_prelude`: deprecated in favor of no_prelude. See https://github.com/rust-lang/rust/issues/20561
-  --> $DIR/no_implicit_prelude.rs:8:1
-   |
-LL | #[no_implicit_prelude]
-   | ^^^^^^^^^^^^^^^^^^^^^^ help: may be removed in a future compiler version
-   |
-   = note: `#[warn(deprecated)]` on by default
-
 error[E0599]: no method named `clone` found for unit type `()` in the current scope
-  --> $DIR/no_implicit_prelude.rs:13:12
+  --> $DIR/no_implicit_prelude.rs:12:12
    |
 LL |     fn f() { ::bar::m!(); }
    |              ------------ in this macro invocation
@@ -35,7 +27,7 @@ LL |         ().clone()
            `use std::clone::Clone;`
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 2 previous errors; 1 warning emitted
+error: aborting due to 2 previous errors
 
 Some errors have detailed explanations: E0433, E0599.
 For more information about an error, try `rustc --explain E0433`.
