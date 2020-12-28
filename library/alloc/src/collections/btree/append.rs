@@ -81,15 +81,18 @@ impl<K, V> Root<K, V> {
             // the appended elements even if advancing the iterator panicks.
             *length += 1;
         }
-        self.fix_right_edge();
+        self.fix_right_border_of_plentiful();
     }
 
-    fn fix_right_edge(&mut self) {
-        // Handle underfull nodes, start from the top.
+    /// Stock up any underfull nodes on the right border of the tree.
+    /// The other nodes, those that are not the root nor a rightmost edge,
+    /// must have MIN_LEN elements to spare.
+    fn fix_right_border_of_plentiful(&mut self) {
         let mut cur_node = self.borrow_mut();
         while let Internal(internal) = cur_node.force() {
             // Check if right-most child is underfull.
             let mut last_kv = internal.last_kv().consider_for_balancing();
+            debug_assert!(last_kv.left_child_len() >= MIN_LEN * 2);
             let right_child_len = last_kv.right_child_len();
             if right_child_len < MIN_LEN {
                 // We need to steal.
