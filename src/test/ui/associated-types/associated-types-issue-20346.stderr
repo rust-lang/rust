@@ -1,5 +1,5 @@
 error[E0271]: type mismatch resolving `<Adapter<I> as Iterator>::Item == Option<T>`
-  --> $DIR/associated-types-issue-20346.rs:34:5
+  --> $DIR/associated-types-issue-20346.rs:35:5
    |
 LL | fn is_iterator_of<A, I: Iterator<Item=A>>(_: &I) {}
    |                                  ------ required by this bound in `is_iterator_of`

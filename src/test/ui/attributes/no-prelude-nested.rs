@@ -31,14 +31,14 @@ mod foo {
     }
 
     struct Test;
-    impl From for Test {} //~ ERROR: not in scope
-    impl Clone for Test {} //~ ERROR: not in scope
-    impl Iterator for Test {} //~ ERROR: not in scope
-    impl ToString for Test {} //~ ERROR: not in scope
-    impl Eq for Test {} //~ ERROR: not in scope
+    impl From for Test {} //~ ERROR: cannot find trait
+    impl Clone for Test {} //~ ERROR: expected trait, found derive macro
+    impl Iterator for Test {} //~ ERROR: cannot find trait
+    impl ToString for Test {} //~ ERROR: cannot find trait
+    impl Eq for Test {} //~ ERROR: expected trait, found derive macro
 
     fn foo() {
-        drop(2) //~ ERROR: unresolved name
+        drop(2) //~ ERROR: cannot find function `drop`
     }
 }
 
@@ -46,14 +46,13 @@ fn qux() {
     #[no_prelude]
     mod qux_inner {
         struct Test;
-        impl From for Test {} //~ ERROR: not in scope
-        impl Clone for Test {} //~ ERROR: not in scope
-        impl Iterator for Test {} //~ ERROR: not in scope
-        impl ToString for Test {} //~ ERROR: not in scope
-        impl Eq for Test {} //~ ERROR: not in scope
-
+        impl From for Test {} //~ ERROR: cannot find trait
+        impl Clone for Test {} //~ ERROR: expected trait, found derive macro
+        impl Iterator for Test {} //~ ERROR: cannot find trait
+        impl ToString for Test {} //~ ERROR: cannot find trait
+        impl Eq for Test {} //~ ERROR: expected trait, found derive macro
         fn foo() {
-            drop(2) //~ ERROR: unresolved name
+            drop(2) //~ ERROR: cannot find function `drop`
         }
     }
 }

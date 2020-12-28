@@ -60,6 +60,8 @@
 #![should_panic] //~ WARN unused attribute
 #![ignore] //~ WARN unused attribute
 #![no_implicit_prelude]
+//~^ WARNING: deprecated attribute
+//~| HELP: may be removed
 #![reexport_test_harness_main = "2900"]
 // see gated-link-args.rs
 // see issue-43106-gating-of-macro_escape.rs for crate-level; but non crate-level is below at "2700"
@@ -398,21 +400,33 @@ mod ignore {
 
 #[no_implicit_prelude]
 //~^ WARN unused attribute
+//~| WARNING: deprecated attribute
+//~| HELP: may be removed
 mod no_implicit_prelude {
     mod inner { #![no_implicit_prelude] }
     //~^ WARN unused attribute
+    //~| WARNING: deprecated attribute
+    //~| HELP: may be removed
 
     #[no_implicit_prelude] fn f() { }
     //~^ WARN unused attribute
+    //~| WARNING: deprecated attribute
+    //~| HELP: may be removed
 
     #[no_implicit_prelude] struct S;
     //~^ WARN unused attribute
+    //~| WARNING: deprecated attribute
+    //~| HELP: may be removed
 
     #[no_implicit_prelude] type T = S;
     //~^ WARN unused attribute
+    //~| WARNING: deprecated attribute
+    //~| HELP: may be removed
 
     #[no_implicit_prelude] impl S { }
     //~^ WARN unused attribute
+    //~| WARNING: deprecated attribute
+    //~| HELP: may be removed
 }
 
 #[reexport_test_harness_main = "2900"]

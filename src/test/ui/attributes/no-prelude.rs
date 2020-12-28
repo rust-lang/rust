@@ -8,12 +8,12 @@
 // fail with the same error message).
 
 struct Test;
-impl Add for Test {} //~ ERROR: not in scope
-impl Clone for Test {} //~ ERROR: not in scope
-impl Iterator for Test {} //~ ERROR: not in scope
-impl ToString for Test {} //~ ERROR: not in scope
-impl Writer for Test {} //~ ERROR: not in scope
+impl Add for Test {} //~ ERROR: cannot find trait
+impl Clone for Test {} //~ ERROR: expected trait, found derive macro
+impl Iterator for Test {} //~ ERROR: cannot find trait
+impl ToString for Test {} //~ ERROR: cannot find trait
+impl Writer for Test {} //~ ERROR: cannot find trait
 
 fn main() {
-    drop(2) //~ ERROR: unresolved name
+    drop(2) //~ ERROR: cannot find function `drop`
 }

@@ -263,7 +263,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     )),
     gated!(
         no_prelude, Normal, template!(Word),
-        "replacement for #![no_implicit_prelude] that is not inherited by descendants"
+        "experimental feature: replacement for #![no_implicit_prelude] that is not inherited by descendants"
     ),
     ungated!(non_exhaustive, AssumedUsed, template!(Word)),
 
