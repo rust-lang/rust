@@ -90,10 +90,9 @@ impl<R: Read> BufReader<R> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn with_capacity(capacity: usize, inner: R) -> BufReader<R> {
         unsafe {
-            let mut buffer = Vec::with_capacity(capacity);
-            buffer.set_len(capacity);
-            inner.initializer().initialize(&mut buffer);
-            BufReader { inner, buf: buffer.into_boxed_slice(), pos: 0, cap: 0 }
+            let mut buf = Box::new_uninit_slice(capacity).assume_init();
+            inner.initializer().initialize(&mut buf);
+            BufReader { inner, buf, pos: 0, cap: 0 }
         }
     }
 }

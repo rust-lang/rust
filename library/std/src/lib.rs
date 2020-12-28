@@ -289,6 +289,7 @@
 #![feature(needs_panic_runtime)]
 #![feature(negative_impls)]
 #![feature(never_type)]
+#![feature(new_uninit)]
 #![feature(nll)]
 #![feature(nonnull_slice_from_raw_parts)]
 #![feature(once_cell)]
