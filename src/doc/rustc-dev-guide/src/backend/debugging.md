@@ -103,27 +103,27 @@ specifically the `#t-compiler/wg-llvm` stream.
 
 ### Compiler options to know and love
 
-The `-Chelp` and `-Zhelp` compiler switches will list out a variety
+The `-C help` and `-Z help` compiler switches will list out a variety
 of interesting options you may find useful. Here are a few of the most
 common that pertain to LLVM development (some of them are employed in the
 tutorial above):
 
 - The `--emit llvm-ir` option emits a `<filename>.ll` file with LLVM IR in textual format
     - The `--emit llvm-bc` option emits in bytecode format (`<filename>.bc`)
-- Passing `-Cllvm-args=<foo>` allows passing pretty much all the
+- Passing `-C llvm-args=<foo>` allows passing pretty much all the
   options that tools like llc and opt would accept;
-  e.g. `-Cllvm-args=-print-before-all` to print IR before every LLVM
+  e.g. `-C llvm-args=-print-before-all` to print IR before every LLVM
   pass.
-- The `-Cno-prepopulate-passes` will avoid pre-populate the LLVM pass
+- The `-C no-prepopulate-passes` will avoid pre-populate the LLVM pass
   manager with a list of passes.  This will allow you to view the LLVM
   IR that rustc generates, not the LLVM IR after optimizations.
-- The `-Cpasses=val` option allows you to supply a space separated list of extra LLVM passes to run
-- The `-Csave-temps` option saves all temporary output files during compilation
-- The `-Zprint-llvm-passes` option will print out LLVM optimization passes being run
-- The `-Ztime-llvm-passes` option measures the time of each LLVM pass
-- The `-Zverify-llvm-ir` option will verify the LLVM IR for correctness
-- The `-Zno-parallel-llvm` will disable parallel compilation of distinct compilation units
-- The `-Zllvm-time-trace` option will output a Chrome profiler compatible JSON file
+- The `-C passes=val` option allows you to supply a space separated list of extra LLVM passes to run
+- The `-C save-temps` option saves all temporary output files during compilation
+- The `-Z print-llvm-passes` option will print out LLVM optimization passes being run
+- The `-Z time-llvm-passes` option measures the time of each LLVM pass
+- The `-Z verify-llvm-ir` option will verify the LLVM IR for correctness
+- The `-Z no-parallel-llvm` will disable parallel compilation of distinct compilation units
+- The `-Z llvm-time-trace` option will output a Chrome profiler compatible JSON file
   which contains details and timings for LLVM passes.
 
 ### Filing LLVM bug reports

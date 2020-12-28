@@ -109,7 +109,7 @@ to specify a custom flag to give to rustc when the test is compiled:
 ```rust,ignore
 // Test the behavior of `0 - 1` when overflow checks are disabled.
 
-// compile-flags: -Coverflow-checks=off
+// compile-flags: -C overflow-checks=off
 
 fn main() {
     let x = 0 - 1;

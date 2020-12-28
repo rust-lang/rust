@@ -263,7 +263,7 @@ There are two main ways to find where a given error is emitted:
   the error emitting code is removed from the code where the error is
   constructed behind a relatively deep call-stack. Even then, it is a good way
   to get your bearings.
-- Invoking `rustc` with the nightly-only flag `-Ztreat-err-as-bug=1`, which
+- Invoking `rustc` with the nightly-only flag `-Z treat-err-as-bug=1`, which
   will treat the first error being emitted as an Internal Compiler Error, which
   allows you to use the environment variable `RUST_BACKTRACE=full` to get a
   stack trace at the point the error has been emitted. Change the `1` to

@@ -150,7 +150,7 @@ the `cargo rustc` command, like so:
 
 ```bash
 touch src/lib.rs
-CARGO_INCREMENTAL=0 perf record -F99 --call-graph dwarf cargo rustc --profile check --lib -- -Zborrowck=mir
+CARGO_INCREMENTAL=0 perf record -F99 --call-graph dwarf cargo rustc --profile check --lib -- -Z borrowck=mir
 ```
 
 [pf]: https://github.com/nikomatsakis/perf-focus

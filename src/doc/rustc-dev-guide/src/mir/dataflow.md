@@ -201,8 +201,8 @@ for (bb, block) in body.basic_blocks().iter_enumerated() {
 ### Graphviz Diagrams
 
 When the results of a dataflow analysis are not what you expect, it often helps
-to visualize them. This can be done with the `-Zdump-mir` flags described in
-[Debugging MIR]. Start with `-Zdump-mir=F -Zdump-mir-dataflow`, where `F` is
+to visualize them. This can be done with the `-Z dump-mir` flags described in
+[Debugging MIR]. Start with `-Z dump-mir=F -Z dump-mir-dataflow`, where `F` is
 either "all" or the name of the MIR body you are interested in.
 
 These `.dot` files will be saved in your `mir_dump` directory and will have the

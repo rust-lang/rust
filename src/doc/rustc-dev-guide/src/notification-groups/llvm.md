@@ -22,8 +22,8 @@ The ["Debugging LLVM"][d] section of the
 rustc-dev-guide gives a step-by-step process for how to help debug bugs
 caused by LLVM. In particular, it discusses how to emit LLVM IR, run
 the LLVM IR optimization pipelines, and so forth. You may also find
-it useful to look at the various codegen options listed under `-Chelp`
-and the internal options under `-Zhelp` -- there are a number that
+it useful to look at the various codegen options listed under `-C help`
+and the internal options under `-Z help` -- there are a number that
 pertain to LLVM (just search for LLVM).
 
 [d]: ../backend/debugging.md

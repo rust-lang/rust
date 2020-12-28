@@ -12,10 +12,10 @@ the HIR. This makes HIR more amenable to analysis than a normal AST.
 This chapter covers the main concepts of the HIR.
 
 You can view the HIR representation of your code by passing the
-`-Zunpretty=hir-tree` flag to rustc:
+`-Z unpretty=hir-tree` flag to rustc:
 
 ```bash
-cargo rustc -- -Zunpretty=hir-tree
+cargo rustc -- -Z unpretty=hir-tree
 ```
 
 ### Out-of-band storage and the `Crate` type

@@ -32,10 +32,10 @@ we'll talk about that later.
 - The token stream passes through a higher-level lexer located in
   [`rustc_parse`] to prepare for the next stage of the compile process. The
   [`StringReader`] struct is used at this stage to perform a set of validations
-  and turn strings into interned symbols (_interning_ is discussed later). 
-  [String interning] is a way of storing only one immutable 
+  and turn strings into interned symbols (_interning_ is discussed later).
+  [String interning] is a way of storing only one immutable
   copy of each distinct string value.
-  
+
 - The lexer has a small interface and doesn't depend directly on the
   diagnostic infrastructure in `rustc`. Instead it provides diagnostics as plain
   data which are emitted in `rustc_parse::lexer::mod` as real diagnostics.
@@ -330,7 +330,7 @@ For more details on bootstrapping, see
 
 - Does LLVM ever do optimizations in debug builds?
 - How do I explore phases of the compile process in my own sources (lexer,
-  parser, HIR, etc)? - e.g., `cargo rustc -- -Zunpretty=hir-tree` allows you to
+  parser, HIR, etc)? - e.g., `cargo rustc -- -Z unpretty=hir-tree` allows you to
   view HIR representation
 - What is the main source entry point for `X`?
 - Where do phases diverge for cross-compilation to machine code across
@@ -363,7 +363,7 @@ For more details on bootstrapping, see
   - Guide: [Identifiers in the HIR](https://rustc-dev-guide.rust-lang.org/hir.html#identifiers-in-the-hir)
   - Guide: [The HIR Map](https://rustc-dev-guide.rust-lang.org/hir.html#the-hir-map)
   - Guide: [Lowering AST to HIR](https://rustc-dev-guide.rust-lang.org/lowering.html)
-  - How to view HIR representation for your code `cargo rustc -- -Zunpretty=hir-tree`
+  - How to view HIR representation for your code `cargo rustc -- -Z unpretty=hir-tree`
   - Rustc HIR definition: [`rustc_hir`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/index.html)
   - Main entry point: **TODO**
   - Late linting: **TODO**

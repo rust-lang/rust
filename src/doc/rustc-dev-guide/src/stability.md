@@ -129,9 +129,9 @@ default `allow`, but most of the standard library raises it to a warning with
 
 [`deprecated` attribute]: https://doc.rust-lang.org/reference/attributes/diagnostics.html#the-deprecated-attribute
 
-## -Zforce-unstable-if-unmarked
+## -Z force-unstable-if-unmarked
 
-The `-Zforce-unstable-if-unmarked` flag has a variety of purposes to help
+The `-Z force-unstable-if-unmarked` flag has a variety of purposes to help
 enforce that the correct crates are marked as unstable. It was introduced
 primarily to allow rustc and the standard library to link to arbitrary crates
 on crates.io which do not themselves use `staged_api`. `rustc` also relies on
@@ -152,9 +152,9 @@ This flag has the following effects:
   attribute to use other unstable crates. However, that would make it
   impossible for a crate from crates.io to access its own dependencies since
   that crate won't have a `feature(rustc_private)` attribute, but *everything*
-  is compiled with `-Zforce-unstable-if-unmarked`.
+  is compiled with `-Z force-unstable-if-unmarked`.
 
-Code which does not use `-Zforce-unstable-if-unmarked` should include the
+Code which does not use `-Z force-unstable-if-unmarked` should include the
 `#![feature(rustc_private)]` crate attribute to access these force-unstable
 crates. This is needed for things that link `rustc`, such as `miri`, `rls`, or
 `clippy`.

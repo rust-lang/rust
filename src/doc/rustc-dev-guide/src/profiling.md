@@ -1,29 +1,29 @@
 # Profiling the compiler
 
-This section talks about how to profile the compiler and find out where it spends its time.  
+This section talks about how to profile the compiler and find out where it spends its time.
 
 Depending on what you're trying to measure, there are several different approaches:
 
 - If you want to see if a PR improves or regresses compiler performance:
   - The [rustc-perf](https://github.com/rust-lang/rustc-perf) project makes this easy and can be triggered to run on a PR via the `@rustc-perf` bot.
-  
+
 - If you want a medium-to-high level overview of where `rustc` is spending its time:
-  - The `-Zself-profile` flag and [measureme](https://github.com/rust-lang/measureme) tools offer a query-based approach to profiling.
+  - The `-Z self-profile` flag and [measureme](https://github.com/rust-lang/measureme) tools offer a query-based approach to profiling.
     See [their docs](https://github.com/rust-lang/measureme/blob/master/summarize/Readme.md) for more information.
-    
+
 - If you want function level performance data or even just more details than the above approaches:
-  - Consider using a native code profiler such as [perf](profiling/with_perf.html) 
-  - or [tracy](https://github.com/nagisa/rust_tracy_client) for a nanosecond-precision, 
+  - Consider using a native code profiler such as [perf](profiling/with_perf.html)
+  - or [tracy](https://github.com/nagisa/rust_tracy_client) for a nanosecond-precision,
     full-featured graphical interface.
 
-- If you want a nice visual representation of the compile times of your crate graph, 
-  you can use [cargo's `-Ztimings` flag](https://doc.rust-lang.org/cargo/reference/unstable.html#timings), 
-  eg. `cargo -Ztimings build`.
-  You can use this flag on the compiler itself with `CARGOFLAGS="-Ztimings" ./x.py build`
-  
+- If you want a nice visual representation of the compile times of your crate graph,
+  you can use [cargo's `-Z timings` flag](https://doc.rust-lang.org/cargo/reference/unstable.html#timings),
+  eg. `cargo -Z timings build`.
+  You can use this flag on the compiler itself with `CARGOFLAGS="-Z timings" ./x.py build`
+
 ## Optimizing rustc's bootstrap times with `cargo-llvm-lines`
 
-Using [cargo-llvm-lines](https://github.com/dtolnay/cargo-llvm-lines) you can count the 
+Using [cargo-llvm-lines](https://github.com/dtolnay/cargo-llvm-lines) you can count the
 number of lines of LLVM IR across all instantiations of a generic function.
 Since most of the time compiling rustc is spent in LLVM, the idea is that by
 reducing the amount of code passed to LLVM, compiling rustc gets faster.
@@ -67,12 +67,12 @@ Example output:
      49714 (0.4%)     14 (0.0%)  rustc_mir::dataflow::framework::graphviz::BlockFormatter<A>::write_node_label
 ```
 
-Since this doesn't seem to work with incremental compilation or `x.py check`, 
+Since this doesn't seem to work with incremental compilation or `x.py check`,
 you will be compiling rustc _a lot_.
 I recommend changing a few settings in `config.toml` to make it bearable:
 ```
 [rust]
-# A debug build takes _a third_ as long on my machine, 
+# A debug build takes _a third_ as long on my machine,
 # but compiling more than stage0 rustc becomes unbearably slow.
 optimize = false
 
@@ -88,7 +88,7 @@ codegen-units = 0  # num_cpus
 The llvm-lines output is affected by several options.
 `optimize = false` increases it from 2.1GB to 3.5GB and `codegen-units = 0` to 4.1GB.
 
-MIR optimizations have little impact. Compared to the default `RUSTFLAGS="-Zmir-opt-level=1"`,
-level 0 adds 0.3GB and level 2 removes 0.2GB. 
+MIR optimizations have little impact. Compared to the default `RUSTFLAGS="-Z mir-opt-level=1"`,
+level 0 adds 0.3GB and level 2 removes 0.2GB.
 Inlining currently only happens in LLVM, but this might change in the future.
 

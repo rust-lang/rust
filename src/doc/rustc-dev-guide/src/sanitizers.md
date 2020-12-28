@@ -11,7 +11,7 @@ The rustc compiler contains support for following sanitizers:
 
 ## How to use the sanitizers?
 
-To enable a sanitizer compile with `-Zsanitizer=...` option, where value is one
+To enable a sanitizer compile with `-Z sanitizer=...` option, where value is one
 of `address`, `leak`, `memory` or `thread`. For more details how to use
 sanitizers please refer to [the unstable book](https://doc.rust-lang.org/unstable-book/).
 
@@ -49,7 +49,7 @@ libraries. Highlight of the most important aspects of the implementation:
 *  When producing an executable, the sanitizer specific runtime library is
    [linked in][sanitizer-link]. The libraries are searched for in target libdir
    relative to default system root, so that this process is not affected
-   by sysroot overrides used for example by cargo `-Zbuild-std` functionality.
+   by sysroot overrides used for example by cargo `-Z build-std` functionality.
 
 [compiler-rt]: https://github.com/llvm/llvm-project/tree/master/compiler-rt
 [sanitizer-build]: https://github.com/rust-lang/rust/blob/a29424a2265411dda7d7446516ac5fd7499e2b55/src/bootstrap/native.rs#L566-L624

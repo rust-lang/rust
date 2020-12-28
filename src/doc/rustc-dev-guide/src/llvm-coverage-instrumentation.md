@@ -308,7 +308,7 @@ $ ./x.py test src/test/<test-type> --blessed
 [spanview-debugging]: compiler-debugging.md#viewing-spanview-output
 [`coverage-llvmir`]: https://github.com/rust-lang/rust/tree/master/src/test/run-make-fulldeps/coverage-llvmir
 
-## Implementation Details of the `InstrumentCoverage` MIR Pass 
+## Implementation Details of the `InstrumentCoverage` MIR Pass
 
 The bulk of the implementation of the `InstrumentCoverage` MIR pass is performed
 by the [`Instrumentor`][instrumentor]. For each MIR (each non-const, non-inlined
@@ -496,8 +496,8 @@ An visual, interactive representation of the final `CoverageSpan`s can be
 generated with the following `rustc` flags:
 
 ```shell
-$ rustc -Zinstrument-coverage -Zdump-mir=InstrumentCoverage \
-    -Zdump-mir-spanview some_rust_source.rs
+$ rustc -Z instrument-coverage -Z dump-mir=InstrumentCoverage \
+    -Z dump-mir-spanview some_rust_source.rs
 ```
 
 These flags request Spanview output for the `InstrumentCoverage` pass, and the

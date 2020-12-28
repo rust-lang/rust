@@ -54,11 +54,11 @@ coverage results for PGO has not been attempted at this time.
 
 Generating a PGO-optimized program involves the following four steps:
 
-1. Compile the program with instrumentation enabled (e.g. `rustc -Cprofile-generate main.rs`)
+1. Compile the program with instrumentation enabled (e.g. `rustc -C profile-generate main.rs`)
 2. Run the instrumented program (e.g. `./main`) which generates a `default-<id>.profraw` file
 3. Convert the `.profraw` file into a `.profdata` file using LLVM's `llvm-profdata` tool.
 4. Compile the program again, this time making use of the profiling data
-   (e.g. `rustc -Cprofile-use=merged.profdata main.rs`)
+   (e.g. `rustc -C profile-use=merged.profdata main.rs`)
 
 ### Compile-Time Aspects
 
