@@ -46,7 +46,6 @@ use rustc_session::cgu_reuse_tracker::CguReuse;
 use rustc_session::config::{self, EntryFnType};
 use rustc_session::utils::NativeLibKind;
 use rustc_session::Session;
-use rustc_symbol_mangling::test as symbol_names_test;
 use rustc_target::abi::{Align, LayoutOf, VariantIdx};
 
 use std::cmp;
@@ -486,8 +485,6 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
 
         ongoing_codegen.codegen_finished(tcx);
 
-        finalize_tcx(tcx);
-
         ongoing_codegen.check_for_errors(tcx.sess);
 
         return ongoing_codegen;
@@ -688,13 +685,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
         total_codegen_time.into_inner(),
     );
 
-    rustc_incremental::assert_module_sources::assert_module_sources(tcx);
-
-    symbol_names_test::report_symbol_names(tcx);
-
     ongoing_codegen.check_for_errors(tcx.sess);
-
-    finalize_tcx(tcx);
 
     ongoing_codegen.into_inner()
 }
@@ -743,18 +734,6 @@ impl<B: ExtraBackendMethods> Drop for AbortCodegenOnDrop<B> {
         if let Some(codegen) = self.0.take() {
             codegen.codegen_aborted();
         }
-    }
-}
-
-fn finalize_tcx(tcx: TyCtxt<'_>) {
-    tcx.sess.time("assert_dep_graph", || rustc_incremental::assert_dep_graph(tcx));
-    tcx.sess.time("serialize_dep_graph", || rustc_incremental::save_dep_graph(tcx));
-
-    // We assume that no queries are run past here. If there are new queries
-    // after this point, they'll show up as "<unknown>" in self-profiling data.
-    {
-        let _prof_timer = tcx.prof.generic_activity("self_profile_alloc_query_strings");
-        tcx.alloc_self_profile_query_strings();
     }
 }
 
