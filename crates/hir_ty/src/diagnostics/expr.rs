@@ -24,6 +24,8 @@ pub(crate) use hir_def::{
     LocalFieldId, VariantId,
 };
 
+use super::ReplaceFilterMapNextWithFindMap;
+
 pub(super) struct ExprValidator<'a, 'b: 'a> {
     owner: DefWithBodyId,
     infer: Arc<InferenceResult>,
@@ -39,7 +41,18 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
         ExprValidator { owner, infer, sink }
     }
 
+    fn bar() {
+        // LOOK FOR THIS
+        let m = [1, 2, 3]
+            .iter()
+            .filter_map(|x| if *x == 2 { Some(4) } else { None })
+            .next();
+    }
+
     pub(super) fn validate_body(&mut self, db: &dyn HirDatabase) {
+        // DO NOT MERGE: just getting something working for now
+        self.check_for_filter_map_next(db);
+
         let body = db.body(self.owner.into());
 
         for (id, expr) in body.exprs.iter() {
@@ -150,20 +163,58 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
         }
     }
 
-    fn validate_call(&mut self, db: &dyn HirDatabase, call_id: ExprId, expr: &Expr) -> Option<()> {
+    fn check_for_filter_map_next(&mut self, db: &dyn HirDatabase) {
+        let body = db.body(self.owner.into());
+        let mut prev = None;
+
+        for (id, expr) in body.exprs.iter() {
+            if let Expr::MethodCall { receiver, method_name, args, .. } = expr {
+                let method_name_hack_do_not_merge = format!("{}", method_name);
+
+                if method_name_hack_do_not_merge == "filter_map" && args.len() == 1 {
+                    prev = Some((id, args[0]));
+                    continue;
+                }
+
+                if method_name_hack_do_not_merge == "next" {
+                    if let Some((filter_map_id, filter_map_args)) = prev {
+                        if *receiver == filter_map_id {
+                            let (_, source_map) = db.body_with_source_map(self.owner.into());
+                            if let (Ok(filter_map_source_ptr), Ok(next_source_ptr)) = (
+                                source_map.expr_syntax(filter_map_id),
+                                source_map.expr_syntax(id),
+                            ) {
+                                self.sink.push(ReplaceFilterMapNextWithFindMap {
+                                    file: filter_map_source_ptr.file_id,
+                                    filter_map_expr: filter_map_source_ptr.value,
+                                    next_expr: next_source_ptr.value,
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+            prev = None;
+        }
+    }
+
+    fn validate_call(&mut self, db: &dyn HirDatabase, call_id: ExprId, expr: &Expr) {
         // Check that the number of arguments matches the number of parameters.
 
         // FIXME: Due to shortcomings in the current type system implementation, only emit this
         // diagnostic if there are no type mismatches in the containing function.
         if self.infer.type_mismatches.iter().next().is_some() {
-            return None;
+            return;
         }
 
         let is_method_call = matches!(expr, Expr::MethodCall { .. });
         let (sig, args) = match expr {
             Expr::Call { callee, args } => {
                 let callee = &self.infer.type_of_expr[*callee];
-                let sig = callee.callable_sig(db)?;
+                let sig = match callee.callable_sig(db) {
+                    Some(sig) => sig,
+                    None => return,
+                };
                 (sig, args.clone())
             }
             Expr::MethodCall { receiver, args, .. } => {
@@ -175,22 +226,25 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
                     // if the receiver is of unknown type, it's very likely we
                     // don't know enough to correctly resolve the method call.
                     // This is kind of a band-aid for #6975.
-                    return None;
+                    return;
                 }
 
                 // FIXME: note that we erase information about substs here. This
                 // is not right, but, luckily, doesn't matter as we care only
                 // about the number of params
-                let callee = self.infer.method_resolution(call_id)?;
+                let callee = match self.infer.method_resolution(call_id) {
+                    Some(callee) => callee,
+                    None => return,
+                };
                 let sig = db.callable_item_signature(callee.into()).value;
 
                 (sig, args)
             }
-            _ => return None,
+            _ => return,
         };
 
         if sig.is_varargs {
-            return None;
+            return;
         }
 
         let params = sig.params();
@@ -213,8 +267,6 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
                 });
             }
         }
-
-        None
     }
 
     fn validate_match(

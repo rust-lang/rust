@@ -247,7 +247,7 @@ impl Diagnostic for RemoveThisSemicolon {
 
 // Diagnostic: break-outside-of-loop
 //
-// This diagnostic is triggered if `break` keyword is used outside of a loop.
+// This diagnostic is triggered if the `break` keyword is used outside of a loop.
 #[derive(Debug)]
 pub struct BreakOutsideOfLoop {
     pub file: HirFileId,
@@ -271,7 +271,7 @@ impl Diagnostic for BreakOutsideOfLoop {
 
 // Diagnostic: missing-unsafe
 //
-// This diagnostic is triggered if operation marked as `unsafe` is used outside of `unsafe` function or block.
+// This diagnostic is triggered if an operation marked as `unsafe` is used outside of an `unsafe` function or block.
 #[derive(Debug)]
 pub struct MissingUnsafe {
     pub file: HirFileId,
@@ -295,7 +295,7 @@ impl Diagnostic for MissingUnsafe {
 
 // Diagnostic: mismatched-arg-count
 //
-// This diagnostic is triggered if function is invoked with an incorrect amount of arguments.
+// This diagnostic is triggered if a function is invoked with an incorrect amount of arguments.
 #[derive(Debug)]
 pub struct MismatchedArgCount {
     pub file: HirFileId,
@@ -347,7 +347,7 @@ impl fmt::Display for CaseType {
 
 // Diagnostic: incorrect-ident-case
 //
-// This diagnostic is triggered if item name doesn't follow https://doc.rust-lang.org/1.0.0/style/style/naming/README.html[Rust naming convention].
+// This diagnostic is triggered if an item name doesn't follow https://doc.rust-lang.org/1.0.0/style/style/naming/README.html[Rust naming convention].
 #[derive(Debug)]
 pub struct IncorrectCase {
     pub file: HirFileId,
@@ -383,6 +383,31 @@ impl Diagnostic for IncorrectCase {
 
     fn is_experimental(&self) -> bool {
         true
+    }
+}
+
+// Diagnostic: replace-filter-map-next-with-find-map
+//
+// This diagnostic is triggered when `.filter_map(..).next()` is used, rather than the more concise `.find_map(..)`.
+#[derive(Debug)]
+pub struct ReplaceFilterMapNextWithFindMap {
+    pub file: HirFileId,
+    pub filter_map_expr: AstPtr<ast::Expr>,
+    pub next_expr: AstPtr<ast::Expr>,
+}
+
+impl Diagnostic for ReplaceFilterMapNextWithFindMap {
+    fn code(&self) -> DiagnosticCode {
+        DiagnosticCode("replace-filter-map-next-with-find-map")
+    }
+    fn message(&self) -> String {
+        "replace filter_map(..).next() with find_map(..)".to_string()
+    }
+    fn display_source(&self) -> InFile<SyntaxNodePtr> {
+        InFile { file_id: self.file, value: self.filter_map_expr.clone().into() }
+    }
+    fn as_any(&self) -> &(dyn Any + Send + 'static) {
+        self
     }
 }
 
@@ -641,6 +666,21 @@ fn foo() { break; }
             r#"
                 fn test() -> i32 { 123; }
                                  //^^^ Remove this semicolon
+            "#,
+        );
+    }
+
+    #[test]
+    fn replace_missing_filter_next_with_find_map() {
+        check_diagnostics(
+            r#"
+            fn foo() {
+            let m = [1, 2, 3]
+                .iter()
+                .filter_map(|x| if *x == 2 { Some (4) } else { None })
+                .next();
+                //^^^ Replace .filter_map(..).next() with .find_map(..)
+            }
             "#,
         );
     }

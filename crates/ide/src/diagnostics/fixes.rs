@@ -4,7 +4,7 @@ use hir::{
     db::AstDatabase,
     diagnostics::{
         Diagnostic, IncorrectCase, MissingFields, MissingOkOrSomeInTailExpr, NoSuchField,
-        RemoveThisSemicolon, UnresolvedModule,
+        RemoveThisSemicolon, ReplaceFilterMapNextWithFindMap, UnresolvedModule,
     },
     HasSource, HirDisplay, InFile, Semantics, VariantDef,
 };
@@ -141,6 +141,37 @@ impl DiagnosticWithFix for IncorrectCase {
 
         let label = format!("Rename to {}", self.suggested_text);
         Some(Fix::new(&label, rename_changes, frange.range))
+    }
+}
+
+// Bugs:
+//  * Action is applicable for both iter() and filter_map() rows
+//  * Action deletes the entire method chain
+impl DiagnosticWithFix for ReplaceFilterMapNextWithFindMap {
+    fn fix(&self, sema: &Semantics<RootDatabase>) -> Option<Fix> {
+        let root = sema.db.parse_or_expand(self.file)?;
+
+        let next_expr = self.next_expr.to_node(&root);
+        let next_expr_range = next_expr.syntax().text_range();
+
+        let filter_map_expr = self.filter_map_expr.to_node(&root);
+        let filter_map_expr_range = filter_map_expr.syntax().text_range();
+
+        let edit = TextEdit::delete(next_expr_range);
+
+        // This is the entire method chain, including the array literal
+        eprintln!("NEXT EXPR: {:#?}", next_expr);
+        // This is the entire method chain except for the final next()
+        eprintln!("FILTER MAP EXPR: {:#?}", filter_map_expr);
+
+        let source_change =
+            SourceFileEdit { file_id: self.file.original_file(sema.db), edit }.into();
+
+        Some(Fix::new(
+            "Replace filter_map(..).next() with find_map()",
+            source_change,
+            filter_map_expr_range,
+        ))
     }
 }
 
