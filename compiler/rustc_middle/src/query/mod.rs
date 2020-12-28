@@ -576,11 +576,13 @@ rustc_queries! {
             desc { |tcx| "collecting associated items of {}", tcx.def_path_str(key) }
         }
 
-        query impl_trait_ref(key: DefId) -> Option<ty::TraitRef<'tcx>> {
-            desc { |tcx| "computing trait implemented by `{}`", tcx.def_path_str(key) }
+        /// Given an `impl_id`, return the trait it implements.
+        /// Return `None` if this is an inherent impl.
+        query impl_trait_ref(impl_id: DefId) -> Option<ty::TraitRef<'tcx>> {
+            desc { |tcx| "computing trait implemented by `{}`", tcx.def_path_str(impl_id) }
         }
-        query impl_polarity(key: DefId) -> ty::ImplPolarity {
-            desc { |tcx| "computing implementation polarity of `{}`", tcx.def_path_str(key) }
+        query impl_polarity(impl_id: DefId) -> ty::ImplPolarity {
+            desc { |tcx| "computing implementation polarity of `{}`", tcx.def_path_str(impl_id) }
         }
 
         query issue33140_self_ty(key: DefId) -> Option<ty::Ty<'tcx>> {
@@ -917,8 +919,10 @@ rustc_queries! {
     }
 
     TypeChecking {
-        query trait_of_item(def_id: DefId) -> Option<DefId> {
-            desc { |tcx| "finding trait defining `{}`", tcx.def_path_str(def_id) }
+        /// Given an `associated_item`, find the trait it belongs to.
+        /// Return `None` if the `DefId` is not an associated item.
+        query trait_of_item(associated_item: DefId) -> Option<DefId> {
+            desc { |tcx| "finding trait defining `{}`", tcx.def_path_str(associated_item) }
         }
     }
 
@@ -948,20 +952,29 @@ rustc_queries! {
     }
 
     TypeChecking {
-        query all_local_trait_impls(key: CrateNum) -> &'tcx BTreeMap<DefId, Vec<hir::HirId>> {
+        /// Return all `impl` blocks in the current crate.
+        ///
+        /// To allow caching this between crates, you must pass in [`LOCAL_CRATE`] as the crate number.
+        /// Passing in any other crate will cause an ICE.
+        ///
+        /// [`LOCAL_CRATE`]: rustc_hir::def_id::LOCAL_CRATE
+        query all_local_trait_impls(local_crate: CrateNum) -> &'tcx BTreeMap<DefId, Vec<hir::HirId>> {
             desc { "local trait impls" }
         }
-        query trait_impls_of(key: DefId) -> ty::trait_def::TraitImpls {
+
+        /// Given a trait `trait_id`, return all known `impl` blocks.
+        query trait_impls_of(trait_id: DefId) -> ty::trait_def::TraitImpls {
             storage(ArenaCacheSelector<'tcx>)
-            desc { |tcx| "trait impls of `{}`", tcx.def_path_str(key) }
+            desc { |tcx| "trait impls of `{}`", tcx.def_path_str(trait_id) }
         }
-        query specialization_graph_of(key: DefId) -> specialization_graph::Graph {
+
+        query specialization_graph_of(trait_id: DefId) -> specialization_graph::Graph {
             storage(ArenaCacheSelector<'tcx>)
-            desc { |tcx| "building specialization graph of trait `{}`", tcx.def_path_str(key) }
+            desc { |tcx| "building specialization graph of trait `{}`", tcx.def_path_str(trait_id) }
             cache_on_disk_if { true }
         }
-        query object_safety_violations(key: DefId) -> &'tcx [traits::ObjectSafetyViolation] {
-            desc { |tcx| "determine object safety of trait `{}`", tcx.def_path_str(key) }
+        query object_safety_violations(trait_id: DefId) -> &'tcx [traits::ObjectSafetyViolation] {
+            desc { |tcx| "determine object safety of trait `{}`", tcx.def_path_str(trait_id) }
         }
 
         /// Gets the ParameterEnvironment for a given item; this environment
@@ -969,6 +982,7 @@ rustc_queries! {
         /// type-checking etc, and it does not normalize specializable
         /// associated types. This is almost always what you want,
         /// unless you are doing MIR optimizations, in which case you
+        /// might want to use `reveal_all()` method to change modes.
         query param_env(def_id: DefId) -> ty::ParamEnv<'tcx> {
             desc { |tcx| "computing normalized predicates of `{}`", tcx.def_path_str(def_id) }
         }
@@ -1229,10 +1243,15 @@ rustc_queries! {
     }
 
     TypeChecking {
+        /// Given a crate and a trait, look up all impls of that trait in the crate.
+        /// Return `(impl_id, self_ty)`.
         query implementations_of_trait(_: (CrateNum, DefId))
             -> &'tcx [(DefId, Option<ty::fast_reject::SimplifiedType>)] {
             desc { "looking up implementations of a trait in a crate" }
         }
+
+        /// Given a crate, look up all trait impls in that crate.
+        /// Return `(impl_id, self_ty)`.
         query all_trait_implementations(_: CrateNum)
             -> &'tcx [(DefId, Option<ty::fast_reject::SimplifiedType>)] {
             desc { "looking up all (?) trait implementations" }
