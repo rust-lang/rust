@@ -156,7 +156,8 @@ impl ImportMap {
             let start = last_batch_start;
             last_batch_start = idx + 1;
 
-            let key = fst_string(&importables[start].1.path);
+            let key = fst_path(&importables[start].1.path);
+
             builder.insert(key, start as u64).unwrap();
         }
 
@@ -212,15 +213,15 @@ impl fmt::Debug for ImportMap {
     }
 }
 
-fn fst_string<T: ToString>(t: &T) -> String {
-    let mut s = t.to_string();
+fn fst_path(path: &ImportPath) -> String {
+    let mut s = path.to_string();
     s.make_ascii_lowercase();
     s
 }
 
 fn cmp((_, lhs): &(&ItemInNs, &ImportInfo), (_, rhs): &(&ItemInNs, &ImportInfo)) -> Ordering {
-    let lhs_str = fst_string(&lhs.path);
-    let rhs_str = fst_string(&rhs.path);
+    let lhs_str = fst_path(&lhs.path);
+    let rhs_str = fst_path(&rhs.path);
     lhs_str.cmp(&rhs_str)
 }
 
@@ -237,14 +238,20 @@ pub enum ImportKind {
     BuiltinType,
 }
 
+/// todo kb
+#[derive(Debug)]
+pub enum SearchMode {
+    Equals,
+    Contains,
+    Fuzzy,
+}
+
 #[derive(Debug)]
 pub struct Query {
     query: String,
     lowercased: String,
-    // TODO kb use enums instead?
     name_only: bool,
-    name_end: bool,
-    strict_include: bool,
+    search_mode: SearchMode,
     case_sensitive: bool,
     limit: usize,
     exclude_import_kinds: FxHashSet<ImportKind>,
@@ -253,29 +260,23 @@ pub struct Query {
 impl Query {
     pub fn new(query: &str) -> Self {
         Self {
-            lowercased: query.to_lowercase(),
             query: query.to_string(),
+            lowercased: query.to_lowercase(),
             name_only: false,
-            name_end: false,
-            strict_include: false,
+            search_mode: SearchMode::Contains,
             case_sensitive: false,
             limit: usize::max_value(),
             exclude_import_kinds: FxHashSet::default(),
         }
     }
 
-    pub fn name_end(self) -> Self {
-        Self { name_end: true, ..self }
-    }
-
-    /// todo kb
     pub fn name_only(self) -> Self {
         Self { name_only: true, ..self }
     }
 
     /// todo kb
-    pub fn strict_include(self) -> Self {
-        Self { strict_include: true, ..self }
+    pub fn search_mode(self, search_mode: SearchMode) -> Self {
+        Self { search_mode, ..self }
     }
 
     /// Limits the returned number of items to `limit`.
@@ -309,18 +310,24 @@ fn contains_query(query: &Query, input_path: &ImportPath, enforce_lowercase: boo
     let query_string =
         if !enforce_lowercase && query.case_sensitive { &query.query } else { &query.lowercased };
 
-    if query.strict_include {
-        if query.name_end {
-            &input == query_string
-        } else {
-            input.contains(query_string)
+    match query.search_mode {
+        SearchMode::Equals => &input == query_string,
+        SearchMode::Contains => input.contains(query_string),
+        SearchMode::Fuzzy => {
+            let mut unchecked_query_chars = query_string.chars();
+            let mut mismatching_query_char = unchecked_query_chars.next();
+
+            for input_char in input.chars() {
+                match mismatching_query_char {
+                    None => return true,
+                    Some(matching_query_char) if matching_query_char == input_char => {
+                        mismatching_query_char = unchecked_query_chars.next();
+                    }
+                    _ => (),
+                }
+            }
+            mismatching_query_char.is_none()
         }
-    } else if query.name_end {
-        input.ends_with(query_string)
-    } else {
-        let input_chars = input.chars().collect::<FxHashSet<_>>();
-        // TODO kb actually check for the order and the quantity
-        query_string.chars().all(|query_char| input_chars.contains(&query_char))
     }
 }
 
@@ -358,14 +365,14 @@ pub fn search_dependencies<'a>(
                 continue;
             }
 
-            let common_importables_path_fst = fst_string(common_importables_path);
+            let common_importables_path_fst = fst_path(common_importables_path);
             // Add the items from this `ModPath` group. Those are all subsequent items in
             // `importables` whose paths match `path`.
             let iter = importables
                 .iter()
                 .copied()
                 .take_while(|item| {
-                    common_importables_path_fst == fst_string(&import_map.map[item].path)
+                    common_importables_path_fst == fst_path(&import_map.map[item].path)
                 })
                 .filter(|&item| match item_import_kind(item) {
                     Some(import_kind) => !query.exclude_import_kinds.contains(&import_kind),
@@ -741,7 +748,7 @@ mod tests {
         check_search(
             ra_fixture,
             "main",
-            Query::new("fmt"),
+            Query::new("fmt").search_mode(SearchMode::Fuzzy),
             expect![[r#"
                 dep::fmt (t)
                 dep::Fmt (t)
@@ -756,7 +763,7 @@ mod tests {
         check_search(
             ra_fixture,
             "main",
-            Query::new("fmt").name_only().strict_include(),
+            Query::new("fmt").name_only().search_mode(SearchMode::Equals),
             expect![[r#"
                 dep::fmt (t)
                 dep::Fmt (t)

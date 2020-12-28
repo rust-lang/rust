@@ -135,7 +135,7 @@ fn fuzzy_completion(acc: &mut Completions, ctx: &CompletionContext) -> Option<()
         ctx.krate?,
         Some(100),
         &potential_import_name,
-        false,
+        true,
     )
     .filter_map(|import_candidate| {
         Some(match import_candidate {
