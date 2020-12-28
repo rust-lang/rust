@@ -47,6 +47,7 @@ use super::MAX;
 ///
 /// assert_eq!(None, c);
 /// ```
+#[doc(alias = "chr")]
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn from_u32(i: u32) -> Option<char> {
