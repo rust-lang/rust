@@ -26,6 +26,7 @@ use rustc_span::DUMMY_SP;
 
 use std::cell::{Cell, RefCell};
 use std::mem;
+use std::path::PathBuf;
 use std::rc::Rc;
 
 use crate::clean;
@@ -273,6 +274,58 @@ where
     (lint_opts, lint_caps)
 }
 
+crate fn get_rustdoc_lints(
+    cfg: FxHashSet<(String, Option<String>)>,
+    opts: config::Options,
+) -> Vec<String> {
+    let config = interface::Config {
+        opts,
+        crate_cfg: cfg,
+        input: Input::File(PathBuf::new()),
+        input_path: None,
+        output_file: None,
+        output_dir: None,
+        file_loader: None,
+        diagnostic_output: DiagnosticOutput::Default,
+        stderr: None,
+        lint_caps: Default::default(),
+        register_lints: None,
+        override_queries: None,
+        make_codegen_backend: None,
+        registry: rustc_driver::diagnostics_registry(),
+    };
+    let missing_docs_lints = rustc_lint::builtin::MISSING_DOCS.name;
+    let renamed_and_removed_lints = rustc_lint::builtin::RENAMED_AND_REMOVED_LINTS.name;
+    let unknown_lints = rustc_lint::builtin::UNKNOWN_LINTS.name;
+
+    // Rustdoc silences all lints by default, only warning on lints in the `rustdoc` group.
+    // These lints aren't in the lint group, but we want to warn on them anyway.
+    let mut rustdoc_lints = vec![
+        missing_docs_lints.to_owned(),
+        renamed_and_removed_lints.to_owned(),
+        unknown_lints.to_owned(),
+    ];
+
+    interface::run_compiler(config, |compiler| {
+        let sopts = &compiler.session().opts;
+        let lint_store = rustc_lint::new_lint_store(
+            sopts.debugging_opts.no_interleave_lints,
+            compiler.session().unstable_options(),
+        );
+        if let Some((_, lints, _)) =
+            lint_store.get_lint_groups().iter().find(|(name, _, _)| *name == "rustdoc")
+        {
+            for lint in lints {
+                // Funny thing about this: the lints in the compiler are capitalized but the lints
+                // you get through the `LintStore` are not, which means you have to capitalize them.
+                rustdoc_lints.push(lint.to_string().to_uppercase());
+            }
+        }
+    });
+
+    rustdoc_lints
+}
+
 /// Parse, resolve, and typecheck the given crate.
 crate fn create_config(
     RustdocOptions {
@@ -301,51 +354,14 @@ crate fn create_config(
     let cpath = Some(input.clone());
     let input = Input::File(input);
 
-    let broken_intra_doc_links = lint::builtin::BROKEN_INTRA_DOC_LINKS.name;
-    let private_intra_doc_links = lint::builtin::PRIVATE_INTRA_DOC_LINKS.name;
-    let missing_docs = rustc_lint::builtin::MISSING_DOCS.name;
-    let missing_doc_example = rustc_lint::builtin::MISSING_DOC_CODE_EXAMPLES.name;
-    let private_doc_tests = rustc_lint::builtin::PRIVATE_DOC_TESTS.name;
-    let no_crate_level_docs = rustc_lint::builtin::MISSING_CRATE_LEVEL_DOCS.name;
-    let invalid_codeblock_attributes_name = rustc_lint::builtin::INVALID_CODEBLOCK_ATTRIBUTES.name;
-    let invalid_html_tags = rustc_lint::builtin::INVALID_HTML_TAGS.name;
-    let renamed_and_removed_lints = rustc_lint::builtin::RENAMED_AND_REMOVED_LINTS.name;
-    let non_autolinks = rustc_lint::builtin::NON_AUTOLINKS.name;
-    let unknown_lints = rustc_lint::builtin::UNKNOWN_LINTS.name;
-
-    // In addition to those specific lints, we also need to allow those given through
-    // command line, otherwise they'll get ignored and we don't want that.
-    let lints_to_show = vec![
-        broken_intra_doc_links.to_owned(),
-        private_intra_doc_links.to_owned(),
-        missing_docs.to_owned(),
-        missing_doc_example.to_owned(),
-        private_doc_tests.to_owned(),
-        no_crate_level_docs.to_owned(),
-        invalid_codeblock_attributes_name.to_owned(),
-        invalid_html_tags.to_owned(),
-        renamed_and_removed_lints.to_owned(),
-        unknown_lints.to_owned(),
-        non_autolinks.to_owned(),
-    ];
-
-    let (lint_opts, lint_caps) = init_lints(lints_to_show, lint_opts, |lint| {
-        // FIXME: why is this necessary?
-        if lint.name == broken_intra_doc_links || lint.name == invalid_codeblock_attributes_name {
-            None
-        } else {
-            Some((lint.name_lower(), lint::Allow))
-        }
-    });
-
     let crate_types =
         if proc_macro_crate { vec![CrateType::ProcMacro] } else { vec![CrateType::Rlib] };
     // plays with error output here!
-    let sessopts = config::Options {
+    let mut sessopts = config::Options {
         maybe_sysroot,
         search_paths: libs,
         crate_types,
-        lint_opts: if !display_warnings { lint_opts } else { vec![] },
+        lint_opts: vec![],
         lint_cap,
         cg: codegen_options,
         externs,
@@ -360,9 +376,27 @@ crate fn create_config(
         ..Options::default()
     };
 
+    let crate_cfg = interface::parse_cfgspecs(cfgs);
+
+    let invalid_codeblock_attributes_name = rustc_lint::builtin::INVALID_CODEBLOCK_ATTRIBUTES.name;
+    let broken_intra_doc_links = lint::builtin::BROKEN_INTRA_DOC_LINKS.name;
+
+    let lints_to_show = get_rustdoc_lints(crate_cfg.clone(), sessopts.clone());
+    let (lint_opts, lint_caps) = init_lints(lints_to_show, lint_opts, |lint| {
+        // FIXME: why is this necessary?
+        if lint.name == broken_intra_doc_links || lint.name == invalid_codeblock_attributes_name {
+            None
+        } else {
+            Some((lint.name_lower(), lint::Allow))
+        }
+    });
+    if !display_warnings {
+        sessopts.lint_opts = lint_opts;
+    }
+
     interface::Config {
         opts: sessopts,
-        crate_cfg: interface::parse_cfgspecs(cfgs),
+        crate_cfg,
         input,
         input_path: cpath,
         output_file: None,
