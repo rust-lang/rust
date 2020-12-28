@@ -1020,6 +1020,42 @@ fn test_underscore() {
 }
 
 #[test]
+fn test_underscore_not_greedily() {
+    parse_macro(
+        r#"
+macro_rules! q {
+    ($($a:ident)* _) => {0};
+}
+"#,
+    )
+    // `_` overlaps with `$a:ident` but rustc matches it under the `_` token
+    .assert_expand_items(r#"q![a b c d _]"#, r#"0"#);
+
+    parse_macro(
+        r#"
+macro_rules! q {
+    ($($a:expr => $b:ident)* _ => $c:expr) => {0};
+}
+"#,
+    )
+    // `_ => ou` overlaps with `$a:expr => $b:ident` but rustc matches it under `_ => $c:expr`
+    .assert_expand_items(r#"q![a => b c => d _ => ou]"#, r#"0"#);
+}
+
+#[test]
+fn test_underscore_as_type() {
+    parse_macro(
+        r#"
+macro_rules! q {
+    ($a:ty) => {0};
+}
+"#,
+    )
+    // Underscore is a type
+    .assert_expand_items(r#"q![_]"#, r#"0"#);
+}
+
+#[test]
 fn test_vertical_bar_with_pat() {
     parse_macro(
         r#"

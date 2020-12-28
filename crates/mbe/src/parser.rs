@@ -101,8 +101,15 @@ fn next_op<'a>(
                     Op::Repeat { subtree, separator, kind }
                 }
                 tt::TokenTree::Leaf(leaf) => match leaf {
-                    tt::Leaf::Punct(_) => {
-                        return Err(ExpandError::UnexpectedToken);
+                    tt::Leaf::Punct(punct) => {
+                        static UNDERSCORE: SmolStr = SmolStr::new_inline("_");
+
+                        if punct.char != '_' {
+                            return Err(ExpandError::UnexpectedToken);
+                        }
+                        let name = &UNDERSCORE;
+                        let kind = eat_fragment_kind(src, mode)?;
+                        Op::Var { name, kind }
                     }
                     tt::Leaf::Ident(ident) => {
                         let name = &ident.text;
