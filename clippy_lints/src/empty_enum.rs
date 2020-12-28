@@ -8,6 +8,10 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 declare_clippy_lint! {
     /// **What it does:** Checks for `enum`s with no variants.
     ///
+    /// As of this writing, the never type is still a
+    /// nightly-only experimental API. Therefore, this lint is only triggered
+    /// if the never type is enabled
+    ///
     /// **Why is this bad?** If you want to introduce a type which
     /// can't be instantiated, you should use `!` (the never type),
     /// or a wrapper around it, because `!` has more extensive
