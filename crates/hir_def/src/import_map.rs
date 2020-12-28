@@ -729,7 +729,7 @@ mod tests {
     }
 
     #[test]
-    fn search() {
+    fn search_mode() {
         let ra_fixture = r#"
             //- /main.rs crate:main deps:dep
             //- /dep.rs crate:dep deps:tdep
@@ -772,7 +772,76 @@ mod tests {
         check_search(
             ra_fixture,
             "main",
-            Query::new("fmt").name_only().search_mode(SearchMode::Equals),
+            Query::new("fmt").search_mode(SearchMode::Equals),
+            expect![[r#"
+                dep::fmt (t)
+                dep::Fmt (t)
+                dep::Fmt (v)
+                dep::Fmt (m)
+                dep::fmt::Display (t)
+            "#]],
+        );
+
+        check_search(
+            ra_fixture,
+            "main",
+            Query::new("fmt").search_mode(SearchMode::Contains),
+            expect![[r#"
+                dep::fmt (t)
+                dep::Fmt (t)
+                dep::Fmt (v)
+                dep::Fmt (m)
+                dep::fmt::Display (t)
+                dep::fmt::Display (t)
+            "#]],
+        );
+    }
+
+    #[test]
+    fn name_only() {
+        let ra_fixture = r#"
+            //- /main.rs crate:main deps:dep
+            //- /dep.rs crate:dep deps:tdep
+            use tdep::fmt as fmt_dep;
+            pub mod fmt {
+                pub trait Display {
+                    fn fmt();
+                }
+            }
+            #[macro_export]
+            macro_rules! Fmt {
+                () => {};
+            }
+            pub struct Fmt;
+
+            pub fn format() {}
+            pub fn no() {}
+
+            //- /tdep.rs crate:tdep
+            pub mod fmt {
+                pub struct NotImportableFromMain;
+            }
+        "#;
+
+        check_search(
+            ra_fixture,
+            "main",
+            Query::new("fmt"),
+            expect![[r#"
+                dep::fmt (t)
+                dep::Fmt (t)
+                dep::Fmt (v)
+                dep::Fmt (m)
+                dep::fmt::Display (t)
+                dep::fmt::Display (t)
+            "#]],
+        );
+
+        // TODO kb where does this duplicate `dep::fmt::Display (t)` come from?
+        check_search(
+            ra_fixture,
+            "main",
+            Query::new("fmt").name_only(),
             expect![[r#"
                 dep::fmt (t)
                 dep::Fmt (t)
