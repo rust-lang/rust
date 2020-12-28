@@ -201,6 +201,12 @@ fn symbols_with_errors(input: TokenStream) -> (TokenStream, Vec<syn::Error>) {
     }
     let _ = counter; // for future use
 
+    // We have finished collecting symbol strings.
+    let static_symbols_len = symbol_strings.len();
+
+    // Build the body of STATIC_SYMBOLS.
+    let symbol_strings_tokens: TokenStream = symbol_strings.iter().map(|s| quote!(#s,)).collect();
+
     // Build the PHF map. This translates from strings to Symbol values.
     let mut phf_map = phf_codegen::Map::<&str>::new();
     for (symbol_index, symbol) in symbol_strings.iter().enumerate() {
@@ -235,6 +241,10 @@ fn symbols_with_errors(input: TokenStream) -> (TokenStream, Vec<syn::Error>) {
                 ])
             }
         }
+
+        static STATIC_SYMBOLS: [&str; #static_symbols_len as usize] = [
+            #symbol_strings_tokens
+        ];
 
         static STATIC_SYMBOLS_PHF: ::phf::Map<&'static str, Symbol> = #phf_map_expr;
     };
