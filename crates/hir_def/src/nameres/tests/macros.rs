@@ -677,7 +677,7 @@ fn macro_expansion_overflow() {
         r#"
 macro_rules! a {
     ($e:expr; $($t:tt)*) => {
-        b!($($t)*);
+        b!(static = (); $($t)*);
     };
     () => {};
 }
@@ -689,7 +689,7 @@ macro_rules! b {
     () => {};
 }
 
-b! { static = #[] (); }
+b! { static = #[] ();}
 "#,
         expect![[r#"
             crate
