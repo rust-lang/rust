@@ -53,6 +53,14 @@ pub struct SyntaxTreeParams {
     pub range: Option<Range>,
 }
 
+pub enum ViewHir {}
+
+impl Request for ViewHir {
+    type Params = lsp_types::TextDocumentPositionParams;
+    type Result = String;
+    const METHOD: &'static str = "rust-analyzer/viewHir";
+}
+
 pub enum ExpandMacro {}
 
 impl Request for ExpandMacro {

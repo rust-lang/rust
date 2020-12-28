@@ -104,6 +104,16 @@ pub(crate) fn handle_syntax_tree(
     Ok(res)
 }
 
+pub(crate) fn handle_view_hir(
+    snap: GlobalStateSnapshot,
+    params: lsp_types::TextDocumentPositionParams,
+) -> Result<String> {
+    let _p = profile::span("handle_view_hir");
+    let position = from_proto::file_position(&snap, params)?;
+    let res = snap.analysis.view_hir(position)?;
+    Ok(res)
+}
+
 pub(crate) fn handle_expand_macro(
     snap: GlobalStateSnapshot,
     params: lsp_ext::ExpandMacroParams,

@@ -729,7 +729,8 @@ impl DefWithBody {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Function {
-    pub(crate) id: FunctionId,
+    // DO NOT MERGE: this was previously pub(crate)
+    pub id: FunctionId,
 }
 
 impl Function {

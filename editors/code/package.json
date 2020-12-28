@@ -104,6 +104,11 @@
                 "category": "Rust Analyzer"
             },
             {
+                "command": "rust-analyzer.viewHir",
+                "title": "View Hir",
+                "category": "Rust Analyzer"
+            },
+            {
                 "command": "rust-analyzer.expandMacro",
                 "title": "Expand macro recursively",
                 "category": "Rust Analyzer"
@@ -996,6 +1001,10 @@
             "commandPalette": [
                 {
                     "command": "rust-analyzer.syntaxTree",
+                    "when": "inRustProject"
+                },
+                {
+                    "command": "rust-analyzer.viewHir",
                     "when": "inRustProject"
                 },
                 {
