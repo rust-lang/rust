@@ -500,18 +500,17 @@ impl Step for Rustc {
         let target = self.target;
         builder.info(&format!("Documenting stage{} compiler ({})", stage, target));
 
-        // This is the intended out directory for compiler documentation.
-        let out = builder.compiler_doc_out(target);
-        t!(fs::create_dir_all(&out));
-
-        let compiler = builder.compiler(stage, builder.config.build);
-
         if !builder.config.compiler_docs {
             builder.info("\tskipping - compiler/librustdoc docs disabled");
             return;
         }
 
+        // This is the intended out directory for compiler documentation.
+        let out = builder.compiler_doc_out(target);
+        t!(fs::create_dir_all(&out));
+
         // Build rustc.
+        let compiler = builder.compiler(stage, builder.config.build);
         builder.ensure(compile::Rustc { compiler, target });
 
         // This uses a shared directory so that librustdoc documentation gets
@@ -521,6 +520,10 @@ impl Step for Rustc {
         // merging the search index, or generating local (relative) links.
         let out_dir = builder.stage_out(compiler, Mode::Rustc).join(target.triple).join("doc");
         t!(symlink_dir_force(&builder.config, &out, &out_dir));
+        // Cargo puts proc macros in `target/doc` even if you pass `--target`
+        // explicitly (https://github.com/rust-lang/cargo/issues/7677).
+        let proc_macro_out_dir = builder.stage_out(compiler, Mode::Rustc).join("doc");
+        t!(symlink_dir_force(&builder.config, &out, &proc_macro_out_dir));
 
         // Build cargo command.
         let mut cargo = builder.cargo(compiler, Mode::Rustc, SourceType::InTree, target, "doc");
