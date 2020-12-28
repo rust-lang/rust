@@ -403,6 +403,7 @@ impl Linker {
             return Ok(());
         }
 
+        let _timer = sess.prof.verbose_generic_activity("link_crate");
         self.codegen_backend.link(&self.sess, codegen_results, &self.prepare_outputs)
     }
 }

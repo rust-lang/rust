@@ -404,12 +404,10 @@ impl<'a> TraitDef<'a> {
                 let has_no_type_params = match item.kind {
                     ast::ItemKind::Struct(_, ref generics)
                     | ast::ItemKind::Enum(_, ref generics)
-                    | ast::ItemKind::Union(_, ref generics) => {
-                        !generics.params.iter().any(|param| match param.kind {
-                            ast::GenericParamKind::Type { .. } => true,
-                            _ => false,
-                        })
-                    }
+                    | ast::ItemKind::Union(_, ref generics) => !generics
+                        .params
+                        .iter()
+                        .any(|param| matches!(param.kind, ast::GenericParamKind::Type { .. })),
                     _ => unreachable!(),
                 };
                 let container_id = cx.current_expansion.id.expn_data().parent;
@@ -868,7 +866,7 @@ impl<'a> MethodDef<'a> {
                 Self_ if nonstatic => {
                     self_args.push(arg_expr);
                 }
-                Ptr(ref ty, _) if (if let Self_ = **ty { true } else { false }) && nonstatic => {
+                Ptr(ref ty, _) if matches!(**ty, Self_) && nonstatic => {
                     self_args.push(cx.expr_deref(trait_.span, arg_expr))
                 }
                 _ => {

@@ -92,9 +92,7 @@ fn main() {
         let mut run_compiler = rustc_driver::RunCompiler::new(&args, &mut callbacks);
         if use_clif {
             run_compiler.set_make_codegen_backend(Some(Box::new(move |_| {
-                Box::new(rustc_codegen_cranelift::CraneliftCodegenBackend {
-                    config: rustc_codegen_cranelift::BackendConfig { use_jit: false },
-                })
+                Box::new(rustc_codegen_cranelift::CraneliftCodegenBackend { config: None })
             })));
         }
         run_compiler.run()

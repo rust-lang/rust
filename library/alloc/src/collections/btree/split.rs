@@ -53,6 +53,9 @@ impl<K, V> Root<K, V> {
         }
     }
 
+    /// Stock up or merge away any underfull nodes on the right border of the
+    /// tree. The other nodes, those that are not the root nor a rightmost edge,
+    /// must already have at least MIN_LEN elements.
     fn fix_right_border(&mut self) {
         self.fix_top();
 
@@ -72,6 +75,7 @@ impl<K, V> Root<K, V> {
                     }
                     cur_node = last_kv.into_right_child();
                 }
+                debug_assert!(cur_node.len() > MIN_LEN);
             }
         }
 
@@ -98,6 +102,7 @@ impl<K, V> Root<K, V> {
                     }
                     cur_node = first_kv.into_left_child();
                 }
+                debug_assert!(cur_node.len() > MIN_LEN);
             }
         }
 

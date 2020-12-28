@@ -696,8 +696,10 @@ fn test_first_last() {
     assert_eq!(a.pop_last(), None);
 }
 
+// Unlike the function with the same name in map/tests, returns no values.
+// Which also means it returns different predetermined pseudo-random keys,
+// and the test cases using this function explore slightly different trees.
 fn rand_data(len: usize) -> Vec<u32> {
-    assert!(len <= 70029); // from that point on numbers repeat
     let mut rng = DeterministicRng::new();
     Vec::from_iter((0..len).map(|_| rng.next()))
 }

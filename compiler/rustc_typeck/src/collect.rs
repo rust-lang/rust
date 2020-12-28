@@ -156,10 +156,10 @@ crate fn placeholder_type_error(
         if let Some(span) = span {
             sugg.push((span, format!("<{}>", type_name)));
         }
-    } else if let Some(arg) = generics.iter().find(|arg| match arg.name {
-        hir::ParamName::Plain(Ident { name: kw::Underscore, .. }) => true,
-        _ => false,
-    }) {
+    } else if let Some(arg) = generics
+        .iter()
+        .find(|arg| matches!(arg.name, hir::ParamName::Plain(Ident { name: kw::Underscore, .. })))
+    {
         // Account for `_` already present in cases like `struct S<_>(_);` and suggest
         // `struct S<T>(T);` instead of `struct S<_, T>(T);`.
         sugg.push((arg.span, (*type_name).to_string()));
@@ -1544,12 +1544,27 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
                     let mut diag = bad_placeholder_type(tcx, visitor.0);
                     let ret_ty = fn_sig.output();
                     if ret_ty != tcx.ty_error() {
-                        diag.span_suggestion(
-                            ty.span,
-                            "replace with the correct return type",
-                            ret_ty.to_string(),
-                            Applicability::MaybeIncorrect,
-                        );
+                        if !ret_ty.is_closure() {
+                            let ret_ty_str = match ret_ty.kind() {
+                                // Suggest a function pointer return type instead of a unique function definition
+                                // (e.g. `fn() -> i32` instead of `fn() -> i32 { f }`, the latter of which is invalid
+                                // syntax)
+                                ty::FnDef(..) => ret_ty.fn_sig(tcx).to_string(),
+                                _ => ret_ty.to_string(),
+                            };
+                            diag.span_suggestion(
+                                ty.span,
+                                "replace with the correct return type",
+                                ret_ty_str,
+                                Applicability::MaybeIncorrect,
+                            );
+                        } else {
+                            // We're dealing with a closure, so we should suggest using `impl Fn` or trait bounds
+                            // to prevent the user from getting a papercut while trying to use the unique closure
+                            // syntax (e.g. `[closure@src/lib.rs:2:5: 2:9]`).
+                            diag.help("consider using an `Fn`, `FnMut`, or `FnOnce` trait bound");
+                            diag.note("for more information on `Fn` traits and closure types, see https://doc.rust-lang.org/book/ch13-01-closures.html");
+                        }
                     }
                     diag.emit();
                     ty::Binder::bind(fn_sig)

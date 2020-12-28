@@ -112,7 +112,7 @@ impl<'a> Tarball<'a> {
     fn new_inner(builder: &'a Builder<'a>, component: &str, target: Option<String>) -> Self {
         let pkgname = crate::dist::pkgname(builder, component);
 
-        let mut temp_dir = builder.out.join("tmp").join("tarball");
+        let mut temp_dir = builder.out.join("tmp").join("tarball").join(component);
         if let Some(target) = &target {
             temp_dir = temp_dir.join(target);
         }

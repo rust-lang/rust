@@ -1653,17 +1653,14 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
         for missing in &self.missing_named_lifetime_spots {
             match missing {
                 MissingLifetimeSpot::Generics(generics) => {
-                    let (span, sugg) = if let Some(param) =
-                        generics.params.iter().find(|p| match p.kind {
-                            hir::GenericParamKind::Type {
-                                synthetic: Some(hir::SyntheticTyParamKind::ImplTrait),
-                                ..
-                            } => false,
-                            hir::GenericParamKind::Lifetime {
-                                kind: hir::LifetimeParamKind::Elided,
-                            } => false,
-                            _ => true,
-                        }) {
+                    let (span, sugg) = if let Some(param) = generics.params.iter().find(|p| {
+                        !matches!(p.kind, hir::GenericParamKind::Type {
+                            synthetic: Some(hir::SyntheticTyParamKind::ImplTrait),
+                            ..
+                        } | hir::GenericParamKind::Lifetime {
+                            kind: hir::LifetimeParamKind::Elided,
+                        })
+                    }) {
                         (param.span.shrink_to_lo(), format!("{}, ", lifetime_ref))
                     } else {
                         suggests_in_band = true;
