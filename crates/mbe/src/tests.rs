@@ -761,6 +761,18 @@ fn test_last_expr() {
 }
 
 #[test]
+fn test_expr_with_attr() {
+    parse_macro(
+        r#"
+macro_rules! m {
+    ($a:expr) => {0}
+}
+"#,
+    )
+    .assert_expand_items("m!(#[allow(a)]())", "0");
+}
+
+#[test]
 fn test_ty() {
     parse_macro(
         r#"
