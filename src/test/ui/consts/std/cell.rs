@@ -36,4 +36,6 @@ unsafe impl<T> Sync for Wrap<T> {}
 
 static BAR_PTR: Wrap<*mut u32> = Wrap(BAR.0.get());
 
+const fn fst_ref<T, U>(x: &(T, U)) -> &T { &x.0 }
+
 fn main() {}

@@ -227,6 +227,13 @@ impl NonConstOp for CellBorrowBehindRef {
 #[derive(Debug)]
 pub struct CellBorrow;
 impl NonConstOp for CellBorrow {
+    fn status_in_item(&self, ccx: &ConstCx<'_, '_>) -> Status {
+        match ccx.const_kind() {
+            // The borrow checker does a much better job at handling these than we do
+            hir::ConstContext::ConstFn => Status::Allowed,
+            _ => Status::Forbidden,
+        }
+    }
     fn importance(&self) -> DiagnosticImportance {
         // The problematic cases will already emit a `CellBorrowBehindRef`
         DiagnosticImportance::Secondary
