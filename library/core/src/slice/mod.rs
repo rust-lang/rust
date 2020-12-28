@@ -404,6 +404,7 @@ impl<T> [T] {
     /// [`as_mut_ptr`]: #method.as_mut_ptr
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_slice_as_ptr", since = "1.32.0")]
+    #[rustc_promotable] // Operation cannot fail, so it may be promoted.
     #[inline]
     pub const fn as_ptr(&self) -> *const T {
         self as *const [T] as *const T
@@ -432,6 +433,7 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_ptr_offset", issue = "71499")]
+    #[rustc_promotable] // Operation cannot fail, so it may be promoted.
     #[inline]
     pub const fn as_mut_ptr(&mut self) -> *mut T {
         self as *mut [T] as *mut T
