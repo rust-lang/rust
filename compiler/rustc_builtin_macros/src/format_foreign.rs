@@ -580,10 +580,7 @@ pub mod printf {
     }
 
     fn is_flag(c: &char) -> bool {
-        match c {
-            '0' | '-' | '+' | ' ' | '#' | '\'' => true,
-            _ => false,
-        }
+        matches!(c, '0' | '-' | '+' | ' ' | '#' | '\'')
     }
 
     #[cfg(test)]

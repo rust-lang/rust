@@ -38,10 +38,9 @@ pub fn expand_deriving_clone(
             | ItemKind::Enum(_, Generics { ref params, .. }) => {
                 let container_id = cx.current_expansion.id.expn_data().parent;
                 if cx.resolver.has_derive_copy(container_id)
-                    && !params.iter().any(|param| match param.kind {
-                        ast::GenericParamKind::Type { .. } => true,
-                        _ => false,
-                    })
+                    && !params
+                        .iter()
+                        .any(|param| matches!(param.kind, ast::GenericParamKind::Type { .. }))
                 {
                     bounds = vec![];
                     is_shallow = true;
