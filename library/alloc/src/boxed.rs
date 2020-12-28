@@ -1229,13 +1229,9 @@ impl<T: Copy> From<&[T]> for Box<[T]> {
     ///
     /// println!("{:?}", boxed_slice);
     /// ```
+    #[inline]
     fn from(slice: &[T]) -> Box<[T]> {
-        let len = slice.len();
-        let buf = RawVec::with_capacity(len);
-        unsafe {
-            ptr::copy_nonoverlapping(slice.as_ptr(), buf.ptr(), len);
-            buf.into_box(slice.len()).assume_init()
-        }
+        slice.to_boxed_slice()
     }
 }
 
@@ -1578,7 +1574,7 @@ impl<I> FromIterator<I> for Box<[I]> {
 impl<T: Clone, A: Allocator + Clone> Clone for Box<[T], A> {
     fn clone(&self) -> Self {
         let alloc = Box::allocator(self).clone();
-        self.to_vec_in(alloc).into_boxed_slice()
+        self.to_boxed_slice_in(alloc)
     }
 
     fn clone_from(&mut self, other: &Self) {

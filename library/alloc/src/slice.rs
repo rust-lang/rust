@@ -143,6 +143,7 @@ pub use hack::to_vec;
 // `test_permutations` test
 mod hack {
     use core::alloc::Allocator;
+    use core::mem::MaybeUninit;
 
     use crate::boxed::Box;
     use crate::vec::Vec;
@@ -163,8 +164,17 @@ mod hack {
         T::to_vec(s, alloc)
     }
 
+    #[inline]
+    pub fn to_boxed_slice<T: ConvertVec, A: Allocator>(s: &[T], alloc: A) -> Box<[T], A> {
+        T::to_boxed_slice(s, alloc)
+    }
+
     pub trait ConvertVec {
         fn to_vec<A: Allocator>(s: &[Self], alloc: A) -> Vec<Self, A>
+        where
+            Self: Sized;
+
+        fn to_boxed_slice<A: Allocator>(s: &[Self], alloc: A) -> Box<[Self], A>
         where
             Self: Sized;
     }
@@ -203,6 +213,35 @@ mod hack {
             }
             vec
         }
+
+        #[inline]
+        default fn to_boxed_slice<A: Allocator>(s: &[Self], alloc: A) -> Box<[Self], A> {
+            struct DropGuard<T> {
+                dst: *mut T,
+                num_init: usize,
+            }
+            impl<T> Drop for DropGuard<T> {
+                #[inline]
+                fn drop(&mut self) {
+                    let init_slice = core::ptr::slice_from_raw_parts_mut(self.dst, self.num_init);
+                    // SAFETY: all elements in this slice have been initialized
+                    unsafe {
+                        core::ptr::drop_in_place(init_slice);
+                    }
+                }
+            }
+
+            let mut boxed = Box::new_uninit_slice_in(s.len(), alloc);
+            let mut guard =
+                DropGuard { dst: MaybeUninit::slice_as_mut_ptr(&mut boxed), num_init: 0 };
+            while guard.num_init < s.len() {
+                boxed[guard.num_init].write(s[guard.num_init].clone());
+                guard.num_init += 1;
+            }
+            core::mem::forget(guard);
+            // SAFETY: each element is initialized by the loop above
+            unsafe { boxed.assume_init() }
+        }
     }
 
     impl<T: Copy> ConvertVec for T {
@@ -217,6 +256,17 @@ mod hack {
                 v.set_len(s.len());
             }
             v
+        }
+
+        #[inline]
+        fn to_boxed_slice<A: Allocator>(s: &[Self], alloc: A) -> Box<[Self], A> {
+            let mut boxed = Box::new_uninit_slice_in(s.len(), alloc);
+            let boxed_ptr = MaybeUninit::slice_as_mut_ptr(&mut boxed);
+            // SAFETY: `boxed` contains `s.len()` elements and all are initialized
+            unsafe {
+                s.as_ptr().copy_to_nonoverlapping(boxed_ptr, s.len());
+                boxed.assume_init()
+            }
         }
     }
 }
@@ -475,6 +525,49 @@ impl<T> [T] {
     {
         // N.B., see the `hack` module in this file for more details.
         hack::to_vec(self, alloc)
+    }
+
+    /// Clones `self` into a new boxed slice.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_to_boxed)]
+    ///
+    /// let s = [1, 2, 3];
+    /// let x: Box<[i32]> = s.to_boxed_slice();
+    /// assert_eq!(&s, x.as_ref());
+    /// ```
+    #[inline]
+    #[unstable(feature = "slice_to_boxed", issue = "82725")]
+    pub fn to_boxed_slice(&self) -> Box<Self>
+    where
+        T: Clone,
+    {
+        self.to_boxed_slice_in(Global)
+    }
+
+    /// Clones `self` into a new boxed slice with an allocator.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(allocator_api)]
+    ///
+    /// use std::alloc::System;
+    ///
+    /// let s = [1, 2, 3];
+    /// let x: Box<[i32], System> = s.to_boxed_slice_in(System);
+    /// assert_eq!(&s, x.as_ref());
+    /// ```
+    #[inline]
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    // #[unstable(feature = "slice_to_boxed", issue = "82725")]
+    pub fn to_boxed_slice_in<A: Allocator>(&self, alloc: A) -> Box<Self, A>
+    where
+        T: Clone,
+    {
+        hack::to_boxed_slice(self, alloc)
     }
 
     /// Converts `self` into a vector without clones or allocation.

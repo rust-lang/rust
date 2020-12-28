@@ -464,8 +464,7 @@ impl Iterator for ReadDir {
                 let ret = DirEntry {
                     entry: *entry_ptr,
                     name: slice::from_raw_parts(name as *const u8, namelen as usize)
-                        .to_owned()
-                        .into_boxed_slice(),
+                        .to_boxed_slice(),
                     dir: Arc::clone(&self.inner),
                 };
                 if ret.name_bytes() != b"." && ret.name_bytes() != b".." {
