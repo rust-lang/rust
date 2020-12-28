@@ -456,28 +456,36 @@ struct BindingKey {
 type Resolutions<'a> = RefCell<FxIndexMap<BindingKey, &'a RefCell<NameResolution<'a>>>>;
 
 /// One node in the tree of modules.
+///
+/// Note that "module" is a loose term here; it does not necessarily mean
+/// a `mod` that you declare in Rust code. It may also be, e.g., a trait
+/// or an enum. See [`ModuleKind`] (accessible through [`ModuleData::kind`]
+/// for all of the kinds of "modules" that resolve deals with.
 pub struct ModuleData<'a> {
+    /// The direct parent module (it may not be a `mod`, however).
     parent: Option<Module<'a>>,
+    /// What kind of module this is, because this may not be a `mod`.
     kind: ModuleKind,
 
-    // The def id of the closest normal module (`mod`) ancestor (including this module).
+    /// The [`DefId`] of the closest `mod` item ancestor (which may be this module), including crate root.
     normal_ancestor_id: DefId,
 
-    // Mapping between names and their (possibly in-progress) resolutions in this module.
-    // Resolutions in modules from other crates are not populated until accessed.
+    /// Mapping between names and their (possibly in-progress) resolutions in this module.
+    /// Resolutions in modules from other crates are not populated until accessed.
     lazy_resolutions: Resolutions<'a>,
-    // True if this is a module from other crate that needs to be populated on access.
+    /// True if this is a module from other crate that needs to be populated on access.
     populate_on_access: Cell<bool>,
 
-    // Macro invocations that can expand into items in this module.
+    /// Macro invocations that can expand into items in this module.
     unexpanded_invocations: RefCell<FxHashSet<ExpnId>>,
 
+    /// Whether `#[no_implicit_prelude]` is active.
     no_implicit_prelude: bool,
 
     glob_importers: RefCell<Vec<&'a Import<'a>>>,
     globs: RefCell<Vec<&'a Import<'a>>>,
 
-    // Used to memoize the traits in this module for faster searches through all traits in scope.
+    /// Used to memoize the traits in this module for faster searches through all traits in scope.
     traits: RefCell<Option<Box<[(Ident, &'a NameBinding<'a>)]>>>,
 
     /// Span of the module itself. Used for error reporting.
