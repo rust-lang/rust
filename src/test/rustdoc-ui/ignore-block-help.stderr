@@ -7,11 +7,8 @@ LL | | /// let heart = '❤️';
 LL | | /// ```
    | |_______^
    |
+   = note: `#[warn(invalid_rust_codeblock)]` on by default
    = note: error from rustc: character literal may only contain one codepoint
-help: `ignore` code blocks require valid Rust code for syntax highlighting. Mark blocks that do not contain Rust code as text
-   |
-LL | /// ```text,ignore (to-prevent-tidy-error)
-   |     ^^^^^^^^
 
 warning: 1 warning emitted
 

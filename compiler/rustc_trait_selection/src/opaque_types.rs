@@ -46,6 +46,7 @@ pub struct OpaqueTypeDecl<'tcx> {
     /// type Foo = impl Baz;
     /// fn bar() -> Foo {
     /// //          ^^^ This is the span we are looking for!
+    /// }
     /// ```
     ///
     /// In cases where the fn returns `(impl Trait, impl Trait)` or
