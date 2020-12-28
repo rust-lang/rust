@@ -101,8 +101,8 @@ fn complete_enum_variants(acc: &mut Completions, ctx: &CompletionContext, ty: &T
 //
 // .Fuzzy search details
 //
-// To avoid an excessive amount of the results returned, completion input is checked for inclusion in the identifiers only
-// (i.e. in `HashMap` in the `std::collections::HashMap` path), also not in the module indentifiers.
+// To avoid an excessive amount of the results returned, completion input is checked for inclusion in the names only
+// (i.e. in `HashMap` in the `std::collections::HashMap` path).
 //
 // .Merge Behavior
 //

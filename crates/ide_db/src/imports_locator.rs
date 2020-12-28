@@ -39,18 +39,18 @@ pub fn find_similar_imports<'a>(
     sema: &Semantics<'a, RootDatabase>,
     krate: Crate,
     limit: Option<usize>,
-    name_to_import: &str,
+    fuzzy_search_string: &str,
     name_only: bool,
 ) -> impl Iterator<Item = Either<ModuleDef, MacroDef>> {
     let _p = profile::span("find_similar_imports");
 
     let mut external_query =
-        import_map::Query::new(name_to_import).search_mode(import_map::SearchMode::Fuzzy);
+        import_map::Query::new(fuzzy_search_string).search_mode(import_map::SearchMode::Fuzzy);
     if name_only {
         external_query = external_query.name_only();
     }
 
-    let mut local_query = symbol_index::Query::new(name_to_import.to_string());
+    let mut local_query = symbol_index::Query::new(fuzzy_search_string.to_string());
 
     if let Some(limit) = limit {
         local_query.limit(limit);

@@ -238,11 +238,15 @@ pub enum ImportKind {
     BuiltinType,
 }
 
-/// todo kb
+/// A way to match import map contents against the search query.
 #[derive(Debug)]
 pub enum SearchMode {
+    /// Import map entry should strictly match the query string.
     Equals,
+    /// Import map entry should contain the query string.
     Contains,
+    /// Import map entry should contain all letters from the query string,
+    /// in the same order, but not necessary adjacent.
     Fuzzy,
 }
 
@@ -270,11 +274,14 @@ impl Query {
         }
     }
 
+    /// Matches entries' names only, ignoring the rest of
+    /// the qualifier.
+    /// Example: for `std::marker::PhantomData`, the name is `PhantomData`.
     pub fn name_only(self) -> Self {
         Self { name_only: true, ..self }
     }
 
-    /// todo kb
+    /// Specifies the way to search for the entries using the query.
     pub fn search_mode(self, search_mode: SearchMode) -> Self {
         Self { search_mode, ..self }
     }
@@ -296,7 +303,6 @@ impl Query {
     }
 }
 
-// TODO kb: ugly with a special `return true` case and the `enforce_lowercase` one.
 fn contains_query(query: &Query, input_path: &ImportPath, enforce_lowercase: bool) -> bool {
     let mut input = if query.name_only {
         input_path.segments.last().unwrap().to_string()
@@ -378,7 +384,10 @@ pub fn search_dependencies<'a>(
                     Some(import_kind) => !query.exclude_import_kinds.contains(&import_kind),
                     None => true,
                 })
-                .filter(|item| contains_query(&query, &import_map.map[item].path, false));
+                .filter(|item| {
+                    !query.case_sensitive // we've already checked the common importables path case-insensitively
+                        || contains_query(&query, &import_map.map[item].path, false)
+                });
             res.extend(iter);
 
             if res.len() >= query.limit {
