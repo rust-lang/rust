@@ -1821,7 +1821,6 @@ fn test_append_ord_chaos() {
 }
 
 fn rand_data(len: usize) -> Vec<(u32, u32)> {
-    assert!(len * 2 <= 70029); // from that point on numbers repeat
     let mut rng = DeterministicRng::new();
     Vec::from_iter((0..len).map(|_| (rng.next(), rng.next())))
 }
@@ -1884,6 +1883,25 @@ fn test_split_off_tiny_right_height_2() {
     assert_eq!(right.len(), 1);
     assert_eq!(*left.last_key_value().unwrap().0, last - 1);
     assert_eq!(*right.last_key_value().unwrap().0, last);
+}
+
+#[test]
+fn test_split_off_halfway() {
+    let mut rng = DeterministicRng::new();
+    for &len in &[NODE_CAPACITY, 25, 50, 75, 100] {
+        let mut data = Vec::from_iter((0..len).map(|_| (rng.next(), ())));
+        // Insertion in non-ascending order creates some variation in node length.
+        let mut map = BTreeMap::from_iter(data.iter().copied());
+        data.sort();
+        let small_keys = data.iter().take(len / 2).map(|kv| kv.0);
+        let large_keys = data.iter().skip(len / 2).map(|kv| kv.0);
+        let split_key = large_keys.clone().next().unwrap();
+        let right = map.split_off(&split_key);
+        map.check();
+        right.check();
+        assert!(map.keys().copied().eq(small_keys));
+        assert!(right.keys().copied().eq(large_keys));
+    }
 }
 
 #[test]
