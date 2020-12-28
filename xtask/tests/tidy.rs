@@ -85,6 +85,7 @@ fn rust_files_are_tidy() {
     for path in rust_files(&project_root().join("crates")) {
         let text = read_file(&path).unwrap();
         check_todo(&path, &text);
+        check_dbg(&path, &text);
         check_trailing_ws(&path, &text);
         deny_clippy(&path, &text);
         tidy_docs.visit(&path, &text);
@@ -223,7 +224,7 @@ Zlib OR Apache-2.0 OR MIT
 fn check_todo(path: &Path, text: &str) {
     let need_todo = &[
         // This file itself obviously needs to use todo (<- like this!).
-        "tests/cli.rs",
+        "tests/tidy.rs",
         // Some of our assists generate `todo!()`.
         "handlers/add_turbo_fish.rs",
         "handlers/generate_function.rs",
@@ -245,6 +246,32 @@ fn check_todo(path: &Path, text: &str) {
         panic!(
             "\nTODO markers or todo! macros should not be committed to the master branch,\n\
              use FIXME instead\n\
+             {}\n",
+            path.display(),
+        )
+    }
+}
+
+fn check_dbg(path: &Path, text: &str) {
+    let need_dbg = &[
+        // This file itself obviously needs to use dbg.
+        "tests/tidy.rs",
+        // Assists to remove `dbg!()`
+        "handlers/remove_dbg.rs",
+        // We have .dbg postfix
+        "completion/src/completions/postfix.rs",
+        // The documentation in string literals may contain anything for its own purposes
+        "completion/src/lib.rs",
+        "completion/src/generated_lint_completions.rs",
+        // test for doc test for remove_dbg
+        "src/tests/generated.rs",
+    ];
+    if need_dbg.iter().any(|p| path.ends_with(p)) {
+        return;
+    }
+    if text.contains("dbg!") {
+        panic!(
+            "\ndbg! macros should not be committed to the master branch,\n\
              {}\n",
             path.display(),
         )
