@@ -96,7 +96,7 @@ impl<'a> Resolver<'a> {
 
     /// Walks up the tree of definitions starting at `def_id`,
     /// stopping at the first `DefKind::Mod` encountered
-    fn nearest_mod_parent(&mut self, def_id: DefId) -> Module<'a> {
+    fn nearest_parent_mod(&mut self, def_id: DefId) -> Module<'a> {
         let def_key = self.cstore().def_key(def_id);
 
         let mut parent_id = DefId {
@@ -137,7 +137,7 @@ impl<'a> Resolver<'a> {
                 .get_opt_name()
                 .expect("given a DefId that wasn't a module");
 
-            let parent = Some(self.nearest_mod_parent(def_id));
+            let parent = Some(self.nearest_parent_mod(def_id));
             (name, parent)
         };
 
@@ -179,7 +179,7 @@ impl<'a> Resolver<'a> {
             // so this hopefully won't be a problem.
             //
             // See https://github.com/rust-lang/rust/pull/77984#issuecomment-712445508
-            self.nearest_mod_parent(def_id)
+            self.nearest_parent_mod(def_id)
         }
     }
 
@@ -266,7 +266,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                 } else {
                     // If it's not in an enum, its visibility is restricted to the `mod` item
                     // that it's defined in.
-                    Ok(ty::Visibility::Restricted(self.parent_scope.module.normal_ancestor_id))
+                    Ok(ty::Visibility::Restricted(self.parent_scope.module.nearest_parent_mod))
                 }
             }
             ast::VisibilityKind::Restricted { ref path, id, .. } => {
@@ -803,7 +803,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                 let module = self.r.new_module(
                     parent,
                     module_kind,
-                    parent.normal_ancestor_id,
+                    parent.nearest_parent_mod,
                     expansion,
                     item.span,
                 );
@@ -878,7 +878,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                 let module = self.r.new_module(
                     parent,
                     module_kind,
-                    parent.normal_ancestor_id,
+                    parent.nearest_parent_mod,
                     expansion,
                     item.span,
                 );
@@ -921,7 +921,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
             let module = self.r.new_module(
                 parent,
                 ModuleKind::Block(block.id),
-                parent.normal_ancestor_id,
+                parent.nearest_parent_mod,
                 expansion,
                 block.span,
             );
