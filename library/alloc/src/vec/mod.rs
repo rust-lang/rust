@@ -370,6 +370,7 @@ mod spec_extend;
 /// [`MaybeUninit`]: core::mem::MaybeUninit
 /// [owned slice]: Box
 #[doc(alias = "ArrayList")]
+#[doc(alias = "List")]
 #[doc(alias = "Vector")]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "vec_type")]
