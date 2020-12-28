@@ -309,49 +309,26 @@ impl<'tcx> Validator<'_, 'tcx> {
                 let statement = &self.body[loc.block].statements[loc.statement_index];
                 match &statement.kind {
                     StatementKind::Assign(box (_, Rvalue::Ref(_, kind, place))) => {
-                        match kind {
-                            BorrowKind::Shared | BorrowKind::Mut { .. } => {}
-
-                            // FIXME(eddyb) these aren't promoted here but *could*
-                            // be promoted as part of a larger value because
-                            // `validate_rvalue`  doesn't check them, need to
-                            // figure out what is the intended behavior.
-                            BorrowKind::Shallow | BorrowKind::Unique => return Err(Unpromotable),
-                        }
-
                         // We can only promote interior borrows of promotable temps (non-temps
                         // don't get promoted anyway).
                         self.validate_local(place.local)?;
 
+                        // The reference operation itself must be promotable.
+                        // (Needs to come after `validate_local` to avoid ICEs.)
+                        self.validate_ref(*kind, place)?;
+
+                        // We do not check all the projections (they do not get promoted anyway),
+                        // but we do stay away from promoting anything involving a dereference.
                         if place.projection.contains(&ProjectionElem::Deref) {
                             return Err(Unpromotable);
                         }
+
+                        // We cannot promote things that need dropping, since the promoted value
+                        // would not get dropped.
                         if self.qualif_local::<qualifs::NeedsDrop>(place.local) {
                             return Err(Unpromotable);
                         }
 
-                        // FIXME(eddyb) this duplicates part of `validate_rvalue`.
-                        let has_mut_interior =
-                            self.qualif_local::<qualifs::HasMutInterior>(place.local);
-                        if has_mut_interior {
-                            return Err(Unpromotable);
-                        }
-
-                        if let BorrowKind::Mut { .. } = kind {
-                            let ty = place.ty(self.body, self.tcx).ty;
-
-                            // In theory, any zero-sized value could be borrowed
-                            // mutably without consequences. However, only &mut []
-                            // is allowed right now.
-                            if let ty::Array(_, len) = ty.kind() {
-                                match len.try_eval_usize(self.tcx, self.param_env) {
-                                    Some(0) => {}
-                                    _ => return Err(Unpromotable),
-                                }
-                            } else {
-                                return Err(Unpromotable);
-                            }
-                        }
 
                         Ok(())
                     }
@@ -572,6 +549,39 @@ impl<'tcx> Validator<'_, 'tcx> {
         }
     }
 
+    fn validate_ref(&self, kind: BorrowKind, place: &Place<'tcx>) -> Result<(), Unpromotable> {
+        match kind {
+            // Reject these borrow types just to be safe.
+            // FIXME(RalfJung): could we allow them? Should we? No point in it until we have a usecase.
+            BorrowKind::Shallow | BorrowKind::Unique => return Err(Unpromotable),
+
+            BorrowKind::Shared => {
+                let has_mut_interior = self.qualif_local::<qualifs::HasMutInterior>(place.local);
+                if has_mut_interior {
+                    return Err(Unpromotable);
+                }
+            }
+
+            BorrowKind::Mut { .. } => {
+                let ty = place.ty(self.body, self.tcx).ty;
+
+                // In theory, any zero-sized value could be borrowed
+                // mutably without consequences. However, only &mut []
+                // is allowed right now.
+                if let ty::Array(_, len) = ty.kind() {
+                    match len.try_eval_usize(self.tcx, self.param_env) {
+                        Some(0) => {}
+                        _ => return Err(Unpromotable),
+                    }
+                } else {
+                    return Err(Unpromotable);
+                }
+            }
+        }
+
+        Ok(())
+    }
+
     fn validate_rvalue(&self, rvalue: &Rvalue<'tcx>) -> Result<(), Unpromotable> {
         match *rvalue {
             Rvalue::Cast(CastKind::Misc, ref operand, cast_ty) => {
@@ -640,37 +650,20 @@ impl<'tcx> Validator<'_, 'tcx> {
             }
 
             Rvalue::Ref(_, kind, place) => {
-                if let BorrowKind::Mut { .. } = kind {
-                    let ty = place.ty(self.body, self.tcx).ty;
-
-                    // In theory, any zero-sized value could be borrowed
-                    // mutably without consequences. However, only &mut []
-                    // is allowed right now.
-                    if let ty::Array(_, len) = ty.kind() {
-                        match len.try_eval_usize(self.tcx, self.param_env) {
-                            Some(0) => {}
-                            _ => return Err(Unpromotable),
-                        }
-                    } else {
-                        return Err(Unpromotable);
-                    }
-                }
-
                 // Special-case reborrows to be more like a copy of the reference.
-                let mut place = place.as_ref();
-                if let [proj_base @ .., ProjectionElem::Deref] = &place.projection {
-                    let base_ty = Place::ty_from(place.local, proj_base, self.body, self.tcx).ty;
+                let mut place_simplified = place.as_ref();
+                if let [proj_base @ .., ProjectionElem::Deref] = &place_simplified.projection {
+                    let base_ty = Place::ty_from(place_simplified.local, proj_base, self.body, self.tcx).ty;
                     if let ty::Ref(..) = base_ty.kind() {
-                        place = PlaceRef { local: place.local, projection: proj_base };
+                        place_simplified = PlaceRef { local: place_simplified.local, projection: proj_base };
                     }
                 }
 
-                self.validate_place(place)?;
+                self.validate_place(place_simplified)?;
 
-                let has_mut_interior = self.qualif_local::<qualifs::HasMutInterior>(place.local);
-                if has_mut_interior {
-                    return Err(Unpromotable);
-                }
+                // Check that the reference is fine (using the original place!).
+                // (Needs to come after `validate_local` to avoid ICEs.)
+                self.validate_ref(*kind, place)?;
 
                 Ok(())
             }
