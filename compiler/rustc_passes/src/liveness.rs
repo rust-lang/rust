@@ -367,10 +367,7 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
     }
 
     fn visit_param(&mut self, param: &'tcx hir::Param<'tcx>) {
-        let is_shorthand = match param.pat.kind {
-            rustc_hir::PatKind::Struct(..) => true,
-            _ => false,
-        };
+        let is_shorthand = matches!(param.pat.kind, rustc_hir::PatKind::Struct(..));
         param.pat.each_binding(|_bm, hir_id, _x, ident| {
             let var = if is_shorthand {
                 Local(LocalInfo { id: hir_id, name: ident.name, is_shorthand: true })

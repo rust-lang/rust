@@ -35,10 +35,7 @@ pub enum AutoTraitResult<A> {
 #[allow(dead_code)]
 impl<A> AutoTraitResult<A> {
     fn is_auto(&self) -> bool {
-        match *self {
-            AutoTraitResult::PositiveImpl(_) | AutoTraitResult::NegativeImpl => true,
-            _ => false,
-        }
+        matches!(self, AutoTraitResult::PositiveImpl(_) | AutoTraitResult::NegativeImpl)
     }
 }
 
@@ -601,10 +598,7 @@ impl AutoTraitFinder<'tcx> {
     }
 
     fn is_self_referential_projection(&self, p: ty::PolyProjectionPredicate<'_>) -> bool {
-        match *p.ty().skip_binder().kind() {
-            ty::Projection(proj) if proj == p.skip_binder().projection_ty => true,
-            _ => false,
-        }
+        matches!(*p.ty().skip_binder().kind(), ty::Projection(proj) if proj == p.skip_binder().projection_ty)
     }
 
     fn evaluate_nested_obligations(

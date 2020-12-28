@@ -354,10 +354,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RegionCtxt<'a, 'tcx> {
         hir_id: hir::HirId,
     ) {
         assert!(
-            match fk {
-                intravisit::FnKind::Closure(..) => true,
-                _ => false,
-            },
+            matches!(fk, intravisit::FnKind::Closure(..)),
             "visit_fn invoked for something other than a closure"
         );
 

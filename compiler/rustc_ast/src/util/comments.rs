@@ -180,10 +180,8 @@ pub fn gather_comments(sm: &SourceMap, path: FileName, src: String) -> Vec<Comme
             }
             rustc_lexer::TokenKind::BlockComment { doc_style, .. } => {
                 if doc_style.is_none() {
-                    let code_to_the_right = match text[pos + token.len..].chars().next() {
-                        Some('\r' | '\n') => false,
-                        _ => true,
-                    };
+                    let code_to_the_right =
+                        !matches!(text[pos + token.len..].chars().next(), Some('\r' | '\n'));
                     let style = match (code_to_the_left, code_to_the_right) {
                         (_, true) => CommentStyle::Mixed,
                         (false, false) => CommentStyle::Isolated,

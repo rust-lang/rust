@@ -156,10 +156,10 @@ crate fn placeholder_type_error(
         if let Some(span) = span {
             sugg.push((span, format!("<{}>", type_name)));
         }
-    } else if let Some(arg) = generics.iter().find(|arg| match arg.name {
-        hir::ParamName::Plain(Ident { name: kw::Underscore, .. }) => true,
-        _ => false,
-    }) {
+    } else if let Some(arg) = generics
+        .iter()
+        .find(|arg| matches!(arg.name, hir::ParamName::Plain(Ident { name: kw::Underscore, .. })))
+    {
         // Account for `_` already present in cases like `struct S<_>(_);` and suggest
         // `struct S<T>(T);` instead of `struct S<_, T>(T);`.
         sugg.push((arg.span, (*type_name).to_string()));

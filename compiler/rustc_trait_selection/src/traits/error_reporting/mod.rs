@@ -861,10 +861,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
 
         let args_str = |arguments: &[ArgKind], other: &[ArgKind]| {
             let arg_length = arguments.len();
-            let distinct = match &other[..] {
-                &[ArgKind::Tuple(..)] => true,
-                _ => false,
-            };
+            let distinct = matches!(other, &[ArgKind::Tuple(..)]);
             match (arg_length, arguments.get(0)) {
                 (1, Some(&ArgKind::Tuple(_, ref fields))) => {
                     format!("a single {}-tuple as argument", fields.len())
@@ -1201,12 +1198,9 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                     normalized_ty, data.ty
                 );
 
-                let is_normalized_ty_expected = match &obligation.cause.code {
-                    ObligationCauseCode::ItemObligation(_)
+                let is_normalized_ty_expected = !matches!(obligation.cause.code, ObligationCauseCode::ItemObligation(_)
                     | ObligationCauseCode::BindingObligation(_, _)
-                    | ObligationCauseCode::ObjectCastObligation(_) => false,
-                    _ => true,
-                };
+                    | ObligationCauseCode::ObjectCastObligation(_));
 
                 if let Err(error) = self.at(&obligation.cause, obligation.param_env).eq_exp(
                     is_normalized_ty_expected,
