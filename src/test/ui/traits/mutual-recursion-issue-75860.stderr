@@ -1,0 +1,16 @@
+error[E0275]: overflow evaluating the requirement `Option<_>: Sized`
+  --> $DIR/mutual-recursion-issue-75860.rs:11:5
+   |
+LL |     iso(left, right)
+   |     ^^^
+   | 
+  ::: $SRC_DIR/core/src/option.rs:LL:COL
+   |
+LL | pub enum Option<T> {
+   |                 - required by this bound in `Option`
+   |
+   = help: consider adding a `#![recursion_limit="256"]` attribute to your crate (`mutual_recursion_issue_75860`)
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0275`.
