@@ -90,7 +90,7 @@ pub enum TempState {
 impl TempState {
     pub fn is_promotable(&self) -> bool {
         debug!("is_promotable: self={:?}", self);
-        matches!(self, TempState::Defined { .. } )
+        matches!(self, TempState::Defined { .. })
     }
 }
 
@@ -328,7 +328,6 @@ impl<'tcx> Validator<'_, 'tcx> {
                         if self.qualif_local::<qualifs::NeedsDrop>(place.local) {
                             return Err(Unpromotable);
                         }
-
 
                         Ok(())
                     }
@@ -583,18 +582,33 @@ impl<'tcx> Validator<'_, 'tcx> {
     }
 
     fn validate_rvalue(&self, rvalue: &Rvalue<'tcx>) -> Result<(), Unpromotable> {
-        match *rvalue {
-            Rvalue::Cast(CastKind::Misc, ref operand, cast_ty) => {
-                let operand_ty = operand.ty(self.body, self.tcx);
-                let cast_in = CastTy::from_ty(operand_ty).expect("bad input type for cast");
-                let cast_out = CastTy::from_ty(cast_ty).expect("bad output type for cast");
-                if let (CastTy::Ptr(_) | CastTy::FnPtr, CastTy::Int(_)) = (cast_in, cast_out) {
-                    // ptr-to-int casts are not possible in consts and thus not promotable
-                    return Err(Unpromotable);
-                }
+        match rvalue {
+            Rvalue::Use(operand) | Rvalue::Repeat(operand, _) | Rvalue::UnaryOp(_, operand) => {
+                self.validate_operand(operand)?;
             }
 
-            Rvalue::BinaryOp(op, ref lhs, _) => {
+            Rvalue::Discriminant(place) | Rvalue::Len(place) => self.validate_place(place.as_ref())?,
+
+            Rvalue::ThreadLocalRef(_) => return Err(Unpromotable),
+
+            Rvalue::Cast(kind, operand, cast_ty) => {
+                if matches!(kind, CastKind::Misc) {
+                    let operand_ty = operand.ty(self.body, self.tcx);
+                    let cast_in = CastTy::from_ty(operand_ty).expect("bad input type for cast");
+                    let cast_out = CastTy::from_ty(cast_ty).expect("bad output type for cast");
+                    if let (CastTy::Ptr(_) | CastTy::FnPtr, CastTy::Int(_)) = (cast_in, cast_out) {
+                        // ptr-to-int casts are not possible in consts and thus not promotable
+                        return Err(Unpromotable);
+                    }
+                    // int-to-ptr casts are fine, they just use the integer value at pointer type.
+                }
+
+                self.validate_operand(operand)?;
+            }
+
+            Rvalue::BinaryOp(op, lhs, rhs)
+            | Rvalue::CheckedBinaryOp(op, lhs, rhs) => {
+                let op = *op;
                 if let ty::RawPtr(_) | ty::FnPtr(..) = lhs.ty(self.body, self.tcx).kind() {
                     assert!(
                         op == BinOp::Eq
@@ -609,29 +623,17 @@ impl<'tcx> Validator<'_, 'tcx> {
                     // raw pointer operations are not allowed inside consts and thus not promotable
                     return Err(Unpromotable);
                 }
+
+                // FIXME: reject operations that can fail -- namely, division and modulo.
+
+                self.validate_operand(lhs)?;
+                self.validate_operand(rhs)?;
             }
 
-            Rvalue::NullaryOp(NullOp::Box, _) => return Err(Unpromotable),
-
-            // FIXME(RalfJung): the rest is *implicitly considered promotable*... that seems dangerous.
-            _ => {}
-        }
-
-        match rvalue {
-            Rvalue::ThreadLocalRef(_) => Err(Unpromotable),
-
-            Rvalue::NullaryOp(..) => Ok(()),
-
-            Rvalue::Discriminant(place) | Rvalue::Len(place) => self.validate_place(place.as_ref()),
-
-            Rvalue::Use(operand)
-            | Rvalue::Repeat(operand, _)
-            | Rvalue::UnaryOp(_, operand)
-            | Rvalue::Cast(_, operand, _) => self.validate_operand(operand),
-
-            Rvalue::BinaryOp(_, lhs, rhs) | Rvalue::CheckedBinaryOp(_, lhs, rhs) => {
-                self.validate_operand(lhs)?;
-                self.validate_operand(rhs)
+            Rvalue::NullaryOp(op, _) => {
+                if matches!(op, NullOp::Box) {
+                    return Err(Unpromotable);
+                }
             }
 
             Rvalue::AddressOf(_, place) => {
@@ -646,16 +648,18 @@ impl<'tcx> Validator<'_, 'tcx> {
                         });
                     }
                 }
-                Err(Unpromotable)
+                return Err(Unpromotable);
             }
 
             Rvalue::Ref(_, kind, place) => {
                 // Special-case reborrows to be more like a copy of the reference.
                 let mut place_simplified = place.as_ref();
                 if let [proj_base @ .., ProjectionElem::Deref] = &place_simplified.projection {
-                    let base_ty = Place::ty_from(place_simplified.local, proj_base, self.body, self.tcx).ty;
+                    let base_ty =
+                        Place::ty_from(place_simplified.local, proj_base, self.body, self.tcx).ty;
                     if let ty::Ref(..) = base_ty.kind() {
-                        place_simplified = PlaceRef { local: place_simplified.local, projection: proj_base };
+                        place_simplified =
+                            PlaceRef { local: place_simplified.local, projection: proj_base };
                     }
                 }
 
@@ -664,18 +668,16 @@ impl<'tcx> Validator<'_, 'tcx> {
                 // Check that the reference is fine (using the original place!).
                 // (Needs to come after `validate_local` to avoid ICEs.)
                 self.validate_ref(*kind, place)?;
-
-                Ok(())
             }
 
-            Rvalue::Aggregate(_, ref operands) => {
+            Rvalue::Aggregate(_, operands) => {
                 for o in operands {
                     self.validate_operand(o)?;
                 }
-
-                Ok(())
             }
         }
+
+        Ok(())
     }
 
     fn validate_call(
