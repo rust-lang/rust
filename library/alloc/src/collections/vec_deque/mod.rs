@@ -1091,7 +1091,7 @@ impl<T> VecDeque<T> {
     /// assert_eq!(all.len(), 3);
     /// ```
     #[inline]
-    #[stable(feature = "deque_range", since = "1.50.0")]
+    #[stable(feature = "deque_range", since = "1.51.0")]
     pub fn range<R>(&self, range: R) -> Iter<'_, T>
     where
         R: RangeBounds<usize>,
@@ -1130,7 +1130,7 @@ impl<T> VecDeque<T> {
     /// assert_eq!(v, vec![2, 4, 12]);
     /// ```
     #[inline]
-    #[stable(feature = "deque_range", since = "1.50.0")]
+    #[stable(feature = "deque_range", since = "1.51.0")]
     pub fn range_mut<R>(&mut self, range: R) -> IterMut<'_, T>
     where
         R: RangeBounds<usize>,
