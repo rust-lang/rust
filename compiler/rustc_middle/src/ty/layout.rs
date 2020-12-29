@@ -2745,7 +2745,11 @@ where
                 cx.layout_of(ty)
             };
 
-            let mut arg = ArgAbi::new(layout);
+            let mut arg = ArgAbi::new(cx, layout, |layout, scalar, offset| {
+                let mut attrs = ArgAttributes::new();
+                adjust_for_rust_scalar(&mut attrs, scalar, *layout, offset, is_return);
+                attrs
+            });
 
             if arg.layout.is_zst() {
                 // For some forsaken reason, x86_64-pc-windows-gnu
@@ -2759,27 +2763,6 @@ where
                         && !linux_powerpc_gnu_like)
                 {
                     arg.mode = PassMode::Ignore;
-                }
-            }
-
-            if let Abi::ScalarPair(ref a, ref b) = arg.layout.abi {
-                let mut a_attrs = ArgAttributes::new();
-                let mut b_attrs = ArgAttributes::new();
-                adjust_for_rust_scalar(&mut a_attrs, a, arg.layout, Size::ZERO, is_return);
-                adjust_for_rust_scalar(
-                    &mut b_attrs,
-                    b,
-                    arg.layout,
-                    a.value.size(cx).align_to(b.value.align(cx).abi),
-                    is_return,
-                );
-                arg.mode = PassMode::Pair(a_attrs, b_attrs);
-                return arg;
-            }
-
-            if let Abi::Scalar(ref scalar) = arg.layout.abi {
-                if let PassMode::Direct(ref mut attrs) = arg.mode {
-                    adjust_for_rust_scalar(attrs, scalar, arg.layout, Size::ZERO, is_return);
                 }
             }
 
@@ -2859,9 +2842,12 @@ where
                 let max_by_val_size = Pointer.size(cx) * 2;
                 let size = arg.layout.size;
 
-                if arg.layout.is_unsized() || size > max_by_val_size {
-                    arg.make_indirect();
-                } else {
+                assert!(
+                    matches!(arg.mode, PassMode::Indirect { on_stack: false, .. }),
+                    "{:?}",
+                    arg
+                );
+                if !arg.layout.is_unsized() && size <= max_by_val_size {
                     // We want to pass small aggregates as immediates, but using
                     // a LLVM aggregate type for this leads to bad optimizations,
                     // so we pick an appropriately sized integer type instead.
@@ -2881,15 +2867,11 @@ where
     }
 }
 
-fn make_thin_self_ptr<'tcx, C>(
-    cx: &C,
-    mut layout: TyAndLayout<'tcx>,
-) -> TyAndLayout<'tcx>
-where C: LayoutOf<Ty = Ty<'tcx>, TyAndLayout = TyAndLayout<'tcx>>
-        //+ HasDataLayout
-        //+ HasTargetSpec
+fn make_thin_self_ptr<'tcx, C>(cx: &C, mut layout: TyAndLayout<'tcx>) -> TyAndLayout<'tcx>
+where
+    C: LayoutOf<Ty = Ty<'tcx>, TyAndLayout = TyAndLayout<'tcx>>
         + HasTyCtxt<'tcx>
-        + HasParamEnv<'tcx>
+        + HasParamEnv<'tcx>,
 {
     let fat_pointer_ty = if layout.is_unsized() {
         // unsized `self` is passed as a pointer to `self`
