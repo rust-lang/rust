@@ -2160,7 +2160,7 @@ fn clean_extern_crate(
         source: krate.span.clean(cx),
         def_id: crate_def_id,
         visibility: krate.vis.clean(cx),
-        kind: ExternCrateItem(name, orig_name),
+        kind: box ExternCrateItem(name, orig_name),
     }]
 }
 
@@ -2228,7 +2228,7 @@ impl Clean<Vec<Item>> for doctree::Import<'_> {
                         source: self.span.clean(cx),
                         def_id: cx.tcx.hir().local_def_id(self.id).to_def_id(),
                         visibility: self.vis.clean(cx),
-                        kind: ImportItem(Import::new_simple(
+                        kind: box ImportItem(Import::new_simple(
                             self.name,
                             resolve_use_source(cx, path),
                             false,
@@ -2246,7 +2246,7 @@ impl Clean<Vec<Item>> for doctree::Import<'_> {
             source: self.span.clean(cx),
             def_id: cx.tcx.hir().local_def_id(self.id).to_def_id(),
             visibility: self.vis.clean(cx),
-            kind: ImportItem(inner),
+            kind: box ImportItem(inner),
         }]
     }
 }

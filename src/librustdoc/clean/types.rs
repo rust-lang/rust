@@ -84,9 +84,13 @@ crate struct Item {
     crate name: Option<Symbol>,
     crate attrs: Attributes,
     crate visibility: Visibility,
-    crate kind: ItemKind,
+    crate kind: Box<ItemKind>,
     crate def_id: DefId,
 }
+
+// `Item` is used a lot. Make sure it doesn't unintentionally get bigger.
+#[cfg(target_arch = "x86_64")]
+rustc_data_structures::static_assert_size!(Item, 136);
 
 impl fmt::Debug for Item {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -152,7 +156,7 @@ impl Item {
 
         Item {
             def_id,
-            kind,
+            kind: box kind,
             name,
             source: source.clean(cx),
             attrs: cx.tcx.get_attrs(def_id).clean(cx),
@@ -171,7 +175,7 @@ impl Item {
     }
 
     crate fn is_crate(&self) -> bool {
-        match self.kind {
+        match *self.kind {
             StrippedItem(box ModuleItem(Module { is_crate: true, .. }))
             | ModuleItem(Module { is_crate: true, .. }) => true,
             _ => false,
@@ -223,14 +227,14 @@ impl Item {
         self.type_() == ItemType::Keyword
     }
     crate fn is_stripped(&self) -> bool {
-        match self.kind {
+        match *self.kind {
             StrippedItem(..) => true,
             ImportItem(ref i) => !i.should_be_displayed,
             _ => false,
         }
     }
     crate fn has_stripped_fields(&self) -> Option<bool> {
-        match self.kind {
+        match *self.kind {
             StructItem(ref _struct) => Some(_struct.fields_stripped),
             UnionItem(ref union) => Some(union.fields_stripped),
             VariantItem(Variant { kind: VariantKind::Struct(ref vstruct) }) => {
@@ -281,7 +285,7 @@ impl Item {
     }
 
     crate fn is_default(&self) -> bool {
-        match self.kind {
+        match *self.kind {
             ItemKind::MethodItem(_, Some(defaultness)) => {
                 defaultness.has_value() && !defaultness.is_final()
             }

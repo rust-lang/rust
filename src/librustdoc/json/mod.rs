@@ -178,9 +178,9 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
         cache: &Cache,
     ) -> Result<(), Error> {
         use clean::types::ItemKind::*;
-        if let ModuleItem(m) = &item.kind {
+        if let ModuleItem(m) = &*item.kind {
             for item in &m.items {
-                match &item.kind {
+                match &*item.kind {
                     // These don't have names so they don't get added to the output by default
                     ImportItem(_) => self.item(item.clone(), cache).unwrap(),
                     ExternCrateItem(_, _) => self.item(item.clone(), cache).unwrap(),

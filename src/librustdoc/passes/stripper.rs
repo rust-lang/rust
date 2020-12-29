@@ -13,7 +13,7 @@ crate struct Stripper<'a> {
 
 impl<'a> DocFolder for Stripper<'a> {
     fn fold_item(&mut self, i: Item) -> Option<Item> {
-        match i.kind {
+        match *i.kind {
             clean::StrippedItem(..) => {
                 // We need to recurse into stripped modules to strip things
                 // like impl methods but when doing so we must not add any
@@ -86,7 +86,7 @@ impl<'a> DocFolder for Stripper<'a> {
             clean::KeywordItem(..) => {}
         }
 
-        let fastreturn = match i.kind {
+        let fastreturn = match *i.kind {
             // nothing left to do for traits (don't want to filter their
             // methods out, visibility controlled by the trait)
             clean::TraitItem(..) => true,
@@ -121,7 +121,7 @@ crate struct ImplStripper<'a> {
 
 impl<'a> DocFolder for ImplStripper<'a> {
     fn fold_item(&mut self, i: Item) -> Option<Item> {
-        if let clean::ImplItem(ref imp) = i.kind {
+        if let clean::ImplItem(ref imp) = *i.kind {
             // emptied none trait impls can be stripped
             if imp.trait_.is_none() && imp.items.is_empty() {
                 return None;
@@ -160,7 +160,7 @@ crate struct ImportStripper;
 
 impl DocFolder for ImportStripper {
     fn fold_item(&mut self, i: Item) -> Option<Item> {
-        match i.kind {
+        match *i.kind {
             clean::ExternCrateItem(..) | clean::ImportItem(..) if !i.visibility.is_public() => None,
             _ => Some(self.fold_item_recur(i)),
         }
