@@ -4303,58 +4303,7 @@ fn sidebar_assoc_items(it: &clean::Item) -> String {
                 .filter(|i| i.inner_impl().trait_.is_some())
                 .find(|i| i.inner_impl().trait_.def_id() == c.deref_trait_did)
             {
-                debug!("found Deref: {:?}", impl_);
-                if let Some((target, real_target)) =
-                    impl_.inner_impl().items.iter().find_map(|item| match *item.kind {
-                        clean::TypedefItem(ref t, true) => Some(match *t {
-                            clean::Typedef { item_type: Some(ref type_), .. } => (type_, &t.type_),
-                            _ => (&t.type_, &t.type_),
-                        }),
-                        _ => None,
-                    })
-                {
-                    debug!("found target, real_target: {:?} {:?}", target, real_target);
-                    let deref_mut = v
-                        .iter()
-                        .filter(|i| i.inner_impl().trait_.is_some())
-                        .any(|i| i.inner_impl().trait_.def_id() == c.deref_mut_trait_did);
-                    let inner_impl = target
-                        .def_id()
-                        .or_else(|| {
-                            target
-                                .primitive_type()
-                                .and_then(|prim| c.primitive_locations.get(&prim).cloned())
-                        })
-                        .and_then(|did| c.impls.get(&did));
-                    if let Some(impls) = inner_impl {
-                        debug!("found inner_impl: {:?}", impls);
-                        out.push_str("<a class=\"sidebar-title\" href=\"#deref-methods\">");
-                        out.push_str(&format!(
-                            "Methods from {}&lt;Target={}&gt;",
-                            Escape(&format!(
-                                "{:#}",
-                                impl_.inner_impl().trait_.as_ref().unwrap().print()
-                            )),
-                            Escape(&format!("{:#}", real_target.print()))
-                        ));
-                        out.push_str("</a>");
-                        let mut ret = impls
-                            .iter()
-                            .filter(|i| i.inner_impl().trait_.is_none())
-                            .flat_map(|i| {
-                                get_methods(i.inner_impl(), true, &mut used_links, deref_mut)
-                            })
-                            .collect::<Vec<_>>();
-                        // We want links' order to be reproducible so we don't use unstable sort.
-                        ret.sort();
-                        if !ret.is_empty() {
-                            out.push_str(&format!(
-                                "<div class=\"sidebar-links\">{}</div>",
-                                ret.join("")
-                            ));
-                        }
-                    }
-                }
+                out.push_str(&sidebar_deref_methods(impl_, v));
             }
             let format_impls = |impls: Vec<&Impl>| {
                 let mut links = FxHashSet::default();
@@ -4415,6 +4364,57 @@ fn sidebar_assoc_items(it: &clean::Item) -> String {
                         Blanket Implementations</a>",
                 );
                 out.push_str(&format!("<div class=\"sidebar-links\">{}</div>", blanket_format));
+            }
+        }
+    }
+
+    out
+}
+
+fn sidebar_deref_methods(impl_: &Impl, v: &Vec<Impl>) -> String {
+    let mut out = String::new();
+    let c = cache();
+
+    debug!("found Deref: {:?}", impl_);
+    if let Some((target, real_target)) =
+        impl_.inner_impl().items.iter().find_map(|item| match *item.kind {
+            clean::TypedefItem(ref t, true) => Some(match *t {
+                clean::Typedef { item_type: Some(ref type_), .. } => (type_, &t.type_),
+                _ => (&t.type_, &t.type_),
+            }),
+            _ => None,
+        })
+    {
+        debug!("found target, real_target: {:?} {:?}", target, real_target);
+        let deref_mut = v
+            .iter()
+            .filter(|i| i.inner_impl().trait_.is_some())
+            .any(|i| i.inner_impl().trait_.def_id() == c.deref_mut_trait_did);
+        let inner_impl = target
+            .def_id()
+            .or_else(|| {
+                target.primitive_type().and_then(|prim| c.primitive_locations.get(&prim).cloned())
+            })
+            .and_then(|did| c.impls.get(&did));
+        if let Some(impls) = inner_impl {
+            debug!("found inner_impl: {:?}", impls);
+            out.push_str("<a class=\"sidebar-title\" href=\"#deref-methods\">");
+            out.push_str(&format!(
+                "Methods from {}&lt;Target={}&gt;",
+                Escape(&format!("{:#}", impl_.inner_impl().trait_.as_ref().unwrap().print())),
+                Escape(&format!("{:#}", real_target.print()))
+            ));
+            out.push_str("</a>");
+            let mut used_links = FxHashSet::default();
+            let mut ret = impls
+                .iter()
+                .filter(|i| i.inner_impl().trait_.is_none())
+                .flat_map(|i| get_methods(i.inner_impl(), true, &mut used_links, deref_mut))
+                .collect::<Vec<_>>();
+            // We want links' order to be reproducible so we don't use unstable sort.
+            ret.sort();
+            if !ret.is_empty() {
+                out.push_str(&format!("<div class=\"sidebar-links\">{}</div>", ret.join("")));
             }
         }
     }
