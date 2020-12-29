@@ -3,6 +3,7 @@ use crate::infer::InferCtxt;
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Namespace};
+use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::{Body, Expr, ExprKind, FnRetTy, HirId, Local, Pat};
 use rustc_middle::hir::map::Map;
@@ -25,6 +26,7 @@ struct FindHirNodeVisitor<'a, 'tcx> {
     found_closure: Option<&'tcx Expr<'tcx>>,
     found_method_call: Option<&'tcx Expr<'tcx>>,
     found_exact_method_call: Option<&'tcx Expr<'tcx>>,
+    found_use_diagnostic: Option<UseDiagnostic<'tcx>>,
 }
 
 impl<'a, 'tcx> FindHirNodeVisitor<'a, 'tcx> {
@@ -39,34 +41,43 @@ impl<'a, 'tcx> FindHirNodeVisitor<'a, 'tcx> {
             found_closure: None,
             found_method_call: None,
             found_exact_method_call: None,
+            found_use_diagnostic: None,
         }
     }
 
-    fn node_ty_contains_target(&mut self, hir_id: HirId) -> Option<Ty<'tcx>> {
-        self.infcx
-            .in_progress_typeck_results
-            .and_then(|typeck_results| typeck_results.borrow().node_type_opt(hir_id))
-            .map(|ty| self.infcx.resolve_vars_if_possible(ty))
-            .filter(|ty| {
-                ty.walk().any(|inner| {
-                    inner == self.target
-                        || match (inner.unpack(), self.target.unpack()) {
-                            (GenericArgKind::Type(inner_ty), GenericArgKind::Type(target_ty)) => {
-                                use ty::{Infer, TyVar};
-                                match (inner_ty.kind(), target_ty.kind()) {
-                                    (&Infer(TyVar(a_vid)), &Infer(TyVar(b_vid))) => self
-                                        .infcx
-                                        .inner
-                                        .borrow_mut()
-                                        .type_variables()
-                                        .sub_unified(a_vid, b_vid),
-                                    _ => false,
-                                }
+    fn node_type_opt(&self, hir_id: HirId) -> Option<Ty<'tcx>> {
+        self.infcx.in_progress_typeck_results?.borrow().node_type_opt(hir_id)
+    }
+
+    fn node_ty_contains_target(&self, hir_id: HirId) -> Option<Ty<'tcx>> {
+        self.node_type_opt(hir_id).map(|ty| self.infcx.resolve_vars_if_possible(ty)).filter(|ty| {
+            ty.walk().any(|inner| {
+                inner == self.target
+                    || match (inner.unpack(), self.target.unpack()) {
+                        (GenericArgKind::Type(inner_ty), GenericArgKind::Type(target_ty)) => {
+                            use ty::{Infer, TyVar};
+                            match (inner_ty.kind(), target_ty.kind()) {
+                                (&Infer(TyVar(a_vid)), &Infer(TyVar(b_vid))) => self
+                                    .infcx
+                                    .inner
+                                    .borrow_mut()
+                                    .type_variables()
+                                    .sub_unified(a_vid, b_vid),
+                                _ => false,
                             }
-                            _ => false,
                         }
-                })
+                        _ => false,
+                    }
             })
+        })
+    }
+
+    /// Determine whether the expression, assumed to be the callee within a `Call`,
+    /// corresponds to the `From::from` emitted in desugaring of the `?` operator.
+    fn is_try_conversion(&self, callee: &Expr<'tcx>) -> bool {
+        self.infcx
+            .trait_def_from_hir_fn(callee.hir_id)
+            .map_or(false, |def_id| self.infcx.is_try_conversion(callee.span, def_id))
     }
 }
 
@@ -119,14 +130,88 @@ impl<'a, 'tcx> Visitor<'tcx> for FindHirNodeVisitor<'a, 'tcx> {
         // are handled specially, but instead they should be handled in `annotate_method_call`,
         // which currently doesn't work because this evaluates to `false` for const arguments.
         // See https://github.com/rust-lang/rust/pull/77758 for more details.
-        if self.node_ty_contains_target(expr.hir_id).is_some() {
+        if let Some(ty) = self.node_ty_contains_target(expr.hir_id) {
             match expr.kind {
                 ExprKind::Closure(..) => self.found_closure = Some(&expr),
                 ExprKind::MethodCall(..) => self.found_method_call = Some(&expr),
+
+                // If the given expression falls within the target span and is a
+                // `From::from(e)` call emitted during desugaring of the `?` operator,
+                // extract the types inferred before and after the call
+                ExprKind::Call(callee, [arg])
+                    if self.target_span.contains(expr.span)
+                        && self.found_use_diagnostic.is_none()
+                        && self.is_try_conversion(callee) =>
+                {
+                    self.found_use_diagnostic = self.node_type_opt(arg.hir_id).map(|pre_ty| {
+                        UseDiagnostic::TryConversion { pre_ty, post_ty: ty, span: callee.span }
+                    });
+                }
                 _ => {}
             }
         }
         intravisit::walk_expr(self, expr);
+    }
+}
+
+/// An observation about the use site of a type to be emitted as an additional
+/// note in an inference failure error.
+enum UseDiagnostic<'tcx> {
+    /// Records the types inferred before and after `From::from` is called on the
+    /// error value within the desugaring of the `?` operator.
+    TryConversion { pre_ty: Ty<'tcx>, post_ty: Ty<'tcx>, span: Span },
+}
+
+impl UseDiagnostic<'_> {
+    /// Return a descriptor of the value at the use site
+    fn descr(&self) -> &'static str {
+        match self {
+            Self::TryConversion { .. } => "`?` error",
+        }
+    }
+
+    /// Return a descriptor of the type at the use site
+    fn type_descr(&self) -> &'static str {
+        match self {
+            Self::TryConversion { .. } => "`?` error type",
+        }
+    }
+
+    fn applies_to(&self, span: Span) -> bool {
+        match *self {
+            // In some cases the span for an inference failure due to try
+            // conversion contains the antecedent expression as well as the `?`
+            Self::TryConversion { span: s, .. } => span.contains(s) && span.hi() == s.hi(),
+        }
+    }
+
+    fn attach_note(&self, err: &mut DiagnosticBuilder<'_>) {
+        match *self {
+            Self::TryConversion { pre_ty, post_ty, .. } => {
+                let pre_ty = pre_ty.to_string();
+                let post_ty = post_ty.to_string();
+
+                let intro = "the `?` operation implicitly converts the error value";
+
+                let msg = match (pre_ty.as_str(), post_ty.as_str()) {
+                    ("_", "_") => format!("{} using the `From` trait", intro),
+                    (_, "_") => {
+                        format!("{} into a type implementing `From<{}>`", intro, pre_ty)
+                    }
+                    ("_", _) => {
+                        format!("{} into `{}` using the `From` trait", intro, post_ty)
+                    }
+                    (_, _) => {
+                        format!(
+                            "{} into `{}` using its implementation of `From<{}>`",
+                            intro, post_ty, pre_ty
+                        )
+                    }
+                };
+
+                err.note(&msg);
+            }
+        }
     }
 }
 
@@ -139,6 +224,7 @@ fn closure_return_type_suggestion(
     descr: &str,
     name: &str,
     ret: &str,
+    use_diag: Option<&UseDiagnostic<'_>>,
     parent_name: Option<String>,
     parent_descr: Option<&str>,
 ) {
@@ -160,7 +246,15 @@ fn closure_return_type_suggestion(
     );
     err.span_label(
         span,
-        InferCtxt::cannot_infer_msg("type", &name, &descr, parent_name, parent_descr),
+        InferCtxt::cannot_infer_msg(
+            span,
+            "type",
+            &name,
+            &descr,
+            use_diag,
+            parent_name,
+            parent_descr,
+        ),
     );
 }
 
@@ -420,7 +514,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
         // When `arg_data.name` corresponds to a type argument, show the path of the full type we're
         // trying to infer. In the following example, `ty_msg` contains
-        // " in `std::result::Result<i32, E>`":
+        // " for `std::result::Result<i32, E>`":
         // ```
         // error[E0282]: type annotations needed for `std::result::Result<i32, E>`
         //  --> file.rs:L:CC
@@ -437,6 +531,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             &format!("type annotations needed{}", ty_msg),
             error_code,
         );
+
+        let use_diag = local_visitor.found_use_diagnostic.as_ref();
+        if let Some(use_diag) = use_diag {
+            if use_diag.applies_to(err_span) {
+                use_diag.attach_note(&mut err);
+            }
+        }
 
         let suffix = match local_visitor.found_node_ty {
             Some(ty) if ty.is_closure() => {
@@ -460,6 +561,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         &arg_data.description,
                         &arg_data.name,
                         &ret,
+                        use_diag,
                         arg_data.parent_name,
                         arg_data.parent_description,
                     );
@@ -634,9 +736,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             err.span_label(
                 span,
                 InferCtxt::cannot_infer_msg(
+                    span,
                     kind_str,
                     &arg_data.name,
                     &arg_data.description,
+                    use_diag,
                     arg_data.parent_name,
                     arg_data.parent_description,
                 ),
@@ -644,6 +748,20 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         }
 
         err
+    }
+
+    fn trait_def_from_hir_fn(&self, hir_id: hir::HirId) -> Option<DefId> {
+        // The DefId will be the method's trait item ID unless this is an inherent impl
+        if let Some((DefKind::AssocFn, def_id)) =
+            self.in_progress_typeck_results?.borrow().type_dependent_def(hir_id)
+        {
+            return self
+                .tcx
+                .parent(def_id)
+                .filter(|&parent_def_id| self.tcx.is_trait(parent_def_id));
+        }
+
+        None
     }
 
     /// If the `FnSig` for the method call can be found and type arguments are identified as
@@ -711,9 +829,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         err.span_label(
             span,
             InferCtxt::cannot_infer_msg(
+                span,
                 "type",
                 &data.name,
                 &data.description,
+                None,
                 data.parent_name,
                 data.parent_description,
             ),
@@ -722,16 +842,24 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     }
 
     fn cannot_infer_msg(
+        span: Span,
         kind_str: &str,
         type_name: &str,
         descr: &str,
+        use_diag: Option<&UseDiagnostic<'_>>,
         parent_name: Option<String>,
         parent_descr: Option<&str>,
     ) -> String {
+        let use_diag = use_diag.filter(|d| d.applies_to(span));
+
         if type_name == "_" {
-            format!("cannot infer {}", kind_str)
+            if let Some(use_diag) = use_diag {
+                format!("cannot infer {} of {}", kind_str, use_diag.descr())
+            } else {
+                format!("cannot infer {}", kind_str)
+            }
         } else {
-            let parent_desc = if let Some(parent_name) = parent_name {
+            let extra_descr = if let Some(parent_name) = parent_name {
                 let parent_type_descr = if let Some(parent_descr) = parent_descr {
                     format!(" the {}", parent_descr)
                 } else {
@@ -739,8 +867,10 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 };
 
                 format!(" declared on{} `{}`", parent_type_descr, parent_name)
+            } else if let Some(use_diag) = use_diag {
+                format!(" in {}", use_diag.type_descr())
             } else {
-                "".to_string()
+                "".into()
             };
 
             // FIXME: We really shouldn't be dealing with strings here
@@ -749,7 +879,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             // For example: "cannot infer type for type parameter `T`"
             format!(
                 "cannot infer {} {} {} `{}`{}",
-                kind_str, preposition, descr, type_name, parent_desc
+                kind_str, preposition, descr, type_name, extra_descr
             )
         }
     }
