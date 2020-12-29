@@ -4,7 +4,12 @@ All notable changes to bootstrap will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## [Non-breaking changes since the last major version]
+
+## [Changes since the last major version]
+
+- `llvm-libunwind` now accepts `in-tree` (formerly true), `system` or `no` (formerly false) [#77703](https://github.com/rust-lang/rust/pull/77703)
+
+### Non-breaking changes
 
 - `x.py check` needs opt-in to check tests (--all-targets) [#77473](https://github.com/rust-lang/rust/pull/77473)
 - The default bootstrap profiles are now located at `bootstrap/defaults/config.$PROFILE.toml` (previously they were located at `bootstrap/defaults/config.toml.$PROFILE`) [#77558](https://github.com/rust-lang/rust/pull/77558)
