@@ -114,28 +114,36 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
 
             // Call CopyNonOverlapping
-            CopyNonOverlapping(box rustc_middle::mir::CopyNonOverlapping { dst, src, size }) => {
-                let size = self.eval_operand(size, None)?;
+            CopyNonOverlapping(box rustc_middle::mir::CopyNonOverlapping { dst, src, count }) => {
+                let (src, size) = {
+                    let src = self.eval_operand(src, None)?;
+                    let size = src.layout.layout.size;
+                    let mplace = *src.assert_mem_place(self);
+                    let ptr = match mplace.ptr {
+                        Scalar::Ptr(ptr) => ptr,
+                        _ => panic!(),
+                    };
+                    (ptr, size)
+                };
 
                 let dst = {
                     let dst = self.eval_operand(dst, None)?;
                     let mplace = *dst.assert_mem_place(self);
                     match mplace.ptr {
-                      Scalar::Ptr(ptr) => ptr,
-                      _ => panic!(),
+                        Scalar::Ptr(ptr) => ptr,
+                        _ => panic!(),
                     }
                 };
-                let src = {
-                    let src = self.eval_operand(src, None)?;
-                    let mplace = *src.assert_mem_place(self);
-                    match mplace.ptr {
-                      Scalar::Ptr(ptr) => ptr,
-                      _ => panic!(),
-                    }
+
+                let count = self.eval_operand(count, None)?;
+                let count = self.read_immediate(count)?.to_scalar()?;
+                let count = if let Scalar::Int(i) = count {
+                    core::convert::TryFrom::try_from(i).unwrap()
+                } else {
+                    panic!();
                 };
-                // Not sure how to convert an MPlaceTy<'_, <M as Machine<'_, '_>>::PointerTag>
-                // to a pointer, or OpTy to a size
-                self.memory.copy(src, dst, size.layout.layout.size, /*nonoverlapping*/ true)?;
+
+                self.memory.copy_repeatedly(src, dst, size, count, /*nonoverlapping*/ true)?;
             }
 
             // Statements we do not track.

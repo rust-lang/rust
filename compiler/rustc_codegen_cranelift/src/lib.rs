@@ -10,6 +10,7 @@
 #![warn(rust_2018_idioms)]
 #![warn(unused_lifetimes)]
 #![warn(unreachable_pub)]
+#![feature(box_patterns)]
 
 #[cfg(feature = "jit")]
 extern crate libc;

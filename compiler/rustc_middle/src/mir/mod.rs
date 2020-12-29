@@ -1641,8 +1641,10 @@ impl Debug for Statement<'_> {
             CopyNonOverlapping(box crate::mir::CopyNonOverlapping {
                 ref src,
                 ref dst,
-                ref size,
-            }) => write!(fmt, "copy_nonoverlapping(src={:?}, dst={:?}, size={:?})", src, dst, size),
+                ref count,
+            }) => {
+                write!(fmt, "copy_nonoverlapping(src={:?}, dst={:?}, count={:?})", src, dst, count)
+            }
             Nop => write!(fmt, "nop"),
         }
     }
@@ -1658,7 +1660,8 @@ pub struct Coverage {
 pub struct CopyNonOverlapping<'tcx> {
     pub src: Operand<'tcx>,
     pub dst: Operand<'tcx>,
-    pub size: Operand<'tcx>,
+    /// Number of elements to copy from src to dest, not bytes.
+    pub count: Operand<'tcx>,
 }
 
 ///////////////////////////////////////////////////////////////////////////
