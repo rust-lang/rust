@@ -110,10 +110,7 @@ impl<'tcx> PlaceWithHirId<'tcx> {
         base: PlaceBase,
         projections: Vec<Projection<'tcx>>,
     ) -> PlaceWithHirId<'tcx> {
-        PlaceWithHirId {
-            hir_id: hir_id,
-            place: Place { base_ty: base_ty, base: base, projections: projections },
-        }
+        PlaceWithHirId { hir_id, place: Place { base_ty, base, projections } }
     }
 }
 
