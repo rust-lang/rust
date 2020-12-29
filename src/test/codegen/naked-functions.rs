@@ -9,6 +9,7 @@
 #[naked]
 pub fn naked_empty() {
     // CHECK-NEXT: {{.+}}:
+    // CHECK-NEXT: %0 = alloca {}, align 1
     // CHECK-NEXT: ret void
 }
 
@@ -18,6 +19,7 @@ pub fn naked_empty() {
 // CHECK-NEXT: define void @naked_with_args(i{{[0-9]+( %a)?}})
 pub fn naked_with_args(a: isize) {
     // CHECK-NEXT: {{.+}}:
+    // CHECK-NEXT: %0 = alloca {}, align 1
     // CHECK: ret void
 }
 

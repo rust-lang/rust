@@ -333,7 +333,7 @@ pub fn simplify_locals<'tcx>(body: &mut Body<'tcx>, tcx: TyCtxt<'tcx>) {
     // count. For example, if we removed `_2 = discriminant(_1)`, then we'll subtract one from
     // `use_counts[_1]`. That in turn might make `_1` unused, so we loop until we hit a
     // fixedpoint where there are no more unused locals.
-    remove_unused_definitions(&mut used_locals, body);
+    remove_unused_definitions(&mut used_locals, body, tcx);
 
     // Finally, we'll actually do the work of shrinking `body.local_decls` and remapping the `Local`s.
     let map = make_local_map(&mut body.local_decls, &used_locals);
@@ -462,11 +462,21 @@ impl Visitor<'_> for UsedLocals {
 }
 
 /// Removes unused definitions. Updates the used locals to reflect the changes made.
-fn remove_unused_definitions<'a, 'tcx>(used_locals: &'a mut UsedLocals, body: &mut Body<'tcx>) {
+fn remove_unused_definitions<'a, 'tcx>(
+    used_locals: &'a mut UsedLocals,
+    body: &mut Body<'tcx>,
+    tcx: TyCtxt<'tcx>,
+) {
     // The use counts are updated as we remove the statements. A local might become unused
     // during the retain operation, leading to a temporary inconsistency (storage statements or
     // definitions referencing the local might remain). For correctness it is crucial that this
     // computation reaches a fixed point.
+
+    let def_id = body.source.def_id();
+    let is_static = tcx.is_static(def_id);
+    let param_env = tcx.param_env(def_id);
+
+    let local_decls = body.local_decls.clone();
 
     let mut modified = true;
     while modified {
@@ -479,7 +489,21 @@ fn remove_unused_definitions<'a, 'tcx>(used_locals: &'a mut UsedLocals, body: &m
                     StatementKind::StorageLive(local) | StatementKind::StorageDead(local) => {
                         used_locals.is_used(*local)
                     }
-                    StatementKind::Assign(box (place, _)) => used_locals.is_used(place.local),
+                    StatementKind::Assign(box (place, _)) => {
+                        let used = used_locals.is_used(place.local);
+                        let mut is_zst = false;
+
+                        // ZST locals can be removed
+                        if used && !is_static {
+                            let ty = local_decls[place.local].ty;
+                            let param_env_and = param_env.and(ty);
+                            if let Ok(layout) = tcx.layout_of(param_env_and) {
+                                is_zst = layout.is_zst();
+                            }
+                        }
+
+                        used && !is_zst
+                    }
 
                     StatementKind::SetDiscriminant { ref place, .. } => {
                         used_locals.is_used(place.local)

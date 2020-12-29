@@ -27,7 +27,6 @@ fn f_u64() -> () {
         StorageDead(_3);                 // scope 1 at $DIR/lower_intrinsics.rs:35:5: 35:21
         StorageDead(_2);                 // scope 1 at $DIR/lower_intrinsics.rs:35:5: 35:21
         StorageDead(_1);                 // scope 0 at $DIR/lower_intrinsics.rs:35:5: 35:21
-        _0 = const ();                   // scope 0 at $DIR/lower_intrinsics.rs:34:16: 36:2
         return;                          // scope 0 at $DIR/lower_intrinsics.rs:36:2: 36:2
     }
 }
