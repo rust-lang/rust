@@ -91,7 +91,7 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext) -> Option
             // extra newlines in the indent block
             let text = indent.text();
             if text.starts_with('\n') {
-                buf.push_str("\n");
+                buf.push('\n');
                 buf.push_str(text.trim_start_matches('\n'));
             } else {
                 buf.push_str(text);

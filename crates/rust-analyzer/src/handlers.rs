@@ -681,7 +681,7 @@ pub(crate) fn handle_completion_resolve(
             &snap.config.completion,
             FilePosition { file_id, offset },
             &resolve_data.full_import_path,
-            &resolve_data.imported_name,
+            resolve_data.imported_name,
         )?
         .into_iter()
         .flat_map(|edit| {

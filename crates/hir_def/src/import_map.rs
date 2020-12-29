@@ -262,10 +262,11 @@ pub struct Query {
 }
 
 impl Query {
-    pub fn new(query: &str) -> Self {
+    pub fn new(query: String) -> Self {
+        let lowercased = query.to_lowercase();
         Self {
-            query: query.to_string(),
-            lowercased: query.to_lowercase(),
+            query,
+            lowercased,
             name_only: false,
             search_mode: SearchMode::Contains,
             case_sensitive: false,
@@ -774,7 +775,7 @@ mod tests {
         check_search(
             ra_fixture,
             "main",
-            Query::new("fmt").search_mode(SearchMode::Fuzzy),
+            Query::new("fmt".to_string()).search_mode(SearchMode::Fuzzy),
             expect![[r#"
                 dep::fmt (t)
                 dep::Fmt (t)
@@ -789,7 +790,7 @@ mod tests {
         check_search(
             ra_fixture,
             "main",
-            Query::new("fmt").search_mode(SearchMode::Equals),
+            Query::new("fmt".to_string()).search_mode(SearchMode::Equals),
             expect![[r#"
                 dep::fmt (t)
                 dep::Fmt (t)
@@ -802,7 +803,7 @@ mod tests {
         check_search(
             ra_fixture,
             "main",
-            Query::new("fmt").search_mode(SearchMode::Contains),
+            Query::new("fmt".to_string()).search_mode(SearchMode::Contains),
             expect![[r#"
                 dep::fmt (t)
                 dep::Fmt (t)
@@ -843,7 +844,7 @@ mod tests {
         check_search(
             ra_fixture,
             "main",
-            Query::new("fmt"),
+            Query::new("fmt".to_string()),
             expect![[r#"
                 dep::fmt (t)
                 dep::Fmt (t)
@@ -857,7 +858,7 @@ mod tests {
         check_search(
             ra_fixture,
             "main",
-            Query::new("fmt").name_only(),
+            Query::new("fmt".to_string()).name_only(),
             expect![[r#"
                 dep::fmt (t)
                 dep::Fmt (t)
@@ -881,7 +882,7 @@ mod tests {
         check_search(
             ra_fixture,
             "main",
-            Query::new("FMT"),
+            Query::new("FMT".to_string()),
             expect![[r#"
                 dep::fmt (t)
                 dep::fmt (v)
@@ -893,7 +894,7 @@ mod tests {
         check_search(
             ra_fixture,
             "main",
-            Query::new("FMT").case_sensitive(),
+            Query::new("FMT".to_string()).case_sensitive(),
             expect![[r#"
                 dep::FMT (t)
                 dep::FMT (v)
@@ -922,7 +923,7 @@ mod tests {
         pub fn no() {}
     "#,
             "main",
-            Query::new("").limit(2),
+            Query::new("".to_string()).limit(2),
             expect![[r#"
                 dep::fmt (t)
                 dep::Fmt (t)
@@ -943,7 +944,7 @@ mod tests {
         check_search(
             ra_fixture,
             "main",
-            Query::new("FMT"),
+            Query::new("FMT".to_string()),
             expect![[r#"
                 dep::fmt (t)
                 dep::fmt (v)
@@ -955,7 +956,7 @@ mod tests {
         check_search(
             ra_fixture,
             "main",
-            Query::new("FMT").exclude_import_kind(ImportKind::Adt),
+            Query::new("FMT".to_string()).exclude_import_kind(ImportKind::Adt),
             expect![[r#""#]],
         );
     }

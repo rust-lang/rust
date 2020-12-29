@@ -249,7 +249,7 @@ impl CrateDefMap {
                     buf.push_str(" _");
                 }
 
-                buf.push_str("\n");
+                buf.push('\n');
             }
 
             for (name, child) in map.modules[module].children.iter() {

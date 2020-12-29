@@ -137,7 +137,7 @@ pub fn resolve_completion_edits(
     config: &CompletionConfig,
     position: FilePosition,
     full_import_path: &str,
-    imported_name: &str,
+    imported_name: String,
 ) -> Option<Vec<TextEdit>> {
     let ctx = CompletionContext::new(db, position, config)?;
     let anchor = ctx.name_ref_syntax.as_ref()?;
