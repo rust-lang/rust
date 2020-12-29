@@ -135,11 +135,12 @@ fn fuzzy_completion(acc: &mut Completions, ctx: &CompletionContext) -> Option<()
     let anchor = ctx.name_ref_syntax.as_ref()?;
     let import_scope = ImportScope::find_insert_use_container(anchor.syntax(), &ctx.sema)?;
 
+    let user_input_lowercased = potential_import_name.to_lowercase();
     let mut all_mod_paths = imports_locator::find_similar_imports(
         &ctx.sema,
         ctx.krate?,
         Some(40),
-        &potential_import_name,
+        potential_import_name,
         true,
     )
     .filter_map(|import_candidate| {
@@ -155,7 +156,6 @@ fn fuzzy_completion(acc: &mut Completions, ctx: &CompletionContext) -> Option<()
     .filter(|(mod_path, _)| mod_path.len() > 1)
     .collect::<Vec<_>>();
 
-    let user_input_lowercased = potential_import_name.to_lowercase();
     all_mod_paths.sort_by_cached_key(|(mod_path, _)| {
         compute_fuzzy_completion_order_key(mod_path, &user_input_lowercased)
     });

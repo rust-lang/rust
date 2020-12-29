@@ -15,14 +15,14 @@ use rustc_hash::FxHashSet;
 pub fn find_exact_imports<'a>(
     sema: &Semantics<'a, RootDatabase>,
     krate: Crate,
-    name_to_import: &str,
+    name_to_import: String,
 ) -> impl Iterator<Item = Either<ModuleDef, MacroDef>> {
     let _p = profile::span("find_exact_imports");
     find_imports(
         sema,
         krate,
         {
-            let mut local_query = symbol_index::Query::new(name_to_import.to_string());
+            let mut local_query = symbol_index::Query::new(name_to_import.clone());
             local_query.exact();
             local_query.limit(40);
             local_query
@@ -39,18 +39,18 @@ pub fn find_similar_imports<'a>(
     sema: &Semantics<'a, RootDatabase>,
     krate: Crate,
     limit: Option<usize>,
-    fuzzy_search_string: &str,
+    fuzzy_search_string: String,
     name_only: bool,
 ) -> impl Iterator<Item = Either<ModuleDef, MacroDef>> {
     let _p = profile::span("find_similar_imports");
 
-    let mut external_query =
-        import_map::Query::new(fuzzy_search_string).search_mode(import_map::SearchMode::Fuzzy);
+    let mut external_query = import_map::Query::new(fuzzy_search_string.clone())
+        .search_mode(import_map::SearchMode::Fuzzy);
     if name_only {
         external_query = external_query.name_only();
     }
 
-    let mut local_query = symbol_index::Query::new(fuzzy_search_string.to_string());
+    let mut local_query = symbol_index::Query::new(fuzzy_search_string);
 
     if let Some(limit) = limit {
         local_query.limit(limit);
