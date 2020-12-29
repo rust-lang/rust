@@ -469,8 +469,14 @@ export function resolveCodeAction(ctx: Ctx): Cmd {
         if (!item.edit) {
             return;
         }
-        const edit = client.protocol2CodeConverter.asWorkspaceEdit(item.edit);
-        await vscode.workspace.applyEdit(edit);
+        const itemEdit = item.edit;
+        const edit = client.protocol2CodeConverter.asWorkspaceEdit(itemEdit);
+        // filter out all text edits and recreate the WorkspaceEdit without them so we can apply
+        // snippet edits on our own
+        const itemEditWithoutTextEdits = { ...item, documentChanges: itemEdit.documentChanges?.filter(change => "kind" in change) };
+        const editWithoutTextEdits = client.protocol2CodeConverter.asWorkspaceEdit(itemEditWithoutTextEdits);
+        await applySnippetWorkspaceEdit(edit);
+        await vscode.workspace.applyEdit(editWithoutTextEdits);
     };
 }
 
