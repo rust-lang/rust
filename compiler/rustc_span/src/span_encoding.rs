@@ -12,7 +12,7 @@ use rustc_data_structures::fx::FxIndexSet;
 
 /// A compressed span.
 ///
-/// `SpanData` is 12 bytes, which is a bit too big to stick everywhere. `Span`
+/// Whereas [`SpanData`] is 12 bytes, which is a bit too big to stick everywhere, `Span`
 /// is a form that only takes up 8 bytes, with less space for the length and
 /// context. The vast majority (99.9%+) of `SpanData` instances will fit within
 /// those 8 bytes; any `SpanData` whose fields don't fit into a `Span` are
@@ -42,13 +42,11 @@ use rustc_data_structures::fx::FxIndexSet;
 /// - `base` is 32 bits in both `Span` and `SpanData`, which means that `base`
 ///   values never cause interning. The number of bits needed for `base`
 ///   depends on the crate size. 32 bits allows up to 4 GiB of code in a crate.
-///   `script-servo` is the largest crate in `rustc-perf`, requiring 26 bits
-///   for some spans.
 /// - `len` is 15 bits in `Span` (a u16, minus 1 bit for the tag) and 32 bits
 ///   in `SpanData`, which means that large `len` values will cause interning.
 ///   The number of bits needed for `len` does not depend on the crate size.
-///   The most common number of bits for `len` are 0--7, with a peak usually at
-///   3 or 4, and then it drops off quickly from 8 onwards. 15 bits is enough
+///   The most common numbers of bits for `len` are from 0 to 7, with a peak usually
+///   at 3 or 4, and then it drops off quickly from 8 onwards. 15 bits is enough
 ///   for 99.99%+ of cases, but larger values (sometimes 20+ bits) might occur
 ///   dozens of times in a typical crate.
 /// - `ctxt` is 16 bits in `Span` and 32 bits in `SpanData`, which means that
