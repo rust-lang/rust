@@ -84,7 +84,7 @@ impl<B, C> ops::Try2015 for ControlFlow<B, C> {
 }
 
 #[unstable(feature = "try_trait_v2", issue = "42327")]
-impl<B, C> ops::TryCore for ControlFlow<B, C> {
+impl<B, C> ops::Bubble for ControlFlow<B, C> {
     //type Continue = C;
     type Ok = C;
     type Holder = ControlFlow<B, !>;

@@ -1,8 +1,8 @@
-error[E0277]: the trait bound `bool: TryCore` is not satisfied
+error[E0277]: the trait bound `bool: Bubble` is not satisfied
   --> $DIR/try-block-in-while.rs:6:17
    |
 LL |     while try { false } {}
-   |                 ^^^^^ the trait `TryCore` is not implemented for `bool`
+   |                 ^^^^^ the trait `Bubble` is not implemented for `bool`
    |
    = note: required by `continue_with`
 

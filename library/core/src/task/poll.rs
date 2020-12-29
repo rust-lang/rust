@@ -153,11 +153,11 @@ impl<T, E> ops::Try2015 for Poll<Result<T, E>> {
 }
 
 #[unstable(feature = "try_trait_v2", issue = "42327")]
-impl<T, E> ops::TryCore for Poll<Result<T, E>> {
+impl<T, E> ops::Bubble for Poll<Result<T, E>> {
     //type Continue = Poll<T>;
     type Ok = Poll<T>;
     //type Holder = PollResultHolder<E>;
-    type Holder = <Result<T, E> as ops::TryCore>::Holder;
+    type Holder = <Result<T, E> as ops::Bubble>::Holder;
 
     #[inline]
     fn continue_with(c: Self::Ok) -> Self {
@@ -231,11 +231,11 @@ impl<T, E> ops::Try2015 for Poll<Option<Result<T, E>>> {
 }
 
 #[unstable(feature = "try_trait_v2", issue = "42327")]
-impl<T, E> ops::TryCore for Poll<Option<Result<T, E>>> {
+impl<T, E> ops::Bubble for Poll<Option<Result<T, E>>> {
     //type Continue = Poll<Option<T>>;
     type Ok = Poll<Option<T>>;
     //type Holder = PollOptionResultHolder<E>;
-    type Holder = <Result<T, E> as ops::TryCore>::Holder;
+    type Holder = <Result<T, E> as ops::Bubble>::Holder;
 
     #[inline]
     fn continue_with(c: Self::Ok) -> Self {

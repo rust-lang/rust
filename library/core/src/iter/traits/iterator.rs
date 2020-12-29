@@ -2460,8 +2460,8 @@ pub trait Iterator {
         }
 
         match self.try_fold((), check(f)) {
-            ControlFlow::Continue(()) => ops::TryCore::continue_with(None),
-            ControlFlow::Break(Ok(x)) => ops::TryCore::continue_with(Some(x)),
+            ControlFlow::Continue(()) => ops::Bubble::continue_with(None),
+            ControlFlow::Break(Ok(x)) => ops::Bubble::continue_with(Some(x)),
             ControlFlow::Break(Err(h)) => Try::from_holder(h),
         }
     }

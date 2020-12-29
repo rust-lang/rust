@@ -185,7 +185,7 @@ pub use self::range::{Bound, RangeBounds, RangeInclusive, RangeToInclusive};
 pub use self::r#try::Try2015;
 
 #[unstable(feature = "try_trait_v2", issue = "42327")]
-pub use self::r#try::{BreakHolder, Try2021, TryCore};
+pub use self::r#try::{BreakHolder, Try2021, Bubble};
 
 #[cfg(bootstrap)]
 #[unstable(feature = "try_trait_v2", issue = "42327")]

@@ -4,5 +4,5 @@
 
 fn main() {
     while try { false } {}
-    //~^ ERROR the trait bound `bool: TryCore` is not satisfied
+    //~^ ERROR the trait bound `bool: Bubble` is not satisfied
 }

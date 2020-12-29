@@ -551,13 +551,13 @@ error[E0600]: cannot apply unary operator `-` to type `bool`
 LL |     if -let 0 = 0 {}
    |        ^^^^^^^^^^ cannot apply unary operator `-`
 
-error[E0277]: the `?` operator can only be applied to values that implement `TryCore`
+error[E0277]: the `?` operator can only be applied to values that implement `Bubble`
   --> $DIR/disallowed-positions.rs:46:8
    |
 LL |     if (let 0 = 0)? {}
    |        ^^^^^^^^^^^^ the `?` operator cannot be applied to type `bool`
    |
-   = help: the trait `TryCore` is not implemented for `bool`
+   = help: the trait `Bubble` is not implemented for `bool`
    = note: required by `branch`
 
 error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `Try2021`)
@@ -709,13 +709,13 @@ LL |     if let Range { start: true, end } = t..&&false {}
    = note: expected type `bool`
             found struct `std::ops::Range<bool>`
 
-error[E0277]: the `?` operator can only be applied to values that implement `TryCore`
+error[E0277]: the `?` operator can only be applied to values that implement `Bubble`
   --> $DIR/disallowed-positions.rs:42:20
    |
 LL |         if let 0 = 0? {}
    |                    ^^ the `?` operator cannot be applied to type `{integer}`
    |
-   = help: the trait `TryCore` is not implemented for `{integer}`
+   = help: the trait `Bubble` is not implemented for `{integer}`
    = note: required by `branch`
 
 error[E0308]: mismatched types
@@ -739,13 +739,13 @@ error[E0600]: cannot apply unary operator `-` to type `bool`
 LL |     while -let 0 = 0 {}
    |           ^^^^^^^^^^ cannot apply unary operator `-`
 
-error[E0277]: the `?` operator can only be applied to values that implement `TryCore`
+error[E0277]: the `?` operator can only be applied to values that implement `Bubble`
   --> $DIR/disallowed-positions.rs:110:11
    |
 LL |     while (let 0 = 0)? {}
    |           ^^^^^^^^^^^^ the `?` operator cannot be applied to type `bool`
    |
-   = help: the trait `TryCore` is not implemented for `bool`
+   = help: the trait `Bubble` is not implemented for `bool`
    = note: required by `branch`
 
 error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `Try2021`)
@@ -897,13 +897,13 @@ LL |     while let Range { start: true, end } = t..&&false {}
    = note: expected type `bool`
             found struct `std::ops::Range<bool>`
 
-error[E0277]: the `?` operator can only be applied to values that implement `TryCore`
+error[E0277]: the `?` operator can only be applied to values that implement `Bubble`
   --> $DIR/disallowed-positions.rs:106:23
    |
 LL |         while let 0 = 0? {}
    |                       ^^ the `?` operator cannot be applied to type `{integer}`
    |
-   = help: the trait `TryCore` is not implemented for `{integer}`
+   = help: the trait `Bubble` is not implemented for `{integer}`
    = note: required by `branch`
 
 error[E0614]: type `bool` cannot be dereferenced
@@ -918,13 +918,13 @@ error[E0600]: cannot apply unary operator `-` to type `bool`
 LL |     -let 0 = 0;
    |     ^^^^^^^^^^ cannot apply unary operator `-`
 
-error[E0277]: the `?` operator can only be applied to values that implement `TryCore`
+error[E0277]: the `?` operator can only be applied to values that implement `Bubble`
   --> $DIR/disallowed-positions.rs:183:5
    |
 LL |     (let 0 = 0)?;
    |     ^^^^^^^^^^^^ the `?` operator cannot be applied to type `bool`
    |
-   = help: the trait `TryCore` is not implemented for `bool`
+   = help: the trait `Bubble` is not implemented for `bool`
    = note: required by `branch`
 
 error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `Try2021`)
@@ -965,13 +965,13 @@ LL | fn outside_if_and_while_expr() {
 LL |     &let 0 = 0
    |     ^^^^^^^^^^ expected `()`, found `&bool`
 
-error[E0277]: the `?` operator can only be applied to values that implement `TryCore`
+error[E0277]: the `?` operator can only be applied to values that implement `Bubble`
   --> $DIR/disallowed-positions.rs:179:17
    |
 LL |         let 0 = 0?;
    |                 ^^ the `?` operator cannot be applied to type `{integer}`
    |
-   = help: the trait `TryCore` is not implemented for `{integer}`
+   = help: the trait `Bubble` is not implemented for `{integer}`
    = note: required by `branch`
 
 error: aborting due to 104 previous errors; 2 warnings emitted

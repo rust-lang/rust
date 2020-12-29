@@ -6,7 +6,7 @@
 #![feature(try_trait_v2)]
 
 use std::convert::Infallible;
-use std::ops::{BreakHolder, ControlFlow, Try2015, Try2021, TryCore};
+use std::ops::{BreakHolder, ControlFlow, Try2015, Try2021, Bubble};
 
 enum MyResult<T, U> {
     Awesome(T),
@@ -33,7 +33,7 @@ impl<U, V> Try2015 for MyResult<U, V> {
     }
 }
 
-impl<U, V> TryCore for MyResult<U, V> {
+impl<U, V> Bubble for MyResult<U, V> {
     //type Continue = U;
     type Ok = U;
     type Holder = MyResult<Infallible, V>;

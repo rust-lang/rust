@@ -1724,7 +1724,7 @@ impl<T> ops::Try2015 for Option<T> {
 }
 
 #[unstable(feature = "try_trait_v2", issue = "42327")]
-impl<T> ops::TryCore for Option<T> {
+impl<T> ops::Bubble for Option<T> {
     //type Continue = T;
     type Ok = T;
     type Holder = Option<!>;

@@ -73,19 +73,19 @@ pub trait Try2015 {
         all(from_method = "continue_with", from_desugaring = "QuestionMark"),
         message = "the `?` operator can only be used in {ItemContext} \
                     that returns `Result` or `Option` \
-                    (or another type that implements `{TryCore}`)",
+                    (or another type that implements `{Bubble}`)",
         label = "cannot use the `?` operator in {ItemContext} that returns `{Self}`",
         enclosing_scope = "this function should return `Result` or `Option` to accept `?`"
     ),
     on(
         all(from_method = "branch", from_desugaring = "QuestionMark"),
         message = "the `?` operator can only be applied to values \
-                    that implement `{TryCore}`",
+                    that implement `{Bubble}`",
         label = "the `?` operator cannot be applied to type `{Self}`"
     )
 )]
 #[unstable(feature = "try_trait_v2", issue = "42327")]
-pub trait TryCore {
+pub trait Bubble {
     /// The type of the value consumed or produced when not short-circuiting.
     #[unstable(feature = "try_trait_v2", issue = "42327")]
     // Temporarily using `Ok` still so I don't need to change the bounds in the library
@@ -119,8 +119,8 @@ pub trait TryCore {
         Self: Try2021,
         Self::Holder: BreakHolder<T>,
     {
-        match TryCore::branch(self) {
-            ControlFlow::Continue(c) => TryCore::continue_with(f(c)),
+        match Bubble::branch(self) {
+            ControlFlow::Continue(c) => Bubble::continue_with(f(c)),
             //ControlFlow::Break(h) => BreakHolder::<T>::expand(h),
             ControlFlow::Break(h) => Try2021::from_holder(h),
         }
@@ -157,7 +157,7 @@ pub trait BreakHolder<T>: Sized {
     enclosing_scope = "this function should return `Result` or `Option` to accept `?`"
 ))]
 #[unstable(feature = "try_trait_v2", issue = "42327")]
-pub trait Try2021<T = <Self as TryCore>::Holder>: TryCore
+pub trait Try2021<T = <Self as Bubble>::Holder>: Bubble
 where
     T: BreakHolder<Self::Ok>,
 {

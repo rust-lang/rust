@@ -1612,7 +1612,7 @@ impl<T, E> ops::Try2015 for Result<T, E> {
 }
 
 #[unstable(feature = "try_trait_v2", issue = "42327")]
-impl<T, E> ops::TryCore for Result<T, E> {
+impl<T, E> ops::Bubble for Result<T, E> {
     //type Continue = T;
     type Ok = T;
     type Holder = Result<!, E>;
