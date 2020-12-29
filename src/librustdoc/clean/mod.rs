@@ -831,7 +831,7 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics, ty::GenericPredicates<'tcx
         where_predicates.retain(|pred| match *pred {
             WP::BoundPredicate { ty: Generic(ref g), ref bounds } => {
                 if bounds.iter().any(|b| b.is_sized_bound(cx)) {
-                    sized_params.insert(g.clone());
+                    sized_params.insert(*g);
                     false
                 } else {
                     true
@@ -847,7 +847,7 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics, ty::GenericPredicates<'tcx
                 && !sized_params.contains(&tp.name)
             {
                 where_predicates.push(WP::BoundPredicate {
-                    ty: Type::Generic(tp.name.clone()),
+                    ty: Type::Generic(tp.name),
                     bounds: vec![GenericBound::maybe_sized(cx)],
                 })
             }

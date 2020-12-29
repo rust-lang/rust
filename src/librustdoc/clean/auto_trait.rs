@@ -597,7 +597,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                                             ref mut bindings, ..
                                         } => {
                                             bindings.push(TypeBinding {
-                                                name: left_name.clone(),
+                                                name: left_name,
                                                 kind: TypeBindingKind::Equality { ty: rhs },
                                             });
                                         }
@@ -665,7 +665,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                 GenericParamDefKind::Type { ref mut default, ref mut bounds, .. } => {
                     // We never want something like `impl<T=Foo>`.
                     default.take();
-                    let generic_ty = Type::Generic(param.name.clone());
+                    let generic_ty = Type::Generic(param.name);
                     if !has_sized.contains(&generic_ty) {
                         bounds.insert(0, GenericBound::maybe_sized(self.cx));
                     }
