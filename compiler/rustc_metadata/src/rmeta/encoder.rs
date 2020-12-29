@@ -40,6 +40,7 @@ use tracing::{debug, trace};
 pub(super) struct EncodeContext<'a, 'tcx> {
     opaque: opaque::Encoder,
     tcx: TyCtxt<'tcx>,
+    mir_keys: &'tcx FxHashSet<LocalDefId>,
     feat: &'tcx rustc_feature::Features,
 
     tables: TableBuilders<'tcx>,
@@ -1118,7 +1119,7 @@ impl EncodeContext<'a, 'tcx> {
 
     fn encode_optimized_mir(&mut self, def_id: LocalDefId) {
         debug!("EntryBuilder::encode_mir({:?})", def_id);
-        if self.tcx.mir_keys(LOCAL_CRATE).contains(&def_id) {
+        if self.mir_keys.contains(&def_id) {
             record!(self.tables.mir[def_id.to_def_id()] <- self.tcx.optimized_mir(def_id));
 
             let unused = self.tcx.unused_generic_params(def_id);
@@ -1135,7 +1136,7 @@ impl EncodeContext<'a, 'tcx> {
 
     fn encode_promoted_mir(&mut self, def_id: LocalDefId) {
         debug!("EncodeContext::encode_promoted_mir({:?})", def_id);
-        if self.tcx.mir_keys(LOCAL_CRATE).contains(&def_id) {
+        if self.mir_keys.contains(&def_id) {
             record!(self.tables.promoted_mir[def_id.to_def_id()] <- self.tcx.promoted_mir(def_id));
         }
     }
@@ -2084,6 +2085,7 @@ fn encode_metadata_impl(tcx: TyCtxt<'_>) -> EncodedMetadata {
     let mut ecx = EncodeContext {
         opaque: encoder,
         tcx,
+        mir_keys: tcx.mir_keys(LOCAL_CRATE),
         feat: tcx.features(),
         tables: Default::default(),
         lazy_state: LazyState::NoNode,
