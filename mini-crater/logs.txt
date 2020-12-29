@@ -1,3 +1,5 @@
+clippy 0.0.212 (0d8a27a6f 2020-12-28)
+
 cargo/0.49.0//home/matthias/.rustup/toolchains/nightly-2020-12-20-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:393:34 clippy::match_same_arms "this `match` has identical arm bodies"
 cargo/0.49.0/build.rs:1:null clippy::cargo_common_metadata "package `cargo` is missing `package.categories` metadata"
 cargo/0.49.0/build.rs:1:null clippy::cargo_common_metadata "package `cargo` is missing `package.keywords` metadata"
@@ -107,6 +109,7 @@ cargo/0.49.0/src/cargo/core/compiler/build_context/target_info.rs:96:31 clippy::
 cargo/0.49.0/src/cargo/core/compiler/build_context/target_info.rs:98:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
 cargo/0.49.0/src/cargo/core/compiler/build_plan.rs:4:9 clippy::doc_markdown "you should put `BuildPlan` between ticks in the documentation"
 cargo/0.49.0/src/cargo/core/compiler/build_plan.rs:5:66 clippy::doc_markdown "you should put `BuildPlan` between ticks in the documentation"
+cargo/0.49.0/src/cargo/core/compiler/build_plan.rs:66:40 clippy::ptr_arg "writing `&PathBuf` instead of `&Path` involves a new object where a slice will do."
 cargo/0.49.0/src/cargo/core/compiler/compilation.rs:150:5 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
 cargo/0.49.0/src/cargo/core/compiler/compilation.rs:169:5 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
 cargo/0.49.0/src/cargo/core/compiler/compilation.rs:185:5 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
@@ -237,6 +240,8 @@ cargo/0.49.0/src/cargo/core/compiler/mod.rs:364:5 clippy::items_after_statements
 cargo/0.49.0/src/cargo/core/compiler/mod.rs:364:5 clippy::unnecessary_wraps "this function's return value is unnecessarily wrapped by `Result`"
 cargo/0.49.0/src/cargo/core/compiler/mod.rs:392:45 clippy::redundant_closure_for_method_calls "redundant closure found"
 cargo/0.49.0/src/cargo/core/compiler/mod.rs:415:23 clippy::single_match_else "you seem to be trying to use match for destructuring a single pattern. Consider using `if let`"
+cargo/0.49.0/src/cargo/core/compiler/mod.rs:464:18 clippy::ptr_arg "writing `&PathBuf` instead of `&Path` involves a new object where a slice will do."
+cargo/0.49.0/src/cargo/core/compiler/mod.rs:488:61 clippy::ptr_arg "writing `&PathBuf` instead of `&Path` involves a new object where a slice will do."
 cargo/0.49.0/src/cargo/core/compiler/mod.rs:667:15 clippy::similar_names "binding's name is too similar to existing binding"
 cargo/0.49.0/src/cargo/core/compiler/mod.rs:693:1 clippy::unnecessary_wraps "this function's return value is unnecessarily wrapped by `Result`"
 cargo/0.49.0/src/cargo/core/compiler/mod.rs:725:42 clippy::match_same_arms "this `match` has identical arm bodies"
@@ -3059,9 +3064,9 @@ ripgrep/12.1.1/crates/core/search.rs:533:5 clippy::cast_precision_loss "casting 
 ripgrep/12.1.1/crates/core/subject.rs:20:1 clippy::module_name_repetitions "item name starts with its containing module's name"
 ripgrep/12.1.1/crates/core/subject.rs:4:1 clippy::single_component_path_imports "this import is redundant"
 syn/1.0.54/build.rs:1:null clippy::cargo_common_metadata "package `syn` is missing `package.keywords` metadata"
-syn/1.0.54/build.rs:1:null clippy::multiple_crate_versions "could not read cargo metadata: failed to run `cargo metadata`:     Blocking waiting for file lock on package cache\n    Blocking waiting for file lock on package cache\n    Blocking waiting for file lock on package cache\n Downloading crates ...\n  Downloaded ref-cast v1.0.5\n  Downloaded ref-cast-impl v1.0.5\n  Downloaded syn-test-suite v0.0.0\nerror: failed to verify the checksum of `syn-test-suite v0.0.0`"
+syn/1.0.54/build.rs:1:null clippy::multiple_crate_versions "could not read cargo metadata: failed to run `cargo metadata`:  Downloading crates ...\n  Downloaded dtoa v0.4.7\n  Downloaded anyhow v1.0.37\n  Downloaded syn-test-suite v0.0.0\nerror: failed to verify the checksum of `syn-test-suite v0.0.0`"
 syn/1.0.54/src/lib.rs:1:null clippy::cargo_common_metadata "package `syn` is missing `package.keywords` metadata"
-syn/1.0.54/src/lib.rs:1:null clippy::multiple_crate_versions "could not read cargo metadata: failed to run `cargo metadata`:  Downloading crates ...\n  Downloaded openssl-sys v0.9.60\n  Downloaded syn-test-suite v0.0.0\nerror: failed to verify the checksum of `syn-test-suite v0.0.0`"
+syn/1.0.54/src/lib.rs:1:null clippy::multiple_crate_versions "could not read cargo metadata: failed to run `cargo metadata`:  Downloading crates ...\n  Downloaded syn-test-suite v0.0.0\nerror: failed to verify the checksum of `syn-test-suite v0.0.0`"
 syn/1.0.54/src/lit.rs:1397:40 clippy::redundant_else "redundant else block"
 syn/1.0.54/src/lit.rs:1405:28 clippy::redundant_else "redundant else block"
 syn/1.0.54/src/lit.rs:1485:32 clippy::redundant_else "redundant else block"
@@ -3293,6 +3298,7 @@ clippy::write_with_newline 2
 clippy::filter_map_next 3
 clippy::fn_params_excessive_bools 3
 clippy::mut_mut 3
+clippy::ptr_arg 3
 clippy::zero_ptr 3
 clippy::if_same_then_else 4
 clippy::let_underscore_drop 4

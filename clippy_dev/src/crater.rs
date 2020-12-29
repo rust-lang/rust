@@ -216,6 +216,12 @@ pub fn run(clap_config: &ArgMatches) {
         cargo_clippy_path.display()
     );
 
+    let clippy_ver = std::process::Command::new("target/debug/cargo-clippy")
+        .arg("--version")
+        .output()
+        .map(|o| String::from_utf8_lossy(&o.stdout).into_owned())
+        .expect("could not get clippy version!");
+
     // download and extract the crates, then run clippy on them and collect clippys warnings
     // flatten into one big list of warnings
 
@@ -274,6 +280,7 @@ pub fn run(clap_config: &ArgMatches) {
     all_msgs.push(stats_formatted);
 
     // save the text into mini-crater/logs.txt
-    let text = all_msgs.join("");
+    let mut text = clippy_ver; // clippy version number on top
+    text.push_str(&format!("\n{}", all_msgs.join("")));
     write("mini-crater/logs.txt", text).unwrap();
 }

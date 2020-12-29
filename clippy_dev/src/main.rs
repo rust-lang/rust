@@ -65,7 +65,7 @@ fn get_clap_config<'a>() -> ArgMatches<'a> {
         );
 
     let app = App::new("Clippy developer tooling")
-            .subcommand(
+        .subcommand(
             SubCommand::with_name("bless")
                 .about("bless the test output changes")
                 .arg(
