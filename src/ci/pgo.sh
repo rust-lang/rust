@@ -2,6 +2,8 @@
 
 set -euxo pipefail
 
+export RUSTC_BOOTSTRAP=1
+
 rm -rf /tmp/rustc-pgo
 
 python2.7 ../x.py build --target=$PGO_HOST --host=$PGO_HOST \
