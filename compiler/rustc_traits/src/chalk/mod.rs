@@ -98,7 +98,7 @@ crate fn evaluate_goal<'tcx>(
     let mut solver = chalk_engine::solve::SLGSolver::new(32, None);
     let db = ChalkRustIrDatabase { interner, reempty_placeholder };
     let solution = solver.solve(&db, &lowered_goal);
-    debug!(?obligation, ?solution, "evaluatate goal");
+    debug!(?obligation, ?solution, "evaluate goal");
 
     // Ideally, the code to convert *back* to rustc types would live close to
     // the code to convert *from* rustc types. Right now though, we don't

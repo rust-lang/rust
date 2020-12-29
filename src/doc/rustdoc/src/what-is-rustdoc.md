@@ -10,7 +10,7 @@ CSS, and JavaScript.
 Let's give it a try! Create a new project with Cargo:
 
 ```bash
-$ cargo new docs
+$ cargo new docs --lib
 $ cd docs
 ```
 
