@@ -2,7 +2,7 @@
 
 // Ensure that we can copy out of a fixed-size array.
 //
-// (Compare with compile-fail/move-out-of-array-1.rs)
+// (Compare with ui/moves/move-out-of-array-1.rs)
 
 #[derive(Copy, Clone)]
 struct C { _x: u8 }

@@ -280,7 +280,7 @@ impl<'tcx> Queries<'tcx> {
                 // Don't do code generation if there were any errors
                 self.session().compile_status()?;
 
-                // Hook for compile-fail tests.
+                // Hook for UI tests.
                 Self::check_for_rustc_errors_attr(tcx);
 
                 Ok(passes::start_codegen(&***self.codegen_backend(), tcx, &*outputs.peek()))
@@ -289,7 +289,7 @@ impl<'tcx> Queries<'tcx> {
     }
 
     /// Check for the `#[rustc_error]` annotation, which forces an error in codegen. This is used
-    /// to write compile-fail tests that actually test that compilation succeeds without reporting
+    /// to write UI tests that actually test that compilation succeeds without reporting
     /// an error.
     fn check_for_rustc_errors_attr(tcx: TyCtxt<'_>) {
         let def_id = match tcx.entry_fn(LOCAL_CRATE) {

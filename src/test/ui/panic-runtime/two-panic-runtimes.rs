@@ -1,3 +1,5 @@
+// build-fail
+// dont-check-compiler-stderr
 // error-pattern:cannot link together two panic runtimes: panic_runtime_unwind and panic_runtime_unwind2
 // ignore-tidy-linelength
 // aux-build:panic-runtime-unwind.rs

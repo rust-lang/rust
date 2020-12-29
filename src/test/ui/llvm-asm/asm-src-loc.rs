@@ -1,4 +1,5 @@
-// compile-flags: -C codegen-units=2
+// build-fail
+// dont-check-compiler-stderr
 // ignore-emscripten
 
 #![feature(llvm_asm)]

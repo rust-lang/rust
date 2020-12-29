@@ -542,10 +542,7 @@ impl TestProps {
         }
 
         if self.failure_status == -1 {
-            self.failure_status = match config.mode {
-                Mode::RunFail => 101,
-                _ => 1,
-            };
+            self.failure_status = 1;
         }
         if self.should_ice {
             self.failure_status = 101;

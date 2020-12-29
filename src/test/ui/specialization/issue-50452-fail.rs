@@ -1,4 +1,3 @@
-// compile-fail
 #![feature(specialization)]
 //~^ WARN the feature `specialization` is incomplete
 

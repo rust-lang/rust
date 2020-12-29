@@ -1,3 +1,4 @@
+// dont-check-compiler-stderr
 // aux-build:some-panic-impl.rs
 
 #![feature(lang_items)]

@@ -8,7 +8,7 @@
 // to it being e.g., a place where the addition of an argument
 // causes it to go down a code path with subtly different behavior).
 //
-// There is a companion test in compile-fail.
+// There is a companion failing test.
 
 // compile-flags: --test -C debug_assertions=yes
 // revisions: std core
@@ -68,26 +68,26 @@ fn to_format_or_not_to_format() {
 
     assert!(true, "{}",);
 
-    // assert_eq!(1, 1, "{}",); // see compile-fail
-    // assert_ne!(1, 2, "{}",); // see compile-fail
+    // assert_eq!(1, 1, "{}",); // see check-fail
+    // assert_ne!(1, 2, "{}",); // see check-fail
 
     debug_assert!(true, "{}",);
 
-    // debug_assert_eq!(1, 1, "{}",); // see compile-fail
-    // debug_assert_ne!(1, 2, "{}",); // see compile-fail
-    // eprint!("{}",); // see compile-fail
-    // eprintln!("{}",); // see compile-fail
-    // format!("{}",); // see compile-fail
-    // format_args!("{}",); // see compile-fail
+    // debug_assert_eq!(1, 1, "{}",); // see check-fail
+    // debug_assert_ne!(1, 2, "{}",); // see check-fail
+    // eprint!("{}",); // see check-fail
+    // eprintln!("{}",); // see check-fail
+    // format!("{}",); // see check-fail
+    // format_args!("{}",); // see check-fail
 
     if falsum() { panic!("{}",); }
 
-    // print!("{}",); // see compile-fail
-    // println!("{}",); // see compile-fail
-    // unimplemented!("{}",); // see compile-fail
+    // print!("{}",); // see check-fail
+    // println!("{}",); // see check-fail
+    // unimplemented!("{}",); // see check-fail
 
     if falsum() { unreachable!("{}",); }
 
-    // write!(&mut stdout, "{}",); // see compile-fail
-    // writeln!(&mut stdout, "{}",); // see compile-fail
+    // write!(&mut stdout, "{}",); // see check-fail
+    // writeln!(&mut stdout, "{}",); // see check-fail
 }

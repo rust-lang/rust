@@ -1767,8 +1767,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
     const NO_GENERICS: &hir::Generics<'_> = &hir::Generics::empty();
 
     // We use an `IndexSet` to preserves order of insertion.
-    // Preserving the order of insertion is important here so as not to break
-    // compile-fail UI tests.
+    // Preserving the order of insertion is important here so as not to break UI tests.
     let mut predicates: FxIndexSet<(ty::Predicate<'_>, Span)> = FxIndexSet::default();
 
     let ast_generics = match node {

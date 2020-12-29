@@ -1,3 +1,5 @@
+// build-fail
+// dont-check-compiler-stderr
 // ignore-msvc due to linker-flavor=ld
 // error-pattern:aFdEfSeVEEE
 // compile-flags: -C linker-flavor=ld
