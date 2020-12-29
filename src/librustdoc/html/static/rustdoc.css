@@ -122,7 +122,9 @@ h3.impl, h3.method, h3.type {
 h1, h2, h3, h4,
 .sidebar, a.source, .search-input, .content table td:first-child > a,
 .collapse-toggle, div.item-list .out-of-band,
-#source-sidebar, #sidebar-toggle {
+#source-sidebar, #sidebar-toggle,
+/* This selector is for the items listed in the "all items" page. */
+#main > ul.docblock > li > a {
 	font-family: "Fira Sans", sans-serif;
 }
 
