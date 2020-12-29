@@ -12,14 +12,14 @@
 # stable release's version number. `date` is the date where the release we're
 # bootstrapping off was released.
 
-date: 2020-11-18
-rustc: beta
+date: 2020-12-29
+rustc: 1.49.0
 
 # We use a nightly rustfmt to format the source because it solves some
 # bootstrapping issues with use of new syntax in this repo. If you're looking at
 # the beta/stable branch, this key should be omitted, as we don't want to depend
 # on rustfmt from nightly there.
-rustfmt: nightly-2020-11-19
+#rustfmt: nightly-2020-11-19
 
 # When making a stable release the process currently looks like:
 #
@@ -39,4 +39,4 @@ rustfmt: nightly-2020-11-19
 # looking at a beta source tarball and it's uncommented we'll shortly comment it
 # out.
 
-#dev: 1
+dev: 1
