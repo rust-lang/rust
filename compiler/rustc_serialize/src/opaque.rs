@@ -1,4 +1,4 @@
-use crate::leb128::{self, max_leb128_len, read_signed_leb128};
+use crate::leb128::{self, max_leb128_len};
 use crate::serialize;
 use std::borrow::Cow;
 use std::fs::File;
@@ -561,19 +561,11 @@ impl<'a> Decoder<'a> {
     }
 }
 
-macro_rules! read_uleb128 {
+macro_rules! read_leb128 {
     ($dec:expr, $fun:ident) => {{
         let (value, bytes_read) = leb128::$fun(&$dec.data[$dec.position..]);
         $dec.position += bytes_read;
         Ok(value)
-    }};
-}
-
-macro_rules! read_sleb128 {
-    ($dec:expr, $t:ty) => {{
-        let (value, bytes_read) = read_signed_leb128($dec.data, $dec.position);
-        $dec.position += bytes_read;
-        Ok(value as $t)
     }};
 }
 
@@ -587,22 +579,22 @@ impl<'a> serialize::Decoder for Decoder<'a> {
 
     #[inline]
     fn read_u128(&mut self) -> Result<u128, Self::Error> {
-        read_uleb128!(self, read_u128_leb128)
+        read_leb128!(self, read_u128_leb128)
     }
 
     #[inline]
     fn read_u64(&mut self) -> Result<u64, Self::Error> {
-        read_uleb128!(self, read_u64_leb128)
+        read_leb128!(self, read_u64_leb128)
     }
 
     #[inline]
     fn read_u32(&mut self) -> Result<u32, Self::Error> {
-        read_uleb128!(self, read_u32_leb128)
+        read_leb128!(self, read_u32_leb128)
     }
 
     #[inline]
     fn read_u16(&mut self) -> Result<u16, Self::Error> {
-        read_uleb128!(self, read_u16_leb128)
+        read_leb128!(self, read_u16_leb128)
     }
 
     #[inline]
@@ -614,27 +606,27 @@ impl<'a> serialize::Decoder for Decoder<'a> {
 
     #[inline]
     fn read_usize(&mut self) -> Result<usize, Self::Error> {
-        read_uleb128!(self, read_usize_leb128)
+        read_leb128!(self, read_usize_leb128)
     }
 
     #[inline]
     fn read_i128(&mut self) -> Result<i128, Self::Error> {
-        read_sleb128!(self, i128)
+        read_leb128!(self, read_i128_leb128)
     }
 
     #[inline]
     fn read_i64(&mut self) -> Result<i64, Self::Error> {
-        read_sleb128!(self, i64)
+        read_leb128!(self, read_i64_leb128)
     }
 
     #[inline]
     fn read_i32(&mut self) -> Result<i32, Self::Error> {
-        read_sleb128!(self, i32)
+        read_leb128!(self, read_i32_leb128)
     }
 
     #[inline]
     fn read_i16(&mut self) -> Result<i16, Self::Error> {
-        read_sleb128!(self, i16)
+        read_leb128!(self, read_i16_leb128)
     }
 
     #[inline]
@@ -646,7 +638,7 @@ impl<'a> serialize::Decoder for Decoder<'a> {
 
     #[inline]
     fn read_isize(&mut self) -> Result<isize, Self::Error> {
-        read_sleb128!(self, isize)
+        read_leb128!(self, read_isize_leb128)
     }
 
     #[inline]

@@ -119,28 +119,38 @@ impl_write_signed_leb128!(write_i64_leb128, i64);
 impl_write_signed_leb128!(write_i128_leb128, i128);
 impl_write_signed_leb128!(write_isize_leb128, isize);
 
-#[inline]
-pub fn read_signed_leb128(data: &[u8], start_position: usize) -> (i128, usize) {
-    let mut result = 0;
-    let mut shift = 0;
-    let mut position = start_position;
-    let mut byte;
+macro_rules! impl_read_signed_leb128 {
+    ($fn_name:ident, $int_ty:ty) => {
+        #[inline]
+        pub fn $fn_name(slice: &[u8]) -> ($int_ty, usize) {
+            let mut result = 0;
+            let mut shift = 0;
+            let mut position = 0;
+            let mut byte;
 
-    loop {
-        byte = data[position];
-        position += 1;
-        result |= i128::from(byte & 0x7F) << shift;
-        shift += 7;
+            loop {
+                byte = slice[position];
+                position += 1;
+                result |= <$int_ty>::from(byte & 0x7F) << shift;
+                shift += 7;
 
-        if (byte & 0x80) == 0 {
-            break;
+                if (byte & 0x80) == 0 {
+                    break;
+                }
+            }
+
+            if (shift < <$int_ty>::BITS) && ((byte & 0x40) != 0) {
+                // sign extend
+                result |= (!0 << shift);
+            }
+
+            (result, position)
         }
-    }
-
-    if (shift < 64) && ((byte & 0x40) != 0) {
-        // sign extend
-        result |= -(1 << shift);
-    }
-
-    (result, position - start_position)
+    };
 }
+
+impl_read_signed_leb128!(read_i16_leb128, i16);
+impl_read_signed_leb128!(read_i32_leb128, i32);
+impl_read_signed_leb128!(read_i64_leb128, i64);
+impl_read_signed_leb128!(read_i128_leb128, i128);
+impl_read_signed_leb128!(read_isize_leb128, isize);
