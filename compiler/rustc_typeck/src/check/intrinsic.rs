@@ -92,6 +92,7 @@ pub fn intrinsic_operation_unsafety(intrinsic: Symbol) -> hir::Unsafety {
         | sym::rustc_peek
         | sym::maxnumf64
         | sym::type_name
+        | sym::forget
         | sym::variant_count => hir::Unsafety::Normal,
         _ => hir::Unsafety::Unsafe,
     }
