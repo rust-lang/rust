@@ -49,7 +49,7 @@ impl<'a> DocFolder for Stripper<'a> {
                     let old = mem::replace(&mut self.update_retained, false);
                     let ret = StripItem(self.fold_item_recur(i)).strip();
                     self.update_retained = old;
-                    return ret;
+                    return Some(ret);
                 }
                 _ => return None,
             }

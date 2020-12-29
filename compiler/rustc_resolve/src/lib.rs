@@ -1991,14 +1991,13 @@ impl<'a> Resolver<'a> {
             {
                 // The macro is a proc macro derive
                 if let Some(def_id) = module.expansion.expn_data().macro_def_id {
-                    if let Some(ext) = self.get_macro_by_def_id(def_id) {
-                        if !ext.is_builtin
-                            && ext.macro_kind() == MacroKind::Derive
-                            && parent.expansion.outer_expn_is_descendant_of(span.ctxt())
-                        {
-                            *poisoned = Some(node_id);
-                            return module.parent;
-                        }
+                    let ext = self.get_macro_by_def_id(def_id);
+                    if !ext.is_builtin
+                        && ext.macro_kind() == MacroKind::Derive
+                        && parent.expansion.outer_expn_is_descendant_of(span.ctxt())
+                    {
+                        *poisoned = Some(node_id);
+                        return module.parent;
                     }
                 }
             }
