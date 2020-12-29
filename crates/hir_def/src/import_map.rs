@@ -238,11 +238,24 @@ pub enum ImportKind {
     BuiltinType,
 }
 
+/// A way to match import map contents against the search query.
+#[derive(Debug)]
+pub enum SearchMode {
+    /// Import map entry should strictly match the query string.
+    Equals,
+    /// Import map entry should contain the query string.
+    Contains,
+    /// Import map entry should contain all letters from the query string,
+    /// in the same order, but not necessary adjacent.
+    Fuzzy,
+}
+
 #[derive(Debug)]
 pub struct Query {
     query: String,
     lowercased: String,
-    anchor_end: bool,
+    name_only: bool,
+    search_mode: SearchMode,
     case_sensitive: bool,
     limit: usize,
     exclude_import_kinds: FxHashSet<ImportKind>,
@@ -251,19 +264,26 @@ pub struct Query {
 impl Query {
     pub fn new(query: &str) -> Self {
         Self {
-            lowercased: query.to_lowercase(),
             query: query.to_string(),
-            anchor_end: false,
+            lowercased: query.to_lowercase(),
+            name_only: false,
+            search_mode: SearchMode::Contains,
             case_sensitive: false,
             limit: usize::max_value(),
             exclude_import_kinds: FxHashSet::default(),
         }
     }
 
-    /// Only returns items whose paths end with the (case-insensitive) query string as their last
-    /// segment.
-    pub fn anchor_end(self) -> Self {
-        Self { anchor_end: true, ..self }
+    /// Matches entries' names only, ignoring the rest of
+    /// the qualifier.
+    /// Example: for `std::marker::PhantomData`, the name is `PhantomData`.
+    pub fn name_only(self) -> Self {
+        Self { name_only: true, ..self }
+    }
+
+    /// Specifies the way to search for the entries using the query.
+    pub fn search_mode(self, search_mode: SearchMode) -> Self {
+        Self { search_mode, ..self }
     }
 
     /// Limits the returned number of items to `limit`.
@@ -280,6 +300,40 @@ impl Query {
     pub fn exclude_import_kind(mut self, import_kind: ImportKind) -> Self {
         self.exclude_import_kinds.insert(import_kind);
         self
+    }
+}
+
+fn contains_query(query: &Query, input_path: &ImportPath, enforce_lowercase: bool) -> bool {
+    let mut input = if query.name_only {
+        input_path.segments.last().unwrap().to_string()
+    } else {
+        input_path.to_string()
+    };
+    if enforce_lowercase || !query.case_sensitive {
+        input.make_ascii_lowercase();
+    }
+
+    let query_string =
+        if !enforce_lowercase && query.case_sensitive { &query.query } else { &query.lowercased };
+
+    match query.search_mode {
+        SearchMode::Equals => &input == query_string,
+        SearchMode::Contains => input.contains(query_string),
+        SearchMode::Fuzzy => {
+            let mut unchecked_query_chars = query_string.chars();
+            let mut mismatching_query_char = unchecked_query_chars.next();
+
+            for input_char in input.chars() {
+                match mismatching_query_char {
+                    None => return true,
+                    Some(matching_query_char) if matching_query_char == input_char => {
+                        mismatching_query_char = unchecked_query_chars.next();
+                    }
+                    _ => (),
+                }
+            }
+            mismatching_query_char.is_none()
+        }
     }
 }
 
@@ -312,39 +366,29 @@ pub fn search_dependencies<'a>(
             let importables = &import_map.importables[indexed_value.value as usize..];
 
             // Path shared by the importable items in this group.
-            let path = &import_map.map[&importables[0]].path;
-
-            if query.anchor_end {
-                // Last segment must match query.
-                let last = path.segments.last().unwrap().to_string();
-                if last.to_lowercase() != query.lowercased {
-                    continue;
-                }
+            let common_importables_path = &import_map.map[&importables[0]].path;
+            if !contains_query(&query, common_importables_path, true) {
+                continue;
             }
 
+            let common_importables_path_fst = fst_path(common_importables_path);
             // Add the items from this `ModPath` group. Those are all subsequent items in
             // `importables` whose paths match `path`.
             let iter = importables
                 .iter()
                 .copied()
                 .take_while(|item| {
-                    let item_path = &import_map.map[item].path;
-                    fst_path(item_path) == fst_path(path)
+                    common_importables_path_fst == fst_path(&import_map.map[item].path)
                 })
                 .filter(|&item| match item_import_kind(item) {
                     Some(import_kind) => !query.exclude_import_kinds.contains(&import_kind),
                     None => true,
+                })
+                .filter(|item| {
+                    !query.case_sensitive // we've already checked the common importables path case-insensitively
+                        || contains_query(&query, &import_map.map[item].path, false)
                 });
-
-            if query.case_sensitive {
-                // FIXME: This does not do a subsequence match.
-                res.extend(iter.filter(|item| {
-                    let item_path = &import_map.map[item].path;
-                    item_path.to_string().contains(&query.query)
-                }));
-            } else {
-                res.extend(iter);
-            }
+            res.extend(iter);
 
             if res.len() >= query.limit {
                 res.truncate(query.limit);
@@ -388,7 +432,7 @@ mod tests {
     use base_db::{fixture::WithFixture, SourceDatabase, Upcast};
     use expect_test::{expect, Expect};
 
-    use crate::{test_db::TestDB, AssocContainerId, Lookup};
+    use crate::{data::FunctionData, test_db::TestDB, AssocContainerId, Lookup};
 
     use super::*;
 
@@ -407,14 +451,31 @@ mod tests {
             .into_iter()
             .filter_map(|item| {
                 let mark = match item {
+                    ItemInNs::Types(ModuleDefId::FunctionId(_))
+                    | ItemInNs::Values(ModuleDefId::FunctionId(_)) => "f",
                     ItemInNs::Types(_) => "t",
                     ItemInNs::Values(_) => "v",
                     ItemInNs::Macros(_) => "m",
                 };
-                let item = assoc_to_trait(&db, item);
                 item.krate(db.upcast()).map(|krate| {
                     let map = db.import_map(krate);
-                    let path = map.path_of(item).unwrap();
+
+                    let path = match assoc_to_trait(&db, item) {
+                        Some(trait_) => {
+                            let mut full_path = map.path_of(trait_).unwrap().to_string();
+                            if let ItemInNs::Types(ModuleDefId::FunctionId(function_id))
+                            | ItemInNs::Values(ModuleDefId::FunctionId(function_id)) = item
+                            {
+                                full_path += &format!(
+                                    "::{}",
+                                    FunctionData::fn_data_query(&db, function_id).name
+                                );
+                            }
+                            full_path
+                        }
+                        None => map.path_of(item).unwrap().to_string(),
+                    };
+
                     format!(
                         "{}::{} ({})\n",
                         crate_graph[krate].display_name.as_ref().unwrap(),
@@ -427,15 +488,15 @@ mod tests {
         expect.assert_eq(&actual)
     }
 
-    fn assoc_to_trait(db: &dyn DefDatabase, item: ItemInNs) -> ItemInNs {
+    fn assoc_to_trait(db: &dyn DefDatabase, item: ItemInNs) -> Option<ItemInNs> {
         let assoc: AssocItemId = match item {
             ItemInNs::Types(it) | ItemInNs::Values(it) => match it {
                 ModuleDefId::TypeAliasId(it) => it.into(),
                 ModuleDefId::FunctionId(it) => it.into(),
                 ModuleDefId::ConstId(it) => it.into(),
-                _ => return item,
+                _ => return None,
             },
-            _ => return item,
+            _ => return None,
         };
 
         let container = match assoc {
@@ -445,8 +506,8 @@ mod tests {
         };
 
         match container {
-            AssocContainerId::TraitId(it) => ItemInNs::Types(it.into()),
-            _ => item,
+            AssocContainerId::TraitId(it) => Some(ItemInNs::Types(it.into())),
+            _ => None,
         }
     }
 
@@ -685,7 +746,76 @@ mod tests {
     }
 
     #[test]
-    fn search() {
+    fn search_mode() {
+        let ra_fixture = r#"
+            //- /main.rs crate:main deps:dep
+            //- /dep.rs crate:dep deps:tdep
+            use tdep::fmt as fmt_dep;
+            pub mod fmt {
+                pub trait Display {
+                    fn fmt();
+                }
+            }
+            #[macro_export]
+            macro_rules! Fmt {
+                () => {};
+            }
+            pub struct Fmt;
+
+            pub fn format() {}
+            pub fn no() {}
+
+            //- /tdep.rs crate:tdep
+            pub mod fmt {
+                pub struct NotImportableFromMain;
+            }
+        "#;
+
+        check_search(
+            ra_fixture,
+            "main",
+            Query::new("fmt").search_mode(SearchMode::Fuzzy),
+            expect![[r#"
+                dep::fmt (t)
+                dep::Fmt (t)
+                dep::Fmt (v)
+                dep::Fmt (m)
+                dep::fmt::Display (t)
+                dep::format (f)
+                dep::fmt::Display::fmt (f)
+            "#]],
+        );
+
+        check_search(
+            ra_fixture,
+            "main",
+            Query::new("fmt").search_mode(SearchMode::Equals),
+            expect![[r#"
+                dep::fmt (t)
+                dep::Fmt (t)
+                dep::Fmt (v)
+                dep::Fmt (m)
+                dep::fmt::Display::fmt (f)
+            "#]],
+        );
+
+        check_search(
+            ra_fixture,
+            "main",
+            Query::new("fmt").search_mode(SearchMode::Contains),
+            expect![[r#"
+                dep::fmt (t)
+                dep::Fmt (t)
+                dep::Fmt (v)
+                dep::Fmt (m)
+                dep::fmt::Display (t)
+                dep::fmt::Display::fmt (f)
+            "#]],
+        );
+    }
+
+    #[test]
+    fn name_only() {
         let ra_fixture = r#"
             //- /main.rs crate:main deps:dep
             //- /dep.rs crate:dep deps:tdep
@@ -720,21 +850,20 @@ mod tests {
                 dep::Fmt (v)
                 dep::Fmt (m)
                 dep::fmt::Display (t)
-                dep::format (v)
-                dep::fmt::Display (t)
+                dep::fmt::Display::fmt (f)
             "#]],
         );
 
         check_search(
             ra_fixture,
             "main",
-            Query::new("fmt").anchor_end(),
+            Query::new("fmt").name_only(),
             expect![[r#"
                 dep::fmt (t)
                 dep::Fmt (t)
                 dep::Fmt (v)
                 dep::Fmt (m)
-                dep::fmt::Display (t)
+                dep::fmt::Display::fmt (f)
             "#]],
         );
     }
