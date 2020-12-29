@@ -2164,7 +2164,10 @@ impl<'tcx> TyS<'tcx> {
             | ty::Tuple(..) => tcx.types.unit,
 
             ty::Str | ty::Slice(_) => tcx.types.usize,
-            ty::Dynamic(..) => tcx.type_of(tcx.lang_items().dyn_metadata().unwrap()),
+            ty::Dynamic(..) => {
+                let dyn_metadata = tcx.lang_items().dyn_metadata().unwrap();
+                tcx.type_of(dyn_metadata).subst(tcx, &[tail.into()])
+            },
 
             ty::Projection(_)
             | ty::Param(_)

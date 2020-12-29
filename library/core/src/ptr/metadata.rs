@@ -1,7 +1,7 @@
 #![unstable(feature = "ptr_metadata", issue = /* FIXME */ "none")]
 
 use crate::fmt;
-use crate::hash::Hash;
+use crate::hash::{Hash, Hasher};
 use crate::ptr::NonNull;
 
 /// FIXME docs
@@ -61,17 +61,60 @@ impl<T: ?Sized> Clone for PtrComponents<T> {
 
 /// The metadata for a `dyn SomeTrait` trait object type.
 #[lang = "dyn_metadata"]
-#[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
-pub struct DynMetadata {
+pub struct DynMetadata<Dyn: ?Sized> {
     #[allow(unused)]
     vtable_ptr: NonNull<()>,
+    phantom: crate::marker::PhantomData<Dyn>,
 }
 
-unsafe impl Send for DynMetadata {}
-unsafe impl Sync for DynMetadata {}
+unsafe impl<Dyn: ?Sized> Send for DynMetadata<Dyn> {}
+unsafe impl<Dyn: ?Sized> Sync for DynMetadata<Dyn> {}
 
-impl fmt::Debug for DynMetadata {
+impl<Dyn: ?Sized> fmt::Debug for DynMetadata<Dyn> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str("DynMetadata { … }")
+    }
+}
+
+// Manual impls needed to avoid `Dyn: $Trait` bounds.
+
+impl<Dyn: ?Sized> Unpin for DynMetadata<Dyn> {}
+
+impl<Dyn: ?Sized> Copy for DynMetadata<Dyn> {}
+
+impl<Dyn: ?Sized> Clone for DynMetadata<Dyn> {
+    #[inline]
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<Dyn: ?Sized> Eq for DynMetadata<Dyn> {}
+
+impl<Dyn: ?Sized> PartialEq for DynMetadata<Dyn> {
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        self.vtable_ptr == other.vtable_ptr
+    }
+}
+
+impl<Dyn: ?Sized> Ord for DynMetadata<Dyn> {
+    #[inline]
+    fn cmp(&self, other: &Self) -> crate::cmp::Ordering {
+        self.vtable_ptr.cmp(&other.vtable_ptr)
+    }
+}
+
+impl<Dyn: ?Sized> PartialOrd for DynMetadata<Dyn> {
+    #[inline]
+    fn partial_cmp(&self, other: &Self) -> Option<crate::cmp::Ordering> {
+        Some(self.vtable_ptr.cmp(&other.vtable_ptr))
+    }
+}
+
+impl<Dyn: ?Sized> Hash for DynMetadata<Dyn> {
+    #[inline]
+    fn hash<H: Hasher>(&self, hasher: &mut H) {
+        self.vtable_ptr.hash(hasher)
     }
 }

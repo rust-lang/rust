@@ -1,6 +1,6 @@
 use core::cell::RefCell;
 use core::ptr::*;
-use std::fmt::Display;
+use std::fmt::{Debug, Display};
 
 #[test]
 fn test_const_from_raw_parts() {
@@ -452,20 +452,25 @@ fn ptr_metadata() {
         assert_eq!(metadata(dst_struct), 3_usize);
     }
 
-    let vtable_1: DynMetadata = metadata(&4_u32 as &dyn Display);
-    let vtable_2: DynMetadata = metadata(&(true, 7_u32) as &(bool, dyn Display));
-    let vtable_3: DynMetadata = metadata(&Pair(true, 7_u32) as &Pair<bool, dyn Display>);
-    let vtable_4: DynMetadata = metadata(&4_u16 as &dyn Display);
+    let vtable_1: DynMetadata<dyn Debug> = metadata(&4_u16 as &dyn Debug);
+    let vtable_2: DynMetadata<dyn Display> = metadata(&4_u16 as &dyn Display);
+    let vtable_3: DynMetadata<dyn Display> = metadata(&4_u32 as &dyn Display);
+    let vtable_4: DynMetadata<dyn Display> = metadata(&(true, 7_u32) as &(bool, dyn Display));
+    let vtable_5: DynMetadata<dyn Display> =
+        metadata(&Pair(true, 7_u32) as &Pair<bool, dyn Display>);
     unsafe {
         let address_1: usize = std::mem::transmute(vtable_1);
         let address_2: usize = std::mem::transmute(vtable_2);
         let address_3: usize = std::mem::transmute(vtable_3);
         let address_4: usize = std::mem::transmute(vtable_4);
-        // Same erased type and same trait: same vtable pointer
-        assert_eq!(address_1, address_2);
-        assert_eq!(address_1, address_3);
-        // Different erased type: different vtable pointer
-        assert_ne!(address_1, address_4);
+        let address_5: usize = std::mem::transmute(vtable_5);
+        // Different trait => different vtable pointer
+        assert_ne!(address_1, address_2);
+        // Different erased type => different vtable pointer
+        assert_ne!(address_2, address_3);
+        // Same erased type and same trait => same vtable pointer
+        assert_eq!(address_3, address_4);
+        assert_eq!(address_3, address_5);
     }
 }
 
@@ -486,11 +491,11 @@ fn ptr_metadata_bounds() {
 
     // For this reason, let’s check here that bounds are satisfied:
 
-    static_assert_expected_bounds_for_metadata::<()>();
-    static_assert_expected_bounds_for_metadata::<usize>();
-    static_assert_expected_bounds_for_metadata::<DynMetadata>();
-    fn static_assert_associated_type<T: ?Sized>() {
-        static_assert_expected_bounds_for_metadata::<<T as Pointee>::Metadata>()
+    let _ = static_assert_expected_bounds_for_metadata::<()>;
+    let _ = static_assert_expected_bounds_for_metadata::<usize>;
+    let _ = static_assert_expected_bounds_for_metadata::<DynMetadata<dyn Display>>;
+    fn _static_assert_associated_type<T: ?Sized>() {
+        let _ = static_assert_expected_bounds_for_metadata::<<T as Pointee>::Metadata>;
     }
 
     fn static_assert_expected_bounds_for_metadata<Meta>()
