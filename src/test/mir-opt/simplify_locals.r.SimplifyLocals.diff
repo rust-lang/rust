@@ -23,7 +23,7 @@
 -         StorageLive(_3);                 // scope 2 at $DIR/simplify-locals.rs:36:13: 36:19
 -         _3 = &mut _1;                    // scope 2 at $DIR/simplify-locals.rs:36:13: 36:19
 -         StorageDead(_3);                 // scope 2 at $DIR/simplify-locals.rs:36:19: 36:20
-          _0 = const ();                   // scope 0 at $DIR/simplify-locals.rs:32:8: 37:2
+-         _0 = const ();                   // scope 0 at $DIR/simplify-locals.rs:32:8: 37:2
           StorageDead(_1);                 // scope 0 at $DIR/simplify-locals.rs:37:1: 37:2
           return;                          // scope 0 at $DIR/simplify-locals.rs:37:2: 37:2
       }

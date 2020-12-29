@@ -138,7 +138,6 @@
           StorageDead(_9);                 // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
           StorageDead(_8);                 // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
           StorageDead(_7);                 // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-          _0 = const ();                   // scope 0 at $DIR/issue-73223.rs:1:11: 9:2
           StorageDead(_1);                 // scope 0 at $DIR/issue-73223.rs:9:1: 9:2
           return;                          // scope 0 at $DIR/issue-73223.rs:9:2: 9:2
       }

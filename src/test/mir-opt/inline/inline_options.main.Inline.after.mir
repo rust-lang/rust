@@ -48,7 +48,6 @@ fn main() -> () {
 
     bb4: {
         StorageDead(_5);                 // scope 1 at $DIR/inline-options.rs:10:5: 10:21
-        _2 = const ();                   // scope 1 at $DIR/inline-options.rs:10:5: 10:21
         StorageDead(_2);                 // scope 0 at $DIR/inline-options.rs:10:21: 10:22
         _0 = const ();                   // scope 0 at $DIR/inline-options.rs:8:11: 11:2
         return;                          // scope 0 at $DIR/inline-options.rs:11:2: 11:2

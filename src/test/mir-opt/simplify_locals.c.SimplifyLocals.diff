@@ -20,7 +20,7 @@
 -         _3 = &_1;                        // scope 1 at $DIR/simplify-locals.rs:16:20: 16:26
 -         _2 = move _3 as &[u8] (Pointer(Unsize)); // scope 1 at $DIR/simplify-locals.rs:16:20: 16:26
 -         StorageDead(_2);                 // scope 1 at $DIR/simplify-locals.rs:16:26: 16:27
-          _0 = const ();                   // scope 0 at $DIR/simplify-locals.rs:13:8: 17:2
+-         _0 = const ();                   // scope 0 at $DIR/simplify-locals.rs:13:8: 17:2
           StorageDead(_1);                 // scope 0 at $DIR/simplify-locals.rs:17:1: 17:2
           return;                          // scope 0 at $DIR/simplify-locals.rs:17:2: 17:2
       }

@@ -13,7 +13,6 @@ fn process_void(_1: *const Void) -> () {
     bb0: {
         StorageLive(_2);                 // scope 0 at $DIR/uninhabited-enum.rs:14:8: 14:14
         _2 = &(*_1);                     // scope 2 at $DIR/uninhabited-enum.rs:14:26: 14:33
-        _0 = const ();                   // scope 0 at $DIR/uninhabited-enum.rs:13:41: 17:2
         StorageDead(_2);                 // scope 0 at $DIR/uninhabited-enum.rs:17:1: 17:2
         return;                          // scope 0 at $DIR/uninhabited-enum.rs:17:2: 17:2
     }

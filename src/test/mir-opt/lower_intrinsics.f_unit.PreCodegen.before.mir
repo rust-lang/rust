@@ -22,7 +22,6 @@ fn f_unit() -> () {
     bb1: {
         StorageDead(_2);                 // scope 1 at $DIR/lower_intrinsics.rs:29:5: 29:19
         StorageDead(_1);                 // scope 0 at $DIR/lower_intrinsics.rs:29:18: 29:19
-        _0 = const ();                   // scope 0 at $DIR/lower_intrinsics.rs:28:17: 30:2
         return;                          // scope 0 at $DIR/lower_intrinsics.rs:30:2: 30:2
     }
 }

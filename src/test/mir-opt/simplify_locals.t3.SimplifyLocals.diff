@@ -19,7 +19,7 @@
 -         StorageDead(_3);                 // scope 0 at $DIR/simplify-locals.rs:56:23: 56:24
 -         StorageDead(_2);                 // scope 0 at $DIR/simplify-locals.rs:56:23: 56:24
 -         StorageDead(_1);                 // scope 0 at $DIR/simplify-locals.rs:56:23: 56:24
-          _0 = const ();                   // scope 0 at $DIR/simplify-locals.rs:54:9: 57:2
+-         _0 = const ();                   // scope 0 at $DIR/simplify-locals.rs:54:9: 57:2
           return;                          // scope 0 at $DIR/simplify-locals.rs:57:2: 57:2
       }
   }
