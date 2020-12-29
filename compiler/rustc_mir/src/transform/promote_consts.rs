@@ -687,7 +687,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                 self.validate_place(place_simplified)?;
 
                 // Check that the reference is fine (using the original place!).
-                // (Needs to come after `validate_local` to avoid ICEs.)
+                // (Needs to come after `validate_place` to avoid ICEs.)
                 self.validate_ref(*kind, place)?;
             }
 
