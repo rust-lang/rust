@@ -28,8 +28,8 @@ use std::collections::HashMap;
 use syn::parse::{Parse, ParseStream, Result};
 use syn::{braced, punctuated::Punctuated, Ident, LitStr, Token};
 
-#[cfg(test)]
-mod tests;
+// #[cfg(test)]
+// mod tests;
 
 mod kw {
     syn::custom_keyword!(Keywords);
