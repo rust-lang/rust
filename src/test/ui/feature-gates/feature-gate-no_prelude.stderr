@@ -1,0 +1,12 @@
+error[E0658]: experimental feature: replacement for #![no_implicit_prelude] that is not inherited by descendants
+  --> $DIR/feature-gate-no_prelude.rs:1:1
+   |
+LL | #![no_prelude]
+   | ^^^^^^^^^^^^^^
+   |
+   = note: see issue #20561 <https://github.com/rust-lang/rust/issues/20561> for more information
+   = help: add `#![feature(no_prelude)]` to the crate attributes to enable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0658`.
