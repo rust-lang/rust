@@ -397,10 +397,8 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         match i.kind {
             ast::ForeignItemKind::Fn(..) | ast::ForeignItemKind::Static(..) => {
                 let link_name = self.sess.first_attr_value_str_by_name(&i.attrs, sym::link_name);
-                let links_to_llvm = match link_name {
-                    Some(val) => val.as_str().starts_with("llvm."),
-                    _ => false,
-                };
+                let links_to_llvm =
+                    link_name.map_or(false, |val| val.as_str().starts_with("llvm."));
                 if links_to_llvm {
                     gate_feature_post!(
                         &self,
