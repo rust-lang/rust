@@ -881,16 +881,18 @@ impl<'tcx> LateLintPass<'tcx> for InterningDefinedSymbol {
             return;
         }
 
-        if let Some(Res::Def(_, def_id)) = path_to_res(cx, &paths::SYM_MODULE) {
-            for item in cx.tcx.item_children(def_id).iter() {
-                if_chain! {
-                    if let Res::Def(DefKind::Const, item_def_id) = item.res;
-                    let ty = cx.tcx.type_of(item_def_id);
-                    if match_type(cx, ty, &paths::SYMBOL);
-                    if let Ok(ConstValue::Scalar(value)) = cx.tcx.const_eval_poly(item_def_id);
-                    if let Ok(value) = value.to_u32();
-                    then {
-                        self.symbol_map.insert(value, item_def_id);
+        for &module in &[&paths::KW_MODULE, &paths::SYM_MODULE] {
+            if let Some(Res::Def(_, def_id)) = path_to_res(cx, module) {
+                for item in cx.tcx.item_children(def_id).iter() {
+                    if_chain! {
+                        if let Res::Def(DefKind::Const, item_def_id) = item.res;
+                        let ty = cx.tcx.type_of(item_def_id);
+                        if match_type(cx, ty, &paths::SYMBOL);
+                        if let Ok(ConstValue::Scalar(value)) = cx.tcx.const_eval_poly(item_def_id);
+                        if let Ok(value) = value.to_u32();
+                        then {
+                            self.symbol_map.insert(value, item_def_id);
+                        }
                     }
                 }
             }

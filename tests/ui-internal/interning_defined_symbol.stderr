@@ -23,5 +23,11 @@ error: interning a defined symbol
 LL |     let _ = Symbol::intern("proc-macro");
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `rustc_span::sym::proc_dash_macro`
 
-error: aborting due to 3 previous errors
+error: interning a defined symbol
+  --> $DIR/interning_defined_symbol.rs:26:13
+   |
+LL |     let _ = Symbol::intern("self");
+   |             ^^^^^^^^^^^^^^^^^^^^^^ help: try: `rustc_span::symbol::kw::SelfLower`
+
+error: aborting due to 4 previous errors
 
