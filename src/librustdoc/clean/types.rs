@@ -88,6 +88,10 @@ crate struct Item {
     crate def_id: DefId,
 }
 
+// `Item` is used a lot. Make sure it doesn't unintentionally get bigger.
+#[cfg(target_arch = "x86_64")]
+rustc_data_structures::static_assert_size!(Item, 136);
+
 impl fmt::Debug for Item {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         let def_id: &dyn fmt::Debug = if self.is_fake() { &"**FAKE**" } else { &self.def_id };
