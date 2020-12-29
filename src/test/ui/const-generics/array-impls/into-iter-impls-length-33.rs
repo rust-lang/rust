@@ -1,6 +1,5 @@
 // check-pass
 
-#![feature(array_value_iter)]
 #![feature(trusted_len)]
 
 use std::{
