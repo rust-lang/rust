@@ -207,9 +207,8 @@ where
                     // All traits in the list are considered the "primary" part of the type
                     // and are visited by shallow visitors.
                     self.visit_predicates(ty::GenericPredicates {
-                        parent: None,
                         predicates: tcx.explicit_item_bounds(def_id),
-                        constness: hir::Constness::NotConst,
+                        ..Default::default()
                     })?;
                 }
             }
@@ -1713,9 +1712,8 @@ impl SearchInterfaceForPrivateItemsVisitor<'tcx> {
 
     fn bounds(&mut self) -> &mut Self {
         self.visit_predicates(ty::GenericPredicates {
-            parent: None,
             predicates: self.tcx.explicit_item_bounds(self.item_def_id),
-            constness: hir::Constness::NotConst,
+            ..Default::default()
         });
         self
     }

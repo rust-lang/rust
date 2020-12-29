@@ -1032,11 +1032,7 @@ fn super_predicates_of(tcx: TyCtxt<'_>, trait_def_id: DefId) -> ty::GenericPredi
         }
     }
 
-    ty::GenericPredicates {
-        parent: None,
-        predicates: superbounds,
-        constness: hir::Constness::NotConst,
-    }
+    ty::GenericPredicates { predicates: superbounds, ..Default::default() }
 }
 
 fn trait_def(tcx: TyCtxt<'_>, def_id: DefId) -> ty::TraitDef {
@@ -1809,11 +1805,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
                         // is from the return type of the containing function,
                         // which will ensure that the function's predicates
                         // hold.
-                        return ty::GenericPredicates {
-                            parent: None,
-                            predicates: &[],
-                            constness: hir::Constness::NotConst,
-                        };
+                        return Default::default();
                     } else {
                         // type-alias impl trait
                         generics

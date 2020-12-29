@@ -1219,7 +1219,8 @@ impl Clean<Item> for ty::AssocItem {
 
                 if let ty::TraitContainer(_) = self.container {
                     let bounds = cx.tcx.explicit_item_bounds(self.def_id);
-                    let predicates = ty::GenericPredicates { parent: None, predicates: bounds };
+                    let predicates =
+                        ty::GenericPredicates { predicates: bounds, ..Default::default() };
                     let generics = (cx.tcx.generics_of(self.def_id), predicates).clean(cx);
                     let mut bounds = generics
                         .where_predicates
