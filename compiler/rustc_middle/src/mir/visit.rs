@@ -439,17 +439,11 @@ macro_rules! make_mir_visitor {
                     StatementKind::CopyNonOverlapping(box crate::mir::CopyNonOverlapping{
                       ref $($mutability)? src,
                       ref $($mutability)? dst,
-                      ref $($mutability)? size,
+                      ref $($mutability)? count,
                     }) => {
-                      self.visit_operand(
-                            src,
-                            location
-                      );
-                      self.visit_operand(
-                            dst,
-                            location
-                      );
-                      self.visit_operand(size, location)
+                      self.visit_operand(src, location);
+                      self.visit_operand(dst, location);
+                      self.visit_operand(count, location)
                     }
                     StatementKind::Nop => {}
                 }

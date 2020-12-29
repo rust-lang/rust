@@ -95,11 +95,11 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
             StatementKind::CopyNonOverlapping(box rustc_middle::mir::CopyNonOverlapping {
                 ref src,
                 ref dst,
-                ref size,
+                ref count,
             }) => {
                 self.consume_operand(location, src);
                 self.consume_operand(location, dst);
-                self.consume_operand(location, size);
+                self.consume_operand(location, count);
                 match dst {
                     Operand::Move(ref place) | Operand::Copy(ref place) => {
                         self.mutate_place(location, *place, Deep, JustWrite);
