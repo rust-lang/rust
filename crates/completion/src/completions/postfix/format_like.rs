@@ -108,7 +108,8 @@ impl FormatStrParser {
         // "{MyStruct { val_a: 0, val_b: 1 }}".
         let mut inexpr_open_count = 0;
 
-        for chr in self.input.chars() {
+        let mut chars = self.input.chars().peekable();
+        while let Some(chr) = chars.next() {
             match (self.state, chr) {
                 (State::NotExpr, '{') => {
                     self.output.push(chr);
@@ -156,6 +157,11 @@ impl FormatStrParser {
                         current_expr.push(chr);
                         inexpr_open_count -= 1;
                     }
+                }
+                (State::Expr, ':') if chars.peek().copied() == Some(':') => {
+                    // path seperator
+                    current_expr.push_str("::");
+                    chars.next();
                 }
                 (State::Expr, ':') => {
                     if inexpr_open_count == 0 {
@@ -249,6 +255,9 @@ mod tests {
                 expect![["{:?}; SomeStruct { val_a: 0, val_b: 1 }"]],
             ),
             ("{     2 + 2        }", expect![["{}; 2 + 2"]]),
+            ("{strsim::jaro_winkle(a)}", expect![["{}; strsim::jaro_winkle(a)"]]),
+            ("{foo::bar::baz()}", expect![["{}; foo::bar::baz()"]]),
+            ("{foo::bar():?}", expect![["{:?}; foo::bar()"]]),
         ];
 
         for (input, output) in test_vector {
