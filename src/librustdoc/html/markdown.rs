@@ -1027,7 +1027,7 @@ fn markdown_summary_with_limit(md: &str, length_limit: usize) -> (String, bool) 
     fn push(s: &mut String, text_length: &mut usize, text: &str) {
         s.push_str(text);
         *text_length += text.len();
-    };
+    }
 
     'outer: for event in Parser::new_ext(md, summary_opts()) {
         match &event {
