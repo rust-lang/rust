@@ -10,7 +10,7 @@ use rustc_middle::hir::map::Map;
 use rustc_middle::infer::unify_key::ConstVariableOriginKind;
 use rustc_middle::ty::print::Print;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind};
-use rustc_middle::ty::{self, DefIdTree, InferConst, Ty};
+use rustc_middle::ty::{self, DefIdTree, InferConst, Ty, TyCtxt};
 use rustc_span::source_map::DesugaringKind;
 use rustc_span::symbol::kw;
 use rustc_span::Span;
@@ -286,6 +286,7 @@ pub struct InferenceDiagnosticsData {
     pub parent: Option<InferenceDiagnosticsParentData>,
 }
 
+/// Data on the parent definition where a generic argument was declared.
 pub struct InferenceDiagnosticsParentData {
     pub prefix: &'static str,
     pub name: String,
@@ -320,6 +321,20 @@ impl InferenceDiagnosticsData {
     }
 }
 
+impl InferenceDiagnosticsParentData {
+    fn for_def_id(tcx: TyCtxt<'_>, def_id: DefId) -> Option<InferenceDiagnosticsParentData> {
+        let parent_def_id = tcx.parent(def_id)?;
+
+        let parent_name =
+            tcx.def_key(parent_def_id).disambiguated_data.data.get_opt_name()?.to_string();
+
+        Some(InferenceDiagnosticsParentData {
+            prefix: tcx.def_kind(parent_def_id).descr(parent_def_id),
+            name: parent_name,
+        })
+    }
+}
+
 impl UnderspecifiedArgKind {
     fn prefix_string(&self) -> Cow<'static, str> {
         match self {
@@ -347,23 +362,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     if let TypeVariableOriginKind::TypeParameterDefinition(name, def_id) =
                         var_origin.kind
                     {
-                        let parent_data = def_id
-                            .and_then(|def_id| self.tcx.parent(def_id))
-                            .and_then(|parent_def_id| {
-                                let parent_name = self
-                                    .tcx
-                                    .def_key(parent_def_id)
-                                    .disambiguated_data
-                                    .data
-                                    .get_opt_name()?
-                                    .to_string();
-
-                                Some(InferenceDiagnosticsParentData {
-                                    prefix: self.tcx.def_kind(parent_def_id).descr(parent_def_id),
-                                    name: parent_name,
-                                })
-                            });
-
                         if name != kw::SelfUpper {
                             return InferenceDiagnosticsData {
                                 name: name.to_string(),
@@ -371,7 +369,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                 kind: UnderspecifiedArgKind::Type {
                                     prefix: "type parameter".into(),
                                 },
-                                parent: parent_data,
+                                parent: def_id.and_then(|def_id| {
+                                    InferenceDiagnosticsParentData::for_def_id(self.tcx, def_id)
+                                }),
                             };
                         }
                     }
@@ -397,26 +397,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     if let ConstVariableOriginKind::ConstParameterDefinition(name, def_id) =
                         origin.kind
                     {
-                        let parent_data = self.tcx.parent(def_id).and_then(|parent_def_id| {
-                            let parent_name = self
-                                .tcx
-                                .def_key(parent_def_id)
-                                .disambiguated_data
-                                .data
-                                .get_opt_name()?
-                                .to_string();
-
-                            Some(InferenceDiagnosticsParentData {
-                                prefix: self.tcx.def_kind(parent_def_id).descr(parent_def_id),
-                                name: parent_name,
-                            })
-                        });
-
                         return InferenceDiagnosticsData {
                             name: name.to_string(),
                             span: Some(origin.span),
                             kind: UnderspecifiedArgKind::Const { is_parameter: true },
-                            parent: parent_data,
+                            parent: InferenceDiagnosticsParentData::for_def_id(self.tcx, def_id),
                         };
                     }
 
