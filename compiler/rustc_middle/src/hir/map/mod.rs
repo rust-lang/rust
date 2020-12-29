@@ -31,7 +31,7 @@ pub struct Entry<'hir> {
 impl<'hir> Entry<'hir> {
     fn parent_node(self) -> Option<HirId> {
         match self.node {
-            Node::Crate(_) | Node::MacroDef(_) => None,
+            Node::Crate(_) => None,
             _ => Some(self.parent),
         }
     }
