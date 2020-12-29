@@ -5,7 +5,7 @@ contribute, and we appreciate all of them.
 
 * [Feature Requests](#feature-requests)
 * [Bug Reports](#bug-reports)
-* [The Build System](#the-build-system)
+* [The Build System](./building/how-to-build-and-run.md)
 * [Pull Requests](#pull-requests)
 * [Writing Documentation](#writing-documentation)
 * [Issue Triage](#issue-triage)
