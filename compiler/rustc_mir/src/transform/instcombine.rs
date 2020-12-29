@@ -29,8 +29,10 @@ impl<'tcx> MirPass<'tcx> for InstCombine {
             optimization_finder.optimizations
         };
 
-        // Then carry out those optimizations.
-        MutVisitor::visit_body(&mut InstCombineVisitor { optimizations, tcx }, body);
+        if !optimizations.is_empty() {
+            // Then carry out those optimizations.
+            MutVisitor::visit_body(&mut InstCombineVisitor { optimizations, tcx }, body);
+        }
     }
 }
 
@@ -95,7 +97,7 @@ impl<'tcx> MutVisitor<'tcx> for InstCombineVisitor<'tcx> {
             }
         }
 
-        self.super_rvalue(rvalue, location)
+        // We do not call super_rvalue as we are not interested in any other parts of the tree
     }
 }
 
@@ -299,7 +301,7 @@ impl Visitor<'tcx> for OptimizationFinder<'b, 'tcx> {
 
         self.find_unneeded_equality_comparison(rvalue, location);
 
-        self.super_rvalue(rvalue, location)
+        // We do not call super_rvalue as we are not interested in any other parts of the tree
     }
 }
 
@@ -309,4 +311,22 @@ struct OptimizationList<'tcx> {
     arrays_lengths: FxHashMap<Location, Constant<'tcx>>,
     unneeded_equality_comparison: FxHashMap<Location, Operand<'tcx>>,
     unneeded_deref: FxHashMap<Location, Place<'tcx>>,
+}
+
+impl<'tcx> OptimizationList<'tcx> {
+    fn is_empty(&self) -> bool {
+        match self {
+            OptimizationList {
+                and_stars,
+                arrays_lengths,
+                unneeded_equality_comparison,
+                unneeded_deref,
+            } => {
+                and_stars.is_empty()
+                    && arrays_lengths.is_empty()
+                    && unneeded_equality_comparison.is_empty()
+                    && unneeded_deref.is_empty()
+            }
+        }
+    }
 }
