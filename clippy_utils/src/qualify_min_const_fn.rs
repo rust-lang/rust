@@ -219,11 +219,11 @@ fn check_statement(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, def_id: DefId, statemen
         StatementKind::LlvmInlineAsm { .. } => Err((span, "cannot use inline assembly in const fn".into())),
 
         StatementKind::CopyNonOverlapping(box rustc_middle::mir::CopyNonOverlapping{
-          dst, src, size,
+          dst, src, count,
         }) => {
           check_operand(tcx, dst, span, body)?;
           check_operand(tcx, src, span, body)?;
-          check_operand(tcx, size, span, body)
+          check_operand(tcx, count, span, body)
         },
         // These are all NOPs
         StatementKind::StorageLive(_)
