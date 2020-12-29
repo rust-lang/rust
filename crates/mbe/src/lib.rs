@@ -14,10 +14,10 @@ mod tests;
 
 use std::fmt;
 
-pub use tt::{Delimiter, Punct};
+pub use tt::{Delimiter, DelimiterKind, Punct};
 
 use crate::{
-    parser::{parse_pattern, Op},
+    parser::{parse_pattern, parse_template, Op},
     tt_iter::TtIter,
 };
 
@@ -78,8 +78,24 @@ pub struct MacroRules {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct Rule {
-    lhs: tt::Subtree,
-    rhs: tt::Subtree,
+    lhs: MetaTemplate,
+    rhs: MetaTemplate,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct MetaTemplate {
+    delimiter: Option<Delimiter>,
+    tokens: Vec<Result<Op, ExpandError>>,
+}
+
+impl<'a> MetaTemplate {
+    fn iter(&self) -> impl Iterator<Item = &Result<Op, ExpandError>> {
+        self.tokens.iter()
+    }
+
+    fn delimiter_kind(&self) -> Option<DelimiterKind> {
+        self.delimiter.map(|it| it.kind)
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -167,7 +183,7 @@ impl MacroRules {
             rules.push(rule);
             if let Err(()) = src.expect_char(';') {
                 if src.len() > 0 {
-                    return Err(ParseError::Expected("expected `:`".to_string()));
+                    return Err(ParseError::Expected("expected `;`".to_string()));
                 }
                 break;
             }
@@ -213,11 +229,15 @@ impl Rule {
             .map_err(|()| ParseError::Expected("expected subtree".to_string()))?
             .clone();
         rhs.delimiter = None;
+
+        let lhs = MetaTemplate { tokens: parse_pattern(&lhs), delimiter: None };
+        let rhs = MetaTemplate { tokens: parse_template(&rhs), delimiter: None };
+
         Ok(crate::Rule { lhs, rhs })
     }
 }
 
-fn to_parse_error(e: ExpandError) -> ParseError {
+fn to_parse_error(e: &ExpandError) -> ParseError {
     let msg = match e {
         ExpandError::InvalidRepeat => "invalid repeat".to_string(),
         _ => "invalid macro definition".to_string(),
@@ -225,22 +245,22 @@ fn to_parse_error(e: ExpandError) -> ParseError {
     ParseError::Expected(msg)
 }
 
-fn validate(pattern: &tt::Subtree) -> Result<(), ParseError> {
-    for op in parse_pattern(pattern) {
-        let op = op.map_err(to_parse_error)?;
+fn validate(pattern: &MetaTemplate) -> Result<(), ParseError> {
+    for op in pattern.iter() {
+        let op = op.as_ref().map_err(|e| to_parse_error(&e))?;
 
         match op {
-            Op::TokenTree(tt::TokenTree::Subtree(subtree)) => validate(subtree)?,
+            Op::Subtree(subtree) => validate(&subtree)?,
             Op::Repeat { subtree, separator, .. } => {
                 // Checks that no repetition which could match an empty token
                 // https://github.com/rust-lang/rust/blob/a58b1ed44f5e06976de2bdc4d7dc81c36a96934f/src/librustc_expand/mbe/macro_rules.rs#L558
 
                 if separator.is_none() {
-                    if parse_pattern(subtree).all(|child_op| {
-                        match child_op.map_err(to_parse_error) {
+                    if subtree.iter().all(|child_op| {
+                        match child_op.as_ref().map_err(to_parse_error) {
                             Ok(Op::Var { kind, .. }) => {
                                 // vis is optional
-                                if kind.map_or(false, |it| it == "vis") {
+                                if kind.as_ref().map_or(false, |it| it == "vis") {
                                     return true;
                                 }
                             }
