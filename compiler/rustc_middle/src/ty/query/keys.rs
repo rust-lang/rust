@@ -127,6 +127,17 @@ impl Key for (DefId, DefId) {
     }
 }
 
+impl Key for (ty::Instance<'tcx>, LocalDefId) {
+    type CacheSelector = DefaultCacheSelector;
+
+    fn query_crate(&self) -> CrateNum {
+        self.0.query_crate()
+    }
+    fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
+        self.0.default_span(tcx)
+    }
+}
+
 impl Key for (DefId, LocalDefId) {
     type CacheSelector = DefaultCacheSelector;
 

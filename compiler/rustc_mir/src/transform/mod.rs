@@ -419,6 +419,15 @@ fn mir_drops_elaborated_and_const_checked<'tcx>(
         tcx.ensure().mir_borrowck(def.did);
     }
 
+    let hir_id = tcx.hir().local_def_id_to_hir_id(def.did);
+    use rustc_middle::hir::map::blocks::FnLikeNode;
+    let is_fn_like = FnLikeNode::from_node(tcx.hir().get(hir_id)).is_some();
+    if is_fn_like {
+        let did = def.did.to_def_id();
+        let def = ty::WithOptConstParam::unknown(did);
+        let _ = tcx.mir_inliner_callees(ty::InstanceDef::Item(def));
+    }
+
     let (body, _) = tcx.mir_promoted(def);
     let mut body = body.steal();
 
