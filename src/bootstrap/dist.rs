@@ -1326,17 +1326,17 @@ impl Step for Extended {
         license += &builder.read(&builder.src.join("COPYRIGHT"));
         license += &builder.read(&builder.src.join("LICENSE-APACHE"));
         license += &builder.read(&builder.src.join("LICENSE-MIT"));
-        license.push_str("\n");
-        license.push_str("\n");
+        license.push('\n');
+        license.push('\n');
 
         let rtf = r"{\rtf1\ansi\deff0{\fonttbl{\f0\fnil\fcharset0 Arial;}}\nowwrap\fs18";
         let mut rtf = rtf.to_string();
-        rtf.push_str("\n");
+        rtf.push('\n');
         for line in license.lines() {
             rtf.push_str(line);
             rtf.push_str("\\line ");
         }
-        rtf.push_str("}");
+        rtf.push('}');
 
         fn filter(contents: &str, marker: &str) -> String {
             let start = format!("tool-{}-start", marker);

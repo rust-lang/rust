@@ -163,7 +163,11 @@ pub fn check(build: &mut Build) {
             panic!("the iOS target is only supported on macOS");
         }
 
-        build.config.target_config.entry(*target).or_insert(Target::from_triple(&target.triple));
+        build
+            .config
+            .target_config
+            .entry(*target)
+            .or_insert_with(|| Target::from_triple(&target.triple));
 
         if target.contains("-none-") || target.contains("nvptx") {
             if build.no_std(*target) == Some(false) {
