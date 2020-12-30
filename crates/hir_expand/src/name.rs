@@ -164,6 +164,7 @@ pub mod known {
         future,
         result,
         boxed,
+        option,
         // Components of known path (type name)
         Iterator,
         IntoIterator,
@@ -172,6 +173,7 @@ pub mod known {
         Ok,
         Future,
         Result,
+        Option,
         Output,
         Target,
         Box,

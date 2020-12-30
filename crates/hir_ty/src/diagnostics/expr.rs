@@ -11,7 +11,7 @@ use crate::{
     db::HirDatabase,
     diagnostics::{
         match_check::{is_useful, MatchCheckCtx, Matrix, PatStack, Usefulness},
-        MismatchedArgCount, MissingFields, MissingMatchArms, MissingOkInTailExpr, MissingPatFields,
+        MismatchedArgCount, MissingFields, MissingMatchArms, MissingOkOrSomeInTailExpr, MissingPatFields,
         RemoveThisSemicolon,
     },
     utils::variant_data,
@@ -306,27 +306,37 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
         };
 
         let core_result_path = path![core::result::Result];
+        let core_option_path = path![core::option::Option];
 
         let resolver = self.owner.resolver(db.upcast());
         let core_result_enum = match resolver.resolve_known_enum(db.upcast(), &core_result_path) {
             Some(it) => it,
             _ => return,
         };
-
-        let core_result_ctor = TypeCtor::Adt(AdtId::EnumId(core_result_enum));
-        let params = match &mismatch.expected {
-            Ty::Apply(ApplicationTy { ctor, parameters }) if ctor == &core_result_ctor => {
-                parameters
-            }
+        let core_option_enum = match resolver.resolve_known_enum(db.upcast(), &core_option_path) {
+            Some(it) => it,
             _ => return,
         };
 
-        if params.len() == 2 && params[0] == mismatch.actual {
+        let core_result_ctor = TypeCtor::Adt(AdtId::EnumId(core_result_enum));
+        let core_option_ctor = TypeCtor::Adt(AdtId::EnumId(core_option_enum));
+
+        let (params, required) = match &mismatch.expected {
+            Ty::Apply(ApplicationTy { ctor, parameters }) if ctor == &core_result_ctor => {
+                (parameters, "Ok".to_string())
+            },
+            Ty::Apply(ApplicationTy { ctor, parameters }) if ctor == &core_option_ctor => {
+                (parameters, "Some".to_string())
+            },
+            _ => return,
+        };
+
+        if params.len() > 0 && params[0] == mismatch.actual {
             let (_, source_map) = db.body_with_source_map(self.owner.into());
 
             if let Ok(source_ptr) = source_map.expr_syntax(id) {
                 self.sink
-                    .push(MissingOkInTailExpr { file: source_ptr.file_id, expr: source_ptr.value });
+                    .push(MissingOkOrSomeInTailExpr { file: source_ptr.file_id, expr: source_ptr.value, required });
             }
         }
     }
