@@ -10,6 +10,7 @@ use rustc_macros::HashStable;
 
 mod int;
 mod kind;
+mod normalize;
 
 pub use int::*;
 pub use kind::*;
