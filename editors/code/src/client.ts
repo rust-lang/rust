@@ -6,6 +6,10 @@ import { DocumentSemanticsTokensSignature, DocumentSemanticsTokensEditsSignature
 import { assert } from './util';
 import { WorkspaceEdit } from 'vscode';
 
+export interface Env {
+    [name: string]: string;
+}
+
 function renderCommand(cmd: ra.CommandLink) {
     return `[${cmd.title}](command:${cmd.command}?${encodeURIComponent(JSON.stringify(cmd.arguments))} '${cmd.tooltip!}')`;
 }
@@ -27,14 +31,17 @@ async function semanticHighlightingWorkaround<R, F extends (...args: any[]) => v
     return res;
 }
 
-export function createClient(serverPath: string, cwd: string): lc.LanguageClient {
+export function createClient(serverPath: string, cwd: string, extraEnv: Env): lc.LanguageClient {
     // '.' Is the fallback if no folder is open
     // TODO?: Workspace folders support Uri's (eg: file://test.txt).
     // It might be a good idea to test if the uri points to a file.
 
+    const newEnv = Object.assign({}, process.env);
+    Object.assign(newEnv, extraEnv);
+
     const run: lc.Executable = {
         command: serverPath,
-        options: { cwd },
+        options: { cwd, env: newEnv },
     };
     const serverOptions: lc.ServerOptions = {
         run,

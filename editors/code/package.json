@@ -283,6 +283,14 @@
                     "default": null,
                     "markdownDescription": "Path to rust-analyzer executable (points to bundled binary by default). If this is set, then `#rust-analyzer.updates.channel#` setting is not used"
                 },
+                "rust-analyzer.server.extraEnv": {
+                    "type": [
+                        "null",
+                        "object"
+                    ],
+                    "default": null,
+                    "markdownDescription": "Extra environment variables that will be passed to the rust-analyzer executable. Useful for passing e.g. `RA_LOG` for debugging."
+                },
                 "rust-analyzer.trace.server": {
                     "type": "string",
                     "scope": "window",
