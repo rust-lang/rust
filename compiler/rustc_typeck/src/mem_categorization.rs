@@ -459,7 +459,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         kind: ProjectionKind,
     ) -> PlaceWithHirId<'tcx> {
         let mut projections = base_place.place.projections;
-        projections.push(Projection { kind: kind, ty: ty });
+        projections.push(Projection { kind, ty });
         let ret = PlaceWithHirId::new(
             node.hir_id(),
             base_place.place.base_ty,
