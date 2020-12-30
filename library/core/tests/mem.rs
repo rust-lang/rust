@@ -267,3 +267,10 @@ fn uninit_write_slice_cloned_no_drop() {
 
     forget(src);
 }
+
+#[test]
+#[cfg(not(bootstrap))]
+fn uninit_const_assume_init_read() {
+    const FOO: u32 = unsafe { MaybeUninit::new(42).assume_init_read() };
+    assert_eq!(FOO, 42);
+}

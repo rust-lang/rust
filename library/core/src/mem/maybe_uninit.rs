@@ -575,8 +575,9 @@ impl<T> MaybeUninit<T> {
     /// // they both get dropped!
     /// ```
     #[unstable(feature = "maybe_uninit_extra", issue = "63567")]
+    #[rustc_const_unstable(feature = "maybe_uninit_extra", issue = "63567")]
     #[inline(always)]
-    pub unsafe fn assume_init_read(&self) -> T {
+    pub const unsafe fn assume_init_read(&self) -> T {
         // SAFETY: the caller must guarantee that `self` is initialized.
         // Reading from `self.as_ptr()` is safe since `self` should be initialized.
         unsafe {
