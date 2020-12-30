@@ -717,35 +717,46 @@ impl<'a> AstValidator<'a> {
 
 /// Checks that generic parameters are in the correct order,
 /// which is lifetimes, then types and then consts. (`<'a, T, const N: usize>`)
-fn validate_generic_param_order<'a>(
+fn validate_generic_param_order(
     sess: &Session,
     handler: &rustc_errors::Handler,
-    generics: impl Iterator<Item = (ParamKindOrd, Option<&'a [GenericBound]>, Span, Option<String>)>,
+    generics: &[GenericParam],
     span: Span,
 ) {
     let mut max_param: Option<ParamKindOrd> = None;
     let mut out_of_order = FxHashMap::default();
     let mut param_idents = vec![];
 
-    for (kind, bounds, span, ident) in generics {
+    for param in generics {
+        let ident = Some(param.ident.to_string());
+        let (kind, bounds, span) = (&param.kind, Some(&*param.bounds), param.ident.span);
+        let (ord_kind, ident) = match &param.kind {
+            GenericParamKind::Lifetime => (ParamKindOrd::Lifetime, ident),
+            GenericParamKind::Type { default: _ } => (ParamKindOrd::Type, ident),
+            GenericParamKind::Const { ref ty, kw_span: _ } => {
+                let ty = pprust::ty_to_string(ty);
+                let unordered = sess.features_untracked().const_generics;
+                (ParamKindOrd::Const { unordered }, Some(format!("const {}: {}", param.ident, ty)))
+            }
+        };
         if let Some(ident) = ident {
-            param_idents.push((kind, bounds, param_idents.len(), ident));
+            param_idents.push((kind, ord_kind, bounds, param_idents.len(), ident));
         }
         let max_param = &mut max_param;
         match max_param {
-            Some(max_param) if *max_param > kind => {
-                let entry = out_of_order.entry(kind).or_insert((*max_param, vec![]));
+            Some(max_param) if *max_param > ord_kind => {
+                let entry = out_of_order.entry(ord_kind).or_insert((*max_param, vec![]));
                 entry.1.push(span);
             }
-            Some(_) | None => *max_param = Some(kind),
+            Some(_) | None => *max_param = Some(ord_kind),
         };
     }
 
     let mut ordered_params = "<".to_string();
     if !out_of_order.is_empty() {
-        param_idents.sort_by_key(|&(po, _, i, _)| (po, i));
+        param_idents.sort_by_key(|&(_, po, _, i, _)| (po, i));
         let mut first = true;
-        for (_, bounds, _, ident) in param_idents {
+        for (kind, _, bounds, _, ident) in param_idents {
             if !first {
                 ordered_params += ", ";
             }
@@ -755,6 +766,16 @@ fn validate_generic_param_order<'a>(
                     ordered_params += ": ";
                     ordered_params += &pprust::bounds_to_string(&bounds);
                 }
+            }
+            match kind {
+                GenericParamKind::Type { default: Some(default) } => {
+                    ordered_params += " = ";
+                    ordered_params += &pprust::ty_to_string(default);
+                }
+                GenericParamKind::Type { default: None } => (),
+                GenericParamKind::Lifetime => (),
+                // FIXME(const_generics:defaults)
+                GenericParamKind::Const { ty: _, kw_span: _ } => (),
             }
             first = false;
         }
@@ -1150,22 +1171,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         validate_generic_param_order(
             self.session,
             self.err_handler(),
-            generics.params.iter().map(|param| {
-                let ident = Some(param.ident.to_string());
-                let (kind, ident) = match &param.kind {
-                    GenericParamKind::Lifetime => (ParamKindOrd::Lifetime, ident),
-                    GenericParamKind::Type { default: _ } => (ParamKindOrd::Type, ident),
-                    GenericParamKind::Const { ref ty, kw_span: _ } => {
-                        let ty = pprust::ty_to_string(ty);
-                        let unordered = self.session.features_untracked().const_generics;
-                        (
-                            ParamKindOrd::Const { unordered },
-                            Some(format!("const {}: {}", param.ident, ty)),
-                        )
-                    }
-                };
-                (kind, Some(&*param.bounds), param.ident.span, ident)
-            }),
+            &generics.params,
             generics.span,
         );
 

@@ -2,7 +2,7 @@ error: type parameters must be declared prior to const parameters
   --> $DIR/simple-defaults.rs:8:40
    |
 LL | struct FixedOutput<'a, const N: usize, T=u32> {
-   |                   ---------------------^----- help: reorder the parameters: lifetimes, then types, then consts: `<'a, T, const N: usize>`
+   |                   ---------------------^----- help: reorder the parameters: lifetimes, then types, then consts: `<'a, T = u32, const N: usize>`
 
 error: aborting due to previous error
 
