@@ -685,30 +685,6 @@ where
     (result, dep_node_index)
 }
 
-#[inline(never)]
-fn get_query_impl<CTX, C>(
-    tcx: CTX,
-    state: &QueryState<CTX::DepKind, C::Key>,
-    cache: &QueryCacheStore<C>,
-    span: Span,
-    key: C::Key,
-    lookup: QueryLookup,
-    query: &QueryVtable<CTX, C::Key, C::Value>,
-    compute: fn(CTX::DepContext, C::Key) -> C::Value,
-) -> C::Stored
-where
-    CTX: QueryContext,
-    C: QueryCache,
-    C::Key: DepNodeParams<CTX::DepContext>,
-{
-    let (result, dep_node_index) =
-        try_execute_query(tcx, state, cache, span, key, lookup, None, query, compute);
-    if let Some(dep_node_index) = dep_node_index {
-        tcx.dep_context().dep_graph().read_index(dep_node_index)
-    }
-    result
-}
-
 /// Ensure that either this query has all green inputs or been executed.
 /// Executing `query::ensure(D)` is considered a read of the dep-node `D`.
 /// Returns true if the query should still run.
@@ -718,13 +694,17 @@ where
 ///
 /// Note: The optimization is only available during incr. comp.
 #[inline(never)]
-fn ensure_must_run<CTX, K, V>(tcx: CTX, key: &K, query: &QueryVtable<CTX, K, V>) -> bool
+fn ensure_must_run<CTX, K, V>(
+    tcx: CTX,
+    key: &K,
+    query: &QueryVtable<CTX, K, V>,
+) -> (bool, Option<DepNode<CTX::DepKind>>)
 where
     K: crate::dep_graph::DepNodeParams<CTX::DepContext>,
     CTX: QueryContext,
 {
     if query.eval_always {
-        return true;
+        return (true, None);
     }
 
     // Ensuring an anonymous query makes no sense
@@ -741,12 +721,12 @@ where
             // DepNodeIndex. We must invoke the query itself. The performance cost
             // this introduces should be negligible as we'll immediately hit the
             // in-memory cache, or another query down the line will.
-            true
+            (true, Some(dep_node))
         }
         Some((_, dep_node_index)) => {
             dep_graph.read_index(dep_node_index);
             tcx.dep_context().profiler().query_cache_hit(dep_node_index.into());
-            false
+            (false, None)
         }
     }
 }
@@ -808,25 +788,33 @@ where
     CTX: QueryContext,
 {
     let query = &Q::VTABLE;
-    if let QueryMode::Ensure = mode {
-        if !ensure_must_run(tcx, &key, query) {
+    let dep_node = if let QueryMode::Ensure = mode {
+        let (must_run, dep_node) = ensure_must_run(tcx, &key, query);
+        if !must_run {
             return None;
         }
-    }
+        dep_node
+    } else {
+        None
+    };
 
     debug!("ty::query::get_query<{}>(key={:?}, span={:?})", Q::NAME, key, span);
     let compute = Q::compute_fn(tcx, &key);
-    let value = get_query_impl(
+    let (result, dep_node_index) = try_execute_query(
         tcx,
         Q::query_state(tcx),
         Q::query_cache(tcx),
         span,
         key,
         lookup,
+        dep_node,
         query,
         compute,
     );
-    Some(value)
+    if let Some(dep_node_index) = dep_node_index {
+        tcx.dep_context().dep_graph().read_index(dep_node_index)
+    }
+    Some(result)
 }
 
 pub fn force_query<Q, CTX>(tcx: CTX, dep_node: &DepNode<CTX::DepKind>) -> bool
