@@ -381,6 +381,11 @@ impl<'s> LintLevelsBuilder<'s> {
                             src,
                             Some(li.span().into()),
                             |lint| {
+                                let name = if let Some(tool_name) = tool_name {
+                                    format!("{}::{}", tool_name, name)
+                                } else {
+                                    name.to_string()
+                                };
                                 let mut db = lint.build(&format!("unknown lint: `{}`", name));
                                 if let Some(suggestion) = suggestion {
                                     db.span_suggestion(
