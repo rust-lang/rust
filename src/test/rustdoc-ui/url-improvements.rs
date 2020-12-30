@@ -1,4 +1,4 @@
-#![deny(non_autolinks)]
+#![deny(rustdoc::non_autolinks)]
 
 /// [http://aa.com](http://aa.com)
 //~^ ERROR unneeded long form for URL
@@ -59,7 +59,7 @@ pub fn c() {}
 /// [should_not.lint](should_not.lint)
 pub fn everything_is_fine_here() {}
 
-#[allow(non_autolinks)]
+#[allow(rustdoc::non_autolinks)]
 pub mod foo {
     /// https://somewhere.com/a?hello=12&bye=11#xyz
     pub fn bar() {}

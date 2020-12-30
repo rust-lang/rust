@@ -12,6 +12,8 @@ use rustc_hir::{
     Path,
 };
 use rustc_interface::{interface, Queries};
+use rustc_lint::LintStore;
+use rustc_lint_defs::{declare_tool_lint, Lint, LintId};
 use rustc_middle::hir::map::Map;
 use rustc_middle::middle::privacy::AccessLevels;
 use rustc_middle::ty::{ParamEnv, Ty, TyCtxt};
@@ -24,9 +26,11 @@ use rustc_span::source_map;
 use rustc_span::symbol::sym;
 use rustc_span::DUMMY_SP;
 
+use std::cell::RefCell;
+use std::collections::hash_map::Entry;
+use std::lazy::SyncLazy as Lazy;
 use std::mem;
 use std::rc::Rc;
-use std::{cell::RefCell, collections::hash_map::Entry};
 
 use crate::clean;
 use crate::clean::inline::build_external_trait;
@@ -281,6 +285,106 @@ where
     (lint_opts, lint_caps)
 }
 
+declare_tool_lint! {
+    /// The `broken_intra_doc_links` lint detects failures in resolving
+    /// intra-doc link targets. This is a `rustdoc` only lint, see the
+    /// documentation in the [rustdoc book].
+    ///
+    /// [rustdoc book]: ../../../rustdoc/lints.html#broken_intra_doc_links
+    pub rustdoc::BROKEN_INTRA_DOC_LINKS,
+    Warn,
+    "failures in resolving intra-doc link targets"
+}
+
+declare_tool_lint! {
+    /// This is a subset of `broken_intra_doc_links` that warns when linking from
+    /// a public item to a private one. This is a `rustdoc` only lint, see the
+    /// documentation in the [rustdoc book].
+    ///
+    /// [rustdoc book]: ../../../rustdoc/lints.html#private_intra_doc_links
+    pub rustdoc::PRIVATE_INTRA_DOC_LINKS,
+    Warn,
+    "linking from a public item to a private one"
+}
+
+declare_tool_lint! {
+    /// The `invalid_codeblock_attributes` lint detects code block attributes
+    /// in documentation examples that have potentially mis-typed values. This
+    /// is a `rustdoc` only lint, see the documentation in the [rustdoc book].
+    ///
+    /// [rustdoc book]: ../../../rustdoc/lints.html#invalid_codeblock_attributes
+    pub rustdoc::INVALID_CODEBLOCK_ATTRIBUTES,
+    Warn,
+    "codeblock attribute looks a lot like a known one"
+}
+
+declare_tool_lint! {
+    /// The `missing_doc_code_examples` lint detects publicly-exported items
+    /// without code samples in their documentation. This is a `rustdoc` only
+    /// lint, see the documentation in the [rustdoc book].
+    ///
+    /// [rustdoc book]: ../../../rustdoc/lints.html#missing_doc_code_examples
+    pub rustdoc::MISSING_DOC_CODE_EXAMPLES,
+    Allow,
+    "detects publicly-exported items without code samples in their documentation"
+}
+
+declare_tool_lint! {
+    /// The `private_doc_tests` lint detects code samples in docs of private
+    /// items not documented by `rustdoc`. This is a `rustdoc` only lint, see
+    /// the documentation in the [rustdoc book].
+    ///
+    /// [rustdoc book]: ../../../rustdoc/lints.html#private_doc_tests
+    pub rustdoc::PRIVATE_DOC_TESTS,
+    Allow,
+    "detects code samples in docs of private items not documented by rustdoc"
+}
+
+declare_tool_lint! {
+    /// The `invalid_html_tags` lint detects invalid HTML tags. This is a
+    /// `rustdoc` only lint, see the documentation in the [rustdoc book].
+    ///
+    /// [rustdoc book]: ../../../rustdoc/lints.html#invalid_html_tags
+    pub rustdoc::INVALID_HTML_TAGS,
+    Allow,
+    "detects invalid HTML tags in doc comments"
+}
+
+declare_tool_lint! {
+    /// The `non_autolinks` lint detects when a URL could be written using
+    /// only angle brackets. This is a `rustdoc` only lint, see the
+    /// documentation in the [rustdoc book].
+    ///
+    /// [rustdoc book]: ../../../rustdoc/lints.html#non_autolinks
+    pub rustdoc::NON_AUTOLINKS,
+    Warn,
+    "detects URLs that could be written using only angle brackets"
+}
+
+static RUSTDOC_LINTS: Lazy<Vec<&'static Lint>> = Lazy::new(|| {
+    vec![
+        BROKEN_INTRA_DOC_LINKS,
+        PRIVATE_INTRA_DOC_LINKS,
+        MISSING_DOC_CODE_EXAMPLES,
+        PRIVATE_DOC_TESTS,
+        INVALID_CODEBLOCK_ATTRIBUTES,
+        INVALID_HTML_TAGS,
+        NON_AUTOLINKS,
+    ]
+});
+
+crate fn register_lints(_sess: &Session, lint_store: &mut LintStore) {
+    lint_store.register_lints(&**RUSTDOC_LINTS);
+    lint_store.register_group(
+        true,
+        "rustdoc",
+        None,
+        RUSTDOC_LINTS.iter().map(|&lint| LintId::of(lint)).collect(),
+    );
+    lint_store
+        .register_renamed("intra_doc_link_resolution_failure", "rustdoc::broken_intra_doc_links");
+}
+
 /// Parse, resolve, and typecheck the given crate.
 crate fn create_config(
     RustdocOptions {
@@ -309,37 +413,23 @@ crate fn create_config(
     let cpath = Some(input.clone());
     let input = Input::File(input);
 
-    let broken_intra_doc_links = lint::builtin::BROKEN_INTRA_DOC_LINKS.name;
-    let private_intra_doc_links = lint::builtin::PRIVATE_INTRA_DOC_LINKS.name;
-    let missing_docs = rustc_lint::builtin::MISSING_DOCS.name;
-    let missing_doc_example = rustc_lint::builtin::MISSING_DOC_CODE_EXAMPLES.name;
-    let private_doc_tests = rustc_lint::builtin::PRIVATE_DOC_TESTS.name;
-    let no_crate_level_docs = rustc_lint::builtin::MISSING_CRATE_LEVEL_DOCS.name;
-    let invalid_codeblock_attributes_name = rustc_lint::builtin::INVALID_CODEBLOCK_ATTRIBUTES.name;
-    let invalid_html_tags = rustc_lint::builtin::INVALID_HTML_TAGS.name;
-    let renamed_and_removed_lints = rustc_lint::builtin::RENAMED_AND_REMOVED_LINTS.name;
-    let non_autolinks = rustc_lint::builtin::NON_AUTOLINKS.name;
-    let unknown_lints = rustc_lint::builtin::UNKNOWN_LINTS.name;
-
     // In addition to those specific lints, we also need to allow those given through
     // command line, otherwise they'll get ignored and we don't want that.
-    let lints_to_show = vec![
-        broken_intra_doc_links.to_owned(),
-        private_intra_doc_links.to_owned(),
-        missing_docs.to_owned(),
-        missing_doc_example.to_owned(),
-        private_doc_tests.to_owned(),
-        no_crate_level_docs.to_owned(),
-        invalid_codeblock_attributes_name.to_owned(),
-        invalid_html_tags.to_owned(),
-        renamed_and_removed_lints.to_owned(),
-        unknown_lints.to_owned(),
-        non_autolinks.to_owned(),
+    let mut lints_to_show = vec![
+        // it's unclear whether these should be part of rustdoc directly
+        rustc_lint::builtin::MISSING_DOCS.name.to_string(),
+        rustc_lint::builtin::MISSING_CRATE_LEVEL_DOCS.name.to_string(),
+        // these are definitely not part of rustdoc, but we want to warn on them anyway.
+        rustc_lint::builtin::RENAMED_AND_REMOVED_LINTS.name.to_string(),
+        rustc_lint::builtin::UNKNOWN_LINTS.name.to_string(),
     ];
+    lints_to_show.extend(RUSTDOC_LINTS.iter().map(|lint| lint.name.to_string()));
 
     let (lint_opts, lint_caps) = init_lints(lints_to_show, lint_opts, |lint| {
         // FIXME: why is this necessary?
-        if lint.name == broken_intra_doc_links || lint.name == invalid_codeblock_attributes_name {
+        if lint.name == BROKEN_INTRA_DOC_LINKS.name
+            || lint.name == INVALID_CODEBLOCK_ATTRIBUTES.name
+        {
             None
         } else {
             Some((lint.name_lower(), lint::Allow))
@@ -379,7 +469,7 @@ crate fn create_config(
         diagnostic_output: DiagnosticOutput::Default,
         stderr: None,
         lint_caps,
-        register_lints: None,
+        register_lints: Some(box register_lints),
         override_queries: Some(|_sess, providers, _external_providers| {
             // Most lints will require typechecking, so just don't run them.
             providers.lint_mod = |_, _| {};

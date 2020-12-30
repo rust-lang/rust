@@ -1,7 +1,7 @@
 // ignore-tidy-linelength
 #![crate_name = "foo"]
 #![feature(intra_doc_pointers)]
-#![deny(broken_intra_doc_links)]
+#![deny(rustdoc::broken_intra_doc_links)]
 
 // @has foo/index.html '//a[@href="https://doc.rust-lang.org/nightly/std/primitive.slice.html#method.rotate_left"]' 'slice::rotate_left'
 //! [slice::rotate_left]
