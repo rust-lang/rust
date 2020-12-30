@@ -647,38 +647,56 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
         let (last_col, other_cols) = self.columns.split_last().unwrap();
 
         let mut matrix = Matrix::new();
-        // Copy all columns except the last one.
-        matrix.columns = other_cols.to_vec();
-        // Add some empty columns to accomodate the patterns to be added.
-        matrix.columns.resize_with(self.column_count() - 1 + ctor_wild_subpatterns.len(), Vec::new);
 
+        // We keep rows from `self` that match this ctor.
+        let mut selected_rows = Vec::new();
         for &row_id in &self.selected_rows {
             let head_entry = &last_col[row_id];
             if ctor.is_covered_by(pcx, head_entry.head_ctor(pcx.cx)) {
+                selected_rows.push(row_id);
                 matrix.selected_rows.push(head_entry.next_row_id);
-
-                // We extract fields from the arguments of `head_entry` and push them onto the
-                // corresponding columns.
-                let new_fields = ctor_wild_subpatterns
-                    .replace_with_pattern_arguments(head_entry.pat)
-                    .into_patterns();
-
-                let mut col_id = self.column_count() - 1;
-                let next_row_id = matrix.selected_rows.last_mut().unwrap();
-                // Note the `rev()` because the fields are in the natural left-to-right order but
-                // the columns are in the reverse order.
-                for &pat in new_fields.iter().rev() {
-                    let entry =
-                        MatrixEntry { pat, next_row_id: *next_row_id, ctor: OnceCell::new() };
-                    *next_row_id = matrix.columns[col_id].len();
-                    matrix.columns[col_id].push(entry);
-                    col_id += 1;
-                }
             }
         }
 
+        let new_col_count = self.column_count() - 1 + ctor_wild_subpatterns.len();
+        matrix.columns = Vec::with_capacity(new_col_count);
+        // We clone existing columns except the last one.
+        matrix.columns.extend_from_slice(other_cols);
+        // Add some empty columns to accomodate the patterns to be added.
+        matrix.columns.resize_with(new_col_count, || Vec::with_capacity(selected_rows.len()));
+        let new_columns = &mut matrix.columns[self.column_count() - 1..];
+
+        // We fill the new columns with the corresponding wildcards. We also set the `row_id`
+        // indices correctly.
+        let wildcards = ctor_wild_subpatterns.clone().into_patterns();
+        // Note the `rev()` because the fields are in the natural left-to-right order but
+        // the columns are in the reverse order.
+        let pats_and_cols = wildcards.iter().copied().rev().zip(new_columns.iter_mut());
+        for (pat, col) in pats_and_cols {
+            for (i, row_id) in matrix.selected_rows.iter_mut().enumerate() {
+                col.push(MatrixEntry { pat, next_row_id: *row_id, ctor: OnceCell::new() });
+                *row_id = i;
+            }
+        }
+
+        // We extract fields from the arguments of the head of each row and push them onto the
+        // corresponding columns.
+        for (i, row_id) in selected_rows.iter().enumerate() {
+            let new_fields = ctor_wild_subpatterns
+                .replace_with_pattern_arguments(last_col[*row_id].pat)
+                .into_patterns();
+
+            // Note the `rev()` because the fields are in the natural left-to-right order but
+            // the columns are in the reverse order.
+            let new_columns = &mut matrix.columns[self.column_count() - 1..];
+            let pats_and_cols = new_fields.iter().copied().rev().zip(new_columns.iter_mut());
+            for (pat, col) in pats_and_cols {
+                col[i].pat = pat;
+            }
+        }
+
+        // Expand any or-patterns present in the new last column.
         if matrix.last_col().any(|e| e.pat.is_or_pat()) {
-            // Expand any or-patterns present in the new last column.
             let last_col = matrix.columns.pop().unwrap();
             let mut new_last_col = Vec::new();
             for &row_id in &matrix.selected_rows {
