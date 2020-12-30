@@ -351,11 +351,13 @@ def output(filepath):
     with open(tmp, 'w') as f:
         yield f
     try:
-        os.remove(filepath)  # PermissionError/OSError on Win32 if in use
-        os.rename(tmp, filepath)
+        if os.path.exists(filepath):
+            os.remove(filepath)  # PermissionError/OSError on Win32 if in use
     except OSError:
         shutil.copy2(tmp, filepath)
         os.remove(tmp)
+        return
+    os.rename(tmp, filepath)
 
 
 class RustBuild(object):
