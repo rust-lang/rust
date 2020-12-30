@@ -526,6 +526,8 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &utils::internal_lints::OUTER_EXPN_EXPN_DATA,
         #[cfg(feature = "internal-lints")]
         &utils::internal_lints::PRODUCE_ICE,
+        #[cfg(feature = "internal-lints")]
+        &utils::internal_lints::UNNECESSARY_SYMBOL_STR,
         &approx_const::APPROX_CONSTANT,
         &arithmetic::FLOAT_ARITHMETIC,
         &arithmetic::INTEGER_ARITHMETIC,
@@ -1372,6 +1374,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&utils::internal_lints::MATCH_TYPE_ON_DIAGNOSTIC_ITEM),
         LintId::of(&utils::internal_lints::OUTER_EXPN_EXPN_DATA),
         LintId::of(&utils::internal_lints::PRODUCE_ICE),
+        LintId::of(&utils::internal_lints::UNNECESSARY_SYMBOL_STR),
     ]);
 
     store.register_group(true, "clippy::all", Some("clippy"), vec![
