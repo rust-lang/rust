@@ -25,7 +25,7 @@ symbols! {
     Keywords {
         // Special reserved identifiers used internally for elided lifetimes,
         // unnamed method parameters, crate root module, error recovery etc.
-        Invalid:            "",
+        Empty:              "",
         PathRoot:           "{{root}}",
         DollarCrate:        "$crate",
         Underscore:         "_",
@@ -1273,7 +1273,7 @@ impl Ident {
 
     #[inline]
     pub fn invalid() -> Ident {
-        Ident::with_dummy_span(kw::Invalid)
+        Ident::with_dummy_span(kw::Empty)
     }
 
     /// Maps a string to an identifier with a dummy span.
@@ -1464,7 +1464,7 @@ impl Symbol {
     }
 
     pub fn is_empty(self) -> bool {
-        self == kw::Invalid
+        self == kw::Empty
     }
 
     /// This method is supposed to be used in error messages, so it's expected to be
@@ -1648,7 +1648,7 @@ impl Symbol {
 
     /// Returns `true` if this symbol can be a raw identifier.
     pub fn can_be_raw(self) -> bool {
-        self != kw::Invalid && self != kw::Underscore && !self.is_path_segment_keyword()
+        self != kw::Empty && self != kw::Underscore && !self.is_path_segment_keyword()
     }
 }
 

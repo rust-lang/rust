@@ -132,7 +132,7 @@ impl ItemLikeVisitor<'tcx> for Collector<'tcx> {
 
 impl Collector<'tcx> {
     fn register_native_lib(&mut self, span: Option<Span>, lib: NativeLib) {
-        if lib.name.as_ref().map(|&s| s == kw::Invalid).unwrap_or(false) {
+        if lib.name.as_ref().map(|&s| s == kw::Empty).unwrap_or(false) {
             match span {
                 Some(span) => {
                     struct_span_err!(

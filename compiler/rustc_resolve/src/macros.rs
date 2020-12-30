@@ -160,7 +160,7 @@ impl<'a> ResolverExpand for Resolver<'a> {
         hygiene::update_dollar_crate_names(|ctxt| {
             let ident = Ident::new(kw::DollarCrate, DUMMY_SP.with_ctxt(ctxt));
             match self.resolve_crate_root(ident).kind {
-                ModuleKind::Def(.., name) if name != kw::Invalid => name,
+                ModuleKind::Def(.., name) if name != kw::Empty => name,
                 _ => kw::Crate,
             }
         });

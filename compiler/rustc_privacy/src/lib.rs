@@ -957,7 +957,7 @@ impl<'tcx> NamePrivacyVisitor<'tcx> {
         in_update_syntax: bool,
     ) {
         // definition of the field
-        let ident = Ident::new(kw::Invalid, use_ctxt);
+        let ident = Ident::new(kw::Empty, use_ctxt);
         let current_hir = self.current_item.unwrap();
         let def_id = self.tcx.adjust_ident_and_get_scope(ident, def.did, current_hir).1;
         if !def.is_enum() && !field.vis.is_accessible_from(def_id, self.tcx) {

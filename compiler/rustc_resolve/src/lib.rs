@@ -1182,12 +1182,12 @@ impl<'a> Resolver<'a> {
     ) -> Resolver<'a> {
         let root_local_def_id = LocalDefId { local_def_index: CRATE_DEF_INDEX };
         let root_def_id = root_local_def_id.to_def_id();
-        let root_module_kind = ModuleKind::Def(DefKind::Mod, root_def_id, kw::Invalid);
+        let root_module_kind = ModuleKind::Def(DefKind::Mod, root_def_id, kw::Empty);
         let graph_root = arenas.alloc_module(ModuleData {
             no_implicit_prelude: session.contains_name(&krate.attrs, sym::no_implicit_prelude),
             ..ModuleData::new(None, root_module_kind, root_def_id, ExpnId::root(), krate.span)
         });
-        let empty_module_kind = ModuleKind::Def(DefKind::Mod, root_def_id, kw::Invalid);
+        let empty_module_kind = ModuleKind::Def(DefKind::Mod, root_def_id, kw::Empty);
         let empty_module = arenas.alloc_module(ModuleData {
             no_implicit_prelude: true,
             ..ModuleData::new(
@@ -1797,7 +1797,7 @@ impl<'a> Resolver<'a> {
         ribs: &[Rib<'a>],
     ) -> Option<LexicalScopeBinding<'a>> {
         assert!(ns == TypeNS || ns == ValueNS);
-        if ident.name == kw::Invalid {
+        if ident.name == kw::Empty {
             return Some(LexicalScopeBinding::Res(Res::Err));
         }
         let (general_span, normalized_span) = if ident.name == kw::SelfUpper {

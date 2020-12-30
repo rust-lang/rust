@@ -2086,8 +2086,8 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
                 (true, false) => return Ordering::Greater,
             }
         }
-        let lhs = i1.name.unwrap_or(kw::Invalid).as_str();
-        let rhs = i2.name.unwrap_or(kw::Invalid).as_str();
+        let lhs = i1.name.unwrap_or(kw::Empty).as_str();
+        let rhs = i2.name.unwrap_or(kw::Empty).as_str();
         compare_names(&lhs, &rhs)
     }
 
@@ -4207,7 +4207,7 @@ fn print_sidebar(cx: &Context<'_>, it: &clean::Item, buffer: &mut Buffer, cache:
                 ty: \"{ty}\", \
                 relpath: \"{path}\"\
             }};</script>",
-        name = it.name.unwrap_or(kw::Invalid),
+        name = it.name.unwrap_or(kw::Empty),
         ty = it.type_(),
         path = relpath
     );

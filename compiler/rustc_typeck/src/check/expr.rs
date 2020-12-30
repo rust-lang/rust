@@ -883,7 +883,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Ok(method)
             }
             Err(error) => {
-                if segment.ident.name != kw::Invalid {
+                if segment.ident.name != kw::Empty {
                     self.report_extended_method_error(segment, span, args, rcvr_t, error);
                 }
                 Err(())
@@ -1547,7 +1547,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return field_ty;
         }
 
-        if field.name == kw::Invalid {
+        if field.name == kw::Empty {
         } else if self.method_exists(field, expr_t, expr.hir_id, true) {
             self.ban_take_value_of_method(expr, expr_t, field);
         } else if !expr_t.is_primitive_ty() {
