@@ -485,7 +485,7 @@ pub(crate) unsafe fn optimize(
     diag_handler: &Handler,
     module: &ModuleCodegen<ModuleLlvm>,
     config: &ModuleConfig,
-) -> Result<(), FatalError> {
+) {
     let _timer = cgcx.prof.generic_activity_with_arg("LLVM_module_optimize", &module.name[..]);
 
     let llmod = module.module_llvm.llmod();
@@ -511,7 +511,7 @@ pub(crate) unsafe fn optimize(
                 _ => llvm::OptStage::PreLinkNoLTO,
             };
             optimize_with_new_llvm_pass_manager(cgcx, module, config, opt_level, opt_stage);
-            return Ok(());
+            return;
         }
 
         if cgcx.prof.llvm_recording_enabled() {
@@ -634,7 +634,6 @@ pub(crate) unsafe fn optimize(
         llvm::LLVMDisposePassManager(fpm);
         llvm::LLVMDisposePassManager(mpm);
     }
-    Ok(())
 }
 
 unsafe fn add_sanitizer_passes(config: &ModuleConfig, passes: &mut Vec<&'static mut llvm::Pass>) {

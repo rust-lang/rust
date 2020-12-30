@@ -3,12 +3,12 @@ use crate::clean::*;
 crate struct StripItem(pub Item);
 
 impl StripItem {
-    crate fn strip(self) -> Option<Item> {
+    crate fn strip(self) -> Item {
         match self.0 {
-            Item { kind: box StrippedItem(..), .. } => Some(self.0),
+            Item { kind: box StrippedItem(..), .. } => self.0,
             mut i => {
                 i.kind = box StrippedItem(i.kind);
-                Some(i)
+                i
             }
         }
     }

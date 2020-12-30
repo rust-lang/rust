@@ -153,7 +153,7 @@ impl<T: Copy + Eq + Hash + std::fmt::Debug, PATH: Default> RefTracking<T, PATH> 
 }
 
 /// Format a path
-fn write_path(out: &mut String, path: &Vec<PathElem>) {
+fn write_path(out: &mut String, path: &[PathElem]) {
     use self::PathElem::*;
 
     for elem in path.iter() {

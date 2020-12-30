@@ -423,9 +423,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             probe_cx.assemble_inherent_candidates();
             match scope {
                 ProbeScope::TraitsInScope => {
-                    probe_cx.assemble_extension_candidates_for_traits_in_scope(scope_expr_id)?
+                    probe_cx.assemble_extension_candidates_for_traits_in_scope(scope_expr_id)
                 }
-                ProbeScope::AllTraits => probe_cx.assemble_extension_candidates_for_all_traits()?,
+                ProbeScope::AllTraits => probe_cx.assemble_extension_candidates_for_all_traits(),
             };
             op(probe_cx)
         })
@@ -866,35 +866,29 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         }
     }
 
-    fn assemble_extension_candidates_for_traits_in_scope(
-        &mut self,
-        expr_hir_id: hir::HirId,
-    ) -> Result<(), MethodError<'tcx>> {
+    fn assemble_extension_candidates_for_traits_in_scope(&mut self, expr_hir_id: hir::HirId) {
         let mut duplicates = FxHashSet::default();
         let opt_applicable_traits = self.tcx.in_scope_traits(expr_hir_id);
         if let Some(applicable_traits) = opt_applicable_traits {
             for trait_candidate in applicable_traits.iter() {
                 let trait_did = trait_candidate.def_id;
                 if duplicates.insert(trait_did) {
-                    let result = self.assemble_extension_candidates_for_trait(
+                    self.assemble_extension_candidates_for_trait(
                         &trait_candidate.import_ids,
                         trait_did,
                     );
-                    result?;
                 }
             }
         }
-        Ok(())
     }
 
-    fn assemble_extension_candidates_for_all_traits(&mut self) -> Result<(), MethodError<'tcx>> {
+    fn assemble_extension_candidates_for_all_traits(&mut self) {
         let mut duplicates = FxHashSet::default();
         for trait_info in suggest::all_traits(self.tcx) {
             if duplicates.insert(trait_info.def_id) {
-                self.assemble_extension_candidates_for_trait(&smallvec![], trait_info.def_id)?;
+                self.assemble_extension_candidates_for_trait(&smallvec![], trait_info.def_id);
             }
         }
-        Ok(())
     }
 
     pub fn matches_return_type(
@@ -932,7 +926,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         &mut self,
         import_ids: &SmallVec<[LocalDefId; 1]>,
         trait_def_id: DefId,
-    ) -> Result<(), MethodError<'tcx>> {
+    ) {
         debug!("assemble_extension_candidates_for_trait(trait_def_id={:?})", trait_def_id);
         let trait_substs = self.fresh_item_substs(trait_def_id);
         let trait_ref = ty::TraitRef::new(trait_def_id, trait_substs);
@@ -980,7 +974,6 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 );
             }
         }
-        Ok(())
     }
 
     fn candidate_method_names(&self) -> Vec<Ident> {
@@ -1027,7 +1020,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         let span = self.span;
         let tcx = self.tcx;
 
-        self.assemble_extension_candidates_for_all_traits()?;
+        self.assemble_extension_candidates_for_all_traits();
 
         let out_of_scope_traits = match self.pick_core() {
             Some(Ok(p)) => vec![p.item.container.id()],

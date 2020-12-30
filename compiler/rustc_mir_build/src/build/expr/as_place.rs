@@ -79,7 +79,7 @@ crate struct PlaceBuilder<'tcx> {
 /// part of a path that is captued by a closure. We stop applying projections once we see the first
 /// projection that isn't captured by a closure.
 fn convert_to_hir_projections_and_truncate_for_capture<'tcx>(
-    mir_projections: &Vec<PlaceElem<'tcx>>,
+    mir_projections: &[PlaceElem<'tcx>],
 ) -> Vec<HirProjectionKind> {
 
     let mut hir_projections  = Vec::new();
@@ -128,7 +128,7 @@ fn convert_to_hir_projections_and_truncate_for_capture<'tcx>(
 ///        list are being applied to the same root variable.
 fn is_ancestor_or_same_capture(
     proj_possible_ancestor: &Vec<HirProjectionKind>,
-    proj_capture: &Vec<HirProjectionKind>,
+    proj_capture: &[HirProjectionKind],
 ) -> bool {
     // We want to make sure `is_ancestor_or_same_capture("x.0.0", "x.0")` to return false.
     // Therefore we can't just check if all projections are same in the zipped iterator below.
@@ -171,7 +171,7 @@ fn find_capture_matching_projections<'a, 'tcx>(
     typeck_results: &'a ty::TypeckResults<'tcx>,
     var_hir_id: HirId,
     closure_def_id: DefId,
-    projections: &Vec<PlaceElem<'tcx>>,
+    projections: &[PlaceElem<'tcx>],
 ) -> Option<(usize, &'a ty::CapturedPlace<'tcx>)> {
     let closure_min_captures = typeck_results.closure_min_captures.get(&closure_def_id)?;
     let root_variable_min_captures = closure_min_captures.get(&var_hir_id)?;

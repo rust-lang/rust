@@ -185,15 +185,15 @@ impl<'a> Resolver<'a> {
 
     crate fn get_macro(&mut self, res: Res) -> Option<Lrc<SyntaxExtension>> {
         match res {
-            Res::Def(DefKind::Macro(..), def_id) => self.get_macro_by_def_id(def_id),
+            Res::Def(DefKind::Macro(..), def_id) => Some(self.get_macro_by_def_id(def_id)),
             Res::NonMacroAttr(attr_kind) => Some(self.non_macro_attr(attr_kind.is_used())),
             _ => None,
         }
     }
 
-    crate fn get_macro_by_def_id(&mut self, def_id: DefId) -> Option<Lrc<SyntaxExtension>> {
+    crate fn get_macro_by_def_id(&mut self, def_id: DefId) -> Lrc<SyntaxExtension> {
         if let Some(ext) = self.macro_map.get(&def_id) {
-            return Some(ext.clone());
+            return ext.clone();
         }
 
         let ext = Lrc::new(match self.cstore().load_macro_untracked(def_id, &self.session) {
@@ -202,7 +202,7 @@ impl<'a> Resolver<'a> {
         });
 
         self.macro_map.insert(def_id, ext.clone());
-        Some(ext)
+        ext
     }
 
     crate fn build_reduced_graph(
