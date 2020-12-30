@@ -2,10 +2,10 @@
 
 use crate::{
     mbe_expander::{Binding, Bindings, Fragment},
-    parser::{parse_pattern, Op, RepeatKind, Separator},
+    parser::{Op, RepeatKind, Separator},
     subtree_source::SubtreeTokenSource,
     tt_iter::TtIter,
-    ExpandError,
+    ExpandError, MetaTemplate,
 };
 
 use super::ExpandResult;
@@ -83,7 +83,7 @@ impl Match {
 // sense to try using it. Matching errors are added to the `Match`. It might
 // make sense to make pattern parsing a separate step?
 
-pub(super) fn match_(pattern: &tt::Subtree, src: &tt::Subtree) -> Result<Match, ExpandError> {
+pub(super) fn match_(pattern: &MetaTemplate, src: &tt::Subtree) -> Result<Match, ExpandError> {
     assert!(pattern.delimiter == None);
 
     let mut res = Match::default();
@@ -101,12 +101,12 @@ pub(super) fn match_(pattern: &tt::Subtree, src: &tt::Subtree) -> Result<Match, 
 
 fn match_subtree(
     res: &mut Match,
-    pattern: &tt::Subtree,
+    pattern: &MetaTemplate,
     src: &mut TtIter,
 ) -> Result<(), ExpandError> {
-    for op in parse_pattern(pattern) {
-        match op? {
-            Op::TokenTree(tt::TokenTree::Leaf(lhs)) => {
+    for op in pattern.iter() {
+        match op.as_ref().map_err(|err| err.clone())? {
+            Op::Leaf(lhs) => {
                 let rhs = match src.expect_leaf() {
                     Ok(l) => l,
                     Err(()) => {
@@ -132,7 +132,7 @@ fn match_subtree(
                     }
                 }
             }
-            Op::TokenTree(tt::TokenTree::Subtree(lhs)) => {
+            Op::Subtree(lhs) => {
                 let rhs = match src.expect_subtree() {
                     Ok(s) => s,
                     Err(()) => {
@@ -172,7 +172,7 @@ fn match_subtree(
                 }
             }
             Op::Repeat { subtree, kind, separator } => {
-                match_repeat(res, subtree, kind, separator, src)?;
+                match_repeat(res, subtree, *kind, separator, src)?;
             }
         }
     }
@@ -372,9 +372,9 @@ impl<'a> TtIter<'a> {
 
 pub(super) fn match_repeat(
     res: &mut Match,
-    pattern: &tt::Subtree,
+    pattern: &MetaTemplate,
     kind: RepeatKind,
-    separator: Option<Separator>,
+    separator: &Option<Separator>,
     src: &mut TtIter,
 ) -> Result<(), ExpandError> {
     // Dirty hack to make macro-expansion terminate.
@@ -489,12 +489,12 @@ fn match_meta_var(kind: &str, input: &mut TtIter) -> ExpandResult<Option<Fragmen
     result.map(|tt| if kind == "expr" { tt.map(Fragment::Ast) } else { tt.map(Fragment::Tokens) })
 }
 
-fn collect_vars(buf: &mut Vec<SmolStr>, pattern: &tt::Subtree) -> Result<(), ExpandError> {
-    for op in parse_pattern(pattern) {
-        match op? {
+fn collect_vars(buf: &mut Vec<SmolStr>, pattern: &MetaTemplate) -> Result<(), ExpandError> {
+    for op in pattern.iter() {
+        match op.as_ref().map_err(|e| e.clone())? {
             Op::Var { name, .. } => buf.push(name.clone()),
-            Op::TokenTree(tt::TokenTree::Leaf(_)) => (),
-            Op::TokenTree(tt::TokenTree::Subtree(subtree)) => collect_vars(buf, subtree)?,
+            Op::Leaf(_) => (),
+            Op::Subtree(subtree) => collect_vars(buf, subtree)?,
             Op::Repeat { subtree, .. } => collect_vars(buf, subtree)?,
         }
     }

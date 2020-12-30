@@ -4,16 +4,17 @@
 use smallvec::SmallVec;
 use syntax::SmolStr;
 
-use crate::{tt_iter::TtIter, ExpandError};
-
-#[derive(Debug)]
-pub(crate) enum Op<'a> {
-    Var { name: &'a SmolStr, kind: Option<&'a SmolStr> },
-    Repeat { subtree: &'a tt::Subtree, kind: RepeatKind, separator: Option<Separator> },
-    TokenTree(&'a tt::TokenTree),
-}
+use crate::{tt_iter::TtIter, ExpandError, MetaTemplate};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) enum Op {
+    Var { name: SmolStr, kind: Option<SmolStr> },
+    Repeat { subtree: MetaTemplate, kind: RepeatKind, separator: Option<Separator> },
+    Leaf(tt::Leaf),
+    Subtree(MetaTemplate),
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub(crate) enum RepeatKind {
     ZeroOrMore,
     OneOrMore,
@@ -45,16 +46,12 @@ impl PartialEq for Separator {
     }
 }
 
-pub(crate) fn parse_template(
-    template: &tt::Subtree,
-) -> impl Iterator<Item = Result<Op<'_>, ExpandError>> {
-    parse_inner(template, Mode::Template)
+pub(crate) fn parse_template(template: &tt::Subtree) -> Vec<Result<Op, ExpandError>> {
+    parse_inner(&template, Mode::Template)
 }
 
-pub(crate) fn parse_pattern(
-    pattern: &tt::Subtree,
-) -> impl Iterator<Item = Result<Op<'_>, ExpandError>> {
-    parse_inner(pattern, Mode::Pattern)
+pub(crate) fn parse_pattern(pattern: &tt::Subtree) -> Vec<Result<Op, ExpandError>> {
+    parse_inner(&pattern, Mode::Pattern)
 }
 
 #[derive(Clone, Copy)]
@@ -63,12 +60,13 @@ enum Mode {
     Template,
 }
 
-fn parse_inner(src: &tt::Subtree, mode: Mode) -> impl Iterator<Item = Result<Op<'_>, ExpandError>> {
-    let mut src = TtIter::new(src);
+fn parse_inner(tt: &tt::Subtree, mode: Mode) -> Vec<Result<Op, ExpandError>> {
+    let mut src = TtIter::new(&tt);
     std::iter::from_fn(move || {
         let first = src.next()?;
         Some(next_op(first, &mut src, mode))
     })
+    .collect()
 }
 
 macro_rules! err {
@@ -83,21 +81,20 @@ macro_rules! bail {
     };
 }
 
-fn next_op<'a>(
-    first: &'a tt::TokenTree,
-    src: &mut TtIter<'a>,
-    mode: Mode,
-) -> Result<Op<'a>, ExpandError> {
+fn next_op<'a>(first: &tt::TokenTree, src: &mut TtIter<'a>, mode: Mode) -> Result<Op, ExpandError> {
     let res = match first {
-        tt::TokenTree::Leaf(tt::Leaf::Punct(tt::Punct { char: '$', .. })) => {
+        tt::TokenTree::Leaf(leaf @ tt::Leaf::Punct(tt::Punct { char: '$', .. })) => {
             // Note that the '$' itself is a valid token inside macro_rules.
             let second = match src.next() {
-                None => return Ok(Op::TokenTree(first)),
+                None => return Ok(Op::Leaf(leaf.clone())),
                 Some(it) => it,
             };
             match second {
                 tt::TokenTree::Subtree(subtree) => {
                     let (separator, kind) = parse_repeat(src)?;
+                    let delimiter = subtree.delimiter;
+                    let tokens = parse_inner(&subtree, mode);
+                    let subtree = MetaTemplate { tokens, delimiter };
                     Op::Repeat { subtree, separator, kind }
                 }
                 tt::TokenTree::Leaf(leaf) => match leaf {
@@ -107,18 +104,18 @@ fn next_op<'a>(
                         if punct.char != '_' {
                             return Err(ExpandError::UnexpectedToken);
                         }
-                        let name = &UNDERSCORE;
+                        let name = UNDERSCORE.clone();
                         let kind = eat_fragment_kind(src, mode)?;
                         Op::Var { name, kind }
                     }
                     tt::Leaf::Ident(ident) => {
-                        let name = &ident.text;
+                        let name = ident.text.clone();
                         let kind = eat_fragment_kind(src, mode)?;
                         Op::Var { name, kind }
                     }
                     tt::Leaf::Literal(lit) => {
-                        if is_boolean_literal(lit) {
-                            let name = &lit.text;
+                        if is_boolean_literal(&lit) {
+                            let name = lit.text.clone();
                             let kind = eat_fragment_kind(src, mode)?;
                             Op::Var { name, kind }
                         } else {
@@ -128,19 +125,22 @@ fn next_op<'a>(
                 },
             }
         }
-        tt => Op::TokenTree(tt),
+        tt::TokenTree::Leaf(tt) => Op::Leaf(tt.clone()),
+        tt::TokenTree::Subtree(subtree) => {
+            let delimiter = subtree.delimiter;
+            let tokens = parse_inner(&subtree, mode);
+            let subtree = MetaTemplate { tokens, delimiter };
+            Op::Subtree(subtree)
+        }
     };
     Ok(res)
 }
 
-fn eat_fragment_kind<'a>(
-    src: &mut TtIter<'a>,
-    mode: Mode,
-) -> Result<Option<&'a SmolStr>, ExpandError> {
+fn eat_fragment_kind<'a>(src: &mut TtIter<'a>, mode: Mode) -> Result<Option<SmolStr>, ExpandError> {
     if let Mode::Pattern = mode {
         src.expect_char(':').map_err(|()| err!("bad fragment specifier 1"))?;
         let ident = src.expect_ident().map_err(|()| err!("bad fragment specifier 1"))?;
-        return Ok(Some(&ident.text));
+        return Ok(Some(ident.text.clone()));
     };
     Ok(None)
 }

@@ -6,8 +6,8 @@ use syntax::SmolStr;
 use super::ExpandResult;
 use crate::{
     mbe_expander::{Binding, Bindings, Fragment},
-    parser::{parse_template, Op, RepeatKind, Separator},
-    ExpandError,
+    parser::{Op, RepeatKind, Separator},
+    ExpandError, MetaTemplate,
 };
 
 impl Bindings {
@@ -50,7 +50,10 @@ impl Bindings {
     }
 }
 
-pub(super) fn transcribe(template: &tt::Subtree, bindings: &Bindings) -> ExpandResult<tt::Subtree> {
+pub(super) fn transcribe(
+    template: &MetaTemplate,
+    bindings: &Bindings,
+) -> ExpandResult<tt::Subtree> {
     assert!(template.delimiter == None);
     let mut ctx = ExpandCtx { bindings: &bindings, nesting: Vec::new() };
     let mut arena: Vec<tt::TokenTree> = Vec::new();
@@ -76,35 +79,35 @@ struct ExpandCtx<'a> {
 
 fn expand_subtree(
     ctx: &mut ExpandCtx,
-    template: &tt::Subtree,
+    template: &MetaTemplate,
     arena: &mut Vec<tt::TokenTree>,
 ) -> ExpandResult<tt::Subtree> {
     // remember how many elements are in the arena now - when returning, we want to drain exactly how many elements we added. This way, the recursive uses of the arena get their own "view" of the arena, but will reuse the allocation
     let start_elements = arena.len();
     let mut err = None;
-    for op in parse_template(template) {
+    for op in template.iter() {
         let op = match op {
             Ok(op) => op,
             Err(e) => {
-                err = Some(e);
+                err = Some(e.clone());
                 break;
             }
         };
         match op {
-            Op::TokenTree(tt @ tt::TokenTree::Leaf(..)) => arena.push(tt.clone()),
-            Op::TokenTree(tt::TokenTree::Subtree(tt)) => {
-                let ExpandResult { value: tt, err: e } = expand_subtree(ctx, tt, arena);
+            Op::Leaf(tt) => arena.push(tt.clone().into()),
+            Op::Subtree(tt) => {
+                let ExpandResult { value: tt, err: e } = expand_subtree(ctx, &tt, arena);
                 err = err.or(e);
                 arena.push(tt.into());
             }
             Op::Var { name, .. } => {
-                let ExpandResult { value: fragment, err: e } = expand_var(ctx, name);
+                let ExpandResult { value: fragment, err: e } = expand_var(ctx, &name);
                 err = err.or(e);
                 push_fragment(arena, fragment);
             }
             Op::Repeat { subtree, kind, separator } => {
                 let ExpandResult { value: fragment, err: e } =
-                    expand_repeat(ctx, subtree, kind, separator, arena);
+                    expand_repeat(ctx, subtree, *kind, separator, arena);
                 err = err.or(e);
                 push_fragment(arena, fragment)
             }
@@ -161,9 +164,9 @@ fn expand_var(ctx: &mut ExpandCtx, v: &SmolStr) -> ExpandResult<Fragment> {
 
 fn expand_repeat(
     ctx: &mut ExpandCtx,
-    template: &tt::Subtree,
+    template: &MetaTemplate,
     kind: RepeatKind,
-    separator: Option<Separator>,
+    separator: &Option<Separator>,
     arena: &mut Vec<tt::TokenTree>,
 ) -> ExpandResult<Fragment> {
     let mut buf: Vec<tt::TokenTree> = Vec::new();
