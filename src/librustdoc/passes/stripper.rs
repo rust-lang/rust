@@ -51,7 +51,7 @@ impl<'a> DocFolder for Stripper<'a> {
 
             clean::StructFieldItem(..) => {
                 if !i.visibility.is_public() {
-                    return StripItem(i).strip();
+                    return Some(StripItem(i).strip());
                 }
             }
 
@@ -61,7 +61,7 @@ impl<'a> DocFolder for Stripper<'a> {
                     let old = mem::replace(&mut self.update_retained, false);
                     let ret = StripItem(self.fold_item_recur(i)).strip();
                     self.update_retained = old;
-                    return ret;
+                    return Some(ret);
                 }
             }
 

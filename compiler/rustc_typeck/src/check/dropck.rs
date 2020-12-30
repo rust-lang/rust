@@ -267,15 +267,13 @@ crate fn check_drop_obligations<'a, 'tcx>(
     ty: Ty<'tcx>,
     span: Span,
     body_id: hir::HirId,
-) -> Result<(), ErrorReported> {
+) {
     debug!("check_drop_obligations typ: {:?}", ty);
 
     let cause = &ObligationCause::misc(span, body_id);
     let infer_ok = rcx.infcx.at(cause, rcx.fcx.param_env).dropck_outlives(ty);
     debug!("dropck_outlives = {:#?}", infer_ok);
     rcx.fcx.register_infer_ok_obligations(infer_ok);
-
-    Ok(())
 }
 
 // This is an implementation of the TypeRelation trait with the
