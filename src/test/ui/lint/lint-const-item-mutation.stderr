@@ -107,7 +107,7 @@ LL |     VEC.push(0);
    = note: each usage of a `const` item creates a new temporary
    = note: the mutable reference will refer to this temporary, not the original `const` item
 note: mutable reference created due to call to this method
-  --> $SRC_DIR/alloc/src/vec.rs:LL:COL
+  --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
    |
 LL | /     pub fn push(&mut self, value: T) {
 LL | |         // This will panic or abort if we would allocate > isize::MAX bytes
