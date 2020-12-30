@@ -37,7 +37,7 @@ note: the lint level is defined here
    |
 LL | #![warn(rustdoc)]
    |         ^^^^^^^
-   = note: `#[warn(missing_doc_code_examples)]` implied by `#[warn(rustdoc)]`
+   = note: `#[warn(rustdoc::missing_doc_code_examples)]` implied by `#[warn(rustdoc)]`
 
 warning: missing code example in this documentation
   --> $DIR/check.rs:9:1

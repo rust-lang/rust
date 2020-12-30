@@ -7,8 +7,8 @@ LL | /// See [zip] crate.
 note: the lint level is defined here
   --> $DIR/unused-extern-crate.rs:2:9
    |
-LL | #![deny(broken_intra_doc_links)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^
+LL | #![deny(rustdoc::broken_intra_doc_links)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
 error: aborting due to previous error

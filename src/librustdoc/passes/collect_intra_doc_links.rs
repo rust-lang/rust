@@ -16,10 +16,7 @@ use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::{bug, ty};
 use rustc_resolve::ParentScope;
-use rustc_session::lint::{
-    builtin::{BROKEN_INTRA_DOC_LINKS, PRIVATE_INTRA_DOC_LINKS},
-    Lint,
-};
+use rustc_session::lint::Lint;
 use rustc_span::hygiene::{MacroKind, SyntaxContext};
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::DUMMY_SP;
@@ -35,6 +32,7 @@ use std::ops::Range;
 
 use crate::clean::{self, utils::find_nearest_parent_module, Crate, Item, ItemLink, PrimitiveType};
 use crate::core::DocContext;
+use crate::core::{BROKEN_INTRA_DOC_LINKS, PRIVATE_INTRA_DOC_LINKS};
 use crate::fold::DocFolder;
 use crate::html::markdown::{markdown_links, MarkdownLink};
 use crate::passes::Pass;
