@@ -12,7 +12,7 @@
 # stable release's version number. `date` is the date where the release we're
 # bootstrapping off was released.
 
-date: 2020-11-18
+date: 2020-12-30
 rustc: beta
 
 # We use a nightly rustfmt to format the source because it solves some

@@ -991,16 +991,8 @@ impl<T> AtomicPtr<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn load(&self, order: Ordering) -> *mut T {
-        #[cfg(not(bootstrap))]
         // SAFETY: data races are prevented by atomic intrinsics.
-        unsafe {
-            atomic_load(self.p.get(), order)
-        }
-        #[cfg(bootstrap)]
-        // SAFETY: data races are prevented by atomic intrinsics.
-        unsafe {
-            atomic_load(self.p.get() as *mut usize, order) as *mut T
-        }
+        unsafe { atomic_load(self.p.get(), order) }
     }
 
     /// Stores a value into the pointer.
@@ -1027,15 +1019,9 @@ impl<T> AtomicPtr<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn store(&self, ptr: *mut T, order: Ordering) {
-        #[cfg(not(bootstrap))]
         // SAFETY: data races are prevented by atomic intrinsics.
         unsafe {
             atomic_store(self.p.get(), ptr, order);
-        }
-        #[cfg(bootstrap)]
-        // SAFETY: data races are prevented by atomic intrinsics.
-        unsafe {
-            atomic_store(self.p.get() as *mut usize, ptr as usize, order);
         }
     }
 
@@ -1065,16 +1051,8 @@ impl<T> AtomicPtr<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[cfg(target_has_atomic = "ptr")]
     pub fn swap(&self, ptr: *mut T, order: Ordering) -> *mut T {
-        #[cfg(bootstrap)]
         // SAFETY: data races are prevented by atomic intrinsics.
-        unsafe {
-            atomic_swap(self.p.get() as *mut usize, ptr as usize, order) as *mut T
-        }
-        #[cfg(not(bootstrap))]
-        // SAFETY: data races are prevented by atomic intrinsics.
-        unsafe {
-            atomic_swap(self.p.get(), ptr, order)
-        }
+        unsafe { atomic_swap(self.p.get(), ptr, order) }
     }
 
     /// Stores a value into the pointer if the current value is the same as the `current` value.
@@ -1174,26 +1152,8 @@ impl<T> AtomicPtr<T> {
         success: Ordering,
         failure: Ordering,
     ) -> Result<*mut T, *mut T> {
-        #[cfg(bootstrap)]
         // SAFETY: data races are prevented by atomic intrinsics.
-        unsafe {
-            let res = atomic_compare_exchange(
-                self.p.get() as *mut usize,
-                current as usize,
-                new as usize,
-                success,
-                failure,
-            );
-            match res {
-                Ok(x) => Ok(x as *mut T),
-                Err(x) => Err(x as *mut T),
-            }
-        }
-        #[cfg(not(bootstrap))]
-        // SAFETY: data races are prevented by atomic intrinsics.
-        unsafe {
-            atomic_compare_exchange(self.p.get(), current, new, success, failure)
-        }
+        unsafe { atomic_compare_exchange(self.p.get(), current, new, success, failure) }
     }
 
     /// Stores a value into the pointer if the current value is the same as the `current` value.
@@ -1241,29 +1201,11 @@ impl<T> AtomicPtr<T> {
         success: Ordering,
         failure: Ordering,
     ) -> Result<*mut T, *mut T> {
-        #[cfg(bootstrap)]
-        // SAFETY: data races are prevented by atomic intrinsics.
-        unsafe {
-            let res = atomic_compare_exchange_weak(
-                self.p.get() as *mut usize,
-                current as usize,
-                new as usize,
-                success,
-                failure,
-            );
-            match res {
-                Ok(x) => Ok(x as *mut T),
-                Err(x) => Err(x as *mut T),
-            }
-        }
-        #[cfg(not(bootstrap))]
         // SAFETY: This intrinsic is unsafe because it operates on a raw pointer
         // but we know for sure that the pointer is valid (we just got it from
         // an `UnsafeCell` that we have by reference) and the atomic operation
         // itself allows us to safely mutate the `UnsafeCell` contents.
-        unsafe {
-            atomic_compare_exchange_weak(self.p.get(), current, new, success, failure)
-        }
+        unsafe { atomic_compare_exchange_weak(self.p.get(), current, new, success, failure) }
     }
 
     /// Fetches the value, and applies a function to it that returns an optional

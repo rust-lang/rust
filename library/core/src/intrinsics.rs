@@ -1736,7 +1736,6 @@ extern "rust-intrinsic" {
 
     /// Allocate at compile time. Should not be called at runtime.
     #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
-    #[cfg(not(bootstrap))]
     pub fn const_allocate(size: usize, align: usize) -> *mut u8;
 }
 
