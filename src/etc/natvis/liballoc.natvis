@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
   <Type Name="alloc::vec::Vec&lt;*&gt;">
-    <DisplayString>{{ size={len} }}</DisplayString>
+    <DisplayString>{{ len={len} }}</DisplayString>
     <Expand>
-      <Item Name="[size]" ExcludeView="simple">len</Item>
+      <Item Name="[len]" ExcludeView="simple">len</Item>
       <Item Name="[capacity]" ExcludeView="simple">buf.cap</Item>
       <ArrayItems>
         <Size>len</Size>
@@ -12,9 +12,9 @@
     </Expand>
   </Type>
   <Type Name="alloc::collections::vec_deque::VecDeque&lt;*&gt;">
-    <DisplayString>{{ size={tail &lt;= head ? head - tail : buf.cap - tail + head} }}</DisplayString>
+    <DisplayString>{{ len={tail &lt;= head ? head - tail : buf.cap - tail + head} }}</DisplayString>
     <Expand>
-      <Item Name="[size]" ExcludeView="simple">tail &lt;= head ? head - tail : buf.cap - tail + head</Item>
+      <Item Name="[len]" ExcludeView="simple">tail &lt;= head ? head - tail : buf.cap - tail + head</Item>
       <Item Name="[capacity]" ExcludeView="simple">buf.cap</Item>
       <CustomListItems>
         <Variable Name="i" InitialValue="tail" />
@@ -31,7 +31,7 @@
     </Expand>
   </Type>
   <Type Name="alloc::collections::linked_list::LinkedList&lt;*&gt;">
-    <DisplayString>{{ size={len} }}</DisplayString>
+    <DisplayString>{{ len={len} }}</DisplayString>
     <Expand>
       <LinkedListItems>
         <Size>len</Size>
@@ -42,15 +42,37 @@
     </Expand>
   </Type>
   <Type Name="alloc::string::String">
-    <DisplayString>{*(char**)this,[vec.len]s8}</DisplayString>
-    <StringView>*(char**)this,[vec.len]s8</StringView>
+    <DisplayString>{(char*)vec.buf.ptr.pointer,[vec.len]s8}</DisplayString>
+    <StringView>(char*)vec.buf.ptr.pointer,[vec.len]s8</StringView>
     <Expand>
-      <Item Name="[size]" ExcludeView="simple">vec.len</Item>
+      <Item Name="[len]" ExcludeView="simple">vec.len</Item>
       <Item Name="[capacity]" ExcludeView="simple">vec.buf.cap</Item>
-      <ArrayItems>
-        <Size>vec.len</Size>
-        <ValuePointer>*(char**)this</ValuePointer>
-      </ArrayItems>
+      <Synthetic Name="[chars]">
+        <Expand>
+          <ArrayItems>
+            <Size>vec.len</Size>
+            <ValuePointer>(char*)vec.buf.ptr.pointer</ValuePointer>
+          </ArrayItems>
+        </Expand>
+      </Synthetic>
+    </Expand>
+  </Type>
+  <Type Name="alloc::rc::Rc&lt;*&gt;">
+    <DisplayString>{ptr.pointer->value}</DisplayString>
+    <Expand>
+      <ExpandedItem>ptr.pointer->value</ExpandedItem>
+    </Expand>
+  </Type>
+  <Type Name="alloc::sync::Arc&lt;*&gt;">
+    <DisplayString>{ptr.pointer->data}</DisplayString>
+    <Expand>
+      <ExpandedItem>ptr.pointer->data</ExpandedItem>
+    </Expand>
+  </Type>
+  <Type Name="alloc::sync::Weak&lt;*&gt;">
+    <DisplayString>{ptr.pointer->data}</DisplayString>
+    <Expand>
+      <ExpandedItem>ptr.pointer->data</ExpandedItem>
     </Expand>
   </Type>
 </AutoVisualizer>
