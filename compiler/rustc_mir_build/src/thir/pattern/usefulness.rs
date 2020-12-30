@@ -525,6 +525,19 @@ impl<'p, 'tcx> MatrixEntry<'p, 'tcx> {
     }
 }
 
+#[derive(Clone)]
+enum UndoFrameKind {
+    Specialization { ctor_arity: usize },
+    OrPatExpansion,
+}
+
+#[derive(Clone)]
+struct UndoFrame<'p, 'tcx> {
+    kind: UndoFrameKind,
+    last_col: Vec<MatrixEntry<'p, 'tcx>>,
+    selected_rows: Vec<usize>,
+}
+
 /// A 2D matrix.
 #[derive(Clone, Default)]
 struct Matrix<'p, 'tcx> {
@@ -535,6 +548,8 @@ struct Matrix<'p, 'tcx> {
     /// `selected_rows`, and the contents in subsequent columns can be found by following
     /// `next_row_id`s.
     selected_rows: Vec<usize>,
+    /// Stores the history of operations done on this matrix, so that we can undo them in-place.
+    history: Vec<UndoFrame<'p, 'tcx>>,
 }
 
 impl<'p, 'tcx> Matrix<'p, 'tcx> {
@@ -640,7 +655,7 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
         pcx: PatCtxt<'_, 'p, 'tcx>,
         ctor: &Constructor<'tcx>,
         ctor_wild_subpatterns: &Fields<'p, 'tcx>,
-    ) -> SpecializedMatrix<'a, 'p, 'tcx> {
+    ) {
         assert!(self.column_count() >= 1);
         let old_col_count = self.column_count();
         let new_col_count = old_col_count - 1 + ctor_wild_subpatterns.len();
@@ -690,71 +705,73 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
             }
         }
 
+        self.history.push(UndoFrame {
+            kind: UndoFrameKind::Specialization { ctor_arity: ctor_wild_subpatterns.len() },
+            last_col,
+            selected_rows: old_selected_rows,
+        });
+
         // Expand any or-patterns present in the new last column.
-        let mut last_col_before_orpat_expansion = None;
         if !self.columns.is_empty() && self.last_col().any(|e| e.pat.is_or_pat()) {
-            let last_col = self.columns.pop().unwrap();
-            let mut new_last_col = Vec::new();
-            for &row_id in &self.selected_rows {
-                let entry = &last_col[row_id];
-                if entry.pat.is_or_pat() {
-                    for pat in entry.pat.expand_or_pat() {
-                        // All subpatterns point to the same row in the next column.
-                        let entry = MatrixEntry {
-                            pat,
-                            next_row_id: entry.next_row_id,
-                            ctor: OnceCell::new(),
-                        };
-                        new_last_col.push(entry);
-                    }
-                } else {
-                    let entry = MatrixEntry {
-                        pat: entry.pat,
-                        next_row_id: entry.next_row_id,
-                        ctor: OnceCell::new(),
-                    };
+            self.expand_or_patterns();
+        }
+    }
+
+    /// Expands or-patterns in the last column of the matrix. Panics if the matrix has no columns.
+    fn expand_or_patterns(&mut self) {
+        let last_col = self.columns.pop().unwrap();
+        let mut new_last_col = Vec::new();
+        for &row_id in &self.selected_rows {
+            let entry = &last_col[row_id];
+            if entry.pat.is_or_pat() {
+                for pat in entry.pat.expand_or_pat() {
+                    // All subpatterns point to the same row in the next column.
+                    let entry =
+                        MatrixEntry { pat, next_row_id: entry.next_row_id, ctor: OnceCell::new() };
                     new_last_col.push(entry);
                 }
+            } else {
+                let entry = MatrixEntry {
+                    pat: entry.pat,
+                    next_row_id: entry.next_row_id,
+                    ctor: OnceCell::new(),
+                };
+                new_last_col.push(entry);
             }
-            last_col_before_orpat_expansion = Some(last_col);
-            self.selected_rows = (0..new_last_col.len()).collect();
-            self.columns.push(new_last_col);
         }
-
-        SpecializedMatrix {
-            matrix: self,
-            ctor_arity: ctor_wild_subpatterns.len(),
-            last_col_before_specialization: last_col,
-            selected_rows_before_specialization: old_selected_rows,
-            last_col_before_orpat_expansion,
-        }
-    }
-}
-
-/// A struct that keeps around enough data to undo matrix specialization in-place.
-struct SpecializedMatrix<'a, 'p, 'tcx> {
-    matrix: &'a mut Matrix<'p, 'tcx>,
-    ctor_arity: usize,
-    last_col_before_specialization: Vec<MatrixEntry<'p, 'tcx>>,
-    selected_rows_before_specialization: Vec<usize>,
-    last_col_before_orpat_expansion: Option<Vec<MatrixEntry<'p, 'tcx>>>,
-}
-
-impl<'a, 'p, 'tcx> SpecializedMatrix<'a, 'p, 'tcx> {
-    fn matrix(&mut self) -> &mut Matrix<'p, 'tcx> {
-        self.matrix
+        let new_selected_rows = (0..new_last_col.len()).collect();
+        self.columns.push(new_last_col);
+        self.history.push(UndoFrame {
+            kind: UndoFrameKind::OrPatExpansion,
+            last_col,
+            selected_rows: mem::replace(&mut self.selected_rows, new_selected_rows),
+        })
     }
 
-    fn unspecialize(self) {
-        if let Some(col) = self.last_col_before_orpat_expansion {
-            self.matrix.columns.pop().unwrap();
-            self.matrix.columns.push(col);
+    /// Undo the last specialization or or-pattern expansion. Panics if nothing to undo.
+    fn undo(&mut self) {
+        let hist = self.history.pop().unwrap();
+        match hist.kind {
+            UndoFrameKind::Specialization { ctor_arity } => {
+                for _ in 0..ctor_arity {
+                    self.columns.pop().unwrap();
+                }
+            }
+            UndoFrameKind::OrPatExpansion => {
+                self.columns.pop().unwrap();
+            }
         }
-        for _ in 0..self.ctor_arity {
-            self.matrix.columns.pop().unwrap();
+        self.columns.push(hist.last_col);
+        self.selected_rows = hist.selected_rows;
+    }
+
+    /// Undo the last specialization, possibly also undoing an or-pattern expansion if there is ont
+    /// before.
+    fn unspecialize(&mut self) {
+        if matches!(self.history.last().unwrap().kind, UndoFrameKind::OrPatExpansion) {
+            self.undo();
         }
-        self.matrix.columns.push(self.last_col_before_specialization);
-        self.matrix.selected_rows = self.selected_rows_before_specialization;
+        self.undo();
     }
 }
 
@@ -1295,27 +1312,16 @@ fn is_useful<'p, 'tcx>(
         let split_ctors = v_ctor.split(pcx, matrix.head_ctors(cx));
         // For each constructor, we compute whether there's a value that starts with it that would
         // witness the usefulness of `v`.
-        let start_matrix = &mut *matrix;
         let usefulnesses = split_ctors.into_iter().map(|ctor| {
             debug!("specialize({:?})", ctor);
             // We cache the result of `Fields::wildcards` because it is used a lot.
             let ctor_wild_subpatterns = Fields::wildcards(pcx, &ctor);
-            let mut spec_matrix =
-                start_matrix.specialize_constructor(pcx, &ctor, &ctor_wild_subpatterns);
+            matrix.specialize_constructor(pcx, &ctor, &ctor_wild_subpatterns);
             let v = v.pop_head_constructor(&ctor_wild_subpatterns);
-            let usefulness = {
-                is_useful(
-                    cx,
-                    spec_matrix.matrix(),
-                    &v,
-                    witness_preference,
-                    hir_id,
-                    is_under_guard,
-                    false,
-                )
-            };
-            spec_matrix.unspecialize();
-            usefulness.apply_constructor(pcx, start_matrix, &ctor, &ctor_wild_subpatterns)
+            let usefulness =
+                is_useful(cx, matrix, &v, witness_preference, hir_id, is_under_guard, false);
+            matrix.unspecialize();
+            usefulness.apply_constructor(pcx, matrix, &ctor, &ctor_wild_subpatterns)
         });
         Usefulness::merge(witness_preference, usefulnesses)
     };
