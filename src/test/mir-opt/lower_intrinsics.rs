@@ -16,7 +16,7 @@ pub fn size_of<T>() -> usize {
 
 // EMIT_MIR lower_intrinsics.forget.LowerIntrinsics.diff
 pub fn forget<T>(t: T) {
-    unsafe { core::intrinsics::forget(t) };
+    core::intrinsics::forget(t)
 }
 
 // EMIT_MIR lower_intrinsics.unreachable.LowerIntrinsics.diff
