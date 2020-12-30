@@ -11,7 +11,7 @@ edition = "2018"
 doctest = false
 
 [dependencies]
-itertools = "0.9.0"
+itertools = "0.10.0"
 rowan = "0.10.0"
 rustc_lexer = { version = "695.0.0", package = "rustc-ap-rustc_lexer" }
 rustc-hash = "1.1.0"

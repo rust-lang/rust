@@ -12,7 +12,7 @@ doctest = false
 
 [dependencies]
 rustc-hash = "1.1.0"
-itertools = "0.9.0"
+itertools = "0.10.0"
 
 text_edit = { path = "../text_edit", version = "0.0.0" }
 syntax = { path = "../syntax", version = "0.0.0" }
