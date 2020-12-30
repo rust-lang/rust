@@ -5,9 +5,9 @@ use rustc_span::symbol::{sym, Symbol};
 
 pub(crate) use self::drop_flag_effects::*;
 pub use self::framework::{
-    fmt, graphviz, lattice, visit_results, Analysis, AnalysisDomain, Backward, BorrowckFlowState,
-    BorrowckResults, Engine, Forward, GenKill, GenKillAnalysis, JoinSemiLattice, Results,
-    ResultsCursor, ResultsRefCursor, ResultsVisitor, SwitchIntEdgeEffects,
+    fmt, lattice, visit_results, Analysis, AnalysisDomain, Backward, Direction, Engine, Forward,
+    GenKill, GenKillAnalysis, JoinSemiLattice, Results, ResultsCursor, ResultsRefCursor,
+    ResultsVisitable, ResultsVisitor,
 };
 
 use self::move_paths::MoveData;
@@ -18,15 +18,12 @@ pub mod impls;
 pub mod move_paths;
 
 pub(crate) mod indexes {
-    pub(crate) use super::{
-        impls::borrows::BorrowIndex,
-        move_paths::{InitIndex, MoveOutIndex, MovePathIndex},
-    };
+    pub(crate) use super::move_paths::MovePathIndex;
 }
 
 pub struct MoveDataParamEnv<'tcx> {
-    pub(crate) move_data: MoveData<'tcx>,
-    pub(crate) param_env: ty::ParamEnv<'tcx>,
+    pub move_data: MoveData<'tcx>,
+    pub param_env: ty::ParamEnv<'tcx>,
 }
 
 pub(crate) fn has_rustc_mir_with(

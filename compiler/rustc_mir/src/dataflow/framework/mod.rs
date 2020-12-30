@@ -50,8 +50,7 @@ pub use self::cursor::{ResultsCursor, ResultsRefCursor};
 pub use self::direction::{Backward, Direction, Forward};
 pub use self::engine::{Engine, Results};
 pub use self::lattice::{JoinSemiLattice, MeetSemiLattice};
-pub use self::visitor::{visit_results, ResultsVisitor};
-pub use self::visitor::{BorrowckFlowState, BorrowckResults};
+pub use self::visitor::{visit_results, ResultsVisitable, ResultsVisitor};
 
 /// Define the domain of a dataflow problem.
 ///

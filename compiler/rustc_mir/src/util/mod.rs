@@ -1,5 +1,4 @@
 pub mod aggregate;
-pub mod borrowck_errors;
 pub mod elaborate_drops;
 pub mod patch;
 pub mod storage;
@@ -10,7 +9,7 @@ mod find_self_call;
 mod generic_graph;
 pub(crate) mod generic_graphviz;
 mod graphviz;
-pub(crate) mod pretty;
+pub mod pretty;
 pub(crate) mod spanview;
 
 pub use self::aggregate::expand_aggregate;

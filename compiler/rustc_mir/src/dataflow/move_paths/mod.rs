@@ -19,6 +19,12 @@ rustc_index::newtype_index! {
     }
 }
 
+impl polonius_engine::Atom for MovePathIndex {
+    fn index(self) -> usize {
+        rustc_index::vec::Idx::index(self)
+    }
+}
+
 rustc_index::newtype_index! {
     pub struct MoveOutIndex {
         DEBUG_FORMAT = "mo{}"
@@ -276,7 +282,7 @@ impl fmt::Debug for Init {
 }
 
 impl Init {
-    crate fn span<'tcx>(&self, body: &Body<'tcx>) -> Span {
+    pub fn span<'tcx>(&self, body: &Body<'tcx>) -> Span {
         match self.location {
             InitLocation::Argument(local) => body.local_decls[local].source_info.span,
             InitLocation::Statement(location) => body.source_info(location).span,
@@ -338,12 +344,12 @@ impl MovePathLookup {
 
 #[derive(Debug)]
 pub struct IllegalMoveOrigin<'tcx> {
-    pub(crate) location: Location,
-    pub(crate) kind: IllegalMoveOriginKind<'tcx>,
+    pub location: Location,
+    pub kind: IllegalMoveOriginKind<'tcx>,
 }
 
 #[derive(Debug)]
-pub(crate) enum IllegalMoveOriginKind<'tcx> {
+pub enum IllegalMoveOriginKind<'tcx> {
     /// Illegal move due to attempt to move from behind a reference.
     BorrowedContent {
         /// The place the reference refers to: if erroneous code was trying to

@@ -2,7 +2,7 @@ use rustc_middle::mir::visit::PlaceContext;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::{Body, Local, Location};
 
-crate trait FindAssignments {
+pub trait FindAssignments {
     // Finds all statements that assign directly to local (i.e., X = ...)
     // and returns their locations.
     fn find_assignments(&self, local: Local) -> Vec<Location>;

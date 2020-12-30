@@ -14,6 +14,7 @@ rayon = { version = "0.3.1", package = "rustc-rayon" }
 smallvec = { version = "1.6.1", features = ["union", "may_dangle"] }
 rustc_ast = { path = "../rustc_ast" }
 rustc_attr = { path = "../rustc_attr" }
+rustc_borrowck = { path = "../rustc_borrowck" }
 rustc_builtin_macros = { path = "../rustc_builtin_macros" }
 rustc_expand = { path = "../rustc_expand" }
 rustc_parse = { path = "../rustc_parse" }

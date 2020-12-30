@@ -250,7 +250,7 @@ fn create_dump_file_with_basename(
 /// bit of MIR-related data. Used by `mir-dump`, but also by other
 /// bits of code (e.g., NLL inference) that dump graphviz data or
 /// other things, and hence takes the extension as an argument.
-pub(crate) fn create_dump_file(
+pub fn create_dump_file(
     tcx: TyCtxt<'_>,
     extension: &str,
     pass_num: Option<&dyn Display>,

@@ -204,7 +204,7 @@ pub(crate) fn drop_flag_effects_for_location<'tcx, F>(
     for_location_inits(tcx, body, move_data, loc, |mpi| callback(mpi, DropFlagState::Present));
 }
 
-pub(crate) fn for_location_inits<'tcx, F>(
+pub fn for_location_inits<'tcx, F>(
     tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
     move_data: &MoveData<'tcx>,

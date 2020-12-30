@@ -1058,7 +1058,7 @@ pub fn promote_candidates<'tcx>(
 
 /// This function returns `true` if the function being called in the array
 /// repeat expression is a `const` function.
-crate fn is_const_fn_in_array_repeat_expression<'tcx>(
+pub fn is_const_fn_in_array_repeat_expression<'tcx>(
     ccx: &ConstCx<'_, 'tcx>,
     place: &Place<'tcx>,
     body: &Body<'tcx>,
