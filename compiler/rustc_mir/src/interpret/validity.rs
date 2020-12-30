@@ -391,7 +391,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
         }
         // Make sure this is dereferenceable and all.
         let size_and_align = try_validation!(
-            self.ecx.size_and_align_of(place.meta, place.layout),
+            self.ecx.size_and_align_of_mplace(place),
             self.path,
             err_ub!(InvalidMeta(msg)) => { "invalid {} metadata: {}", kind, msg },
         );

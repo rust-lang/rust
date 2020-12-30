@@ -379,7 +379,8 @@ pub const fn size_of_val<T: ?Sized>(val: &T) -> usize {
 /// ```
 #[inline]
 #[unstable(feature = "layout_for_ptr", issue = "69835")]
-pub unsafe fn size_of_val_raw<T: ?Sized>(val: *const T) -> usize {
+#[rustc_const_unstable(feature = "const_size_of_val_raw", issue = "46571")]
+pub const unsafe fn size_of_val_raw<T: ?Sized>(val: *const T) -> usize {
     intrinsics::size_of_val(val)
 }
 
@@ -510,7 +511,8 @@ pub const fn align_of_val<T: ?Sized>(val: &T) -> usize {
 /// ```
 #[inline]
 #[unstable(feature = "layout_for_ptr", issue = "69835")]
-pub unsafe fn align_of_val_raw<T: ?Sized>(val: *const T) -> usize {
+#[rustc_const_unstable(feature = "const_align_of_val_raw", issue = "46571")]
+pub const unsafe fn align_of_val_raw<T: ?Sized>(val: *const T) -> usize {
     intrinsics::min_align_of_val(val)
 }
 
