@@ -3,6 +3,8 @@ error: expected `;`, found `::`
    |
 LL | use foo::{bar}::baz
    |               ^^ expected `;`
+   |
+   = note: glob-like brace syntax must be last on the path
 
 error: aborting due to previous error
 
