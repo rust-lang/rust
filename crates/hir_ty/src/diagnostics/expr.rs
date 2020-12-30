@@ -41,16 +41,7 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
         ExprValidator { owner, infer, sink }
     }
 
-    fn bar() {
-        // LOOK FOR THIS
-        let m = [1, 2, 3]
-            .iter()
-            .filter_map(|x| if *x == 2 { Some(4) } else { None })
-            .next();
-    }
-
     pub(super) fn validate_body(&mut self, db: &dyn HirDatabase) {
-        // DO NOT MERGE: just getting something working for now
         self.check_for_filter_map_next(db);
 
         let body = db.body(self.owner.into());
@@ -169,24 +160,20 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
 
         for (id, expr) in body.exprs.iter() {
             if let Expr::MethodCall { receiver, method_name, args, .. } = expr {
-                let method_name_hack_do_not_merge = format!("{}", method_name);
+                let method_name = format!("{}", method_name);
 
-                if method_name_hack_do_not_merge == "filter_map" && args.len() == 1 {
-                    prev = Some((id, args[0]));
+                if method_name == "filter_map" && args.len() == 1 {
+                    prev = Some(id);
                     continue;
                 }
 
-                if method_name_hack_do_not_merge == "next" {
-                    if let Some((filter_map_id, filter_map_args)) = prev {
+                if method_name == "next" {
+                    if let Some(filter_map_id) = prev {
                         if *receiver == filter_map_id {
                             let (_, source_map) = db.body_with_source_map(self.owner.into());
-                            if let (Ok(filter_map_source_ptr), Ok(next_source_ptr)) = (
-                                source_map.expr_syntax(filter_map_id),
-                                source_map.expr_syntax(id),
-                            ) {
+                            if let Ok(next_source_ptr) = source_map.expr_syntax(id) {
                                 self.sink.push(ReplaceFilterMapNextWithFindMap {
-                                    file: filter_map_source_ptr.file_id,
-                                    filter_map_expr: filter_map_source_ptr.value,
+                                    file: next_source_ptr.file_id,
                                     next_expr: next_source_ptr.value,
                                 });
                             }

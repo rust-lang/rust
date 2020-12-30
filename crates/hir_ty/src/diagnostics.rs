@@ -392,7 +392,7 @@ impl Diagnostic for IncorrectCase {
 #[derive(Debug)]
 pub struct ReplaceFilterMapNextWithFindMap {
     pub file: HirFileId,
-    pub filter_map_expr: AstPtr<ast::Expr>,
+    /// This expression is the whole method chain up to and including `.filter_map(..).next()`.
     pub next_expr: AstPtr<ast::Expr>,
 }
 
@@ -404,7 +404,7 @@ impl Diagnostic for ReplaceFilterMapNextWithFindMap {
         "replace filter_map(..).next() with find_map(..)".to_string()
     }
     fn display_source(&self) -> InFile<SyntaxNodePtr> {
-        InFile { file_id: self.file, value: self.filter_map_expr.clone().into() }
+        InFile { file_id: self.file, value: self.next_expr.clone().into() }
     }
     fn as_any(&self) -> &(dyn Any + Send + 'static) {
         self
@@ -671,15 +671,55 @@ fn foo() { break; }
     }
 
     #[test]
-    fn replace_missing_filter_next_with_find_map() {
+    fn replace_filter_next_with_find_map() {
         check_diagnostics(
             r#"
             fn foo() {
-            let m = [1, 2, 3]
-                .iter()
-                .filter_map(|x| if *x == 2 { Some (4) } else { None })
-                .next();
-                //^^^ Replace .filter_map(..).next() with .find_map(..)
+                let m = [1, 2, 3].iter().filter_map(|x| if *x == 2 { Some (4) } else { None }).next();
+                      //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ replace filter_map(..).next() with find_map(..)
+            }
+            "#,
+        );
+    }
+
+    #[test]
+    fn replace_filter_next_with_find_map_no_diagnostic_without_next() {
+        check_diagnostics(
+            r#"
+            fn foo() {
+                let m = [1, 2, 3]
+                    .iter()
+                    .filter_map(|x| if *x == 2 { Some (4) } else { None })
+                    .len();
+            }
+            "#,
+        );
+    }
+
+    #[test]
+    fn replace_filter_next_with_find_map_no_diagnostic_with_intervening_methods() {
+        check_diagnostics(
+            r#"
+            fn foo() {
+                let m = [1, 2, 3]
+                    .iter()
+                    .filter_map(|x| if *x == 2 { Some (4) } else { None })
+                    .map(|x| x + 2)
+                    .len();
+            }
+            "#,
+        );
+    }
+
+    #[test]
+    fn replace_filter_next_with_find_map_no_diagnostic_if_not_in_chain() {
+        check_diagnostics(
+            r#"
+            fn foo() {
+                let m = [1, 2, 3]
+                    .iter()
+                    .filter_map(|x| if *x == 2 { Some (4) } else { None });
+                let n = m.next();
             }
             "#,
         );

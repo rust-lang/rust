@@ -1,5 +1,6 @@
 //! Provides a way to attach fixes to the diagnostics.
 //! The same module also has all curret custom fixes for the diagnostics implemented.
+use ast::MethodCallExpr;
 use hir::{
     db::AstDatabase,
     diagnostics::{
@@ -13,11 +14,7 @@ use ide_db::{
     source_change::{FileSystemEdit, SourceChange},
     RootDatabase,
 };
-use syntax::{
-    algo,
-    ast::{self, edit::IndentLevel, make},
-    AstNode,
-};
+use syntax::{AstNode, TextRange, algo, ast::{self, ArgList, edit::IndentLevel, make}};
 use text_edit::TextEdit;
 
 use crate::{diagnostics::Fix, references::rename::rename_with_semantics, FilePosition};
@@ -144,25 +141,21 @@ impl DiagnosticWithFix for IncorrectCase {
     }
 }
 
-// Bugs:
-//  * Action is applicable for both iter() and filter_map() rows
-//  * Action deletes the entire method chain
 impl DiagnosticWithFix for ReplaceFilterMapNextWithFindMap {
     fn fix(&self, sema: &Semantics<RootDatabase>) -> Option<Fix> {
         let root = sema.db.parse_or_expand(self.file)?;
-
         let next_expr = self.next_expr.to_node(&root);
-        let next_expr_range = next_expr.syntax().text_range();
+        let next_call = MethodCallExpr::cast(next_expr.syntax().clone())?;
 
-        let filter_map_expr = self.filter_map_expr.to_node(&root);
-        let filter_map_expr_range = filter_map_expr.syntax().text_range();
+        let filter_map_call = MethodCallExpr::cast(next_call.receiver()?.syntax().clone())?;
+        let filter_map_name_range = filter_map_call.name_ref()?.ident_token()?.text_range();
+        let filter_map_args = filter_map_call.syntax().children().find_map(ArgList::cast)?;
 
-        let edit = TextEdit::delete(next_expr_range);
+        let range_to_replace = TextRange::new(filter_map_name_range.start(), next_expr.syntax().text_range().end());
+        let replacement = format!("find_map{}", filter_map_args.syntax().text());
+        let trigger_range = next_expr.syntax().text_range();
 
-        // This is the entire method chain, including the array literal
-        eprintln!("NEXT EXPR: {:#?}", next_expr);
-        // This is the entire method chain except for the final next()
-        eprintln!("FILTER MAP EXPR: {:#?}", filter_map_expr);
+        let edit = TextEdit::replace(range_to_replace, replacement);
 
         let source_change =
             SourceFileEdit { file_id: self.file.original_file(sema.db), edit }.into();
@@ -170,7 +163,7 @@ impl DiagnosticWithFix for ReplaceFilterMapNextWithFindMap {
         Some(Fix::new(
             "Replace filter_map(..).next() with find_map()",
             source_change,
-            filter_map_expr_range,
+            trigger_range,
         ))
     }
 }
