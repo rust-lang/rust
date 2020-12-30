@@ -14,7 +14,11 @@ use ide_db::{
     source_change::{FileSystemEdit, SourceChange},
     RootDatabase,
 };
-use syntax::{AstNode, TextRange, algo, ast::{self, ArgList, edit::IndentLevel, make}};
+use syntax::{
+    algo,
+    ast::{self, edit::IndentLevel, make, ArgList},
+    AstNode, TextRange,
+};
 use text_edit::TextEdit;
 
 use crate::{diagnostics::Fix, references::rename::rename_with_semantics, FilePosition};
@@ -151,7 +155,8 @@ impl DiagnosticWithFix for ReplaceFilterMapNextWithFindMap {
         let filter_map_name_range = filter_map_call.name_ref()?.ident_token()?.text_range();
         let filter_map_args = filter_map_call.syntax().children().find_map(ArgList::cast)?;
 
-        let range_to_replace = TextRange::new(filter_map_name_range.start(), next_expr.syntax().text_range().end());
+        let range_to_replace =
+            TextRange::new(filter_map_name_range.start(), next_expr.syntax().text_range().end());
         let replacement = format!("find_map{}", filter_map_args.syntax().text());
         let trigger_range = next_expr.syntax().text_range();
 
