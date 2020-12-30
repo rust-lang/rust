@@ -584,6 +584,8 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
                 if borrowed_place_has_mut_interior {
                     // Locals without StorageDead follow the "enclosing scope" rule, meaning
                     // they are essentially anonymous static items themselves.
+                    // Note: This is only sound if every local that has a `StorageDead` has a
+                    // `StorageDead` in every control flow path leading to a `return` terminator.
                     if self.local_has_storage_dead(place.local) {
                         self.check_op(ops::CellBorrowBehindRef);
                     } else {

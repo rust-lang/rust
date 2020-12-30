@@ -2,23 +2,28 @@
 
 use std::cell::*;
 
-// not ok, because this would create a silent constant with interior mutability.
-// the rules could be relaxed in the future
+// not ok, because this creates a dangling pointer, just like `let x = Cell::new(42).as_ptr()` would
 static FOO: Wrap<*mut u32> = Wrap(Cell::new(42).as_ptr());
 //~^ ERROR encountered dangling pointer
 const FOO_CONST: Wrap<*mut u32> = Wrap(Cell::new(42).as_ptr());
 //~^ ERROR encountered dangling pointer
 
+// Ok, these are just base values and it is the `Wrap` author's job to uphold `Send` and `Sync`
+// invariants, since they used `unsafe impl`.
 static FOO3: Wrap<Cell<u32>> = Wrap(Cell::new(42));
 const FOO3_CONST: Wrap<Cell<u32>> = Wrap(Cell::new(42));
 
-// ok
+// ok, we are referring to the memory of another static item.
 static FOO4: Wrap<*mut u32> = Wrap(FOO3.0.as_ptr());
+
+// not ok, the use of a constant here is equivalent to an inline declaration of the value, so
+// its memory will get freed before the constant is finished evaluating, thus creating a dangling
+// pointer. This would happen exactly the same at runtime.
 const FOO4_CONST: Wrap<*mut u32> = Wrap(FOO3_CONST.0.as_ptr());
 //~^ ERROR encountered dangling pointer
 
-// not ok, because the `as_ptr` call takes a reference to a type with interior mutability
-// which is not allowed in constants
+// not ok, because the `as_ptr` call takes a reference to a temporary that will get freed
+// before the constant is finished evaluating.
 const FOO2: *mut u32 = Cell::new(42).as_ptr();
 //~^ ERROR encountered dangling pointer
 
