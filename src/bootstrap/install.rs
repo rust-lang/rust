@@ -10,60 +10,19 @@ use std::process::Command;
 
 use build_helper::t;
 
-use crate::dist::{self, pkgname, sanitize_sh, tmpdir};
+use crate::dist::{self, sanitize_sh};
+use crate::tarball::GeneratedTarball;
 use crate::Compiler;
 
 use crate::builder::{Builder, RunConfig, ShouldRun, Step};
 use crate::config::{Config, TargetSelection};
 
-pub fn install_docs(builder: &Builder<'_>, stage: u32, host: TargetSelection) {
-    install_sh(builder, "docs", "rust-docs", stage, Some(host));
-}
-
-pub fn install_std(builder: &Builder<'_>, stage: u32, target: TargetSelection) {
-    install_sh(builder, "std", "rust-std", stage, Some(target));
-}
-
-pub fn install_cargo(builder: &Builder<'_>, stage: u32, host: TargetSelection) {
-    install_sh(builder, "cargo", "cargo", stage, Some(host));
-}
-
-pub fn install_rls(builder: &Builder<'_>, stage: u32, host: TargetSelection) {
-    install_sh(builder, "rls", "rls", stage, Some(host));
-}
-
-pub fn install_rust_analyzer(builder: &Builder<'_>, stage: u32, host: TargetSelection) {
-    install_sh(builder, "rust-analyzer", "rust-analyzer", stage, Some(host));
-}
-
-pub fn install_clippy(builder: &Builder<'_>, stage: u32, host: TargetSelection) {
-    install_sh(builder, "clippy", "clippy", stage, Some(host));
-}
-pub fn install_miri(builder: &Builder<'_>, stage: u32, host: TargetSelection) {
-    install_sh(builder, "miri", "miri", stage, Some(host));
-}
-
-pub fn install_rustfmt(builder: &Builder<'_>, stage: u32, host: TargetSelection) {
-    install_sh(builder, "rustfmt", "rustfmt", stage, Some(host));
-}
-
-pub fn install_analysis(builder: &Builder<'_>, stage: u32, host: TargetSelection) {
-    install_sh(builder, "analysis", "rust-analysis", stage, Some(host));
-}
-
-pub fn install_src(builder: &Builder<'_>, stage: u32) {
-    install_sh(builder, "src", "rust-src", stage, None);
-}
-pub fn install_rustc(builder: &Builder<'_>, stage: u32, host: TargetSelection) {
-    install_sh(builder, "rustc", "rustc", stage, Some(host));
-}
-
 fn install_sh(
     builder: &Builder<'_>,
     package: &str,
-    name: &str,
     stage: u32,
     host: Option<TargetSelection>,
+    tarball: &GeneratedTarball,
 ) {
     builder.info(&format!("Install {} stage{} ({:?})", package, stage, host));
 
@@ -108,15 +67,10 @@ fn install_sh(
     let empty_dir = builder.out.join("tmp/empty_dir");
 
     t!(fs::create_dir_all(&empty_dir));
-    let package_name = if let Some(host) = host {
-        format!("{}-{}", pkgname(builder, name), host.triple)
-    } else {
-        pkgname(builder, name)
-    };
 
     let mut cmd = Command::new("sh");
     cmd.current_dir(&empty_dir)
-        .arg(sanitize_sh(&tmpdir(builder).join(&package_name).join("install.sh")))
+        .arg(sanitize_sh(&tarball.decompressed_output().join("install.sh")))
         .arg(format!("--prefix={}", sanitize_sh(&prefix)))
         .arg(format!("--sysconfdir={}", sanitize_sh(&sysconfdir)))
         .arg(format!("--datadir={}", sanitize_sh(&datadir)))
@@ -191,25 +145,25 @@ macro_rules! install {
 
 install!((self, builder, _config),
     Docs, "src/doc", _config.docs, only_hosts: false, {
-        builder.ensure(dist::Docs { host: self.target });
-        install_docs(builder, self.compiler.stage, self.target);
+        let tarball = builder.ensure(dist::Docs { host: self.target }).expect("missing docs");
+        install_sh(builder, "docs", self.compiler.stage, Some(self.target), &tarball);
     };
     Std, "library/std", true, only_hosts: false, {
         for target in &builder.targets {
-            builder.ensure(dist::Std {
+            let tarball = builder.ensure(dist::Std {
                 compiler: self.compiler,
                 target: *target
-            });
-            install_std(builder, self.compiler.stage, *target);
+            }).expect("missing std");
+            install_sh(builder, "std", self.compiler.stage, Some(*target), &tarball);
         }
     };
     Cargo, "cargo", Self::should_build(_config), only_hosts: true, {
-        builder.ensure(dist::Cargo { compiler: self.compiler, target: self.target });
-        install_cargo(builder, self.compiler.stage, self.target);
+        let tarball = builder.ensure(dist::Cargo { compiler: self.compiler, target: self.target });
+        install_sh(builder, "cargo", self.compiler.stage, Some(self.target), &tarball);
     };
     Rls, "rls", Self::should_build(_config), only_hosts: true, {
-        if builder.ensure(dist::Rls { compiler: self.compiler, target: self.target }).is_some() {
-            install_rls(builder, self.compiler.stage, self.target);
+        if let Some(tarball) = builder.ensure(dist::Rls { compiler: self.compiler, target: self.target }) {
+            install_sh(builder, "rls", self.compiler.stage, Some(self.target), &tarball);
         } else {
             builder.info(
                 &format!("skipping Install RLS stage{} ({})", self.compiler.stage, self.target),
@@ -217,16 +171,18 @@ install!((self, builder, _config),
         }
     };
     RustAnalyzer, "rust-analyzer", Self::should_build(_config), only_hosts: true, {
-        builder.ensure(dist::RustAnalyzer { compiler: self.compiler, target: self.target });
-        install_rust_analyzer(builder, self.compiler.stage, self.target);
+        let tarball = builder
+            .ensure(dist::RustAnalyzer { compiler: self.compiler, target: self.target })
+            .expect("missing rust-analyzer");
+        install_sh(builder, "rust-analyzer", self.compiler.stage, Some(self.target), &tarball);
     };
     Clippy, "clippy", Self::should_build(_config), only_hosts: true, {
-        builder.ensure(dist::Clippy { compiler: self.compiler, target: self.target });
-        install_clippy(builder, self.compiler.stage, self.target);
+        let tarball = builder.ensure(dist::Clippy { compiler: self.compiler, target: self.target });
+        install_sh(builder, "clippy", self.compiler.stage, Some(self.target), &tarball);
     };
     Miri, "miri", Self::should_build(_config), only_hosts: true, {
-        if builder.ensure(dist::Miri { compiler: self.compiler, target: self.target }).is_some() {
-            install_miri(builder, self.compiler.stage, self.target);
+        if let Some(tarball) = builder.ensure(dist::Miri { compiler: self.compiler, target: self.target }) {
+            install_sh(builder, "miri", self.compiler.stage, Some(self.target), &tarball);
         } else {
             builder.info(
                 &format!("skipping Install miri stage{} ({})", self.compiler.stage, self.target),
@@ -234,11 +190,11 @@ install!((self, builder, _config),
         }
     };
     Rustfmt, "rustfmt", Self::should_build(_config), only_hosts: true, {
-        if builder.ensure(dist::Rustfmt {
+        if let Some(tarball) = builder.ensure(dist::Rustfmt {
             compiler: self.compiler,
             target: self.target
-        }).is_some() {
-            install_rustfmt(builder, self.compiler.stage, self.target);
+        }) {
+            install_sh(builder, "rustfmt", self.compiler.stage, Some(self.target), &tarball);
         } else {
             builder.info(
                 &format!("skipping Install Rustfmt stage{} ({})", self.compiler.stage, self.target),
@@ -246,20 +202,20 @@ install!((self, builder, _config),
         }
     };
     Analysis, "analysis", Self::should_build(_config), only_hosts: false, {
-        builder.ensure(dist::Analysis {
+        let tarball = builder.ensure(dist::Analysis {
             // Find the actual compiler (handling the full bootstrap option) which
             // produced the save-analysis data because that data isn't copied
             // through the sysroot uplifting.
             compiler: builder.compiler_for(builder.top_stage, builder.config.build, self.target),
             target: self.target
-        });
-        install_analysis(builder, self.compiler.stage, self.target);
+        }).expect("missing analysis");
+        install_sh(builder, "analysis", self.compiler.stage, Some(self.target), &tarball);
     };
     Rustc, "src/librustc", true, only_hosts: true, {
-        builder.ensure(dist::Rustc {
+        let tarball = builder.ensure(dist::Rustc {
             compiler: builder.compiler(builder.top_stage, self.target),
         });
-        install_rustc(builder, self.compiler.stage, self.target);
+        install_sh(builder, "rustc", self.compiler.stage, Some(self.target), &tarball);
     };
 );
 
@@ -284,7 +240,7 @@ impl Step for Src {
     }
 
     fn run(self, builder: &Builder<'_>) {
-        builder.ensure(dist::Src);
-        install_src(builder, self.stage);
+        let tarball = builder.ensure(dist::Src);
+        install_sh(builder, "src", self.stage, None, &tarball);
     }
 }

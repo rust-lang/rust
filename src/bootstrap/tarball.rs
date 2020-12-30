@@ -196,10 +196,6 @@ impl<'a> Tarball<'a> {
         self.builder.cp_r(src.as_ref(), &dest);
     }
 
-    pub(crate) fn work_dir(&self) -> PathBuf {
-        self.temp_dir.clone()
-    }
-
     pub(crate) fn generate(self) -> GeneratedTarball {
         let mut component_name = self.component.clone();
         if self.is_preview {
@@ -309,6 +305,8 @@ impl<'a> Tarball<'a> {
 
         GeneratedTarball {
             path: crate::dist::distdir(self.builder).join(format!("{}.tar.{}", package_name, ext)),
+            decompressed_output: self.temp_dir.join(package_name),
+            work: self.temp_dir,
         }
     }
 }
@@ -316,10 +314,20 @@ impl<'a> Tarball<'a> {
 #[derive(Debug, Clone)]
 pub struct GeneratedTarball {
     path: PathBuf,
+    decompressed_output: PathBuf,
+    work: PathBuf,
 }
 
 impl GeneratedTarball {
     pub(crate) fn tarball(&self) -> &Path {
         &self.path
+    }
+
+    pub(crate) fn decompressed_output(&self) -> &Path {
+        &self.decompressed_output
+    }
+
+    pub(crate) fn work_dir(&self) -> &Path {
+        &self.work
     }
 }

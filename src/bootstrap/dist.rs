@@ -1317,10 +1317,10 @@ impl Step for Extended {
         }
 
         let tarball = Tarball::new(builder, "rust", &target.triple);
-        let work = tarball.work_dir();
-        tarball.combine(&tarballs);
+        let generated = tarball.combine(&tarballs);
 
         let tmp = tmpdir(builder).join("combined-tarball");
+        let work = generated.work_dir();
 
         let mut license = String::new();
         license += &builder.read(&builder.src.join("COPYRIGHT"));
