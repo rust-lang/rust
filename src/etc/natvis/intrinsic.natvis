@@ -4,17 +4,21 @@
     <DisplayString>{data_ptr,[length]s8}</DisplayString>
     <StringView>data_ptr,[length]s8</StringView>
     <Expand>
-      <Item Name="[size]" ExcludeView="simple">length</Item>
-      <ArrayItems>
-        <Size>length</Size>
-        <ValuePointer>data_ptr</ValuePointer>
-      </ArrayItems>
+      <Item Name="[len]" ExcludeView="simple">length</Item>
+      <Synthetic Name="[chars]">
+        <Expand>
+          <ArrayItems>
+            <Size>length</Size>
+            <ValuePointer>data_ptr</ValuePointer>
+          </ArrayItems>
+        </Expand>
+      </Synthetic>
     </Expand>
   </Type>
   <Type Name="slice&lt;*&gt;">
-    <DisplayString>{{ length={length} }}</DisplayString>
+    <DisplayString>{{ len={length} }}</DisplayString>
     <Expand>
-      <Item Name="[size]" ExcludeView="simple">length</Item>
+      <Item Name="[len]" ExcludeView="simple">length</Item>
       <ArrayItems>
         <Size>length</Size>
         <ValuePointer>data_ptr</ValuePointer>
