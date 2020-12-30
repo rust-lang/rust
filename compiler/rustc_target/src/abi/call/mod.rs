@@ -20,6 +20,7 @@ mod sparc;
 mod sparc64;
 mod wasm32;
 mod wasm32_bindgen_compat;
+mod wasm64;
 mod x86;
 mod x86_64;
 mod x86_win64;
@@ -652,6 +653,7 @@ impl<'a, Ty> FnAbi<'a, Ty> {
                 _ => wasm32_bindgen_compat::compute_abi_info(self),
             },
             "asmjs" => wasm32::compute_abi_info(cx, self),
+            "wasm64" => wasm64::compute_abi_info(cx, self),
             a => return Err(format!("unrecognized arch \"{}\" in target specification", a)),
         }
 

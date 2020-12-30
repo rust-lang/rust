@@ -170,10 +170,7 @@ pub fn target_machine_factory(
     // On the wasm target once the `atomics` feature is enabled that means that
     // we're no longer single-threaded, or otherwise we don't want LLVM to
     // lower atomic operations to single-threaded operations.
-    if singlethread
-        && sess.target.llvm_target.contains("wasm32")
-        && sess.target_features.contains(&sym::atomics)
-    {
+    if singlethread && sess.target.is_like_wasm && sess.target_features.contains(&sym::atomics) {
         singlethread = false;
     }
 

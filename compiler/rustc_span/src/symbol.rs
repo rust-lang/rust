@@ -1291,6 +1291,7 @@ symbols! {
         vreg,
         vreg_low16,
         warn,
+        wasm,
         wasm_import_module,
         wasm_target_feature,
         while_let,

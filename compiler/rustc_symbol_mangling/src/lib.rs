@@ -198,7 +198,7 @@ fn compute_symbol_name(
     //
     // [1]: https://bugs.llvm.org/show_bug.cgi?id=44316
     if is_foreign
-        && (tcx.sess.target.arch != "wasm32"
+        && (!tcx.sess.target.is_like_wasm
             || !tcx.wasm_import_module_map(def_id.krate).contains_key(&def_id))
     {
         if let Some(name) = attrs.link_name {
