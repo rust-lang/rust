@@ -630,16 +630,16 @@ impl Pat {
     }
 }
 
-/// A single field in a struct pattern
+/// A single field in a struct pattern.
 ///
-/// Patterns like the fields of Foo `{ x, ref y, ref mut z }`
-/// are treated the same as` x: x, y: ref y, z: ref mut z`,
-/// except is_shorthand is true
+/// Patterns like the fields of `Foo { x, ref y, ref mut z }`
+/// are treated the same as `x: x, y: ref y, z: ref mut z`,
+/// except when `is_shorthand` is true.
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct FieldPat {
-    /// The identifier for the field
+    /// The identifier for the field.
     pub ident: Ident,
-    /// The pattern the field is destructured to
+    /// The pattern the field is destructured to.
     pub pat: P<Pat>,
     pub is_shorthand: bool,
     pub attrs: AttrVec,
