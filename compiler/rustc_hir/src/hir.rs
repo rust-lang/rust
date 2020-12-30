@@ -290,6 +290,14 @@ impl GenericArg<'_> {
             GenericArg::Const(_) => "const",
         }
     }
+
+    pub fn to_ord(&self, feats: &rustc_feature::Features) -> ast::ParamKindOrd {
+        match self {
+            GenericArg::Lifetime(_) => ast::ParamKindOrd::Lifetime,
+            GenericArg::Type(_) => ast::ParamKindOrd::Type,
+            GenericArg::Const(_) => ast::ParamKindOrd::Const { unordered: feats.const_generics },
+        }
+    }
 }
 
 #[derive(Debug, HashStable_Generic)]
