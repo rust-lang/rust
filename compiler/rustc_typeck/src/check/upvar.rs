@@ -390,7 +390,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             let min_cap_list = match root_var_min_capture_list.get_mut(&var_hir_id) {
                 None => {
-                    let min_cap_list = vec![ty::CapturedPlace { place: place, info: capture_info }];
+                    let min_cap_list = vec![ty::CapturedPlace { place, info: capture_info }];
                     root_var_min_capture_list.insert(var_hir_id, min_cap_list);
                     continue;
                 }

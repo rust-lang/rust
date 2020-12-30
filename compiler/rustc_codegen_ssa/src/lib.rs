@@ -116,7 +116,7 @@ pub struct NativeLib {
 
 impl From<&cstore::NativeLib> for NativeLib {
     fn from(lib: &cstore::NativeLib) -> Self {
-        NativeLib { kind: lib.kind.clone(), name: lib.name.clone(), cfg: lib.cfg.clone() }
+        NativeLib { kind: lib.kind, name: lib.name, cfg: lib.cfg.clone() }
     }
 }
 

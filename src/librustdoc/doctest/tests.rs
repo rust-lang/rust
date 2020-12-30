@@ -292,7 +292,7 @@ use std::io;
 let mut input = String::new();
 io::stdin().read_line(&mut input)?;
 Ok::<(), io:Error>(())
-}; _inner().unwrap() }"
+} _inner().unwrap() }"
         .to_string();
     let (output, len, _) = make_test(input, None, false, &opts, DEFAULT_EDITION, None);
     assert_eq!((output, len), (expected, 2));
@@ -306,7 +306,7 @@ fn make_test_named_wrapper() {
     let expected = "#![allow(unused)]
 fn main() { #[allow(non_snake_case)] fn _doctest_main__some_unique_name() {
 assert_eq!(2+2, 4);
-}; _doctest_main__some_unique_name() }"
+} _doctest_main__some_unique_name() }"
         .to_string();
     let (output, len, _) =
         make_test(input, None, false, &opts, DEFAULT_EDITION, Some("_some_unique_name"));

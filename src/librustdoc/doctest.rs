@@ -558,12 +558,12 @@ crate fn make_test(
                     "fn main() {{ {}fn {}() -> Result<(), impl core::fmt::Debug> {{\n",
                     inner_attr, inner_fn_name
                 ),
-                format!("\n}}; {}().unwrap() }}", inner_fn_name),
+                format!("\n}} {}().unwrap() }}", inner_fn_name),
             )
         } else if test_id.is_some() {
             (
                 format!("fn main() {{ {}fn {}() {{\n", inner_attr, inner_fn_name),
-                format!("\n}}; {}() }}", inner_fn_name),
+                format!("\n}} {}() }}", inner_fn_name),
             )
         } else {
             ("fn main() {\n".into(), "\n}".into())

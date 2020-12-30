@@ -1234,7 +1234,7 @@ impl LinkCollector<'_, '_> {
     ) -> Option<(Res, Option<String>)> {
         // Try to look up both the result and the corresponding side channel value
         if let Some(ref cached) = self.visited_links.get(&key) {
-            self.kind_side_channel.set(cached.side_channel.clone());
+            self.kind_side_channel.set(cached.side_channel);
             return Some(cached.res.clone());
         }
 

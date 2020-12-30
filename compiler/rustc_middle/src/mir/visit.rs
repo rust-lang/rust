@@ -306,13 +306,13 @@ macro_rules! make_mir_visitor {
 
                 let mut index = 0;
                 for statement in statements {
-                    let location = Location { block: block, statement_index: index };
+                    let location = Location { block, statement_index: index };
                     self.visit_statement(statement, location);
                     index += 1;
                 }
 
                 if let Some(terminator) = terminator {
-                    let location = Location { block: block, statement_index: index };
+                    let location = Location { block, statement_index: index };
                     self.visit_terminator(terminator, location);
                 }
             }

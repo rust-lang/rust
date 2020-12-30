@@ -1634,7 +1634,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
 
         let layout = tcx.intern_layout(Layout {
             variants: Variants::Multiple {
-                tag: tag,
+                tag,
                 tag_encoding: TagEncoding::Direct,
                 tag_field: tag_index,
                 variants,

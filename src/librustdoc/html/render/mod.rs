@@ -538,7 +538,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
     fn after_krate(&mut self, krate: &clean::Crate, cache: &Cache) -> Result<(), Error> {
         let final_file = self.dst.join(&*krate.name.as_str()).join("all.html");
         let settings_file = self.dst.join("settings.html");
-        let crate_name = krate.name.clone();
+        let crate_name = krate.name;
 
         let mut root_path = self.dst.to_str().expect("invalid path").to_owned();
         if !root_path.ends_with('/') {
@@ -3967,7 +3967,7 @@ fn render_impl(
         cache: &Cache,
     ) {
         for trait_item in &t.items {
-            let n = trait_item.name.clone();
+            let n = trait_item.name;
             if i.items.iter().any(|m| m.name == n) {
                 continue;
             }

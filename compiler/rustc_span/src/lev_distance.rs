@@ -1,10 +1,16 @@
+//! Levenshtein distances.
+//!
+//! The [Levenshtein distance] is a metric for measuring the difference between two strings.
+//!
+//! [Levenshtein distance]: https://en.wikipedia.org/wiki/Levenshtein_distance
+
 use crate::symbol::Symbol;
 use std::cmp;
 
 #[cfg(test)]
 mod tests;
 
-/// Finds the Levenshtein distance between two strings
+/// Finds the Levenshtein distance between two strings.
 pub fn lev_distance(a: &str, b: &str) -> usize {
     // cases which don't require further computation
     if a.is_empty() {
@@ -35,14 +41,14 @@ pub fn lev_distance(a: &str, b: &str) -> usize {
     dcol[t_last + 1]
 }
 
-/// Finds the best match for a given word in the given iterator
+/// Finds the best match for a given word in the given iterator.
 ///
 /// As a loose rule to avoid the obviously incorrect suggestions, it takes
 /// an optional limit for the maximum allowable edit distance, which defaults
 /// to one-third of the given word.
 ///
-/// Besides Levenshtein, we use case insensitive comparison to improve accuracy on an edge case with
-/// a lower(upper)case letters mismatch.
+/// Besides Levenshtein, we use case insensitive comparison to improve accuracy
+/// on an edge case with a lower(upper)case letters mismatch.
 #[cold]
 pub fn find_best_match_for_name(
     name_vec: &[Symbol],
@@ -98,7 +104,7 @@ fn find_match_by_sorted_words(iter_names: &[Symbol], lookup: &str) -> Option<Sym
 
 fn sort_by_words(name: &str) -> String {
     let mut split_words: Vec<&str> = name.split('_').collect();
-    // We are sorting primitive &strs and can use unstable sort here
+    // We are sorting primitive &strs and can use unstable sort here.
     split_words.sort_unstable();
     split_words.join("_")
 }
