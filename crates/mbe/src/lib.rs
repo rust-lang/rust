@@ -217,18 +217,14 @@ impl MacroRules {
 
 impl Rule {
     fn parse(src: &mut TtIter) -> Result<Rule, ParseError> {
-        let mut lhs = src
+        let lhs = src
             .expect_subtree()
-            .map_err(|()| ParseError::Expected("expected subtree".to_string()))?
-            .clone();
-        lhs.delimiter = None;
+            .map_err(|()| ParseError::Expected("expected subtree".to_string()))?;
         src.expect_char('=').map_err(|()| ParseError::Expected("expected `=`".to_string()))?;
         src.expect_char('>').map_err(|()| ParseError::Expected("expected `>`".to_string()))?;
-        let mut rhs = src
+        let rhs = src
             .expect_subtree()
-            .map_err(|()| ParseError::Expected("expected subtree".to_string()))?
-            .clone();
-        rhs.delimiter = None;
+            .map_err(|()| ParseError::Expected("expected subtree".to_string()))?;
 
         let lhs = MetaTemplate { tokens: parse_pattern(&lhs), delimiter: None };
         let rhs = MetaTemplate { tokens: parse_template(&rhs), delimiter: None };
