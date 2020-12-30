@@ -403,9 +403,13 @@ impl<'tcx> Pat<'tcx> {
             }
         }
 
-        let mut pats = Vec::new();
-        expand(self, &mut pats);
-        pats
+        if self.is_or_pat() {
+            let mut pats = Vec::new();
+            expand(self, &mut pats);
+            pats
+        } else {
+            vec![self]
+        }
     }
 }
 
@@ -526,8 +530,11 @@ impl<'p, 'tcx> MatrixEntry<'p, 'tcx> {
 struct Matrix<'p, 'tcx> {
     /// Stores the patterns by column. The leftmost column is stored last.
     columns: Vec<Vec<MatrixEntry<'p, 'tcx>>>,
-    /// We need to know the number of rows even when there are no columns.
-    row_count: usize,
+    /// In order to not rebuild the matrix every time, we may keep patterns around even when their
+    /// rows have been filtered out. The actual contents of the first column are those indices in
+    /// `selected_rows`, and the contents in subsequent columns can be found by following
+    /// `next_row_id`s.
+    selected_rows: Vec<usize>,
 }
 
 impl<'p, 'tcx> Matrix<'p, 'tcx> {
@@ -536,12 +543,7 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
     }
 
     fn is_empty(&self) -> bool {
-        self.row_count == 0
-    }
-
-    /// Returns the first column or an empty slice if none exist.
-    fn last_col<'a>(&'a self) -> &'a [MatrixEntry<'p, 'tcx>] {
-        self.columns.last().map(|col| col.as_slice()).unwrap_or(&[])
+        self.selected_rows.is_empty()
     }
 
     /// Number of columns of this matrix. Returns `0` if the matrix never had any rows.
@@ -550,49 +552,59 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
     }
 
     // Returns the type of the first column, if any.
-    fn ty_of_first_col(&self) -> Option<Ty<'tcx>> {
-        self.last_col().get(0).map(|e| e.pat.ty)
+    fn ty_of_last_col(&self) -> Option<Ty<'tcx>> {
+        self.last_col().next().map(|e| e.pat.ty)
     }
 
     /// Pushes a new row to the matrix. If the row starts with an or-pattern, this recursively
     /// expands it.
     fn push(&mut self, mut row: PatStack<'p, 'tcx>) {
-        if self.columns.is_empty() {
+        if self.is_empty() {
             // This is the first row we've ever seen; we create enough columns for it.
             self.columns.resize_with(row.len(), Vec::new);
         }
         assert_eq!(row.len(), self.column_count());
 
+        self.selected_rows.push(0);
+        let next_row_id = self.selected_rows.last_mut().unwrap();
         for i in 0..row.len() {
-            let next_row_id = if i != 0 { self.columns[i - 1].len() - 1 } else { 0 };
             let entry = MatrixEntry {
-                // Patterns are stored in reverse order in `PatStack`.
+                // Patterns are stored in the reverse order in `PatStack`.
                 pat: row.pats[row.len() - 1 - i],
-                next_row_id,
+                next_row_id: *next_row_id,
                 ctor: OnceCell::new(),
             };
+            *next_row_id = self.columns[i].len();
             self.columns[i].push(entry);
         }
 
-        self.row_count += 1;
         if !row.is_empty() {
             if let Some(ctor) = row.head_ctor.take() {
-                let _ = self.last_col().last().unwrap().ctor.set(ctor);
+                let _ = self.columns.last().unwrap()[*next_row_id].ctor.set(ctor);
             }
 
             if row.head().is_or_pat() {
-                self.row_count -= 1;
+                self.selected_rows.pop().unwrap();
                 // Expand the or-pattern. All subpatterns point to the same row in the next column.
                 let last_col = self.columns.last_mut().unwrap();
                 let entry = last_col.pop().unwrap();
-                let next_row_id = entry.next_row_id;
                 for pat in entry.pat.expand_or_pat() {
-                    let entry = MatrixEntry { pat, next_row_id, ctor: OnceCell::new() };
+                    let entry =
+                        MatrixEntry { pat, next_row_id: entry.next_row_id, ctor: OnceCell::new() };
+                    self.selected_rows.push(last_col.len());
                     last_col.push(entry);
-                    self.row_count += 1;
                 }
             }
         }
+    }
+
+    /// Iterate over the last column, if any.
+    fn last_col<'a>(&'a self) -> impl Iterator<Item = &'a MatrixEntry<'p, 'tcx>> + Clone {
+        // Unwrap with an empty slice so that we don't panic in the empty case.
+        let last_col = self.columns.last().map(|col| col.as_slice()).unwrap_or(&[]);
+        // If there are no columns we return an empty iterator even if there are rows.
+        let rows = if self.columns.is_empty() { &[] } else { self.selected_rows.as_slice() };
+        rows.iter().map(move |&row_id| &last_col[row_id])
     }
 
     /// Iterate over the first constructor of each row.
@@ -600,7 +612,7 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
         &'a self,
         cx: &'a MatchCheckCtxt<'p, 'tcx>,
     ) -> impl Iterator<Item = &'a Constructor<'tcx>> + Captures<'p> + Clone {
-        self.last_col().iter().map(move |e| e.head_ctor(cx))
+        self.last_col().map(move |e| e.head_ctor(cx))
     }
 
     /// Iterate over the first constructor and the corresponding span of each row.
@@ -608,7 +620,7 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
         &'a self,
         cx: &'a MatchCheckCtxt<'p, 'tcx>,
     ) -> impl Iterator<Item = (&'a Constructor<'tcx>, Span)> + Captures<'p> {
-        self.last_col().iter().map(move |e| (e.head_ctor(cx), e.pat.span))
+        self.last_col().map(move |e| (e.head_ctor(cx), e.pat.span))
     }
 
     /// Iterate over the entries of the selected row.
@@ -628,63 +640,72 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
         ctor: &Constructor<'tcx>,
         ctor_wild_subpatterns: &Fields<'p, 'tcx>,
     ) -> Matrix<'p, 'tcx> {
-        if self.column_count() == 0 && self.row_count == 0 {
+        if self.is_empty() && self.column_count() == 0 {
             return Matrix::new();
         }
         assert!(self.column_count() >= 1);
+        let (last_col, other_cols) = self.columns.split_last().unwrap();
 
         let mut matrix = Matrix::new();
+        // Copy all columns except the last one.
+        matrix.columns = other_cols.to_vec();
+        // Add some empty columns to accomodate the patterns to be added.
         matrix.columns.resize_with(self.column_count() - 1 + ctor_wild_subpatterns.len(), Vec::new);
-        for row_id in 0..self.row_count {
-            let head_entry = &self.last_col()[row_id];
+
+        for &row_id in &self.selected_rows {
+            let head_entry = &last_col[row_id];
             if ctor.is_covered_by(pcx, head_entry.head_ctor(pcx.cx)) {
-                // We pop the head pattern and push the new fields extracted from the arguments of
-                // `self.head()`.
+                matrix.selected_rows.push(head_entry.next_row_id);
+
+                // We extract fields from the arguments of `head_entry` and push them onto the
+                // corresponding columns.
                 let new_fields = ctor_wild_subpatterns
                     .replace_with_pattern_arguments(head_entry.pat)
                     .into_patterns();
 
-                let mut col_id = 0;
-                let mut current_row_tail: SmallVec<[_; 2]> =
-                    self.row(row_id).skip(1).map(|e| e.pat).collect();
-                current_row_tail.reverse();
-                for &pat in &current_row_tail {
-                    let next_row_id =
-                        if col_id != 0 { matrix.columns[col_id - 1].len() - 1 } else { 0 };
-                    let entry = MatrixEntry { pat, next_row_id, ctor: OnceCell::new() };
-                    matrix.columns[col_id].push(entry);
-                    col_id += 1;
-                }
+                let mut col_id = self.column_count() - 1;
+                let next_row_id = matrix.selected_rows.last_mut().unwrap();
                 // Note the `rev()` because the fields are in the natural left-to-right order but
                 // the columns are in the reverse order.
                 for &pat in new_fields.iter().rev() {
-                    let next_row_id =
-                        if col_id != 0 { matrix.columns[col_id - 1].len() - 1 } else { 0 };
-                    let entry = MatrixEntry { pat, next_row_id, ctor: OnceCell::new() };
+                    let entry =
+                        MatrixEntry { pat, next_row_id: *next_row_id, ctor: OnceCell::new() };
+                    *next_row_id = matrix.columns[col_id].len();
                     matrix.columns[col_id].push(entry);
                     col_id += 1;
                 }
-
-                matrix.row_count += 1;
-                if let Some(head) = matrix.last_col().last() {
-                    if head.pat.is_or_pat() {
-                        // Expand the or-pattern. All subpatterns point to the same row in the next column.
-                        matrix.row_count -= 1;
-                        let last_col = matrix.columns.last_mut().unwrap();
-                        let head = last_col.pop().unwrap();
-                        for pat in head.pat.expand_or_pat() {
-                            let entry = MatrixEntry {
-                                pat,
-                                next_row_id: head.next_row_id,
-                                ctor: OnceCell::new(),
-                            };
-                            last_col.push(entry);
-                            matrix.row_count += 1;
-                        }
-                    }
-                }
             }
         }
+
+        if matrix.last_col().any(|e| e.pat.is_or_pat()) {
+            // Expand any or-patterns present in the new last column.
+            let last_col = matrix.columns.pop().unwrap();
+            let mut new_last_col = Vec::new();
+            for &row_id in &matrix.selected_rows {
+                let entry = &last_col[row_id];
+                if entry.pat.is_or_pat() {
+                    for pat in entry.pat.expand_or_pat() {
+                        // All subpatterns point to the same row in the next column.
+                        let entry = MatrixEntry {
+                            pat,
+                            next_row_id: entry.next_row_id,
+                            ctor: OnceCell::new(),
+                        };
+                        new_last_col.push(entry);
+                    }
+                } else {
+                    let entry = MatrixEntry {
+                        pat: entry.pat,
+                        next_row_id: entry.next_row_id,
+                        ctor: OnceCell::new(),
+                    };
+                    new_last_col.push(entry);
+                }
+            }
+            matrix.selected_rows = (0..new_last_col.len()).collect();
+            matrix.columns.push(new_last_col);
+        }
+
         matrix
     }
 }
@@ -702,8 +723,10 @@ impl<'p, 'tcx> fmt::Debug for Matrix<'p, 'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "\n")?;
 
-        let pretty_printed_matrix: Vec<Vec<String>> = (0..self.row_count)
-            .map(|row_id| self.row(row_id).map(|e| format!("{}", e.pat)).collect())
+        let pretty_printed_matrix: Vec<Vec<String>> = self
+            .selected_rows
+            .iter()
+            .map(|&row_id| self.row(row_id).map(|e| format!("{}", e.pat)).collect())
             .collect();
 
         let column_count = self.column_count();
@@ -1185,7 +1208,7 @@ fn is_useful<'p, 'tcx>(
     }
 
     // FIXME(Nadrieril): Hack to work around type normalization issues (see #72476).
-    let ty = matrix.ty_of_first_col().unwrap_or(v.head().ty);
+    let ty = matrix.ty_of_last_col().unwrap_or(v.head().ty);
     let pcx = PatCtxt { cx, ty, span: v.head().span, is_top_level };
 
     // If the first pattern is an or-pattern, expand it.
