@@ -199,6 +199,12 @@ fn check_unnecessary_braces_in_use_statement(
 ) -> Option<()> {
     let use_tree_list = ast::UseTreeList::cast(node.clone())?;
     if let Some((single_use_tree,)) = use_tree_list.use_trees().collect_tuple() {
+        // If there is a comment inside the bracketed `use`,
+        // assume it is a commented out module path and don't show diagnostic.
+        if use_tree_list.has_inner_comment() {
+            return Some(());
+        }
+
         let use_range = use_tree_list.syntax().text_range();
         let edit =
             text_edit_for_remove_unnecessary_braces_with_self_in_use_statement(&single_use_tree)

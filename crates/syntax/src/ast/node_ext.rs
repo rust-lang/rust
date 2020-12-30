@@ -193,6 +193,14 @@ impl ast::UseTreeList {
             .and_then(ast::UseTree::cast)
             .expect("UseTreeLists are always nested in UseTrees")
     }
+
+    pub fn has_inner_comment(&self) -> bool {
+        self.syntax()
+            .children_with_tokens()
+        .filter_map(|it| it.into_token())
+        .find_map(ast::Comment::cast)
+        .is_some()
+    }
 }
 
 impl ast::Impl {
