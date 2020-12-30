@@ -1,5 +1,3 @@
-#![feature(const_refs_to_cell)]
-
 use std::sync::atomic::AtomicUsize;
 
 const A: AtomicUsize = AtomicUsize::new(0);

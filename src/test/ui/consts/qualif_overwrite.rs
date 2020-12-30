@@ -1,5 +1,3 @@
-#![feature(const_refs_to_cell)]
-
 use std::cell::Cell;
 
 // this is overly conservative. The reset to `None` should clear `a` of all qualifications

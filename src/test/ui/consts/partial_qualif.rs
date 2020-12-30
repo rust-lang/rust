@@ -1,5 +1,3 @@
-#![feature(const_refs_to_cell)]
-
 use std::cell::Cell;
 
 const FOO: &(Cell<usize>, bool) = {

@@ -1,5 +1,3 @@
-#![feature(const_refs_to_cell)]
-
 use std::cell::UnsafeCell;
 
 const A: UnsafeCell<usize> = UnsafeCell::new(1);

@@ -209,10 +209,17 @@ impl NonConstOp for LiveDrop {
 }
 
 #[derive(Debug)]
-pub struct CellBorrowBehindRef;
-impl NonConstOp for CellBorrowBehindRef {
+/// A borrow of a type that contains an `UnsafeCell` somewhere. The borrow never escapes to
+/// the final value of the constant.
+pub struct TransientCellBorrow;
+impl NonConstOp for TransientCellBorrow {
     fn status_in_item(&self, _: &ConstCx<'_, '_>) -> Status {
         Status::Unstable(sym::const_refs_to_cell)
+    }
+    fn importance(&self) -> DiagnosticImportance {
+        // The cases that cannot possibly work will already emit a `CellBorrow`, so we should
+        // not additionally emit a feature gate error if activating the feature gate won't work.
+        DiagnosticImportance::Secondary
     }
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
         feature_err(
@@ -225,18 +232,17 @@ impl NonConstOp for CellBorrowBehindRef {
 }
 
 #[derive(Debug)]
+/// A borrow of a type that contains an `UnsafeCell` somewhere. The borrow escapes to
+/// the final value of the constant, and thus we cannot allow this (for now). We may allow
+/// it in the future for static items.
 pub struct CellBorrow;
 impl NonConstOp for CellBorrow {
     fn status_in_item(&self, ccx: &ConstCx<'_, '_>) -> Status {
         match ccx.const_kind() {
-            // The borrow checker does a much better job at handling these than we do
-            hir::ConstContext::ConstFn => Status::Allowed,
+            // The borrow checker does a much better job at handling these than we do.
+            hir::ConstContext::ConstFn => Status::Unstable(sym::const_refs_to_cell),
             _ => Status::Forbidden,
         }
-    }
-    fn importance(&self) -> DiagnosticImportance {
-        // The problematic cases will already emit a `CellBorrowBehindRef`
-        DiagnosticImportance::Secondary
     }
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
         struct_span_err!(

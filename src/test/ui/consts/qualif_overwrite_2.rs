@@ -1,5 +1,3 @@
-#![feature(const_refs_to_cell)]
-
 use std::cell::Cell;
 
 // const qualification is not smart enough to know about fields and always assumes that there might

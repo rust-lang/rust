@@ -587,7 +587,7 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
                     // Note: This is only sound if every local that has a `StorageDead` has a
                     // `StorageDead` in every control flow path leading to a `return` terminator.
                     if self.local_has_storage_dead(place.local) {
-                        self.check_op(ops::CellBorrowBehindRef);
+                        self.check_op(ops::TransientCellBorrow);
                     } else {
                         self.check_op(ops::CellBorrow);
                     }
