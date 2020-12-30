@@ -191,3 +191,20 @@ fn shared_from_iter_trustedlen_no_fuse() {
     assert_trusted_len(&iter);
     assert_eq!(&[Box::new(42), Box::new(24)], &*iter.collect::<Rc<[_]>>());
 }
+
+mod other_mod {
+    use std::rc::Rc;
+
+    pub fn cast(r: Rc<()>) -> Rc<dyn Send> {
+        r
+    }
+}
+
+#[test]
+fn ptr_eq_ignores_duplicated_vtable() {
+    let a = Rc::new(());
+    let b = other_mod::cast(Rc::clone(&a));
+    let c: Rc<dyn Send> = a;
+    assert!(Rc::ptr_eq(&b, &c));
+    assert!(Weak::ptr_eq(&Rc::downgrade(&b), &Rc::downgrade(&c)));
+}

@@ -195,3 +195,20 @@ fn shared_from_iter_trustedlen_no_fuse() {
     assert_trusted_len(&iter);
     assert_eq!(&[Box::new(42), Box::new(24)], &*iter.collect::<Rc<[_]>>());
 }
+
+mod other_mod {
+    use std::sync::Arc;
+
+    pub fn cast(r: Arc<()>) -> Arc<dyn Send> {
+        r
+    }
+}
+
+#[test]
+fn ptr_eq_ignores_duplicated_vtable() {
+    let a = Arc::new(());
+    let b = other_mod::cast(Arc::clone(&a));
+    let c: Arc<dyn Send> = a;
+    assert!(Arc::ptr_eq(&b, &c));
+    assert!(Weak::ptr_eq(&Arc::downgrade(&b), &Arc::downgrade(&c)));
+}

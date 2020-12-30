@@ -1066,7 +1066,9 @@ impl<T: ?Sized> Arc<T> {
     ///
     /// [`ptr::eq`]: core::ptr::eq
     pub fn ptr_eq(this: &Self, other: &Self) -> bool {
-        this.ptr.as_ptr() == other.ptr.as_ptr()
+        // The *const u8 cast discards the vtable to work around
+        // https://github.com/rust-lang/rust/issues/46139
+        this.ptr.as_ptr() as *const u8 == other.ptr.as_ptr() as *const u8
     }
 }
 
@@ -1936,7 +1938,9 @@ impl<T: ?Sized> Weak<T> {
     #[inline]
     #[stable(feature = "weak_ptr_eq", since = "1.39.0")]
     pub fn ptr_eq(&self, other: &Self) -> bool {
-        self.ptr.as_ptr() == other.ptr.as_ptr()
+        // The *const u8 cast discards the vtable to work around
+        // https://github.com/rust-lang/rust/issues/46139
+        self.ptr.as_ptr() as *const u8 == other.ptr.as_ptr() as *const u8
     }
 }
 
