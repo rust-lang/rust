@@ -507,18 +507,27 @@ impl<'p, 'tcx> fmt::Debug for PatStack<'p, 'tcx> {
 
 /// A 2D matrix.
 #[derive(Clone, PartialEq)]
-pub(super) struct Matrix<'p, 'tcx> {
+struct Matrix<'p, 'tcx> {
     patterns: Vec<PatStack<'p, 'tcx>>,
 }
 
 impl<'p, 'tcx> Matrix<'p, 'tcx> {
-    fn empty() -> Self {
+    fn new() -> Self {
         Matrix { patterns: vec![] }
     }
 
+    fn is_empty(&self) -> bool {
+        self.patterns.is_empty()
+    }
+
     /// Number of columns of this matrix. `None` is the matrix is empty.
-    pub(super) fn column_count(&self) -> Option<usize> {
+    fn column_count(&self) -> Option<usize> {
         self.patterns.get(0).map(|r| r.len())
+    }
+
+    /// Iterate over the rows
+    fn iter<'a>(&'a self) -> impl Iterator<Item = &'a PatStack<'p, 'tcx>> {
+        self.patterns.iter()
     }
 
     /// Pushes a new row to the matrix. If the row starts with an or-pattern, this recursively
@@ -539,7 +548,7 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
     }
 
     /// Iterate over the first constructor of each row.
-    pub(super) fn head_ctors<'a>(
+    fn head_ctors<'a>(
         &'a self,
         cx: &'a MatchCheckCtxt<'p, 'tcx>,
     ) -> impl Iterator<Item = &'a Constructor<'tcx>> + Captures<'p> + Clone {
@@ -547,7 +556,7 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
     }
 
     /// Iterate over the first constructor and the corresponding span of each row.
-    pub(super) fn head_ctors_and_spans<'a>(
+    fn head_ctors_and_spans<'a>(
         &'a self,
         cx: &'a MatchCheckCtxt<'p, 'tcx>,
     ) -> impl Iterator<Item = (&'a Constructor<'tcx>, Span)> + Captures<'p> {
@@ -586,7 +595,7 @@ impl<'p, 'tcx> fmt::Debug for Matrix<'p, 'tcx> {
         let pretty_printed_matrix: Vec<Vec<String>> =
             m.iter().map(|row| row.iter().map(|pat| format!("{}", pat)).collect()).collect();
 
-        let column_count = m.iter().map(|row| row.len()).next().unwrap_or(0);
+        let column_count = self.column_count().unwrap_or(0);
         assert!(m.iter().all(|row| row.len() == column_count));
         let column_widths: Vec<usize> = (0..column_count)
             .map(|col| pretty_printed_matrix.iter().map(|row| row[col].len()).max().unwrap_or(0))
@@ -610,7 +619,7 @@ impl<'p, 'tcx> FromIterator<PatStack<'p, 'tcx>> for Matrix<'p, 'tcx> {
     where
         T: IntoIterator<Item = PatStack<'p, 'tcx>>,
     {
-        let mut matrix = Matrix::empty();
+        let mut matrix = Matrix::new();
         for x in iter {
             // Using `push` ensures we correctly expand or-patterns.
             matrix.push(x);
@@ -1063,7 +1072,6 @@ fn is_useful<'p, 'tcx>(
     is_top_level: bool,
 ) -> Usefulness<'p, 'tcx> {
     debug!("matrix,v={:?}{:?}", matrix, v);
-    let Matrix { patterns: rows, .. } = matrix;
 
     // The base case. We are pattern-matching on () and the return value is
     // based on whether our matrix has a row or not.
@@ -1071,7 +1079,7 @@ fn is_useful<'p, 'tcx>(
     // first and then, if v is non-empty, the return value is based on whether
     // the type of the tuple we're checking is inhabited or not.
     if v.is_empty() {
-        let ret = if rows.is_empty() {
+        let ret = if matrix.is_empty() {
             Usefulness::new_useful(witness_preference)
         } else {
             Usefulness::new_not_useful(witness_preference)
@@ -1080,7 +1088,7 @@ fn is_useful<'p, 'tcx>(
         return ret;
     }
 
-    assert!(rows.iter().all(|r| r.len() == v.len()));
+    assert!(matrix.iter().all(|r| r.len() == v.len()));
 
     // FIXME(Nadrieril): Hack to work around type normalization issues (see #72476).
     let ty = matrix.heads().next().map_or(v.head().ty, |r| r.ty);
@@ -1177,7 +1185,7 @@ crate fn compute_match_usefulness<'p, 'tcx>(
     scrut_hir_id: HirId,
     scrut_ty: Ty<'tcx>,
 ) -> UsefulnessReport<'p, 'tcx> {
-    let mut matrix = Matrix::empty();
+    let mut matrix = Matrix::new();
     let arm_usefulness: Vec<_> = arms
         .iter()
         .copied()
