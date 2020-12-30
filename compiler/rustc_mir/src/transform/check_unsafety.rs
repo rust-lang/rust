@@ -223,13 +223,6 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
         // Check for raw pointer `Deref`.
         for (base, proj) in place.iter_projections() {
             if proj == ProjectionElem::Deref {
-                let source_info = self.source_info; // Backup source_info so we can restore it later.
-                if base.projection.is_empty() && decl.internal {
-                    // Internal locals are used in the `move_val_init` desugaring.
-                    // We want to check unsafety against the source info of the
-                    // desugaring, rather than the source info of the RHS.
-                    self.source_info = self.body.local_decls[place.local].source_info;
-                }
                 let base_ty = base.ty(self.body, self.tcx).ty;
                 if base_ty.is_unsafe_ptr() {
                     self.require_unsafe(
@@ -237,7 +230,6 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                         UnsafetyViolationDetails::DerefOfRawPointer,
                     )
                 }
-                self.source_info = source_info; // Restore backed-up source_info.
             }
         }
 
