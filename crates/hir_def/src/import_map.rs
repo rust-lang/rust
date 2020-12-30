@@ -432,6 +432,7 @@ fn item_import_kind(item: ItemInNs) -> Option<ImportKind> {
 mod tests {
     use base_db::{fixture::WithFixture, SourceDatabase, Upcast};
     use expect_test::{expect, Expect};
+    use stdx::format_to;
 
     use crate::{data::FunctionData, test_db::TestDB, AssocContainerId, Lookup};
 
@@ -467,9 +468,10 @@ mod tests {
                             if let ItemInNs::Types(ModuleDefId::FunctionId(function_id))
                             | ItemInNs::Values(ModuleDefId::FunctionId(function_id)) = item
                             {
-                                full_path += &format!(
+                                format_to!(
+                                    full_path,
                                     "::{}",
-                                    FunctionData::fn_data_query(&db, function_id).name
+                                    FunctionData::fn_data_query(&db, function_id).name,
                                 );
                             }
                             full_path
