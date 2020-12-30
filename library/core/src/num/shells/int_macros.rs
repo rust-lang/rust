@@ -6,7 +6,7 @@ macro_rules! int_module {
         #[doc = concat!(
             "The smallest value that can be represented by this integer type. Use ",
             "[`", stringify!($T), "::MIN", "`](../../std/primitive.", stringify!($T), ".html#associatedconstant.MIN)",
-            "intead.",
+            " instead.",
         )]
         ///
         /// # Examples
@@ -25,7 +25,7 @@ macro_rules! int_module {
         #[doc = concat!(
             "The largest value that can be represented by this integer type. Use ",
             "[`", stringify!($T), "::MAX", "`](../../std/primitive.", stringify!($T), ".html#associatedconstant.MAX)",
-            "instead.",
+            " instead.",
         )]
         ///
         /// # Examples
