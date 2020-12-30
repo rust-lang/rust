@@ -254,8 +254,6 @@ pub fn handle_native_features(sess: &Session) -> Vec<String> {
 }
 
 pub fn tune_cpu(sess: &Session) -> Option<&str> {
-    match sess.opts.debugging_opts.tune_cpu {
-        Some(ref s) => Some(handle_native(&**s)),
-        None => None,
-    }
+    let name = sess.opts.debugging_opts.tune_cpu.as_ref()?;
+    Some(handle_native(name))
 }
