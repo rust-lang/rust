@@ -97,7 +97,6 @@ pub(crate) struct Tarball<'a> {
 
     include_target_in_component_name: bool,
     is_preview: bool,
-    delete_temp_dir: bool,
 }
 
 impl<'a> Tarball<'a> {
@@ -136,7 +135,6 @@ impl<'a> Tarball<'a> {
 
             include_target_in_component_name: false,
             is_preview: false,
-            delete_temp_dir: true,
         }
     }
 
@@ -198,8 +196,7 @@ impl<'a> Tarball<'a> {
         self.builder.cp_r(src.as_ref(), &dest);
     }
 
-    pub(crate) fn persist_work_dir(&mut self) -> PathBuf {
-        self.delete_temp_dir = false;
+    pub(crate) fn work_dir(&self) -> PathBuf {
         self.temp_dir.clone()
     }
 
@@ -299,9 +296,6 @@ impl<'a> Tarball<'a> {
             cmd.arg("--compression-formats").arg(formats.join(","));
         }
         self.builder.run(&mut cmd);
-        if self.delete_temp_dir {
-            t!(std::fs::remove_dir_all(&self.temp_dir));
-        }
 
         // Use either the first compression format defined, or "gz" as the default.
         let ext = self
