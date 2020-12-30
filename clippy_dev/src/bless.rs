@@ -24,6 +24,9 @@ static CLIPPY_BUILD_TIME: SyncLazy<Option<std::time::SystemTime>> = SyncLazy::ne
     fs::metadata(path).ok()?.modified().ok()
 });
 
+/// # Panics
+///
+/// Panics if the path to a test file is broken
 pub fn bless(ignore_timestamp: bool) {
     let test_suite_dirs = [
         clippy_project_root().join("tests").join("ui"),
