@@ -945,12 +945,13 @@ pub trait Read {
     }
 }
 
-/// Convenience function for [`Read::read_to_string`].
+/// Read all bytes from a [reader][Read] into a new [`String`].
 ///
-/// This avoids having to create a variable first and it provides more type safety
-/// since you can only get the buffer out if there were no errors. (If you use
-/// [`Read::read_to_string`] you have to remember to check whether the read succeeded
-/// because otherwise your buffer will be empty.)
+/// This is a convenience function for [`Read::read_to_string`]. Using this
+/// function avoids having to create a variable first and provides more type
+/// safety since you can only get the buffer out if there were no errors. (If you
+/// use [`Read::read_to_string`] you have to remember to check whether the read
+/// succeeded because otherwise your buffer will be empty.)
 ///
 /// # Examples
 ///
