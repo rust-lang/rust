@@ -645,6 +645,7 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
         let old_col_count = self.column_count();
         let new_col_count = old_col_count - 1 + ctor_wild_subpatterns.len();
 
+        // Keep those two to undo specialization.
         let last_col = self.columns.pop().unwrap();
         let old_selected_rows = mem::replace(&mut self.selected_rows, Vec::new());
 
@@ -670,30 +671,27 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
         // the columns are in the reverse order.
         let pats_and_cols = wildcards.iter().copied().rev().zip(new_columns.iter_mut());
         for (pat, col) in pats_and_cols {
-            for (i, row_id) in self.selected_rows.iter_mut().enumerate() {
-                col.push(MatrixEntry { pat, next_row_id: *row_id, ctor: OnceCell::new() });
+            for (new_row_id, old_row_id) in self.selected_rows.iter_mut().enumerate() {
+                col.push(MatrixEntry { pat, next_row_id: *old_row_id, ctor: OnceCell::new() });
                 // Make `row_id` point to the entry just added.
-                *row_id = i;
+                *old_row_id = new_row_id;
             }
         }
 
         // We extract fields from the arguments of the head of each row and push them onto the
         // corresponding columns.
-        for (i, row_id) in selected_rows.iter().enumerate() {
-            let new_fields = ctor_wild_subpatterns
-                .replace_with_pattern_arguments(last_col[*row_id].pat)
-                .into_patterns();
-
-            // Note the `rev()` because the fields are in the natural left-to-right order but
-            // the columns are in the reverse order.
-            let pats_and_cols = new_fields.iter().copied().rev().zip(new_columns.iter_mut());
-            for (pat, col) in pats_and_cols {
-                col[i].pat = pat;
+        for (new_row_id, old_row_id) in selected_rows.iter().enumerate() {
+            let head_entry = &last_col[*old_row_id];
+            for idxpat in ctor_wild_subpatterns.extract_pattern_arguments(head_entry.pat) {
+                // The fields are in the natural left-to-right order but the columns are in the
+                // reverse order.
+                let col_id = new_columns.len() - 1 - idxpat.field_list_index;
+                new_columns[col_id][new_row_id].pat = idxpat.pat;
             }
         }
 
-        let mut last_col_before_orpat_expansion = None;
         // Expand any or-patterns present in the new last column.
+        let mut last_col_before_orpat_expansion = None;
         if !self.columns.is_empty() && self.last_col().any(|e| e.pat.is_or_pat()) {
             let last_col = self.columns.pop().unwrap();
             let mut new_last_col = Vec::new();
