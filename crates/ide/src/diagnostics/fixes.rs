@@ -101,7 +101,8 @@ impl DiagnosticWithFix for MissingOkOrSomeInTailExpr {
         let tail_expr_range = tail_expr.syntax().text_range();
         let replacement = format!("{}({})", self.required, tail_expr.syntax());
         let edit = TextEdit::replace(tail_expr_range, replacement);
-        let source_change = SourceFileEdit { file_id: self.file.original_file(sema.db), edit }.into();
+        let source_change =
+            SourceFileEdit { file_id: self.file.original_file(sema.db), edit }.into();
         let name = if self.required == "Ok" { "Wrap with Ok" } else { "Wrap with Some" };
         Some(Fix::new(name, source_change, tail_expr_range))
     }

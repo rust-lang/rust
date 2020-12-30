@@ -11,8 +11,8 @@ use crate::{
     db::HirDatabase,
     diagnostics::{
         match_check::{is_useful, MatchCheckCtx, Matrix, PatStack, Usefulness},
-        MismatchedArgCount, MissingFields, MissingMatchArms, MissingOkOrSomeInTailExpr, MissingPatFields,
-        RemoveThisSemicolon,
+        MismatchedArgCount, MissingFields, MissingMatchArms, MissingOkOrSomeInTailExpr,
+        MissingPatFields, RemoveThisSemicolon,
     },
     utils::variant_data,
     ApplicationTy, InferenceResult, Ty, TypeCtor,
@@ -324,10 +324,10 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
         let (params, required) = match &mismatch.expected {
             Ty::Apply(ApplicationTy { ctor, parameters }) if ctor == &core_result_ctor => {
                 (parameters, "Ok".to_string())
-            },
+            }
             Ty::Apply(ApplicationTy { ctor, parameters }) if ctor == &core_option_ctor => {
                 (parameters, "Some".to_string())
-            },
+            }
             _ => return,
         };
 
@@ -335,8 +335,11 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
             let (_, source_map) = db.body_with_source_map(self.owner.into());
 
             if let Ok(source_ptr) = source_map.expr_syntax(id) {
-                self.sink
-                    .push(MissingOkOrSomeInTailExpr { file: source_ptr.file_id, expr: source_ptr.value, required });
+                self.sink.push(MissingOkOrSomeInTailExpr {
+                    file: source_ptr.file_id,
+                    expr: source_ptr.value,
+                    required,
+                });
             }
         }
     }
