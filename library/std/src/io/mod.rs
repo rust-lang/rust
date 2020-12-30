@@ -951,7 +951,14 @@ pub trait Read {
 /// function avoids having to create a variable first and provides more type
 /// safety since you can only get the buffer out if there were no errors. (If you
 /// use [`Read::read_to_string`] you have to remember to check whether the read
-/// succeeded because otherwise your buffer will be empty.)
+/// succeeded because otherwise your buffer will be empty or only partially full.)
+///
+/// # Errors
+///
+/// This function forces you to handle errors because the output (the `String`)
+/// is wrapped in a [`Result`]. See [`Read::read_to_string`] for the errors
+/// that can occur. If any error occurs, you will get an [`Err`], so you
+/// don't have to worry about your buffer being empty or partially full.
 ///
 /// # Examples
 ///
