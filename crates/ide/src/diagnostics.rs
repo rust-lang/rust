@@ -644,6 +644,22 @@ mod a {
 }
 "#,
         );
+        check_no_diagnostics(
+            r#"
+use a;
+use a::{
+    c,
+    // d::e
+};
+
+mod a {
+    mod c {}
+    mod d {
+        mod e {}
+    }
+}
+"#,
+        );
         check_fix(
             r"
             mod b {}
