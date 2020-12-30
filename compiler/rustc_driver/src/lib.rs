@@ -603,7 +603,7 @@ fn handle_explain(registry: Registry, code: &str, output: ErrorOutputType) {
     }
 }
 
-fn show_content_with_pager(content: &String) {
+fn show_content_with_pager(content: &str) {
     let pager_name = env::var_os("PAGER").unwrap_or_else(|| {
         if cfg!(windows) { OsString::from("more.com") } else { OsString::from("less") }
     });

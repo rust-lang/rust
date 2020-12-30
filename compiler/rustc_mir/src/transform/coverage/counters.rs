@@ -140,7 +140,7 @@ impl<'a> BcbCounters<'a> {
     /// message for subsequent debugging.
     fn make_bcb_counters(
         &mut self,
-        coverage_spans: &Vec<CoverageSpan>,
+        coverage_spans: &[CoverageSpan],
     ) -> Result<Vec<CoverageKind>, Error> {
         debug!("make_bcb_counters(): adding a counter or expression to each BasicCoverageBlock");
         let num_bcbs = self.basic_coverage_blocks.num_nodes();
@@ -465,7 +465,7 @@ impl<'a> BcbCounters<'a> {
     fn choose_preferred_expression_branch(
         &self,
         traversal: &TraverseCoverageGraphWithLoops,
-        branches: &Vec<BcbBranch>,
+        branches: &[BcbBranch],
     ) -> BcbBranch {
         let branch_needs_a_counter =
             |branch: &BcbBranch| branch.counter(&self.basic_coverage_blocks).is_none();
@@ -509,7 +509,7 @@ impl<'a> BcbCounters<'a> {
     fn find_some_reloop_branch(
         &self,
         traversal: &TraverseCoverageGraphWithLoops,
-        branches: &Vec<BcbBranch>,
+        branches: &[BcbBranch],
     ) -> Option<BcbBranch> {
         let branch_needs_a_counter =
             |branch: &BcbBranch| branch.counter(&self.basic_coverage_blocks).is_none();

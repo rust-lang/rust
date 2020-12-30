@@ -417,7 +417,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     // obviously it never weeds out ALL errors.
     fn process_errors(
         &self,
-        errors: &Vec<RegionResolutionError<'tcx>>,
+        errors: &[RegionResolutionError<'tcx>],
     ) -> Vec<RegionResolutionError<'tcx>> {
         debug!("process_errors()");
 
@@ -442,7 +442,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         };
 
         let mut errors = if errors.iter().all(|e| is_bound_failure(e)) {
-            errors.clone()
+            errors.to_owned()
         } else {
             errors.iter().filter(|&e| !is_bound_failure(e)).cloned().collect()
         };

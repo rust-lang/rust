@@ -954,7 +954,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         &self,
         def_id: DefId,
         target_place: PlaceRef<'tcx>,
-        places: &Vec<Operand<'tcx>>,
+        places: &[Operand<'tcx>],
     ) -> Option<(Span, Option<GeneratorKind>, Span)> {
         debug!(
             "closure_span: def_id={:?} target_place={:?} places={:?}",
