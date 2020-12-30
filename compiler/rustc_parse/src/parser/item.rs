@@ -494,7 +494,7 @@ impl<'a> Parser<'a> {
         let polarity = self.parse_polarity();
 
         // Parse both types and traits as a type, then reinterpret if necessary.
-        let err_path = |span| ast::Path::from_ident(Ident::new(kw::Invalid, span));
+        let err_path = |span| ast::Path::from_ident(Ident::new(kw::Empty, span));
         let ty_first = if self.token.is_keyword(kw::For) && self.look_ahead(1, |t| t != &token::Lt)
         {
             let span = self.prev_token.span.between(self.token.span);
@@ -1699,7 +1699,7 @@ impl<'a> Parser<'a> {
                 // Skip every token until next possible arg or end.
                 p.eat_to_tokens(&[&token::Comma, &token::CloseDelim(token::Paren)]);
                 // Create a placeholder argument for proper arg count (issue #34264).
-                Ok(dummy_arg(Ident::new(kw::Invalid, lo.to(p.prev_token.span))))
+                Ok(dummy_arg(Ident::new(kw::Empty, lo.to(p.prev_token.span))))
             });
             // ...now that we've parsed the first argument, `self` is no longer allowed.
             first_param = false;
@@ -1759,7 +1759,7 @@ impl<'a> Parser<'a> {
             }
             match ty {
                 Ok(ty) => {
-                    let ident = Ident::new(kw::Invalid, self.prev_token.span);
+                    let ident = Ident::new(kw::Empty, self.prev_token.span);
                     let bm = BindingMode::ByValue(Mutability::Not);
                     let pat = self.mk_pat_ident(ty.span, bm, ident);
                     (pat, ty)

@@ -90,7 +90,7 @@ pub enum TempState {
 impl TempState {
     pub fn is_promotable(&self) -> bool {
         debug!("is_promotable: self={:?}", self);
-        matches!(self, TempState::Defined { .. } )
+        matches!(self, TempState::Defined { .. })
     }
 }
 
@@ -309,48 +309,24 @@ impl<'tcx> Validator<'_, 'tcx> {
                 let statement = &self.body[loc.block].statements[loc.statement_index];
                 match &statement.kind {
                     StatementKind::Assign(box (_, Rvalue::Ref(_, kind, place))) => {
-                        match kind {
-                            BorrowKind::Shared | BorrowKind::Mut { .. } => {}
-
-                            // FIXME(eddyb) these aren't promoted here but *could*
-                            // be promoted as part of a larger value because
-                            // `validate_rvalue`  doesn't check them, need to
-                            // figure out what is the intended behavior.
-                            BorrowKind::Shallow | BorrowKind::Unique => return Err(Unpromotable),
-                        }
-
                         // We can only promote interior borrows of promotable temps (non-temps
                         // don't get promoted anyway).
                         self.validate_local(place.local)?;
 
+                        // The reference operation itself must be promotable.
+                        // (Needs to come after `validate_local` to avoid ICEs.)
+                        self.validate_ref(*kind, place)?;
+
+                        // We do not check all the projections (they do not get promoted anyway),
+                        // but we do stay away from promoting anything involving a dereference.
                         if place.projection.contains(&ProjectionElem::Deref) {
                             return Err(Unpromotable);
                         }
+
+                        // We cannot promote things that need dropping, since the promoted value
+                        // would not get dropped.
                         if self.qualif_local::<qualifs::NeedsDrop>(place.local) {
                             return Err(Unpromotable);
-                        }
-
-                        // FIXME(eddyb) this duplicates part of `validate_rvalue`.
-                        let has_mut_interior =
-                            self.qualif_local::<qualifs::HasMutInterior>(place.local);
-                        if has_mut_interior {
-                            return Err(Unpromotable);
-                        }
-
-                        if let BorrowKind::Mut { .. } = kind {
-                            let ty = place.ty(self.body, self.tcx).ty;
-
-                            // In theory, any zero-sized value could be borrowed
-                            // mutably without consequences. However, only &mut []
-                            // is allowed right now.
-                            if let ty::Array(_, len) = ty.kind() {
-                                match len.try_eval_usize(self.tcx, self.param_env) {
-                                    Some(0) => {}
-                                    _ => return Err(Unpromotable),
-                                }
-                            } else {
-                                return Err(Unpromotable);
-                            }
                         }
 
                         Ok(())
@@ -572,57 +548,114 @@ impl<'tcx> Validator<'_, 'tcx> {
         }
     }
 
-    fn validate_rvalue(&self, rvalue: &Rvalue<'tcx>) -> Result<(), Unpromotable> {
-        match *rvalue {
-            Rvalue::Cast(CastKind::Misc, ref operand, cast_ty) => {
-                let operand_ty = operand.ty(self.body, self.tcx);
-                let cast_in = CastTy::from_ty(operand_ty).expect("bad input type for cast");
-                let cast_out = CastTy::from_ty(cast_ty).expect("bad output type for cast");
-                if let (CastTy::Ptr(_) | CastTy::FnPtr, CastTy::Int(_)) = (cast_in, cast_out) {
-                    // ptr-to-int casts are not possible in consts and thus not promotable
+    fn validate_ref(&self, kind: BorrowKind, place: &Place<'tcx>) -> Result<(), Unpromotable> {
+        match kind {
+            // Reject these borrow types just to be safe.
+            // FIXME(RalfJung): could we allow them? Should we? No point in it until we have a usecase.
+            BorrowKind::Shallow | BorrowKind::Unique => return Err(Unpromotable),
+
+            BorrowKind::Shared => {
+                let has_mut_interior = self.qualif_local::<qualifs::HasMutInterior>(place.local);
+                if has_mut_interior {
                     return Err(Unpromotable);
                 }
             }
 
-            Rvalue::BinaryOp(op, ref lhs, _) => {
-                if let ty::RawPtr(_) | ty::FnPtr(..) = lhs.ty(self.body, self.tcx).kind() {
-                    assert!(
-                        op == BinOp::Eq
-                            || op == BinOp::Ne
-                            || op == BinOp::Le
-                            || op == BinOp::Lt
-                            || op == BinOp::Ge
-                            || op == BinOp::Gt
-                            || op == BinOp::Offset
-                    );
+            BorrowKind::Mut { .. } => {
+                let ty = place.ty(self.body, self.tcx).ty;
 
-                    // raw pointer operations are not allowed inside consts and thus not promotable
+                // In theory, any zero-sized value could be borrowed
+                // mutably without consequences. However, only &mut []
+                // is allowed right now.
+                if let ty::Array(_, len) = ty.kind() {
+                    match len.try_eval_usize(self.tcx, self.param_env) {
+                        Some(0) => {}
+                        _ => return Err(Unpromotable),
+                    }
+                } else {
                     return Err(Unpromotable);
                 }
             }
-
-            Rvalue::NullaryOp(NullOp::Box, _) => return Err(Unpromotable),
-
-            // FIXME(RalfJung): the rest is *implicitly considered promotable*... that seems dangerous.
-            _ => {}
         }
 
+        Ok(())
+    }
+
+    fn validate_rvalue(&self, rvalue: &Rvalue<'tcx>) -> Result<(), Unpromotable> {
         match rvalue {
-            Rvalue::ThreadLocalRef(_) => Err(Unpromotable),
-
-            Rvalue::NullaryOp(..) => Ok(()),
-
-            Rvalue::Discriminant(place) | Rvalue::Len(place) => self.validate_place(place.as_ref()),
-
             Rvalue::Use(operand)
             | Rvalue::Repeat(operand, _)
-            | Rvalue::UnaryOp(_, operand)
-            | Rvalue::Cast(_, operand, _) => self.validate_operand(operand),
-
-            Rvalue::BinaryOp(_, lhs, rhs) | Rvalue::CheckedBinaryOp(_, lhs, rhs) => {
-                self.validate_operand(lhs)?;
-                self.validate_operand(rhs)
+            | Rvalue::UnaryOp(UnOp::Not | UnOp::Neg, operand) => {
+                self.validate_operand(operand)?;
             }
+
+            Rvalue::Discriminant(place) | Rvalue::Len(place) => {
+                self.validate_place(place.as_ref())?
+            }
+
+            Rvalue::ThreadLocalRef(_) => return Err(Unpromotable),
+
+            Rvalue::Cast(kind, operand, cast_ty) => {
+                if matches!(kind, CastKind::Misc) {
+                    let operand_ty = operand.ty(self.body, self.tcx);
+                    let cast_in = CastTy::from_ty(operand_ty).expect("bad input type for cast");
+                    let cast_out = CastTy::from_ty(cast_ty).expect("bad output type for cast");
+                    if let (CastTy::Ptr(_) | CastTy::FnPtr, CastTy::Int(_)) = (cast_in, cast_out) {
+                        // ptr-to-int casts are not possible in consts and thus not promotable
+                        return Err(Unpromotable);
+                    }
+                    // int-to-ptr casts are fine, they just use the integer value at pointer type.
+                }
+
+                self.validate_operand(operand)?;
+            }
+
+            Rvalue::BinaryOp(op, lhs, rhs) | Rvalue::CheckedBinaryOp(op, lhs, rhs) => {
+                let op = *op;
+                if let ty::RawPtr(_) | ty::FnPtr(..) = lhs.ty(self.body, self.tcx).kind() {
+                    // raw pointer operations are not allowed inside consts and thus not promotable
+                    assert!(matches!(
+                        op,
+                        BinOp::Eq
+                            | BinOp::Ne
+                            | BinOp::Le
+                            | BinOp::Lt
+                            | BinOp::Ge
+                            | BinOp::Gt
+                            | BinOp::Offset
+                    ));
+                    return Err(Unpromotable);
+                }
+
+                match op {
+                    // FIXME: reject operations that can fail -- namely, division and modulo.
+                    BinOp::Eq
+                    | BinOp::Ne
+                    | BinOp::Le
+                    | BinOp::Lt
+                    | BinOp::Ge
+                    | BinOp::Gt
+                    | BinOp::Offset
+                    | BinOp::Add
+                    | BinOp::Sub
+                    | BinOp::Mul
+                    | BinOp::Div
+                    | BinOp::Rem
+                    | BinOp::BitXor
+                    | BinOp::BitAnd
+                    | BinOp::BitOr
+                    | BinOp::Shl
+                    | BinOp::Shr => {}
+                }
+
+                self.validate_operand(lhs)?;
+                self.validate_operand(rhs)?;
+            }
+
+            Rvalue::NullaryOp(op, _) => match op {
+                NullOp::Box => return Err(Unpromotable),
+                NullOp::SizeOf => {}
+            },
 
             Rvalue::AddressOf(_, place) => {
                 // We accept `&raw *`, i.e., raw reborrows -- creating a raw pointer is
@@ -636,53 +669,36 @@ impl<'tcx> Validator<'_, 'tcx> {
                         });
                     }
                 }
-                Err(Unpromotable)
+                return Err(Unpromotable);
             }
 
             Rvalue::Ref(_, kind, place) => {
-                if let BorrowKind::Mut { .. } = kind {
-                    let ty = place.ty(self.body, self.tcx).ty;
-
-                    // In theory, any zero-sized value could be borrowed
-                    // mutably without consequences. However, only &mut []
-                    // is allowed right now.
-                    if let ty::Array(_, len) = ty.kind() {
-                        match len.try_eval_usize(self.tcx, self.param_env) {
-                            Some(0) => {}
-                            _ => return Err(Unpromotable),
-                        }
-                    } else {
-                        return Err(Unpromotable);
-                    }
-                }
-
                 // Special-case reborrows to be more like a copy of the reference.
-                let mut place = place.as_ref();
-                if let [proj_base @ .., ProjectionElem::Deref] = &place.projection {
-                    let base_ty = Place::ty_from(place.local, proj_base, self.body, self.tcx).ty;
+                let mut place_simplified = place.as_ref();
+                if let [proj_base @ .., ProjectionElem::Deref] = &place_simplified.projection {
+                    let base_ty =
+                        Place::ty_from(place_simplified.local, proj_base, self.body, self.tcx).ty;
                     if let ty::Ref(..) = base_ty.kind() {
-                        place = PlaceRef { local: place.local, projection: proj_base };
+                        place_simplified =
+                            PlaceRef { local: place_simplified.local, projection: proj_base };
                     }
                 }
 
-                self.validate_place(place)?;
+                self.validate_place(place_simplified)?;
 
-                let has_mut_interior = self.qualif_local::<qualifs::HasMutInterior>(place.local);
-                if has_mut_interior {
-                    return Err(Unpromotable);
-                }
-
-                Ok(())
+                // Check that the reference is fine (using the original place!).
+                // (Needs to come after `validate_place` to avoid ICEs.)
+                self.validate_ref(*kind, place)?;
             }
 
-            Rvalue::Aggregate(_, ref operands) => {
+            Rvalue::Aggregate(_, operands) => {
                 for o in operands {
                     self.validate_operand(o)?;
                 }
-
-                Ok(())
             }
         }
+
+        Ok(())
     }
 
     fn validate_call(

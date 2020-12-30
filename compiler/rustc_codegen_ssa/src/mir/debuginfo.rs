@@ -170,7 +170,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 // (after #67586 gets fixed).
                 None
             } else {
-                let name = kw::Invalid;
+                let name = kw::Empty;
                 let decl = &self.mir.local_decls[local];
                 let dbg_var = if full_debug_info {
                     self.adjusted_span_and_dbg_scope(decl.source_info).map(
@@ -204,7 +204,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             None
         } else {
             Some(match whole_local_var.or(fallback_var) {
-                Some(var) if var.name != kw::Invalid => var.name.to_string(),
+                Some(var) if var.name != kw::Empty => var.name.to_string(),
                 _ => format!("{:?}", local),
             })
         };

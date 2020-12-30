@@ -8,7 +8,6 @@ use crate::clean::{
 };
 use crate::core::DocContext;
 
-use itertools::Itertools;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};

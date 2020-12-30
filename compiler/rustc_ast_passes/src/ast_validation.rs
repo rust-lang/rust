@@ -184,7 +184,7 @@ impl<'a> AstValidator<'a> {
     }
 
     fn check_lifetime(&self, ident: Ident) {
-        let valid_names = [kw::UnderscoreLifetime, kw::StaticLifetime, kw::Invalid];
+        let valid_names = [kw::UnderscoreLifetime, kw::StaticLifetime, kw::Empty];
         if !valid_names.contains(&ident.name) && ident.without_first_quote().is_reserved() {
             self.err_handler().span_err(ident.span, "lifetimes cannot use keyword names");
         }

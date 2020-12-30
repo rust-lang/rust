@@ -1639,7 +1639,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         }
 
         // Record as bound if it's valid:
-        let ident_valid = ident.name != kw::Invalid;
+        let ident_valid = ident.name != kw::Empty;
         if ident_valid {
             bindings.last_mut().unwrap().1.insert(ident);
         }

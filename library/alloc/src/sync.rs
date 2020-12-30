@@ -1927,7 +1927,7 @@ impl<T: ?Sized> Drop for Weak<T> {
 
         if inner.weak.fetch_sub(1, Release) == 1 {
             acquire!(inner.weak);
-            unsafe { Global.deallocate(self.ptr.cast(), Layout::for_value(self.ptr.as_ref())) }
+            unsafe { Global.deallocate(self.ptr.cast(), Layout::for_value_raw(self.ptr.as_ptr())) }
         }
     }
 }

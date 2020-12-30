@@ -1382,7 +1382,7 @@ impl<'tcx> Liveness<'_, 'tcx> {
 
     fn should_warn(&self, var: Variable) -> Option<String> {
         let name = self.ir.variable_name(var);
-        if name == kw::Invalid {
+        if name == kw::Empty {
             return None;
         }
         let name: &str = &name.as_str();

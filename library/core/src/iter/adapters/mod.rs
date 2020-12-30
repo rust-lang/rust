@@ -11,6 +11,7 @@ mod filter_map;
 mod flatten;
 mod fuse;
 mod inspect;
+mod intersperse;
 mod map;
 mod map_while;
 mod peekable;
@@ -40,6 +41,9 @@ pub use self::flatten::Flatten;
 
 #[stable(feature = "iter_copied", since = "1.36.0")]
 pub use self::copied::Copied;
+
+#[unstable(feature = "iter_intersperse", reason = "recently added", issue = "79524")]
+pub use self::intersperse::Intersperse;
 
 #[unstable(feature = "iter_map_while", reason = "recently added", issue = "68537")]
 pub use self::map_while::MapWhile;

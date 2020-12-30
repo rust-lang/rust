@@ -1481,7 +1481,7 @@ impl<F: fmt::Write> Printer<'tcx> for FmtPrinter<'_, 'tcx, F> {
         // FIXME(eddyb) `name` should never be empty, but it
         // currently is for `extern { ... }` "foreign modules".
         let name = disambiguated_data.data.name();
-        if name != DefPathDataName::Named(kw::Invalid) {
+        if name != DefPathDataName::Named(kw::Empty) {
             if !self.empty_path {
                 write!(self, "::")?;
             }
@@ -1608,14 +1608,14 @@ impl<F: fmt::Write> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx, F> {
 
         match *region {
             ty::ReEarlyBound(ref data) => {
-                data.name != kw::Invalid && data.name != kw::UnderscoreLifetime
+                data.name != kw::Empty && data.name != kw::UnderscoreLifetime
             }
 
             ty::ReLateBound(_, ty::BoundRegion { kind: br })
             | ty::ReFree(ty::FreeRegion { bound_region: br, .. })
             | ty::RePlaceholder(ty::Placeholder { name: br, .. }) => {
                 if let ty::BrNamed(_, name) = br {
-                    if name != kw::Invalid && name != kw::UnderscoreLifetime {
+                    if name != kw::Empty && name != kw::UnderscoreLifetime {
                         return true;
                     }
                 }
@@ -1685,7 +1685,7 @@ impl<F: fmt::Write> FmtPrinter<'_, '_, F> {
         // `explain_region()` or `note_and_explain_region()`.
         match *region {
             ty::ReEarlyBound(ref data) => {
-                if data.name != kw::Invalid {
+                if data.name != kw::Empty {
                     p!(write("{}", data.name));
                     return Ok(self);
                 }
@@ -1694,7 +1694,7 @@ impl<F: fmt::Write> FmtPrinter<'_, '_, F> {
             | ty::ReFree(ty::FreeRegion { bound_region: br, .. })
             | ty::RePlaceholder(ty::Placeholder { name: br, .. }) => {
                 if let ty::BrNamed(_, name) = br {
-                    if name != kw::Invalid && name != kw::UnderscoreLifetime {
+                    if name != kw::Empty && name != kw::UnderscoreLifetime {
                         p!(write("{}", name));
                         return Ok(self);
                     }

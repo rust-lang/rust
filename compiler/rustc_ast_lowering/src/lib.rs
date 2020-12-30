@@ -1767,7 +1767,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
         self.arena.alloc_from_iter(inputs.iter().map(|param| match param.pat.kind {
             PatKind::Ident(_, ident, _) => ident,
-            _ => Ident::new(kw::Invalid, param.pat.span),
+            _ => Ident::new(kw::Empty, param.pat.span),
         }))
     }
 

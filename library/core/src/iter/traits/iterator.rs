@@ -8,7 +8,7 @@ use crate::ops::{Add, ControlFlow, Try};
 use super::super::TrustedRandomAccess;
 use super::super::{Chain, Cloned, Copied, Cycle, Enumerate, Filter, FilterMap, Fuse};
 use super::super::{FlatMap, Flatten};
-use super::super::{FromIterator, Product, Sum, Zip};
+use super::super::{FromIterator, Intersperse, Product, Sum, Zip};
 use super::super::{
     Inspect, Map, MapWhile, Peekable, Rev, Scan, Skip, SkipWhile, StepBy, Take, TakeWhile,
 };
@@ -567,6 +567,28 @@ pub trait Iterator {
         U: IntoIterator,
     {
         Zip::new(self, other.into_iter())
+    }
+
+    /// Places a copy of `separator` between all elements.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(iter_intersperse)]
+    ///
+    /// let hello = ["Hello", "World"].iter().copied().intersperse(" ").collect::<String>();
+    /// assert_eq!(hello, "Hello World");
+    /// ```
+    #[inline]
+    #[unstable(feature = "iter_intersperse", reason = "recently added", issue = "79524")]
+    fn intersperse(self, separator: Self::Item) -> Intersperse<Self>
+    where
+        Self: Sized,
+        Self::Item: Clone,
+    {
+        Intersperse::new(self, separator)
     }
 
     /// Takes a closure and creates an iterator which calls that closure on each

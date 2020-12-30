@@ -95,7 +95,7 @@ fn parse_inline_asm<'a>(
         })
         .unwrap_or(tts.len());
     let mut p = cx.new_parser_from_tts(tts.trees().skip(first_colon).collect());
-    let mut asm = kw::Invalid;
+    let mut asm = kw::Empty;
     let mut asm_str_style = None;
     let mut outputs = Vec::new();
     let mut inputs = Vec::new();

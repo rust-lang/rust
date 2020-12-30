@@ -342,7 +342,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
         let field_names = vdata
             .fields()
             .iter()
-            .map(|field| respan(field.span, field.ident.map_or(kw::Invalid, |ident| ident.name)))
+            .map(|field| respan(field.span, field.ident.map_or(kw::Empty, |ident| ident.name)))
             .collect();
         self.insert_field_names(def_id, field_names);
     }
@@ -527,7 +527,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                         // HACK(eddyb) unclear how good this is, but keeping `$crate`
                         // in `source` breaks `src/test/ui/imports/import-crate-var.rs`,
                         // while the current crate doesn't have a valid `crate_name`.
-                        if crate_name != kw::Invalid {
+                        if crate_name != kw::Empty {
                             // `crate_name` should not be interpreted as relative.
                             module_path.push(Segment {
                                 ident: Ident { name: kw::PathRoot, span: source.ident.span },
@@ -656,7 +656,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
 
     /// Constructs the reduced graph for one item.
     fn build_reduced_graph_for_item(&mut self, item: &'b Item) {
-        if matches!(item.kind, ItemKind::Mod(..)) && item.ident.name == kw::Invalid {
+        if matches!(item.kind, ItemKind::Mod(..)) && item.ident.name == kw::Empty {
             // Fake crate root item from expand.
             return;
         }
