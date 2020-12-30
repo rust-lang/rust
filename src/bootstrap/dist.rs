@@ -1316,8 +1316,8 @@ impl Step for Extended {
             tarballs.push(mingw_installer.unwrap());
         }
 
-        let mut tarball = Tarball::new(builder, "rust", &target.triple);
-        let work = tarball.persist_work_dir();
+        let tarball = Tarball::new(builder, "rust", &target.triple);
+        let work = tarball.work_dir();
         tarball.combine(&tarballs);
 
         let tmp = tmpdir(builder).join("combined-tarball");
