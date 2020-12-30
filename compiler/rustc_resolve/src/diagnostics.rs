@@ -450,12 +450,12 @@ impl<'a> Resolver<'a> {
                     self.session,
                     span,
                     E0128,
-                    "type parameters with a default cannot use \
+                    "generic parameters with a default cannot use \
                                                 forward declared identifiers"
                 );
                 err.span_label(
                     span,
-                    "defaulted type parameters cannot be forward declared".to_string(),
+                    "defaulted generic parameters cannot be forward declared".to_string(),
                 );
                 err
             }

@@ -254,10 +254,14 @@ impl Visitor<'tcx> for CollectItemTypesVisitor<'tcx> {
                     self.tcx.ensure().type_of(def_id);
                 }
                 hir::GenericParamKind::Type { .. } => {}
-                hir::GenericParamKind::Const { .. } => {
+                hir::GenericParamKind::Const { default, .. } => {
                     let def_id = self.tcx.hir().local_def_id(param.hir_id);
                     self.tcx.ensure().type_of(def_id);
                     // FIXME(const_generics_defaults)
+                    if let Some(default) = default {
+                        let def_id = self.tcx.hir().local_def_id(default.hir_id);
+                        self.tcx.ensure().type_of(def_id);
+                    }
                 }
             }
         }

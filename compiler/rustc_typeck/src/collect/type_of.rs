@@ -83,8 +83,7 @@ pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<
                     return generics
                         .params
                         .iter()
-                        .filter(|param| matches!(param.kind, ty::GenericParamDefKind::Const { ..
-                        }))
+                        .filter(|param| matches!(param.kind, ty::GenericParamDefKind::Const { .. }))
                         .nth(arg_index)
                         .map(|param| param.def_id);
                 }

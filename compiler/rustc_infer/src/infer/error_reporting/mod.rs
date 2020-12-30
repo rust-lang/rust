@@ -963,9 +963,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             .rev()
             .filter_map(|param| match param.kind {
                 ty::GenericParamDefKind::Lifetime => None,
-
-                ty::GenericParamDefKind::Type { has_default, .. }
-                | ty::GenericParamDefKind::Const { has_default } => {
+                ty::GenericParamDefKind::Const { has_default }
+                | ty::GenericParamDefKind::Type { has_default, .. } => {
                     Some((param.def_id, has_default))
                 }
             })

@@ -1447,7 +1447,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         if infer_args || !has_default {
                             return self.fcx.var_for_def(self.span, param);
                         }
-                        // FIXME(const_generics:defaults)
+                        // FIXME(const_generic_defaults)
                         // No const parameters were provided, we have to infer them.
                         todo!()
                     }

@@ -1,7 +1,6 @@
-#![feature(const_generic_defaults)]
+#![crate_type = "lib"]
+#![feature(const_generics_defaults)]
 #![feature(min_const_generics)]
+#![allow(incomplete_features)]
 
-fn foo<const SIZE: usize = 5>() {}
-//~^ ERROR default values for const generic parameters are experimental
-
-fn main() {}
+fn foo<const SIZE: usize = 5usize>() {}

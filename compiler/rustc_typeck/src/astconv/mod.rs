@@ -507,7 +507,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     GenericParamDefKind::Const { has_default } => {
                         let ty = tcx.at(self.span).type_of(param.def_id);
                         if !infer_args && has_default {
-                            let c = ty::Const::from_anon_const(tcx, param.def_id.expect_local());
+                            let c = substs.unwrap()[param.index as usize].expect_const();
                             ty::subst::GenericArg::from(c)
                         } else if infer_args {
                             self.astconv.ct_infer(ty, Some(param), self.span).into()
@@ -515,6 +515,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             // We've already errored above about the mismatch.
                             tcx.const_error(ty).into()
                         }
+                        // FIXME(const_generic_defaults)
                         /*
                         if !infer_args && has_default {
                             /*

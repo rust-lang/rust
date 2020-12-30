@@ -1,12 +1,9 @@
-error[E0658]: default values for const generic parameters are experimental
-  --> $DIR/default_function_param.rs:1:26
+error[E0282]: type annotations needed
+  --> $DIR/default_function_param.rs:6:28
    |
 LL | fn foo<const SIZE: usize = 5>() {}
-   |                          ^^^
-   |
-   = note: see issue #44580 <https://github.com/rust-lang/rust/issues/44580> for more information
-   = help: add `#![feature(const_generics_defaults)]` to the crate attributes to enable
+   |                            ^ cannot infer type for type `{integer}`
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0658`.
+For more information about this error, try `rustc --explain E0282`.

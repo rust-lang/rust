@@ -785,8 +785,8 @@ pub fn noop_flat_map_generic_param<T: MutVisitor>(
             visit_opt(default, |default| vis.visit_ty(default));
         }
         GenericParamKind::Const { ty, kw_span: _, default } => {
-            visit_opt(default, |default| vis.visit_anon_const(default));
             vis.visit_ty(ty);
+            visit_opt(default, |default| vis.visit_anon_const(default));
         }
     }
     smallvec![param]

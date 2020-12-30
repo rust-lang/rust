@@ -507,10 +507,9 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
 
     fn visit_generic_param(&mut self, p: &'tcx hir::GenericParam<'tcx>) {
         let kind = match &p.kind {
-            // FIXME(const_generics_defaults)
-            hir::GenericParamKind::Type { default, .. } if default.is_some() => {
-                AnnotationKind::Container
-            }
+            // Allow stability attributes on default generic arguments.
+            hir::GenericParamKind::Type { default: Some(_), .. }
+            | hir::GenericParamKind::Const { default: Some(_), .. } => AnnotationKind::Container,
             _ => AnnotationKind::Prohibited,
         };
 
