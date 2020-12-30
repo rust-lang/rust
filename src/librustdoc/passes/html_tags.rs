@@ -182,7 +182,7 @@ impl<'a, 'tcx> DocFolder for InvalidHtmlTagsLinter<'a, 'tcx> {
                     Some(sp) => sp,
                     None => span_of_attrs(&item.attrs).unwrap_or(item.source.span()),
                 };
-                cx.tcx.struct_span_lint_hir(crate::core::INVALID_HTML_TAGS, hir_id, sp, |lint| {
+                cx.tcx.struct_span_lint_hir(crate::lint::INVALID_HTML_TAGS, hir_id, sp, |lint| {
                     lint.build(msg).emit()
                 });
             };

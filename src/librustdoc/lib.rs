@@ -87,6 +87,7 @@ mod formats;
 // used by the error-index generator, so it needs to be public
 pub mod html;
 mod json;
+crate mod lint;
 mod markdown;
 mod passes;
 mod theme;
