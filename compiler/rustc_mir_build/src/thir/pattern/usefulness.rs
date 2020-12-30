@@ -650,7 +650,7 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
     }
 
     /// This computes `S(constructor, self)`. See top of the file for explanations.
-    fn specialize_constructor<'a>(
+    fn specialize<'a>(
         &'a mut self,
         pcx: PatCtxt<'_, 'p, 'tcx>,
         ctor: &Constructor<'tcx>,
@@ -1316,7 +1316,7 @@ fn is_useful<'p, 'tcx>(
             debug!("specialize({:?})", ctor);
             // We cache the result of `Fields::wildcards` because it is used a lot.
             let ctor_wild_subpatterns = Fields::wildcards(pcx, &ctor);
-            matrix.specialize_constructor(pcx, &ctor, &ctor_wild_subpatterns);
+            matrix.specialize(pcx, &ctor, &ctor_wild_subpatterns);
             let v = v.pop_head_constructor(&ctor_wild_subpatterns);
             let usefulness =
                 is_useful(cx, matrix, &v, witness_preference, hir_id, is_under_guard, false);
