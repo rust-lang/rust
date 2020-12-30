@@ -298,8 +298,8 @@ use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::Span;
 
 use smallvec::{smallvec, SmallVec};
-use std::fmt;
 use std::iter::{FromIterator, IntoIterator};
+use std::{fmt, mem};
 
 crate struct MatchCheckCtxt<'a, 'tcx> {
     crate tcx: TyCtxt<'tcx>,
@@ -635,35 +635,33 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
     }
 
     /// This computes `S(constructor, self)`. See top of the file for explanations.
-    fn specialize_constructor(
-        &self,
+    fn specialize_constructor<'a>(
+        &'a mut self,
         pcx: PatCtxt<'_, 'p, 'tcx>,
         ctor: &Constructor<'tcx>,
         ctor_wild_subpatterns: &Fields<'p, 'tcx>,
-    ) -> Matrix<'p, 'tcx> {
+    ) -> SpecializedMatrix<'a, 'p, 'tcx> {
         assert!(self.column_count() >= 1);
-        let new_col_count = self.column_count() - 1 + ctor_wild_subpatterns.len();
-        let (last_col, other_cols) = self.columns.split_last().unwrap();
+        let old_col_count = self.column_count();
+        let new_col_count = old_col_count - 1 + ctor_wild_subpatterns.len();
 
-        let mut matrix = Matrix::new(new_col_count);
+        let last_col = self.columns.pop().unwrap();
+        let old_selected_rows = mem::replace(&mut self.selected_rows, Vec::new());
 
-        // We keep rows from `self` that match this ctor.
+        // We keep rows that match this ctor. In `selected_rows` we keep indices into `last_col`,
+        // and in `self.selected_rows` we keep indices into the new last column of `self`.
         let mut selected_rows = Vec::new();
-        for &row_id in &self.selected_rows {
+        for &row_id in &old_selected_rows {
             let head_entry = &last_col[row_id];
             if ctor.is_covered_by(pcx, head_entry.head_ctor(pcx.cx)) {
                 selected_rows.push(row_id);
-                matrix.selected_rows.push(head_entry.next_row_id);
+                self.selected_rows.push(head_entry.next_row_id);
             }
         }
 
-        // Remove empty columns
-        matrix.columns.drain(..);
-        // We clone existing columns except the last one.
-        matrix.columns.extend_from_slice(other_cols);
         // Add some empty columns to accomodate the patterns to be added.
-        matrix.columns.resize_with(new_col_count, || Vec::with_capacity(selected_rows.len()));
-        let new_columns = &mut matrix.columns[self.column_count() - 1..];
+        self.columns.resize_with(new_col_count, || Vec::with_capacity(selected_rows.len()));
+        let new_columns = &mut self.columns[old_col_count - 1..];
 
         // We fill the new columns with the corresponding wildcards. We also set the `row_id`
         // indices correctly.
@@ -672,8 +670,9 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
         // the columns are in the reverse order.
         let pats_and_cols = wildcards.iter().copied().rev().zip(new_columns.iter_mut());
         for (pat, col) in pats_and_cols {
-            for (i, row_id) in matrix.selected_rows.iter_mut().enumerate() {
+            for (i, row_id) in self.selected_rows.iter_mut().enumerate() {
                 col.push(MatrixEntry { pat, next_row_id: *row_id, ctor: OnceCell::new() });
+                // Make `row_id` point to the entry just added.
                 *row_id = i;
             }
         }
@@ -687,18 +686,18 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
 
             // Note the `rev()` because the fields are in the natural left-to-right order but
             // the columns are in the reverse order.
-            let new_columns = &mut matrix.columns[self.column_count() - 1..];
             let pats_and_cols = new_fields.iter().copied().rev().zip(new_columns.iter_mut());
             for (pat, col) in pats_and_cols {
                 col[i].pat = pat;
             }
         }
 
+        let mut last_col_before_orpat_expansion = None;
         // Expand any or-patterns present in the new last column.
-        if !matrix.columns.is_empty() && matrix.last_col().any(|e| e.pat.is_or_pat()) {
-            let last_col = matrix.columns.pop().unwrap();
+        if !self.columns.is_empty() && self.last_col().any(|e| e.pat.is_or_pat()) {
+            let last_col = self.columns.pop().unwrap();
             let mut new_last_col = Vec::new();
-            for &row_id in &matrix.selected_rows {
+            for &row_id in &self.selected_rows {
                 let entry = &last_col[row_id];
                 if entry.pat.is_or_pat() {
                     for pat in entry.pat.expand_or_pat() {
@@ -719,11 +718,45 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
                     new_last_col.push(entry);
                 }
             }
-            matrix.selected_rows = (0..new_last_col.len()).collect();
-            matrix.columns.push(new_last_col);
+            last_col_before_orpat_expansion = Some(last_col);
+            self.selected_rows = (0..new_last_col.len()).collect();
+            self.columns.push(new_last_col);
         }
 
-        matrix
+        SpecializedMatrix {
+            matrix: self,
+            ctor_arity: ctor_wild_subpatterns.len(),
+            last_col_before_specialization: last_col,
+            selected_rows_before_specialization: old_selected_rows,
+            last_col_before_orpat_expansion,
+        }
+    }
+}
+
+/// A struct that keeps around enough data to undo matrix specialization in-place.
+struct SpecializedMatrix<'a, 'p, 'tcx> {
+    matrix: &'a mut Matrix<'p, 'tcx>,
+    ctor_arity: usize,
+    last_col_before_specialization: Vec<MatrixEntry<'p, 'tcx>>,
+    selected_rows_before_specialization: Vec<usize>,
+    last_col_before_orpat_expansion: Option<Vec<MatrixEntry<'p, 'tcx>>>,
+}
+
+impl<'a, 'p, 'tcx> SpecializedMatrix<'a, 'p, 'tcx> {
+    fn matrix(&mut self) -> &mut Matrix<'p, 'tcx> {
+        self.matrix
+    }
+
+    fn unspecialize(self) {
+        if let Some(col) = self.last_col_before_orpat_expansion {
+            self.matrix.columns.pop().unwrap();
+            self.matrix.columns.push(col);
+        }
+        for _ in 0..self.ctor_arity {
+            self.matrix.columns.pop().unwrap();
+        }
+        self.matrix.columns.push(self.last_col_before_specialization);
+        self.matrix.selected_rows = self.selected_rows_before_specialization;
     }
 }
 
@@ -1200,7 +1233,7 @@ impl<'tcx> Witness<'tcx> {
 #[instrument(skip(cx, matrix, witness_preference, hir_id, is_under_guard, is_top_level))]
 fn is_useful<'p, 'tcx>(
     cx: &MatchCheckCtxt<'p, 'tcx>,
-    matrix: &Matrix<'p, 'tcx>,
+    matrix: &mut Matrix<'p, 'tcx>,
     v: &PatStack<'p, 'tcx>,
     witness_preference: WitnessPreference,
     hir_id: HirId,
@@ -1239,7 +1272,7 @@ fn is_useful<'p, 'tcx>(
         let mut matrix = matrix.clone();
         let usefulnesses = vs.into_iter().enumerate().map(|(i, v)| {
             let usefulness =
-                is_useful(cx, &matrix, &v, witness_preference, hir_id, is_under_guard, false);
+                is_useful(cx, &mut matrix, &v, witness_preference, hir_id, is_under_guard, false);
             // If pattern has a guard don't add it to the matrix.
             if !is_under_guard {
                 // We push the already-seen patterns into the matrix in order to detect redundant
@@ -1264,16 +1297,26 @@ fn is_useful<'p, 'tcx>(
         let split_ctors = v_ctor.split(pcx, matrix.head_ctors(cx));
         // For each constructor, we compute whether there's a value that starts with it that would
         // witness the usefulness of `v`.
-        let start_matrix = &matrix;
+        let start_matrix = &mut *matrix;
         let usefulnesses = split_ctors.into_iter().map(|ctor| {
             debug!("specialize({:?})", ctor);
             // We cache the result of `Fields::wildcards` because it is used a lot.
             let ctor_wild_subpatterns = Fields::wildcards(pcx, &ctor);
-            let spec_matrix =
+            let mut spec_matrix =
                 start_matrix.specialize_constructor(pcx, &ctor, &ctor_wild_subpatterns);
             let v = v.pop_head_constructor(&ctor_wild_subpatterns);
-            let usefulness =
-                is_useful(cx, &spec_matrix, &v, witness_preference, hir_id, is_under_guard, false);
+            let usefulness = {
+                is_useful(
+                    cx,
+                    spec_matrix.matrix(),
+                    &v,
+                    witness_preference,
+                    hir_id,
+                    is_under_guard,
+                    false,
+                )
+            };
+            spec_matrix.unspecialize();
             usefulness.apply_constructor(pcx, start_matrix, &ctor, &ctor_wild_subpatterns)
         });
         Usefulness::merge(witness_preference, usefulnesses)
@@ -1326,7 +1369,7 @@ crate fn compute_match_usefulness<'p, 'tcx>(
         .map(|arm| {
             let v = PatStack::from_pattern(arm.pat);
             let usefulness =
-                is_useful(cx, &matrix, &v, LeaveOutWitness, arm.hir_id, arm.has_guard, true);
+                is_useful(cx, &mut matrix, &v, LeaveOutWitness, arm.hir_id, arm.has_guard, true);
             if !arm.has_guard {
                 matrix.push(v);
             }
@@ -1341,7 +1384,7 @@ crate fn compute_match_usefulness<'p, 'tcx>(
 
     let wild_pattern = cx.pattern_arena.alloc(super::Pat::wildcard_from_ty(scrut_ty));
     let v = PatStack::from_pattern(wild_pattern);
-    let usefulness = is_useful(cx, &matrix, &v, ConstructWitness, scrut_hir_id, false, true);
+    let usefulness = is_useful(cx, &mut matrix, &v, ConstructWitness, scrut_hir_id, false, true);
     let non_exhaustiveness_witnesses = match usefulness {
         WithWitnesses(pats) => pats.into_iter().map(|w| w.single_pattern()).collect(),
         NoWitnesses(_) => bug!(),
