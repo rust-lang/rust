@@ -294,11 +294,25 @@ impl<'a> Tarball<'a> {
 
         build_cli(&self, &mut cmd);
         cmd.arg("--work-dir").arg(&self.temp_dir);
+        if let Some(formats) = &self.builder.config.dist_compression_formats {
+            assert!(!formats.is_empty(), "dist.compression-formats can't be empty");
+            cmd.arg("--compression-formats").arg(formats.join(","));
+        }
         self.builder.run(&mut cmd);
         if self.delete_temp_dir {
             t!(std::fs::remove_dir_all(&self.temp_dir));
         }
 
-        crate::dist::distdir(self.builder).join(format!("{}.tar.gz", package_name))
+        // Use either the first compression format defined, or "gz" as the default.
+        let ext = self
+            .builder
+            .config
+            .dist_compression_formats
+            .as_ref()
+            .and_then(|formats| formats.get(0))
+            .map(|s| s.as_str())
+            .unwrap_or("gz");
+
+        crate::dist::distdir(self.builder).join(format!("{}.tar.{}", package_name, ext))
     }
 }
