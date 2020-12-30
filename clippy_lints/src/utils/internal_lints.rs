@@ -10,6 +10,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
+use rustc_hir::def_id::DefId;
 use rustc_hir::hir_id::CRATE_HIR_ID;
 use rustc_hir::intravisit::{NestedVisitorMap, Visitor};
 use rustc_hir::{Crate, Expr, ExprKind, HirId, Item, MutTy, Mutability, Node, Path, StmtKind, Ty, TyKind};
@@ -868,8 +869,8 @@ impl<'tcx> LateLintPass<'tcx> for InvalidPaths {
 
 #[derive(Default)]
 pub struct InterningDefinedSymbol {
-    // Maps the symbol value to the constant name.
-    symbol_map: FxHashMap<u32, String>,
+    // Maps the symbol value to the constant DefId.
+    symbol_map: FxHashMap<u32, DefId>,
 }
 
 impl_lint_pass!(InterningDefinedSymbol => [INTERNING_DEFINED_SYMBOL]);
@@ -889,7 +890,7 @@ impl<'tcx> LateLintPass<'tcx> for InterningDefinedSymbol {
                     if let Ok(ConstValue::Scalar(value)) = cx.tcx.const_eval_poly(item_def_id);
                     if let Ok(value) = value.to_u32();
                     then {
-                        self.symbol_map.insert(value, item.ident.to_string());
+                        self.symbol_map.insert(value, item_def_id);
                     }
                 }
             }
@@ -903,7 +904,7 @@ impl<'tcx> LateLintPass<'tcx> for InterningDefinedSymbol {
             if match_def_path(cx, *def_id, &paths::SYMBOL_INTERN);
             if let Some(Constant::Str(arg)) = constant_simple(cx, cx.typeck_results(), arg);
             let value = Symbol::intern(&arg).as_u32();
-            if let Some(symbol_const) = self.symbol_map.get(&value);
+            if let Some(&def_id) = self.symbol_map.get(&value);
             then {
                 span_lint_and_sugg(
                     cx,
@@ -911,7 +912,7 @@ impl<'tcx> LateLintPass<'tcx> for InterningDefinedSymbol {
                     is_expn_of(expr.span, "sym").unwrap_or(expr.span),
                     "interning a defined symbol",
                     "try",
-                    format!("rustc_span::symbol::sym::{}", symbol_const),
+                    cx.tcx.def_path_str(def_id),
                     Applicability::MachineApplicable,
                 );
             }
