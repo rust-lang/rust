@@ -1317,7 +1317,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         T: TypeFoldable<'tcx>,
     {
         if !value.needs_infer() {
-            return value.clone(); // Avoid duplicated subst-folding.
+            return value; // Avoid duplicated subst-folding.
         }
         let mut r = resolve::OpportunisticVarResolver::new(self);
         value.fold_with(&mut r)
