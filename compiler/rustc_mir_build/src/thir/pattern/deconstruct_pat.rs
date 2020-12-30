@@ -328,8 +328,8 @@ struct SplitIntRange {
 }
 
 impl SplitIntRange {
-    fn new(r: IntRange) -> Self {
-        SplitIntRange { range: r.clone(), borders: Vec::new() }
+    fn new(range: IntRange) -> Self {
+        SplitIntRange { range, borders: Vec::new() }
     }
 
     /// Internal use
