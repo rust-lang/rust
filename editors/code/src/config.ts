@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { Env } from './client';
 import { log } from "./util";
 
 export type UpdatesChannel = "stable" | "nightly";
@@ -13,6 +14,7 @@ export class Config {
     readonly rootSection = "rust-analyzer";
     private readonly requiresReloadOpts = [
         "serverPath",
+        "server",
         "cargo",
         "procMacro",
         "files",
@@ -92,6 +94,7 @@ export class Config {
     }
 
     get serverPath() { return this.get<null | string>("serverPath"); }
+    get serverExtraEnv() { return this.get<Env | null>("server.extraEnv") ?? {}; }
     get channel() { return this.get<UpdatesChannel>("updates.channel"); }
     get askBeforeDownload() { return this.get<boolean>("updates.askBeforeDownload"); }
     get traceExtension() { return this.get<boolean>("trace.extension"); }
