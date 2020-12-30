@@ -182,53 +182,49 @@ macro_rules! nonzero_leading_trailing_zeros {
     ( $( $Ty: ident($Uint: ty) , $LeadingTestExpr:expr ;)+ ) => {
         $(
             impl $Ty {
-                doc_comment! {
-                    concat!("Returns the number of leading zeros in the binary representation of `self`.
-
-On many architectures, this function can perform better than `leading_zeros()` on the underlying integer type, as special handling of zero can be avoided.
-
-# Examples
-
-Basic usage:
-
-```
-#![feature(nonzero_leading_trailing_zeros)]
-let n = std::num::", stringify!($Ty), "::new(", stringify!($LeadingTestExpr), ").unwrap();
-
-assert_eq!(n.leading_zeros(), 0);
-```"),
-                    #[unstable(feature = "nonzero_leading_trailing_zeros", issue = "79143")]
-                    #[rustc_const_unstable(feature = "nonzero_leading_trailing_zeros", issue = "79143")]
-                    #[inline]
-                    pub const fn leading_zeros(self) -> u32 {
-                        // SAFETY: since `self` can not be zero it is safe to call ctlz_nonzero
-                        unsafe { intrinsics::ctlz_nonzero(self.0 as $Uint) as u32 }
-                    }
+                /// Returns the number of leading zeros in the binary representation of `self`.
+                ///
+                /// On many architectures, this function can perform better than `leading_zeros()` on the underlying integer type, as special handling of zero can be avoided.
+                ///
+                /// # Examples
+                ///
+                /// Basic usage:
+                ///
+                /// ```
+                /// #![feature(nonzero_leading_trailing_zeros)]
+                #[doc = concat!("let n = std::num::", stringify!($Ty), "::new(", stringify!($LeadingTestExpr), ").unwrap();")]
+                ///
+                /// assert_eq!(n.leading_zeros(), 0);
+                /// ```
+                #[unstable(feature = "nonzero_leading_trailing_zeros", issue = "79143")]
+                #[rustc_const_unstable(feature = "nonzero_leading_trailing_zeros", issue = "79143")]
+                #[inline]
+                pub const fn leading_zeros(self) -> u32 {
+                    // SAFETY: since `self` can not be zero it is safe to call ctlz_nonzero
+                    unsafe { intrinsics::ctlz_nonzero(self.0 as $Uint) as u32 }
                 }
 
-                doc_comment! {
-                    concat!("Returns the number of trailing zeros in the binary representation
-of `self`.
-
-On many architectures, this function can perform better than `trailing_zeros()` on the underlying integer type, as special handling of zero can be avoided.
-
-# Examples
-
-Basic usage:
-
-```
-#![feature(nonzero_leading_trailing_zeros)]
-let n = std::num::", stringify!($Ty), "::new(0b0101000).unwrap();
-
-assert_eq!(n.trailing_zeros(), 3);
-```"),
-                    #[unstable(feature = "nonzero_leading_trailing_zeros", issue = "79143")]
-                    #[rustc_const_unstable(feature = "nonzero_leading_trailing_zeros", issue = "79143")]
-                    #[inline]
-                    pub const fn trailing_zeros(self) -> u32 {
-                        // SAFETY: since `self` can not be zero it is safe to call cttz_nonzero
-                        unsafe { intrinsics::cttz_nonzero(self.0 as $Uint) as u32 }
-                    }
+                /// Returns the number of trailing zeros in the binary representation
+                /// of `self`.
+                ///
+                /// On many architectures, this function can perform better than `trailing_zeros()` on the underlying integer type, as special handling of zero can be avoided.
+                ///
+                /// # Examples
+                ///
+                /// Basic usage:
+                ///
+                /// ```
+                /// #![feature(nonzero_leading_trailing_zeros)]
+                #[doc = concat!("let n = std::num::", stringify!($Ty), "::new(0b0101000).unwrap();")]
+                ///
+                /// assert_eq!(n.trailing_zeros(), 3);
+                /// ```
+                #[unstable(feature = "nonzero_leading_trailing_zeros", issue = "79143")]
+                #[rustc_const_unstable(feature = "nonzero_leading_trailing_zeros", issue = "79143")]
+                #[inline]
+                pub const fn trailing_zeros(self) -> u32 {
+                    // SAFETY: since `self` can not be zero it is safe to call cttz_nonzero
+                    unsafe { intrinsics::cttz_nonzero(self.0 as $Uint) as u32 }
                 }
 
             }
