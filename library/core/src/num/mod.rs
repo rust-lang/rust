@@ -93,18 +93,21 @@ depending on the target pointer size.
     };
 }
 
+#[doc(alias = "integer")]
 #[lang = "i8"]
 impl i8 {
     int_impl! { i8, i8, u8, 8, -128, 127, "", "", 2, "-0x7e", "0xa", "0x12", "0x12", "0x48",
     "[0x12]", "[0x12]", "", "" }
 }
 
+#[doc(alias = "integer")]
 #[lang = "i16"]
 impl i16 {
     int_impl! { i16, i16, u16, 16, -32768, 32767, "", "", 4, "-0x5ffd", "0x3a", "0x1234", "0x3412",
     "0x2c48", "[0x34, 0x12]", "[0x12, 0x34]", "", "" }
 }
 
+#[doc(alias = "integer")]
 #[lang = "i32"]
 impl i32 {
     int_impl! { i32, i32, u32, 32, -2147483648, 2147483647, "", "", 8, "0x10000b3", "0xb301",
@@ -112,6 +115,7 @@ impl i32 {
     "[0x12, 0x34, 0x56, 0x78]", "", "" }
 }
 
+#[doc(alias = "integer")]
 #[lang = "i64"]
 impl i64 {
     int_impl! { i64, i64, u64, 64, -9223372036854775808, 9223372036854775807, "", "", 12,
@@ -120,6 +124,7 @@ impl i64 {
     "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56]", "", "" }
 }
 
+#[doc(alias = "integer")]
 #[lang = "i128"]
 impl i128 {
     int_impl! { i128, i128, u128, 128, -170141183460469231731687303715884105728,
@@ -133,6 +138,7 @@ impl i128 {
 }
 
 #[cfg(target_pointer_width = "16")]
+#[doc(alias = "integer")]
 #[lang = "isize"]
 impl isize {
     int_impl! { isize, i16, usize, 16, -32768, 32767, "", "", 4, "-0x5ffd", "0x3a", "0x1234",
@@ -141,6 +147,7 @@ impl isize {
 }
 
 #[cfg(target_pointer_width = "32")]
+#[doc(alias = "integer")]
 #[lang = "isize"]
 impl isize {
     int_impl! { isize, i32, usize, 32, -2147483648, 2147483647, "", "", 8, "0x10000b3", "0xb301",
@@ -150,6 +157,7 @@ impl isize {
 }
 
 #[cfg(target_pointer_width = "64")]
+#[doc(alias = "integer")]
 #[lang = "isize"]
 impl isize {
     int_impl! { isize, i64, usize, 64, -9223372036854775808, 9223372036854775807, "", "",
@@ -159,6 +167,7 @@ impl isize {
      usize_isize_to_xe_bytes_doc!(), usize_isize_from_xe_bytes_doc!() }
 }
 
+#[doc(alias = "integer")]
 #[lang = "u8"]
 impl u8 {
     uint_impl! { u8, u8, 8, 255, "", "", 2, "0x82", "0xa", "0x12", "0x12", "0x48", "[0x12]",
@@ -658,18 +667,21 @@ impl u8 {
     }
 }
 
+#[doc(alias = "integer")]
 #[lang = "u16"]
 impl u16 {
     uint_impl! { u16, u16, 16, 65535, "", "", 4, "0xa003", "0x3a", "0x1234", "0x3412", "0x2c48",
     "[0x34, 0x12]", "[0x12, 0x34]", "", "" }
 }
 
+#[doc(alias = "integer")]
 #[lang = "u32"]
 impl u32 {
     uint_impl! { u32, u32, 32, 4294967295, "", "", 8, "0x10000b3", "0xb301", "0x12345678",
     "0x78563412", "0x1e6a2c48", "[0x78, 0x56, 0x34, 0x12]", "[0x12, 0x34, 0x56, 0x78]", "", "" }
 }
 
+#[doc(alias = "integer")]
 #[lang = "u64"]
 impl u64 {
     uint_impl! { u64, u64, 64, 18446744073709551615, "", "", 12, "0xaa00000000006e1", "0x6e10aa",
@@ -679,6 +691,7 @@ impl u64 {
     "", ""}
 }
 
+#[doc(alias = "integer")]
 #[lang = "u128"]
 impl u128 {
     uint_impl! { u128, u128, 128, 340282366920938463463374607431768211455, "", "", 16,
@@ -692,6 +705,7 @@ impl u128 {
 }
 
 #[cfg(target_pointer_width = "16")]
+#[doc(alias = "integer")]
 #[lang = "usize"]
 impl usize {
     uint_impl! { usize, u16, 16, 65535, "", "", 4, "0xa003", "0x3a", "0x1234", "0x3412", "0x2c48",
@@ -699,6 +713,7 @@ impl usize {
     usize_isize_to_xe_bytes_doc!(), usize_isize_from_xe_bytes_doc!() }
 }
 #[cfg(target_pointer_width = "32")]
+#[doc(alias = "integer")]
 #[lang = "usize"]
 impl usize {
     uint_impl! { usize, u32, 32, 4294967295, "", "", 8, "0x10000b3", "0xb301", "0x12345678",
@@ -707,6 +722,7 @@ impl usize {
 }
 
 #[cfg(target_pointer_width = "64")]
+#[doc(alias = "integer")]
 #[lang = "usize"]
 impl usize {
     uint_impl! { usize, u64, 64, 18446744073709551615, "", "", 12, "0xaa00000000006e1", "0x6e10aa",
