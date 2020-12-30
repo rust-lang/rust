@@ -198,7 +198,7 @@ impl<E: rustc_serialize::Encoder> Encodable<E> for PackedFingerprint {
 impl<D: rustc_serialize::Decoder> Decodable<D> for PackedFingerprint {
     #[inline]
     fn decode(d: &mut D) -> Result<Self, D::Error> {
-        Fingerprint::decode(d).map(|f| PackedFingerprint(f))
+        Fingerprint::decode(d).map(PackedFingerprint)
     }
 }
 

@@ -292,7 +292,7 @@ fn add_unreachable_coverage<'tcx>(
         if let Some(non_codegenned_file_name) = tcx.covered_file_name(non_codegenned_def_id) {
             let def_ids = unreachable_def_ids_by_file
                 .entry(*non_codegenned_file_name)
-                .or_insert_with(|| Vec::new());
+                .or_insert_with(Vec::new);
             def_ids.push(non_codegenned_def_id);
         }
     }

@@ -394,7 +394,7 @@ impl BasicCoverageBlockData {
         let operand = counter_kind.as_operand_id();
         if let Some(replaced) = self
             .edge_from_bcbs
-            .get_or_insert_with(|| FxHashMap::default())
+            .get_or_insert_with(FxHashMap::default)
             .insert(from_bcb, counter_kind)
         {
             Error::from_string(format!(
