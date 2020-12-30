@@ -736,10 +736,7 @@ impl<'a> Builder<'a> {
         if self.config.deny_warnings {
             cmd.arg("-Dwarnings");
         }
-        // cfg(not(bootstrap)), can be removed on the next beta bump
-        if compiler.stage != 0 {
-            cmd.arg("-Znormalize-docs");
-        }
+        cmd.arg("-Znormalize-docs");
 
         // Remove make-related flags that can cause jobserver problems.
         cmd.env_remove("MAKEFLAGS");
