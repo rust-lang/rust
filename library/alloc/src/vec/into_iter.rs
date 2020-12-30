@@ -10,8 +10,8 @@ use core::slice::{self};
 
 /// An iterator that moves out of a vector.
 ///
-/// This `struct` is created by the `into_iter` method on [`super::Vec`] (provided
-/// by the [`IntoIterator`] trait).
+/// This `struct` is created by the `into_iter` method on [`Vec`](super::Vec)
+/// (provided by the [`IntoIterator`] trait).
 ///
 /// # Example
 ///
