@@ -84,8 +84,8 @@ def test_cargo_miri_test():
         env={'MIRIFLAGS': "-Zmiri-disable-isolation"},
     )
     test("`cargo miri test` (raw-ptr tracking)",
-        cargo_miri("test") + ["--", "-Zunstable-options", "--exclude-should-panic"],
-        "test.raw-ptr-track.stdout.ref", rustdoc_ref,
+        cargo_miri("test"),
+        "test.default.stdout.ref", rustdoc_ref,
         env={'MIRIFLAGS': "-Zmiri-track-raw-pointers"},
     )
     test("`cargo miri test` (with filter)",
