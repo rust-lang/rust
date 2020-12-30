@@ -648,6 +648,8 @@ impl<'a> InferenceContext<'a> {
             }
             Expr::Array(array) => {
                 let elem_ty = match &expected.ty {
+                    // FIXME: remove when https://github.com/rust-lang/rust/issues/80501 is fixed
+                    #[allow(unreachable_patterns)]
                     ty_app!(TypeCtor::Array, st) | ty_app!(TypeCtor::Slice, st) => {
                         st.as_single().clone()
                     }
