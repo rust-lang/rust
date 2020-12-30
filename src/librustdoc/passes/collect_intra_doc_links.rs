@@ -32,9 +32,9 @@ use std::ops::Range;
 
 use crate::clean::{self, utils::find_nearest_parent_module, Crate, Item, ItemLink, PrimitiveType};
 use crate::core::DocContext;
-use crate::core::{BROKEN_INTRA_DOC_LINKS, PRIVATE_INTRA_DOC_LINKS};
 use crate::fold::DocFolder;
 use crate::html::markdown::{markdown_links, MarkdownLink};
+use crate::lint::{BROKEN_INTRA_DOC_LINKS, PRIVATE_INTRA_DOC_LINKS};
 use crate::passes::Pass;
 
 use super::span_of_attrs;

@@ -720,7 +720,7 @@ impl<'tcx> ExtraInfo<'tcx> {
             (None, None) => return,
         };
         self.tcx.struct_span_lint_hir(
-            crate::core::INVALID_CODEBLOCK_ATTRIBUTES,
+            crate::lint::INVALID_CODEBLOCK_ATTRIBUTES,
             hir_id,
             self.sp,
             |lint| {
