@@ -99,7 +99,7 @@ impl<'a, 'tcx> FunctionItemRefChecker<'a, 'tcx> {
         &self,
         def_id: DefId,
         substs_ref: SubstsRef<'tcx>,
-        args: &Vec<Operand<'tcx>>,
+        args: &[Operand<'tcx>],
         source_info: SourceInfo,
     ) {
         let param_env = self.tcx.param_env(def_id);
@@ -162,7 +162,7 @@ impl<'a, 'tcx> FunctionItemRefChecker<'a, 'tcx> {
             .unwrap_or(None)
     }
 
-    fn nth_arg_span(&self, args: &Vec<Operand<'tcx>>, n: usize) -> Span {
+    fn nth_arg_span(&self, args: &[Operand<'tcx>], n: usize) -> Span {
         match &args[n] {
             Operand::Copy(place) | Operand::Move(place) => {
                 self.body.local_decls[place.local].source_info.span

@@ -76,7 +76,7 @@ impl<'a> FileSearch<'a> {
     pub fn new(
         sysroot: &'a Path,
         triple: &'a str,
-        search_paths: &'a Vec<SearchPath>,
+        search_paths: &'a [SearchPath],
         tlib_path: &'a SearchPath,
         kind: PathKind,
     ) -> FileSearch<'a> {

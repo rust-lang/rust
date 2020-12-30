@@ -3483,7 +3483,7 @@ enum AssocItemLink<'a> {
 }
 
 impl<'a> AssocItemLink<'a> {
-    fn anchor(&self, id: &'a String) -> Self {
+    fn anchor(&self, id: &'a str) -> Self {
         match *self {
             AssocItemLink::Anchor(_) => AssocItemLink::Anchor(Some(&id)),
             ref other => *other,
