@@ -854,7 +854,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     let mut mutability = Mutability::Not;
 
                     // FIXME(project-rfc-2229#8): Store more precise information
-                    let mut name = kw::Invalid;
+                    let mut name = kw::Empty;
                     if let Some(Node::Binding(pat)) = tcx_hir.find(var_id) {
                         if let hir::PatKind::Binding(_, _, ident, _) = pat.kind {
                             name = ident.name;
