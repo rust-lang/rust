@@ -11,7 +11,7 @@ doctest = false
 
 [dependencies]
 rustc-hash = "1.1.0"
-itertools = "0.9.0"
+itertools = "0.10.0"
 either = "1.6.1"
 
 stdx = { path = "../stdx", version = "0.0.0" }

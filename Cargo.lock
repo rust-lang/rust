@@ -26,9 +26,9 @@ dependencies = [
 
 [[package]]
 name = "anyhow"
-version = "1.0.36"
+version = "1.0.37"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "68803225a7b13e47191bab76f2687382b60d259e8cf37f6e1893658b84bb9479"
+checksum = "ee67c11feeac938fae061b232e38e0b6d94f97a9df10e6271319325ac4c56a86"
 
 [[package]]
 name = "anymap"
@@ -53,7 +53,7 @@ dependencies = [
  "either",
  "hir",
  "ide_db",
- "itertools",
+ "itertools 0.10.0",
  "profile",
  "rustc-hash",
  "stdx",
@@ -211,7 +211,7 @@ dependencies = [
  "chalk-derive",
  "chalk-ir",
  "ena",
- "itertools",
+ "itertools 0.9.0",
  "petgraph",
  "rustc-hash",
  "tracing",
@@ -250,7 +250,7 @@ dependencies = [
  "expect-test",
  "hir",
  "ide_db",
- "itertools",
+ "itertools 0.10.0",
  "log",
  "profile",
  "rustc-hash",
@@ -534,7 +534,7 @@ dependencies = [
  "hir_def",
  "hir_expand",
  "hir_ty",
- "itertools",
+ "itertools 0.10.0",
  "log",
  "profile",
  "rustc-hash",
@@ -557,7 +557,7 @@ dependencies = [
  "fst",
  "hir_expand",
  "indexmap",
- "itertools",
+ "itertools 0.10.0",
  "log",
  "mbe",
  "once_cell",
@@ -601,7 +601,7 @@ dependencies = [
  "expect-test",
  "hir_def",
  "hir_expand",
- "itertools",
+ "itertools 0.10.0",
  "log",
  "once_cell",
  "profile",
@@ -637,7 +637,7 @@ dependencies = [
  "hir",
  "ide_db",
  "indexmap",
- "itertools",
+ "itertools 0.10.0",
  "log",
  "oorandom",
  "profile",
@@ -661,7 +661,7 @@ dependencies = [
  "expect-test",
  "fst",
  "hir",
- "itertools",
+ "itertools 0.10.0",
  "log",
  "once_cell",
  "profile",
@@ -742,10 +742,19 @@ dependencies = [
 ]
 
 [[package]]
-name = "itoa"
-version = "0.4.6"
+name = "itertools"
+version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dc6f3ad7b9d11a0c00842ff8de1b60ee58661048eb8049ed33c73594f359d7e6"
+checksum = "37d572918e350e82412fe766d24b15e6682fb2ed2bbe018280caa810397cb319"
+dependencies = [
+ "either",
+]
+
+[[package]]
+name = "itoa"
+version = "0.4.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dd25036021b0de88a0aff6b850051563c6516d0bf53f8638938edbb9de732736"
 
 [[package]]
 name = "jod-thread"
@@ -1219,7 +1228,7 @@ dependencies = [
  "base_db",
  "cargo_metadata",
  "cfg",
- "itertools",
+ "itertools 0.10.0",
  "log",
  "paths",
  "proc_macro_api",
@@ -1342,7 +1351,7 @@ dependencies = [
  "hir_ty",
  "ide",
  "ide_db",
- "itertools",
+ "itertools 0.10.0",
  "jod-thread",
  "log",
  "lsp-server",
@@ -1518,9 +1527,9 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
-version = "1.0.60"
+version = "1.0.61"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1500e84d27fe482ed1dc791a56eddc2f230046a040fa908c08bda1d9fb615779"
+checksum = "4fceb2595057b6891a4ee808f70054bd2d12f0e97f1cbb78689b59f676df325a"
 dependencies = [
  "indexmap",
  "itoa",
@@ -1586,7 +1595,7 @@ dependencies = [
  "expect-test",
  "hir",
  "ide_db",
- "itertools",
+ "itertools 0.10.0",
  "rustc-hash",
  "syntax",
  "test_utils",
@@ -1599,9 +1608,9 @@ version = "0.0.0"
 
 [[package]]
 name = "syn"
-version = "1.0.55"
+version = "1.0.56"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a571a711dddd09019ccc628e1b17fe87c59b09d513c06c026877aa708334f37a"
+checksum = "a9802ddde94170d186eeee5005b798d9c159fa970403f1be19976d0cfb939b72"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1627,7 +1636,7 @@ dependencies = [
  "arrayvec",
  "expect-test",
  "indexmap",
- "itertools",
+ "itertools 0.10.0",
  "once_cell",
  "parser",
  "profile",

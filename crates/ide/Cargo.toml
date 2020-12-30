@@ -12,7 +12,7 @@ doctest = false
 [dependencies]
 either = "1.5.3"
 indexmap = "1.4.0"
-itertools = "0.9.0"
+itertools = "0.10.0"
 log = "0.4.8"
 rustc-hash = "1.1.0"
 oorandom = "11.1.2"
