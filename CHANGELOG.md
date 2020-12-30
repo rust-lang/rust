@@ -41,14 +41,9 @@ Current beta, release 2021-02-11
 
 ### Enhancements
 
-* You can now tell Clippy about the MSRV your project supports. Please refer to
-  the specific README section to learn more about MSRV support [here][msrv_readme]
-  [#6201](https://github.com/rust-lang/rust-clippy/pull/6201)
 * Add the `unreadable-literal-lint-fractions` configuration to disable
   the `unreadable_literal` lint for fractions
   [#6421](https://github.com/rust-lang/rust-clippy/pull/6421)
-* Add `--no-deps` option to avoid running on path dependencies in workspaces
-  [#6188](https://github.com/rust-lang/rust-clippy/pull/6188)
 * [`clone_on_copy`]: Now shows the type in the lint message
   [#6443](https://github.com/rust-lang/rust-clippy/pull/6443)
 * [`redundant_pattern_matching`]: Now also lints on `std::task::Poll`
@@ -88,7 +83,7 @@ Current beta, release 2021-02-11
   [#6301](https://github.com/rust-lang/rust-clippy/pull/6301)
 * [`needless_update`]: Now ignores `non_exhaustive` structs
   [#6464](https://github.com/rust-lang/rust-clippy/pull/6464)
-* [`needless_collect `]: No longer lints when a collect is needed multiple times
+* [`needless_collect`]: No longer lints when a collect is needed multiple times
   [#6313](https://github.com/rust-lang/rust-clippy/pull/6313)
 * [`unnecessary_cast`] No longer lints cfg-dependent types
   [#6369](https://github.com/rust-lang/rust-clippy/pull/6369)
@@ -105,7 +100,7 @@ Current beta, release 2021-02-11
   [#6320](https://github.com/rust-lang/rust-clippy/pull/6320)
 * [`unnecessary_lazy_evaluations`]: Don't always mark suggestion as MachineApplicable
   [#6272](https://github.com/rust-lang/rust-clippy/pull/6272)
-* [`manual_async`]: Improve suggestion formatting
+* [`manual_async_fn`]: Improve suggestion formatting
   [#6294](https://github.com/rust-lang/rust-clippy/pull/6294)
 * [`unnecessary_cast`]: Fix incorrectly formatted float literal suggestion
   [#6362](https://github.com/rust-lang/rust-clippy/pull/6362)
@@ -133,6 +128,12 @@ Current beta, release 2021-02-11
   [#6340](https://github.com/rust-lang/rust-clippy/pull/6340)
 
 ### Others
+
+* You can now tell Clippy about the MSRV your project supports. Please refer to
+  the specific README section to learn more about MSRV support [here][msrv_readme]
+  [#6201](https://github.com/rust-lang/rust-clippy/pull/6201)
+* Add `--no-deps` option to avoid running on path dependencies in workspaces
+  [#6188](https://github.com/rust-lang/rust-clippy/pull/6188)
 
 ## Rust 1.49
 
