@@ -582,14 +582,24 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
                 );
 
                 if borrowed_place_has_mut_interior {
-                    // Locals without StorageDead follow the "enclosing scope" rule, meaning
-                    // they are essentially anonymous static items themselves.
-                    // Note: This is only sound if every local that has a `StorageDead` has a
-                    // `StorageDead` in every control flow path leading to a `return` terminator.
-                    if self.local_has_storage_dead(place.local) {
-                        self.check_op(ops::TransientCellBorrow);
-                    } else {
-                        self.check_op(ops::CellBorrow);
+                    match self.const_kind() {
+                        // In a const fn all borrows are transient or point to the places given via
+                        // references in the arguments. The borrow checker guarantees that.
+                        // NOTE: Once we have heap allocations during CTFE we need to figure out
+                        // how to prevent `const fn` to create long-lived allocations that point
+                        // to (interior) mutable memory.
+                        hir::ConstContext::ConstFn => self.check_op(ops::TransientCellBorrow),
+                        _ => {
+                            // Locals without StorageDead follow the "enclosing scope" rule, meaning
+                            // they are essentially anonymous static items themselves.
+                            // Note: This is only sound if every local that has a `StorageDead` has a
+                            // `StorageDead` in every control flow path leading to a `return` terminator.
+                            if self.local_has_storage_dead(place.local) {
+                                self.check_op(ops::TransientCellBorrow);
+                            } else {
+                                self.check_op(ops::CellBorrow);
+                            }
+                        }
                     }
                 }
             }

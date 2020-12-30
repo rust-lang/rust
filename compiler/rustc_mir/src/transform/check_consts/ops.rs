@@ -237,13 +237,6 @@ impl NonConstOp for TransientCellBorrow {
 /// it in the future for static items.
 pub struct CellBorrow;
 impl NonConstOp for CellBorrow {
-    fn status_in_item(&self, ccx: &ConstCx<'_, '_>) -> Status {
-        match ccx.const_kind() {
-            // The borrow checker does a much better job at handling these than we do.
-            hir::ConstContext::ConstFn => Status::Unstable(sym::const_refs_to_cell),
-            _ => Status::Forbidden,
-        }
-    }
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
         struct_span_err!(
             ccx.tcx.sess,
