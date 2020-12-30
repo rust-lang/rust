@@ -481,6 +481,11 @@ impl Span {
         self.edition() >= edition::Edition::Edition2018
     }
 
+    #[inline]
+    pub fn rust_2021(&self) -> bool {
+        self.edition() >= edition::Edition::Edition2021
+    }
+
     /// Returns the source callee.
     ///
     /// Returns `None` if the supplied span has no expansion trace,

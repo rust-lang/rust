@@ -16,7 +16,7 @@ use rustc_ast::{FnHeader, ForeignItem, Path, PathSegment, Visibility, Visibility
 use rustc_ast::{MacArgs, MacCall, MacDelimiter};
 use rustc_ast_pretty::pprust;
 use rustc_errors::{struct_span_err, Applicability, PResult, StashKey};
-use rustc_span::edition::Edition;
+use rustc_span::edition::{Edition, LATEST_STABLE_EDITION};
 use rustc_span::source_map::{self, Span};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 
@@ -1668,8 +1668,8 @@ impl<'a> Parser<'a> {
         if span.rust_2015() {
             let diag = self.diagnostic();
             struct_span_err!(diag, span, E0670, "`async fn` is not permitted in the 2015 edition")
-                .span_label(span, "to use `async fn`, switch to Rust 2018")
-                .help("set `edition = \"2018\"` in `Cargo.toml`")
+                .span_label(span, "to use `async fn`, switch to Rust 2018 or later")
+                .help(&format!("set `edition = \"{}\"` in `Cargo.toml`", LATEST_STABLE_EDITION))
                 .note("for more on editions, read https://doc.rust-lang.org/edition-guide")
                 .emit();
         }
