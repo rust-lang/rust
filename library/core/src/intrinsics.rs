@@ -1846,20 +1846,22 @@ pub(crate) fn is_nonoverlapping<T>(src: *const T, dst: *const T, count: usize) -
 /// [`Vec::append`]: ../../std/vec/struct.Vec.html#method.append
 #[doc(alias = "memcpy")]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_const_unstable(feature = "const_intrinsic_copy", issue = "none")]
 #[inline]
-pub unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize) {
+pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize) {
     extern "rust-intrinsic" {
         fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize);
     }
 
-    if cfg!(debug_assertions)
+    // FIXME: Perform these checks only at run time
+    /*if cfg!(debug_assertions)
         && !(is_aligned_and_not_null(src)
             && is_aligned_and_not_null(dst)
             && is_nonoverlapping(src, dst, count))
     {
         // Not panicking to keep codegen impact smaller.
         abort();
-    }
+    }*/
 
     // SAFETY: the safety contract for `copy_nonoverlapping` must be
     // upheld by the caller.
@@ -1928,16 +1930,19 @@ pub unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize) {
 /// ```
 #[doc(alias = "memmove")]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_const_unstable(feature = "const_intrinsic_copy", issue = "none")]
 #[inline]
-pub unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
+pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
     extern "rust-intrinsic" {
+        #[rustc_const_unstable(feature = "const_intrinsic_copy", issue = "none")]
         fn copy<T>(src: *const T, dst: *mut T, count: usize);
     }
 
-    if cfg!(debug_assertions) && !(is_aligned_and_not_null(src) && is_aligned_and_not_null(dst)) {
+    // FIXME: Perform these checks only at run time
+    /*if cfg!(debug_assertions) && !(is_aligned_and_not_null(src) && is_aligned_and_not_null(dst)) {
         // Not panicking to keep codegen impact smaller.
         abort();
-    }
+    }*/
 
     // SAFETY: the safety contract for `copy` must be upheld by the caller.
     unsafe { copy(src, dst, count) }
