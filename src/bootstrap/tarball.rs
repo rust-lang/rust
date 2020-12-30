@@ -200,7 +200,7 @@ impl<'a> Tarball<'a> {
         self.temp_dir.clone()
     }
 
-    pub(crate) fn generate(self) -> PathBuf {
+    pub(crate) fn generate(self) -> GeneratedTarball {
         let mut component_name = self.component.clone();
         if self.is_preview {
             component_name.push_str("-preview");
@@ -224,20 +224,20 @@ impl<'a> Tarball<'a> {
         })
     }
 
-    pub(crate) fn combine(self, tarballs: &[PathBuf]) {
-        let mut input_tarballs = tarballs[0].as_os_str().to_os_string();
+    pub(crate) fn combine(self, tarballs: &[GeneratedTarball]) -> GeneratedTarball {
+        let mut input_tarballs = tarballs[0].path.as_os_str().to_os_string();
         for tarball in &tarballs[1..] {
             input_tarballs.push(",");
-            input_tarballs.push(tarball);
+            input_tarballs.push(&tarball.path);
         }
 
         self.run(|this, cmd| {
             cmd.arg("combine").arg("--input-tarballs").arg(input_tarballs);
             this.non_bare_args(cmd);
-        });
+        })
     }
 
-    pub(crate) fn bare(self) -> PathBuf {
+    pub(crate) fn bare(self) -> GeneratedTarball {
         // Bare tarballs should have the top level directory match the package
         // name, not "image". We rename the image directory just before passing
         // into rust-installer.
@@ -273,7 +273,7 @@ impl<'a> Tarball<'a> {
             .arg(crate::dist::distdir(self.builder));
     }
 
-    fn run(self, build_cli: impl FnOnce(&Tarball<'a>, &mut Command)) -> PathBuf {
+    fn run(self, build_cli: impl FnOnce(&Tarball<'a>, &mut Command)) -> GeneratedTarball {
         t!(std::fs::create_dir_all(&self.overlay_dir));
         self.builder.create(&self.overlay_dir.join("version"), &self.overlay.version(self.builder));
         if let Some(sha) = self.builder.rust_sha() {
@@ -307,6 +307,19 @@ impl<'a> Tarball<'a> {
             .map(|s| s.as_str())
             .unwrap_or("gz");
 
-        crate::dist::distdir(self.builder).join(format!("{}.tar.{}", package_name, ext))
+        GeneratedTarball {
+            path: crate::dist::distdir(self.builder).join(format!("{}.tar.{}", package_name, ext)),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct GeneratedTarball {
+    path: PathBuf,
+}
+
+impl GeneratedTarball {
+    pub(crate) fn tarball(&self) -> &Path {
+        &self.path
     }
 }
