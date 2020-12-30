@@ -538,31 +538,35 @@ struct Matrix<'p, 'tcx> {
 }
 
 impl<'p, 'tcx> Matrix<'p, 'tcx> {
-    fn new() -> Self {
-        Self::default()
+    /// A matrix is created with a given number of columns and all its rows must have that same
+    /// number of columns.
+    fn new(n_columns: usize) -> Self {
+        let mut this = Matrix::default();
+        this.columns.resize_with(n_columns, Vec::new);
+        this
     }
 
+    /// Returns whether the matrix has no rows. Note that it would have no columns and be
+    /// non-empty.
     fn is_empty(&self) -> bool {
         self.selected_rows.is_empty()
     }
 
-    /// Number of columns of this matrix. Returns `0` if the matrix never had any rows.
+    /// Number of columns of this matrix.
     fn column_count(&self) -> usize {
         self.columns.len()
     }
 
-    // Returns the type of the first column, if any.
+    /// Returns the type of the first column, if any.
     fn ty_of_last_col(&self) -> Option<Ty<'tcx>> {
-        self.last_col().next().map(|e| e.pat.ty)
+        let last_col = self.columns.last()?;
+        let row_id = self.selected_rows.first()?;
+        Some(last_col[*row_id].pat.ty)
     }
 
     /// Pushes a new row to the matrix. If the row starts with an or-pattern, this recursively
     /// expands it.
     fn push(&mut self, mut row: PatStack<'p, 'tcx>) {
-        if self.is_empty() {
-            // This is the first row we've ever seen; we create enough columns for it.
-            self.columns.resize_with(row.len(), Vec::new);
-        }
         assert_eq!(row.len(), self.column_count());
 
         self.selected_rows.push(0);
@@ -598,13 +602,10 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
         }
     }
 
-    /// Iterate over the last column, if any.
+    /// Iterate over the last column; panics if no columns.
     fn last_col<'a>(&'a self) -> impl Iterator<Item = &'a MatrixEntry<'p, 'tcx>> + Clone {
-        // Unwrap with an empty slice so that we don't panic in the empty case.
-        let last_col = self.columns.last().map(|col| col.as_slice()).unwrap_or(&[]);
-        // If there are no columns we return an empty iterator even if there are rows.
-        let rows = if self.columns.is_empty() { &[] } else { self.selected_rows.as_slice() };
-        rows.iter().map(move |&row_id| &last_col[row_id])
+        let last_col = self.columns.last().unwrap();
+        self.selected_rows.iter().map(move |&row_id| &last_col[row_id])
     }
 
     /// Iterate over the first constructor of each row.
@@ -640,13 +641,11 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
         ctor: &Constructor<'tcx>,
         ctor_wild_subpatterns: &Fields<'p, 'tcx>,
     ) -> Matrix<'p, 'tcx> {
-        if self.is_empty() && self.column_count() == 0 {
-            return Matrix::new();
-        }
         assert!(self.column_count() >= 1);
+        let new_col_count = self.column_count() - 1 + ctor_wild_subpatterns.len();
         let (last_col, other_cols) = self.columns.split_last().unwrap();
 
-        let mut matrix = Matrix::new();
+        let mut matrix = Matrix::new(new_col_count);
 
         // We keep rows from `self` that match this ctor.
         let mut selected_rows = Vec::new();
@@ -658,8 +657,8 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
             }
         }
 
-        let new_col_count = self.column_count() - 1 + ctor_wild_subpatterns.len();
-        matrix.columns = Vec::with_capacity(new_col_count);
+        // Remove empty columns
+        matrix.columns.drain(..);
         // We clone existing columns except the last one.
         matrix.columns.extend_from_slice(other_cols);
         // Add some empty columns to accomodate the patterns to be added.
@@ -696,7 +695,7 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
         }
 
         // Expand any or-patterns present in the new last column.
-        if matrix.last_col().any(|e| e.pat.is_or_pat()) {
+        if !matrix.columns.is_empty() && matrix.last_col().any(|e| e.pat.is_or_pat()) {
             let last_col = matrix.columns.pop().unwrap();
             let mut new_last_col = Vec::new();
             for &row_id in &matrix.selected_rows {
@@ -1320,7 +1319,7 @@ crate fn compute_match_usefulness<'p, 'tcx>(
     scrut_hir_id: HirId,
     scrut_ty: Ty<'tcx>,
 ) -> UsefulnessReport<'p, 'tcx> {
-    let mut matrix = Matrix::new();
+    let mut matrix = Matrix::new(1);
     let arm_usefulness: Vec<_> = arms
         .iter()
         .copied()
