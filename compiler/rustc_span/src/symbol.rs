@@ -1,3 +1,5 @@
+// ignore-tidy-filelength
+
 //! An "interner" is a data structure that associates values with usize tags and
 //! allows bidirectional lookup; i.e., given a value, one can easily find the
 //! type, and vice versa.
@@ -5056,7 +5058,7 @@ impl Symbol {
 
     /// Maps a string to its interned representation.
     pub fn intern(string: &str) -> Self {
-        if let Some(symbol) = STATIC_SYMBOLS_PHF.get(string) {
+        if let Some(symbol) = unsafe { STATIC_SYMBOLS.get(string) } {
             *symbol
         } else {
             with_interner(|interner| interner.intern(string))
@@ -5141,13 +5143,23 @@ pub struct Interner {
     strings: Vec<&'static str>,
 }
 
+use std::hash::BuildHasherDefault;
+use std::marker::PhantomData;
+
+#[allow(unused)]
+static mut STATIC_SYMBOLS: FxHashMap<&'static str, Symbol> =
+    FxHashMap::with_hasher(BuildHasherDefault(PhantomData));
+
 impl Interner {
     fn prefill(init: &[&'static str]) -> Self {
-        Interner {
-            strings: init.into(),
-            names: init.iter().copied().zip((0..).map(Symbol::new)).collect(),
-            ..Default::default()
+        let names: FxHashMap<_, _> = init.iter().copied().zip((0..).map(Symbol::new)).collect();
+        unsafe {
+            STATIC_SYMBOLS = names.clone();
+            // Some memory fence must go here,
+            // and all accesses to `Symbol::intern` must go after it.
         }
+
+        Interner { strings: init.into(), names, ..Default::default() }
     }
 
     #[inline]
