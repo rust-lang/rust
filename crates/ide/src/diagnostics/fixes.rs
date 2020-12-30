@@ -1,6 +1,5 @@
 //! Provides a way to attach fixes to the diagnostics.
 //! The same module also has all curret custom fixes for the diagnostics implemented.
-use ast::MethodCallExpr;
 use hir::{
     db::AstDatabase,
     diagnostics::{
@@ -14,11 +13,7 @@ use ide_db::{
     source_change::{FileSystemEdit, SourceChange},
     RootDatabase,
 };
-use syntax::{
-    algo,
-    ast::{self, edit::IndentLevel, make, ArgList},
-    AstNode, TextRange,
-};
+use syntax::{AstNode, TextRange, algo, ast::{self, ArgListOwner, edit::IndentLevel, make}};
 use text_edit::TextEdit;
 
 use crate::{diagnostics::Fix, references::rename::rename_with_semantics, FilePosition};
@@ -149,11 +144,11 @@ impl DiagnosticWithFix for ReplaceFilterMapNextWithFindMap {
     fn fix(&self, sema: &Semantics<RootDatabase>) -> Option<Fix> {
         let root = sema.db.parse_or_expand(self.file)?;
         let next_expr = self.next_expr.to_node(&root);
-        let next_call = MethodCallExpr::cast(next_expr.syntax().clone())?;
+        let next_call = ast::MethodCallExpr::cast(next_expr.syntax().clone())?;
 
-        let filter_map_call = MethodCallExpr::cast(next_call.receiver()?.syntax().clone())?;
+        let filter_map_call = ast::MethodCallExpr::cast(next_call.receiver()?.syntax().clone())?;
         let filter_map_name_range = filter_map_call.name_ref()?.ident_token()?.text_range();
-        let filter_map_args = filter_map_call.syntax().children().find_map(ArgList::cast)?;
+        let filter_map_args = filter_map_call.arg_list()?;
 
         let range_to_replace =
             TextRange::new(filter_map_name_range.start(), next_expr.syntax().text_range().end());
