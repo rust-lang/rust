@@ -259,7 +259,8 @@ fn format_args_expand(
     }
     for arg in &mut args {
         // Remove `key =`.
-        if matches!(arg.get(1), Some(tt::TokenTree::Leaf(tt::Leaf::Punct(p))) if p.char == '=') {
+        if matches!(arg.get(1), Some(tt::TokenTree::Leaf(tt::Leaf::Punct(p))) if p.char == '=' && p.spacing != tt::Spacing::Joint)
+        {
             arg.drain(..2);
         }
     }
