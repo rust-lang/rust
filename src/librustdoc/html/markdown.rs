@@ -1135,43 +1135,40 @@ crate fn markdown_links(md: &str) -> Vec<(String, Option<Range<usize>>)> {
     let mut links = vec![];
     let mut shortcut_links = vec![];
 
-    {
-        let locate = |s: &str| unsafe {
-            let s_start = s.as_ptr();
-            let s_end = s_start.add(s.len());
-            let md_start = md.as_ptr();
-            let md_end = md_start.add(md.len());
-            if md_start <= s_start && s_end <= md_end {
-                let start = s_start.offset_from(md_start) as usize;
-                let end = s_end.offset_from(md_start) as usize;
-                Some(start..end)
-            } else {
-                None
-            }
-        };
-
-        let mut push = |link: BrokenLink<'_>| {
-            // FIXME: use `link.span` instead of `locate`
-            // (doing it now includes the `[]` as well as the text)
-            shortcut_links.push((link.reference.to_owned(), locate(link.reference)));
+    let locate = |s: &str| unsafe {
+        let s_start = s.as_ptr();
+        let s_end = s_start.add(s.len());
+        let md_start = md.as_ptr();
+        let md_end = md_start.add(md.len());
+        if md_start <= s_start && s_end <= md_end {
+            let start = s_start.offset_from(md_start) as usize;
+            let end = s_end.offset_from(md_start) as usize;
+            Some(start..end)
+        } else {
             None
-        };
-        let p =
-            Parser::new_with_broken_link_callback(md, opts(), Some(&mut push)).into_offset_iter();
+        }
+    };
 
-        // There's no need to thread an IdMap through to here because
-        // the IDs generated aren't going to be emitted anywhere.
-        let mut ids = IdMap::new();
-        let iter = Footnotes::new(HeadingLinks::new(p, None, &mut ids));
+    let mut push = |link: BrokenLink<'_>| {
+        // FIXME: use `link.span` instead of `locate`
+        // (doing it now includes the `[]` as well as the text)
+        shortcut_links.push((link.reference.to_owned(), locate(link.reference)));
+        None
+    };
+    let p = Parser::new_with_broken_link_callback(md, opts(), Some(&mut push)).into_offset_iter();
 
-        for ev in iter {
-            if let Event::Start(Tag::Link(_, dest, _)) = ev.0 {
-                debug!("found link: {}", dest);
-                links.push(match dest {
-                    CowStr::Borrowed(s) => (s.to_owned(), locate(s)),
-                    s @ (CowStr::Boxed(..) | CowStr::Inlined(..)) => (s.into_string(), None),
-                });
-            }
+    // There's no need to thread an IdMap through to here because
+    // the IDs generated aren't going to be emitted anywhere.
+    let mut ids = IdMap::new();
+    let iter = Footnotes::new(HeadingLinks::new(p, None, &mut ids));
+
+    for ev in iter {
+        if let Event::Start(Tag::Link(_, dest, _)) = ev.0 {
+            debug!("found link: {}", dest);
+            links.push(match dest {
+                CowStr::Borrowed(s) => (s.to_owned(), locate(s)),
+                s @ (CowStr::Boxed(..) | CowStr::Inlined(..)) => (s.into_string(), None),
+            });
         }
     }
 
