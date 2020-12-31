@@ -785,7 +785,7 @@ fn check_where_clauses<'tcx, 'fcx>(
             }
 
             GenericParamDefKind::Const => {
-                // FIXME(const_generics:defaults)
+                // FIXME(const_generics_defaults)
                 fcx.tcx.mk_param_from_def(param)
             }
         }

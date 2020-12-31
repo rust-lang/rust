@@ -443,7 +443,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
 
     fn visit_generic_param(&mut self, p: &'tcx hir::GenericParam<'tcx>) {
         let kind = match &p.kind {
-            // FIXME(const_generics:defaults)
+            // FIXME(const_generics_defaults)
             hir::GenericParamKind::Type { default, .. } if default.is_some() => {
                 AnnotationKind::Container
             }

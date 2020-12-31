@@ -774,7 +774,7 @@ fn validate_generic_param_order(
                 }
                 GenericParamKind::Type { default: None } => (),
                 GenericParamKind::Lifetime => (),
-                // FIXME(const_generics:defaults)
+                // FIXME(const_generics_defaults)
                 GenericParamKind::Const { ty: _, kw_span: _, default: _ } => (),
             }
             first = false;
