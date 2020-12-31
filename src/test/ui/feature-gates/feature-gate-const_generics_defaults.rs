@@ -1,7 +1,9 @@
+#[cfg(FALSE)]
 struct A<const N: usize = 3>;
-//~^ ERROR default values for const generic parameters are unstable
+//~^ ERROR default values for const generic parameters are experimental
 
-fn foo<const N: u8 = 6>() {}
-//~^ ERROR default values for const generic parameters are unstable
+#[cfg(FALSE)]
+fn foo<const B: bool = false>() {}
+//~^ ERROR default values for const generic parameters are experimental
 
 fn main() {}
