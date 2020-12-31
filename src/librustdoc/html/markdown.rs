@@ -25,6 +25,7 @@ use rustc_session::lint;
 use rustc_span::edition::Edition;
 use rustc_span::Span;
 use std::borrow::Cow;
+use std::cell::RefCell;
 use std::collections::VecDeque;
 use std::default::Default;
 use std::fmt::Write;
@@ -1132,8 +1133,7 @@ crate fn markdown_links(md: &str) -> Vec<(String, Range<usize>)> {
         return vec![];
     }
 
-    let mut links = vec![];
-    let mut shortcut_links = vec![];
+    let links = RefCell::new(vec![]);
 
     let locate = |s: &str, fallback: Range<usize>| unsafe {
         let s_start = s.as_ptr();
@@ -1152,7 +1152,7 @@ crate fn markdown_links(md: &str) -> Vec<(String, Range<usize>)> {
     let mut push = |link: BrokenLink<'_>| {
         // FIXME: use `link.span` instead of `locate`
         // (doing it now includes the `[]` as well as the text)
-        shortcut_links.push((link.reference.to_owned(), locate(link.reference, link.span)));
+        links.borrow_mut().push((link.reference.to_owned(), locate(link.reference, link.span)));
         None
     };
     let p = Parser::new_with_broken_link_callback(md, opts(), Some(&mut push)).into_offset_iter();
@@ -1165,16 +1165,14 @@ crate fn markdown_links(md: &str) -> Vec<(String, Range<usize>)> {
     for ev in iter {
         if let Event::Start(Tag::Link(_, dest, _)) = ev.0 {
             debug!("found link: {}", dest);
-            links.push(match dest {
+            links.borrow_mut().push(match dest {
                 CowStr::Borrowed(s) => (s.to_owned(), locate(s, ev.1)),
                 s @ (CowStr::Boxed(..) | CowStr::Inlined(..)) => (s.into_string(), ev.1),
             });
         }
     }
 
-    links.append(&mut shortcut_links);
-
-    links
+    links.into_inner()
 }
 
 #[derive(Debug)]
