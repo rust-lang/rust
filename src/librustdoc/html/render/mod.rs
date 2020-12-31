@@ -115,6 +115,9 @@ crate struct Context<'tcx> {
     crate render_redirect_pages: bool,
     /// The map used to ensure all generated 'id=' attributes are unique.
     id_map: Rc<RefCell<IdMap>>,
+    /// Tracks section IDs for `Deref` targets so they match in both the main
+    /// body and the sidebar.
+    deref_id_map: Rc<RefCell<FxHashMap<DefId, String>>>,
     crate shared: Arc<SharedContext<'tcx>>,
     all: Rc<RefCell<AllTypes>>,
     /// Storage for the errors produced while generating documentation so they
@@ -372,7 +375,6 @@ crate fn initial_ids() -> Vec<String> {
         "implementors-list",
         "synthetic-implementors-list",
         "methods",
-        "deref-methods",
         "implementations",
     ]
     .iter()
@@ -506,6 +508,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             dst,
             render_redirect_pages: false,
             id_map: Rc::new(RefCell::new(id_map)),
+            deref_id_map: Rc::new(RefCell::new(FxHashMap::default())),
             shared: Arc::new(scx),
             all: Rc::new(RefCell::new(AllTypes::new())),
             errors: Rc::new(receiver),
@@ -3517,14 +3520,18 @@ fn render_assoc_items(
                 RenderMode::Normal
             }
             AssocItemRender::DerefFor { trait_, type_, deref_mut_ } => {
+                let id =
+                    cx.derive_id(small_url_encode(&format!("deref-methods-{:#}", type_.print())));
+                cx.deref_id_map.borrow_mut().insert(type_.def_id().unwrap(), id.clone());
                 write!(
                     w,
-                    "<h2 id=\"deref-methods\" class=\"small-section-header\">\
-                         Methods from {}&lt;Target = {}&gt;\
-                         <a href=\"#deref-methods\" class=\"anchor\"></a>\
+                    "<h2 id=\"{id}\" class=\"small-section-header\">\
+                         Methods from {trait_}&lt;Target = {type_}&gt;\
+                         <a href=\"#{id}\" class=\"anchor\"></a>\
                      </h2>",
-                    trait_.print(),
-                    type_.print()
+                    id = id,
+                    trait_ = trait_.print(),
+                    type_ = type_.print(),
                 );
                 RenderMode::ForDeref { mut_: deref_mut_ }
             }
@@ -4175,14 +4182,14 @@ fn print_sidebar(cx: &Context<'_>, it: &clean::Item, buffer: &mut Buffer, cache:
         );
     }
     match *it.kind {
-        clean::StructItem(ref s) => sidebar_struct(buffer, it, s),
-        clean::TraitItem(ref t) => sidebar_trait(buffer, it, t),
-        clean::PrimitiveItem(_) => sidebar_primitive(buffer, it),
-        clean::UnionItem(ref u) => sidebar_union(buffer, it, u),
-        clean::EnumItem(ref e) => sidebar_enum(buffer, it, e),
-        clean::TypedefItem(_, _) => sidebar_typedef(buffer, it),
+        clean::StructItem(ref s) => sidebar_struct(cx, buffer, it, s),
+        clean::TraitItem(ref t) => sidebar_trait(cx, buffer, it, t),
+        clean::PrimitiveItem(_) => sidebar_primitive(cx, buffer, it),
+        clean::UnionItem(ref u) => sidebar_union(cx, buffer, it, u),
+        clean::EnumItem(ref e) => sidebar_enum(cx, buffer, it, e),
+        clean::TypedefItem(_, _) => sidebar_typedef(cx, buffer, it),
         clean::ModuleItem(ref m) => sidebar_module(buffer, &m.items),
-        clean::ForeignTypeItem => sidebar_foreign_type(buffer, it),
+        clean::ForeignTypeItem => sidebar_foreign_type(cx, buffer, it),
         _ => (),
     }
 
@@ -4283,7 +4290,7 @@ fn small_url_encode(s: &str) -> String {
         .replace("\"", "%22")
 }
 
-fn sidebar_assoc_items(it: &clean::Item) -> String {
+fn sidebar_assoc_items(cx: &Context<'_>, it: &clean::Item) -> String {
     let mut out = String::new();
     let c = cache();
     if let Some(v) = c.impls.get(&it.def_id) {
@@ -4313,7 +4320,7 @@ fn sidebar_assoc_items(it: &clean::Item) -> String {
                 .filter(|i| i.inner_impl().trait_.is_some())
                 .find(|i| i.inner_impl().trait_.def_id() == c.deref_trait_did)
             {
-                out.push_str(&sidebar_deref_methods(impl_, v));
+                out.push_str(&sidebar_deref_methods(cx, impl_, v));
             }
             let format_impls = |impls: Vec<&Impl>| {
                 let mut links = FxHashSet::default();
@@ -4381,7 +4388,7 @@ fn sidebar_assoc_items(it: &clean::Item) -> String {
     out
 }
 
-fn sidebar_deref_methods(impl_: &Impl, v: &Vec<Impl>) -> String {
+fn sidebar_deref_methods(cx: &Context<'_>, impl_: &Impl, v: &Vec<Impl>) -> String {
     let mut out = String::new();
     let c = cache();
 
@@ -4408,22 +4415,26 @@ fn sidebar_deref_methods(impl_: &Impl, v: &Vec<Impl>) -> String {
             .and_then(|did| c.impls.get(&did));
         if let Some(impls) = inner_impl {
             debug!("found inner_impl: {:?}", impls);
-            out.push_str("<a class=\"sidebar-title\" href=\"#deref-methods\">");
-            out.push_str(&format!(
-                "Methods from {}&lt;Target={}&gt;",
-                Escape(&format!("{:#}", impl_.inner_impl().trait_.as_ref().unwrap().print())),
-                Escape(&format!("{:#}", real_target.print()))
-            ));
-            out.push_str("</a>");
             let mut used_links = FxHashSet::default();
             let mut ret = impls
                 .iter()
                 .filter(|i| i.inner_impl().trait_.is_none())
                 .flat_map(|i| get_methods(i.inner_impl(), true, &mut used_links, deref_mut))
                 .collect::<Vec<_>>();
-            // We want links' order to be reproducible so we don't use unstable sort.
-            ret.sort();
             if !ret.is_empty() {
+                let deref_id_map = cx.deref_id_map.borrow();
+                let id = deref_id_map
+                    .get(&real_target.def_id().unwrap())
+                    .expect("Deref section without derived id");
+                out.push_str(&format!("<a class=\"sidebar-title\" href=\"#{}\">", id));
+                out.push_str(&format!(
+                    "Methods from {}&lt;Target={}&gt;",
+                    Escape(&format!("{:#}", impl_.inner_impl().trait_.as_ref().unwrap().print())),
+                    Escape(&format!("{:#}", real_target.print()))
+                ));
+                out.push_str("</a>");
+                // We want links' order to be reproducible so we don't use unstable sort.
+                ret.sort();
                 out.push_str(&format!("<div class=\"sidebar-links\">{}</div>", ret.join("")));
             }
         }
@@ -4443,7 +4454,7 @@ fn sidebar_deref_methods(impl_: &Impl, v: &Vec<Impl>) -> String {
                             return out;
                         }
                     }
-                    out.push_str(&sidebar_deref_methods(target_deref_impl, target_impls));
+                    out.push_str(&sidebar_deref_methods(cx, target_deref_impl, target_impls));
                 }
             }
         }
@@ -4452,7 +4463,7 @@ fn sidebar_deref_methods(impl_: &Impl, v: &Vec<Impl>) -> String {
     out
 }
 
-fn sidebar_struct(buf: &mut Buffer, it: &clean::Item, s: &clean::Struct) {
+fn sidebar_struct(cx: &Context<'_>, buf: &mut Buffer, it: &clean::Item, s: &clean::Struct) {
     let mut sidebar = String::new();
     let fields = get_struct_fields_name(&s.fields);
 
@@ -4466,7 +4477,7 @@ fn sidebar_struct(buf: &mut Buffer, it: &clean::Item, s: &clean::Struct) {
         }
     }
 
-    sidebar.push_str(&sidebar_assoc_items(it));
+    sidebar.push_str(&sidebar_assoc_items(cx, it));
 
     if !sidebar.is_empty() {
         write!(buf, "<div class=\"block items\">{}</div>", sidebar);
@@ -4497,7 +4508,7 @@ fn is_negative_impl(i: &clean::Impl) -> bool {
     i.polarity == Some(clean::ImplPolarity::Negative)
 }
 
-fn sidebar_trait(buf: &mut Buffer, it: &clean::Item, t: &clean::Trait) {
+fn sidebar_trait(cx: &Context<'_>, buf: &mut Buffer, it: &clean::Item, t: &clean::Trait) {
     let mut sidebar = String::new();
 
     let mut types = t
@@ -4597,7 +4608,7 @@ fn sidebar_trait(buf: &mut Buffer, it: &clean::Item, t: &clean::Trait) {
         }
     }
 
-    sidebar.push_str(&sidebar_assoc_items(it));
+    sidebar.push_str(&sidebar_assoc_items(cx, it));
 
     sidebar.push_str("<a class=\"sidebar-title\" href=\"#implementors\">Implementors</a>");
     if t.is_auto {
@@ -4610,16 +4621,16 @@ fn sidebar_trait(buf: &mut Buffer, it: &clean::Item, t: &clean::Trait) {
     write!(buf, "<div class=\"block items\">{}</div>", sidebar)
 }
 
-fn sidebar_primitive(buf: &mut Buffer, it: &clean::Item) {
-    let sidebar = sidebar_assoc_items(it);
+fn sidebar_primitive(cx: &Context<'_>, buf: &mut Buffer, it: &clean::Item) {
+    let sidebar = sidebar_assoc_items(cx, it);
 
     if !sidebar.is_empty() {
         write!(buf, "<div class=\"block items\">{}</div>", sidebar);
     }
 }
 
-fn sidebar_typedef(buf: &mut Buffer, it: &clean::Item) {
-    let sidebar = sidebar_assoc_items(it);
+fn sidebar_typedef(cx: &Context<'_>, buf: &mut Buffer, it: &clean::Item) {
+    let sidebar = sidebar_assoc_items(cx, it);
 
     if !sidebar.is_empty() {
         write!(buf, "<div class=\"block items\">{}</div>", sidebar);
@@ -4641,7 +4652,7 @@ fn get_struct_fields_name(fields: &[clean::Item]) -> String {
     fields.join("")
 }
 
-fn sidebar_union(buf: &mut Buffer, it: &clean::Item, u: &clean::Union) {
+fn sidebar_union(cx: &Context<'_>, buf: &mut Buffer, it: &clean::Item, u: &clean::Union) {
     let mut sidebar = String::new();
     let fields = get_struct_fields_name(&u.fields);
 
@@ -4653,14 +4664,14 @@ fn sidebar_union(buf: &mut Buffer, it: &clean::Item, u: &clean::Union) {
         ));
     }
 
-    sidebar.push_str(&sidebar_assoc_items(it));
+    sidebar.push_str(&sidebar_assoc_items(cx, it));
 
     if !sidebar.is_empty() {
         write!(buf, "<div class=\"block items\">{}</div>", sidebar);
     }
 }
 
-fn sidebar_enum(buf: &mut Buffer, it: &clean::Item, e: &clean::Enum) {
+fn sidebar_enum(cx: &Context<'_>, buf: &mut Buffer, it: &clean::Item, e: &clean::Enum) {
     let mut sidebar = String::new();
 
     let mut variants = e
@@ -4680,7 +4691,7 @@ fn sidebar_enum(buf: &mut Buffer, it: &clean::Item, e: &clean::Enum) {
         ));
     }
 
-    sidebar.push_str(&sidebar_assoc_items(it));
+    sidebar.push_str(&sidebar_assoc_items(cx, it));
 
     if !sidebar.is_empty() {
         write!(buf, "<div class=\"block items\">{}</div>", sidebar);
@@ -4769,8 +4780,8 @@ fn sidebar_module(buf: &mut Buffer, items: &[clean::Item]) {
     }
 }
 
-fn sidebar_foreign_type(buf: &mut Buffer, it: &clean::Item) {
-    let sidebar = sidebar_assoc_items(it);
+fn sidebar_foreign_type(cx: &Context<'_>, buf: &mut Buffer, it: &clean::Item) {
+    let sidebar = sidebar_assoc_items(cx, it);
     if !sidebar.is_empty() {
         write!(buf, "<div class=\"block items\">{}</div>", sidebar);
     }
