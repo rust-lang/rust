@@ -861,16 +861,18 @@ pub(crate) fn handle_formatting(
         }
     };
 
-    let mut rustfmt = rustfmt.stdin(Stdio::piped()).stdout(Stdio::piped()).spawn()?;
+    let mut rustfmt =
+        rustfmt.stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::piped()).spawn()?;
 
     rustfmt.stdin.as_mut().unwrap().write_all(file.as_bytes())?;
 
     let output = rustfmt.wait_with_output()?;
     let captured_stdout = String::from_utf8(output.stdout)?;
+    let captured_stderr = String::from_utf8(output.stderr).unwrap_or_default();
 
     if !output.status.success() {
         match output.status.code() {
-            Some(1) => {
+            Some(1) if !captured_stderr.contains("not installed") => {
                 // While `rustfmt` doesn't have a specific exit code for parse errors this is the
                 // likely cause exiting with 1. Most Language Servers swallow parse errors on
                 // formatting because otherwise an error is surfaced to the user on top of the
@@ -886,8 +888,9 @@ pub(crate) fn handle_formatting(
                     format!(
                         r#"rustfmt exited with:
                            Status: {}
-                           stdout: {}"#,
-                        output.status, captured_stdout,
+                           stdout: {}
+                           stderr: {}"#,
+                        output.status, captured_stdout, captured_stderr,
                     ),
                 )
                 .into());
