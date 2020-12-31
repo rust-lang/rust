@@ -625,13 +625,11 @@ where
     r
 }
 
-crate fn find_closest_parent_module(tcx: TyCtxt<'_>, def_id: DefId) -> Option<DefId> {
-    if item.is_fake() {
-        // FIXME: is this correct?
-        None
-    // If we're documenting the crate root itself, it has no parent. Use the root instead.
-    } else if item.def_id.is_top_level_module() {
-        Some(item.def_id)
+/// Find the nearest parent module of a [`DefId`].
+crate fn find_nearest_parent_module(tcx: TyCtxt<'_>, def_id: DefId) -> Option<DefId> {
+    if def_id.is_top_level_module() {
+        // The crate root has no parent. Use it as the root instead.
+        Some(def_id)
     } else {
         let mut current = def_id;
         // The immediate parent might not always be a module.
