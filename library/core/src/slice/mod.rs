@@ -1231,6 +1231,21 @@ impl<T> [T] {
     /// assert_eq!(iter.next(), Some(&[2, 2, 2][..]));
     /// assert_eq!(iter.next(), None);
     /// ```
+    ///
+    /// This method can be used to extract the sorted subslices:
+    ///
+    /// ```
+    /// #![feature(slice_group_by)]
+    ///
+    /// let slice = &[1, 1, 2, 3, 2, 3, 2, 3, 4];
+    ///
+    /// let mut iter = slice.group_by(|a, b| a <= b);
+    ///
+    /// assert_eq!(iter.next(), Some(&[1, 1, 2, 3][..]));
+    /// assert_eq!(iter.next(), Some(&[2, 3][..]));
+    /// assert_eq!(iter.next(), Some(&[2, 3, 4][..]));
+    /// assert_eq!(iter.next(), None);
+    /// ```
     #[unstable(feature = "slice_group_by", issue = "none")]
     #[inline]
     pub fn group_by<F>(&self, pred: F) -> GroupBy<'_, T, F>
@@ -1259,6 +1274,21 @@ impl<T> [T] {
     /// assert_eq!(iter.next(), Some(&mut [1, 1, 1][..]));
     /// assert_eq!(iter.next(), Some(&mut [3, 3][..]));
     /// assert_eq!(iter.next(), Some(&mut [2, 2, 2][..]));
+    /// assert_eq!(iter.next(), None);
+    /// ```
+    ///
+    /// This method can be used to extract the sorted subslices:
+    ///
+    /// ```
+    /// #![feature(slice_group_by)]
+    ///
+    /// let slice = &mut [1, 1, 2, 3, 2, 3, 2, 3, 4];
+    ///
+    /// let mut iter = slice.group_by_mut(|a, b| a <= b);
+    ///
+    /// assert_eq!(iter.next(), Some(&mut [1, 1, 2, 3][..]));
+    /// assert_eq!(iter.next(), Some(&mut [2, 3][..]));
+    /// assert_eq!(iter.next(), Some(&mut [2, 3, 4][..]));
     /// assert_eq!(iter.next(), None);
     /// ```
     #[unstable(feature = "slice_group_by", issue = "none")]
