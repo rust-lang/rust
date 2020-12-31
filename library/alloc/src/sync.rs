@@ -1085,19 +1085,10 @@ impl<T: ?Sized> Arc<T> {
         // `&*(ptr as *const ArcInner<T>)`, but this created a misaligned
         // reference (see #54908).
         let layout = Layout::new::<ArcInner<()>>().extend(value_layout).unwrap().0.pad_to_align();
-
-        let ptr = allocate(layout).unwrap_or_else(|_| handle_alloc_error(layout));
-
-        // Initialize the ArcInner
-        let inner = mem_to_arcinner(ptr.as_non_null_ptr().as_ptr());
-        debug_assert_eq!(unsafe { Layout::for_value(&*inner) }, layout);
-
         unsafe {
-            ptr::write(&mut (*inner).strong, atomic::AtomicUsize::new(1));
-            ptr::write(&mut (*inner).weak, atomic::AtomicUsize::new(1));
+            Arc::try_allocate_for_layout(value_layout, allocate, mem_to_arcinner)
+                .unwrap_or_else(|_| handle_alloc_error(layout))
         }
-
-        inner
     }
 
     /// Allocates an `ArcInner<T>` with sufficient space for

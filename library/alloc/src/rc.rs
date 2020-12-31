@@ -1107,20 +1107,10 @@ impl<T: ?Sized> Rc<T> {
         // `&*(ptr as *const RcBox<T>)`, but this created a misaligned
         // reference (see #54908).
         let layout = Layout::new::<RcBox<()>>().extend(value_layout).unwrap().0.pad_to_align();
-
-        // Allocate for the layout.
-        let ptr = allocate(layout).unwrap_or_else(|_| handle_alloc_error(layout));
-
-        // Initialize the RcBox
-        let inner = mem_to_rcbox(ptr.as_non_null_ptr().as_ptr());
         unsafe {
-            debug_assert_eq!(Layout::for_value(&*inner), layout);
-
-            ptr::write(&mut (*inner).strong, Cell::new(1));
-            ptr::write(&mut (*inner).weak, Cell::new(1));
+            Rc::try_allocate_for_layout(value_layout, allocate, mem_to_rcbox)
+                .unwrap_or_else(|_| handle_alloc_error(layout))
         }
-
-        inner
     }
 
     /// Allocates an `RcBox<T>` with sufficient space for
@@ -1129,6 +1119,7 @@ impl<T: ?Sized> Rc<T> {
     ///
     /// The function `mem_to_rcbox` is called with the data pointer
     /// and must return back a (potentially fat)-pointer for the `RcBox<T>`.
+    #[inline]
     unsafe fn try_allocate_for_layout(
         value_layout: Layout,
         allocate: impl FnOnce(Layout) -> Result<NonNull<[u8]>, AllocError>,
