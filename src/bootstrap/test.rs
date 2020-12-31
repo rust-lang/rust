@@ -1962,7 +1962,7 @@ impl Step for Distcheck {
         builder.ensure(dist::Src);
 
         let mut cmd = Command::new("tar");
-        cmd.arg("-xzf")
+        cmd.arg("-xf")
             .arg(builder.ensure(dist::PlainSourceTarball))
             .arg("--strip-components=1")
             .current_dir(&dir);
@@ -1986,10 +1986,7 @@ impl Step for Distcheck {
         t!(fs::create_dir_all(&dir));
 
         let mut cmd = Command::new("tar");
-        cmd.arg("-xzf")
-            .arg(builder.ensure(dist::Src))
-            .arg("--strip-components=1")
-            .current_dir(&dir);
+        cmd.arg("-xf").arg(builder.ensure(dist::Src)).arg("--strip-components=1").current_dir(&dir);
         builder.run(&mut cmd);
 
         let toml = dir.join("rust-src/lib/rustlib/src/rust/library/std/Cargo.toml");
