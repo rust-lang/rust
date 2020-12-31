@@ -19,6 +19,7 @@ pub static CARGO_TARGET_DIR: SyncLazy<PathBuf> = SyncLazy::new(|| match env::var
 pub fn bless() {
     let test_suite_dirs = [
         clippy_project_root().join("tests").join("ui"),
+        clippy_project_root().join("tests").join("ui-internal"),
         clippy_project_root().join("tests").join("ui-toml"),
         clippy_project_root().join("tests").join("ui-cargo"),
     ];
