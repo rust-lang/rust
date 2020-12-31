@@ -3548,9 +3548,6 @@ fn render_assoc_items(
             );
         }
     }
-    if let AssocItemRender::DerefFor { .. } = what {
-        return;
-    }
     if !traits.is_empty() {
         let deref_impl =
             traits.iter().find(|t| t.inner_impl().trait_.def_id() == cache.deref_trait_did);
@@ -3558,6 +3555,12 @@ fn render_assoc_items(
             let has_deref_mut =
                 traits.iter().any(|t| t.inner_impl().trait_.def_id() == cache.deref_mut_trait_did);
             render_deref_methods(w, cx, impl_, containing_item, has_deref_mut, cache);
+        }
+
+        // If we were already one level into rendering deref methods, we don't want to render
+        // anything after recursing into any further deref methods above.
+        if let AssocItemRender::DerefFor { .. } = what {
+            return;
         }
 
         let (synthetic, concrete): (Vec<&&Impl>, Vec<&&Impl>) =
@@ -3631,6 +3634,13 @@ fn render_deref_methods(
     let what =
         AssocItemRender::DerefFor { trait_: deref_type, type_: real_target, deref_mut_: deref_mut };
     if let Some(did) = target.def_id() {
+        if let Some(type_did) = impl_.inner_impl().for_.def_id() {
+            // `impl Deref<Target = S> for S`
+            if did == type_did {
+                // Avoid infinite cycles
+                return;
+            }
+        }
         render_assoc_items(w, cx, container_item, did, what, cache);
     } else {
         if let Some(prim) = target.primitive_type() {
@@ -4415,6 +4425,26 @@ fn sidebar_deref_methods(impl_: &Impl, v: &Vec<Impl>) -> String {
             ret.sort();
             if !ret.is_empty() {
                 out.push_str(&format!("<div class=\"sidebar-links\">{}</div>", ret.join("")));
+            }
+        }
+
+        // Recurse into any further impls that might exist for `target`
+        if let Some(target_did) = target.def_id() {
+            if let Some(target_impls) = c.impls.get(&target_did) {
+                if let Some(target_deref_impl) = target_impls
+                    .iter()
+                    .filter(|i| i.inner_impl().trait_.is_some())
+                    .find(|i| i.inner_impl().trait_.def_id() == c.deref_trait_did)
+                {
+                    if let Some(type_did) = impl_.inner_impl().for_.def_id() {
+                        // `impl Deref<Target = S> for S`
+                        if target_did == type_did {
+                            // Avoid infinite cycles
+                            return out;
+                        }
+                    }
+                    out.push_str(&sidebar_deref_methods(target_deref_impl, target_impls));
+                }
             }
         }
     }
