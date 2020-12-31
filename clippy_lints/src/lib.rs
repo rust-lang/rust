@@ -301,6 +301,7 @@ mod redundant_closure_call;
 mod redundant_else;
 mod redundant_field_names;
 mod redundant_pub_crate;
+mod redundant_slicing;
 mod redundant_static_lifetimes;
 mod ref_option_ref;
 mod reference;
@@ -849,6 +850,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &redundant_else::REDUNDANT_ELSE,
         &redundant_field_names::REDUNDANT_FIELD_NAMES,
         &redundant_pub_crate::REDUNDANT_PUB_CRATE,
+        &redundant_slicing::REDUNDANT_SLICING,
         &redundant_static_lifetimes::REDUNDANT_STATIC_LIFETIMES,
         &ref_option_ref::REF_OPTION_REF,
         &reference::DEREF_ADDROF,
@@ -1229,6 +1231,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box vec_init_then_push::VecInitThenPush::default());
     store.register_late_pass(move || box types::PtrAsPtr::new(msrv));
     store.register_late_pass(|| box case_sensitive_file_extension_comparisons::CaseSensitiveFileExtensionComparisons);
+    store.register_late_pass(|| box redundant_slicing::RedundantSlicing);
 
     store.register_group(true, "clippy::restriction", Some("clippy_restriction"), vec![
         LintId::of(&arithmetic::FLOAT_ARITHMETIC),
@@ -1591,6 +1594,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&redundant_clone::REDUNDANT_CLONE),
         LintId::of(&redundant_closure_call::REDUNDANT_CLOSURE_CALL),
         LintId::of(&redundant_field_names::REDUNDANT_FIELD_NAMES),
+        LintId::of(&redundant_slicing::REDUNDANT_SLICING),
         LintId::of(&redundant_static_lifetimes::REDUNDANT_STATIC_LIFETIMES),
         LintId::of(&reference::DEREF_ADDROF),
         LintId::of(&reference::REF_IN_DEREF),
@@ -1835,6 +1839,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&ptr_offset_with_cast::PTR_OFFSET_WITH_CAST),
         LintId::of(&ranges::RANGE_ZIP_WITH_LEN),
         LintId::of(&redundant_closure_call::REDUNDANT_CLOSURE_CALL),
+        LintId::of(&redundant_slicing::REDUNDANT_SLICING),
         LintId::of(&reference::DEREF_ADDROF),
         LintId::of(&reference::REF_IN_DEREF),
         LintId::of(&repeat_once::REPEAT_ONCE),
