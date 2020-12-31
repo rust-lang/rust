@@ -15,7 +15,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc_target::spec::abi::Abi;
 
-use crate::clean::{self, utils::find_closest_parent_module, PrimitiveType};
+use crate::clean::{self, utils::find_nearest_parent_module, PrimitiveType};
 use crate::formats::cache::cache;
 use crate::formats::item_type::ItemType;
 use crate::html::escape::Escape;
@@ -1097,7 +1097,7 @@ impl clean::Visibility {
             clean::Inherited => Ok(()),
 
             clean::Visibility::Restricted(vis_did) => {
-                let parent_module = find_closest_parent_module(tcx, item_did);
+                let parent_module = find_nearest_parent_module(tcx, item_did);
 
                 if vis_did.index == CRATE_DEF_INDEX {
                     write!(f, "pub(crate) ")
@@ -1106,7 +1106,7 @@ impl clean::Visibility {
                     // is the same as no visibility modifier
                     Ok(())
                 } else if parent_module
-                    .map(|parent| find_closest_parent_module(tcx, parent))
+                    .map(|parent| find_nearest_parent_module(tcx, parent))
                     .flatten()
                     == Some(vis_did)
                 {
