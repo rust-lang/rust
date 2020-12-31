@@ -1,6 +1,7 @@
 //! FIXME: write short doc here
 
 use std::{
+    convert::TryInto,
     ffi::OsStr,
     ops,
     path::{Path, PathBuf},
@@ -196,8 +197,23 @@ impl CargoWorkspace {
         if let Some(target) = target {
             meta.other_options(vec![String::from("--filter-platform"), target]);
         }
+
         let mut meta = meta.exec().with_context(|| {
-            format!("Failed to run `cargo metadata --manifest-path {}`", cargo_toml.display())
+            let cwd: Option<AbsPathBuf> =
+                std::env::current_dir().ok().and_then(|p| p.try_into().ok());
+
+            let workdir = cargo_toml
+                .parent()
+                .map(|p| p.to_path_buf())
+                .or(cwd)
+                .map(|dir| dir.to_string_lossy().to_string())
+                .unwrap_or_else(|| "<failed to get path>".into());
+
+            format!(
+                "Failed to run `cargo metadata --manifest-path {}` in `{}`",
+                cargo_toml.display(),
+                workdir
+            )
         })?;
 
         let mut out_dir_by_id = FxHashMap::default();
