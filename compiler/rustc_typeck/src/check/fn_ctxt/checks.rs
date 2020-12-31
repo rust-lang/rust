@@ -640,8 +640,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             suggestions.push((hungry_span, "".to_string()));
                         }
                         Issue::Missing(arg) => {
-                            // FIXME: do this celaner, if possible.  Handle `missing()`, etc
-                            let prev_span = provided_args[arg].span;
+                            // FIXME: do this cleaner, if possible.  Handle `missing()`, etc
+                            let prev_span = if arg < provided_args.len() {
+                                provided_args[arg].span
+                            } else {
+                                call_span
+                            };
                             let missing_span = Span::new(
                                 BytePos(prev_span.hi().to_u32() + 1u32),
                                 BytePos(prev_span.hi().to_u32() + 1u32),
