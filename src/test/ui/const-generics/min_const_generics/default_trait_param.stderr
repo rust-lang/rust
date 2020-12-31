@@ -1,8 +1,10 @@
-error: expected one of `!`, `(`, `+`, `,`, `::`, `<`, or `>`, found `=`
-  --> $DIR/default_trait_param.rs:1:28
+error: default values for const generic parameters are unstable
+  --> $DIR/default_trait_param.rs:1:30
    |
 LL | trait Foo<const KIND: bool = true> {}
-   |                            ^ expected one of 7 possible tokens
+   |                              ^^^^
+   |
+   = help: add `#![feature(const_generics_defaults)]` to the crate attributes to enable
 
 error: aborting due to previous error
 
