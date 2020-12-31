@@ -454,7 +454,7 @@ mod diagnostics {
                                     });
                                 for token in tokens {
                                     if token.kind() == SyntaxKind::IDENT
-                                        && token.to_string() == *name
+                                        && token.text() == name.as_str()
                                     {
                                         precise_location = Some(token.text_range());
                                         break 'outer;

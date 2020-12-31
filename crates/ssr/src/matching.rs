@@ -473,7 +473,9 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
                         }
                         SyntaxElement::Node(n) => {
                             if let Some(first_token) = n.first_token() {
-                                if Some(first_token.to_string()) == next_pattern_token {
+                                if Some(first_token.text().as_str())
+                                    == next_pattern_token.as_deref()
+                                {
                                     if let Some(SyntaxElement::Node(p)) = pattern.next() {
                                         // We have a subtree that starts with the next token in our pattern.
                                         self.attempt_match_token_tree(phase, &p, &n)?;
