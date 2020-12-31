@@ -150,66 +150,106 @@ Cool, now I have a backtrace for the error!
 ## Getting logging output
 [getting-logging-output]: #getting-logging-output
 
-These crates are used in compiler for logging:
+The compiler uses the [`tracing`] crate for logging.
 
-* [log]
-* [env-logger]
+[`tracing`]: https://docs.rs/tracing
 
-[log]: https://docs.rs/log/0.4.6/log/index.html
-[env-logger]: https://docs.rs/env_logger
-
-The compiler has a lot of `debug!` calls, which print out logging information
+The compiler has a lot of [`debug!`] calls, which print out logging information
 at many points. These are very useful to at least narrow down the location of
 a bug if not to find it entirely, or just to orient yourself as to why the
 compiler is doing a particular thing.
 
-To see the logs, you need to set the `RUSTC_LOG` environment variable to
-your log filter, e.g. to get the logs for a specific module, you can run the
-compiler as `RUSTC_LOG=module::path rustc my-file.rs`. All `debug!` output will
-then appear in standard error.
+[`debug!`]: https://docs.rs/tracing/0.1/tracing/macro.debug.html
 
-If you are developing rustdoc, use `RUSTDOC_LOG` instead.
+To see the logs, you need to set the `RUSTC_LOG` environment variable to your
+log filter. Your log filter can be just `debug` to get all `debug!` output and
+higher (e.g., it will also include `info!`), or `path::to::module` to get *all*
+output (which will include `trace!`) from a particular module, or
+`path::to::module=debug` to get `debug!` output and higher from a particular
+module.
 
-See the [env-logger] doc for more info on the full syntax. (Note: unlike the
-compiler, the env-logger crate and its examples use the `RUST_LOG` env
-variable.)
+For example, to get the `debug!` output and higher for a specific module, you
+can run the compiler with `RUSTC_LOG=path::to::module=debug rustc my-file.rs`.
+All `debug!` output will then appear in standard error.
+
+Note that you can use a partial path and the filter will still work. For
+example, if you want to see `info!` output from only
+`rustdoc::passes::collect_intra_doc_links`, you could use
+`RUSTDOC_LOG=rustdoc::passes::collect_intra_doc_links=info` *or* you could use
+`RUSTDOC_LOG=rustdoc::passes::collect_intra=info`.
+
+If you are developing rustdoc, use `RUSTDOC_LOG` instead. If you are developing
+Miri, use `MIRI_LOG` instead. You get the idea :)
+
+See the [`tracing`] crate's docs, and specifically the docs for [`debug!`] to
+see the full syntax you can use. See the [env-logger] doc for more info on the
+full syntax. (Note: unlike the compiler, the [`tracing`] crate and its examples
+use the `RUST_LOG` environment variable. rustc, rustdoc, and other tools set
+custom environment variables.)
 
 **Note that unless you use a very strict filter, the logger will emit a lot of
 output, so use the most specific module(s) you can (comma-separated if
 multiple)**. It's typically a good idea to pipe standard error to a file and
 look at the log output with a text editor.
 
-So to put it together.
+So, to put it together:
 
 ```bash
 # This puts the output of all debug calls in `rustc_middle/src/traits` into
 # standard error, which might fill your console backscroll.
-$ RUSTC_LOG=rustc_middle::traits rustc +stage1 my-file.rs
+$ RUSTC_LOG=rustc_middle::traits=debug rustc +stage1 my-file.rs
 
 # This puts the output of all debug calls in `rustc_middle/src/traits` in
 # `traits-log`, so you can then see it with a text editor.
-$ RUSTC_LOG=rustc_middle::traits rustc +stage1 my-file.rs 2>traits-log
+$ RUSTC_LOG=rustc_middle::traits=debug rustc +stage1 my-file.rs 2>traits-log
 
-# Not recommended. This will show the output of all `debug!` calls
+# Not recommended! This will show the output of all `debug!` calls
 # in the Rust compiler, and there are a *lot* of them, so it will be
 # hard to find anything.
 $ RUSTC_LOG=debug rustc +stage1 my-file.rs 2>all-log
 
-# This will show the output of all `info!` calls in `rustc_trans`.
+# This will show the output of all `info!` calls in `rustc_codegen_ssa`.
 #
-# There's an `info!` statement in `trans_instance` that outputs
-# every function that is translated. This is useful to find out
+# There's an `info!` statement in `codegen_instance` that outputs
+# every function that is codegen'd. This is useful to find out
 # which function triggers an LLVM assertion, and this is an `info!`
 # log rather than a `debug!` log so it will work on the official
 # compilers.
-$ RUSTC_LOG=rustc_trans=info rustc +stage1 my-file.rs
+$ RUSTC_LOG=rustc_codegen_ssa=info rustc +stage1 my-file.rs
 
-# This will show the output of all `info!` calls made by rustdoc or any rustc library it calls.
+# This will show the output of all `info!` calls made by rustdoc
+# or any rustc library it calls.
 $ RUSTDOC_LOG=info rustdoc +stage1 my-file.rs
 
-# This will only show `debug!` calls made by rustdoc directly, not any `rustc*` crate.
-$ RUSTDOC_LOG=rustdoc rustdoc +stage1 my-file.rs
+# This will only show `debug!` calls made by rustdoc directly,
+# not any `rustc*` crate.
+$ RUSTDOC_LOG=rustdoc=debug rustdoc +stage1 my-file.rs
 ```
+
+### Log colors
+
+By default, rustc (and other tools, like rustdoc and Miri) will be smart about
+when to use ANSI colors in the log output. If they are outputting to a terminal,
+they will use colors, and if they are outputting to a file or being piped
+somewhere else, they will not. However, it's hard to read log output in your
+terminal unless you have a very strict filter, so you may want to pipe the
+output to a pager like `less`. But then there won't be any colors, which makes
+it hard to pick out what you're looking for!
+
+You can override whether to have colors in log output with the `RUSTC_LOG_COLOR`
+environment variable (or `RUSTDOC_LOG_COLOR` for rustdoc, or `MIRI_LOG_COLOR`
+for Miri, etc.). There are three options: `auto` (the default), `always`, and
+`never`. So, if you want to enable colors when piping to `less`, use something
+similar to this command:
+
+```bash
+# The `-R` switch tells less to print ANSI colors without escaping them.
+$ RUSTC_LOG=debug RUSTC_LOG_COLOR=always rustc +stage1 ... | less -R
+```
+
+Note that `MIRI_LOG_COLOR` will only color logs that come from Miri, not logs
+from rustc functions that Miri calls. Use `RUSTC_LOG_COLOR` to color logs from
+rustc.
 
 ### How to keep or remove `debug!` and `trace!` calls from the resulting binary
 
