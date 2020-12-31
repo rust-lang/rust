@@ -1135,6 +1135,7 @@ crate fn markdown_links(md: &str) -> Vec<(String, Range<usize>)> {
 
     let links = RefCell::new(vec![]);
 
+    // FIXME: remove this function once pulldown_cmark can provide spans for link definitions.
     let locate = |s: &str, fallback: Range<usize>| unsafe {
         let s_start = s.as_ptr();
         let s_end = s_start.add(s.len());
@@ -1149,10 +1150,25 @@ crate fn markdown_links(md: &str) -> Vec<(String, Range<usize>)> {
         }
     };
 
+    let span_for_link = |link: &CowStr<'_>, span: Range<usize>| {
+        // For diagnostics, we want to underline the link's definition but `span` will point at
+        // where the link is used. This is a problem for reference-style links, where the definition
+        // is separate from the usage.
+        match link {
+            // `Borrowed` variant means the string (the link's destination) may come directly from
+            // the markdown text and we can locate the original link destination.
+            // NOTE: LinkReplacer also provides `Borrowed` but possibly from other sources,
+            // so `locate()` can fall back to use `span`.
+            CowStr::Borrowed(s) => locate(s, span),
+
+            // For anything else, we can only use the provided range.
+            CowStr::Boxed(_) | CowStr::Inlined(_) => span,
+        }
+    };
+
     let mut push = |link: BrokenLink<'_>| {
-        // FIXME: use `link.span` instead of `locate`
-        // (doing it now includes the `[]` as well as the text)
-        links.borrow_mut().push((link.reference.to_owned(), locate(link.reference, link.span)));
+        let span = span_for_link(&CowStr::Borrowed(link.reference), link.span);
+        links.borrow_mut().push((link.reference.to_owned(), span));
         None
     };
     let p = Parser::new_with_broken_link_callback(md, opts(), Some(&mut push)).into_offset_iter();
@@ -1165,10 +1181,8 @@ crate fn markdown_links(md: &str) -> Vec<(String, Range<usize>)> {
     for ev in iter {
         if let Event::Start(Tag::Link(_, dest, _)) = ev.0 {
             debug!("found link: {}", dest);
-            links.borrow_mut().push(match dest {
-                CowStr::Borrowed(s) => (s.to_owned(), locate(s, ev.1)),
-                s @ (CowStr::Boxed(..) | CowStr::Inlined(..)) => (s.into_string(), ev.1),
-            });
+            let span = span_for_link(&dest, ev.1);
+            links.borrow_mut().push((dest.into_string(), span));
         }
     }
 
