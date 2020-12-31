@@ -241,6 +241,77 @@ impl<T> Box<T> {
     pub fn pin(x: T) -> Pin<Box<T>> {
         (box x).into()
     }
+
+    /// Allocates memory on the heap then places `x` into it,
+    /// returning an error if the allocation fails
+    ///
+    /// This doesn't actually allocate if `T` is zero-sized.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(allocator_api)]
+    ///
+    /// let five = Box::try_new(5)?;
+    /// # Ok::<(), std::alloc::AllocError>(())
+    /// ```
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[inline]
+    pub fn try_new(x: T) -> Result<Self, AllocError> {
+        Self::try_new_in(x, Global)
+    }
+
+    /// Constructs a new box with uninitialized contents on the heap,
+    /// returning an error if the allocation fails
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(allocator_api, new_uninit)]
+    ///
+    ///
+    /// let mut five = Box::<u32>::try_new_uninit()?;
+    ///
+    /// let five = unsafe {
+    ///     // Deferred initialization:
+    ///     five.as_mut_ptr().write(5);
+    ///
+    ///     five.assume_init()
+    /// };
+    ///
+    /// assert_eq!(*five, 5);
+    /// # Ok::<(), std::alloc::AllocError>(())
+    /// ```
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    // #[unstable(feature = "new_uninit", issue = "63291")]
+    pub fn try_new_uninit() -> Result<Box<mem::MaybeUninit<T>>, AllocError> {
+        Box::try_new_uninit_in(Global)
+    }
+
+    /// Constructs a new `Box` with uninitialized contents, with the memory
+    /// being filled with `0` bytes on the heap
+    ///
+    /// See [`MaybeUninit::zeroed`][zeroed] for examples of correct and incorrect usage
+    /// of this method.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(allocator_api, new_uninit)]
+    ///
+    /// let zero = Box::<u32>::try_new_zeroed()?;
+    /// let zero = unsafe { zero.assume_init() };
+    ///
+    /// assert_eq!(*zero, 0);
+    /// # Ok::<(), std::alloc::AllocError>(())
+    /// ```
+    ///
+    /// [zeroed]: mem::MaybeUninit::zeroed
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    // #[unstable(feature = "new_uninit", issue = "63291")]
+    pub fn try_new_zeroed() -> Result<Box<mem::MaybeUninit<T>>, AllocError> {
+        Box::try_new_zeroed_in(Global)
+    }
 }
 
 impl<T, A: Allocator> Box<T, A> {
@@ -380,7 +451,8 @@ impl<T, A: Allocator> Box<T, A> {
     }
 
     /// Constructs a new `Box` with uninitialized contents, with the memory
-    /// being filled with `0` bytes in the provided allocator.
+    /// being filled with `0` bytes in the provided allocator,
+    /// returning an error if the allocation fails,
     ///
     /// See [`MaybeUninit::zeroed`][zeroed] for examples of correct and incorrect usage
     /// of this method.

@@ -346,6 +346,28 @@ impl<T> Rc<T> {
         )
     }
 
+    /// Constructs a new `Rc<T>`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(allocator_api, new_uninit)]
+    /// use std::rc::Rc;
+    ///
+    /// let five = Rc::new(5);
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn try_new(value: T) -> Result<Rc<T>, AllocError> {
+        // There is an implicit weak pointer owned by all the strong
+        // pointers, which ensures that the weak destructor never frees
+        // the allocation while the strong destructor is running, even
+        // if the weak pointer is stored inside the strong one.
+        Ok(Self::from_inner(
+            Box::leak(Box::try_new(RcBox { strong: Cell::new(1), weak: Cell::new(1), value })?)
+                .into(),
+        ))
+    }
+
     /// Constructs a new `Rc<T>` using a weak reference to itself. Attempting
     /// to upgrade the weak reference before this function returns will result
     /// in a `None` value. However, the weak reference may be cloned freely and
