@@ -626,6 +626,8 @@ where
 }
 
 /// Find the nearest parent module of a [`DefId`].
+///
+/// **Panics if the item it belongs to [is fake][Item::is_fake].**
 crate fn find_nearest_parent_module(tcx: TyCtxt<'_>, def_id: DefId) -> Option<DefId> {
     if def_id.is_top_level_module() {
         // The crate root has no parent. Use it as the root instead.
