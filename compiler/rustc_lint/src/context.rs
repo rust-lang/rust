@@ -261,6 +261,7 @@ impl LintStore {
         }
     }
 
+    #[track_caller]
     pub fn register_renamed(&mut self, old_name: &str, new_name: &str) {
         let target = match self.by_name.get(new_name) {
             Some(&Id(lint_id)) => lint_id,
