@@ -89,7 +89,7 @@ Moreover, a reference to a late-bound lifetime is written `^0.a`:
 - The `0` is the index; it identifies that this lifetime is bound in the
   innermost binder (the `for`).
 - The `a` is the "name"; late-bound lifetimes in rustc are identified by a
-  "name" -- the [`BoundRegion`] struct. This struct can contain a
+  "name" -- the [`BoundRegionKind`] enum. This enum can contain a
   [`DefId`][defid] or it might have various "anonymous" numbered names. The
   latter arise from types like `fn(&u32, &u32)`, which are equivalent to
   something like `for<'a, 'b> fn(&'a u32, &'b u32)`, but the names of those
@@ -103,5 +103,5 @@ anonymous regions like in `fn(&u32)`, we just create a fresh index and don't hav
 to update the binder.
 
 [`Binder`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.Binder.html
-[`BoundRegion`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/enum.BoundRegion.html
+[`BoundRegionKind`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/enum.BoundRegionKind.html
 [defid]: ./hir.html#identifiers-in-the-hir
