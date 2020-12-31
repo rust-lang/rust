@@ -43,7 +43,7 @@ pub use self::flatten::Flatten;
 pub use self::copied::Copied;
 
 #[unstable(feature = "iter_intersperse", reason = "recently added", issue = "79524")]
-pub use self::intersperse::Intersperse;
+pub use self::intersperse::{Intersperse, IntersperseWith};
 
 #[unstable(feature = "iter_map_while", reason = "recently added", issue = "68537")]
 pub use self::map_while::MapWhile;
