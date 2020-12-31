@@ -620,6 +620,9 @@ declare_features! (
     /// Allows arbitrary expressions in key-value attributes at parse time.
     (active, extended_key_value_attributes, "1.50.0", Some(78835), None),
 
+    /// `:pat2018` and `:pat2021` macro matchers.
+    (active, edition_macro_pats, "1.51.0", Some(54883), None),
+
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------
