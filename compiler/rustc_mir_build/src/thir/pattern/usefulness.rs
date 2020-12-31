@@ -649,6 +649,41 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
         })
     }
 
+    /// Keep the rows that match the predicate. Returns the old set of selected rows.
+    fn filter_rows<'a>(
+        &'a mut self,
+        mut f: impl FnMut(&'a MatrixEntry<'p, 'tcx>) -> bool,
+    ) -> Vec<usize> {
+        let last_col = self.columns.last().unwrap();
+        let old_selected_rows = std::mem::replace(&mut self.selected_rows, Vec::new());
+        for &row_id in &old_selected_rows {
+            if f(&last_col[row_id]) {
+                self.selected_rows.push(row_id);
+            }
+        }
+        old_selected_rows
+    }
+
+    /// Remove the last column and adjust indices accordingly.
+    fn pop_last_col(&mut self) -> Option<Vec<MatrixEntry<'p, 'tcx>>> {
+        let last_col = self.columns.pop()?;
+        for row_id in self.selected_rows.iter_mut() {
+            *row_id = last_col[*row_id].next_row_id;
+        }
+        Some(last_col)
+    }
+
+    /// Push a new column filled with the input pattern.
+    fn push_wildcard_column(&mut self, wild: &'p Pat<'tcx>) {
+        let mut col = Vec::with_capacity(self.selected_rows.len());
+        for (new_row_id, old_row_id) in self.selected_rows.iter_mut().enumerate() {
+            col.push(MatrixEntry { pat: wild, next_row_id: *old_row_id, ctor: OnceCell::new() });
+            // Make `row_id` point to the entry just added.
+            *old_row_id = new_row_id;
+        }
+        self.columns.push(col);
+    }
+
     /// This computes `S(constructor, self)`. See top of the file for explanations.
     fn specialize<'a>(
         &'a mut self,
@@ -658,43 +693,26 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
     ) {
         assert!(self.column_count() >= 1);
         let old_col_count = self.column_count();
-        let new_col_count = old_col_count - 1 + ctor_wild_subpatterns.len();
 
-        // Keep those two to undo specialization.
-        let last_col = self.columns.pop().unwrap();
-        let old_selected_rows = mem::replace(&mut self.selected_rows, Vec::new());
+        // We keep rows that match this ctor.
+        let old_selected_rows = self.filter_rows(|e| ctor.is_covered_by(pcx, e.head_ctor(pcx.cx)));
 
-        // We keep rows that match this ctor. In `selected_rows` we keep indices into `last_col`,
-        // and in `self.selected_rows` we keep indices into the new last column of `self`.
-        let mut selected_rows = Vec::new();
-        for &row_id in &old_selected_rows {
-            let head_entry = &last_col[row_id];
-            if ctor.is_covered_by(pcx, head_entry.head_ctor(pcx.cx)) {
-                selected_rows.push(row_id);
-                self.selected_rows.push(head_entry.next_row_id);
-            }
-        }
+        // In `selected_rows` we keep indices into `last_col`.
+        let selected_rows = self.selected_rows.clone();
+        // Remove the last column. Note: this updates `self.selected_rows`.
+        let last_col = self.pop_last_col().unwrap();
 
-        // Add some empty columns to accomodate the patterns to be added.
-        self.columns.resize_with(new_col_count, || Vec::with_capacity(selected_rows.len()));
-        let new_columns = &mut self.columns[old_col_count - 1..];
-
-        // We fill the new columns with the corresponding wildcards. We also set the `row_id`
-        // indices correctly.
+        // We add new columns filled with wildcards of the appropriate type.
         let wildcards = ctor_wild_subpatterns.clone().into_patterns();
-        // Note the `rev()` because the fields are in the natural left-to-right order but
-        // the columns are in the reverse order.
-        let pats_and_cols = wildcards.iter().copied().rev().zip(new_columns.iter_mut());
-        for (pat, col) in pats_and_cols {
-            for (new_row_id, old_row_id) in self.selected_rows.iter_mut().enumerate() {
-                col.push(MatrixEntry { pat, next_row_id: *old_row_id, ctor: OnceCell::new() });
-                // Make `row_id` point to the entry just added.
-                *old_row_id = new_row_id;
-            }
+        self.columns.reserve(wildcards.len());
+        // Note: the fields are in the natural left-to-right order but the columns are not.
+        for &wild in wildcards.iter().rev() {
+            self.push_wildcard_column(wild);
         }
 
         // We extract fields from the arguments of the head of each row and push them onto the
         // corresponding columns.
+        let new_columns = &mut self.columns[old_col_count - 1..];
         for (new_row_id, old_row_id) in selected_rows.iter().enumerate() {
             let head_entry = &last_col[*old_row_id];
             for idxpat in ctor_wild_subpatterns.extract_pattern_arguments(head_entry.pat) {
