@@ -510,8 +510,9 @@ impl Scope {
                 if let Some(prelude) = m.crate_def_map.prelude {
                     let prelude_def_map = db.crate_def_map(prelude.krate);
                     prelude_def_map[prelude.local_id].scope.entries().for_each(|(name, def)| {
-                        if !seen.contains(&(name.clone(), def)) {
-                            f(name.clone(), ScopeDef::PerNs(def));
+                        let seen_tuple = (name.clone(), def);
+                        if !seen.contains(&seen_tuple) {
+                            f(seen_tuple.0, ScopeDef::PerNs(def));
                         }
                     });
                 }
