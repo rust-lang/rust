@@ -557,7 +557,7 @@ impl<T> Arc<T> {
     /// # Ok::<(), std::alloc::AllocError>(())
     /// ```
     ///
-    /// [zeroed]: ../../std/mem/union.MaybeUninit.html#method.zeroed
+    /// [zeroed]: mem::MaybeUninit::zeroed
     #[unstable(feature = "allocator_api", issue = "32838")]
     // #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn try_new_zeroed() -> Result<Arc<mem::MaybeUninit<T>>, AllocError> {

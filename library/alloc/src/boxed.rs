@@ -269,7 +269,6 @@ impl<T> Box<T> {
     /// ```
     /// #![feature(allocator_api, new_uninit)]
     ///
-    ///
     /// let mut five = Box::<u32>::try_new_uninit()?;
     ///
     /// let five = unsafe {
@@ -284,6 +283,7 @@ impl<T> Box<T> {
     /// ```
     #[unstable(feature = "allocator_api", issue = "32838")]
     // #[unstable(feature = "new_uninit", issue = "63291")]
+    #[inline]
     pub fn try_new_uninit() -> Result<Box<mem::MaybeUninit<T>>, AllocError> {
         Box::try_new_uninit_in(Global)
     }
@@ -309,6 +309,7 @@ impl<T> Box<T> {
     /// [zeroed]: mem::MaybeUninit::zeroed
     #[unstable(feature = "allocator_api", issue = "32838")]
     // #[unstable(feature = "new_uninit", issue = "63291")]
+    #[inline]
     pub fn try_new_zeroed() -> Result<Box<mem::MaybeUninit<T>>, AllocError> {
         Box::try_new_zeroed_in(Global)
     }
