@@ -2295,20 +2295,19 @@ impl Clean<Item> for (&hir::MacroDef<'_>, Option<Symbol>) {
             )
         } else {
             let vis = item.vis.clean(cx);
-            let vis_printed_with_space =
-                vis.print_with_space(cx.tcx, cx.tcx.hir().local_def_id(item.hir_id).to_def_id());
+            let def_id = cx.tcx.hir().local_def_id(item.hir_id).to_def_id();
 
             if matchers.len() <= 1 {
                 format!(
                     "{}macro {}{} {{\n    ...\n}}",
-                    vis_printed_with_space,
+                    vis.print_with_space(cx.tcx, def_id),
                     name,
                     matchers.iter().map(|span| span.to_src(cx)).collect::<String>(),
                 )
             } else {
                 format!(
                     "{}macro {} {{\n{}}}",
-                    vis_printed_with_space,
+                    vis.print_with_space(cx.tcx, def_id),
                     name,
                     matchers
                         .iter()
