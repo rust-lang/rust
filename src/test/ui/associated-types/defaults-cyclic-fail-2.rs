@@ -25,13 +25,13 @@ impl Tr for u32 {
 
 impl Tr for bool {
     type A = Box<Self::B>;
-    //~^ ERROR type mismatch resolving `<bool as Tr>::B == _`
+    //~^ ERROR overflow evaluating the requirement `<bool as Tr>::B == _`
 }
 // (the error is shown twice for some reason)
 
 impl Tr for usize {
     type B = &'static Self::A;
-    //~^ ERROR type mismatch resolving `<usize as Tr>::A == _`
+    //~^ ERROR overflow evaluating the requirement `<usize as Tr>::A == _`
 }
 
 fn main() {

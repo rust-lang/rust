@@ -241,10 +241,16 @@ impl<'a> Tarball<'a> {
     }
 
     pub(crate) fn bare(self) -> PathBuf {
+        // Bare tarballs should have the top level directory match the package
+        // name, not "image". We rename the image directory just before passing
+        // into rust-installer.
+        let dest = self.temp_dir.join(self.package_name());
+        t!(std::fs::rename(&self.image_dir, &dest));
+
         self.run(|this, cmd| {
             cmd.arg("tarball")
                 .arg("--input")
-                .arg(&this.image_dir)
+                .arg(&dest)
                 .arg("--output")
                 .arg(crate::dist::distdir(this.builder).join(this.package_name()));
         })
