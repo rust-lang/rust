@@ -144,7 +144,6 @@ use std::{
     sync::Mutex,
 };
 
-use difference::Changeset;
 use once_cell::sync::Lazy;
 
 const HELP: &str = "
@@ -334,7 +333,7 @@ impl Runtime {
         let print_help = !mem::replace(&mut self.help_printed, true);
         let help = if print_help { HELP } else { "" };
 
-        let diff = Changeset::new(expected, actual, "\n");
+        let diff = dissimilar::diff(expected, actual);
 
         println!(
             "\n
@@ -356,7 +355,11 @@ impl Runtime {
 {}
 ----
 ",
-            position, help, expected, actual, diff
+            position,
+            help,
+            expected,
+            actual,
+            format_chunks(diff)
         );
         // Use resume_unwind instead of panic!() to prevent a backtrace, which is unnecessary noise.
         panic::resume_unwind(Box::new(()));
@@ -513,6 +516,19 @@ impl<'a> Iterator for LinesWithEnds<'a> {
         self.text = next;
         Some(res)
     }
+}
+
+fn format_chunks(chunks: Vec<dissimilar::Chunk>) -> String {
+    let mut buf = String::new();
+    for chunk in chunks {
+        let formatted = match chunk {
+            dissimilar::Chunk::Equal(text) => text.into(),
+            dissimilar::Chunk::Delete(text) => format!("\x1b[41m{}\x1b[0m", text),
+            dissimilar::Chunk::Insert(text) => format!("\x1b[42m{}\x1b[0m", text),
+        };
+        buf.push_str(&formatted);
+    }
+    buf
 }
 
 #[cfg(test)]
