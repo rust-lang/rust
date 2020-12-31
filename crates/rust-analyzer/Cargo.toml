@@ -17,6 +17,7 @@ path = "src/bin/main.rs"
 [dependencies]
 anyhow = "1.0.26"
 crossbeam-channel = "0.5.0"
+dissimilar = "1.0.2"
 env_logger = { version = "0.8.1", default-features = false }
 itertools = "0.10.0"
 jod-thread = "0.1.0"
