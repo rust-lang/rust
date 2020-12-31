@@ -2157,14 +2157,14 @@ function defocusSearchBar() {
                 var code = document.createElement("code");
                 code.innerHTML = struct.text;
 
-                var x = code.getElementsByTagName("a");
-                var xlength = x.length;
-                for (var it = 0; it < xlength; it++) {
-                    var href = x[it].getAttribute("href");
+                onEachLazy(code.getElementsByTagName("a"), function(elem) {
+                    var href = elem.getAttribute("href");
+
                     if (href && href.indexOf("http") !== 0) {
-                        x[it].setAttribute("href", rootPath + href);
+                        elem.setAttribute("href", rootPath + href);
                     }
-                }
+                });
+
                 var display = document.createElement("h3");
                 addClass(display, "impl");
                 display.innerHTML = "<span class=\"in-band\"><table class=\"table-display\">" +
@@ -2553,14 +2553,12 @@ function defocusSearchBar() {
             var hiddenElems = e.getElementsByClassName("hidden");
             var needToggle = false;
 
-            var hlength = hiddenElems.length;
-            for (var i = 0; i < hlength; ++i) {
-                if (hasClass(hiddenElems[i], "content") === false &&
-                    hasClass(hiddenElems[i], "docblock") === false) {
-                    needToggle = true;
-                    break;
+            var needToggle = onEachLazy(e.getElementsByClassName("hidden"), function(hiddenElem) {
+                if (hasClass(hiddenElem, "content") === false &&
+                    hasClass(hiddenElem, "docblock") === false) {
+                    return true;
                 }
-            }
+            });
             if (needToggle === true) {
                 var inner_toggle = newToggle.cloneNode(true);
                 inner_toggle.onclick = toggleClicked;
