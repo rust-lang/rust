@@ -335,7 +335,7 @@ impl Merge for TomlConfig {
                     *x = Some(new);
                 }
             }
-        };
+        }
         do_merge(&mut self.build, build);
         do_merge(&mut self.install, install);
         do_merge(&mut self.llvm, llvm);
