@@ -1097,6 +1097,9 @@ impl clean::Visibility {
             clean::Inherited => Ok(()),
 
             clean::Visibility::Restricted(vis_did) => {
+                // FIXME(camelid): This may not work correctly if `item_did` is a module.
+                //                 However, rustdoc currently never displays a module's
+                //                 visibility, so it shouldn't matter.
                 let parent_module = find_nearest_parent_module(tcx, item_did);
 
                 if vis_did.index == CRATE_DEF_INDEX {
