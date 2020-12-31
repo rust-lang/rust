@@ -23,8 +23,10 @@ mod a {
     // @has 'foo/a/struct.FooAInSuper.html' '//pre' 'pub(crate) struct FooAInSuper'
     pub(in super) struct FooAInSuper;
     // @has 'foo/a/struct.FooAInA.html' '//pre' 'struct FooAInA'
+    // @!has 'foo/a/struct.FooAInA.html' '//pre' 'pub'
     pub(in a) struct FooAInA;
     // @has 'foo/a/struct.FooAPriv.html' '//pre' 'struct FooAPriv'
+    // @!has 'foo/a/struct.FooAPriv.html' '//pre' 'pub'
     struct FooAPriv;
 
     mod b {
@@ -33,8 +35,10 @@ mod a {
         // @has 'foo/a/b/struct.FooBInSuperSuper.html' '//pre' 'pub(crate) struct FooBInSuperSuper'
         pub(in super::super) struct FooBInSuperSuper;
         // @has 'foo/a/b/struct.FooBInAB.html' '//pre' 'struct FooBInAB'
+        // @!has 'foo/a/b/struct.FooBInAB.html' '//pre' 'pub'
         pub(in a::b) struct FooBInAB;
         // @has 'foo/a/b/struct.FooBPriv.html' '//pre' 'struct FooBPriv'
+        // @!has 'foo/a/b/struct.FooBPriv.html' '//pre' 'pub'
         struct FooBPriv;
     }
 }
