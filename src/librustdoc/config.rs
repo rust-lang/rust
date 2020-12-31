@@ -37,10 +37,7 @@ crate enum OutputFormat {
 
 impl OutputFormat {
     crate fn is_json(&self) -> bool {
-        match self {
-            OutputFormat::Json => true,
-            _ => false,
-        }
+        matches!(self, OutputFormat::Json)
     }
 }
 

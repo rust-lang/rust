@@ -245,7 +245,7 @@ impl<'a> fmt::Display for WhereClause<'a> {
             }
 
             match pred {
-                &clean::WherePredicate::BoundPredicate { ref ty, ref bounds } => {
+                clean::WherePredicate::BoundPredicate { ty, bounds } => {
                     let bounds = bounds;
                     if f.alternate() {
                         clause.push_str(&format!(
@@ -261,7 +261,7 @@ impl<'a> fmt::Display for WhereClause<'a> {
                         ));
                     }
                 }
-                &clean::WherePredicate::RegionPredicate { ref lifetime, ref bounds } => {
+                clean::WherePredicate::RegionPredicate { lifetime, bounds } => {
                     clause.push_str(&format!(
                         "{}: {}",
                         lifetime.print(),
@@ -272,7 +272,7 @@ impl<'a> fmt::Display for WhereClause<'a> {
                             .join(" + ")
                     ));
                 }
-                &clean::WherePredicate::EqPredicate { ref lhs, ref rhs } => {
+                clean::WherePredicate::EqPredicate { lhs, rhs } => {
                     if f.alternate() {
                         clause.push_str(&format!("{:#} == {:#}", lhs.print(), rhs.print()));
                     } else {
@@ -376,8 +376,8 @@ impl clean::GenericBound {
 impl clean::GenericArgs {
     fn print(&self) -> impl fmt::Display + '_ {
         display_fn(move |f| {
-            match *self {
-                clean::GenericArgs::AngleBracketed { ref args, ref bindings } => {
+            match self {
+                clean::GenericArgs::AngleBracketed { args, bindings } => {
                     if !args.is_empty() || !bindings.is_empty() {
                         if f.alternate() {
                             f.write_str("<")?;
@@ -414,7 +414,7 @@ impl clean::GenericArgs {
                         }
                     }
                 }
-                clean::GenericArgs::Parenthesized { ref inputs, ref output } => {
+                clean::GenericArgs::Parenthesized { inputs, output } => {
                     f.write_str("(")?;
                     let mut comma = false;
                     for ty in inputs {
@@ -501,7 +501,7 @@ crate fn href(did: DefId) -> Option<(String, ItemType, Vec<String>)> {
     };
     for component in &fqp[..fqp.len() - 1] {
         url.push_str(component);
-        url.push_str("/");
+        url.push('/');
     }
     match shortty {
         ItemType::Module => {
@@ -510,7 +510,7 @@ crate fn href(did: DefId) -> Option<(String, ItemType, Vec<String>)> {
         }
         _ => {
             url.push_str(shortty.as_str());
-            url.push_str(".");
+            url.push('.');
             url.push_str(fqp.last().unwrap());
             url.push_str(".html");
         }
@@ -1021,7 +1021,7 @@ impl Function<'_> {
                 } else {
                     if i > 0 {
                         args.push_str(" <br>");
-                        args_plain.push_str(" ");
+                        args_plain.push(' ');
                     }
                     if !input.name.is_empty() {
                         args.push_str(&format!("{}: ", input.name));

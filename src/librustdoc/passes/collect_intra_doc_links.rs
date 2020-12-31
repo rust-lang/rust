@@ -1276,7 +1276,7 @@ impl LinkCollector<'_, '_> {
                         // This could just be a normal link or a broken link
                         // we could potentially check if something is
                         // "intra-doc-link-like" and warn in that case.
-                        return None;
+                        None
                     }
                     Err(ErrorKind::AnchorFailure(msg)) => {
                         anchor_failure(
@@ -1287,7 +1287,7 @@ impl LinkCollector<'_, '_> {
                             diag.link_range,
                             msg,
                         );
-                        return None;
+                        None
                     }
                 }
             }
@@ -1383,7 +1383,7 @@ impl LinkCollector<'_, '_> {
                         diag.link_range,
                         candidates.present_items().collect(),
                     );
-                    return None;
+                    None
                 }
             }
             Some(MacroNS) => {
@@ -1408,7 +1408,7 @@ impl LinkCollector<'_, '_> {
                             diag.link_range,
                             smallvec![kind],
                         );
-                        return None;
+                        None
                     }
                 }
             }

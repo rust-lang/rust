@@ -636,15 +636,15 @@ fn partition_source(s: &str) -> (String, String, String) {
         match state {
             PartitionState::Attrs => {
                 before.push_str(line);
-                before.push_str("\n");
+                before.push('\n');
             }
             PartitionState::Crates => {
                 crates.push_str(line);
-                crates.push_str("\n");
+                crates.push('\n');
             }
             PartitionState::Other => {
                 after.push_str(line);
-                after.push_str("\n");
+                after.push('\n');
             }
         }
     }

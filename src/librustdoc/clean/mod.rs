@@ -640,10 +640,10 @@ impl Clean<Generics> for hir::Generics<'_> {
         ///
         /// [`lifetime_to_generic_param`]: rustc_ast_lowering::LoweringContext::lifetime_to_generic_param
         fn is_elided_lifetime(param: &hir::GenericParam<'_>) -> bool {
-            match param.kind {
-                hir::GenericParamKind::Lifetime { kind: hir::LifetimeParamKind::Elided } => true,
-                _ => false,
-            }
+            matches!(
+                param.kind,
+                hir::GenericParamKind::Lifetime { kind: hir::LifetimeParamKind::Elided }
+            )
         }
 
         let impl_trait_params = self
@@ -801,7 +801,7 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics, ty::GenericPredicates<'tcx
 
         for (param, mut bounds) in impl_trait {
             // Move trait bounds to the front.
-            bounds.sort_by_key(|b| if let GenericBound::TraitBound(..) = b { false } else { true });
+            bounds.sort_by_key(|b| !matches!(b, GenericBound::TraitBound(..)));
 
             if let crate::core::ImplTraitParam::ParamIndex(idx) = param {
                 if let Some(proj) = impl_trait_proj.remove(&idx) {
