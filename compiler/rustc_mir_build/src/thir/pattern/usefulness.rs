@@ -344,6 +344,12 @@ pub(super) struct PatCtxt<'a, 'p, 'tcx> {
     pub(super) is_top_level: bool,
 }
 
+impl<'a, 'p, 'tcx> fmt::Debug for PatCtxt<'a, 'p, 'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("PatCtxt").field("ty", &self.ty).finish()
+    }
+}
+
 crate fn expand_pattern<'tcx>(pat: Pat<'tcx>) -> Pat<'tcx> {
     LiteralExpander.fold_pattern(&pat)
 }
@@ -383,7 +389,7 @@ impl<'tcx> Pat<'tcx> {
 
 /// A row of a matrix. Rows of len 1 are very common, which is why `SmallVec[_; 2]`
 /// works well.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 struct PatStack<'p, 'tcx> {
     pats: SmallVec<[&'p Pat<'tcx>; 2]>,
     /// Cache for the constructor of the head
@@ -475,6 +481,17 @@ impl<'p, 'tcx> FromIterator<&'p Pat<'tcx>> for PatStack<'p, 'tcx> {
     }
 }
 
+/// Pretty-printing for matrix row.
+impl<'p, 'tcx> fmt::Debug for PatStack<'p, 'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "+")?;
+        for pat in self.iter() {
+            write!(f, " {} +", pat)?;
+        }
+        Ok(())
+    }
+}
+
 /// A 2D matrix.
 #[derive(Clone, PartialEq)]
 pub(super) struct Matrix<'p, 'tcx> {
@@ -543,17 +560,11 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
 /// Pretty-printer for matrices of patterns, example:
 ///
 /// ```text
-/// +++++++++++++++++++++++++++++
 /// + _     + []                +
-/// +++++++++++++++++++++++++++++
 /// + true  + [First]           +
-/// +++++++++++++++++++++++++++++
 /// + true  + [Second(true)]    +
-/// +++++++++++++++++++++++++++++
 /// + false + [_]               +
-/// +++++++++++++++++++++++++++++
 /// + _     + [_, _, tail @ ..] +
-/// +++++++++++++++++++++++++++++
 /// ```
 impl<'p, 'tcx> fmt::Debug for Matrix<'p, 'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -561,17 +572,14 @@ impl<'p, 'tcx> fmt::Debug for Matrix<'p, 'tcx> {
 
         let Matrix { patterns: m, .. } = self;
         let pretty_printed_matrix: Vec<Vec<String>> =
-            m.iter().map(|row| row.iter().map(|pat| format!("{:?}", pat)).collect()).collect();
+            m.iter().map(|row| row.iter().map(|pat| format!("{}", pat)).collect()).collect();
 
-        let column_count = m.iter().map(|row| row.len()).max().unwrap_or(0);
+        let column_count = m.iter().map(|row| row.len()).next().unwrap_or(0);
         assert!(m.iter().all(|row| row.len() == column_count));
         let column_widths: Vec<usize> = (0..column_count)
             .map(|col| pretty_printed_matrix.iter().map(|row| row[col].len()).max().unwrap_or(0))
             .collect();
 
-        let total_width = column_widths.iter().cloned().sum::<usize>() + column_count * 3 + 1;
-        let br = "+".repeat(total_width);
-        write!(f, "{}\n", br)?;
         for row in pretty_printed_matrix {
             write!(f, "+")?;
             for (column, pat_str) in row.into_iter().enumerate() {
@@ -580,7 +588,6 @@ impl<'p, 'tcx> fmt::Debug for Matrix<'p, 'tcx> {
                 write!(f, " +")?;
             }
             write!(f, "\n")?;
-            write!(f, "{}\n", br)?;
         }
         Ok(())
     }
@@ -924,6 +931,7 @@ impl<'tcx> Witness<'tcx> {
 /// `is_under_guard` is used to inform if the pattern has a guard. If it
 /// has one it must not be inserted into the matrix. This shouldn't be
 /// relied on for soundness.
+#[instrument(skip(cx, matrix, witness_preference, hir_id, is_under_guard, is_top_level))]
 fn is_useful<'p, 'tcx>(
     cx: &MatchCheckCtxt<'p, 'tcx>,
     matrix: &Matrix<'p, 'tcx>,
@@ -933,8 +941,8 @@ fn is_useful<'p, 'tcx>(
     is_under_guard: bool,
     is_top_level: bool,
 ) -> Usefulness<'tcx> {
+    debug!("matrix,v={:?}{:?}", matrix, v);
     let Matrix { patterns: rows, .. } = matrix;
-    debug!("is_useful({:#?}, {:#?})", matrix, v);
 
     // The base case. We are pattern-matching on () and the return value is
     // based on whether our matrix has a row or not.
@@ -942,12 +950,11 @@ fn is_useful<'p, 'tcx>(
     // first and then, if v is non-empty, the return value is based on whether
     // the type of the tuple we're checking is inhabited or not.
     if v.is_empty() {
-        return if rows.is_empty() {
-            Usefulness::new_useful(witness_preference)
-        } else {
-            NotUseful
-        };
-    };
+        let ret =
+            if rows.is_empty() { Usefulness::new_useful(witness_preference) } else { NotUseful };
+        debug!(?ret);
+        return ret;
+    }
 
     assert!(rows.iter().all(|r| r.len() == v.len()));
 
@@ -955,10 +962,9 @@ fn is_useful<'p, 'tcx>(
     let ty = matrix.heads().next().map_or(v.head().ty, |r| r.ty);
     let pcx = PatCtxt { cx, ty, span: v.head().span, is_top_level };
 
-    debug!("is_useful_expand_first_col: ty={:#?}, expanding {:#?}", pcx.ty, v.head());
-
     // If the first pattern is an or-pattern, expand it.
     let ret = if let Some(vs) = v.expand_or_pat() {
+        debug!("expanding or-pattern");
         let subspans: Vec<_> = vs.iter().map(|v| v.head().span).collect();
         // We expand the or pattern, trying each of its branches in turn and keeping careful track
         // of possible unreachable sub-branches.
@@ -993,6 +999,7 @@ fn is_useful<'p, 'tcx>(
         // witness the usefulness of `v`.
         let start_matrix = &matrix;
         let usefulnesses = split_ctors.into_iter().map(|ctor| {
+            debug!("specialize({:?})", ctor);
             // We cache the result of `Fields::wildcards` because it is used a lot.
             let ctor_wild_subpatterns = Fields::wildcards(pcx, &ctor);
             let spec_matrix =
@@ -1004,7 +1011,7 @@ fn is_useful<'p, 'tcx>(
         });
         Usefulness::merge(usefulnesses)
     };
-    debug!("is_useful::returns({:#?}, {:#?}) = {:?}", matrix, v, ret);
+    debug!(?ret);
     ret
 }
 
