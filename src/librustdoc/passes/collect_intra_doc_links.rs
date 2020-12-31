@@ -768,7 +768,6 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
         use rustc_middle::ty::DefIdTree;
 
         let parent_node = if item.is_fake() {
-            // FIXME: is this correct?
             None
         } else {
             find_nearest_parent_module(self.cx.tcx, item.def_id)
