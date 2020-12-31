@@ -31,7 +31,7 @@ use std::convert::{TryFrom, TryInto};
 use std::mem;
 use std::ops::Range;
 
-use crate::clean::{self, Crate, Item, ItemLink, PrimitiveType};
+use crate::clean::{self, utils::find_nearest_parent_module, Crate, Item, ItemLink, PrimitiveType};
 use crate::core::DocContext;
 use crate::fold::DocFolder;
 use crate::html::markdown::markdown_links;
@@ -830,31 +830,9 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
         use rustc_middle::ty::DefIdTree;
 
         let parent_node = if item.is_fake() {
-            // FIXME: is this correct?
             None
-        // If we're documenting the crate root itself, it has no parent. Use the root instead.
-        } else if item.def_id.is_top_level_module() {
-            Some(item.def_id)
         } else {
-            let mut current = item.def_id;
-            // The immediate parent might not always be a module.
-            // Find the first parent which is.
-            loop {
-                if let Some(parent) = self.cx.tcx.parent(current) {
-                    if self.cx.tcx.def_kind(parent) == DefKind::Mod {
-                        break Some(parent);
-                    }
-                    current = parent;
-                } else {
-                    debug!(
-                        "{:?} has no parent (kind={:?}, original was {:?})",
-                        current,
-                        self.cx.tcx.def_kind(current),
-                        item.def_id
-                    );
-                    break None;
-                }
-            }
+            find_nearest_parent_module(self.cx.tcx, item.def_id)
         };
 
         if parent_node.is_some() {
