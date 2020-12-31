@@ -17,18 +17,18 @@ pub static CARGO_TARGET_DIR: SyncLazy<PathBuf> = SyncLazy::new(|| match env::var
 });
 
 pub fn bless() {
-    let test_dirs = [
+    let test_suite_dirs = [
         clippy_project_root().join("tests").join("ui"),
         clippy_project_root().join("tests").join("ui-toml"),
         clippy_project_root().join("tests").join("ui-cargo"),
     ];
-    for test_dir in &test_dirs {
-        WalkDir::new(test_dir)
+    for test_suite_dir in &test_suite_dirs {
+        WalkDir::new(test_suite_dir)
             .into_iter()
             .filter_map(Result::ok)
             .filter(|f| f.path().extension() == Some(OsStr::new("rs")))
             .for_each(|f| {
-                let test_name = f.path().strip_prefix(test_dir).unwrap();
+                let test_name = f.path().strip_prefix(test_suite_dir).unwrap();
 
                 update_reference_file(f.path().with_extension("stdout"), test_name.with_extension("stdout"));
                 update_reference_file(f.path().with_extension("stderr"), test_name.with_extension("stderr"));
