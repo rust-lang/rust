@@ -763,10 +763,11 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                 let module_kind = ModuleKind::Def(DefKind::Mod, def_id, ident.name);
                 let inheritable_no_prelude = parent.pass_on_no_prelude
                     || self.r.session.contains_name(&item.attrs, sym::no_implicit_prelude);
-                let local_no_prelude = self.r.session.contains_name(&item.attrs, sym::no_prelude);
+                let local_no_prelude = inheritable_no_prelude
+                    || self.r.session.contains_name(&item.attrs, sym::no_prelude);
                 let module = self.r.arenas.alloc_module(ModuleData {
                     pass_on_no_prelude: inheritable_no_prelude,
-                    no_prelude: inheritable_no_prelude || local_no_prelude,
+                    no_prelude: local_no_prelude,
                     ..ModuleData::new(Some(parent), module_kind, def_id, expansion, item.span)
                 });
                 self.r.define(parent, ident, TypeNS, (module, vis, sp, expansion));

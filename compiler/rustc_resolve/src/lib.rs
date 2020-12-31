@@ -1214,10 +1214,11 @@ impl<'a> Resolver<'a> {
         let root_def_id = root_local_def_id.to_def_id();
         let root_module_kind = ModuleKind::Def(DefKind::Mod, root_def_id, kw::Empty);
         let inheritable_no_prelude = session.contains_name(&krate.attrs, sym::no_implicit_prelude);
-        let local_no_prelude = session.contains_name(&krate.attrs, sym::no_prelude);
+        let local_no_prelude =
+            inheritable_no_prelude || session.contains_name(&krate.attrs, sym::no_prelude);
         let graph_root = arenas.alloc_module(ModuleData {
             pass_on_no_prelude: inheritable_no_prelude,
-            no_prelude: local_no_prelude || inheritable_no_prelude,
+            no_prelude: local_no_prelude,
             ..ModuleData::new(None, root_module_kind, root_def_id, ExpnId::root(), krate.span)
         });
         let empty_module_kind = ModuleKind::Def(DefKind::Mod, root_def_id, kw::Empty);
