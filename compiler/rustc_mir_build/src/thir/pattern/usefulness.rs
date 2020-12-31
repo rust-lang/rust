@@ -526,16 +526,11 @@ impl<'p, 'tcx> MatrixEntry<'p, 'tcx> {
 }
 
 #[derive(Clone)]
-enum UndoFrameKind {
-    Specialization { ctor_arity: usize },
-    OrPatExpansion,
-}
-
-#[derive(Clone)]
-struct UndoFrame<'p, 'tcx> {
-    kind: UndoFrameKind,
-    last_col: Vec<MatrixEntry<'p, 'tcx>>,
-    selected_rows: Vec<usize>,
+enum UndoKind {
+    FilterRows,
+    PopLastCol,
+    Specialize { ctor_arity: usize },
+    ExpandOrPats,
 }
 
 /// A 2D matrix.
@@ -549,7 +544,9 @@ struct Matrix<'p, 'tcx> {
     /// `next_row_id`s.
     selected_rows: Vec<usize>,
     /// Stores the history of operations done on this matrix, so that we can undo them in-place.
-    history: Vec<UndoFrame<'p, 'tcx>>,
+    history: Vec<UndoKind>,
+    last_col_history: Vec<Vec<MatrixEntry<'p, 'tcx>>>,
+    selected_rows_history: Vec<Vec<usize>>,
 }
 
 impl<'p, 'tcx> Matrix<'p, 'tcx> {
@@ -649,11 +646,8 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
         })
     }
 
-    /// Keep the rows that match the predicate. Returns the old set of selected rows.
-    fn filter_rows<'a>(
-        &'a mut self,
-        mut f: impl FnMut(&'a MatrixEntry<'p, 'tcx>) -> bool,
-    ) -> Vec<usize> {
+    /// Keep the rows that match the predicate.
+    fn filter_rows<'a>(&'a mut self, mut f: impl FnMut(&'a MatrixEntry<'p, 'tcx>) -> bool) {
         let last_col = self.columns.last().unwrap();
         let old_selected_rows = std::mem::replace(&mut self.selected_rows, Vec::new());
         for &row_id in &old_selected_rows {
@@ -661,16 +655,22 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
                 self.selected_rows.push(row_id);
             }
         }
-        old_selected_rows
+        self.selected_rows_history.push(old_selected_rows);
+        self.history.push(UndoKind::FilterRows);
     }
 
     /// Remove the last column and adjust indices accordingly.
-    fn pop_last_col(&mut self) -> Option<Vec<MatrixEntry<'p, 'tcx>>> {
-        let last_col = self.columns.pop()?;
+    fn pop_last_col(&mut self) {
+        if self.columns.is_empty() {
+            return;
+        }
+        let last_col = self.columns.pop().unwrap();
+        self.selected_rows_history.push(self.selected_rows.clone());
         for row_id in self.selected_rows.iter_mut() {
             *row_id = last_col[*row_id].next_row_id;
         }
-        Some(last_col)
+        self.last_col_history.push(last_col);
+        self.history.push(UndoKind::PopLastCol);
     }
 
     /// Push a new column filled with the input pattern.
@@ -695,12 +695,10 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
         let old_col_count = self.column_count();
 
         // We keep rows that match this ctor.
-        let old_selected_rows = self.filter_rows(|e| ctor.is_covered_by(pcx, e.head_ctor(pcx.cx)));
+        self.filter_rows(|e| ctor.is_covered_by(pcx, e.head_ctor(pcx.cx)));
 
-        // In `selected_rows` we keep indices into `last_col`.
-        let selected_rows = self.selected_rows.clone();
-        // Remove the last column. Note: this updates `self.selected_rows`.
-        let last_col = self.pop_last_col().unwrap();
+        // Remove the last column.
+        self.pop_last_col();
 
         // We add new columns filled with wildcards of the appropriate type.
         let wildcards = ctor_wild_subpatterns.clone().into_patterns();
@@ -713,6 +711,8 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
         // We extract fields from the arguments of the head of each row and push them onto the
         // corresponding columns.
         let new_columns = &mut self.columns[old_col_count - 1..];
+        let last_col = self.last_col_history.last().unwrap();
+        let selected_rows = self.selected_rows_history.last().unwrap();
         for (new_row_id, old_row_id) in selected_rows.iter().enumerate() {
             let head_entry = &last_col[*old_row_id];
             for idxpat in ctor_wild_subpatterns.extract_pattern_arguments(head_entry.pat) {
@@ -723,11 +723,7 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
             }
         }
 
-        self.history.push(UndoFrame {
-            kind: UndoFrameKind::Specialization { ctor_arity: ctor_wild_subpatterns.len() },
-            last_col,
-            selected_rows: old_selected_rows,
-        });
+        self.history.push(UndoKind::Specialize { ctor_arity: ctor_wild_subpatterns.len() });
 
         // Expand any or-patterns present in the new last column.
         if !self.columns.is_empty() && self.last_col().any(|e| e.pat.is_or_pat()) {
@@ -759,36 +755,46 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
         }
         let new_selected_rows = (0..new_last_col.len()).collect();
         self.columns.push(new_last_col);
-        self.history.push(UndoFrame {
-            kind: UndoFrameKind::OrPatExpansion,
-            last_col,
-            selected_rows: mem::replace(&mut self.selected_rows, new_selected_rows),
-        })
+
+        self.last_col_history.push(last_col);
+        self.selected_rows_history.push(mem::replace(&mut self.selected_rows, new_selected_rows));
+        self.history.push(UndoKind::ExpandOrPats);
     }
 
     /// Undo the last specialization or or-pattern expansion. Panics if nothing to undo.
     fn undo(&mut self) {
-        let hist = self.history.pop().unwrap();
-        match hist.kind {
-            UndoFrameKind::Specialization { ctor_arity } => {
+        match self.history.pop().unwrap() {
+            UndoKind::FilterRows => {
+                self.selected_rows = self.selected_rows_history.pop().unwrap();
+            }
+            UndoKind::PopLastCol => {
+                self.columns.push(self.last_col_history.pop().unwrap());
+                self.selected_rows = self.selected_rows_history.pop().unwrap();
+            }
+            UndoKind::Specialize { ctor_arity } => {
                 for _ in 0..ctor_arity {
                     self.columns.pop().unwrap();
                 }
+                assert!(matches!(self.history.last().unwrap(), UndoKind::PopLastCol));
+                self.undo();
+                assert!(matches!(self.history.last().unwrap(), UndoKind::FilterRows));
+                self.undo();
             }
-            UndoFrameKind::OrPatExpansion => {
+            UndoKind::ExpandOrPats => {
                 self.columns.pop().unwrap();
+                self.columns.push(self.last_col_history.pop().unwrap());
+                self.selected_rows = self.selected_rows_history.pop().unwrap();
             }
         }
-        self.columns.push(hist.last_col);
-        self.selected_rows = hist.selected_rows;
     }
 
-    /// Undo the last specialization, possibly also undoing an or-pattern expansion if there is ont
+    /// Undo the last specialization, possibly also undoing an or-pattern expansion if there is one
     /// before.
     fn unspecialize(&mut self) {
-        if matches!(self.history.last().unwrap().kind, UndoFrameKind::OrPatExpansion) {
+        if matches!(self.history.last().unwrap(), UndoKind::ExpandOrPats) {
             self.undo();
         }
+        assert!(matches!(self.history.last().unwrap(), UndoKind::Specialize {..}));
         self.undo();
     }
 }
