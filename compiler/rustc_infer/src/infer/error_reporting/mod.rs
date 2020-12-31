@@ -153,6 +153,7 @@ fn msg_span_from_early_bound_and_free_regions(
         Some(Node::Item(it)) => item_scope_tag(&it),
         Some(Node::TraitItem(it)) => trait_item_scope_tag(&it),
         Some(Node::ImplItem(it)) => impl_item_scope_tag(&it),
+        Some(Node::ForeignItem(it)) => foreign_item_scope_tag(&it),
         _ => unreachable!(),
     };
     let (prefix, span) = match *region {
@@ -230,6 +231,13 @@ fn impl_item_scope_tag(item: &hir::ImplItem<'_>) -> &'static str {
     match item.kind {
         hir::ImplItemKind::Fn(..) => "method body",
         hir::ImplItemKind::Const(..) | hir::ImplItemKind::TyAlias(..) => "associated item",
+    }
+}
+
+fn foreign_item_scope_tag(item: &hir::ForeignItem<'_>) -> &'static str {
+    match item.kind {
+        hir::ForeignItemKind::Fn(..) => "method body",
+        hir::ForeignItemKind::Static(..) | hir::ForeignItemKind::Type => "associated item",
     }
 }
 

@@ -51,7 +51,7 @@ impl<'tcx> CheckWfFcxBuilder<'tcx> {
             let fcx = FnCtxt::new(&inh, param_env, id);
             if !inh.tcx.features().trivial_bounds {
                 // As predicates are cached rather than obligations, this
-                // needsto be called first so that they are checked with an
+                // needs to be called first so that they are checked with an
                 // empty `param_env`.
                 check_false_global_bounds(&fcx, span, id);
             }
