@@ -204,17 +204,18 @@ pub mod token_stream {
                 let content = subtree
                     .token_trees
                     .iter()
-                    .map(|tkn| {
-                        let s = to_text(tkn);
+                    .fold((String::new(), true), |(last, last_to_joint), tkn| {
+                        let s = [last, to_text(tkn)].join(if last_to_joint { "" } else { " " });
+                        let mut is_joint = false;
                         if let tt::TokenTree::Leaf(tt::Leaf::Punct(punct)) = tkn {
-                            if punct.spacing == tt::Spacing::Alone {
-                                return s + " ";
+                            if punct.spacing == tt::Spacing::Joint {
+                                is_joint = true;
                             }
                         }
-                        s
+                        (s, is_joint)
                     })
-                    .collect::<Vec<_>>()
-                    .concat();
+                    .0;
+
                 let (open, close) = match subtree.delimiter.map(|it| it.kind) {
                     None => ("", ""),
                     Some(tt::DelimiterKind::Brace) => ("{", "}"),
@@ -709,5 +710,33 @@ mod tests {
         assert_eq!(srv.string("hello_world").text, "\"hello_world\"");
         assert_eq!(srv.character('c').text, "'c'");
         assert_eq!(srv.byte_string(b"1234586\x88").text, "b\"1234586\\x88\"");
+    }
+
+    #[test]
+    fn test_rustc_server_to_string() {
+        let s = TokenStream {
+            subtree: tt::Subtree {
+                delimiter: None,
+                token_trees: vec![
+                    tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident {
+                        text: "struct".into(),
+                        id: tt::TokenId::unspecified(),
+                    })),
+                    tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident {
+                        text: "T".into(),
+                        id: tt::TokenId::unspecified(),
+                    })),
+                    tt::TokenTree::Subtree(tt::Subtree {
+                        delimiter: Some(tt::Delimiter {
+                            id: tt::TokenId::unspecified(),
+                            kind: tt::DelimiterKind::Brace,
+                        }),
+                        token_trees: vec![],
+                    }),
+                ],
+            },
+        };
+
+        assert_eq!(s.to_string(), "struct T {}");
     }
 }
