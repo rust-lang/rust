@@ -300,6 +300,7 @@ use rustc_span::Span;
 use smallvec::{smallvec, SmallVec};
 use std::fmt;
 use std::iter::{FromIterator, IntoIterator};
+use std::ops::Index;
 
 crate struct MatchCheckCtxt<'a, 'tcx> {
     crate tcx: TyCtxt<'tcx>,
@@ -410,6 +411,82 @@ impl<'tcx> Pat<'tcx> {
         } else {
             vec![self]
         }
+    }
+}
+
+/// Behaves like `Vec<Vec<T>>`, but uses a single allocation. Only the last vector can be
+/// extended/shrunk.
+#[derive(Debug, Clone)]
+struct VecVec<T> {
+    data: Vec<T>,
+    /// Indices into `data`. Each index is the start of a contained slice.
+    indices: Vec<usize>,
+    /// Remember the last index because we use it often.
+    last_index_cache: Option<usize>,
+}
+
+impl<T> VecVec<T> {
+    fn new() -> Self {
+        VecVec { data: Vec::new(), indices: vec![], last_index_cache: None }
+    }
+
+    #[inline]
+    fn len(&self) -> usize {
+        self.indices.len()
+    }
+
+    #[inline]
+    fn last(&self) -> Option<&[T]> {
+        if let Some(i) = self.last_index_cache {
+            Some(&self.data[i..self.data.len()])
+        } else {
+            None
+        }
+    }
+
+    /// Pushes a new `Vec` at the end.
+    fn push_slice(&mut self, items: &[T])
+    where
+        T: Clone,
+    {
+        self.last_index_cache = Some(self.data.len());
+        self.indices.push(self.data.len());
+        self.data.extend_from_slice(items);
+    }
+
+    /// Pushes a new `Vec` at the end.
+    fn push_vec(&mut self, mut items: Vec<T>) {
+        self.last_index_cache = Some(self.data.len());
+        self.indices.push(self.data.len());
+        self.data.append(&mut items);
+    }
+
+    fn pop_iter<'a>(&'a mut self) -> Option<impl Iterator<Item = T> + 'a> {
+        let l = self.indices.pop()?;
+        self.last_index_cache = self.indices.last().copied();
+        Some(self.data.drain(l..))
+    }
+
+    fn pop_vec(&mut self) -> Option<Vec<T>> {
+        let l = self.indices.pop()?;
+        self.last_index_cache = self.indices.last().copied();
+        Some(self.data.split_off(l))
+    }
+}
+
+impl<T> Index<usize> for VecVec<T> {
+    type Output = [T];
+    fn index(&self, index: usize) -> &Self::Output {
+        assert!(index < self.len());
+        let lo = self.indices[index];
+        let hi = *self.indices.get(index + 1).unwrap_or(&self.data.len());
+        &self.data.index(lo..hi)
+    }
+}
+
+impl<T> Default for VecVec<T> {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -545,8 +622,8 @@ struct Matrix<'p, 'tcx> {
     selected_rows: Vec<usize>,
     /// Stores the history of operations done on this matrix, so that we can undo them in-place.
     history: Vec<UndoKind>,
-    last_col_history: Vec<Vec<MatrixEntry<'p, 'tcx>>>,
-    selected_rows_history: Vec<Vec<usize>>,
+    last_col_history: VecVec<MatrixEntry<'p, 'tcx>>,
+    selected_rows_history: VecVec<usize>,
 }
 
 impl<'p, 'tcx> Matrix<'p, 'tcx> {
@@ -647,16 +724,18 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
     }
 
     fn save_last_col(&mut self) {
-        self.last_col_history.push(self.columns.pop().unwrap());
+        self.last_col_history.push_vec(self.columns.pop().unwrap());
     }
     fn restore_last_col(&mut self) {
-        self.columns.push(self.last_col_history.pop().unwrap());
+        self.columns.push(self.last_col_history.pop_vec().unwrap());
     }
     fn save_selected_rows(&mut self) {
-        self.selected_rows_history.push(self.selected_rows.clone());
+        self.selected_rows_history.push_slice(&self.selected_rows);
     }
     fn restore_selected_rows(&mut self) {
-        self.selected_rows = self.selected_rows_history.pop().unwrap();
+        self.selected_rows.clear();
+        self.selected_rows.extend_from_slice(self.selected_rows_history.last().unwrap());
+        self.selected_rows_history.pop_iter();
     }
 
     /// Keep the rows that match the predicate.
