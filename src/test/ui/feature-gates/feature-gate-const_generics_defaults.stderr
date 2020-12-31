@@ -1,0 +1,18 @@
+error: default values for const generic parameters are unstable
+  --> $DIR/feature-gate-const_generics_defaults.rs:1:27
+   |
+LL | struct A<const N: usize = 3>;
+   |                           ^
+   |
+   = help: add `#![feature(const_generics_defaults)]` to the crate attributes to enable
+
+error: default values for const generic parameters are unstable
+  --> $DIR/feature-gate-const_generics_defaults.rs:4:22
+   |
+LL | fn foo<const N: u8 = 6>() {}
+   |                      ^
+   |
+   = help: add `#![feature(const_generics_defaults)]` to the crate attributes to enable
+
+error: aborting due to 2 previous errors
+
