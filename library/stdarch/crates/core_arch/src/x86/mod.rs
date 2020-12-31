@@ -675,27 +675,19 @@ pub use self::avx512cd::*;
 mod avx512ifma;
 pub use self::avx512ifma::*;
 
-#[cfg(not(bootstrap))]
 mod avx512bitalg;
-#[cfg(not(bootstrap))]
 pub use self::avx512bitalg::*;
 
-#[cfg(not(bootstrap))]
 mod avx512gfni;
-#[cfg(not(bootstrap))]
 pub use self::avx512gfni::*;
 
 mod avx512vpopcntdq;
 pub use self::avx512vpopcntdq::*;
 
-#[cfg(not(bootstrap))]
 mod avx512vaes;
-#[cfg(not(bootstrap))]
 pub use self::avx512vaes::*;
 
-#[cfg(not(bootstrap))]
 mod avx512vpclmulqdq;
-#[cfg(not(bootstrap))]
 pub use self::avx512vpclmulqdq::*;
 
 mod bt;
