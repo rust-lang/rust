@@ -1,7 +1,7 @@
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, LangItem};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::{lint::in_external_macro, ty::TyS};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
@@ -39,7 +39,7 @@ declare_lint_pass!(RedundantSlicing => [REDUNDANT_SLICING]);
 
 impl LateLintPass<'_> for RedundantSlicing {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if in_external_macro(cx.sess, expr.span) {
+        if in_external_macro(cx.sess(), expr.span) {
             return;
         }
 
