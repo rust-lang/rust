@@ -352,15 +352,8 @@ impl<'a> Parser<'a> {
             // they are dealt with later in resolve.
             self.parse_pat_ident(BindingMode::ByValue(Mutability::Not))?
         } else if self.is_start_of_pat_with_path() {
-            // Parse pattern starting with a path
-            let (qself, path) = if self.eat_lt() {
-                // Parse a qualified path
-                let (qself, path) = self.parse_qpath(PathStyle::Expr)?;
-                (Some(qself), path)
-            } else {
-                // Parse an unqualified path
-                (None, self.parse_path(PathStyle::Expr)?)
-            };
+            // Parse pattern starting with a path.
+            let (qself, path) = self.parse_pat_path()?;
             let span = lo.to(self.prev_token.span);
 
             if qself.is_none() && self.check(&token::Not) {
@@ -752,19 +745,23 @@ impl<'a> Parser<'a> {
             })
     }
 
+    fn parse_pat_path(&mut self) -> PResult<'a, (Option<QSelf>, Path)> {
+        Ok(if self.eat_lt() {
+            // Parse a qualified path.
+            let (qself, path) = self.parse_qpath(PathStyle::Expr)?;
+            (Some(qself), path)
+        } else {
+            // Parse an unqualified path.
+            (None, self.parse_path(PathStyle::Expr)?)
+        })
+    }
+
     fn parse_pat_range_end(&mut self) -> PResult<'a, P<Expr>> {
         if self.check_inline_const(0) {
             self.parse_const_block(self.token.span)
         } else if self.check_path() {
             let lo = self.token.span;
-            let (qself, path) = if self.eat_lt() {
-                // Parse a qualified path
-                let (qself, path) = self.parse_qpath(PathStyle::Expr)?;
-                (Some(qself), path)
-            } else {
-                // Parse an unqualified path
-                (None, self.parse_path(PathStyle::Expr)?)
-            };
+            let (qself, path) = self.parse_pat_path()?;
             let hi = self.prev_token.span;
             Ok(self.mk_expr(lo.to(hi), ExprKind::Path(qself, path), AttrVec::new()))
         } else {
