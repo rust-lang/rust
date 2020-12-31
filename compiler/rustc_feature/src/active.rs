@@ -650,6 +650,7 @@ pub const INCOMPLETE_FEATURES: &[Symbol] = &[
     sym::repr128,
     sym::unsized_locals,
     sym::capture_disjoint_fields,
+    sym::const_generics_defaults,
 ];
 
 /// Some features are not allowed to be used together at the same time, if
