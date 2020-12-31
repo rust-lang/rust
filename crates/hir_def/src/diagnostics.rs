@@ -133,6 +133,10 @@ impl Diagnostic for InactiveCode {
 // This diagnostic is shown when a procedural macro can not be found. This usually means that
 // procedural macro support is simply disabled (and hence is only a weak hint instead of an error),
 // but can also indicate project setup problems.
+//
+// If you are seeing a lot of "proc macro not expanded" warnings, you can add this option to the
+// `rust-analyzer.diagnostics.disabled` list to prevent them from showing. Alternatively you can
+// enable support for procedural macros (see `rust-analyzer.procMacro.enable`).
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct UnresolvedProcMacro {
     pub file: HirFileId,
