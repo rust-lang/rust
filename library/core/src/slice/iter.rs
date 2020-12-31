@@ -1,3 +1,4 @@
+// ignore-tidy-filelength
 //! Definitions of a bunch of iterators for `[T]`.
 
 #[macro_use] // import iterator! and forward_iterator!
@@ -2965,5 +2966,178 @@ unsafe impl<'a, T> TrustedRandomAccess for Iter<'a, T> {
 unsafe impl<'a, T> TrustedRandomAccess for IterMut<'a, T> {
     fn may_have_side_effect() -> bool {
         false
+    }
+}
+
+/// An iterator over slice in (non-overlapping) chunks separated by a predicate.
+///
+/// This struct is created by the [`group_by`] method on [slices].
+///
+/// [`group_by`]: ../../std/primitive.slice.html#method.group_by
+/// [slices]: ../../std/primitive.slice.html
+#[unstable(feature = "slice_group_by", issue = "80552")]
+pub struct GroupBy<'a, T: 'a, P> {
+    slice: &'a [T],
+    predicate: P,
+}
+
+#[unstable(feature = "slice_group_by", issue = "80552")]
+impl<'a, T: 'a, P> GroupBy<'a, T, P> {
+    pub(super) fn new(slice: &'a [T], predicate: P) -> Self {
+        GroupBy { slice, predicate }
+    }
+}
+
+#[unstable(feature = "slice_group_by", issue = "80552")]
+impl<'a, T: 'a, P> Iterator for GroupBy<'a, T, P>
+where
+    P: FnMut(&T, &T) -> bool,
+{
+    type Item = &'a [T];
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.slice.is_empty() {
+            None
+        } else {
+            let mut len = 1;
+            let mut iter = self.slice.windows(2);
+            while let Some([l, r]) = iter.next() {
+                if (self.predicate)(l, r) { len += 1 } else { break }
+            }
+            let (head, tail) = self.slice.split_at(len);
+            self.slice = tail;
+            Some(head)
+        }
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        if self.slice.is_empty() { (0, Some(0)) } else { (1, Some(self.slice.len())) }
+    }
+
+    #[inline]
+    fn last(mut self) -> Option<Self::Item> {
+        self.next_back()
+    }
+}
+
+#[unstable(feature = "slice_group_by", issue = "80552")]
+impl<'a, T: 'a, P> DoubleEndedIterator for GroupBy<'a, T, P>
+where
+    P: FnMut(&T, &T) -> bool,
+{
+    #[inline]
+    fn next_back(&mut self) -> Option<Self::Item> {
+        if self.slice.is_empty() {
+            None
+        } else {
+            let mut len = 1;
+            let mut iter = self.slice.windows(2);
+            while let Some([l, r]) = iter.next_back() {
+                if (self.predicate)(l, r) { len += 1 } else { break }
+            }
+            let (head, tail) = self.slice.split_at(self.slice.len() - len);
+            self.slice = head;
+            Some(tail)
+        }
+    }
+}
+
+#[unstable(feature = "slice_group_by", issue = "80552")]
+impl<'a, T: 'a, P> FusedIterator for GroupBy<'a, T, P> where P: FnMut(&T, &T) -> bool {}
+
+#[unstable(feature = "slice_group_by", issue = "80552")]
+impl<'a, T: 'a + fmt::Debug, P> fmt::Debug for GroupBy<'a, T, P> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("GroupBy").field("slice", &self.slice).finish()
+    }
+}
+
+/// An iterator over slice in (non-overlapping) mutable chunks separated
+/// by a predicate.
+///
+/// This struct is created by the [`group_by_mut`] method on [slices].
+///
+/// [`group_by_mut`]: ../../std/primitive.slice.html#method.group_by_mut
+/// [slices]: ../../std/primitive.slice.html
+#[unstable(feature = "slice_group_by", issue = "80552")]
+pub struct GroupByMut<'a, T: 'a, P> {
+    slice: &'a mut [T],
+    predicate: P,
+}
+
+#[unstable(feature = "slice_group_by", issue = "80552")]
+impl<'a, T: 'a, P> GroupByMut<'a, T, P> {
+    pub(super) fn new(slice: &'a mut [T], predicate: P) -> Self {
+        GroupByMut { slice, predicate }
+    }
+}
+
+#[unstable(feature = "slice_group_by", issue = "80552")]
+impl<'a, T: 'a, P> Iterator for GroupByMut<'a, T, P>
+where
+    P: FnMut(&T, &T) -> bool,
+{
+    type Item = &'a mut [T];
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.slice.is_empty() {
+            None
+        } else {
+            let mut len = 1;
+            let mut iter = self.slice.windows(2);
+            while let Some([l, r]) = iter.next() {
+                if (self.predicate)(l, r) { len += 1 } else { break }
+            }
+            let slice = mem::take(&mut self.slice);
+            let (head, tail) = slice.split_at_mut(len);
+            self.slice = tail;
+            Some(head)
+        }
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        if self.slice.is_empty() { (0, Some(0)) } else { (1, Some(self.slice.len())) }
+    }
+
+    #[inline]
+    fn last(mut self) -> Option<Self::Item> {
+        self.next_back()
+    }
+}
+
+#[unstable(feature = "slice_group_by", issue = "80552")]
+impl<'a, T: 'a, P> DoubleEndedIterator for GroupByMut<'a, T, P>
+where
+    P: FnMut(&T, &T) -> bool,
+{
+    #[inline]
+    fn next_back(&mut self) -> Option<Self::Item> {
+        if self.slice.is_empty() {
+            None
+        } else {
+            let mut len = 1;
+            let mut iter = self.slice.windows(2);
+            while let Some([l, r]) = iter.next_back() {
+                if (self.predicate)(l, r) { len += 1 } else { break }
+            }
+            let slice = mem::take(&mut self.slice);
+            let (head, tail) = slice.split_at_mut(slice.len() - len);
+            self.slice = head;
+            Some(tail)
+        }
+    }
+}
+
+#[unstable(feature = "slice_group_by", issue = "80552")]
+impl<'a, T: 'a, P> FusedIterator for GroupByMut<'a, T, P> where P: FnMut(&T, &T) -> bool {}
+
+#[unstable(feature = "slice_group_by", issue = "80552")]
+impl<'a, T: 'a + fmt::Debug, P> fmt::Debug for GroupByMut<'a, T, P> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("GroupByMut").field("slice", &self.slice).finish()
     }
 }

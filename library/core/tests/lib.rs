@@ -72,6 +72,7 @@
 #![feature(nonzero_leading_trailing_zeros)]
 #![feature(const_option)]
 #![feature(integer_atomics)]
+#![feature(slice_group_by)]
 #![deny(unsafe_op_in_unsafe_fn)]
 
 extern crate test;

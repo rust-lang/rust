@@ -139,6 +139,7 @@
 #![feature(try_trait)]
 #![feature(type_alias_impl_trait)]
 #![feature(associated_type_bounds)]
+#![feature(slice_group_by)]
 // Allow testing this library
 
 #[cfg(test)]

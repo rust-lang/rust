@@ -57,6 +57,9 @@ pub use iter::{ArrayChunks, ArrayChunksMut};
 #[unstable(feature = "array_windows", issue = "75027")]
 pub use iter::ArrayWindows;
 
+#[unstable(feature = "slice_group_by", issue = "80552")]
+pub use iter::{GroupBy, GroupByMut};
+
 #[unstable(feature = "split_inclusive", issue = "72360")]
 pub use iter::{SplitInclusive, SplitInclusiveMut};
 
@@ -1206,6 +1209,96 @@ impl<T> [T] {
     pub fn rchunks_exact_mut(&mut self, chunk_size: usize) -> RChunksExactMut<'_, T> {
         assert!(chunk_size != 0);
         RChunksExactMut::new(self, chunk_size)
+    }
+
+    /// Returns an iterator over the slice producing non-overlapping runs
+    /// of elements using the predicate to separate them.
+    ///
+    /// The predicate is called on two elements following themselves,
+    /// it means the predicate is called on `slice[0]` and `slice[1]`
+    /// then on `slice[1]` and `slice[2]` and so on.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_group_by)]
+    ///
+    /// let slice = &[1, 1, 1, 3, 3, 2, 2, 2];
+    ///
+    /// let mut iter = slice.group_by(|a, b| a == b);
+    ///
+    /// assert_eq!(iter.next(), Some(&[1, 1, 1][..]));
+    /// assert_eq!(iter.next(), Some(&[3, 3][..]));
+    /// assert_eq!(iter.next(), Some(&[2, 2, 2][..]));
+    /// assert_eq!(iter.next(), None);
+    /// ```
+    ///
+    /// This method can be used to extract the sorted subslices:
+    ///
+    /// ```
+    /// #![feature(slice_group_by)]
+    ///
+    /// let slice = &[1, 1, 2, 3, 2, 3, 2, 3, 4];
+    ///
+    /// let mut iter = slice.group_by(|a, b| a <= b);
+    ///
+    /// assert_eq!(iter.next(), Some(&[1, 1, 2, 3][..]));
+    /// assert_eq!(iter.next(), Some(&[2, 3][..]));
+    /// assert_eq!(iter.next(), Some(&[2, 3, 4][..]));
+    /// assert_eq!(iter.next(), None);
+    /// ```
+    #[unstable(feature = "slice_group_by", issue = "80552")]
+    #[inline]
+    pub fn group_by<F>(&self, pred: F) -> GroupBy<'_, T, F>
+    where
+        F: FnMut(&T, &T) -> bool,
+    {
+        GroupBy::new(self, pred)
+    }
+
+    /// Returns an iterator over the slice producing non-overlapping mutable
+    /// runs of elements using the predicate to separate them.
+    ///
+    /// The predicate is called on two elements following themselves,
+    /// it means the predicate is called on `slice[0]` and `slice[1]`
+    /// then on `slice[1]` and `slice[2]` and so on.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_group_by)]
+    ///
+    /// let slice = &mut [1, 1, 1, 3, 3, 2, 2, 2];
+    ///
+    /// let mut iter = slice.group_by_mut(|a, b| a == b);
+    ///
+    /// assert_eq!(iter.next(), Some(&mut [1, 1, 1][..]));
+    /// assert_eq!(iter.next(), Some(&mut [3, 3][..]));
+    /// assert_eq!(iter.next(), Some(&mut [2, 2, 2][..]));
+    /// assert_eq!(iter.next(), None);
+    /// ```
+    ///
+    /// This method can be used to extract the sorted subslices:
+    ///
+    /// ```
+    /// #![feature(slice_group_by)]
+    ///
+    /// let slice = &mut [1, 1, 2, 3, 2, 3, 2, 3, 4];
+    ///
+    /// let mut iter = slice.group_by_mut(|a, b| a <= b);
+    ///
+    /// assert_eq!(iter.next(), Some(&mut [1, 1, 2, 3][..]));
+    /// assert_eq!(iter.next(), Some(&mut [2, 3][..]));
+    /// assert_eq!(iter.next(), Some(&mut [2, 3, 4][..]));
+    /// assert_eq!(iter.next(), None);
+    /// ```
+    #[unstable(feature = "slice_group_by", issue = "80552")]
+    #[inline]
+    pub fn group_by_mut<F>(&mut self, pred: F) -> GroupByMut<'_, T, F>
+    where
+        F: FnMut(&T, &T) -> bool,
+    {
+        GroupByMut::new(self, pred)
     }
 
     /// Divides one slice into two at an index.
