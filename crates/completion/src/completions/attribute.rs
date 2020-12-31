@@ -234,7 +234,7 @@ fn parse_comma_sep_input(derive_input: ast::TokenTree) -> Result<FxHashSet<Strin
                         current_derive = String::new();
                     }
                 } else {
-                    current_derive.push_str(token.to_string().trim());
+                    current_derive.push_str(token.text().trim());
                 }
             }
 
