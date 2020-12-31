@@ -110,7 +110,6 @@ TypeTree getConstantAnalysis(Constant *Val, const FnTypeInfo &nfti,
   // the subtypes
   if (auto CA = dyn_cast<ConstantAggregate>(Val)) {
     TypeTree Result;
-    int Off = 0;
     for (unsigned i = 0, size = CA->getNumOperands(); i < size; ++i) {
       assert(nfti.Function);
       auto Op = CA->getOperand(i);
@@ -120,6 +119,26 @@ TypeTree getConstantAnalysis(Constant *Val, const FnTypeInfo &nfti,
                Op->getType()) +
            7) /
           8;
+
+      Value *vec[2] = {
+          ConstantInt::get(Type::getInt64Ty(Val->getContext()), 0),
+          ConstantInt::get(Type::getInt32Ty(Val->getContext()), i),
+      };
+      auto g2 = GetElementPtrInst::Create(
+          nullptr, UndefValue::get(PointerType::getUnqual(Val->getType())),
+          vec);
+#if LLVM_VERSION_MAJOR > 6
+      APInt ai(DL.getIndexSizeInBits(g2->getPointerAddressSpace()), 0);
+#else
+      APInt ai(DL.getPointerSize(g2->getPointerAddressSpace()) * 8, 0);
+#endif
+      g2->accumulateConstantOffset(DL, ai);
+      // Using destructor rather than eraseFromParent
+      //   as g2 has no parent
+      delete g2;
+
+      int Off = (int)ai.getLimitedValue();
+
       Result |= getConstantAnalysis(Op, nfti, TA)
                     .ShiftIndices(DL, /*init offset*/ 0, /*maxSize*/ ObjSize,
                                   /*addOffset*/ Off);
@@ -132,7 +151,7 @@ TypeTree getConstantAnalysis(Constant *Val, const FnTypeInfo &nfti,
   // the subtypes
   if (auto CD = dyn_cast<ConstantDataSequential>(Val)) {
     TypeTree Result;
-    int Off = 0;
+
     for (unsigned i = 0, size = CD->getNumElements(); i < size; ++i) {
       assert(nfti.Function);
       auto Op = CD->getElementAsConstant(i);
@@ -142,10 +161,29 @@ TypeTree getConstantAnalysis(Constant *Val, const FnTypeInfo &nfti,
                Op->getType()) +
            7) /
           8;
+
+      Value *vec[2] = {
+          ConstantInt::get(Type::getInt64Ty(Val->getContext()), 0),
+          ConstantInt::get(Type::getInt32Ty(Val->getContext()), i),
+      };
+      auto g2 = GetElementPtrInst::Create(
+          nullptr, UndefValue::get(PointerType::getUnqual(Val->getType())),
+          vec);
+#if LLVM_VERSION_MAJOR > 6
+      APInt ai(DL.getIndexSizeInBits(g2->getPointerAddressSpace()), 0);
+#else
+      APInt ai(DL.getPointerSize(g2->getPointerAddressSpace()) * 8, 0);
+#endif
+      g2->accumulateConstantOffset(DL, ai);
+      // Using destructor rather than eraseFromParent
+      //   as g2 has no parent
+      delete g2;
+
+      int Off = (int)ai.getLimitedValue();
+
       Result |= getConstantAnalysis(Op, nfti, TA)
                     .ShiftIndices(DL, /*init offset*/ 0, /*maxSize*/ ObjSize,
                                   /*addOffset*/ Off);
-      Off += size;
     }
     return Result;
   }

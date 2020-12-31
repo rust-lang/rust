@@ -1828,18 +1828,22 @@ void createInvertedTerminator(TypeResults &TR, DiffeGradientUtils *gutils,
       auto PNtype = TR.intType(size, orig, /*necessary*/ false);
 
       // TODO remove explicit type check and only use PNtype
-      if (PNtype == BaseType::Pointer || orig->getType()->isPointerTy())
+      if (PNtype == BaseType::Anything || PNtype == BaseType::Pointer ||
+          orig->getType()->isPointerTy())
         continue;
 
       auto prediff = gutils->diffe(orig, Builder);
       gutils->setDiffe(orig, Constant::getNullValue(orig->getType()), Builder);
 
       Type *PNfloatType = PNtype.isFloat();
-      if (!PNfloatType)
+      if (!PNfloatType) {
+        llvm::errs() << *gutils->oldFunc->getParent() << "\n";
+        llvm::errs() << *gutils->oldFunc << "\n";
         llvm::errs() << " for orig " << *orig << " saw "
                      << TR.intType(size, orig, /*necessary*/ false).str()
                      << " - "
                      << "\n";
+      }
       assert(PNfloatType);
       TR.intType(size, orig, /*necessary*/ true);
 

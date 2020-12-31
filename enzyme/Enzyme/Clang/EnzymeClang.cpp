@@ -34,6 +34,8 @@ using namespace llvm;
 // This function is of type PassManagerBuilder::ExtensionFn
 static void loadPass(const PassManagerBuilder &Builder,
                      legacy::PassManagerBase &PM) {
+  PM.add(createGVNPass());
+  PM.add(createSROAPass());
   PM.add(createEnzymePass(/*PostOpt*/ true));
   PM.add(createGVNPass());
   PM.add(createSROAPass());
@@ -46,3 +48,5 @@ static RegisterStandardPasses
     clangtoolLoader_Ox(PassManagerBuilder::EP_VectorizerStart, loadPass);
 static RegisterStandardPasses
     clangtoolLoader_O0(PassManagerBuilder::EP_EnabledOnOptLevel0, loadPass);
+static RegisterStandardPasses
+    clangtoolLoader_LTO(PassManagerBuilder::EP_FullLinkTimeOptimizationEarly, loadPass);

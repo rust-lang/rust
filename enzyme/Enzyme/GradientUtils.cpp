@@ -1149,8 +1149,6 @@ Value *GradientUtils::invertPointerM(Value *oval, IRBuilder<> &BuilderM) {
     // NOTE, this is legal and the correct resolution, however, our activity
     // analysis honeypot no longer exists
     return lookupM(getNewFromOriginal(oval), BuilderM);
-    llvm::errs() << *oldFunc << "\n";
-    llvm::errs() << *oval << "\n";
   }
   assert(!isConstantValue(oval));
 
@@ -1180,6 +1178,7 @@ Value *GradientUtils::invertPointerM(Value *oval, IRBuilder<> &BuilderM) {
         //#endif
       }
 
+      llvm::errs() << *oldFunc->getParent() << "\n";
       llvm::errs() << *oldFunc << "\n";
       llvm::errs() << *newFunc << "\n";
       llvm::errs() << *arg << "\n";
@@ -1531,7 +1530,8 @@ end:;
 
   llvm::errs() << *BuilderM.GetInsertBlock()->getParent()->getParent() << "\n";
   llvm::errs() << "fn:" << *BuilderM.GetInsertBlock()->getParent()
-               << "\noval=" << *oval << "\n";
+               << "\noval=" << *oval << " icv=" << isConstantValue(oval)
+               << "\n";
   for (auto z : invertedPointers) {
     llvm::errs() << "available inversion for " << *z.first << " of "
                  << *z.second << "\n";

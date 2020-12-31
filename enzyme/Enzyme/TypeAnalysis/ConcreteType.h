@@ -124,14 +124,14 @@ public:
   /// Whether this ConcreteType could be a pointer (SubTypeEnum is unknown or a
   /// pointer)
   bool isPossiblePointer() const {
-    return !isKnown() || SubTypeEnum == BaseType::Pointer;
+    return SubTypeEnum == BaseType::Pointer ||
+           SubTypeEnum == BaseType::Anything;
   }
 
   /// Whether this ConcreteType could be a float (SubTypeEnum is unknown or a
   /// float)
   bool isPossibleFloat() const {
-    return !isKnown() || SubTypeEnum == BaseType::Float ||
-           SubTypeEnum == BaseType::Anything;
+    return SubTypeEnum == BaseType::Float || SubTypeEnum == BaseType::Anything;
   }
 
   /// Return the floating point type, if this is a float
