@@ -4,7 +4,7 @@
 
 use std::cell::{Cell, RefCell};
 use std::rc::{Rc, Weak};
-use std::sync::Arc;
+use std::sync::{Arc, Weak as ArcWeak};
 use std::fmt::Debug;
 
 fn rc_refcell() {
@@ -48,6 +48,9 @@ fn arc() {
         a
     }
     assert_eq!(*test(), 42);
+
+    let raw = ArcWeak::into_raw(ArcWeak::<usize>::new());
+    drop(unsafe { ArcWeak::from_raw(raw) });
 }
 
 // Make sure this Rc doesn't fall apart when touched
@@ -84,6 +87,9 @@ fn weak_into_raw() {
 
     drop(unsafe { Weak::from_raw(raw) });
     assert_eq!(0, Rc::weak_count(&strong));
+
+    let raw = Weak::into_raw(Weak::<usize>::new());
+    drop(unsafe { Weak::from_raw(raw) });
 }
 
 /// Taken from the `Weak::from_raw` doctest.

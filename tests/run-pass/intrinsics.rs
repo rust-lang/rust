@@ -1,7 +1,8 @@
 #![feature(core_intrinsics, const_raw_ptr_comparison)]
+#![feature(layout_for_ptr)]
 
 use std::intrinsics;
-use std::mem::{size_of, size_of_val};
+use std::mem::{size_of, size_of_val, size_of_val_raw};
 
 struct Bomb;
 
@@ -18,6 +19,9 @@ fn main() {
     assert_eq!(size_of_val(&[] as &[i32]), 0);
     assert_eq!(size_of_val(&[1, 2, 3] as &[i32]), 12);
     assert_eq!(size_of_val("foobar"), 6);
+
+    unsafe { assert_eq!(size_of_val_raw(&[1] as &[i32] as *const [i32]), 4); }
+    unsafe { assert_eq!(size_of_val_raw(0x100 as *const i32), 4); }
 
     assert_eq!(intrinsics::type_name::<Option<i32>>(), "core::option::Option<i32>");
 
