@@ -110,7 +110,7 @@ pub use core::slice::{Chunks, Windows};
 pub use core::slice::{ChunksExact, ChunksExactMut};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::slice::{ChunksMut, Split, SplitMut};
-#[unstable(feature = "slice_group_by", issue = "none")]
+#[unstable(feature = "slice_group_by", issue = "80552")]
 pub use core::slice::{GroupBy, GroupByMut};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::slice::{Iter, IterMut};

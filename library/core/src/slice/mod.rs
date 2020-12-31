@@ -57,7 +57,7 @@ pub use iter::{ArrayChunks, ArrayChunksMut};
 #[unstable(feature = "array_windows", issue = "75027")]
 pub use iter::ArrayWindows;
 
-#[unstable(feature = "slice_group_by", issue = "none")]
+#[unstable(feature = "slice_group_by", issue = "80552")]
 pub use iter::{GroupBy, GroupByMut};
 
 #[unstable(feature = "split_inclusive", issue = "72360")]
@@ -1246,7 +1246,7 @@ impl<T> [T] {
     /// assert_eq!(iter.next(), Some(&[2, 3, 4][..]));
     /// assert_eq!(iter.next(), None);
     /// ```
-    #[unstable(feature = "slice_group_by", issue = "none")]
+    #[unstable(feature = "slice_group_by", issue = "80552")]
     #[inline]
     pub fn group_by<F>(&self, pred: F) -> GroupBy<'_, T, F>
     where
@@ -1291,7 +1291,7 @@ impl<T> [T] {
     /// assert_eq!(iter.next(), Some(&mut [2, 3, 4][..]));
     /// assert_eq!(iter.next(), None);
     /// ```
-    #[unstable(feature = "slice_group_by", issue = "none")]
+    #[unstable(feature = "slice_group_by", issue = "80552")]
     #[inline]
     pub fn group_by_mut<F>(&mut self, pred: F) -> GroupByMut<'_, T, F>
     where
