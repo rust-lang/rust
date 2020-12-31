@@ -15,7 +15,7 @@ use rustc_span::hygiene::ExpnKind;
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{kw, sym};
 use rustc_span::symbol::{Ident, Symbol};
-use rustc_span::{self, FileName, RealFileName, Span, DUMMY_SP};
+use rustc_span::{self, edition::Edition, FileName, RealFileName, Span, DUMMY_SP};
 use std::borrow::Cow;
 use std::{fmt, mem};
 
@@ -690,7 +690,16 @@ pub enum NonterminalKind {
     Item,
     Block,
     Stmt,
-    Pat,
+    Pat2018 {
+        /// Keep track of whether the user used `:pat2018` or `:pat` and we inferred it from the
+        /// edition of the span. This is used for diagnostics.
+        inferred: bool,
+    },
+    Pat2021 {
+        /// Keep track of whether the user used `:pat2018` or `:pat` and we inferred it from the
+        /// edition of the span. This is used for diagnostics.
+        inferred: bool,
+    },
     Expr,
     Ty,
     Ident,
@@ -703,12 +712,25 @@ pub enum NonterminalKind {
 }
 
 impl NonterminalKind {
-    pub fn from_symbol(symbol: Symbol) -> Option<NonterminalKind> {
+    /// The `edition` closure is used to get the edition for the given symbol. Doing
+    /// `span.edition()` is expensive, so we do it lazily.
+    pub fn from_symbol(
+        symbol: Symbol,
+        edition: impl FnOnce() -> Edition,
+    ) -> Option<NonterminalKind> {
         Some(match symbol {
             sym::item => NonterminalKind::Item,
             sym::block => NonterminalKind::Block,
             sym::stmt => NonterminalKind::Stmt,
-            sym::pat => NonterminalKind::Pat,
+            sym::pat => match edition() {
+                Edition::Edition2015 | Edition::Edition2018 => {
+                    NonterminalKind::Pat2018 { inferred: true }
+                }
+                // FIXME(mark-i-m): uncomment when 2021 machinery is available.
+                //Edition::Edition2021 => NonterminalKind::Pat2021{inferred:true},
+            },
+            sym::pat2018 => NonterminalKind::Pat2018 { inferred: false },
+            sym::pat2021 => NonterminalKind::Pat2021 { inferred: false },
             sym::expr => NonterminalKind::Expr,
             sym::ty => NonterminalKind::Ty,
             sym::ident => NonterminalKind::Ident,
@@ -726,7 +748,10 @@ impl NonterminalKind {
             NonterminalKind::Item => sym::item,
             NonterminalKind::Block => sym::block,
             NonterminalKind::Stmt => sym::stmt,
-            NonterminalKind::Pat => sym::pat,
+            NonterminalKind::Pat2018 { inferred: false } => sym::pat2018,
+            NonterminalKind::Pat2021 { inferred: false } => sym::pat2021,
+            NonterminalKind::Pat2018 { inferred: true }
+            | NonterminalKind::Pat2021 { inferred: true } => sym::pat,
             NonterminalKind::Expr => sym::expr,
             NonterminalKind::Ty => sym::ty,
             NonterminalKind::Ident => sym::ident,

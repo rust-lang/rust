@@ -77,9 +77,9 @@ use TokenTreeOrTokenTreeSlice::*;
 use crate::mbe::{self, TokenTree};
 
 use rustc_ast::token::{self, DocComment, Nonterminal, Token};
-use rustc_parse::parser::{OrPatNonterminalMode, Parser};
+use rustc_parse::parser::Parser;
 use rustc_session::parse::ParseSess;
-use rustc_span::{edition::Edition, symbol::MacroRulesNormalizedIdent};
+use rustc_span::symbol::MacroRulesNormalizedIdent;
 
 use smallvec::{smallvec, SmallVec};
 
@@ -419,18 +419,6 @@ fn token_name_eq(t1: &Token, t2: &Token) -> bool {
     }
 }
 
-/// In edition 2015/18, `:pat` can only match `pat<no_top_alt>` because otherwise, we have
-/// breakage. As of edition 2021, `:pat` matches `top_pat`.
-///
-/// See <https://github.com/rust-lang/rust/issues/54883> for more info.
-fn or_pat_mode(edition: Edition) -> OrPatNonterminalMode {
-    match edition {
-        Edition::Edition2015 | Edition::Edition2018 => OrPatNonterminalMode::NoTopAlt,
-        // FIXME(mark-i-m): uncomment this when edition 2021 machinery is added.
-        // Edition::Edition2021 =>  OrPatNonterminalMode::TopPat,
-    }
-}
-
 /// Process the matcher positions of `cur_items` until it is empty. In the process, this will
 /// produce more items in `next_items`, `eof_items`, and `bb_items`.
 ///
@@ -578,14 +566,13 @@ fn inner_parse_loop<'root, 'tt>(
 
                 // We need to match a metavar with a valid ident... call out to the black-box
                 // parser by adding an item to `bb_items`.
-                TokenTree::MetaVarDecl(span, _, Some(kind)) => {
+                TokenTree::MetaVarDecl(_, _, Some(kind)) => {
                     // Built-in nonterminals never start with these tokens, so we can eliminate
                     // them from consideration.
                     //
                     // We use the span of the metavariable declaration to determine any
                     // edition-specific matching behavior for non-terminals.
-                    if Parser::nonterminal_may_begin_with(kind, token, or_pat_mode(span.edition()))
-                    {
+                    if Parser::nonterminal_may_begin_with(kind, token) {
                         bb_items.push(item);
                     }
                 }
@@ -749,8 +736,7 @@ pub(super) fn parse_tt(parser: &mut Cow<'_, Parser<'_>>, ms: &[TokenTree]) -> Na
                 let match_cur = item.match_cur;
                 // We use the span of the metavariable declaration to determine any
                 // edition-specific matching behavior for non-terminals.
-                let nt = match parser.to_mut().parse_nonterminal(kind, or_pat_mode(span.edition()))
-                {
+                let nt = match parser.to_mut().parse_nonterminal(kind) {
                     Err(mut err) => {
                         err.span_label(
                             span,

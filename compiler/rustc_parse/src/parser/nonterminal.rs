@@ -4,7 +4,7 @@ use rustc_ast_pretty::pprust;
 use rustc_errors::PResult;
 use rustc_span::symbol::{kw, Ident};
 
-use crate::parser::pat::{GateOr, OrPatNonterminalMode, RecoverComma};
+use crate::parser::pat::{GateOr, RecoverComma};
 use crate::parser::{FollowedByType, Parser, PathStyle};
 
 impl<'a> Parser<'a> {
@@ -12,11 +12,7 @@ impl<'a> Parser<'a> {
     ///
     /// Returning `false` is a *stability guarantee* that such a matcher will *never* begin with that
     /// token. Be conservative (return true) if not sure.
-    pub fn nonterminal_may_begin_with(
-        kind: NonterminalKind,
-        token: &Token,
-        or_pat_mode: OrPatNonterminalMode,
-    ) -> bool {
+    pub fn nonterminal_may_begin_with(kind: NonterminalKind, token: &Token) -> bool {
         /// Checks whether the non-terminal may contain a single (non-keyword) identifier.
         fn may_be_ident(nt: &token::Nonterminal) -> bool {
             match *nt {
@@ -62,7 +58,7 @@ impl<'a> Parser<'a> {
                 },
                 _ => false,
             },
-            NonterminalKind::Pat => match token.kind {
+            NonterminalKind::Pat2018 { .. } | NonterminalKind::Pat2021 { .. } => match token.kind {
                 token::Ident(..) |                  // box, ref, mut, and other identifiers (can stricten)
                 token::OpenDelim(token::Paren) |    // tuple pattern
                 token::OpenDelim(token::Bracket) |  // slice pattern
@@ -76,7 +72,7 @@ impl<'a> Parser<'a> {
                 token::Lt |                         // path (UFCS constant)
                 token::BinOp(token::Shl) => true,   // path (double UFCS)
                 // leading vert `|` or-pattern
-                token::BinOp(token::Or) =>  matches!(or_pat_mode, OrPatNonterminalMode::TopPat),
+                token::BinOp(token::Or) =>  matches!(kind, NonterminalKind::Pat2021 {..}),
                 token::Interpolated(ref nt) => may_be_ident(nt),
                 _ => false,
             },
@@ -94,11 +90,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse a non-terminal (e.g. MBE `:pat` or `:ident`).
-    pub fn parse_nonterminal(
-        &mut self,
-        kind: NonterminalKind,
-        or_pat_mode: OrPatNonterminalMode,
-    ) -> PResult<'a, Nonterminal> {
+    pub fn parse_nonterminal(&mut self, kind: NonterminalKind) -> PResult<'a, Nonterminal> {
         // Any `Nonterminal` which stores its tokens (currently `NtItem` and `NtExpr`)
         // needs to have them force-captured here.
         // A `macro_rules!` invocation may pass a captured item/expr to a proc-macro,
@@ -141,12 +133,13 @@ impl<'a> Parser<'a> {
                     }
                 }
             }
-            NonterminalKind::Pat => {
-                let (mut pat, tokens) = self.collect_tokens(|this| match or_pat_mode {
-                    OrPatNonterminalMode::TopPat => {
+            NonterminalKind::Pat2018 { .. } | NonterminalKind::Pat2021 { .. } => {
+                let (mut pat, tokens) = self.collect_tokens(|this| match kind {
+                    NonterminalKind::Pat2018 { .. } => this.parse_pat(None),
+                    NonterminalKind::Pat2021 { .. } => {
                         this.parse_top_pat(GateOr::Yes, RecoverComma::No)
                     }
-                    OrPatNonterminalMode::NoTopAlt => this.parse_pat(None),
+                    _ => unreachable!(),
                 })?;
                 // We have have eaten an NtPat, which could already have tokens
                 if pat.tokens.is_none() {
