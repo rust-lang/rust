@@ -1372,12 +1372,9 @@ macro_rules! atomic_int {
 
         #[$stable_from]
         impl From<$int_type> for $atomic_type {
-            doc_comment! {
-                concat!(
-"Converts an `", stringify!($int_type), "` into an `", stringify!($atomic_type), "`."),
-                #[inline]
-                fn from(v: $int_type) -> Self { Self::new(v) }
-            }
+            #[doc = concat!("Converts an `", stringify!($int_type), "` into an `", stringify!($atomic_type), "`.")]
+            #[inline]
+            fn from(v: $int_type) -> Self { Self::new(v) }
         }
 
         #[$stable_debug]
@@ -1392,744 +1389,703 @@ macro_rules! atomic_int {
         unsafe impl Sync for $atomic_type {}
 
         impl $atomic_type {
-            doc_comment! {
-                concat!("Creates a new atomic integer.
+            /// Creates a new atomic integer.
+            ///
+            /// # Examples
+            ///
+            /// ```
+            #[doc = concat!($extra_feature, "use std::sync::atomic::", stringify!($atomic_type), ";")]
+            ///
+            #[doc = concat!("let atomic_forty_two = ", stringify!($atomic_type), "::new(42);")]
+            /// ```
+            #[inline]
+            #[$stable]
+            #[$const_stable]
+            pub const fn new(v: $int_type) -> Self {
+                Self {v: UnsafeCell::new(v)}
+            }
 
-# Examples
+            /// Returns a mutable reference to the underlying integer.
+            ///
+            /// This is safe because the mutable reference guarantees that no other threads are
+            /// concurrently accessing the atomic data.
+            ///
+            /// # Examples
+            ///
+            /// ```
+            #[doc = concat!($extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
+            ///
+            #[doc = concat!("let mut some_var = ", stringify!($atomic_type), "::new(10);")]
+            /// assert_eq!(*some_var.get_mut(), 10);
+            /// *some_var.get_mut() = 5;
+            /// assert_eq!(some_var.load(Ordering::SeqCst), 5);
+            /// ```
+            #[inline]
+            #[$stable_access]
+            pub fn get_mut(&mut self) -> &mut $int_type {
+                self.v.get_mut()
+            }
 
-```
-", $extra_feature, "use std::sync::atomic::", stringify!($atomic_type), ";
+            #[doc = concat!("Get atomic access to a `&mut ", stringify!($int_type), "`.")]
+            ///
+            #[doc = if_not_8_bit! {
+                $int_type,
+                concat!(
+                    "**Note:** This function is only available on targets where `",
+                    stringify!($int_type), "` has an alignment of ", $align, " bytes."
+                )
+            }]
+            ///
+            /// # Examples
+            ///
+            /// ```
+            /// #![feature(atomic_from_mut)]
+            #[doc = concat!($extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
+            ///
+            /// let mut some_int = 123;
+            #[doc = concat!("let a = ", stringify!($atomic_type), "::from_mut(&mut some_int);")]
+            /// a.store(100, Ordering::Relaxed);
+            /// assert_eq!(some_int, 100);
+            /// ```
+            ///
+            #[inline]
+            #[$cfg_align]
+            #[unstable(feature = "atomic_from_mut", issue = "76314")]
+            pub fn from_mut(v: &mut $int_type) -> &Self {
+                use crate::mem::align_of;
+                let [] = [(); align_of::<Self>() - align_of::<$int_type>()];
+                // SAFETY:
+                //  - the mutable reference guarantees unique ownership.
+                //  - the alignment of `$int_type` and `Self` is the
+                //    same, as promised by $cfg_align and verified above.
+                unsafe { &*(v as *mut $int_type as *mut Self) }
+            }
 
-let atomic_forty_two = ", stringify!($atomic_type), "::new(42);
-```"),
-                #[inline]
-                #[$stable]
-                #[$const_stable]
-                pub const fn new(v: $int_type) -> Self {
-                    Self {v: UnsafeCell::new(v)}
+            /// Consumes the atomic and returns the contained value.
+            ///
+            /// This is safe because passing `self` by value guarantees that no other threads are
+            /// concurrently accessing the atomic data.
+            ///
+            /// # Examples
+            ///
+            /// ```
+            #[doc = concat!($extra_feature, "use std::sync::atomic::", stringify!($atomic_type), ";")]
+            ///
+            #[doc = concat!("let some_var = ", stringify!($atomic_type), "::new(5);")]
+            /// assert_eq!(some_var.into_inner(), 5);
+            /// ```
+            #[inline]
+            #[$stable_access]
+            #[rustc_const_unstable(feature = "const_cell_into_inner", issue = "78729")]
+            pub const fn into_inner(self) -> $int_type {
+                self.v.into_inner()
+            }
+
+            /// Loads a value from the atomic integer.
+            ///
+            /// `load` takes an [`Ordering`] argument which describes the memory ordering of this operation.
+            /// Possible values are [`SeqCst`], [`Acquire`] and [`Relaxed`].
+            ///
+            /// # Panics
+            ///
+            /// Panics if `order` is [`Release`] or [`AcqRel`].
+            ///
+            /// # Examples
+            ///
+            /// ```
+            #[doc = concat!($extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
+            ///
+            #[doc = concat!("let some_var = ", stringify!($atomic_type), "::new(5);")]
+            ///
+            /// assert_eq!(some_var.load(Ordering::Relaxed), 5);
+            /// ```
+            #[inline]
+            #[$stable]
+            pub fn load(&self, order: Ordering) -> $int_type {
+                // SAFETY: data races are prevented by atomic intrinsics.
+                unsafe { atomic_load(self.v.get(), order) }
+            }
+
+            /// Stores a value into the atomic integer.
+            ///
+            /// `store` takes an [`Ordering`] argument which describes the memory ordering of this operation.
+            ///  Possible values are [`SeqCst`], [`Release`] and [`Relaxed`].
+            ///
+            /// # Panics
+            ///
+            /// Panics if `order` is [`Acquire`] or [`AcqRel`].
+            ///
+            /// # Examples
+            ///
+            /// ```
+            #[doc = concat!($extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
+            ///
+            #[doc = concat!("let some_var = ", stringify!($atomic_type), "::new(5);")]
+            ///
+            /// some_var.store(10, Ordering::Relaxed);
+            /// assert_eq!(some_var.load(Ordering::Relaxed), 10);
+            /// ```
+            #[inline]
+            #[$stable]
+            pub fn store(&self, val: $int_type, order: Ordering) {
+                // SAFETY: data races are prevented by atomic intrinsics.
+                unsafe { atomic_store(self.v.get(), val, order); }
+            }
+
+            /// Stores a value into the atomic integer, returning the previous value.
+            ///
+            /// `swap` takes an [`Ordering`] argument which describes the memory ordering
+            /// of this operation. All ordering modes are possible. Note that using
+            /// [`Acquire`] makes the store part of this operation [`Relaxed`], and
+            /// using [`Release`] makes the load part [`Relaxed`].
+            ///
+            /// **Note**: This method is only available on platforms that support atomic operations on
+            #[doc = concat!("[`", $s_int_type, "`](", $int_ref, ").")]
+            ///
+            /// # Examples
+            ///
+            /// ```
+            #[doc = concat!($extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
+            ///
+            #[doc = concat!("let some_var = ", stringify!($atomic_type), "::new(5);")]
+            ///
+            /// assert_eq!(some_var.swap(10, Ordering::Relaxed), 5);
+            /// ```
+            #[inline]
+            #[$stable]
+            #[$cfg_cas]
+            pub fn swap(&self, val: $int_type, order: Ordering) -> $int_type {
+                // SAFETY: data races are prevented by atomic intrinsics.
+                unsafe { atomic_swap(self.v.get(), val, order) }
+            }
+
+            /// Stores a value into the atomic integer if the current value is the same as
+            /// the `current` value.
+            ///
+            /// The return value is always the previous value. If it is equal to `current`, then the
+            /// value was updated.
+            ///
+            /// `compare_and_swap` also takes an [`Ordering`] argument which describes the memory
+            /// ordering of this operation. Notice that even when using [`AcqRel`], the operation
+            /// might fail and hence just perform an `Acquire` load, but not have `Release` semantics.
+            /// Using [`Acquire`] makes the store part of this operation [`Relaxed`] if it
+            /// happens, and using [`Release`] makes the load part [`Relaxed`].
+            ///
+            /// **Note**: This method is only available on platforms that support atomic operations on
+            #[doc = concat!("[`", $s_int_type, "`](", $int_ref, ").")]
+            ///
+            /// # Migrating to `compare_exchange` and `compare_exchange_weak`
+            ///
+            /// `compare_and_swap` is equivalent to `compare_exchange` with the following mapping for
+            /// memory orderings:
+            ///
+            /// Original | Success | Failure
+            /// -------- | ------- | -------
+            /// Relaxed  | Relaxed | Relaxed
+            /// Acquire  | Acquire | Acquire
+            /// Release  | Release | Relaxed
+            /// AcqRel   | AcqRel  | Acquire
+            /// SeqCst   | SeqCst  | SeqCst
+            ///
+            /// `compare_exchange_weak` is allowed to fail spuriously even when the comparison succeeds,
+            /// which allows the compiler to generate better assembly code when the compare and swap
+            /// is used in a loop.
+            ///
+            /// # Examples
+            ///
+            /// ```
+            #[doc = concat!($extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
+            ///
+            #[doc = concat!("let some_var = ", stringify!($atomic_type), "::new(5);")]
+            ///
+            /// assert_eq!(some_var.compare_and_swap(5, 10, Ordering::Relaxed), 5);
+            /// assert_eq!(some_var.load(Ordering::Relaxed), 10);
+            ///
+            /// assert_eq!(some_var.compare_and_swap(6, 12, Ordering::Relaxed), 10);
+            /// assert_eq!(some_var.load(Ordering::Relaxed), 10);
+            /// ```
+            #[inline]
+            #[$stable]
+            #[rustc_deprecated(
+                since = "1.50.0",
+                reason = "Use `compare_exchange` or `compare_exchange_weak` instead")
+            ]
+            #[$cfg_cas]
+            pub fn compare_and_swap(&self,
+                                    current: $int_type,
+                                    new: $int_type,
+                                    order: Ordering) -> $int_type {
+                match self.compare_exchange(current,
+                                            new,
+                                            order,
+                                            strongest_failure_ordering(order)) {
+                    Ok(x) => x,
+                    Err(x) => x,
                 }
             }
 
-            doc_comment! {
-                concat!("Returns a mutable reference to the underlying integer.
+            /// Stores a value into the atomic integer if the current value is the same as
+            /// the `current` value.
+            ///
+            /// The return value is a result indicating whether the new value was written and
+            /// containing the previous value. On success this value is guaranteed to be equal to
+            /// `current`.
+            ///
+            /// `compare_exchange` takes two [`Ordering`] arguments to describe the memory
+            /// ordering of this operation. `success` describes the required ordering for the
+            /// read-modify-write operation that takes place if the comparison with `current` succeeds.
+            /// `failure` describes the required ordering for the load operation that takes place when
+            /// the comparison fails. Using [`Acquire`] as success ordering makes the store part
+            /// of this operation [`Relaxed`], and using [`Release`] makes the successful load
+            /// [`Relaxed`]. The failure ordering can only be [`SeqCst`], [`Acquire`] or [`Relaxed`]
+            /// and must be equivalent to or weaker than the success ordering.
+            ///
+            /// **Note**: This method is only available on platforms that support atomic operations on
+            #[doc = concat!("[`", $s_int_type, "`](", $int_ref, ").")]
+            ///
+            /// # Examples
+            ///
+            /// ```
+            #[doc = concat!($extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
+            ///
+            #[doc = concat!("let some_var = ", stringify!($atomic_type), "::new(5);")]
+            ///
+            /// assert_eq!(some_var.compare_exchange(5, 10,
+            ///                                      Ordering::Acquire,
+            ///                                      Ordering::Relaxed),
+            ///            Ok(5));
+            /// assert_eq!(some_var.load(Ordering::Relaxed), 10);
+            ///
+            /// assert_eq!(some_var.compare_exchange(6, 12,
+            ///                                      Ordering::SeqCst,
+            ///                                      Ordering::Acquire),
+            ///            Err(10));
+            /// assert_eq!(some_var.load(Ordering::Relaxed), 10);
+            /// ```
+            #[inline]
+            #[$stable_cxchg]
+            #[$cfg_cas]
+            pub fn compare_exchange(&self,
+                                    current: $int_type,
+                                    new: $int_type,
+                                    success: Ordering,
+                                    failure: Ordering) -> Result<$int_type, $int_type> {
+                // SAFETY: data races are prevented by atomic intrinsics.
+                unsafe { atomic_compare_exchange(self.v.get(), current, new, success, failure) }
+            }
 
-This is safe because the mutable reference guarantees that no other threads are
-concurrently accessing the atomic data.
-
-# Examples
-
-```
-", $extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};
-
-let mut some_var = ", stringify!($atomic_type), "::new(10);
-assert_eq!(*some_var.get_mut(), 10);
-*some_var.get_mut() = 5;
-assert_eq!(some_var.load(Ordering::SeqCst), 5);
-```"),
-                #[inline]
-                #[$stable_access]
-                pub fn get_mut(&mut self) -> &mut $int_type {
-                    self.v.get_mut()
+            /// Stores a value into the atomic integer if the current value is the same as
+            /// the `current` value.
+            ///
+            #[doc = concat!("Unlike [`", stringify!($atomic_type), "::compare_exchange`],")]
+            /// this function is allowed to spuriously fail even
+            /// when the comparison succeeds, which can result in more efficient code on some
+            /// platforms. The return value is a result indicating whether the new value was
+            /// written and containing the previous value.
+            ///
+            /// `compare_exchange_weak` takes two [`Ordering`] arguments to describe the memory
+            /// ordering of this operation. `success` describes the required ordering for the
+            /// read-modify-write operation that takes place if the comparison with `current` succeeds.
+            /// `failure` describes the required ordering for the load operation that takes place when
+            /// the comparison fails. Using [`Acquire`] as success ordering makes the store part
+            /// of this operation [`Relaxed`], and using [`Release`] makes the successful load
+            /// [`Relaxed`]. The failure ordering can only be [`SeqCst`], [`Acquire`] or [`Relaxed`]
+            /// and must be equivalent to or weaker than the success ordering.
+            ///
+            /// **Note**: This method is only available on platforms that support atomic operations on
+            #[doc = concat!("[`", $s_int_type, "`](", $int_ref, ").")]
+            ///
+            /// # Examples
+            ///
+            /// ```
+            #[doc = concat!($extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
+            ///
+            #[doc = concat!("let val = ", stringify!($atomic_type), "::new(4);")]
+            ///
+            /// let mut old = val.load(Ordering::Relaxed);
+            /// loop {
+            ///     let new = old * 2;
+            ///     match val.compare_exchange_weak(old, new, Ordering::SeqCst, Ordering::Relaxed) {
+            ///         Ok(_) => break,
+            ///         Err(x) => old = x,
+            ///     }
+            /// }
+            /// ```
+            #[inline]
+            #[$stable_cxchg]
+            #[$cfg_cas]
+            pub fn compare_exchange_weak(&self,
+                                         current: $int_type,
+                                         new: $int_type,
+                                         success: Ordering,
+                                         failure: Ordering) -> Result<$int_type, $int_type> {
+                // SAFETY: data races are prevented by atomic intrinsics.
+                unsafe {
+                    atomic_compare_exchange_weak(self.v.get(), current, new, success, failure)
                 }
             }
 
-            doc_comment! {
-                concat!("Get atomic access to a `&mut ", stringify!($int_type), "`.
-
-",
-if_not_8_bit! {
-    $int_type,
-    concat!(
-        "**Note:** This function is only available on targets where `",
-        stringify!($int_type), "` has an alignment of ", $align, " bytes."
-    )
-},
-"
-
-# Examples
-
-```
-#![feature(atomic_from_mut)]
-", $extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};
-
-let mut some_int = 123;
-let a = ", stringify!($atomic_type), "::from_mut(&mut some_int);
-a.store(100, Ordering::Relaxed);
-assert_eq!(some_int, 100);
-```
-                "),
-                #[inline]
-                #[$cfg_align]
-                #[unstable(feature = "atomic_from_mut", issue = "76314")]
-                pub fn from_mut(v: &mut $int_type) -> &Self {
-                    use crate::mem::align_of;
-                    let [] = [(); align_of::<Self>() - align_of::<$int_type>()];
-                    // SAFETY:
-                    //  - the mutable reference guarantees unique ownership.
-                    //  - the alignment of `$int_type` and `Self` is the
-                    //    same, as promised by $cfg_align and verified above.
-                    unsafe { &*(v as *mut $int_type as *mut Self) }
-                }
+            /// Adds to the current value, returning the previous value.
+            ///
+            /// This operation wraps around on overflow.
+            ///
+            /// `fetch_add` takes an [`Ordering`] argument which describes the memory ordering
+            /// of this operation. All ordering modes are possible. Note that using
+            /// [`Acquire`] makes the store part of this operation [`Relaxed`], and
+            /// using [`Release`] makes the load part [`Relaxed`].
+            ///
+            /// **Note**: This method is only available on platforms that support atomic operations on
+            #[doc = concat!("[`", $s_int_type, "`](", $int_ref, ").")]
+            ///
+            /// # Examples
+            ///
+            /// ```
+            #[doc = concat!($extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
+            ///
+            #[doc = concat!("let foo = ", stringify!($atomic_type), "::new(0);")]
+            /// assert_eq!(foo.fetch_add(10, Ordering::SeqCst), 0);
+            /// assert_eq!(foo.load(Ordering::SeqCst), 10);
+            /// ```
+            #[inline]
+            #[$stable]
+            #[$cfg_cas]
+            pub fn fetch_add(&self, val: $int_type, order: Ordering) -> $int_type {
+                // SAFETY: data races are prevented by atomic intrinsics.
+                unsafe { atomic_add(self.v.get(), val, order) }
             }
 
-            doc_comment! {
-                concat!("Consumes the atomic and returns the contained value.
-
-This is safe because passing `self` by value guarantees that no other threads are
-concurrently accessing the atomic data.
-
-# Examples
-
-```
-", $extra_feature, "use std::sync::atomic::", stringify!($atomic_type), ";
-
-let some_var = ", stringify!($atomic_type), "::new(5);
-assert_eq!(some_var.into_inner(), 5);
-```"),
-                #[inline]
-                #[$stable_access]
-                #[rustc_const_unstable(feature = "const_cell_into_inner", issue = "78729")]
-                pub const fn into_inner(self) -> $int_type {
-                    self.v.into_inner()
-                }
+            /// Subtracts from the current value, returning the previous value.
+            ///
+            /// This operation wraps around on overflow.
+            ///
+            /// `fetch_sub` takes an [`Ordering`] argument which describes the memory ordering
+            /// of this operation. All ordering modes are possible. Note that using
+            /// [`Acquire`] makes the store part of this operation [`Relaxed`], and
+            /// using [`Release`] makes the load part [`Relaxed`].
+            ///
+            /// **Note**: This method is only available on platforms that support atomic operations on
+            #[doc = concat!("[`", $s_int_type, "`](", $int_ref, ").")]
+            ///
+            /// # Examples
+            ///
+            /// ```
+            #[doc = concat!($extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
+            ///
+            #[doc = concat!("let foo = ", stringify!($atomic_type), "::new(20);")]
+            /// assert_eq!(foo.fetch_sub(10, Ordering::SeqCst), 20);
+            /// assert_eq!(foo.load(Ordering::SeqCst), 10);
+            /// ```
+            #[inline]
+            #[$stable]
+            #[$cfg_cas]
+            pub fn fetch_sub(&self, val: $int_type, order: Ordering) -> $int_type {
+                // SAFETY: data races are prevented by atomic intrinsics.
+                unsafe { atomic_sub(self.v.get(), val, order) }
             }
 
-            doc_comment! {
-                concat!("Loads a value from the atomic integer.
-
-`load` takes an [`Ordering`] argument which describes the memory ordering of this operation.
-Possible values are [`SeqCst`], [`Acquire`] and [`Relaxed`].
-
-# Panics
-
-Panics if `order` is [`Release`] or [`AcqRel`].
-
-# Examples
-
-```
-", $extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};
-
-let some_var = ", stringify!($atomic_type), "::new(5);
-
-assert_eq!(some_var.load(Ordering::Relaxed), 5);
-```"),
-                #[inline]
-                #[$stable]
-                pub fn load(&self, order: Ordering) -> $int_type {
-                    // SAFETY: data races are prevented by atomic intrinsics.
-                    unsafe { atomic_load(self.v.get(), order) }
-                }
+            /// Bitwise "and" with the current value.
+            ///
+            /// Performs a bitwise "and" operation on the current value and the argument `val`, and
+            /// sets the new value to the result.
+            ///
+            /// Returns the previous value.
+            ///
+            /// `fetch_and` takes an [`Ordering`] argument which describes the memory ordering
+            /// of this operation. All ordering modes are possible. Note that using
+            /// [`Acquire`] makes the store part of this operation [`Relaxed`], and
+            /// using [`Release`] makes the load part [`Relaxed`].
+            ///
+            /// **Note**: This method is only available on platforms that support atomic operations on
+            #[doc = concat!("[`", $s_int_type, "`](", $int_ref, ").")]
+            ///
+            /// # Examples
+            ///
+            /// ```
+            #[doc = concat!($extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
+            ///
+            #[doc = concat!("let foo = ", stringify!($atomic_type), "::new(0b101101);")]
+            /// assert_eq!(foo.fetch_and(0b110011, Ordering::SeqCst), 0b101101);
+            /// assert_eq!(foo.load(Ordering::SeqCst), 0b100001);
+            /// ```
+            #[inline]
+            #[$stable]
+            #[$cfg_cas]
+            pub fn fetch_and(&self, val: $int_type, order: Ordering) -> $int_type {
+                // SAFETY: data races are prevented by atomic intrinsics.
+                unsafe { atomic_and(self.v.get(), val, order) }
             }
 
-            doc_comment! {
-                concat!("Stores a value into the atomic integer.
-
-`store` takes an [`Ordering`] argument which describes the memory ordering of this operation.
- Possible values are [`SeqCst`], [`Release`] and [`Relaxed`].
-
-# Panics
-
-Panics if `order` is [`Acquire`] or [`AcqRel`].
-
-# Examples
-
-```
-", $extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};
-
-let some_var = ", stringify!($atomic_type), "::new(5);
-
-some_var.store(10, Ordering::Relaxed);
-assert_eq!(some_var.load(Ordering::Relaxed), 10);
-```"),
-                #[inline]
-                #[$stable]
-                pub fn store(&self, val: $int_type, order: Ordering) {
-                    // SAFETY: data races are prevented by atomic intrinsics.
-                    unsafe { atomic_store(self.v.get(), val, order); }
-                }
+            /// Bitwise "nand" with the current value.
+            ///
+            /// Performs a bitwise "nand" operation on the current value and the argument `val`, and
+            /// sets the new value to the result.
+            ///
+            /// Returns the previous value.
+            ///
+            /// `fetch_nand` takes an [`Ordering`] argument which describes the memory ordering
+            /// of this operation. All ordering modes are possible. Note that using
+            /// [`Acquire`] makes the store part of this operation [`Relaxed`], and
+            /// using [`Release`] makes the load part [`Relaxed`].
+            ///
+            /// **Note**: This method is only available on platforms that support atomic operations on
+            #[doc = concat!("[`", $s_int_type, "`](", $int_ref, ").")]
+            ///
+            /// # Examples
+            ///
+            /// ```
+            #[doc = concat!($extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
+            ///
+            #[doc = concat!("let foo = ", stringify!($atomic_type), "::new(0x13);")]
+            /// assert_eq!(foo.fetch_nand(0x31, Ordering::SeqCst), 0x13);
+            /// assert_eq!(foo.load(Ordering::SeqCst), !(0x13 & 0x31));
+            /// ```
+            #[inline]
+            #[$stable_nand]
+            #[$cfg_cas]
+            pub fn fetch_nand(&self, val: $int_type, order: Ordering) -> $int_type {
+                // SAFETY: data races are prevented by atomic intrinsics.
+                unsafe { atomic_nand(self.v.get(), val, order) }
             }
 
-            doc_comment! {
-                concat!("Stores a value into the atomic integer, returning the previous value.
-
-`swap` takes an [`Ordering`] argument which describes the memory ordering
-of this operation. All ordering modes are possible. Note that using
-[`Acquire`] makes the store part of this operation [`Relaxed`], and
-using [`Release`] makes the load part [`Relaxed`].
-
-**Note**: This method is only available on platforms that support atomic
-operations on [`", $s_int_type, "`](", $int_ref, ").
-
-# Examples
-
-```
-", $extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};
-
-let some_var = ", stringify!($atomic_type), "::new(5);
-
-assert_eq!(some_var.swap(10, Ordering::Relaxed), 5);
-```"),
-                #[inline]
-                #[$stable]
-                #[$cfg_cas]
-                pub fn swap(&self, val: $int_type, order: Ordering) -> $int_type {
-                    // SAFETY: data races are prevented by atomic intrinsics.
-                    unsafe { atomic_swap(self.v.get(), val, order) }
-                }
+            /// Bitwise "or" with the current value.
+            ///
+            /// Performs a bitwise "or" operation on the current value and the argument `val`, and
+            /// sets the new value to the result.
+            ///
+            /// Returns the previous value.
+            ///
+            /// `fetch_or` takes an [`Ordering`] argument which describes the memory ordering
+            /// of this operation. All ordering modes are possible. Note that using
+            /// [`Acquire`] makes the store part of this operation [`Relaxed`], and
+            /// using [`Release`] makes the load part [`Relaxed`].
+            ///
+            /// **Note**: This method is only available on platforms that support atomic operations on
+            #[doc = concat!("[`", $s_int_type, "`](", $int_ref, ").")]
+            ///
+            /// # Examples
+            ///
+            /// ```
+            #[doc = concat!($extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
+            ///
+            #[doc = concat!("let foo = ", stringify!($atomic_type), "::new(0b101101);")]
+            /// assert_eq!(foo.fetch_or(0b110011, Ordering::SeqCst), 0b101101);
+            /// assert_eq!(foo.load(Ordering::SeqCst), 0b111111);
+            /// ```
+            #[inline]
+            #[$stable]
+            #[$cfg_cas]
+            pub fn fetch_or(&self, val: $int_type, order: Ordering) -> $int_type {
+                // SAFETY: data races are prevented by atomic intrinsics.
+                unsafe { atomic_or(self.v.get(), val, order) }
             }
 
-            doc_comment! {
-                concat!("Stores a value into the atomic integer if the current value is the same as
-the `current` value.
+            /// Bitwise "xor" with the current value.
+            ///
+            /// Performs a bitwise "xor" operation on the current value and the argument `val`, and
+            /// sets the new value to the result.
+            ///
+            /// Returns the previous value.
+            ///
+            /// `fetch_xor` takes an [`Ordering`] argument which describes the memory ordering
+            /// of this operation. All ordering modes are possible. Note that using
+            /// [`Acquire`] makes the store part of this operation [`Relaxed`], and
+            /// using [`Release`] makes the load part [`Relaxed`].
+            ///
+            /// **Note**: This method is only available on platforms that support atomic operations on
+            #[doc = concat!("[`", $s_int_type, "`](", $int_ref, ").")]
+            ///
+            /// # Examples
+            ///
+            /// ```
+            #[doc = concat!($extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
+            ///
+            #[doc = concat!("let foo = ", stringify!($atomic_type), "::new(0b101101);")]
+            /// assert_eq!(foo.fetch_xor(0b110011, Ordering::SeqCst), 0b101101);
+            /// assert_eq!(foo.load(Ordering::SeqCst), 0b011110);
+            /// ```
+            #[inline]
+            #[$stable]
+            #[$cfg_cas]
+            pub fn fetch_xor(&self, val: $int_type, order: Ordering) -> $int_type {
+                // SAFETY: data races are prevented by atomic intrinsics.
+                unsafe { atomic_xor(self.v.get(), val, order) }
+            }
 
-The return value is always the previous value. If it is equal to `current`, then the
-value was updated.
-
-`compare_and_swap` also takes an [`Ordering`] argument which describes the memory
-ordering of this operation. Notice that even when using [`AcqRel`], the operation
-might fail and hence just perform an `Acquire` load, but not have `Release` semantics.
-Using [`Acquire`] makes the store part of this operation [`Relaxed`] if it
-happens, and using [`Release`] makes the load part [`Relaxed`].
-
-**Note**: This method is only available on platforms that support atomic
-operations on [`", $s_int_type, "`](", $int_ref, ").
-
-# Migrating to `compare_exchange` and `compare_exchange_weak`
-
-`compare_and_swap` is equivalent to `compare_exchange` with the following mapping for
-memory orderings:
-
-Original | Success | Failure
--------- | ------- | -------
-Relaxed  | Relaxed | Relaxed
-Acquire  | Acquire | Acquire
-Release  | Release | Relaxed
-AcqRel   | AcqRel  | Acquire
-SeqCst   | SeqCst  | SeqCst
-
-`compare_exchange_weak` is allowed to fail spuriously even when the comparison succeeds,
-which allows the compiler to generate better assembly code when the compare and swap
-is used in a loop.
-
-# Examples
-
-```
-", $extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};
-
-let some_var = ", stringify!($atomic_type), "::new(5);
-
-assert_eq!(some_var.compare_and_swap(5, 10, Ordering::Relaxed), 5);
-assert_eq!(some_var.load(Ordering::Relaxed), 10);
-
-assert_eq!(some_var.compare_and_swap(6, 12, Ordering::Relaxed), 10);
-assert_eq!(some_var.load(Ordering::Relaxed), 10);
-```"),
-                #[inline]
-                #[$stable]
-                #[rustc_deprecated(
-                    since = "1.50.0",
-                    reason = "Use `compare_exchange` or `compare_exchange_weak` instead")
-                ]
-                #[$cfg_cas]
-                pub fn compare_and_swap(&self,
-                                        current: $int_type,
-                                        new: $int_type,
-                                        order: Ordering) -> $int_type {
-                    match self.compare_exchange(current,
-                                                new,
-                                                order,
-                                                strongest_failure_ordering(order)) {
-                        Ok(x) => x,
-                        Err(x) => x,
+            /// Fetches the value, and applies a function to it that returns an optional
+            /// new value. Returns a `Result` of `Ok(previous_value)` if the function returned `Some(_)`, else
+            /// `Err(previous_value)`.
+            ///
+            /// Note: This may call the function multiple times if the value has been changed from other threads in
+            /// the meantime, as long as the function returns `Some(_)`, but the function will have been applied
+            /// only once to the stored value.
+            ///
+            /// `fetch_update` takes two [`Ordering`] arguments to describe the memory ordering of this operation.
+            /// The first describes the required ordering for when the operation finally succeeds while the second
+            /// describes the required ordering for loads. These correspond to the success and failure orderings of
+            #[doc = concat!("[`", stringify!($atomic_type), "::compare_exchange`]")]
+            /// respectively.
+            ///
+            /// Using [`Acquire`] as success ordering makes the store part
+            /// of this operation [`Relaxed`], and using [`Release`] makes the final successful load
+            /// [`Relaxed`]. The (failed) load ordering can only be [`SeqCst`], [`Acquire`] or [`Relaxed`]
+            /// and must be equivalent to or weaker than the success ordering.
+            ///
+            /// **Note**: This method is only available on platforms that support atomic operations on
+            #[doc = concat!("[`", $s_int_type, "`](", $int_ref, ").")]
+            ///
+            /// # Examples
+            ///
+            /// ```rust
+            #[doc = concat!($extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
+            ///
+            #[doc = concat!("let x = ", stringify!($atomic_type), "::new(7);")]
+            /// assert_eq!(x.fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| None), Err(7));
+            /// assert_eq!(x.fetch_update(Ordering::SeqCst, Ordering::SeqCst, |x| Some(x + 1)), Ok(7));
+            /// assert_eq!(x.fetch_update(Ordering::SeqCst, Ordering::SeqCst, |x| Some(x + 1)), Ok(8));
+            /// assert_eq!(x.load(Ordering::SeqCst), 9);
+            /// ```
+            #[inline]
+            #[stable(feature = "no_more_cas", since = "1.45.0")]
+            #[$cfg_cas]
+            pub fn fetch_update<F>(&self,
+                                   set_order: Ordering,
+                                   fetch_order: Ordering,
+                                   mut f: F) -> Result<$int_type, $int_type>
+            where F: FnMut($int_type) -> Option<$int_type> {
+                let mut prev = self.load(fetch_order);
+                while let Some(next) = f(prev) {
+                    match self.compare_exchange_weak(prev, next, set_order, fetch_order) {
+                        x @ Ok(_) => return x,
+                        Err(next_prev) => prev = next_prev
                     }
                 }
+                Err(prev)
             }
 
-            doc_comment! {
-                concat!("Stores a value into the atomic integer if the current value is the same as
-the `current` value.
-
-The return value is a result indicating whether the new value was written and
-containing the previous value. On success this value is guaranteed to be equal to
-`current`.
-
-`compare_exchange` takes two [`Ordering`] arguments to describe the memory
-ordering of this operation. `success` describes the required ordering for the
-read-modify-write operation that takes place if the comparison with `current` succeeds.
-`failure` describes the required ordering for the load operation that takes place when
-the comparison fails. Using [`Acquire`] as success ordering makes the store part
-of this operation [`Relaxed`], and using [`Release`] makes the successful load
-[`Relaxed`]. The failure ordering can only be [`SeqCst`], [`Acquire`] or [`Relaxed`]
-and must be equivalent to or weaker than the success ordering.
-
-**Note**: This method is only available on platforms that support atomic
-operations on [`", $s_int_type, "`](", $int_ref, ").
-
-# Examples
-
-```
-", $extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};
-
-let some_var = ", stringify!($atomic_type), "::new(5);
-
-assert_eq!(some_var.compare_exchange(5, 10,
-                                     Ordering::Acquire,
-                                     Ordering::Relaxed),
-           Ok(5));
-assert_eq!(some_var.load(Ordering::Relaxed), 10);
-
-assert_eq!(some_var.compare_exchange(6, 12,
-                                     Ordering::SeqCst,
-                                     Ordering::Acquire),
-           Err(10));
-assert_eq!(some_var.load(Ordering::Relaxed), 10);
-```"),
-                #[inline]
-                #[$stable_cxchg]
-                #[$cfg_cas]
-                pub fn compare_exchange(&self,
-                                        current: $int_type,
-                                        new: $int_type,
-                                        success: Ordering,
-                                        failure: Ordering) -> Result<$int_type, $int_type> {
-                    // SAFETY: data races are prevented by atomic intrinsics.
-                    unsafe { atomic_compare_exchange(self.v.get(), current, new, success, failure) }
-                }
+            /// Maximum with the current value.
+            ///
+            /// Finds the maximum of the current value and the argument `val`, and
+            /// sets the new value to the result.
+            ///
+            /// Returns the previous value.
+            ///
+            /// `fetch_max` takes an [`Ordering`] argument which describes the memory ordering
+            /// of this operation. All ordering modes are possible. Note that using
+            /// [`Acquire`] makes the store part of this operation [`Relaxed`], and
+            /// using [`Release`] makes the load part [`Relaxed`].
+            ///
+            /// **Note**: This method is only available on platforms that support atomic operations on
+            #[doc = concat!("[`", $s_int_type, "`](", $int_ref, ").")]
+            ///
+            /// # Examples
+            ///
+            /// ```
+            #[doc = concat!($extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
+            ///
+            #[doc = concat!("let foo = ", stringify!($atomic_type), "::new(23);")]
+            /// assert_eq!(foo.fetch_max(42, Ordering::SeqCst), 23);
+            /// assert_eq!(foo.load(Ordering::SeqCst), 42);
+            /// ```
+            ///
+            /// If you want to obtain the maximum value in one step, you can use the following:
+            ///
+            /// ```
+            #[doc = concat!($extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
+            ///
+            #[doc = concat!("let foo = ", stringify!($atomic_type), "::new(23);")]
+            /// let bar = 42;
+            /// let max_foo = foo.fetch_max(bar, Ordering::SeqCst).max(bar);
+            /// assert!(max_foo == 42);
+            /// ```
+            #[inline]
+            #[stable(feature = "atomic_min_max", since = "1.45.0")]
+            #[$cfg_cas]
+            pub fn fetch_max(&self, val: $int_type, order: Ordering) -> $int_type {
+                // SAFETY: data races are prevented by atomic intrinsics.
+                unsafe { $max_fn(self.v.get(), val, order) }
             }
 
-            doc_comment! {
-                concat!("Stores a value into the atomic integer if the current value is the same as
-the `current` value.
-
-Unlike [`", stringify!($atomic_type), "::compare_exchange`], this function is allowed to spuriously fail even
-when the comparison succeeds, which can result in more efficient code on some
-platforms. The return value is a result indicating whether the new value was
-written and containing the previous value.
-
-`compare_exchange_weak` takes two [`Ordering`] arguments to describe the memory
-ordering of this operation. `success` describes the required ordering for the
-read-modify-write operation that takes place if the comparison with `current` succeeds.
-`failure` describes the required ordering for the load operation that takes place when
-the comparison fails. Using [`Acquire`] as success ordering makes the store part
-of this operation [`Relaxed`], and using [`Release`] makes the successful load
-[`Relaxed`]. The failure ordering can only be [`SeqCst`], [`Acquire`] or [`Relaxed`]
-and must be equivalent to or weaker than the success ordering.
-
-**Note**: This method is only available on platforms that support atomic
-operations on [`", $s_int_type, "`](", $int_ref, ").
-
-# Examples
-
-```
-", $extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};
-
-let val = ", stringify!($atomic_type), "::new(4);
-
-let mut old = val.load(Ordering::Relaxed);
-loop {
-    let new = old * 2;
-    match val.compare_exchange_weak(old, new, Ordering::SeqCst, Ordering::Relaxed) {
-        Ok(_) => break,
-        Err(x) => old = x,
-    }
-}
-```"),
-                #[inline]
-                #[$stable_cxchg]
-                #[$cfg_cas]
-                pub fn compare_exchange_weak(&self,
-                                             current: $int_type,
-                                             new: $int_type,
-                                             success: Ordering,
-                                             failure: Ordering) -> Result<$int_type, $int_type> {
-                    // SAFETY: data races are prevented by atomic intrinsics.
-                    unsafe {
-                        atomic_compare_exchange_weak(self.v.get(), current, new, success, failure)
-                    }
-                }
+            /// Minimum with the current value.
+            ///
+            /// Finds the minimum of the current value and the argument `val`, and
+            /// sets the new value to the result.
+            ///
+            /// Returns the previous value.
+            ///
+            /// `fetch_min` takes an [`Ordering`] argument which describes the memory ordering
+            /// of this operation. All ordering modes are possible. Note that using
+            /// [`Acquire`] makes the store part of this operation [`Relaxed`], and
+            /// using [`Release`] makes the load part [`Relaxed`].
+            ///
+            /// **Note**: This method is only available on platforms that support atomic operations on
+            #[doc = concat!("[`", $s_int_type, "`](", $int_ref, ").")]
+            ///
+            /// # Examples
+            ///
+            /// ```
+            #[doc = concat!($extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
+            ///
+            #[doc = concat!("let foo = ", stringify!($atomic_type), "::new(23);")]
+            /// assert_eq!(foo.fetch_min(42, Ordering::Relaxed), 23);
+            /// assert_eq!(foo.load(Ordering::Relaxed), 23);
+            /// assert_eq!(foo.fetch_min(22, Ordering::Relaxed), 23);
+            /// assert_eq!(foo.load(Ordering::Relaxed), 22);
+            /// ```
+            ///
+            /// If you want to obtain the minimum value in one step, you can use the following:
+            ///
+            /// ```
+            #[doc = concat!($extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
+            ///
+            #[doc = concat!("let foo = ", stringify!($atomic_type), "::new(23);")]
+            /// let bar = 12;
+            /// let min_foo = foo.fetch_min(bar, Ordering::SeqCst).min(bar);
+            /// assert_eq!(min_foo, 12);
+            /// ```
+            #[inline]
+            #[stable(feature = "atomic_min_max", since = "1.45.0")]
+            #[$cfg_cas]
+            pub fn fetch_min(&self, val: $int_type, order: Ordering) -> $int_type {
+                // SAFETY: data races are prevented by atomic intrinsics.
+                unsafe { $min_fn(self.v.get(), val, order) }
             }
 
-            doc_comment! {
-                concat!("Adds to the current value, returning the previous value.
-
-This operation wraps around on overflow.
-
-`fetch_add` takes an [`Ordering`] argument which describes the memory ordering
-of this operation. All ordering modes are possible. Note that using
-[`Acquire`] makes the store part of this operation [`Relaxed`], and
-using [`Release`] makes the load part [`Relaxed`].
-
-**Note**: This method is only available on platforms that support atomic
-operations on [`", $s_int_type, "`](", $int_ref, ").
-
-# Examples
-
-```
-", $extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};
-
-let foo = ", stringify!($atomic_type), "::new(0);
-assert_eq!(foo.fetch_add(10, Ordering::SeqCst), 0);
-assert_eq!(foo.load(Ordering::SeqCst), 10);
-```"),
-                #[inline]
-                #[$stable]
-                #[$cfg_cas]
-                pub fn fetch_add(&self, val: $int_type, order: Ordering) -> $int_type {
-                    // SAFETY: data races are prevented by atomic intrinsics.
-                    unsafe { atomic_add(self.v.get(), val, order) }
-                }
-            }
-
-            doc_comment! {
-                concat!("Subtracts from the current value, returning the previous value.
-
-This operation wraps around on overflow.
-
-`fetch_sub` takes an [`Ordering`] argument which describes the memory ordering
-of this operation. All ordering modes are possible. Note that using
-[`Acquire`] makes the store part of this operation [`Relaxed`], and
-using [`Release`] makes the load part [`Relaxed`].
-
-**Note**: This method is only available on platforms that support atomic
-operations on [`", $s_int_type, "`](", $int_ref, ").
-
-# Examples
-
-```
-", $extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};
-
-let foo = ", stringify!($atomic_type), "::new(20);
-assert_eq!(foo.fetch_sub(10, Ordering::SeqCst), 20);
-assert_eq!(foo.load(Ordering::SeqCst), 10);
-```"),
-                #[inline]
-                #[$stable]
-                #[$cfg_cas]
-                pub fn fetch_sub(&self, val: $int_type, order: Ordering) -> $int_type {
-                    // SAFETY: data races are prevented by atomic intrinsics.
-                    unsafe { atomic_sub(self.v.get(), val, order) }
-                }
-            }
-
-            doc_comment! {
-                concat!("Bitwise \"and\" with the current value.
-
-Performs a bitwise \"and\" operation on the current value and the argument `val`, and
-sets the new value to the result.
-
-Returns the previous value.
-
-`fetch_and` takes an [`Ordering`] argument which describes the memory ordering
-of this operation. All ordering modes are possible. Note that using
-[`Acquire`] makes the store part of this operation [`Relaxed`], and
-using [`Release`] makes the load part [`Relaxed`].
-
-**Note**: This method is only available on platforms that support atomic
-operations on [`", $s_int_type, "`](", $int_ref, ").
-
-# Examples
-
-```
-", $extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};
-
-let foo = ", stringify!($atomic_type), "::new(0b101101);
-assert_eq!(foo.fetch_and(0b110011, Ordering::SeqCst), 0b101101);
-assert_eq!(foo.load(Ordering::SeqCst), 0b100001);
-```"),
-                #[inline]
-                #[$stable]
-                #[$cfg_cas]
-                pub fn fetch_and(&self, val: $int_type, order: Ordering) -> $int_type {
-                    // SAFETY: data races are prevented by atomic intrinsics.
-                    unsafe { atomic_and(self.v.get(), val, order) }
-                }
-            }
-
-            doc_comment! {
-                concat!("Bitwise \"nand\" with the current value.
-
-Performs a bitwise \"nand\" operation on the current value and the argument `val`, and
-sets the new value to the result.
-
-Returns the previous value.
-
-`fetch_nand` takes an [`Ordering`] argument which describes the memory ordering
-of this operation. All ordering modes are possible. Note that using
-[`Acquire`] makes the store part of this operation [`Relaxed`], and
-using [`Release`] makes the load part [`Relaxed`].
-
-**Note**: This method is only available on platforms that support atomic
-operations on [`", $s_int_type, "`](", $int_ref, ").
-
-# Examples
-
-```
-", $extra_feature, "
-use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};
-
-let foo = ", stringify!($atomic_type), "::new(0x13);
-assert_eq!(foo.fetch_nand(0x31, Ordering::SeqCst), 0x13);
-assert_eq!(foo.load(Ordering::SeqCst), !(0x13 & 0x31));
-```"),
-                #[inline]
-                #[$stable_nand]
-                #[$cfg_cas]
-                pub fn fetch_nand(&self, val: $int_type, order: Ordering) -> $int_type {
-                    // SAFETY: data races are prevented by atomic intrinsics.
-                    unsafe { atomic_nand(self.v.get(), val, order) }
-                }
-            }
-
-            doc_comment! {
-                concat!("Bitwise \"or\" with the current value.
-
-Performs a bitwise \"or\" operation on the current value and the argument `val`, and
-sets the new value to the result.
-
-Returns the previous value.
-
-`fetch_or` takes an [`Ordering`] argument which describes the memory ordering
-of this operation. All ordering modes are possible. Note that using
-[`Acquire`] makes the store part of this operation [`Relaxed`], and
-using [`Release`] makes the load part [`Relaxed`].
-
-**Note**: This method is only available on platforms that support atomic
-operations on [`", $s_int_type, "`](", $int_ref, ").
-
-# Examples
-
-```
-", $extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};
-
-let foo = ", stringify!($atomic_type), "::new(0b101101);
-assert_eq!(foo.fetch_or(0b110011, Ordering::SeqCst), 0b101101);
-assert_eq!(foo.load(Ordering::SeqCst), 0b111111);
-```"),
-                #[inline]
-                #[$stable]
-                #[$cfg_cas]
-                pub fn fetch_or(&self, val: $int_type, order: Ordering) -> $int_type {
-                    // SAFETY: data races are prevented by atomic intrinsics.
-                    unsafe { atomic_or(self.v.get(), val, order) }
-                }
-            }
-
-            doc_comment! {
-                concat!("Bitwise \"xor\" with the current value.
-
-Performs a bitwise \"xor\" operation on the current value and the argument `val`, and
-sets the new value to the result.
-
-Returns the previous value.
-
-`fetch_xor` takes an [`Ordering`] argument which describes the memory ordering
-of this operation. All ordering modes are possible. Note that using
-[`Acquire`] makes the store part of this operation [`Relaxed`], and
-using [`Release`] makes the load part [`Relaxed`].
-
-**Note**: This method is only available on platforms that support atomic
-operations on [`", $s_int_type, "`](", $int_ref, ").
-
-# Examples
-
-```
-", $extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};
-
-let foo = ", stringify!($atomic_type), "::new(0b101101);
-assert_eq!(foo.fetch_xor(0b110011, Ordering::SeqCst), 0b101101);
-assert_eq!(foo.load(Ordering::SeqCst), 0b011110);
-```"),
-                #[inline]
-                #[$stable]
-                #[$cfg_cas]
-                pub fn fetch_xor(&self, val: $int_type, order: Ordering) -> $int_type {
-                    // SAFETY: data races are prevented by atomic intrinsics.
-                    unsafe { atomic_xor(self.v.get(), val, order) }
-                }
-            }
-
-            doc_comment! {
-                concat!("Fetches the value, and applies a function to it that returns an optional
-new value. Returns a `Result` of `Ok(previous_value)` if the function returned `Some(_)`, else
-`Err(previous_value)`.
-
-Note: This may call the function multiple times if the value has been changed from other threads in
-the meantime, as long as the function returns `Some(_)`, but the function will have been applied
-only once to the stored value.
-
-`fetch_update` takes two [`Ordering`] arguments to describe the memory ordering of this operation.
-The first describes the required ordering for when the operation finally succeeds while the second
-describes the required ordering for loads. These correspond to the success and failure orderings of
-[`", stringify!($atomic_type), "::compare_exchange`] respectively.
-
-Using [`Acquire`] as success ordering makes the store part
-of this operation [`Relaxed`], and using [`Release`] makes the final successful load
-[`Relaxed`]. The (failed) load ordering can only be [`SeqCst`], [`Acquire`] or [`Relaxed`]
-and must be equivalent to or weaker than the success ordering.
-
-**Note**: This method is only available on platforms that support atomic
-operations on [`", $s_int_type, "`](", $int_ref, ").
-
-# Examples
-
-```rust
-", $extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};
-
-let x = ", stringify!($atomic_type), "::new(7);
-assert_eq!(x.fetch_update(Ordering::SeqCst, Ordering::SeqCst, |_| None), Err(7));
-assert_eq!(x.fetch_update(Ordering::SeqCst, Ordering::SeqCst, |x| Some(x + 1)), Ok(7));
-assert_eq!(x.fetch_update(Ordering::SeqCst, Ordering::SeqCst, |x| Some(x + 1)), Ok(8));
-assert_eq!(x.load(Ordering::SeqCst), 9);
-```"),
-                #[inline]
-                #[stable(feature = "no_more_cas", since = "1.45.0")]
-                #[$cfg_cas]
-                pub fn fetch_update<F>(&self,
-                                       set_order: Ordering,
-                                       fetch_order: Ordering,
-                                       mut f: F) -> Result<$int_type, $int_type>
-                where F: FnMut($int_type) -> Option<$int_type> {
-                    let mut prev = self.load(fetch_order);
-                    while let Some(next) = f(prev) {
-                        match self.compare_exchange_weak(prev, next, set_order, fetch_order) {
-                            x @ Ok(_) => return x,
-                            Err(next_prev) => prev = next_prev
-                        }
-                    }
-                    Err(prev)
-                }
-            }
-
-            doc_comment! {
-                concat!("Maximum with the current value.
-
-Finds the maximum of the current value and the argument `val`, and
-sets the new value to the result.
-
-Returns the previous value.
-
-`fetch_max` takes an [`Ordering`] argument which describes the memory ordering
-of this operation. All ordering modes are possible. Note that using
-[`Acquire`] makes the store part of this operation [`Relaxed`], and
-using [`Release`] makes the load part [`Relaxed`].
-
-**Note**: This method is only available on platforms that support atomic
-operations on [`", $s_int_type, "`](", $int_ref, ").
-
-# Examples
-
-```
-", $extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};
-
-let foo = ", stringify!($atomic_type), "::new(23);
-assert_eq!(foo.fetch_max(42, Ordering::SeqCst), 23);
-assert_eq!(foo.load(Ordering::SeqCst), 42);
-```
-
-If you want to obtain the maximum value in one step, you can use the following:
-
-```
-", $extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};
-
-let foo = ", stringify!($atomic_type), "::new(23);
-let bar = 42;
-let max_foo = foo.fetch_max(bar, Ordering::SeqCst).max(bar);
-assert!(max_foo == 42);
-```"),
-                #[inline]
-                #[stable(feature = "atomic_min_max", since = "1.45.0")]
-                #[$cfg_cas]
-                pub fn fetch_max(&self, val: $int_type, order: Ordering) -> $int_type {
-                    // SAFETY: data races are prevented by atomic intrinsics.
-                    unsafe { $max_fn(self.v.get(), val, order) }
-                }
-            }
-
-            doc_comment! {
-                concat!("Minimum with the current value.
-
-Finds the minimum of the current value and the argument `val`, and
-sets the new value to the result.
-
-Returns the previous value.
-
-`fetch_min` takes an [`Ordering`] argument which describes the memory ordering
-of this operation. All ordering modes are possible. Note that using
-[`Acquire`] makes the store part of this operation [`Relaxed`], and
-using [`Release`] makes the load part [`Relaxed`].
-
-**Note**: This method is only available on platforms that support atomic
-operations on [`", $s_int_type, "`](", $int_ref, ").
-
-# Examples
-
-```
-", $extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};
-
-let foo = ", stringify!($atomic_type), "::new(23);
-assert_eq!(foo.fetch_min(42, Ordering::Relaxed), 23);
-assert_eq!(foo.load(Ordering::Relaxed), 23);
-assert_eq!(foo.fetch_min(22, Ordering::Relaxed), 23);
-assert_eq!(foo.load(Ordering::Relaxed), 22);
-```
-
-If you want to obtain the minimum value in one step, you can use the following:
-
-```
-", $extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};
-
-let foo = ", stringify!($atomic_type), "::new(23);
-let bar = 12;
-let min_foo = foo.fetch_min(bar, Ordering::SeqCst).min(bar);
-assert_eq!(min_foo, 12);
-```"),
-                #[inline]
-                #[stable(feature = "atomic_min_max", since = "1.45.0")]
-                #[$cfg_cas]
-                pub fn fetch_min(&self, val: $int_type, order: Ordering) -> $int_type {
-                    // SAFETY: data races are prevented by atomic intrinsics.
-                    unsafe { $min_fn(self.v.get(), val, order) }
-                }
-            }
-
-            doc_comment! {
-                concat!("Returns a mutable pointer to the underlying integer.
-
-Doing non-atomic reads and writes on the resulting integer can be a data race.
-This method is mostly useful for FFI, where the function signature may use
-`*mut ", stringify!($int_type), "` instead of `&", stringify!($atomic_type), "`.
-
-Returning an `*mut` pointer from a shared reference to this atomic is safe because the
-atomic types work with interior mutability. All modifications of an atomic change the value
-through a shared reference, and can do so safely as long as they use atomic operations. Any
-use of the returned raw pointer requires an `unsafe` block and still has to uphold the same
-restriction: operations on it must be atomic.
-
-# Examples
-
-```ignore (extern-declaration)
-# fn main() {
-", $extra_feature, "use std::sync::atomic::", stringify!($atomic_type), ";
-
-extern {
-    fn my_atomic_op(arg: *mut ", stringify!($int_type), ");
-}
-
-let mut atomic = ", stringify!($atomic_type), "::new(1);
-",
-// SAFETY: Safe as long as `my_atomic_op` is atomic.
-"unsafe {
-    my_atomic_op(atomic.as_mut_ptr());
-}
-# }
-```"),
-                #[inline]
-                #[unstable(feature = "atomic_mut_ptr",
-                       reason = "recently added",
-                       issue = "66893")]
-                pub fn as_mut_ptr(&self) -> *mut $int_type {
-                    self.v.get()
-                }
+            /// Returns a mutable pointer to the underlying integer.
+            ///
+            /// Doing non-atomic reads and writes on the resulting integer can be a data race.
+            /// This method is mostly useful for FFI, where the function signature may use
+            #[doc = concat!("`*mut ", stringify!($int_type), "` instead of `&", stringify!($atomic_type), "`.")]
+            ///
+            /// Returning an `*mut` pointer from a shared reference to this atomic is safe because the
+            /// atomic types work with interior mutability. All modifications of an atomic change the value
+            /// through a shared reference, and can do so safely as long as they use atomic operations. Any
+            /// use of the returned raw pointer requires an `unsafe` block and still has to uphold the same
+            /// restriction: operations on it must be atomic.
+            ///
+            /// # Examples
+            ///
+            /// ```ignore (extern-declaration)
+            /// # fn main() {
+            #[doc = concat!($extra_feature, "use std::sync::atomic::", stringify!($atomic_type), ";")]
+            ///
+            /// extern {
+            #[doc = concat!("    fn my_atomic_op(arg: *mut ", stringify!($int_type), ");")]
+            /// }
+            ///
+            #[doc = concat!("let mut atomic = ", stringify!($atomic_type), "::new(1);")]
+            ///
+            // SAFETY: Safe as long as `my_atomic_op` is atomic.
+            /// unsafe {
+            ///     my_atomic_op(atomic.as_mut_ptr());
+            /// }
+            /// # }
+            /// ```
+            #[inline]
+            #[unstable(feature = "atomic_mut_ptr",
+                   reason = "recently added",
+                   issue = "66893")]
+            pub fn as_mut_ptr(&self) -> *mut $int_type {
+                self.v.get()
             }
         }
     }

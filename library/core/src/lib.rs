@@ -113,6 +113,7 @@
 #![feature(doc_spotlight)]
 #![feature(duration_consts_2)]
 #![feature(duration_saturating_ops)]
+#![feature(extended_key_value_attributes)]
 #![feature(extern_types)]
 #![feature(fundamental)]
 #![feature(intrinsics)]
