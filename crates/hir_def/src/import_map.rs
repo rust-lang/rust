@@ -749,6 +749,30 @@ mod tests {
     }
 
     #[test]
+    fn fuzzy_import_trait() {
+        let ra_fixture = r#"
+        //- /main.rs crate:main deps:dep
+        //- /dep.rs crate:dep
+        pub mod fmt {
+            pub trait Display {
+                fn fmttt();
+            }
+        }
+    "#;
+
+        check_search(
+            ra_fixture,
+            "main",
+            Query::new("fmt".to_string()).search_mode(SearchMode::Fuzzy),
+            expect![[r#"
+                dep::fmt (t)
+                dep::fmt::Display (t)
+                dep::fmt::Display::fmttt (f)
+            "#]],
+        );
+    }
+
+    #[test]
     fn search_mode() {
         let ra_fixture = r#"
             //- /main.rs crate:main deps:dep
