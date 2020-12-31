@@ -34,6 +34,7 @@ mod request_metrics;
 mod lsp_utils;
 mod thread_pool;
 mod document;
+mod diff;
 pub mod lsp_ext;
 pub mod config;
 

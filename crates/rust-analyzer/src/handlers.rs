@@ -29,6 +29,7 @@ use serde_json::to_value;
 use stdx::{format_to, split_once};
 use syntax::{algo, ast, AstNode, TextRange, TextSize};
 
+use crate::diff::diff;
 use crate::{
     cargo_target_spec::CargoTargetSpec,
     config::RustfmtConfig,
@@ -799,7 +800,7 @@ pub(crate) fn handle_formatting(
     let crate_ids = snap.analysis.crate_for(file_id)?;
 
     let file_line_index = snap.analysis.file_line_index(file_id)?;
-    let end_position = to_proto::position(&file_line_index, TextSize::of(file.as_str()));
+    let file_line_endings = snap.file_line_endings(file_id);
 
     let mut rustfmt = match &snap.config.rustfmt {
         RustfmtConfig::Rustfmt { extra_args } => {
@@ -858,10 +859,11 @@ pub(crate) fn handle_formatting(
         // The document is already formatted correctly -- no edits needed.
         Ok(None)
     } else {
-        Ok(Some(vec![lsp_types::TextEdit {
-            range: Range::new(Position::new(0, 0), end_position),
-            new_text: captured_stdout,
-        }]))
+        Ok(Some(to_proto::text_edit_vec(
+            &file_line_index,
+            file_line_endings,
+            diff(&file, &captured_stdout),
+        )))
     }
 }
 

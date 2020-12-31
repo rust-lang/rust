@@ -190,15 +190,10 @@ pub use std::collections::HashMap;
         },
         json!([
             {
-                "newText": r#"mod bar;
-
-fn main() {}
-
-pub use std::collections::HashMap;
-"#,
+                "newText": "",
                 "range": {
-                    "end": { "character": 0, "line": 6 },
-                    "start": { "character": 0, "line": 0 }
+                    "end": { "character": 0, "line": 3 },
+                    "start": { "character": 11, "line": 2 }
                 }
             }
         ]),
@@ -248,17 +243,17 @@ pub use std::collections::HashMap;
         },
         json!([
             {
-                "newText": r#"mod bar;
-
-async fn test() {}
-
-fn main() {}
-
-pub use std::collections::HashMap;
-"#,
+                "newText": "",
                 "range": {
-                    "end": { "character": 0, "line": 9 },
-                    "start": { "character": 0, "line": 0 }
+                    "end": { "character": 0, "line": 3 },
+                    "start": { "character": 17, "line": 2 }
+                }
+            },
+            {
+                "newText": "",
+                "range": {
+                    "end": { "character": 0, "line": 6 },
+                    "start": { "character": 11, "line": 5 }
                 }
             }
         ]),
