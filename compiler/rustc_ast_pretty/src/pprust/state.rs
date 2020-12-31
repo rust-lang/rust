@@ -2668,13 +2668,17 @@ impl<'a> State<'a> {
                         s.print_type(default)
                     }
                 }
-                ast::GenericParamKind::Const { ref ty, kw_span: _ } => {
+                ast::GenericParamKind::Const { ref ty, kw_span: _, ref default } => {
                     s.word_space("const");
                     s.print_ident(param.ident);
                     s.s.space();
                     s.word_space(":");
                     s.print_type(ty);
-                    s.print_type_bounds(":", &param.bounds)
+                    s.print_type_bounds(":", &param.bounds);
+                    if let Some(ref _default) = default {
+                        // FIXME(const_generics_defaults): print the `default` value here
+                        todo!();
+                    }
                 }
             }
         });

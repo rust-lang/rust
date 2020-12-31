@@ -623,6 +623,9 @@ declare_features! (
     /// `:pat2018` and `:pat2021` macro matchers.
     (active, edition_macro_pats, "1.51.0", Some(54883), None),
 
+    /// Allows const generics to have default values (e.g. `struct Foo<const N: usize = 3>(...);`).
+    (active, const_generics_defaults, "1.51.0", Some(44580), None),
+
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------

@@ -2205,9 +2205,13 @@ impl<'a> State<'a> {
                     self.print_type(&default)
                 }
             }
-            GenericParamKind::Const { ref ty } => {
+            GenericParamKind::Const { ref ty, ref default } => {
                 self.word_space(":");
-                self.print_type(ty)
+                self.print_type(ty);
+                if let Some(ref _default) = default {
+                    // FIXME(const_generics_defaults): print the `default` value here
+                    todo!();
+                }
             }
         }
     }

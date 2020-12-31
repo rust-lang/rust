@@ -607,11 +607,12 @@ impl Clean<GenericParamDef> for hir::GenericParam<'_> {
                     synthetic,
                 },
             ),
-            hir::GenericParamKind::Const { ref ty } => (
+            hir::GenericParamKind::Const { ref ty, default: _ } => (
                 self.name.ident().name,
                 GenericParamDefKind::Const {
                     did: cx.tcx.hir().local_def_id(self.hir_id).to_def_id(),
                     ty: ty.clean(cx),
+                    // FIXME(const_generics_defaults): add `default` field here to the docs
                 },
             ),
         };

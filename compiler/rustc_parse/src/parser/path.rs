@@ -515,6 +515,23 @@ impl<'a> Parser<'a> {
         }
     }
 
+    /// Parse a const argument, e.g. `<3>`. It is assumed the angle brackets will be parsed by
+    /// the caller.
+    pub(super) fn parse_const_arg(&mut self) -> PResult<'a, AnonConst> {
+        // Parse const argument.
+        let value = if let token::OpenDelim(token::Brace) = self.token.kind {
+            self.parse_block_expr(
+                None,
+                self.token.span,
+                BlockCheckMode::Default,
+                ast::AttrVec::new(),
+            )?
+        } else {
+            self.handle_unambiguous_unbraced_const_arg()?
+        };
+        Ok(AnonConst { id: ast::DUMMY_NODE_ID, value })
+    }
+
     /// Parse a generic argument in a path segment.
     /// This does not include constraints, e.g., `Item = u8`, which is handled in `parse_angle_arg`.
     fn parse_generic_arg(&mut self) -> PResult<'a, Option<GenericArg>> {
@@ -524,17 +541,7 @@ impl<'a> Parser<'a> {
             GenericArg::Lifetime(self.expect_lifetime())
         } else if self.check_const_arg() {
             // Parse const argument.
-            let value = if let token::OpenDelim(token::Brace) = self.token.kind {
-                self.parse_block_expr(
-                    None,
-                    self.token.span,
-                    BlockCheckMode::Default,
-                    ast::AttrVec::new(),
-                )?
-            } else {
-                self.handle_unambiguous_unbraced_const_arg()?
-            };
-            GenericArg::Const(AnonConst { id: ast::DUMMY_NODE_ID, value })
+            GenericArg::Const(self.parse_const_arg()?)
         } else if self.check_type() {
             // Parse type argument.
             match self.parse_ty() {
