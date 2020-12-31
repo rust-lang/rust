@@ -493,11 +493,7 @@ function defocusSearchBar() {
     document.addEventListener("keypress", handleShortcut);
     document.addEventListener("keydown", handleShortcut);
 
-    function resetMouseMoved(ev) {
-        mouseMovedAfterSearch = true;
-    }
-
-    document.addEventListener("mousemove", resetMouseMoved);
+    document.addEventListener("mousemove", function() { mouseMovedAfterSearch = true; });
 
     var handleSourceHighlight = (function() {
         var prev_line_id = 0;
