@@ -245,7 +245,7 @@ struct DiagnosticInfo<'a> {
     item: &'a Item,
     dox: &'a str,
     ori_link: &'a str,
-    link_range: Option<Range<usize>>,
+    link_range: Range<usize>,
 }
 
 #[derive(Clone, Debug, Hash)]
@@ -982,7 +982,7 @@ impl LinkCollector<'_, '_> {
         parent_node: Option<DefId>,
         krate: CrateNum,
         ori_link: String,
-        link_range: Option<Range<usize>>,
+        link_range: Range<usize>,
     ) -> Option<ItemLink> {
         trace!("considering link '{}'", ori_link);
 
@@ -1628,7 +1628,7 @@ fn report_diagnostic(
     msg: &str,
     item: &Item,
     dox: &str,
-    link_range: &Option<Range<usize>>,
+    link_range: &Range<usize>,
     decorate: impl FnOnce(&mut DiagnosticBuilder<'_>, Option<rustc_span::Span>),
 ) {
     let hir_id = match cx.as_local_hir_id(item.def_id) {
@@ -1646,31 +1646,27 @@ fn report_diagnostic(
     cx.tcx.struct_span_lint_hir(lint, hir_id, sp, |lint| {
         let mut diag = lint.build(msg);
 
-        let span = link_range
-            .as_ref()
-            .and_then(|range| super::source_span_for_markdown_range(cx, dox, range, attrs));
+        let span = super::source_span_for_markdown_range(cx, dox, link_range, attrs);
 
-        if let Some(link_range) = link_range {
-            if let Some(sp) = span {
-                diag.set_span(sp);
-            } else {
-                // blah blah blah\nblah\nblah [blah] blah blah\nblah blah
-                //                       ^     ~~~~
-                //                       |     link_range
-                //                       last_new_line_offset
-                let last_new_line_offset = dox[..link_range.start].rfind('\n').map_or(0, |n| n + 1);
-                let line = dox[last_new_line_offset..].lines().next().unwrap_or("");
+        if let Some(sp) = span {
+            diag.set_span(sp);
+        } else {
+            // blah blah blah\nblah\nblah [blah] blah blah\nblah blah
+            //                       ^     ~~~~
+            //                       |     link_range
+            //                       last_new_line_offset
+            let last_new_line_offset = dox[..link_range.start].rfind('\n').map_or(0, |n| n + 1);
+            let line = dox[last_new_line_offset..].lines().next().unwrap_or("");
 
-                // Print the line containing the `link_range` and manually mark it with '^'s.
-                diag.note(&format!(
-                    "the link appears in this line:\n\n{line}\n\
+            // Print the line containing the `link_range` and manually mark it with '^'s.
+            diag.note(&format!(
+                "the link appears in this line:\n\n{line}\n\
                      {indicator: <before$}{indicator:^<found$}",
-                    line = line,
-                    indicator = "",
-                    before = link_range.start - last_new_line_offset,
-                    found = link_range.len(),
-                ));
-            }
+                line = line,
+                indicator = "",
+                before = link_range.start - last_new_line_offset,
+                found = link_range.len(),
+            ));
         }
 
         decorate(&mut diag, span);
@@ -1690,7 +1686,7 @@ fn resolution_failure(
     path_str: &str,
     disambiguator: Option<Disambiguator>,
     dox: &str,
-    link_range: Option<Range<usize>>,
+    link_range: Range<usize>,
     kinds: SmallVec<[ResolutionFailure<'_>; 3]>,
 ) {
     let tcx = collector.cx.tcx;
@@ -1914,7 +1910,7 @@ fn anchor_failure(
     item: &Item,
     path_str: &str,
     dox: &str,
-    link_range: Option<Range<usize>>,
+    link_range: Range<usize>,
     failure: AnchorFailure,
 ) {
     let msg = match failure {
@@ -1939,7 +1935,7 @@ fn ambiguity_error(
     item: &Item,
     path_str: &str,
     dox: &str,
-    link_range: Option<Range<usize>>,
+    link_range: Range<usize>,
     candidates: Vec<Res>,
 ) {
     let mut msg = format!("`{}` is ", path_str);
@@ -1988,13 +1984,12 @@ fn suggest_disambiguator(
     path_str: &str,
     dox: &str,
     sp: Option<rustc_span::Span>,
-    link_range: &Option<Range<usize>>,
+    link_range: &Range<usize>,
 ) {
     let suggestion = disambiguator.suggestion();
     let help = format!("to link to the {}, {}", disambiguator.descr(), suggestion.descr());
 
     if let Some(sp) = sp {
-        let link_range = link_range.as_ref().expect("must have a link range if we have a span");
         let msg = if dox.bytes().nth(link_range.start) == Some(b'`') {
             format!("`{}`", suggestion.as_help(path_str))
         } else {
@@ -2013,7 +2008,7 @@ fn privacy_error(
     item: &Item,
     path_str: &str,
     dox: &str,
-    link_range: Option<Range<usize>>,
+    link_range: Range<usize>,
 ) {
     let sym;
     let item_name = match item.name {

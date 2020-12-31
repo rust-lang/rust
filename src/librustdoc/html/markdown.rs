@@ -1127,7 +1127,7 @@ crate fn plain_text_summary(md: &str) -> String {
     s
 }
 
-crate fn markdown_links(md: &str) -> Vec<(String, Option<Range<usize>>)> {
+crate fn markdown_links(md: &str) -> Vec<(String, Range<usize>)> {
     if md.is_empty() {
         return vec![];
     }
@@ -1135,7 +1135,7 @@ crate fn markdown_links(md: &str) -> Vec<(String, Option<Range<usize>>)> {
     let mut links = vec![];
     let mut shortcut_links = vec![];
 
-    let locate = |s: &str| unsafe {
+    let locate = |s: &str, fallback: Range<usize>| unsafe {
         let s_start = s.as_ptr();
         let s_end = s_start.add(s.len());
         let md_start = md.as_ptr();
@@ -1143,16 +1143,16 @@ crate fn markdown_links(md: &str) -> Vec<(String, Option<Range<usize>>)> {
         if md_start <= s_start && s_end <= md_end {
             let start = s_start.offset_from(md_start) as usize;
             let end = s_end.offset_from(md_start) as usize;
-            Some(start..end)
+            start..end
         } else {
-            None
+            fallback
         }
     };
 
     let mut push = |link: BrokenLink<'_>| {
         // FIXME: use `link.span` instead of `locate`
         // (doing it now includes the `[]` as well as the text)
-        shortcut_links.push((link.reference.to_owned(), locate(link.reference)));
+        shortcut_links.push((link.reference.to_owned(), locate(link.reference, link.span)));
         None
     };
     let p = Parser::new_with_broken_link_callback(md, opts(), Some(&mut push)).into_offset_iter();
@@ -1166,8 +1166,8 @@ crate fn markdown_links(md: &str) -> Vec<(String, Option<Range<usize>>)> {
         if let Event::Start(Tag::Link(_, dest, _)) = ev.0 {
             debug!("found link: {}", dest);
             links.push(match dest {
-                CowStr::Borrowed(s) => (s.to_owned(), locate(s)),
-                s @ (CowStr::Boxed(..) | CowStr::Inlined(..)) => (s.into_string(), None),
+                CowStr::Borrowed(s) => (s.to_owned(), locate(s, ev.1)),
+                s @ (CowStr::Boxed(..) | CowStr::Inlined(..)) => (s.into_string(), ev.1),
             });
         }
     }
