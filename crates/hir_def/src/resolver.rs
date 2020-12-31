@@ -483,6 +483,7 @@ pub enum ScopeDef {
 
 impl Scope {
     fn process_names(&self, db: &dyn DefDatabase, f: &mut dyn FnMut(Name, ScopeDef)) {
+        let mut seen = FxHashSet::default();
         match self {
             Scope::ModuleScope(m) => {
                 // FIXME: should we provide `self` here?
@@ -496,7 +497,9 @@ impl Scope {
                     f(name.clone(), ScopeDef::PerNs(def));
                 });
                 m.crate_def_map[m.module_id].scope.legacy_macros().for_each(|(name, macro_)| {
-                    f(name.clone(), ScopeDef::PerNs(PerNs::macros(macro_, Visibility::Public)));
+                    let scope = PerNs::macros(macro_, Visibility::Public);
+                    seen.insert((name.clone(), scope));
+                    f(name.clone(), ScopeDef::PerNs(scope));
                 });
                 m.crate_def_map.extern_prelude.iter().for_each(|(name, &def)| {
                     f(name.clone(), ScopeDef::PerNs(PerNs::types(def, Visibility::Public)));
@@ -507,7 +510,9 @@ impl Scope {
                 if let Some(prelude) = m.crate_def_map.prelude {
                     let prelude_def_map = db.crate_def_map(prelude.krate);
                     prelude_def_map[prelude.local_id].scope.entries().for_each(|(name, def)| {
-                        f(name.clone(), ScopeDef::PerNs(def));
+                        if !seen.contains(&(name.clone(), def)) {
+                            f(name.clone(), ScopeDef::PerNs(def));
+                        }
                     });
                 }
             }
