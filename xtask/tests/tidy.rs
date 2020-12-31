@@ -139,7 +139,7 @@ fn deny_clippy(path: &PathBuf, text: &String) {
         return;
     }
 
-    if text.contains("[\u{61}llow(clippy") {
+    if text.contains("\u{61}llow(clippy") {
         panic!(
             "\n\nallowing lints is forbidden: {}.
 rust-analyzer intentionally doesn't check clippy on CI.
