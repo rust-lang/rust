@@ -350,6 +350,11 @@ pub(crate) fn load_extern_resources(
     let mut cmd = Command::new(toolchain::cargo());
     cmd.args(&["check", "--message-format=json", "--manifest-path"]).arg(cargo_toml);
 
+    // --all-targets includes tests, benches and examples in addition to the
+    // default lib and bins. This is an independent concept from the --targets
+    // flag below.
+    cmd.arg("--all-targets");
+
     if let Some(target) = &cargo_features.target {
         cmd.args(&["--target", target]);
     }
