@@ -2173,11 +2173,26 @@ impl Clean<Vec<Item>> for doctree::Import<'_> {
             return Vec::new();
         }
 
+        let (doc_meta_item, please_inline) = self.attrs.lists(sym::doc).get_word_attr(sym::inline);
+        let pub_underscore = self.vis.node.is_pub() && self.name == kw::Underscore;
+
+        if pub_underscore && please_inline {
+            rustc_errors::struct_span_err!(
+                cx.tcx.sess,
+                doc_meta_item.unwrap().span(),
+                E0780,
+                "anonymous imports cannot be inlined"
+            )
+            .span_label(self.span, "anonymous import")
+            .emit();
+        }
+
         // We consider inlining the documentation of `pub use` statements, but we
         // forcefully don't inline if this is not public or if the
         // #[doc(no_inline)] attribute is present.
         // Don't inline doc(hidden) imports so they can be stripped at a later stage.
         let mut denied = !self.vis.node.is_pub()
+            || pub_underscore
             || self.attrs.iter().any(|a| {
                 a.has_name(sym::doc)
                     && match a.meta_item_list() {
@@ -2190,7 +2205,6 @@ impl Clean<Vec<Item>> for doctree::Import<'_> {
             });
         // Also check whether imports were asked to be inlined, in case we're trying to re-export a
         // crate in Rust 2018+
-        let please_inline = self.attrs.lists(sym::doc).has_word(sym::inline);
         let path = self.path.clean(cx);
         let inner = if self.glob {
             if !denied {
