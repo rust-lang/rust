@@ -19,7 +19,7 @@ use crate::builder::{Builder, RunConfig, ShouldRun, Step};
 use crate::cache::{Interned, INTERNER};
 use crate::compile;
 use crate::config::TargetSelection;
-use crate::tarball::{OverlayKind, Tarball};
+use crate::tarball::{GeneratedTarball, OverlayKind, Tarball};
 use crate::tool::{self, Tool};
 use crate::util::{exe, is_dylib, timeit};
 use crate::{Compiler, DependencyType, Mode, LLVM_TOOLS};
@@ -51,7 +51,7 @@ pub struct Docs {
 }
 
 impl Step for Docs {
-    type Output = Option<PathBuf>;
+    type Output = Option<GeneratedTarball>;
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -63,7 +63,7 @@ impl Step for Docs {
     }
 
     /// Builds the `rust-docs` installer component.
-    fn run(self, builder: &Builder<'_>) -> Option<PathBuf> {
+    fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
         let host = self.host;
         if !builder.config.docs {
             return None;
@@ -86,7 +86,7 @@ pub struct RustcDocs {
 }
 
 impl Step for RustcDocs {
-    type Output = Option<PathBuf>;
+    type Output = Option<GeneratedTarball>;
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -98,7 +98,7 @@ impl Step for RustcDocs {
     }
 
     /// Builds the `rustc-docs` installer component.
-    fn run(self, builder: &Builder<'_>) -> Option<PathBuf> {
+    fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
         let host = self.host;
         if !builder.config.compiler_docs {
             return None;
@@ -267,7 +267,7 @@ pub struct Mingw {
 }
 
 impl Step for Mingw {
-    type Output = Option<PathBuf>;
+    type Output = Option<GeneratedTarball>;
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -282,7 +282,7 @@ impl Step for Mingw {
     ///
     /// This contains all the bits and pieces to run the MinGW Windows targets
     /// without any extra installed software (e.g., we bundle gcc, libraries, etc).
-    fn run(self, builder: &Builder<'_>) -> Option<PathBuf> {
+    fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
         let host = self.host;
         if !host.contains("pc-windows-gnu") {
             return None;
@@ -307,7 +307,7 @@ pub struct Rustc {
 }
 
 impl Step for Rustc {
-    type Output = PathBuf;
+    type Output = GeneratedTarball;
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
 
@@ -321,7 +321,7 @@ impl Step for Rustc {
     }
 
     /// Creates the `rustc` installer component.
-    fn run(self, builder: &Builder<'_>) -> PathBuf {
+    fn run(self, builder: &Builder<'_>) -> GeneratedTarball {
         let compiler = self.compiler;
         let host = self.compiler.host;
 
@@ -555,7 +555,7 @@ pub struct Std {
 }
 
 impl Step for Std {
-    type Output = Option<PathBuf>;
+    type Output = Option<GeneratedTarball>;
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -573,7 +573,7 @@ impl Step for Std {
         });
     }
 
-    fn run(self, builder: &Builder<'_>) -> Option<PathBuf> {
+    fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
         let compiler = self.compiler;
         let target = self.target;
 
@@ -601,7 +601,7 @@ pub struct RustcDev {
 }
 
 impl Step for RustcDev {
-    type Output = Option<PathBuf>;
+    type Output = Option<GeneratedTarball>;
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
 
@@ -620,7 +620,7 @@ impl Step for RustcDev {
         });
     }
 
-    fn run(self, builder: &Builder<'_>) -> Option<PathBuf> {
+    fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
         let compiler = self.compiler;
         let target = self.target;
         if skip_host_target_lib(builder, compiler) {
@@ -660,7 +660,7 @@ pub struct Analysis {
 }
 
 impl Step for Analysis {
-    type Output = Option<PathBuf>;
+    type Output = Option<GeneratedTarball>;
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -683,7 +683,7 @@ impl Step for Analysis {
     }
 
     /// Creates a tarball of save-analysis metadata, if available.
-    fn run(self, builder: &Builder<'_>) -> Option<PathBuf> {
+    fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
         let compiler = self.compiler;
         let target = self.target;
         assert!(builder.config.extended);
@@ -796,7 +796,7 @@ pub struct Src;
 
 impl Step for Src {
     /// The output path of the src installer tarball
-    type Output = PathBuf;
+    type Output = GeneratedTarball;
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
 
@@ -809,7 +809,7 @@ impl Step for Src {
     }
 
     /// Creates the `rust-src` installer component
-    fn run(self, builder: &Builder<'_>) -> PathBuf {
+    fn run(self, builder: &Builder<'_>) -> GeneratedTarball {
         let tarball = Tarball::new_targetless(builder, "rust-src");
 
         // A lot of tools expect the rust-src component to be entirely in this directory, so if you
@@ -848,7 +848,7 @@ pub struct PlainSourceTarball;
 
 impl Step for PlainSourceTarball {
     /// Produces the location of the tarball generated
-    type Output = PathBuf;
+    type Output = GeneratedTarball;
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
 
@@ -862,7 +862,7 @@ impl Step for PlainSourceTarball {
     }
 
     /// Creates the plain source tarball
-    fn run(self, builder: &Builder<'_>) -> PathBuf {
+    fn run(self, builder: &Builder<'_>) -> GeneratedTarball {
         let tarball = Tarball::new(builder, "rustc", "src");
         let plain_dst_src = tarball.image_dir();
 
@@ -941,7 +941,7 @@ pub struct Cargo {
 }
 
 impl Step for Cargo {
-    type Output = PathBuf;
+    type Output = GeneratedTarball;
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -959,7 +959,7 @@ impl Step for Cargo {
         });
     }
 
-    fn run(self, builder: &Builder<'_>) -> PathBuf {
+    fn run(self, builder: &Builder<'_>) -> GeneratedTarball {
         let compiler = self.compiler;
         let target = self.target;
 
@@ -995,7 +995,7 @@ pub struct Rls {
 }
 
 impl Step for Rls {
-    type Output = Option<PathBuf>;
+    type Output = Option<GeneratedTarball>;
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -1013,7 +1013,7 @@ impl Step for Rls {
         });
     }
 
-    fn run(self, builder: &Builder<'_>) -> Option<PathBuf> {
+    fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
         let compiler = self.compiler;
         let target = self.target;
         assert!(builder.config.extended);
@@ -1041,7 +1041,7 @@ pub struct RustAnalyzer {
 }
 
 impl Step for RustAnalyzer {
-    type Output = Option<PathBuf>;
+    type Output = Option<GeneratedTarball>;
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -1059,7 +1059,7 @@ impl Step for RustAnalyzer {
         });
     }
 
-    fn run(self, builder: &Builder<'_>) -> Option<PathBuf> {
+    fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
         let compiler = self.compiler;
         let target = self.target;
         assert!(builder.config.extended);
@@ -1090,7 +1090,7 @@ pub struct Clippy {
 }
 
 impl Step for Clippy {
-    type Output = PathBuf;
+    type Output = GeneratedTarball;
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -1108,7 +1108,7 @@ impl Step for Clippy {
         });
     }
 
-    fn run(self, builder: &Builder<'_>) -> PathBuf {
+    fn run(self, builder: &Builder<'_>) -> GeneratedTarball {
         let compiler = self.compiler;
         let target = self.target;
         assert!(builder.config.extended);
@@ -1140,7 +1140,7 @@ pub struct Miri {
 }
 
 impl Step for Miri {
-    type Output = Option<PathBuf>;
+    type Output = Option<GeneratedTarball>;
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -1158,7 +1158,7 @@ impl Step for Miri {
         });
     }
 
-    fn run(self, builder: &Builder<'_>) -> Option<PathBuf> {
+    fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
         let compiler = self.compiler;
         let target = self.target;
         assert!(builder.config.extended);
@@ -1193,7 +1193,7 @@ pub struct Rustfmt {
 }
 
 impl Step for Rustfmt {
-    type Output = Option<PathBuf>;
+    type Output = Option<GeneratedTarball>;
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -1211,7 +1211,7 @@ impl Step for Rustfmt {
         });
     }
 
-    fn run(self, builder: &Builder<'_>) -> Option<PathBuf> {
+    fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
         let compiler = self.compiler;
         let target = self.target;
 
@@ -1316,11 +1316,11 @@ impl Step for Extended {
             tarballs.push(mingw_installer.unwrap());
         }
 
-        let mut tarball = Tarball::new(builder, "rust", &target.triple);
-        let work = tarball.persist_work_dir();
-        tarball.combine(&tarballs);
+        let tarball = Tarball::new(builder, "rust", &target.triple);
+        let generated = tarball.combine(&tarballs);
 
         let tmp = tmpdir(builder).join("combined-tarball");
+        let work = generated.work_dir();
 
         let mut license = String::new();
         license += &builder.read(&builder.src.join("COPYRIGHT"));
@@ -1870,7 +1870,7 @@ pub struct LlvmTools {
 }
 
 impl Step for LlvmTools {
-    type Output = Option<PathBuf>;
+    type Output = Option<GeneratedTarball>;
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -1881,7 +1881,7 @@ impl Step for LlvmTools {
         run.builder.ensure(LlvmTools { target: run.target });
     }
 
-    fn run(self, builder: &Builder<'_>) -> Option<PathBuf> {
+    fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
         let target = self.target;
         assert!(builder.config.extended);
 
@@ -1924,7 +1924,7 @@ pub struct RustDev {
 }
 
 impl Step for RustDev {
-    type Output = Option<PathBuf>;
+    type Output = Option<GeneratedTarball>;
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
 
@@ -1936,7 +1936,7 @@ impl Step for RustDev {
         run.builder.ensure(RustDev { target: run.target });
     }
 
-    fn run(self, builder: &Builder<'_>) -> Option<PathBuf> {
+    fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
         let target = self.target;
 
         /* run only if llvm-config isn't used */
@@ -1989,7 +1989,7 @@ pub struct BuildManifest {
 }
 
 impl Step for BuildManifest {
-    type Output = PathBuf;
+    type Output = GeneratedTarball;
     const DEFAULT: bool = false;
     const ONLY_HOSTS: bool = true;
 
@@ -2001,7 +2001,7 @@ impl Step for BuildManifest {
         run.builder.ensure(BuildManifest { target: run.target });
     }
 
-    fn run(self, builder: &Builder<'_>) -> PathBuf {
+    fn run(self, builder: &Builder<'_>) -> GeneratedTarball {
         let build_manifest = builder.tool_exe(Tool::BuildManifest);
 
         let tarball = Tarball::new(builder, "build-manifest", &self.target.triple);
@@ -2021,7 +2021,7 @@ pub struct ReproducibleArtifacts {
 }
 
 impl Step for ReproducibleArtifacts {
-    type Output = Option<PathBuf>;
+    type Output = Option<GeneratedTarball>;
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
 
