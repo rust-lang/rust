@@ -742,6 +742,14 @@ fn never_loop_expr(expr: &Expr<'_>, main_loop_id: HirId) -> NeverLoopResult {
             // Break can come from the inner loop so remove them.
             absorb_break(&never_loop_block(b, main_loop_id))
         },
+        ExprKind::If(ref e, ref e2, ref e3) => {
+            let e1 = never_loop_expr(e, main_loop_id);
+            let e2 = never_loop_expr(e2, main_loop_id);
+            let e3 = e3
+                .as_ref()
+                .map_or(NeverLoopResult::Otherwise, |e| never_loop_expr(e, main_loop_id));
+            combine_seq(e1, combine_branches(e2, e3))
+        },
         ExprKind::Match(ref e, ref arms, _) => {
             let e = never_loop_expr(e, main_loop_id);
             if arms.is_empty() {
@@ -2594,7 +2602,7 @@ fn is_loop(expr: &Expr<'_>) -> bool {
 }
 
 fn is_conditional(expr: &Expr<'_>) -> bool {
-    matches!(expr.kind, ExprKind::Match(..))
+    matches!(expr.kind, ExprKind::If(..) | ExprKind::Match(..))
 }
 
 fn is_nested(cx: &LateContext<'_>, match_expr: &Expr<'_>, iter_expr: &Expr<'_>) -> bool {

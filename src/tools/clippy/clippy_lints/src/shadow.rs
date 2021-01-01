@@ -333,6 +333,13 @@ fn check_expr<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, bindings: &mut
                 check_expr(cx, e, bindings)
             }
         },
+        ExprKind::If(ref cond, ref then, ref otherwise) => {
+            check_expr(cx, cond, bindings);
+            check_expr(cx, &**then, bindings);
+            if let Some(ref o) = *otherwise {
+                check_expr(cx, o, bindings);
+            }
+        },
         ExprKind::Match(ref init, arms, _) => {
             check_expr(cx, init, bindings);
             let len = bindings.len();

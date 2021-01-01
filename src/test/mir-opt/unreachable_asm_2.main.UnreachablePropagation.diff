@@ -49,27 +49,27 @@
           StorageLive(_5);                 // scope 2 at $DIR/unreachable_asm_2.rs:14:9: 22:10
           StorageLive(_6);                 // scope 2 at $DIR/unreachable_asm_2.rs:14:12: 14:16
           _6 = const true;                 // scope 2 at $DIR/unreachable_asm_2.rs:14:12: 14:16
-          switchInt(_6) -> [false: bb4, otherwise: bb5]; // scope 2 at $DIR/unreachable_asm_2.rs:14:9: 22:10
+          switchInt(move _6) -> [false: bb5, otherwise: bb4]; // scope 2 at $DIR/unreachable_asm_2.rs:14:9: 22:10
       }
   
       bb4: {
-          StorageLive(_8);                 // scope 2 at $DIR/unreachable_asm_2.rs:20:13: 20:41
-          llvm_asm!(LlvmInlineAsmInner { asm: "NOP", asm_str_style: Cooked, outputs: [], inputs: [], clobbers: [], volatile: true, alignstack: false, dialect: Att } : [] : []); // scope 4 at $DIR/unreachable_asm_2.rs:20:22: 20:39
-          _8 = const ();                   // scope 4 at $DIR/unreachable_asm_2.rs:20:13: 20:41
-          StorageDead(_8);                 // scope 2 at $DIR/unreachable_asm_2.rs:20:40: 20:41
-          _4 = const 42_i32;               // scope 2 at $DIR/unreachable_asm_2.rs:21:13: 21:20
-          _5 = const ();                   // scope 2 at $DIR/unreachable_asm_2.rs:18:16: 22:10
--         goto -> bb6;                     // scope 2 at $DIR/unreachable_asm_2.rs:14:9: 22:10
-+         unreachable;                     // scope 2 at $DIR/unreachable_asm_2.rs:14:9: 22:10
-      }
-  
-      bb5: {
           StorageLive(_7);                 // scope 2 at $DIR/unreachable_asm_2.rs:16:13: 16:41
           llvm_asm!(LlvmInlineAsmInner { asm: "NOP", asm_str_style: Cooked, outputs: [], inputs: [], clobbers: [], volatile: true, alignstack: false, dialect: Att } : [] : []); // scope 3 at $DIR/unreachable_asm_2.rs:16:22: 16:39
           _7 = const ();                   // scope 3 at $DIR/unreachable_asm_2.rs:16:13: 16:41
           StorageDead(_7);                 // scope 2 at $DIR/unreachable_asm_2.rs:16:40: 16:41
           _4 = const 21_i32;               // scope 2 at $DIR/unreachable_asm_2.rs:17:13: 17:20
           _5 = const ();                   // scope 2 at $DIR/unreachable_asm_2.rs:14:17: 18:10
+-         goto -> bb6;                     // scope 2 at $DIR/unreachable_asm_2.rs:14:9: 22:10
++         unreachable;                     // scope 2 at $DIR/unreachable_asm_2.rs:14:9: 22:10
+      }
+  
+      bb5: {
+          StorageLive(_8);                 // scope 2 at $DIR/unreachable_asm_2.rs:20:13: 20:41
+          llvm_asm!(LlvmInlineAsmInner { asm: "NOP", asm_str_style: Cooked, outputs: [], inputs: [], clobbers: [], volatile: true, alignstack: false, dialect: Att } : [] : []); // scope 4 at $DIR/unreachable_asm_2.rs:20:22: 20:39
+          _8 = const ();                   // scope 4 at $DIR/unreachable_asm_2.rs:20:13: 20:41
+          StorageDead(_8);                 // scope 2 at $DIR/unreachable_asm_2.rs:20:40: 20:41
+          _4 = const 42_i32;               // scope 2 at $DIR/unreachable_asm_2.rs:21:13: 21:20
+          _5 = const ();                   // scope 2 at $DIR/unreachable_asm_2.rs:18:16: 22:10
 -         goto -> bb6;                     // scope 2 at $DIR/unreachable_asm_2.rs:14:9: 22:10
 -     }
 - 

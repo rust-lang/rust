@@ -14,21 +14,21 @@
 -         _2 = Eq(move _3, const true);    // scope 0 at $DIR/equal_true.rs:4:8: 4:17
 +         _2 = move _3;                    // scope 0 at $DIR/equal_true.rs:4:8: 4:17
           StorageDead(_3);                 // scope 0 at $DIR/equal_true.rs:4:16: 4:17
-          switchInt(_2) -> [false: bb1, otherwise: bb2]; // scope 0 at $DIR/equal_true.rs:4:5: 4:34
+          switchInt(move _2) -> [false: bb2, otherwise: bb1]; // scope 0 at $DIR/equal_true.rs:4:5: 4:34
       }
   
       bb1: {
-          _0 = const 1_i32;                // scope 0 at $DIR/equal_true.rs:4:31: 4:32
-          goto -> bb3;                     // scope 0 at $DIR/equal_true.rs:4:5: 4:34
-      }
-  
-      bb2: {
           _0 = const 0_i32;                // scope 0 at $DIR/equal_true.rs:4:20: 4:21
           goto -> bb3;                     // scope 0 at $DIR/equal_true.rs:4:5: 4:34
       }
   
+      bb2: {
+          _0 = const 1_i32;                // scope 0 at $DIR/equal_true.rs:4:31: 4:32
+          goto -> bb3;                     // scope 0 at $DIR/equal_true.rs:4:5: 4:34
+      }
+  
       bb3: {
-          StorageDead(_2);                 // scope 0 at $DIR/equal_true.rs:5:1: 5:2
+          StorageDead(_2);                 // scope 0 at $DIR/equal_true.rs:4:33: 4:34
           return;                          // scope 0 at $DIR/equal_true.rs:5:2: 5:2
       }
   }

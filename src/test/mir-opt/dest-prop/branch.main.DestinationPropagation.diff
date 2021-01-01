@@ -36,21 +36,21 @@
       }
   
       bb2: {
-          switchInt(_3) -> [false: bb3, otherwise: bb4]; // scope 1 at $DIR/branch.rs:15:13: 20:6
+          switchInt(move _3) -> [false: bb4, otherwise: bb3]; // scope 1 at $DIR/branch.rs:15:13: 20:6
       }
   
       bb3: {
+-         _2 = _1;                         // scope 1 at $DIR/branch.rs:16:9: 16:10
++         nop;                             // scope 1 at $DIR/branch.rs:16:9: 16:10
+          goto -> bb6;                     // scope 1 at $DIR/branch.rs:15:13: 20:6
+      }
+  
+      bb4: {
           StorageLive(_4);                 // scope 1 at $DIR/branch.rs:18:9: 18:14
           _4 = val() -> bb5;               // scope 1 at $DIR/branch.rs:18:9: 18:14
                                            // mir::Constant
                                            // + span: $DIR/branch.rs:18:9: 18:12
                                            // + literal: Const { ty: fn() -> i32 {val}, val: Value(Scalar(<ZST>)) }
-      }
-  
-      bb4: {
--         _2 = _1;                         // scope 1 at $DIR/branch.rs:16:9: 16:10
-+         nop;                             // scope 1 at $DIR/branch.rs:16:9: 16:10
-          goto -> bb6;                     // scope 1 at $DIR/branch.rs:15:13: 20:6
       }
   
       bb5: {
@@ -61,7 +61,7 @@
       }
   
       bb6: {
-          StorageDead(_3);                 // scope 1 at $DIR/branch.rs:20:6: 20:7
+          StorageDead(_3);                 // scope 1 at $DIR/branch.rs:20:5: 20:6
           _0 = const ();                   // scope 0 at $DIR/branch.rs:12:11: 21:2
 -         StorageDead(_2);                 // scope 1 at $DIR/branch.rs:21:1: 21:2
 -         StorageDead(_1);                 // scope 0 at $DIR/branch.rs:21:1: 21:2

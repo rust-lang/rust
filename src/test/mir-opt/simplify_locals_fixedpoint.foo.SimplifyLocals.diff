@@ -47,21 +47,21 @@
           _8 = _6;                         // scope 1 at $DIR/simplify-locals-fixedpoint.rs:5:12: 5:13
           _7 = Gt(move _8, const 42_u8);   // scope 1 at $DIR/simplify-locals-fixedpoint.rs:5:12: 5:20
           StorageDead(_8);                 // scope 1 at $DIR/simplify-locals-fixedpoint.rs:5:19: 5:20
-          switchInt(_7) -> [false: bb4, otherwise: bb5]; // scope 1 at $DIR/simplify-locals-fixedpoint.rs:5:9: 7:10
+          switchInt(move _7) -> [false: bb5, otherwise: bb4]; // scope 1 at $DIR/simplify-locals-fixedpoint.rs:5:9: 7:10
       }
   
       bb4: {
-          _0 = const ();                   // scope 1 at $DIR/simplify-locals-fixedpoint.rs:7:10: 7:10
-          goto -> bb6;                     // scope 1 at $DIR/simplify-locals-fixedpoint.rs:5:9: 7:10
-      }
-  
-      bb5: {
           _0 = const ();                   // scope 1 at $DIR/simplify-locals-fixedpoint.rs:5:21: 7:10
           goto -> bb6;                     // scope 1 at $DIR/simplify-locals-fixedpoint.rs:5:9: 7:10
       }
   
+      bb5: {
+          _0 = const ();                   // scope 1 at $DIR/simplify-locals-fixedpoint.rs:7:10: 7:10
+          goto -> bb6;                     // scope 1 at $DIR/simplify-locals-fixedpoint.rs:5:9: 7:10
+      }
+  
       bb6: {
-          StorageDead(_7);                 // scope 1 at $DIR/simplify-locals-fixedpoint.rs:8:5: 8:6
+          StorageDead(_7);                 // scope 1 at $DIR/simplify-locals-fixedpoint.rs:7:9: 7:10
           StorageDead(_6);                 // scope 0 at $DIR/simplify-locals-fixedpoint.rs:8:5: 8:6
           goto -> bb7;                     // scope 0 at $DIR/simplify-locals-fixedpoint.rs:4:5: 8:6
       }

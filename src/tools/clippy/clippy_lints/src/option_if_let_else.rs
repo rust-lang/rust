@@ -109,25 +109,26 @@ fn extract_body_from_arm<'a>(arm: &'a Arm<'a>) -> Option<&'a Expr<'a>> {
 /// it in curly braces. Otherwise, we don't.
 fn should_wrap_in_braces(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     utils::get_enclosing_block(cx, expr.hir_id).map_or(false, |parent| {
+        let mut should_wrap = false;
+        
         if let Some(Expr {
             kind:
                 ExprKind::Match(
                     _,
                     arms,
-                    MatchSource::IfDesugar {
-                        contains_else_clause: true,
-                    }
-                    | MatchSource::IfLetDesugar {
+                    MatchSource::IfLetDesugar {
                         contains_else_clause: true,
                     },
                 ),
             ..
         }) = parent.expr
         {
-            expr.hir_id == arms[1].body.hir_id
-        } else {
-            false
+            should_wrap = expr.hir_id == arms[1].body.hir_id;
+        } else if let Some(Expr { kind: ExprKind::If(_, _, Some(else_clause)), .. }) = parent.expr {
+            should_wrap = expr.hir_id == else_clause.hir_id;
         }
+
+        should_wrap
     })
 }
 

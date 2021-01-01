@@ -3,24 +3,28 @@
 fn f_u64() -> () {
     let mut _0: ();                      // return place in scope 0 at $DIR/lower_intrinsics.rs:34:16: 34:16
     scope 1 (inlined f_dispatch::<u64>) { // at $DIR/lower_intrinsics.rs:35:5: 35:21
-        debug t => _2;                   // in scope 1 at $DIR/lower_intrinsics.rs:35:5: 35:21
-        let _1: ();                      // in scope 1 at $DIR/lower_intrinsics.rs:35:5: 35:21
-        let mut _2: u64;                 // in scope 1 at $DIR/lower_intrinsics.rs:35:5: 35:21
+        debug t => _1;                   // in scope 1 at $DIR/lower_intrinsics.rs:35:5: 35:21
+        let mut _1: u64;                 // in scope 1 at $DIR/lower_intrinsics.rs:35:5: 35:21
+        let _2: ();                      // in scope 1 at $DIR/lower_intrinsics.rs:35:5: 35:21
+        let mut _3: u64;                 // in scope 1 at $DIR/lower_intrinsics.rs:35:5: 35:21
         scope 2 (inlined std::mem::size_of::<u64>) { // at $DIR/lower_intrinsics.rs:35:5: 35:21
         }
     }
 
     bb0: {
-        _2 = const 0_u64;                // scope 0 at $DIR/lower_intrinsics.rs:35:5: 35:21
-        StorageLive(_1);                 // scope 1 at $DIR/lower_intrinsics.rs:35:5: 35:21
-        _1 = f_non_zst::<u64>(move _2) -> bb1; // scope 1 at $DIR/lower_intrinsics.rs:35:5: 35:21
+        _1 = const 0_u64;                // scope 0 at $DIR/lower_intrinsics.rs:35:5: 35:21
+        StorageLive(_2);                 // scope 1 at $DIR/lower_intrinsics.rs:35:5: 35:21
+        StorageLive(_3);                 // scope 1 at $DIR/lower_intrinsics.rs:35:5: 35:21
+        _3 = move _1;                    // scope 1 at $DIR/lower_intrinsics.rs:35:5: 35:21
+        _2 = f_non_zst::<u64>(move _3) -> bb1; // scope 1 at $DIR/lower_intrinsics.rs:35:5: 35:21
                                          // mir::Constant
                                          // + span: $DIR/lower_intrinsics.rs:35:5: 35:21
                                          // + literal: Const { ty: fn(u64) {f_non_zst::<u64>}, val: Value(Scalar(<ZST>)) }
     }
 
     bb1: {
-        StorageDead(_1);                 // scope 1 at $DIR/lower_intrinsics.rs:35:5: 35:21
+        StorageDead(_3);                 // scope 1 at $DIR/lower_intrinsics.rs:35:5: 35:21
+        StorageDead(_2);                 // scope 1 at $DIR/lower_intrinsics.rs:35:5: 35:21
         _0 = const ();                   // scope 0 at $DIR/lower_intrinsics.rs:34:16: 36:2
         return;                          // scope 0 at $DIR/lower_intrinsics.rs:36:2: 36:2
     }

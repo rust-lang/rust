@@ -90,16 +90,16 @@
 + 
 +     bb3: {
 +         _8 = move _7;                    // scope 6 at $DIR/inline-generator.rs:9:14: 9:46
-+         switchInt(_8) -> [false: bb4, otherwise: bb5]; // scope 6 at $DIR/inline-generator.rs:9:14: 9:46
++         switchInt(move _8) -> [false: bb5, otherwise: bb4]; // scope 6 at $DIR/inline-generator.rs:9:14: 9:46
 +     }
 + 
 +     bb4: {
-+         ((_1 as Yielded).0: i32) = const 13_i32; // scope 6 at $DIR/inline-generator.rs:9:14: 9:46
++         ((_1 as Yielded).0: i32) = const 7_i32; // scope 6 at $DIR/inline-generator.rs:9:14: 9:46
 +         goto -> bb6;                     // scope 6 at $DIR/inline-generator.rs:9:14: 9:46
 +     }
 + 
 +     bb5: {
-+         ((_1 as Yielded).0: i32) = const 7_i32; // scope 6 at $DIR/inline-generator.rs:9:14: 9:46
++         ((_1 as Yielded).0: i32) = const 13_i32; // scope 6 at $DIR/inline-generator.rs:9:14: 9:46
 +         goto -> bb6;                     // scope 6 at $DIR/inline-generator.rs:9:14: 9:46
 +     }
 + 

@@ -3,6 +3,8 @@ error[E0308]: mismatched types
    |
 LL |     assert!(1,1);
    |     ^^^^^^^^^^^^^ expected `bool`, found integer
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error
 

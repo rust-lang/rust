@@ -1443,14 +1443,14 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                 &mut err, expr, expected, found, cause.span, blk_id,
             );
             let parent = fcx.tcx.hir().get(parent_id);
-            if let (Some(match_expr), true, false) = (
-                fcx.tcx.hir().get_match_if_cause(expr.hir_id),
+            if let (Some(cond_expr), true, false) = (
+                fcx.tcx.hir().get_if_cause(expr.hir_id),
                 expected.is_unit(),
                 pointing_at_return_type,
             ) {
-                if match_expr.span.desugaring_kind().is_none() {
-                    err.span_label(match_expr.span, "expected this to be `()`");
-                    fcx.suggest_semicolon_at_end(match_expr.span, &mut err);
+                if cond_expr.span.desugaring_kind().is_none() {
+                    err.span_label(cond_expr.span, "expected this to be `()`");
+                    fcx.suggest_semicolon_at_end(cond_expr.span, &mut err);
                 }
             }
             fcx.get_node_fn_decl(parent).map(|(fn_decl, _, is_main)| (fn_decl, is_main))

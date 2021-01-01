@@ -9,21 +9,21 @@
       bb0: {
           StorageLive(_2);                 // scope 0 at $DIR/multiple_return_terminators.rs:5:8: 5:9
           _2 = _1;                         // scope 0 at $DIR/multiple_return_terminators.rs:5:8: 5:9
-          switchInt(_2) -> [false: bb1, otherwise: bb2]; // scope 0 at $DIR/multiple_return_terminators.rs:5:5: 9:6
+          switchInt(move _2) -> [false: bb2, otherwise: bb1]; // scope 0 at $DIR/multiple_return_terminators.rs:5:5: 9:6
       }
   
       bb1: {
-          _0 = const ();                   // scope 0 at $DIR/multiple_return_terminators.rs:7:12: 9:6
-          goto -> bb3;                     // scope 0 at $DIR/multiple_return_terminators.rs:5:5: 9:6
-      }
-  
-      bb2: {
           _0 = const ();                   // scope 0 at $DIR/multiple_return_terminators.rs:5:10: 7:6
           goto -> bb3;                     // scope 0 at $DIR/multiple_return_terminators.rs:5:5: 9:6
       }
   
+      bb2: {
+          _0 = const ();                   // scope 0 at $DIR/multiple_return_terminators.rs:7:12: 9:6
+          goto -> bb3;                     // scope 0 at $DIR/multiple_return_terminators.rs:5:5: 9:6
+      }
+  
       bb3: {
-          StorageDead(_2);                 // scope 0 at $DIR/multiple_return_terminators.rs:10:1: 10:2
+          StorageDead(_2);                 // scope 0 at $DIR/multiple_return_terminators.rs:9:5: 9:6
           return;                          // scope 0 at $DIR/multiple_return_terminators.rs:10:2: 10:2
       }
   }

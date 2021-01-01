@@ -9,18 +9,12 @@
       bb0: {
           StorageLive(_1);                 // scope 0 at $DIR/control-flow-simplification.rs:12:8: 12:21
 -         _1 = const <bool as NeedsDrop>::NEEDS; // scope 0 at $DIR/control-flow-simplification.rs:12:8: 12:21
--         switchInt(_1) -> [false: bb1, otherwise: bb2]; // scope 0 at $DIR/control-flow-simplification.rs:12:5: 14:6
+-         switchInt(move _1) -> [false: bb2, otherwise: bb1]; // scope 0 at $DIR/control-flow-simplification.rs:12:5: 14:6
 +         _1 = const false;                // scope 0 at $DIR/control-flow-simplification.rs:12:8: 12:21
-+         switchInt(const false) -> [false: bb1, otherwise: bb2]; // scope 0 at $DIR/control-flow-simplification.rs:12:5: 14:6
++         switchInt(const false) -> [false: bb2, otherwise: bb1]; // scope 0 at $DIR/control-flow-simplification.rs:12:5: 14:6
       }
   
       bb1: {
-          _0 = const ();                   // scope 0 at $DIR/control-flow-simplification.rs:14:6: 14:6
-          StorageDead(_1);                 // scope 0 at $DIR/control-flow-simplification.rs:15:1: 15:2
-          return;                          // scope 0 at $DIR/control-flow-simplification.rs:15:2: 15:2
-      }
-  
-      bb2: {
           StorageLive(_2);                 // scope 0 at $SRC_DIR/std/src/macros.rs:LL:COL
           begin_panic::<&str>(const "explicit panic"); // scope 0 at $SRC_DIR/std/src/macros.rs:LL:COL
                                            // mir::Constant
@@ -32,6 +26,12 @@
                                            // mir::Constant
                                            // + span: $SRC_DIR/std/src/macros.rs:LL:COL
                                            // + literal: Const { ty: &str, val: Value(Slice { data: Allocation { bytes: [101, 120, 112, 108, 105, 99, 105, 116, 32, 112, 97, 110, 105, 99], relocations: Relocations(SortedMap { data: [] }), init_mask: InitMask { blocks: [16383], len: Size { raw: 14 } }, size: Size { raw: 14 }, align: Align { pow2: 0 }, mutability: Not, extra: () }, start: 0, end: 14 }) }
+      }
+  
+      bb2: {
+          _0 = const ();                   // scope 0 at $DIR/control-flow-simplification.rs:14:6: 14:6
+          StorageDead(_1);                 // scope 0 at $DIR/control-flow-simplification.rs:14:5: 14:6
+          return;                          // scope 0 at $DIR/control-flow-simplification.rs:15:2: 15:2
       }
   }
   

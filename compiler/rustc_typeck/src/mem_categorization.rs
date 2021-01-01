@@ -364,6 +364,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
             | hir::ExprKind::Cast(..)
             | hir::ExprKind::DropTemps(..)
             | hir::ExprKind::Array(..)
+            | hir::ExprKind::If(..)
             | hir::ExprKind::Tup(..)
             | hir::ExprKind::Binary(..)
             | hir::ExprKind::Block(..)
