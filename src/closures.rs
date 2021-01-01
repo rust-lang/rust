@@ -151,7 +151,6 @@ fn rewrite_closure_with_block(
             id: ast::NodeId::root(),
             kind: ast::StmtKind::Expr(ptr::P(body.clone())),
             span: body.span,
-            tokens: None,
         }],
         id: ast::NodeId::root(),
         rules: ast::BlockCheckMode::Default,

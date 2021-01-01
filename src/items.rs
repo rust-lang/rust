@@ -2118,7 +2118,7 @@ pub(crate) fn span_hi_for_param(context: &RewriteContext<'_>, param: &ast::Param
 
 pub(crate) fn is_named_param(param: &ast::Param) -> bool {
     if let ast::PatKind::Ident(_, ident, _) = param.pat.kind {
-        ident.name != symbol::kw::Invalid
+        ident.name != symbol::kw::Empty
     } else {
         true
     }

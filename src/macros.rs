@@ -158,7 +158,7 @@ fn rewrite_macro_name(
         format!("{}!", pprust::path_to_string(path))
     };
     match extra_ident {
-        Some(ident) if ident.name != kw::Invalid => format!("{} {}", name, ident),
+        Some(ident) if ident.name != kw::Empty => format!("{} {}", name, ident),
         _ => name,
     }
 }
