@@ -14,9 +14,9 @@ pub(crate) fn render_fn<'a>(
     import_to_add: Option<ImportEdit>,
     local_name: Option<String>,
     fn_: hir::Function,
-) -> CompletionItem {
+) -> Option<CompletionItem> {
     let _p = profile::span("render_fn");
-    FunctionRender::new(ctx, local_name, fn_).render(import_to_add)
+    Some(FunctionRender::new(ctx, local_name, fn_)?.render(import_to_add))
 }
 
 #[derive(Debug)]
@@ -32,12 +32,11 @@ impl<'a> FunctionRender<'a> {
         ctx: RenderContext<'a>,
         local_name: Option<String>,
         fn_: hir::Function,
-    ) -> FunctionRender<'a> {
+    ) -> Option<FunctionRender<'a>> {
         let name = local_name.unwrap_or_else(|| fn_.name(ctx.db()).to_string());
-        #[allow(deprecated)]
-        let ast_node = fn_.source_old(ctx.db()).value;
+        let ast_node = fn_.source(ctx.db())?.value;
 
-        FunctionRender { ctx, name, func: fn_, ast_node }
+        Some(FunctionRender { ctx, name, func: fn_, ast_node })
     }
 
     fn render(self, import_to_add: Option<ImportEdit>) -> CompletionItem {

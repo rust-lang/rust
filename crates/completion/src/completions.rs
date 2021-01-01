@@ -106,8 +106,9 @@ impl Completions {
         func: hir::Function,
         local_name: Option<String>,
     ) {
-        let item = render_fn(RenderContext::new(ctx), None, local_name, func);
-        self.add(item)
+        if let Some(item) = render_fn(RenderContext::new(ctx), None, local_name, func) {
+            self.add(item)
+        }
     }
 
     pub(crate) fn add_variant_pat(

@@ -15,7 +15,7 @@ pub(crate) fn render_type_alias<'a>(
     ctx: RenderContext<'a>,
     type_alias: hir::TypeAlias,
 ) -> Option<CompletionItem> {
-    TypeAliasRender::new(ctx, type_alias).render()
+    TypeAliasRender::new(ctx, type_alias)?.render()
 }
 
 #[derive(Debug)]
@@ -26,10 +26,9 @@ struct TypeAliasRender<'a> {
 }
 
 impl<'a> TypeAliasRender<'a> {
-    fn new(ctx: RenderContext<'a>, type_alias: hir::TypeAlias) -> TypeAliasRender<'a> {
-        #[allow(deprecated)]
-        let ast_node = type_alias.source_old(ctx.db()).value;
-        TypeAliasRender { ctx, type_alias, ast_node }
+    fn new(ctx: RenderContext<'a>, type_alias: hir::TypeAlias) -> Option<TypeAliasRender<'a>> {
+        let ast_node = type_alias.source(ctx.db())?.value;
+        Some(TypeAliasRender { ctx, type_alias, ast_node })
     }
 
     fn render(self) -> Option<CompletionItem> {

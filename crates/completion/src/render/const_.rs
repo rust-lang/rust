@@ -15,7 +15,7 @@ pub(crate) fn render_const<'a>(
     ctx: RenderContext<'a>,
     const_: hir::Const,
 ) -> Option<CompletionItem> {
-    ConstRender::new(ctx, const_).render()
+    ConstRender::new(ctx, const_)?.render()
 }
 
 #[derive(Debug)]
@@ -26,10 +26,9 @@ struct ConstRender<'a> {
 }
 
 impl<'a> ConstRender<'a> {
-    fn new(ctx: RenderContext<'a>, const_: hir::Const) -> ConstRender<'a> {
-        #[allow(deprecated)]
-        let ast_node = const_.source_old(ctx.db()).value;
-        ConstRender { ctx, const_, ast_node }
+    fn new(ctx: RenderContext<'a>, const_: hir::Const) -> Option<ConstRender<'a>> {
+        let ast_node = const_.source(ctx.db())?.value;
+        Some(ConstRender { ctx, const_, ast_node })
     }
 
     fn render(self) -> Option<CompletionItem> {
