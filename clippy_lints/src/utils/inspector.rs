@@ -213,6 +213,15 @@ fn print_expr(cx: &LateContext<'_>, expr: &hir::Expr<'_>, indent: usize) {
         hir::ExprKind::Loop(..) => {
             println!("{}Loop", ind);
         },
+        hir::ExprKind::If(ref cond, _, ref else_opt) => {
+            println!("{}If", ind);
+            println!("{}condition:", ind);
+            print_expr(cx, cond, indent + 1);
+            if let Some(ref els) = *else_opt {
+                println!("{}else:", ind);
+                print_expr(cx, els, indent + 1);
+            }
+        },
         hir::ExprKind::Match(ref cond, _, ref source) => {
             println!("{}Match", ind);
             println!("{}condition:", ind);
