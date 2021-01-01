@@ -671,7 +671,7 @@ fn foo() { break; }
     }
 
     #[test]
-    fn replace_filter_next_with_find_map() {
+    fn replace_filter_map_next_with_find_map() {
         check_diagnostics(
             r#"
             fn foo() {
@@ -683,7 +683,7 @@ fn foo() { break; }
     }
 
     #[test]
-    fn replace_filter_next_with_find_map_no_diagnostic_without_next() {
+    fn replace_filter_map_next_with_find_map_no_diagnostic_without_next() {
         check_diagnostics(
             r#"
             fn foo() {
@@ -697,7 +697,7 @@ fn foo() { break; }
     }
 
     #[test]
-    fn replace_filter_next_with_find_map_no_diagnostic_with_intervening_methods() {
+    fn replace_filter_map_next_with_find_map_no_diagnostic_with_intervening_methods() {
         check_diagnostics(
             r#"
             fn foo() {
@@ -712,7 +712,7 @@ fn foo() { break; }
     }
 
     #[test]
-    fn replace_filter_next_with_find_map_no_diagnostic_if_not_in_chain() {
+    fn replace_filter_map_next_with_find_map_no_diagnostic_if_not_in_chain() {
         check_diagnostics(
             r#"
             fn foo() {
