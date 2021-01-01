@@ -791,6 +791,10 @@ impl Ty {
         matches!(self, Ty::Apply(ApplicationTy { ctor: TypeCtor::Never, .. }))
     }
 
+    pub fn is_unknown(&self) -> bool {
+        matches!(self, Ty::Unknown)
+    }
+
     /// If this is a `dyn Trait` type, this returns the `Trait` part.
     pub fn dyn_trait_ref(&self) -> Option<&TraitRef> {
         match self {
