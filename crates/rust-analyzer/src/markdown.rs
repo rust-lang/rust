@@ -1,8 +1,17 @@
 //! Transforms markdown
 
 const RUSTDOC_FENCE: &str = "```";
-const RUSTDOC_CODE_BLOCK_ATTRIBUTES_RUST_SPECIFIC: &[&str] =
-    &["", "rust", "should_panic", "ignore", "no_run", "compile_fail", "edition2015", "edition2018"];
+const RUSTDOC_CODE_BLOCK_ATTRIBUTES_RUST_SPECIFIC: &[&str] = &[
+    "",
+    "rust",
+    "should_panic",
+    "ignore",
+    "no_run",
+    "compile_fail",
+    "edition2015",
+    "edition2018",
+    "edition2021",
+];
 
 pub(crate) fn format_docs(src: &str) -> String {
     let mut processed_lines = Vec::new();

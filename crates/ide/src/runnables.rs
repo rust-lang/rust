@@ -230,7 +230,7 @@ impl TestAttr {
 
 const RUSTDOC_FENCE: &str = "```";
 const RUSTDOC_CODE_BLOCK_ATTRIBUTES_RUNNABLE: &[&str] =
-    &["", "rust", "should_panic", "edition2015", "edition2018"];
+    &["", "rust", "should_panic", "edition2015", "edition2018", "edition2021"];
 
 fn has_runnable_doc_test(attrs: &hir::Attrs) -> bool {
     attrs.docs().map_or(false, |doc| {
