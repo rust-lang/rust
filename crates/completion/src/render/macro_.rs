@@ -45,7 +45,7 @@ impl<'a> MacroRender<'a> {
                 .set_documentation(self.docs.clone())
                 .set_deprecated(self.ctx.is_deprecated(self.macro_))
                 .add_import(import_to_add)
-                .detail(self.detail()?);
+                .set_detail(self.detail());
 
         let needs_bang = self.needs_bang();
         builder = match self.ctx.snippet_cap() {
