@@ -20,11 +20,10 @@ pub(crate) fn complete_record(acc: &mut Completions, ctx: &CompletionContext) ->
 
             let missing_fields = ctx.sema.record_literal_missing_fields(record_lit);
             if impl_default_trait && !missing_fields.is_empty() {
-                let completion_text = if ctx.token.to_string() == "." {
-                    ".Default::default()"
-                } else {
-                    "..Default::default()"
-                };
+                let completion_text = "..Default::default()";
+                let completion_text = completion_text
+                    .strip_prefix(ctx.token.to_string().as_str())
+                    .unwrap_or(completion_text);
                 acc.add(
                     CompletionItem::new(
                         CompletionKind::Snippet,
