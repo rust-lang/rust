@@ -370,8 +370,9 @@ fn hover_for_definition(db: &RootDatabase, def: Definition) -> Option<Markup> {
         }
         Definition::Label(it) => Some(Markup::fenced_block(&it.name(db))),
         Definition::LifetimeParam(it) => Some(Markup::fenced_block(&it.name(db))),
-        Definition::TypeParam(_) | Definition::ConstParam(_) => {
-            // FIXME: Hover for generic param
+        Definition::TypeParam(type_param) => Some(Markup::fenced_block(&type_param.display(db))),
+        Definition::ConstParam(_) => {
+            // FIXME: Hover for generic const param
             None
         }
     };
@@ -3255,6 +3256,53 @@ fn foo() {
             'lifetime
             ```
             "#]],
+        );
+    }
+
+    #[test]
+    fn hover_type_param() {
+        check(
+            r#"
+struct Foo<T>(T);
+trait Copy {}
+trait Clone {}
+trait Sized {}
+impl<T: Copy + Clone> Foo<T<|>> where T: Sized {}
+"#,
+            expect![[r#"
+                *T*
+
+                ```rust
+                T: Copy + Clone + Sized
+                ```
+            "#]],
+        );
+        check(
+            r#"
+struct Foo<T>(T);
+impl<T> Foo<T<|>> {}
+"#,
+            expect![[r#"
+                *T*
+
+                ```rust
+                T
+                ```
+                "#]],
+        );
+        // lifetimes aren't being substituted yet
+        check(
+            r#"
+struct Foo<T>(T);
+impl<T: 'static> Foo<T<|>> {}
+"#,
+            expect![[r#"
+                *T*
+
+                ```rust
+                T: {error}
+                ```
+                "#]],
         );
     }
 }
