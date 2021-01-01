@@ -5,7 +5,9 @@ enum BtNode {
 
 fn main() {
     let y = match 10 {
-        Foo<T>::A(value) => value, //~ error: expected one of `=>`, `@`, `if`, or `|`, found `<`
-        Foo<T>::B => 7,
+        Foo<T>::A(value) => value, //~ ERROR failed to resolve: use of undeclared type `Foo`
+        //~^ ERROR cannot find type `T` in this scope
+        Foo<T>::B => 7, //~ ERROR failed to resolve: use of undeclared type `Foo`
+        //~^ ERROR cannot find type `T` in this scope
     };
 }

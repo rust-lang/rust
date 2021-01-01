@@ -1,6 +1,6 @@
 fn main() {
-    let caller<F> = |f: F|  //~ ERROR expected one of `:`, `;`, `=`, `@`, or `|`, found `<`
-    where F: Fn() -> i32
+    let caller<F> = |f: F|
+    where F: Fn() -> i32 //~ ERROR expected expression, found keyword `where`
     {
         let x = f();
         println!("Y {}",x);

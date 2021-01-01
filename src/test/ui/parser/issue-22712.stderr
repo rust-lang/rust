@@ -1,8 +1,23 @@
-error: expected one of `:`, `;`, `=`, `@`, or `|`, found `<`
-  --> $DIR/issue-22712.rs:6:12
+error: expected `;`, found `}`
+  --> $DIR/issue-22712.rs:6:21
    |
 LL |     let Foo<Vec<u8>>
-   |            ^ expected one of `:`, `;`, `=`, `@`, or `|`
+   |                     ^ help: add `;` here
+LL |
+LL | }
+   | - unexpected token
 
-error: aborting due to previous error
+error[E0532]: expected unit struct, unit variant or constant, found struct `Foo`
+  --> $DIR/issue-22712.rs:6:9
+   |
+LL | / struct Foo<B> {
+LL | |     buffer: B
+LL | | }
+   | |_- `Foo` defined here
+...
+LL |       let Foo<Vec<u8>>
+   |           ^^^^^^^^^^^^ help: use struct pattern syntax instead: `Foo { buffer }`
 
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0532`.

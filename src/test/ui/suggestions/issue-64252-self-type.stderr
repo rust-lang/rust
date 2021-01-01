@@ -1,34 +1,14 @@
-error: expected one of `:`, `@`, or `|`, found `<`
-  --> $DIR/issue-64252-self-type.rs:4:15
+error: expected one of `!`, `(`, `...`, `..=`, `..`, `::`, `:`, `{`, or `|`, found `)`
+  --> $DIR/issue-64252-self-type.rs:4:21
    |
 LL | pub fn foo(Box<Self>) { }
-   |               ^ expected one of `:`, `@`, or `|`
-   |
-   = note: anonymous parameters are removed in the 2018 edition (see RFC 1685)
-help: if this is a `self` type, give it a parameter name
-   |
-LL | pub fn foo(self: Box<Self>) { }
-   |            ^^^^^^^^^
-help: if this is a type, explicitly ignore the parameter name
-   |
-LL | pub fn foo(_: Box<Self>) { }
-   |            ^^^^^^
+   |                     ^ expected one of 9 possible tokens
 
-error: expected one of `:`, `@`, or `|`, found `<`
-  --> $DIR/issue-64252-self-type.rs:10:15
+error: expected one of `!`, `(`, `...`, `..=`, `..`, `::`, `:`, `{`, or `|`, found `)`
+  --> $DIR/issue-64252-self-type.rs:10:21
    |
 LL |     fn bar(Box<Self>) { }
-   |               ^ expected one of `:`, `@`, or `|`
-   |
-   = note: anonymous parameters are removed in the 2018 edition (see RFC 1685)
-help: if this is a `self` type, give it a parameter name
-   |
-LL |     fn bar(self: Box<Self>) { }
-   |            ^^^^^^^^^
-help: if this is a type, explicitly ignore the parameter name
-   |
-LL |     fn bar(_: Box<Self>) { }
-   |            ^^^^^^
+   |                     ^ expected one of 9 possible tokens
 
 error: aborting due to 2 previous errors
 

@@ -1,8 +1,28 @@
-error: expected one of `=>`, `@`, `if`, or `|`, found `<`
-  --> $DIR/pat-lt-bracket-4.rs:8:12
+error[E0433]: failed to resolve: use of undeclared type `Foo`
+  --> $DIR/pat-lt-bracket-4.rs:8:9
    |
 LL |         Foo<T>::A(value) => value,
-   |            ^ expected one of `=>`, `@`, `if`, or `|`
+   |         ^^^ use of undeclared type `Foo`
 
-error: aborting due to previous error
+error[E0433]: failed to resolve: use of undeclared type `Foo`
+  --> $DIR/pat-lt-bracket-4.rs:10:9
+   |
+LL |         Foo<T>::B => 7,
+   |         ^^^ use of undeclared type `Foo`
 
+error[E0412]: cannot find type `T` in this scope
+  --> $DIR/pat-lt-bracket-4.rs:8:13
+   |
+LL |         Foo<T>::A(value) => value,
+   |             ^ not found in this scope
+
+error[E0412]: cannot find type `T` in this scope
+  --> $DIR/pat-lt-bracket-4.rs:10:13
+   |
+LL |         Foo<T>::B => 7,
+   |             ^ not found in this scope
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0412, E0433.
+For more information about an error, try `rustc --explain E0412`.

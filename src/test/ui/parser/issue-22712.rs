@@ -3,7 +3,8 @@ struct Foo<B> {
 }
 
 fn bar() {
-    let Foo<Vec<u8>>  //~ ERROR expected one of `:`, `;`, `=`, `@`, or `|`, found `<`
+    let Foo<Vec<u8>> //~ ERROR expected `;`, found `}`
+    //~^ ERROR expected unit struct, unit variant or constant, found struct `Foo`
 }
 
 fn main() {}

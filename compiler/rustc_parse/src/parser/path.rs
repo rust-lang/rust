@@ -28,6 +28,10 @@ pub enum PathStyle {
     /// without the disambiguator, e.g., `x<y>` - unambiguously a path.
     /// Paths with disambiguators are still accepted, `x::<Y>` - unambiguously a path too.
     Type,
+    /// Paths in patterns behave like paths in types, where there is no ambiguity. `Pat` has to be
+    /// distinct from `Type`, because types permit generic arguments to begin with `(`, i.e.
+    /// `fn(A, B, C) -> D`, which conflicts with the constructors in a pattern, e.g. `Foo(x, y)`.
+    Pat,
     /// A path with generic arguments disallowed, e.g., `foo::bar::Baz`, used in imports,
     /// visibilities or attributes.
     /// Technically, this variant is unnecessary and e.g., `Expr` can be used instead
@@ -156,7 +160,7 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, ()> {
         loop {
             let segment = self.parse_path_segment(style)?;
-            if style == PathStyle::Expr {
+            if matches!(style, PathStyle::Expr | PathStyle::Pat) {
                 // In order to check for trailing angle brackets, we must have finished
                 // recursing (`parse_path_segment` can indirectly call this function),
                 // that is, the next token must be the highlighted part of the below example:
@@ -186,33 +190,31 @@ impl<'a> Parser<'a> {
     pub(super) fn parse_path_segment(&mut self, style: PathStyle) -> PResult<'a, PathSegment> {
         let ident = self.parse_path_segment_ident()?;
 
-        let is_args_start = |token: &Token| {
-            matches!(
-                token.kind,
-                token::Lt
-                    | token::BinOp(token::Shl)
-                    | token::OpenDelim(token::Paren)
-                    | token::LArrow
-            )
+        let is_args_start = |token: &Token, include_paren: bool| {
+            matches!(token.kind, token::Lt | token::BinOp(token::Shl) | token::LArrow)
+                // Parentheses are only valid for types, where `(` can denote the start of the
+                // generic arguments of function types, e.g. `fn(A, B, C) -> D`.
+                || include_paren && matches!(token.kind, token::OpenDelim(token::Paren))
         };
         let check_args_start = |this: &mut Self| {
-            this.expected_tokens.extend_from_slice(&[
-                TokenType::Token(token::Lt),
-                TokenType::Token(token::OpenDelim(token::Paren)),
-            ]);
-            is_args_start(&this.token)
+            this.expected_tokens.push(TokenType::Token(token::Lt));
+            if matches!(style, PathStyle::Type) {
+                // Parentheses are only valid for types, not patterns (see comment above).
+                this.expected_tokens.push(TokenType::Token(token::OpenDelim(token::Paren)));
+            }
+            is_args_start(&this.token, matches!(style, PathStyle::Type))
         };
 
         Ok(
-            if style == PathStyle::Type && check_args_start(self)
+            if matches!(style, PathStyle::Type | PathStyle::Pat) && check_args_start(self)
                 || style != PathStyle::Mod
                     && self.check(&token::ModSep)
-                    && self.look_ahead(1, |t| is_args_start(t))
+                    && self.look_ahead(1, |t| is_args_start(t, true))
             {
-                // We use `style == PathStyle::Expr` to check if this is in a recursion or not. If
-                // it isn't, then we reset the unmatched angle bracket count as we're about to start
-                // parsing a new path.
-                if style == PathStyle::Expr {
+                // We check whether this call is part of a recursion or not. If it is not, then we
+                // reset the unmatched angle bracket count as we're about to start parsing a new
+                // path.
+                if matches!(style, PathStyle::Expr | PathStyle::Pat) {
                     self.unmatched_angle_bracket_count = 0;
                     self.max_angle_bracket_count = 0;
                 }
@@ -337,7 +339,7 @@ impl<'a> Parser<'a> {
         // locations that consume some `<` characters - as long as we update the count when
         // this happens, it isn't an issue.
 
-        let is_first_invocation = style == PathStyle::Expr;
+        let is_first_invocation = matches!(style, PathStyle::Expr | PathStyle::Pat);
         // Take a snapshot before attempting to parse - we can restore this later.
         let snapshot = if is_first_invocation { Some(self.clone()) } else { None };
 

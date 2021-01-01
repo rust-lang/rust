@@ -1,8 +1,8 @@
-error: expected one of `=>`, `@`, `if`, or `|`, found `<`
-  --> $DIR/pat-lt-bracket-1.rs:3:7
+error: expected one of `,`, `.`, `:`, `=`, `>`, `?`, or an operator, found `=>`
+  --> $DIR/pat-lt-bracket-1.rs:3:11
    |
 LL |     x < 7 => (),
-   |       ^ expected one of `=>`, `@`, `if`, or `|`
+   |           ^^ expected one of 7 possible tokens
 
 error: aborting due to previous error
 

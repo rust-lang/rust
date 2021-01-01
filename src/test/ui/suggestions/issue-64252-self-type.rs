@@ -2,13 +2,13 @@
 // to functions where this is applicable.
 
 pub fn foo(Box<Self>) { }
-//~^ ERROR expected one of `:`, `@`, or `|`, found `<`
+//~^ ERROR expected one of
 
 struct Bar;
 
 impl Bar {
     fn bar(Box<Self>) { }
-    //~^ ERROR expected one of `:`, `@`, or `|`, found `<`
+    //~^ ERROR expected one of
 }
 
 fn main() { }

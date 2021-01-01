@@ -748,11 +748,11 @@ impl<'a> Parser<'a> {
     fn parse_pat_path(&mut self) -> PResult<'a, (Option<QSelf>, Path)> {
         Ok(if self.eat_lt() {
             // Parse a qualified path.
-            let (qself, path) = self.parse_qpath(PathStyle::Expr)?;
+            let (qself, path) = self.parse_qpath(PathStyle::Pat)?;
             (Some(qself), path)
         } else {
             // Parse an unqualified path.
-            (None, self.parse_path(PathStyle::Expr)?)
+            (None, self.parse_path(PathStyle::Pat)?)
         })
     }
 
@@ -787,7 +787,9 @@ impl<'a> Parser<'a> {
         && self.look_ahead(1, |t| !matches!(t.kind, token::OpenDelim(token::Paren) // A tuple struct pattern.
             | token::OpenDelim(token::Brace) // A struct pattern.
             | token::DotDotDot | token::DotDotEq | token::DotDot // A range pattern.
-            | token::ModSep // A tuple / struct variant pattern.
+             // An (undisambiguated) tuple / struct variant pattern.
+            | token::Lt | token::BinOp(token::Shl) | token::LArrow
+            | token::ModSep // A (disambiguated) tuple / struct variant pattern.
             | token::Not)) // A macro expanding to a pattern.
     }
 
