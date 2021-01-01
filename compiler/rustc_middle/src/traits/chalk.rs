@@ -72,6 +72,7 @@ impl<'tcx> chalk_ir::interner::Interner for RustInterner<'tcx> {
     type InternedQuantifiedWhereClauses = Vec<chalk_ir::QuantifiedWhereClause<Self>>;
     type InternedVariableKinds = Vec<chalk_ir::VariableKind<Self>>;
     type InternedCanonicalVarKinds = Vec<chalk_ir::CanonicalVarKind<Self>>;
+    type InternedVariances = Vec<chalk_ir::Variance>;
     type InternedConstraints = Vec<chalk_ir::InEnvironment<chalk_ir::Constraint<Self>>>;
     type DefId = DefId;
     type InternedAdtId = &'tcx AdtDef;
@@ -350,6 +351,20 @@ impl<'tcx> chalk_ir::interner::Interner for RustInterner<'tcx> {
         constraints: &'a Self::InternedConstraints,
     ) -> &'a [chalk_ir::InEnvironment<chalk_ir::Constraint<Self>>] {
         constraints
+    }
+
+    fn intern_variances<E>(
+        &self,
+        data: impl IntoIterator<Item = Result<chalk_ir::Variance, E>>,
+    ) -> Result<Self::InternedVariances, E> {
+        data.into_iter().collect::<Result<Vec<_>, _>>()
+    }
+
+    fn variances_data<'a>(
+        &self,
+        variances: &'a Self::InternedVariances,
+    ) -> &'a [chalk_ir::Variance] {
+        variances
     }
 }
 
