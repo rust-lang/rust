@@ -1185,6 +1185,14 @@ fn find_matches_sugg(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>], expr
             } else {
                 pat
             };
+
+            // strip potential borrows (#6503), but only if the type is a reference
+            let mut ex_new = ex;
+            if let ExprKind::AddrOf(BorrowKind::Ref, .., ex_inner) = ex.kind {
+                if let ty::Ref(..) = cx.typeck_results().expr_ty(&ex_inner).kind() {
+                    ex_new = ex_inner;
+                }
+            };
             span_lint_and_sugg(
                 cx,
                 MATCH_LIKE_MATCHES_MACRO,
@@ -1194,7 +1202,7 @@ fn find_matches_sugg(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>], expr
                 format!(
                     "{}matches!({}, {})",
                     if b0 { "" } else { "!" },
-                    snippet_with_applicability(cx, ex.span, "..", &mut applicability),
+                    snippet_with_applicability(cx, ex_new.span, "..", &mut applicability),
                     pat_and_guard,
                 ),
                 applicability,
