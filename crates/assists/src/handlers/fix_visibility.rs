@@ -97,6 +97,7 @@ fn add_vis_to_referenced_record_field(acc: &mut Assists, ctx: &AssistContext) ->
     let parent_name = parent.name(ctx.db());
     let target_module = parent.module(ctx.db());
 
+    #[allow(deprecated)]
     let in_file_source = record_field_def.source_old(ctx.db());
     let (offset, current_visibility, target) = match in_file_source.value {
         hir::FieldSource::Named(it) => {
@@ -150,6 +151,7 @@ fn target_data_for_def(
         S: HasSource<Ast = Ast>,
         Ast: AstNode + ast::VisibilityOwner,
     {
+        #[allow(deprecated)]
         let source = x.source_old(db);
         let in_file_syntax = source.syntax();
         let file_id = in_file_syntax.file_id;

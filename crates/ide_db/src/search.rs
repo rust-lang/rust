@@ -120,6 +120,7 @@ impl Definition {
         let file_id = module_src.file_id.original_file(db);
 
         if let Definition::Local(var) = self {
+            #[allow(deprecated)]
             let range = match var.parent(db) {
                 DefWithBody::Function(f) => f.source_old(db).value.syntax().text_range(),
                 DefWithBody::Const(c) => c.source_old(db).value.syntax().text_range(),
@@ -131,6 +132,7 @@ impl Definition {
         }
 
         if let Definition::LifetimeParam(param) = self {
+            #[allow(deprecated)]
             let range = match param.parent(db) {
                 hir::GenericDef::Function(it) => it.source_old(db).value.syntax().text_range(),
                 hir::GenericDef::Adt(it) => match it {

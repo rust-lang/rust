@@ -27,6 +27,7 @@ struct TypeAliasRender<'a> {
 
 impl<'a> TypeAliasRender<'a> {
     fn new(ctx: RenderContext<'a>, type_alias: hir::TypeAlias) -> TypeAliasRender<'a> {
+        #[allow(deprecated)]
         let ast_node = type_alias.source_old(ctx.db()).value;
         TypeAliasRender { ctx, type_alias, ast_node }
     }

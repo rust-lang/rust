@@ -206,6 +206,7 @@ fn runnable_action(
                 _ => None,
             },
             ModuleDef::Function(it) => {
+                #[allow(deprecated)]
                 let src = it.source_old(sema.db);
                 if src.file_id != file_id.into() {
                     mark::hit!(hover_macro_generated_struct_fn_doc_comment);
@@ -332,10 +333,12 @@ fn hover_for_definition(db: &RootDatabase, def: Definition) -> Option<Markup> {
             if it.is_proc_macro() {
                 return None;
             }
+            #[allow(deprecated)]
             let label = macro_label(&it.source_old(db).value);
             from_def_source_labeled(db, it, Some(label), mod_path)
         }
         Definition::Field(def) => {
+            #[allow(deprecated)]
             let src = def.source_old(db).value;
             if let FieldSource::Named(it) = src {
                 from_def_source_labeled(db, def, it.short_label(), mod_path)
@@ -385,6 +388,7 @@ fn hover_for_definition(db: &RootDatabase, def: Definition) -> Option<Markup> {
         D: HasSource<Ast = A> + HasAttrs + Copy,
         A: ShortLabel,
     {
+        #[allow(deprecated)]
         let short_label = def.source_old(db).value.short_label();
         from_def_source_labeled(db, def, short_label, mod_path)
     }

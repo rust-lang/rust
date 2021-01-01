@@ -156,6 +156,7 @@ fn add_function_impl(
     };
     let range = TextRange::new(fn_def_node.text_range().start(), ctx.source_range().end());
 
+    #[allow(deprecated)]
     let function_decl = function_declaration(&func.source_old(ctx.db).value);
     match ctx.config.snippet_cap {
         Some(cap) => {
@@ -200,6 +201,7 @@ fn add_const_impl(
     let const_name = const_.name(ctx.db).map(|n| n.to_string());
 
     if let Some(const_name) = const_name {
+        #[allow(deprecated)]
         let snippet = make_const_compl_syntax(&const_.source_old(ctx.db).value);
 
         let range = TextRange::new(const_def_node.text_range().start(), ctx.source_range().end());

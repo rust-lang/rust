@@ -27,6 +27,7 @@ struct ConstRender<'a> {
 
 impl<'a> ConstRender<'a> {
     fn new(ctx: RenderContext<'a>, const_: hir::Const) -> ConstRender<'a> {
+        #[allow(deprecated)]
         let ast_node = const_.source_old(ctx.db()).value;
         ConstRender { ctx, const_, ast_node }
     }

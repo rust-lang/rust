@@ -161,6 +161,7 @@ impl AnalysisStatsCmd {
             }
             let mut msg = format!("processing: {}", full_name);
             if verbosity.is_verbose() {
+                #[allow(deprecated)]
                 let src = f.source_old(db);
                 let original_file = src.file_id.original_file(db);
                 let path = vfs.file_path(original_file);

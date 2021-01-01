@@ -989,6 +989,7 @@ impl MacroDef {
         if self.is_proc_macro() {
             return None;
         }
+        #[allow(deprecated)]
         self.source_old(db).value.name().map(|it| it.as_name())
     }
 
@@ -1378,6 +1379,7 @@ impl Impl {
     }
 
     pub fn is_builtin_derive(self, db: &dyn HirDatabase) -> Option<InFile<ast::Attr>> {
+        #[allow(deprecated)]
         let src = self.source_old(db);
         let item = src.file_id.is_builtin_derive(db.upcast())?;
         let hygenic = hir_expand::hygiene::Hygiene::new(db.upcast(), item.file_id);

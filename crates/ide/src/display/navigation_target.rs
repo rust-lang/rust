@@ -285,6 +285,7 @@ where
     D::Ast: ast::NameOwner + ShortLabel,
 {
     fn to_nav(&self, db: &RootDatabase) -> NavigationTarget {
+        #[allow(deprecated)]
         let src = self.source_old(db);
         let mut res = NavigationTarget::from_named(
             db,
@@ -314,6 +315,7 @@ impl ToNav for hir::Module {
 
 impl ToNav for hir::Impl {
     fn to_nav(&self, db: &RootDatabase) -> NavigationTarget {
+        #[allow(deprecated)]
         let src = self.source_old(db);
         let derive_attr = self.is_builtin_derive(db);
         let frange = if let Some(item) = &derive_attr {
@@ -339,6 +341,7 @@ impl ToNav for hir::Impl {
 
 impl ToNav for hir::Field {
     fn to_nav(&self, db: &RootDatabase) -> NavigationTarget {
+        #[allow(deprecated)]
         let src = self.source_old(db);
 
         match &src.value {
@@ -365,6 +368,7 @@ impl ToNav for hir::Field {
 
 impl ToNav for hir::MacroDef {
     fn to_nav(&self, db: &RootDatabase) -> NavigationTarget {
+        #[allow(deprecated)]
         let src = self.source_old(db);
         log::debug!("nav target {:#?}", src.value.syntax());
         let mut res = NavigationTarget::from_named(
@@ -448,6 +452,7 @@ impl ToNav for hir::Label {
 
 impl ToNav for hir::TypeParam {
     fn to_nav(&self, db: &RootDatabase) -> NavigationTarget {
+        #[allow(deprecated)]
         let src = self.source_old(db);
         let full_range = match &src.value {
             Either::Left(it) => it.syntax().text_range(),
@@ -472,6 +477,7 @@ impl ToNav for hir::TypeParam {
 
 impl ToNav for hir::LifetimeParam {
     fn to_nav(&self, db: &RootDatabase) -> NavigationTarget {
+        #[allow(deprecated)]
         let src = self.source_old(db);
         let full_range = src.value.syntax().text_range();
         NavigationTarget {

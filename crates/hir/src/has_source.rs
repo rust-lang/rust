@@ -16,6 +16,7 @@ use crate::{
 
 pub trait HasSource {
     type Ast;
+    #[deprecated = "migrating to source() method that returns an Option"]
     fn source_old(self, db: &dyn HirDatabase) -> InFile<Self::Ast>;
     fn source(self, db: &dyn HirDatabase) -> Option<InFile<Self::Ast>>;
 }

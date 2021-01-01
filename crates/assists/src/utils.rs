@@ -98,10 +98,13 @@ pub fn filter_assoc_items(
 
     items
         .iter()
-        .map(|i| match i {
-            hir::AssocItem::Function(i) => ast::AssocItem::Fn(i.source_old(db).value),
-            hir::AssocItem::TypeAlias(i) => ast::AssocItem::TypeAlias(i.source_old(db).value),
-            hir::AssocItem::Const(i) => ast::AssocItem::Const(i.source_old(db).value),
+        .map(|i| {
+            #[allow(deprecated)]
+            match i {
+                hir::AssocItem::Function(i) => ast::AssocItem::Fn(i.source_old(db).value),
+                hir::AssocItem::TypeAlias(i) => ast::AssocItem::TypeAlias(i.source_old(db).value),
+                hir::AssocItem::Const(i) => ast::AssocItem::Const(i.source_old(db).value),
+            }
         })
         .filter(has_def_name)
         .filter(|it| match it {
