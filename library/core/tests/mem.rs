@@ -149,10 +149,8 @@ fn uninit_array_assume_init() {
     array[3].write(1);
     array[4].write(5);
 
-    let array = unsafe {
-        MaybeUninit::array_assume_init(array)
-    };
-    
+    let array = unsafe { MaybeUninit::array_assume_init(array) };
+
     assert_eq!(array, [3, 1, 4, 1, 5]);
 }
 
