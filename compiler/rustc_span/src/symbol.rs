@@ -5,7 +5,7 @@
 //! type, and vice versa.
 
 use rustc_arena::DroplessArena;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxHasher};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
 use rustc_macros::HashStable_Generic;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
@@ -5051,6 +5051,12 @@ rustc_index::newtype_index! {
     pub struct SymbolIndex { .. }
 }
 
+fn fx_hash(string: &str) -> u64 {
+    let mut hasher = FxHasher::default();
+    string.hash(&mut hasher);
+    hasher.finish()
+}
+
 impl Symbol {
     const fn new(n: u32) -> Self {
         Symbol(SymbolIndex::from_u32(n))
@@ -5058,10 +5064,13 @@ impl Symbol {
 
     /// Maps a string to its interned representation.
     pub fn intern(string: &str) -> Self {
-        if let Some(symbol) = unsafe { STATIC_SYMBOLS.get(string) } {
+        let hash = fx_hash(string);
+        if let Some((_, symbol)) =
+            unsafe { &STATIC_SYMBOLS }.raw_entry().from_key_hashed_nocheck(hash, string)
+        {
             *symbol
         } else {
-            with_interner(|interner| interner.intern(string))
+            with_interner(|interner| interner.intern_ext(hash, string))
         }
     }
 
@@ -5163,8 +5172,8 @@ impl Interner {
     }
 
     #[inline]
-    pub fn intern(&mut self, string: &str) -> Symbol {
-        if let Some(&name) = self.names.get(string) {
+    fn intern_ext(&mut self, hash: u64, string: &str) -> Symbol {
+        if let Some((_, &name)) = self.names.raw_entry().from_key_hashed_nocheck(hash, string) {
             return name;
         }
 
@@ -5180,6 +5189,11 @@ impl Interner {
         self.strings.push(string);
         self.names.insert(string, name);
         name
+    }
+
+    #[inline]
+    pub fn intern(&mut self, string: &str) -> Symbol {
+        self.intern_ext(fx_hash(string), string)
     }
 
     // Get the symbol as a string. `Symbol::as_str()` should be used in

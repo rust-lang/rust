@@ -18,6 +18,7 @@
 #![feature(crate_visibility_modifier)]
 #![feature(const_fn)]
 #![feature(const_panic)]
+#![feature(hash_raw_entry)]
 #![feature(negative_impls)]
 #![feature(nll)]
 #![feature(min_specialization)]
