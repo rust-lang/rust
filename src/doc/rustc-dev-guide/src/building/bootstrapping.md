@@ -62,6 +62,7 @@ the `stage1` compiler: `x.py build library/std`.
 `x.py` tries to be helpful and pick the stage you most likely meant for each subcommand.
 These defaults are as follows:
 
+- `check`: `--stage 0`
 - `doc`: `--stage 0`
 - `build`: `--stage 1`
 - `test`: `--stage 1`
@@ -69,9 +70,12 @@ These defaults are as follows:
 - `install`: `--stage 2`
 - `bench`: `--stage 2`
 
-You can always override the stage by passing `--stage N` explicitly.
+You can always override the stage by passing `--stage N` explicitly, except for `check`,
+which is [hard-coded to stage 0][stage1-check].
 
 For more information about stages, [see below](#understanding-stages-of-bootstrap).
+
+[stage1-check]: https://github.com/rust-lang/rust/issues/46955
 
 ## Complications of bootstrapping
 
