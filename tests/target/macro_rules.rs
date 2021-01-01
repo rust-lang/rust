@@ -172,7 +172,7 @@ macro_rules! m [
 ];
 
 // #2470
-macro foo($type_name: ident, $docs: expr) {
+macro foo($type_name:ident, $docs:expr) {
     #[allow(non_camel_case_types)]
     #[doc=$docs]
     #[derive(Debug, Clone, Copy)]
