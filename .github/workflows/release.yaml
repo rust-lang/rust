@@ -124,10 +124,10 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v2
 
-    - name: Install Rust toolchain (beta)
+    - name: Install Rust toolchain
       uses: actions-rs/toolchain@v1
       with:
-        toolchain: beta
+        toolchain: stable
         target: aarch64-apple-darwin
         profile: minimal
         override: true
