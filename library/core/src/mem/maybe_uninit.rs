@@ -804,6 +804,55 @@ impl<T> MaybeUninit<T> {
         }
     }
 
+    /// Extracts the values from an array of `MaybeUninit` containers. 
+    /// 
+    /// # Safety
+    /// 
+    /// It is up to the caller to guarantee that all elements of the array are
+    /// in an initialized state. 
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(maybe_uninit_uninit_array)]
+    /// #![feature(maybe_uninit_array_assume_init)]
+    /// use std::mem::MaybeUninit;
+    /// 
+    /// let mut array: [MaybeUninit<i32>; 3] = MaybeUninit::uninit_array();
+    /// array[0] = MaybeUninit::new(0);
+    /// array[1] = MaybeUninit::new(1);
+    /// array[2] = MaybeUninit::new(2);
+    /// 
+    /// // SAFETY: Now safe as we initialised all elements
+    /// let array = unsafe {
+    ///     MaybeUninit::array_assume_init(array)
+    /// };
+    /// 
+    /// assert_eq!(array, [0, 1, 2]);
+    /// ```
+    #[unstable(feature = "maybe_uninit_array_assume_init", issue = "none")]
+    #[inline(always)]
+    pub unsafe fn array_assume_init<const N: usize>(array: [Self; N]) -> [T; N] {
+        // Convert using a union because mem::transmute does not support const_generics
+        union ArrayInit<T, const N: usize> {
+            maybe_uninit: ManuallyDrop<[MaybeUninit<T>; N]>,
+            init: ManuallyDrop<[T; N]>,
+        }
+
+        // SAFETY:
+        // * The caller guarantees that all elements of the array are initialized,
+        // * `MaybeUninit<T>` and T are guaranteed to have the same layout,
+        // Therefore the conversion is safe
+        unsafe {
+            intrinsics::assert_inhabited::<T>();
+
+            let array = ArrayInit {
+                maybe_uninit: ManuallyDrop::new(array),
+            };
+            ManuallyDrop::into_inner(array.init)
+        }
+    }
+
     /// Assuming all the elements are initialized, get a slice to them.
     ///
     /// # Safety
