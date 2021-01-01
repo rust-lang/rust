@@ -20,13 +20,17 @@ pub(crate) fn complete_record(acc: &mut Completions, ctx: &CompletionContext) ->
 
             let missing_fields = ctx.sema.record_literal_missing_fields(record_lit);
             if impl_default_trait && !missing_fields.is_empty() {
+                let completion_text = "..Default::default()";
+                let completion_text = completion_text
+                    .strip_prefix(ctx.token.to_string().as_str())
+                    .unwrap_or(completion_text);
                 acc.add(
                     CompletionItem::new(
                         CompletionKind::Snippet,
                         ctx.source_range(),
                         "..Default::default()",
                     )
-                    .insert_text("..Default::default()")
+                    .insert_text(completion_text)
                     .kind(CompletionItemKind::Field)
                     .build(),
                 );
@@ -48,7 +52,10 @@ mod tests {
     use expect_test::{expect, Expect};
     use ide_db::helpers::FamousDefs;
 
-    use crate::{test_utils::completion_list, CompletionKind};
+    use crate::{
+        test_utils::{self, completion_list},
+        CompletionKind,
+    };
 
     fn check(ra_fixture: &str, expect: Expect) {
         let actual = completion_list(ra_fixture, CompletionKind::Reference);
@@ -61,6 +68,18 @@ mod tests {
             CompletionKind::Snippet,
         );
         expect.assert_eq(&actual);
+    }
+
+    fn check_edit(what: &str, ra_fixture_before: &str, ra_fixture_after: &str) {
+        test_utils::check_edit(
+            what,
+            &format!(
+                "//- /main.rs crate:main deps:core{}\n{}",
+                ra_fixture_before,
+                FamousDefs::FIXTURE,
+            ),
+            &(ra_fixture_after.to_owned() + "\n"),
+        );
     }
 
     #[test]
@@ -98,6 +117,51 @@ fn process(f: S) {
                 sn ppd
                 fd ..Default::default()
             "#]],
+        );
+    }
+
+    #[test]
+    fn test_record_literal_field_default_completion() {
+        check_edit(
+            "..Default::default()",
+            r#"
+struct S { foo: u32, bar: usize }
+
+impl core::default::Default for S {
+    fn default() -> Self {
+        S {
+            foo: 0,
+            bar: 0,
+        }
+    }
+}
+
+fn process(f: S) {
+    let other = S {
+        foo: 5,
+        .<|>
+    };
+}
+"#,
+            r#"
+struct S { foo: u32, bar: usize }
+
+impl core::default::Default for S {
+    fn default() -> Self {
+        S {
+            foo: 0,
+            bar: 0,
+        }
+    }
+}
+
+fn process(f: S) {
+    let other = S {
+        foo: 5,
+        ..Default::default()
+    };
+}
+"#,
         );
     }
 
