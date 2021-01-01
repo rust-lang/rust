@@ -14,7 +14,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_middle::mir::interpret::ConstValue;
 use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
-use rustc_middle::ty::{self, DefIdTree, Ty};
+use rustc_middle::ty::{self, DefIdTree, Ty, TyCtxt};
 use rustc_span::symbol::{kw, sym, Symbol};
 use std::mem;
 
@@ -622,4 +622,25 @@ where
     assert!(cx.impl_trait_bounds.borrow().is_empty());
     *cx.impl_trait_bounds.borrow_mut() = old_bounds;
     r
+}
+
+/// Find the nearest parent module of a [`DefId`].
+///
+/// **Panics if the item it belongs to [is fake][Item::is_fake].**
+crate fn find_nearest_parent_module(tcx: TyCtxt<'_>, def_id: DefId) -> Option<DefId> {
+    if def_id.is_top_level_module() {
+        // The crate root has no parent. Use it as the root instead.
+        Some(def_id)
+    } else {
+        let mut current = def_id;
+        // The immediate parent might not always be a module.
+        // Find the first parent which is.
+        while let Some(parent) = tcx.parent(current) {
+            if tcx.def_kind(parent) == DefKind::Mod {
+                return Some(parent);
+            }
+            current = parent;
+        }
+        None
+    }
 }

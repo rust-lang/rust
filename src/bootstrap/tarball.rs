@@ -97,7 +97,6 @@ pub(crate) struct Tarball<'a> {
 
     include_target_in_component_name: bool,
     is_preview: bool,
-    delete_temp_dir: bool,
 }
 
 impl<'a> Tarball<'a> {
@@ -136,7 +135,6 @@ impl<'a> Tarball<'a> {
 
             include_target_in_component_name: false,
             is_preview: false,
-            delete_temp_dir: true,
         }
     }
 
@@ -198,12 +196,7 @@ impl<'a> Tarball<'a> {
         self.builder.cp_r(src.as_ref(), &dest);
     }
 
-    pub(crate) fn persist_work_dir(&mut self) -> PathBuf {
-        self.delete_temp_dir = false;
-        self.temp_dir.clone()
-    }
-
-    pub(crate) fn generate(self) -> PathBuf {
+    pub(crate) fn generate(self) -> GeneratedTarball {
         let mut component_name = self.component.clone();
         if self.is_preview {
             component_name.push_str("-preview");
@@ -227,20 +220,20 @@ impl<'a> Tarball<'a> {
         })
     }
 
-    pub(crate) fn combine(self, tarballs: &[PathBuf]) {
-        let mut input_tarballs = tarballs[0].as_os_str().to_os_string();
+    pub(crate) fn combine(self, tarballs: &[GeneratedTarball]) -> GeneratedTarball {
+        let mut input_tarballs = tarballs[0].path.as_os_str().to_os_string();
         for tarball in &tarballs[1..] {
             input_tarballs.push(",");
-            input_tarballs.push(tarball);
+            input_tarballs.push(&tarball.path);
         }
 
         self.run(|this, cmd| {
             cmd.arg("combine").arg("--input-tarballs").arg(input_tarballs);
             this.non_bare_args(cmd);
-        });
+        })
     }
 
-    pub(crate) fn bare(self) -> PathBuf {
+    pub(crate) fn bare(self) -> GeneratedTarball {
         // Bare tarballs should have the top level directory match the package
         // name, not "image". We rename the image directory just before passing
         // into rust-installer.
@@ -276,7 +269,7 @@ impl<'a> Tarball<'a> {
             .arg(crate::dist::distdir(self.builder));
     }
 
-    fn run(self, build_cli: impl FnOnce(&Tarball<'a>, &mut Command)) -> PathBuf {
+    fn run(self, build_cli: impl FnOnce(&Tarball<'a>, &mut Command)) -> GeneratedTarball {
         t!(std::fs::create_dir_all(&self.overlay_dir));
         self.builder.create(&self.overlay_dir.join("version"), &self.overlay.version(self.builder));
         if let Some(sha) = self.builder.rust_sha() {
@@ -299,9 +292,6 @@ impl<'a> Tarball<'a> {
             cmd.arg("--compression-formats").arg(formats.join(","));
         }
         self.builder.run(&mut cmd);
-        if self.delete_temp_dir {
-            t!(std::fs::remove_dir_all(&self.temp_dir));
-        }
 
         // Use either the first compression format defined, or "gz" as the default.
         let ext = self
@@ -313,6 +303,31 @@ impl<'a> Tarball<'a> {
             .map(|s| s.as_str())
             .unwrap_or("gz");
 
-        crate::dist::distdir(self.builder).join(format!("{}.tar.{}", package_name, ext))
+        GeneratedTarball {
+            path: crate::dist::distdir(self.builder).join(format!("{}.tar.{}", package_name, ext)),
+            decompressed_output: self.temp_dir.join(package_name),
+            work: self.temp_dir,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct GeneratedTarball {
+    path: PathBuf,
+    decompressed_output: PathBuf,
+    work: PathBuf,
+}
+
+impl GeneratedTarball {
+    pub(crate) fn tarball(&self) -> &Path {
+        &self.path
+    }
+
+    pub(crate) fn decompressed_output(&self) -> &Path {
+        &self.decompressed_output
+    }
+
+    pub(crate) fn work_dir(&self) -> &Path {
+        &self.work
     }
 }
