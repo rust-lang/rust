@@ -151,7 +151,8 @@ fn target_data_for_def(
         S: HasSource<Ast = Ast>,
         Ast: AstNode + ast::VisibilityOwner,
     {
-        let source = x.source(db)?;
+        #[allow(deprecated)]
+        let source = x.source_old(db);
         let in_file_syntax = source.syntax();
         let file_id = in_file_syntax.file_id;
         let syntax = in_file_syntax.value;
