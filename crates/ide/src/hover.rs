@@ -207,7 +207,7 @@ fn runnable_action(
             },
             ModuleDef::Function(it) => {
                 #[allow(deprecated)]
-                let src = it.source_old(sema.db);
+                let src = it.source(sema.db)?;
                 if src.file_id != file_id.into() {
                     mark::hit!(hover_macro_generated_struct_fn_doc_comment);
                     mark::hit!(hover_macro_generated_struct_fn_doc_attr);
@@ -332,7 +332,7 @@ fn hover_for_definition(db: &RootDatabase, def: Definition) -> Option<Markup> {
         }
         Definition::Field(def) => {
             #[allow(deprecated)]
-            let src = def.source_old(db).value;
+            let src = def.source(db)?.value;
             if let FieldSource::Named(it) = src {
                 from_def_source_labeled(db, def, it.short_label(), mod_path)
             } else {
@@ -382,7 +382,7 @@ fn hover_for_definition(db: &RootDatabase, def: Definition) -> Option<Markup> {
         A: ShortLabel,
     {
         #[allow(deprecated)]
-        let short_label = def.source_old(db).value.short_label();
+        let short_label = def.source(db)?.value.short_label();
         from_def_source_labeled(db, def, short_label, mod_path)
     }
 
