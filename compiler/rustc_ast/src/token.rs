@@ -726,8 +726,7 @@ impl NonterminalKind {
                 Edition::Edition2015 | Edition::Edition2018 => {
                     NonterminalKind::Pat2018 { inferred: true }
                 }
-                // FIXME(mark-i-m): uncomment when 2021 machinery is available.
-                //Edition::Edition2021 => NonterminalKind::Pat2021{inferred:true},
+                Edition::Edition2021 => NonterminalKind::Pat2021 { inferred: true },
             },
             sym::pat2018 => NonterminalKind::Pat2018 { inferred: false },
             sym::pat2021 => NonterminalKind::Pat2021 { inferred: false },
