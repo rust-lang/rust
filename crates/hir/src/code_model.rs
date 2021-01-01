@@ -1,5 +1,5 @@
 //! FIXME: write short doc here
-use std::{iter, sync::Arc};
+use std::{fmt::Write, iter, sync::Arc};
 
 use arrayvec::ArrayVec;
 use base_db::{CrateDisplayName, CrateId, Edition, FileId};
@@ -729,8 +729,7 @@ impl DefWithBody {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Function {
-    // DO NOT MERGE: this was previously pub(crate)
-    pub id: FunctionId,
+    pub(crate) id: FunctionId,
 }
 
 impl Function {
@@ -797,6 +796,19 @@ impl Function {
     /// This is false in the case of required (not provided) trait methods.
     pub fn has_body(self, db: &dyn HirDatabase) -> bool {
         db.function_data(self.id).has_body
+    }
+
+    /// A textual representation of the HIR of this function for debugging purposes.
+    pub fn debug_hir(self, db: &dyn HirDatabase) -> String {
+        let body = db.body(self.id.into());
+
+        let mut result = String::new();
+        writeln!(&mut result, "HIR expressions in the body of `{}`:", self.name(db)).unwrap();
+        for (id, expr) in body.exprs.iter() {
+            writeln!(&mut result, "{:?}: {:?}", id, expr).unwrap();
+        }
+
+        result
     }
 }
 
