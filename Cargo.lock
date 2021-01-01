@@ -3928,6 +3928,7 @@ dependencies = [
  "rustc_middle",
  "rustc_mir",
  "rustc_mir_build",
+ "rustc_mir_transform",
  "rustc_parse",
  "rustc_passes",
  "rustc_plugin_impl",
@@ -4071,10 +4072,8 @@ dependencies = [
 name = "rustc_mir"
 version = "0.0.0"
 dependencies = [
- "coverage_test_macros",
  "either",
  "gsgdt",
- "itertools 0.9.0",
  "polonius-engine",
  "regex",
  "rustc_apfloat",
@@ -4111,6 +4110,29 @@ dependencies = [
  "rustc_index",
  "rustc_infer",
  "rustc_middle",
+ "rustc_serialize",
+ "rustc_session",
+ "rustc_span",
+ "rustc_target",
+ "rustc_trait_selection",
+ "smallvec",
+ "tracing",
+]
+
+[[package]]
+name = "rustc_mir_transform"
+version = "0.0.0"
+dependencies = [
+ "coverage_test_macros",
+ "itertools 0.9.0",
+ "rustc_ast",
+ "rustc_attr",
+ "rustc_data_structures",
+ "rustc_errors",
+ "rustc_hir",
+ "rustc_index",
+ "rustc_middle",
+ "rustc_mir",
  "rustc_serialize",
  "rustc_session",
  "rustc_span",

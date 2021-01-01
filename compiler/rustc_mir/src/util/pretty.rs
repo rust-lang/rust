@@ -7,7 +7,6 @@ use std::path::{Path, PathBuf};
 
 use super::graphviz::write_mir_fn_graphviz;
 use super::spanview::write_mir_fn_spanview;
-use crate::transform::MirSource;
 use either::Either;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::DefId;
@@ -16,6 +15,7 @@ use rustc_middle::mir::interpret::{
     read_target_uint, AllocId, Allocation, ConstValue, GlobalAlloc, Pointer, Provenance,
 };
 use rustc_middle::mir::visit::Visitor;
+use rustc_middle::mir::MirSource;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, TyCtxt, TyS, TypeFoldable, TypeVisitor};
 use rustc_target::abi::Size;

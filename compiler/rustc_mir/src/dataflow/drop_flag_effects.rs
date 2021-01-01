@@ -79,7 +79,7 @@ fn place_contents_drop_state_cannot_differ<'tcx>(
     }
 }
 
-pub(crate) fn on_lookup_result_bits<'tcx, F>(
+pub fn on_lookup_result_bits<'tcx, F>(
     tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
     move_data: &MoveData<'tcx>,
@@ -96,7 +96,7 @@ pub(crate) fn on_lookup_result_bits<'tcx, F>(
     }
 }
 
-pub(crate) fn on_all_children_bits<'tcx, F>(
+pub fn on_all_children_bits<'tcx, F>(
     tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
     move_data: &MoveData<'tcx>,
@@ -138,7 +138,7 @@ pub(crate) fn on_all_children_bits<'tcx, F>(
     on_all_children_bits(tcx, body, move_data, move_path_index, &mut each_child);
 }
 
-pub(crate) fn on_all_drop_children_bits<'tcx, F>(
+pub fn on_all_drop_children_bits<'tcx, F>(
     tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
     ctxt: &MoveDataParamEnv<'tcx>,
@@ -161,7 +161,7 @@ pub(crate) fn on_all_drop_children_bits<'tcx, F>(
     })
 }
 
-pub(crate) fn drop_flag_effects_for_function_entry<'tcx, F>(
+pub fn drop_flag_effects_for_function_entry<'tcx, F>(
     tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
     ctxt: &MoveDataParamEnv<'tcx>,
@@ -179,7 +179,7 @@ pub(crate) fn drop_flag_effects_for_function_entry<'tcx, F>(
     }
 }
 
-pub(crate) fn drop_flag_effects_for_location<'tcx, F>(
+pub fn drop_flag_effects_for_location<'tcx, F>(
     tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
     ctxt: &MoveDataParamEnv<'tcx>,

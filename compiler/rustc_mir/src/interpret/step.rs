@@ -76,7 +76,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     /// Runs the interpretation logic for the given `mir::Statement` at the current frame and
     /// statement counter. This also moves the statement counter forward.
-    crate fn statement(&mut self, stmt: &mir::Statement<'tcx>) -> InterpResult<'tcx> {
+    pub fn statement(&mut self, stmt: &mir::Statement<'tcx>) -> InterpResult<'tcx> {
         info!("{:?}", stmt);
 
         use rustc_middle::mir::StatementKind::*;

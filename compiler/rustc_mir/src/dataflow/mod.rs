@@ -3,7 +3,11 @@ use rustc_middle::ty;
 use rustc_session::Session;
 use rustc_span::symbol::{sym, Symbol};
 
-pub(crate) use self::drop_flag_effects::*;
+pub use self::drop_flag_effects::{
+    drop_flag_effects_for_function_entry, drop_flag_effects_for_location,
+    move_path_children_matching, on_all_children_bits, on_all_drop_children_bits,
+    on_lookup_result_bits,
+};
 pub use self::framework::{
     fmt, lattice, visit_results, Analysis, AnalysisDomain, Backward, Direction, Engine, Forward,
     GenKill, GenKillAnalysis, JoinSemiLattice, Results, ResultsCursor, ResultsRefCursor,
@@ -26,7 +30,7 @@ pub struct MoveDataParamEnv<'tcx> {
     pub param_env: ty::ParamEnv<'tcx>,
 }
 
-pub(crate) fn has_rustc_mir_with(
+pub fn has_rustc_mir_with(
     _sess: &Session,
     attrs: &[ast::Attribute],
     name: Symbol,

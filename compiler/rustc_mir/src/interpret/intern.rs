@@ -420,7 +420,7 @@ impl<'mir, 'tcx: 'mir, M: super::intern::CompileTimeMachine<'mir, 'tcx, !>>
     /// A helper function that allocates memory for the layout given and gives you access to mutate
     /// it. Once your own mutation code is done, the backing `Allocation` is removed from the
     /// current `Memory` and returned.
-    pub(crate) fn intern_with_temp_alloc(
+    pub fn intern_with_temp_alloc(
         &mut self,
         layout: TyAndLayout<'tcx>,
         f: impl FnOnce(

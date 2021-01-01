@@ -7,10 +7,10 @@ mod alignment;
 pub mod collect_writes;
 mod find_self_call;
 mod generic_graph;
-pub(crate) mod generic_graphviz;
+pub mod generic_graphviz;
 mod graphviz;
 pub mod pretty;
-pub(crate) mod spanview;
+pub mod spanview;
 
 pub use self::aggregate::expand_aggregate;
 pub use self::alignment::is_disaligned;

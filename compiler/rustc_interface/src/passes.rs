@@ -742,6 +742,7 @@ pub static DEFAULT_QUERY_PROVIDERS: SyncLazy<Providers> = SyncLazy::new(|| {
     mir::provide(providers);
     mir_borrowck::provide(providers);
     mir_build::provide(providers);
+    rustc_mir_transform::provide(providers);
     rustc_privacy::provide(providers);
     typeck::provide(providers);
     ty::provide(providers);
@@ -913,7 +914,7 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
         for def_id in tcx.body_owners() {
             tcx.ensure().thir_check_unsafety(def_id);
             if !tcx.sess.opts.debugging_opts.thir_unsafeck {
-                mir::transform::check_unsafety::check_unsafety(tcx, def_id);
+                rustc_mir_transform::check_unsafety::check_unsafety(tcx, def_id);
             }
 
             if tcx.hir().body_const_context(def_id).is_some() {
@@ -1061,7 +1062,7 @@ pub fn start_codegen<'tcx>(
     info!("Post-codegen\n{:?}", tcx.debug_stats());
 
     if tcx.sess.opts.output_types.contains_key(&OutputType::Mir) {
-        if let Err(e) = mir::transform::dump_mir::emit_mir(tcx, outputs) {
+        if let Err(e) = rustc_mir_transform::dump_mir::emit_mir(tcx, outputs) {
             tcx.sess.err(&format!("could not emit MIR: {}", e));
             tcx.sess.abort_if_errors();
         }
