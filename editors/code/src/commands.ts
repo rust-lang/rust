@@ -340,7 +340,7 @@ export function syntaxTree(ctx: Ctx): Cmd {
     };
 }
 
-// Opens the virtual file that will show hir
+// Opens the virtual file that will show the HIR of the function containing the cursor position
 //
 // The contents of the file come from the `TextDocumentContentProvider`
 export function viewHir(ctx: Ctx): Cmd {
@@ -384,25 +384,11 @@ export function viewHir(ctx: Ctx): Cmd {
         }
     };
 
-    void new AstInspector(ctx);
-
     ctx.pushCleanup(vscode.workspace.registerTextDocumentContentProvider('rust-analyzer', tdcp));
-    ctx.pushCleanup(vscode.languages.setLanguageConfiguration("ra_syntax_tree", {
-        brackets: [["[", ")"]],
-    }));
 
     return async () => {
-        const editor = vscode.window.activeTextEditor;
-        const rangeEnabled = !!editor && !editor.selection.isEmpty;
-
-        const uri = rangeEnabled
-            ? vscode.Uri.parse(`${tdcp.uri.toString()}?range=true`)
-            : tdcp.uri;
-
-        const document = await vscode.workspace.openTextDocument(uri);
-
-        tdcp.eventEmitter.fire(uri);
-
+        const document = await vscode.workspace.openTextDocument(tdcp.uri);
+        tdcp.eventEmitter.fire(tdcp.uri);
         void await vscode.window.showTextDocument(document, {
             viewColumn: vscode.ViewColumn.Two,
             preserveFocus: true
