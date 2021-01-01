@@ -17,6 +17,7 @@ use crate::{
 pub trait HasSource {
     type Ast;
     fn source_old(self, db: &dyn HirDatabase) -> InFile<Self::Ast>;
+    fn source(self, db: &dyn HirDatabase) -> Option<InFile<Self::Ast>>;
 }
 
 /// NB: Module is !HasSource, because it has two source nodes at the same time:
@@ -54,11 +55,25 @@ impl HasSource for Field {
             Either::Right(it) => FieldSource::Named(it),
         })
     }
+
+    fn source(self, db: &dyn HirDatabase) -> Option<InFile<Self::Ast>> {
+        let var = VariantId::from(self.parent);
+        let src = var.child_source(db.upcast());
+        let field_source = src.map(|it| match it[self.id].clone() {
+            Either::Left(it) => FieldSource::Pos(it),
+            Either::Right(it) => FieldSource::Named(it),
+        });
+        Some(field_source)
+    }
 }
 impl HasSource for Struct {
     type Ast = ast::Struct;
     fn source_old(self, db: &dyn HirDatabase) -> InFile<ast::Struct> {
         self.id.lookup(db.upcast()).source(db.upcast())
+    }
+
+    fn source(self, db: &dyn HirDatabase) -> Option<InFile<Self::Ast>> {
+        Some(self.id.lookup(db.upcast()).source(db.upcast()))
     }
 }
 impl HasSource for Union {
@@ -66,11 +81,19 @@ impl HasSource for Union {
     fn source_old(self, db: &dyn HirDatabase) -> InFile<ast::Union> {
         self.id.lookup(db.upcast()).source(db.upcast())
     }
+
+    fn source(self, db: &dyn HirDatabase) -> Option<InFile<Self::Ast>> {
+        Some(self.id.lookup(db.upcast()).source(db.upcast()))
+    }
 }
 impl HasSource for Enum {
     type Ast = ast::Enum;
     fn source_old(self, db: &dyn HirDatabase) -> InFile<ast::Enum> {
         self.id.lookup(db.upcast()).source(db.upcast())
+    }
+
+    fn source(self, db: &dyn HirDatabase) -> Option<InFile<Self::Ast>> {
+        Some(self.id.lookup(db.upcast()).source(db.upcast()))
     }
 }
 impl HasSource for Variant {
@@ -78,11 +101,19 @@ impl HasSource for Variant {
     fn source_old(self, db: &dyn HirDatabase) -> InFile<ast::Variant> {
         self.parent.id.child_source(db.upcast()).map(|map| map[self.id].clone())
     }
+
+    fn source(self, db: &dyn HirDatabase) -> Option<InFile<ast::Variant>> {
+        Some(self.parent.id.child_source(db.upcast()).map(|map| map[self.id].clone()))
+    }
 }
 impl HasSource for Function {
     type Ast = ast::Fn;
     fn source_old(self, db: &dyn HirDatabase) -> InFile<ast::Fn> {
         self.id.lookup(db.upcast()).source(db.upcast())
+    }
+
+    fn source(self, db: &dyn HirDatabase) -> Option<InFile<Self::Ast>> {
+        Some(self.id.lookup(db.upcast()).source(db.upcast()))
     }
 }
 impl HasSource for Const {
@@ -90,11 +121,19 @@ impl HasSource for Const {
     fn source_old(self, db: &dyn HirDatabase) -> InFile<ast::Const> {
         self.id.lookup(db.upcast()).source(db.upcast())
     }
+
+    fn source(self, db: &dyn HirDatabase) -> Option<InFile<Self::Ast>> {
+        Some(self.id.lookup(db.upcast()).source(db.upcast()))
+    }
 }
 impl HasSource for Static {
     type Ast = ast::Static;
     fn source_old(self, db: &dyn HirDatabase) -> InFile<ast::Static> {
         self.id.lookup(db.upcast()).source(db.upcast())
+    }
+
+    fn source(self, db: &dyn HirDatabase) -> Option<InFile<Self::Ast>> {
+        Some(self.id.lookup(db.upcast()).source(db.upcast()))
     }
 }
 impl HasSource for Trait {
@@ -102,11 +141,19 @@ impl HasSource for Trait {
     fn source_old(self, db: &dyn HirDatabase) -> InFile<ast::Trait> {
         self.id.lookup(db.upcast()).source(db.upcast())
     }
+
+    fn source(self, db: &dyn HirDatabase) -> Option<InFile<Self::Ast>> {
+        Some(self.id.lookup(db.upcast()).source(db.upcast()))
+    }
 }
 impl HasSource for TypeAlias {
     type Ast = ast::TypeAlias;
     fn source_old(self, db: &dyn HirDatabase) -> InFile<ast::TypeAlias> {
         self.id.lookup(db.upcast()).source(db.upcast())
+    }
+
+    fn source(self, db: &dyn HirDatabase) -> Option<InFile<Self::Ast>> {
+        Some(self.id.lookup(db.upcast()).source(db.upcast()))
     }
 }
 impl HasSource for MacroDef {
@@ -117,11 +164,20 @@ impl HasSource for MacroDef {
             value: self.id.ast_id.expect("MacroDef without ast_id").to_node(db.upcast()),
         }
     }
+
+    fn source(self, db: &dyn HirDatabase) -> Option<InFile<Self::Ast>> {
+        let ast_id = self.id.ast_id?;
+        Some(InFile { file_id: ast_id.file_id, value: ast_id.to_node(db.upcast()) })
+    }
 }
 impl HasSource for Impl {
     type Ast = ast::Impl;
     fn source_old(self, db: &dyn HirDatabase) -> InFile<ast::Impl> {
         self.id.lookup(db.upcast()).source(db.upcast())
+    }
+
+    fn source(self, db: &dyn HirDatabase) -> Option<InFile<Self::Ast>> {
+        Some(self.id.lookup(db.upcast()).source(db.upcast()))
     }
 }
 
@@ -131,6 +187,11 @@ impl HasSource for TypeParam {
         let child_source = self.id.parent.child_source(db.upcast());
         child_source.map(|it| it[self.id.local_id].clone())
     }
+
+    fn source(self, db: &dyn HirDatabase) -> Option<InFile<Self::Ast>> {
+        let child_source = self.id.parent.child_source(db.upcast());
+        Some(child_source.map(|it| it[self.id.local_id].clone()))
+    }
 }
 
 impl HasSource for LifetimeParam {
@@ -138,6 +199,11 @@ impl HasSource for LifetimeParam {
     fn source_old(self, db: &dyn HirDatabase) -> InFile<Self::Ast> {
         let child_source = self.id.parent.child_source(db.upcast());
         child_source.map(|it| it[self.id.local_id].clone())
+    }
+
+    fn source(self, db: &dyn HirDatabase) -> Option<InFile<Self::Ast>> {
+        let child_source = self.id.parent.child_source(db.upcast());
+        Some(child_source.map(|it| it[self.id.local_id].clone()))
     }
 }
 
