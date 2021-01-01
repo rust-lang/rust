@@ -478,6 +478,97 @@ impl<T> Arc<T> {
         unsafe { Pin::new_unchecked(Arc::new(data)) }
     }
 
+    /// Constructs a new `Arc<T>`, returning an error if allocation fails.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(allocator_api)]
+    /// use std::sync::Arc;
+    ///
+    /// let five = Arc::try_new(5)?;
+    /// # Ok::<(), std::alloc::AllocError>(())
+    /// ```
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[inline]
+    pub fn try_new(data: T) -> Result<Arc<T>, AllocError> {
+        // Start the weak pointer count as 1 which is the weak pointer that's
+        // held by all the strong pointers (kinda), see std/rc.rs for more info
+        let x: Box<_> = Box::try_new(ArcInner {
+            strong: atomic::AtomicUsize::new(1),
+            weak: atomic::AtomicUsize::new(1),
+            data,
+        })?;
+        Ok(Self::from_inner(Box::leak(x).into()))
+    }
+
+    /// Constructs a new `Arc` with uninitialized contents, returning an error
+    /// if allocation fails.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(new_uninit, allocator_api)]
+    /// #![feature(get_mut_unchecked)]
+    ///
+    /// use std::sync::Arc;
+    ///
+    /// let mut five = Arc::<u32>::try_new_uninit()?;
+    ///
+    /// let five = unsafe {
+    ///     // Deferred initialization:
+    ///     Arc::get_mut_unchecked(&mut five).as_mut_ptr().write(5);
+    ///
+    ///     five.assume_init()
+    /// };
+    ///
+    /// assert_eq!(*five, 5);
+    /// # Ok::<(), std::alloc::AllocError>(())
+    /// ```
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    // #[unstable(feature = "new_uninit", issue = "63291")]
+    pub fn try_new_uninit() -> Result<Arc<mem::MaybeUninit<T>>, AllocError> {
+        unsafe {
+            Ok(Arc::from_ptr(Arc::try_allocate_for_layout(
+                Layout::new::<T>(),
+                |layout| Global.allocate(layout),
+                |mem| mem as *mut ArcInner<mem::MaybeUninit<T>>,
+            )?))
+        }
+    }
+
+    /// Constructs a new `Arc` with uninitialized contents, with the memory
+    /// being filled with `0` bytes, returning an error if allocation fails.
+    ///
+    /// See [`MaybeUninit::zeroed`][zeroed] for examples of correct and incorrect usage
+    /// of this method.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(new_uninit, allocator_api)]
+    ///
+    /// use std::sync::Arc;
+    ///
+    /// let zero = Arc::<u32>::try_new_zeroed()?;
+    /// let zero = unsafe { zero.assume_init() };
+    ///
+    /// assert_eq!(*zero, 0);
+    /// # Ok::<(), std::alloc::AllocError>(())
+    /// ```
+    ///
+    /// [zeroed]: mem::MaybeUninit::zeroed
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    // #[unstable(feature = "new_uninit", issue = "63291")]
+    pub fn try_new_zeroed() -> Result<Arc<mem::MaybeUninit<T>>, AllocError> {
+        unsafe {
+            Ok(Arc::from_ptr(Arc::try_allocate_for_layout(
+                Layout::new::<T>(),
+                |layout| Global.allocate_zeroed(layout),
+                |mem| mem as *mut ArcInner<mem::MaybeUninit<T>>,
+            )?))
+        }
+    }
     /// Returns the inner value, if the `Arc` has exactly one strong reference.
     ///
     /// Otherwise, an [`Err`] is returned with the same `Arc` that was
@@ -994,8 +1085,30 @@ impl<T: ?Sized> Arc<T> {
         // `&*(ptr as *const ArcInner<T>)`, but this created a misaligned
         // reference (see #54908).
         let layout = Layout::new::<ArcInner<()>>().extend(value_layout).unwrap().0.pad_to_align();
+        unsafe {
+            Arc::try_allocate_for_layout(value_layout, allocate, mem_to_arcinner)
+                .unwrap_or_else(|_| handle_alloc_error(layout))
+        }
+    }
 
-        let ptr = allocate(layout).unwrap_or_else(|_| handle_alloc_error(layout));
+    /// Allocates an `ArcInner<T>` with sufficient space for
+    /// a possibly-unsized inner value where the value has the layout provided,
+    /// returning an error if allocation fails.
+    ///
+    /// The function `mem_to_arcinner` is called with the data pointer
+    /// and must return back a (potentially fat)-pointer for the `ArcInner<T>`.
+    unsafe fn try_allocate_for_layout(
+        value_layout: Layout,
+        allocate: impl FnOnce(Layout) -> Result<NonNull<[u8]>, AllocError>,
+        mem_to_arcinner: impl FnOnce(*mut u8) -> *mut ArcInner<T>,
+    ) -> Result<*mut ArcInner<T>, AllocError> {
+        // Calculate layout using the given value layout.
+        // Previously, layout was calculated on the expression
+        // `&*(ptr as *const ArcInner<T>)`, but this created a misaligned
+        // reference (see #54908).
+        let layout = Layout::new::<ArcInner<()>>().extend(value_layout).unwrap().0.pad_to_align();
+
+        let ptr = allocate(layout)?;
 
         // Initialize the ArcInner
         let inner = mem_to_arcinner(ptr.as_non_null_ptr().as_ptr());
@@ -1006,7 +1119,7 @@ impl<T: ?Sized> Arc<T> {
             ptr::write(&mut (*inner).weak, atomic::AtomicUsize::new(1));
         }
 
-        inner
+        Ok(inner)
     }
 
     /// Allocates an `ArcInner<T>` with sufficient space for an unsized inner value.

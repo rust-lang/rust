@@ -453,6 +453,95 @@ impl<T> Rc<T> {
         }
     }
 
+    /// Constructs a new `Rc<T>`, returning an error if the allocation fails
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(allocator_api)]
+    /// use std::rc::Rc;
+    ///
+    /// let five = Rc::try_new(5);
+    /// # Ok::<(), std::alloc::AllocError>(())
+    /// ```
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    pub fn try_new(value: T) -> Result<Rc<T>, AllocError> {
+        // There is an implicit weak pointer owned by all the strong
+        // pointers, which ensures that the weak destructor never frees
+        // the allocation while the strong destructor is running, even
+        // if the weak pointer is stored inside the strong one.
+        Ok(Self::from_inner(
+            Box::leak(Box::try_new(RcBox { strong: Cell::new(1), weak: Cell::new(1), value })?)
+                .into(),
+        ))
+    }
+
+    /// Constructs a new `Rc` with uninitialized contents, returning an error if the allocation fails
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(allocator_api, new_uninit)]
+    /// #![feature(get_mut_unchecked)]
+    ///
+    /// use std::rc::Rc;
+    ///
+    /// let mut five = Rc::<u32>::try_new_uninit()?;
+    ///
+    /// let five = unsafe {
+    ///     // Deferred initialization:
+    ///     Rc::get_mut_unchecked(&mut five).as_mut_ptr().write(5);
+    ///
+    ///     five.assume_init()
+    /// };
+    ///
+    /// assert_eq!(*five, 5);
+    /// # Ok::<(), std::alloc::AllocError>(())
+    /// ```
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    // #[unstable(feature = "new_uninit", issue = "63291")]
+    pub fn try_new_uninit() -> Result<Rc<mem::MaybeUninit<T>>, AllocError> {
+        unsafe {
+            Ok(Rc::from_ptr(Rc::try_allocate_for_layout(
+                Layout::new::<T>(),
+                |layout| Global.allocate(layout),
+                |mem| mem as *mut RcBox<mem::MaybeUninit<T>>,
+            )?))
+        }
+    }
+
+    /// Constructs a new `Rc` with uninitialized contents, with the memory
+    /// being filled with `0` bytes, returning an error if the allocation fails
+    ///
+    /// See [`MaybeUninit::zeroed`][zeroed] for examples of correct and
+    /// incorrect usage of this method.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(allocator_api, new_uninit)]
+    ///
+    /// use std::rc::Rc;
+    ///
+    /// let zero = Rc::<u32>::try_new_zeroed()?;
+    /// let zero = unsafe { zero.assume_init() };
+    ///
+    /// assert_eq!(*zero, 0);
+    /// # Ok::<(), std::alloc::AllocError>(())
+    /// ```
+    ///
+    /// [zeroed]: mem::MaybeUninit::zeroed
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    //#[unstable(feature = "new_uninit", issue = "63291")]
+    pub fn try_new_zeroed() -> Result<Rc<mem::MaybeUninit<T>>, AllocError> {
+        unsafe {
+            Ok(Rc::from_ptr(Rc::try_allocate_for_layout(
+                Layout::new::<T>(),
+                |layout| Global.allocate_zeroed(layout),
+                |mem| mem as *mut RcBox<mem::MaybeUninit<T>>,
+            )?))
+        }
+    }
     /// Constructs a new `Pin<Rc<T>>`. If `T` does not implement `Unpin`, then
     /// `value` will be pinned in memory and unable to be moved.
     #[stable(feature = "pin", since = "1.33.0")]
@@ -1018,9 +1107,32 @@ impl<T: ?Sized> Rc<T> {
         // `&*(ptr as *const RcBox<T>)`, but this created a misaligned
         // reference (see #54908).
         let layout = Layout::new::<RcBox<()>>().extend(value_layout).unwrap().0.pad_to_align();
+        unsafe {
+            Rc::try_allocate_for_layout(value_layout, allocate, mem_to_rcbox)
+                .unwrap_or_else(|_| handle_alloc_error(layout))
+        }
+    }
+
+    /// Allocates an `RcBox<T>` with sufficient space for
+    /// a possibly-unsized inner value where the value has the layout provided,
+    /// returning an error if allocation fails.
+    ///
+    /// The function `mem_to_rcbox` is called with the data pointer
+    /// and must return back a (potentially fat)-pointer for the `RcBox<T>`.
+    #[inline]
+    unsafe fn try_allocate_for_layout(
+        value_layout: Layout,
+        allocate: impl FnOnce(Layout) -> Result<NonNull<[u8]>, AllocError>,
+        mem_to_rcbox: impl FnOnce(*mut u8) -> *mut RcBox<T>,
+    ) -> Result<*mut RcBox<T>, AllocError> {
+        // Calculate layout using the given value layout.
+        // Previously, layout was calculated on the expression
+        // `&*(ptr as *const RcBox<T>)`, but this created a misaligned
+        // reference (see #54908).
+        let layout = Layout::new::<RcBox<()>>().extend(value_layout).unwrap().0.pad_to_align();
 
         // Allocate for the layout.
-        let ptr = allocate(layout).unwrap_or_else(|_| handle_alloc_error(layout));
+        let ptr = allocate(layout)?;
 
         // Initialize the RcBox
         let inner = mem_to_rcbox(ptr.as_non_null_ptr().as_ptr());
@@ -1031,7 +1143,7 @@ impl<T: ?Sized> Rc<T> {
             ptr::write(&mut (*inner).weak, Cell::new(1));
         }
 
-        inner
+        Ok(inner)
     }
 
     /// Allocates an `RcBox<T>` with sufficient space for an unsized inner value
