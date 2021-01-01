@@ -1,4 +1,6 @@
-use crate::utils::{any_parent_is_automatically_derived, contains_name, match_def_path, paths, qpath_res, snippet};
+use crate::utils::{
+    any_parent_is_automatically_derived, contains_name, match_def_path, paths, qpath_res, snippet_with_macro_callsite,
+};
 use crate::utils::{span_lint_and_note, span_lint_and_sugg};
 use if_chain::if_chain;
 use rustc_data_structures::fx::FxHashSet;
@@ -187,7 +189,7 @@ impl LateLintPass<'_> for Default {
                     .into_iter()
                     .map(|(field, rhs)| {
                         // extract and store the assigned value for help message
-                        let value_snippet = snippet(cx, rhs.span, "..");
+                        let value_snippet = snippet_with_macro_callsite(cx, rhs.span, "..");
                         format!("{}: {}", field, value_snippet)
                     })
                     .collect::<Vec<String>>()

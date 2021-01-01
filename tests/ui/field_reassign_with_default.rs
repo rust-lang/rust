@@ -11,6 +11,11 @@ struct B {
     j: i64,
 }
 
+#[derive(Default)]
+struct C {
+    i: Vec<i32>,
+    j: i64,
+}
 /// Implements .next() that returns a different number each time.
 struct SideEffect(i32);
 
@@ -111,6 +116,10 @@ fn main() {
     // don't lint - some private fields
     let mut x = m::F::default();
     x.a = 1;
+
+    // don't expand macros in the suggestion (#6522)
+    let mut a: C = C::default();
+    a.i = vec![1];
 }
 
 mod m {
