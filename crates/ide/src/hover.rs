@@ -109,6 +109,8 @@ pub(crate) fn hover(
         match node {
             ast::Name(name) => NameClass::classify(&sema, &name).and_then(|d| d.defined(sema.db)),
             ast::NameRef(name_ref) => NameRefClass::classify(&sema, &name_ref).map(|d| d.referenced(sema.db)),
+            ast::Lifetime(lifetime) => NameClass::classify_lifetime(&sema, &lifetime)
+                .map_or_else(|| NameRefClass::classify_lifetime(&sema, &lifetime).map(|d| d.referenced(sema.db)), |d| d.defined(sema.db)),
             _ => None,
         }
     };
@@ -360,9 +362,9 @@ fn hover_for_definition(db: &RootDatabase, def: Definition) -> Option<Markup> {
             ModuleDef::Static(it) => from_def_source(db, it, mod_path),
             ModuleDef::Trait(it) => from_def_source(db, it, mod_path),
             ModuleDef::TypeAlias(it) => from_def_source(db, it, mod_path),
-            ModuleDef::BuiltinType(it) => return Some(it.to_string().into()),
+            ModuleDef::BuiltinType(it) => Some(Markup::fenced_block(&it)),
         },
-        Definition::Local(it) => return Some(Markup::fenced_block(&it.ty(db).display(db))),
+        Definition::Local(it) => Some(Markup::fenced_block(&it.ty(db).display(db))),
         Definition::SelfType(impl_def) => {
             impl_def.target_ty(db).as_adt().and_then(|adt| match adt {
                 Adt::Struct(it) => from_def_source(db, it, mod_path),
@@ -370,10 +372,9 @@ fn hover_for_definition(db: &RootDatabase, def: Definition) -> Option<Markup> {
                 Adt::Enum(it) => from_def_source(db, it, mod_path),
             })
         }
-        Definition::TypeParam(_)
-        | Definition::LifetimeParam(_)
-        | Definition::ConstParam(_)
-        | Definition::Label(_) => {
+        Definition::Label(it) => Some(Markup::fenced_block(&it.name(db))),
+        Definition::LifetimeParam(it) => Some(Markup::fenced_block(&it.name(db))),
+        Definition::TypeParam(_) | Definition::ConstParam(_) => {
             // FIXME: Hover for generic param
             None
         }
@@ -406,7 +407,7 @@ fn pick_best(tokens: TokenAtOffset<SyntaxToken>) -> Option<SyntaxToken> {
     return tokens.max_by_key(priority);
     fn priority(n: &SyntaxToken) -> usize {
         match n.kind() {
-            IDENT | INT_NUMBER => 3,
+            IDENT | INT_NUMBER | LIFETIME_IDENT => 3,
             T!['('] | T![')'] => 2,
             kind if kind.is_trivia() => 0,
             _ => 1,
@@ -1172,7 +1173,10 @@ fn f() { fo<|>o!(); }
             r#"struct TS(String, i32<|>);"#,
             expect![[r#"
                 *i32*
+
+                ```rust
                 i32
+                ```
             "#]],
         )
     }
@@ -3222,6 +3226,38 @@ fn no_hover() {
     // no<|>hover
 }
 "#,
+        );
+    }
+
+    #[test]
+    fn hover_label() {
+        check(
+            r#"
+fn foo() {
+    'label<|>: loop {}
+}
+"#,
+            expect![[r#"
+            *'label*
+
+            ```rust
+            'label
+            ```
+            "#]],
+        );
+    }
+
+    #[test]
+    fn hover_lifetime() {
+        check(
+            r#"fn foo<'lifetime>(_: &'lifetime<|> ()) {}"#,
+            expect![[r#"
+            *'lifetime*
+
+            ```rust
+            'lifetime
+            ```
+            "#]],
         );
     }
 }
