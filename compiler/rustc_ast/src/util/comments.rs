@@ -25,9 +25,8 @@ pub struct Comment {
 
 /// Makes a doc string more presentable to users.
 /// Used by rustdoc and perhaps other tools, but not by rustc.
-pub fn beautify_doc_string(data: Symbol) -> String {
-    /// remove whitespace-only lines from the start/end of lines
-    fn vertical_trim(lines: Vec<String>) -> Vec<String> {
+pub fn beautify_doc_string(data: Symbol) -> Symbol {
+    fn get_vertical_trim(lines: &[&str]) -> Option<(usize, usize)> {
         let mut i = 0;
         let mut j = lines.len();
         // first line of all-stars should be omitted
@@ -47,55 +46,58 @@ pub fn beautify_doc_string(data: Symbol) -> String {
             j -= 1;
         }
 
-        lines[i..j].to_vec()
+        if i != 0 || j != lines.len() { Some((i, j)) } else { None }
     }
 
-    /// remove a "[ \t]*\*" block from each line, if possible
-    fn horizontal_trim(lines: Vec<String>) -> Vec<String> {
+    fn get_horizontal_trim(lines: &[&str]) -> Option<usize> {
         let mut i = usize::MAX;
-        let mut can_trim = true;
         let mut first = true;
 
-        for line in &lines {
+        for line in lines {
             for (j, c) in line.chars().enumerate() {
                 if j > i || !"* \t".contains(c) {
-                    can_trim = false;
-                    break;
+                    return None;
                 }
                 if c == '*' {
                     if first {
                         i = j;
                         first = false;
                     } else if i != j {
-                        can_trim = false;
+                        return None;
                     }
                     break;
                 }
             }
             if i >= line.len() {
-                can_trim = false;
-            }
-            if !can_trim {
-                break;
+                return None;
             }
         }
+        Some(i)
+    }
 
-        if can_trim {
-            lines.iter().map(|line| (&line[i + 1..line.len()]).to_string()).collect()
+    let data_s = data.as_str();
+    if data_s.contains('\n') {
+        let mut lines = data_s.lines().collect::<Vec<&str>>();
+        let mut changes = false;
+        let lines = if let Some((i, j)) = get_vertical_trim(&lines) {
+            changes = true;
+            // remove whitespace-only lines from the start/end of lines
+            &mut lines[i..j]
         } else {
-            lines
+            &mut lines
+        };
+        if let Some(horizontal) = get_horizontal_trim(&lines) {
+            changes = true;
+            // remove a "[ \t]*\*" block from each line, if possible
+            for line in lines.iter_mut() {
+                *line = &line[horizontal + 1..];
+            }
+        }
+        if changes {
+            return Symbol::intern(&lines.join("\n"));
         }
     }
-
-    let data = data.as_str();
-    if data.contains('\n') {
-        let lines = data.lines().map(|s| s.to_string()).collect::<Vec<String>>();
-        let lines = vertical_trim(lines);
-        let lines = horizontal_trim(lines);
-        lines.join("\n")
-    } else {
-        data.to_string()
-    }
+    data
 }
 
 /// Returns `None` if the first `col` chars of `s` contain a non-whitespace char.
@@ -178,10 +180,8 @@ pub fn gather_comments(sm: &SourceMap, path: FileName, src: String) -> Vec<Comme
             }
             rustc_lexer::TokenKind::BlockComment { doc_style, .. } => {
                 if doc_style.is_none() {
-                    let code_to_the_right = match text[pos + token.len..].chars().next() {
-                        Some('\r' | '\n') => false,
-                        _ => true,
-                    };
+                    let code_to_the_right =
+                        !matches!(text[pos + token.len..].chars().next(), Some('\r' | '\n'));
                     let style = match (code_to_the_left, code_to_the_right) {
                         (_, true) => CommentStyle::Mixed,
                         (false, false) => CommentStyle::Isolated,

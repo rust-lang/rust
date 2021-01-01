@@ -176,7 +176,7 @@ where
                         universe
                     });
 
-                    let placeholder = ty::PlaceholderRegion { universe, name: br };
+                    let placeholder = ty::PlaceholderRegion { universe, name: br.kind };
                     delegate.next_placeholder_region(placeholder)
                 } else {
                     delegate.next_existential_region_var(true)
@@ -1008,6 +1008,6 @@ where
         self.first_free_index.shift_in(1);
         let result = self.relate(a.skip_binder(), a.skip_binder())?;
         self.first_free_index.shift_out(1);
-        Ok(ty::Binder::bind(result))
+        Ok(a.rebind(result))
     }
 }

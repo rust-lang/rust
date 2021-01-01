@@ -171,27 +171,6 @@ macro validate_simd_type($fx:ident, $intrinsic:ident, $span:ident, $ty:expr) {
     }
 }
 
-fn lane_type_and_count<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    layout: TyAndLayout<'tcx>,
-) -> (TyAndLayout<'tcx>, u16) {
-    assert!(layout.ty.is_simd());
-    let lane_count = match layout.fields {
-        rustc_target::abi::FieldsShape::Array { stride: _, count } => u16::try_from(count).unwrap(),
-        _ => unreachable!("lane_type_and_count({:?})", layout),
-    };
-    let lane_layout = layout
-        .field(
-            &ty::layout::LayoutCx {
-                tcx,
-                param_env: ParamEnv::reveal_all(),
-            },
-            0,
-        )
-        .unwrap();
-    (lane_layout, lane_count)
-}
-
 pub(crate) fn clif_vector_type<'tcx>(tcx: TyCtxt<'tcx>, layout: TyAndLayout<'tcx>) -> Option<Type> {
     let (element, count) = match &layout.abi {
         Abi::Vector { element, count } => (element.clone(), *count),
@@ -218,8 +197,10 @@ fn simd_for_each_lane<'tcx, M: Module>(
 ) {
     let layout = val.layout();
 
-    let (lane_layout, lane_count) = lane_type_and_count(fx.tcx, layout);
-    let (ret_lane_layout, ret_lane_count) = lane_type_and_count(fx.tcx, ret.layout());
+    let (lane_count, lane_ty) = layout.ty.simd_size_and_type(fx.tcx);
+    let lane_layout = fx.layout_of(lane_ty);
+    let (ret_lane_count, ret_lane_ty) = ret.layout().ty.simd_size_and_type(fx.tcx);
+    let ret_lane_layout = fx.layout_of(ret_lane_ty);
     assert_eq!(lane_count, ret_lane_count);
 
     for lane_idx in 0..lane_count {
@@ -248,8 +229,10 @@ fn simd_pair_for_each_lane<'tcx, M: Module>(
     assert_eq!(x.layout(), y.layout());
     let layout = x.layout();
 
-    let (lane_layout, lane_count) = lane_type_and_count(fx.tcx, layout);
-    let (ret_lane_layout, ret_lane_count) = lane_type_and_count(fx.tcx, ret.layout());
+    let (lane_count, lane_ty) = layout.ty.simd_size_and_type(fx.tcx);
+    let lane_layout = fx.layout_of(lane_ty);
+    let (ret_lane_count, ret_lane_ty) = ret.layout().ty.simd_size_and_type(fx.tcx);
+    let ret_lane_layout = fx.layout_of(ret_lane_ty);
     assert_eq!(lane_count, ret_lane_count);
 
     for lane in 0..lane_count {
@@ -269,13 +252,14 @@ fn simd_reduce<'tcx, M: Module>(
     ret: CPlace<'tcx>,
     f: impl Fn(&mut FunctionCx<'_, 'tcx, M>, TyAndLayout<'tcx>, Value, Value) -> Value,
 ) {
-    let (lane_layout, lane_count) = lane_type_and_count(fx.tcx, val.layout());
+    let (lane_count, lane_ty) = val.layout().ty.simd_size_and_type(fx.tcx);
+    let lane_layout = fx.layout_of(lane_ty);
     assert_eq!(lane_layout, ret.layout());
 
     let mut res_val = val.value_field(fx, mir::Field::new(0)).load_scalar(fx);
     for lane_idx in 1..lane_count {
         let lane = val
-            .value_field(fx, mir::Field::new(lane_idx.into()))
+            .value_field(fx, mir::Field::new(lane_idx.try_into().unwrap()))
             .load_scalar(fx);
         res_val = f(fx, lane_layout, res_val, lane);
     }
@@ -289,14 +273,14 @@ fn simd_reduce_bool<'tcx, M: Module>(
     ret: CPlace<'tcx>,
     f: impl Fn(&mut FunctionCx<'_, 'tcx, M>, Value, Value) -> Value,
 ) {
-    let (_lane_layout, lane_count) = lane_type_and_count(fx.tcx, val.layout());
+    let (lane_count, _lane_ty) = val.layout().ty.simd_size_and_type(fx.tcx);
     assert!(ret.layout().ty.is_bool());
 
     let res_val = val.value_field(fx, mir::Field::new(0)).load_scalar(fx);
     let mut res_val = fx.bcx.ins().band_imm(res_val, 1); // mask to boolean
     for lane_idx in 1..lane_count {
         let lane = val
-            .value_field(fx, mir::Field::new(lane_idx.into()))
+            .value_field(fx, mir::Field::new(lane_idx.try_into().unwrap()))
             .load_scalar(fx);
         let lane = fx.bcx.ins().band_imm(lane, 1); // mask to boolean
         res_val = f(fx, res_val, lane);
@@ -460,9 +444,6 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
                 "abort" => {
                     trap_abort(fx, "Called intrinsic::abort.");
                 }
-                "unreachable" => {
-                    trap_unreachable(fx, "[corruption] Called intrinsic::unreachable.");
-                }
                 "transmute" => {
                     crate::base::codegen_panic(fx, "Transmuting to uninhabited type.", span);
                 }
@@ -575,12 +556,6 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
                 fx.bcx.call_memmove(fx.cx.module.target_config(), dst, src, byte_amount);
             }
         };
-        discriminant_value, (c ptr) {
-            let pointee_layout = fx.layout_of(ptr.layout().ty.builtin_deref(true).unwrap().ty);
-            let val = CValue::by_ref(Pointer::new(ptr.load_scalar(fx)), pointee_layout);
-            let discr = crate::discriminant::codegen_get_discriminant(fx, val, ret.layout());
-            ret.write_cvalue(fx, discr);
-        };
         size_of_val, <T> (c ptr) {
             let layout = fx.layout_of(T);
             let size = if layout.is_unsized() {
@@ -634,22 +609,6 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
             };
 
             let res = crate::num::codegen_checked_int_binop(
-                fx,
-                bin_op,
-                x,
-                y,
-            );
-            ret.write_cvalue(fx, res);
-        };
-        _ if intrinsic.starts_with("wrapping_"), (c x, c y) {
-            assert_eq!(x.layout().ty, y.layout().ty);
-            let bin_op = match intrinsic {
-                "wrapping_add" => BinOp::Add,
-                "wrapping_sub" => BinOp::Sub,
-                "wrapping_mul" => BinOp::Mul,
-                _ => unreachable!("intrinsic {}", intrinsic),
-            };
-            let res = crate::num::codegen_int_binop(
                 fx,
                 bin_op,
                 x,
@@ -916,7 +875,7 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
             dest.write_cvalue(fx, val);
         };
 
-        size_of | pref_align_of | min_align_of | needs_drop | type_id | type_name | variant_count, () {
+        pref_align_of | min_align_of | needs_drop | type_id | type_name | variant_count, () {
             let const_val =
                 fx.tcx.const_eval_instance(ParamEnv::reveal_all(), instance, None).unwrap();
             let val = crate::constant::codegen_const_value(

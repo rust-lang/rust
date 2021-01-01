@@ -1,4 +1,5 @@
-// build-pass
+// ignore-test
+// FIXME(const_generics): This test causes an ICE after reverting #76030.
 
 #![allow(incomplete_features)]
 #![feature(const_generics)]

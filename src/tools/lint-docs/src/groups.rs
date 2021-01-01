@@ -116,13 +116,23 @@ impl<'a> LintExtractor<'a> {
         result.push('\n');
         result.push_str("[warn-by-default]: listing/warn-by-default.md\n");
         for lint_name in to_link {
-            let lint_def =
-                lints.iter().find(|l| l.name == lint_name.replace("-", "_")).ok_or_else(|| {
-                    format!(
-                        "`rustc -W help` defined lint `{}` but that lint does not appear to exist",
+            let lint_def = match lints.iter().find(|l| l.name == lint_name.replace("-", "_")) {
+                Some(def) => def,
+                None => {
+                    let msg = format!(
+                        "`rustc -W help` defined lint `{}` but that lint does not \
+                        appear to exist\n\
+                        Check that the lint definition includes the appropriate doc comments.",
                         lint_name
-                    )
-                })?;
+                    );
+                    if self.validate {
+                        return Err(msg.into());
+                    } else {
+                        eprintln!("warning: {}", msg);
+                        continue;
+                    }
+                }
+            };
             write!(
                 result,
                 "[{}]: listing/{}#{}\n",

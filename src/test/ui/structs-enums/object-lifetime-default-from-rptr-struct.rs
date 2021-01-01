@@ -27,7 +27,7 @@ fn b<'a>(t: &'a MyBox<dyn Test>, mut ss: SomeStruct<'a>) {
     ss.u = t;
 }
 
-// see also compile-fail/object-lifetime-default-from-rptr-box-error.rs
+// see also ui/object-lifetime/object-lifetime-default-from-rptr-box-error.rs
 
 fn d<'a>(t: &'a MyBox<dyn Test+'a>, mut ss: SomeStruct<'a>) {
     ss.u = t;

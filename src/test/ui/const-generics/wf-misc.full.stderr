@@ -1,5 +1,5 @@
 error: constant expression depends on a generic parameter
-  --> $DIR/wf-misc.rs:9:12
+  --> $DIR/wf-misc.rs:8:12
    |
 LL |     let _: [u8; N + 1];
    |            ^^^^^^^^^^^
@@ -7,7 +7,7 @@ LL |     let _: [u8; N + 1];
    = note: this may fail depending on what value the parameter takes
 
 error: constant expression depends on a generic parameter
-  --> $DIR/wf-misc.rs:17:12
+  --> $DIR/wf-misc.rs:16:12
    |
 LL |     let _: Const::<{N + 1}>;
    |            ^^^^^^^^^^^^^^^^

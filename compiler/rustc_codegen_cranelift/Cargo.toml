@@ -12,7 +12,7 @@ crate-type = ["dylib"]
 cranelift-codegen = { git = "https://github.com/bytecodealliance/wasmtime/", branch = "main", features = ["unwind"] }
 cranelift-frontend = { git = "https://github.com/bytecodealliance/wasmtime/", branch = "main" }
 cranelift-module = { git = "https://github.com/bytecodealliance/wasmtime/", branch = "main" }
-cranelift-simplejit = { git = "https://github.com/bytecodealliance/wasmtime/", branch = "main", optional = true }
+cranelift-jit = { git = "https://github.com/bytecodealliance/wasmtime/", branch = "main", optional = true }
 cranelift-object = { git = "https://github.com/bytecodealliance/wasmtime/", branch = "main" }
 target-lexicon = "0.11.0"
 gimli = { version = "0.23.0", default-features = false, features = ["write"]}
@@ -27,7 +27,7 @@ libloading = { version = "0.6.0", optional = true }
 #cranelift-codegen = { path = "../wasmtime/cranelift/codegen" }
 #cranelift-frontend = { path = "../wasmtime/cranelift/frontend" }
 #cranelift-module = { path = "../wasmtime/cranelift/module" }
-#cranelift-simplejit = { path = "../wasmtime/cranelift/simplejit" }
+#cranelift-jit = { path = "../wasmtime/cranelift/jit" }
 #cranelift-object = { path = "../wasmtime/cranelift/object" }
 
 #[patch.crates-io]
@@ -35,7 +35,7 @@ libloading = { version = "0.6.0", optional = true }
 
 [features]
 default = ["jit", "inline_asm"]
-jit = ["cranelift-simplejit", "libloading"]
+jit = ["cranelift-jit", "libloading"]
 inline_asm = []
 
 [profile.dev]

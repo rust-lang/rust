@@ -2420,7 +2420,15 @@ impl<'a> State<'a> {
                 if mutbl == ast::Mutability::Mut {
                     self.s.word("mut ");
                 }
-                self.print_pat(inner);
+                if let PatKind::Ident(ast::BindingMode::ByValue(ast::Mutability::Mut), ..) =
+                    inner.kind
+                {
+                    self.popen();
+                    self.print_pat(inner);
+                    self.pclose();
+                } else {
+                    self.print_pat(inner);
+                }
             }
             PatKind::Lit(ref e) => self.print_expr(&**e),
             PatKind::Range(ref begin, ref end, Spanned { node: ref end_kind, .. }) => {
@@ -2779,7 +2787,7 @@ impl<'a> State<'a> {
                     self.print_explicit_self(&eself);
                 } else {
                     let invalid = if let PatKind::Ident(_, ident, _) = input.pat.kind {
-                        ident.name == kw::Invalid
+                        ident.name == kw::Empty
                     } else {
                         false
                     };

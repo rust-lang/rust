@@ -26,7 +26,7 @@ pub(super) enum GateOr {
 
 /// Whether or not to recover a `,` when parsing or-patterns.
 #[derive(PartialEq, Copy, Clone)]
-enum RecoverComma {
+pub(super) enum RecoverComma {
     Yes,
     No,
 }
@@ -43,13 +43,17 @@ impl<'a> Parser<'a> {
 
     /// Entry point to the main pattern parser.
     /// Corresponds to `top_pat` in RFC 2535 and allows or-pattern at the top level.
-    pub(super) fn parse_top_pat(&mut self, gate_or: GateOr) -> PResult<'a, P<Pat>> {
+    pub(super) fn parse_top_pat(
+        &mut self,
+        gate_or: GateOr,
+        rc: RecoverComma,
+    ) -> PResult<'a, P<Pat>> {
         // Allow a '|' before the pats (RFCs 1925, 2530, and 2535).
         let gated_leading_vert = self.eat_or_separator(None) && gate_or == GateOr::Yes;
         let leading_vert_span = self.prev_token.span;
 
         // Parse the possibly-or-pattern.
-        let pat = self.parse_pat_with_or(None, gate_or, RecoverComma::Yes)?;
+        let pat = self.parse_pat_with_or(None, gate_or, rc)?;
 
         // If we parsed a leading `|` which should be gated,
         // and no other gated or-pattern has been parsed thus far,

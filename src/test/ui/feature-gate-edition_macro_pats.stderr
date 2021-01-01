@@ -1,0 +1,21 @@
+error[E0658]: `pat2018` and `pat2021` are unstable.
+  --> $DIR/feature-gate-edition_macro_pats.rs:4:9
+   |
+LL |     ($x:pat2018) => {};
+   |         ^^^^^^^
+   |
+   = note: see issue #54883 <https://github.com/rust-lang/rust/issues/54883> for more information
+   = help: add `#![feature(edition_macro_pats)]` to the crate attributes to enable
+
+error[E0658]: `pat2018` and `pat2021` are unstable.
+  --> $DIR/feature-gate-edition_macro_pats.rs:5:9
+   |
+LL |     ($x:pat2021) => {};
+   |         ^^^^^^^
+   |
+   = note: see issue #54883 <https://github.com/rust-lang/rust/issues/54883> for more information
+   = help: add `#![feature(edition_macro_pats)]` to the crate attributes to enable
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

@@ -162,7 +162,7 @@ impl AddConstructor for ObjectProduct {
 }
 
 pub(crate) fn with_object(sess: &Session, name: &str, f: impl FnOnce(&mut Object)) -> Vec<u8> {
-    let triple = crate::build_isa(sess, true).triple().clone();
+    let triple = crate::build_isa(sess).triple().clone();
 
     let binary_format = match triple.binary_format {
         target_lexicon::BinaryFormat::Elf => object::BinaryFormat::Elf,
@@ -193,7 +193,7 @@ pub(crate) fn with_object(sess: &Session, name: &str, f: impl FnOnce(&mut Object
 
 pub(crate) fn make_module(sess: &Session, name: String) -> ObjectModule {
     let mut builder = ObjectBuilder::new(
-        crate::build_isa(sess, true),
+        crate::build_isa(sess),
         name + ".o",
         cranelift_module::default_libcall_names(),
     )

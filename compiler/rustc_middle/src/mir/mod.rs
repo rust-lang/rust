@@ -35,11 +35,13 @@ use std::ops::{ControlFlow, Index, IndexMut};
 use std::slice;
 use std::{iter, mem, option};
 
+use self::graph_cyclic_cache::GraphIsCyclicCache;
 use self::predecessors::{PredecessorCache, Predecessors};
 pub use self::query::*;
 
 pub mod abstract_const;
 pub mod coverage;
+mod graph_cyclic_cache;
 pub mod interpret;
 pub mod mono;
 mod predecessors;
@@ -227,6 +229,7 @@ pub struct Body<'tcx> {
     pub is_polymorphic: bool,
 
     predecessor_cache: PredecessorCache,
+    is_cyclic: GraphIsCyclicCache,
 }
 
 impl<'tcx> Body<'tcx> {
@@ -267,6 +270,7 @@ impl<'tcx> Body<'tcx> {
             required_consts: Vec::new(),
             is_polymorphic: false,
             predecessor_cache: PredecessorCache::new(),
+            is_cyclic: GraphIsCyclicCache::new(),
         };
         body.is_polymorphic = body.has_param_types_or_consts();
         body
@@ -296,6 +300,7 @@ impl<'tcx> Body<'tcx> {
             var_debug_info: Vec::new(),
             is_polymorphic: false,
             predecessor_cache: PredecessorCache::new(),
+            is_cyclic: GraphIsCyclicCache::new(),
         };
         body.is_polymorphic = body.has_param_types_or_consts();
         body
@@ -309,11 +314,12 @@ impl<'tcx> Body<'tcx> {
     #[inline]
     pub fn basic_blocks_mut(&mut self) -> &mut IndexVec<BasicBlock, BasicBlockData<'tcx>> {
         // Because the user could mutate basic block terminators via this reference, we need to
-        // invalidate the predecessor cache.
+        // invalidate the caches.
         //
         // FIXME: Use a finer-grained API for this, so only transformations that alter terminators
-        // invalidate the predecessor cache.
+        // invalidate the caches.
         self.predecessor_cache.invalidate();
+        self.is_cyclic.invalidate();
         &mut self.basic_blocks
     }
 
@@ -322,6 +328,7 @@ impl<'tcx> Body<'tcx> {
         &mut self,
     ) -> (&mut IndexVec<BasicBlock, BasicBlockData<'tcx>>, &mut LocalDecls<'tcx>) {
         self.predecessor_cache.invalidate();
+        self.is_cyclic.invalidate();
         (&mut self.basic_blocks, &mut self.local_decls)
     }
 
@@ -334,13 +341,14 @@ impl<'tcx> Body<'tcx> {
         &mut Vec<VarDebugInfo<'tcx>>,
     ) {
         self.predecessor_cache.invalidate();
+        self.is_cyclic.invalidate();
         (&mut self.basic_blocks, &mut self.local_decls, &mut self.var_debug_info)
     }
 
     /// Returns `true` if a cycle exists in the control-flow graph that is reachable from the
     /// `START_BLOCK`.
     pub fn is_cfg_cyclic(&self) -> bool {
-        graph::is_cyclic(self)
+        self.is_cyclic.is_cyclic(self)
     }
 
     #[inline]
@@ -1060,6 +1068,23 @@ impl<'tcx> LocalDecl<'tcx> {
     }
 }
 
+#[derive(Clone, TyEncodable, TyDecodable, HashStable, TypeFoldable)]
+pub enum VarDebugInfoContents<'tcx> {
+    /// NOTE(eddyb) There's an unenforced invariant that this `Place` is
+    /// based on a `Local`, not a `Static`, and contains no indexing.
+    Place(Place<'tcx>),
+    Const(Constant<'tcx>),
+}
+
+impl<'tcx> Debug for VarDebugInfoContents<'tcx> {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            VarDebugInfoContents::Const(c) => write!(fmt, "{}", c),
+            VarDebugInfoContents::Place(p) => write!(fmt, "{:?}", p),
+        }
+    }
+}
+
 /// Debug information pertaining to a user variable.
 #[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable, TypeFoldable)]
 pub struct VarDebugInfo<'tcx> {
@@ -1071,9 +1096,7 @@ pub struct VarDebugInfo<'tcx> {
     pub source_info: SourceInfo,
 
     /// Where the data for this user variable is to be found.
-    /// NOTE(eddyb) There's an unenforced invariant that this `Place` is
-    /// based on a `Local`, not a `Static`, and contains no indexing.
-    pub place: Place<'tcx>,
+    pub value: VarDebugInfoContents<'tcx>,
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -1740,6 +1763,21 @@ impl<'tcx> Place<'tcx> {
 
     pub fn as_ref(&self) -> PlaceRef<'tcx> {
         PlaceRef { local: self.local, projection: &self.projection }
+    }
+
+    /// Iterate over the projections in evaluation order, i.e., the first element is the base with
+    /// its projection and then subsequently more projections are added.
+    /// As a concrete example, given the place a.b.c, this would yield:
+    /// - (a, .b)
+    /// - (a.b, .c)
+    /// Given a place without projections, the iterator is empty.
+    pub fn iter_projections(
+        self,
+    ) -> impl Iterator<Item = (PlaceRef<'tcx>, PlaceElem<'tcx>)> + DoubleEndedIterator {
+        self.projection.iter().enumerate().map(move |(i, proj)| {
+            let base = PlaceRef { local: self.local, projection: &self.projection[..i] };
+            (base, proj)
+        })
     }
 }
 

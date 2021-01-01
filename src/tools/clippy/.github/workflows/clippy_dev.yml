@@ -22,6 +22,12 @@ jobs:
 
     steps:
     # Setup
+    - name: Checkout
+      uses: actions/checkout@v2.3.3
+
+    - name: remove toolchain file
+      run: rm rust-toolchain
+
     - name: rust-toolchain
       uses: actions-rs/toolchain@v1.0.6
       with:
@@ -29,9 +35,7 @@ jobs:
         target: x86_64-unknown-linux-gnu
         profile: minimal
         components: rustfmt
-
-    - name: Checkout
-      uses: actions/checkout@v2.3.3
+        default: true
 
     # Run
     - name: Build

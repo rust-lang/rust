@@ -1633,10 +1633,10 @@ function defocusSearchBar() {
 
         function makeTabHeader(tabNb, text, nbElems) {
             if (currentTab === tabNb) {
-                return "<div class=\"selected\">" + text +
-                       " <div class=\"count\">(" + nbElems + ")</div></div>";
+                return "<button class=\"selected\">" + text +
+                       " <div class=\"count\">(" + nbElems + ")</div></button>";
             }
-            return "<div>" + text + " <div class=\"count\">(" + nbElems + ")</div></div>";
+            return "<button>" + text + " <div class=\"count\">(" + nbElems + ")</div></button>";
         }
 
         function showResults(results) {
@@ -2274,9 +2274,12 @@ function defocusSearchBar() {
 
         function implHider(addOrRemove, fullHide) {
             return function(n) {
-                var is_method = hasClass(n, "method") || fullHide;
-                if (is_method || hasClass(n, "type")) {
-                    if (is_method === true) {
+                var shouldHide =
+                    fullHide === true ||
+                    hasClass(n, "method") === true ||
+                    hasClass(n, "associatedconstant") === true;
+                if (shouldHide === true || hasClass(n, "type") === true) {
+                    if (shouldHide === true) {
                         if (addOrRemove) {
                             addClass(n, "hidden-by-impl-hider");
                         } else {

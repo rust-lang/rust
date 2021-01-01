@@ -1,18 +1,18 @@
-use crate::env::temp_dir;
 use crate::fs::OpenOptions;
 use crate::io;
 use crate::io::Result;
 use crate::io::SeekFrom;
 use crate::io::{BufRead, Read, Seek, Write};
 use crate::os::unix::io::AsRawFd;
+use crate::sys_common::io::test::tmpdir;
 
 #[test]
 fn copy_specialization() -> Result<()> {
     use crate::io::{BufReader, BufWriter};
 
-    let path = crate::env::temp_dir();
-    let source_path = path.join("copy-spec.source");
-    let sink_path = path.join("copy-spec.sink");
+    let tmp_path = tmpdir();
+    let source_path = tmp_path.join("copy-spec.source");
+    let sink_path = tmp_path.join("copy-spec.sink");
 
     let result: Result<()> = try {
         let mut source = crate::fs::OpenOptions::new()
@@ -68,7 +68,8 @@ fn copy_specialization() -> Result<()> {
 #[bench]
 fn bench_file_to_file_copy(b: &mut test::Bencher) {
     const BYTES: usize = 128 * 1024;
-    let src_path = temp_dir().join("file-copy-bench-src");
+    let temp_path = tmpdir();
+    let src_path = temp_path.join("file-copy-bench-src");
     let mut src = crate::fs::OpenOptions::new()
         .create(true)
         .truncate(true)
@@ -78,7 +79,7 @@ fn bench_file_to_file_copy(b: &mut test::Bencher) {
         .unwrap();
     src.write(&vec![0u8; BYTES]).unwrap();
 
-    let sink_path = temp_dir().join("file-copy-bench-sink");
+    let sink_path = temp_path.join("file-copy-bench-sink");
     let mut sink = crate::fs::OpenOptions::new()
         .create(true)
         .truncate(true)
@@ -97,7 +98,8 @@ fn bench_file_to_file_copy(b: &mut test::Bencher) {
 #[bench]
 fn bench_file_to_socket_copy(b: &mut test::Bencher) {
     const BYTES: usize = 128 * 1024;
-    let src_path = temp_dir().join("pipe-copy-bench-src");
+    let temp_path = tmpdir();
+    let src_path = temp_path.join("pipe-copy-bench-src");
     let mut src = OpenOptions::new()
         .create(true)
         .truncate(true)
@@ -128,7 +130,8 @@ fn bench_file_to_socket_copy(b: &mut test::Bencher) {
 #[bench]
 fn bench_file_to_uds_copy(b: &mut test::Bencher) {
     const BYTES: usize = 128 * 1024;
-    let src_path = temp_dir().join("uds-copy-bench-src");
+    let temp_path = tmpdir();
+    let src_path = temp_path.join("uds-copy-bench-src");
     let mut src = OpenOptions::new()
         .create(true)
         .truncate(true)

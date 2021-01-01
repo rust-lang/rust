@@ -1,5 +1,5 @@
 error[E0658]: a non-static lifetime is not allowed in a `const`
-  --> $DIR/forbid-non-static-lifetimes.rs:9:22
+  --> $DIR/forbid-non-static-lifetimes.rs:7:22
    |
 LL |     test::<{ let _: &'a (); 3 },>();
    |                      ^^
@@ -8,7 +8,7 @@ LL |     test::<{ let _: &'a (); 3 },>();
    = help: add `#![feature(const_generics)]` to the crate attributes to enable
 
 error[E0658]: a non-static lifetime is not allowed in a `const`
-  --> $DIR/forbid-non-static-lifetimes.rs:23:16
+  --> $DIR/forbid-non-static-lifetimes.rs:21:16
    |
 LL |     [(); (|_: &'a u8| (), 0).1];
    |                ^^

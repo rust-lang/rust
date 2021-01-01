@@ -1388,6 +1388,7 @@ impl String {
     /// assert_eq!(fancy_f.len(), 4);
     /// assert_eq!(fancy_f.chars().count(), 3);
     /// ```
+    #[doc(alias = "length")]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn len(&self) -> usize {
@@ -1413,7 +1414,7 @@ impl String {
         self.len() == 0
     }
 
-    /// Splits the string into two at the given index.
+    /// Splits the string into two at the given byte index.
     ///
     /// Returns a newly allocated `String`. `self` contains bytes `[0, at)`, and
     /// the returned `String` contains bytes `[at, len)`. `at` must be on the

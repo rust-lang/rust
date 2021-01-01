@@ -21,7 +21,7 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
 
 #[proc_macro]
 pub fn symbols(input: TokenStream) -> TokenStream {
-    symbols::symbols(input)
+    symbols::symbols(input.into()).into()
 }
 
 decl_derive!([HashStable, attributes(stable_hasher)] => hash_stable::hash_stable_derive);

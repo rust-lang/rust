@@ -868,7 +868,7 @@ impl EarlyLintPass for AnonymousParameters {
         if let ast::AssocItemKind::Fn(_, ref sig, _, _) = it.kind {
             for arg in sig.decl.inputs.iter() {
                 if let ast::PatKind::Ident(_, ident, None) = arg.pat.kind {
-                    if ident.name == kw::Invalid {
+                    if ident.name == kw::Empty {
                         cx.struct_span_lint(ANONYMOUS_PARAMETERS, arg.pat.span, |lint| {
                             let ty_snip = cx.sess.source_map().span_to_snippet(arg.ty.span);
 
@@ -2299,7 +2299,7 @@ impl EarlyLintPass for IncompleteFeatures {
     }
 }
 
-const HAS_MIN_FEATURES: &[Symbol] = &[sym::const_generics, sym::specialization];
+const HAS_MIN_FEATURES: &[Symbol] = &[sym::specialization];
 
 declare_lint! {
     /// The `invalid_value` lint detects creating a value that is not valid,

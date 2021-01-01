@@ -167,10 +167,7 @@ pub enum GenericArgs {
 
 impl GenericArgs {
     pub fn is_angle_bracketed(&self) -> bool {
-        match *self {
-            AngleBracketed(..) => true,
-            _ => false,
-        }
+        matches!(self, AngleBracketed(..))
     }
 
     pub fn span(&self) -> Span {
@@ -629,23 +626,20 @@ impl Pat {
 
     /// Is this a `..` pattern?
     pub fn is_rest(&self) -> bool {
-        match self.kind {
-            PatKind::Rest => true,
-            _ => false,
-        }
+        matches!(self.kind, PatKind::Rest)
     }
 }
 
-/// A single field in a struct pattern
+/// A single field in a struct pattern.
 ///
-/// Patterns like the fields of Foo `{ x, ref y, ref mut z }`
-/// are treated the same as` x: x, y: ref y, z: ref mut z`,
-/// except is_shorthand is true
+/// Patterns like the fields of `Foo { x, ref y, ref mut z }`
+/// are treated the same as `x: x, y: ref y, z: ref mut z`,
+/// except when `is_shorthand` is true.
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct FieldPat {
-    /// The identifier for the field
+    /// The identifier for the field.
     pub ident: Ident,
-    /// The pattern the field is destructured to
+    /// The pattern the field is destructured to.
     pub pat: P<Pat>,
     pub is_shorthand: bool,
     pub attrs: AttrVec,
@@ -852,10 +846,7 @@ impl BinOpKind {
         }
     }
     pub fn lazy(&self) -> bool {
-        match *self {
-            BinOpKind::And | BinOpKind::Or => true,
-            _ => false,
-        }
+        matches!(self, BinOpKind::And | BinOpKind::Or)
     }
 
     pub fn is_comparison(&self) -> bool {
@@ -963,17 +954,11 @@ impl Stmt {
     }
 
     pub fn is_item(&self) -> bool {
-        match self.kind {
-            StmtKind::Item(_) => true,
-            _ => false,
-        }
+        matches!(self.kind, StmtKind::Item(_))
     }
 
     pub fn is_expr(&self) -> bool {
-        match self.kind {
-            StmtKind::Expr(_) => true,
-            _ => false,
-        }
+        matches!(self.kind, StmtKind::Expr(_))
     }
 }
 
@@ -1107,15 +1092,9 @@ impl Expr {
         if let ExprKind::Block(ref block, _) = self.kind {
             match block.stmts.last().map(|last_stmt| &last_stmt.kind) {
                 // Implicit return
-                Some(&StmtKind::Expr(_)) => true,
-                Some(&StmtKind::Semi(ref expr)) => {
-                    if let ExprKind::Ret(_) = expr.kind {
-                        // Last statement is explicit return.
-                        true
-                    } else {
-                        false
-                    }
-                }
+                Some(StmtKind::Expr(_)) => true,
+                // Last statement is an explicit return?
+                Some(StmtKind::Semi(expr)) => matches!(expr.kind, ExprKind::Ret(_)),
                 // This is a block that doesn't end in either an implicit or explicit return.
                 _ => false,
             }
@@ -1128,7 +1107,7 @@ impl Expr {
     /// Is this expr either `N`, or `{ N }`.
     ///
     /// If this is not the case, name resolution does not resolve `N` when using
-    /// `feature(min_const_generics)` as more complex expressions are not supported.
+    /// `min_const_generics` as more complex expressions are not supported.
     pub fn is_potential_trivial_const_param(&self) -> bool {
         let this = if let ExprKind::Block(ref block, None) = self.kind {
             if block.stmts.len() == 1 {
@@ -1652,26 +1631,17 @@ pub enum LitKind {
 impl LitKind {
     /// Returns `true` if this literal is a string.
     pub fn is_str(&self) -> bool {
-        match *self {
-            LitKind::Str(..) => true,
-            _ => false,
-        }
+        matches!(self, LitKind::Str(..))
     }
 
     /// Returns `true` if this literal is byte literal string.
     pub fn is_bytestr(&self) -> bool {
-        match self {
-            LitKind::ByteStr(_) => true,
-            _ => false,
-        }
+        matches!(self, LitKind::ByteStr(_))
     }
 
     /// Returns `true` if this is a numeric literal.
     pub fn is_numeric(&self) -> bool {
-        match *self {
-            LitKind::Int(..) | LitKind::Float(..) => true,
-            _ => false,
-        }
+        matches!(self, LitKind::Int(..) | LitKind::Float(..))
     }
 
     /// Returns `true` if this literal has no suffix.
@@ -1974,7 +1944,7 @@ impl TyKind {
     }
 
     pub fn is_unit(&self) -> bool {
-        if let TyKind::Tup(ref tys) = *self { tys.is_empty() } else { false }
+        matches!(self, TyKind::Tup(tys) if tys.is_empty())
     }
 }
 
@@ -2237,10 +2207,7 @@ impl FnDecl {
         self.inputs.get(0).map_or(false, Param::is_self)
     }
     pub fn c_variadic(&self) -> bool {
-        self.inputs.last().map_or(false, |arg| match arg.ty.kind {
-            TyKind::CVarArgs => true,
-            _ => false,
-        })
+        self.inputs.last().map_or(false, |arg| matches!(arg.ty.kind, TyKind::CVarArgs))
     }
 }
 

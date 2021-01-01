@@ -1,5 +1,5 @@
 error: no rules expected the token `let`
-  --> $DIR/feature-gate.rs:81:15
+  --> $DIR/feature-gate.rs:80:15
    |
 LL |     macro_rules! use_expr {
    |     --------------------- when calling this macro
@@ -7,7 +7,7 @@ LL |     macro_rules! use_expr {
 LL |     use_expr!(let 0 = 1);
    |               ^^^ no rules expected this token in macro call
 
-error[E0658]: `if let` guard is not implemented
+error[E0658]: `if let` guards are experimental
   --> $DIR/feature-gate.rs:7:12
    |
 LL |         () if let 0 = 1 => {}
@@ -16,8 +16,8 @@ LL |         () if let 0 = 1 => {}
    = note: see issue #51114 <https://github.com/rust-lang/rust/issues/51114> for more information
    = help: add `#![feature(if_let_guard)]` to the crate attributes to enable
 
-error[E0658]: `if let` guard is not implemented
-  --> $DIR/feature-gate.rs:77:12
+error[E0658]: `if let` guards are experimental
+  --> $DIR/feature-gate.rs:76:12
    |
 LL |         () if let 0 = 1 => {}
    |            ^^^^^^^^^^^^
@@ -26,7 +26,7 @@ LL |         () if let 0 = 1 => {}
    = help: add `#![feature(if_let_guard)]` to the crate attributes to enable
 
 error[E0658]: `let` expressions in this position are experimental
-  --> $DIR/feature-gate.rs:11:16
+  --> $DIR/feature-gate.rs:10:16
    |
 LL |         () if (let 0 = 1) => {}
    |                ^^^^^^^^^
@@ -35,7 +35,7 @@ LL |         () if (let 0 = 1) => {}
    = help: add `#![feature(let_chains)]` to the crate attributes to enable
 
 error[E0658]: `let` expressions in this position are experimental
-  --> $DIR/feature-gate.rs:15:18
+  --> $DIR/feature-gate.rs:14:18
    |
 LL |         () if (((let 0 = 1))) => {}
    |                  ^^^^^^^^^
@@ -44,7 +44,7 @@ LL |         () if (((let 0 = 1))) => {}
    = help: add `#![feature(let_chains)]` to the crate attributes to enable
 
 error[E0658]: `let` expressions in this position are experimental
-  --> $DIR/feature-gate.rs:19:23
+  --> $DIR/feature-gate.rs:18:23
    |
 LL |         () if true && let 0 = 1 => {}
    |                       ^^^^^^^^^
@@ -53,7 +53,7 @@ LL |         () if true && let 0 = 1 => {}
    = help: add `#![feature(let_chains)]` to the crate attributes to enable
 
 error[E0658]: `let` expressions in this position are experimental
-  --> $DIR/feature-gate.rs:23:15
+  --> $DIR/feature-gate.rs:22:15
    |
 LL |         () if let 0 = 1 && true => {}
    |               ^^^^^^^^^
@@ -62,7 +62,7 @@ LL |         () if let 0 = 1 && true => {}
    = help: add `#![feature(let_chains)]` to the crate attributes to enable
 
 error[E0658]: `let` expressions in this position are experimental
-  --> $DIR/feature-gate.rs:27:16
+  --> $DIR/feature-gate.rs:26:16
    |
 LL |         () if (let 0 = 1) && true => {}
    |                ^^^^^^^^^
@@ -71,7 +71,7 @@ LL |         () if (let 0 = 1) && true => {}
    = help: add `#![feature(let_chains)]` to the crate attributes to enable
 
 error[E0658]: `let` expressions in this position are experimental
-  --> $DIR/feature-gate.rs:31:24
+  --> $DIR/feature-gate.rs:30:24
    |
 LL |         () if true && (let 0 = 1) => {}
    |                        ^^^^^^^^^
@@ -80,7 +80,7 @@ LL |         () if true && (let 0 = 1) => {}
    = help: add `#![feature(let_chains)]` to the crate attributes to enable
 
 error[E0658]: `let` expressions in this position are experimental
-  --> $DIR/feature-gate.rs:35:16
+  --> $DIR/feature-gate.rs:34:16
    |
 LL |         () if (let 0 = 1) && (let 0 = 1) => {}
    |                ^^^^^^^^^
@@ -89,7 +89,7 @@ LL |         () if (let 0 = 1) && (let 0 = 1) => {}
    = help: add `#![feature(let_chains)]` to the crate attributes to enable
 
 error[E0658]: `let` expressions in this position are experimental
-  --> $DIR/feature-gate.rs:35:31
+  --> $DIR/feature-gate.rs:34:31
    |
 LL |         () if (let 0 = 1) && (let 0 = 1) => {}
    |                               ^^^^^^^^^
@@ -98,7 +98,7 @@ LL |         () if (let 0 = 1) && (let 0 = 1) => {}
    = help: add `#![feature(let_chains)]` to the crate attributes to enable
 
 error[E0658]: `let` expressions in this position are experimental
-  --> $DIR/feature-gate.rs:41:15
+  --> $DIR/feature-gate.rs:40:15
    |
 LL |         () if let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 5) => {}
    |               ^^^^^^^^^
@@ -107,7 +107,7 @@ LL |         () if let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 
    = help: add `#![feature(let_chains)]` to the crate attributes to enable
 
 error[E0658]: `let` expressions in this position are experimental
-  --> $DIR/feature-gate.rs:41:28
+  --> $DIR/feature-gate.rs:40:28
    |
 LL |         () if let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 5) => {}
    |                            ^^^^^^^^^
@@ -116,7 +116,7 @@ LL |         () if let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 
    = help: add `#![feature(let_chains)]` to the crate attributes to enable
 
 error[E0658]: `let` expressions in this position are experimental
-  --> $DIR/feature-gate.rs:41:42
+  --> $DIR/feature-gate.rs:40:42
    |
 LL |         () if let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 5) => {}
    |                                          ^^^^^^^^^
@@ -125,7 +125,7 @@ LL |         () if let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 
    = help: add `#![feature(let_chains)]` to the crate attributes to enable
 
 error[E0658]: `let` expressions in this position are experimental
-  --> $DIR/feature-gate.rs:41:55
+  --> $DIR/feature-gate.rs:40:55
    |
 LL |         () if let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 5) => {}
    |                                                       ^^^^^^^^^
@@ -134,7 +134,7 @@ LL |         () if let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 
    = help: add `#![feature(let_chains)]` to the crate attributes to enable
 
 error[E0658]: `let` expressions in this position are experimental
-  --> $DIR/feature-gate.rs:41:68
+  --> $DIR/feature-gate.rs:40:68
    |
 LL |         () if let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 5) => {}
    |                                                                    ^^^^^^^^^
@@ -143,7 +143,7 @@ LL |         () if let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 
    = help: add `#![feature(let_chains)]` to the crate attributes to enable
 
 error[E0658]: `let` expressions in this position are experimental
-  --> $DIR/feature-gate.rs:53:15
+  --> $DIR/feature-gate.rs:52:15
    |
 LL |         () if let Range { start: _, end: _ } = (true..true) && false => {}
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -152,7 +152,7 @@ LL |         () if let Range { start: _, end: _ } = (true..true) && false => {}
    = help: add `#![feature(let_chains)]` to the crate attributes to enable
 
 error[E0658]: `let` expressions in this position are experimental
-  --> $DIR/feature-gate.rs:69:16
+  --> $DIR/feature-gate.rs:68:16
    |
 LL |     use_expr!((let 0 = 1 && 0 == 0));
    |                ^^^^^^^^^
@@ -161,7 +161,7 @@ LL |     use_expr!((let 0 = 1 && 0 == 0));
    = help: add `#![feature(let_chains)]` to the crate attributes to enable
 
 error[E0658]: `let` expressions in this position are experimental
-  --> $DIR/feature-gate.rs:72:16
+  --> $DIR/feature-gate.rs:71:16
    |
 LL |     use_expr!((let 0 = 1));
    |                ^^^^^^^^^
@@ -170,16 +170,7 @@ LL |     use_expr!((let 0 = 1));
    = help: add `#![feature(let_chains)]` to the crate attributes to enable
 
 error: `let` expressions are not supported here
-  --> $DIR/feature-gate.rs:7:15
-   |
-LL |         () if let 0 = 1 => {}
-   |               ^^^^^^^^^
-   |
-   = note: only supported directly in conditions of `if`- and `while`-expressions
-   = note: as well as when nested within `&&` and parenthesis in those conditions
-
-error: `let` expressions are not supported here
-  --> $DIR/feature-gate.rs:11:16
+  --> $DIR/feature-gate.rs:10:16
    |
 LL |         () if (let 0 = 1) => {}
    |                ^^^^^^^^^
@@ -188,7 +179,7 @@ LL |         () if (let 0 = 1) => {}
    = note: as well as when nested within `&&` and parenthesis in those conditions
 
 error: `let` expressions are not supported here
-  --> $DIR/feature-gate.rs:15:18
+  --> $DIR/feature-gate.rs:14:18
    |
 LL |         () if (((let 0 = 1))) => {}
    |                  ^^^^^^^^^
@@ -197,7 +188,7 @@ LL |         () if (((let 0 = 1))) => {}
    = note: as well as when nested within `&&` and parenthesis in those conditions
 
 error: `let` expressions are not supported here
-  --> $DIR/feature-gate.rs:19:23
+  --> $DIR/feature-gate.rs:18:23
    |
 LL |         () if true && let 0 = 1 => {}
    |                       ^^^^^^^^^
@@ -206,7 +197,7 @@ LL |         () if true && let 0 = 1 => {}
    = note: as well as when nested within `&&` and parenthesis in those conditions
 
 error: `let` expressions are not supported here
-  --> $DIR/feature-gate.rs:23:15
+  --> $DIR/feature-gate.rs:22:15
    |
 LL |         () if let 0 = 1 && true => {}
    |               ^^^^^^^^^
@@ -215,7 +206,7 @@ LL |         () if let 0 = 1 && true => {}
    = note: as well as when nested within `&&` and parenthesis in those conditions
 
 error: `let` expressions are not supported here
-  --> $DIR/feature-gate.rs:27:16
+  --> $DIR/feature-gate.rs:26:16
    |
 LL |         () if (let 0 = 1) && true => {}
    |                ^^^^^^^^^
@@ -224,7 +215,7 @@ LL |         () if (let 0 = 1) && true => {}
    = note: as well as when nested within `&&` and parenthesis in those conditions
 
 error: `let` expressions are not supported here
-  --> $DIR/feature-gate.rs:31:24
+  --> $DIR/feature-gate.rs:30:24
    |
 LL |         () if true && (let 0 = 1) => {}
    |                        ^^^^^^^^^
@@ -233,7 +224,7 @@ LL |         () if true && (let 0 = 1) => {}
    = note: as well as when nested within `&&` and parenthesis in those conditions
 
 error: `let` expressions are not supported here
-  --> $DIR/feature-gate.rs:35:16
+  --> $DIR/feature-gate.rs:34:16
    |
 LL |         () if (let 0 = 1) && (let 0 = 1) => {}
    |                ^^^^^^^^^
@@ -242,7 +233,7 @@ LL |         () if (let 0 = 1) && (let 0 = 1) => {}
    = note: as well as when nested within `&&` and parenthesis in those conditions
 
 error: `let` expressions are not supported here
-  --> $DIR/feature-gate.rs:35:31
+  --> $DIR/feature-gate.rs:34:31
    |
 LL |         () if (let 0 = 1) && (let 0 = 1) => {}
    |                               ^^^^^^^^^
@@ -251,7 +242,7 @@ LL |         () if (let 0 = 1) && (let 0 = 1) => {}
    = note: as well as when nested within `&&` and parenthesis in those conditions
 
 error: `let` expressions are not supported here
-  --> $DIR/feature-gate.rs:41:15
+  --> $DIR/feature-gate.rs:40:15
    |
 LL |         () if let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 5) => {}
    |               ^^^^^^^^^
@@ -260,7 +251,7 @@ LL |         () if let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 
    = note: as well as when nested within `&&` and parenthesis in those conditions
 
 error: `let` expressions are not supported here
-  --> $DIR/feature-gate.rs:41:28
+  --> $DIR/feature-gate.rs:40:28
    |
 LL |         () if let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 5) => {}
    |                            ^^^^^^^^^
@@ -269,7 +260,7 @@ LL |         () if let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 
    = note: as well as when nested within `&&` and parenthesis in those conditions
 
 error: `let` expressions are not supported here
-  --> $DIR/feature-gate.rs:41:42
+  --> $DIR/feature-gate.rs:40:42
    |
 LL |         () if let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 5) => {}
    |                                          ^^^^^^^^^
@@ -278,7 +269,7 @@ LL |         () if let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 
    = note: as well as when nested within `&&` and parenthesis in those conditions
 
 error: `let` expressions are not supported here
-  --> $DIR/feature-gate.rs:41:55
+  --> $DIR/feature-gate.rs:40:55
    |
 LL |         () if let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 5) => {}
    |                                                       ^^^^^^^^^
@@ -287,7 +278,7 @@ LL |         () if let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 
    = note: as well as when nested within `&&` and parenthesis in those conditions
 
 error: `let` expressions are not supported here
-  --> $DIR/feature-gate.rs:41:68
+  --> $DIR/feature-gate.rs:40:68
    |
 LL |         () if let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 5) => {}
    |                                                                    ^^^^^^^^^
@@ -296,7 +287,7 @@ LL |         () if let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 
    = note: as well as when nested within `&&` and parenthesis in those conditions
 
 error: `let` expressions are not supported here
-  --> $DIR/feature-gate.rs:53:15
+  --> $DIR/feature-gate.rs:52:15
    |
 LL |         () if let Range { start: _, end: _ } = (true..true) && false => {}
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -305,7 +296,7 @@ LL |         () if let Range { start: _, end: _ } = (true..true) && false => {}
    = note: as well as when nested within `&&` and parenthesis in those conditions
 
 error: `let` expressions are not supported here
-  --> $DIR/feature-gate.rs:69:16
+  --> $DIR/feature-gate.rs:68:16
    |
 LL |     use_expr!((let 0 = 1 && 0 == 0));
    |                ^^^^^^^^^
@@ -314,7 +305,7 @@ LL |     use_expr!((let 0 = 1 && 0 == 0));
    = note: as well as when nested within `&&` and parenthesis in those conditions
 
 error: `let` expressions are not supported here
-  --> $DIR/feature-gate.rs:72:16
+  --> $DIR/feature-gate.rs:71:16
    |
 LL |     use_expr!((let 0 = 1));
    |                ^^^^^^^^^
@@ -322,6 +313,6 @@ LL |     use_expr!((let 0 = 1));
    = note: only supported directly in conditions of `if`- and `while`-expressions
    = note: as well as when nested within `&&` and parenthesis in those conditions
 
-error: aborting due to 36 previous errors
+error: aborting due to 35 previous errors
 
 For more information about this error, try `rustc --explain E0658`.

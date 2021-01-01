@@ -36,7 +36,7 @@ impl Drop for DropMoveFoo { fn drop(&mut self) { } }
 fn test0() {
     // just copy implicitly copyable fields from `f`, no moves
     // (and thus it is okay that these are Drop; compare against
-    // compile-fail test: borrowck-struct-update-with-dtor.rs).
+    // test ui/borrowck/borrowck-struct-update-with-dtor.rs).
 
     // Case 1: Nocopyable
     let f = DropNoFoo::new(1, 2);

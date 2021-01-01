@@ -706,13 +706,20 @@ impl<'a> CrateLoader<'a> {
         self.inject_dependency_if(cnum, "a panic runtime", &|data| data.needs_panic_runtime());
     }
 
-    fn inject_profiler_runtime(&mut self) {
+    fn inject_profiler_runtime(&mut self, krate: &ast::Crate) {
         if (self.sess.opts.debugging_opts.instrument_coverage
             || self.sess.opts.debugging_opts.profile
             || self.sess.opts.cg.profile_generate.enabled())
             && !self.sess.opts.debugging_opts.no_profiler_runtime
         {
             info!("loading profiler");
+
+            if self.sess.contains_name(&krate.attrs, sym::no_core) {
+                self.sess.err(
+                    "`profiler_builtins` crate (required by compiler options) \
+                               is not compatible with crate attribute `#![no_core]`",
+                );
+            }
 
             let name = sym::profiler_builtins;
             let cnum = self.resolve_crate(name, DUMMY_SP, CrateDepKind::Implicit, None);
@@ -879,7 +886,7 @@ impl<'a> CrateLoader<'a> {
     }
 
     pub fn postprocess(&mut self, krate: &ast::Crate) {
-        self.inject_profiler_runtime();
+        self.inject_profiler_runtime(krate);
         self.inject_allocator_crate(krate);
         self.inject_panic_runtime(krate);
 

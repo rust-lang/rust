@@ -1,5 +1,5 @@
 error: `Inner` is forbidden as the type of a const generic parameter
-  --> $DIR/issue-74950.rs:18:23
+  --> $DIR/issue-74950.rs:17:23
    |
 LL | struct Outer<const I: Inner>;
    |                       ^^^^^
@@ -8,7 +8,7 @@ LL | struct Outer<const I: Inner>;
    = help: more complex types are supported with `#[feature(const_generics)]`
 
 error: `Inner` is forbidden as the type of a const generic parameter
-  --> $DIR/issue-74950.rs:18:23
+  --> $DIR/issue-74950.rs:17:23
    |
 LL | struct Outer<const I: Inner>;
    |                       ^^^^^
@@ -17,7 +17,7 @@ LL | struct Outer<const I: Inner>;
    = help: more complex types are supported with `#[feature(const_generics)]`
 
 error: `Inner` is forbidden as the type of a const generic parameter
-  --> $DIR/issue-74950.rs:18:23
+  --> $DIR/issue-74950.rs:17:23
    |
 LL | struct Outer<const I: Inner>;
    |                       ^^^^^
@@ -26,7 +26,7 @@ LL | struct Outer<const I: Inner>;
    = help: more complex types are supported with `#[feature(const_generics)]`
 
 error: `Inner` is forbidden as the type of a const generic parameter
-  --> $DIR/issue-74950.rs:18:23
+  --> $DIR/issue-74950.rs:17:23
    |
 LL | struct Outer<const I: Inner>;
    |                       ^^^^^
@@ -35,7 +35,7 @@ LL | struct Outer<const I: Inner>;
    = help: more complex types are supported with `#[feature(const_generics)]`
 
 error: `Inner` is forbidden as the type of a const generic parameter
-  --> $DIR/issue-74950.rs:18:23
+  --> $DIR/issue-74950.rs:17:23
    |
 LL | struct Outer<const I: Inner>;
    |                       ^^^^^

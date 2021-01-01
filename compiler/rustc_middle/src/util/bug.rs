@@ -21,6 +21,7 @@ pub fn span_bug_fmt<S: Into<MultiSpan>>(span: S, args: fmt::Arguments<'_>) -> ! 
     opt_span_bug_fmt(Some(span), args, Location::caller());
 }
 
+#[track_caller]
 fn opt_span_bug_fmt<S: Into<MultiSpan>>(
     span: Option<S>,
     args: fmt::Arguments<'_>,

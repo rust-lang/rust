@@ -1,5 +1,5 @@
 error: `A` is forbidden as the type of a const generic parameter
-  --> $DIR/forbid-non-structural_match-types.rs:10:19
+  --> $DIR/forbid-non-structural_match-types.rs:9:19
    |
 LL | struct B<const X: A>; // ok
    |                   ^
@@ -8,7 +8,7 @@ LL | struct B<const X: A>; // ok
    = help: more complex types are supported with `#[feature(const_generics)]`
 
 error: `C` is forbidden as the type of a const generic parameter
-  --> $DIR/forbid-non-structural_match-types.rs:15:19
+  --> $DIR/forbid-non-structural_match-types.rs:14:19
    |
 LL | struct D<const X: C>;
    |                   ^
@@ -17,7 +17,7 @@ LL | struct D<const X: C>;
    = help: more complex types are supported with `#[feature(const_generics)]`
 
 error[E0741]: `C` must be annotated with `#[derive(PartialEq, Eq)]` to be used as the type of a const parameter
-  --> $DIR/forbid-non-structural_match-types.rs:15:19
+  --> $DIR/forbid-non-structural_match-types.rs:14:19
    |
 LL | struct D<const X: C>;
    |                   ^ `C` doesn't derive both `PartialEq` and `Eq`

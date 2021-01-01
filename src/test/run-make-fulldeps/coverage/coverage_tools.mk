@@ -1,7 +1,7 @@
-# Common Makefile include for Rust `run-make-fulldeps/instrument-coverage-* tests. Include this
+# Common Makefile include for Rust `run-make-fulldeps/coverage-* tests. Include this
 # file with the line:
 #
-# -include ../instrument-coverage/coverage_tools.mk
+# -include ../coverage/coverage_tools.mk
 
 -include ../tools.mk
 

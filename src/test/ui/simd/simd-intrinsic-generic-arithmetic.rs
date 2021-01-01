@@ -3,7 +3,7 @@
 
 // ignore-emscripten FIXME(#45351) hits an LLVM assert
 
-#![feature(repr_simd, platform_intrinsics, min_const_generics)]
+#![feature(repr_simd, platform_intrinsics)]
 
 #[repr(simd)]
 #[derive(Copy, Clone)]

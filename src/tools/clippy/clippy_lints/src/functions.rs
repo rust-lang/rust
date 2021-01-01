@@ -405,13 +405,10 @@ impl<'tcx> Functions {
                     break;
                 }
                 if in_comment {
-                    match line.find("*/") {
-                        Some(i) => {
-                            line = &line[i + 2..];
-                            in_comment = false;
-                            continue;
-                        },
-                        None => break,
+                    if let Some(i) = line.find("*/") {
+                        line = &line[i + 2..];
+                        in_comment = false;
+                        continue;
                     }
                 } else {
                     let multi_idx = line.find("/*").unwrap_or_else(|| line.len());
@@ -423,8 +420,8 @@ impl<'tcx> Functions {
                         in_comment = true;
                         continue;
                     }
-                    break;
                 }
+                break;
             }
             if code_in_line {
                 line_count += 1;

@@ -15,6 +15,7 @@ use rustc_hir::intravisit::{NestedVisitorMap, Visitor};
 use rustc_hir::{Crate, Expr, ExprKind, HirId, Item, MutTy, Mutability, Node, Path, StmtKind, Ty, TyKind};
 use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass};
 use rustc_middle::hir::map::Map;
+use rustc_middle::mir::interpret::ConstValue;
 use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::{Span, Spanned};
@@ -245,6 +246,30 @@ declare_clippy_lint! {
     pub INVALID_PATHS,
     internal,
     "invalid path"
+}
+
+declare_clippy_lint! {
+    /// **What it does:**
+    /// Checks for interning symbols that have already been pre-interned and defined as constants.
+    ///
+    /// **Why is this bad?**
+    /// It's faster and easier to use the symbol constant.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// Bad:
+    /// ```rust,ignore
+    /// let _ = sym!(f32);
+    /// ```
+    ///
+    /// Good:
+    /// ```rust,ignore
+    /// let _ = sym::f32;
+    /// ```
+    pub INTERNING_DEFINED_SYMBOL,
+    internal,
+    "interning a symbol that is pre-interned and defined as a constant"
 }
 
 declare_lint_pass!(ClippyLintsInternal => [CLIPPY_LINTS_INTERNAL]);
@@ -836,6 +861,59 @@ impl<'tcx> LateLintPass<'tcx> for InvalidPaths {
             if !check_path(cx, &path[..]);
             then {
                 span_lint(cx, CLIPPY_LINTS_INTERNAL, item.span, "invalid path");
+            }
+        }
+    }
+}
+
+#[derive(Default)]
+pub struct InterningDefinedSymbol {
+    // Maps the symbol value to the constant name.
+    symbol_map: FxHashMap<u32, String>,
+}
+
+impl_lint_pass!(InterningDefinedSymbol => [INTERNING_DEFINED_SYMBOL]);
+
+impl<'tcx> LateLintPass<'tcx> for InterningDefinedSymbol {
+    fn check_crate(&mut self, cx: &LateContext<'_>, _: &Crate<'_>) {
+        if !self.symbol_map.is_empty() {
+            return;
+        }
+
+        if let Some(Res::Def(_, def_id)) = path_to_res(cx, &paths::SYM_MODULE) {
+            for item in cx.tcx.item_children(def_id).iter() {
+                if_chain! {
+                    if let Res::Def(DefKind::Const, item_def_id) = item.res;
+                    let ty = cx.tcx.type_of(item_def_id);
+                    if match_type(cx, ty, &paths::SYMBOL);
+                    if let Ok(ConstValue::Scalar(value)) = cx.tcx.const_eval_poly(item_def_id);
+                    if let Ok(value) = value.to_u32();
+                    then {
+                        self.symbol_map.insert(value, item.ident.to_string());
+                    }
+                }
+            }
+        }
+    }
+
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
+        if_chain! {
+            if let ExprKind::Call(func, [arg]) = &expr.kind;
+            if let ty::FnDef(def_id, _) = cx.typeck_results().expr_ty(func).kind();
+            if match_def_path(cx, *def_id, &paths::SYMBOL_INTERN);
+            if let Some(Constant::Str(arg)) = constant_simple(cx, cx.typeck_results(), arg);
+            let value = Symbol::intern(&arg).as_u32();
+            if let Some(symbol_const) = self.symbol_map.get(&value);
+            then {
+                span_lint_and_sugg(
+                    cx,
+                    INTERNING_DEFINED_SYMBOL,
+                    is_expn_of(expr.span, "sym").unwrap_or(expr.span),
+                    "interning a defined symbol",
+                    "try",
+                    format!("rustc_span::symbol::sym::{}", symbol_const),
+                    Applicability::MachineApplicable,
+                );
             }
         }
     }

@@ -1,13 +1,14 @@
 use crate::utils::{
-    in_macro, match_def_path, match_qpath, paths, snippet, snippet_with_applicability, span_lint_and_help,
+    in_macro, match_def_path, match_qpath, meets_msrv, paths, snippet, snippet_with_applicability, span_lint_and_help,
     span_lint_and_sugg, span_lint_and_then,
 };
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{BorrowKind, Expr, ExprKind, Mutability, QPath};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_semver::RustcVersion;
+use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::Span;
 use rustc_span::symbol::sym;
 
@@ -94,7 +95,7 @@ declare_clippy_lint! {
     "replacing a value of type `T` with `T::default()` instead of using `std::mem::take`"
 }
 
-declare_lint_pass!(MemReplace =>
+impl_lint_pass!(MemReplace =>
     [MEM_REPLACE_OPTION_WITH_NONE, MEM_REPLACE_WITH_UNINIT, MEM_REPLACE_WITH_DEFAULT]);
 
 fn check_replace_option_with_none(cx: &LateContext<'_>, src: &Expr<'_>, dest: &Expr<'_>, expr_span: Span) {
@@ -224,6 +225,19 @@ fn check_replace_with_default(cx: &LateContext<'_>, src: &Expr<'_>, dest: &Expr<
     }
 }
 
+const MEM_REPLACE_WITH_DEFAULT_MSRV: RustcVersion = RustcVersion::new(1, 40, 0);
+
+pub struct MemReplace {
+    msrv: Option<RustcVersion>,
+}
+
+impl MemReplace {
+    #[must_use]
+    pub fn new(msrv: Option<RustcVersion>) -> Self {
+        Self { msrv }
+    }
+}
+
 impl<'tcx> LateLintPass<'tcx> for MemReplace {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if_chain! {
@@ -236,8 +250,11 @@ impl<'tcx> LateLintPass<'tcx> for MemReplace {
             then {
                 check_replace_option_with_none(cx, src, dest, expr.span);
                 check_replace_with_uninit(cx, src, dest, expr.span);
-                check_replace_with_default(cx, src, dest, expr.span);
+                if meets_msrv(self.msrv.as_ref(), &MEM_REPLACE_WITH_DEFAULT_MSRV) {
+                    check_replace_with_default(cx, src, dest, expr.span);
+                }
             }
         }
     }
+    extract_msrv_attr!(LateContext);
 }

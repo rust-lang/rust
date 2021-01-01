@@ -1695,7 +1695,9 @@ impl<T> Option<Option<T>> {
     /// Converts from `Option<Option<T>>` to `Option<T>`
     ///
     /// # Examples
+    ///
     /// Basic usage:
+    ///
     /// ```
     /// let x: Option<Option<u32>> = Some(Some(6));
     /// assert_eq!(Some(6), x.flatten());
@@ -1706,7 +1708,9 @@ impl<T> Option<Option<T>> {
     /// let x: Option<Option<u32>> = None;
     /// assert_eq!(None, x.flatten());
     /// ```
-    /// Flattening once only removes one level of nesting:
+    ///
+    /// Flattening only removes one level of nesting at a time:
+    ///
     /// ```
     /// let x: Option<Option<Option<u32>>> = Some(Some(Some(6)));
     /// assert_eq!(Some(Some(6)), x.flatten());

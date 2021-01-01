@@ -28,7 +28,7 @@ pub struct Lifetime {
     pub span: Span,
 
     /// Either "`'a`", referring to a named lifetime definition,
-    /// or "``" (i.e., `kw::Invalid`), for elision placeholders.
+    /// or "``" (i.e., `kw::Empty`), for elision placeholders.
     ///
     /// HIR lowering inserts these placeholders in type paths that
     /// refer to type definitions needing lifetime parameters,
@@ -607,7 +607,7 @@ pub struct Crate<'hir> {
     // over the ids in increasing order. In principle it should not
     // matter what order we visit things in, but in *practice* it
     // does, because it can affect the order in which errors are
-    // detected, which in turn can make compile-fail tests yield
+    // detected, which in turn can make UI tests yield
     // slightly different results.
     pub items: BTreeMap<HirId, Item<'hir>>,
 
@@ -760,9 +760,9 @@ pub struct Pat<'hir> {
     pub default_binding_modes: bool,
 }
 
-impl Pat<'_> {
+impl<'hir> Pat<'hir> {
     // FIXME(#19596) this is a workaround, but there should be a better way
-    fn walk_short_(&self, it: &mut impl FnMut(&Pat<'_>) -> bool) -> bool {
+    fn walk_short_(&self, it: &mut impl FnMut(&Pat<'hir>) -> bool) -> bool {
         if !it(self) {
             return false;
         }
@@ -785,12 +785,12 @@ impl Pat<'_> {
     /// Note that when visiting e.g. `Tuple(ps)`,
     /// if visiting `ps[0]` returns `false`,
     /// then `ps[1]` will not be visited.
-    pub fn walk_short(&self, mut it: impl FnMut(&Pat<'_>) -> bool) -> bool {
+    pub fn walk_short(&self, mut it: impl FnMut(&Pat<'hir>) -> bool) -> bool {
         self.walk_short_(&mut it)
     }
 
     // FIXME(#19596) this is a workaround, but there should be a better way
-    fn walk_(&self, it: &mut impl FnMut(&Pat<'_>) -> bool) {
+    fn walk_(&self, it: &mut impl FnMut(&Pat<'hir>) -> bool) {
         if !it(self) {
             return;
         }
@@ -810,7 +810,7 @@ impl Pat<'_> {
     /// Walk the pattern in left-to-right order.
     ///
     /// If `it(pat)` returns `false`, the children are not visited.
-    pub fn walk(&self, mut it: impl FnMut(&Pat<'_>) -> bool) {
+    pub fn walk(&self, mut it: impl FnMut(&Pat<'hir>) -> bool) {
         self.walk_(&mut it)
     }
 
@@ -1160,6 +1160,7 @@ pub struct Arm<'hir> {
 #[derive(Debug, HashStable_Generic)]
 pub enum Guard<'hir> {
     If(&'hir Expr<'hir>),
+    IfLet(&'hir Pat<'hir>, &'hir Expr<'hir>),
 }
 
 #[derive(Debug, HashStable_Generic)]
@@ -1721,6 +1722,8 @@ pub enum MatchSource {
     IfDesugar { contains_else_clause: bool },
     /// An `if let _ = _ { .. }` (optionally with `else { .. }`).
     IfLetDesugar { contains_else_clause: bool },
+    /// An `if let _ = _ => { .. }` match guard.
+    IfLetGuardDesugar,
     /// A `while _ { .. }` (which was desugared to a `loop { match _ { .. } }`).
     WhileDesugar,
     /// A `while let _ = _ { .. }` (which was desugared to a
@@ -1739,7 +1742,7 @@ impl MatchSource {
         use MatchSource::*;
         match self {
             Normal => "match",
-            IfDesugar { .. } | IfLetDesugar { .. } => "if",
+            IfDesugar { .. } | IfLetDesugar { .. } | IfLetGuardDesugar => "if",
             WhileDesugar | WhileLetDesugar => "while",
             ForLoopDesugar => "for",
             TryDesugar => "?",

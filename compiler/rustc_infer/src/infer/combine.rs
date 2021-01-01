@@ -543,6 +543,10 @@ impl TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
         true
     }
 
+    fn visit_ct_substs(&self) -> bool {
+        true
+    }
+
     fn binders<T>(
         &mut self,
         a: ty::Binder<T>,
@@ -551,7 +555,7 @@ impl TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
     where
         T: Relate<'tcx>,
     {
-        Ok(ty::Binder::bind(self.relate(a.skip_binder(), b.skip_binder())?))
+        Ok(a.rebind(self.relate(a.skip_binder(), b.skip_binder())?))
     }
 
     fn relate_item_substs(
@@ -716,7 +720,10 @@ impl TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
                 let variable_table = &mut inner.const_unification_table();
                 let var_value = variable_table.probe_value(vid);
                 match var_value.val {
-                    ConstVariableValue::Known { value: u } => self.relate(u, u),
+                    ConstVariableValue::Known { value: u } => {
+                        drop(inner);
+                        self.relate(u, u)
+                    }
                     ConstVariableValue::Unknown { universe } => {
                         if self.for_universe.can_name(universe) {
                             Ok(c)
@@ -815,6 +822,10 @@ impl TypeRelation<'tcx> for ConstInferUnifier<'_, 'tcx> {
         true
     }
 
+    fn visit_ct_substs(&self) -> bool {
+        true
+    }
+
     fn relate_with_variance<T: Relate<'tcx>>(
         &mut self,
         _variance: ty::Variance,
@@ -833,7 +844,7 @@ impl TypeRelation<'tcx> for ConstInferUnifier<'_, 'tcx> {
     where
         T: Relate<'tcx>,
     {
-        Ok(ty::Binder::bind(self.relate(a.skip_binder(), b.skip_binder())?))
+        Ok(a.rebind(self.relate(a.skip_binder(), b.skip_binder())?))
     }
 
     fn tys(&mut self, t: Ty<'tcx>, _t: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
@@ -870,6 +881,7 @@ impl TypeRelation<'tcx> for ConstInferUnifier<'_, 'tcx> {
                     }
                 }
             }
+            ty::Infer(ty::IntVar(_) | ty::FloatVar(_)) => Ok(t),
             _ => relate::super_relate_tys(self, t, t),
         }
     }

@@ -4,8 +4,13 @@ use super::{DepKind, DepNode};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_index::vec::IndexVec;
 
+// The maximum value of `SerializedDepNodeIndex` leaves the upper two bits
+// unused so that we can store multiple index types in `CompressedHybridIndex`,
+// and use those bits to encode which index type it contains.
 rustc_index::newtype_index! {
-    pub struct SerializedDepNodeIndex { .. }
+    pub struct SerializedDepNodeIndex {
+        MAX = 0x7FFF_FFFF
+    }
 }
 
 /// Data for use when recompiling the **current crate**.

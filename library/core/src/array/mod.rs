@@ -463,6 +463,37 @@ impl<T, const N: usize> [T; N] {
         unsafe { crate::mem::transmute_copy::<_, [U; N]>(&dst) }
     }
 
+    /// 'Zips up' two arrays into a single array of pairs.
+    ///
+    /// `zip()` returns a new array where every element is a tuple where the
+    /// first element comes from the first array, and the second element comes
+    /// from the second array. In other words, it zips two arrays together,
+    /// into a single one.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(array_zip)]
+    /// let x = [1, 2, 3];
+    /// let y = [4, 5, 6];
+    /// let z = x.zip(y);
+    /// assert_eq!(z, [(1, 4), (2, 5), (3, 6)]);
+    /// ```
+    #[unstable(feature = "array_zip", issue = "80094")]
+    pub fn zip<U>(self, rhs: [U; N]) -> [(T, U); N] {
+        use crate::mem::MaybeUninit;
+
+        let mut dst = MaybeUninit::uninit_array::<N>();
+        for (i, (lhs, rhs)) in IntoIter::new(self).zip(IntoIter::new(rhs)).enumerate() {
+            dst[i].write((lhs, rhs));
+        }
+        // FIXME: Convert to crate::mem::transmute once it works with generics.
+        // unsafe { crate::mem::transmute::<[MaybeUninit<U>; N], [U; N]>(dst) }
+        // SAFETY: At this point we've properly initialized the whole array
+        // and we just need to cast it to the correct type.
+        unsafe { crate::mem::transmute_copy::<_, [(T, U); N]>(&dst) }
+    }
+
     /// Returns a slice containing the entire array. Equivalent to `&s[..]`.
     #[unstable(feature = "array_methods", issue = "76118")]
     pub fn as_slice(&self) -> &[T] {

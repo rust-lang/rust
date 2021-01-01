@@ -68,6 +68,9 @@ pub struct Flags {
     pub deny_warnings: Option<bool>,
 
     pub llvm_skip_rebuild: Option<bool>,
+
+    pub rust_profile_use: Option<String>,
+    pub rust_profile_generate: Option<String>,
 }
 
 pub enum Subcommand {
@@ -219,6 +222,8 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`",
              VALUE overrides the skip-rebuild option in config.toml.",
             "VALUE",
         );
+        opts.optopt("", "rust-profile-generate", "rustc error format", "FORMAT");
+        opts.optopt("", "rust-profile-use", "rustc error format", "FORMAT");
 
         // We can't use getopt to parse the options until we have completed specifying which
         // options are valid, but under the current implementation, some options are conditional on
@@ -674,6 +679,8 @@ Arguments:
             color: matches
                 .opt_get_default("color", Color::Auto)
                 .expect("`color` should be `always`, `never`, or `auto`"),
+            rust_profile_use: matches.opt_str("rust-profile-use"),
+            rust_profile_generate: matches.opt_str("rust-profile-generate"),
         }
     }
 }

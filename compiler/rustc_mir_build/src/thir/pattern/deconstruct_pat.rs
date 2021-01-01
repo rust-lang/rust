@@ -1,6 +1,47 @@
-//! This module provides functions to deconstruct and reconstruct patterns into a constructor
-//! applied to some fields. This is used by the `_match` module to compute pattern
-//! usefulness/exhaustiveness.
+//! [`super::usefulness`] explains most of what is happening in this file. As explained there,
+//! values and patterns are made from constructors applied to fields. This file defines a
+//! `Constructor` enum, a `Fields` struct, and various operations to manipulate them and convert
+//! them from/to patterns.
+//!
+//! There's one idea that is not detailed in [`super::usefulness`] because the details are not
+//! needed there: _constructor splitting_.
+//!
+//! # Constructor splitting
+//!
+//! The idea is as follows: given a constructor `c` and a matrix, we want to specialize in turn
+//! with all the value constructors that are covered by `c`, and compute usefulness for each.
+//! Instead of listing all those constructors (which is intractable), we group those value
+//! constructors together as much as possible. Example:
+//!
+//! ```
+//! match (0, false) {
+//!     (0 ..=100, true) => {} // `p_1`
+//!     (50..=150, false) => {} // `p_2`
+//!     (0 ..=200, _) => {} // `q`
+//! }
+//! ```
+//!
+//! The naive approach would try all numbers in the range `0..=200`. But we can be a lot more
+//! clever: `0` and `1` for example will match the exact same rows, and return equivalent
+//! witnesses. In fact all of `0..50` would. We can thus restrict our exploration to 4
+//! constructors: `0..50`, `50..=100`, `101..=150` and `151..=200`. That is enough and infinitely
+//! more tractable.
+//!
+//! We capture this idea in a function `split(p_1 ... p_n, c)` which returns a list of constructors
+//! `c'` covered by `c`. Given such a `c'`, we require that all value ctors `c''` covered by `c'`
+//! return an equivalent set of witnesses after specializing and computing usefulness.
+//! In the example above, witnesses for specializing by `c''` covered by `0..50` will only differ
+//! in their first element.
+//!
+//! We usually also ask that the `c'` together cover all of the original `c`. However we allow
+//! skipping some constructors as long as it doesn't change whether the resulting list of witnesses
+//! is empty of not. We use this in the wildcard `_` case.
+//!
+//! Splitting is implemented in the [`Constructor::split`] function. We don't do splitting for
+//! or-patterns; instead we just try the alternatives one-by-one. For details on splitting
+//! wildcards, see [`SplitWildcard`]; for integer ranges, see [`SplitIntRange`]; for slices, see
+//! [`SplitVarLenSlice`].
+
 use self::Constructor::*;
 use self::SliceKind::*;
 
@@ -24,7 +65,7 @@ use rustc_target::abi::{Integer, Size, VariantIdx};
 
 use smallvec::{smallvec, SmallVec};
 use std::cmp::{self, max, min, Ordering};
-use std::iter::IntoIterator;
+use std::iter::{once, IntoIterator};
 use std::ops::RangeInclusive;
 
 /// An inclusive interval, used for precise integer exhaustiveness checking.
@@ -161,7 +202,7 @@ impl IntRange {
         // 2       --------   // 2 -------
         let (lo, hi) = self.boundaries();
         let (other_lo, other_hi) = other.boundaries();
-        lo == other_hi || hi == other_lo
+        (lo == other_hi || hi == other_lo) && !self.is_singleton() && !other.is_singleton()
     }
 
     fn to_pat<'tcx>(&self, tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Pat<'tcx> {
@@ -183,143 +224,56 @@ impl IntRange {
         Pat { ty, span: DUMMY_SP, kind: Box::new(kind) }
     }
 
-    /// For exhaustive integer matching, some constructors are grouped within other constructors
-    /// (namely integer typed values are grouped within ranges). However, when specialising these
-    /// constructors, we want to be specialising for the underlying constructors (the integers), not
-    /// the groups (the ranges). Thus we need to split the groups up. Splitting them up naïvely would
-    /// mean creating a separate constructor for every single value in the range, which is clearly
-    /// impractical. However, observe that for some ranges of integers, the specialisation will be
-    /// identical across all values in that range (i.e., there are equivalence classes of ranges of
-    /// constructors based on their `U(S(c, P), S(c, p))` outcome). These classes are grouped by
-    /// the patterns that apply to them (in the matrix `P`). We can split the range whenever the
-    /// patterns that apply to that range (specifically: the patterns that *intersect* with that range)
-    /// change.
-    /// Our solution, therefore, is to split the range constructor into subranges at every single point
-    /// the group of intersecting patterns changes (using the method described below).
-    /// And voilà! We're testing precisely those ranges that we need to, without any exhaustive matching
-    /// on actual integers. The nice thing about this is that the number of subranges is linear in the
-    /// number of rows in the matrix (i.e., the number of cases in the `match` statement), so we don't
-    /// need to be worried about matching over gargantuan ranges.
-    ///
-    /// Essentially, given the first column of a matrix representing ranges, looking like the following:
-    ///
-    /// |------|  |----------| |-------|    ||
-    ///    |-------| |-------|            |----| ||
-    ///       |---------|
-    ///
-    /// We split the ranges up into equivalence classes so the ranges are no longer overlapping:
-    ///
-    /// |--|--|||-||||--||---|||-------|  |-|||| ||
-    ///
-    /// The logic for determining how to split the ranges is fairly straightforward: we calculate
-    /// boundaries for each interval range, sort them, then create constructors for each new interval
-    /// between every pair of boundary points. (This essentially sums up to performing the intuitive
-    /// merging operation depicted above.)
-    fn split<'p, 'tcx>(
+    /// Lint on likely incorrect range patterns (#63987)
+    pub(super) fn lint_overlapping_range_endpoints<'a, 'tcx: 'a>(
         &self,
-        pcx: PatCtxt<'_, 'p, 'tcx>,
-        hir_id: Option<HirId>,
-    ) -> SmallVec<[Constructor<'tcx>; 1]> {
-        /// Represents a border between 2 integers. Because the intervals spanning borders
-        /// must be able to cover every integer, we need to be able to represent
-        /// 2^128 + 1 such borders.
-        #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
-        enum Border {
-            JustBefore(u128),
-            AfterMax,
-        }
-
-        // A function for extracting the borders of an integer interval.
-        fn range_borders(r: IntRange) -> impl Iterator<Item = Border> {
-            let (lo, hi) = r.range.into_inner();
-            let from = Border::JustBefore(lo);
-            let to = match hi.checked_add(1) {
-                Some(m) => Border::JustBefore(m),
-                None => Border::AfterMax,
-            };
-            vec![from, to].into_iter()
-        }
-
-        // Collect the span and range of all the intersecting ranges to lint on likely
-        // incorrect range patterns. (#63987)
-        let mut overlaps = vec![];
-        let row_len = pcx.matrix.column_count().unwrap_or(0);
-        // `borders` is the set of borders between equivalence classes: each equivalence
-        // class lies between 2 borders.
-        let row_borders = pcx
-            .matrix
-            .head_ctors_and_spans(pcx.cx)
-            .filter_map(|(ctor, span)| Some((ctor.as_int_range()?, span)))
-            .filter_map(|(range, span)| {
-                let intersection = self.intersection(&range);
-                let should_lint = self.suspicious_intersection(&range);
-                if let (Some(range), 1, true) = (&intersection, row_len, should_lint) {
-                    // FIXME: for now, only check for overlapping ranges on simple range
-                    // patterns. Otherwise with the current logic the following is detected
-                    // as overlapping:
-                    // ```
-                    // match (0u8, true) {
-                    //   (0 ..= 125, false) => {}
-                    //   (125 ..= 255, true) => {}
-                    //   _ => {}
-                    // }
-                    // ```
-                    overlaps.push((range.clone(), span));
-                }
-                intersection
-            })
-            .flat_map(range_borders);
-        let self_borders = range_borders(self.clone());
-        let mut borders: Vec<_> = row_borders.chain(self_borders).collect();
-        borders.sort_unstable();
-
-        self.lint_overlapping_patterns(pcx, hir_id, overlaps);
-
-        // We're going to iterate through every adjacent pair of borders, making sure that
-        // each represents an interval of nonnegative length, and convert each such
-        // interval into a constructor.
-        borders
-            .array_windows()
-            .filter_map(|&pair| match pair {
-                [Border::JustBefore(n), Border::JustBefore(m)] => {
-                    if n < m {
-                        Some(n..=(m - 1))
-                    } else {
-                        None
-                    }
-                }
-                [Border::JustBefore(n), Border::AfterMax] => Some(n..=u128::MAX),
-                [Border::AfterMax, _] => None,
-            })
-            .map(|range| IntRange { range })
-            .map(IntRange)
-            .collect()
-    }
-
-    fn lint_overlapping_patterns(
-        &self,
-        pcx: PatCtxt<'_, '_, '_>,
-        hir_id: Option<HirId>,
-        overlaps: Vec<(IntRange, Span)>,
+        pcx: PatCtxt<'_, '_, 'tcx>,
+        ctors: impl Iterator<Item = (&'a Constructor<'tcx>, Span)>,
+        column_count: usize,
+        hir_id: HirId,
     ) {
-        if let (true, Some(hir_id)) = (!overlaps.is_empty(), hir_id) {
+        if self.is_singleton() {
+            return;
+        }
+
+        if column_count != 1 {
+            // FIXME: for now, only check for overlapping ranges on simple range
+            // patterns. Otherwise with the current logic the following is detected
+            // as overlapping:
+            // ```
+            // match (0u8, true) {
+            //   (0 ..= 125, false) => {}
+            //   (125 ..= 255, true) => {}
+            //   _ => {}
+            // }
+            // ```
+            return;
+        }
+
+        let overlaps: Vec<_> = ctors
+            .filter_map(|(ctor, span)| Some((ctor.as_int_range()?, span)))
+            .filter(|(range, _)| self.suspicious_intersection(range))
+            .map(|(range, span)| (self.intersection(&range).unwrap(), span))
+            .collect();
+
+        if !overlaps.is_empty() {
             pcx.cx.tcx.struct_span_lint_hir(
-                lint::builtin::OVERLAPPING_PATTERNS,
+                lint::builtin::OVERLAPPING_RANGE_ENDPOINTS,
                 hir_id,
                 pcx.span,
                 |lint| {
-                    let mut err = lint.build("multiple patterns covering the same range");
-                    err.span_label(pcx.span, "overlapping patterns");
+                    let mut err = lint.build("multiple patterns overlap on their endpoints");
                     for (int_range, span) in overlaps {
-                        // Use the real type for user display of the ranges:
                         err.span_label(
                             span,
                             &format!(
-                                "this range overlaps on `{}`",
-                                int_range.to_pat(pcx.cx.tcx, pcx.ty),
+                                "this range overlaps on `{}`...",
+                                int_range.to_pat(pcx.cx.tcx, pcx.ty)
                             ),
                         );
                     }
+                    err.span_label(pcx.span, "... with this range");
+                    err.note("you likely meant to write mutually exclusive ranges");
                     err.emit();
                 },
             );
@@ -336,6 +290,101 @@ impl IntRange {
         } else {
             false
         }
+    }
+}
+
+/// Represents a border between 2 integers. Because the intervals spanning borders must be able to
+/// cover every integer, we need to be able to represent 2^128 + 1 such borders.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+enum IntBorder {
+    JustBefore(u128),
+    AfterMax,
+}
+
+/// A range of integers that is partitioned into disjoint subranges. This does constructor
+/// splitting for integer ranges as explained at the top of the file.
+///
+/// This is fed multiple ranges, and returns an output that covers the input, but is split so that
+/// the only intersections between an output range and a seen range are inclusions. No output range
+/// straddles the boundary of one of the inputs.
+///
+/// The following input:
+/// ```
+///   |-------------------------| // `self`
+/// |------|  |----------|   |----|
+///    |-------| |-------|
+/// ```
+/// would be iterated over as follows:
+/// ```
+///   ||---|--||-|---|---|---|--|
+/// ```
+#[derive(Debug, Clone)]
+struct SplitIntRange {
+    /// The range we are splitting
+    range: IntRange,
+    /// The borders of ranges we have seen. They are all contained within `range`. This is kept
+    /// sorted.
+    borders: Vec<IntBorder>,
+}
+
+impl SplitIntRange {
+    fn new(range: IntRange) -> Self {
+        SplitIntRange { range, borders: Vec::new() }
+    }
+
+    /// Internal use
+    fn to_borders(r: IntRange) -> [IntBorder; 2] {
+        use IntBorder::*;
+        let (lo, hi) = r.boundaries();
+        let lo = JustBefore(lo);
+        let hi = match hi.checked_add(1) {
+            Some(m) => JustBefore(m),
+            None => AfterMax,
+        };
+        [lo, hi]
+    }
+
+    /// Add ranges relative to which we split.
+    fn split(&mut self, ranges: impl Iterator<Item = IntRange>) {
+        let this_range = &self.range;
+        let included_ranges = ranges.filter_map(|r| this_range.intersection(&r));
+        let included_borders = included_ranges.flat_map(|r| {
+            let borders = Self::to_borders(r);
+            once(borders[0]).chain(once(borders[1]))
+        });
+        self.borders.extend(included_borders);
+        self.borders.sort_unstable();
+    }
+
+    /// Iterate over the contained ranges.
+    fn iter<'a>(&'a self) -> impl Iterator<Item = IntRange> + Captures<'a> {
+        use IntBorder::*;
+
+        let self_range = Self::to_borders(self.range.clone());
+        // Start with the start of the range.
+        let mut prev_border = self_range[0];
+        self.borders
+            .iter()
+            .copied()
+            // End with the end of the range.
+            .chain(once(self_range[1]))
+            // List pairs of adjacent borders.
+            .map(move |border| {
+                let ret = (prev_border, border);
+                prev_border = border;
+                ret
+            })
+            // Skip duplicates.
+            .filter(|(prev_border, border)| prev_border != border)
+            // Finally, convert to ranges.
+            .map(|(prev_border, border)| {
+                let range = match (prev_border, border) {
+                    (JustBefore(n), JustBefore(m)) if n < m => n..=(m - 1),
+                    (JustBefore(n), AfterMax) => n..=u128::MAX,
+                    _ => unreachable!(), // Ruled out by the sorting and filtering we did
+                };
+                IntRange { range }
+            })
     }
 }
 
@@ -391,129 +440,141 @@ impl Slice {
         self.kind.arity()
     }
 
-    /// The exhaustiveness-checking paper does not include any details on
-    /// checking variable-length slice patterns. However, they may be
-    /// matched by an infinite collection of fixed-length array patterns.
-    ///
-    /// Checking the infinite set directly would take an infinite amount
-    /// of time. However, it turns out that for each finite set of
-    /// patterns `P`, all sufficiently large array lengths are equivalent:
-    ///
-    /// Each slice `s` with a "sufficiently-large" length `l ≥ L` that applies
-    /// to exactly the subset `Pₜ` of `P` can be transformed to a slice
-    /// `sₘ` for each sufficiently-large length `m` that applies to exactly
-    /// the same subset of `P`.
-    ///
-    /// Because of that, each witness for reachability-checking of one
-    /// of the sufficiently-large lengths can be transformed to an
-    /// equally-valid witness of any other length, so we only have
-    /// to check slices of the "minimal sufficiently-large length"
-    /// and less.
-    ///
-    /// Note that the fact that there is a *single* `sₘ` for each `m`
-    /// not depending on the specific pattern in `P` is important: if
-    /// you look at the pair of patterns
-    ///     `[true, ..]`
-    ///     `[.., false]`
-    /// Then any slice of length ≥1 that matches one of these two
-    /// patterns can be trivially turned to a slice of any
-    /// other length ≥1 that matches them and vice-versa,
-    /// but the slice of length 2 `[false, true]` that matches neither
-    /// of these patterns can't be turned to a slice from length 1 that
-    /// matches neither of these patterns, so we have to consider
-    /// slices from length 2 there.
-    ///
-    /// Now, to see that that length exists and find it, observe that slice
-    /// patterns are either "fixed-length" patterns (`[_, _, _]`) or
-    /// "variable-length" patterns (`[_, .., _]`).
-    ///
-    /// For fixed-length patterns, all slices with lengths *longer* than
-    /// the pattern's length have the same outcome (of not matching), so
-    /// as long as `L` is greater than the pattern's length we can pick
-    /// any `sₘ` from that length and get the same result.
-    ///
-    /// For variable-length patterns, the situation is more complicated,
-    /// because as seen above the precise value of `sₘ` matters.
-    ///
-    /// However, for each variable-length pattern `p` with a prefix of length
-    /// `plₚ` and suffix of length `slₚ`, only the first `plₚ` and the last
-    /// `slₚ` elements are examined.
-    ///
-    /// Therefore, as long as `L` is positive (to avoid concerns about empty
-    /// types), all elements after the maximum prefix length and before
-    /// the maximum suffix length are not examined by any variable-length
-    /// pattern, and therefore can be added/removed without affecting
-    /// them - creating equivalent patterns from any sufficiently-large
-    /// length.
-    ///
-    /// Of course, if fixed-length patterns exist, we must be sure
-    /// that our length is large enough to miss them all, so
-    /// we can pick `L = max(max(FIXED_LEN)+1, max(PREFIX_LEN) + max(SUFFIX_LEN))`
-    ///
-    /// for example, with the above pair of patterns, all elements
-    /// but the first and last can be added/removed, so any
-    /// witness of length ≥2 (say, `[false, false, true]`) can be
-    /// turned to a witness from any other length ≥2.
-    fn split<'p, 'tcx>(self, pcx: PatCtxt<'_, 'p, 'tcx>) -> SmallVec<[Constructor<'tcx>; 1]> {
-        let (self_prefix, self_suffix) = match self.kind {
-            VarLen(self_prefix, self_suffix) => (self_prefix, self_suffix),
-            _ => return smallvec![Slice(self)],
-        };
-
-        let head_ctors = pcx.matrix.head_ctors(pcx.cx).filter(|c| !c.is_wildcard());
-
-        let mut max_prefix_len = self_prefix;
-        let mut max_suffix_len = self_suffix;
-        let mut max_fixed_len = 0;
-
-        for ctor in head_ctors {
-            if let Slice(slice) = ctor {
-                match slice.kind {
-                    FixedLen(len) => {
-                        max_fixed_len = cmp::max(max_fixed_len, len);
-                    }
-                    VarLen(prefix, suffix) => {
-                        max_prefix_len = cmp::max(max_prefix_len, prefix);
-                        max_suffix_len = cmp::max(max_suffix_len, suffix);
-                    }
-                }
-            } else {
-                bug!("unexpected ctor for slice type: {:?}", ctor);
-            }
-        }
-
-        // For diagnostics, we keep the prefix and suffix lengths separate, so in the case
-        // where `max_fixed_len + 1` is the largest, we adapt `max_prefix_len` accordingly,
-        // so that `L = max_prefix_len + max_suffix_len`.
-        if max_fixed_len + 1 >= max_prefix_len + max_suffix_len {
-            // The subtraction can't overflow thanks to the above check.
-            // The new `max_prefix_len` is also guaranteed to be larger than its previous
-            // value.
-            max_prefix_len = max_fixed_len + 1 - max_suffix_len;
-        }
-
-        let final_slice = VarLen(max_prefix_len, max_suffix_len);
-        let final_slice = Slice::new(self.array_len, final_slice);
-        match self.array_len {
-            Some(_) => smallvec![Slice(final_slice)],
-            None => {
-                // `self` originally covered the range `(self.arity()..infinity)`. We split that
-                // range into two: lengths smaller than `final_slice.arity()` are treated
-                // independently as fixed-lengths slices, and lengths above are captured by
-                // `final_slice`.
-                let smaller_lengths = (self.arity()..final_slice.arity()).map(FixedLen);
-                smaller_lengths
-                    .map(|kind| Slice::new(self.array_len, kind))
-                    .chain(Some(final_slice))
-                    .map(Slice)
-                    .collect()
-            }
-        }
-    }
-
     /// See `Constructor::is_covered_by`
     fn is_covered_by(self, other: Self) -> bool {
         other.kind.covers_length(self.arity())
+    }
+}
+
+/// This computes constructor splitting for variable-length slices, as explained at the top of the
+/// file.
+///
+/// A slice pattern `[x, .., y]` behaves like the infinite or-pattern `[x, y] | [x, _, y] | [x, _,
+/// _, y] | ...`. The corresponding value constructors are fixed-length array constructors above a
+/// given minimum length. We obviously can't list this infinitude of constructors. Thankfully,
+/// it turns out that for each finite set of slice patterns, all sufficiently large array lengths
+/// are equivalent.
+///
+/// Let's look at an example, where we are trying to split the last pattern:
+/// ```
+/// match x {
+///     [true, true, ..] => {}
+///     [.., false, false] => {}
+///     [..] => {}
+/// }
+/// ```
+/// Here are the results of specialization for the first few lengths:
+/// ```
+/// // length 0
+/// [] => {}
+/// // length 1
+/// [_] => {}
+/// // length 2
+/// [true, true] => {}
+/// [false, false] => {}
+/// [_, _] => {}
+/// // length 3
+/// [true, true,  _    ] => {}
+/// [_,    false, false] => {}
+/// [_,    _,     _    ] => {}
+/// // length 4
+/// [true, true, _,     _    ] => {}
+/// [_,    _,    false, false] => {}
+/// [_,    _,    _,     _    ] => {}
+/// // length 5
+/// [true, true, _, _,     _    ] => {}
+/// [_,    _,    _, false, false] => {}
+/// [_,    _,    _, _,     _    ] => {}
+/// ```
+///
+/// If we went above length 5, we would simply be inserting more columns full of wildcards in the
+/// middle. This means that the set of witnesses for length `l >= 5` if equivalent to the set for
+/// any other `l' >= 5`: simply add or remove wildcards in the middle to convert between them.
+///
+/// This applies to any set of slice patterns: there will be a length `L` above which all lengths
+/// behave the same. This is exactly what we need for constructor splitting. Therefore a
+/// variable-length slice can be split into a variable-length slice of minimal length `L`, and many
+/// fixed-length slices of lengths `< L`.
+///
+/// For each variable-length pattern `p` with a prefix of length `plₚ` and suffix of length `slₚ`,
+/// only the first `plₚ` and the last `slₚ` elements are examined. Therefore, as long as `L` is
+/// positive (to avoid concerns about empty types), all elements after the maximum prefix length
+/// and before the maximum suffix length are not examined by any variable-length pattern, and
+/// therefore can be added/removed without affecting them - creating equivalent patterns from any
+/// sufficiently-large length.
+///
+/// Of course, if fixed-length patterns exist, we must be sure that our length is large enough to
+/// miss them all, so we can pick `L = max(max(FIXED_LEN)+1, max(PREFIX_LEN) + max(SUFFIX_LEN))`
+///
+/// `max_slice` below will be made to have arity `L`.
+#[derive(Debug)]
+struct SplitVarLenSlice {
+    /// If the type is an array, this is its size.
+    array_len: Option<u64>,
+    /// The arity of the input slice.
+    arity: u64,
+    /// The smallest slice bigger than any slice seen. `max_slice.arity()` is the length `L`
+    /// described above.
+    max_slice: SliceKind,
+}
+
+impl SplitVarLenSlice {
+    fn new(prefix: u64, suffix: u64, array_len: Option<u64>) -> Self {
+        SplitVarLenSlice { array_len, arity: prefix + suffix, max_slice: VarLen(prefix, suffix) }
+    }
+
+    /// Pass a set of slices relative to which to split this one.
+    fn split(&mut self, slices: impl Iterator<Item = SliceKind>) {
+        let (max_prefix_len, max_suffix_len) = match &mut self.max_slice {
+            VarLen(prefix, suffix) => (prefix, suffix),
+            FixedLen(_) => return, // No need to split
+        };
+        // We grow `self.max_slice` to be larger than all slices encountered, as described above.
+        // For diagnostics, we keep the prefix and suffix lengths separate, but grow them so that
+        // `L = max_prefix_len + max_suffix_len`.
+        let mut max_fixed_len = 0;
+        for slice in slices {
+            match slice {
+                FixedLen(len) => {
+                    max_fixed_len = cmp::max(max_fixed_len, len);
+                }
+                VarLen(prefix, suffix) => {
+                    *max_prefix_len = cmp::max(*max_prefix_len, prefix);
+                    *max_suffix_len = cmp::max(*max_suffix_len, suffix);
+                }
+            }
+        }
+        // We want `L = max(L, max_fixed_len + 1)`, modulo the fact that we keep prefix and
+        // suffix separate.
+        if max_fixed_len + 1 >= *max_prefix_len + *max_suffix_len {
+            // The subtraction can't overflow thanks to the above check.
+            // The new `max_prefix_len` is larger than its previous value.
+            *max_prefix_len = max_fixed_len + 1 - *max_suffix_len;
+        }
+
+        // We cap the arity of `max_slice` at the array size.
+        match self.array_len {
+            Some(len) if self.max_slice.arity() >= len => self.max_slice = FixedLen(len),
+            _ => {}
+        }
+    }
+
+    /// Iterate over the partition of this slice.
+    fn iter<'a>(&'a self) -> impl Iterator<Item = Slice> + Captures<'a> {
+        let smaller_lengths = match self.array_len {
+            // The only admissible fixed-length slice is one of the array size. Whether `max_slice`
+            // is fixed-length or variable-length, it will be the only relevant slice to output
+            // here.
+            Some(_) => (0..0), // empty range
+            // We cover all arities in the range `(self.arity..infinity)`. We split that range into
+            // two: lengths smaller than `max_slice.arity()` are treated independently as
+            // fixed-lengths slices, and lengths above are captured by `max_slice`.
+            None => self.arity..self.max_slice.arity(),
+        };
+        smaller_lengths
+            .map(FixedLen)
+            .chain(once(self.max_slice))
+            .map(move |kind| Slice::new(self.array_len, kind))
     }
 }
 
@@ -546,6 +607,9 @@ pub(super) enum Constructor<'tcx> {
     /// Fake extra constructor for enums that aren't allowed to be matched exhaustively. Also used
     /// for those types for which we cannot list constructors explicitly, like `f64` and `str`.
     NonExhaustive,
+    /// Stands for constructors that are not seen in the matrix, as explained in the documentation
+    /// for [`SplitWildcard`].
+    Missing,
     /// Wildcard pattern.
     Wildcard,
 }
@@ -652,45 +716,38 @@ impl<'tcx> Constructor<'tcx> {
     /// This function may discard some irrelevant constructors if this preserves behavior and
     /// diagnostics. Eg. for the `_` case, we ignore the constructors already present in the
     /// matrix, unless all of them are.
-    ///
-    /// `hir_id` is `None` when we're evaluating the wildcard pattern. In that case we do not want
-    /// to lint for overlapping ranges.
-    pub(super) fn split<'p>(
+    pub(super) fn split<'a>(
         &self,
-        pcx: PatCtxt<'_, 'p, 'tcx>,
-        hir_id: Option<HirId>,
-    ) -> SmallVec<[Self; 1]> {
-        debug!("Constructor::split({:#?}, {:#?})", self, pcx.matrix);
+        pcx: PatCtxt<'_, '_, 'tcx>,
+        ctors: impl Iterator<Item = &'a Constructor<'tcx>> + Clone,
+    ) -> SmallVec<[Self; 1]>
+    where
+        'tcx: 'a,
+    {
+        debug!("Constructor::split({:#?})", self);
 
         match self {
-            Wildcard => Constructor::split_wildcard(pcx),
+            Wildcard => {
+                let mut split_wildcard = SplitWildcard::new(pcx);
+                split_wildcard.split(pcx, ctors);
+                split_wildcard.into_ctors(pcx)
+            }
             // Fast-track if the range is trivial. In particular, we don't do the overlapping
             // ranges check.
-            IntRange(ctor_range) if !ctor_range.is_singleton() => ctor_range.split(pcx, hir_id),
-            Slice(slice @ Slice { kind: VarLen(..), .. }) => slice.split(pcx),
+            IntRange(ctor_range) if !ctor_range.is_singleton() => {
+                let mut split_range = SplitIntRange::new(ctor_range.clone());
+                let int_ranges = ctors.filter_map(|ctor| ctor.as_int_range());
+                split_range.split(int_ranges.cloned());
+                split_range.iter().map(IntRange).collect()
+            }
+            &Slice(Slice { kind: VarLen(self_prefix, self_suffix), array_len }) => {
+                let mut split_self = SplitVarLenSlice::new(self_prefix, self_suffix, array_len);
+                let slices = ctors.filter_map(|c| c.as_slice()).map(|s| s.kind);
+                split_self.split(slices);
+                split_self.iter().map(Slice).collect()
+            }
             // Any other constructor can be used unchanged.
             _ => smallvec![self.clone()],
-        }
-    }
-
-    /// For wildcards, there are two groups of constructors: there are the constructors actually
-    /// present in the matrix (`head_ctors`), and the constructors not present (`missing_ctors`).
-    /// Two constructors that are not in the matrix will either both be caught (by a wildcard), or
-    /// both not be caught. Therefore we can keep the missing constructors grouped together.
-    fn split_wildcard<'p>(pcx: PatCtxt<'_, 'p, 'tcx>) -> SmallVec<[Self; 1]> {
-        // Missing constructors are those that are not matched by any non-wildcard patterns in the
-        // current column. We only fully construct them on-demand, because they're rarely used and
-        // can be big.
-        let missing_ctors = MissingConstructors::new(pcx);
-        if missing_ctors.is_empty(pcx) {
-            // All the constructors are present in the matrix, so we just go through them all.
-            // We must also split them first.
-            missing_ctors.all_ctors
-        } else {
-            // Some constructors are missing, thus we can specialize with the wildcard constructor,
-            // which will stand for those constructors that are missing, and behaves like any of
-            // them.
-            smallvec![Wildcard]
         }
     }
 
@@ -704,8 +761,8 @@ impl<'tcx> Constructor<'tcx> {
         match (self, other) {
             // Wildcards cover anything
             (_, Wildcard) => true,
-            // Wildcards are only covered by wildcards
-            (Wildcard, _) => false,
+            // The missing ctors are not covered by anything in the matrix except wildcards.
+            (Missing | Wildcard, _) => false,
 
             (Single, Single) => true,
             (Variant(self_id), Variant(other_id)) => self_id == other_id,
@@ -778,247 +835,253 @@ impl<'tcx> Constructor<'tcx> {
                 .any(|other| slice.is_covered_by(other)),
             // This constructor is never covered by anything else
             NonExhaustive => false,
-            Str(..) | FloatRange(..) | Opaque | Wildcard => {
+            Str(..) | FloatRange(..) | Opaque | Missing | Wildcard => {
                 span_bug!(pcx.span, "found unexpected ctor in all_ctors: {:?}", self)
             }
         }
     }
 }
 
-/// This determines the set of all possible constructors of a pattern matching
-/// values of type `left_ty`. For vectors, this would normally be an infinite set
-/// but is instead bounded by the maximum fixed length of slice patterns in
-/// the column of patterns being analyzed.
+/// A wildcard constructor that we split relative to the constructors in the matrix, as explained
+/// at the top of the file.
 ///
-/// We make sure to omit constructors that are statically impossible. E.g., for
-/// `Option<!>`, we do not include `Some(_)` in the returned list of constructors.
-/// Invariant: this returns an empty `Vec` if and only if the type is uninhabited (as determined by
-/// `cx.is_uninhabited()`).
-fn all_constructors<'p, 'tcx>(pcx: PatCtxt<'_, 'p, 'tcx>) -> Vec<Constructor<'tcx>> {
-    debug!("all_constructors({:?})", pcx.ty);
-    let cx = pcx.cx;
-    let make_range = |start, end| {
-        IntRange(
-            // `unwrap()` is ok because we know the type is an integer.
-            IntRange::from_range(cx.tcx, start, end, pcx.ty, &RangeEnd::Included).unwrap(),
-        )
-    };
-    match pcx.ty.kind() {
-        ty::Bool => vec![make_range(0, 1)],
-        ty::Array(sub_ty, len) if len.try_eval_usize(cx.tcx, cx.param_env).is_some() => {
-            let len = len.eval_usize(cx.tcx, cx.param_env);
-            if len != 0 && cx.is_uninhabited(sub_ty) {
-                vec![]
-            } else {
-                vec![Slice(Slice::new(Some(len), VarLen(0, 0)))]
-            }
-        }
-        // Treat arrays of a constant but unknown length like slices.
-        ty::Array(sub_ty, _) | ty::Slice(sub_ty) => {
-            let kind = if cx.is_uninhabited(sub_ty) { FixedLen(0) } else { VarLen(0, 0) };
-            vec![Slice(Slice::new(None, kind))]
-        }
-        ty::Adt(def, substs) if def.is_enum() => {
-            // If the enum is declared as `#[non_exhaustive]`, we treat it as if it had an
-            // additional "unknown" constructor.
-            // There is no point in enumerating all possible variants, because the user can't
-            // actually match against them all themselves. So we always return only the fictitious
-            // constructor.
-            // E.g., in an example like:
-            //
-            // ```
-            //     let err: io::ErrorKind = ...;
-            //     match err {
-            //         io::ErrorKind::NotFound => {},
-            //     }
-            // ```
-            //
-            // we don't want to show every possible IO error, but instead have only `_` as the
-            // witness.
-            let is_declared_nonexhaustive = cx.is_foreign_non_exhaustive_enum(pcx.ty);
-
-            // If `exhaustive_patterns` is disabled and our scrutinee is an empty enum, we treat it
-            // as though it had an "unknown" constructor to avoid exposing its emptiness. The
-            // exception is if the pattern is at the top level, because we want empty matches to be
-            // considered exhaustive.
-            let is_secretly_empty = def.variants.is_empty()
-                && !cx.tcx.features().exhaustive_patterns
-                && !pcx.is_top_level;
-
-            if is_secretly_empty || is_declared_nonexhaustive {
-                vec![NonExhaustive]
-            } else if cx.tcx.features().exhaustive_patterns {
-                // If `exhaustive_patterns` is enabled, we exclude variants known to be
-                // uninhabited.
-                def.variants
-                    .iter()
-                    .filter(|v| {
-                        !v.uninhabited_from(cx.tcx, substs, def.adt_kind(), cx.param_env)
-                            .contains(cx.tcx, cx.module)
-                    })
-                    .map(|v| Variant(v.def_id))
-                    .collect()
-            } else {
-                def.variants.iter().map(|v| Variant(v.def_id)).collect()
-            }
-        }
-        ty::Char => {
-            vec![
-                // The valid Unicode Scalar Value ranges.
-                make_range('\u{0000}' as u128, '\u{D7FF}' as u128),
-                make_range('\u{E000}' as u128, '\u{10FFFF}' as u128),
-            ]
-        }
-        ty::Int(_) | ty::Uint(_)
-            if pcx.ty.is_ptr_sized_integral()
-                && !cx.tcx.features().precise_pointer_size_matching =>
-        {
-            // `usize`/`isize` are not allowed to be matched exhaustively unless the
-            // `precise_pointer_size_matching` feature is enabled. So we treat those types like
-            // `#[non_exhaustive]` enums by returning a special unmatcheable constructor.
-            vec![NonExhaustive]
-        }
-        &ty::Int(ity) => {
-            let bits = Integer::from_attr(&cx.tcx, SignedInt(ity)).size().bits() as u128;
-            let min = 1u128 << (bits - 1);
-            let max = min - 1;
-            vec![make_range(min, max)]
-        }
-        &ty::Uint(uty) => {
-            let size = Integer::from_attr(&cx.tcx, UnsignedInt(uty)).size();
-            let max = size.truncate(u128::MAX);
-            vec![make_range(0, max)]
-        }
-        // If `exhaustive_patterns` is disabled and our scrutinee is the never type, we cannot
-        // expose its emptiness. The exception is if the pattern is at the top level, because we
-        // want empty matches to be considered exhaustive.
-        ty::Never if !cx.tcx.features().exhaustive_patterns && !pcx.is_top_level => {
-            vec![NonExhaustive]
-        }
-        ty::Never => vec![],
-        _ if cx.is_uninhabited(pcx.ty) => vec![],
-        ty::Adt(..) | ty::Tuple(..) | ty::Ref(..) => vec![Single],
-        // This type is one for which we cannot list constructors, like `str` or `f64`.
-        _ => vec![NonExhaustive],
-    }
-}
-
-// A struct to compute a set of constructors equivalent to `all_ctors \ used_ctors`.
+/// A constructor that is not present in the matrix rows will only be covered by the rows that have
+/// wildcards. Thus we can group all of those constructors together; we call them "missing
+/// constructors". Splitting a wildcard would therefore list all present constructors individually
+/// (or grouped if they are integers or slices), and then all missing constructors together as a
+/// group.
+///
+/// However we can go further: since any constructor will match the wildcard rows, and having more
+/// rows can only reduce the amount of usefulness witnesses, we can skip the present constructors
+/// and only try the missing ones.
+/// This will not preserve the whole list of witnesses, but will preserve whether the list is empty
+/// or not. In fact this is quite natural from the point of view of diagnostics too. This is done
+/// in `to_ctors`: in some cases we only return `Missing`.
 #[derive(Debug)]
-pub(super) struct MissingConstructors<'tcx> {
+pub(super) struct SplitWildcard<'tcx> {
+    /// Constructors seen in the matrix.
+    matrix_ctors: Vec<Constructor<'tcx>>,
+    /// All the constructors for this type
     all_ctors: SmallVec<[Constructor<'tcx>; 1]>,
-    used_ctors: Vec<Constructor<'tcx>>,
 }
 
-impl<'tcx> MissingConstructors<'tcx> {
+impl<'tcx> SplitWildcard<'tcx> {
     pub(super) fn new<'p>(pcx: PatCtxt<'_, 'p, 'tcx>) -> Self {
-        let used_ctors: Vec<Constructor<'_>> =
-            pcx.matrix.head_ctors(pcx.cx).cloned().filter(|c| !c.is_wildcard()).collect();
+        debug!("SplitWildcard::new({:?})", pcx.ty);
+        let cx = pcx.cx;
+        let make_range = |start, end| {
+            IntRange(
+                // `unwrap()` is ok because we know the type is an integer.
+                IntRange::from_range(cx.tcx, start, end, pcx.ty, &RangeEnd::Included).unwrap(),
+            )
+        };
+        // This determines the set of all possible constructors for the type `pcx.ty`. For numbers,
+        // arrays and slices we use ranges and variable-length slices when appropriate.
+        //
+        // If the `exhaustive_patterns` feature is enabled, we make sure to omit constructors that
+        // are statically impossible. E.g., for `Option<!>`, we do not include `Some(_)` in the
+        // returned list of constructors.
+        // Invariant: this is empty if and only if the type is uninhabited (as determined by
+        // `cx.is_uninhabited()`).
+        let all_ctors = match pcx.ty.kind() {
+            ty::Bool => smallvec![make_range(0, 1)],
+            ty::Array(sub_ty, len) if len.try_eval_usize(cx.tcx, cx.param_env).is_some() => {
+                let len = len.eval_usize(cx.tcx, cx.param_env);
+                if len != 0 && cx.is_uninhabited(sub_ty) {
+                    smallvec![]
+                } else {
+                    smallvec![Slice(Slice::new(Some(len), VarLen(0, 0)))]
+                }
+            }
+            // Treat arrays of a constant but unknown length like slices.
+            ty::Array(sub_ty, _) | ty::Slice(sub_ty) => {
+                let kind = if cx.is_uninhabited(sub_ty) { FixedLen(0) } else { VarLen(0, 0) };
+                smallvec![Slice(Slice::new(None, kind))]
+            }
+            ty::Adt(def, substs) if def.is_enum() => {
+                // If the enum is declared as `#[non_exhaustive]`, we treat it as if it had an
+                // additional "unknown" constructor.
+                // There is no point in enumerating all possible variants, because the user can't
+                // actually match against them all themselves. So we always return only the fictitious
+                // constructor.
+                // E.g., in an example like:
+                //
+                // ```
+                //     let err: io::ErrorKind = ...;
+                //     match err {
+                //         io::ErrorKind::NotFound => {},
+                //     }
+                // ```
+                //
+                // we don't want to show every possible IO error, but instead have only `_` as the
+                // witness.
+                let is_declared_nonexhaustive = cx.is_foreign_non_exhaustive_enum(pcx.ty);
+
+                // If `exhaustive_patterns` is disabled and our scrutinee is an empty enum, we treat it
+                // as though it had an "unknown" constructor to avoid exposing its emptiness. The
+                // exception is if the pattern is at the top level, because we want empty matches to be
+                // considered exhaustive.
+                let is_secretly_empty = def.variants.is_empty()
+                    && !cx.tcx.features().exhaustive_patterns
+                    && !pcx.is_top_level;
+
+                if is_secretly_empty || is_declared_nonexhaustive {
+                    smallvec![NonExhaustive]
+                } else if cx.tcx.features().exhaustive_patterns {
+                    // If `exhaustive_patterns` is enabled, we exclude variants known to be
+                    // uninhabited.
+                    def.variants
+                        .iter()
+                        .filter(|v| {
+                            !v.uninhabited_from(cx.tcx, substs, def.adt_kind(), cx.param_env)
+                                .contains(cx.tcx, cx.module)
+                        })
+                        .map(|v| Variant(v.def_id))
+                        .collect()
+                } else {
+                    def.variants.iter().map(|v| Variant(v.def_id)).collect()
+                }
+            }
+            ty::Char => {
+                smallvec![
+                    // The valid Unicode Scalar Value ranges.
+                    make_range('\u{0000}' as u128, '\u{D7FF}' as u128),
+                    make_range('\u{E000}' as u128, '\u{10FFFF}' as u128),
+                ]
+            }
+            ty::Int(_) | ty::Uint(_)
+                if pcx.ty.is_ptr_sized_integral()
+                    && !cx.tcx.features().precise_pointer_size_matching =>
+            {
+                // `usize`/`isize` are not allowed to be matched exhaustively unless the
+                // `precise_pointer_size_matching` feature is enabled. So we treat those types like
+                // `#[non_exhaustive]` enums by returning a special unmatcheable constructor.
+                smallvec![NonExhaustive]
+            }
+            &ty::Int(ity) => {
+                let bits = Integer::from_attr(&cx.tcx, SignedInt(ity)).size().bits() as u128;
+                let min = 1u128 << (bits - 1);
+                let max = min - 1;
+                smallvec![make_range(min, max)]
+            }
+            &ty::Uint(uty) => {
+                let size = Integer::from_attr(&cx.tcx, UnsignedInt(uty)).size();
+                let max = size.truncate(u128::MAX);
+                smallvec![make_range(0, max)]
+            }
+            // If `exhaustive_patterns` is disabled and our scrutinee is the never type, we cannot
+            // expose its emptiness. The exception is if the pattern is at the top level, because we
+            // want empty matches to be considered exhaustive.
+            ty::Never if !cx.tcx.features().exhaustive_patterns && !pcx.is_top_level => {
+                smallvec![NonExhaustive]
+            }
+            ty::Never => smallvec![],
+            _ if cx.is_uninhabited(pcx.ty) => smallvec![],
+            ty::Adt(..) | ty::Tuple(..) | ty::Ref(..) => smallvec![Single],
+            // This type is one for which we cannot list constructors, like `str` or `f64`.
+            _ => smallvec![NonExhaustive],
+        };
+        SplitWildcard { matrix_ctors: Vec::new(), all_ctors }
+    }
+
+    /// Pass a set of constructors relative to which to split this one. Don't call twice, it won't
+    /// do what you want.
+    pub(super) fn split<'a>(
+        &mut self,
+        pcx: PatCtxt<'_, '_, 'tcx>,
+        ctors: impl Iterator<Item = &'a Constructor<'tcx>> + Clone,
+    ) where
+        'tcx: 'a,
+    {
         // Since `all_ctors` never contains wildcards, this won't recurse further.
-        let all_ctors =
-            all_constructors(pcx).into_iter().flat_map(|ctor| ctor.split(pcx, None)).collect();
-
-        MissingConstructors { all_ctors, used_ctors }
+        self.all_ctors =
+            self.all_ctors.iter().flat_map(|ctor| ctor.split(pcx, ctors.clone())).collect();
+        self.matrix_ctors = ctors.filter(|c| !c.is_wildcard()).cloned().collect();
     }
 
-    fn is_empty<'p>(&self, pcx: PatCtxt<'_, 'p, 'tcx>) -> bool {
-        self.iter(pcx).next().is_none()
+    /// Whether there are any value constructors for this type that are not present in the matrix.
+    fn any_missing(&self, pcx: PatCtxt<'_, '_, 'tcx>) -> bool {
+        self.iter_missing(pcx).next().is_some()
     }
 
-    /// Iterate over all_ctors \ used_ctors
-    fn iter<'a, 'p>(
+    /// Iterate over the constructors for this type that are not present in the matrix.
+    pub(super) fn iter_missing<'a, 'p>(
         &'a self,
         pcx: PatCtxt<'a, 'p, 'tcx>,
     ) -> impl Iterator<Item = &'a Constructor<'tcx>> + Captures<'p> {
-        self.all_ctors.iter().filter(move |ctor| !ctor.is_covered_by_any(pcx, &self.used_ctors))
+        self.all_ctors.iter().filter(move |ctor| !ctor.is_covered_by_any(pcx, &self.matrix_ctors))
     }
 
-    /// List the patterns corresponding to the missing constructors. In some cases, instead of
-    /// listing all constructors of a given type, we prefer to simply report a wildcard.
-    pub(super) fn report_patterns<'p>(
-        &self,
-        pcx: PatCtxt<'_, 'p, 'tcx>,
-    ) -> SmallVec<[Pat<'tcx>; 1]> {
-        // There are 2 ways we can report a witness here.
-        // Commonly, we can report all the "free"
-        // constructors as witnesses, e.g., if we have:
-        //
-        // ```
-        //     enum Direction { N, S, E, W }
-        //     let Direction::N = ...;
-        // ```
-        //
-        // we can report 3 witnesses: `S`, `E`, and `W`.
-        //
-        // However, there is a case where we don't want
-        // to do this and instead report a single `_` witness:
-        // if the user didn't actually specify a constructor
-        // in this arm, e.g., in
-        //
-        // ```
-        //     let x: (Direction, Direction, bool) = ...;
-        //     let (_, _, false) = x;
-        // ```
-        //
-        // we don't want to show all 16 possible witnesses
-        // `(<direction-1>, <direction-2>, true)` - we are
-        // satisfied with `(_, _, true)`. In this case,
-        // `used_ctors` is empty.
-        // The exception is: if we are at the top-level, for example in an empty match, we
-        // sometimes prefer reporting the list of constructors instead of just `_`.
-        let report_when_all_missing = pcx.is_top_level && !IntRange::is_integral(pcx.ty);
-        if self.used_ctors.is_empty() && !report_when_all_missing {
-            // All constructors are unused. Report only a wildcard
-            // rather than each individual constructor.
-            smallvec![Pat::wildcard_from_ty(pcx.ty)]
-        } else {
-            // Construct for each missing constructor a "wild" version of this
-            // constructor, that matches everything that can be built with
-            // it. For example, if `ctor` is a `Constructor::Variant` for
-            // `Option::Some`, we get the pattern `Some(_)`.
-            self.iter(pcx)
-                .map(|missing_ctor| Fields::wildcards(pcx, &missing_ctor).apply(pcx, missing_ctor))
-                .collect()
+    /// Return the set of constructors resulting from splitting the wildcard. As explained at the
+    /// top of the file, if any constructors are missing we can ignore the present ones.
+    fn into_ctors(self, pcx: PatCtxt<'_, '_, 'tcx>) -> SmallVec<[Constructor<'tcx>; 1]> {
+        if self.any_missing(pcx) {
+            // Some constructors are missing, thus we can specialize with the special `Missing`
+            // constructor, which stands for those constructors that are not seen in the matrix,
+            // and matches the same rows as any of them (namely the wildcard rows). See the top of
+            // the file for details.
+            // However, when all constructors are missing we can also specialize with the full
+            // `Wildcard` constructor. The difference will depend on what we want in diagnostics.
+
+            // If some constructors are missing, we typically want to report those constructors,
+            // e.g.:
+            // ```
+            //     enum Direction { N, S, E, W }
+            //     let Direction::N = ...;
+            // ```
+            // we can report 3 witnesses: `S`, `E`, and `W`.
+            //
+            // However, if the user didn't actually specify a constructor
+            // in this arm, e.g., in
+            // ```
+            //     let x: (Direction, Direction, bool) = ...;
+            //     let (_, _, false) = x;
+            // ```
+            // we don't want to show all 16 possible witnesses `(<direction-1>, <direction-2>,
+            // true)` - we are satisfied with `(_, _, true)`. So if all constructors are missing we
+            // prefer to report just a wildcard `_`.
+            //
+            // The exception is: if we are at the top-level, for example in an empty match, we
+            // sometimes prefer reporting the list of constructors instead of just `_`.
+            let report_when_all_missing = pcx.is_top_level && !IntRange::is_integral(pcx.ty);
+            let ctor = if !self.matrix_ctors.is_empty() || report_when_all_missing {
+                Missing
+            } else {
+                Wildcard
+            };
+            return smallvec![ctor];
         }
+
+        // All the constructors are present in the matrix, so we just go through them all.
+        self.all_ctors
     }
 }
 
 /// Some fields need to be explicitly hidden away in certain cases; see the comment above the
-/// `Fields` struct. This struct represents such a potentially-hidden field. When a field is hidden
-/// we still keep its type around.
+/// `Fields` struct. This struct represents such a potentially-hidden field.
 #[derive(Debug, Copy, Clone)]
 pub(super) enum FilteredField<'p, 'tcx> {
     Kept(&'p Pat<'tcx>),
-    Hidden(Ty<'tcx>),
+    Hidden,
 }
 
 impl<'p, 'tcx> FilteredField<'p, 'tcx> {
     fn kept(self) -> Option<&'p Pat<'tcx>> {
         match self {
             FilteredField::Kept(p) => Some(p),
-            FilteredField::Hidden(_) => None,
-        }
-    }
-
-    fn to_pattern(self) -> Pat<'tcx> {
-        match self {
-            FilteredField::Kept(p) => p.clone(),
-            FilteredField::Hidden(ty) => Pat::wildcard_from_ty(ty),
+            FilteredField::Hidden => None,
         }
     }
 }
 
 /// A value can be decomposed into a constructor applied to some fields. This struct represents
 /// those fields, generalized to allow patterns in each field. See also `Constructor`.
+/// This is constructed from a constructor using [`Fields::wildcards()`].
 ///
 /// If a private or `non_exhaustive` field is uninhabited, the code mustn't observe that it is
-/// uninhabited. For that, we filter these fields out of the matrix. This is subtle because we
-/// still need to have those fields back when going to/from a `Pat`. Most of this is handled
-/// automatically in `Fields`, but when constructing or deconstructing `Fields` you need to be
-/// careful. As a rule, when going to/from the matrix, use the filtered field list; when going
-/// to/from `Pat`, use the full field list.
-/// This filtering is uncommon in practice, because uninhabited fields are rarely used, so we avoid
-/// it when possible to preserve performance.
+/// uninhabited. For that, we filter these fields out of the matrix. This is handled automatically
+/// in `Fields`. This filtering is uncommon in practice, because uninhabited fields are rarely used,
+/// so we avoid it when possible to preserve performance.
 #[derive(Debug, Clone)]
 pub(super) enum Fields<'p, 'tcx> {
     /// Lists of patterns that don't contain any filtered fields.
@@ -1027,21 +1090,19 @@ pub(super) enum Fields<'p, 'tcx> {
     /// have not measured if it really made a difference.
     Slice(&'p [Pat<'tcx>]),
     Vec(SmallVec<[&'p Pat<'tcx>; 2]>),
-    /// Patterns where some of the fields need to be hidden. `kept_count` caches the number of
-    /// non-hidden fields.
+    /// Patterns where some of the fields need to be hidden. For all intents and purposes we only
+    /// care about the non-hidden fields. We need to keep the real field index for those fields;
+    /// we're morally storing a `Vec<(usize, &Pat)>` but what we do is more convenient.
+    /// `len` counts the number of non-hidden fields
     Filtered {
         fields: SmallVec<[FilteredField<'p, 'tcx>; 2]>,
-        kept_count: usize,
+        len: usize,
     },
 }
 
 impl<'p, 'tcx> Fields<'p, 'tcx> {
-    fn empty() -> Self {
-        Fields::Slice(&[])
-    }
-
-    /// Construct a new `Fields` from the given pattern. Must not be used if the pattern is a field
-    /// of a struct/tuple/variant.
+    /// Internal use. Use `Fields::wildcards()` instead.
+    /// Must not be used if the pattern is a field of a struct/tuple/variant.
     fn from_single_pattern(pat: &'p Pat<'tcx>) -> Self {
         Fields::Slice(std::slice::from_ref(pat))
     }
@@ -1086,7 +1147,7 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
                         if has_no_hidden_fields {
                             Fields::wildcards_from_tys(cx, field_tys)
                         } else {
-                            let mut kept_count = 0;
+                            let mut len = 0;
                             let fields = variant
                                 .fields
                                 .iter()
@@ -1101,14 +1162,14 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
                                     // order not to reveal the uninhabitedness of the whole
                                     // variant.
                                     if is_uninhabited && (!is_visible || is_non_exhaustive) {
-                                        FilteredField::Hidden(ty)
+                                        FilteredField::Hidden
                                     } else {
-                                        kept_count += 1;
+                                        len += 1;
                                         FilteredField::Kept(wildcard_from_ty(ty))
                                     }
                                 })
                                 .collect();
-                            Fields::Filtered { fields, kept_count }
+                            Fields::Filtered { fields, len }
                         }
                     }
                 }
@@ -1121,9 +1182,8 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
                 }
                 _ => bug!("bad slice pattern {:?} {:?}", constructor, ty),
             },
-            Str(..) | FloatRange(..) | IntRange(..) | NonExhaustive | Opaque | Wildcard => {
-                Fields::empty()
-            }
+            Str(..) | FloatRange(..) | IntRange(..) | NonExhaustive | Opaque | Missing
+            | Wildcard => Fields::Slice(&[]),
         };
         debug!("Fields::wildcards({:?}, {:?}) = {:#?}", constructor, ty, ret);
         ret
@@ -1145,14 +1205,16 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
     /// `self`: `[false]`
     /// returns `Some(false)`
     pub(super) fn apply(self, pcx: PatCtxt<'_, 'p, 'tcx>, ctor: &Constructor<'tcx>) -> Pat<'tcx> {
-        let mut subpatterns = self.all_patterns();
+        let subpatterns_and_indices = self.patterns_and_indices();
+        let mut subpatterns = subpatterns_and_indices.iter().map(|&(_, p)| p).cloned();
 
         let pat = match ctor {
             Single | Variant(_) => match pcx.ty.kind() {
                 ty::Adt(..) | ty::Tuple(..) => {
-                    let subpatterns = subpatterns
-                        .enumerate()
-                        .map(|(i, p)| FieldPat { field: Field::new(i), pattern: p })
+                    // We want the real indices here.
+                    let subpatterns = subpatterns_and_indices
+                        .iter()
+                        .map(|&(field, p)| FieldPat { field, pattern: p.clone() })
                         .collect();
 
                     if let ty::Adt(adt, substs) = pcx.ty.kind() {
@@ -1207,48 +1269,52 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
             &FloatRange(lo, hi, end) => PatKind::Range(PatRange { lo, hi, end }),
             IntRange(range) => return range.to_pat(pcx.cx.tcx, pcx.ty),
             NonExhaustive => PatKind::Wild,
+            Wildcard => return Pat::wildcard_from_ty(pcx.ty),
             Opaque => bug!("we should not try to apply an opaque constructor"),
-            Wildcard => bug!(
-                "trying to apply a wildcard constructor; this should have been done in `apply_constructors`"
+            Missing => bug!(
+                "trying to apply the `Missing` constructor; this should have been done in `apply_constructors`"
             ),
         };
 
         Pat { ty: pcx.ty, span: DUMMY_SP, kind: Box::new(pat) }
     }
 
-    /// Returns the number of patterns from the viewpoint of match-checking, i.e. excluding hidden
-    /// fields. This is what we want in most cases in this file, the only exception being
-    /// conversion to/from `Pat`.
+    /// Returns the number of patterns. This is the same as the arity of the constructor used to
+    /// construct `self`.
     pub(super) fn len(&self) -> usize {
         match self {
             Fields::Slice(pats) => pats.len(),
             Fields::Vec(pats) => pats.len(),
-            Fields::Filtered { kept_count, .. } => *kept_count,
+            Fields::Filtered { len, .. } => *len,
         }
     }
 
-    /// Returns the complete list of patterns, including hidden fields.
-    fn all_patterns(self) -> impl Iterator<Item = Pat<'tcx>> {
-        let pats: SmallVec<[_; 2]> = match self {
-            Fields::Slice(pats) => pats.iter().cloned().collect(),
-            Fields::Vec(pats) => pats.into_iter().cloned().collect(),
-            Fields::Filtered { fields, .. } => {
-                // We don't skip any fields here.
-                fields.into_iter().map(|p| p.to_pattern()).collect()
+    /// Returns the list of patterns along with the corresponding field indices.
+    fn patterns_and_indices(&self) -> SmallVec<[(Field, &'p Pat<'tcx>); 2]> {
+        match self {
+            Fields::Slice(pats) => {
+                pats.iter().enumerate().map(|(i, p)| (Field::new(i), p)).collect()
             }
-        };
-        pats.into_iter()
+            Fields::Vec(pats) => {
+                pats.iter().copied().enumerate().map(|(i, p)| (Field::new(i), p)).collect()
+            }
+            Fields::Filtered { fields, .. } => {
+                // Indices must be relative to the full list of patterns
+                fields
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(i, p)| Some((Field::new(i), p.kept()?)))
+                    .collect()
+            }
+        }
     }
 
-    /// Returns the filtered list of patterns, not including hidden fields.
-    pub(super) fn filtered_patterns(self) -> SmallVec<[&'p Pat<'tcx>; 2]> {
+    /// Returns the list of patterns.
+    pub(super) fn into_patterns(self) -> SmallVec<[&'p Pat<'tcx>; 2]> {
         match self {
             Fields::Slice(pats) => pats.iter().collect(),
             Fields::Vec(pats) => pats,
-            Fields::Filtered { fields, .. } => {
-                // We skip hidden fields here
-                fields.into_iter().filter_map(|p| p.kept()).collect()
-            }
+            Fields::Filtered { fields, .. } => fields.iter().filter_map(|p| p.kept()).collect(),
         }
     }
 
@@ -1264,10 +1330,10 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
     }
 
     /// Overrides some of the fields with the provided patterns. This is used when a pattern
-    /// defines some fields but not all, for example `Foo { field1: Some(_), .. }`: here we start with a
-    /// `Fields` that is just one wildcard per field of the `Foo` struct, and override the entry
-    /// corresponding to `field1` with the pattern `Some(_)`. This is also used for slice patterns
-    /// for the same reason.
+    /// defines some fields but not all, for example `Foo { field1: Some(_), .. }`: here we start
+    /// with a `Fields` that is just one wildcard per field of the `Foo` struct, and override the
+    /// entry corresponding to `field1` with the pattern `Some(_)`. This is also used for slice
+    /// patterns for the same reason.
     fn replace_fields_indexed(
         &self,
         new_pats: impl IntoIterator<Item = (usize, &'p Pat<'tcx>)>,
@@ -1295,8 +1361,8 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
         fields
     }
 
-    /// Replaces contained fields with the given filtered list of patterns, e.g. taken from the
-    /// matrix. There must be `len()` patterns in `pats`.
+    /// Replaces contained fields with the given list of patterns. There must be `len()` patterns
+    /// in `pats`.
     pub(super) fn replace_fields(
         &self,
         cx: &MatchCheckCtxt<'p, 'tcx>,
@@ -1305,7 +1371,7 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
         let pats: &[_] = cx.pattern_arena.alloc_from_iter(pats);
 
         match self {
-            Fields::Filtered { fields, kept_count } => {
+            Fields::Filtered { fields, len } => {
                 let mut pats = pats.iter();
                 let mut fields = fields.clone();
                 for f in &mut fields {
@@ -1314,7 +1380,7 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
                         *p = pats.next().unwrap();
                     }
                 }
-                Fields::Filtered { fields, kept_count: *kept_count }
+                Fields::Filtered { fields, len: *len }
             }
             _ => Fields::Slice(pats),
         }

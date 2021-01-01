@@ -329,12 +329,12 @@ pre.ignore:hover, .information:hover + pre.ignore {
 	color: #0089ff;
 }
 
-.tooltip .tooltiptext {
+.tooltip::after {
 	background-color: #000;
 	color: #fff;
 }
 
-.tooltip .tooltiptext::after {
+.tooltip::before {
 	border-color: transparent black transparent transparent;
 }
 
@@ -343,16 +343,17 @@ pre.ignore:hover, .information:hover + pre.ignore {
 	border-color: #999;
 }
 
-#titles > div:not(.selected) {
+#titles > button:not(.selected) {
 	background-color: #e6e6e6;
 	border-top-color: #e6e6e6;
 }
 
-#titles > div:hover, #titles > div.selected {
+#titles > button:hover, #titles > button.selected {
+	background-color: #ffffff;
 	border-top-color: #0089ff;
 }
 
-#titles > div > div.count {
+#titles > button > div.count {
 	color: #888;
 }
 

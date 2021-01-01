@@ -37,7 +37,7 @@
 
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::token::{self, DelimToken, Nonterminal, Token};
-use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree};
+use rustc_ast::tokenstream::{CanSynthesizeMissingTokens, DelimSpan, TokenStream, TokenTree};
 use rustc_ast::visit::{self, AssocCtxt, Visitor};
 use rustc_ast::walk_list;
 use rustc_ast::{self as ast, *};
@@ -206,7 +206,8 @@ pub trait ResolverAstLowering {
     ) -> LocalDefId;
 }
 
-type NtToTokenstream = fn(&Nonterminal, &ParseSess, Span) -> TokenStream;
+type NtToTokenstream =
+    fn(&Nonterminal, &ParseSess, Span, CanSynthesizeMissingTokens) -> TokenStream;
 
 /// Context of `impl Trait` in code, which determines whether it is allowed in an HIR subtree,
 /// and if so, what meaning it has.
@@ -391,6 +392,47 @@ enum AnonymousLifetimeMode {
 
     /// Pass responsibility to `resolve_lifetime` code for all cases.
     PassThrough,
+}
+
+struct TokenStreamLowering<'a> {
+    parse_sess: &'a ParseSess,
+    synthesize_tokens: CanSynthesizeMissingTokens,
+    nt_to_tokenstream: NtToTokenstream,
+}
+
+impl<'a> TokenStreamLowering<'a> {
+    fn lower_token_stream(&mut self, tokens: TokenStream) -> TokenStream {
+        tokens.into_trees().flat_map(|tree| self.lower_token_tree(tree).into_trees()).collect()
+    }
+
+    fn lower_token_tree(&mut self, tree: TokenTree) -> TokenStream {
+        match tree {
+            TokenTree::Token(token) => self.lower_token(token),
+            TokenTree::Delimited(span, delim, tts) => {
+                TokenTree::Delimited(span, delim, self.lower_token_stream(tts)).into()
+            }
+        }
+    }
+
+    fn lower_token(&mut self, token: Token) -> TokenStream {
+        match token.kind {
+            token::Interpolated(nt) => {
+                let tts = (self.nt_to_tokenstream)(
+                    &nt,
+                    self.parse_sess,
+                    token.span,
+                    self.synthesize_tokens,
+                );
+                TokenTree::Delimited(
+                    DelimSpan::from_single(token.span),
+                    DelimToken::NoDelim,
+                    self.lower_token_stream(tts),
+                )
+                .into()
+            }
+            _ => TokenTree::Token(token).into(),
+        }
+    }
 }
 
 struct ImplTraitTypeIdVisitor<'a> {
@@ -955,40 +997,49 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         match *args {
             MacArgs::Empty => MacArgs::Empty,
             MacArgs::Delimited(dspan, delim, ref tokens) => {
-                MacArgs::Delimited(dspan, delim, self.lower_token_stream(tokens.clone()))
-            }
-            MacArgs::Eq(eq_span, ref tokens) => {
-                MacArgs::Eq(eq_span, self.lower_token_stream(tokens.clone()))
-            }
-        }
-    }
-
-    fn lower_token_stream(&mut self, tokens: TokenStream) -> TokenStream {
-        tokens.into_trees().flat_map(|tree| self.lower_token_tree(tree).into_trees()).collect()
-    }
-
-    fn lower_token_tree(&mut self, tree: TokenTree) -> TokenStream {
-        match tree {
-            TokenTree::Token(token) => self.lower_token(token),
-            TokenTree::Delimited(span, delim, tts) => {
-                TokenTree::Delimited(span, delim, self.lower_token_stream(tts)).into()
-            }
-        }
-    }
-
-    fn lower_token(&mut self, token: Token) -> TokenStream {
-        match token.kind {
-            token::Interpolated(nt) => {
-                let tts = (self.nt_to_tokenstream)(&nt, &self.sess.parse_sess, token.span);
-                TokenTree::Delimited(
-                    DelimSpan::from_single(token.span),
-                    DelimToken::NoDelim,
-                    self.lower_token_stream(tts),
+                // This is either a non-key-value attribute, or a `macro_rules!` body.
+                // We either not have any nonterminals present (in the case of an attribute),
+                // or have tokens available for all nonterminals in the case of a nested
+                // `macro_rules`: e.g:
+                //
+                // ```rust
+                // macro_rules! outer {
+                //     ($e:expr) => {
+                //         macro_rules! inner {
+                //             () => { $e }
+                //         }
+                //     }
+                // }
+                // ```
+                //
+                // In both cases, we don't want to synthesize any tokens
+                MacArgs::Delimited(
+                    dspan,
+                    delim,
+                    self.lower_token_stream(tokens.clone(), CanSynthesizeMissingTokens::No),
                 )
-                .into()
             }
-            _ => TokenTree::Token(token).into(),
+            // This is an inert key-value attribute - it will never be visible to macros
+            // after it gets lowered to HIR. Therefore, we can synthesize tokens with fake
+            // spans to handle nonterminals in `#[doc]` (e.g. `#[doc = $e]`).
+            MacArgs::Eq(eq_span, ref tokens) => MacArgs::Eq(
+                eq_span,
+                self.lower_token_stream(tokens.clone(), CanSynthesizeMissingTokens::Yes),
+            ),
         }
+    }
+
+    fn lower_token_stream(
+        &self,
+        tokens: TokenStream,
+        synthesize_tokens: CanSynthesizeMissingTokens,
+    ) -> TokenStream {
+        TokenStreamLowering {
+            parse_sess: &self.sess.parse_sess,
+            synthesize_tokens,
+            nt_to_tokenstream: self.nt_to_tokenstream,
+        }
+        .lower_token_stream(tokens)
     }
 
     /// Given an associated type constraint like one of these:
@@ -1716,7 +1767,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
         self.arena.alloc_from_iter(inputs.iter().map(|param| match param.pat.kind {
             PatKind::Ident(_, ident, _) => ident,
-            _ => Ident::new(kw::Invalid, param.pat.span),
+            _ => Ident::new(kw::Empty, param.pat.span),
         }))
     }
 
@@ -1806,12 +1857,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             output,
             c_variadic,
             implicit_self: decl.inputs.get(0).map_or(hir::ImplicitSelfKind::None, |arg| {
-                let is_mutable_pat = match arg.pat.kind {
-                    PatKind::Ident(BindingMode::ByValue(mt) | BindingMode::ByRef(mt), _, _) => {
-                        mt == Mutability::Mut
-                    }
-                    _ => false,
-                };
+                use BindingMode::{ByRef, ByValue};
+                let is_mutable_pat = matches!(
+                    arg.pat.kind,
+                    PatKind::Ident(ByValue(Mutability::Mut) | ByRef(Mutability::Mut), ..)
+                );
 
                 match arg.ty.kind {
                     TyKind::ImplicitSelf if is_mutable_pat => hir::ImplicitSelfKind::Mut,

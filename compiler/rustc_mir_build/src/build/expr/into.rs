@@ -40,11 +40,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let expr_span = expr.span;
         let source_info = this.source_info(expr_span);
 
-        let expr_is_block_or_scope = match expr.kind {
-            ExprKind::Block { .. } => true,
-            ExprKind::Scope { .. } => true,
-            _ => false,
-        };
+        let expr_is_block_or_scope = matches!(expr.kind, ExprKind::Block { .. } | ExprKind::Scope { .. });
 
         let schedule_drop = move |this: &mut Self| {
             if let Some(drop_scope) = scope {

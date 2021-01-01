@@ -11,10 +11,11 @@ use std::fmt;
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
+use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc_target::spec::abi::Abi;
 
-use crate::clean::{self, PrimitiveType};
+use crate::clean::{self, utils::find_nearest_parent_module, PrimitiveType};
 use crate::formats::cache::cache;
 use crate::formats::item_type::ItemType;
 use crate::html::escape::Escape;
@@ -172,7 +173,7 @@ impl clean::GenericParamDef {
         display_fn(move |f| match self.kind {
             clean::GenericParamDefKind::Lifetime => write!(f, "{}", self.name),
             clean::GenericParamDefKind::Type { ref bounds, ref default, .. } => {
-                f.write_str(&self.name)?;
+                f.write_str(&*self.name.as_str())?;
 
                 if !bounds.is_empty() {
                     if f.alternate() {
@@ -193,13 +194,10 @@ impl clean::GenericParamDef {
                 Ok(())
             }
             clean::GenericParamDefKind::Const { ref ty, .. } => {
-                f.write_str("const ")?;
-                f.write_str(&self.name)?;
-
                 if f.alternate() {
-                    write!(f, ": {:#}", ty.print())
+                    write!(f, "const {}: {:#}", self.name, ty.print())
                 } else {
-                    write!(f, ":&nbsp;{}", ty.print())
+                    write!(f, "const {}:&nbsp;{}", self.name, ty.print())
                 }
             }
         })
@@ -311,7 +309,7 @@ impl<'a> fmt::Display for WhereClause<'a> {
 }
 
 impl clean::Lifetime {
-    crate fn print(&self) -> &str {
+    crate fn print(&self) -> impl fmt::Display + '_ {
         self.get_ref()
     }
 }
@@ -448,11 +446,10 @@ impl clean::GenericArgs {
 impl clean::PathSegment {
     crate fn print(&self) -> impl fmt::Display + '_ {
         display_fn(move |f| {
-            f.write_str(&self.name)?;
             if f.alternate() {
-                write!(f, "{:#}", self.args.print())
+                write!(f, "{}{:#}", self.name, self.args.print())
             } else {
-                write!(f, "{}", self.args.print())
+                write!(f, "{}{}", self.name, self.args.print())
             }
         })
     }
@@ -547,7 +544,7 @@ fn resolved_path(
                 last.name.to_string()
             }
         } else {
-            anchor(did, &last.name).to_string()
+            anchor(did, &*last.name.as_str()).to_string()
         };
         write!(w, "{}{}", path, last.args.print())?;
     }
@@ -638,7 +635,7 @@ crate fn anchor(did: DefId, text: &str) -> impl fmt::Display + '_ {
 
 fn fmt_type(t: &clean::Type, f: &mut fmt::Formatter<'_>, use_absolute: bool) -> fmt::Result {
     match *t {
-        clean::Generic(ref name) => f.write_str(name),
+        clean::Generic(name) => write!(f, "{}", name),
         clean::ResolvedPath { did, ref param_names, ref path, is_generic } => {
             if param_names.is_some() {
                 f.write_str("dyn ")?;
@@ -1088,32 +1085,54 @@ impl Function<'_> {
 }
 
 impl clean::Visibility {
-    crate fn print_with_space(&self) -> impl fmt::Display + '_ {
+    crate fn print_with_space<'tcx>(
+        self,
+        tcx: TyCtxt<'tcx>,
+        item_did: DefId,
+    ) -> impl fmt::Display + 'tcx {
         use rustc_span::symbol::kw;
 
-        display_fn(move |f| match *self {
+        display_fn(move |f| match self {
             clean::Public => f.write_str("pub "),
             clean::Inherited => Ok(()),
-            // If this is `pub(crate)`, `path` will be empty.
-            clean::Visibility::Restricted(did, _) if did.index == CRATE_DEF_INDEX => {
-                write!(f, "pub(crate) ")
-            }
-            clean::Visibility::Restricted(did, ref path) => {
-                f.write_str("pub(")?;
-                debug!("path={:?}", path);
-                let first_name =
-                    path.data[0].data.get_opt_name().expect("modules are always named");
-                if path.data.len() != 1 || (first_name != kw::SelfLower && first_name != kw::Super)
+
+            clean::Visibility::Restricted(vis_did) => {
+                // FIXME(camelid): This may not work correctly if `item_did` is a module.
+                //                 However, rustdoc currently never displays a module's
+                //                 visibility, so it shouldn't matter.
+                let parent_module = find_nearest_parent_module(tcx, item_did);
+
+                if vis_did.index == CRATE_DEF_INDEX {
+                    write!(f, "pub(crate) ")
+                } else if parent_module == Some(vis_did) {
+                    // `pub(in foo)` where `foo` is the parent module
+                    // is the same as no visibility modifier
+                    Ok(())
+                } else if parent_module
+                    .map(|parent| find_nearest_parent_module(tcx, parent))
+                    .flatten()
+                    == Some(vis_did)
                 {
-                    f.write_str("in ")?;
+                    write!(f, "pub(super) ")
+                } else {
+                    f.write_str("pub(")?;
+                    let path = tcx.def_path(vis_did);
+                    debug!("path={:?}", path);
+                    let first_name =
+                        path.data[0].data.get_opt_name().expect("modules are always named");
+                    if path.data.len() != 1
+                        || (first_name != kw::SelfLower && first_name != kw::Super)
+                    {
+                        f.write_str("in ")?;
+                    }
+                    // modified from `resolved_path()` to work with `DefPathData`
+                    let last_name = path.data.last().unwrap().data.get_opt_name().unwrap();
+                    for seg in &path.data[..path.data.len() - 1] {
+                        write!(f, "{}::", seg.data.get_opt_name().unwrap())?;
+                    }
+                    let path = anchor(vis_did, &last_name.as_str()).to_string();
+                    write!(f, "{}) ", path)
                 }
-                // modified from `resolved_path()` to work with `DefPathData`
-                let last_name = path.data.last().unwrap().data.get_opt_name().unwrap();
-                for seg in &path.data[..path.data.len() - 1] {
-                    write!(f, "{}::", seg.data.get_opt_name().unwrap())?;
-                }
-                let path = anchor(did, &last_name.as_str()).to_string();
-                write!(f, "{}) ", path)
             }
         })
     }
@@ -1162,11 +1181,11 @@ impl PrintWithSpace for hir::Mutability {
 impl clean::Import {
     crate fn print(&self) -> impl fmt::Display + '_ {
         display_fn(move |f| match self.kind {
-            clean::ImportKind::Simple(ref name) => {
-                if *name == self.source.path.last_name() {
+            clean::ImportKind::Simple(name) => {
+                if name == self.source.path.last() {
                     write!(f, "use {};", self.source.print())
                 } else {
-                    write!(f, "use {} as {};", self.source.print(), *name)
+                    write!(f, "use {} as {};", self.source.print(), name)
                 }
             }
             clean::ImportKind::Glob => {
@@ -1190,7 +1209,7 @@ impl clean::ImportSource {
                 }
                 let name = self.path.last_name();
                 if let hir::def::Res::PrimTy(p) = self.path.res {
-                    primitive_link(f, PrimitiveType::from(p), name)?;
+                    primitive_link(f, PrimitiveType::from(p), &*name)?;
                 } else {
                     write!(f, "{}", name)?;
                 }
@@ -1203,7 +1222,7 @@ impl clean::ImportSource {
 impl clean::TypeBinding {
     crate fn print(&self) -> impl fmt::Display + '_ {
         display_fn(move |f| {
-            f.write_str(&self.name)?;
+            f.write_str(&*self.name.as_str())?;
             match self.kind {
                 clean::TypeBindingKind::Equality { ref ty } => {
                     if f.alternate() {

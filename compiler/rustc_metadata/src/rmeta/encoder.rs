@@ -319,10 +319,6 @@ impl<'a, 'tcx> TyEncoder<'tcx> for EncodeContext<'a, 'tcx> {
         self.opaque.position()
     }
 
-    fn tcx(&self) -> TyCtxt<'tcx> {
-        self.tcx
-    }
-
     fn type_shorthands(&mut self) -> &mut FxHashMap<Ty<'tcx>, usize> {
         &mut self.type_shorthands
     }
@@ -663,7 +659,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             no_builtins: tcx.sess.contains_name(&attrs, sym::no_builtins),
             panic_runtime: tcx.sess.contains_name(&attrs, sym::panic_runtime),
             profiler_runtime: tcx.sess.contains_name(&attrs, sym::profiler_runtime),
-            symbol_mangling_version: tcx.sess.opts.debugging_opts.symbol_mangling_version,
+            symbol_mangling_version: tcx.sess.opts.debugging_opts.get_symbol_mangling_version(),
 
             crate_deps,
             dylib_dependency_formats,

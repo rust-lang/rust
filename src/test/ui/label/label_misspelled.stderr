@@ -1,0 +1,47 @@
+error[E0425]: cannot find value `LOOP` in this scope
+  --> $DIR/label_misspelled.rs:3:9
+   |
+LL |         LOOP;
+   |         ^^^^
+   |         |
+   |         not found in this scope
+   |         help: a label with a similar name exists: `'LOOP`
+
+error[E0425]: cannot find value `while_loop` in this scope
+  --> $DIR/label_misspelled.rs:7:9
+   |
+LL |         while_loop;
+   |         ^^^^^^^^^^
+   |         |
+   |         not found in this scope
+   |         help: a label with a similar name exists: `'while_loop`
+
+error[E0425]: cannot find value `while_let` in this scope
+  --> $DIR/label_misspelled.rs:11:9
+   |
+LL |         while_let;
+   |         ^^^^^^^^^
+   |         |
+   |         not found in this scope
+   |         help: a label with a similar name exists: `'while_let`
+
+error[E0425]: cannot find value `for_loop` in this scope
+  --> $DIR/label_misspelled.rs:15:9
+   |
+LL |         for_loop;
+   |         ^^^^^^^^
+   |         |
+   |         not found in this scope
+   |         help: a label with a similar name exists: `'for_loop`
+
+warning: denote infinite loops with `loop { ... }`
+  --> $DIR/label_misspelled.rs:6:5
+   |
+LL |     'while_loop: while true {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ help: use `loop`
+   |
+   = note: `#[warn(while_true)]` on by default
+
+error: aborting due to 4 previous errors; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0425`.

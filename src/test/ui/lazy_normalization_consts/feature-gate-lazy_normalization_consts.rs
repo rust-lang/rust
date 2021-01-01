@@ -4,7 +4,7 @@ pub const fn sof<T>() -> usize {
 
 fn test<T>() {
     let _: [u8; sof::<T>()];
-    //~^ ERROR the size for values of type `T`
+    //~^ ERROR generic parameters may not be used in const operations
 }
 
 fn main() {}

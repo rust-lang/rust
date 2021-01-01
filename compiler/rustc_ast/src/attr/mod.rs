@@ -234,10 +234,7 @@ impl MetaItem {
     }
 
     pub fn is_word(&self) -> bool {
-        match self.kind {
-            MetaItemKind::Word => true,
-            _ => false,
-        }
+        matches!(self.kind, MetaItemKind::Word)
     }
 
     pub fn has_name(&self, name: Symbol) -> bool {

@@ -182,28 +182,32 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
                 for (dep_v, stab_v) in
                     dep_since.as_str().split('.').zip(stab_since.as_str().split('.'))
                 {
-                    if let (Ok(dep_v), Ok(stab_v)) = (dep_v.parse::<u64>(), stab_v.parse()) {
-                        match dep_v.cmp(&stab_v) {
-                            Ordering::Less => {
-                                self.tcx.sess.span_err(
-                                    item_sp,
-                                    "An API can't be stabilized \
-                                                                 after it is deprecated",
-                                );
+                    match stab_v.parse::<u64>() {
+                        Err(_) => {
+                            self.tcx.sess.span_err(item_sp, "Invalid stability version found");
+                            break;
+                        }
+                        Ok(stab_vp) => match dep_v.parse::<u64>() {
+                            Ok(dep_vp) => match dep_vp.cmp(&stab_vp) {
+                                Ordering::Less => {
+                                    self.tcx.sess.span_err(
+                                        item_sp,
+                                        "An API can't be stabilized after it is deprecated",
+                                    );
+                                    break;
+                                }
+                                Ordering::Equal => continue,
+                                Ordering::Greater => break,
+                            },
+                            Err(_) => {
+                                if dep_v != "TBD" {
+                                    self.tcx
+                                        .sess
+                                        .span_err(item_sp, "Invalid deprecation version found");
+                                }
                                 break;
                             }
-                            Ordering::Equal => continue,
-                            Ordering::Greater => break,
-                        }
-                    } else {
-                        // Act like it isn't less because the question is now nonsensical,
-                        // and this makes us not do anything else interesting.
-                        self.tcx.sess.span_err(
-                            item_sp,
-                            "Invalid stability or deprecation \
-                                                         version found",
-                        );
-                        break;
+                        },
                     }
                 }
             }

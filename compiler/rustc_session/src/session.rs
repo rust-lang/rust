@@ -1109,10 +1109,7 @@ impl Session {
     }
 
     pub fn link_dead_code(&self) -> bool {
-        match self.opts.cg.link_dead_code {
-            Some(explicitly_set) => explicitly_set,
-            None => false,
-        }
+        self.opts.cg.link_dead_code.unwrap_or(false)
     }
 
     pub fn mark_attr_known(&self, attr: &Attribute) {

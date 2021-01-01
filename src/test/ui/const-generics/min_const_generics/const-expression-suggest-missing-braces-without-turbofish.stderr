@@ -1,5 +1,5 @@
 error: comparison operators cannot be chained
-  --> $DIR/const-expression-suggest-missing-braces-without-turbofish.rs:8:8
+  --> $DIR/const-expression-suggest-missing-braces-without-turbofish.rs:6:8
    |
 LL |     foo<BAR + 3>();
    |        ^       ^
@@ -10,7 +10,7 @@ LL |     foo::<BAR + 3>();
    |        ^^
 
 error: comparison operators cannot be chained
-  --> $DIR/const-expression-suggest-missing-braces-without-turbofish.rs:11:8
+  --> $DIR/const-expression-suggest-missing-braces-without-turbofish.rs:9:8
    |
 LL |     foo<BAR + BAR>();
    |        ^         ^
@@ -21,7 +21,7 @@ LL |     foo::<BAR + BAR>();
    |        ^^
 
 error: comparison operators cannot be chained
-  --> $DIR/const-expression-suggest-missing-braces-without-turbofish.rs:14:8
+  --> $DIR/const-expression-suggest-missing-braces-without-turbofish.rs:12:8
    |
 LL |     foo<3 + 3>();
    |        ^     ^
@@ -32,7 +32,7 @@ LL |     foo::<3 + 3>();
    |        ^^
 
 error: comparison operators cannot be chained
-  --> $DIR/const-expression-suggest-missing-braces-without-turbofish.rs:17:8
+  --> $DIR/const-expression-suggest-missing-braces-without-turbofish.rs:15:8
    |
 LL |     foo<BAR - 3>();
    |        ^       ^
@@ -43,7 +43,7 @@ LL |     foo::<BAR - 3>();
    |        ^^
 
 error: comparison operators cannot be chained
-  --> $DIR/const-expression-suggest-missing-braces-without-turbofish.rs:20:8
+  --> $DIR/const-expression-suggest-missing-braces-without-turbofish.rs:18:8
    |
 LL |     foo<BAR - BAR>();
    |        ^         ^
@@ -54,7 +54,7 @@ LL |     foo::<BAR - BAR>();
    |        ^^
 
 error: comparison operators cannot be chained
-  --> $DIR/const-expression-suggest-missing-braces-without-turbofish.rs:23:8
+  --> $DIR/const-expression-suggest-missing-braces-without-turbofish.rs:21:8
    |
 LL |     foo<100 - BAR>();
    |        ^         ^
@@ -65,7 +65,7 @@ LL |     foo::<100 - BAR>();
    |        ^^
 
 error: comparison operators cannot be chained
-  --> $DIR/const-expression-suggest-missing-braces-without-turbofish.rs:26:8
+  --> $DIR/const-expression-suggest-missing-braces-without-turbofish.rs:24:8
    |
 LL |     foo<bar<i32>()>();
    |        ^   ^
@@ -76,13 +76,13 @@ LL |     foo::<bar<i32>()>();
    |        ^^
 
 error: expected one of `;` or `}`, found `>`
-  --> $DIR/const-expression-suggest-missing-braces-without-turbofish.rs:26:19
+  --> $DIR/const-expression-suggest-missing-braces-without-turbofish.rs:24:19
    |
 LL |     foo<bar<i32>()>();
    |                   ^ expected one of `;` or `}`
 
 error: comparison operators cannot be chained
-  --> $DIR/const-expression-suggest-missing-braces-without-turbofish.rs:30:8
+  --> $DIR/const-expression-suggest-missing-braces-without-turbofish.rs:28:8
    |
 LL |     foo<bar::<i32>()>();
    |        ^            ^
@@ -93,7 +93,7 @@ LL |     foo::<bar::<i32>()>();
    |        ^^
 
 error: comparison operators cannot be chained
-  --> $DIR/const-expression-suggest-missing-braces-without-turbofish.rs:33:8
+  --> $DIR/const-expression-suggest-missing-braces-without-turbofish.rs:31:8
    |
 LL |     foo<bar::<i32>() + BAR>();
    |        ^                  ^
@@ -104,7 +104,7 @@ LL |     foo::<bar::<i32>() + BAR>();
    |        ^^
 
 error: comparison operators cannot be chained
-  --> $DIR/const-expression-suggest-missing-braces-without-turbofish.rs:36:8
+  --> $DIR/const-expression-suggest-missing-braces-without-turbofish.rs:34:8
    |
 LL |     foo<bar::<i32>() - BAR>();
    |        ^                  ^
@@ -115,7 +115,7 @@ LL |     foo::<bar::<i32>() - BAR>();
    |        ^^
 
 error: comparison operators cannot be chained
-  --> $DIR/const-expression-suggest-missing-braces-without-turbofish.rs:39:8
+  --> $DIR/const-expression-suggest-missing-braces-without-turbofish.rs:37:8
    |
 LL |     foo<BAR - bar::<i32>()>();
    |        ^                  ^
@@ -126,7 +126,7 @@ LL |     foo::<BAR - bar::<i32>()>();
    |        ^^
 
 error: comparison operators cannot be chained
-  --> $DIR/const-expression-suggest-missing-braces-without-turbofish.rs:42:8
+  --> $DIR/const-expression-suggest-missing-braces-without-turbofish.rs:40:8
    |
 LL |     foo<BAR - bar::<i32>()>();
    |        ^                  ^

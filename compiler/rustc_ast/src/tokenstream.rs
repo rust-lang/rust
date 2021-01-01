@@ -44,6 +44,12 @@ pub enum TokenTree {
     Delimited(DelimSpan, DelimToken, TokenStream),
 }
 
+#[derive(Copy, Clone)]
+pub enum CanSynthesizeMissingTokens {
+    Yes,
+    No,
+}
+
 // Ensure all fields of `TokenTree` is `Send` and `Sync`.
 #[cfg(parallel_compiler)]
 fn _dummy()

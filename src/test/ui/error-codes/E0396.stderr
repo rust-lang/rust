@@ -7,6 +7,24 @@ LL | const VALUE: u8 = unsafe { *REG_ADDR };
    = note: see issue #51911 <https://github.com/rust-lang/rust/issues/51911> for more information
    = help: add `#![feature(const_raw_ptr_deref)]` to the crate attributes to enable
 
-error: aborting due to previous error
+error[E0658]: dereferencing raw pointers in constant functions is unstable
+  --> $DIR/E0396.rs:12:11
+   |
+LL |     match *INFALLIBLE {}
+   |           ^^^^^^^^^^^
+   |
+   = note: see issue #51911 <https://github.com/rust-lang/rust/issues/51911> for more information
+   = help: add `#![feature(const_raw_ptr_deref)]` to the crate attributes to enable
+
+error[E0658]: dereferencing raw pointers in constants is unstable
+  --> $DIR/E0396.rs:15:36
+   |
+LL |     const BAD: () = unsafe { match *INFALLIBLE {} };
+   |                                    ^^^^^^^^^^^
+   |
+   = note: see issue #51911 <https://github.com/rust-lang/rust/issues/51911> for more information
+   = help: add `#![feature(const_raw_ptr_deref)]` to the crate attributes to enable
+
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0658`.

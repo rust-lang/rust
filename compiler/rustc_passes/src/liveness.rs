@@ -360,14 +360,14 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
 
     fn visit_arm(&mut self, arm: &'tcx hir::Arm<'tcx>) {
         self.add_from_pat(&arm.pat);
+        if let Some(hir::Guard::IfLet(ref pat, _)) = arm.guard {
+            self.add_from_pat(pat);
+        }
         intravisit::walk_arm(self, arm);
     }
 
     fn visit_param(&mut self, param: &'tcx hir::Param<'tcx>) {
-        let is_shorthand = match param.pat.kind {
-            rustc_hir::PatKind::Struct(..) => true,
-            _ => false,
-        };
+        let is_shorthand = matches!(param.pat.kind, rustc_hir::PatKind::Struct(..));
         param.pat.each_binding(|_bm, hir_id, _x, ident| {
             let var = if is_shorthand {
                 Local(LocalInfo { id: hir_id, name: ident.name, is_shorthand: true })
@@ -866,10 +866,13 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 for arm in arms {
                     let body_succ = self.propagate_through_expr(&arm.body, succ);
 
-                    let guard_succ = self.propagate_through_opt_expr(
-                        arm.guard.as_ref().map(|hir::Guard::If(e)| *e),
-                        body_succ,
-                    );
+                    let guard_succ = arm.guard.as_ref().map_or(body_succ, |g| match g {
+                        hir::Guard::If(e) => self.propagate_through_expr(e, body_succ),
+                        hir::Guard::IfLet(pat, e) => {
+                            let let_bind = self.define_bindings_in_pat(pat, body_succ);
+                            self.propagate_through_expr(e, let_bind)
+                        }
+                    });
                     let arm_succ = self.define_bindings_in_pat(&arm.pat, guard_succ);
                     self.merge_from_succ(ln, arm_succ);
                 }
@@ -1379,7 +1382,7 @@ impl<'tcx> Liveness<'_, 'tcx> {
 
     fn should_warn(&self, var: Variable) -> Option<String> {
         let name = self.ir.variable_name(var);
-        if name == kw::Invalid {
+        if name == kw::Empty {
             return None;
         }
         let name: &str = &name.as_str();

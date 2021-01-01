@@ -679,7 +679,7 @@ impl<T: Ord> BTreeSet<T> {
     /// ```
     #[unstable(feature = "map_first_last", issue = "62924")]
     pub fn pop_first(&mut self) -> Option<T> {
-        self.map.first_entry().map(|entry| entry.remove_entry().0)
+        self.map.pop_first().map(|kv| kv.0)
     }
 
     /// Removes the last value from the set and returns it, if any.
@@ -701,7 +701,7 @@ impl<T: Ord> BTreeSet<T> {
     /// ```
     #[unstable(feature = "map_first_last", issue = "62924")]
     pub fn pop_last(&mut self) -> Option<T> {
-        self.map.last_entry().map(|entry| entry.remove_entry().0)
+        self.map.pop_last().map(|kv| kv.0)
     }
 
     /// Adds a value to the set.
@@ -975,6 +975,7 @@ impl<T> BTreeSet<T> {
     /// v.insert(1);
     /// assert_eq!(v.len(), 1);
     /// ```
+    #[doc(alias = "length")]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_btree_new", issue = "71835")]
     pub const fn len(&self) -> usize {

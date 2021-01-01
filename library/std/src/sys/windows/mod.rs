@@ -35,6 +35,7 @@ pub mod rwlock;
 pub mod thread;
 pub mod thread_local_dtor;
 pub mod thread_local_key;
+pub mod thread_parker;
 pub mod time;
 cfg_if::cfg_if! {
     if #[cfg(not(target_vendor = "uwp"))] {

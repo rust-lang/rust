@@ -478,8 +478,10 @@ mod prim_unit {}
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_pointer {}
 
+#[doc(alias = "[]")]
+#[doc(alias = "[T;N]")] // unfortunately, rustdoc doesn't have fuzzy search for aliases
+#[doc(alias = "[T; N]")]
 #[doc(primitive = "array")]
-//
 /// A fixed-size array, denoted `[T; N]`, for the element type, `T`, and the
 /// non-negative compile-time constant size, `N`.
 ///
@@ -488,6 +490,10 @@ mod prim_pointer {}
 /// * A list with each element, i.e., `[x, y, z]`.
 /// * A repeat expression `[x; N]`, which produces an array with `N` copies of `x`.
 ///   The type of `x` must be [`Copy`].
+///
+/// Note that `[expr; 0]` is allowed, and produces an empty array.
+/// This will still evaluate `expr`, however, and immediately drop the resulting value, so
+/// be mindful of side effects.
 ///
 /// Arrays of *any* size implement the following traits if the element type allows it:
 ///
@@ -920,6 +926,7 @@ mod prim_usize {}
 
 #[doc(primitive = "reference")]
 #[doc(alias = "&")]
+#[doc(alias = "&mut")]
 //
 /// References, both shared and mutable.
 ///

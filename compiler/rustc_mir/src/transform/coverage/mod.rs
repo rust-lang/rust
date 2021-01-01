@@ -30,6 +30,7 @@ use rustc_middle::mir::{
 };
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::DefId;
+use rustc_span::source_map::SourceMap;
 use rustc_span::{CharPos, Pos, SourceFile, Span, Symbol};
 
 /// A simple error message wrapper for `coverage::Error`s.
@@ -76,6 +77,14 @@ impl<'tcx> MirPass<'tcx> for InstrumentCoverage {
         if !is_fn_like {
             trace!("InstrumentCoverage skipped for {:?} (not an FnLikeNode)", mir_source.def_id());
             return;
+        }
+
+        match mir_body.basic_blocks()[mir::START_BLOCK].terminator().kind {
+            TerminatorKind::Unreachable => {
+                trace!("InstrumentCoverage skipped for unreachable `START_BLOCK`");
+                return;
+            }
+            _ => {}
         }
 
         trace!("InstrumentCoverage starting for {:?}", mir_source.def_id());
@@ -302,8 +311,8 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
             inject_statement(
                 self.mir_body,
                 counter_kind,
-                self.bcb_last_bb(bcb),
-                Some(make_code_region(file_name, &self.source_file, span, body_span)),
+                self.bcb_leader_bb(bcb),
+                Some(make_code_region(source_map, file_name, &self.source_file, span, body_span)),
             );
         }
     }
@@ -462,7 +471,7 @@ fn inject_statement(
             code_region: some_code_region,
         }),
     };
-    data.statements.push(statement);
+    data.statements.insert(0, statement);
 }
 
 // Non-code expressions are injected into the coverage map, without generating executable code.
@@ -481,6 +490,7 @@ fn inject_intermediate_expression(mir_body: &mut mir::Body<'tcx>, expression: Co
 
 /// Convert the Span into its file name, start line and column, and end line and column
 fn make_code_region(
+    source_map: &SourceMap,
     file_name: Symbol,
     source_file: &Lrc<SourceFile>,
     span: Span,
@@ -500,6 +510,8 @@ fn make_code_region(
     } else {
         source_file.lookup_file_pos(span.hi())
     };
+    let start_line = source_map.doctest_offset_line(&source_file.name, start_line);
+    let end_line = source_map.doctest_offset_line(&source_file.name, end_line);
     CodeRegion {
         file_name,
         start_line: start_line as u32,

@@ -1,4 +1,4 @@
-use super::ty::{AllowPlus, RecoverQPath};
+use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
 use super::{Parser, TokenType};
 use crate::maybe_whole;
 use rustc_ast::ptr::P;
@@ -231,7 +231,8 @@ impl<'a> Parser<'a> {
                     // `(T, U) -> R`
                     let (inputs, _) = self.parse_paren_comma_seq(|p| p.parse_ty())?;
                     let span = ident.span.to(self.prev_token.span);
-                    let output = self.parse_ret_ty(AllowPlus::No, RecoverQPath::No)?;
+                    let output =
+                        self.parse_ret_ty(AllowPlus::No, RecoverQPath::No, RecoverReturnSign::No)?;
                     ParenthesizedArgs { inputs, output, span }.into()
                 };
 
@@ -500,10 +501,9 @@ impl<'a> Parser<'a> {
     pub(super) fn expr_is_valid_const_arg(&self, expr: &P<rustc_ast::Expr>) -> bool {
         match &expr.kind {
             ast::ExprKind::Block(_, _) | ast::ExprKind::Lit(_) => true,
-            ast::ExprKind::Unary(ast::UnOp::Neg, expr) => match &expr.kind {
-                ast::ExprKind::Lit(_) => true,
-                _ => false,
-            },
+            ast::ExprKind::Unary(ast::UnOp::Neg, expr) => {
+                matches!(expr.kind, ast::ExprKind::Lit(_))
+            }
             // We can only resolve single-segment paths at the moment, because multi-segment paths
             // require type-checking: see `visit_generic_arg` in `src/librustc_resolve/late.rs`.
             ast::ExprKind::Path(None, path)

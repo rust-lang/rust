@@ -1,5 +1,4 @@
 // check-pass
-#![feature(min_const_generics)]
 #![allow(dead_code)]
 
 fn foo<T>() {

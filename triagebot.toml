@@ -90,7 +90,7 @@ exclude_labels = [
 
 [notify-zulip."I-prioritize"]
 zulip_stream = 245100 # #t-compiler/wg-prioritization/alerts
-topic = "I-prioritize #{number} {title}"
+topic = "#{number} {title}"
 message_on_add = """\
 @*WG-prioritization/alerts* issue #{number} has been requested for prioritization.
 

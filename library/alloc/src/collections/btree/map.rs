@@ -248,7 +248,7 @@ where
         let (map, dormant_map) = DormantMutRef::new(self);
         let root_node = Self::ensure_is_owned(&mut map.root).borrow_mut();
         match search::search_tree::<marker::Mut<'_>, K, (), K>(root_node, &key) {
-            Found(handle) => Some(mem::replace(handle.into_key_mut(), key)),
+            Found(mut kv) => Some(mem::replace(kv.key_mut(), key)),
             GoDown(handle) => {
                 VacantEntry { key, handle, dormant_map, _marker: PhantomData }.insert(());
                 None
@@ -2132,6 +2132,7 @@ impl<K, V> BTreeMap<K, V> {
     /// a.insert(1, "a");
     /// assert_eq!(a.len(), 1);
     /// ```
+    #[doc(alias = "length")]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_btree_new", issue = "71835")]
     pub const fn len(&self) -> usize {

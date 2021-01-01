@@ -35,9 +35,12 @@ fn main() {
 
     // Checks that only make sense for the std libs.
     pal::check(&library_path, &mut bad);
-    unit_tests::check(&library_path, &mut bad);
 
     // Checks that need to be done for both the compiler and std libraries.
+    unit_tests::check(&src_path, &mut bad);
+    unit_tests::check(&compiler_path, &mut bad);
+    unit_tests::check(&library_path, &mut bad);
+
     bins::check(&src_path, &output_directory, &mut bad);
     bins::check(&compiler_path, &output_directory, &mut bad);
     bins::check(&library_path, &output_directory, &mut bad);

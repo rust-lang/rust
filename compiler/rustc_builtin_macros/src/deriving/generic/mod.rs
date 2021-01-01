@@ -257,7 +257,10 @@ pub struct Substructure<'a> {
     pub type_ident: Ident,
     /// ident of the method
     pub method_ident: Ident,
-    /// dereferenced access to any `Self_` or `Ptr(Self_, _)` arguments
+    /// dereferenced access to any [`Self_`] or [`Ptr(Self_, _)][ptr]` arguments
+    ///
+    /// [`Self_`]: ty::Ty::Self_
+    /// [ptr]: ty::Ty::Ptr
     pub self_args: &'a [P<Expr>],
     /// verbatim access to any other arguments
     pub nonself_args: &'a [P<Expr>],
@@ -401,12 +404,10 @@ impl<'a> TraitDef<'a> {
                 let has_no_type_params = match item.kind {
                     ast::ItemKind::Struct(_, ref generics)
                     | ast::ItemKind::Enum(_, ref generics)
-                    | ast::ItemKind::Union(_, ref generics) => {
-                        !generics.params.iter().any(|param| match param.kind {
-                            ast::GenericParamKind::Type { .. } => true,
-                            _ => false,
-                        })
-                    }
+                    | ast::ItemKind::Union(_, ref generics) => !generics
+                        .params
+                        .iter()
+                        .any(|param| matches!(param.kind, ast::GenericParamKind::Type { .. })),
                     _ => unreachable!(),
                 };
                 let container_id = cx.current_expansion.id.expn_data().parent;
@@ -597,10 +598,7 @@ impl<'a> TraitDef<'a> {
 
             let mut ty_params = params
                 .iter()
-                .filter_map(|param| match param.kind {
-                    ast::GenericParamKind::Type { .. } => Some(param),
-                    _ => None,
-                })
+                .filter(|param| matches!(param.kind,  ast::GenericParamKind::Type{..}))
                 .peekable();
 
             if ty_params.peek().is_some() {
@@ -868,7 +866,7 @@ impl<'a> MethodDef<'a> {
                 Self_ if nonstatic => {
                     self_args.push(arg_expr);
                 }
-                Ptr(ref ty, _) if (if let Self_ = **ty { true } else { false }) && nonstatic => {
+                Ptr(ref ty, _) if matches!(**ty, Self_) && nonstatic => {
                     self_args.push(cx.expr_deref(trait_.span, arg_expr))
                 }
                 _ => {

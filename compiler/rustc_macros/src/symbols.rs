@@ -1,8 +1,35 @@
-use proc_macro::TokenStream;
+//! Proc macro which builds the Symbol table
+//!
+//! # Debugging
+//!
+//! Since this proc-macro does some non-trivial work, debugging it is important.
+//! This proc-macro can be invoked as an ordinary unit test, like so:
+//!
+//! ```bash
+//! cd compiler/rustc_macros
+//! cargo test symbols::test_symbols -- --nocapture
+//! ```
+//!
+//! This unit test finds the `symbols!` invocation in `compiler/rustc_span/src/symbol.rs`
+//! and runs it. It verifies that the output token stream can be parsed as valid module
+//! items and that no errors were produced.
+//!
+//! You can also view the generated code by using `cargo expand`:
+//!
+//! ```bash
+//! cargo install cargo-expand          # this is necessary only once
+//! cd compiler/rustc_span
+//! cargo expand > /tmp/rustc_span.rs   # it's a big file
+//! ```
+
+use proc_macro2::{Span, TokenStream};
 use quote::quote;
-use std::collections::HashSet;
+use std::collections::HashMap;
 use syn::parse::{Parse, ParseStream, Result};
-use syn::{braced, parse_macro_input, Ident, LitStr, Token};
+use syn::{braced, punctuated::Punctuated, Ident, LitStr, Token};
+
+#[cfg(test)]
+mod tests;
 
 mod kw {
     syn::custom_keyword!(Keywords);
@@ -19,7 +46,6 @@ impl Parse for Keyword {
         let name = input.parse()?;
         input.parse::<Token![:]>()?;
         let value = input.parse()?;
-        input.parse::<Token![,]>()?;
 
         Ok(Keyword { name, value })
     }
@@ -37,28 +63,14 @@ impl Parse for Symbol {
             Ok(_) => Some(input.parse()?),
             Err(_) => None,
         };
-        input.parse::<Token![,]>()?;
 
         Ok(Symbol { name, value })
     }
 }
 
-/// A type used to greedily parse another type until the input is empty.
-struct List<T>(Vec<T>);
-
-impl<T: Parse> Parse for List<T> {
-    fn parse(input: ParseStream<'_>) -> Result<Self> {
-        let mut list = Vec::new();
-        while !input.is_empty() {
-            list.push(input.parse()?);
-        }
-        Ok(List(list))
-    }
-}
-
 struct Input {
-    keywords: List<Keyword>,
-    symbols: List<Symbol>,
+    keywords: Punctuated<Keyword, Token![,]>,
+    symbols: Punctuated<Symbol, Token![,]>,
 }
 
 impl Parse for Input {
@@ -66,115 +78,141 @@ impl Parse for Input {
         input.parse::<kw::Keywords>()?;
         let content;
         braced!(content in input);
-        let keywords = content.parse()?;
+        let keywords = Punctuated::parse_terminated(&content)?;
 
         input.parse::<kw::Symbols>()?;
         let content;
         braced!(content in input);
-        let symbols = content.parse()?;
+        let symbols = Punctuated::parse_terminated(&content)?;
 
         Ok(Input { keywords, symbols })
     }
 }
 
+#[derive(Default)]
+struct Errors {
+    list: Vec<syn::Error>,
+}
+
+impl Errors {
+    fn error(&mut self, span: Span, message: String) {
+        self.list.push(syn::Error::new(span, message));
+    }
+}
+
 pub fn symbols(input: TokenStream) -> TokenStream {
-    let input = parse_macro_input!(input as Input);
+    let (mut output, errors) = symbols_with_errors(input);
+
+    // If we generated any errors, then report them as compiler_error!() macro calls.
+    // This lets the errors point back to the most relevant span. It also allows us
+    // to report as many errors as we can during a single run.
+    output.extend(errors.into_iter().map(|e| e.to_compile_error()));
+
+    output
+}
+
+fn symbols_with_errors(input: TokenStream) -> (TokenStream, Vec<syn::Error>) {
+    let mut errors = Errors::default();
+
+    let input: Input = match syn::parse2(input) {
+        Ok(input) => input,
+        Err(e) => {
+            // This allows us to display errors at the proper span, while minimizing
+            // unrelated errors caused by bailing out (and not generating code).
+            errors.list.push(e);
+            Input { keywords: Default::default(), symbols: Default::default() }
+        }
+    };
 
     let mut keyword_stream = quote! {};
     let mut symbols_stream = quote! {};
-    let mut digits_stream = quote! {};
     let mut prefill_stream = quote! {};
     let mut counter = 0u32;
-    let mut keys = HashSet::<String>::new();
-    let mut prev_key: Option<String> = None;
-    let mut errors = Vec::<String>::new();
+    let mut keys =
+        HashMap::<String, Span>::with_capacity(input.keywords.len() + input.symbols.len() + 10);
+    let mut prev_key: Option<(Span, String)> = None;
 
-    let mut check_dup = |str: &str, errors: &mut Vec<String>| {
-        if !keys.insert(str.to_string()) {
-            errors.push(format!("Symbol `{}` is duplicated", str));
+    let mut check_dup = |span: Span, str: &str, errors: &mut Errors| {
+        if let Some(prev_span) = keys.get(str) {
+            errors.error(span, format!("Symbol `{}` is duplicated", str));
+            errors.error(*prev_span, format!("location of previous definition"));
+        } else {
+            keys.insert(str.to_string(), span);
         }
     };
 
-    let mut check_order = |str: &str, errors: &mut Vec<String>| {
-        if let Some(ref prev_str) = prev_key {
+    let mut check_order = |span: Span, str: &str, errors: &mut Errors| {
+        if let Some((prev_span, ref prev_str)) = prev_key {
             if str < prev_str {
-                errors.push(format!("Symbol `{}` must precede `{}`", str, prev_str));
+                errors.error(span, format!("Symbol `{}` must precede `{}`", str, prev_str));
+                errors.error(prev_span, format!("location of previous symbol `{}`", prev_str));
             }
         }
-        prev_key = Some(str.to_string());
+        prev_key = Some((span, str.to_string()));
     };
 
     // Generate the listed keywords.
-    for keyword in &input.keywords.0 {
+    for keyword in input.keywords.iter() {
         let name = &keyword.name;
         let value = &keyword.value;
-        check_dup(&value.value(), &mut errors);
+        let value_string = value.value();
+        check_dup(keyword.name.span(), &value_string, &mut errors);
         prefill_stream.extend(quote! {
             #value,
         });
         keyword_stream.extend(quote! {
-            #[allow(non_upper_case_globals)]
             pub const #name: Symbol = Symbol::new(#counter);
         });
         counter += 1;
     }
 
     // Generate the listed symbols.
-    for symbol in &input.symbols.0 {
+    for symbol in input.symbols.iter() {
         let name = &symbol.name;
         let value = match &symbol.value {
             Some(value) => value.value(),
             None => name.to_string(),
         };
-        check_dup(&value, &mut errors);
-        check_order(&name.to_string(), &mut errors);
+        check_dup(symbol.name.span(), &value, &mut errors);
+        check_order(symbol.name.span(), &name.to_string(), &mut errors);
+
         prefill_stream.extend(quote! {
             #value,
         });
         symbols_stream.extend(quote! {
-            #[allow(rustc::default_hash_types)]
-            #[allow(non_upper_case_globals)]
             pub const #name: Symbol = Symbol::new(#counter);
         });
         counter += 1;
     }
 
     // Generate symbols for the strings "0", "1", ..., "9".
+    let digits_base = counter;
+    counter += 10;
     for n in 0..10 {
         let n = n.to_string();
-        check_dup(&n, &mut errors);
+        check_dup(Span::call_site(), &n, &mut errors);
         prefill_stream.extend(quote! {
             #n,
         });
-        digits_stream.extend(quote! {
-            Symbol::new(#counter),
-        });
-        counter += 1;
     }
+    let _ = counter; // for future use
 
-    if !errors.is_empty() {
-        for error in errors.into_iter() {
-            eprintln!("error: {}", error)
-        }
-        panic!("errors in `Keywords` and/or `Symbols`");
-    }
+    let output = quote! {
+        const SYMBOL_DIGITS_BASE: u32 = #digits_base;
 
-    let tt = TokenStream::from(quote! {
-        macro_rules! keywords {
-            () => {
-                #keyword_stream
-            }
+        #[doc(hidden)]
+        #[allow(non_upper_case_globals)]
+        mod kw_generated {
+            use super::Symbol;
+            #keyword_stream
         }
 
-        macro_rules! define_symbols {
-            () => {
-                #symbols_stream
-
-                #[allow(non_upper_case_globals)]
-                pub const digits_array: &[Symbol; 10] = &[
-                    #digits_stream
-                ];
-            }
+        #[allow(rustc::default_hash_types)]
+        #[allow(non_upper_case_globals)]
+        #[doc(hidden)]
+        pub mod sym_generated {
+            use super::Symbol;
+            #symbols_stream
         }
 
         impl Interner {
@@ -184,11 +222,16 @@ pub fn symbols(input: TokenStream) -> TokenStream {
                 ])
             }
         }
-    });
+    };
 
-    // To see the generated code generated, uncomment this line, recompile, and
-    // run the resulting output through `rustfmt`.
-    //eprintln!("{}", tt);
+    (output, errors.list)
 
-    tt
+    // To see the generated code, use the "cargo expand" command.
+    // Do this once to install:
+    //      cargo install cargo-expand
+    //
+    // Then, cd to rustc_span and run:
+    //      cargo expand > /tmp/rustc_span_expanded.rs
+    //
+    // and read that file.
 }

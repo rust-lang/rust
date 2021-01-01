@@ -179,9 +179,10 @@ macro_rules! options {
     {
         let mut op = $defaultfn();
         for option in matches.opt_strs($prefix) {
-            let mut iter = option.splitn(2, '=');
-            let key = iter.next().unwrap();
-            let value = iter.next();
+            let (key, value) = match option.split_once('=') {
+                None => (option, None),
+                Some((k, v)) => (k.to_string(), Some(v)),
+            };
             let option_to_lookup = key.replace("-", "_");
             let mut found = false;
             for &(candidate, setter, type_desc, _) in $stat {
@@ -268,6 +269,7 @@ macro_rules! options {
         pub const parse_switch_with_opt_path: &str =
             "an optional path to the profiling data output directory";
         pub const parse_merge_functions: &str = "one of: `disabled`, `trampolines`, or `aliases`";
+        pub const parse_split_dwarf_kind: &str = "one of: `none`, `single` or `split`";
         pub const parse_symbol_mangling_version: &str = "either `legacy` or `v0` (RFC 2603)";
         pub const parse_src_file_hash: &str = "either `md5` or `sha1`";
         pub const parse_relocation_model: &str =
@@ -675,13 +677,26 @@ macro_rules! options {
             true
         }
 
-        fn parse_symbol_mangling_version(
-            slot: &mut SymbolManglingVersion,
+        fn parse_split_dwarf_kind(
+            slot: &mut SplitDwarfKind,
             v: Option<&str>,
         ) -> bool {
             *slot = match v {
-                Some("legacy") => SymbolManglingVersion::Legacy,
-                Some("v0") => SymbolManglingVersion::V0,
+                Some("none") => SplitDwarfKind::None,
+                Some("split") => SplitDwarfKind::Split,
+                Some("single") => SplitDwarfKind::Single,
+                _ => return false,
+            };
+            true
+        }
+
+        fn parse_symbol_mangling_version(
+            slot: &mut Option<SymbolManglingVersion>,
+            v: Option<&str>,
+        ) -> bool {
+            *slot = match v {
+                Some("legacy") => Some(SymbolManglingVersion::Legacy),
+                Some("v0") => Some(SymbolManglingVersion::V0),
                 _ => return false,
             };
             true
@@ -1087,9 +1102,14 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "hash algorithm of source files in debug info (`md5`, `sha1`, or `sha256`)"),
     strip: Strip = (Strip::None, parse_strip, [UNTRACKED],
         "tell the linker which information to strip (`none` (default), `debuginfo` or `symbols`)"),
-    symbol_mangling_version: SymbolManglingVersion = (SymbolManglingVersion::Legacy,
+    split_dwarf: SplitDwarfKind = (SplitDwarfKind::None, parse_split_dwarf_kind, [UNTRACKED],
+        "enable generation of split dwarf"),
+    split_dwarf_inlining: bool = (true, parse_bool, [UNTRACKED],
+        "provide minimal debug info in the object/executable to facilitate online \
+         symbolication/stack traces in the absence of .dwo/.dwp files when using Split DWARF"),
+    symbol_mangling_version: Option<SymbolManglingVersion> = (None,
         parse_symbol_mangling_version, [TRACKED],
-        "which mangling version to use for symbol names"),
+        "which mangling version to use for symbol names ('legacy' (default) or 'v0')"),
     teach: bool = (false, parse_bool, [TRACKED],
         "show extended diagnostic help (default: no)"),
     terminal_width: Option<usize> = (None, parse_opt_uint, [UNTRACKED],

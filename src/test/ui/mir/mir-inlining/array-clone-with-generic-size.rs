@@ -3,8 +3,6 @@
 //
 // build-pass
 // compile-flags: -Zmir-opt-level=2 -Zvalidate-mir
-#![feature(min_const_generics)]
-
 #[derive(Clone)]
 struct Array<T, const N: usize>([T; N]);
 

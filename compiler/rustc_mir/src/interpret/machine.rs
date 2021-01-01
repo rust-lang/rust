@@ -9,6 +9,7 @@ use std::hash::Hash;
 use rustc_middle::mir;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::def_id::DefId;
+use rustc_target::abi::Size;
 
 use super::{
     AllocId, Allocation, AllocationExtra, CheckInAllocMsg, Frame, ImmTy, InterpCx, InterpResult,
@@ -176,7 +177,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
     ) -> InterpResult<'tcx>;
 
     /// Called to evaluate `Abort` MIR terminator.
-    fn abort(_ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx, !> {
+    fn abort(_ecx: &mut InterpCx<'mir, 'tcx, Self>, _msg: String) -> InterpResult<'tcx, !> {
         throw_unsup_format!("aborting execution is not supported")
     }
 
@@ -295,6 +296,15 @@ pub trait Machine<'mir, 'tcx>: Sized {
     fn before_deallocation(
         _memory_extra: &mut Self::MemoryExtra,
         _id: AllocId,
+    ) -> InterpResult<'tcx> {
+        Ok(())
+    }
+
+    /// Called after initializing static memory using the interpreter.
+    fn after_static_mem_initialized(
+        _ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        _ptr: Pointer<Self::PointerTag>,
+        _size: Size,
     ) -> InterpResult<'tcx> {
         Ok(())
     }

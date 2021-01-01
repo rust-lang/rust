@@ -1,5 +1,5 @@
 error[E0282]: type annotations needed
-  --> $DIR/method-chain.rs:21:33
+  --> $DIR/method-chain.rs:20:33
    |
 LL |     Foo.bar().bar().bar().bar().baz();
    |                                 ^^^ cannot infer the value of const parameter `N` declared on the associated function `baz`

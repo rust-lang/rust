@@ -9,9 +9,10 @@ use rustc_hir::{HirId, Node};
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::IndexVec;
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
+use rustc_middle::hir::place::PlaceBase as HirPlaceBase;
 use rustc_middle::mir::{
     traversal, Body, ClearCrossCrate, Local, Location, Mutability, Operand, Place, PlaceElem,
-    PlaceRef,
+    PlaceRef, VarDebugInfoContents,
 };
 use rustc_middle::mir::{AggregateKind, BasicBlock, BorrowCheckResult, BorrowKind};
 use rustc_middle::mir::{Field, ProjectionElem, Promoted, Rvalue, Statement, StatementKind};
@@ -75,6 +76,7 @@ crate use region_infer::RegionInferenceContext;
 crate struct Upvar {
     name: Symbol,
 
+    // FIXME(project-rfc-2229#8): This should use Place or something similar
     var_hir_id: HirId,
 
     /// If true, the capture is behind a reference.
@@ -133,19 +135,21 @@ fn do_mir_borrowck<'a, 'tcx>(
 
     let mut local_names = IndexVec::from_elem(None, &input_body.local_decls);
     for var_debug_info in &input_body.var_debug_info {
-        if let Some(local) = var_debug_info.place.as_local() {
-            if let Some(prev_name) = local_names[local] {
-                if var_debug_info.name != prev_name {
-                    span_bug!(
-                        var_debug_info.source_info.span,
-                        "local {:?} has many names (`{}` vs `{}`)",
-                        local,
-                        prev_name,
-                        var_debug_info.name
-                    );
+        if let VarDebugInfoContents::Place(place) = var_debug_info.value {
+            if let Some(local) = place.as_local() {
+                if let Some(prev_name) = local_names[local] {
+                    if var_debug_info.name != prev_name {
+                        span_bug!(
+                            var_debug_info.source_info.span,
+                            "local {:?} has many names (`{}` vs `{}`)",
+                            local,
+                            prev_name,
+                            var_debug_info.name
+                        );
+                    }
                 }
+                local_names[local] = Some(var_debug_info.name);
             }
-            local_names[local] = Some(var_debug_info.name);
         }
     }
 
@@ -155,13 +159,13 @@ fn do_mir_borrowck<'a, 'tcx>(
         infcx.set_tainted_by_errors();
     }
     let upvars: Vec<_> = tables
-        .closure_captures
-        .get(&def.did.to_def_id())
-        .into_iter()
-        .flat_map(|v| v.values())
-        .map(|upvar_id| {
-            let var_hir_id = upvar_id.var_path.hir_id;
-            let capture = tables.upvar_capture(*upvar_id);
+        .closure_min_captures_flattened(def.did.to_def_id())
+        .map(|captured_place| {
+            let var_hir_id = match captured_place.place.base {
+                HirPlaceBase::Upvar(upvar_id) => upvar_id.var_path.hir_id,
+                _ => bug!("Expected upvar"),
+            };
+            let capture = captured_place.info.capture_kind;
             let by_ref = match capture {
                 ty::UpvarCapture::ByValue(_) => false,
                 ty::UpvarCapture::ByRef(..) => true,

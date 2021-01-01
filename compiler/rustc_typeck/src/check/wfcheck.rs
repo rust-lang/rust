@@ -51,7 +51,7 @@ impl<'tcx> CheckWfFcxBuilder<'tcx> {
             let fcx = FnCtxt::new(&inh, param_env, id);
             if !inh.tcx.features().trivial_bounds {
                 // As predicates are cached rather than obligations, this
-                // needsto be called first so that they are checked with an
+                // needs to be called first so that they are checked with an
                 // empty `param_env`.
                 check_false_global_bounds(&fcx, span, id);
             }
@@ -293,7 +293,13 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) {
 
             let err_ty_str;
             let mut is_ptr = true;
-            let err = if tcx.features().min_const_generics {
+            let err = if tcx.features().const_generics {
+                match ty.peel_refs().kind() {
+                    ty::FnPtr(_) => Some("function pointers"),
+                    ty::RawPtr(_) => Some("raw pointers"),
+                    _ => None,
+                }
+            } else {
                 match ty.kind() {
                     ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Error(_) => None,
                     ty::FnPtr(_) => Some("function pointers"),
@@ -303,12 +309,6 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) {
                         err_ty_str = format!("`{}`", ty);
                         Some(err_ty_str.as_str())
                     }
-                }
-            } else {
-                match ty.peel_refs().kind() {
-                    ty::FnPtr(_) => Some("function pointers"),
-                    ty::RawPtr(_) => Some("raw pointers"),
-                    _ => None,
                 }
             };
             if let Some(unsupported_type) = err {

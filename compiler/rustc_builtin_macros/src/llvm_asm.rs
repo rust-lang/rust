@@ -87,13 +87,15 @@ fn parse_inline_asm<'a>(
     // parsed as `llvm_asm!(z)` with `z = "x": y` which is type ascription.
     let first_colon = tts
         .trees()
-        .position(|tt| match tt {
-            tokenstream::TokenTree::Token(Token { kind: token::Colon | token::ModSep, .. }) => true,
-            _ => false,
+        .position(|tt| {
+            matches!(
+                tt,
+                tokenstream::TokenTree::Token(Token { kind: token::Colon | token::ModSep, .. })
+            )
         })
         .unwrap_or(tts.len());
     let mut p = cx.new_parser_from_tts(tts.trees().skip(first_colon).collect());
-    let mut asm = kw::Invalid;
+    let mut asm = kw::Empty;
     let mut asm_str_style = None;
     let mut outputs = Vec::new();
     let mut inputs = Vec::new();

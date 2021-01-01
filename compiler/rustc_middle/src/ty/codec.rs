@@ -69,7 +69,6 @@ impl OpaqueEncoder for rustc_serialize::opaque::Encoder {
 pub trait TyEncoder<'tcx>: Encoder {
     const CLEAR_CROSS_CRATE: bool;
 
-    fn tcx(&self) -> TyCtxt<'tcx>;
     fn position(&self) -> usize;
     fn type_shorthands(&mut self) -> &mut FxHashMap<Ty<'tcx>, usize>;
     fn predicate_shorthands(&mut self) -> &mut FxHashMap<ty::Predicate<'tcx>, usize>;
@@ -321,10 +320,14 @@ impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for ty::List<Ty<'tcx>> {
     }
 }
 
-impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for ty::List<ty::ExistentialPredicate<'tcx>> {
+impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D>
+    for ty::List<ty::Binder<ty::ExistentialPredicate<'tcx>>>
+{
     fn decode(decoder: &mut D) -> Result<&'tcx Self, D::Error> {
         let len = decoder.read_usize()?;
-        Ok(decoder.tcx().mk_existential_predicates((0..len).map(|_| Decodable::decode(decoder)))?)
+        Ok(decoder
+            .tcx()
+            .mk_poly_existential_predicates((0..len).map(|_| Decodable::decode(decoder)))?)
     }
 }
 
@@ -373,7 +376,7 @@ impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for [mir::abstract_const::N
 impl_decodable_via_ref! {
     &'tcx ty::TypeckResults<'tcx>,
     &'tcx ty::List<Ty<'tcx>>,
-    &'tcx ty::List<ty::ExistentialPredicate<'tcx>>,
+    &'tcx ty::List<ty::Binder<ty::ExistentialPredicate<'tcx>>>,
     &'tcx Allocation,
     &'tcx mir::Body<'tcx>,
     &'tcx mir::UnsafetyCheckResult,

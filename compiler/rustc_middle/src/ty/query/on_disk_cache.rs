@@ -1,4 +1,4 @@
-use crate::dep_graph::{DepNodeIndex, SerializedDepNodeIndex};
+use crate::dep_graph::{DepNode, DepNodeIndex, SerializedDepNodeIndex};
 use crate::mir::interpret::{AllocDecodingSession, AllocDecodingState};
 use crate::mir::{self, interpret};
 use crate::ty::codec::{OpaqueEncoder, RefDecodable, TyDecoder, TyEncoder};
@@ -264,6 +264,13 @@ impl<'sess> OnDiskCache<'sess> {
                 (file_to_file_index, file_index_to_stable_id)
             };
 
+            // Register any dep nodes that we reused from the previous session,
+            // but didn't `DepNode::construct` in this session. This ensures
+            // that their `DefPathHash` to `RawDefId` mappings are registered
+            // in 'latest_foreign_def_path_hashes' if necessary, since that
+            // normally happens in `DepNode::construct`.
+            tcx.dep_graph.register_reused_dep_nodes(tcx);
+
             // Load everything into memory so we can write it out to the on-disk
             // cache. The vast majority of cacheable query results should already
             // be in memory, so this should be a cheap operation.
@@ -454,6 +461,7 @@ impl<'sess> OnDiskCache<'sess> {
     fn try_remap_cnum(&self, tcx: TyCtxt<'_>, cnum: u32) -> Option<CrateNum> {
         let cnum_map =
             self.cnum_map.get_or_init(|| Self::compute_cnum_map(tcx, &self.prev_cnums[..]));
+        debug!("try_remap_cnum({}): cnum_map={:?}", cnum, cnum_map);
 
         cnum_map[CrateNum::from_u32(cnum)]
     }
@@ -466,9 +474,33 @@ impl<'sess> OnDiskCache<'sess> {
             .insert(hash, RawDefId { krate: def_id.krate.as_u32(), index: def_id.index.as_u32() });
     }
 
-    pub fn register_reused_dep_path_hash(&self, hash: DefPathHash) {
-        if let Some(old_id) = self.foreign_def_path_hashes.get(&hash) {
-            self.latest_foreign_def_path_hashes.lock().insert(hash, *old_id);
+    /// If the given `dep_node`'s hash still exists in the current compilation,
+    /// and its current `DefId` is foreign, calls `store_foreign_def_id` with it.
+    ///
+    /// Normally, `store_foreign_def_id_hash` can be called directly by
+    /// the dependency graph when we construct a `DepNode`. However,
+    /// when we re-use a deserialized `DepNode` from the previous compilation
+    /// session, we only have the `DefPathHash` available. This method is used
+    /// to that any `DepNode` that we re-use has a `DefPathHash` -> `RawId` written
+    /// out for usage in the next compilation session.
+    pub fn register_reused_dep_node(&self, tcx: TyCtxt<'tcx>, dep_node: &DepNode) {
+        // For reused dep nodes, we only need to store the mapping if the node
+        // is one whose query key we can reconstruct from the hash. We use the
+        // mapping to aid that reconstruction in the next session. While we also
+        // use it to decode `DefId`s we encoded in the cache as `DefPathHashes`,
+        // they're already registered during `DefId` encoding.
+        if dep_node.kind.can_reconstruct_query_key() {
+            let hash = DefPathHash(dep_node.hash.into());
+
+            // We can't simply copy the `RawDefId` from `foreign_def_path_hashes` to
+            // `latest_foreign_def_path_hashes`, since the `RawDefId` might have
+            // changed in the current compilation session (e.g. we've added/removed crates,
+            // or added/removed definitions before/after the target definition).
+            if let Some(def_id) = self.def_path_hash_to_def_id(tcx, hash) {
+                if !def_id.is_local() {
+                    self.store_foreign_def_id_hash(def_id, hash);
+                }
+            }
         }
     }
 
@@ -592,6 +624,7 @@ impl<'sess> OnDiskCache<'sess> {
         match cache.entry(hash) {
             Entry::Occupied(e) => *e.get(),
             Entry::Vacant(e) => {
+                debug!("def_path_hash_to_def_id({:?})", hash);
                 // Check if the `DefPathHash` corresponds to a definition in the current
                 // crate
                 if let Some(def_id) = self.local_def_path_hash_to_def_id.get(&hash).cloned() {
@@ -605,9 +638,11 @@ impl<'sess> OnDiskCache<'sess> {
                 // current compilation session, the crate is guaranteed to be the same
                 // (otherwise, we would compute a different `DefPathHash`).
                 let raw_def_id = self.get_raw_def_id(&hash)?;
+                debug!("def_path_hash_to_def_id({:?}): raw_def_id = {:?}", hash, raw_def_id);
                 // If the owning crate no longer exists, the corresponding definition definitely
                 // no longer exists.
                 let krate = self.try_remap_cnum(tcx, raw_def_id.krate)?;
+                debug!("def_path_hash_to_def_id({:?}): krate = {:?}", hash, krate);
                 // If our `DefPathHash` corresponded to a definition in the local crate,
                 // we should have either found it in `local_def_path_hash_to_def_id`, or
                 // never attempted to load it in the first place. Any query result or `DepNode`
@@ -621,6 +656,7 @@ impl<'sess> OnDiskCache<'sess> {
                 // Try to find a definition in the current session, using the previous `DefIndex`
                 // as an initial guess.
                 let opt_def_id = tcx.cstore.def_path_hash_to_def_id(krate, raw_def_id.index, hash);
+                debug!("def_path_to_def_id({:?}): opt_def_id = {:?}", hash, opt_def_id);
                 e.insert(opt_def_id);
                 opt_def_id
             }
@@ -630,7 +666,7 @@ impl<'sess> OnDiskCache<'sess> {
 
 //- DECODING -------------------------------------------------------------------
 
-/// A decoder that can read from the incr. comp. cache. It is similar to the one
+/// A decoder that can read from the incremental compilation cache. It is similar to the one
 /// we use for crate metadata decoding in that it can rebase spans and eventually
 /// will also handle things that contain `Ty` instances.
 crate struct CacheDecoder<'a, 'tcx> {
@@ -918,7 +954,7 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for &'tcx [Span] {
 
 //- ENCODING -------------------------------------------------------------------
 
-/// An encoder that can write the incr. comp. cache.
+/// An encoder that can write to the incremental compilation cache.
 struct CacheEncoder<'a, 'tcx, E: OpaqueEncoder> {
     tcx: TyCtxt<'tcx>,
     encoder: &'a mut E,
@@ -1026,9 +1062,6 @@ where
 {
     const CLEAR_CROSS_CRATE: bool = false;
 
-    fn tcx(&self) -> TyCtxt<'tcx> {
-        self.tcx
-    }
     fn position(&self) -> usize {
         self.encoder.encoder_position()
     }

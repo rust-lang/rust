@@ -3505,3 +3505,85 @@ pub fn extend_for_unit() {
     }
     assert_eq!(x, 5);
 }
+
+#[test]
+fn test_intersperse() {
+    let xs = ["a", "", "b", "c"];
+    let v: Vec<&str> = xs.iter().map(|x| x.clone()).intersperse(", ").collect();
+    let text: String = v.concat();
+    assert_eq!(text, "a, , b, c".to_string());
+
+    let ys = [0, 1, 2, 3];
+    let mut it = ys[..0].iter().map(|x| *x).intersperse(1);
+    assert!(it.next() == None);
+}
+
+#[test]
+fn test_intersperse_size_hint() {
+    let xs = ["a", "", "b", "c"];
+    let mut iter = xs.iter().map(|x| x.clone()).intersperse(", ");
+    assert_eq!(iter.size_hint(), (7, Some(7)));
+
+    assert_eq!(iter.next(), Some("a"));
+    assert_eq!(iter.size_hint(), (6, Some(6)));
+    assert_eq!(iter.next(), Some(", "));
+    assert_eq!(iter.size_hint(), (5, Some(5)));
+
+    assert_eq!([].iter().intersperse(&()).size_hint(), (0, Some(0)));
+}
+
+#[test]
+fn test_fold_specialization_intersperse() {
+    let mut iter = (1..2).intersperse(0);
+    iter.clone().for_each(|x| assert_eq!(Some(x), iter.next()));
+
+    let mut iter = (1..3).intersperse(0);
+    iter.clone().for_each(|x| assert_eq!(Some(x), iter.next()));
+
+    let mut iter = (1..4).intersperse(0);
+    iter.clone().for_each(|x| assert_eq!(Some(x), iter.next()));
+}
+
+#[test]
+fn test_try_fold_specialization_intersperse_ok() {
+    let mut iter = (1..2).intersperse(0);
+    iter.clone().try_for_each(|x| {
+        assert_eq!(Some(x), iter.next());
+        Some(())
+    });
+
+    let mut iter = (1..3).intersperse(0);
+    iter.clone().try_for_each(|x| {
+        assert_eq!(Some(x), iter.next());
+        Some(())
+    });
+
+    let mut iter = (1..4).intersperse(0);
+    iter.clone().try_for_each(|x| {
+        assert_eq!(Some(x), iter.next());
+        Some(())
+    });
+}
+
+#[test]
+fn test_try_fold_specialization_intersperse_err() {
+    let orig_iter = ["a", "b"].iter().copied().intersperse("-");
+
+    // Abort after the first item.
+    let mut iter = orig_iter.clone();
+    iter.try_for_each(|_| None::<()>);
+    assert_eq!(iter.next(), Some("-"));
+    assert_eq!(iter.next(), Some("b"));
+    assert_eq!(iter.next(), None);
+
+    // Abort after the second item.
+    let mut iter = orig_iter.clone();
+    iter.try_for_each(|item| if item == "-" { None } else { Some(()) });
+    assert_eq!(iter.next(), Some("b"));
+    assert_eq!(iter.next(), None);
+
+    // Abort after the third item.
+    let mut iter = orig_iter.clone();
+    iter.try_for_each(|item| if item == "b" { None } else { Some(()) });
+    assert_eq!(iter.next(), None);
+}

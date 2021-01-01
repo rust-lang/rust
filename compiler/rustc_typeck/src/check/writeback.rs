@@ -55,6 +55,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             hir::BodyOwnerKind::Closure | hir::BodyOwnerKind::Fn => (),
         }
         wbcx.visit_body(body);
+        wbcx.visit_min_capture_map();
         wbcx.visit_upvar_capture_map();
         wbcx.visit_closures();
         wbcx.visit_liberated_fn_sigs();
@@ -331,6 +332,37 @@ impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
 }
 
 impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
+    fn visit_min_capture_map(&mut self) {
+        let mut min_captures_wb = ty::MinCaptureInformationMap::with_capacity_and_hasher(
+            self.fcx.typeck_results.borrow().closure_min_captures.len(),
+            Default::default(),
+        );
+        for (closure_def_id, root_min_captures) in
+            self.fcx.typeck_results.borrow().closure_min_captures.iter()
+        {
+            let mut root_var_map_wb = ty::RootVariableMinCaptureList::with_capacity_and_hasher(
+                root_min_captures.len(),
+                Default::default(),
+            );
+            for (var_hir_id, min_list) in root_min_captures.iter() {
+                let min_list_wb = min_list
+                    .iter()
+                    .map(|captured_place| {
+                        let locatable = captured_place.info.expr_id.unwrap_or(
+                            self.tcx().hir().local_def_id_to_hir_id(closure_def_id.expect_local()),
+                        );
+
+                        self.resolve(captured_place.clone(), &locatable)
+                    })
+                    .collect();
+                root_var_map_wb.insert(*var_hir_id, min_list_wb);
+            }
+            min_captures_wb.insert(*closure_def_id, root_var_map_wb);
+        }
+
+        self.typeck_results.closure_min_captures = min_captures_wb;
+    }
+
     fn visit_upvar_capture_map(&mut self) {
         for (upvar_id, upvar_capture) in self.fcx.typeck_results.borrow().upvar_capture_map.iter() {
             let new_upvar_capture = match *upvar_capture {

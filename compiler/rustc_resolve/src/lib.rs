@@ -403,6 +403,7 @@ enum PathResult<'a> {
     },
 }
 
+#[derive(Debug)]
 enum ModuleKind {
     /// An anonymous module; e.g., just a block.
     ///
@@ -1181,12 +1182,12 @@ impl<'a> Resolver<'a> {
     ) -> Resolver<'a> {
         let root_local_def_id = LocalDefId { local_def_index: CRATE_DEF_INDEX };
         let root_def_id = root_local_def_id.to_def_id();
-        let root_module_kind = ModuleKind::Def(DefKind::Mod, root_def_id, kw::Invalid);
+        let root_module_kind = ModuleKind::Def(DefKind::Mod, root_def_id, kw::Empty);
         let graph_root = arenas.alloc_module(ModuleData {
             no_implicit_prelude: session.contains_name(&krate.attrs, sym::no_implicit_prelude),
             ..ModuleData::new(None, root_module_kind, root_def_id, ExpnId::root(), krate.span)
         });
-        let empty_module_kind = ModuleKind::Def(DefKind::Mod, root_def_id, kw::Invalid);
+        let empty_module_kind = ModuleKind::Def(DefKind::Mod, root_def_id, kw::Empty);
         let empty_module = arenas.alloc_module(ModuleData {
             no_implicit_prelude: true,
             ..ModuleData::new(
@@ -1796,7 +1797,7 @@ impl<'a> Resolver<'a> {
         ribs: &[Rib<'a>],
     ) -> Option<LexicalScopeBinding<'a>> {
         assert!(ns == TypeNS || ns == ValueNS);
-        if ident.name == kw::Invalid {
+        if ident.name == kw::Empty {
             return Some(LexicalScopeBinding::Res(Res::Err));
         }
         let (general_span, normalized_span) = if ident.name == kw::SelfUpper {
@@ -1990,14 +1991,13 @@ impl<'a> Resolver<'a> {
             {
                 // The macro is a proc macro derive
                 if let Some(def_id) = module.expansion.expn_data().macro_def_id {
-                    if let Some(ext) = self.get_macro_by_def_id(def_id) {
-                        if !ext.is_builtin
-                            && ext.macro_kind() == MacroKind::Derive
-                            && parent.expansion.outer_expn_is_descendant_of(span.ctxt())
-                        {
-                            *poisoned = Some(node_id);
-                            return module.parent;
-                        }
+                    let ext = self.get_macro_by_def_id(def_id);
+                    if !ext.is_builtin
+                        && ext.macro_kind() == MacroKind::Derive
+                        && parent.expansion.outer_expn_is_descendant_of(span.ctxt())
+                    {
+                        *poisoned = Some(node_id);
+                        return module.parent;
                     }
                 }
             }
@@ -2415,7 +2415,10 @@ impl<'a> Resolver<'a> {
                     } else if i == 0 {
                         if ident
                             .name
-                            .with(|n| n.chars().next().map_or(false, |c| c.is_ascii_uppercase()))
+                            .as_str()
+                            .chars()
+                            .next()
+                            .map_or(false, |c| c.is_ascii_uppercase())
                         {
                             (format!("use of undeclared type `{}`", ident), None)
                         } else {
@@ -2623,8 +2626,12 @@ impl<'a> Resolver<'a> {
                             continue;
                         }
                         ConstantItemRibKind(trivial) => {
+                            let features = self.session.features_untracked();
                             // HACK(min_const_generics): We currently only allow `N` or `{ N }`.
-                            if !trivial && self.session.features_untracked().min_const_generics {
+                            if !(trivial
+                                || features.const_generics
+                                || features.lazy_normalization_consts)
+                            {
                                 // HACK(min_const_generics): If we encounter `Self` in an anonymous constant
                                 // we can't easily tell if it's generic at this stage, so we instead remember
                                 // this and then enforce the self type to be concrete later on.
@@ -2712,8 +2719,12 @@ impl<'a> Resolver<'a> {
                             continue;
                         }
                         ConstantItemRibKind(trivial) => {
+                            let features = self.session.features_untracked();
                             // HACK(min_const_generics): We currently only allow `N` or `{ N }`.
-                            if !trivial && self.session.features_untracked().min_const_generics {
+                            if !(trivial
+                                || features.const_generics
+                                || features.lazy_normalization_consts)
+                            {
                                 if record_used {
                                     self.report_error(
                                         span,

@@ -14,7 +14,7 @@ use core::hint;
 use core::intrinsics::abort;
 use core::iter;
 use core::marker::{PhantomData, Unpin, Unsize};
-use core::mem::{self, align_of_val, size_of_val};
+use core::mem::{self, align_of_val_raw, size_of_val};
 use core::ops::{CoerceUnsized, Deref, DispatchFromDyn, Receiver};
 use core::pin::Pin;
 use core::ptr::{self, NonNull};
@@ -1535,7 +1535,7 @@ struct WeakInner<'a> {
     strong: &'a atomic::AtomicUsize,
 }
 
-impl<T: ?Sized> Weak<T> {
+impl<T> Weak<T> {
     /// Returns a raw pointer to the object `T` pointed to by this `Weak<T>`.
     ///
     /// The pointer is valid only if there are some strong references. The pointer may be dangling,
@@ -1668,7 +1668,9 @@ impl<T: ?Sized> Weak<T> {
         // SAFETY: we now have recovered the original Weak pointer, so can create the Weak.
         unsafe { Weak { ptr: NonNull::new_unchecked(ptr) } }
     }
+}
 
+impl<T: ?Sized> Weak<T> {
     /// Attempts to upgrade the `Weak` pointer to an [`Arc`], delaying
     /// dropping of the inner value if successful.
     ///
@@ -1925,7 +1927,7 @@ impl<T: ?Sized> Drop for Weak<T> {
 
         if inner.weak.fetch_sub(1, Release) == 1 {
             acquire!(inner.weak);
-            unsafe { Global.deallocate(self.ptr.cast(), Layout::for_value(self.ptr.as_ref())) }
+            unsafe { Global.deallocate(self.ptr.cast(), Layout::for_value_raw(self.ptr.as_ptr())) }
         }
     }
 }
@@ -2364,7 +2366,7 @@ unsafe fn data_offset<T: ?Sized>(ptr: *const T) -> isize {
     // Because it is `?Sized`, it will always be the last field in memory.
     // Note: This is a detail of the current implementation of the compiler,
     // and is not a guaranteed language detail. Do not rely on it outside of std.
-    unsafe { data_offset_align(align_of_val(&*ptr)) }
+    unsafe { data_offset_align(align_of_val_raw(ptr)) }
 }
 
 #[inline]

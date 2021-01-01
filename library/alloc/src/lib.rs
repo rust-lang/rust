@@ -112,8 +112,7 @@
 #![feature(never_type)]
 #![feature(nll)]
 #![feature(nonnull_slice_from_raw_parts)]
-#![cfg_attr(bootstrap, feature(optin_builtin_traits))]
-#![cfg_attr(not(bootstrap), feature(auto_traits))]
+#![feature(auto_traits)]
 #![feature(or_patterns)]
 #![feature(pattern)]
 #![feature(ptr_internals)]
@@ -140,6 +139,7 @@
 #![feature(try_trait)]
 #![feature(type_alias_impl_trait)]
 #![feature(associated_type_bounds)]
+#![feature(slice_group_by)]
 // Allow testing this library
 
 #[cfg(test)]

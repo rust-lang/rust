@@ -16,6 +16,8 @@
 #![feature(once_cell)]
 #![feature(type_ascription)]
 #![feature(split_inclusive)]
+#![feature(str_split_once)]
+#![feature(iter_intersperse)]
 #![recursion_limit = "256"]
 
 #[macro_use]
@@ -61,7 +63,10 @@ use std::default::Default;
 use std::env;
 use std::process;
 
+use rustc_driver::abort_on_err;
 use rustc_errors::ErrorReported;
+use rustc_interface::interface;
+use rustc_middle::ty;
 use rustc_session::config::{make_crate_type_option, ErrorOutputType, RustcOptGroup};
 use rustc_session::getopts;
 use rustc_session::{early_error, early_warn};
@@ -114,21 +119,9 @@ fn get_args() -> Option<Vec<String>> {
         .collect()
 }
 
-fn stable<F>(name: &'static str, f: F) -> RustcOptGroup
-where
-    F: Fn(&mut getopts::Options) -> &mut getopts::Options + 'static,
-{
-    RustcOptGroup::stable(name, f)
-}
-
-fn unstable<F>(name: &'static str, f: F) -> RustcOptGroup
-where
-    F: Fn(&mut getopts::Options) -> &mut getopts::Options + 'static,
-{
-    RustcOptGroup::unstable(name, f)
-}
-
 fn opts() -> Vec<RustcOptGroup> {
+    let stable: fn(_, fn(&mut getopts::Options) -> &mut _) -> _ = RustcOptGroup::stable;
+    let unstable: fn(_, fn(&mut getopts::Options) -> &mut _) -> _ = RustcOptGroup::unstable;
     vec![
         stable("h", |o| o.optflag("h", "help", "show this help message")),
         stable("V", |o| o.optflag("V", "version", "print rustdoc's version")),
@@ -271,13 +264,13 @@ fn opts() -> Vec<RustcOptGroup> {
                 "sort modules by where they appear in the program, rather than alphabetically",
             )
         }),
-        unstable("default-theme", |o| {
+        stable("default-theme", |o| {
             o.optopt(
                 "",
                 "default-theme",
                 "Set the default theme. THEME should be the theme name, generally lowercase. \
                  If an unknown default theme is specified, the builtin default is used. \
-                 The set of themes, and the rustdoc built-in default is not stable.",
+                 The set of themes, and the rustdoc built-in default, are not stable.",
                 "THEME",
             )
         }),
@@ -477,14 +470,15 @@ fn wrap_return(diag: &rustc_errors::Handler, res: Result<(), String>) -> MainRes
     }
 }
 
-fn run_renderer<T: formats::FormatRenderer>(
+fn run_renderer<'tcx, T: formats::FormatRenderer<'tcx>>(
     krate: clean::Crate,
     renderopts: config::RenderOptions,
     render_info: config::RenderInfo,
     diag: &rustc_errors::Handler,
     edition: rustc_span::edition::Edition,
+    tcx: ty::TyCtxt<'tcx>,
 ) -> MainResult {
-    match formats::run_format::<T>(krate, renderopts, render_info, &diag, edition) {
+    match formats::run_format::<T>(krate, renderopts, render_info, &diag, edition, tcx) {
         Ok(_) => Ok(()),
         Err(e) => {
             let mut msg = diag.struct_err(&format!("couldn't generate documentation: {}", e.error));
@@ -527,37 +521,81 @@ fn main_options(options: config::Options) -> MainResult {
     // compiler all the way through the analysis passes. The rustdoc output is
     // then generated from the cleaned AST of the crate. This runs all the
     // plug/cleaning passes.
-    let crate_name = options.crate_name.clone();
     let crate_version = options.crate_version.clone();
+
+    let default_passes = options.default_passes;
     let output_format = options.output_format;
-    let (mut krate, renderinfo, renderopts, sess) = core::run_core(options);
+    // FIXME: fix this clone (especially render_options)
+    let externs = options.externs.clone();
+    let manual_passes = options.manual_passes.clone();
+    let render_options = options.render_options.clone();
+    let config = core::create_config(options);
 
-    info!("finished with rustc");
+    interface::create_compiler_and_run(config, |compiler| {
+        compiler.enter(|queries| {
+            let sess = compiler.session();
 
-    if let Some(name) = crate_name {
-        krate.name = name
-    }
+            // We need to hold on to the complete resolver, so we cause everything to be
+            // cloned for the analysis passes to use. Suboptimal, but necessary in the
+            // current architecture.
+            let resolver = core::create_resolver(externs, queries, &sess);
 
-    krate.version = crate_version;
+            if sess.has_errors() {
+                sess.fatal("Compilation failed, aborting rustdoc");
+            }
 
-    if show_coverage {
-        // if we ran coverage, bail early, we don't need to also generate docs at this point
-        // (also we didn't load in any of the useful passes)
-        return Ok(());
-    } else if run_check {
-        // Since we're in "check" mode, no need to generate anything beyond this point.
-        return Ok(());
-    }
+            let mut global_ctxt = abort_on_err(queries.global_ctxt(), sess).take();
 
-    info!("going to format");
-    let (error_format, edition, debugging_options) = diag_opts;
-    let diag = core::new_handler(error_format, None, &debugging_options);
-    match output_format {
-        None | Some(config::OutputFormat::Html) => sess.time("render_html", || {
-            run_renderer::<html::render::Context>(krate, renderopts, renderinfo, &diag, edition)
-        }),
-        Some(config::OutputFormat::Json) => sess.time("render_json", || {
-            run_renderer::<json::JsonRenderer>(krate, renderopts, renderinfo, &diag, edition)
-        }),
-    }
+            global_ctxt.enter(|tcx| {
+                let (mut krate, render_info, render_opts) = sess.time("run_global_ctxt", || {
+                    core::run_global_ctxt(
+                        tcx,
+                        resolver,
+                        default_passes,
+                        manual_passes,
+                        render_options,
+                        output_format,
+                    )
+                });
+                info!("finished with rustc");
+
+                krate.version = crate_version;
+
+                if show_coverage {
+                    // if we ran coverage, bail early, we don't need to also generate docs at this point
+                    // (also we didn't load in any of the useful passes)
+                    return Ok(());
+                } else if run_check {
+                    // Since we're in "check" mode, no need to generate anything beyond this point.
+                    return Ok(());
+                }
+
+                info!("going to format");
+                let (error_format, edition, debugging_options) = diag_opts;
+                let diag = core::new_handler(error_format, None, &debugging_options);
+                match output_format {
+                    None | Some(config::OutputFormat::Html) => sess.time("render_html", || {
+                        run_renderer::<html::render::Context<'_>>(
+                            krate,
+                            render_opts,
+                            render_info,
+                            &diag,
+                            edition,
+                            tcx,
+                        )
+                    }),
+                    Some(config::OutputFormat::Json) => sess.time("render_json", || {
+                        run_renderer::<json::JsonRenderer<'_>>(
+                            krate,
+                            render_opts,
+                            render_info,
+                            &diag,
+                            edition,
+                            tcx,
+                        )
+                    }),
+                }
+            })
+        })
+    })
 }

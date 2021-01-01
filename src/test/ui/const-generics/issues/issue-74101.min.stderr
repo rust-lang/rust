@@ -1,5 +1,5 @@
 error: `[u8; _]` is forbidden as the type of a const generic parameter
-  --> $DIR/issue-74101.rs:7:18
+  --> $DIR/issue-74101.rs:6:18
    |
 LL | fn test<const N: [u8; 1 + 2]>() {}
    |                  ^^^^^^^^^^^
@@ -8,7 +8,7 @@ LL | fn test<const N: [u8; 1 + 2]>() {}
    = help: more complex types are supported with `#[feature(const_generics)]`
 
 error: `[u8; _]` is forbidden as the type of a const generic parameter
-  --> $DIR/issue-74101.rs:10:21
+  --> $DIR/issue-74101.rs:9:21
    |
 LL | struct Foo<const N: [u8; 1 + 2]>;
    |                     ^^^^^^^^^^^

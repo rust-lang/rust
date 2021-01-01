@@ -323,9 +323,8 @@ pub fn normalize_param_env_or_error<'tcx>(
     // This works fairly well because trait matching  does not actually care about param-env
     // TypeOutlives predicates - these are normally used by regionck.
     let outlives_predicates: Vec<_> = predicates
-        .drain_filter(|predicate| match predicate.skip_binders() {
-            ty::PredicateAtom::TypeOutlives(..) => true,
-            _ => false,
+        .drain_filter(|predicate| {
+            matches!(predicate.skip_binders(), ty::PredicateAtom::TypeOutlives(..))
         })
         .collect();
 

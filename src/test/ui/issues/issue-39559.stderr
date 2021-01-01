@@ -1,11 +1,11 @@
-error[E0599]: no function or associated item named `dim` found for type parameter `D` in the current scope
-  --> $DIR/issue-39559.rs:14:21
+error: generic parameters may not be used in const operations
+  --> $DIR/issue-39559.rs:14:18
    |
 LL |     entries: [T; D::dim()],
-   |                     ^^^ function or associated item not found in `D`
+   |                  ^^^^^^ cannot perform const operation using `D`
    |
-   = help: items from traits can only be used if the type parameter is bounded by the trait
+   = note: type parameters may not be used in const expressions
+   = help: use `#![feature(const_generics)]` and `#![feature(const_evaluatable_checked)]` to allow generic const expressions
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0599`.

@@ -5,8 +5,8 @@ use syn::parse::{Parse, ParseStream, Result};
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::{
-    braced, parenthesized, parse_macro_input, AttrStyle, Attribute, Block, Error, Expr, Ident,
-    ReturnType, Token, Type,
+    braced, parenthesized, parse_macro_input, parse_quote, AttrStyle, Attribute, Block, Error,
+    Expr, Ident, ReturnType, Token, Type,
 };
 
 mod kw {
@@ -271,6 +271,40 @@ fn process_modifiers(query: &mut Query) -> QueryModifiers {
             QueryModifier::Desc(tcx, list) => {
                 if desc.is_some() {
                     panic!("duplicate modifier `desc` for query `{}`", query.name);
+                }
+                // If there are no doc-comments, give at least some idea of what
+                // it does by showing the query description.
+                if query.doc_comments.is_empty() {
+                    use ::syn::*;
+                    let mut list = list.iter();
+                    let format_str: String = match list.next() {
+                        Some(&Expr::Lit(ExprLit { lit: Lit::Str(ref lit_str), .. })) => {
+                            lit_str.value().replace("`{}`", "{}") // We add them later anyways for consistency
+                        }
+                        _ => panic!("Expected a string literal"),
+                    };
+                    let mut fmt_fragments = format_str.split("{}");
+                    let mut doc_string = fmt_fragments.next().unwrap().to_string();
+                    list.map(::quote::ToTokens::to_token_stream).zip(fmt_fragments).for_each(
+                        |(tts, next_fmt_fragment)| {
+                            use ::core::fmt::Write;
+                            write!(
+                                &mut doc_string,
+                                " `{}` {}",
+                                tts.to_string().replace(" . ", "."),
+                                next_fmt_fragment,
+                            )
+                            .unwrap();
+                        },
+                    );
+                    let doc_string = format!(
+                        "[query description - consider adding a doc-comment!] {}",
+                        doc_string
+                    );
+                    let comment = parse_quote! {
+                        #[doc = #doc_string]
+                    };
+                    query.doc_comments.push(comment);
                 }
                 desc = Some((tcx, list));
             }

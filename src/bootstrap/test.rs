@@ -869,12 +869,6 @@ default_test_with_compare_mode!(Ui {
     compare_mode: "nll"
 });
 
-default_test!(CompileFail {
-    path: "src/test/compile-fail",
-    mode: "compile-fail",
-    suite: "compile-fail"
-});
-
 default_test!(RunPassValgrind {
     path: "src/test/run-pass-valgrind",
     mode: "run-pass-valgrind",
@@ -897,7 +891,12 @@ default_test!(Incremental {
     suite: "incremental"
 });
 
-default_test!(Debuginfo { path: "src/test/debuginfo", mode: "debuginfo", suite: "debuginfo" });
+default_test_with_compare_mode!(Debuginfo {
+    path: "src/test/debuginfo",
+    mode: "debuginfo",
+    suite: "debuginfo",
+    compare_mode: "split-dwarf"
+});
 
 host_test!(UiFullDeps { path: "src/test/ui-fulldeps", mode: "ui", suite: "ui-fulldeps" });
 
@@ -1963,8 +1962,8 @@ impl Step for Distcheck {
         builder.ensure(dist::Src);
 
         let mut cmd = Command::new("tar");
-        cmd.arg("-xzf")
-            .arg(builder.ensure(dist::PlainSourceTarball))
+        cmd.arg("-xf")
+            .arg(builder.ensure(dist::PlainSourceTarball).tarball())
             .arg("--strip-components=1")
             .current_dir(&dir);
         builder.run(&mut cmd);
@@ -1987,8 +1986,8 @@ impl Step for Distcheck {
         t!(fs::create_dir_all(&dir));
 
         let mut cmd = Command::new("tar");
-        cmd.arg("-xzf")
-            .arg(builder.ensure(dist::Src))
+        cmd.arg("-xf")
+            .arg(builder.ensure(dist::Src).tarball())
             .arg("--strip-components=1")
             .current_dir(&dir);
         builder.run(&mut cmd);

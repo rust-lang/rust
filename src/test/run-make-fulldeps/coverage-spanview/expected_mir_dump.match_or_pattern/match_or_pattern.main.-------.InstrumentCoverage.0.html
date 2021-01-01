@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<!--
+
+Preview this file as rendered HTML from the github source at:
+https://htmlpreview.github.io/?https://github.com/rust-lang/rust/blob/master/src/test/run-make-fulldeps/coverage-spanview/expected_mir_dump.match_or_pattern/match_or_pattern.main.-------.InstrumentCoverage.0.html
+
+For revisions in Pull Requests (PR):
+  * Replace "rust-lang" with the github PR author
+  * Replace "master" with the PR branch name
+
+-->
+<html>
+<head>
+<title>match_or_pattern.main - Coverage Spans</title>
+<style>
+    .line {
+        counter-increment: line;
+    }
+    .line:before {
+        content: counter(line) ": ";
+        font-family: Menlo, Monaco, monospace;
+        font-style: italic;
+        width: 3.8em;
+        display: inline-block;
+        text-align: right;
+        filter: opacity(50%);
+        -webkit-user-select: none;
+    }
+    .code {
+        color: #dddddd;
+        background-color: #222222;
+        font-family: Menlo, Monaco, monospace;
+        line-height: 1.4em;
+        border-bottom: 2px solid #222222;
+        white-space: pre;
+        display: inline-block;
+    }
+    .odd {
+        background-color: #55bbff;
+        color: #223311;
+    }
+    .even {
+        background-color: #ee7756;
+        color: #551133;
+    }
+    .code {
+        --index: calc(var(--layer) - 1);
+        padding-top: calc(var(--index) * 0.15em);
+        filter:
+            hue-rotate(calc(var(--index) * 25deg))
+            saturate(calc(100% - (var(--index) * 2%)))
+            brightness(calc(100% - (var(--index) * 1.5%)));
+    }
+    .annotation {
+        color: #4444ff;
+        font-family: monospace;
+        font-style: italic;
+        display: none;
+        -webkit-user-select: none;
+    }
+    body:active .annotation {
+        /* requires holding mouse down anywhere on the page */
+        display: inline-block;
+    }
+    span:hover .annotation {
+        /* requires hover over a span ONLY on its first line */
+        display: inline-block;
+    }
+</style>
+</head>
+<body>
+<div class="code" style="counter-reset: line 2"><span class="line"><span><span class="code even" style="--layer: 1" title="7:19-7:35: @0.Call: _4 = args() -&gt; [return: bb1, unwind: bb41]
+7:19-7:35: @1[0]: _3 = &amp;_4
+7:19-7:41: @1.Call: _2 = &lt;Args as ExactSizeIterator&gt;::len(move _3) -&gt; [return: bb2, unwind: bb40]
+7:19-7:46: @2[1]: _1 = Eq(move _2, const 1_usize)
+7:9-7:16: @2[3]: FakeRead(ForLet, _1)
+9:21-9:22: @3[2]: _5 = const 0_u8
+9:9-9:14: @3[3]: FakeRead(ForLet, _5)
+9:16-9:18: @3[4]: AscribeUserType(_5, o, UserTypeProjection { base: UserType(1), projs: [] })
+10:21-10:22: @3[6]: _6 = const 0_u8
+10:9-10:14: @3[7]: FakeRead(ForLet, _6)
+10:16-10:18: @3[8]: AscribeUserType(_6, o, UserTypeProjection { base: UserType(3), projs: [] })
+11:8-11:15: @3[11]: _8 = _1
+11:8-11:15: @3[12]: FakeRead(ForMatchedPlace, _8)"><span class="annotation">@0,1,2,3⦊</span>fn main() {</span></span>
+<span class="line"><span class="code even" style="--layer: 1" title="7:19-7:35: @0.Call: _4 = args() -&gt; [return: bb1, unwind: bb41]
+7:19-7:35: @1[0]: _3 = &amp;_4
+7:19-7:41: @1.Call: _2 = &lt;Args as ExactSizeIterator&gt;::len(move _3) -&gt; [return: bb2, unwind: bb40]
+7:19-7:46: @2[1]: _1 = Eq(move _2, const 1_usize)
+7:9-7:16: @2[3]: FakeRead(ForLet, _1)
+9:21-9:22: @3[2]: _5 = const 0_u8
+9:9-9:14: @3[3]: FakeRead(ForLet, _5)
+9:16-9:18: @3[4]: AscribeUserType(_5, o, UserTypeProjection { base: UserType(1), projs: [] })
+10:21-10:22: @3[6]: _6 = const 0_u8
+10:9-10:14: @3[7]: FakeRead(ForLet, _6)
+10:16-10:18: @3[8]: AscribeUserType(_6, o, UserTypeProjection { base: UserType(3), projs: [] })
+11:8-11:15: @3[11]: _8 = _1
+11:8-11:15: @3[12]: FakeRead(ForMatchedPlace, _8)">    // Initialize test constants in a way that cannot be determined at compile time, to ensure</span></span>
+<span class="line"><span class="code even" style="--layer: 1" title="7:19-7:35: @0.Call: _4 = args() -&gt; [return: bb1, unwind: bb41]
+7:19-7:35: @1[0]: _3 = &amp;_4
+7:19-7:41: @1.Call: _2 = &lt;Args as ExactSizeIterator&gt;::len(move _3) -&gt; [return: bb2, unwind: bb40]
+7:19-7:46: @2[1]: _1 = Eq(move _2, const 1_usize)
+7:9-7:16: @2[3]: FakeRead(ForLet, _1)
+9:21-9:22: @3[2]: _5 = const 0_u8
+9:9-9:14: @3[3]: FakeRead(ForLet, _5)
+9:16-9:18: @3[4]: AscribeUserType(_5, o, UserTypeProjection { base: UserType(1), projs: [] })
+10:21-10:22: @3[6]: _6 = const 0_u8
+10:9-10:14: @3[7]: FakeRead(ForLet, _6)
+10:16-10:18: @3[8]: AscribeUserType(_6, o, UserTypeProjection { base: UserType(3), projs: [] })
+11:8-11:15: @3[11]: _8 = _1
+11:8-11:15: @3[12]: FakeRead(ForMatchedPlace, _8)">    // rustc and LLVM cannot optimize out statements (or coverage counters) downstream from</span></span>
+<span class="line"><span class="code even" style="--layer: 1" title="7:19-7:35: @0.Call: _4 = args() -&gt; [return: bb1, unwind: bb41]
+7:19-7:35: @1[0]: _3 = &amp;_4
+7:19-7:41: @1.Call: _2 = &lt;Args as ExactSizeIterator&gt;::len(move _3) -&gt; [return: bb2, unwind: bb40]
+7:19-7:46: @2[1]: _1 = Eq(move _2, const 1_usize)
+7:9-7:16: @2[3]: FakeRead(ForLet, _1)
+9:21-9:22: @3[2]: _5 = const 0_u8
+9:9-9:14: @3[3]: FakeRead(ForLet, _5)
+9:16-9:18: @3[4]: AscribeUserType(_5, o, UserTypeProjection { base: UserType(1), projs: [] })
+10:21-10:22: @3[6]: _6 = const 0_u8
+10:9-10:14: @3[7]: FakeRead(ForLet, _6)
+10:16-10:18: @3[8]: AscribeUserType(_6, o, UserTypeProjection { base: UserType(3), projs: [] })
+11:8-11:15: @3[11]: _8 = _1
+11:8-11:15: @3[12]: FakeRead(ForMatchedPlace, _8)">    // dependent conditions.</span></span>
+<span class="line"><span class="code even" style="--layer: 1" title="7:19-7:35: @0.Call: _4 = args() -&gt; [return: bb1, unwind: bb41]
+7:19-7:35: @1[0]: _3 = &amp;_4
+7:19-7:41: @1.Call: _2 = &lt;Args as ExactSizeIterator&gt;::len(move _3) -&gt; [return: bb2, unwind: bb40]
+7:19-7:46: @2[1]: _1 = Eq(move _2, const 1_usize)
+7:9-7:16: @2[3]: FakeRead(ForLet, _1)
+9:21-9:22: @3[2]: _5 = const 0_u8
+9:9-9:14: @3[3]: FakeRead(ForLet, _5)
+9:16-9:18: @3[4]: AscribeUserType(_5, o, UserTypeProjection { base: UserType(1), projs: [] })
+10:21-10:22: @3[6]: _6 = const 0_u8
+10:9-10:14: @3[7]: FakeRead(ForLet, _6)
+10:16-10:18: @3[8]: AscribeUserType(_6, o, UserTypeProjection { base: UserType(3), projs: [] })
+11:8-11:15: @3[11]: _8 = _1
+11:8-11:15: @3[12]: FakeRead(ForMatchedPlace, _8)">    let is_true = std::env::args().len() == 1;</span></span>
+<span class="line"><span class="code even" style="--layer: 1" title="7:19-7:35: @0.Call: _4 = args() -&gt; [return: bb1, unwind: bb41]
+7:19-7:35: @1[0]: _3 = &amp;_4
+7:19-7:41: @1.Call: _2 = &lt;Args as ExactSizeIterator&gt;::len(move _3) -&gt; [return: bb2, unwind: bb40]
+7:19-7:46: @2[1]: _1 = Eq(move _2, const 1_usize)
+7:9-7:16: @2[3]: FakeRead(ForLet, _1)
+9:21-9:22: @3[2]: _5 = const 0_u8
+9:9-9:14: @3[3]: FakeRead(ForLet, _5)
+9:16-9:18: @3[4]: AscribeUserType(_5, o, UserTypeProjection { base: UserType(1), projs: [] })
+10:21-10:22: @3[6]: _6 = const 0_u8
+10:9-10:14: @3[7]: FakeRead(ForLet, _6)
+10:16-10:18: @3[8]: AscribeUserType(_6, o, UserTypeProjection { base: UserType(3), projs: [] })
+11:8-11:15: @3[11]: _8 = _1
+11:8-11:15: @3[12]: FakeRead(ForMatchedPlace, _8)"></span></span>
+<span class="line"><span class="code even" style="--layer: 1" title="7:19-7:35: @0.Call: _4 = args() -&gt; [return: bb1, unwind: bb41]
+7:19-7:35: @1[0]: _3 = &amp;_4
+7:19-7:41: @1.Call: _2 = &lt;Args as ExactSizeIterator&gt;::len(move _3) -&gt; [return: bb2, unwind: bb40]
+7:19-7:46: @2[1]: _1 = Eq(move _2, const 1_usize)
+7:9-7:16: @2[3]: FakeRead(ForLet, _1)
+9:21-9:22: @3[2]: _5 = const 0_u8
+9:9-9:14: @3[3]: FakeRead(ForLet, _5)
+9:16-9:18: @3[4]: AscribeUserType(_5, o, UserTypeProjection { base: UserType(1), projs: [] })
+10:21-10:22: @3[6]: _6 = const 0_u8
+10:9-10:14: @3[7]: FakeRead(ForLet, _6)
+10:16-10:18: @3[8]: AscribeUserType(_6, o, UserTypeProjection { base: UserType(3), projs: [] })
+11:8-11:15: @3[11]: _8 = _1
+11:8-11:15: @3[12]: FakeRead(ForMatchedPlace, _8)">    let mut a: u8 = 0;</span></span>
+<span class="line"><span class="code even" style="--layer: 1" title="7:19-7:35: @0.Call: _4 = args() -&gt; [return: bb1, unwind: bb41]
+7:19-7:35: @1[0]: _3 = &amp;_4
+7:19-7:41: @1.Call: _2 = &lt;Args as ExactSizeIterator&gt;::len(move _3) -&gt; [return: bb2, unwind: bb40]
+7:19-7:46: @2[1]: _1 = Eq(move _2, const 1_usize)
+7:9-7:16: @2[3]: FakeRead(ForLet, _1)
+9:21-9:22: @3[2]: _5 = const 0_u8
+9:9-9:14: @3[3]: FakeRead(ForLet, _5)
+9:16-9:18: @3[4]: AscribeUserType(_5, o, UserTypeProjection { base: UserType(1), projs: [] })
+10:21-10:22: @3[6]: _6 = const 0_u8
+10:9-10:14: @3[7]: FakeRead(ForLet, _6)
+10:16-10:18: @3[8]: AscribeUserType(_6, o, UserTypeProjection { base: UserType(3), projs: [] })
+11:8-11:15: @3[11]: _8 = _1
+11:8-11:15: @3[12]: FakeRead(ForMatchedPlace, _8)">    let mut b: u8 = 0;</span></span>
+<span class="line"><span class="code even" style="--layer: 1" title="7:19-7:35: @0.Call: _4 = args() -&gt; [return: bb1, unwind: bb41]
+7:19-7:35: @1[0]: _3 = &amp;_4
+7:19-7:41: @1.Call: _2 = &lt;Args as ExactSizeIterator&gt;::len(move _3) -&gt; [return: bb2, unwind: bb40]
+7:19-7:46: @2[1]: _1 = Eq(move _2, const 1_usize)
+7:9-7:16: @2[3]: FakeRead(ForLet, _1)
+9:21-9:22: @3[2]: _5 = const 0_u8
+9:9-9:14: @3[3]: FakeRead(ForLet, _5)
+9:16-9:18: @3[4]: AscribeUserType(_5, o, UserTypeProjection { base: UserType(1), projs: [] })
+10:21-10:22: @3[6]: _6 = const 0_u8
+10:9-10:14: @3[7]: FakeRead(ForLet, _6)
+10:16-10:18: @3[8]: AscribeUserType(_6, o, UserTypeProjection { base: UserType(3), projs: [] })
+11:8-11:15: @3[11]: _8 = _1
+11:8-11:15: @3[12]: FakeRead(ForMatchedPlace, _8)">    if is_true<span class="annotation">⦉@0,1,2,3</span></span></span><span class="code" style="--layer: 0"> </span><span><span class="code odd" style="--layer: 1" title="12:9-12:14: @6[0]: _5 = const 2_u8
+13:9-13:14: @6[1]: _6 = const 0_u8
+11:16-14:6: @6[2]: _7 = const ()"><span class="annotation">@4,6⦊</span>{</span></span>
+<span class="line"><span class="code odd" style="--layer: 1" title="12:9-12:14: @6[0]: _5 = const 2_u8
+13:9-13:14: @6[1]: _6 = const 0_u8
+11:16-14:6: @6[2]: _7 = const ()">        a = 2;</span></span>
+<span class="line"><span class="code odd" style="--layer: 1" title="12:9-12:14: @6[0]: _5 = const 2_u8
+13:9-13:14: @6[1]: _6 = const 0_u8
+11:16-14:6: @6[2]: _7 = const ()">        b = 0;</span></span>
+<span class="line"><span class="code odd" style="--layer: 1" title="12:9-12:14: @6[0]: _5 = const 2_u8
+13:9-13:14: @6[1]: _6 = const 0_u8
+11:16-14:6: @6[2]: _7 = const ()">    }<span class="annotation">⦉@4,6</span></span></span><span><span class="code even" style="--layer: 1" title="14:6-14:6: @5[0]: _7 = const ()"><span class="annotation">@5⦊</span>‸<span class="annotation">⦉@5</span></span></span><span class="code" style="--layer: 0"></span></span>
+<span class="line"><span class="code" style="--layer: 0">    match </span><span><span class="code odd" style="--layer: 1" title="15:12-15:13: @7[5]: _11 = _5
+15:15-15:16: @7[7]: _12 = _6
+15:11-15:17: @7[8]: _10 = (move _11, move _12)
+15:11-15:17: @7[11]: FakeRead(ForMatchedPlace, _10)"><span class="annotation">@7⦊</span>(a, b)<span class="annotation">⦉@7</span></span></span><span class="code" style="--layer: 0"> {</span></span>
+<span class="line"><span class="code" style="--layer: 0">        // Or patterns generate MIR `SwitchInt` with multiple targets to the same `BasicBlock`.</span></span>
+<span class="line"><span class="code" style="--layer: 0">        // This test confirms a fix for Issue #79569.</span></span>
+<span class="line"><span class="code" style="--layer: 0">        (0 | 1, 2 | 3) =&gt; </span><span><span class="code even" style="--layer: 1" title="18:27-18:29: @11[0]: _9 = const ()"><span class="annotation">@10,11⦊</span>{}<span class="annotation">⦉@10,11</span></span></span><span class="code" style="--layer: 0"></span></span>
+<span class="line"><span class="code" style="--layer: 0">        _ =&gt; </span><span><span class="code odd" style="--layer: 1" title="19:14-19:16: @8[0]: _9 = const ()"><span class="annotation">@8⦊</span>{}<span class="annotation">⦉@8</span></span></span><span class="code" style="--layer: 0"></span></span>
+<span class="line"><span class="code" style="--layer: 0">    }</span></span>
+<span class="line"><span class="code" style="--layer: 0">    if </span><span><span class="code even" style="--layer: 1" title="21:8-21:15: @12[4]: _14 = _1
+21:8-21:15: @12[5]: FakeRead(ForMatchedPlace, _14)"><span class="annotation">@12⦊</span>is_true<span class="annotation">⦉@12</span></span></span><span class="code" style="--layer: 0"> </span><span><span class="code odd" style="--layer: 1" title="22:9-22:14: @15[0]: _5 = const 0_u8
+23:9-23:14: @15[1]: _6 = const 0_u8
+21:16-24:6: @15[2]: _13 = const ()"><span class="annotation">@13,15⦊</span>{</span></span>
+<span class="line"><span class="code odd" style="--layer: 1" title="22:9-22:14: @15[0]: _5 = const 0_u8
+23:9-23:14: @15[1]: _6 = const 0_u8
+21:16-24:6: @15[2]: _13 = const ()">        a = 0;</span></span>
+<span class="line"><span class="code odd" style="--layer: 1" title="22:9-22:14: @15[0]: _5 = const 0_u8
+23:9-23:14: @15[1]: _6 = const 0_u8
+21:16-24:6: @15[2]: _13 = const ()">        b = 0;</span></span>
+<span class="line"><span class="code odd" style="--layer: 1" title="22:9-22:14: @15[0]: _5 = const 0_u8
+23:9-23:14: @15[1]: _6 = const 0_u8
+21:16-24:6: @15[2]: _13 = const ()">    }<span class="annotation">⦉@13,15</span></span></span><span><span class="code even" style="--layer: 1" title="24:6-24:6: @14[0]: _13 = const ()"><span class="annotation">@14⦊</span>‸<span class="annotation">⦉@14</span></span></span><span class="code" style="--layer: 0"></span></span>
+<span class="line"><span class="code" style="--layer: 0">    match </span><span><span class="code odd" style="--layer: 1" title="25:12-25:13: @16[5]: _17 = _5
+25:15-25:16: @16[7]: _18 = _6
+25:11-25:17: @16[8]: _16 = (move _17, move _18)
+25:11-25:17: @16[11]: FakeRead(ForMatchedPlace, _16)"><span class="annotation">@16⦊</span>(a, b)<span class="annotation">⦉@16</span></span></span><span class="code" style="--layer: 0"> {</span></span>
+<span class="line"><span class="code" style="--layer: 0">        (0 | 1, 2 | 3) =&gt; </span><span><span class="code even" style="--layer: 1" title="26:27-26:29: @20[0]: _15 = const ()"><span class="annotation">@19,20⦊</span>{}<span class="annotation">⦉@19,20</span></span></span><span class="code" style="--layer: 0"></span></span>
+<span class="line"><span class="code" style="--layer: 0">        _ =&gt; </span><span><span class="code odd" style="--layer: 1" title="27:14-27:16: @17[0]: _15 = const ()"><span class="annotation">@17⦊</span>{}<span class="annotation">⦉@17</span></span></span><span class="code" style="--layer: 0"></span></span>
+<span class="line"><span class="code" style="--layer: 0">    }</span></span>
+<span class="line"><span class="code" style="--layer: 0">    if </span><span><span class="code even" style="--layer: 1" title="29:8-29:15: @21[4]: _20 = _1
+29:8-29:15: @21[5]: FakeRead(ForMatchedPlace, _20)"><span class="annotation">@21⦊</span>is_true<span class="annotation">⦉@21</span></span></span><span class="code" style="--layer: 0"> </span><span><span class="code odd" style="--layer: 1" title="30:9-30:14: @24[0]: _5 = const 2_u8
+31:9-31:14: @24[1]: _6 = const 2_u8
+29:16-32:6: @24[2]: _19 = const ()"><span class="annotation">@22,24⦊</span>{</span></span>
+<span class="line"><span class="code odd" style="--layer: 1" title="30:9-30:14: @24[0]: _5 = const 2_u8
+31:9-31:14: @24[1]: _6 = const 2_u8
+29:16-32:6: @24[2]: _19 = const ()">        a = 2;</span></span>
+<span class="line"><span class="code odd" style="--layer: 1" title="30:9-30:14: @24[0]: _5 = const 2_u8
+31:9-31:14: @24[1]: _6 = const 2_u8
+29:16-32:6: @24[2]: _19 = const ()">        b = 2;</span></span>
+<span class="line"><span class="code odd" style="--layer: 1" title="30:9-30:14: @24[0]: _5 = const 2_u8
+31:9-31:14: @24[1]: _6 = const 2_u8
+29:16-32:6: @24[2]: _19 = const ()">    }<span class="annotation">⦉@22,24</span></span></span><span><span class="code even" style="--layer: 1" title="32:6-32:6: @23[0]: _19 = const ()"><span class="annotation">@23⦊</span>‸<span class="annotation">⦉@23</span></span></span><span class="code" style="--layer: 0"></span></span>
+<span class="line"><span class="code" style="--layer: 0">    match </span><span><span class="code odd" style="--layer: 1" title="33:12-33:13: @25[5]: _23 = _5
+33:15-33:16: @25[7]: _24 = _6
+33:11-33:17: @25[8]: _22 = (move _23, move _24)
+33:11-33:17: @25[11]: FakeRead(ForMatchedPlace, _22)"><span class="annotation">@25⦊</span>(a, b)<span class="annotation">⦉@25</span></span></span><span class="code" style="--layer: 0"> {</span></span>
+<span class="line"><span class="code" style="--layer: 0">        (0 | 1, 2 | 3) =&gt; </span><span><span class="code even" style="--layer: 1" title="34:27-34:29: @29[0]: _21 = const ()"><span class="annotation">@28,29⦊</span>{}<span class="annotation">⦉@28,29</span></span></span><span class="code" style="--layer: 0"></span></span>
+<span class="line"><span class="code" style="--layer: 0">        _ =&gt; </span><span><span class="code odd" style="--layer: 1" title="35:14-35:16: @26[0]: _21 = const ()"><span class="annotation">@26⦊</span>{}<span class="annotation">⦉@26</span></span></span><span class="code" style="--layer: 0"></span></span>
+<span class="line"><span class="code" style="--layer: 0">    }</span></span>
+<span class="line"><span class="code" style="--layer: 0">    if </span><span><span class="code even" style="--layer: 1" title="37:8-37:15: @30[4]: _26 = _1
+37:8-37:15: @30[5]: FakeRead(ForMatchedPlace, _26)"><span class="annotation">@30⦊</span>is_true<span class="annotation">⦉@30</span></span></span><span class="code" style="--layer: 0"> </span><span><span class="code odd" style="--layer: 1" title="38:9-38:14: @33[0]: _5 = const 0_u8
+39:9-39:14: @33[1]: _6 = const 2_u8
+37:16-40:6: @33[2]: _25 = const ()"><span class="annotation">@31,33⦊</span>{</span></span>
+<span class="line"><span class="code odd" style="--layer: 1" title="38:9-38:14: @33[0]: _5 = const 0_u8
+39:9-39:14: @33[1]: _6 = const 2_u8
+37:16-40:6: @33[2]: _25 = const ()">        a = 0;</span></span>
+<span class="line"><span class="code odd" style="--layer: 1" title="38:9-38:14: @33[0]: _5 = const 0_u8
+39:9-39:14: @33[1]: _6 = const 2_u8
+37:16-40:6: @33[2]: _25 = const ()">        b = 2;</span></span>
+<span class="line"><span class="code odd" style="--layer: 1" title="38:9-38:14: @33[0]: _5 = const 0_u8
+39:9-39:14: @33[1]: _6 = const 2_u8
+37:16-40:6: @33[2]: _25 = const ()">    }<span class="annotation">⦉@31,33</span></span></span><span><span class="code even" style="--layer: 1" title="40:6-40:6: @32[0]: _25 = const ()"><span class="annotation">@32⦊</span>‸<span class="annotation">⦉@32</span></span></span><span class="code" style="--layer: 0"></span></span>
+<span class="line"><span class="code" style="--layer: 0">    match </span><span><span class="code odd" style="--layer: 1" title="41:12-41:13: @34[4]: _28 = _5
+41:15-41:16: @34[6]: _29 = _6
+41:11-41:17: @34[7]: _27 = (move _28, move _29)
+41:11-41:17: @34[10]: FakeRead(ForMatchedPlace, _27)"><span class="annotation">@34⦊</span>(a, b)<span class="annotation">⦉@34</span></span></span><span class="code" style="--layer: 0"> {</span></span>
+<span class="line"><span class="code" style="--layer: 0">        (0 | 1, 2 | 3) =&gt; </span><span><span class="code even" style="--layer: 1" title="42:27-42:29: @38[0]: _0 = const ()"><span class="annotation">@37,38⦊</span>{}<span class="annotation">⦉@37,38</span></span></span><span class="code" style="--layer: 0"></span></span>
+<span class="line"><span class="code" style="--layer: 0">        _ =&gt; </span><span><span class="code odd" style="--layer: 1" title="43:14-43:16: @35[0]: _0 = const ()"><span class="annotation">@35⦊</span>{}<span class="annotation">⦉@35</span></span></span><span class="code" style="--layer: 0"></span></span>
+<span class="line"><span class="code" style="--layer: 0">    }</span></span>
+<span class="line"><span class="code" style="--layer: 0">}</span><span><span class="code even" style="--layer: 1" title="45:2-45:2: @39.Return: return"><span class="annotation">@39⦊</span>‸<span class="annotation">⦉@39</span></span></span></span></div>
+</body>
+</html>

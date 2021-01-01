@@ -2,8 +2,8 @@ use crate::expand::{self, AstFragment, Invocation};
 use crate::module::DirectoryOwnership;
 
 use rustc_ast::ptr::P;
-use rustc_ast::token;
-use rustc_ast::tokenstream::TokenStream;
+use rustc_ast::token::{self, Nonterminal};
+use rustc_ast::tokenstream::{CanSynthesizeMissingTokens, TokenStream};
 use rustc_ast::visit::{AssocCtxt, Visitor};
 use rustc_ast::{self as ast, Attribute, NodeId, PatKind};
 use rustc_attr::{self as attr, Deprecation, HasAttrs, Stability};
@@ -119,8 +119,8 @@ impl Annotatable {
         }
     }
 
-    crate fn into_tokens(self, sess: &ParseSess) -> TokenStream {
-        let nt = match self {
+    crate fn into_nonterminal(self) -> Nonterminal {
+        match self {
             Annotatable::Item(item) => token::NtItem(item),
             Annotatable::TraitItem(item) | Annotatable::ImplItem(item) => {
                 token::NtItem(P(item.and_then(ast::AssocItem::into_item)))
@@ -137,8 +137,11 @@ impl Annotatable {
             | Annotatable::Param(..)
             | Annotatable::StructField(..)
             | Annotatable::Variant(..) => panic!("unexpected annotatable"),
-        };
-        nt_to_tokenstream(&nt, sess, DUMMY_SP)
+        }
+    }
+
+    crate fn into_tokens(self, sess: &ParseSess) -> TokenStream {
+        nt_to_tokenstream(&self.into_nonterminal(), sess, DUMMY_SP, CanSynthesizeMissingTokens::No)
     }
 
     pub fn expect_item(self) -> P<ast::Item> {

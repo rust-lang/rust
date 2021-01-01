@@ -1,8 +1,8 @@
 // Reject mixing cyclic structure and Drop when using TypedArena.
 //
-// (Compare against compile-fail/dropck_vec_cycle_checked.rs)
+// (Compare against dropck-vec-cycle-checked.rs)
 //
-// (Also compare against compile-fail/dropck_tarena_unsound_drop.rs,
+// (Also compare against ui-fulldeps/dropck-tarena-unsound-drop.rs,
 //  which is a reduction of this code to more directly show the reason
 //  for the error message we see here.)
 

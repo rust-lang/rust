@@ -83,6 +83,21 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
                             terminator.kind = TerminatorKind::Goto { target };
                         }
                     }
+                    sym::discriminant_value => {
+                        if let (Some((destination, target)), Some(arg)) =
+                            (*destination, args[0].place())
+                        {
+                            let arg = tcx.mk_place_deref(arg);
+                            block.statements.push(Statement {
+                                source_info: terminator.source_info,
+                                kind: StatementKind::Assign(box (
+                                    destination,
+                                    Rvalue::Discriminant(arg),
+                                )),
+                            });
+                            terminator.kind = TerminatorKind::Goto { target };
+                        }
+                    }
                     _ => {}
                 }
             }

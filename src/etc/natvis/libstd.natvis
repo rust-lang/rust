@@ -26,9 +26,9 @@
   -->
 
   <Type Name="std::collections::hash::map::HashMap&lt;*,*,*&gt;">
-    <DisplayString>{{ size={base.table.items} }}</DisplayString>
+    <DisplayString>{{ len={base.table.items} }}</DisplayString>
     <Expand>
-      <Item Name="[size]">base.table.items</Item>
+      <Item Name="[len]">base.table.items</Item>
       <Item Name="[capacity]">base.table.items + base.table.growth_left</Item>
       <Item Name="[state]">base.hash_builder</Item>
 
@@ -50,9 +50,9 @@
   </Type>
 
   <Type Name="std::collections::hash::set::HashSet&lt;*,*&gt;">
-    <DisplayString>{{ size={base.map.table.items} }}</DisplayString>
+    <DisplayString>{{ len={base.map.table.items} }}</DisplayString>
     <Expand>
-      <Item Name="[size]">base.map.table.items</Item>
+      <Item Name="[len]">base.map.table.items</Item>
       <Item Name="[capacity]">base.map.table.items + base.map.table.growth_left</Item>
       <Item Name="[state]">base.map.hash_builder</Item>
 

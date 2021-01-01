@@ -690,13 +690,14 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateCompileUnit(
     const char *Producer, size_t ProducerLen, bool isOptimized,
     const char *Flags, unsigned RuntimeVer,
     const char *SplitName, size_t SplitNameLen,
-    LLVMRustDebugEmissionKind Kind) {
+    LLVMRustDebugEmissionKind Kind,
+    uint64_t DWOId, bool SplitDebugInlining) {
   auto *File = unwrapDI<DIFile>(FileRef);
 
   return wrap(Builder->createCompileUnit(Lang, File, StringRef(Producer, ProducerLen),
                                          isOptimized, Flags, RuntimeVer,
                                          StringRef(SplitName, SplitNameLen),
-                                         fromRust(Kind)));
+                                         fromRust(Kind), DWOId, SplitDebugInlining));
 }
 
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateFile(

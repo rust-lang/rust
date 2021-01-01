@@ -17,6 +17,7 @@ use std::process::Command;
 
 use build_helper::{output, t};
 
+use crate::cache::INTERNER;
 use crate::config::Target;
 use crate::Build;
 
@@ -79,18 +80,19 @@ pub fn check(build: &mut Build) {
     }
 
     // We need cmake, but only if we're actually building LLVM or sanitizers.
-    let building_llvm = build
-        .hosts
-        .iter()
-        .map(|host| {
-            build
-                .config
-                .target_config
-                .get(host)
-                .map(|config| config.llvm_config.is_none())
-                .unwrap_or(true)
-        })
-        .any(|build_llvm_ourselves| build_llvm_ourselves);
+    let building_llvm = build.config.rust_codegen_backends.contains(&INTERNER.intern_str("llvm"))
+        && build
+            .hosts
+            .iter()
+            .map(|host| {
+                build
+                    .config
+                    .target_config
+                    .get(host)
+                    .map(|config| config.llvm_config.is_none())
+                    .unwrap_or(true)
+            })
+            .any(|build_llvm_ourselves| build_llvm_ourselves);
     if building_llvm || build.config.any_sanitizers_enabled() {
         cmd_finder.must_have("cmake");
     }
@@ -147,10 +149,12 @@ pub fn check(build: &mut Build) {
         }
     }
 
-    // Externally configured LLVM requires FileCheck to exist
-    let filecheck = build.llvm_filecheck(build.build);
-    if !filecheck.starts_with(&build.out) && !filecheck.exists() && build.config.codegen_tests {
-        panic!("FileCheck executable {:?} does not exist", filecheck);
+    if build.config.rust_codegen_backends.contains(&INTERNER.intern_str("llvm")) {
+        // Externally configured LLVM requires FileCheck to exist
+        let filecheck = build.llvm_filecheck(build.build);
+        if !filecheck.starts_with(&build.out) && !filecheck.exists() && build.config.codegen_tests {
+            panic!("FileCheck executable {:?} does not exist", filecheck);
+        }
     }
 
     for target in &build.targets {
@@ -159,11 +163,7 @@ pub fn check(build: &mut Build) {
             panic!("the iOS target is only supported on macOS");
         }
 
-        build
-            .config
-            .target_config
-            .entry(target.clone())
-            .or_insert(Target::from_triple(&target.triple));
+        build.config.target_config.entry(*target).or_insert(Target::from_triple(&target.triple));
 
         if target.contains("-none-") || target.contains("nvptx") {
             if build.no_std(*target) == Some(false) {
@@ -176,7 +176,7 @@ pub fn check(build: &mut Build) {
             // If this is a native target (host is also musl) and no musl-root is given,
             // fall back to the system toolchain in /usr before giving up
             if build.musl_root(*target).is_none() && build.config.build == *target {
-                let target = build.config.target_config.entry(target.clone()).or_default();
+                let target = build.config.target_config.entry(*target).or_default();
                 target.musl_root = Some("/usr".into());
             }
             match build.musl_libdir(*target) {

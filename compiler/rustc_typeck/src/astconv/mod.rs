@@ -196,11 +196,13 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
             Some(rl::Region::LateBound(debruijn, id, _)) => {
                 let name = lifetime_name(id.expect_local());
-                tcx.mk_region(ty::ReLateBound(debruijn, ty::BrNamed(id, name)))
+                let br = ty::BoundRegion { kind: ty::BrNamed(id, name) };
+                tcx.mk_region(ty::ReLateBound(debruijn, br))
             }
 
             Some(rl::Region::LateBoundAnon(debruijn, index)) => {
-                tcx.mk_region(ty::ReLateBound(debruijn, ty::BrAnon(index)))
+                let br = ty::BoundRegion { kind: ty::BrAnon(index) };
+                tcx.mk_region(ty::ReLateBound(debruijn, br))
             }
 
             Some(rl::Region::EarlyBound(index, id, _)) => {
@@ -837,9 +839,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     .instantiate_lang_item_trait_ref(
                         lang_item, span, hir_id, args, param_ty, bounds,
                     ),
-                hir::GenericBound::Outlives(ref l) => {
-                    bounds.region_bounds.push((self.ast_region_to_region(l, None), l.span))
-                }
+                hir::GenericBound::Outlives(ref l) => bounds
+                    .region_bounds
+                    .push((ty::Binder::bind(self.ast_region_to_region(l, None)), l.span)),
             }
         }
     }
@@ -1254,22 +1256,22 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             })
         });
 
-        // Calling `skip_binder` is okay because the predicates are re-bound.
-        let regular_trait_predicates = existential_trait_refs
-            .map(|trait_ref| ty::ExistentialPredicate::Trait(trait_ref.skip_binder()));
-        let auto_trait_predicates = auto_traits
-            .into_iter()
-            .map(|trait_ref| ty::ExistentialPredicate::AutoTrait(trait_ref.trait_ref().def_id()));
+        let regular_trait_predicates = existential_trait_refs.map(|trait_ref| {
+            trait_ref.map_bound(|trait_ref| ty::ExistentialPredicate::Trait(trait_ref))
+        });
+        let auto_trait_predicates = auto_traits.into_iter().map(|trait_ref| {
+            ty::Binder::dummy(ty::ExistentialPredicate::AutoTrait(trait_ref.trait_ref().def_id()))
+        });
         let mut v = regular_trait_predicates
             .chain(auto_trait_predicates)
             .chain(
                 existential_projections
-                    .map(|x| ty::ExistentialPredicate::Projection(x.skip_binder())),
+                    .map(|x| x.map_bound(|x| ty::ExistentialPredicate::Projection(x))),
             )
             .collect::<SmallVec<[_; 8]>>();
-        v.sort_by(|a, b| a.stable_cmp(tcx, b));
+        v.sort_by(|a, b| a.skip_binder().stable_cmp(tcx, &b.skip_binder()));
         v.dedup();
-        let existential_predicates = ty::Binder::bind(tcx.mk_existential_predicates(v.into_iter()));
+        let existential_predicates = tcx.mk_poly_existential_predicates(v.into_iter());
 
         // Use explicitly-specified region bound.
         let region_bound = if !lifetime.is_elided() {
@@ -2295,8 +2297,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
     fn validate_late_bound_regions(
         &self,
-        constrained_regions: FxHashSet<ty::BoundRegion>,
-        referenced_regions: FxHashSet<ty::BoundRegion>,
+        constrained_regions: FxHashSet<ty::BoundRegionKind>,
+        referenced_regions: FxHashSet<ty::BoundRegionKind>,
         generate_err: impl Fn(&str) -> rustc_errors::DiagnosticBuilder<'tcx>,
     ) {
         for br in referenced_regions.difference(&constrained_regions) {
@@ -2331,7 +2333,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     fn compute_object_lifetime_bound(
         &self,
         span: Span,
-        existential_predicates: ty::Binder<&'tcx ty::List<ty::ExistentialPredicate<'tcx>>>,
+        existential_predicates: &'tcx ty::List<ty::Binder<ty::ExistentialPredicate<'tcx>>>,
     ) -> Option<ty::Region<'tcx>> // if None, use the default
     {
         let tcx = self.tcx();

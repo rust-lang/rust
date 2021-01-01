@@ -5,7 +5,7 @@ use rustc_ast::{
     self as ast, Attribute, GenericBounds, GenericParam, GenericParamKind, WhereClause,
 };
 use rustc_errors::PResult;
-use rustc_span::symbol::{kw, sym};
+use rustc_span::symbol::kw;
 
 impl<'a> Parser<'a> {
     /// Parses bounds of a lifetime parameter `BOUND + BOUND + BOUND`, possibly with trailing `+`.
@@ -55,8 +55,6 @@ impl<'a> Parser<'a> {
         let ident = self.parse_ident()?;
         self.expect(&token::Colon)?;
         let ty = self.parse_ty()?;
-
-        self.sess.gated_spans.gate(sym::min_const_generics, const_span.to(self.prev_token.span));
 
         Ok(GenericParam {
             ident,
@@ -240,7 +238,7 @@ impl<'a> Parser<'a> {
 
         // Parse type with mandatory colon and (possibly empty) bounds,
         // or with mandatory equality sign and the second type.
-        let ty = self.parse_ty()?;
+        let ty = self.parse_ty_for_where_clause()?;
         if self.eat(&token::Colon) {
             let bounds = self.parse_generic_bounds(Some(self.prev_token.span))?;
             Ok(ast::WherePredicate::BoundPredicate(ast::WhereBoundPredicate {

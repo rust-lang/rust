@@ -156,10 +156,10 @@ crate fn placeholder_type_error(
         if let Some(span) = span {
             sugg.push((span, format!("<{}>", type_name)));
         }
-    } else if let Some(arg) = generics.iter().find(|arg| match arg.name {
-        hir::ParamName::Plain(Ident { name: kw::Underscore, .. }) => true,
-        _ => false,
-    }) {
+    } else if let Some(arg) = generics
+        .iter()
+        .find(|arg| matches!(arg.name, hir::ParamName::Plain(Ident { name: kw::Underscore, .. })))
+    {
         // Account for `_` already present in cases like `struct S<_>(_);` and suggest
         // `struct S<T>(T);` instead of `struct S<_, T>(T);`.
         sugg.push((arg.span, (*type_name).to_string()));
@@ -359,8 +359,8 @@ impl AstConv<'tcx> for ItemCtxt<'tcx> {
                 self.tcx().sess,
                 span,
                 E0212,
-                "cannot extract an associated type from a higher-ranked trait bound \
-                 in this context"
+                "cannot use the associated type of a trait \
+                 with uninferred generic parameters"
             );
 
             match self.node() {
@@ -461,7 +461,7 @@ fn get_new_lifetime_name<'tcx>(
         .collect_referenced_late_bound_regions(&poly_trait_ref)
         .into_iter()
         .filter_map(|lt| {
-            if let ty::BoundRegion::BrNamed(_, name) = lt {
+            if let ty::BoundRegionKind::BrNamed(_, name) = lt {
                 Some(name.as_str().to_string())
             } else {
                 None
@@ -1260,7 +1260,7 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
                 // used with const generics, e.g. `Foo<{N+1}>`, can work at all.
                 //
                 // Note that we do not supply the parent generics when using
-                // `feature(min_const_generics)`.
+                // `min_const_generics`.
                 Some(parent_def_id.to_def_id())
             } else {
                 let parent_node = tcx.hir().get(tcx.hir().get_parent_node(hir_id));
@@ -1369,7 +1369,11 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
         generics.parent_count + generics.params.len()
     });
 
-    let mut params: Vec<_> = opt_self.into_iter().collect();
+    let mut params: Vec<_> = Vec::with_capacity(ast_generics.params.len() + has_self as usize);
+
+    if let Some(opt_self) = opt_self {
+        params.push(opt_self);
+    }
 
     let early_lifetimes = early_bound_lifetimes_from_generics(tcx, ast_generics);
     params.extend(early_lifetimes.enumerate().map(|(i, param)| ty::GenericParamDef {
@@ -1540,12 +1544,27 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
                     let mut diag = bad_placeholder_type(tcx, visitor.0);
                     let ret_ty = fn_sig.output();
                     if ret_ty != tcx.ty_error() {
-                        diag.span_suggestion(
-                            ty.span,
-                            "replace with the correct return type",
-                            ret_ty.to_string(),
-                            Applicability::MaybeIncorrect,
-                        );
+                        if !ret_ty.is_closure() {
+                            let ret_ty_str = match ret_ty.kind() {
+                                // Suggest a function pointer return type instead of a unique function definition
+                                // (e.g. `fn() -> i32` instead of `fn() -> i32 { f }`, the latter of which is invalid
+                                // syntax)
+                                ty::FnDef(..) => ret_ty.fn_sig(tcx).to_string(),
+                                _ => ret_ty.to_string(),
+                            };
+                            diag.span_suggestion(
+                                ty.span,
+                                "replace with the correct return type",
+                                ret_ty_str,
+                                Applicability::MaybeIncorrect,
+                            );
+                        } else {
+                            // We're dealing with a closure, so we should suggest using `impl Fn` or trait bounds
+                            // to prevent the user from getting a papercut while trying to use the unique closure
+                            // syntax (e.g. `[closure@src/lib.rs:2:5: 2:9]`).
+                            diag.help("consider using an `Fn`, `FnMut`, or `FnOnce` trait bound");
+                            diag.note("for more information on `Fn` traits and closure types, see https://doc.rust-lang.org/book/ch13-01-closures.html");
+                        }
                     }
                     diag.emit();
                     ty::Binder::bind(fn_sig)
@@ -1748,8 +1767,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
     const NO_GENERICS: &hir::Generics<'_> = &hir::Generics::empty();
 
     // We use an `IndexSet` to preserves order of insertion.
-    // Preserving the order of insertion is important here so as not to break
-    // compile-fail UI tests.
+    // Preserving the order of insertion is important here so as not to break UI tests.
     let mut predicates: FxIndexSet<(ty::Predicate<'_>, Span)> = FxIndexSet::default();
 
     let ast_generics = match node {
@@ -1919,10 +1937,11 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
                     } else {
                         let span = bound_pred.bounded_ty.span;
                         let re_root_empty = tcx.lifetimes.re_root_empty;
-                        let predicate = ty::OutlivesPredicate(ty, re_root_empty);
+                        let predicate = ty::Binder::bind(ty::PredicateAtom::TypeOutlives(
+                            ty::OutlivesPredicate(ty, re_root_empty),
+                        ));
                         predicates.insert((
-                            ty::PredicateAtom::TypeOutlives(predicate)
-                                .potentially_quantified(tcx, ty::PredicateKind::ForAll),
+                            predicate.potentially_quantified(tcx, ty::PredicateKind::ForAll),
                             span,
                         ));
                     }
@@ -1965,8 +1984,10 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
                         &hir::GenericBound::Outlives(ref lifetime) => {
                             let region = AstConv::ast_region_to_region(&icx, lifetime, None);
                             predicates.insert((
-                                ty::PredicateAtom::TypeOutlives(ty::OutlivesPredicate(ty, region))
-                                    .potentially_quantified(tcx, ty::PredicateKind::ForAll),
+                                ty::Binder::bind(ty::PredicateAtom::TypeOutlives(
+                                    ty::OutlivesPredicate(ty, region),
+                                ))
+                                .potentially_quantified(tcx, ty::PredicateKind::ForAll),
                                 lifetime.span,
                             ));
                         }
@@ -1983,9 +2004,10 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
                         }
                         _ => bug!(),
                     };
-                    let pred = ty::PredicateAtom::RegionOutlives(ty::OutlivesPredicate(r1, r2));
+                    let pred = ty::PredicateAtom::RegionOutlives(ty::OutlivesPredicate(r1, r2))
+                        .to_predicate(icx.tcx);
 
-                    (pred.potentially_quantified(icx.tcx, ty::PredicateKind::ForAll), span)
+                    (pred, span)
                 }))
             }
 
@@ -2141,13 +2163,8 @@ fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicat
             // * It must be an associated type for this trait (*not* a
             //   supertrait).
             if let ty::Projection(projection) = ty.kind() {
-                if projection.substs == trait_identity_substs
+                projection.substs == trait_identity_substs
                     && tcx.associated_item(projection.item_def_id).container.id() == def_id
-                {
-                    true
-                } else {
-                    false
-                }
             } else {
                 false
             }
@@ -2239,7 +2256,7 @@ fn predicates_from_bound<'tcx>(
         hir::GenericBound::Outlives(ref lifetime) => {
             let region = astconv.ast_region_to_region(lifetime, None);
             let pred = ty::PredicateAtom::TypeOutlives(ty::OutlivesPredicate(param_ty, region))
-                .potentially_quantified(astconv.tcx(), ty::PredicateKind::ForAll);
+                .to_predicate(astconv.tcx());
             vec![(pred, lifetime.span)]
         }
     }

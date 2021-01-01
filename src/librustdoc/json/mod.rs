@@ -13,6 +13,8 @@ use std::path::PathBuf;
 use std::rc::Rc;
 
 use rustc_data_structures::fx::FxHashMap;
+use rustc_middle::ty;
+use rustc_session::Session;
 use rustc_span::edition::Edition;
 
 use crate::clean;
@@ -23,7 +25,8 @@ use crate::formats::FormatRenderer;
 use crate::html::render::cache::ExternalLocation;
 
 #[derive(Clone)]
-crate struct JsonRenderer {
+crate struct JsonRenderer<'tcx> {
+    tcx: ty::TyCtxt<'tcx>,
     /// A mapping of IDs that contains all local items for this crate which gets output as a top
     /// level field of the JSON blob.
     index: Rc<RefCell<FxHashMap<types::Id, types::Item>>>,
@@ -31,7 +34,11 @@ crate struct JsonRenderer {
     out_path: PathBuf,
 }
 
-impl JsonRenderer {
+impl JsonRenderer<'_> {
+    fn sess(&self) -> &Session {
+        self.tcx.sess
+    }
+
     fn get_trait_implementors(
         &mut self,
         id: rustc_span::def_id::DefId,
@@ -117,17 +124,19 @@ impl JsonRenderer {
     }
 }
 
-impl FormatRenderer for JsonRenderer {
+impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
     fn init(
         krate: clean::Crate,
         options: RenderOptions,
         _render_info: RenderInfo,
         _edition: Edition,
         _cache: &mut Cache,
+        tcx: ty::TyCtxt<'tcx>,
     ) -> Result<(Self, clean::Crate), Error> {
         debug!("Initializing json renderer");
         Ok((
             JsonRenderer {
+                tcx,
                 index: Rc::new(RefCell::new(FxHashMap::default())),
                 out_path: options.output,
             },
@@ -143,7 +152,7 @@ impl FormatRenderer for JsonRenderer {
         item.kind.inner_items().for_each(|i| self.item(i.clone(), cache).unwrap());
 
         let id = item.def_id;
-        if let Some(mut new_item) = item.into(): Option<types::Item> {
+        if let Some(mut new_item) = self.convert_item(item) {
             if let types::ItemEnum::TraitItem(ref mut t) = new_item.inner {
                 t.implementors = self.get_trait_implementors(id, cache)
             } else if let types::ItemEnum::StructItem(ref mut s) = new_item.inner {
@@ -169,9 +178,9 @@ impl FormatRenderer for JsonRenderer {
         cache: &Cache,
     ) -> Result<(), Error> {
         use clean::types::ItemKind::*;
-        if let ModuleItem(m) = &item.kind {
+        if let ModuleItem(m) = &*item.kind {
             for item in &m.items {
-                match &item.kind {
+                match &*item.kind {
                     // These don't have names so they don't get added to the output by default
                     ImportItem(_) => self.item(item.clone(), cache).unwrap(),
                     ExternCrateItem(_, _) => self.item(item.clone(), cache).unwrap(),
@@ -218,7 +227,7 @@ impl FormatRenderer for JsonRenderer {
                     (
                         k.as_u32(),
                         types::ExternalCrate {
-                            name: v.0.clone(),
+                            name: v.0.to_string(),
                             html_root_url: match &v.2 {
                                 ExternalLocation::Remote(s) => Some(s.clone()),
                                 _ => None,

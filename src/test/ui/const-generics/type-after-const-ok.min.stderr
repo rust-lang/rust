@@ -1,5 +1,5 @@
 error: type parameters must be declared prior to const parameters
-  --> $DIR/type-after-const-ok.rs:9:26
+  --> $DIR/type-after-const-ok.rs:8:26
    |
 LL | struct A<const N: usize, T>(T);
    |         -----------------^- help: reorder the parameters: lifetimes, then types, then consts: `<T, const N: usize>`

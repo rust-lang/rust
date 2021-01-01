@@ -1,5 +1,5 @@
 error: generic parameters may not be used in const operations
-  --> $DIR/wf-misc.rs:9:17
+  --> $DIR/wf-misc.rs:8:17
    |
 LL |     let _: [u8; N + 1];
    |                 ^ cannot perform const operation using `N`
@@ -8,7 +8,7 @@ LL |     let _: [u8; N + 1];
    = help: use `#![feature(const_generics)]` and `#![feature(const_evaluatable_checked)]` to allow generic const expressions
 
 error: generic parameters may not be used in const operations
-  --> $DIR/wf-misc.rs:17:21
+  --> $DIR/wf-misc.rs:16:21
    |
 LL |     let _: Const::<{N + 1}>;
    |                     ^ cannot perform const operation using `N`

@@ -18,5 +18,9 @@
 -                                          // + literal: Const { ty: unsafe extern "rust-intrinsic" fn() -> ! {std::intrinsics::unreachable}, val: Value(Scalar(<ZST>)) }
 +         unreachable;                     // scope 1 at $DIR/lower_intrinsics.rs:24:14: 24:45
       }
+  
+      bb1 (cleanup): {
+          resume;                          // scope 0 at $DIR/lower_intrinsics.rs:23:1: 25:2
+      }
   }
   

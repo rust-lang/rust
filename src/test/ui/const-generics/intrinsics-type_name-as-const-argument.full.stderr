@@ -1,5 +1,5 @@
 error: constant expression depends on a generic parameter
-  --> $DIR/intrinsics-type_name-as-const-argument.rs:15:8
+  --> $DIR/intrinsics-type_name-as-const-argument.rs:14:8
    |
 LL |     T: Trait<{std::intrinsics::type_name::<T>()}>
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

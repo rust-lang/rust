@@ -153,6 +153,7 @@ fn msg_span_from_early_bound_and_free_regions(
         Some(Node::Item(it)) => item_scope_tag(&it),
         Some(Node::TraitItem(it)) => trait_item_scope_tag(&it),
         Some(Node::ImplItem(it)) => impl_item_scope_tag(&it),
+        Some(Node::ForeignItem(it)) => foreign_item_scope_tag(&it),
         _ => unreachable!(),
     };
     let (prefix, span) = match *region {
@@ -165,7 +166,9 @@ fn msg_span_from_early_bound_and_free_regions(
             }
             (format!("the lifetime `{}` as defined on", br.name), sp)
         }
-        ty::ReFree(ty::FreeRegion { bound_region: ty::BoundRegion::BrNamed(_, name), .. }) => {
+        ty::ReFree(ty::FreeRegion {
+            bound_region: ty::BoundRegionKind::BrNamed(_, name), ..
+        }) => {
             let mut sp = sm.guess_head_span(tcx.hir().span(node));
             if let Some(param) =
                 tcx.hir().get_generics(scope).and_then(|generics| generics.get_named(name))
@@ -228,6 +231,13 @@ fn impl_item_scope_tag(item: &hir::ImplItem<'_>) -> &'static str {
     match item.kind {
         hir::ImplItemKind::Fn(..) => "method body",
         hir::ImplItemKind::Const(..) | hir::ImplItemKind::TyAlias(..) => "associated item",
+    }
+}
+
+fn foreign_item_scope_tag(item: &hir::ForeignItem<'_>) -> &'static str {
+    match item.kind {
+        hir::ForeignItemKind::Fn(..) => "method body",
+        hir::ForeignItemKind::Static(..) | hir::ForeignItemKind::Type => "associated item",
     }
 }
 
@@ -415,7 +425,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     // obviously it never weeds out ALL errors.
     fn process_errors(
         &self,
-        errors: &Vec<RegionResolutionError<'tcx>>,
+        errors: &[RegionResolutionError<'tcx>],
     ) -> Vec<RegionResolutionError<'tcx>> {
         debug!("process_errors()");
 
@@ -440,7 +450,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         };
 
         let mut errors = if errors.iter().all(|e| is_bound_failure(e)) {
-            errors.clone()
+            errors.to_owned()
         } else {
             errors.iter().filter(|&e| !is_bound_failure(e)).cloned().collect()
         };
@@ -496,7 +506,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
             fn print_dyn_existential(
                 self,
-                _predicates: &'tcx ty::List<ty::ExistentialPredicate<'tcx>>,
+                _predicates: &'tcx ty::List<ty::Binder<ty::ExistentialPredicate<'tcx>>>,
             ) -> Result<Self::DynExistential, Self::Error> {
                 Err(NonTrivialPath)
             }
@@ -1622,7 +1632,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     }
                 }
                 (TypeError::ObjectUnsafeCoercion(_), _) => {
-                    diag.note_unsuccessfull_coercion(found, expected);
+                    diag.note_unsuccessful_coercion(found, expected);
                 }
                 (_, _) => {
                     debug!(
@@ -2279,7 +2289,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         &self,
         var_origin: RegionVariableOrigin,
     ) -> DiagnosticBuilder<'tcx> {
-        let br_string = |br: ty::BoundRegion| {
+        let br_string = |br: ty::BoundRegionKind| {
             let mut s = match br {
                 ty::BrNamed(_, name) => name.to_string(),
                 _ => String::new(),

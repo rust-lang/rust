@@ -1,4 +1,3 @@
-#![feature(min_const_generics)]
 #![feature(never_type)]
 
 struct Foo<const N: [u8; 0]>;

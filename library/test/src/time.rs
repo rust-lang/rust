@@ -105,30 +105,24 @@ impl TimeThreshold {
     /// value.
     pub fn from_env_var(env_var_name: &str) -> Option<Self> {
         let durations_str = env::var(env_var_name).ok()?;
+        let (warn_str, critical_str) = durations_str.split_once(',').unwrap_or_else(|| {
+            panic!(
+                "Duration variable {} expected to have 2 numbers separated by comma, but got {}",
+                env_var_name, durations_str
+            )
+        });
 
-        // Split string into 2 substrings by comma and try to parse numbers.
-        let mut durations = durations_str.splitn(2, ',').map(|v| {
+        let parse_u64 = |v| {
             u64::from_str(v).unwrap_or_else(|_| {
                 panic!(
                     "Duration value in variable {} is expected to be a number, but got {}",
                     env_var_name, v
                 )
             })
-        });
-
-        // Callback to be called if the environment variable has unexpected structure.
-        let panic_on_incorrect_value = || {
-            panic!(
-                "Duration variable {} expected to have 2 numbers separated by comma, but got {}",
-                env_var_name, durations_str
-            );
         };
 
-        let (warn, critical) = (
-            durations.next().unwrap_or_else(panic_on_incorrect_value),
-            durations.next().unwrap_or_else(panic_on_incorrect_value),
-        );
-
+        let warn = parse_u64(warn_str);
+        let critical = parse_u64(critical_str);
         if warn > critical {
             panic!("Test execution warn time should be less or equal to the critical time");
         }

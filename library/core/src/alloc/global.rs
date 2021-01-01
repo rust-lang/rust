@@ -53,6 +53,27 @@ use crate::ptr;
 /// * `Layout` queries and calculations in general must be correct. Callers of
 ///   this trait are allowed to rely on the contracts defined on each method,
 ///   and implementors must ensure such contracts remain true.
+///
+/// * You may not rely on allocations actually happening, even if there are explicit
+///   heap allocations in the source. The optimizer may detect unused allocations that it can either
+///   eliminate entirely or move to the stack and thus never invoke the allocator. The
+///   optimizer may further assume that allocation is infallible, so code that used to fail due
+///   to allocator failures may now suddenly work because the optimizer worked around the
+///   need for an allocation. More concretely, the following code example is unsound, irrespective
+///   of whether your custom allocator allows counting how many allocations have happened.
+///
+///   ```rust,ignore (unsound and has placeholders)
+///   drop(Box::new(42));
+///   let number_of_heap_allocs = /* call private allocator API */;
+///   unsafe { std::intrinsics::assume(number_of_heap_allocs > 0); }
+///   ```
+///
+///   Note that the optimizations mentioned above are not the only
+///   optimization that can be applied. You may generally not rely on heap allocations
+///   happening if they can be removed without changing program behavior.
+///   Whether allocations happen or not is not part of the program behavior, even if it
+///   could be detected via an allocator that tracks allocations by printing or otherwise
+///   having side effects.
 #[stable(feature = "global_alloc", since = "1.28.0")]
 pub unsafe trait GlobalAlloc {
     /// Allocate memory as described by the given `layout`.

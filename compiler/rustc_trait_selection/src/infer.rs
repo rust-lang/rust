@@ -162,7 +162,7 @@ impl<'tcx> OutlivesEnvironmentExt<'tcx> for OutlivesEnvironment<'tcx> {
     /// 'b` (and hence, transitively, that `T: 'a`). This method would
     /// add those assumptions into the outlives-environment.
     ///
-    /// Tests: `src/test/compile-fail/regions-free-region-ordering-*.rs`
+    /// Tests: `src/test/ui/regions/regions-free-region-ordering-*.rs`
     fn add_implied_bounds(
         &mut self,
         infcx: &InferCtxt<'a, 'tcx>,

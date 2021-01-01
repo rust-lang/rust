@@ -111,11 +111,23 @@ impl<K, V> BTreeMap<K, V> {
             }
         }
     }
+
+    // Transform the tree to minimize wasted space, obtaining fewer nodes that
+    // are mostly filled up to their capacity. The same compact tree could have
+    // been obtained by inserting keys in a shrewd order.
+    fn compact(&mut self)
+    where
+        K: Ord,
+    {
+        let iter = mem::take(self).into_iter();
+        let root = BTreeMap::ensure_is_owned(&mut self.root);
+        root.bulk_push(iter, &mut self.length);
+    }
 }
 
 impl<'a, K: 'a, V: 'a> NodeRef<marker::Immut<'a>, K, V, marker::LeafOrInternal> {
     fn assert_min_len(self, min_len: usize) {
-        assert!(self.len() >= min_len, "{} < {}", self.len(), min_len);
+        assert!(self.len() >= min_len, "node len {} < {}", self.len(), min_len);
         if let node::ForceResult::Internal(node) = self.force() {
             for idx in 0..=node.len() {
                 let edge = unsafe { Handle::new_edge(node, idx) };
@@ -1679,17 +1691,29 @@ fn test_first_last_entry() {
 }
 
 #[test]
-fn test_insert_into_full_left() {
-    let mut map: BTreeMap<_, _> = (0..NODE_CAPACITY).map(|i| (i * 2, ())).collect();
-    assert!(map.insert(NODE_CAPACITY, ()).is_none());
-    map.check();
+fn test_insert_into_full_height_0() {
+    let size = NODE_CAPACITY;
+    for pos in 0..=size {
+        let mut map: BTreeMap<_, _> = (0..size).map(|i| (i * 2 + 1, ())).collect();
+        assert!(map.insert(pos * 2, ()).is_none());
+        map.check();
+    }
 }
 
 #[test]
-fn test_insert_into_full_right() {
-    let mut map: BTreeMap<_, _> = (0..NODE_CAPACITY).map(|i| (i * 2, ())).collect();
-    assert!(map.insert(NODE_CAPACITY + 2, ()).is_none());
-    map.check();
+fn test_insert_into_full_height_1() {
+    let size = NODE_CAPACITY + 1 + NODE_CAPACITY;
+    for pos in 0..=size {
+        let mut map: BTreeMap<_, _> = (0..size).map(|i| (i * 2 + 1, ())).collect();
+        map.compact();
+        let root_node = map.root.as_ref().unwrap().reborrow();
+        assert_eq!(root_node.len(), 1);
+        assert_eq!(root_node.first_leaf_edge().into_node().len(), NODE_CAPACITY);
+        assert_eq!(root_node.last_leaf_edge().into_node().len(), NODE_CAPACITY);
+
+        assert!(map.insert(pos * 2, ()).is_none());
+        map.check();
+    }
 }
 
 macro_rules! create_append_test {
@@ -1797,7 +1821,6 @@ fn test_append_ord_chaos() {
 }
 
 fn rand_data(len: usize) -> Vec<(u32, u32)> {
-    assert!(len * 2 <= 70029); // from that point on numbers repeat
     let mut rng = DeterministicRng::new();
     Vec::from_iter((0..len).map(|_| (rng.next(), rng.next())))
 }
@@ -1860,6 +1883,25 @@ fn test_split_off_tiny_right_height_2() {
     assert_eq!(right.len(), 1);
     assert_eq!(*left.last_key_value().unwrap().0, last - 1);
     assert_eq!(*right.last_key_value().unwrap().0, last);
+}
+
+#[test]
+fn test_split_off_halfway() {
+    let mut rng = DeterministicRng::new();
+    for &len in &[NODE_CAPACITY, 25, 50, 75, 100] {
+        let mut data = Vec::from_iter((0..len).map(|_| (rng.next(), ())));
+        // Insertion in non-ascending order creates some variation in node length.
+        let mut map = BTreeMap::from_iter(data.iter().copied());
+        data.sort();
+        let small_keys = data.iter().take(len / 2).map(|kv| kv.0);
+        let large_keys = data.iter().skip(len / 2).map(|kv| kv.0);
+        let split_key = large_keys.clone().next().unwrap();
+        let right = map.split_off(&split_key);
+        map.check();
+        right.check();
+        assert!(map.keys().copied().eq(small_keys));
+        assert!(right.keys().copied().eq(large_keys));
+    }
 }
 
 #[test]

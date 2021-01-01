@@ -185,15 +185,15 @@ impl<'a> Resolver<'a> {
 
     crate fn get_macro(&mut self, res: Res) -> Option<Lrc<SyntaxExtension>> {
         match res {
-            Res::Def(DefKind::Macro(..), def_id) => self.get_macro_by_def_id(def_id),
+            Res::Def(DefKind::Macro(..), def_id) => Some(self.get_macro_by_def_id(def_id)),
             Res::NonMacroAttr(attr_kind) => Some(self.non_macro_attr(attr_kind.is_used())),
             _ => None,
         }
     }
 
-    crate fn get_macro_by_def_id(&mut self, def_id: DefId) -> Option<Lrc<SyntaxExtension>> {
+    crate fn get_macro_by_def_id(&mut self, def_id: DefId) -> Lrc<SyntaxExtension> {
         if let Some(ext) = self.macro_map.get(&def_id) {
-            return Some(ext.clone());
+            return ext.clone();
         }
 
         let ext = Lrc::new(match self.cstore().load_macro_untracked(def_id, &self.session) {
@@ -202,7 +202,7 @@ impl<'a> Resolver<'a> {
         });
 
         self.macro_map.insert(def_id, ext.clone());
-        Some(ext)
+        ext
     }
 
     crate fn build_reduced_graph(
@@ -258,7 +258,16 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                 Ok(ty::Visibility::Restricted(DefId::local(CRATE_DEF_INDEX)))
             }
             ast::VisibilityKind::Inherited => {
-                Ok(ty::Visibility::Restricted(parent_scope.module.normal_ancestor_id))
+                if matches!(self.parent_scope.module.kind, ModuleKind::Def(DefKind::Enum, _, _)) {
+                    // Any inherited visibility resolved directly inside an enum
+                    // (e.g. variants or fields) inherits from the visibility of the enum.
+                    let parent_enum = self.parent_scope.module.def_id().unwrap().expect_local();
+                    Ok(self.r.visibilities[&parent_enum])
+                } else {
+                    // If it's not in an enum, its visibility is restricted to the `mod` item
+                    // that it's defined in.
+                    Ok(ty::Visibility::Restricted(self.parent_scope.module.normal_ancestor_id))
+                }
             }
             ast::VisibilityKind::Restricted { ref path, id, .. } => {
                 // For visibilities we are not ready to provide correct implementation of "uniform
@@ -333,7 +342,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
         let field_names = vdata
             .fields()
             .iter()
-            .map(|field| respan(field.span, field.ident.map_or(kw::Invalid, |ident| ident.name)))
+            .map(|field| respan(field.span, field.ident.map_or(kw::Empty, |ident| ident.name)))
             .collect();
         self.insert_field_names(def_id, field_names);
     }
@@ -516,9 +525,9 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                             ModuleKind::Block(..) => unreachable!(),
                         };
                         // HACK(eddyb) unclear how good this is, but keeping `$crate`
-                        // in `source` breaks `src/test/compile-fail/import-crate-var.rs`,
+                        // in `source` breaks `src/test/ui/imports/import-crate-var.rs`,
                         // while the current crate doesn't have a valid `crate_name`.
-                        if crate_name != kw::Invalid {
+                        if crate_name != kw::Empty {
                             // `crate_name` should not be interpreted as relative.
                             module_path.push(Segment {
                                 ident: Ident { name: kw::PathRoot, span: source.ident.span },
@@ -647,7 +656,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
 
     /// Constructs the reduced graph for one item.
     fn build_reduced_graph_for_item(&mut self, item: &'b Item) {
-        if matches!(item.kind, ItemKind::Mod(..)) && item.ident.name == kw::Invalid {
+        if matches!(item.kind, ItemKind::Mod(..)) && item.ident.name == kw::Empty {
             // Fake crate root item from expand.
             return;
         }

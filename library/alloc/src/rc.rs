@@ -1749,7 +1749,7 @@ struct WeakInner<'a> {
     strong: &'a Cell<usize>,
 }
 
-impl<T: ?Sized> Weak<T> {
+impl<T> Weak<T> {
     /// Returns a raw pointer to the object `T` pointed to by this `Weak<T>`.
     ///
     /// The pointer is valid only if there are some strong references. The pointer may be dangling,
@@ -1882,7 +1882,9 @@ impl<T: ?Sized> Weak<T> {
         // SAFETY: we now have recovered the original Weak pointer, so can create the Weak.
         Weak { ptr: unsafe { NonNull::new_unchecked(ptr) } }
     }
+}
 
+impl<T: ?Sized> Weak<T> {
     /// Attempts to upgrade the `Weak` pointer to an [`Rc`], delaying
     /// dropping of the inner value if successful.
     ///
@@ -2040,7 +2042,7 @@ impl<T: ?Sized> Drop for Weak<T> {
         // the strong pointers have disappeared.
         if inner.weak() == 0 {
             unsafe {
-                Global.deallocate(self.ptr.cast(), Layout::for_value(self.ptr.as_ref()));
+                Global.deallocate(self.ptr.cast(), Layout::for_value_raw(self.ptr.as_ptr()));
             }
         }
     }

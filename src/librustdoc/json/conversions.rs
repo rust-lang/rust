@@ -6,34 +6,27 @@ use std::convert::From;
 
 use rustc_ast::ast;
 use rustc_span::def_id::{DefId, CRATE_DEF_INDEX};
+use rustc_span::Pos;
 
 use crate::clean;
 use crate::doctree;
 use crate::formats::item_type::ItemType;
 use crate::json::types::*;
+use crate::json::JsonRenderer;
 
-impl From<clean::Item> for Option<Item> {
-    fn from(item: clean::Item) -> Self {
+impl JsonRenderer<'_> {
+    pub(super) fn convert_item(&self, item: clean::Item) -> Option<Item> {
         let item_type = ItemType::from(&item);
-        let clean::Item {
-            source,
-            name,
-            attrs,
-            kind,
-            visibility,
-            def_id,
-            stability: _,
-            const_stability: _,
-            deprecation,
-        } = item;
-        match kind {
+        let deprecation = item.deprecation(self.tcx);
+        let clean::Item { source, name, attrs, kind, visibility, def_id } = item;
+        match *kind {
             clean::StrippedItem(_) => None,
-            _ => Some(Item {
+            kind => Some(Item {
                 id: def_id.into(),
                 crate_id: def_id.krate.as_u32(),
-                name,
-                source: source.into(),
-                visibility: visibility.into(),
+                name: name.map(|sym| sym.to_string()),
+                source: self.convert_span(source),
+                visibility: self.convert_visibility(visibility),
                 docs: attrs.collapsed_doc_value().unwrap_or_default(),
                 links: attrs
                     .links
@@ -53,46 +46,46 @@ impl From<clean::Item> for Option<Item> {
             }),
         }
     }
-}
 
-impl From<clean::Span> for Option<Span> {
-    fn from(span: clean::Span) -> Self {
-        let clean::Span { loline, locol, hiline, hicol, .. } = span;
-        match span.filename {
-            rustc_span::FileName::Real(name) => Some(Span {
-                filename: match name {
-                    rustc_span::RealFileName::Named(path) => path,
-                    rustc_span::RealFileName::Devirtualized { local_path, virtual_name: _ } => {
-                        local_path
-                    }
-                },
-                begin: (loline, locol),
-                end: (hiline, hicol),
-            }),
+    fn convert_span(&self, span: clean::Span) -> Option<Span> {
+        match span.filename(self.sess()) {
+            rustc_span::FileName::Real(name) => {
+                let hi = span.hi(self.sess());
+                let lo = span.lo(self.sess());
+                Some(Span {
+                    filename: match name {
+                        rustc_span::RealFileName::Named(path) => path,
+                        rustc_span::RealFileName::Devirtualized { local_path, virtual_name: _ } => {
+                            local_path
+                        }
+                    },
+                    begin: (lo.line, lo.col.to_usize()),
+                    end: (hi.line, hi.col.to_usize()),
+                })
+            }
             _ => None,
         }
     }
-}
 
-impl From<clean::Deprecation> for Deprecation {
-    fn from(deprecation: clean::Deprecation) -> Self {
-        let clean::Deprecation { since, note, is_since_rustc_version: _ } = deprecation;
-        Deprecation { since, note }
-    }
-}
-
-impl From<clean::Visibility> for Visibility {
-    fn from(v: clean::Visibility) -> Self {
+    fn convert_visibility(&self, v: clean::Visibility) -> Visibility {
         use clean::Visibility::*;
         match v {
             Public => Visibility::Public,
             Inherited => Visibility::Default,
-            Restricted(did, _) if did.index == CRATE_DEF_INDEX => Visibility::Crate,
-            Restricted(did, path) => Visibility::Restricted {
+            Restricted(did) if did.index == CRATE_DEF_INDEX => Visibility::Crate,
+            Restricted(did) => Visibility::Restricted {
                 parent: did.into(),
-                path: path.to_string_no_crate_verbose(),
+                path: self.tcx.def_path(did).to_string_no_crate_verbose(),
             },
         }
+    }
+}
+
+impl From<rustc_attr::Deprecation> for Deprecation {
+    fn from(deprecation: rustc_attr::Deprecation) -> Self {
+        #[rustfmt::skip]
+        let rustc_attr::Deprecation { since, note, is_since_rustc_version: _, suggestion: _ } = deprecation;
+        Deprecation { since: since.map(|s| s.to_string()), note: note.map(|s| s.to_string()) }
     }
 }
 
@@ -116,7 +109,7 @@ impl From<clean::GenericArg> for GenericArg {
     fn from(arg: clean::GenericArg) -> Self {
         use clean::GenericArg::*;
         match arg {
-            Lifetime(l) => GenericArg::Lifetime(l.0),
+            Lifetime(l) => GenericArg::Lifetime(l.0.to_string()),
             Type(t) => GenericArg::Type(t.into()),
             Const(c) => GenericArg::Const(c.into()),
         }
@@ -132,7 +125,7 @@ impl From<clean::Constant> for Constant {
 
 impl From<clean::TypeBinding> for TypeBinding {
     fn from(binding: clean::TypeBinding) -> Self {
-        TypeBinding { name: binding.name, binding: binding.kind.into() }
+        TypeBinding { name: binding.name.to_string(), binding: binding.kind.into() }
     }
 }
 
@@ -159,7 +152,9 @@ impl From<clean::ItemKind> for ItemEnum {
         use clean::ItemKind::*;
         match item {
             ModuleItem(m) => ItemEnum::ModuleItem(m.into()),
-            ExternCrateItem(c, a) => ItemEnum::ExternCrateItem { name: c, rename: a },
+            ExternCrateItem(c, a) => {
+                ItemEnum::ExternCrateItem { name: c.to_string(), rename: a.map(|x| x.to_string()) }
+            }
             ImportItem(i) => ItemEnum::ImportItem(i.into()),
             StructItem(s) => ItemEnum::StructItem(s.into()),
             UnionItem(u) => ItemEnum::StructItem(u.into()),
@@ -271,7 +266,7 @@ impl From<clean::Generics> for Generics {
 
 impl From<clean::GenericParamDef> for GenericParamDef {
     fn from(generic_param: clean::GenericParamDef) -> Self {
-        GenericParamDef { name: generic_param.name, kind: generic_param.kind.into() }
+        GenericParamDef { name: generic_param.name.to_string(), kind: generic_param.kind.into() }
     }
 }
 
@@ -298,7 +293,7 @@ impl From<clean::WherePredicate> for WherePredicate {
                 bounds: bounds.into_iter().map(Into::into).collect(),
             },
             RegionPredicate { lifetime, bounds } => WherePredicate::RegionPredicate {
-                lifetime: lifetime.0,
+                lifetime: lifetime.0.to_string(),
                 bounds: bounds.into_iter().map(Into::into).collect(),
             },
             EqPredicate { lhs, rhs } => {
@@ -319,7 +314,7 @@ impl From<clean::GenericBound> for GenericBound {
                     modifier: modifier.into(),
                 }
             }
-            Outlives(lifetime) => GenericBound::Outlives(lifetime.0),
+            Outlives(lifetime) => GenericBound::Outlives(lifetime.0.to_string()),
         }
     }
 }
@@ -347,7 +342,7 @@ impl From<clean::Type> for Type {
                     .map(|v| v.into_iter().map(Into::into).collect())
                     .unwrap_or_default(),
             },
-            Generic(s) => Type::Generic(s),
+            Generic(s) => Type::Generic(s.to_string()),
             Primitive(p) => Type::Primitive(p.as_str().to_string()),
             BareFunction(f) => Type::FunctionPointer(Box::new((*f).into())),
             Tuple(t) => Type::Tuple(t.into_iter().map(Into::into).collect()),
@@ -361,12 +356,12 @@ impl From<clean::Type> for Type {
                 type_: Box::new((*type_).into()),
             },
             BorrowedRef { lifetime, mutability, type_ } => Type::BorrowedRef {
-                lifetime: lifetime.map(|l| l.0),
+                lifetime: lifetime.map(|l| l.0.to_string()),
                 mutable: mutability == ast::Mutability::Mut,
                 type_: Box::new((*type_).into()),
             },
             QPath { name, self_type, trait_ } => Type::QualifiedPath {
-                name,
+                name: name.to_string(),
                 self_type: Box::new((*self_type).into()),
                 trait_: Box::new((*trait_).into()),
             },
@@ -390,7 +385,11 @@ impl From<clean::FnDecl> for FnDecl {
     fn from(decl: clean::FnDecl) -> Self {
         let clean::FnDecl { inputs, output, c_variadic, attrs: _ } = decl;
         FnDecl {
-            inputs: inputs.values.into_iter().map(|arg| (arg.name, arg.type_.into())).collect(),
+            inputs: inputs
+                .values
+                .into_iter()
+                .map(|arg| (arg.name.to_string(), arg.type_.into()))
+                .collect(),
             output: match output {
                 clean::FnRetTy::Return(t) => Some(t.into()),
                 clean::FnRetTy::DefaultReturn => None,
@@ -430,7 +429,10 @@ impl From<clean::Impl> for Impl {
         Impl {
             is_unsafe: unsafety == rustc_hir::Unsafety::Unsafe,
             generics: generics.into(),
-            provided_trait_methods: provided_trait_methods.into_iter().collect(),
+            provided_trait_methods: provided_trait_methods
+                .into_iter()
+                .map(|x| x.to_string())
+                .collect(),
             trait_: trait_.map(Into::into),
             for_: for_.into(),
             items: ids(items),
@@ -495,7 +497,7 @@ impl From<clean::Import> for Import {
         match import.kind {
             Simple(s) => Import {
                 span: import.source.path.whole_name(),
-                name: s,
+                name: s.to_string(),
                 id: import.source.did.map(Into::into),
                 glob: false,
             },
@@ -511,7 +513,10 @@ impl From<clean::Import> for Import {
 
 impl From<clean::ProcMacro> for ProcMacro {
     fn from(mac: clean::ProcMacro) -> Self {
-        ProcMacro { kind: mac.kind.into(), helpers: mac.helpers }
+        ProcMacro {
+            kind: mac.kind.into(),
+            helpers: mac.helpers.iter().map(|x| x.to_string()).collect(),
+        }
     }
 }
 

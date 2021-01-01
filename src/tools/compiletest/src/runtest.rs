@@ -5,8 +5,8 @@ use crate::common::{output_base_dir, output_base_name, output_testname_unique};
 use crate::common::{Assembly, Incremental, JsDocTest, MirOpt, RunMake, RustdocJson, Ui};
 use crate::common::{Codegen, CodegenUnits, DebugInfo, Debugger, Rustdoc};
 use crate::common::{CompareMode, FailMode, PassMode};
-use crate::common::{CompileFail, Pretty, RunFail, RunPassValgrind};
 use crate::common::{Config, TestPaths};
+use crate::common::{Pretty, RunPassValgrind};
 use crate::common::{UI_RUN_STDERR, UI_RUN_STDOUT};
 use crate::errors::{self, Error, ErrorKind};
 use crate::header::TestProps;
@@ -330,13 +330,11 @@ impl<'test> TestCx<'test> {
     /// revisions, exactly once, with revision == None).
     fn run_revision(&self) {
         if self.props.should_ice {
-            if self.config.mode != CompileFail && self.config.mode != Incremental {
+            if self.config.mode != Incremental {
                 self.fatal("cannot use should-ice in a test that is not cfail");
             }
         }
         match self.config.mode {
-            CompileFail => self.run_cfail_test(),
-            RunFail => self.run_rfail_test(),
             RunPassValgrind => self.run_valgrind_test(),
             Pretty => self.run_pretty_test(),
             DebugInfo => self.run_debuginfo_test(),
@@ -377,7 +375,6 @@ impl<'test> TestCx<'test> {
 
     fn should_compile_successfully(&self, pm: Option<PassMode>) -> bool {
         match self.config.mode {
-            CompileFail => false,
             JsDocTest => true,
             Ui => pm.is_some() || self.props.fail_mode > Some(FailMode::Build),
             Incremental => {
@@ -1537,8 +1534,8 @@ impl<'test> TestCx<'test> {
         };
 
         let allow_unused = match self.config.mode {
-            CompileFail | Ui => {
-                // compile-fail and ui tests tend to have tons of unused code as
+            Ui => {
+                // UI tests tend to have tons of unused code as
                 // it's just testing various pieces of the compile, but we don't
                 // want to actually assert warnings about all this code. Instead
                 // let's just ignore unused code warnings by defaults and tests
@@ -1940,7 +1937,7 @@ impl<'test> TestCx<'test> {
         }
 
         match self.config.mode {
-            CompileFail | Incremental => {
+            Incremental => {
                 // If we are extracting and matching errors in the new
                 // fashion, then you want JSON mode. Old-skool error
                 // patterns still match the raw compiler output.
@@ -1975,8 +1972,8 @@ impl<'test> TestCx<'test> {
 
                 rustc.arg(dir_opt);
             }
-            RunFail | RunPassValgrind | Pretty | DebugInfo | Codegen | Rustdoc | RustdocJson
-            | RunMake | CodegenUnits | JsDocTest | Assembly => {
+            RunPassValgrind | Pretty | DebugInfo | Codegen | Rustdoc | RustdocJson | RunMake
+            | CodegenUnits | JsDocTest | Assembly => {
                 // do not use JSON output
             }
         }
@@ -2016,6 +2013,12 @@ impl<'test> TestCx<'test> {
             }
             Some(CompareMode::Chalk) => {
                 rustc.args(&["-Zchalk"]);
+            }
+            Some(CompareMode::SplitDwarf) => {
+                rustc.args(&["-Zsplit-dwarf=split"]);
+            }
+            Some(CompareMode::SplitDwarfSingle) => {
+                rustc.args(&["-Zsplit-dwarf=single"]);
             }
             None => {}
         }
@@ -2394,7 +2397,8 @@ impl<'test> TestCx<'test> {
 
         let proc_res = new_rustdoc.document(&compare_dir);
         if !proc_res.status.success() {
-            proc_res.fatal(Some("failed to run nightly rustdoc"), || ());
+            eprintln!("failed to run nightly rustdoc");
+            return;
         }
 
         #[rustfmt::skip]
@@ -2408,28 +2412,22 @@ impl<'test> TestCx<'test> {
             "-modify",
         ];
         let tidy_dir = |dir| {
-            let tidy = |file: &_| {
-                Command::new("tidy")
-                    .args(&tidy_args)
-                    .arg(file)
-                    .spawn()
-                    .unwrap_or_else(|err| {
-                        self.fatal(&format!("failed to run tidy - is it installed? - {}", err))
-                    })
-                    .wait()
-                    .unwrap()
-            };
             for entry in walkdir::WalkDir::new(dir) {
                 let entry = entry.expect("failed to read file");
                 if entry.file_type().is_file()
                     && entry.path().extension().and_then(|p| p.to_str()) == Some("html".into())
                 {
-                    tidy(entry.path());
+                    let status =
+                        Command::new("tidy").args(&tidy_args).arg(entry.path()).status().unwrap();
+                    // `tidy` returns 1 if it modified the file.
+                    assert!(status.success() || status.code() == Some(1));
                 }
             }
         };
-        tidy_dir(out_dir);
-        tidy_dir(&compare_dir);
+        if self.config.has_tidy {
+            tidy_dir(out_dir);
+            tidy_dir(&compare_dir);
+        }
 
         let pager = {
             let output = Command::new("git").args(&["config", "--get", "core.pager"]).output().ok();
@@ -2442,7 +2440,8 @@ impl<'test> TestCx<'test> {
             })
         };
         let mut diff = Command::new("diff");
-        diff.args(&["-u", "-r"]).args(&[out_dir, &compare_dir]);
+        // diff recursively, showing context, and excluding .css files
+        diff.args(&["-u", "-r", "-x", "*.css"]).args(&[&compare_dir, out_dir]);
 
         let output = if let Some(pager) = pager {
             let diff_pid = diff.stdout(Stdio::piped()).spawn().expect("failed to run `diff`");

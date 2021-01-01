@@ -17,7 +17,9 @@ fn test() {}
 #[bench] // OK, shadowed
 fn bench() {}
 
-fn non_macro_expanded_location<#[repr(C)] T>() { //~ ERROR `repr` is ambiguous
+fn non_macro_expanded_location<#[repr(C)] T>() {
+    //~^ ERROR `repr` is ambiguous
+    //~| ERROR attribute should be applied to a struct, enum, or union
     match 0u8 {
         #[repr(C)] //~ ERROR `repr` is ambiguous
         _ => {}

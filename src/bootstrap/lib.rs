@@ -142,6 +142,7 @@ mod native;
 mod run;
 mod sanity;
 mod setup;
+mod tarball;
 mod test;
 mod tool;
 mod toolstate;
@@ -1068,10 +1069,6 @@ impl Build {
         self.package_vers(&self.version)
     }
 
-    fn llvm_tools_vers(&self) -> String {
-        self.rust_version()
-    }
-
     fn llvm_link_tools_dynamically(&self, target: TargetSelection) -> bool {
         target.contains("linux-gnu") || target.contains("apple-darwin")
     }
@@ -1180,27 +1177,6 @@ impl Build {
             paths.push((path, dependency_type));
         }
         paths
-    }
-
-    /// Copies a file from `src` to `dst` and doesn't use links, so
-    /// that the copy can be modified without affecting the original.
-    pub fn really_copy(&self, src: &Path, dst: &Path) {
-        if self.config.dry_run {
-            return;
-        }
-        self.verbose_than(1, &format!("Copy {:?} to {:?}", src, dst));
-        if src == dst {
-            return;
-        }
-        let _ = fs::remove_file(&dst);
-        let metadata = t!(src.symlink_metadata());
-        if let Err(e) = fs::copy(src, dst) {
-            panic!("failed to copy `{}` to `{}`: {}", src.display(), dst.display(), e)
-        }
-        t!(fs::set_permissions(dst, metadata.permissions()));
-        let atime = FileTime::from_last_access_time(&metadata);
-        let mtime = FileTime::from_last_modification_time(&metadata);
-        t!(filetime::set_file_times(dst, atime, mtime));
     }
 
     /// Copies a file from `src` to `dst`

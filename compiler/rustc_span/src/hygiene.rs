@@ -1065,7 +1065,7 @@ pub fn decode_syntax_context<
             parent: SyntaxContext::root(),
             opaque: SyntaxContext::root(),
             opaque_and_semitransparent: SyntaxContext::root(),
-            dollar_crate_name: kw::Invalid,
+            dollar_crate_name: kw::Empty,
         });
         let mut ctxts = outer_ctxts.lock();
         let new_len = raw_id as usize + 1;
@@ -1092,7 +1092,7 @@ pub fn decode_syntax_context<
             ctxt_data,
         );
         // Make sure nothing weird happening while `decode_data` was running
-        assert_eq!(dummy.dollar_crate_name, kw::Invalid);
+        assert_eq!(dummy.dollar_crate_name, kw::Empty);
     });
 
     Ok(new_ctxt)

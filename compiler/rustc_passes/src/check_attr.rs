@@ -882,6 +882,18 @@ impl Visitor<'tcx> for CheckAttrVisitor<'tcx> {
         intravisit::walk_item(self, item)
     }
 
+    fn visit_generic_param(&mut self, generic_param: &'tcx hir::GenericParam<'tcx>) {
+        let target = Target::from_generic_param(generic_param);
+        self.check_attributes(
+            generic_param.hir_id,
+            generic_param.attrs,
+            &generic_param.span,
+            target,
+            None,
+        );
+        intravisit::walk_generic_param(self, generic_param)
+    }
+
     fn visit_trait_item(&mut self, trait_item: &'tcx TraitItem<'tcx>) {
         let target = Target::from_trait_item(trait_item);
         self.check_attributes(trait_item.hir_id, &trait_item.attrs, &trait_item.span, target, None);

@@ -1,7 +1,7 @@
 use rustc_ast as ast;
 use rustc_ast::visit::{self, AssocCtxt, FnCtxt, FnKind, Visitor};
 use rustc_ast::{AssocTyConstraint, AssocTyConstraintKind, NodeId};
-use rustc_ast::{GenericParam, GenericParamKind, PatKind, RangeEnd, VariantData};
+use rustc_ast::{PatKind, RangeEnd, VariantData};
 use rustc_errors::struct_span_err;
 use rustc_feature::{AttributeGate, BUILTIN_ATTRIBUTE_MAP};
 use rustc_feature::{Features, GateIssue};
@@ -397,10 +397,8 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         match i.kind {
             ast::ForeignItemKind::Fn(..) | ast::ForeignItemKind::Static(..) => {
                 let link_name = self.sess.first_attr_value_str_by_name(&i.attrs, sym::link_name);
-                let links_to_llvm = match link_name {
-                    Some(val) => val.as_str().starts_with("llvm."),
-                    _ => false,
-                };
+                let links_to_llvm =
+                    link_name.map_or(false, |val| val.as_str().starts_with("llvm."));
                 if links_to_llvm {
                     gate_feature_post!(
                         &self,
@@ -529,19 +527,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         visit::walk_fn(self, fn_kind, span)
     }
 
-    fn visit_generic_param(&mut self, param: &'a GenericParam) {
-        if let GenericParamKind::Const { .. } = param.kind {
-            gate_feature_fn!(
-                &self,
-                |x: &Features| x.const_generics || x.min_const_generics,
-                param.ident.span,
-                sym::min_const_generics,
-                "const generics are unstable"
-            );
-        }
-        visit::walk_generic_param(self, param)
-    }
-
     fn visit_assoc_ty_constraint(&mut self, constraint: &'a AssocTyConstraint) {
         if let AssocTyConstraintKind::Bound { .. } = constraint.kind {
             gate_feature_post!(
@@ -620,7 +605,7 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session) {
             }
         };
     }
-    gate_all!(if_let_guard, "`if let` guard is not implemented");
+    gate_all!(if_let_guard, "`if let` guards are experimental");
     gate_all!(let_chains, "`let` expressions in this position are experimental");
     gate_all!(async_closure, "async closures are unstable");
     gate_all!(generators, "yield syntax is experimental");

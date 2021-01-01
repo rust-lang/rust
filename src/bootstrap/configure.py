@@ -147,6 +147,8 @@ v("experimental-targets", "llvm.experimental-targets",
   "experimental LLVM targets to build")
 v("release-channel", "rust.channel", "the name of the release channel to build")
 v("release-description", "rust.description", "optional descriptive string for version output")
+v("dist-compression-formats", None,
+  "comma-separated list of compression formats to use")
 
 # Used on systems where "cc" is unavailable
 v("default-linker", "rust.default-linker", "the default linker")
@@ -349,6 +351,8 @@ for key in known_args:
     elif option.name == 'option-checking':
         # this was handled above
         pass
+    elif option.name == 'dist-compression-formats':
+        set('dist.compression-formats', value.split(','))
     else:
         raise RuntimeError("unhandled option {}".format(option.name))
 

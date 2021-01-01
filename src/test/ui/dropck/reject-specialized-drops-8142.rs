@@ -1,7 +1,5 @@
 // Issue 8142: Test that Drop impls cannot be specialized beyond the
 // predicates attached to the type definition itself.
-#![feature(min_const_generics)]
-
 trait Bound { fn foo(&self) { } }
 struct K<'l1,'l2> { x: &'l1 i8, y: &'l2 u8 }
 struct L<'l1,'l2> { x: &'l1 i8, y: &'l2 u8 }

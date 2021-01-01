@@ -61,10 +61,10 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                             .params
                             .iter()
                             .filter_map(|param| match param.kind {
-                                ty::GenericParamDefKind::Lifetime => Some(param.name.to_string()),
+                                ty::GenericParamDefKind::Lifetime => Some(param.name),
                                 _ => None,
                             })
-                            .map(|name| (name.clone(), Lifetime(name)))
+                            .map(|name| (name, Lifetime(name)))
                             .collect();
                         let lifetime_predicates = self.handle_lifetimes(&region_data, &names_map);
                         let new_generics = self.param_env_to_generics(
@@ -118,15 +118,12 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                 };
 
                 Some(Item {
-                    source: Span::empty(),
+                    source: Span::dummy(),
                     name: None,
                     attrs: Default::default(),
                     visibility: Inherited,
                     def_id: self.cx.next_def_id(param_env_def_id.krate),
-                    stability: None,
-                    const_stability: None,
-                    deprecation: None,
-                    kind: ImplItem(Impl {
+                    kind: box ImplItem(Impl {
                         unsafety: hir::Unsafety::Normal,
                         generics: new_generics,
                         provided_trait_methods: Default::default(),
@@ -145,21 +142,21 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
     fn get_lifetime(
         &self,
         region: Region<'_>,
-        names_map: &FxHashMap<String, Lifetime>,
+        names_map: &FxHashMap<Symbol, Lifetime>,
     ) -> Lifetime {
         self.region_name(region)
             .map(|name| {
                 names_map.get(&name).unwrap_or_else(|| {
-                    panic!("Missing lifetime with name {:?} for {:?}", name, region)
+                    panic!("Missing lifetime with name {:?} for {:?}", name.as_str(), region)
                 })
             })
             .unwrap_or(&Lifetime::statik())
             .clone()
     }
 
-    fn region_name(&self, region: Region<'_>) -> Option<String> {
+    fn region_name(&self, region: Region<'_>) -> Option<Symbol> {
         match region {
-            &ty::ReEarlyBound(r) => Some(r.name.to_string()),
+            &ty::ReEarlyBound(r) => Some(r.name),
             _ => None,
         }
     }
@@ -177,7 +174,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
     fn handle_lifetimes<'cx>(
         &self,
         regions: &RegionConstraintData<'cx>,
-        names_map: &FxHashMap<String, Lifetime>,
+        names_map: &FxHashMap<Symbol, Lifetime>,
     ) -> Vec<WherePredicate> {
         // Our goal is to 'flatten' the list of constraints by eliminating
         // all intermediate RegionVids. At the end, all constraints should
@@ -333,10 +330,9 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                 match br {
                     // We only care about named late bound regions, as we need to add them
                     // to the 'for<>' section
-                    ty::BrNamed(_, name) => Some(GenericParamDef {
-                        name: name.to_string(),
-                        kind: GenericParamDefKind::Lifetime,
-                    }),
+                    ty::BrNamed(_, name) => {
+                        Some(GenericParamDef { name, kind: GenericParamDefKind::Lifetime })
+                    }
                     _ => None,
                 }
             })
@@ -569,7 +565,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                 }
                 WherePredicate::EqPredicate { lhs, rhs } => {
                     match lhs {
-                        Type::QPath { name: ref left_name, ref self_type, ref trait_ } => {
+                        Type::QPath { name: left_name, ref self_type, ref trait_ } => {
                             let ty = &*self_type;
                             match **trait_ {
                                 Type::ResolvedPath {
@@ -580,7 +576,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                                 } => {
                                     let mut new_trait_path = trait_path.clone();
 
-                                    if self.is_fn_ty(tcx, trait_) && left_name == FN_OUTPUT_NAME {
+                                    if self.is_fn_ty(tcx, trait_) && left_name == sym::Output {
                                         ty_to_fn
                                             .entry(*ty.clone())
                                             .and_modify(|e| *e = (e.0.clone(), Some(rhs.clone())))
@@ -601,7 +597,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                                             ref mut bindings, ..
                                         } => {
                                             bindings.push(TypeBinding {
-                                                name: left_name.clone(),
+                                                name: left_name,
                                                 kind: TypeBindingKind::Equality { ty: rhs },
                                             });
                                         }
@@ -669,7 +665,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                 GenericParamDefKind::Type { ref mut default, ref mut bounds, .. } => {
                     // We never want something like `impl<T=Foo>`.
                     default.take();
-                    let generic_ty = Type::Generic(param.name.clone());
+                    let generic_ty = Type::Generic(param.name);
                     if !has_sized.contains(&generic_ty) {
                         bounds.insert(0, GenericBound::maybe_sized(self.cx));
                     }

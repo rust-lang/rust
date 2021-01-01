@@ -5,7 +5,7 @@ use crate::dep_graph::{self, DepGraph, DepKind, DepNode, DepNodeExt};
 use crate::hir::exports::ExportMap;
 use crate::ich::{NodeIdHashingMode, StableHashingContext};
 use crate::infer::canonical::{Canonical, CanonicalVarInfo, CanonicalVarInfos};
-use crate::lint::{struct_lint_level, LintDiagnosticBuilder, LintSource};
+use crate::lint::{struct_lint_level, LintDiagnosticBuilder, LintLevelSource};
 use crate::middle;
 use crate::middle::cstore::{CrateStoreDyn, EncodedMetadata};
 use crate::middle::resolve_lifetime::{self, ObjectLifetimeDefault};
@@ -87,7 +87,7 @@ pub struct CtxtInterners<'tcx> {
     substs: InternedSet<'tcx, InternalSubsts<'tcx>>,
     canonical_var_infos: InternedSet<'tcx, List<CanonicalVarInfo<'tcx>>>,
     region: InternedSet<'tcx, RegionKind>,
-    existential_predicates: InternedSet<'tcx, List<ExistentialPredicate<'tcx>>>,
+    poly_existential_predicates: InternedSet<'tcx, List<ty::Binder<ExistentialPredicate<'tcx>>>>,
     predicate: InternedSet<'tcx, PredicateInner<'tcx>>,
     predicates: InternedSet<'tcx, List<Predicate<'tcx>>>,
     projs: InternedSet<'tcx, List<ProjectionKind>>,
@@ -103,7 +103,7 @@ impl<'tcx> CtxtInterners<'tcx> {
             type_list: Default::default(),
             substs: Default::default(),
             region: Default::default(),
-            existential_predicates: Default::default(),
+            poly_existential_predicates: Default::default(),
             canonical_var_infos: Default::default(),
             predicate: Default::default(),
             predicates: Default::default(),
@@ -299,6 +299,7 @@ pub struct ResolvedOpaqueTy<'tcx> {
 /// Here, we would store the type `T`, the span of the value `x`, the "scope-span" for
 /// the scope that contains `x`, the expr `T` evaluated from, and the span of `foo.await`.
 #[derive(TyEncodable, TyDecodable, Clone, Debug, Eq, Hash, PartialEq, HashStable)]
+#[derive(TypeFoldable)]
 pub struct GeneratorInteriorTypeCause<'tcx> {
     /// Type of the captured binding.
     pub ty: Ty<'tcx>,
@@ -423,7 +424,7 @@ pub struct TypeckResults<'tcx> {
 
     /// Stores the type, expression, span and optional scope span of all types
     /// that are live across the yield of this generator (if a generator).
-    pub generator_interior_types: Vec<GeneratorInteriorTypeCause<'tcx>>,
+    pub generator_interior_types: ty::Binder<Vec<GeneratorInteriorTypeCause<'tcx>>>,
 
     /// We sometimes treat byte string literals (which are of type `&[u8; N]`)
     /// as `&[u8]`, depending on the pattern  in which they are used.
@@ -455,7 +456,7 @@ impl<'tcx> TypeckResults<'tcx> {
             concrete_opaque_types: Default::default(),
             closure_captures: Default::default(),
             closure_min_captures: Default::default(),
-            generator_interior_types: Default::default(),
+            generator_interior_types: ty::Binder::dummy(Default::default()),
             treat_byte_string_as_slice: Default::default(),
         }
     }
@@ -622,6 +623,19 @@ impl<'tcx> TypeckResults<'tcx> {
 
     pub fn pat_adjustments_mut(&mut self) -> LocalTableInContextMut<'_, Vec<Ty<'tcx>>> {
         LocalTableInContextMut { hir_owner: self.hir_owner, data: &mut self.pat_adjustments }
+    }
+
+    /// For a given closure, returns the iterator of `ty::CapturedPlace`s that are captured
+    /// by the closure.
+    pub fn closure_min_captures_flattened(
+        &self,
+        closure_def_id: DefId,
+    ) -> impl Iterator<Item = &ty::CapturedPlace<'tcx>> {
+        self.closure_min_captures
+            .get(&closure_def_id)
+            .map(|closure_min_captures| closure_min_captures.values().flat_map(|v| v.iter()))
+            .into_iter()
+            .flatten()
     }
 
     pub fn upvar_capture(&self, upvar_id: ty::UpvarId) -> ty::UpvarCapture<'tcx> {
@@ -876,7 +890,7 @@ pub struct FreeRegionInfo {
     // `LocalDefId` corresponding to FreeRegion
     pub def_id: LocalDefId,
     // the bound region corresponding to FreeRegion
-    pub boundregion: ty::BoundRegion,
+    pub boundregion: ty::BoundRegionKind,
     // checks if bound region is in Impl Item
     pub is_impl_item: bool,
 }
@@ -1372,7 +1386,7 @@ impl<'tcx> TyCtxt<'tcx> {
     #[inline]
     pub fn lazy_normalization(self) -> bool {
         let features = self.features();
-        // Note: We do not enable lazy normalization for `features.min_const_generics`.
+        // Note: We do not enable lazy normalization for `min_const_generics`.
         features.const_generics || features.lazy_normalization_consts
     }
 
@@ -1398,7 +1412,7 @@ impl<'tcx> TyCtxt<'tcx> {
         })
     }
 
-    // Returns the `DefId` and the `BoundRegion` corresponding to the given region.
+    // Returns the `DefId` and the `BoundRegionKind` corresponding to the given region.
     pub fn is_suitable_region(self, region: Region<'tcx>) -> Option<FreeRegionInfo> {
         let (suitable_region_binding_scope, bound_region) = match *region {
             ty::ReFree(ref free_region) => {
@@ -1406,7 +1420,7 @@ impl<'tcx> TyCtxt<'tcx> {
             }
             ty::ReEarlyBound(ref ebr) => (
                 self.parent(ebr.def_id).unwrap().expect_local(),
-                ty::BoundRegion::BrNamed(ebr.def_id, ebr.name),
+                ty::BoundRegionKind::BrNamed(ebr.def_id, ebr.name),
             ),
             _ => return None, // not a free region
         };
@@ -1610,7 +1624,7 @@ nop_lift! {const_; &'a Const<'a> => &'tcx Const<'tcx>}
 nop_lift! {predicate; &'a PredicateInner<'a> => &'tcx PredicateInner<'tcx>}
 
 nop_list_lift! {type_list; Ty<'a> => Ty<'tcx>}
-nop_list_lift! {existential_predicates; ExistentialPredicate<'a> => ExistentialPredicate<'tcx>}
+nop_list_lift! {poly_existential_predicates; ty::Binder<ExistentialPredicate<'a>> => ty::Binder<ExistentialPredicate<'tcx>>}
 nop_list_lift! {predicates; Predicate<'a> => Predicate<'tcx>}
 nop_list_lift! {canonical_var_infos; CanonicalVarInfo<'a> => CanonicalVarInfo<'tcx>}
 nop_list_lift! {projs; ProjectionKind => ProjectionKind}
@@ -2051,7 +2065,8 @@ slice_interners!(
     type_list: _intern_type_list(Ty<'tcx>),
     substs: _intern_substs(GenericArg<'tcx>),
     canonical_var_infos: _intern_canonical_var_infos(CanonicalVarInfo<'tcx>),
-    existential_predicates: _intern_existential_predicates(ExistentialPredicate<'tcx>),
+    poly_existential_predicates:
+        _intern_poly_existential_predicates(ty::Binder<ExistentialPredicate<'tcx>>),
     predicates: _intern_predicates(Predicate<'tcx>),
     projs: _intern_projs(ProjectionKind),
     place_elems: _intern_place_elems(PlaceElem<'tcx>),
@@ -2282,7 +2297,7 @@ impl<'tcx> TyCtxt<'tcx> {
     #[inline]
     pub fn mk_dynamic(
         self,
-        obj: ty::Binder<&'tcx List<ExistentialPredicate<'tcx>>>,
+        obj: &'tcx List<ty::Binder<ExistentialPredicate<'tcx>>>,
         reg: ty::Region<'tcx>,
     ) -> Ty<'tcx> {
         self.mk_ty(Dynamic(obj, reg))
@@ -2412,13 +2427,17 @@ impl<'tcx> TyCtxt<'tcx> {
         Place { local: place.local, projection: self.intern_place_elems(&projection) }
     }
 
-    pub fn intern_existential_predicates(
+    pub fn intern_poly_existential_predicates(
         self,
-        eps: &[ExistentialPredicate<'tcx>],
-    ) -> &'tcx List<ExistentialPredicate<'tcx>> {
+        eps: &[ty::Binder<ExistentialPredicate<'tcx>>],
+    ) -> &'tcx List<ty::Binder<ExistentialPredicate<'tcx>>> {
         assert!(!eps.is_empty());
-        assert!(eps.array_windows().all(|[a, b]| a.stable_cmp(self, b) != Ordering::Greater));
-        self._intern_existential_predicates(eps)
+        assert!(
+            eps.array_windows()
+                .all(|[a, b]| a.skip_binder().stable_cmp(self, &b.skip_binder())
+                    != Ordering::Greater)
+        );
+        self._intern_poly_existential_predicates(eps)
     }
 
     pub fn intern_predicates(self, preds: &[Predicate<'tcx>]) -> &'tcx List<Predicate<'tcx>> {
@@ -2475,13 +2494,16 @@ impl<'tcx> TyCtxt<'tcx> {
         })
     }
 
-    pub fn mk_existential_predicates<
-        I: InternAs<[ExistentialPredicate<'tcx>], &'tcx List<ExistentialPredicate<'tcx>>>,
+    pub fn mk_poly_existential_predicates<
+        I: InternAs<
+            [ty::Binder<ExistentialPredicate<'tcx>>],
+            &'tcx List<ty::Binder<ExistentialPredicate<'tcx>>>,
+        >,
     >(
         self,
         iter: I,
     ) -> I::Output {
-        iter.intern_with(|xs| self.intern_existential_predicates(xs))
+        iter.intern_with(|xs| self.intern_poly_existential_predicates(xs))
     }
 
     pub fn mk_predicates<I: InternAs<[Predicate<'tcx>], &'tcx List<Predicate<'tcx>>>>(
@@ -2537,7 +2559,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         lint: &'static Lint,
         mut id: hir::HirId,
-    ) -> (Level, LintSource) {
+    ) -> (Level, LintLevelSource) {
         let sets = self.lint_levels(LOCAL_CRATE);
         loop {
             if let Some(pair) = sets.level_and_source(lint, id, self.sess) {

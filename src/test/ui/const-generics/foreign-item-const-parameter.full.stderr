@@ -1,5 +1,5 @@
 error[E0044]: foreign items may not have const parameters
-  --> $DIR/foreign-item-const-parameter.rs:8:5
+  --> $DIR/foreign-item-const-parameter.rs:7:5
    |
 LL |     fn foo<const X: usize>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^ can't have const parameters
@@ -7,7 +7,7 @@ LL |     fn foo<const X: usize>();
    = help: replace the const parameters with concrete consts
 
 error[E0044]: foreign items may not have type or const parameters
-  --> $DIR/foreign-item-const-parameter.rs:10:5
+  --> $DIR/foreign-item-const-parameter.rs:9:5
    |
 LL |     fn bar<T, const X: usize>(_: T);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ can't have type or const parameters

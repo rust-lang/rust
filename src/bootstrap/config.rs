@@ -123,6 +123,7 @@ pub struct Config {
     pub rust_debuginfo_level_std: u32,
     pub rust_debuginfo_level_tools: u32,
     pub rust_debuginfo_level_tests: u32,
+    pub rust_run_dsymutil: bool,
     pub rust_rpath: bool,
     pub rustc_parallel: bool,
     pub rustc_default_linker: Option<String>,
@@ -133,6 +134,8 @@ pub struct Config {
     pub rust_thin_lto_import_instr_limit: Option<u32>,
     pub rust_remap_debuginfo: bool,
     pub rust_new_symbol_mangling: bool,
+    pub rust_profile_use: Option<String>,
+    pub rust_profile_generate: Option<String>,
 
     pub build: TargetSelection,
     pub hosts: Vec<TargetSelection>,
@@ -145,6 +148,7 @@ pub struct Config {
     pub dist_sign_folder: Option<PathBuf>,
     pub dist_upload_addr: Option<String>,
     pub dist_gpg_password_file: Option<PathBuf>,
+    pub dist_compression_formats: Option<Vec<String>>,
 
     // libstd features
     pub backtrace: bool, // support for RUST_BACKTRACE
@@ -331,7 +335,7 @@ impl Merge for TomlConfig {
                     *x = Some(new);
                 }
             }
-        };
+        }
         do_merge(&mut self.build, build);
         do_merge(&mut self.install, install);
         do_merge(&mut self.llvm, llvm);
@@ -435,6 +439,7 @@ struct Dist {
     upload_addr: Option<String>,
     src_tarball: Option<bool>,
     missing_tools: Option<bool>,
+    compression_formats: Option<Vec<String>>,
 }
 
 #[derive(Deserialize)]
@@ -466,6 +471,7 @@ struct Rust {
     debuginfo_level_std: Option<u32>,
     debuginfo_level_tools: Option<u32>,
     debuginfo_level_tests: Option<u32>,
+    run_dsymutil: Option<bool>,
     backtrace: Option<bool>,
     incremental: Option<bool>,
     parallel_compiler: Option<bool>,
@@ -494,6 +500,8 @@ struct Rust {
     llvm_libunwind: Option<String>,
     control_flow_guard: Option<bool>,
     new_symbol_mangling: Option<bool>,
+    profile_generate: Option<String>,
+    profile_use: Option<String>,
 }
 
 /// TOML representation of how each build target is configured.
@@ -830,6 +838,7 @@ impl Config {
             debuginfo_level_std = rust.debuginfo_level_std;
             debuginfo_level_tools = rust.debuginfo_level_tools;
             debuginfo_level_tests = rust.debuginfo_level_tests;
+            config.rust_run_dsymutil = rust.run_dsymutil.unwrap_or(false);
             optimize = rust.optimize;
             ignore_git = rust.ignore_git;
             set(&mut config.rust_new_symbol_mangling, rust.new_symbol_mangling);
@@ -871,6 +880,11 @@ impl Config {
 
             config.rust_codegen_units = rust.codegen_units.map(threads_from_config);
             config.rust_codegen_units_std = rust.codegen_units_std.map(threads_from_config);
+            config.rust_profile_use = flags.rust_profile_use.or(rust.profile_use);
+            config.rust_profile_generate = flags.rust_profile_generate.or(rust.profile_generate);
+        } else {
+            config.rust_profile_use = flags.rust_profile_use;
+            config.rust_profile_generate = flags.rust_profile_generate;
         }
 
         if let Some(t) = toml.target {
@@ -924,6 +938,7 @@ impl Config {
             config.dist_sign_folder = t.sign_folder.map(PathBuf::from);
             config.dist_gpg_password_file = t.gpg_password_file.map(PathBuf::from);
             config.dist_upload_addr = t.upload_addr;
+            config.dist_compression_formats = t.compression_formats;
             set(&mut config.rust_dist_src, t.src_tarball);
             set(&mut config.missing_tools, t.missing_tools);
         }

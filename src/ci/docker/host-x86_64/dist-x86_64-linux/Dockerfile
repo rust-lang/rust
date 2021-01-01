@@ -85,6 +85,8 @@ ENV CC=clang CXX=clang++
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
+ENV PGO_HOST=x86_64-unknown-linux-gnu
+
 ENV HOSTS=x86_64-unknown-linux-gnu
 
 ENV RUST_CONFIGURE_ARGS \
@@ -98,9 +100,10 @@ ENV RUST_CONFIGURE_ARGS \
       --set llvm.thin-lto=true \
       --set llvm.ninja=false \
       --set rust.jemalloc
-ENV SCRIPT python2.7 ../x.py dist --host $HOSTS --target $HOSTS \
-        --include-default-paths \
-        src/tools/build-manifest
+ENV SCRIPT ../src/ci/pgo.sh python2.7 ../x.py dist \
+    --host $HOSTS --target $HOSTS \
+    --include-default-paths \
+    src/tools/build-manifest
 ENV CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER=clang
 
 # This is the only builder which will create source tarballs

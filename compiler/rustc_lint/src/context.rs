@@ -261,6 +261,7 @@ impl LintStore {
         }
     }
 
+    #[track_caller]
     pub fn register_renamed(&mut self, old_name: &str, new_name: &str) {
         let target = match self.by_name.get(new_name) {
             Some(&Id(lint_id)) => lint_id,
@@ -728,7 +729,7 @@ impl<'tcx> LateContext<'tcx> {
 
     /// Check if a `DefId`'s path matches the given absolute type path usage.
     ///
-    /// Anonymous scopes such as `extern` imports are matched with `kw::Invalid`;
+    /// Anonymous scopes such as `extern` imports are matched with `kw::Empty`;
     /// inherent `impl` blocks are matched with the name of the type.
     ///
     /// Instead of using this method, it is often preferable to instead use
@@ -786,7 +787,7 @@ impl<'tcx> LateContext<'tcx> {
 
             fn print_dyn_existential(
                 self,
-                _predicates: &'tcx ty::List<ty::ExistentialPredicate<'tcx>>,
+                _predicates: &'tcx ty::List<ty::Binder<ty::ExistentialPredicate<'tcx>>>,
             ) -> Result<Self::DynExistential, Self::Error> {
                 Ok(())
             }

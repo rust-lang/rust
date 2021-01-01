@@ -1,11 +1,11 @@
 error[E0107]: wrong number of const arguments: expected 2, found 1
-  --> $DIR/incorrect-number-of-const-args.rs:12:5
+  --> $DIR/incorrect-number-of-const-args.rs:11:5
    |
 LL |     foo::<0>();
    |     ^^^^^^^^ expected 2 const arguments
 
 error[E0107]: wrong number of const arguments: expected 2, found 3
-  --> $DIR/incorrect-number-of-const-args.rs:13:17
+  --> $DIR/incorrect-number-of-const-args.rs:12:17
    |
 LL |     foo::<0, 0, 0>();
    |                 ^ unexpected const argument

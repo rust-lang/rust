@@ -1,0 +1,13 @@
+error: the order of `move` and `async` is incorrect
+  --> $DIR/incorrect-move-async-order-issue-79694.rs:7:13
+   |
+LL |     let _ = move async { };
+   |             ^^^^^^^^^^
+   |
+help: try switching the order
+   |
+LL |     let _ = async move { };
+   |             ^^^^^^^^^^
+
+error: aborting due to previous error
+

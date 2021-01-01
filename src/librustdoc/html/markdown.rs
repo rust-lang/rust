@@ -139,9 +139,9 @@ fn map_line(s: &str) -> Line<'_> {
     let trimmed = s.trim();
     if trimmed.starts_with("##") {
         Line::Shown(Cow::Owned(s.replacen("##", "#", 1)))
-    } else if trimmed.starts_with("# ") {
+    } else if let Some(stripped) = trimmed.strip_prefix("# ") {
         // # text
-        Line::Hidden(&trimmed[2..])
+        Line::Hidden(&stripped)
     } else if trimmed == "#" {
         // We cannot handle '#text' because it could be #[attr].
         Line::Hidden("")
@@ -204,7 +204,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
                 CodeBlockKind::Fenced(ref lang) => {
                     LangString::parse_without_check(&lang, self.check_error_codes, false)
                 }
-                CodeBlockKind::Indented => LangString::all_false(),
+                CodeBlockKind::Indented => Default::default(),
             };
             if !parse_result.rust {
                 return Some(Event::Start(Tag::CodeBlock(kind)));
@@ -248,7 +248,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
                 .join("\n");
             let krate = krate.as_ref().map(|s| &**s);
             let (test, _, _) =
-                doctest::make_test(&test, krate, false, &Default::default(), edition);
+                doctest::make_test(&test, krate, false, &Default::default(), edition, None);
             let channel = if test.contains("#![feature(") { "&amp;version=nightly" } else { "" };
 
             let edition_string = format!("&amp;edition={}", edition);
@@ -284,60 +284,28 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
         });
 
         let tooltip = if ignore != Ignore::None {
-            Some(("This example is not tested".to_owned(), "ignore"))
+            Some((None, "ignore"))
         } else if compile_fail {
-            Some(("This example deliberately fails to compile".to_owned(), "compile_fail"))
+            Some((None, "compile_fail"))
         } else if should_panic {
-            Some(("This example panics".to_owned(), "should_panic"))
+            Some((None, "should_panic"))
         } else if explicit_edition {
-            Some((format!("This code runs with edition {}", edition), "edition"))
+            Some((Some(edition), "edition"))
         } else {
             None
         };
 
-        if let Some((s1, s2)) = tooltip {
-            s.push_str(&highlight::render_with_highlighting(
-                text,
-                Some(&format!(
-                    "rust-example-rendered{}",
-                    if ignore != Ignore::None {
-                        " ignore"
-                    } else if compile_fail {
-                        " compile_fail"
-                    } else if should_panic {
-                        " should_panic"
-                    } else if explicit_edition {
-                        " edition "
-                    } else {
-                        ""
-                    }
-                )),
-                playground_button.as_deref(),
-                Some((s1.as_str(), s2)),
-            ));
-            Some(Event::Html(s.into()))
-        } else {
-            s.push_str(&highlight::render_with_highlighting(
-                text,
-                Some(&format!(
-                    "rust-example-rendered{}",
-                    if ignore != Ignore::None {
-                        " ignore"
-                    } else if compile_fail {
-                        " compile_fail"
-                    } else if should_panic {
-                        " should_panic"
-                    } else if explicit_edition {
-                        " edition "
-                    } else {
-                        ""
-                    }
-                )),
-                playground_button.as_deref(),
-                None,
-            ));
-            Some(Event::Html(s.into()))
-        }
+        s.push_str(&highlight::render_with_highlighting(
+            text,
+            Some(&format!(
+                "rust-example-rendered{}",
+                if let Some((_, class)) = tooltip { format!(" {}", class) } else { String::new() }
+            )),
+            playground_button.as_deref(),
+            tooltip,
+            edition,
+        ));
+        Some(Event::Html(s.into()))
     }
 }
 
@@ -447,14 +415,14 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for LinkReplacer<'a, I> {
 }
 
 /// Make headings links with anchor IDs and build up TOC.
-struct HeadingLinks<'a, 'b, 'ids, I: Iterator<Item = Event<'a>>> {
+struct HeadingLinks<'a, 'b, 'ids, I> {
     inner: I,
     toc: Option<&'b mut TocBuilder>,
     buf: VecDeque<Event<'a>>,
     id_map: &'ids mut IdMap,
 }
 
-impl<'a, 'b, 'ids, I: Iterator<Item = Event<'a>>> HeadingLinks<'a, 'b, 'ids, I> {
+impl<'a, 'b, 'ids, I> HeadingLinks<'a, 'b, 'ids, I> {
     fn new(iter: I, toc: Option<&'b mut TocBuilder>, ids: &'ids mut IdMap) -> Self {
         HeadingLinks { inner: iter, toc, buf: VecDeque::new(), id_map: ids }
     }
@@ -575,15 +543,16 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for SummaryLine<'a, I> {
 
 /// Moves all footnote definitions to the end and add back links to the
 /// references.
-struct Footnotes<'a, I: Iterator<Item = Event<'a>>> {
+struct Footnotes<'a, I> {
     inner: I,
     footnotes: FxHashMap<String, (Vec<Event<'a>>, u16)>,
 }
 
-impl<'a, I: Iterator<Item = Event<'a>>> Footnotes<'a, I> {
+impl<'a, I> Footnotes<'a, I> {
     fn new(iter: I) -> Self {
         Footnotes { inner: iter, footnotes: FxHashMap::default() }
     }
+
     fn get_entry(&mut self, key: &str) -> &mut (Vec<Event<'a>>, u16) {
         let new_id = self.footnotes.keys().count() + 1;
         let key = key.to_owned();
@@ -665,7 +634,7 @@ crate fn find_testable_code<T: doctest::Tester>(
                 let block_info = match kind {
                     CodeBlockKind::Fenced(ref lang) => {
                         if lang.is_empty() {
-                            LangString::all_false()
+                            Default::default()
                         } else {
                             LangString::parse(
                                 lang,
@@ -675,7 +644,7 @@ crate fn find_testable_code<T: doctest::Tester>(
                             )
                         }
                     }
-                    CodeBlockKind::Indented => LangString::all_false(),
+                    CodeBlockKind::Indented => Default::default(),
                 };
                 if !block_info.rust {
                     continue;
@@ -778,14 +747,14 @@ crate enum Ignore {
     Some(Vec<String>),
 }
 
-impl LangString {
-    fn all_false() -> LangString {
-        LangString {
+impl Default for LangString {
+    fn default() -> Self {
+        Self {
             original: String::new(),
             should_panic: false,
             no_run: false,
             ignore: Ignore::None,
-            rust: true, // NB This used to be `notrust = false`
+            rust: true,
             test_harness: false,
             compile_fail: false,
             error_codes: Vec::new(),
@@ -793,7 +762,9 @@ impl LangString {
             edition: None,
         }
     }
+}
 
+impl LangString {
     fn parse_without_check(
         string: &str,
         allow_error_code_check: ErrorCodes,
@@ -811,7 +782,7 @@ impl LangString {
         let allow_error_code_check = allow_error_code_check.as_bool();
         let mut seen_rust_tags = false;
         let mut seen_other_tags = false;
-        let mut data = LangString::all_false();
+        let mut data = LangString::default();
         let mut ignores = vec![];
 
         data.original = string.to_owned();
@@ -1055,7 +1026,7 @@ fn markdown_summary_with_limit(md: &str, length_limit: usize) -> (String, bool) 
     fn push(s: &mut String, text_length: &mut usize, text: &str) {
         s.push_str(text);
         *text_length += text.len();
-    };
+    }
 
     'outer: for event in Parser::new_ext(md, summary_opts()) {
         match &event {
@@ -1233,7 +1204,7 @@ crate fn rust_code_blocks(md: &str, extra_info: &ExtraInfo<'_, '_>) -> Vec<RustC
                 CodeBlockKind::Fenced(syntax) => {
                     let syntax = syntax.as_ref();
                     let lang_string = if syntax.is_empty() {
-                        LangString::all_false()
+                        Default::default()
                     } else {
                         LangString::parse(&*syntax, ErrorCodes::Yes, false, Some(extra_info))
                     };
