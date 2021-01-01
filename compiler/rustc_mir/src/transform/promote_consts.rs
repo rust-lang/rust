@@ -505,6 +505,10 @@ impl<'tcx> Validator<'_, 'tcx> {
                     ProjectionElem::ConstantIndex { .. } | ProjectionElem::Subslice { .. } => {}
 
                     ProjectionElem::Index(local) => {
+                        // This could be OOB, so reject for implicit promotion.
+                        if !self.explicit {
+                            return Err(Unpromotable);
+                        }
                         self.validate_local(local)?;
                     }
 
@@ -589,9 +593,7 @@ impl<'tcx> Validator<'_, 'tcx> {
 
     fn validate_rvalue(&self, rvalue: &Rvalue<'tcx>) -> Result<(), Unpromotable> {
         match rvalue {
-            Rvalue::Use(operand)
-            | Rvalue::Repeat(operand, _)
-            | Rvalue::UnaryOp(UnOp::Not | UnOp::Neg, operand) => {
+            Rvalue::Use(operand) | Rvalue::Repeat(operand, _) => {
                 self.validate_operand(operand)?;
             }
 
@@ -616,10 +618,26 @@ impl<'tcx> Validator<'_, 'tcx> {
                 self.validate_operand(operand)?;
             }
 
+            Rvalue::NullaryOp(op, _) => match op {
+                NullOp::Box => return Err(Unpromotable),
+                NullOp::SizeOf => {}
+            },
+
+            Rvalue::UnaryOp(op, operand) => {
+                match op {
+                    // These operations can never fail.
+                    UnOp::Neg | UnOp::Not => {}
+                }
+
+                self.validate_operand(operand)?;
+            }
+
             Rvalue::BinaryOp(op, lhs, rhs) | Rvalue::CheckedBinaryOp(op, lhs, rhs) => {
                 let op = *op;
-                if let ty::RawPtr(_) | ty::FnPtr(..) = lhs.ty(self.body, self.tcx).kind() {
-                    // raw pointer operations are not allowed inside consts and thus not promotable
+                let lhs_ty = lhs.ty(self.body, self.tcx);
+
+                if let ty::RawPtr(_) | ty::FnPtr(..) = lhs_ty.kind() {
+                    // Raw and fn pointer operations are not allowed inside consts and thus not promotable.
                     assert!(matches!(
                         op,
                         BinOp::Eq
@@ -634,7 +652,22 @@ impl<'tcx> Validator<'_, 'tcx> {
                 }
 
                 match op {
-                    // FIXME: reject operations that can fail -- namely, division and modulo.
+                    BinOp::Div | BinOp::Rem => {
+                        if !self.explicit && lhs_ty.is_integral() {
+                            // Integer division: the RHS must be a non-zero const.
+                            let const_val = match rhs {
+                                Operand::Constant(c) => {
+                                    c.literal.try_eval_bits(self.tcx, self.param_env, lhs_ty)
+                                }
+                                _ => None,
+                            };
+                            match const_val {
+                                Some(x) if x != 0 => {}        // okay
+                                _ => return Err(Unpromotable), // value not known or 0 -- not okay
+                            }
+                        }
+                    }
+                    // The remaining operations can never fail.
                     BinOp::Eq
                     | BinOp::Ne
                     | BinOp::Le
@@ -645,8 +678,6 @@ impl<'tcx> Validator<'_, 'tcx> {
                     | BinOp::Add
                     | BinOp::Sub
                     | BinOp::Mul
-                    | BinOp::Div
-                    | BinOp::Rem
                     | BinOp::BitXor
                     | BinOp::BitAnd
                     | BinOp::BitOr
@@ -657,11 +688,6 @@ impl<'tcx> Validator<'_, 'tcx> {
                 self.validate_operand(lhs)?;
                 self.validate_operand(rhs)?;
             }
-
-            Rvalue::NullaryOp(op, _) => match op {
-                NullOp::Box => return Err(Unpromotable),
-                NullOp::SizeOf => {}
-            },
 
             Rvalue::AddressOf(_, place) => {
                 // We accept `&raw *`, i.e., raw reborrows -- creating a raw pointer is

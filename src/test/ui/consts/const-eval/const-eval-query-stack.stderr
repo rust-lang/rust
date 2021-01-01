@@ -1,18 +1,26 @@
-error: reaching this expression at runtime will panic or abort
-  --> $DIR/const-eval-query-stack.rs:19:28
+warning: any use of this value will cause an error
+  --> $DIR/const-eval-query-stack.rs:20:16
    |
-LL |     let x: &'static i32 = &(1 / 0);
-   |                           -^^^^^^^
-   |                            |
-   |                            dividing by zero
+LL | const X: i32 = 1 / 0;
+   | ---------------^^^^^-
+   |                |
+   |                attempt to divide `1_i32` by zero
    |
-   = note: `#[deny(const_err)]` on by default
+note: the lint level is defined here
+  --> $DIR/const-eval-query-stack.rs:19:8
+   |
+LL | #[warn(const_err)]
+   |        ^^^^^^^^^
 
+error[E0080]: evaluation of constant expression failed
+  --> $DIR/const-eval-query-stack.rs:23:27
+   |
+LL |     let x: &'static i32 = &X;
+   |                           ^-
+   |                            |
+   |                            referenced constant has errors
 query stack during panic:
-#0 [eval_to_allocation_raw] const-evaluating + checking `main::promoted[1]`
-#1 [eval_to_const_value_raw] simplifying constant for the type system `main::promoted[1]`
-#2 [eval_to_const_value_raw] simplifying constant for the type system `main::promoted[1]`
-#3 [normalize_generic_arg_after_erasing_regions] normalizing `main::promoted[1]`
-#4 [optimized_mir] optimizing MIR for `main`
-#5 [collect_and_partition_mono_items] collect_and_partition_mono_items
+#0 [normalize_generic_arg_after_erasing_regions] normalizing `main::promoted[1]`
+#1 [optimized_mir] optimizing MIR for `main`
+#2 [collect_and_partition_mono_items] collect_and_partition_mono_items
 end of query stack

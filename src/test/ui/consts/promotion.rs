@@ -1,4 +1,4 @@
-// check-pass
+// run-pass
 
 // compile-flags: -O
 
@@ -25,4 +25,14 @@ fn main() {
     // make sure that these do not cause trouble despite overflowing
     baz_u32(&(0-1));
     baz_i32(&-i32::MIN);
+
+    // div-by-non-0 is okay
+    baz_i32(&(1/1));
+    baz_i32(&(1%1));
+
+    // Top-level projections do not get promoted, so no error here.
+    if false {
+        #[allow(unconditional_panic)]
+        baz_i32(&[1,2,3][4]);
+    }
 }
