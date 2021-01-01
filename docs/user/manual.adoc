@@ -339,7 +339,7 @@ interface Crate {
     /// Path to the root module of the crate.
     root_module: string;
     /// Edition of the crate.
-    edition: "2015" | "2018";
+    edition: "2015" | "2018" | "2021";
     /// Dependencies
     deps: Dep[];
     /// Should this crate be treated as a member of current "workspace".

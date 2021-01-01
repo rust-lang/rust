@@ -139,6 +139,8 @@ enum EditionData {
     Edition2015,
     #[serde(rename = "2018")]
     Edition2018,
+    #[serde(rename = "2021")]
+    Edition2021,
 }
 
 impl From<EditionData> for Edition {
@@ -146,6 +148,7 @@ impl From<EditionData> for Edition {
         match data {
             EditionData::Edition2015 => Edition::Edition2015,
             EditionData::Edition2018 => Edition::Edition2018,
+            EditionData::Edition2021 => Edition::Edition2021,
         }
     }
 }

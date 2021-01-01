@@ -55,7 +55,7 @@ type RangesMap = BTreeMap<TextSize, TextSize>;
 
 const RUSTDOC_FENCE: &'static str = "```";
 const RUSTDOC_FENCE_TOKENS: &[&'static str] =
-    &["", "rust", "should_panic", "ignore", "no_run", "compile_fail", "edition2015", "edition2018"];
+    &["", "rust", "should_panic", "ignore", "no_run", "compile_fail", "edition2015", "edition2018", "edition2021"];
 
 /// Extracts Rust code from documentation comments as well as a mapping from
 /// the extracted source code back to the original source ranges.

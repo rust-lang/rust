@@ -190,10 +190,11 @@ pub struct CrateData {
     pub proc_macro: Vec<ProcMacro>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Edition {
-    Edition2018,
     Edition2015,
+    Edition2018,
+    Edition2021,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
@@ -393,6 +394,7 @@ impl FromStr for Edition {
         let res = match s {
             "2015" => Edition::Edition2015,
             "2018" => Edition::Edition2018,
+            "2021" => Edition::Edition2021,
             _ => return Err(ParseEditionError { invalid_input: s.to_string() }),
         };
         Ok(res)
@@ -404,6 +406,7 @@ impl fmt::Display for Edition {
         f.write_str(match self {
             Edition::Edition2015 => "2015",
             Edition::Edition2018 => "2018",
+            Edition::Edition2021 => "2021",
         })
     }
 }
