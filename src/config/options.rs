@@ -388,6 +388,10 @@ pub enum Edition {
     #[doc_hint = "2018"]
     /// Edition 2018.
     Edition2018,
+    #[value = "2021"]
+    #[doc_hint = "2021"]
+    /// Edition 2021.
+    Edition2021,
 }
 
 impl Default for Edition {
@@ -396,12 +400,19 @@ impl Default for Edition {
     }
 }
 
-impl Edition {
-    pub(crate) fn to_libsyntax_pos_edition(self) -> rustc_span::edition::Edition {
-        match self {
-            Edition::Edition2015 => rustc_span::edition::Edition::Edition2015,
-            Edition::Edition2018 => rustc_span::edition::Edition::Edition2018,
+impl From<Edition> for rustc_span::edition::Edition {
+    fn from(edition: Edition) -> Self {
+        match edition {
+            Edition::Edition2015 => Self::Edition2015,
+            Edition::Edition2018 => Self::Edition2018,
+            Edition::Edition2021 => Self::Edition2021,
         }
+    }
+}
+
+impl PartialOrd for Edition {
+    fn partial_cmp(&self, other: &Edition) -> Option<std::cmp::Ordering> {
+        rustc_span::edition::Edition::partial_cmp(&(*self).into(), &(*other).into())
     }
 }
 

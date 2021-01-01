@@ -497,8 +497,8 @@ Don't reformat anything
 
 Specifies which edition is used by the parser.
 
-- **Default value**: `2015`
-- **Possible values**: `2015`, `2018`
+- **Default value**: `"2015"`
+- **Possible values**: `"2015"`, `"2018"`, `"2021"`
 - **Stable**: Yes
 
 Rustfmt is able to pick up the edition used by reading the `Cargo.toml` file if executed

@@ -331,7 +331,7 @@ impl UseTree {
         };
 
         let leading_modsep =
-            context.config.edition() == Edition::Edition2018 && a.prefix.is_global();
+            context.config.edition() >= Edition::Edition2018 && a.prefix.is_global();
 
         let mut modsep = leading_modsep;
 
