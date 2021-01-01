@@ -2,7 +2,9 @@
 
 use std::sync::Arc;
 
-use hir_def::{AdtId, AssocItemId, DefWithBodyId, expr::Statement, path::path, resolver::HasResolver};
+use hir_def::{
+    expr::Statement, path::path, resolver::HasResolver, AdtId, AssocItemId, DefWithBodyId,
+};
 use hir_expand::{diagnostics::DiagnosticSink, name};
 use rustc_hash::FxHashSet;
 use syntax::{ast, AstPtr};
@@ -163,11 +165,13 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
             None => return,
         };
         let iterator_trait_items = &db.trait_data(iterator_trait_id).items;
-        let filter_map_function_id = match iterator_trait_items.iter().find(|item| item.0 == name![filter_map]) {
-            Some((_, AssocItemId::FunctionId(id))) => id,
-            _ => return,
-        };
-        let next_function_id = match iterator_trait_items.iter().find(|item| item.0 == name![next]) {
+        let filter_map_function_id =
+            match iterator_trait_items.iter().find(|item| item.0 == name![filter_map]) {
+                Some((_, AssocItemId::FunctionId(id))) => id,
+                _ => return,
+            };
+        let next_function_id = match iterator_trait_items.iter().find(|item| item.0 == name![next])
+        {
             Some((_, AssocItemId::FunctionId(id))) => id,
             _ => return,
         };

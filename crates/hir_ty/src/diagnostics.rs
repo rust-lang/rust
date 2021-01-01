@@ -670,21 +670,49 @@ fn foo() { break; }
         );
     }
 
+    // Register the required standard library types to make the tests work
+    fn add_filter_map_with_find_next_boilerplate(body: &str) -> String {
+        let prefix = r#"
+        //- /main.rs crate:main deps:core
+        use core::iter::Iterator;
+        use core::option::Option::{self, Some, None};
+        "#;
+        let suffix = r#"
+        //- /core/lib.rs crate:core
+        pub mod option {
+            pub enum Option<T> { Some(T), None }
+        }
+        pub mod iter {
+            pub trait Iterator {
+                type Item;
+                fn filter_map<B, F>(self, f: F) -> FilterMap where F: FnMut(Self::Item) -> Option<B> { FilterMap }
+                fn next(&mut self) -> Option<Self::Item>;
+            }
+            pub struct FilterMap {}
+            impl Iterator for FilterMap {
+                type Item = i32;
+                fn next(&mut self) -> i32 { 7 }
+            }
+        }
+        "#;
+        format!("{}{}{}", prefix, body, suffix)
+    }
+
     #[test]
-    fn replace_filter_map_next_with_find_map() {
-        check_diagnostics(
+    fn replace_filter_map_next_with_find_map2() {
+        check_diagnostics(&add_filter_map_with_find_next_boilerplate(
             r#"
             fn foo() {
                 let m = [1, 2, 3].iter().filter_map(|x| if *x == 2 { Some (4) } else { None }).next();
                       //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ replace filter_map(..).next() with find_map(..)
             }
-            "#,
-        );
+        "#,
+        ));
     }
 
     #[test]
     fn replace_filter_map_next_with_find_map_no_diagnostic_without_next() {
-        check_diagnostics(
+        check_diagnostics(&add_filter_map_with_find_next_boilerplate(
             r#"
             fn foo() {
                 let m = [1, 2, 3]
@@ -693,12 +721,12 @@ fn foo() { break; }
                     .len();
             }
             "#,
-        );
+        ));
     }
 
     #[test]
     fn replace_filter_map_next_with_find_map_no_diagnostic_with_intervening_methods() {
-        check_diagnostics(
+        check_diagnostics(&add_filter_map_with_find_next_boilerplate(
             r#"
             fn foo() {
                 let m = [1, 2, 3]
@@ -708,12 +736,12 @@ fn foo() { break; }
                     .len();
             }
             "#,
-        );
+        ));
     }
 
     #[test]
     fn replace_filter_map_next_with_find_map_no_diagnostic_if_not_in_chain() {
-        check_diagnostics(
+        check_diagnostics(&add_filter_map_with_find_next_boilerplate(
             r#"
             fn foo() {
                 let m = [1, 2, 3]
@@ -722,6 +750,6 @@ fn foo() { break; }
                 let n = m.next();
             }
             "#,
-        );
+        ));
     }
 }
