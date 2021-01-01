@@ -120,20 +120,19 @@ impl Definition {
         let file_id = module_src.file_id.original_file(db);
 
         if let Definition::Local(var) = self {
-            #[allow(deprecated)]
             let range = match var.parent(db) {
                 DefWithBody::Function(f) => {
-                    f.source(db).and_then(|src| src.value.syntax().text_range())
+                    f.source(db).and_then(|src| Some(src.value.syntax().text_range()))
                 }
                 DefWithBody::Const(c) => {
-                    c.source(db).and_then(|src| src.value.syntax().text_range())
+                    c.source(db).and_then(|src| Some(src.value.syntax().text_range()))
                 }
                 DefWithBody::Static(s) => {
-                    s.source(db).and_then(|src| src.value.syntax().text_range())
+                    s.source(db).and_then(|src| Some(src.value.syntax().text_range()))
                 }
             };
             let mut res = FxHashMap::default();
-            res.insert(file_id, Some(range));
+            res.insert(file_id, range);
             return SearchScope::new(res);
         }
 
@@ -141,37 +140,37 @@ impl Definition {
             #[allow(deprecated)]
             let range = match param.parent(db) {
                 hir::GenericDef::Function(it) => {
-                    it.source(db).and_then(|src| src.value.syntax().text_range())
+                    it.source(db).and_then(|src| Some(src.value.syntax().text_range()))
                 }
                 hir::GenericDef::Adt(it) => match it {
                     hir::Adt::Struct(it) => {
-                        it.source(db).and_then(|src| src.value.syntax().text_range())
+                        it.source(db).and_then(|src| Some(src.value.syntax().text_range()))
                     }
                     hir::Adt::Union(it) => {
-                        it.source(db).and_then(|src| src.value.syntax().text_range())
+                        it.source(db).and_then(|src| Some(src.value.syntax().text_range()))
                     }
                     hir::Adt::Enum(it) => {
-                        it.source(db).and_then(|src| src.value.syntax().text_range())
+                        it.source(db).and_then(|src| Some(src.value.syntax().text_range()))
                     }
                 },
                 hir::GenericDef::Trait(it) => {
-                    it.source(db).and_then(|src| src.value.syntax().text_range())
+                    it.source(db).and_then(|src| Some(src.value.syntax().text_range()))
                 }
                 hir::GenericDef::TypeAlias(it) => {
-                    it.source(db).and_then(|src| src.value.syntax().text_range())
+                    it.source(db).and_then(|src| Some(src.value.syntax().text_range()))
                 }
                 hir::GenericDef::Impl(it) => {
-                    it.source(db).and_then(|src| src.value.syntax().text_range())
+                    it.source(db).and_then(|src| Some(src.value.syntax().text_range()))
                 }
                 hir::GenericDef::Variant(it) => {
-                    it.source(db).and_then(|src| src.value.syntax().text_range())
+                    it.source(db).and_then(|src| Some(src.value.syntax().text_range()))
                 }
                 hir::GenericDef::Const(it) => {
-                    it.source(db).and_then(|src| src.value.syntax().text_range())
+                    it.source(db).and_then(|src| Some(src.value.syntax().text_range()))
                 }
             };
             let mut res = FxHashMap::default();
-            res.insert(file_id, Some(range));
+            res.insert(file_id, range);
             return SearchScope::new(res);
         }
 
