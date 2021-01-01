@@ -15,7 +15,6 @@ pub use fs::garbage_collect_session_directories;
 pub use fs::in_incr_comp_dir;
 pub use fs::in_incr_comp_dir_sess;
 pub use fs::prepare_session_directory;
-pub use load::dep_graph_tcx_init;
 pub use load::load_query_result_cache;
 pub use load::LoadResult;
 pub use load::{load_dep_graph, DepGraphFuture};

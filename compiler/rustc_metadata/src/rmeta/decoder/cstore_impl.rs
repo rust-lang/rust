@@ -44,18 +44,33 @@ macro_rules! provide {
                 let ($def_id, $other) = def_id_arg.into_args();
                 assert!(!$def_id.is_local());
 
-                let $cdata = CStore::from_tcx($tcx).get_crate_data($def_id.krate);
-
                 if $tcx.dep_graph.is_fully_enabled() {
-                    let crate_dep_node_index = $cdata.get_crate_dep_node_index($tcx);
-                    $tcx.dep_graph.read_index(crate_dep_node_index);
+                    $tcx.ensure().crate_hash($def_id.krate);
                 }
+
+                let $cdata = CStore::from_tcx($tcx).get_crate_data($def_id.krate);
 
                 $compute
             })*
 
+            // The other external query providers call `crate_hash` in order to register a
+            // dependency on the crate metadata. The `crate_hash` implementation differs in
+            // that it doesn't need to do this (and can't, as it would cause a query cycle).
+            fn crate_hash<'tcx>(
+                tcx: TyCtxt<'tcx>,
+                def_id_arg: ty::query::query_keys::crate_hash<'tcx>,
+            ) -> ty::query::query_values::crate_hash<'tcx> {
+                let _prof_timer = tcx.prof.generic_activity("metadata_decode_entry_crate_hash");
+
+                let (def_id, _) = def_id_arg.into_args();
+                assert!(!def_id.is_local());
+
+                CStore::from_tcx(tcx).get_crate_data(def_id.krate).root.hash
+            }
+
             *providers = Providers {
                 $($name,)*
+                crate_hash,
                 ..*providers
             };
         }
@@ -191,7 +206,6 @@ provide! { <'tcx> tcx, def_id, other, cdata,
         })
     }
     crate_disambiguator => { cdata.root.disambiguator }
-    crate_hash => { cdata.root.hash }
     crate_host_hash => { cdata.host_hash }
     original_crate_name => { cdata.root.name }
 
