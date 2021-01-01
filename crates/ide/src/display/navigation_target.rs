@@ -211,12 +211,12 @@ impl TryToNav for Definition {
     fn try_to_nav(&self, db: &RootDatabase) -> Option<NavigationTarget> {
         match self {
             Definition::Macro(it) => it.try_to_nav(db),
-            Definition::Field(it) => Some(it.to_nav(db)),
+            Definition::Field(it) => it.try_to_nav(db),
             Definition::ModuleDef(it) => it.try_to_nav(db),
-            Definition::SelfType(it) => Some(it.to_nav(db)),
+            Definition::SelfType(it) => it.try_to_nav(db),
             Definition::Local(it) => Some(it.to_nav(db)),
-            Definition::TypeParam(it) => Some(it.to_nav(db)),
-            Definition::LifetimeParam(it) => Some(it.to_nav(db)),
+            Definition::TypeParam(it) => it.try_to_nav(db),
+            Definition::LifetimeParam(it) => it.try_to_nav(db),
             Definition::Label(it) => Some(it.to_nav(db)),
             Definition::ConstParam(it) => Some(it.to_nav(db)),
         }
@@ -225,18 +225,17 @@ impl TryToNav for Definition {
 
 impl TryToNav for hir::ModuleDef {
     fn try_to_nav(&self, db: &RootDatabase) -> Option<NavigationTarget> {
-        let res = match self {
-            hir::ModuleDef::Module(it) => it.to_nav(db),
-            hir::ModuleDef::Function(it) => it.to_nav(db),
-            hir::ModuleDef::Adt(it) => it.to_nav(db),
-            hir::ModuleDef::Variant(it) => it.to_nav(db),
-            hir::ModuleDef::Const(it) => it.to_nav(db),
-            hir::ModuleDef::Static(it) => it.to_nav(db),
-            hir::ModuleDef::Trait(it) => it.to_nav(db),
-            hir::ModuleDef::TypeAlias(it) => it.to_nav(db),
-            hir::ModuleDef::BuiltinType(_) => return None,
-        };
-        Some(res)
+        match self {
+            hir::ModuleDef::Module(it) => Some(it.to_nav(db)),
+            hir::ModuleDef::Function(it) => it.try_to_nav(db),
+            hir::ModuleDef::Adt(it) => it.try_to_nav(db),
+            hir::ModuleDef::Variant(it) => it.try_to_nav(db),
+            hir::ModuleDef::Const(it) => it.try_to_nav(db),
+            hir::ModuleDef::Static(it) => it.try_to_nav(db),
+            hir::ModuleDef::Trait(it) => it.try_to_nav(db),
+            hir::ModuleDef::TypeAlias(it) => it.try_to_nav(db),
+            hir::ModuleDef::BuiltinType(_) => None,
+        }
     }
 }
 
@@ -271,14 +270,13 @@ impl ToNavFromAst for hir::Trait {
     const KIND: SymbolKind = SymbolKind::Trait;
 }
 
-impl<D> ToNav for D
+impl<D> TryToNav for D
 where
     D: HasSource + ToNavFromAst + Copy + HasAttrs,
     D::Ast: ast::NameOwner + ShortLabel,
 {
-    fn to_nav(&self, db: &RootDatabase) -> NavigationTarget {
-        #[allow(deprecated)]
-        let src = self.source_old(db);
+    fn try_to_nav(&self, db: &RootDatabase) -> Option<NavigationTarget> {
+        let src = self.source(db)?;
         let mut res = NavigationTarget::from_named(
             db,
             src.as_ref().map(|it| it as &dyn ast::NameOwner),
@@ -286,7 +284,7 @@ where
         );
         res.docs = self.docs(db);
         res.description = src.value.short_label();
-        res
+        Some(res)
     }
 }
 
@@ -305,10 +303,9 @@ impl ToNav for hir::Module {
     }
 }
 
-impl ToNav for hir::Impl {
-    fn to_nav(&self, db: &RootDatabase) -> NavigationTarget {
-        #[allow(deprecated)]
-        let src = self.source_old(db);
+impl TryToNav for hir::Impl {
+    fn try_to_nav(&self, db: &RootDatabase) -> Option<NavigationTarget> {
+        let src = self.source(db)?;
         let derive_attr = self.is_builtin_derive(db);
         let frange = if let Some(item) = &derive_attr {
             item.syntax().original_file_range(db)
@@ -321,22 +318,21 @@ impl ToNav for hir::Impl {
             src.value.self_ty().map(|ty| src.with_value(ty.syntax()).original_file_range(db).range)
         };
 
-        NavigationTarget::from_syntax(
+        Some(NavigationTarget::from_syntax(
             frange.file_id,
             "impl".into(),
             focus_range,
             frange.range,
             SymbolKind::Impl,
-        )
+        ))
     }
 }
 
-impl ToNav for hir::Field {
-    fn to_nav(&self, db: &RootDatabase) -> NavigationTarget {
-        #[allow(deprecated)]
-        let src = self.source_old(db);
+impl TryToNav for hir::Field {
+    fn try_to_nav(&self, db: &RootDatabase) -> Option<NavigationTarget> {
+        let src = self.source(db)?;
 
-        match &src.value {
+        let field_source = match &src.value {
             FieldSource::Named(it) => {
                 let mut res =
                     NavigationTarget::from_named(db, src.with_value(it), SymbolKind::Field);
@@ -354,7 +350,8 @@ impl ToNav for hir::Field {
                     SymbolKind::Field,
                 )
             }
-        }
+        };
+        Some(field_source)
     }
 }
 
@@ -372,22 +369,22 @@ impl TryToNav for hir::MacroDef {
     }
 }
 
-impl ToNav for hir::Adt {
-    fn to_nav(&self, db: &RootDatabase) -> NavigationTarget {
+impl TryToNav for hir::Adt {
+    fn try_to_nav(&self, db: &RootDatabase) -> Option<NavigationTarget> {
         match self {
-            hir::Adt::Struct(it) => it.to_nav(db),
-            hir::Adt::Union(it) => it.to_nav(db),
-            hir::Adt::Enum(it) => it.to_nav(db),
+            hir::Adt::Struct(it) => it.try_to_nav(db),
+            hir::Adt::Union(it) => it.try_to_nav(db),
+            hir::Adt::Enum(it) => it.try_to_nav(db),
         }
     }
 }
 
-impl ToNav for hir::AssocItem {
-    fn to_nav(&self, db: &RootDatabase) -> NavigationTarget {
+impl TryToNav for hir::AssocItem {
+    fn try_to_nav(&self, db: &RootDatabase) -> Option<NavigationTarget> {
         match self {
-            AssocItem::Function(it) => it.to_nav(db),
-            AssocItem::Const(it) => it.to_nav(db),
-            AssocItem::TypeAlias(it) => it.to_nav(db),
+            AssocItem::Function(it) => it.try_to_nav(db),
+            AssocItem::Const(it) => it.try_to_nav(db),
+            AssocItem::TypeAlias(it) => it.try_to_nav(db),
         }
     }
 }
@@ -441,10 +438,9 @@ impl ToNav for hir::Label {
     }
 }
 
-impl ToNav for hir::TypeParam {
-    fn to_nav(&self, db: &RootDatabase) -> NavigationTarget {
-        #[allow(deprecated)]
-        let src = self.source_old(db);
+impl TryToNav for hir::TypeParam {
+    fn try_to_nav(&self, db: &RootDatabase) -> Option<NavigationTarget> {
+        let src = self.source(db)?;
         let full_range = match &src.value {
             Either::Left(it) => it.syntax().text_range(),
             Either::Right(it) => it.syntax().text_range(),
@@ -453,7 +449,7 @@ impl ToNav for hir::TypeParam {
             Either::Left(_) => None,
             Either::Right(it) => it.name().map(|it| it.syntax().text_range()),
         };
-        NavigationTarget {
+        Some(NavigationTarget {
             file_id: src.file_id.original_file(db),
             name: self.name(db).to_string().into(),
             kind: Some(SymbolKind::TypeParam),
@@ -462,16 +458,15 @@ impl ToNav for hir::TypeParam {
             container_name: None,
             description: None,
             docs: None,
-        }
+        })
     }
 }
 
-impl ToNav for hir::LifetimeParam {
-    fn to_nav(&self, db: &RootDatabase) -> NavigationTarget {
-        #[allow(deprecated)]
-        let src = self.source_old(db);
+impl TryToNav for hir::LifetimeParam {
+    fn try_to_nav(&self, db: &RootDatabase) -> Option<NavigationTarget> {
+        let src = self.source(db)?;
         let full_range = src.value.syntax().text_range();
-        NavigationTarget {
+        Some(NavigationTarget {
             file_id: src.file_id.original_file(db),
             name: self.name(db).to_string().into(),
             kind: Some(SymbolKind::LifetimeParam),
@@ -480,7 +475,7 @@ impl ToNav for hir::LifetimeParam {
             container_name: None,
             description: None,
             docs: None,
-        }
+        })
     }
 }
 

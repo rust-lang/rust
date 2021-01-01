@@ -13,7 +13,7 @@ use syntax::{ast, match_ast, AstNode, SyntaxKind::*, SyntaxToken, TokenAtOffset,
 use test_utils::mark;
 
 use crate::{
-    display::{macro_label, ShortLabel, ToNav, TryToNav},
+    display::{macro_label, ShortLabel, TryToNav},
     doc_links::{remove_links, rewrite_links},
     markdown_remove::remove_markdown,
     markup::Markup,
@@ -183,10 +183,10 @@ fn show_implementations_action(db: &RootDatabase, def: Definition) -> Option<Hov
 
     match def {
         Definition::ModuleDef(it) => match it {
-            ModuleDef::Adt(Adt::Struct(it)) => Some(to_action(it.to_nav(db))),
-            ModuleDef::Adt(Adt::Union(it)) => Some(to_action(it.to_nav(db))),
-            ModuleDef::Adt(Adt::Enum(it)) => Some(to_action(it.to_nav(db))),
-            ModuleDef::Trait(it) => Some(to_action(it.to_nav(db))),
+            ModuleDef::Adt(Adt::Struct(it)) => Some(to_action(it.try_to_nav(db)?)),
+            ModuleDef::Adt(Adt::Union(it)) => Some(to_action(it.try_to_nav(db)?)),
+            ModuleDef::Adt(Adt::Enum(it)) => Some(to_action(it.try_to_nav(db)?)),
+            ModuleDef::Trait(it) => Some(to_action(it.try_to_nav(db)?)),
             _ => None,
         },
         _ => None,
