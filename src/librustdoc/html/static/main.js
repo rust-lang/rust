@@ -667,13 +667,7 @@ function defocusSearchBar() {
                 results = {}, results_in_args = {}, results_returned = {},
                 split = valLower.split("::");
 
-            var length = split.length;
-            for (var z = 0; z < length; ++z) {
-                if (split[z] === "") {
-                    split.splice(z, 1);
-                    z -= 1;
-                }
-            }
+            split = split.filter(function(segment) { return segment !== ""; });
 
             function transformResults(results, isType) {
                 var out = [];
