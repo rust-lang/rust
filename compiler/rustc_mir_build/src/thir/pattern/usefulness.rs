@@ -680,24 +680,32 @@ impl SpanSet {
 
 #[derive(Clone, Debug)]
 enum Usefulness<'tcx> {
-    /// Pontentially carries a set of sub-branches that have been found to be unreachable. Used
+    /// Potentially carries a set of sub-branches that have been found to be unreachable. Used
     /// only in the presence of or-patterns, otherwise it stays empty.
-    Useful(SpanSet),
-    /// Carries a list of witnesses of non-exhaustiveness.
-    UsefulWithWitness(Vec<Witness<'tcx>>),
-    NotUseful,
+    NoWitnesses(SpanSet),
+    /// When not carrying witnesses, indicates that the whole pattern is unreachable.
+    NoWitnessesFull,
+    /// Carries a list of witnesses of non-exhaustiveness. Non-empty.
+    WithWitnesses(Vec<Witness<'tcx>>),
+    /// When carrying witnesses, indicates that the whole pattern is unreachable.
+    WithWitnessesEmpty,
 }
 
 impl<'tcx> Usefulness<'tcx> {
     fn new_useful(preference: WitnessPreference) -> Self {
         match preference {
-            ConstructWitness => UsefulWithWitness(vec![Witness(vec![])]),
-            LeaveOutWitness => Useful(Default::default()),
+            ConstructWitness => WithWitnesses(vec![Witness(vec![])]),
+            LeaveOutWitness => NoWitnesses(Default::default()),
+        }
+    }
+    fn new_not_useful(preference: WitnessPreference) -> Self {
+        match preference {
+            ConstructWitness => WithWitnessesEmpty,
+            LeaveOutWitness => NoWitnessesFull,
         }
     }
 
-    /// Combine usefulnesses from two branches. This is an associative operation and `NotUseful` is
-    /// a unit.
+    /// Combine usefulnesses from two branches. This is an associative operation.
     fn extend(&mut self, other: Self) {
         // If we have detected some unreachable sub-branches, we only want to keep them when they
         // were unreachable in _all_ branches. Eg. in the following, the last `true` is unreachable
@@ -720,21 +728,29 @@ impl<'tcx> Usefulness<'tcx> {
         // }
         // ```
         match (&mut *self, other) {
-            (Useful(s), Useful(o)) => s.intersection_mut(&o),
-            (UsefulWithWitness(s), UsefulWithWitness(o)) => s.extend(o),
-            (_, NotUseful) => {}
-            (NotUseful, other) => *self = other,
-            (UsefulWithWitness(_), Useful(_)) | (Useful(_), UsefulWithWitness(_)) => unreachable!(),
+            (WithWitnesses(s), WithWitnesses(o)) => s.extend(o),
+            (WithWitnessesEmpty, WithWitnesses(o)) => *self = WithWitnesses(o),
+            (WithWitnesses(_), WithWitnessesEmpty) => {}
+            (WithWitnessesEmpty, WithWitnessesEmpty) => {}
+
+            (NoWitnesses(s), NoWitnesses(o)) => s.intersection_mut(&o),
+            (NoWitnessesFull, NoWitnesses(o)) => *self = NoWitnesses(o),
+            (NoWitnesses(_), NoWitnessesFull) => {}
+            (NoWitnessesFull, NoWitnessesFull) => {}
+
+            _ => {
+                unreachable!()
+            }
         }
     }
 
     /// When trying several branches and each returns a `Usefulness`, we need to combine the
     /// results together.
-    fn merge(usefulnesses: impl Iterator<Item = Self>) -> Self {
-        let mut ret = NotUseful;
+    fn merge(pref: WitnessPreference, usefulnesses: impl Iterator<Item = Self>) -> Self {
+        let mut ret = Self::new_not_useful(pref);
         for u in usefulnesses {
             ret.extend(u);
-            if let Useful(spans) = &ret {
+            if let NoWitnesses(spans) = &ret {
                 if spans.is_empty() {
                     // Once we reach the empty set, more intersections won't change the result.
                     return ret;
@@ -748,7 +764,7 @@ impl<'tcx> Usefulness<'tcx> {
     /// usefulness mergeable with those from the other branches.
     fn unsplit_or_pat(self, this_span: Span, or_pat_spans: &[Span]) -> Self {
         match self {
-            Useful(mut spans) => {
+            NoWitnesses(mut spans) => {
                 // We register the spans of the other branches of this or-pattern as being
                 // unreachable from this one. This ensures that intersecting together the sets of
                 // spans returns what we want.
@@ -759,9 +775,10 @@ impl<'tcx> Usefulness<'tcx> {
                         spans.push_nonintersecting(span);
                     }
                 }
-                Useful(spans)
+                NoWitnesses(spans)
             }
-            x => x,
+            NoWitnessesFull => NoWitnessesFull,
+            WithWitnesses(_) | WithWitnessesEmpty => bug!(),
         }
     }
 
@@ -776,7 +793,7 @@ impl<'tcx> Usefulness<'tcx> {
         ctor_wild_subpatterns: &Fields<'p, 'tcx>,
     ) -> Self {
         match self {
-            UsefulWithWitness(witnesses) => {
+            WithWitnesses(witnesses) => {
                 let new_witnesses = if matches!(ctor, Constructor::Missing) {
                     let mut split_wildcard = SplitWildcard::new(pcx);
                     split_wildcard.split(pcx, matrix.head_ctors(pcx.cx));
@@ -806,7 +823,7 @@ impl<'tcx> Usefulness<'tcx> {
                         .map(|witness| witness.apply_constructor(pcx, &ctor, ctor_wild_subpatterns))
                         .collect()
                 };
-                UsefulWithWitness(new_witnesses)
+                WithWitnesses(new_witnesses)
             }
             x => x,
         }
@@ -935,8 +952,11 @@ fn is_useful<'p, 'tcx>(
     // first and then, if v is non-empty, the return value is based on whether
     // the type of the tuple we're checking is inhabited or not.
     if v.is_empty() {
-        let ret =
-            if rows.is_empty() { Usefulness::new_useful(witness_preference) } else { NotUseful };
+        let ret = if rows.is_empty() {
+            Usefulness::new_useful(witness_preference)
+        } else {
+            Usefulness::new_not_useful(witness_preference)
+        };
         debug!(?ret);
         return ret;
     }
@@ -966,7 +986,7 @@ fn is_useful<'p, 'tcx>(
             }
             usefulness.unsplit_or_pat(v_span, &subspans)
         });
-        Usefulness::merge(usefulnesses)
+        Usefulness::merge(witness_preference, usefulnesses)
     } else {
         let v_ctor = v.head_ctor(cx);
         if let Constructor::IntRange(ctor_range) = &v_ctor {
@@ -994,7 +1014,7 @@ fn is_useful<'p, 'tcx>(
                 is_useful(cx, &spec_matrix, &v, witness_preference, hir_id, is_under_guard, false);
             usefulness.apply_constructor(pcx, start_matrix, &ctor, &ctor_wild_subpatterns)
         });
-        Usefulness::merge(usefulnesses)
+        Usefulness::merge(witness_preference, usefulnesses)
     };
     debug!(?ret);
     ret
@@ -1049,9 +1069,9 @@ crate fn compute_match_usefulness<'p, 'tcx>(
                 matrix.push(v);
             }
             let reachability = match usefulness {
-                Useful(spans) => Reachability::Reachable(spans),
-                NotUseful => Reachability::Unreachable,
-                UsefulWithWitness(..) => bug!(),
+                NoWitnesses(spans) => Reachability::Reachable(spans),
+                NoWitnessesFull => Reachability::Unreachable,
+                WithWitnesses(..) | WithWitnessesEmpty => bug!(),
             };
             (arm, reachability)
         })
@@ -1061,15 +1081,15 @@ crate fn compute_match_usefulness<'p, 'tcx>(
     let v = PatStack::from_pattern(wild_pattern);
     let usefulness = is_useful(cx, &matrix, &v, ConstructWitness, scrut_hir_id, false, true);
     let non_exhaustiveness_witnesses = match usefulness {
-        NotUseful => vec![], // Wildcard pattern isn't useful, so the match is exhaustive.
-        UsefulWithWitness(pats) => {
+        WithWitnessesEmpty => vec![], // Wildcard pattern isn't useful, so the match is exhaustive.
+        WithWitnesses(pats) => {
             if pats.is_empty() {
                 bug!("Exhaustiveness check returned no witnesses")
             } else {
                 pats.into_iter().map(|w| w.single_pattern()).collect()
             }
         }
-        Useful(_) => bug!(),
+        NoWitnesses(_) | NoWitnessesFull => bug!(),
     };
     UsefulnessReport { arm_usefulness, non_exhaustiveness_witnesses }
 }
