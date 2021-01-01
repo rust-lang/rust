@@ -3,15 +3,15 @@ use hir_def::{
     attr::{Attrs, Documentation},
     path::ModPath,
     resolver::HasResolver,
-    AttrDefId, ModuleDefId,
+    AttrDefId, GenericParamId, ModuleDefId,
 };
 use hir_expand::hygiene::Hygiene;
 use hir_ty::db::HirDatabase;
 use syntax::ast;
 
 use crate::{
-    Adt, Const, Enum, Field, Function, MacroDef, Module, ModuleDef, Static, Struct, Trait,
-    TypeAlias, Union, Variant,
+    Adt, Const, Enum, Field, Function, GenericParam, MacroDef, Module, ModuleDef, Static, Struct,
+    Trait, TypeAlias, Union, Variant,
 };
 
 pub trait HasAttrs {
@@ -62,6 +62,7 @@ impl_has_attrs![
     (Function, FunctionId),
     (Adt, AdtId),
     (Module, ModuleId),
+    (GenericParam, GenericParamId),
 ];
 
 macro_rules! impl_has_attrs_adt {
@@ -99,6 +100,12 @@ fn resolve_doc_path(
         AttrDefId::TraitId(it) => it.resolver(db.upcast()),
         AttrDefId::TypeAliasId(it) => it.resolver(db.upcast()),
         AttrDefId::ImplId(it) => it.resolver(db.upcast()),
+        AttrDefId::GenericParamId(it) => match it {
+            GenericParamId::TypeParamId(it) => it.parent,
+            GenericParamId::LifetimeParamId(it) => it.parent,
+            GenericParamId::ConstParamId(it) => it.parent,
+        }
+        .resolver(db.upcast()),
         AttrDefId::MacroDefId(_) => return None,
     };
     let path = ast::Path::parse(link).ok()?;

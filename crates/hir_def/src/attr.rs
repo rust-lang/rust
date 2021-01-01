@@ -21,7 +21,7 @@ use crate::{
     nameres::ModuleSource,
     path::{ModPath, PathKind},
     src::HasChildSource,
-    AdtId, AttrDefId, Lookup,
+    AdtId, AttrDefId, GenericParamId, Lookup,
 };
 
 /// Holds documentation
@@ -235,6 +235,25 @@ impl Attrs {
             AttrDefId::StaticId(it) => attrs_from_item_tree(it.lookup(db).id, db),
             AttrDefId::FunctionId(it) => attrs_from_item_tree(it.lookup(db).id, db),
             AttrDefId::TypeAliasId(it) => attrs_from_item_tree(it.lookup(db).id, db),
+            AttrDefId::GenericParamId(it) => match it {
+                GenericParamId::TypeParamId(it) => {
+                    let src = it.parent.child_source(db);
+                    RawAttrs::from_attrs_owner(
+                        db,
+                        src.with_value(
+                            src.value[it.local_id].as_ref().either(|it| it as _, |it| it as _),
+                        ),
+                    )
+                }
+                GenericParamId::LifetimeParamId(it) => {
+                    let src = it.parent.child_source(db);
+                    RawAttrs::from_attrs_owner(db, src.with_value(&src.value[it.local_id]))
+                }
+                GenericParamId::ConstParamId(it) => {
+                    let src = it.parent.child_source(db);
+                    RawAttrs::from_attrs_owner(db, src.with_value(&src.value[it.local_id]))
+                }
+            },
         };
 
         raw_attrs.filter(db, def.krate(db))
