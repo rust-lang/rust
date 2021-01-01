@@ -5,8 +5,8 @@ use std::sync::Arc;
 use arena::map::ArenaMap;
 use base_db::{impl_intern_key, salsa, CrateId, Upcast};
 use hir_def::{
-    db::DefDatabase, expr::ExprId, DefWithBodyId, FunctionId, GenericDefId, ImplId, LocalFieldId,
-    TypeParamId, VariantId,
+    db::DefDatabase, expr::ExprId, ConstParamId, DefWithBodyId, FunctionId, GenericDefId, ImplId,
+    LocalFieldId, TypeParamId, VariantId,
 };
 
 use crate::{
@@ -36,6 +36,9 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
     #[salsa::invoke(crate::lower::impl_self_ty_query)]
     #[salsa::cycle(crate::lower::impl_self_ty_recover)]
     fn impl_self_ty(&self, def: ImplId) -> Binders<Ty>;
+
+    #[salsa::invoke(crate::lower::const_param_ty_query)]
+    fn const_param_ty(&self, def: ConstParamId) -> Ty;
 
     #[salsa::invoke(crate::lower::impl_trait_query)]
     fn impl_trait(&self, def: ImplId) -> Option<Binders<TraitRef>>;

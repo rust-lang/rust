@@ -24,6 +24,7 @@ pub enum SymbolKind {
     Impl,
     Field,
     TypeParam,
+    ConstParam,
     LifetimeParam,
     ValueParam,
     SelfParam,
@@ -225,6 +226,7 @@ impl TryToNav for Definition {
             Definition::TypeParam(it) => Some(it.to_nav(db)),
             Definition::LifetimeParam(it) => Some(it.to_nav(db)),
             Definition::Label(it) => Some(it.to_nav(db)),
+            Definition::ConstParam(it) => Some(it.to_nav(db)),
         }
     }
 }
@@ -478,6 +480,23 @@ impl ToNav for hir::LifetimeParam {
             kind: Some(SymbolKind::LifetimeParam),
             full_range,
             focus_range: Some(full_range),
+            container_name: None,
+            description: None,
+            docs: None,
+        }
+    }
+}
+
+impl ToNav for hir::ConstParam {
+    fn to_nav(&self, db: &RootDatabase) -> NavigationTarget {
+        let src = self.source(db);
+        let full_range = src.value.syntax().text_range();
+        NavigationTarget {
+            file_id: src.file_id.original_file(db),
+            name: self.name(db).to_string().into(),
+            kind: Some(SymbolKind::ConstParam),
+            full_range,
+            focus_range: src.value.name().map(|n| n.syntax().text_range()),
             container_name: None,
             description: None,
             docs: None,

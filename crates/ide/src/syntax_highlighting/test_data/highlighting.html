@@ -118,6 +118,10 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
     <span class="keyword control">loop</span> <span class="punctuation">{</span><span class="punctuation">}</span>
 <span class="punctuation">}</span>
 
+<span class="keyword">fn</span> <span class="function declaration">const_param</span><span class="punctuation">&lt;</span><span class="keyword">const</span> <span class="const_param declaration">FOO</span><span class="punctuation">:</span> <span class="builtin_type">usize</span><span class="punctuation">&gt;</span><span class="punctuation">(</span><span class="punctuation">)</span> <span class="operator">-&gt;</span> <span class="builtin_type">usize</span> <span class="punctuation">{</span>
+    <span class="const_param">FOO</span>
+<span class="punctuation">}</span>
+
 <span class="keyword">use</span> <span class="module">ops</span><span class="operator">::</span><span class="trait">Fn</span><span class="punctuation">;</span>
 <span class="keyword">fn</span> <span class="function declaration">baz</span><span class="punctuation">&lt;</span><span class="type_param declaration">F</span><span class="punctuation">:</span> <span class="trait">Fn</span><span class="punctuation">(</span><span class="punctuation">)</span> <span class="operator">-&gt;</span> <span class="punctuation">(</span><span class="punctuation">)</span><span class="punctuation">&gt;</span><span class="punctuation">(</span><span class="value_param declaration callable">f</span><span class="punctuation">:</span> <span class="type_param">F</span><span class="punctuation">)</span> <span class="punctuation">{</span>
     <span class="value_param callable">f</span><span class="punctuation">(</span><span class="punctuation">)</span>

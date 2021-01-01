@@ -10,8 +10,8 @@ use hir_expand::InFile;
 use syntax::ast;
 
 use crate::{
-    db::HirDatabase, Const, Enum, Field, FieldSource, Function, Impl, LifetimeParam, MacroDef,
-    Module, Static, Struct, Trait, TypeAlias, TypeParam, Union, Variant,
+    db::HirDatabase, Const, ConstParam, Enum, Field, FieldSource, Function, Impl, LifetimeParam,
+    MacroDef, Module, Static, Struct, Trait, TypeAlias, TypeParam, Union, Variant,
 };
 
 pub trait HasSource {
@@ -135,6 +135,14 @@ impl HasSource for TypeParam {
 
 impl HasSource for LifetimeParam {
     type Ast = ast::LifetimeParam;
+    fn source(self, db: &dyn HirDatabase) -> InFile<Self::Ast> {
+        let child_source = self.id.parent.child_source(db.upcast());
+        child_source.map(|it| it[self.id.local_id].clone())
+    }
+}
+
+impl HasSource for ConstParam {
+    type Ast = ast::ConstParam;
     fn source(self, db: &dyn HirDatabase) -> InFile<Self::Ast> {
         let child_source = self.id.parent.child_source(db.upcast());
         child_source.map(|it| it[self.id.local_id].clone())

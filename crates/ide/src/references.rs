@@ -1144,4 +1144,20 @@ fn foo<'a>() -> &'a () {
             "#]],
         );
     }
+
+    #[test]
+    fn test_find_const_param() {
+        check(
+            r#"
+fn foo<const FOO<|>: usize>() -> usize {
+    FOO
+}
+"#,
+            expect![[r#"
+                FOO ConstParam FileId(0) 7..23 13..16 Other
+
+                FileId(0) 42..45 Other
+            "#]],
+        );
+    }
 }

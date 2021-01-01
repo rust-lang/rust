@@ -44,6 +44,7 @@ define_semantic_token_types![
     (ESCAPE_SEQUENCE, "escapeSequence"),
     (FORMAT_SPECIFIER, "formatSpecifier"),
     (GENERIC, "generic"),
+    (CONST_PARAMETER, "constParameter"),
     (LIFETIME, "lifetime"),
     (LABEL, "label"),
     (PUNCTUATION, "punctuation"),

@@ -479,6 +479,7 @@ pub(crate) fn resolve_hir_path(
                 ValueNs::StructId(it) => PathResolution::Def(Struct::from(it).into()),
                 ValueNs::EnumVariantId(it) => PathResolution::Def(Variant::from(it).into()),
                 ValueNs::ImplSelf(impl_id) => PathResolution::SelfType(impl_id.into()),
+                ValueNs::GenericParam(it) => PathResolution::ConstParam(it.into()),
             };
             Some(res)
         });

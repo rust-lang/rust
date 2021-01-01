@@ -6,8 +6,8 @@
 // FIXME: this badly needs rename/rewrite (matklad, 2020-02-06).
 
 use hir::{
-    db::HirDatabase, Crate, Field, HasVisibility, Impl, Label, LifetimeParam, Local, MacroDef,
-    Module, ModuleDef, Name, PathResolution, Semantics, TypeParam, Visibility,
+    db::HirDatabase, ConstParam, Crate, Field, HasVisibility, Impl, Label, LifetimeParam, Local,
+    MacroDef, Module, ModuleDef, Name, PathResolution, Semantics, TypeParam, Visibility,
 };
 use syntax::{
     ast::{self, AstNode},
@@ -26,6 +26,7 @@ pub enum Definition {
     Local(Local),
     TypeParam(TypeParam),
     LifetimeParam(LifetimeParam),
+    ConstParam(ConstParam),
     Label(Label),
 }
 
@@ -39,6 +40,7 @@ impl Definition {
             Definition::Local(it) => Some(it.module(db)),
             Definition::TypeParam(it) => Some(it.module(db)),
             Definition::LifetimeParam(it) => Some(it.module(db)),
+            Definition::ConstParam(it) => Some(it.module(db)),
             Definition::Label(it) => Some(it.module(db)),
         }
     }
@@ -52,6 +54,7 @@ impl Definition {
             Definition::Local(_) => None,
             Definition::TypeParam(_) => None,
             Definition::LifetimeParam(_) => None,
+            Definition::ConstParam(_) => None,
             Definition::Label(_) => None,
         }
     }
@@ -79,6 +82,7 @@ impl Definition {
             Definition::Local(it) => it.name(db)?,
             Definition::TypeParam(it) => it.name(db),
             Definition::LifetimeParam(it) => it.name(db),
+            Definition::ConstParam(it) => it.name(db),
             Definition::Label(it) => it.name(db),
         };
         Some(name)
@@ -232,6 +236,10 @@ impl NameClass {
                 ast::TypeParam(it) => {
                     let def = sema.to_def(&it)?;
                     Some(NameClass::Definition(Definition::TypeParam(def)))
+                },
+                ast::ConstParam(it) => {
+                    let def = sema.to_def(&it)?;
+                    Some(NameClass::Definition(Definition::ConstParam(def)))
                 },
                 _ => None,
             }
@@ -417,6 +425,7 @@ impl From<PathResolution> for Definition {
             PathResolution::TypeParam(par) => Definition::TypeParam(par),
             PathResolution::Macro(def) => Definition::Macro(def),
             PathResolution::SelfType(impl_def) => Definition::SelfType(impl_def),
+            PathResolution::ConstParam(par) => Definition::ConstParam(par),
         }
     }
 }

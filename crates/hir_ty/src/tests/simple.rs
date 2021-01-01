@@ -2375,3 +2375,19 @@ fn infer_operator_overload() {
         "#]],
     );
 }
+
+#[test]
+fn infer_const_params() {
+    check_infer(
+        r#"
+        fn foo<const FOO: usize>() {
+            let bar = FOO;
+        }
+        "#,
+        expect![[r#"
+            27..49 '{     ...FOO; }': ()
+            37..40 'bar': usize
+            43..46 'FOO': usize
+        "#]],
+    );
+}

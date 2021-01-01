@@ -370,7 +370,10 @@ fn hover_for_definition(db: &RootDatabase, def: Definition) -> Option<Markup> {
                 Adt::Enum(it) => from_def_source(db, it, mod_path),
             })
         }
-        Definition::TypeParam(_) | Definition::LifetimeParam(_) | Definition::Label(_) => {
+        Definition::TypeParam(_)
+        | Definition::LifetimeParam(_)
+        | Definition::ConstParam(_)
+        | Definition::Label(_) => {
             // FIXME: Hover for generic param
             None
         }

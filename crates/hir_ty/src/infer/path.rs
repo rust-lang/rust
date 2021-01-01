@@ -89,6 +89,7 @@ impl<'a> InferenceContext<'a> {
                     return None;
                 }
             }
+            ValueNs::GenericParam(it) => return Some(self.db.const_param_ty(it)),
         };
 
         let ty = self.db.value_ty(typable);

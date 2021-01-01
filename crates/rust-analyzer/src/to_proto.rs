@@ -42,6 +42,7 @@ pub(crate) fn symbol_kind(symbol_kind: SymbolKind) -> lsp_types::SymbolKind {
         SymbolKind::Field => lsp_types::SymbolKind::Field,
         SymbolKind::Static => lsp_types::SymbolKind::Constant,
         SymbolKind::Const => lsp_types::SymbolKind::Constant,
+        SymbolKind::ConstParam => lsp_types::SymbolKind::Constant,
         SymbolKind::Impl => lsp_types::SymbolKind::Object,
         SymbolKind::Local
         | SymbolKind::SelfParam
@@ -378,6 +379,7 @@ fn semantic_token_type_and_modifiers(
             SymbolKind::Impl => lsp_types::SemanticTokenType::TYPE,
             SymbolKind::Field => lsp_types::SemanticTokenType::PROPERTY,
             SymbolKind::TypeParam => lsp_types::SemanticTokenType::TYPE_PARAMETER,
+            SymbolKind::ConstParam => semantic_tokens::CONST_PARAMETER,
             SymbolKind::LifetimeParam => semantic_tokens::LIFETIME,
             SymbolKind::Label => semantic_tokens::LABEL,
             SymbolKind::ValueParam => lsp_types::SemanticTokenType::PARAMETER,

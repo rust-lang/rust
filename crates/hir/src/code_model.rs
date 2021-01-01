@@ -18,10 +18,10 @@ use hir_def::{
     resolver::{HasResolver, Resolver},
     src::HasSource as _,
     type_ref::{Mutability, TypeRef},
-    AdtId, AssocContainerId, AssocItemId, AssocItemLoc, AttrDefId, ConstId, DefWithBodyId, EnumId,
-    FunctionId, GenericDefId, HasModule, ImplId, LifetimeParamId, LocalEnumVariantId, LocalFieldId,
-    LocalModuleId, Lookup, ModuleId, StaticId, StructId, TraitId, TypeAliasId, TypeParamId,
-    UnionId,
+    AdtId, AssocContainerId, AssocItemId, AssocItemLoc, AttrDefId, ConstId, ConstParamId,
+    DefWithBodyId, EnumId, FunctionId, GenericDefId, HasModule, ImplId, LifetimeParamId,
+    LocalEnumVariantId, LocalFieldId, LocalModuleId, Lookup, ModuleId, StaticId, StructId, TraitId,
+    TypeAliasId, TypeParamId, UnionId,
 };
 use hir_def::{find_path::PrefixKind, item_scope::ItemInNs, visibility::Visibility};
 use hir_expand::{
@@ -1125,7 +1125,12 @@ impl GenericDef {
                 id: LifetimeParamId { parent: self.into(), local_id },
             })
             .map(GenericParam::LifetimeParam);
-        ty_params.chain(lt_params).collect()
+        let const_params = generics
+            .consts
+            .iter()
+            .map(|(local_id, _)| ConstParam { id: ConstParamId { parent: self.into(), local_id } })
+            .map(GenericParam::ConstParam);
+        ty_params.chain(lt_params).chain(const_params).collect()
     }
 
     pub fn type_params(self, db: &dyn HirDatabase) -> Vec<TypeParam> {
@@ -1237,8 +1242,9 @@ impl Label {
 pub enum GenericParam {
     TypeParam(TypeParam),
     LifetimeParam(LifetimeParam),
+    ConstParam(ConstParam),
 }
-impl_from!(TypeParam, LifetimeParam for GenericParam);
+impl_from!(TypeParam, LifetimeParam, ConstParam for GenericParam);
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct TypeParam {
@@ -1289,6 +1295,26 @@ impl LifetimeParam {
     pub fn name(self, db: &dyn HirDatabase) -> Name {
         let params = db.generic_params(self.id.parent);
         params.lifetimes[self.id.local_id].name.clone()
+    }
+
+    pub fn module(self, db: &dyn HirDatabase) -> Module {
+        self.id.parent.module(db.upcast()).into()
+    }
+
+    pub fn parent(self, _db: &dyn HirDatabase) -> GenericDef {
+        self.id.parent.into()
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct ConstParam {
+    pub(crate) id: ConstParamId,
+}
+
+impl ConstParam {
+    pub fn name(self, db: &dyn HirDatabase) -> Name {
+        let params = db.generic_params(self.id.parent);
+        params.consts[self.id.local_id].name.clone()
     }
 
     pub fn module(self, db: &dyn HirDatabase) -> Module {

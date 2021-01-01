@@ -44,6 +44,7 @@ from_id![
     (hir_def::ImplId, crate::Impl),
     (hir_def::TypeParamId, crate::TypeParam),
     (hir_def::LifetimeParamId, crate::LifetimeParam),
+    (hir_def::ConstParamId, crate::ConstParam),
     (hir_expand::MacroDefId, crate::MacroDef)
 ];
 

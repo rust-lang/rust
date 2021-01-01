@@ -77,6 +77,7 @@ impl HighlightTag {
                 SymbolKind::Function => "function",
                 SymbolKind::TypeAlias => "type_alias",
                 SymbolKind::TypeParam => "type_param",
+                SymbolKind::ConstParam => "const_param",
                 SymbolKind::LifetimeParam => "lifetime",
                 SymbolKind::Macro => "macro",
                 SymbolKind::Local => "variable",

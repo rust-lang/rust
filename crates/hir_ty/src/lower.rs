@@ -16,9 +16,9 @@ use hir_def::{
     path::{GenericArg, Path, PathSegment, PathSegments},
     resolver::{HasResolver, Resolver, TypeNs},
     type_ref::{TypeBound, TypeRef},
-    AdtId, AssocContainerId, AssocItemId, ConstId, EnumId, EnumVariantId, FunctionId, GenericDefId,
-    HasModule, ImplId, LocalFieldId, Lookup, StaticId, StructId, TraitId, TypeAliasId, TypeParamId,
-    UnionId, VariantId,
+    AdtId, AssocContainerId, AssocItemId, ConstId, ConstParamId, EnumId, EnumVariantId, FunctionId,
+    GenericDefId, HasModule, ImplId, LocalFieldId, Lookup, StaticId, StructId, TraitId,
+    TypeAliasId, TypeParamId, UnionId, VariantId,
 };
 use hir_expand::name::Name;
 use smallvec::SmallVec;
@@ -1219,6 +1219,15 @@ pub(crate) fn impl_self_ty_query(db: &dyn HirDatabase, impl_id: ImplId) -> Binde
     let ctx =
         TyLoweringContext::new(db, &resolver).with_type_param_mode(TypeParamLoweringMode::Variable);
     Binders::new(generics.len(), Ty::from_hir(&ctx, &impl_data.target_type))
+}
+
+pub(crate) fn const_param_ty_query(db: &dyn HirDatabase, def: ConstParamId) -> Ty {
+    let parent_data = db.generic_params(def.parent);
+    let data = &parent_data.consts[def.local_id];
+    let resolver = def.parent.resolver(db.upcast());
+    let ctx = TyLoweringContext::new(db, &resolver);
+
+    Ty::from_hir(&ctx, &data.ty)
 }
 
 pub(crate) fn impl_self_ty_recover(
