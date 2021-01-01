@@ -260,6 +260,7 @@ impl GenericParamsStorage {
     fn alloc(&mut self, params: GenericParams) -> GenericParamsId {
         if params.types.is_empty()
             && params.lifetimes.is_empty()
+            && params.consts.is_empty()
             && params.where_predicates.is_empty()
         {
             return GenericParamsId::EMPTY;
@@ -269,8 +270,12 @@ impl GenericParamsStorage {
     }
 }
 
-static EMPTY_GENERICS: GenericParams =
-    GenericParams { types: Arena::new(), lifetimes: Arena::new(), where_predicates: Vec::new() };
+static EMPTY_GENERICS: GenericParams = GenericParams {
+    types: Arena::new(),
+    lifetimes: Arena::new(),
+    consts: Arena::new(),
+    where_predicates: Vec::new(),
+};
 
 #[derive(Default, Debug, Eq, PartialEq)]
 struct ItemTreeData {

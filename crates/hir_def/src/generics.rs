@@ -21,11 +21,11 @@ use crate::{
     keys,
     src::{HasChildSource, HasSource},
     type_ref::{LifetimeRef, TypeBound, TypeRef},
-    AdtId, GenericDefId, LifetimeParamId, LocalLifetimeParamId, LocalTypeParamId, Lookup,
-    TypeParamId,
+    AdtId, ConstParamId, GenericDefId, LifetimeParamId, LocalConstParamId, LocalLifetimeParamId,
+    LocalTypeParamId, Lookup, TypeParamId,
 };
 
-/// Data about a generic parameter (to a function, struct, impl, ...).
+/// Data about a generic type parameter (to a function, struct, impl, ...).
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct TypeParamData {
     pub name: Option<Name>,
@@ -33,10 +33,17 @@ pub struct TypeParamData {
     pub provenance: TypeParamProvenance,
 }
 
-/// Data about a generic parameter (to a function, struct, impl, ...).
+/// Data about a generic lifetime parameter (to a function, struct, impl, ...).
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct LifetimeParamData {
     pub name: Name,
+}
+
+/// Data about a generic const parameter (to a function, struct, impl, ...).
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct ConstParamData {
+    pub name: Name,
+    pub ty: TypeRef,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
@@ -51,6 +58,7 @@ pub enum TypeParamProvenance {
 pub struct GenericParams {
     pub types: Arena<TypeParamData>,
     pub lifetimes: Arena<LifetimeParamData>,
+    pub consts: Arena<ConstParamData>,
     pub where_predicates: Vec<WherePredicate>,
 }
 
@@ -76,6 +84,7 @@ pub enum WherePredicateTypeTarget {
 pub(crate) struct SourceMap {
     pub(crate) type_params: ArenaMap<LocalTypeParamId, Either<ast::Trait, ast::TypeParam>>,
     lifetime_params: ArenaMap<LocalLifetimeParamId, ast::LifetimeParam>,
+    const_params: ArenaMap<LocalConstParamId, ast::ConstParam>,
 }
 
 impl GenericParams {
@@ -268,6 +277,13 @@ impl GenericParams {
             let lifetime_ref = LifetimeRef::new_name(name);
             self.fill_bounds(&lower_ctx, &lifetime_param, Either::Right(lifetime_ref));
         }
+        for const_param in params.const_params() {
+            let name = const_param.name().map_or_else(Name::missing, |it| it.as_name());
+            let ty = const_param.ty().map_or(TypeRef::Error, |it| TypeRef::from_ast(lower_ctx, it));
+            let param = ConstParamData { name, ty };
+            let param_id = self.consts.alloc(param);
+            sm.const_params.insert(param_id, const_param.clone());
+        }
     }
 
     fn fill_where_predicates(&mut self, lower_ctx: &LowerCtx, where_clause: ast::WhereClause) {
@@ -353,10 +369,14 @@ impl GenericParams {
         });
     }
 
-    pub fn find_by_name(&self, name: &Name) -> Option<LocalTypeParamId> {
+    pub fn find_type_by_name(&self, name: &Name) -> Option<LocalTypeParamId> {
         self.types
             .iter()
             .find_map(|(id, p)| if p.name.as_ref() == Some(name) { Some(id) } else { None })
+    }
+
+    pub fn find_const_by_name(&self, name: &Name) -> Option<LocalConstParamId> {
+        self.consts.iter().find_map(|(id, p)| if p.name == *name { Some(id) } else { None })
     }
 
     pub fn find_trait_self_param(&self) -> Option<LocalTypeParamId> {
@@ -390,6 +410,16 @@ impl HasChildSource<LocalLifetimeParamId> for GenericDefId {
     }
 }
 
+impl HasChildSource<LocalConstParamId> for GenericDefId {
+    type Value = ast::ConstParam;
+    fn child_source(
+        &self,
+        db: &dyn DefDatabase,
+    ) -> InFile<ArenaMap<LocalConstParamId, Self::Value>> {
+        GenericParams::new(db, *self).1.map(|source_maps| source_maps.const_params)
+    }
+}
+
 impl ChildBySource for GenericDefId {
     fn child_by_source(&self, db: &dyn DefDatabase) -> DynMap {
         let mut res = DynMap::default();
@@ -405,6 +435,10 @@ impl ChildBySource for GenericDefId {
         for (local_id, src) in sm.value.lifetime_params.iter() {
             let id = LifetimeParamId { parent: *self, local_id };
             res[keys::LIFETIME_PARAM].insert(sm.with_value(src.clone()), id);
+        }
+        for (local_id, src) in sm.value.const_params.iter() {
+            let id = ConstParamId { parent: *self, local_id };
+            res[keys::CONST_PARAM].insert(sm.with_value(src.clone()), id);
         }
         res
     }

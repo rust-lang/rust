@@ -6,9 +6,9 @@ use hir_def::{
     dyn_map::DynMap,
     expr::{LabelId, PatId},
     keys::{self, Key},
-    ConstId, DefWithBodyId, EnumId, EnumVariantId, FieldId, FunctionId, GenericDefId, ImplId,
-    LifetimeParamId, ModuleId, StaticId, StructId, TraitId, TypeAliasId, TypeParamId, UnionId,
-    VariantId,
+    ConstId, ConstParamId, DefWithBodyId, EnumId, EnumVariantId, FieldId, FunctionId, GenericDefId,
+    ImplId, LifetimeParamId, ModuleId, StaticId, StructId, TraitId, TypeAliasId, TypeParamId,
+    UnionId, VariantId,
 };
 use hir_expand::{name::AsName, AstId, MacroDefKind};
 use rustc_hash::FxHashMap;
@@ -155,6 +155,18 @@ impl SourceToDefCtx<'_, '_> {
         let dyn_map =
             &*self.cache.entry(container).or_insert_with(|| container.child_by_source(db));
         dyn_map[keys::LIFETIME_PARAM].get(&src).copied()
+    }
+
+    pub(super) fn const_param_to_def(
+        &mut self,
+        src: InFile<ast::ConstParam>,
+    ) -> Option<ConstParamId> {
+        let container: ChildContainer =
+            self.find_generic_param_container(src.as_ref().map(|it| it.syntax()))?.into();
+        let db = self.db;
+        let dyn_map =
+            &*self.cache.entry(container).or_insert_with(|| container.child_by_source(db));
+        dyn_map[keys::CONST_PARAM].get(&src).copied()
     }
 
     // FIXME: use DynMap as well?

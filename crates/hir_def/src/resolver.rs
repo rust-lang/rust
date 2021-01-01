@@ -20,9 +20,9 @@ use crate::{
     path::{ModPath, PathKind},
     per_ns::PerNs,
     visibility::{RawVisibility, Visibility},
-    AdtId, AssocContainerId, ConstId, ContainerId, DefWithBodyId, EnumId, EnumVariantId,
-    FunctionId, GenericDefId, HasModule, ImplId, LocalModuleId, Lookup, ModuleDefId, ModuleId,
-    StaticId, StructId, TraitId, TypeAliasId, TypeParamId, VariantId,
+    AdtId, AssocContainerId, ConstId, ConstParamId, ContainerId, DefWithBodyId, EnumId,
+    EnumVariantId, FunctionId, GenericDefId, HasModule, ImplId, LocalModuleId, Lookup, ModuleDefId,
+    ModuleId, StaticId, StructId, TraitId, TypeAliasId, TypeParamId, VariantId,
 };
 
 #[derive(Debug, Clone, Default)]
@@ -93,6 +93,7 @@ pub enum ValueNs {
     StaticId(StaticId),
     StructId(StructId),
     EnumVariantId(EnumVariantId),
+    GenericParam(ConstParamId),
 }
 
 impl Resolver {
@@ -163,7 +164,7 @@ impl Resolver {
                 }
 
                 Scope::GenericParams { params, def } => {
-                    if let Some(local_id) = params.find_by_name(first_name) {
+                    if let Some(local_id) = params.find_type_by_name(first_name) {
                         let idx = if path.segments.len() == 1 { None } else { Some(1) };
                         return Some((
                             TypeNs::GenericParam(TypeParamId { local_id, parent: *def }),
@@ -285,9 +286,15 @@ impl Resolver {
                 Scope::ExprScope(_) => continue,
 
                 Scope::GenericParams { params, def } if n_segments > 1 => {
-                    if let Some(local_id) = params.find_by_name(first_name) {
+                    if let Some(local_id) = params.find_type_by_name(first_name) {
                         let ty = TypeNs::GenericParam(TypeParamId { local_id, parent: *def });
                         return Some(ResolveValueResult::Partial(ty, 1));
+                    }
+                }
+                Scope::GenericParams { params, def } if n_segments == 1 => {
+                    if let Some(local_id) = params.find_const_by_name(first_name) {
+                        let val = ValueNs::GenericParam(ConstParamId { local_id, parent: *def });
+                        return Some(ResolveValueResult::ValueNs(val));
                     }
                 }
                 Scope::GenericParams { .. } => continue,

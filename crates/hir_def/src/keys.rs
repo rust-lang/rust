@@ -8,8 +8,8 @@ use syntax::{ast, AstNode, AstPtr};
 
 use crate::{
     dyn_map::{DynMap, Policy},
-    ConstId, EnumId, EnumVariantId, FieldId, FunctionId, ImplId, LifetimeParamId, StaticId,
-    StructId, TraitId, TypeAliasId, TypeParamId, UnionId,
+    ConstId, ConstParamId, EnumId, EnumVariantId, FieldId, FunctionId, ImplId, LifetimeParamId,
+    StaticId, StructId, TraitId, TypeAliasId, TypeParamId, UnionId,
 };
 
 pub type Key<K, V> = crate::dyn_map::Key<InFile<K>, V, AstPtrPolicy<K, V>>;
@@ -29,6 +29,7 @@ pub const TUPLE_FIELD: Key<ast::TupleField, FieldId> = Key::new();
 pub const RECORD_FIELD: Key<ast::RecordField, FieldId> = Key::new();
 pub const TYPE_PARAM: Key<ast::TypeParam, TypeParamId> = Key::new();
 pub const LIFETIME_PARAM: Key<ast::LifetimeParam, LifetimeParamId> = Key::new();
+pub const CONST_PARAM: Key<ast::ConstParam, ConstParamId> = Key::new();
 
 pub const MACRO: Key<ast::MacroCall, MacroDefId> = Key::new();
 

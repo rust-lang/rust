@@ -25,9 +25,9 @@ use crate::{
     diagnostics::Diagnostic,
     semantics::source_to_def::{ChildContainer, SourceToDefCache, SourceToDefCtx},
     source_analyzer::{resolve_hir_path, SourceAnalyzer},
-    AssocItem, Callable, Crate, Field, Function, HirFileId, Impl, InFile, Label, LifetimeParam,
-    Local, MacroDef, Module, ModuleDef, Name, Path, ScopeDef, Trait, Type, TypeAlias, TypeParam,
-    VariantDef,
+    AssocItem, Callable, ConstParam, Crate, Field, Function, HirFileId, Impl, InFile, Label,
+    LifetimeParam, Local, MacroDef, Module, ModuleDef, Name, Path, ScopeDef, Trait, Type,
+    TypeAlias, TypeParam, VariantDef,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -38,6 +38,7 @@ pub enum PathResolution {
     Local(Local),
     /// A generic parameter
     TypeParam(TypeParam),
+    ConstParam(ConstParam),
     SelfType(Impl),
     Macro(MacroDef),
     AssocItem(AssocItem),
@@ -59,7 +60,9 @@ impl PathResolution {
             PathResolution::Def(ModuleDef::TypeAlias(alias)) => {
                 Some(TypeNs::TypeAliasId((*alias).into()))
             }
-            PathResolution::Local(_) | PathResolution::Macro(_) => None,
+            PathResolution::Local(_) | PathResolution::Macro(_) | PathResolution::ConstParam(_) => {
+                None
+            }
             PathResolution::TypeParam(param) => Some(TypeNs::GenericParam((*param).into())),
             PathResolution::SelfType(impl_def) => Some(TypeNs::SelfType((*impl_def).into())),
             PathResolution::AssocItem(AssocItem::Const(_))
@@ -744,6 +747,7 @@ to_def_impls![
     (crate::Variant, ast::Variant, enum_variant_to_def),
     (crate::TypeParam, ast::TypeParam, type_param_to_def),
     (crate::LifetimeParam, ast::LifetimeParam, lifetime_param_to_def),
+    (crate::ConstParam, ast::ConstParam, const_param_to_def),
     (crate::MacroDef, ast::MacroRules, macro_rules_to_def),
     (crate::Local, ast::IdentPat, bind_pat_to_def),
     (crate::Label, ast::Label, label_to_def),

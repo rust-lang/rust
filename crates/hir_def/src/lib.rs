@@ -232,6 +232,13 @@ pub struct LifetimeParamId {
 pub type LocalLifetimeParamId = Idx<generics::LifetimeParamData>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct ConstParamId {
+    pub parent: GenericDefId,
+    pub local_id: LocalConstParamId,
+}
+pub type LocalConstParamId = Idx<generics::ConstParamData>;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ContainerId {
     ModuleId(ModuleId),
     DefWithBodyId(DefWithBodyId),
