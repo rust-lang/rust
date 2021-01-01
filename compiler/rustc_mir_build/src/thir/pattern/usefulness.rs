@@ -846,15 +846,14 @@ impl<'p, 'tcx> SubPatSet<'p, 'tcx> {
 
 #[derive(Clone, Debug)]
 enum Usefulness<'p, 'tcx> {
-    /// Potentially carries a set of sub-branches that have been found to be unreachable. Used
-    /// only in the presence of or-patterns, otherwise it stays empty.
+    /// Carries a set of subpatterns that have been found to be unreachable. If full, this
+    /// indicates the whole pattern is unreachable. If not, this indicates that the pattern is
+    /// reachable but has some unreachable sub-patterns (due to or-patterns). In the absence of
+    /// or-patterns, this is either `Empty` or `Full`.
     NoWitnesses(SubPatSet<'p, 'tcx>),
-    /// When not carrying witnesses, indicates that the whole pattern is unreachable.
-    NoWitnessesFull,
-    /// Carries a list of witnesses of non-exhaustiveness. Non-empty.
+    /// Carries a list of witnesses of non-exhaustiveness. If empty, indicates that the whole
+    /// pattern is unreachable.
     WithWitnesses(Vec<Witness<'tcx>>),
-    /// When carrying witnesses, indicates that the whole pattern is unreachable.
-    WithWitnessesEmpty,
 }
 
 impl<'p, 'tcx> Usefulness<'p, 'tcx> {
@@ -866,27 +865,19 @@ impl<'p, 'tcx> Usefulness<'p, 'tcx> {
     }
     fn new_not_useful(preference: WitnessPreference) -> Self {
         match preference {
-            ConstructWitness => WithWitnessesEmpty,
-            LeaveOutWitness => NoWitnessesFull,
+            ConstructWitness => WithWitnesses(vec![]),
+            LeaveOutWitness => NoWitnesses(SubPatSet::full()),
         }
     }
 
     /// Combine usefulnesses from two branches. This is an associative operation.
     fn extend(&mut self, other: Self) {
         match (&mut *self, other) {
+            (WithWitnesses(_), WithWitnesses(o)) if o.is_empty() => {}
+            (WithWitnesses(s), WithWitnesses(o)) if s.is_empty() => *self = WithWitnesses(o),
             (WithWitnesses(s), WithWitnesses(o)) => s.extend(o),
-            (WithWitnessesEmpty, WithWitnesses(o)) => *self = WithWitnesses(o),
-            (WithWitnesses(_), WithWitnessesEmpty) => {}
-            (WithWitnessesEmpty, WithWitnessesEmpty) => {}
-
             (NoWitnesses(s), NoWitnesses(o)) => s.intersect(o),
-            (NoWitnessesFull, NoWitnesses(o)) => *self = NoWitnesses(o),
-            (NoWitnesses(_), NoWitnessesFull) => {}
-            (NoWitnessesFull, NoWitnessesFull) => {}
-
-            _ => {
-                unreachable!()
-            }
+            _ => unreachable!(),
         }
     }
 
@@ -909,12 +900,10 @@ impl<'p, 'tcx> Usefulness<'p, 'tcx> {
     /// After calculating the usefulness for a branch of an or-pattern, call this to make this
     /// usefulness mergeable with those from the other branches.
     fn unsplit_or_pat(self, alt_id: usize, alt_count: usize, pat: &'p Pat<'tcx>) -> Self {
-        let subpats = match self {
-            NoWitnesses(subpats) => subpats,
-            NoWitnessesFull => SubPatSet::full(),
-            WithWitnesses(_) | WithWitnessesEmpty => bug!(),
-        };
-        NoWitnesses(subpats.unsplit_or_pat(alt_id, alt_count, pat))
+        match self {
+            NoWitnesses(subpats) => NoWitnesses(subpats.unsplit_or_pat(alt_id, alt_count, pat)),
+            WithWitnesses(_) => bug!(),
+        }
     }
 
     /// After calculating usefulness after a specialization, call this to recontruct a usefulness
@@ -928,6 +917,7 @@ impl<'p, 'tcx> Usefulness<'p, 'tcx> {
         ctor_wild_subpatterns: &Fields<'p, 'tcx>,
     ) -> Self {
         match self {
+            WithWitnesses(witnesses) if witnesses.is_empty() => WithWitnesses(witnesses),
             WithWitnesses(witnesses) => {
                 let new_witnesses = if matches!(ctor, Constructor::Missing) {
                     let mut split_wildcard = SplitWildcard::new(pcx);
@@ -961,8 +951,6 @@ impl<'p, 'tcx> Usefulness<'p, 'tcx> {
                 WithWitnesses(new_witnesses)
             }
             NoWitnesses(subpats) => NoWitnesses(subpats.unspecialize(ctor_wild_subpatterns.len())),
-            NoWitnessesFull => NoWitnessesFull,
-            WithWitnessesEmpty => WithWitnessesEmpty,
         }
     }
 }
@@ -1209,8 +1197,7 @@ crate fn compute_match_usefulness<'p, 'tcx>(
             let reachability = match usefulness {
                 NoWitnesses(subpats) if subpats.is_full() => Reachability::Unreachable,
                 NoWitnesses(subpats) => Reachability::Reachable(subpats.to_spans().unwrap()),
-                NoWitnessesFull => Reachability::Unreachable,
-                WithWitnesses(..) | WithWitnessesEmpty => bug!(),
+                WithWitnesses(..) => bug!(),
             };
             (arm, reachability)
         })
@@ -1220,15 +1207,8 @@ crate fn compute_match_usefulness<'p, 'tcx>(
     let v = PatStack::from_pattern(wild_pattern);
     let usefulness = is_useful(cx, &matrix, &v, ConstructWitness, scrut_hir_id, false, true);
     let non_exhaustiveness_witnesses = match usefulness {
-        WithWitnessesEmpty => vec![], // Wildcard pattern isn't useful, so the match is exhaustive.
-        WithWitnesses(pats) => {
-            if pats.is_empty() {
-                bug!("Exhaustiveness check returned no witnesses")
-            } else {
-                pats.into_iter().map(|w| w.single_pattern()).collect()
-            }
-        }
-        NoWitnesses(_) | NoWitnessesFull => bug!(),
+        WithWitnesses(pats) => pats.into_iter().map(|w| w.single_pattern()).collect(),
+        NoWitnesses(_) => bug!(),
     };
     UsefulnessReport { arm_usefulness, non_exhaustiveness_witnesses }
 }
