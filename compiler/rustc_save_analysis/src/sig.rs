@@ -619,7 +619,6 @@ impl<'hir> Sig for hir::Generics<'hir> {
                 param_text.push_str(&ty_to_string(&ty));
                 if let Some(ref _default) = default {
                     // FIXME(const_generics_defaults): push the `default` value here
-                    todo!();
                 }
             }
             if !param.bounds.is_empty() {

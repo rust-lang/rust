@@ -2210,7 +2210,6 @@ impl<'a> State<'a> {
                 self.print_type(ty);
                 if let Some(ref _default) = default {
                     // FIXME(const_generics_defaults): print the `default` value here
-                    todo!();
                 }
             }
         }
