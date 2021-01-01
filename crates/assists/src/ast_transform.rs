@@ -204,7 +204,8 @@ impl<'a> AstTransform<'a> for QualifyPaths<'a> {
             }
             PathResolution::Local(_)
             | PathResolution::TypeParam(_)
-            | PathResolution::SelfType(_) => None,
+            | PathResolution::SelfType(_)
+            | PathResolution::ConstParam(_) => None,
             PathResolution::Macro(_) => None,
             PathResolution::AssocItem(_) => None,
         }

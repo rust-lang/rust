@@ -2376,7 +2376,6 @@ fn infer_operator_overload() {
     );
 }
 
-
 #[test]
 fn infer_const_params() {
     check_infer(

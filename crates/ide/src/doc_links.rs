@@ -193,6 +193,7 @@ fn rewrite_intra_doc_link(
         Definition::SelfType(_)
         | Definition::Local(_)
         | Definition::TypeParam(_)
+        | Definition::ConstParam(_)
         | Definition::LifetimeParam(_)
         | Definition::Label(_) => return None,
     }?;

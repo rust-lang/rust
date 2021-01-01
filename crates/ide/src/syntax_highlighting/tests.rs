@@ -91,6 +91,10 @@ fn never() -> ! {
     loop {}
 }
 
+fn const_param<const FOO: usize>() -> usize {
+    FOO
+}
+
 use ops::Fn;
 fn baz<F: Fn() -> ()>(f: F) {
     f()
