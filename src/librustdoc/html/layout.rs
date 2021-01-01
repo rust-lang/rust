@@ -1,5 +1,6 @@
-use std::collections::HashMap;
 use std::path::PathBuf;
+
+use rustc_data_structures::fx::FxHashMap;
 
 use crate::externalfiles::ExternalHtml;
 use crate::html::escape::Escape;
@@ -11,7 +12,7 @@ crate struct Layout {
     crate logo: String,
     crate favicon: String,
     crate external_html: ExternalHtml,
-    crate default_settings: HashMap<String, String>,
+    crate default_settings: FxHashMap<String, String>,
     crate krate: String,
     /// The given user css file which allow to customize the generated
     /// documentation theme.

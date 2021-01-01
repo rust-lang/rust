@@ -620,7 +620,7 @@ crate fn find_testable_code<T: doctest::Tester>(
     tests: &mut T,
     error_codes: ErrorCodes,
     enable_per_target_ignores: bool,
-    extra_info: Option<&ExtraInfo<'_, '_>>,
+    extra_info: Option<&ExtraInfo<'_>>,
 ) {
     let mut parser = Parser::new(doc).into_offset_iter();
     let mut prev_offset = 0;
@@ -681,19 +681,19 @@ crate fn find_testable_code<T: doctest::Tester>(
     }
 }
 
-crate struct ExtraInfo<'a, 'b> {
+crate struct ExtraInfo<'tcx> {
     hir_id: Option<HirId>,
     item_did: Option<DefId>,
     sp: Span,
-    tcx: &'a TyCtxt<'b>,
+    tcx: TyCtxt<'tcx>,
 }
 
-impl<'a, 'b> ExtraInfo<'a, 'b> {
-    crate fn new(tcx: &'a TyCtxt<'b>, hir_id: HirId, sp: Span) -> ExtraInfo<'a, 'b> {
+impl<'tcx> ExtraInfo<'tcx> {
+    crate fn new(tcx: TyCtxt<'tcx>, hir_id: HirId, sp: Span) -> ExtraInfo<'tcx> {
         ExtraInfo { hir_id: Some(hir_id), item_did: None, sp, tcx }
     }
 
-    crate fn new_did(tcx: &'a TyCtxt<'b>, did: DefId, sp: Span) -> ExtraInfo<'a, 'b> {
+    crate fn new_did(tcx: TyCtxt<'tcx>, did: DefId, sp: Span) -> ExtraInfo<'tcx> {
         ExtraInfo { hir_id: None, item_did: Some(did), sp, tcx }
     }
 
@@ -775,7 +775,7 @@ impl LangString {
         string: &str,
         allow_error_code_check: ErrorCodes,
         enable_per_target_ignores: bool,
-        extra: Option<&ExtraInfo<'_, '_>>,
+        extra: Option<&ExtraInfo<'_>>,
     ) -> LangString {
         let allow_error_code_check = allow_error_code_check.as_bool();
         let mut seen_rust_tags = false;
@@ -1208,7 +1208,7 @@ crate struct RustCodeBlock {
 
 /// Returns a range of bytes for each code block in the markdown that is tagged as `rust` or
 /// untagged (and assumed to be rust).
-crate fn rust_code_blocks(md: &str, extra_info: &ExtraInfo<'_, '_>) -> Vec<RustCodeBlock> {
+crate fn rust_code_blocks(md: &str, extra_info: &ExtraInfo<'_>) -> Vec<RustCodeBlock> {
     let mut code_blocks = vec![];
 
     if md.is_empty() {

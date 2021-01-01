@@ -65,7 +65,7 @@ use std::process;
 use rustc_driver::abort_on_err;
 use rustc_errors::ErrorReported;
 use rustc_interface::interface;
-use rustc_middle::ty;
+use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{make_crate_type_option, ErrorOutputType, RustcOptGroup};
 use rustc_session::getopts;
 use rustc_session::{early_error, early_warn};
@@ -471,7 +471,7 @@ fn run_renderer<'tcx, T: formats::FormatRenderer<'tcx>>(
     render_info: config::RenderInfo,
     diag: &rustc_errors::Handler,
     edition: rustc_span::edition::Edition,
-    tcx: ty::TyCtxt<'tcx>,
+    tcx: TyCtxt<'tcx>,
 ) -> MainResult {
     match formats::run_format::<T>(krate, renderopts, render_info, &diag, edition, tcx) {
         Ok(_) => Ok(()),

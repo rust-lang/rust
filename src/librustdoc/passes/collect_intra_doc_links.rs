@@ -13,6 +13,7 @@ use rustc_hir::def::{
     PerNS,
 };
 use rustc_hir::def_id::{CrateNum, DefId};
+use rustc_middle::ty::TyCtxt;
 use rustc_middle::{bug, ty};
 use rustc_resolve::ParentScope;
 use rustc_session::lint::{
@@ -85,7 +86,7 @@ impl Res {
         }
     }
 
-    fn name(self, tcx: ty::TyCtxt<'_>) -> String {
+    fn name(self, tcx: TyCtxt<'_>) -> String {
         match self {
             Res::Def(_, id) => tcx.item_name(id).to_string(),
             Res::Primitive(prim) => prim.as_str().to_string(),
@@ -865,12 +866,11 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
 
         // FIXME(jynelson): this shouldn't go through stringification, rustdoc should just use the DefId directly
         let self_name = self_id.and_then(|self_id| {
-            use ty::TyKind;
             if matches!(self.cx.tcx.def_kind(self_id), DefKind::Impl) {
                 // using `ty.to_string()` (or any variant) has issues with raw idents
                 let ty = self.cx.tcx.type_of(self_id);
                 let name = match ty.kind() {
-                    TyKind::Adt(def, _) => Some(self.cx.tcx.item_name(def.did).to_string()),
+                    ty::Adt(def, _) => Some(self.cx.tcx.item_name(def.did).to_string()),
                     other if other.is_primitive() => Some(ty.to_string()),
                     _ => None,
                 };

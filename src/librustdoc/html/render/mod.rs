@@ -55,7 +55,6 @@ use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::Mutability;
 use rustc_middle::middle::stability;
-use rustc_middle::ty;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_span::edition::Edition;
@@ -390,7 +389,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         _render_info: RenderInfo,
         edition: Edition,
         cache: &mut Cache,
-        tcx: ty::TyCtxt<'tcx>,
+        tcx: TyCtxt<'tcx>,
     ) -> Result<(Self, clean::Crate), Error> {
         // need to save a copy of the options for rendering the index page
         let md_opts = options.clone();
