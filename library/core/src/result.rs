@@ -1289,7 +1289,7 @@ impl<T> Result<T, T> {
     /// cases where you don't care if the result was `Ok` or not.
     ///
     /// [`Atomic*::compare_exchange`]: crate::sync::atomic::AtomicBool::compare_exchange
-    /// [binary_search]: ../primitive.slice.html#method.binary_search
+    /// [binary_search]: ../../std/primitive.slice.html#method.binary_search
     ///
     /// # Examples
     ///
