@@ -15,7 +15,8 @@ use if_chain::if_chain;
 use rustc_ast::ast;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
-use rustc_hir::{TraitItem, TraitItemKind};
+use rustc_hir::def::Res;
+use rustc_hir::{Expr, ExprKind, PatKind, QPath, TraitItem, TraitItemKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass, Lint, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, TraitRef, Ty, TyS};
@@ -448,6 +449,32 @@ declare_clippy_lint! {
     pub FILTER_MAP,
     pedantic,
     "using combinations of `filter`, `map`, `filter_map` and `flat_map` which can usually be written as a single method call"
+}
+
+declare_clippy_lint! {
+    /// **What it does:** Checks for usage of `_.filter(_).map(_)` that can be written more simply
+    /// as `filter_map(_)`.
+    ///
+    /// **Why is this bad?** Redundant code in the `filter` and `map` operations is poor style and
+    /// less performant.
+    ///
+    /// **Known problems:** None.
+    ///
+     /// **Example:**
+    /// Bad:
+    /// ```rust
+    /// (0_i32..10)
+    ///     .filter(|n| n.checked_add(1).is_some())
+    ///     .map(|n| n.checked_add(1).unwrap());
+    /// ```
+    ///
+    /// Good:
+    /// ```rust
+    /// (0_i32..10).filter_map(|n| n.checked_add(1));
+    /// ```
+    pub MANUAL_FILTER_MAP,
+    complexity,
+    "using `_.filter(_).map(_)` in a way that can be written more simply as `filter_map(_)`"
 }
 
 declare_clippy_lint! {
@@ -1473,6 +1500,7 @@ impl_lint_pass!(Methods => [
     FILTER_NEXT,
     SKIP_WHILE_NEXT,
     FILTER_MAP,
+    MANUAL_FILTER_MAP,
     FILTER_MAP_NEXT,
     FLAT_MAP_IDENTITY,
     FIND_MAP,
@@ -1540,7 +1568,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             ["next", "filter"] => lint_filter_next(cx, expr, arg_lists[1]),
             ["next", "skip_while"] => lint_skip_while_next(cx, expr, arg_lists[1]),
             ["next", "iter"] => lint_iter_next(cx, expr, arg_lists[1]),
-            ["map", "filter"] => lint_filter_map(cx, expr, arg_lists[1], arg_lists[0]),
+            ["map", "filter"] => lint_filter_map(cx, expr),
             ["map", "filter_map"] => lint_filter_map_map(cx, expr, arg_lists[1], arg_lists[0]),
             ["next", "filter_map"] => lint_filter_map_next(cx, expr, arg_lists[1], self.msrv.as_ref()),
             ["map", "find"] => lint_find_map(cx, expr, arg_lists[1], arg_lists[0]),
@@ -2989,17 +3017,72 @@ fn lint_skip_while_next<'tcx>(
 }
 
 /// lint use of `filter().map()` for `Iterators`
-fn lint_filter_map<'tcx>(
-    cx: &LateContext<'tcx>,
-    expr: &'tcx hir::Expr<'_>,
-    _filter_args: &'tcx [hir::Expr<'_>],
-    _map_args: &'tcx [hir::Expr<'_>],
-) {
-    // lint if caller of `.filter().map()` is an Iterator
-    if match_trait_method(cx, expr, &paths::ITERATOR) {
-        let msg = "called `filter(..).map(..)` on an `Iterator`";
-        let hint = "this is more succinctly expressed by calling `.filter_map(..)` instead";
-        span_lint_and_help(cx, FILTER_MAP, expr.span, msg, None, hint);
+fn lint_filter_map<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
+    if_chain! {
+        if let ExprKind::MethodCall(_, _, [map_recv, map_arg], map_span) = expr.kind;
+        if let ExprKind::MethodCall(_, _, [_, filter_arg], filter_span) = map_recv.kind;
+        if match_trait_method(cx, expr, &paths::ITERATOR);
+
+        // filter(|x| ...is_some())...
+        if let ExprKind::Closure(_, _, filter_body_id, ..) = filter_arg.kind;
+        let filter_body = cx.tcx.hir().body(filter_body_id);
+        if let [filter_param] = filter_body.params;
+        // optional ref pattern: `filter(|&x| ..)`
+        let (filter_pat, is_filter_param_ref) = if let PatKind::Ref(ref_pat, _) = filter_param.pat.kind {
+            (ref_pat, true)
+        } else {
+            (filter_param.pat, false)
+        };
+        // closure ends with is_some() or is_ok()
+        if let PatKind::Binding(_, filter_param_id, _, None) = filter_pat.kind;
+        if let ExprKind::MethodCall(path, _, [filter_arg], _) = filter_body.value.kind;
+        if let Some(opt_ty) = cx.typeck_results().expr_ty(filter_arg).ty_adt_def();
+        if let Some(is_result) = if cx.tcx.is_diagnostic_item(sym::option_type, opt_ty.did) {
+            Some(false)
+        } else if cx.tcx.is_diagnostic_item(sym::result_type, opt_ty.did) {
+            Some(true)
+        } else {
+            None
+        };
+        if path.ident.name.as_str() == if is_result { "is_ok" } else { "is_some" };
+
+        // ...map(|x| ...unwrap())
+        if let ExprKind::Closure(_, _, map_body_id, ..) = map_arg.kind;
+        let map_body = cx.tcx.hir().body(map_body_id);
+        if let [map_param] = map_body.params;
+        if let PatKind::Binding(_, map_param_id, map_param_ident, None) = map_param.pat.kind;
+        // closure ends with expect() or unwrap()
+        if let ExprKind::MethodCall(seg, _, [map_arg, ..], _) = map_body.value.kind;
+        if matches!(seg.ident.name, sym::expect | sym::unwrap | sym::unwrap_or);
+
+        let eq_fallback = |a: &Expr<'_>, b: &Expr<'_>| {
+            // in `filter(|x| ..)`, replace `*x` with `x`
+            let a_path = if_chain! {
+                if !is_filter_param_ref;
+                if let ExprKind::Unary(UnOp::UnDeref, expr_path) = a.kind;
+                then { expr_path } else { a }
+            };
+            // let the filter closure arg and the map closure arg be equal
+            if_chain! {
+                if let ExprKind::Path(QPath::Resolved(None, a_path)) = a_path.kind;
+                if let ExprKind::Path(QPath::Resolved(None, b_path)) = b.kind;
+                if a_path.res == Res::Local(filter_param_id);
+                if b_path.res == Res::Local(map_param_id);
+                if TyS::same_type(cx.typeck_results().expr_ty_adjusted(a), cx.typeck_results().expr_ty_adjusted(b));
+                then {
+                    return true;
+                }
+            }
+            false
+        };
+        if SpanlessEq::new(cx).expr_fallback(eq_fallback).eq_expr(filter_arg, map_arg);
+        then {
+            let span = filter_span.to(map_span);
+            let msg = "`filter(..).map(..)` can be simplified as `filter_map(..)`";
+            let to_opt = if is_result { ".ok()" } else { "" };
+            let sugg = format!("filter_map(|{}| {}{})", map_param_ident, snippet(cx, map_arg.span, ".."), to_opt);
+            span_lint_and_sugg(cx, MANUAL_FILTER_MAP, span, msg, "try", sugg, Applicability::MachineApplicable);
+        }
     }
 }
 
