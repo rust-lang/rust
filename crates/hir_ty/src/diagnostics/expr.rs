@@ -156,7 +156,7 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
         // FIXME: Due to shortcomings in the current type system implementation, only emit this
         // diagnostic if there are no type mismatches in the containing function.
         if self.infer.type_mismatches.iter().next().is_some() {
-            return Some(());
+            return None;
         }
 
         let is_method_call = matches!(expr, Expr::MethodCall { .. });
@@ -169,6 +169,14 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
             Expr::MethodCall { receiver, args, .. } => {
                 let mut args = args.clone();
                 args.insert(0, *receiver);
+
+                let receiver = &self.infer.type_of_expr[*receiver];
+                if receiver.strip_references().is_unknown() {
+                    // if the receiver is of unknown type, it's very likely we
+                    // don't know enough to correctly resolve the method call.
+                    // This is kind of a band-aid for #6975.
+                    return None;
+                }
 
                 // FIXME: note that we erase information about substs here. This
                 // is not right, but, luckily, doesn't matter as we care only
@@ -499,6 +507,22 @@ impl S { fn method(&self, arg: u8) {} }
 fn f() {
     S::method(&S, 0);
     S.method(1);
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn method_unknown_receiver() {
+        // note: this is incorrect code, so there might be errors on this in the
+        // future, but we shouldn't emit an argument count diagnostic here
+        check_diagnostics(
+            r#"
+trait Foo { fn method(&self, arg: usize) {} }
+
+fn f() {
+    let x;
+    x.method();
 }
 "#,
         );
