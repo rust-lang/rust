@@ -103,8 +103,8 @@ fn main() {
     }
     macro_rules! t_or_f {
         () => {
-            (true // FIXME: should be unreachable
-                        | false)
+            (true //~ ERROR unreachable
+            | false)
         };
     }
     match (true, None) {

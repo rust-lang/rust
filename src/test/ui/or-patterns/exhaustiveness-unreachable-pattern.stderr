@@ -132,6 +132,17 @@ LL |         (true | false, None | Some(true
    |                                    ^^^^
 
 error: unreachable pattern
+  --> $DIR/exhaustiveness-unreachable-pattern.rs:106:14
+   |
+LL |             (true
+   |              ^^^^
+...
+LL |         (true | false, None | Some(t_or_f!())) => {}
+   |                                    --------- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: unreachable pattern
   --> $DIR/exhaustiveness-unreachable-pattern.rs:117:14
    |
 LL |         Some(0
@@ -155,5 +166,5 @@ error: unreachable pattern
 LL |             | true,
    |               ^^^^
 
-error: aborting due to 25 previous errors
+error: aborting due to 26 previous errors
 
