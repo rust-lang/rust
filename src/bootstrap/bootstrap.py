@@ -487,7 +487,12 @@ class RustBuild(object):
         url = "https://ci-artifacts.rust-lang.org/rustc-builds/{}".format(llvm_sha)
         if llvm_assertions:
             url = url.replace('rustc-builds', 'rustc-builds-alt')
-        tarball_suffix = '.tar.xz' if support_xz() else '.tar.gz'
+        # ci-artifacts are only stored as .xz, not .gz
+        if not support_xz():
+            print("error: XZ support is required to download LLVM")
+            print("help: consider disabling `download-ci-llvm` or using python3")
+            exit(1)
+        tarball_suffix = '.tar.xz'
         filename = "rust-dev-nightly-" + self.build + tarball_suffix
         tarball = os.path.join(rustc_cache, filename)
         if not os.path.exists(tarball):
