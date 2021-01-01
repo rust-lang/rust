@@ -92,10 +92,11 @@ fn client_loop(task_rx: Receiver<Task>, mut process: Process) {
     for Task { req, result_tx } in task_rx {
         match send_request(&mut stdin, &mut stdout, req) {
             Ok(res) => result_tx.send(res).unwrap(),
-            Err(_err) => {
+            Err(err) => {
                 log::error!(
-                    "proc macro server crashed, server process state: {:?}",
-                    process.child.try_wait()
+                    "proc macro server crashed, server process state: {:?}, server request error: {:?}",
+                    process.child.try_wait(),
+                    err
                 );
                 let res = Response::Error(ResponseError {
                     code: ErrorCode::ServerErrorEnd,
