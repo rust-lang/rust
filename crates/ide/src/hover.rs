@@ -327,14 +327,7 @@ fn hover_for_definition(db: &RootDatabase, def: Definition) -> Option<Markup> {
     let mod_path = definition_mod_path(db, &def);
     return match def {
         Definition::Macro(it) => {
-            // FIXME: Currently proc-macro do not have ast-node,
-            // such that it does not have source
-            // more discussion: https://github.com/rust-analyzer/rust-analyzer/issues/6913
-            if it.is_proc_macro() {
-                return None;
-            }
-            #[allow(deprecated)]
-            let label = macro_label(&it.source_old(db).value);
+            let label = macro_label(&it.source(db)?.value);
             from_def_source_labeled(db, it, Some(label), mod_path)
         }
         Definition::Field(def) => {

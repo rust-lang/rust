@@ -210,15 +210,7 @@ impl ToNav for FileSymbol {
 impl TryToNav for Definition {
     fn try_to_nav(&self, db: &RootDatabase) -> Option<NavigationTarget> {
         match self {
-            Definition::Macro(it) => {
-                // FIXME: Currently proc-macro do not have ast-node,
-                // such that it does not have source
-                // more discussion: https://github.com/rust-analyzer/rust-analyzer/issues/6913
-                if it.is_proc_macro() {
-                    return None;
-                }
-                Some(it.to_nav(db))
-            }
+            Definition::Macro(it) => it.try_to_nav(db),
             Definition::Field(it) => Some(it.to_nav(db)),
             Definition::ModuleDef(it) => it.try_to_nav(db),
             Definition::SelfType(it) => Some(it.to_nav(db)),
@@ -366,10 +358,9 @@ impl ToNav for hir::Field {
     }
 }
 
-impl ToNav for hir::MacroDef {
-    fn to_nav(&self, db: &RootDatabase) -> NavigationTarget {
-        #[allow(deprecated)]
-        let src = self.source_old(db);
+impl TryToNav for hir::MacroDef {
+    fn try_to_nav(&self, db: &RootDatabase) -> Option<NavigationTarget> {
+        let src = self.source(db)?;
         log::debug!("nav target {:#?}", src.value.syntax());
         let mut res = NavigationTarget::from_named(
             db,
@@ -377,7 +368,7 @@ impl ToNav for hir::MacroDef {
             SymbolKind::Macro,
         );
         res.docs = self.docs(db);
-        res
+        Some(res)
     }
 }
 
