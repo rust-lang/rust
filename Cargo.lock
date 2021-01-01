@@ -1182,7 +1182,6 @@ dependencies = [
  "log",
  "serde",
  "serde_json",
- "serde_stacker",
  "tt",
 ]
 
@@ -1238,15 +1237,6 @@ dependencies = [
  "serde_json",
  "stdx",
  "toolchain",
-]
-
-[[package]]
-name = "psm"
-version = "0.1.12"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3abf49e5417290756acfd26501536358560c4a5cc4a0934d390939acb3e7083a"
-dependencies = [
- "cc",
 ]
 
 [[package]]
@@ -1568,16 +1558,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "serde_stacker"
-version = "0.1.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f4c92391a63e3b83f77334d8beaaf11bac4c900f3769483e543bf76a81bf8ee2"
-dependencies = [
- "serde",
- "stacker",
-]
-
-[[package]]
 name = "sharded-slab"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1620,19 +1600,6 @@ dependencies = [
  "syntax",
  "test_utils",
  "text_edit",
-]
-
-[[package]]
-name = "stacker"
-version = "0.1.12"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "21ccb4c06ec57bc82d0f610f1a2963d7648700e43a6f513e564b9c89f7991786"
-dependencies = [
- "cc",
- "cfg-if 0.1.10",
- "libc",
- "psm",
- "winapi 0.3.9",
 ]
 
 [[package]]

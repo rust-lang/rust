@@ -63,8 +63,7 @@ pub trait Message: Serialize + DeserializeOwned {
                 // Note that some proc-macro generate very deep syntax tree
                 // We have to disable the current limit of serde here
                 deserializer.disable_recursion_limit();
-                let deserializer = serde_stacker::Deserializer::new(&mut deserializer);
-                Some(Self::deserialize(deserializer)?)
+                Some(Self::deserialize(&mut deserializer)?)
             }
         })
     }
