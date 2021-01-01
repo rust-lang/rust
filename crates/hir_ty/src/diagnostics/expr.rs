@@ -2,8 +2,8 @@
 
 use std::sync::Arc;
 
-use hir_def::{expr::Statement, path::path, resolver::HasResolver, AdtId, DefWithBodyId};
-use hir_expand::diagnostics::DiagnosticSink;
+use hir_def::{AdtId, AssocItemId, DefWithBodyId, expr::Statement, path::path, resolver::HasResolver};
+use hir_expand::{diagnostics::DiagnosticSink, name};
 use rustc_hash::FxHashSet;
 use syntax::{ast, AstPtr};
 
@@ -155,19 +155,39 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
     }
 
     fn check_for_filter_map_next(&mut self, db: &dyn HirDatabase) {
+        // Find the FunctionIds for Iterator::filter_map and Iterator::next
+        let iterator_path = path![core::iter::Iterator];
+        let resolver = self.owner.resolver(db.upcast());
+        let iterator_trait_id = match resolver.resolve_known_trait(db.upcast(), &iterator_path) {
+            Some(id) => id,
+            None => return,
+        };
+        let iterator_trait_items = &db.trait_data(iterator_trait_id).items;
+        let filter_map_function_id = match iterator_trait_items.iter().find(|item| item.0 == name![filter_map]) {
+            Some((_, AssocItemId::FunctionId(id))) => id,
+            _ => return,
+        };
+        let next_function_id = match iterator_trait_items.iter().find(|item| item.0 == name![next]) {
+            Some((_, AssocItemId::FunctionId(id))) => id,
+            _ => return,
+        };
+
+        // Search function body for instances of .filter_map(..).next()
         let body = db.body(self.owner.into());
         let mut prev = None;
-
         for (id, expr) in body.exprs.iter() {
-            if let Expr::MethodCall { receiver, method_name, args, .. } = expr {
-                let method_name = format!("{}", method_name);
+            if let Expr::MethodCall { receiver, .. } = expr {
+                let function_id = match self.infer.method_resolution(id) {
+                    Some(id) => id,
+                    None => continue,
+                };
 
-                if method_name == "filter_map" && args.len() == 1 {
+                if function_id == *filter_map_function_id {
                     prev = Some(id);
                     continue;
                 }
 
-                if method_name == "next" {
+                if function_id == *next_function_id {
                     if let Some(filter_map_id) = prev {
                         if *receiver == filter_map_id {
                             let (_, source_map) = db.body_with_source_map(self.owner.into());
