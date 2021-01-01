@@ -121,9 +121,9 @@ impl Definition {
 
         if let Definition::Local(var) = self {
             let range = match var.parent(db) {
-                DefWithBody::Function(f) => f.source(db).value.syntax().text_range(),
-                DefWithBody::Const(c) => c.source(db).value.syntax().text_range(),
-                DefWithBody::Static(s) => s.source(db).value.syntax().text_range(),
+                DefWithBody::Function(f) => f.source_old(db).value.syntax().text_range(),
+                DefWithBody::Const(c) => c.source_old(db).value.syntax().text_range(),
+                DefWithBody::Static(s) => s.source_old(db).value.syntax().text_range(),
             };
             let mut res = FxHashMap::default();
             res.insert(file_id, Some(range));
@@ -132,17 +132,17 @@ impl Definition {
 
         if let Definition::LifetimeParam(param) = self {
             let range = match param.parent(db) {
-                hir::GenericDef::Function(it) => it.source(db).value.syntax().text_range(),
+                hir::GenericDef::Function(it) => it.source_old(db).value.syntax().text_range(),
                 hir::GenericDef::Adt(it) => match it {
-                    hir::Adt::Struct(it) => it.source(db).value.syntax().text_range(),
-                    hir::Adt::Union(it) => it.source(db).value.syntax().text_range(),
-                    hir::Adt::Enum(it) => it.source(db).value.syntax().text_range(),
+                    hir::Adt::Struct(it) => it.source_old(db).value.syntax().text_range(),
+                    hir::Adt::Union(it) => it.source_old(db).value.syntax().text_range(),
+                    hir::Adt::Enum(it) => it.source_old(db).value.syntax().text_range(),
                 },
-                hir::GenericDef::Trait(it) => it.source(db).value.syntax().text_range(),
-                hir::GenericDef::TypeAlias(it) => it.source(db).value.syntax().text_range(),
-                hir::GenericDef::Impl(it) => it.source(db).value.syntax().text_range(),
-                hir::GenericDef::Variant(it) => it.source(db).value.syntax().text_range(),
-                hir::GenericDef::Const(it) => it.source(db).value.syntax().text_range(),
+                hir::GenericDef::Trait(it) => it.source_old(db).value.syntax().text_range(),
+                hir::GenericDef::TypeAlias(it) => it.source_old(db).value.syntax().text_range(),
+                hir::GenericDef::Impl(it) => it.source_old(db).value.syntax().text_range(),
+                hir::GenericDef::Variant(it) => it.source_old(db).value.syntax().text_range(),
+                hir::GenericDef::Const(it) => it.source_old(db).value.syntax().text_range(),
             };
             let mut res = FxHashMap::default();
             res.insert(file_id, Some(range));

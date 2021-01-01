@@ -96,7 +96,7 @@ impl<'a> MacroRender<'a> {
     }
 
     fn detail(&self) -> String {
-        let ast_node = self.macro_.source(self.ctx.db()).value;
+        let ast_node = self.macro_.source_old(self.ctx.db()).value;
         macro_label(&ast_node)
     }
 }

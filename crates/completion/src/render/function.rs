@@ -34,7 +34,7 @@ impl<'a> FunctionRender<'a> {
         fn_: hir::Function,
     ) -> FunctionRender<'a> {
         let name = local_name.unwrap_or_else(|| fn_.name(ctx.db()).to_string());
-        let ast_node = fn_.source(ctx.db()).value;
+        let ast_node = fn_.source_old(ctx.db()).value;
 
         FunctionRender { ctx, name, func: fn_, ast_node }
     }
