@@ -385,6 +385,27 @@ impl<'tcx> Pat<'tcx> {
     pub(super) fn is_wildcard(&self) -> bool {
         matches!(*self.kind, PatKind::Binding { subpattern: None, .. } | PatKind::Wild)
     }
+
+    fn is_or_pat(&self) -> bool {
+        matches!(*self.kind, PatKind::Or { .. })
+    }
+
+    /// Recursively expand this pattern into its subpatterns. Only useful for or-patterns.
+    fn expand_or_pat(&self) -> Vec<&Self> {
+        fn expand<'p, 'tcx>(pat: &'p Pat<'tcx>, vec: &mut Vec<&'p Pat<'tcx>>) {
+            if let PatKind::Or { pats } = pat.kind.as_ref() {
+                for pat in pats {
+                    expand(pat, vec);
+                }
+            } else {
+                vec.push(pat)
+            }
+        }
+
+        let mut pats = Vec::new();
+        expand(self, &mut pats);
+        pats
+    }
 }
 
 /// A row of a matrix. Rows of len 1 are very common, which is why `SmallVec[_; 2]`
@@ -425,23 +446,14 @@ impl<'p, 'tcx> PatStack<'p, 'tcx> {
         self.pats.iter().copied()
     }
 
-    // If the first pattern is an or-pattern, expand this pattern. Otherwise, return `None`.
-    fn expand_or_pat(&self) -> Option<Vec<Self>> {
-        if self.is_empty() {
-            None
-        } else if let PatKind::Or { pats } = &*self.head().kind {
-            Some(
-                pats.iter()
-                    .map(|pat| {
-                        let mut new_patstack = PatStack::from_pattern(pat);
-                        new_patstack.pats.extend_from_slice(&self.pats[1..]);
-                        new_patstack
-                    })
-                    .collect(),
-            )
-        } else {
-            None
-        }
+    // Recursively expand the first pattern into its subpatterns. Only useful if the pattern is an
+    // or-pattern. Panics if `self` is empty.
+    fn expand_or_pat<'a>(&'a self) -> impl Iterator<Item = PatStack<'p, 'tcx>> + Captures<'a> {
+        self.head().expand_or_pat().into_iter().map(move |pat| {
+            let mut new_patstack = PatStack::from_pattern(pat);
+            new_patstack.pats.extend_from_slice(&self.pats[1..]);
+            new_patstack
+        })
     }
 
     /// This computes `S(self.head_ctor(), self)`. See top of the file for explanations.
@@ -508,13 +520,12 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
         self.patterns.get(0).map(|r| r.len())
     }
 
-    /// Pushes a new row to the matrix. If the row starts with an or-pattern, this expands it.
+    /// Pushes a new row to the matrix. If the row starts with an or-pattern, this recursively
+    /// expands it.
     fn push(&mut self, row: PatStack<'p, 'tcx>) {
-        if let Some(rows) = row.expand_or_pat() {
-            for row in rows {
-                // We recursively expand the or-patterns of the new rows.
-                // This is necessary as we might have `0 | (1 | 2)` or e.g., `x @ 0 | x @ (1 | 2)`.
-                self.push(row)
+        if !row.is_empty() && row.head().is_or_pat() {
+            for row in row.expand_or_pat() {
+                self.patterns.push(row);
             }
         } else {
             self.patterns.push(row);
@@ -968,8 +979,9 @@ fn is_useful<'p, 'tcx>(
     let pcx = PatCtxt { cx, ty, span: v.head().span, is_top_level };
 
     // If the first pattern is an or-pattern, expand it.
-    let ret = if let Some(vs) = v.expand_or_pat() {
+    let ret = if v.head().is_or_pat() {
         debug!("expanding or-pattern");
+        let vs: Vec<_> = v.expand_or_pat().collect();
         let subspans: Vec<_> = vs.iter().map(|v| v.head().span).collect();
         // We expand the or pattern, trying each of its branches in turn and keeping careful track
         // of possible unreachable sub-branches.

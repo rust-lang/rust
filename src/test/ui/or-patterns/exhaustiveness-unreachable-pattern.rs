@@ -53,8 +53,11 @@ fn main() {
         _ => {}
     }
     match 0 {
+        // We get two errors because recursive or-pattern expansion means we don't notice the two
+        // errors span a whole pattern. This could be better but doesn't matter much
         0 | (0 | 0) => {}
         //~^ ERROR unreachable
+        //~| ERROR unreachable
         _ => {}
     }
     match None {
