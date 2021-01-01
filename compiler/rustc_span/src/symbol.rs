@@ -368,6 +368,7 @@ symbols! {
         const_fn_transmute,
         const_fn_union,
         const_generics,
+        const_generics_defaults,
         const_if_match,
         const_impl_trait,
         const_in_array_repeat_expressions,

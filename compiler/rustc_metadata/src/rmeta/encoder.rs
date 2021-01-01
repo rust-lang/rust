@@ -1834,7 +1834,7 @@ impl EncodeContext<'a, 'tcx> {
                         EntryKind::ConstParam,
                         true,
                     );
-                    // FIXME(const_generics:defaults)
+                    // FIXME(const_generics_defaults)
                 }
             }
         }

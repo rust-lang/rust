@@ -578,7 +578,12 @@ pub fn walk_generic_param<'a, V: Visitor<'a>>(visitor: &mut V, param: &'a Generi
     match param.kind {
         GenericParamKind::Lifetime => (),
         GenericParamKind::Type { ref default } => walk_list!(visitor, visit_ty, default),
-        GenericParamKind::Const { ref ty, .. } => visitor.visit_ty(ty),
+        GenericParamKind::Const { ref ty, ref default, .. } => {
+            visitor.visit_ty(ty);
+            if let Some(default) = default {
+                visitor.visit_anon_const(default);
+            }
+        }
     }
 }
 

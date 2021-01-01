@@ -1376,7 +1376,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                     }
                     GenericParamDefKind::Const => {
-                        // FIXME(const_generics:defaults)
+                        // FIXME(const_generics_defaults)
                         // No const parameters were provided, we have to infer them.
                         self.fcx.var_for_def(self.span, param)
                     }

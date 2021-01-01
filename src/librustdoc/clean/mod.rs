@@ -607,11 +607,12 @@ impl Clean<GenericParamDef> for hir::GenericParam<'_> {
                     synthetic,
                 },
             ),
-            hir::GenericParamKind::Const { ref ty } => (
+            hir::GenericParamKind::Const { ref ty, default: _ } => (
                 self.name.ident().name,
                 GenericParamDefKind::Const {
                     did: cx.tcx.hir().local_def_id(self.hir_id).to_def_id(),
                     ty: ty.clean(cx),
+                    // FIXME(const_generics_defaults): add `default` field here for docs
                 },
             ),
         };
@@ -1385,7 +1386,7 @@ fn clean_qpath(hir_ty: &hir::Ty<'_>, cx: &DocContext<'_>) -> Type {
                                 if let Some(ct) = const_ {
                                     ct_substs.insert(const_param_def_id.to_def_id(), ct.clean(cx));
                                 }
-                                // FIXME(const_generics:defaults)
+                                // FIXME(const_generics_defaults)
                                 indices.consts += 1;
                             }
                         }

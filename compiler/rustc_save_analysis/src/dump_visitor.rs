@@ -1343,9 +1343,12 @@ impl<'tcx> Visitor<'tcx> for DumpVisitor<'tcx> {
                         self.visit_ty(ty);
                     }
                 }
-                hir::GenericParamKind::Const { ref ty } => {
+                hir::GenericParamKind::Const { ref ty, ref default } => {
                     self.process_bounds(param.bounds);
                     self.visit_ty(ty);
+                    if let Some(default) = default {
+                        self.visit_anon_const(default);
+                    }
                 }
             }
         }

@@ -733,7 +733,7 @@ fn validate_generic_param_order(
         let (ord_kind, ident) = match &param.kind {
             GenericParamKind::Lifetime => (ParamKindOrd::Lifetime, ident),
             GenericParamKind::Type { default: _ } => (ParamKindOrd::Type, ident),
-            GenericParamKind::Const { ref ty, kw_span: _ } => {
+            GenericParamKind::Const { ref ty, kw_span: _, default: _ } => {
                 let ty = pprust::ty_to_string(ty);
                 let unordered = sess.features_untracked().const_generics;
                 (ParamKindOrd::Const { unordered }, Some(format!("const {}: {}", param.ident, ty)))
@@ -774,8 +774,8 @@ fn validate_generic_param_order(
                 }
                 GenericParamKind::Type { default: None } => (),
                 GenericParamKind::Lifetime => (),
-                // FIXME(const_generics:defaults)
-                GenericParamKind::Const { ty: _, kw_span: _ } => (),
+                // FIXME(const_generics_defaults)
+                GenericParamKind::Const { ty: _, kw_span: _, default: _ } => (),
             }
             first = false;
         }

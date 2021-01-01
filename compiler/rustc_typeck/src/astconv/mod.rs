@@ -486,7 +486,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     }
                     GenericParamDefKind::Const => {
                         let ty = tcx.at(self.span).type_of(param.def_id);
-                        // FIXME(const_generics:defaults)
+                        // FIXME(const_generics_defaults)
                         if infer_args {
                             // No const parameters were provided, we can infer all.
                             self.astconv.ct_infer(ty, Some(param), self.span).into()
