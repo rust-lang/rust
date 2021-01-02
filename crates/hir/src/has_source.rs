@@ -142,8 +142,8 @@ impl HasSource for LifetimeParam {
 
 impl HasSource for ConstParam {
     type Ast = ast::ConstParam;
-    fn source(self, db: &dyn HirDatabase) -> InFile<Self::Ast> {
+    fn source(self, db: &dyn HirDatabase) -> Option<InFile<Self::Ast>> {
         let child_source = self.id.parent.child_source(db.upcast());
-        child_source.map(|it| it[self.id.local_id].clone())
+        Some(child_source.map(|it| it[self.id.local_id].clone()))
     }
 }
