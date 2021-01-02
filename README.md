@@ -10,16 +10,16 @@ A collection of lints to catch common mistakes and improve your [Rust](https://g
 Lints are divided into categories, each with a default [lint level](https://doc.rust-lang.org/rustc/lints/levels.html).
 You can choose how much Clippy is supposed to ~~annoy~~ help you by changing the lint level by category.
 
-Category | Description | Default level
--- | -- | --
-`clippy::all` | all lints that are on by default (correctness, style, complexity, perf) | **warn/deny**
-`clippy::correctness` | code that is outright wrong or very useless | **deny**
-`clippy::style` | code that should be written in a more idiomatic way | **warn**
-`clippy::complexity` | code that does something simple but in a complex way | **warn**
-`clippy::perf` | code that can be written to run faster | **warn**
-`clippy::pedantic` | lints which are rather strict or might have false positives | allow
-`clippy::nursery` | new lints that are still under development | allow
-`clippy::cargo` | lints for the cargo manifest | allow
+| Category              | Description                                                             | Default level |
+| --------------------- | ----------------------------------------------------------------------- | ------------- |
+| `clippy::all`         | all lints that are on by default (correctness, style, complexity, perf) | **warn/deny** |
+| `clippy::correctness` | code that is outright wrong or very useless                             | **deny**      |
+| `clippy::style`       | code that should be written in a more idiomatic way                     | **warn**      |
+| `clippy::complexity`  | code that does something simple but in a complex way                    | **warn**      |
+| `clippy::perf`        | code that can be written to run faster                                  | **warn**      |
+| `clippy::pedantic`    | lints which are rather strict or might have false positives             | allow         |
+| `clippy::nursery`     | new lints that are still under development                              | allow         |
+| `clippy::cargo`       | lints for the cargo manifest                                            | allow         |
 
 More to come, please [file an issue](https://github.com/rust-lang/rust-clippy/issues) if you have ideas!
 
@@ -98,17 +98,6 @@ If you want to run Clippy **only** on the given crate, use the `--no-deps` optio
 cargo clippy -p example -- --no-deps 
 ```
 
-### Running Clippy from the command line without installing it
-
-To have cargo compile your crate with Clippy without Clippy installation
-in your code, you can use:
-
-```terminal
-cargo run --bin cargo-clippy --manifest-path=path_to_clippys_Cargo.toml
-```
-
-*Note:* Be sure that Clippy was compiled with the same version of rustc that cargo invokes here!
-
 ### Travis CI
 
 You can add Clippy to Travis CI in the same way you use it locally:
@@ -128,18 +117,6 @@ script:
   - cargo clippy --all-targets --all-features -- -D warnings
   - cargo test
   # etc.
-```
-
-If you are on nightly, It might happen that Clippy is not available for a certain nightly release.
-In this case you can try to conditionally install Clippy from the Git repo.
-
-```yaml
-language: rust
-rust:
-  - nightly
-before_script:
-   - rustup component add clippy --toolchain=nightly || cargo install --git https://github.com/rust-lang/rust-clippy/ --force clippy
-   # etc.
 ```
 
 Note that adding `-D warnings` will cause your build to fail if **any** warnings are found in your code.

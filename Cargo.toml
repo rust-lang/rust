@@ -1,6 +1,6 @@
 [package]
 name = "clippy"
-version = "0.0.212"
+version = "0.1.51"
 authors = [
 	"Manish Goregaokar <manishsmail@gmail.com>",
 	"Andre Bogus <bogusandre@gmail.com>",
@@ -29,7 +29,7 @@ path = "src/driver.rs"
 
 [dependencies]
 # begin automatic update
-clippy_lints = { version = "0.0.212", path = "clippy_lints" }
+clippy_lints = { version = "0.1.50", path = "clippy_lints" }
 # end automatic update
 semver = "0.11"
 rustc_tools_util = { version = "0.2.0", path = "rustc_tools_util" }
