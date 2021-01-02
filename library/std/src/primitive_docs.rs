@@ -11,7 +11,7 @@
 /// `bool` implements various traits, such as [`BitAnd`], [`BitOr`], [`Not`], etc.,
 /// which allow us to perform boolean operations using `&`, `|` and `!`.
 ///
-/// `if` always demands a `bool` value as its conditional. [`assert!`], which is an
+/// `if` requires a `bool` value as its conditional. [`assert!`], which is an
 /// important macro in testing, checks whether an expression is `true` and panics
 /// if it isn't.
 ///
