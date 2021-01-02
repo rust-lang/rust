@@ -7,9 +7,7 @@ use fst::{self, Streamer};
 use hir_expand::name::Name;
 use indexmap::{map::Entry, IndexMap};
 use itertools::Itertools;
-use rustc_hash::{FxHashMap, FxHashSet, FxHasher};
-use smallvec::SmallVec;
-use syntax::SmolStr;
+use rustc_hash::{FxHashSet, FxHasher};
 
 use crate::{
     db::DefDatabase, item_scope::ItemInNs, visibility::Visibility, AssocItemId, ModuleDefId,
@@ -25,6 +23,8 @@ pub struct ImportInfo {
     pub path: ImportPath,
     /// The module containing this item.
     pub container: ModuleId,
+    /// Whether the import is a trait associated item or not.
+    pub is_assoc_item: bool,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -64,10 +64,6 @@ pub struct ImportMap {
     /// the index of the first one.
     importables: Vec<ItemInNs>,
     fst: fst::Map<Vec<u8>>,
-
-    /// Maps names of associated items to the item's ID. Only includes items whose defining trait is
-    /// exported.
-    assoc_map: FxHashMap<SmolStr, SmallVec<[AssocItemId; 1]>>,
 }
 
 impl ImportMap {
@@ -108,14 +104,22 @@ impl ImportMap {
 
                 for item in per_ns.iter_items() {
                     let path = mk_path();
+                    let path_len = path.len();
+                    let import_info = ImportInfo { path, container: module, is_assoc_item: false };
+
+                    // If we've added a path to a trait, add the trait's associated items to the assoc map.
+                    if let Some(ModuleDefId::TraitId(tr)) = item.as_module_def_id() {
+                        import_map.collect_trait_assoc_items(db, tr, &import_info);
+                    }
+
                     match import_map.map.entry(item) {
                         Entry::Vacant(entry) => {
-                            entry.insert(ImportInfo { path, container: module });
+                            entry.insert(import_info);
                         }
                         Entry::Occupied(mut entry) => {
                             // If the new path is shorter, prefer that one.
-                            if path.len() < entry.get().path.len() {
-                                *entry.get_mut() = ImportInfo { path, container: module };
+                            if path_len < entry.get().path.len() {
+                                *entry.get_mut() = import_info;
                             } else {
                                 continue;
                             }
@@ -127,11 +131,6 @@ impl ImportMap {
                     // first (else we `continue` above).
                     if let Some(ModuleDefId::ModuleId(mod_id)) = item.as_module_def_id() {
                         worklist.push((mod_id, mk_path()));
-                    }
-
-                    // If we've added a path to a trait, add the trait's methods to the method map.
-                    if let Some(ModuleDefId::TraitId(tr)) = item.as_module_def_id() {
-                        import_map.collect_trait_methods(db, tr);
                     }
                 }
             }
@@ -153,12 +152,10 @@ impl ImportMap {
                 }
             }
 
-            let start = last_batch_start;
+            let key = fst_path(&importables[last_batch_start].1.path);
+            builder.insert(key, last_batch_start as u64).unwrap();
+
             last_batch_start = idx + 1;
-
-            let key = fst_path(&importables[start].1.path);
-
-            builder.insert(key, start as u64).unwrap();
         }
 
         import_map.fst = fst::Map::new(builder.into_inner().unwrap()).unwrap();
@@ -176,10 +173,22 @@ impl ImportMap {
         self.map.get(&item)
     }
 
-    fn collect_trait_methods(&mut self, db: &dyn DefDatabase, tr: TraitId) {
-        let data = db.trait_data(tr);
-        for (name, item) in data.items.iter() {
-            self.assoc_map.entry(name.to_string().into()).or_default().push(*item);
+    fn collect_trait_assoc_items(
+        &mut self,
+        db: &dyn DefDatabase,
+        tr: TraitId,
+        import_info: &ImportInfo,
+    ) {
+        for (assoc_item_name, item) in db.trait_data(tr).items.iter() {
+            let assoc_item = ItemInNs::Types(match item.clone() {
+                AssocItemId::FunctionId(f) => f.into(),
+                AssocItemId::ConstId(c) => c.into(),
+                AssocItemId::TypeAliasId(t) => t.into(),
+            });
+            let mut assoc_item_info = import_info.to_owned();
+            assoc_item_info.path.segments.push(assoc_item_name.to_owned());
+            assoc_item_info.is_assoc_item = true;
+            self.map.insert(assoc_item, assoc_item_info);
         }
     }
 }
@@ -304,11 +313,11 @@ impl Query {
     }
 }
 
-fn contains_query(query: &Query, input_path: &ImportPath, enforce_lowercase: bool) -> bool {
-    let mut input = if query.name_only {
-        input_path.segments.last().unwrap().to_string()
+fn import_matches_query(import: &ImportInfo, query: &Query, enforce_lowercase: bool) -> bool {
+    let mut input = if import.is_assoc_item || query.name_only {
+        import.path.segments.last().unwrap().to_string()
     } else {
-        input_path.to_string()
+        import.path.to_string()
     };
     if enforce_lowercase || !query.case_sensitive {
         input.make_ascii_lowercase();
@@ -366,13 +375,13 @@ pub fn search_dependencies<'a>(
             let import_map = &import_maps[indexed_value.index];
             let importables = &import_map.importables[indexed_value.value as usize..];
 
-            // Path shared by the importable items in this group.
-            let common_importables_path = &import_map.map[&importables[0]].path;
-            if !contains_query(&query, common_importables_path, true) {
+            let common_importable_data = &import_map.map[&importables[0]];
+            if !import_matches_query(common_importable_data, &query, true) {
                 continue;
             }
 
-            let common_importables_path_fst = fst_path(common_importables_path);
+            // Path shared by the importable items in this group.
+            let common_importables_path_fst = fst_path(&common_importable_data.path);
             // Add the items from this `ModPath` group. Those are all subsequent items in
             // `importables` whose paths match `path`.
             let iter = importables
@@ -387,7 +396,7 @@ pub fn search_dependencies<'a>(
                 })
                 .filter(|item| {
                     !query.case_sensitive // we've already checked the common importables path case-insensitively
-                        || contains_query(&query, &import_map.map[item].path, false)
+                        || import_matches_query(&import_map.map[item], &query, false)
                 });
             res.extend(iter);
 
@@ -395,19 +404,6 @@ pub fn search_dependencies<'a>(
                 res.truncate(query.limit);
                 return res;
             }
-        }
-    }
-
-    // Add all exported associated items whose names match the query (exactly).
-    for map in &import_maps {
-        if let Some(v) = map.assoc_map.get(&*query.query) {
-            res.extend(v.iter().map(|&assoc| {
-                ItemInNs::Types(match assoc {
-                    AssocItemId::FunctionId(it) => it.into(),
-                    AssocItemId::ConstId(it) => it.into(),
-                    AssocItemId::TypeAliasId(it) => it.into(),
-                })
-            }));
         }
     }
 
@@ -755,7 +751,7 @@ mod tests {
         //- /dep.rs crate:dep
         pub mod fmt {
             pub trait Display {
-                fn fmttt();
+                fn format();
             }
         }
     "#;
@@ -767,7 +763,7 @@ mod tests {
             expect![[r#"
                 dep::fmt (t)
                 dep::fmt::Display (t)
-                dep::fmt::Display::fmttt (f)
+                dep::fmt::Display::format (f)
             "#]],
         );
     }
@@ -808,8 +804,8 @@ mod tests {
                 dep::Fmt (v)
                 dep::Fmt (m)
                 dep::fmt::Display (t)
-                dep::format (f)
                 dep::fmt::Display::fmt (f)
+                dep::format (f)
             "#]],
         );
 
