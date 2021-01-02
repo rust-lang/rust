@@ -6,7 +6,7 @@ use rustc_middle::mir::mono::{CodegenUnit, CodegenUnitNameBuilder};
 use rustc_span::symbol::{Symbol, SymbolStr};
 
 use super::PartitioningCx;
-use crate::monomorphize::partitioning::PreInliningPartitioning;
+use crate::partitioning::PreInliningPartitioning;
 
 pub fn merge_codegen_units<'tcx>(
     cx: &PartitioningCx<'_, 'tcx>,

@@ -35,6 +35,7 @@ rustc_metadata = { path = "../rustc_metadata" }
 rustc_mir = { path = "../rustc_mir" }
 rustc_mir_build = { path = "../rustc_mir_build" }
 rustc_mir_transform = { path = "../rustc_mir_transform" }
+rustc_monomorphize = { path = "../rustc_monomorphize" }
 rustc_passes = { path = "../rustc_passes" }
 rustc_typeck = { path = "../rustc_typeck" }
 rustc_lint = { path = "../rustc_lint" }

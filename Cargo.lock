@@ -3929,6 +3929,7 @@ dependencies = [
  "rustc_mir",
  "rustc_mir_build",
  "rustc_mir_transform",
+ "rustc_monomorphize",
  "rustc_parse",
  "rustc_passes",
  "rustc_plugin_impl",
@@ -4138,6 +4139,22 @@ dependencies = [
  "rustc_span",
  "rustc_target",
  "rustc_trait_selection",
+ "smallvec",
+ "tracing",
+]
+
+[[package]]
+name = "rustc_monomorphize"
+version = "0.0.0"
+dependencies = [
+ "rustc_data_structures",
+ "rustc_errors",
+ "rustc_hir",
+ "rustc_index",
+ "rustc_middle",
+ "rustc_session",
+ "rustc_span",
+ "rustc_target",
  "smallvec",
  "tracing",
 ]

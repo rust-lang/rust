@@ -13,9 +13,9 @@ use rustc_middle::ty::{self, DefIdTree, InstanceDef, TyCtxt};
 use rustc_span::symbol::Symbol;
 
 use super::PartitioningCx;
-use crate::monomorphize::collector::InliningMap;
-use crate::monomorphize::partitioning::merging;
-use crate::monomorphize::partitioning::{
+use crate::collector::InliningMap;
+use crate::partitioning::merging;
+use crate::partitioning::{
     MonoItemPlacement, Partitioner, PostInliningPartitioning, PreInliningPartitioning,
 };
 

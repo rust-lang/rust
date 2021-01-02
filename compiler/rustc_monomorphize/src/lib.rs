@@ -1,13 +1,24 @@
-use rustc_middle::traits;
-use rustc_middle::ty::adjustment::CustomCoerceUnsized;
-use rustc_middle::ty::{self, Ty, TyCtxt};
+#![feature(array_windows)]
+#![feature(bool_to_option)]
+#![feature(crate_visibility_modifier)]
+#![feature(control_flow_enum)]
+#![feature(in_band_lifetimes)]
+
+#[macro_use]
+extern crate tracing;
+#[macro_use]
+extern crate rustc_middle;
 
 use rustc_hir::lang_items::LangItem;
+use rustc_middle::traits;
+use rustc_middle::ty::adjustment::CustomCoerceUnsized;
+use rustc_middle::ty::query::Providers;
+use rustc_middle::ty::{self, Ty, TyCtxt};
 
-pub mod collector;
-pub mod partitioning;
-pub mod polymorphize;
-pub mod util;
+mod collector;
+mod partitioning;
+mod polymorphize;
+mod util;
 
 fn custom_coerce_unsize_info<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -30,4 +41,9 @@ fn custom_coerce_unsize_info<'tcx>(
             bug!("invalid `CoerceUnsized` impl_source: {:?}", impl_source);
         }
     }
+}
+
+pub fn provide(providers: &mut Providers) {
+    partitioning::provide(providers);
+    polymorphize::provide(providers);
 }

@@ -4,7 +4,6 @@ Rust MIR: a lowered representation of Rust.
 
 */
 
-#![feature(array_windows)]
 #![feature(assert_matches)]
 #![cfg_attr(bootstrap, feature(bindings_after_at))]
 #![feature(associated_type_defaults)]
@@ -36,7 +35,6 @@ extern crate rustc_middle;
 pub mod const_eval;
 pub mod dataflow;
 pub mod interpret;
-pub mod monomorphize;
 pub mod transform;
 pub mod util;
 
@@ -44,8 +42,6 @@ use rustc_middle::ty::query::Providers;
 
 pub fn provide(providers: &mut Providers) {
     const_eval::provide(providers);
-    monomorphize::partitioning::provide(providers);
-    monomorphize::polymorphize::provide(providers);
     providers.eval_to_const_value_raw = const_eval::eval_to_const_value_raw_provider;
     providers.eval_to_allocation_raw = const_eval::eval_to_allocation_raw_provider;
     providers.const_caller_location = const_eval::const_caller_location;

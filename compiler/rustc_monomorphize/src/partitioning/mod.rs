@@ -105,8 +105,8 @@ use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::Symbol;
 
-use crate::monomorphize::collector::InliningMap;
-use crate::monomorphize::collector::{self, MonoItemCollectionMode};
+use crate::collector::InliningMap;
+use crate::collector::{self, MonoItemCollectionMode};
 
 pub struct PartitioningCx<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,

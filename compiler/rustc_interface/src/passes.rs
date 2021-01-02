@@ -743,6 +743,7 @@ pub static DEFAULT_QUERY_PROVIDERS: SyncLazy<Providers> = SyncLazy::new(|| {
     mir_borrowck::provide(providers);
     mir_build::provide(providers);
     rustc_mir_transform::provide(providers);
+    rustc_monomorphize::provide(providers);
     rustc_privacy::provide(providers);
     typeck::provide(providers);
     ty::provide(providers);
