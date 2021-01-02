@@ -404,7 +404,7 @@ fn to_fragment_kind(db: &dyn AstDatabase, id: MacroCallId) -> FragmentKind {
         TRY_EXPR => FragmentKind::Expr,
         TUPLE_EXPR => FragmentKind::Expr,
         PAREN_EXPR => FragmentKind::Expr,
-
+        ARRAY_EXPR => FragmentKind::Expr,
         FOR_EXPR => FragmentKind::Expr,
         PATH_EXPR => FragmentKind::Expr,
         CLOSURE_EXPR => FragmentKind::Expr,

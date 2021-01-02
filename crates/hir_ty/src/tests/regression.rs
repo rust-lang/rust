@@ -326,6 +326,24 @@ fn infer_paren_macro_call() {
 }
 
 #[test]
+fn infer_array_macro_call() {
+    check_infer(
+        r#"
+        macro_rules! bar { () => {0u32} }
+        fn test() {
+            let a = [bar!()];
+        }
+        "#,
+        expect![[r#"
+            !0..4 '0u32': u32
+            44..69 '{     ...()]; }': ()
+            54..55 'a': [u32; _]
+            58..66 '[bar!()]': [u32; _]
+        "#]],
+    );
+}
+
+#[test]
 fn bug_1030() {
     check_infer(
         r#"
