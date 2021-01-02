@@ -1176,7 +1176,7 @@ impl<T: ?Sized, A: Allocator> From<Box<T, A>> for NonNull<T> {
     /// releasing the memory previously managed by the `Box` (for example, via
     /// [`Box::from_raw`]).
     #[inline]
-    #[must_use]
+    #[must_use = "this will leak memory if unused"]
     fn from(b: Box<T, A>) -> Self {
         // Safety: Box's pointer is guaranteed to be nonnull, so we can use
         // new_unchecked.
