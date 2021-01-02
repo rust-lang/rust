@@ -489,15 +489,10 @@ impl<'a, I: Iterator<Item = Event<'a>>> SummaryLine<'a, I> {
 }
 
 fn check_if_allowed_tag(t: &Tag<'_>) -> bool {
-    match *t {
-        Tag::Paragraph
-        | Tag::Item
-        | Tag::Emphasis
-        | Tag::Strong
-        | Tag::Link(..)
-        | Tag::BlockQuote => true,
-        _ => false,
-    }
+    matches!(
+        t,
+        Tag::Paragraph | Tag::Item | Tag::Emphasis | Tag::Strong | Tag::Link(..) | Tag::BlockQuote
+    )
 }
 
 impl<'a, I: Iterator<Item = Event<'a>>> Iterator for SummaryLine<'a, I> {

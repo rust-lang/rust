@@ -132,7 +132,7 @@ impl TocBuilder {
                 }
                 Some(entry) => {
                     sec_number = entry.sec_number.clone();
-                    sec_number.push_str(".");
+                    sec_number.push('.');
                     (entry.level, &entry.children)
                 }
             };

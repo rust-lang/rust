@@ -26,9 +26,7 @@ crate fn strip_hidden(krate: clean::Crate, _: &DocContext<'_>) -> clean::Crate {
 
     // strip all impls referencing stripped items
     let mut stripper = ImplStripper { retained: &retained };
-    let krate = stripper.fold_crate(krate);
-
-    krate
+    stripper.fold_crate(krate)
 }
 
 struct Stripper<'a> {

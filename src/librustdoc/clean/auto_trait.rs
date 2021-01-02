@@ -738,11 +738,11 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
     }
 
     fn is_fn_ty(&self, tcx: TyCtxt<'_>, ty: &Type) -> bool {
-        match &ty {
-            &&Type::ResolvedPath { ref did, .. } => {
-                *did == tcx.require_lang_item(LangItem::Fn, None)
-                    || *did == tcx.require_lang_item(LangItem::FnMut, None)
-                    || *did == tcx.require_lang_item(LangItem::FnOnce, None)
+        match ty {
+            &Type::ResolvedPath { did, .. } => {
+                did == tcx.require_lang_item(LangItem::Fn, None)
+                    || did == tcx.require_lang_item(LangItem::FnMut, None)
+                    || did == tcx.require_lang_item(LangItem::FnOnce, None)
             }
             _ => false,
         }

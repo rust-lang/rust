@@ -177,10 +177,7 @@ impl Cfg {
             Cfg::Any(ref sub_cfgs) | Cfg::All(ref sub_cfgs) => {
                 sub_cfgs.first().map(Cfg::should_capitalize_first_letter).unwrap_or(false)
             }
-            Cfg::Cfg(name, _) => match name {
-                sym::debug_assertions | sym::target_endian => true,
-                _ => false,
-            },
+            Cfg::Cfg(name, _) => name == sym::debug_assertions || name == sym::target_endian,
         }
     }
 
@@ -188,18 +185,13 @@ impl Cfg {
         match *self {
             Cfg::False | Cfg::True => false,
             Cfg::Any(..) | Cfg::All(..) | Cfg::Cfg(..) => true,
-            Cfg::Not(ref child) => match **child {
-                Cfg::Cfg(..) => true,
-                _ => false,
-            },
+            Cfg::Not(box Cfg::Cfg(..)) => true,
+            Cfg::Not(..) => false,
         }
     }
 
     fn should_use_with_in_description(&self) -> bool {
-        match *self {
-            Cfg::Cfg(name, _) if name == sym::target_feature => true,
-            _ => false,
-        }
+        matches!(self, Cfg::Cfg(sym::target_feature, _))
     }
 
     /// Attempt to simplify this cfg by assuming that `assume` is already known to be true, will
