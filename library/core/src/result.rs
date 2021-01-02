@@ -368,8 +368,6 @@ impl<T, E> Result<T, E> {
     /// Converts `self` into an [`Option<T>`], consuming `self`,
     /// and discarding the error, if any.
     ///
-    /// [`Option<T>`]: Option
-    ///
     /// # Examples
     ///
     /// Basic usage:
@@ -394,8 +392,6 @@ impl<T, E> Result<T, E> {
     ///
     /// Converts `self` into an [`Option<E>`], consuming `self`,
     /// and discarding the success value, if any.
-    ///
-    /// [`Option<E>`]: Option
     ///
     /// # Examples
     ///
@@ -1008,8 +1004,6 @@ impl<T: fmt::Debug, E> Result<T, E> {
     ///
     /// Panics if the value is an [`Ok`], with a custom panic message provided
     /// by the [`Ok`]'s value.
-    ///
-    ///
     ///
     /// # Examples
     ///

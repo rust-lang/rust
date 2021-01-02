@@ -451,8 +451,6 @@ impl str {
 
     /// Converts a [`Box<str>`] into a [`String`] without copying or allocating.
     ///
-    /// [`Box<str>`]: Box
-    ///
     /// # Examples
     ///
     /// Basic usage:

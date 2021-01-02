@@ -126,9 +126,7 @@
 //!
 //! [ucg#198]: https://github.com/rust-lang/unsafe-code-guidelines/issues/198
 //! [dereferencing]: core::ops::Deref
-//! [`Box<T>`]: Box
 //! [`Box::<T>::from_raw(value)`]: Box::from_raw
-//! [`Box::<T>::into_raw`]: Box::into_raw
 //! [`Global`]: crate::alloc::Global
 //! [`Layout`]: crate::alloc::Layout
 //! [`Layout::for_value(&*value)`]: crate::alloc::Layout::for_value

@@ -240,7 +240,6 @@
 //!
 //! [`File`]: crate::fs::File
 //! [`TcpStream`]: crate::net::TcpStream
-//! [`Vec<T>`]: Vec
 //! [`io::stdout`]: stdout
 //! [`io::Result`]: self::Result
 //! [`?` operator]: ../../book/appendix-02-operators.html
@@ -1984,7 +1983,6 @@ pub trait BufRead: Read {
     /// also yielded an error.
     ///
     /// [`io::Result`]: self::Result
-    /// [`Vec<u8>`]: Vec
     /// [`read_until`]: BufRead::read_until
     ///
     /// # Examples

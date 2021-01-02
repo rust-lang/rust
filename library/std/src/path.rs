@@ -1775,7 +1775,6 @@ impl Path {
     /// Any non-Unicode sequences are replaced with
     /// [`U+FFFD REPLACEMENT CHARACTER`][U+FFFD].
     ///
-    /// [`Cow<str>`]: Cow
     /// [U+FFFD]: super::char::REPLACEMENT_CHARACTER
     ///
     /// # Examples
