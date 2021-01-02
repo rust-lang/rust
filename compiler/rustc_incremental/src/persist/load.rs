@@ -210,6 +210,12 @@ pub fn load_query_result_cache<'a>(
     definitions: &Definitions,
 ) -> Option<OnDiskCache<'a>> {
     if sess.opts.incremental.is_none() {
+        // Create a cache so that we can map any `DefPathHash`
+        // to its `DefId` when printing the dep graph
+        if sess.opts.debugging_opts.dump_dep_graph {
+            return Some(OnDiskCache::new_empty(sess.source_map()));
+        }
+        // We have no use for a cache
         return None;
     }
 

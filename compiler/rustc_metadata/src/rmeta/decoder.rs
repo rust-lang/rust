@@ -1591,6 +1591,29 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         })
     }
 
+    fn num_def_ids(&self) -> usize {
+        self.root.tables.def_keys.size()
+    }
+
+    // Only used when certain `-Z` flags are enabled - should *not* be used
+    // otherwise
+    fn debug_all_def_path_hashes_and_def_ids(&self) -> Vec<(DefPathHash, DefId)> {
+        let mut def_path_hashes = self.def_path_hash_cache.lock();
+        let mut def_index_to_data = |index| {
+            (self.def_path_hash_unlocked(index, &mut def_path_hashes), self.local_def_id(index))
+        };
+        if let Some(data) = &self.root.proc_macro_data {
+            std::iter::once(CRATE_DEF_INDEX)
+                .chain(data.macros.decode(self))
+                .map(def_index_to_data)
+                .collect()
+        } else {
+            (0..self.num_def_ids())
+                .map(|index| def_index_to_data(DefIndex::from_usize(index)))
+                .collect()
+        }
+    }
+
     #[inline]
     fn def_path_hash(&self, index: DefIndex) -> DefPathHash {
         let mut def_path_hashes = self.def_path_hash_cache.lock();
@@ -1924,10 +1947,6 @@ impl CrateMetadata {
 
     crate fn hash(&self) -> Svh {
         self.root.hash
-    }
-
-    fn num_def_ids(&self) -> usize {
-        self.root.tables.def_keys.size()
     }
 
     fn local_def_id(&self, index: DefIndex) -> DefId {

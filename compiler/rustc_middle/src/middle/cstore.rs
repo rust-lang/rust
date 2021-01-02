@@ -210,6 +210,8 @@ pub trait CrateStore {
     fn encode_metadata(&self, tcx: TyCtxt<'_>) -> EncodedMetadata;
     fn metadata_encoding_version(&self) -> &[u8];
     fn allocator_kind(&self) -> Option<AllocatorKind>;
+    fn debug_all_def_path_hashes_and_def_ids(&self, cnum: CrateNum) -> Vec<(DefPathHash, DefId)>;
+    fn num_def_ids(&self, cnum: CrateNum) -> usize;
 }
 
 pub type CrateStoreDyn = dyn CrateStore + sync::Sync;

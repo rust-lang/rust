@@ -1343,6 +1343,12 @@ impl<'tcx> TyCtxt<'tcx> {
         self.queries.on_disk_cache.as_ref().map(|c| c.serialize(self, encoder)).unwrap_or(Ok(()))
     }
 
+    pub fn build_debug_def_path_hash_map(self) {
+        if let Some(cache) = &self.queries.on_disk_cache {
+            cache.build_debug_def_path_hash_map(self);
+        }
+    }
+
     /// If `true`, we should use the MIR-based borrowck, but also
     /// fall back on the AST borrowck if the MIR-based one errors.
     pub fn migrate_borrowck(self) -> bool {

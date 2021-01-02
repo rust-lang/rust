@@ -529,4 +529,12 @@ impl CrateStore for CStore {
     fn allocator_kind(&self) -> Option<AllocatorKind> {
         self.allocator_kind()
     }
+
+    fn debug_all_def_path_hashes_and_def_ids(&self, cnum: CrateNum) -> Vec<(DefPathHash, DefId)> {
+        self.get_crate_data(cnum).debug_all_def_path_hashes_and_def_ids()
+    }
+
+    fn num_def_ids(&self, cnum: CrateNum) -> usize {
+        self.get_crate_data(cnum).num_def_ids()
+    }
 }

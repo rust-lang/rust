@@ -8,6 +8,7 @@ use rustc_data_structures::fingerprint::{Fingerprint, FingerprintDecoder, Finger
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_data_structures::sync::{HashMapExt, Lock, Lrc, OnceCell};
 use rustc_data_structures::thin_vec::ThinVec;
+use rustc_data_structures::unhash::UnhashMap;
 use rustc_errors::Diagnostic;
 use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, LOCAL_CRATE};
 use rustc_hir::definitions::DefPathHash;
@@ -108,6 +109,19 @@ pub struct OnDiskCache<'sess> {
     // may no longer exist in the current compilation session, so
     // we use `Option<DefId>` so that we can cache a lookup failure.
     def_path_hash_to_def_id_cache: Lock<FxHashMap<DefPathHash, Option<DefId>>>,
+
+    // A map from a `DefPathHash` to its corresponding `DefId`, for all
+    // known `DefId`s (both foreign and local). Building this map takes
+    // a significant amount of time, so it is only initialized when
+    // needed by certain `-Z` flags (currently `-Z dump-dep-graph`).
+    // When this `OnceCell` is not initialized, the other fields of
+    // this struct (e.g. `foreign_def_path_hahses`) are used to map
+    // `DefPathHashes` to `DefId`s
+    //
+    // This field should *not* be used directly - the `def_path_hash_to_def_id`
+    // function should be used to map a `DefPathHash` to its corresponding
+    // `DefId`
+    debug_def_path_hash_to_def_id: OnceCell<UnhashMap<DefPathHash, DefId>>,
 }
 
 // This type is used only for serialization and deserialization.
@@ -215,6 +229,7 @@ impl<'sess> OnDiskCache<'sess> {
             latest_foreign_def_path_hashes: Default::default(),
             local_def_path_hash_to_def_id: make_local_def_path_hash_map(definitions),
             def_path_hash_to_def_id_cache: Default::default(),
+            debug_def_path_hash_to_def_id: OnceCell::new(),
         }
     }
 
@@ -237,6 +252,7 @@ impl<'sess> OnDiskCache<'sess> {
             latest_foreign_def_path_hashes: Default::default(),
             local_def_path_hash_to_def_id: Default::default(),
             def_path_hash_to_def_id_cache: Default::default(),
+            debug_def_path_hash_to_def_id: OnceCell::new(),
         }
     }
 
@@ -474,6 +490,20 @@ impl<'sess> OnDiskCache<'sess> {
             .insert(hash, RawDefId { krate: def_id.krate.as_u32(), index: def_id.index.as_u32() });
     }
 
+    pub fn build_debug_def_path_hash_map(&self, tcx: TyCtxt<'tcx>) {
+        let crates = tcx.cstore.crates_untracked();
+
+        let capacity = tcx.definitions.def_path_table().num_def_ids()
+            + crates.iter().map(|cnum| tcx.cstore.num_def_ids(*cnum)).sum::<usize>();
+        let mut map = UnhashMap::with_capacity_and_hasher(capacity, Default::default());
+
+        map.extend(tcx.definitions.def_path_table().all_def_path_hashes_and_def_ids(LOCAL_CRATE));
+        for cnum in &crates {
+            map.extend(tcx.cstore.debug_all_def_path_hashes_and_def_ids(*cnum).into_iter());
+        }
+        self.debug_def_path_hash_to_def_id.set(map).unwrap();
+    }
+
     /// If the given `dep_node`'s hash still exists in the current compilation,
     /// and its current `DefId` is foreign, calls `store_foreign_def_id` with it.
     ///
@@ -625,6 +655,14 @@ impl<'sess> OnDiskCache<'sess> {
             Entry::Occupied(e) => *e.get(),
             Entry::Vacant(e) => {
                 debug!("def_path_hash_to_def_id({:?})", hash);
+
+                if let Some(debug_map) = self.debug_def_path_hash_to_def_id.get() {
+                    if let Some(def_id) = debug_map.get(&hash).copied() {
+                        e.insert(Some(def_id));
+                        return Some(def_id);
+                    }
+                }
+
                 // Check if the `DefPathHash` corresponds to a definition in the current
                 // crate
                 if let Some(def_id) = self.local_def_path_hash_to_def_id.get(&hash).cloned() {

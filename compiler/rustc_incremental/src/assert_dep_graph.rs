@@ -216,6 +216,7 @@ fn check_paths<'tcx>(tcx: TyCtxt<'tcx>, if_this_changed: &Sources, then_this_wou
 }
 
 fn dump_graph(tcx: TyCtxt<'_>) {
+    tcx.build_debug_def_path_hash_map();
     let path: String = env::var("RUST_DEP_GRAPH").unwrap_or_else(|_| "dep_graph".to_string());
     let query = tcx.dep_graph.query();
 
