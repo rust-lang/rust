@@ -120,7 +120,7 @@ fn is_unit_expr(expr: &ast::Expr) -> bool {
 
 fn lint_unneeded_unit_return(cx: &EarlyContext<'_>, ty: &ast::Ty, span: Span) {
     let (ret_span, appl) = if let Ok(fn_source) = cx.sess().source_map().span_to_snippet(span.with_hi(ty.span.hi())) {
-        position_before_rarrow(fn_source).map_or((ty.span, Applicability::MaybeIncorrect), |rpos| {
+        position_before_rarrow(&fn_source).map_or((ty.span, Applicability::MaybeIncorrect), |rpos| {
             (
                 #[allow(clippy::cast_possible_truncation)]
                 ty.span.with_lo(BytePos(span.lo().0 + rpos as u32)),
