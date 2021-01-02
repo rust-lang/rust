@@ -105,7 +105,7 @@ impl MacroUseImports {
 impl<'tcx> LateLintPass<'tcx> for MacroUseImports {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &hir::Item<'_>) {
         if_chain! {
-            if cx.sess().opts.edition == Edition::Edition2018;
+            if cx.sess().opts.edition >= Edition::Edition2018;
             if let hir::ItemKind::Use(path, _kind) = &item.kind;
             if let Some(mac_attr) = item
                 .attrs

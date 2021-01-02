@@ -1,7 +1,7 @@
 [package]
 name = "clippy_lints"
 # begin automatic update
-version = "0.0.212"
+version = "0.1.51"
 # end automatic update
 authors = [
 	"Manish Goregaokar <manishsmail@gmail.com>",

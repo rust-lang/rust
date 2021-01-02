@@ -50,6 +50,9 @@ jobs:
     - name: Build
       run: cargo build --features deny-warnings,internal-lints
 
+    - name: Test "--fix -Zunstable-options"
+      run: cargo run --features deny-warnings,internal-lints --bin cargo-clippy -- clippy --fix -Zunstable-options
+
     - name: Test
       run: cargo test --features deny-warnings,internal-lints
 

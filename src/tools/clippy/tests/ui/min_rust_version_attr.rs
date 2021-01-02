@@ -57,6 +57,14 @@ pub fn checked_conversion() {
     let _ = value <= (u32::MAX as i64) && value >= 0;
 }
 
+pub struct FromOverInto(String);
+
+impl Into<FromOverInto> for String {
+    fn into(self) -> FromOverInto {
+        FromOverInto(self)
+    }
+}
+
 pub fn filter_map_next() {
     let a = ["1", "lol", "3", "NaN", "5"];
 
