@@ -2677,7 +2677,6 @@ impl<'a> State<'a> {
                     s.print_type_bounds(":", &param.bounds);
                     if let Some(ref _default) = default {
                         // FIXME(const_generics_defaults): print the `default` value here
-                        todo!();
                     }
                 }
             }
