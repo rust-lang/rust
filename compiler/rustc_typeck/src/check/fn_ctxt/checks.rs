@@ -22,6 +22,7 @@ use rustc_span::symbol::{sym, Ident};
 use rustc_span::{self, MultiSpan, Span};
 use rustc_trait_selection::traits::{self, ObligationCauseCode, StatementAsExpression};
 
+use crate::structured_errors::StructuredDiagnostic;
 use std::mem::replace;
 use std::slice;
 
@@ -173,18 +174,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
 
             if let Some(def_id) = def_id {
-                if let Some(node) = tcx.hir().get_if_local(def_id) {
-                    let mut spans: MultiSpan = node
-                        .ident()
-                        .map(|ident| ident.span)
-                        .unwrap_or_else(|| tcx.hir().span(node.hir_id().unwrap()))
-                        .into();
+                if let Some(def_span) = tcx.def_ident_span(def_id) {
+                    let mut spans: MultiSpan = def_span.into();
 
-                    if let Some(id) = node.body_id() {
-                        let body = tcx.hir().body(id);
-                        for param in body.params {
-                            spans.push_span_label(param.span, String::new());
-                        }
+                    let params = tcx
+                        .hir()
+                        .get_if_local(def_id)
+                        .and_then(|node| node.body_id())
+                        .into_iter()
+                        .map(|id| tcx.hir().body(id).params)
+                        .flatten();
+
+                    for param in params {
+                        spans.push_span_label(param.span, String::new());
                     }
 
                     let def_kind = tcx.def_kind(def_id);
@@ -358,9 +360,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // We also need to make sure we at least write the ty of the other
         // arguments which we skipped above.
         if c_variadic {
-            fn variadic_error<'tcx>(s: &Session, span: Span, t: Ty<'tcx>, cast_ty: &str) {
-                use crate::structured_errors::{StructuredDiagnostic, VariadicError};
-                VariadicError::new(s, span, t, cast_ty).diagnostic().emit();
+            fn variadic_error<'tcx>(sess: &Session, span: Span, ty: Ty<'tcx>, cast_ty: &str) {
+                use crate::structured_errors::MissingCastForVariadicArg;
+
+                MissingCastForVariadicArg { sess, span, ty, cast_ty }.diagnostic().emit()
             }
 
             for arg in args.iter().skip(expected_arg_count) {

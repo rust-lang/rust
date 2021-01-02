@@ -1,6 +1,6 @@
 use super::{probe, MethodCallee};
 
-use crate::astconv::{AstConv, CreateSubstsForGenericArgsCtxt};
+use crate::astconv::{AstConv, CreateSubstsForGenericArgsCtxt, IsMethodCall};
 use crate::check::{callee, FnCtxt};
 use crate::hir::def_id::DefId;
 use crate::hir::GenericArg;
@@ -298,8 +298,14 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         // If they were not explicitly supplied, just construct fresh
         // variables.
         let generics = self.tcx.generics_of(pick.item.def_id);
+
         let arg_count_correct = AstConv::check_generic_arg_count_for_call(
-            self.tcx, self.span, &generics, &seg, true, // `is_method_call`
+            self.tcx,
+            self.span,
+            pick.item.def_id,
+            &generics,
+            seg,
+            IsMethodCall::Yes,
         );
 
         // Create subst for early-bound lifetime parameters, combining

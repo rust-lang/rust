@@ -1,20 +1,46 @@
-error[E0107]: wrong number of lifetime arguments: expected 1, found 2
-  --> $DIR/parameter_number_and_kind.rs:13:35
+error[E0107]: this associated type takes 1 lifetime argument but 2 lifetime arguments were supplied
+  --> $DIR/parameter_number_and_kind.rs:13:24
    |
 LL |     type FErr1 = Self::E<'static, 'static>;
-   |                                   ^^^^^^^ unexpected lifetime argument
+   |                        ^        --------- help: remove this lifetime argument
+   |                        |
+   |                        expected 1 lifetime argument
+   |
+note: associated type defined here, with 1 lifetime parameter: `'a`
+  --> $DIR/parameter_number_and_kind.rs:10:10
+   |
+LL |     type E<'a, T>;
+   |          ^ --
 
-error[E0107]: wrong number of type arguments: expected 1, found 0
-  --> $DIR/parameter_number_and_kind.rs:13:18
+error[E0107]: this associated type takes 1 type argument but 0 type arguments were supplied
+  --> $DIR/parameter_number_and_kind.rs:13:24
    |
 LL |     type FErr1 = Self::E<'static, 'static>;
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^ expected 1 type argument
+   |                        ^ expected 1 type argument
+   |
+note: associated type defined here, with 1 type parameter: `T`
+  --> $DIR/parameter_number_and_kind.rs:10:10
+   |
+LL |     type E<'a, T>;
+   |          ^     -
+help: add missing type argument
+   |
+LL |     type FErr1 = Self::E<'static, 'static, T>;
+   |                                          ^^^
 
-error[E0107]: wrong number of type arguments: expected 1, found 2
-  --> $DIR/parameter_number_and_kind.rs:16:41
+error[E0107]: this associated type takes 1 type argument but 2 type arguments were supplied
+  --> $DIR/parameter_number_and_kind.rs:16:27
    |
 LL |     type FErr2<T> = Self::E<'static, T, u32>;
-   |                                         ^^^ unexpected type argument
+   |                           ^           ----- help: remove this type argument
+   |                           |
+   |                           expected 1 type argument
+   |
+note: associated type defined here, with 1 type parameter: `T`
+  --> $DIR/parameter_number_and_kind.rs:10:10
+   |
+LL |     type E<'a, T>;
+   |          ^     -
 
 error: aborting due to 3 previous errors
 

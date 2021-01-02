@@ -1433,7 +1433,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                     hir::TyKind::Path(ref qpath) => {
                         if let QPath::Resolved(_, path) = qpath {
                             let last_segment = &path.segments[path.segments.len() - 1];
-                            let generics = last_segment.generic_args();
+                            let generics = last_segment.args();
                             for arg in generics.args.iter() {
                                 if let GenericArg::Lifetime(lt) = arg {
                                     if lt.name.ident() == name {

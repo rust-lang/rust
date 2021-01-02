@@ -1213,7 +1213,7 @@ impl<'a> State<'a> {
         self.s.word(".");
         self.print_ident(segment.ident);
 
-        let generic_args = segment.generic_args();
+        let generic_args = segment.args();
         if !generic_args.args.is_empty() || !generic_args.bindings.is_empty() {
             self.print_generic_args(generic_args, segment.infer_args, true);
         }
@@ -1661,11 +1661,7 @@ impl<'a> State<'a> {
             }
             if segment.ident.name != kw::PathRoot {
                 self.print_ident(segment.ident);
-                self.print_generic_args(
-                    segment.generic_args(),
-                    segment.infer_args,
-                    colons_before_params,
-                );
+                self.print_generic_args(segment.args(), segment.infer_args, colons_before_params);
             }
         }
     }
@@ -1673,7 +1669,7 @@ impl<'a> State<'a> {
     pub fn print_path_segment(&mut self, segment: &hir::PathSegment<'_>) {
         if segment.ident.name != kw::PathRoot {
             self.print_ident(segment.ident);
-            self.print_generic_args(segment.generic_args(), segment.infer_args, false);
+            self.print_generic_args(segment.args(), segment.infer_args, false);
         }
     }
 
@@ -1693,7 +1689,7 @@ impl<'a> State<'a> {
                     if segment.ident.name != kw::PathRoot {
                         self.print_ident(segment.ident);
                         self.print_generic_args(
-                            segment.generic_args(),
+                            segment.args(),
                             segment.infer_args,
                             colons_before_params,
                         );
@@ -1705,7 +1701,7 @@ impl<'a> State<'a> {
                 let item_segment = path.segments.last().unwrap();
                 self.print_ident(item_segment.ident);
                 self.print_generic_args(
-                    item_segment.generic_args(),
+                    item_segment.args(),
                     item_segment.infer_args,
                     colons_before_params,
                 )
@@ -1725,7 +1721,7 @@ impl<'a> State<'a> {
                 self.s.word("::");
                 self.print_ident(item_segment.ident);
                 self.print_generic_args(
-                    item_segment.generic_args(),
+                    item_segment.args(),
                     item_segment.infer_args,
                     colons_before_params,
                 )

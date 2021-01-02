@@ -1,8 +1,16 @@
-error[E0107]: wrong number of lifetime arguments: expected 0, found 1
-  --> $DIR/issue-18423.rs:4:12
+error[E0107]: this struct takes 0 lifetime arguments but 1 lifetime argument was supplied
+  --> $DIR/issue-18423.rs:4:8
    |
 LL |     x: Box<'a, isize>
-   |            ^^ unexpected lifetime argument
+   |        ^^^ ---- help: remove this lifetime argument
+   |        |
+   |        expected 0 lifetime arguments
+   |
+note: struct defined here, with 0 lifetime parameters
+  --> $SRC_DIR/alloc/src/boxed.rs:LL:COL
+   |
+LL | pub struct Box<
+   |            ^^^
 
 error: aborting due to previous error
 

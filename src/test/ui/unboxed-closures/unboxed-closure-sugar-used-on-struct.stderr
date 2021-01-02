@@ -4,11 +4,21 @@ error[E0214]: parenthesized type parameters may only be used with a `Fn` trait
 LL | fn foo(b: Box<Bar()>) {
    |               ^^^^^ only `Fn` traits may use parentheses
 
-error[E0107]: wrong number of type arguments: expected 1, found 0
+error[E0107]: missing generics for struct `Bar`
   --> $DIR/unboxed-closure-sugar-used-on-struct.rs:7:15
    |
 LL | fn foo(b: Box<Bar()>) {
-   |               ^^^^^ expected 1 type argument
+   |               ^^^ expected 1 type argument
+   |
+note: struct defined here, with 1 type parameter: `A`
+  --> $DIR/unboxed-closure-sugar-used-on-struct.rs:3:8
+   |
+LL | struct Bar<A> {
+   |        ^^^ -
+help: use angle brackets to add missing type argument
+   |
+LL | fn foo(b: Box<Bar<A>()>) {
+   |                  ^^^
 
 error: aborting due to 2 previous errors
 

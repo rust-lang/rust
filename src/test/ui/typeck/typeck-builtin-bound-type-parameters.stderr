@@ -1,38 +1,86 @@
-error[E0107]: wrong number of type arguments: expected 0, found 1
-  --> $DIR/typeck-builtin-bound-type-parameters.rs:1:16
+error[E0107]: this trait takes 0 type arguments but 1 type argument was supplied
+  --> $DIR/typeck-builtin-bound-type-parameters.rs:1:11
    |
 LL | fn foo1<T:Copy<U>, U>(x: T) {}
-   |                ^ unexpected type argument
+   |           ^^^^--- help: remove these generics
+   |           |
+   |           expected 0 type arguments
+   |
+note: trait defined here, with 0 type parameters
+  --> $SRC_DIR/core/src/marker.rs:LL:COL
+   |
+LL | pub trait Copy: Clone {
+   |           ^^^^
 
-error[E0107]: wrong number of type arguments: expected 0, found 1
-  --> $DIR/typeck-builtin-bound-type-parameters.rs:4:19
+error[E0107]: this trait takes 0 type arguments but 1 type argument was supplied
+  --> $DIR/typeck-builtin-bound-type-parameters.rs:4:14
    |
 LL | trait Trait: Copy<dyn Send> {}
-   |                   ^^^^^^^^ unexpected type argument
+   |              ^^^^---------- help: remove these generics
+   |              |
+   |              expected 0 type arguments
+   |
+note: trait defined here, with 0 type parameters
+  --> $SRC_DIR/core/src/marker.rs:LL:COL
+   |
+LL | pub trait Copy: Clone {
+   |           ^^^^
 
-error[E0107]: wrong number of type arguments: expected 0, found 1
-  --> $DIR/typeck-builtin-bound-type-parameters.rs:7:26
+error[E0107]: this trait takes 0 type arguments but 1 type argument was supplied
+  --> $DIR/typeck-builtin-bound-type-parameters.rs:7:21
    |
 LL | struct MyStruct1<T: Copy<T>>;
-   |                          ^ unexpected type argument
+   |                     ^^^^--- help: remove these generics
+   |                     |
+   |                     expected 0 type arguments
+   |
+note: trait defined here, with 0 type parameters
+  --> $SRC_DIR/core/src/marker.rs:LL:COL
+   |
+LL | pub trait Copy: Clone {
+   |           ^^^^
 
-error[E0107]: wrong number of lifetime arguments: expected 0, found 1
-  --> $DIR/typeck-builtin-bound-type-parameters.rs:10:30
+error[E0107]: this trait takes 0 lifetime arguments but 1 lifetime argument was supplied
+  --> $DIR/typeck-builtin-bound-type-parameters.rs:10:25
    |
 LL | struct MyStruct2<'a, T: Copy<'a>>;
-   |                              ^^ unexpected lifetime argument
+   |                         ^^^^---- help: remove these generics
+   |                         |
+   |                         expected 0 lifetime arguments
+   |
+note: trait defined here, with 0 lifetime parameters
+  --> $SRC_DIR/core/src/marker.rs:LL:COL
+   |
+LL | pub trait Copy: Clone {
+   |           ^^^^
 
-error[E0107]: wrong number of lifetime arguments: expected 0, found 1
-  --> $DIR/typeck-builtin-bound-type-parameters.rs:14:20
+error[E0107]: this trait takes 0 lifetime arguments but 1 lifetime argument was supplied
+  --> $DIR/typeck-builtin-bound-type-parameters.rs:13:15
    |
 LL | fn foo2<'a, T:Copy<'a, U>, U>(x: T) {}
-   |                    ^^ unexpected lifetime argument
+   |               ^^^^ ---- help: remove this lifetime argument
+   |               |
+   |               expected 0 lifetime arguments
+   |
+note: trait defined here, with 0 lifetime parameters
+  --> $SRC_DIR/core/src/marker.rs:LL:COL
+   |
+LL | pub trait Copy: Clone {
+   |           ^^^^
 
-error[E0107]: wrong number of type arguments: expected 0, found 1
-  --> $DIR/typeck-builtin-bound-type-parameters.rs:14:24
+error[E0107]: this trait takes 0 type arguments but 1 type argument was supplied
+  --> $DIR/typeck-builtin-bound-type-parameters.rs:13:15
    |
 LL | fn foo2<'a, T:Copy<'a, U>, U>(x: T) {}
-   |                        ^ unexpected type argument
+   |               ^^^^   --- help: remove this type argument
+   |               |
+   |               expected 0 type arguments
+   |
+note: trait defined here, with 0 type parameters
+  --> $SRC_DIR/core/src/marker.rs:LL:COL
+   |
+LL | pub trait Copy: Clone {
+   |           ^^^^
 
 error: aborting due to 6 previous errors
 

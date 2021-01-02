@@ -871,17 +871,35 @@ impl<'tcx> Generics {
         // We could cache this as a property of `GenericParamCount`, but
         // the aim is to refactor this away entirely eventually and the
         // presence of this method will be a constant reminder.
-        let mut own_counts: GenericParamCount = Default::default();
+        let mut own_counts = GenericParamCount::default();
 
         for param in &self.params {
             match param.kind {
                 GenericParamDefKind::Lifetime => own_counts.lifetimes += 1,
                 GenericParamDefKind::Type { .. } => own_counts.types += 1,
                 GenericParamDefKind::Const => own_counts.consts += 1,
-            };
+            }
         }
 
         own_counts
+    }
+
+    pub fn own_defaults(&self) -> GenericParamCount {
+        let mut own_defaults = GenericParamCount::default();
+
+        for param in &self.params {
+            match param.kind {
+                GenericParamDefKind::Lifetime => (),
+                GenericParamDefKind::Type { has_default, .. } => {
+                    own_defaults.types += has_default as usize;
+                }
+                GenericParamDefKind::Const => {
+                    // FIXME(const_generics:defaults)
+                }
+            }
+        }
+
+        own_defaults
     }
 
     pub fn requires_monomorphization(&self, tcx: TyCtxt<'tcx>) -> bool {

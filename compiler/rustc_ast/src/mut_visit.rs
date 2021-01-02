@@ -565,7 +565,7 @@ pub fn noop_visit_parenthesized_parameter_data<T: MutVisitor>(
     args: &mut ParenthesizedArgs,
     vis: &mut T,
 ) {
-    let ParenthesizedArgs { inputs, output, span } = args;
+    let ParenthesizedArgs { inputs, output, span, .. } = args;
     visit_vec(inputs, |input| vis.visit_ty(input));
     noop_visit_fn_ret_ty(output, vis);
     vis.visit_span(span);

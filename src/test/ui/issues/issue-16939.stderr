@@ -5,6 +5,12 @@ LL |     |t| f(t);
    |         ^ - supplied 1 argument
    |         |
    |         expected 0 arguments
+   |
+note: associated function defined here
+  --> $SRC_DIR/core/src/ops/function.rs:LL:COL
+   |
+LL |     extern "rust-call" fn call(&self, args: Args) -> Self::Output;
+   |                           ^^^^
 
 error: aborting due to previous error
 

@@ -13,6 +13,7 @@
 #![feature(const_fn_transmute)]
 #![feature(const_panic)]
 #![feature(crate_visibility_modifier)]
+#![feature(iterator_fold_self)]
 #![feature(label_break_value)]
 #![feature(nll)]
 #![feature(or_patterns)]

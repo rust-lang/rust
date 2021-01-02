@@ -6,7 +6,7 @@ pub trait T<X, Y> {
 pub struct Foo {
     i: Box<dyn T<usize, usize, usize, usize, B=usize>>,
     //~^ ERROR must be specified
-    //~| ERROR wrong number of type arguments
+    //~| ERROR this trait takes 2 type arguments but 4 type arguments were supplied
 }
 
 

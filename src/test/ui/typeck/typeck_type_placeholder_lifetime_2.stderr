@@ -1,8 +1,16 @@
-error[E0107]: wrong number of type arguments: expected 1, found 2
-  --> $DIR/typeck_type_placeholder_lifetime_2.rs:9:19
+error[E0107]: this struct takes 1 type argument but 2 type arguments were supplied
+  --> $DIR/typeck_type_placeholder_lifetime_2.rs:9:12
    |
 LL |     let c: Foo<_, usize> = Foo { r: &5 };
-   |                   ^^^^^ unexpected type argument
+   |            ^^^  ------- help: remove this type argument
+   |            |
+   |            expected 1 type argument
+   |
+note: struct defined here, with 1 type parameter: `T`
+  --> $DIR/typeck_type_placeholder_lifetime_2.rs:4:8
+   |
+LL | struct Foo<'a, T:'a> {
+   |        ^^^     -
 
 error: aborting due to previous error
 

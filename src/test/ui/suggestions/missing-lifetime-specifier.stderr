@@ -166,53 +166,149 @@ help: consider using the `'static` lifetime
 LL |     static f: RefCell<HashMap<i32, Vec<Vec<&'static Tar<'static, i32>>>>> = RefCell::new(HashMap::new());
    |                                            ^^^^^^^^
 
-error[E0107]: wrong number of lifetime arguments: expected 2, found 1
+error[E0107]: this union takes 2 lifetime arguments but only 1 lifetime argument was supplied
   --> $DIR/missing-lifetime-specifier.rs:43:44
    |
 LL |     static e: RefCell<HashMap<i32, Vec<Vec<Qux<'static, i32>>>>> = RefCell::new(HashMap::new());
-   |                                            ^^^^^^^^^^^^^^^^^ expected 2 lifetime arguments
+   |                                            ^^^ ------- supplied 1 lifetime argument
+   |                                            |
+   |                                            expected 2 lifetime arguments
+   |
+note: union defined here, with 2 lifetime parameters: `'t`, `'k`
+  --> $DIR/missing-lifetime-specifier.rs:11:11
+   |
+LL | pub union Qux<'t, 'k, I> {
+   |           ^^^ --  --
+help: add missing lifetime argument
+   |
+LL |     static e: RefCell<HashMap<i32, Vec<Vec<Qux<'static, 'k, i32>>>>> = RefCell::new(HashMap::new());
+   |                                                       ^^^^
 
-error[E0107]: wrong number of lifetime arguments: expected 2, found 1
+error[E0107]: this union takes 2 lifetime arguments but only 1 lifetime argument was supplied
   --> $DIR/missing-lifetime-specifier.rs:43:44
    |
 LL |     static e: RefCell<HashMap<i32, Vec<Vec<Qux<'static, i32>>>>> = RefCell::new(HashMap::new());
-   |                                            ^^^^^^^^^^^^^^^^^ expected 2 lifetime arguments
+   |                                            ^^^ ------- supplied 1 lifetime argument
+   |                                            |
+   |                                            expected 2 lifetime arguments
+   |
+note: union defined here, with 2 lifetime parameters: `'t`, `'k`
+  --> $DIR/missing-lifetime-specifier.rs:11:11
+   |
+LL | pub union Qux<'t, 'k, I> {
+   |           ^^^ --  --
+help: add missing lifetime argument
+   |
+LL |     static e: RefCell<HashMap<i32, Vec<Vec<Qux<'static, 'k, i32>>>>> = RefCell::new(HashMap::new());
+   |                                                       ^^^^
 
-error[E0107]: wrong number of lifetime arguments: expected 2, found 1
+error[E0107]: this union takes 2 lifetime arguments but only 1 lifetime argument was supplied
   --> $DIR/missing-lifetime-specifier.rs:43:44
    |
 LL |     static e: RefCell<HashMap<i32, Vec<Vec<Qux<'static, i32>>>>> = RefCell::new(HashMap::new());
-   |                                            ^^^^^^^^^^^^^^^^^ expected 2 lifetime arguments
+   |                                            ^^^ ------- supplied 1 lifetime argument
+   |                                            |
+   |                                            expected 2 lifetime arguments
+   |
+note: union defined here, with 2 lifetime parameters: `'t`, `'k`
+  --> $DIR/missing-lifetime-specifier.rs:11:11
+   |
+LL | pub union Qux<'t, 'k, I> {
+   |           ^^^ --  --
+help: add missing lifetime argument
+   |
+LL |     static e: RefCell<HashMap<i32, Vec<Vec<Qux<'static, 'k, i32>>>>> = RefCell::new(HashMap::new());
+   |                                                       ^^^^
 
-error[E0107]: wrong number of lifetime arguments: expected 2, found 1
+error[E0107]: this union takes 2 lifetime arguments but only 1 lifetime argument was supplied
   --> $DIR/missing-lifetime-specifier.rs:43:44
    |
 LL |     static e: RefCell<HashMap<i32, Vec<Vec<Qux<'static, i32>>>>> = RefCell::new(HashMap::new());
-   |                                            ^^^^^^^^^^^^^^^^^ expected 2 lifetime arguments
+   |                                            ^^^ ------- supplied 1 lifetime argument
+   |                                            |
+   |                                            expected 2 lifetime arguments
+   |
+note: union defined here, with 2 lifetime parameters: `'t`, `'k`
+  --> $DIR/missing-lifetime-specifier.rs:11:11
+   |
+LL | pub union Qux<'t, 'k, I> {
+   |           ^^^ --  --
+help: add missing lifetime argument
+   |
+LL |     static e: RefCell<HashMap<i32, Vec<Vec<Qux<'static, 'k, i32>>>>> = RefCell::new(HashMap::new());
+   |                                                       ^^^^
 
-error[E0107]: wrong number of lifetime arguments: expected 2, found 1
+error[E0107]: this trait takes 2 lifetime arguments but only 1 lifetime argument was supplied
   --> $DIR/missing-lifetime-specifier.rs:50:45
    |
 LL |     static f: RefCell<HashMap<i32, Vec<Vec<&Tar<'static, i32>>>>> = RefCell::new(HashMap::new());
-   |                                             ^^^^^^^^^^^^^^^^^ expected 2 lifetime arguments
+   |                                             ^^^ ------- supplied 1 lifetime argument
+   |                                             |
+   |                                             expected 2 lifetime arguments
+   |
+note: trait defined here, with 2 lifetime parameters: `'t`, `'k`
+  --> $DIR/missing-lifetime-specifier.rs:15:7
+   |
+LL | trait Tar<'t, 'k, I> {}
+   |       ^^^ --  --
+help: add missing lifetime argument
+   |
+LL |     static f: RefCell<HashMap<i32, Vec<Vec<&Tar<'static, 'k, i32>>>>> = RefCell::new(HashMap::new());
+   |                                                        ^^^^
 
-error[E0107]: wrong number of lifetime arguments: expected 2, found 1
+error[E0107]: this trait takes 2 lifetime arguments but only 1 lifetime argument was supplied
   --> $DIR/missing-lifetime-specifier.rs:50:45
    |
 LL |     static f: RefCell<HashMap<i32, Vec<Vec<&Tar<'static, i32>>>>> = RefCell::new(HashMap::new());
-   |                                             ^^^^^^^^^^^^^^^^^ expected 2 lifetime arguments
+   |                                             ^^^ ------- supplied 1 lifetime argument
+   |                                             |
+   |                                             expected 2 lifetime arguments
+   |
+note: trait defined here, with 2 lifetime parameters: `'t`, `'k`
+  --> $DIR/missing-lifetime-specifier.rs:15:7
+   |
+LL | trait Tar<'t, 'k, I> {}
+   |       ^^^ --  --
+help: add missing lifetime argument
+   |
+LL |     static f: RefCell<HashMap<i32, Vec<Vec<&Tar<'static, 'k, i32>>>>> = RefCell::new(HashMap::new());
+   |                                                        ^^^^
 
-error[E0107]: wrong number of lifetime arguments: expected 2, found 1
+error[E0107]: this trait takes 2 lifetime arguments but only 1 lifetime argument was supplied
   --> $DIR/missing-lifetime-specifier.rs:50:45
    |
 LL |     static f: RefCell<HashMap<i32, Vec<Vec<&Tar<'static, i32>>>>> = RefCell::new(HashMap::new());
-   |                                             ^^^^^^^^^^^^^^^^^ expected 2 lifetime arguments
+   |                                             ^^^ ------- supplied 1 lifetime argument
+   |                                             |
+   |                                             expected 2 lifetime arguments
+   |
+note: trait defined here, with 2 lifetime parameters: `'t`, `'k`
+  --> $DIR/missing-lifetime-specifier.rs:15:7
+   |
+LL | trait Tar<'t, 'k, I> {}
+   |       ^^^ --  --
+help: add missing lifetime argument
+   |
+LL |     static f: RefCell<HashMap<i32, Vec<Vec<&Tar<'static, 'k, i32>>>>> = RefCell::new(HashMap::new());
+   |                                                        ^^^^
 
-error[E0107]: wrong number of lifetime arguments: expected 2, found 1
+error[E0107]: this trait takes 2 lifetime arguments but only 1 lifetime argument was supplied
   --> $DIR/missing-lifetime-specifier.rs:50:45
    |
 LL |     static f: RefCell<HashMap<i32, Vec<Vec<&Tar<'static, i32>>>>> = RefCell::new(HashMap::new());
-   |                                             ^^^^^^^^^^^^^^^^^ expected 2 lifetime arguments
+   |                                             ^^^ ------- supplied 1 lifetime argument
+   |                                             |
+   |                                             expected 2 lifetime arguments
+   |
+note: trait defined here, with 2 lifetime parameters: `'t`, `'k`
+  --> $DIR/missing-lifetime-specifier.rs:15:7
+   |
+LL | trait Tar<'t, 'k, I> {}
+   |       ^^^ --  --
+help: add missing lifetime argument
+   |
+LL |     static f: RefCell<HashMap<i32, Vec<Vec<&Tar<'static, 'k, i32>>>>> = RefCell::new(HashMap::new());
+   |                                                        ^^^^
 
 error: aborting due to 22 previous errors
 

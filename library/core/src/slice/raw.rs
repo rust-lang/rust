@@ -103,7 +103,7 @@ pub unsafe fn from_raw_parts<'a, T>(data: *const T, len: usize) -> &'a [T] {
 ///
 /// Behavior is undefined if any of the following conditions are violated:
 ///
-/// * `data` must be [valid] for boths reads and writes for `len * mem::size_of::<T>()` many bytes,
+/// * `data` must be [valid] for both reads and writes for `len * mem::size_of::<T>()` many bytes,
 ///   and it must be properly aligned. This means in particular:
 ///
 ///     * The entire memory range of this slice must be contained within a single allocated object!

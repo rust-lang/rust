@@ -1,6 +1,6 @@
 use crate::astconv::{
     AstConv, CreateSubstsForGenericArgsCtxt, ExplicitLateBound, GenericArgCountMismatch,
-    GenericArgCountResult, PathSeg,
+    GenericArgCountResult, IsMethodCall, PathSeg,
 };
 use crate::check::callee::{self, DeferredCallResolution};
 use crate::check::method::{self, MethodCallee, SelfSource};
@@ -1219,18 +1219,25 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // a problem.
 
         let mut infer_args_for_err = FxHashSet::default();
+
         for &PathSeg(def_id, index) in &path_segs {
             let seg = &segments[index];
             let generics = tcx.generics_of(def_id);
+
             // Argument-position `impl Trait` is treated as a normal generic
             // parameter internally, but we don't allow users to specify the
             // parameter's value explicitly, so we have to do some error-
             // checking here.
             if let GenericArgCountResult {
-                correct: Err(GenericArgCountMismatch { reported: Some(ErrorReported), .. }),
+                correct: Err(GenericArgCountMismatch { reported: Some(_), .. }),
                 ..
             } = AstConv::check_generic_arg_count_for_call(
-                tcx, span, &generics, &seg, false, // `is_method_call`
+                tcx,
+                span,
+                def_id,
+                &generics,
+                seg,
+                IsMethodCall::No,
             ) {
                 infer_args_for_err.insert(index);
                 self.set_tainted_by_errors(); // See issue #53251.
