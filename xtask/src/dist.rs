@@ -63,8 +63,7 @@ fn dist_server() -> Result<()> {
         env::set_var("CC", "clang");
     }
 
-    let toolchain = toolchain(&target);
-    cmd!("cargo +{toolchain} build --manifest-path ./crates/rust-analyzer/Cargo.toml --bin rust-analyzer --target {target} --release").run()?;
+    cmd!("cargo build --manifest-path ./crates/rust-analyzer/Cargo.toml --bin rust-analyzer --target {target} --release").run()?;
 
     let suffix = exe_suffix(&target);
     let src =
@@ -115,13 +114,6 @@ fn exe_suffix(target: &str) -> String {
         ".exe".into()
     } else {
         "".into()
-    }
-}
-
-fn toolchain(target: &str) -> String {
-    match target {
-        "aarch64-apple-darwin" => "beta".to_string(),
-        _ => "stable".to_string(),
     }
 }
 
