@@ -1,0 +1,2 @@
+warning: `-Z mir-opt-level=2` (or any level > 1) enables function inlining, which is incompatible with `-Z instrument-coverage`. Inlining will be disabled.
+
