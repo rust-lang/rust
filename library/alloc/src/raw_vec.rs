@@ -3,8 +3,8 @@
 
 use core::alloc::LayoutError;
 use core::cmp;
-use core::intrinsics;
-use core::mem::{self, ManuallyDrop, MaybeUninit};
+use core::intrinsics::{self, min_align_of as align_of, size_of};
+use core::mem::{ManuallyDrop, MaybeUninit};
 use core::ops::Drop;
 use core::ptr::{self, NonNull, Unique};
 use core::slice;
@@ -171,7 +171,7 @@ impl<T, A: Allocator> RawVec<T, A> {
     }
 
     fn allocate_in(capacity: usize, init: AllocInit, alloc: A) -> Self {
-        if mem::size_of::<T>() == 0 {
+        if size_of::<T>() == 0 {
             Self::new_in(alloc)
         } else {
             // We avoid `unwrap_or_else` here because it bloats the amount of
@@ -228,7 +228,7 @@ impl<T, A: Allocator> RawVec<T, A> {
     /// This will always be `usize::MAX` if `T` is zero-sized.
     #[inline(always)]
     pub fn capacity(&self) -> usize {
-        if mem::size_of::<T>() == 0 { usize::MAX } else { self.cap }
+        if size_of::<T>() == 0 { usize::MAX } else { self.cap }
     }
 
     /// Returns a shared reference to the allocator backing this `RawVec`.
@@ -237,14 +237,14 @@ impl<T, A: Allocator> RawVec<T, A> {
     }
 
     fn current_memory(&self) -> Option<(NonNull<u8>, Layout)> {
-        if mem::size_of::<T>() == 0 || self.cap == 0 {
+        if size_of::<T>() == 0 || self.cap == 0 {
             None
         } else {
             // We have an allocated chunk of memory, so we can bypass runtime
             // checks to get our current layout.
             unsafe {
-                let align = mem::align_of::<T>();
-                let size = mem::size_of::<T>() * self.cap;
+                let align = align_of::<T>();
+                let size = size_of::<T>() * self.cap;
                 let layout = Layout::from_size_align_unchecked(size, align);
                 Some((self.ptr.cast().into(), layout))
             }
@@ -367,8 +367,8 @@ impl<T, A: Allocator> RawVec<T, A> {
     }
 
     fn capacity_from_bytes(excess: usize) -> usize {
-        debug_assert_ne!(mem::size_of::<T>(), 0);
-        excess / mem::size_of::<T>()
+        debug_assert_ne!(size_of::<T>(), 0);
+        excess / size_of::<T>()
     }
 
     fn set_ptr(&mut self, ptr: NonNull<[u8]>) {
@@ -387,7 +387,7 @@ impl<T, A: Allocator> RawVec<T, A> {
         // This is ensured by the calling contexts.
         debug_assert!(additional > 0);
 
-        if mem::size_of::<T>() == 0 {
+        if size_of::<T>() == 0 {
             // Since we return a capacity of `usize::MAX` when `elem_size` is
             // 0, getting to here necessarily means the `RawVec` is overfull.
             return Err(CapacityOverflow);
@@ -406,7 +406,7 @@ impl<T, A: Allocator> RawVec<T, A> {
         // - 4 if elements are moderate-sized (<= 1 KiB).
         // - 1 otherwise, to avoid wasting too much space for very short Vecs.
         // Note that `min_non_zero_cap` is computed statically.
-        let elem_size = mem::size_of::<T>();
+        let elem_size = size_of::<T>();
         let min_non_zero_cap = if elem_size == 1 {
             8
         } else if elem_size <= 1024 {
@@ -428,7 +428,7 @@ impl<T, A: Allocator> RawVec<T, A> {
     // `grow_amortized`, but this method is usually instantiated less often so
     // it's less critical.
     fn grow_exact(&mut self, len: usize, additional: usize) -> Result<(), TryReserveError> {
-        if mem::size_of::<T>() == 0 {
+        if size_of::<T>() == 0 {
             // Since we return a capacity of `usize::MAX` when the type size is
             // 0, getting to here necessarily means the `RawVec` is overfull.
             return Err(CapacityOverflow);
@@ -447,7 +447,7 @@ impl<T, A: Allocator> RawVec<T, A> {
         assert!(amount <= self.capacity(), "Tried to shrink to a larger capacity");
 
         let (ptr, layout) = if let Some(mem) = self.current_memory() { mem } else { return Ok(()) };
-        let new_size = amount * mem::size_of::<T>();
+        let new_size = amount * size_of::<T>();
 
         let ptr = unsafe {
             let new_layout = Layout::from_size_align_unchecked(new_size, layout.align());

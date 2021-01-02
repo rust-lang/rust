@@ -1,18 +1,10 @@
 use crate::cmp;
 use crate::fmt;
-use crate::mem;
+use crate::intrinsics::{
+    min_align_of as align_of, min_align_of_val as align_of_val, size_of, size_of_val,
+};
 use crate::num::NonZeroUsize;
 use crate::ptr::NonNull;
-
-// While this function is used in one place and its implementation
-// could be inlined, the previous attempts to do so made rustc
-// slower:
-//
-// * https://github.com/rust-lang/rust/pull/72189
-// * https://github.com/rust-lang/rust/pull/79827
-const fn size_align<T>() -> (usize, usize) {
-    (mem::size_of::<T>(), mem::align_of::<T>())
-}
 
 /// Layout of a block of memory.
 ///
@@ -121,7 +113,8 @@ impl Layout {
     #[rustc_const_stable(feature = "alloc_layout_const_new", since = "1.42.0")]
     #[inline]
     pub const fn new<T>() -> Self {
-        let (size, align) = size_align::<T>();
+        let size = size_of::<T>();
+        let align = align_of::<T>();
         // SAFETY: the align is guaranteed by Rust to be a power of two and
         // the size+align combo is guaranteed to fit in our address space. As a
         // result use the unchecked constructor here to avoid inserting code
@@ -135,7 +128,8 @@ impl Layout {
     #[stable(feature = "alloc_layout", since = "1.28.0")]
     #[inline]
     pub fn for_value<T: ?Sized>(t: &T) -> Self {
-        let (size, align) = (mem::size_of_val(t), mem::align_of_val(t));
+        let size = size_of_val(t);
+        let align = align_of_val(t);
         debug_assert!(Layout::from_size_align(size, align).is_ok());
         // SAFETY: see rationale in `new` for why this is using the unsafe variant
         unsafe { Layout::from_size_align_unchecked(size, align) }
@@ -170,7 +164,8 @@ impl Layout {
     #[unstable(feature = "layout_for_ptr", issue = "69835")]
     pub unsafe fn for_value_raw<T: ?Sized>(t: *const T) -> Self {
         // SAFETY: we pass along the prerequisites of these functions to the caller
-        let (size, align) = unsafe { (mem::size_of_val_raw(t), mem::align_of_val_raw(t)) };
+        let size = size_of_val(t);
+        let align = align_of_val(t);
         debug_assert!(Layout::from_size_align(size, align).is_ok());
         // SAFETY: see rationale in `new` for why this is using the unsafe variant
         unsafe { Layout::from_size_align_unchecked(size, align) }
@@ -393,7 +388,7 @@ impl Layout {
     #[inline]
     pub fn array<T>(n: usize) -> Result<Self, LayoutError> {
         let (layout, offset) = Layout::new::<T>().repeat(n)?;
-        debug_assert_eq!(offset, mem::size_of::<T>());
+        debug_assert_eq!(offset, size_of::<T>());
         Ok(layout.pad_to_align())
     }
 }

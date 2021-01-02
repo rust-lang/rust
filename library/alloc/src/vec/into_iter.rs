@@ -1,7 +1,7 @@
 use crate::alloc::{Allocator, Global};
 use crate::raw_vec::RawVec;
 use core::fmt;
-use core::intrinsics::arith_offset;
+use core::intrinsics::{arith_offset, size_of};
 use core::iter::{FusedIterator, InPlaceIterable, SourceIter, TrustedLen, TrustedRandomAccess};
 use core::marker::PhantomData;
 use core::mem::{self};
@@ -122,7 +122,7 @@ impl<T, A: Allocator> Iterator for IntoIter<T, A> {
     fn next(&mut self) -> Option<T> {
         if self.ptr as *const _ == self.end {
             None
-        } else if mem::size_of::<T>() == 0 {
+        } else if size_of::<T>() == 0 {
             // purposefully don't use 'ptr.offset' because for
             // vectors with 0-size elements this would return the
             // same pointer.
@@ -140,7 +140,7 @@ impl<T, A: Allocator> Iterator for IntoIter<T, A> {
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let exact = if mem::size_of::<T>() == 0 {
+        let exact = if size_of::<T>() == 0 {
             (self.end as usize).wrapping_sub(self.ptr as usize)
         } else {
             unsafe { self.end.offset_from(self.ptr) as usize }
@@ -166,7 +166,7 @@ impl<T, A: Allocator> Iterator for IntoIter<T, A> {
         // that `T: Copy` so reading elements from the buffer doesn't invalidate
         // them for `Drop`.
         unsafe {
-            if mem::size_of::<T>() == 0 { mem::zeroed() } else { ptr::read(self.ptr.add(i)) }
+            if size_of::<T>() == 0 { mem::zeroed() } else { ptr::read(self.ptr.add(i)) }
         }
     }
 }
@@ -177,7 +177,7 @@ impl<T, A: Allocator> DoubleEndedIterator for IntoIter<T, A> {
     fn next_back(&mut self) -> Option<T> {
         if self.end == self.ptr {
             None
-        } else if mem::size_of::<T>() == 0 {
+        } else if size_of::<T>() == 0 {
             // See above for why 'ptr.offset' isn't used
             self.end = unsafe { arith_offset(self.end as *const i8, -1) as *mut T };
 

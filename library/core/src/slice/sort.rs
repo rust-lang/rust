@@ -9,6 +9,7 @@
 // ignore-tidy-undocumented-unsafe
 
 use crate::cmp;
+use crate::intrinsics::size_of;
 use crate::mem::{self, MaybeUninit};
 use crate::ptr;
 
@@ -268,8 +269,8 @@ where
 
     // Returns the number of elements between pointers `l` (inclusive) and `r` (exclusive).
     fn width<T>(l: *mut T, r: *mut T) -> usize {
-        assert!(mem::size_of::<T>() > 0);
-        (r as usize - l as usize) / mem::size_of::<T>()
+        assert!(size_of::<T>() > 0);
+        (r as usize - l as usize) / size_of::<T>()
     }
 
     loop {
@@ -758,7 +759,7 @@ where
     F: FnMut(&T, &T) -> bool,
 {
     // Sorting has no meaningful behavior on zero-sized types.
-    if mem::size_of::<T>() == 0 {
+    if size_of::<T>() == 0 {
         return;
     }
 
@@ -843,7 +844,7 @@ where
         panic!("partition_at_index index {} greater than length of slice {}", index, v.len());
     }
 
-    if mem::size_of::<T>() == 0 {
+    if size_of::<T>() == 0 {
         // Sorting has no meaningful behavior on zero-sized types. Do nothing.
     } else if index == v.len() - 1 {
         // Find max element and place it in the last position of the array. We're free to use

@@ -10,9 +10,10 @@
 use core::cmp::{self, Ordering};
 use core::fmt;
 use core::hash::{Hash, Hasher};
+use core::intrinsics::size_of;
 use core::iter::{repeat_with, FromIterator};
 use core::marker::PhantomData;
-use core::mem::{self, ManuallyDrop};
+use core::mem::ManuallyDrop;
 use core::ops::{Index, IndexMut, Range, RangeBounds};
 use core::ptr::{self, NonNull};
 use core::slice;
@@ -58,7 +59,7 @@ mod tests;
 const INITIAL_CAPACITY: usize = 7; // 2^3 - 1
 const MINIMUM_CAPACITY: usize = 1; // 2 - 1
 
-const MAXIMUM_ZST_CAPACITY: usize = 1 << (core::mem::size_of::<usize>() * 8 - 1); // Largest possible power of two
+const MAXIMUM_ZST_CAPACITY: usize = 1 << (size_of::<usize>() * 8 - 1); // Largest possible power of two
 
 /// A double-ended queue implemented with a growable ring buffer.
 ///
@@ -157,7 +158,7 @@ impl<T> VecDeque<T> {
     /// Marginally more convenient
     #[inline]
     fn cap(&self) -> usize {
-        if mem::size_of::<T>() == 0 {
+        if size_of::<T>() == 0 {
             // For zero sized types, we are always at maximum capacity
             MAXIMUM_ZST_CAPACITY
         } else {
@@ -2795,7 +2796,7 @@ impl<T> From<Vec<T>> for VecDeque<T> {
             // because `usize::MAX` (the capacity returned by `capacity()` for ZST)
             // is not a power of two and thus it'll always try
             // to reserve more memory which will panic for ZST (rust-lang/rust#78532)
-            if (!buf.capacity().is_power_of_two() && mem::size_of::<T>() != 0)
+            if (!buf.capacity().is_power_of_two() && size_of::<T>() != 0)
                 || (buf.capacity() < (MINIMUM_CAPACITY + 1))
                 || (buf.capacity() == len)
             {

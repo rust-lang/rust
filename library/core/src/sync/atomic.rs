@@ -116,7 +116,7 @@ use self::Ordering::*;
 
 use crate::cell::UnsafeCell;
 use crate::fmt;
-use crate::intrinsics;
+use crate::intrinsics::{self, min_align_of as align_of};
 
 use crate::hint::spin_loop;
 
@@ -940,7 +940,6 @@ impl<T> AtomicPtr<T> {
     #[cfg(target_has_atomic_equal_alignment = "ptr")]
     #[unstable(feature = "atomic_from_mut", issue = "76314")]
     pub fn from_mut(v: &mut *mut T) -> &Self {
-        use crate::mem::align_of;
         let [] = [(); align_of::<AtomicPtr<()>>() - align_of::<*mut ()>()];
         // SAFETY:
         //  - the mutable reference guarantees unique ownership.
@@ -1452,7 +1451,6 @@ macro_rules! atomic_int {
             #[$cfg_align]
             #[unstable(feature = "atomic_from_mut", issue = "76314")]
             pub fn from_mut(v: &mut $int_type) -> &Self {
-                use crate::mem::align_of;
                 let [] = [(); align_of::<Self>() - align_of::<$int_type>()];
                 // SAFETY:
                 //  - the mutable reference guarantees unique ownership.

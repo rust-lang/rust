@@ -80,6 +80,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::fmt;
+use crate::intrinsics::size_of;
 use crate::marker;
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -539,7 +540,6 @@ impl<H> PartialEq for BuildHasherDefault<H> {
 impl<H> Eq for BuildHasherDefault<H> {}
 
 mod impls {
-    use crate::mem;
     use crate::slice;
 
     use super::*;
@@ -553,7 +553,7 @@ mod impls {
                 }
 
                 fn hash_slice<H: Hasher>(data: &[$ty], state: &mut H) {
-                    let newlen = data.len() * mem::size_of::<$ty>();
+                    let newlen = data.len() * size_of::<$ty>();
                     let ptr = data.as_ptr() as *const u8;
                     // SAFETY: `ptr` is valid and aligned, as this macro is only used
                     // for numeric primitives which have no padding. The new slice only
@@ -673,7 +673,7 @@ mod impls {
     #[stable(feature = "rust1", since = "1.0.0")]
     impl<T: ?Sized> Hash for *const T {
         fn hash<H: Hasher>(&self, state: &mut H) {
-            if mem::size_of::<Self>() == mem::size_of::<usize>() {
+            if size_of::<Self>() == size_of::<usize>() {
                 // Thin pointer
                 state.write_usize(*self as *const () as usize);
             } else {
@@ -693,7 +693,7 @@ mod impls {
     #[stable(feature = "rust1", since = "1.0.0")]
     impl<T: ?Sized> Hash for *mut T {
         fn hash<H: Hasher>(&self, state: &mut H) {
-            if mem::size_of::<Self>() == mem::size_of::<usize>() {
+            if size_of::<Self>() == size_of::<usize>() {
                 // Thin pointer
                 state.write_usize(*self as *const () as usize);
             } else {

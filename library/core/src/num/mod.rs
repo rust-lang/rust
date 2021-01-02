@@ -2,7 +2,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use crate::intrinsics;
+use crate::intrinsics::{self, size_of};
 use crate::mem;
 use crate::str::FromStr;
 

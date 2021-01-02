@@ -57,7 +57,7 @@ use core::cmp::{self, Ordering};
 use core::convert::TryFrom;
 use core::fmt;
 use core::hash::{Hash, Hasher};
-use core::intrinsics::{arith_offset, assume};
+use core::intrinsics::{arith_offset, assume, size_of};
 use core::iter::FromIterator;
 use core::marker::PhantomData;
 use core::mem::{self, ManuallyDrop, MaybeUninit};
@@ -2105,7 +2105,7 @@ impl<T, A: Allocator> IntoIterator for Vec<T, A> {
             let mut me = ManuallyDrop::new(self);
             let alloc = ptr::read(me.allocator());
             let begin = me.as_mut_ptr();
-            let end = if mem::size_of::<T>() == 0 {
+            let end = if size_of::<T>() == 0 {
                 arith_offset(begin as *const i8, me.len() as isize) as *const T
             } else {
                 begin.add(me.len()) as *const T

@@ -1,7 +1,6 @@
 use super::*;
 use crate::cmp::Ordering::{self, Equal, Greater, Less};
-use crate::intrinsics;
-use crate::mem;
+use crate::intrinsics::{self, size_of};
 use crate::slice::{self, SliceIndex};
 
 #[lang = "const_ptr"]
@@ -372,7 +371,7 @@ impl<T: ?Sized> *const T {
     where
         T: Sized,
     {
-        let pointee_size = mem::size_of::<T>();
+        let pointee_size = size_of::<T>();
         assert!(0 < pointee_size && pointee_size <= isize::MAX as usize);
         // SAFETY: the caller must uphold the safety contract for `ptr_offset_from`.
         unsafe { intrinsics::ptr_offset_from(self, origin) }

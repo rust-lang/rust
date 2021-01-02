@@ -2,8 +2,9 @@ use crate::cmp::Ordering;
 use crate::convert::From;
 use crate::fmt;
 use crate::hash;
+use crate::intrinsics::min_align_of as align_of;
 use crate::marker::Unsize;
-use crate::mem::{self, MaybeUninit};
+use crate::mem::MaybeUninit;
 use crate::ops::{CoerceUnsized, DispatchFromDyn};
 use crate::ptr::Unique;
 use crate::slice::{self, SliceIndex};
@@ -68,11 +69,11 @@ impl<T: Sized> NonNull<T> {
     #[rustc_const_stable(feature = "const_nonnull_dangling", since = "1.32.0")]
     #[inline]
     pub const fn dangling() -> Self {
-        // SAFETY: mem::align_of() returns a non-zero usize which is then casted
+        // SAFETY: align_of() returns a non-zero usize which is then casted
         // to a *mut T. Therefore, `ptr` is not null and the conditions for
         // calling new_unchecked() are respected.
         unsafe {
-            let ptr = mem::align_of::<T>() as *mut T;
+            let ptr = align_of::<T>() as *mut T;
             NonNull::new_unchecked(ptr)
         }
     }

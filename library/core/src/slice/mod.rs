@@ -9,6 +9,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::cmp::Ordering::{self, Equal, Greater, Less};
+use crate::intrinsics::{min_align_of as align_of, size_of};
 use crate::marker::Copy;
 use crate::mem;
 use crate::num::NonZeroUsize;
@@ -585,9 +586,9 @@ impl<T> [T] {
 
         let fast_unaligned = cfg!(any(target_arch = "x86", target_arch = "x86_64"));
 
-        if fast_unaligned && mem::size_of::<T>() == 1 {
+        if fast_unaligned && size_of::<T>() == 1 {
             // Use the llvm.bswap intrinsic to reverse u8s in a usize
-            let chunk = mem::size_of::<usize>();
+            let chunk = size_of::<usize>();
             while i + chunk - 1 < ln / 2 {
                 // SAFETY: There are several things to check here:
                 //
@@ -620,9 +621,9 @@ impl<T> [T] {
             }
         }
 
-        if fast_unaligned && mem::size_of::<T>() == 2 {
+        if fast_unaligned && size_of::<T>() == 2 {
             // Use rotate-by-16 to reverse u16s in a u32
-            let chunk = mem::size_of::<u32>() / 2;
+            let chunk = size_of::<u32>() / 2;
             while i + chunk - 1 < ln / 2 {
                 // SAFETY: An unaligned u32 can be read from `i` if `i + 1 < ln`
                 // (and obviously `i < ln`), because each element is 2 bytes and
@@ -3032,9 +3033,9 @@ impl<T> [T] {
             }
             a << k
         }
-        let gcd: usize = gcd(mem::size_of::<T>(), mem::size_of::<U>());
-        let ts: usize = mem::size_of::<U>() / gcd;
-        let us: usize = mem::size_of::<T>() / gcd;
+        let gcd: usize = gcd(size_of::<T>(), size_of::<U>());
+        let ts: usize = size_of::<U>() / gcd;
+        let us: usize = size_of::<T>() / gcd;
 
         // Armed with this knowledge, we can find how many `U`s we can fit!
         let us_len = self.len() / ts * us;
@@ -3076,7 +3077,7 @@ impl<T> [T] {
     #[stable(feature = "slice_align_to", since = "1.30.0")]
     pub unsafe fn align_to<U>(&self) -> (&[T], &[U], &[T]) {
         // Note that most of this function will be constant-evaluated,
-        if mem::size_of::<U>() == 0 || mem::size_of::<T>() == 0 {
+        if size_of::<U>() == 0 || size_of::<T>() == 0 {
             // handle ZSTs specially, which is – don't handle them at all.
             return (self, &[], &[]);
         }
@@ -3085,7 +3086,7 @@ impl<T> [T] {
         // ptr.align_offset.
         let ptr = self.as_ptr();
         // SAFETY: See the `align_to_mut` method for the detailed safety comment.
-        let offset = unsafe { crate::ptr::align_offset(ptr, mem::align_of::<U>()) };
+        let offset = unsafe { crate::ptr::align_offset(ptr, align_of::<U>()) };
         if offset > self.len() {
             (self, &[], &[])
         } else {
@@ -3136,7 +3137,7 @@ impl<T> [T] {
     #[stable(feature = "slice_align_to", since = "1.30.0")]
     pub unsafe fn align_to_mut<U>(&mut self) -> (&mut [T], &mut [U], &mut [T]) {
         // Note that most of this function will be constant-evaluated,
-        if mem::size_of::<U>() == 0 || mem::size_of::<T>() == 0 {
+        if size_of::<U>() == 0 || size_of::<T>() == 0 {
             // handle ZSTs specially, which is – don't handle them at all.
             return (self, &mut [], &mut []);
         }
@@ -3151,7 +3152,7 @@ impl<T> [T] {
         // valid pointer `ptr` (it comes from a reference to `self`) and with
         // a size that is a power of two (since it comes from the alignement for U),
         // satisfying its safety constraints.
-        let offset = unsafe { crate::ptr::align_offset(ptr, mem::align_of::<U>()) };
+        let offset = unsafe { crate::ptr::align_offset(ptr, align_of::<U>()) };
         if offset > self.len() {
             (self, &mut [], &mut [])
         } else {

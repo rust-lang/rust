@@ -7,7 +7,7 @@ mod macros;
 use crate::cmp;
 use crate::cmp::Ordering;
 use crate::fmt;
-use crate::intrinsics::{assume, exact_div, unchecked_sub};
+use crate::intrinsics::{assume, exact_div, size_of, unchecked_sub};
 use crate::iter::{FusedIterator, TrustedLen, TrustedRandomAccess};
 use crate::marker::{PhantomData, Send, Sized, Sync};
 use crate::mem;
@@ -39,7 +39,7 @@ impl<'a, T> IntoIterator for &'a mut [T] {
 // Macro helper functions
 #[inline(always)]
 fn size_from_ptr<T>(_: *const T) -> usize {
-    mem::size_of::<T>()
+    size_of::<T>()
 }
 
 /// Immutable slice iterator
@@ -91,7 +91,7 @@ impl<'a, T> Iter<'a, T> {
         unsafe {
             assume(!ptr.is_null());
 
-            let end = if mem::size_of::<T>() == 0 {
+            let end = if size_of::<T>() == 0 {
                 (ptr as *const u8).wrapping_add(slice.len()) as *const T
             } else {
                 ptr.add(slice.len())
@@ -225,7 +225,7 @@ impl<'a, T> IterMut<'a, T> {
         unsafe {
             assume(!ptr.is_null());
 
-            let end = if mem::size_of::<T>() == 0 {
+            let end = if size_of::<T>() == 0 {
                 (ptr as *mut u8).wrapping_add(slice.len()) as *mut T
             } else {
                 ptr.add(slice.len())

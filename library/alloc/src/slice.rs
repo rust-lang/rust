@@ -84,7 +84,8 @@
 
 use core::borrow::{Borrow, BorrowMut};
 use core::cmp::Ordering::{self, Less};
-use core::mem::{self, size_of};
+use core::intrinsics::size_of;
+use core::mem;
 use core::ptr;
 
 use crate::alloc::{Allocator, Global};
@@ -411,10 +412,10 @@ impl<T> [T] {
             }};
         }
 
-        let sz_u8 = mem::size_of::<(K, u8)>();
-        let sz_u16 = mem::size_of::<(K, u16)>();
-        let sz_u32 = mem::size_of::<(K, u32)>();
-        let sz_usize = mem::size_of::<(K, usize)>();
+        let sz_u8 = size_of::<(K, u8)>();
+        let sz_u16 = size_of::<(K, u16)>();
+        let sz_u32 = size_of::<(K, u32)>();
+        let sz_usize = size_of::<(K, usize)>();
 
         let len = self.len();
         if len < 2 {
@@ -1004,7 +1005,7 @@ where
     impl<T> Drop for MergeHole<T> {
         fn drop(&mut self) {
             // `T` is not a zero-sized type, so it's okay to divide by its size.
-            let len = (self.end as usize - self.start as usize) / mem::size_of::<T>();
+            let len = (self.end as usize - self.start as usize) / size_of::<T>();
             unsafe {
                 ptr::copy_nonoverlapping(self.start, self.dest, len);
             }

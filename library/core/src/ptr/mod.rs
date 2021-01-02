@@ -67,7 +67,7 @@
 use crate::cmp::Ordering;
 use crate::fmt;
 use crate::hash;
-use crate::intrinsics::{self, abort, is_aligned_and_not_null, is_nonoverlapping};
+use crate::intrinsics::{self, abort, is_aligned_and_not_null, is_nonoverlapping, size_of};
 use crate::mem::{self, MaybeUninit};
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -441,7 +441,7 @@ pub unsafe fn swap_nonoverlapping<T>(x: *mut T, y: *mut T, count: usize) {
 
     let x = x as *mut u8;
     let y = y as *mut u8;
-    let len = mem::size_of::<T>() * count;
+    let len = size_of::<T>() * count;
     // SAFETY: the caller must guarantee that `x` and `y` are
     // valid for writes and properly aligned.
     unsafe { swap_nonoverlapping_bytes(x, y, len) }
@@ -451,7 +451,7 @@ pub unsafe fn swap_nonoverlapping<T>(x: *mut T, y: *mut T, count: usize) {
 pub(crate) unsafe fn swap_nonoverlapping_one<T>(x: *mut T, y: *mut T) {
     // For types smaller than the block optimization below,
     // just swap directly to avoid pessimizing codegen.
-    if mem::size_of::<T>() < 32 {
+    if size_of::<T>() < 32 {
         // SAFETY: the caller must guarantee that `x` and `y` are valid
         // for writes, properly aligned, and non-overlapping.
         unsafe {
@@ -477,7 +477,7 @@ unsafe fn swap_nonoverlapping_bytes(x: *mut u8, y: *mut u8, len: usize) {
     struct Block(u64, u64, u64, u64);
     struct UnalignedBlock(u64, u64, u64, u64);
 
-    let block_size = mem::size_of::<Block>();
+    let block_size = size_of::<Block>();
 
     // Loop through x & y, copying them `Block` at a time
     // The optimizer should unroll the loop fully for most types
@@ -796,7 +796,7 @@ pub const unsafe fn read_unaligned<T>(src: *const T) -> T {
     // Also, since we just wrote a valid value into `tmp`, it is guaranteed
     // to be properly initialized.
     unsafe {
-        copy_nonoverlapping(src as *const u8, tmp.as_mut_ptr() as *mut u8, mem::size_of::<T>());
+        copy_nonoverlapping(src as *const u8, tmp.as_mut_ptr() as *mut u8, size_of::<T>());
         tmp.assume_init()
     }
 }
@@ -982,7 +982,7 @@ pub unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
     // to `dst` while `src` is owned by this function.
     unsafe {
         // `copy_nonoverlapping` takes care of debug_assert.
-        copy_nonoverlapping(&src as *const T as *const u8, dst as *mut u8, mem::size_of::<T>());
+        copy_nonoverlapping(&src as *const T as *const u8, dst as *mut u8, size_of::<T>());
     }
     mem::forget(src);
 }
@@ -1202,7 +1202,7 @@ pub(crate) unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usize {
         }
     }
 
-    let stride = mem::size_of::<T>();
+    let stride = size_of::<T>();
     // SAFETY: `a` is a power-of-two, therefore non-zero.
     let a_minus_one = unsafe { unchecked_sub(a, 1) };
     if stride == 1 {

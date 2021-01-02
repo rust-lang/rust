@@ -1,6 +1,7 @@
+use core::intrinsics::{min_align_of as align_of, size_of};
 use core::iter::{InPlaceIterable, SourceIter};
-use core::mem::{self, ManuallyDrop};
-use core::ptr::{self};
+use core::mem::ManuallyDrop;
+use core::ptr;
 
 use super::{AsIntoIter, InPlaceDrop, SpecFromIter, SpecFromIterNested, Vec};
 
@@ -31,11 +32,9 @@ where
         // a) no ZSTs as there would be no allocation to reuse and pointer arithmetic would panic
         // b) size match as required by Alloc contract
         // c) alignments match as required by Alloc contract
-        if mem::size_of::<T>() == 0
-            || mem::size_of::<T>()
-                != mem::size_of::<<<I as SourceIter>::Source as AsIntoIter>::Item>()
-            || mem::align_of::<T>()
-                != mem::align_of::<<<I as SourceIter>::Source as AsIntoIter>::Item>()
+        if size_of::<T>() == 0
+            || size_of::<T>() != size_of::<<<I as SourceIter>::Source as AsIntoIter>::Item>()
+            || align_of::<T>() != align_of::<<<I as SourceIter>::Source as AsIntoIter>::Item>()
         {
             // fallback to more generic implementations
             return SpecFromIterNested::from_iter(iterator);

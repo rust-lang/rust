@@ -1,7 +1,7 @@
 use crate::convert::From;
 use crate::fmt;
+use crate::intrinsics::min_align_of as align_of;
 use crate::marker::{PhantomData, Unsize};
-use crate::mem;
 use crate::ops::{CoerceUnsized, DispatchFromDyn};
 
 /// A wrapper around a raw non-null `*mut T` that indicates that the possessor
@@ -70,9 +70,9 @@ impl<T: Sized> Unique<T> {
     /// some other means.
     #[inline]
     pub const fn dangling() -> Self {
-        // SAFETY: mem::align_of() returns a valid, non-null pointer. The
+        // SAFETY: align_of() returns a valid, non-null pointer. The
         // conditions to call new_unchecked() are thus respected.
-        unsafe { Unique::new_unchecked(mem::align_of::<T>() as *mut T) }
+        unsafe { Unique::new_unchecked(align_of::<T>() as *mut T) }
     }
 }
 
