@@ -283,6 +283,7 @@ impl NonSnakeCase {
                             if sc_ident.name.can_be_raw() {
                                 ("rename the identifier or convert it to a snake case raw identifier", sc_ident.to_string())
                             } else {
+                                err.note(&format!("`{}` cannot be used as a raw identifier", sc));
                                 ("rename the identifier", String::new())
                             }
                         } else {
