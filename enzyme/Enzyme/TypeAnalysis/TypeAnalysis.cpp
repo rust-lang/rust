@@ -1130,8 +1130,15 @@ void TypeAnalyzer::visitPHINode(PHINode &phi) {
     PhiTypes &= vd1.Only(bo->getType()->isIntegerTy() ? -1 : 0);
   }
 
-  if (direction & DOWN)
+  if (direction & DOWN) {
+    if (phi.getType()->isIntOrIntVectorTy() &&
+        PhiTypes.Inner0() == BaseType::Anything) {
+      if (mustRemainInteger(&phi)) {
+        PhiTypes = TypeTree(BaseType::Integer).Only(-1);
+      }
+    }
     updateAnalysis(&phi, PhiTypes, &phi);
+  }
 }
 
 void TypeAnalyzer::visitTruncInst(TruncInst &I) {
@@ -1143,11 +1150,20 @@ void TypeAnalyzer::visitTruncInst(TruncInst &I) {
 
 void TypeAnalyzer::visitZExtInst(ZExtInst &I) {
   if (direction & DOWN) {
+    TypeTree Result;
     if (cast<IntegerType>(I.getOperand(0)->getType())->getBitWidth() == 1) {
-      updateAnalysis(&I, TypeTree(BaseType::Anything).Only(-1), &I);
+      Result = TypeTree(BaseType::Anything).Only(-1);
     } else {
-      updateAnalysis(&I, getAnalysis(I.getOperand(0)), &I);
+      Result = getAnalysis(I.getOperand(0));
     }
+
+    if (I.getType()->isIntOrIntVectorTy() &&
+        Result.Inner0() == BaseType::Anything) {
+      if (mustRemainInteger(&I)) {
+        Result = TypeTree(BaseType::Integer).Only(-1);
+      }
+    }
+    updateAnalysis(&I, Result, &I);
   }
   if (direction & UP) {
     updateAnalysis(I.getOperand(0), getAnalysis(&I), &I);
@@ -1607,17 +1623,35 @@ void TypeAnalyzer::visitBinaryOperator(BinaryOperator &I) {
                I.getOpcode() == BinaryOperator::Sub) {
       for (int i = 0; i < 2; ++i) {
         if (auto CI = dyn_cast<ConstantInt>(I.getOperand(i))) {
-          if (CI->isNegative() || CI->isZero() || CI->isOne()) {
-            // If add/sub with zero or a negative number, the result is equal to
-            // the type of the other operand (and we don't need to assume this
-            // was an "anything")
+          if (CI->isNegative() || CI->isZero() ||
+              CI->getLimitedValue() <= 4096) {
+            // If add/sub with zero, small, or negative number, the result is
+            // equal to the type of the other operand (and we don't need to
+            // assume this was an "anything")
             Result = getAnalysis(I.getOperand(1 - i)).Data0();
           }
         }
       }
+    } else if (I.getOpcode() == BinaryOperator::Mul) {
+      for (int i = 0; i < 2; ++i) {
+        // If we mul a constant against an integer, the result remains an
+        // integer
+        if (isa<ConstantInt>(I.getOperand(i)) &&
+            getAnalysis(I.getOperand(1 - i)).Inner0() == BaseType::Integer) {
+          Result = TypeTree(BaseType::Integer);
+        }
+      }
     }
-    if (direction & DOWN)
+
+    if (direction & DOWN) {
+      if (I.getType()->isIntOrIntVectorTy() &&
+          Result[{}] == BaseType::Anything) {
+        if (mustRemainInteger(&I)) {
+          Result = TypeTree(BaseType::Integer);
+        }
+      }
       updateAnalysis(&I, Result.Only(-1), &I);
+    }
   }
 }
 
@@ -2887,15 +2921,100 @@ std::set<int64_t> FnTypeInfo::knownIntegralValues(
   return intseen[val];
 }
 
-void TypeAnalyzer::visitIPOCall(CallInst &call, Function &fn) {
-  assert(fntypeinfo.KnownValues.size() ==
-         fntypeinfo.Function->getFunctionType()->getNumParams());
+/// Helper function that calculates whether a given value must only be
+/// an integer and cannot be cast/stored to be used as a ptr/integer
+bool TypeAnalyzer::mustRemainInteger(Value *val, bool *returned) {
+  std::map<Value *, std::pair<bool, bool>> &seen = mriseen;
+  const DataLayout &DL = fntypeinfo.Function->getParent()->getDataLayout();
+  if (seen.find(val) != seen.end()) {
+    if (returned)
+      *returned |= seen[val].second;
+    return seen[val].first;
+  }
+  seen[val] = std::make_pair(true, false);
+  for (auto u : val->users()) {
+    if (auto SI = dyn_cast<StoreInst>(u)) {
+      if (parseTBAA(*SI, DL).Inner0().isIntegral())
+        continue;
+      seen[val].first = false;
+      continue;
+    }
+    if (isa<CastInst>(u)) {
+      if (!u->getType()->isIntOrIntVectorTy()) {
+        seen[val].first = false;
+        continue;
+      } else if (!mustRemainInteger(u, returned)) {
+        seen[val].first = false;
+        seen[val].second |= seen[u].second;
+        continue;
+      } else
+        continue;
+    }
+    if (isa<BinaryOperator>(u) || isa<IntrinsicInst>(u) || isa<PHINode>(u) ||
+        isa<UDivOperator>(u) || isa<SDivOperator>(u) || isa<LShrOperator>(u) ||
+        isa<AShrOperator>(u) || isa<AddOperator>(u) || isa<MulOperator>(u) ||
+        isa<ShlOperator>(u)) {
+      if (!mustRemainInteger(u, returned)) {
+        seen[val].first = false;
+        seen[val].second |= seen[u].second;
+      }
+      continue;
+    }
+    if (auto gep = dyn_cast<GetElementPtrInst>(u)) {
+      if (gep->isInBounds() && gep->getPointerOperand() != val) {
+        continue;
+      }
+    }
+    if (returned && isa<ReturnInst>(u)) {
+      *returned = true;
+      seen[val].second = true;
+      continue;
+    }
+    if (auto CI = dyn_cast<CallInst>(u)) {
+      if (auto F = CI->getCalledFunction()) {
+        if (!F->empty()) {
+          int argnum = 0;
+          bool subreturned = false;
+          for (auto &arg : F->args()) {
+            if (CI->getArgOperand(argnum) == val &&
+                !mustRemainInteger(&arg, &subreturned)) {
+              seen[val].first = false;
+              seen[val].second |= seen[&arg].second;
+              continue;
+            }
+            ++argnum;
+          }
+          if (subreturned && !mustRemainInteger(CI, returned)) {
+            seen[val].first = false;
+            seen[val].second |= seen[CI].second;
+            continue;
+          }
+          continue;
+        }
+      }
+    }
+    if (isa<CmpInst>(u))
+      continue;
+    seen[val].first = false;
+    seen[val].second = true;
+  }
+  if (returned && seen[val].second)
+    *returned = true;
+  return seen[val].first;
+}
 
+FnTypeInfo TypeAnalyzer::getCallInfo(CallInst &call, Function &fn) {
   FnTypeInfo typeInfo(&fn);
 
   int argnum = 0;
   for (auto &arg : fn.args()) {
     auto dt = getAnalysis(call.getArgOperand(argnum));
+    if (arg.getType()->isIntOrIntVectorTy() &&
+        dt.Inner0() == BaseType::Anything) {
+      if (mustRemainInteger(&arg)) {
+        dt = TypeTree(BaseType::Integer).Only(-1);
+      }
+    }
     typeInfo.Arguments.insert(std::pair<Argument *, TypeTree>(&arg, dt));
     typeInfo.KnownValues.insert(std::pair<Argument *, std::set<int64_t>>(
         &arg, fntypeinfo.knownIntegralValues(call.getArgOperand(argnum), DT,
@@ -2904,6 +3023,14 @@ void TypeAnalyzer::visitIPOCall(CallInst &call, Function &fn) {
   }
 
   typeInfo.Return = getAnalysis(&call);
+  return typeInfo;
+}
+
+void TypeAnalyzer::visitIPOCall(CallInst &call, Function &fn) {
+  assert(fntypeinfo.KnownValues.size() ==
+         fntypeinfo.Function->getFunctionType()->getNumParams());
+
+  FnTypeInfo typeInfo = getCallInfo(call, fn);
 
   if (PrintType)
     llvm::errs() << " starting IPO of " << call << "\n";
@@ -2919,6 +3046,13 @@ void TypeAnalyzer::visitIPOCall(CallInst &call, Function &fn) {
 
   if (direction & DOWN) {
     TypeTree vd = interprocedural.getReturnAnalysis(typeInfo);
+    if (call.getType()->isIntOrIntVectorTy() &&
+        vd.Inner0() == BaseType::Anything) {
+      bool returned = false;
+      if (mustRemainInteger(&call, &returned) && !returned) {
+        vd = TypeTree(BaseType::Integer).Only(-1);
+      }
+    }
     updateAnalysis(&call, vd, &call);
   }
 }
@@ -3136,6 +3270,12 @@ FnTypeInfo TypeResults::getAnalyzedTypeInfo() {
   res.Return = getReturnAnalysis();
   res.KnownValues = info.KnownValues;
   return res;
+}
+
+FnTypeInfo TypeResults::getCallInfo(CallInst &CI, Function &fn) {
+  assert(analysis.analyzedFunctions.find(info) !=
+         analysis.analyzedFunctions.end());
+  return analysis.analyzedFunctions.find(info)->second.getCallInfo(CI, fn);
 }
 
 TypeTree TypeResults::query(Value *val) {

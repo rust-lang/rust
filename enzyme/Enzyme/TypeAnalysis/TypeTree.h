@@ -336,6 +336,9 @@ public:
     TypeTree Result;
 
     for (const auto &pair : mapping) {
+      if (pair.first.size() == 0) {
+        llvm::errs() << str() << "\n";
+      }
       assert(pair.first.size() != 0);
 
       if (pair.first[0] == 0 || pair.first[0] == -1) {

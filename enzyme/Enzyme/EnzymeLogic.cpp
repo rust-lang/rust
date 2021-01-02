@@ -2001,8 +2001,9 @@ Function *CreatePrimalAndGradient(
         if (recursiveUse)
           break;
       }
-      if (recursiveUse)
+      if (recursiveUse) {
         pair.second.clear();
+      }
     }
   }
 

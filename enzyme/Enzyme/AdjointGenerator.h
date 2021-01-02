@@ -578,6 +578,7 @@ public:
         auto trunced = Builder2.CreateZExt(dif, op0->getType());
         addToDiffe(orig_op0, trunced, Builder2, TR.addingType(size, orig_op0));
       } else {
+        TR.dump();
         llvm::errs() << *I.getParent()->getParent() << "\n"
                      << *I.getParent() << "\n";
         llvm::errs() << "cannot handle above cast " << I << "\n";
@@ -1004,6 +1005,14 @@ public:
     default:
     def:;
       llvm::errs() << *gutils->oldFunc << "\n";
+      for (auto &arg : gutils->oldFunc->args()) {
+        llvm::errs() << " constantarg[" << arg
+                     << "] = " << gutils->internal_isConstantValue[&arg]
+                     << " type: " << TR.query(&arg).str() << " - vals: {";
+        for (auto v : TR.knownIntegralValues(&arg))
+          llvm::errs() << v << ",";
+        llvm::errs() << "}\n";
+      }
       for (auto &pair : gutils->internal_isConstantInstruction) {
         llvm::errs()
             << " constantinst[" << *pair.first << "] = " << pair.second
@@ -2037,6 +2046,7 @@ public:
     CallInst *augmentcall = nullptr;
     // Value *cachereplace = nullptr;
 
+    // TODO consider reduction of int 0 args
     FnTypeInfo nextTypeInfo(called);
 
     if (called) {
@@ -3276,21 +3286,9 @@ public:
     Value *cachereplace = nullptr;
 
     FnTypeInfo nextTypeInfo(called);
-    int argnum = 0;
 
     if (called) {
-      std::map<Value *, std::set<int64_t>> intseen;
-
-      for (auto &arg : called->args()) {
-        nextTypeInfo.Arguments.insert(std::pair<Argument *, TypeTree>(
-            &arg, TR.query(orig->getArgOperand(argnum))));
-        nextTypeInfo.KnownValues.insert(
-            std::pair<Argument *, std::set<int64_t>>(
-                &arg, TR.knownIntegralValues(orig->getArgOperand(argnum))));
-
-        ++argnum;
-      }
-      nextTypeInfo.Return = TR.query(orig);
+      nextTypeInfo = TR.getCallInfo(*orig, *called);
     }
 
     // llvm::Optional<std::map<std::pair<Instruction*, std::string>, unsigned>>

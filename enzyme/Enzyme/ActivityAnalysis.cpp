@@ -726,6 +726,22 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
           }
         }
       }
+      if (auto inst = dyn_cast<Instruction>(Val)) {
+        if (!inst->mayReadFromMemory() && !isa<AllocaInst>(Val)) {
+          if (directions == UP && !isa<PHINode>(inst)) {
+            if (isInstructionInactiveFromOrigin(TR, inst)) {
+              ConstantValues.insert(Val);
+              return true;
+            }
+          } else {
+            if (UpHypothesis->isInstructionInactiveFromOrigin(TR, inst)) {
+              ConstantValues.insert(Val);
+              insertConstantsFrom(*UpHypothesis);
+              return true;
+            }
+          }
+        }
+      }
     }
 
     // If not capable of looking at both users and uses, all the ways a pointer
@@ -1273,6 +1289,13 @@ bool ActivityAnalyzer::isInstructionInactiveFromOrigin(TypeResults &TR,
       return true;
     }
     return false;
+  } else if (isa<SIToFPInst>(inst) || isa<UIToFPInst>(inst) ||
+             isa<FPToSIInst>(inst) || isa<FPToUIInst>(inst)) {
+
+    if (printconst)
+      llvm::errs() << "constant(" << (int)directions << ") up-fpcst:" << *inst
+                   << "\n";
+    return true;
   } else {
     bool seenuse = false;
     //! TODO does not consider reading from global memory that is active and not
@@ -1354,6 +1377,14 @@ bool ActivityAnalyzer::isValueInactiveFromUsers(TypeResults &TR,
       if (printconst)
         llvm::errs() << "found constant(" << (int)directions
                      << ")  allocainst use:" << *val << " user " << *a << "\n";
+      continue;
+    }
+
+    if (isa<SIToFPInst>(a) || isa<UIToFPInst>(a) || isa<FPToSIInst>(a) ||
+        isa<FPToUIInst>(a)) {
+      if (printconst)
+        llvm::errs() << "found constant(" << (int)directions
+                     << ")  si-fp use:" << *val << " user " << *a << "\n";
       continue;
     }
 

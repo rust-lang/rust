@@ -123,6 +123,8 @@ public:
 
   /// The set of values val will take on during this program
   std::set<int64_t> knownIntegralValues(llvm::Value *val) const;
+
+  FnTypeInfo getCallInfo(llvm::CallInst &CI, llvm::Function &fn);
 };
 
 /// Helper class that computes the fixed-point type results of a given function
@@ -138,6 +140,9 @@ private:
 
   /// Map of Value to known integer constants that it will take on
   std::map<llvm::Value *, std::set<int64_t>> intseen;
+
+  std::map<llvm::Value *, std::pair<bool, bool>> mriseen;
+  bool mustRemainInteger(llvm::Value *val, bool *returned = nullptr);
 
 public:
   /// Calling context
@@ -164,6 +169,8 @@ public:
   std::map<llvm::Value *, TypeTree> analysis;
 
   llvm::DominatorTree DT;
+
+  FnTypeInfo getCallInfo(llvm::CallInst &CI, llvm::Function &fn);
 
   TypeAnalyzer(const FnTypeInfo &fn, TypeAnalysis &TA,
                uint8_t direction = BOTH);

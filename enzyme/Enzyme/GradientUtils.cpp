@@ -1374,7 +1374,8 @@ Value *GradientUtils::invertPointerM(Value *oval, IRBuilder<> &BuilderM) {
     val1 = invertPointerM(arg->getOperand(1), bb);
 
     auto li = bb.CreateBinOp(arg->getOpcode(), val0, val1, arg->getName());
-    cast<BinaryOperator>(li)->copyIRFlags(arg);
+    if (auto BI = dyn_cast<BinaryOperator>(li))
+      BI->copyIRFlags(arg);
     invertedPointers[arg] = li;
     return lookupM(invertedPointers[arg], BuilderM);
   } else if (auto arg = dyn_cast<GetElementPtrInst>(oval)) {

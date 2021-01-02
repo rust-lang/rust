@@ -48,5 +48,8 @@ static RegisterStandardPasses
     clangtoolLoader_Ox(PassManagerBuilder::EP_VectorizerStart, loadPass);
 static RegisterStandardPasses
     clangtoolLoader_O0(PassManagerBuilder::EP_EnabledOnOptLevel0, loadPass);
+#if LLVM_VERSION_MAJOR >= 9
 static RegisterStandardPasses
-    clangtoolLoader_LTO(PassManagerBuilder::EP_FullLinkTimeOptimizationEarly, loadPass);
+    clangtoolLoader_LTO(PassManagerBuilder::EP_FullLinkTimeOptimizationEarly,
+                        loadPass);
+#endif
