@@ -4,7 +4,7 @@ pub enum Enum {
 }
 
 pub fn foo(x: i32) -> Enum {
-    Enum::V1 { x } //~ ERROR field does not exist
+    Enum::V1 { x } //~ ERROR `Enum::V1` has no field named `x`
 }
 
 fn main() {}

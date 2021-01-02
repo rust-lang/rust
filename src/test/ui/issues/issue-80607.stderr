@@ -2,12 +2,12 @@ error[E0559]: variant `Enum::V1` has no field named `x`
   --> $DIR/issue-80607.rs:7:16
    |
 LL |     V1(i32),
-   |     -- `Enum` defined here
+   |     -- `Enum::V1` defined here
 ...
 LL |     Enum::V1 { x }
    |     --------   ^ field does not exist
    |     |
-   |     `Enum` is a tuple variant, use the appropriate syntax: `Enum(/* fields */)`
+   |     `Enum::V1` is a tuple variant, use the appropriate syntax: `Enum::V1(/* fields */)`
 
 error: aborting due to previous error
 
