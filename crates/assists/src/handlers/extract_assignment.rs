@@ -40,25 +40,52 @@ use crate::{
 pub(crate) fn extract_assigment(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let name = ctx.find_node_at_offset::<ast::NameRef>()?.as_name();
 
-    let if_statement = ctx.find_node_at_offset::<ast::IfExpr>()?;
+    let (old_stmt, new_stmt) = if let Some(if_expr) = ctx.find_node_at_offset::<ast::IfExpr>() {
+        (
+            ast::Expr::cast(if_expr.syntax().to_owned())?,
+            exprify_if(&if_expr, &name)?.indent(if_expr.indent_level()),
+        )
+    } else if let Some(match_expr) = ctx.find_node_at_offset::<ast::MatchExpr>() {
+        (ast::Expr::cast(match_expr.syntax().to_owned())?, exprify_match(&match_expr, &name)?)
+    } else {
+        return None;
+    };
 
-    let new_stmt = exprify_if(&if_statement, &name)?.indent(if_statement.indent_level());
     let expr_stmt = make::expr_stmt(new_stmt);
 
     acc.add(
         AssistId("extract_assignment", AssistKind::RefactorExtract),
         "Extract assignment",
-        if_statement.syntax().text_range(),
+        old_stmt.syntax().text_range(),
         move |edit| {
-            edit.replace(if_statement.syntax().text_range(), format!("{} = {};", name, expr_stmt));
+            edit.replace(old_stmt.syntax().text_range(), format!("{} = {};", name, expr_stmt));
         },
     )
+}
+
+fn exprify_match(match_expr: &ast::MatchExpr, name: &hir::Name) -> Option<ast::Expr> {
+    let new_arm_list = match_expr
+        .match_arm_list()?
+        .arms()
+        .map(|arm| {
+            if let ast::Expr::BlockExpr(block) = arm.expr()? {
+                let new_block = exprify_block(&block, name)?.indent(block.indent_level());
+                Some(arm.replace_descendant(block, new_block))
+            } else {
+                None
+            }
+        })
+        .collect::<Option<Vec<_>>>()?;
+    let new_arm_list = match_expr
+        .match_arm_list()?
+        .replace_descendants(match_expr.match_arm_list()?.arms().zip(new_arm_list));
+    Some(make::expr_match(match_expr.expr()?, new_arm_list))
 }
 
 fn exprify_if(statement: &ast::IfExpr, name: &hir::Name) -> Option<ast::Expr> {
     let then_branch = exprify_block(&statement.then_branch()?, name)?;
     let else_branch = match statement.else_branch()? {
-        ast::ElseBranch::Block(block) => ast::ElseBranch::Block(exprify_block(&block, name)?),
+        ast::ElseBranch::Block(ref block) => ast::ElseBranch::Block(exprify_block(block, name)?),
         ast::ElseBranch::IfExpr(expr) => {
             mark::hit!(test_extract_assigment_chained_if);
             ast::ElseBranch::IfExpr(ast::IfExpr::cast(
@@ -97,7 +124,7 @@ mod tests {
     use crate::tests::{check_assist, check_assist_not_applicable};
 
     #[test]
-    fn test_extract_assignment() {
+    fn test_extract_assignment_if() {
         check_assist(
             extract_assigment,
             r#"
@@ -118,6 +145,45 @@ fn foo() {
         2
     } else {
         3
+    };
+}"#,
+        );
+    }
+
+    #[test]
+    fn test_extract_assignment_match() {
+        check_assist(
+            extract_assigment,
+            r#"
+fn foo() {
+    let mut a = 1;
+
+    match 1 {
+        1 => {
+            <|>a = 2;
+        },
+        2 => {
+            a = 3;
+        },
+        3 => {
+            a = 4;
+        }
+    }
+}"#,
+            r#"
+fn foo() {
+    let mut a = 1;
+
+    a = match 1 {
+        1 => {
+            2
+        },
+        2 => {
+            3
+        },
+        3 => {
+            4
+        }
     };
 }"#,
         );
@@ -222,7 +288,7 @@ fn foo() {
     }
 
     #[test]
-    fn extract_assignment_missing_assigment_not_applicable() {
+    fn extract_assignment_if_missing_assigment_not_applicable() {
         check_assist_not_applicable(
             extract_assigment,
             r#"
@@ -232,6 +298,27 @@ fn foo() {
     if true {
         <|>a = 2;
     } else {}
+}"#,
+        )
+    }
+
+    #[test]
+    fn extract_assignment_match_missing_assigment_not_applicable() {
+        check_assist_not_applicable(
+            extract_assigment,
+            r#"
+fn foo() {
+    let mut a = 1;
+
+    match 1 {
+        1 => {
+            <|>a = 2;
+        },
+        2 => {
+            a = 3;
+        },
+        3 => {},
+    }
 }"#,
         )
     }
