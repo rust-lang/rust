@@ -4,6 +4,7 @@
 //! this moment, this is horribly incomplete and handles only `$crate`.
 use std::sync::Arc;
 
+use arena::{Arena, Idx};
 use base_db::CrateId;
 use either::Either;
 use mbe::Origin;
@@ -46,7 +47,7 @@ impl Hygiene {
         let frames = self.frames.as_ref()?;
 
         let mut token = path.syntax().first_token()?;
-        let mut current = frames.0.first();
+        let mut current = frames.first();
 
         while let Some((frame, data)) =
             current.and_then(|it| Some((it, it.expansion.as_ref()?.map_token_up(&token)?)))
@@ -55,18 +56,15 @@ impl Hygiene {
             if origin == Origin::Def {
                 return if frame.local_inner { frame.krate } else { None };
             }
-            current = frames.get(frame.call_site?);
+            current = Some(&frames.0[frame.call_site?]);
             token = mapped.value;
         }
         None
     }
 }
 
-#[derive(Clone, Debug, Copy)]
-struct HygieneFrameId(usize);
-
-#[derive(Clone, Debug, Default)]
-struct HygieneFrames(Vec<HygieneFrame>);
+#[derive(Default, Debug)]
+struct HygieneFrames(Arena<HygieneFrame>);
 
 #[derive(Clone, Debug)]
 struct HygieneFrame {
@@ -76,8 +74,8 @@ struct HygieneFrame {
     local_inner: bool,
     krate: Option<CrateId>,
 
-    call_site: Option<HygieneFrameId>,
-    def_site: Option<HygieneFrameId>,
+    call_site: Option<Idx<HygieneFrame>>,
+    def_site: Option<Idx<HygieneFrame>>,
 }
 
 impl HygieneFrames {
@@ -87,7 +85,7 @@ impl HygieneFrames {
         frames
     }
 
-    fn add(&mut self, db: &dyn AstDatabase, file_id: HirFileId) -> Option<HygieneFrameId> {
+    fn add(&mut self, db: &dyn AstDatabase, file_id: HirFileId) -> Option<Idx<HygieneFrame>> {
         let (krate, local_inner) = match file_id.0 {
             HirFileIdRepr::FileId(_) => (None, false),
             HirFileIdRepr::MacroFile(macro_file) => match macro_file.macro_call_id {
@@ -108,24 +106,20 @@ impl HygieneFrames {
         let expansion = file_id.expansion_info(db);
         let expansion = match expansion {
             None => {
-                let idx = self.0.len();
-                self.0.push(HygieneFrame {
+                return Some(self.0.alloc(HygieneFrame {
                     expansion: None,
                     local_inner,
                     krate,
                     call_site: None,
                     def_site: None,
-                });
-                return Some(HygieneFrameId(idx));
+                }));
             }
             Some(it) => it,
         };
 
         let def_site = expansion.def.clone();
         let call_site = expansion.arg.file_id;
-
-        let idx = self.0.len();
-        self.0.push(HygieneFrame {
+        let idx = self.0.alloc(HygieneFrame {
             expansion: Some(expansion),
             local_inner,
             krate,
@@ -136,16 +130,16 @@ impl HygieneFrames {
         self.0[idx].call_site = self.add(db, call_site);
         self.0[idx].def_site = def_site.and_then(|it| self.add(db, it.file_id));
 
-        Some(HygieneFrameId(idx))
+        Some(idx)
     }
 
-    fn get(&self, id: HygieneFrameId) -> Option<&HygieneFrame> {
-        self.0.get(id.0)
+    fn first(&self) -> Option<&HygieneFrame> {
+        self.0.iter().next().map(|it| it.1)
     }
 
     fn root_crate(&self, name_ref: &ast::NameRef) -> Option<CrateId> {
         let mut token = name_ref.syntax().first_token()?;
-        let first = self.0.first()?;
+        let first = self.first()?;
         let mut result = first.krate;
         let mut current = Some(first);
 
@@ -164,7 +158,7 @@ impl HygieneFrames {
                 Some(it) => it,
             };
 
-            current = self.get(site);
+            current = Some(&self.0[site]);
             token = mapped.value;
         }
 
