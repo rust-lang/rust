@@ -568,7 +568,7 @@ dependencies = [
 
 [[package]]
 name = "clippy"
-version = "0.0.212"
+version = "0.1.51"
 dependencies = [
  "cargo_metadata 0.12.0",
  "clippy-mini-macro-test",
@@ -589,7 +589,7 @@ version = "0.2.0"
 
 [[package]]
 name = "clippy_lints"
-version = "0.0.212"
+version = "0.1.51"
 dependencies = [
  "cargo_metadata 0.12.0",
  "if_chain",
