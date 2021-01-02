@@ -531,6 +531,29 @@ fn foo() -> i32 { 42i32 }
 }
 
 #[test]
+fn doctest_inline_function() {
+    check_doc_test(
+        "inline_function",
+        r#####"
+fn add(a: u32, b: u32) -> u32 { a + b }
+fn main() {
+    let x = add<|>(1, 2);
+}
+"#####,
+        r#####"
+fn add(a: u32, b: u32) -> u32 { a + b }
+fn main() {
+    let x = {
+        let a = 1;
+        let b = 2;
+        a + b
+    };
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_inline_local_variable() {
     check_doc_test(
         "inline_local_variable",
