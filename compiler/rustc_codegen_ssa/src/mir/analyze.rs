@@ -104,7 +104,7 @@ impl<Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'tcx, Bx> {
     ) {
         let cx = self.fx.cx;
 
-        if let &[ref proj_base @ .., elem] = place_ref.projection {
+        if let Some((place_base, elem)) = place_ref.last_projection() {
             let mut base_context = if context.is_mutating_use() {
                 PlaceContext::MutatingUse(MutatingUseContext::Projection)
             } else {
@@ -119,8 +119,7 @@ impl<Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'tcx, Bx> {
                 )
             );
             if is_consume {
-                let base_ty =
-                    mir::Place::ty_from(place_ref.local, proj_base, self.fx.mir, cx.tcx());
+                let base_ty = mir::PlaceRef::ty(&place_base, self.fx.mir, cx.tcx());
                 let base_ty = self.fx.monomorphize(base_ty);
 
                 // ZSTs don't require any actual memory access.
@@ -175,11 +174,7 @@ impl<Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'tcx, Bx> {
                 base_context = context;
             }
 
-            self.process_place(
-                &mir::PlaceRef { local: place_ref.local, projection: proj_base },
-                base_context,
-                location,
-            );
+            self.process_place(&place_base, base_context, location);
             // HACK(eddyb) this emulates the old `visit_projection_elem`, this
             // entire `visit_place`-like `process_place` method should be rewritten,
             // now that we have moved to the "slice of projections" representation.

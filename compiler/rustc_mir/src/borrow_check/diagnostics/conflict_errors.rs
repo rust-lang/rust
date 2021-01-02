@@ -293,9 +293,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 );
             }
 
-            let ty =
-                Place::ty_from(used_place.local, used_place.projection, self.body, self.infcx.tcx)
-                    .ty;
+            let ty = PlaceRef::ty(&used_place, self.body, self.infcx.tcx).ty;
             let needs_note = match ty.kind() {
                 ty::Closure(id, _) => {
                     let tables = self.infcx.tcx.typeck(id.expect_local());
@@ -732,8 +730,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     ) -> (String, String, String, String) {
         // Define a small closure that we can use to check if the type of a place
         // is a union.
-        let union_ty = |place_base, place_projection| {
-            let ty = Place::ty_from(place_base, place_projection, self.body, self.infcx.tcx).ty;
+        let union_ty = |place_base| {
+            let ty = PlaceRef::ty(&place_base, self.body, self.infcx.tcx).ty;
             ty.ty_adt_def().filter(|adt| adt.is_union()).map(|_| ty)
         };
 
@@ -751,15 +749,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 // field access to a union. If we find that, then we will keep the place of the
                 // union being accessed and the field that was being accessed so we can check the
                 // second borrowed place for the same union and a access to a different field.
-                let Place { local, projection } = first_borrowed_place;
-
-                let mut cursor = projection.as_ref();
-                while let [proj_base @ .., elem] = cursor {
-                    cursor = proj_base;
-
+                for (place_base, elem) in first_borrowed_place.iter_projections().rev() {
                     match elem {
-                        ProjectionElem::Field(field, _) if union_ty(local, proj_base).is_some() => {
-                            return Some((PlaceRef { local, projection: proj_base }, field));
+                        ProjectionElem::Field(field, _) if union_ty(place_base).is_some() => {
+                            return Some((place_base, field));
                         }
                         _ => {}
                     }
@@ -769,23 +762,12 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             .and_then(|(target_base, target_field)| {
                 // With the place of a union and a field access into it, we traverse the second
                 // borrowed place and look for a access to a different field of the same union.
-                let Place { local, ref projection } = second_borrowed_place;
-
-                let mut cursor = &projection[..];
-                while let [proj_base @ .., elem] = cursor {
-                    cursor = proj_base;
-
+                for (place_base, elem) in second_borrowed_place.iter_projections().rev() {
                     if let ProjectionElem::Field(field, _) = elem {
-                        if let Some(union_ty) = union_ty(local, proj_base) {
-                            if field != target_field
-                                && local == target_base.local
-                                && proj_base == target_base.projection
-                            {
+                        if let Some(union_ty) = union_ty(place_base) {
+                            if field != target_field && place_base == target_base {
                                 return Some((
-                                    self.describe_any_place(PlaceRef {
-                                        local,
-                                        projection: proj_base,
-                                    }),
+                                    self.describe_any_place(place_base),
                                     self.describe_any_place(first_borrowed_place.as_ref()),
                                     self.describe_any_place(second_borrowed_place.as_ref()),
                                     union_ty.to_string(),

@@ -1745,18 +1745,14 @@ impl<'tcx> Place<'tcx> {
 
     /// Finds the innermost `Local` from this `Place`, *if* it is either a local itself or
     /// a single deref of a local.
-    //
-    // FIXME: can we safely swap the semantics of `fn base_local` below in here instead?
+    #[inline(always)]
     pub fn local_or_deref_local(&self) -> Option<Local> {
-        match self.as_ref() {
-            PlaceRef { local, projection: [] }
-            | PlaceRef { local, projection: [ProjectionElem::Deref] } => Some(local),
-            _ => None,
-        }
+        self.as_ref().local_or_deref_local()
     }
 
     /// If this place represents a local variable like `_X` with no
     /// projections, return `Some(_X)`.
+    #[inline(always)]
     pub fn as_local(&self) -> Option<Local> {
         self.as_ref().as_local()
     }
@@ -1770,6 +1766,7 @@ impl<'tcx> Place<'tcx> {
     /// As a concrete example, given the place a.b.c, this would yield:
     /// - (a, .b)
     /// - (a.b, .c)
+    ///
     /// Given a place without projections, the iterator is empty.
     pub fn iter_projections(
         self,
@@ -1790,8 +1787,6 @@ impl From<Local> for Place<'_> {
 impl<'tcx> PlaceRef<'tcx> {
     /// Finds the innermost `Local` from this `Place`, *if* it is either a local itself or
     /// a single deref of a local.
-    //
-    // FIXME: can we safely swap the semantics of `fn base_local` below in here instead?
     pub fn local_or_deref_local(&self) -> Option<Local> {
         match *self {
             PlaceRef { local, projection: [] }
@@ -1806,6 +1801,14 @@ impl<'tcx> PlaceRef<'tcx> {
         match *self {
             PlaceRef { local, projection: [] } => Some(local),
             _ => None,
+        }
+    }
+
+    pub fn last_projection(&self) -> Option<(PlaceRef<'tcx>, PlaceElem<'tcx>)> {
+        if let &[ref proj_base @ .., elem] = self.projection {
+            Some((PlaceRef { local: self.local, projection: proj_base }, elem))
+        } else {
+            None
         }
     }
 }
