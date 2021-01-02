@@ -240,7 +240,7 @@ This struct also has hygiene information attached to it, as we will see later.
 Because macros invocations and definitions can be nested, the syntax context of
 a node must be a hierarchy. For example, if we expand a macro and there is
 another macro invocation or definition in the generated output, then the syntax
-context should reflex the nesting.
+context should reflect the nesting.
 
 However, it turns out that there are actually a few types of context we may
 want to track for different purposes. Thus, there are not just one but _three_
