@@ -275,10 +275,25 @@ impl NonSnakeCase {
                     // We have a valid span in almost all cases, but we don't have one when linting a crate
                     // name provided via the command line.
                     if !ident.span.is_dummy() {
+                        let sc_ident = Ident::from_str_and_span(&sc, ident.span);
+                        let (message, suggestion) = if sc_ident.is_reserved() {
+                            // We shouldn't suggest a reserved identifier to fix non-snake-case identifiers.
+                            // Instead, recommend renaming the identifier entirely or, if permitted,
+                            // escaping it to create a raw identifier.
+                            if sc_ident.name.can_be_raw() {
+                                ("rename the identifier or convert it to a snake case raw identifier", sc_ident.to_string())
+                            } else {
+                                err.note(&format!("`{}` cannot be used as a raw identifier", sc));
+                                ("rename the identifier", String::new())
+                            }
+                        } else {
+                            ("convert the identifier to snake case", sc)
+                        };
+
                         err.span_suggestion(
                             ident.span,
-                            "convert the identifier to snake case",
-                            sc,
+                            message,
+                            suggestion,
                             Applicability::MaybeIncorrect,
                         );
                     } else {
