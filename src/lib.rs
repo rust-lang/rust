@@ -27,7 +27,6 @@ extern crate rustc_incremental;
 extern crate rustc_index;
 extern crate rustc_session;
 extern crate rustc_span;
-extern crate rustc_symbol_mangling;
 extern crate rustc_target;
 
 // This prevents duplicating functions and statics that are already part of the host rustc process.
@@ -257,8 +256,6 @@ impl CodegenBackend for CraneliftCodegenBackend {
         };
         let res = driver::codegen_crate(tcx, metadata, need_metadata_module, config);
 
-        rustc_symbol_mangling::test::report_symbol_names(tcx);
-
         res
     }
 
@@ -280,18 +277,14 @@ impl CodegenBackend for CraneliftCodegenBackend {
     ) -> Result<(), ErrorReported> {
         use rustc_codegen_ssa::back::link::link_binary;
 
-        let _timer = sess.prof.generic_activity("link_crate");
-
-        sess.time("linking", || {
-            let target_cpu = crate::target_triple(sess).to_string();
-            link_binary::<crate::archive::ArArchiveBuilder<'_>>(
-                sess,
-                &codegen_results,
-                outputs,
-                &codegen_results.crate_name.as_str(),
-                &target_cpu,
-            );
-        });
+        let target_cpu = crate::target_triple(sess).to_string();
+        link_binary::<crate::archive::ArArchiveBuilder<'_>>(
+            sess,
+            &codegen_results,
+            outputs,
+            &codegen_results.crate_name.as_str(),
+            &target_cpu,
+        );
 
         Ok(())
     }
