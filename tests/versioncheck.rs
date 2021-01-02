@@ -28,17 +28,17 @@ fn check_that_clippy_has_the_same_major_version_as_rustc() {
     let clippy_minor = clippy_version.minor;
     let clippy_patch = clippy_version.patch;
 
-    // get the rustc version from cargo
+    // get the rustc version
     // this way the rust-toolchain file version is honored
     let rustc_version = String::from_utf8(
-        std::process::Command::new("cargo")
+        std::process::Command::new("rustc")
             .arg("--version")
             .output()
-            .expect("failed to run 'cargo --version'")
+            .expect("failed to run `rustc --version`")
             .stdout,
     )
     .unwrap();
-    // extract "1 50 0" from "cargo 1.50.0-nightly (a3c2627fb 2020-12-14)"
+    // extract "1 XX 0" from "rustc 1.XX.0-nightly (<commit> <date>)"
     let vsplit: Vec<&str> = rustc_version
         .split(' ')
         .nth(1)
@@ -50,9 +50,7 @@ fn check_that_clippy_has_the_same_major_version_as_rustc() {
         .collect();
     match vsplit.as_slice() {
         [rustc_major, rustc_minor, _rustc_patch] => {
-            // clippy 0.1.50 should correspond to rustc 1.50.0
-            dbg!(&rustc_version);
-            dbg!(&clippy_version);
+            // clippy 0.1.XX should correspond to rustc 1.XX.0
             assert_eq!(clippy_major, 0); // this will probably stay the same for a long time
             assert_eq!(
                 clippy_minor.to_string(),
@@ -68,8 +66,7 @@ fn check_that_clippy_has_the_same_major_version_as_rustc() {
             // we don't want our tests failing suddenly
         },
         _ => {
-            dbg!(vsplit);
-            panic!("Failed to parse rustc version");
+            panic!("Failed to parse rustc version: {:?}", vsplit);
         },
     };
 }
