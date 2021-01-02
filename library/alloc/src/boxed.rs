@@ -148,7 +148,7 @@ use core::ops::{
     CoerceUnsized, Deref, DerefMut, DispatchFromDyn, Generator, GeneratorState, Receiver,
 };
 use core::pin::Pin;
-use core::ptr::{self, Unique};
+use core::ptr::{self, Unique, NonNull};
 use core::task::{Context, Poll};
 
 use crate::alloc::{handle_alloc_error, AllocError, Allocator, Global, Layout};
@@ -1165,6 +1165,21 @@ impl<T> From<T> for Box<T> {
     /// ```
     fn from(t: T) -> Self {
         Box::new(t)
+    }
+}
+
+#[stable(feature = "nonnull_from_box", since = "1.51.0")]
+impl<T: ?Sized> From<Box<T>> for NonNull<T> {
+    /// Convert a `Box<T>` into a [`NonNull<T>`](core::ptr::NonNull).
+    ///
+    /// After calling this function, the caller is responsible for eventually
+    /// releasing the memory previously managed by the `Box` (for example, via
+    /// [`Box::from_raw`]).
+    #[inline]
+    fn from(b: Box<T>) -> Self {
+        // Safety: Box's pointer is guaranteed to be nonnull, so we can use
+        // new_unchecked.
+        unsafe { NonNull::new_unchecked(Box::into_raw(b)) }
     }
 }
 

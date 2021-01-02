@@ -57,3 +57,19 @@ fn box_deref_lval() {
     x.set(1000);
     assert_eq!(x.get(), 1000);
 }
+
+#[test]
+fn nonnull_from_box() {
+    let x = Box::new(5);
+    let p = NonNull::from(x);
+    assert_eq!(unsafe { *p.as_ref() }, 5);
+    let _ = unsafe { Box::from_raw(p.as_ptr()) };
+}
+
+#[test]
+fn nonnull_from_box_dynsized() {
+    let s: Box<str> = "foo".into();
+    let ps = NonNull::from(s);
+    let s_again = unsafe { Box::from_raw(ps.as_ptr()) };
+    assert_eq!(&*s_again, "foo");
+}
