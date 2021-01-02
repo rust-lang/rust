@@ -7,6 +7,7 @@ use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::{symbol::sym, Span, Symbol};
+use std::convert::TryInto;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for calls to `push` immediately after creating a new `Vec`.
@@ -92,7 +93,7 @@ impl LateLintPass<'_> for VecInitThenPush {
                         init: init_kind,
                         name: ident.name,
                         lhs_is_local: true,
-                        lhs_span: local.ty.map(|t| local.pat.span.to(t.span)).unwrap_or(local.pat.span),
+                        lhs_span: local.ty.map_or(local.pat.span, |t| local.pat.span.to(t.span)),
                         err_span: local.span,
                         found: 0,
                     });
@@ -165,7 +166,7 @@ fn get_vec_init_kind<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> Op
                             if let ExprKind::Lit(lit) = &arg.kind;
                             if let LitKind::Int(num, _) = lit.node;
                             then {
-                                Some(VecInitKind::WithCapacity(num as u64))
+                                Some(VecInitKind::WithCapacity(num.try_into().ok()?))
                             } else {
                                 None
                             }
