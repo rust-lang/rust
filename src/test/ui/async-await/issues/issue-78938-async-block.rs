@@ -16,7 +16,7 @@ fn game_loop(v: Arc<Vec<usize>>) {}
 fn spawn<F>(future: F) -> JoinHandle
 where
     F: Future + Send + 'static,
-    F::Output: Send + 'static,  
+    F::Output: Send + 'static,
 {
     loop {}
 }
@@ -26,7 +26,7 @@ struct JoinHandle;
 impl Future for JoinHandle {
     type Output = ();
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        loop {}
+       loop {}
     }
 }
 

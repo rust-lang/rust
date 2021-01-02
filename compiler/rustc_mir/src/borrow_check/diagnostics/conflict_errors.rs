@@ -1323,16 +1323,6 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             suggestion,
             Applicability::MachineApplicable,
         );
-        if let Some(generator_kind) = use_span.generator_kind() {
-            if let GeneratorKind::Async(_) = generator_kind {
-                err.note(
-            "borrows cannot be held across a yield point, because the stack space of the current \
-            function is not preserved",
-        );
-                err.help("see https://rust-lang.github.io/async-book/03_async_await/01_chapter.html#awaiting-on-a-multithreaded-executor \
-        for more information");
-            }
-        }
 
         let msg = match category {
             ConstraintCategory::Return(_) | ConstraintCategory::OpaqueType => {
@@ -1349,6 +1339,18 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             ),
         };
         err.span_note(constraint_span, &msg);
+        if let ConstraintCategory::CallArgument = category {
+            if let Some(generator_kind) = use_span.generator_kind() {
+                if let GeneratorKind::Async(_) = generator_kind {
+                    err.note(
+                        "borrows cannot be held across a yield point, because the stack \
+                        space of the current function is not preserved",
+                    );
+                    err.help("see https://rust-lang.github.io/async-book/03_async_await/01_chapter.html#awaiting-on-a-multithreaded-executor \
+                        for more information");
+                }
+            }
+        }
         err
     }
 
