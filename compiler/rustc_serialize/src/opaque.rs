@@ -1,6 +1,8 @@
 use crate::leb128::{self, read_signed_leb128, write_signed_leb128};
 use crate::serialize;
 use std::borrow::Cow;
+use std::mem::MaybeUninit;
+use std::ptr;
 
 // -----------------------------------------------------------------------------
 // Encoder
@@ -179,11 +181,19 @@ impl<'a> Decoder<'a> {
     }
 
     #[inline]
-    pub fn read_raw_bytes(&mut self, s: &mut [u8]) -> Result<(), String> {
+    pub fn read_raw_bytes(&mut self, s: &mut [MaybeUninit<u8>]) -> Result<(), String> {
         let start = self.position;
         let end = start + s.len();
+        assert!(end <= self.data.len());
 
-        s.copy_from_slice(&self.data[start..end]);
+        // SAFETY: Both `src` and `dst` point to at least `s.len()` elements:
+        // `src` points to at least `s.len()` elements by above assert, and
+        // `dst` points to `s.len()` elements by derivation from `s`.
+        unsafe {
+            let src = self.data.as_ptr().add(start);
+            let dst = s.as_mut_ptr() as *mut u8;
+            ptr::copy_nonoverlapping(src, dst, s.len());
+        }
 
         self.position = end;
 
@@ -314,5 +324,38 @@ impl<'a> serialize::Decoder for Decoder<'a> {
     #[inline]
     fn error(&mut self, err: &str) -> Self::Error {
         err.to_string()
+    }
+}
+
+// Specializations for contiguous byte sequences follow. The default implementations for slices
+// encode and decode each element individually. This isn't necessary for `u8` slices when using
+// opaque encoders and decoders, because each `u8` is unchanged by encoding and decoding.
+// Therefore, we can use more efficient implementations that process the entire sequence at once.
+
+// Specialize encoding byte slices. This specialization also applies to encoding `Vec<u8>`s, etc.,
+// since the default implementations call `encode` on their slices internally.
+impl serialize::Encodable<Encoder> for [u8] {
+    fn encode(&self, e: &mut Encoder) -> EncodeResult {
+        serialize::Encoder::emit_usize(e, self.len())?;
+        e.emit_raw_bytes(self);
+        Ok(())
+    }
+}
+
+// Specialize decoding `Vec<u8>`. This specialization also applies to decoding `Box<[u8]>`s, etc.,
+// since the default implementations call `decode` to produce a `Vec<u8>` internally.
+impl<'a> serialize::Decodable<Decoder<'a>> for Vec<u8> {
+    fn decode(d: &mut Decoder<'a>) -> Result<Self, String> {
+        let len = serialize::Decoder::read_usize(d)?;
+
+        let mut v = Vec::with_capacity(len);
+        let buf = &mut v.spare_capacity_mut()[..len];
+        d.read_raw_bytes(buf)?;
+
+        unsafe {
+            v.set_len(len);
+        }
+
+        Ok(v)
     }
 }
