@@ -979,7 +979,7 @@ themePicker.onblur = handleThemeButtonsBlur;
                 .iter()
                 .map(|s| format!("\"{}\"", s.to_str().expect("invalid osstring conversion")))
                 .collect::<Vec<_>>();
-            files.sort_unstable_by(|a, b| a.cmp(b));
+            files.sort_unstable();
             let subs = subs.iter().map(|s| s.to_json_string()).collect::<Vec<_>>().join(",");
             let dirs =
                 if subs.is_empty() { String::new() } else { format!(",\"dirs\":[{}]", subs) };
@@ -1428,7 +1428,7 @@ impl Setting {
                     .map(|opt| format!(
                         "<option value=\"{}\" {}>{}</option>",
                         opt.0,
-                        if &opt.0 == default_value { "selected" } else { "" },
+                        if opt.0 == default_value { "selected" } else { "" },
                         opt.1,
                     ))
                     .collect::<String>(),
@@ -1595,7 +1595,7 @@ impl Context<'_> {
             if let Some(&(ref names, ty)) = cache.paths.get(&it.def_id) {
                 for name in &names[..names.len() - 1] {
                     url.push_str(name);
-                    url.push_str("/");
+                    url.push('/');
                 }
                 url.push_str(&item_path(ty, names.last().unwrap()));
                 layout::redirect(&url)
@@ -2308,7 +2308,7 @@ fn short_item_info(
             let since = &since.as_str();
             if !stability::deprecation_in_effect(is_since_rustc_version, Some(since)) {
                 if *since == "TBD" {
-                    format!("Deprecating in a future Rust version")
+                    String::from("Deprecating in a future Rust version")
                 } else {
                     format!("Deprecating in {}", Escape(since))
                 }
@@ -4323,9 +4323,11 @@ fn sidebar_assoc_items(it: &clean::Item) -> String {
                         .any(|i| i.inner_impl().trait_.def_id() == c.deref_mut_trait_did);
                     let inner_impl = target
                         .def_id()
-                        .or(target
-                            .primitive_type()
-                            .and_then(|prim| c.primitive_locations.get(&prim).cloned()))
+                        .or_else(|| {
+                            target
+                                .primitive_type()
+                                .and_then(|prim| c.primitive_locations.get(&prim).cloned())
+                        })
                         .and_then(|did| c.impls.get(&did));
                     if let Some(impls) = inner_impl {
                         out.push_str("<a class=\"sidebar-title\" href=\"#deref-methods\">");

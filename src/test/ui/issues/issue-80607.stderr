@@ -1,0 +1,14 @@
+error[E0559]: variant `Enum::V1` has no field named `x`
+  --> $DIR/issue-80607.rs:7:16
+   |
+LL |     V1(i32),
+   |     -- `Enum::V1` defined here
+...
+LL |     Enum::V1 { x }
+   |     --------   ^ field does not exist
+   |     |
+   |     `Enum::V1` is a tuple variant, use the appropriate syntax: `Enum::V1(/* fields */)`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0559`.

@@ -175,11 +175,9 @@ impl Item {
     }
 
     crate fn is_crate(&self) -> bool {
-        match *self.kind {
+        matches!(*self.kind,
             StrippedItem(box ModuleItem(Module { is_crate: true, .. }))
-            | ModuleItem(Module { is_crate: true, .. }) => true,
-            _ => false,
-        }
+            | ModuleItem(Module { is_crate: true, .. }))
     }
     crate fn is_mod(&self) -> bool {
         self.type_() == ItemType::Module
@@ -378,10 +376,7 @@ impl ItemKind {
     }
 
     crate fn is_type_alias(&self) -> bool {
-        match *self {
-            ItemKind::TypedefItem(_, _) | ItemKind::AssocTypeItem(_, _) => true,
-            _ => false,
-        }
+        matches!(self, ItemKind::TypedefItem(..) | ItemKind::AssocTypeItem(..))
     }
 }
 
@@ -674,7 +669,7 @@ impl Attributes {
                                 span: attr.span,
                                 doc: contents,
                                 kind: DocFragmentKind::Include { filename },
-                                parent_module: parent_module,
+                                parent_module,
                             });
                         }
                     }
@@ -750,7 +745,7 @@ impl Attributes {
                     Some(did) => {
                         if let Some((mut href, ..)) = href(did) {
                             if let Some(ref fragment) = *fragment {
-                                href.push_str("#");
+                                href.push('#');
                                 href.push_str(fragment);
                             }
                             Some(RenderedLink {
@@ -945,10 +940,7 @@ crate enum GenericParamDefKind {
 
 impl GenericParamDefKind {
     crate fn is_type(&self) -> bool {
-        match *self {
-            GenericParamDefKind::Type { .. } => true,
-            _ => false,
-        }
+        matches!(self, GenericParamDefKind::Type { .. })
     }
 
     // FIXME(eddyb) this either returns the default of a type parameter, or the
@@ -1292,15 +1284,12 @@ impl Type {
     }
 
     crate fn is_full_generic(&self) -> bool {
-        match *self {
-            Type::Generic(_) => true,
-            _ => false,
-        }
+        matches!(self, Type::Generic(_))
     }
 
     crate fn projection(&self) -> Option<(&Type, DefId, Symbol)> {
         let (self_, trait_, name) = match self {
-            QPath { ref self_type, ref trait_, name } => (self_type, trait_, name),
+            QPath { self_type, trait_, name } => (self_type, trait_, name),
             _ => return None,
         };
         let trait_did = match **trait_ {

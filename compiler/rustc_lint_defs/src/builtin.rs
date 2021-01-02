@@ -221,14 +221,10 @@ declare_lint! {
     ///
     /// ### Explanation
     ///
-    /// This lint detects code that is very likely incorrect. When possible,
-    /// the compiler will attempt to detect situations where code can be
-    /// evaluated at compile-time to generate more efficient code. While
-    /// evaluating such code, if it detects that the code will unconditionally
-    /// panic, this usually indicates that it is doing something incorrectly.
-    /// If this lint is allowed, then the code will not be evaluated at
-    /// compile-time, and instead continue to generate code to evaluate at
-    /// runtime, which may panic during runtime.
+    /// This lint detects code that is very likely incorrect because it will
+    /// always panic, such as division by zero and out-of-bounds array
+    /// accesses. Consider adjusting your code if this is a bug, or using the
+    /// `panic!` or `unreachable!` macro instead in case the panic is intended.
     pub UNCONDITIONAL_PANIC,
     Deny,
     "operation will cause a panic at runtime"

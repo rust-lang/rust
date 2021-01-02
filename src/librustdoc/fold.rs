@@ -61,7 +61,7 @@ crate trait DocFolder: Sized {
                         j.fields = j.fields.into_iter().filter_map(|x| self.fold_item(x)).collect();
                         j.fields_stripped |= num_fields != j.fields.len()
                             || j.fields.iter().any(|f| f.is_stripped());
-                        VariantItem(Variant { kind: VariantKind::Struct(j), ..i2 })
+                        VariantItem(Variant { kind: VariantKind::Struct(j) })
                     }
                     _ => VariantItem(i2),
                 }
