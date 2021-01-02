@@ -679,7 +679,7 @@ fn schema(fields: &[(&'static str, &'static str, &[&str], &str)]) -> serde_json:
     for ((f1, ..), (f2, ..)) in fields.iter().zip(&fields[1..]) {
         fn key(f: &str) -> &str {
             f.splitn(2, "_").next().unwrap()
-        };
+        }
         assert!(key(f1) <= key(f2), "wrong field order: {:?} {:?}", f1, f2);
     }
 

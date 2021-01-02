@@ -260,14 +260,13 @@ impl Attrs {
     }
 
     pub fn docs(&self) -> Option<Documentation> {
-        let docs = self
-            .by_key("doc")
-            .attrs()
-            .flat_map(|attr| match attr.input.as_ref()? {
-                AttrInput::Literal(s) => Some(s),
-                AttrInput::TokenTree(_) => None,
-            })
-            .intersperse(&SmolStr::new_inline("\n"))
+        let docs = self.by_key("doc").attrs().flat_map(|attr| match attr.input.as_ref()? {
+            AttrInput::Literal(s) => Some(s),
+            AttrInput::TokenTree(_) => None,
+        });
+        // FIXME: Replace `Itertools::intersperse` with `Iterator::intersperse[_with]` until the
+        // libstd api gets stabilized (https://github.com/rust-lang/rust/issues/79524).
+        let docs = Itertools::intersperse(docs, &SmolStr::new_inline("\n"))
             .map(|it| it.as_str())
             .collect::<String>();
         if docs.is_empty() {
