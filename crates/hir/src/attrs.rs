@@ -10,8 +10,8 @@ use hir_ty::db::HirDatabase;
 use syntax::ast;
 
 use crate::{
-    Adt, Const, Enum, Field, Function, GenericParam, MacroDef, Module, ModuleDef, Static, Struct,
-    Trait, TypeAlias, Union, Variant,
+    Adt, Const, ConstParam, Enum, Field, Function, GenericParam, LifetimeParam, MacroDef, Module,
+    ModuleDef, Static, Struct, Trait, TypeAlias, TypeParam, Union, Variant,
 };
 
 pub trait HasAttrs {
@@ -65,23 +65,24 @@ impl_has_attrs![
     (GenericParam, GenericParamId),
 ];
 
-macro_rules! impl_has_attrs_adt {
-    ($($adt:ident),*) => {$(
-        impl HasAttrs for $adt {
+macro_rules! impl_has_attrs_enum {
+    ($($variant:ident),* for $enum:ident) => {$(
+        impl HasAttrs for $variant {
             fn attrs(self, db: &dyn HirDatabase) -> Attrs {
-                Adt::$adt(self).attrs(db)
+                $enum::$variant(self).attrs(db)
             }
             fn docs(self, db: &dyn HirDatabase) -> Option<Documentation> {
-                Adt::$adt(self).docs(db)
+                $enum::$variant(self).docs(db)
             }
             fn resolve_doc_path(self, db: &dyn HirDatabase, link: &str, ns: Option<Namespace>) -> Option<ModuleDef> {
-                Adt::$adt(self).resolve_doc_path(db, link, ns)
+                $enum::$variant(self).resolve_doc_path(db, link, ns)
             }
         }
     )*};
 }
 
-impl_has_attrs_adt![Struct, Union, Enum];
+impl_has_attrs_enum![Struct, Union, Enum for Adt];
+impl_has_attrs_enum![TypeParam, ConstParam, LifetimeParam for GenericParam];
 
 fn resolve_doc_path(
     db: &dyn HirDatabase,
