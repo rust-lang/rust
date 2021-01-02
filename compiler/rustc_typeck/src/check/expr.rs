@@ -1381,19 +1381,42 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ty,
         );
         match variant.ctor_kind {
-            CtorKind::Fn => {
-                err.span_label(variant.ident.span, format!("`{adt}` defined here", adt = ty));
-                err.span_label(field.ident.span, "field does not exist");
-                err.span_label(
-                    ty_span,
-                    format!(
-                        "`{adt}` is a tuple {kind_name}, \
-                         use the appropriate syntax: `{adt}(/* fields */)`",
-                        adt = ty,
-                        kind_name = kind_name
-                    ),
-                );
-            }
+            CtorKind::Fn => match ty.kind() {
+                ty::Adt(adt, ..) if adt.is_enum() => {
+                    err.span_label(
+                        variant.ident.span,
+                        format!(
+                            "`{adt}::{variant}` defined here",
+                            adt = ty,
+                            variant = variant.ident,
+                        ),
+                    );
+                    err.span_label(field.ident.span, "field does not exist");
+                    err.span_label(
+                        ty_span,
+                        format!(
+                            "`{adt}::{variant}` is a tuple {kind_name}, \
+                             use the appropriate syntax: `{adt}::{variant}(/* fields */)`",
+                            adt = ty,
+                            variant = variant.ident,
+                            kind_name = kind_name
+                        ),
+                    );
+                }
+                _ => {
+                    err.span_label(variant.ident.span, format!("`{adt}` defined here", adt = ty));
+                    err.span_label(field.ident.span, "field does not exist");
+                    err.span_label(
+                        ty_span,
+                        format!(
+                            "`{adt}` is a tuple {kind_name}, \
+                                 use the appropriate syntax: `{adt}(/* fields */)`",
+                            adt = ty,
+                            kind_name = kind_name
+                        ),
+                    );
+                }
+            },
             _ => {
                 // prevent all specified fields from being suggested
                 let skip_fields = skip_fields.iter().map(|ref x| x.ident.name);
