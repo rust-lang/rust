@@ -938,8 +938,8 @@ impl EarlyLintPass for DeprecatedAttr {
             if attr.ident().map(|ident| ident.name) == Some(n) {
                 if let &AttributeGate::Gated(
                     Stability::Deprecated(link, suggestion),
-                    ref name,
-                    ref reason,
+                    name,
+                    reason,
                     _,
                 ) = g
                 {

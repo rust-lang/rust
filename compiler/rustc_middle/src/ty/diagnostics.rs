@@ -245,8 +245,8 @@ pub fn suggest_constraining_type_param(
                 }
             }
 
-            match &param_spans[..] {
-                &[&param_span] => suggest_restrict(param_span.shrink_to_hi()),
+            match param_spans[..] {
+                [&param_span] => suggest_restrict(param_span.shrink_to_hi()),
                 _ => {
                     err.span_suggestion_verbose(
                         generics.where_clause.tail_span_for_suggestion(),

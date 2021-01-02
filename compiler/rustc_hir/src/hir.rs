@@ -378,9 +378,9 @@ impl GenericBound<'_> {
 
     pub fn span(&self) -> Span {
         match self {
-            &GenericBound::Trait(ref t, ..) => t.span,
-            &GenericBound::LangItemTrait(_, span, ..) => span,
-            &GenericBound::Outlives(ref l) => l.span,
+            GenericBound::Trait(t, ..) => t.span,
+            GenericBound::LangItemTrait(_, span, ..) => *span,
+            GenericBound::Outlives(l) => l.span,
         }
     }
 }
@@ -538,9 +538,9 @@ pub enum WherePredicate<'hir> {
 impl WherePredicate<'_> {
     pub fn span(&self) -> Span {
         match self {
-            &WherePredicate::BoundPredicate(ref p) => p.span,
-            &WherePredicate::RegionPredicate(ref p) => p.span,
-            &WherePredicate::EqPredicate(ref p) => p.span,
+            WherePredicate::BoundPredicate(p) => p.span,
+            WherePredicate::RegionPredicate(p) => p.span,
+            WherePredicate::EqPredicate(p) => p.span,
         }
     }
 }

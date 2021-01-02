@@ -1920,7 +1920,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
     let where_clause = &ast_generics.where_clause;
     for predicate in where_clause.predicates {
         match predicate {
-            &hir::WherePredicate::BoundPredicate(ref bound_pred) => {
+            hir::WherePredicate::BoundPredicate(bound_pred) => {
                 let ty = icx.to_ty(&bound_pred.bounded_ty);
 
                 // Keep the type around in a dummy predicate, in case of no bounds.
@@ -1949,7 +1949,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
 
                 for bound in bound_pred.bounds.iter() {
                     match bound {
-                        &hir::GenericBound::Trait(ref poly_trait_ref, modifier) => {
+                        hir::GenericBound::Trait(poly_trait_ref, modifier) => {
                             let constness = match modifier {
                                 hir::TraitBoundModifier::MaybeConst => hir::Constness::NotConst,
                                 hir::TraitBoundModifier::None => constness,
@@ -1959,7 +1959,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
                             let mut bounds = Bounds::default();
                             let _ = AstConv::instantiate_poly_trait_ref(
                                 &icx,
-                                poly_trait_ref,
+                                &poly_trait_ref,
                                 constness,
                                 ty,
                                 &mut bounds,
@@ -1981,7 +1981,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
                             predicates.extend(bounds.predicates(tcx, ty));
                         }
 
-                        &hir::GenericBound::Outlives(ref lifetime) => {
+                        hir::GenericBound::Outlives(lifetime) => {
                             let region = AstConv::ast_region_to_region(&icx, lifetime, None);
                             predicates.insert((
                                 ty::Binder::bind(ty::PredicateAtom::TypeOutlives(
@@ -1995,7 +1995,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
                 }
             }
 
-            &hir::WherePredicate::RegionPredicate(ref region_pred) => {
+            hir::WherePredicate::RegionPredicate(region_pred) => {
                 let r1 = AstConv::ast_region_to_region(&icx, &region_pred.lifetime, None);
                 predicates.extend(region_pred.bounds.iter().map(|bound| {
                     let (r2, span) = match bound {
@@ -2011,7 +2011,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
                 }))
             }
 
-            &hir::WherePredicate::EqPredicate(..) => {
+            hir::WherePredicate::EqPredicate(..) => {
                 // FIXME(#20041)
             }
         }

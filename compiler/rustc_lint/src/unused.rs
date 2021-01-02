@@ -862,11 +862,11 @@ impl EarlyLintPass for UnusedParens {
     }
 
     fn check_ty(&mut self, cx: &EarlyContext<'_>, ty: &ast::Ty) {
-        if let &ast::TyKind::Paren(ref r) = &ty.kind {
+        if let ast::TyKind::Paren(r) = &ty.kind {
             match &r.kind {
-                &ast::TyKind::TraitObject(..) => {}
-                &ast::TyKind::ImplTrait(_, ref bounds) if bounds.len() > 1 => {}
-                &ast::TyKind::Array(_, ref len) => {
+                ast::TyKind::TraitObject(..) => {}
+                ast::TyKind::ImplTrait(_, bounds) if bounds.len() > 1 => {}
+                ast::TyKind::Array(_, len) => {
                     self.check_unused_delims_expr(
                         cx,
                         &len.value,
