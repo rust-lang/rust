@@ -94,7 +94,7 @@ pub fn filter_assoc_items(
             ast::AssocItem::MacroCall(_) => None,
         }
         .is_some()
-    };
+    }
 
     items
         .iter()

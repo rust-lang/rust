@@ -220,7 +220,7 @@ impl ast::RecordExprFieldList {
                     InsertPosition::After($anchor.syntax().clone().into())
                 }
             };
-        };
+        }
 
         let position = match position {
             InsertPosition::First => after_l_curly!(),
@@ -533,7 +533,7 @@ impl ast::GenericParamList {
                     InsertPosition::After($anchor.syntax().clone().into())
                 }
             };
-        };
+        }
 
         let position = match self.generic_params().last() {
             Some(it) => after_field!(it),
