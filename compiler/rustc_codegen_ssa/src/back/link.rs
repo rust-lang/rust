@@ -895,7 +895,7 @@ fn link_sanitizer_runtime(sess: &Session, linker: &mut dyn Linker, name: &str) {
         .unwrap_or_default();
 
     match sess.opts.target_triple.triple() {
-        "x86_64-apple-darwin" => {
+        "aarch64-apple-darwin" | "x86_64-apple-darwin" => {
             // On Apple platforms, the sanitizer is always built as a dylib, and
             // LLVM will link to `@rpath/*.dylib`, so we need to specify an
             // rpath to the library as well (the rpath should be absolute, see
