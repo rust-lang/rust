@@ -340,11 +340,8 @@ impl ExpansionInfo {
         Some(self.expanded.with_value(token))
     }
 
-    pub fn map_token_up(
-        &self,
-        token: InFile<&SyntaxToken>,
-    ) -> Option<(InFile<SyntaxToken>, Origin)> {
-        let token_id = self.exp_map.token_by_range(token.value.text_range())?;
+    pub fn map_token_up(&self, token: &SyntaxToken) -> Option<(InFile<SyntaxToken>, Origin)> {
+        let token_id = self.exp_map.token_by_range(token.text_range())?;
 
         let (token_id, origin) = self.macro_def.0.map_id_up(token_id);
         let (token_map, tt) = match origin {
@@ -359,7 +356,7 @@ impl ExpansionInfo {
             ),
         };
 
-        let range = token_map.range_by_token(token_id)?.by_kind(token.value.kind())?;
+        let range = token_map.range_by_token(token_id)?.by_kind(token.kind())?;
         let token = algo::find_covering_element(&tt.value, range + tt.value.text_range().start())
             .into_token()?;
         Some((tt.with_value(token), origin))
@@ -495,7 +492,7 @@ fn ascend_call_token(
     expansion: &ExpansionInfo,
     token: InFile<SyntaxToken>,
 ) -> Option<InFile<SyntaxToken>> {
-    let (mapped, origin) = expansion.map_token_up(token.as_ref())?;
+    let (mapped, origin) = expansion.map_token_up(&token.value)?;
     if origin != Origin::Call {
         return None;
     }
