@@ -48,6 +48,22 @@ fn main() {
         (1 | 1,) => {} //~ ERROR unreachable
         _ => {}
     }
+    match 0 {
+        (0 | 1) | 1 => {} //~ ERROR unreachable
+        _ => {}
+    }
+    match 0 {
+        0 | (0 | 0) => {}
+        //~^ ERROR unreachable
+        _ => {}
+    }
+    match None {
+        // There is only one error that correctly points to the whole subpattern
+        Some(0) |
+            Some( //~ ERROR unreachable
+                0 | 0) => {}
+        _ => {}
+    }
     match [0; 2] {
         [0
             | 0 //~ ERROR unreachable
