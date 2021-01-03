@@ -281,7 +281,18 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
                     Some(assignment_location) => {
                         assignment_location.dominates(location, &self.dominators)
                     }
-                    None => false,
+                    None => {
+                        debug!("No first assignment found for {:?}", local);
+                        // We have not seen any assignment to the local yet,
+                        // but before marking not_ssa, check if it is a ZST,
+                        // in which case we don't need to initialize the local.
+                        let ty = self.fx.mir.local_decls[local].ty;
+                        let ty = self.fx.monomorphize(ty);
+
+                        let is_zst = self.fx.cx.layout_of(ty).is_zst();
+                        debug!("is_zst: {}", is_zst);
+                        is_zst
+                    }
                 };
                 if !ssa_read {
                     self.not_ssa(local);
