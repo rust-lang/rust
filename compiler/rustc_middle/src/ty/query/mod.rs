@@ -120,6 +120,46 @@ macro_rules! query_storage {
     };
 }
 
+macro_rules! declare_callbacks {
+    (<$tcx:tt> $(
+         $(#[$attr:meta])*
+         fn $name:ident(&'tcx self, $($pp:ident: $pt:ty),*) $(-> $ret:ty)?;
+    )*) => {
+        impl<$tcx> QueryEngine {
+            $(
+                #[inline(always)]
+                $(#[$attr])*
+                pub fn $name(&'tcx self, $($pp: $pt),*) $(-> $ret)? {
+                    extern "Rust" {
+                        fn $name<$tcx>(_: &$tcx QueryEngine, $($pp: $pt),*) $(-> $ret)?;
+                    }
+                    unsafe { $name(self, $($pp),*) }
+                }
+            )*
+        }
+    }
+}
+
+#[macro_export]
+macro_rules! implement_callbacks {
+    (<$qty:ty><$tcx:tt> $(
+        $(#[$attr:meta])* fn $name:ident(&'tcx $this:ident, $($pp:ident: $pt:ty),*) $(-> $ret:ty)?
+        { $($body:tt)* }
+    )*) => {
+        mod callback_impl {
+            use super::*;
+            $(
+                #[no_mangle]
+                $(#[$attr])*
+                extern "Rust" fn $name(this: &$tcx QueryEngine, $($pp: $pt),*) $(-> $ret)? {
+                    let $this = unsafe { std::mem::transmute::<&QueryEngine, &$qty>(this) };
+                    { $($body)* }
+                }
+            )*
+        }
+    }
+}
+
 macro_rules! define_callbacks {
     (<$tcx:tt>
      $($(#[$attr:meta])*
@@ -206,15 +246,22 @@ macro_rules! define_callbacks {
             fn clone(&self) -> Self { *self }
         }
 
-        pub trait QueryEngine<'tcx>: rustc_data_structures::sync::Sync {
+        extern "Rust" {
+            pub type QueryEngine;
+        }
+
+        #[cfg(parallel_compiler)]
+        unsafe impl Sync for QueryEngine {}
+
+        declare_callbacks! {<'tcx>
             #[cfg(parallel_compiler)]
-            unsafe fn deadlock(&'tcx self, tcx: TyCtxt<'tcx>, registry: &rustc_rayon_core::Registry);
+            fn deadlock(&'tcx self, tcx: TyCtxt<'tcx>, registry: &rustc_rayon_core::Registry);
 
             fn encode_query_results(
                 &'tcx self,
                 tcx: TyCtxt<'tcx>,
-                encoder: &mut on_disk_cache::CacheEncoder<'a, 'tcx, opaque::FileEncoder>,
-                query_result_index: &mut on_disk_cache::EncodedQueryResultIndex,
+                encoder: &mut on_disk_cache::CacheEncoder<'_, 'tcx, opaque::FileEncoder>,
+                query_result_index: &mut on_disk_cache::EncodedQueryResultIndex
             ) -> opaque::FileEncodeResult;
 
             fn exec_cache_promotions(&'tcx self, tcx: TyCtxt<'tcx>);
@@ -226,7 +273,7 @@ macro_rules! define_callbacks {
                 tcx: TyCtxt<'tcx>,
                 query: Option<QueryJobId<dep_graph::DepKind>>,
                 handler: &Handler,
-                num_frames: Option<usize>,
+                num_frames: Option<usize>
             ) -> usize;
 
             $($(#[$attr])*
@@ -235,7 +282,7 @@ macro_rules! define_callbacks {
                 tcx: TyCtxt<$tcx>,
                 span: Span,
                 key: query_keys::$name<$tcx>,
-                mode: QueryMode,
+                mode: QueryMode
             ) -> Option<query_stored::$name<$tcx>>;)*
         }
     };

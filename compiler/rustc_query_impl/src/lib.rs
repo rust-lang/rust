@@ -60,7 +60,7 @@ rustc_query_append! { [define_queries!][<'tcx>] }
 
 impl<'tcx> Queries<'tcx> {
     // Force codegen in the dyn-trait transformation in this crate.
-    pub fn as_dyn(&'tcx self) -> &'tcx dyn QueryEngine<'tcx> {
-        self
+    pub fn as_dyn(&'tcx self) -> &'tcx QueryEngine {
+        unsafe { std::mem::transmute::<&Queries<'tcx>, &QueryEngine>(self) }
     }
 }

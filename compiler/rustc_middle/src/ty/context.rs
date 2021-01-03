@@ -968,7 +968,7 @@ pub struct GlobalCtxt<'tcx> {
     /// This is `None` if we are not incremental compilation mode
     pub on_disk_cache: Option<OnDiskCache<'tcx>>,
 
-    pub queries: &'tcx dyn QueryEngine<'tcx>,
+    pub queries: &'tcx QueryEngine,
 
     maybe_unused_trait_imports: FxHashSet<LocalDefId>,
     maybe_unused_extern_crates: Vec<(LocalDefId, Span)>,
@@ -1114,7 +1114,7 @@ impl<'tcx> TyCtxt<'tcx> {
         definitions: &'tcx Definitions,
         dep_graph: DepGraph,
         on_disk_cache: Option<query::OnDiskCache<'tcx>>,
-        queries: &'tcx dyn QueryEngine<'tcx>,
+        queries: &'tcx QueryEngine,
         crate_name: &str,
         output_filenames: &OutputFilenames,
     ) -> GlobalCtxt<'tcx> {

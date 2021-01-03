@@ -653,41 +653,41 @@ macro_rules! define_queries_struct {
             }
         }
 
-        impl QueryEngine<'tcx> for Queries<'tcx> {
+        implement_callbacks!{<Queries<'tcx>><'tcx>
             #[cfg(parallel_compiler)]
-            unsafe fn deadlock(&'tcx self, tcx: TyCtxt<'tcx>, registry: &rustc_rayon_core::Registry) {
-                let tcx = QueryCtxt { tcx, queries: self };
+            fn deadlock(&'tcx queries, tcx: TyCtxt<'tcx>, registry: &rustc_rayon_core::Registry) {
+                let tcx = QueryCtxt { tcx, queries };
                 rustc_query_system::query::deadlock(tcx, registry)
             }
 
             fn encode_query_results(
-                &'tcx self,
+                &'tcx queries,
                 tcx: TyCtxt<'tcx>,
                 encoder: &mut on_disk_cache::CacheEncoder<'a, 'tcx, opaque::FileEncoder>,
-                query_result_index: &mut on_disk_cache::EncodedQueryResultIndex,
+                query_result_index: &mut on_disk_cache::EncodedQueryResultIndex
             ) -> opaque::FileEncodeResult {
-                let tcx = QueryCtxt { tcx, queries: self };
+                let tcx = QueryCtxt { tcx, queries };
                 tcx.encode_query_results(encoder, query_result_index)
             }
 
-            fn exec_cache_promotions(&'tcx self, tcx: TyCtxt<'tcx>) {
-                let tcx = QueryCtxt { tcx, queries: self };
+            fn exec_cache_promotions(&'tcx queries, tcx: TyCtxt<'tcx>) {
+                let tcx = QueryCtxt { tcx, queries };
                 tcx.dep_graph.exec_cache_promotions(tcx)
             }
 
-            fn try_mark_green(&'tcx self, tcx: TyCtxt<'tcx>, dep_node: &dep_graph::DepNode) -> bool {
-                let qcx = QueryCtxt { tcx, queries: self };
+            fn try_mark_green(&'tcx queries, tcx: TyCtxt<'tcx>, dep_node: &dep_graph::DepNode) -> bool {
+                let qcx = QueryCtxt { tcx, queries };
                 tcx.dep_graph.try_mark_green(qcx, dep_node).is_some()
             }
 
             fn try_print_query_stack(
-                &'tcx self,
+                &'tcx queries,
                 tcx: TyCtxt<'tcx>,
                 query: Option<QueryJobId<dep_graph::DepKind>>,
                 handler: &Handler,
-                num_frames: Option<usize>,
+                num_frames: Option<usize>
             ) -> usize {
-                let query_map = self.try_collect_active_jobs();
+                let query_map = queries.try_collect_active_jobs();
 
                 let mut current_query = query;
                 let mut i = 0;
@@ -708,7 +708,7 @@ macro_rules! define_queries_struct {
                             "#{} [{}] {}",
                             i,
                             query_info.info.query.name(),
-                            query_info.info.query.describe(QueryCtxt { tcx, queries: self })
+                            query_info.info.query.describe(QueryCtxt { tcx, queries })
                         ),
                     );
                     diag.span = tcx.sess.source_map().guess_head_span(query_info.info.span).into();
@@ -724,13 +724,13 @@ macro_rules! define_queries_struct {
             $($(#[$attr])*
             #[inline(always)]
             fn $name(
-                &'tcx self,
+                &'tcx queries,
                 tcx: TyCtxt<$tcx>,
                 span: Span,
                 key: query_keys::$name<$tcx>,
-                mode: QueryMode,
+                mode: QueryMode
             ) -> Option<query_stored::$name<$tcx>> {
-                let qcx = QueryCtxt { tcx, queries: self };
+                let qcx = QueryCtxt { tcx, queries };
                 get_query::<queries::$name<$tcx>, _>(qcx, span, key, mode)
             })*
         }
