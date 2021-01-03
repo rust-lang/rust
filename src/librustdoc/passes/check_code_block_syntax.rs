@@ -51,10 +51,10 @@ impl<'a, 'tcx> SyntaxChecker<'a, 'tcx> {
             let mut diag = if let Some(sp) =
                 super::source_span_for_markdown_range(self.cx, &dox, &code_block.range, &item.attrs)
             {
-                let warning_message = if buffer.has_errors {
-                    "could not parse code block as Rust code"
+                let (warning_message, suggest_using_text) = if buffer.has_errors {
+                    ("could not parse code block as Rust code", true)
                 } else {
-                    "Rust code block is empty"
+                    ("Rust code block is empty", false)
                 };
 
                 let mut diag = self.cx.sess().struct_span_warn(sp, warning_message);
@@ -65,6 +65,15 @@ impl<'a, 'tcx> SyntaxChecker<'a, 'tcx> {
                         sp,
                         "mark blocks that do not contain Rust code as text",
                         String::from("```text"),
+                        Applicability::MachineApplicable,
+                    );
+                } else if suggest_using_text && code_block.is_ignore {
+                    let sp = sp.from_inner(InnerSpan::new(0, 3));
+                    diag.span_suggestion(
+                        sp,
+                        "`ignore` code blocks require valid Rust code for syntax highlighting. \
+                         Mark blocks that do not contain Rust code as text",
+                        String::from("```text,"),
                         Applicability::MachineApplicable,
                     );
                 }
