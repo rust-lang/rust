@@ -238,13 +238,32 @@ impl NonConstOp for TransientCellBorrow {
 pub struct CellBorrow;
 impl NonConstOp for CellBorrow {
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
-        struct_span_err!(
+        let mut err = struct_span_err!(
             ccx.tcx.sess,
             span,
             E0492,
-            "this borrow to an interior mutable value may end up in the final value of this {}",
+            "{}s cannot refer to interior mutable data",
             ccx.const_kind(),
-        )
+        );
+        err.span_label(
+            span,
+            format!("this borrow of an interior mutable value may end up in the final value"),
+        );
+        if let hir::ConstContext::Static(_) = ccx.const_kind() {
+            err.help(
+                "To fix this, the value can be extracted to separate \
+                `static` and then referenced.",
+            );
+        }
+        if ccx.tcx.sess.teach(&err.get_code().unwrap()) {
+            err.note(
+                "A constant containing interior mutable data behind a reference can allow you
+                 to modify that data. This would make multiple uses of a constant to be able to
+                 see different values and allow one to escape the `Send` and `Sync` requirements
+                 for shared mutable data, which is unsound.",
+            );
+        }
+        err
     }
 }
 

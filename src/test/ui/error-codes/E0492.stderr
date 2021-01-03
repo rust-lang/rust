@@ -1,14 +1,16 @@
-error[E0492]: this borrow to an interior mutable value may end up in the final value of this constant
+error[E0492]: constants cannot refer to interior mutable data
   --> $DIR/E0492.rs:4:33
    |
 LL | const B: &'static AtomicUsize = &A;
-   |                                 ^^
+   |                                 ^^ this borrow of an interior mutable value may end up in the final value
 
-error[E0492]: this borrow to an interior mutable value may end up in the final value of this static
+error[E0492]: statics cannot refer to interior mutable data
   --> $DIR/E0492.rs:5:34
    |
 LL | static C: &'static AtomicUsize = &A;
-   |                                  ^^
+   |                                  ^^ this borrow of an interior mutable value may end up in the final value
+   |
+   = help: To fix this, the value can be extracted to separate `static` and then referenced.
 
 error: aborting due to 2 previous errors
 

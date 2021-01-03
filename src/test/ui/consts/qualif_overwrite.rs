@@ -7,7 +7,7 @@ use std::cell::Cell;
 const FOO: &Option<Cell<usize>> = {
     let mut a = Some(Cell::new(0));
     a = None; // sets `qualif(a)` to `qualif(a) | qualif(None)`
-    &{a} //~ ERROR borrow to an interior mutable value may end up in the final value
+    &{a} //~ ERROR cannot refer to interior mutable
 };
 
 fn main() {}
