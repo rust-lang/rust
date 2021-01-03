@@ -8,7 +8,7 @@ use crate::{tt_iter::TtIter, ExpandError, MetaTemplate};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum Op {
-    Var { name: SmolStr, kind: Option<SmolStr>, id: tt::TokenId },
+    Var { name: SmolStr, kind: Option<SmolStr> },
     Repeat { subtree: MetaTemplate, kind: RepeatKind, separator: Option<Separator> },
     Leaf(tt::Leaf),
     Subtree(MetaTemplate),
@@ -106,21 +106,18 @@ fn next_op<'a>(first: &tt::TokenTree, src: &mut TtIter<'a>, mode: Mode) -> Resul
                         }
                         let name = UNDERSCORE.clone();
                         let kind = eat_fragment_kind(src, mode)?;
-                        let id = punct.id;
-                        Op::Var { name, kind, id }
+                        Op::Var { name, kind }
                     }
                     tt::Leaf::Ident(ident) => {
                         let name = ident.text.clone();
                         let kind = eat_fragment_kind(src, mode)?;
-                        let id = ident.id;
-                        Op::Var { name, kind, id }
+                        Op::Var { name, kind }
                     }
                     tt::Leaf::Literal(lit) => {
                         if is_boolean_literal(&lit) {
                             let name = lit.text.clone();
                             let kind = eat_fragment_kind(src, mode)?;
-                            let id = lit.id;
-                            Op::Var { name, kind, id }
+                            Op::Var { name, kind }
                         } else {
                             bail!("bad var 2");
                         }
