@@ -227,6 +227,8 @@ There are also two VS Code commands which might be of interest:
 
 * `Rust Analyzer: Syntax Tree` shows syntax tree of the current file/selection.
 
+* `Rust Analyzer: View Hir` shows the HIR expressions within the function containing the cursor.
+
   You can hover over syntax nodes in the opened text file to see the appropriate
   rust code that it refers to and the rust editor will also highlight the proper
   text range.

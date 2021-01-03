@@ -39,7 +39,7 @@ use hir_ty::{
     TyDefId, TyKind, TypeCtor,
 };
 use rustc_hash::FxHashSet;
-use stdx::impl_from;
+use stdx::{format_to, impl_from};
 use syntax::{
     ast::{self, AttrsOwner, NameOwner},
     AstNode, SmolStr,
@@ -796,6 +796,19 @@ impl Function {
     /// This is false in the case of required (not provided) trait methods.
     pub fn has_body(self, db: &dyn HirDatabase) -> bool {
         db.function_data(self.id).has_body
+    }
+
+    /// A textual representation of the HIR of this function for debugging purposes.
+    pub fn debug_hir(self, db: &dyn HirDatabase) -> String {
+        let body = db.body(self.id.into());
+
+        let mut result = String::new();
+        format_to!(result, "HIR expressions in the body of `{}`:\n", self.name(db));
+        for (id, expr) in body.exprs.iter() {
+            format_to!(result, "{:?}: {:?}\n", id, expr);
+        }
+
+        result
     }
 }
 

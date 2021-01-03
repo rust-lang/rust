@@ -1,5 +1,5 @@
 <!---
-lsp_ext.rs hash: 203fdf79b21b5987
+lsp_ext.rs hash: 91f2c62457e0a20f
 
 If you need to change the above hash to make the test pass, please check if you
 need to adjust this doc as well and ping this  issue:
@@ -448,6 +448,17 @@ interface SyntaxTeeParams {
 
 Returns textual representation of a parse tree for the file/selected region.
 Primarily for debugging, but very useful for all people working on rust-analyzer itself.
+
+## View Hir
+
+**Method:** `rust-analyzer/viewHir`
+
+**Request:** `TextDocumentPositionParams`
+
+**Response:** `string`
+
+Returns a textual representation of the HIR of the function containing the cursor.
+For debugging or when working on rust-analyzer itself.
 
 ## Expand Macro
 

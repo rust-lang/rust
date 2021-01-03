@@ -31,6 +31,7 @@ mod folding_ranges;
 mod goto_definition;
 mod goto_implementation;
 mod goto_type_definition;
+mod view_hir;
 mod hover;
 mod inlay_hints;
 mod join_lines;
@@ -269,6 +270,10 @@ impl Analysis {
         text_range: Option<TextRange>,
     ) -> Cancelable<String> {
         self.with_db(|db| syntax_tree::syntax_tree(&db, file_id, text_range))
+    }
+
+    pub fn view_hir(&self, position: FilePosition) -> Cancelable<String> {
+        self.with_db(|db| view_hir::view_hir(&db, position))
     }
 
     pub fn expand_macro(&self, position: FilePosition) -> Cancelable<Option<ExpandedMacro>> {
