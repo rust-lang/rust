@@ -122,7 +122,7 @@ impl Item {
 
     /// Finds the `doc` attribute as a NameValue and returns the corresponding
     /// value found.
-    crate fn doc_value(&self) -> Option<&str> {
+    crate fn doc_value(&self) -> Option<String> {
         self.attrs.doc_value()
     }
 
@@ -469,11 +469,13 @@ crate struct DocFragment {
     /// This allows distinguishing between the original documentation and a pub re-export.
     /// If it is `None`, the item was not re-exported.
     crate parent_module: Option<DefId>,
-    crate doc: String,
+    crate doc: Symbol,
     crate kind: DocFragmentKind,
+    crate need_backline: bool,
+    crate indent: usize,
 }
 
-#[derive(Clone, PartialEq, Eq, Debug, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
 crate enum DocFragmentKind {
     /// A doc fragment created from a `///` or `//!` doc comment.
     SugaredDoc,
@@ -481,7 +483,33 @@ crate enum DocFragmentKind {
     RawDoc,
     /// A doc fragment created from a `#[doc(include="filename")]` attribute. Contains both the
     /// given filename and the file contents.
-    Include { filename: String },
+    Include { filename: Symbol },
+}
+
+// The goal of this function is to apply the `DocFragment` transformations that are required when
+// transforming into the final markdown. So the transformations in here are:
+//
+// * Applying the computed indent to each lines in each doc fragment (a `DocFragment` can contain
+//   multiple lines in case of `#[doc = ""]`).
+// * Adding backlines between `DocFragment`s and adding an extra one if required (stored in the
+//   `need_backline` field).
+fn add_doc_fragment(out: &mut String, frag: &DocFragment) {
+    let s = frag.doc.as_str();
+    let mut iter = s.lines().peekable();
+    while let Some(line) = iter.next() {
+        if line.chars().any(|c| !c.is_whitespace()) {
+            assert!(line.len() >= frag.indent);
+            out.push_str(&line[frag.indent..]);
+        } else {
+            out.push_str(line);
+        }
+        if iter.peek().is_some() {
+            out.push('\n');
+        }
+    }
+    if frag.need_backline {
+        out.push('\n');
+    }
 }
 
 impl<'a> FromIterator<&'a DocFragment> for String {
@@ -489,11 +517,18 @@ impl<'a> FromIterator<&'a DocFragment> for String {
     where
         T: IntoIterator<Item = &'a DocFragment>,
     {
+        let mut prev_kind: Option<DocFragmentKind> = None;
         iter.into_iter().fold(String::new(), |mut acc, frag| {
-            if !acc.is_empty() {
+            if !acc.is_empty()
+                && prev_kind
+                    .take()
+                    .map(|p| matches!(p, DocFragmentKind::Include { .. }) && p != frag.kind)
+                    .unwrap_or(false)
+            {
                 acc.push('\n');
             }
-            acc.push_str(&frag.doc);
+            add_doc_fragment(&mut acc, &frag);
+            prev_kind = Some(frag.kind);
             acc
         })
     }
@@ -565,7 +600,7 @@ impl Attributes {
     /// Reads a `MetaItem` from within an attribute, looks for whether it is a
     /// `#[doc(include="file")]`, and returns the filename and contents of the file as loaded from
     /// its expansion.
-    crate fn extract_include(mi: &ast::MetaItem) -> Option<(String, String)> {
+    crate fn extract_include(mi: &ast::MetaItem) -> Option<(Symbol, Symbol)> {
         mi.meta_item_list().and_then(|list| {
             for meta in list {
                 if meta.has_name(sym::include) {
@@ -573,17 +608,17 @@ impl Attributes {
                     // `#[doc(include(file="filename", contents="file contents")]` so we need to
                     // look for that instead
                     return meta.meta_item_list().and_then(|list| {
-                        let mut filename: Option<String> = None;
-                        let mut contents: Option<String> = None;
+                        let mut filename: Option<Symbol> = None;
+                        let mut contents: Option<Symbol> = None;
 
                         for it in list {
                             if it.has_name(sym::file) {
                                 if let Some(name) = it.value_str() {
-                                    filename = Some(name.to_string());
+                                    filename = Some(name);
                                 }
                             } else if it.has_name(sym::contents) {
                                 if let Some(docs) = it.value_str() {
-                                    contents = Some(docs.to_string());
+                                    contents = Some(docs);
                                 }
                             }
                         }
@@ -622,15 +657,30 @@ impl Attributes {
         attrs: &[ast::Attribute],
         additional_attrs: Option<(&[ast::Attribute], DefId)>,
     ) -> Attributes {
-        let mut doc_strings = vec![];
+        let mut doc_strings: Vec<DocFragment> = vec![];
         let mut sp = None;
         let mut cfg = Cfg::True;
         let mut doc_line = 0;
 
+        fn update_need_backline(doc_strings: &mut Vec<DocFragment>, frag: &DocFragment) {
+            if let Some(prev) = doc_strings.last_mut() {
+                if matches!(prev.kind, DocFragmentKind::Include { .. })
+                    || prev.kind != frag.kind
+                    || prev.parent_module != frag.parent_module
+                {
+                    // add a newline for extra padding between segments
+                    prev.need_backline = prev.kind == DocFragmentKind::SugaredDoc
+                        || prev.kind == DocFragmentKind::RawDoc
+                } else {
+                    prev.need_backline = true;
+                }
+            }
+        }
+
         let clean_attr = |(attr, parent_module): (&ast::Attribute, _)| {
             if let Some(value) = attr.doc_str() {
                 trace!("got doc_str={:?}", value);
-                let value = beautify_doc_string(value).to_string();
+                let value = beautify_doc_string(value);
                 let kind = if attr.is_doc_comment() {
                     DocFragmentKind::SugaredDoc
                 } else {
@@ -638,14 +688,20 @@ impl Attributes {
                 };
 
                 let line = doc_line;
-                doc_line += value.lines().count();
-                doc_strings.push(DocFragment {
+                doc_line += value.as_str().lines().count();
+                let frag = DocFragment {
                     line,
                     span: attr.span,
                     doc: value,
                     kind,
                     parent_module,
-                });
+                    need_backline: false,
+                    indent: 0,
+                };
+
+                update_need_backline(&mut doc_strings, &frag);
+
+                doc_strings.push(frag);
 
                 if sp.is_none() {
                     sp = Some(attr.span);
@@ -663,14 +719,18 @@ impl Attributes {
                         } else if let Some((filename, contents)) = Attributes::extract_include(&mi)
                         {
                             let line = doc_line;
-                            doc_line += contents.lines().count();
-                            doc_strings.push(DocFragment {
+                            doc_line += contents.as_str().lines().count();
+                            let frag = DocFragment {
                                 line,
                                 span: attr.span,
                                 doc: contents,
                                 kind: DocFragmentKind::Include { filename },
                                 parent_module,
-                            });
+                                need_backline: false,
+                                indent: 0,
+                            };
+                            update_need_backline(&mut doc_strings, &frag);
+                            doc_strings.push(frag);
                         }
                     }
                 }
@@ -721,14 +781,41 @@ impl Attributes {
 
     /// Finds the `doc` attribute as a NameValue and returns the corresponding
     /// value found.
-    crate fn doc_value(&self) -> Option<&str> {
-        self.doc_strings.first().map(|s| s.doc.as_str())
+    crate fn doc_value(&self) -> Option<String> {
+        let mut iter = self.doc_strings.iter();
+
+        let ori = iter.next()?;
+        let mut out = String::new();
+        add_doc_fragment(&mut out, &ori);
+        while let Some(new_frag) = iter.next() {
+            if matches!(ori.kind, DocFragmentKind::Include { .. })
+                || new_frag.kind != ori.kind
+                || new_frag.parent_module != ori.parent_module
+            {
+                break;
+            }
+            add_doc_fragment(&mut out, &new_frag);
+        }
+        if out.is_empty() { None } else { Some(out) }
+    }
+
+    /// Return the doc-comments on this item, grouped by the module they came from.
+    ///
+    /// The module can be different if this is a re-export with added documentation.
+    crate fn collapsed_doc_value_by_module_level(&self) -> FxHashMap<Option<DefId>, String> {
+        let mut ret = FxHashMap::default();
+
+        for new_frag in self.doc_strings.iter() {
+            let out = ret.entry(new_frag.parent_module).or_default();
+            add_doc_fragment(out, &new_frag);
+        }
+        ret
     }
 
     /// Finds all `doc` attributes as NameValues and returns their corresponding values, joined
     /// with newlines.
     crate fn collapsed_doc_value(&self) -> Option<String> {
-        if !self.doc_strings.is_empty() { Some(self.doc_strings.iter().collect()) } else { None }
+        if self.doc_strings.is_empty() { None } else { Some(self.doc_strings.iter().collect()) }
     }
 
     /// Gets links as a vector

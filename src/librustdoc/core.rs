@@ -525,7 +525,7 @@ crate fn run_global_ctxt(
     let mut krate = tcx.sess.time("clean_crate", || clean::krate(&mut ctxt));
 
     if let Some(ref m) = krate.module {
-        if let None | Some("") = m.doc_value() {
+        if m.doc_value().map(|d| d.is_empty()).unwrap_or(true) {
             let help = "The following guide may be of use:\n\
                 https://doc.rust-lang.org/nightly/rustdoc/how-to-write-documentation.html";
             tcx.struct_lint_node(
@@ -622,6 +622,9 @@ crate fn run_global_ctxt(
     }
 
     ctxt.sess().abort_if_errors();
+
+    // The main crate doc comments are always collapsed.
+    krate.collapsed = true;
 
     (krate, ctxt.renderinfo.into_inner(), ctxt.render_options)
 }

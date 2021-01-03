@@ -78,7 +78,7 @@ crate fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
                 ty: item.type_(),
                 name: item.name.unwrap().to_string(),
                 path: fqp[..fqp.len() - 1].join("::"),
-                desc: item.doc_value().map_or_else(|| String::new(), short_markdown_summary),
+                desc: item.doc_value().map_or_else(String::new, |s| short_markdown_summary(&s)),
                 parent: Some(did),
                 parent_idx: None,
                 search_type: get_index_search_type(&item),
@@ -127,7 +127,7 @@ crate fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
     let crate_doc = krate
         .module
         .as_ref()
-        .map(|module| module.doc_value().map_or_else(|| String::new(), short_markdown_summary))
+        .map(|module| module.doc_value().map_or_else(String::new, |s| short_markdown_summary(&s)))
         .unwrap_or_default();
 
     #[derive(Serialize)]

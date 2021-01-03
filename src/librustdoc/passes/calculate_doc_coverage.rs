@@ -235,12 +235,7 @@ impl<'a, 'b> fold::DocFolder for CoverageCalculator<'a, 'b> {
                 let mut tests = Tests { found_tests: 0 };
 
                 find_testable_code(
-                    &i.attrs
-                        .doc_strings
-                        .iter()
-                        .map(|d| d.doc.as_str())
-                        .collect::<Vec<_>>()
-                        .join("\n"),
+                    &i.attrs.collapsed_doc_value().unwrap_or_default(),
                     &mut tests,
                     ErrorCodes::No,
                     false,
