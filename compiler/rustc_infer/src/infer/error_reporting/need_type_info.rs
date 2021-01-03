@@ -166,14 +166,14 @@ impl UseDiagnostic<'_> {
     /// Return a descriptor of the value at the use site
     fn descr(&self) -> &'static str {
         match self {
-            Self::TryConversion { .. } => "`?` error",
+            Self::TryConversion { .. } => "error for `?` operator",
         }
     }
 
     /// Return a descriptor of the type at the use site
     fn type_descr(&self) -> &'static str {
         match self {
-            Self::TryConversion { .. } => "`?` error type",
+            Self::TryConversion { .. } => "error type for `?` operator",
         }
     }
 
@@ -188,20 +188,17 @@ impl UseDiagnostic<'_> {
     fn attach_note(&self, err: &mut DiagnosticBuilder<'_>) {
         match *self {
             Self::TryConversion { pre_ty, post_ty, .. } => {
-                let pre_ty = pre_ty.to_string();
-                let post_ty = post_ty.to_string();
+                let intro = "`?` implicitly converts the error value";
 
-                let intro = "the `?` operation implicitly converts the error value";
-
-                let msg = match (pre_ty.as_str(), post_ty.as_str()) {
-                    ("_", "_") => format!("{} using the `From` trait", intro),
-                    (_, "_") => {
+                let msg = match (pre_ty.is_ty_infer(), post_ty.is_ty_infer()) {
+                    (true, true) => format!("{} using the `From` trait", intro),
+                    (false, true) => {
                         format!("{} into a type implementing `From<{}>`", intro, pre_ty)
                     }
-                    ("_", _) => {
+                    (true, false) => {
                         format!("{} into `{}` using the `From` trait", intro, post_ty)
                     }
-                    (_, _) => {
+                    (false, false) => {
                         format!(
                             "{} into `{}` using its implementation of `From<{}>`",
                             intro, post_ty, pre_ty

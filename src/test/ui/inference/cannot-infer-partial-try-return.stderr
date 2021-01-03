@@ -2,9 +2,9 @@ error[E0282]: type annotations needed for the closure `fn() -> std::result::Resu
   --> $DIR/cannot-infer-partial-try-return.rs:19:9
    |
 LL |         infallible()?;
-   |         ^^^^^^^^^^^^^ cannot infer type of `?` error
+   |         ^^^^^^^^^^^^^ cannot infer type of error for `?` operator
    |
-   = note: the `?` operation implicitly converts the error value into `QualifiedError<_>` using its implementation of `From<Infallible>`
+   = note: `?` implicitly converts the error value into `QualifiedError<_>` using its implementation of `From<Infallible>`
 help: give this closure an explicit return type without `_` placeholders
    |
 LL |     let x = || -> std::result::Result<(), QualifiedError<_>> {
