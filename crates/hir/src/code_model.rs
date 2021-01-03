@@ -1,5 +1,5 @@
 //! FIXME: write short doc here
-use std::{fmt::Write, iter, sync::Arc};
+use std::{iter, sync::Arc};
 
 use arrayvec::ArrayVec;
 use base_db::{CrateDisplayName, CrateId, Edition, FileId};
@@ -39,7 +39,7 @@ use hir_ty::{
     TyDefId, TyKind, TypeCtor,
 };
 use rustc_hash::FxHashSet;
-use stdx::impl_from;
+use stdx::{format_to, impl_from};
 use syntax::{
     ast::{self, AttrsOwner, NameOwner},
     AstNode, SmolStr,
@@ -803,9 +803,9 @@ impl Function {
         let body = db.body(self.id.into());
 
         let mut result = String::new();
-        writeln!(&mut result, "HIR expressions in the body of `{}`:", self.name(db)).unwrap();
+        format_to!(result, "HIR expressions in the body of `{}`:\n", self.name(db));
         for (id, expr) in body.exprs.iter() {
-            writeln!(&mut result, "{:?}: {:?}", id, expr).unwrap();
+            format_to!(result, "{:?}: {:?}\n", id, expr);
         }
 
         result
