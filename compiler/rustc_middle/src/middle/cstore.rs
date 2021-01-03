@@ -96,7 +96,7 @@ pub struct NativeLib {
     pub wasm_import_module: Option<Symbol>,
 }
 
-#[derive(Clone, TyEncodable, TyDecodable, HashStable)]
+#[derive(Clone, TyEncodable, TyDecodable, HashStable, Debug)]
 pub struct ForeignModule {
     pub foreign_items: Vec<DefId>,
     pub def_id: DefId,

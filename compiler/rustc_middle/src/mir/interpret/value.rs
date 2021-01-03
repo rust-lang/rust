@@ -13,7 +13,7 @@ use crate::ty::{ParamEnv, ScalarInt, Ty, TyCtxt};
 use super::{AllocId, Allocation, InterpResult, Pointer, PointerArithmetic};
 
 /// Represents the result of const evaluation via the `eval_to_allocation` query.
-#[derive(Clone, HashStable, TyEncodable, TyDecodable)]
+#[derive(Clone, HashStable, TyEncodable, TyDecodable, Debug)]
 pub struct ConstAlloc<'tcx> {
     // the value lives here, at offset 0, and that allocation definitely is a `AllocKind::Memory`
     // (so you can use `AllocMap::unwrap_memory`).

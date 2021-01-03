@@ -16,6 +16,7 @@ use rustc_hir::def_id::{LocalDefId, LOCAL_CRATE};
 use rustc_hir::*;
 use rustc_index::vec::IndexVec;
 
+#[derive(Debug)]
 pub struct Owner<'tcx> {
     parent: HirId,
     node: Node<'tcx>,
@@ -31,12 +32,13 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for Owner<'tcx> {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct ParentedNode<'tcx> {
     parent: ItemLocalId,
     node: Node<'tcx>,
 }
 
+#[derive(Debug)]
 pub struct OwnerNodes<'tcx> {
     hash: Fingerprint,
     nodes: IndexVec<ItemLocalId, Option<ParentedNode<'tcx>>>,

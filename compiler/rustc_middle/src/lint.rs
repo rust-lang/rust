@@ -12,7 +12,7 @@ use rustc_span::source_map::{DesugaringKind, ExpnKind, MultiSpan};
 use rustc_span::{symbol, Span, Symbol, DUMMY_SP};
 
 /// How a lint level was set.
-#[derive(Clone, Copy, PartialEq, Eq, HashStable)]
+#[derive(Clone, Copy, PartialEq, Eq, HashStable, Debug)]
 pub enum LintLevelSource {
     /// Lint is at the default level as declared
     /// in rustc or a plugin.
@@ -48,11 +48,13 @@ impl LintLevelSource {
 /// A tuple of a lint level and its source.
 pub type LevelAndSource = (Level, LintLevelSource);
 
+#[derive(Debug)]
 pub struct LintLevelSets {
     pub list: Vec<LintSet>,
     pub lint_cap: Level,
 }
 
+#[derive(Debug)]
 pub enum LintSet {
     CommandLine {
         // -A,-W,-D flags, a `Symbol` for the flag itself and `Level` for which
@@ -139,6 +141,7 @@ impl LintLevelSets {
     }
 }
 
+#[derive(Debug)]
 pub struct LintLevelMap {
     pub sets: LintLevelSets,
     pub id_to_set: FxHashMap<HirId, u32>,
