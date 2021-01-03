@@ -73,12 +73,18 @@ impl ParsedRule {
             placeholders_by_stand_in: pattern.placeholders_by_stand_in(),
             rules: Vec::new(),
         };
-        builder.try_add(ast::Expr::parse(&raw_pattern), raw_template.map(ast::Expr::parse));
+
+        let raw_template_stmt = raw_template.map(ast::Stmt::parse);
+        if let raw_template_expr @ Some(Ok(_)) = raw_template.map(ast::Expr::parse) {
+            builder.try_add(ast::Expr::parse(&raw_pattern), raw_template_expr);
+        } else {
+            builder.try_add(ast::Expr::parse(&raw_pattern), raw_template_stmt.clone());
+        }
         builder.try_add(ast::Type::parse(&raw_pattern), raw_template.map(ast::Type::parse));
         builder.try_add(ast::Item::parse(&raw_pattern), raw_template.map(ast::Item::parse));
         builder.try_add(ast::Path::parse(&raw_pattern), raw_template.map(ast::Path::parse));
         builder.try_add(ast::Pat::parse(&raw_pattern), raw_template.map(ast::Pat::parse));
-        builder.try_add(ast::Stmt::parse(&raw_pattern), raw_template.map(ast::Stmt::parse));
+        builder.try_add(ast::Stmt::parse(&raw_pattern), raw_template_stmt);
         builder.build()
     }
 }
@@ -89,7 +95,11 @@ struct RuleBuilder {
 }
 
 impl RuleBuilder {
-    fn try_add<T: AstNode>(&mut self, pattern: Result<T, ()>, template: Option<Result<T, ()>>) {
+    fn try_add<T: AstNode, T2: AstNode>(
+        &mut self,
+        pattern: Result<T, ()>,
+        template: Option<Result<T2, ()>>,
+    ) {
         match (pattern, template) {
             (Ok(pattern), Some(Ok(template))) => self.rules.push(ParsedRule {
                 placeholders_by_stand_in: self.placeholders_by_stand_in.clone(),
