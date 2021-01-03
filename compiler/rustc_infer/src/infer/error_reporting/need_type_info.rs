@@ -43,22 +43,18 @@ impl<'a, 'tcx> FindHirNodeVisitor<'a, 'tcx> {
     }
 
     fn node_ty_contains_target(&mut self, hir_id: HirId) -> Option<Ty<'tcx>> {
-        let ty_opt = self
-            .infcx
+        self.infcx
             .in_progress_typeck_results
-            .and_then(|typeck_results| typeck_results.borrow().node_type_opt(hir_id));
-        match ty_opt {
-            Some(ty) => {
-                let ty = self.infcx.resolve_vars_if_possible(ty);
-                if ty.walk().any(|inner| {
+            .and_then(|typeck_results| typeck_results.borrow().node_type_opt(hir_id))
+            .map(|ty| self.infcx.resolve_vars_if_possible(ty))
+            .filter(|ty| {
+                ty.walk().any(|inner| {
                     inner == self.target
                         || match (inner.unpack(), self.target.unpack()) {
                             (GenericArgKind::Type(inner_ty), GenericArgKind::Type(target_ty)) => {
+                                use ty::{Infer, TyVar};
                                 match (inner_ty.kind(), target_ty.kind()) {
-                                    (
-                                        &ty::Infer(ty::TyVar(a_vid)),
-                                        &ty::Infer(ty::TyVar(b_vid)),
-                                    ) => self
+                                    (&Infer(TyVar(a_vid)), &Infer(TyVar(b_vid))) => self
                                         .infcx
                                         .inner
                                         .borrow_mut()
@@ -69,14 +65,8 @@ impl<'a, 'tcx> FindHirNodeVisitor<'a, 'tcx> {
                             }
                             _ => false,
                         }
-                }) {
-                    Some(ty)
-                } else {
-                    None
-                }
-            }
-            None => None,
-        }
+                })
+            })
     }
 }
 
