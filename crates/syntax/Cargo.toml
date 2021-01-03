@@ -33,4 +33,4 @@ profile = { path = "../profile", version = "0.0.0" }
 [dev-dependencies]
 walkdir = "2.3.1"
 rayon = "1"
-expect-test = "1.0"
+expect-test = "1.1"
