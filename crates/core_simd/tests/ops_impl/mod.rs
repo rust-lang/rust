@@ -3,12 +3,6 @@
 mod helpers;
 
 #[macro_use]
-mod float_macros;
-
-mod r#f32;
-mod r#f64;
-
-#[macro_use]
 mod int_macros;
 
 mod r#i8;
