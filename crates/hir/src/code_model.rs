@@ -983,13 +983,7 @@ impl MacroDef {
 
     /// XXX: this parses the file
     pub fn name(self, db: &dyn HirDatabase) -> Option<Name> {
-        // FIXME: Currently proc-macro do not have ast-node,
-        // such that it does not have source
-        // more discussion: https://github.com/rust-analyzer/rust-analyzer/issues/6913
-        if self.is_proc_macro() {
-            return None;
-        }
-        self.source(db).value.name().map(|it| it.as_name())
+        self.source(db)?.value.name().map(|it| it.as_name())
     }
 
     /// Indicate it is a proc-macro
@@ -1378,7 +1372,7 @@ impl Impl {
     }
 
     pub fn is_builtin_derive(self, db: &dyn HirDatabase) -> Option<InFile<ast::Attr>> {
-        let src = self.source(db);
+        let src = self.source(db)?;
         let item = src.file_id.is_builtin_derive(db.upcast())?;
         let hygenic = hir_expand::hygiene::Hygiene::new(db.upcast(), item.file_id);
 

@@ -2,7 +2,7 @@ use hir::{Crate, Impl, Semantics};
 use ide_db::RootDatabase;
 use syntax::{algo::find_node_at_offset, ast, AstNode};
 
-use crate::{display::ToNav, FilePosition, NavigationTarget, RangeInfo};
+use crate::{display::TryToNav, FilePosition, NavigationTarget, RangeInfo};
 
 // Feature: Go to Implementation
 //
@@ -55,7 +55,7 @@ fn impls_for_def(
         impls
             .into_iter()
             .filter(|impl_def| ty.is_equal_for_find_impls(&impl_def.target_ty(sema.db)))
-            .map(|imp| imp.to_nav(sema.db))
+            .filter_map(|imp| imp.try_to_nav(sema.db))
             .collect(),
     )
 }
@@ -69,7 +69,7 @@ fn impls_for_trait(
 
     let impls = Impl::for_trait(sema.db, krate, tr);
 
-    Some(impls.into_iter().map(|imp| imp.to_nav(sema.db)).collect())
+    Some(impls.into_iter().filter_map(|imp| imp.try_to_nav(sema.db)).collect())
 }
 
 #[cfg(test)]

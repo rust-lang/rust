@@ -1,7 +1,7 @@
 use ide_db::RootDatabase;
 use syntax::{ast, match_ast, AstNode, SyntaxKind::*, SyntaxToken, TokenAtOffset, T};
 
-use crate::{display::ToNav, FilePosition, NavigationTarget, RangeInfo};
+use crate::{display::TryToNav, FilePosition, NavigationTarget, RangeInfo};
 
 // Feature: Go to Type Definition
 //
@@ -37,7 +37,7 @@ pub(crate) fn goto_type_definition(
 
     let adt_def = ty.autoderef(db).filter_map(|ty| ty.as_adt()).last()?;
 
-    let nav = adt_def.to_nav(db);
+    let nav = adt_def.try_to_nav(db)?;
     Some(RangeInfo::new(node.text_range(), vec![nav]))
 }
 

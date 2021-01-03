@@ -13,7 +13,7 @@ use syntax::{ast, match_ast, AstNode, SyntaxKind::*, SyntaxToken, TokenAtOffset,
 use test_utils::mark;
 
 use crate::{
-    display::{macro_label, ShortLabel, ToNav, TryToNav},
+    display::{macro_label, ShortLabel, TryToNav},
     doc_links::{remove_links, rewrite_links},
     markdown_remove::remove_markdown,
     markup::Markup,
@@ -183,10 +183,10 @@ fn show_implementations_action(db: &RootDatabase, def: Definition) -> Option<Hov
 
     match def {
         Definition::ModuleDef(it) => match it {
-            ModuleDef::Adt(Adt::Struct(it)) => Some(to_action(it.to_nav(db))),
-            ModuleDef::Adt(Adt::Union(it)) => Some(to_action(it.to_nav(db))),
-            ModuleDef::Adt(Adt::Enum(it)) => Some(to_action(it.to_nav(db))),
-            ModuleDef::Trait(it) => Some(to_action(it.to_nav(db))),
+            ModuleDef::Adt(Adt::Struct(it)) => Some(to_action(it.try_to_nav(db)?)),
+            ModuleDef::Adt(Adt::Union(it)) => Some(to_action(it.try_to_nav(db)?)),
+            ModuleDef::Adt(Adt::Enum(it)) => Some(to_action(it.try_to_nav(db)?)),
+            ModuleDef::Trait(it) => Some(to_action(it.try_to_nav(db)?)),
             _ => None,
         },
         _ => None,
@@ -206,7 +206,8 @@ fn runnable_action(
                 _ => None,
             },
             ModuleDef::Function(it) => {
-                let src = it.source(sema.db);
+                #[allow(deprecated)]
+                let src = it.source(sema.db)?;
                 if src.file_id != file_id.into() {
                     mark::hit!(hover_macro_generated_struct_fn_doc_comment);
                     mark::hit!(hover_macro_generated_struct_fn_doc_attr);
@@ -326,17 +327,12 @@ fn hover_for_definition(db: &RootDatabase, def: Definition) -> Option<Markup> {
     let mod_path = definition_mod_path(db, &def);
     return match def {
         Definition::Macro(it) => {
-            // FIXME: Currently proc-macro do not have ast-node,
-            // such that it does not have source
-            // more discussion: https://github.com/rust-analyzer/rust-analyzer/issues/6913
-            if it.is_proc_macro() {
-                return None;
-            }
-            let label = macro_label(&it.source(db).value);
+            let label = macro_label(&it.source(db)?.value);
             from_def_source_labeled(db, it, Some(label), mod_path)
         }
         Definition::Field(def) => {
-            let src = def.source(db).value;
+            #[allow(deprecated)]
+            let src = def.source(db)?.value;
             if let FieldSource::Named(it) = src {
                 from_def_source_labeled(db, def, it.short_label(), mod_path)
             } else {
@@ -385,7 +381,8 @@ fn hover_for_definition(db: &RootDatabase, def: Definition) -> Option<Markup> {
         D: HasSource<Ast = A> + HasAttrs + Copy,
         A: ShortLabel,
     {
-        let short_label = def.source(db).value.short_label();
+        #[allow(deprecated)]
+        let short_label = def.source(db)?.value.short_label();
         from_def_source_labeled(db, def, short_label, mod_path)
     }
 

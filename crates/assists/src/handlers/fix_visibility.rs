@@ -97,7 +97,8 @@ fn add_vis_to_referenced_record_field(acc: &mut Assists, ctx: &AssistContext) ->
     let parent_name = parent.name(ctx.db());
     let target_module = parent.module(ctx.db());
 
-    let in_file_source = record_field_def.source(ctx.db());
+    #[allow(deprecated)]
+    let in_file_source = record_field_def.source(ctx.db())?;
     let (offset, current_visibility, target) = match in_file_source.value {
         hir::FieldSource::Named(it) => {
             let s = it.syntax();
@@ -145,53 +146,53 @@ fn target_data_for_def(
     fn offset_target_and_file_id<S, Ast>(
         db: &dyn HirDatabase,
         x: S,
-    ) -> (TextSize, Option<ast::Visibility>, TextRange, FileId)
+    ) -> Option<(TextSize, Option<ast::Visibility>, TextRange, FileId)>
     where
         S: HasSource<Ast = Ast>,
         Ast: AstNode + ast::VisibilityOwner,
     {
-        let source = x.source(db);
+        let source = x.source(db)?;
         let in_file_syntax = source.syntax();
         let file_id = in_file_syntax.file_id;
         let syntax = in_file_syntax.value;
         let current_visibility = source.value.visibility();
-        (
+        Some((
             vis_offset(syntax),
             current_visibility,
             syntax.text_range(),
             file_id.original_file(db.upcast()),
-        )
+        ))
     }
 
     let target_name;
     let (offset, current_visibility, target, target_file) = match def {
         hir::ModuleDef::Function(f) => {
             target_name = Some(f.name(db));
-            offset_target_and_file_id(db, f)
+            offset_target_and_file_id(db, f)?
         }
         hir::ModuleDef::Adt(adt) => {
             target_name = Some(adt.name(db));
             match adt {
-                hir::Adt::Struct(s) => offset_target_and_file_id(db, s),
-                hir::Adt::Union(u) => offset_target_and_file_id(db, u),
-                hir::Adt::Enum(e) => offset_target_and_file_id(db, e),
+                hir::Adt::Struct(s) => offset_target_and_file_id(db, s)?,
+                hir::Adt::Union(u) => offset_target_and_file_id(db, u)?,
+                hir::Adt::Enum(e) => offset_target_and_file_id(db, e)?,
             }
         }
         hir::ModuleDef::Const(c) => {
             target_name = c.name(db);
-            offset_target_and_file_id(db, c)
+            offset_target_and_file_id(db, c)?
         }
         hir::ModuleDef::Static(s) => {
             target_name = s.name(db);
-            offset_target_and_file_id(db, s)
+            offset_target_and_file_id(db, s)?
         }
         hir::ModuleDef::Trait(t) => {
             target_name = Some(t.name(db));
-            offset_target_and_file_id(db, t)
+            offset_target_and_file_id(db, t)?
         }
         hir::ModuleDef::TypeAlias(t) => {
             target_name = Some(t.name(db));
-            offset_target_and_file_id(db, t)
+            offset_target_and_file_id(db, t)?
         }
         hir::ModuleDef::Module(m) => {
             target_name = m.name(db);

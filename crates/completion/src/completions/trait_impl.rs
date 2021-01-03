@@ -156,19 +156,21 @@ fn add_function_impl(
     };
     let range = TextRange::new(fn_def_node.text_range().start(), ctx.source_range().end());
 
-    let function_decl = function_declaration(&func.source(ctx.db).value);
-    match ctx.config.snippet_cap {
-        Some(cap) => {
-            let snippet = format!("{} {{\n    $0\n}}", function_decl);
-            builder.snippet_edit(cap, TextEdit::replace(range, snippet))
+    if let Some(src) = func.source(ctx.db) {
+        let function_decl = function_declaration(&src.value);
+        match ctx.config.snippet_cap {
+            Some(cap) => {
+                let snippet = format!("{} {{\n    $0\n}}", function_decl);
+                builder.snippet_edit(cap, TextEdit::replace(range, snippet))
+            }
+            None => {
+                let header = format!("{} {{", function_decl);
+                builder.text_edit(TextEdit::replace(range, header))
+            }
         }
-        None => {
-            let header = format!("{} {{", function_decl);
-            builder.text_edit(TextEdit::replace(range, header))
-        }
+        .kind(completion_kind)
+        .add_to(acc);
     }
-    .kind(completion_kind)
-    .add_to(acc);
 }
 
 fn add_type_alias_impl(
@@ -200,16 +202,19 @@ fn add_const_impl(
     let const_name = const_.name(ctx.db).map(|n| n.to_string());
 
     if let Some(const_name) = const_name {
-        let snippet = make_const_compl_syntax(&const_.source(ctx.db).value);
+        if let Some(source) = const_.source(ctx.db) {
+            let snippet = make_const_compl_syntax(&source.value);
 
-        let range = TextRange::new(const_def_node.text_range().start(), ctx.source_range().end());
+            let range =
+                TextRange::new(const_def_node.text_range().start(), ctx.source_range().end());
 
-        CompletionItem::new(CompletionKind::Magic, ctx.source_range(), snippet.clone())
-            .text_edit(TextEdit::replace(range, snippet))
-            .lookup_by(const_name)
-            .kind(CompletionItemKind::Const)
-            .set_documentation(const_.docs(ctx.db))
-            .add_to(acc);
+            CompletionItem::new(CompletionKind::Magic, ctx.source_range(), snippet.clone())
+                .text_edit(TextEdit::replace(range, snippet))
+                .lookup_by(const_name)
+                .kind(CompletionItemKind::Const)
+                .set_documentation(const_.docs(ctx.db))
+                .add_to(acc);
+        }
     }
 }
 

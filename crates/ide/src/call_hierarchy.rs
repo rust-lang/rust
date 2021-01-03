@@ -8,7 +8,7 @@ use ide_db::RootDatabase;
 use syntax::{ast, match_ast, AstNode, TextRange};
 
 use crate::{
-    display::ToNav, goto_definition, references, FilePosition, NavigationTarget, RangeInfo,
+    display::TryToNav, goto_definition, references, FilePosition, NavigationTarget, RangeInfo,
 };
 
 #[derive(Debug, Clone)]
@@ -61,7 +61,7 @@ pub(crate) fn incoming_calls(db: &RootDatabase, position: FilePosition) -> Optio
                 match node {
                     ast::Fn(it) => {
                         let def = sema.to_def(&it)?;
-                        Some(def.to_nav(sema.db))
+                        def.try_to_nav(sema.db)
                     },
                     _ => None,
                 }
@@ -99,7 +99,7 @@ pub(crate) fn outgoing_calls(db: &RootDatabase, position: FilePosition) -> Optio
                     match callable.kind() {
                         hir::CallableKind::Function(it) => {
                             let fn_def: hir::Function = it.into();
-                            let nav = fn_def.to_nav(db);
+                            let nav = fn_def.try_to_nav(db)?;
                             Some(nav)
                         }
                         _ => None,
@@ -107,7 +107,7 @@ pub(crate) fn outgoing_calls(db: &RootDatabase, position: FilePosition) -> Optio
                 }
                 FnCallNode::MethodCallExpr(expr) => {
                     let function = sema.resolve_method_call(&expr)?;
-                    Some(function.to_nav(db))
+                    function.try_to_nav(db)
                 }
             } {
                 Some((func_target, name_ref.syntax().text_range()))
