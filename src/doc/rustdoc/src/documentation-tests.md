@@ -3,6 +3,9 @@
 `rustdoc` supports executing your documentation examples as tests. This makes sure
 that examples within your documentation are up to date and working.
 
+Before going any further, please note that only documentation examples in the source
+code are run. So if you have ones in your `tests` folder files, they won't be run.
+
 The basic idea is this:
 
 ```ignore
