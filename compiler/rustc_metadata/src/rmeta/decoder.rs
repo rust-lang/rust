@@ -1098,8 +1098,8 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                 }
 
                 let def_key = self.def_key(child_index);
-                let span = self.get_span(child_index, sess);
                 if def_key.disambiguated_data.data.get_opt_name().is_some() {
+                    let span = self.get_span(child_index, sess);
                     let kind = self.def_kind(child_index);
                     let ident = self.item_ident(child_index, sess);
                     let vis = self.get_visibility(child_index);
