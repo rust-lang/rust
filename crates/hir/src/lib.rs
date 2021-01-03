@@ -35,8 +35,9 @@ pub use crate::{
     code_model::{
         Access, Adt, AsAssocItem, AssocItem, AssocItemContainer, Callable, CallableKind, Const,
         ConstParam, Crate, CrateDependency, DefWithBody, Enum, Field, FieldSource, Function,
-        GenericDef, HasVisibility, Impl, Label, LifetimeParam, Local, MacroDef, Module, ModuleDef,
-        ScopeDef, Static, Struct, Trait, Type, TypeAlias, TypeParam, Union, Variant, VariantDef,
+        GenericDef, GenericParam, HasVisibility, Impl, Label, LifetimeParam, Local, MacroDef,
+        Module, ModuleDef, ScopeDef, Static, Struct, Trait, Type, TypeAlias, TypeParam, Union,
+        Variant, VariantDef,
     },
     has_source::HasSource,
     semantics::{PathResolution, Semantics, SemanticsScope},

@@ -6,13 +6,13 @@
 use hir_def::{
     expr::{LabelId, PatId},
     item_scope::ItemInNs,
-    AdtId, AssocItemId, DefWithBodyId, EnumVariantId, FieldId, GenericDefId, ModuleDefId,
-    VariantId,
+    AdtId, AssocItemId, DefWithBodyId, EnumVariantId, FieldId, GenericDefId, GenericParamId,
+    ModuleDefId, VariantId,
 };
 
 use crate::{
-    Adt, AssocItem, DefWithBody, Field, GenericDef, Label, Local, MacroDef, ModuleDef, Variant,
-    VariantDef,
+    code_model::GenericParam, Adt, AssocItem, DefWithBody, Field, GenericDef, Label, Local,
+    MacroDef, ModuleDef, Variant, VariantDef,
 };
 
 macro_rules! from_id {
@@ -64,6 +64,26 @@ impl From<Adt> for AdtId {
             Adt::Struct(it) => AdtId::StructId(it.id),
             Adt::Union(it) => AdtId::UnionId(it.id),
             Adt::Enum(it) => AdtId::EnumId(it.id),
+        }
+    }
+}
+
+impl From<GenericParamId> for GenericParam {
+    fn from(id: GenericParamId) -> Self {
+        match id {
+            GenericParamId::TypeParamId(it) => GenericParam::TypeParam(it.into()),
+            GenericParamId::LifetimeParamId(it) => GenericParam::LifetimeParam(it.into()),
+            GenericParamId::ConstParamId(it) => GenericParam::ConstParam(it.into()),
+        }
+    }
+}
+
+impl From<GenericParam> for GenericParamId {
+    fn from(id: GenericParam) -> Self {
+        match id {
+            GenericParam::TypeParam(it) => GenericParamId::TypeParamId(it.id),
+            GenericParam::LifetimeParam(it) => GenericParamId::LifetimeParamId(it.id),
+            GenericParam::ConstParam(it) => GenericParamId::ConstParamId(it.id),
         }
     }
 }

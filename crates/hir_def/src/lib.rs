@@ -261,6 +261,15 @@ pub enum AdtId {
 }
 impl_from!(StructId, UnionId, EnumId for AdtId);
 
+/// A generic param
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum GenericParamId {
+    TypeParamId(TypeParamId),
+    LifetimeParamId(LifetimeParamId),
+    ConstParamId(ConstParamId),
+}
+impl_from!(TypeParamId, LifetimeParamId, ConstParamId for GenericParamId);
+
 /// The defs which can be visible in the module.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ModuleDefId {
@@ -357,6 +366,7 @@ pub enum AttrDefId {
     TypeAliasId(TypeAliasId),
     MacroDefId(MacroDefId),
     ImplId(ImplId),
+    GenericParamId(GenericParamId),
 }
 
 impl_from!(
@@ -370,7 +380,8 @@ impl_from!(
     TraitId,
     TypeAliasId,
     MacroDefId,
-    ImplId
+    ImplId,
+    GenericParamId
     for AttrDefId
 );
 
@@ -495,6 +506,15 @@ impl AttrDefId {
             AttrDefId::TraitId(it) => it.lookup(db).container.module(db).krate,
             AttrDefId::TypeAliasId(it) => it.lookup(db).module(db).krate,
             AttrDefId::ImplId(it) => it.lookup(db).container.module(db).krate,
+            AttrDefId::GenericParamId(it) => {
+                match it {
+                    GenericParamId::TypeParamId(it) => it.parent,
+                    GenericParamId::LifetimeParamId(it) => it.parent,
+                    GenericParamId::ConstParamId(it) => it.parent,
+                }
+                .module(db)
+                .krate
+            }
             // FIXME: `MacroDefId` should store the defining module, then this can implement
             // `HasModule`
             AttrDefId::MacroDefId(it) => it.krate,
