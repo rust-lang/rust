@@ -24,7 +24,7 @@ pub struct ImportInfo {
     /// The module containing this item.
     pub container: ModuleId,
     /// Whether the import is a trait associated item or not.
-    pub is_assoc_item: bool,
+    pub is_trait_assoc_item: bool,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -105,11 +105,16 @@ impl ImportMap {
                 for item in per_ns.iter_items() {
                     let path = mk_path();
                     let path_len = path.len();
-                    let import_info = ImportInfo { path, container: module, is_assoc_item: false };
+                    let import_info =
+                        ImportInfo { path, container: module, is_trait_assoc_item: false };
 
-                    // If we've added a path to a trait, add the trait's associated items to the assoc map.
                     if let Some(ModuleDefId::TraitId(tr)) = item.as_module_def_id() {
-                        import_map.collect_trait_assoc_items(db, tr, &import_info);
+                        import_map.collect_trait_assoc_items(
+                            db,
+                            tr,
+                            matches!(item, ItemInNs::Types(_)),
+                            &import_info,
+                        );
                     }
 
                     match import_map.map.entry(item) {
@@ -177,17 +182,24 @@ impl ImportMap {
         &mut self,
         db: &dyn DefDatabase,
         tr: TraitId,
-        import_info: &ImportInfo,
+        is_type_in_ns: bool,
+        original_import_info: &ImportInfo,
     ) {
-        for (assoc_item_name, item) in db.trait_data(tr).items.iter() {
-            let assoc_item = ItemInNs::Types(match item.clone() {
+        for (assoc_item_name, item) in &db.trait_data(tr).items {
+            let module_def_id = match *item {
                 AssocItemId::FunctionId(f) => f.into(),
                 AssocItemId::ConstId(c) => c.into(),
                 AssocItemId::TypeAliasId(t) => t.into(),
-            });
-            let mut assoc_item_info = import_info.to_owned();
+            };
+            let assoc_item = if is_type_in_ns {
+                ItemInNs::Types(module_def_id)
+            } else {
+                ItemInNs::Values(module_def_id)
+            };
+
+            let mut assoc_item_info = original_import_info.to_owned();
             assoc_item_info.path.segments.push(assoc_item_name.to_owned());
-            assoc_item_info.is_assoc_item = true;
+            assoc_item_info.is_trait_assoc_item = true;
             self.map.insert(assoc_item, assoc_item_info);
         }
     }
@@ -314,7 +326,7 @@ impl Query {
 }
 
 fn import_matches_query(import: &ImportInfo, query: &Query, enforce_lowercase: bool) -> bool {
-    let mut input = if import.is_assoc_item || query.name_only {
+    let mut input = if import.is_trait_assoc_item || query.name_only {
         import.path.segments.last().unwrap().to_string()
     } else {
         import.path.to_string()
@@ -455,6 +467,8 @@ mod tests {
                     None => (
                         dependency_imports.path_of(dependency)?.to_string(),
                         match dependency {
+                            ItemInNs::Types(ModuleDefId::FunctionId(_))
+                            | ItemInNs::Values(ModuleDefId::FunctionId(_)) => "f",
                             ItemInNs::Types(_) => "t",
                             ItemInNs::Values(_) => "v",
                             ItemInNs::Macros(_) => "m",
@@ -478,7 +492,16 @@ mod tests {
         dependency_imports: &ImportMap,
         dependency: ItemInNs,
     ) -> Option<String> {
-        let dependency_assoc_item_id = dependency.as_assoc_item_id()?;
+        let dependency_assoc_item_id = match dependency {
+            ItemInNs::Types(ModuleDefId::FunctionId(id))
+            | ItemInNs::Values(ModuleDefId::FunctionId(id)) => AssocItemId::from(id),
+            ItemInNs::Types(ModuleDefId::ConstId(id))
+            | ItemInNs::Values(ModuleDefId::ConstId(id)) => AssocItemId::from(id),
+            ItemInNs::Types(ModuleDefId::TypeAliasId(id))
+            | ItemInNs::Values(ModuleDefId::TypeAliasId(id)) => AssocItemId::from(id),
+            _ => return None,
+        };
+
         let trait_ = assoc_to_trait(db, dependency)?;
         if let ModuleDefId::TraitId(tr) = trait_.as_module_def_id()? {
             let trait_data = db.trait_data(tr);
@@ -820,7 +843,7 @@ mod tests {
                 dep::Fmt (m)
                 dep::fmt::Display (t)
                 dep::fmt::Display::fmt (a)
-                dep::format (v)
+                dep::format (f)
             "#]],
         );
 
