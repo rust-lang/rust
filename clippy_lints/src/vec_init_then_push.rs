@@ -20,12 +20,12 @@ declare_clippy_lint! {
     /// **Example:**
     ///
     /// ```rust
-    /// let mut v: Vec<u32> = Vec::new();
+    /// let mut v = Vec::new();
     /// v.push(0);
     /// ```
     /// Use instead:
     /// ```rust
-    /// let v: Vec<u32> = vec![0];
+    /// let v = vec![0];
     /// ```
     pub VEC_INIT_THEN_PUSH,
     perf,
