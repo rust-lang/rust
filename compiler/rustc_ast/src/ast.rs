@@ -1095,8 +1095,8 @@ impl Expr {
             match block.stmts.last().map(|last_stmt| &last_stmt.kind) {
                 // Implicit return
                 Some(StmtKind::Expr(_)) => true,
-                // Last statement is an explicit return?
-                Some(StmtKind::Semi(expr)) => matches!(expr.kind, ExprKind::Ret(_)),
+                // Last statement is an explicit return
+                Some(StmtKind::Semi(Expr { kind: ExprKind::Ret(_), .. })) => true,
                 // This is a block that doesn't end in either an implicit or explicit return.
                 _ => false,
             }
