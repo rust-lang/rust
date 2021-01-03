@@ -242,8 +242,8 @@ impl NonConstOp for CellBorrow {
             ccx.tcx.sess,
             span,
             E0492,
-            "cannot borrow a constant which may contain \
-            interior mutability, create a static instead"
+            "this borrow to an interior mutable value may end up in the final value of this {}",
+            ccx.const_kind(),
         )
     }
 }

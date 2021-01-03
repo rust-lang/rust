@@ -1,10 +1,10 @@
-error[E0492]: cannot borrow a constant which may contain interior mutability, create a static instead
+error[E0492]: this borrow to an interior mutable value may end up in the final value of this constant
   --> $DIR/E0492.rs:4:33
    |
 LL | const B: &'static AtomicUsize = &A;
    |                                 ^^
 
-error[E0492]: cannot borrow a constant which may contain interior mutability, create a static instead
+error[E0492]: this borrow to an interior mutable value may end up in the final value of this static
   --> $DIR/E0492.rs:5:34
    |
 LL | static C: &'static AtomicUsize = &A;
