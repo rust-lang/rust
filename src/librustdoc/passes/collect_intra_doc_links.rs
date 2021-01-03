@@ -394,10 +394,14 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                         ns,
                         impl_,
                     )
-                    .map(|item| match item.kind {
-                        ty::AssocKind::Fn => "method",
-                        ty::AssocKind::Const => "associatedconstant",
-                        ty::AssocKind::Type => "associatedtype",
+                    .map(|item| {
+                        let kind = item.kind;
+                        self.kind_side_channel.set(Some((kind.as_def_kind(), item.def_id)));
+                        match kind {
+                            ty::AssocKind::Fn => "method",
+                            ty::AssocKind::Const => "associatedconstant",
+                            ty::AssocKind::Type => "associatedtype",
+                        }
                     })
                     .map(|out| {
                         (
@@ -1143,7 +1147,7 @@ impl LinkCollector<'_, '_> {
             );
         };
         match res {
-            Res::Primitive(_) => match disambiguator {
+            Res::Primitive(_) if self.kind_side_channel.get().is_none() => match disambiguator {
                 Some(Disambiguator::Primitive | Disambiguator::Namespace(_)) | None => {
                     Some(ItemLink { link: ori_link.link, link_text, did: None, fragment })
                 }
@@ -1152,6 +1156,7 @@ impl LinkCollector<'_, '_> {
                     None
                 }
             },
+            Res::Primitive(_) => Some(ItemLink { link: ori_link, link_text, did: None, fragment }),
             Res::Def(kind, id) => {
                 debug!("intra-doc link to {} resolved to {:?}", path_str, res);
 
