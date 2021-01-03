@@ -1240,6 +1240,7 @@ crate fn rust_code_blocks(md: &str, extra_info: &ExtraInfo<'_, '_>) -> Vec<RustC
                     if !lang_string.rust {
                         continue;
                     }
+                    let is_ignore = lang_string.ignore != Ignore::None;
                     let syntax = if syntax.is_empty() { None } else { Some(syntax.to_owned()) };
                     let (code_start, mut code_end) = match p.next() {
                         Some((Event::Text(_), offset)) => (offset.start, offset.end),
@@ -1250,7 +1251,7 @@ crate fn rust_code_blocks(md: &str, extra_info: &ExtraInfo<'_, '_>) -> Vec<RustC
                                 range: offset,
                                 code,
                                 syntax,
-                                is_ignore: lang_string.ignore != Ignore::None,
+                                is_ignore,
                             });
                             continue;
                         }
@@ -1261,7 +1262,7 @@ crate fn rust_code_blocks(md: &str, extra_info: &ExtraInfo<'_, '_>) -> Vec<RustC
                                 range: offset,
                                 code,
                                 syntax,
-                                is_ignore: lang_string.ignore != Ignore::None,
+                                is_ignore,
                             });
                             continue;
                         }
@@ -1269,7 +1270,7 @@ crate fn rust_code_blocks(md: &str, extra_info: &ExtraInfo<'_, '_>) -> Vec<RustC
                     while let Some((Event::Text(_), offset)) = p.next() {
                         code_end = offset.end;
                     }
-                    (syntax, code_start, code_end, offset, true, lang_string.ignore != Ignore::None)
+                    (syntax, code_start, code_end, offset, true, is_ignore)
                 }
                 CodeBlockKind::Indented => {
                     // The ending of the offset goes too far sometime so we reduce it by one in
