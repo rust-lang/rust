@@ -1899,8 +1899,9 @@ where
             return;
         }
 
-        if *self == DUMMY_SP {
+        if self.is_dummy() {
             Hash::hash(&TAG_INVALID_SPAN, hasher);
+            self.ctxt().hash_stable(ctx, hasher);
             return;
         }
 

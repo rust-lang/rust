@@ -32,8 +32,10 @@ use std::mem;
 
 const TAG_FILE_FOOTER: u128 = 0xC0FFEE_C0FFEE_C0FFEE_C0FFEE_C0FFEE;
 
-const TAG_VALID_SPAN: u8 = 0;
-const TAG_INVALID_SPAN: u8 = 1;
+// A normal span encoded with both location information and a `SyntaxContext`
+const TAG_FULL_SPAN: u8 = 0;
+// A partial span with no location information, encoded only with a `SyntaxContext`
+const TAG_PARTIAL_SPAN: u8 = 1;
 
 const TAG_SYNTAX_CONTEXT: u8 = 0;
 const TAG_EXPN_DATA: u8 = 1;
@@ -864,10 +866,11 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for Span {
     fn decode(decoder: &mut CacheDecoder<'a, 'tcx>) -> Result<Self, String> {
         let tag: u8 = Decodable::decode(decoder)?;
 
-        if tag == TAG_INVALID_SPAN {
-            return Ok(DUMMY_SP);
+        if tag == TAG_PARTIAL_SPAN {
+            let ctxt = SyntaxContext::decode(decoder)?;
+            return Ok(DUMMY_SP.with_ctxt(ctxt));
         } else {
-            debug_assert_eq!(tag, TAG_VALID_SPAN);
+            debug_assert_eq!(tag, TAG_FULL_SPAN);
         }
 
         let file_lo_index = SourceFileIndex::decode(decoder)?;
@@ -1057,24 +1060,29 @@ where
 {
     fn encode(&self, s: &mut CacheEncoder<'a, 'tcx, E>) -> Result<(), E::Error> {
         if *self == DUMMY_SP {
-            return TAG_INVALID_SPAN.encode(s);
+            TAG_PARTIAL_SPAN.encode(s)?;
+            return SyntaxContext::root().encode(s);
         }
 
         let span_data = self.data();
-        let (file_lo, line_lo, col_lo) = match s.source_map.byte_pos_to_line_and_col(span_data.lo) {
-            Some(pos) => pos,
-            None => return TAG_INVALID_SPAN.encode(s),
+        let pos = s.source_map.byte_pos_to_line_and_col(span_data.lo);
+        let partial_span = match &pos {
+            Some((file_lo, _, _)) => !file_lo.contains(span_data.hi),
+            None => true,
         };
 
-        if !file_lo.contains(span_data.hi) {
-            return TAG_INVALID_SPAN.encode(s);
+        if partial_span {
+            TAG_PARTIAL_SPAN.encode(s)?;
+            return span_data.ctxt.encode(s);
         }
+
+        let (file_lo, line_lo, col_lo) = pos.unwrap();
 
         let len = span_data.hi - span_data.lo;
 
         let source_file_index = s.source_file_index(file_lo);
 
-        TAG_VALID_SPAN.encode(s)?;
+        TAG_FULL_SPAN.encode(s)?;
         source_file_index.encode(s)?;
         line_lo.encode(s)?;
         col_lo.encode(s)?;
