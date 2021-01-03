@@ -1051,7 +1051,7 @@ pub(crate) mod builtin {
     /// ```ignore (cannot-doctest-external-file-dependency)
     /// fn main() {
     ///     let bytes = include_bytes!("spanish.in");
-    ///     assert_eq!(bytes, b"adi\xc3\xb3s\n");
+    ///     assert_eq!(bytes, b"adi\xc3\xb3s");
     ///     print!("{}", String::from_utf8_lossy(bytes));
     /// }
     /// ```
