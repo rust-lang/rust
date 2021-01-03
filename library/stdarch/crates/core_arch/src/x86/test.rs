@@ -97,7 +97,7 @@ mod x86_polyfill {
         union A {
             a: __m128i,
             b: [i64; 2],
-        };
+        }
         let mut a = A { a };
         a.b[idx as usize] = val;
         a.a
@@ -109,7 +109,7 @@ mod x86_polyfill {
         union A {
             a: __m256i,
             b: [i64; 4],
-        };
+        }
         let mut a = A { a };
         a.b[idx as usize] = val;
         a.a
