@@ -53,7 +53,7 @@ error: field assignment outside of initializer for an instance created with Defa
 LL |     a.i = Default::default();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: consider initializing the variable with `A::default()` and removing relevant reassignments
+note: consider initializing the variable with `A { i: Default::default(), ..Default::default() }` and removing relevant reassignments
   --> $DIR/field_reassign_with_default.rs:90:5
    |
 LL |     let mut a: A = Default::default();
@@ -65,7 +65,7 @@ error: field assignment outside of initializer for an instance created with Defa
 LL |     a.i = Default::default();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: consider initializing the variable with `A { j: 45, ..Default::default() }` and removing relevant reassignments
+note: consider initializing the variable with `A { i: Default::default(), j: 45 }` and removing relevant reassignments
   --> $DIR/field_reassign_with_default.rs:94:5
    |
 LL |     let mut a: A = Default::default();
