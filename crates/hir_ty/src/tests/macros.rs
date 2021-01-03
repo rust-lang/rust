@@ -371,37 +371,6 @@ expand!();
 }
 
 #[test]
-fn infer_macro_with_dollar_crate_in_def_site() {
-    check_types(
-        r#"
-//- /main.rs crate:main deps:foo
-use foo::expand;
-
-macro_rules! list {
-    ($($tt:tt)*) => { $($tt)* }
-}
-
-fn test() {
-    let r = expand!();
-    r;
-  //^ u128
-}
-
-//- /lib.rs crate:foo
-#[macro_export]
-macro_rules! expand {
-    () => { list!($crate::m!()) };
-}
-
-#[macro_export]
-macro_rules! m {
-    () => { 0u128 };
-}
-"#,
-    );
-}
-
-#[test]
 fn infer_type_value_non_legacy_macro_use_as() {
     check_infer(
         r#"

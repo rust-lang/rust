@@ -123,7 +123,7 @@ pub(super) fn lower_path(mut path: ast::Path, hygiene: &Hygiene) -> Option<Path>
     // We follow what it did anyway :)
     if segments.len() == 1 && kind == PathKind::Plain {
         if let Some(_macro_call) = path.syntax().parent().and_then(ast::MacroCall::cast) {
-            if let Some(crate_id) = hygiene.local_inner_macros(path) {
+            if let Some(crate_id) = hygiene.local_inner_macros() {
                 kind = PathKind::DollarCrate(crate_id);
             }
         }

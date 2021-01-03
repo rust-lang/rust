@@ -150,7 +150,7 @@ fn match_subtree(
                     res.add_err(err!("leftover tokens"));
                 }
             }
-            Op::Var { name, kind, .. } => {
+            Op::Var { name, kind } => {
                 let kind = match kind {
                     Some(k) => k,
                     None => {

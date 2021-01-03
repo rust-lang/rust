@@ -100,8 +100,8 @@ fn expand_subtree(
                 err = err.or(e);
                 arena.push(tt.into());
             }
-            Op::Var { name, id, .. } => {
-                let ExpandResult { value: fragment, err: e } = expand_var(ctx, &name, *id);
+            Op::Var { name, .. } => {
+                let ExpandResult { value: fragment, err: e } = expand_var(ctx, &name);
                 err = err.or(e);
                 push_fragment(arena, fragment);
             }
@@ -118,10 +118,12 @@ fn expand_subtree(
     ExpandResult { value: tt::Subtree { delimiter: template.delimiter, token_trees: tts }, err }
 }
 
-fn expand_var(ctx: &mut ExpandCtx, v: &SmolStr, id: tt::TokenId) -> ExpandResult<Fragment> {
+fn expand_var(ctx: &mut ExpandCtx, v: &SmolStr) -> ExpandResult<Fragment> {
     if v == "crate" {
         // We simply produce identifier `$crate` here. And it will be resolved when lowering ast to Path.
-        let tt = tt::Leaf::from(tt::Ident { text: "$crate".into(), id }).into();
+        let tt =
+            tt::Leaf::from(tt::Ident { text: "$crate".into(), id: tt::TokenId::unspecified() })
+                .into();
         ExpandResult::ok(Fragment::Tokens(tt))
     } else if !ctx.bindings.contains(v) {
         // Note that it is possible to have a `$var` inside a macro which is not bound.
@@ -140,8 +142,14 @@ fn expand_var(ctx: &mut ExpandCtx, v: &SmolStr, id: tt::TokenId) -> ExpandResult
         let tt = tt::Subtree {
             delimiter: None,
             token_trees: vec![
-                tt::Leaf::from(tt::Punct { char: '$', spacing: tt::Spacing::Alone, id }).into(),
-                tt::Leaf::from(tt::Ident { text: v.clone(), id }).into(),
+                tt::Leaf::from(tt::Punct {
+                    char: '$',
+                    spacing: tt::Spacing::Alone,
+                    id: tt::TokenId::unspecified(),
+                })
+                .into(),
+                tt::Leaf::from(tt::Ident { text: v.clone(), id: tt::TokenId::unspecified() })
+                    .into(),
             ],
         }
         .into();
