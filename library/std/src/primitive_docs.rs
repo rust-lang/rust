@@ -11,8 +11,9 @@
 /// `bool` implements various traits, such as [`BitAnd`], [`BitOr`], [`Not`], etc.,
 /// which allow us to perform boolean operations using `&`, `|` and `!`.
 ///
-/// `if` always demands a `bool` value. [`assert!`], which is an important macro in testing,
-/// checks whether an expression returns `true` and panics if it isn't.
+/// `if` requires a `bool` value as its conditional. [`assert!`], which is an
+/// important macro in testing, checks whether an expression is `true` and panics
+/// if it isn't.
 ///
 /// ```
 /// let bool_val = true & false | false;
@@ -25,7 +26,7 @@
 ///
 /// # Examples
 ///
-/// A trivial example of the usage of `bool`,
+/// A trivial example of the usage of `bool`:
 ///
 /// ```
 /// let praise_the_borrow_checker = true;
@@ -122,9 +123,9 @@ mod prim_bool {}
 /// `!`, if we have to call [`String::from_str`] for some reason the result will be a
 /// [`Result<String, !>`] which we can unpack like this:
 ///
-/// ```ignore (string-from-str-error-type-is-not-never-yet)
-/// #[feature(exhaustive_patterns)]
-/// // NOTE: this does not work today!
+/// ```
+/// #![feature(exhaustive_patterns)]
+/// use std::str::FromStr;
 /// let Ok(s) = String::from_str("hello");
 /// ```
 ///
