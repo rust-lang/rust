@@ -10,11 +10,11 @@ use once_cell::sync::Lazy;
 use rustc_hash::{FxHashMap, FxHashSet};
 use test_utils::mark;
 
-use crate::ModuleId;
 use crate::{
     db::DefDatabase, per_ns::PerNs, visibility::Visibility, AdtId, BuiltinType, HasModule, ImplId,
     LocalModuleId, Lookup, MacroDefId, ModuleDefId, TraitId,
 };
+use crate::{AssocItemId, ModuleId};
 
 #[derive(Copy, Clone)]
 pub(crate) enum ImportType {
@@ -346,6 +346,18 @@ impl ItemInNs {
         match self {
             ItemInNs::Types(id) | ItemInNs::Values(id) => Some(id),
             ItemInNs::Macros(_) => None,
+        }
+    }
+
+    pub fn as_assoc_item_id(self) -> Option<AssocItemId> {
+        match self {
+            ItemInNs::Types(ModuleDefId::FunctionId(id))
+            | ItemInNs::Values(ModuleDefId::FunctionId(id)) => Some(id.into()),
+            ItemInNs::Types(ModuleDefId::ConstId(id))
+            | ItemInNs::Values(ModuleDefId::ConstId(id)) => Some(id.into()),
+            ItemInNs::Types(ModuleDefId::TypeAliasId(id))
+            | ItemInNs::Values(ModuleDefId::TypeAliasId(id)) => Some(id.into()),
+            _ => None,
         }
     }
 

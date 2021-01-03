@@ -428,9 +428,8 @@ fn item_import_kind(item: ItemInNs) -> Option<ImportKind> {
 mod tests {
     use base_db::{fixture::WithFixture, SourceDatabase, Upcast};
     use expect_test::{expect, Expect};
-    use stdx::format_to;
 
-    use crate::{data::FunctionData, test_db::TestDB, AssocContainerId, Lookup};
+    use crate::{test_db::TestDB, AssocContainerId, Lookup};
 
     use super::*;
 
@@ -447,44 +446,53 @@ mod tests {
 
         let actual = search_dependencies(db.upcast(), krate, query)
             .into_iter()
-            .filter_map(|item| {
-                let mark = match item {
-                    ItemInNs::Types(ModuleDefId::FunctionId(_))
-                    | ItemInNs::Values(ModuleDefId::FunctionId(_)) => "f",
-                    ItemInNs::Types(_) => "t",
-                    ItemInNs::Values(_) => "v",
-                    ItemInNs::Macros(_) => "m",
+            .filter_map(|dependency| {
+                let dependency_krate = dependency.krate(db.upcast())?;
+                let dependency_imports = db.import_map(dependency_krate);
+
+                let (path, mark) = match assoc_item_path(&db, &dependency_imports, dependency) {
+                    Some(assoc_item_path) => (assoc_item_path, "a"),
+                    None => (
+                        dependency_imports.path_of(dependency)?.to_string(),
+                        match dependency {
+                            ItemInNs::Types(_) => "t",
+                            ItemInNs::Values(_) => "v",
+                            ItemInNs::Macros(_) => "m",
+                        },
+                    ),
                 };
-                item.krate(db.upcast()).map(|krate| {
-                    let map = db.import_map(krate);
 
-                    let path = match assoc_to_trait(&db, item) {
-                        Some(trait_) => {
-                            let mut full_path = map.path_of(trait_).unwrap().to_string();
-                            if let ItemInNs::Types(ModuleDefId::FunctionId(function_id))
-                            | ItemInNs::Values(ModuleDefId::FunctionId(function_id)) = item
-                            {
-                                format_to!(
-                                    full_path,
-                                    "::{}",
-                                    FunctionData::fn_data_query(&db, function_id).name,
-                                );
-                            }
-                            full_path
-                        }
-                        None => map.path_of(item).unwrap().to_string(),
-                    };
-
-                    format!(
-                        "{}::{} ({})\n",
-                        crate_graph[krate].display_name.as_ref().unwrap(),
-                        path,
-                        mark
-                    )
-                })
+                Some(format!(
+                    "{}::{} ({})\n",
+                    crate_graph[dependency_krate].display_name.as_ref()?,
+                    path,
+                    mark
+                ))
             })
             .collect::<String>();
         expect.assert_eq(&actual)
+    }
+
+    fn assoc_item_path(
+        db: &dyn DefDatabase,
+        dependency_imports: &ImportMap,
+        dependency: ItemInNs,
+    ) -> Option<String> {
+        let dependency_assoc_item_id = dependency.as_assoc_item_id()?;
+        let trait_ = assoc_to_trait(db, dependency)?;
+        if let ModuleDefId::TraitId(tr) = trait_.as_module_def_id()? {
+            let trait_data = db.trait_data(tr);
+            let assoc_item_name =
+                trait_data.items.iter().find_map(|(assoc_item_name, assoc_item_id)| {
+                    if &dependency_assoc_item_id == assoc_item_id {
+                        Some(assoc_item_name)
+                    } else {
+                        None
+                    }
+                })?;
+            return Some(format!("{}::{}", dependency_imports.path_of(trait_)?, assoc_item_name));
+        }
+        None
     }
 
     fn assoc_to_trait(db: &dyn DefDatabase, item: ItemInNs) -> Option<ItemInNs> {
@@ -745,13 +753,17 @@ mod tests {
     }
 
     #[test]
-    fn fuzzy_import_trait() {
+    fn fuzzy_import_trait_and_assoc_items() {
         let ra_fixture = r#"
         //- /main.rs crate:main deps:dep
         //- /dep.rs crate:dep
         pub mod fmt {
             pub trait Display {
-                fn format();
+                type FmtTypeAlias;
+                const FMT_CONST: bool;
+
+                fn format_function();
+                fn format_method(&self);
             }
         }
     "#;
@@ -763,7 +775,10 @@ mod tests {
             expect![[r#"
                 dep::fmt (t)
                 dep::fmt::Display (t)
-                dep::fmt::Display::format (f)
+                dep::fmt::Display::FMT_CONST (a)
+                dep::fmt::Display::FmtTypeAlias (a)
+                dep::fmt::Display::format_function (a)
+                dep::fmt::Display::format_method (a)
             "#]],
         );
     }
@@ -804,8 +819,8 @@ mod tests {
                 dep::Fmt (v)
                 dep::Fmt (m)
                 dep::fmt::Display (t)
-                dep::fmt::Display::fmt (f)
-                dep::format (f)
+                dep::fmt::Display::fmt (a)
+                dep::format (v)
             "#]],
         );
 
@@ -818,7 +833,7 @@ mod tests {
                 dep::Fmt (t)
                 dep::Fmt (v)
                 dep::Fmt (m)
-                dep::fmt::Display::fmt (f)
+                dep::fmt::Display::fmt (a)
             "#]],
         );
 
@@ -832,7 +847,7 @@ mod tests {
                 dep::Fmt (v)
                 dep::Fmt (m)
                 dep::fmt::Display (t)
-                dep::fmt::Display::fmt (f)
+                dep::fmt::Display::fmt (a)
             "#]],
         );
     }
@@ -873,7 +888,7 @@ mod tests {
                 dep::Fmt (v)
                 dep::Fmt (m)
                 dep::fmt::Display (t)
-                dep::fmt::Display::fmt (f)
+                dep::fmt::Display::fmt (a)
             "#]],
         );
 
@@ -886,7 +901,7 @@ mod tests {
                 dep::Fmt (t)
                 dep::Fmt (v)
                 dep::Fmt (m)
-                dep::fmt::Display::fmt (f)
+                dep::fmt::Display::fmt (a)
             "#]],
         );
     }
