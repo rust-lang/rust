@@ -694,10 +694,17 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 };
 
                 // SIMD vectors of zero length are not supported.
+                // Additionally, lengths are capped at 2^16 as a fixed maximum backends must
+                // support.
                 //
                 // Can't be caught in typeck if the array length is generic.
                 if e_len == 0 {
                     tcx.sess.fatal(&format!("monomorphising SIMD type `{}` of zero length", ty));
+                } else if e_len > 65536 {
+                    tcx.sess.fatal(&format!(
+                        "monomorphising SIMD type `{}` of length greater than 65536",
+                        ty,
+                    ));
                 }
 
                 // Compute the ABI of the element type:

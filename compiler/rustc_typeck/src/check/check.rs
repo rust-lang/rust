@@ -1098,6 +1098,28 @@ pub fn check_simd(tcx: TyCtxt<'_>, sp: Span, def_id: LocalDefId) {
                     .emit();
                 return;
             }
+
+            let len = if let ty::Array(_ty, c) = e.kind() {
+                c.try_eval_usize(tcx, tcx.param_env(def.did))
+            } else {
+                Some(fields.len() as u64)
+            };
+            if let Some(len) = len {
+                if len == 0 {
+                    struct_span_err!(tcx.sess, sp, E0075, "SIMD vector cannot be empty").emit();
+                    return;
+                } else if len > 65536 {
+                    struct_span_err!(
+                        tcx.sess,
+                        sp,
+                        E0075,
+                        "SIMD vector cannot have more than 65536 elements"
+                    )
+                    .emit();
+                    return;
+                }
+            }
+
             match e.kind() {
                 ty::Param(_) => { /* struct<T>(T, T, T, T) is ok */ }
                 _ if e.is_machine() => { /* struct(u8, u8, u8, u8) is ok */ }
