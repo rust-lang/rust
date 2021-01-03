@@ -31,7 +31,7 @@ syntax = { path = "../syntax", version = "0.0.0" }
 test_utils = { path = "../test_utils", version = "0.0.0" }
 
 [dev-dependencies]
-expect-test = "1.0"
+expect-test = "1.1"
 tracing = "0.1"
 tracing-subscriber = { version = "0.2", default-features = false, features = ["env-filter", "registry"] }
 tracing-tree = { version = "0.1.4" }
