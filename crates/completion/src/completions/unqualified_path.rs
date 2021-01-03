@@ -3,7 +3,7 @@
 use std::iter;
 
 use either::Either;
-use hir::{Adt, ModPath, ModuleDef, ScopeDef, Type};
+use hir::{Adt, AsAssocItem, ModPath, ModuleDef, ScopeDef, Type};
 use ide_db::helpers::insert_use::ImportScope;
 use ide_db::imports_locator;
 use syntax::AstNode;
@@ -143,6 +143,14 @@ fn fuzzy_completion(acc: &mut Completions, ctx: &CompletionContext) -> Option<()
         potential_import_name,
         true,
     )
+    .filter(|import_candidate| match import_candidate {
+        Either::Left(ModuleDef::Function(function)) => function.as_assoc_item(ctx.db).is_none(),
+        Either::Left(ModuleDef::Const(const_)) => const_.as_assoc_item(ctx.db).is_none(),
+        Either::Left(ModuleDef::TypeAlias(type_alias)) => {
+            type_alias.as_assoc_item(ctx.db).is_none()
+        }
+        _ => true,
+    })
     .filter_map(|import_candidate| {
         Some(match import_candidate {
             Either::Left(module_def) => {
