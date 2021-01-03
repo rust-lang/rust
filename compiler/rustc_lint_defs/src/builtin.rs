@@ -3002,7 +3002,7 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```rust
+    /// ```rust,compile_fail
     /// # #![deny(disjoint_capture_drop_reorder)]
     /// # #![allow(unused)]
     /// struct FancyInteger(i32);
