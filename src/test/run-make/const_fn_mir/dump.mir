@@ -14,7 +14,6 @@ fn main() -> () {
 
     bb1: {
         StorageDead(_1);                 // scope 0 at main.rs:9:10: 9:11
-        _0 = const ();                   // scope 0 at main.rs:8:11: 10:2
         return;                          // scope 0 at main.rs:10:2: 10:2
     }
 }
