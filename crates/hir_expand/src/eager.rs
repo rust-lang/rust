@@ -218,6 +218,12 @@ fn eager_macro_recur(
             }
         };
 
+        // check if the whole original sytnax is replaced
+        // Note that SyntaxRewriter cannot replace the root node itself
+        if child.syntax() == &original {
+            return Ok(insert);
+        }
+
         rewriter.replace(child.syntax(), &insert);
     }
 
