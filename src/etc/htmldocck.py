@@ -218,7 +218,7 @@ def concat_multi_lines(f):
 
 
 LINE_PATTERN = re.compile(r'''
-    (?<=(?<!\S)@)(?P<negated>!?)
+    (?<=(?<!\S))(?P<invalid>!?)@(?P<negated>!?)
     (?P<cmd>[A-Za-z]+(?:-[A-Za-z]+)*)
     (?P<args>.*)$
 ''', re.X | re.UNICODE)
@@ -233,6 +233,16 @@ def get_commands(template):
 
             negated = (m.group('negated') == '!')
             cmd = m.group('cmd')
+            if m.group('invalid') == '!':
+                print_err(
+                    lineno,
+                    line,
+                    'Invalid command: `!@{0}{1}`, (help: try with `@!{1}`)'.format(
+                        '!' if negated else '',
+                        cmd,
+                    ),
+                )
+                continue
             args = m.group('args')
             if args and not args[:1].isspace():
                 print_err(lineno, line, 'Invalid template syntax')
