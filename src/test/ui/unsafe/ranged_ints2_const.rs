@@ -18,3 +18,9 @@ const fn bar() -> NonZero<u32> {
     let y = unsafe { &mut x.0 }; //~ ERROR mutable references
     unsafe { NonZero(1) }
 }
+
+const fn boo() -> NonZero<u32> {
+    let mut x = unsafe { NonZero(1) };
+    unsafe { let y = &mut x.0; } //~ ERROR mutable references
+    unsafe { NonZero(1) }
+}

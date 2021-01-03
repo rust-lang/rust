@@ -1,0 +1,9 @@
+error[E0764]: mutable references are not allowed in final value of constants
+  --> $DIR/mut_ref_in_final.rs:10:21
+   |
+LL | const B: *mut i32 = &mut 4;
+   |                     ^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0764`.

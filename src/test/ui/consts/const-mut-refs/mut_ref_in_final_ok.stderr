@@ -1,0 +1,13 @@
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/mut_ref_in_final_ok.rs:10:65
+   |
+LL | const FOO: NotAMutex<&mut i32> = NotAMutex(UnsafeCell::new(&mut 42));
+   |                                  -------------------------------^^--
+   |                                  |                              |  |
+   |                                  |                              |  temporary value is freed at the end of this statement
+   |                                  |                              creates a temporary which is freed while still in use
+   |                                  using this value as a constant requires that borrow lasts for `'static`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0716`.

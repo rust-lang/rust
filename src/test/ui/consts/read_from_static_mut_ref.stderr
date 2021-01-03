@@ -1,9 +1,16 @@
-error[E0764]: mutable references are not allowed in statics
-  --> $DIR/read_from_static_mut_ref.rs:5:26
+error[E0764]: mutable references are not allowed in final value of statics
+  --> $DIR/read_from_static_mut_ref.rs:4:26
    |
 LL | static OH_NO: &mut i32 = &mut 42;
-   |                          ^^^^^^^ `&mut` is only allowed in `const fn`
+   |                          ^^^^^^^
 
-error: aborting due to previous error
+error[E0594]: cannot assign to `*OH_NO`, as `OH_NO` is an immutable static item
+  --> $DIR/read_from_static_mut_ref.rs:7:5
+   |
+LL |     *OH_NO = 43;
+   |     ^^^^^^^^^^^ cannot assign
 
-For more information about this error, try `rustc --explain E0764`.
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0594, E0764.
+For more information about an error, try `rustc --explain E0594`.

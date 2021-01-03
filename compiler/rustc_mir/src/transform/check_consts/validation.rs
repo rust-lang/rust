@@ -466,6 +466,29 @@ impl Validator<'mir, 'tcx> {
             }
         }
     }
+
+    fn check_mut_borrow(&mut self, local: Local, kind: hir::BorrowKind) {
+        match self.const_kind() {
+            // In a const fn all borrows are transient or point to the places given via
+            // references in the arguments (so we already checked them with
+            // TransientMutBorrow/MutBorrow as appropriate).
+            // The borrow checker guarantees that no new non-transient borrows are created.
+            // NOTE: Once we have heap allocations during CTFE we need to figure out
+            // how to prevent `const fn` to create long-lived allocations that point
+            // to mutable memory.
+            hir::ConstContext::ConstFn => self.check_op(ops::TransientMutBorrow(kind)),
+            _ => {
+                // Locals with StorageDead do not live beyond the evaluation and can
+                // thus safely be borrowed without being able to be leaked to the final
+                // value of the constant.
+                if self.local_has_storage_dead(local) {
+                    self.check_op(ops::TransientMutBorrow(kind));
+                } else {
+                    self.check_op(ops::MutBorrow(kind));
+                }
+            }
+        }
+    }
 }
 
 impl Visitor<'tcx> for Validator<'mir, 'tcx> {
@@ -562,15 +585,15 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
 
                 if !is_allowed {
                     if let BorrowKind::Mut { .. } = kind {
-                        self.check_op(ops::MutBorrow(hir::BorrowKind::Ref));
+                        self.check_mut_borrow(place.local, hir::BorrowKind::Ref)
                     } else {
                         self.check_op(ops::CellBorrow);
                     }
                 }
             }
 
-            Rvalue::AddressOf(Mutability::Mut, _) => {
-                self.check_op(ops::MutBorrow(hir::BorrowKind::Raw))
+            Rvalue::AddressOf(Mutability::Mut, ref place) => {
+                self.check_mut_borrow(place.local, hir::BorrowKind::Raw)
             }
 
             Rvalue::Ref(_, BorrowKind::Shared | BorrowKind::Shallow, ref place)
