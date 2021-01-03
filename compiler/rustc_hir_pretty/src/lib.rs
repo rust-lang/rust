@@ -2233,19 +2233,19 @@ impl<'a> State<'a> {
             }
 
             match predicate {
-                &hir::WherePredicate::BoundPredicate(hir::WhereBoundPredicate {
-                    ref bound_generic_params,
-                    ref bounded_ty,
+                hir::WherePredicate::BoundPredicate(hir::WhereBoundPredicate {
+                    bound_generic_params,
+                    bounded_ty,
                     bounds,
                     ..
                 }) => {
                     self.print_formal_generic_params(bound_generic_params);
                     self.print_type(&bounded_ty);
-                    self.print_bounds(":", bounds);
+                    self.print_bounds(":", *bounds);
                 }
-                &hir::WherePredicate::RegionPredicate(hir::WhereRegionPredicate {
-                    ref lifetime,
-                    ref bounds,
+                hir::WherePredicate::RegionPredicate(hir::WhereRegionPredicate {
+                    lifetime,
+                    bounds,
                     ..
                 }) => {
                     self.print_lifetime(lifetime);
@@ -2264,10 +2264,8 @@ impl<'a> State<'a> {
                         }
                     }
                 }
-                &hir::WherePredicate::EqPredicate(hir::WhereEqPredicate {
-                    ref lhs_ty,
-                    ref rhs_ty,
-                    ..
+                hir::WherePredicate::EqPredicate(hir::WhereEqPredicate {
+                    lhs_ty, rhs_ty, ..
                 }) => {
                     self.print_type(lhs_ty);
                     self.s.space();

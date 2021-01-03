@@ -149,7 +149,7 @@ impl<'tcx> Visitor<'tcx> for CheckParameters<'tcx> {
 fn check_asm<'tcx>(tcx: TyCtxt<'tcx>, hir_id: HirId, body: &'tcx hir::Body<'tcx>, fn_span: Span) {
     let mut this = CheckInlineAssembly { tcx, items: Vec::new() };
     this.visit_body(body);
-    if let &[(ItemKind::Asm, _)] = &this.items[..] {
+    if let [(ItemKind::Asm, _)] = this.items[..] {
         // Ok.
     } else {
         tcx.struct_span_lint_hir(UNSUPPORTED_NAKED_FUNCTIONS, hir_id, fn_span, |lint| {

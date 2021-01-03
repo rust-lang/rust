@@ -179,12 +179,12 @@ crate fn get_real_types(
     if arg.is_full_generic() {
         let arg_s = Symbol::intern(&arg.print().to_string());
         if let Some(where_pred) = generics.where_predicates.iter().find(|g| match g {
-            &WherePredicate::BoundPredicate { ref ty, .. } => ty.def_id() == arg.def_id(),
+            WherePredicate::BoundPredicate { ty, .. } => ty.def_id() == arg.def_id(),
             _ => false,
         }) {
             let bounds = where_pred.get_bounds().unwrap_or_else(|| &[]);
             for bound in bounds.iter() {
-                if let GenericBound::TraitBound(ref poly_trait, _) = *bound {
+                if let GenericBound::TraitBound(poly_trait, _) = bound {
                     for x in poly_trait.generic_params.iter() {
                         if !x.is_type() {
                             continue;

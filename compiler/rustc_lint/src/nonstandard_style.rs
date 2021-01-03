@@ -412,7 +412,7 @@ impl<'tcx> LateLintPass<'tcx> for NonSnakeCase {
     }
 
     fn check_pat(&mut self, cx: &LateContext<'_>, p: &hir::Pat<'_>) {
-        if let &PatKind::Binding(_, hid, ident, _) = &p.kind {
+        if let PatKind::Binding(_, hid, ident, _) = p.kind {
             if let hir::Node::Pat(parent_pat) = cx.tcx.hir().get(cx.tcx.hir().get_parent_node(hid))
             {
                 if let PatKind::Struct(_, field_pats, _) = &parent_pat.kind {

@@ -926,11 +926,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     false
                 }
             };
-            if is_capturing_closure(&prev_ty.kind()) || is_capturing_closure(&new_ty.kind()) {
+            if is_capturing_closure(prev_ty.kind()) || is_capturing_closure(new_ty.kind()) {
                 (None, None)
             } else {
-                match (&prev_ty.kind(), &new_ty.kind()) {
-                    (&ty::FnDef(..), &ty::FnDef(..)) => {
+                match (prev_ty.kind(), new_ty.kind()) {
+                    (ty::FnDef(..), ty::FnDef(..)) => {
                         // Don't reify if the function types have a LUB, i.e., they
                         // are the same function and their parameters have a LUB.
                         match self
@@ -943,21 +943,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             }
                         }
                     }
-                    (&ty::Closure(_, substs), &ty::FnDef(..)) => {
+                    (ty::Closure(_, substs), ty::FnDef(..)) => {
                         let b_sig = new_ty.fn_sig(self.tcx);
                         let a_sig = self
                             .tcx
                             .signature_unclosure(substs.as_closure().sig(), b_sig.unsafety());
                         (Some(a_sig), Some(b_sig))
                     }
-                    (&ty::FnDef(..), &ty::Closure(_, substs)) => {
+                    (ty::FnDef(..), ty::Closure(_, substs)) => {
                         let a_sig = prev_ty.fn_sig(self.tcx);
                         let b_sig = self
                             .tcx
                             .signature_unclosure(substs.as_closure().sig(), a_sig.unsafety());
                         (Some(a_sig), Some(b_sig))
                     }
-                    (&ty::Closure(_, substs_a), &ty::Closure(_, substs_b)) => (
+                    (ty::Closure(_, substs_a), ty::Closure(_, substs_b)) => (
                         Some(self.tcx.signature_unclosure(
                             substs_a.as_closure().sig(),
                             hir::Unsafety::Normal,
