@@ -1732,7 +1732,12 @@ crate struct PathSegment {
 crate struct Typedef {
     crate type_: Type,
     crate generics: Generics,
-    // Type of target item.
+    /// `type_` can come from either the HIR or from metadata. If it comes from HIR, it may be a type
+    /// alias instead of the final type. This will always have the final type, regardless of whether
+    /// `type_` came from HIR or from metadata.
+    ///
+    /// If `item_type.is_none()`, `type_` is guarenteed to come from metadata (and therefore hold the
+    /// final type).
     crate item_type: Option<Type>,
 }
 

@@ -264,9 +264,9 @@ fn build_type_alias(cx: &DocContext<'_>, did: DefId) -> clean::Typedef {
     let type_ = cx.tcx.type_of(did).clean(cx);
 
     clean::Typedef {
-        type_: type_.clone(),
+        type_,
         generics: (cx.tcx.generics_of(did), predicates).clean(cx),
-        item_type: Some(type_),
+        item_type: None,
     }
 }
 

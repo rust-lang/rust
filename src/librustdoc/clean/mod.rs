@@ -1121,7 +1121,14 @@ impl Clean<Item> for hir::ImplItem<'_> {
                 hir::ImplItemKind::TyAlias(ref hir_ty) => {
                     let type_ = hir_ty.clean(cx);
                     let item_type = hir_ty_to_ty(cx.tcx, hir_ty).clean(cx);
-                    TypedefItem(Typedef { type_, generics: Generics::default(), item_type: Some(item_type) }, true)
+                    TypedefItem(
+                        Typedef {
+                            type_,
+                            generics: Generics::default(),
+                            item_type: Some(item_type),
+                        },
+                        true,
+                    )
                 }
             };
             Item::from_def_id_and_parts(local_did, Some(self.ident.name), inner, cx)
@@ -1271,9 +1278,9 @@ impl Clean<Item> for ty::AssocItem {
                     let type_ = cx.tcx.type_of(self.def_id).clean(cx);
                     TypedefItem(
                         Typedef {
-                            type_: type_.clone(),
+                            type_,
                             generics: Generics { params: Vec::new(), where_predicates: Vec::new() },
-                            item_type: Some(type_),
+                            item_type: None,
                         },
                         true,
                     )
@@ -1988,9 +1995,13 @@ impl Clean<Vec<Item>> for (&hir::Item<'_>, Option<Symbol>) {
                 }),
                 ItemKind::TyAlias(hir_ty, ref generics) => {
                     let rustdoc_ty = hir_ty.clean(cx);
-                    let ty = hir_ty_to_ty(cx.tcx, hir_ty);
+                    let ty = hir_ty_to_ty(cx.tcx, hir_ty).clean(cx);
                     TypedefItem(
-                        Typedef { type_: rustdoc_ty, generics: generics.clean(cx), item_type: Some(ty.clean(cx)) },
+                        Typedef {
+                            type_: rustdoc_ty,
+                            generics: generics.clean(cx),
+                            item_type: Some(ty),
+                        },
                         false,
                     )
                 }
