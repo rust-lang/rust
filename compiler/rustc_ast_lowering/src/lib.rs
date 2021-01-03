@@ -57,7 +57,7 @@ use rustc_session::lint::{builtin::BARE_TRAIT_OBJECTS, BuiltinLintDiagnostics, L
 use rustc_session::parse::ParseSess;
 use rustc_session::Session;
 use rustc_span::hygiene::ExpnId;
-use rustc_span::source_map::{respan, DesugaringKind, ExpnData, ExpnKind};
+use rustc_span::source_map::{respan, DesugaringKind};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::Span;
 
@@ -743,10 +743,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         span: Span,
         allow_internal_unstable: Option<Lrc<[Symbol]>>,
     ) -> Span {
-        span.fresh_expansion(ExpnData {
-            allow_internal_unstable,
-            ..ExpnData::default(ExpnKind::Desugaring(reason), span, self.sess.edition(), None)
-        })
+        span.mark_with_reason(allow_internal_unstable, reason, self.sess.edition())
     }
 
     fn with_anonymous_lifetime_mode<R>(
