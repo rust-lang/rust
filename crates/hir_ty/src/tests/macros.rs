@@ -571,6 +571,52 @@ fn bar() -> u32 {0}
 }
 
 #[test]
+fn infer_builtin_macros_include_str() {
+    check_types(
+        r#"
+//- /main.rs
+#[rustc_builtin_macro]
+macro_rules! include_str {() => {}}
+
+fn main() {
+    let a = include_str!("foo.rs");
+    a;
+} //^ &str
+
+//- /foo.rs
+hello
+"#,
+    );
+}
+
+#[test]
+fn infer_builtin_macros_include_str_with_lazy_nested() {
+    check_types(
+        r#"
+//- /main.rs
+#[rustc_builtin_macro]
+macro_rules! concat {() => {}}
+#[rustc_builtin_macro]
+macro_rules! include_str {() => {}}
+
+macro_rules! m {
+    ($x:expr) => {
+        concat!("foo", $x)
+    };
+}
+
+fn main() {
+    let a = include_str!(m!(".rs"));
+    a;
+} //^ &str
+
+//- /foo.rs
+hello
+"#,
+    );
+}
+
+#[test]
 #[ignore]
 fn include_accidentally_quadratic() {
     let file = project_dir().join("crates/syntax/test_data/accidentally_quadratic");
