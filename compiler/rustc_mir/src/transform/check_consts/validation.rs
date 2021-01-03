@@ -592,7 +592,7 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
                         // to (interior) mutable memory.
                         hir::ConstContext::ConstFn => self.check_op(ops::TransientCellBorrow),
                         _ => {
-                            // Locals StorageDead are known to not leak to the final constant, and
+                            // Locals with StorageDead are definitely not part of the final constant value, and
                             // it is thus inherently safe to permit such locals to have their
                             // address taken as we can't end up with a reference to them in the
                             // final value without creating a dangling pointer, which will cause
