@@ -4426,13 +4426,12 @@ fn sidebar_deref_methods(cx: &Context<'_>, impl_: &Impl, v: &Vec<Impl>) -> Strin
                 let id = deref_id_map
                     .get(&real_target.def_id().unwrap())
                     .expect("Deref section without derived id");
-                out.push_str(&format!("<a class=\"sidebar-title\" href=\"#{}\">", id));
                 out.push_str(&format!(
-                    "Methods from {}&lt;Target={}&gt;",
+                    "<a class=\"sidebar-title\" href=\"#{}\">Methods from {}&lt;Target={}&gt;</a>",
+                    id,
                     Escape(&format!("{:#}", impl_.inner_impl().trait_.as_ref().unwrap().print())),
-                    Escape(&format!("{:#}", real_target.print()))
+                    Escape(&format!("{:#}", real_target.print())),
                 ));
-                out.push_str("</a>");
                 // We want links' order to be reproducible so we don't use unstable sort.
                 ret.sort();
                 out.push_str(&format!("<div class=\"sidebar-links\">{}</div>", ret.join("")));
