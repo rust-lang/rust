@@ -1133,9 +1133,8 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                                 // within the crate. We only need this for fictive constructors,
                                 // for other constructors correct visibilities
                                 // were already encoded in metadata.
-                                let attrs: Vec<_> =
-                                    self.get_item_attrs(def_id.index, sess).collect();
-                                if sess.contains_name(&attrs, sym::non_exhaustive) {
+                                let mut attrs = self.get_item_attrs(def_id.index, sess);
+                                if attrs.any(|item| item.has_name(sym::non_exhaustive)) {
                                     let crate_def_id = self.local_def_id(CRATE_DEF_INDEX);
                                     vis = ty::Visibility::Restricted(crate_def_id);
                                 }
