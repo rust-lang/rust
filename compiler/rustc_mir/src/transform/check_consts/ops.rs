@@ -232,7 +232,7 @@ impl NonConstOp for TransientCellBorrow {
 }
 
 #[derive(Debug)]
-/// A borrow of a type that contains an `UnsafeCell` somewhere. The borrow escapes to
+/// A borrow of a type that contains an `UnsafeCell` somewhere. The borrow might escape to
 /// the final value of the constant, and thus we cannot allow this (for now). We may allow
 /// it in the future for static items.
 pub struct CellBorrow;

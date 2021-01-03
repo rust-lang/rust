@@ -584,14 +584,19 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
                 if borrowed_place_has_mut_interior {
                     match self.const_kind() {
                         // In a const fn all borrows are transient or point to the places given via
-                        // references in the arguments. The borrow checker guarantees that.
+                        // references in the arguments (so we already checked them with
+                        // TransientCellBorrow/CellBorrow as appropriate).
+                        // The borrow checker guarantees that no new non-transient borrows are created.
                         // NOTE: Once we have heap allocations during CTFE we need to figure out
                         // how to prevent `const fn` to create long-lived allocations that point
                         // to (interior) mutable memory.
                         hir::ConstContext::ConstFn => self.check_op(ops::TransientCellBorrow),
                         _ => {
-                            // Locals without StorageDead follow the "enclosing scope" rule, meaning
-                            // they are essentially anonymous static items themselves.
+                            // Locals StorageDead are known to not leak to the final constant, and
+                            // it is thus inherently safe to permit such locals to have their
+                            // address taken as we can't end up with a reference to them in the
+                            // final value without creating a dangling pointer, which will cause
+                            // errors during validation.
                             // Note: This is only sound if every local that has a `StorageDead` has a
                             // `StorageDead` in every control flow path leading to a `return` terminator.
                             if self.local_has_storage_dead(place.local) {
