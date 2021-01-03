@@ -302,7 +302,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             .find_map(|p| self.is_upvar_field_projection(p));
 
         let deref_base = match deref_target_place.projection.as_ref() {
-            &[ref proj_base @ .., ProjectionElem::Deref] => {
+            [proj_base @ .., ProjectionElem::Deref] => {
                 PlaceRef { local: deref_target_place.local, projection: &proj_base }
             }
             _ => bug!("deref_target_place is not a deref projection"),

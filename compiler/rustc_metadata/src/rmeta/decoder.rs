@@ -1055,19 +1055,15 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
 
         // Iterate over all children.
         let macros_only = self.dep_kind.lock().macros_only();
-        let children = self.root.tables.children.get(self, id).unwrap_or_else(Lazy::empty);
-        for child_index in children.decode((self, sess)) {
-            if macros_only {
-                continue;
-            }
+        if !macros_only {
+            let children = self.root.tables.children.get(self, id).unwrap_or_else(Lazy::empty);
 
-            // Get the item.
-            if let Some(child_kind) = self.maybe_kind(child_index) {
-                match child_kind {
-                    EntryKind::MacroDef(..) => {}
-                    _ if macros_only => continue,
-                    _ => {}
-                }
+            for child_index in children.decode((self, sess)) {
+                // Get the item.
+                let child_kind = match self.maybe_kind(child_index) {
+                    Some(child_kind) => child_kind,
+                    None => continue,
+                };
 
                 // Hand off the item to the callback.
                 match child_kind {
@@ -1102,8 +1098,8 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                 }
 
                 let def_key = self.def_key(child_index);
-                let span = self.get_span(child_index, sess);
                 if def_key.disambiguated_data.data.get_opt_name().is_some() {
+                    let span = self.get_span(child_index, sess);
                     let kind = self.def_kind(child_index);
                     let ident = self.item_ident(child_index, sess);
                     let vis = self.get_visibility(child_index);
@@ -1137,9 +1133,8 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                                 // within the crate. We only need this for fictive constructors,
                                 // for other constructors correct visibilities
                                 // were already encoded in metadata.
-                                let attrs: Vec<_> =
-                                    self.get_item_attrs(def_id.index, sess).collect();
-                                if sess.contains_name(&attrs, sym::non_exhaustive) {
+                                let mut attrs = self.get_item_attrs(def_id.index, sess);
+                                if attrs.any(|item| item.has_name(sym::non_exhaustive)) {
                                     let crate_def_id = self.local_def_id(CRATE_DEF_INDEX);
                                     vis = ty::Visibility::Restricted(crate_def_id);
                                 }

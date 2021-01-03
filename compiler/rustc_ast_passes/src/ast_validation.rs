@@ -1212,11 +1212,11 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
     }
 
     fn visit_pat(&mut self, pat: &'a Pat) {
-        match pat.kind {
-            PatKind::Lit(ref expr) => {
+        match &pat.kind {
+            PatKind::Lit(expr) => {
                 self.check_expr_within_pat(expr, false);
             }
-            PatKind::Range(ref start, ref end, _) => {
+            PatKind::Range(start, end, _) => {
                 if let Some(expr) = start {
                     self.check_expr_within_pat(expr, true);
                 }

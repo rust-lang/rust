@@ -582,7 +582,7 @@ impl<'tcx> DumpVisitor<'tcx> {
                 }
                 ref v => {
                     let mut value = format!("{}::{}", enum_data.name, name);
-                    if let &hir::VariantData::Tuple(ref fields, _) = v {
+                    if let hir::VariantData::Tuple(fields, _) = v {
                         value.push('(');
                         value.push_str(
                             &fields
@@ -653,7 +653,7 @@ impl<'tcx> DumpVisitor<'tcx> {
         let map = &self.tcx.hir();
         self.nest_typeck_results(map.local_def_id(item.hir_id), |v| {
             v.visit_ty(&typ);
-            if let &Some(ref trait_ref) = trait_ref {
+            if let Some(trait_ref) = trait_ref {
                 v.process_path(trait_ref.hir_ref_id, &hir::QPath::Resolved(None, &trait_ref.path));
             }
             v.process_generic_params(generics, "", item.hir_id);
@@ -1082,7 +1082,7 @@ impl<'tcx> DumpVisitor<'tcx> {
                     );
                 }
 
-                if let &Some(ref default_ty) = default_ty {
+                if let Some(default_ty) = default_ty {
                     self.visit_ty(default_ty)
                 }
             }

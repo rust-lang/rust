@@ -192,13 +192,13 @@ impl Collector<'tcx> {
     fn process_command_line(&mut self) {
         // First, check for errors
         let mut renames = FxHashSet::default();
-        for &(ref name, ref new_name, _) in &self.tcx.sess.opts.libs {
-            if let &Some(ref new_name) = new_name {
+        for (name, new_name, _) in &self.tcx.sess.opts.libs {
+            if let Some(ref new_name) = new_name {
                 let any_duplicate = self
                     .libs
                     .iter()
                     .filter_map(|lib| lib.name.as_ref())
-                    .any(|n| n.as_str() == *name);
+                    .any(|n| &n.as_str() == name);
                 if new_name.is_empty() {
                     self.tcx.sess.err(&format!(
                         "an empty renaming target was specified for library `{}`",
@@ -240,7 +240,7 @@ impl Collector<'tcx> {
                             if kind != NativeLibKind::Unspecified {
                                 lib.kind = kind;
                             }
-                            if let &Some(ref new_name) = new_name {
+                            if let Some(new_name) = new_name {
                                 lib.name = Some(Symbol::intern(new_name));
                             }
                             return true;

@@ -290,16 +290,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ty::FnPtr(sig) => (sig, None),
             ref t => {
                 let mut unit_variant = None;
-                if let &ty::Adt(adt_def, ..) = t {
+                if let ty::Adt(adt_def, ..) = t {
                     if adt_def.is_enum() {
-                        if let hir::ExprKind::Call(ref expr, _) = call_expr.kind {
+                        if let hir::ExprKind::Call(expr, _) = call_expr.kind {
                             unit_variant =
                                 self.tcx.sess.source_map().span_to_snippet(expr.span).ok();
                         }
                     }
                 }
 
-                if let hir::ExprKind::Call(ref callee, _) = call_expr.kind {
+                if let hir::ExprKind::Call(callee, _) = call_expr.kind {
                     let mut err = type_error_struct!(
                         self.tcx.sess,
                         callee.span,

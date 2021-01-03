@@ -770,7 +770,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         // Try to find an unbound in bounds.
         let mut unbound = None;
         for ab in ast_bounds {
-            if let &hir::GenericBound::Trait(ref ptr, hir::TraitBoundModifier::Maybe) = ab {
+            if let hir::GenericBound::Trait(ptr, hir::TraitBoundModifier::Maybe) = ab {
                 if unbound.is_none() {
                     unbound = Some(&ptr.trait_ref);
                 } else {

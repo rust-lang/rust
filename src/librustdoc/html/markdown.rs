@@ -1193,6 +1193,7 @@ crate struct RustCodeBlock {
     crate code: Range<usize>,
     crate is_fenced: bool,
     crate syntax: Option<String>,
+    crate is_ignore: bool,
 }
 
 /// Returns a range of bytes for each code block in the markdown that is tagged as `rust` or
@@ -1208,7 +1209,7 @@ crate fn rust_code_blocks(md: &str, extra_info: &ExtraInfo<'_, '_>) -> Vec<RustC
 
     while let Some((event, offset)) = p.next() {
         if let Event::Start(Tag::CodeBlock(syntax)) = event {
-            let (syntax, code_start, code_end, range, is_fenced) = match syntax {
+            let (syntax, code_start, code_end, range, is_fenced, is_ignore) = match syntax {
                 CodeBlockKind::Fenced(syntax) => {
                     let syntax = syntax.as_ref();
                     let lang_string = if syntax.is_empty() {
@@ -1219,6 +1220,7 @@ crate fn rust_code_blocks(md: &str, extra_info: &ExtraInfo<'_, '_>) -> Vec<RustC
                     if !lang_string.rust {
                         continue;
                     }
+                    let is_ignore = lang_string.ignore != Ignore::None;
                     let syntax = if syntax.is_empty() { None } else { Some(syntax.to_owned()) };
                     let (code_start, mut code_end) = match p.next() {
                         Some((Event::Text(_), offset)) => (offset.start, offset.end),
@@ -1229,6 +1231,7 @@ crate fn rust_code_blocks(md: &str, extra_info: &ExtraInfo<'_, '_>) -> Vec<RustC
                                 range: offset,
                                 code,
                                 syntax,
+                                is_ignore,
                             });
                             continue;
                         }
@@ -1239,6 +1242,7 @@ crate fn rust_code_blocks(md: &str, extra_info: &ExtraInfo<'_, '_>) -> Vec<RustC
                                 range: offset,
                                 code,
                                 syntax,
+                                is_ignore,
                             });
                             continue;
                         }
@@ -1246,7 +1250,7 @@ crate fn rust_code_blocks(md: &str, extra_info: &ExtraInfo<'_, '_>) -> Vec<RustC
                     while let Some((Event::Text(_), offset)) = p.next() {
                         code_end = offset.end;
                     }
-                    (syntax, code_start, code_end, offset, true)
+                    (syntax, code_start, code_end, offset, true, is_ignore)
                 }
                 CodeBlockKind::Indented => {
                     // The ending of the offset goes too far sometime so we reduce it by one in
@@ -1258,9 +1262,10 @@ crate fn rust_code_blocks(md: &str, extra_info: &ExtraInfo<'_, '_>) -> Vec<RustC
                             offset.end,
                             Range { start: offset.start, end: offset.end - 1 },
                             false,
+                            false,
                         )
                     } else {
-                        (None, offset.start, offset.end, offset, false)
+                        (None, offset.start, offset.end, offset, false, false)
                     }
                 }
             };
@@ -1270,6 +1275,7 @@ crate fn rust_code_blocks(md: &str, extra_info: &ExtraInfo<'_, '_>) -> Vec<RustC
                 range,
                 code: Range { start: code_start, end: code_end },
                 syntax,
+                is_ignore,
             });
         }
     }
