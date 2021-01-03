@@ -1055,19 +1055,15 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
 
         // Iterate over all children.
         let macros_only = self.dep_kind.lock().macros_only();
-        let children = self.root.tables.children.get(self, id).unwrap_or_else(Lazy::empty);
-        for child_index in children.decode((self, sess)) {
-            if macros_only {
-                continue;
-            }
+        if !macros_only {
+            let children = self.root.tables.children.get(self, id).unwrap_or_else(Lazy::empty);
 
-            // Get the item.
-            if let Some(child_kind) = self.maybe_kind(child_index) {
-                match child_kind {
-                    EntryKind::MacroDef(..) => {}
-                    _ if macros_only => continue,
-                    _ => {}
-                }
+            for child_index in children.decode((self, sess)) {
+                // Get the item.
+                let child_kind = match self.maybe_kind(child_index) {
+                    Some(child_kind) => child_kind,
+                    None => continue,
+                };
 
                 // Hand off the item to the callback.
                 match child_kind {
