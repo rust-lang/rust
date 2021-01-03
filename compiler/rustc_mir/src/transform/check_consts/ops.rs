@@ -251,15 +251,15 @@ impl NonConstOp for CellBorrow {
         );
         if let hir::ConstContext::Static(_) = ccx.const_kind() {
             err.help(
-                "To fix this, the value can be extracted to separate \
-                `static` and then referenced.",
+                "to fix this, the value can be extracted to a separate \
+                `static` item and then referenced",
             );
         }
         if ccx.tcx.sess.teach(&err.get_code().unwrap()) {
             err.note(
                 "A constant containing interior mutable data behind a reference can allow you
                  to modify that data. This would make multiple uses of a constant to be able to
-                 see different values and allow one to escape the `Send` and `Sync` requirements
+                 see different values and allow circumventing the `Send` and `Sync` requirements
                  for shared mutable data, which is unsound.",
             );
         }

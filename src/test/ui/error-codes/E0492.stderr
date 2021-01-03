@@ -10,7 +10,7 @@ error[E0492]: statics cannot refer to interior mutable data
 LL | static C: &'static AtomicUsize = &A;
    |                                  ^^ this borrow of an interior mutable value may end up in the final value
    |
-   = help: To fix this, the value can be extracted to separate `static` and then referenced.
+   = help: to fix this, the value can be extracted to a separate `static` item and then referenced
 
 error: aborting due to 2 previous errors
 
