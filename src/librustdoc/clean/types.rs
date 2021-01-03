@@ -334,6 +334,10 @@ crate enum ItemKind {
     ProcMacroItem(ProcMacro),
     PrimitiveItem(PrimitiveType),
     AssocConstItem(Type, Option<String>),
+    /// An associated item in a trait or trait impl.
+    ///
+    /// The bounds may be non-empty if there is a `where` clause.
+    /// The `Option<Type>` is the default concrete type (e.g. `trait Trait { type Target = usize; }`)
     AssocTypeItem(Vec<GenericBound>, Option<Type>),
     /// An item that has been stripped by a rustdoc pass
     StrippedItem(Box<ItemKind>),
