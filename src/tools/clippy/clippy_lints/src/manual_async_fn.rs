@@ -69,7 +69,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualAsyncFn {
                     |diag| {
                         if_chain! {
                             if let Some(header_snip) = snippet_opt(cx, header_span);
-                            if let Some(ret_pos) = position_before_rarrow(header_snip.clone());
+                            if let Some(ret_pos) = position_before_rarrow(&header_snip);
                             if let Some((ret_sugg, ret_snip)) = suggested_ret(cx, output);
                             then {
                                 let help = format!("make the function `async` and {}", ret_sugg);

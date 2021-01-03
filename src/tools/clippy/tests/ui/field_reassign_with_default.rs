@@ -107,4 +107,16 @@ fn main() {
     x.i = side_effect.next();
     x.j = 2;
     x.i = side_effect.next();
+
+    // don't lint - some private fields
+    let mut x = m::F::default();
+    x.a = 1;
+}
+
+mod m {
+    #[derive(Default)]
+    pub struct F {
+        pub a: u64,
+        b: u64,
+    }
 }

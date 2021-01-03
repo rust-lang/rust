@@ -501,8 +501,18 @@ pub fn eq_generic_param(l: &GenericParam, r: &GenericParam) -> bool {
         && match (&l.kind, &r.kind) {
             (Lifetime, Lifetime) => true,
             (Type { default: l }, Type { default: r }) => both(l, r, |l, r| eq_ty(l, r)),
-            (Const { ty: lt, kw_span: _ , default: ld}, Const { ty: rt, kw_span: _, default: rd }) =>
-                eq_ty(lt, rt) && both(ld, rd, |ld, rd| eq_anon_const(ld, rd)),
+            (
+                Const {
+                    ty: lt,
+                    kw_span: _,
+                    default: ld,
+                },
+                Const {
+                    ty: rt,
+                    kw_span: _,
+                    default: rd,
+                },
+            ) => eq_ty(lt, rt) && both(ld, rd, |ld, rd| eq_anon_const(ld, rd)),
             _ => false,
         }
         && over(&l.attrs, &r.attrs, |l, r| eq_attr(l, r))

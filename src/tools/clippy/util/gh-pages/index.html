@@ -77,7 +77,7 @@
                     <div class="col-md-12 form-horizontal">
                         <div class="input-group">
                             <label class="input-group-addon" id="filter-label" for="filter-input">Filter:</label>
-                            <input type="text" class="form-control" placeholder="Keywords or search string" id="filter-input" ng-model="search" />
+                            <input type="text" class="form-control" placeholder="Keywords or search string" id="filter-input" ng-model="search" ng-model-options="{debounce: 50}"/>
                             <span class="input-group-btn">
                                 <button class="btn btn-default" type="button" ng-click="search = ''">
                                     Clear
@@ -119,6 +119,7 @@
                             {{title}}
                         </h4>
                         <div class="list-group-item-text" ng-bind-html="text | markdown"></div>
+                        <a ng-if="title == 'Known problems'" href="https://github.com/rust-lang/rust-clippy/issues?q=is%3Aissue+is%3Aopen+{{lint.id}}">Search on GitHub</a>
                     </li>
                 </ul>
             </article>
@@ -180,6 +181,22 @@
             }
         }
 
+        function searchLint(lint, term) {
+            for (const field in lint.docs) {
+                // Continue if it's not a property
+                if (!lint.docs.hasOwnProperty(field)) {
+                    continue;
+                }
+
+                // Return if not found
+                if (lint.docs[field].toLowerCase().indexOf(term) !== -1) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         angular.module("clippy", [])
         .filter('markdown', function ($sce) {
             return function (text) {
@@ -216,40 +233,31 @@
             };
 
             $scope.bySearch = function (lint, index, array) {
-                let search_str = $scope.search;
+                let searchStr = $scope.search;
                 // It can be `null` I haven't missed this value 
-                if (search_str == null || search_str.length == 0) {
+                if (searchStr == null || searchStr.length < 3) {
                     return true;
                 }
-                search_str = search_str.toLowerCase();
+                searchStr = searchStr.toLowerCase();
 
                 // Search by id
-                let id_search = search_str.trim().replace(/(\-| )/g, "_");
-                if (lint.id.includes(id_search)) {
+                if (lint.id.indexOf(searchStr.replace("-", "_")) !== -1) {
                     return true;
                 }
 
                 // Search the description
                 // The use of `for`-loops instead of `foreach` enables us to return early 
-                let search_lint = (lint, therm) => {
-                    for (const field in lint.docs) {
-                        // Continue if it's not a property
-                        if (!lint.docs.hasOwnProperty(field)) {
-                            continue;
-                        }
+                let terms = searchStr.split(" ");
+                for (index = 0; index < terms.length; index++) {
+                    if (lint.id.indexOf(terms[index]) !== -1) {
+                        continue;
+                    }
 
-                        // Return if not found
-                        if (lint.docs[field].toLowerCase().includes(therm)) {
-                            return true;
-                        }
+                    if (searchLint(lint, terms[index])) {
+                        continue;
                     }
+
                     return false;
-                };
-                let therms = search_str.split(" ");
-                for (index = 0; index < therms.length; index++) {
-                    if (!search_lint(lint, therms[index])) {
-                        return false;
-                    }
                 }
 
                 return true;
