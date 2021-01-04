@@ -483,6 +483,16 @@ fn typeck_with_fallback<'tcx>(
 
     let id = tcx.hir().local_def_id_to_hir_id(def_id);
     let span = tcx.hir().span(id);
+    let is_inline_const = match tcx.hir().get(id) {
+        Node::AnonConst(_) => match tcx.hir().get(tcx.hir().get_parent_node(id)) {
+            Node::Expr(&hir::Expr { kind: hir::ExprKind::ConstBlock(ref anon_const), .. }) => {
+                assert_eq!(anon_const.hir_id, id);
+                true
+            }
+            _ => false,
+        },
+        _ => false,
+    };
 
     // Figure out what primary body this item has.
     let (body_id, body_ty, fn_header, fn_decl) = primary_body_of(tcx, id).unwrap_or_else(|| {
@@ -529,18 +539,15 @@ fn typeck_with_fallback<'tcx>(
                     hir::TyKind::Infer => Some(AstConv::ast_ty_to_ty(&fcx, ty)),
                     _ => None,
                 })
-                .unwrap_or_else(|| match tcx.hir().get(id) {
-                    Node::AnonConst(_) => match tcx.hir().get(tcx.hir().get_parent_node(id)) {
-                        Node::Expr(&hir::Expr {
-                            kind: hir::ExprKind::ConstBlock(ref anon_const),
-                            ..
-                        }) if anon_const.hir_id == id => fcx.next_ty_var(TypeVariableOrigin {
+                .unwrap_or_else(|| {
+                    if is_inline_const {
+                        fcx.next_ty_var(TypeVariableOrigin {
                             kind: TypeVariableOriginKind::TypeInference,
                             span,
-                        }),
-                        _ => fallback(),
-                    },
-                    _ => fallback(),
+                        })
+                    } else {
+                        fallback()
+                    }
                 });
 
             let expected_type = fcx.normalize_associated_types_in(body.value.span, expected_type);
@@ -566,46 +573,57 @@ fn typeck_with_fallback<'tcx>(
         fcx.select_obligations_where_possible(false, |_| {});
         let mut fallback_has_occurred = false;
 
-        // We do fallback in two passes, to try to generate
-        // better error messages.
-        // The first time, we do *not* replace opaque types.
-        for ty in &fcx.unsolved_variables() {
-            fallback_has_occurred |= fcx.fallback_if_possible(ty, FallbackMode::NoOpaque);
-        }
-        // We now see if we can make progress. This might
-        // cause us to unify inference variables for opaque types,
-        // since we may have unified some other type variables
-        // during the first phase of fallback.
-        // This means that we only replace inference variables with their underlying
-        // opaque types as a last resort.
+        // We do not apply any fallback inside of inline consts as
+        // we probably want to infer their type from how they
+        // are used in their parent.
         //
-        // In code like this:
+        // As that isn't completely trivial without causing query cycles
+        // we do not apply fallback to allow us to change this in the future
+        // without causing too much breakage.
         //
-        // ```rust
-        // type MyType = impl Copy;
-        // fn produce() -> MyType { true }
-        // fn bad_produce() -> MyType { panic!() }
-        // ```
-        //
-        // we want to unify the opaque inference variable in `bad_produce`
-        // with the diverging fallback for `panic!` (e.g. `()` or `!`).
-        // This will produce a nice error message about conflicting concrete
-        // types for `MyType`.
-        //
-        // If we had tried to fallback the opaque inference variable to `MyType`,
-        // we will generate a confusing type-check error that does not explicitly
-        // refer to opaque types.
-        fcx.select_obligations_where_possible(fallback_has_occurred, |_| {});
+        // See #80698 for the approach we probably want to end up with.
+        if !is_inline_const {
+            // We do fallback in two passes, to try to generate
+            // better error messages.
+            // The first time, we do *not* replace opaque types.
+            for ty in &fcx.unsolved_variables() {
+                fallback_has_occurred |= fcx.fallback_if_possible(ty, FallbackMode::NoOpaque);
+            }
+            // We now see if we can make progress. This might
+            // cause us to unify inference variables for opaque types,
+            // since we may have unified some other type variables
+            // during the first phase of fallback.
+            // This means that we only replace inference variables with their underlying
+            // opaque types as a last resort.
+            //
+            // In code like this:
+            //
+            // ```rust
+            // type MyType = impl Copy;
+            // fn produce() -> MyType { true }
+            // fn bad_produce() -> MyType { panic!() }
+            // ```
+            //
+            // we want to unify the opaque inference variable in `bad_produce`
+            // with the diverging fallback for `panic!` (e.g. `()` or `!`).
+            // This will produce a nice error message about conflicting concrete
+            // types for `MyType`.
+            //
+            // If we had tried to fallback the opaque inference variable to `MyType`,
+            // we will generate a confusing type-check error that does not explicitly
+            // refer to opaque types.
+            fcx.select_obligations_where_possible(fallback_has_occurred, |_| {});
 
-        // We now run fallback again, but this time we allow it to replace
-        // unconstrained opaque type variables, in addition to performing
-        // other kinds of fallback.
-        for ty in &fcx.unsolved_variables() {
-            fallback_has_occurred |= fcx.fallback_if_possible(ty, FallbackMode::All);
-        }
+            // We now run fallback again, but this time we allow it to replace
+            // unconstrained opaque type variables, in addition to performing
+            // other kinds of fallback.
+            for ty in &fcx.unsolved_variables() {
+                fallback_has_occurred |= fcx.fallback_if_possible(ty, FallbackMode::All);
+            }
 
-        // See if we can make any more progress.
-        fcx.select_obligations_where_possible(fallback_has_occurred, |_| {});
+            // See if we can make any more progress.
+            fcx.select_obligations_where_possible(fallback_has_occurred, |_| {});
+        }
 
         // Even though coercion casts provide type hints, we check casts after fallback for
         // backwards compatibility. This makes fallback a stronger type hint than a cast coercion.

@@ -8,8 +8,8 @@ const MMIO_BIT2: u8 = 5;
 fn main() {
     let s = match read_mmio() {
         0 => "FOO",
-        const { 1 << MMIO_BIT1 } => "BAR",
-        const { 1 << MMIO_BIT2 } => "BAZ",
+        const { 1i32 << MMIO_BIT1 } => "BAR",
+        const { 1i32 << MMIO_BIT2 } => "BAZ",
         _ => unreachable!(),
     };
 

@@ -6,5 +6,5 @@
 use std::cell::Cell;
 
 fn main() {
-    let _x = [const { Cell::new(0) }; 20];
+    let _x = [const { Cell::new(0i32) }; 20];
 }

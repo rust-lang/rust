@@ -2,9 +2,9 @@
 
 #![allow(incomplete_features)]
 #![feature(inline_const)]
-fn foo() -> i32 {
+fn foo() -> u32 {
     const {
-        let x = 5 + 10;
+        let x = 5u32 + 10;
         x / 3
     }
 }

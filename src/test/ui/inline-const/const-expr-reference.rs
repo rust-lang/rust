@@ -5,7 +5,7 @@
 
 const fn bar() -> i32 {
     const {
-        2 + 3
+        2i32 + 3
     }
 }
 

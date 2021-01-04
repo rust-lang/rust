@@ -7,6 +7,6 @@ macro_rules! do_const_block{
 }
 
 fn main() {
-    let s = do_const_block!({ 22 });
+    let s = do_const_block!({ 22u64 });
     assert_eq!(s, 22);
 }
