@@ -15,8 +15,8 @@ env:
   RUSTUP_MAX_RETRIES: 10
 
 jobs:
-  dist-windows:
-    name: dist (Windows)
+  dist-x86_64-pc-windows-msvc:
+    name: dist (x86_64-pc-windows-msvc)
     runs-on: windows-latest
     env:
       RA_TARGET: x86_64-pc-windows-msvc
@@ -45,11 +45,41 @@ jobs:
     - name: Upload artifacts
       uses: actions/upload-artifact@v1
       with:
-        name: dist-windows-latest
+        name: x86_64-pc-windows-msvc
         path: ./dist
 
-  dist-ubuntu:
-    name: dist (Ubuntu 16.04)
+  dist-aarch64-pc-windows-msvc:
+    name: dist (aarch64-pc-windows-msvc)
+    runs-on: windows-latest
+    env:
+      RA_TARGET: aarch64-pc-windows-msvc
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Rename existing rust toolchain
+      run: Rename-Item C:\Users\runneradmin\.rustup\toolchains\stable-x86_64-pc-windows-msvc C:\Users\runneradmin\.rustup\toolchains\stable-x86_64-pc-windows-msvc.old
+
+    - name: Install Rust toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        target: aarch64-pc-windows-msvc
+        profile: minimal
+        override: true
+
+    - name: Dist
+      run: cargo xtask dist
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v1
+      with:
+        name: dist-aarch64-pc-windows-msvc
+        path: ./dist
+
+  dist-x86_64-unknown-linux-gnu:
+    name: dist (x86_64-unknown-linux-gnu)
     runs-on: ubuntu-16.04
     env:
       RA_TARGET: x86_64-unknown-linux-gnu
@@ -85,11 +115,11 @@ jobs:
     - name: Upload artifacts
       uses: actions/upload-artifact@v1
       with:
-        name: dist-ubuntu-16.04
+        name: dist-x86_64-unknown-linux-gnu
         path: ./dist
 
-  dist-macos-latest:
-    name: dist (MacOS latest)
+  dist-x86_64-apple-darwin:
+    name: dist (x86_64-apple-darwin)
     runs-on: macos-latest
     env:
       RA_TARGET: x86_64-apple-darwin
@@ -111,11 +141,11 @@ jobs:
     - name: Upload artifacts
       uses: actions/upload-artifact@v1
       with:
-        name: dist-macos-latest
+        name: dist-x86_64-apple-darwin
         path: ./dist
 
-  dist-macos-11:
-    name: dist (MacOS 11.0)
+  dist-aarch64-apple-darwin:
+    name: dist (aarch64-apple-darwin)
     runs-on: macos-11.0
     env:
       RA_TARGET: aarch64-apple-darwin
@@ -138,13 +168,13 @@ jobs:
     - name: Upload artifacts
       uses: actions/upload-artifact@v1
       with:
-        name: dist-macos-11.0
+        name: dist-aarch64-apple-darwin
         path: ./dist
 
   publish:
     name: publish
     runs-on: ubuntu-16.04
-    needs: ['dist-windows', 'dist-ubuntu', 'dist-macos-latest', 'dist-macos-11']
+    needs: ['dist-x86_64-pc-windows-msvc', 'dist-aarch64-pc-windows-msvc', 'dist-x86_64-unknown-linux-gnu', 'dist-x86_64-apple-darwin', 'dist-aarch64-apple-darwin']
     steps:
     - name: Install Nodejs
       uses: actions/setup-node@v1
@@ -165,19 +195,23 @@ jobs:
 
     - uses: actions/download-artifact@v1
       with:
-        name: dist-macos-11.0
+        name: dist-aarch64-apple-darwin
         path: dist
     - uses: actions/download-artifact@v1
       with:
-        name: dist-macos-latest
+        name: dist-x86_64-apple-darwin
         path: dist
     - uses: actions/download-artifact@v1
       with:
-        name: dist-ubuntu-16.04
+        name: dist-x86_64-unknown-linux-gnu
         path: dist
     - uses: actions/download-artifact@v1
       with:
-        name: dist-windows-latest
+        name: dist-x86_64-pc-windows-msvc
+        path: dist
+    - uses: actions/download-artifact@v1
+      with:
+        name: dist-aarch64-pc-windows-msvc
         path: dist
     - run: ls -al ./dist
 
