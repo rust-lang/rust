@@ -1177,8 +1177,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 //
                 // If this is the simple case, this parameter will end up being the same as the
                 // original parameter, but with a different pattern id.
-                let mut stmt_attrs = AttrVec::new();
-                stmt_attrs.extend(parameter.attrs.iter().cloned());
+                let stmt_attrs = this.attrs[parameter.hir_id];
                 let (new_parameter_pat, new_parameter_id) = this.pat_ident(desugared_span, ident);
                 let new_parameter = hir::Param {
                     attrs: parameter.attrs,
@@ -1224,7 +1223,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     );
                     let move_expr = this.expr_ident(desugared_span, ident, new_parameter_id);
                     let move_stmt = this.stmt_let_pat(
-                        AttrVec::new(),
+                        &[],
                         desugared_span,
                         Some(move_expr),
                         move_pat,

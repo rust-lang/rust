@@ -2526,15 +2526,23 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
     fn stmt_let_pat(
         &mut self,
-        attrs: AttrVec,
+        attrs: &'hir [Attribute],
         span: Span,
         init: Option<&'hir hir::Expr<'hir>>,
         pat: &'hir hir::Pat<'hir>,
         source: hir::LocalSource,
     ) -> hir::Stmt<'hir> {
         let hir_id = self.next_id();
-        self.attrs.push_sparse(hir_id, &*self.arena.alloc_from_iter(attrs.iter().cloned()));
-        let local = hir::Local { attrs, hir_id, init, pat, source, span, ty: None };
+        self.attrs.push_sparse(hir_id, attrs);
+        let local = hir::Local {
+            attrs: attrs.iter().cloned().collect::<Vec<_>>().into(),
+            hir_id,
+            init,
+            pat,
+            source,
+            span,
+            ty: None,
+        };
         self.stmt(span, hir::StmtKind::Local(self.arena.alloc(local)))
     }
 
