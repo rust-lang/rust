@@ -2968,4 +2968,6 @@ impl<'tcx> LateLintPass<'tcx> for PtrAsPtr {
             }
         }
     }
+
+    extract_msrv_attr!(LateContext);
 }
