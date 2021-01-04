@@ -11,6 +11,7 @@
 //! On Intel i7-7800x using single thread with fixed AVX-512 clock at 4.0GHz, the avx512 is speed up about 9x.\
 //! The average time for each move in the avx512 is around 14.00s <span>&#177;</span> 1.31s and in the non-avx512
 //! is 129.02s <span>&#177;</span> 4.96s.\
+//! On Intel Tiger Lake i7-1165G7, the avx512 is around 11.11s <span>&#177;</span> 1.31s.
 //!
 //! <b>Pattern Matching</b>\
 //! Use 512-bit to present the board state. The location 0 is top left.\
