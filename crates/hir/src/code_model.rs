@@ -743,6 +743,18 @@ impl Function {
         db.function_data(self.id).name.clone()
     }
 
+    /// Get this function's return type
+    pub fn ret_type(self, db: &dyn HirDatabase) -> Type {
+        let resolver = self.id.resolver(db.upcast());
+        let ret_type = &db.function_data(self.id).ret_type;
+        let ctx = hir_ty::TyLoweringContext::new(db, &resolver);
+        let environment = TraitEnvironment::lower(db, &resolver);
+        Type {
+            krate: self.id.lookup(db.upcast()).container.module(db.upcast()).krate,
+            ty: InEnvironment { value: Ty::from_hir_ext(&ctx, ret_type).0, environment },
+        }
+    }
+
     pub fn self_param(self, db: &dyn HirDatabase) -> Option<SelfParam> {
         if !db.function_data(self.id).has_self_param {
             return None;
