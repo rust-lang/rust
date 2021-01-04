@@ -817,7 +817,7 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
                 // Attempting to call a trait method?
                 if let Some(trait_id) = tcx.trait_of_item(callee) {
                     if !self.tcx.features().const_trait_impl {
-                        self.check_op(ops::FnCallNonConst(callee));
+                        self.check_op(ops::FnCallNonConst);
                         return;
                     }
 
@@ -883,7 +883,7 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
                 }
 
                 if !tcx.is_const_fn_raw(callee) {
-                    self.check_op(ops::FnCallNonConst(callee));
+                    self.check_op(ops::FnCallNonConst);
                     return;
                 }
 
