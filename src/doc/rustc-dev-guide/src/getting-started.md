@@ -181,7 +181,7 @@ should still read the rest of the section:
 
 | Command | When to use it |
 | --- | --- |
-| `x.py check` | Quick check to see if things compile; rust-analyzer can run this automatically for you |
+| `x.py check` | Quick check to see if things compile; [rust-analyzer can run this automatically for you][rust-analyzer] |
 | `x.py build --stage 0 [library/std]` | Build only the standard library, without building the compiler |
 | `x.py build library/std` | Build just the 1st stage of the compiler, along with the standard library; this is faster than building stage 2 and usually good enough |
 | `x.py build --keep-stage 1 library/std` | Build the 1st stage of the compiler and skips rebuilding the standard library; this is useful after you've done an ordinary stage1 build to skip compilation time, but it can cause weird problems. (Just do a regular build to resolve.) |
@@ -230,6 +230,7 @@ test are mostly for the frontend of the compiler, so if you are working on LLVM
 or codegen, this shortcut will _not_ test your changes. You can read more about the
 different test suites [in this chapter][testing].
 
+[rust-analyzer]: ./building/suggested.html#configuring-rust-analyzer-for-rustc
 [uitests]: ./tests/adding.html#ui
 [testing]: https://rustc-dev-guide.rust-lang.org/tests/intro.html
 
