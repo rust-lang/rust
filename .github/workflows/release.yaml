@@ -45,7 +45,7 @@ jobs:
     - name: Upload artifacts
       uses: actions/upload-artifact@v1
       with:
-        name: x86_64-pc-windows-msvc
+        name: dist-x86_64-pc-windows-msvc
         path: ./dist
 
   dist-aarch64-pc-windows-msvc:
