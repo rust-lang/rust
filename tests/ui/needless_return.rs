@@ -101,6 +101,19 @@ fn test_return_in_macro() {
     needed_return!(0);
 }
 
+mod issue6501 {
+    fn foo(bar: Result<(), ()>) {
+        bar.unwrap_or_else(|_| return)
+    }
+
+    fn test_closure() {
+        let _ = || {
+            return;
+        };
+        let _ = || return;
+    }
+}
+
 fn main() {
     let _ = test_end_of_fn();
     let _ = test_no_semicolon();

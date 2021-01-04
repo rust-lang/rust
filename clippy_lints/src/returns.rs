@@ -131,7 +131,16 @@ impl<'tcx> LateLintPass<'tcx> for Return {
         _: HirId,
     ) {
         match kind {
-            FnKind::Closure(_) => check_final_expr(cx, &body.value, Some(body.value.span), RetReplacement::Empty),
+            FnKind::Closure(_) => {
+                // when returning without value in closure, replace this `return`
+                // with an empty block to prevent invalid suggestion (see #6501)
+                let replacement = if let ExprKind::Ret(None) = &body.value.kind {
+                    RetReplacement::Block
+                } else {
+                    RetReplacement::Empty
+                };
+                check_final_expr(cx, &body.value, Some(body.value.span), replacement)
+            },
             FnKind::ItemFn(..) | FnKind::Method(..) => {
                 if let ExprKind::Block(ref block, _) = body.value.kind {
                     check_block_return(cx, block);
