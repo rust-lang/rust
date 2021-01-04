@@ -744,19 +744,15 @@ impl Function {
     }
 
     /// Get this function's return type
-    ///
-    /// The returned type can be converted to a [`Type`] via its `ty`
-    /// method.
-    pub fn ret_type(self, db: &dyn HirDatabase) -> RetType {
+    pub fn ret_type(self, db: &dyn HirDatabase) -> Type {
         let resolver = self.id.resolver(db.upcast());
         let ret_type = &db.function_data(self.id).ret_type;
         let ctx = hir_ty::TyLoweringContext::new(db, &resolver);
         let environment = TraitEnvironment::lower(db, &resolver);
-        let ty = Type {
+        Type {
             krate: self.id.lookup(db.upcast()).container.module(db.upcast()).krate,
             ty: InEnvironment { value: Ty::from_hir_ext(&ctx, ret_type).0, environment },
-        };
-        RetType { ty }
+        }
     }
 
     pub fn self_param(self, db: &dyn HirDatabase) -> Option<SelfParam> {
@@ -839,17 +835,6 @@ impl From<Mutability> for Access {
             Mutability::Shared => Access::Shared,
             Mutability::Mut => Access::Exclusive,
         }
-    }
-}
-
-#[derive(Debug)]
-pub struct RetType {
-    ty: Type,
-}
-
-impl RetType {
-    pub fn ty(&self) -> &Type {
-        &self.ty
     }
 }
 
