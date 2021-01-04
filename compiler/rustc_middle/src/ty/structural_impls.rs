@@ -1017,7 +1017,7 @@ impl<'tcx> TypeFoldable<'tcx> for ty::Region<'tcx> {
 
 impl<'tcx> TypeFoldable<'tcx> for ty::Predicate<'tcx> {
     fn super_fold_with<F: TypeFolder<'tcx>>(self, folder: &mut F) -> Self {
-        let new = self.inner.kind.super_fold_with(folder);
+        let new = self.inner.kind.fold_with(folder);
         folder.tcx().reuse_or_mk_predicate(self, new)
     }
 
