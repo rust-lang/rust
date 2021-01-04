@@ -204,6 +204,53 @@ fn ssr_let_stmt_replace_expr() {
 }
 
 #[test]
+fn ssr_blockexpr_replace_stmt_with_stmt() {
+    assert_ssr_transform(
+        "if $a() {$b;} ==>> $b;",
+        "{
+    if foo() {
+        bar();
+    }
+    Ok(())
+}",
+        expect![[r#"{
+    bar();
+    Ok(())
+}"#]],
+    );
+}
+
+#[test]
+fn ssr_blockexpr_match_trailing_expr() {
+    assert_matches(
+        "if $a() {$b;}",
+        "{
+    if foo() {
+        bar();
+    }
+}",
+        &["if foo() {
+        bar();
+    }"],
+    );
+}
+
+#[test]
+fn ssr_blockexpr_replace_trailing_expr_with_stmt() {
+    assert_ssr_transform(
+        "if $a() {$b;} ==>> $b;",
+        "{
+    if foo() {
+        bar();
+    }
+}",
+        expect![["{
+    bar();
+}"]],
+    );
+}
+
+#[test]
 fn ssr_function_to_method() {
     assert_ssr_transform(
         "my_function($a, $b) ==>> ($a).my_method($b)",
