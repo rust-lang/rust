@@ -2,9 +2,9 @@
 # It is not intended for manual editing.
 [[package]]
 name = "addr2line"
-version = "0.14.0"
+version = "0.14.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7c0929d69e78dd9bf5408269919fcbcaeb2e35e5d43e5815517cdc6a8e11a423"
+checksum = "a55f82cfe485775d02112886f4169bde0c5894d75e79ead7eafe7e40a25e45f7"
 dependencies = [
  "gimli",
 ]
@@ -168,9 +168,9 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
 name = "chalk-derive"
-version = "0.45.0"
+version = "0.47.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ec7dacf94958d1a930b95d049d9443860859af59eadc77849392093eb577bcee"
+checksum = "3f00f6342a387edc822002d36a381e117afcac9f744951ff75fbf4a218edea5c"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -180,9 +180,9 @@ dependencies = [
 
 [[package]]
 name = "chalk-ir"
-version = "0.45.0"
+version = "0.47.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a1a5b38ede247def17da87f4badb62396a5753db6048e2011d3089d8b3796c67"
+checksum = "c686e69913591ae753e5526e73cbee39db3d9b0a92cc9078ab780cabf1c70aa9"
 dependencies = [
  "bitflags",
  "chalk-derive",
@@ -191,9 +191,9 @@ dependencies = [
 
 [[package]]
 name = "chalk-recursive"
-version = "0.45.0"
+version = "0.47.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7a18db146d7a023edc20ad094e8c2284451f7888719645004979617d1f17c041"
+checksum = "310fdcac0340dab4163b766baa8067266e3b909108d1ac1b5246c033bde63975"
 dependencies = [
  "chalk-derive",
  "chalk-ir",
@@ -204,9 +204,9 @@ dependencies = [
 
 [[package]]
 name = "chalk-solve"
-version = "0.45.0"
+version = "0.47.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7f73e0de04a0f394e47ed8118e00541bcf681d7c3c2ef500fa743eb4cf3a4850"
+checksum = "c3c3252116111c3548f1164ab8d98c67c49848b3bde10dd11b650fd023e91c72"
 dependencies = [
  "chalk-derive",
  "chalk-ir",
@@ -1394,9 +1394,9 @@ dependencies = [
 
 [[package]]
 name = "rustc-ap-rustc_lexer"
-version = "695.0.0"
+version = "697.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "390bad134705b0bff02cd9541ac66df751a91c3cc734c3369cd6151ca269caed"
+checksum = "67adbe260a0a11910624d6d28c0304fcf7b063e666682111005c83b09f73429d"
 dependencies = [
  "unicode-xid",
 ]
@@ -1582,9 +1582,9 @@ checksum = "c111b5bd5695e56cffe5129854aa230b39c93a305372fdbb2668ca2394eea9f8"
 
 [[package]]
 name = "smallvec"
-version = "1.5.1"
+version = "1.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ae524f056d7d770e174287294f562e95044c68e88dec909a00d2094805db9d75"
+checksum = "1a55ca5f3b68e41c979bf8c46a6f1da892ca4db8f94023ce0bd32407573b1ac0"
 
 [[package]]
 name = "smol_str"
@@ -1615,9 +1615,9 @@ version = "0.0.0"
 
 [[package]]
 name = "syn"
-version = "1.0.56"
+version = "1.0.57"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a9802ddde94170d186eeee5005b798d9c159fa970403f1be19976d0cfb939b72"
+checksum = "4211ce9909eb971f111059df92c45640aad50a619cf55cd76476be803c4c68e6"
 dependencies = [
  "proc-macro2",
  "quote",
