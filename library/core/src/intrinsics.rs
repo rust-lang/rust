@@ -1845,7 +1845,7 @@ pub(crate) fn is_nonoverlapping<T>(src: *const T, dst: *const T, count: usize) -
 /// [`Vec::append`]: ../../std/vec/struct.Vec.html#method.append
 #[doc(alias = "memcpy")]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_intrinsic_copy", issue = "none")]
+#[rustc_const_unstable(feature = "const_intrinsic_copy", issue = "80697")]
 #[inline]
 pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize) {
     extern "rust-intrinsic" {
@@ -1929,11 +1929,10 @@ pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: us
 /// ```
 #[doc(alias = "memmove")]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_intrinsic_copy", issue = "none")]
+#[rustc_const_unstable(feature = "const_intrinsic_copy", issue = "80697")]
 #[inline]
 pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
     extern "rust-intrinsic" {
-        #[rustc_const_unstable(feature = "const_intrinsic_copy", issue = "none")]
         fn copy<T>(src: *const T, dst: *mut T, count: usize);
     }
 
