@@ -182,16 +182,18 @@ fn show_implementations_action(db: &RootDatabase, def: Definition) -> Option<Hov
         })
     }
 
-    match def {
-        Definition::ModuleDef(it) => match it {
-            ModuleDef::Adt(Adt::Struct(it)) => Some(to_action(it.try_to_nav(db)?)),
-            ModuleDef::Adt(Adt::Union(it)) => Some(to_action(it.try_to_nav(db)?)),
-            ModuleDef::Adt(Adt::Enum(it)) => Some(to_action(it.try_to_nav(db)?)),
-            ModuleDef::Trait(it) => Some(to_action(it.try_to_nav(db)?)),
-            _ => None,
-        },
+    let adt = match def {
+        Definition::ModuleDef(ModuleDef::Trait(it)) => return it.try_to_nav(db).map(to_action),
+        Definition::ModuleDef(ModuleDef::Adt(it)) => Some(it),
+        Definition::SelfType(it) => it.target_ty(db).as_adt(),
         _ => None,
+    }?;
+    match adt {
+        Adt::Struct(it) => it.try_to_nav(db),
+        Adt::Union(it) => it.try_to_nav(db),
+        Adt::Enum(it) => it.try_to_nav(db),
     }
+    .map(to_action)
 }
 
 fn runnable_action(
@@ -2167,6 +2169,25 @@ fn foo() { let bar = Bar; bar.fo<|>o(); }
                                 0,
                             ),
                             offset: 5,
+                        },
+                    ),
+                ]
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_hover_self_has_impl_action() {
+        check_actions(
+            r#"struct foo where Self<|>:;"#,
+            expect![[r#"
+                [
+                    Implementation(
+                        FilePosition {
+                            file_id: FileId(
+                                0,
+                            ),
+                            offset: 7,
                         },
                     ),
                 ]
