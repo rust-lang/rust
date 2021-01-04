@@ -1648,7 +1648,7 @@ fn prepare_hover_actions(
     actions
         .iter()
         .filter_map(|it| match it {
-            HoverAction::Implementaion(position) => show_impl_command_link(snap, position),
+            HoverAction::Implementation(position) => show_impl_command_link(snap, position),
             HoverAction::Runnable(r) => runnable_action_links(snap, file_id, r.clone()),
             HoverAction::GoToType(targets) => goto_type_action_links(snap, targets),
         })

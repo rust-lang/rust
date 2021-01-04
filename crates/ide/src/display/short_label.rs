@@ -87,6 +87,17 @@ impl ShortLabel for ast::Variant {
     }
 }
 
+impl ShortLabel for ast::ConstParam {
+    fn short_label(&self) -> Option<String> {
+        let mut buf = "const ".to_owned();
+        buf.push_str(self.name()?.text().as_str());
+        if let Some(type_ref) = self.ty() {
+            format_to!(buf, ": {}", type_ref.syntax());
+        }
+        Some(buf)
+    }
+}
+
 fn short_label_from_ty<T>(node: &T, ty: Option<ast::Type>, prefix: &str) -> Option<String>
 where
     T: NameOwner + VisibilityOwner,

@@ -70,7 +70,7 @@ impl HoverConfig {
 #[derive(Debug, Clone)]
 pub enum HoverAction {
     Runnable(Runnable),
-    Implementaion(FilePosition),
+    Implementation(FilePosition),
     GoToType(Vec<HoverGotoTypeData>),
 }
 
@@ -116,12 +116,13 @@ pub(crate) fn hover(
     };
     if let Some(definition) = definition {
         if let Some(markup) = hover_for_definition(db, definition) {
+            let markup = markup.as_str();
             let markup = if !markdown {
-                remove_markdown(&markup.as_str())
+                remove_markdown(markup)
             } else if links_in_hover {
-                rewrite_links(db, &markup.as_str(), &definition)
+                rewrite_links(db, markup, &definition)
             } else {
-                remove_links(&markup.as_str())
+                remove_links(markup)
             };
             res.markup = Markup::from(markup);
             if let Some(action) = show_implementations_action(db, definition) {
@@ -175,7 +176,7 @@ pub(crate) fn hover(
 
 fn show_implementations_action(db: &RootDatabase, def: Definition) -> Option<HoverAction> {
     fn to_action(nav_target: NavigationTarget) -> HoverAction {
-        HoverAction::Implementaion(FilePosition {
+        HoverAction::Implementation(FilePosition {
             file_id: nav_target.file_id,
             offset: nav_target.focus_or_full_range().start(),
         })
@@ -371,10 +372,7 @@ fn hover_for_definition(db: &RootDatabase, def: Definition) -> Option<Markup> {
         Definition::Label(it) => Some(Markup::fenced_block(&it.name(db))),
         Definition::LifetimeParam(it) => Some(Markup::fenced_block(&it.name(db))),
         Definition::TypeParam(type_param) => Some(Markup::fenced_block(&type_param.display(db))),
-        Definition::ConstParam(_) => {
-            // FIXME: Hover for generic const param
-            None
-        }
+        Definition::ConstParam(it) => from_def_source(db, it, None),
     };
 
     fn from_def_source<A, D>(db: &RootDatabase, def: D, mod_path: Option<String>) -> Option<Markup>
@@ -1394,7 +1392,7 @@ fn bar() { fo<|>o(); }
             r"unsafe trait foo<|>() {}",
             expect![[r#"
                 [
-                    Implementaion(
+                    Implementation(
                         FilePosition {
                             file_id: FileId(
                                 0,
@@ -2106,7 +2104,7 @@ fn foo() { let bar = Bar; bar.fo<|>o(); }
             r#"trait foo<|>() {}"#,
             expect![[r#"
                 [
-                    Implementaion(
+                    Implementation(
                         FilePosition {
                             file_id: FileId(
                                 0,
@@ -2125,7 +2123,7 @@ fn foo() { let bar = Bar; bar.fo<|>o(); }
             r"struct foo<|>() {}",
             expect![[r#"
                 [
-                    Implementaion(
+                    Implementation(
                         FilePosition {
                             file_id: FileId(
                                 0,
@@ -2144,7 +2142,7 @@ fn foo() { let bar = Bar; bar.fo<|>o(); }
             r#"union foo<|>() {}"#,
             expect![[r#"
                 [
-                    Implementaion(
+                    Implementation(
                         FilePosition {
                             file_id: FileId(
                                 0,
@@ -2163,7 +2161,7 @@ fn foo() { let bar = Bar; bar.fo<|>o(); }
             r"enum foo<|>() { A, B }",
             expect![[r#"
                 [
-                    Implementaion(
+                    Implementation(
                         FilePosition {
                             file_id: FileId(
                                 0,
@@ -3303,6 +3301,23 @@ impl<T: 'static> Foo<T<|>> {}
                 T: {error}
                 ```
                 "#]],
+        );
+    }
+
+    #[test]
+    fn hover_const_param() {
+        check(
+            r#"
+struct Foo<const LEN: usize>;
+impl<const LEN: usize> Foo<LEN<|>> {}
+"#,
+            expect![[r#"
+                *LEN*
+
+                ```rust
+                const LEN: usize
+                ```
+            "#]],
         );
     }
 }
