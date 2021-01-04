@@ -2,6 +2,7 @@
 
 use core::cell::Cell;
 use core::convert::TryFrom;
+use core::iter::TrustedRandomAccess;
 use core::iter::*;
 
 /// An iterator wrapper that panics whenever `next` or `next_back` is called
@@ -599,6 +600,26 @@ fn test_zip_nth_back_side_effects_exhausted() {
     assert_eq!(iter.nth_back(0), None);
     assert_eq!(a, vec![1, 2, 3, 4, 6, 5]);
     assert_eq!(b, vec![200, 300, 400]);
+}
+
+#[test]
+fn test_zip_trusted_random_access_composition() {
+    let a = [0, 1, 2, 3, 4];
+    let b = a;
+    let c = a;
+
+    let a = a.iter().copied();
+    let b = b.iter().copied();
+    let mut c = c.iter().copied();
+    c.next();
+
+    let mut z1 = a.zip(b);
+    assert_eq!(z1.next().unwrap(), (0, 0));
+
+    let mut z2 = z1.zip(c);
+    fn assert_trusted_random_access<T: TrustedRandomAccess>(_a: &T) {}
+    assert_trusted_random_access(&z2);
+    assert_eq!(z2.next().unwrap(), ((1, 1), 1));
 }
 
 #[test]
