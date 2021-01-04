@@ -595,7 +595,7 @@ impl HirDisplay for FnSig {
     }
 }
 
-fn write_bounds_like_dyn_trait(
+pub fn write_bounds_like_dyn_trait(
     predicates: &[GenericPredicate],
     f: &mut HirFormatter,
 ) -> Result<(), HirDisplayError> {

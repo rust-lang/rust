@@ -5,9 +5,7 @@ use arrayvec::ArrayVec;
 use base_db::{CrateDisplayName, CrateId, Edition, FileId};
 use either::Either;
 use hir_def::{
-    adt::ReprKind,
-    adt::StructKind,
-    adt::VariantData,
+    adt::{ReprKind, StructKind, VariantData},
     builtin_type::BuiltinType,
     expr::{BindingAnnotation, LabelId, Pat, PatId},
     import_map,
@@ -31,7 +29,7 @@ use hir_expand::{
 };
 use hir_ty::{
     autoderef,
-    display::{HirDisplayError, HirFormatter},
+    display::{write_bounds_like_dyn_trait, HirDisplayError, HirFormatter},
     method_resolution,
     traits::{FnTrait, Solution, SolutionVariables},
     ApplicationTy, BoundVar, CallableDefId, Canonical, DebruijnIndex, FnSig, GenericPredicate,
@@ -1290,6 +1288,20 @@ impl TypeParam {
             krate: self.id.parent.module(db.upcast()).krate,
             ty: InEnvironment { value: ty, environment },
         })
+    }
+}
+
+impl HirDisplay for TypeParam {
+    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
+        write!(f, "{}", self.name(f.db))?;
+        let bounds = f.db.generic_predicates_for_param(self.id);
+        let substs = Substs::type_params(f.db, self.id.parent);
+        let predicates = bounds.iter().cloned().map(|b| b.subst(&substs)).collect::<Vec<_>>();
+        if !(predicates.is_empty() || f.omit_verbose_types()) {
+            write!(f, ": ")?;
+            write_bounds_like_dyn_trait(&predicates, f)?;
+        }
+        Ok(())
     }
 }
 
