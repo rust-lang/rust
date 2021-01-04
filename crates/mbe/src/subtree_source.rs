@@ -53,10 +53,12 @@ impl<'a> SubtreeTokenSource<'a> {
         fn is_lifetime(c: Cursor) -> Option<(Cursor, SmolStr)> {
             let tkn = c.token_tree();
 
-            if let Some(tt::TokenTree::Leaf(tt::Leaf::Punct(punct))) = tkn {
+            if let Some(tt::buffer::TokenTreeRef::Leaf(tt::Leaf::Punct(punct), _)) = tkn {
                 if punct.char == '\'' {
                     let next = c.bump();
-                    if let Some(tt::TokenTree::Leaf(tt::Leaf::Ident(ident))) = next.token_tree() {
+                    if let Some(tt::buffer::TokenTreeRef::Leaf(tt::Leaf::Ident(ident), _)) =
+                        next.token_tree()
+                    {
                         let res_cursor = next.bump();
                         let text = SmolStr::new("'".to_string() + &ident.to_string());
 
@@ -94,11 +96,11 @@ impl<'a> SubtreeTokenSource<'a> {
                 }
 
                 match cursor.token_tree() {
-                    Some(tt::TokenTree::Leaf(leaf)) => {
+                    Some(tt::buffer::TokenTreeRef::Leaf(leaf, _)) => {
                         cached.push(Some(convert_leaf(&leaf)));
                         self.cached_cursor.set(cursor.bump());
                     }
-                    Some(tt::TokenTree::Subtree(subtree)) => {
+                    Some(tt::buffer::TokenTreeRef::Subtree(subtree, _)) => {
                         self.cached_cursor.set(cursor.subtree().unwrap());
                         cached.push(Some(convert_delim(subtree.delimiter_kind(), false)));
                     }

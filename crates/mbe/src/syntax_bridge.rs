@@ -70,15 +70,12 @@ pub fn token_tree_to_syntax_node(
     tt: &tt::Subtree,
     fragment_kind: FragmentKind,
 ) -> Result<(Parse<SyntaxNode>, TokenMap), ExpandError> {
-    let tmp;
-    let tokens = match tt {
-        tt::Subtree { delimiter: None, token_trees } => token_trees.as_slice(),
-        _ => {
-            tmp = [tt.clone().into()];
-            &tmp[..]
+    let buffer = match tt {
+        tt::Subtree { delimiter: None, token_trees } => {
+            TokenBuffer::from_tokens(token_trees.as_slice())
         }
+        _ => TokenBuffer::from_subtree(tt),
     };
-    let buffer = TokenBuffer::new(&tokens);
     let mut token_source = SubtreeTokenSource::new(&buffer);
     let mut tree_sink = TtTreeSink::new(buffer.begin());
     parser::parse_fragment(&mut token_source, &mut tree_sink, fragment_kind);
@@ -631,7 +628,7 @@ impl<'a> TreeSink for TtTreeSink<'a> {
             }
             last = self.cursor;
             let text: &str = match self.cursor.token_tree() {
-                Some(tt::TokenTree::Leaf(leaf)) => {
+                Some(tt::buffer::TokenTreeRef::Leaf(leaf, _)) => {
                     // Mark the range if needed
                     let (text, id) = match leaf {
                         tt::Leaf::Ident(ident) => (&ident.text, ident.id),
@@ -650,7 +647,7 @@ impl<'a> TreeSink for TtTreeSink<'a> {
                     self.cursor = self.cursor.bump();
                     text
                 }
-                Some(tt::TokenTree::Subtree(subtree)) => {
+                Some(tt::buffer::TokenTreeRef::Subtree(subtree, _)) => {
                     self.cursor = self.cursor.subtree().unwrap();
                     if let Some(id) = subtree.delimiter.map(|it| it.id) {
                         self.open_delims.insert(id, self.text_pos);
@@ -684,8 +681,8 @@ impl<'a> TreeSink for TtTreeSink<'a> {
         // Add whitespace between adjoint puncts
         let next = last.bump();
         if let (
-            Some(tt::TokenTree::Leaf(tt::Leaf::Punct(curr))),
-            Some(tt::TokenTree::Leaf(tt::Leaf::Punct(_))),
+            Some(tt::buffer::TokenTreeRef::Leaf(tt::Leaf::Punct(curr), _)),
+            Some(tt::buffer::TokenTreeRef::Leaf(tt::Leaf::Punct(_), _)),
         ) = (last.token_tree(), next.token_tree())
         {
             // Note: We always assume the semi-colon would be the last token in
@@ -744,7 +741,7 @@ mod tests {
         )
         .expand_tt("literals!(foo);");
         let tts = &[expansion.into()];
-        let buffer = tt::buffer::TokenBuffer::new(tts);
+        let buffer = tt::buffer::TokenBuffer::from_tokens(tts);
         let mut tt_src = SubtreeTokenSource::new(&buffer);
         let mut tokens = vec![];
         while tt_src.current().kind != EOF {

@@ -309,7 +309,7 @@ impl<'a> TtIter<'a> {
             }
         }
 
-        let buffer = TokenBuffer::new(&self.inner.as_slice());
+        let buffer = TokenBuffer::from_tokens(&self.inner.as_slice());
         let mut src = SubtreeTokenSource::new(&buffer);
         let mut sink = OffsetTokenSink { cursor: buffer.begin(), error: false };
 
@@ -336,11 +336,11 @@ impl<'a> TtIter<'a> {
             err = Some(err!("no tokens consumed"));
         }
         let res = match res.len() {
-            1 => Some(res[0].clone()),
+            1 => Some(res[0].cloned()),
             0 => None,
             _ => Some(tt::TokenTree::Subtree(tt::Subtree {
                 delimiter: None,
-                token_trees: res.into_iter().cloned().collect(),
+                token_trees: res.into_iter().map(|it| it.cloned()).collect(),
             })),
         };
         ExpandResult { value: res, err }
