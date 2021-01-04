@@ -124,8 +124,8 @@ fn complete_enum_variants(acc: &mut Completions, ctx: &CompletionContext, ty: &T
 // Note that having this flag set to `true` does not guarantee that the feature is enabled: your client needs to have the corredponding
 // capability enabled.
 fn fuzzy_completion(acc: &mut Completions, ctx: &CompletionContext) -> Option<()> {
-    let _p = profile::span("fuzzy_completion");
     let potential_import_name = ctx.token.to_string();
+    let _p = profile::span("fuzzy_completion").detail(|| potential_import_name.clone());
 
     if potential_import_name.len() < 2 {
         return None;

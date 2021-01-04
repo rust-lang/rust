@@ -8,6 +8,7 @@ use hir_expand::name::Name;
 use indexmap::{map::Entry, IndexMap};
 use itertools::Itertools;
 use rustc_hash::{FxHashSet, FxHasher};
+use test_utils::mark;
 
 use crate::{
     db::DefDatabase, item_scope::ItemInNs, visibility::Visibility, AssocItemId, ModuleDefId,
@@ -185,6 +186,7 @@ impl ImportMap {
         is_type_in_ns: bool,
         original_import_info: &ImportInfo,
     ) {
+        mark::hit!(type_aliases_ignored);
         for (assoc_item_name, item) in &db.trait_data(tr).items {
             let module_def_id = match item {
                 AssocItemId::FunctionId(f) => ModuleDefId::from(*f),
@@ -442,6 +444,7 @@ fn item_import_kind(item: ItemInNs) -> Option<ImportKind> {
 mod tests {
     use base_db::{fixture::WithFixture, SourceDatabase, Upcast};
     use expect_test::{expect, Expect};
+    use test_utils::mark;
 
     use crate::{test_db::TestDB, AssocContainerId, Lookup};
 
@@ -779,6 +782,7 @@ mod tests {
 
     #[test]
     fn fuzzy_import_trait_and_assoc_items() {
+        mark::check!(type_aliases_ignored);
         let ra_fixture = r#"
         //- /main.rs crate:main deps:dep
         //- /dep.rs crate:dep
