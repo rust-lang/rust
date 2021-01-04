@@ -661,14 +661,17 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
         self.selected_rows.push(0);
         let next_row_id = self.selected_rows.last_mut().unwrap();
         for i in 0..row.len() {
-            let entry = MatrixEntry {
-                // Patterns are stored in the reverse order in `PatStack`.
-                pat: row.pats[row.len() - 1 - i],
-                next_row_id: *next_row_id,
-                ctor: OnceCell::new(),
-            };
-            *next_row_id = self.columns[i].len();
-            self.columns[i].push(entry);
+            // Patterns are stored in the reverse order in `PatStack`.
+            let pat = row.pats[row.len() - 1 - i];
+            // When pushing or-pats we often push the same entries. This deduplicates those.
+            if self.columns[i].is_empty() || pat != self.columns[i].last().unwrap().pat {
+                self.columns[i].push(MatrixEntry {
+                    pat,
+                    next_row_id: *next_row_id,
+                    ctor: OnceCell::new(),
+                });
+            }
+            *next_row_id = self.columns[i].len() - 1;
         }
 
         if !row.is_empty() {
