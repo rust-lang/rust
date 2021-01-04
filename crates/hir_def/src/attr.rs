@@ -2,6 +2,7 @@
 
 use std::{ops, sync::Arc};
 
+use arena::map::ArenaMap;
 use base_db::CrateId;
 use cfg::{CfgExpr, CfgOptions};
 use either::Either;
@@ -21,7 +22,8 @@ use crate::{
     nameres::ModuleSource,
     path::{ModPath, PathKind},
     src::HasChildSource,
-    AdtId, AttrDefId, GenericParamId, Lookup,
+    AdtId, AttrDefId, EnumId, GenericParamId, HasModule, LocalEnumVariantId, LocalFieldId, Lookup,
+    VariantId,
 };
 
 /// Holds documentation
@@ -210,16 +212,10 @@ impl Attrs {
                 }
             }
             AttrDefId::FieldId(it) => {
-                let src = it.parent.child_source(db);
-                match &src.value[it.local_id] {
-                    Either::Left(_tuple) => RawAttrs::default(),
-                    Either::Right(record) => RawAttrs::from_attrs_owner(db, src.with_value(record)),
-                }
+                return db.fields_attrs(it.parent)[it.local_id].clone();
             }
-            AttrDefId::EnumVariantId(var_id) => {
-                let src = var_id.parent.child_source(db);
-                let src = src.as_ref().map(|it| &it[var_id.local_id]);
-                RawAttrs::from_attrs_owner(db, src.map(|it| it as &dyn AttrsOwner))
+            AttrDefId::EnumVariantId(it) => {
+                return db.variants_attrs(it.parent)[it.local_id].clone();
             }
             AttrDefId::AdtId(it) => match it {
                 AdtId::StructId(it) => attrs_from_item_tree(it.lookup(db).id, db),
@@ -257,6 +253,46 @@ impl Attrs {
         };
 
         raw_attrs.filter(db, def.krate(db))
+    }
+
+    pub(crate) fn variants_attrs_query(
+        db: &dyn DefDatabase,
+        e: EnumId,
+    ) -> Arc<ArenaMap<LocalEnumVariantId, Attrs>> {
+        let krate = e.lookup(db).container.module(db).krate;
+        let src = e.child_source(db);
+        let mut res = ArenaMap::default();
+
+        for (id, var) in src.value.iter() {
+            let attrs = RawAttrs::from_attrs_owner(db, src.with_value(var as &dyn AttrsOwner))
+                .filter(db, krate);
+
+            res.insert(id, attrs)
+        }
+
+        Arc::new(res)
+    }
+
+    pub(crate) fn fields_attrs_query(
+        db: &dyn DefDatabase,
+        v: VariantId,
+    ) -> Arc<ArenaMap<LocalFieldId, Attrs>> {
+        let krate = v.module(db).krate;
+        let src = v.child_source(db);
+        let mut res = ArenaMap::default();
+
+        for (id, fld) in src.value.iter() {
+            let attrs = match fld {
+                Either::Left(_tuple) => Attrs::default(),
+                Either::Right(record) => {
+                    RawAttrs::from_attrs_owner(db, src.with_value(record)).filter(db, krate)
+                }
+            };
+
+            res.insert(id, attrs);
+        }
+
+        Arc::new(res)
     }
 
     pub fn by_key(&self, key: &'static str) -> AttrQuery<'_> {
