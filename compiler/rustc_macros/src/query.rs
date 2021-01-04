@@ -33,7 +33,7 @@ enum QueryModifier {
     Desc(Option<Ident>, Punctuated<Expr, Token![,]>),
 
     /// Use this type for the in-memory cache.
-    Storage(Type),
+    Storage(Box<Type>),
 
     /// Cache the query to disk if the `Expr` returns true.
     Cache(Option<(IdentOrWild, IdentOrWild)>, Block),
@@ -213,7 +213,7 @@ struct QueryModifiers {
     desc: (Option<Ident>, Punctuated<Expr, Token![,]>),
 
     /// Use this type for the in-memory cache.
-    storage: Option<Type>,
+    storage: Option<Box<Type>>,
 
     /// Cache the query to disk if the `Block` returns true.
     cache: Option<(Option<(IdentOrWild, IdentOrWild)>, Block)>,
