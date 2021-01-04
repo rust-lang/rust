@@ -70,7 +70,7 @@ impl HoverConfig {
 #[derive(Debug, Clone)]
 pub enum HoverAction {
     Runnable(Runnable),
-    Implementaion(FilePosition),
+    Implementation(FilePosition),
     GoToType(Vec<HoverGotoTypeData>),
 }
 
@@ -116,12 +116,13 @@ pub(crate) fn hover(
     };
     if let Some(definition) = definition {
         if let Some(markup) = hover_for_definition(db, definition) {
+            let markup = markup.as_str();
             let markup = if !markdown {
-                remove_markdown(&markup.as_str())
+                remove_markdown(markup)
             } else if links_in_hover {
-                rewrite_links(db, &markup.as_str(), &definition)
+                rewrite_links(db, markup, &definition)
             } else {
-                remove_links(&markup.as_str())
+                remove_links(markup)
             };
             res.markup = Markup::from(markup);
             if let Some(action) = show_implementations_action(db, definition) {
@@ -175,7 +176,7 @@ pub(crate) fn hover(
 
 fn show_implementations_action(db: &RootDatabase, def: Definition) -> Option<HoverAction> {
     fn to_action(nav_target: NavigationTarget) -> HoverAction {
-        HoverAction::Implementaion(FilePosition {
+        HoverAction::Implementation(FilePosition {
             file_id: nav_target.file_id,
             offset: nav_target.focus_or_full_range().start(),
         })
@@ -1391,7 +1392,7 @@ fn bar() { fo<|>o(); }
             r"unsafe trait foo<|>() {}",
             expect![[r#"
                 [
-                    Implementaion(
+                    Implementation(
                         FilePosition {
                             file_id: FileId(
                                 0,
@@ -2103,7 +2104,7 @@ fn foo() { let bar = Bar; bar.fo<|>o(); }
             r#"trait foo<|>() {}"#,
             expect![[r#"
                 [
-                    Implementaion(
+                    Implementation(
                         FilePosition {
                             file_id: FileId(
                                 0,
@@ -2122,7 +2123,7 @@ fn foo() { let bar = Bar; bar.fo<|>o(); }
             r"struct foo<|>() {}",
             expect![[r#"
                 [
-                    Implementaion(
+                    Implementation(
                         FilePosition {
                             file_id: FileId(
                                 0,
@@ -2141,7 +2142,7 @@ fn foo() { let bar = Bar; bar.fo<|>o(); }
             r#"union foo<|>() {}"#,
             expect![[r#"
                 [
-                    Implementaion(
+                    Implementation(
                         FilePosition {
                             file_id: FileId(
                                 0,
@@ -2160,7 +2161,7 @@ fn foo() { let bar = Bar; bar.fo<|>o(); }
             r"enum foo<|>() { A, B }",
             expect![[r#"
                 [
-                    Implementaion(
+                    Implementation(
                         FilePosition {
                             file_id: FileId(
                                 0,
