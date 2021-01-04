@@ -345,7 +345,7 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
 
         let infcx = self.selcx.infcx();
 
-        let binder = obligation.predicate.kind();
+        let binder = obligation.predicate.bound_atom();
         if binder.skip_binder().has_escaping_bound_vars() {
             match binder.skip_binder() {
                 // Evaluation will discard candidates using the leak check.

@@ -46,7 +46,7 @@ impl<'tcx, E: TyEncoder<'tcx>> EncodableWithShorthand<'tcx, E> for Ty<'tcx> {
 impl<'tcx, E: TyEncoder<'tcx>> EncodableWithShorthand<'tcx, E> for ty::Predicate<'tcx> {
     type Variant = ty::Binder<ty::PredicateAtom<'tcx>>;
     fn variant(&self) -> &Self::Variant {
-        self.kind_ref()
+        self.bound_atom_ref()
     }
 }
 

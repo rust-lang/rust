@@ -224,7 +224,7 @@ impl fmt::Debug for ty::ProjectionPredicate<'tcx> {
 
 impl fmt::Debug for ty::Predicate<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self.kind())
+        write!(f, "{:?}", self.bound_atom())
     }
 }
 
@@ -1017,12 +1017,12 @@ impl<'tcx> TypeFoldable<'tcx> for ty::Region<'tcx> {
 
 impl<'tcx> TypeFoldable<'tcx> for ty::Predicate<'tcx> {
     fn super_fold_with<F: TypeFolder<'tcx>>(self, folder: &mut F) -> Self {
-        let new = self.inner.kind.fold_with(folder);
+        let new = self.inner.binder.fold_with(folder);
         folder.tcx().reuse_or_mk_predicate(self, new)
     }
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
-        self.inner.kind.super_visit_with(visitor)
+        self.inner.binder.visit_with(visitor)
     }
 
     fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {

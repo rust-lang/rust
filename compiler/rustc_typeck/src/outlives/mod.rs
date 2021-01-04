@@ -31,7 +31,7 @@ fn inferred_outlives_of(tcx: TyCtxt<'_>, item_def_id: DefId) -> &[(ty::Predicate
                     let mut pred: Vec<String> = predicates
                         .iter()
                         .map(|(out_pred, _)| {
-                            let binder = out_pred.kind();
+                            let binder = out_pred.bound_atom();
                             match binder.skip_binder() {
                                 ty::PredicateAtom::RegionOutlives(p) => p.to_string(),
                                 ty::PredicateAtom::TypeOutlives(p) => p.to_string(),

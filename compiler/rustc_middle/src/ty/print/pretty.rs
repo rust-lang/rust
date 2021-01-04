@@ -2068,7 +2068,7 @@ define_print_and_forward_display! {
     }
 
     ty::Predicate<'tcx> {
-        let binder = self.kind();
+        let binder = self.bound_atom();
         p!(print(binder))
     }
 

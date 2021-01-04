@@ -133,13 +133,13 @@ impl<'tcx> CtxtInterners<'tcx> {
     }
 
     #[inline(never)]
-    fn intern_predicate(&self, kind: Binder<PredicateAtom<'tcx>>) -> &'tcx PredicateInner<'tcx> {
+    fn intern_predicate(&self, binder: Binder<PredicateAtom<'tcx>>) -> &'tcx PredicateInner<'tcx> {
         self.predicate
-            .intern(kind, |kind| {
-                let flags = super::flags::FlagComputation::for_predicate(kind);
+            .intern(binder, |binder| {
+                let flags = super::flags::FlagComputation::for_predicate(binder);
 
                 let predicate_struct = PredicateInner {
-                    kind,
+                    binder,
                     flags: flags.flags,
                     outer_exclusive_binder: flags.outer_exclusive_binder,
                 };
@@ -1936,7 +1936,7 @@ impl<'tcx> Borrow<TyKind<'tcx>> for Interned<'tcx, TyS<'tcx>> {
 // N.B., an `Interned<PredicateInner>` compares and hashes as a `PredicateKind`.
 impl<'tcx> PartialEq for Interned<'tcx, PredicateInner<'tcx>> {
     fn eq(&self, other: &Interned<'tcx, PredicateInner<'tcx>>) -> bool {
-        self.0.kind == other.0.kind
+        self.0.binder == other.0.binder
     }
 }
 
@@ -1944,13 +1944,13 @@ impl<'tcx> Eq for Interned<'tcx, PredicateInner<'tcx>> {}
 
 impl<'tcx> Hash for Interned<'tcx, PredicateInner<'tcx>> {
     fn hash<H: Hasher>(&self, s: &mut H) {
-        self.0.kind.hash(s)
+        self.0.binder.hash(s)
     }
 }
 
 impl<'tcx> Borrow<Binder<PredicateAtom<'tcx>>> for Interned<'tcx, PredicateInner<'tcx>> {
     fn borrow<'a>(&'a self) -> &'a Binder<PredicateAtom<'tcx>> {
-        &self.0.kind
+        &self.0.binder
     }
 }
 
@@ -2085,8 +2085,8 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline]
-    pub fn mk_predicate(self, kind: Binder<PredicateAtom<'tcx>>) -> Predicate<'tcx> {
-        let inner = self.interners.intern_predicate(kind);
+    pub fn mk_predicate(self, binder: Binder<PredicateAtom<'tcx>>) -> Predicate<'tcx> {
+        let inner = self.interners.intern_predicate(binder);
         Predicate { inner }
     }
 
@@ -2094,9 +2094,9 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn reuse_or_mk_predicate(
         self,
         pred: Predicate<'tcx>,
-        kind: Binder<PredicateAtom<'tcx>>,
+        binder: Binder<PredicateAtom<'tcx>>,
     ) -> Predicate<'tcx> {
-        if pred.kind() != kind { self.mk_predicate(kind) } else { pred }
+        if pred.bound_atom() != binder { self.mk_predicate(binder) } else { pred }
     }
 
     pub fn mk_mach_int(self, tm: ast::IntTy) -> Ty<'tcx> {

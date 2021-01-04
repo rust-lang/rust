@@ -22,9 +22,9 @@ impl FlagComputation {
         result
     }
 
-    pub fn for_predicate(kind: ty::Binder<ty::PredicateAtom<'_>>) -> FlagComputation {
+    pub fn for_predicate(binder: ty::Binder<ty::PredicateAtom<'_>>) -> FlagComputation {
         let mut result = FlagComputation::new();
-        result.add_predicate_kind(kind);
+        result.add_predicate(binder);
         result
     }
 
@@ -204,7 +204,7 @@ impl FlagComputation {
         }
     }
 
-    fn add_predicate_kind(&mut self, binder: ty::Binder<ty::PredicateAtom<'_>>) {
+    fn add_predicate(&mut self, binder: ty::Binder<ty::PredicateAtom<'_>>) {
         self.bound_computation(binder, |computation, atom| computation.add_predicate_atom(atom));
     }
 

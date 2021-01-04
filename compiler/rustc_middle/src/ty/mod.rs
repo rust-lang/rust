@@ -1030,7 +1030,7 @@ impl<'tcx> GenericPredicates<'tcx> {
 
 #[derive(Debug)]
 crate struct PredicateInner<'tcx> {
-    kind: Binder<PredicateAtom<'tcx>>,
+    binder: Binder<PredicateAtom<'tcx>>,
     flags: TypeFlags,
     /// See the comment for the corresponding field of [TyS].
     outer_exclusive_binder: ty::DebruijnIndex,
@@ -1060,16 +1060,6 @@ impl Hash for Predicate<'_> {
 impl<'tcx> Eq for Predicate<'tcx> {}
 
 impl<'tcx> Predicate<'tcx> {
-    #[inline(always)]
-    pub fn kind(self) -> Binder<PredicateAtom<'tcx>> {
-        self.inner.kind
-    }
-
-    #[inline(always)]
-    pub fn kind_ref(&self) -> &Binder<PredicateAtom<'tcx>> {
-        &self.inner.kind
-    }
-
     /// Returns the inner `PredicateAtom`.
     ///
     /// The returned atom may contain unbound variables bound to binders skipped in this method.
@@ -1077,8 +1067,7 @@ impl<'tcx> Predicate<'tcx> {
     ///
     /// Note that this method panics in case this predicate has unbound variables.
     pub fn skip_binders(self) -> PredicateAtom<'tcx> {
-        let binder = self.kind();
-        binder.skip_binder()
+        self.inner.binder.skip_binder()
     }
 
     /// Returns the inner `PredicateAtom`.
@@ -1088,29 +1077,30 @@ impl<'tcx> Predicate<'tcx> {
     /// Rebinding the returned atom can causes the previously bound variables
     /// to end up at the wrong binding level.
     pub fn skip_binders_unchecked(self) -> PredicateAtom<'tcx> {
-        let binder = self.kind();
-        binder.skip_binder()
+        self.inner.binder.skip_binder()
     }
 
     /// Converts this to a `Binder<PredicateAtom<'tcx>>`. If the value was an
     /// `Atom`, then it is not allowed to contain escaping bound vars.
     pub fn bound_atom(self) -> Binder<PredicateAtom<'tcx>> {
-        let binder = self.kind();
-        binder
+        self.inner.binder
+    }
+
+    pub fn bound_atom_ref(self) -> &'tcx Binder<PredicateAtom<'tcx>> {
+        &self.inner.binder
     }
 
     /// Allows using a `Binder<PredicateAtom<'tcx>>` even if the given predicate previously
     /// contained unbound variables by shifting these variables outwards.
     pub fn bound_atom_with_opt_escaping(self, _tcx: TyCtxt<'tcx>) -> Binder<PredicateAtom<'tcx>> {
-        let binder = self.kind();
-        binder
+        self.inner.binder
     }
 }
 
 impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for Predicate<'tcx> {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         let PredicateInner {
-            ref kind,
+            ref binder,
 
             // The other fields just provide fast access to information that is
             // also contained in `kind`, so no need to hash them.
@@ -1118,7 +1108,7 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for Predicate<'tcx> {
             outer_exclusive_binder: _,
         } = self.inner;
 
-        kind.hash_stable(hcx, hasher);
+        binder.hash_stable(hcx, hasher);
     }
 }
 
