@@ -13,7 +13,7 @@ declare_clippy_lint! {
     /// if the `never_type` is enabled.
     ///
     /// **Why is this bad?** If you want to introduce a type which
-    /// can't be instantiated, you should use `!` (the primitive type never),
+    /// can't be instantiated, you should use `!` (the primitive type "never"),
     /// or a wrapper around it, because `!` has more extensive
     /// compiler support (type inference, etc...) and wrappers
     /// around it are the conventional way to define an uninhabited type.
