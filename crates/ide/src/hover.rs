@@ -371,10 +371,7 @@ fn hover_for_definition(db: &RootDatabase, def: Definition) -> Option<Markup> {
         Definition::Label(it) => Some(Markup::fenced_block(&it.name(db))),
         Definition::LifetimeParam(it) => Some(Markup::fenced_block(&it.name(db))),
         Definition::TypeParam(type_param) => Some(Markup::fenced_block(&type_param.display(db))),
-        Definition::ConstParam(_) => {
-            // FIXME: Hover for generic const param
-            None
-        }
+        Definition::ConstParam(it) => from_def_source(db, it, None),
     };
 
     fn from_def_source<A, D>(db: &RootDatabase, def: D, mod_path: Option<String>) -> Option<Markup>
@@ -3303,6 +3300,23 @@ impl<T: 'static> Foo<T<|>> {}
                 T: {error}
                 ```
                 "#]],
+        );
+    }
+
+    #[test]
+    fn hover_const_param() {
+        check(
+            r#"
+struct Foo<const LEN: usize>;
+impl<const LEN: usize> Foo<LEN<|>> {}
+"#,
+            expect![[r#"
+                *LEN*
+
+                ```rust
+                const LEN: usize
+                ```
+            "#]],
         );
     }
 }
