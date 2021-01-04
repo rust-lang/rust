@@ -743,6 +743,10 @@ impl Function {
         db.function_data(self.id).name.clone()
     }
 
+    /// Get this function's return type
+    ///
+    /// The returned type can be converted to a [`Type`] via its `ty`
+    /// method.
     pub fn ret_type(self, db: &dyn HirDatabase) -> RetType {
         let resolver = self.id.resolver(db.upcast());
         let ret_type = &db.function_data(self.id).ret_type;
