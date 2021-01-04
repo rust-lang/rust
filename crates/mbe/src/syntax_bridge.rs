@@ -70,15 +70,12 @@ pub fn token_tree_to_syntax_node(
     tt: &tt::Subtree,
     fragment_kind: FragmentKind,
 ) -> Result<(Parse<SyntaxNode>, TokenMap), ExpandError> {
-    let tmp;
-    let tokens = match tt {
-        tt::Subtree { delimiter: None, token_trees } => token_trees.as_slice(),
-        _ => {
-            tmp = [tt.clone().into()];
-            &tmp[..]
+    let buffer = match tt {
+        tt::Subtree { delimiter: None, token_trees } => {
+            TokenBuffer::from_tokens(token_trees.as_slice())
         }
+        _ => TokenBuffer::from_subtree(tt),
     };
-    let buffer = TokenBuffer::new(&tokens);
     let mut token_source = SubtreeTokenSource::new(&buffer);
     let mut tree_sink = TtTreeSink::new(buffer.begin());
     parser::parse_fragment(&mut token_source, &mut tree_sink, fragment_kind);
@@ -414,7 +411,7 @@ trait TokenConvertor {
     fn id_alloc(&mut self) -> &mut TokenIdAlloc;
 }
 
-impl<'a> SrcToken for (RawToken, &'a str) {
+impl<'a> SrcToken for (&'a RawToken, &'a str) {
     fn kind(&self) -> SyntaxKind {
         self.0.kind
     }
@@ -431,7 +428,7 @@ impl<'a> SrcToken for (RawToken, &'a str) {
 impl RawConvertor<'_> {}
 
 impl<'a> TokenConvertor for RawConvertor<'a> {
-    type Token = (RawToken, &'a str);
+    type Token = (&'a RawToken, &'a str);
 
     fn convert_doc_comment(&self, token: &Self::Token) -> Option<Vec<tt::TokenTree>> {
         convert_doc_comment(&doc_comment(token.1))
@@ -442,11 +439,11 @@ impl<'a> TokenConvertor for RawConvertor<'a> {
         let range = TextRange::at(self.offset, token.len);
         self.offset += token.len;
 
-        Some(((*token, &self.text[range]), range))
+        Some(((token, &self.text[range]), range))
     }
 
     fn peek(&self) -> Option<Self::Token> {
-        let token = self.inner.as_slice().get(0).cloned();
+        let token = self.inner.as_slice().get(0);
 
         token.map(|it| {
             let range = TextRange::at(self.offset, it.len);
@@ -601,17 +598,16 @@ impl<'a> TtTreeSink<'a> {
     }
 }
 
-fn delim_to_str(d: Option<tt::DelimiterKind>, closing: bool) -> SmolStr {
+fn delim_to_str(d: Option<tt::DelimiterKind>, closing: bool) -> &'static str {
     let texts = match d {
         Some(tt::DelimiterKind::Parenthesis) => "()",
         Some(tt::DelimiterKind::Brace) => "{}",
         Some(tt::DelimiterKind::Bracket) => "[]",
-        None => return "".into(),
+        None => return "",
     };
 
     let idx = closing as usize;
-    let text = &texts[idx..texts.len() - (1 - idx)];
-    text.into()
+    &texts[idx..texts.len() - (1 - idx)]
 }
 
 impl<'a> TreeSink for TtTreeSink<'a> {
@@ -626,29 +622,32 @@ impl<'a> TreeSink for TtTreeSink<'a> {
 
         let mut last = self.cursor;
         for _ in 0..n_tokens {
+            let tmp_str: SmolStr;
             if self.cursor.eof() {
                 break;
             }
             last = self.cursor;
-            let text: SmolStr = match self.cursor.token_tree() {
-                Some(tt::TokenTree::Leaf(leaf)) => {
+            let text: &str = match self.cursor.token_tree() {
+                Some(tt::buffer::TokenTreeRef::Leaf(leaf, _)) => {
                     // Mark the range if needed
                     let (text, id) = match leaf {
-                        tt::Leaf::Ident(ident) => (ident.text.clone(), ident.id),
+                        tt::Leaf::Ident(ident) => (&ident.text, ident.id),
                         tt::Leaf::Punct(punct) => {
                             assert!(punct.char.is_ascii());
                             let char = &(punct.char as u8);
-                            let text = std::str::from_utf8(std::slice::from_ref(char)).unwrap();
-                            (SmolStr::new_inline(text), punct.id)
+                            tmp_str = SmolStr::new_inline(
+                                std::str::from_utf8(std::slice::from_ref(char)).unwrap(),
+                            );
+                            (&tmp_str, punct.id)
                         }
-                        tt::Leaf::Literal(lit) => (lit.text.clone(), lit.id),
+                        tt::Leaf::Literal(lit) => (&lit.text, lit.id),
                     };
                     let range = TextRange::at(self.text_pos, TextSize::of(text.as_str()));
                     self.token_map.insert(id, range);
                     self.cursor = self.cursor.bump();
                     text
                 }
-                Some(tt::TokenTree::Subtree(subtree)) => {
+                Some(tt::buffer::TokenTreeRef::Subtree(subtree, _)) => {
                     self.cursor = self.cursor.subtree().unwrap();
                     if let Some(id) = subtree.delimiter.map(|it| it.id) {
                         self.open_delims.insert(id, self.text_pos);
@@ -672,7 +671,7 @@ impl<'a> TreeSink for TtTreeSink<'a> {
                 }
             };
             self.buf += &text;
-            self.text_pos += TextSize::of(text.as_str());
+            self.text_pos += TextSize::of(text);
         }
 
         let text = SmolStr::new(self.buf.as_str());
@@ -682,8 +681,8 @@ impl<'a> TreeSink for TtTreeSink<'a> {
         // Add whitespace between adjoint puncts
         let next = last.bump();
         if let (
-            Some(tt::TokenTree::Leaf(tt::Leaf::Punct(curr))),
-            Some(tt::TokenTree::Leaf(tt::Leaf::Punct(_))),
+            Some(tt::buffer::TokenTreeRef::Leaf(tt::Leaf::Punct(curr), _)),
+            Some(tt::buffer::TokenTreeRef::Leaf(tt::Leaf::Punct(_), _)),
         ) = (last.token_tree(), next.token_tree())
         {
             // Note: We always assume the semi-colon would be the last token in
@@ -742,7 +741,7 @@ mod tests {
         )
         .expand_tt("literals!(foo);");
         let tts = &[expansion.into()];
-        let buffer = tt::buffer::TokenBuffer::new(tts);
+        let buffer = tt::buffer::TokenBuffer::from_tokens(tts);
         let mut tt_src = SubtreeTokenSource::new(&buffer);
         let mut tokens = vec![];
         while tt_src.current().kind != EOF {
