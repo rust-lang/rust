@@ -287,16 +287,15 @@ async function getServer(config: Config, state: PersistentState): Promise<string
     };
     if (config.package.releaseTag === null) return "rust-analyzer";
 
-    let platform: string | undefined;
-    if ((process.arch === "x64" || process.arch === "ia32") && process.platform === "win32") {
-        platform = "x86_64-pc-windows-msvc";
-    } else if (process.arch === "x64" && process.platform === "linux") {
-        platform = "x86_64-unknown-linux-gnu";
-    } else if (process.arch === "x64" && process.platform === "darwin") {
-        platform = "x86_64-apple-darwin";
-    } else if (process.arch === "arm64" && process.platform === "darwin") {
-        platform = "aarch64-apple-darwin";
-    }
+    const platforms: { [key: string]: string } = {
+        "ia32 win32": "x86_64-pc-windows-msvc",
+        "x64 win32": "x86_64-pc-windows-msvc",
+        "x64 linux": "x86_64-unknown-linux-gnu",
+        "x64 darwin": "x86_64-apple-darwin",
+        "arm64 win32": "aarch64-pc-windows-msvc",
+        "arm64 darwin": "aarch64-apple-darwin",
+    };
+    const platform = platforms[`${process.arch} ${process.platform}`];
     if (platform === undefined) {
         vscode.window.showErrorMessage(
             "Unfortunately we don't ship binaries for your platform yet. " +
