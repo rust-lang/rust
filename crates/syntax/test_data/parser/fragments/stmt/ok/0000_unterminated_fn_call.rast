@@ -1,0 +1,10 @@
+EXPR_STMT@0..5
+  CALL_EXPR@0..5
+    PATH_EXPR@0..3
+      PATH@0..3
+        PATH_SEGMENT@0..3
+          NAME_REF@0..3
+            IDENT@0..3 "foo"
+    ARG_LIST@3..5
+      L_PAREN@3..4 "("
+      R_PAREN@4..5 ")"

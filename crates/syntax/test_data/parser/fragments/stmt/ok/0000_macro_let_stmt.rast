@@ -1,0 +1,21 @@
+EXPR_STMT@0..18
+  MACRO_CALL@0..17
+    PATH@0..2
+      PATH_SEGMENT@0..2
+        NAME_REF@0..2
+          IDENT@0..2 "m1"
+    BANG@2..3 "!"
+    TOKEN_TREE@3..17
+      L_CURLY@3..4 "{"
+      WHITESPACE@4..5 " "
+      LET_KW@5..8 "let"
+      WHITESPACE@8..9 " "
+      IDENT@9..10 "a"
+      WHITESPACE@10..11 " "
+      EQ@11..12 "="
+      WHITESPACE@12..13 " "
+      INT_NUMBER@13..14 "0"
+      SEMICOLON@14..15 ";"
+      WHITESPACE@15..16 " "
+      R_CURLY@16..17 "}"
+  SEMICOLON@17..18 ";"

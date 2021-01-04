@@ -1,0 +1,22 @@
+STRUCT@0..28
+  STRUCT_KW@0..6 "struct"
+  WHITESPACE@6..7 " "
+  NAME@7..10
+    IDENT@7..10 "Foo"
+  WHITESPACE@10..11 " "
+  RECORD_FIELD_LIST@11..28
+    L_CURLY@11..12 "{"
+    WHITESPACE@12..17 "\n    "
+    RECORD_FIELD@17..25
+      NAME@17..20
+        IDENT@17..20 "bar"
+      COLON@20..21 ":"
+      WHITESPACE@21..22 " "
+      PATH_TYPE@22..25
+        PATH@22..25
+          PATH_SEGMENT@22..25
+            NAME_REF@22..25
+              IDENT@22..25 "u32"
+    COMMA@25..26 ","
+    WHITESPACE@26..27 "\n"
+    R_CURLY@27..28 "}"

@@ -1,0 +1,12 @@
+LET_STMT@0..11
+  LET_KW@0..3 "let"
+  WHITESPACE@3..4 " "
+  IDENT_PAT@4..5
+    NAME@4..5
+      IDENT@4..5 "x"
+  WHITESPACE@5..6 " "
+  EQ@6..7 "="
+  WHITESPACE@7..8 " "
+  LITERAL@8..10
+    INT_NUMBER@8..10 "10"
+  SEMICOLON@10..11 ";"

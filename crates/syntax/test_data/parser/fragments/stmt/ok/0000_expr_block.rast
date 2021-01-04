@@ -1,0 +1,69 @@
+EXPR_STMT@0..55
+  BLOCK_EXPR@0..55
+    L_CURLY@0..1 "{"
+    WHITESPACE@1..6 "\n    "
+    LET_STMT@6..20
+      LET_KW@6..9 "let"
+      WHITESPACE@9..10 " "
+      IDENT_PAT@10..11
+        NAME@10..11
+          IDENT@10..11 "x"
+      WHITESPACE@11..12 " "
+      EQ@12..13 "="
+      WHITESPACE@13..14 " "
+      CALL_EXPR@14..19
+        PATH_EXPR@14..17
+          PATH@14..17
+            PATH_SEGMENT@14..17
+              NAME_REF@14..17
+                IDENT@14..17 "foo"
+        ARG_LIST@17..19
+          L_PAREN@17..18 "("
+          R_PAREN@18..19 ")"
+      SEMICOLON@19..20 ";"
+    WHITESPACE@20..25 "\n    "
+    LET_STMT@25..39
+      LET_KW@25..28 "let"
+      WHITESPACE@28..29 " "
+      IDENT_PAT@29..30
+        NAME@29..30
+          IDENT@29..30 "y"
+      WHITESPACE@30..31 " "
+      EQ@31..32 "="
+      WHITESPACE@32..33 " "
+      CALL_EXPR@33..38
+        PATH_EXPR@33..36
+          PATH@33..36
+            PATH_SEGMENT@33..36
+              NAME_REF@33..36
+                IDENT@33..36 "bar"
+        ARG_LIST@36..38
+          L_PAREN@36..37 "("
+          R_PAREN@37..38 ")"
+      SEMICOLON@38..39 ";"
+    WHITESPACE@39..44 "\n    "
+    CALL_EXPR@44..53
+      PATH_EXPR@44..46
+        PATH@44..46
+          PATH_SEGMENT@44..46
+            NAME_REF@44..46
+              IDENT@44..46 "Ok"
+      ARG_LIST@46..53
+        L_PAREN@46..47 "("
+        BIN_EXPR@47..52
+          PATH_EXPR@47..48
+            PATH@47..48
+              PATH_SEGMENT@47..48
+                NAME_REF@47..48
+                  IDENT@47..48 "x"
+          WHITESPACE@48..49 " "
+          PLUS@49..50 "+"
+          WHITESPACE@50..51 " "
+          PATH_EXPR@51..52
+            PATH@51..52
+              PATH_SEGMENT@51..52
+                NAME_REF@51..52
+                  IDENT@51..52 "y"
+        R_PAREN@52..53 ")"
+    WHITESPACE@53..54 "\n"
+    R_CURLY@54..55 "}"
