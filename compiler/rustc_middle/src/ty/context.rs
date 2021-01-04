@@ -14,7 +14,7 @@ use crate::middle::stability;
 use crate::mir::interpret::{self, Allocation, ConstValue, Scalar};
 use crate::mir::{Body, Field, Local, Place, PlaceElem, ProjectionKind, Promoted};
 use crate::traits;
-use crate::ty::query::{self, TyCtxtAt};
+use crate::ty::query::{self, OnDiskCache, TyCtxtAt};
 use crate::ty::subst::{GenericArg, GenericArgKind, InternalSubsts, Subst, SubstsRef, UserSubsts};
 use crate::ty::TyKind::*;
 use crate::ty::{
@@ -962,6 +962,12 @@ pub struct GlobalCtxt<'tcx> {
     pub(crate) untracked_crate: &'tcx hir::Crate<'tcx>,
     pub(crate) definitions: &'tcx Definitions,
 
+    /// This provides access to the incremental compilation on-disk cache for query results.
+    /// Do not access this directly. It is only meant to be used by
+    /// `DepGraph::try_mark_green()` and the query infrastructure.
+    /// This is `None` if we are not incremental compilation mode
+    pub(crate) on_disk_cache: Option<OnDiskCache<'tcx>>,
+
     pub queries: query::Queries<'tcx>,
     pub query_caches: query::QueryCaches<'tcx>,
 
@@ -1110,7 +1116,7 @@ impl<'tcx> TyCtxt<'tcx> {
         krate: &'tcx hir::Crate<'tcx>,
         definitions: &'tcx Definitions,
         dep_graph: DepGraph,
-        on_disk_query_result_cache: Option<query::OnDiskCache<'tcx>>,
+        on_disk_cache: Option<query::OnDiskCache<'tcx>>,
         crate_name: &str,
         output_filenames: &OutputFilenames,
     ) -> GlobalCtxt<'tcx> {
@@ -1154,7 +1160,8 @@ impl<'tcx> TyCtxt<'tcx> {
             extern_prelude: resolutions.extern_prelude,
             untracked_crate: krate,
             definitions,
-            queries: query::Queries::new(providers, extern_providers, on_disk_query_result_cache),
+            on_disk_cache,
+            queries: query::Queries::new(providers, extern_providers),
             query_caches: query::QueryCaches::default(),
             ty_rcache: Default::default(),
             pred_rcache: Default::default(),
@@ -1320,7 +1327,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn serialize_query_result_cache(self, encoder: &mut FileEncoder) -> FileEncodeResult {
-        self.queries.on_disk_cache.as_ref().map_or(Ok(()), |c| c.serialize(self, encoder))
+        self.on_disk_cache.as_ref().map_or(Ok(()), |c| c.serialize(self, encoder))
     }
 
     /// If `true`, we should use the MIR-based borrowck, but also
