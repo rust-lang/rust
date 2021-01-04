@@ -11,6 +11,7 @@ use rustc_data_structures::fingerprint::{Fingerprint, FingerprintDecoder};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::{AtomicCell, Lock, LockGuard, Lrc, OnceCell};
+use rustc_data_structures::unhash::UnhashMap;
 use rustc_errors::ErrorReported;
 use rustc_expand::base::{SyntaxExtension, SyntaxExtensionKind};
 use rustc_expand::proc_macro::{AttrProcMacro, BangProcMacro, ProcMacroDerive};
@@ -80,7 +81,7 @@ crate struct CrateMetadata {
     /// For every definition in this crate, maps its `DefPathHash` to its
     /// `DefIndex`. See `raw_def_id_to_def_id` for more details about how
     /// this is used.
-    def_path_hash_map: OnceCell<FxHashMap<DefPathHash, DefIndex>>,
+    def_path_hash_map: OnceCell<UnhashMap<DefPathHash, DefIndex>>,
     /// Used for decoding interpret::AllocIds in a cached & thread-safe manner.
     alloc_decoding_state: AllocDecodingState,
     /// The `DepNodeIndex` of the `DepNode` representing this upstream crate.
@@ -1555,7 +1556,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         // stored in this crate.
         let map = self.cdata.def_path_hash_map.get_or_init(|| {
             let end_id = self.root.tables.def_path_hashes.size() as u32;
-            let mut map = FxHashMap::with_capacity_and_hasher(end_id as usize, Default::default());
+            let mut map = UnhashMap::with_capacity_and_hasher(end_id as usize, Default::default());
             for i in 0..end_id {
                 let def_index = DefIndex::from_u32(i);
                 // There may be gaps in the encoded table if we're decoding a proc-macro crate
