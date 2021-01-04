@@ -15,7 +15,6 @@
 #![feature(never_type)]
 #![feature(once_cell)]
 #![feature(type_ascription)]
-#![feature(split_inclusive)]
 #![feature(str_split_once)]
 #![feature(iter_intersperse)]
 #![recursion_limit = "256"]

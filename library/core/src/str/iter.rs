@@ -1284,7 +1284,6 @@ impl<'a, P: Pattern<'a>> SplitInclusive<'a, P> {
     ///
     /// ```
     /// #![feature(str_split_inclusive_as_str)]
-    /// #![feature(split_inclusive)]
     /// let mut split = "Mary had a little lamb".split_inclusive(' ');
     /// assert_eq!(split.as_str(), "Mary had a little lamb");
     /// split.next();
