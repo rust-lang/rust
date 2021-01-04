@@ -200,6 +200,21 @@ repository. This made syncing between the two repositories easier. A
    to it that might be useful for the Rust repo, e.g. `cargo dev deprecate`.
 3. Easier sync process. The `subtree` situation is not ideal.
 
+## Prioritization
+
+The most pressing issues for users of Clippy are of course the user facing
+issues. So there should be a priority on those issues, but without losing track
+of the internal issues listed in this document.
+
+Getting the FP rate of warn/deny-by-default lints under control should have the
+highest priority. Other user facing issues should also get a high priority, but
+shouldn't be in the way of addressing internal issues.
+
+To better manage the upcoming projects, the basic internal processes, like
+meetings, tracking issues and documentation, should be established as soon as
+possible. They might even be necessary to properly manage the projects,
+regarding the user facing issues.
+
 # Prior Art
 
 ## Rust Roadmap
@@ -218,11 +233,3 @@ This roadmap is pretty big and not all items listed in this document might be
 addressed during 2021. Because this is the first roadmap for Clippy, having open
 tasks at the end of 2021 is fine, but they should be revisited in the 2022
 roadmap.
-
-# Unresolved Questions
-
-## Prioritization
-
-This document is not in the order from highest to lowest priority, but grouped
-into tasks that address the same broader topic. Prioritizing these tasks might
-help to get them completed.
