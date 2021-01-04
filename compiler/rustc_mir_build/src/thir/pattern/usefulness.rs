@@ -646,6 +646,11 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
         self.columns.len()
     }
 
+    /// Number of rows of this matrix.
+    fn row_count(&self) -> usize {
+        self.selected_rows.len()
+    }
+
     /// Returns the type of the first column, if any.
     fn ty_of_last_col(&self) -> Option<Ty<'tcx>> {
         let last_col = self.columns.last()?;
@@ -689,6 +694,11 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
                 }
             }
         }
+    }
+
+    /// Removes the last row of the matrix, if any.
+    fn pop_last_row(&mut self) -> bool {
+        self.selected_rows.pop().is_some()
     }
 
     /// Iterate over the last column; panics if no columns.
@@ -1395,10 +1405,10 @@ fn is_useful<'p, 'tcx>(
         let alt_count = vs.len();
         // We expand the or pattern, trying each of its branches in turn and keeping careful track
         // of possible unreachable sub-branches.
-        let mut matrix = matrix.clone();
+        let old_row_count = matrix.row_count();
         let usefulnesses = vs.into_iter().enumerate().map(|(i, v)| {
             let usefulness =
-                is_useful(cx, &mut matrix, &v, witness_preference, hir_id, is_under_guard, false);
+                is_useful(cx, matrix, &v, witness_preference, hir_id, is_under_guard, false);
             // If pattern has a guard don't add it to the matrix.
             if !is_under_guard {
                 // We push the already-seen patterns into the matrix in order to detect redundant
@@ -1407,7 +1417,11 @@ fn is_useful<'p, 'tcx>(
             }
             usefulness.unsplit_or_pat(i, alt_count, v_head)
         });
-        Usefulness::merge(witness_preference, usefulnesses)
+        let usefulness = Usefulness::merge(witness_preference, usefulnesses);
+        for _ in old_row_count..matrix.row_count() {
+            matrix.pop_last_row();
+        }
+        usefulness
     } else {
         let v_ctor = v.head_ctor(cx);
         if let Constructor::IntRange(ctor_range) = &v_ctor {
