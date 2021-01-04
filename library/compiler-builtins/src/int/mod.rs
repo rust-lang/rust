@@ -90,7 +90,6 @@ pub trait Int:
     fn aborting_div(self, other: Self) -> Self;
     fn aborting_rem(self, other: Self) -> Self;
     fn leading_zeros(self) -> u32;
-    fn count_ones(self) -> u32;
 }
 
 fn unwrap<T>(t: Option<T>) -> T {
@@ -228,10 +227,6 @@ macro_rules! int_impl_common {
 
         fn leading_zeros(self) -> u32 {
             <Self>::leading_zeros(self)
-        }
-
-        fn count_ones(self) -> u32 {
-            <Self>::count_ones(self)
         }
     };
 }
