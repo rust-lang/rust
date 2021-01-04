@@ -918,7 +918,6 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for DefId {
         // which means that the definition with this hash is guaranteed to
         // still exist in the current compilation session.
         Ok(d.tcx()
-            .queries
             .on_disk_cache
             .as_ref()
             .unwrap()

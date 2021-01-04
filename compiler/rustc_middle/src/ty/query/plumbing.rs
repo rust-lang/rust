@@ -501,12 +501,6 @@ macro_rules! define_queries_struct {
     (tcx: $tcx:tt,
      input: ($(([$($modifiers:tt)*] [$($attr:tt)*] [$name:ident]))*)) => {
         pub struct Queries<$tcx> {
-            /// This provides access to the incremental compilation on-disk cache for query results.
-            /// Do not access this directly. It is only meant to be used by
-            /// `DepGraph::try_mark_green()` and the query infrastructure.
-            /// This is `None` if we are not incremental compilation mode
-            pub(crate) on_disk_cache: Option<OnDiskCache<'tcx>>,
-
             providers: IndexVec<CrateNum, Providers>,
             fallback_extern_providers: Box<Providers>,
 
@@ -521,12 +515,10 @@ macro_rules! define_queries_struct {
             pub(crate) fn new(
                 providers: IndexVec<CrateNum, Providers>,
                 fallback_extern_providers: Providers,
-                on_disk_cache: Option<OnDiskCache<'tcx>>,
             ) -> Self {
                 Queries {
                     providers,
                     fallback_extern_providers: Box::new(fallback_extern_providers),
-                    on_disk_cache,
                     $($name: Default::default()),*
                 }
             }

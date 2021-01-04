@@ -97,7 +97,7 @@ impl Parse for QueryModifier {
             Ok(QueryModifier::Cache(args, block))
         } else if modifier == "load_cached" {
             // Parse a load_cached modifier like:
-            // `load_cached(tcx, id) { tcx.queries.on_disk_cache.try_load_query_result(tcx, id) }`
+            // `load_cached(tcx, id) { tcx.on_disk_cache.try_load_query_result(tcx, id) }`
             let args;
             parenthesized!(args in input);
             let tcx = args.parse()?;
@@ -387,7 +387,7 @@ fn add_query_description_impl(
                     tcx: TyCtxt<'tcx>,
                     id: SerializedDepNodeIndex
                 ) -> Option<Self::Value> {
-                    tcx.queries.on_disk_cache.as_ref().and_then(|c| c.try_load_query_result(tcx, id))
+                    tcx.on_disk_cache.as_ref()?.try_load_query_result(tcx, id)
                 }
             }
         };

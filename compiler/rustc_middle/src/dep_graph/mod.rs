@@ -94,7 +94,7 @@ impl<'tcx> DepContext for TyCtxt<'tcx> {
     type StableHashingContext = StableHashingContext<'tcx>;
 
     fn register_reused_dep_node(&self, dep_node: &DepNode) {
-        if let Some(cache) = self.queries.on_disk_cache.as_ref() {
+        if let Some(cache) = self.on_disk_cache.as_ref() {
             cache.register_reused_dep_node(*self, dep_node)
         }
     }
@@ -185,15 +185,14 @@ impl<'tcx> DepContext for TyCtxt<'tcx> {
     }
 
     fn load_diagnostics(&self, prev_dep_node_index: SerializedDepNodeIndex) -> Vec<Diagnostic> {
-        self.queries
-            .on_disk_cache
+        self.on_disk_cache
             .as_ref()
             .map(|c| c.load_diagnostics(*self, prev_dep_node_index))
             .unwrap_or_default()
     }
 
     fn store_diagnostics(&self, dep_node_index: DepNodeIndex, diagnostics: ThinVec<Diagnostic>) {
-        if let Some(c) = self.queries.on_disk_cache.as_ref() {
+        if let Some(c) = self.on_disk_cache.as_ref() {
             c.store_diagnostics(dep_node_index, diagnostics)
         }
     }
@@ -203,7 +202,7 @@ impl<'tcx> DepContext for TyCtxt<'tcx> {
         dep_node_index: DepNodeIndex,
         diagnostics: ThinVec<Diagnostic>,
     ) {
-        if let Some(c) = self.queries.on_disk_cache.as_ref() {
+        if let Some(c) = self.on_disk_cache.as_ref() {
             c.store_diagnostics_for_anon_node(dep_node_index, diagnostics)
         }
     }
