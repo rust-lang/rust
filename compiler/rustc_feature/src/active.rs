@@ -626,6 +626,9 @@ declare_features! (
     /// Allows const generics to have default values (e.g. `struct Foo<const N: usize = 3>(...);`).
     (active, const_generics_defaults, "1.51.0", Some(44580), None),
 
+    /// Allows references to types with interior mutability within constants
+    (active, const_refs_to_cell, "1.51.0", Some(80384), None),
+
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------

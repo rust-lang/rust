@@ -9,13 +9,13 @@ fn main() {}
 
 const fn foo() -> NonZero<Cell<u32>> {
     let mut x = unsafe { NonZero(Cell::new(1)) };
-    let y = &x.0; //~ ERROR cannot borrow a constant which may contain interior mutability
+    let y = &x.0; //~ ERROR the borrowed element may contain interior mutability
     //~^ ERROR borrow of layout constrained field with interior mutability
     unsafe { NonZero(Cell::new(1)) }
 }
 
 const fn bar() -> NonZero<Cell<u32>> {
     let mut x = unsafe { NonZero(Cell::new(1)) };
-    let y = unsafe { &x.0 }; //~ ERROR cannot borrow a constant which may contain interior mut
+    let y = unsafe { &x.0 }; //~ ERROR the borrowed element may contain interior mutability
     unsafe { NonZero(Cell::new(1)) }
 }
