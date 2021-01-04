@@ -10,7 +10,7 @@
 use super::MirBorrowckCtxt;
 
 use rustc_hir as hir;
-use rustc_middle::mir::{Body, Place, PlaceRef, ProjectionElem};
+use rustc_middle::mir::{Body, PlaceRef, ProjectionElem};
 use rustc_middle::ty::{self, TyCtxt};
 
 pub trait IsPrefixOf<'tcx> {
@@ -67,24 +67,23 @@ impl<'cx, 'tcx> Iterator for Prefixes<'cx, 'tcx> {
         // downcasts here, but may return a base of a downcast).
 
         'cursor: loop {
-            match &cursor {
-                PlaceRef { local: _, projection: [] } => {
+            match cursor.last_projection() {
+                None => {
                     self.next = None;
                     return Some(cursor);
                 }
-                PlaceRef { local: _, projection: [proj_base @ .., elem] } => {
+                Some((cursor_base, elem)) => {
                     match elem {
                         ProjectionElem::Field(_ /*field*/, _ /*ty*/) => {
                             // FIXME: add union handling
-                            self.next =
-                                Some(PlaceRef { local: cursor.local, projection: proj_base });
+                            self.next = Some(cursor_base);
                             return Some(cursor);
                         }
                         ProjectionElem::Downcast(..)
                         | ProjectionElem::Subslice { .. }
                         | ProjectionElem::ConstantIndex { .. }
                         | ProjectionElem::Index(_) => {
-                            cursor = PlaceRef { local: cursor.local, projection: proj_base };
+                            cursor = cursor_base;
                             continue 'cursor;
                         }
                         ProjectionElem::Deref => {
@@ -92,7 +91,7 @@ impl<'cx, 'tcx> Iterator for Prefixes<'cx, 'tcx> {
                         }
                     }
 
-                    assert_eq!(*elem, ProjectionElem::Deref);
+                    assert_eq!(elem, ProjectionElem::Deref);
 
                     match self.kind {
                         PrefixSet::Shallow => {
@@ -105,8 +104,7 @@ impl<'cx, 'tcx> Iterator for Prefixes<'cx, 'tcx> {
                         PrefixSet::All => {
                             // All prefixes: just blindly enqueue the base
                             // of the projection.
-                            self.next =
-                                Some(PlaceRef { local: cursor.local, projection: proj_base });
+                            self.next = Some(cursor_base);
                             return Some(cursor);
                         }
                         PrefixSet::Supporting => {
@@ -119,7 +117,7 @@ impl<'cx, 'tcx> Iterator for Prefixes<'cx, 'tcx> {
                     // derefs, except we stop at the deref of a shared
                     // reference.
 
-                    let ty = Place::ty_from(cursor.local, proj_base, self.body, self.tcx).ty;
+                    let ty = PlaceRef::ty(&cursor_base, self.body, self.tcx).ty;
                     match ty.kind() {
                         ty::RawPtr(_) | ty::Ref(_ /*rgn*/, _ /*ty*/, hir::Mutability::Not) => {
                             // don't continue traversing over derefs of raw pointers or shared
@@ -129,14 +127,12 @@ impl<'cx, 'tcx> Iterator for Prefixes<'cx, 'tcx> {
                         }
 
                         ty::Ref(_ /*rgn*/, _ /*ty*/, hir::Mutability::Mut) => {
-                            self.next =
-                                Some(PlaceRef { local: cursor.local, projection: proj_base });
+                            self.next = Some(cursor_base);
                             return Some(cursor);
                         }
 
                         ty::Adt(..) if ty.is_box() => {
-                            self.next =
-                                Some(PlaceRef { local: cursor.local, projection: proj_base });
+                            self.next = Some(cursor_base);
                             return Some(cursor);
                         }
 
