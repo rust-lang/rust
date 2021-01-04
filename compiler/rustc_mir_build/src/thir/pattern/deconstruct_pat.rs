@@ -1059,27 +1059,17 @@ impl<'tcx> SplitWildcard<'tcx> {
 /// `Fields` struct. This struct represents such a potentially-hidden field.
 #[derive(Debug, Copy, Clone)]
 pub(super) enum FilteredField<'p, 'tcx> {
-    /// Stores the index into the list of non-hidden fields.
-    Kept(usize, &'p Pat<'tcx>),
+    Kept(&'p Pat<'tcx>),
     Hidden,
 }
 
 impl<'p, 'tcx> FilteredField<'p, 'tcx> {
     fn kept(self) -> Option<&'p Pat<'tcx>> {
         match self {
-            FilteredField::Kept(_, p) => Some(p),
+            FilteredField::Kept(p) => Some(p),
             FilteredField::Hidden => None,
         }
     }
-}
-
-/// A pattern along with its index in a list of fields.
-pub(super) struct IndexedPat<'p, 'tcx> {
-    pub(super) pat: &'p Pat<'tcx>,
-    pub(super) field_list_index: usize,
-    /// We also keep the original index into the real ADT list of fields. The two may differ in the
-    /// presence of fields we need to hide.
-    adt_index: usize,
 }
 
 /// A value can be decomposed into a constructor applied to some fields. This struct represents
@@ -1172,9 +1162,8 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
                                     if is_uninhabited && (!is_visible || is_non_exhaustive) {
                                         FilteredField::Hidden
                                     } else {
-                                        let idx = len;
                                         len += 1;
-                                        FilteredField::Kept(idx, wildcard_from_ty(ty))
+                                        FilteredField::Kept(wildcard_from_ty(ty))
                                     }
                                 })
                                 .collect();
@@ -1327,24 +1316,47 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
         }
     }
 
-    fn extract_fields_indexed<'a>(
-        &'a self,
-        new_pats: impl Iterator<Item = (usize, &'p Pat<'tcx>)> + 'a,
-    ) -> Box<dyn Iterator<Item = IndexedPat<'p, 'tcx>> + 'a> {
-        match self {
-            Fields::Vec(_) | Fields::Slice(_) => Box::new(new_pats.map(|(i, pat)| IndexedPat {
-                pat,
-                field_list_index: i,
-                adt_index: i,
-            })),
-            Fields::Filtered { fields, .. } => Box::new(new_pats.filter_map(move |(i, pat)| {
-                if let FilteredField::Kept(out_i, _) = &fields[i] {
-                    Some(IndexedPat { pat, field_list_index: *out_i, adt_index: i })
-                } else {
-                    None
-                }
-            })),
+    /// Overrides some of the fields with the provided patterns. Exactly like
+    /// `replace_fields_indexed`, except that it takes `FieldPat`s as input.
+    fn replace_with_fieldpats(
+        &self,
+        new_pats: impl IntoIterator<Item = &'p FieldPat<'tcx>>,
+    ) -> Self {
+        self.replace_fields_indexed(
+            new_pats.into_iter().map(|pat| (pat.field.index(), &pat.pattern)),
+        )
+    }
+
+    /// Overrides some of the fields with the provided patterns. This is used when a pattern
+    /// defines some fields but not all, for example `Foo { field1: Some(_), .. }`: here we start
+    /// with a `Fields` that is just one wildcard per field of the `Foo` struct, and override the
+    /// entry corresponding to `field1` with the pattern `Some(_)`. This is also used for slice
+    /// patterns for the same reason.
+    fn replace_fields_indexed(
+        &self,
+        new_pats: impl IntoIterator<Item = (usize, &'p Pat<'tcx>)>,
+    ) -> Self {
+        let mut fields = self.clone();
+        if let Fields::Slice(pats) = fields {
+            fields = Fields::Vec(pats.iter().collect());
         }
+
+        match &mut fields {
+            Fields::Vec(pats) => {
+                for (i, pat) in new_pats {
+                    pats[i] = pat
+                }
+            }
+            Fields::Filtered { fields, .. } => {
+                for (i, pat) in new_pats {
+                    if let FilteredField::Kept(p) = &mut fields[i] {
+                        *p = pat
+                    }
+                }
+            }
+            Fields::Slice(_) => unreachable!(),
+        }
+        fields
     }
 
     /// Replaces contained fields with the given list of patterns. There must be `len()` patterns
@@ -1361,7 +1373,7 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
                 let mut pats = pats.iter();
                 let mut fields = fields.clone();
                 for f in &mut fields {
-                    if let FilteredField::Kept(_, p) = f {
+                    if let FilteredField::Kept(p) = f {
                         // We take one input pattern for each `Kept` field, in order.
                         *p = pats.next().unwrap();
                     }
@@ -1388,56 +1400,14 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
     /// ```
     /// This is guaranteed to preserve the number of patterns in `self`.
     pub(super) fn replace_with_pattern_arguments(&self, pat: &'p Pat<'tcx>) -> Self {
-        let mut fields = self.clone();
-        if let Fields::Slice(pats) = fields {
-            fields = Fields::Vec(pats.iter().collect());
-        }
-
-        match &mut fields {
-            Fields::Vec(pats) => {
-                for idxpat in self.extract_pattern_arguments(pat) {
-                    pats[idxpat.adt_index] = idxpat.pat
-                }
-            }
-            Fields::Filtered { fields, .. } => {
-                for idxpat in self.extract_pattern_arguments(pat) {
-                    if let FilteredField::Kept(_, p) = &mut fields[idxpat.adt_index] {
-                        *p = idxpat.pat
-                    }
-                }
-            }
-            Fields::Slice(_) => unreachable!(),
-        }
-        fields
-    }
-
-    /// Extracts the arguments of the given pattern. Only use on a pattern that is compatible with
-    /// the constructor used to build `self`. Returns pairs of a subpattern and an index
-    /// corresponding to the location of the subpattern in the list of fields.
-    /// This is meant to be used on the result of `Fields::wildcards()`. The idea is that
-    /// `wildcards` constructs a list of fields where all entries are wildcards, and we use this
-    /// function on a pattern to fill some of the fields with non-wildcards.
-    /// In the following example `Fields::wildcards` would return `[_, _, _, _]`. If fill that list
-    /// with the arguments of the pattern, the result will be `[Some(0), _, _, _]`.
-    /// ```rust
-    /// let x: [Option<u8>; 4] = foo();
-    /// match x {
-    ///     [Some(0), ..] => {}
-    /// }
-    /// ```
-    pub(super) fn extract_pattern_arguments<'a>(
-        &'a self,
-        pat: &'p Pat<'tcx>,
-    ) -> Box<dyn Iterator<Item = IndexedPat<'p, 'tcx>> + 'a> {
         match pat.kind.as_ref() {
             PatKind::Deref { subpattern } => {
                 assert_eq!(self.len(), 1);
-                Box::new(once(IndexedPat { pat: subpattern, field_list_index: 0, adt_index: 0 }))
+                Fields::from_single_pattern(subpattern)
             }
-            PatKind::Leaf { subpatterns } | PatKind::Variant { subpatterns, .. } => self
-                .extract_fields_indexed(
-                    subpatterns.iter().map(|pat| (pat.field.index(), &pat.pattern)),
-                ),
+            PatKind::Leaf { subpatterns } | PatKind::Variant { subpatterns, .. } => {
+                self.replace_with_fieldpats(subpatterns)
+            }
             PatKind::Array { prefix, suffix, .. } | PatKind::Slice { prefix, suffix, .. } => {
                 // Number of subpatterns for the constructor
                 let ctor_arity = self.len();
@@ -1446,10 +1416,10 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
                 // the middle if there was a subslice pattern `..`.
                 let prefix = prefix.iter().enumerate();
                 let suffix =
-                    suffix.iter().enumerate().map(move |(i, p)| (ctor_arity - suffix.len() + i, p));
-                self.extract_fields_indexed(prefix.chain(suffix))
+                    suffix.iter().enumerate().map(|(i, p)| (ctor_arity - suffix.len() + i, p));
+                self.replace_fields_indexed(prefix.chain(suffix))
             }
-            _ => Box::new(std::iter::empty()),
+            _ => self.clone(),
         }
     }
 }

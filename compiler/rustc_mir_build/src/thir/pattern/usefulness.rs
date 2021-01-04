@@ -798,25 +798,26 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
         self.pop_last_col();
 
         // We add new columns filled with wildcards of the appropriate type.
+        self.columns.reserve(ctor_wild_subpatterns.len());
         let wildcards = ctor_wild_subpatterns.clone().into_patterns();
-        self.columns.reserve(wildcards.len());
         // Note: the fields are in the natural left-to-right order but the columns are not.
         for &wild in wildcards.iter().rev() {
             self.push_wildcard_column(wild);
         }
 
-        // We extract fields from the arguments of the head of each row and push them onto the
+        // We extract fields from the arguments of the head of each row and put them in the
         // corresponding columns.
         let new_columns = &mut self.columns[old_col_count - 1..];
         let last_col = self.last_col_history.last().unwrap();
         let selected_rows = self.selected_rows_history.last().unwrap();
         for (new_row_id, old_row_id) in selected_rows.iter().enumerate() {
             let head_entry = &last_col[*old_row_id];
-            for idxpat in ctor_wild_subpatterns.extract_pattern_arguments(head_entry.pat) {
-                // The fields are in the natural left-to-right order but the columns are in the
-                // reverse order.
-                let col_id = new_columns.len() - 1 - idxpat.field_list_index;
-                new_columns[col_id][new_row_id].pat = idxpat.pat;
+            let new_fields = ctor_wild_subpatterns
+                .replace_with_pattern_arguments(head_entry.pat)
+                .into_patterns();
+            // The fields are in the natural left-to-right order but the columns are not.
+            for (col, pat) in new_columns.iter_mut().rev().zip(new_fields) {
+                col[new_row_id].pat = pat;
             }
         }
 
