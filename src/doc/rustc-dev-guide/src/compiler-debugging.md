@@ -324,7 +324,7 @@ reveal the actual MIR elements, as text.
 
 To view these files, simply use a modern browser, or a CSS-capable HTML preview
 feature in a modern IDE. (The default HTML preview pane in *VS Code* is known to
-work, for instance.
+work, for instance.)
 
 ## Narrowing (Bisecting) Regressions
 

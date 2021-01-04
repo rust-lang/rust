@@ -70,7 +70,7 @@ including:
   is correct. The formatting check is also automatically run by the Tidy tool
   mentioned above.
 
-  Example: `./x.py fmt --check` checks formatting an exits with an error if
+  Example: `./x.py fmt --check` checks formatting and exits with an error if
   formatting is needed.
 
   Example: `./x.py fmt` runs rustfmt on the codebase.
