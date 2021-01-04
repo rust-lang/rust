@@ -541,7 +541,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
                     span_bug!(cause.span, "unexpected const outlives {:?}", constraint);
                 }
             };
-            let predicate = predicate.rebind(atom).potentially_quantified(self.tcx);
+            let predicate = predicate.rebind(atom).to_predicate(self.tcx);
 
             Obligation::new(cause.clone(), param_env, predicate)
         })

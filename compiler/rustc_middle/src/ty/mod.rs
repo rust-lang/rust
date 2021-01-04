@@ -1070,16 +1070,6 @@ impl<'tcx> Predicate<'tcx> {
         self.inner.binder.skip_binder()
     }
 
-    /// Returns the inner `PredicateAtom`.
-    ///
-    /// Note that this method does not check if the predicate has unbound variables.
-    ///
-    /// Rebinding the returned atom can causes the previously bound variables
-    /// to end up at the wrong binding level.
-    pub fn skip_binders_unchecked(self) -> PredicateAtom<'tcx> {
-        self.inner.binder.skip_binder()
-    }
-
     /// Converts this to a `Binder<PredicateAtom<'tcx>>`. If the value was an
     /// `Atom`, then it is not allowed to contain escaping bound vars.
     pub fn bound_atom(self) -> Binder<PredicateAtom<'tcx>> {
@@ -1088,12 +1078,6 @@ impl<'tcx> Predicate<'tcx> {
 
     pub fn bound_atom_ref(self) -> &'tcx Binder<PredicateAtom<'tcx>> {
         &self.inner.binder
-    }
-
-    /// Allows using a `Binder<PredicateAtom<'tcx>>` even if the given predicate previously
-    /// contained unbound variables by shifting these variables outwards.
-    pub fn bound_atom_with_opt_escaping(self, _tcx: TyCtxt<'tcx>) -> Binder<PredicateAtom<'tcx>> {
-        self.inner.binder
     }
 }
 
@@ -1158,13 +1142,6 @@ pub enum PredicateAtom<'tcx> {
     ///
     /// Only used for Chalk.
     TypeWellFormedFromEnv(Ty<'tcx>),
-}
-
-impl<'tcx> Binder<PredicateAtom<'tcx>> {
-    /// Wraps `self` with the given qualifier if this predicate has any unbound variables.
-    pub fn potentially_quantified(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
-        self.to_predicate(tcx)
-    }
 }
 
 /// The crate outlives map is computed during typeck and contains the
@@ -1254,7 +1231,7 @@ impl<'tcx> Predicate<'tcx> {
         let substs = trait_ref.skip_binder().substs;
         let pred = self.skip_binders();
         let new = pred.subst(tcx, substs);
-        if new != pred { ty::Binder::bind(new).potentially_quantified(tcx) } else { self }
+        if new != pred { ty::Binder::bind(new).to_predicate(tcx) } else { self }
     }
 }
 
@@ -1409,27 +1386,25 @@ impl<'tcx> ToPredicate<'tcx> for ConstnessAnd<PolyTraitRef<'tcx>> {
 
 impl<'tcx> ToPredicate<'tcx> for ConstnessAnd<PolyTraitPredicate<'tcx>> {
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
-        self.value
-            .map_bound(|value| PredicateAtom::Trait(value, self.constness))
-            .potentially_quantified(tcx)
+        self.value.map_bound(|value| PredicateAtom::Trait(value, self.constness)).to_predicate(tcx)
     }
 }
 
 impl<'tcx> ToPredicate<'tcx> for PolyRegionOutlivesPredicate<'tcx> {
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
-        self.map_bound(PredicateAtom::RegionOutlives).potentially_quantified(tcx)
+        self.map_bound(PredicateAtom::RegionOutlives).to_predicate(tcx)
     }
 }
 
 impl<'tcx> ToPredicate<'tcx> for PolyTypeOutlivesPredicate<'tcx> {
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
-        self.map_bound(PredicateAtom::TypeOutlives).potentially_quantified(tcx)
+        self.map_bound(PredicateAtom::TypeOutlives).to_predicate(tcx)
     }
 }
 
 impl<'tcx> ToPredicate<'tcx> for PolyProjectionPredicate<'tcx> {
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
-        self.map_bound(PredicateAtom::Projection).potentially_quantified(tcx)
+        self.map_bound(PredicateAtom::Projection).to_predicate(tcx)
     }
 }
 

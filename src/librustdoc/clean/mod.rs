@@ -1686,7 +1686,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                     .filter_map(|bound| {
                         // Note: The substs of opaque types can contain unbound variables,
                         // meaning that we have to use `ignore_quantifiers_with_unbound_vars` here.
-                        let bound_predicate = bound.bound_atom_with_opt_escaping(cx.tcx);
+                        let bound_predicate = bound.bound_atom();
                         let trait_ref = match bound_predicate.skip_binder() {
                             ty::PredicateAtom::Trait(tr, _constness) => {
                                 bound_predicate.rebind(tr.trait_ref)
@@ -1711,7 +1711,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                             .iter()
                             .filter_map(|bound| {
                                 if let ty::PredicateAtom::Projection(proj) =
-                                    bound.bound_atom_with_opt_escaping(cx.tcx).skip_binder()
+                                    bound.bound_atom().skip_binder()
                                 {
                                     if proj.projection_ty.trait_ref(cx.tcx)
                                         == trait_ref.skip_binder()
