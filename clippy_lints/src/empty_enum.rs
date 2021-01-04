@@ -8,12 +8,12 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 declare_clippy_lint! {
     /// **What it does:** Checks for `enum`s with no variants.
     ///
-    /// As of this writing, the never type is still a
+    /// As of this writing, the `never_type` is still a
     /// nightly-only experimental API. Therefore, this lint is only triggered
-    /// if the never type is enabled
+    /// if the `never_type` is enabled.
     ///
     /// **Why is this bad?** If you want to introduce a type which
-    /// can't be instantiated, you should use `!` (the never type),
+    /// can't be instantiated, you should use `!` (the primitive type never),
     /// or a wrapper around it, because `!` has more extensive
     /// compiler support (type inference, etc...) and wrappers
     /// around it are the conventional way to define an uninhabited type.
@@ -44,13 +44,16 @@ declare_lint_pass!(EmptyEnum => [EMPTY_ENUM]);
 
 impl<'tcx> LateLintPass<'tcx> for EmptyEnum {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &Item<'_>) {
+        // Only suggest the `never_type` if the feature is enabled
+        if !cx.tcx.features().never_type {
+            return;
+        }
+
         let did = cx.tcx.hir().local_def_id(item.hir_id);
         if let ItemKind::Enum(..) = item.kind {
             let ty = cx.tcx.type_of(did);
             let adt = ty.ty_adt_def().expect("already checked whether this is an enum");
-
-            // Only suggest the never type if the feature is enabled
-            if adt.variants.is_empty() && cx.tcx.features().never_type {
+            if adt.variants.is_empty() {
                 span_lint_and_help(
                     cx,
                     EMPTY_ENUM,
