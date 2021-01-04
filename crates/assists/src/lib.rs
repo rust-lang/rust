@@ -116,7 +116,6 @@ mod handlers {
     mod convert_integer_literal;
     mod early_return;
     mod expand_glob_import;
-    mod extract_assignment;
     mod extract_module_to_file;
     mod extract_struct_from_enum_variant;
     mod extract_variable;
@@ -125,8 +124,8 @@ mod handlers {
     mod flip_binexpr;
     mod flip_comma;
     mod flip_trait_bound;
-    mod generate_derive;
     mod generate_default_from_enum_variant;
+    mod generate_derive;
     mod generate_from_impl_for_enum;
     mod generate_function;
     mod generate_impl;
@@ -139,6 +138,7 @@ mod handlers {
     mod merge_match_arms;
     mod move_bounds;
     mod move_guard;
+    mod pull_assignment_up;
     mod qualify_path;
     mod raw_string;
     mod remove_dbg;
@@ -168,7 +168,6 @@ mod handlers {
             convert_integer_literal::convert_integer_literal,
             early_return::convert_to_guarded_return,
             expand_glob_import::expand_glob_import,
-            extract_assignment::extract_assigment,
             extract_module_to_file::extract_module_to_file,
             extract_struct_from_enum_variant::extract_struct_from_enum_variant,
             extract_variable::extract_variable,
@@ -177,8 +176,8 @@ mod handlers {
             flip_binexpr::flip_binexpr,
             flip_comma::flip_comma,
             flip_trait_bound::flip_trait_bound,
-            generate_derive::generate_derive,
             generate_default_from_enum_variant::generate_default_from_enum_variant,
+            generate_derive::generate_derive,
             generate_from_impl_for_enum::generate_from_impl_for_enum,
             generate_function::generate_function,
             generate_impl::generate_impl,
@@ -192,6 +191,7 @@ mod handlers {
             move_bounds::move_bounds_to_where_clause,
             move_guard::move_arm_cond_to_match_guard,
             move_guard::move_guard_to_arm_body,
+            pull_assignment_up::pull_assignment_up,
             qualify_path::qualify_path,
             raw_string::add_hash,
             raw_string::make_usual_string,

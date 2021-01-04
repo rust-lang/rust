@@ -9,9 +9,9 @@ use crate::{
     AssistId, AssistKind,
 };
 
-// Assist: extract_assignment
+// Assist: pull_assignment_up
 //
-// Extracts variable assigment to outside an if or match statement.
+// Extracts variable assignment to outside an if or match statement.
 //
 // ```
 // fn main() {
@@ -36,7 +36,7 @@ use crate::{
 //     };
 // }
 // ```
-pub(crate) fn extract_assigment(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+pub(crate) fn pull_assignment_up(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let assign_expr = ctx.find_node_at_offset::<ast::BinExpr>()?;
     let name_expr = if assign_expr.op_kind()? == ast::BinOp::Assignment {
         assign_expr.lhs()?
@@ -61,8 +61,8 @@ pub(crate) fn extract_assigment(acc: &mut Assists, ctx: &AssistContext) -> Optio
     let expr_stmt = make::expr_stmt(new_stmt);
 
     acc.add(
-        AssistId("extract_assignment", AssistKind::RefactorExtract),
-        "Extract assignment",
+        AssistId("pull_assignment_up", AssistKind::RefactorExtract),
+        "Pull assignment up",
         old_stmt.syntax().text_range(),
         move |edit| {
             edit.replace(old_stmt.syntax().text_range(), format!("{} = {};", name_expr, expr_stmt));
@@ -104,7 +104,7 @@ fn exprify_if(
             ast::ElseBranch::Block(exprify_block(block, sema, name)?)
         }
         ast::ElseBranch::IfExpr(expr) => {
-            mark::hit!(test_extract_assigment_chained_if);
+            mark::hit!(test_pull_assignment_up_chained_if);
             ast::ElseBranch::IfExpr(ast::IfExpr::cast(
                 exprify_if(&expr, sema, name)?.syntax().to_owned(),
             )?)
@@ -144,7 +144,7 @@ fn is_equivalent(
 ) -> bool {
     match (expr0, expr1) {
         (ast::Expr::FieldExpr(field_expr0), ast::Expr::FieldExpr(field_expr1)) => {
-            mark::hit!(test_extract_assignment_field_assignment);
+            mark::hit!(test_pull_assignment_up_field_assignment);
             sema.resolve_field(field_expr0) == sema.resolve_field(field_expr1)
         }
         (ast::Expr::PathExpr(path0), ast::Expr::PathExpr(path1)) => {
@@ -167,9 +167,9 @@ mod tests {
     use crate::tests::{check_assist, check_assist_not_applicable};
 
     #[test]
-    fn test_extract_assignment_if() {
+    fn test_pull_assignment_up_if() {
         check_assist(
-            extract_assigment,
+            pull_assignment_up,
             r#"
 fn foo() {
     let mut a = 1;
@@ -194,9 +194,9 @@ fn foo() {
     }
 
     #[test]
-    fn test_extract_assignment_match() {
+    fn test_pull_assignment_up_match() {
         check_assist(
-            extract_assigment,
+            pull_assignment_up,
             r#"
 fn foo() {
     let mut a = 1;
@@ -233,9 +233,9 @@ fn foo() {
     }
 
     #[test]
-    fn test_extract_assignment_not_last_not_applicable() {
+    fn test_pull_assignment_up_not_last_not_applicable() {
         check_assist_not_applicable(
-            extract_assigment,
+            pull_assignment_up,
             r#"
 fn foo() {
     let mut a = 1;
@@ -251,10 +251,10 @@ fn foo() {
     }
 
     #[test]
-    fn test_extract_assignment_chained_if() {
-        mark::check!(test_extract_assigment_chained_if);
+    fn test_pull_assignment_up_chained_if() {
+        mark::check!(test_pull_assignment_up_chained_if);
         check_assist(
-            extract_assigment,
+            pull_assignment_up,
             r#"
 fn foo() {
     let mut a = 1;
@@ -283,9 +283,9 @@ fn foo() {
     }
 
     #[test]
-    fn test_extract_assigment_retains_stmts() {
+    fn test_pull_assignment_up_retains_stmts() {
         check_assist(
-            extract_assigment,
+            pull_assignment_up,
             r#"
 fn foo() {
     let mut a = 1;
@@ -314,9 +314,9 @@ fn foo() {
     }
 
     #[test]
-    fn extract_assignment_let_stmt_not_applicable() {
+    fn pull_assignment_up_let_stmt_not_applicable() {
         check_assist_not_applicable(
-            extract_assigment,
+            pull_assignment_up,
             r#"
 fn foo() {
     let mut a = 1;
@@ -331,9 +331,9 @@ fn foo() {
     }
 
     #[test]
-    fn extract_assignment_if_missing_assigment_not_applicable() {
+    fn pull_assignment_up_if_missing_assigment_not_applicable() {
         check_assist_not_applicable(
-            extract_assigment,
+            pull_assignment_up,
             r#"
 fn foo() {
     let mut a = 1;
@@ -346,9 +346,9 @@ fn foo() {
     }
 
     #[test]
-    fn extract_assignment_match_missing_assigment_not_applicable() {
+    fn pull_assignment_up_match_missing_assigment_not_applicable() {
         check_assist_not_applicable(
-            extract_assigment,
+            pull_assignment_up,
             r#"
 fn foo() {
     let mut a = 1;
@@ -367,10 +367,10 @@ fn foo() {
     }
 
     #[test]
-    fn test_extract_assignment_field_assignment() {
-        mark::check!(test_extract_assignment_field_assignment);
+    fn test_pull_assignment_up_field_assignment() {
+        mark::check!(test_pull_assignment_up_field_assignment);
         check_assist(
-            extract_assigment,
+            pull_assignment_up,
             r#"
 struct A(usize);
 
