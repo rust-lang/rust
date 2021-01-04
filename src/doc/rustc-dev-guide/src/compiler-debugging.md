@@ -7,6 +7,21 @@ advice about specific parts of the compiler (e.g. the [Queries Debugging and
 Testing chapter](./incrcomp-debugging.html) or the [LLVM Debugging
 chapter](./backend/debugging.md)).
 
+## Configuring the compiler
+
+By default, rustc is built without most debug information. To enable debug info, 
+set `debug = true` in your config.toml. 
+
+Setting `debug = true` turns on many different debug options (e.g., `debug-assertions`, 
+`debug-logging`, etc.) which can be individually tweaked if you want to, but many people 
+simply set `debug = true`. Check out the comments in `config.toml.example` for more info.
+
+In some cases, just setting these options will not trigger a rebuild,
+so if you changed it and you already have a compiler built, you might
+want to call `x.py clean` to force a rebuild.
+
+You will need to rebuild the compiler once you've changed any configuration options. 
+
 ## `-Z` flags
 
 The compiler has a bunch of `-Z` flags. These are unstable flags that are only
@@ -25,8 +40,8 @@ normal Rust programs.  IIRC backtraces **don't work** on MinGW,
 sorry. If you have trouble or the backtraces are full of `unknown`,
 you might want to find some way to use Linux, Mac, or MSVC on Windows.
 
-In the default configuration, you don't have line numbers enabled, so the
-backtrace looks like this:
+In the default configuration (without `debug` set to `true`), you don't have line numbers 
+enabled, so the backtrace looks like this:
 
 ```text
 stack backtrace:
@@ -45,10 +60,9 @@ stack backtrace:
   37: rustc_driver::run_compiler
 ```
 
-If you want line numbers for the stack trace, you can enable `debug = true` in
-your config.toml and rebuild the compiler (`debuginfo-level = 1` will also add
-line numbers, but `debug = true` gives full debuginfo). Then the backtrace will
-look like this:
+If you set `debug = true`, you will get line numbers for the stack trace. 
+`debuginfo-level = 1` will also add line numbers, but `debug = true` gives 
+full debug info. Then the backtrace will look like this:
 
 ```text
 stack backtrace:
@@ -259,10 +273,6 @@ turned off by default), so if you don't see `DEBUG` logs, especially
 if you run the compiler with `RUSTC_LOG=rustc rustc some.rs` and only see
 `INFO` logs, make sure that `debug-logging=true` is turned on in your
 config.toml.
-
-In some cases, just setting it will not trigger a rebuild,
-so if you changed it and you already have a compiler built, you might
-want to call `x.py clean` to force one.
 
 ### Logging etiquette and conventions
 
