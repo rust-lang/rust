@@ -1,6 +1,8 @@
 // check-pass
 
-// compile-flags: --crate-type lib
+// need to emit MIR, because const prop (which emits `unconditional_panic`) only runs if
+// the `optimized_mir` query is run, which it isn't in check-only mode.
+// compile-flags: --crate-type lib --emit=mir,link
 
 #![warn(unconditional_panic)]
 

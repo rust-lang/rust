@@ -357,28 +357,43 @@ fn inner_mir_for_ctfe(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -
         return shim::build_adt_ctor(tcx, def.did.to_def_id());
     }
 
-    assert_ne!(
-        tcx.hir().body_const_context(def.did),
-        None,
-        "mir_for_ctfe should not be used for runtime functions"
-    );
+    let context = tcx
+        .hir()
+        .body_const_context(def.did)
+        .expect("mir_for_ctfe should not be used for runtime functions");
 
     let mut body = tcx.mir_drops_elaborated_and_const_checked(def).borrow().clone();
 
-    #[rustfmt::skip]
-    let optimizations: &[&dyn MirPass<'_>] = &[
-        &const_prop::ConstProp,
-    ];
+    match context {
+        // Do not const prop functions, either they get executed at runtime or exported to metadata,
+        // so we run const prop on them, or they don't, in which case we const evaluate some control
+        // flow paths of the function and any errors in those paths will get emitted as const eval
+        // errors.
+        hir::ConstContext::ConstFn => {}
+        // Static items always get evaluated, so we can just let const eval see if any erroneous
+        // control flow paths get executed.
+        hir::ConstContext::Static(_) => {}
+        // Associated constants get const prop run so we detect common failure situations in the
+        // crate that defined the constant.
+        // Technically we want to not run on regular const items, but oli-obk doesn't know how to
+        // conveniently detect that at this point without looking at the HIR.
+        hir::ConstContext::Const => {
+            #[rustfmt::skip]
+            let optimizations: &[&dyn MirPass<'_>] = &[
+                &const_prop::ConstProp,
+            ];
 
-    #[rustfmt::skip]
-    run_passes(
-        tcx,
-        &mut body,
-        MirPhase::Optimization,
-        &[
-            optimizations,
-        ],
-    );
+            #[rustfmt::skip]
+            run_passes(
+                tcx,
+                &mut body,
+                MirPhase::Optimization,
+                &[
+                    optimizations,
+                ],
+            );
+        }
+    }
 
     debug_assert!(!body.has_free_regions(), "Free regions in MIR for CTFE");
 
