@@ -238,35 +238,6 @@ fn qux(bar: Bar, baz: Baz) {}
 }
 
 #[test]
-fn doctest_extract_assignment() {
-    check_doc_test(
-        "extract_assignment",
-        r#####"
-fn main() {
-    let mut foo = 6;
-
-    if true {
-        <|>foo = 5;
-    } else {
-        foo = 4;
-    }
-}
-"#####,
-        r#####"
-fn main() {
-    let mut foo = 6;
-
-    foo = if true {
-        5
-    } else {
-        4
-    };
-}
-"#####,
-    )
-}
-
-#[test]
 fn doctest_extract_module_to_file() {
     check_doc_test(
         "extract_module_to_file",
@@ -761,6 +732,35 @@ fn handle(action: Action) {
         },
         _ => (),
     }
+}
+"#####,
+    )
+}
+
+#[test]
+fn doctest_pull_assignment_up() {
+    check_doc_test(
+        "pull_assignment_up",
+        r#####"
+fn main() {
+    let mut foo = 6;
+
+    if true {
+        <|>foo = 5;
+    } else {
+        foo = 4;
+    }
+}
+"#####,
+        r#####"
+fn main() {
+    let mut foo = 6;
+
+    foo = if true {
+        5
+    } else {
+        4
+    };
 }
 "#####,
     )
