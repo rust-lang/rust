@@ -1343,6 +1343,12 @@ impl ConstParam {
     pub fn parent(self, _db: &dyn HirDatabase) -> GenericDef {
         self.id.parent.into()
     }
+
+    pub fn ty(self, db: &dyn HirDatabase) -> Type {
+        let def = self.id.parent;
+        let krate = def.module(db.upcast()).krate;
+        Type::new(db, krate, def, db.const_param_ty(self.id))
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

@@ -228,45 +228,41 @@ fn runnable_action(
 }
 
 fn goto_type_action(db: &RootDatabase, def: Definition) -> Option<HoverAction> {
-    match def {
-        Definition::Local(it) => {
-            let mut targets: Vec<ModuleDef> = Vec::new();
-            let mut push_new_def = |item: ModuleDef| {
-                if !targets.contains(&item) {
-                    targets.push(item);
-                }
-            };
-
-            it.ty(db).walk(db, |t| {
-                if let Some(adt) = t.as_adt() {
-                    push_new_def(adt.into());
-                } else if let Some(trait_) = t.as_dyn_trait() {
-                    push_new_def(trait_.into());
-                } else if let Some(traits) = t.as_impl_traits(db) {
-                    traits.into_iter().for_each(|it| push_new_def(it.into()));
-                } else if let Some(trait_) = t.as_associated_type_parent_trait(db) {
-                    push_new_def(trait_.into());
-                }
-            });
-
-            let targets = targets
-                .into_iter()
-                .filter_map(|it| {
-                    Some(HoverGotoTypeData {
-                        mod_path: render_path(
-                            db,
-                            it.module(db)?,
-                            it.name(db).map(|name| name.to_string()),
-                        ),
-                        nav: it.try_to_nav(db)?,
-                    })
-                })
-                .collect();
-
-            Some(HoverAction::GoToType(targets))
+    let ty = match def {
+        Definition::Local(it) => it.ty(db),
+        Definition::ConstParam(it) => it.ty(db),
+        _ => return None,
+    };
+    let mut targets: Vec<ModuleDef> = Vec::new();
+    let mut push_new_def = |item: ModuleDef| {
+        if !targets.contains(&item) {
+            targets.push(item);
         }
-        _ => None,
-    }
+    };
+
+    ty.walk(db, |t| {
+        if let Some(adt) = t.as_adt() {
+            push_new_def(adt.into());
+        } else if let Some(trait_) = t.as_dyn_trait() {
+            push_new_def(trait_.into());
+        } else if let Some(traits) = t.as_impl_traits(db) {
+            traits.into_iter().for_each(|it| push_new_def(it.into()));
+        } else if let Some(trait_) = t.as_associated_type_parent_trait(db) {
+            push_new_def(trait_.into());
+        }
+    });
+
+    let targets = targets
+        .into_iter()
+        .filter_map(|it| {
+            Some(HoverGotoTypeData {
+                mod_path: render_path(db, it.module(db)?, it.name(db).map(|name| name.to_string())),
+                nav: it.try_to_nav(db)?,
+            })
+        })
+        .collect();
+
+    Some(HoverAction::GoToType(targets))
 }
 
 fn hover_markup(
@@ -3074,6 +3070,39 @@ fn main() { let s<|>t = test().get(); }
                                     name: "Foo",
                                     kind: Trait,
                                     description: "trait Foo",
+                                },
+                            },
+                        ],
+                    ),
+                ]
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_hover_const_param_has_goto_type_action() {
+        check_actions(
+            r#"
+struct Bar;
+struct Foo<const BAR: Bar>;
+
+impl<const BAR: Bar> Foo<BAR<|>> {} 
+"#,
+            expect![[r#"
+                [
+                    GoToType(
+                        [
+                            HoverGotoTypeData {
+                                mod_path: "test::Bar",
+                                nav: NavigationTarget {
+                                    file_id: FileId(
+                                        0,
+                                    ),
+                                    full_range: 0..11,
+                                    focus_range: 7..10,
+                                    name: "Bar",
+                                    kind: Struct,
+                                    description: "struct Bar",
                                 },
                             },
                         ],
