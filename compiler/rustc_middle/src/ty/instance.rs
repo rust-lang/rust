@@ -31,7 +31,7 @@ pub enum InstanceDef<'tcx> {
     /// - `fn` items
     /// - closures
     /// - generators
-    Item(ty::WithOptConstParam<DefId>),
+    Item(ty::WithOptConstParam<'tcx, DefId>),
 
     /// An intrinsic `fn` item (with `"rust-intrinsic"` or `"platform-intrinsic"` ABI).
     ///
@@ -153,7 +153,7 @@ impl<'tcx> InstanceDef<'tcx> {
     }
 
     #[inline]
-    pub fn with_opt_param(self) -> ty::WithOptConstParam<DefId> {
+    pub fn with_opt_param(self) -> ty::WithOptConstParam<'tcx, DefId> {
         match self {
             InstanceDef::Item(def) => def,
             InstanceDef::VtableShim(def_id)
@@ -350,7 +350,7 @@ impl<'tcx> Instance<'tcx> {
     pub fn resolve_opt_const_arg(
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        def: ty::WithOptConstParam<DefId>,
+        def: ty::WithOptConstParam<'tcx, DefId>,
         substs: SubstsRef<'tcx>,
     ) -> Result<Option<Instance<'tcx>>, ErrorReported> {
         // All regions in the result of this query are erased, so it's
@@ -363,9 +363,8 @@ impl<'tcx> Instance<'tcx> {
 
         // FIXME(eddyb) should this always use `param_env.with_reveal_all()`?
         if let Some((did, param_did)) = def.as_const_arg() {
-            tcx.resolve_instance_of_const_arg(
-                tcx.erase_regions(param_env.and((did, param_did, substs))),
-            )
+            let (param_env, substs) = tcx.erase_regions((param_env, substs));
+            tcx.resolve_instance_of_const_arg(param_env.and((did, param_did, substs)))
         } else {
             tcx.resolve_instance(tcx.erase_regions(param_env.and((def.did, substs))))
         }

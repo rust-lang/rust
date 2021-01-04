@@ -249,7 +249,7 @@ rustc_queries! {
             cache_on_disk_if { key.is_local() }
         }
         query mir_const_qualif_const_arg(
-            key: (LocalDefId, DefId)
+            key: (LocalDefId, Ty<'tcx>)
         ) -> mir::ConstQualifs {
             desc {
                 |tcx| "const checking the const argument `{}`",
@@ -259,7 +259,7 @@ rustc_queries! {
 
         /// Fetch the MIR for a given `DefId` right after it's built - this includes
         /// unreachable code.
-        query mir_built(key: ty::WithOptConstParam<LocalDefId>) -> &'tcx Steal<mir::Body<'tcx>> {
+        query mir_built(key: ty::WithOptConstParam<'tcx, LocalDefId>) -> &'tcx Steal<mir::Body<'tcx>> {
             desc { |tcx| "building MIR for `{}`", tcx.def_path_str(key.did.to_def_id()) }
         }
 
@@ -267,7 +267,7 @@ rustc_queries! {
         /// ready for const qualification.
         ///
         /// See the README for the `mir` module for details.
-        query mir_const(key: ty::WithOptConstParam<LocalDefId>) -> &'tcx Steal<mir::Body<'tcx>> {
+        query mir_const(key: ty::WithOptConstParam<'tcx, LocalDefId>) -> &'tcx Steal<mir::Body<'tcx>> {
             desc {
                 |tcx| "processing MIR for {}`{}`",
                 if key.const_param_did.is_some() { "the const argument " } else { "" },
@@ -286,7 +286,7 @@ rustc_queries! {
         }
         /// Try to build an abstract representation of the given constant.
         query mir_abstract_const_of_const_arg(
-            key: (LocalDefId, DefId)
+            key: (LocalDefId, Ty<'tcx>)
         ) -> Result<Option<&'tcx [mir::abstract_const::Node<'tcx>]>, ErrorReported> {
             desc {
                 |tcx|
@@ -296,8 +296,8 @@ rustc_queries! {
         }
 
         query try_unify_abstract_consts(key: (
-            (ty::WithOptConstParam<DefId>, SubstsRef<'tcx>),
-            (ty::WithOptConstParam<DefId>, SubstsRef<'tcx>)
+            (ty::WithOptConstParam<'tcx, DefId>, SubstsRef<'tcx>),
+            (ty::WithOptConstParam<'tcx, DefId>, SubstsRef<'tcx>)
         )) -> bool {
             desc {
                 |tcx| "trying to unify the generic constants {} and {}",
@@ -306,13 +306,13 @@ rustc_queries! {
         }
 
         query mir_drops_elaborated_and_const_checked(
-            key: ty::WithOptConstParam<LocalDefId>
+            key: ty::WithOptConstParam<'tcx, LocalDefId>
         ) -> &'tcx Steal<mir::Body<'tcx>> {
             no_hash
             desc { |tcx| "elaborating drops for `{}`", tcx.def_path_str(key.did.to_def_id()) }
         }
 
-        query mir_promoted(key: ty::WithOptConstParam<LocalDefId>) ->
+        query mir_promoted(key: ty::WithOptConstParam<'tcx, LocalDefId>) ->
             (
                 &'tcx Steal<mir::Body<'tcx>>,
                 &'tcx Steal<IndexVec<mir::Promoted, mir::Body<'tcx>>>
@@ -331,7 +331,7 @@ rustc_queries! {
             desc { |tcx| "optimizing MIR for `{}`", tcx.def_path_str(key) }
             cache_on_disk_if { key.is_local() }
         }
-        query optimized_mir_of_const_arg(key: (LocalDefId, DefId)) -> &'tcx mir::Body<'tcx> {
+        query optimized_mir_of_const_arg(key: (LocalDefId, Ty<'tcx>)) -> &'tcx mir::Body<'tcx> {
             desc {
                 |tcx| "optimizing MIR for the const argument `{}`",
                 tcx.def_path_str(key.0.to_def_id())
@@ -371,7 +371,7 @@ rustc_queries! {
             cache_on_disk_if { key.is_local() }
         }
         query promoted_mir_of_const_arg(
-            key: (LocalDefId, DefId)
+            key: (LocalDefId, Ty<'tcx>)
         ) -> &'tcx IndexVec<mir::Promoted, mir::Body<'tcx>> {
             desc {
                 |tcx| "optimizing promoted MIR for the const argument `{}`",
@@ -606,7 +606,7 @@ rustc_queries! {
             desc { |tcx| "unsafety-checking `{}`", tcx.def_path_str(key.to_def_id()) }
             cache_on_disk_if { true }
         }
-        query unsafety_check_result_for_const_arg(key: (LocalDefId, DefId)) -> &'tcx mir::UnsafetyCheckResult {
+        query unsafety_check_result_for_const_arg(key: (LocalDefId, Ty<'tcx>)) -> &'tcx mir::UnsafetyCheckResult {
             desc {
                 |tcx| "unsafety-checking the const argument `{}`",
                 tcx.def_path_str(key.0.to_def_id())
@@ -697,7 +697,7 @@ rustc_queries! {
             cache_on_disk_if { true }
         }
         query typeck_const_arg(
-            key: (LocalDefId, DefId)
+            key: (LocalDefId, Ty<'tcx>)
         ) -> &'tcx ty::TypeckResults<'tcx> {
             desc {
                 |tcx| "type-checking the const argument `{}`",
@@ -744,7 +744,7 @@ rustc_queries! {
                     || opt_result.map_or(false, |r| !r.concrete_opaque_types.is_empty())
             }
         }
-        query mir_borrowck_const_arg(key: (LocalDefId, DefId)) -> &'tcx mir::BorrowCheckResult<'tcx> {
+        query mir_borrowck_const_arg(key: (LocalDefId, Ty<'tcx>)) -> &'tcx mir::BorrowCheckResult<'tcx> {
             desc {
                 |tcx| "borrow-checking the const argument`{}`",
                 tcx.def_path_str(key.0.to_def_id())
@@ -1656,7 +1656,7 @@ rustc_queries! {
         }
 
         query resolve_instance_of_const_arg(
-            key: ty::ParamEnvAnd<'tcx, (LocalDefId, DefId, SubstsRef<'tcx>)>
+            key: ty::ParamEnvAnd<'tcx, (LocalDefId, Ty<'tcx>, SubstsRef<'tcx>)>
         ) -> Result<Option<ty::Instance<'tcx>>, ErrorReported> {
             desc {
                 "resolving instance of the const argument `{}`",

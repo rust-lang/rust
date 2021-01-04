@@ -34,7 +34,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn const_eval_resolve(
         self,
         param_env: ty::ParamEnv<'tcx>,
-        def: ty::WithOptConstParam<DefId>,
+        def: ty::WithOptConstParam<'tcx, DefId>,
         substs: SubstsRef<'tcx>,
         promoted: Option<mir::Promoted>,
         span: Option<Span>,

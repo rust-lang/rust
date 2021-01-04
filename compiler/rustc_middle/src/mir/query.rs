@@ -417,7 +417,7 @@ impl<'tcx> TyCtxt<'tcx> {
     #[inline]
     pub fn mir_const_qualif_opt_const_arg(
         self,
-        def: ty::WithOptConstParam<LocalDefId>,
+        def: ty::WithOptConstParam<'tcx, LocalDefId>,
     ) -> ConstQualifs {
         if let Some(param_did) = def.const_param_did {
             self.mir_const_qualif_const_arg((def.did, param_did))
@@ -429,7 +429,7 @@ impl<'tcx> TyCtxt<'tcx> {
     #[inline]
     pub fn promoted_mir_opt_const_arg(
         self,
-        def: ty::WithOptConstParam<DefId>,
+        def: ty::WithOptConstParam<'tcx, DefId>,
     ) -> &'tcx IndexVec<Promoted, Body<'tcx>> {
         if let Some((did, param_did)) = def.as_const_arg() {
             self.promoted_mir_of_const_arg((did, param_did))
@@ -441,7 +441,7 @@ impl<'tcx> TyCtxt<'tcx> {
     #[inline]
     pub fn optimized_mir_opt_const_arg(
         self,
-        def: ty::WithOptConstParam<DefId>,
+        def: ty::WithOptConstParam<'tcx, DefId>,
     ) -> &'tcx Body<'tcx> {
         if let Some((did, param_did)) = def.as_const_arg() {
             self.optimized_mir_of_const_arg((did, param_did))
@@ -453,7 +453,7 @@ impl<'tcx> TyCtxt<'tcx> {
     #[inline]
     pub fn mir_abstract_const_opt_const_arg(
         self,
-        def: ty::WithOptConstParam<DefId>,
+        def: ty::WithOptConstParam<'tcx, DefId>,
     ) -> Result<Option<&'tcx [abstract_const::Node<'tcx>]>, ErrorReported> {
         if let Some((did, param_did)) = def.as_const_arg() {
             self.mir_abstract_const_of_const_arg((did, param_did))

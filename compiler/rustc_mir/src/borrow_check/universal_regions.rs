@@ -227,7 +227,7 @@ impl<'tcx> UniversalRegions<'tcx> {
     /// known between those regions.
     pub fn new(
         infcx: &InferCtxt<'_, 'tcx>,
-        mir_def: ty::WithOptConstParam<LocalDefId>,
+        mir_def: ty::WithOptConstParam<'tcx, LocalDefId>,
         param_env: ty::ParamEnv<'tcx>,
     ) -> Self {
         let tcx = infcx.tcx;
@@ -388,7 +388,7 @@ impl<'tcx> UniversalRegions<'tcx> {
 
 struct UniversalRegionsBuilder<'cx, 'tcx> {
     infcx: &'cx InferCtxt<'cx, 'tcx>,
-    mir_def: ty::WithOptConstParam<LocalDefId>,
+    mir_def: ty::WithOptConstParam<'tcx, LocalDefId>,
     mir_hir_id: HirId,
     param_env: ty::ParamEnv<'tcx>,
 }
@@ -636,7 +636,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                 // For a constant body, there are no inputs, and one
                 // "output" (the type of the constant).
                 assert_eq!(self.mir_def.did.to_def_id(), def_id);
-                let ty = tcx.type_of(self.mir_def.def_id_for_type_of());
+                let ty = self.mir_def.type_of(tcx);
                 let ty = indices.fold_to_region_vids(tcx, ty);
                 ty::Binder::dummy(tcx.intern_type_list(&[ty]))
             }

@@ -35,7 +35,7 @@ impl<'tcx> Const<'tcx> {
 
     pub fn from_opt_const_arg_anon_const(
         tcx: TyCtxt<'tcx>,
-        def: ty::WithOptConstParam<LocalDefId>,
+        def: ty::WithOptConstParam<'tcx, LocalDefId>,
     ) -> &'tcx Self {
         debug!("Const::from_anon_const(def={:?})", def);
 
@@ -51,7 +51,7 @@ impl<'tcx> Const<'tcx> {
 
         let expr = &tcx.hir().body(body_id).value;
 
-        let ty = tcx.type_of(def.def_id_for_type_of());
+        let ty = def.type_of(tcx);
 
         let lit_input = match expr.kind {
             hir::ExprKind::Lit(ref lit) => Some(LitToConstInput { lit: &lit.node, ty, neg: false }),

@@ -27,7 +27,7 @@ pub enum ConstKind<'tcx> {
 
     /// Used in the HIR by using `Unevaluated` everywhere and later normalizing to one of the other
     /// variants when the code is monomorphic enough for that.
-    Unevaluated(ty::WithOptConstParam<DefId>, SubstsRef<'tcx>, Option<Promoted>),
+    Unevaluated(ty::WithOptConstParam<'tcx, DefId>, SubstsRef<'tcx>, Option<Promoted>),
 
     /// Used to hold computed value.
     Value(ConstValue<'tcx>),

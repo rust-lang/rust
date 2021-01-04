@@ -1010,7 +1010,7 @@ pub struct GlobalCtxt<'tcx> {
 impl<'tcx> TyCtxt<'tcx> {
     pub fn typeck_opt_const_arg(
         self,
-        def: ty::WithOptConstParam<LocalDefId>,
+        def: ty::WithOptConstParam<'tcx, LocalDefId>,
     ) -> &'tcx TypeckResults<'tcx> {
         if let Some(param_did) = def.const_param_did {
             self.typeck_const_arg((def.did, param_did))

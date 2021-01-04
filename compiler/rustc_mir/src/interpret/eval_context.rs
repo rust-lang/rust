@@ -511,7 +511,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// The `substs` are assumed to already be in our interpreter "universe" (param_env).
     pub(super) fn resolve(
         &self,
-        def: ty::WithOptConstParam<DefId>,
+        def: ty::WithOptConstParam<'tcx, DefId>,
         substs: SubstsRef<'tcx>,
     ) -> InterpResult<'tcx, ty::Instance<'tcx>> {
         trace!("resolve: {:?}, {:#?}", def, substs);

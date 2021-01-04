@@ -105,7 +105,7 @@ impl Key for DefId {
     }
 }
 
-impl Key for ty::WithOptConstParam<LocalDefId> {
+impl Key for ty::WithOptConstParam<'tcx, LocalDefId> {
     type CacheSelector = DefaultCacheSelector;
 
     fn query_crate(&self) -> CrateNum {
@@ -138,7 +138,7 @@ impl Key for (DefId, LocalDefId) {
     }
 }
 
-impl Key for (LocalDefId, DefId) {
+impl<'tcx> Key for (LocalDefId, Ty<'tcx>) {
     type CacheSelector = DefaultCacheSelector;
 
     fn query_crate(&self) -> CrateNum {
@@ -195,8 +195,8 @@ impl<'tcx> Key for (DefId, SubstsRef<'tcx>) {
 
 impl<'tcx> Key
     for (
-        (ty::WithOptConstParam<DefId>, SubstsRef<'tcx>),
-        (ty::WithOptConstParam<DefId>, SubstsRef<'tcx>),
+        (ty::WithOptConstParam<'tcx, DefId>, SubstsRef<'tcx>),
+        (ty::WithOptConstParam<'tcx, DefId>, SubstsRef<'tcx>),
     )
 {
     type CacheSelector = DefaultCacheSelector;
@@ -209,7 +209,7 @@ impl<'tcx> Key
     }
 }
 
-impl<'tcx> Key for (LocalDefId, DefId, SubstsRef<'tcx>) {
+impl<'tcx> Key for (LocalDefId, Ty<'tcx>, SubstsRef<'tcx>) {
     type CacheSelector = DefaultCacheSelector;
 
     fn query_crate(&self) -> CrateNum {

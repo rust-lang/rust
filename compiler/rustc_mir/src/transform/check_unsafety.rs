@@ -526,7 +526,7 @@ fn check_unused_unsafe(
 
 fn unsafety_check_result<'tcx>(
     tcx: TyCtxt<'tcx>,
-    def: ty::WithOptConstParam<LocalDefId>,
+    def: ty::WithOptConstParam<'tcx, LocalDefId>,
 ) -> &'tcx UnsafetyCheckResult {
     debug!("unsafety_violations({:?})", def);
 

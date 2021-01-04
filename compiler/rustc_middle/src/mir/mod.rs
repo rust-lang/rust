@@ -134,7 +134,7 @@ impl<'tcx> MirSource<'tcx> {
         MirSource { instance, promoted: None }
     }
 
-    pub fn with_opt_param(self) -> ty::WithOptConstParam<DefId> {
+    pub fn with_opt_param(self) -> ty::WithOptConstParam<'tcx, DefId> {
         self.instance.with_opt_param()
     }
 

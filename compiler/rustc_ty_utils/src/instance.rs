@@ -2,7 +2,7 @@ use rustc_errors::ErrorReported;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::ty::subst::SubstsRef;
-use rustc_middle::ty::{self, Instance, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, Instance, Ty, TyCtxt, TypeFoldable};
 use rustc_span::{sym, DUMMY_SP};
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::traits;
@@ -17,7 +17,11 @@ fn resolve_instance<'tcx>(
     let (param_env, (did, substs)) = key.into_parts();
     if let Some(did) = did.as_local() {
         if let Some(param_did) = tcx.opt_const_param_of(did) {
-            return tcx.resolve_instance_of_const_arg(param_env.and((did, param_did, substs)));
+            return tcx.resolve_instance_of_const_arg(param_env.and((
+                did,
+                tcx.type_of(param_did),
+                substs,
+            )));
         }
     }
 
@@ -26,7 +30,7 @@ fn resolve_instance<'tcx>(
 
 fn resolve_instance_of_const_arg<'tcx>(
     tcx: TyCtxt<'tcx>,
-    key: ty::ParamEnvAnd<'tcx, (LocalDefId, DefId, SubstsRef<'tcx>)>,
+    key: ty::ParamEnvAnd<'tcx, (LocalDefId, Ty<'tcx>, SubstsRef<'tcx>)>,
 ) -> Result<Option<Instance<'tcx>>, ErrorReported> {
     let (param_env, (did, const_param_did, substs)) = key.into_parts();
     inner_resolve_instance(
@@ -40,7 +44,7 @@ fn resolve_instance_of_const_arg<'tcx>(
 
 fn inner_resolve_instance<'tcx>(
     tcx: TyCtxt<'tcx>,
-    key: ty::ParamEnvAnd<'tcx, (ty::WithOptConstParam<DefId>, SubstsRef<'tcx>)>,
+    key: ty::ParamEnvAnd<'tcx, (ty::WithOptConstParam<'tcx, DefId>, SubstsRef<'tcx>)>,
 ) -> Result<Option<Instance<'tcx>>, ErrorReported> {
     let (param_env, (def, substs)) = key.into_parts();
 
@@ -50,7 +54,7 @@ fn inner_resolve_instance<'tcx>(
         let item = tcx.associated_item(def.did);
         resolve_associated_item(tcx, &item, param_env, trait_def_id, substs)
     } else {
-        let ty = tcx.type_of(def.def_id_for_type_of());
+        let ty = def.type_of(tcx);
         let item_type = tcx.subst_and_normalize_erasing_regions(substs, param_env, ty);
 
         let def = match *item_type.kind() {

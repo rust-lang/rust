@@ -105,7 +105,7 @@ pub fn provide(providers: &mut Providers) {
 
 fn mir_borrowck<'tcx>(
     tcx: TyCtxt<'tcx>,
-    def: ty::WithOptConstParam<LocalDefId>,
+    def: ty::WithOptConstParam<'tcx, LocalDefId>,
 ) -> &'tcx BorrowCheckResult<'tcx> {
     let (input_body, promoted) = tcx.mir_promoted(def);
     debug!("run query mir_borrowck: {}", tcx.def_path_str(def.did.to_def_id()));

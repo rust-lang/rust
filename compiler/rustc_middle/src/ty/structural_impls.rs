@@ -518,7 +518,7 @@ impl<'a, 'tcx> Lift<'tcx> for ty::PredicateAtom<'a> {
                 Some(ty::PredicateAtom::ObjectSafe(trait_def_id))
             }
             ty::PredicateAtom::ConstEvaluatable(def_id, substs) => {
-                tcx.lift(substs).map(|substs| ty::PredicateAtom::ConstEvaluatable(def_id, substs))
+                Some(ty::PredicateAtom::ConstEvaluatable(tcx.lift(def_id)?, tcx.lift(substs)?))
             }
             ty::PredicateAtom::ConstEquate(c1, c2) => {
                 tcx.lift((c1, c2)).map(|(c1, c2)| ty::PredicateAtom::ConstEquate(c1, c2))
@@ -691,7 +691,7 @@ impl<'a, 'tcx> Lift<'tcx> for ty::InstanceDef<'a> {
     type Lifted = ty::InstanceDef<'tcx>;
     fn lift_to_tcx(self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
         match self {
-            ty::InstanceDef::Item(def_id) => Some(ty::InstanceDef::Item(def_id)),
+            ty::InstanceDef::Item(def_id) => Some(ty::InstanceDef::Item(tcx.lift(def_id)?)),
             ty::InstanceDef::VtableShim(def_id) => Some(ty::InstanceDef::VtableShim(def_id)),
             ty::InstanceDef::ReifyShim(def_id) => Some(ty::InstanceDef::ReifyShim(def_id)),
             ty::InstanceDef::Intrinsic(def_id) => Some(ty::InstanceDef::Intrinsic(def_id)),
@@ -722,6 +722,20 @@ impl<'a, 'tcx> Lift<'tcx> for ty::InstanceDef<'a> {
 // override the behavior, but there are a lot of random types and one
 // can easily refactor the folding into the TypeFolder trait as
 // needed.
+
+// We do not visit the `const_param_did` here as we should never fold that one.
+impl<'tcx, T: TypeFoldable<'tcx>> TypeFoldable<'tcx> for ty::WithOptConstParam<'tcx, T> {
+    fn super_fold_with<F: TypeFolder<'tcx>>(self, folder: &mut F) -> Self {
+        ty::WithOptConstParam {
+            did: self.did.fold_with(folder),
+            const_param_did: self.const_param_did,
+        }
+    }
+
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
+        self.did.visit_with(visitor)
+    }
+}
 
 /// AdtDefs are basically the same as a DefId.
 impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::AdtDef {

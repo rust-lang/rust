@@ -29,7 +29,7 @@ use std::ops::ControlFlow;
 /// Check if a given constant can be evaluated.
 pub fn is_const_evaluatable<'cx, 'tcx>(
     infcx: &InferCtxt<'cx, 'tcx>,
-    def: ty::WithOptConstParam<DefId>,
+    def: ty::WithOptConstParam<'tcx, DefId>,
     substs: SubstsRef<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     span: Span,
@@ -210,7 +210,7 @@ pub struct AbstractConst<'tcx> {
 impl AbstractConst<'tcx> {
     pub fn new(
         tcx: TyCtxt<'tcx>,
-        def: ty::WithOptConstParam<DefId>,
+        def: ty::WithOptConstParam<'tcx, DefId>,
         substs: SubstsRef<'tcx>,
     ) -> Result<Option<AbstractConst<'tcx>>, ErrorReported> {
         let inner = tcx.mir_abstract_const_opt_const_arg(def)?;
@@ -533,7 +533,7 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
 /// Builds an abstract const, do not use this directly, but use `AbstractConst::new` instead.
 pub(super) fn mir_abstract_const<'tcx>(
     tcx: TyCtxt<'tcx>,
-    def: ty::WithOptConstParam<LocalDefId>,
+    def: ty::WithOptConstParam<'tcx, LocalDefId>,
 ) -> Result<Option<&'tcx [mir::abstract_const::Node<'tcx>]>, ErrorReported> {
     if tcx.features().const_evaluatable_checked {
         match tcx.def_kind(def.did) {
@@ -555,8 +555,8 @@ pub(super) fn mir_abstract_const<'tcx>(
 pub(super) fn try_unify_abstract_consts<'tcx>(
     tcx: TyCtxt<'tcx>,
     ((a, a_substs), (b, b_substs)): (
-        (ty::WithOptConstParam<DefId>, SubstsRef<'tcx>),
-        (ty::WithOptConstParam<DefId>, SubstsRef<'tcx>),
+        (ty::WithOptConstParam<'tcx, DefId>, SubstsRef<'tcx>),
+        (ty::WithOptConstParam<'tcx, DefId>, SubstsRef<'tcx>),
     ),
 ) -> bool {
     (|| {

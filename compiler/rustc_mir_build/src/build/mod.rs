@@ -24,7 +24,7 @@ use super::lints;
 
 crate fn mir_built<'tcx>(
     tcx: TyCtxt<'tcx>,
-    def: ty::WithOptConstParam<LocalDefId>,
+    def: ty::WithOptConstParam<'tcx, LocalDefId>,
 ) -> &'tcx rustc_data_structures::steal::Steal<Body<'tcx>> {
     if let Some(def) = def.try_upgrade(tcx) {
         return tcx.mir_built(def);
@@ -40,7 +40,7 @@ crate fn mir_built<'tcx>(
 }
 
 /// Construct the MIR for a given `DefId`.
-fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_> {
+fn mir_build<'tcx>(tcx: TyCtxt<'tcx>, def: ty::WithOptConstParam<'tcx, LocalDefId>) -> Body<'tcx> {
     let id = tcx.hir().local_def_id_to_hir_id(def.did);
 
     // Figure out what primary body this item has.

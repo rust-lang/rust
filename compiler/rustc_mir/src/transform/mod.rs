@@ -9,7 +9,7 @@ use rustc_index::vec::IndexVec;
 use rustc_middle::mir::visit::Visitor as _;
 use rustc_middle::mir::{traversal, Body, ConstQualifs, MirPhase, Promoted};
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::{self, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc_span::{Span, Symbol};
 use std::borrow::Cow;
 
@@ -212,7 +212,10 @@ pub fn run_passes(
     }
 }
 
-fn mir_const_qualif(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> ConstQualifs {
+fn mir_const_qualif<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def: ty::WithOptConstParam<'tcx, LocalDefId>,
+) -> ConstQualifs {
     let const_kind = tcx.hir().body_const_context(def.did);
 
     // No need to const-check a non-const `fn`.
@@ -244,7 +247,7 @@ fn mir_const_qualif(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> 
 /// Make MIR ready for const evaluation. This is run on all MIR, not just on consts!
 fn mir_const<'tcx>(
     tcx: TyCtxt<'tcx>,
-    def: ty::WithOptConstParam<LocalDefId>,
+    def: ty::WithOptConstParam<'tcx, LocalDefId>,
 ) -> &'tcx Steal<Body<'tcx>> {
     if let Some(def) = def.try_upgrade(tcx) {
         return tcx.mir_const(def);
@@ -280,7 +283,7 @@ fn mir_const<'tcx>(
 
 fn mir_promoted(
     tcx: TyCtxt<'tcx>,
-    def: ty::WithOptConstParam<LocalDefId>,
+    def: ty::WithOptConstParam<'tcx, LocalDefId>,
 ) -> (&'tcx Steal<Body<'tcx>>, &'tcx Steal<IndexVec<Promoted, Body<'tcx>>>) {
     if let Some(def) = def.try_upgrade(tcx) {
         return tcx.mir_promoted(def);
@@ -321,7 +324,7 @@ fn mir_promoted(
 
 fn mir_drops_elaborated_and_const_checked<'tcx>(
     tcx: TyCtxt<'tcx>,
-    def: ty::WithOptConstParam<LocalDefId>,
+    def: ty::WithOptConstParam<'tcx, LocalDefId>,
 ) -> &'tcx Steal<Body<'tcx>> {
     if let Some(def) = def.try_upgrade(tcx) {
         return tcx.mir_drops_elaborated_and_const_checked(def);
@@ -467,7 +470,7 @@ fn optimized_mir<'tcx>(tcx: TyCtxt<'tcx>, did: DefId) -> &'tcx Body<'tcx> {
 
 fn optimized_mir_of_const_arg<'tcx>(
     tcx: TyCtxt<'tcx>,
-    (did, param_did): (LocalDefId, DefId),
+    (did, param_did): (LocalDefId, Ty<'tcx>),
 ) -> &'tcx Body<'tcx> {
     tcx.arena.alloc(inner_optimized_mir(
         tcx,
@@ -475,7 +478,10 @@ fn optimized_mir_of_const_arg<'tcx>(
     ))
 }
 
-fn inner_optimized_mir(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_> {
+fn inner_optimized_mir<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def: ty::WithOptConstParam<'tcx, LocalDefId>,
+) -> Body<'tcx> {
     if tcx.is_constructor(def.did.to_def_id()) {
         // There's no reason to run all of the MIR passes on constructors when
         // we can just output the MIR we want directly. This also saves const
@@ -494,7 +500,7 @@ fn inner_optimized_mir(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) 
 
 fn promoted_mir<'tcx>(
     tcx: TyCtxt<'tcx>,
-    def: ty::WithOptConstParam<LocalDefId>,
+    def: ty::WithOptConstParam<'tcx, LocalDefId>,
 ) -> &'tcx IndexVec<Promoted, Body<'tcx>> {
     if tcx.is_constructor(def.did.to_def_id()) {
         return tcx.arena.alloc(IndexVec::new());

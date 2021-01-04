@@ -428,7 +428,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             tcx,
                             ty::WithOptConstParam {
                                 did: tcx.hir().local_def_id(ct.value.hir_id),
-                                const_param_did: Some(param.def_id),
+                                const_param_did: Some(tcx.type_of(param.def_id)),
                             },
                         )
                         .into()

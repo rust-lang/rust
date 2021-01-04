@@ -1149,7 +1149,7 @@ pub enum PredicateAtom<'tcx> {
     Subtype(SubtypePredicate<'tcx>),
 
     /// Constant initializer must evaluate successfully.
-    ConstEvaluatable(ty::WithOptConstParam<DefId>, SubstsRef<'tcx>),
+    ConstEvaluatable(ty::WithOptConstParam<'tcx, DefId>, SubstsRef<'tcx>),
 
     /// Constants must be equal. The first component is the const that is expected.
     ConstEquate(&'tcx Const<'tcx>, &'tcx Const<'tcx>),
@@ -1682,10 +1682,10 @@ pub type PlaceholderConst<'tcx> = Placeholder<BoundConst<'tcx>>;
 /// except that instead of a `Ty` we bundle the `DefId` of the const parameter.
 /// Meaning that we need to use `type_of(const_param_did)` if `const_param_did` is `Some`
 /// to get the type of `did`.
-#[derive(Copy, Clone, Debug, TypeFoldable, Lift, TyEncodable, TyDecodable)]
+#[derive(Copy, Clone, Debug, Lift, TyEncodable, TyDecodable)]
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
 #[derive(Hash, HashStable)]
-pub struct WithOptConstParam<T> {
+pub struct WithOptConstParam<'tcx, T> {
     pub did: T,
     /// The `DefId` of the corresponding generic parameter in case `did` is
     /// a const argument.
@@ -1693,55 +1693,58 @@ pub struct WithOptConstParam<T> {
     /// Note that even if `did` is a const argument, this may still be `None`.
     /// All queries taking `WithOptConstParam` start by calling `tcx.opt_const_param_of(def.did)`
     /// to potentially update `param_did` in the case it is `None`.
-    pub const_param_did: Option<DefId>,
+    pub const_param_did: Option<Ty<'tcx>>,
 }
 
-impl<T> WithOptConstParam<T> {
+impl<'tcx, T> WithOptConstParam<'tcx, T> {
     /// Creates a new `WithOptConstParam` setting `const_param_did` to `None`.
     #[inline(always)]
-    pub fn unknown(did: T) -> WithOptConstParam<T> {
+    pub fn unknown(did: T) -> WithOptConstParam<'tcx, T> {
         WithOptConstParam { did, const_param_did: None }
     }
 }
 
-impl WithOptConstParam<LocalDefId> {
+impl WithOptConstParam<'tcx, LocalDefId> {
     /// Returns `Some((did, param_did))` if `def_id` is a const argument,
     /// `None` otherwise.
     #[inline(always)]
-    pub fn try_lookup(did: LocalDefId, tcx: TyCtxt<'_>) -> Option<(LocalDefId, DefId)> {
-        tcx.opt_const_param_of(did).map(|param_did| (did, param_did))
+    pub fn try_lookup(did: LocalDefId, tcx: TyCtxt<'tcx>) -> Option<(LocalDefId, Ty<'tcx>)> {
+        tcx.opt_const_param_of(did).map(|param_did| (did, tcx.type_of(param_did)))
     }
 
     /// In case `self` is unknown but `self.did` is a const argument, this returns
     /// a `WithOptConstParam` with the correct `const_param_did`.
     #[inline(always)]
-    pub fn try_upgrade(self, tcx: TyCtxt<'_>) -> Option<WithOptConstParam<LocalDefId>> {
+    pub fn try_upgrade(self, tcx: TyCtxt<'tcx>) -> Option<WithOptConstParam<'tcx, LocalDefId>> {
         if self.const_param_did.is_none() {
-            if let const_param_did @ Some(_) = tcx.opt_const_param_of(self.did) {
-                return Some(WithOptConstParam { did: self.did, const_param_did });
+            if let Some(const_param_did) = tcx.opt_const_param_of(self.did) {
+                return Some(WithOptConstParam {
+                    did: self.did,
+                    const_param_did: Some(tcx.type_of(const_param_did)),
+                });
             }
         }
 
         None
     }
 
-    pub fn to_global(self) -> WithOptConstParam<DefId> {
+    pub fn to_global(self) -> WithOptConstParam<'tcx, DefId> {
         WithOptConstParam { did: self.did.to_def_id(), const_param_did: self.const_param_did }
     }
 
-    pub fn def_id_for_type_of(self) -> DefId {
-        if let Some(did) = self.const_param_did { did } else { self.did.to_def_id() }
+    pub fn type_of(self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
+        self.const_param_did.unwrap_or_else(|| tcx.type_of(self.did))
     }
 }
 
-impl WithOptConstParam<DefId> {
-    pub fn as_local(self) -> Option<WithOptConstParam<LocalDefId>> {
+impl WithOptConstParam<'tcx, DefId> {
+    pub fn as_local(self) -> Option<WithOptConstParam<'tcx, LocalDefId>> {
         self.did
             .as_local()
             .map(|did| WithOptConstParam { did, const_param_did: self.const_param_did })
     }
 
-    pub fn as_const_arg(self) -> Option<(LocalDefId, DefId)> {
+    pub fn as_const_arg(self) -> Option<(LocalDefId, Ty<'tcx>)> {
         if let Some(param_did) = self.const_param_did {
             if let Some(did) = self.did.as_local() {
                 return Some((did, param_did));
@@ -1751,7 +1754,7 @@ impl WithOptConstParam<DefId> {
         None
     }
 
-    pub fn expect_local(self) -> WithOptConstParam<LocalDefId> {
+    pub fn expect_local(self) -> WithOptConstParam<'tcx, LocalDefId> {
         self.as_local().unwrap()
     }
 
@@ -1759,8 +1762,8 @@ impl WithOptConstParam<DefId> {
         self.did.is_local()
     }
 
-    pub fn def_id_for_type_of(self) -> DefId {
-        self.const_param_did.unwrap_or(self.did)
+    pub fn type_of(self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
+        self.const_param_did.unwrap_or_else(|| tcx.type_of(self.did))
     }
 }
 

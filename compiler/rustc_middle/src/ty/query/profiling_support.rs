@@ -166,7 +166,7 @@ impl SpecIntoSelfProfilingString for LocalDefId {
     }
 }
 
-impl<T: SpecIntoSelfProfilingString> SpecIntoSelfProfilingString for WithOptConstParam<T> {
+impl<T: SpecIntoSelfProfilingString> SpecIntoSelfProfilingString for WithOptConstParam<'tcx, T> {
     fn spec_to_self_profile_string(
         &self,
         builder: &mut QueryKeyStringBuilder<'_, '_, '_>,
@@ -182,7 +182,7 @@ impl<T: SpecIntoSelfProfilingString> SpecIntoSelfProfilingString for WithOptCons
         let did = StringComponent::Ref(self.did.to_self_profile_string(builder));
 
         let const_param_did = if let Some(const_param_did) = self.const_param_did {
-            let const_param_did = builder.def_id_to_string_id(const_param_did);
+            let const_param_did = const_param_did.to_self_profile_string(builder);
             StringComponent::Ref(const_param_did)
         } else {
             StringComponent::Value("_")
