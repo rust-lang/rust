@@ -1276,6 +1276,18 @@ impl TypeParam {
         }
     }
 
+    pub fn trait_bounds(self, db: &dyn HirDatabase) -> Vec<Trait> {
+        db.generic_predicates_for_param(self.id)
+            .into_iter()
+            .filter_map(|pred| match &pred.value {
+                hir_ty::GenericPredicate::Implemented(trait_ref) => {
+                    Some(Trait::from(trait_ref.trait_))
+                }
+                _ => None,
+            })
+            .collect()
+    }
+
     pub fn default(self, db: &dyn HirDatabase) -> Option<Type> {
         let params = db.generic_defaults(self.id.parent);
         let local_idx = hir_ty::param_idx(db, self.id)?;
