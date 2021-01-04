@@ -6,6 +6,7 @@ LL |     match uninhab_ref() {
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `&!`
+   = note: references are always considered inhabited
 
 error[E0004]: non-exhaustive patterns: type `Foo` is non-empty
   --> $DIR/always-inhabited-union-ref.rs:27:11

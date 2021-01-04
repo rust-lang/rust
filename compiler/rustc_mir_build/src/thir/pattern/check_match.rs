@@ -503,6 +503,11 @@ fn non_exhaustive_match<'p, 'tcx>(
             ));
         }
     }
+    if let ty::Ref(_, sub_ty, _) = scrut_ty.kind() {
+        if cx.tcx.is_ty_uninhabited_from(cx.module, sub_ty, cx.param_env) {
+            err.note("references are always considered inhabited");
+        }
+    }
     err.emit();
 }
 
