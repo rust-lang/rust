@@ -171,7 +171,7 @@ impl<'tcx, K: Eq + Hash, V: Debug + 'tcx> QueryStorage for ArenaCache<'tcx, K, V
 impl<'tcx, K, V: 'tcx> QueryCache for ArenaCache<'tcx, K, V>
 where
     K: Eq + Hash + Clone + Debug,
-    V: Debug
+    V: Debug,
 {
     type Key = K;
     type Sharded = FxHashMap<K, &'tcx (V, DepNodeIndex)>;

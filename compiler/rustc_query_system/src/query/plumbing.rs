@@ -20,8 +20,8 @@ use rustc_errors::{Diagnostic, FatalError};
 use rustc_span::source_map::DUMMY_SP;
 use rustc_span::Span;
 use std::collections::hash_map::Entry;
-use std::hash::{Hash, Hasher};
 use std::fmt::Debug;
+use std::hash::{Hash, Hasher};
 use std::mem;
 use std::num::NonZeroU32;
 use std::ptr;
@@ -564,7 +564,12 @@ fn incremental_verify_ich<CTX, K, V: Debug>(
 
     let old_hash = tcx.dep_graph().fingerprint_of(dep_node_index);
 
-    assert!(new_hash == old_hash, "found unstable fingerprints for {:?}: result {:?}", dep_node, result);
+    assert!(
+        new_hash == old_hash,
+        "found unstable fingerprints for {:?}: result {:?}",
+        dep_node,
+        result
+    );
 }
 
 fn force_query_with_job<C, CTX>(
