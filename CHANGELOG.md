@@ -1896,6 +1896,7 @@ Released 2018-09-13
 [`cmp_null`]: https://rust-lang.github.io/rust-clippy/master/index.html#cmp_null
 [`cmp_owned`]: https://rust-lang.github.io/rust-clippy/master/index.html#cmp_owned
 [`cognitive_complexity`]: https://rust-lang.github.io/rust-clippy/master/index.html#cognitive_complexity
+[`collapsible_else_if`]: https://rust-lang.github.io/rust-clippy/master/index.html#collapsible_else_if
 [`collapsible_if`]: https://rust-lang.github.io/rust-clippy/master/index.html#collapsible_if
 [`collapsible_match`]: https://rust-lang.github.io/rust-clippy/master/index.html#collapsible_match
 [`comparison_chain`]: https://rust-lang.github.io/rust-clippy/master/index.html#comparison_chain
