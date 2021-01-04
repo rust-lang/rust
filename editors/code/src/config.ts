@@ -93,7 +93,9 @@ export class Config {
         return this.cfg.get<T>(path)!;
     }
 
-    get serverPath() { return this.get<null | string>("serverPath"); }
+    get serverPath() {
+        return this.get<null | string>("server.path") ?? this.get<null | string>("serverPath");
+    }
     get serverExtraEnv() { return this.get<Env | null>("server.extraEnv") ?? {}; }
     get channel() { return this.get<UpdatesChannel>("updates.channel"); }
     get askBeforeDownload() { return this.get<boolean>("updates.askBeforeDownload"); }

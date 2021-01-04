@@ -280,7 +280,7 @@
                     "default": true,
                     "description": "Whether to ask for permission before downloading any files from the Internet."
                 },
-                "rust-analyzer.serverPath": {
+                "rust-analyzer.server.path": {
                     "type": [
                         "null",
                         "string"
