@@ -60,9 +60,7 @@ stack backtrace:
   37: rustc_driver::run_compiler
 ```
 
-If you set `debug = true`, you will get line numbers for the stack trace. 
-`debuginfo-level = 1` will also add line numbers, but `debug = true` gives 
-full debug info. Then the backtrace will look like this:
+If you set `debug = true`, you will get line numbers for the stack trace. Then the backtrace will look like this:
 
 ```text
 stack backtrace:
