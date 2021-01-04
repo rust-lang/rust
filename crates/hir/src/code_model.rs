@@ -1276,6 +1276,18 @@ impl TypeParam {
         }
     }
 
+    pub fn trait_bounds(self, db: &dyn HirDatabase) -> Vec<Trait> {
+        db.generic_predicates_for_param(self.id)
+            .into_iter()
+            .filter_map(|pred| match &pred.value {
+                hir_ty::GenericPredicate::Implemented(trait_ref) => {
+                    Some(Trait::from(trait_ref.trait_))
+                }
+                _ => None,
+            })
+            .collect()
+    }
+
     pub fn default(self, db: &dyn HirDatabase) -> Option<Type> {
         let params = db.generic_defaults(self.id.parent);
         let local_idx = hir_ty::param_idx(db, self.id)?;
@@ -1342,6 +1354,12 @@ impl ConstParam {
 
     pub fn parent(self, _db: &dyn HirDatabase) -> GenericDef {
         self.id.parent.into()
+    }
+
+    pub fn ty(self, db: &dyn HirDatabase) -> Type {
+        let def = self.id.parent;
+        let krate = def.module(db.upcast()).krate;
+        Type::new(db, krate, def, db.const_param_ty(self.id))
     }
 }
 

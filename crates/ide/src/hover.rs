@@ -182,16 +182,18 @@ fn show_implementations_action(db: &RootDatabase, def: Definition) -> Option<Hov
         })
     }
 
-    match def {
-        Definition::ModuleDef(it) => match it {
-            ModuleDef::Adt(Adt::Struct(it)) => Some(to_action(it.try_to_nav(db)?)),
-            ModuleDef::Adt(Adt::Union(it)) => Some(to_action(it.try_to_nav(db)?)),
-            ModuleDef::Adt(Adt::Enum(it)) => Some(to_action(it.try_to_nav(db)?)),
-            ModuleDef::Trait(it) => Some(to_action(it.try_to_nav(db)?)),
-            _ => None,
-        },
+    let adt = match def {
+        Definition::ModuleDef(ModuleDef::Trait(it)) => return it.try_to_nav(db).map(to_action),
+        Definition::ModuleDef(ModuleDef::Adt(it)) => Some(it),
+        Definition::SelfType(it) => it.target_ty(db).as_adt(),
         _ => None,
+    }?;
+    match adt {
+        Adt::Struct(it) => it.try_to_nav(db),
+        Adt::Union(it) => it.try_to_nav(db),
+        Adt::Enum(it) => it.try_to_nav(db),
     }
+    .map(to_action)
 }
 
 fn runnable_action(
@@ -226,45 +228,46 @@ fn runnable_action(
 }
 
 fn goto_type_action(db: &RootDatabase, def: Definition) -> Option<HoverAction> {
-    match def {
-        Definition::Local(it) => {
-            let mut targets: Vec<ModuleDef> = Vec::new();
-            let mut push_new_def = |item: ModuleDef| {
-                if !targets.contains(&item) {
-                    targets.push(item);
-                }
-            };
-
-            it.ty(db).walk(db, |t| {
-                if let Some(adt) = t.as_adt() {
-                    push_new_def(adt.into());
-                } else if let Some(trait_) = t.as_dyn_trait() {
-                    push_new_def(trait_.into());
-                } else if let Some(traits) = t.as_impl_traits(db) {
-                    traits.into_iter().for_each(|it| push_new_def(it.into()));
-                } else if let Some(trait_) = t.as_associated_type_parent_trait(db) {
-                    push_new_def(trait_.into());
-                }
-            });
-
-            let targets = targets
-                .into_iter()
-                .filter_map(|it| {
-                    Some(HoverGotoTypeData {
-                        mod_path: render_path(
-                            db,
-                            it.module(db)?,
-                            it.name(db).map(|name| name.to_string()),
-                        ),
-                        nav: it.try_to_nav(db)?,
-                    })
-                })
-                .collect();
-
-            Some(HoverAction::GoToType(targets))
+    let mut targets: Vec<ModuleDef> = Vec::new();
+    let mut push_new_def = |item: ModuleDef| {
+        if !targets.contains(&item) {
+            targets.push(item);
         }
-        _ => None,
+    };
+
+    if let Definition::TypeParam(it) = def {
+        it.trait_bounds(db).into_iter().for_each(|it| push_new_def(it.into()));
+    } else {
+        let ty = match def {
+            Definition::Local(it) => it.ty(db),
+            Definition::ConstParam(it) => it.ty(db),
+            _ => return None,
+        };
+
+        ty.walk(db, |t| {
+            if let Some(adt) = t.as_adt() {
+                push_new_def(adt.into());
+            } else if let Some(trait_) = t.as_dyn_trait() {
+                push_new_def(trait_.into());
+            } else if let Some(traits) = t.as_impl_traits(db) {
+                traits.into_iter().for_each(|it| push_new_def(it.into()));
+            } else if let Some(trait_) = t.as_associated_type_parent_trait(db) {
+                push_new_def(trait_.into());
+            }
+        });
     }
+
+    let targets = targets
+        .into_iter()
+        .filter_map(|it| {
+            Some(HoverGotoTypeData {
+                mod_path: render_path(db, it.module(db)?, it.name(db).map(|name| name.to_string())),
+                nav: it.try_to_nav(db)?,
+            })
+        })
+        .collect();
+
+    Some(HoverAction::GoToType(targets))
 }
 
 fn hover_markup(
@@ -2175,6 +2178,25 @@ fn foo() { let bar = Bar; bar.fo<|>o(); }
     }
 
     #[test]
+    fn test_hover_self_has_impl_action() {
+        check_actions(
+            r#"struct foo where Self<|>:;"#,
+            expect![[r#"
+                [
+                    Implementation(
+                        FilePosition {
+                            file_id: FileId(
+                                0,
+                            ),
+                            offset: 7,
+                        },
+                    ),
+                ]
+            "#]],
+        );
+    }
+
+    #[test]
     fn test_hover_test_has_action() {
         check_actions(
             r#"
@@ -3049,6 +3071,71 @@ fn main() { let s<|>t = test().get(); }
                                         0,
                                     ),
                                     full_range: 0..62,
+                                    focus_range: 6..9,
+                                    name: "Foo",
+                                    kind: Trait,
+                                    description: "trait Foo",
+                                },
+                            },
+                        ],
+                    ),
+                ]
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_hover_const_param_has_goto_type_action() {
+        check_actions(
+            r#"
+struct Bar;
+struct Foo<const BAR: Bar>;
+
+impl<const BAR: Bar> Foo<BAR<|>> {}
+"#,
+            expect![[r#"
+                [
+                    GoToType(
+                        [
+                            HoverGotoTypeData {
+                                mod_path: "test::Bar",
+                                nav: NavigationTarget {
+                                    file_id: FileId(
+                                        0,
+                                    ),
+                                    full_range: 0..11,
+                                    focus_range: 7..10,
+                                    name: "Bar",
+                                    kind: Struct,
+                                    description: "struct Bar",
+                                },
+                            },
+                        ],
+                    ),
+                ]
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_hover_type_param_has_goto_type_action() {
+        check_actions(
+            r#"
+trait Foo {}
+
+fn foo<T: Foo>(t: T<|>){}
+"#,
+            expect![[r#"
+                [
+                    GoToType(
+                        [
+                            HoverGotoTypeData {
+                                mod_path: "test::Foo",
+                                nav: NavigationTarget {
+                                    file_id: FileId(
+                                        0,
+                                    ),
+                                    full_range: 0..12,
                                     focus_range: 6..9,
                                     name: "Foo",
                                     kind: Trait,
