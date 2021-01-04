@@ -1147,69 +1147,70 @@ impl LinkCollector<'_, '_> {
             );
         };
 
-        let (kind, id) = match res {
+        let verify = |kind: DefKind, id: DefId| {
+            debug!("intra-doc link to {} resolved to {:?}", path_str, res);
+
+            // Disallow e.g. linking to enums with `struct@`
+            debug!("saw kind {:?} with disambiguator {:?}", kind, disambiguator);
+            match (self.kind_side_channel.take().map(|(kind, _)| kind).unwrap_or(kind), disambiguator) {
+                | (DefKind::Const | DefKind::ConstParam | DefKind::AssocConst | DefKind::AnonConst, Some(Disambiguator::Kind(DefKind::Const)))
+                // NOTE: this allows 'method' to mean both normal functions and associated functions
+                // This can't cause ambiguity because both are in the same namespace.
+                | (DefKind::Fn | DefKind::AssocFn, Some(Disambiguator::Kind(DefKind::Fn)))
+                // These are namespaces; allow anything in the namespace to match
+                | (_, Some(Disambiguator::Namespace(_)))
+                // If no disambiguator given, allow anything
+                | (_, None)
+                // All of these are valid, so do nothing
+                => {}
+                (actual, Some(Disambiguator::Kind(expected))) if actual == expected => {}
+                (_, Some(specified @ Disambiguator::Kind(_) | specified @ Disambiguator::Primitive)) => {
+                    report_mismatch(specified, Disambiguator::Kind(kind));
+                    return None;
+                }
+            }
+
+            // item can be non-local e.g. when using #[doc(primitive = "pointer")]
+            if let Some((src_id, dst_id)) = id
+                .as_local()
+                .and_then(|dst_id| item.def_id.as_local().map(|src_id| (src_id, dst_id)))
+            {
+                use rustc_hir::def_id::LOCAL_CRATE;
+
+                let hir_src = self.cx.tcx.hir().local_def_id_to_hir_id(src_id);
+                let hir_dst = self.cx.tcx.hir().local_def_id_to_hir_id(dst_id);
+
+                if self.cx.tcx.privacy_access_levels(LOCAL_CRATE).is_exported(hir_src)
+                    && !self.cx.tcx.privacy_access_levels(LOCAL_CRATE).is_exported(hir_dst)
+                {
+                    privacy_error(cx, &item, &path_str, dox, &ori_link);
+                }
+            }
+
+            Some((kind, id))
+        };
+
+        match res {
             Res::Primitive(_) => {
                 if let Some((kind, id)) = self.kind_side_channel.take() {
-                    (kind, id)
+                    verify(kind, id)?;
                 } else {
                     match disambiguator {
-                        Some(Disambiguator::Primitive | Disambiguator::Namespace(_)) | None => {
-                            return Some(ItemLink {
-                                link: ori_link.link,
-                                link_text,
-                                did: None,
-                                fragment,
-                            });
-                        }
+                        Some(Disambiguator::Primitive | Disambiguator::Namespace(_)) | None => {}
                         Some(other) => {
                             report_mismatch(other, Disambiguator::Primitive);
                             return None;
                         }
                     }
                 }
+                Some(ItemLink { link: ori_link.link, link_text, did: None, fragment })
             }
-            Res::Def(kind, id) => (kind, id),
-        };
-
-        debug!("intra-doc link to {} resolved to {:?}", path_str, res);
-
-        // Disallow e.g. linking to enums with `struct@`
-        debug!("saw kind {:?} with disambiguator {:?}", kind, disambiguator);
-        match (self.kind_side_channel.take().map(|(kind, _)| kind).unwrap_or(kind), disambiguator) {
-            | (DefKind::Const | DefKind::ConstParam | DefKind::AssocConst | DefKind::AnonConst, Some(Disambiguator::Kind(DefKind::Const)))
-            // NOTE: this allows 'method' to mean both normal functions and associated functions
-            // This can't cause ambiguity because both are in the same namespace.
-            | (DefKind::Fn | DefKind::AssocFn, Some(Disambiguator::Kind(DefKind::Fn)))
-            // These are namespaces; allow anything in the namespace to match
-            | (_, Some(Disambiguator::Namespace(_)))
-            // If no disambiguator given, allow anything
-            | (_, None)
-            // All of these are valid, so do nothing
-            => {}
-            (actual, Some(Disambiguator::Kind(expected))) if actual == expected => {}
-            (_, Some(specified @ Disambiguator::Kind(_) | specified @ Disambiguator::Primitive)) => {
-                report_mismatch(specified, Disambiguator::Kind(kind));
-                return None;
+            Res::Def(kind, id) => {
+                let (kind, id) = verify(kind, id)?;
+                let id = clean::register_res(cx, rustc_hir::def::Res::Def(kind, id));
+                Some(ItemLink { link: ori_link.link, link_text, did: Some(id), fragment })
             }
         }
-
-        // item can be non-local e.g. when using #[doc(primitive = "pointer")]
-        if let Some((src_id, dst_id)) =
-            id.as_local().and_then(|dst_id| item.def_id.as_local().map(|src_id| (src_id, dst_id)))
-        {
-            use rustc_hir::def_id::LOCAL_CRATE;
-
-            let hir_src = self.cx.tcx.hir().local_def_id_to_hir_id(src_id);
-            let hir_dst = self.cx.tcx.hir().local_def_id_to_hir_id(dst_id);
-
-            if self.cx.tcx.privacy_access_levels(LOCAL_CRATE).is_exported(hir_src)
-                && !self.cx.tcx.privacy_access_levels(LOCAL_CRATE).is_exported(hir_dst)
-            {
-                privacy_error(cx, &item, &path_str, dox, &ori_link);
-            }
-        }
-        let id = clean::register_res(cx, rustc_hir::def::Res::Def(kind, id));
-        Some(ItemLink { link: ori_link.link, link_text, did: Some(id), fragment })
     }
 
     fn resolve_with_disambiguator_cached(
