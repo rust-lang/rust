@@ -743,6 +743,18 @@ impl Function {
         db.function_data(self.id).name.clone()
     }
 
+    pub fn ret_type(self, db: &dyn HirDatabase) -> RetType {
+        let resolver = self.id.resolver(db.upcast());
+        let ret_type = &db.function_data(self.id).ret_type;
+        let ctx = hir_ty::TyLoweringContext::new(db, &resolver);
+        let environment = TraitEnvironment::lower(db, &resolver);
+        let ty = Type {
+            krate: self.id.lookup(db.upcast()).container.module(db.upcast()).krate,
+            ty: InEnvironment { value: Ty::from_hir_ext(&ctx, ret_type).0, environment },
+        };
+        RetType { ty }
+    }
+
     pub fn self_param(self, db: &dyn HirDatabase) -> Option<SelfParam> {
         if !db.function_data(self.id).has_self_param {
             return None;
@@ -823,6 +835,17 @@ impl From<Mutability> for Access {
             Mutability::Shared => Access::Shared,
             Mutability::Mut => Access::Exclusive,
         }
+    }
+}
+
+#[derive(Debug)]
+pub struct RetType {
+    ty: Type,
+}
+
+impl RetType {
+    pub fn ty(&self) -> &Type {
+        &self.ty
     }
 }
 
