@@ -35,6 +35,7 @@
 #include <llvm/Config/llvm-config.h>
 
 #include "ActivityAnalysis.h"
+#include "SCEV/ScalarEvolution.h"
 #include "SCEV/ScalarEvolutionExpander.h"
 #include "Utils.h"
 

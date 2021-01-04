@@ -112,17 +112,20 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
     }
   }
 
-  // llvm::errs() << "uwval: " << *val << "\n";
-  auto getOp = [&](Value *v) -> Value * {
-    if (mode == UnwrapMode::LegalFullUnwrap ||
-        mode == UnwrapMode::AttemptFullUnwrap ||
-        mode == UnwrapMode::AttemptFullUnwrapWithLookup) {
-      return unwrapM(v, BuilderM, available, mode);
-    } else {
-      assert(mode == UnwrapMode::AttemptSingleUnwrap);
-      return lookupM(v, BuilderM, available);
-    }
-  };
+// llvm::errs() << "uwval: " << *val << "\n";
+#define getOp(v)                                                               \
+  ({                                                                           \
+    Value *___res;                                                             \
+    if (mode == UnwrapMode::LegalFullUnwrap ||                                 \
+        mode == UnwrapMode::AttemptFullUnwrap ||                               \
+        mode == UnwrapMode::AttemptFullUnwrapWithLookup) {                     \
+      ___res = unwrapM(v, BuilderM, available, mode);                          \
+    } else {                                                                   \
+      assert(mode == UnwrapMode::AttemptSingleUnwrap);                         \
+      ___res = lookupM(v, BuilderM, available);                                \
+    }                                                                          \
+    ___res;                                                                    \
+  })
 
   if (isa<Argument>(val) || isa<Constant>(val)) {
     unwrap_cache[std::make_pair(val, BuilderM.GetInsertBlock())] = val;
@@ -326,8 +329,6 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
       if (toreturn == nullptr)
         goto endCheck;
       assert(val->getType() == toreturn->getType());
-      if (auto newi = dyn_cast<Instruction>(toreturn))
-        newi->copyIRFlags(op);
       return toreturn;
     }
   }
@@ -913,7 +914,8 @@ bool GradientUtils::legalRecompute(const Value *val,
       if (n == "lgamma" || n == "lgammaf" || n == "lgammal" ||
           n == "lgamma_r" || n == "lgammaf_r" || n == "lgammal_r" ||
           n == "__lgamma_r_finite" || n == "__lgammaf_r_finite" ||
-          n == "__lgammal_r_finite" || n == "tanh" || n == "tanhf") {
+          n == "__lgammal_r_finite" || n == "tanh" || n == "tanhf" ||
+          n == "asin" || n == "asinf" || n == "asinl" || n == "__pow_finite") {
         return true;
       }
     }
@@ -1861,9 +1863,15 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
 
               std::vector<Instruction *> toErase;
               {
+#if LLVM_VERSION_MAJOR >= 12
+                SCEVExpander Exp(SE,
+                                 ctx->getParent()->getParent()->getDataLayout(),
+                                 "enzyme");
+#else
                 fake::SCEVExpander Exp(
                     SE, ctx->getParent()->getParent()->getDataLayout(),
                     "enzyme");
+#endif
                 Exp.setInsertPoint(l1.header->getTerminator());
                 Value *start0 = Exp.expandCodeFor(
                     ar1->getStart(), li->getPointerOperand()->getType());

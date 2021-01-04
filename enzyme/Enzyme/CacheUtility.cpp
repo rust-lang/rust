@@ -182,8 +182,13 @@ void RemoveRedundantIVs(BasicBlock *Header, PHINode *CanonicalIV,
   // This scope is necessary to ensure scevexpander cleans up before we erase
   // things
   {
+#if LLVM_VERSION_MAJOR >= 12
+    SCEVExpander Exp(SE, Header->getParent()->getParent()->getDataLayout(),
+                     "enzyme");
+#else
     fake::SCEVExpander Exp(
         SE, Header->getParent()->getParent()->getDataLayout(), "enzyme");
+#endif
 
     for (BasicBlock::iterator II = Header->begin(); isa<PHINode>(II); ++II) {
       PHINode *PN = cast<PHINode>(II);
@@ -533,8 +538,13 @@ bool CacheUtility::getContext(BasicBlock *BB, LoopContext &loopContext) {
     if (Limit->getType() != CanonicalIV->getType())
       Limit = SE.getZeroExtendExpr(Limit, CanonicalIV->getType());
 
+#if LLVM_VERSION_MAJOR >= 12
+    SCEVExpander Exp(SE, BB->getParent()->getParent()->getDataLayout(),
+                     "enzyme");
+#else
     fake::SCEVExpander Exp(SE, BB->getParent()->getParent()->getDataLayout(),
                            "enzyme");
+#endif
     LimitVar = Exp.expandCodeFor(Limit, CanonicalIV->getType(),
                                  loopContexts[L].preheader->getTerminator());
     loopContexts[L].dynamic = false;

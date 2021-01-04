@@ -23,6 +23,7 @@
 // the function passed as the first argument.
 //
 //===----------------------------------------------------------------------===//
+#include "SCEV/ScalarEvolution.h"
 #include "SCEV/ScalarEvolutionExpander.h"
 
 #include <llvm/Config/llvm-config.h>

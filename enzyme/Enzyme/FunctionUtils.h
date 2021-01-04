@@ -28,6 +28,7 @@
 #include <deque>
 #include <set>
 
+#include "SCEV/ScalarEvolution.h"
 #include "SCEV/ScalarEvolutionExpander.h"
 
 #include "Utils.h"

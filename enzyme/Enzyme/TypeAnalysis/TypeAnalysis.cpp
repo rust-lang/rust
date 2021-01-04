@@ -1784,8 +1784,12 @@ void TypeAnalyzer::visitIntrinsicInst(llvm::IntrinsicInst &I) {
   case Intrinsic::x86_sse_min_ss:
   case Intrinsic::x86_sse_min_ps:
 #endif
-#if LLVM_VERSION_MAJOR >= 9
+#if LLVM_VERSION_MAJOR >= 12
+  case Intrinsic::vector_reduce_fadd:
+  case Intrinsic::vector_reduce_fmul:
+#elif LLVM_VERSION_MAJOR >= 9
   case Intrinsic::experimental_vector_reduce_v2_fadd:
+  case Intrinsic::experimental_vector_reduce_v2_fmul:
 #endif
   case Intrinsic::copysign:
   case Intrinsic::maxnum:
@@ -2715,6 +2719,21 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
     CONSIDER(fmaf)
     CONSIDER(fmal)
 
+    if (ci->getName() == "__pow_finite") {
+      updateAnalysis(
+          call.getArgOperand(0),
+          TypeTree(ConcreteType(Type::getDoubleTy(call.getContext()))).Only(-1),
+          &call);
+      updateAnalysis(
+          call.getArgOperand(1),
+          TypeTree(ConcreteType(Type::getDoubleTy(call.getContext()))).Only(-1),
+          &call);
+      updateAnalysis(
+          &call,
+          TypeTree(ConcreteType(Type::getDoubleTy(call.getContext()))).Only(-1),
+          &call);
+      return;
+    }
     if (ci->getName() == "__lgamma_r_finite") {
       updateAnalysis(
           call.getArgOperand(0),

@@ -1025,5 +1025,5 @@ void optimizeIntermediate(GradientUtils *gutils, bool topLevel, Function *F) {
   EarlyCSEPass(/*memoryssa*/ true).run(*F, AM);
 #endif
 
-  DCEPass().run(*F, AM);
+  // DCEPass().run(*F, AM);
 }

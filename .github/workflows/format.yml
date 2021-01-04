@@ -14,6 +14,6 @@ jobs:
     - uses: DoozyX/clang-format-lint-action@v0.11
       with:
         source: 'enzyme/Enzyme'
-        exclude: './CMakeLists.txt'
+        exclude: './CMakeLists.txt enzyme/Enzyme/SCEV'
         style: 'llvm'
         clangFormatVersion: 11

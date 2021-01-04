@@ -27,9 +27,9 @@
 #ifndef ENZYME_MUST_EXIT_SCALAR_EVOLUTION_H_
 #define ENZYME_MUST_EXIT_SCALAR_EVOLUTION_H_
 
+#include "SCEV/ScalarEvolution.h"
 #include "SCEV/ScalarEvolutionExpander.h"
 
-#include "llvm/Analysis/ScalarEvolution.h"
 #include "llvm/IR/Dominators.h"
 
 class MustExitScalarEvolution : public llvm::ScalarEvolution {

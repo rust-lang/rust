@@ -29,6 +29,7 @@
 //===----------------------------------------------------------------------===//
 #include "AdjointGenerator.h"
 
+#include "SCEV/ScalarEvolution.h"
 #include "SCEV/ScalarEvolutionExpander.h"
 
 #include <deque>

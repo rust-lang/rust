@@ -862,7 +862,10 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
           }
         }
 
-#if LLVM_VERSION_MAJOR >= 9
+#if LLVM_VERSION_MAJOR >= 12
+        auto AARes = AA.getModRefInfo(
+            &I, MemoryLocation(memval, LocationSize::beforeOrAfterPointer()));
+#elif LLVM_VERSION_MAJOR >= 9
         auto AARes = AA.getModRefInfo(
             &I, MemoryLocation(memval, LocationSize::unknown()));
 #else
