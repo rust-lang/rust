@@ -4303,6 +4303,7 @@ fn sidebar_assoc_items(it: &clean::Item) -> String {
                 .filter(|i| i.inner_impl().trait_.is_some())
                 .find(|i| i.inner_impl().trait_.def_id() == c.deref_trait_did)
             {
+                debug!("found Deref: {:?}", impl_);
                 if let Some((target, real_target)) =
                     impl_.inner_impl().items.iter().find_map(|item| match *item.kind {
                         clean::TypedefItem(ref t, true) => Some(match *t {
@@ -4312,6 +4313,7 @@ fn sidebar_assoc_items(it: &clean::Item) -> String {
                         _ => None,
                     })
                 {
+                    debug!("found target, real_target: {:?} {:?}", target, real_target);
                     let deref_mut = v
                         .iter()
                         .filter(|i| i.inner_impl().trait_.is_some())
@@ -4325,6 +4327,7 @@ fn sidebar_assoc_items(it: &clean::Item) -> String {
                         })
                         .and_then(|did| c.impls.get(&did));
                     if let Some(impls) = inner_impl {
+                        debug!("found inner_impl: {:?}", impls);
                         out.push_str("<a class=\"sidebar-title\" href=\"#deref-methods\">");
                         out.push_str(&format!(
                             "Methods from {}&lt;Target={}&gt;",

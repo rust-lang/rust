@@ -261,26 +261,12 @@ fn build_union(cx: &DocContext<'_>, did: DefId) -> clean::Union {
 
 fn build_type_alias(cx: &DocContext<'_>, did: DefId) -> clean::Typedef {
     let predicates = cx.tcx.explicit_predicates_of(did);
+    let type_ = cx.tcx.type_of(did).clean(cx);
 
     clean::Typedef {
-        type_: cx.tcx.type_of(did).clean(cx),
+        type_,
         generics: (cx.tcx.generics_of(did), predicates).clean(cx),
-        item_type: build_type_alias_type(cx, did),
-    }
-}
-
-fn build_type_alias_type(cx: &DocContext<'_>, did: DefId) -> Option<clean::Type> {
-    let type_ = cx.tcx.type_of(did).clean(cx);
-    type_.def_id().and_then(|did| build_ty(cx, did))
-}
-
-crate fn build_ty(cx: &DocContext<'_>, did: DefId) -> Option<clean::Type> {
-    match cx.tcx.def_kind(did) {
-        DefKind::Struct | DefKind::Union | DefKind::Enum | DefKind::Const | DefKind::Static => {
-            Some(cx.tcx.type_of(did).clean(cx))
-        }
-        DefKind::TyAlias => build_type_alias_type(cx, did),
-        _ => None,
+        item_type: None,
     }
 }
 
