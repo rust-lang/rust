@@ -2,7 +2,7 @@
 // aux-build:macro_rules.rs
 
 #![deny(clippy::try_err)]
-#![allow(clippy::unnecessary_wraps)]
+#![allow(clippy::unnecessary_wraps, clippy::needless_question_mark)]
 
 #[macro_use]
 extern crate macro_rules;
