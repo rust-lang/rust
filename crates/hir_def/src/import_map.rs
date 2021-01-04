@@ -199,7 +199,7 @@ impl ImportMap {
                 ItemInNs::Values(module_def_id)
             };
 
-            let mut assoc_item_info = original_import_info.to_owned();
+            let mut assoc_item_info = original_import_info.clone();
             assoc_item_info.path.segments.push(assoc_item_name.to_owned());
             assoc_item_info.is_trait_assoc_item = true;
             self.map.insert(assoc_item, assoc_item_info);
@@ -325,38 +325,38 @@ impl Query {
         self.exclude_import_kinds.insert(import_kind);
         self
     }
-}
 
-fn import_matches_query(import: &ImportInfo, query: &Query, enforce_lowercase: bool) -> bool {
-    let mut input = if import.is_trait_assoc_item || query.name_only {
-        import.path.segments.last().unwrap().to_string()
-    } else {
-        import.path.to_string()
-    };
-    if enforce_lowercase || !query.case_sensitive {
-        input.make_ascii_lowercase();
-    }
+    fn import_matches(&self, import: &ImportInfo, enforce_lowercase: bool) -> bool {
+        let mut input = if import.is_trait_assoc_item || self.name_only {
+            import.path.segments.last().unwrap().to_string()
+        } else {
+            import.path.to_string()
+        };
+        if enforce_lowercase || !self.case_sensitive {
+            input.make_ascii_lowercase();
+        }
 
-    let query_string =
-        if !enforce_lowercase && query.case_sensitive { &query.query } else { &query.lowercased };
+        let query_string =
+            if !enforce_lowercase && self.case_sensitive { &self.query } else { &self.lowercased };
 
-    match query.search_mode {
-        SearchMode::Equals => &input == query_string,
-        SearchMode::Contains => input.contains(query_string),
-        SearchMode::Fuzzy => {
-            let mut unchecked_query_chars = query_string.chars();
-            let mut mismatching_query_char = unchecked_query_chars.next();
+        match self.search_mode {
+            SearchMode::Equals => &input == query_string,
+            SearchMode::Contains => input.contains(query_string),
+            SearchMode::Fuzzy => {
+                let mut unchecked_query_chars = query_string.chars();
+                let mut mismatching_query_char = unchecked_query_chars.next();
 
-            for input_char in input.chars() {
-                match mismatching_query_char {
-                    None => return true,
-                    Some(matching_query_char) if matching_query_char == input_char => {
-                        mismatching_query_char = unchecked_query_chars.next();
+                for input_char in input.chars() {
+                    match mismatching_query_char {
+                        None => return true,
+                        Some(matching_query_char) if matching_query_char == input_char => {
+                            mismatching_query_char = unchecked_query_chars.next();
+                        }
+                        _ => (),
                     }
-                    _ => (),
                 }
+                mismatching_query_char.is_none()
             }
-            mismatching_query_char.is_none()
         }
     }
 }
@@ -390,7 +390,7 @@ pub fn search_dependencies<'a>(
             let importables = &import_map.importables[indexed_value.value as usize..];
 
             let common_importable_data = &import_map.map[&importables[0]];
-            if !import_matches_query(common_importable_data, &query, true) {
+            if !query.import_matches(common_importable_data, true) {
                 continue;
             }
 
@@ -410,7 +410,7 @@ pub fn search_dependencies<'a>(
                 })
                 .filter(|item| {
                     !query.case_sensitive // we've already checked the common importables path case-insensitively
-                        || import_matches_query(&import_map.map[item], &query, false)
+                        || query.import_matches(&import_map.map[item], false)
                 });
             res.extend(iter);
 

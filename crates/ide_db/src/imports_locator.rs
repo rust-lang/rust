@@ -1,7 +1,7 @@
 //! This module contains an import search funcionality that is provided to the assists module.
 //! Later, this should be moved away to a separate crate that is accessible from the assists module.
 
-use hir::{import_map, Crate, MacroDef, ModuleDef, Semantics};
+use hir::{import_map, AsAssocItem, Crate, MacroDef, ModuleDef, Semantics};
 use syntax::{ast, AstNode, SyntaxKind::NAME};
 
 use crate::{
@@ -40,8 +40,9 @@ pub fn find_similar_imports<'a>(
     krate: Crate,
     limit: Option<usize>,
     fuzzy_search_string: String,
+    ignore_assoc_items: bool,
     name_only: bool,
-) -> impl Iterator<Item = Either<ModuleDef, MacroDef>> {
+) -> impl Iterator<Item = Either<ModuleDef, MacroDef>> + 'a {
     let _p = profile::span("find_similar_imports");
 
     let mut external_query = import_map::Query::new(fuzzy_search_string.clone())
@@ -57,7 +58,21 @@ pub fn find_similar_imports<'a>(
         external_query = external_query.limit(limit);
     }
 
-    find_imports(sema, krate, local_query, external_query)
+    let db = sema.db;
+    find_imports(sema, krate, local_query, external_query).filter(move |import_candidate| {
+        if ignore_assoc_items {
+            match import_candidate {
+                Either::Left(ModuleDef::Function(function)) => function.as_assoc_item(db).is_none(),
+                Either::Left(ModuleDef::Const(const_)) => const_.as_assoc_item(db).is_none(),
+                Either::Left(ModuleDef::TypeAlias(type_alias)) => {
+                    type_alias.as_assoc_item(db).is_none()
+                }
+                _ => true,
+            }
+        } else {
+            true
+        }
+    })
 }
 
 fn find_imports<'a>(
