@@ -25,6 +25,7 @@ mod check_const;
 pub mod dead;
 mod diagnostic_items;
 pub mod entry;
+mod extern_indicators;
 pub mod hir_id_validator;
 pub mod hir_stats;
 mod intrinsicck;
@@ -45,6 +46,7 @@ pub fn provide(providers: &mut Providers) {
     check_const::provide(providers);
     diagnostic_items::provide(providers);
     entry::provide(providers);
+    extern_indicators::provide(providers);
     lang_items::provide(providers);
     lib_features::provide(providers);
     loops::provide(providers);

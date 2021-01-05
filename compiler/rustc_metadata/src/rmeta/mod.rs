@@ -208,6 +208,7 @@ crate struct CrateRoot<'tcx> {
     has_global_allocator: bool,
     has_panic_handler: bool,
     has_default_lib_allocator: bool,
+    has_extern_indicators: bool,
     plugin_registrar_fn: Option<DefIndex>,
 
     crate_deps: Lazy<[CrateDep]>,

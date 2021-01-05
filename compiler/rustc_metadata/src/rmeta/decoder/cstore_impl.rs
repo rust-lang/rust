@@ -151,6 +151,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     is_compiler_builtins => { cdata.root.compiler_builtins }
     has_global_allocator => { cdata.root.has_global_allocator }
     has_panic_handler => { cdata.root.has_panic_handler }
+    has_extern_indicators => { cdata.root.has_extern_indicators }
     is_profiler_runtime => { cdata.root.profiler_runtime }
     panic_strategy => { cdata.root.panic_strategy }
     extern_crate => {

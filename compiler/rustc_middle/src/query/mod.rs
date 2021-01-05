@@ -1064,6 +1064,10 @@ rustc_queries! {
             fatal_cycle
             desc { "checking if the crate has_panic_handler" }
         }
+        query has_extern_indicators(_: CrateNum) -> bool {
+            fatal_cycle
+            desc { "checking if the crate has_extern_indicators" }
+        }
         query is_profiler_runtime(_: CrateNum) -> bool {
             fatal_cycle
             desc { "query a crate is `#![profiler_runtime]`" }
