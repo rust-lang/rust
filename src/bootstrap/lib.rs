@@ -1083,7 +1083,7 @@ impl Build {
         if let Some(ref s) = self.config.description {
             version.push_str(" (");
             version.push_str(s);
-            version.push_str(")");
+            version.push(')');
         }
         version
     }
@@ -1144,7 +1144,7 @@ impl Build {
                     && (dep != "profiler_builtins"
                         || target
                             .map(|t| self.config.profiler_enabled(t))
-                            .unwrap_or(self.config.any_profiler_enabled()))
+                            .unwrap_or_else(|| self.config.any_profiler_enabled()))
                     && (dep != "rustc_codegen_llvm" || self.config.llvm_enabled())
                 {
                     list.push(*dep);

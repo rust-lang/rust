@@ -238,6 +238,7 @@
 //! [downgrade]: Rc::downgrade
 //! [upgrade]: Weak::upgrade
 //! [mutability]: core::cell#introducing-mutability-inside-of-something-immutable
+//! [fully qualified syntax]: https://doc.rust-lang.org/book/ch19-03-advanced-traits.html#fully-qualified-syntax-for-disambiguation-calling-methods-with-the-same-name
 
 #![stable(feature = "rust1", since = "1.0.0")]
 

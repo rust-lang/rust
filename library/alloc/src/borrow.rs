@@ -103,6 +103,11 @@ where
 /// is desired, `to_mut` will obtain a mutable reference to an owned
 /// value, cloning if necessary.
 ///
+/// If you need reference-counting pointers, note that
+/// [`Rc::make_mut`][crate::rc::Rc::make_mut] and
+/// [`Arc::make_mut`][crate::sync::Arc::make_mut] can provide clone-on-write
+/// functionality as well.
+///
 /// # Examples
 ///
 /// ```
