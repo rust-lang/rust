@@ -1,3 +1,4 @@
+use crate::abi::Endian;
 use crate::spec::{Target, TargetOptions};
 
 pub fn target() -> Target {
@@ -7,7 +8,7 @@ pub fn target() -> Target {
         data_layout: "E-m:m-p:32:32-i8:8:32-i16:16:32-i64:64-n32-S64".to_string(),
         arch: "mips".to_string(),
         options: TargetOptions {
-            endian: "big".to_string(),
+            endian: Endian::Big,
             cpu: "mips32r6".to_string(),
             features: "+mips32r6".to_string(),
             max_atomic_width: Some(32),
