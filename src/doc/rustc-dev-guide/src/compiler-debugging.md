@@ -14,11 +14,7 @@ set `debug = true` in your config.toml.
 
 Setting `debug = true` turns on many different debug options (e.g., `debug-assertions`, 
 `debug-logging`, etc.) which can be individually tweaked if you want to, but many people 
-simply set `debug = true`. Check out the comments in `config.toml.example` for more info.
-
-In some cases, just setting these options will not trigger a rebuild,
-so if you changed it and you already have a compiler built, you might
-want to call `x.py clean` to force a rebuild.
+simply set `debug = true`. Check out the comments in config.toml.example for more info.
 
 You will need to rebuild the compiler once you've changed any configuration options. 
 
