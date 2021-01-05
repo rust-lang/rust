@@ -173,8 +173,8 @@ crate fn record_extern_fqn(cx: &DocContext<'_>, did: DefId, kind: clean::TypeKin
         if matches!(
             cx.enter_resolver(|r| r.cstore().load_macro_untracked(did, cx.sess())),
             LoadedMacro::MacroDef(def, _)
-                if matches!(&def.kind, ast::ItemKind::MacroDef(def)
-                    if !def.macro_rules)
+                if matches!(&def.kind, ast::ItemKind::MacroDef(ast_def)
+                    if !ast_def.macro_rules)
         ) {
             once(crate_name).chain(relative).collect()
         } else {
