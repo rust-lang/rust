@@ -16,9 +16,9 @@
 //! By default, all types in Rust are movable. Rust allows passing all types by-value,
 //! and common smart-pointer types such as [`Box<T>`] and `&mut T` allow replacing and
 //! moving the values they contain: you can move out of a [`Box<T>`], or you can use [`mem::swap`].
-//! [`Pin<P>`] wraps a pointer type `P`, so [`Pin`]`<`[`Box`]`<T>>` functions much like a regular
-//! [`Box<T>`]: when a [`Pin`]`<`[`Box`]`<T>>` gets dropped, so do its contents, and the memory gets
-//! deallocated. Similarly, [`Pin`]`<&mut T>` is a lot like `&mut T`. However, [`Pin<P>`] does
+//! [`Pin<P>`] wraps a pointer type `P`, so <code>[Pin]<[Box]\<T>></code> functions much like a regular
+//! [`Box<T>`]: when a <code>[Pin]<[Box]\<T>></code> gets dropped, so do its contents, and the memory gets
+//! deallocated. Similarly, <code>[Pin]<&mut T></code> is a lot like `&mut T`. However, [`Pin<P>`] does
 //! not let clients actually obtain a [`Box<T>`] or `&mut T` to pinned data, which implies that you
 //! cannot use operations such as [`mem::swap`]:
 //!
@@ -40,8 +40,8 @@
 //!
 //! [`Pin<P>`] can be used to wrap any pointer type `P`, and as such it interacts with
 //! [`Deref`] and [`DerefMut`]. A [`Pin<P>`] where `P: Deref` should be considered
-//! as a "`P`-style pointer" to a pinned `P::Target` -- so, a [`Pin`]`<`[`Box`]`<T>>` is
-//! an owned pointer to a pinned `T`, and a [`Pin`]`<`[`Rc`]`<T>>` is a reference-counted
+//! as a "`P`-style pointer" to a pinned `P::Target` -- so, a <code>[Pin]<[Box]\<T>></code> is
+//! an owned pointer to a pinned `T`, and a <code>[Pin]<[Rc]\<T>></code> is a reference-counted
 //! pointer to a pinned `T`.
 //! For correctness, [`Pin<P>`] relies on the implementations of [`Deref`] and
 //! [`DerefMut`] not to move out of their `self` parameter, and only ever to
@@ -54,12 +54,12 @@
 //! [`bool`], [`i32`], and references) as well as types consisting solely of these
 //! types. Types that do not care about pinning implement the [`Unpin`]
 //! auto-trait, which cancels the effect of [`Pin<P>`]. For `T: Unpin`,
-//! [`Pin`]`<`[`Box`]`<T>>` and [`Box<T>`] function identically, as do [`Pin`]`<&mut T>` and
+//! <code>[Pin]<[Box]\<T>></code> and [`Box<T>`] function identically, as do <code>[Pin]<&mut T></code> and
 //! `&mut T`.
 //!
 //! Note that pinning and [`Unpin`] only affect the pointed-to type `P::Target`, not the pointer
 //! type `P` itself that got wrapped in [`Pin<P>`]. For example, whether or not [`Box<T>`] is
-//! [`Unpin`] has no effect on the behavior of [`Pin`]`<`[`Box`]`<T>>` (here, `T` is the
+//! [`Unpin`] has no effect on the behavior of <code>[Pin]<[Box]\<T>></code> (here, `T` is the
 //! pointed-to type).
 //!
 //! # Example: self-referential struct
@@ -158,7 +158,7 @@
 //!
 //! Notice that this guarantee does *not* mean that memory does not leak! It is still
 //! completely okay not ever to call [`drop`] on a pinned element (e.g., you can still
-//! call [`mem::forget`] on a [`Pin`]`<`[`Box`]`<T>>`). In the example of the doubly-linked
+//! call [`mem::forget`] on a <code>[Pin]<[Box]\<T>></code>). In the example of the doubly-linked
 //! list, that element would just stay in the list. However you may not free or reuse the storage
 //! *without calling [`drop`]*.
 //!
@@ -172,9 +172,9 @@
 //! This can never cause a problem in safe code because implementing a type that
 //! relies on pinning requires unsafe code, but be aware that deciding to make
 //! use of pinning in your type (for example by implementing some operation on
-//! [`Pin`]`<&Self>` or [`Pin`]`<&mut Self>`) has consequences for your [`Drop`]
+//! <code>[Pin]<&Self></code> or <code>[Pin]<&mut Self></code>) has consequences for your [`Drop`]
 //! implementation as well: if an element of your type could have been pinned,
-//! you must treat [`Drop`] as implicitly taking [`Pin`]`<&mut Self>`.
+//! you must treat [`Drop`] as implicitly taking <code>[Pin]<&mut Self></code>.
 //!
 //! For example, you could implement `Drop` as follows:
 //!
@@ -204,10 +204,10 @@
 //! # Projections and Structural Pinning
 //!
 //! When working with pinned structs, the question arises how one can access the
-//! fields of that struct in a method that takes just [`Pin`]`<&mut Struct>`.
+//! fields of that struct in a method that takes just <code>[Pin]<&mut Struct></code>.
 //! The usual approach is to write helper methods (so called *projections*)
-//! that turn [`Pin`]`<&mut Struct>` into a reference to the field, but what
-//! type should that reference have? Is it [`Pin`]`<&mut Field>` or `&mut Field`?
+//! that turn <code>[Pin]<&mut Struct></code> into a reference to the field, but what
+//! type should that reference have? Is it <code>[Pin]<&mut Field></code> or `&mut Field`?
 //! The same question arises with the fields of an `enum`, and also when considering
 //! container/wrapper types such as [`Vec<T>`], [`Box<T>`], or [`RefCell<T>`].
 //! (This question applies to both mutable and shared references, we just
@@ -215,7 +215,7 @@
 //!
 //! It turns out that it is actually up to the author of the data structure
 //! to decide whether the pinned projection for a particular field turns
-//! [`Pin`]`<&mut Struct>` into [`Pin`]`<&mut Field>` or `&mut Field`. There are some
+//! <code>[Pin]<&mut Struct></code> into <code>[Pin]<&mut Field></code> or `&mut Field`. There are some
 //! constraints though, and the most important constraint is *consistency*:
 //! every field can be *either* projected to a pinned reference, *or* have
 //! pinning removed as part of the projection. If both are done for the same field,
@@ -230,12 +230,12 @@
 //! ## Pinning *is not* structural for `field`
 //!
 //! It may seem counter-intuitive that the field of a pinned struct might not be pinned,
-//! but that is actually the easiest choice: if a [`Pin`]`<&mut Field>` is never created,
+//! but that is actually the easiest choice: if a <code>[Pin]<&mut Field></code> is never created,
 //! nothing can go wrong! So, if you decide that some field does not have structural pinning,
 //! all you have to ensure is that you never create a pinned reference to that field.
 //!
 //! Fields without structural pinning may have a projection method that turns
-//! [`Pin`]`<&mut Struct>` into `&mut Field`:
+//! <code>[Pin]<&mut Struct></code> into `&mut Field`:
 //!
 //! ```rust,no_run
 //! # use std::pin::Pin;
@@ -251,14 +251,14 @@
 //!
 //! You may also `impl Unpin for Struct` *even if* the type of `field`
 //! is not [`Unpin`]. What that type thinks about pinning is not relevant
-//! when no [`Pin`]`<&mut Field>` is ever created.
+//! when no <code>[Pin]<&mut Field></code> is ever created.
 //!
 //! ## Pinning *is* structural for `field`
 //!
 //! The other option is to decide that pinning is "structural" for `field`,
 //! meaning that if the struct is pinned then so is the field.
 //!
-//! This allows writing a projection that creates a [`Pin`]`<&mut Field>`, thus
+//! This allows writing a projection that creates a <code>[Pin]<&mut Field></code>, thus
 //! witnessing that the field is pinned:
 //!
 //! ```rust,no_run
@@ -336,17 +336,17 @@
 //! and thus they do not offer pinning projections. This is why `Box<T>: Unpin` holds for all `T`.
 //! It makes sense to do this for pointer types, because moving the `Box<T>`
 //! does not actually move the `T`: the [`Box<T>`] can be freely movable (aka `Unpin`) even if
-//! the `T` is not. In fact, even [`Pin`]`<`[`Box`]`<T>>` and [`Pin`]`<&mut T>` are always
+//! the `T` is not. In fact, even <code>[Pin]<[Box]\<T>></code> and <code>[Pin]<&mut T></code> are always
 //! [`Unpin`] themselves, for the same reason: their contents (the `T`) are pinned, but the
 //! pointers themselves can be moved without moving the pinned data. For both [`Box<T>`] and
-//! [`Pin`]`<`[`Box`]`<T>>`, whether the content is pinned is entirely independent of whether the
+//! <code>[Pin]<[Box]\<T>></code>, whether the content is pinned is entirely independent of whether the
 //! pointer is pinned, meaning pinning is *not* structural.
 //!
 //! When implementing a [`Future`] combinator, you will usually need structural pinning
 //! for the nested futures, as you need to get pinned references to them to call [`poll`].
 //! But if your combinator contains any other data that does not need to be pinned,
 //! you can make those fields not structural and hence freely access them with a
-//! mutable reference even when you just have [`Pin`]`<&mut Self>` (such as in your own
+//! mutable reference even when you just have <code>[Pin]<&mut Self></code> (such as in your own
 //! [`poll`] implementation).
 //!
 //! [`Deref`]: crate::ops::Deref
@@ -356,10 +356,10 @@
 //! [`Box<T>`]: ../../std/boxed/struct.Box.html
 //! [`Vec<T>`]: ../../std/vec/struct.Vec.html
 //! [`Vec::set_len`]: ../../std/vec/struct.Vec.html#method.set_len
-//! [`Box`]: ../../std/boxed/struct.Box.html
+//! [Box]: ../../std/boxed/struct.Box.html
 //! [Vec::pop]: ../../std/vec/struct.Vec.html#method.pop
 //! [Vec::push]: ../../std/vec/struct.Vec.html#method.push
-//! [`Rc`]: ../../std/rc/struct.Rc.html
+//! [Rc]: ../../std/rc/struct.Rc.html
 //! [`RefCell<T>`]: crate::cell::RefCell
 //! [`drop`]: Drop::drop
 //! [`VecDeque<T>`]: ../../std/collections/struct.VecDeque.html
