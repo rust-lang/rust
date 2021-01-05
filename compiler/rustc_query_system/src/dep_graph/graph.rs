@@ -24,6 +24,7 @@ use super::prev::PreviousDepGraph;
 use super::query::DepGraphQuery;
 use super::serialized::SerializedDepNodeIndex;
 use super::{DepContext, DepKind, DepNode, HasDepContext, WorkProductId};
+use crate::query::QueryContext;
 
 #[derive(Clone)]
 pub struct DepGraph<K: DepKind> {
@@ -875,7 +876,8 @@ impl<K: DepKind> DepGraph<K> {
     //
     // This method will only load queries that will end up in the disk cache.
     // Other queries will not be executed.
-    pub fn exec_cache_promotions<Ctxt: DepContext<DepKind = K>>(&self, tcx: Ctxt) {
+    pub fn exec_cache_promotions<Ctxt: QueryContext<DepKind = K>>(&self, qcx: Ctxt) {
+        let tcx = qcx.dep_context();
         let _prof_timer = tcx.profiler().generic_activity("incr_comp_query_cache_promotion");
 
         let data = self.data.as_ref().unwrap();
@@ -883,7 +885,7 @@ impl<K: DepKind> DepGraph<K> {
             match data.colors.get(prev_index) {
                 Some(DepNodeColor::Green(_)) => {
                     let dep_node = data.previous.index_to_node(prev_index);
-                    tcx.try_load_from_on_disk_cache(&dep_node);
+                    qcx.try_load_from_on_disk_cache(&dep_node);
                 }
                 None | Some(DepNodeColor::Red) => {
                     // We can skip red nodes because a node can only be marked

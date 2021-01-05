@@ -68,6 +68,10 @@ impl QueryContext for QueryCtxt<'tcx> {
         self.queries.try_collect_active_jobs()
     }
 
+    fn try_load_from_on_disk_cache(&self, dep_node: &dep_graph::DepNode) {
+        (dep_node.kind.try_load_from_on_disk_cache)(*self, dep_node)
+    }
+
     /// Executes a job by changing the `ImplicitCtxt` to point to the
     /// new query job while it executes. It returns the diagnostics
     /// captured during execution and the actual result.
@@ -597,6 +601,11 @@ macro_rules! define_queries_struct {
             ) -> opaque::FileEncodeResult {
                 let tcx = QueryCtxt { tcx, queries: self };
                 tcx.encode_query_results(encoder, query_result_index)
+            }
+
+            fn exec_cache_promotions(&'tcx self, tcx: TyCtxt<'tcx>) {
+                let tcx = QueryCtxt { tcx, queries: self };
+                tcx.dep_graph.exec_cache_promotions(tcx)
             }
 
             $($(#[$attr])*

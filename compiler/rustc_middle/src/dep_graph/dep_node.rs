@@ -135,7 +135,7 @@ pub struct DepKindStruct {
     pub(super) force_from_dep_node: fn(tcx: TyCtxt<'_>, dep_node: &DepNode) -> bool,
 
     /// Invoke a query to put the on-disk cached value in memory.
-    pub(super) try_load_from_on_disk_cache: fn(TyCtxt<'_>, &DepNode),
+    pub(crate) try_load_from_on_disk_cache: fn(QueryCtxt<'_>, &DepNode),
 }
 
 impl std::ops::Deref for DepKind {
@@ -270,7 +270,7 @@ pub mod dep_kind {
                     false
                 }
 
-                fn try_load_from_on_disk_cache(tcx: TyCtxt<'_>, dep_node: &DepNode) {
+                fn try_load_from_on_disk_cache(tcx: QueryCtxt<'_>, dep_node: &DepNode) {
                     if is_anon {
                         return
                     }
@@ -284,9 +284,8 @@ pub mod dep_kind {
                                      .map(|c| c.is_green())
                                      .unwrap_or(false));
 
-                    let key = recover(tcx, dep_node).unwrap_or_else(|| panic!("Failed to recover key for {:?} with hash {}", dep_node, dep_node.hash));
-                    let qcx = QueryCtxt { tcx, queries: tcx.queries };
-                    if queries::$variant::cache_on_disk(qcx, &key, None) {
+                    let key = recover(*tcx, dep_node).unwrap_or_else(|| panic!("Failed to recover key for {:?} with hash {}", dep_node, dep_node.hash));
+                    if queries::$variant::cache_on_disk(tcx, &key, None) {
                         let _ = tcx.$variant(key);
                     }
                 }

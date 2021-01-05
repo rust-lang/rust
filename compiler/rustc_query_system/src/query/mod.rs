@@ -14,7 +14,7 @@ pub use self::caches::{
 mod config;
 pub use self::config::{QueryAccessors, QueryConfig, QueryDescription};
 
-use crate::dep_graph::HasDepContext;
+use crate::dep_graph::{DepNode, HasDepContext};
 use crate::query::job::QueryMap;
 
 use rustc_data_structures::stable_hasher::HashStable;
@@ -36,6 +36,9 @@ pub trait QueryContext: HasDepContext {
     fn current_query_job(&self) -> Option<QueryJobId<Self::DepKind>>;
 
     fn try_collect_active_jobs(&self) -> Option<QueryMap<Self::DepKind, Self::Query>>;
+
+    /// Load data from the on-disk cache.
+    fn try_load_from_on_disk_cache(&self, dep_node: &DepNode<Self::DepKind>);
 
     /// Executes a job by changing the `ImplicitCtxt` to point to the
     /// new query job while it executes. It returns the diagnostics
