@@ -777,9 +777,8 @@ fn manual(fields: &[(&'static str, &'static str, &[&str], &str)]) -> String {
     fields
         .iter()
         .map(|(field, _ty, doc, default)| {
-            let name = field.replace("_", ".");
-            let name = format!("rust-analyzer.{} (default: `{}`)", name, default);
-            format!("{}::\n{}\n", name, doc.join(" "))
+            let name = format!("rust-analyzer.{}", field.replace("_", "."));
+            format!("[[{}]]{} (default: `{}`)::\n{}\n", name, name, default, doc.join(" "))
         })
         .collect::<String>()
 }
