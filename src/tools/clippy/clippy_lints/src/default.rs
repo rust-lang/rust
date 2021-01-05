@@ -6,7 +6,7 @@ use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::{Block, Expr, ExprKind, PatKind, QPath, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::{self, Adt, Ty};
+use rustc_middle::ty;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::Span;
@@ -103,18 +103,41 @@ impl LateLintPass<'_> for Default {
     }
 
     fn check_block<'tcx>(&mut self, cx: &LateContext<'tcx>, block: &Block<'tcx>) {
-        // find all binding statements like `let mut _ = T::default()` where `T::default()` is the
-        // `default` method of the `Default` trait, and store statement index in current block being
-        // checked and the name of the bound variable
-        let binding_statements_using_default = enumerate_bindings_using_default(cx, block);
-
         // start from the `let mut _ = _::default();` and look at all the following
         // statements, see if they re-assign the fields of the binding
-        for (stmt_idx, binding_name, binding_type, span) in binding_statements_using_default {
-            // the last statement of a block cannot trigger the lint
-            if stmt_idx == block.stmts.len() - 1 {
-                break;
-            }
+        let stmts_head = match block.stmts {
+            // Skip the last statement since there cannot possibly be any following statements that re-assign fields.
+            [head @ .., _] if !head.is_empty() => head,
+            _ => return,
+        };
+        for (stmt_idx, stmt) in stmts_head.iter().enumerate() {
+            // find all binding statements like `let mut _ = T::default()` where `T::default()` is the
+            // `default` method of the `Default` trait, and store statement index in current block being
+            // checked and the name of the bound variable
+            let (local, variant, binding_name, binding_type, span) = if_chain! {
+                // only take `let ...` statements
+                if let StmtKind::Local(local) = stmt.kind;
+                if let Some(expr) = local.init;
+                // only take bindings to identifiers
+                if let PatKind::Binding(_, binding_id, ident, _) = local.pat.kind;
+                // only when assigning `... = Default::default()`
+                if is_expr_default(expr, cx);
+                let binding_type = cx.typeck_results().node_type(binding_id);
+                if let Some(adt) = binding_type.ty_adt_def();
+                if adt.is_struct();
+                let variant = adt.non_enum_variant();
+                if adt.did.is_local() || !variant.is_field_list_non_exhaustive();
+                let module_did = cx.tcx.parent_module(stmt.hir_id).to_def_id();
+                if variant
+                    .fields
+                    .iter()
+                    .all(|field| field.vis.is_accessible_from(module_did, cx.tcx));
+                then {
+                    (local, variant, ident.name, binding_type, expr.span)
+                } else {
+                    continue;
+                }
+            };
 
             // find all "later statement"'s where the fields of the binding set as
             // Default::default() get reassigned, unless the reassignment refers to the original binding
@@ -122,15 +145,8 @@ impl LateLintPass<'_> for Default {
             let mut assigned_fields = Vec::new();
             let mut cancel_lint = false;
             for consecutive_statement in &block.stmts[stmt_idx + 1..] {
-                // interrupt if the statement is a let binding (`Local`) that shadows the original
-                // binding
-                if stmt_shadows_binding(consecutive_statement, binding_name) {
-                    break;
-                }
                 // find out if and which field was set by this `consecutive_statement`
-                else if let Some((field_ident, assign_rhs)) =
-                    field_reassigned_by_stmt(consecutive_statement, binding_name)
-                {
+                if let Some((field_ident, assign_rhs)) = field_reassigned_by_stmt(consecutive_statement, binding_name) {
                     // interrupt and cancel lint if assign_rhs references the original binding
                     if contains_name(binding_name, assign_rhs) {
                         cancel_lint = true;
@@ -152,7 +168,7 @@ impl LateLintPass<'_> for Default {
                         first_assign = Some(consecutive_statement);
                     }
                 }
-                // interrupt also if no field was assigned, since we only want to look at consecutive statements
+                // interrupt if no field was assigned, since we only want to look at consecutive statements
                 else {
                     break;
                 }
@@ -161,55 +177,45 @@ impl LateLintPass<'_> for Default {
             // if there are incorrectly assigned fields, do a span_lint_and_note to suggest
             // construction using `Ty { fields, ..Default::default() }`
             if !assigned_fields.is_empty() && !cancel_lint {
-                // take the original assignment as span
-                let stmt = &block.stmts[stmt_idx];
+                // if all fields of the struct are not assigned, add `.. Default::default()` to the suggestion.
+                let ext_with_default = !variant
+                    .fields
+                    .iter()
+                    .all(|field| assigned_fields.iter().any(|(a, _)| a == &field.ident.name));
 
-                if let StmtKind::Local(preceding_local) = &stmt.kind {
-                    // filter out fields like `= Default::default()`, because the FRU already covers them
-                    let assigned_fields = assigned_fields
-                        .into_iter()
-                        .filter(|(_, rhs)| !is_expr_default(rhs, cx))
-                        .collect::<Vec<(Symbol, &Expr<'_>)>>();
+                let field_list = assigned_fields
+                    .into_iter()
+                    .map(|(field, rhs)| {
+                        // extract and store the assigned value for help message
+                        let value_snippet = snippet(cx, rhs.span, "..");
+                        format!("{}: {}", field, value_snippet)
+                    })
+                    .collect::<Vec<String>>()
+                    .join(", ");
 
-                    // if all fields of the struct are not assigned, add `.. Default::default()` to the suggestion.
-                    let ext_with_default = !fields_of_type(binding_type)
-                        .iter()
-                        .all(|field| assigned_fields.iter().any(|(a, _)| a == &field.name));
-
-                    let field_list = assigned_fields
-                        .into_iter()
-                        .map(|(field, rhs)| {
-                            // extract and store the assigned value for help message
-                            let value_snippet = snippet(cx, rhs.span, "..");
-                            format!("{}: {}", field, value_snippet)
-                        })
-                        .collect::<Vec<String>>()
-                        .join(", ");
-
-                    let sugg = if ext_with_default {
-                        if field_list.is_empty() {
-                            format!("{}::default()", binding_type)
-                        } else {
-                            format!("{} {{ {}, ..Default::default() }}", binding_type, field_list)
-                        }
+                let sugg = if ext_with_default {
+                    if field_list.is_empty() {
+                        format!("{}::default()", binding_type)
                     } else {
-                        format!("{} {{ {} }}", binding_type, field_list)
-                    };
+                        format!("{} {{ {}, ..Default::default() }}", binding_type, field_list)
+                    }
+                } else {
+                    format!("{} {{ {} }}", binding_type, field_list)
+                };
 
-                    // span lint once per statement that binds default
-                    span_lint_and_note(
-                        cx,
-                        FIELD_REASSIGN_WITH_DEFAULT,
-                        first_assign.unwrap().span,
-                        "field assignment outside of initializer for an instance created with Default::default()",
-                        Some(preceding_local.span),
-                        &format!(
-                            "consider initializing the variable with `{}` and removing relevant reassignments",
-                            sugg
-                        ),
-                    );
-                    self.reassigned_linted.insert(span);
-                }
+                // span lint once per statement that binds default
+                span_lint_and_note(
+                    cx,
+                    FIELD_REASSIGN_WITH_DEFAULT,
+                    first_assign.unwrap().span,
+                    "field assignment outside of initializer for an instance created with Default::default()",
+                    Some(local.span),
+                    &format!(
+                        "consider initializing the variable with `{}` and removing relevant reassignments",
+                        sugg
+                    ),
+                );
+                self.reassigned_linted.insert(span);
             }
         }
     }
@@ -230,47 +236,6 @@ fn is_expr_default<'tcx>(expr: &'tcx Expr<'tcx>, cx: &LateContext<'tcx>) -> bool
     }
 }
 
-/// Returns the block indices, identifiers and types of bindings set as `Default::default()`, except
-/// for when the pattern type is a tuple.
-fn enumerate_bindings_using_default<'tcx>(
-    cx: &LateContext<'tcx>,
-    block: &Block<'tcx>,
-) -> Vec<(usize, Symbol, Ty<'tcx>, Span)> {
-    block
-        .stmts
-        .iter()
-        .enumerate()
-        .filter_map(|(idx, stmt)| {
-            if_chain! {
-                // only take `let ...` statements
-                if let StmtKind::Local(ref local) = stmt.kind;
-                // only take bindings to identifiers
-                if let PatKind::Binding(_, _, ident, _) = local.pat.kind;
-                // that are not tuples
-                let ty = cx.typeck_results().pat_ty(local.pat);
-                if !matches!(ty.kind(), ty::Tuple(_));
-                // only when assigning `... = Default::default()`
-                if let Some(ref expr) = local.init;
-                if is_expr_default(expr, cx);
-                then {
-                    Some((idx, ident.name, ty, expr.span))
-                } else {
-                    None
-                }
-            }
-        })
-        .collect()
-}
-
-fn stmt_shadows_binding(this: &Stmt<'_>, shadowed: Symbol) -> bool {
-    if let StmtKind::Local(local) = &this.kind {
-        if let PatKind::Binding(_, _, ident, _) = local.pat.kind {
-            return ident.name == shadowed;
-        }
-    }
-    false
-}
-
 /// Returns the reassigned field and the assigning expression (right-hand side of assign).
 fn field_reassigned_by_stmt<'tcx>(this: &Stmt<'tcx>, binding_name: Symbol) -> Option<(Ident, &'tcx Expr<'tcx>)> {
     if_chain! {
@@ -289,15 +254,4 @@ fn field_reassigned_by_stmt<'tcx>(this: &Stmt<'tcx>, binding_name: Symbol) -> Op
             None
         }
     }
-}
-
-/// Returns the vec of fields for a struct and an empty vec for non-struct ADTs.
-fn fields_of_type(ty: Ty<'_>) -> Vec<Ident> {
-    if let Adt(adt, _) = ty.kind() {
-        if adt.is_struct() {
-            let variant = &adt.non_enum_variant();
-            return variant.fields.iter().map(|f| f.ident).collect();
-        }
-    }
-    vec![]
 }
