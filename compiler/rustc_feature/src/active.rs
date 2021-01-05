@@ -126,7 +126,7 @@ declare_features! (
     /// macros disappear).
     (active, allow_internal_unsafe, "1.0.0", None, None),
 
-    /// no-tracking-issue-end
+    // no-tracking-issue-end
 
     /// Allows using `#[link_name="llvm.*"]`.
     (active, link_llvm_intrinsics, "1.0.0", Some(29602), None),
@@ -643,6 +643,9 @@ declare_features! (
 
     /// Allows `extern "C-unwind" fn` to enable unwinding across ABI boundaries.
     (active, c_unwind, "1.52.0", Some(74990), None),
+
+    /// Allows users to provide classes for fenced code block using `class:classname`.
+    (active, custom_code_classes_in_docs, "1.52.0", Some(79483), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates

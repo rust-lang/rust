@@ -38,6 +38,20 @@ future.
 Attempting to use these error numbers on stable will result in the code sample being interpreted as
 plain text.
 
+### Custom CSS classes for code blocks
+
+```rust
+#![feature(custom_code_classes_in_docs)]
+
+/// ```class:language-c
+/// int main(void) { return 0; }
+/// ```
+fn main() {}
+```
+
+The text `int main(void) { return 0; }` is rendered without highlighting in a code block with the class
+`language-c`. This can be used to highlight other languages through JavaScript libraries for example.
+
 ## Extensions to the `#[doc]` attribute
 
 These features operate by extending the `#[doc]` attribute, and thus can be caught by the compiler

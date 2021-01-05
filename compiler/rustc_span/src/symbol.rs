@@ -434,6 +434,7 @@ symbols! {
         cttz,
         cttz_nonzero,
         custom_attribute,
+        custom_code_classes_in_docs,
         custom_derive,
         custom_inner_attributes,
         custom_test_frameworks,

@@ -48,6 +48,9 @@ crate use self::calculate_doc_coverage::CALCULATE_DOC_COVERAGE;
 mod html_tags;
 crate use self::html_tags::CHECK_INVALID_HTML_TAGS;
 
+mod check_custom_code_classes;
+crate use self::check_custom_code_classes::CHECK_CUSTOM_CODE_CLASSES;
+
 /// A single pass over the cleaned documentation.
 ///
 /// Runs in the compiler context, so it has access to types and traits and the like.
@@ -79,6 +82,7 @@ crate enum Condition {
 
 /// The full list of passes.
 crate const PASSES: &[Pass] = &[
+    CHECK_CUSTOM_CODE_CLASSES,
     CHECK_PRIVATE_ITEMS_DOC_TESTS,
     STRIP_HIDDEN,
     UNINDENT_COMMENTS,
@@ -97,6 +101,7 @@ crate const PASSES: &[Pass] = &[
 crate const DEFAULT_PASSES: &[ConditionalPass] = &[
     ConditionalPass::always(COLLECT_TRAIT_IMPLS),
     ConditionalPass::always(UNINDENT_COMMENTS),
+    ConditionalPass::always(CHECK_CUSTOM_CODE_CLASSES),
     ConditionalPass::always(CHECK_PRIVATE_ITEMS_DOC_TESTS),
     ConditionalPass::new(STRIP_HIDDEN, WhenNotDocumentHidden),
     ConditionalPass::new(STRIP_PRIVATE, WhenNotDocumentPrivate),

@@ -88,6 +88,12 @@ pub fn check(
         &[
             &src_path.join("test/ui"),
             &src_path.join("test/ui-fulldeps"),
+            // This allows `tidy` to pick up features that are `rustdoc`-specific.
+            //
+            // This way, `tidy` is happy because all features have a test file
+            // and all the features are correctly tested (either through `rustdoc`
+            // or `rustc`), while avoiding having to run `rustdoc` for all other
+            // feature files.
             &src_path.join("test/rustdoc-ui"),
         ],
         &mut |path| super::filter_dirs(path),

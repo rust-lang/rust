@@ -27,6 +27,30 @@ crate fn render_with_highlighting(
     edition: Edition,
 ) {
     debug!("highlighting: ================\n{}\n==============", src);
+
+    write_tooltip(out, tooltip);
+    write_header(out, class);
+    write_highlighted_code(out, src, edition);
+    write_footer(out, playground_button);
+}
+
+/// Does not highlight `src` because additional classes have been provided with
+/// the `class:` modifier.
+crate fn render_with_added_classes(
+    src: &str,
+    out: &mut Buffer,
+    classes: String,
+    tooltip: Option<(Option<Edition>, &str)>,
+) {
+    debug!("*not* highlighting: ================\n{}\n==============", src);
+
+    write_tooltip(out, tooltip);
+    write_header(out, Some(&classes));
+    write_raw_code(out, src);
+    write_footer(out, None);
+}
+
+fn write_tooltip(out: &mut Buffer, tooltip: Option<(Option<Edition>, &str)>) {
     if let Some((edition_info, class)) = tooltip {
         write!(
             out,
@@ -39,17 +63,13 @@ crate fn render_with_highlighting(
             },
         );
     }
-
-    write_header(out, class);
-    write_code(out, &src, edition);
-    write_footer(out, playground_button);
 }
 
 fn write_header(out: &mut Buffer, class: Option<&str>) {
     write!(out, "<div class=\"example-wrap\"><pre class=\"rust {}\">\n", class.unwrap_or_default());
 }
 
-fn write_code(out: &mut Buffer, src: &str, edition: Edition) {
+fn write_highlighted_code(out: &mut Buffer, src: &str, edition: Edition) {
     // This replace allows to fix how the code source with DOS backline characters is displayed.
     let src = src.replace("\r\n", "\n");
     Classifier::new(&src, edition).highlight(&mut |highlight| {
@@ -63,6 +83,10 @@ fn write_code(out: &mut Buffer, src: &str, edition: Edition) {
 
 fn write_footer(out: &mut Buffer, playground_button: Option<&str>) {
     write!(out, "</pre>{}</div>\n", playground_button.unwrap_or_default());
+}
+
+fn write_raw_code(out: &mut Buffer, src: &str) {
+    write!(out, "{}", src.replace("\r\n", "\n"));
 }
 
 /// How a span of text is classified. Mostly corresponds to token kinds.

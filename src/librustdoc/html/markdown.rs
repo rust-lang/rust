@@ -207,6 +207,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
         let should_panic;
         let ignore;
         let edition;
+        let added_classes;
         if let Some(Event::Start(Tag::CodeBlock(kind))) = event {
             let parse_result = match kind {
                 CodeBlockKind::Fenced(ref lang) => {
@@ -221,6 +222,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
             should_panic = parse_result.should_panic;
             ignore = parse_result.ignore;
             edition = parse_result.edition;
+            added_classes = parse_result.added_classes;
         } else {
             return event;
         }
@@ -289,33 +291,42 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
             ))
         });
 
-        let tooltip = if ignore != Ignore::None {
-            Some((None, "ignore"))
+        let (tooltip, special_class) = if ignore != Ignore::None {
+            (Some((None, "ignore")), " ignore")
         } else if compile_fail {
-            Some((None, "compile_fail"))
+            (Some((None, "compile_fail")), " compile_fail")
         } else if should_panic {
-            Some((None, "should_panic"))
+            (Some((None, "should_panic")), " should_panic")
         } else if explicit_edition {
-            Some((Some(edition), "edition"))
+            (Some((Some(edition), "edition")), " edition")
         } else {
-            None
+            (None, "")
         };
 
         // insert newline to clearly separate it from the
         // previous block so we can shorten the html output
         let mut s = Buffer::new();
         s.push_str("\n");
-        highlight::render_with_highlighting(
-            &text,
-            &mut s,
-            Some(&format!(
-                "rust-example-rendered{}",
-                if let Some((_, class)) = tooltip { format!(" {}", class) } else { String::new() }
-            )),
-            playground_button.as_deref(),
-            tooltip,
-            edition,
-        );
+
+        if added_classes.is_empty() {
+            highlight::render_with_highlighting(
+                &text,
+                &mut s,
+                Some(&format!("rust-example-rendered{}", special_class)),
+                playground_button.as_deref(),
+                tooltip,
+                edition,
+            );
+        } else {
+            let classes = if special_class.is_empty() {
+                added_classes.join(" ")
+            } else {
+                format!("{} {}", special_class.trim(), added_classes.join(" "))
+            };
+
+            highlight::render_with_added_classes(&text, &mut s, classes, tooltip);
+        }
+
         Some(Event::Html(s.into_inner().into()))
     }
 }
@@ -744,6 +755,7 @@ crate struct LangString {
     crate error_codes: Vec<String>,
     crate allow_fail: bool,
     crate edition: Option<Edition>,
+    crate added_classes: Vec<String>,
 }
 
 #[derive(Eq, PartialEq, Clone, Debug)]
@@ -766,6 +778,7 @@ impl Default for LangString {
             error_codes: Vec::new(),
             allow_fail: false,
             edition: None,
+            added_classes: Vec::new(),
         }
     }
 }
@@ -775,7 +788,7 @@ impl LangString {
         string: &str,
         allow_error_code_check: ErrorCodes,
         enable_per_target_ignores: bool,
-    ) -> LangString {
+    ) -> Self {
         Self::parse(string, allow_error_code_check, enable_per_target_ignores, None)
     }
 
@@ -809,7 +822,7 @@ impl LangString {
         allow_error_code_check: ErrorCodes,
         enable_per_target_ignores: bool,
         extra: Option<&ExtraInfo<'_>>,
-    ) -> LangString {
+    ) -> Self {
         let allow_error_code_check = allow_error_code_check.as_bool();
         let mut seen_rust_tags = false;
         let mut seen_other_tags = false;
@@ -866,6 +879,14 @@ impl LangString {
                         seen_rust_tags = !seen_other_tags || seen_rust_tags;
                     } else {
                         seen_other_tags = true;
+                    }
+                }
+                x if x.starts_with("class:") => {
+                    let class = x.trim_start_matches("class:");
+                    if class.is_empty() {
+                        seen_other_tags = true;
+                    } else {
+                        data.added_classes.push(class.to_owned());
                     }
                 }
                 x if extra.is_some() => {
