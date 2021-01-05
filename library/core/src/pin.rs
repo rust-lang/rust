@@ -349,29 +349,29 @@
 //! mutable reference even when you just have <code>[Pin]<[&mut] Self></code> (such as in your own
 //! [`poll`] implementation).
 //!
-//! [Deref]: crate::ops::Deref
-//! [`Deref`]: crate::ops::Deref
-//! [Target]: crate::ops::Deref::Target
-//! [`DerefMut`]: crate::ops::DerefMut
-//! [`mem::swap`]: crate::mem::swap
-//! [`mem::forget`]: crate::mem::forget
-//! [Vec]: ../../std/vec/struct.Vec.html
-//! [`Vec::set_len`]: ../../std/vec/struct.Vec.html#method.set_len
-//! [Box]: ../../std/boxed/struct.Box.html
-//! [Vec::pop]: ../../std/vec/struct.Vec.html#method.pop
-//! [Vec::push]: ../../std/vec/struct.Vec.html#method.push
-//! [Rc]: ../../std/rc/struct.Rc.html
-//! [RefCell]: crate::cell::RefCell
-//! [`drop`]: Drop::drop
-//! [VecDeque]: ../../std/collections/struct.VecDeque.html
-//! [`ptr::write`]: crate::ptr::write
-//! [`Future`]: crate::future::Future
+//! [Deref]: crate::ops::Deref "ops::Deref"
+//! [`Deref`]: crate::ops::Deref "ops::Deref"
+//! [Target]: crate::ops::Deref::Target "ops::Deref::Target"
+//! [`DerefMut`]: crate::ops::DerefMut "ops::DerefMut"
+//! [`mem::swap`]: crate::mem::swap "mem::swap"
+//! [`mem::forget`]: crate::mem::forget "mem::forget"
+//! [Vec]: ../../std/vec/struct.Vec.html "Vec"
+//! [`Vec::set_len`]: ../../std/vec/struct.Vec.html#method.set_len "Vec::set_len"
+//! [Box]: ../../std/boxed/struct.Box.html "Box"
+//! [Vec::pop]: ../../std/vec/struct.Vec.html#method.pop "Vec::pop"
+//! [Vec::push]: ../../std/vec/struct.Vec.html#method.push "Vec::push"
+//! [Rc]: ../../std/rc/struct.Rc.html "rc::Rc"
+//! [RefCell]: crate::cell::RefCell "cell::RefCell"
+//! [`drop`]: Drop::drop "Drop::drop"
+//! [VecDeque]: ../../std/collections/struct.VecDeque.html "collections::VecDeque"
+//! [`ptr::write`]: crate::ptr::write "ptr::write"
+//! [`Future`]: crate::future::Future "future::Future"
 //! [drop-impl]: #drop-implementation
 //! [drop-guarantee]: #drop-guarantee
-//! [`poll`]: crate::future::Future::poll
-//! [&]: ../../std/primitive.reference.html
-//! [&mut]: ../../std/primitive.reference.html
-//! [`unsafe`]: ../../std/keyword.unsafe.html
+//! [`poll`]: crate::future::Future::poll "future::Future::poll"
+//! [&]: ../../std/primitive.reference.html "shared reference"
+//! [&mut]: ../../std/primitive.reference.html "mutable reference"
+//! [`unsafe`]: ../../std/keyword.unsafe.html "keyword unsafe"
 
 #![stable(feature = "pin", since = "1.33.0")]
 
