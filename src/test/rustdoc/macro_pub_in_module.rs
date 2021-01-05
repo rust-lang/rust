@@ -72,3 +72,11 @@ const __: () = {
 pub mod __ {
     // @!has krate/__/macro.in_both_const_and_mod.html
 }
+
+enum Enum {
+    Crazy = {
+        // @!has krate/macro.this_is_getting_weird.html;
+        pub macro this_is_getting_weird() {}
+        42
+    },
+}

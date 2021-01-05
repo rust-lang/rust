@@ -93,6 +93,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             });
             // HACK: rustdoc has no way to lookup `doctree::Module`s by their HirId. Instead,
             // lookup the module by its name, by looking at each path segment one at a time.
+            // Once #80415 is merged, this whole `for` loop research can be replaced by that.
             let mut cur_mod = &mut top_level_module;
             for path_segment in macro_parent_module.data {
                 let path_segment_ty_ns = match path_segment.data {
@@ -106,11 +107,18 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                         continue 'exported_macros;
                     }
                 };
-                cur_mod = cur_mod
-                    .mods
-                    .iter_mut()
-                    .find(|module| module.name == Some(path_segment_ty_ns))
-                    .unwrap();
+                // The obtained name in the type namespace may belong to something that is not
+                // a `mod`ule (_e.g._, it could be an `enum` with a `pub macro` defined within
+                // the block used for a discriminant.
+                if let Some(child_mod) =
+                    cur_mod.mods.iter_mut().find(|module| module.name == Some(path_segment_ty_ns))
+                {
+                    cur_mod = child_mod;
+                } else {
+                    // If the macro's parent def path is not exclusively made of module
+                    // components, then it is not accessible (c.f. previous `continue`).
+                    continue 'exported_macros;
+                }
             }
             cur_mod.macros.push((def, None));
         }
