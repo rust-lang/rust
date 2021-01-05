@@ -1037,7 +1037,7 @@ bool GradientUtils::shouldRecompute(const Value *val,
   // cache a call, assuming its longer to run that
   if (isa<CallInst>(val)) {
     llvm::errs() << " caching call: " << *val << "\n";
-    //cast<CallInst>(val)->getCalledFunction()->dump();
+    // cast<CallInst>(val)->getCalledFunction()->dump();
     return false;
   }
 
@@ -1174,11 +1174,17 @@ Value *GradientUtils::invertPointerM(Value *oval, IRBuilder<> &BuilderM) {
         llvm::errs() << "warning found shared memory\n";
         //#if LLVM_VERSION_MAJOR >= 11
         Type *type = cast<PointerType>(arg->getType())->getElementType();
+        // TODO this needs initialization by entry
         auto shadow = new GlobalVariable(
             *arg->getParent(), type, arg->isConstant(), arg->getLinkage(),
-            Constant::getNullValue(type), arg->getName() + "_shadow", arg,
+            UndefValue::get(type), arg->getName() + "_shadow", arg,
             arg->getThreadLocalMode(), arg->getType()->getAddressSpace(),
             arg->isExternallyInitialized());
+        arg->setMetadata("enzyme_shadow",
+                         MDTuple::get(shadow->getContext(),
+                                      {ConstantAsMetadata::get(shadow)}));
+        shadow->setMetadata("enzyme_internalshadowglobal",
+                            MDTuple::get(shadow->getContext(), {}));
         return invertedPointers[oval] = shadow;
         //#endif
       }

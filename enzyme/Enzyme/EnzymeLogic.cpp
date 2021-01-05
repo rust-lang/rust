@@ -2438,6 +2438,26 @@ Function *CreatePrimalAndGradient(
 
   gutils->eraseFictiousPHIs();
 
+  if (topLevel) {
+    IRBuilder<> entryBuilder(gutils->inversionAllocs,
+                             gutils->inversionAllocs->begin());
+    bool seenshared = false;
+    for (auto &g : gutils->newFunc->getParent()->globals()) {
+      if (hasMetadata(&g, "enzyme_internalshadowglobal")) {
+        entryBuilder.CreateStore(Constant::getNullValue(g.getValueType()), &g);
+        if (g.getType()->getAddressSpace() == 3) {
+          seenshared = true;
+        }
+      }
+    }
+    if (seenshared) {
+      cast<CallInst>(entryBuilder.CreateCall(
+          Intrinsic::getDeclaration(gutils->newFunc->getParent(),
+                                    Intrinsic::nvvm_barrier0),
+          {}));
+    }
+  }
+
   while (gutils->inversionAllocs->size() > 0) {
     gutils->inversionAllocs->back().moveBefore(
         gutils->newFunc->getEntryBlock().getFirstNonPHIOrDbgOrLifetime());

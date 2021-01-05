@@ -1,4 +1,4 @@
-; RUN: %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -mem2reg -gvn -adce -instsimplify -early-cse-memssa -simplifycfg -S | FileCheck %s
+; RUN: if [ %llvmver -ge 9 ]; then %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -mem2reg -gvn -adce -instsimplify -early-cse-memssa -simplifycfg -S | FileCheck %s; fi
 
 ; ModuleID = 'cuda.cu'
 source_filename = "cuda.cu"
@@ -79,6 +79,6 @@ attributes #3 = { nounwind }
 ; CHECK-NEXT:   %0 = load double, double* %"gep'ipg", align 4
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"gep'ipg", align 4
 ; CHECK-NEXT:   %m0diffeld = fmul fast double %0, %x
-; CHECK-NEXT:   %1 = call fast double @llvm.nvvm.atomic.add.gen.f.sys.f64.p0f64(double* %"g0'ipg", double %m0diffeld)
+; CHECK-NEXT:   %1 = atomicrmw fadd double* %"g0'ipg", double %m0diffeld monotonic
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }

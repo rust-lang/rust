@@ -1255,6 +1255,16 @@ assert(cast<PointerType>(ptr->getType())->getElementType() == dif->getType());
 
 // atomics
 if (AtomicAdd) {
+  /*
+  while (auto ASC = dyn_cast<AddrSpaceCastInst>(ptr)) {
+    ptr = ASC->getOperand(0);
+  }
+  while (auto ASC = dyn_cast<ConstantExpr>(ptr)) {
+    if (!ASC->isCast()) break;
+    if (ASC->getOpcode() != Instruction::AddrSpaceCast) break;
+    ptr = ASC->getOperand(0);
+  }
+  */
   if (dif->getType()->isIntOrIntVectorTy()) {
 
     ptr = BuilderM.CreateBitCast(
@@ -1263,65 +1273,40 @@ if (AtomicAdd) {
                          cast<PointerType>(ptr->getType())->getAddressSpace()));
     dif = BuilderM.CreateBitCast(dif, IntToFloatTy(dif->getType()));
   }
-  if (llvm::Triple(newFunc->getParent()->getTargetTriple()).getArch() ==
-          Triple::nvptx ||
-      llvm::Triple(newFunc->getParent()->getTargetTriple()).getArch() ==
-          Triple::nvptx64) {
-    if (dif->getType()->isFloatTy()) {
-      // auto atomicAdd =
-      cast<CallInst>(BuilderM.CreateCall(
-          Intrinsic::getDeclaration(newFunc->getParent(),
-                                    Intrinsic::nvvm_atomic_add_gen_f_sys,
-                                    {dif->getType(), ptr->getType()}),
-          {ptr, dif}));
-    } else if (dif->getType()->isDoubleTy()) {
-      // auto atomicAdd =
-      cast<CallInst>(BuilderM.CreateCall(
-          Intrinsic::getDeclaration(newFunc->getParent(),
-                                    Intrinsic::nvvm_atomic_add_gen_f_sys,
-                                    {dif->getType(), ptr->getType()}),
-          {ptr, dif}));
-    } else {
-      llvm::errs() << "unhandled atomic add: " << *ptr << " " << *dif << "\n";
-      llvm_unreachable("unhandled atomic add");
-    }
-  } else {
 #if LLVM_VERSION_MAJOR >= 9
-    AtomicRMWInst::BinOp op = AtomicRMWInst::FAdd;
-    if (auto vt = dyn_cast<VectorType>(dif->getType())) {
-      for (size_t i = 0; i < vt->getNumElements(); ++i) {
-        auto vdif = BuilderM.CreateExtractElement(dif, i);
-        Value *Idxs[] = {
-            ConstantInt::get(Type::getInt64Ty(vt->getContext()), 0),
-            ConstantInt::get(Type::getInt32Ty(vt->getContext()), i)};
-        auto vptr = BuilderM.CreateGEP(ptr, Idxs);
-#if LLVM_VERSION_MAJOR >= 11
-        AtomicRMWInst *rmw = BuilderM.CreateAtomicRMW(
-            op, vptr, vdif, AtomicOrdering::Monotonic, SyncScope::System);
-        if (align)
-          rmw->setAlignment(align.getValue());
-#else
-        BuilderM.CreateAtomicRMW(op, vptr, vdif, AtomicOrdering::Monotonic,
-                                 SyncScope::System);
-#endif
-      }
-    } else {
+  AtomicRMWInst::BinOp op = AtomicRMWInst::FAdd;
+  if (auto vt = dyn_cast<VectorType>(dif->getType())) {
+    for (size_t i = 0; i < vt->getNumElements(); ++i) {
+      auto vdif = BuilderM.CreateExtractElement(dif, i);
+      Value *Idxs[] = {ConstantInt::get(Type::getInt64Ty(vt->getContext()), 0),
+                       ConstantInt::get(Type::getInt32Ty(vt->getContext()), i)};
+      auto vptr = BuilderM.CreateGEP(ptr, Idxs);
 #if LLVM_VERSION_MAJOR >= 11
       AtomicRMWInst *rmw = BuilderM.CreateAtomicRMW(
-          op, ptr, dif, AtomicOrdering::Monotonic, SyncScope::System);
+          op, vptr, vdif, AtomicOrdering::Monotonic, SyncScope::System);
       if (align)
         rmw->setAlignment(align.getValue());
 #else
-      BuilderM.CreateAtomicRMW(op, ptr, dif, AtomicOrdering::Monotonic,
+      BuilderM.CreateAtomicRMW(op, vptr, vdif, AtomicOrdering::Monotonic,
                                SyncScope::System);
 #endif
     }
+  } else {
+#if LLVM_VERSION_MAJOR >= 11
+    AtomicRMWInst *rmw = BuilderM.CreateAtomicRMW(
+        op, ptr, dif, AtomicOrdering::Monotonic, SyncScope::System);
+    if (align)
+      rmw->setAlignment(align.getValue());
 #else
-        llvm::errs() << "unhandled atomic fadd on llvm version " << *ptr << " "
-                     << *dif << "\n";
-        llvm_unreachable("unhandled atomic fadd");
+    BuilderM.CreateAtomicRMW(op, ptr, dif, AtomicOrdering::Monotonic,
+                             SyncScope::System);
 #endif
   }
+#else
+      llvm::errs() << "unhandled atomic fadd on llvm version " << *ptr << " "
+                   << *dif << "\n";
+      llvm_unreachable("unhandled atomic fadd");
+#endif
   return;
 }
 

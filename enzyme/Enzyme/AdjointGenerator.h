@@ -3034,7 +3034,9 @@ public:
               lookup(gutils->getNewFromOriginal(orig_ops[0]), Builder2)};
           Type *tys[] = {orig_ops[0]->getType()};
           auto cal = cast<CallInst>(Builder2.CreateCall(
-              Intrinsic::getDeclaration(called->getParent(), Intrinsic::sqrt, tys), args));
+              Intrinsic::getDeclaration(called->getParent(), Intrinsic::sqrt,
+                                        tys),
+              args));
           cal->copyIRFlags(orig);
           cal->setAttributes(orig->getAttributes());
           cal->setCallingConv(orig->getCallingConv());

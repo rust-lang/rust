@@ -2720,16 +2720,14 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
     CONSIDER(fmal)
 
     if (ci->getName() == "__pow_finite" || ci->getName() == "__sqrt_finite") {
-      for(int i=0; i<call.getNumArgOperands(); ++i) {
+      for (int i = 0; i < call.getNumArgOperands(); ++i) {
         updateAnalysis(
             call.getArgOperand(i),
             TypeTree(ConcreteType(call.getArgOperand(i)->getType())).Only(-1),
             &call);
       }
-      updateAnalysis(
-          &call,
-          TypeTree(ConcreteType(call.getType())).Only(-1),
-          &call);
+      updateAnalysis(&call, TypeTree(ConcreteType(call.getType())).Only(-1),
+                     &call);
       return;
     }
     if (ci->getName() == "__lgamma_r_finite") {
