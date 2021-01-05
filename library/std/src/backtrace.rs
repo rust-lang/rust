@@ -499,12 +499,3 @@ impl BacktraceFrame {
     }
 }
 
-#[unstable(feature = "backtrace_frames", issue = "79676")]
-impl<'a> Iterator for Frames<'a> {
-    type Item = BacktraceFrame;
-    
-    fn next(&mut self) -> Option<BacktraceFrame> {
-        self.inner.pop()        
-    }
-}
-
