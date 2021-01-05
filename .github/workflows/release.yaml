@@ -146,7 +146,7 @@ jobs:
 
   dist-aarch64-apple-darwin:
     name: dist (aarch64-apple-darwin)
-    runs-on: macos-11.0
+    runs-on: macos-latest
     env:
       RA_TARGET: aarch64-apple-darwin
 
@@ -163,7 +163,7 @@ jobs:
         override: true
 
     - name: Dist
-      run: cargo xtask dist
+      run: SDKROOT=$(xcrun -sdk macosx11.0 --show-sdk-path) MACOSX_DEPLOYMENT_TARGET=$(xcrun -sdk macosx11.0 --show-sdk-platform-version) cargo xtask dist
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v1
