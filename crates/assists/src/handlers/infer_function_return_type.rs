@@ -89,7 +89,7 @@ fn extract_tail(ctx: &AssistContext) -> Option<(FnType, ast::Expr, InsertOrRepla
             let body = closure.body()?;
             let body_start = body.syntax().first_token()?.text_range().start();
             let (tail_expr, wrap_expr) = match body {
-                ast::Expr::BlockExpr(block) => (block.expr()?, false),
+                ast::Expr::BlockExpr(block) => (block.tail_expr()?, false),
                 body => (body, true),
             };
 
@@ -101,7 +101,7 @@ fn extract_tail(ctx: &AssistContext) -> Option<(FnType, ast::Expr, InsertOrRepla
             let action = ret_ty_to_action(func.ret_type(), rparen_pos)?;
 
             let body = func.body()?;
-            let tail_expr = body.expr()?;
+            let tail_expr = body.tail_expr()?;
 
             let ret_range_end = body.l_curly_token()?.text_range().start();
             let ret_range = TextRange::new(rparen_pos, ret_range_end);

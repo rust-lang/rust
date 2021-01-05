@@ -98,7 +98,7 @@ impl TailReturnCollector {
         }
 
         // Browse tail expressions for each block
-        if let Some(expr) = block_expr.expr() {
+        if let Some(expr) = block_expr.tail_expr() {
             if let Some(last_exprs) = get_tail_expr_from_block(&expr) {
                 for last_expr in last_exprs {
                     let last_expr = match last_expr {
@@ -170,7 +170,7 @@ impl TailReturnCollector {
     }
 
     fn collect_tail_exprs(&mut self, block: &BlockExpr) {
-        if let Some(expr) = block.expr() {
+        if let Some(expr) = block.tail_expr() {
             self.handle_exprs(&expr, true);
             self.fetch_tail_exprs(&expr);
         }
@@ -206,7 +206,7 @@ fn get_tail_expr_from_block(expr: &Expr) -> Option<Vec<NodeType>> {
         Expr::IfExpr(if_expr) => {
             let mut nodes = vec![];
             for block in if_expr.blocks() {
-                if let Some(block_expr) = block.expr() {
+                if let Some(block_expr) = block.tail_expr() {
                     if let Some(tail_exprs) = get_tail_expr_from_block(&block_expr) {
                         nodes.extend(tail_exprs);
                     }
@@ -228,7 +228,7 @@ fn get_tail_expr_from_block(expr: &Expr) -> Option<Vec<NodeType>> {
             while_expr.syntax().last_child().map(|lc| vec![NodeType::Node(lc)])
         }
         Expr::BlockExpr(block_expr) => {
-            block_expr.expr().map(|lc| vec![NodeType::Node(lc.syntax().clone())])
+            block_expr.tail_expr().map(|lc| vec![NodeType::Node(lc.syntax().clone())])
         }
         Expr::MatchExpr(match_expr) => {
             let arm_list = match_expr.match_arm_list()?;

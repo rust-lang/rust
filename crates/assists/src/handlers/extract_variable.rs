@@ -139,7 +139,7 @@ impl Anchor {
     fn from(to_extract: &ast::Expr) -> Option<Anchor> {
         to_extract.syntax().ancestors().find_map(|node| {
             if let Some(expr) =
-                node.parent().and_then(ast::BlockExpr::cast).and_then(|it| it.expr())
+                node.parent().and_then(ast::BlockExpr::cast).and_then(|it| it.tail_expr())
             {
                 if expr.syntax() == &node {
                     mark::hit!(test_extract_var_last_expr);

@@ -168,7 +168,7 @@ pub enum DisplayTarget {
 
 impl DisplayTarget {
     fn is_source_code(&self) -> bool {
-        matches!(self, Self::SourceCode {..})
+        matches!(self, Self::SourceCode { .. })
     }
     fn is_test(&self) -> bool {
         matches!(self, Self::Test)

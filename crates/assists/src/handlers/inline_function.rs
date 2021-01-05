@@ -71,7 +71,7 @@ pub(crate) fn inline_function(acc: &mut Assists, ctx: &AssistContext) -> Option<
             statements.extend(body.statements());
 
             let original_indentation = call.indent_level();
-            let replacement = make::block_expr(statements, body.expr())
+            let replacement = make::block_expr(statements, body.tail_expr())
                 .reset_indent()
                 .indent(original_indentation);
 

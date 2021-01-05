@@ -118,7 +118,7 @@ fn exprify_block(
     sema: &hir::Semantics<ide_db::RootDatabase>,
     name: &ast::Expr,
 ) -> Option<ast::BlockExpr> {
-    if block.expr().is_some() {
+    if block.tail_expr().is_some() {
         return None;
     }
 

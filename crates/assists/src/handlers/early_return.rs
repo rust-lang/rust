@@ -69,7 +69,7 @@ pub(crate) fn convert_to_guarded_return(acc: &mut Assists, ctx: &AssistContext) 
 
     let parent_block = if_expr.syntax().parent()?.ancestors().find_map(ast::BlockExpr::cast)?;
 
-    if parent_block.expr()? != if_expr.clone().into() {
+    if parent_block.tail_expr()? != if_expr.clone().into() {
         return None;
     }
 

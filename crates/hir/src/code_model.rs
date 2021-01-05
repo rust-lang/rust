@@ -1642,9 +1642,10 @@ impl Type {
     }
 
     pub fn is_fn(&self) -> bool {
-        matches!(&self.ty.value,
-            Ty::Apply(ApplicationTy { ctor: TypeCtor::FnDef(..), .. }) |
-            Ty::Apply(ApplicationTy { ctor: TypeCtor::FnPtr { .. }, .. })
+        matches!(
+            &self.ty.value,
+            Ty::Apply(ApplicationTy { ctor: TypeCtor::FnDef(..), .. })
+                | Ty::Apply(ApplicationTy { ctor: TypeCtor::FnPtr { .. }, .. })
         )
     }
 
