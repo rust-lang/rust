@@ -1,0 +1,15 @@
+error[E0747]: type provided when a constant was expected
+  --> $DIR/suggest_const_for_array.rs:6:13
+   |
+LL |   example::<[usize; 3]>();
+   |             ^^^^^^^^^^ help: array type provided where a `usize` was expected, try: `{ 3 }`
+
+error[E0747]: type provided when a constant was expected
+  --> $DIR/suggest_const_for_array.rs:8:13
+   |
+LL |   example::<[usize; 4+5]>();
+   |             ^^^^^^^^^^^^ help: array type provided where a `usize` was expected, try: `{ 4+5 }`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0747`.
