@@ -1135,7 +1135,7 @@ note: if you're sure you want to do this, please open an issue as to why. In the
                 // flag is respected, so providing an empty --test-args conflicts with
                 // any following it.
                 match p.strip_prefix(suite_path).ok().and_then(|p| p.to_str()) {
-                    Some(s) if s != "" => Some(s),
+                    Some(s) if !s.is_empty() => Some(s),
                     _ => None,
                 }
             })
