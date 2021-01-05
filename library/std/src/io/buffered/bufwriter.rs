@@ -351,6 +351,7 @@ impl<W: Write> BufWriter<W> {
     // If this function ends up being called frequently relative to `write`,
     // it's likely a sign that the client is using an improperly sized buffer
     // or their write patterns are somewhat pathological.
+    #[cold]
     #[inline(never)]
     fn write_cold(&mut self, buf: &[u8]) -> io::Result<usize> {
         if buf.len() > self.spare_capacity() {
@@ -385,6 +386,7 @@ impl<W: Write> BufWriter<W> {
     // If this function ends up being called frequently relative to `write_all`,
     // it's likely a sign that the client is using an improperly sized buffer
     // or their write patterns are somewhat pathological.
+    #[cold]
     #[inline(never)]
     fn write_all_cold(&mut self, buf: &[u8]) -> io::Result<()> {
         // Normally, `write_all` just calls `write` in a loop. We can do better
@@ -421,7 +423,7 @@ impl<W: Write> BufWriter<W> {
 
     // SAFETY: Requires `buf.len() <= self.buf.capacity() - self.buf.len()`,
     // i.e., that input buffer length is less than or equal to spare capacity.
-    #[inline(always)]
+    #[inline]
     unsafe fn write_to_buffer_unchecked(&mut self, buf: &[u8]) {
         debug_assert!(buf.len() <= self.spare_capacity());
         let old_len = self.buf.len();
