@@ -182,12 +182,9 @@ If you are developing rustdoc, use `RUSTDOC_LOG` instead. If you are developing
 Miri, use `MIRI_LOG` instead. You get the idea :)
 
 See the [`tracing`] crate's docs, and specifically the docs for [`debug!`] to
-see the full syntax you can use. See the [`env_logger`] doc for more info on the
-full syntax. (Note: unlike the compiler, the [`tracing`] crate and its examples
-use the `RUST_LOG` environment variable. rustc, rustdoc, and other tools set
-custom environment variables.)
-
-[`env_logger`]: https://docs.rs/env_logger
+see the full syntax you can use. (Note: unlike the compiler, the [`tracing`]
+crate and its examples use the `RUST_LOG` environment variable. rustc, rustdoc,
+and other tools set custom environment variables.)
 
 **Note that unless you use a very strict filter, the logger will emit a lot of
 output, so use the most specific module(s) you can (comma-separated if
