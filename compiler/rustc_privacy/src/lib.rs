@@ -832,21 +832,15 @@ impl Visitor<'tcx> for EmbargoVisitor<'tcx> {
     }
 
     fn visit_macro_def(&mut self, md: &'tcx hir::MacroDef<'tcx>) {
-        // HACK (or fix?): a
-        // ```rust,ignore (dummy example)
-        // mod private {
-        //     #[rustc_macro_transparency(semitransparent)]
-        //     pub macro m { … }
-        // }
-        // ```
-        // is *not* `Public`ly reachable and yet this shortcut would express
-        // that.
-        // FIXME!
-        if md.ast.macro_rules
-            && attr::find_transparency(&self.tcx.sess, &md.attrs, md.ast.macro_rules).0
-                != Transparency::Opaque
+        // Non-opaque macros cannot make other items more accessible than they already are.
+        if attr::find_transparency(&self.tcx.sess, &md.attrs, md.ast.macro_rules).0
+            != Transparency::Opaque
         {
-            self.update(md.hir_id, Some(AccessLevel::Public));
+            // `#[macro_export]`-ed `macro_rules!` are `Public` since they
+            // ignore their containing path to always appear at the crate root.
+            if md.ast.macro_rules {
+                self.update(md.hir_id, Some(AccessLevel::Public));
+            }
             return;
         }
 
