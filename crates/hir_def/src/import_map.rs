@@ -186,14 +186,16 @@ impl ImportMap {
         is_type_in_ns: bool,
         original_import_info: &ImportInfo,
     ) {
-        mark::hit!(type_aliases_ignored);
         for (assoc_item_name, item) in &db.trait_data(tr).items {
             let module_def_id = match item {
                 AssocItemId::FunctionId(f) => ModuleDefId::from(*f),
                 AssocItemId::ConstId(c) => ModuleDefId::from(*c),
                 // cannot use associated type aliases directly: need a `<Struct as Trait>::TypeAlias`
                 // qualifier, ergo no need to store it for imports in import_map
-                AssocItemId::TypeAliasId(_) => continue,
+                AssocItemId::TypeAliasId(_) => {
+                    mark::hit!(type_aliases_ignored);
+                    continue;
+                }
             };
             let assoc_item = if is_type_in_ns {
                 ItemInNs::Types(module_def_id)
