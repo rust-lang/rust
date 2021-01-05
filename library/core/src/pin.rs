@@ -14,12 +14,12 @@
 //! for more details.
 //!
 //! By default, all types in Rust are movable. Rust allows passing all types by-value,
-//! and common smart-pointer types such as <code>[Box]\<T></code> and `&mut T` allow replacing and
+//! and common smart-pointer types such as <code>[Box]\<T></code> and <code>[&mut] T</code> allow replacing and
 //! moving the values they contain: you can move out of a <code>[Box]\<T></code>, or you can use [`mem::swap`].
 //! <code>[Pin]\<P></code> wraps a pointer type `P`, so <code>[Pin]<[Box]\<T>></code> functions much like a regular
 //! <code>[Box]\<T></code>: when a <code>[Pin]<[Box]\<T>></code> gets dropped, so do its contents, and the memory gets
-//! deallocated. Similarly, <code>[Pin]<&mut T></code> is a lot like `&mut T`. However, <code>[Pin]\<P></code> does
-//! not let clients actually obtain a <code>[Box]\<T></code> or `&mut T` to pinned data, which implies that you
+//! deallocated. Similarly, <code>[Pin]<[&mut] T></code> is a lot like <code>[&mut] T</code>. However, <code>[Pin]\<P></code> does
+//! not let clients actually obtain a <code>[Box]\<T></code> or <code>[&mut] T</code> to pinned data, which implies that you
 //! cannot use operations such as [`mem::swap`]:
 //!
 //! ```
@@ -35,12 +35,12 @@
 //! It is worth reiterating that <code>[Pin]\<P></code> does *not* change the fact that a Rust compiler
 //! considers all types movable. [`mem::swap`] remains callable for any `T`. Instead, <code>[Pin]\<P></code>
 //! prevents certain *values* (pointed to by pointers wrapped in <code>[Pin]\<P></code>) from being
-//! moved by making it impossible to call methods that require `&mut T` on them
+//! moved by making it impossible to call methods that require <code>[&mut] T</code> on them
 //! (like [`mem::swap`]).
 //!
 //! <code>[Pin]\<P></code> can be used to wrap any pointer type `P`, and as such it interacts with
-//! [`Deref`] and [`DerefMut`]. A <code>[Pin]\<P></code> where `P: Deref` should be considered
-//! as a "`P`-style pointer" to a pinned `P::Target` -- so, a <code>[Pin]<[Box]\<T>></code> is
+//! [`Deref`] and [`DerefMut`]. A <code>[Pin]\<P></code> where <code>P: [Deref]</code> should be considered
+//! as a "`P`-style pointer" to a pinned <code>P::[Target]</code> – so, a <code>[Pin]<[Box]\<T>></code> is
 //! an owned pointer to a pinned `T`, and a <code>[Pin]<[Rc]\<T>></code> is a reference-counted
 //! pointer to a pinned `T`.
 //! For correctness, <code>[Pin]\<P></code> relies on the implementations of [`Deref`] and
@@ -53,11 +53,11 @@
 //! rely on having a stable address. This includes all the basic types (like
 //! [`bool`], [`i32`], and references) as well as types consisting solely of these
 //! types. Types that do not care about pinning implement the [`Unpin`]
-//! auto-trait, which cancels the effect of <code>[Pin]\<P></code>. For `T: Unpin`,
-//! <code>[Pin]<[Box]\<T>></code> and <code>[Box]\<T></code> function identically, as do <code>[Pin]<&mut T></code> and
-//! `&mut T`.
+//! auto-trait, which cancels the effect of <code>[Pin]\<P></code>. For <code>T: [Unpin]</code>,
+//! <code>[Pin]<[Box]\<T>></code> and <code>[Box]\<T></code> function identically, as do <code>[Pin]<[&mut] T></code> and
+//! <code>[&mut] T</code>.
 //!
-//! Note that pinning and [`Unpin`] only affect the pointed-to type `P::Target`, not the pointer
+//! Note that pinning and [`Unpin`] only affect the pointed-to type <code>P::[Target]</code>, not the pointer
 //! type `P` itself that got wrapped in <code>[Pin]\<P></code>. For example, whether or not <code>[Box]\<T></code> is
 //! [`Unpin`] has no effect on the behavior of <code>[Pin]<[Box]\<T>></code> (here, `T` is the
 //! pointed-to type).
@@ -65,7 +65,7 @@
 //! # Example: self-referential struct
 //!
 //! Before we go into more details to explain the guarantees and choices
-//! associated with `Pin<T>`, we discuss some examples for how it might be used.
+//! associated with <code>[Pin]\<P></code>, we discuss some examples for how it might be used.
 //! Feel free to [skip to where the theoretical discussion continues](#drop-guarantee).
 //!
 //! ```rust
@@ -165,18 +165,18 @@
 //! # `Drop` implementation
 //!
 //! If your type uses pinning (such as the two examples above), you have to be careful
-//! when implementing [`Drop`]. The [`drop`] function takes `&mut self`, but this
+//! when implementing [`Drop`]. The [`drop`] function takes <code>[&mut] self</code>, but this
 //! is called *even if your type was previously pinned*! It is as if the
 //! compiler automatically called [`Pin::get_unchecked_mut`].
 //!
 //! This can never cause a problem in safe code because implementing a type that
 //! relies on pinning requires unsafe code, but be aware that deciding to make
 //! use of pinning in your type (for example by implementing some operation on
-//! <code>[Pin]<&Self></code> or <code>[Pin]<&mut Self></code>) has consequences for your [`Drop`]
+//! <code>[Pin]<[&]Self></code> or <code>[Pin]<[&mut] Self></code>) has consequences for your [`Drop`]
 //! implementation as well: if an element of your type could have been pinned,
-//! you must treat [`Drop`] as implicitly taking <code>[Pin]<&mut Self></code>.
+//! you must treat [`Drop`] as implicitly taking <code>[Pin]<[&mut] Self></code>.
 //!
-//! For example, you could implement `Drop` as follows:
+//! For example, you could implement [`Drop`] as follows:
 //!
 //! ```rust,no_run
 //! # use std::pin::Pin;
@@ -204,10 +204,10 @@
 //! # Projections and Structural Pinning
 //!
 //! When working with pinned structs, the question arises how one can access the
-//! fields of that struct in a method that takes just <code>[Pin]<&mut Struct></code>.
+//! fields of that struct in a method that takes just <code>[Pin]<[&mut] Struct></code>.
 //! The usual approach is to write helper methods (so called *projections*)
-//! that turn <code>[Pin]<&mut Struct></code> into a reference to the field, but what
-//! type should that reference have? Is it <code>[Pin]<&mut Field></code> or `&mut Field`?
+//! that turn <code>[Pin]<[&mut] Struct></code> into a reference to the field, but what
+//! type should that reference have? Is it <code>[Pin]<[&mut] Field></code> or <code>[&mut] Field</code>?
 //! The same question arises with the fields of an `enum`, and also when considering
 //! container/wrapper types such as <code>[Vec]\<T></code>, <code>[Box]\<T></code>, or <code>[RefCell]\<T></code>.
 //! (This question applies to both mutable and shared references, we just
@@ -215,7 +215,7 @@
 //!
 //! It turns out that it is actually up to the author of the data structure
 //! to decide whether the pinned projection for a particular field turns
-//! <code>[Pin]<&mut Struct></code> into <code>[Pin]<&mut Field></code> or `&mut Field`. There are some
+//! <code>[Pin]<[&mut] Struct></code> into <code>[Pin]<[&mut] Field></code> or <code>[&mut] Field</code>. There are some
 //! constraints though, and the most important constraint is *consistency*:
 //! every field can be *either* projected to a pinned reference, *or* have
 //! pinning removed as part of the projection. If both are done for the same field,
@@ -230,12 +230,12 @@
 //! ## Pinning *is not* structural for `field`
 //!
 //! It may seem counter-intuitive that the field of a pinned struct might not be pinned,
-//! but that is actually the easiest choice: if a <code>[Pin]<&mut Field></code> is never created,
+//! but that is actually the easiest choice: if a <code>[Pin]<[&mut] Field></code> is never created,
 //! nothing can go wrong! So, if you decide that some field does not have structural pinning,
 //! all you have to ensure is that you never create a pinned reference to that field.
 //!
 //! Fields without structural pinning may have a projection method that turns
-//! <code>[Pin]<&mut Struct></code> into `&mut Field`:
+//! <code>[Pin]<[&mut] Struct></code> into <code>[&mut] Field</code>:
 //!
 //! ```rust,no_run
 //! # use std::pin::Pin;
@@ -249,16 +249,16 @@
 //! }
 //! ```
 //!
-//! You may also `impl Unpin for Struct` *even if* the type of `field`
+//! You may also <code>impl [Unpin] for Struct</code> *even if* the type of `field`
 //! is not [`Unpin`]. What that type thinks about pinning is not relevant
-//! when no <code>[Pin]<&mut Field></code> is ever created.
+//! when no <code>[Pin]<[&mut] Field></code> is ever created.
 //!
 //! ## Pinning *is* structural for `field`
 //!
 //! The other option is to decide that pinning is "structural" for `field`,
 //! meaning that if the struct is pinned then so is the field.
 //!
-//! This allows writing a projection that creates a <code>[Pin]<&mut Field></code>, thus
+//! This allows writing a projection that creates a <code>[Pin]<[&mut] Field></code>, thus
 //! witnessing that the field is pinned:
 //!
 //! ```rust,no_run
@@ -278,12 +278,12 @@
 //! 1.  The struct must only be [`Unpin`] if all the structural fields are
 //!     [`Unpin`]. This is the default, but [`Unpin`] is a safe trait, so as the author of
 //!     the struct it is your responsibility *not* to add something like
-//!     `impl<T> Unpin for Struct<T>`. (Notice that adding a projection operation
+//!     <code>impl\<T> [Unpin] for Struct\<T></code>. (Notice that adding a projection operation
 //!     requires unsafe code, so the fact that [`Unpin`] is a safe trait does not break
-//!     the principle that you only have to worry about any of this if you use `unsafe`.)
+//!     the principle that you only have to worry about any of this if you use [`unsafe`].)
 //! 2.  The destructor of the struct must not move structural fields out of its argument. This
-//!     is the exact point that was raised in the [previous section][drop-impl]: `drop` takes
-//!     `&mut self`, but the struct (and hence its fields) might have been pinned before.
+//!     is the exact point that was raised in the [previous section][drop-impl]: [`drop`] takes
+//!     <code>[&mut] self</code>, but the struct (and hence its fields) might have been pinned before.
 //!     You have to guarantee that you do not move a field inside your [`Drop`] implementation.
 //!     In particular, as explained previously, this means that your struct must *not*
 //!     be `#[repr(packed)]`.
@@ -299,13 +299,13 @@
 //!     does not cause unsoundness.)
 //! 4.  You must not offer any other operations that could lead to data being moved out of
 //!     the structural fields when your type is pinned. For example, if the struct contains an
-//!     <code>[Option]\<T></code> and there is a `take`-like operation with type
-//!     `fn(Pin<&mut Struct<T>>) -> Option<T>`,
-//!     that operation can be used to move a `T` out of a pinned `Struct<T>` -- which means
+//!     <code>[Option]\<T></code> and there is a [`take`][Option::take]-like operation with type
+//!     <code>fn([Pin]<[&mut] Struct\<T>>) -> [Option]\<T></code>,
+//!     that operation can be used to move a `T` out of a pinned `Struct<T>` – which means
 //!     pinning cannot be structural for the field holding this data.
 //!
 //!     For a more complex example of moving data out of a pinned type, imagine if <code>[RefCell]\<T></code>
-//!     had a method `fn get_pin_mut(self: Pin<&mut Self>) -> Pin<&mut T>`.
+//!     had a method <code>fn get_pin_mut(self: [Pin]<[&mut] Self>) -> [Pin]<[&mut] T></code>.
 //!     Then we could do the following:
 //!     ```compile_fail
 //!     fn exploit_ref_cell<T>(rc: Pin<&mut RefCell<T>>) {
@@ -316,7 +316,7 @@
 //!     }
 //!     ```
 //!     This is catastrophic, it means we can first pin the content of the <code>[RefCell]\<T></code>
-//!     (using `RefCell::get_pin_mut`) and then move that content using the mutable
+//!     (using <code>[RefCell]::get_pin_mut</code>) and then move that content using the mutable
 //!     reference we got later.
 //!
 //! ## Examples
@@ -328,15 +328,15 @@
 //! contents! Nor could it allow [`push`][Vec::push], which might reallocate and thus also move the
 //! contents.
 //!
-//! A <code>[Vec]\<T></code> without structural pinning could `impl<T> Unpin for Vec<T>`, because the contents
+//! A <code>[Vec]\<T></code> without structural pinning could <code>impl\<T> [Unpin] for [Vec]\<T></code>, because the contents
 //! are never pinned and the <code>[Vec]\<T></code> itself is fine with being moved as well.
 //! At that point pinning just has no effect on the vector at all.
 //!
 //! In the standard library, pointer types generally do not have structural pinning,
-//! and thus they do not offer pinning projections. This is why `Box<T>: Unpin` holds for all `T`.
-//! It makes sense to do this for pointer types, because moving the `Box<T>`
-//! does not actually move the `T`: the <code>[Box]\<T></code> can be freely movable (aka `Unpin`) even if
-//! the `T` is not. In fact, even <code>[Pin]<[Box]\<T>></code> and <code>[Pin]<&mut T></code> are always
+//! and thus they do not offer pinning projections. This is why <code>[Box]\<T>: [Unpin]</code> holds for all `T`.
+//! It makes sense to do this for pointer types, because moving the <code>[Box]\<T></code>
+//! does not actually move the `T`: the <code>[Box]\<T></code> can be freely movable (aka [`Unpin`]) even if
+//! the `T` is not. In fact, even <code>[Pin]<[Box]\<T>></code> and <code>[Pin]<[&mut] T></code> are always
 //! [`Unpin`] themselves, for the same reason: their contents (the `T`) are pinned, but the
 //! pointers themselves can be moved without moving the pinned data. For both <code>[Box]\<T></code> and
 //! <code>[Pin]<[Box]\<T>></code>, whether the content is pinned is entirely independent of whether the
@@ -346,10 +346,12 @@
 //! for the nested futures, as you need to get pinned references to them to call [`poll`].
 //! But if your combinator contains any other data that does not need to be pinned,
 //! you can make those fields not structural and hence freely access them with a
-//! mutable reference even when you just have <code>[Pin]<&mut Self></code> (such as in your own
+//! mutable reference even when you just have <code>[Pin]<[&mut] Self></code> (such as in your own
 //! [`poll`] implementation).
 //!
+//! [Deref]: crate::ops::Deref
 //! [`Deref`]: crate::ops::Deref
+//! [Target]: crate::ops::Deref::Target
 //! [`DerefMut`]: crate::ops::DerefMut
 //! [`mem::swap`]: crate::mem::swap
 //! [`mem::forget`]: crate::mem::forget
@@ -367,6 +369,9 @@
 //! [drop-impl]: #drop-implementation
 //! [drop-guarantee]: #drop-guarantee
 //! [`poll`]: crate::future::Future::poll
+//! [&]: ../../std/primitive.reference.html
+//! [&mut]: ../../std/primitive.reference.html
+//! [`unsafe`]: ../../std/keyword.unsafe.html
 
 #![stable(feature = "pin", since = "1.33.0")]
 
