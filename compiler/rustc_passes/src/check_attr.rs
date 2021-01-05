@@ -310,7 +310,7 @@ impl CheckAttrVisitor<'tcx> {
                 .sess
                 .struct_span_err(
                     meta.name_value_literal_span().unwrap_or_else(|| meta.span()),
-                    &format!("{:?} character isn't allowed in `#[doc(alias = \"...\")]`", c,),
+                    &format!("{:?} character isn't allowed in `#[doc(alias = \"...\")]`", c),
                 )
                 .emit();
             return false;
@@ -354,6 +354,17 @@ impl CheckAttrVisitor<'tcx> {
                 .struct_span_err(
                     meta.span(),
                     &format!("`#[doc(alias = \"...\")]` isn't allowed on {}", err),
+                )
+                .emit();
+            return false;
+        }
+        let item_name = self.tcx.hir().name(hir_id);
+        if item_name.to_string() == doc_alias {
+            self.tcx
+                .sess
+                .struct_span_err(
+                    meta.span(),
+                    &format!("`#[doc(alias = \"...\")]` is the same as the item's name"),
                 )
                 .emit();
             return false;
