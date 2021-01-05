@@ -4,6 +4,7 @@
 //! types, initializing and manipulating memory.
 
 #![stable(feature = "rust1", since = "1.0.0")]
+#![cfg_attr(bootstrap, allow(unused_unsafe))]
 
 use crate::clone;
 use crate::cmp;
@@ -333,7 +334,8 @@ pub const fn size_of<T>() -> usize {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_size_of_val", issue = "46571")]
 pub const fn size_of_val<T: ?Sized>(val: &T) -> usize {
-    intrinsics::size_of_val(val)
+    // SAFETY: `val` is a reference, so it's a valid raw pointer
+    unsafe { intrinsics::size_of_val(val) }
 }
 
 /// Returns the size of the pointed-to value in bytes.
@@ -381,7 +383,8 @@ pub const fn size_of_val<T: ?Sized>(val: &T) -> usize {
 #[unstable(feature = "layout_for_ptr", issue = "69835")]
 #[rustc_const_unstable(feature = "const_size_of_val_raw", issue = "46571")]
 pub const unsafe fn size_of_val_raw<T: ?Sized>(val: *const T) -> usize {
-    intrinsics::size_of_val(val)
+    // SAFETY: the caller must provide a valid raw pointer
+    unsafe { intrinsics::size_of_val(val) }
 }
 
 /// Returns the [ABI]-required minimum alignment of a type.
@@ -425,7 +428,8 @@ pub fn min_align_of<T>() -> usize {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_deprecated(reason = "use `align_of_val` instead", since = "1.2.0")]
 pub fn min_align_of_val<T: ?Sized>(val: &T) -> usize {
-    intrinsics::min_align_of_val(val)
+    // SAFETY: val is a reference, so it's a valid raw pointer
+    unsafe { intrinsics::min_align_of_val(val) }
 }
 
 /// Returns the [ABI]-required minimum alignment of a type.
@@ -469,7 +473,8 @@ pub const fn align_of<T>() -> usize {
 #[rustc_const_unstable(feature = "const_align_of_val", issue = "46571")]
 #[allow(deprecated)]
 pub const fn align_of_val<T: ?Sized>(val: &T) -> usize {
-    intrinsics::min_align_of_val(val)
+    // SAFETY: val is a reference, so it's a valid raw pointer
+    unsafe { intrinsics::min_align_of_val(val) }
 }
 
 /// Returns the [ABI]-required minimum alignment of the type of the value that `val` points to.
@@ -513,7 +518,8 @@ pub const fn align_of_val<T: ?Sized>(val: &T) -> usize {
 #[unstable(feature = "layout_for_ptr", issue = "69835")]
 #[rustc_const_unstable(feature = "const_align_of_val_raw", issue = "46571")]
 pub const unsafe fn align_of_val_raw<T: ?Sized>(val: *const T) -> usize {
-    intrinsics::min_align_of_val(val)
+    // SAFETY: the caller must provide a valid raw pointer
+    unsafe { intrinsics::min_align_of_val(val) }
 }
 
 /// Returns `true` if dropping values of type `T` matters.
