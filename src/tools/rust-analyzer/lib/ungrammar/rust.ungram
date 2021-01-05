@@ -368,7 +368,7 @@ BlockExpr =
   '{'
     Attr*
     statements:Stmt*
-    Expr?
+    tail_expr:Expr?
   '}'
 
 RefExpr =
