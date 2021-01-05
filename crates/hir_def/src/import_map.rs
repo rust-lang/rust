@@ -7,9 +7,8 @@ use fst::{self, Streamer};
 use hir_expand::name::Name;
 use indexmap::{map::Entry, IndexMap};
 use itertools::Itertools;
-use rustc_hash::{FxHashMap, FxHashSet, FxHasher};
-use smallvec::SmallVec;
-use syntax::SmolStr;
+use rustc_hash::{FxHashSet, FxHasher};
+use test_utils::mark;
 
 use crate::{
     db::DefDatabase, item_scope::ItemInNs, visibility::Visibility, AssocItemId, ModuleDefId,
@@ -25,6 +24,8 @@ pub struct ImportInfo {
     pub path: ImportPath,
     /// The module containing this item.
     pub container: ModuleId,
+    /// Whether the import is a trait associated item or not.
+    pub is_trait_assoc_item: bool,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -64,10 +65,6 @@ pub struct ImportMap {
     /// the index of the first one.
     importables: Vec<ItemInNs>,
     fst: fst::Map<Vec<u8>>,
-
-    /// Maps names of associated items to the item's ID. Only includes items whose defining trait is
-    /// exported.
-    assoc_map: FxHashMap<SmolStr, SmallVec<[AssocItemId; 1]>>,
 }
 
 impl ImportMap {
@@ -108,14 +105,27 @@ impl ImportMap {
 
                 for item in per_ns.iter_items() {
                     let path = mk_path();
+                    let path_len = path.len();
+                    let import_info =
+                        ImportInfo { path, container: module, is_trait_assoc_item: false };
+
+                    if let Some(ModuleDefId::TraitId(tr)) = item.as_module_def_id() {
+                        import_map.collect_trait_assoc_items(
+                            db,
+                            tr,
+                            matches!(item, ItemInNs::Types(_)),
+                            &import_info,
+                        );
+                    }
+
                     match import_map.map.entry(item) {
                         Entry::Vacant(entry) => {
-                            entry.insert(ImportInfo { path, container: module });
+                            entry.insert(import_info);
                         }
                         Entry::Occupied(mut entry) => {
                             // If the new path is shorter, prefer that one.
-                            if path.len() < entry.get().path.len() {
-                                *entry.get_mut() = ImportInfo { path, container: module };
+                            if path_len < entry.get().path.len() {
+                                *entry.get_mut() = import_info;
                             } else {
                                 continue;
                             }
@@ -127,11 +137,6 @@ impl ImportMap {
                     // first (else we `continue` above).
                     if let Some(ModuleDefId::ModuleId(mod_id)) = item.as_module_def_id() {
                         worklist.push((mod_id, mk_path()));
-                    }
-
-                    // If we've added a path to a trait, add the trait's methods to the method map.
-                    if let Some(ModuleDefId::TraitId(tr)) = item.as_module_def_id() {
-                        import_map.collect_trait_methods(db, tr);
                     }
                 }
             }
@@ -153,12 +158,10 @@ impl ImportMap {
                 }
             }
 
-            let start = last_batch_start;
+            let key = fst_path(&importables[last_batch_start].1.path);
+            builder.insert(key, last_batch_start as u64).unwrap();
+
             last_batch_start = idx + 1;
-
-            let key = fst_path(&importables[start].1.path);
-
-            builder.insert(key, start as u64).unwrap();
         }
 
         import_map.fst = fst::Map::new(builder.into_inner().unwrap()).unwrap();
@@ -176,10 +179,34 @@ impl ImportMap {
         self.map.get(&item)
     }
 
-    fn collect_trait_methods(&mut self, db: &dyn DefDatabase, tr: TraitId) {
-        let data = db.trait_data(tr);
-        for (name, item) in data.items.iter() {
-            self.assoc_map.entry(name.to_string().into()).or_default().push(*item);
+    fn collect_trait_assoc_items(
+        &mut self,
+        db: &dyn DefDatabase,
+        tr: TraitId,
+        is_type_in_ns: bool,
+        original_import_info: &ImportInfo,
+    ) {
+        for (assoc_item_name, item) in &db.trait_data(tr).items {
+            let module_def_id = match item {
+                AssocItemId::FunctionId(f) => ModuleDefId::from(*f),
+                AssocItemId::ConstId(c) => ModuleDefId::from(*c),
+                // cannot use associated type aliases directly: need a `<Struct as Trait>::TypeAlias`
+                // qualifier, ergo no need to store it for imports in import_map
+                AssocItemId::TypeAliasId(_) => {
+                    mark::hit!(type_aliases_ignored);
+                    continue;
+                }
+            };
+            let assoc_item = if is_type_in_ns {
+                ItemInNs::Types(module_def_id)
+            } else {
+                ItemInNs::Values(module_def_id)
+            };
+
+            let mut assoc_item_info = original_import_info.clone();
+            assoc_item_info.path.segments.push(assoc_item_name.to_owned());
+            assoc_item_info.is_trait_assoc_item = true;
+            self.map.insert(assoc_item, assoc_item_info);
         }
     }
 }
@@ -302,38 +329,38 @@ impl Query {
         self.exclude_import_kinds.insert(import_kind);
         self
     }
-}
 
-fn contains_query(query: &Query, input_path: &ImportPath, enforce_lowercase: bool) -> bool {
-    let mut input = if query.name_only {
-        input_path.segments.last().unwrap().to_string()
-    } else {
-        input_path.to_string()
-    };
-    if enforce_lowercase || !query.case_sensitive {
-        input.make_ascii_lowercase();
-    }
+    fn import_matches(&self, import: &ImportInfo, enforce_lowercase: bool) -> bool {
+        let mut input = if import.is_trait_assoc_item || self.name_only {
+            import.path.segments.last().unwrap().to_string()
+        } else {
+            import.path.to_string()
+        };
+        if enforce_lowercase || !self.case_sensitive {
+            input.make_ascii_lowercase();
+        }
 
-    let query_string =
-        if !enforce_lowercase && query.case_sensitive { &query.query } else { &query.lowercased };
+        let query_string =
+            if !enforce_lowercase && self.case_sensitive { &self.query } else { &self.lowercased };
 
-    match query.search_mode {
-        SearchMode::Equals => &input == query_string,
-        SearchMode::Contains => input.contains(query_string),
-        SearchMode::Fuzzy => {
-            let mut unchecked_query_chars = query_string.chars();
-            let mut mismatching_query_char = unchecked_query_chars.next();
+        match self.search_mode {
+            SearchMode::Equals => &input == query_string,
+            SearchMode::Contains => input.contains(query_string),
+            SearchMode::Fuzzy => {
+                let mut unchecked_query_chars = query_string.chars();
+                let mut mismatching_query_char = unchecked_query_chars.next();
 
-            for input_char in input.chars() {
-                match mismatching_query_char {
-                    None => return true,
-                    Some(matching_query_char) if matching_query_char == input_char => {
-                        mismatching_query_char = unchecked_query_chars.next();
+                for input_char in input.chars() {
+                    match mismatching_query_char {
+                        None => return true,
+                        Some(matching_query_char) if matching_query_char == input_char => {
+                            mismatching_query_char = unchecked_query_chars.next();
+                        }
+                        _ => (),
                     }
-                    _ => (),
                 }
+                mismatching_query_char.is_none()
             }
-            mismatching_query_char.is_none()
         }
     }
 }
@@ -366,13 +393,13 @@ pub fn search_dependencies<'a>(
             let import_map = &import_maps[indexed_value.index];
             let importables = &import_map.importables[indexed_value.value as usize..];
 
-            // Path shared by the importable items in this group.
-            let common_importables_path = &import_map.map[&importables[0]].path;
-            if !contains_query(&query, common_importables_path, true) {
+            let common_importable_data = &import_map.map[&importables[0]];
+            if !query.import_matches(common_importable_data, true) {
                 continue;
             }
 
-            let common_importables_path_fst = fst_path(common_importables_path);
+            // Path shared by the importable items in this group.
+            let common_importables_path_fst = fst_path(&common_importable_data.path);
             // Add the items from this `ModPath` group. Those are all subsequent items in
             // `importables` whose paths match `path`.
             let iter = importables
@@ -387,7 +414,7 @@ pub fn search_dependencies<'a>(
                 })
                 .filter(|item| {
                     !query.case_sensitive // we've already checked the common importables path case-insensitively
-                        || contains_query(&query, &import_map.map[item].path, false)
+                        || query.import_matches(&import_map.map[item], false)
                 });
             res.extend(iter);
 
@@ -395,19 +422,6 @@ pub fn search_dependencies<'a>(
                 res.truncate(query.limit);
                 return res;
             }
-        }
-    }
-
-    // Add all exported associated items whose names match the query (exactly).
-    for map in &import_maps {
-        if let Some(v) = map.assoc_map.get(&*query.query) {
-            res.extend(v.iter().map(|&assoc| {
-                ItemInNs::Types(match assoc {
-                    AssocItemId::FunctionId(it) => it.into(),
-                    AssocItemId::ConstId(it) => it.into(),
-                    AssocItemId::TypeAliasId(it) => it.into(),
-                })
-            }));
         }
     }
 
@@ -432,9 +446,9 @@ fn item_import_kind(item: ItemInNs) -> Option<ImportKind> {
 mod tests {
     use base_db::{fixture::WithFixture, SourceDatabase, Upcast};
     use expect_test::{expect, Expect};
-    use stdx::format_to;
+    use test_utils::mark;
 
-    use crate::{data::FunctionData, test_db::TestDB, AssocContainerId, Lookup};
+    use crate::{test_db::TestDB, AssocContainerId, Lookup};
 
     use super::*;
 
@@ -451,44 +465,64 @@ mod tests {
 
         let actual = search_dependencies(db.upcast(), krate, query)
             .into_iter()
-            .filter_map(|item| {
-                let mark = match item {
-                    ItemInNs::Types(ModuleDefId::FunctionId(_))
-                    | ItemInNs::Values(ModuleDefId::FunctionId(_)) => "f",
-                    ItemInNs::Types(_) => "t",
-                    ItemInNs::Values(_) => "v",
-                    ItemInNs::Macros(_) => "m",
+            .filter_map(|dependency| {
+                let dependency_krate = dependency.krate(db.upcast())?;
+                let dependency_imports = db.import_map(dependency_krate);
+
+                let (path, mark) = match assoc_item_path(&db, &dependency_imports, dependency) {
+                    Some(assoc_item_path) => (assoc_item_path, "a"),
+                    None => (
+                        dependency_imports.path_of(dependency)?.to_string(),
+                        match dependency {
+                            ItemInNs::Types(ModuleDefId::FunctionId(_))
+                            | ItemInNs::Values(ModuleDefId::FunctionId(_)) => "f",
+                            ItemInNs::Types(_) => "t",
+                            ItemInNs::Values(_) => "v",
+                            ItemInNs::Macros(_) => "m",
+                        },
+                    ),
                 };
-                item.krate(db.upcast()).map(|krate| {
-                    let map = db.import_map(krate);
 
-                    let path = match assoc_to_trait(&db, item) {
-                        Some(trait_) => {
-                            let mut full_path = map.path_of(trait_).unwrap().to_string();
-                            if let ItemInNs::Types(ModuleDefId::FunctionId(function_id))
-                            | ItemInNs::Values(ModuleDefId::FunctionId(function_id)) = item
-                            {
-                                format_to!(
-                                    full_path,
-                                    "::{}",
-                                    FunctionData::fn_data_query(&db, function_id).name,
-                                );
-                            }
-                            full_path
-                        }
-                        None => map.path_of(item).unwrap().to_string(),
-                    };
-
-                    format!(
-                        "{}::{} ({})\n",
-                        crate_graph[krate].display_name.as_ref().unwrap(),
-                        path,
-                        mark
-                    )
-                })
+                Some(format!(
+                    "{}::{} ({})\n",
+                    crate_graph[dependency_krate].display_name.as_ref()?,
+                    path,
+                    mark
+                ))
             })
             .collect::<String>();
         expect.assert_eq(&actual)
+    }
+
+    fn assoc_item_path(
+        db: &dyn DefDatabase,
+        dependency_imports: &ImportMap,
+        dependency: ItemInNs,
+    ) -> Option<String> {
+        let dependency_assoc_item_id = match dependency {
+            ItemInNs::Types(ModuleDefId::FunctionId(id))
+            | ItemInNs::Values(ModuleDefId::FunctionId(id)) => AssocItemId::from(id),
+            ItemInNs::Types(ModuleDefId::ConstId(id))
+            | ItemInNs::Values(ModuleDefId::ConstId(id)) => AssocItemId::from(id),
+            ItemInNs::Types(ModuleDefId::TypeAliasId(id))
+            | ItemInNs::Values(ModuleDefId::TypeAliasId(id)) => AssocItemId::from(id),
+            _ => return None,
+        };
+
+        let trait_ = assoc_to_trait(db, dependency)?;
+        if let ModuleDefId::TraitId(tr) = trait_.as_module_def_id()? {
+            let trait_data = db.trait_data(tr);
+            let assoc_item_name =
+                trait_data.items.iter().find_map(|(assoc_item_name, assoc_item_id)| {
+                    if &dependency_assoc_item_id == assoc_item_id {
+                        Some(assoc_item_name)
+                    } else {
+                        None
+                    }
+                })?;
+            return Some(format!("{}::{}", dependency_imports.path_of(trait_)?, assoc_item_name));
+        }
+        None
     }
 
     fn assoc_to_trait(db: &dyn DefDatabase, item: ItemInNs) -> Option<ItemInNs> {
@@ -749,6 +783,37 @@ mod tests {
     }
 
     #[test]
+    fn fuzzy_import_trait_and_assoc_items() {
+        mark::check!(type_aliases_ignored);
+        let ra_fixture = r#"
+        //- /main.rs crate:main deps:dep
+        //- /dep.rs crate:dep
+        pub mod fmt {
+            pub trait Display {
+                type FmtTypeAlias;
+                const FMT_CONST: bool;
+
+                fn format_function();
+                fn format_method(&self);
+            }
+        }
+    "#;
+
+        check_search(
+            ra_fixture,
+            "main",
+            Query::new("fmt".to_string()).search_mode(SearchMode::Fuzzy),
+            expect![[r#"
+                dep::fmt (t)
+                dep::fmt::Display (t)
+                dep::fmt::Display::FMT_CONST (a)
+                dep::fmt::Display::format_function (a)
+                dep::fmt::Display::format_method (a)
+            "#]],
+        );
+    }
+
+    #[test]
     fn search_mode() {
         let ra_fixture = r#"
             //- /main.rs crate:main deps:dep
@@ -784,8 +849,8 @@ mod tests {
                 dep::Fmt (v)
                 dep::Fmt (m)
                 dep::fmt::Display (t)
+                dep::fmt::Display::fmt (a)
                 dep::format (f)
-                dep::fmt::Display::fmt (f)
             "#]],
         );
 
@@ -798,7 +863,7 @@ mod tests {
                 dep::Fmt (t)
                 dep::Fmt (v)
                 dep::Fmt (m)
-                dep::fmt::Display::fmt (f)
+                dep::fmt::Display::fmt (a)
             "#]],
         );
 
@@ -812,7 +877,7 @@ mod tests {
                 dep::Fmt (v)
                 dep::Fmt (m)
                 dep::fmt::Display (t)
-                dep::fmt::Display::fmt (f)
+                dep::fmt::Display::fmt (a)
             "#]],
         );
     }
@@ -853,7 +918,7 @@ mod tests {
                 dep::Fmt (v)
                 dep::Fmt (m)
                 dep::fmt::Display (t)
-                dep::fmt::Display::fmt (f)
+                dep::fmt::Display::fmt (a)
             "#]],
         );
 
@@ -866,7 +931,7 @@ mod tests {
                 dep::Fmt (t)
                 dep::Fmt (v)
                 dep::Fmt (m)
-                dep::fmt::Display::fmt (f)
+                dep::fmt::Display::fmt (a)
             "#]],
         );
     }

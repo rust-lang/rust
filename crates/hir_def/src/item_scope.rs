@@ -10,10 +10,9 @@ use once_cell::sync::Lazy;
 use rustc_hash::{FxHashMap, FxHashSet};
 use test_utils::mark;
 
-use crate::ModuleId;
 use crate::{
     db::DefDatabase, per_ns::PerNs, visibility::Visibility, AdtId, BuiltinType, HasModule, ImplId,
-    LocalModuleId, Lookup, MacroDefId, ModuleDefId, TraitId,
+    LocalModuleId, Lookup, MacroDefId, ModuleDefId, ModuleId, TraitId,
 };
 
 #[derive(Copy, Clone)]
