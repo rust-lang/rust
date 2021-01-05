@@ -60,6 +60,7 @@
 #[doc(alias = "*")]
 #[doc(alias = "&*")]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_diagnostic_item = "Deref"]
 pub trait Deref {
     /// The resulting type after dereferencing.
     #[stable(feature = "rust1", since = "1.0.0")]

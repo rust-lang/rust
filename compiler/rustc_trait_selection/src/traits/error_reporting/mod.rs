@@ -819,7 +819,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 sig.decl
                     .inputs
                     .iter()
-                    .map(|arg| match arg.clone().kind {
+                    .map(|arg| match arg.kind {
                         hir::TyKind::Tup(ref tys) => ArgKind::Tuple(
                             Some(arg.span),
                             vec![("_".to_owned(), "_".to_owned()); tys.len()],
