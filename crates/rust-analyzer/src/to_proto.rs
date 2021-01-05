@@ -605,7 +605,7 @@ pub(crate) fn goto_definition_response(
     src: Option<FileRange>,
     targets: Vec<NavigationTarget>,
 ) -> Result<lsp_types::GotoDefinitionResponse> {
-    if snap.config.client_caps.location_link {
+    if snap.config.location_link() {
         let links = targets
             .into_iter()
             .map(|nav| location_link(snap, src, nav))
@@ -785,7 +785,7 @@ pub(crate) fn unresolved_code_action(
     assert!(assist.source_change.is_none());
     let res = lsp_ext::CodeAction {
         title: assist.label.to_string(),
-        group: assist.group.filter(|_| snap.config.client_caps.code_action_group).map(|gr| gr.0),
+        group: assist.group.filter(|_| snap.config.code_action_group()).map(|gr| gr.0),
         kind: Some(code_action_kind(assist.id.1)),
         edit: None,
         is_preferred: None,
@@ -805,7 +805,7 @@ pub(crate) fn resolved_code_action(
     let res = lsp_ext::CodeAction {
         edit: Some(snippet_workspace_edit(snap, change)?),
         title: assist.label.to_string(),
-        group: assist.group.filter(|_| snap.config.client_caps.code_action_group).map(|gr| gr.0),
+        group: assist.group.filter(|_| snap.config.code_action_group()).map(|gr| gr.0),
         kind: Some(code_action_kind(assist.id.1)),
         is_preferred: None,
         data: None,

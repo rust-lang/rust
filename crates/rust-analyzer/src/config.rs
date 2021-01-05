@@ -175,7 +175,7 @@ config_data! {
 
 #[derive(Debug, Clone)]
 pub struct Config {
-    pub client_caps: ClientCapsConfig,
+    pub caps: lsp_types::ClientCapabilities,
 
     pub publish_diagnostics: bool,
     pub diagnostics: DiagnosticsConfig,
@@ -286,26 +286,12 @@ pub struct RunnablesConfig {
     pub cargo_extra_args: Vec<String>,
 }
 
-#[derive(Debug, Clone, Default)]
-pub struct ClientCapsConfig {
-    pub location_link: bool,
-    pub line_folding_only: bool,
-    pub hierarchical_symbols: bool,
-    pub code_action_literals: bool,
-    pub work_done_progress: bool,
-    pub code_action_group: bool,
-    pub code_action_resolve: bool,
-    pub hover_actions: bool,
-    pub status_notification: bool,
-    pub signature_help_label_offsets: bool,
-}
-
 impl Config {
     pub fn new(root_path: AbsPathBuf) -> Self {
         // Defaults here don't matter, we'll immediately re-write them with
         // ConfigData.
         let mut res = Config {
-            client_caps: ClientCapsConfig::default(),
+            caps: lsp_types::ClientCapabilities::default(),
 
             publish_diagnostics: false,
             diagnostics: DiagnosticsConfig::default(),
@@ -505,37 +491,10 @@ impl Config {
     }
 
     pub fn update_caps(&mut self, caps: &ClientCapabilities) {
+        self.caps = caps.clone();
         if let Some(doc_caps) = caps.text_document.as_ref() {
             if let Some(value) = doc_caps.hover.as_ref().and_then(|it| it.content_format.as_ref()) {
                 self.hover.markdown = value.contains(&MarkupKind::Markdown)
-            }
-            if let Some(value) = doc_caps.definition.as_ref().and_then(|it| it.link_support) {
-                self.client_caps.location_link = value;
-            }
-            if let Some(value) = doc_caps.folding_range.as_ref().and_then(|it| it.line_folding_only)
-            {
-                self.client_caps.line_folding_only = value
-            }
-            if let Some(value) = doc_caps
-                .document_symbol
-                .as_ref()
-                .and_then(|it| it.hierarchical_document_symbol_support)
-            {
-                self.client_caps.hierarchical_symbols = value
-            }
-            if let Some(value) =
-                doc_caps.code_action.as_ref().map(|it| it.code_action_literal_support.is_some())
-            {
-                self.client_caps.code_action_literals = value;
-            }
-            if let Some(value) = doc_caps
-                .signature_help
-                .as_ref()
-                .and_then(|it| it.signature_information.as_ref())
-                .and_then(|it| it.parameter_information.as_ref())
-                .and_then(|it| it.label_offset_support)
-            {
-                self.client_caps.signature_help_label_offsets = value;
             }
 
             self.completion.allow_snippets(false);
@@ -548,20 +507,6 @@ impl Config {
                     }
                 }
             }
-
-            if let Some(code_action) = &doc_caps.code_action {
-                if let Some(resolve_support) = &code_action.resolve_support {
-                    if resolve_support.properties.iter().any(|it| it == "edit") {
-                        self.client_caps.code_action_resolve = true;
-                    }
-                }
-            }
-        }
-
-        if let Some(window_caps) = caps.window.as_ref() {
-            if let Some(value) = window_caps.work_done_progress {
-                self.client_caps.work_done_progress = value;
-            }
         }
 
         self.assist.allow_snippets(false);
@@ -571,10 +516,6 @@ impl Config {
 
             let snippet_text_edit = get_bool("snippetTextEdit");
             self.assist.allow_snippets(snippet_text_edit);
-
-            self.client_caps.code_action_group = get_bool("codeActionGroup");
-            self.client_caps.hover_actions = get_bool("hoverActions");
-            self.client_caps.status_notification = get_bool("statusNotification");
         }
 
         if let Some(workspace_caps) = caps.workspace.as_ref() {
@@ -594,6 +535,95 @@ impl Config {
 
     pub fn json_schema() -> serde_json::Value {
         ConfigData::json_schema()
+    }
+}
+
+macro_rules! try_ {
+    ($expr:expr) => {
+        || -> _ { Some($expr) }()
+    };
+}
+macro_rules! try_or {
+    ($expr:expr, $or:expr) => {
+        try_!($expr).unwrap_or($or)
+    };
+}
+
+impl Config {
+    pub fn location_link(&self) -> bool {
+        try_or!(self.caps.text_document.as_ref()?.definition?.link_support?, false)
+    }
+    pub fn line_folding_only(&self) -> bool {
+        try_or!(self.caps.text_document.as_ref()?.folding_range.as_ref()?.line_folding_only?, false)
+    }
+    pub fn hierarchical_symbols(&self) -> bool {
+        try_or!(
+            self.caps
+                .text_document
+                .as_ref()?
+                .document_symbol
+                .as_ref()?
+                .hierarchical_document_symbol_support?,
+            false
+        )
+    }
+    pub fn code_action_literals(&self) -> bool {
+        try_!(self
+            .caps
+            .text_document
+            .as_ref()?
+            .code_action
+            .as_ref()?
+            .code_action_literal_support
+            .as_ref()?)
+        .is_some()
+    }
+    pub fn work_done_progress(&self) -> bool {
+        try_or!(self.caps.window.as_ref()?.work_done_progress?, false)
+    }
+    pub fn code_action_resolve(&self) -> bool {
+        try_or!(
+            self.caps
+                .text_document
+                .as_ref()?
+                .code_action
+                .as_ref()?
+                .resolve_support
+                .as_ref()?
+                .properties
+                .as_slice(),
+            &[]
+        )
+        .iter()
+        .any(|it| it == "edit")
+    }
+    pub fn signature_help_label_offsets(&self) -> bool {
+        try_or!(
+            self.caps
+                .text_document
+                .as_ref()?
+                .signature_help
+                .as_ref()?
+                .signature_information
+                .as_ref()?
+                .parameter_information
+                .as_ref()?
+                .label_offset_support?,
+            false
+        )
+    }
+
+    fn experimental(&self, index: &'static str) -> bool {
+        try_or!(self.caps.experimental.as_ref()?.get(index)?.as_bool()?, false)
+    }
+    pub fn code_action_group(&self) -> bool {
+        self.experimental("codeActionGroup")
+    }
+    pub fn hover_actions(&self) -> bool {
+        self.experimental("hoverActions")
+    }
+    pub fn status_notification(&self) -> bool {
+        self.experimental("statusNotification")
     }
 }
 

@@ -79,7 +79,7 @@ impl GlobalState {
     }
     pub(crate) fn transition(&mut self, new_status: Status) {
         self.status = new_status;
-        if self.config.client_caps.status_notification {
+        if self.config.status_notification() {
             let lsp_status = match new_status {
                 Status::Loading => lsp_ext::Status::Loading,
                 Status::Ready => lsp_ext::Status::Ready,

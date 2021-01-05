@@ -14,7 +14,7 @@ use lsp_types::{
 use lsp_types::{ProgressParams, ProgressParamsValue};
 use project_model::{CargoConfig, ProjectManifest};
 use rust_analyzer::{
-    config::{ClientCapsConfig, Config, FilesConfig, FilesWatcher, LinkedProject},
+    config::{Config, FilesConfig, FilesWatcher, LinkedProject},
     main_loop,
 };
 use serde::Serialize;
@@ -84,10 +84,24 @@ impl<'a> Project<'a> {
             .collect::<Vec<_>>();
 
         let mut config = Config {
-            client_caps: ClientCapsConfig {
-                location_link: true,
-                code_action_literals: true,
-                work_done_progress: true,
+            caps: lsp_types::ClientCapabilities {
+                text_document: Some(lsp_types::TextDocumentClientCapabilities {
+                    definition: Some(lsp_types::GotoCapability {
+                        link_support: Some(true),
+                        ..Default::default()
+                    }),
+                    code_action: Some(lsp_types::CodeActionClientCapabilities {
+                        code_action_literal_support: Some(
+                            lsp_types::CodeActionLiteralSupport::default(),
+                        ),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                }),
+                window: Some(lsp_types::WindowClientCapabilities {
+                    work_done_progress: Some(true),
+                    ..Default::default()
+                }),
                 ..Default::default()
             },
             cargo: CargoConfig { no_sysroot: !self.with_sysroot, ..Default::default() },
