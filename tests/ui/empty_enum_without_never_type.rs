@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 #![warn(clippy::empty_enum)]
-// Enable never type to test empty enum lint
-#![feature(never_type)]
+
+// `never_type` is not enabled; this test has no stderr file
 enum Empty {}
 
 fn main() {}
