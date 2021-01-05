@@ -1,6 +1,7 @@
 //! Defines database & queries for name resolution.
 use std::sync::Arc;
 
+use arena::map::ArenaMap;
 use base_db::{salsa, CrateId, SourceDatabase, Upcast};
 use hir_expand::{db::AstDatabase, HirFileId};
 use syntax::SmolStr;
@@ -16,8 +17,8 @@ use crate::{
     lang_item::{LangItemTarget, LangItems},
     nameres::CrateDefMap,
     AttrDefId, ConstId, ConstLoc, DefWithBodyId, EnumId, EnumLoc, FunctionId, FunctionLoc,
-    GenericDefId, ImplId, ImplLoc, StaticId, StaticLoc, StructId, StructLoc, TraitId, TraitLoc,
-    TypeAliasId, TypeAliasLoc, UnionId, UnionLoc,
+    GenericDefId, ImplId, ImplLoc, LocalEnumVariantId, LocalFieldId, StaticId, StaticLoc, StructId,
+    StructLoc, TraitId, TraitLoc, TypeAliasId, TypeAliasLoc, UnionId, UnionLoc, VariantId,
 };
 
 #[salsa::query_group(InternDatabaseStorage)]
@@ -91,6 +92,12 @@ pub trait DefDatabase: InternDatabase + AstDatabase + Upcast<dyn AstDatabase> {
 
     #[salsa::invoke(GenericParams::generic_params_query)]
     fn generic_params(&self, def: GenericDefId) -> Arc<GenericParams>;
+
+    #[salsa::invoke(Attrs::variants_attrs_query)]
+    fn variants_attrs(&self, def: EnumId) -> Arc<ArenaMap<LocalEnumVariantId, Attrs>>;
+
+    #[salsa::invoke(Attrs::fields_attrs_query)]
+    fn fields_attrs(&self, def: VariantId) -> Arc<ArenaMap<LocalFieldId, Attrs>>;
 
     #[salsa::invoke(Attrs::attrs_query)]
     fn attrs(&self, def: AttrDefId) -> Attrs;
