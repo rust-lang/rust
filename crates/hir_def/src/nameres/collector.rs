@@ -13,7 +13,7 @@ use hir_expand::{
     builtin_macro::find_builtin_macro,
     name::{AsName, Name},
     proc_macro::ProcMacroExpander,
-    HirFileId, MacroCallId, MacroDefId, MacroDefKind,
+    HirFileId, MacroCallId, MacroCallKind, MacroDefId, MacroDefKind,
 };
 use hir_expand::{InFile, MacroCallLoc};
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -860,6 +860,37 @@ impl DefCollector<'_> {
     }
 
     fn finish(mut self) -> CrateDefMap {
+        // Emit diagnostics for all remaining unexpanded macros.
+
+        for directive in &self.unexpanded_macros {
+            let mut error = None;
+            directive.ast_id.as_call_id_with_errors(
+                self.db,
+                self.def_map.krate,
+                |path| {
+                    let resolved_res = self.def_map.resolve_path_fp_with_macro(
+                        self.db,
+                        ResolveMode::Other,
+                        directive.module_id,
+                        &path,
+                        BuiltinShadowMode::Module,
+                    );
+                    resolved_res.resolved_def.take_macros()
+                },
+                &mut |e| {
+                    error.get_or_insert(e);
+                },
+            );
+
+            if let Some(err) = error {
+                self.def_map.diagnostics.push(DefDiagnostic::macro_error(
+                    directive.module_id,
+                    MacroCallKind::FnLike(directive.ast_id.ast_id),
+                    err.to_string(),
+                ));
+            }
+        }
+
         // Emit diagnostics for all remaining unresolved imports.
 
         // We'd like to avoid emitting a diagnostics avalanche when some `extern crate` doesn't
