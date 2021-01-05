@@ -219,6 +219,7 @@ impl<T: ?Sized> BorrowMut<T> for T {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> Borrow<T> for &T {
+    #[rustc_diagnostic_item = "noop_method_borrow"]
     fn borrow(&self) -> &T {
         &**self
     }

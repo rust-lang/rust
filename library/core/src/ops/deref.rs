@@ -77,6 +77,7 @@ pub trait Deref {
 impl<T: ?Sized> Deref for &T {
     type Target = T;
 
+    #[rustc_diagnostic_item = "noop_method_deref"]
     fn deref(&self) -> &T {
         *self
     }

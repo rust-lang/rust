@@ -1,0 +1,28 @@
+warning: call to noop method
+  --> $DIR/noop-method-call.rs:24:32
+   |
+LL |     let foo_clone: &Foo<u32> = foo.clone();
+   |                                ^^^^^^^^^^^
+   |
+   = note: `#[warn(noop_method_call)]` on by default
+
+warning: call to noop method
+  --> $DIR/noop-method-call.rs:30:39
+   |
+LL |     let derefed: &DerefExample<u32> = deref.deref();
+   |                                       ^^^^^^^^^^^^^
+
+warning: call to noop method
+  --> $DIR/noop-method-call.rs:36:31
+   |
+LL |     let borrowed: &Foo<u32> = a.borrow();
+   |                               ^^^^^^^^^^
+
+warning: call to noop method
+  --> $DIR/noop-method-call.rs:44:5
+   |
+LL |     foo.clone();
+   |     ^^^^^^^^^^^
+
+warning: 4 warnings emitted
+
