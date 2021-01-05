@@ -46,7 +46,7 @@ impl GlobalState {
         message: Option<String>,
         fraction: Option<f64>,
     ) {
-        if !self.config.client_caps.work_done_progress {
+        if !self.config.work_done_progress() {
             return;
         }
         let percentage = fraction.map(|f| {

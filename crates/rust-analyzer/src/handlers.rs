@@ -320,7 +320,7 @@ pub(crate) fn handle_document_symbol(
         acc
     };
 
-    let res = if snap.config.client_caps.hierarchical_symbols {
+    let res = if snap.config.hierarchical_symbols() {
         document_symbols.into()
     } else {
         let url = to_proto::url(&snap, file_id);
@@ -727,7 +727,7 @@ pub(crate) fn handle_folding_range(
     let folds = snap.analysis.folding_ranges(file_id)?;
     let text = snap.analysis.file_text(file_id)?;
     let line_index = snap.analysis.file_line_index(file_id)?;
-    let line_folding_only = snap.config.client_caps.line_folding_only;
+    let line_folding_only = snap.config.line_folding_only();
     let res = folds
         .into_iter()
         .map(|it| to_proto::folding_range(&*text, &line_index, line_folding_only, it))
@@ -746,11 +746,8 @@ pub(crate) fn handle_signature_help(
         None => return Ok(None),
     };
     let concise = !snap.config.call_info_full;
-    let res = to_proto::signature_help(
-        call_info,
-        concise,
-        snap.config.client_caps.signature_help_label_offsets,
-    );
+    let res =
+        to_proto::signature_help(call_info, concise, snap.config.signature_help_label_offsets());
     Ok(Some(res))
 }
 
@@ -929,7 +926,7 @@ pub(crate) fn handle_code_action(
     // We intentionally don't support command-based actions, as those either
     // requires custom client-code anyway, or requires server-initiated edits.
     // Server initiated edits break causality, so we avoid those as well.
-    if !snap.config.client_caps.code_action_literals {
+    if !snap.config.code_action_literals() {
         return Ok(None);
     }
 
@@ -959,7 +956,7 @@ pub(crate) fn handle_code_action(
         add_quick_fixes(&snap, frange, &line_index, &mut res)?;
     }
 
-    if snap.config.client_caps.code_action_resolve {
+    if snap.config.code_action_resolve() {
         for (index, assist) in
             snap.analysis.assists(&assists_config, false, frange)?.into_iter().enumerate()
         {
@@ -1542,7 +1539,7 @@ fn debug_single_command(runnable: &lsp_ext::Runnable) -> Command {
 }
 
 fn goto_location_command(snap: &GlobalStateSnapshot, nav: &NavigationTarget) -> Option<Command> {
-    let value = if snap.config.client_caps.location_link {
+    let value = if snap.config.location_link() {
         let link = to_proto::location_link(snap, None, nav.clone()).ok()?;
         to_value(link).ok()?
     } else {
@@ -1641,7 +1638,7 @@ fn prepare_hover_actions(
     file_id: FileId,
     actions: &[HoverAction],
 ) -> Vec<lsp_ext::CommandLinkGroup> {
-    if snap.config.hover.none() || !snap.config.client_caps.hover_actions {
+    if snap.config.hover.none() || !snap.config.hover_actions() {
         return Vec::new();
     }
 
