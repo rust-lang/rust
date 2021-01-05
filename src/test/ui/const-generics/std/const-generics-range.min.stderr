@@ -5,7 +5,7 @@ LL | struct _Range<const R: std::ops::Range<usize>>;
    |                        ^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: the only supported types are integers, `bool` and `char`
-   = help: more complex types are supported with `#[feature(const_generics)]`
+   = help: more complex types are supported with `#![feature(const_generics)]`
 
 error: `RangeFrom<usize>` is forbidden as the type of a const generic parameter
   --> $DIR/const-generics-range.rs:12:28
@@ -14,7 +14,7 @@ LL | struct _RangeFrom<const R: std::ops::RangeFrom<usize>>;
    |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: the only supported types are integers, `bool` and `char`
-   = help: more complex types are supported with `#[feature(const_generics)]`
+   = help: more complex types are supported with `#![feature(const_generics)]`
 
 error: `RangeFull` is forbidden as the type of a const generic parameter
   --> $DIR/const-generics-range.rs:17:28
@@ -23,7 +23,7 @@ LL | struct _RangeFull<const R: std::ops::RangeFull>;
    |                            ^^^^^^^^^^^^^^^^^^^
    |
    = note: the only supported types are integers, `bool` and `char`
-   = help: more complex types are supported with `#[feature(const_generics)]`
+   = help: more complex types are supported with `#![feature(const_generics)]`
 
 error: `RangeInclusive<usize>` is forbidden as the type of a const generic parameter
   --> $DIR/const-generics-range.rs:23:33
@@ -32,7 +32,7 @@ LL | struct _RangeInclusive<const R: std::ops::RangeInclusive<usize>>;
    |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: the only supported types are integers, `bool` and `char`
-   = help: more complex types are supported with `#[feature(const_generics)]`
+   = help: more complex types are supported with `#![feature(const_generics)]`
 
 error: `RangeTo<usize>` is forbidden as the type of a const generic parameter
   --> $DIR/const-generics-range.rs:28:26
@@ -41,7 +41,7 @@ LL | struct _RangeTo<const R: std::ops::RangeTo<usize>>;
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: the only supported types are integers, `bool` and `char`
-   = help: more complex types are supported with `#[feature(const_generics)]`
+   = help: more complex types are supported with `#![feature(const_generics)]`
 
 error: `RangeToInclusive<usize>` is forbidden as the type of a const generic parameter
   --> $DIR/const-generics-range.rs:33:35
@@ -50,7 +50,7 @@ LL | struct _RangeToInclusive<const R: std::ops::RangeToInclusive<usize>>;
    |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: the only supported types are integers, `bool` and `char`
-   = help: more complex types are supported with `#[feature(const_generics)]`
+   = help: more complex types are supported with `#![feature(const_generics)]`
 
 error: aborting due to 6 previous errors
 

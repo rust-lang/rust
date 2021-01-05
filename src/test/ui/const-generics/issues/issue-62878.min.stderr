@@ -11,7 +11,7 @@ LL | fn foo<const N: usize, const A: [u8; N]>() {}
    |                                 ^^^^^^^
    |
    = note: the only supported types are integers, `bool` and `char`
-   = help: more complex types are supported with `#[feature(const_generics)]`
+   = help: more complex types are supported with `#![feature(const_generics)]`
 
 error: aborting due to 2 previous errors
 
