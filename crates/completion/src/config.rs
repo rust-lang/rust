@@ -9,7 +9,7 @@ use ide_db::helpers::{insert_use::InsertUseConfig, SnippetCap};
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CompletionConfig {
     pub enable_postfix_completions: bool,
-    pub enable_autoimport_completions: bool,
+    pub enable_imports_on_the_fly: bool,
     pub add_call_parenthesis: bool,
     pub add_call_argument_snippets: bool,
     pub snippet_cap: Option<SnippetCap>,

@@ -263,6 +263,7 @@ pub enum ImportKind {
     Trait,
     TypeAlias,
     BuiltinType,
+    AssociatedItem,
 }
 
 /// A way to match import map contents against the search query.
@@ -282,6 +283,7 @@ pub struct Query {
     query: String,
     lowercased: String,
     name_only: bool,
+    assoc_items_only: bool,
     search_mode: SearchMode,
     case_sensitive: bool,
     limit: usize,
@@ -295,6 +297,7 @@ impl Query {
             query,
             lowercased,
             name_only: false,
+            assoc_items_only: false,
             search_mode: SearchMode::Contains,
             case_sensitive: false,
             limit: usize::max_value(),
@@ -307,6 +310,11 @@ impl Query {
     /// Example: for `std::marker::PhantomData`, the name is `PhantomData`.
     pub fn name_only(self) -> Self {
         Self { name_only: true, ..self }
+    }
+
+    /// Matches only the entries that are associated items, ignoring the rest.
+    pub fn assoc_items_only(self) -> Self {
+        Self { assoc_items_only: true, ..self }
     }
 
     /// Specifies the way to search for the entries using the query.
@@ -331,6 +339,14 @@ impl Query {
     }
 
     fn import_matches(&self, import: &ImportInfo, enforce_lowercase: bool) -> bool {
+        if import.is_trait_assoc_item {
+            if self.exclude_import_kinds.contains(&ImportKind::AssociatedItem) {
+                return false;
+            }
+        } else if self.assoc_items_only {
+            return false;
+        }
+
         let mut input = if import.is_trait_assoc_item || self.name_only {
             import.path.segments.last().unwrap().to_string()
         } else {
@@ -810,6 +826,56 @@ mod tests {
                 dep::fmt::Display::format_function (a)
                 dep::fmt::Display::format_method (a)
             "#]],
+        );
+    }
+
+    #[test]
+    fn assoc_items_filtering() {
+        let ra_fixture = r#"
+        //- /main.rs crate:main deps:dep
+        //- /dep.rs crate:dep
+        pub mod fmt {
+            pub trait Display {
+                type FmtTypeAlias;
+                const FMT_CONST: bool;
+
+                fn format_function();
+                fn format_method(&self);
+            }
+        }
+    "#;
+
+        check_search(
+            ra_fixture,
+            "main",
+            Query::new("fmt".to_string()).search_mode(SearchMode::Fuzzy).assoc_items_only(),
+            expect![[r#"
+            dep::fmt::Display::FMT_CONST (a)
+            dep::fmt::Display::format_function (a)
+            dep::fmt::Display::format_method (a)
+        "#]],
+        );
+
+        check_search(
+            ra_fixture,
+            "main",
+            Query::new("fmt".to_string())
+                .search_mode(SearchMode::Fuzzy)
+                .exclude_import_kind(ImportKind::AssociatedItem),
+            expect![[r#"
+            dep::fmt (t)
+            dep::fmt::Display (t)
+        "#]],
+        );
+
+        check_search(
+            ra_fixture,
+            "main",
+            Query::new("fmt".to_string())
+                .search_mode(SearchMode::Fuzzy)
+                .assoc_items_only()
+                .exclude_import_kind(ImportKind::AssociatedItem),
+            expect![[r#""#]],
         );
     }
 

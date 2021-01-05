@@ -653,7 +653,7 @@ pub(crate) fn handle_completion(
             let mut new_completion_items =
                 to_proto::completion_item(&line_index, line_endings, item.clone());
 
-            if completion_config.enable_autoimport_completions {
+            if completion_config.enable_imports_on_the_fly {
                 for new_item in &mut new_completion_items {
                     fill_resolve_data(&mut new_item.data, &item, &text_document_position);
                 }
@@ -703,6 +703,7 @@ pub(crate) fn handle_completion_resolve(
             FilePosition { file_id, offset },
             &resolve_data.full_import_path,
             resolve_data.imported_name,
+            resolve_data.import_for_trait_assoc_item,
         )?
         .into_iter()
         .flat_map(|edit| {
@@ -1694,6 +1695,7 @@ struct CompletionResolveData {
     position: lsp_types::TextDocumentPositionParams,
     full_import_path: String,
     imported_name: String,
+    import_for_trait_assoc_item: bool,
 }
 
 fn fill_resolve_data(
@@ -1710,6 +1712,7 @@ fn fill_resolve_data(
             position: position.to_owned(),
             full_import_path,
             imported_name,
+            import_for_trait_assoc_item: import_edit.import_for_trait_assoc_item,
         })
         .unwrap(),
     );

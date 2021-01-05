@@ -1,10 +1,7 @@
 use std::iter;
 
 use hir::AsName;
-use ide_db::helpers::{
-    import_assets::{ImportAssets, ImportCandidate},
-    mod_path_to_ast,
-};
+use ide_db::helpers::{import_assets::ImportCandidate, mod_path_to_ast};
 use ide_db::RootDatabase;
 use syntax::{
     ast,
@@ -17,6 +14,8 @@ use crate::{
     assist_context::{AssistContext, Assists},
     AssistId, AssistKind, GroupLabel,
 };
+
+use super::auto_import::find_importable_node;
 
 // Assist: qualify_path
 //
@@ -36,47 +35,38 @@ use crate::{
 // # pub mod std { pub mod collections { pub struct HashMap { } } }
 // ```
 pub(crate) fn qualify_path(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
-    let import_assets =
-        if let Some(path_under_caret) = ctx.find_node_at_offset_with_descend::<ast::Path>() {
-            ImportAssets::for_regular_path(path_under_caret, &ctx.sema)
-        } else if let Some(method_under_caret) =
-            ctx.find_node_at_offset_with_descend::<ast::MethodCallExpr>()
-        {
-            ImportAssets::for_method_call(method_under_caret, &ctx.sema)
-        } else {
-            None
-        }?;
+    let (import_assets, syntax_under_caret) = find_importable_node(ctx)?;
     let proposed_imports = import_assets.search_for_relative_paths(&ctx.sema);
     if proposed_imports.is_empty() {
         return None;
     }
 
     let candidate = import_assets.import_candidate();
-    let range = ctx.sema.original_range(import_assets.syntax_under_caret()).range;
+    let range = ctx.sema.original_range(&syntax_under_caret).range;
 
     let qualify_candidate = match candidate {
         ImportCandidate::Path(candidate) => {
             if candidate.qualifier.is_some() {
                 mark::hit!(qualify_path_qualifier_start);
-                let path = ast::Path::cast(import_assets.syntax_under_caret().clone())?;
+                let path = ast::Path::cast(syntax_under_caret)?;
                 let (prev_segment, segment) = (path.qualifier()?.segment()?, path.segment()?);
                 QualifyCandidate::QualifierStart(segment, prev_segment.generic_arg_list())
             } else {
                 mark::hit!(qualify_path_unqualified_name);
-                let path = ast::Path::cast(import_assets.syntax_under_caret().clone())?;
+                let path = ast::Path::cast(syntax_under_caret)?;
                 let generics = path.segment()?.generic_arg_list();
                 QualifyCandidate::UnqualifiedName(generics)
             }
         }
         ImportCandidate::TraitAssocItem(_) => {
             mark::hit!(qualify_path_trait_assoc_item);
-            let path = ast::Path::cast(import_assets.syntax_under_caret().clone())?;
+            let path = ast::Path::cast(syntax_under_caret)?;
             let (qualifier, segment) = (path.qualifier()?, path.segment()?);
             QualifyCandidate::TraitAssocItem(qualifier, segment)
         }
         ImportCandidate::TraitMethod(_) => {
             mark::hit!(qualify_path_trait_method);
-            let mcall_expr = ast::MethodCallExpr::cast(import_assets.syntax_under_caret().clone())?;
+            let mcall_expr = ast::MethodCallExpr::cast(syntax_under_caret)?;
             QualifyCandidate::TraitMethod(ctx.sema.db, mcall_expr)
         }
     };
@@ -140,7 +130,7 @@ impl QualifyCandidate<'_> {
         let generics =
             mcall_expr.generic_arg_list().as_ref().map_or_else(String::new, ToString::to_string);
         let arg_list = mcall_expr.arg_list().map(|arg_list| arg_list.args());
-        let trait_ = item_as_trait(item)?;
+        let trait_ = item_as_trait(db, item)?;
         let method = find_trait_method(db, trait_, &trait_method_name)?;
         if let Some(self_access) = method.self_param(db).map(|sp| sp.access(db)) {
             let receiver = match self_access {
@@ -179,11 +169,13 @@ fn find_trait_method(
     }
 }
 
-fn item_as_trait(item: hir::ItemInNs) -> Option<hir::Trait> {
-    if let hir::ModuleDef::Trait(trait_) = hir::ModuleDef::from(item.as_module_def_id()?) {
+fn item_as_trait(db: &RootDatabase, item: hir::ItemInNs) -> Option<hir::Trait> {
+    let item_module_def = hir::ModuleDef::from(item.as_module_def_id()?);
+
+    if let hir::ModuleDef::Trait(trait_) = item_module_def {
         Some(trait_)
     } else {
-        None
+        item_module_def.as_assoc_item(db)?.containing_trait(db)
     }
 }
 
@@ -191,7 +183,8 @@ fn group_label(candidate: &ImportCandidate) -> GroupLabel {
     let name = match candidate {
         ImportCandidate::Path(it) => &it.name,
         ImportCandidate::TraitAssocItem(it) | ImportCandidate::TraitMethod(it) => &it.name,
-    };
+    }
+    .text();
     GroupLabel(format!("Qualify {}", name))
 }
 
