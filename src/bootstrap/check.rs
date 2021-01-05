@@ -21,6 +21,16 @@ fn args(builder: &Builder<'_>) -> Vec<String> {
     }
 
     if let Subcommand::Clippy { fix, .. } = builder.config.cmd {
+        // disable the most spammy clippy lints
+        let ignored_lints = vec![
+            "many_single_char_names", // there are a lot in stdarch
+            "collapsible_if",
+            "type_complexity",
+            "missing_safety_doc", // almost 3K warnings
+            "too_many_arguments",
+            "needless_lifetimes", // people want to keep the lifetimes
+            "wrong_self_convention",
+        ];
         let mut args = vec![];
         if fix {
             #[rustfmt::skip]
@@ -33,6 +43,7 @@ fn args(builder: &Builder<'_>) -> Vec<String> {
             ]));
         }
         args.extend(strings(&["--", "--cap-lints", "warn"]));
+        args.extend(ignored_lints.iter().map(|lint| format!("-Aclippy::{}", lint)));
         args
     } else {
         vec![]
