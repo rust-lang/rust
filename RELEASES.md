@@ -45,7 +45,6 @@ Libraries
 
 - [`RangeInclusive` now checks for exhaustion when calling `contains` and indexing.][78109]
 - [`ToString::to_string` now no longer shrinks the internal buffer in the default implementation.][77997]
-- [`ops::{Index, IndexMut}` are now implemented for fixed sized arrays of any length.][74989]
 
 Stabilized APIs
 ---------------
@@ -110,7 +109,6 @@ related tools.
 [76199]: https://github.com/rust-lang/rust/pull/76199
 [76119]: https://github.com/rust-lang/rust/pull/76119
 [75914]: https://github.com/rust-lang/rust/pull/75914
-[74989]: https://github.com/rust-lang/rust/pull/74989
 [79004]: https://github.com/rust-lang/rust/pull/79004
 [78676]: https://github.com/rust-lang/rust/pull/78676
 [79904]: https://github.com/rust-lang/rust/issues/79904
