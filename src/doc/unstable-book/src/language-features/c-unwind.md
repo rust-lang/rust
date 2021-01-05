@@ -6,7 +6,8 @@ The tracking issue for this feature is: [#74990]
 
 ------------------------
 
-Introduces a new ABI string, "C-unwind", to enable unwinding from other
+Introduces four new ABI strings: "C-unwind", "stdcall-unwind",
+"thiscall-unwind", and "system-unwind". These enable unwinding from other
 languages (such as C++) into Rust frames and from Rust into other languages.
 
 See [RFC 2945] for more information.
