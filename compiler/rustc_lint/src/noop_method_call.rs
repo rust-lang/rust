@@ -54,11 +54,19 @@ impl<'tcx> LateLintPass<'tcx> for NoopMethodCall {
                         // Resolve the trait method instance
                         if let Ok(Some(i)) = ty::Instance::resolve(cx.tcx, param_env, did, substs) {
                             // Check that it implements the noop diagnostic
-                            if cx.tcx.is_diagnostic_item(sym::ref_clone_method, i.def_id()) {
+                            tracing::debug!("Resolves to: {:?}", i.def_id());
+                            if [
+                                sym::noop_method_borrow,
+                                sym::noop_method_clone,
+                                sym::noop_method_deref,
+                            ]
+                            .iter()
+                            .any(|s| cx.tcx.is_diagnostic_item(*s, i.def_id()))
+                            {
                                 let span = expr.span;
 
                                 cx.struct_span_lint(NOOP_METHOD_CALL, span, |lint| {
-                                    let message = "Call to noop method";
+                                    let message = "call to noop method";
                                     lint.build(&message).emit()
                                 });
                             }
