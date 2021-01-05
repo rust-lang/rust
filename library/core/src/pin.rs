@@ -129,7 +129,7 @@
 //!
 //! To make this work, every element has pointers to its predecessor and successor in
 //! the list. Elements can only be added when they are pinned, because moving the elements
-//! around would invalidate the pointers. Moreover, the [`Drop`] implementation of a linked
+//! around would invalidate the pointers. Moreover, the [`Drop`][Drop] implementation of a linked
 //! list element will patch the pointers of its predecessor and successor to remove itself
 //! from the list.
 //!
@@ -165,18 +165,18 @@
 //! # `Drop` implementation
 //!
 //! If your type uses pinning (such as the two examples above), you have to be careful
-//! when implementing [`Drop`]. The [`drop`] function takes <code>[&mut] self</code>, but this
+//! when implementing [`Drop`][Drop]. The [`drop`] function takes <code>[&mut] self</code>, but this
 //! is called *even if your type was previously pinned*! It is as if the
 //! compiler automatically called [`Pin::get_unchecked_mut`].
 //!
 //! This can never cause a problem in safe code because implementing a type that
 //! relies on pinning requires unsafe code, but be aware that deciding to make
 //! use of pinning in your type (for example by implementing some operation on
-//! <code>[Pin]<[&]Self></code> or <code>[Pin]<[&mut] Self></code>) has consequences for your [`Drop`]
+//! <code>[Pin]<[&]Self></code> or <code>[Pin]<[&mut] Self></code>) has consequences for your [`Drop`][Drop]
 //! implementation as well: if an element of your type could have been pinned,
-//! you must treat [`Drop`] as implicitly taking <code>[Pin]<[&mut] Self></code>.
+//! you must treat [`Drop`][Drop] as implicitly taking <code>[Pin]<[&mut] Self></code>.
 //!
-//! For example, you could implement [`Drop`] as follows:
+//! For example, you could implement [`Drop`][Drop] as follows:
 //!
 //! ```rust,no_run
 //! # use std::pin::Pin;
@@ -284,7 +284,7 @@
 //! 2.  The destructor of the struct must not move structural fields out of its argument. This
 //!     is the exact point that was raised in the [previous section][drop-impl]: [`drop`] takes
 //!     <code>[&mut] self</code>, but the struct (and hence its fields) might have been pinned before.
-//!     You have to guarantee that you do not move a field inside your [`Drop`] implementation.
+//!     You have to guarantee that you do not move a field inside your [`Drop`][Drop] implementation.
 //!     In particular, as explained previously, this means that your struct must *not*
 //!     be `#[repr(packed)]`.
 //!     See that section for how to write [`drop`] in a way that the compiler can help you
@@ -294,7 +294,7 @@
 //!     content is not overwritten or deallocated without calling the content's destructors.
 //!     This can be tricky, as witnessed by <code>[VecDeque]\<T></code>: the destructor of <code>[VecDeque]\<T></code>
 //!     can fail to call [`drop`] on all elements if one of the destructors panics. This violates
-//!     the [`Drop`] guarantee, because it can lead to elements being deallocated without
+//!     the [`Drop`][Drop] guarantee, because it can lead to elements being deallocated without
 //!     their destructor being called. (<code>[VecDeque]\<T></code> has no pinning projections, so this
 //!     does not cause unsoundness.)
 //! 4.  You must not offer any other operations that could lead to data being moved out of
