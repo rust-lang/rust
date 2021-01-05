@@ -1193,6 +1193,14 @@ impl LinkCollector<'_, '_> {
         match res {
             Res::Primitive(_) => {
                 if let Some((kind, id)) = self.kind_side_channel.take() {
+                    // We're actually resolving an associated item of a primitive, so we need to
+                    // verify the disambiguator (if any) matches the type of the associated item.
+                    // This case should really follow the same flow as the `Res::Def` branch below,
+                    // but attempting to add a call to `clean::register_res` causes an ICE. @jyn514
+                    // thinks `register_res` is only needed for cross-crate re-exports, but Rust
+                    // doesn't allow statements like `use str::trim;`, making this a (hopefully)
+                    // valid omission. See https://github.com/rust-lang/rust/pull/80660#discussion_r551585677
+                    // for discussion on the matter.
                     verify(kind, id)?;
                 } else {
                     match disambiguator {
