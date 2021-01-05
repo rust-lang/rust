@@ -3016,6 +3016,46 @@ public:
         return;
       }
 
+      if (called && (called->getName() == "__sqrt_finite")) {
+        eraseIfUnused(*orig);
+        if (Mode == DerivativeMode::Forward ||
+            gutils->isConstantInstruction(orig)) {
+          return;
+        }
+
+        IRBuilder<> Builder2(call.getParent());
+        getReverseBuilder(Builder2);
+
+        Value *vdiff = diffe(orig, Builder2);
+        Value *orig_ops[1] = {orig->getArgOperand(0)};
+
+        if (vdiff && !gutils->isConstantValue(orig_ops[0])) {
+          SmallVector<Value *, 2> args = {
+              lookup(gutils->getNewFromOriginal(orig_ops[0]), Builder2)};
+          Type *tys[] = {orig_ops[0]->getType()};
+          auto cal = cast<CallInst>(Builder2.CreateCall(
+              Intrinsic::getDeclaration(called->getParent(), Intrinsic::sqrt, tys), args));
+          cal->copyIRFlags(orig);
+          cal->setAttributes(orig->getAttributes());
+          cal->setCallingConv(orig->getCallingConv());
+          cal->setTailCallKind(orig->getTailCallKind());
+          cal->setDebugLoc(gutils->getNewFromOriginal(orig->getDebugLoc()));
+
+          Value *dif0 = Builder2.CreateBinOp(
+              Instruction::FDiv,
+              Builder2.CreateFMul(ConstantFP::get(orig->getType(), 0.5), vdiff),
+              cal);
+
+          Value *cmp = Builder2.CreateFCmpOEQ(
+              args[0], ConstantFP::get(orig_ops[0]->getType(), 0));
+          dif0 = Builder2.CreateSelect(
+              cmp, ConstantFP::get(orig_ops[0]->getType(), 0), dif0);
+
+          addToDiffe(orig_ops[0], dif0, Builder2, orig->getType());
+        }
+        return;
+      }
+
       if (n == "lgamma" || n == "lgammaf" || n == "lgammal" ||
           n == "lgamma_r" || n == "lgammaf_r" || n == "lgammal_r" ||
           n == "__lgamma_r_finite" || n == "__lgammaf_r_finite" ||

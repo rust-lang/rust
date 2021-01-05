@@ -2719,18 +2719,16 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
     CONSIDER(fmaf)
     CONSIDER(fmal)
 
-    if (ci->getName() == "__pow_finite") {
-      updateAnalysis(
-          call.getArgOperand(0),
-          TypeTree(ConcreteType(Type::getDoubleTy(call.getContext()))).Only(-1),
-          &call);
-      updateAnalysis(
-          call.getArgOperand(1),
-          TypeTree(ConcreteType(Type::getDoubleTy(call.getContext()))).Only(-1),
-          &call);
+    if (ci->getName() == "__pow_finite" || ci->getName() == "__sqrt_finite") {
+      for(int i=0; i<call.getNumArgOperands(); ++i) {
+        updateAnalysis(
+            call.getArgOperand(i),
+            TypeTree(ConcreteType(call.getArgOperand(i)->getType())).Only(-1),
+            &call);
+      }
       updateAnalysis(
           &call,
-          TypeTree(ConcreteType(Type::getDoubleTy(call.getContext()))).Only(-1),
+          TypeTree(ConcreteType(call.getType())).Only(-1),
           &call);
       return;
     }

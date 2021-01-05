@@ -915,7 +915,8 @@ bool GradientUtils::legalRecompute(const Value *val,
           n == "lgamma_r" || n == "lgammaf_r" || n == "lgammal_r" ||
           n == "__lgamma_r_finite" || n == "__lgammaf_r_finite" ||
           n == "__lgammal_r_finite" || n == "tanh" || n == "tanhf" ||
-          n == "asin" || n == "asinf" || n == "asinl" || n == "__pow_finite") {
+          n == "asin" || n == "asinf" || n == "asinl" || n == "__pow_finite" ||
+          n == "__sqrt_finite") {
         return true;
       }
     }
@@ -1026,7 +1027,8 @@ bool GradientUtils::shouldRecompute(const Value *val,
       if (n == "lgamma" || n == "lgammaf" || n == "lgammal" ||
           n == "lgamma_r" || n == "lgammaf_r" || n == "lgammal_r" ||
           n == "__lgamma_r_finite" || n == "__lgammaf_r_finite" ||
-          n == "__lgammal_r_finite" || n == "tanh" || n == "tanhf") {
+          n == "__lgammal_r_finite" || n == "tanh" || n == "tanhf" ||
+          n == "__pow_finite" || n == "__sqrt_finite") {
         return true;
       }
     }
@@ -1035,6 +1037,7 @@ bool GradientUtils::shouldRecompute(const Value *val,
   // cache a call, assuming its longer to run that
   if (isa<CallInst>(val)) {
     llvm::errs() << " caching call: " << *val << "\n";
+    //cast<CallInst>(val)->getCalledFunction()->dump();
     return false;
   }
 
