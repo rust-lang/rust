@@ -218,6 +218,11 @@ where
     multispan_sugg_with_applicability(diag, help_msg, Applicability::Unspecified, sugg)
 }
 
+/// Create a suggestion made from several `span → replacement`.
+///
+/// rustfix currently doesn't support the automatic application of suggestions with
+/// multiple spans. This is tracked in issue [rustfix#141](https://github.com/rust-lang/rustfix/issues/141).
+/// Suggestions with multiple spans will be silently ignored.
 pub fn multispan_sugg_with_applicability<I>(
     diag: &mut DiagnosticBuilder<'_>,
     help_msg: &str,
