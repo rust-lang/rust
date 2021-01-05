@@ -46,6 +46,14 @@ impl<'tcx> LateLintPass<'tcx> for NoopMethodCall {
             {
                 // Check that we're dealing with a trait method
                 if let Some(trait_id) = cx.tcx.trait_of_item(did) {
+                    // Check we're dealing with one of the traits we care about
+                    if ![sym::Clone, sym::Deref, sym::Borrow]
+                        .iter()
+                        .any(|s| cx.tcx.is_diagnostic_item(*s, trait_id))
+                    {
+                        return;
+                    }
+
                     let substs = cx.typeck_results().node_substs(expr.hir_id);
                     // We can't resolve on types that recursively require monomorphization,
                     // so check that we don't need to perfom substitution
@@ -54,7 +62,6 @@ impl<'tcx> LateLintPass<'tcx> for NoopMethodCall {
                         // Resolve the trait method instance
                         if let Ok(Some(i)) = ty::Instance::resolve(cx.tcx, param_env, did, substs) {
                             // Check that it implements the noop diagnostic
-                            tracing::debug!("Resolves to: {:?}", i.def_id());
                             if [
                                 sym::noop_method_borrow,
                                 sym::noop_method_clone,
