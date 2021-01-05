@@ -829,15 +829,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 let tail_field_ty = tcx.type_of(tail_field.did);
 
                 let mut unsizing_params = GrowableBitSet::new_empty();
-                let mut found = false;
                 for arg in tail_field_ty.walk() {
                     if let Some(i) = maybe_unsizing_param_idx(arg) {
                         unsizing_params.insert(i);
-                        found = true;
                     }
-                }
-                if !found {
-                    return Err(Unimplemented);
                 }
 
                 // Ensure none of the other fields mention the parameters used
@@ -848,11 +843,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 for field in prefix_fields {
                     for arg in tcx.type_of(field.did).walk() {
                         if let Some(i) = maybe_unsizing_param_idx(arg) {
-                            if unsizing_params.contains(i) {
-                                return Err(Unimplemented);
-                            }
+                            unsizing_params.remove(i);
                         }
                     }
+                }
+
+                if unsizing_params.is_empty() {
+                    return Err(Unimplemented);
                 }
 
                 // Extract `TailField<T>` and `TailField<U>` from `Struct<T>` and `Struct<U>`.

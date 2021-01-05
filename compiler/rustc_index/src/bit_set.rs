@@ -707,6 +707,18 @@ impl<T: Idx> GrowableBitSet<T> {
         self.bit_set.insert(elem)
     }
 
+    /// Returns `true` if the set has changed.
+    #[inline]
+    pub fn remove(&mut self, elem: T) -> bool {
+        self.ensure(elem.index() + 1);
+        self.bit_set.remove(elem)
+    }
+
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.bit_set.is_empty()
+    }
+
     #[inline]
     pub fn contains(&self, elem: T) -> bool {
         let (word_index, mask) = word_index_and_mask(elem);
