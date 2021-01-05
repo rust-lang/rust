@@ -458,7 +458,7 @@ impl<'a> CompletionContext<'a> {
                     }
                     if let Some(block) = ast::BlockExpr::cast(node) {
                         return Some(
-                            block.expr().map(|e| e.syntax().text_range())
+                            block.tail_expr().map(|e| e.syntax().text_range())
                                 == Some(name_ref.syntax().text_range()),
                         );
                     }

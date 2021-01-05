@@ -37,7 +37,7 @@ pub fn extract_trivial_expression(block: &ast::BlockExpr) -> Option<ast::Expr> {
         non_trivial_children.next().is_some()
     };
 
-    if let Some(expr) = block.expr() {
+    if let Some(expr) = block.tail_expr() {
         if has_anything_else(expr.syntax()) {
             return None;
         }

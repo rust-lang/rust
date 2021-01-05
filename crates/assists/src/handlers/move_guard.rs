@@ -98,7 +98,7 @@ pub(crate) fn move_arm_cond_to_match_guard(acc: &mut Assists, ctx: &AssistContex
     let mut replace_node = None;
     let if_expr: IfExpr = IfExpr::cast(arm_body.syntax().clone()).or_else(|| {
         let block_expr = BlockExpr::cast(arm_body.syntax().clone())?;
-        if let Expr::IfExpr(e) = block_expr.expr()? {
+        if let Expr::IfExpr(e) = block_expr.tail_expr()? {
             replace_node = Some(block_expr.syntax().clone());
             Some(e)
         } else {
@@ -128,7 +128,7 @@ pub(crate) fn move_arm_cond_to_match_guard(acc: &mut Assists, ctx: &AssistContex
         |edit| {
             let then_only_expr = then_block.statements().next().is_none();
 
-            match &then_block.expr() {
+            match &then_block.tail_expr() {
                 Some(then_expr) if then_only_expr => {
                     edit.replace(replace_node.text_range(), then_expr.syntax().text())
                 }

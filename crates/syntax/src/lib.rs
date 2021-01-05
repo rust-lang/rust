@@ -290,7 +290,7 @@ fn api_walkthrough() {
 
     // Let's get the `1 + 1` expression!
     let body: ast::BlockExpr = func.body().unwrap();
-    let expr: ast::Expr = body.expr().unwrap();
+    let expr: ast::Expr = body.tail_expr().unwrap();
 
     // Enums are used to group related ast nodes together, and can be used for
     // matching. However, because there are no public fields, it's possible to

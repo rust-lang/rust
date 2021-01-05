@@ -117,10 +117,14 @@ fn existing_definition(db: &RootDatabase, variant_name: &ast::Name, variant: &Va
         .into_iter()
         .filter(|(_, def)| match def {
             // only check type-namespace
-            hir::ScopeDef::ModuleDef(def) => matches!(def,
-                ModuleDef::Module(_) | ModuleDef::Adt(_) |
-                ModuleDef::Variant(_) | ModuleDef::Trait(_) |
-                ModuleDef::TypeAlias(_) | ModuleDef::BuiltinType(_)
+            hir::ScopeDef::ModuleDef(def) => matches!(
+                def,
+                ModuleDef::Module(_)
+                    | ModuleDef::Adt(_)
+                    | ModuleDef::Variant(_)
+                    | ModuleDef::Trait(_)
+                    | ModuleDef::TypeAlias(_)
+                    | ModuleDef::BuiltinType(_)
             ),
             _ => false,
         })

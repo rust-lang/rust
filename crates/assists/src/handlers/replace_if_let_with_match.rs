@@ -138,7 +138,7 @@ pub(crate) fn replace_match_with_if_let(acc: &mut Assists, ctx: &AssistContext) 
             };
             let else_expr = match else_expr {
                 ast::Expr::BlockExpr(block)
-                    if block.statements().count() == 0 && block.expr().is_none() =>
+                    if block.statements().count() == 0 && block.tail_expr().is_none() =>
                 {
                     None
                 }

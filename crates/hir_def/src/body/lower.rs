@@ -695,7 +695,7 @@ impl ExprCollector<'_> {
         self.collect_stmts_items(block.statements());
         let statements =
             block.statements().filter_map(|s| self.collect_stmt(s)).flatten().collect();
-        let tail = block.expr().map(|e| self.collect_expr(e));
+        let tail = block.tail_expr().map(|e| self.collect_expr(e));
         self.alloc_expr(Expr::Block { statements, tail, label: None }, syntax_node_ptr)
     }
 
