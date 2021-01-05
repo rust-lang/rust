@@ -12,7 +12,6 @@ use counters::CoverageCounters;
 use graph::{BasicCoverageBlock, BasicCoverageBlockData, CoverageGraph};
 use spans::{CoverageSpan, CoverageSpans};
 
-use crate::util::pretty;
 use crate::MirPass;
 
 use rustc_data_structures::fingerprint::Fingerprint;
@@ -25,6 +24,7 @@ use rustc_middle::hir::map::blocks::FnLikeNode;
 use rustc_middle::ich::StableHashingContext;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::coverage::*;
+use rustc_middle::mir::dump_enabled;
 use rustc_middle::mir::{
     self, BasicBlock, BasicBlockData, Coverage, SourceInfo, Statement, StatementKind, Terminator,
     TerminatorKind,
@@ -159,7 +159,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         let mut graphviz_data = debug::GraphvizData::new();
         let mut debug_used_expressions = debug::UsedExpressions::new();
 
-        let dump_mir = pretty::dump_enabled(tcx, self.pass_name, def_id);
+        let dump_mir = dump_enabled(tcx, self.pass_name, def_id);
         let dump_graphviz = dump_mir && tcx.sess.opts.debugging_opts.dump_mir_graphviz;
         let dump_spanview = dump_mir && tcx.sess.opts.debugging_opts.dump_mir_spanview.is_some();
 

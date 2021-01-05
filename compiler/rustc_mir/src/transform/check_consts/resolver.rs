@@ -9,7 +9,6 @@ use rustc_middle::mir::{self, BasicBlock, Local, Location};
 use std::marker::PhantomData;
 
 use super::{qualifs, ConstCx, Qualif};
-use crate::dataflow;
 
 /// A `Visitor` that propagates qualifs between locals. This defines the transfer function of
 /// `FlowSensitiveAnalysis`.
@@ -165,7 +164,7 @@ where
     }
 }
 
-impl<Q> dataflow::AnalysisDomain<'tcx> for FlowSensitiveAnalysis<'_, '_, 'tcx, Q>
+impl<Q> rustc_mir_dataflow::AnalysisDomain<'tcx> for FlowSensitiveAnalysis<'_, '_, 'tcx, Q>
 where
     Q: Qualif,
 {
@@ -182,7 +181,7 @@ where
     }
 }
 
-impl<Q> dataflow::Analysis<'tcx> for FlowSensitiveAnalysis<'_, '_, 'tcx, Q>
+impl<Q> rustc_mir_dataflow::Analysis<'tcx> for FlowSensitiveAnalysis<'_, '_, 'tcx, Q>
 where
     Q: Qualif,
 {

@@ -6,11 +6,11 @@ use std::{io, ops, str};
 
 use regex::Regex;
 use rustc_graphviz as dot;
+use rustc_middle::mir::graphviz_safe_def_name;
 use rustc_middle::mir::{self, BasicBlock, Body, Location};
 
 use super::fmt::{DebugDiffWithAdapter, DebugWithAdapter, DebugWithContext};
 use super::{Analysis, Direction, Results, ResultsRefCursor, ResultsVisitor};
-use crate::util::graphviz_safe_def_name;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum OutputStyle {

@@ -5,7 +5,7 @@ use polonius_engine::Atom;
 use rustc_index::vec::Idx;
 use rustc_middle::mir::Local;
 use rustc_middle::ty::{RegionVid, TyCtxt};
-use rustc_mir::dataflow::move_paths::MovePathIndex;
+use rustc_mir_dataflow::move_paths::MovePathIndex;
 use std::error::Error;
 use std::fmt::Debug;
 use std::fs::{self, File};

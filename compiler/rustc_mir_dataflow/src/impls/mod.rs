@@ -7,18 +7,15 @@ use rustc_index::vec::Idx;
 use rustc_middle::mir::{self, Body, Location};
 use rustc_middle::ty::{self, TyCtxt};
 
-use super::MoveDataParamEnv;
-
-use crate::util::elaborate_drops::DropFlagState;
-
-use super::move_paths::{HasMoveData, InitIndex, InitKind, MoveData, MovePathIndex};
-use super::{lattice, AnalysisDomain, GenKill, GenKillAnalysis};
-
-use super::drop_flag_effects_for_function_entry;
-use super::drop_flag_effects_for_location;
-use super::on_lookup_result_bits;
-use crate::dataflow::drop_flag_effects;
-use crate::dataflow::framework::SwitchIntEdgeEffects;
+use crate::drop_flag_effects;
+use crate::drop_flag_effects_for_function_entry;
+use crate::drop_flag_effects_for_location;
+use crate::elaborate_drops::DropFlagState;
+use crate::framework::SwitchIntEdgeEffects;
+use crate::move_paths::{HasMoveData, InitIndex, InitKind, MoveData, MovePathIndex};
+use crate::on_lookup_result_bits;
+use crate::MoveDataParamEnv;
+use crate::{lattice, AnalysisDomain, GenKill, GenKillAnalysis};
 
 mod borrowed_locals;
 mod init_locals;

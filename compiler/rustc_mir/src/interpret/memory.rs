@@ -15,6 +15,7 @@ use std::ptr;
 
 use rustc_ast::Mutability;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_middle::mir::display_allocation;
 use rustc_middle::ty::{Instance, ParamEnv, TyCtxt};
 use rustc_target::abi::{Align, HasDataLayout, Size, TargetDataLayout};
 
@@ -23,7 +24,6 @@ use super::{
     InterpResult, Machine, MayLeak, Pointer, PointerArithmetic, Provenance, Scalar,
     ScalarMaybeUninit,
 };
-use crate::util::pretty;
 
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub enum MemoryKind<T> {
@@ -851,7 +851,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> std::fmt::Debug for DumpAllocs<'a, 
             for alloc_id in alloc.relocations().values().map(|tag| tag.get_alloc_id()) {
                 allocs_to_print.push_back(alloc_id);
             }
-            write!(fmt, "{}", pretty::display_allocation(tcx, alloc))
+            write!(fmt, "{}", display_allocation(tcx, alloc))
         }
 
         let mut allocs_to_print: VecDeque<_> = self.allocs.iter().copied().collect();

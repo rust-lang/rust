@@ -8,9 +8,9 @@ use rustc_trait_selection::traits::query::type_op::outlives::DropckOutlives;
 use rustc_trait_selection::traits::query::type_op::{TypeOp, TypeOpOutput};
 use std::rc::Rc;
 
-use rustc_mir::dataflow::impls::MaybeInitializedPlaces;
-use rustc_mir::dataflow::move_paths::{HasMoveData, MoveData, MovePathIndex};
-use rustc_mir::dataflow::ResultsCursor;
+use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
+use rustc_mir_dataflow::move_paths::{HasMoveData, MoveData, MovePathIndex};
+use rustc_mir_dataflow::ResultsCursor;
 
 use crate::{
     region_infer::values::{self, PointIndex, RegionValueElements},

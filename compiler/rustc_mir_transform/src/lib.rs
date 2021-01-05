@@ -75,9 +75,9 @@ mod unreachable_prop;
 
 use rustc_mir::transform::check_consts;
 use rustc_mir::transform::promote_consts;
-use rustc_mir::transform::rustc_peek;
 use rustc_mir::transform::validate;
 use rustc_mir::transform::MirPass;
+use rustc_mir_dataflow::rustc_peek;
 
 pub fn provide(providers: &mut Providers) {
     check_unsafety::provide(providers);
@@ -274,7 +274,7 @@ fn mir_const<'tcx>(
 
     let mut body = tcx.mir_built(def).steal();
 
-    util::dump_mir(tcx, None, "mir_map", &0, &body, |_, _| Ok(()));
+    rustc_middle::mir::dump_mir(tcx, None, "mir_map", &0, &body, |_, _| Ok(()));
 
     run_passes(
         tcx,

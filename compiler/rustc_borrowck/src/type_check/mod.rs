@@ -41,12 +41,12 @@ use rustc_trait_selection::traits::query::type_op::custom::CustomTypeOp;
 use rustc_trait_selection::traits::query::Fallible;
 use rustc_trait_selection::traits::{self, ObligationCause, PredicateObligations};
 
-use rustc_mir::dataflow::impls::MaybeInitializedPlaces;
-use rustc_mir::dataflow::move_paths::MoveData;
-use rustc_mir::dataflow::ResultsCursor;
 use rustc_mir::transform::{
     check_consts::ConstCx, promote_consts::is_const_fn_in_array_repeat_expression,
 };
+use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
+use rustc_mir_dataflow::move_paths::MoveData;
+use rustc_mir_dataflow::ResultsCursor;
 
 use crate::{
     borrow_set::BorrowSet,

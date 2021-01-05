@@ -2,7 +2,7 @@
 //!
 //! A local will be maybe initialized if *any* projections of that local might be initialized.
 
-use crate::dataflow::{self, GenKill};
+use crate::GenKill;
 
 use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::visit::{PlaceContext, Visitor};
@@ -10,7 +10,7 @@ use rustc_middle::mir::{self, BasicBlock, Local, Location};
 
 pub struct MaybeInitializedLocals;
 
-impl dataflow::AnalysisDomain<'tcx> for MaybeInitializedLocals {
+impl crate::AnalysisDomain<'tcx> for MaybeInitializedLocals {
     type Domain = BitSet<Local>;
 
     const NAME: &'static str = "maybe_init_locals";
@@ -28,7 +28,7 @@ impl dataflow::AnalysisDomain<'tcx> for MaybeInitializedLocals {
     }
 }
 
-impl dataflow::GenKillAnalysis<'tcx> for MaybeInitializedLocals {
+impl crate::GenKillAnalysis<'tcx> for MaybeInitializedLocals {
     type Idx = Local;
 
     fn statement_effect(

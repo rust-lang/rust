@@ -12,6 +12,7 @@ use rustc_middle::ty::layout::{self, LayoutError, LayoutOf, LayoutOfHelpers, TyA
 use rustc_middle::ty::{
     self, query::TyCtxtAt, subst::SubstsRef, ParamEnv, Ty, TyCtxt, TypeFoldable,
 };
+use rustc_mir_dataflow::storage::AlwaysLiveLocals;
 use rustc_session::Limit;
 use rustc_span::{Pos, Span};
 use rustc_target::abi::{Align, HasDataLayout, Size, TargetDataLayout};
@@ -22,7 +23,6 @@ use super::{
     ScalarMaybeUninit, StackPopJump,
 };
 use crate::transform::validate::equal_up_to_regions;
-use crate::util::storage::AlwaysLiveLocals;
 
 pub struct InterpCx<'mir, 'tcx, M: Machine<'mir, 'tcx>> {
     /// Stores the `Machine` instance.

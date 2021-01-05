@@ -1,4 +1,4 @@
-use crate::util::elaborate_drops::DropFlagState;
+use crate::elaborate_drops::DropFlagState;
 use rustc_middle::mir::{self, Body, Location};
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_target::abi::VariantIdx;

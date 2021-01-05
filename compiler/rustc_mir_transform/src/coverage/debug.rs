@@ -111,9 +111,9 @@
 use super::graph::{BasicCoverageBlock, BasicCoverageBlockData, CoverageGraph};
 use super::spans::CoverageSpan;
 
-use crate::util::generic_graphviz::GraphvizWriter;
-use crate::util::pretty;
-use crate::util::spanview::{self, SpanViewable};
+use rustc_middle::mir::create_dump_file;
+use rustc_middle::mir::generic_graphviz::GraphvizWriter;
+use rustc_middle::mir::spanview::{self, SpanViewable};
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::mir::coverage::*;
@@ -641,7 +641,7 @@ pub(super) fn dump_coverage_spanview(
     let def_id = mir_source.def_id();
 
     let span_viewables = span_viewables(tcx, mir_body, basic_coverage_blocks, &coverage_spans);
-    let mut file = pretty::create_dump_file(tcx, "html", None, pass_name, &0, mir_source)
+    let mut file = create_dump_file(tcx, "html", None, pass_name, &0, mir_source)
         .expect("Unexpected error creating MIR spanview HTML file");
     let crate_name = tcx.crate_name(def_id.krate);
     let item_name = tcx.def_path(def_id).to_filename_friendly_no_crate();
@@ -743,7 +743,7 @@ pub(super) fn dump_coverage_graphviz(
                 .join("\n  ")
         ));
     }
-    let mut file = pretty::create_dump_file(tcx, "dot", None, pass_name, &0, mir_source)
+    let mut file = create_dump_file(tcx, "dot", None, pass_name, &0, mir_source)
         .expect("Unexpected error creating BasicCoverageBlock graphviz DOT file");
     graphviz_writer
         .write_graphviz(tcx, &mut file)

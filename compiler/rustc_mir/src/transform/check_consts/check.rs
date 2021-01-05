@@ -12,6 +12,8 @@ use rustc_middle::ty::cast::CastTy;
 use rustc_middle::ty::subst::{GenericArgKind, InternalSubsts};
 use rustc_middle::ty::{self, adjustment::PointerCast, Instance, InstanceDef, Ty, TyCtxt};
 use rustc_middle::ty::{Binder, TraitPredicate, TraitRef};
+use rustc_mir_dataflow::impls::MaybeMutBorrowedLocals;
+use rustc_mir_dataflow::{self, Analysis};
 use rustc_span::{sym, Span, Symbol};
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt;
 use rustc_trait_selection::traits::{self, SelectionContext, TraitEngine};
@@ -24,17 +26,15 @@ use super::qualifs::{self, CustomEq, HasMutInterior, NeedsDrop};
 use super::resolver::FlowSensitiveAnalysis;
 use super::{is_lang_panic_fn, ConstCx, Qualif};
 use crate::const_eval::is_unstable_const_fn;
-use crate::dataflow::impls::MaybeMutBorrowedLocals;
-use crate::dataflow::{self, Analysis};
 
 // We are using `MaybeMutBorrowedLocals` as a proxy for whether an item may have been mutated
 // through a pointer prior to the given point. This is okay even though `MaybeMutBorrowedLocals`
 // kills locals upon `StorageDead` because a local will never be used after a `StorageDead`.
 type IndirectlyMutableResults<'mir, 'tcx> =
-    dataflow::ResultsCursor<'mir, 'tcx, MaybeMutBorrowedLocals<'mir, 'tcx>>;
+    rustc_mir_dataflow::ResultsCursor<'mir, 'tcx, MaybeMutBorrowedLocals<'mir, 'tcx>>;
 
 type QualifResults<'mir, 'tcx, Q> =
-    dataflow::ResultsCursor<'mir, 'tcx, FlowSensitiveAnalysis<'mir, 'mir, 'tcx, Q>>;
+    rustc_mir_dataflow::ResultsCursor<'mir, 'tcx, FlowSensitiveAnalysis<'mir, 'mir, 'tcx, Q>>;
 
 #[derive(Default)]
 pub struct Qualifs<'mir, 'tcx> {

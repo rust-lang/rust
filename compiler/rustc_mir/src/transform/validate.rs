@@ -1,9 +1,5 @@
 //! Validates the MIR to ensure that invariants are upheld.
 
-use crate::dataflow::impls::MaybeStorageLive;
-use crate::dataflow::{Analysis, ResultsCursor};
-use crate::util::storage::AlwaysLiveLocals;
-
 use super::MirPass;
 use rustc_index::bit_set::BitSet;
 use rustc_infer::infer::TyCtxtInferExt;
@@ -17,6 +13,9 @@ use rustc_middle::mir::{
 };
 use rustc_middle::ty::fold::BottomUpFolder;
 use rustc_middle::ty::{self, ParamEnv, Ty, TyCtxt, TypeFoldable};
+use rustc_mir_dataflow::impls::MaybeStorageLive;
+use rustc_mir_dataflow::storage::AlwaysLiveLocals;
+use rustc_mir_dataflow::{Analysis, ResultsCursor};
 use rustc_target::abi::Size;
 
 #[derive(Copy, Clone, Debug)]

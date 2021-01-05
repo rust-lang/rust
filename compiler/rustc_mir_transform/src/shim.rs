@@ -15,13 +15,13 @@ use rustc_target::spec::abi::Abi;
 use std::fmt;
 use std::iter;
 
-use crate::util::elaborate_drops::{self, DropElaborator, DropFlagMode, DropStyle};
 use crate::util::expand_aggregate;
-use crate::util::patch::MirPatch;
 use crate::{
     abort_unwinding_calls, add_call_guards, add_moves_for_packed_drops, remove_noop_landing_pads,
     run_passes, simplify,
 };
+use rustc_middle::mir::patch::MirPatch;
+use rustc_mir_dataflow::elaborate_drops::{self, DropElaborator, DropFlagMode, DropStyle};
 
 pub fn provide(providers: &mut Providers) {
     providers.mir_shims = make_shim;
@@ -940,7 +940,7 @@ pub fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> Body<'_> {
         span,
     );
 
-    crate::util::dump_mir(tcx, None, "mir_map", &0, &body, |_, _| Ok(()));
+    rustc_middle::mir::dump_mir(tcx, None, "mir_map", &0, &body, |_, _| Ok(()));
 
     body
 }

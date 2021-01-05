@@ -12,7 +12,7 @@ use rustc_middle::mir::{
 };
 use rustc_middle::ty::print::Print;
 use rustc_middle::ty::{self, DefIdTree, Instance, Ty, TyCtxt};
-use rustc_mir::dataflow::move_paths::{InitLocation, LookupResult};
+use rustc_mir_dataflow::move_paths::{InitLocation, LookupResult};
 use rustc_span::{
     hygiene::{DesugaringKind, ForLoopLoc},
     symbol::sym,

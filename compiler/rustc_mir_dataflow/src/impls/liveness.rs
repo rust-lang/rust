@@ -2,7 +2,7 @@ use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::{self, Local, Location};
 
-use crate::dataflow::{AnalysisDomain, Backward, GenKill, GenKillAnalysis};
+use crate::{AnalysisDomain, Backward, GenKill, GenKillAnalysis};
 
 /// A [live-variable dataflow analysis][liveness].
 ///

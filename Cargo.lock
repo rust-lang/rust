@@ -3614,6 +3614,7 @@ dependencies = [
  "rustc_lexer",
  "rustc_middle",
  "rustc_mir",
+ "rustc_mir_dataflow",
  "rustc_serialize",
  "rustc_session",
  "rustc_span",
@@ -4047,6 +4048,8 @@ version = "0.0.0"
 dependencies = [
  "bitflags",
  "chalk-ir",
+ "either",
+ "gsgdt",
  "polonius-engine",
  "rustc-rayon-core",
  "rustc_apfloat",
@@ -4056,6 +4059,7 @@ dependencies = [
  "rustc_data_structures",
  "rustc_errors",
  "rustc_feature",
+ "rustc_graphviz",
  "rustc_hir",
  "rustc_index",
  "rustc_macros",
@@ -4075,25 +4079,21 @@ version = "0.0.0"
 dependencies = [
  "either",
  "gsgdt",
- "polonius-engine",
- "regex",
  "rustc_apfloat",
  "rustc_ast",
  "rustc_attr",
  "rustc_data_structures",
  "rustc_errors",
- "rustc_graphviz",
  "rustc_hir",
  "rustc_index",
  "rustc_infer",
  "rustc_macros",
  "rustc_middle",
- "rustc_serialize",
+ "rustc_mir_dataflow",
  "rustc_session",
  "rustc_span",
  "rustc_target",
  "rustc_trait_selection",
- "smallvec",
  "tracing",
 ]
 
@@ -4121,6 +4121,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustc_mir_dataflow"
+version = "0.0.0"
+dependencies = [
+ "polonius-engine",
+ "regex",
+ "rustc_ast",
+ "rustc_data_structures",
+ "rustc_graphviz",
+ "rustc_hir",
+ "rustc_index",
+ "rustc_middle",
+ "rustc_serialize",
+ "rustc_session",
+ "rustc_span",
+ "rustc_target",
+ "smallvec",
+ "tracing",
+]
+
+[[package]]
 name = "rustc_mir_transform"
 version = "0.0.0"
 dependencies = [
@@ -4134,6 +4154,7 @@ dependencies = [
  "rustc_index",
  "rustc_middle",
  "rustc_mir",
+ "rustc_mir_dataflow",
  "rustc_serialize",
  "rustc_session",
  "rustc_span",

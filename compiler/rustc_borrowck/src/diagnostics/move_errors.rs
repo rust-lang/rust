@@ -2,7 +2,7 @@ use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::mir::*;
 use rustc_middle::ty;
-use rustc_mir::dataflow::move_paths::{
+use rustc_mir_dataflow::move_paths::{
     IllegalMoveOrigin, IllegalMoveOriginKind, LookupResult, MoveError, MovePathIndex,
 };
 use rustc_span::source_map::DesugaringKind;

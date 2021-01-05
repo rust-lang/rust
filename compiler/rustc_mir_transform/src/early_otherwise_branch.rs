@@ -1,4 +1,4 @@
-use crate::{util::patch::MirPatch, MirPass};
+use rustc_middle::mir::patch::MirPatch;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{Ty, TyCtxt};
 use std::fmt::Debug;

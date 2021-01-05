@@ -1,3 +1,21 @@
+#![feature(associated_type_defaults)]
+#![feature(bool_to_option)]
+#![feature(box_patterns)]
+#![feature(box_syntax)]
+#![feature(const_panic)]
+#![feature(exact_size_is_empty)]
+#![feature(in_band_lifetimes)]
+#![feature(iter_zip)]
+#![feature(min_specialization)]
+#![feature(once_cell)]
+#![feature(stmt_expr_attributes)]
+#![feature(trusted_step)]
+
+#[macro_use]
+extern crate tracing;
+#[macro_use]
+extern crate rustc_middle;
+
 use rustc_ast::{self as ast, MetaItem};
 use rustc_middle::ty;
 use rustc_session::Session;
@@ -17,9 +35,12 @@ pub use self::framework::{
 use self::move_paths::MoveData;
 
 pub mod drop_flag_effects;
+pub mod elaborate_drops;
 mod framework;
 pub mod impls;
 pub mod move_paths;
+pub mod rustc_peek;
+pub mod storage;
 
 pub(crate) mod indexes {
     pub(crate) use super::move_paths::MovePathIndex;

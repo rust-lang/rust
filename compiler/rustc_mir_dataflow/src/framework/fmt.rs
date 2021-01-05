@@ -147,18 +147,18 @@ where
 }
 
 impl<C> DebugWithContext<C> for rustc_middle::mir::Local {}
-impl<C> DebugWithContext<C> for crate::dataflow::move_paths::InitIndex {}
+impl<C> DebugWithContext<C> for crate::move_paths::InitIndex {}
 
-impl<'tcx, C> DebugWithContext<C> for crate::dataflow::move_paths::MovePathIndex
+impl<'tcx, C> DebugWithContext<C> for crate::move_paths::MovePathIndex
 where
-    C: crate::dataflow::move_paths::HasMoveData<'tcx>,
+    C: crate::move_paths::HasMoveData<'tcx>,
 {
     fn fmt_with(&self, ctxt: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", ctxt.move_data().move_paths[*self])
     }
 }
 
-impl<T, C> DebugWithContext<C> for crate::dataflow::lattice::Dual<T>
+impl<T, C> DebugWithContext<C> for crate::lattice::Dual<T>
 where
     T: DebugWithContext<C>,
 {

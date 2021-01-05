@@ -46,13 +46,13 @@ use std::iter;
 use std::mem;
 use std::rc::Rc;
 
-use rustc_mir::dataflow::impls::{
+use rustc_mir_dataflow::impls::{
     EverInitializedPlaces, MaybeInitializedPlaces, MaybeUninitializedPlaces,
 };
-use rustc_mir::dataflow::move_paths::{InitIndex, MoveOutIndex, MovePathIndex};
-use rustc_mir::dataflow::move_paths::{InitLocation, LookupResult, MoveData, MoveError};
-use rustc_mir::dataflow::Analysis;
-use rustc_mir::dataflow::MoveDataParamEnv;
+use rustc_mir_dataflow::move_paths::{InitIndex, MoveOutIndex, MovePathIndex};
+use rustc_mir_dataflow::move_paths::{InitLocation, LookupResult, MoveData, MoveError};
+use rustc_mir_dataflow::Analysis;
+use rustc_mir_dataflow::MoveDataParamEnv;
 
 use self::diagnostics::{AccessKind, RegionName};
 use self::location::LocationTable;
@@ -373,7 +373,7 @@ fn do_mir_borrowck<'a, 'tcx>(
 
     mbcx.report_move_errors(move_errors);
 
-    rustc_mir::dataflow::visit_results(
+    rustc_mir_dataflow::visit_results(
         &body,
         traversal::reverse_postorder(&body).map(|(bb, _)| bb),
         &results,
@@ -615,7 +615,7 @@ struct MirBorrowckCtxt<'cx, 'tcx> {
 // 2. loans made in overlapping scopes do not conflict
 // 3. assignments do not affect things loaned out as immutable
 // 4. moves do not affect things loaned out in any way
-impl<'cx, 'tcx> rustc_mir::dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtxt<'cx, 'tcx> {
+impl<'cx, 'tcx> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtxt<'cx, 'tcx> {
     type FlowState = Flows<'cx, 'tcx>;
 
     fn visit_statement_before_primary_effect(

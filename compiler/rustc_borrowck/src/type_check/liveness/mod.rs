@@ -3,9 +3,9 @@ use rustc_middle::mir::{Body, Local};
 use rustc_middle::ty::{RegionVid, TyCtxt};
 use std::rc::Rc;
 
-use rustc_mir::dataflow::impls::MaybeInitializedPlaces;
-use rustc_mir::dataflow::move_paths::MoveData;
-use rustc_mir::dataflow::ResultsCursor;
+use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
+use rustc_mir_dataflow::move_paths::MoveData;
+use rustc_mir_dataflow::ResultsCursor;
 
 use crate::{
     constraints::OutlivesConstraintSet,

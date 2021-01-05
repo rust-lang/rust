@@ -10,14 +10,14 @@ use rustc_middle::mir::{
     ProjectionElem, Rvalue, Statement, StatementKind, Terminator, TerminatorKind, VarBindingForm,
 };
 use rustc_middle::ty::{self, suggest_constraining_type_param, Ty};
+use rustc_mir_dataflow::drop_flag_effects;
+use rustc_mir_dataflow::move_paths::{MoveOutIndex, MovePathIndex};
 use rustc_span::source_map::DesugaringKind;
 use rustc_span::symbol::sym;
 use rustc_span::{BytePos, MultiSpan, Span, DUMMY_SP};
 use rustc_trait_selection::infer::InferCtxtExt;
 
 use crate::borrowck_errors;
-use rustc_mir::dataflow::drop_flag_effects;
-use rustc_mir::dataflow::move_paths::{MoveOutIndex, MovePathIndex};
 
 use crate::{
     borrow_set::BorrowData, diagnostics::Instance, prefixes::IsPrefixOf,

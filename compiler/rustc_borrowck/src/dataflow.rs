@@ -3,10 +3,10 @@ use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::{self, BasicBlock, Body, Location, Place};
 use rustc_middle::ty::RegionVid;
 use rustc_middle::ty::TyCtxt;
-use rustc_mir::dataflow::impls::{EverInitializedPlaces, MaybeUninitializedPlaces};
-use rustc_mir::dataflow::ResultsVisitable;
-use rustc_mir::dataflow::{self, fmt::DebugWithContext, GenKill};
-use rustc_mir::dataflow::{Analysis, Direction, Results};
+use rustc_mir_dataflow::impls::{EverInitializedPlaces, MaybeUninitializedPlaces};
+use rustc_mir_dataflow::ResultsVisitable;
+use rustc_mir_dataflow::{self, fmt::DebugWithContext, GenKill};
+use rustc_mir_dataflow::{Analysis, Direction, Results};
 use std::fmt;
 use std::iter;
 
@@ -323,7 +323,7 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
     }
 }
 
-impl<'tcx> dataflow::AnalysisDomain<'tcx> for Borrows<'_, 'tcx> {
+impl<'tcx> rustc_mir_dataflow::AnalysisDomain<'tcx> for Borrows<'_, 'tcx> {
     type Domain = BitSet<BorrowIndex>;
 
     const NAME: &'static str = "borrows";
@@ -339,7 +339,7 @@ impl<'tcx> dataflow::AnalysisDomain<'tcx> for Borrows<'_, 'tcx> {
     }
 }
 
-impl<'tcx> dataflow::GenKillAnalysis<'tcx> for Borrows<'_, 'tcx> {
+impl<'tcx> rustc_mir_dataflow::GenKillAnalysis<'tcx> for Borrows<'_, 'tcx> {
     type Idx = BorrowIndex;
 
     fn before_statement_effect(

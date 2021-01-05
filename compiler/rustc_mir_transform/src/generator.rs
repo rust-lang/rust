@@ -50,24 +50,24 @@
 //! Otherwise it drops all the values in scope at the last suspension point.
 
 use crate::simplify;
-use crate::util::dump_mir;
 use crate::util::expand_aggregate;
-use crate::util::storage;
 use crate::MirPass;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
 use rustc_index::bit_set::{BitMatrix, BitSet};
 use rustc_index::vec::{Idx, IndexVec};
+use rustc_middle::mir::dump_mir;
 use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::subst::{Subst, SubstsRef};
 use rustc_middle::ty::GeneratorSubsts;
 use rustc_middle::ty::{self, AdtDef, Ty, TyCtxt};
-use rustc_mir::dataflow::impls::{
+use rustc_mir_dataflow::impls::{
     MaybeBorrowedLocals, MaybeLiveLocals, MaybeRequiresStorage, MaybeStorageLive,
 };
-use rustc_mir::dataflow::{self, Analysis};
+use rustc_mir_dataflow::storage;
+use rustc_mir_dataflow::{self, Analysis};
 use rustc_target::abi::VariantIdx;
 use rustc_target::spec::PanicStrategy;
 use std::{iter, ops};
@@ -468,7 +468,7 @@ fn locals_live_across_suspend_points(
         .iterate_to_fixpoint();
 
     let mut borrowed_locals_cursor =
-        dataflow::ResultsCursor::new(body_ref, &borrowed_locals_results);
+        rustc_mir_dataflow::ResultsCursor::new(body_ref, &borrowed_locals_results);
 
     // Calculate the MIR locals that we actually need to keep storage around
     // for.
@@ -476,7 +476,7 @@ fn locals_live_across_suspend_points(
         .into_engine(tcx, body_ref)
         .iterate_to_fixpoint();
     let mut requires_storage_cursor =
-        dataflow::ResultsCursor::new(body_ref, &requires_storage_results);
+        rustc_mir_dataflow::ResultsCursor::new(body_ref, &requires_storage_results);
 
     // Calculate the liveness of MIR locals ignoring borrows.
     let mut liveness = MaybeLiveLocals
@@ -616,7 +616,7 @@ fn compute_storage_conflicts(
     body: &'mir Body<'tcx>,
     saved_locals: &GeneratorSavedLocals,
     always_live_locals: storage::AlwaysLiveLocals,
-    requires_storage: dataflow::Results<'tcx, MaybeRequiresStorage<'mir, 'tcx>>,
+    requires_storage: rustc_mir_dataflow::Results<'tcx, MaybeRequiresStorage<'mir, 'tcx>>,
 ) -> BitMatrix<GeneratorSavedLocal, GeneratorSavedLocal> {
     assert_eq!(body.local_decls.len(), saved_locals.domain_size());
 
@@ -671,7 +671,7 @@ struct StorageConflictVisitor<'mir, 'tcx, 's> {
     local_conflicts: BitMatrix<Local, Local>,
 }
 
-impl dataflow::ResultsVisitor<'mir, 'tcx> for StorageConflictVisitor<'mir, 'tcx, '_> {
+impl rustc_mir_dataflow::ResultsVisitor<'mir, 'tcx> for StorageConflictVisitor<'mir, 'tcx, '_> {
     type FlowState = BitSet<Local>;
 
     fn visit_statement_before_primary_effect(
@@ -865,8 +865,8 @@ fn insert_switch<'tcx>(
 
 fn elaborate_generator_drops<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     use crate::shim::DropShimElaborator;
-    use crate::util::elaborate_drops::{elaborate_drop, Unwind};
-    use crate::util::patch::MirPatch;
+    use rustc_middle::mir::patch::MirPatch;
+    use rustc_mir_dataflow::elaborate_drops::{elaborate_drop, Unwind};
 
     // Note that `elaborate_drops` only drops the upvars of a generator, and
     // this is ok because `open_drop` can only be reached within that own

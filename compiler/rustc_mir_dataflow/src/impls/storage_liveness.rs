@@ -1,7 +1,7 @@
 pub use super::*;
 
-use crate::dataflow::{self, GenKill, Results, ResultsRefCursor};
-use crate::util::storage::AlwaysLiveLocals;
+use crate::storage::AlwaysLiveLocals;
+use crate::{GenKill, Results, ResultsRefCursor};
 use rustc_middle::mir::visit::{NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use std::cell::RefCell;
@@ -17,7 +17,7 @@ impl MaybeStorageLive {
     }
 }
 
-impl dataflow::AnalysisDomain<'tcx> for MaybeStorageLive {
+impl crate::AnalysisDomain<'tcx> for MaybeStorageLive {
     type Domain = BitSet<Local>;
 
     const NAME: &'static str = "maybe_storage_live";
@@ -39,7 +39,7 @@ impl dataflow::AnalysisDomain<'tcx> for MaybeStorageLive {
     }
 }
 
-impl dataflow::GenKillAnalysis<'tcx> for MaybeStorageLive {
+impl crate::GenKillAnalysis<'tcx> for MaybeStorageLive {
     type Idx = Local;
 
     fn statement_effect(
@@ -97,7 +97,7 @@ impl<'mir, 'tcx> MaybeRequiresStorage<'mir, 'tcx> {
     }
 }
 
-impl<'mir, 'tcx> dataflow::AnalysisDomain<'tcx> for MaybeRequiresStorage<'mir, 'tcx> {
+impl<'mir, 'tcx> crate::AnalysisDomain<'tcx> for MaybeRequiresStorage<'mir, 'tcx> {
     type Domain = BitSet<Local>;
 
     const NAME: &'static str = "requires_storage";
@@ -116,7 +116,7 @@ impl<'mir, 'tcx> dataflow::AnalysisDomain<'tcx> for MaybeRequiresStorage<'mir, '
     }
 }
 
-impl<'mir, 'tcx> dataflow::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'mir, 'tcx> {
+impl<'mir, 'tcx> crate::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'mir, 'tcx> {
     type Idx = Local;
 
     fn before_statement_effect(
