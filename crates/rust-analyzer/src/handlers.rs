@@ -31,12 +31,13 @@ use serde_json::to_value;
 use stdx::{format_to, split_once};
 use syntax::{algo, ast, AstNode, TextRange, TextSize};
 
-use crate::diff::diff;
 use crate::{
     cargo_target_spec::CargoTargetSpec,
     config::RustfmtConfig,
+    diff::diff,
     from_json, from_proto,
     global_state::{GlobalState, GlobalStateSnapshot},
+    line_endings::LineEndings,
     lsp_ext::{self, InlayHint, InlayHintsParams},
     lsp_utils::all_edits_are_disjoint,
     to_proto, LspError, Result,
@@ -909,14 +910,25 @@ pub(crate) fn handle_formatting(
         }
     }
 
-    if *file == captured_stdout {
+    let (new_text, new_line_endings) = LineEndings::normalize(captured_stdout);
+
+    if file_line_endings != new_line_endings {
+        // If line endings are different, send the entire file.
+        // Diffing would not work here, as the line endings might be the only
+        // difference.
+        Ok(Some(to_proto::text_edit_vec(
+            &file_line_index,
+            new_line_endings,
+            TextEdit::replace(TextRange::up_to(TextSize::of(&*file)), new_text),
+        )))
+    } else if *file == new_text {
         // The document is already formatted correctly -- no edits needed.
         Ok(None)
     } else {
         Ok(Some(to_proto::text_edit_vec(
             &file_line_index,
             file_line_endings,
-            diff(&file, &captured_stdout),
+            diff(&file, &new_text),
         )))
     }
 }
