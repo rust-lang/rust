@@ -9,7 +9,7 @@ use rustc_codegen_ssa::{
 };
 use rustc_middle::ty::layout::HasTyCtxt;
 use rustc_middle::ty::Ty;
-use rustc_target::abi::{Align, HasDataLayout, LayoutOf, Size};
+use rustc_target::abi::{Align, Endian, HasDataLayout, LayoutOf, Size};
 
 fn round_pointer_up_to_alignment(
     bx: &mut Builder<'a, 'll, 'tcx>,
@@ -52,7 +52,7 @@ fn emit_direct_ptr_va_arg(
     let next = bx.inbounds_gep(addr, &[full_direct_size]);
     bx.store(next, va_list_addr, bx.tcx().data_layout.pointer_align.abi);
 
-    if size.bytes() < slot_size.bytes() && &*bx.tcx().sess.target.endian == "big" {
+    if size.bytes() < slot_size.bytes() && bx.tcx().sess.target.endian == Endian::Big {
         let adjusted_size = bx.cx().const_i32((slot_size.bytes() - size.bytes()) as i32);
         let adjusted = bx.inbounds_gep(addr, &[adjusted_size]);
         (bx.bitcast(adjusted, bx.cx().type_ptr_to(llty)), addr_align)
@@ -105,7 +105,7 @@ fn emit_aapcs_va_arg(
     let mut end = bx.build_sibling_block("va_arg.end");
     let zero = bx.const_i32(0);
     let offset_align = Align::from_bytes(4).unwrap();
-    assert!(&*bx.tcx().sess.target.endian == "little");
+    assert_eq!(bx.tcx().sess.target.endian, Endian::Little);
 
     let gr_type = target_ty.is_any_ptr() || target_ty.is_integral();
     let (reg_off, reg_top_index, slot_size) = if gr_type {
