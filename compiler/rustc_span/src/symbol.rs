@@ -915,6 +915,7 @@ symbols! {
         receiver,
         recursion_limit,
         reexport_test_harness_main,
+        ref_clone_method,
         reference,
         reflect,
         reg,

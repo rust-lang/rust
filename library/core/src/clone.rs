@@ -104,6 +104,7 @@
 /// [impls]: #implementors
 #[stable(feature = "rust1", since = "1.0.0")]
 #[lang = "clone"]
+#[rustc_diagnostic_item = "Clone"]
 pub trait Clone: Sized {
     /// Returns a copy of the value.
     ///
@@ -221,6 +222,7 @@ mod impls {
     #[stable(feature = "rust1", since = "1.0.0")]
     impl<T: ?Sized> Clone for &T {
         #[inline]
+        #[rustc_diagnostic_item = "ref_clone_method"]
         fn clone(&self) -> Self {
             *self
         }
