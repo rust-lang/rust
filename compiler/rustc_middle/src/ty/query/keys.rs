@@ -7,7 +7,7 @@ use crate::ty::subst::{GenericArg, SubstsRef};
 use crate::ty::{self, Ty, TyCtxt};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
 use rustc_query_system::query::DefaultCacheSelector;
-use rustc_span::symbol::{Ident, Symbol};
+use rustc_span::symbol::Symbol;
 use rustc_span::{Span, DUMMY_SP};
 
 /// The `Key` trait controls what types can legally be used as the key
@@ -149,7 +149,7 @@ impl Key for (LocalDefId, DefId) {
     }
 }
 
-impl Key for (DefId, Option<Ident>) {
+impl Key for (DefId, Option<Symbol>) {
     type CacheSelector = DefaultCacheSelector;
 
     fn query_crate(&self) -> CrateNum {
@@ -160,7 +160,7 @@ impl Key for (DefId, Option<Ident>) {
     }
 }
 
-impl Key for (DefId, LocalDefId, Ident) {
+impl Key for (DefId, LocalDefId, Symbol) {
     type CacheSelector = DefaultCacheSelector;
 
     fn query_crate(&self) -> CrateNum {

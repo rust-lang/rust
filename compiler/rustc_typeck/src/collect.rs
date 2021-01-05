@@ -316,7 +316,7 @@ impl AstConv<'tcx> for ItemCtxt<'tcx> {
         &self,
         span: Span,
         def_id: DefId,
-        assoc_name: Ident,
+        assoc_name: Symbol,
     ) -> ty::GenericPredicates<'tcx> {
         self.tcx.at(span).type_param_predicates((
             self.item_def_id,
@@ -503,7 +503,7 @@ fn get_new_lifetime_name<'tcx>(
 /// `X: Foo` where `X` is the type parameter `def_id`.
 fn type_param_predicates(
     tcx: TyCtxt<'_>,
-    (item_def_id, def_id, assoc_name): (DefId, LocalDefId, Ident),
+    (item_def_id, def_id, assoc_name): (DefId, LocalDefId, Symbol),
 ) -> ty::GenericPredicates<'_> {
     use rustc_hir::*;
 
@@ -600,7 +600,7 @@ impl ItemCtxt<'tcx> {
         param_id: hir::HirId,
         ty: Ty<'tcx>,
         only_self_bounds: OnlySelfBounds,
-        assoc_name: Option<Ident>,
+        assoc_name: Option<Symbol>,
     ) -> Vec<(ty::Predicate<'tcx>, Span)> {
         let constness = self.default_constness_for_trait_bounds();
         let from_ty_params = ast_generics
@@ -646,7 +646,7 @@ impl ItemCtxt<'tcx> {
         from_ty_params.chain(from_where_clauses).collect()
     }
 
-    fn bound_defines_assoc_item(&self, b: &hir::GenericBound<'_>, assoc_name: Ident) -> bool {
+    fn bound_defines_assoc_item(&self, b: &hir::GenericBound<'_>, assoc_name: Symbol) -> bool {
         debug!("bound_defines_assoc_item(b={:?}, assoc_name={:?})", b, assoc_name);
 
         match b {
@@ -1037,7 +1037,7 @@ fn super_predicates_of(tcx: TyCtxt<'_>, trait_def_id: DefId) -> ty::GenericPredi
 /// the transitive super-predicates are converted.
 fn super_predicates_that_define_assoc_type(
     tcx: TyCtxt<'_>,
-    (trait_def_id, assoc_name): (DefId, Option<Ident>),
+    (trait_def_id, assoc_name): (DefId, Option<Symbol>),
 ) -> ty::GenericPredicates<'_> {
     debug!(
         "super_predicates_that_define_assoc_type(trait_def_id={:?}, assoc_name={:?})",

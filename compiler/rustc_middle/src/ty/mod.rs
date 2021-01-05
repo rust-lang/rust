@@ -318,6 +318,16 @@ impl<'tcx> AssociatedItems<'tcx> {
             .find(|item| tcx.hygienic_eq(ident, item.ident, parent_def_id))
     }
 
+    /// Returns the associated item with the given name and `AssocKind`, if one exists, ignoring
+    /// hygiene.
+    pub fn find_by_name_and_kind_unhygienic(
+        &self,
+        name: Symbol,
+        kind: AssocKind,
+    ) -> impl '_ + Iterator<Item = &ty::AssocItem> {
+        self.filter_by_name_unhygienic(name).filter(move |item| item.kind == kind)
+    }
+
     /// Returns the associated item with the given name in the given `Namespace`, if one exists.
     pub fn find_by_name_and_namespace(
         &self,

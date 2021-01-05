@@ -65,7 +65,7 @@ pub trait AstConv<'tcx> {
         &self,
         span: Span,
         def_id: DefId,
-        assoc_name: Ident,
+        assoc_name: Symbol,
     ) -> ty::GenericPredicates<'tcx>;
 
     /// Returns the lifetime to use when a lifetime is omitted (and not elided).
@@ -887,7 +887,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         ast_bounds: &[hir::GenericBound<'_>],
         sized_by_default: SizedByDefault,
         span: Span,
-        assoc_name: Ident,
+        assoc_name: Symbol,
     ) -> Bounds<'tcx> {
         let mut result = Vec::new();
 
@@ -1398,7 +1398,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         );
 
         let predicates = &self
-            .get_type_parameter_bounds(span, ty_param_def_id.to_def_id(), assoc_name)
+            .get_type_parameter_bounds(span, ty_param_def_id.to_def_id(), assoc_name.name)
             .predicates;
 
         debug!("find_bound_for_assoc_item: predicates={:#?}", predicates);
@@ -1412,7 +1412,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     predicates.iter().filter_map(|(p, _)| {
                         p.to_opt_poly_trait_ref().map(|trait_ref| trait_ref.value)
                     }),
-                    assoc_name,
+                    assoc_name.name,
                 )
                 .into_iter()
             },

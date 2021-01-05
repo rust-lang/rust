@@ -4,7 +4,7 @@ use crate::traits::{Obligation, ObligationCause, PredicateObligation};
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_middle::ty::outlives::Component;
 use rustc_middle::ty::{self, ToPredicate, TyCtxt, WithConstness};
-use rustc_span::symbol::Ident;
+use rustc_span::symbol::Symbol;
 
 pub fn anonymize_predicate<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -296,7 +296,7 @@ pub fn transitive_bounds<'tcx>(
 pub fn transitive_bounds_that_define_assoc_type<'tcx>(
     tcx: TyCtxt<'tcx>,
     bounds: impl Iterator<Item = ty::PolyTraitRef<'tcx>>,
-    assoc_name: Ident,
+    assoc_name: Symbol,
 ) -> FxIndexSet<ty::PolyTraitRef<'tcx>> {
     let mut stack: Vec<_> = bounds.collect();
     let mut trait_refs = FxIndexSet::default();

@@ -20,7 +20,7 @@ use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::{self, Const, Ty, TyCtxt};
 use rustc_session::Session;
-use rustc_span::symbol::Ident;
+use rustc_span::symbol::Symbol;
 use rustc_span::{self, Span};
 use rustc_trait_selection::traits::{ObligationCause, ObligationCauseCode};
 
@@ -188,7 +188,7 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
         &self,
         _: Span,
         def_id: DefId,
-        _: Ident,
+        _: Symbol,
     ) -> ty::GenericPredicates<'tcx> {
         let tcx = self.tcx;
         let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
