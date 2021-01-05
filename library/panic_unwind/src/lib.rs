@@ -17,6 +17,7 @@
     html_root_url = "https://doc.rust-lang.org/nightly/",
     issue_tracker_base_url = "https://github.com/rust-lang/rust/issues/"
 )]
+
 #![feature(core_intrinsics)]
 #![feature(int_bits_const)]
 #![feature(lang_items)]
@@ -30,7 +31,9 @@
 #![feature(raw)]
 #![panic_runtime]
 #![feature(panic_runtime)]
+
 // `real_imp` is unused with Miri, so silence warnings.
+
 #![cfg_attr(miri, allow(dead_code))]
 
 use alloc::boxed::Box;
