@@ -180,10 +180,6 @@ impl<'tcx> DepContext for TyCtxt<'tcx> {
     }
 
     // Interactions with on_disk_cache
-    fn try_load_from_on_disk_cache(&self, dep_node: &DepNode) {
-        (dep_node.kind.try_load_from_on_disk_cache)(*self, dep_node)
-    }
-
     fn load_diagnostics(&self, prev_dep_node_index: SerializedDepNodeIndex) -> Vec<Diagnostic> {
         self.on_disk_cache
             .as_ref()

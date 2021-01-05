@@ -285,7 +285,7 @@ impl<'sess> OnDiskCache<'sess> {
             // Do this *before* we clone 'latest_foreign_def_path_hashes', since
             // loading existing queries may cause us to create new DepNodes, which
             // may in turn end up invoking `store_foreign_def_id_hash`
-            tcx.dep_graph.exec_cache_promotions(tcx);
+            tcx.queries.exec_cache_promotions(tcx);
 
             let latest_foreign_def_path_hashes = self.latest_foreign_def_path_hashes.lock().clone();
             let hygiene_encode_context = HygieneEncodeContext::default();

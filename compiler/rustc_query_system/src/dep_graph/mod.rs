@@ -43,9 +43,6 @@ pub trait DepContext: Copy {
     /// Return the diagnostic handler.
     fn diagnostic(&self) -> &rustc_errors::Handler;
 
-    /// Load data from the on-disk cache.
-    fn try_load_from_on_disk_cache(&self, dep_node: &DepNode<Self::DepKind>);
-
     /// Load diagnostics associated to the node in the previous session.
     fn load_diagnostics(&self, prev_dep_node_index: SerializedDepNodeIndex) -> Vec<Diagnostic>;
 
