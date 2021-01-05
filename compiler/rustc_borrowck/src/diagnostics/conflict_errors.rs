@@ -1695,7 +1695,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             Some((method_did, method_substs)),
         ) = (
             &self.body[loan.reserve_location.block].terminator,
-            rustc_mir::util::find_self_call(
+            rustc_const_eval::util::find_self_call(
                 tcx,
                 self.body,
                 loan.assigned_place.local,

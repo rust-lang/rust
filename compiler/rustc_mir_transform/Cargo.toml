@@ -18,7 +18,7 @@ rustc_errors = { path = "../rustc_errors" }
 rustc_hir = { path = "../rustc_hir" }
 rustc_index = { path = "../rustc_index" }
 rustc_middle = { path = "../rustc_middle" }
-rustc_mir = { path = "../rustc_mir" }
+rustc_const_eval = { path = "../rustc_const_eval" }
 rustc_mir_dataflow = { path = "../rustc_mir_dataflow" }
 rustc_serialize = { path = "../rustc_serialize" }
 rustc_session = { path = "../rustc_session" }

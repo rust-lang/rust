@@ -1170,7 +1170,7 @@ rustc_index::newtype_index! {
     /// [CFG]: https://rustc-dev-guide.rust-lang.org/appendix/background.html#cfg
     /// [data-flow analyses]:
     ///     https://rustc-dev-guide.rust-lang.org/appendix/background.html#what-is-a-dataflow-analysis
-    /// [`CriticalCallEdges`]: ../../rustc_mir/transform/add_call_guards/enum.AddCallGuards.html#variant.CriticalCallEdges
+    /// [`CriticalCallEdges`]: ../../rustc_const_eval/transform/add_call_guards/enum.AddCallGuards.html#variant.CriticalCallEdges
     /// [guide-mir]: https://rustc-dev-guide.rust-lang.org/mir/
     pub struct BasicBlock {
         derive [HashStable]

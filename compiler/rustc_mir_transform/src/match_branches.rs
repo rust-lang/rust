@@ -134,7 +134,7 @@ impl<'tcx> MirPass<'tcx> for MatchBranchSimplification {
                             let const_cmp = Operand::const_from_scalar(
                                 tcx,
                                 switch_ty,
-                                rustc_mir::interpret::Scalar::from_uint(val, size),
+                                rustc_const_eval::interpret::Scalar::from_uint(val, size),
                                 rustc_span::DUMMY_SP,
                             );
                             let op = if f_b { BinOp::Eq } else { BinOp::Ne };

@@ -1,11 +1,11 @@
 //! This pass lowers calls to core::slice::len to just Len op.
 //! It should run before inlining!
 
+use crate::MirPass;
 use rustc_hir::def_id::DefId;
 use rustc_index::vec::IndexVec;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_mir::transform::MirPass;
 
 pub struct LowerSliceLenCalls;
 

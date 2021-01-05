@@ -29,8 +29,8 @@ use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::traits;
 
 use crate::MirPass;
-use rustc_mir::const_eval::ConstEvalErr;
-use rustc_mir::interpret::{
+use rustc_const_eval::const_eval::ConstEvalErr;
+use rustc_const_eval::interpret::{
     self, compile_time_machine, AllocId, Allocation, ConstValue, CtfeValidationMode, Frame, ImmTy,
     Immediate, InterpCx, InterpResult, LocalState, LocalValue, MemPlace, MemoryKind, OpTy,
     Operand as InterpOperand, PlaceTy, Scalar, ScalarMaybeUninit, StackPopCleanup, StackPopUnwind,

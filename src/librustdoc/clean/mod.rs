@@ -11,6 +11,7 @@ crate mod utils;
 
 use rustc_ast as ast;
 use rustc_attr as attr;
+use rustc_const_eval::const_eval::{is_const_fn, is_unstable_const_fn};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
@@ -22,7 +23,6 @@ use rustc_middle::ty::fold::TypeFolder;
 use rustc_middle::ty::subst::{InternalSubsts, Subst};
 use rustc_middle::ty::{self, AdtKind, DefIdTree, Lift, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
-use rustc_mir::const_eval::{is_const_fn, is_unstable_const_fn};
 use rustc_span::hygiene::{AstPass, MacroKind};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{self, ExpnKind};

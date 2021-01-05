@@ -19,6 +19,7 @@ extern crate tracing;
 extern crate rustc_middle;
 
 use required_consts::RequiredConstsVisitor;
+use rustc_const_eval::util;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::steal::Steal;
 use rustc_hir as hir;
@@ -29,7 +30,6 @@ use rustc_middle::mir::visit::Visitor as _;
 use rustc_middle::mir::{traversal, Body, ConstQualifs, MirPhase, Promoted};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, TyCtxt, TypeFoldable};
-use rustc_mir::util;
 use rustc_span::{Span, Symbol};
 
 mod abort_unwinding_calls;
@@ -73,10 +73,10 @@ mod simplify_try;
 mod uninhabited_enum_branching;
 mod unreachable_prop;
 
-use rustc_mir::transform::check_consts;
-use rustc_mir::transform::promote_consts;
-use rustc_mir::transform::validate;
-use rustc_mir::transform::MirPass;
+use rustc_const_eval::transform::check_consts;
+use rustc_const_eval::transform::promote_consts;
+use rustc_const_eval::transform::validate;
+use rustc_const_eval::transform::MirPass;
 use rustc_mir_dataflow::rustc_peek;
 
 pub fn provide(providers: &mut Providers) {

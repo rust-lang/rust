@@ -11,7 +11,7 @@
 //! `visit_results`. The following example uses the `ResultsCursor` approach.
 //!
 //! ```ignore (cross-crate-imports)
-//! use rustc_mir::dataflow::Analysis; // Makes `into_engine` available.
+//! use rustc_const_eval::dataflow::Analysis; // Makes `into_engine` available.
 //!
 //! fn do_my_analysis(tcx: TyCtxt<'tcx>, body: &mir::Body<'tcx>) {
 //!     let analysis = MyAnalysis::new()

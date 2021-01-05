@@ -22,7 +22,6 @@ use rustc_middle::middle;
 use rustc_middle::middle::cstore::{MetadataLoader, MetadataLoaderDyn};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, GlobalCtxt, ResolverOutputs, TyCtxt};
-use rustc_mir as mir;
 use rustc_mir_build as mir_build;
 use rustc_parse::{parse_crate_from_file, parse_crate_from_source_str};
 use rustc_passes::{self, hir_stats, layout_test};
@@ -738,8 +737,8 @@ pub static DEFAULT_QUERY_PROVIDERS: SyncLazy<Providers> = SyncLazy::new(|| {
     let providers = &mut Providers::default();
     providers.analysis = analysis;
     proc_macro_decls::provide(providers);
+    rustc_const_eval::provide(providers);
     rustc_middle::hir::provide(providers);
-    mir::provide(providers);
     mir_borrowck::provide(providers);
     mir_build::provide(providers);
     rustc_mir_transform::provide(providers);
