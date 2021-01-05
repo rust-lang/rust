@@ -1,5 +1,4 @@
 #![crate_type="lib"]
-#![feature(doc_alias)]
 
 pub struct Bar;
 pub trait Foo {
