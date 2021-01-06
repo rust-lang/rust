@@ -732,6 +732,16 @@ pub fn foo(_input: TokenStream) -> TokenStream {
         ),
         work_done_progress_params: Default::default(),
     });
-    let value = res.get("contents").unwrap().get("value").unwrap().to_string();
-    expect![[r#""\n```rust\nfoo::Bar\n```\n\n```rust\nfn bar()\n```""#]].assert_eq(&value);
+    let value = res.get("contents").unwrap().get("value").unwrap().as_str().unwrap();
+
+    expect![[r#"
+
+        ```rust
+        foo::Bar
+        ```
+
+        ```rust
+        fn bar()
+        ```"#]]
+    .assert_eq(&value);
 }
