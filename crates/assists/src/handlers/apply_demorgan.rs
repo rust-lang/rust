@@ -12,7 +12,7 @@ use crate::{utils::invert_boolean_expression, AssistContext, AssistId, AssistKin
 //
 // ```
 // fn main() {
-//     if x != 4 ||<|> !y {}
+//     if x != 4 ||$0 !y {}
 // }
 // ```
 // ->
@@ -68,26 +68,26 @@ mod tests {
 
     #[test]
     fn demorgan_turns_and_into_or() {
-        check_assist(apply_demorgan, "fn f() { !x &&<|> !x }", "fn f() { !(x || x) }")
+        check_assist(apply_demorgan, "fn f() { !x &&$0 !x }", "fn f() { !(x || x) }")
     }
 
     #[test]
     fn demorgan_turns_or_into_and() {
-        check_assist(apply_demorgan, "fn f() { !x ||<|> !x }", "fn f() { !(x && x) }")
+        check_assist(apply_demorgan, "fn f() { !x ||$0 !x }", "fn f() { !(x && x) }")
     }
 
     #[test]
     fn demorgan_removes_inequality() {
-        check_assist(apply_demorgan, "fn f() { x != x ||<|> !x }", "fn f() { !(x == x && x) }")
+        check_assist(apply_demorgan, "fn f() { x != x ||$0 !x }", "fn f() { !(x == x && x) }")
     }
 
     #[test]
     fn demorgan_general_case() {
-        check_assist(apply_demorgan, "fn f() { x ||<|> x }", "fn f() { !(!x && !x) }")
+        check_assist(apply_demorgan, "fn f() { x ||$0 x }", "fn f() { !(!x && !x) }")
     }
 
     #[test]
     fn demorgan_doesnt_apply_with_cursor_not_on_op() {
-        check_assist_not_applicable(apply_demorgan, "fn f() { <|> !x || !x }")
+        check_assist_not_applicable(apply_demorgan, "fn f() { $0 !x || !x }")
     }
 }

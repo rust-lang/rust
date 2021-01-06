@@ -20,7 +20,7 @@ use crate::{utils::unwrap_trivial_block, AssistContext, AssistId, AssistKind, As
 // enum Action { Move { distance: u32 }, Stop }
 //
 // fn handle(action: Action) {
-//     <|>if let Action::Move { distance } = action {
+//     $0if let Action::Move { distance } = action {
 //         foo(distance)
 //     } else {
 //         bar()
@@ -89,7 +89,7 @@ pub(crate) fn replace_if_let_with_match(acc: &mut Assists, ctx: &AssistContext) 
 // enum Action { Move { distance: u32 }, Stop }
 //
 // fn handle(action: Action) {
-//     <|>match action {
+//     $0match action {
 //         Action::Move { distance } => foo(distance),
 //         _ => bar(),
 //     }
@@ -179,7 +179,7 @@ mod tests {
             r#"
 impl VariantData {
     pub fn is_struct(&self) -> bool {
-        if <|>let VariantData::Struct(..) = *self {
+        if $0let VariantData::Struct(..) = *self {
             true
         } else {
             false
@@ -204,7 +204,7 @@ impl VariantData {
             replace_if_let_with_match,
             r#"
 fn foo() {
-    if <|>let VariantData::Struct(..) = a {
+    if $0let VariantData::Struct(..) = a {
         bar(
             123
         )
@@ -233,7 +233,7 @@ fn foo() {
             r#"
 impl VariantData {
     pub fn is_struct(&self) -> bool {
-        if <|>let VariantData::Struct(..) = *self {
+        if $0let VariantData::Struct(..) = *self {
             true
         } else {
             false
@@ -257,7 +257,7 @@ enum Option<T> { Some(T), None }
 use Option::*;
 
 fn foo(x: Option<i32>) {
-    <|>if let Some(x) = x {
+    $0if let Some(x) = x {
         println!("{}", x)
     } else {
         println!("none")
@@ -287,7 +287,7 @@ enum Result<T, E> { Ok(T), Err(E) }
 use Result::*;
 
 fn foo(x: Result<i32, ()>) {
-    <|>if let Ok(x) = x {
+    $0if let Ok(x) = x {
         println!("{}", x)
     } else {
         println!("none")
@@ -315,7 +315,7 @@ fn foo(x: Result<i32, ()>) {
             r#"
 fn main() {
     if true {
-        <|>if let Ok(rel_path) = path.strip_prefix(root_path) {
+        $0if let Ok(rel_path) = path.strip_prefix(root_path) {
             let rel_path = RelativePathBuf::from_path(rel_path).ok()?;
             Some((*id, rel_path))
         } else {
@@ -347,7 +347,7 @@ fn main() {
             r#"
 impl VariantData {
     pub fn is_struct(&self) -> bool {
-        <|>match *self {
+        $0match *self {
             VariantData::Struct(..) => true,
             _ => false,
         }
@@ -372,7 +372,7 @@ impl VariantData {
             replace_match_with_if_let,
             r#"
 fn foo() {
-    <|>match a {
+    $0match a {
         VariantData::Struct(..) => {
             bar(
                 123
@@ -401,7 +401,7 @@ fn foo() {
             r#"
 impl VariantData {
     pub fn is_struct(&self) -> bool {
-        <|>match *self {
+        $0match *self {
             VariantData::Struct(..) => true,
             _ => false,
         }
@@ -423,7 +423,7 @@ enum Option<T> { Some(T), None }
 use Option::*;
 
 fn foo(x: Option<i32>) {
-    <|>match x {
+    $0match x {
         Some(x) => println!("{}", x),
         None => println!("none"),
     }
@@ -453,7 +453,7 @@ enum Result<T, E> { Ok(T), Err(E) }
 use Result::*;
 
 fn foo(x: Result<i32, ()>) {
-    <|>match x {
+    $0match x {
         Ok(x) => println!("{}", x),
         Err(_) => println!("none"),
     }
@@ -481,7 +481,7 @@ fn foo(x: Result<i32, ()>) {
             r#"
 fn main() {
     if true {
-        <|>match path.strip_prefix(root_path) {
+        $0match path.strip_prefix(root_path) {
             Ok(rel_path) => {
                 let rel_path = RelativePathBuf::from_path(rel_path).ok()?;
                 Some((*id, rel_path))
@@ -512,7 +512,7 @@ fn main() {
             replace_match_with_if_let,
             r#"
 fn main() {
-    <|>match path.strip_prefix(root_path) {
+    $0match path.strip_prefix(root_path) {
         Ok(rel_path) => println!("{}", rel_path),
         _ => (),
     }

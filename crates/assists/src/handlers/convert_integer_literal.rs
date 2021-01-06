@@ -7,7 +7,7 @@ use crate::{AssistContext, AssistId, AssistKind, Assists, GroupLabel};
 // Converts the base of integer literals to other bases.
 //
 // ```
-// const _: i32 = 10<|>;
+// const _: i32 = 10$0;
 // ```
 // ->
 // ```
@@ -65,47 +65,47 @@ mod tests {
 
     #[test]
     fn binary_target() {
-        check_assist_target(convert_integer_literal, "const _: i32 = 0b1010<|>;", "0b1010");
+        check_assist_target(convert_integer_literal, "const _: i32 = 0b1010$0;", "0b1010");
     }
 
     #[test]
     fn octal_target() {
-        check_assist_target(convert_integer_literal, "const _: i32 = 0o12<|>;", "0o12");
+        check_assist_target(convert_integer_literal, "const _: i32 = 0o12$0;", "0o12");
     }
 
     #[test]
     fn decimal_target() {
-        check_assist_target(convert_integer_literal, "const _: i32 = 10<|>;", "10");
+        check_assist_target(convert_integer_literal, "const _: i32 = 10$0;", "10");
     }
 
     #[test]
     fn hexadecimal_target() {
-        check_assist_target(convert_integer_literal, "const _: i32 = 0xA<|>;", "0xA");
+        check_assist_target(convert_integer_literal, "const _: i32 = 0xA$0;", "0xA");
     }
 
     #[test]
     fn binary_target_with_underscores() {
-        check_assist_target(convert_integer_literal, "const _: i32 = 0b10_10<|>;", "0b10_10");
+        check_assist_target(convert_integer_literal, "const _: i32 = 0b10_10$0;", "0b10_10");
     }
 
     #[test]
     fn octal_target_with_underscores() {
-        check_assist_target(convert_integer_literal, "const _: i32 = 0o1_2<|>;", "0o1_2");
+        check_assist_target(convert_integer_literal, "const _: i32 = 0o1_2$0;", "0o1_2");
     }
 
     #[test]
     fn decimal_target_with_underscores() {
-        check_assist_target(convert_integer_literal, "const _: i32 = 1_0<|>;", "1_0");
+        check_assist_target(convert_integer_literal, "const _: i32 = 1_0$0;", "1_0");
     }
 
     #[test]
     fn hexadecimal_target_with_underscores() {
-        check_assist_target(convert_integer_literal, "const _: i32 = 0x_A<|>;", "0x_A");
+        check_assist_target(convert_integer_literal, "const _: i32 = 0x_A$0;", "0x_A");
     }
 
     #[test]
     fn convert_decimal_integer() {
-        let before = "const _: i32 = 1000<|>;";
+        let before = "const _: i32 = 1000$0;";
 
         check_assist_by_label(
             convert_integer_literal,
@@ -131,7 +131,7 @@ mod tests {
 
     #[test]
     fn convert_hexadecimal_integer() {
-        let before = "const _: i32 = 0xFF<|>;";
+        let before = "const _: i32 = 0xFF$0;";
 
         check_assist_by_label(
             convert_integer_literal,
@@ -157,7 +157,7 @@ mod tests {
 
     #[test]
     fn convert_binary_integer() {
-        let before = "const _: i32 = 0b11111111<|>;";
+        let before = "const _: i32 = 0b11111111$0;";
 
         check_assist_by_label(
             convert_integer_literal,
@@ -183,7 +183,7 @@ mod tests {
 
     #[test]
     fn convert_octal_integer() {
-        let before = "const _: i32 = 0o377<|>;";
+        let before = "const _: i32 = 0o377$0;";
 
         check_assist_by_label(
             convert_integer_literal,
@@ -209,7 +209,7 @@ mod tests {
 
     #[test]
     fn convert_integer_with_underscores() {
-        let before = "const _: i32 = 1_00_0<|>;";
+        let before = "const _: i32 = 1_00_0$0;";
 
         check_assist_by_label(
             convert_integer_literal,
@@ -235,7 +235,7 @@ mod tests {
 
     #[test]
     fn convert_integer_with_suffix() {
-        let before = "const _: i32 = 1000i32<|>;";
+        let before = "const _: i32 = 1000i32$0;";
 
         check_assist_by_label(
             convert_integer_literal,
@@ -262,7 +262,7 @@ mod tests {
     #[test]
     fn convert_overflowing_literal() {
         let before = "const _: i32 =
-            111111111111111111111111111111111111111111111111111111111111111111111111<|>;";
+            111111111111111111111111111111111111111111111111111111111111111111111111$0;";
         check_assist_not_applicable(convert_integer_literal, before);
     }
 }

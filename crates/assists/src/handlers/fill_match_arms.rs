@@ -21,7 +21,7 @@ use crate::{
 //
 // fn handle(action: Action) {
 //     match action {
-//         <|>
+//         $0
 //     }
 // }
 // ```
@@ -231,7 +231,7 @@ mod tests {
                 Cs(i32, Option<i32>),
             }
             fn main() {
-                match A::As<|> {
+                match A::As$0 {
                     A::As,
                     A::Bs{x,y:Some(_)} => {}
                     A::Cs(_, Some(_)) => {}
@@ -249,7 +249,7 @@ mod tests {
             fill_match_arms,
             r#"
             fn main() {
-                match (0, false)<|> {
+                match (0, false)$0 {
                 }
             }
             "#,
@@ -267,7 +267,7 @@ mod tests {
                 Cs(i32, Option<i32>),
             }
             fn main() {
-                match A::As<|> {
+                match A::As$0 {
                     A::Bs { x, y: Some(_) } => {}
                     A::Cs(_, Some(_)) => {}
                 }
@@ -297,7 +297,7 @@ mod tests {
             r#"
 enum A { As, Bs, Cs(Option<i32>) }
 fn main() {
-    match A::As<|> {
+    match A::As$0 {
         A::Cs(_) | A::Bs => {}
     }
 }
@@ -322,7 +322,7 @@ fn main() {
 enum A { As, Bs, Cs, Ds(String), Es(B) }
 enum B { Xs, Ys }
 fn main() {
-    match A::As<|> {
+    match A::As$0 {
         A::Bs if 0 < 1 => {}
         A::Ds(_value) => { let x = 1; }
         A::Es(B::Xs) => (),
@@ -352,7 +352,7 @@ fn main() {
             r#"
 enum A { As, Bs, Cs(Option<i32>) }
 fn main() {
-    match A::As<|> {
+    match A::As$0 {
         A::As(_) => {}
         a @ A::Bs(_) => {}
     }
@@ -380,7 +380,7 @@ enum A { As, Bs, Cs(String), Ds(String, String), Es { x: usize, y: usize } }
 
 fn main() {
     let a = A::As;
-    match a<|> {}
+    match a$0 {}
 }
 "#,
             r#"
@@ -411,7 +411,7 @@ fn main() {
             fn main() {
                 let a = A::One;
                 let b = B::One;
-                match (a<|>, b) {}
+                match (a$0, b) {}
             }
             "#,
             r#"
@@ -443,7 +443,7 @@ fn main() {
             fn main() {
                 let a = A::One;
                 let b = B::One;
-                match (&a<|>, &b) {}
+                match (&a$0, &b) {}
             }
             "#,
             r#"
@@ -475,7 +475,7 @@ fn main() {
             fn main() {
                 let a = A::One;
                 let b = B::One;
-                match (a<|>, b) {
+                match (a$0, b) {
                     (A::Two, B::One) => {}
                 }
             }
@@ -494,7 +494,7 @@ fn main() {
             fn main() {
                 let a = A::One;
                 let b = B::One;
-                match (a<|>, b) {
+                match (a$0, b) {
                     (A::Two, B::One) => {}
                     (A::One, B::One) => {}
                     (A::One, B::Two) => {}
@@ -517,7 +517,7 @@ fn main() {
 
             fn main() {
                 let a = A::One;
-                match (a<|>, ) {
+                match (a$0, ) {
                 }
             }
             "#,
@@ -532,7 +532,7 @@ fn main() {
             enum A { As }
 
             fn foo(a: &A) {
-                match a<|> {
+                match a$0 {
                 }
             }
             "#,
@@ -555,7 +555,7 @@ fn main() {
             }
 
             fn foo(a: &mut A) {
-                match a<|> {
+                match a$0 {
                 }
             }
             "#,
@@ -581,7 +581,7 @@ fn main() {
             enum E { X, Y }
 
             fn main() {
-                match E::X<|> {}
+                match E::X$0 {}
             }
             "#,
             "match E::X {}",
@@ -597,7 +597,7 @@ fn main() {
 
             fn main() {
                 match E::X {
-                    <|>_ => {}
+                    $0_ => {}
                 }
             }
             "#,
@@ -624,7 +624,7 @@ fn main() {
 
             fn main() {
                 match X {
-                    <|>
+                    $0
                 }
             }
             "#,
@@ -650,7 +650,7 @@ fn main() {
             enum A { One, Two }
             fn foo(a: A) {
                 match a {
-                    // foo bar baz<|>
+                    // foo bar baz$0
                     A::One => {}
                     // This is where the rest should be
                 }
@@ -678,7 +678,7 @@ fn main() {
             enum A { One, Two }
             fn foo(a: A) {
                 match a {
-                    // foo bar baz<|>
+                    // foo bar baz$0
                 }
             }
             "#,
@@ -702,7 +702,7 @@ fn main() {
             r#"
             enum A { One, Two, }
             fn foo(a: A) {
-                match a<|> {
+                match a$0 {
                     _ => (),
                 }
             }
@@ -724,7 +724,7 @@ fn main() {
         mark::check!(option_order);
         let before = r#"
 fn foo(opt: Option<i32>) {
-    match opt<|> {
+    match opt$0 {
     }
 }
 "#;

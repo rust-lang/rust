@@ -16,7 +16,7 @@ use crate::{
 // Removes unused function parameter.
 //
 // ```
-// fn frobnicate(x: i32<|>) {}
+// fn frobnicate(x: i32$0) {}
 //
 // fn main() {
 //     frobnicate(92);
@@ -123,7 +123,7 @@ mod tests {
             remove_unused_param,
             r#"
 fn a() { foo(9, 2) }
-fn foo(x: i32, <|>y: i32) { x; }
+fn foo(x: i32, $0y: i32) { x; }
 fn b() { foo(9, 2,) }
 "#,
             r#"
@@ -139,7 +139,7 @@ fn b() { foo(9, ) }
         check_assist(
             remove_unused_param,
             r#"
-fn foo(<|>x: i32, y: i32) { y; }
+fn foo($0x: i32, y: i32) { y; }
 fn a() { foo(1, 2) }
 fn b() { foo(1, 2,) }
 "#,
@@ -156,7 +156,7 @@ fn b() { foo(2,) }
         check_assist(
             remove_unused_param,
             r#"
-fn foo(<|>x: i32) { 0; }
+fn foo($0x: i32) { 0; }
 fn a() { foo(1) }
 fn b() { foo(1, ) }
 "#,
@@ -173,7 +173,7 @@ fn b() { foo( ) }
         check_assist(
             remove_unused_param,
             r#"
-fn foo(x: i32, <|>y: i32, z: i32) { x; }
+fn foo(x: i32, $0y: i32, z: i32) { x; }
 fn a() { foo(1, 2, 3) }
 fn b() { foo(1, 2, 3,) }
 "#,
@@ -190,7 +190,7 @@ fn b() { foo(1, 3,) }
         check_assist(
             remove_unused_param,
             r#"
-mod bar { pub fn foo(x: i32, <|>y: i32) { x; } }
+mod bar { pub fn foo(x: i32, $0y: i32) { x; } }
 fn b() { bar::foo(9, 2) }
 "#,
             r#"
@@ -205,7 +205,7 @@ fn b() { bar::foo(9) }
         check_assist(
             remove_unused_param,
             r#"
-pub fn foo<T>(x: T, <|>y: i32) { x; }
+pub fn foo<T>(x: T, $0y: i32) { x; }
 fn b() { foo::<i32>(9, 2) }
 "#,
             r#"
@@ -220,7 +220,7 @@ fn b() { foo::<i32>(9) }
         check_assist(
             remove_unused_param,
             r#"
-pub fn foo<T>(x: i32, <|>y: T) { x; }
+pub fn foo<T>(x: i32, $0y: T) { x; }
 fn b() { foo::<i32>(9, 2) }
 fn b2() { foo(9, 2) }
 "#,
@@ -238,7 +238,7 @@ fn b2() { foo(9) }
         check_assist_not_applicable(
             remove_unused_param,
             r#"
-fn foo(x: i32, <|>y: i32) { y; }
+fn foo(x: i32, $0y: i32) { y; }
 fn main() { foo(9, 2) }
 "#,
         );
@@ -250,7 +250,7 @@ fn main() { foo(9, 2) }
             remove_unused_param,
             r#"
 //- /main.rs
-fn foo(x: i32, <|>y: i32) { x; }
+fn foo(x: i32, $0y: i32) { x; }
 
 mod foo;
 

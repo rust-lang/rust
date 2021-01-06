@@ -8,7 +8,7 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 //
 // ```
 // fn main() {
-//     let _ = 90 +<|> 2;
+//     let _ = 90 +$0 2;
 // }
 // ```
 // ->
@@ -77,42 +77,34 @@ mod tests {
 
     #[test]
     fn flip_binexpr_target_is_the_op() {
-        check_assist_target(flip_binexpr, "fn f() { let res = 1 ==<|> 2; }", "==")
+        check_assist_target(flip_binexpr, "fn f() { let res = 1 ==$0 2; }", "==")
     }
 
     #[test]
     fn flip_binexpr_not_applicable_for_assignment() {
-        check_assist_not_applicable(flip_binexpr, "fn f() { let mut _x = 1; _x +=<|> 2 }")
+        check_assist_not_applicable(flip_binexpr, "fn f() { let mut _x = 1; _x +=$0 2 }")
     }
 
     #[test]
     fn flip_binexpr_works_for_eq() {
-        check_assist(
-            flip_binexpr,
-            "fn f() { let res = 1 ==<|> 2; }",
-            "fn f() { let res = 2 == 1; }",
-        )
+        check_assist(flip_binexpr, "fn f() { let res = 1 ==$0 2; }", "fn f() { let res = 2 == 1; }")
     }
 
     #[test]
     fn flip_binexpr_works_for_gt() {
-        check_assist(flip_binexpr, "fn f() { let res = 1 ><|> 2; }", "fn f() { let res = 2 < 1; }")
+        check_assist(flip_binexpr, "fn f() { let res = 1 >$0 2; }", "fn f() { let res = 2 < 1; }")
     }
 
     #[test]
     fn flip_binexpr_works_for_lteq() {
-        check_assist(
-            flip_binexpr,
-            "fn f() { let res = 1 <=<|> 2; }",
-            "fn f() { let res = 2 >= 1; }",
-        )
+        check_assist(flip_binexpr, "fn f() { let res = 1 <=$0 2; }", "fn f() { let res = 2 >= 1; }")
     }
 
     #[test]
     fn flip_binexpr_works_for_complex_expr() {
         check_assist(
             flip_binexpr,
-            "fn f() { let res = (1 + 1) ==<|> (2 + 2); }",
+            "fn f() { let res = (1 + 1) ==$0 (2 + 2); }",
             "fn f() { let res = (2 + 2) == (1 + 1); }",
         )
     }
@@ -125,7 +117,7 @@ mod tests {
             fn dyn_eq(&self, other: &dyn Diagnostic) -> bool {
                 match other.downcast_ref::<Self>() {
                     None => false,
-                    Some(it) => it ==<|> self,
+                    Some(it) => it ==$0 self,
                 }
             }
             "#,

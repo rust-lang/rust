@@ -10,7 +10,7 @@ use crate::{utils::test_related_attribute, AssistContext, AssistId, AssistKind, 
 // Adds `#[ignore]` attribute to the test.
 //
 // ```
-// <|>#[test]
+// $0#[test]
 // fn arithmetics {
 //     assert_eq!(2 + 2, 5);
 // }
@@ -69,7 +69,7 @@ mod tests {
         check_assist(
             toggle_ignore,
             r#"
-            #[test<|>]
+            #[test$0]
             fn test() {}
             "#,
             r#"
@@ -85,7 +85,7 @@ mod tests {
         check_assist(
             toggle_ignore,
             r#"
-            #[test<|>]
+            #[test$0]
             #[ignore]
             fn test() {}
             "#,

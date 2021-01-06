@@ -194,7 +194,7 @@ mod tests {
             let mut buf = String::new();
             let off: usize = offset.into();
             buf.push_str(&code[..off]);
-            buf.push_str("<|>marker");
+            buf.push_str("$0marker");
             buf.push_str(&code[off..]);
             buf
         };
@@ -231,7 +231,7 @@ mod tests {
             r"
             fn quux(foo: i32) {
                 let f = |bar, baz: i32| {
-                    <|>
+                    $0
                 };
             }",
             &["bar", "baz", "foo"],
@@ -243,7 +243,7 @@ mod tests {
         do_check(
             r"
             fn quux() {
-                f(|x| <|> );
+                f(|x| $0 );
             }",
             &["x"],
         );
@@ -254,7 +254,7 @@ mod tests {
         do_check(
             r"
             fn quux() {
-                z.f(|x| <|> );
+                z.f(|x| $0 );
             }",
             &["x"],
         );
@@ -267,7 +267,7 @@ mod tests {
             fn quux() {
                 loop {
                     let x = ();
-                    <|>
+                    $0
                 };
             }",
             &["x"],
@@ -281,7 +281,7 @@ mod tests {
             fn quux() {
                 match () {
                     Some(x) => {
-                        <|>
+                        $0
                     }
                 };
             }",
@@ -294,7 +294,7 @@ mod tests {
         do_check(
             r"
             fn foo(x: String) {
-                let x : &str = &x<|>;
+                let x : &str = &x$0;
             }",
             &["x"],
         );
@@ -307,7 +307,7 @@ mod tests {
 fn foo() {
     match Some(()) {
         opt @ Some(unit) => {
-            <|>
+            $0
         }
         _ => {}
     }
@@ -330,7 +330,7 @@ fn foo() {
 
             fn foo() {
                 mac!();
-                <|>
+                $0
             }
         ",
             &[],
@@ -343,7 +343,7 @@ fn foo() {
             r"
             fn foo() {
                 trait {}
-                <|>
+                $0
             }
         ",
             &[],
@@ -391,7 +391,7 @@ fn foo(x: i32, y: u32) {
         let z = x * 2;
     }
     {
-        let t = x<|> * 3;
+        let t = x$0 * 3;
     }
 }
 "#,
@@ -404,7 +404,7 @@ fn foo(x: i32, y: u32) {
         do_check_local_name(
             r#"
 fn foo(x: String) {
-    let x : &str = &x<|>;
+    let x : &str = &x$0;
 }
 "#,
             7,
@@ -417,7 +417,7 @@ fn foo(x: String) {
             r"
 fn foo(x: String) {
     let x : &str = &x;
-    x<|>
+    x$0
 }
 ",
             28,
@@ -430,7 +430,7 @@ fn foo(x: String) {
             r"
 fn foo() {
     if let Some(&from) = bar() {
-        from<|>;
+        from$0;
     }
 }
 ",
@@ -446,7 +446,7 @@ fn foo() {
 fn test() {
     let foo: Option<f32> = None;
     while let Option::Some(spam) = foo {
-        spam<|>
+        spam$0
     }
 }
 "#,

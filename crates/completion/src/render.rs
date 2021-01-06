@@ -358,7 +358,7 @@ mod tests {
             r#"
 enum Foo { Foo { x: i32, y: i32 } }
 
-fn main() { Foo::Fo<|> }
+fn main() { Foo::Fo$0 }
 "#,
             expect![[r#"
                 [
@@ -381,7 +381,7 @@ fn main() { Foo::Fo<|> }
             r#"
 enum Foo { Foo (i32, i32) }
 
-fn main() { Foo::Fo<|> }
+fn main() { Foo::Fo$0 }
 "#,
             expect![[r#"
                 [
@@ -406,7 +406,7 @@ fn main() { Foo::Fo<|> }
             r#"
 enum Foo { Foo }
 
-fn main() { Foo::Fo<|> }
+fn main() { Foo::Fo$0 }
 "#,
             expect![[r#"
                 [
@@ -430,7 +430,7 @@ fn main() { Foo::Fo<|> }
 mod m {
     pub enum Spam { Foo, Bar(i32) }
 }
-fn main() { let _: m::Spam = S<|> }
+fn main() { let _: m::Spam = S$0 }
 "#,
             expect![[r#"
                 [
@@ -483,7 +483,7 @@ fn something_deprecated() {}
 #[deprecated(since = "1.0.0")]
 fn something_else_deprecated() {}
 
-fn main() { som<|> }
+fn main() { som$0 }
 "#,
             expect![[r#"
                 [
@@ -523,7 +523,7 @@ fn main() { som<|> }
         check(
             r#"
 struct A { #[deprecated] the_field: u32 }
-fn foo() { A { the<|> } }
+fn foo() { A { the$0 } }
 "#,
             expect![[r#"
                 [
@@ -551,7 +551,7 @@ struct S {
 }
 impl S {
     /// Method docs
-    fn bar(self) { self.<|> }
+    fn bar(self) { self.$0 }
 }"#,
             expect![[r#"
                 [
@@ -584,7 +584,7 @@ impl S {
 
         check(
             r#"
-use self::my<|>;
+use self::my$0;
 
 /// mod docs
 mod my { }
@@ -643,7 +643,7 @@ impl S {
     #[inline]
     fn the_method(&self) { }
 }
-fn foo(s: S) { s.<|> }
+fn foo(s: S) { s.$0 }
 "#,
             expect![[r#"
                 [
@@ -671,7 +671,7 @@ fn foo(foo: u8, bar: u8) {}
 struct ManualVtable { f: fn(u8, u8) }
 
 fn main() -> ManualVtable {
-    ManualVtable { f: f<|> }
+    ManualVtable { f: f$0 }
 }
 "#,
             r#"
@@ -692,7 +692,7 @@ fn main() -> ManualVtable {
             "foo",
             r#"
 mod m { pub fn foo() {} }
-use crate::m::f<|>;
+use crate::m::f$0;
 "#,
             r#"
 mod m { pub fn foo() {} }
@@ -707,7 +707,7 @@ use crate::m::foo;
             "foo",
             r#"
 fn foo(x: i32) {}
-fn main() { f<|>(); }
+fn main() { f$0(); }
 "#,
             r#"
 fn foo(x: i32) {}
@@ -719,7 +719,7 @@ fn main() { foo(); }
             r#"
 struct Foo;
 impl Foo { fn foo(&self){} }
-fn f(foo: &Foo) { foo.f<|>(); }
+fn f(foo: &Foo) { foo.f$0(); }
 "#,
             r#"
 struct Foo;
@@ -736,7 +736,7 @@ fn f(foo: &Foo) { foo.foo(); }
             "Vec",
             r#"
 struct Vec<T> {}
-fn foo(xs: Ve<|>)
+fn foo(xs: Ve$0)
 "#,
             r#"
 struct Vec<T> {}
@@ -747,7 +747,7 @@ fn foo(xs: Vec<$0>)
             "Vec",
             r#"
 type Vec<T> = (T,);
-fn foo(xs: Ve<|>)
+fn foo(xs: Ve$0)
 "#,
             r#"
 type Vec<T> = (T,);
@@ -758,7 +758,7 @@ fn foo(xs: Vec<$0>)
             "Vec",
             r#"
 struct Vec<T = i128> {}
-fn foo(xs: Ve<|>)
+fn foo(xs: Ve$0)
 "#,
             r#"
 struct Vec<T = i128> {}
@@ -769,7 +769,7 @@ fn foo(xs: Vec)
             "Vec",
             r#"
 struct Vec<T> {}
-fn foo(xs: Ve<|><i128>)
+fn foo(xs: Ve$0<i128>)
 "#,
             r#"
 struct Vec<T> {}
@@ -785,7 +785,7 @@ fn foo(xs: Vec<i128>)
             r#"
 struct S { foo: i64, bar: u32, baz: u32 }
 fn test(bar: u32) { }
-fn foo(s: S) { test(s.<|>) }
+fn foo(s: S) { test(s.$0) }
 "#,
             expect![[r#"
                 fd bar [type+name]
@@ -802,7 +802,7 @@ fn foo(s: S) { test(s.<|>) }
             r#"
 struct A { foo: i64, bar: u32, baz: u32 }
 struct B { x: (), y: f32, bar: u32 }
-fn foo(a: A) { B { bar: a.<|> }; }
+fn foo(a: A) { B { bar: a.$0 }; }
 "#,
             expect![[r#"
                 fd bar [type+name]
@@ -819,7 +819,7 @@ fn foo(a: A) { B { bar: a.<|> }; }
 struct A { foo: i64, bar: u32, baz: u32 }
 struct B { x: (), y: f32, bar: u32 }
 fn f(foo: i64) {  }
-fn foo(a: A) { B { bar: f(a.<|>) }; }
+fn foo(a: A) { B { bar: f(a.$0) }; }
 "#,
             expect![[r#"
                 fd foo [type+name]
@@ -832,7 +832,7 @@ fn foo(a: A) { B { bar: f(a.<|>) }; }
 struct A { foo: i64, bar: u32, baz: u32 }
 struct B { x: (), y: f32, bar: u32 }
 fn f(foo: i64) {  }
-fn foo(a: A) { f(B { bar: a.<|> }); }
+fn foo(a: A) { f(B { bar: a.$0 }); }
 "#,
             expect![[r#"
                 fd bar [type+name]
@@ -847,7 +847,7 @@ fn foo(a: A) { f(B { bar: a.<|> }); }
         check_scores(
             r#"
 struct WorldSnapshot { _f: () };
-fn go(world: &WorldSnapshot) { go(w<|>) }
+fn go(world: &WorldSnapshot) { go(w$0) }
 "#,
             expect![[r#"
                 bn world [type+name]
@@ -862,7 +862,7 @@ fn go(world: &WorldSnapshot) { go(w<|>) }
         check_scores(
             r#"
 struct Foo;
-fn f(foo: &Foo) { f(foo, w<|>) }
+fn f(foo: &Foo) { f(foo, w$0) }
 "#,
             expect![[r#"
                 st Foo []

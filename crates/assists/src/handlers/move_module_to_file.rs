@@ -13,7 +13,7 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 // Moves inline module's contents to a separate file.
 //
 // ```
-// mod <|>foo {
+// mod $0foo {
 //     fn t() {}
 // }
 // ```
@@ -78,7 +78,7 @@ mod tests {
         check_assist(
             move_module_to_file,
             r#"
-mod <|>tests {
+mod $0tests {
     #[test] fn t() {}
 }
 "#,
@@ -99,7 +99,7 @@ mod tests;
 //- /main.rs
 mod submod;
 //- /submod.rs
-<|>mod inner {
+$0mod inner {
     fn f() {}
 }
 fn g() {}
@@ -122,7 +122,7 @@ fn f() {}
 //- /main.rs
 mod submodule;
 //- /submodule/mod.rs
-mod inner<|> {
+mod inner$0 {
     fn f() {}
 }
 fn g() {}
@@ -140,6 +140,6 @@ fn f() {}
     #[test]
     fn available_before_curly() {
         mark::check!(available_before_curly);
-        check_assist_not_applicable(move_module_to_file, r#"mod m { <|> }"#);
+        check_assist_not_applicable(move_module_to_file, r#"mod m { $0 }"#);
     }
 }

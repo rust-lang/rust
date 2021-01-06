@@ -115,7 +115,7 @@ mod tests {
 enum Option<T> { Some(T), None }
 use Option::*;
 fn main() -> Option<i32> {
-    Som<|>
+    Som$0
 }
 "#,
             r#"

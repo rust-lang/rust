@@ -20,7 +20,7 @@ use ide_db::ty_filter::TryEnum;
 // # enum Option<T> { Some(T), None }
 //
 // fn main(action: Action) {
-//     <|>let x = compute();
+//     $0let x = compute();
 // }
 //
 // fn compute() -> Option<i32> { None }
@@ -85,7 +85,7 @@ mod tests {
 enum E<T> { X(T), Y(T) }
 
 fn main() {
-    <|>let x = E::X(92);
+    $0let x = E::X(92);
 }
             ",
             r"

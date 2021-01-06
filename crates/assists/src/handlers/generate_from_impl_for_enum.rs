@@ -10,7 +10,7 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 // Adds a From impl for an enum variant with one tuple field.
 //
 // ```
-// enum A { <|>One(u32) }
+// enum A { $0One(u32) }
 // ```
 // ->
 // ```
@@ -101,7 +101,7 @@ mod tests {
     fn test_generate_from_impl_for_enum() {
         check_assist(
             generate_from_impl_for_enum,
-            "enum A { <|>One(u32) }",
+            "enum A { $0One(u32) }",
             r#"enum A { One(u32) }
 
 impl From<u32> for A {
@@ -116,7 +116,7 @@ impl From<u32> for A {
     fn test_generate_from_impl_for_enum_complicated_path() {
         check_assist(
             generate_from_impl_for_enum,
-            r#"enum A { <|>One(foo::bar::baz::Boo) }"#,
+            r#"enum A { $0One(foo::bar::baz::Boo) }"#,
             r#"enum A { One(foo::bar::baz::Boo) }
 
 impl From<foo::bar::baz::Boo> for A {
@@ -135,17 +135,17 @@ impl From<foo::bar::baz::Boo> for A {
 
     #[test]
     fn test_add_from_impl_no_element() {
-        check_not_applicable("enum A { <|>One }");
+        check_not_applicable("enum A { $0One }");
     }
 
     #[test]
     fn test_add_from_impl_more_than_one_element_in_tuple() {
-        check_not_applicable("enum A { <|>One(u32, String) }");
+        check_not_applicable("enum A { $0One(u32, String) }");
     }
 
     #[test]
     fn test_add_from_impl_struct_variant() {
-        check_not_applicable("enum A { <|>One { x: u32 } }");
+        check_not_applicable("enum A { $0One { x: u32 } }");
     }
 
     #[test]
@@ -153,7 +153,7 @@ impl From<foo::bar::baz::Boo> for A {
         mark::check!(test_add_from_impl_already_exists);
         check_not_applicable(
             r#"
-enum A { <|>One(u32), }
+enum A { $0One(u32), }
 
 impl From<u32> for A {
     fn from(v: u32) -> Self {
@@ -168,7 +168,7 @@ impl From<u32> for A {
     fn test_add_from_impl_different_variant_impl_exists() {
         check_assist(
             generate_from_impl_for_enum,
-            r#"enum A { <|>One(u32), Two(String), }
+            r#"enum A { $0One(u32), Two(String), }
 
 impl From<String> for A {
     fn from(v: String) -> Self {

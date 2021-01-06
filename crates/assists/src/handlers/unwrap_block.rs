@@ -14,7 +14,7 @@ use crate::{utils::unwrap_trivial_block, AssistContext, AssistId, AssistKind, As
 //
 // ```
 // fn foo() {
-//     if true {<|>
+//     if true {$0
 //         println!("foo");
 //     }
 // }
@@ -124,7 +124,7 @@ mod tests {
             unwrap_block,
             r#"
 fn main() {
-    <|>{
+    $0{
         92
     }
 }
@@ -143,7 +143,7 @@ fn main() {
             unwrap_block,
             r#"
 fn main() {
-    <|>{
+    $0{
         92;
     }
     ()
@@ -161,7 +161,7 @@ fn main() {
             unwrap_block,
             r#"
 fn main() {
-    <|>{
+    $0{
         92
     }
     ()
@@ -183,7 +183,7 @@ fn main() {
             r#"
 fn main() {
     bar();
-    if true {<|>
+    if true {$0
         foo();
 
         //comment
@@ -217,7 +217,7 @@ fn main() {
 
         //comment
         bar();
-    } else {<|>
+    } else {$0
         println!("bar");
     }
 }
@@ -249,7 +249,7 @@ fn main() {
 
         //comment
         //bar();
-    } else if false {<|>
+    } else if false {$0
         println!("bar");
     } else {
         println!("foo");
@@ -285,7 +285,7 @@ fn main() {
         //bar();
     } else if false {
         println!("bar");
-    } else if true {<|>
+    } else if true {$0
         println!("foo");
     }
 }
@@ -323,7 +323,7 @@ fn main() {
         println!("bar");
     } else if true {
         println!("foo");
-    } else {<|>
+    } else {$0
         println!("else");
     }
 }
@@ -361,7 +361,7 @@ fn main() {
         //bar();
     } else if false {
         println!("bar");
-    } else if true {<|>
+    } else if true {$0
         println!("foo");
     } else {
         println!("else");
@@ -391,7 +391,7 @@ fn main() {
             unwrap_block,
             r#"
 fn main() {
-    bar();<|>
+    bar();$0
     if true {
         foo();
 
@@ -411,7 +411,7 @@ fn main() {
             unwrap_block,
             r#"
 fn main() {
-    for i in 0..5 {<|>
+    for i in 0..5 {$0
         if true {
             foo();
 
@@ -445,7 +445,7 @@ fn main() {
             r#"
 fn main() {
     for i in 0..5 {
-        if true {<|>
+        if true {$0
             foo();
 
             //comment
@@ -475,7 +475,7 @@ fn main() {
             unwrap_block,
             r#"
 fn main() {
-    loop {<|>
+    loop {$0
         if true {
             foo();
 
@@ -508,7 +508,7 @@ fn main() {
             unwrap_block,
             r#"
 fn main() {
-    while true {<|>
+    while true {$0
         if true {
             foo();
 
@@ -542,7 +542,7 @@ fn main() {
             r#"
 fn main() {
     match rel_path {
-        Ok(rel_path) => {<|>
+        Ok(rel_path) => {$0
             let rel_path = RelativePathBuf::from_path(rel_path).ok()?;
             Some((*id, rel_path))
         }
@@ -567,7 +567,7 @@ fn main() {
 fn main() {
     while true {
         if true {
-            foo();<|>
+            foo();$0
 
             //comment
             bar();

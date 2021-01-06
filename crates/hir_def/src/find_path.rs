@@ -410,7 +410,7 @@ mod tests {
         let code = r#"
             //- /main.rs
             struct S;
-            <|>
+            $0
         "#;
         check_found_path(code, "S", "S", "crate::S", "self::S");
     }
@@ -420,7 +420,7 @@ mod tests {
         let code = r#"
             //- /main.rs
             enum E { A }
-            <|>
+            $0
         "#;
         check_found_path(code, "E::A", "E::A", "E::A", "E::A");
     }
@@ -432,7 +432,7 @@ mod tests {
             mod foo {
                 pub struct S;
             }
-            <|>
+            $0
         "#;
         check_found_path(code, "foo::S", "foo::S", "crate::foo::S", "self::foo::S");
     }
@@ -446,7 +446,7 @@ mod tests {
             mod bar;
             struct S;
             //- /foo/bar.rs
-            <|>
+            $0
         "#;
         check_found_path(code, "super::S", "super::S", "crate::foo::S", "super::S");
     }
@@ -457,7 +457,7 @@ mod tests {
             //- /main.rs
             mod foo;
             //- /foo.rs
-            <|>
+            $0
         "#;
         check_found_path(code, "self", "self", "crate::foo", "self");
     }
@@ -468,7 +468,7 @@ mod tests {
             //- /main.rs
             mod foo;
             //- /foo.rs
-            <|>
+            $0
         "#;
         check_found_path(code, "crate", "crate", "crate", "crate");
     }
@@ -480,7 +480,7 @@ mod tests {
             mod foo;
             struct S;
             //- /foo.rs
-            <|>
+            $0
         "#;
         check_found_path(code, "crate::S", "crate::S", "crate::S", "crate::S");
     }
@@ -489,7 +489,7 @@ mod tests {
     fn different_crate() {
         let code = r#"
             //- /main.rs crate:main deps:std
-            <|>
+            $0
             //- /std.rs crate:std
             pub struct S;
         "#;
@@ -501,7 +501,7 @@ mod tests {
         let code = r#"
             //- /main.rs crate:main deps:std
             extern crate std as std_renamed;
-            <|>
+            $0
             //- /std.rs crate:std
             pub struct S;
         "#;
@@ -523,7 +523,7 @@ mod tests {
             //- /main.rs crate:main deps:syntax
 
             use syntax::ast;
-            <|>
+            $0
 
             //- /lib.rs crate:syntax
             pub mod ast {
@@ -543,7 +543,7 @@ mod tests {
         let code = r#"
             //- /main.rs crate:main deps:syntax
 
-            <|>
+            $0
 
             //- /lib.rs crate:syntax
             pub mod ast {
@@ -569,7 +569,7 @@ mod tests {
                 mod foo { pub(super) struct S; }
                 pub(crate) use foo::*;
             }
-            <|>
+            $0
         "#;
         check_found_path(code, "bar::S", "bar::S", "crate::bar::S", "self::bar::S");
     }
@@ -582,7 +582,7 @@ mod tests {
                 mod foo { pub(super) struct S; }
                 pub(crate) use foo::S as U;
             }
-            <|>
+            $0
         "#;
         check_found_path(code, "bar::U", "bar::U", "crate::bar::U", "self::bar::U");
     }
@@ -591,7 +591,7 @@ mod tests {
     fn different_crate_reexport() {
         let code = r#"
             //- /main.rs crate:main deps:std
-            <|>
+            $0
             //- /std.rs crate:std deps:core
             pub use core::S;
             //- /core.rs crate:core
@@ -604,7 +604,7 @@ mod tests {
     fn prelude() {
         let code = r#"
             //- /main.rs crate:main deps:std
-            <|>
+            $0
             //- /std.rs crate:std
             pub mod prelude { pub struct S; }
             #[prelude_import]
@@ -617,7 +617,7 @@ mod tests {
     fn enum_variant_from_prelude() {
         let code = r#"
             //- /main.rs crate:main deps:std
-            <|>
+            $0
             //- /std.rs crate:std
             pub mod prelude {
                 pub enum Option<T> { Some(T), None }
@@ -637,7 +637,7 @@ mod tests {
             pub mod foo;
             pub mod baz;
             struct S;
-            <|>
+            $0
             //- /foo.rs
             pub mod bar { pub struct S; }
             //- /baz.rs
@@ -654,7 +654,7 @@ mod tests {
             pub mod bar { pub struct S; }
             use bar::S;
             //- /foo.rs
-            <|>
+            $0
         "#;
         // crate::S would be shorter, but using private imports seems wrong
         check_found_path(code, "crate::bar::S", "crate::bar::S", "crate::bar::S", "crate::bar::S");
@@ -668,7 +668,7 @@ mod tests {
             pub mod bar;
             pub mod baz;
             //- /bar.rs
-            <|>
+            $0
             //- /foo.rs
             pub use super::baz;
             pub struct S;
@@ -683,7 +683,7 @@ mod tests {
         mark::check!(prefer_std_paths);
         let code = r#"
         //- /main.rs crate:main deps:alloc,std
-        <|>
+        $0
 
         //- /std.rs crate:std deps:alloc
         pub mod sync {
@@ -711,7 +711,7 @@ mod tests {
         //- /main.rs crate:main deps:core,std
         #![no_std]
 
-        <|>
+        $0
 
         //- /std.rs crate:std deps:core
 
@@ -740,7 +740,7 @@ mod tests {
         //- /main.rs crate:main deps:alloc,std
         #![no_std]
 
-        <|>
+        $0
 
         //- /std.rs crate:std deps:alloc
 
@@ -767,7 +767,7 @@ mod tests {
     fn prefer_shorter_paths_if_not_alloc() {
         let code = r#"
         //- /main.rs crate:main deps:megaalloc,std
-        <|>
+        $0
 
         //- /std.rs crate:std deps:megaalloc
         pub mod sync {
@@ -790,7 +790,7 @@ mod tests {
     fn builtins_are_in_scope() {
         let code = r#"
         //- /main.rs
-        <|>
+        $0
 
         pub mod primitive {
             pub use u8;

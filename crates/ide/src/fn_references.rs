@@ -34,7 +34,7 @@ mod tests {
     fn test_find_all_methods() {
         let (analysis, pos) = fixture::position(
             r#"
-            fn private_fn() {<|>}
+            fn private_fn() {$0}
 
             pub fn pub_fn() {}
 
@@ -51,7 +51,7 @@ mod tests {
         let (analysis, pos) = fixture::position(
             r#"
             trait Foo {
-                fn bar() {<|>}
+                fn bar() {$0}
                 fn baz() {}
             }
         "#,
@@ -67,7 +67,7 @@ mod tests {
             r#"
             //- /lib.rs
             #[test]
-            fn foo() {<|>}
+            fn foo() {$0}
 
             pub fn pub_fn() {}
 

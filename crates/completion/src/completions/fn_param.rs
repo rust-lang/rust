@@ -81,7 +81,7 @@ mod tests {
             r#"
 fn foo(file_id: FileId) {}
 fn bar(file_id: FileId) {}
-fn baz(file<|>) {}
+fn baz(file$0) {}
 "#,
             expect![[r#"
                 bn file_id: FileId
@@ -94,7 +94,7 @@ fn baz(file<|>) {}
         check(
             r#"
 fn foo(file_id: FileId) {}
-fn baz(file<|>, x: i32) {}
+fn baz(file$0, x: i32) {}
 "#,
             expect![[r#"
                 bn file_id: FileId
@@ -110,7 +110,7 @@ pub(crate) trait SourceRoot {
     pub fn contains(&self, file_id: FileId) -> bool;
     pub fn module_map(&self) -> &ModuleMap;
     pub fn lines(&self, file_id: FileId) -> &LineIndex;
-    pub fn syntax(&self, file<|>)
+    pub fn syntax(&self, file$0)
 }
 "#,
             expect![[r#"
@@ -124,7 +124,7 @@ pub(crate) trait SourceRoot {
         check(
             r#"
 fn outer(text: String) {
-    fn inner(<|>)
+    fn inner($0)
 }
 "#,
             expect![[r#"

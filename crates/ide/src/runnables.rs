@@ -329,7 +329,7 @@ mod tests {
         check(
             r#"
 //- /lib.rs
-<|>
+$0
 fn main() {}
 
 #[test]
@@ -425,7 +425,7 @@ fn bench() {}
         check(
             r#"
 //- /lib.rs
-<|>
+$0
 fn main() {}
 
 /// ```
@@ -573,7 +573,7 @@ struct StructWithRunnable(String);
         check(
             r#"
 //- /lib.rs
-<|>
+$0
 fn main() {}
 
 struct Data;
@@ -625,7 +625,7 @@ impl Data {
         check(
             r#"
 //- /lib.rs
-<|>
+$0
 mod test_mod {
     #[test]
     fn test_foo1() {}
@@ -679,7 +679,7 @@ mod test_mod {
         check(
             r#"
 //- /lib.rs
-<|>
+$0
 mod root_tests {
     mod nested_tests_0 {
         mod nested_tests_1 {
@@ -819,7 +819,7 @@ mod root_tests {
         check(
             r#"
 //- /lib.rs crate:foo cfg:feature=foo
-<|>
+$0
 #[test]
 #[cfg(feature = "foo")]
 fn test_foo1() {}
@@ -864,7 +864,7 @@ fn test_foo1() {}
         check(
             r#"
 //- /lib.rs crate:foo cfg:feature=foo,feature=bar
-<|>
+$0
 #[test]
 #[cfg(all(feature = "foo", feature = "bar"))]
 fn test_foo1() {}
@@ -919,7 +919,7 @@ fn test_foo1() {}
         check(
             r#"
 //- /lib.rs
-<|>
+$0
 mod test_mod {
     fn foo1() {}
 }
@@ -938,7 +938,7 @@ mod test_mod {
 //- /lib.rs
 mod foo;
 //- /foo.rs
-struct Foo;<|>
+struct Foo;$0
 impl Foo {
     /// ```
     /// let x = 5;

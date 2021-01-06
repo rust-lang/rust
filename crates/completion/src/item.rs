@@ -43,7 +43,7 @@ pub struct CompletionItem {
     /// Lookup is used to check if completion item indeed can complete current
     /// ident.
     ///
-    /// That is, in `foo.bar<|>` lookup of `abracadabra` will be accepted (it
+    /// That is, in `foo.bar$0` lookup of `abracadabra` will be accepted (it
     /// contains `bar` sub sequence), and `quux` will rejected.
     lookup: Option<String>,
 

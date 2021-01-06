@@ -18,7 +18,7 @@ use crate::{
 // ```
 // fn add(a: u32, b: u32) -> u32 { a + b }
 // fn main() {
-//     let x = add<|>(1, 2);
+//     let x = add$0(1, 2);
 // }
 // ```
 // ->
@@ -104,7 +104,7 @@ mod tests {
             r#"
 fn foo() { println!("Hello, World!"); }
 fn main() {
-    fo<|>o();
+    fo$0o();
 }
 "#,
             r#"
@@ -125,7 +125,7 @@ fn main() {
             r#"
 fn foo(name: String) { println!("Hello, {}!", name); }
 fn main() {
-    foo<|>(String::from("Michael"));
+    foo$0(String::from("Michael"));
 }
 "#,
             r#"
@@ -148,7 +148,7 @@ fn main() {
 struct Foo;
 impl Foo { fn bar(&self) {} }
 
-fn main() { Foo.bar<|>(); }
+fn main() { Foo.bar$0(); }
 ",
         );
     }
@@ -160,7 +160,7 @@ fn main() { Foo.bar<|>(); }
             inline_function,
             r#"
 fn add(a: u32, b: u32) -> u32 { a + b }
-fn main() { let x = add<|>(42); }
+fn main() { let x = add$0(42); }
 "#,
         );
     }
@@ -177,7 +177,7 @@ fn foo(a: u32, b: u32) -> u32 {
 }
 
 fn main() {
-    let x = foo<|>(1, 2);
+    let x = foo$0(1, 2);
 }
 "#,
             r#"

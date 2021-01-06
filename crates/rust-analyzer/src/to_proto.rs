@@ -861,7 +861,7 @@ mod tests {
         fn foo(arg: &Foo) {}
         fn main() {
             let arg = Foo;
-            foo(<|>)
+            foo($0)
         }"#;
 
         let (offset, text) = test_utils::extract_offset(fixture);

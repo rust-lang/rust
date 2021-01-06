@@ -135,7 +135,7 @@ mod tests {
             "frobnicate!",
             r#"
 //- /main.rs crate:main deps:foo
-use foo::<|>;
+use foo::$0;
 //- /foo/lib.rs crate:foo
 #[macro_export]
 macro_rules! frobnicate { () => () }
@@ -149,7 +149,7 @@ use foo::frobnicate;
             "frobnicate!",
             r#"
 macro_rules! frobnicate { () => () }
-fn main() { frob<|>!(); }
+fn main() { frob$0!(); }
 "#,
             r#"
 macro_rules! frobnicate { () => () }
@@ -173,7 +173,7 @@ fn main() { frobnicate!(); }
 /// ```
 macro_rules! vec { () => {} }
 
-fn fn main() { v<|> }
+fn fn main() { v$0 }
 "#,
             r#"
 /// Creates a [`Vec`] containing the arguments.
@@ -198,7 +198,7 @@ fn fn main() { vec![$0] }
 /// Don't call `fooo!()` `fooo!()`, or `_foo![]` `_foo![]`,
 /// call as `let _=foo!  { hello world };`
 macro_rules! foo { () => {} }
-fn main() { <|> }
+fn main() { $0 }
 "#,
             r#"
 /// Foo

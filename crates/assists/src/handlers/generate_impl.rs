@@ -10,7 +10,7 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 //
 // ```
 // struct Ctx<T: Clone> {
-//     data: T,<|>
+//     data: T,$0
 // }
 // ```
 // ->
@@ -87,24 +87,24 @@ mod tests {
     fn test_add_impl() {
         check_assist(
             generate_impl,
-            "struct Foo {<|>}\n",
+            "struct Foo {$0}\n",
             "struct Foo {}\n\nimpl Foo {\n    $0\n}\n",
         );
         check_assist(
             generate_impl,
-            "struct Foo<T: Clone> {<|>}",
+            "struct Foo<T: Clone> {$0}",
             "struct Foo<T: Clone> {}\n\nimpl<T: Clone> Foo<T> {\n    $0\n}",
         );
         check_assist(
             generate_impl,
-            "struct Foo<'a, T: Foo<'a>> {<|>}",
+            "struct Foo<'a, T: Foo<'a>> {$0}",
             "struct Foo<'a, T: Foo<'a>> {}\n\nimpl<'a, T: Foo<'a>> Foo<'a, T> {\n    $0\n}",
         );
         check_assist(
             generate_impl,
             r#"
             #[cfg(feature = "foo")]
-            struct Foo<'a, T: Foo<'a>> {<|>}"#,
+            struct Foo<'a, T: Foo<'a>> {$0}"#,
             r#"
             #[cfg(feature = "foo")]
             struct Foo<'a, T: Foo<'a>> {}
@@ -119,7 +119,7 @@ mod tests {
             generate_impl,
             r#"
             #[cfg(not(feature = "foo"))]
-            struct Foo<'a, T: Foo<'a>> {<|>}"#,
+            struct Foo<'a, T: Foo<'a>> {$0}"#,
             r#"
             #[cfg(not(feature = "foo"))]
             struct Foo<'a, T: Foo<'a>> {}
@@ -138,7 +138,7 @@ mod tests {
             "
 struct SomeThingIrrelevant;
 /// Has a lifetime parameter
-struct Foo<'a, T: Foo<'a>> {<|>}
+struct Foo<'a, T: Foo<'a>> {$0}
 struct EvenMoreIrrelevant;
 ",
             "/// Has a lifetime parameter

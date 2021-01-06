@@ -3,12 +3,12 @@ use base_db::{fixture::ChangeFixture, FilePosition};
 use expect_test::{expect, Expect};
 use test_utils::{mark, RangeOrOffset};
 
-/// Creates analysis from a multi-file fixture, returns positions marked with <|>.
+/// Creates analysis from a multi-file fixture, returns positions marked with $0.
 pub(crate) fn position(ra_fixture: &str) -> (RootDatabase, FilePosition) {
     let change_fixture = ChangeFixture::parse(ra_fixture);
     let mut database = RootDatabase::default();
     database.apply_change(change_fixture.change);
-    let (file_id, range_or_offset) = change_fixture.file_position.expect("expected a marker (<|>)");
+    let (file_id, range_or_offset) = change_fixture.file_position.expect("expected a marker ($0)");
     let offset = match range_or_offset {
         RangeOrOffset::Range(_) => panic!(),
         RangeOrOffset::Offset(it) => it,
@@ -49,7 +49,7 @@ fn test_fn_signature_two_args() {
     check(
         r#"
 fn foo(x: u32, y: u32) -> u32 {x + y}
-fn bar() { foo(<|>3, ); }
+fn bar() { foo($03, ); }
 "#,
         expect![[r#"
                 fn foo(x: u32, y: u32) -> u32
@@ -59,7 +59,7 @@ fn bar() { foo(<|>3, ); }
     check(
         r#"
 fn foo(x: u32, y: u32) -> u32 {x + y}
-fn bar() { foo(3<|>, ); }
+fn bar() { foo(3$0, ); }
 "#,
         expect![[r#"
                 fn foo(x: u32, y: u32) -> u32
@@ -69,7 +69,7 @@ fn bar() { foo(3<|>, ); }
     check(
         r#"
 fn foo(x: u32, y: u32) -> u32 {x + y}
-fn bar() { foo(3,<|> ); }
+fn bar() { foo(3,$0 ); }
 "#,
         expect![[r#"
                 fn foo(x: u32, y: u32) -> u32
@@ -79,7 +79,7 @@ fn bar() { foo(3,<|> ); }
     check(
         r#"
 fn foo(x: u32, y: u32) -> u32 {x + y}
-fn bar() { foo(3, <|>); }
+fn bar() { foo(3, $0); }
 "#,
         expect![[r#"
                 fn foo(x: u32, y: u32) -> u32
@@ -93,7 +93,7 @@ fn test_fn_signature_two_args_empty() {
     check(
         r#"
 fn foo(x: u32, y: u32) -> u32 {x + y}
-fn bar() { foo(<|>); }
+fn bar() { foo($0); }
 "#,
         expect![[r#"
                 fn foo(x: u32, y: u32) -> u32
@@ -110,7 +110,7 @@ fn foo<T, U: Copy + Display>(x: T, y: U) -> u32
     where T: Copy + Display, U: Debug
 { x + y }
 
-fn bar() { foo(<|>3, ); }
+fn bar() { foo($03, ); }
 "#,
         expect![[r#"
                 fn foo(x: i32, y: {unknown}) -> u32
@@ -124,7 +124,7 @@ fn test_fn_signature_no_params() {
     check(
         r#"
 fn foo<T>() -> T where T: Copy + Display {}
-fn bar() { foo(<|>); }
+fn bar() { foo($0); }
 "#,
         expect![[r#"
                 fn foo() -> {unknown}
@@ -140,7 +140,7 @@ fn test_fn_signature_for_impl() {
 struct F;
 impl F { pub fn new() { } }
 fn bar() {
-    let _ : F = F::new(<|>);
+    let _ : F = F::new($0);
 }
 "#,
         expect![[r#"
@@ -159,7 +159,7 @@ impl S { pub fn do_it(&self) {} }
 
 fn bar() {
     let s: S = S;
-    s.do_it(<|>);
+    s.do_it($0);
 }
 "#,
         expect![[r#"
@@ -178,7 +178,7 @@ impl S {
     fn foo(&self, x: i32) {}
 }
 
-fn main() { S.foo(<|>); }
+fn main() { S.foo($0); }
 "#,
         expect![[r#"
                 fn foo(&self, x: i32)
@@ -196,7 +196,7 @@ impl S {
     fn foo(&self, x: i32) {}
 }
 
-fn main() { S::foo(<|>); }
+fn main() { S::foo($0); }
 "#,
         expect![[r#"
                 fn foo(self: &S, x: i32)
@@ -216,7 +216,7 @@ fn foo(j: u32) -> u32 {
 }
 
 fn bar() {
-    let _ = foo(<|>);
+    let _ = foo($0);
 }
 "#,
         expect![[r#"
@@ -246,7 +246,7 @@ pub fn add_one(x: i32) -> i32 {
 }
 
 pub fn do() {
-    add_one(<|>
+    add_one($0
 }"#,
         expect![[r##"
                 Adds one to the number given.
@@ -287,7 +287,7 @@ impl addr {
 
 pub fn do_it() {
     addr {};
-    addr::add_one(<|>);
+    addr::add_one($0);
 }
 "#,
         expect![[r##"
@@ -331,7 +331,7 @@ impl<E> WriteHandler<E> {
 }
 
 pub fn foo(mut r: WriteHandler<()>) {
-    r.finished(<|>);
+    r.finished($0);
 }
 "#,
         expect![[r#"
@@ -351,7 +351,7 @@ fn call_info_bad_offset() {
     check(
         r#"
 fn foo(x: u32, y: u32) -> u32 {x + y}
-fn bar() { foo <|> (3, ); }
+fn bar() { foo $0 (3, ); }
 "#,
         expect![[""]],
     );
@@ -368,7 +368,7 @@ fn bar(_: u32) { }
 
 fn main() {
     let foo = Foo;
-    std::thread::spawn(move || foo.bar(<|>));
+    std::thread::spawn(move || foo.bar($0));
 }
 "#,
         expect![[r#"
@@ -385,7 +385,7 @@ fn works_for_tuple_structs() {
 /// A cool tuple struct
 struct S(u32, i32);
 fn main() {
-    let s = S(0, <|>);
+    let s = S(0, $0);
 }
 "#,
         expect![[r#"
@@ -403,7 +403,7 @@ fn generic_struct() {
         r#"
 struct S<T>(T);
 fn main() {
-    let s = S(<|>);
+    let s = S($0);
 }
 "#,
         expect![[r#"
@@ -427,7 +427,7 @@ enum E {
 }
 
 fn main() {
-    let a = E::A(<|>);
+    let a = E::A($0);
 }
 "#,
         expect![[r#"
@@ -445,7 +445,7 @@ fn cant_call_struct_record() {
         r#"
 struct S { x: u32, y: i32 }
 fn main() {
-    let s = S(<|>);
+    let s = S($0);
 }
 "#,
         expect![[""]],
@@ -466,7 +466,7 @@ enum E {
 }
 
 fn main() {
-    let a = E::C(<|>);
+    let a = E::C($0);
 }
 "#,
         expect![[""]],
@@ -480,7 +480,7 @@ fn fn_signature_for_call_in_macro() {
 macro_rules! id { ($($tt:tt)*) => { $($tt)* } }
 fn foo() { }
 id! {
-    fn bar() { foo(<|>); }
+    fn bar() { foo($0); }
 }
 "#,
         expect![[r#"
@@ -497,7 +497,7 @@ fn call_info_for_lambdas() {
 struct S;
 fn foo(s: S) -> i32 { 92 }
 fn main() {
-    (|s| foo(s))(<|>)
+    (|s| foo(s))($0)
 }
         "#,
         expect![[r#"
@@ -512,7 +512,7 @@ fn call_info_for_fn_ptr() {
     check(
         r#"
 fn main(f: fn(i32, f64) -> char) {
-    f(0, <|>)
+    f(0, $0)
 }
         "#,
         expect![[r#"

@@ -28,7 +28,7 @@ fn typing_inside_a_function_should_not_invalidate_def_map() {
     check_def_map_is_not_recomputed(
         r"
         //- /lib.rs
-        mod foo;<|>
+        mod foo;$0
 
         use crate::foo::bar::Baz;
 
@@ -81,7 +81,7 @@ fn typing_inside_a_macro_should_not_invalidate_def_map() {
         pub mod bar;
 
         //- /foo/bar.rs
-        <|>
+        $0
         m!(X);
         ",
     );

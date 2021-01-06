@@ -9,7 +9,7 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 // Adds a use statement for a given fully-qualified name.
 //
 // ```
-// fn process(map: std::collections::<|>HashMap<String, String>) {}
+// fn process(map: std::collections::$0HashMap<String, String>) {}
 // ```
 // ->
 // ```
@@ -127,7 +127,7 @@ mod tests {
             r"use std::fs;
 
 fn main() {
-    std::f<|>s::Path
+    std::f$0s::Path
 }",
             r"use std::fs;
 
@@ -142,7 +142,7 @@ fn main() {
         check_assist(
             replace_qualified_name_with_use,
             r"
-std::fmt::Debug<|>
+std::fmt::Debug$0
     ",
             r"
 use std::fmt::Debug;
@@ -156,7 +156,7 @@ Debug
         check_assist(
             replace_qualified_name_with_use,
             r"
-std::fmt::Debug<|>
+std::fmt::Debug$0
 
 fn main() {
 }
@@ -180,7 +180,7 @@ fn main() {
 fn main() {
 }
 
-std::fmt::Debug<|>
+std::fmt::Debug$0
     ",
             r"
 use std::fmt::Debug;
@@ -198,7 +198,7 @@ Debug
         check_assist(
             replace_qualified_name_with_use,
             r"
-std::fmt<|>::Debug
+std::fmt$0::Debug
     ",
             r"
 use std::fmt;
@@ -215,7 +215,7 @@ fmt::Debug
             r"
 use stdx;
 
-impl std::fmt::Debug<|> for Foo {
+impl std::fmt::Debug$0 for Foo {
 }
     ",
             r"
@@ -234,7 +234,7 @@ impl Debug for Foo {
         check_assist(
             replace_qualified_name_with_use,
             r"
-impl std::fmt::Debug<|> for Foo {
+impl std::fmt::Debug$0 for Foo {
 }
     ",
             r"
@@ -251,7 +251,7 @@ impl Debug for Foo {
         check_assist(
             replace_qualified_name_with_use,
             r"
-    impl std::fmt::Debug<|> for Foo {
+    impl std::fmt::Debug$0 for Foo {
     }
     ",
             r"
@@ -270,7 +270,7 @@ impl Debug for Foo {
             r"
 use std::fmt;
 
-impl std::io<|> for Foo {
+impl std::io$0 for Foo {
 }
     ",
             r"
@@ -289,7 +289,7 @@ impl io for Foo {
             r"
 use std::fmt;
 
-impl std::fmt::Debug<|> for Foo {
+impl std::fmt::Debug$0 for Foo {
 }
     ",
             r"
@@ -308,7 +308,7 @@ impl Debug for Foo {
             r"
 use std::fmt::Debug;
 
-impl std::fmt<|> for Foo {
+impl std::fmt$0 for Foo {
 }
     ",
             r"
@@ -327,7 +327,7 @@ impl fmt for Foo {
             r"
 use std::fmt::{Debug, nested::{Display}};
 
-impl std::fmt::nested<|> for Foo {
+impl std::fmt::nested$0 for Foo {
 }
 ",
             r"
@@ -346,7 +346,7 @@ impl nested for Foo {
             r"
 use std::fmt::{Debug, nested::{self, Display}};
 
-impl std::fmt::nested<|> for Foo {
+impl std::fmt::nested$0 for Foo {
 }
 ",
             r"
@@ -365,7 +365,7 @@ impl nested for Foo {
             r"
 use std::fmt::{Debug, nested::{Display}};
 
-impl std::fmt::nested::Debug<|> for Foo {
+impl std::fmt::nested::Debug$0 for Foo {
 }
 ",
             r"
@@ -384,7 +384,7 @@ impl Debug for Foo {
             r"
 use std::fmt::Debug;
 
-impl std::fmt::nested::Display<|> for Foo {
+impl std::fmt::nested::Display$0 for Foo {
 }
 ",
             r"
@@ -403,7 +403,7 @@ impl Display for Foo {
             r"
 use std::fmt::nested::Debug;
 
-impl std::fmt::Display<|> for Foo {
+impl std::fmt::Display$0 for Foo {
 }
 ",
             r"
@@ -425,7 +425,7 @@ use crate::{
     AssocItem,
 };
 
-fn foo() { crate::ty::lower<|>::trait_env() }
+fn foo() { crate::ty::lower$0::trait_env() }
 ",
             r"
 use crate::{AssocItem, ty::{Substs, Ty, lower}};
@@ -442,7 +442,7 @@ fn foo() { lower::trait_env() }
             r"
 use std::fmt as foo;
 
-impl foo::Debug<|> for Foo {
+impl foo::Debug$0 for Foo {
 }
 ",
             r"
@@ -462,7 +462,7 @@ impl Debug for Foo {
         check_assist_not_applicable(
             replace_qualified_name_with_use,
             r"
-impl foo<|> for Foo {
+impl foo$0 for Foo {
 }
 ",
         );
@@ -473,7 +473,7 @@ impl foo<|> for Foo {
         check_assist_not_applicable(
             replace_qualified_name_with_use,
             r"
-use std::fmt<|>;
+use std::fmt$0;
 ",
         );
     }
@@ -485,7 +485,7 @@ use std::fmt<|>;
             r"
 mod foo {
     mod bar {
-        std::fmt::Debug<|>
+        std::fmt::Debug$0
     }
 }
     ",
@@ -509,7 +509,7 @@ mod foo {
 #![allow(dead_code)]
 
 fn main() {
-    std::fmt::Debug<|>
+    std::fmt::Debug$0
 }
     ",
             r"
@@ -530,7 +530,7 @@ fn main() {
             replace_qualified_name_with_use,
             r"
 fn main() {
-    std::fmt::Debug<|>;
+    std::fmt::Debug$0;
     let x: std::fmt::Debug = std::fmt::Debug;
 }
     ",
@@ -552,7 +552,7 @@ fn main() {
             r"
 mod m {
     fn f() {
-        std::fmt::Debug<|>;
+        std::fmt::Debug$0;
         let x: std::fmt::Debug = std::fmt::Debug;
     }
     fn g() {
@@ -590,7 +590,7 @@ fn f() {
             replace_qualified_name_with_use,
             r"
 fn main() {
-    std::fmt::Debug<|>;
+    std::fmt::Debug$0;
 }
 
 mod sub {
@@ -623,7 +623,7 @@ mod sub {
 use std::fmt::Display;
 
 fn main() {
-    std::fmt<|>;
+    std::fmt$0;
 }
     ",
             r"
@@ -643,7 +643,7 @@ fn main() {
             r"
 pub use std::fmt;
 
-impl std::io<|> for Foo {
+impl std::io$0 for Foo {
 }
     ",
             r"
@@ -663,7 +663,7 @@ impl io for Foo {
             r"
 pub(crate) use std::fmt;
 
-impl std::io<|> for Foo {
+impl std::io$0 for Foo {
 }
     ",
             r"

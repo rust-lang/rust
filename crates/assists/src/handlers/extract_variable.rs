@@ -16,7 +16,7 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 //
 // ```
 // fn main() {
-//     <|>(1 + 2)<|> * 4;
+//     $0(1 + 2)$0 * 4;
 // }
 // ```
 // ->
@@ -187,7 +187,7 @@ mod tests {
             extract_variable,
             r#"
 fn foo() {
-    foo(<|>1 + 1<|>);
+    foo($01 + 1$0);
 }"#,
             r#"
 fn foo() {
@@ -200,7 +200,7 @@ fn foo() {
     #[test]
     fn extract_var_in_comment_is_not_applicable() {
         mark::check!(extract_var_in_comment_is_not_applicable);
-        check_assist_not_applicable(extract_variable, "fn main() { 1 + /* <|>comment<|> */ 1; }");
+        check_assist_not_applicable(extract_variable, "fn main() { 1 + /* $0comment$0 */ 1; }");
     }
 
     #[test]
@@ -210,7 +210,7 @@ fn foo() {
             extract_variable,
             r#"
 fn foo() {
-    <|>1 + 1<|>;
+    $01 + 1$0;
 }"#,
             r#"
 fn foo() {
@@ -221,7 +221,7 @@ fn foo() {
             extract_variable,
             "
 fn foo() {
-    <|>{ let x = 0; x }<|>
+    $0{ let x = 0; x }$0
     something_else();
 }",
             "
@@ -238,7 +238,7 @@ fn foo() {
             extract_variable,
             "
 fn foo() {
-    <|>1<|> + 1;
+    $01$0 + 1;
 }",
             "
 fn foo() {
@@ -255,7 +255,7 @@ fn foo() {
             extract_variable,
             r#"
 fn foo() {
-    bar(<|>1 + 1<|>)
+    bar($01 + 1$0)
 }
 "#,
             r#"
@@ -269,7 +269,7 @@ fn foo() {
             extract_variable,
             r#"
 fn foo() {
-    <|>bar(1 + 1)<|>
+    $0bar(1 + 1)$0
 }
 "#,
             r#"
@@ -289,7 +289,7 @@ fn foo() {
 fn main() {
     let x = true;
     let tuple = match x {
-        true => (<|>2 + 2<|>, true)
+        true => ($02 + 2$0, true)
         _ => (0, false)
     };
 }
@@ -316,7 +316,7 @@ fn main() {
     let tuple = match x {
         true => {
             let y = 1;
-            (<|>2 + y<|>, true)
+            ($02 + y$0, true)
         }
         _ => (0, false)
     };
@@ -344,7 +344,7 @@ fn main() {
             extract_variable,
             "
 fn main() {
-    let lambda = |x: u32| <|>x * 2<|>;
+    let lambda = |x: u32| $0x * 2$0;
 }
 ",
             "
@@ -361,7 +361,7 @@ fn main() {
             extract_variable,
             "
 fn main() {
-    let lambda = |x: u32| { <|>x * 2<|> };
+    let lambda = |x: u32| { $0x * 2$0 };
 }
 ",
             "
@@ -378,7 +378,7 @@ fn main() {
             extract_variable,
             "
 fn main() {
-    let o = <|>Some(true)<|>;
+    let o = $0Some(true)$0;
 }
 ",
             "
@@ -396,7 +396,7 @@ fn main() {
             extract_variable,
             "
 fn main() {
-    let v = <|>bar.foo()<|>;
+    let v = $0bar.foo()$0;
 }
 ",
             "
@@ -414,7 +414,7 @@ fn main() {
             extract_variable,
             "
 fn foo() -> u32 {
-    <|>return 2 + 2<|>;
+    $0return 2 + 2$0;
 }
 ",
             "
@@ -434,7 +434,7 @@ fn foo() -> u32 {
 fn foo() -> u32 {
 
 
-    <|>return 2 + 2<|>;
+    $0return 2 + 2$0;
 }
 ",
             "
@@ -452,7 +452,7 @@ fn foo() -> u32 {
             "
 fn foo() -> u32 {
 
-        <|>return 2 + 2<|>;
+        $0return 2 + 2$0;
 }
 ",
             "
@@ -473,7 +473,7 @@ fn foo() -> u32 {
     // bar
 
 
-    <|>return 2 + 2<|>;
+    $0return 2 + 2$0;
 }
 ",
             "
@@ -497,7 +497,7 @@ fn foo() -> u32 {
             "
 fn main() {
     let result = loop {
-        <|>break 2 + 2<|>;
+        $0break 2 + 2$0;
     };
 }
 ",
@@ -518,7 +518,7 @@ fn main() {
             extract_variable,
             "
 fn main() {
-    let v = <|>0f32 as u32<|>;
+    let v = $00f32 as u32$0;
 }
 ",
             "
@@ -540,7 +540,7 @@ struct S {
 }
 
 fn main() {
-    S { foo: <|>1 + 1<|> }
+    S { foo: $01 + 1$0 }
 }
 "#,
             r#"
@@ -558,18 +558,18 @@ fn main() {
 
     #[test]
     fn test_extract_var_for_return_not_applicable() {
-        check_assist_not_applicable(extract_variable, "fn foo() { <|>return<|>; } ");
+        check_assist_not_applicable(extract_variable, "fn foo() { $0return$0; } ");
     }
 
     #[test]
     fn test_extract_var_for_break_not_applicable() {
-        check_assist_not_applicable(extract_variable, "fn main() { loop { <|>break<|>; }; }");
+        check_assist_not_applicable(extract_variable, "fn main() { loop { $0break$0; }; }");
     }
 
     // FIXME: This is not quite correct, but good enough(tm) for the sorting heuristic
     #[test]
     fn extract_var_target() {
-        check_assist_target(extract_variable, "fn foo() -> u32 { <|>return 2 + 2<|>; }", "2 + 2");
+        check_assist_target(extract_variable, "fn foo() -> u32 { $0return 2 + 2$0; }", "2 + 2");
 
         check_assist_target(
             extract_variable,
@@ -577,7 +577,7 @@ fn main() {
 fn main() {
     let x = true;
     let tuple = match x {
-        true => (<|>2 + 2<|>, true)
+        true => ($02 + 2$0, true)
         _ => (0, false)
     };
 }

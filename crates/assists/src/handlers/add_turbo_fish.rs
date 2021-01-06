@@ -14,7 +14,7 @@ use crate::{
 // ```
 // fn make<T>() -> T { todo!() }
 // fn main() {
-//     let x = make<|>();
+//     let x = make$0();
 // }
 // ```
 // ->
@@ -77,7 +77,7 @@ mod tests {
             r#"
 fn make<T>() -> T {}
 fn main() {
-    make<|>();
+    make$0();
 }
 "#,
             r#"
@@ -97,7 +97,7 @@ fn main() {
             r#"
 fn make<T>() -> T {}
 fn main() {
-    make()<|>;
+    make()$0;
 }
 "#,
             r#"
@@ -119,7 +119,7 @@ impl S {
     fn make<T>(&self) -> T {}
 }
 fn main() {
-    S.make<|>();
+    S.make$0();
 }
 "#,
             r#"
@@ -142,7 +142,7 @@ fn main() {
             r#"
 fn make<T>() -> T {}
 fn main() {
-    make<|>::<()>();
+    make$0::<()>();
 }
 "#,
         );
@@ -156,7 +156,7 @@ fn main() {
             r#"
 fn make() -> () {}
 fn main() {
-    make<|>();
+    make$0();
 }
 "#,
         );

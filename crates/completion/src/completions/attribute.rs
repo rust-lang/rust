@@ -413,7 +413,7 @@ mod tests {
     fn empty_derive_completion() {
         check(
             r#"
-#[derive(<|>)]
+#[derive($0)]
 struct Test {}
         "#,
             expect![[r#"
@@ -434,7 +434,7 @@ struct Test {}
     fn no_completion_for_incorrect_derive() {
         check(
             r#"
-#[derive{<|>)]
+#[derive{$0)]
 struct Test {}
 "#,
             expect![[r#""#]],
@@ -445,7 +445,7 @@ struct Test {}
     fn derive_with_input_completion() {
         check(
             r#"
-#[derive(serde::Serialize, PartialEq, <|>)]
+#[derive(serde::Serialize, PartialEq, $0)]
 struct Test {}
 "#,
             expect![[r#"
@@ -464,7 +464,7 @@ struct Test {}
     #[test]
     fn test_attribute_completion() {
         check(
-            r#"#[<|>]"#,
+            r#"#[$0]"#,
             expect![[r#"
                 at allow(…)
                 at automatically_derived
@@ -504,13 +504,13 @@ struct Test {}
 
     #[test]
     fn test_attribute_completion_inside_nested_attr() {
-        check(r#"#[cfg(<|>)]"#, expect![[]])
+        check(r#"#[cfg($0)]"#, expect![[]])
     }
 
     #[test]
     fn test_inner_attribute_completion() {
         check(
-            r"#![<|>]",
+            r"#![$0]",
             expect![[r#"
                 at allow(…)
                 at automatically_derived

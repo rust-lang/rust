@@ -193,7 +193,7 @@ mod tests {
     #[test]
     fn test_keywords_in_use_stmt() {
         check(
-            r"use <|>",
+            r"use $0",
             expect![[r#"
                 kw crate::
                 kw self
@@ -202,7 +202,7 @@ mod tests {
         );
 
         check(
-            r"use a::<|>",
+            r"use a::$0",
             expect![[r#"
                 kw self
                 kw super::
@@ -210,7 +210,7 @@ mod tests {
         );
 
         check(
-            r"use a::{b, <|>}",
+            r"use a::{b, $0}",
             expect![[r#"
                 kw self
                 kw super::
@@ -221,7 +221,7 @@ mod tests {
     #[test]
     fn test_keywords_at_source_file_level() {
         check(
-            r"m<|>",
+            r"m$0",
             expect![[r#"
                 kw fn
                 kw use
@@ -245,7 +245,7 @@ mod tests {
     #[test]
     fn test_keywords_in_function() {
         check(
-            r"fn quux() { <|> }",
+            r"fn quux() { $0 }",
             expect![[r#"
                 kw fn
                 kw use
@@ -271,7 +271,7 @@ mod tests {
     #[test]
     fn test_keywords_inside_block() {
         check(
-            r"fn quux() { if true { <|> } }",
+            r"fn quux() { if true { $0 } }",
             expect![[r#"
                 kw fn
                 kw use
@@ -297,7 +297,7 @@ mod tests {
     #[test]
     fn test_keywords_after_if() {
         check(
-            r#"fn quux() { if true { () } <|> }"#,
+            r#"fn quux() { if true { () } $0 }"#,
             expect![[r#"
                 kw fn
                 kw use
@@ -322,7 +322,7 @@ mod tests {
         );
         check_edit(
             "else",
-            r#"fn quux() { if true { () } <|> }"#,
+            r#"fn quux() { if true { () } $0 }"#,
             r#"fn quux() { if true { () } else {$0} }"#,
         );
     }
@@ -332,7 +332,7 @@ mod tests {
         check(
             r#"
 fn quux() -> i32 {
-    match () { () => <|> }
+    match () { () => $0 }
 }
 "#,
             expect![[r#"
@@ -350,7 +350,7 @@ fn quux() -> i32 {
     #[test]
     fn test_keywords_in_trait_def() {
         check(
-            r"trait My { <|> }",
+            r"trait My { $0 }",
             expect![[r#"
                 kw fn
                 kw const
@@ -363,7 +363,7 @@ fn quux() -> i32 {
     #[test]
     fn test_keywords_in_impl_def() {
         check(
-            r"impl My { <|> }",
+            r"impl My { $0 }",
             expect![[r#"
                 kw fn
                 kw const
@@ -378,7 +378,7 @@ fn quux() -> i32 {
     #[test]
     fn test_keywords_in_loop() {
         check(
-            r"fn my() { loop { <|> } }",
+            r"fn my() { loop { $0 } }",
             expect![[r#"
                 kw fn
                 kw use
@@ -406,7 +406,7 @@ fn quux() -> i32 {
     #[test]
     fn test_keywords_after_unsafe_in_item_list() {
         check(
-            r"unsafe <|>",
+            r"unsafe $0",
             expect![[r#"
                 kw fn
                 kw trait
@@ -418,7 +418,7 @@ fn quux() -> i32 {
     #[test]
     fn test_keywords_after_unsafe_in_block_expr() {
         check(
-            r"fn my_fn() { unsafe <|> }",
+            r"fn my_fn() { unsafe $0 }",
             expect![[r#"
                 kw fn
                 kw trait
@@ -430,19 +430,19 @@ fn quux() -> i32 {
     #[test]
     fn test_mut_in_ref_and_in_fn_parameters_list() {
         check(
-            r"fn my_fn(&<|>) {}",
+            r"fn my_fn(&$0) {}",
             expect![[r#"
                 kw mut
             "#]],
         );
         check(
-            r"fn my_fn(<|>) {}",
+            r"fn my_fn($0) {}",
             expect![[r#"
                 kw mut
             "#]],
         );
         check(
-            r"fn my_fn() { let &<|> }",
+            r"fn my_fn() { let &$0 }",
             expect![[r#"
                 kw mut
             "#]],
@@ -452,13 +452,13 @@ fn quux() -> i32 {
     #[test]
     fn test_where_keyword() {
         check(
-            r"trait A <|>",
+            r"trait A $0",
             expect![[r#"
                 kw where
             "#]],
         );
         check(
-            r"impl A <|>",
+            r"impl A $0",
             expect![[r#"
                 kw where
             "#]],
@@ -471,7 +471,7 @@ fn quux() -> i32 {
         check(
             r#"
 fn test() {
-    let x = 2; // A comment<|>
+    let x = 2; // A comment$0
 }
 "#,
             expect![[""]],
@@ -479,7 +479,7 @@ fn test() {
         check(
             r#"
 /*
-Some multi-line comment<|>
+Some multi-line comment$0
 */
 "#,
             expect![[""]],
@@ -487,7 +487,7 @@ Some multi-line comment<|>
         check(
             r#"
 /// Some doc comment
-/// let test<|> = 1
+/// let test$0 = 1
 "#,
             expect![[""]],
         );
@@ -501,7 +501,7 @@ Some multi-line comment<|>
 use std::future::*;
 struct A {}
 impl Future for A {}
-fn foo(a: A) { a.<|> }
+fn foo(a: A) { a.$0 }
 
 //- /std/lib.rs crate:std
 pub mod future {
@@ -520,7 +520,7 @@ pub mod future {
 use std::future::*;
 fn foo() {
     let a = async {};
-    a.<|>
+    a.$0
 }
 
 //- /std/lib.rs crate:std
@@ -540,7 +540,7 @@ pub mod future {
     #[test]
     fn after_let() {
         check(
-            r#"fn main() { let _ = <|> }"#,
+            r#"fn main() { let _ = $0 }"#,
             expect![[r#"
                 kw match
                 kw while
@@ -557,7 +557,7 @@ pub mod future {
         check(
             r#"
 struct Foo {
-    <|>
+    $0
     pub f: i32,
 }
 "#,
@@ -578,7 +578,7 @@ struct Foo {
 }
 fn foo() {
     Foo {
-        <|>
+        $0
     }
 }
 "#,
@@ -595,7 +595,7 @@ struct Foo {
 }
 fn foo() {
     Foo {
-        f: <|>
+        f: $0
     }
 }
 "#,

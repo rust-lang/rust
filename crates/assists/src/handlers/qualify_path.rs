@@ -22,7 +22,7 @@ use crate::{
 //
 // ```
 // fn main() {
-//     let map = HashMap<|>::new();
+//     let map = HashMap$0::new();
 // }
 // # pub mod std { pub mod collections { pub struct HashMap { } } }
 // ```
@@ -221,7 +221,7 @@ mod tests {
 
             use std::fmt;
 
-            <|>Formatter
+            $0Formatter
             ",
             r"
             mod std {
@@ -242,7 +242,7 @@ mod tests {
         check_assist(
             qualify_path,
             r"
-            <|>PubStruct
+            $0PubStruct
 
             pub mod PubMod {
                 pub struct PubStruct;
@@ -266,7 +266,7 @@ mod tests {
             macro_rules! foo {
                 ($i:ident) => { fn foo(a: $i) {} }
             }
-            foo!(Pub<|>Struct);
+            foo!(Pub$0Struct);
 
             pub mod PubMod {
                 pub struct PubStruct;
@@ -290,7 +290,7 @@ mod tests {
         check_assist(
             qualify_path,
             r"
-            PubSt<|>ruct
+            PubSt$0ruct
 
             pub mod PubMod1 {
                 pub struct PubStruct;
@@ -325,7 +325,7 @@ mod tests {
             r"
             use PubMod::PubStruct;
 
-            PubStruct<|>
+            PubStruct$0
 
             pub mod PubMod {
                 pub struct PubStruct;
@@ -339,7 +339,7 @@ mod tests {
         check_assist_not_applicable(
             qualify_path,
             r"
-            PrivateStruct<|>
+            PrivateStruct$0
 
             pub mod PubMod {
                 struct PrivateStruct;
@@ -353,7 +353,7 @@ mod tests {
         check_assist_not_applicable(
             qualify_path,
             "
-            PubStruct<|>",
+            PubStruct$0",
         );
     }
 
@@ -362,7 +362,7 @@ mod tests {
         check_assist_not_applicable(
             qualify_path,
             r"
-            use PubStruct<|>;
+            use PubStruct$0;
 
             pub mod PubMod {
                 pub struct PubStruct;
@@ -375,7 +375,7 @@ mod tests {
         check_assist(
             qualify_path,
             r"
-            test_function<|>
+            test_function$0
 
             pub mod PubMod {
                 pub fn test_function() {};
@@ -404,7 +404,7 @@ macro_rules! foo {
 
 //- /main.rs crate:main deps:crate_with_macro
 fn main() {
-    foo<|>
+    foo$0
 }
 ",
             r"
@@ -421,7 +421,7 @@ fn main() {
             qualify_path,
             r"
             struct AssistInfo {
-                group_label: Option<<|>GroupLabel>,
+                group_label: Option<$0GroupLabel>,
             }
 
             mod m { pub struct GroupLabel; }
@@ -445,7 +445,7 @@ fn main() {
 
             use mod1::mod2;
             fn main() {
-                mod2::mod3::TestStruct<|>
+                mod2::mod3::TestStruct$0
             }
             ",
         );
@@ -462,7 +462,7 @@ fn main() {
 
             use test_mod::test_function;
             fn main() {
-                test_function<|>
+                test_function$0
             }
             ",
         );
@@ -481,7 +481,7 @@ fn main() {
             }
 
             fn main() {
-                TestStruct::test_function<|>
+                TestStruct::test_function$0
             }
             ",
             r"
@@ -513,7 +513,7 @@ fn main() {
             }
 
             fn main() {
-                TestStruct::TEST_CONST<|>
+                TestStruct::TEST_CONST$0
             }
             ",
             r"
@@ -547,7 +547,7 @@ fn main() {
             }
 
             fn main() {
-                test_mod::TestStruct::test_function<|>
+                test_mod::TestStruct::test_function$0
             }
             ",
             r"
@@ -594,7 +594,7 @@ fn main() {
 
             use test_mod::TestTrait2;
             fn main() {
-                test_mod::TestEnum::test_function<|>;
+                test_mod::TestEnum::test_function$0;
             }
             ",
         )
@@ -617,7 +617,7 @@ fn main() {
             }
 
             fn main() {
-                test_mod::TestStruct::TEST_CONST<|>
+                test_mod::TestStruct::TEST_CONST$0
             }
             ",
             r"
@@ -664,7 +664,7 @@ fn main() {
 
             use test_mod::TestTrait2;
             fn main() {
-                test_mod::TestEnum::TEST_CONST<|>;
+                test_mod::TestEnum::TEST_CONST$0;
             }
             ",
         )
@@ -688,7 +688,7 @@ fn main() {
 
             fn main() {
                 let test_struct = test_mod::TestStruct {};
-                test_struct.test_meth<|>od()
+                test_struct.test_meth$0od()
             }
             ",
             r"
@@ -727,7 +727,7 @@ fn main() {
 
             fn main() {
                 let test_struct = test_mod::TestStruct {};
-                test_struct.test_meth<|>od(42)
+                test_struct.test_meth$0od(42)
             }
             ",
             r"
@@ -766,7 +766,7 @@ fn main() {
 
             fn main() {
                 let test_struct = test_mod::TestStruct {};
-                test_struct.test_meth<|>od()
+                test_struct.test_meth$0od()
             }
             ",
             r"
@@ -796,7 +796,7 @@ fn main() {
             //- /main.rs crate:main deps:dep
             fn main() {
                 let test_struct = dep::test_mod::TestStruct {};
-                test_struct.test_meth<|>od()
+                test_struct.test_meth$0od()
             }
             //- /dep.rs crate:dep
             pub mod test_mod {
@@ -825,7 +825,7 @@ fn main() {
             r"
             //- /main.rs crate:main deps:dep
             fn main() {
-                dep::test_mod::TestStruct::test_func<|>tion
+                dep::test_mod::TestStruct::test_func$0tion
             }
             //- /dep.rs crate:dep
             pub mod test_mod {
@@ -853,7 +853,7 @@ fn main() {
             r"
             //- /main.rs crate:main deps:dep
             fn main() {
-                dep::test_mod::TestStruct::CONST<|>
+                dep::test_mod::TestStruct::CONST$0
             }
             //- /dep.rs crate:dep
             pub mod test_mod {
@@ -882,7 +882,7 @@ fn main() {
             //- /main.rs crate:main deps:dep
             fn main() {
                 let test_struct = dep::test_mod::TestStruct {};
-                test_struct.test_func<|>tion()
+                test_struct.test_func$0tion()
             }
             //- /dep.rs crate:dep
             pub mod test_mod {
@@ -906,7 +906,7 @@ fn main() {
             //- /main.rs crate:main deps:dep
             fn main() {
                 let test_struct = dep::test_mod::TestStruct {};
-                test_struct.test_meth<|>od()
+                test_struct.test_meth$0od()
             }
             //- /dep.rs crate:dep
             pub mod test_mod {
@@ -949,7 +949,7 @@ fn main() {
             use test_mod::TestTrait2;
             fn main() {
                 let one = test_mod::TestEnum::One;
-                one.test<|>_method();
+                one.test$0_method();
             }
             ",
         )
@@ -965,7 +965,7 @@ pub struct Struct;
 
 //- /main.rs crate:main deps:dep
 fn main() {
-    Struct<|>
+    Struct$0
 }
 ",
             r"
@@ -992,7 +992,7 @@ pub fn panic_fmt() {}
 //- /main.rs crate:main deps:dep
 struct S;
 
-impl f<|>mt::Display for S {}
+impl f$0mt::Display for S {}
 ",
             r"
 struct S;
@@ -1019,7 +1019,7 @@ mac!();
 
 //- /main.rs crate:main deps:dep
 fn main() {
-    Cheese<|>;
+    Cheese$0;
 }
 ",
             r"
@@ -1042,7 +1042,7 @@ pub struct fmt;
 
 //- /main.rs crate:main deps:dep
 fn main() {
-    FMT<|>;
+    FMT$0;
 }
 ",
             r"
@@ -1062,7 +1062,7 @@ fn main() {
 pub mod generic { pub struct Thing<'a, T>(&'a T); }
 
 //- /main.rs crate:main deps:dep
-fn foo() -> Thin<|>g<'static, ()> {}
+fn foo() -> Thin$0g<'static, ()> {}
 
 fn main() {}
 ",
@@ -1083,7 +1083,7 @@ fn main() {}
 pub mod generic { pub struct Thing<'a, T>(&'a T); }
 
 //- /main.rs crate:main deps:dep
-fn foo() -> Thin<|>g::<'static, ()> {}
+fn foo() -> Thin$0g::<'static, ()> {}
 
 fn main() {}
 ",
@@ -1108,7 +1108,7 @@ fn main() {}
             }
 
             fn main() {
-                TestStruct::<()>::TEST_CONST<|>
+                TestStruct::<()>::TEST_CONST$0
             }
             ",
             r"
@@ -1142,7 +1142,7 @@ fn main() {}
             }
 
             fn main() {
-                test_mod::TestStruct::<()>::TEST_CONST<|>
+                test_mod::TestStruct::<()>::TEST_CONST$0
             }
             ",
             r"
@@ -1180,7 +1180,7 @@ fn main() {}
 
             fn main() {
                 let test_struct = test_mod::TestStruct {};
-                test_struct.test_meth<|>od::<()>()
+                test_struct.test_meth$0od::<()>()
             }
             ",
             r"

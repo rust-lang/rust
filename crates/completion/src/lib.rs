@@ -47,8 +47,8 @@ pub use crate::{
 // - `expr.while` -> `while expr {}` or `while let ... {}` for `Option` or `Result`
 // - `expr.ref` -> `&expr`
 // - `expr.refm` -> `&mut expr`
-// - `expr.let` -> `let <|> = expr;`
-// - `expr.letm` -> `let mut <|> = expr;`
+// - `expr.let` -> `let $0 = expr;`
+// - `expr.letm` -> `let mut $0 = expr;`
 // - `expr.not` -> `!expr`
 // - `expr.dbg` -> `dbg!(expr)`
 // - `expr.dbgr` -> `dbg!(&expr)`
@@ -92,7 +92,7 @@ pub use crate::{
 /// ```no_run
 /// fn f() {
 ///     let foo = 92;
-///     let _ = bar<|>
+///     let _ = bar$0
 /// }
 /// ```
 ///
@@ -220,7 +220,7 @@ mod tests {
 
             fn foo() {
                 let bar = Bar;
-                bar.fo<|>;
+                bar.fo$0;
             }
             "#,
             DetailAndDocumentation { detail: "fn foo(&self)", documentation: "Do the foo" },
@@ -246,7 +246,7 @@ mod tests {
 
             fn foo() {
                 let bar = Bar;
-                bar.fo<|>;
+                bar.fo$0;
             }
             "#,
             DetailAndDocumentation { detail: "fn foo(&self)", documentation: " Do the foo" },
@@ -259,7 +259,7 @@ mod tests {
         check_no_completion(
             r#"
             fn foo() {
-                for i i<|>
+                for i i$0
             }
             "#,
         );
@@ -270,7 +270,7 @@ mod tests {
             fn foo() -> &'static str { "foo" }
 
             fn bar() {
-                for c in fo<|>
+                for c in fo$0
             }
             "#,
             DetailAndDocumentation {

@@ -76,7 +76,7 @@ mod tests {
 struct Foo;
      //^^^
 fn foo() {
-    let f: Foo; f<|>
+    let f: Foo; f$0
 }
 "#,
         );
@@ -89,7 +89,7 @@ fn foo() {
 struct Foo;
      //^^^
 fn foo() {
-    let f: &Foo; f<|>
+    let f: &Foo; f$0
 }
 "#,
         );
@@ -103,7 +103,7 @@ macro_rules! id { ($($tt:tt)*) => { $($tt)* } }
 struct Foo {}
      //^^^
 id! {
-    fn bar() { let f<|> = Foo {}; }
+    fn bar() { let f$0 = Foo {}; }
 }
 "#,
         );
@@ -115,7 +115,7 @@ id! {
             r#"
 struct Foo;
      //^^^
-fn foo(<|>f: Foo) {}
+fn foo($0f: Foo) {}
 "#,
         );
     }
@@ -129,7 +129,7 @@ struct Foo;
 struct Bar(Foo);
 fn foo() {
     let bar = Bar(Foo);
-    bar.<|>0;
+    bar.$00;
 }
 "#,
         );
@@ -142,7 +142,7 @@ fn foo() {
 struct Foo;
      //^^^
 impl Foo {
-    fn f(&self<|>) {}
+    fn f(&self$0) {}
 }
 "#,
         )

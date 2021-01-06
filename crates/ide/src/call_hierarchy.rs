@@ -178,7 +178,7 @@ mod tests {
 //- /lib.rs
 fn callee() {}
 fn caller() {
-    call<|>ee();
+    call$0ee();
 }
 "#,
             "callee Function FileId(0) 0..14 3..9",
@@ -192,7 +192,7 @@ fn caller() {
         check_hierarchy(
             r#"
 //- /lib.rs
-fn call<|>ee() {}
+fn call$0ee() {}
 fn caller() {
     callee();
 }
@@ -210,7 +210,7 @@ fn caller() {
 //- /lib.rs
 fn callee() {}
 fn caller() {
-    call<|>ee();
+    call$0ee();
     callee();
 }
 "#,
@@ -227,7 +227,7 @@ fn caller() {
 //- /lib.rs
 fn callee() {}
 fn caller1() {
-    call<|>ee();
+    call$0ee();
 }
 
 fn caller2() {
@@ -250,7 +250,7 @@ fn caller2() {
 //- /lib.rs cfg:test
 fn callee() {}
 fn caller1() {
-    call<|>ee();
+    call$0ee();
 }
 
 #[cfg(test)]
@@ -281,7 +281,7 @@ mod foo;
 use foo::callee;
 
 fn caller() {
-    call<|>ee();
+    call$0ee();
 }
 
 //- /foo/mod.rs
@@ -299,7 +299,7 @@ pub fn callee() {}
             r#"
 //- /lib.rs
 fn callee() {}
-fn call<|>er() {
+fn call$0er() {
     callee();
     callee();
 }
@@ -318,7 +318,7 @@ fn call<|>er() {
 mod foo;
 use foo::callee;
 
-fn call<|>er() {
+fn call$0er() {
     callee();
 }
 
@@ -337,7 +337,7 @@ pub fn callee() {}
             r#"
 //- /lib.rs
 fn caller1() {
-    call<|>er2();
+    call$0er2();
 }
 
 fn caller2() {
@@ -365,7 +365,7 @@ fn a() {
 fn b() {}
 
 fn main() {
-    a<|>()
+    a$0()
 }
 "#,
             "a Function FileId(0) 0..18 3..4",
@@ -376,7 +376,7 @@ fn main() {
         check_hierarchy(
             r#"
 fn a() {
-    b<|>()
+    b$0()
 }
 
 fn b() {}

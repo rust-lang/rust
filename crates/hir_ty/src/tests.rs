@@ -314,7 +314,7 @@ fn typing_whitespace_inside_a_function_should_not_invalidate_types() {
         "
         //- /lib.rs
         fn foo() -> i32 {
-            <|>1 + 1
+            $01 + 1
         }
     ",
     );

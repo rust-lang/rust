@@ -170,7 +170,7 @@ mod tests {
     fn test_on_eq_typed() {
         //     do_check(r"
         // fn foo() {
-        //     let foo =<|>
+        //     let foo =$0
         // }
         // ", r"
         // fn foo() {
@@ -181,7 +181,7 @@ mod tests {
             '=',
             r"
 fn foo() {
-    let foo <|> 1 + 1
+    let foo $0 1 + 1
 }
 ",
             r"
@@ -192,7 +192,7 @@ fn foo() {
         );
         //     do_check(r"
         // fn foo() {
-        //     let foo =<|>
+        //     let foo =$0
         //     let bar = 1;
         // }
         // ", r"
@@ -210,7 +210,7 @@ fn foo() {
             r"
             fn main() {
                 xs.foo()
-                <|>
+                $0
             }
             ",
             r"
@@ -225,7 +225,7 @@ fn foo() {
             r"
             fn main() {
                 xs.foo()
-                    <|>
+                    $0
             }
             ",
         )
@@ -238,7 +238,7 @@ fn foo() {
             r"
             fn main() {
                 xs.foo()
-                <|>;
+                $0;
             }
             ",
             r"
@@ -253,7 +253,7 @@ fn foo() {
             r"
             fn main() {
                 xs.foo()
-                    <|>;
+                    $0;
             }
             ",
         )
@@ -266,7 +266,7 @@ fn foo() {
             r#"
 fn main() {
     let _ = foo
-    <|>
+    $0
     bar()
 }
 "#,
@@ -288,7 +288,7 @@ fn main() {
             fn main() {
                 xs.foo()
                     .first()
-                <|>
+                $0
             }
             ",
             r"
@@ -305,7 +305,7 @@ fn main() {
             fn main() {
                 xs.foo()
                     .first()
-                    <|>
+                    $0
             }
             ",
         );
@@ -318,7 +318,7 @@ fn main() {
             r"
             fn source_impl() {
                 let var = enum_defvariant_list().unwrap()
-                <|>
+                $0
                     .nth(92)
                     .unwrap();
             }
@@ -337,7 +337,7 @@ fn main() {
             r"
             fn source_impl() {
                 let var = enum_defvariant_list().unwrap()
-                    <|>
+                    $0
                     .nth(92)
                     .unwrap();
             }
@@ -351,7 +351,7 @@ fn main() {
             '.',
             r"
             fn main() {
-                <|>
+                $0
             }
             ",
         );
@@ -359,7 +359,7 @@ fn main() {
             '.',
             r"
             fn main() {
-            <|>
+            $0
             }
             ",
         );
@@ -367,6 +367,6 @@ fn main() {
 
     #[test]
     fn adds_space_after_return_type() {
-        type_char('>', "fn foo() -<|>{ 92 }", "fn foo() -> { 92 }")
+        type_char('>', "fn foo() -$0{ 92 }", "fn foo() -> { 92 }")
     }
 }

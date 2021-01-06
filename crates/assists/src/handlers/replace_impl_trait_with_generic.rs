@@ -7,7 +7,7 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 // Replaces `impl Trait` function argument with the named generic.
 //
 // ```
-// fn foo(bar: <|>impl Bar) {}
+// fn foo(bar: $0impl Bar) {}
 // ```
 // ->
 // ```
@@ -56,7 +56,7 @@ mod tests {
         check_assist(
             replace_impl_trait_with_generic,
             r#"
-            fn foo<G>(bar: <|>impl Bar) {}
+            fn foo<G>(bar: $0impl Bar) {}
             "#,
             r#"
             fn foo<G, B: Bar>(bar: B) {}
@@ -69,7 +69,7 @@ mod tests {
         check_assist(
             replace_impl_trait_with_generic,
             r#"
-            fn foo(bar: <|>impl Bar) {}
+            fn foo(bar: $0impl Bar) {}
             "#,
             r#"
             fn foo<B: Bar>(bar: B) {}
@@ -82,7 +82,7 @@ mod tests {
         check_assist(
             replace_impl_trait_with_generic,
             r#"
-            fn foo<G>(foo: impl Foo, bar: <|>impl Bar) {}
+            fn foo<G>(foo: impl Foo, bar: $0impl Bar) {}
             "#,
             r#"
             fn foo<G, B: Bar>(foo: impl Foo, bar: B) {}
@@ -95,7 +95,7 @@ mod tests {
         check_assist(
             replace_impl_trait_with_generic,
             r#"
-            fn foo<>(bar: <|>impl Bar) {}
+            fn foo<>(bar: $0impl Bar) {}
             "#,
             r#"
             fn foo<B: Bar>(bar: B) {}
@@ -109,7 +109,7 @@ mod tests {
             replace_impl_trait_with_generic,
             r#"
             fn foo<
-            >(bar: <|>impl Bar) {}
+            >(bar: $0impl Bar) {}
             "#,
             r#"
             fn foo<B: Bar
@@ -124,7 +124,7 @@ mod tests {
         check_assist(
             replace_impl_trait_with_generic,
             r#"
-            fn foo<B>(bar: <|>impl Bar) {}
+            fn foo<B>(bar: $0impl Bar) {}
             "#,
             r#"
             fn foo<B, C: Bar>(bar: C) {}
@@ -141,7 +141,7 @@ mod tests {
                 G: Foo,
                 F,
                 H,
-            >(bar: <|>impl Bar) {}
+            >(bar: $0impl Bar) {}
             "#,
             r#"
             fn foo<
@@ -158,7 +158,7 @@ mod tests {
         check_assist(
             replace_impl_trait_with_generic,
             r#"
-            fn foo(bar: <|>impl Foo + Bar) {}
+            fn foo(bar: $0impl Foo + Bar) {}
             "#,
             r#"
             fn foo<F: Foo + Bar>(bar: F) {}

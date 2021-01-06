@@ -23,7 +23,7 @@ use crate::{
 // struct Baz;
 // fn baz() -> Baz { Baz }
 // fn foo() {
-//     bar<|>("", baz());
+//     bar$0("", baz());
 // }
 //
 // ```
@@ -342,7 +342,7 @@ mod tests {
             generate_function,
             r"
 fn foo() {
-    bar<|>();
+    bar$0();
 }
 ",
             r"
@@ -366,7 +366,7 @@ fn bar() ${0:-> ()} {
             r"
 impl Foo {
     fn foo() {
-        bar<|>();
+        bar$0();
     }
 }
 ",
@@ -391,7 +391,7 @@ fn bar() ${0:-> ()} {
             generate_function,
             r"
 fn foo1() {
-    bar<|>();
+    bar$0();
 }
 
 fn foo2() {}
@@ -417,7 +417,7 @@ fn foo2() {}
             r"
 mod baz {
     fn foo() {
-        bar<|>();
+        bar$0();
     }
 }
 ",
@@ -443,7 +443,7 @@ mod baz {
 struct Baz;
 fn baz() -> Baz { todo!() }
 fn foo() {
-    bar<|>(baz());
+    bar$0(baz());
 }
 ",
             r"
@@ -468,7 +468,7 @@ fn bar(baz: Baz) ${0:-> ()} {
 struct Baz;
 impl Baz {
     fn foo(&self) -> Baz {
-        ba<|>r(self.baz())
+        ba$0r(self.baz())
     }
     fn baz(&self) -> Baz {
         Baz
@@ -499,7 +499,7 @@ fn bar(baz: Baz) ${0:-> ()} {
             generate_function,
             r#"
 fn foo() {
-    <|>bar("bar")
+    $0bar("bar")
 }
 "#,
             r#"
@@ -520,7 +520,7 @@ fn bar(arg: &str) ${0:-> ()} {
             generate_function,
             r#"
 fn foo() {
-    <|>bar('x')
+    $0bar('x')
 }
 "#,
             r#"
@@ -541,7 +541,7 @@ fn bar(arg: char) ${0:-> ()} {
             generate_function,
             r"
 fn foo() {
-    <|>bar(42)
+    $0bar(42)
 }
 ",
             r"
@@ -562,7 +562,7 @@ fn bar(arg: i32) ${0:-> ()} {
             generate_function,
             r"
 fn foo() {
-    <|>bar(42 as u8)
+    $0bar(42 as u8)
 }
 ",
             r"
@@ -586,7 +586,7 @@ fn bar(arg: u8) ${0:-> ()} {
             r"
 fn foo() {
     let x = 42;
-    bar<|>(x as u8)
+    bar$0(x as u8)
 }
 ",
             r"
@@ -609,7 +609,7 @@ fn bar(x: u8) ${0:-> ()} {
             r"
 fn foo() {
     let worble = ();
-    <|>bar(worble)
+    $0bar(worble)
 }
 ",
             r"
@@ -635,7 +635,7 @@ fn foo() -> impl Foo {
     todo!()
 }
 fn baz() {
-    <|>bar(foo())
+    $0bar(foo())
 }
 ",
             r"
@@ -663,7 +663,7 @@ struct Baz;
 fn baz() -> Baz { todo!() }
 
 fn foo() {
-    bar<|>(&baz())
+    bar$0(&baz())
 }
 ",
             r"
@@ -691,7 +691,7 @@ mod Baz {
     pub fn baz() -> Bof { Bof }
 }
 fn foo() {
-    <|>bar(Baz::baz())
+    $0bar(Baz::baz())
 }
 ",
             r"
@@ -718,7 +718,7 @@ fn bar(baz: Baz::Bof) ${0:-> ()} {
             generate_function,
             r"
 fn foo<T>(t: T) {
-    <|>bar(t)
+    $0bar(t)
 }
 ",
             r"
@@ -745,7 +745,7 @@ impl Baz {
     fn new() -> Self { Baz }
 }
 fn foo() {
-    <|>bar(Baz::new);
+    $0bar(Baz::new);
 }
 ",
             r"
@@ -773,7 +773,7 @@ fn bar(arg: fn() -> Baz) ${0:-> ()} {
             r"
 fn foo() {
     let closure = |x: i64| x - 1;
-    <|>bar(closure)
+    $0bar(closure)
 }
 ",
             r"
@@ -795,7 +795,7 @@ fn bar(closure: impl Fn(i64) -> i64) ${0:-> ()} {
             generate_function,
             r"
 fn foo() {
-    <|>bar(baz)
+    $0bar(baz)
 }
 ",
             r"
@@ -818,7 +818,7 @@ fn bar(baz: ()) ${0:-> ()} {
 struct Baz;
 fn baz() -> Baz { Baz }
 fn foo() {
-    <|>bar(baz(), baz())
+    $0bar(baz(), baz())
 }
 ",
             r"
@@ -843,7 +843,7 @@ fn bar(baz_1: Baz, baz_2: Baz) ${0:-> ()} {
 struct Baz;
 fn baz() -> Baz { Baz }
 fn foo() {
-    <|>bar(baz(), baz(), "foo", "bar")
+    $0bar(baz(), baz(), "foo", "bar")
 }
 "#,
             r#"
@@ -868,7 +868,7 @@ fn bar(baz_1: Baz, baz_2: Baz, arg_1: &str, arg_2: &str) ${0:-> ()} {
 mod bar {}
 
 fn foo() {
-    bar::my_fn<|>()
+    bar::my_fn$0()
 }
 ",
             r"
@@ -899,7 +899,7 @@ mod foo {
 fn bar() {
     use foo::Foo;
     let foo = Foo;
-    baz<|>(foo)
+    baz$0(foo)
 }
 ",
             "
@@ -929,7 +929,7 @@ mod bar {
 }
 
 fn foo() {
-    bar::my_fn<|>()
+    bar::my_fn$0()
 }
 ",
             r"
@@ -958,7 +958,7 @@ mod bar {
 }
 
 fn foo() {
-    bar::baz::my_fn<|>()
+    bar::baz::my_fn$0()
 }
 ",
             r"
@@ -986,7 +986,7 @@ fn foo() {
 mod foo;
 
 fn main() {
-    foo::bar<|>()
+    foo::bar$0()
 }
 //- /foo.rs
 ",
@@ -1005,7 +1005,7 @@ pub(crate) fn bar() ${0:-> ()} {
             generate_function,
             r"
 fn foo() {
-    bar<|>();
+    bar$0();
 }
 
 fn bar() {}
@@ -1022,7 +1022,7 @@ fn bar() {}
             generate_function,
             r"
 fn foo() {
-    bar(b<|>az);
+    bar(b$0az);
 }
 
 fn bar(baz: ()) {}
@@ -1039,7 +1039,7 @@ fn bar(baz: ()) {}
 struct Foo;
 impl Foo {
     fn foo(&self) {
-        self.bar()<|>;
+        self.bar()$0;
     }
 }
         ",

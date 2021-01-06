@@ -99,7 +99,7 @@ impl core::default::Default for S {
 fn process(f: S) {
     let other = S {
         foo: 5,
-        .<|>
+        .$0
     };
 }
 "#;
@@ -139,7 +139,7 @@ impl core::default::Default for S {
 fn process(f: S) {
     let other = S {
         foo: 5,
-        .<|>
+        .$0
     };
 }
 "#,
@@ -173,7 +173,7 @@ struct S { foo: u32, bar: usize }
 fn process(f: S) {
     let other = S {
         foo: 5,
-        .<|>
+        .$0
     };
 }
 "#;
@@ -201,7 +201,7 @@ struct S { foo: u32 }
 
 fn process(f: S) {
     match f {
-        S { f<|>: 92 } => (),
+        S { f$0: 92 } => (),
     }
 }
 "#,
@@ -219,7 +219,7 @@ enum E { S { foo: u32, bar: () } }
 
 fn process(e: E) {
     match e {
-        E::S { <|> } => (),
+        E::S { $0 } => (),
     }
 }
 "#,
@@ -239,7 +239,7 @@ struct S { foo: u32 }
 
 fn process(f: S) {
     m!(match f {
-        S { f<|>: 92 } => (),
+        S { f$0: 92 } => (),
     })
 }
 ",
@@ -263,7 +263,7 @@ fn main() {
         foo1: 1, foo2: 2,
         bar: 3, baz: 4,
     };
-    if let S { foo1, foo2: a, <|> } = s {}
+    if let S { foo1, foo2: a, $0 } = s {}
 }
 "#,
             expect![[r#"
@@ -279,7 +279,7 @@ fn main() {
             r#"
 struct A { the_field: u32 }
 fn foo() {
-   A { the<|> }
+   A { the$0 }
 }
 "#,
             expect![[r#"
@@ -294,7 +294,7 @@ fn foo() {
             r#"
 enum E { A { a: u32 } }
 fn foo() {
-    let _ = E::A { <|> }
+    let _ = E::A { $0 }
 }
 "#,
             expect![[r#"
@@ -311,7 +311,7 @@ struct A { a: u32 }
 struct B { b: u32 }
 
 fn foo() {
-   let _: A = B { <|> }
+   let _: A = B { $0 }
 }
 "#,
             expect![[r#"
@@ -327,7 +327,7 @@ fn foo() {
 struct A<T> { a: T }
 
 fn foo() {
-   let _: A<u32> = A { <|> }
+   let _: A<u32> = A { $0 }
 }
 "#,
             expect![[r#"
@@ -343,7 +343,7 @@ fn foo() {
 macro_rules! m { ($e:expr) => { $e } }
 struct A { the_field: u32 }
 fn foo() {
-   m!(A { the<|> })
+   m!(A { the$0 })
 }
 "#,
             expect![[r#"
@@ -363,7 +363,7 @@ struct S {
 
 fn main() {
     let foo1 = 1;
-    let s = S { foo1, foo2: 5, <|> }
+    let s = S { foo1, foo2: 5, $0 }
 }
 "#,
             expect![[r#"
@@ -381,7 +381,7 @@ struct S { foo1: u32, foo2: u32 }
 
 fn main() {
     let foo1 = 1;
-    let s = S { foo1, <|> .. loop {} }
+    let s = S { foo1, $0 .. loop {} }
 }
 "#,
             expect![[r#"

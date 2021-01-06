@@ -13,7 +13,7 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 // Wrap the function's return type into Result.
 //
 // ```
-// fn foo() -> i32<|> { 42i32 }
+// fn foo() -> i32$0 { 42i32 }
 // ```
 // ->
 // ```
@@ -282,7 +282,7 @@ mod tests {
         check_assist(
             wrap_return_type_in_result,
             r#"
-fn foo() -> i3<|>2 {
+fn foo() -> i3$02 {
     let test = "test";
     return 42i32;
 }
@@ -302,7 +302,7 @@ fn foo() -> Result<i32, ${0:_}> {
             wrap_return_type_in_result,
             r#"
 fn foo() {
-    || -> i32<|> {
+    || -> i32$0 {
         let test = "test";
         return 42i32;
     };
@@ -325,7 +325,7 @@ fn foo() {
             wrap_return_type_in_result,
             r#"
 fn foo() -> i32 {
-    let test = "test";<|>
+    let test = "test";$0
     return 42i32;
 }
 "#,
@@ -339,7 +339,7 @@ fn foo() -> i32 {
             r#"
 fn foo() {
     || -> i32 {
-        let test = "test";<|>
+        let test = "test";$0
         return 42i32;
     };
 }
@@ -349,7 +349,7 @@ fn foo() {
 
     #[test]
     fn wrap_return_type_in_result_closure_non_block() {
-        check_assist_not_applicable(wrap_return_type_in_result, r#"fn foo() { || -> i<|>32 3; }"#);
+        check_assist_not_applicable(wrap_return_type_in_result, r#"fn foo() { || -> i$032 3; }"#);
     }
 
     #[test]
@@ -357,7 +357,7 @@ fn foo() {
         check_assist_not_applicable(
             wrap_return_type_in_result,
             r#"
-fn foo() -> std::result::Result<i32<|>, String> {
+fn foo() -> std::result::Result<i32$0, String> {
     let test = "test";
     return 42i32;
 }
@@ -371,7 +371,7 @@ fn foo() -> std::result::Result<i32<|>, String> {
         check_assist_not_applicable(
             wrap_return_type_in_result,
             r#"
-fn foo() -> Result<i32<|>, String> {
+fn foo() -> Result<i32$0, String> {
     let test = "test";
     return 42i32;
 }
@@ -385,7 +385,7 @@ fn foo() -> Result<i32<|>, String> {
             wrap_return_type_in_result,
             r#"
 fn foo() {
-    || -> Result<i32<|>, String> {
+    || -> Result<i32$0, String> {
         let test = "test";
         return 42i32;
     };
@@ -399,7 +399,7 @@ fn foo() {
         check_assist(
             wrap_return_type_in_result,
             r#"
-fn foo() -> <|>i32 {
+fn foo() -> $0i32 {
     let test = "test";
     return 42i32;
 }
@@ -418,7 +418,7 @@ fn foo() -> Result<i32, ${0:_}> {
         check_assist(
             wrap_return_type_in_result,
             r#"
-fn foo() -><|> i32 {
+fn foo() ->$0 i32 {
     let test = "test";
     42i32
 }
@@ -438,7 +438,7 @@ fn foo() -> Result<i32, ${0:_}> {
             wrap_return_type_in_result,
             r#"
 fn foo() {
-    || -><|> i32 {
+    || ->$0 i32 {
         let test = "test";
         42i32
     };
@@ -459,7 +459,7 @@ fn foo() {
     fn wrap_return_type_in_result_simple_with_tail_only() {
         check_assist(
             wrap_return_type_in_result,
-            r#"fn foo() -> i32<|> { 42i32 }"#,
+            r#"fn foo() -> i32$0 { 42i32 }"#,
             r#"fn foo() -> Result<i32, ${0:_}> { Ok(42i32) }"#,
         );
     }
@@ -469,7 +469,7 @@ fn foo() {
         check_assist(
             wrap_return_type_in_result,
             r#"
-fn foo() -> i32<|> {
+fn foo() -> i32$0 {
     if true {
         42i32
     } else {
@@ -495,7 +495,7 @@ fn foo() -> Result<i32, ${0:_}> {
             wrap_return_type_in_result,
             r#"
 fn foo() {
-    || -> i32<|> {
+    || -> i32$0 {
         if true {
             42i32
         } else {
@@ -523,7 +523,7 @@ fn foo() {
         check_assist(
             wrap_return_type_in_result,
             r#"
-fn foo() -> i32<|> {
+fn foo() -> i32$0 {
     if true {
         if false {
             1
@@ -556,7 +556,7 @@ fn foo() -> Result<i32, ${0:_}> {
         check_assist(
             wrap_return_type_in_result,
             r#"
-async fn foo() -> i<|>32 {
+async fn foo() -> i$032 {
     if true {
         if false {
             1.await
@@ -588,7 +588,7 @@ async fn foo() -> Result<i32, ${0:_}> {
     fn wrap_return_type_in_result_simple_with_array() {
         check_assist(
             wrap_return_type_in_result,
-            r#"fn foo() -> [i32;<|> 3] { [1, 2, 3] }"#,
+            r#"fn foo() -> [i32;$0 3] { [1, 2, 3] }"#,
             r#"fn foo() -> Result<[i32; 3], ${0:_}> { Ok([1, 2, 3]) }"#,
         );
     }
@@ -598,7 +598,7 @@ async fn foo() -> Result<i32, ${0:_}> {
         check_assist(
             wrap_return_type_in_result,
             r#"
-fn foo() -<|>> i32 {
+fn foo() -$0> i32 {
     if true {
         if false {
             1 as i32
@@ -631,7 +631,7 @@ fn foo() -> Result<i32, ${0:_}> {
         check_assist(
             wrap_return_type_in_result,
             r#"
-fn foo() -> i32<|> {
+fn foo() -> i32$0 {
     let my_var = 5;
     match my_var {
         5 => 42i32,
@@ -656,7 +656,7 @@ fn foo() -> Result<i32, ${0:_}> {
         check_assist(
             wrap_return_type_in_result,
             r#"
-fn foo() -> i32<|> {
+fn foo() -> i32$0 {
     let my_var = 5;
     loop {
         println!("test");
@@ -683,7 +683,7 @@ fn foo() -> Result<i32, ${0:_}> {
         check_assist(
             wrap_return_type_in_result,
             r#"
-fn foo() -> i32<|> {
+fn foo() -> i32$0 {
     let my_var = let x = loop {
         break 1;
     };
@@ -706,7 +706,7 @@ fn foo() -> Result<i32, ${0:_}> {
         check_assist(
             wrap_return_type_in_result,
             r#"
-fn foo() -> i32<|> {
+fn foo() -> i32$0 {
     let my_var = 5;
     let res = match my_var {
         5 => 42i32,
@@ -730,7 +730,7 @@ fn foo() -> Result<i32, ${0:_}> {
         check_assist(
             wrap_return_type_in_result,
             r#"
-fn foo() -> i32<|> {
+fn foo() -> i32$0 {
     let my_var = 5;
     let res = if my_var == 5 {
         42i32
@@ -759,7 +759,7 @@ fn foo() -> Result<i32, ${0:_}> {
         check_assist(
             wrap_return_type_in_result,
             r#"
-fn foo() -> i32<|> {
+fn foo() -> i32$0 {
     let my_var = 5;
     match my_var {
         5 => {
@@ -808,7 +808,7 @@ fn foo() -> Result<i32, ${0:_}> {
         check_assist(
             wrap_return_type_in_result,
             r#"
-fn foo() -> i<|>32 {
+fn foo() -> i$032 {
     let test = "test";
     if test == "test" {
         return 24i32;
@@ -833,7 +833,7 @@ fn foo() -> Result<i32, ${0:_}> {
         check_assist(
             wrap_return_type_in_result,
             r#"
-fn foo(the_field: u32) -><|> u32 {
+fn foo(the_field: u32) ->$0 u32 {
     let true_closure = || { return true; };
     if the_field < 5 {
         let mut i = 0;
@@ -865,7 +865,7 @@ fn foo(the_field: u32) -> Result<u32, ${0:_}> {
         check_assist(
             wrap_return_type_in_result,
             r#"
-            fn foo(the_field: u32) -> u32<|> {
+            fn foo(the_field: u32) -> u32$0 {
                 let true_closure = || {
                     return true;
                 };
@@ -912,7 +912,7 @@ fn foo(the_field: u32) -> Result<u32, ${0:_}> {
         check_assist(
             wrap_return_type_in_result,
             r#"
-fn foo() -> i32<|> {
+fn foo() -> i32$0 {
     let test = "test";
     if test == "test" {
         return 24i32;
@@ -946,7 +946,7 @@ fn foo() -> Result<i32, ${0:_}> {
         check_assist(
             wrap_return_type_in_result,
             r#"
-fn foo() -> i32<|> {
+fn foo() -> i32$0 {
     let test = "test";
     if test == "test" {
         return 24i32;
@@ -984,7 +984,7 @@ fn foo() -> Result<i32, ${0:_}> {
         check_assist(
             wrap_return_type_in_result,
             r#"
-fn foo() -> i3<|>2 {
+fn foo() -> i3$02 {
     let test = "test";
     let other = 5;
     if test == "test" {
@@ -1030,7 +1030,7 @@ fn foo() -> Result<i32, ${0:_}> {
         check_assist(
             wrap_return_type_in_result,
             r#"
-fn foo(the_field: u32) -> u32<|> {
+fn foo(the_field: u32) -> u32$0 {
     if the_field < 5 {
         let mut i = 0;
         loop {
@@ -1070,7 +1070,7 @@ fn foo(the_field: u32) -> Result<u32, ${0:_}> {
         check_assist(
             wrap_return_type_in_result,
             r#"
-fn foo(the_field: u32) -> u3<|>2 {
+fn foo(the_field: u32) -> u3$02 {
     if the_field < 5 {
         let mut i = 0;
         match i {
@@ -1098,7 +1098,7 @@ fn foo(the_field: u32) -> Result<u32, ${0:_}> {
         check_assist(
             wrap_return_type_in_result,
             r#"
-fn foo(the_field: u32) -> u32<|> {
+fn foo(the_field: u32) -> u32$0 {
     if the_field < 5 {
         let mut i = 0;
         if i == 5 {
@@ -1128,7 +1128,7 @@ fn foo(the_field: u32) -> Result<u32, ${0:_}> {
         check_assist(
             wrap_return_type_in_result,
             r#"
-fn foo(the_field: u32) -> <|>u32 {
+fn foo(the_field: u32) -> $0u32 {
     if the_field < 5 {
         let mut i = 0;
         if i == 5 {

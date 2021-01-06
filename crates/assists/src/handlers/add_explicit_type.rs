@@ -12,7 +12,7 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 //
 // ```
 // fn main() {
-//     let x<|> = 92;
+//     let x$0 = 92;
 // }
 // ```
 // ->
@@ -81,21 +81,17 @@ mod tests {
 
     #[test]
     fn add_explicit_type_target() {
-        check_assist_target(add_explicit_type, "fn f() { let a<|> = 1; }", "a");
+        check_assist_target(add_explicit_type, "fn f() { let a$0 = 1; }", "a");
     }
 
     #[test]
     fn add_explicit_type_works_for_simple_expr() {
-        check_assist(add_explicit_type, "fn f() { let a<|> = 1; }", "fn f() { let a: i32 = 1; }");
+        check_assist(add_explicit_type, "fn f() { let a$0 = 1; }", "fn f() { let a: i32 = 1; }");
     }
 
     #[test]
     fn add_explicit_type_works_for_underscore() {
-        check_assist(
-            add_explicit_type,
-            "fn f() { let a<|>: _ = 1; }",
-            "fn f() { let a: i32 = 1; }",
-        );
+        check_assist(add_explicit_type, "fn f() { let a$0: _ = 1; }", "fn f() { let a: i32 = 1; }");
     }
 
     #[test]
@@ -109,7 +105,7 @@ mod tests {
             }
 
             fn f() {
-                let a<|>: Option<_> = Option::Some(1);
+                let a$0: Option<_> = Option::Some(1);
             }"#,
             r#"
             enum Option<T> {
@@ -127,7 +123,7 @@ mod tests {
     fn add_explicit_type_works_for_macro_call() {
         check_assist(
             add_explicit_type,
-            r"macro_rules! v { () => {0u64} } fn f() { let a<|> = v!(); }",
+            r"macro_rules! v { () => {0u64} } fn f() { let a$0 = v!(); }",
             r"macro_rules! v { () => {0u64} } fn f() { let a: u64 = v!(); }",
         );
     }
@@ -136,31 +132,31 @@ mod tests {
     fn add_explicit_type_works_for_macro_call_recursive() {
         check_assist(
             add_explicit_type,
-            r#"macro_rules! u { () => {0u64} } macro_rules! v { () => {u!()} } fn f() { let a<|> = v!(); }"#,
+            r#"macro_rules! u { () => {0u64} } macro_rules! v { () => {u!()} } fn f() { let a$0 = v!(); }"#,
             r#"macro_rules! u { () => {0u64} } macro_rules! v { () => {u!()} } fn f() { let a: u64 = v!(); }"#,
         );
     }
 
     #[test]
     fn add_explicit_type_not_applicable_if_ty_not_inferred() {
-        check_assist_not_applicable(add_explicit_type, "fn f() { let a<|> = None; }");
+        check_assist_not_applicable(add_explicit_type, "fn f() { let a$0 = None; }");
     }
 
     #[test]
     fn add_explicit_type_not_applicable_if_ty_already_specified() {
-        check_assist_not_applicable(add_explicit_type, "fn f() { let a<|>: i32 = 1; }");
+        check_assist_not_applicable(add_explicit_type, "fn f() { let a$0: i32 = 1; }");
     }
 
     #[test]
     fn add_explicit_type_not_applicable_if_specified_ty_is_tuple() {
-        check_assist_not_applicable(add_explicit_type, "fn f() { let a<|>: (i32, i32) = (3, 4); }");
+        check_assist_not_applicable(add_explicit_type, "fn f() { let a$0: (i32, i32) = (3, 4); }");
     }
 
     #[test]
     fn add_explicit_type_not_applicable_if_cursor_after_equals() {
         check_assist_not_applicable(
             add_explicit_type,
-            "fn f() {let a =<|> match 1 {2 => 3, 3 => 5};}",
+            "fn f() {let a =$0 match 1 {2 => 3, 3 => 5};}",
         )
     }
 
@@ -168,7 +164,7 @@ mod tests {
     fn add_explicit_type_not_applicable_if_cursor_before_let() {
         check_assist_not_applicable(
             add_explicit_type,
-            "fn f() <|>{let a = match 1 {2 => 3, 3 => 5};}",
+            "fn f() $0{let a = match 1 {2 => 3, 3 => 5};}",
         )
     }
 
@@ -178,7 +174,7 @@ mod tests {
             add_explicit_type,
             r#"
 fn main() {
-    let multiply_by_two<|> = |i| i * 3;
+    let multiply_by_two$0 = |i| i * 3;
     let six = multiply_by_two(2);
 }"#,
         )
@@ -195,7 +191,7 @@ struct Test<K, T = u8> {
 }
 
 fn main() {
-    let test<|> = Test { t: 23u8, k: 33 };
+    let test$0 = Test { t: 23u8, k: 33 };
 }"#,
             r#"
 struct Test<K, T = u8> {

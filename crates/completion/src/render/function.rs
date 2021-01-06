@@ -124,7 +124,7 @@ mod tests {
             "no_args",
             r#"
 fn no_args() {}
-fn main() { no_<|> }
+fn main() { no_$0 }
 "#,
             r#"
 fn no_args() {}
@@ -136,7 +136,7 @@ fn main() { no_args()$0 }
             "with_args",
             r#"
 fn with_args(x: i32, y: String) {}
-fn main() { with_<|> }
+fn main() { with_$0 }
 "#,
             r#"
 fn with_args(x: i32, y: String) {}
@@ -151,7 +151,7 @@ struct S;
 impl S {
     fn foo(&self) {}
 }
-fn bar(s: &S) { s.f<|> }
+fn bar(s: &S) { s.f$0 }
 "#,
             r#"
 struct S;
@@ -170,7 +170,7 @@ impl S {
     fn foo(&self, x: i32) {}
 }
 fn bar(s: &S) {
-    s.f<|>
+    s.f$0
 }
 "#,
             r#"
@@ -195,7 +195,7 @@ struct S;
 impl S {
     fn foo(&self) {}
 }
-fn main() { S::f<|> }
+fn main() { S::f$0 }
 "#,
             r#"
 struct S;
@@ -215,7 +215,7 @@ fn main() { S::foo(${1:&self})$0 }
             "with_args",
             r#"
 fn with_args(x: i32, y: String) {}
-fn main() { with_<|> }
+fn main() { with_$0 }
 "#,
             r#"
 fn with_args(x: i32, y: String) {}
@@ -230,7 +230,7 @@ fn main() { with_args($0) }
             "foo",
             r#"
 fn foo(_foo: i32, ___bar: bool, ho_ge_: String) {}
-fn main() { f<|> }
+fn main() { f$0 }
 "#,
             r#"
 fn foo(_foo: i32, ___bar: bool, ho_ge_: String) {}
@@ -248,7 +248,7 @@ struct Foo {}
 fn ref_arg(x: &Foo) {}
 fn main() {
     let x = Foo {};
-    ref_ar<|>
+    ref_ar$0
 }
 "#,
             r#"
@@ -271,7 +271,7 @@ struct Foo {}
 fn ref_arg(x: &mut Foo) {}
 fn main() {
     let x = Foo {};
-    ref_ar<|>
+    ref_ar$0
 }
 "#,
             r#"
@@ -299,7 +299,7 @@ impl Bar {
 fn main() {
     let x = Foo {};
     let y = Bar {};
-    y.<|>
+    y.$0
 }
 "#,
             r#"
@@ -326,7 +326,7 @@ fn main() {
 fn take_mutably(mut x: &i32) {}
 
 fn main() {
-    take_m<|>
+    take_m$0
 }
 "#,
             r#"

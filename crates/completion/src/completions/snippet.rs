@@ -83,7 +83,7 @@ mod tests {
     #[test]
     fn completes_snippets_in_expressions() {
         check(
-            r#"fn foo(x: i32) { <|> }"#,
+            r#"fn foo(x: i32) { $0 }"#,
             expect![[r#"
                 sn pd
                 sn ppd
@@ -93,8 +93,8 @@ mod tests {
 
     #[test]
     fn should_not_complete_snippets_in_path() {
-        check(r#"fn foo(x: i32) { ::foo<|> }"#, expect![[""]]);
-        check(r#"fn foo(x: i32) { ::<|> }"#, expect![[""]]);
+        check(r#"fn foo(x: i32) { ::foo$0 }"#, expect![[""]]);
+        check(r#"fn foo(x: i32) { ::$0 }"#, expect![[""]]);
     }
 
     #[test]
@@ -103,7 +103,7 @@ mod tests {
             r#"
 #[cfg(test)]
 mod tests {
-    <|>
+    $0
 }
 "#,
             expect![[r#"

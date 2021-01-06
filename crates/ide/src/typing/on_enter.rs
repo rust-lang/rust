@@ -136,7 +136,7 @@ mod tests {
     fn continues_doc_comment() {
         do_check(
             r"
-/// Some docs<|>
+/// Some docs$0
 fn foo() {
 }
 ",
@@ -151,7 +151,7 @@ fn foo() {
         do_check(
             r"
 impl S {
-    /// Some<|> docs.
+    /// Some$0 docs.
     fn foo() {}
 }
 ",
@@ -166,7 +166,7 @@ impl S {
 
         do_check(
             r"
-///<|> Some docs
+///$0 Some docs
 fn foo() {
 }
 ",
@@ -181,7 +181,7 @@ fn foo() {
 
     #[test]
     fn does_not_continue_before_doc_comment() {
-        do_check_noop(r"<|>//! docz");
+        do_check_noop(r"$0//! docz");
     }
 
     #[test]
@@ -189,7 +189,7 @@ fn foo() {
         do_check(
             r"
 fn main() {
-    // Fix<|> me
+    // Fix$0 me
     let x = 1 + 1;
 }
 ",
@@ -208,7 +208,7 @@ fn main() {
         do_check(
             r"
 fn main() {
-    // Fix<|>
+    // Fix$0
     // me
     let x = 1 + 1;
 }
@@ -229,7 +229,7 @@ fn main() {
         do_check_noop(
             r"
 fn main() {
-    // Fix me<|>
+    // Fix me$0
     let x = 1 + 1;
 }
 ",
@@ -242,7 +242,7 @@ fn main() {
         do_check(
             r#"
 fn main() {
-    // Fix me <|>
+    // Fix me $0
     let x = 1 + 1;
 }
 "#,
@@ -261,7 +261,7 @@ fn main() {
         do_check(
             "
 fn main() {
-    // Fix me  \t\t   <|>
+    // Fix me  \t\t   $0
     let x = 1 + 1;
 }
 ",

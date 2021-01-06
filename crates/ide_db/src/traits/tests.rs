@@ -5,12 +5,12 @@ use hir::Semantics;
 use syntax::ast::{self, AstNode};
 use test_utils::RangeOrOffset;
 
-/// Creates analysis from a multi-file fixture, returns positions marked with <|>.
+/// Creates analysis from a multi-file fixture, returns positions marked with $0.
 pub(crate) fn position(ra_fixture: &str) -> (RootDatabase, FilePosition) {
     let change_fixture = ChangeFixture::parse(ra_fixture);
     let mut database = RootDatabase::default();
     database.apply_change(change_fixture.change);
-    let (file_id, range_or_offset) = change_fixture.file_position.expect("expected a marker (<|>)");
+    let (file_id, range_or_offset) = change_fixture.file_position.expect("expected a marker ($0)");
     let offset = match range_or_offset {
         RangeOrOffset::Range(_) => panic!(),
         RangeOrOffset::Offset(it) => it,
@@ -55,7 +55,7 @@ pub trait Foo {
     fn bar();
 }
 impl Foo for u8 {
-    <|>
+    $0
 }
             "#,
         expect![["Foo"]],
@@ -68,7 +68,7 @@ pub trait Foo {
 impl Foo for u8 {
     fn bar() {
         fn baz() {
-            <|>
+            $0
         }
         baz();
     }
@@ -83,7 +83,7 @@ pub trait Foo {
 }
 pub struct Bar;
 impl Bar {
-    <|>
+    $0
 }
             "#,
         expect![[""]],
@@ -99,7 +99,7 @@ pub trait Foo {
     fn bar();
 }
 impl Foo for u8 {
-    <|>
+    $0
 }"#,
         expect![[r#"
                 FOO
@@ -114,7 +114,7 @@ pub trait Foo {
 }
 impl Foo for u8 {
     const FOO: u8 = 10;
-    <|>
+    $0
 }"#,
         expect![[r#"
                 bar"#]],
@@ -128,7 +128,7 @@ pub trait Foo {
 }
 impl Foo for u8 {
     const FOO: u8 = 10;
-    fn bar() {<|>}
+    fn bar() {$0}
 }"#,
         expect![[r#""#]],
     );
@@ -137,7 +137,7 @@ impl Foo for u8 {
         r#"
 pub struct Foo;
 impl Foo {
-    fn bar() {<|>}
+    fn bar() {$0}
 }"#,
         expect![[r#""#]],
     );

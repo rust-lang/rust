@@ -166,7 +166,7 @@ fn check(handler: Handler, before: &str, expected: ExpectedResult, assist_label:
 
 #[test]
 fn assist_order_field_struct() {
-    let before = "struct Foo { <|>bar: u32 }";
+    let before = "struct Foo { $0bar: u32 }";
     let (before_cursor_pos, before) = extract_offset(before);
     let (db, file_id) = with_single_file(&before);
     let frange = FileRange { file_id, range: TextRange::empty(before_cursor_pos) };
@@ -181,7 +181,7 @@ fn assist_order_field_struct() {
 fn assist_order_if_expr() {
     let before = "
     pub fn test_some_range(a: int) -> bool {
-        if let 2..6 = <|>5<|> {
+        if let 2..6 = $05$0 {
             true
         } else {
             false
@@ -201,7 +201,7 @@ fn assist_order_if_expr() {
 fn assist_filter_works() {
     let before = "
     pub fn test_some_range(a: int) -> bool {
-        if let 2..6 = <|>5<|> {
+        if let 2..6 = $05$0 {
             true
         } else {
             false

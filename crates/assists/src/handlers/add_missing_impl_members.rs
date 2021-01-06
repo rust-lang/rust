@@ -20,7 +20,7 @@ use crate::{
 //     fn bar(&self) {}
 // }
 //
-// impl Trait<u32> for () {<|>
+// impl Trait<u32> for () {$0
 //
 // }
 // ```
@@ -63,7 +63,7 @@ pub(crate) fn add_missing_impl_members(acc: &mut Assists, ctx: &AssistContext) -
 //
 // impl Trait for () {
 //     type X = ();
-//     fn foo(&self) {}<|>
+//     fn foo(&self) {}$0
 //
 // }
 // ```
@@ -166,7 +166,7 @@ struct S;
 
 impl Foo for S {
     fn bar(&self) {}
-<|>
+$0
 }"#,
             r#"
 trait Foo {
@@ -214,7 +214,7 @@ struct S;
 
 impl Foo for S {
     fn bar(&self) {}
-<|>
+$0
 }"#,
             r#"
 trait Foo {
@@ -242,7 +242,7 @@ impl Foo for S {
             r#"
 trait Foo { fn foo(&self); }
 struct S;
-impl Foo for S { <|> }"#,
+impl Foo for S { $0 }"#,
             r#"
 trait Foo { fn foo(&self); }
 struct S;
@@ -261,7 +261,7 @@ impl Foo for S {
             r#"
 trait Foo { fn foo(&self); }
 struct S;
-impl Foo for S<|>"#,
+impl Foo for S$0"#,
             r#"
 trait Foo { fn foo(&self); }
 struct S;
@@ -280,7 +280,7 @@ impl Foo for S {
             r#"
 trait Foo<T> { fn foo(&self, t: T) -> &T; }
 struct S;
-impl Foo<u32> for S { <|> }"#,
+impl Foo<u32> for S { $0 }"#,
             r#"
 trait Foo<T> { fn foo(&self, t: T) -> &T; }
 struct S;
@@ -299,7 +299,7 @@ impl Foo<u32> for S {
             r#"
 trait Foo<T> { fn foo(&self, t: T) -> &T; }
 struct S;
-impl<U> Foo<U> for S { <|> }"#,
+impl<U> Foo<U> for S { $0 }"#,
             r#"
 trait Foo<T> { fn foo(&self, t: T) -> &T; }
 struct S;
@@ -318,7 +318,7 @@ impl<U> Foo<U> for S {
             r#"
 trait Foo { fn foo(&self); }
 struct S;
-impl Foo for S {}<|>"#,
+impl Foo for S {}$0"#,
             r#"
 trait Foo { fn foo(&self); }
 struct S;
@@ -340,7 +340,7 @@ mod foo {
     trait Foo { fn foo(&self, bar: Bar); }
 }
 struct S;
-impl foo::Foo for S { <|> }"#,
+impl foo::Foo for S { $0 }"#,
             r#"
 mod foo {
     pub struct Bar;
@@ -370,7 +370,7 @@ mod foo {
 use foo::bar;
 
 struct S;
-impl bar::Foo for S { <|> }"#,
+impl bar::Foo for S { $0 }"#,
             r#"
 mod foo {
     pub mod bar {
@@ -400,7 +400,7 @@ mod foo {
     trait Foo { fn foo(&self, bar: Bar<u32>); }
 }
 struct S;
-impl foo::Foo for S { <|> }"#,
+impl foo::Foo for S { $0 }"#,
             r#"
 mod foo {
     pub struct Bar<T>;
@@ -425,7 +425,7 @@ mod foo {
     trait Foo<T> { fn foo(&self, bar: Bar<T>); }
 }
 struct S;
-impl foo::Foo<u32> for S { <|> }"#,
+impl foo::Foo<u32> for S { $0 }"#,
             r#"
 mod foo {
     pub struct Bar<T>;
@@ -452,7 +452,7 @@ mod foo {
 }
 struct Param;
 struct S;
-impl foo::Foo<Param> for S { <|> }"#,
+impl foo::Foo<Param> for S { $0 }"#,
             r#"
 mod foo {
     trait Foo<T> { fn foo(&self, bar: T); }
@@ -479,7 +479,7 @@ mod foo {
     trait Foo { fn foo(&self, bar: Bar<u32>::Assoc); }
 }
 struct S;
-impl foo::Foo for S { <|> }"#,
+impl foo::Foo for S { $0 }"#,
             r#"
 mod foo {
     pub struct Bar<T>;
@@ -506,7 +506,7 @@ mod foo {
     trait Foo { fn foo(&self, bar: Bar<Baz>); }
 }
 struct S;
-impl foo::Foo for S { <|> }"#,
+impl foo::Foo for S { $0 }"#,
             r#"
 mod foo {
     pub struct Bar<T>;
@@ -532,7 +532,7 @@ mod foo {
     trait Foo { fn foo(&self, bar: dyn Fn(u32) -> i32); }
 }
 struct S;
-impl foo::Foo for S { <|> }"#,
+impl foo::Foo for S { $0 }"#,
             r#"
 mod foo {
     pub trait Fn<Args> { type Output; }
@@ -554,7 +554,7 @@ impl foo::Foo for S {
             r#"
 trait Foo;
 struct S;
-impl Foo for S { <|> }"#,
+impl Foo for S { $0 }"#,
         )
     }
 
@@ -568,7 +568,7 @@ trait Foo {
     fn valid(some: u32) -> bool { false }
 }
 struct S;
-impl Foo for S { <|> }"#,
+impl Foo for S { $0 }"#,
         )
     }
 
@@ -586,7 +586,7 @@ trait Foo {
     fn foo(&self);
 }
 struct S;
-impl Foo for S {}<|>"#,
+impl Foo for S {}$0"#,
             r#"
 #[doc(alias = "test alias")]
 trait Foo {
@@ -621,7 +621,7 @@ trait Foo {
     fn foo(some: u32) -> bool;
 }
 struct S;
-impl Foo for S { <|> }"#,
+impl Foo for S { $0 }"#,
             r#"
 trait Foo {
     type Output;
@@ -648,7 +648,7 @@ trait Foo<T = Self> {
 }
 
 struct S;
-impl Foo for S { <|> }"#,
+impl Foo for S { $0 }"#,
             r#"
 trait Foo<T = Self> {
     fn bar(&self, other: &T);
@@ -673,7 +673,7 @@ trait Foo<T1, T2 = Self> {
 }
 
 struct S<T>;
-impl Foo<T> for S<T> { <|> }"#,
+impl Foo<T> for S<T> { $0 }"#,
             r#"
 trait Foo<T1, T2 = Self> {
     fn bar(&self, this: &T1, that: &T2);
@@ -697,7 +697,7 @@ trait Tr {
     type Ty: Copy + 'static;
 }
 
-impl Tr for ()<|> {
+impl Tr for ()$0 {
 }"#,
             r#"
 trait Tr {
@@ -719,7 +719,7 @@ trait Tr {
     fn foo();
 }
 
-impl Tr for ()<|> {
+impl Tr for ()$0 {
     +++
 }"#,
             r#"
@@ -745,7 +745,7 @@ trait Tr {
     fn foo();
 }
 
-impl Tr for ()<|> {
+impl Tr for ()$0 {
     // very important
 }"#,
             r#"
@@ -771,7 +771,7 @@ trait Test {
     fn foo(&self, x: crate)
 }
 impl Test for () {
-    <|>
+    $0
 }
 "#,
             r#"
@@ -796,7 +796,7 @@ trait Foo<BAR> {
     fn foo(&self, bar: BAR);
 }
 impl Foo for () {
-    <|>
+    $0
 }
 "#,
             r#"

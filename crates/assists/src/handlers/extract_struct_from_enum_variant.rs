@@ -21,7 +21,7 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 // Extracts a struct from enum variant.
 //
 // ```
-// enum A { <|>One(u32, u32) }
+// enum A { $0One(u32, u32) }
 // ```
 // ->
 // ```
@@ -251,7 +251,7 @@ mod tests {
     fn test_extract_struct_several_fields_tuple() {
         check_assist(
             extract_struct_from_enum_variant,
-            "enum A { <|>One(u32, u32) }",
+            "enum A { $0One(u32, u32) }",
             r#"struct One(pub u32, pub u32);
 
 enum A { One(One) }"#,
@@ -262,7 +262,7 @@ enum A { One(One) }"#,
     fn test_extract_struct_several_fields_named() {
         check_assist(
             extract_struct_from_enum_variant,
-            "enum A { <|>One { foo: u32, bar: u32 } }",
+            "enum A { $0One { foo: u32, bar: u32 } }",
             r#"struct One{ pub foo: u32, pub bar: u32 }
 
 enum A { One(One) }"#,
@@ -273,7 +273,7 @@ enum A { One(One) }"#,
     fn test_extract_struct_one_field_named() {
         check_assist(
             extract_struct_from_enum_variant,
-            "enum A { <|>One { foo: u32 } }",
+            "enum A { $0One { foo: u32 } }",
             r#"struct One{ pub foo: u32 }
 
 enum A { One(One) }"#,
@@ -285,7 +285,7 @@ enum A { One(One) }"#,
         check_assist(
             extract_struct_from_enum_variant,
             r#"const One: () = ();
-enum A { <|>One(u32, u32) }"#,
+enum A { $0One(u32, u32) }"#,
             r#"const One: () = ();
 struct One(pub u32, pub u32);
 
@@ -297,7 +297,7 @@ enum A { One(One) }"#,
     fn test_extract_struct_pub_visibility() {
         check_assist(
             extract_struct_from_enum_variant,
-            "pub enum A { <|>One(u32, u32) }",
+            "pub enum A { $0One(u32, u32) }",
             r#"pub struct One(pub u32, pub u32);
 
 pub enum A { One(One) }"#,
@@ -319,7 +319,7 @@ pub enum A { One(One) }"#,
         }
 
         pub enum MyEnum {
-            <|>MyField(u8, u8),
+            $0MyField(u8, u8),
         }
     }
 }
@@ -361,7 +361,7 @@ fn another_fn() {
             extract_struct_from_enum_variant,
             r#"
 enum E {
-    <|>V { i: i32, j: i32 }
+    $0V { i: i32, j: i32 }
 }
 
 fn f() {
@@ -389,7 +389,7 @@ fn f() {
             r#"
 //- /main.rs
 enum E {
-    <|>V(i32, i32)
+    $0V(i32, i32)
 }
 mod foo;
 
@@ -424,7 +424,7 @@ fn f() {
             r#"
 //- /main.rs
 enum E {
-    <|>V { i: i32, j: i32 }
+    $0V { i: i32, j: i32 }
 }
 mod foo;
 
@@ -457,7 +457,7 @@ fn f() {
         check_assist(
             extract_struct_from_enum_variant,
             r#"
-enum A { <|>One { a: u32, b: u32 } }
+enum A { $0One { a: u32, b: u32 } }
 
 struct B(A);
 
@@ -487,29 +487,29 @@ fn foo() {
 
     #[test]
     fn test_extract_enum_not_applicable_for_element_with_no_fields() {
-        check_not_applicable("enum A { <|>One }");
+        check_not_applicable("enum A { $0One }");
     }
 
     #[test]
     fn test_extract_enum_not_applicable_if_struct_exists() {
         check_not_applicable(
             r#"struct One;
-        enum A { <|>One(u8, u32) }"#,
+        enum A { $0One(u8, u32) }"#,
         );
     }
 
     #[test]
     fn test_extract_not_applicable_one_field() {
-        check_not_applicable(r"enum A { <|>One(u32) }");
+        check_not_applicable(r"enum A { $0One(u32) }");
     }
 
     #[test]
     fn test_extract_not_applicable_no_field_tuple() {
-        check_not_applicable(r"enum A { <|>None() }");
+        check_not_applicable(r"enum A { $0None() }");
     }
 
     #[test]
     fn test_extract_not_applicable_no_field_named() {
-        check_not_applicable(r"enum A { <|>None {} }");
+        check_not_applicable(r"enum A { $0None {} }");
     }
 }
