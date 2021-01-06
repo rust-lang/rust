@@ -19,12 +19,12 @@ impl GlobalState {
     pub(crate) fn update_configuration(&mut self, config: Config) {
         let _p = profile::span("GlobalState::update_configuration");
         let old_config = mem::replace(&mut self.config, config);
-        if self.config.lru_capacity != old_config.lru_capacity {
-            self.analysis_host.update_lru_capacity(old_config.lru_capacity);
+        if self.config.lru_capacity() != old_config.lru_capacity() {
+            self.analysis_host.update_lru_capacity(self.config.lru_capacity());
         }
-        if self.config.linked_projects != old_config.linked_projects {
+        if self.config.linked_projects() != old_config.linked_projects() {
             self.fetch_workspaces()
-        } else if self.config.flycheck != old_config.flycheck {
+        } else if self.config.flycheck() != old_config.flycheck() {
             self.reload_flycheck();
         }
     }
@@ -36,7 +36,7 @@ impl GlobalState {
             Status::Loading | Status::NeedsReload => return,
             Status::Ready | Status::Invalid => (),
         }
-        if self.config.cargo_autoreload {
+        if self.config.cargo_autoreload() {
             self.fetch_workspaces();
         } else {
             self.transition(Status::NeedsReload);
@@ -94,8 +94,8 @@ impl GlobalState {
     pub(crate) fn fetch_workspaces(&mut self) {
         log::info!("will fetch workspaces");
         self.task_pool.handle.spawn({
-            let linked_projects = self.config.linked_projects.clone();
-            let cargo_config = self.config.cargo.clone();
+            let linked_projects = self.config.linked_projects();
+            let cargo_config = self.config.cargo();
             move || {
                 let workspaces = linked_projects
                     .iter()
@@ -143,7 +143,7 @@ impl GlobalState {
             return;
         }
 
-        if let FilesWatcher::Client = self.config.files.watcher {
+        if let FilesWatcher::Client = self.config.files().watcher {
             let registration_options = lsp_types::DidChangeWatchedFilesRegistrationOptions {
                 watchers: workspaces
                     .iter()
@@ -170,9 +170,9 @@ impl GlobalState {
 
         let project_folders = ProjectFolders::new(&workspaces);
 
-        self.proc_macro_client = match &self.config.proc_macro_srv {
+        self.proc_macro_client = match self.config.proc_macro_srv() {
             None => None,
-            Some((path, args)) => match ProcMacroClient::extern_process(path.into(), args) {
+            Some((path, args)) => match ProcMacroClient::extern_process(path.clone(), args) {
                 Ok(it) => Some(it),
                 Err(err) => {
                     log::error!(
@@ -185,7 +185,7 @@ impl GlobalState {
             },
         };
 
-        let watch = match self.config.files.watcher {
+        let watch = match self.config.files().watcher {
             FilesWatcher::Client => vec![],
             FilesWatcher::Notify => project_folders.watch,
         };
@@ -211,7 +211,7 @@ impl GlobalState {
             };
             for ws in workspaces.iter() {
                 crate_graph.extend(ws.to_crate_graph(
-                    self.config.cargo.target.as_deref(),
+                    self.config.cargo().target.as_deref(),
                     self.proc_macro_client.as_ref(),
                     &mut load,
                 ));
@@ -231,7 +231,7 @@ impl GlobalState {
     }
 
     fn reload_flycheck(&mut self) {
-        let config = match self.config.flycheck.clone() {
+        let config = match self.config.flycheck() {
             Some(it) => it,
             None => {
                 self.flycheck = Vec::new();

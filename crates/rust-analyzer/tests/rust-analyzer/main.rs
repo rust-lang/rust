@@ -13,6 +13,7 @@ mod support;
 
 use std::{collections::HashMap, path::PathBuf, time::Instant};
 
+use expect_test::expect;
 use lsp_types::{
     notification::DidOpenTextDocument,
     request::{CodeActionRequest, Completion, Formatting, GotoTypeDefinition, HoverRequest},
@@ -569,9 +570,9 @@ fn main() {
 }
 "###,
     )
-    .with_config(|config| {
-        config.cargo.load_out_dirs_from_check = true;
-    })
+    .with_config(serde_json::json!({
+        "cargo": { "loadOutDirsFromCheck": true }
+    }))
     .server()
     .wait_until_workspace_is_loaded();
 
@@ -712,12 +713,13 @@ pub fn foo(_input: TokenStream) -> TokenStream {
 
 "###,
     )
-    .with_config(|config| {
-        let macro_srv_path = PathBuf::from(env!("CARGO_BIN_EXE_rust-analyzer"));
-
-        config.cargo.load_out_dirs_from_check = true;
-        config.proc_macro_srv = Some((macro_srv_path, vec!["proc-macro".into()]));
-    })
+    .with_config(serde_json::json!({
+        "cargo": { "loadOutDirsFromCheck": true },
+        "procMacro": {
+            "enable": true,
+            "server": PathBuf::from(env!("CARGO_BIN_EXE_rust-analyzer")),
+        }
+    }))
     .root("foo")
     .root("bar")
     .server()
@@ -731,5 +733,5 @@ pub fn foo(_input: TokenStream) -> TokenStream {
         work_done_progress_params: Default::default(),
     });
     let value = res.get("contents").unwrap().get("value").unwrap().to_string();
-    assert_eq!(value, r#""\n```rust\nfoo::Bar\n```\n\n```rust\nfn bar()\n```""#)
+    expect![[r#""\n```rust\nfoo::Bar\n```\n\n```rust\nfn bar()\n```""#]].assert_eq(&value);
 }

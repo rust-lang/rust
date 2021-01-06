@@ -2,11 +2,11 @@ use std::fmt;
 
 use assists::utils::test_related_attribute;
 use cfg::CfgExpr;
-use hir::{AsAssocItem, HasAttrs, InFile, Semantics};
+use hir::{AsAssocItem, HasAttrs, HasSource, Semantics};
 use ide_db::RootDatabase;
 use itertools::Itertools;
 use syntax::{
-    ast::{self, AstNode, AttrsOwner, ModuleItemOwner, NameOwner},
+    ast::{self, AstNode, AttrsOwner, ModuleItemOwner},
     match_ast, SyntaxNode,
 };
 
@@ -96,17 +96,16 @@ impl Runnable {
 pub(crate) fn runnables(db: &RootDatabase, file_id: FileId) -> Vec<Runnable> {
     let sema = Semantics::new(db);
     let source_file = sema.parse(file_id);
-    source_file.syntax().descendants().filter_map(|i| runnable(&sema, i, file_id)).collect()
+    source_file.syntax().descendants().filter_map(|i| runnable(&sema, i)).collect()
 }
 
-pub(crate) fn runnable(
-    sema: &Semantics<RootDatabase>,
-    item: SyntaxNode,
-    file_id: FileId,
-) -> Option<Runnable> {
+pub(crate) fn runnable(sema: &Semantics<RootDatabase>, item: SyntaxNode) -> Option<Runnable> {
     let runnable_item = match_ast! {
         match (item.clone()) {
-            ast::Fn(it) => runnable_fn(sema, it, file_id),
+            ast::Fn(func) => {
+                let def = sema.to_def(&func)?;
+                runnable_fn(sema, def)
+            },
             ast::Module(it) => runnable_mod(sema, it),
             _ => None,
         }
@@ -114,23 +113,23 @@ pub(crate) fn runnable(
     runnable_item.or_else(|| runnable_doctest(sema, item))
 }
 
-fn runnable_fn(sema: &Semantics<RootDatabase>, func: ast::Fn, file_id: FileId) -> Option<Runnable> {
-    let def = sema.to_def(&func)?;
-    let name_string = func.name()?.text().to_string();
+pub(crate) fn runnable_fn(sema: &Semantics<RootDatabase>, def: hir::Function) -> Option<Runnable> {
+    let func = def.source(sema.db)?;
+    let name_string = def.name(sema.db).to_string();
 
     let kind = if name_string == "main" {
         RunnableKind::Bin
     } else {
-        let canonical_path = sema.to_def(&func).and_then(|def| {
+        let canonical_path = {
             let def: hir::ModuleDef = def.into();
             def.canonical_path(sema.db)
-        });
+        };
         let test_id = canonical_path.map(TestId::Path).unwrap_or(TestId::Name(name_string));
 
-        if test_related_attribute(&func).is_some() {
-            let attr = TestAttr::from_fn(&func);
+        if test_related_attribute(&func.value).is_some() {
+            let attr = TestAttr::from_fn(&func.value);
             RunnableKind::Test { test_id, attr }
-        } else if func.has_atom_attr("bench") {
+        } else if func.value.has_atom_attr("bench") {
             RunnableKind::Bench { test_id }
         } else {
             return None;
@@ -139,7 +138,7 @@ fn runnable_fn(sema: &Semantics<RootDatabase>, func: ast::Fn, file_id: FileId) -
 
     let nav = NavigationTarget::from_named(
         sema.db,
-        InFile::new(file_id.into(), &func),
+        func.as_ref().map(|it| it as &dyn ast::NameOwner),
         SymbolKind::Function,
     );
     let cfg = def.attrs(sema.db).cfg();

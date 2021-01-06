@@ -17,7 +17,7 @@ use crate::{
     doc_links::{remove_links, rewrite_links},
     markdown_remove::remove_markdown,
     markup::Markup,
-    runnables::runnable,
+    runnables::{runnable, runnable_fn},
     FileId, FilePosition, NavigationTarget, RangeInfo, Runnable,
 };
 
@@ -29,19 +29,6 @@ pub struct HoverConfig {
     pub goto_type_def: bool,
     pub links_in_hover: bool,
     pub markdown: bool,
-}
-
-impl Default for HoverConfig {
-    fn default() -> Self {
-        Self {
-            implementations: true,
-            run: true,
-            debug: true,
-            goto_type_def: true,
-            links_in_hover: true,
-            markdown: true,
-        }
-    }
 }
 
 impl HoverConfig {
@@ -204,22 +191,20 @@ fn runnable_action(
     match def {
         Definition::ModuleDef(it) => match it {
             ModuleDef::Module(it) => match it.definition_source(sema.db).value {
-                ModuleSource::Module(it) => runnable(&sema, it.syntax().clone(), file_id)
-                    .map(|it| HoverAction::Runnable(it)),
+                ModuleSource::Module(it) => {
+                    runnable(&sema, it.syntax().clone()).map(|it| HoverAction::Runnable(it))
+                }
                 _ => None,
             },
-            ModuleDef::Function(it) => {
-                #[allow(deprecated)]
-                let src = it.source(sema.db)?;
+            ModuleDef::Function(func) => {
+                let src = func.source(sema.db)?;
                 if src.file_id != file_id.into() {
                     mark::hit!(hover_macro_generated_struct_fn_doc_comment);
                     mark::hit!(hover_macro_generated_struct_fn_doc_attr);
-
                     return None;
                 }
 
-                runnable(&sema, src.value.syntax().clone(), file_id)
-                    .map(|it| HoverAction::Runnable(it))
+                runnable_fn(&sema, func).map(HoverAction::Runnable)
             }
             _ => None,
         },

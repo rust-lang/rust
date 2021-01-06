@@ -663,6 +663,14 @@
                     "default": false,
                     "type": "boolean"
                 },
+                "rust-analyzer.procMacro.server": {
+                    "markdownDescription": "Internal config, path to proc-macro server executable (typically, this is rust-analyzer itself, but we override this in tests).",
+                    "default": null,
+                    "type": [
+                        "null",
+                        "string"
+                    ]
+                },
                 "rust-analyzer.runnables.overrideCargo": {
                     "markdownDescription": "Command to be executed instead of 'cargo' for runnables.",
                     "default": null,
