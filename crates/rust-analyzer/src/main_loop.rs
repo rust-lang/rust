@@ -99,7 +99,8 @@ impl fmt::Debug for Event {
 
 impl GlobalState {
     fn run(mut self, inbox: Receiver<lsp_server::Message>) -> Result<()> {
-        if self.config.linked_projects.is_empty() && self.config.notifications.cargo_toml_not_found
+        if self.config.linked_projects().is_empty()
+            && self.config.notifications().cargo_toml_not_found
         {
             self.show_message(
                 lsp_types::MessageType::Error,
@@ -296,7 +297,7 @@ impl GlobalState {
                         flycheck::Message::AddDiagnostic { workspace_root, diagnostic } => {
                             let diagnostics =
                                 crate::diagnostics::to_proto::map_rust_diagnostic_to_lsp(
-                                    &self.config.diagnostics_map,
+                                    &self.config.diagnostics_map(),
                                     &diagnostic,
                                     &workspace_root,
                                 );
@@ -365,13 +366,13 @@ impl GlobalState {
             self.update_file_notifications_on_threadpool();
 
             // Refresh semantic tokens if the client supports it.
-            if self.config.semantic_tokens_refresh {
+            if self.config.semantic_tokens_refresh() {
                 self.semantic_tokens_cache.lock().clear();
                 self.send_request::<lsp_types::request::SemanticTokensRefesh>((), |_, _| ());
             }
 
             // Refresh code lens if the client supports it.
-            if self.config.code_lens_refresh {
+            if self.config.code_lens_refresh() {
                 self.send_request::<lsp_types::request::CodeLensRefresh>((), |_, _| ());
             }
         }
@@ -658,7 +659,7 @@ impl GlobalState {
             .collect::<Vec<_>>();
 
         log::trace!("updating notifications for {:?}", subscriptions);
-        if self.config.publish_diagnostics {
+        if self.config.publish_diagnostics() {
             let snapshot = self.snapshot();
             self.task_pool.handle.spawn(move || {
                 let diagnostics = subscriptions

@@ -84,14 +84,15 @@ impl CargoTargetSpec {
             }
         }
 
-        if snap.config.cargo.all_features {
+        let cargo_config = snap.config.cargo();
+        if cargo_config.all_features {
             args.push("--all-features".to_string());
         } else {
             let mut features = Vec::new();
             if let Some(cfg) = cfg.as_ref() {
                 required_features(cfg, &mut features);
             }
-            for feature in &snap.config.cargo.features {
+            for feature in cargo_config.features {
                 features.push(feature.clone());
             }
             features.dedup();

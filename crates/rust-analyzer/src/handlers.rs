@@ -9,9 +9,9 @@ use std::{
 };
 
 use ide::{
-    AssistConfig, CompletionResolveCapability, FileId, FilePosition, FileRange, HoverAction,
-    HoverGotoTypeData, LineIndex, NavigationTarget, Query, RangeInfo, Runnable, RunnableKind,
-    SearchScope, SourceChange, SymbolKind, TextEdit,
+    CompletionResolveCapability, FileId, FilePosition, FileRange, HoverAction, HoverGotoTypeData,
+    LineIndex, NavigationTarget, Query, RangeInfo, Runnable, RunnableKind, SearchScope,
+    SourceChange, SymbolKind, TextEdit,
 };
 use itertools::Itertools;
 use lsp_server::ErrorCode;
@@ -548,7 +548,7 @@ pub(crate) fn handle_runnables(
     }
 
     // Add `cargo check` and `cargo test` for all targets of the whole package
-    let config = &snap.config.runnables;
+    let config = snap.config.runnables();
     match cargo_spec {
         Some(spec) => {
             for &cmd in ["check", "test"].iter() {
@@ -579,9 +579,9 @@ pub(crate) fn handle_runnables(
                 kind: lsp_ext::RunnableKind::Cargo,
                 args: lsp_ext::CargoRunnable {
                     workspace_root: None,
-                    override_cargo: config.override_cargo.clone(),
+                    override_cargo: config.override_cargo,
                     cargo_args: vec!["check".to_string(), "--workspace".to_string()],
-                    cargo_extra_args: config.cargo_extra_args.clone(),
+                    cargo_extra_args: config.cargo_extra_args,
                     executable_args: Vec::new(),
                     expect_test: None,
                 },
@@ -620,7 +620,8 @@ pub(crate) fn handle_completion(
         return Ok(None);
     }
 
-    let items = match snap.analysis.completions(&snap.config.completion, position)? {
+    let completion_config = &snap.config.completion();
+    let items = match snap.analysis.completions(completion_config, position)? {
         None => return Ok(None),
         Some(items) => items,
     };
@@ -633,7 +634,7 @@ pub(crate) fn handle_completion(
             let mut new_completion_items =
                 to_proto::completion_item(&line_index, line_endings, item.clone());
 
-            if snap.config.completion.resolve_additional_edits_lazily() {
+            if completion_config.resolve_additional_edits_lazily() {
                 for new_item in &mut new_completion_items {
                     let _ = fill_resolve_data(&mut new_item.data, &item, &text_document_position)
                         .take();
@@ -663,9 +664,8 @@ pub(crate) fn handle_completion_resolve(
     }
 
     // FIXME resolve the other capabilities also?
-    if !snap
-        .config
-        .completion
+    let completion_config = &snap.config.completion();
+    if !completion_config
         .active_resolve_capabilities
         .contains(&CompletionResolveCapability::AdditionalTextEdits)
     {
@@ -690,7 +690,7 @@ pub(crate) fn handle_completion_resolve(
     let additional_edits = snap
         .analysis
         .resolve_completion_edits(
-            &snap.config.completion,
+            &completion_config,
             FilePosition { file_id, offset },
             &resolve_data.full_import_path,
             resolve_data.imported_name,
@@ -746,7 +746,7 @@ pub(crate) fn handle_signature_help(
         Some(it) => it,
         None => return Ok(None),
     };
-    let concise = !snap.config.call_info_full;
+    let concise = !snap.config.call_info_full();
     let res =
         to_proto::signature_help(call_info, concise, snap.config.signature_help_label_offsets());
     Ok(Some(res))
@@ -758,14 +758,12 @@ pub(crate) fn handle_hover(
 ) -> Result<Option<lsp_ext::Hover>> {
     let _p = profile::span("handle_hover");
     let position = from_proto::file_position(&snap, params.text_document_position_params)?;
-    let info = match snap.analysis.hover(
-        position,
-        snap.config.hover.links_in_hover,
-        snap.config.hover.markdown,
-    )? {
-        None => return Ok(None),
-        Some(info) => info,
-    };
+    let hover_config = snap.config.hover();
+    let info =
+        match snap.analysis.hover(position, hover_config.links_in_hover, hover_config.markdown)? {
+            None => return Ok(None),
+            Some(info) => info,
+        };
     let line_index = snap.analysis.file_line_index(position.file_id)?;
     let range = to_proto::range(&line_index, info.range);
     let hover = lsp_ext::Hover {
@@ -851,7 +849,7 @@ pub(crate) fn handle_formatting(
     let file_line_index = snap.analysis.file_line_index(file_id)?;
     let file_line_endings = snap.file_line_endings(file_id);
 
-    let mut rustfmt = match &snap.config.rustfmt {
+    let mut rustfmt = match snap.config.rustfmt() {
         RustfmtConfig::Rustfmt { extra_args } => {
             let mut cmd = process::Command::new(toolchain::rustfmt());
             cmd.args(extra_args);
@@ -947,14 +945,12 @@ pub(crate) fn handle_code_action(
     let range = from_proto::text_range(&line_index, params.range);
     let frange = FileRange { file_id, range };
 
-    let assists_config = AssistConfig {
-        allowed: params
-            .clone()
-            .context
-            .only
-            .map(|it| it.into_iter().filter_map(from_proto::assist_kind).collect()),
-        ..snap.config.assist
-    };
+    let mut assists_config = snap.config.assist();
+    assists_config.allowed = params
+        .clone()
+        .context
+        .only
+        .map(|it| it.into_iter().filter_map(from_proto::assist_kind).collect());
 
     let mut res: Vec<lsp_ext::CodeAction> = Vec::new();
 
@@ -989,7 +985,7 @@ fn add_quick_fixes(
     line_index: &Arc<LineIndex>,
     acc: &mut Vec<lsp_ext::CodeAction>,
 ) -> Result<()> {
-    let diagnostics = snap.analysis.diagnostics(&snap.config.diagnostics, frange.file_id)?;
+    let diagnostics = snap.analysis.diagnostics(&snap.config.diagnostics(), frange.file_id)?;
 
     for fix in diagnostics
         .into_iter()
@@ -1018,7 +1014,7 @@ fn add_quick_fixes(
 }
 
 pub(crate) fn handle_code_action_resolve(
-    mut snap: GlobalStateSnapshot,
+    snap: GlobalStateSnapshot,
     mut code_action: lsp_ext::CodeAction,
 ) -> Result<lsp_ext::CodeAction> {
     let _p = profile::span("handle_code_action_resolve");
@@ -1032,13 +1028,14 @@ pub(crate) fn handle_code_action_resolve(
     let range = from_proto::text_range(&line_index, params.code_action_params.range);
     let frange = FileRange { file_id, range };
 
-    snap.config.assist.allowed = params
+    let mut assists_config = snap.config.assist();
+    assists_config.allowed = params
         .code_action_params
         .context
         .only
         .map(|it| it.into_iter().filter_map(from_proto::assist_kind).collect());
 
-    let assists = snap.analysis.assists(&snap.config.assist, true, frange)?;
+    let assists = snap.analysis.assists(&assists_config, true, frange)?;
     let (id, index) = split_once(&params.id, ':').unwrap();
     let index = index.parse::<usize>().unwrap();
     let assist = &assists[index];
@@ -1055,7 +1052,8 @@ pub(crate) fn handle_code_lens(
     let _p = profile::span("handle_code_lens");
     let mut lenses: Vec<CodeLens> = Default::default();
 
-    if snap.config.lens.none() {
+    let lens_config = snap.config.lens();
+    if lens_config.none() {
         // early return before any db query!
         return Ok(Some(lenses));
     }
@@ -1064,7 +1062,7 @@ pub(crate) fn handle_code_lens(
     let line_index = snap.analysis.file_line_index(file_id)?;
     let cargo_spec = CargoTargetSpec::for_file(&snap, file_id)?;
 
-    if snap.config.lens.runnable() {
+    if lens_config.runnable() {
         // Gather runnables
         for runnable in snap.analysis.runnables(file_id)? {
             if should_skip_target(&runnable, cargo_spec.as_ref()) {
@@ -1074,7 +1072,7 @@ pub(crate) fn handle_code_lens(
             let action = runnable.action();
             let range = to_proto::range(&line_index, runnable.nav.full_range);
             let r = to_proto::runnable(&snap, file_id, runnable)?;
-            if snap.config.lens.run {
+            if lens_config.run {
                 let lens = CodeLens {
                     range,
                     command: Some(run_single_command(&r, action.run_title)),
@@ -1083,7 +1081,7 @@ pub(crate) fn handle_code_lens(
                 lenses.push(lens);
             }
 
-            if action.debugee && snap.config.lens.debug {
+            if action.debugee && lens_config.debug {
                 let debug_lens =
                     CodeLens { range, command: Some(debug_single_command(&r)), data: None };
                 lenses.push(debug_lens);
@@ -1091,7 +1089,7 @@ pub(crate) fn handle_code_lens(
         }
     }
 
-    if snap.config.lens.implementations {
+    if lens_config.implementations {
         // Handle impls
         lenses.extend(
             snap.analysis
@@ -1126,7 +1124,7 @@ pub(crate) fn handle_code_lens(
         );
     }
 
-    if snap.config.lens.references() {
+    if lens_config.references() {
         lenses.extend(snap.analysis.find_all_methods(file_id)?.into_iter().map(|it| {
             let range = to_proto::range(&line_index, it.range);
             let position = to_proto::position(&line_index, it.range.start());
@@ -1272,7 +1270,7 @@ pub(crate) fn publish_diagnostics(
 
     let diagnostics: Vec<Diagnostic> = snap
         .analysis
-        .diagnostics(&snap.config.diagnostics, file_id)?
+        .diagnostics(&snap.config.diagnostics(), file_id)?
         .into_iter()
         .map(|d| Diagnostic {
             range: to_proto::range(&line_index, d.range),
@@ -1305,7 +1303,7 @@ pub(crate) fn handle_inlay_hints(
     let line_index = snap.analysis.file_line_index(file_id)?;
     Ok(snap
         .analysis
-        .inlay_hints(file_id, &snap.config.inlay_hints)?
+        .inlay_hints(file_id, &snap.config.inlay_hints())?
         .into_iter()
         .map(|it| to_proto::inlay_hint(&line_index, it))
         .collect())
@@ -1575,7 +1573,7 @@ fn show_impl_command_link(
     snap: &GlobalStateSnapshot,
     position: &FilePosition,
 ) -> Option<lsp_ext::CommandLinkGroup> {
-    if snap.config.hover.implementations {
+    if snap.config.hover().implementations {
         if let Some(nav_data) = snap.analysis.goto_implementation(*position).unwrap_or(None) {
             let uri = to_proto::url(snap, position.file_id);
             let line_index = snap.analysis.file_line_index(position.file_id).ok()?;
@@ -1603,7 +1601,8 @@ fn runnable_action_links(
     runnable: Runnable,
 ) -> Option<lsp_ext::CommandLinkGroup> {
     let cargo_spec = CargoTargetSpec::for_file(&snap, file_id).ok()?;
-    if !snap.config.hover.runnable() || should_skip_target(&runnable, cargo_spec.as_ref()) {
+    let hover_config = snap.config.hover();
+    if !hover_config.runnable() || should_skip_target(&runnable, cargo_spec.as_ref()) {
         return None;
     }
 
@@ -1611,12 +1610,12 @@ fn runnable_action_links(
     to_proto::runnable(snap, file_id, runnable).ok().map(|r| {
         let mut group = lsp_ext::CommandLinkGroup::default();
 
-        if snap.config.hover.run {
+        if hover_config.run {
             let run_command = run_single_command(&r, action.run_title);
             group.commands.push(to_command_link(run_command, r.label.clone()));
         }
 
-        if snap.config.hover.debug {
+        if hover_config.debug {
             let dbg_command = debug_single_command(&r);
             group.commands.push(to_command_link(dbg_command, r.label));
         }
@@ -1629,7 +1628,7 @@ fn goto_type_action_links(
     snap: &GlobalStateSnapshot,
     nav_targets: &[HoverGotoTypeData],
 ) -> Option<lsp_ext::CommandLinkGroup> {
-    if !snap.config.hover.goto_type_def || nav_targets.is_empty() {
+    if !snap.config.hover().goto_type_def || nav_targets.is_empty() {
         return None;
     }
 
@@ -1650,7 +1649,7 @@ fn prepare_hover_actions(
     file_id: FileId,
     actions: &[HoverAction],
 ) -> Vec<lsp_ext::CommandLinkGroup> {
-    if snap.config.hover.none() || !snap.config.hover_actions() {
+    if snap.config.hover().none() || !snap.config.hover_actions() {
         return Vec::new();
     }
 

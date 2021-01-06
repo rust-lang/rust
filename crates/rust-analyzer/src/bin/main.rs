@@ -8,11 +8,7 @@ use std::{convert::TryFrom, env, fs, path::PathBuf, process};
 
 use lsp_server::Connection;
 use project_model::ProjectManifest;
-use rust_analyzer::{
-    cli,
-    config::{Config, LinkedProject},
-    from_json, Result,
-};
+use rust_analyzer::{cli, config::Config, from_json, Result};
 use vfs::AbsPathBuf;
 
 #[cfg(all(feature = "mimalloc"))]
@@ -138,13 +134,12 @@ fn run_server() -> Result<()> {
             }
         };
 
-        let mut config = Config::new(root_path);
+        let mut config = Config::new(root_path, initialize_params.capabilities);
         if let Some(json) = initialize_params.initialization_options {
             config.update(json);
         }
-        config.update_caps(&initialize_params.capabilities);
 
-        if config.linked_projects.is_empty() {
+        if config.linked_projects().is_empty() {
             let workspace_roots = initialize_params
                 .workspace_folders
                 .map(|workspaces| {
@@ -163,7 +158,7 @@ fn run_server() -> Result<()> {
                 log::error!("failed to find any projects in {:?}", workspace_roots);
             }
 
-            config.linked_projects = discovered.into_iter().map(LinkedProject::from).collect();
+            config.discovered_projects = Some(discovered);
         }
 
         config

@@ -12,11 +12,8 @@ use lsp_types::{
     notification::Exit, request::Shutdown, TextDocumentIdentifier, Url, WorkDoneProgress,
 };
 use lsp_types::{ProgressParams, ProgressParamsValue};
-use project_model::{CargoConfig, ProjectManifest};
-use rust_analyzer::{
-    config::{Config, FilesConfig, FilesWatcher, LinkedProject},
-    main_loop,
-};
+use project_model::ProjectManifest;
+use rust_analyzer::{config::Config, main_loop};
 use serde::Serialize;
 use serde_json::{to_string_pretty, Value};
 use test_utils::{find_mismatch, Fixture};
@@ -29,12 +26,18 @@ pub(crate) struct Project<'a> {
     with_sysroot: bool,
     tmp_dir: Option<TestDir>,
     roots: Vec<PathBuf>,
-    config: Option<Box<dyn Fn(&mut Config)>>,
+    config: serde_json::Value,
 }
 
 impl<'a> Project<'a> {
     pub(crate) fn with_fixture(fixture: &str) -> Project {
-        Project { fixture, tmp_dir: None, roots: vec![], with_sysroot: false, config: None }
+        Project {
+            fixture,
+            tmp_dir: None,
+            roots: vec![],
+            with_sysroot: false,
+            config: serde_json::Value::Null,
+        }
     }
 
     pub(crate) fn tmp_dir(mut self, tmp_dir: TestDir) -> Project<'a> {
@@ -52,8 +55,8 @@ impl<'a> Project<'a> {
         self
     }
 
-    pub(crate) fn with_config(mut self, config: impl Fn(&mut Config) + 'static) -> Project<'a> {
-        self.config = Some(Box::new(config));
+    pub(crate) fn with_config(mut self, config: serde_json::Value) -> Project<'a> {
+        self.config = config;
         self
     }
 
@@ -77,14 +80,14 @@ impl<'a> Project<'a> {
         if roots.is_empty() {
             roots.push(tmp_dir_path.clone());
         }
-        let linked_projects = roots
+        let discovered_projects = roots
             .into_iter()
             .map(|it| ProjectManifest::discover_single(&it).unwrap())
-            .map(LinkedProject::from)
             .collect::<Vec<_>>();
 
-        let mut config = Config {
-            caps: lsp_types::ClientCapabilities {
+        let mut config = Config::new(
+            tmp_dir_path,
+            lsp_types::ClientCapabilities {
                 text_document: Some(lsp_types::TextDocumentClientCapabilities {
                     definition: Some(lsp_types::GotoCapability {
                         link_support: Some(true),
@@ -96,6 +99,10 @@ impl<'a> Project<'a> {
                         ),
                         ..Default::default()
                     }),
+                    hover: Some(lsp_types::HoverClientCapabilities {
+                        content_format: Some(vec![lsp_types::MarkupKind::Markdown]),
+                        ..Default::default()
+                    }),
                     ..Default::default()
                 }),
                 window: Some(lsp_types::WindowClientCapabilities {
@@ -104,14 +111,9 @@ impl<'a> Project<'a> {
                 }),
                 ..Default::default()
             },
-            cargo: CargoConfig { no_sysroot: !self.with_sysroot, ..Default::default() },
-            linked_projects,
-            files: FilesConfig { watcher: FilesWatcher::Client, exclude: Vec::new() },
-            ..Config::new(tmp_dir_path)
-        };
-        if let Some(f) = &self.config {
-            f(&mut config)
-        }
+        );
+        config.discovered_projects = Some(discovered_projects);
+        config.update(self.config);
 
         Server::new(tmp_dir, config)
     }

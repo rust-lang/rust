@@ -94,6 +94,8 @@
  Whether to show `can't find Cargo.toml` error message.
 [[rust-analyzer.procMacro.enable]]rust-analyzer.procMacro.enable (default: `false`)::
  Enable Proc macro support, `#rust-analyzer.cargo.loadOutDirsFromCheck#` must be  enabled.
+[[rust-analyzer.procMacro.server]]rust-analyzer.procMacro.server (default: `null`)::
+ Internal config, path to proc-macro server executable (typically,  this is rust-analyzer itself, but we override this in tests).
 [[rust-analyzer.runnables.overrideCargo]]rust-analyzer.runnables.overrideCargo (default: `null`)::
  Command to be executed instead of 'cargo' for runnables.
 [[rust-analyzer.runnables.cargoExtraArgs]]rust-analyzer.runnables.cargoExtraArgs (default: `[]`)::

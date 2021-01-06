@@ -18,12 +18,6 @@ pub struct InlayHintsConfig {
     pub max_length: Option<usize>,
 }
 
-impl Default for InlayHintsConfig {
-    fn default() -> Self {
-        Self { type_hints: true, parameter_hints: true, chaining_hints: true, max_length: None }
-    }
-}
-
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum InlayKind {
     TypeHint,
@@ -433,8 +427,15 @@ mod tests {
 
     use crate::{fixture, inlay_hints::InlayHintsConfig};
 
+    const TEST_CONFIG: InlayHintsConfig = InlayHintsConfig {
+        type_hints: true,
+        parameter_hints: true,
+        chaining_hints: true,
+        max_length: None,
+    };
+
     fn check(ra_fixture: &str) {
-        check_with_config(InlayHintsConfig::default(), ra_fixture);
+        check_with_config(TEST_CONFIG, ra_fixture);
     }
 
     fn check_with_config(config: InlayHintsConfig, ra_fixture: &str) {
@@ -748,7 +749,7 @@ fn main() {
     #[test]
     fn hint_truncation() {
         check_with_config(
-            InlayHintsConfig { max_length: Some(8), ..Default::default() },
+            InlayHintsConfig { max_length: Some(8), ..TEST_CONFIG },
             r#"
 struct Smol<T>(T);
 
@@ -831,7 +832,7 @@ fn main() {
     #[test]
     fn omitted_parameters_hints_heuristics() {
         check_with_config(
-            InlayHintsConfig { max_length: Some(8), ..Default::default() },
+            InlayHintsConfig { max_length: Some(8), ..TEST_CONFIG },
             r#"
 fn map(f: i32) {}
 fn filter(predicate: i32) {}
@@ -924,7 +925,7 @@ fn main() {
     #[test]
     fn unit_structs_have_no_type_hints() {
         check_with_config(
-            InlayHintsConfig { max_length: Some(8), ..Default::default() },
+            InlayHintsConfig { max_length: Some(8), ..TEST_CONFIG },
             r#"
 enum Result<T, E> { Ok(T), Err(E) }
 use Result::*;
