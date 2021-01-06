@@ -2305,6 +2305,11 @@ impl Path {
     /// println!("{:?}", metadata.file_type());
     /// ```
     #[stable(feature = "path_ext", since = "1.5.0")]
+    #[rustc_deprecated(
+        since = "1.51.0",
+        reason = "the `std::fs::metadata` function is now preferred",
+        suggestion = "std::fs::metadata"
+    )]
     pub fn metadata(&self) -> io::Result<fs::Metadata> {
         fs::metadata(self)
     }
@@ -2323,6 +2328,11 @@ impl Path {
     /// println!("{:?}", metadata.file_type());
     /// ```
     #[stable(feature = "path_ext", since = "1.5.0")]
+    #[rustc_deprecated(
+        since = "1.51.0",
+        reason = "the `std::fs::symlink_metadata` function is now preferred",
+        suggestion = "std::fs::symlink_metadata"
+    )]
     pub fn symlink_metadata(&self) -> io::Result<fs::Metadata> {
         fs::symlink_metadata(self)
     }
@@ -2341,6 +2351,11 @@ impl Path {
     /// assert_eq!(path.canonicalize().unwrap(), PathBuf::from("/foo/test/bar.rs"));
     /// ```
     #[stable(feature = "path_ext", since = "1.5.0")]
+    #[rustc_deprecated(
+        since = "1.51.0",
+        reason = "the `std::fs::canonicalize` function is now preferred",
+        suggestion = "std::fs::canonicalize"
+    )]
     pub fn canonicalize(&self) -> io::Result<PathBuf> {
         fs::canonicalize(self)
     }
@@ -2358,6 +2373,11 @@ impl Path {
     /// let path_link = path.read_link().expect("read_link call failed");
     /// ```
     #[stable(feature = "path_ext", since = "1.5.0")]
+    #[rustc_deprecated(
+        since = "1.51.0",
+        reason = "the `std::fs::read_link` function is now preferred",
+        suggestion = "std::fs::read_link"
+    )]
     pub fn read_link(&self) -> io::Result<PathBuf> {
         fs::read_link(self)
     }
@@ -2382,6 +2402,11 @@ impl Path {
     /// }
     /// ```
     #[stable(feature = "path_ext", since = "1.5.0")]
+    #[rustc_deprecated(
+        since = "1.51.0",
+        reason = "the `std::fs::read_dir` function is now preferred",
+        suggestion = "std::fs::read_dir"
+    )]
     pub fn read_dir(&self) -> io::Result<fs::ReadDir> {
         fs::read_dir(self)
     }
@@ -2406,6 +2431,11 @@ impl Path {
     /// This is a convenience function that coerces errors to false. If you want to
     /// check errors, call [`fs::metadata`].
     #[stable(feature = "path_ext", since = "1.5.0")]
+    #[rustc_deprecated(
+        since = "1.51.0",
+        reason = "other processes may remove or rename files at any time",
+        suggestion = "use `std::fs::metadata`"
+    )]
     pub fn exists(&self) -> bool {
         fs::metadata(self).is_ok()
     }
@@ -2438,6 +2468,11 @@ impl Path {
     /// a Unix-like system for example. See [`fs::File::open`] or
     /// [`fs::OpenOptions::open`] for more information.
     #[stable(feature = "path_ext", since = "1.5.0")]
+    #[rustc_deprecated(
+        since = "1.51.0",
+        reason = "other processes may remove, rename, or replace files at any time",
+        suggestion = "use `std::fs::File::open` or `std::fs::metadata`"
+    )]
     pub fn is_file(&self) -> bool {
         fs::metadata(self).map(|m| m.is_file()).unwrap_or(false)
     }
@@ -2463,7 +2498,16 @@ impl Path {
     /// This is a convenience function that coerces errors to false. If you want to
     /// check errors, call [`fs::metadata`] and handle its [`Result`]. Then call
     /// [`fs::Metadata::is_dir`] if it was [`Ok`].
+    ///
+    /// When the goal is simply to read from the source, the most reliable way to
+    /// test the source can be read is to open it. See [`fs::read_dir`] for more
+    /// information.
     #[stable(feature = "path_ext", since = "1.5.0")]
+    #[rustc_deprecated(
+        since = "1.51.0",
+        reason = "other processes may remove, rename, or replace directories at any time",
+        suggestion = "use `std::fs::read_dir` or `std::fs::metadata`"
+    )]
     pub fn is_dir(&self) -> bool {
         fs::metadata(self).map(|m| m.is_dir()).unwrap_or(false)
     }
