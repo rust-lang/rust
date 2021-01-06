@@ -46,7 +46,7 @@ pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
         acc.add_resolution(ctx, name.to_string(), &res)
     });
 
-    if ctx.config.enable_autoimport_completions && ctx.config.resolve_additional_edits_lazily() {
+    if ctx.config.enable_autoimport_completions {
         fuzzy_completion(acc, ctx);
     }
 }
@@ -206,11 +206,7 @@ mod tests {
     }
 
     fn fuzzy_completion_config() -> CompletionConfig {
-        let mut completion_config = CompletionConfig::default();
-        completion_config
-            .active_resolve_capabilities
-            .insert(crate::CompletionResolveCapability::AdditionalTextEdits);
-        completion_config
+        CompletionConfig::default()
     }
 
     #[test]
