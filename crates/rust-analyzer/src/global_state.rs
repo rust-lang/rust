@@ -67,7 +67,7 @@ pub(crate) struct GlobalState {
     pub(crate) flycheck: Vec<FlycheckHandle>,
     pub(crate) flycheck_sender: Sender<flycheck::Message>,
     pub(crate) flycheck_receiver: Receiver<flycheck::Message>,
-    pub(crate) config: Config,
+    pub(crate) config: Arc<Config>,
     pub(crate) analysis_host: AnalysisHost,
     pub(crate) diagnostics: DiagnosticCollection,
     pub(crate) mem_docs: FxHashMap<VfsPath, DocumentData>,
@@ -83,7 +83,7 @@ pub(crate) struct GlobalState {
 
 /// An immutable snapshot of the world's state at a point in time.
 pub(crate) struct GlobalStateSnapshot {
-    pub(crate) config: Config,
+    pub(crate) config: Arc<Config>,
     pub(crate) analysis: Analysis,
     pub(crate) check_fixes: CheckFixes,
     pub(crate) latest_requests: Arc<RwLock<LatestRequests>>,
@@ -119,7 +119,7 @@ impl GlobalState {
             flycheck: Vec::new(),
             flycheck_sender,
             flycheck_receiver,
-            config,
+            config: Arc::new(config),
             analysis_host,
             diagnostics: Default::default(),
             mem_docs: FxHashMap::default(),
@@ -184,7 +184,7 @@ impl GlobalState {
 
     pub(crate) fn snapshot(&self) -> GlobalStateSnapshot {
         GlobalStateSnapshot {
-            config: self.config.clone(),
+            config: Arc::clone(&self.config),
             workspaces: Arc::clone(&self.workspaces),
             analysis: self.analysis_host.analysis(),
             vfs: Arc::clone(&self.vfs),
