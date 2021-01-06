@@ -1291,9 +1291,6 @@ impl<'tcx> TyCtxt<'tcx> {
     /// the nearest module-like item (e.g., the enum that a variant belongs to).
     ///
     /// Returns `def_id` if it's the crate root.
-    ///
-    /// Note for users in rustdoc: **panics if the item it belongs to is fake**
-    /// (see `rustdoc::clean::types::Item::is_fake()`).
     pub fn find_nearest_parent_module(self, def_id: DefId) -> Option<DefId> {
         if def_id.is_top_level_module() {
             // The crate root has no parent. Use it as the root instead.
