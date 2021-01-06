@@ -116,7 +116,6 @@ mod handlers {
     mod convert_integer_literal;
     mod early_return;
     mod expand_glob_import;
-    mod extract_module_to_file;
     mod extract_struct_from_enum_variant;
     mod extract_variable;
     mod fill_match_arms;
@@ -139,6 +138,7 @@ mod handlers {
     mod merge_match_arms;
     mod move_bounds;
     mod move_guard;
+    mod move_module_to_file;
     mod pull_assignment_up;
     mod qualify_path;
     mod raw_string;
@@ -169,7 +169,7 @@ mod handlers {
             convert_integer_literal::convert_integer_literal,
             early_return::convert_to_guarded_return,
             expand_glob_import::expand_glob_import,
-            extract_module_to_file::extract_module_to_file,
+            move_module_to_file::move_module_to_file,
             extract_struct_from_enum_variant::extract_struct_from_enum_variant,
             extract_variable::extract_variable,
             fill_match_arms::fill_match_arms,

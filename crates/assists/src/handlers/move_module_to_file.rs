@@ -2,17 +2,18 @@ use ast::edit::IndentLevel;
 use ide_db::base_db::AnchoredPathBuf;
 use syntax::{
     ast::{self, edit::AstNodeEdit, NameOwner},
-    AstNode,
+    AstNode, TextRange,
 };
+use test_utils::mark;
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
 
-// Assist: extract_module_to_file
+// Assist: move_module_to_file
 //
-// This assist extract module to file.
+// Moves inline module's contents to a separate file.
 //
 // ```
-// mod foo {<|>
+// mod <|>foo {
 //     fn t() {}
 // }
 // ```
@@ -20,19 +21,24 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 // ```
 // mod foo;
 // ```
-pub(crate) fn extract_module_to_file(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+pub(crate) fn move_module_to_file(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let module_ast = ctx.find_node_at_offset::<ast::Module>()?;
+    let module_items = module_ast.item_list()?;
+
+    let l_curly_offset = module_items.syntax().text_range().start();
+    if l_curly_offset <= ctx.offset() {
+        mark::hit!(available_before_curly);
+        return None;
+    }
+    let target = TextRange::new(module_ast.syntax().text_range().start(), l_curly_offset);
+
     let module_name = module_ast.name()?;
 
     let module_def = ctx.sema.to_def(&module_ast)?;
     let parent_module = module_def.parent(ctx.db())?;
 
-    let module_items = module_ast.item_list()?;
-    let target = module_ast.syntax().text_range();
-    let anchor_file_id = ctx.frange.file_id;
-
     acc.add(
-        AssistId("extract_module_to_file", AssistKind::RefactorExtract),
+        AssistId("move_module_to_file", AssistKind::RefactorExtract),
         "Extract module to file",
         target,
         |builder| {
@@ -53,9 +59,9 @@ pub(crate) fn extract_module_to_file(acc: &mut Assists, ctx: &AssistContext) -> 
                 items
             };
 
-            builder.replace(target, format!("mod {};", module_name));
+            builder.replace(module_ast.syntax().text_range(), format!("mod {};", module_name));
 
-            let dst = AnchoredPathBuf { anchor: anchor_file_id, path };
+            let dst = AnchoredPathBuf { anchor: ctx.frange.file_id, path };
             builder.create_file(dst, contents);
         },
     )
@@ -63,16 +69,16 @@ pub(crate) fn extract_module_to_file(acc: &mut Assists, ctx: &AssistContext) -> 
 
 #[cfg(test)]
 mod tests {
-    use crate::tests::check_assist;
+    use crate::tests::{check_assist, check_assist_not_applicable};
 
     use super::*;
 
     #[test]
     fn extract_from_root() {
         check_assist(
-            extract_module_to_file,
+            move_module_to_file,
             r#"
-mod tests {<|>
+mod <|>tests {
     #[test] fn t() {}
 }
 "#,
@@ -88,12 +94,12 @@ mod tests;
     #[test]
     fn extract_from_submodule() {
         check_assist(
-            extract_module_to_file,
+            move_module_to_file,
             r#"
 //- /main.rs
 mod submod;
 //- /submod.rs
-mod inner<|> {
+<|>mod inner {
     fn f() {}
 }
 fn g() {}
@@ -111,7 +117,7 @@ fn f() {}
     #[test]
     fn extract_from_mod_rs() {
         check_assist(
-            extract_module_to_file,
+            move_module_to_file,
             r#"
 //- /main.rs
 mod submodule;
@@ -129,5 +135,11 @@ fn g() {}
 fn f() {}
 "#,
         );
+    }
+
+    #[test]
+    fn available_before_curly() {
+        mark::check!(available_before_curly);
+        check_assist_not_applicable(move_module_to_file, r#"mod m { <|> }"#);
     }
 }
