@@ -1,4 +1,4 @@
-//! The Rust Prelude.
+//! # The Rust Prelude
 //!
 //! Rust comes with a variety of things in its standard library. However, if
 //! you had to manually import every single thing that you used, it would be
