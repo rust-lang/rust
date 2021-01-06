@@ -76,7 +76,11 @@ impl fmt::Display for StopWatchSpan {
                 instructions /= 1000;
                 prefix = "m"
             }
-            write!(f, ", {}{}i", instructions, prefix)?;
+            if instructions > 10000 {
+                instructions /= 1000;
+                prefix = "g"
+            }
+            write!(f, ", {}{}instr", instructions, prefix)?;
         }
         if let Some(memory) = self.memory {
             write!(f, ", {}", memory)?;
