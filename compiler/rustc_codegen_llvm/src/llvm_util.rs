@@ -10,6 +10,7 @@ use rustc_span::symbol::Symbol;
 use rustc_target::spec::{MergeFunctions, PanicStrategy};
 use std::ffi::CString;
 
+use std::detect;
 use std::slice;
 use std::str;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -219,6 +220,25 @@ pub fn target_cpu(sess: &Session) -> &str {
     };
 
     handle_native(name)
+}
+
+pub fn handle_native_features(sess: &Session) -> Vec<String> {
+    const LLVM_NOT_RECOGNIZED: &[&str] = &["tsc"];
+
+    match sess.opts.cg.target_cpu {
+        Some(ref s) => {
+            if s != "native" {
+                return vec![];
+            }
+
+            detect::features()
+                .map(|(feature, support)| (to_llvm_feature(sess, feature), support))
+                .filter(|(feature, _)| !LLVM_NOT_RECOGNIZED.contains(feature))
+                .map(|(feature, support)| (if support { "+" } else { "-" }).to_owned() + feature)
+                .collect()
+        }
+        None => vec![],
+    }
 }
 
 pub fn tune_cpu(sess: &Session) -> Option<&str> {
