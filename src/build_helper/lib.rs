@@ -172,10 +172,11 @@ pub fn mtime(path: &Path) -> SystemTime {
 ///
 /// Uses last-modified time checks to verify this.
 pub fn up_to_date(src: &Path, dst: &Path) -> bool {
-    if !dst.exists() {
-        return false;
-    }
-    let threshold = mtime(dst);
+    let dst_meta = match fs::metadata(dst) {
+        Ok(meta) => meta,
+        Err(_) => return false,
+    };
+    let threshold = dst_meta.modified().unwrap_or(UNIX_EPOCH);
     let meta = match fs::metadata(src) {
         Ok(meta) => meta,
         Err(e) => panic!("source {:?} failed to get metadata: {}", src, e),
