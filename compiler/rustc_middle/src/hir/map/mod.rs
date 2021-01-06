@@ -792,6 +792,13 @@ impl<'hir> Map<'hir> {
         }
     }
 
+    pub fn maybe_expr(&self, id: HirId) -> Option<&'hir Expr<'hir>> {
+        match self.find(id) {
+            Some(Node::Expr(expr)) => Some(expr),
+            _ => None,
+        }
+    }
+
     pub fn opt_name(&self, id: HirId) -> Option<Symbol> {
         Some(match self.get(id) {
             Node::Item(i) => i.ident.name,

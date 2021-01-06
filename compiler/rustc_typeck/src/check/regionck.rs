@@ -484,7 +484,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
         place_with_id: &PlaceWithHirId<'tcx>,
         span: Span,
     ) {
-        if let PlaceBase::Rvalue = place_with_id.place.base {
+        if let PlaceBase::Rvalue(_) = place_with_id.place.base {
             if place_with_id.place.projections.is_empty() {
                 let typ = self.resolve_type(place_with_id.place.ty());
                 let body_id = self.body_id;

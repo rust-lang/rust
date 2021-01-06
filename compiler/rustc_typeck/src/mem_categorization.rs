@@ -237,6 +237,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
     }
 
     crate fn cat_expr(&self, expr: &hir::Expr<'_>) -> McResult<PlaceWithHirId<'tcx>> {
+        debug!("cat_expr(expr: {:?})", expr);
         // This recursion helper avoids going through *too many*
         // adjustments, since *only* non-overloaded deref recurses.
         fn helper<'a, 'tcx>(
@@ -299,7 +300,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
     }
 
     crate fn cat_expr_unadjusted(&self, expr: &hir::Expr<'_>) -> McResult<PlaceWithHirId<'tcx>> {
-        debug!("cat_expr: id={} expr={:?}", expr.hir_id, expr);
+        debug!("cat_expr_unadjusted: id={} expr={:?}", expr.hir_id, expr);
 
         let expr_ty = self.expr_ty(expr)?;
         match expr.kind {
@@ -350,8 +351,6 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
                 self.cat_res(expr.hir_id, expr.span, expr_ty, res)
             }
 
-            hir::ExprKind::Type(ref e, _) => self.cat_expr(&e),
-
             hir::ExprKind::AddrOf(..)
             | hir::ExprKind::Call(..)
             | hir::ExprKind::Assign(..)
@@ -378,6 +377,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
             | hir::ExprKind::InlineAsm(..)
             | hir::ExprKind::LlvmInlineAsm(..)
             | hir::ExprKind::Box(..)
+            | hir::ExprKind::Type(..)
             | hir::ExprKind::Err => Ok(self.cat_rvalue(expr.hir_id, expr.span, expr_ty)),
         }
     }
@@ -446,7 +446,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         expr_ty: Ty<'tcx>,
     ) -> PlaceWithHirId<'tcx> {
         debug!("cat_rvalue hir_id={:?}, expr_ty={:?}, span={:?}", hir_id, expr_ty, span);
-        let ret = PlaceWithHirId::new(hir_id, expr_ty, PlaceBase::Rvalue, Vec::new());
+        let ret = PlaceWithHirId::new(hir_id, expr_ty, PlaceBase::Rvalue(hir_id), Vec::new());
         debug!("cat_rvalue ret={:?}", ret);
         ret
     }

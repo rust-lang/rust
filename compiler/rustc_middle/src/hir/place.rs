@@ -18,7 +18,7 @@ use rustc_target::abi::VariantIdx;
 )]
 pub enum PlaceBase {
     /// A temporary variable.
-    Rvalue,
+    Rvalue(HirId),
     /// A named `static` item.
     StaticItem,
     /// A named local variable.

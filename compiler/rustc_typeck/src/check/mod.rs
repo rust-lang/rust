@@ -85,6 +85,7 @@ mod op;
 mod pat;
 mod place_op;
 mod regionck;
+mod type_ascription;
 mod upvar;
 mod wfcheck;
 pub mod writeback;
@@ -610,6 +611,8 @@ fn typeck_with_fallback<'tcx>(
         // Even though coercion casts provide type hints, we check casts after fallback for
         // backwards compatibility. This makes fallback a stronger type hint than a cast coercion.
         fcx.check_casts();
+
+        fcx.analyze_type_ascriptions(body);
 
         // Closure and generator analysis may run after fallback
         // because they don't constrain other type variables.
