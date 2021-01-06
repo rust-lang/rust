@@ -491,23 +491,13 @@ where
         // `to_dep_node` is expensive for some `DepKind`s.
         let dep_node = dep_node_opt.unwrap_or_else(|| query.to_dep_node(*tcx.dep_context(), &key));
 
-        if query.eval_always {
-            tcx.dep_context().dep_graph().with_eval_always_task(
-                dep_node,
-                *tcx.dep_context(),
-                key,
-                compute,
-                query.hash_result,
-            )
-        } else {
-            tcx.dep_context().dep_graph().with_task(
-                dep_node,
-                *tcx.dep_context(),
-                key,
-                compute,
-                query.hash_result,
-            )
-        }
+        tcx.dep_context().dep_graph().with_task(
+            dep_node,
+            *tcx.dep_context(),
+            key,
+            compute,
+            query.hash_result,
+        )
     });
 
     prof_timer.finish_with_query_invocation_id(dep_node_index.into());
