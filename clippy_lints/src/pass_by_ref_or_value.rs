@@ -63,7 +63,7 @@ declare_clippy_lint! {
     ///
     /// **Why is this bad?** Arguments passed by value might result in an unnecessary
     /// shallow copy, taking up more space in the stack and requiring a call to
-    /// `memcpy`, which which can be expensive.
+    /// `memcpy`, which can be expensive.
     ///
     /// **Example:**
     ///
