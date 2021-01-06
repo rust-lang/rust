@@ -65,9 +65,6 @@ where
     needs_sep: bool,
 }
 
-// FIXME This manual implementation is needed as #[derive] misplaces trait bounds,
-// requiring <I as Iterator>::Item to be Debug on the struct-definition, which is
-// not what we want.
 #[unstable(feature = "iter_intersperse", reason = "recently added", issue = "79524")]
 impl<I, G> crate::fmt::Debug for IntersperseWith<I, G>
 where
@@ -84,9 +81,6 @@ where
     }
 }
 
-// FIXME This manual implementation is needed as #[derive] misplaces trait bounds,
-// requiring <I as Iterator>::Item to be Clone on the struct-definition, which is
-// not what we want.
 #[unstable(feature = "iter_intersperse", reason = "recently added", issue = "79524")]
 impl<I, G> crate::clone::Clone for IntersperseWith<I, G>
 where
