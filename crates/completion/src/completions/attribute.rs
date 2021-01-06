@@ -98,7 +98,7 @@ const ATTRIBUTES: &[AttrCompletion] = &[
     attr(r#"crate_name = """#, Some("crate_name"), Some(r#"crate_name = "${0:crate_name}""#))
         .prefer_inner(),
     attr("deny(…)", Some("deny"), Some("deny(${0:lint})")),
-    attr(r#"deprecated = "…""#, Some("deprecated"), Some(r#"deprecated = "${0:reason}""#)),
+    attr(r#"deprecated"#, Some("deprecated"), Some(r#"deprecated"#)),
     attr("derive(…)", Some("derive"), Some(r#"derive(${0:Debug})"#)),
     attr(
         r#"export_name = "…""#,
@@ -121,7 +121,7 @@ const ATTRIBUTES: &[AttrCompletion] = &[
     ),
     attr("macro_export", None, None),
     attr("macro_use", None, None),
-    attr(r#"must_use = "…""#, Some("must_use"), Some(r#"must_use = "${0:reason}""#)),
+    attr(r#"must_use"#, Some("must_use"), Some(r#"must_use"#)),
     attr("no_link", None, None).prefer_inner(),
     attr("no_implicit_prelude", None, None).prefer_inner(),
     attr("no_main", None, None).prefer_inner(),
@@ -136,11 +136,7 @@ const ATTRIBUTES: &[AttrCompletion] = &[
     attr("recursion_limit = …", Some("recursion_limit"), Some("recursion_limit = ${0:128}"))
         .prefer_inner(),
     attr("repr(…)", Some("repr"), Some("repr(${0:C})")),
-    attr(
-        "should_panic(…)",
-        Some("should_panic"),
-        Some(r#"should_panic(expected = "${0:reason}")"#),
-    ),
+    attr("should_panic", Some("should_panic"), Some(r#"should_panic"#)),
     attr(
         r#"target_feature = "…""#,
         Some("target_feature"),
@@ -476,7 +472,7 @@ struct Test {}
                 at cfg(…)
                 at cold
                 at deny(…)
-                at deprecated = "…"
+                at deprecated
                 at derive(…)
                 at export_name = "…"
                 at doc = "…"
@@ -488,7 +484,7 @@ struct Test {}
                 at link_section = "…"
                 at macro_export
                 at macro_use
-                at must_use = "…"
+                at must_use
                 at no_mangle
                 at non_exhaustive
                 at path = "…"
@@ -496,7 +492,7 @@ struct Test {}
                 at proc_macro_attribute
                 at proc_macro_derive(…)
                 at repr(…)
-                at should_panic(…)
+                at should_panic
                 at target_feature = "…"
                 at test
                 at track_caller
@@ -523,7 +519,7 @@ struct Test {}
                 at cold
                 at crate_name = ""
                 at deny(…)
-                at deprecated = "…"
+                at deprecated
                 at derive(…)
                 at export_name = "…"
                 at doc = "…"
@@ -537,7 +533,7 @@ struct Test {}
                 at link_section = "…"
                 at macro_export
                 at macro_use
-                at must_use = "…"
+                at must_use
                 at no_link
                 at no_implicit_prelude
                 at no_main
@@ -551,7 +547,7 @@ struct Test {}
                 at proc_macro_derive(…)
                 at recursion_limit = …
                 at repr(…)
-                at should_panic(…)
+                at should_panic
                 at target_feature = "…"
                 at test
                 at track_caller
