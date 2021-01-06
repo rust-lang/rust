@@ -20,7 +20,7 @@ use serde_json::Value;
 use stdx::lines_with_ends;
 use text_size::{TextRange, TextSize};
 
-pub use difference::Changeset as __Changeset;
+pub use dissimilar::diff as __diff;
 pub use rustc_hash::FxHashMap;
 
 pub use crate::fixture::Fixture;
@@ -45,8 +45,8 @@ macro_rules! assert_eq_text {
             if left.trim() == right.trim() {
                 std::eprintln!("Left:\n{:?}\n\nRight:\n{:?}\n\nWhitespace difference\n", left, right);
             } else {
-                let changeset = $crate::__Changeset::new(left, right, "\n");
-                std::eprintln!("Left:\n{}\n\nRight:\n{}\n\nDiff:\n{}\n", left, right, changeset);
+                let diff = $crate::__diff(left, right);
+                std::eprintln!("Left:\n{}\n\nRight:\n{}\n\nDiff:\n{}\n", left, right, $crate::format_diff(diff));
             }
             std::eprintln!($($tt)*);
             panic!("text differs");
@@ -391,4 +391,17 @@ pub fn skip_slow_tests() -> bool {
 pub fn project_dir() -> PathBuf {
     let dir = env!("CARGO_MANIFEST_DIR");
     PathBuf::from(dir).parent().unwrap().parent().unwrap().to_owned()
+}
+
+pub fn format_diff(chunks: Vec<dissimilar::Chunk>) -> String {
+    let mut buf = String::new();
+    for chunk in chunks {
+        let formatted = match chunk {
+            dissimilar::Chunk::Equal(text) => text.into(),
+            dissimilar::Chunk::Delete(text) => format!("\x1b[41m{}\x1b[0m", text),
+            dissimilar::Chunk::Insert(text) => format!("\x1b[42m{}\x1b[0m", text),
+        };
+        buf.push_str(&formatted);
+    }
+    buf
 }

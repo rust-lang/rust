@@ -21,7 +21,6 @@ test_utils = { path = "../test_utils", version = "0.0.0" }
 
 [dev-dependencies]
 cargo_metadata = "=0.12.0"
-difference = "2.0.0"
 
 # used as proc macro test targets
 serde_derive = "1.0.106"
