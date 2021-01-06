@@ -1285,6 +1285,33 @@ impl<'tcx> TyCtxt<'tcx> {
         )
     }
 
+    /// Find the nearest parent module of a [`DefId`].
+    /// This is different from [`TyCtxt::parent()`] because this returns
+    /// the nearest parent `mod`, whereas [`TyCtxt::parent()`] returns
+    /// the nearest module-like item (e.g., the enum that a variant belongs to).
+    ///
+    /// Returns `def_id` if it's the crate root.
+    ///
+    /// Note for users in rustdoc: **panics if the item it belongs to is fake**
+    /// (see `rustdoc::clean::types::Item::is_fake()`).
+    pub fn find_nearest_parent_module(self, def_id: DefId) -> Option<DefId> {
+        if def_id.is_top_level_module() {
+            // The crate root has no parent. Use it as the root instead.
+            Some(def_id)
+        } else {
+            let mut current = def_id;
+            // The immediate parent might not always be a module.
+            // Find the first parent which is.
+            while let Some(parent) = self.parent(current) {
+                if self.def_kind(parent) == DefKind::Mod {
+                    return Some(parent);
+                }
+                current = parent;
+            }
+            None
+        }
+    }
+
     pub fn metadata_encoding_version(self) -> Vec<u8> {
         self.cstore.metadata_encoding_version().to_vec()
     }

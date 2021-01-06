@@ -33,7 +33,7 @@ use std::convert::{TryFrom, TryInto};
 use std::mem;
 use std::ops::Range;
 
-use crate::clean::{self, utils::find_nearest_parent_module, Crate, Item, ItemLink, PrimitiveType};
+use crate::clean::{self, Crate, Item, ItemLink, PrimitiveType};
 use crate::core::DocContext;
 use crate::fold::DocFolder;
 use crate::html::markdown::{markdown_links, MarkdownLink};
@@ -832,11 +832,8 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
     fn fold_item(&mut self, mut item: Item) -> Option<Item> {
         use rustc_middle::ty::DefIdTree;
 
-        let parent_node = if item.is_fake() {
-            None
-        } else {
-            find_nearest_parent_module(self.cx.tcx, item.def_id)
-        };
+        let parent_node =
+            if item.is_fake() { None } else { self.cx.tcx.find_nearest_parent_module(item.def_id) };
 
         if parent_node.is_some() {
             trace!("got parent node for {:?} {:?}, id {:?}", item.type_(), item.name, item.def_id);
