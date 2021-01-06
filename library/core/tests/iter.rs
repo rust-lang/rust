@@ -3509,7 +3509,7 @@ pub fn extend_for_unit() {
 #[test]
 fn test_intersperse() {
     let xs = ["a", "", "b", "c"];
-    let v: Vec<&str> = xs.iter().map(|x| x.clone()).intersperse(", ").collect();
+    let v: Vec<&str> = xs.iter().map(|x| *x).intersperse(", ").collect();
     let text: String = v.concat();
     assert_eq!(text, "a, , b, c".to_string());
 
@@ -3521,7 +3521,7 @@ fn test_intersperse() {
 #[test]
 fn test_intersperse_size_hint() {
     let xs = ["a", "", "b", "c"];
-    let mut iter = xs.iter().map(|x| x.clone()).intersperse(", ");
+    let mut iter = xs.iter().map(|x| *x).intersperse(", ");
     assert_eq!(iter.size_hint(), (7, Some(7)));
 
     assert_eq!(iter.next(), Some("a"));
