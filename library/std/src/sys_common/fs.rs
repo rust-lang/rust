@@ -5,19 +5,21 @@ use crate::io::{self, Error, ErrorKind};
 use crate::path::Path;
 
 pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
-    if !from.is_file() {
+    let mut reader = fs::File::open(from)?;
+    let metadata = reader.metadata()?;
+
+    if !metadata.is_file() {
         return Err(Error::new(
             ErrorKind::InvalidInput,
             "the source path is not an existing regular file",
         ));
     }
 
-    let mut reader = fs::File::open(from)?;
     let mut writer = fs::File::create(to)?;
-    let perm = reader.metadata()?.permissions();
+    let perm = metadata.permissions();
 
     let ret = io::copy(&mut reader, &mut writer)?;
-    fs::set_permissions(to, perm)?;
+    writer.set_permissions(perm)?;
     Ok(ret)
 }
 
