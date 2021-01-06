@@ -2307,7 +2307,7 @@ impl Path {
     #[stable(feature = "path_ext", since = "1.5.0")]
     #[rustc_deprecated(
         since = "1.51.0",
-        reason = "the `std::fs::metadata` function is now preferred",
+        reason = "use `std::fs::metadata` instead",
         suggestion = "std::fs::metadata"
     )]
     pub fn metadata(&self) -> io::Result<fs::Metadata> {
