@@ -94,11 +94,9 @@ fn compute_implied_outlives_bounds<'tcx>(
         // region relationships.
         implied_bounds.extend(obligations.into_iter().flat_map(|obligation| {
             assert!(!obligation.has_escaping_bound_vars());
-            let binder = obligation.predicate.bound_atom();
-            if binder.skip_binder().has_escaping_bound_vars() {
-                vec![]
-            } else {
-                match binder.skip_binder() {
+            match obligation.predicate.bound_atom().no_bound_vars() {
+                None => vec![],
+                Some(pred) => match pred {
                     ty::PredicateAtom::Trait(..)
                     | ty::PredicateAtom::Subtype(..)
                     | ty::PredicateAtom::Projection(..)
@@ -122,7 +120,7 @@ fn compute_implied_outlives_bounds<'tcx>(
                         tcx.push_outlives_components(ty_a, &mut components);
                         implied_bounds_from_components(r_b, components)
                     }
-                }
+                },
             }
         }));
     }
