@@ -80,19 +80,35 @@ pub type Package = Idx<PackageData>;
 
 pub type Target = Idx<TargetData>;
 
+/// Information associated with a cargo crate
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct PackageData {
+    /// Version given in the `Cargo.toml`
     pub version: String,
+    /// Name as given in the `Cargo.toml`
     pub name: String,
+    /// Path containing the `Cargo.toml`
     pub manifest: AbsPathBuf,
+    /// Targets provided by the crate (lib, bin, example, test, ...)
     pub targets: Vec<Target>,
+    /// Is this package a member of the current workspace
     pub is_member: bool,
+    /// List of packages this package depends on
     pub dependencies: Vec<PackageDependency>,
+    /// Rust edition for this package
     pub edition: Edition,
+    /// List of features to activate
     pub features: Vec<String>,
+    /// List of config flags defined by this package's build script
     pub cfgs: Vec<CfgFlag>,
+    /// List of cargo-related environment variables with their value
+    ///
+    /// If the package has a build script which defines environment variables,
+    /// they can also be found here.
     pub envs: Vec<(String, String)>,
+    /// Directory where a build script might place its output
     pub out_dir: Option<AbsPathBuf>,
+    /// Path to the proc-macro library file if this package exposes proc-macros
     pub proc_macro_dylib_path: Option<AbsPathBuf>,
 }
 
