@@ -1,14 +1,28 @@
 mod generated;
 
 use hir::Semantics;
-use ide_db::base_db::{fixture::WithFixture, FileId, FileRange, SourceDatabaseExt};
-use ide_db::source_change::FileSystemEdit;
-use ide_db::RootDatabase;
+use ide_db::{
+    base_db::{fixture::WithFixture, FileId, FileRange, SourceDatabaseExt},
+    helpers::{insert_use::MergeBehavior, SnippetCap},
+    source_change::FileSystemEdit,
+    RootDatabase,
+};
 use syntax::TextRange;
 use test_utils::{assert_eq_text, extract_offset, extract_range};
 
-use crate::{handlers::Handler, Assist, AssistConfig, AssistContext, AssistKind, Assists};
+use crate::{
+    handlers::Handler, Assist, AssistConfig, AssistContext, AssistKind, Assists, InsertUseConfig,
+};
 use stdx::{format_to, trim_indent};
+
+pub(crate) const TEST_CONFIG: AssistConfig = AssistConfig {
+    snippet_cap: SnippetCap::new(true),
+    allowed: None,
+    insert_use: InsertUseConfig {
+        merge: Some(MergeBehavior::Full),
+        prefix_kind: hir::PrefixKind::Plain,
+    },
+};
 
 pub(crate) fn with_single_file(text: &str) -> (RootDatabase, FileId) {
     RootDatabase::with_single_file(text)
@@ -48,14 +62,14 @@ fn check_doc_test(assist_id: &str, before: &str, after: &str) {
     let before = db.file_text(file_id).to_string();
     let frange = FileRange { file_id, range: selection.into() };
 
-    let assist = Assist::get(&db, &AssistConfig::default(), true, frange)
+    let assist = Assist::get(&db, &TEST_CONFIG, true, frange)
         .into_iter()
         .find(|assist| assist.id.0 == assist_id)
         .unwrap_or_else(|| {
             panic!(
                 "\n\nAssist is not applicable: {}\nAvailable assists: {}",
                 assist_id,
-                Assist::get(&db, &AssistConfig::default(), false, frange)
+                Assist::get(&db, &TEST_CONFIG, false, frange)
                     .into_iter()
                     .map(|assist| assist.id.0)
                     .collect::<Vec<_>>()
@@ -89,7 +103,7 @@ fn check(handler: Handler, before: &str, expected: ExpectedResult, assist_label:
     let frange = FileRange { file_id: file_with_caret_id, range: range_or_offset.into() };
 
     let sema = Semantics::new(&db);
-    let config = AssistConfig::default();
+    let config = TEST_CONFIG;
     let ctx = AssistContext::new(sema, &config, frange);
     let mut acc = Assists::new(&ctx, true);
     handler(&mut acc, &ctx);
@@ -156,7 +170,7 @@ fn assist_order_field_struct() {
     let (before_cursor_pos, before) = extract_offset(before);
     let (db, file_id) = with_single_file(&before);
     let frange = FileRange { file_id, range: TextRange::empty(before_cursor_pos) };
-    let assists = Assist::get(&db, &AssistConfig::default(), false, frange);
+    let assists = Assist::get(&db, &TEST_CONFIG, false, frange);
     let mut assists = assists.iter();
 
     assert_eq!(assists.next().expect("expected assist").label, "Change visibility to pub(crate)");
@@ -176,7 +190,7 @@ fn assist_order_if_expr() {
     let (range, before) = extract_range(before);
     let (db, file_id) = with_single_file(&before);
     let frange = FileRange { file_id, range };
-    let assists = Assist::get(&db, &AssistConfig::default(), false, frange);
+    let assists = Assist::get(&db, &TEST_CONFIG, false, frange);
     let mut assists = assists.iter();
 
     assert_eq!(assists.next().expect("expected assist").label, "Extract into variable");
@@ -198,7 +212,7 @@ fn assist_filter_works() {
     let frange = FileRange { file_id, range };
 
     {
-        let mut cfg = AssistConfig::default();
+        let mut cfg = TEST_CONFIG;
         cfg.allowed = Some(vec![AssistKind::Refactor]);
 
         let assists = Assist::get(&db, &cfg, false, frange);
@@ -209,7 +223,7 @@ fn assist_filter_works() {
     }
 
     {
-        let mut cfg = AssistConfig::default();
+        let mut cfg = TEST_CONFIG;
         cfg.allowed = Some(vec![AssistKind::RefactorExtract]);
         let assists = Assist::get(&db, &cfg, false, frange);
         assert_eq!(assists.len(), 1);
@@ -219,7 +233,7 @@ fn assist_filter_works() {
     }
 
     {
-        let mut cfg = AssistConfig::default();
+        let mut cfg = TEST_CONFIG;
         cfg.allowed = Some(vec![AssistKind::QuickFix]);
         let assists = Assist::get(&db, &cfg, false, frange);
         assert!(assists.is_empty(), "All asserts but quickfixes should be filtered out");

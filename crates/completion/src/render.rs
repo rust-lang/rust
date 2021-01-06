@@ -11,13 +11,13 @@ pub(crate) mod type_alias;
 mod builder_ext;
 
 use hir::{Documentation, HasAttrs, HirDisplay, Mutability, ScopeDef, Type};
-use ide_db::RootDatabase;
+use ide_db::{helpers::SnippetCap, RootDatabase};
 use syntax::TextRange;
 use test_utils::mark;
 
 use crate::{
-    config::SnippetCap, item::ImportEdit, CompletionContext, CompletionItem, CompletionItemKind,
-    CompletionKind, CompletionScore,
+    item::ImportEdit, CompletionContext, CompletionItem, CompletionItemKind, CompletionKind,
+    CompletionScore,
 };
 
 use crate::render::{enum_variant::render_variant, function::render_fn, macro_::render_macro};
@@ -320,8 +320,8 @@ mod tests {
     use test_utils::mark;
 
     use crate::{
-        test_utils::{check_edit, do_completion, get_all_items},
-        CompletionConfig, CompletionKind, CompletionScore,
+        test_utils::{check_edit, do_completion, get_all_items, TEST_CONFIG},
+        CompletionKind, CompletionScore,
     };
 
     fn check(ra_fixture: &str, expect: Expect) {
@@ -338,7 +338,7 @@ mod tests {
             }
         }
 
-        let mut completions = get_all_items(CompletionConfig::default(), ra_fixture);
+        let mut completions = get_all_items(TEST_CONFIG, ra_fixture);
         completions.sort_by_key(|it| (Reverse(it.score()), it.label().to_string()));
         let actual = completions
             .into_iter()

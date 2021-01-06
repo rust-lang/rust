@@ -1,8 +1,10 @@
 //! This file provides snippet completions, like `pd` => `eprintln!(...)`.
 
+use ide_db::helpers::SnippetCap;
+
 use crate::{
-    config::SnippetCap, item::Builder, CompletionContext, CompletionItem, CompletionItemKind,
-    CompletionKind, Completions,
+    item::Builder, CompletionContext, CompletionItem, CompletionItemKind, CompletionKind,
+    Completions,
 };
 
 fn snippet(ctx: &CompletionContext, cap: SnippetCap, label: &str, snippet: &str) -> Builder {

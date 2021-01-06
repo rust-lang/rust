@@ -113,7 +113,7 @@ mod tests {
     use test_utils::mark;
 
     use crate::{
-        test_utils::{check_edit, check_edit_with_config},
+        test_utils::{check_edit, check_edit_with_config, TEST_CONFIG},
         CompletionConfig,
     };
 
@@ -211,7 +211,7 @@ fn main() { S::foo(${1:&self})$0 }
     fn suppress_arg_snippets() {
         mark::check!(suppress_arg_snippets);
         check_edit_with_config(
-            CompletionConfig { add_call_argument_snippets: false, ..CompletionConfig::default() },
+            CompletionConfig { add_call_argument_snippets: false, ..TEST_CONFIG },
             "with_args",
             r#"
 fn with_args(x: i32, y: String) {}

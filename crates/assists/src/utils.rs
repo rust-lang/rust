@@ -4,7 +4,7 @@ pub(crate) mod import_assets;
 use std::ops;
 
 use hir::HasSource;
-use ide_db::RootDatabase;
+use ide_db::{helpers::SnippetCap, RootDatabase};
 use itertools::Itertools;
 use syntax::{
     ast::edit::AstNodeEdit,
@@ -16,10 +16,7 @@ use syntax::{
     SyntaxNode, TextSize, T,
 };
 
-use crate::{
-    assist_config::SnippetCap,
-    ast_transform::{self, AstTransform, QualifyPaths, SubstituteTypeParams},
-};
+use crate::ast_transform::{self, AstTransform, QualifyPaths, SubstituteTypeParams};
 
 pub(crate) fn unwrap_trivial_block(block: ast::BlockExpr) -> ast::Expr {
     extract_trivial_expression(&block)

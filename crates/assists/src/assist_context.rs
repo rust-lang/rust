@@ -4,7 +4,10 @@ use std::mem;
 
 use algo::find_covering_element;
 use hir::Semantics;
-use ide_db::base_db::{AnchoredPathBuf, FileId, FileRange};
+use ide_db::{
+    base_db::{AnchoredPathBuf, FileId, FileRange},
+    helpers::SnippetCap,
+};
 use ide_db::{
     label::Label,
     source_change::{FileSystemEdit, SourceChange, SourceFileEdit},
@@ -17,10 +20,7 @@ use syntax::{
 };
 use text_edit::{TextEdit, TextEditBuilder};
 
-use crate::{
-    assist_config::{AssistConfig, SnippetCap},
-    Assist, AssistId, AssistKind, GroupLabel,
-};
+use crate::{assist_config::AssistConfig, Assist, AssistId, AssistKind, GroupLabel};
 
 /// `AssistContext` allows to apply an assist or check if it could be applied.
 ///

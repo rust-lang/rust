@@ -158,8 +158,7 @@ pub fn resolve_completion_edits(
 
 #[cfg(test)]
 mod tests {
-    use crate::config::CompletionConfig;
-    use crate::test_utils;
+    use crate::test_utils::{self, TEST_CONFIG};
 
     struct DetailAndDocumentation<'a> {
         detail: &'a str,
@@ -168,7 +167,7 @@ mod tests {
 
     fn check_detail_and_documentation(ra_fixture: &str, expected: DetailAndDocumentation) {
         let (db, position) = test_utils::position(ra_fixture);
-        let config = CompletionConfig::default();
+        let config = TEST_CONFIG;
         let completions: Vec<_> = crate::completions(&db, &config, position).unwrap().into();
         for item in completions {
             if item.detail() == Some(expected.detail) {
@@ -183,7 +182,7 @@ mod tests {
 
     fn check_no_completion(ra_fixture: &str) {
         let (db, position) = test_utils::position(ra_fixture);
-        let config = CompletionConfig::default();
+        let config = TEST_CONFIG;
 
         let completions: Option<Vec<String>> = crate::completions(&db, &config, position)
             .and_then(|completions| {

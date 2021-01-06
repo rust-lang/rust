@@ -24,7 +24,7 @@ use syntax::TextRange;
 
 pub(crate) use crate::assist_context::{AssistContext, Assists};
 
-pub use assist_config::AssistConfig;
+pub use assist_config::{AssistConfig, InsertUseConfig};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AssistKind {

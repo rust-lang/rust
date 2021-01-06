@@ -1,14 +1,26 @@
 //! Runs completion for testing purposes.
 
 use hir::Semantics;
-use ide_db::base_db::{fixture::ChangeFixture, FileLoader, FilePosition};
-use ide_db::RootDatabase;
+use ide_db::{
+    base_db::{fixture::ChangeFixture, FileLoader, FilePosition},
+    helpers::{insert_use::MergeBehavior, SnippetCap},
+    RootDatabase,
+};
 use itertools::Itertools;
 use stdx::{format_to, trim_indent};
 use syntax::{AstNode, NodeOrToken, SyntaxElement};
 use test_utils::{assert_eq_text, RangeOrOffset};
 
 use crate::{item::CompletionKind, CompletionConfig, CompletionItem};
+
+pub(crate) const TEST_CONFIG: CompletionConfig = CompletionConfig {
+    enable_postfix_completions: true,
+    enable_autoimport_completions: true,
+    add_call_parenthesis: true,
+    add_call_argument_snippets: true,
+    snippet_cap: SnippetCap::new(true),
+    merge: Some(MergeBehavior::Full),
+};
 
 /// Creates analysis from a multi-file fixture, returns positions marked with <|>.
 pub(crate) fn position(ra_fixture: &str) -> (RootDatabase, FilePosition) {
@@ -24,7 +36,7 @@ pub(crate) fn position(ra_fixture: &str) -> (RootDatabase, FilePosition) {
 }
 
 pub(crate) fn do_completion(code: &str, kind: CompletionKind) -> Vec<CompletionItem> {
-    do_completion_with_config(CompletionConfig::default(), code, kind)
+    do_completion_with_config(TEST_CONFIG, code, kind)
 }
 
 pub(crate) fn do_completion_with_config(
@@ -39,7 +51,7 @@ pub(crate) fn do_completion_with_config(
 }
 
 pub(crate) fn completion_list(code: &str, kind: CompletionKind) -> String {
-    completion_list_with_config(CompletionConfig::default(), code, kind)
+    completion_list_with_config(TEST_CONFIG, code, kind)
 }
 
 pub(crate) fn completion_list_with_config(
@@ -76,7 +88,7 @@ fn monospace_width(s: &str) -> usize {
 }
 
 pub(crate) fn check_edit(what: &str, ra_fixture_before: &str, ra_fixture_after: &str) {
-    check_edit_with_config(CompletionConfig::default(), what, ra_fixture_before, ra_fixture_after)
+    check_edit_with_config(TEST_CONFIG, what, ra_fixture_before, ra_fixture_after)
 }
 
 pub(crate) fn check_edit_with_config(

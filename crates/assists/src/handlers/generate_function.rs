@@ -1,5 +1,5 @@
 use hir::HirDisplay;
-use ide_db::base_db::FileId;
+use ide_db::{base_db::FileId, helpers::SnippetCap};
 use rustc_hash::{FxHashMap, FxHashSet};
 use syntax::{
     ast::{
@@ -11,7 +11,6 @@ use syntax::{
 };
 
 use crate::{
-    assist_config::SnippetCap,
     utils::{render_snippet, Cursor},
     AssistContext, AssistId, AssistKind, Assists,
 };
