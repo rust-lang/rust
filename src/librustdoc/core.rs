@@ -123,7 +123,7 @@ impl<'tcx> DocContext<'tcx> {
     /// Create a new "fake" [`DefId`].
     ///
     /// This is an ugly hack, but it's the simplest way to handle synthetic impls without greatly
-    /// refactoring either `librustdoc` or [`rustc_middle`]. In particular, allowing new [`DefId`]s
+    /// refactoring either rustdoc or [`rustc_middle`]. In particular, allowing new [`DefId`]s
     /// to be registered after the AST is constructed would require storing the [`DefId`] mapping
     /// in a [`RefCell`], decreasing the performance for normal compilation for very little gain.
     ///
