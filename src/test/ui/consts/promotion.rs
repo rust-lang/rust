@@ -30,6 +30,9 @@ fn main() {
     baz_i32(&(1/1));
     baz_i32(&(1%1));
 
+    // in-bounds array access is okay
+    baz_i32(&([1,2,3][0] + 1));
+
     // Top-level projections do not get promoted, so no error here.
     if false {
         #[allow(unconditional_panic)]

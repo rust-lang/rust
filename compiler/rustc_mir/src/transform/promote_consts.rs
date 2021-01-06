@@ -415,10 +415,11 @@ impl<'tcx> Validator<'_, 'tcx> {
     // FIXME(eddyb) maybe cache this?
     fn validate_local(&self, local: Local) -> Result<(), Unpromotable> {
         if let TempState::Defined { location: loc, .. } = self.temps[local] {
-            let num_stmts = self.body[loc.block].statements.len();
+            let block = &self.body[loc.block];
+            let num_stmts = block.statements.len();
 
             if loc.statement_index < num_stmts {
-                let statement = &self.body[loc.block].statements[loc.statement_index];
+                let statement = &block.statements[loc.statement_index];
                 match &statement.kind {
                     StatementKind::Assign(box (_, rhs)) => self.validate_rvalue(rhs),
                     _ => {
@@ -430,7 +431,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                     }
                 }
             } else {
-                let terminator = self.body[loc.block].terminator();
+                let terminator = block.terminator();
                 match &terminator.kind {
                     TerminatorKind::Call { func, args, .. } => self.validate_call(func, args),
                     TerminatorKind::Yield { .. } => Err(Unpromotable),
@@ -452,22 +453,15 @@ impl<'tcx> Validator<'_, 'tcx> {
                 match elem {
                     ProjectionElem::Deref => {
                         let mut promotable = false;
-                        // The `is_empty` predicate is introduced to exclude the case
-                        // where the projection operations are [ .field, * ].
-                        // The reason is because promotion will be illegal if field
-                        // accesses precede the dereferencing.
+                        // We need to make sure this is a `Deref` of a local with no further projections.
                         // Discussion can be found at
                         // https://github.com/rust-lang/rust/pull/74945#discussion_r463063247
-                        // There may be opportunity for generalization, but this needs to be
-                        // accounted for.
-                        if place_base.projection.is_empty() {
+                        if let Some(local) = place_base.as_local() {
                             // This is a special treatment for cases like *&STATIC where STATIC is a
                             // global static variable.
                             // This pattern is generated only when global static variables are directly
                             // accessed and is qualified for promotion safely.
-                            if let TempState::Defined { location, .. } =
-                                self.temps[place_base.local]
-                            {
+                            if let TempState::Defined { location, .. } = self.temps[local] {
                                 let def_stmt = self.body[location.block]
                                     .statements
                                     .get(location.statement_index);
@@ -505,9 +499,49 @@ impl<'tcx> Validator<'_, 'tcx> {
                     ProjectionElem::ConstantIndex { .. } | ProjectionElem::Subslice { .. } => {}
 
                     ProjectionElem::Index(local) => {
-                        // This could be OOB, so reject for implicit promotion.
                         if !self.explicit {
-                            return Err(Unpromotable);
+                            let mut promotable = false;
+                            // Only accept if we can predict the index and are indexing an array.
+                            let val = if let TempState::Defined { location: loc, .. } =
+                                self.temps[local]
+                            {
+                                let block = &self.body[loc.block];
+                                if loc.statement_index < block.statements.len() {
+                                    let statement = &block.statements[loc.statement_index];
+                                    match &statement.kind {
+                                        StatementKind::Assign(box (
+                                            _,
+                                            Rvalue::Use(Operand::Constant(c)),
+                                        )) => c.literal.try_eval_usize(self.tcx, self.param_env),
+                                        _ => None,
+                                    }
+                                } else {
+                                    None
+                                }
+                            } else {
+                                None
+                            };
+                            if let Some(idx) = val {
+                                // Determine the type of the thing we are indexing.
+                                let ty = place_base.ty(self.body, self.tcx).ty;
+                                match ty.kind() {
+                                    ty::Array(_, len) => {
+                                        // It's an array; determine its length.
+                                        if let Some(len) =
+                                            len.try_eval_usize(self.tcx, self.param_env)
+                                        {
+                                            // If the index is in-bounds, go ahead.
+                                            if idx < len {
+                                                promotable = true;
+                                            }
+                                        }
+                                    }
+                                    _ => {}
+                                }
+                            }
+                            if !promotable {
+                                return Err(Unpromotable);
+                            }
                         }
                         self.validate_local(local)?;
                     }
