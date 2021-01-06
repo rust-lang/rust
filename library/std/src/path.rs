@@ -2330,7 +2330,7 @@ impl Path {
     #[stable(feature = "path_ext", since = "1.5.0")]
     #[rustc_deprecated(
         since = "1.51.0",
-        reason = "the `std::fs::symlink_metadata` function is now preferred",
+        reason = "use `std::fs::symlink_metadata` instead",
         suggestion = "std::fs::symlink_metadata"
     )]
     pub fn symlink_metadata(&self) -> io::Result<fs::Metadata> {
@@ -2353,7 +2353,7 @@ impl Path {
     #[stable(feature = "path_ext", since = "1.5.0")]
     #[rustc_deprecated(
         since = "1.51.0",
-        reason = "the `std::fs::canonicalize` function is now preferred",
+        reason = "use `std::fs::canonicalize` instead",
         suggestion = "std::fs::canonicalize"
     )]
     pub fn canonicalize(&self) -> io::Result<PathBuf> {
@@ -2375,7 +2375,7 @@ impl Path {
     #[stable(feature = "path_ext", since = "1.5.0")]
     #[rustc_deprecated(
         since = "1.51.0",
-        reason = "the `std::fs::read_link` function is now preferred",
+        reason = "use `std::fs::read_link` instead",
         suggestion = "std::fs::read_link"
     )]
     pub fn read_link(&self) -> io::Result<PathBuf> {
@@ -2404,7 +2404,7 @@ impl Path {
     #[stable(feature = "path_ext", since = "1.5.0")]
     #[rustc_deprecated(
         since = "1.51.0",
-        reason = "the `std::fs::read_dir` function is now preferred",
+        reason = "use `std::fs::read_dir` instead",
         suggestion = "std::fs::read_dir"
     )]
     pub fn read_dir(&self) -> io::Result<fs::ReadDir> {
