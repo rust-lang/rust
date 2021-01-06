@@ -1648,7 +1648,7 @@ struct WeakInner<'a> {
     strong: &'a atomic::AtomicUsize,
 }
 
-impl<T> Weak<T> {
+impl<T: ?Sized> Weak<T> {
     /// Returns a raw pointer to the object `T` pointed to by this `Weak<T>`.
     ///
     /// The pointer is valid only if there are some strong references. The pointer may be dangling,
@@ -1678,15 +1678,17 @@ impl<T> Weak<T> {
     pub fn as_ptr(&self) -> *const T {
         let ptr: *mut ArcInner<T> = NonNull::as_ptr(self.ptr);
 
-        // SAFETY: we must offset the pointer manually, and said pointer may be
-        // a dangling weak (usize::MAX) if T is sized. data_offset is safe to call,
-        // because we know that a pointer to unsized T was derived from a real
-        // unsized T, as dangling weaks are only created for sized T. wrapping_offset
-        // is used so that we can use the same code path for the non-dangling
-        // unsized case and the potentially dangling sized case.
-        unsafe {
-            let offset = data_offset(ptr as *mut T);
-            set_data_ptr(ptr as *mut T, (ptr as *mut u8).wrapping_offset(offset))
+        if is_dangling(self.ptr) {
+            // If the pointer is dangling, we return a null pointer as the dangling sentinel.
+            // We can't return the usize::MAX sentinel, as that could valid if T is ZST.
+            // SAFETY: we have to return a known sentinel here that cannot be produced for
+            // a valid pointer, so that `from_raw` can reverse this transformation.
+            (ptr as *mut T).set_ptr_value(ptr::null_mut())
+        } else {
+            // SAFETY: If the pointer is not dangling, it describes to a valid allocation.
+            // The payload may be dropped at this point, and we have to maintain provenance,
+            // so use raw pointer manipulation.
+            unsafe { &raw mut (*ptr).data }
         }
     }
 
@@ -1768,18 +1770,23 @@ impl<T> Weak<T> {
     /// [`forget`]: std::mem::forget
     #[stable(feature = "weak_into_raw", since = "1.45.0")]
     pub unsafe fn from_raw(ptr: *const T) -> Self {
-        // SAFETY: data_offset is safe to call, because this pointer originates from a Weak.
         // See Weak::as_ptr for context on how the input pointer is derived.
-        let offset = unsafe { data_offset(ptr) };
 
-        // Reverse the offset to find the original ArcInner.
-        // SAFETY: we use wrapping_offset here because the pointer may be dangling (but only if T: Sized)
-        let ptr = unsafe {
-            set_data_ptr(ptr as *mut ArcInner<T>, (ptr as *mut u8).wrapping_offset(-offset))
+        let ptr = if ptr.is_null() {
+            // If we get a null pointer, this is a dangling weak.
+            // SAFETY: this is the same sentinel as used in Weak::new and is_dangling
+            (ptr as *mut ArcInner<T>).set_ptr_value(usize::MAX as *mut _)
+        } else {
+            // Otherwise, this describes a real allocation.
+            // SAFETY: data_offset is safe to call, as ptr describes a real allocation.
+            let offset = unsafe { data_offset(ptr) };
+            // Thus, we reverse the offset to get the whole RcBox.
+            // SAFETY: the pointer originated from a Weak, so this offset is safe.
+            unsafe { (ptr as *mut ArcInner<T>).set_ptr_value((ptr as *mut u8).offset(-offset)) }
         };
 
         // SAFETY: we now have recovered the original Weak pointer, so can create the Weak.
-        unsafe { Weak { ptr: NonNull::new_unchecked(ptr) } }
+        Weak { ptr: unsafe { NonNull::new_unchecked(ptr) } }
     }
 }
 
