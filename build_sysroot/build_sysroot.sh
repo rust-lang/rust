@@ -12,6 +12,7 @@ dir=$(pwd)
 # build scripts are still compiled using cg_llvm.
 export RUSTC=$dir"/bin/cg_clif_build_sysroot"
 export RUSTFLAGS=$RUSTFLAGS" --clif"
+export CG_CLIF_DISPLAY_CG_TIME=1
 
 cd "$(dirname "$0")"
 

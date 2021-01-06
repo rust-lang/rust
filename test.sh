@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-export RUSTFLAGS="-Zrun_dsymutil=no"
+export CG_CLIF_DISPLAY_CG_TIME=1
 
 ./build.sh --without-sysroot "$@"
 

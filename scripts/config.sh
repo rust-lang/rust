@@ -56,4 +56,3 @@ fi
 export LD_LIBRARY_PATH="$(rustc --print sysroot)/lib"
 export DYLD_LIBRARY_PATH=$LD_LIBRARY_PATH
 
-export CG_CLIF_DISPLAY_CG_TIME=1
