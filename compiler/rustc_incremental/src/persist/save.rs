@@ -5,8 +5,8 @@ use rustc_middle::ty::TyCtxt;
 use rustc_serialize::opaque::Encoder;
 use rustc_serialize::Encodable as RustcEncodable;
 use rustc_session::Session;
-use std::fs;
 use std::path::PathBuf;
+use std::{fs, io};
 
 use super::data::*;
 use super::dirty_clean;
@@ -73,11 +73,9 @@ pub fn save_work_product_index(
     for (id, wp) in previous_work_products.iter() {
         if !new_work_products.contains_key(id) {
             work_product::delete_workproduct_files(sess, wp);
-            debug_assert!(
-                wp.saved_file.as_ref().map_or(true, |file_name| {
-                    !in_incr_comp_dir_sess(sess, &file_name).exists()
-                })
-            );
+            debug_assert!(wp.saved_file.as_ref().map_or(true, |file_name| {
+                fs::metadata(in_incr_comp_dir_sess(sess, &file_name)).is_err()
+            }));
         }
     }
 
@@ -87,7 +85,7 @@ pub fn save_work_product_index(
             .iter()
             .flat_map(|(_, wp)| wp.saved_file.iter())
             .map(|name| in_incr_comp_dir_sess(sess, name))
-            .all(|path| path.exists())
+            .all(|path| fs::metadata(path).is_ok())
     });
 }
 
@@ -101,19 +99,18 @@ where
     // Note: It's important that we actually delete the old file and not just
     // truncate and overwrite it, since it might be a shared hard-link, the
     // underlying data of which we don't want to modify
-    if path_buf.exists() {
-        match fs::remove_file(&path_buf) {
-            Ok(()) => {
-                debug!("save: remove old file");
-            }
-            Err(err) => {
-                sess.err(&format!(
-                    "unable to delete old dep-graph at `{}`: {}",
-                    path_buf.display(),
-                    err
-                ));
-                return;
-            }
+    match fs::remove_file(&path_buf) {
+        Ok(()) => {
+            debug!("save: remove old file");
+        }
+        Err(err) if err.kind() == io::ErrorKind::NotFound => (),
+        Err(err) => {
+            sess.err(&format!(
+                "unable to delete old dep-graph at `{}`: {}",
+                path_buf.display(),
+                err
+            ));
+            return;
         }
     }
 

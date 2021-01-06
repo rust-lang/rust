@@ -1,4 +1,5 @@
 use std::env;
+use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -205,7 +206,7 @@ fn main() {
             stripped
         } else if let Some(stripped) = lib.strip_prefix('-') {
             stripped
-        } else if Path::new(lib).exists() {
+        } else if fs::metadata(Path::new(lib)).is_ok() {
             // On MSVC llvm-config will print the full name to libraries, but
             // we're only interested in the name part
             let name = Path::new(lib).file_name().unwrap().to_str().unwrap();

@@ -205,7 +205,7 @@ pub fn prepare_session_directory(
     // because, on windows, long paths can cause problems;
     // canonicalization inserts this weird prefix that makes windows
     // tolerate long paths.
-    let crate_dir = match crate_dir.canonicalize() {
+    let crate_dir = match std_fs::canonicalize(&crate_dir) {
         Ok(v) => v,
         Err(err) => {
             sess.err(&format!(
@@ -387,7 +387,7 @@ pub fn finalize_session_directory(sess: &Session, svh: Svh) {
 }
 
 pub fn delete_all_session_dir_contents(sess: &Session) -> io::Result<()> {
-    let sess_dir_iterator = sess.incr_comp_session_dir().read_dir()?;
+    let sess_dir_iterator = std_fs::read_dir(&*sess.incr_comp_session_dir())?;
     for entry in sess_dir_iterator {
         let entry = entry?;
         safe_remove_file(&entry.path())?
@@ -412,7 +412,7 @@ fn copy_files(sess: &Session, target_dir: &Path, source_dir: &Path) -> Result<bo
         return Err(());
     };
 
-    let source_dir_iterator = match source_dir.read_dir() {
+    let source_dir_iterator = match std_fs::read_dir(source_dir) {
         Ok(it) => it,
         Err(_) => return Err(()),
     };
@@ -534,8 +534,7 @@ fn find_source_directory(
     crate_dir: &Path,
     source_directories_already_tried: &FxHashSet<PathBuf>,
 ) -> Option<PathBuf> {
-    let iter = crate_dir
-        .read_dir()
+    let iter = std_fs::read_dir(crate_dir)
         .unwrap() // FIXME
         .filter_map(|e| e.ok().map(|e| e.path()));
 
@@ -670,7 +669,7 @@ pub fn garbage_collect_session_directories(sess: &Session) -> io::Result<()> {
     let mut session_directories = FxHashSet::default();
     let mut lock_files = FxHashSet::default();
 
-    for dir_entry in crate_directory.read_dir()? {
+    for dir_entry in std_fs::read_dir(crate_directory)? {
         let dir_entry = match dir_entry {
             Ok(dir_entry) => dir_entry,
             _ => {
@@ -922,22 +921,24 @@ fn all_except_most_recent(
 /// before passing it to std::fs::remove_dir_all(). This will convert the path
 /// into the '\\?\' format, which supports much longer paths.
 fn safe_remove_dir_all(p: &Path) -> io::Result<()> {
-    if p.exists() {
-        let canonicalized = p.canonicalize()?;
-        std_fs::remove_dir_all(canonicalized)
-    } else {
-        Ok(())
-    }
+    let canonicalized = match std_fs::canonicalize(p) {
+        Ok(canonicalized) => canonicalized,
+        Err(err) if err.kind() == io::ErrorKind::NotFound => return Ok(()),
+        Err(err) => return Err(err),
+    };
+
+    std_fs::remove_dir_all(canonicalized)
 }
 
 fn safe_remove_file(p: &Path) -> io::Result<()> {
-    if p.exists() {
-        let canonicalized = p.canonicalize()?;
-        match std_fs::remove_file(canonicalized) {
-            Err(ref err) if err.kind() == io::ErrorKind::NotFound => Ok(()),
-            result => result,
-        }
-    } else {
-        Ok(())
+    let canonicalized = match std_fs::canonicalize(p) {
+        Ok(canonicalized) => canonicalized,
+        Err(err) if err.kind() == io::ErrorKind::NotFound => return Ok(()),
+        Err(err) => return Err(err),
+    };
+
+    match std_fs::remove_file(canonicalized) {
+        Err(err) if err.kind() == io::ErrorKind::NotFound => Ok(()),
+        result => result,
     }
 }

@@ -33,6 +33,7 @@ use rustc_target::spec::{Target, TargetTriple, TlsModel};
 use std::cell::{self, RefCell};
 use std::env;
 use std::fmt;
+use std::fs;
 use std::io::Write;
 use std::num::NonZeroU32;
 use std::ops::{Div, Mul};
@@ -1384,7 +1385,7 @@ pub fn build_session(
     let real_rust_source_base_dir = {
         // This is the location used by the `rust-src` `rustup` component.
         let mut candidate = sysroot.join("lib/rustlib/src/rust");
-        if let Ok(metadata) = candidate.symlink_metadata() {
+        if let Ok(metadata) = fs::symlink_metadata(&candidate) {
             // Replace the symlink rustbuild creates, with its destination.
             // We could try to use `fs::canonicalize` instead, but that might
             // produce unnecessarily verbose path.
@@ -1396,7 +1397,14 @@ pub fn build_session(
         }
 
         // Only use this directory if it has a file we can expect to always find.
-        if candidate.join("library/std/src/lib.rs").is_file() { Some(candidate) } else { None }
+        if fs::metadata(candidate.join("library/std/src/lib.rs"))
+            .map(|m| m.is_file())
+            .unwrap_or(false)
+        {
+            Some(candidate)
+        } else {
+            None
+        }
     };
 
     let asm_arch =
@@ -1477,7 +1485,7 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
     // Make sure that any given profiling data actually exists so LLVM can't
     // decide to silently skip PGO.
     if let Some(ref path) = sess.opts.cg.profile_use {
-        if !path.exists() {
+        if fs::metadata(path).is_err() {
             sess.err(&format!(
                 "File `{}` passed to `-C profile-use` does not exist.",
                 path.display()

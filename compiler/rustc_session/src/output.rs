@@ -4,6 +4,7 @@ use crate::Session;
 use rustc_ast as ast;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
+use std::fs;
 use std::path::{Path, PathBuf};
 
 pub fn out_filename(
@@ -39,7 +40,7 @@ pub fn check_file_is_writeable(file: &Path, sess: &Session) {
 }
 
 fn is_writeable(p: &Path) -> bool {
-    match p.metadata() {
+    match fs::metadata(p) {
         Err(..) => true,
         Ok(m) => !m.permissions().readonly(),
     }

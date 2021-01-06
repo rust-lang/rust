@@ -146,8 +146,7 @@ pub fn output(cmd: &mut Command) -> String {
 }
 
 pub fn rerun_if_changed_anything_in_dir(dir: &Path) {
-    let mut stack = dir
-        .read_dir()
+    let mut stack = fs::read_dir(dir)
         .unwrap()
         .map(|e| e.unwrap())
         .filter(|e| &*e.file_name() != ".git")
@@ -155,7 +154,7 @@ pub fn rerun_if_changed_anything_in_dir(dir: &Path) {
     while let Some(entry) = stack.pop() {
         let path = entry.path();
         if entry.file_type().unwrap().is_dir() {
-            stack.extend(path.read_dir().unwrap().map(|e| e.unwrap()));
+            stack.extend(fs::read_dir(path).unwrap().map(|e| e.unwrap()));
         } else {
             println!("cargo:rerun-if-changed={}", path.display());
         }
@@ -172,7 +171,7 @@ pub fn mtime(path: &Path) -> SystemTime {
 ///
 /// Uses last-modified time checks to verify this.
 pub fn up_to_date(src: &Path, dst: &Path) -> bool {
-    if !dst.exists() {
+    if fs::metadata(dst).is_err() {
         return false;
     }
     let threshold = mtime(dst);

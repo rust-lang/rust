@@ -25,6 +25,7 @@ use rustc_span::symbol::{sym, Symbol};
 use smallvec::SmallVec;
 use std::env;
 use std::env::consts::{DLL_PREFIX, DLL_SUFFIX};
+use std::fs;
 use std::io;
 use std::lazy::SyncOnceCell;
 use std::mem;
@@ -269,14 +270,14 @@ fn get_rustc_path_inner(bin_path: &str) -> Option<PathBuf> {
         } else {
             "rustc"
         });
-        candidate.exists().then_some(candidate)
+        fs::metadata(&candidate).is_ok().then_some(candidate)
     })
 }
 
 fn sysroot_candidates() -> Vec<PathBuf> {
     let target = session::config::host_triple();
     let mut sysroot_candidates = vec![filesearch::get_or_default_sysroot()];
-    let path = current_dll_path().and_then(|s| s.canonicalize().ok());
+    let path = current_dll_path().and_then(|s| fs::canonicalize(s).ok());
     if let Some(dll) = path {
         // use `parent` twice to chop off the file name and then also the
         // directory containing the dll which should be either `lib` or `bin`.
@@ -397,7 +398,7 @@ pub fn get_codegen_sysroot(backend_name: &str) -> fn() -> Box<dyn CodegenBackend
         })
         .find(|f| {
             info!("codegen backend candidate: {}", f.display());
-            f.exists()
+            fs::metadata(f).is_ok()
         });
     let sysroot = sysroot.unwrap_or_else(|| {
         let candidates = sysroot_candidates
@@ -414,7 +415,7 @@ pub fn get_codegen_sysroot(backend_name: &str) -> fn() -> Box<dyn CodegenBackend
     });
     info!("probing {} for a codegen backend", sysroot.display());
 
-    let d = sysroot.read_dir().unwrap_or_else(|e| {
+    let d = fs::read_dir(&sysroot).unwrap_or_else(|e| {
         let err = format!(
             "failed to load default codegen backend, couldn't \
                            read `{}`: {}",

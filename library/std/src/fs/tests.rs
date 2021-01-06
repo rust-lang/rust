@@ -397,10 +397,8 @@ fn file_test_stat_is_correct_on_is_file() {
         let fstat_res = check!(fs.metadata());
         assert!(fstat_res.is_file());
     }
-    let stat_res_fn = check!(fs::metadata(filename));
-    assert!(stat_res_fn.is_file());
-    let stat_res_meth = check!(filename.metadata());
-    assert!(stat_res_meth.is_file());
+    let stat_res = check!(fs::metadata(filename));
+    assert!(stat_res.is_file());
     check!(fs::remove_file(filename));
 }
 
@@ -409,10 +407,8 @@ fn file_test_stat_is_correct_on_is_dir() {
     let tmpdir = tmpdir();
     let filename = &tmpdir.join("file_stat_correct_on_is_dir");
     check!(fs::create_dir(filename));
-    let stat_res_fn = check!(fs::metadata(filename));
-    assert!(stat_res_fn.is_dir());
-    let stat_res_meth = check!(filename.metadata());
-    assert!(stat_res_meth.is_dir());
+    let stat_res = check!(fs::metadata(filename));
+    assert!(stat_res.is_dir());
     check!(fs::remove_dir(filename));
 }
 
@@ -421,7 +417,7 @@ fn file_test_fileinfo_false_when_checking_is_file_on_a_directory() {
     let tmpdir = tmpdir();
     let dir = &tmpdir.join("fileinfo_false_on_dir");
     check!(fs::create_dir(dir));
-    assert!(!dir.is_file());
+    assert!(!fs::metadata(dir).unwrap().is_file());
     check!(fs::remove_dir(dir));
 }
 
@@ -430,21 +426,20 @@ fn file_test_fileinfo_check_exists_before_and_after_file_creation() {
     let tmpdir = tmpdir();
     let file = &tmpdir.join("fileinfo_check_exists_b_and_a.txt");
     check!(check!(File::create(file)).write(b"foo"));
-    assert!(file.exists());
+    assert!(fs::metadata(file).is_ok());
     check!(fs::remove_file(file));
-    assert!(!file.exists());
+    assert!(fs::metadata(file).is_err());
 }
 
 #[test]
 fn file_test_directoryinfo_check_exists_before_and_after_mkdir() {
     let tmpdir = tmpdir();
     let dir = &tmpdir.join("before_and_after_dir");
-    assert!(!dir.exists());
+    assert!(fs::metadata(dir).is_err());
     check!(fs::create_dir(dir));
-    assert!(dir.exists());
-    assert!(dir.is_dir());
+    assert!(fs::metadata(dir).unwrap().is_dir());
     check!(fs::remove_dir(dir));
-    assert!(!dir.exists());
+    assert!(fs::metadata(dir).is_err());
 }
 
 #[test]
@@ -499,7 +494,7 @@ fn recursive_mkdir() {
     let tmpdir = tmpdir();
     let dir = tmpdir.join("d1/d2");
     check!(fs::create_dir_all(&dir));
-    assert!(dir.is_dir())
+    assert!(fs::metadata(dir).unwrap().is_dir());
 }
 
 #[test]
@@ -567,8 +562,8 @@ fn recursive_rmdir() {
     let _ = symlink_file(&canary, &d1.join("canary"));
     check!(fs::remove_dir_all(&d1));
 
-    assert!(!d1.is_dir());
-    assert!(canary.exists());
+    assert!(!fs::metadata(d1).unwrap().is_dir());
+    assert!(fs::metadata(canary).is_ok());
 }
 
 #[test]
@@ -583,8 +578,8 @@ fn recursive_rmdir_of_symlink() {
     check!(symlink_junction(&dir, &link));
     check!(fs::remove_dir_all(&link));
 
-    assert!(!link.is_dir());
-    assert!(canary.exists());
+    assert!(!fs::metadata(link).unwrap().is_dir());
+    assert!(fs::metadata(canary).is_ok());
 }
 
 #[test]
@@ -608,34 +603,33 @@ fn recursive_rmdir_of_file_symlink() {
 
 #[test]
 fn unicode_path_is_dir() {
-    assert!(Path::new(".").is_dir());
-    assert!(!Path::new("test/stdtest/fs.rs").is_dir());
+    assert!(fs::metadata(Path::new(".")).unwrap().is_dir());
+    assert!(!fs::metadata(Path::new("test/stdtest/fs.rs")).unwrap().is_dir());
 
     let tmpdir = tmpdir();
 
     let mut dirpath = tmpdir.path().to_path_buf();
     dirpath.push("test-가一ー你好");
     check!(fs::create_dir(&dirpath));
-    assert!(dirpath.is_dir());
+    assert!(fs::metadata(&dirpath).unwrap().is_dir());
 
     let mut filepath = dirpath;
     filepath.push("unicode-file-\u{ac00}\u{4e00}\u{30fc}\u{4f60}\u{597d}.rs");
     check!(File::create(&filepath)); // ignore return; touch only
-    assert!(!filepath.is_dir());
-    assert!(filepath.exists());
+    assert!(!fs::metadata(filepath).unwrap().is_dir());
 }
 
 #[test]
 fn unicode_path_exists() {
-    assert!(Path::new(".").exists());
-    assert!(!Path::new("test/nonexistent-bogus-path").exists());
+    assert!(fs::metadata(Path::new(".")).is_ok());
+    assert!(fs::metadata(Path::new("test/nonexistent-bogus-path")).is_err());
 
     let tmpdir = tmpdir();
     let unicode = tmpdir.path();
     let unicode = unicode.join("test-각丁ー再见");
     check!(fs::create_dir(&unicode));
-    assert!(unicode.exists());
-    assert!(!Path::new("test/unicode-bogus-path-각丁ー再见").exists());
+    assert!(fs::metadata(unicode).is_ok());
+    assert!(fs::metadata(Path::new("test/unicode-bogus-path-각丁ー再见")).is_err());
 }
 
 #[test]
@@ -646,8 +640,8 @@ fn copy_file_does_not_exist() {
     match fs::copy(&from, &to) {
         Ok(..) => panic!(),
         Err(..) => {
-            assert!(!from.exists());
-            assert!(!to.exists());
+            assert!(fs::metadata(from).is_err());
+            assert!(fs::metadata(to).is_err());
         }
     }
 }
@@ -659,7 +653,7 @@ fn copy_src_does_not_exist() {
     let to = tmpdir.join("out.txt");
     check!(check!(File::create(&to)).write(b"hello"));
     assert!(fs::copy(&from, &to).is_err());
-    assert!(!from.exists());
+    assert!(fs::metadata(from).is_err());
     let mut v = Vec::new();
     check!(check!(File::open(&to)).read_to_end(&mut v));
     assert_eq!(v, b"hello");
@@ -677,7 +671,7 @@ fn copy_file_ok() {
     check!(check!(File::open(&out)).read_to_end(&mut v));
     assert_eq!(v, b"hello");
 
-    assert_eq!(check!(input.metadata()).permissions(), check!(out.metadata()).permissions());
+    assert_eq!(check!(fs::metadata(input)).permissions(), check!(fs::metadata(out)).permissions());
 }
 
 #[test]
@@ -716,7 +710,7 @@ fn copy_file_src_dir() {
         Ok(..) => panic!(),
         Err(..) => {}
     }
-    assert!(!out.exists());
+    assert!(fs::metadata(out).is_err());
 }
 
 #[test]
@@ -730,7 +724,7 @@ fn copy_file_preserves_perm_bits() {
     p.set_readonly(true);
     check!(fs::set_permissions(&input, p));
     check!(fs::copy(&input, &out));
-    assert!(check!(out.metadata()).permissions().readonly());
+    assert!(check!(fs::metadata(&out)).permissions().readonly());
     check!(fs::set_permissions(&input, attr.permissions()));
     check!(fs::set_permissions(&out, attr.permissions()));
 }
@@ -741,7 +735,7 @@ fn copy_file_preserves_streams() {
     let tmp = tmpdir();
     check!(check!(File::create(tmp.join("in.txt:bunny"))).write("carrot".as_bytes()));
     assert_eq!(check!(fs::copy(tmp.join("in.txt"), tmp.join("out.txt"))), 0);
-    assert_eq!(check!(tmp.join("out.txt").metadata()).len(), 0);
+    assert_eq!(check!(fs::metadata(tmp.join("out.txt"))).len(), 0);
     let mut v = Vec::new();
     check!(check!(File::open(tmp.join("out.txt:bunny"))).read_to_end(&mut v));
     assert_eq!(v, b"carrot".to_vec());
@@ -756,7 +750,7 @@ fn copy_file_returns_metadata_len() {
     #[cfg(windows)]
     check!(check!(File::create(tmp.join("in.txt:bunny"))).write(b"carrot"));
     let copied_len = check!(fs::copy(&in_path, &out_path));
-    assert_eq!(check!(out_path.metadata()).len(), copied_len);
+    assert_eq!(check!(fs::metadata(out_path)).len(), copied_len);
 }
 
 #[test]
@@ -776,7 +770,7 @@ fn copy_file_follows_dst_symlink() {
 
     check!(fs::copy(&in_path, &out_path_symlink));
 
-    assert!(check!(out_path_symlink.symlink_metadata()).file_type().is_symlink());
+    assert!(check!(fs::symlink_metadata(&out_path_symlink)).file_type().is_symlink());
     assert_eq!(check!(fs::read(&out_path_symlink)), b"foo".to_vec());
     assert_eq!(check!(fs::read(&out_path)), b"foo".to_vec());
 }
@@ -793,7 +787,7 @@ fn symlinks_work() {
 
     check!(check!(File::create(&input)).write("foobar".as_bytes()));
     check!(symlink_file(&input, &out));
-    assert!(check!(out.symlink_metadata()).file_type().is_symlink());
+    assert!(check!(fs::symlink_metadata(&out)).file_type().is_symlink());
     assert_eq!(check!(fs::metadata(&out)).len(), check!(fs::metadata(&input)).len());
     let mut v = Vec::new();
     check!(check!(File::open(&out)).read_to_end(&mut v));
@@ -860,7 +854,6 @@ fn links_work() {
     check!(check!(File::create(&input)).write("foobar".as_bytes()));
     check!(fs::hard_link(&input, &out));
     assert_eq!(check!(fs::metadata(&out)).len(), check!(fs::metadata(&input)).len());
-    assert_eq!(check!(fs::metadata(&out)).len(), check!(input.metadata()).len());
     let mut v = Vec::new();
     check!(check!(File::open(&out)).read_to_end(&mut v));
     assert_eq!(v, b"foobar".to_vec());
@@ -1196,7 +1189,7 @@ fn realpath_works() {
     symlink_file(&file, &link).unwrap();
     symlink_dir(&dir, &linkdir).unwrap();
 
-    assert!(link.symlink_metadata().unwrap().file_type().is_symlink());
+    assert!(fs::symlink_metadata(&link).unwrap().file_type().is_symlink());
 
     assert_eq!(fs::canonicalize(&tmpdir).unwrap(), tmpdir);
     assert_eq!(fs::canonicalize(&file).unwrap(), file);
@@ -1243,7 +1236,7 @@ fn dir_entry_methods() {
     fs::create_dir_all(&tmpdir.join("a")).unwrap();
     File::create(&tmpdir.join("b")).unwrap();
 
-    for file in tmpdir.path().read_dir().unwrap().map(|f| f.unwrap()) {
+    for file in fs::read_dir(tmpdir.path()).unwrap().map(|f| f.unwrap()) {
         let fname = file.file_name();
         match fname.to_str() {
             Some("a") => {
@@ -1263,7 +1256,7 @@ fn dir_entry_methods() {
 fn dir_entry_debug() {
     let tmpdir = tmpdir();
     File::create(&tmpdir.join("b")).unwrap();
-    let mut read_dir = tmpdir.path().read_dir().unwrap();
+    let mut read_dir = fs::read_dir(tmpdir.path()).unwrap();
     let dir_entry = read_dir.next().unwrap().unwrap();
     let actual = format!("{:?}", dir_entry);
     let expected = format!("DirEntry({:?})", dir_entry.0.path());
@@ -1293,16 +1286,16 @@ fn create_dir_all_with_junctions() {
     check!(fs::create_dir_all(&b));
     // the junction itself is not a directory, but `is_dir()` on a Path
     // follows links
-    assert!(junction.is_dir());
-    assert!(b.exists());
+    assert!(fs::metadata(junction).unwrap().is_dir());
+    assert!(fs::metadata(b).is_ok());
 
     if !got_symlink_permission(&tmpdir) {
         return;
     };
     check!(symlink_dir(&target, &link));
     check!(fs::create_dir_all(&d));
-    assert!(link.is_dir());
-    assert!(d.exists());
+    assert!(fs::metadata(link).unwrap().is_dir());
+    assert!(fs::metadata(d).is_ok());
 }
 
 #[test]

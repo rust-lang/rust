@@ -52,11 +52,11 @@ pub fn read_file(
     path: &Path,
     nightly_build: bool,
 ) -> io::Result<Option<(Vec<u8>, usize)>> {
-    if !path.exists() {
-        return Ok(None);
-    }
-
-    let data = fs::read(path)?;
+    let data = match fs::read(path) {
+        Ok(data) => data,
+        Err(err) if err.kind() == io::ErrorKind::NotFound => return Ok(None),
+        Err(err) => return Err(err),
+    };
 
     let mut file = io::Cursor::new(data);
 

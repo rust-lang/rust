@@ -1600,14 +1600,14 @@ impl Target {
 
                 for dir in env::split_paths(&target_path) {
                     let p = dir.join(&path);
-                    if p.is_file() {
+                    if fs::metadata(&p).map(|m| m.is_file()).unwrap_or(false) {
                         return load_file(&p);
                     }
                 }
                 Err(format!("Could not find specification for target {:?}", target_triple))
             }
             TargetTriple::TargetPath(ref target_path) => {
-                if target_path.is_file() {
+                if fs::metadata(target_path).map(|m| m.is_file()).unwrap_or(false) {
                     return load_file(&target_path);
                 }
                 Err(format!("Target path {:?} is not a valid file", target_path))
@@ -1796,7 +1796,7 @@ impl TargetTriple {
 
     /// Creates a target triple from the passed target path.
     pub fn from_path(path: &Path) -> Result<Self, io::Error> {
-        let canonicalized_path = path.canonicalize()?;
+        let canonicalized_path = std::fs::canonicalize(path)?;
         Ok(TargetTriple::TargetPath(canonicalized_path))
     }
 

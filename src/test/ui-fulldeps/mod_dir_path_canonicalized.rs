@@ -13,6 +13,7 @@ extern crate rustc_span;
 use rustc_parse::new_parser_from_file;
 use rustc_session::parse::ParseSess;
 use rustc_span::source_map::FilePathMapping;
+use std::fs;
 use std::path::Path;
 
 #[path = "mod_dir_simple/test.rs"]
@@ -28,7 +29,7 @@ fn parse() {
     let parse_session = ParseSess::new(FilePathMapping::empty());
 
     let path = Path::new(file!());
-    let path = path.canonicalize().unwrap();
+    let path = fs::canonicalize(path).unwrap();
     let mut parser = new_parser_from_file(&parse_session, &path, None);
     let _ = parser.parse_crate_mod();
 }

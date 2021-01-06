@@ -591,7 +591,7 @@ impl<'a> CrateLocator<'a> {
             // as well.
             if let Some((prev, _)) = &ret {
                 let sysroot = &self.sess.sysroot;
-                let sysroot = sysroot.canonicalize().unwrap_or_else(|_| sysroot.to_path_buf());
+                let sysroot = fs::canonicalize(sysroot).unwrap_or_else(|_| sysroot.to_path_buf());
                 if prev.starts_with(&sysroot) {
                     continue;
                 }
@@ -664,7 +664,7 @@ impl<'a> CrateLocator<'a> {
         let mut rmetas = FxHashMap::default();
         let mut dylibs = FxHashMap::default();
         for loc in &self.exact_paths {
-            if !loc.exists() {
+            if fs::metadata(loc).is_err() {
                 return Err(CrateError::ExternLocationNotExist(self.crate_name, loc.clone()));
             }
             let file = match loc.file_name().and_then(|s| s.to_str()) {
@@ -738,7 +738,7 @@ fn get_metadata_section(
     filename: &Path,
     loader: &dyn MetadataLoader,
 ) -> Result<MetadataBlob, String> {
-    if !filename.exists() {
+    if fs::metadata(filename).is_err() {
         return Err(format!("no such file: '{}'", filename.display()));
     }
     let raw_bytes: MetadataRef = match flavor {

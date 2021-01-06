@@ -1110,19 +1110,19 @@ fn print_native_static_libs(sess: &Session, all_native_libs: &[NativeLib]) {
 fn get_object_file_path(sess: &Session, name: &str, self_contained: bool) -> PathBuf {
     let fs = sess.target_filesearch(PathKind::Native);
     let file_path = fs.get_lib_path().join(name);
-    if file_path.exists() {
+    if fs::metadata(&file_path).is_ok() {
         return file_path;
     }
     // Special directory with objects used only in self-contained linkage mode
     if self_contained {
         let file_path = fs.get_self_contained_lib_path().join(name);
-        if file_path.exists() {
+        if fs::metadata(&file_path).is_ok() {
             return file_path;
         }
     }
     for search_path in fs.search_paths() {
         let file_path = search_path.dir.join(name);
-        if file_path.exists() {
+        if fs::metadata(&file_path).is_ok() {
             return file_path;
         }
     }
@@ -1312,7 +1312,9 @@ fn detect_self_contained_mingw(sess: &Session) -> bool {
     for dir in env::split_paths(&env::var_os("PATH").unwrap_or_default()) {
         let full_path = dir.join(&linker_with_extension);
         // If linker comes from sysroot assume self-contained mode
-        if full_path.is_file() && !full_path.starts_with(&sess.sysroot) {
+        if fs::metadata(&full_path).map(|m| m.is_file()).unwrap_or(false)
+            && !full_path.starts_with(&sess.sysroot)
+        {
             return false;
         }
     }
@@ -2228,7 +2230,7 @@ fn get_apple_sdk_root(sdk_name: &str) -> Result<String, String> {
                 if sdkroot.contains("iPhoneOS.platform")
                     || sdkroot.contains("iPhoneSimulator.platform") => {}
             // Ignore `SDKROOT` if it's not a valid path.
-            _ if !p.is_absolute() || p == Path::new("/") || !p.exists() => {}
+            _ if !p.is_absolute() || p == Path::new("/") || fs::metadata(p).is_err() => {}
             _ => return Ok(sdkroot),
         }
     }

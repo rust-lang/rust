@@ -506,18 +506,20 @@ where
 }
 
 fn output_contains_path(output_paths: &[PathBuf], input_path: &PathBuf) -> bool {
-    let input_path = input_path.canonicalize().ok();
+    let input_path = fs::canonicalize(input_path).ok();
     if input_path.is_none() {
         return false;
     }
     let check = |output_path: &PathBuf| {
-        if output_path.canonicalize().ok() == input_path { Some(()) } else { None }
+        if fs::canonicalize(output_path).ok() == input_path { Some(()) } else { None }
     };
     check_output(output_paths, check).is_some()
 }
 
 fn output_conflicts_with_dir(output_paths: &[PathBuf]) -> Option<PathBuf> {
-    let check = |output_path: &PathBuf| output_path.is_dir().then(|| output_path.clone());
+    let check = |output_path: &PathBuf| {
+        fs::metadata(output_path).map(|m| m.is_dir()).unwrap_or(false).then(|| output_path.clone())
+    };
     check_output(output_paths, check)
 }
 

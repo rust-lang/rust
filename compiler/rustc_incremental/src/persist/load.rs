@@ -8,6 +8,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_serialize::opaque::Decoder;
 use rustc_serialize::Decodable as RustcDecodable;
 use rustc_session::Session;
+use std::fs;
 use std::path::Path;
 
 use super::data::*;
@@ -142,7 +143,7 @@ pub fn load_dep_graph(sess: &Session) -> DepGraphFuture {
                 let mut all_files_exist = true;
                 if let Some(ref file_name) = swp.work_product.saved_file {
                     let path = in_incr_comp_dir_sess(sess, file_name);
-                    if !path.exists() {
+                    if fs::metadata(&path).is_err() {
                         all_files_exist = false;
 
                         if sess.opts.debugging_opts.incremental_info {

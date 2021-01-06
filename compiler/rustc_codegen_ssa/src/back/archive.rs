@@ -1,6 +1,7 @@
 use rustc_session::Session;
 use rustc_span::symbol::Symbol;
 
+use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 
@@ -14,12 +15,12 @@ pub fn find_library(name: Symbol, search_paths: &[PathBuf], sess: &Session) -> P
     for path in search_paths {
         debug!("looking for {} inside {:?}", name, path);
         let test = path.join(&oslibname);
-        if test.exists() {
+        if fs::metadata(&test).is_ok() {
             return test;
         }
         if oslibname != unixlibname {
             let test = path.join(&unixlibname);
-            if test.exists() {
+            if fs::metadata(&test).is_ok() {
                 return test;
             }
         }

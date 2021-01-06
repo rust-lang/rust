@@ -154,7 +154,7 @@ fn find_libdir(sysroot: &Path) -> Cow<'static, str> {
 
     match option_env!("CFG_LIBDIR_RELATIVE") {
         None | Some("lib") => {
-            if sysroot.join(PRIMARY_LIB_DIR).join(RUST_LIB_DIR).exists() {
+            if fs::metadata(sysroot.join(PRIMARY_LIB_DIR).join(RUST_LIB_DIR)).is_ok() {
                 PRIMARY_LIB_DIR.into()
             } else {
                 SECONDARY_LIB_DIR.into()

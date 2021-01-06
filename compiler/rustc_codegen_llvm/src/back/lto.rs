@@ -22,7 +22,7 @@ use rustc_session::config::{self, CrateType, Lto};
 use tracing::{debug, info};
 
 use std::ffi::{CStr, CString};
-use std::fs::File;
+use std::fs::{self, File};
 use std::io;
 use std::path::Path;
 use std::ptr;
@@ -496,8 +496,11 @@ fn thin_lto(
             // If the previous file was deleted, or we get an IO error
             // reading the file, then we'll just use `None` as the
             // prev_key_map, which will force the code to be recompiled.
-            let prev =
-                if path.exists() { ThinLTOKeysMap::load_from_file(&path).ok() } else { None };
+            let prev = if fs::metadata(&path).is_ok() {
+                ThinLTOKeysMap::load_from_file(&path).ok()
+            } else {
+                None
+            };
             let curr = ThinLTOKeysMap::from_thin_lto_modules(&data, &thin_modules, &module_names);
             (Some(path), prev, curr)
         } else {
