@@ -18,7 +18,7 @@ use lsp_ext::StatusParams;
 impl GlobalState {
     pub(crate) fn update_configuration(&mut self, config: Config) {
         let _p = profile::span("GlobalState::update_configuration");
-        let old_config = mem::replace(&mut self.config, config);
+        let old_config = mem::replace(&mut self.config, Arc::new(config));
         if self.config.lru_capacity() != old_config.lru_capacity() {
             self.analysis_host.update_lru_capacity(self.config.lru_capacity());
         }
