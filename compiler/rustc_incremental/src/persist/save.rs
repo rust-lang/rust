@@ -6,6 +6,7 @@ use rustc_serialize::opaque::Encoder;
 use rustc_serialize::Encodable as RustcEncodable;
 use rustc_session::Session;
 use std::fs;
+use std::io;
 use std::path::PathBuf;
 
 use super::data::*;
@@ -101,19 +102,18 @@ where
     // Note: It's important that we actually delete the old file and not just
     // truncate and overwrite it, since it might be a shared hard-link, the
     // underlying data of which we don't want to modify
-    if path_buf.exists() {
-        match fs::remove_file(&path_buf) {
-            Ok(()) => {
-                debug!("save: remove old file");
-            }
-            Err(err) => {
-                sess.err(&format!(
-                    "unable to delete old dep-graph at `{}`: {}",
-                    path_buf.display(),
-                    err
-                ));
-                return;
-            }
+    match fs::remove_file(&path_buf) {
+        Ok(()) => {
+            debug!("save: remove old file");
+        }
+        Err(err) if err.kind() == io::ErrorKind::NotFound => (),
+        Err(err) => {
+            sess.err(&format!(
+                "unable to delete old dep-graph at `{}`: {}",
+                path_buf.display(),
+                err
+            ));
+            return;
         }
     }
 
