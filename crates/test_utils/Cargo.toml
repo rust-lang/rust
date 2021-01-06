@@ -11,7 +11,7 @@ doctest = false
 
 [dependencies]
 # Avoid adding deps here, this crate is widely used in tests it should compile fast!
-difference = "2.0.0"
+dissimilar = "1.0.2"
 text-size = "1.0.0"
 serde_json = "1.0.48"
 rustc-hash = "1.1.0"
