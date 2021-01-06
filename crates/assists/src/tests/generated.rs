@@ -238,21 +238,6 @@ fn qux(bar: Bar, baz: Baz) {}
 }
 
 #[test]
-fn doctest_extract_module_to_file() {
-    check_doc_test(
-        "extract_module_to_file",
-        r#####"
-mod foo {<|>
-    fn t() {}
-}
-"#####,
-        r#####"
-mod foo;
-"#####,
-    )
-}
-
-#[test]
 fn doctest_extract_struct_from_enum_variant() {
     check_doc_test(
         "extract_struct_from_enum_variant",
@@ -756,6 +741,21 @@ fn handle(action: Action) {
         _ => (),
     }
 }
+"#####,
+    )
+}
+
+#[test]
+fn doctest_move_module_to_file() {
+    check_doc_test(
+        "move_module_to_file",
+        r#####"
+mod <|>foo {
+    fn t() {}
+}
+"#####,
+        r#####"
+mod foo;
 "#####,
     )
 }
