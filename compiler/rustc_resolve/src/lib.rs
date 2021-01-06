@@ -44,9 +44,9 @@ use rustc_index::vec::IndexVec;
 use rustc_metadata::creader::{CStore, CrateLoader};
 use rustc_middle::hir::exports::ExportMap;
 use rustc_middle::middle::cstore::{CrateStore, MetadataLoaderDyn};
+use rustc_middle::span_bug;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, DefIdTree, ResolverOutputs};
-use rustc_middle::{bug, span_bug};
 use rustc_session::lint;
 use rustc_session::lint::{BuiltinLintDiagnostics, LintBuffer};
 use rustc_session::Session;
@@ -1477,49 +1477,76 @@ impl<'a> Resolver<'a> {
         self.crate_loader.postprocess(krate);
     }
 
-    fn get_traits_in_module_containing_item(
+    pub fn traits_in_scope(
         &mut self,
-        ident: Ident,
-        ns: Namespace,
-        module: Module<'a>,
-        found_traits: &mut Vec<TraitCandidate>,
+        current_trait: Option<Module<'a>>,
         parent_scope: &ParentScope<'a>,
+        ctxt: SyntaxContext,
+        assoc_item: Option<(Symbol, Namespace)>,
+    ) -> Vec<TraitCandidate> {
+        let mut found_traits = Vec::new();
+
+        if let Some(module) = current_trait {
+            if self.trait_may_have_item(Some(module), assoc_item) {
+                let def_id = module.def_id().unwrap();
+                found_traits.push(TraitCandidate { def_id, import_ids: smallvec![] });
+            }
+        }
+
+        self.visit_scopes(ScopeSet::All(TypeNS, false), parent_scope, ctxt, |this, scope, _, _| {
+            match scope {
+                Scope::Module(module) => {
+                    this.traits_in_module(module, assoc_item, &mut found_traits);
+                }
+                Scope::StdLibPrelude => {
+                    if let Some(module) = this.prelude {
+                        this.traits_in_module(module, assoc_item, &mut found_traits);
+                    }
+                }
+                Scope::ExternPrelude | Scope::ToolPrelude | Scope::BuiltinTypes => {}
+                _ => unreachable!(),
+            }
+            None::<()>
+        });
+
+        found_traits
+    }
+
+    fn traits_in_module(
+        &mut self,
+        module: Module<'a>,
+        assoc_item: Option<(Symbol, Namespace)>,
+        found_traits: &mut Vec<TraitCandidate>,
     ) {
-        assert!(ns == TypeNS || ns == ValueNS);
         module.ensure_traits(self);
         let traits = module.traits.borrow();
-
-        for &(trait_name, binding) in traits.as_ref().unwrap().iter() {
-            // Traits have pseudo-modules that can be used to search for the given ident.
-            if let Some(module) = binding.module() {
-                let mut ident = ident;
-                if ident.span.glob_adjust(module.expansion, binding.span).is_none() {
-                    continue;
-                }
-                if self
-                    .resolve_ident_in_module_unadjusted(
-                        ModuleOrUniformRoot::Module(module),
-                        ident,
-                        ns,
-                        parent_scope,
-                        false,
-                        module.span,
-                    )
-                    .is_ok()
-                {
-                    let import_ids = self.find_transitive_imports(&binding.kind, trait_name);
-                    let trait_def_id = module.def_id().unwrap();
-                    found_traits.push(TraitCandidate { def_id: trait_def_id, import_ids });
-                }
-            } else if let Res::Def(DefKind::TraitAlias, _) = binding.res() {
-                // For now, just treat all trait aliases as possible candidates, since we don't
-                // know if the ident is somewhere in the transitive bounds.
-                let import_ids = self.find_transitive_imports(&binding.kind, trait_name);
-                let trait_def_id = binding.res().def_id();
-                found_traits.push(TraitCandidate { def_id: trait_def_id, import_ids });
-            } else {
-                bug!("candidate is not trait or trait alias?")
+        for (trait_name, trait_binding) in traits.as_ref().unwrap().iter() {
+            if self.trait_may_have_item(trait_binding.module(), assoc_item) {
+                let def_id = trait_binding.res().def_id();
+                let import_ids = self.find_transitive_imports(&trait_binding.kind, *trait_name);
+                found_traits.push(TraitCandidate { def_id, import_ids });
             }
+        }
+    }
+
+    // List of traits in scope is pruned on best effort basis. We reject traits not having an
+    // associated item with the given name and namespace (if specified). This is a conservative
+    // optimization, proper hygienic type-based resolution of associated items is done in typeck.
+    // We don't reject trait aliases (`trait_module == None`) because we don't have access to their
+    // associated items.
+    fn trait_may_have_item(
+        &mut self,
+        trait_module: Option<Module<'a>>,
+        assoc_item: Option<(Symbol, Namespace)>,
+    ) -> bool {
+        match (trait_module, assoc_item) {
+            (Some(trait_module), Some((name, ns))) => {
+                self.resolutions(trait_module).borrow().iter().any(|resolution| {
+                    let (&BindingKey { ident: assoc_ident, ns: assoc_ns, .. }, _) = resolution;
+                    assoc_ns == ns && assoc_ident.name == name
+                })
+            }
+            _ => true,
         }
     }
 
@@ -3225,34 +3252,6 @@ impl<'a> Resolver<'a> {
                 )
             }
         })
-    }
-
-    /// This is equivalent to `get_traits_in_module_containing_item`, but without filtering by the associated item.
-    ///
-    /// This is used by rustdoc for intra-doc links.
-    pub fn traits_in_scope(&mut self, module_id: DefId) -> Vec<TraitCandidate> {
-        let module = self.get_module(module_id);
-        module.ensure_traits(self);
-        let traits = module.traits.borrow();
-        let to_candidate =
-            |this: &mut Self, &(trait_name, binding): &(Ident, &NameBinding<'_>)| TraitCandidate {
-                def_id: binding.res().def_id(),
-                import_ids: this.find_transitive_imports(&binding.kind, trait_name),
-            };
-
-        let mut candidates: Vec<_> =
-            traits.as_ref().unwrap().iter().map(|x| to_candidate(self, x)).collect();
-
-        if let Some(prelude) = self.prelude {
-            if !module.no_implicit_prelude {
-                prelude.ensure_traits(self);
-                candidates.extend(
-                    prelude.traits.borrow().as_ref().unwrap().iter().map(|x| to_candidate(self, x)),
-                );
-            }
-        }
-
-        candidates
     }
 
     /// Rustdoc uses this to resolve things in a recoverable way. `ResolutionError<'a>`
