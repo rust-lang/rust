@@ -22,10 +22,10 @@ declare double @__enzyme_autodiff(double (double, double)*, ...)
 ; CHECK: define internal {{(dso_local )?}}{ double, double } @diffetester(double %x, double %y, double %differeturn) {
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %[[ym1:.+]] = fsub fast double %y, 1.000000e+00
-; CHECK-NEXT:   %[[newpow:.+]] = tail call fast double @llvm.pow.f64(double %x, double %[[ym1]])
+; CHECK-NEXT:   %[[newpow:.+]] = call fast double @llvm.pow.f64(double %x, double %[[ym1]])
 ; CHECK-NEXT:   %[[newpowdret:.+]] = fmul fast double %differeturn, %[[newpow]]
 ; CHECK-NEXT:   %[[dx:.+]] = fmul fast double %[[newpowdret]], %y
-; CHECK-NEXT:   %[[origpow:.+]] = tail call fast double @llvm.pow.f64(double %x, double %y)
+; CHECK-NEXT:   %[[origpow:.+]] = call fast double @llvm.pow.f64(double %x, double %y)
 ; CHECK-DAG:    %[[logy:.+]] = call fast double @llvm.log.f64(double %x)
 ; CHECK-DAG:    %[[origpowdret:.+]] = fmul fast double %differeturn, %[[origpow]]
 ; CHECK-NEXT:   %[[dy:.+]] = fmul fast double %[[origpowdret]], %[[logy]]

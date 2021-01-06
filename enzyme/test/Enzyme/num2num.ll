@@ -1,4 +1,4 @@
-; RUN: %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -mem2reg -early-cse -instcombine -simplifycfg -S | FileCheck %s
+; RUN: %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -mem2reg -early-cse -instsimplify -simplifycfg -S | FileCheck %s
 source_filename = "julia"
 target datalayout = "e-m:e-i64:64-f80:128-n8:16:32:64-S128"
 target triple = "x86_64-linux-gnu"
@@ -80,10 +80,11 @@ attributes #14 = { nounwind }
 ; CHECK: define internal { double } @diffejulia_num2num_3(double %x, double %differeturn)
 ; CHECK-NEXT: top:
 ; CHECK-NEXT:   %[[x2:.+]] = fadd double %x, %x
-; CHECK-NEXT:   %[[pow:.+]] = call double @llvm.pow.f64(double 1.031000e+01, double %[[x2]])
-; CHECK-NEXT:   %[[dmul:.+]] = fmul fast double %[[pow]], %differeturn
+; CHECK-NEXT:   %[[subret:.+]] = fneg fast double %differeturn
+; CHECK-NEXT:   %[[pow:.+]] = call fast double @llvm.pow.f64(double 1.031000e+01, double %[[x2]])
+; CHECK-NEXT:   %[[dmul:.+]] = fmul fast double %differeturn, %[[pow]]
 ; CHECK-NEXT:   %[[cmul:.+]] = fmul fast double %[[dmul]], 0x4002AA37D43EE973
-; CHECK-NEXT:   %[[sub:.+]] = fsub fast double %[[cmul]], %differeturn
+; CHECK-NEXT:   %[[sub:.+]] = fadd fast double %[[subret]], %[[cmul]]
 ; CHECK-NEXT:   %[[add:.+]] = fadd fast double %[[sub]], %[[cmul]]
 ; CHECK-NEXT:   %[[res:.+]] = insertvalue { double } undef, double %[[add]], 0
 ; CHECK-NEXT:   ret { double } %[[res]]

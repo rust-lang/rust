@@ -83,12 +83,12 @@ cl::opt<bool> nonmarkedglobals_inactiveloads(
 bool is_load_uncacheable(
     LoadInst &li, AAResults &AA, GradientUtils *gutils, TargetLibraryInfo &TLI,
     const SmallPtrSetImpl<const Instruction *> &unnecessaryInstructions,
-    const std::map<Argument *, bool> &uncacheable_args);
+    const std::map<Argument *, bool> &uncacheable_args, bool topLevel);
 
 bool is_value_mustcache_from_origin(
     Value *obj, AAResults &AA, GradientUtils *gutils, TargetLibraryInfo &TLI,
     const SmallPtrSetImpl<const Instruction *> &unnecessaryInstructions,
-    const std::map<Argument *, bool> &uncacheable_args) {
+    const std::map<Argument *, bool> &uncacheable_args, bool topLevel) {
   bool mustcache = false;
 
   // If the pointer operand is from an argument to the function, we need to
@@ -138,11 +138,15 @@ bool is_value_mustcache_from_origin(
       }
     } else if (isa<AllocaInst>(obj)) {
       // No change to modref if alloca
+    } else if (isa<GlobalVariable>(obj)) {
+      // In the absense of more fine-grained global info, assume object is written to
+      // in a subseqent call unless this is "topLevel";
+      if (!topLevel) mustcache = true;
     } else if (auto sli = dyn_cast<LoadInst>(obj)) {
       // If obj is from a load instruction conservatively consider it
       // uncacheable if that load itself cannot be cached
       mustcache = is_load_uncacheable(
-          *sli, AA, gutils, TLI, unnecessaryInstructions, uncacheable_args);
+          *sli, AA, gutils, TLI, unnecessaryInstructions, uncacheable_args, topLevel);
     } else {
       // In absence of more information, assume that the underlying object for
       // pointer operand is uncacheable in caller.
@@ -155,7 +159,7 @@ bool is_value_mustcache_from_origin(
 bool is_load_uncacheable(
     LoadInst &li, AAResults &AA, GradientUtils *gutils, TargetLibraryInfo &TLI,
     const SmallPtrSetImpl<const Instruction *> &unnecessaryInstructions,
-    const std::map<Argument *, bool> &uncacheable_args) {
+    const std::map<Argument *, bool> &uncacheable_args, bool topLevel) {
   assert(li.getParent()->getParent() == gutils->oldFunc);
 
   // Find the underlying object for the pointer operand of the load instruction.
@@ -168,7 +172,7 @@ bool is_load_uncacheable(
 #endif
 
   bool can_modref = is_value_mustcache_from_origin(
-      obj, AA, gutils, TLI, unnecessaryInstructions, uncacheable_args);
+      obj, AA, gutils, TLI, unnecessaryInstructions, uncacheable_args, topLevel);
 
   if (!can_modref) {
     allFollowersOf(&li, [&](Instruction *inst2) {
@@ -218,7 +222,7 @@ bool is_load_uncacheable(
 std::map<Instruction *, bool> compute_uncacheable_load_map(
     GradientUtils *gutils, AAResults &AA, TargetLibraryInfo &TLI,
     const SmallPtrSetImpl<const Instruction *> &unnecessaryInstructions,
-    const std::map<Argument *, bool> uncacheable_args) {
+    const std::map<Argument *, bool> uncacheable_args, bool topLevel) {
   std::map<Instruction *, bool> can_modref_map;
   for (inst_iterator I = inst_begin(*gutils->oldFunc),
                      E = inst_end(*gutils->oldFunc);
@@ -227,7 +231,7 @@ std::map<Instruction *, bool> compute_uncacheable_load_map(
     // For each load instruction, determine if it is uncacheable.
     if (auto op = dyn_cast<LoadInst>(inst)) {
       can_modref_map[inst] = is_load_uncacheable(
-          *op, AA, gutils, TLI, unnecessaryInstructions, uncacheable_args);
+          *op, AA, gutils, TLI, unnecessaryInstructions, uncacheable_args, topLevel);
     }
   }
   return can_modref_map;
@@ -237,7 +241,7 @@ std::map<Argument *, bool> compute_uncacheable_args_for_one_callsite(
     CallInst *callsite_op, DominatorTree &DT, TargetLibraryInfo &TLI,
     const SmallPtrSetImpl<const Instruction *> &unnecessaryInstructions,
     AAResults &AA, GradientUtils *gutils,
-    const std::map<Argument *, bool> parent_uncacheable_args) {
+    const std::map<Argument *, bool> parent_uncacheable_args, bool topLevel) {
 
   if (!callsite_op->getCalledFunction())
     return {};
@@ -263,7 +267,7 @@ std::map<Argument *, bool> compute_uncacheable_args_for_one_callsite(
 #endif
 
     bool init_safe = !is_value_mustcache_from_origin(
-        obj, AA, gutils, TLI, unnecessaryInstructions, parent_uncacheable_args);
+        obj, AA, gutils, TLI, unnecessaryInstructions, parent_uncacheable_args, topLevel);
     args_safe.push_back(init_safe);
   }
 
@@ -329,7 +333,7 @@ compute_uncacheable_args_for_callsites(
     Function *F, DominatorTree &DT, TargetLibraryInfo &TLI,
     const SmallPtrSetImpl<const Instruction *> &unnecessaryInstructions,
     AAResults &AA, GradientUtils *gutils,
-    const std::map<Argument *, bool> uncacheable_args) {
+    const std::map<Argument *, bool> uncacheable_args, bool topLevel) {
   std::map<CallInst *, const std::map<Argument *, bool>> uncacheable_args_map;
 
   for (inst_iterator I = inst_begin(*gutils->oldFunc),
@@ -349,7 +353,7 @@ compute_uncacheable_args_for_callsites(
           std::pair<CallInst *, const std::map<Argument *, bool>>(
               op, compute_uncacheable_args_for_one_callsite(
                       op, DT, TLI, unnecessaryInstructions, AA, gutils,
-                      uncacheable_args)));
+                      uncacheable_args, topLevel)));
     }
   }
   return uncacheable_args_map;
@@ -1242,11 +1246,11 @@ const AugmentedReturn &CreateAugmentedPrimal(
   const std::map<CallInst *, const std::map<Argument *, bool>>
       uncacheable_args_map = compute_uncacheable_args_for_callsites(
           gutils->oldFunc, gutils->DT, TLI, unnecessaryInstructions, AA, gutils,
-          _uncacheable_argsPP);
+          _uncacheable_argsPP, /*topLevel*/false);
 
   const std::map<Instruction *, bool> can_modref_map =
       compute_uncacheable_load_map(gutils, AA, TLI, unnecessaryInstructions,
-                                   _uncacheable_argsPP);
+                                   _uncacheable_argsPP, /*topLevel*/false);
 
   insert_or_assign(cachedfunctions, tup,
                    AugmentedReturn(gutils->newFunc, nullptr, {}, returnMapping,
@@ -2225,13 +2229,13 @@ Function *CreatePrimalAndGradient(
               ? augmenteddata->uncacheable_args_map
               : compute_uncacheable_args_for_callsites(
                     gutils->oldFunc, gutils->DT, TLI, unnecessaryInstructions,
-                    AA, gutils, _uncacheable_argsPP);
+                    AA, gutils, _uncacheable_argsPP, topLevel);
 
   const std::map<Instruction *, bool> can_modref_map =
       augmenteddata ? augmenteddata->can_modref_map
                     : compute_uncacheable_load_map(gutils, AA, TLI,
                                                    unnecessaryInstructions,
-                                                   _uncacheable_argsPP);
+                                                   _uncacheable_argsPP, topLevel);
 
   gutils->can_modref_map = &can_modref_map;
 

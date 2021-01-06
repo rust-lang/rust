@@ -42,6 +42,25 @@
 
 #include "TypeTree.h"
 
+extern const std::map<std::string,llvm::Intrinsic::ID>  LIBM_FUNCTIONS;
+
+static inline bool isMemFreeLibMFunction(llvm::StringRef str, llvm::Intrinsic::ID* ID=nullptr) {
+  if (str.startswith("__") && str.endswith("_finite")) {
+    str = str.substr(2, str.size()-2-7);
+  }
+  if (LIBM_FUNCTIONS.find(str.str()) != LIBM_FUNCTIONS.end()) {
+    if (ID) *ID = LIBM_FUNCTIONS.find(str.str())->second;
+    return true;
+  }
+  if (str.endswith("f") || str.endswith("l")) {
+    if (LIBM_FUNCTIONS.find(str.substr(0, str.size()-1).str()) != LIBM_FUNCTIONS.end()) {
+      if (ID) *ID = LIBM_FUNCTIONS.find(str.substr(0, str.size()-1).str())->second;
+      return true;
+    }
+  }
+  return false;
+}
+
 /// Struct containing all contextual type information for a
 /// particular function call
 struct FnTypeInfo {

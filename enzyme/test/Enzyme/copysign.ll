@@ -20,8 +20,8 @@ declare double @__enzyme_autodiff(double (double, double)*, ...)
 
 ; CHECK: define internal {{(dso_local )?}}{ double, double } @diffetester(double %x, double %y, double %[[differet:.+]])
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %0 = tail call fast double @llvm.copysign.f64(double 1.000000e+00, double %x)
-; CHECK-NEXT:   %1 = tail call fast double @llvm.copysign.f64(double 1.000000e+00, double %y)
+; CHECK-NEXT:   %0 = call fast double @llvm.copysign.f64(double 1.000000e+00, double %x)
+; CHECK-NEXT:   %1 = call fast double @llvm.copysign.f64(double 1.000000e+00, double %y)
 ; CHECK-NEXT:   %2 = fmul fast double %0, %1
 ; CHECK-NEXT:   %3 = fmul fast double %2, %[[differet]]
 ; CHECK-NEXT:   %4 = insertvalue { double, double } undef, double %3, 0

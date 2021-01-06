@@ -405,11 +405,8 @@ public:
       // *inverted_operand << "\n";
 
       if (!gutils->isConstantValue(LI.getPointerOperand())) {
-        Value *inverted_operand =
-            gutils->invertPointerM(LI.getPointerOperand(), Builder2);
-        assert(inverted_operand);
         ((DiffeGradientUtils *)gutils)
-            ->addToInvertedPtrDiffe(inverted_operand, prediff, Builder2,
+            ->addToInvertedPtrDiffe(LI.getPointerOperand(), prediff, Builder2,
                                     alignment);
       }
     }
@@ -1387,14 +1384,18 @@ public:
     }
 
     eraseIfUnused(II);
-    Value *orig_ops[II.getNumOperands()];
+    SmallVector<Value*, 2> orig_ops(II.getNumOperands());
 
     for (unsigned i = 0; i < II.getNumOperands(); ++i) {
       orig_ops[i] = II.getOperand(i);
     }
+    handleAdjointForIntrinsic(II.getIntrinsicID(), II, orig_ops);
+  }
 
+  void handleAdjointForIntrinsic(Intrinsic::ID ID, llvm::Instruction &I,
+                                 SmallVectorImpl<Value*> &orig_ops) {
     if (Mode == DerivativeMode::Forward) {
-      switch (II.getIntrinsicID()) {
+      switch (ID) {
       case Intrinsic::nvvm_barrier0:
       case Intrinsic::nvvm_barrier0_popc:
       case Intrinsic::nvvm_barrier0_and:
@@ -1426,6 +1427,9 @@ public:
       case Intrinsic::log10:
       case Intrinsic::exp:
       case Intrinsic::exp2:
+      case Intrinsic::nvvm_ex2_approx_ftz_f:
+      case Intrinsic::nvvm_ex2_approx_f:
+      case Intrinsic::nvvm_ex2_approx_d:
       case Intrinsic::copysign:
       case Intrinsic::pow:
       case Intrinsic::powi:
@@ -1448,39 +1452,36 @@ public:
       case Intrinsic::fma:
         return;
       default:
-        if (gutils->isConstantInstruction(&II))
+        if (gutils->isConstantInstruction(&I))
           return;
         llvm::errs() << *gutils->oldFunc << "\n";
         llvm::errs() << *gutils->newFunc << "\n";
-        llvm::errs() << "cannot handle (augmented) unknown intrinsic\n" << II;
+        llvm::errs() << "cannot handle (augmented) unknown intrinsic\n" << I;
         report_fatal_error("(augmented) unknown intrinsic");
       }
     }
 
     if (Mode == DerivativeMode::Both || Mode == DerivativeMode::Reverse) {
 
-      IRBuilder<> Builder2(II.getParent());
+      IRBuilder<> Builder2(I.getParent());
       getReverseBuilder(Builder2);
-      Module *M = II.getParent()->getParent()->getParent();
+      Module *M = I.getParent()->getParent()->getParent();
 
       Value *vdiff = nullptr;
-      if (!gutils->isConstantValue(&II)) {
-        vdiff = diffe(&II, Builder2);
-        setDiffe(&II, Constant::getNullValue(II.getType()), Builder2);
+      if (!gutils->isConstantValue(&I)) {
+        vdiff = diffe(&I, Builder2);
+        setDiffe(&I, Constant::getNullValue(I.getType()), Builder2);
       }
 
-      switch (II.getIntrinsicID()) {
+      switch (ID) {
       case Intrinsic::nvvm_barrier0_popc:
       case Intrinsic::nvvm_barrier0_and:
       case Intrinsic::nvvm_barrier0_or: {
         SmallVector<Value *, 1> args = {};
         auto cal = cast<CallInst>(Builder2.CreateCall(
             Intrinsic::getDeclaration(M, Intrinsic::nvvm_barrier0), args));
-        cal->copyIRFlags(&II);
-        cal->setAttributes(II.getAttributes());
-        cal->setCallingConv(II.getCallingConv());
-        cal->setTailCallKind(II.getTailCallKind());
-        cal->setDebugLoc(gutils->getNewFromOriginal(II.getDebugLoc()));
+        cal->setCallingConv(Intrinsic::getDeclaration(M, Intrinsic::nvvm_barrier0)->getCallingConv());
+        cal->setDebugLoc(gutils->getNewFromOriginal(I.getDebugLoc()));
         return;
       }
 
@@ -1490,12 +1491,9 @@ public:
       case Intrinsic::nvvm_membar_sys: {
         SmallVector<Value *, 1> args = {};
         auto cal =
-            cast<CallInst>(Builder2.CreateCall(II.getCalledFunction(), args));
-        cal->copyIRFlags(&II);
-        cal->setAttributes(II.getAttributes());
-        cal->setCallingConv(II.getCallingConv());
-        cal->setTailCallKind(II.getTailCallKind());
-        cal->setDebugLoc(gutils->getNewFromOriginal(II.getDebugLoc()));
+            cast<CallInst>(Builder2.CreateCall(Intrinsic::getDeclaration(M, ID), args));
+        cal->setCallingConv(Intrinsic::getDeclaration(M, ID)->getCallingConv());
+        cal->setDebugLoc(gutils->getNewFromOriginal(I.getDebugLoc()));
         return;
       }
 
@@ -1523,7 +1521,7 @@ public:
       case Intrinsic::experimental_vector_reduce_v2_fadd:
 #endif
       {
-        if (gutils->isConstantInstruction(&II))
+        if (gutils->isConstantInstruction(&I))
           return;
 
         if (!gutils->isConstantValue(orig_ops[0])) {
@@ -1549,7 +1547,7 @@ public:
 #endif
 
       case Intrinsic::lifetime_start: {
-        if (gutils->isConstantInstruction(&II))
+        if (gutils->isConstantInstruction(&I))
           return;
         SmallVector<Value *, 2> args = {
             lookup(gutils->getNewFromOriginal(orig_ops[0]), Builder2),
@@ -1557,9 +1555,7 @@ public:
         Type *tys[] = {args[1]->getType()};
         auto cal = Builder2.CreateCall(
             Intrinsic::getDeclaration(M, Intrinsic::lifetime_end, tys), args);
-        cal->setAttributes(II.getAttributes());
-        cal->setCallingConv(II.getCallingConv());
-        cal->setTailCallKind(II.getTailCallKind());
+        cal->setCallingConv(Intrinsic::getDeclaration(M, Intrinsic::lifetime_end, tys)->getCallingConv());
         return;
       }
 
@@ -1568,17 +1564,14 @@ public:
           SmallVector<Value *, 2> args = {
               lookup(gutils->getNewFromOriginal(orig_ops[0]), Builder2)};
           Type *tys[] = {orig_ops[0]->getType()};
-          auto cal = cast<CallInst>(Builder2.CreateCall(
-              Intrinsic::getDeclaration(M, II.getIntrinsicID(), tys), args));
-          cal->copyIRFlags(&II);
-          cal->setAttributes(II.getAttributes());
-          cal->setCallingConv(II.getCallingConv());
-          cal->setTailCallKind(II.getTailCallKind());
-          cal->setDebugLoc(gutils->getNewFromOriginal(II.getDebugLoc()));
+          auto SqrtF = Intrinsic::getDeclaration(M, ID, tys);
+          auto cal = cast<CallInst>(Builder2.CreateCall(SqrtF, args));
+          cal->setCallingConv(SqrtF->getCallingConv());
+          cal->setDebugLoc(gutils->getNewFromOriginal(I.getDebugLoc()));
 
           Value *dif0 = Builder2.CreateBinOp(
               Instruction::FDiv,
-              Builder2.CreateFMul(ConstantFP::get(II.getType(), 0.5), vdiff),
+              Builder2.CreateFMul(ConstantFP::get(I.getType(), 0.5), vdiff),
               cal);
 
           Value *cmp = Builder2.CreateFCmpOEQ(
@@ -1586,7 +1579,7 @@ public:
           dif0 = Builder2.CreateSelect(
               cmp, ConstantFP::get(orig_ops[0]->getType(), 0), dif0);
 
-          addToDiffe(orig_ops[0], dif0, Builder2, II.getType());
+          addToDiffe(orig_ops[0], dif0, Builder2, I.getType());
         }
         return;
       }
@@ -1601,7 +1594,7 @@ public:
                                     ConstantFP::get(orig_ops[0]->getType(), -1),
                                     ConstantFP::get(orig_ops[0]->getType(), 1)),
               vdiff);
-          addToDiffe(orig_ops[0], dif0, Builder2, II.getType());
+          addToDiffe(orig_ops[0], dif0, Builder2, I.getType());
         }
         return;
       }
@@ -1617,7 +1610,7 @@ public:
               lookup(gutils->getNewFromOriginal(orig_ops[1]), Builder2));
           Value *dif0 = Builder2.CreateSelect(
               cmp, ConstantFP::get(orig_ops[0]->getType(), 0), vdiff);
-          addToDiffe(orig_ops[0], dif0, Builder2, II.getType());
+          addToDiffe(orig_ops[0], dif0, Builder2, I.getType());
         }
         if (vdiff && !gutils->isConstantValue(orig_ops[1])) {
           Value *cmp = Builder2.CreateFCmpOLT(
@@ -1625,7 +1618,7 @@ public:
               lookup(gutils->getNewFromOriginal(orig_ops[1]), Builder2));
           Value *dif1 = Builder2.CreateSelect(
               cmp, vdiff, ConstantFP::get(orig_ops[0]->getType(), 0));
-          addToDiffe(orig_ops[1], dif1, Builder2, II.getType());
+          addToDiffe(orig_ops[1], dif1, Builder2, I.getType());
         }
         return;
       }
@@ -1641,7 +1634,7 @@ public:
               lookup(gutils->getNewFromOriginal(orig_ops[1]), Builder2));
           Value *dif0 = Builder2.CreateSelect(
               cmp, vdiff, ConstantFP::get(orig_ops[0]->getType(), 0));
-          addToDiffe(orig_ops[0], dif0, Builder2, II.getType());
+          addToDiffe(orig_ops[0], dif0, Builder2, I.getType());
         }
         if (vdiff && !gutils->isConstantValue(orig_ops[1])) {
           Value *cmp = Builder2.CreateFCmpOLT(
@@ -1649,7 +1642,7 @@ public:
               lookup(gutils->getNewFromOriginal(orig_ops[1]), Builder2));
           Value *dif1 = Builder2.CreateSelect(
               cmp, ConstantFP::get(orig_ops[0]->getType(), 0), vdiff);
-          addToDiffe(orig_ops[1], dif1, Builder2, II.getType());
+          addToDiffe(orig_ops[1], dif1, Builder2, I.getType());
         }
         return;
       }
@@ -1659,17 +1652,17 @@ public:
           Value *dif0 = Builder2.CreateFMul(
               vdiff, lookup(gutils->getNewFromOriginal(orig_ops[1]), Builder2));
           addToDiffe(orig_ops[0], dif0, Builder2,
-                     II.getType()->getScalarType());
+                     I.getType()->getScalarType());
         }
         if (vdiff && !gutils->isConstantValue(orig_ops[1])) {
           Value *dif1 = Builder2.CreateFMul(
               vdiff, lookup(gutils->getNewFromOriginal(orig_ops[0]), Builder2));
           addToDiffe(orig_ops[1], dif1, Builder2,
-                     II.getType()->getScalarType());
+                     I.getType()->getScalarType());
         }
         if (vdiff && !gutils->isConstantValue(orig_ops[2])) {
           addToDiffe(orig_ops[2], vdiff, Builder2,
-                     II.getType()->getScalarType());
+                     I.getType()->getScalarType());
         }
         return;
       }
@@ -1678,7 +1671,7 @@ public:
         if (vdiff && !gutils->isConstantValue(orig_ops[0])) {
           Value *dif0 = Builder2.CreateFDiv(
               vdiff, lookup(gutils->getNewFromOriginal(orig_ops[0]), Builder2));
-          addToDiffe(orig_ops[0], dif0, Builder2, II.getType());
+          addToDiffe(orig_ops[0], dif0, Builder2, I.getType());
         }
         return;
       }
@@ -1688,9 +1681,9 @@ public:
           Value *dif0 = Builder2.CreateFDiv(
               vdiff,
               Builder2.CreateFMul(
-                  ConstantFP::get(II.getType(), 0.6931471805599453),
+                  ConstantFP::get(I.getType(), 0.6931471805599453),
                   lookup(gutils->getNewFromOriginal(orig_ops[0]), Builder2)));
-          addToDiffe(orig_ops[0], dif0, Builder2, II.getType());
+          addToDiffe(orig_ops[0], dif0, Builder2, I.getType());
         }
         return;
       }
@@ -1699,96 +1692,75 @@ public:
           Value *dif0 = Builder2.CreateFDiv(
               vdiff,
               Builder2.CreateFMul(
-                  ConstantFP::get(II.getType(), 2.302585092994046),
+                  ConstantFP::get(I.getType(), 2.302585092994046),
                   lookup(gutils->getNewFromOriginal(orig_ops[0]), Builder2)));
-          addToDiffe(orig_ops[0], dif0, Builder2, II.getType());
+          addToDiffe(orig_ops[0], dif0, Builder2, I.getType());
         }
         return;
       }
 
-      case Intrinsic::exp: {
+      case Intrinsic::exp:
+      case Intrinsic::exp2:
+      case Intrinsic::nvvm_ex2_approx_ftz_f:
+      case Intrinsic::nvvm_ex2_approx_f:
+      case Intrinsic::nvvm_ex2_approx_d: {
         if (vdiff && !gutils->isConstantValue(orig_ops[0])) {
           SmallVector<Value *, 2> args = {
               lookup(gutils->getNewFromOriginal(orig_ops[0]), Builder2)};
-          Type *tys[] = {orig_ops[0]->getType()};
-          auto cal = cast<CallInst>(Builder2.CreateCall(
-              Intrinsic::getDeclaration(M, II.getIntrinsicID(), tys), args));
-          cal->copyIRFlags(&II);
-          cal->setAttributes(II.getAttributes());
-          cal->setCallingConv(II.getCallingConv());
-          cal->setTailCallKind(II.getTailCallKind());
-          cal->setDebugLoc(gutils->getNewFromOriginal(II.getDebugLoc()));
+          SmallVector<Type *,1> tys;
+          if (ID == Intrinsic::exp || ID == Intrinsic::exp2)
+            tys.push_back(orig_ops[0]->getType());
+          auto ExpF = Intrinsic::getDeclaration(M, ID, tys);
+          auto cal = cast<CallInst>(Builder2.CreateCall(ExpF, args));
+          cal->setCallingConv(ExpF->getCallingConv());
+          cal->setDebugLoc(gutils->getNewFromOriginal(I.getDebugLoc()));
 
           Value *dif0 = Builder2.CreateFMul(vdiff, lookup(cal, Builder2));
-          addToDiffe(orig_ops[0], dif0, Builder2, II.getType());
-        }
-        return;
-      }
-      case Intrinsic::exp2: {
-        if (vdiff && !gutils->isConstantValue(orig_ops[0])) {
-          SmallVector<Value *, 2> args = {
-              lookup(gutils->getNewFromOriginal(orig_ops[0]), Builder2)};
-          Type *tys[] = {orig_ops[0]->getType()};
-          auto cal = cast<CallInst>(Builder2.CreateCall(
-              Intrinsic::getDeclaration(M, II.getIntrinsicID(), tys), args));
-          cal->copyIRFlags(&II);
-          cal->setAttributes(II.getAttributes());
-          cal->setCallingConv(II.getCallingConv());
-          cal->setTailCallKind(II.getTailCallKind());
-          cal->setDebugLoc(gutils->getNewFromOriginal(II.getDebugLoc()));
-
-          Value *dif0 = Builder2.CreateFMul(
-              Builder2.CreateFMul(vdiff, lookup(cal, Builder2)),
-              ConstantFP::get(II.getType(), 0.6931471805599453));
-          addToDiffe(orig_ops[0], dif0, Builder2, II.getType());
+          if (ID != Intrinsic::exp) {
+            dif0 = Builder2.CreateFMul(dif0,
+              ConstantFP::get(I.getType(), 0.6931471805599453));
+          }
+          addToDiffe(orig_ops[0], dif0, Builder2, I.getType());
         }
         return;
       }
       case Intrinsic::copysign: {
         if (vdiff && !gutils->isConstantValue(orig_ops[0])) {
+          Type *tys[] = {orig_ops[0]->getType()};
+          Function* CopyF = Intrinsic::getDeclaration(M, Intrinsic::copysign, tys);
 
           Value *xsign = nullptr;
           {
-            Type *tys[] = {orig_ops[0]->getType()};
             SmallVector<Value *, 2> args = {
                 ConstantFP::get(tys[0], 1.0),
                 lookup(gutils->getNewFromOriginal(orig_ops[0]), Builder2)};
 
-            auto cal = cast<CallInst>(Builder2.CreateCall(
-                Intrinsic::getDeclaration(M, Intrinsic::copysign, tys), args));
-            cal->copyIRFlags(&II);
-            cal->setAttributes(II.getAttributes());
-            cal->setCallingConv(II.getCallingConv());
-            cal->setTailCallKind(II.getTailCallKind());
-            cal->setDebugLoc(gutils->getNewFromOriginal(II.getDebugLoc()));
+            auto cal = cast<CallInst>(Builder2.CreateCall(CopyF
+                , args));
+            cal->setCallingConv(CopyF->getCallingConv());
+            cal->setDebugLoc(gutils->getNewFromOriginal(I.getDebugLoc()));
             xsign = cal;
           }
 
           Value *ysign = nullptr;
           {
-            Type *tys[] = {orig_ops[1]->getType()};
             SmallVector<Value *, 2> args = {
                 ConstantFP::get(tys[0], 1.0),
                 lookup(gutils->getNewFromOriginal(orig_ops[1]), Builder2)};
 
-            auto cal = cast<CallInst>(Builder2.CreateCall(
-                Intrinsic::getDeclaration(M, Intrinsic::copysign, tys), args));
-            cal->copyIRFlags(&II);
-            cal->setAttributes(II.getAttributes());
-            cal->setCallingConv(II.getCallingConv());
-            cal->setTailCallKind(II.getTailCallKind());
-            cal->setDebugLoc(gutils->getNewFromOriginal(II.getDebugLoc()));
+            auto cal = cast<CallInst>(Builder2.CreateCall(CopyF, args));
+            cal->setCallingConv(CopyF->getCallingConv());
+            cal->setDebugLoc(gutils->getNewFromOriginal(I.getDebugLoc()));
             ysign = cal;
           }
           Value *dif0 =
               Builder2.CreateFMul(Builder2.CreateFMul(xsign, ysign), vdiff);
-          addToDiffe(orig_ops[0], dif0, Builder2, II.getType());
+          addToDiffe(orig_ops[0], dif0, Builder2, I.getType());
         }
         return;
       }
       case Intrinsic::powi: {
         if (vdiff && !gutils->isConstantValue(orig_ops[0])) {
-
           Value *op0 = gutils->getNewFromOriginal(orig_ops[0]);
           Value *op1 = gutils->getNewFromOriginal(orig_ops[1]);
           SmallVector<Value *, 2> args = {
@@ -1796,21 +1768,20 @@ public:
               Builder2.CreateSub(lookup(op1, Builder2),
                                  ConstantInt::get(op1->getType(), 1))};
           Type *tys[] = {orig_ops[0]->getType()};
-          auto cal = cast<CallInst>(Builder2.CreateCall(
-              Intrinsic::getDeclaration(M, Intrinsic::powi, tys), args));
-          cal->copyIRFlags(&II);
-          cal->setAttributes(II.getAttributes());
-          cal->setCallingConv(II.getCallingConv());
-          cal->setTailCallKind(II.getTailCallKind());
-          cal->setDebugLoc(gutils->getNewFromOriginal(II.getDebugLoc()));
+          Function* PowF = Intrinsic::getDeclaration(M, Intrinsic::powi, tys);
+          auto cal = cast<CallInst>(Builder2.CreateCall(PowF, args));
+          cal->setCallingConv(PowF->getCallingConv());
+          cal->setDebugLoc(gutils->getNewFromOriginal(I.getDebugLoc()));
           Value *dif0 = Builder2.CreateFMul(
               Builder2.CreateFMul(vdiff, cal),
               Builder2.CreateSIToFP(lookup(op1, Builder2), op0->getType()));
-          addToDiffe(orig_ops[0], dif0, Builder2, II.getType());
+          addToDiffe(orig_ops[0], dif0, Builder2, I.getType());
         }
         return;
       }
       case Intrinsic::pow: {
+        Type *tys[] = {orig_ops[0]->getType()};
+        Function* PowF = Intrinsic::getDeclaration(M, Intrinsic::pow, tys);
         if (vdiff && !gutils->isConstantValue(orig_ops[0])) {
 
           Value *op0 = gutils->getNewFromOriginal(orig_ops[0]);
@@ -1825,19 +1796,14 @@ public:
           SmallVector<Value *, 2> args = {
               lookup(op0, Builder2),
               Builder2.CreateFSub(lookup(op1, Builder2),
-                                  ConstantFP::get(II.getType(), 1.0))};
-          Type *tys[] = {orig_ops[0]->getType()};
-          auto cal = cast<CallInst>(Builder2.CreateCall(
-              Intrinsic::getDeclaration(M, Intrinsic::pow, tys), args));
-          cal->copyIRFlags(&II);
-          cal->setAttributes(II.getAttributes());
-          cal->setCallingConv(II.getCallingConv());
-          cal->setTailCallKind(II.getTailCallKind());
-          cal->setDebugLoc(gutils->getNewFromOriginal(II.getDebugLoc()));
+                                  ConstantFP::get(I.getType(), 1.0))};
+          auto cal = cast<CallInst>(Builder2.CreateCall(PowF, args));
+          cal->setCallingConv(PowF->getCallingConv());
+          cal->setDebugLoc(gutils->getNewFromOriginal(I.getDebugLoc()));
 
           Value *dif0 = Builder2.CreateFMul(Builder2.CreateFMul(vdiff, cal),
                                             lookup(op1, Builder2));
-          addToDiffe(orig_ops[0], dif0, Builder2, II.getType());
+          addToDiffe(orig_ops[0], dif0, Builder2, I.getType());
         }
 
         if (vdiff && !gutils->isConstantValue(orig_ops[1])) {
@@ -1848,25 +1814,19 @@ public:
                 lookup(gutils->getNewFromOriginal(orig_ops[0]), Builder2),
                 lookup(gutils->getNewFromOriginal(orig_ops[1]), Builder2)};
 
-            Type *tys[] = {orig_ops[0]->getType()};
-            cal = cast<CallInst>(Builder2.CreateCall(
-                Intrinsic::getDeclaration(M, II.getIntrinsicID(), tys), args));
-            cal->copyIRFlags(&II);
-            cal->setAttributes(II.getAttributes());
-            cal->setCallingConv(II.getCallingConv());
-            cal->setTailCallKind(II.getTailCallKind());
-            cal->setDebugLoc(gutils->getNewFromOriginal(II.getDebugLoc()));
+            cal = cast<CallInst>(Builder2.CreateCall(PowF, args));
+            cal->setCallingConv(PowF->getCallingConv());
+            cal->setDebugLoc(gutils->getNewFromOriginal(I.getDebugLoc()));
           }
 
           Value *args[] = {
               lookup(gutils->getNewFromOriginal(orig_ops[0]), Builder2)};
-          Type *tys[] = {orig_ops[0]->getType()};
 
           Value *dif1 = Builder2.CreateFMul(
               Builder2.CreateFMul(vdiff, cal),
               Builder2.CreateCall(
                   Intrinsic::getDeclaration(M, Intrinsic::log, tys), args));
-          addToDiffe(orig_ops[1], dif1, Builder2, II.getType());
+          addToDiffe(orig_ops[1], dif1, Builder2, I.getType());
         }
         return;
       }
@@ -1877,9 +1837,8 @@ public:
           Type *tys[] = {orig_ops[0]->getType()};
           CallInst *cal = cast<CallInst>(Builder2.CreateCall(
               Intrinsic::getDeclaration(M, Intrinsic::cos, tys), args));
-          cal->setTailCallKind(II.getTailCallKind());
           Value *dif0 = Builder2.CreateFMul(vdiff, cal);
-          addToDiffe(orig_ops[0], dif0, Builder2, II.getType());
+          addToDiffe(orig_ops[0], dif0, Builder2, I.getType());
         }
         return;
       }
@@ -1890,24 +1849,23 @@ public:
           Type *tys[] = {orig_ops[0]->getType()};
           CallInst *cal = cast<CallInst>(Builder2.CreateCall(
               Intrinsic::getDeclaration(M, Intrinsic::sin, tys), args));
-          cal->setTailCallKind(II.getTailCallKind());
           Value *dif0 = Builder2.CreateFMul(vdiff, Builder2.CreateFNeg(cal));
-          addToDiffe(orig_ops[0], dif0, Builder2, II.getType());
+          addToDiffe(orig_ops[0], dif0, Builder2, I.getType());
         }
         return;
       }
       default:
-        if (gutils->isConstantInstruction(&II))
+        if (gutils->isConstantInstruction(&I))
           return;
         llvm::errs() << *gutils->oldFunc << "\n";
         llvm::errs() << *gutils->newFunc << "\n";
-        llvm::errs() << "cannot handle (reverse) unknown intrinsic\n" << II;
+        if (Intrinsic::isOverloaded(ID))
+          llvm::errs() << "cannot handle (reverse) unknown intrinsic\n" << Intrinsic::getName(ID, {}) << "\n" << I;
+        else
+          llvm::errs() << "cannot handle (reverse) unknown intrinsic\n" << Intrinsic::getName(ID) << "\n" << I;
         report_fatal_error("(reverse) unknown intrinsic");
       }
     }
-
-    llvm::InstVisitor<
-        AdjointGenerator<AugmentedReturnType>>::visitIntrinsicInst(II);
   }
 
   void visitOMPCall(llvm::CallInst &call) {
@@ -2954,114 +2912,30 @@ public:
         return;
       }
 
-      if (called && (called->getName() == "__pow_finite")) {
-        eraseIfUnused(*orig);
-        if (Mode == DerivativeMode::Forward ||
-            gutils->isConstantInstruction(orig)) {
-          return;
-        }
-
-        IRBuilder<> Builder2(call.getParent());
-        getReverseBuilder(Builder2);
-
-        Value *vdiff = diffe(orig, Builder2);
-        Value *orig_ops[2] = {orig->getArgOperand(0), orig->getArgOperand(1)};
-        if (vdiff && !gutils->isConstantValue(orig_ops[0])) {
-
-          Value *op0 = gutils->getNewFromOriginal(orig_ops[0]);
-          Value *op1 = gutils->getNewFromOriginal(orig_ops[1]);
-          SmallVector<Value *, 2> args = {
-              lookup(op0, Builder2),
-              Builder2.CreateFSub(lookup(op1, Builder2),
-                                  ConstantFP::get(orig->getType(), 1.0))};
-          auto cal = cast<CallInst>(Builder2.CreateCall(called, args));
-          cal->copyIRFlags(orig);
-          cal->setAttributes(orig->getAttributes());
-          cal->setCallingConv(orig->getCallingConv());
-          cal->setTailCallKind(orig->getTailCallKind());
-          cal->setDebugLoc(gutils->getNewFromOriginal(orig->getDebugLoc()));
-
-          Value *dif0 = Builder2.CreateFMul(Builder2.CreateFMul(vdiff, cal),
-                                            lookup(op1, Builder2));
-          addToDiffe(orig_ops[0], dif0, Builder2, orig->getType());
-        }
-
-        if (vdiff && !gutils->isConstantValue(orig_ops[1])) {
-
-          CallInst *cal;
-          {
-            SmallVector<Value *, 2> args = {
-                lookup(gutils->getNewFromOriginal(orig_ops[0]), Builder2),
-                lookup(gutils->getNewFromOriginal(orig_ops[1]), Builder2)};
-
-            cal = cast<CallInst>(Builder2.CreateCall(called, args));
-            cal->copyIRFlags(orig);
-            cal->setAttributes(orig->getAttributes());
-            cal->setCallingConv(orig->getCallingConv());
-            cal->setTailCallKind(orig->getTailCallKind());
-            cal->setDebugLoc(gutils->getNewFromOriginal(orig->getDebugLoc()));
+      if (called) {
+        Intrinsic::ID ID = Intrinsic::not_intrinsic;
+        if (isMemFreeLibMFunction(called->getName(), &ID)) {
+          if (Mode == DerivativeMode::Forward ||
+              gutils->isConstantInstruction(orig)) {
+            eraseIfUnused(*orig);
+            return;
           }
 
-          Value *args[] = {
-              lookup(gutils->getNewFromOriginal(orig_ops[0]), Builder2)};
-          Type *tys[] = {orig_ops[0]->getType()};
-
-          Value *dif1 = Builder2.CreateFMul(
-              Builder2.CreateFMul(vdiff, cal),
-              Builder2.CreateCall(Intrinsic::getDeclaration(
-                                      called->getParent(), Intrinsic::log, tys),
-                                  args));
-          addToDiffe(orig_ops[1], dif1, Builder2, orig->getType());
+          if (ID != Intrinsic::not_intrinsic) {
+            SmallVector<Value*, 2> orig_ops(orig->getNumOperands());
+            for (unsigned i = 0; i < orig->getNumOperands(); ++i) {
+              orig_ops[i] = orig->getOperand(i);
+            }
+            handleAdjointForIntrinsic(ID, *orig, orig_ops);
+            return;
+          }
         }
-        return;
-      }
-
-      if (called && (called->getName() == "__sqrt_finite")) {
-        eraseIfUnused(*orig);
-        if (Mode == DerivativeMode::Forward ||
-            gutils->isConstantInstruction(orig)) {
-          return;
-        }
-
-        IRBuilder<> Builder2(call.getParent());
-        getReverseBuilder(Builder2);
-
-        Value *vdiff = diffe(orig, Builder2);
-        Value *orig_ops[1] = {orig->getArgOperand(0)};
-
-        if (vdiff && !gutils->isConstantValue(orig_ops[0])) {
-          SmallVector<Value *, 2> args = {
-              lookup(gutils->getNewFromOriginal(orig_ops[0]), Builder2)};
-          Type *tys[] = {orig_ops[0]->getType()};
-          auto cal = cast<CallInst>(Builder2.CreateCall(
-              Intrinsic::getDeclaration(called->getParent(), Intrinsic::sqrt,
-                                        tys),
-              args));
-          cal->copyIRFlags(orig);
-          cal->setAttributes(orig->getAttributes());
-          cal->setCallingConv(orig->getCallingConv());
-          cal->setTailCallKind(orig->getTailCallKind());
-          cal->setDebugLoc(gutils->getNewFromOriginal(orig->getDebugLoc()));
-
-          Value *dif0 = Builder2.CreateBinOp(
-              Instruction::FDiv,
-              Builder2.CreateFMul(ConstantFP::get(orig->getType(), 0.5), vdiff),
-              cal);
-
-          Value *cmp = Builder2.CreateFCmpOEQ(
-              args[0], ConstantFP::get(orig_ops[0]->getType(), 0));
-          dif0 = Builder2.CreateSelect(
-              cmp, ConstantFP::get(orig_ops[0]->getType(), 0), dif0);
-
-          addToDiffe(orig_ops[0], dif0, Builder2, orig->getType());
-        }
-        return;
       }
 
       if (n == "lgamma" || n == "lgammaf" || n == "lgammal" ||
           n == "lgamma_r" || n == "lgammaf_r" || n == "lgammal_r" ||
           n == "__lgamma_r_finite" || n == "__lgammaf_r_finite" ||
-          n == "__lgammal_r_finite" || n == "acos") {
+          n == "__lgammal_r_finite") {
         if (Mode == DerivativeMode::Forward ||
             gutils->isConstantInstruction(orig)) {
           return;

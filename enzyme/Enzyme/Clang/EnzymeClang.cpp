@@ -48,8 +48,27 @@ static RegisterStandardPasses
     clangtoolLoader_Ox(PassManagerBuilder::EP_VectorizerStart, loadPass);
 static RegisterStandardPasses
     clangtoolLoader_O0(PassManagerBuilder::EP_EnabledOnOptLevel0, loadPass);
+
 #if LLVM_VERSION_MAJOR >= 9
+
+static void loadLTOPass(const PassManagerBuilder &Builder,
+                     legacy::PassManagerBase &PM) {
+  loadPass(Builder, PM);
+  PassManagerBuilder Builder2 = Builder;
+  Builder2.Inliner = nullptr;
+  Builder2.LibraryInfo = nullptr;
+  Builder2.ExportSummary = nullptr;
+  Builder2.ImportSummary = nullptr;
+  /*
+  Builder2.LoopVectorize = false;
+  Builder2.SLPVectorize = false;
+  Builder2.DisableUnrollLoops = true;
+  Builder2.RerollLoops = true;
+  */
+  const_cast<PassManagerBuilder&>(Builder2).populateModulePassManager(PM);
+}
+
 static RegisterStandardPasses
     clangtoolLoader_LTO(PassManagerBuilder::EP_FullLinkTimeOptimizationEarly,
-                        loadPass);
+                        loadLTOPass);
 #endif

@@ -994,6 +994,8 @@ Function *CloneFunctionWithReturns(
   return NewF;
 }
 
+#include "llvm/Transforms/IPO/PassManagerBuilder.h"
+#include "llvm/IR/LegacyPassManager.h"
 void optimizeIntermediate(GradientUtils *gutils, bool topLevel, Function *F) {
   {
     DominatorTree DT(*F);
@@ -1024,6 +1026,12 @@ void optimizeIntermediate(GradientUtils *gutils, bool topLevel, Function *F) {
   SROA().run(*F, AM);
   EarlyCSEPass(/*memoryssa*/ true).run(*F, AM);
 #endif
+
+  PassManagerBuilder Builder;
+  Builder.OptLevel = 2;
+  legacy::FunctionPassManager PM(F->getParent());
+  Builder.populateFunctionPassManager(PM);
+  PM.run(*F);
 
   // DCEPass().run(*F, AM);
 }

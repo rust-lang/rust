@@ -22,7 +22,7 @@ declare double @__enzyme_autodiff(double (double, i32)*, ...)
 ; CHECK: define internal {{(dso_local )?}}{ double } @diffetester(double %x, i32 %y, double %differeturn) {
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %[[ym1:.+]] = sub i32 %y, 1
-; CHECK-NEXT:   %[[newpow:.+]] = tail call fast double @llvm.powi.f64(double %x, i32 %[[ym1]])
+; CHECK-NEXT:   %[[newpow:.+]] = call fast double @llvm.powi.f64(double %x, i32 %[[ym1]])
 ; CHECK-DAG:    %[[sitofp:.+]] = sitofp i32 %y to double
 ; CHECK-DAG:    %[[newpowdret:.+]] = fmul fast double %differeturn, %[[newpow]]
 ; CHECK-NEXT:   %[[dx:.+]] = fmul fast double %[[newpowdret]], %[[sitofp]]

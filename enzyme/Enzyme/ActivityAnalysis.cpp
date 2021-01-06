@@ -336,7 +336,8 @@ bool ActivityAnalyzer::isConstantInstruction(TypeResults &TR, Instruction *I) {
   // TODO the "doesn't write to active memory" can be made more aggressive than
   // doesn't write to any memory
   if (!I->mayWriteToMemory() ||
-      (isa<CallInst>(I) && AA.onlyReadsMemory(cast<CallInst>(I)))) {
+      (isa<CallInst>(I) && AA.onlyReadsMemory(cast<CallInst>(I))) ||
+      (isa<CallInst>(I) && cast<CallInst>(I)->getFunction() && isMemFreeLibMFunction(cast<CallInst>(I)->getFunction()->getName()))) {
 
     // Even if returning a pointer, this instruction is considered inactive
     // since the instruction doesn't prop gradients. Thus, so long as we don't

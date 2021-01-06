@@ -120,7 +120,7 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   %m0diffetmp17 = fmul fast float %0, %tmp18
 ; CHECK-NEXT:   %m1diffetmp18 = fmul fast float %0, %tmp17
 ; CHECK-NEXT:   %1 = atomicrmw fadd float* addrspacecast (float addrspace(3)* @_ZZ19gpu_square_elem_mulPfS_S_mE6tile_a_shadow to float*), float %m1diffetmp18 monotonic
-; CHECK-NEXT:   tail call void @llvm.nvvm.barrier0()
+; CHECK-NEXT:   call void @llvm.nvvm.barrier0()
 ; CHECK-NEXT:   %2 = atomicrmw fadd float* %"tmp16'ipg", float %m0diffetmp17 monotonic
 ; CHECK-NEXT:   %3 = load i32, i32* addrspacecast (i32 addrspace(3)* bitcast (float addrspace(3)* @_ZZ19gpu_square_elem_mulPfS_S_mE6tile_a_shadow to i32 addrspace(3)*) to i32*), align 4
 ; CHECK-NEXT:   store i32 0, i32* addrspacecast (i32 addrspace(3)* bitcast (float addrspace(3)* @_ZZ19gpu_square_elem_mulPfS_S_mE6tile_a_shadow to i32 addrspace(3)*) to i32*), align 4

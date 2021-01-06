@@ -57,6 +57,7 @@
 #include "llvm/IR/Value.h"
 
 #include "llvm/Analysis/PostDominators.h"
+#include "llvm/Analysis/ValueTracking.h"
 #include "llvm/Support/Casting.h"
 
 #include "llvm/Transforms/Utils/ValueMapper.h"
@@ -1230,31 +1231,53 @@ public:
 
 //! align is the alignment that should be specified for load/store to pointer
 #if LLVM_VERSION_MAJOR >= 10
-  void addToInvertedPtrDiffe(Value *ptr, Value *dif, IRBuilder<> &BuilderM,
+  void addToInvertedPtrDiffe(Value *origptr, Value *dif, IRBuilder<> &BuilderM,
                              MaybeAlign align){
 #else
-  void addToInvertedPtrDiffe(Value *ptr, Value *dif, IRBuilder<> &BuilderM,
+  void addToInvertedPtrDiffe(Value *origptr, Value *dif, IRBuilder<> &BuilderM,
                              unsigned align) {
 #endif
-      if (!(ptr->getType()->isPointerTy()) ||
-          !(cast<PointerType>(ptr->getType())->getElementType() ==
+      if (!(origptr->getType()->isPointerTy()) ||
+          !(cast<PointerType>(origptr->getType())->getElementType() ==
             dif->getType())) {
         llvm::errs() << *oldFunc << "\n";
   llvm::errs() << *newFunc << "\n";
-  llvm::errs() << "Ptr: " << *ptr << "\n";
+  llvm::errs() << "Origptr: " << *origptr << "\n";
   llvm::errs() << "Diff: " << *dif << "\n";
-} assert(ptr->getType()->isPointerTy());
-assert(cast<PointerType>(ptr->getType())->getElementType() == dif->getType());
+} assert(origptr->getType()->isPointerTy());
+assert(cast<PointerType>(origptr->getType())->getElementType() == dif->getType());
 
-assert(ptr->getType()->isPointerTy());
-assert(cast<PointerType>(ptr->getType())->getElementType() == dif->getType());
+assert(origptr->getType()->isPointerTy());
+assert(cast<PointerType>(origptr->getType())->getElementType() == dif->getType());
 
 // const SCEV *S = SE.getSCEV(PN);
 // if (SE.getCouldNotCompute() == S)
 //  continue;
 
+
+Value *ptr = invertPointerM(origptr, BuilderM);
+assert(ptr);
+
+    auto TmpOrig =
+#if LLVM_VERSION_MAJOR >= 12
+        getUnderlyingObject(origptr, 100);
+#else
+        GetUnderlyingObject(origptr, oldFunc->getParent()->getDataLayout(),
+                            100);
+#endif
+
 // atomics
-if (AtomicAdd) {
+bool Atomic = AtomicAdd;
+
+// No need to do atomic on local memory for CUDA since it can't be raced upon
+if (isa<AllocaInst>(TmpOrig) && (llvm::Triple(newFunc->getParent()->getTargetTriple()).getArch() ==
+          Triple::nvptx ||
+      llvm::Triple(newFunc->getParent()->getTargetTriple()).getArch() ==
+          Triple::nvptx64)) {
+    Atomic = false;
+  }
+
+if (Atomic) {
   /*
   while (auto ASC = dyn_cast<AddrSpaceCastInst>(ptr)) {
     ptr = ASC->getOperand(0);

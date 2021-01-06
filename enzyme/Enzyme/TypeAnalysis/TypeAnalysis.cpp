@@ -50,6 +50,60 @@
 
 #include "TBAA.h"
 
+const std::map<std::string,llvm::Intrinsic::ID> LIBM_FUNCTIONS = {
+  {"cos",Intrinsic::cos},
+  {"sin",Intrinsic::sin},
+  {"tan",Intrinsic::not_intrinsic},
+  {"acos",Intrinsic::not_intrinsic},
+  {"asin",Intrinsic::not_intrinsic},
+  {"atan",Intrinsic::not_intrinsic},
+  {"atan2",Intrinsic::not_intrinsic},
+  {"cosh",Intrinsic::not_intrinsic},
+  {"sinh",Intrinsic::not_intrinsic},
+  {"tanh",Intrinsic::not_intrinsic},
+  {"acosh",Intrinsic::not_intrinsic},
+  {"asinh",Intrinsic::not_intrinsic},
+  {"atanh",Intrinsic::not_intrinsic},
+  {"exp",Intrinsic::exp},
+  {"log",Intrinsic::log},
+  {"log10",Intrinsic::log10},
+  {"exp2",Intrinsic::exp2},
+  {"expm1",Intrinsic::not_intrinsic},
+  {"log1p",Intrinsic::not_intrinsic},
+  {"log2",Intrinsic::log2},
+  {"logb",Intrinsic::not_intrinsic},
+  {"pow",Intrinsic::pow},
+  {"sqrt",Intrinsic::sqrt},
+  {"cbrt",Intrinsic::not_intrinsic},
+  {"hypot",Intrinsic::not_intrinsic},
+  {"erf",Intrinsic::not_intrinsic},
+  {"erfc",Intrinsic::not_intrinsic},
+  {"tgamma",Intrinsic::not_intrinsic},
+  {"lgamma",Intrinsic::not_intrinsic},
+  {"ceil",Intrinsic::ceil},
+  {"floor",Intrinsic::floor},
+  {"fmod",Intrinsic::not_intrinsic},
+  {"trunc",Intrinsic::trunc},
+  {"round",Intrinsic::round},
+  {"rint",Intrinsic::rint},
+  {"remainder",Intrinsic::not_intrinsic},
+  {"copysign",Intrinsic::copysign},
+  {"nextafter",Intrinsic::not_intrinsic},
+  {"nexttoward",Intrinsic::not_intrinsic},
+  {"fdim",Intrinsic::not_intrinsic},
+  {"fmax",Intrinsic::maxnum},
+  {"fmin",Intrinsic::minnum},
+  {"fabs",Intrinsic::fabs},
+  {"fma",Intrinsic::fma},
+  {"ilogb",Intrinsic::not_intrinsic},
+  {"scalbn",Intrinsic::not_intrinsic},
+  {"lround",Intrinsic::lround},
+  {"llround",Intrinsic::llround},
+  {"lrint",Intrinsic::lrint},
+  {"llrint",Intrinsic::llrint}
+};
+
+
 llvm::cl::opt<bool> PrintType("enzyme-print-type", cl::init(false), cl::Hidden,
                               cl::desc("Print type analysis algorithm"));
 
@@ -2595,139 +2649,50 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
     // CONSIDER(__lgamma_r_finite)
 
     CONSIDER2(frexp, double, double, int *)
-
     CONSIDER(frexpf)
     CONSIDER(frexpl)
     CONSIDER2(ldexp, double, double, int)
     CONSIDER2(modf, double, double, double *)
 
-    CONSIDER2(cos, double, double)
-    CONSIDER2(sin, double, double)
-    CONSIDER2(tan, double, double)
-    CONSIDER2(acos, double, double)
-    CONSIDER2(asin, double, double)
-    CONSIDER2(atan, double, double)
-    CONSIDER2(atan2, double, double, double)
-    CONSIDER2(cosh, double, double)
-    CONSIDER2(sinh, double, double)
-    CONSIDER2(tanh, double, double)
-    CONSIDER(tanhf)
-    CONSIDER2(acosh, double, double)
-    CONSIDER(acoshf)
-    CONSIDER(acoshl)
-    CONSIDER2(asinh, double, double)
-    CONSIDER(asinhf)
-    CONSIDER(asinhl)
-    CONSIDER2(atanh, double, double)
-    CONSIDER(atanhl)
-    CONSIDER(atanhf)
-    CONSIDER2(exp, double, double)
-    CONSIDER2(log, double, double)
-    CONSIDER2(log10, double, double)
-    CONSIDER2(exp2, double, double)
-    CONSIDER(exp2f)
-    CONSIDER(exp2l)
-    CONSIDER2(expm1, double, double)
-    CONSIDER(expm1f)
-    CONSIDER(expm1l)
-    CONSIDER2(ilogb, int, double)
-    CONSIDER(ilogbf)
-    CONSIDER(ilogbl)
-    CONSIDER2(log1p, double, double)
-    CONSIDER(log1pf)
-    CONSIDER(log1pl)
-    CONSIDER2(log2, double, double)
-    CONSIDER(log2f)
-    CONSIDER(log2l)
-    CONSIDER2(logb, double, double)
-    CONSIDER(logbf)
-    CONSIDER(logbl)
-    CONSIDER2(scalbn, double, double, int)
-    CONSIDER(scalbnf)
-    CONSIDER(scalbnl)
-    CONSIDER2(scalbln, double, double, long)
-    CONSIDER(scalblnf)
-    CONSIDER(scalblnl)
-    CONSIDER2(pow, double, double, double)
-    CONSIDER2(sqrt, double, double)
-    CONSIDER2(cbrt, double, double)
-    CONSIDER(cbrtf)
-    CONSIDER(cbrtl)
-    CONSIDER2(hypot, double, double, double)
-    CONSIDER2(erf, double, double)
-    CONSIDER(erff)
-    CONSIDER(erfl)
-    CONSIDER2(erfc, double, double)
-    CONSIDER(erfcf)
-    CONSIDER(erfcl)
-    CONSIDER2(tgamma, double, double)
-    CONSIDER(tgammaf)
-    CONSIDER(tgammal)
-    CONSIDER2(lgamma, double, double)
-    CONSIDER(lgammaf)
-    CONSIDER(lgammal)
-    CONSIDER2(ceil, double, double)
-    CONSIDER2(floor, double, double)
-    CONSIDER2(fmod, double, double, double)
-    CONSIDER2(trunc, double, double)
-    CONSIDER(truncf)
-    CONSIDER(truncl)
-    CONSIDER2(round, double, double)
-    CONSIDER(roundf)
-    CONSIDER(roundl)
-    CONSIDER2(lround, long, double)
-    CONSIDER(lroundf)
-    CONSIDER(lroundl)
-    CONSIDER2(llround, long long, double)
-    CONSIDER(llroundf)
-    CONSIDER(llroundl)
-    CONSIDER2(rint, double, double)
-    CONSIDER(rintf)
-    CONSIDER(rintl)
-    CONSIDER2(lrint, long, double)
-    CONSIDER(lrintf)
-    CONSIDER(lrintl)
-    CONSIDER2(llrint, long long, double)
-    CONSIDER(llrintf)
-    CONSIDER(llrintl)
-    CONSIDER2(remainder, double, double, double)
-    CONSIDER(remainderf)
-    CONSIDER(remainderl)
     CONSIDER2(remquo, double, double, double, int *)
     CONSIDER(remquof)
     CONSIDER(remquol)
-    CONSIDER2(copysign, double, double, double)
-    CONSIDER(copysignf)
-    CONSIDER(copysignl)
-    CONSIDER2(nextafter, double, double, double)
-    CONSIDER(nextafterf)
-    CONSIDER(nextafterl)
-    CONSIDER2(nexttoward, double, double, long double)
-    CONSIDER(nexttowardf)
-    CONSIDER(nexttowardl)
-    CONSIDER2(fdim, double, double, double)
-    CONSIDER(fdimf)
-    CONSIDER(fdiml)
-    CONSIDER2(fmax, double, double, double)
-    CONSIDER(fmaxf)
-    CONSIDER(fmaxl)
-    CONSIDER2(fmin, double, double, double)
-    CONSIDER(fminf)
-    CONSIDER(fminl)
-    CONSIDER2(fabs, double, double)
-    CONSIDER2(fma, double, double, double, double)
-    CONSIDER(fmaf)
-    CONSIDER(fmal)
 
-    if (ci->getName() == "__pow_finite" || ci->getName() == "__sqrt_finite") {
-      for (int i = 0; i < call.getNumArgOperands(); ++i) {
-        updateAnalysis(
-            call.getArgOperand(i),
-            TypeTree(ConcreteType(call.getArgOperand(i)->getType())).Only(-1),
-            &call);
+    if (isMemFreeLibMFunction(ci->getName())) {
+      for (size_t i = 0; i < call.getNumArgOperands(); ++i) {
+        Type* T = call.getArgOperand(i)->getType();
+        if (T->isFloatingPointTy()) {
+          updateAnalysis(
+              call.getArgOperand(i),
+              TypeTree(ConcreteType(call.getArgOperand(i)->getType())).Only(-1),
+              &call);
+        } else if (T->isIntegerTy()) {
+          updateAnalysis(
+              call.getArgOperand(i),
+              TypeTree(BaseType::Integer).Only(-1),
+              &call);
+        } else {
+          llvm::errs() << *T << " - " << call << "\n";
+          llvm_unreachable("Unknown type for libm");
+        }
       }
-      updateAnalysis(&call, TypeTree(ConcreteType(call.getType())).Only(-1),
-                     &call);
+      Type* T = call.getType();
+      if (T->isFloatingPointTy()) {
+        updateAnalysis(
+            &call,
+            TypeTree(ConcreteType(call.getType())).Only(-1),
+            &call);
+      } else if (T->isIntegerTy()) {
+        updateAnalysis(
+            &call,
+            TypeTree(BaseType::Integer).Only(-1),
+            &call);
+      } else if (T->isVoidTy()) {
+        
+      } else {
+        llvm::errs() << *T << " - " << call << "\n";
+        llvm_unreachable("Unknown type for libm");
+      }
       return;
     }
     if (ci->getName() == "__lgamma_r_finite") {
