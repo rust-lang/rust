@@ -20,7 +20,7 @@ use rustc_hash::FxHashSet;
 use serde::{de::DeserializeOwned, Deserialize};
 use vfs::AbsPathBuf;
 
-use crate::{caps::enabled_completions_resolve_capabilities, diagnostics::DiagnosticsMapConfig};
+use crate::{caps::completion_item_edit_resolve, diagnostics::DiagnosticsMapConfig};
 
 config_data! {
     struct ConfigData {
@@ -536,12 +536,11 @@ impl Config {
     pub fn completion(&self) -> CompletionConfig {
         let mut res = CompletionConfig::default();
         res.enable_postfix_completions = self.data.completion_postfix_enable;
-        res.enable_autoimport_completions = self.data.completion_autoimport_enable;
+        res.enable_autoimport_completions =
+            self.data.completion_autoimport_enable && completion_item_edit_resolve(&self.caps);
         res.add_call_parenthesis = self.data.completion_addCallParenthesis;
         res.add_call_argument_snippets = self.data.completion_addCallArgumentSnippets;
         res.merge = self.merge_behavior();
-        res.active_resolve_capabilities =
-            enabled_completions_resolve_capabilities(&self.caps).unwrap_or_default();
 
         res.allow_snippets(try_or!(
             self.caps

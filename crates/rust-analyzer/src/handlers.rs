@@ -9,9 +9,8 @@ use std::{
 };
 
 use ide::{
-    CompletionResolveCapability, FileId, FilePosition, FileRange, HoverAction, HoverGotoTypeData,
-    LineIndex, NavigationTarget, Query, RangeInfo, Runnable, RunnableKind, SearchScope,
-    SourceChange, SymbolKind, TextEdit,
+    FileId, FilePosition, FileRange, HoverAction, HoverGotoTypeData, LineIndex, NavigationTarget,
+    Query, RangeInfo, Runnable, RunnableKind, SearchScope, SourceChange, SymbolKind, TextEdit,
 };
 use itertools::Itertools;
 use lsp_server::ErrorCode;
@@ -634,10 +633,9 @@ pub(crate) fn handle_completion(
             let mut new_completion_items =
                 to_proto::completion_item(&line_index, line_endings, item.clone());
 
-            if completion_config.resolve_additional_edits_lazily() {
+            if completion_config.enable_autoimport_completions {
                 for new_item in &mut new_completion_items {
-                    let _ = fill_resolve_data(&mut new_item.data, &item, &text_document_position)
-                        .take();
+                    fill_resolve_data(&mut new_item.data, &item, &text_document_position);
                 }
             }
 
@@ -663,15 +661,6 @@ pub(crate) fn handle_completion_resolve(
         .into());
     }
 
-    // FIXME resolve the other capabilities also?
-    let completion_config = &snap.config.completion();
-    if !completion_config
-        .active_resolve_capabilities
-        .contains(&CompletionResolveCapability::AdditionalTextEdits)
-    {
-        return Ok(original_completion);
-    }
-
     let resolve_data = match original_completion
         .data
         .take()
@@ -690,7 +679,7 @@ pub(crate) fn handle_completion_resolve(
     let additional_edits = snap
         .analysis
         .resolve_completion_edits(
-            &completion_config,
+            &snap.config.completion(),
             FilePosition { file_id, offset },
             &resolve_data.full_import_path,
             resolve_data.imported_name,

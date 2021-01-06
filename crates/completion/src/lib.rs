@@ -20,7 +20,7 @@ use text_edit::TextEdit;
 use crate::{completions::Completions, context::CompletionContext, item::CompletionKind};
 
 pub use crate::{
-    config::{CompletionConfig, CompletionResolveCapability},
+    config::CompletionConfig,
     item::{CompletionItem, CompletionItemKind, CompletionScore, ImportEdit, InsertTextFormat},
 };
 

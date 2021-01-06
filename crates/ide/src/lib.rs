@@ -82,8 +82,8 @@ pub use crate::{
 };
 pub use assists::{Assist, AssistConfig, AssistId, AssistKind};
 pub use completion::{
-    CompletionConfig, CompletionItem, CompletionItemKind, CompletionResolveCapability,
-    CompletionScore, ImportEdit, InsertTextFormat,
+    CompletionConfig, CompletionItem, CompletionItemKind, CompletionScore, ImportEdit,
+    InsertTextFormat,
 };
 pub use hir::{Documentation, Semantics};
 pub use ide_db::base_db::{
