@@ -1,9 +1,9 @@
 //! FIXME: write short doc here
 
 mod cargo_workspace;
+mod cfg_flag;
 mod project_json;
 mod sysroot;
-mod cfg_flag;
 mod workspace;
 
 use std::{
@@ -17,7 +17,10 @@ use paths::{AbsPath, AbsPathBuf};
 use rustc_hash::FxHashSet;
 
 pub use crate::{
-    cargo_workspace::{CargoConfig, CargoWorkspace, Package, Target, TargetKind},
+    cargo_workspace::{
+        CargoConfig, CargoWorkspace, Package, PackageData, PackageDependency, Target, TargetData,
+        TargetKind,
+    },
     project_json::{ProjectJson, ProjectJsonData},
     sysroot::Sysroot,
     workspace::{PackageRoot, ProjectWorkspace},
