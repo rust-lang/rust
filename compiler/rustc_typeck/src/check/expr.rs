@@ -48,11 +48,6 @@ use rustc_trait_selection::traits::{self, ObligationCauseCode};
 use std::fmt::Display;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
-    fn check_expr_eq_type(&self, expr: &'tcx hir::Expr<'tcx>, expected: Ty<'tcx>) {
-        let ty = self.check_expr_with_hint(expr, expected);
-        self.demand_eqtype(expr.span, expected, ty);
-    }
-
     pub fn check_expr_has_type_or_error(
         &self,
         expr: &'tcx hir::Expr<'tcx>,
@@ -282,7 +277,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ExprKind::Cast(ref e, ref t) => self.check_expr_cast(e, t, expr),
             ExprKind::Type(ref e, ref t) => {
                 let ty = self.to_ty_saving_user_provided_ty(&t);
-                self.check_expr_eq_type(&e, ty);
+                self.check_expr_coercable_to_type(e, ty, None);
                 ty
             }
             ExprKind::DropTemps(ref e) => self.check_expr_with_expectation(e, expected),
