@@ -2,7 +2,7 @@
 
 mod format_like;
 
-use ide_db::ty_filter::TryEnum;
+use ide_db::{helpers::SnippetCap, ty_filter::TryEnum};
 use syntax::{
     ast::{self, AstNode, AstToken},
     SyntaxKind::{BLOCK_EXPR, EXPR_STMT},
@@ -10,9 +10,8 @@ use syntax::{
 };
 use text_edit::TextEdit;
 
-use self::format_like::add_format_like_completions;
 use crate::{
-    config::SnippetCap,
+    completions::postfix::format_like::add_format_like_completions,
     context::CompletionContext,
     item::{Builder, CompletionKind},
     CompletionItem, CompletionItemKind, Completions,

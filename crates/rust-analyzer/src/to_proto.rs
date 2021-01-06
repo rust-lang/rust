@@ -850,6 +850,7 @@ pub(crate) fn markup_content(markup: Markup) -> lsp_types::MarkupContent {
 #[cfg(test)]
 mod tests {
     use ide::Analysis;
+    use ide_db::helpers::SnippetCap;
 
     use super::*;
 
@@ -868,7 +869,14 @@ mod tests {
         let (analysis, file_id) = Analysis::from_single_file(text);
         let completions: Vec<(String, Option<String>)> = analysis
             .completions(
-                &ide::CompletionConfig::default(),
+                &ide::CompletionConfig {
+                    enable_postfix_completions: true,
+                    enable_autoimport_completions: true,
+                    add_call_parenthesis: true,
+                    add_call_argument_snippets: true,
+                    snippet_cap: SnippetCap::new(true),
+                    merge: None,
+                },
                 ide_db::base_db::FilePosition { file_id, offset },
             )
             .unwrap()

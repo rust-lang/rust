@@ -14,11 +14,10 @@
 //   + `logw` -> `log::warn!(...)`
 //   + `loge` -> `log::error!(...)`
 
-use crate::{
-    completions::postfix::postfix_snippet, config::SnippetCap, context::CompletionContext,
-    Completions,
-};
+use ide_db::helpers::SnippetCap;
 use syntax::ast::{self, AstToken};
+
+use crate::{completions::postfix::postfix_snippet, context::CompletionContext, Completions};
 
 /// Mapping ("postfix completion item" => "macro to use")
 static KINDS: &[(&str, &str)] = &[

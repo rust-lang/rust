@@ -192,21 +192,19 @@ mod tests {
     use test_utils::mark;
 
     use crate::{
-        test_utils::{check_edit, check_edit_with_config, completion_list_with_config},
+        test_utils::{
+            check_edit, check_edit_with_config, completion_list_with_config, TEST_CONFIG,
+        },
         CompletionConfig, CompletionKind,
     };
 
     fn check(ra_fixture: &str, expect: Expect) {
-        check_with_config(CompletionConfig::default(), ra_fixture, expect);
+        check_with_config(TEST_CONFIG, ra_fixture, expect);
     }
 
     fn check_with_config(config: CompletionConfig, ra_fixture: &str, expect: Expect) {
         let actual = completion_list_with_config(config, ra_fixture, CompletionKind::Reference);
         expect.assert_eq(&actual)
-    }
-
-    fn fuzzy_completion_config() -> CompletionConfig {
-        CompletionConfig::default()
     }
 
     #[test]
@@ -832,7 +830,7 @@ impl My<|>
     #[test]
     fn function_fuzzy_completion() {
         check_edit_with_config(
-            fuzzy_completion_config(),
+            TEST_CONFIG,
             "stdin",
             r#"
 //- /lib.rs crate:dep
@@ -858,7 +856,7 @@ fn main() {
     #[test]
     fn macro_fuzzy_completion() {
         check_edit_with_config(
-            fuzzy_completion_config(),
+            TEST_CONFIG,
             "macro_with_curlies!",
             r#"
 //- /lib.rs crate:dep
@@ -886,7 +884,7 @@ fn main() {
     #[test]
     fn struct_fuzzy_completion() {
         check_edit_with_config(
-            fuzzy_completion_config(),
+            TEST_CONFIG,
             "ThirdStruct",
             r#"
 //- /lib.rs crate:dep
@@ -917,7 +915,7 @@ fn main() {
     fn fuzzy_completions_come_in_specific_order() {
         mark::check!(certain_fuzzy_order_test);
         check_with_config(
-            fuzzy_completion_config(),
+            TEST_CONFIG,
             r#"
 //- /lib.rs crate:dep
 pub struct FirstStruct;

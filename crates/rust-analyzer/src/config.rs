@@ -11,8 +11,11 @@ use std::{convert::TryFrom, ffi::OsString, path::PathBuf};
 
 use flycheck::FlycheckConfig;
 use hir::PrefixKind;
-use ide::{AssistConfig, CompletionConfig, DiagnosticsConfig, HoverConfig, InlayHintsConfig};
-use ide_db::helpers::insert_use::MergeBehavior;
+use ide::{
+    AssistConfig, CompletionConfig, DiagnosticsConfig, HoverConfig, InlayHintsConfig,
+    InsertUseConfig,
+};
+use ide_db::helpers::{insert_use::MergeBehavior, SnippetCap};
 use itertools::Itertools;
 use lsp_types::{ClientCapabilities, MarkupKind};
 use project_model::{CargoConfig, ProjectJson, ProjectJsonData, ProjectManifest};
@@ -534,37 +537,39 @@ impl Config {
         }
     }
     pub fn completion(&self) -> CompletionConfig {
-        let mut res = CompletionConfig::default();
-        res.enable_postfix_completions = self.data.completion_postfix_enable;
-        res.enable_autoimport_completions =
-            self.data.completion_autoimport_enable && completion_item_edit_resolve(&self.caps);
-        res.add_call_parenthesis = self.data.completion_addCallParenthesis;
-        res.add_call_argument_snippets = self.data.completion_addCallArgumentSnippets;
-        res.merge = self.merge_behavior();
-
-        res.allow_snippets(try_or!(
-            self.caps
-                .text_document
-                .as_ref()?
-                .completion
-                .as_ref()?
-                .completion_item
-                .as_ref()?
-                .snippet_support?,
-            false
-        ));
-        res
+        CompletionConfig {
+            enable_postfix_completions: self.data.completion_postfix_enable,
+            enable_autoimport_completions: self.data.completion_autoimport_enable
+                && completion_item_edit_resolve(&self.caps),
+            add_call_parenthesis: self.data.completion_addCallParenthesis,
+            add_call_argument_snippets: self.data.completion_addCallArgumentSnippets,
+            merge: self.merge_behavior(),
+            snippet_cap: SnippetCap::new(try_or!(
+                self.caps
+                    .text_document
+                    .as_ref()?
+                    .completion
+                    .as_ref()?
+                    .completion_item
+                    .as_ref()?
+                    .snippet_support?,
+                false
+            )),
+        }
     }
     pub fn assist(&self) -> AssistConfig {
-        let mut res = AssistConfig::default();
-        res.insert_use.merge = self.merge_behavior();
-        res.insert_use.prefix_kind = match self.data.assist_importPrefix {
-            ImportPrefixDef::Plain => PrefixKind::Plain,
-            ImportPrefixDef::ByCrate => PrefixKind::ByCrate,
-            ImportPrefixDef::BySelf => PrefixKind::BySelf,
-        };
-        res.allow_snippets(self.experimental("snippetTextEdit"));
-        res
+        AssistConfig {
+            snippet_cap: SnippetCap::new(self.experimental("snippetTextEdit")),
+            allowed: None,
+            insert_use: InsertUseConfig {
+                merge: self.merge_behavior(),
+                prefix_kind: match self.data.assist_importPrefix {
+                    ImportPrefixDef::Plain => PrefixKind::Plain,
+                    ImportPrefixDef::ByCrate => PrefixKind::ByCrate,
+                    ImportPrefixDef::BySelf => PrefixKind::BySelf,
+                },
+            },
+        }
     }
     pub fn call_info_full(&self) -> bool {
         self.data.callInfo_full

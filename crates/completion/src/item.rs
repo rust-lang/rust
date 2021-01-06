@@ -5,12 +5,10 @@ use std::fmt;
 use hir::{Documentation, ModPath, Mutability};
 use ide_db::helpers::{
     insert_use::{self, ImportScope, MergeBehavior},
-    mod_path_to_ast,
+    mod_path_to_ast, SnippetCap,
 };
 use syntax::{algo, TextRange};
 use text_edit::TextEdit;
-
-use crate::config::SnippetCap;
 
 /// `CompletionItem` describes a single completion variant in the editor pop-up.
 /// It is basically a POD with various properties. To construct a

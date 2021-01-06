@@ -4,7 +4,7 @@
 //! module, and we use to statically check that we only produce snippet
 //! completions if we are allowed to.
 
-use ide_db::helpers::insert_use::MergeBehavior;
+use ide_db::helpers::{insert_use::MergeBehavior, SnippetCap};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CompletionConfig {
@@ -14,28 +14,4 @@ pub struct CompletionConfig {
     pub add_call_argument_snippets: bool,
     pub snippet_cap: Option<SnippetCap>,
     pub merge: Option<MergeBehavior>,
-}
-
-impl CompletionConfig {
-    pub fn allow_snippets(&mut self, yes: bool) {
-        self.snippet_cap = if yes { Some(SnippetCap { _private: () }) } else { None }
-    }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct SnippetCap {
-    _private: (),
-}
-
-impl Default for CompletionConfig {
-    fn default() -> Self {
-        CompletionConfig {
-            enable_postfix_completions: true,
-            enable_autoimport_completions: true,
-            add_call_parenthesis: true,
-            add_call_argument_snippets: true,
-            snippet_cap: Some(SnippetCap { _private: () }),
-            merge: Some(MergeBehavior::Full),
-        }
-    }
 }

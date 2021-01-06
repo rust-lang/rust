@@ -1,9 +1,10 @@
 //! A module with ide helpers for high-level ide features.
-use crate::RootDatabase;
+pub mod insert_use;
+
 use hir::{Crate, Enum, Module, ScopeDef, Semantics, Trait};
 use syntax::ast::{self, make};
 
-pub mod insert_use;
+use crate::RootDatabase;
 
 /// Converts the mod path struct into its ast representation.
 pub fn mod_path_to_ast(path: &hir::ModPath) -> ast::Path {
@@ -199,5 +200,20 @@ pub use prelude::*;
         let def =
             module.scope(db, None).into_iter().find(|(name, _def)| name.to_string() == trait_)?.1;
         Some(def)
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct SnippetCap {
+    _private: (),
+}
+
+impl SnippetCap {
+    pub const fn new(allow_snippets: bool) -> Option<SnippetCap> {
+        if allow_snippets {
+            Some(SnippetCap { _private: () })
+        } else {
+            None
+        }
     }
 }

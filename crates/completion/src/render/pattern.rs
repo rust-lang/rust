@@ -1,12 +1,10 @@
 //! Renderer for patterns.
 
 use hir::{db::HirDatabase, HasAttrs, HasVisibility, Name, StructKind};
+use ide_db::helpers::SnippetCap;
 use itertools::Itertools;
 
-use crate::{
-    config::SnippetCap, item::CompletionKind, render::RenderContext, CompletionItem,
-    CompletionItemKind,
-};
+use crate::{item::CompletionKind, render::RenderContext, CompletionItem, CompletionItemKind};
 
 fn visible_fields(
     ctx: &RenderContext<'_>,
