@@ -143,7 +143,7 @@ pub fn load_dep_graph(sess: &Session) -> DepGraphFuture {
                 let mut all_files_exist = true;
                 if let Some(ref file_name) = swp.work_product.saved_file {
                     let path = in_incr_comp_dir_sess(sess, file_name);
-                    if fs::metadata(&path).is_err() {
+                    if !fs::exists(&path) {
                         all_files_exist = false;
 
                         if sess.opts.debugging_opts.incremental_info {

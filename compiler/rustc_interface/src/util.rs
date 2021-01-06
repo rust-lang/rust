@@ -270,7 +270,7 @@ fn get_rustc_path_inner(bin_path: &str) -> Option<PathBuf> {
         } else {
             "rustc"
         });
-        fs::metadata(&candidate).is_ok().then_some(candidate)
+        fs::exists(&candidate).then_some(candidate)
     })
 }
 
@@ -398,7 +398,7 @@ pub fn get_codegen_sysroot(backend_name: &str) -> fn() -> Box<dyn CodegenBackend
         })
         .find(|f| {
             info!("codegen backend candidate: {}", f.display());
-            fs::metadata(f).is_ok()
+            fs::exists(f)
         });
     let sysroot = sysroot.unwrap_or_else(|| {
         let candidates = sysroot_candidates

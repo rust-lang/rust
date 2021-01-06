@@ -517,9 +517,7 @@ fn output_contains_path(output_paths: &[PathBuf], input_path: &PathBuf) -> bool 
 }
 
 fn output_conflicts_with_dir(output_paths: &[PathBuf]) -> Option<PathBuf> {
-    let check = |output_path: &PathBuf| {
-        fs::metadata(output_path).map(|m| m.is_dir()).unwrap_or(false).then(|| output_path.clone())
-    };
+    let check = |output_path: &PathBuf| fs::is_dir(output_path).then(|| output_path.clone());
     check_output(output_paths, check)
 }
 

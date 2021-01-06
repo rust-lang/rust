@@ -47,10 +47,10 @@ pub fn get_dbpath_for_term(term: &str) -> Option<PathBuf> {
 
     // Look for the terminal in all of the search directories
     for mut p in dirs_to_search {
-        if fs::metadata(&p).is_ok() {
+        if fs::exists(&p) {
             p.push(&first_char.to_string());
             p.push(&term);
-            if fs::metadata(&p).is_ok() {
+            if fs::exists(&p) {
                 return Some(p);
             }
             p.pop();
@@ -60,7 +60,7 @@ pub fn get_dbpath_for_term(term: &str) -> Option<PathBuf> {
             // (e.g., macOS)
             p.push(&format!("{:x}", first_char as usize));
             p.push(term);
-            if fs::metadata(&p).is_ok() {
+            if fs::exists(&p) {
                 return Some(p);
             }
         }

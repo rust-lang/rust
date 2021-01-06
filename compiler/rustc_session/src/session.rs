@@ -1485,7 +1485,7 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
     // Make sure that any given profiling data actually exists so LLVM can't
     // decide to silently skip PGO.
     if let Some(ref path) = sess.opts.cg.profile_use {
-        if fs::metadata(path).is_err() {
+        if !fs::exists(path) {
             sess.err(&format!(
                 "File `{}` passed to `-C profile-use` does not exist.",
                 path.display()

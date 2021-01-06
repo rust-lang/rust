@@ -2108,6 +2108,92 @@ pub fn set_permissions<P: AsRef<Path>>(path: P, perm: Permissions) -> io::Result
     fs_imp::set_perm(path.as_ref(), perm.0)
 }
 
+/// Returns `true` if the path points at an existing entity.
+///
+/// This function will traverse symbolic links to query information about the
+/// destination file. In case of broken symbolic links this will return `false`.
+///
+/// If you cannot access the directory containing the file, e.g., because of a
+/// permission error, this will return `false`.
+///
+/// # Examples
+///
+/// ```no_run
+/// use std::path::Path;
+/// assert!(!Path::new("does_not_exist.txt").exists());
+/// ```
+///
+/// # See Also
+///
+/// This is a convenience function that coerces errors to false. If you want to
+/// check errors, call [`metadata`].
+#[stable(feature = "fs_path_convenience", since = "1.51.0")]
+pub fn exists<P: AsRef<Path>>(path: P) -> bool {
+    metadata(path).is_ok()
+}
+
+/// Returns `true` if the path exists on disk and is pointing at a regular file.
+///
+/// This function will traverse symbolic links to query information about the
+/// destination file. In case of broken symbolic links this will return `false`.
+///
+/// If you cannot access the directory containing the file, e.g., because of a
+/// permission error, this will return `false`.
+///
+/// # Examples
+///
+/// ```no_run
+/// use std::path::Path;
+/// assert_eq!(Path::new("./is_a_directory/").is_file(), false);
+/// assert_eq!(Path::new("a_file.txt").is_file(), true);
+/// ```
+///
+/// # See Also
+///
+/// This is a convenience function that coerces errors to false. If you want to
+/// check errors, call [`metadata`] and handle its [`Result`]. Then call
+/// [`Metadata::is_file`] if it was [`Ok`].
+///
+/// When the goal is simply to read from (or write to) the source, the most
+/// reliable way to test the source can be read (or written to) is to open
+/// it. Only using `is_file` can break workflows like `diff <( prog_a )` on
+/// a Unix-like system for example. See [`File::open`] or
+/// [`OpenOptions::open`] for more information.
+#[stable(feature = "fs_path_convenience", since = "1.51.0")]
+pub fn is_file<P: AsRef<Path>>(path: P) -> bool {
+    metadata(path).map(|m| m.is_file()).unwrap_or(false)
+}
+
+/// Returns `true` if the path exists on disk and is pointing at a directory.
+///
+/// This function will traverse symbolic links to query information about the
+/// destination file. In case of broken symbolic links this will return `false`.
+///
+/// If you cannot access the directory containing the file, e.g., because of a
+/// permission error, this will return `false`.
+///
+/// # Examples
+///
+/// ```no_run
+/// use std::path::Path;
+/// assert_eq!(Path::new("./is_a_directory/").is_dir(), true);
+/// assert_eq!(Path::new("a_file.txt").is_dir(), false);
+/// ```
+///
+/// # See Also
+///
+/// This is a convenience function that coerces errors to false. If you want to
+/// check errors, call [`metadata`] and handle its [`Result`]. Then call
+/// [`Metadata::is_dir`] if it was [`Ok`].
+///
+/// When the goal is simply to read from the source, the most reliable way to
+/// test the source can be read is to open it. See [`read_dir`] for more
+/// information.
+#[stable(feature = "fs_path_convenience", since = "1.51.0")]
+pub fn is_dir<P: AsRef<Path>>(path: P) -> bool {
+    metadata(path).map(|m| m.is_dir()).unwrap_or(false)
+}
+
 impl DirBuilder {
     /// Creates a new set of options with default mode/security settings for all
     /// platforms and also non-recursive.
@@ -2160,7 +2246,7 @@ impl DirBuilder {
     ///     .recursive(true)
     ///     .create(path).unwrap();
     ///
-    /// assert!(fs::metadata(path).unwrap().is_dir());
+    /// assert!(fs::is_dir(path));
     /// ```
     #[stable(feature = "dir_builder", since = "1.6.0")]
     pub fn create<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
@@ -2179,7 +2265,7 @@ impl DirBuilder {
         match self.inner.mkdir(path) {
             Ok(()) => return Ok(()),
             Err(ref e) if e.kind() == io::ErrorKind::NotFound => {}
-            Err(_) if metadata(path).map(|m| m.is_dir()).unwrap_or(false) => return Ok(()),
+            Err(_) if is_dir(path) => return Ok(()),
             Err(e) => return Err(e),
         }
         match path.parent() {
@@ -2190,7 +2276,7 @@ impl DirBuilder {
         }
         match self.inner.mkdir(path) {
             Ok(()) => Ok(()),
-            Err(_) if metadata(path).map(|m| m.is_dir()).unwrap_or(false) => Ok(()),
+            Err(_) if is_dir(path) => Ok(()),
             Err(e) => Err(e),
         }
     }

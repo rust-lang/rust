@@ -1600,14 +1600,14 @@ impl Target {
 
                 for dir in env::split_paths(&target_path) {
                     let p = dir.join(&path);
-                    if fs::metadata(&p).map(|m| m.is_file()).unwrap_or(false) {
+                    if fs::is_file(&p) {
                         return load_file(&p);
                     }
                 }
                 Err(format!("Could not find specification for target {:?}", target_triple))
             }
             TargetTriple::TargetPath(ref target_path) => {
-                if fs::metadata(target_path).map(|m| m.is_file()).unwrap_or(false) {
+                if fs::is_file(target_path) {
                     return load_file(&target_path);
                 }
                 Err(format!("Target path {:?} is not a valid file", target_path))

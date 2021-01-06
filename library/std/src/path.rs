@@ -2419,6 +2419,8 @@ impl Path {
     /// If you cannot access the directory containing the file, e.g., because of a
     /// permission error, this will return `false`.
     ///
+    /// This is an alias to [`fs::exists`].
+    ///
     /// # Examples
     ///
     /// ```no_run
@@ -2434,10 +2436,10 @@ impl Path {
     #[rustc_deprecated(
         since = "1.51.0",
         reason = "other processes may remove or rename files at any time",
-        suggestion = "use `std::fs::metadata`"
+        suggestion = "use `std::fs::exists`"
     )]
     pub fn exists(&self) -> bool {
-        fs::metadata(self).is_ok()
+        fs::exists(self)
     }
 
     /// Returns `true` if the path exists on disk and is pointing at a regular file.
@@ -2456,6 +2458,8 @@ impl Path {
     /// assert_eq!(Path::new("a_file.txt").is_file(), true);
     /// ```
     ///
+    /// This is an alias to [`fs::is_file`].
+    ///
     /// # See Also
     ///
     /// This is a convenience function that coerces errors to false. If you want to
@@ -2471,10 +2475,10 @@ impl Path {
     #[rustc_deprecated(
         since = "1.51.0",
         reason = "other processes may remove, rename, or replace files at any time",
-        suggestion = "use `std::fs::File::open` or `std::fs::metadata`"
+        suggestion = "use `std::fs::File::open` or `std::fs::is_file`"
     )]
     pub fn is_file(&self) -> bool {
-        fs::metadata(self).map(|m| m.is_file()).unwrap_or(false)
+        fs::is_file(self)
     }
 
     /// Returns `true` if the path exists on disk and is pointing at a directory.
@@ -2484,6 +2488,8 @@ impl Path {
     ///
     /// If you cannot access the directory containing the file, e.g., because of a
     /// permission error, this will return `false`.
+    ///
+    /// This is an alias to [`fs::is_dir`].
     ///
     /// # Examples
     ///
@@ -2506,10 +2512,10 @@ impl Path {
     #[rustc_deprecated(
         since = "1.51.0",
         reason = "other processes may remove, rename, or replace directories at any time",
-        suggestion = "use `std::fs::read_dir` or `std::fs::metadata`"
+        suggestion = "use `std::fs::read_dir` or `std::fs::is_dir`"
     )]
     pub fn is_dir(&self) -> bool {
-        fs::metadata(self).map(|m| m.is_dir()).unwrap_or(false)
+        fs::is_dir(self)
     }
 
     /// Converts a [`Box<Path>`](Box) into a [`PathBuf`] without copying or

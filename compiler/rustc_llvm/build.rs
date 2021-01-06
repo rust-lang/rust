@@ -206,7 +206,7 @@ fn main() {
             stripped
         } else if let Some(stripped) = lib.strip_prefix('-') {
             stripped
-        } else if fs::metadata(Path::new(lib)).is_ok() {
+        } else if fs::exists(Path::new(lib)) {
             // On MSVC llvm-config will print the full name to libraries, but
             // we're only interested in the name part
             let name = Path::new(lib).file_name().unwrap().to_str().unwrap();

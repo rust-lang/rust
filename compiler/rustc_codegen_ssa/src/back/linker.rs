@@ -695,7 +695,7 @@ impl<'a> Linker for MsvcLinker<'a> {
         // check to see if the file is there and just omit linking to it if it's
         // not present.
         let name = format!("{}.dll.lib", lib);
-        if fs::metadata(&path.join(&name)).is_ok() {
+        if fs::exists(&path.join(&name)) {
             self.cmd.arg(name);
         }
     }

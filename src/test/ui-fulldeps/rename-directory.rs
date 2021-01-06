@@ -23,8 +23,8 @@ fn rename_directory() {
     let new_path = tmpdir.join("quux/blat");
     fs::create_dir_all(&new_path).unwrap();
     fs::rename(&old_path, &new_path.join("newdir"));
-    assert!(fs::metadata(new_path.join("newdir")).map(|m| m.is_dir()).unwrap_or(false));
-    assert!(fs::metadata(new_path.join("newdir/temp.txt")).is_ok());
+    assert!(fs::is_dir(new_path.join("newdir")));
+    assert!(fs::exists(new_path.join("newdir/temp.txt")));
 }
 
 pub fn main() { rename_directory() }

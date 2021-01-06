@@ -109,7 +109,7 @@ pub struct RealFileLoader;
 
 impl FileLoader for RealFileLoader {
     fn file_exists(&self, path: &Path) -> bool {
-        fs::metadata(path).is_ok()
+        fs::exists(path)
     }
 
     fn read_file(&self, path: &Path) -> io::Result<String> {

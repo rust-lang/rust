@@ -417,7 +417,7 @@ fn file_test_fileinfo_false_when_checking_is_file_on_a_directory() {
     let tmpdir = tmpdir();
     let dir = &tmpdir.join("fileinfo_false_on_dir");
     check!(fs::create_dir(dir));
-    assert!(!fs::metadata(dir).unwrap().is_file());
+    assert!(!fs::is_file(dir));
     check!(fs::remove_dir(dir));
 }
 
@@ -426,20 +426,20 @@ fn file_test_fileinfo_check_exists_before_and_after_file_creation() {
     let tmpdir = tmpdir();
     let file = &tmpdir.join("fileinfo_check_exists_b_and_a.txt");
     check!(check!(File::create(file)).write(b"foo"));
-    assert!(fs::metadata(file).is_ok());
+    assert!(fs::exists(file));
     check!(fs::remove_file(file));
-    assert!(fs::metadata(file).is_err());
+    assert!(!fs::exists(file));
 }
 
 #[test]
 fn file_test_directoryinfo_check_exists_before_and_after_mkdir() {
     let tmpdir = tmpdir();
     let dir = &tmpdir.join("before_and_after_dir");
-    assert!(fs::metadata(dir).is_err());
+    assert!(!fs::exists(dir));
     check!(fs::create_dir(dir));
-    assert!(fs::metadata(dir).unwrap().is_dir());
+    assert!(fs::is_dir(dir));
     check!(fs::remove_dir(dir));
-    assert!(fs::metadata(dir).is_err());
+    assert!(!fs::exists(dir));
 }
 
 #[test]
@@ -494,7 +494,7 @@ fn recursive_mkdir() {
     let tmpdir = tmpdir();
     let dir = tmpdir.join("d1/d2");
     check!(fs::create_dir_all(&dir));
-    assert!(fs::metadata(dir).unwrap().is_dir());
+    assert!(fs::is_dir(dir));
 }
 
 #[test]
@@ -562,8 +562,8 @@ fn recursive_rmdir() {
     let _ = symlink_file(&canary, &d1.join("canary"));
     check!(fs::remove_dir_all(&d1));
 
-    assert!(!fs::metadata(d1).unwrap().is_dir());
-    assert!(fs::metadata(canary).is_ok());
+    assert!(!fs::is_dir(d1));
+    assert!(fs::exists(canary));
 }
 
 #[test]
@@ -578,8 +578,8 @@ fn recursive_rmdir_of_symlink() {
     check!(symlink_junction(&dir, &link));
     check!(fs::remove_dir_all(&link));
 
-    assert!(!fs::metadata(link).unwrap().is_dir());
-    assert!(fs::metadata(canary).is_ok());
+    assert!(!fs::is_dir(link));
+    assert!(fs::exists(canary));
 }
 
 #[test]
@@ -603,33 +603,33 @@ fn recursive_rmdir_of_file_symlink() {
 
 #[test]
 fn unicode_path_is_dir() {
-    assert!(fs::metadata(Path::new(".")).unwrap().is_dir());
-    assert!(!fs::metadata(Path::new("test/stdtest/fs.rs")).unwrap().is_dir());
+    assert!(fs::is_dir(Path::new(".")));
+    assert!(!fs::is_dir(Path::new("test/stdtest/fs.rs")));
 
     let tmpdir = tmpdir();
 
     let mut dirpath = tmpdir.path().to_path_buf();
     dirpath.push("test-가一ー你好");
     check!(fs::create_dir(&dirpath));
-    assert!(fs::metadata(&dirpath).unwrap().is_dir());
+    assert!(fs::is_dir(&dirpath));
 
     let mut filepath = dirpath;
     filepath.push("unicode-file-\u{ac00}\u{4e00}\u{30fc}\u{4f60}\u{597d}.rs");
     check!(File::create(&filepath)); // ignore return; touch only
-    assert!(!fs::metadata(filepath).unwrap().is_dir());
+    assert!(!fs::is_dir(filepath));
 }
 
 #[test]
 fn unicode_path_exists() {
-    assert!(fs::metadata(Path::new(".")).is_ok());
-    assert!(fs::metadata(Path::new("test/nonexistent-bogus-path")).is_err());
+    assert!(fs::exists(Path::new(".")));
+    assert!(!fs::exists(Path::new("test/nonexistent-bogus-path")));
 
     let tmpdir = tmpdir();
     let unicode = tmpdir.path();
     let unicode = unicode.join("test-각丁ー再见");
     check!(fs::create_dir(&unicode));
-    assert!(fs::metadata(unicode).is_ok());
-    assert!(fs::metadata(Path::new("test/unicode-bogus-path-각丁ー再见")).is_err());
+    assert!(fs::exists(unicode));
+    assert!(!fs::exists(Path::new("test/unicode-bogus-path-각丁ー再见")));
 }
 
 #[test]
@@ -640,8 +640,8 @@ fn copy_file_does_not_exist() {
     match fs::copy(&from, &to) {
         Ok(..) => panic!(),
         Err(..) => {
-            assert!(fs::metadata(from).is_err());
-            assert!(fs::metadata(to).is_err());
+            assert!(!fs::exists(from));
+            assert!(!fs::exists(to));
         }
     }
 }
@@ -653,7 +653,7 @@ fn copy_src_does_not_exist() {
     let to = tmpdir.join("out.txt");
     check!(check!(File::create(&to)).write(b"hello"));
     assert!(fs::copy(&from, &to).is_err());
-    assert!(fs::metadata(from).is_err());
+    assert!(!fs::exists(from));
     let mut v = Vec::new();
     check!(check!(File::open(&to)).read_to_end(&mut v));
     assert_eq!(v, b"hello");
@@ -710,7 +710,7 @@ fn copy_file_src_dir() {
         Ok(..) => panic!(),
         Err(..) => {}
     }
-    assert!(fs::metadata(out).is_err());
+    assert!(!fs::exists(out));
 }
 
 #[test]
@@ -1286,16 +1286,16 @@ fn create_dir_all_with_junctions() {
     check!(fs::create_dir_all(&b));
     // the junction itself is not a directory, but `is_dir()` on a Path
     // follows links
-    assert!(fs::metadata(junction).unwrap().is_dir());
-    assert!(fs::metadata(b).is_ok());
+    assert!(fs::is_dir(junction));
+    assert!(fs::exists(b));
 
     if !got_symlink_permission(&tmpdir) {
         return;
     };
     check!(symlink_dir(&target, &link));
     check!(fs::create_dir_all(&d));
-    assert!(fs::metadata(link).unwrap().is_dir());
-    assert!(fs::metadata(d).is_ok());
+    assert!(fs::is_dir(link));
+    assert!(fs::exists(d));
 }
 
 #[test]

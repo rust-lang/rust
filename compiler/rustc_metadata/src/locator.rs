@@ -664,7 +664,7 @@ impl<'a> CrateLocator<'a> {
         let mut rmetas = FxHashMap::default();
         let mut dylibs = FxHashMap::default();
         for loc in &self.exact_paths {
-            if fs::metadata(loc).is_err() {
+            if !fs::exists(loc) {
                 return Err(CrateError::ExternLocationNotExist(self.crate_name, loc.clone()));
             }
             let file = match loc.file_name().and_then(|s| s.to_str()) {
@@ -738,7 +738,7 @@ fn get_metadata_section(
     filename: &Path,
     loader: &dyn MetadataLoader,
 ) -> Result<MetadataBlob, String> {
-    if fs::metadata(filename).is_err() {
+    if !fs::exists(filename) {
         return Err(format!("no such file: '{}'", filename.display()));
     }
     let raw_bytes: MetadataRef = match flavor {

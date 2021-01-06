@@ -496,11 +496,8 @@ fn thin_lto(
             // If the previous file was deleted, or we get an IO error
             // reading the file, then we'll just use `None` as the
             // prev_key_map, which will force the code to be recompiled.
-            let prev = if fs::metadata(&path).is_ok() {
-                ThinLTOKeysMap::load_from_file(&path).ok()
-            } else {
-                None
-            };
+            let prev =
+                if fs::exists(&path) { ThinLTOKeysMap::load_from_file(&path).ok() } else { None };
             let curr = ThinLTOKeysMap::from_thin_lto_modules(&data, &thin_modules, &module_names);
             (Some(path), prev, curr)
         } else {

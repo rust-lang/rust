@@ -168,7 +168,7 @@ impl Command {
                     let path = path
                         .join(self.program.to_str().unwrap())
                         .with_extension(env::consts::EXE_EXTENSION);
-                    if fs::metadata(&path).is_ok() {
+                    if fs::exists(&path) {
                         return Some(path.into_os_string());
                     }
                 }

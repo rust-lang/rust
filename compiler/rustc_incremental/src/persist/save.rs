@@ -74,7 +74,7 @@ pub fn save_work_product_index(
         if !new_work_products.contains_key(id) {
             work_product::delete_workproduct_files(sess, wp);
             debug_assert!(wp.saved_file.as_ref().map_or(true, |file_name| {
-                fs::metadata(in_incr_comp_dir_sess(sess, &file_name)).is_err()
+                !fs::exists(in_incr_comp_dir_sess(sess, &file_name))
             }));
         }
     }
@@ -85,7 +85,7 @@ pub fn save_work_product_index(
             .iter()
             .flat_map(|(_, wp)| wp.saved_file.iter())
             .map(|name| in_incr_comp_dir_sess(sess, name))
-            .all(|path| fs::metadata(path).is_ok())
+            .all(|path| fs::exists(path))
     });
 }
 
