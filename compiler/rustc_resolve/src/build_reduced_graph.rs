@@ -1398,10 +1398,7 @@ impl<'a, 'b> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b> {
             let parent = self.parent_scope.module;
             let expansion = self.parent_scope.expansion;
             let res = Res::Def(def_kind, def_id);
-            // FIXME: For historical reasons the binding visibility is set to public,
-            // use actual visibility here instead, using enum variants as an example.
-            let vis_hack = ty::Visibility::Public;
-            self.r.define(parent, item.ident, ns, (res, vis_hack, item.span, expansion));
+            self.r.define(parent, item.ident, ns, (res, vis, item.span, expansion));
         }
 
         visit::walk_assoc_item(self, item, ctxt);
