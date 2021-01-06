@@ -230,7 +230,7 @@ pub mod dep_kind {
         is_anon: true,
         is_eval_always: false,
 
-        can_reconstruct_query_key: || false,
+        can_reconstruct_query_key: || true,
         force_from_dep_node: |_, _| false,
         try_load_from_on_disk_cache: |_, _| {},
     };
@@ -257,7 +257,6 @@ pub mod dep_kind {
 
                 #[inline(always)]
                 fn can_reconstruct_query_key() -> bool {
-                    !is_anon &&
                     <query_keys::$variant<'_> as DepNodeParams<TyCtxt<'_>>>
                         ::can_reconstruct_query_key()
                 }
@@ -267,6 +266,10 @@ pub mod dep_kind {
                 }
 
                 fn force_from_dep_node(tcx: TyCtxt<'_>, dep_node: &DepNode) -> bool {
+                    if is_anon {
+                        return false;
+                    }
+
                     if !can_reconstruct_query_key() {
                         return false;
                     }
@@ -285,6 +288,10 @@ pub mod dep_kind {
                 }
 
                 fn try_load_from_on_disk_cache(tcx: TyCtxt<'_>, dep_node: &DepNode) {
+                    if is_anon {
+                        return
+                    }
+
                     if !can_reconstruct_query_key() {
                         return
                     }
