@@ -121,7 +121,7 @@ const ATTRIBUTES: &[AttrCompletion] = &[
     ),
     attr("macro_export", None, None),
     attr("macro_use", None, None),
-    attr(r#"must_use = "…""#, Some("must_use"), Some(r#"must_use = "${0:reason}""#)),
+    attr(r#"must_use"#, Some("must_use"), Some(r#"must_use"#)),
     attr("no_link", None, None).prefer_inner(),
     attr("no_implicit_prelude", None, None).prefer_inner(),
     attr("no_main", None, None).prefer_inner(),
@@ -488,7 +488,7 @@ struct Test {}
                 at link_section = "…"
                 at macro_export
                 at macro_use
-                at must_use = "…"
+                at must_use
                 at no_mangle
                 at non_exhaustive
                 at path = "…"
@@ -537,7 +537,7 @@ struct Test {}
                 at link_section = "…"
                 at macro_export
                 at macro_use
-                at must_use = "…"
+                at must_use
                 at no_link
                 at no_implicit_prelude
                 at no_main
