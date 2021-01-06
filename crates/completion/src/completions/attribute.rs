@@ -98,7 +98,7 @@ const ATTRIBUTES: &[AttrCompletion] = &[
     attr(r#"crate_name = """#, Some("crate_name"), Some(r#"crate_name = "${0:crate_name}""#))
         .prefer_inner(),
     attr("deny(…)", Some("deny"), Some("deny(${0:lint})")),
-    attr(r#"deprecated = "…""#, Some("deprecated"), Some(r#"deprecated = "${0:reason}""#)),
+    attr(r#"deprecated "…""#, Some("deprecated"), Some(r#"deprecated"#)),
     attr("derive(…)", Some("derive"), Some(r#"derive(${0:Debug})"#)),
     attr(
         r#"export_name = "…""#,
