@@ -18,6 +18,8 @@ Only logic module matters.
 
 ### module tree
 
+only update the module which is included in the main branch.
+
 ### module declaration
 
 > logic module could be defined in its ancestor's folder.
@@ -26,3 +28,15 @@ Only logic module matters.
 
 ## use clauses
 
+## NOTE
+
+1. path attribute
+if some module is declared by `#[path = "filePath"]`, only update the `filePath`.
+
+2. not update `mod.rs` change, like to `mod1.rs`
+
+3. for folder name change(not add more subfolders), equal to change its `mod.rs`.
+
+4. However, mod could be declared through `mod XX {}` in its ancestor file.
+
+5. Key: How to update? Through semantic tree, or plain text? I worry the former one is not that clever.
