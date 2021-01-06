@@ -136,11 +136,7 @@ const ATTRIBUTES: &[AttrCompletion] = &[
     attr("recursion_limit = …", Some("recursion_limit"), Some("recursion_limit = ${0:128}"))
         .prefer_inner(),
     attr("repr(…)", Some("repr"), Some("repr(${0:C})")),
-    attr(
-        "should_panic(…)",
-        Some("should_panic"),
-        Some(r#"should_panic(expected = "${0:reason}")"#),
-    ),
+    attr("should_panic", Some("should_panic"), Some(r#"should_panic"#)),
     attr(
         r#"target_feature = "…""#,
         Some("target_feature"),
@@ -496,7 +492,7 @@ struct Test {}
                 at proc_macro_attribute
                 at proc_macro_derive(…)
                 at repr(…)
-                at should_panic(…)
+                at should_panic
                 at target_feature = "…"
                 at test
                 at track_caller
@@ -551,7 +547,7 @@ struct Test {}
                 at proc_macro_derive(…)
                 at recursion_limit = …
                 at repr(…)
-                at should_panic(…)
+                at should_panic
                 at target_feature = "…"
                 at test
                 at track_caller
