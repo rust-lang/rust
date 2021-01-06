@@ -19,7 +19,7 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
     let perm = reader.metadata()?.permissions();
 
     let ret = io::copy(&mut reader, &mut writer)?;
-    fs::set_permissions(to, perm)?;
+    writer.set_permissions(perm)?;
     Ok(ret)
 }
 
