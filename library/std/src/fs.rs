@@ -2179,7 +2179,7 @@ impl DirBuilder {
         match self.inner.mkdir(path) {
             Ok(()) => return Ok(()),
             Err(ref e) if e.kind() == io::ErrorKind::NotFound => {}
-            Err(_) if path.is_dir() => return Ok(()),
+            Err(_) if metadata(path).map(|m| m.is_dir()).unwrap_or(false) => return Ok(()),
             Err(e) => return Err(e),
         }
         match path.parent() {
@@ -2190,7 +2190,7 @@ impl DirBuilder {
         }
         match self.inner.mkdir(path) {
             Ok(()) => Ok(()),
-            Err(_) if path.is_dir() => Ok(()),
+            Err(_) if metadata(path).map(|m| m.is_dir()).unwrap_or(false) => Ok(()),
             Err(e) => Err(e),
         }
     }
