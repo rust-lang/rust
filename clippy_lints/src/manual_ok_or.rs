@@ -23,9 +23,6 @@ declare_clippy_lint! {
     /// ```rust
     /// let foo: Option<i32> = None;
     /// foo.map_or(Err("error"), |v| Ok(v));
-    ///
-    /// let foo: Option<i32> = None;
-    /// foo.map_or(Err("error"), |v| Ok(v));
     /// ```
     ///
     /// Use instead:
