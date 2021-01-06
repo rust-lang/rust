@@ -118,12 +118,18 @@ pub struct PackageDependency {
     pub name: String,
 }
 
+/// Information associated with a package's target
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct TargetData {
+    /// Package that provided this target
     pub package: Package,
+    /// Name as given in the `Cargo.toml` or generated from the file name
     pub name: String,
+    /// Path to the main source file of the target
     pub root: AbsPathBuf,
+    /// Kind of target
     pub kind: TargetKind,
+    /// Is this target a proc-macro
     pub is_proc_macro: bool,
 }
 
