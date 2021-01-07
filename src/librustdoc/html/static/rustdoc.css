@@ -1412,6 +1412,7 @@ h4 > .notable-traits {
 	.sidebar > .block.version {
 		border-bottom: none;
 		margin-top: 12px;
+		margin-bottom: 0;
 	}
 
 	nav.sub {
