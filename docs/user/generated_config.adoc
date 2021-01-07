@@ -1,4 +1,4 @@
-[[rust-analyzer.assist.importMergeBehaviour]]rust-analyzer.assist.importMergeBehaviour (default: `"full"`)::
+[[rust-analyzer.assist.importMergeBehavior]]rust-analyzer.assist.importMergeBehavior (default: `"full"`)::
  The strategy to use when inserting new imports or merging imports.
 [[rust-analyzer.assist.importPrefix]]rust-analyzer.assist.importPrefix (default: `"plain"`)::
  The path structure for newly inserted paths to use.

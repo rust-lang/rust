@@ -349,7 +349,7 @@
                     "default": {},
                     "markdownDescription": "Optional settings passed to the debug engine. Example: `{ \"lldb\": { \"terminal\":\"external\"} }`"
                 },
-                "rust-analyzer.assist.importMergeBehaviour": {
+                "rust-analyzer.assist.importMergeBehavior": {
                     "markdownDescription": "The strategy to use when inserting new imports or merging imports.",
                     "default": "full",
                     "type": "string",
