@@ -1775,7 +1775,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             if this.should_report_errs() {
                 let (err, candidates) = this.smart_resolve_report_errors(path, span, source, res);
 
-                let def_id = this.parent_scope.module.normal_ancestor_id;
+                let def_id = this.parent_scope.module.nearest_parent_mod;
                 let instead = res.is_some();
                 let suggestion =
                     if res.is_none() { this.report_missing_type_error(path) } else { None };
@@ -1843,7 +1843,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
 
             drop(parent_err);
 
-            let def_id = this.parent_scope.module.normal_ancestor_id;
+            let def_id = this.parent_scope.module.nearest_parent_mod;
 
             if this.should_report_errs() {
                 this.r.use_injections.push(UseError {

@@ -422,7 +422,9 @@ enum ModuleKind {
     ///
     /// This could be:
     ///
-    /// * A normal module ‒ either `mod from_file;` or `mod from_block { }`.
+    /// * A normal module – either `mod from_file;` or `mod from_block { }` –
+    ///   or the crate root (which is conceptually a top-level module).
+    ///   Note that the crate root's [name][Self::name] will be [`kw::Empty`].
     /// * A trait or an enum (it implicitly contains associated types, methods and variant
     ///   constructors).
     Def(DefKind, DefId, Symbol),
@@ -456,28 +458,42 @@ struct BindingKey {
 type Resolutions<'a> = RefCell<FxIndexMap<BindingKey, &'a RefCell<NameResolution<'a>>>>;
 
 /// One node in the tree of modules.
+///
+/// Note that a "module" in resolve is broader than a `mod` that you declare in Rust code. It may be one of these:
+///
+/// * `mod`
+/// * crate root (aka, top-level anonymous module)
+/// * `enum`
+/// * `trait`
+/// * curly-braced block with statements
+///
+/// You can use [`ModuleData::kind`] to determine the kind of module this is.
 pub struct ModuleData<'a> {
+    /// The direct parent module (it may not be a `mod`, however).
     parent: Option<Module<'a>>,
+    /// What kind of module this is, because this may not be a `mod`.
     kind: ModuleKind,
 
-    // The def id of the closest normal module (`mod`) ancestor (including this module).
-    normal_ancestor_id: DefId,
+    /// The [`DefId`] of the nearest `mod` item ancestor (which may be this module).
+    /// This may be the crate root.
+    nearest_parent_mod: DefId,
 
-    // Mapping between names and their (possibly in-progress) resolutions in this module.
-    // Resolutions in modules from other crates are not populated until accessed.
+    /// Mapping between names and their (possibly in-progress) resolutions in this module.
+    /// Resolutions in modules from other crates are not populated until accessed.
     lazy_resolutions: Resolutions<'a>,
-    // True if this is a module from other crate that needs to be populated on access.
+    /// True if this is a module from other crate that needs to be populated on access.
     populate_on_access: Cell<bool>,
 
-    // Macro invocations that can expand into items in this module.
+    /// Macro invocations that can expand into items in this module.
     unexpanded_invocations: RefCell<FxHashSet<ExpnId>>,
 
+    /// Whether `#[no_implicit_prelude]` is active.
     no_implicit_prelude: bool,
 
     glob_importers: RefCell<Vec<&'a Import<'a>>>,
     globs: RefCell<Vec<&'a Import<'a>>>,
 
-    // Used to memoize the traits in this module for faster searches through all traits in scope.
+    /// Used to memoize the traits in this module for faster searches through all traits in scope.
     traits: RefCell<Option<Box<[(Ident, &'a NameBinding<'a>)]>>>,
 
     /// Span of the module itself. Used for error reporting.
@@ -492,16 +508,16 @@ impl<'a> ModuleData<'a> {
     fn new(
         parent: Option<Module<'a>>,
         kind: ModuleKind,
-        normal_ancestor_id: DefId,
+        nearest_parent_mod: DefId,
         expansion: ExpnId,
         span: Span,
     ) -> Self {
         ModuleData {
             parent,
             kind,
-            normal_ancestor_id,
+            nearest_parent_mod,
             lazy_resolutions: Default::default(),
-            populate_on_access: Cell::new(!normal_ancestor_id.is_local()),
+            populate_on_access: Cell::new(!nearest_parent_mod.is_local()),
             unexpanded_invocations: Default::default(),
             no_implicit_prelude: false,
             glob_importers: RefCell::new(Vec::new()),
@@ -1519,11 +1535,11 @@ impl<'a> Resolver<'a> {
         &self,
         parent: Module<'a>,
         kind: ModuleKind,
-        normal_ancestor_id: DefId,
+        nearest_parent_mod: DefId,
         expn_id: ExpnId,
         span: Span,
     ) -> Module<'a> {
-        let module = ModuleData::new(Some(parent), kind, normal_ancestor_id, expn_id, span);
+        let module = ModuleData::new(Some(parent), kind, nearest_parent_mod, expn_id, span);
         self.arenas.alloc_module(module)
     }
 
@@ -2116,7 +2132,7 @@ impl<'a> Resolver<'a> {
                 return self.graph_root;
             }
         };
-        let module = self.get_module(DefId { index: CRATE_DEF_INDEX, ..module.normal_ancestor_id });
+        let module = self.get_module(DefId { index: CRATE_DEF_INDEX, ..module.nearest_parent_mod });
         debug!(
             "resolve_crate_root({:?}): got module {:?} ({:?}) (ident.span = {:?})",
             ident,
@@ -2128,10 +2144,10 @@ impl<'a> Resolver<'a> {
     }
 
     fn resolve_self(&mut self, ctxt: &mut SyntaxContext, module: Module<'a>) -> Module<'a> {
-        let mut module = self.get_module(module.normal_ancestor_id);
+        let mut module = self.get_module(module.nearest_parent_mod);
         while module.span.ctxt().normalize_to_macros_2_0() != *ctxt {
             let parent = module.parent.unwrap_or_else(|| self.macro_def_scope(ctxt.remove_mark()));
-            module = self.get_module(parent.normal_ancestor_id);
+            module = self.get_module(parent.nearest_parent_mod);
         }
         module
     }
@@ -2793,7 +2809,7 @@ impl<'a> Resolver<'a> {
     }
 
     fn is_accessible_from(&self, vis: ty::Visibility, module: Module<'a>) -> bool {
-        vis.is_accessible_from(module.normal_ancestor_id, self)
+        vis.is_accessible_from(module.nearest_parent_mod, self)
     }
 
     fn set_binding_parent_module(&mut self, binding: &'a NameBinding<'a>, module: Module<'a>) {
@@ -2817,7 +2833,7 @@ impl<'a> Resolver<'a> {
             self.binding_parent_modules.get(&PtrKey(modularized)),
         ) {
             (Some(macro_rules), Some(modularized)) => {
-                macro_rules.normal_ancestor_id == modularized.normal_ancestor_id
+                macro_rules.nearest_parent_mod == modularized.nearest_parent_mod
                     && modularized.is_ancestor_of(macro_rules)
             }
             _ => false,
