@@ -7,7 +7,7 @@
 //! configure the server itself, feature flags are passed into analysis, and
 //! tweak things like automatic insertion of `()` in completions.
 
-use std::{convert::TryFrom, ffi::OsString, path::PathBuf};
+use std::{convert::TryFrom, ffi::OsString, iter, path::PathBuf};
 
 use flycheck::FlycheckConfig;
 use hir::PrefixKind;
@@ -28,7 +28,8 @@ use crate::{caps::completion_item_edit_resolve, diagnostics::DiagnosticsMapConfi
 config_data! {
     struct ConfigData {
         /// The strategy to use when inserting new imports or merging imports.
-        assist_importMergeBehaviour: MergeBehaviorDef = "\"full\"",
+        assist_importMergeBehavior |
+        assist_importMergeBehaviour: MergeBehaviorDef  = "\"full\"",
         /// The path structure for newly inserted paths to use.
         assist_importPrefix: ImportPrefixDef           = "\"plain\"",
 
@@ -530,7 +531,7 @@ impl Config {
         }
     }
     fn merge_behavior(&self) -> Option<MergeBehavior> {
-        match self.data.assist_importMergeBehaviour {
+        match self.data.assist_importMergeBehavior {
             MergeBehaviorDef::None => None,
             MergeBehaviorDef::Full => Some(MergeBehavior::Full),
             MergeBehaviorDef::Last => Some(MergeBehavior::Last),
@@ -639,7 +640,7 @@ macro_rules! _config_data {
     (struct $name:ident {
         $(
             $(#[doc=$doc:literal])*
-            $field:ident: $ty:ty = $default:expr,
+            $field:ident $(| $alias:ident)?: $ty:ty = $default:expr,
         )*
     }) => {
         #[allow(non_snake_case)]
@@ -648,7 +649,12 @@ macro_rules! _config_data {
         impl $name {
             fn from_json(mut json: serde_json::Value) -> $name {
                 $name {$(
-                    $field: get_field(&mut json, stringify!($field), $default),
+                    $field: get_field(
+                        &mut json,
+                        stringify!($field),
+                        None$(.or(Some(stringify!($alias))))?,
+                        $default,
+                    ),
                 )*}
             }
 
@@ -680,14 +686,21 @@ use _config_data as config_data;
 fn get_field<T: DeserializeOwned>(
     json: &mut serde_json::Value,
     field: &'static str,
+    alias: Option<&'static str>,
     default: &str,
 ) -> T {
     let default = serde_json::from_str(default).unwrap();
 
-    let mut pointer = field.replace('_', "/");
-    pointer.insert(0, '/');
-    json.pointer_mut(&pointer)
-        .and_then(|it| serde_json::from_value(it.take()).ok())
+    // XXX: check alias first, to work-around the VS Code where it pre-fills the
+    // defaults instead of sending an empty object.
+    alias
+        .into_iter()
+        .chain(iter::once(field))
+        .find_map(move |field| {
+            let mut pointer = field.replace('_', "/");
+            pointer.insert(0, '/');
+            json.pointer_mut(&pointer).and_then(|it| serde_json::from_value(it.take()).ok())
+        })
         .unwrap_or(default)
 }
 
