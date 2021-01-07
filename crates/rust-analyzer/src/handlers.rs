@@ -18,8 +18,8 @@ use lsp_types::{
     CallHierarchyIncomingCall, CallHierarchyIncomingCallsParams, CallHierarchyItem,
     CallHierarchyOutgoingCall, CallHierarchyOutgoingCallsParams, CallHierarchyPrepareParams,
     CodeActionKind, CodeLens, Command, CompletionItem, Diagnostic, DiagnosticTag,
-    DocumentFormattingParams, DocumentHighlight, DocumentSymbol, FoldingRange, FoldingRangeParams,
-    HoverContents, Location, NumberOrString, Position, PrepareRenameResponse, Range, RenameParams,
+    DocumentFormattingParams, DocumentHighlight, FoldingRange, FoldingRangeParams, HoverContents,
+    Location, NumberOrString, Position, PrepareRenameResponse, Range, RenameParams,
     SemanticTokensDeltaParams, SemanticTokensFullDeltaResult, SemanticTokensParams,
     SemanticTokensRangeParams, SemanticTokensRangeResult, SemanticTokensResult, SymbolInformation,
     SymbolTag, TextDocumentIdentifier, TextDocumentPositionParams, Url, WorkspaceEdit,
@@ -280,7 +280,7 @@ pub(crate) fn handle_document_symbol(
     let file_id = from_proto::file_id(&snap, &params.text_document.uri)?;
     let line_index = snap.analysis.file_line_index(file_id)?;
 
-    let mut parents: Vec<(DocumentSymbol, Option<usize>)> = Vec::new();
+    let mut parents: Vec<(lsp_types::DocumentSymbol, Option<usize>)> = Vec::new();
 
     for symbol in snap.analysis.file_structure(file_id)? {
         let mut tags = Vec::new();
@@ -289,7 +289,7 @@ pub(crate) fn handle_document_symbol(
         };
 
         #[allow(deprecated)]
-        let doc_symbol = DocumentSymbol {
+        let doc_symbol = lsp_types::DocumentSymbol {
             name: symbol.label,
             detail: symbol.detail,
             kind: to_proto::symbol_kind(symbol.kind),
@@ -333,7 +333,7 @@ pub(crate) fn handle_document_symbol(
     return Ok(Some(res));
 
     fn flatten_document_symbol(
-        symbol: &DocumentSymbol,
+        symbol: &lsp_types::DocumentSymbol,
         container_name: Option<String>,
         url: &Url,
         res: &mut Vec<SymbolInformation>,
