@@ -15,6 +15,13 @@ use crate::{
 };
 use lsp_ext::StatusParams;
 
+#[derive(Debug)]
+pub(crate) enum ProjectWorkspaceProgress {
+    Begin,
+    Report(String),
+    End,
+}
+
 impl GlobalState {
     pub(crate) fn update_configuration(&mut self, config: Config) {
         let _p = profile::span("GlobalState::update_configuration");
@@ -93,23 +100,42 @@ impl GlobalState {
     }
     pub(crate) fn fetch_workspaces(&mut self) {
         log::info!("will fetch workspaces");
-        self.task_pool.handle.spawn({
+
+        self.task_pool.handle.spawn_with_sender({
             let linked_projects = self.config.linked_projects();
             let cargo_config = self.config.cargo();
-            move || {
+
+            move |sender| {
+                let progress = {
+                    let sender = sender.clone();
+                    move |msg| {
+                        sender
+                            .send(Task::FetchWorkspace(ProjectWorkspaceProgress::Report(msg)))
+                            .unwrap()
+                    }
+                };
+
+                sender.send(Task::FetchWorkspace(ProjectWorkspaceProgress::Begin)).unwrap();
+
                 let workspaces = linked_projects
                     .iter()
                     .map(|project| match project {
                         LinkedProject::ProjectManifest(manifest) => {
-                            project_model::ProjectWorkspace::load(manifest.clone(), &cargo_config)
+                            project_model::ProjectWorkspace::load(
+                                manifest.clone(),
+                                &cargo_config,
+                                &progress,
+                            )
                         }
                         LinkedProject::InlineJsonProject(it) => {
                             project_model::ProjectWorkspace::load_inline(it.clone())
                         }
                     })
                     .collect::<Vec<_>>();
+
+                sender.send(Task::FetchWorkspace(ProjectWorkspaceProgress::End)).unwrap();
                 log::info!("did fetch workspaces {:?}", workspaces);
-                Task::Workspaces(workspaces)
+                sender.send(Task::Workspaces(workspaces)).unwrap()
             }
         });
     }

@@ -64,7 +64,11 @@ impl fmt::Debug for ProjectWorkspace {
 }
 
 impl ProjectWorkspace {
-    pub fn load(manifest: ProjectManifest, config: &CargoConfig) -> Result<ProjectWorkspace> {
+    pub fn load(
+        manifest: ProjectManifest,
+        config: &CargoConfig,
+        progress: &dyn Fn(String),
+    ) -> Result<ProjectWorkspace> {
         let res = match manifest {
             ProjectManifest::ProjectJson(project_json) => {
                 let file = fs::read_to_string(&project_json).with_context(|| {
@@ -84,15 +88,14 @@ impl ProjectWorkspace {
                     cmd
                 })?;
 
-                let cargo = CargoWorkspace::from_cargo_metadata(&cargo_toml, config).with_context(
-                    || {
+                let cargo = CargoWorkspace::from_cargo_metadata(&cargo_toml, config, progress)
+                    .with_context(|| {
                         format!(
                             "Failed to read Cargo metadata from Cargo.toml file {}, {}",
                             cargo_toml.display(),
                             cargo_version
                         )
-                    },
-                )?;
+                    })?;
                 let sysroot = if config.no_sysroot {
                     Sysroot::default()
                 } else {
@@ -105,9 +108,12 @@ impl ProjectWorkspace {
                 };
 
                 let rustc = if let Some(rustc_dir) = &config.rustc_source {
-                    Some(CargoWorkspace::from_cargo_metadata(&rustc_dir, config).with_context(
-                        || format!("Failed to read Cargo metadata for Rust sources"),
-                    )?)
+                    Some(
+                        CargoWorkspace::from_cargo_metadata(&rustc_dir, config, progress)
+                            .with_context(|| {
+                                format!("Failed to read Cargo metadata for Rust sources")
+                            })?,
+                    )
                 } else {
                     None
                 };

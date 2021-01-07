@@ -3,9 +3,10 @@
 use std::{
     convert::TryInto,
     ffi::OsStr,
+    io::BufReader,
     ops,
     path::{Path, PathBuf},
-    process::Command,
+    process::{Command, Stdio},
 };
 
 use anyhow::{Context, Result};
@@ -15,6 +16,7 @@ use cargo_metadata::{BuildScript, CargoOpt, Message, MetadataCommand, PackageId}
 use itertools::Itertools;
 use paths::{AbsPath, AbsPathBuf};
 use rustc_hash::FxHashMap;
+use stdx::JodChild;
 
 use crate::cfg_flag::CfgFlag;
 use crate::utf8_stdout;
@@ -171,6 +173,7 @@ impl CargoWorkspace {
     pub fn from_cargo_metadata(
         cargo_toml: &AbsPath,
         config: &CargoConfig,
+        progress: &dyn Fn(String),
     ) -> Result<CargoWorkspace> {
         let mut meta = MetadataCommand::new();
         meta.cargo_path(toolchain::cargo());
@@ -220,6 +223,9 @@ impl CargoWorkspace {
             meta.other_options(vec![String::from("--filter-platform"), target]);
         }
 
+        // FIXME: Currently MetadataCommand is not based on parse_stream,
+        // So we just report it as a whole
+        progress("metadata".to_string());
         let mut meta = meta.exec().with_context(|| {
             let cwd: Option<AbsPathBuf> =
                 std::env::current_dir().ok().and_then(|p| p.try_into().ok());
@@ -243,7 +249,7 @@ impl CargoWorkspace {
         let mut envs = FxHashMap::default();
         let mut proc_macro_dylib_paths = FxHashMap::default();
         if config.load_out_dirs_from_check {
-            let resources = load_extern_resources(cargo_toml, config)?;
+            let resources = load_extern_resources(cargo_toml, config, progress)?;
             out_dir_by_id = resources.out_dirs;
             cfgs = resources.cfgs;
             envs = resources.env;
@@ -368,6 +374,7 @@ pub(crate) struct ExternResources {
 pub(crate) fn load_extern_resources(
     cargo_toml: &Path,
     cargo_features: &CargoConfig,
+    progress: &dyn Fn(String),
 ) -> Result<ExternResources> {
     let mut cmd = Command::new(toolchain::cargo());
     cmd.args(&["check", "--message-format=json", "--manifest-path"]).arg(cargo_toml);
@@ -395,11 +402,14 @@ pub(crate) fn load_extern_resources(
         }
     }
 
-    let output = cmd.output()?;
+    cmd.stdout(Stdio::piped()).stderr(Stdio::null()).stdin(Stdio::null());
+
+    let mut child = cmd.spawn().map(JodChild)?;
+    let child_stdout = child.stdout.take().unwrap();
+    let stdout = BufReader::new(child_stdout);
 
     let mut res = ExternResources::default();
-
-    for message in cargo_metadata::Message::parse_stream(output.stdout.as_slice()) {
+    for message in cargo_metadata::Message::parse_stream(stdout) {
         if let Ok(message) = message {
             match message {
                 Message::BuildScriptExecuted(BuildScript {
@@ -432,6 +442,8 @@ pub(crate) fn load_extern_resources(
                     res.env.insert(package_id, env);
                 }
                 Message::CompilerArtifact(message) => {
+                    progress(format!("metadata {}", message.target.name));
+
                     if message.target.kind.contains(&"proc-macro".to_string()) {
                         let package_id = message.package_id;
                         // Skip rmeta file
@@ -442,7 +454,9 @@ pub(crate) fn load_extern_resources(
                         }
                     }
                 }
-                Message::CompilerMessage(_) => (),
+                Message::CompilerMessage(message) => {
+                    progress(message.target.name.clone());
+                }
                 Message::Unknown => (),
                 Message::BuildFinished(_) => {}
                 Message::TextLine(_) => {}
