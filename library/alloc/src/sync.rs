@@ -2476,11 +2476,8 @@ impl<T: ?Sized> Unpin for Arc<T> {}
 ///
 /// # Safety
 ///
-/// This has the same safety requirements as `align_of_val_raw`. In effect:
-///
-/// - This function is safe for any argument if `T` is sized, and
-/// - if `T` is unsized, the pointer must have appropriate pointer metadata
-///   acquired from the real instance that you are getting this offset for.
+/// The pointer must point to (and have valid metadata for) a previously
+/// valid instance of T, but the T is allowed to be dropped.
 unsafe fn data_offset<T: ?Sized>(ptr: *const T) -> isize {
     // Align the unsized value to the end of the `ArcInner`.
     // Because it is `?Sized`, it will always be the last field in memory.
