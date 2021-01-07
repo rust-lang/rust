@@ -1685,7 +1685,7 @@ impl<T: ?Sized> Weak<T> {
             // a valid pointer, so that `from_raw` can reverse this transformation.
             (ptr as *mut T).set_ptr_value(ptr::null_mut())
         } else {
-            // SAFETY: If the pointer is not dangling, it describes to a valid allocation.
+            // SAFETY: If the pointer is not dangling, it references a valid allocation.
             // The payload may be dropped at this point, and we have to maintain provenance,
             // so use raw pointer manipulation.
             unsafe { &raw mut (*ptr).data }
@@ -1777,8 +1777,8 @@ impl<T: ?Sized> Weak<T> {
             // SAFETY: this is the same sentinel as used in Weak::new and is_dangling
             (ptr as *mut ArcInner<T>).set_ptr_value(usize::MAX as *mut _)
         } else {
-            // Otherwise, this describes a real allocation.
-            // SAFETY: data_offset is safe to call, as ptr describes a real allocation.
+            // Otherwise, this references a real allocation.
+            // SAFETY: data_offset is safe to call, as ptr references a real (potentially dropped) T.
             let offset = unsafe { data_offset(ptr) };
             // Thus, we reverse the offset to get the whole RcBox.
             // SAFETY: the pointer originated from a Weak, so this offset is safe.
@@ -2471,8 +2471,7 @@ impl<T: ?Sized> AsRef<T> for Arc<T> {
 #[stable(feature = "pin", since = "1.33.0")]
 impl<T: ?Sized> Unpin for Arc<T> {}
 
-/// Get the offset within an `ArcInner` for
-/// a payload of type described by a pointer.
+/// Get the offset within an `ArcInner` for the payload behind a pointer.
 ///
 /// # Safety
 ///
