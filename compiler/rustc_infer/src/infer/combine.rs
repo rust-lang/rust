@@ -358,7 +358,7 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
             self.obligations.push(Obligation::new(
                 self.trace.cause.clone(),
                 self.param_env,
-                ty::PredicateAtom::WellFormed(b_ty.into()).to_predicate(self.infcx.tcx),
+                ty::PredicateKind::WellFormed(b_ty.into()).to_predicate(self.infcx.tcx),
             ));
         }
 
@@ -451,9 +451,9 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
         b: &'tcx ty::Const<'tcx>,
     ) {
         let predicate = if a_is_expected {
-            ty::PredicateAtom::ConstEquate(a, b)
+            ty::PredicateKind::ConstEquate(a, b)
         } else {
-            ty::PredicateAtom::ConstEquate(b, a)
+            ty::PredicateKind::ConstEquate(b, a)
         };
         self.obligations.push(Obligation::new(
             self.trace.cause.clone(),

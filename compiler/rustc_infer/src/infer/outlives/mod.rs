@@ -15,20 +15,21 @@ pub fn explicit_outlives_bounds<'tcx>(
     param_env
         .caller_bounds()
         .into_iter()
-        .map(ty::Predicate::skip_binders)
+        .map(ty::Predicate::kind)
+        .map(ty::Binder::skip_binder)
         .filter(|atom| !atom.has_escaping_bound_vars())
         .filter_map(move |atom| match atom {
-            ty::PredicateAtom::Projection(..)
-            | ty::PredicateAtom::Trait(..)
-            | ty::PredicateAtom::Subtype(..)
-            | ty::PredicateAtom::WellFormed(..)
-            | ty::PredicateAtom::ObjectSafe(..)
-            | ty::PredicateAtom::ClosureKind(..)
-            | ty::PredicateAtom::TypeOutlives(..)
-            | ty::PredicateAtom::ConstEvaluatable(..)
-            | ty::PredicateAtom::ConstEquate(..)
-            | ty::PredicateAtom::TypeWellFormedFromEnv(..) => None,
-            ty::PredicateAtom::RegionOutlives(ty::OutlivesPredicate(r_a, r_b)) => {
+            ty::PredicateKind::Projection(..)
+            | ty::PredicateKind::Trait(..)
+            | ty::PredicateKind::Subtype(..)
+            | ty::PredicateKind::WellFormed(..)
+            | ty::PredicateKind::ObjectSafe(..)
+            | ty::PredicateKind::ClosureKind(..)
+            | ty::PredicateKind::TypeOutlives(..)
+            | ty::PredicateKind::ConstEvaluatable(..)
+            | ty::PredicateKind::ConstEquate(..)
+            | ty::PredicateKind::TypeWellFormedFromEnv(..) => None,
+            ty::PredicateKind::RegionOutlives(ty::OutlivesPredicate(r_a, r_b)) => {
                 Some(OutlivesBound::RegionSubRegion(r_b, r_a))
             }
         })

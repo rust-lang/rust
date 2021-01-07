@@ -1153,7 +1153,7 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
         debug!("instantiate_opaque_types: ty_var={:?}", ty_var);
 
         for predicate in &bounds {
-            if let ty::PredicateAtom::Projection(projection) = predicate.skip_binders() {
+            if let ty::PredicateKind::Projection(projection) = predicate.kind().skip_binder() {
                 if projection.ty.references_error() {
                     // No point on adding these obligations since there's a type error involved.
                     return ty_var;
@@ -1251,18 +1251,18 @@ crate fn required_region_bounds(
     traits::elaborate_predicates(tcx, predicates)
         .filter_map(|obligation| {
             debug!("required_region_bounds(obligation={:?})", obligation);
-            match obligation.predicate.skip_binders() {
-                ty::PredicateAtom::Projection(..)
-                | ty::PredicateAtom::Trait(..)
-                | ty::PredicateAtom::Subtype(..)
-                | ty::PredicateAtom::WellFormed(..)
-                | ty::PredicateAtom::ObjectSafe(..)
-                | ty::PredicateAtom::ClosureKind(..)
-                | ty::PredicateAtom::RegionOutlives(..)
-                | ty::PredicateAtom::ConstEvaluatable(..)
-                | ty::PredicateAtom::ConstEquate(..)
-                | ty::PredicateAtom::TypeWellFormedFromEnv(..) => None,
-                ty::PredicateAtom::TypeOutlives(ty::OutlivesPredicate(ref t, ref r)) => {
+            match obligation.predicate.kind().skip_binder() {
+                ty::PredicateKind::Projection(..)
+                | ty::PredicateKind::Trait(..)
+                | ty::PredicateKind::Subtype(..)
+                | ty::PredicateKind::WellFormed(..)
+                | ty::PredicateKind::ObjectSafe(..)
+                | ty::PredicateKind::ClosureKind(..)
+                | ty::PredicateKind::RegionOutlives(..)
+                | ty::PredicateKind::ConstEvaluatable(..)
+                | ty::PredicateKind::ConstEquate(..)
+                | ty::PredicateKind::TypeWellFormedFromEnv(..) => None,
+                ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(ref t, ref r)) => {
                     // Search for a bound of the form `erased_self_ty
                     // : 'a`, but be wary of something like `for<'a>
                     // erased_self_ty : 'a` (we interpret a

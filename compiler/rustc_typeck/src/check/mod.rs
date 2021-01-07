@@ -864,9 +864,9 @@ fn bounds_from_generic_predicates<'tcx>(
     let mut projections = vec![];
     for (predicate, _) in predicates.predicates {
         debug!("predicate {:?}", predicate);
-        let bound_predicate = predicate.bound_atom();
+        let bound_predicate = predicate.kind();
         match bound_predicate.skip_binder() {
-            ty::PredicateAtom::Trait(trait_predicate, _) => {
+            ty::PredicateKind::Trait(trait_predicate, _) => {
                 let entry = types.entry(trait_predicate.self_ty()).or_default();
                 let def_id = trait_predicate.def_id();
                 if Some(def_id) != tcx.lang_items().sized_trait() {
@@ -875,7 +875,7 @@ fn bounds_from_generic_predicates<'tcx>(
                     entry.push(trait_predicate.def_id());
                 }
             }
-            ty::PredicateAtom::Projection(projection_pred) => {
+            ty::PredicateKind::Projection(projection_pred) => {
                 projections.push(bound_predicate.rebind(projection_pred));
             }
             _ => {}

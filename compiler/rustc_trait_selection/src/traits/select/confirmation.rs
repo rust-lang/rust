@@ -432,7 +432,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             .predicates
             .into_iter()
         {
-            if let ty::PredicateAtom::Trait(..) = super_trait.skip_binders() {
+            if let ty::PredicateKind::Trait(..) = super_trait.kind().skip_binder() {
                 let normalized_super_trait = normalize_with_depth_to(
                     self,
                     obligation.param_env,
@@ -641,7 +641,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             obligations.push(Obligation::new(
                 obligation.cause.clone(),
                 obligation.param_env,
-                ty::PredicateAtom::ClosureKind(closure_def_id, substs, kind)
+                ty::PredicateKind::ClosureKind(closure_def_id, substs, kind)
                     .to_predicate(self.tcx()),
             ));
         }

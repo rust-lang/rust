@@ -345,13 +345,13 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
 
         let infcx = self.selcx.infcx();
 
-        let binder = obligation.predicate.bound_atom();
-        if binder.skip_binder().has_escaping_bound_vars() {
-            match binder.skip_binder() {
+        let binder = obligation.predicate.kind();
+        match binder.no_bound_vars() {
+            None => match binder.skip_binder() {
                 // Evaluation will discard candidates using the leak check.
                 // This means we need to pass it the bound version of our
                 // predicate.
-                ty::PredicateAtom::Trait(trait_ref, _constness) => {
+                ty::PredicateKind::Trait(trait_ref, _constness) => {
                     let trait_obligation = obligation.with(binder.rebind(trait_ref));
 
                     self.process_trait_obligation(
@@ -360,7 +360,7 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                         &mut pending_obligation.stalled_on,
                     )
                 }
-                ty::PredicateAtom::Projection(data) => {
+                ty::PredicateKind::Projection(data) => {
                     let project_obligation = obligation.with(binder.rebind(data));
 
                     self.process_projection_obligation(
@@ -368,26 +368,25 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                         &mut pending_obligation.stalled_on,
                     )
                 }
-                ty::PredicateAtom::RegionOutlives(_)
-                | ty::PredicateAtom::TypeOutlives(_)
-                | ty::PredicateAtom::WellFormed(_)
-                | ty::PredicateAtom::ObjectSafe(_)
-                | ty::PredicateAtom::ClosureKind(..)
-                | ty::PredicateAtom::Subtype(_)
-                | ty::PredicateAtom::ConstEvaluatable(..)
-                | ty::PredicateAtom::ConstEquate(..) => {
+                ty::PredicateKind::RegionOutlives(_)
+                | ty::PredicateKind::TypeOutlives(_)
+                | ty::PredicateKind::WellFormed(_)
+                | ty::PredicateKind::ObjectSafe(_)
+                | ty::PredicateKind::ClosureKind(..)
+                | ty::PredicateKind::Subtype(_)
+                | ty::PredicateKind::ConstEvaluatable(..)
+                | ty::PredicateKind::ConstEquate(..) => {
                     let pred = infcx.replace_bound_vars_with_placeholders(binder);
                     ProcessResult::Changed(mk_pending(vec![
                         obligation.with(pred.to_predicate(self.selcx.tcx())),
                     ]))
                 }
-                ty::PredicateAtom::TypeWellFormedFromEnv(..) => {
+                ty::PredicateKind::TypeWellFormedFromEnv(..) => {
                     bug!("TypeWellFormedFromEnv is only used for Chalk")
                 }
-            }
-        } else {
-            match binder.skip_binder() {
-                ty::PredicateAtom::Trait(data, _) => {
+            },
+            Some(pred) => match pred {
+                ty::PredicateKind::Trait(data, _) => {
                     let trait_obligation = obligation.with(Binder::dummy(data));
 
                     self.process_trait_obligation(
@@ -397,14 +396,14 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                     )
                 }
 
-                ty::PredicateAtom::RegionOutlives(data) => {
+                ty::PredicateKind::RegionOutlives(data) => {
                     match infcx.region_outlives_predicate(&obligation.cause, Binder::dummy(data)) {
                         Ok(()) => ProcessResult::Changed(vec![]),
                         Err(_) => ProcessResult::Error(CodeSelectionError(Unimplemented)),
                     }
                 }
 
-                ty::PredicateAtom::TypeOutlives(ty::OutlivesPredicate(t_a, r_b)) => {
+                ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(t_a, r_b)) => {
                     if self.register_region_obligations {
                         self.selcx.infcx().register_region_obligation_with_cause(
                             t_a,
@@ -415,7 +414,7 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                     ProcessResult::Changed(vec![])
                 }
 
-                ty::PredicateAtom::Projection(ref data) => {
+                ty::PredicateKind::Projection(ref data) => {
                     let project_obligation = obligation.with(Binder::dummy(*data));
 
                     self.process_projection_obligation(
@@ -424,7 +423,7 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                     )
                 }
 
-                ty::PredicateAtom::ObjectSafe(trait_def_id) => {
+                ty::PredicateKind::ObjectSafe(trait_def_id) => {
                     if !self.selcx.tcx().is_object_safe(trait_def_id) {
                         ProcessResult::Error(CodeSelectionError(Unimplemented))
                     } else {
@@ -432,7 +431,7 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                     }
                 }
 
-                ty::PredicateAtom::ClosureKind(_, closure_substs, kind) => {
+                ty::PredicateKind::ClosureKind(_, closure_substs, kind) => {
                     match self.selcx.infcx().closure_kind(closure_substs) {
                         Some(closure_kind) => {
                             if closure_kind.extends(kind) {
@@ -445,7 +444,7 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                     }
                 }
 
-                ty::PredicateAtom::WellFormed(arg) => {
+                ty::PredicateKind::WellFormed(arg) => {
                     match wf::obligations(
                         self.selcx.infcx(),
                         obligation.param_env,
@@ -463,7 +462,7 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                     }
                 }
 
-                ty::PredicateAtom::Subtype(subtype) => {
+                ty::PredicateKind::Subtype(subtype) => {
                     match self.selcx.infcx().subtype_predicate(
                         &obligation.cause,
                         obligation.param_env,
@@ -489,7 +488,7 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                     }
                 }
 
-                ty::PredicateAtom::ConstEvaluatable(def_id, substs) => {
+                ty::PredicateKind::ConstEvaluatable(def_id, substs) => {
                     match const_evaluatable::is_const_evaluatable(
                         self.selcx.infcx(),
                         def_id,
@@ -509,7 +508,7 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                     }
                 }
 
-                ty::PredicateAtom::ConstEquate(c1, c2) => {
+                ty::PredicateKind::ConstEquate(c1, c2) => {
                     debug!(?c1, ?c2, "equating consts");
                     if self.selcx.tcx().features().const_evaluatable_checked {
                         // FIXME: we probably should only try to unify abstract constants
@@ -595,10 +594,10 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                         }
                     }
                 }
-                ty::PredicateAtom::TypeWellFormedFromEnv(..) => {
+                ty::PredicateKind::TypeWellFormedFromEnv(..) => {
                     bug!("TypeWellFormedFromEnv is only used for Chalk")
                 }
-            }
+            },
         }
     }
 

@@ -923,8 +923,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 continue;
             }
 
-            if let ty::PredicateAtom::Trait(predicate, _) =
-                error.obligation.predicate.skip_binders()
+            if let ty::PredicateKind::Trait(predicate, _) =
+                error.obligation.predicate.kind().skip_binder()
             {
                 // Collect the argument position for all arguments that could have caused this
                 // `FulfillmentError`.
@@ -974,8 +974,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if let hir::ExprKind::Path(qpath) = &path.kind {
                 if let hir::QPath::Resolved(_, path) = &qpath {
                     for error in errors {
-                        if let ty::PredicateAtom::Trait(predicate, _) =
-                            error.obligation.predicate.skip_binders()
+                        if let ty::PredicateKind::Trait(predicate, _) =
+                            error.obligation.predicate.kind().skip_binder()
                         {
                             // If any of the type arguments in this path segment caused the
                             // `FullfillmentError`, point at its span (#61860).

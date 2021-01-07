@@ -41,8 +41,8 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
             // We are looking at a generic abstract constant.
             Some(ct) => {
                 for pred in param_env.caller_bounds() {
-                    match pred.skip_binders() {
-                        ty::PredicateAtom::ConstEvaluatable(b_def, b_substs) => {
+                    match pred.kind().skip_binder() {
+                        ty::PredicateKind::ConstEvaluatable(b_def, b_substs) => {
                             debug!(
                                 "is_const_evaluatable: caller_bound={:?}, {:?}",
                                 b_def, b_substs

@@ -19,7 +19,7 @@ use crate::ty::TyKind::*;
 use crate::ty::{
     self, AdtDef, AdtKind, Binder, BindingMode, BoundVar, CanonicalPolyFnSig, Const, ConstVid,
     DefIdTree, ExistentialPredicate, FloatVar, FloatVid, GenericParamDefKind, InferConst, InferTy,
-    IntVar, IntVid, List, ParamConst, ParamTy, PolyFnSig, Predicate, PredicateAtom, PredicateInner,
+    IntVar, IntVid, List, ParamConst, ParamTy, PolyFnSig, Predicate, PredicateInner, PredicateKind,
     ProjectionTy, Region, RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyKind, TyS, TyVar,
     TyVid, TypeAndMut, Visibility,
 };
@@ -133,7 +133,7 @@ impl<'tcx> CtxtInterners<'tcx> {
     }
 
     #[inline(never)]
-    fn intern_predicate(&self, binder: Binder<PredicateAtom<'tcx>>) -> &'tcx PredicateInner<'tcx> {
+    fn intern_predicate(&self, binder: Binder<PredicateKind<'tcx>>) -> &'tcx PredicateInner<'tcx> {
         self.predicate
             .intern(binder, |binder| {
                 let flags = super::flags::FlagComputation::for_predicate(binder);
@@ -1948,8 +1948,8 @@ impl<'tcx> Hash for Interned<'tcx, PredicateInner<'tcx>> {
     }
 }
 
-impl<'tcx> Borrow<Binder<PredicateAtom<'tcx>>> for Interned<'tcx, PredicateInner<'tcx>> {
-    fn borrow<'a>(&'a self) -> &'a Binder<PredicateAtom<'tcx>> {
+impl<'tcx> Borrow<Binder<PredicateKind<'tcx>>> for Interned<'tcx, PredicateInner<'tcx>> {
+    fn borrow<'a>(&'a self) -> &'a Binder<PredicateKind<'tcx>> {
         &self.0.binder
     }
 }
@@ -2085,7 +2085,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline]
-    pub fn mk_predicate(self, binder: Binder<PredicateAtom<'tcx>>) -> Predicate<'tcx> {
+    pub fn mk_predicate(self, binder: Binder<PredicateKind<'tcx>>) -> Predicate<'tcx> {
         let inner = self.interners.intern_predicate(binder);
         Predicate { inner }
     }
@@ -2094,9 +2094,9 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn reuse_or_mk_predicate(
         self,
         pred: Predicate<'tcx>,
-        binder: Binder<PredicateAtom<'tcx>>,
+        binder: Binder<PredicateKind<'tcx>>,
     ) -> Predicate<'tcx> {
-        if pred.bound_atom() != binder { self.mk_predicate(binder) } else { pred }
+        if pred.kind() != binder { self.mk_predicate(binder) } else { pred }
     }
 
     pub fn mk_mach_int(self, tm: ast::IntTy) -> Ty<'tcx> {
