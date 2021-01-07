@@ -156,7 +156,6 @@ fn missing_record_expr_field_fix(
     let record_fields = match VariantDef::from(def_id) {
         VariantDef::Struct(s) => {
             module = s.module(sema.db);
-            #[allow(deprecated)]
             let source = s.source(sema.db)?;
             def_file_id = source.file_id;
             let fields = source.value.field_list()?;
@@ -164,14 +163,12 @@ fn missing_record_expr_field_fix(
         }
         VariantDef::Union(u) => {
             module = u.module(sema.db);
-            #[allow(deprecated)]
             let source = u.source(sema.db)?;
             def_file_id = source.file_id;
             source.value.record_field_list()?
         }
         VariantDef::Variant(e) => {
             module = e.module(sema.db);
-            #[allow(deprecated)]
             let source = e.source(sema.db)?;
             def_file_id = source.file_id;
             let fields = source.value.field_list()?;

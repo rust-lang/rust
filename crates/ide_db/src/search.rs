@@ -137,7 +137,6 @@ impl Definition {
         }
 
         if let Definition::LifetimeParam(param) = self {
-            #[allow(deprecated)]
             let range = match param.parent(db) {
                 hir::GenericDef::Function(it) => {
                     it.source(db).and_then(|src| Some(src.value.syntax().text_range()))

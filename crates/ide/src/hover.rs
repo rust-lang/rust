@@ -320,7 +320,6 @@ fn hover_for_definition(db: &RootDatabase, def: Definition) -> Option<Markup> {
             from_def_source_labeled(db, it, Some(label), mod_path)
         }
         Definition::Field(def) => {
-            #[allow(deprecated)]
             let src = def.source(db)?.value;
             if let FieldSource::Named(it) = src {
                 from_def_source_labeled(db, def, it.short_label(), mod_path)
@@ -368,7 +367,6 @@ fn hover_for_definition(db: &RootDatabase, def: Definition) -> Option<Markup> {
         D: HasSource<Ast = A> + HasAttrs + Copy,
         A: ShortLabel,
     {
-        #[allow(deprecated)]
         let short_label = def.source(db)?.value.short_label();
         from_def_source_labeled(db, def, short_label, mod_path)
     }
