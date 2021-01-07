@@ -1,5 +1,5 @@
 //! Missing batteries for standard libraries.
-use std::time::Instant;
+use std::{ops, process, time::Instant};
 
 mod macros;
 pub mod panic_context;
@@ -145,6 +145,27 @@ where
     }
 
     left
+}
+
+pub struct JodChild(pub process::Child);
+
+impl ops::Deref for JodChild {
+    type Target = process::Child;
+    fn deref(&self) -> &process::Child {
+        &self.0
+    }
+}
+
+impl ops::DerefMut for JodChild {
+    fn deref_mut(&mut self) -> &mut process::Child {
+        &mut self.0
+    }
+}
+
+impl Drop for JodChild {
+    fn drop(&mut self) {
+        let _ = self.0.kill();
+    }
 }
 
 #[cfg(test)]

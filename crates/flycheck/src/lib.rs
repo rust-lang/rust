@@ -5,13 +5,13 @@
 use std::{
     fmt,
     io::{self, BufReader},
-    ops,
     path::PathBuf,
     process::{self, Command, Stdio},
     time::Duration,
 };
 
 use crossbeam_channel::{never, select, unbounded, Receiver, Sender};
+use stdx::JodChild;
 
 pub use cargo_metadata::diagnostic::{
     Applicability, Diagnostic, DiagnosticCode, DiagnosticLevel, DiagnosticSpan,
@@ -321,26 +321,5 @@ impl CargoActor {
             }
         }
         Ok(read_at_least_one_message)
-    }
-}
-
-struct JodChild(process::Child);
-
-impl ops::Deref for JodChild {
-    type Target = process::Child;
-    fn deref(&self) -> &process::Child {
-        &self.0
-    }
-}
-
-impl ops::DerefMut for JodChild {
-    fn deref_mut(&mut self) -> &mut process::Child {
-        &mut self.0
-    }
-}
-
-impl Drop for JodChild {
-    fn drop(&mut self) {
-        let _ = self.0.kill();
     }
 }
