@@ -107,8 +107,13 @@ When updating a pull-request, please rebase your feature branch
 on top of master by running `git rebase master`. If rebase fails,
 you can re-apply your changes like this:
 
-  # Abort in-progress rebase, if any.
+  # Just look around to see the current state.
+  $ git status
+  $ git log
+
+  # Abort in-progress rebase and merges, if any.
   $ git rebase --abort
+  $ git merge --abort
 
   # Make the branch point to the latest commit from master,
   # while maintaining your local changes uncommited.
@@ -117,9 +122,16 @@ you can re-apply your changes like this:
   # Commit all changes in a single batch.
   $ git commit -am'My changes'
 
+  # Verify that everything looks alright.
+  $ git status
+  $ git log
+
   # Push the changes. We did a rebase, so we need `--force` option.
   # `--force-with-lease` is a more safe (Rusty) version of `--force`.
   $ git push --force-with-lease
+
+  # Verify that both local and remote branch point to the same commit.
+  $ git log
 
 And don't fear to mess something up during a rebase -- you can
 always restore the previous state using `git ref-log`:
