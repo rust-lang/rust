@@ -3,7 +3,7 @@
 use hir::{
     db::AstDatabase,
     diagnostics::{
-        Diagnostic, IncorrectCase, MissingFields, MissingOkInTailExpr, NoSuchField,
+        Diagnostic, IncorrectCase, MissingFields, MissingOkOrSomeInTailExpr, NoSuchField,
         RemoveThisSemicolon, UnresolvedModule,
     },
     HasSource, HirDisplay, InFile, Semantics, VariantDef,
@@ -94,15 +94,17 @@ impl DiagnosticWithFix for MissingFields {
     }
 }
 
-impl DiagnosticWithFix for MissingOkInTailExpr {
+impl DiagnosticWithFix for MissingOkOrSomeInTailExpr {
     fn fix(&self, sema: &Semantics<RootDatabase>) -> Option<Fix> {
         let root = sema.db.parse_or_expand(self.file)?;
         let tail_expr = self.expr.to_node(&root);
         let tail_expr_range = tail_expr.syntax().text_range();
-        let edit = TextEdit::replace(tail_expr_range, format!("Ok({})", tail_expr.syntax()));
+        let replacement = format!("{}({})", self.required, tail_expr.syntax());
+        let edit = TextEdit::replace(tail_expr_range, replacement);
         let source_change =
             SourceFileEdit { file_id: self.file.original_file(sema.db), edit }.into();
-        Some(Fix::new("Wrap with ok", source_change, tail_expr_range))
+        let name = if self.required == "Ok" { "Wrap with Ok" } else { "Wrap with Some" };
+        Some(Fix::new(name, source_change, tail_expr_range))
     }
 }
 

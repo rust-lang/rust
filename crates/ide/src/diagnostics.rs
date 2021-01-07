@@ -125,7 +125,7 @@ pub(crate) fn diagnostics(
         .on::<hir::diagnostics::MissingFields, _>(|d| {
             res.borrow_mut().push(diagnostic_with_fix(d, &sema));
         })
-        .on::<hir::diagnostics::MissingOkInTailExpr, _>(|d| {
+        .on::<hir::diagnostics::MissingOkOrSomeInTailExpr, _>(|d| {
             res.borrow_mut().push(diagnostic_with_fix(d, &sema));
         })
         .on::<hir::diagnostics::NoSuchField, _>(|d| {
@@ -305,6 +305,40 @@ mod tests {
     }
 
     #[test]
+    fn test_wrap_return_type_option() {
+        check_fix(
+            r#"
+//- /main.rs crate:main deps:core
+use core::option::Option::{self, Some, None};
+
+fn div(x: i32, y: i32) -> Option<i32> {
+    if y == 0 {
+        return None;
+    }
+    x / y$0
+}
+//- /core/lib.rs crate:core
+pub mod result {
+    pub enum Result<T, E> { Ok(T), Err(E) }
+}
+pub mod option {
+    pub enum Option<T> { Some(T), None }
+}
+"#,
+            r#"
+use core::option::Option::{self, Some, None};
+
+fn div(x: i32, y: i32) -> Option<i32> {
+    if y == 0 {
+        return None;
+    }
+    Some(x / y)
+}
+"#,
+        );
+    }
+
+    #[test]
     fn test_wrap_return_type() {
         check_fix(
             r#"
@@ -320,6 +354,9 @@ fn div(x: i32, y: i32) -> Result<i32, ()> {
 //- /core/lib.rs crate:core
 pub mod result {
     pub enum Result<T, E> { Ok(T), Err(E) }
+}
+pub mod option {
+    pub enum Option<T> { Some(T), None }
 }
 "#,
             r#"
@@ -351,6 +388,9 @@ fn div<T>(x: T) -> Result<T, i32> {
 //- /core/lib.rs crate:core
 pub mod result {
     pub enum Result<T, E> { Ok(T), Err(E) }
+}
+pub mod option {
+    pub enum Option<T> { Some(T), None }
 }
 "#,
             r#"
@@ -385,6 +425,9 @@ fn div(x: i32, y: i32) -> MyResult<i32> {
 pub mod result {
     pub enum Result<T, E> { Ok(T), Err(E) }
 }
+pub mod option {
+    pub enum Option<T> { Some(T), None }
+}
 "#,
             r#"
 use core::result::Result::{self, Ok, Err};
@@ -414,12 +457,15 @@ fn foo() -> Result<(), i32> { 0 }
 pub mod result {
     pub enum Result<T, E> { Ok(T), Err(E) }
 }
+pub mod option {
+    pub enum Option<T> { Some(T), None }
+}
 "#,
         );
     }
 
     #[test]
-    fn test_wrap_return_type_not_applicable_when_return_type_is_not_result() {
+    fn test_wrap_return_type_not_applicable_when_return_type_is_not_result_or_option() {
         check_no_diagnostics(
             r#"
 //- /main.rs crate:main deps:core
@@ -432,6 +478,9 @@ fn foo() -> SomeOtherEnum { 0 }
 //- /core/lib.rs crate:core
 pub mod result {
     pub enum Result<T, E> { Ok(T), Err(E) }
+}
+pub mod option {
+    pub enum Option<T> { Some(T), None }
 }
 "#,
         );

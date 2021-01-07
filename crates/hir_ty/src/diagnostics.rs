@@ -186,9 +186,10 @@ impl Diagnostic for MissingMatchArms {
     }
 }
 
-// Diagnostic: missing-ok-in-tail-expr
+// Diagnostic: missing-ok-or-some-in-tail-expr
 //
-// This diagnostic is triggered if block that should return `Result` returns a value not wrapped in `Ok`.
+// This diagnostic is triggered if a block that should return `Result` returns a value not wrapped in `Ok`,
+// or if a block that should return `Option` returns a value not wrapped in `Some`.
 //
 // Example:
 //
@@ -198,17 +199,19 @@ impl Diagnostic for MissingMatchArms {
 // }
 // ```
 #[derive(Debug)]
-pub struct MissingOkInTailExpr {
+pub struct MissingOkOrSomeInTailExpr {
     pub file: HirFileId,
     pub expr: AstPtr<ast::Expr>,
+    // `Some` or `Ok` depending on whether the return type is Result or Option
+    pub required: String,
 }
 
-impl Diagnostic for MissingOkInTailExpr {
+impl Diagnostic for MissingOkOrSomeInTailExpr {
     fn code(&self) -> DiagnosticCode {
-        DiagnosticCode("missing-ok-in-tail-expr")
+        DiagnosticCode("missing-ok-or-some-in-tail-expr")
     }
     fn message(&self) -> String {
-        "wrap return expression in Ok".to_string()
+        format!("wrap return expression in {}", self.required)
     }
     fn display_source(&self) -> InFile<SyntaxNodePtr> {
         InFile { file_id: self.file, value: self.expr.clone().into() }
