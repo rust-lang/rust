@@ -2266,6 +2266,144 @@ pub trait Iterator {
         self.try_fold((), check(f)) == ControlFlow::BREAK
     }
 
+    /// Tests if at least `n` elements of the iterator matches a predicate.
+    ///
+    /// `at_least()` takes a usize `n` and a closure that returns `true` or `false`. It applies
+    /// this closure to each element of the iterator, and if more than `n` of them return
+    /// `true`, then so does `at_least()`. If less than `n` of them return `true`, it
+    /// returns `false`.
+    ///
+    /// `at_least()` is short-circuiting; in other words, it will stop processing
+    /// as soon as it finds `n` `true`, given that no matter what else happens,
+    /// the result will also be `true`.
+    ///
+    /// An empty iterator returns `false`.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// let a = [1, 2, 3];
+    ///
+    /// assert!(a.iter().at_least(1, |&x| x > 0));
+    ///
+    /// assert!(!a.iter().at_least(1, |&x| x > 5));
+    /// ```
+    ///
+    /// Stopping at the `n`th `true`:
+    ///
+    /// ```
+    /// let a = vec![1, 2, 3, 4, 5];
+    ///
+    /// let mut iter = a.iter();
+    ///
+    /// assert!(iter.at_least(0, |&x| x % 2 == 0));
+    /// assert!(iter.at_least(1, |&x| x % 2 == 0));
+    /// assert!(iter.at_least(2, |&x| x % 2 == 0));
+    /// assert!(!iter.at_least(3, |&x| x % 2 == 0));
+    ///
+    /// // we can still use `iter`, as there are more elements.
+    /// let a = [1, 2, 3];
+    /// let mut iter = a.iter();
+    /// assert!(iter.at_least(1, |&x| x > 0));
+    /// assert_eq!(iter.next(), Some(&2));
+    /// ```
+    #[inline]
+    #[unstable(feature = "at_least", reason = "new API", issue = "none")]
+    fn at_least<F>(&mut self, n: usize, f: F) -> bool
+        where
+            Self: Sized,
+            F: FnMut(Self::Item) -> bool,
+    {
+        #[inline]
+        fn check<T>(
+            n: usize,
+            mut f: impl FnMut(T) -> bool,
+        ) -> impl FnMut(usize, T) -> ControlFlow<usize, usize> {
+            move |mut i, x| {
+                i += f(x) as usize;
+
+                if i < n {
+                    ControlFlow::Continue(i)
+                } else {
+                    ControlFlow::Break(i)
+                }
+            }
+        }
+
+        matches!(self.try_fold(0, check(n, f)), ControlFlow::Break(_))
+    }
+
+    /// Tests if at most `n` elements of the iterator matches a predicate.
+    ///
+    /// `at_most()` takes a usize `n` and a closure that returns `true` or `false`. It applies
+    /// this closure to each element of the iterator, and if less than `n` of them return
+    /// `true`, then so does `at_least()`. If more than `n` of them return `true`, it
+    /// returns `false`.
+    ///
+    /// `at_most()` is short-circuiting; in other words, it will stop processing
+    /// as soon as it finds `n` `false`, given that no matter what else happens,
+    /// the result will also be `false`.
+    ///
+    /// An empty iterator returns `true`.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// let a = [1, 2, 3];
+    ///
+    /// assert!(a.iter().at_most(1, |&x| x > 3));
+    ///
+    /// assert!(!a.iter().at_most(1, |&x| x > 0));
+    /// ```
+    ///
+    /// Stopping at the `n + 1`th `true`:
+    ///
+    /// ```
+    /// let a = vec![1, 2, 3, 4, 5];
+    ///
+    /// let mut iter = a.iter();
+    ///
+    /// assert!(iter.at_least(0, |&x| x % 2 == 0));
+    /// assert!(iter.at_least(1, |&x| x % 2 == 0));
+    /// assert!(iter.at_least(2, |&x| x % 2 == 0));
+    /// assert!(!iter.at_least(3, |&x| x % 2 == 0));
+    ///
+    /// // we can still use `iter`, as there are more elements.
+    /// let a = [1, 1, 3];
+    /// let mut iter = a.iter();
+    /// assert!(!iter.at_most(1, |&x| x == 1));
+    /// assert_eq!(iter.next(), Some(&3));
+    /// ```
+    #[inline]
+    #[unstable(feature = "at_most", reason = "new API", issue = "none")]
+    fn at_most<F>(&mut self, n: usize, f: F) -> bool
+        where
+            Self: Sized,
+            F: FnMut(Self::Item) -> bool,
+    {
+        #[inline]
+        fn check<T>(
+            n: usize,
+            mut f: impl FnMut(T) -> bool,
+        ) -> impl FnMut(usize, T) -> ControlFlow<usize, usize> {
+            move |mut i, x| {
+                i += f(x) as usize;
+
+                if i <= n {
+                    ControlFlow::Continue(i)
+                } else {
+                    ControlFlow::Break(i)
+                }
+            }
+        }
+
+        matches!(self.try_fold(0, check(n, f)), ControlFlow::Continue(_))
+    }
+
     /// Searches for an element of an iterator that satisfies a predicate.
     ///
     /// `find()` takes a closure that returns `true` or `false`. It applies
