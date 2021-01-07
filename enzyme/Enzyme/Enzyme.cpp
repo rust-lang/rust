@@ -104,7 +104,7 @@ bool HandleAutoDiff(CallInst *CI, TargetLibraryInfo &TLI, AAResults &AA,
 
   for (unsigned i = 1; i < CI->getNumArgOperands(); ++i) {
     Value *res = CI->getArgOperand(i);
-
+    llvm::errs() << *CI << " - res " << *res << " truei: " << truei << "\n";
     assert(truei < FT->getNumParams());
     auto PTy = FT->getParamType(truei);
     DIFFE_TYPE ty = DIFFE_TYPE::CONSTANT;
@@ -169,7 +169,57 @@ bool HandleAutoDiff(CallInst *CI, TargetLibraryInfo &TLI, AAResults &AA,
         ++i;
         res = CI->getArgOperand(i);
       } else if (MS == "enzyme_out") {
-        llvm::errs() << "saw metadata for diffe_out\n";
+        ty = DIFFE_TYPE::OUT_DIFF;
+        ++i;
+        res = CI->getArgOperand(i);
+      } else if (MS == "enzyme_const") {
+        ty = DIFFE_TYPE::CONSTANT;
+        ++i;
+        res = CI->getArgOperand(i);
+      } else {
+        ty = whatType(PTy);
+      }
+    } else if (isa<GlobalVariable>(res)) {
+      auto gv = cast<GlobalVariable>(res);
+      auto MS = gv->getName();
+      if (MS == "enzyme_dup") {
+        ty = DIFFE_TYPE::DUP_ARG;
+        ++i;
+        res = CI->getArgOperand(i);
+      } else if (MS == "enzyme_dupnoneed") {
+        ty = DIFFE_TYPE::DUP_NONEED;
+        ++i;
+        res = CI->getArgOperand(i);
+      } else if (MS == "enzyme_out") {
+        ty = DIFFE_TYPE::OUT_DIFF;
+        ++i;
+        res = CI->getArgOperand(i);
+      } else if (MS == "enzyme_const") {
+        ty = DIFFE_TYPE::CONSTANT;
+        ++i;
+        res = CI->getArgOperand(i);
+      } else {
+        ty = whatType(PTy);
+      }
+    } else if (isa<ConstantExpr>(res) &&
+               cast<ConstantExpr>(res)
+                   ->isCast() &&
+               isa<GlobalVariable>(
+                   cast<ConstantExpr>(res)
+                       ->getOperand(0))) {
+      auto gv = cast<GlobalVariable>(
+          cast<ConstantExpr>(res)
+              ->getOperand(0));
+      auto MS = gv->getName();
+      if (MS == "enzyme_dup") {
+        ty = DIFFE_TYPE::DUP_ARG;
+        ++i;
+        res = CI->getArgOperand(i);
+      } else if (MS == "enzyme_dupnoneed") {
+        ty = DIFFE_TYPE::DUP_NONEED;
+        ++i;
+        res = CI->getArgOperand(i);
+      } else if (MS == "enzyme_out") {
         ty = DIFFE_TYPE::OUT_DIFF;
         ++i;
         res = CI->getArgOperand(i);
