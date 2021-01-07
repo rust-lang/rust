@@ -77,7 +77,7 @@ Notably, this uses the usual `rust-analyzer` binary from `PATH`.
 For this, it is important to have the following in your `settings.json` file:
 ```json
 {
-    "rust-analyzer.serverPath": "rust-analyzer"
+    "rust-analyzer.server.path": "rust-analyzer"
 }
 ```
 After I am done with the fix, I use `cargo xtask install --client` to try the new extension for real.

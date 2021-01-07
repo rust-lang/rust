@@ -115,7 +115,7 @@ $ code --install-extension /path/to/rust-analyzer.vsix
 Copy the `rust-analyzer-{platform}` binary anywhere, then add the path to your settings.json, for example:
 [source,json]
 ----
-{ "rust-analyzer.serverPath": "~/.local/bin/rust-analyzer-linux" }
+{ "rust-analyzer.server.path": "~/.local/bin/rust-analyzer-linux" }
 ----
 
 ==== Building From Source
@@ -219,7 +219,7 @@ The are several LSP client implementations for vim or neovim:
    https://github.com/fannheyward/coc-rust-analyzer[coc-rust-analyzer],
    this extension implements _most_ of the features supported in the VSCode extension:
    * automatically install and upgrade stable/nightly releases
-   * same configurations as VSCode extension, `rust-analyzer.serverPath`, `rust-analyzer.cargo.features` etc.
+   * same configurations as VSCode extension, `rust-analyzer.server.path`, `rust-analyzer.cargo.features` etc.
    * same commands too, `rust-analyzer.analyzerStatus`, `rust-analyzer.ssr` etc.
    * inlay hints for variables and method chaining, _Neovim Only_
    * semantic highlighting is not implemented yet
