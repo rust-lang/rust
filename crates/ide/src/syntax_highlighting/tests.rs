@@ -555,6 +555,25 @@ impl t for foo {
     )
 }
 
+#[test]
+fn test_injection() {
+    check_highlighting(
+        r##"
+fn f(ra_fixture: &str) {}
+fn main() {
+    f(r"
+fn foo() {
+    foo(\$0{
+        92
+    }\$0)
+}");
+}
+    "##,
+        expect_file!["./test_data/injection.html"],
+        false,
+    );
+}
+
 /// Highlights the code given by the `ra_fixture` argument, renders the
 /// result as HTML, and compares it with the HTML file given as `snapshot`.
 /// Note that the `snapshot` file is overwritten by the rendered HTML.

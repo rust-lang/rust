@@ -49,14 +49,14 @@ mod tests {
     fn flip_comma_works_for_function_parameters() {
         check_assist(
             flip_comma,
-            "fn foo(x: i32,$0 y: Result<(), ()>) {}",
-            "fn foo(y: Result<(), ()>, x: i32) {}",
+            r#"fn foo(x: i32,$0 y: Result<(), ()>) {}"#,
+            r#"fn foo(y: Result<(), ()>, x: i32) {}"#,
         )
     }
 
     #[test]
     fn flip_comma_target() {
-        check_assist_target(flip_comma, "fn foo(x: i32,$0 y: Result<(), ()>) {}", ",")
+        check_assist_target(flip_comma, r#"fn foo(x: i32,$0 y: Result<(), ()>) {}"#, ",")
     }
 
     #[test]

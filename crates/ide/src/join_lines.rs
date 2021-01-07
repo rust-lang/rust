@@ -198,8 +198,8 @@ mod tests {
 
     use super::*;
 
-    fn check_join_lines(before: &str, after: &str) {
-        let (before_cursor_pos, before) = extract_offset(before);
+    fn check_join_lines(ra_fixture_before: &str, ra_fixture_after: &str) {
+        let (before_cursor_pos, before) = extract_offset(ra_fixture_before);
         let file = SourceFile::parse(&before).ok().unwrap();
 
         let range = TextRange::empty(before_cursor_pos);
@@ -214,7 +214,7 @@ mod tests {
             .apply_to_offset(before_cursor_pos)
             .expect("cursor position is affected by the edit");
         let actual = add_cursor(&actual, actual_cursor_pos);
-        assert_eq_text!(after, &actual);
+        assert_eq_text!(ra_fixture_after, &actual);
     }
 
     #[test]
@@ -604,8 +604,8 @@ fn foo() {
         );
     }
 
-    fn check_join_lines_sel(before: &str, after: &str) {
-        let (sel, before) = extract_range(before);
+    fn check_join_lines_sel(ra_fixture_before: &str, ra_fixture_after: &str) {
+        let (sel, before) = extract_range(ra_fixture_before);
         let parse = SourceFile::parse(&before);
         let result = join_lines(&parse.tree(), sel);
         let actual = {
@@ -613,7 +613,7 @@ fn foo() {
             result.apply(&mut actual);
             actual
         };
-        assert_eq_text!(after, &actual);
+        assert_eq_text!(ra_fixture_after, &actual);
     }
 
     #[test]
