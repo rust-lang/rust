@@ -172,7 +172,7 @@ else
 	# files are redundant, so there is no need to generate `expected_*.json` files or
 	# compare actual JSON results.)
 
-	$(DIFF) --ignore-matching-lines='::<.*>.*:$$' \
+	$(DIFF) --ignore-matching-lines='^  | .*::<.*>.*:$$' --ignore-matching-lines='^  | <.*>::.*:$$' \
 		expected_show_coverage.$@.txt "$(TMPDIR)"/actual_show_coverage.$@.txt || \
 		( grep -q '^\/\/ ignore-llvm-cov-show-diffs' $(SOURCEDIR)/$@.rs && \
 			>&2 echo 'diff failed, but suppressed with `// ignore-llvm-cov-show-diffs` in $(SOURCEDIR)/$@.rs' \
