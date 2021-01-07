@@ -53,7 +53,7 @@ We try to be very conservative with usage of crates.io dependencies.
 Don't use small "helper" crates (exception: `itertools` is allowed).
 If there's some general reusable bit of code you need, consider adding it to the `stdx` crate.
 
-**Rational:** keep compile times low, create ecosystem pressure for faster
+**Rationale:** keep compile times low, create ecosystem pressure for faster
 compiles, reduce the number of things which might break.
 
 ## Commit Style
@@ -78,7 +78,7 @@ Use original span for FileId
 
 This makes it easier to prepare a changelog.
 
-**Rational:** clean history is potentially useful, but rarely used.
+**Rationale:** clean history is potentially useful, but rarely used.
 But many users read changelogs.
 
 ## Clippy
@@ -90,7 +90,7 @@ There's `cargo xtask lint` command which runs a subset of low-FPR lints.
 Careful tweaking of `xtask lint` is welcome.
 Of course, applying Clippy suggestions is welcome as long as they indeed improve the code.
 
-**Rational:** see [rust-lang/clippy#5537](https://github.com/rust-lang/rust-clippy/issues/5537).
+**Rationale:** see [rust-lang/clippy#5537](https://github.com/rust-lang/rust-clippy/issues/5537).
 
 # Code
 
@@ -126,7 +126,7 @@ fn main() {
     }
 ```
 
-**Rational:**
+**Rationale:**
 
 There are many benefits to this:
 
@@ -157,7 +157,7 @@ fn frobnicate(walrus: Option<Walrus>) {
 }
 ```
 
-**Rational:** this makes control flow explicit at the call site.
+**Rationale:** this makes control flow explicit at the call site.
 Call-site has more context, it often happens that the precondition falls out naturally or can be bubbled up higher in the stack.
 
 Avoid splitting precondition check and precondition use across functions:
@@ -195,7 +195,7 @@ fn is_string_literal(s: &str) -> bool {
 In the "Not as good" version, the precondition that `1` is a valid char boundary is checked in `is_string_literal` and used in `foo`.
 In the "Good" version, the precondition check and usage are checked in the same block, and then encoded in the types.
 
-**Rational:** non-local code properties degrade under change.
+**Rationale:** non-local code properties degrade under change.
 
 When checking a boolean precondition, prefer `if !invariant` to `if negated_invariant`:
 
@@ -211,7 +211,7 @@ if idx >= len {
 }
 ```
 
-**Rational:** its useful to see the invariant relied upon by the rest of the function clearly spelled out.
+**Rationale:** its useful to see the invariant relied upon by the rest of the function clearly spelled out.
 
 ## Getters & Setters
 
@@ -241,7 +241,7 @@ impl Person {
 }
 ```
 
-**Rational:** we don't provide public API, it's cheaper to refactor than to pay getters rent.
+**Rationale:** we don't provide public API, it's cheaper to refactor than to pay getters rent.
 Non-local code properties degrade under change, privacy makes invariant local.
 Borrowed own data discloses irrelevant details about origin of data.
 Irrelevant (neither right nor wrong) things obscure correctness.
@@ -271,7 +271,7 @@ impl Foo {
 
 Prefer `Default` even it has to be implemented manually.
 
-**Rational:** less typing in the common case, uniformity.
+**Rationale:** less typing in the common case, uniformity.
 
 ## Functions Over Objects
 
@@ -327,7 +327,7 @@ impl ThingDoer {
 }
 ```
 
-**Rational:** not bothering the caller with irrelevant details, not mixing user API with implementor API.
+**Rationale:** not bothering the caller with irrelevant details, not mixing user API with implementor API.
 
 ## Avoid Monomorphization
 
@@ -360,7 +360,7 @@ fn frbonicate(f: impl AsRef<Path>) {
 }
 ```
 
-**Rational:** Rust uses monomorphization to compile generic code, meaning that for each instantiation of a generic functions with concrete types, the function is compiled afresh, *per crate*.
+**Rationale:** Rust uses monomorphization to compile generic code, meaning that for each instantiation of a generic functions with concrete types, the function is compiled afresh, *per crate*.
 This allows for exceptionally good performance, but leads to increased compile times.
 Runtime performance obeys 80%/20% rule -- only a small fraction of code is hot.
 Compile time **does not** obey this rule -- all code has to be compiled.
@@ -389,7 +389,7 @@ if words.len() != 2 {
 }
 ```
 
-**Rational:** not allocating is almost often faster.
+**Rationale:** not allocating is almost often faster.
 
 ## Push Allocations to the Call Site
 
@@ -408,14 +408,14 @@ fn frobnicate(s: &str) {
 }
 ```
 
-**Rational:** reveals the costs.
+**Rationale:** reveals the costs.
 It is also more efficient when the caller already owns the allocation.
 
 ## Collection types
 
 Prefer `rustc_hash::FxHashMap` and `rustc_hash::FxHashSet` instead of the ones in `std::collections`.
 
-**Rational:** they use a hasher that's significantly faster and using them consistently will reduce code size by some small amount.
+**Rationale:** they use a hasher that's significantly faster and using them consistently will reduce code size by some small amount.
 
 # Style
 
@@ -445,7 +445,7 @@ use crate::{}
 use super::{}
 ```
 
-**Rational:** consistency.
+**Rationale:** consistency.
 Reading order is important for new contributors.
 Grouping by crate allows to spot unwanted dependencies easier.
 
@@ -466,7 +466,7 @@ use syntax::ast::Struct;
 fn frobnicate(func: Function, strukt: Struct) {}
 ```
 
-**Rational:** avoids name clashes, makes the layer clear at a glance.
+**Rationale:** avoids name clashes, makes the layer clear at a glance.
 
 When implementing traits from `std::fmt` or `std::ops`, import the module:
 
@@ -492,14 +492,14 @@ impl Deref for Widget {
 }
 ```
 
-**Rational:** overall, less typing.
+**Rationale:** overall, less typing.
 Makes it clear that a trait is implemented, rather than used.
 
 Avoid local `use MyEnum::*` imports.
-**Rational:** consistency.
+**Rationale:** consistency.
 
 Prefer `use crate::foo::bar` to `use super::bar` or `use self::bar::baz`.
-**Rational:** consistency, this is the style which works in all cases.
+**Rationale:** consistency, this is the style which works in all cases.
 
 ## Order of Items
 
@@ -570,7 +570,7 @@ impl Parent {
 }
 ```
 
-**Rational:** easier to get the sense of the API by visually scanning the file.
+**Rationale:** easier to get the sense of the API by visually scanning the file.
 If function bodies are folded in the editor, the source code should read as documentation for the public API.
 
 ## Variable Naming
@@ -626,7 +626,7 @@ fn foo() -> Option<Bar> {
 }
 ```
 
-**Rational:** reduce congnitive stack usage.
+**Rationale:** reduce congnitive stack usage.
 
 ## Comparisons
 
@@ -640,7 +640,7 @@ assert!(lo <= x && x <= hi);
 assert!(x >= lo && x <= hi>);
 ```
 
-**Rational:** Less-then comparisons are more intuitive, they correspond spatially to [real line](https://en.wikipedia.org/wiki/Real_line).
+**Rationale:** Less-then comparisons are more intuitive, they correspond spatially to [real line](https://en.wikipedia.org/wiki/Real_line).
 
 
 ## Documentation
@@ -648,4 +648,4 @@ assert!(x >= lo && x <= hi>);
 For `.md` and `.adoc` files, prefer a sentence-per-line format, don't wrap lines.
 If the line is too long, you want to split the sentence in two :-)
 
-**Rational:** much easier to edit the text and read the diff.
+**Rationale:** much easier to edit the text and read the diff.
