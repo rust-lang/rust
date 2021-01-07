@@ -291,7 +291,9 @@ impl Item {
         }
     }
 
-    /// See comments on next_def_id
+    /// See the documentation for [`next_def_id()`].
+    ///
+    /// [`next_def_id()`]: DocContext::next_def_id()
     crate fn is_fake(&self) -> bool {
         MAX_DEF_ID.with(|m| {
             m.borrow().get(&self.def_id.krate).map(|id| self.def_id >= *id).unwrap_or(false)
