@@ -120,14 +120,20 @@ impl<'tcx> DocContext<'tcx> {
         r
     }
 
-    // This is an ugly hack, but it's the simplest way to handle synthetic impls without greatly
-    // refactoring either librustdoc or librustc_middle. In particular, allowing new DefIds to be
-    // registered after the AST is constructed would require storing the defid mapping in a
-    // RefCell, decreasing the performance for normal compilation for very little gain.
-    //
-    // Instead, we construct 'fake' def ids, which start immediately after the last DefId.
-    // In the Debug impl for clean::Item, we explicitly check for fake
-    // def ids, as we'll end up with a panic if we use the DefId Debug impl for fake DefIds
+    /// Create a new "fake" [`DefId`].
+    ///
+    /// This is an ugly hack, but it's the simplest way to handle synthetic impls without greatly
+    /// refactoring either rustdoc or [`rustc_middle`]. In particular, allowing new [`DefId`]s
+    /// to be registered after the AST is constructed would require storing the [`DefId`] mapping
+    /// in a [`RefCell`], decreasing the performance for normal compilation for very little gain.
+    ///
+    /// Instead, we construct "fake" [`DefId`]s, which start immediately after the last `DefId`.
+    /// In the [`Debug`] impl for [`clean::Item`], we explicitly check for fake `DefId`s,
+    /// as we'll end up with a panic if we use the `DefId` `Debug` impl for fake `DefId`s.
+    ///
+    /// [`RefCell`]: std::cell::RefCell
+    /// [`Debug`]: std::fmt::Debug
+    /// [`clean::Item`]: crate::clean::types::Item
     crate fn next_def_id(&self, crate_num: CrateNum) -> DefId {
         let start_def_id = {
             let num_def_ids = if crate_num == LOCAL_CRATE {
