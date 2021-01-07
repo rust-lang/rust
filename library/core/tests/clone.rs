@@ -1,4 +1,4 @@
-#![allow(noop_method_call)]
+#![cfg_attr(not(bootstrap), allow(noop_method_call))]
 
 #[test]
 fn test_borrowed_clone() {
