@@ -13,7 +13,7 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 // ```
 // struct Point {
 //     x: u32,
-//     y: u32,<|>
+//     y: u32,$0
 // }
 // ```
 // ->
@@ -76,12 +76,12 @@ mod tests {
     fn add_derive_new() {
         check_assist(
             generate_derive,
-            "struct Foo { a: i32, <|>}",
+            "struct Foo { a: i32, $0}",
             "#[derive($0)]\nstruct Foo { a: i32, }",
         );
         check_assist(
             generate_derive,
-            "struct Foo { <|> a: i32, }",
+            "struct Foo { $0 a: i32, }",
             "#[derive($0)]\nstruct Foo {  a: i32, }",
         );
     }
@@ -90,7 +90,7 @@ mod tests {
     fn add_derive_existing() {
         check_assist(
             generate_derive,
-            "#[derive(Clone)]\nstruct Foo { a: i32<|>, }",
+            "#[derive(Clone)]\nstruct Foo { a: i32$0, }",
             "#[derive(Clone$0)]\nstruct Foo { a: i32, }",
         );
     }
@@ -102,7 +102,7 @@ mod tests {
             "
 /// `Foo` is a pretty important struct.
 /// It does stuff.
-struct Foo { a: i32<|>, }
+struct Foo { a: i32$0, }
             ",
             "
 /// `Foo` is a pretty important struct.
@@ -121,7 +121,7 @@ struct Foo { a: i32, }
 struct SomeThingIrrelevant;
 /// `Foo` is a pretty important struct.
 /// It does stuff.
-struct Foo { a: i32<|>, }
+struct Foo { a: i32$0, }
 struct EvenMoreIrrelevant;
             ",
             "/// `Foo` is a pretty important struct.

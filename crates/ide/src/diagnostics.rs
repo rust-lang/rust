@@ -315,7 +315,7 @@ fn div(x: i32, y: i32) -> Result<i32, ()> {
     if y == 0 {
         return Err(());
     }
-    x / y<|>
+    x / y$0
 }
 //- /core/lib.rs crate:core
 pub mod result {
@@ -346,7 +346,7 @@ fn div<T>(x: T) -> Result<T, i32> {
     if x == 0 {
         return Err(7);
     }
-    <|>x
+    $0x
 }
 //- /core/lib.rs crate:core
 pub mod result {
@@ -379,7 +379,7 @@ fn div(x: i32, y: i32) -> MyResult<i32> {
     if y == 0 {
         return Err(());
     }
-    x <|>/ y
+    x $0/ y
 }
 //- /core/lib.rs crate:core
 pub mod result {
@@ -444,7 +444,7 @@ pub mod result {
 struct TestStruct { one: i32, two: i64 }
 
 fn test_fn() {
-    let s = TestStruct {<|>};
+    let s = TestStruct {$0};
 }
 "#,
             r#"
@@ -464,7 +464,7 @@ fn test_fn() {
 struct TestStruct { one: i32 }
 
 impl TestStruct {
-    fn test_fn() { let s = Self {<|>}; }
+    fn test_fn() { let s = Self {$0}; }
 }
 "#,
             r#"
@@ -487,7 +487,7 @@ enum Expr {
 
 impl Expr {
     fn new_bin(lhs: Box<Expr>, rhs: Box<Expr>) -> Expr {
-        Expr::Bin {<|> }
+        Expr::Bin {$0 }
     }
 }
 "#,
@@ -512,7 +512,7 @@ impl Expr {
 struct TestStruct { one: i32, two: i64 }
 
 fn test_fn() {
-    let s = TestStruct{ two: 2<|> };
+    let s = TestStruct{ two: 2$0 };
 }
 "#,
             r"
@@ -608,7 +608,7 @@ fn here() {}
 macro_rules! id { ($($tt:tt)*) => { $($tt)*}; }
 
 fn main() {
-    let _x = id![Foo { a: <|>42 }];
+    let _x = id![Foo { a: $042 }];
 }
 
 pub struct Foo { pub a: i32, pub b: i32 }
@@ -663,7 +663,7 @@ mod a {
         check_fix(
             r"
             mod b {}
-            use {<|>b};
+            use {$0b};
             ",
             r"
             mod b {}
@@ -673,7 +673,7 @@ mod a {
         check_fix(
             r"
             mod b {}
-            use {b<|>};
+            use {b$0};
             ",
             r"
             mod b {}
@@ -683,7 +683,7 @@ mod a {
         check_fix(
             r"
             mod a { mod c {} }
-            use a::{c<|>};
+            use a::{c$0};
             ",
             r"
             mod a { mod c {} }
@@ -693,7 +693,7 @@ mod a {
         check_fix(
             r"
             mod a {}
-            use a::{self<|>};
+            use a::{self$0};
             ",
             r"
             mod a {}
@@ -703,7 +703,7 @@ mod a {
         check_fix(
             r"
             mod a { mod c {} mod d { mod e {} } }
-            use a::{c, d::{e<|>}};
+            use a::{c, d::{e$0}};
             ",
             r"
             mod a { mod c {} mod d { mod e {} } }
@@ -717,7 +717,7 @@ mod a {
         check_fix(
             r"
 fn main() {
-    Foo { bar: 3, baz<|>: false};
+    Foo { bar: 3, baz$0: false};
 }
 struct Foo {
     bar: i32
@@ -743,7 +743,7 @@ struct Foo {
 mod foo;
 
 fn main() {
-    foo::Foo { bar: 3, <|>baz: false};
+    foo::Foo { bar: 3, $0baz: false};
 }
 //- /foo.rs
 struct Foo {
@@ -777,7 +777,7 @@ struct Foo {
     fn test_rename_incorrect_case() {
         check_fix(
             r#"
-pub struct test_struct<|> { one: i32 }
+pub struct test_struct$0 { one: i32 }
 
 pub fn some_fn(val: test_struct) -> test_struct {
     test_struct { one: val.one + 1 }
@@ -794,7 +794,7 @@ pub fn some_fn(val: TestStruct) -> TestStruct {
 
         check_fix(
             r#"
-pub fn some_fn(NonSnakeCase<|>: u8) -> u8 {
+pub fn some_fn(NonSnakeCase$0: u8) -> u8 {
     NonSnakeCase
 }
 "#,
@@ -807,7 +807,7 @@ pub fn some_fn(non_snake_case: u8) -> u8 {
 
         check_fix(
             r#"
-pub fn SomeFn<|>(val: u8) -> u8 {
+pub fn SomeFn$0(val: u8) -> u8 {
     if val != 0 { SomeFn(val - 1) } else { val }
 }
 "#,
@@ -821,7 +821,7 @@ pub fn some_fn(val: u8) -> u8 {
         check_fix(
             r#"
 fn some_fn() {
-    let whatAWeird_Formatting<|> = 10;
+    let whatAWeird_Formatting$0 = 10;
     another_func(whatAWeird_Formatting);
 }
 "#,
@@ -839,7 +839,7 @@ fn some_fn() {
         check_no_diagnostics(
             r#"
 fn foo() {
-    const ANOTHER_ITEM<|>: &str = "some_item";
+    const ANOTHER_ITEM$0: &str = "some_item";
 }
 "#,
         );
@@ -852,7 +852,7 @@ fn foo() {
 pub struct TestStruct;
 
 impl TestStruct {
-    pub fn SomeFn<|>() -> TestStruct {
+    pub fn SomeFn$0() -> TestStruct {
         TestStruct
     }
 }
@@ -871,7 +871,7 @@ impl TestStruct {
 
     #[test]
     fn test_single_incorrect_case_diagnostic_in_function_name_issue_6970() {
-        let input = r#"fn FOO<|>() {}"#;
+        let input = r#"fn FOO$0() {}"#;
         let expected = r#"fn foo() {}"#;
 
         let (analysis, file_position) = fixture::position(input);

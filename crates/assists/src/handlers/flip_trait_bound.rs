@@ -11,7 +11,7 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 // Flips two trait bounds.
 //
 // ```
-// fn foo<T: Clone +<|> Copy>() { }
+// fn foo<T: Clone +$0 Copy>() { }
 // ```
 // ->
 // ```
@@ -52,19 +52,19 @@ mod tests {
 
     #[test]
     fn flip_trait_bound_assist_available() {
-        check_assist_target(flip_trait_bound, "struct S<T> where T: A <|>+ B + C { }", "+")
+        check_assist_target(flip_trait_bound, "struct S<T> where T: A $0+ B + C { }", "+")
     }
 
     #[test]
     fn flip_trait_bound_not_applicable_for_single_trait_bound() {
-        check_assist_not_applicable(flip_trait_bound, "struct S<T> where T: <|>A { }")
+        check_assist_not_applicable(flip_trait_bound, "struct S<T> where T: $0A { }")
     }
 
     #[test]
     fn flip_trait_bound_works_for_struct() {
         check_assist(
             flip_trait_bound,
-            "struct S<T> where T: A <|>+ B { }",
+            "struct S<T> where T: A $0+ B { }",
             "struct S<T> where T: B + A { }",
         )
     }
@@ -73,21 +73,21 @@ mod tests {
     fn flip_trait_bound_works_for_trait_impl() {
         check_assist(
             flip_trait_bound,
-            "impl X for S<T> where T: A +<|> B { }",
+            "impl X for S<T> where T: A +$0 B { }",
             "impl X for S<T> where T: B + A { }",
         )
     }
 
     #[test]
     fn flip_trait_bound_works_for_fn() {
-        check_assist(flip_trait_bound, "fn f<T: A <|>+ B>(t: T) { }", "fn f<T: B + A>(t: T) { }")
+        check_assist(flip_trait_bound, "fn f<T: A $0+ B>(t: T) { }", "fn f<T: B + A>(t: T) { }")
     }
 
     #[test]
     fn flip_trait_bound_works_for_fn_where_clause() {
         check_assist(
             flip_trait_bound,
-            "fn f<T>(t: T) where T: A +<|> B { }",
+            "fn f<T>(t: T) where T: A +$0 B { }",
             "fn f<T>(t: T) where T: B + A { }",
         )
     }
@@ -96,7 +96,7 @@ mod tests {
     fn flip_trait_bound_works_for_lifetime() {
         check_assist(
             flip_trait_bound,
-            "fn f<T>(t: T) where T: A <|>+ 'static { }",
+            "fn f<T>(t: T) where T: A $0+ 'static { }",
             "fn f<T>(t: T) where T: 'static + A { }",
         )
     }
@@ -105,7 +105,7 @@ mod tests {
     fn flip_trait_bound_works_for_complex_bounds() {
         check_assist(
             flip_trait_bound,
-            "struct S<T> where T: A<T> <|>+ b_mod::B<T> + C<T> { }",
+            "struct S<T> where T: A<T> $0+ b_mod::B<T> + C<T> { }",
             "struct S<T> where T: b_mod::B<T> + A<T> + C<T> { }",
         )
     }
@@ -114,7 +114,7 @@ mod tests {
     fn flip_trait_bound_works_for_long_bounds() {
         check_assist(
             flip_trait_bound,
-            "struct S<T> where T: A + B + C + D + E + F +<|> G + H + I + J { }",
+            "struct S<T> where T: A + B + C + D + E + F +$0 G + H + I + J { }",
             "struct S<T> where T: A + B + C + D + E + G + F + H + I + J { }",
         )
     }

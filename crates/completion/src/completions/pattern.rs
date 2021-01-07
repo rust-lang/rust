@@ -71,7 +71,7 @@ static FOO: E = E::X;
 struct Bar { f: u32 }
 
 fn foo() {
-   match E::X { <|> }
+   match E::X { $0 }
 }
 "#,
             expect![[r#"
@@ -92,7 +92,7 @@ macro_rules! m { ($e:expr) => { $e } }
 enum E { X }
 
 fn foo() {
-   m!(match E::X { <|> })
+   m!(match E::X { $0 })
 }
 "#,
             expect![[r#"
@@ -115,7 +115,7 @@ static FOO: E = E::X;
 struct Bar { f: u32 }
 
 fn foo() {
-   let <|>
+   let $0
 }
 "#,
             expect![[r#"
@@ -133,7 +133,7 @@ enum E { X }
 static FOO: E = E::X;
 struct Bar { f: u32 }
 
-fn foo(<|>) {
+fn foo($0) {
 }
 "#,
             expect![[r#"
@@ -149,7 +149,7 @@ fn foo(<|>) {
 struct Bar { f: u32 }
 
 fn foo() {
-   let <|>
+   let $0
 }
 "#,
             expect![[r#"
@@ -165,7 +165,7 @@ fn foo() {
 struct Foo { bar: String, baz: String }
 struct Bar(String, String);
 struct Baz;
-fn outer(<|>) {}
+fn outer($0) {}
 "#,
             expect![[r#"
                 bn Foo Foo { bar$1, baz$2 }: Foo$0
@@ -182,7 +182,7 @@ struct Foo { bar: String, baz: String }
 struct Bar(String, String);
 struct Baz;
 fn outer() {
-    let <|>
+    let $0
 }
 "#,
             expect![[r#"
@@ -201,7 +201,7 @@ struct Bar(String, String);
 struct Baz;
 fn outer() {
     match () {
-        <|>
+        $0
     }
 }
 "#,
@@ -225,7 +225,7 @@ use foo::*;
 
 fn outer() {
     match () {
-        <|>
+        $0
     }
 }
 "#,
@@ -244,7 +244,7 @@ fn outer() {
 struct Foo(i32);
 fn main() {
     match Foo(92) {
-        <|>(92) => (),
+        $0(92) => (),
     }
 }
 "#,

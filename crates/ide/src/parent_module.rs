@@ -74,7 +74,7 @@ mod tests {
             //- /lib.rs
             mod foo;
             //- /foo.rs
-            <|>// empty
+            $0// empty
             ",
         );
         let nav = analysis.parent_module(pos).unwrap().pop().unwrap();
@@ -90,7 +90,7 @@ mod tests {
             mod foo;
 
             //- /foo.rs
-            mod <|>bar;
+            mod $0bar;
 
             //- /foo/bar.rs
             // empty
@@ -107,7 +107,7 @@ mod tests {
             //- /lib.rs
             mod foo {
                 mod bar {
-                    mod baz { <|> }
+                    mod baz { $0 }
                 }
             }
             ",
@@ -123,7 +123,7 @@ mod tests {
 //- /main.rs
 mod foo;
 //- /foo.rs
-<|>
+$0
 "#,
         );
         assert_eq!(analysis.crate_for(file_id).unwrap().len(), 1);

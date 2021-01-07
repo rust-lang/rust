@@ -12,7 +12,7 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 // Moves inline type bounds to a where clause.
 //
 // ```
-// fn apply<T, U, <|>F: FnOnce(T) -> U>(f: F, x: T) -> U {
+// fn apply<T, U, $0F: FnOnce(T) -> U>(f: F, x: T) -> U {
 //     f(x)
 // }
 // ```
@@ -103,7 +103,7 @@ mod tests {
         check_assist(
             move_bounds_to_where_clause,
             r#"
-            fn foo<T: u32, <|>F: FnOnce(T) -> T>() {}
+            fn foo<T: u32, $0F: FnOnce(T) -> T>() {}
             "#,
             r#"
             fn foo<T, F>() where T: u32, F: FnOnce(T) -> T {}
@@ -116,7 +116,7 @@ mod tests {
         check_assist(
             move_bounds_to_where_clause,
             r#"
-            impl<U: u32, <|>T> A<U, T> {}
+            impl<U: u32, $0T> A<U, T> {}
             "#,
             r#"
             impl<U, T> A<U, T> where U: u32 {}
@@ -129,7 +129,7 @@ mod tests {
         check_assist(
             move_bounds_to_where_clause,
             r#"
-            struct A<<|>T: Iterator<Item = u32>> {}
+            struct A<$0T: Iterator<Item = u32>> {}
             "#,
             r#"
             struct A<T> where T: Iterator<Item = u32> {}
@@ -142,7 +142,7 @@ mod tests {
         check_assist(
             move_bounds_to_where_clause,
             r#"
-            struct Pair<<|>T: u32>(T, T);
+            struct Pair<$0T: u32>(T, T);
             "#,
             r#"
             struct Pair<T>(T, T) where T: u32;

@@ -3,7 +3,7 @@
 //! Most notable things are:
 //!
 //! * Rich text comparison, which outputs a diff.
-//! * Extracting markup (mainly, `<|>` markers) out of fixture strings.
+//! * Extracting markup (mainly, `$0` markers) out of fixture strings.
 //! * marks (see the eponymous module).
 
 #[macro_use]
@@ -25,7 +25,7 @@ pub use rustc_hash::FxHashMap;
 
 pub use crate::fixture::Fixture;
 
-pub const CURSOR_MARKER: &str = "<|>";
+pub const CURSOR_MARKER: &str = "$0";
 
 /// Asserts that two strings are equal, otherwise displays a rich diff between them.
 ///
@@ -62,7 +62,7 @@ pub fn extract_offset(text: &str) -> (TextSize, String) {
     }
 }
 
-/// Returns the offset of the first occurence of `<|>` marker and the copy of `text`
+/// Returns the offset of the first occurence of `$0` marker and the copy of `text`
 /// without the marker.
 fn try_extract_offset(text: &str) -> Option<(TextSize, String)> {
     let cursor_pos = text.find(CURSOR_MARKER)?;
@@ -81,7 +81,7 @@ pub fn extract_range(text: &str) -> (TextRange, String) {
     }
 }
 
-/// Returns `TextRange` between the first two markers `<|>...<|>` and the copy
+/// Returns `TextRange` between the first two markers `$0...$0` and the copy
 /// of `text` without both of these markers.
 fn try_extract_range(text: &str) -> Option<(TextRange, String)> {
     let (start, text) = try_extract_offset(text)?;
@@ -104,11 +104,11 @@ impl From<RangeOrOffset> for TextRange {
     }
 }
 
-/// Extracts `TextRange` or `TextSize` depending on the amount of `<|>` markers
+/// Extracts `TextRange` or `TextSize` depending on the amount of `$0` markers
 /// found in `text`.
 ///
 /// # Panics
-/// Panics if no `<|>` marker is present in the `text`.
+/// Panics if no `$0` marker is present in the `text`.
 pub fn extract_range_or_offset(text: &str) -> (RangeOrOffset, String) {
     if let Some((range, text)) = try_extract_range(text) {
         return (RangeOrOffset::Range(range), text);
@@ -164,12 +164,12 @@ fn test_extract_tags() {
     assert_eq!(actual, vec![("fn main() {}", Some("fn".into())), ("main", None),]);
 }
 
-/// Inserts `<|>` marker into the `text` at `offset`.
+/// Inserts `$0` marker into the `text` at `offset`.
 pub fn add_cursor(text: &str, offset: TextSize) -> String {
     let offset: usize = offset.into();
     let mut res = String::new();
     res.push_str(&text[..offset]);
-    res.push_str("<|>");
+    res.push_str("$0");
     res.push_str(&text[offset..]);
     res
 }

@@ -9,7 +9,7 @@ use crate::{CompletionItem, CompletionItemKind};
 
 use crate::{context::CompletionContext, item::CompletionKind, Completions};
 
-/// Complete mod declaration, i.e. `mod <|> ;`
+/// Complete mod declaration, i.e. `mod $0 ;`
 pub(crate) fn complete_mod(acc: &mut Completions, ctx: &CompletionContext) -> Option<()> {
     let mod_under_caret = match &ctx.mod_declaration_under_caret {
         Some(mod_under_caret) if mod_under_caret.item_list().is_some() => return None,
@@ -159,7 +159,7 @@ mod tests {
         check(
             r#"
             //- /lib.rs
-            mod <|>
+            mod $0
             //- /foo.rs
             fn foo() {}
             //- /foo/ignored_foo.rs
@@ -181,7 +181,7 @@ mod tests {
         check(
             r#"
             //- /lib.rs
-            mod <|> {
+            mod $0 {
 
             }
             //- /foo.rs
@@ -196,7 +196,7 @@ mod tests {
         check(
             r#"
             //- /main.rs
-            mod <|>
+            mod $0
             //- /foo.rs
             fn foo() {}
             //- /foo/ignored_foo.rs
@@ -219,7 +219,7 @@ mod tests {
             r#"
             //- /main.rs
             mod tests {
-                mod <|>;
+                mod $0;
             }
             //- /tests/foo.rs
             fn foo() {}
@@ -237,7 +237,7 @@ mod tests {
             //- /lib.rs
             mod foo;
             //- /foo.rs
-            mod <|>;
+            mod $0;
             //- /foo/bar.rs
             fn bar() {}
             //- /foo/bar/ignored_bar.rs
@@ -262,7 +262,7 @@ mod tests {
             mod foo;
             //- /foo.rs
             mod bar {
-                mod <|>
+                mod $0
             }
             //- /foo/bar/baz.rs
             fn baz() {}
@@ -288,7 +288,7 @@ mod tests {
     //         //- /src/bin.rs
     //         fn main() {}
     //         //- /src/bin/foo.rs
-    //         mod <|>
+    //         mod $0
     //         //- /src/bin/bar.rs
     //         fn bar() {}
     //         //- /src/bin/bar/bar_ignored.rs
@@ -307,7 +307,7 @@ mod tests {
             //- /src/bin.rs crate:main
             fn main() {}
             //- /src/bin/foo.rs
-            mod <|>
+            mod $0
             //- /src/bin/bar.rs
             mod foo;
             fn bar() {}

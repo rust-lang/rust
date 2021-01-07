@@ -12,7 +12,7 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 // ```
 // enum Version {
 //  Undefined,
-//  Minor<|>,
+//  Minor$0,
 //  Major,
 // }
 // ```
@@ -108,7 +108,7 @@ mod tests {
             r#"
 enum Variant {
     Undefined,
-    Minor<|>,
+    Minor$0,
     Major,
 }"#,
             r#"enum Variant {
@@ -132,7 +132,7 @@ impl Default for Variant {
             r#"
 enum Variant {
     Undefined,
-    Minor<|>,
+    Minor$0,
     Major,
 }
 
@@ -151,7 +151,7 @@ impl Default for Variant {
             r#"
 enum Variant {
     Undefined,
-    Minor(u32)<|>,
+    Minor(u32)$0,
     Major,
 }"#,
         );
@@ -161,7 +161,7 @@ enum Variant {
     fn test_generate_default_from_variant_with_one_variant() {
         check_assist(
             generate_default_from_enum_variant,
-            r#"enum Variant { Undefi<|>ned }"#,
+            r#"enum Variant { Undefi$0ned }"#,
             r#"
 enum Variant { Undefined }
 

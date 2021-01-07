@@ -15,7 +15,7 @@
 //! }
 //!
 //! impl SomeTrait for () {
-//!     fn f<|>
+//!     fn f$0
 //! }
 //! ```
 //!
@@ -27,7 +27,7 @@
 //! # }
 //!
 //! impl SomeTrait for () {
-//!     fn foo() {}<|>
+//!     fn foo() {}$0
 //! }
 //! ```
 
@@ -82,7 +82,7 @@ pub(crate) fn complete_trait_impl(acc: &mut Completions, ctx: &CompletionContext
 
 fn completion_match(ctx: &CompletionContext) -> Option<(ImplCompletionKind, SyntaxNode, Impl)> {
     let mut token = ctx.token.clone();
-    // For keywork without name like `impl .. { fn <|> }`, the current position is inside
+    // For keywork without name like `impl .. { fn $0 }`, the current position is inside
     // the whitespace token, which is outside `FN` syntax node.
     // We need to follow the previous token in this case.
     if token.kind() == SyntaxKind::WHITESPACE {
@@ -90,20 +90,20 @@ fn completion_match(ctx: &CompletionContext) -> Option<(ImplCompletionKind, Synt
     }
 
     let impl_item_offset = match token.kind() {
-        // `impl .. { const <|> }`
+        // `impl .. { const $0 }`
         // ERROR      0
         //   CONST_KW <- *
         SyntaxKind::CONST_KW => 0,
-        // `impl .. { fn/type <|> }`
+        // `impl .. { fn/type $0 }`
         // FN/TYPE_ALIAS  0
         //   FN_KW        <- *
         SyntaxKind::FN_KW | SyntaxKind::TYPE_KW => 0,
-        // `impl .. { fn/type/const foo<|> }`
+        // `impl .. { fn/type/const foo$0 }`
         // FN/TYPE_ALIAS/CONST  1
         //  NAME                0
         //    IDENT             <- *
         SyntaxKind::IDENT if token.parent().kind() == SyntaxKind::NAME => 1,
-        // `impl .. { foo<|> }`
+        // `impl .. { foo$0 }`
         // MACRO_CALL       3
         //  PATH            2
         //    PATH_SEGMENT  1
@@ -120,7 +120,7 @@ fn completion_match(ctx: &CompletionContext) -> Option<(ImplCompletionKind, Synt
     //     <item>
     let impl_def = ast::Impl::cast(impl_item.parent()?.parent()?)?;
     let kind = match impl_item.kind() {
-        // `impl ... { const <|> fn/type/const }`
+        // `impl ... { const $0 fn/type/const }`
         _ if token.kind() == SyntaxKind::CONST_KW => ImplCompletionKind::Const,
         SyntaxKind::CONST | SyntaxKind::ERROR => ImplCompletionKind::Const,
         SyntaxKind::TYPE_ALIAS => ImplCompletionKind::TypeAlias,
@@ -267,7 +267,7 @@ trait Test {
 struct T;
 
 impl Test for T {
-    t<|>
+    t$0
 }
 "#,
             expect![["
@@ -287,7 +287,7 @@ struct T;
 
 impl Test for T {
     fn test() {
-        t<|>
+        t$0
     }
 }
 ",
@@ -301,7 +301,7 @@ struct T;
 
 impl Test for T {
     fn test() {
-        fn t<|>
+        fn t$0
     }
 }
 ",
@@ -315,7 +315,7 @@ struct T;
 
 impl Test for T {
     fn test() {
-        fn <|>
+        fn $0
     }
 }
 ",
@@ -330,7 +330,7 @@ struct T;
 
 impl Test for T {
     fn test() {
-        foo.<|>
+        foo.$0
     }
 }
 ",
@@ -343,7 +343,7 @@ trait Test { fn test(_: i32); fn test2(); }
 struct T;
 
 impl Test for T {
-    fn test(t<|>)
+    fn test(t$0)
 }
 ",
             expect![[""]],
@@ -355,7 +355,7 @@ trait Test { fn test(_: fn()); fn test2(); }
 struct T;
 
 impl Test for T {
-    fn test(f: fn <|>)
+    fn test(f: fn $0)
 }
 ",
             expect![[""]],
@@ -370,7 +370,7 @@ trait Test { const TEST: fn(); const TEST2: u32; type Test; fn test(); }
 struct T;
 
 impl Test for T {
-    const TEST: fn <|>
+    const TEST: fn $0
 }
 ",
             expect![[""]],
@@ -382,7 +382,7 @@ trait Test { const TEST: u32; const TEST2: u32; type Test; fn test(); }
 struct T;
 
 impl Test for T {
-    const TEST: T<|>
+    const TEST: T$0
 }
 ",
             expect![[""]],
@@ -394,7 +394,7 @@ trait Test { const TEST: u32; const TEST2: u32; type Test; fn test(); }
 struct T;
 
 impl Test for T {
-    const TEST: u32 = f<|>
+    const TEST: u32 = f$0
 }
 ",
             expect![[""]],
@@ -407,7 +407,7 @@ struct T;
 
 impl Test for T {
     const TEST: u32 = {
-        t<|>
+        t$0
     };
 }
 ",
@@ -421,7 +421,7 @@ struct T;
 
 impl Test for T {
     const TEST: u32 = {
-        fn <|>
+        fn $0
     };
 }
 ",
@@ -435,7 +435,7 @@ struct T;
 
 impl Test for T {
     const TEST: u32 = {
-        fn t<|>
+        fn t$0
     };
 }
 ",
@@ -451,7 +451,7 @@ trait Test { type Test; type Test2; fn test(); }
 struct T;
 
 impl Test for T {
-    type Test = T<|>;
+    type Test = T$0;
 }
 ",
             expect![[""]],
@@ -463,7 +463,7 @@ trait Test { type Test; type Test2; fn test(); }
 struct T;
 
 impl Test for T {
-    type Test = fn <|>;
+    type Test = fn $0;
 }
 ",
             expect![[""]],
@@ -481,7 +481,7 @@ trait Test {
 struct T;
 
 impl Test for T {
-    t<|>
+    t$0
 }
 "#,
             r#"
@@ -510,7 +510,7 @@ trait Test {
 struct T;
 
 impl Test for T {
-    fn t<|>
+    fn t$0
 }
 "#,
             r#"
@@ -540,7 +540,7 @@ struct T;
 
 impl Test for T {
     fn foo() {}
-    fn f<|>
+    fn f$0
 }
 "#,
             expect![[r#"
@@ -560,7 +560,7 @@ trait Test {
 struct T;
 
 impl Test for T {
-    fn f<|>
+    fn f$0
 }
 "#,
             r#"
@@ -585,7 +585,7 @@ trait Test {
 struct T;
 
 impl Test for T {
-    fn f<|>
+    fn f$0
 }
 "#,
             r#"
@@ -614,7 +614,7 @@ trait Test {
 }
 
 impl Test for () {
-    type S<|>
+    type S$0
 }
 "#,
             "
@@ -639,7 +639,7 @@ trait Test {
 }
 
 impl Test for () {
-    const S<|>
+    const S$0
 }
 "#,
             "
@@ -661,7 +661,7 @@ trait Test {
 }
 
 impl Test for () {
-    const S<|>
+    const S$0
 }
 "#,
             "
@@ -724,7 +724,7 @@ impl Test for T {{
         // Enumerate some possible next siblings.
         for next_sibling in &[
             "",
-            "fn other_fn() {}", // `const <|> fn` -> `const fn`
+            "fn other_fn() {}", // `const $0 fn` -> `const fn`
             "type OtherType = i32;",
             "const OTHER_CONST: i32 = 0;",
             "async fn other_fn() {}",
@@ -733,9 +733,9 @@ impl Test for T {{
             "default type OtherType = i32;",
             "default const OTHER_CONST: i32 = 0;",
         ] {
-            test("bar", "fn <|>", "fn bar() {\n    $0\n}", next_sibling);
-            test("Foo", "type <|>", "type Foo = ", next_sibling);
-            test("CONST", "const <|>", "const CONST: u16 = ", next_sibling);
+            test("bar", "fn $0", "fn bar() {\n    $0\n}", next_sibling);
+            test("Foo", "type $0", "type Foo = ", next_sibling);
+            test("CONST", "const $0", "const CONST: u16 = ", next_sibling);
         }
     }
 }

@@ -15,7 +15,7 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 //
 // ```
 // struct Foo {foo: i32, bar: i32};
-// const test: Foo = <|>Foo {bar: 0, foo: 1}
+// const test: Foo = $0Foo {bar: 0, foo: 1}
 // ```
 // ->
 // ```
@@ -126,7 +126,7 @@ struct Foo {
     bar: i32,
 }
 
-const test: Foo = <|>Foo { foo: 0, bar: 0 };
+const test: Foo = $0Foo { foo: 0, bar: 0 };
 "#,
         )
     }
@@ -137,7 +137,7 @@ const test: Foo = <|>Foo { foo: 0, bar: 0 };
             reorder_fields,
             r#"
 struct Foo {};
-const test: Foo = <|>Foo {}
+const test: Foo = $0Foo {}
 "#,
         )
     }
@@ -148,7 +148,7 @@ const test: Foo = <|>Foo {}
             reorder_fields,
             r#"
 struct Foo {foo: i32, bar: i32};
-const test: Foo = <|>Foo {bar: 0, foo: 1}
+const test: Foo = $0Foo {bar: 0, foo: 1}
 "#,
             r#"
 struct Foo {foo: i32, bar: i32};
@@ -166,7 +166,7 @@ struct Foo { foo: i64, bar: i64, baz: i64 }
 
 fn f(f: Foo) -> {
     match f {
-        <|>Foo { baz: 0, ref mut bar, .. } => (),
+        $0Foo { baz: 0, ref mut bar, .. } => (),
         _ => ()
     }
 }
@@ -197,7 +197,7 @@ struct Foo {
 impl Foo {
     fn new() -> Foo {
         let foo = String::new();
-        <|>Foo {
+        $0Foo {
             bar: foo.clone(),
             extra: "Extra field",
             foo,

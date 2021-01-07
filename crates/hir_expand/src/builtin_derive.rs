@@ -277,7 +277,7 @@ mod tests {
         let expander = BuiltinDeriveExpander::find_by_name(&name).unwrap();
         let fixture = format!(
             r#"//- /main.rs crate:main deps:core
-<|>
+$0
 {}
 //- /lib.rs crate:core
 // empty

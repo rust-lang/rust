@@ -15,7 +15,7 @@ use crate::{
 // Merges two imports with a common prefix.
 //
 // ```
-// use std::<|>fmt::Formatter;
+// use std::$0fmt::Formatter;
 // use std::io;
 // ```
 // ->
@@ -75,7 +75,7 @@ mod tests {
         check_assist(
             merge_imports,
             r"
-use std::fmt<|>::{Display, Debug};
+use std::fmt$0::{Display, Debug};
 use std::fmt::{Display, Debug};
 ",
             r"
@@ -89,7 +89,7 @@ use std::fmt::{Debug, Display};
         check_assist(
             merge_imports,
             r"
-use std::fmt<|>::Debug;
+use std::fmt$0::Debug;
 use std::fmt::Display;
 ",
             r"
@@ -104,7 +104,7 @@ use std::fmt::{Debug, Display};
             merge_imports,
             r"
 use std::fmt::Debug;
-use std::fmt<|>::Display;
+use std::fmt$0::Display;
 ",
             r"
 use std::fmt::{Debug, Display};
@@ -117,7 +117,7 @@ use std::fmt::{Debug, Display};
         check_assist(
             merge_imports,
             r"
-use std::fmt<|>;
+use std::fmt$0;
 use std::fmt::Display;
 ",
             r"
@@ -131,7 +131,7 @@ use std::fmt::{self, Display};
         check_assist(
             merge_imports,
             r"
-use std::{fmt, <|>fmt::Display};
+use std::{fmt, $0fmt::Display};
 ",
             r"
 use std::{fmt::{self, Display}};
@@ -144,7 +144,7 @@ use std::{fmt::{self, Display}};
         check_assist_not_applicable(
             merge_imports,
             r"
-pub use std::fmt<|>::Debug;
+pub use std::fmt$0::Debug;
 use std::fmt::Display;
 ",
         );
@@ -155,7 +155,7 @@ use std::fmt::Display;
         check_assist_not_applicable(
             merge_imports,
             r"
-use std::fmt<|>::Debug;
+use std::fmt$0::Debug;
 pub use std::fmt::Display;
 ",
         );
@@ -166,7 +166,7 @@ pub use std::fmt::Display;
         check_assist_not_applicable(
             merge_imports,
             r"
-pub(crate) use std::fmt<|>::Debug;
+pub(crate) use std::fmt$0::Debug;
 pub use std::fmt::Display;
 ",
         );
@@ -177,7 +177,7 @@ pub use std::fmt::Display;
         check_assist_not_applicable(
             merge_imports,
             r"
-pub use std::fmt<|>::Debug;
+pub use std::fmt$0::Debug;
 pub(crate) use std::fmt::Display;
 ",
         );
@@ -188,7 +188,7 @@ pub(crate) use std::fmt::Display;
         check_assist(
             merge_imports,
             r"
-pub use std::fmt<|>::Debug;
+pub use std::fmt$0::Debug;
 pub use std::fmt::Display;
 ",
             r"
@@ -202,7 +202,7 @@ pub use std::fmt::{Debug, Display};
         check_assist(
             merge_imports,
             r"
-pub(crate) use std::fmt<|>::Debug;
+pub(crate) use std::fmt$0::Debug;
 pub(crate) use std::fmt::Display;
 ",
             r"
@@ -216,7 +216,7 @@ pub(crate) use std::fmt::{Debug, Display};
         check_assist(
             merge_imports,
             r"
-use std::{fmt<|>::Debug, fmt::Display};
+use std::{fmt$0::Debug, fmt::Display};
 ",
             r"
 use std::{fmt::{Debug, Display}};
@@ -229,7 +229,7 @@ use std::{fmt::{Debug, Display}};
         check_assist(
             merge_imports,
             r"
-use std::{fmt::Debug, fmt<|>::Display};
+use std::{fmt::Debug, fmt$0::Display};
 ",
             r"
 use std::{fmt::{Debug, Display}};
@@ -242,7 +242,7 @@ use std::{fmt::{Debug, Display}};
         check_assist(
             merge_imports,
             r"
-use std<|>::cell::*;
+use std$0::cell::*;
 use std::str;
 ",
             r"
@@ -256,7 +256,7 @@ use std::{cell::*, str};
         check_assist(
             merge_imports,
             r"
-use std<|>::cell::*;
+use std$0::cell::*;
 use std::str::*;
 ",
             r"
@@ -270,7 +270,7 @@ use std::{cell::*, str::*};
         check_assist(
             merge_imports,
             r"
-use foo<|>::bar;
+use foo$0::bar;
 use foo::baz;
 
 /// Doc comment
@@ -289,7 +289,7 @@ use foo::{bar, baz};
             merge_imports,
             r"
 use {
-    foo<|>::bar,
+    foo$0::bar,
     foo::baz,
 };
 ",
@@ -304,7 +304,7 @@ use {
             r"
 use {
     foo::baz,
-    foo<|>::bar,
+    foo$0::bar,
 };
 ",
             r"
@@ -321,7 +321,7 @@ use {
             merge_imports,
             r"
 use foo::bar::baz;
-use foo::<|>{
+use foo::$0{
     FooBar,
 };
 ",
@@ -336,7 +336,7 @@ use foo::{FooBar, bar::baz};
         check_assist_not_applicable(
             merge_imports,
             r"
-use std::<|>
+use std::$0
 fn main() {}",
         );
     }

@@ -8,7 +8,7 @@ fn doctest_add_explicit_type() {
         "add_explicit_type",
         r#####"
 fn main() {
-    let x<|> = 92;
+    let x$0 = 92;
 }
 "#####,
         r#####"
@@ -25,7 +25,7 @@ fn doctest_add_hash() {
         "add_hash",
         r#####"
 fn main() {
-    r#"Hello,<|> World!"#;
+    r#"Hello,$0 World!"#;
 }
 "#####,
         r#####"
@@ -49,7 +49,7 @@ trait Trait {
 
 impl Trait for () {
     type X = ();
-    fn foo(&self) {}<|>
+    fn foo(&self) {}$0
 
 }
 "#####,
@@ -81,7 +81,7 @@ trait Trait<T> {
     fn bar(&self) {}
 }
 
-impl Trait<u32> for () {<|>
+impl Trait<u32> for () {$0
 
 }
 "#####,
@@ -110,7 +110,7 @@ fn doctest_add_turbo_fish() {
         r#####"
 fn make<T>() -> T { todo!() }
 fn main() {
-    let x = make<|>();
+    let x = make$0();
 }
 "#####,
         r#####"
@@ -128,7 +128,7 @@ fn doctest_apply_demorgan() {
         "apply_demorgan",
         r#####"
 fn main() {
-    if x != 4 ||<|> !y {}
+    if x != 4 ||$0 !y {}
 }
 "#####,
         r#####"
@@ -145,7 +145,7 @@ fn doctest_auto_import() {
         "auto_import",
         r#####"
 fn main() {
-    let map = HashMap<|>::new();
+    let map = HashMap$0::new();
 }
 pub mod std { pub mod collections { pub struct HashMap { } } }
 "#####,
@@ -165,7 +165,7 @@ fn doctest_change_visibility() {
     check_doc_test(
         "change_visibility",
         r#####"
-<|>fn frobnicate() {}
+$0fn frobnicate() {}
 "#####,
         r#####"
 pub(crate) fn frobnicate() {}
@@ -178,7 +178,7 @@ fn doctest_convert_integer_literal() {
     check_doc_test(
         "convert_integer_literal",
         r#####"
-const _: i32 = 10<|>;
+const _: i32 = 10$0;
 "#####,
         r#####"
 const _: i32 = 0b1010;
@@ -192,7 +192,7 @@ fn doctest_convert_to_guarded_return() {
         "convert_to_guarded_return",
         r#####"
 fn main() {
-    <|>if cond {
+    $0if cond {
         foo();
         bar();
     }
@@ -220,7 +220,7 @@ mod foo {
     pub struct Baz;
 }
 
-use foo::*<|>;
+use foo::*$0;
 
 fn qux(bar: Bar, baz: Baz) {}
 "#####,
@@ -242,7 +242,7 @@ fn doctest_extract_struct_from_enum_variant() {
     check_doc_test(
         "extract_struct_from_enum_variant",
         r#####"
-enum A { <|>One(u32, u32) }
+enum A { $0One(u32, u32) }
 "#####,
         r#####"
 struct One(pub u32, pub u32);
@@ -258,7 +258,7 @@ fn doctest_extract_variable() {
         "extract_variable",
         r#####"
 fn main() {
-    <|>(1 + 2)<|> * 4;
+    $0(1 + 2)$0 * 4;
 }
 "#####,
         r#####"
@@ -279,7 +279,7 @@ enum Action { Move { distance: u32 }, Stop }
 
 fn handle(action: Action) {
     match action {
-        <|>
+        $0
     }
 }
 "#####,
@@ -305,7 +305,7 @@ mod m {
     fn frobnicate() {}
 }
 fn main() {
-    m::frobnicate<|>() {}
+    m::frobnicate$0() {}
 }
 "#####,
         r#####"
@@ -325,7 +325,7 @@ fn doctest_flip_binexpr() {
         "flip_binexpr",
         r#####"
 fn main() {
-    let _ = 90 +<|> 2;
+    let _ = 90 +$0 2;
 }
 "#####,
         r#####"
@@ -342,7 +342,7 @@ fn doctest_flip_comma() {
         "flip_comma",
         r#####"
 fn main() {
-    ((1, 2),<|> (3, 4));
+    ((1, 2),$0 (3, 4));
 }
 "#####,
         r#####"
@@ -358,7 +358,7 @@ fn doctest_flip_trait_bound() {
     check_doc_test(
         "flip_trait_bound",
         r#####"
-fn foo<T: Clone +<|> Copy>() { }
+fn foo<T: Clone +$0 Copy>() { }
 "#####,
         r#####"
 fn foo<T: Copy + Clone>() { }
@@ -373,7 +373,7 @@ fn doctest_generate_default_from_enum_variant() {
         r#####"
 enum Version {
  Undefined,
- Minor<|>,
+ Minor$0,
  Major,
 }
 "#####,
@@ -400,7 +400,7 @@ fn doctest_generate_derive() {
         r#####"
 struct Point {
     x: u32,
-    y: u32,<|>
+    y: u32,$0
 }
 "#####,
         r#####"
@@ -418,7 +418,7 @@ fn doctest_generate_from_impl_for_enum() {
     check_doc_test(
         "generate_from_impl_for_enum",
         r#####"
-enum A { <|>One(u32) }
+enum A { $0One(u32) }
 "#####,
         r#####"
 enum A { One(u32) }
@@ -440,7 +440,7 @@ fn doctest_generate_function() {
 struct Baz;
 fn baz() -> Baz { Baz }
 fn foo() {
-    bar<|>("", baz());
+    bar$0("", baz());
 }
 
 "#####,
@@ -465,7 +465,7 @@ fn doctest_generate_impl() {
         "generate_impl",
         r#####"
 struct Ctx<T: Clone> {
-    data: T,<|>
+    data: T,$0
 }
 "#####,
         r#####"
@@ -486,7 +486,7 @@ fn doctest_generate_new() {
         "generate_new",
         r#####"
 struct Ctx<T: Clone> {
-     data: T,<|>
+     data: T,$0
 }
 "#####,
         r#####"
@@ -507,7 +507,7 @@ fn doctest_infer_function_return_type() {
     check_doc_test(
         "infer_function_return_type",
         r#####"
-fn foo() { 4<|>2i32 }
+fn foo() { 4$02i32 }
 "#####,
         r#####"
 fn foo() -> i32 { 42i32 }
@@ -522,7 +522,7 @@ fn doctest_inline_function() {
         r#####"
 fn add(a: u32, b: u32) -> u32 { a + b }
 fn main() {
-    let x = add<|>(1, 2);
+    let x = add$0(1, 2);
 }
 "#####,
         r#####"
@@ -544,7 +544,7 @@ fn doctest_inline_local_variable() {
         "inline_local_variable",
         r#####"
 fn main() {
-    let x<|> = 1 + 2;
+    let x$0 = 1 + 2;
     x * 4;
 }
 "#####,
@@ -561,7 +561,7 @@ fn doctest_introduce_named_lifetime() {
     check_doc_test(
         "introduce_named_lifetime",
         r#####"
-impl Cursor<'_<|>> {
+impl Cursor<'_$0> {
     fn node(self) -> &SyntaxNode {
         match self {
             Cursor::Replace(node) | Cursor::Before(node) => node,
@@ -587,7 +587,7 @@ fn doctest_invert_if() {
         "invert_if",
         r#####"
 fn main() {
-    if<|> !y { A } else { B }
+    if$0 !y { A } else { B }
 }
 "#####,
         r#####"
@@ -604,7 +604,7 @@ fn doctest_make_raw_string() {
         "make_raw_string",
         r#####"
 fn main() {
-    "Hello,<|> World!";
+    "Hello,$0 World!";
 }
 "#####,
         r#####"
@@ -621,7 +621,7 @@ fn doctest_make_usual_string() {
         "make_usual_string",
         r#####"
 fn main() {
-    r#"Hello,<|> "World!""#;
+    r#"Hello,$0 "World!""#;
 }
 "#####,
         r#####"
@@ -637,7 +637,7 @@ fn doctest_merge_imports() {
     check_doc_test(
         "merge_imports",
         r#####"
-use std::<|>fmt::Formatter;
+use std::$0fmt::Formatter;
 use std::io;
 "#####,
         r#####"
@@ -655,7 +655,7 @@ enum Action { Move { distance: u32 }, Stop }
 
 fn handle(action: Action) {
     match action {
-        <|>Action::Move(..) => foo(),
+        $0Action::Move(..) => foo(),
         Action::Stop => foo(),
     }
 }
@@ -681,7 +681,7 @@ enum Action { Move { distance: u32 }, Stop }
 
 fn handle(action: Action) {
     match action {
-        Action::Move { distance } => <|>if distance > 10 { foo() },
+        Action::Move { distance } => $0if distance > 10 { foo() },
         _ => (),
     }
 }
@@ -704,7 +704,7 @@ fn doctest_move_bounds_to_where_clause() {
     check_doc_test(
         "move_bounds_to_where_clause",
         r#####"
-fn apply<T, U, <|>F: FnOnce(T) -> U>(f: F, x: T) -> U {
+fn apply<T, U, $0F: FnOnce(T) -> U>(f: F, x: T) -> U {
     f(x)
 }
 "#####,
@@ -725,7 +725,7 @@ enum Action { Move { distance: u32 }, Stop }
 
 fn handle(action: Action) {
     match action {
-        Action::Move { distance } <|>if distance > 10 => foo(),
+        Action::Move { distance } $0if distance > 10 => foo(),
         _ => (),
     }
 }
@@ -750,7 +750,7 @@ fn doctest_move_module_to_file() {
     check_doc_test(
         "move_module_to_file",
         r#####"
-mod <|>foo {
+mod $0foo {
     fn t() {}
 }
 "#####,
@@ -769,7 +769,7 @@ fn main() {
     let mut foo = 6;
 
     if true {
-        <|>foo = 5;
+        $0foo = 5;
     } else {
         foo = 4;
     }
@@ -795,7 +795,7 @@ fn doctest_qualify_path() {
         "qualify_path",
         r#####"
 fn main() {
-    let map = HashMap<|>::new();
+    let map = HashMap$0::new();
 }
 pub mod std { pub mod collections { pub struct HashMap { } } }
 "#####,
@@ -814,7 +814,7 @@ fn doctest_remove_dbg() {
         "remove_dbg",
         r#####"
 fn main() {
-    <|>dbg!(92);
+    $0dbg!(92);
 }
 "#####,
         r#####"
@@ -831,7 +831,7 @@ fn doctest_remove_hash() {
         "remove_hash",
         r#####"
 fn main() {
-    r#"Hello,<|> World!"#;
+    r#"Hello,$0 World!"#;
 }
 "#####,
         r#####"
@@ -848,7 +848,7 @@ fn doctest_remove_mut() {
         "remove_mut",
         r#####"
 impl Walrus {
-    fn feed(&mut<|> self, amount: u32) {}
+    fn feed(&mut$0 self, amount: u32) {}
 }
 "#####,
         r#####"
@@ -864,7 +864,7 @@ fn doctest_remove_unused_param() {
     check_doc_test(
         "remove_unused_param",
         r#####"
-fn frobnicate(x: i32<|>) {}
+fn frobnicate(x: i32$0) {}
 
 fn main() {
     frobnicate(92);
@@ -886,7 +886,7 @@ fn doctest_reorder_fields() {
         "reorder_fields",
         r#####"
 struct Foo {foo: i32, bar: i32};
-const test: Foo = <|>Foo {bar: 0, foo: 1}
+const test: Foo = $0Foo {bar: 0, foo: 1}
 "#####,
         r#####"
 struct Foo {foo: i32, bar: i32};
@@ -901,7 +901,7 @@ fn doctest_replace_derive_with_manual_impl() {
         "replace_derive_with_manual_impl",
         r#####"
 trait Debug { fn fmt(&self, f: &mut Formatter) -> Result<()>; }
-#[derive(Deb<|>ug, Display)]
+#[derive(Deb$0ug, Display)]
 struct S;
 "#####,
         r#####"
@@ -926,7 +926,7 @@ fn doctest_replace_if_let_with_match() {
 enum Action { Move { distance: u32 }, Stop }
 
 fn handle(action: Action) {
-    <|>if let Action::Move { distance } = action {
+    $0if let Action::Move { distance } = action {
         foo(distance)
     } else {
         bar()
@@ -951,7 +951,7 @@ fn doctest_replace_impl_trait_with_generic() {
     check_doc_test(
         "replace_impl_trait_with_generic",
         r#####"
-fn foo(bar: <|>impl Bar) {}
+fn foo(bar: $0impl Bar) {}
 "#####,
         r#####"
 fn foo<B: Bar>(bar: B) {}
@@ -967,7 +967,7 @@ fn doctest_replace_let_with_if_let() {
 enum Option<T> { Some(T), None }
 
 fn main(action: Action) {
-    <|>let x = compute();
+    $0let x = compute();
 }
 
 fn compute() -> Option<i32> { None }
@@ -993,7 +993,7 @@ fn doctest_replace_match_with_if_let() {
 enum Action { Move { distance: u32 }, Stop }
 
 fn handle(action: Action) {
-    <|>match action {
+    $0match action {
         Action::Move { distance } => foo(distance),
         _ => bar(),
     }
@@ -1018,7 +1018,7 @@ fn doctest_replace_qualified_name_with_use() {
     check_doc_test(
         "replace_qualified_name_with_use",
         r#####"
-fn process(map: std::collections::<|>HashMap<String, String>) {}
+fn process(map: std::collections::$0HashMap<String, String>) {}
 "#####,
         r#####"
 use std::collections::HashMap;
@@ -1034,7 +1034,7 @@ fn doctest_replace_string_with_char() {
         "replace_string_with_char",
         r#####"
 fn main() {
-    find("{<|>");
+    find("{$0");
 }
 "#####,
         r#####"
@@ -1053,7 +1053,7 @@ fn doctest_replace_unwrap_with_match() {
 enum Result<T, E> { Ok(T), Err(E) }
 fn main() {
     let x: Result<i32, i32> = Result::Ok(92);
-    let y = x.<|>unwrap();
+    let y = x.$0unwrap();
 }
 "#####,
         r#####"
@@ -1074,7 +1074,7 @@ fn doctest_split_import() {
     check_doc_test(
         "split_import",
         r#####"
-use std::<|>collections::HashMap;
+use std::$0collections::HashMap;
 "#####,
         r#####"
 use std::{collections::HashMap};
@@ -1087,7 +1087,7 @@ fn doctest_toggle_ignore() {
     check_doc_test(
         "toggle_ignore",
         r#####"
-<|>#[test]
+$0#[test]
 fn arithmetics {
     assert_eq!(2 + 2, 5);
 }
@@ -1108,7 +1108,7 @@ fn doctest_unwrap_block() {
         "unwrap_block",
         r#####"
 fn foo() {
-    if true {<|>
+    if true {$0
         println!("foo");
     }
 }
@@ -1126,7 +1126,7 @@ fn doctest_wrap_return_type_in_result() {
     check_doc_test(
         "wrap_return_type_in_result",
         r#####"
-fn foo() -> i32<|> { 42i32 }
+fn foo() -> i32$0 { 42i32 }
 "#####,
         r#####"
 fn foo() -> Result<i32, ${0:_}> { Ok(42i32) }

@@ -13,7 +13,7 @@ use crate::{utils::vis_offset, AssistContext, AssistId, AssistKind, Assists};
 // Adds or changes existing visibility specifier.
 //
 // ```
-// <|>fn frobnicate() {}
+// $0fn frobnicate() {}
 // ```
 // ->
 // ```
@@ -118,23 +118,23 @@ mod tests {
 
     #[test]
     fn change_visibility_adds_pub_crate_to_items() {
-        check_assist(change_visibility, "<|>fn foo() {}", "pub(crate) fn foo() {}");
-        check_assist(change_visibility, "f<|>n foo() {}", "pub(crate) fn foo() {}");
-        check_assist(change_visibility, "<|>struct Foo {}", "pub(crate) struct Foo {}");
-        check_assist(change_visibility, "<|>mod foo {}", "pub(crate) mod foo {}");
-        check_assist(change_visibility, "<|>trait Foo {}", "pub(crate) trait Foo {}");
-        check_assist(change_visibility, "m<|>od {}", "pub(crate) mod {}");
-        check_assist(change_visibility, "unsafe f<|>n foo() {}", "pub(crate) unsafe fn foo() {}");
+        check_assist(change_visibility, "$0fn foo() {}", "pub(crate) fn foo() {}");
+        check_assist(change_visibility, "f$0n foo() {}", "pub(crate) fn foo() {}");
+        check_assist(change_visibility, "$0struct Foo {}", "pub(crate) struct Foo {}");
+        check_assist(change_visibility, "$0mod foo {}", "pub(crate) mod foo {}");
+        check_assist(change_visibility, "$0trait Foo {}", "pub(crate) trait Foo {}");
+        check_assist(change_visibility, "m$0od {}", "pub(crate) mod {}");
+        check_assist(change_visibility, "unsafe f$0n foo() {}", "pub(crate) unsafe fn foo() {}");
     }
 
     #[test]
     fn change_visibility_works_with_struct_fields() {
         check_assist(
             change_visibility,
-            r"struct S { <|>field: u32 }",
+            r"struct S { $0field: u32 }",
             r"struct S { pub(crate) field: u32 }",
         );
-        check_assist(change_visibility, r"struct S ( <|>u32 )", r"struct S ( pub(crate) u32 )");
+        check_assist(change_visibility, r"struct S ( $0u32 )", r"struct S ( pub(crate) u32 )");
     }
 
     #[test]
@@ -142,33 +142,33 @@ mod tests {
         mark::check!(change_visibility_field_false_positive);
         check_assist_not_applicable(
             change_visibility,
-            r"struct S { field: [(); { let <|>x = ();}] }",
+            r"struct S { field: [(); { let $0x = ();}] }",
         )
     }
 
     #[test]
     fn change_visibility_pub_to_pub_crate() {
-        check_assist(change_visibility, "<|>pub fn foo() {}", "pub(crate) fn foo() {}")
+        check_assist(change_visibility, "$0pub fn foo() {}", "pub(crate) fn foo() {}")
     }
 
     #[test]
     fn change_visibility_pub_crate_to_pub() {
-        check_assist(change_visibility, "<|>pub(crate) fn foo() {}", "pub fn foo() {}")
+        check_assist(change_visibility, "$0pub(crate) fn foo() {}", "pub fn foo() {}")
     }
 
     #[test]
     fn change_visibility_const() {
-        check_assist(change_visibility, "<|>const FOO = 3u8;", "pub(crate) const FOO = 3u8;");
+        check_assist(change_visibility, "$0const FOO = 3u8;", "pub(crate) const FOO = 3u8;");
     }
 
     #[test]
     fn change_visibility_static() {
-        check_assist(change_visibility, "<|>static FOO = 3u8;", "pub(crate) static FOO = 3u8;");
+        check_assist(change_visibility, "$0static FOO = 3u8;", "pub(crate) static FOO = 3u8;");
     }
 
     #[test]
     fn change_visibility_type_alias() {
-        check_assist(change_visibility, "<|>type T = ();", "pub(crate) type T = ();");
+        check_assist(change_visibility, "$0type T = ();", "pub(crate) type T = ();");
     }
 
     #[test]
@@ -181,7 +181,7 @@ mod tests {
             // comments
 
             #[derive(Debug)]
-            <|>struct Foo;
+            $0struct Foo;
             ",
             r"
             /// docs
@@ -199,14 +199,14 @@ mod tests {
         check_assist_not_applicable(
             change_visibility,
             r"mod foo { pub enum Foo {Foo1} }
-              fn main() { foo::Foo::Foo1<|> } ",
+              fn main() { foo::Foo::Foo1$0 } ",
         );
     }
 
     #[test]
     fn change_visibility_target() {
-        check_assist_target(change_visibility, "<|>fn foo() {}", "fn");
-        check_assist_target(change_visibility, "pub(crate)<|> fn foo() {}", "pub(crate)");
-        check_assist_target(change_visibility, "struct S { <|>field: u32 }", "field");
+        check_assist_target(change_visibility, "$0fn foo() {}", "fn");
+        check_assist_target(change_visibility, "pub(crate)$0 fn foo() {}", "pub(crate)");
+        check_assist_target(change_visibility, "struct S { $0field: u32 }", "field");
     }
 }

@@ -18,7 +18,7 @@ use crate::{
 //
 // ```
 // fn main() {
-//     if<|> !y { A } else { B }
+//     if$0 !y { A } else { B }
 // }
 // ```
 // ->
@@ -72,7 +72,7 @@ mod tests {
     fn invert_if_composite_condition() {
         check_assist(
             invert_if,
-            "fn f() { i<|>f x == 3 || x == 4 || x == 5 { 1 } else { 3 * 2 } }",
+            "fn f() { i$0f x == 3 || x == 4 || x == 5 { 1 } else { 3 * 2 } }",
             "fn f() { if !(x == 3 || x == 4 || x == 5) { 3 * 2 } else { 1 } }",
         )
     }
@@ -81,7 +81,7 @@ mod tests {
     fn invert_if_remove_not_parentheses() {
         check_assist(
             invert_if,
-            "fn f() { i<|>f !(x == 3 || x == 4 || x == 5) { 3 * 2 } else { 1 } }",
+            "fn f() { i$0f !(x == 3 || x == 4 || x == 5) { 3 * 2 } else { 1 } }",
             "fn f() { if x == 3 || x == 4 || x == 5 { 1 } else { 3 * 2 } }",
         )
     }
@@ -90,7 +90,7 @@ mod tests {
     fn invert_if_remove_inequality() {
         check_assist(
             invert_if,
-            "fn f() { i<|>f x != 3 { 1 } else { 3 + 2 } }",
+            "fn f() { i$0f x != 3 { 1 } else { 3 + 2 } }",
             "fn f() { if x == 3 { 3 + 2 } else { 1 } }",
         )
     }
@@ -99,7 +99,7 @@ mod tests {
     fn invert_if_remove_not() {
         check_assist(
             invert_if,
-            "fn f() { <|>if !cond { 3 * 2 } else { 1 } }",
+            "fn f() { $0if !cond { 3 * 2 } else { 1 } }",
             "fn f() { if cond { 1 } else { 3 * 2 } }",
         )
     }
@@ -108,21 +108,21 @@ mod tests {
     fn invert_if_general_case() {
         check_assist(
             invert_if,
-            "fn f() { i<|>f cond { 3 * 2 } else { 1 } }",
+            "fn f() { i$0f cond { 3 * 2 } else { 1 } }",
             "fn f() { if !cond { 1 } else { 3 * 2 } }",
         )
     }
 
     #[test]
     fn invert_if_doesnt_apply_with_cursor_not_on_if() {
-        check_assist_not_applicable(invert_if, "fn f() { if !<|>cond { 3 * 2 } else { 1 } }")
+        check_assist_not_applicable(invert_if, "fn f() { if !$0cond { 3 * 2 } else { 1 } }")
     }
 
     #[test]
     fn invert_if_doesnt_apply_with_if_let() {
         check_assist_not_applicable(
             invert_if,
-            "fn f() { i<|>f let Some(_) = Some(1) { 1 } else { 0 } }",
+            "fn f() { i$0f let Some(_) = Some(1) { 1 } else { 0 } }",
         )
     }
 
@@ -130,7 +130,7 @@ mod tests {
     fn invert_if_option_case() {
         check_assist(
             invert_if,
-            "fn f() { if<|> doc_style.is_some() { Class::DocComment } else { Class::Comment } }",
+            "fn f() { if$0 doc_style.is_some() { Class::DocComment } else { Class::Comment } }",
             "fn f() { if doc_style.is_none() { Class::Comment } else { Class::DocComment } }",
         )
     }
@@ -139,7 +139,7 @@ mod tests {
     fn invert_if_result_case() {
         check_assist(
             invert_if,
-            "fn f() { i<|>f doc_style.is_err() { Class::Err } else { Class::Ok } }",
+            "fn f() { i$0f doc_style.is_err() { Class::Err } else { Class::Ok } }",
             "fn f() { if doc_style.is_ok() { Class::Ok } else { Class::Err } }",
         )
     }

@@ -104,7 +104,7 @@ fn remove_newline(edit: &mut TextEditBuilder, token: &SyntaxToken, offset: TextS
     // Special case that turns something like:
     //
     // ```
-    // my_function({<|>
+    // my_function({$0
     //    <some-expr>
     // })
     // ```
@@ -116,7 +116,7 @@ fn remove_newline(edit: &mut TextEditBuilder, token: &SyntaxToken, offset: TextS
     // ditto for
     //
     // ```
-    // use foo::{<|>
+    // use foo::{$0
     //    bar
     // };
     // ```
@@ -222,13 +222,13 @@ mod tests {
         check_join_lines(
             r"
 fn foo() {
-    <|>foo(1,
+    $0foo(1,
     )
 }
 ",
             r"
 fn foo() {
-    <|>foo(1)
+    $0foo(1)
 }
 ",
         );
@@ -239,14 +239,14 @@ fn foo() {
         check_join_lines(
             r"
 pub fn reparse(&self, edit: &AtomTextEdit) -> File {
-    <|>self.incremental_reparse(edit).unwrap_or_else(|| {
+    $0self.incremental_reparse(edit).unwrap_or_else(|| {
         self.full_reparse(edit)
     })
 }
 ",
             r"
 pub fn reparse(&self, edit: &AtomTextEdit) -> File {
-    <|>self.incremental_reparse(edit).unwrap_or_else(|| self.full_reparse(edit))
+    $0self.incremental_reparse(edit).unwrap_or_else(|| self.full_reparse(edit))
 }
 ",
         );
@@ -257,13 +257,13 @@ pub fn reparse(&self, edit: &AtomTextEdit) -> File {
         check_join_lines(
             r"
 fn foo() {
-    foo(<|>{
+    foo($0{
         92
     })
 }",
             r"
 fn foo() {
-    foo(<|>92)
+    foo($092)
 }",
         );
     }
@@ -274,7 +274,7 @@ fn foo() {
             fn foo() {
                 loop {
                     match x {
-                        92 => <|>{
+                        92 => $0{
                             continue;
                         }
                     }
@@ -285,7 +285,7 @@ fn foo() {
             fn foo() {
                 loop {
                     match x {
-                        92 => <|>continue,
+                        92 => $0continue,
                     }
                 }
             }
@@ -299,7 +299,7 @@ fn foo() {
             r"
 fn foo(e: Result<U, V>) {
     match e {
-        Ok(u) => <|>{
+        Ok(u) => $0{
             u.foo()
         }
         Err(v) => v,
@@ -308,7 +308,7 @@ fn foo(e: Result<U, V>) {
             r"
 fn foo(e: Result<U, V>) {
     match e {
-        Ok(u) => <|>u.foo(),
+        Ok(u) => $0u.foo(),
         Err(v) => v,
     }
 }",
@@ -321,7 +321,7 @@ fn foo(e: Result<U, V>) {
             r"
 fn foo() {
     match ty {
-        <|> Some(ty) => {
+        $0 Some(ty) => {
             match ty {
                 _ => false,
             }
@@ -333,7 +333,7 @@ fn foo() {
             r"
 fn foo() {
     match ty {
-        <|> Some(ty) => match ty {
+        $0 Some(ty) => match ty {
                 _ => false,
             },
         _ => true,
@@ -350,7 +350,7 @@ fn foo() {
             r"
 fn foo(e: Result<U, V>) {
     match e {
-        Ok(u) => <|>{
+        Ok(u) => $0{
             u.foo()
         },
         Err(v) => v,
@@ -359,7 +359,7 @@ fn foo(e: Result<U, V>) {
             r"
 fn foo(e: Result<U, V>) {
     match e {
-        Ok(u) => <|>u.foo(),
+        Ok(u) => $0u.foo(),
         Err(v) => v,
     }
 }",
@@ -370,7 +370,7 @@ fn foo(e: Result<U, V>) {
             r"
 fn foo(e: Result<U, V>) {
     match e {
-        Ok(u) => <|>{
+        Ok(u) => $0{
             u.foo()
         }    ,
         Err(v) => v,
@@ -379,7 +379,7 @@ fn foo(e: Result<U, V>) {
             r"
 fn foo(e: Result<U, V>) {
     match e {
-        Ok(u) => <|>u.foo()    ,
+        Ok(u) => $0u.foo()    ,
         Err(v) => v,
     }
 }",
@@ -390,7 +390,7 @@ fn foo(e: Result<U, V>) {
             r"
 fn foo(e: Result<U, V>) {
     match e {
-        Ok(u) => <|>{
+        Ok(u) => $0{
             u.foo()
         }
         ,
@@ -400,7 +400,7 @@ fn foo(e: Result<U, V>) {
             r"
 fn foo(e: Result<U, V>) {
     match e {
-        Ok(u) => <|>u.foo()
+        Ok(u) => $0u.foo()
         ,
         Err(v) => v,
     }
@@ -414,13 +414,13 @@ fn foo(e: Result<U, V>) {
         check_join_lines(
             r"
 fn foo() {
-    let x = (<|>{
+    let x = ($0{
        4
     },);
 }",
             r"
 fn foo() {
-    let x = (<|>4,);
+    let x = ($04,);
 }",
         );
 
@@ -428,13 +428,13 @@ fn foo() {
         check_join_lines(
             r"
 fn foo() {
-    let x = (<|>{
+    let x = ($0{
        4
     }   ,);
 }",
             r"
 fn foo() {
-    let x = (<|>4   ,);
+    let x = ($04   ,);
 }",
         );
 
@@ -442,14 +442,14 @@ fn foo() {
         check_join_lines(
             r"
 fn foo() {
-    let x = (<|>{
+    let x = ($0{
        4
     }
     ,);
 }",
             r"
 fn foo() {
-    let x = (<|>4
+    let x = ($04
     ,);
 }",
         );
@@ -460,11 +460,11 @@ fn foo() {
         // No space after the '{'
         check_join_lines(
             r"
-<|>use syntax::{
+$0use syntax::{
     TextSize, TextRange,
 };",
             r"
-<|>use syntax::{TextSize, TextRange,
+$0use syntax::{TextSize, TextRange,
 };",
         );
     }
@@ -475,11 +475,11 @@ fn foo() {
         check_join_lines(
             r"
 use syntax::{
-<|>    TextSize, TextRange
+$0    TextSize, TextRange
 };",
             r"
 use syntax::{
-<|>    TextSize, TextRange};",
+$0    TextSize, TextRange};",
         );
     }
 
@@ -489,11 +489,11 @@ use syntax::{
         check_join_lines(
             r"
 use syntax::{
-<|>    TextSize, TextRange,
+$0    TextSize, TextRange,
 };",
             r"
 use syntax::{
-<|>    TextSize, TextRange};",
+$0    TextSize, TextRange};",
         );
     }
 
@@ -502,14 +502,14 @@ use syntax::{
         check_join_lines(
             r"
 use syntax::{
-    algo::<|>{
+    algo::$0{
         find_token_at_offset,
     },
     ast,
 };",
             r"
 use syntax::{
-    algo::<|>find_token_at_offset,
+    algo::$0find_token_at_offset,
     ast,
 };",
         );
@@ -520,13 +520,13 @@ use syntax::{
         check_join_lines(
             r"
 fn foo() {
-    // Hello<|>
+    // Hello$0
     // world!
 }
 ",
             r"
 fn foo() {
-    // Hello<|> world!
+    // Hello$0 world!
 }
 ",
         );
@@ -537,13 +537,13 @@ fn foo() {
         check_join_lines(
             r"
 fn foo() {
-    /// Hello<|>
+    /// Hello$0
     /// world!
 }
 ",
             r"
 fn foo() {
-    /// Hello<|> world!
+    /// Hello$0 world!
 }
 ",
         );
@@ -554,13 +554,13 @@ fn foo() {
         check_join_lines(
             r"
 fn foo() {
-    //! Hello<|>
+    //! Hello$0
     //! world!
 }
 ",
             r"
 fn foo() {
-    //! Hello<|> world!
+    //! Hello$0 world!
 }
 ",
         );
@@ -571,13 +571,13 @@ fn foo() {
         check_join_lines(
             r"
 fn foo() {
-    // Hello<|>
+    // Hello$0
     /* world! */
 }
 ",
             r"
 fn foo() {
-    // Hello<|> world! */
+    // Hello$0 world! */
 }
 ",
         );
@@ -588,7 +588,7 @@ fn foo() {
         check_join_lines(
             r"
 fn foo() {
-    // The<|>
+    // The$0
     /* quick
     brown
     fox! */
@@ -596,7 +596,7 @@ fn foo() {
 ",
             r"
 fn foo() {
-    // The<|> quick
+    // The$0 quick
     brown
     fox! */
 }
@@ -621,10 +621,10 @@ fn foo() {
         check_join_lines_sel(
             r"
 fn foo() {
-    <|>foo(1,
+    $0foo(1,
         2,
         3,
-    <|>)
+    $0)
 }
     ",
             r"
@@ -639,9 +639,9 @@ fn foo() {
     fn test_join_lines_selection_struct() {
         check_join_lines_sel(
             r"
-struct Foo <|>{
+struct Foo $0{
     f: u32,
-}<|>
+}$0
     ",
             r"
 struct Foo { f: u32 }
@@ -654,9 +654,9 @@ struct Foo { f: u32 }
         check_join_lines_sel(
             r"
 fn foo() {
-    join(<|>type_params.type_params()
+    join($0type_params.type_params()
             .filter_map(|it| it.name())
-            .map(|it| it.text())<|>)
+            .map(|it| it.text())$0)
 }",
             r"
 fn foo() {
@@ -671,9 +671,9 @@ fn foo() {
             r"
 pub fn handle_find_matching_brace() {
     params.offsets
-        .map(|offset| <|>{
+        .map(|offset| $0{
             world.analysis().matching_brace(&file, offset).unwrap_or(offset)
-        }<|>)
+        }$0)
         .collect();
 }",
             r"
@@ -691,7 +691,7 @@ pub fn handle_find_matching_brace() {
             r"
 fn main() {
     let _ = {
-        // <|>foo
+        // $0foo
         // bar
         92
     };
@@ -700,7 +700,7 @@ fn main() {
             r"
 fn main() {
     let _ = {
-        // <|>foo bar
+        // $0foo bar
         92
     };
 }
@@ -712,12 +712,12 @@ fn main() {
     fn join_lines_mandatory_blocks_block() {
         check_join_lines(
             r"
-<|>fn foo() {
+$0fn foo() {
     92
 }
         ",
             r"
-<|>fn foo() { 92
+$0fn foo() { 92
 }
         ",
         );
@@ -725,30 +725,14 @@ fn main() {
         check_join_lines(
             r"
 fn foo() {
-    <|>if true {
+    $0if true {
         92
     }
 }
         ",
             r"
 fn foo() {
-    <|>if true { 92
-    }
-}
-        ",
-        );
-
-        check_join_lines(
-            r"
-fn foo() {
-    <|>loop {
-        92
-    }
-}
-        ",
-            r"
-fn foo() {
-    <|>loop { 92
+    $0if true { 92
     }
 }
         ",
@@ -757,14 +741,30 @@ fn foo() {
         check_join_lines(
             r"
 fn foo() {
-    <|>unsafe {
+    $0loop {
         92
     }
 }
         ",
             r"
 fn foo() {
-    <|>unsafe { 92
+    $0loop { 92
+    }
+}
+        ",
+        );
+
+        check_join_lines(
+            r"
+fn foo() {
+    $0unsafe {
+        92
+    }
+}
+        ",
+            r"
+fn foo() {
+    $0unsafe { 92
     }
 }
         ",

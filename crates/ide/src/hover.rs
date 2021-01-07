@@ -457,7 +457,7 @@ mod tests {
 pub fn foo() -> u32 { 1 }
 
 fn main() {
-    let foo_test = foo()<|>;
+    let foo_test = foo()$0;
 }
 "#,
             expect![[r#"
@@ -476,7 +476,7 @@ fn main() {
 pub fn foo() -> u32 { 1 }
 
 fn main() {
-    let foo_test = foo()<|>;
+    let foo_test = foo()$0;
 }
 "#,
             expect![[r#"
@@ -506,7 +506,7 @@ fn main() {
         Option::Some(*memo + value)
     };
     let number = 5u32;
-    let mut iter<|> = scan(OtherStruct { i: num }, closure, number);
+    let mut iter$0 = scan(OtherStruct { i: num }, closure, number);
 }
 "#,
             expect![[r#"
@@ -526,7 +526,7 @@ fn main() {
             r#"
 pub fn foo() -> u32 { 1 }
 
-fn main() { let foo_test = fo<|>o(); }
+fn main() { let foo_test = fo$0o(); }
 "#,
             expect![[r#"
                 *foo*
@@ -558,7 +558,7 @@ mod a;
 mod b;
 mod c;
 
-fn main() { let foo_test = fo<|>o(); }
+fn main() { let foo_test = fo$0o(); }
         "#,
             expect![[r#"
                 *foo*
@@ -575,7 +575,7 @@ fn main() { let foo_test = fo<|>o(); }
             r#"
 pub fn foo<'a, T: AsRef<str>>(b: &'a T) -> &'a str { }
 
-fn main() { let foo_test = fo<|>o(); }
+fn main() { let foo_test = fo$0o(); }
         "#,
             expect![[r#"
                 *foo*
@@ -595,7 +595,7 @@ fn main() { let foo_test = fo<|>o(); }
     fn hover_shows_fn_signature_on_fn_name() {
         check(
             r#"
-pub fn foo<|>(a: u32, b: u32) -> u32 {}
+pub fn foo$0(a: u32, b: u32) -> u32 {}
 
 fn main() { }
 "#,
@@ -623,7 +623,7 @@ fn main() { }
 /// #
 /// foo(Path::new("hello, world!"))
 /// ```
-pub fn foo<|>(_: &Path) {}
+pub fn foo$0(_: &Path) {}
 
 fn main() { }
 "#,
@@ -656,7 +656,7 @@ fn main() { }
         check(
             r##"
 #[doc = r#"Raw string doc attr"#]
-pub fn foo<|>(_: &Path) {}
+pub fn foo$0(_: &Path) {}
 
 fn main() { }
 "##,
@@ -686,7 +686,7 @@ fn main() { }
 struct Foo { field_a: u32 }
 
 fn main() {
-    let foo = Foo { field_a<|>: 0, };
+    let foo = Foo { field_a$0: 0, };
 }
 "#,
             expect![[r#"
@@ -705,7 +705,7 @@ fn main() {
         // Hovering over the field in the definition
         check(
             r#"
-struct Foo { field_a<|>: u32 }
+struct Foo { field_a$0: u32 }
 
 fn main() {
     let foo = Foo { field_a: 0 };
@@ -728,7 +728,7 @@ fn main() {
     #[test]
     fn hover_const_static() {
         check(
-            r#"const foo<|>: u32 = 123;"#,
+            r#"const foo$0: u32 = 123;"#,
             expect![[r#"
                 *foo*
 
@@ -742,7 +742,7 @@ fn main() {
             "#]],
         );
         check(
-            r#"static foo<|>: u32 = 456;"#,
+            r#"static foo$0: u32 = 456;"#,
             expect![[r#"
                 *foo*
 
@@ -764,7 +764,7 @@ fn main() {
 struct Test<K, T = u8> { k: K, t: T }
 
 fn main() {
-    let zz<|> = Test { t: 23u8, k: 33 };
+    let zz$0 = Test { t: 23u8, k: 33 };
 }"#,
             expect![[r#"
                 *zz*
@@ -783,7 +783,7 @@ fn main() {
 enum Option<T> { Some(T) }
 use Option::Some;
 
-fn main() { So<|>me(12); }
+fn main() { So$0me(12); }
 "#,
             expect![[r#"
                 *Some*
@@ -803,7 +803,7 @@ fn main() { So<|>me(12); }
 enum Option<T> { Some(T) }
 use Option::Some;
 
-fn main() { let b<|>ar = Some(12); }
+fn main() { let b$0ar = Some(12); }
 "#,
             expect![[r#"
                 *bar*
@@ -821,7 +821,7 @@ fn main() { let b<|>ar = Some(12); }
             r#"
 enum Option<T> {
     /// The None variant
-    Non<|>e
+    Non$0e
 }
 "#,
             expect![[r#"
@@ -848,7 +848,7 @@ enum Option<T> {
     Some(T)
 }
 fn main() {
-    let s = Option::Som<|>e(12);
+    let s = Option::Som$0e(12);
 }
 "#,
             expect![[r#"
@@ -872,7 +872,7 @@ fn main() {
     #[test]
     fn hover_for_local_variable() {
         check(
-            r#"fn func(foo: i32) { fo<|>o; }"#,
+            r#"fn func(foo: i32) { fo$0o; }"#,
             expect![[r#"
                 *foo*
 
@@ -886,7 +886,7 @@ fn main() {
     #[test]
     fn hover_for_local_variable_pat() {
         check(
-            r#"fn func(fo<|>o: i32) {}"#,
+            r#"fn func(fo$0o: i32) {}"#,
             expect![[r#"
                 *foo*
 
@@ -900,7 +900,7 @@ fn main() {
     #[test]
     fn hover_local_var_edge() {
         check(
-            r#"fn func(foo: i32) { if true { <|>foo; }; }"#,
+            r#"fn func(foo: i32) { if true { $0foo; }; }"#,
             expect![[r#"
                 *foo*
 
@@ -914,7 +914,7 @@ fn main() {
     #[test]
     fn hover_for_param_edge() {
         check(
-            r#"fn func(<|>foo: i32) {}"#,
+            r#"fn func($0foo: i32) {}"#,
             expect![[r#"
                 *foo*
 
@@ -934,7 +934,7 @@ fn main() {
             trait DerefMut {
                 type Target: ?Sized;
             }
-            fn f(_x<|>: impl Deref<Target=u8> + DerefMut<Target=u8>) {}"#,
+            fn f(_x$0: impl Deref<Target=u8> + DerefMut<Target=u8>) {}"#,
             expect![[r#"
                 *_x*
 
@@ -955,7 +955,7 @@ impl Thing {
     fn new() -> Thing { Thing { x: 0 } }
 }
 
-fn main() { let foo_<|>test = Thing::new(); }
+fn main() { let foo_$0test = Thing::new(); }
             "#,
             expect![[r#"
                 *foo_test*
@@ -979,7 +979,7 @@ mod wrapper {
     }
 }
 
-fn main() { let foo_test = wrapper::Thing::new<|>(); }
+fn main() { let foo_test = wrapper::Thing::new$0(); }
 "#,
             expect![[r#"
                 *new*
@@ -1006,7 +1006,7 @@ impl X {
 
 fn main() {
     match 1 {
-        X::C<|> => {},
+        X::C$0 => {},
         2 => {},
         _ => {}
     };
@@ -1032,7 +1032,7 @@ fn main() {
             r#"
 struct Thing { x: u32 }
 impl Thing {
-    fn new() -> Self { Self<|> { x: 0 } }
+    fn new() -> Self { Self$0 { x: 0 } }
 }
 "#,
             expect![[r#"
@@ -1051,7 +1051,7 @@ impl Thing {
             r#"
 struct Thing { x: u32 }
 impl Thing {
-    fn new() -> Self<|> { Self { x: 0 } }
+    fn new() -> Self$0 { Self { x: 0 } }
 }
 "#,
             expect![[r#"
@@ -1070,7 +1070,7 @@ impl Thing {
             r#"
 enum Thing { A }
 impl Thing {
-    pub fn new() -> Self<|> { Thing::A }
+    pub fn new() -> Self$0 { Thing::A }
 }
 "#,
             expect![[r#"
@@ -1089,7 +1089,7 @@ impl Thing {
             r#"
         enum Thing { A }
         impl Thing {
-            pub fn thing(a: Self<|>) {}
+            pub fn thing(a: Self$0) {}
         }
         "#,
             expect![[r#"
@@ -1114,7 +1114,7 @@ fn x() {}
 
 fn y() {
     let x = 0i32;
-    x<|>;
+    x$0;
 }
 "#,
             expect![[r#"
@@ -1133,7 +1133,7 @@ fn y() {
             r#"
 macro_rules! foo { () => {} }
 
-fn f() { fo<|>o!(); }
+fn f() { fo$0o!(); }
 "#,
             expect![[r#"
                 *foo*
@@ -1152,7 +1152,7 @@ fn f() { fo<|>o!(); }
     #[test]
     fn test_hover_tuple_field() {
         check(
-            r#"struct TS(String, i32<|>);"#,
+            r#"struct TS(String, i32$0);"#,
             expect![[r#"
                 *i32*
 
@@ -1170,7 +1170,7 @@ fn f() { fo<|>o!(); }
 macro_rules! id { ($($tt:tt)*) => { $($tt)* } }
 fn foo() {}
 id! {
-    fn bar() { fo<|>o(); }
+    fn bar() { fo$0o(); }
 }
 "#,
             expect![[r#"
@@ -1192,7 +1192,7 @@ id! {
         check(
             r#"
 macro_rules! id { ($($tt:tt)*) => { $($tt)* } }
-fn foo(bar:u32) { let a = id!(ba<|>r); }
+fn foo(bar:u32) { let a = id!(ba$0r); }
 "#,
             expect![[r#"
                 *bar*
@@ -1210,7 +1210,7 @@ fn foo(bar:u32) { let a = id!(ba<|>r); }
             r#"
 macro_rules! id_deep { ($($tt:tt)*) => { $($tt)* } }
 macro_rules! id { ($($tt:tt)*) => { id_deep!($($tt)*) } }
-fn foo(bar:u32) { let a = id!(ba<|>r); }
+fn foo(bar:u32) { let a = id!(ba$0r); }
 "#,
             expect![[r#"
                 *bar*
@@ -1229,7 +1229,7 @@ fn foo(bar:u32) { let a = id!(ba<|>r); }
 macro_rules! id_deep { ($($tt:tt)*) => { $($tt)* } }
 macro_rules! id { ($($tt:tt)*) => { id_deep!($($tt)*) } }
 fn bar() -> u32 { 0 }
-fn foo() { let a = id!([0u32, bar(<|>)] ); }
+fn foo() { let a = id!([0u32, bar($0)] ); }
 "#,
             expect![[r#"
                 *bar()*
@@ -1247,7 +1247,7 @@ fn foo() { let a = id!([0u32, bar(<|>)] ); }
 macro_rules! arr { ($($tt:tt)*) => { [$($tt)*)] } }
 fn foo() {
     let mastered_for_itunes = "";
-    let _ = arr!("Tr<|>acks", &mastered_for_itunes);
+    let _ = arr!("Tr$0acks", &mastered_for_itunes);
 }
 "#,
             expect![[r#"
@@ -1268,7 +1268,7 @@ macro_rules! assert {}
 
 fn bar() -> bool { true }
 fn foo() {
-    assert!(ba<|>r());
+    assert!(ba$0r());
 }
 "#,
             expect![[r#"
@@ -1293,7 +1293,7 @@ fn foo() {
             macro_rules! format {}
 
             fn foo() {
-                format!("hel<|>lo {}", 0);
+                format!("hel$0lo {}", 0);
             }
             "#,
         );
@@ -1306,7 +1306,7 @@ fn foo() {
 ///　<- `\u{3000}` here
 fn foo() { }
 
-fn bar() { fo<|>o(); }
+fn bar() { fo$0o(); }
 ",
             expect![[r#"
                 *foo*
@@ -1329,7 +1329,7 @@ fn bar() { fo<|>o(); }
     #[test]
     fn test_hover_function_show_qualifiers() {
         check(
-            r#"async fn foo<|>() {}"#,
+            r#"async fn foo$0() {}"#,
             expect![[r#"
                 *foo*
 
@@ -1343,7 +1343,7 @@ fn bar() { fo<|>o(); }
             "#]],
         );
         check(
-            r#"pub const unsafe fn foo<|>() {}"#,
+            r#"pub const unsafe fn foo$0() {}"#,
             expect![[r#"
                 *foo*
 
@@ -1357,7 +1357,7 @@ fn bar() { fo<|>o(); }
             "#]],
         );
         check(
-            r#"pub(crate) async unsafe extern "C" fn foo<|>() {}"#,
+            r#"pub(crate) async unsafe extern "C" fn foo$0() {}"#,
             expect![[r#"
                 *foo*
 
@@ -1375,7 +1375,7 @@ fn bar() { fo<|>o(); }
     #[test]
     fn test_hover_trait_show_qualifiers() {
         check_actions(
-            r"unsafe trait foo<|>() {}",
+            r"unsafe trait foo$0() {}",
             expect![[r#"
                 [
                     Implementation(
@@ -1396,7 +1396,7 @@ fn bar() { fo<|>o(); }
         check(
             r#"
 //- /main.rs crate:main deps:std
-extern crate st<|>d;
+extern crate st$0d;
 //- /std/lib.rs crate:std
 //! Standard library for this test
 //!
@@ -1414,7 +1414,7 @@ extern crate st<|>d;
         check(
             r#"
 //- /main.rs crate:main deps:std
-extern crate std as ab<|>c;
+extern crate std as ab$0c;
 //- /std/lib.rs crate:std
 //! Standard library for this test
 //!
@@ -1435,7 +1435,7 @@ extern crate std as ab<|>c;
     fn test_hover_mod_with_same_name_as_function() {
         check(
             r#"
-use self::m<|>y::Bar;
+use self::m$0y::Bar;
 mod my { pub struct Bar; }
 
 fn my() {}
@@ -1461,7 +1461,7 @@ fn my() {}
 /// bar docs
 struct Bar;
 
-fn foo() { let bar = Ba<|>r; }
+fn foo() { let bar = Ba$0r; }
 "#,
             expect![[r#"
                 *Bar*
@@ -1488,7 +1488,7 @@ fn foo() { let bar = Ba<|>r; }
 #[doc = "bar docs"]
 struct Bar;
 
-fn foo() { let bar = Ba<|>r; }
+fn foo() { let bar = Ba$0r; }
 "#,
             expect![[r#"
                 *Bar*
@@ -1517,7 +1517,7 @@ fn foo() { let bar = Ba<|>r; }
 #[doc = "bar docs 2"]
 struct Bar;
 
-fn foo() { let bar = Ba<|>r; }
+fn foo() { let bar = Ba$0r; }
 "#,
             expect![[r#"
                 *Bar*
@@ -1545,7 +1545,7 @@ fn foo() { let bar = Ba<|>r; }
             r#"
 pub struct Foo;
 /// [Foo](struct.Foo.html)
-pub struct B<|>ar
+pub struct B$0ar
 "#,
             expect![[r#"
                 *Bar*
@@ -1571,7 +1571,7 @@ pub struct B<|>ar
             r#"
 pub struct Foo;
 /// [struct Foo](struct.Foo.html)
-pub struct B<|>ar
+pub struct B$0ar
 "#,
             expect![[r#"
                 *Bar*
@@ -1599,7 +1599,7 @@ pub struct B<|>ar
 pub struct Foo;
 pub struct Bar {
     /// [Foo](struct.Foo.html)
-    fie<|>ld: ()
+    fie$0ld: ()
 }
 "#,
             expect![[r#"
@@ -1628,7 +1628,7 @@ pub mod foo {
     pub struct Foo;
 }
 /// [Foo](foo::Foo)
-pub struct B<|>ar
+pub struct B$0ar
 "#,
             expect![[r#"
                 *Bar*
@@ -1658,7 +1658,7 @@ pub mod foo {
     pub struct Foo;
 }
 /// [Foo](foo::Foo)
-pub struct B<|>ar
+pub struct B$0ar
 "#,
             expect![[r#"
                 *Bar*
@@ -1684,7 +1684,7 @@ pub struct B<|>ar
             r#"
 pub struct Foo;
 /// [Foo]
-pub struct B<|>ar
+pub struct B$0ar
 "#,
             expect![[r#"
                 *Bar*
@@ -1710,7 +1710,7 @@ pub struct B<|>ar
             r#"
 pub struct Foo;
 /// [`Foo`]
-pub struct B<|>ar
+pub struct B$0ar
 "#,
             expect![[r#"
                 *Bar*
@@ -1737,7 +1737,7 @@ pub struct B<|>ar
 pub struct Foo;
 fn Foo() {}
 /// [Foo()]
-pub struct B<|>ar
+pub struct B$0ar
 "#,
             expect![[r#"
                 *Bar*
@@ -1763,7 +1763,7 @@ pub struct B<|>ar
             r#"
 pub struct Foo;
 /// [`struct Foo`]
-pub struct B<|>ar
+pub struct B$0ar
 "#,
             expect![[r#"
                 *Bar*
@@ -1789,7 +1789,7 @@ pub struct B<|>ar
             r#"
 pub struct Foo;
 /// [`struct@Foo`]
-pub struct B<|>ar
+pub struct B$0ar
 "#,
             expect![[r#"
                 *Bar*
@@ -1817,7 +1817,7 @@ pub struct Foo;
 /// [my Foo][foo]
 ///
 /// [foo]: Foo
-pub struct B<|>ar
+pub struct B$0ar
 "#,
             expect![[r#"
                 *Bar*
@@ -1843,7 +1843,7 @@ pub struct B<|>ar
             r#"
 pub struct Foo;
 /// [external](https://www.google.com)
-pub struct B<|>ar
+pub struct B$0ar
 "#,
             expect![[r#"
                 *Bar*
@@ -1870,7 +1870,7 @@ pub struct B<|>ar
             r#"
 pub struct Foo;
 /// [baz](Baz)
-pub struct B<|>ar
+pub struct B$0ar
 "#,
             expect![[r#"
                 *Bar*
@@ -1896,7 +1896,7 @@ pub struct B<|>ar
             r#"
 enum E {
     /// [E]
-    V<|> { field: i32 }
+    V$0 { field: i32 }
 }
 "#,
             expect![[r#"
@@ -1923,7 +1923,7 @@ enum E {
             r#"
 struct S {
     /// [`S`]
-    field<|>: i32
+    field$0: i32
 }
 "#,
             expect![[r#"
@@ -1969,7 +1969,7 @@ struct S {
 ///
 /// [`Result`]: ../../std/result/enum.Result.html
 /// [^example]: https://www.example.com/
-pub fn fo<|>o() {}
+pub fn fo$0o() {}
 "#,
             expect![[r#"
                 *foo*
@@ -2026,7 +2026,7 @@ macro_rules! bar {
 
 bar!();
 
-fn foo() { let bar = Bar; bar.fo<|>o(); }
+fn foo() { let bar = Bar; bar.fo$0o(); }
 "#,
             expect![[r#"
                 *foo*
@@ -2064,7 +2064,7 @@ macro_rules! bar {
 
 bar!();
 
-fn foo() { let bar = Bar; bar.fo<|>o(); }
+fn foo() { let bar = Bar; bar.fo$0o(); }
 "#,
             expect![[r#"
                 *foo*
@@ -2087,7 +2087,7 @@ fn foo() { let bar = Bar; bar.fo<|>o(); }
     #[test]
     fn test_hover_trait_has_impl_action() {
         check_actions(
-            r#"trait foo<|>() {}"#,
+            r#"trait foo$0() {}"#,
             expect![[r#"
                 [
                     Implementation(
@@ -2106,7 +2106,7 @@ fn foo() { let bar = Bar; bar.fo<|>o(); }
     #[test]
     fn test_hover_struct_has_impl_action() {
         check_actions(
-            r"struct foo<|>() {}",
+            r"struct foo$0() {}",
             expect![[r#"
                 [
                     Implementation(
@@ -2125,7 +2125,7 @@ fn foo() { let bar = Bar; bar.fo<|>o(); }
     #[test]
     fn test_hover_union_has_impl_action() {
         check_actions(
-            r#"union foo<|>() {}"#,
+            r#"union foo$0() {}"#,
             expect![[r#"
                 [
                     Implementation(
@@ -2144,7 +2144,7 @@ fn foo() { let bar = Bar; bar.fo<|>o(); }
     #[test]
     fn test_hover_enum_has_impl_action() {
         check_actions(
-            r"enum foo<|>() { A, B }",
+            r"enum foo$0() { A, B }",
             expect![[r#"
                 [
                     Implementation(
@@ -2163,7 +2163,7 @@ fn foo() { let bar = Bar; bar.fo<|>o(); }
     #[test]
     fn test_hover_self_has_impl_action() {
         check_actions(
-            r#"struct foo where Self<|>:;"#,
+            r#"struct foo where Self$0:;"#,
             expect![[r#"
                 [
                     Implementation(
@@ -2184,7 +2184,7 @@ fn foo() { let bar = Bar; bar.fo<|>o(); }
         check_actions(
             r#"
 #[test]
-fn foo_<|>test() {}
+fn foo_$0test() {}
 "#,
             expect![[r#"
                 [
@@ -2219,7 +2219,7 @@ fn foo_<|>test() {}
     fn test_hover_test_mod_has_action() {
         check_actions(
             r#"
-mod tests<|> {
+mod tests$0 {
     #[test]
     fn foo_test() {}
 }
@@ -2254,7 +2254,7 @@ mod tests<|> {
             r#"
 struct S{ f1: u32 }
 
-fn main() { let s<|>t = S{ f1:0 }; }
+fn main() { let s$0t = S{ f1:0 }; }
             "#,
             expect![[r#"
                 [
@@ -2287,7 +2287,7 @@ fn main() { let s<|>t = S{ f1:0 }; }
 struct Arg(u32);
 struct S<T>{ f1: T }
 
-fn main() { let s<|>t = S{ f1:Arg(0) }; }
+fn main() { let s$0t = S{ f1:Arg(0) }; }
 "#,
             expect![[r#"
                 [
@@ -2333,7 +2333,7 @@ fn main() { let s<|>t = S{ f1:Arg(0) }; }
 struct Arg(u32);
 struct S<T>{ f1: T }
 
-fn main() { let s<|>t = S{ f1: S{ f1: Arg(0) } }; }
+fn main() { let s$0t = S{ f1: S{ f1: Arg(0) } }; }
             "#,
             expect![[r#"
                 [
@@ -2382,7 +2382,7 @@ mod M {
     pub struct C(u32);
 }
 
-fn main() { let s<|>t = (A(1), B(2), M::C(3) ); }
+fn main() { let s$0t = (A(1), B(2), M::C(3) ); }
 "#,
             expect![[r#"
                 [
@@ -2441,7 +2441,7 @@ fn main() { let s<|>t = (A(1), B(2), M::C(3) ); }
 trait Foo {}
 fn foo() -> impl Foo {}
 
-fn main() { let s<|>t = foo(); }
+fn main() { let s$0t = foo(); }
 "#,
             expect![[r#"
                 [
@@ -2475,7 +2475,7 @@ trait Foo<T> {}
 struct S;
 fn foo() -> impl Foo<S> {}
 
-fn main() { let s<|>t = foo(); }
+fn main() { let s$0t = foo(); }
 "#,
             expect![[r#"
                 [
@@ -2522,7 +2522,7 @@ trait Foo {}
 trait Bar {}
 fn foo() -> impl Foo + Bar {}
 
-fn main() { let s<|>t = foo(); }
+fn main() { let s$0t = foo(); }
             "#,
             expect![[r#"
                 [
@@ -2572,7 +2572,7 @@ struct S2 {}
 
 fn foo() -> impl Foo<S1> + Bar<S2> {}
 
-fn main() { let s<|>t = foo(); }
+fn main() { let s$0t = foo(); }
 "#,
             expect![[r#"
                 [
@@ -2642,7 +2642,7 @@ fn main() { let s<|>t = foo(); }
         check_actions(
             r#"
 trait Foo {}
-fn foo(ar<|>g: &impl Foo) {}
+fn foo(ar$0g: &impl Foo) {}
 "#,
             expect![[r#"
                 [
@@ -2676,7 +2676,7 @@ trait Foo {}
 trait Bar<T> {}
 struct S{}
 
-fn foo(ar<|>g: &impl Foo + Bar<S>) {}
+fn foo(ar$0g: &impl Foo + Bar<S>) {}
 "#,
             expect![[r#"
                 [
@@ -2734,7 +2734,7 @@ fn foo(ar<|>g: &impl Foo + Bar<S>) {}
             r#"
 struct S;
 fn foo() {
-    let fo<|>o = async { S };
+    let fo$0o = async { S };
 }
 
 #[prelude_import] use future::*;
@@ -2786,7 +2786,7 @@ mod future {
             r#"
 trait Foo<T> {}
 struct S {}
-fn foo(ar<|>g: &impl Foo<S>) {}
+fn foo(ar$0g: &impl Foo<S>) {}
 "#,
             expect![[r#"
                 [
@@ -2836,7 +2836,7 @@ impl Foo for S {}
 struct B<T>{}
 fn foo() -> B<dyn Foo> {}
 
-fn main() { let s<|>t = foo(); }
+fn main() { let s$0t = foo(); }
 "#,
             expect![[r#"
                 [
@@ -2880,7 +2880,7 @@ fn main() { let s<|>t = foo(); }
         check_actions(
             r#"
 trait Foo {}
-fn foo(ar<|>g: &dyn Foo) {}
+fn foo(ar$0g: &dyn Foo) {}
 "#,
             expect![[r#"
                 [
@@ -2912,7 +2912,7 @@ fn foo(ar<|>g: &dyn Foo) {}
             r#"
 trait Foo<T> {}
 struct S {}
-fn foo(ar<|>g: &dyn Foo<S>) {}
+fn foo(ar$0g: &dyn Foo<S>) {}
 "#,
             expect![[r#"
                 [
@@ -2960,7 +2960,7 @@ trait DynTrait<T> {}
 struct B<T> {}
 struct S {}
 
-fn foo(a<|>rg: &impl ImplTrait<B<dyn DynTrait<B<S>>>>) {}
+fn foo(a$0rg: &impl ImplTrait<B<dyn DynTrait<B<S>>>>) {}
             "#,
             expect![[r#"
                 [
@@ -3041,7 +3041,7 @@ impl Foo for S { type Item = Bar; }
 
 fn test() -> impl Foo { S {} }
 
-fn main() { let s<|>t = test().get(); }
+fn main() { let s$0t = test().get(); }
 "#,
             expect![[r#"
                 [
@@ -3074,7 +3074,7 @@ fn main() { let s<|>t = test().get(); }
 struct Bar;
 struct Foo<const BAR: Bar>;
 
-impl<const BAR: Bar> Foo<BAR<|>> {}
+impl<const BAR: Bar> Foo<BAR$0> {}
 "#,
             expect![[r#"
                 [
@@ -3106,7 +3106,7 @@ impl<const BAR: Bar> Foo<BAR<|>> {}
             r#"
 trait Foo {}
 
-fn foo<T: Foo>(t: T<|>){}
+fn foo<T: Foo>(t: T$0){}
 "#,
             expect![[r#"
                 [
@@ -3146,7 +3146,7 @@ pub mod wrapper {
 }
 
 //- /main.rs crate:main deps:name-with-dashes
-fn main() { let foo_test = name_with_dashes::wrapper::Thing::new<|>(); }
+fn main() { let foo_test = name_with_dashes::wrapper::Thing::new$0(); }
 "#,
             expect![[r#"
             *new*
@@ -3172,7 +3172,7 @@ struct S {
 
 fn main() {
     let s = S { f: 0 };
-    let S { f<|> } = &s;
+    let S { f$0 } = &s;
 }
 "#,
             expect![[r#"
@@ -3191,7 +3191,7 @@ fn main() {
             r#"
 struct Foo {}
 impl Foo {
-    fn bar(&sel<|>f) {}
+    fn bar(&sel$0f) {}
 }
 "#,
             expect![[r#"
@@ -3210,7 +3210,7 @@ impl Foo {
 struct Arc<T>(T);
 struct Foo {}
 impl Foo {
-    fn bar(sel<|>f: Arc<Foo>) {}
+    fn bar(sel$0f: Arc<Foo>) {}
 }
 "#,
             expect![[r#"
@@ -3227,7 +3227,7 @@ impl Foo {
         check(
             r#"
 /// Be quick;
-mod Foo<|> {
+mod Foo$0 {
     //! time is mana
 
     /// This comment belongs to the function
@@ -3258,7 +3258,7 @@ mod Foo<|> {
         check(
             r#"
 #[doc = "Be quick;"]
-mod Foo<|> {
+mod Foo$0 {
     #![doc = "time is mana"]
 
     #[doc = "This comment belongs to the function"]
@@ -3289,7 +3289,7 @@ mod Foo<|> {
         check_hover_no_result(
             r#"
 fn no_hover() {
-    // no<|>hover
+    // no$0hover
 }
 "#,
         );
@@ -3300,7 +3300,7 @@ fn no_hover() {
         check(
             r#"
 fn foo() {
-    'label<|>: loop {}
+    'label$0: loop {}
 }
 "#,
             expect![[r#"
@@ -3316,7 +3316,7 @@ fn foo() {
     #[test]
     fn hover_lifetime() {
         check(
-            r#"fn foo<'lifetime>(_: &'lifetime<|> ()) {}"#,
+            r#"fn foo<'lifetime>(_: &'lifetime$0 ()) {}"#,
             expect![[r#"
             *'lifetime*
 
@@ -3335,7 +3335,7 @@ struct Foo<T>(T);
 trait Copy {}
 trait Clone {}
 trait Sized {}
-impl<T: Copy + Clone> Foo<T<|>> where T: Sized {}
+impl<T: Copy + Clone> Foo<T$0> where T: Sized {}
 "#,
             expect![[r#"
                 *T*
@@ -3348,7 +3348,7 @@ impl<T: Copy + Clone> Foo<T<|>> where T: Sized {}
         check(
             r#"
 struct Foo<T>(T);
-impl<T> Foo<T<|>> {}
+impl<T> Foo<T$0> {}
 "#,
             expect![[r#"
                 *T*
@@ -3362,7 +3362,7 @@ impl<T> Foo<T<|>> {}
         check(
             r#"
 struct Foo<T>(T);
-impl<T: 'static> Foo<T<|>> {}
+impl<T: 'static> Foo<T$0> {}
 "#,
             expect![[r#"
                 *T*
@@ -3379,7 +3379,7 @@ impl<T: 'static> Foo<T<|>> {}
         check(
             r#"
 struct Foo<const LEN: usize>;
-impl<const LEN: usize> Foo<LEN<|>> {}
+impl<const LEN: usize> Foo<LEN$0> {}
 "#,
             expect![[r#"
                 *LEN*

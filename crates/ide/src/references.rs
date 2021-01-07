@@ -331,7 +331,7 @@ mod tests {
     fn test_struct_literal_after_space() {
         check(
             r#"
-struct Foo <|>{
+struct Foo $0{
     a: i32,
 }
 impl Foo {
@@ -354,7 +354,7 @@ fn main() {
     fn test_struct_literal_before_space() {
         check(
             r#"
-struct Foo<|> {}
+struct Foo$0 {}
     fn main() {
     let f: Foo;
     f = Foo {};
@@ -373,7 +373,7 @@ struct Foo<|> {}
     fn test_struct_literal_with_generic_type() {
         check(
             r#"
-struct Foo<T> <|>{}
+struct Foo<T> $0{}
     fn main() {
     let f: Foo::<i32>;
     f = Foo {};
@@ -391,7 +391,7 @@ struct Foo<T> <|>{}
     fn test_struct_literal_for_tuple() {
         check(
             r#"
-struct Foo<|>(i32);
+struct Foo$0(i32);
 
 fn main() {
     let f: Foo;
@@ -410,7 +410,7 @@ fn main() {
     fn test_enum_after_space() {
         check(
             r#"
-enum Foo <|>{
+enum Foo $0{
     A,
     B,
 }
@@ -431,7 +431,7 @@ fn main() {
     fn test_enum_before_space() {
         check(
             r#"
-enum Foo<|> {
+enum Foo$0 {
     A,
     B,
 }
@@ -453,7 +453,7 @@ fn main() {
     fn test_enum_with_generic_type() {
         check(
             r#"
-enum Foo<T> <|>{
+enum Foo<T> $0{
     A(T),
     B,
 }
@@ -474,7 +474,7 @@ fn main() {
     fn test_enum_for_tuple() {
         check(
             r#"
-enum Foo<|>{
+enum Foo$0{
     A(i8),
     B(i8),
 }
@@ -498,7 +498,7 @@ fn main() {
 fn main() {
     let mut i = 1;
     let j = 1;
-    i = i<|> + j;
+    i = i$0 + j;
 
     {
         i = 0;
@@ -522,7 +522,7 @@ fn main() {
         check(
             r#"
 fn foo() {
-    let spam<|> = 92;
+    let spam$0 = 92;
     spam + spam
 }
 fn bar() {
@@ -543,7 +543,7 @@ fn bar() {
     fn test_find_all_refs_for_param_inside() {
         check(
             r#"
-fn foo(i : u32) -> u32 { i<|> }
+fn foo(i : u32) -> u32 { i$0 }
 "#,
             expect![[r#"
                 i ValueParam FileId(0) 7..8 Other
@@ -557,7 +557,7 @@ fn foo(i : u32) -> u32 { i<|> }
     fn test_find_all_refs_for_fn_param() {
         check(
             r#"
-fn foo(i<|> : u32) -> u32 { i }
+fn foo(i$0 : u32) -> u32 { i }
 "#,
             expect![[r#"
                 i ValueParam FileId(0) 7..8 Other
@@ -573,7 +573,7 @@ fn foo(i<|> : u32) -> u32 { i }
             r#"
 //- /lib.rs
 struct Foo {
-    pub spam<|>: u32,
+    pub spam$0: u32,
 }
 
 fn main(s: Foo) {
@@ -594,7 +594,7 @@ fn main(s: Foo) {
             r#"
 struct Foo;
 impl Foo {
-    fn f<|>(&self) {  }
+    fn f$0(&self) {  }
 }
 "#,
             expect![[r#"
@@ -610,7 +610,7 @@ impl Foo {
             r#"
 enum Foo {
     A,
-    B<|>,
+    B$0,
     C,
 }
 "#,
@@ -627,7 +627,7 @@ enum Foo {
             r#"
 enum Foo {
     A,
-    B { field<|>: u8 },
+    B { field$0: u8 },
     C,
 }
 "#,
@@ -669,7 +669,7 @@ pub struct Bar {
 }
 
 fn f() {
-    let i = foo::Foo<|> { n: 5 };
+    let i = foo::Foo$0 { n: 5 };
 }
 "#,
             expect![[r#"
@@ -689,7 +689,7 @@ fn f() {
         check(
             r#"
 //- /lib.rs
-mod foo<|>;
+mod foo$0;
 
 use foo::Foo;
 
@@ -726,7 +726,7 @@ fn f() {
 }
 
 //- /foo/some.rs
-pub(super) struct Foo<|> {
+pub(super) struct Foo$0 {
     pub n: u32,
 }
 "#,
@@ -746,7 +746,7 @@ pub(super) struct Foo<|> {
             mod foo;
             mod bar;
 
-            pub fn quux<|>() {}
+            pub fn quux$0() {}
 
             //- /foo.rs
             fn f() { super::quux(); }
@@ -782,7 +782,7 @@ pub(super) struct Foo<|> {
         check(
             r#"
 #[macro_export]
-macro_rules! m1<|> { () => (()) }
+macro_rules! m1$0 { () => (()) }
 
 fn foo() {
     m1();
@@ -803,7 +803,7 @@ fn foo() {
         check(
             r#"
 fn foo() {
-    let mut i<|> = 0;
+    let mut i$0 = 0;
     i = i + 1;
 }
 "#,
@@ -826,7 +826,7 @@ struct S {
 
 fn foo() {
     let mut s = S{f: 0};
-    s.f<|> = 0;
+    s.f$0 = 0;
 }
 "#,
             expect![[r#"
@@ -843,7 +843,7 @@ fn foo() {
         check(
             r#"
 fn foo() {
-    let i<|>;
+    let i$0;
     i = 1;
 }
 "#,
@@ -863,7 +863,7 @@ mod foo {
     pub struct Foo;
 
     impl Foo {
-        pub fn new<|>() -> Foo { Foo }
+        pub fn new$0() -> Foo { Foo }
     }
 }
 
@@ -886,7 +886,7 @@ fn main() {
 //- /lib.rs
 mod foo { mod bar; }
 
-fn f<|>() {}
+fn f$0() {}
 
 //- /foo/bar.rs
 use crate::f;
@@ -907,7 +907,7 @@ fn g() { f(); }
         check(
             r#"
 struct S {
-    field<|>: u8,
+    field$0: u8,
 }
 
 fn f(s: S) {
@@ -930,7 +930,7 @@ fn f(s: S) {
             r#"
 enum En {
     Variant {
-        field<|>: u8,
+        field$0: u8,
     }
 }
 
@@ -955,7 +955,7 @@ fn f(e: En) {
 mod m {
     pub enum En {
         Variant {
-            field<|>: u8,
+            field$0: u8,
         }
     }
 }
@@ -980,7 +980,7 @@ struct Foo { bar: i32 }
 
 impl Foo {
     fn foo(self) {
-        let x = self<|>.bar;
+        let x = self$0.bar;
         if true {
             let _ = match () {
                 () => self,
@@ -1032,7 +1032,7 @@ impl Foo {
             r#"
 trait Foo<'a> {}
 impl<'a> Foo<'a> for &'a () {}
-fn foo<'a, 'b: 'a>(x: &'a<|> ()) -> &'a () where &'a (): Foo<'a> {
+fn foo<'a, 'b: 'a>(x: &'a$0 ()) -> &'a () where &'a (): Foo<'a> {
     fn bar<'a>(_: &'a ()) {}
     x
 }
@@ -1053,7 +1053,7 @@ fn foo<'a, 'b: 'a>(x: &'a<|> ()) -> &'a () where &'a (): Foo<'a> {
     fn test_find_lifetimes_type_alias() {
         check(
             r#"
-type Foo<'a, T> where T: 'a<|> = &'a T;
+type Foo<'a, T> where T: 'a$0 = &'a T;
 "#,
             expect![[r#"
                 'a LifetimeParam FileId(0) 9..11 9..11 Lifetime
@@ -1072,7 +1072,7 @@ trait Foo<'a> {
     fn foo() -> &'a ();
 }
 impl<'a> Foo<'a> for &'a () {
-    fn foo() -> &'a<|> () {
+    fn foo() -> &'a$0 () {
         unimplemented!()
     }
 }
@@ -1093,7 +1093,7 @@ impl<'a> Foo<'a> for &'a () {
             r#"
 macro_rules! foo {($i:ident) => {$i} }
 fn main() {
-    let a<|> = "test";
+    let a$0 = "test";
     foo!(a);
 }
 "#,
@@ -1112,7 +1112,7 @@ fn main() {
 macro_rules! foo {($i:ident) => {$i} }
 fn main() {
     let a = "test";
-    foo!(a<|>);
+    foo!(a$0);
 }
 "#,
             expect![[r#"
@@ -1130,7 +1130,7 @@ fn main() {
 fn foo<'a>() -> &'a () {
     'a: loop {
         'b: loop {
-            continue 'a<|>;
+            continue 'a$0;
         }
         break 'a;
     }
@@ -1149,7 +1149,7 @@ fn foo<'a>() -> &'a () {
     fn test_find_const_param() {
         check(
             r#"
-fn foo<const FOO<|>: usize>() -> usize {
+fn foo<const FOO$0: usize>() -> usize {
     FOO
 }
 "#,

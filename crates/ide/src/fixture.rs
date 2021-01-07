@@ -20,12 +20,12 @@ pub(crate) fn files(ra_fixture: &str) -> (Analysis, Vec<FileId>) {
     (host.analysis(), change_fixture.files)
 }
 
-/// Creates analysis from a multi-file fixture, returns positions marked with <|>.
+/// Creates analysis from a multi-file fixture, returns positions marked with $0.
 pub(crate) fn position(ra_fixture: &str) -> (Analysis, FilePosition) {
     let mut host = AnalysisHost::default();
     let change_fixture = ChangeFixture::parse(ra_fixture);
     host.db.apply_change(change_fixture.change);
-    let (file_id, range_or_offset) = change_fixture.file_position.expect("expected a marker (<|>)");
+    let (file_id, range_or_offset) = change_fixture.file_position.expect("expected a marker ($0)");
     let offset = match range_or_offset {
         RangeOrOffset::Range(_) => panic!(),
         RangeOrOffset::Offset(it) => it,
@@ -33,12 +33,12 @@ pub(crate) fn position(ra_fixture: &str) -> (Analysis, FilePosition) {
     (host.analysis(), FilePosition { file_id, offset })
 }
 
-/// Creates analysis for a single file, returns range marked with a pair of <|>.
+/// Creates analysis for a single file, returns range marked with a pair of $0.
 pub(crate) fn range(ra_fixture: &str) -> (Analysis, FileRange) {
     let mut host = AnalysisHost::default();
     let change_fixture = ChangeFixture::parse(ra_fixture);
     host.db.apply_change(change_fixture.change);
-    let (file_id, range_or_offset) = change_fixture.file_position.expect("expected a marker (<|>)");
+    let (file_id, range_or_offset) = change_fixture.file_position.expect("expected a marker ($0)");
     let range = match range_or_offset {
         RangeOrOffset::Range(it) => it,
         RangeOrOffset::Offset(_) => panic!(),
@@ -46,12 +46,12 @@ pub(crate) fn range(ra_fixture: &str) -> (Analysis, FileRange) {
     (host.analysis(), FileRange { file_id, range })
 }
 
-/// Creates analysis from a multi-file fixture, returns positions marked with <|>.
+/// Creates analysis from a multi-file fixture, returns positions marked with $0.
 pub(crate) fn annotations(ra_fixture: &str) -> (Analysis, FilePosition, Vec<(FileRange, String)>) {
     let mut host = AnalysisHost::default();
     let change_fixture = ChangeFixture::parse(ra_fixture);
     host.db.apply_change(change_fixture.change);
-    let (file_id, range_or_offset) = change_fixture.file_position.expect("expected a marker (<|>)");
+    let (file_id, range_or_offset) = change_fixture.file_position.expect("expected a marker ($0)");
     let offset = match range_or_offset {
         RangeOrOffset::Range(_) => panic!(),
         RangeOrOffset::Offset(it) => it,

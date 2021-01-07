@@ -25,7 +25,7 @@ use crate::{
 //     pub struct Baz;
 // }
 //
-// use foo::*<|>;
+// use foo::*$0;
 //
 // fn qux(bar: Bar, baz: Baz) {}
 // ```
@@ -201,7 +201,7 @@ fn is_mod_visible_from(ctx: &AssistContext, module: Module, from: Module) -> boo
 // }
 //
 // ↓ ---------------
-// use foo::*<|>;
+// use foo::*$0;
 // use baz::Baz;
 // ↑ ---------------
 fn find_imported_defs(ctx: &AssistContext, star: SyntaxToken) -> Option<Vec<Def>> {
@@ -303,7 +303,7 @@ mod foo {
     pub fn f() {}
 }
 
-use foo::*<|>;
+use foo::*$0;
 
 fn qux(bar: Bar, baz: Baz) {
     f();
@@ -340,7 +340,7 @@ mod foo {
     pub fn f() {}
 }
 
-use foo::{*<|>, f};
+use foo::{*$0, f};
 
 fn qux(bar: Bar, baz: Baz) {
     f();
@@ -378,7 +378,7 @@ mod foo {
 }
 
 use foo::Bar;
-use foo::{*<|>, f};
+use foo::{*$0, f};
 
 fn qux(bar: Bar, baz: Baz) {
     f();
@@ -422,7 +422,7 @@ mod foo {
     }
 }
 
-use foo::{bar::{*<|>, f}, baz::*};
+use foo::{bar::{*$0, f}, baz::*};
 
 fn qux(bar: Bar, baz: Baz) {
     f();
@@ -470,7 +470,7 @@ mod foo {
     }
 }
 
-use foo::{bar::{Bar, Baz, f}, baz::*<|>};
+use foo::{bar::{Bar, Baz, f}, baz::*$0};
 
 fn qux(bar: Bar, baz: Baz) {
     f();
@@ -529,7 +529,7 @@ mod foo {
 
 use foo::{
     bar::{*, f},
-    baz::{g, qux::*<|>}
+    baz::{g, qux::*$0}
 };
 
 fn qux(bar: Bar, baz: Baz) {
@@ -605,7 +605,7 @@ mod foo {
 
 use foo::{
     bar::{*, f},
-    baz::{g, qux::{h, q::*<|>}}
+    baz::{g, qux::{h, q::*$0}}
 };
 
 fn qux(bar: Bar, baz: Baz) {
@@ -681,7 +681,7 @@ mod foo {
 
 use foo::{
     bar::{*, f},
-    baz::{g, qux::{q::j, *<|>}}
+    baz::{g, qux::{q::j, *$0}}
 };
 
 fn qux(bar: Bar, baz: Baz) {
@@ -747,7 +747,7 @@ fn qux(bar: Bar, baz: Baz) {
         // pub fn baz() {}
 
         // //- /main.rs crate:main deps:foo
-        // use foo::*<|>;
+        // use foo::*$0;
 
         // fn main() {
         //     bar!();
@@ -777,7 +777,7 @@ pub trait Tr {
 impl Tr for () {}
 
 //- /main.rs crate:main deps:foo
-use foo::*<|>;
+use foo::*$0;
 
 fn main() {
     ().method();
@@ -807,7 +807,7 @@ pub trait Tr2 {
 impl Tr2 for () {}
 
 //- /main.rs crate:main deps:foo
-use foo::*<|>;
+use foo::*$0;
 
 fn main() {
     ().method();
@@ -834,7 +834,7 @@ mod foo {
     }
 }
 
-use foo::bar::*<|>;
+use foo::bar::*$0;
 
 fn baz(bar: Bar) {}
 ",
@@ -851,7 +851,7 @@ mod foo {
     }
 }
 
-use foo::bar::baz::*<|>;
+use foo::bar::baz::*$0;
 
 fn qux(baz: Baz) {}
 ",
@@ -869,7 +869,7 @@ fn qux(baz: Baz) {}
         pub struct Qux;
     }
 
-    use foo::Bar<|>;
+    use foo::Bar$0;
 
     fn qux(bar: Bar, baz: Baz) {}
     ",
@@ -885,7 +885,7 @@ mod foo {
     pub struct Bar;
 }
 
-use foo::{*<|>};
+use foo::{*$0};
 
 struct Baz {
     bar: Bar

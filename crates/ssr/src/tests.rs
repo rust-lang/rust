@@ -59,7 +59,7 @@ fn parser_undefined_placeholder_in_replacement() {
     );
 }
 
-/// `code` may optionally contain a cursor marker `<|>`. If it doesn't, then the position will be
+/// `code` may optionally contain a cursor marker `$0`. If it doesn't, then the position will be
 /// the start of the file. If there's a second cursor marker, then we'll return a single range.
 pub(crate) fn single_file(code: &str) -> (ide_db::RootDatabase, FilePosition, Vec<FileRange>) {
     use ide_db::base_db::fixture::WithFixture;
@@ -596,7 +596,7 @@ fn replace_function_call() {
     // This test also makes sure that we ignore empty-ranges.
     assert_ssr_transform(
         "foo() ==>> bar()",
-        "fn foo() {<|><|>} fn bar() {} fn f1() {foo(); foo();}",
+        "fn foo() {$0$0} fn bar() {} fn f1() {foo(); foo();}",
         expect![["fn foo() {} fn bar() {} fn f1() {bar(); bar();}"]],
     );
 }
@@ -706,7 +706,7 @@ fn replace_associated_trait_constant() {
 
 #[test]
 fn replace_path_in_different_contexts() {
-    // Note the <|> inside module a::b which marks the point where the rule is interpreted. We
+    // Note the $0 inside module a::b which marks the point where the rule is interpreted. We
     // replace foo with bar, but both need different path qualifiers in different contexts. In f4,
     // foo is unqualified because of a use statement, however the replacement needs to be fully
     // qualified.
@@ -714,7 +714,7 @@ fn replace_path_in_different_contexts() {
         "c::foo() ==>> c::bar()",
         r#"
             mod a {
-                pub mod b {<|>
+                pub mod b {$0
                     pub mod c {
                         pub fn foo() {}
                         pub fn bar() {}
@@ -1096,7 +1096,7 @@ fn pattern_is_a_single_segment_path() {
         fn f1() -> i32 {
             let foo = 1;
             let bar = 2;
-            foo<|>
+            foo$0
         }
         "#,
         expect![[r#"
@@ -1128,7 +1128,7 @@ fn replace_local_variable_reference() {
                 let foo = 5;
                 res += foo + 1;
                 let foo = 10;
-                res += foo + 2;<|>
+                res += foo + 2;$0
                 res += foo + 3;
                 let foo = 15;
                 res += foo + 4;
@@ -1160,9 +1160,9 @@ fn replace_path_within_selection() {
             let foo = 41;
             let bar = 42;
             do_stuff(foo);
-            do_stuff(foo);<|>
+            do_stuff(foo);$0
             do_stuff(foo);
-            do_stuff(foo);<|>
+            do_stuff(foo);$0
             do_stuff(foo);
         }"#,
         expect![[r#"
@@ -1185,9 +1185,9 @@ fn replace_nonpath_within_selection() {
         "$a + $b ==>> $b * $a",
         r#"
         fn main() {
-            let v = 1 + 2;<|>
+            let v = 1 + 2;$0
             let v2 = 3 + 3;
-            let v3 = 4 + 5;<|>
+            let v3 = 4 + 5;$0
             let v4 = 6 + 7;
         }"#,
         expect![[r#"
@@ -1212,7 +1212,7 @@ fn replace_self() {
         fn bar(_: &S1) {}
         impl S1 {
             fn f1(&self) {
-                foo(self)<|>
+                foo(self)$0
             }
             fn f2(&self) {
                 foo(self)

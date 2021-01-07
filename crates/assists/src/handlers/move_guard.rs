@@ -14,7 +14,7 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 //
 // fn handle(action: Action) {
 //     match action {
-//         Action::Move { distance } <|>if distance > 10 => foo(),
+//         Action::Move { distance } $0if distance > 10 => foo(),
 //         _ => (),
 //     }
 // }
@@ -74,7 +74,7 @@ pub(crate) fn move_guard_to_arm_body(acc: &mut Assists, ctx: &AssistContext) -> 
 //
 // fn handle(action: Action) {
 //     match action {
-//         Action::Move { distance } => <|>if distance > 10 { foo() },
+//         Action::Move { distance } => $0if distance > 10 { foo() },
 //         _ => (),
 //     }
 // }
@@ -158,7 +158,7 @@ mod tests {
             r#"
 fn main() {
     match 92 {
-        x <|>if x > 10 => false,
+        x $0if x > 10 => false,
         _ => true
     }
 }
@@ -174,7 +174,7 @@ fn main() {
             r#"
 fn main() {
     match 92 {
-        x <|>if x > 10 => false,
+        x $0if x > 10 => false,
         _ => true
     }
 }
@@ -199,7 +199,7 @@ fn main() {
             r#"
 fn main() {
     match 92 {
-        <|>x @ 4 | x @ 5    if x > 5 => true,
+        $0x @ 4 | x @ 5    if x > 5 => true,
         _ => false
     }
 }
@@ -224,7 +224,7 @@ fn main() {
             r#"
 fn main() {
     match 92 {
-        x => if x > 10 { <|>false },
+        x => if x > 10 { $0false },
         _ => true
     }
 }
@@ -248,7 +248,7 @@ fn main() {
 fn main() {
     match 92 {
         x => {
-            <|>if x > 10 {
+            $0if x > 10 {
                 false
             }
         },
@@ -274,7 +274,7 @@ fn main() {
             r#"
 fn main() {
     match 92 {
-        x => if let 62 = x { <|>false },
+        x => if let 62 = x { $0false },
         _ => true
     }
 }
@@ -289,7 +289,7 @@ fn main() {
             r#"
 fn main() {
     match 92 {
-        x => if x > 10 { <|> },
+        x => if x > 10 { $0 },
         _ => true
     }
 }
@@ -313,7 +313,7 @@ fn main() {
 fn main() {
     match 92 {
         x => if x > 10 {
-            92;<|>
+            92;$0
             false
         },
         _ => true
@@ -343,7 +343,7 @@ fn main() {
     match 92 {
         x => {
             if x > 10 {
-                92;<|>
+                92;$0
                 false
             }
         }

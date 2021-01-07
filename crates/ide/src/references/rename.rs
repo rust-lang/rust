@@ -493,19 +493,19 @@ mod tests {
 
     #[test]
     fn test_rename_to_underscore() {
-        check("_", r#"fn main() { let i<|> = 1; }"#, r#"fn main() { let _ = 1; }"#);
+        check("_", r#"fn main() { let i$0 = 1; }"#, r#"fn main() { let _ = 1; }"#);
     }
 
     #[test]
     fn test_rename_to_raw_identifier() {
-        check("r#fn", r#"fn main() { let i<|> = 1; }"#, r#"fn main() { let r#fn = 1; }"#);
+        check("r#fn", r#"fn main() { let i$0 = 1; }"#, r#"fn main() { let r#fn = 1; }"#);
     }
 
     #[test]
     fn test_rename_to_invalid_identifier1() {
         check(
             "invalid!",
-            r#"fn main() { let i<|> = 1; }"#,
+            r#"fn main() { let i$0 = 1; }"#,
             "error: Invalid name `invalid!`: not an identifier",
         );
     }
@@ -514,7 +514,7 @@ mod tests {
     fn test_rename_to_invalid_identifier2() {
         check(
             "multiple tokens",
-            r#"fn main() { let i<|> = 1; }"#,
+            r#"fn main() { let i$0 = 1; }"#,
             "error: Invalid name `multiple tokens`: not an identifier",
         );
     }
@@ -523,7 +523,7 @@ mod tests {
     fn test_rename_to_invalid_identifier3() {
         check(
             "let",
-            r#"fn main() { let i<|> = 1; }"#,
+            r#"fn main() { let i$0 = 1; }"#,
             "error: Invalid name `let`: not an identifier",
         );
     }
@@ -532,7 +532,7 @@ mod tests {
     fn test_rename_to_invalid_identifier_lifetime() {
         check(
             "'foo",
-            r#"fn main() { let i<|> = 1; }"#,
+            r#"fn main() { let i$0 = 1; }"#,
             "error: Invalid name `'foo`: not an identifier",
         );
     }
@@ -541,7 +541,7 @@ mod tests {
     fn test_rename_to_invalid_identifier_lifetime2() {
         check(
             "foo",
-            r#"fn main<'a>(_: &'a<|> ()) {}"#,
+            r#"fn main<'a>(_: &'a$0 ()) {}"#,
             "error: Invalid name `foo`: not a lifetime identifier",
         );
     }
@@ -554,7 +554,7 @@ mod tests {
 fn main() {
     let mut i = 1;
     let j = 1;
-    i = i<|> + j;
+    i = i$0 + j;
 
     { i = 0; }
 
@@ -579,7 +579,7 @@ fn main() {
     fn test_rename_unresolved_reference() {
         check(
             "new_name",
-            r#"fn main() { let _ = unresolved_ref<|>; }"#,
+            r#"fn main() { let _ = unresolved_ref$0; }"#,
             "error: No references found at position",
         );
     }
@@ -591,7 +591,7 @@ fn main() {
             r#"
 macro_rules! foo {($i:ident) => {$i} }
 fn main() {
-    let a<|> = "test";
+    let a$0 = "test";
     foo!(a);
 }
 "#,
@@ -613,7 +613,7 @@ fn main() {
 macro_rules! foo {($i:ident) => {$i} }
 fn main() {
     let a = "test";
-    foo!(a<|>);
+    foo!(a$0);
 }
 "#,
             r#"
@@ -634,7 +634,7 @@ fn main() {
 macro_rules! define_fn {($id:ident) => { fn $id{} }}
 define_fn!(foo);
 fn main() {
-    fo<|>o();
+    fo$0o();
 }
 "#,
             r#"
@@ -653,7 +653,7 @@ fn main() {
             "bar",
             r#"
 macro_rules! define_fn {($id:ident) => { fn $id{} }}
-define_fn!(fo<|>o);
+define_fn!(fo$0o);
 fn main() {
     foo();
 }
@@ -670,17 +670,17 @@ fn main() {
 
     #[test]
     fn test_rename_for_param_inside() {
-        check("j", r#"fn foo(i : u32) -> u32 { i<|> }"#, r#"fn foo(j : u32) -> u32 { j }"#);
+        check("j", r#"fn foo(i : u32) -> u32 { i$0 }"#, r#"fn foo(j : u32) -> u32 { j }"#);
     }
 
     #[test]
     fn test_rename_refs_for_fn_param() {
-        check("j", r#"fn foo(i<|> : u32) -> u32 { i }"#, r#"fn foo(j : u32) -> u32 { j }"#);
+        check("j", r#"fn foo(i$0 : u32) -> u32 { i }"#, r#"fn foo(j : u32) -> u32 { j }"#);
     }
 
     #[test]
     fn test_rename_for_mut_param() {
-        check("j", r#"fn foo(mut i<|> : u32) -> u32 { i }"#, r#"fn foo(mut j : u32) -> u32 { j }"#);
+        check("j", r#"fn foo(mut i$0 : u32) -> u32 { i }"#, r#"fn foo(mut j : u32) -> u32 { j }"#);
     }
 
     #[test]
@@ -688,7 +688,7 @@ fn main() {
         check(
             "j",
             r#"
-struct Foo { i<|>: i32 }
+struct Foo { i$0: i32 }
 
 impl Foo {
     fn new(i: i32) -> Self {
@@ -714,7 +714,7 @@ impl Foo {
         check(
             "j",
             r#"
-struct Foo { i<|>: i32 }
+struct Foo { i$0: i32 }
 
 impl Foo {
     fn new(i: i32) -> Self {
@@ -743,7 +743,7 @@ impl Foo {
 struct Foo { i: i32 }
 
 impl Foo {
-    fn new(i<|>: i32) -> Self {
+    fn new(i$0: i32) -> Self {
         Self { i }
     }
 }
@@ -765,7 +765,7 @@ impl Foo {
         check(
             "j",
             r#"
-struct Foo { i<|>: i32 }
+struct Foo { i$0: i32 }
 struct Bar { i: i32 }
 
 impl Bar {
@@ -794,7 +794,7 @@ impl Bar {
             r#"
 struct Foo { i: i32 }
 
-fn baz(i<|>: i32) -> Self {
+fn baz(i$0: i32) -> Self {
      let x = Foo { i };
      {
          let i = 0;
@@ -825,7 +825,7 @@ fn baz(j: i32) -> Self {
 mod bar;
 
 //- /bar.rs
-mod foo<|>;
+mod foo$0;
 
 //- /bar/foo.rs
 // empty
@@ -883,7 +883,7 @@ fn main() {}
 pub struct FooContent;
 
 //- /bar.rs
-use crate::foo<|>::FooContent;
+use crate::foo$0::FooContent;
 "#,
             expect![[r#"
                 RangeInfo {
@@ -943,7 +943,7 @@ use crate::foo<|>::FooContent;
             "foo2",
             r#"
 //- /lib.rs
-mod fo<|>o;
+mod fo$0o;
 //- /foo/mod.rs
 // emtpy
 "#,
@@ -992,7 +992,7 @@ mod fo<|>o;
             "bar",
             r#"
 //- /lib.rs
-mod outer { mod fo<|>o; }
+mod outer { mod fo$0o; }
 
 //- /outer/foo.rs
 // emtpy
@@ -1041,7 +1041,7 @@ mod outer { mod fo<|>o; }
         check(
             "baz",
             r#"
-mod <|>foo { pub fn bar() {} }
+mod $0foo { pub fn bar() {} }
 
 fn main() { foo::bar(); }
 "#,
@@ -1065,7 +1065,7 @@ fn f() {
 }
 
 //- /bar.rs
-pub mod foo<|>;
+pub mod foo$0;
 
 //- /bar/foo.rs
 // pub fn fun() {}
@@ -1128,7 +1128,7 @@ pub mod foo<|>;
             "Baz",
             r#"
 mod foo {
-    pub enum Foo { Bar<|> }
+    pub enum Foo { Bar$0 }
 }
 
 fn func(f: foo::Foo) {
@@ -1157,7 +1157,7 @@ fn func(f: foo::Foo) {
             "baz",
             r#"
 mod foo {
-    pub struct Foo { pub bar<|>: uint }
+    pub struct Foo { pub bar$0: uint }
 }
 
 fn foo(f: foo::Foo) {
@@ -1184,7 +1184,7 @@ fn foo(f: foo::Foo) {
 struct Foo { i: i32 }
 
 impl Foo {
-    fn f(foo<|>: &mut Foo) -> i32 {
+    fn f(foo$0: &mut Foo) -> i32 {
         foo.i
     }
 }
@@ -1205,7 +1205,7 @@ impl Foo {
 struct Foo { i: i32 }
 
 impl Foo {
-    fn f(foo<|>: Foo) -> i32 {
+    fn f(foo$0: Foo) -> i32 {
         foo.i
     }
 }
@@ -1229,7 +1229,7 @@ impl Foo {
             r#"
 struct Foo { i: i32 }
 
-fn f(foo<|>: &mut Foo) -> i32 {
+fn f(foo$0: &mut Foo) -> i32 {
     foo.i
 }
 "#,
@@ -1242,7 +1242,7 @@ struct Foo { i: i32 }
 struct Bar;
 
 impl Bar {
-    fn f(foo<|>: &mut Foo) -> i32 {
+    fn f(foo$0: &mut Foo) -> i32 {
         foo.i
     }
 }
@@ -1258,7 +1258,7 @@ impl Bar {
             r#"
 struct Foo { i: i32 }
 impl Foo {
-    fn f(x: (), foo<|>: &mut Foo) -> i32 {
+    fn f(x: (), foo$0: &mut Foo) -> i32 {
         foo.i
     }
 }
@@ -1274,7 +1274,7 @@ impl Foo {
             r#"
 struct Foo { i: i32 }
 impl &Foo {
-    fn f(foo<|>: &Foo) -> i32 {
+    fn f(foo$0: &Foo) -> i32 {
         foo.i
     }
 }
@@ -1298,7 +1298,7 @@ impl &Foo {
 struct Foo { i: i32 }
 
 impl Foo {
-    fn f(&mut <|>self) -> i32 {
+    fn f(&mut $0self) -> i32 {
         self.i
     }
 }
@@ -1323,7 +1323,7 @@ impl Foo {
 struct Foo { i: i32 }
 
 impl Foo {
-    fn f(<|>self) -> i32 {
+    fn f($0self) -> i32 {
         self.i
     }
 }
@@ -1350,7 +1350,7 @@ struct Foo { i: i32 }
 impl Foo {
     fn f(&self) -> i32 {
         let self_var = 1;
-        self<|>.i
+        self$0.i
     }
 }
 "#,
@@ -1373,7 +1373,7 @@ impl Foo {
         check(
             "bar",
             r#"
-struct Foo { i<|>: i32 }
+struct Foo { i$0: i32 }
 
 fn foo(bar: i32) -> Foo {
     Foo { i: bar }
@@ -1394,7 +1394,7 @@ fn foo(bar: i32) -> Foo {
         check(
             "baz",
             r#"
-struct Foo { i<|>: i32 }
+struct Foo { i$0: i32 }
 
 fn foo(foo: Foo) {
     let Foo { i: baz } = foo;
@@ -1433,7 +1433,7 @@ struct Foo {
 
 fn foo(foo: Foo) {
     let Foo { i: b } = foo;
-    let _ = b<|>;
+    let _ = b$0;
 }
 "#,
             expected_fixture,
@@ -1447,7 +1447,7 @@ struct Foo {
 
 fn foo(foo: Foo) {
     let Foo { i } = foo;
-    let _ = i<|>;
+    let _ = i$0;
 }
 "#,
             expected_fixture,
@@ -1464,7 +1464,7 @@ struct Foo {
 }
 
 fn foo(Foo { i }: foo) -> i32 {
-    i<|>
+    i$0
 }
 "#,
             r#"
@@ -1488,7 +1488,7 @@ trait Foo<'a> {
     fn foo() -> &'a ();
 }
 impl<'a> Foo<'a> for &'a () {
-    fn foo() -> &'a<|> () {
+    fn foo() -> &'a$0 () {
         unimplemented!()
     }
 }
@@ -1520,7 +1520,7 @@ fn main() {
     let test_variable = CustomOption::Some(22);
 
     match test_variable {
-        CustomOption::Some(foo<|>) if foo == 11 => {}
+        CustomOption::Some(foo$0) if foo == 11 => {}
         _ => (),
     }
 }"#,
@@ -1549,7 +1549,7 @@ fn main() {
 fn foo<'a>() -> &'a () {
     'a: {
         'b: loop {
-            break 'a<|>;
+            break 'a$0;
         }
     }
 }

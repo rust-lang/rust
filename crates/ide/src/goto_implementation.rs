@@ -107,7 +107,7 @@ mod tests {
     fn goto_implementation_works() {
         check(
             r#"
-struct Foo<|>;
+struct Foo$0;
 impl Foo {}
    //^^^
 "#,
@@ -118,7 +118,7 @@ impl Foo {}
     fn goto_implementation_works_multiple_blocks() {
         check(
             r#"
-struct Foo<|>;
+struct Foo$0;
 impl Foo {}
    //^^^
 impl Foo {}
@@ -131,7 +131,7 @@ impl Foo {}
     fn goto_implementation_works_multiple_mods() {
         check(
             r#"
-struct Foo<|>;
+struct Foo$0;
 mod a {
     impl super::Foo {}
        //^^^^^^^^^^
@@ -149,7 +149,7 @@ mod b {
         check(
             r#"
 //- /lib.rs
-struct Foo<|>;
+struct Foo$0;
 mod a;
 mod b;
 //- /a.rs
@@ -166,7 +166,7 @@ impl crate::Foo {}
     fn goto_implementation_for_trait() {
         check(
             r#"
-trait T<|> {}
+trait T$0 {}
 struct Foo;
 impl T for Foo {}
          //^^^
@@ -179,7 +179,7 @@ impl T for Foo {}
         check(
             r#"
 //- /lib.rs
-trait T<|> {};
+trait T$0 {};
 struct Foo;
 mod a;
 mod b;
@@ -199,7 +199,7 @@ impl crate::T for crate::Foo {}
             r#"
 //- /lib.rs
 trait T {}
-struct Foo<|>;
+struct Foo$0;
 impl Foo {}
    //^^^
 impl T for Foo {}
@@ -216,7 +216,7 @@ impl T for &Foo {}
             r#"
   #[derive(Copy)]
 //^^^^^^^^^^^^^^^
-struct Foo<|>;
+struct Foo$0;
 
 mod marker {
     trait Copy {}

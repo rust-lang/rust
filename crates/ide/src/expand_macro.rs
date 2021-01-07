@@ -144,7 +144,7 @@ macro_rules! foo {
 macro_rules! baz {
     () => { foo!(); }
 }
-f<|>oo!();
+f$0oo!();
 "#,
             expect![[r#"
                 foo
@@ -165,7 +165,7 @@ macro_rules! foo {
         }
     }
 }
-f<|>oo!();
+f$0oo!();
         "#,
             expect![[r#"
             foo
@@ -192,7 +192,7 @@ macro_rules! match_ast {
 }
 
 fn main() {
-    mat<|>ch_ast! {
+    mat$0ch_ast! {
         match container {
             ast::TraitDef(it) => {},
             ast::ImplDef(it) => {},
@@ -226,7 +226,7 @@ macro_rules! match_ast {
 
 fn main() {
     let p = f(|it| {
-        let res = mat<|>ch_ast! { match c {}};
+        let res = mat$0ch_ast! { match c {}};
         Some(res)
     })?;
 }
@@ -250,7 +250,7 @@ macro_rules! foo {
 }
 
 fn main() {
-    let res = fo<|>o!();
+    let res = fo$0o!();
 }
 "#,
             expect![[r#"
@@ -272,7 +272,7 @@ macro_rules! foo {
 }
 
 fn main() {
-    let res = fo<|>o!();
+    let res = fo$0o!();
 }
 "#,
             expect![[r#"

@@ -14,7 +14,7 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 //
 // ```
 // struct Ctx<T: Clone> {
-//      data: T,<|>
+//      data: T,$0
 // }
 // ```
 // ->
@@ -182,7 +182,7 @@ mod tests {
         // Check output of generation
         check_assist(
             generate_new,
-"struct Foo {<|>}",
+"struct Foo {$0}",
 "struct Foo {}
 
 impl Foo {
@@ -192,7 +192,7 @@ impl Foo {
         );
         check_assist(
             generate_new,
-"struct Foo<T: Clone> {<|>}",
+"struct Foo<T: Clone> {$0}",
 "struct Foo<T: Clone> {}
 
 impl<T: Clone> Foo<T> {
@@ -202,7 +202,7 @@ impl<T: Clone> Foo<T> {
         );
         check_assist(
             generate_new,
-"struct Foo<'a, T: Foo<'a>> {<|>}",
+"struct Foo<'a, T: Foo<'a>> {$0}",
 "struct Foo<'a, T: Foo<'a>> {}
 
 impl<'a, T: Foo<'a>> Foo<'a, T> {
@@ -212,7 +212,7 @@ impl<'a, T: Foo<'a>> Foo<'a, T> {
         );
         check_assist(
             generate_new,
-"struct Foo { baz: String <|>}",
+"struct Foo { baz: String $0}",
 "struct Foo { baz: String }
 
 impl Foo {
@@ -222,7 +222,7 @@ impl Foo {
         );
         check_assist(
             generate_new,
-"struct Foo { baz: String, qux: Vec<i32> <|>}",
+"struct Foo { baz: String, qux: Vec<i32> $0}",
 "struct Foo { baz: String, qux: Vec<i32> }
 
 impl Foo {
@@ -234,7 +234,7 @@ impl Foo {
         // Check that visibility modifiers don't get brought in for fields
         check_assist(
             generate_new,
-"struct Foo { pub baz: String, pub qux: Vec<i32> <|>}",
+"struct Foo { pub baz: String, pub qux: Vec<i32> $0}",
 "struct Foo { pub baz: String, pub qux: Vec<i32> }
 
 impl Foo {
@@ -246,7 +246,7 @@ impl Foo {
         // Check that it reuses existing impls
         check_assist(
             generate_new,
-"struct Foo {<|>}
+"struct Foo {$0}
 
 impl Foo {}
 ",
@@ -259,7 +259,7 @@ impl Foo {
         );
         check_assist(
             generate_new,
-"struct Foo {<|>}
+"struct Foo {$0}
 
 impl Foo {
     fn qux(&self) {}
@@ -277,7 +277,7 @@ impl Foo {
 
         check_assist(
             generate_new,
-"struct Foo {<|>}
+"struct Foo {$0}
 
 impl Foo {
     fn qux(&self) {}
@@ -302,7 +302,7 @@ impl Foo {
         // Check visibility of new fn based on struct
         check_assist(
             generate_new,
-"pub struct Foo {<|>}",
+"pub struct Foo {$0}",
 "pub struct Foo {}
 
 impl Foo {
@@ -312,7 +312,7 @@ impl Foo {
         );
         check_assist(
             generate_new,
-"pub(crate) struct Foo {<|>}",
+"pub(crate) struct Foo {$0}",
 "pub(crate) struct Foo {}
 
 impl Foo {
@@ -327,7 +327,7 @@ impl Foo {
         check_assist_not_applicable(
             generate_new,
             "
-struct Foo {<|>}
+struct Foo {$0}
 
 impl Foo {
     fn new() -> Self {
@@ -339,7 +339,7 @@ impl Foo {
         check_assist_not_applicable(
             generate_new,
             "
-struct Foo {<|>}
+struct Foo {$0}
 
 impl Foo {
     fn New() -> Self {
@@ -356,7 +356,7 @@ impl Foo {
             "
 struct SomeThingIrrelevant;
 /// Has a lifetime parameter
-struct Foo<'a, T: Foo<'a>> {<|>}
+struct Foo<'a, T: Foo<'a>> {$0}
 struct EvenMoreIrrelevant;
 ",
             "/// Has a lifetime parameter
@@ -381,7 +381,7 @@ impl<N: AstNode> AstId<N> {
 }
 
 pub struct Source<T> {
-    pub file_id: HirFileId,<|>
+    pub file_id: HirFileId,$0
     pub ast: T,
 }
 

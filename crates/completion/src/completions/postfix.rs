@@ -1,4 +1,4 @@
-//! Postfix completions, like `Ok(10).ifl<|>` => `if let Ok() = Ok(10) { <|> }`.
+//! Postfix completions, like `Ok(10).ifl$0` => `if let Ok() = Ok(10) { $0 }`.
 
 mod format_like;
 
@@ -310,7 +310,7 @@ mod tests {
             r#"
 fn main() {
     let bar = true;
-    bar.<|>
+    bar.$0
 }
 "#,
             expect![[r#"
@@ -342,7 +342,7 @@ fn foo(elt: bool) -> bool {
 
 fn main() {
     let bar = true;
-    foo(bar.<|>)
+    foo(bar.$0)
 }
 "#,
             expect![[r#"
@@ -368,7 +368,7 @@ fn main() {
             r#"
 fn main() {
     let bar: u8 = 12;
-    bar.<|>
+    bar.$0
 }
 "#,
             expect![[r#"
@@ -392,7 +392,7 @@ fn main() {
         check(
             r#"
 fn main() {
-    baz.l<|>
+    baz.l$0
     res
 }
 "#,
@@ -424,7 +424,7 @@ enum Option<T> { Some(T), None }
 
 fn main() {
     let bar = Option::Some(true);
-    bar.<|>
+    bar.$0
 }
 "#,
             r#"
@@ -449,7 +449,7 @@ enum Result<T, E> { Ok(T), Err(E) }
 
 fn main() {
     let bar = Result::Ok(true);
-    bar.<|>
+    bar.$0
 }
 "#,
             r#"
@@ -468,7 +468,7 @@ fn main() {
 
     #[test]
     fn postfix_completion_works_for_ambiguous_float_literal() {
-        check_edit("refm", r#"fn main() { 42.<|> }"#, r#"fn main() { &mut 42 }"#)
+        check_edit("refm", r#"fn main() { 42.$0 }"#, r#"fn main() { &mut 42 }"#)
     }
 
     #[test]
@@ -479,7 +479,7 @@ fn main() {
 macro_rules! m { ($e:expr) => { $e } }
 fn main() {
     let bar: u8 = 12;
-    m!(bar.d<|>)
+    m!(bar.d$0)
 }
 "#,
             r#"
@@ -494,55 +494,47 @@ fn main() {
 
     #[test]
     fn postfix_completion_for_references() {
-        check_edit("dbg", r#"fn main() { &&42.<|> }"#, r#"fn main() { dbg!(&&42) }"#);
-        check_edit("refm", r#"fn main() { &&42.<|> }"#, r#"fn main() { &&&mut 42 }"#);
+        check_edit("dbg", r#"fn main() { &&42.$0 }"#, r#"fn main() { dbg!(&&42) }"#);
+        check_edit("refm", r#"fn main() { &&42.$0 }"#, r#"fn main() { &&&mut 42 }"#);
     }
 
     #[test]
     fn postfix_completion_for_format_like_strings() {
         check_edit(
             "format",
-            r#"fn main() { "{some_var:?}".<|> }"#,
+            r#"fn main() { "{some_var:?}".$0 }"#,
             r#"fn main() { format!("{:?}", some_var) }"#,
         );
         check_edit(
             "panic",
-            r#"fn main() { "Panic with {a}".<|> }"#,
+            r#"fn main() { "Panic with {a}".$0 }"#,
             r#"fn main() { panic!("Panic with {}", a) }"#,
         );
         check_edit(
             "println",
-            r#"fn main() { "{ 2+2 } { SomeStruct { val: 1, other: 32 } :?}".<|> }"#,
+            r#"fn main() { "{ 2+2 } { SomeStruct { val: 1, other: 32 } :?}".$0 }"#,
             r#"fn main() { println!("{} {:?}", 2+2, SomeStruct { val: 1, other: 32 }) }"#,
         );
         check_edit(
             "loge",
-            r#"fn main() { "{2+2}".<|> }"#,
+            r#"fn main() { "{2+2}".$0 }"#,
             r#"fn main() { log::error!("{}", 2+2) }"#,
         );
         check_edit(
             "logt",
-            r#"fn main() { "{2+2}".<|> }"#,
+            r#"fn main() { "{2+2}".$0 }"#,
             r#"fn main() { log::trace!("{}", 2+2) }"#,
         );
         check_edit(
             "logd",
-            r#"fn main() { "{2+2}".<|> }"#,
+            r#"fn main() { "{2+2}".$0 }"#,
             r#"fn main() { log::debug!("{}", 2+2) }"#,
         );
-        check_edit(
-            "logi",
-            r#"fn main() { "{2+2}".<|> }"#,
-            r#"fn main() { log::info!("{}", 2+2) }"#,
-        );
-        check_edit(
-            "logw",
-            r#"fn main() { "{2+2}".<|> }"#,
-            r#"fn main() { log::warn!("{}", 2+2) }"#,
-        );
+        check_edit("logi", r#"fn main() { "{2+2}".$0 }"#, r#"fn main() { log::info!("{}", 2+2) }"#);
+        check_edit("logw", r#"fn main() { "{2+2}".$0 }"#, r#"fn main() { log::warn!("{}", 2+2) }"#);
         check_edit(
             "loge",
-            r#"fn main() { "{2+2}".<|> }"#,
+            r#"fn main() { "{2+2}".$0 }"#,
             r#"fn main() { log::error!("{}", 2+2) }"#,
         );
     }

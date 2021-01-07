@@ -79,7 +79,7 @@ struct S { foo: u32 }
 impl S {
     fn bar(&self) {}
 }
-fn foo(s: S) { s.<|> }
+fn foo(s: S) { s.$0 }
 "#,
             expect![[r#"
                 fd foo   u32
@@ -94,7 +94,7 @@ fn foo(s: S) { s.<|> }
             r#"
 struct S { the_field: (u32,) }
 impl S {
-    fn foo(self) { self.<|> }
+    fn foo(self) { self.$0 }
 }
 "#,
             expect![[r#"
@@ -110,7 +110,7 @@ impl S {
             r#"
 struct A { the_field: (u32, i32) }
 impl A {
-    fn foo(&self) { self.<|> }
+    fn foo(&self) { self.$0 }
 }
 "#,
             expect![[r#"
@@ -126,7 +126,7 @@ impl A {
         check(
             r#"
 struct A { the_field: u32 }
-fn foo(a: A) { a.<|>() }
+fn foo(a: A) { a.$0() }
 "#,
             expect![[""]],
         );
@@ -144,7 +144,7 @@ mod inner {
         pub(crate) super_field: u32,
     }
 }
-fn foo(a: inner::A) { a.<|> }
+fn foo(a: inner::A) { a.$0 }
 "#,
             expect![[r#"
                 fd pub_field   u32
@@ -162,7 +162,7 @@ mod m {
         pub(crate) fn the_method(&self) {}
     }
 }
-fn foo(a: A) { a.<|> }
+fn foo(a: A) { a.$0 }
 "#,
             expect![[r#"
                 me the_method() pub(crate) fn the_method(&self)
@@ -175,7 +175,7 @@ fn foo(a: A) { a.<|> }
         check(
             r#"
 union U { field: u8, other: u16 }
-fn foo(u: U) { u.<|> }
+fn foo(u: U) { u.$0 }
 "#,
             expect![[r#"
                 fd field u8
@@ -195,7 +195,7 @@ impl A<u32> {
 impl A<i32> {
     fn the_other_method(&self) {}
 }
-fn foo(a: A<u32>) { a.<|> }
+fn foo(a: A<u32>) { a.$0 }
 "#,
             expect![[r#"
                 me the_method() fn the_method(&self)
@@ -210,7 +210,7 @@ fn foo(a: A<u32>) { a.<|> }
 struct A {}
 trait Trait { fn the_method(&self); }
 impl Trait for A {}
-fn foo(a: A) { a.<|> }
+fn foo(a: A) { a.$0 }
 "#,
             expect![[r#"
                 me the_method() fn the_method(&self)
@@ -225,7 +225,7 @@ fn foo(a: A) { a.<|> }
 struct A {}
 trait Trait { fn the_method(&self); }
 impl<T> Trait for T {}
-fn foo(a: &A) { a.<|> }
+fn foo(a: &A) { a.$0 }
 ",
             expect![[r#"
                 me the_method() fn the_method(&self)
@@ -243,7 +243,7 @@ mod m {
 }
 use m::Trait;
 impl Trait for A {}
-fn foo(a: A) { a.<|> }
+fn foo(a: A) { a.$0 }
 ",
             expect![[r#"
                 me the_method() fn the_method(&self)
@@ -260,7 +260,7 @@ impl A {
     fn the_method() {}
 }
 fn foo(a: A) {
-   a.<|>
+   a.$0
 }
 "#,
             expect![[""]],
@@ -273,7 +273,7 @@ fn foo(a: A) {
             r#"
 fn foo() {
    let b = (0, 3.14);
-   b.<|>
+   b.$0
 }
 "#,
             expect![[r#"
@@ -295,7 +295,7 @@ struct T(S);
 impl T {
     fn foo(&self) {
         // FIXME: This doesn't work without the trailing `a` as `0.` is a float
-        self.0.a<|>
+        self.0.a$0
     }
 }
 "#,
@@ -311,7 +311,7 @@ impl T {
             r#"
 struct A { the_field: u32 }
 const X: u32 = {
-    A { the_field: 92 }.<|>
+    A { the_field: 92 }.$0
 };
 "#,
             expect![[r#"
@@ -327,7 +327,7 @@ const X: u32 = {
 macro_rules! m { ($e:expr) => { $e } }
 struct A { the_field: u32 }
 fn foo(a: A) {
-    m!(a.x<|>)
+    m!(a.x$0)
 }
 "#,
             expect![[r#"
@@ -344,7 +344,7 @@ fn foo(a: A) {
 macro_rules! m { ($e:expr) => { $e } }
 struct A { the_field: u32 }
 fn foo(a: A) {
-    m!(a.<|>)
+    m!(a.$0)
 }
 "#,
             expect![[r#"
@@ -360,7 +360,7 @@ fn foo(a: A) {
 macro_rules! m { ($e:expr) => { $e } }
 struct A { the_field: u32 }
 fn foo(a: A) {
-    m!(m!(m!(a.x<|>)))
+    m!(m!(m!(a.x$0)))
 }
 "#,
             expect![[r#"
@@ -386,7 +386,7 @@ macro_rules! dbg {
 }
 struct A { the_field: u32 }
 fn foo(a: A) {
-    dbg!(a.<|>)
+    dbg!(a.$0)
 }
 "#,
             expect![[r#"
@@ -405,7 +405,7 @@ impl<T> HashSet<T> {
 }
 fn foo() {
     let s: HashSet<_>;
-    s.<|>
+    s.$0
 }
 "#,
             expect![[r#"
@@ -421,7 +421,7 @@ fn foo() {
 struct S;
 impl S { fn foo(&self) {} }
 macro_rules! make_s { () => { S }; }
-fn main() { make_s!().f<|>; }
+fn main() { make_s!().f$0; }
 "#,
             expect![[r#"
                 me foo() fn foo(&self)

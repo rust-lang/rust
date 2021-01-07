@@ -86,8 +86,8 @@ impl Assist {
 
 impl fmt::Display for Assist {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let before = self.before.replace("<|>", "┃"); // Unicode pseudo-graphics bar
-        let after = self.after.replace("<|>", "┃");
+        let before = self.before.replace("$0", "┃"); // Unicode pseudo-graphics bar
+        let after = self.after.replace("$0", "┃");
         writeln!(
             f,
             "[discrete]\n=== `{}`

@@ -85,7 +85,7 @@ fn complete_enum_variants(acc: &mut Completions, ctx: &CompletionContext, ty: &T
 //
 // ```
 // fn main() {
-//     pda<|>
+//     pda$0
 // }
 // # pub mod std { pub mod marker { pub struct PhantomData { } } }
 // ```
@@ -212,7 +212,7 @@ mod tests {
         mark::check!(self_fulfilling_completion);
         check(
             r#"
-use foo<|>
+use foo$0
 use std::collections;
 "#,
             expect![[r#"
@@ -229,7 +229,7 @@ enum Enum { A, B }
 fn quux(x: Option<Enum>) {
     match x {
         None => (),
-        Some(en<|> @ Enum::A) => (),
+        Some(en$0 @ Enum::A) => (),
     }
 }
 "#,
@@ -245,7 +245,7 @@ enum Enum { A, B }
 fn quux(x: Option<Enum>) {
     match x {
         None => (),
-        Some(ref en<|>) => (),
+        Some(ref en$0) => (),
     }
 }
 "#,
@@ -261,7 +261,7 @@ enum Enum { A, B }
 fn quux(x: Option<Enum>) {
     match x {
         None => (),
-        Some(En<|>) => (),
+        Some(En$0) => (),
     }
 }
 "#,
@@ -277,7 +277,7 @@ fn quux(x: Option<Enum>) {
             r#"
 fn quux(x: i32) {
     let y = 92;
-    1 + <|>;
+    1 + $0;
     let z = ();
 }
 "#,
@@ -299,7 +299,7 @@ fn quux() {
     };
     if let Some(a) = bar() {
         let b = 62;
-        1 + <|>
+        1 + $0
     }
 }
 "#,
@@ -316,7 +316,7 @@ fn quux() {
         check(
             r#"
 fn quux() {
-    for x in &[1, 2, 3] { <|> }
+    for x in &[1, 2, 3] { $0 }
 }
 "#,
             expect![[r#"
@@ -334,7 +334,7 @@ fn quux() {
             r#"
 fn main() {
     let wherewolf = 92;
-    drop(where<|>)
+    drop(where$0)
 }
 "#,
             r#"
@@ -349,7 +349,7 @@ fn main() {
     #[test]
     fn completes_generic_params() {
         check(
-            r#"fn quux<T>() { <|> }"#,
+            r#"fn quux<T>() { $0 }"#,
             expect![[r#"
                 tp T
                 fn quux() fn quux<T>()
@@ -360,7 +360,7 @@ fn main() {
     #[test]
     fn completes_generic_params_in_struct() {
         check(
-            r#"struct S<T> { x: <|>}"#,
+            r#"struct S<T> { x: $0}"#,
             expect![[r#"
                 tp Self
                 tp T
@@ -372,7 +372,7 @@ fn main() {
     #[test]
     fn completes_self_in_enum() {
         check(
-            r#"enum X { Y(<|>) }"#,
+            r#"enum X { Y($0) }"#,
             expect![[r#"
                 tp Self
                 en X
@@ -386,7 +386,7 @@ fn main() {
             r#"
 struct S;
 enum E {}
-fn quux() { <|> }
+fn quux() { $0 }
 "#,
             expect![[r#"
                 st S
@@ -403,7 +403,7 @@ fn quux() { <|> }
             "_alpha",
             r#"
 fn main() {
-    _<|>
+    _$0
 }
 fn _alpha() {}
 "#,
@@ -421,7 +421,7 @@ fn _alpha() {}
         check(
             r#"
 //- /lib.rs crate:main deps:other_crate
-use <|>;
+use $0;
 
 //- /other_crate/lib.rs crate:other_crate
 // nothing here
@@ -439,7 +439,7 @@ use <|>;
 struct Foo;
 mod m {
     struct Bar;
-    fn quux() { <|> }
+    fn quux() { $0 }
 }
 "#,
             expect![[r#"
@@ -454,7 +454,7 @@ mod m {
         check(
             r#"
 struct Foo;
-fn x() -> <|>
+fn x() -> $0
 "#,
             expect![[r#"
                 st Foo
@@ -471,7 +471,7 @@ fn foo() {
     let bar = 92;
     {
         let bar = 62;
-        drop(<|>)
+        drop($0)
     }
 }
 "#,
@@ -487,7 +487,7 @@ fn foo() {
     #[test]
     fn completes_self_in_methods() {
         check(
-            r#"impl S { fn foo(&self) { <|> } }"#,
+            r#"impl S { fn foo(&self) { $0 } }"#,
             expect![[r#"
                 bn self &{unknown}
                 tp Self
@@ -500,7 +500,7 @@ fn foo() {
         check(
             r#"
 //- /main.rs crate:main deps:std
-fn foo() { let x: <|> }
+fn foo() { let x: $0 }
 
 //- /std/lib.rs crate:std
 #[prelude_import]
@@ -521,7 +521,7 @@ mod prelude { struct Option; }
         check(
             r#"
 //- /main.rs crate:main deps:core,std
-fn foo() { let x: <|> }
+fn foo() { let x: $0 }
 
 //- /core/lib.rs crate:core
 #[prelude_import]
@@ -562,7 +562,7 @@ mod m2 {
     macro_rules! baz { () => {} }
 }
 
-fn main() { let v = <|> }
+fn main() { let v = $0 }
 "#,
             expect![[r##"
                 md m1
@@ -581,7 +581,7 @@ fn main() { let v = <|> }
         check(
             r#"
 macro_rules! foo { () => {} }
-fn foo() { <|> }
+fn foo() { $0 }
 "#,
             expect![[r#"
                 fn foo()   fn foo()
@@ -595,7 +595,7 @@ fn foo() { <|> }
         check(
             r#"
 macro_rules! foo { () => {} }
-fn main() { let x: <|> }
+fn main() { let x: $0 }
 "#,
             expect![[r#"
                 fn main()  fn main()
@@ -609,7 +609,7 @@ fn main() { let x: <|> }
         check(
             r#"
 macro_rules! foo { () => {} }
-fn main() { <|> }
+fn main() { $0 }
 "#,
             expect![[r#"
                 fn main()  fn main()
@@ -623,7 +623,7 @@ fn main() { <|> }
         check(
             r#"
 fn main() {
-    return f<|>;
+    return f$0;
     fn frobnicate() {}
 }
 "#,
@@ -641,7 +641,7 @@ fn main() {
 macro_rules! m { ($e:expr) => { $e } }
 fn quux(x: i32) {
     let y = 92;
-    m!(<|>);
+    m!($0);
 }
 "#,
             expect![[r#"
@@ -660,7 +660,7 @@ fn quux(x: i32) {
 macro_rules! m { ($e:expr) => { $e } }
 fn quux(x: i32) {
     let y = 92;
-    m!(x<|>);
+    m!(x$0);
 }
 ",
             expect![[r#"
@@ -679,7 +679,7 @@ fn quux(x: i32) {
 macro_rules! m { ($e:expr) => { $e } }
 fn quux(x: i32) {
     let y = 92;
-    m!(x<|>
+    m!(x$0
 }
 "#,
             expect![[r#"
@@ -697,7 +697,7 @@ fn quux(x: i32) {
             r#"
 use spam::Quux;
 
-fn main() { <|> }
+fn main() { $0 }
 "#,
             expect![[r#"
                 fn main() fn main()
@@ -714,7 +714,7 @@ enum Foo { Bar, Baz, Quux }
 
 fn main() {
     let foo = Foo::Quux;
-    match foo { Qu<|> }
+    match foo { Qu$0 }
 }
 "#,
             expect![[r#"
@@ -734,7 +734,7 @@ enum Foo { Bar, Baz, Quux }
 
 fn main() {
     let foo = Foo::Quux;
-    match &foo { Qu<|> }
+    match &foo { Qu$0 }
 }
 "#,
             expect![[r#"
@@ -754,7 +754,7 @@ enum Foo { Bar, Baz, Quux }
 
 fn main() {
     let foo = Foo::Quux;
-    if let Qu<|> = foo { }
+    if let Qu$0 = foo { }
 }
 "#,
             expect![[r#"
@@ -771,7 +771,7 @@ fn main() {
         check(
             r#"
 enum Foo { Bar, Baz, Quux }
-fn main() { let foo: Foo = Q<|> }
+fn main() { let foo: Foo = Q$0 }
 "#,
             expect![[r#"
                 ev Foo::Bar  ()
@@ -788,7 +788,7 @@ fn main() { let foo: Foo = Q<|> }
         check(
             r#"
 mod m { pub enum E { V } }
-fn f() -> m::E { V<|> }
+fn f() -> m::E { V$0 }
 "#,
             expect![[r#"
                 ev m::E::V ()
@@ -803,7 +803,7 @@ fn f() -> m::E { V<|> }
         check(
             r#"
 struct Foo;
-#[<|>]
+#[$0]
 fn f() {}
 "#,
             expect![[""]],
@@ -817,7 +817,7 @@ fn f() {}
 trait MyTrait {}
 struct MyStruct {}
 
-impl My<|>
+impl My$0
 "#,
             expect![[r#"
                 tp Self
@@ -840,7 +840,7 @@ pub mod io {
 
 //- /main.rs crate:main deps:dep
 fn main() {
-    stdi<|>
+    stdi$0
 }
 "#,
             r#"
@@ -868,7 +868,7 @@ macro_rules! macro_with_curlies {
 
 //- /main.rs crate:main deps:dep
 fn main() {
-    curli<|>
+    curli$0
 }
 "#,
             r#"
@@ -898,7 +898,7 @@ pub mod some_module {
 use dep::{FirstStruct, some_module::SecondStruct};
 
 fn main() {
-    this<|>
+    this$0
 }
 "#,
             r#"
@@ -936,7 +936,7 @@ pub mod some_module {
 use dep::{FirstStruct, some_module::SecondStruct};
 
 fn main() {
-    hir<|>
+    hir$0
 }
 "#,
             expect![[r#"

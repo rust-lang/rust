@@ -8,7 +8,7 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 //
 // ```
 // impl Walrus {
-//     fn feed(&mut<|> self, amount: u32) {}
+//     fn feed(&mut$0 self, amount: u32) {}
 // }
 // ```
 // ->

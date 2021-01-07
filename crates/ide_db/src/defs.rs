@@ -358,7 +358,7 @@ impl NameRefClass {
             if let Some(path) = macro_call.path() {
                 if path.qualifier().is_none() {
                     // Only use this to resolve single-segment macro calls like `foo!()`. Multi-segment
-                    // paths are handled below (allowing `log<|>::info!` to resolve to the log crate).
+                    // paths are handled below (allowing `log$0::info!` to resolve to the log crate).
                     if let Some(macro_def) = sema.resolve_macro_call(&macro_call) {
                         return Some(NameRefClass::Definition(Definition::Macro(macro_def)));
                     }

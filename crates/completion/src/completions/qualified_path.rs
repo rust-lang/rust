@@ -1,4 +1,4 @@
-//! Completion of paths, i.e. `some::prefix::<|>`.
+//! Completion of paths, i.e. `some::prefix::$0`.
 
 use hir::{Adt, HasVisibility, PathResolution, ScopeDef};
 use rustc_hash::FxHashSet;
@@ -38,7 +38,7 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
                     if let ScopeDef::Unknown = def {
                         if let Some(name_ref) = ctx.name_ref_syntax.as_ref() {
                             if name_ref.syntax().text() == name.to_string().as_str() {
-                                // for `use self::foo<|>`, don't suggest `foo` as a completion
+                                // for `use self::foo$0`, don't suggest `foo` as a completion
                                 mark::hit!(dont_complete_current_use);
                                 continue;
                             }
@@ -173,7 +173,7 @@ mod tests {
     #[test]
     fn dont_complete_current_use() {
         mark::check!(dont_complete_current_use);
-        check(r#"use self::foo<|>;"#, expect![[""]]);
+        check(r#"use self::foo$0;"#, expect![[""]]);
     }
 
     #[test]
@@ -181,7 +181,7 @@ mod tests {
         check(
             r#"
 mod foo { pub struct S; }
-use self::{foo::*, bar<|>};
+use self::{foo::*, bar$0};
 "#,
             expect![[r#"
                 st S
@@ -192,18 +192,18 @@ use self::{foo::*, bar<|>};
 
     #[test]
     fn dont_complete_primitive_in_use() {
-        check_builtin(r#"use self::<|>;"#, expect![[""]]);
+        check_builtin(r#"use self::$0;"#, expect![[""]]);
     }
 
     #[test]
     fn dont_complete_primitive_in_module_scope() {
-        check_builtin(r#"fn foo() { self::<|> }"#, expect![[""]]);
+        check_builtin(r#"fn foo() { self::$0 }"#, expect![[""]]);
     }
 
     #[test]
     fn completes_primitives() {
         check_builtin(
-            r#"fn main() { let _: <|> = 92; }"#,
+            r#"fn main() { let _: $0 = 92; }"#,
             expect![[r#"
                 bt u32
                 bt bool
@@ -230,7 +230,7 @@ use self::{foo::*, bar<|>};
     fn completes_mod_with_same_name_as_function() {
         check(
             r#"
-use self::my::<|>;
+use self::my::$0;
 
 mod my { pub struct Bar; }
 fn my() {}
@@ -245,7 +245,7 @@ fn my() {}
     fn filters_visibility() {
         check(
             r#"
-use self::my::<|>;
+use self::my::$0;
 
 mod my {
     struct Bar;
@@ -264,7 +264,7 @@ mod my {
     fn completes_use_item_starting_with_self() {
         check(
             r#"
-use self::m::<|>;
+use self::m::$0;
 
 mod m { pub struct Bar; }
 "#,
@@ -282,7 +282,7 @@ mod m { pub struct Bar; }
 mod foo;
 struct Spam;
 //- /foo.rs
-use crate::Sp<|>
+use crate::Sp$0
 "#,
             expect![[r#"
                 md foo
@@ -299,7 +299,7 @@ use crate::Sp<|>
 mod foo;
 struct Spam;
 //- /foo.rs
-use crate::{Sp<|>};
+use crate::{Sp$0};
 "#,
             expect![[r#"
                 md foo
@@ -320,7 +320,7 @@ pub mod bar {
     }
 }
 //- /foo.rs
-use crate::{bar::{baz::Sp<|>}};
+use crate::{bar::{baz::Sp$0}};
 "#,
             expect![[r#"
                 st Spam
@@ -333,7 +333,7 @@ use crate::{bar::{baz::Sp<|>}};
         check(
             r#"
 enum E { Foo, Bar(i32) }
-fn foo() { let _ = E::<|> }
+fn foo() { let _ = E::$0 }
 "#,
             expect![[r#"
                 ev Foo    ()
@@ -356,7 +356,7 @@ impl S {
     type T = i32;
 }
 
-fn foo() { let _ = S::<|> }
+fn foo() { let _ = S::$0 }
 "#,
             expect![[r#"
                 fn a()  fn a()
@@ -384,7 +384,7 @@ mod m {
     }
 }
 
-fn foo() { let _ = S::<|> }
+fn foo() { let _ = S::$0 }
 "#,
             expect![[r#"
                 fn public_method() pub(crate) fn public_method()
@@ -401,7 +401,7 @@ fn foo() { let _ = S::<|> }
 enum E {};
 impl E { fn m() { } }
 
-fn foo() { let _ = E::<|> }
+fn foo() { let _ = E::$0 }
         "#,
             expect![[r#"
                 fn m() fn m()
@@ -416,7 +416,7 @@ fn foo() { let _ = E::<|> }
 union U {};
 impl U { fn m() { } }
 
-fn foo() { let _ = U::<|> }
+fn foo() { let _ = U::$0 }
 "#,
             expect![[r#"
                 fn m() fn m()
@@ -429,7 +429,7 @@ fn foo() { let _ = U::<|> }
         check(
             r#"
 //- /main.rs crate:main deps:foo
-use foo::<|>;
+use foo::$0;
 
 //- /foo/lib.rs crate:foo
 pub mod bar { pub struct S; }
@@ -446,7 +446,7 @@ pub mod bar { pub struct S; }
             r#"
 trait Trait { fn m(); }
 
-fn foo() { let _ = Trait::<|> }
+fn foo() { let _ = Trait::$0 }
 "#,
             expect![[r#"
                 fn m() fn m()
@@ -463,7 +463,7 @@ trait Trait { fn m(); }
 struct S;
 impl Trait for S {}
 
-fn foo() { let _ = S::<|> }
+fn foo() { let _ = S::$0 }
 "#,
             expect![[r#"
                 fn m() fn m()
@@ -480,7 +480,7 @@ trait Trait { fn m(); }
 struct S;
 impl Trait for S {}
 
-fn foo() { let _ = <S as Trait>::<|> }
+fn foo() { let _ = <S as Trait>::$0 }
 "#,
             expect![[r#"
                 fn m() fn m()
@@ -506,7 +506,7 @@ trait Sub: Super {
     fn submethod(&self) {}
 }
 
-fn foo<T: Sub>() { T::<|> }
+fn foo<T: Sub>() { T::$0 }
 "#,
             expect![[r#"
                 ta SubTy        type SubTy;
@@ -544,7 +544,7 @@ impl<T> Super for Wrap<T> {}
 impl<T> Sub for Wrap<T> {
     fn subfunc() {
         // Should be able to assume `Self: Sub + Super`
-        Self::<|>
+        Self::$0
     }
 }
 "#,
@@ -570,7 +570,7 @@ impl S { fn foo() {} }
 type T = S;
 impl T { fn bar() {} }
 
-fn main() { T::<|>; }
+fn main() { T::$0; }
 "#,
             expect![[r#"
                 fn foo() fn foo()
@@ -586,7 +586,7 @@ fn main() { T::<|>; }
 #[macro_export]
 macro_rules! foo { () => {} }
 
-fn main() { let _ = crate::<|> }
+fn main() { let _ = crate::$0 }
         "#,
             expect![[r##"
                 fn main()  fn main()
@@ -604,7 +604,7 @@ mod a {
     const A: usize = 0;
     mod b {
         const B: usize = 0;
-        mod c { use super::super::<|> }
+        mod c { use super::super::$0 }
     }
 }
 "#,
@@ -619,7 +619,7 @@ mod a {
     fn completes_reexported_items_under_correct_name() {
         check(
             r#"
-fn foo() { self::m::<|> }
+fn foo() { self::m::$0 }
 
 mod m {
     pub use super::p::wrong_fn as right_fn;
@@ -642,7 +642,7 @@ mod p {
         check_edit(
             "RightType",
             r#"
-fn foo() { self::m::<|> }
+fn foo() { self::m::$0 }
 
 mod m {
     pub use super::p::wrong_fn as right_fn;
@@ -677,7 +677,7 @@ mod p {
         check(
             r#"
 macro_rules! m { ($e:expr) => { $e } }
-fn main() { m!(self::f<|>); }
+fn main() { m!(self::f$0); }
 fn foo() {}
 "#,
             expect![[r#"
@@ -691,7 +691,7 @@ fn foo() {}
     fn function_mod_share_name() {
         check(
             r#"
-fn foo() { self::m::<|> }
+fn foo() { self::m::$0 }
 
 mod m {
     pub mod z {}
@@ -716,7 +716,7 @@ impl<K, V> HashMap<K, V, RandomState> {
     pub fn new() -> HashMap<K, V, RandomState> { }
 }
 fn foo() {
-    HashMap::<|>
+    HashMap::$0
 }
 "#,
             expect![[r#"
@@ -730,7 +730,7 @@ fn foo() {
         check(
             r#"
 mod foo { pub struct Foo; }
-#[foo::<|>]
+#[foo::$0]
 fn f() {}
 "#,
             expect![[""]],
@@ -749,7 +749,7 @@ fn foo(
 }
 
 fn main() {
-    fo<|>
+    fo$0
 }
 "#,
             expect![[r#"
@@ -770,7 +770,7 @@ enum Foo {
 
 impl Foo {
     fn foo(self) {
-        Self::<|>
+        Self::$0
     }
 }
 "#,

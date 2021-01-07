@@ -10,7 +10,7 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 // type specified. This assists is useable in a functions or closures tail expression or return type position.
 //
 // ```
-// fn foo() { 4<|>2i32 }
+// fn foo() { 4$02i32 }
 // ```
 // ->
 // ```
@@ -131,7 +131,7 @@ mod tests {
         mark::check!(existing_infer_ret_type);
         check_assist(
             infer_function_return_type,
-            r#"fn foo() -> <|>_ {
+            r#"fn foo() -> $0_ {
     45
 }"#,
             r#"fn foo() -> i32 {
@@ -146,7 +146,7 @@ mod tests {
         check_assist(
             infer_function_return_type,
             r#"fn foo() {
-    || -> _ {<|>45};
+    || -> _ {$045};
 }"#,
             r#"fn foo() {
     || -> i32 {45};
@@ -159,7 +159,7 @@ mod tests {
         mark::check!(cursor_in_ret_position);
         check_assist(
             infer_function_return_type,
-            r#"fn foo() <|>{
+            r#"fn foo() $0{
     45
 }"#,
             r#"fn foo() -> i32 {
@@ -174,7 +174,7 @@ mod tests {
         check_assist(
             infer_function_return_type,
             r#"fn foo() {
-    || <|>45
+    || $045
 }"#,
             r#"fn foo() {
     || -> i32 {45}
@@ -188,7 +188,7 @@ mod tests {
         check_assist(
             infer_function_return_type,
             r#"fn foo() {
-    45<|>
+    45$0
 }"#,
             r#"fn foo() -> i32 {
     45
@@ -202,7 +202,7 @@ mod tests {
             infer_function_return_type,
             r#"fn foo() {
     if true {
-        3<|>
+        3$0
     } else {
         5
     }
@@ -223,7 +223,7 @@ mod tests {
         check_assist_not_applicable(
             infer_function_return_type,
             r#"fn foo() -> i32 {
-    ( 45<|> + 32 ) * 123
+    ( 45$0 + 32 ) * 123
 }"#,
         );
     }
@@ -233,7 +233,7 @@ mod tests {
         check_assist_not_applicable(
             infer_function_return_type,
             r#"fn foo() {
-    let x = <|>3;
+    let x = $03;
     ( 45 + 32 ) * 123
 }"#,
         );
@@ -244,7 +244,7 @@ mod tests {
         check_assist_not_applicable(
             infer_function_return_type,
             r#"fn foo() {
-    (<|>)
+    ($0)
 }"#,
         );
     }
@@ -256,7 +256,7 @@ mod tests {
             infer_function_return_type,
             r#"fn foo() {
     |x: i32| {
-        x<|>
+        x$0
     };
 }"#,
             r#"fn foo() {
@@ -272,7 +272,7 @@ mod tests {
         check_assist(
             infer_function_return_type,
             r#"fn foo() {
-    |x: i32| { x<|> };
+    |x: i32| { x$0 };
 }"#,
             r#"fn foo() {
     |x: i32| -> i32 { x };
@@ -286,7 +286,7 @@ mod tests {
         check_assist(
             infer_function_return_type,
             r#"fn foo() {
-    |x: i32| x<|>;
+    |x: i32| x$0;
 }"#,
             r#"fn foo() {
     |x: i32| -> i32 {x};
@@ -301,7 +301,7 @@ mod tests {
             r#"fn foo() {
     || {
         if true {
-            3<|>
+            3$0
         } else {
             5
         }
@@ -325,7 +325,7 @@ mod tests {
         check_assist_not_applicable(
             infer_function_return_type,
             r#"fn foo() {
-    || -> i32 { 3<|> }
+    || -> i32 { 3$0 }
 }"#,
         );
     }
@@ -336,7 +336,7 @@ mod tests {
             infer_function_return_type,
             r#"fn foo() {
     || -> i32 {
-        let x = 3<|>;
+        let x = 3$0;
         6
     }
 }"#,

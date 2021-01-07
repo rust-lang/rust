@@ -17,7 +17,7 @@ use crate::{AssistContext, AssistId, AssistKind, Assists, TextRange};
 //
 // fn handle(action: Action) {
 //     match action {
-//         <|>Action::Move(..) => foo(),
+//         $0Action::Move(..) => foo(),
 //         Action::Stop => foo(),
 //     }
 // }
@@ -106,7 +106,7 @@ mod tests {
             fn main() {
                 let x = X::A;
                 let y = match x {
-                    X::A => { 1i32<|> }
+                    X::A => { 1i32$0 }
                     X::B => { 1i32 }
                     X::C => { 2i32 }
                 }
@@ -138,7 +138,7 @@ mod tests {
             fn main() {
                 let x = X::A;
                 let y = match x {
-                    X::A | X::B => {<|> 1i32 },
+                    X::A | X::B => {$0 1i32 },
                     X::C | X::D => { 1i32 },
                     X::E => { 2i32 },
                 }
@@ -171,7 +171,7 @@ mod tests {
                 let x = X::A;
                 let y = match x {
                     X::A => { 1i32 },
-                    X::B => { 2i<|>32 },
+                    X::B => { 2i$032 },
                     _ => { 2i32 }
                 }
             }
@@ -200,7 +200,7 @@ mod tests {
 
             fn main() {
                 match X::A {
-                    X::A<|> => 92,
+                    X::A$0 => 92,
                     X::B => 92,
                     X::C => 92,
                     X::D => 62,
@@ -237,7 +237,7 @@ mod tests {
             fn main() {
                 let x = X::A;
                 let y = match x {
-                    X::A(a) if a > 5 => { <|>1i32 },
+                    X::A(a) if a > 5 => { $01i32 },
                     X::B => { 1i32 },
                     X::C => { 2i32 }
                 }

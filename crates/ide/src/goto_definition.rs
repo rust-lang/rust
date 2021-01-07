@@ -166,7 +166,7 @@ mod tests {
         check(
             r#"
             //- /main.rs crate:main deps:std
-            extern crate std<|>;
+            extern crate std$0;
             //- /std/lib.rs crate:std
             // empty
             //^ file
@@ -179,7 +179,7 @@ mod tests {
         check(
             r#"
             //- /main.rs crate:main deps:std
-            extern crate std as abc<|>;
+            extern crate std as abc$0;
             //- /std/lib.rs crate:std
             // empty
             //^ file
@@ -193,7 +193,7 @@ mod tests {
             r#"
 struct Foo;
      //^^^
-enum E { X(Foo<|>) }
+enum E { X(Foo$0) }
 "#,
         );
     }
@@ -204,7 +204,7 @@ enum E { X(Foo<|>) }
             r#"
 struct Foo;
      //^^^
-enum E { X(<|>Foo) }
+enum E { X($0Foo) }
 "#,
         );
     }
@@ -217,7 +217,7 @@ enum E { X(<|>Foo) }
 use a::Foo;
 mod a;
 mod b;
-enum E { X(Foo<|>) }
+enum E { X(Foo$0) }
 
 //- /a.rs
 struct Foo;
@@ -233,7 +233,7 @@ struct Foo;
         check(
             r#"
 //- /lib.rs
-mod <|>foo;
+mod $0foo;
 
 //- /foo.rs
 // empty
@@ -244,7 +244,7 @@ mod <|>foo;
         check(
             r#"
 //- /lib.rs
-mod <|>foo;
+mod $0foo;
 
 //- /foo/mod.rs
 // empty
@@ -260,7 +260,7 @@ mod <|>foo;
 macro_rules! foo { () => { () } }
            //^^^
 fn bar() {
-    <|>foo!();
+    $0foo!();
 }
 "#,
         );
@@ -273,7 +273,7 @@ fn bar() {
 //- /lib.rs
 use foo::foo;
 fn bar() {
-    <|>foo!();
+    $0foo!();
 }
 
 //- /foo/lib.rs
@@ -289,7 +289,7 @@ macro_rules! foo { () => { () } }
         check(
             r#"
 //- /lib.rs
-use foo::foo<|>;
+use foo::foo$0;
 
 //- /foo/lib.rs
 #[macro_export]
@@ -312,7 +312,7 @@ define_fn!(foo);
          //^^^
 
 fn bar() {
-   <|>foo();
+   $0foo();
 }
 "#,
         );
@@ -331,7 +331,7 @@ macro_rules! define_fn {
 //^^^^^^^^^^^^^
 
 fn bar() {
-   <|>foo();
+   $0foo();
 }
 "#,
         );
@@ -347,7 +347,7 @@ macro_rules! foo {() => {0}}
 
 fn bar() {
     match (0,1) {
-        (<|>foo!(), _) => {}
+        ($0foo!(), _) => {}
     }
 }
 "#,
@@ -363,7 +363,7 @@ macro_rules! foo {() => {0}}
            //^^^
 fn bar() {
     match 0 {
-        <|>foo!() => {}
+        $0foo!() => {}
     }
 }
 "#,
@@ -375,7 +375,7 @@ fn bar() {
         check(
             r#"
 //- /lib.rs crate:main deps:foo
-use foo as bar<|>;
+use foo as bar$0;
 
 //- /foo/lib.rs crate:foo
 // empty
@@ -389,7 +389,7 @@ use foo as bar<|>;
         check(
             r#"
 //- /lib.rs crate:main deps:foo
-use foo::foo as bar<|>;
+use foo::foo as bar$0;
 
 //- /foo/lib.rs crate:foo
 #[macro_export]
@@ -410,7 +410,7 @@ impl Foo {
 }
 
 fn bar(foo: &Foo) {
-    foo.frobnicate<|>();
+    foo.frobnicate$0();
 }
 "#,
         );
@@ -425,7 +425,7 @@ struct Foo {
 } //^^^^
 
 fn bar(foo: &Foo) {
-    foo.spam<|>;
+    foo.spam$0;
 }
 "#,
         );
@@ -442,7 +442,7 @@ struct Foo {
 
 fn bar() -> Foo {
     Foo {
-        spam<|>: 0,
+        spam$0: 0,
     }
 }
 "#,
@@ -459,7 +459,7 @@ struct Foo {
 } //^^^^
 
 fn bar(foo: Foo) -> Foo {
-    let Foo { spam<|>: _, } = foo
+    let Foo { spam$0: _, } = foo
 }
 "#,
         );
@@ -474,7 +474,7 @@ struct Foo { spam: u32 }
            //^^^^
 
 fn bar() -> Foo {
-    Foo { spam<|>: m!() }
+    Foo { spam$0: m!() }
 }
 ",
         );
@@ -489,7 +489,7 @@ struct Foo(u32);
 
 fn bar() {
     let foo = Foo(0);
-    foo.<|>0;
+    foo.$00;
 }
 "#,
         );
@@ -505,7 +505,7 @@ impl Foo {
 }    //^^^^^^^^^^
 
 fn bar(foo: &Foo) {
-    Foo::frobnicate<|>();
+    Foo::frobnicate$0();
 }
 "#,
         );
@@ -520,7 +520,7 @@ trait Foo {
 }    //^^^^^^^^^^
 
 fn bar() {
-    Foo::frobnicate<|>();
+    Foo::frobnicate$0();
 }
 "#,
         );
@@ -537,7 +537,7 @@ trait Trait {
 impl Trait for Foo {}
 
 fn bar() {
-    Foo::frobnicate<|>();
+    Foo::frobnicate$0();
 }
 "#,
         );
@@ -551,7 +551,7 @@ struct Foo;
 impl Foo {
    //^^^
     pub fn new() -> Self {
-        Self<|> {}
+        Self$0 {}
     }
 }
 "#,
@@ -561,7 +561,7 @@ impl Foo {
 struct Foo;
 impl Foo {
    //^^^
-    pub fn new() -> Self<|> {
+    pub fn new() -> Self$0 {
         Self {}
     }
 }
@@ -573,7 +573,7 @@ impl Foo {
 enum Foo { A }
 impl Foo {
    //^^^
-    pub fn new() -> Self<|> {
+    pub fn new() -> Self$0 {
         Foo::A
     }
 }
@@ -585,7 +585,7 @@ impl Foo {
 enum Foo { A }
 impl Foo {
    //^^^
-    pub fn thing(a: &Self<|>) {
+    pub fn thing(a: &Self$0) {
     }
 }
 "#,
@@ -603,7 +603,7 @@ trait Make {
 impl Make for Foo {
             //^^^
     fn new() -> Self {
-        Self<|> {}
+        Self$0 {}
     }
 }
 "#,
@@ -617,7 +617,7 @@ trait Make {
 }
 impl Make for Foo {
             //^^^
-    fn new() -> Self<|> {
+    fn new() -> Self$0 {
         Self {}
     }
 }
@@ -629,7 +629,7 @@ impl Make for Foo {
     fn goto_def_when_used_on_definition_name_itself() {
         check(
             r#"
-struct Foo<|> { value: u32 }
+struct Foo$0 { value: u32 }
      //^^^
             "#,
         );
@@ -637,21 +637,21 @@ struct Foo<|> { value: u32 }
         check(
             r#"
 struct Foo {
-    field<|>: string,
+    field$0: string,
 } //^^^^^
 "#,
         );
 
         check(
             r#"
-fn foo_test<|>() { }
+fn foo_test$0() { }
  //^^^^^^^^
 "#,
         );
 
         check(
             r#"
-enum Foo<|> { Variant }
+enum Foo$0 { Variant }
    //^^^
 "#,
         );
@@ -660,7 +660,7 @@ enum Foo<|> { Variant }
             r#"
 enum Foo {
     Variant1,
-    Variant2<|>,
+    Variant2$0,
   //^^^^^^^^
     Variant3,
 }
@@ -669,35 +669,35 @@ enum Foo {
 
         check(
             r#"
-static INNER<|>: &str = "";
+static INNER$0: &str = "";
      //^^^^^
 "#,
         );
 
         check(
             r#"
-const INNER<|>: &str = "";
+const INNER$0: &str = "";
     //^^^^^
 "#,
         );
 
         check(
             r#"
-type Thing<|> = Option<()>;
+type Thing$0 = Option<()>;
    //^^^^^
 "#,
         );
 
         check(
             r#"
-trait Foo<|> { }
+trait Foo$0 { }
     //^^^
 "#,
         );
 
         check(
             r#"
-mod bar<|> { }
+mod bar$0 { }
   //^^^
 "#,
         );
@@ -714,7 +714,7 @@ fn foo() {}
  //^^^
 id! {
     fn bar() {
-        fo<|>o();
+        fo$0o();
     }
 }
 mod confuse_index { fn foo(); }
@@ -743,7 +743,7 @@ pub mod __export {
 fn foo() -> i8 {}
  //^^^
 fn test() {
-    format!("{}", fo<|>o())
+    format!("{}", fo$0o())
 }
 "#,
         );
@@ -761,7 +761,7 @@ macro_rules! include {}
 //^^^^^^^^^^^^^^^^^^^
 
 fn f() {
-    foo<|>();
+    foo$0();
 }
 
 mod confuse_index {
@@ -778,7 +778,7 @@ fn foo() {}
     fn goto_for_type_param() {
         check(
             r#"
-struct Foo<T: Clone> { t: <|>T }
+struct Foo<T: Clone> { t: $0T }
          //^
 "#,
         );
@@ -796,7 +796,7 @@ fn foo() {
     let x = 1;
       //^
     id!({
-        let y = <|>x;
+        let y = $0x;
         let z = y;
     });
 }
@@ -814,7 +814,7 @@ fn foo() {
     id!({
         let y = x;
           //^
-        let z = <|>y;
+        let z = $0y;
     });
 }
 "#,
@@ -829,7 +829,7 @@ fn main() {
     fn foo() {
         let x = 92;
           //^
-        <|>x;
+        $0x;
     }
 }
 "#,
@@ -843,7 +843,7 @@ fn main() {
 fn bar() {
     macro_rules! foo { () => { () } }
                //^^^
-    <|>foo!();
+    $0foo!();
 }
 "#,
         );
@@ -857,7 +857,7 @@ struct Foo { x: i32 }
 fn main() {
     let x = 92;
       //^
-    Foo { x<|> };
+    Foo { x$0 };
 }
 "#,
         )
@@ -872,7 +872,7 @@ enum Foo {
 }       //^
 fn baz(foo: Foo) {
     match foo {
-        Foo::Bar { x<|> } => x
+        Foo::Bar { x$0 } => x
     };
 }
 "#,
@@ -887,7 +887,7 @@ enum Foo { Bar }
          //^^^
 impl Foo {
     fn baz(self) {
-        match self { Self::Bar<|> => {} }
+        match self { Self::Bar$0 => {} }
     }
 }
 "#,
@@ -902,7 +902,7 @@ enum Foo { Bar { val: i32 } }
          //^^^
 impl Foo {
     fn baz(self) -> i32 {
-        match self { Self::Bar<|> { val } => {} }
+        match self { Self::Bar$0 { val } => {} }
     }
 }
 "#,
@@ -916,7 +916,7 @@ impl Foo {
 enum Foo { Bar }
          //^^^
 impl Foo {
-    fn baz(self) { Self::Bar<|>; }
+    fn baz(self) { Self::Bar$0; }
 }
 "#,
         );
@@ -929,7 +929,7 @@ impl Foo {
 enum Foo { Bar { val: i32 } }
          //^^^
 impl Foo {
-    fn baz(self) { Self::Bar<|> {val: 4}; }
+    fn baz(self) { Self::Bar$0 {val: 4}; }
 }
 "#,
         );
@@ -939,7 +939,7 @@ impl Foo {
     fn goto_def_for_type_alias_generic_parameter() {
         check(
             r#"
-type Alias<T> = T<|>;
+type Alias<T> = T$0;
          //^
 "#,
         )
@@ -950,7 +950,7 @@ type Alias<T> = T<|>;
         check(
             r#"
 //- /lib.rs
-foo::module<|>::mac!();
+foo::module$0::mac!();
 
 //- /foo/lib.rs
 pub mod module {
@@ -972,7 +972,7 @@ trait Iterator {
        //^^^^
 }
 
-fn f() -> impl Iterator<Item<|> = u8> {}
+fn f() -> impl Iterator<Item$0 = u8> {}
 "#,
         );
     }
@@ -987,7 +987,7 @@ trait Iterator {
     type B;
 }
 
-fn f() -> impl Iterator<A<|> = u8, B = ()> {}
+fn f() -> impl Iterator<A$0 = u8, B = ()> {}
 "#,
         );
         check(
@@ -998,7 +998,7 @@ trait Iterator {
        //^
 }
 
-fn f() -> impl Iterator<A = u8, B<|> = ()> {}
+fn f() -> impl Iterator<A = u8, B$0 = ()> {}
 "#,
         );
     }
@@ -1012,7 +1012,7 @@ trait Iterator {
        //^^^^
 }
 
-fn g() -> <() as Iterator<Item<|> = ()>>::Item {}
+fn g() -> <() as Iterator<Item$0 = ()>>::Item {}
 "#,
         );
     }
@@ -1027,7 +1027,7 @@ trait Iterator {
     type B;
 }
 
-fn g() -> <() as Iterator<A<|> = (), B = u8>>::B {}
+fn g() -> <() as Iterator<A$0 = (), B = u8>>::B {}
 "#,
         );
         check(
@@ -1038,7 +1038,7 @@ trait Iterator {
        //^
 }
 
-fn g() -> <() as Iterator<A = (), B<|> = u8>>::A {}
+fn g() -> <() as Iterator<A = (), B$0 = u8>>::A {}
 "#,
         );
     }
@@ -1052,7 +1052,7 @@ struct Foo {}
 impl Foo {
     fn bar(self: &Foo) {
          //^^^^
-        let foo = sel<|>f;
+        let foo = sel$0f;
     }
 }"#,
         )
@@ -1065,7 +1065,7 @@ impl Foo {
 struct Foo {}
 
 impl Foo {
-    fn bar(&self<|>) {
+    fn bar(&self$0) {
           //^^^^
     }
 }"#,
@@ -1076,7 +1076,7 @@ impl Foo {
     fn goto_lifetime_param_on_decl() {
         check(
             r#"
-fn foo<'foobar<|>>(_: &'foobar ()) {
+fn foo<'foobar$0>(_: &'foobar ()) {
      //^^^^^^^
 }"#,
         )
@@ -1086,7 +1086,7 @@ fn foo<'foobar<|>>(_: &'foobar ()) {
     fn goto_lifetime_param_decl() {
         check(
             r#"
-fn foo<'foobar>(_: &'foobar<|> ()) {
+fn foo<'foobar>(_: &'foobar$0 ()) {
      //^^^^^^^
 }"#,
         )
@@ -1097,7 +1097,7 @@ fn foo<'foobar>(_: &'foobar<|> ()) {
         check(
             r#"
 fn foo<'foobar>(_: &'foobar ()) {
-    fn foo<'foobar>(_: &'foobar<|> ()) {}
+    fn foo<'foobar>(_: &'foobar$0 ()) {}
          //^^^^^^^
 }"#,
         )
@@ -1108,13 +1108,13 @@ fn foo<'foobar>(_: &'foobar ()) {
     fn goto_lifetime_hrtb() {
         check(
             r#"trait Foo<T> {}
-fn foo<T>() where for<'a> T: Foo<&'a<|> (u8, u16)>, {}
+fn foo<T>() where for<'a> T: Foo<&'a$0 (u8, u16)>, {}
                     //^^
 "#,
         );
         check(
             r#"trait Foo<T> {}
-fn foo<T>() where for<'a<|>> T: Foo<&'a (u8, u16)>, {}
+fn foo<T>() where for<'a$0> T: Foo<&'a (u8, u16)>, {}
                     //^^
 "#,
         );
@@ -1125,7 +1125,7 @@ fn foo<T>() where for<'a<|>> T: Foo<&'a (u8, u16)>, {}
     fn goto_lifetime_hrtb_for_type() {
         check(
             r#"trait Foo<T> {}
-fn foo<T>() where T: for<'a> Foo<&'a<|> (u8, u16)>, {}
+fn foo<T>() where T: for<'a> Foo<&'a$0 (u8, u16)>, {}
                        //^^
 "#,
         );
@@ -1139,7 +1139,7 @@ fn foo<'foo>(_: &'foo ()) {
     'foo: {
   //^^^^
         'bar: loop {
-            break 'foo<|>;
+            break 'foo$0;
         }
     }
 }"#,

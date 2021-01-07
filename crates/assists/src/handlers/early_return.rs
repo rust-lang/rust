@@ -24,7 +24,7 @@ use crate::{
 //
 // ```
 // fn main() {
-//     <|>if cond {
+//     $0if cond {
 //         foo();
 //         bar();
 //     }
@@ -200,7 +200,7 @@ mod tests {
             r#"
             fn main() {
                 bar();
-                if<|> true {
+                if$0 true {
                     foo();
 
                     //comment
@@ -230,7 +230,7 @@ mod tests {
             r#"
             fn main(n: Option<String>) {
                 bar();
-                if<|> let Some(n) = n {
+                if$0 let Some(n) = n {
                     foo(n);
 
                     //comment
@@ -260,7 +260,7 @@ mod tests {
             convert_to_guarded_return,
             r#"
             fn main() {
-                if<|> let Ok(x) = Err(92) {
+                if$0 let Ok(x) = Err(92) {
                     foo(x);
                 }
             }
@@ -284,7 +284,7 @@ mod tests {
             r#"
             fn main(n: Option<String>) {
                 bar();
-                if<|> let Ok(n) = n {
+                if$0 let Ok(n) = n {
                     foo(n);
 
                     //comment
@@ -315,7 +315,7 @@ mod tests {
             r#"
             fn main() {
                 while true {
-                    if<|> true {
+                    if$0 true {
                         foo();
                         bar();
                     }
@@ -343,7 +343,7 @@ mod tests {
             r#"
             fn main() {
                 while true {
-                    if<|> let Some(n) = n {
+                    if$0 let Some(n) = n {
                         foo(n);
                         bar();
                     }
@@ -372,7 +372,7 @@ mod tests {
             r#"
             fn main() {
                 loop {
-                    if<|> true {
+                    if$0 true {
                         foo();
                         bar();
                     }
@@ -400,7 +400,7 @@ mod tests {
             r#"
             fn main() {
                 loop {
-                    if<|> let Some(n) = n {
+                    if$0 let Some(n) = n {
                         foo(n);
                         bar();
                     }
@@ -428,7 +428,7 @@ mod tests {
             convert_to_guarded_return,
             r#"
             fn main() {
-                if<|> true {
+                if$0 true {
                     return;
                 }
             }
@@ -443,7 +443,7 @@ mod tests {
             r#"
             fn main() {
                 loop {
-                    if<|> true {
+                    if$0 true {
                         continue;
                     }
                 }
@@ -458,7 +458,7 @@ mod tests {
             convert_to_guarded_return,
             r#"
             fn main() {
-                if<|> true {
+                if$0 true {
                     return
                 }
             }
@@ -472,7 +472,7 @@ mod tests {
             convert_to_guarded_return,
             r#"
             fn main() {
-                if<|> true {
+                if$0 true {
                     foo();
                 } else {
                     bar()
@@ -488,7 +488,7 @@ mod tests {
             convert_to_guarded_return,
             r#"
             fn main() {
-                if<|> true {
+                if$0 true {
                     foo();
                 }
                 bar();
@@ -504,7 +504,7 @@ mod tests {
             r#"
             fn main() {
                 if false {
-                    if<|> true {
+                    if$0 true {
                         foo();
                     }
                 }

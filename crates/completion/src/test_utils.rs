@@ -22,12 +22,12 @@ pub(crate) const TEST_CONFIG: CompletionConfig = CompletionConfig {
     merge: Some(MergeBehavior::Full),
 };
 
-/// Creates analysis from a multi-file fixture, returns positions marked with <|>.
+/// Creates analysis from a multi-file fixture, returns positions marked with $0.
 pub(crate) fn position(ra_fixture: &str) -> (RootDatabase, FilePosition) {
     let change_fixture = ChangeFixture::parse(ra_fixture);
     let mut database = RootDatabase::default();
     database.apply_change(change_fixture.change);
-    let (file_id, range_or_offset) = change_fixture.file_position.expect("expected a marker (<|>)");
+    let (file_id, range_or_offset) = change_fixture.file_position.expect("expected a marker ($0)");
     let offset = match range_or_offset {
         RangeOrOffset::Range(_) => panic!(),
         RangeOrOffset::Offset(it) => it,

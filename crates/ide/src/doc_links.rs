@@ -464,7 +464,7 @@ mod tests {
     fn test_doc_url_struct() {
         check(
             r#"
-pub struct Fo<|>o;
+pub struct Fo$0o;
 "#,
             expect![[r#"https://docs.rs/test/*/test/struct.Foo.html"#]],
         );
@@ -474,7 +474,7 @@ pub struct Fo<|>o;
     fn test_doc_url_fn() {
         check(
             r#"
-pub fn fo<|>o() {}
+pub fn fo$0o() {}
 "#,
             expect![[r##"https://docs.rs/test/*/test/fn.foo.html#method.foo"##]],
         );
@@ -487,7 +487,7 @@ pub fn fo<|>o() {}
 pub struct Foo;
 
 impl Foo {
-    pub fn met<|>hod() {}
+    pub fn met$0hod() {}
 }
 
 "#,
@@ -500,7 +500,7 @@ impl Foo {
         check(
             r#"
 pub trait Bar {
-    fn met<|>hod() {}
+    fn met$0hod() {}
 }
 
 "#,
@@ -513,7 +513,7 @@ pub trait Bar {
         check(
             r#"
 pub trait Foo {
-    fn met<|>hod();
+    fn met$0hod();
 }
 
 "#,
@@ -526,7 +526,7 @@ pub trait Foo {
         check(
             r#"
 pub struct Foo {
-    pub fie<|>ld: ()
+    pub fie$0ld: ()
 }
 
 "#,
@@ -539,7 +539,7 @@ pub struct Foo {
         check(
             r#"
 pub mod foo {
-    pub mod ba<|>r {}
+    pub mod ba$0r {}
 }
         "#,
             expect![[r#"https://docs.rs/test/*/test/foo/bar/index.html"#]],
@@ -564,7 +564,7 @@ pub mod wrapper {
 }
 
 fn foo() {
-    let bar: wrapper::It<|>em;
+    let bar: wrapper::It$0em;
 }
         "#,
             expect![[r#"https://docs.rs/test/*/test/wrapper/module/struct.Item.html"#]],

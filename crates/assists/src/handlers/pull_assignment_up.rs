@@ -18,7 +18,7 @@ use crate::{
 //     let mut foo = 6;
 //
 //     if true {
-//         <|>foo = 5;
+//         $0foo = 5;
 //     } else {
 //         foo = 4;
 //     }
@@ -175,7 +175,7 @@ fn foo() {
     let mut a = 1;
 
     if true {
-        <|>a = 2;
+        $0a = 2;
     } else {
         a = 3;
     }
@@ -203,7 +203,7 @@ fn foo() {
 
     match 1 {
         1 => {
-            <|>a = 2;
+            $0a = 2;
         },
         2 => {
             a = 3;
@@ -241,7 +241,7 @@ fn foo() {
     let mut a = 1;
 
     if true {
-        <|>a = 2;
+        $0a = 2;
         b = a;
     } else {
         a = 3;
@@ -260,7 +260,7 @@ fn foo() {
     let mut a = 1;
 
     if true {
-        <|>a = 2;
+        $0a = 2;
     } else if false {
         a = 3;
     } else {
@@ -292,7 +292,7 @@ fn foo() {
 
     if true {
         let b = 2;
-        <|>a = 2;
+        $0a = 2;
     } else {
         let b = 3;
         a = 3;
@@ -322,7 +322,7 @@ fn foo() {
     let mut a = 1;
 
     let b = if true {
-        <|>a = 2
+        $0a = 2
     } else {
         a = 3
     };
@@ -339,7 +339,7 @@ fn foo() {
     let mut a = 1;
 
     if true {
-        <|>a = 2;
+        $0a = 2;
     } else {}
 }"#,
         )
@@ -355,7 +355,7 @@ fn foo() {
 
     match 1 {
         1 => {
-            <|>a = 2;
+            $0a = 2;
         },
         2 => {
             a = 3;
@@ -378,7 +378,7 @@ fn foo() {
     let mut a = A(1);
 
     if true {
-        <|>a.0 = 2;
+        $0a.0 = 2;
     } else {
         a.0 = 3;
     }

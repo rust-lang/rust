@@ -11,7 +11,7 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 //
 // ```
 // fn main() {
-//     "Hello,<|> World!";
+//     "Hello,$0 World!";
 // }
 // ```
 // ->
@@ -53,7 +53,7 @@ pub(crate) fn make_raw_string(acc: &mut Assists, ctx: &AssistContext) -> Option<
 //
 // ```
 // fn main() {
-//     r#"Hello,<|> "World!""#;
+//     r#"Hello,$0 "World!""#;
 // }
 // ```
 // ->
@@ -95,7 +95,7 @@ pub(crate) fn make_usual_string(acc: &mut Assists, ctx: &AssistContext) -> Optio
 //
 // ```
 // fn main() {
-//     r#"Hello,<|> World!"#;
+//     r#"Hello,$0 World!"#;
 // }
 // ```
 // ->
@@ -123,7 +123,7 @@ pub(crate) fn add_hash(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
 //
 // ```
 // fn main() {
-//     r#"Hello,<|> World!"#;
+//     r#"Hello,$0 World!"#;
 // }
 // ```
 // ->
@@ -194,7 +194,7 @@ mod tests {
             make_raw_string,
             r#"
             fn f() {
-                let s = <|>"random\nstring";
+                let s = $0"random\nstring";
             }
             "#,
             r#""random\nstring""#,
@@ -207,7 +207,7 @@ mod tests {
             make_raw_string,
             r#"
 fn f() {
-    let s = <|>"random\nstring";
+    let s = $0"random\nstring";
 }
 "#,
             r##"
@@ -225,7 +225,7 @@ string"#;
             make_raw_string,
             r#"
             fn f() {
-                format!(<|>"x = {}", 92)
+                format!($0"x = {}", 92)
             }
             "#,
             r##"
@@ -242,7 +242,7 @@ string"#;
             make_raw_string,
             r###"
 fn f() {
-    let s = <|>"#random##\nstring";
+    let s = $0"#random##\nstring";
 }
 "###,
             r####"
@@ -260,7 +260,7 @@ string"#;
             make_raw_string,
             r###"
 fn f() {
-    let s = <|>"#random\"##\nstring";
+    let s = $0"#random\"##\nstring";
 }
 "###,
             r####"
@@ -278,7 +278,7 @@ string"###;
             make_raw_string,
             r#"
             fn f() {
-                let s = <|>"random string";
+                let s = $0"random string";
             }
             "#,
             r##"
@@ -295,7 +295,7 @@ string"###;
             make_raw_string,
             r#"
             fn f() {
-                let s = "foo<|>
+                let s = "foo$0
             }
             "#,
         )
@@ -307,7 +307,7 @@ string"###;
             make_usual_string,
             r#"
             fn main() {
-                let s = r#"bar<|>
+                let s = r#"bar$0
             }
             "#,
         )
@@ -319,7 +319,7 @@ string"###;
             add_hash,
             r#"
             fn f() {
-                let s = <|>r"random string";
+                let s = $0r"random string";
             }
             "#,
             r#"r"random string""#,
@@ -332,7 +332,7 @@ string"###;
             add_hash,
             r#"
             fn f() {
-                let s = <|>r"random string";
+                let s = $0r"random string";
             }
             "#,
             r##"
@@ -349,7 +349,7 @@ string"###;
             add_hash,
             r##"
             fn f() {
-                let s = <|>r#"random"string"#;
+                let s = $0r#"random"string"#;
             }
             "##,
             r###"
@@ -366,7 +366,7 @@ string"###;
             add_hash,
             r#"
             fn f() {
-                let s = <|>"random string";
+                let s = $0"random string";
             }
             "#,
         );
@@ -378,7 +378,7 @@ string"###;
             remove_hash,
             r##"
             fn f() {
-                let s = <|>r#"random string"#;
+                let s = $0r#"random string"#;
             }
             "##,
             r##"r#"random string"#"##,
@@ -389,7 +389,7 @@ string"###;
     fn remove_hash_works() {
         check_assist(
             remove_hash,
-            r##"fn f() { let s = <|>r#"random string"#; }"##,
+            r##"fn f() { let s = $0r#"random string"#; }"##,
             r#"fn f() { let s = r"random string"; }"#,
         )
     }
@@ -401,7 +401,7 @@ string"###;
             remove_hash,
             r##"
             fn f() {
-                let s = <|>r#"random"str"ing"#;
+                let s = $0r#"random"str"ing"#;
             }
             "##,
         )
@@ -413,7 +413,7 @@ string"###;
             remove_hash,
             r###"
             fn f() {
-                let s = <|>r##"random string"##;
+                let s = $0r##"random string"##;
             }
             "###,
             r##"
@@ -426,12 +426,12 @@ string"###;
 
     #[test]
     fn remove_hash_doesnt_work() {
-        check_assist_not_applicable(remove_hash, r#"fn f() { let s = <|>"random string"; }"#);
+        check_assist_not_applicable(remove_hash, r#"fn f() { let s = $0"random string"; }"#);
     }
 
     #[test]
     fn remove_hash_no_hash_doesnt_work() {
-        check_assist_not_applicable(remove_hash, r#"fn f() { let s = <|>r"random string"; }"#);
+        check_assist_not_applicable(remove_hash, r#"fn f() { let s = $0r"random string"; }"#);
     }
 
     #[test]
@@ -440,7 +440,7 @@ string"###;
             make_usual_string,
             r##"
             fn f() {
-                let s = <|>r#"random string"#;
+                let s = $0r#"random string"#;
             }
             "##,
             r##"r#"random string"#"##,
@@ -453,7 +453,7 @@ string"###;
             make_usual_string,
             r##"
             fn f() {
-                let s = <|>r#"random string"#;
+                let s = $0r#"random string"#;
             }
             "##,
             r#"
@@ -470,7 +470,7 @@ string"###;
             make_usual_string,
             r##"
             fn f() {
-                let s = <|>r#"random"str"ing"#;
+                let s = $0r#"random"str"ing"#;
             }
             "##,
             r#"
@@ -487,7 +487,7 @@ string"###;
             make_usual_string,
             r###"
             fn f() {
-                let s = <|>r##"random string"##;
+                let s = $0r##"random string"##;
             }
             "###,
             r##"
@@ -504,7 +504,7 @@ string"###;
             make_usual_string,
             r#"
             fn f() {
-                let s = <|>"random string";
+                let s = $0"random string";
             }
             "#,
         );

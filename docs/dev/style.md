@@ -111,7 +111,7 @@ When using multiline fixtures, use unindented raw string literals:
             r#"
 struct S { foo: i32}
 fn main() {
-    let <|>foo = 92;
+    let $0foo = 92;
     S { foo }
 }
 "#,

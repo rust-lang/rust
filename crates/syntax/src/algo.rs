@@ -19,7 +19,7 @@ use crate::{
 
 /// Returns ancestors of the node at the offset, sorted by length. This should
 /// do the right thing at an edge, e.g. when searching for expressions at `{
-/// <|>foo }` we will get the name reference instead of the whole block, which
+/// $0foo }` we will get the name reference instead of the whole block, which
 /// we would get if we just did `find_token_at_offset(...).flat_map(|t|
 /// t.parent().ancestors())`.
 pub fn ancestors_at_offset(

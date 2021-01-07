@@ -31,7 +31,7 @@ mod tests {
 macro_rules! foo { () => {} }
 fn foo() {}
 
-<|>
+$0
 "#,
             expect![[r#"
                 ma foo!(…) macro_rules! foo

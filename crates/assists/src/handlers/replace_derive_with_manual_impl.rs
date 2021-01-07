@@ -22,7 +22,7 @@ use crate::{
 //
 // ```
 // # trait Debug { fn fmt(&self, f: &mut Formatter) -> Result<()>; }
-// #[derive(Deb<|>ug, Display)]
+// #[derive(Deb$0ug, Display)]
 // struct S;
 // ```
 // ->
@@ -219,7 +219,7 @@ mod fmt {
     }
 }
 
-#[derive(Debu<|>g)]
+#[derive(Debu$0g)]
 struct Foo {
     bar: String,
 }
@@ -261,7 +261,7 @@ mod foo {
     }
 }
 
-#[derive(<|>Bar)]
+#[derive($0Bar)]
 struct Foo {
     bar: String,
 }
@@ -300,7 +300,7 @@ impl foo::Bar for Foo {
         check_assist(
             replace_derive_with_manual_impl,
             "
-#[derive(Debu<|>g)]
+#[derive(Debu$0g)]
 struct Foo {
     bar: String,
 }
@@ -322,7 +322,7 @@ impl Debug for Foo {
         check_assist(
             replace_derive_with_manual_impl,
             "
-#[derive(Debug<|>)]
+#[derive(Debug$0)]
 pub struct Foo {
     bar: String,
 }
@@ -344,7 +344,7 @@ impl Debug for Foo {
         check_assist(
             replace_derive_with_manual_impl,
             "
-#[derive(Display, Debug<|>, Serialize)]
+#[derive(Display, Debug$0, Serialize)]
 struct Foo {}
             ",
             "
@@ -363,7 +363,7 @@ impl Debug for Foo {
         check_assist_not_applicable(
             replace_derive_with_manual_impl,
             "
-#[derive(<|>)]
+#[derive($0)]
 struct Foo {}
             ",
         )
@@ -374,7 +374,7 @@ struct Foo {}
         check_assist_not_applicable(
             replace_derive_with_manual_impl,
             "
-#[derive<|>(Debug)]
+#[derive$0(Debug)]
 struct Foo {}
             ",
         );
@@ -382,7 +382,7 @@ struct Foo {}
         check_assist_not_applicable(
             replace_derive_with_manual_impl,
             "
-#[derive(Debug)<|>]
+#[derive(Debug)$0]
 struct Foo {}
             ",
         )
@@ -393,7 +393,7 @@ struct Foo {}
         check_assist_not_applicable(
             replace_derive_with_manual_impl,
             "
-#[allow(non_camel_<|>case_types)]
+#[allow(non_camel_$0case_types)]
 struct Foo {}
             ",
         )

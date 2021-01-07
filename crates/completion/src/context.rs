@@ -63,7 +63,7 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) is_expr: bool,
     /// Something is typed at the "top" level, in module or impl/trait.
     pub(super) is_new_item: bool,
-    /// The receiver if this is a field or method access, i.e. writing something.<|>
+    /// The receiver if this is a field or method access, i.e. writing something.$0
     pub(super) dot_receiver: Option<ast::Expr>,
     pub(super) dot_receiver_is_ambiguous_float_literal: bool,
     /// If this is a call (method or function) in particular, i.e. the () are already there.
@@ -228,9 +228,9 @@ impl<'a> CompletionContext<'a> {
 
     /// Checks whether completions in that particular case don't make much sense.
     /// Examples:
-    /// - `fn <|>` -- we expect function name, it's unlikely that "hint" will be helpful.
+    /// - `fn $0` -- we expect function name, it's unlikely that "hint" will be helpful.
     ///   Exception for this case is `impl Trait for Foo`, where we would like to hint trait method names.
-    /// - `for _ i<|>` -- obviously, it'll be "in" keyword.
+    /// - `for _ i$0` -- obviously, it'll be "in" keyword.
     pub(crate) fn no_completion_required(&self) -> bool {
         (self.fn_is_prev && !self.inside_impl_trait_block) || self.for_is_prev2
     }
@@ -279,7 +279,7 @@ impl<'a> CompletionContext<'a> {
         offset: TextSize,
     ) {
         // FIXME: this is wrong in at least two cases:
-        //  * when there's no token `foo(<|>)`
+        //  * when there's no token `foo($0)`
         //  * when there is a token, but it happens to have type of it's own
         self.expected_type = self
             .token

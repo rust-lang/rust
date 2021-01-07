@@ -8,7 +8,7 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 //
 // ```
 // fn main() {
-//     find("{<|>");
+//     find("{$0");
 // }
 // ```
 // ->
@@ -48,7 +48,7 @@ mod tests {
             replace_string_with_char,
             r#"
             fn f() {
-                let s = "<|>c";
+                let s = "$0c";
             }
             "#,
             r#""c""#,
@@ -61,7 +61,7 @@ mod tests {
             replace_string_with_char,
             r#"
     fn f() {
-        let s = "<|>c";
+        let s = "$0c";
     }
     "#,
             r##"
@@ -78,7 +78,7 @@ mod tests {
             replace_string_with_char,
             r#"
     fn f() {
-        let s = "<|>😀";
+        let s = "$0😀";
     }
     "#,
             r##"
@@ -95,7 +95,7 @@ mod tests {
             replace_string_with_char,
             r#"
     fn f() {
-        let s = "<|>test";
+        let s = "$0test";
     }
     "#,
         )
@@ -107,7 +107,7 @@ mod tests {
             replace_string_with_char,
             r#"
                 fn f() {
-                    format!(<|>"x", 92)
+                    format!($0"x", 92)
                 }
                 "#,
             r##"
@@ -124,7 +124,7 @@ mod tests {
             replace_string_with_char,
             r#"
                 fn f() {
-                    find(<|>"x");
+                    find($0"x");
                 }
                 "#,
             r##"

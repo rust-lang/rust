@@ -120,7 +120,7 @@ fn main() { A { 0: 0 } }
 struct A { a: &'static str }
 fn main() {
     let a = "haha";
-    A { a<|>: a }
+    A { a$0: a }
 }
 "#,
             r#"
@@ -138,7 +138,7 @@ struct A { a: &'static str, b: &'static str }
 fn main() {
     let a = "haha";
     let b = "bb";
-    A { a<|>: a, b }
+    A { a$0: a, b }
 }
 "#,
             r#"
@@ -171,7 +171,7 @@ fn f(a: A) { let A { 0: 0 } = a; }
             r#"
 struct A { a: &'static str }
 fn f(a: A) {
-    let A { a<|>: a } = a;
+    let A { a$0: a } = a;
 }
 "#,
             r#"
@@ -186,7 +186,7 @@ fn f(a: A) {
             r#"
 struct A { a: &'static str, b: &'static str }
 fn f(a: A) {
-    let A { a<|>: a, b } = a;
+    let A { a$0: a, b } = a;
 }
 "#,
             r#"

@@ -85,7 +85,7 @@ fn syntax_tree_for_token(node: &SyntaxToken, text_range: TextRange) -> Option<St
         .trim_end_matches('"')
         .trim()
         // Remove custom markers
-        .replace("<|>", "");
+        .replace("$0", "");
 
     let parsed = SourceFile::parse(&text);
 
@@ -182,7 +182,7 @@ SOURCE_FILE@0..60
 
     #[test]
     fn test_syntax_tree_with_range() {
-        let (analysis, range) = fixture::range(r#"<|>fn foo() {}<|>"#.trim());
+        let (analysis, range) = fixture::range(r#"$0fn foo() {}$0"#.trim());
         let syn = analysis.syntax_tree(range.file_id, Some(range.range)).unwrap();
 
         assert_eq_text!(
@@ -206,10 +206,10 @@ FN@0..11
 
         let (analysis, range) = fixture::range(
             r#"fn test() {
-    <|>assert!("
+    $0assert!("
     fn foo() {
     }
-    ", "");<|>
+    ", "");$0
 }"#
             .trim(),
         );
@@ -243,8 +243,8 @@ EXPR_STMT@16..58
         let (analysis, range) = fixture::range(
             r#"fn test() {
     assert!("
-<|>fn foo() {
-}<|>
+$0fn foo() {
+}$0
 fn bar() {
 }
     ", "");
@@ -277,8 +277,8 @@ SOURCE_FILE@0..12
         let (analysis, range) = fixture::range(
             r###"fn test() {
     assert!(r#"
-<|>fn foo() {
-}<|>
+$0fn foo() {
+}$0
 fn bar() {
 }
     "#, "");
@@ -310,11 +310,11 @@ SOURCE_FILE@0..12
         // With a raw string
         let (analysis, range) = fixture::range(
             r###"fn test() {
-    assert!(r<|>#"
+    assert!(r$0#"
 fn foo() {
 }
 fn bar() {
-}"<|>#, "");
+}"$0#, "");
 }"###
                 .trim(),
         );
