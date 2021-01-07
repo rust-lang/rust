@@ -205,22 +205,20 @@ fn parse_args<'a>(
                 err.emit();
             }
             args.named_args.insert(name, slot);
-        } else {
-            if !args.named_args.is_empty() || !args.reg_args.is_empty() {
-                let mut err = ecx.struct_span_err(
-                    span,
-                    "positional arguments cannot follow named arguments \
+        } else if !args.named_args.is_empty() || !args.reg_args.is_empty() {
+            let mut err = ecx.struct_span_err(
+                span,
+                "positional arguments cannot follow named arguments \
                      or explicit register arguments",
-                );
-                err.span_label(span, "positional argument");
-                for pos in args.named_args.values() {
-                    err.span_label(args.operands[*pos].1, "named argument");
-                }
-                for pos in &args.reg_args {
-                    err.span_label(args.operands[*pos].1, "explicit register argument");
-                }
-                err.emit();
+            );
+            err.span_label(span, "positional argument");
+            for pos in args.named_args.values() {
+                err.span_label(args.operands[*pos].1, "named argument");
             }
+            for pos in &args.reg_args {
+                err.span_label(args.operands[*pos].1, "explicit register argument");
+            }
+            err.emit();
         }
     }
 

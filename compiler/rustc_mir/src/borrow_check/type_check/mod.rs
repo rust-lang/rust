@@ -345,24 +345,16 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
                         let promoted_ty = promoted_body.return_ty();
                         check_err(self, promoted_body, ty, promoted_ty);
                     }
-                } else {
-                    if let Err(terr) = self.cx.fully_perform_op(
-                        location.to_locations(),
-                        ConstraintCategory::Boring,
-                        self.cx.param_env.and(type_op::ascribe_user_type::AscribeUserType::new(
-                            constant.literal.ty,
-                            def.did,
-                            UserSubsts { substs, user_self_ty: None },
-                        )),
-                    ) {
-                        span_mirbug!(
-                            self,
-                            constant,
-                            "bad constant type {:?} ({:?})",
-                            constant,
-                            terr
-                        );
-                    }
+                } else if let Err(terr) = self.cx.fully_perform_op(
+                    location.to_locations(),
+                    ConstraintCategory::Boring,
+                    self.cx.param_env.and(type_op::ascribe_user_type::AscribeUserType::new(
+                        constant.literal.ty,
+                        def.did,
+                        UserSubsts { substs, user_self_ty: None },
+                    )),
+                ) {
+                    span_mirbug!(self, constant, "bad constant type {:?} ({:?})", constant, terr);
                 }
             } else if let Some(static_def_id) = constant.check_static_ptr(tcx) {
                 let unnormalized_ty = tcx.type_of(static_def_id);

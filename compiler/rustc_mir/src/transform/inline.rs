@@ -382,14 +382,12 @@ impl Inliner<'tcx> {
         if let attr::InlineAttr::Always = codegen_fn_attrs.inline {
             debug!("INLINING {:?} because inline(always) [cost={}]", callsite, cost);
             true
+        } else if cost <= threshold {
+            debug!("INLINING {:?} [cost={} <= threshold={}]", callsite, cost, threshold);
+            true
         } else {
-            if cost <= threshold {
-                debug!("INLINING {:?} [cost={} <= threshold={}]", callsite, cost, threshold);
-                true
-            } else {
-                debug!("NOT inlining {:?} [cost={} > threshold={}]", callsite, cost, threshold);
-                false
-            }
+            debug!("NOT inlining {:?} [cost={} > threshold={}]", callsite, cost, threshold);
+            false
         }
     }
 

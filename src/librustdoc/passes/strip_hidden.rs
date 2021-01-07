@@ -51,11 +51,10 @@ impl<'a> DocFolder for Stripper<'a> {
                 }
                 _ => return None,
             }
-        } else {
-            if self.update_retained {
-                self.retained.insert(i.def_id);
-            }
+        } else if self.update_retained {
+            self.retained.insert(i.def_id);
         }
+
         Some(self.fold_item_recur(i))
     }
 }

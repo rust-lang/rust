@@ -1085,26 +1085,24 @@ fn check_method_receiver<'fcx, 'tcx>(
             // Report error; `arbitrary_self_types` was enabled.
             e0307(fcx, span, receiver_ty);
         }
-    } else {
-        if !receiver_is_valid(fcx, span, receiver_ty, self_ty, false) {
-            if receiver_is_valid(fcx, span, receiver_ty, self_ty, true) {
-                // Report error; would have worked with `arbitrary_self_types`.
-                feature_err(
-                    &fcx.tcx.sess.parse_sess,
-                    sym::arbitrary_self_types,
-                    span,
-                    &format!(
-                        "`{}` cannot be used as the type of `self` without \
+    } else if !receiver_is_valid(fcx, span, receiver_ty, self_ty, false) {
+        if receiver_is_valid(fcx, span, receiver_ty, self_ty, true) {
+            // Report error; would have worked with `arbitrary_self_types`.
+            feature_err(
+                &fcx.tcx.sess.parse_sess,
+                sym::arbitrary_self_types,
+                span,
+                &format!(
+                    "`{}` cannot be used as the type of `self` without \
                          the `arbitrary_self_types` feature",
-                        receiver_ty,
-                    ),
-                )
-                .help(HELP_FOR_SELF_TYPE)
-                .emit();
-            } else {
-                // Report error; would not have worked with `arbitrary_self_types`.
-                e0307(fcx, span, receiver_ty);
-            }
+                    receiver_ty,
+                ),
+            )
+            .help(HELP_FOR_SELF_TYPE)
+            .emit();
+        } else {
+            // Report error; would not have worked with `arbitrary_self_types`.
+            e0307(fcx, span, receiver_ty);
         }
     }
 }

@@ -109,10 +109,8 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
                         traits::SizedArgumentType(Some(p.span)),
                     );
                 }
-            } else {
-                if !self.fcx.tcx.features().unsized_locals {
-                    self.fcx.require_type_is_sized(var_ty, p.span, traits::VariableType(p.hir_id));
-                }
+            } else if !self.fcx.tcx.features().unsized_locals {
+                self.fcx.require_type_is_sized(var_ty, p.span, traits::VariableType(p.hir_id));
             }
 
             debug!(

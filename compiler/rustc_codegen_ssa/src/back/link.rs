@@ -1431,10 +1431,8 @@ fn add_late_link_args(
         if let Some(args) = sess.target.late_link_args_dynamic.get(&flavor) {
             cmd.args(args);
         }
-    } else {
-        if let Some(args) = sess.target.late_link_args_static.get(&flavor) {
-            cmd.args(args);
-        }
+    } else if let Some(args) = sess.target.late_link_args_static.get(&flavor) {
+        cmd.args(args);
     }
     if let Some(args) = sess.target.late_link_args.get(&flavor) {
         cmd.args(args);

@@ -1220,15 +1220,13 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
                                 msg,
                             );
                         }
-                    } else {
-                        if self.should_const_prop(value) {
-                            if let ScalarMaybeUninit::Scalar(scalar) = value_const {
-                                *cond = self.operand_from_scalar(
-                                    scalar,
-                                    self.tcx.types.bool,
-                                    source_info.span,
-                                );
-                            }
+                    } else if self.should_const_prop(value) {
+                        if let ScalarMaybeUninit::Scalar(scalar) = value_const {
+                            *cond = self.operand_from_scalar(
+                                scalar,
+                                self.tcx.types.bool,
+                                source_info.span,
+                            );
                         }
                     }
                 }

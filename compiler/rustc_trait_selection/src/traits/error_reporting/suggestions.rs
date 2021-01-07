@@ -2016,17 +2016,14 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 // then the tuple must be the one containing capture types.
                 let is_upvar_tys_infer_tuple = if !matches!(ty.kind(), ty::Tuple(..)) {
                     false
+                } else if let ObligationCauseCode::BuiltinDerivedObligation(ref data) =
+                    *data.parent_code
+                {
+                    let parent_trait_ref = self.resolve_vars_if_possible(data.parent_trait_ref);
+                    let ty = parent_trait_ref.skip_binder().self_ty();
+                    matches!(ty.kind(), ty::Generator(..)) || matches!(ty.kind(), ty::Closure(..))
                 } else {
-                    if let ObligationCauseCode::BuiltinDerivedObligation(ref data) =
-                        *data.parent_code
-                    {
-                        let parent_trait_ref = self.resolve_vars_if_possible(data.parent_trait_ref);
-                        let ty = parent_trait_ref.skip_binder().self_ty();
-                        matches!(ty.kind(), ty::Generator(..))
-                            || matches!(ty.kind(), ty::Closure(..))
-                    } else {
-                        false
-                    }
+                    false
                 };
 
                 // Don't print the tuple of capture types

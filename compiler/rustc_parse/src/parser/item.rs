@@ -1588,22 +1588,20 @@ impl<'a> Parser<'a> {
                 )
                 .emit();
             (Vec::new(), Some(self.mk_block_err(span)))
-        } else {
-            if let Err(mut err) =
-                self.expected_one_of_not_found(&[], &[token::Semi, token::OpenDelim(token::Brace)])
-            {
-                if self.token.kind == token::CloseDelim(token::Brace) {
-                    // The enclosing `mod`, `trait` or `impl` is being closed, so keep the `fn` in
-                    // the AST for typechecking.
-                    err.span_label(ident.span, "while parsing this `fn`");
-                    err.emit();
-                    (Vec::new(), None)
-                } else {
-                    return Err(err);
-                }
+        } else if let Err(mut err) =
+            self.expected_one_of_not_found(&[], &[token::Semi, token::OpenDelim(token::Brace)])
+        {
+            if self.token.kind == token::CloseDelim(token::Brace) {
+                // The enclosing `mod`, `trait` or `impl` is being closed, so keep the `fn` in
+                // the AST for typechecking.
+                err.span_label(ident.span, "while parsing this `fn`");
+                err.emit();
+                (Vec::new(), None)
             } else {
-                unreachable!()
+                return Err(err);
             }
+        } else {
+            unreachable!()
         };
         attrs.extend(inner_attrs);
         Ok(body)

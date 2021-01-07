@@ -256,10 +256,8 @@ crate fn get_all_types(
         let args = get_real_types(generics, &arg.type_, cx, 0);
         if !args.is_empty() {
             all_types.extend(args);
-        } else {
-            if let Some(kind) = arg.type_.def_id().map(|did| cx.tcx.def_kind(did).clean(cx)) {
-                all_types.insert((arg.type_.clone(), kind));
-            }
+        } else if let Some(kind) = arg.type_.def_id().map(|did| cx.tcx.def_kind(did).clean(cx)) {
+            all_types.insert((arg.type_.clone(), kind));
         }
     }
 

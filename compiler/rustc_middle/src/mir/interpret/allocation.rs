@@ -371,11 +371,9 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         if size != cx.data_layout().pointer_size {
             // *Now*, we better make sure that the inside is free of relocations too.
             self.check_relocations(cx, ptr, size)?;
-        } else {
-            if let Some(&(tag, alloc_id)) = self.relocations.get(&ptr.offset) {
-                let ptr = Pointer::new_with_tag(alloc_id, Size::from_bytes(bits), tag);
-                return Ok(ScalarMaybeUninit::Scalar(ptr.into()));
-            }
+        } else if let Some(&(tag, alloc_id)) = self.relocations.get(&ptr.offset) {
+            let ptr = Pointer::new_with_tag(alloc_id, Size::from_bytes(bits), tag);
+            return Ok(ScalarMaybeUninit::Scalar(ptr.into()));
         }
         // We don't. Just return the bits.
         Ok(ScalarMaybeUninit::Scalar(Scalar::from_uint(bits, size)))

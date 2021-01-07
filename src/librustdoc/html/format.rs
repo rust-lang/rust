@@ -230,12 +230,10 @@ impl<'a> fmt::Display for WhereClause<'a> {
         let mut clause = String::new();
         if f.alternate() {
             clause.push_str(" where");
+        } else if end_newline {
+            clause.push_str(" <span class=\"where fmt-newline\">where");
         } else {
-            if end_newline {
-                clause.push_str(" <span class=\"where fmt-newline\">where");
-            } else {
-                clause.push_str(" <span class=\"where\">where");
-            }
+            clause.push_str(" <span class=\"where\">where");
         }
         for (i, pred) in gens.where_predicates.iter().enumerate() {
             if f.alternate() {
@@ -806,12 +804,10 @@ fn fmt_type(t: &clean::Type, f: &mut fmt::Formatter<'_>, use_absolute: bool) -> 
                 } else {
                     write!(f, "{:#}::", self_type.print())?
                 }
+            } else if should_show_cast {
+                write!(f, "&lt;{} as {}&gt;::", self_type.print(), trait_.print())?
             } else {
-                if should_show_cast {
-                    write!(f, "&lt;{} as {}&gt;::", self_type.print(), trait_.print())?
-                } else {
-                    write!(f, "{}::", self_type.print())?
-                }
+                write!(f, "{}::", self_type.print())?
             };
             match *trait_ {
                 // It's pretty unsightly to look at `<A as B>::C` in output, and

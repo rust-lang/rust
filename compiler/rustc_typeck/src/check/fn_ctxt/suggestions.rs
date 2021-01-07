@@ -224,12 +224,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             {
                                 let max_len = receiver.rfind('.').unwrap();
                                 format!("{}{}", &receiver[..max_len], method_call)
+                            } else if expr.precedence().order() < ExprPrecedence::MethodCall.order()
+                            {
+                                format!("({}){}", receiver, method_call)
                             } else {
-                                if expr.precedence().order() < ExprPrecedence::MethodCall.order() {
-                                    format!("({}){}", receiver, method_call)
-                                } else {
-                                    format!("{}{}", receiver, method_call)
-                                }
+                                format!("{}{}", receiver, method_call)
                             };
                             Some(if is_struct_pat_shorthand_field {
                                 format!("{}: {}", receiver, sugg)

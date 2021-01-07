@@ -168,87 +168,82 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             partially_str, move_msg
                         ),
                     );
-                } else {
-                    if let UseSpans::FnSelfUse { var_span, fn_call_span, fn_span, kind } =
-                        move_spans
-                    {
-                        let place_name = self
-                            .describe_place(moved_place.as_ref())
-                            .map(|n| format!("`{}`", n))
-                            .unwrap_or_else(|| "value".to_owned());
-                        match kind {
-                            FnSelfUseKind::FnOnceCall => {
-                                err.span_label(
-                                    fn_call_span,
-                                    &format!(
-                                        "{} {}moved due to this call",
-                                        place_name, partially_str
-                                    ),
-                                );
-                                err.span_note(
+                } else if let UseSpans::FnSelfUse { var_span, fn_call_span, fn_span, kind } =
+                    move_spans
+                {
+                    let place_name = self
+                        .describe_place(moved_place.as_ref())
+                        .map(|n| format!("`{}`", n))
+                        .unwrap_or_else(|| "value".to_owned());
+                    match kind {
+                        FnSelfUseKind::FnOnceCall => {
+                            err.span_label(
+                                fn_call_span,
+                                &format!("{} {}moved due to this call", place_name, partially_str),
+                            );
+                            err.span_note(
                                     var_span,
                                     "this value implements `FnOnce`, which causes it to be moved when called",
                                 );
+                        }
+                        FnSelfUseKind::Operator { self_arg } => {
+                            err.span_label(
+                                fn_call_span,
+                                &format!(
+                                    "{} {}moved due to usage in operator",
+                                    place_name, partially_str
+                                ),
+                            );
+                            if self.fn_self_span_reported.insert(fn_span) {
+                                err.span_note(
+                                    self_arg.span,
+                                    "calling this operator moves the left-hand side",
+                                );
                             }
-                            FnSelfUseKind::Operator { self_arg } => {
+                        }
+                        FnSelfUseKind::Normal { self_arg, implicit_into_iter } => {
+                            if implicit_into_iter {
                                 err.span_label(
                                     fn_call_span,
                                     &format!(
-                                        "{} {}moved due to usage in operator",
+                                        "{} {}moved due to this implicit call to `.into_iter()`",
                                         place_name, partially_str
                                     ),
                                 );
-                                if self.fn_self_span_reported.insert(fn_span) {
-                                    err.span_note(
-                                        self_arg.span,
-                                        "calling this operator moves the left-hand side",
-                                    );
-                                }
+                            } else {
+                                err.span_label(
+                                    fn_call_span,
+                                    &format!(
+                                        "{} {}moved due to this method call",
+                                        place_name, partially_str
+                                    ),
+                                );
                             }
-                            FnSelfUseKind::Normal { self_arg, implicit_into_iter } => {
-                                if implicit_into_iter {
-                                    err.span_label(
-                                        fn_call_span,
-                                        &format!(
-                                            "{} {}moved due to this implicit call to `.into_iter()`",
-                                            place_name, partially_str
-                                        ),
-                                    );
-                                } else {
-                                    err.span_label(
-                                        fn_call_span,
-                                        &format!(
-                                            "{} {}moved due to this method call",
-                                            place_name, partially_str
-                                        ),
-                                    );
-                                }
-                                // Avoid pointing to the same function in multiple different
-                                // error messages
-                                if self.fn_self_span_reported.insert(self_arg.span) {
-                                    err.span_note(
+                            // Avoid pointing to the same function in multiple different
+                            // error messages
+                            if self.fn_self_span_reported.insert(self_arg.span) {
+                                err.span_note(
                                         self_arg.span,
                                         &format!("this function consumes the receiver `self` by taking ownership of it, which moves {}", place_name)
                                     );
-                                }
                             }
-                            // Deref::deref takes &self, which cannot cause a move
-                            FnSelfUseKind::DerefCoercion { .. } => unreachable!(),
                         }
-                    } else {
-                        err.span_label(
-                            move_span,
-                            format!("value {}moved{} here", partially_str, move_msg),
-                        );
-                        move_spans.var_span_label(
-                            &mut err,
-                            format!(
-                                "variable {}moved due to use{}",
-                                partially_str,
-                                move_spans.describe()
-                            ),
-                        );
+                        // Deref::deref takes &self, which cannot cause a move
+                        FnSelfUseKind::DerefCoercion { .. } => unreachable!(),
                     }
+                } else {
+                    err.span_label(
+                        move_span,
+                        format!("value {}moved{} here", partially_str, move_msg),
+                    );
+                    move_spans.var_span_label(
+                        &mut err,
+                        format!(
+                            "variable {}moved due to use{}",
+                            partially_str,
+                            move_spans.describe()
+                        ),
+                    );
                 }
                 if let UseSpans::PatUse(span) = move_spans {
                     err.span_suggestion_verbose(

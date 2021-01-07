@@ -2947,14 +2947,12 @@ fn render_stability_since_raw(
                     v
                 );
             }
-        } else {
-            if ver != containing_ver {
-                write!(
-                    w,
-                    "<span class=\"since\" title=\"Stable since Rust version {0}\">{0}</span>",
-                    v
-                );
-            }
+        } else if ver != containing_ver {
+            write!(
+                w,
+                "<span class=\"since\" title=\"Stable since Rust version {0}\">{0}</span>",
+                v
+            );
         }
     }
 }
@@ -3632,11 +3630,9 @@ fn render_deref_methods(
         AssocItemRender::DerefFor { trait_: deref_type, type_: real_target, deref_mut_: deref_mut };
     if let Some(did) = target.def_id() {
         render_assoc_items(w, cx, container_item, did, what, cache);
-    } else {
-        if let Some(prim) = target.primitive_type() {
-            if let Some(&did) = cache.primitive_locations.get(&prim) {
-                render_assoc_items(w, cx, container_item, did, what, cache);
-            }
+    } else if let Some(prim) = target.primitive_type() {
+        if let Some(&did) = cache.primitive_locations.get(&prim) {
+            render_assoc_items(w, cx, container_item, did, what, cache);
         }
     }
 }

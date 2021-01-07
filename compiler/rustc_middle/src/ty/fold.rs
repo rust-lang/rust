@@ -518,13 +518,11 @@ impl<'a, 'tcx> TypeFolder<'tcx> for BoundVarReplacer<'a, 'tcx> {
             } else {
                 ct
             }
+        } else if !ct.has_vars_bound_at_or_above(self.current_index) {
+            // Nothing more to substitute.
+            ct
         } else {
-            if !ct.has_vars_bound_at_or_above(self.current_index) {
-                // Nothing more to substitute.
-                ct
-            } else {
-                ct.super_fold_with(self)
-            }
+            ct.super_fold_with(self)
         }
     }
 }

@@ -1146,45 +1146,40 @@ pub(super) fn check_packed(tcx: TyCtxt<'_>, sp: Span, def: &ty::AdtDef) {
                 "type has conflicting packed and align representation hints"
             )
             .emit();
-        } else {
-            if let Some(def_spans) = check_packed_inner(tcx, def.did, &mut vec![]) {
-                let mut err = struct_span_err!(
-                    tcx.sess,
-                    sp,
-                    E0588,
-                    "packed type cannot transitively contain a `#[repr(align)]` type"
-                );
+        } else if let Some(def_spans) = check_packed_inner(tcx, def.did, &mut vec![]) {
+            let mut err = struct_span_err!(
+                tcx.sess,
+                sp,
+                E0588,
+                "packed type cannot transitively contain a `#[repr(align)]` type"
+            );
 
-                err.span_note(
-                    tcx.def_span(def_spans[0].0),
-                    &format!(
-                        "`{}` has a `#[repr(align)]` attribute",
-                        tcx.item_name(def_spans[0].0)
-                    ),
-                );
+            err.span_note(
+                tcx.def_span(def_spans[0].0),
+                &format!("`{}` has a `#[repr(align)]` attribute", tcx.item_name(def_spans[0].0)),
+            );
 
-                if def_spans.len() > 2 {
-                    let mut first = true;
-                    for (adt_def, span) in def_spans.iter().skip(1).rev() {
-                        let ident = tcx.item_name(*adt_def);
-                        err.span_note(
-                            *span,
-                            &if first {
-                                format!(
-                                    "`{}` contains a field of type `{}`",
-                                    tcx.type_of(def.did),
-                                    ident
-                                )
-                            } else {
-                                format!("...which contains a field of type `{}`", ident)
-                            },
-                        );
-                        first = false;
-                    }
+            if def_spans.len() > 2 {
+                let mut first = true;
+                for (adt_def, span) in def_spans.iter().skip(1).rev() {
+                    let ident = tcx.item_name(*adt_def);
+                    err.span_note(
+                        *span,
+                        &if first {
+                            format!(
+                                "`{}` contains a field of type `{}`",
+                                tcx.type_of(def.did),
+                                ident
+                            )
+                        } else {
+                            format!("...which contains a field of type `{}`", ident)
+                        },
+                    );
+                    first = false;
                 }
-
-                err.emit();
             }
+
+            err.emit();
         }
     }
 }

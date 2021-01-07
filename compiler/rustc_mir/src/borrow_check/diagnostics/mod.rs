@@ -225,24 +225,22 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                 buf.push('*');
                                 buf.push_str(&name);
                             }
+                        } else if autoderef {
+                            // FIXME turn this recursion into iteration
+                            self.append_place_to_string(
+                                PlaceRef { local, projection: proj_base },
+                                buf,
+                                autoderef,
+                                &including_downcast,
+                            )?;
                         } else {
-                            if autoderef {
-                                // FIXME turn this recursion into iteration
-                                self.append_place_to_string(
-                                    PlaceRef { local, projection: proj_base },
-                                    buf,
-                                    autoderef,
-                                    &including_downcast,
-                                )?;
-                            } else {
-                                buf.push('*');
-                                self.append_place_to_string(
-                                    PlaceRef { local, projection: proj_base },
-                                    buf,
-                                    autoderef,
-                                    &including_downcast,
-                                )?;
-                            }
+                            buf.push('*');
+                            self.append_place_to_string(
+                                PlaceRef { local, projection: proj_base },
+                                buf,
+                                autoderef,
+                                &including_downcast,
+                            )?;
                         }
                     }
                     ProjectionElem::Downcast(..) => {

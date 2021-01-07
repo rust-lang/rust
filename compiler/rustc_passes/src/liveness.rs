@@ -1426,19 +1426,17 @@ impl<'tcx> Liveness<'_, 'tcx> {
                         );
                     }
                 }
-            } else {
-                if let Some(name) = self.should_warn(var) {
-                    self.ir.tcx.struct_span_lint_hir(
-                        lint::builtin::UNUSED_VARIABLES,
-                        var_hir_id,
-                        vec![upvar.span],
-                        |lint| {
-                            lint.build(&format!("unused variable: `{}`", name))
-                                .help("did you mean to capture by reference instead?")
-                                .emit();
-                        },
-                    );
-                }
+            } else if let Some(name) = self.should_warn(var) {
+                self.ir.tcx.struct_span_lint_hir(
+                    lint::builtin::UNUSED_VARIABLES,
+                    var_hir_id,
+                    vec![upvar.span],
+                    |lint| {
+                        lint.build(&format!("unused variable: `{}`", name))
+                            .help("did you mean to capture by reference instead?")
+                            .emit();
+                    },
+                );
             }
         }
     }
