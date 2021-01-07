@@ -301,6 +301,10 @@ pub struct SpanData {
 
 impl SpanData {
     #[inline]
+    pub fn span(&self) -> Span {
+        Span::new(self.lo, self.hi, self.ctxt)
+    }
+    #[inline]
     pub fn with_lo(&self, lo: BytePos) -> Span {
         Span::new(lo, self.hi, self.ctxt)
     }
@@ -468,7 +472,7 @@ impl Span {
 
     /// Edition of the crate from which this span came.
     pub fn edition(self) -> edition::Edition {
-        self.ctxt().outer_expn_data().edition
+        self.ctxt().edition()
     }
 
     #[inline]
