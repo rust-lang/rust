@@ -21,20 +21,15 @@ pub(crate) fn complete_attribute(acc: &mut Completions, ctx: &CompletionContext)
 
     let attribute = ctx.attribute_under_caret.as_ref()?;
     match (attribute.path(), attribute.token_tree()) {
-        (Some(path), Some(token_tree)) if path.to_string() == "derive" => {
-            complete_derive(acc, ctx, token_tree)
-        }
-        (Some(path), Some(token_tree)) if path.to_string() == "feature" => {
-            complete_lint(acc, ctx, token_tree, FEATURES);
-        }
-        (Some(path), Some(token_tree))
-            if ["allow", "warn", "deny", "forbid"]
-                .iter()
-                .any(|lint_level| lint_level == &path.to_string()) =>
-        {
-            complete_lint(acc, ctx, token_tree.clone(), DEFAULT_LINT_COMPLETIONS);
-            complete_lint(acc, ctx, token_tree, CLIPPY_LINTS);
-        }
+        (Some(path), Some(token_tree)) => match path.to_string().as_str() {
+            "derive" => complete_derive(acc, ctx, token_tree),
+            "feature" => complete_lint(acc, ctx, token_tree, FEATURES),
+            "allow" | "warn" | "deny" | "forbid" => {
+                complete_lint(acc, ctx, token_tree.clone(), DEFAULT_LINT_COMPLETIONS);
+                complete_lint(acc, ctx, token_tree, CLIPPY_LINTS);
+            }
+            _ => {}
+        },
         (_, Some(_token_tree)) => {}
         _ => complete_attribute_start(acc, ctx, attribute),
     }
@@ -54,11 +49,8 @@ fn complete_attribute_start(acc: &mut Completions, ctx: &CompletionContext, attr
             item = item.lookup_by(lookup);
         }
 
-        match (attr_completion.snippet, ctx.config.snippet_cap) {
-            (Some(snippet), Some(cap)) => {
-                item = item.insert_snippet(cap, snippet);
-            }
-            _ => {}
+        if let Some((snippet, cap)) = attr_completion.snippet.zip(ctx.config.snippet_cap) {
+            item = item.insert_snippet(cap, snippet);
         }
 
         if attribute.kind() == ast::AttrKind::Inner || !attr_completion.prefer_inner {
