@@ -22,7 +22,8 @@ pub(super) fn highlight_injection(
         return None;
     }
     let value = literal.value()?;
-    let (analysis, tmp_file_id) = Analysis::from_single_file(value.into_owned());
+    let marker_info = MarkerInfo::new(&*value);
+    let (analysis, tmp_file_id) = Analysis::from_single_file(marker_info.cleaned_text.clone());
 
     if let Some(range) = literal.open_quote_text_range() {
         acc.add(HighlightedRange {
@@ -33,9 +34,10 @@ pub(super) fn highlight_injection(
     }
 
     for mut h in analysis.highlight(tmp_file_id).unwrap() {
-        if let Some(r) = literal.map_range_up(h.range) {
-            h.range = r;
-            acc.add(h)
+        let range = marker_info.map_range_up(h.range);
+        if let Some(range) = literal.map_range_up(range) {
+            h.range = range;
+            acc.add(h);
         }
     }
 
@@ -48,6 +50,52 @@ pub(super) fn highlight_injection(
     }
 
     Some(())
+}
+
+/// Data to remove `$0` from string and map ranges
+#[derive(Default, Debug)]
+struct MarkerInfo {
+    cleaned_text: String,
+    markers: Vec<TextRange>,
+}
+
+impl MarkerInfo {
+    fn new(mut text: &str) -> Self {
+        let marker = "$0";
+
+        let mut res = MarkerInfo::default();
+        let mut offset: TextSize = 0.into();
+        while !text.is_empty() {
+            let idx = text.find(marker).unwrap_or(text.len());
+            let (chunk, next) = text.split_at(idx);
+            text = next;
+            res.cleaned_text.push_str(chunk);
+            offset += TextSize::of(chunk);
+
+            if let Some(next) = text.strip_prefix(marker) {
+                text = next;
+
+                let marker_len = TextSize::of(marker);
+                res.markers.push(TextRange::at(offset, marker_len));
+                offset += marker_len;
+            }
+        }
+        res
+    }
+    fn map_range_up(&self, range: TextRange) -> TextRange {
+        TextRange::new(
+            self.map_offset_up(range.start(), true),
+            self.map_offset_up(range.end(), false),
+        )
+    }
+    fn map_offset_up(&self, mut offset: TextSize, start: bool) -> TextSize {
+        for r in &self.markers {
+            if r.start() < offset || (start && r.start() == offset) {
+                offset += r.len()
+            }
+        }
+        offset
+    }
 }
 
 /// Mapping from extracted documentation code to original code

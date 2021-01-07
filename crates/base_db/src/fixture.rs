@@ -61,7 +61,9 @@ use std::{str::FromStr, sync::Arc};
 
 use cfg::CfgOptions;
 use rustc_hash::FxHashMap;
-use test_utils::{extract_range_or_offset, Fixture, RangeOrOffset, CURSOR_MARKER};
+use test_utils::{
+    extract_range_or_offset, Fixture, RangeOrOffset, CURSOR_MARKER, ESCAPED_CURSOR_MARKER,
+};
 use vfs::{file_set::FileSet, VfsPath};
 
 use crate::{
@@ -142,10 +144,14 @@ impl ChangeFixture {
 
         for entry in fixture {
             let text = if entry.text.contains(CURSOR_MARKER) {
-                let (range_or_offset, text) = extract_range_or_offset(&entry.text);
-                assert!(file_position.is_none());
-                file_position = Some((file_id, range_or_offset));
-                text.to_string()
+                if entry.text.contains(ESCAPED_CURSOR_MARKER) {
+                    entry.text.replace(ESCAPED_CURSOR_MARKER, CURSOR_MARKER)
+                } else {
+                    let (range_or_offset, text) = extract_range_or_offset(&entry.text);
+                    assert!(file_position.is_none());
+                    file_position = Some((file_id, range_or_offset));
+                    text.to_string()
+                }
             } else {
                 entry.text.clone()
             };
