@@ -743,7 +743,6 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         AttrStyle::Inner => rustc_parse::fake_token_stream(
                             &self.cx.sess.parse_sess,
                             &item.into_nonterminal(),
-                            span,
                         ),
                     };
                     let attr_item = attr.unwrap_normal_item();

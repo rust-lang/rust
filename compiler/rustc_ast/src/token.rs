@@ -771,7 +771,7 @@ impl fmt::Display for NonterminalKind {
 }
 
 impl Nonterminal {
-    fn span(&self) -> Span {
+    pub fn span(&self) -> Span {
         match self {
             NtItem(item) => item.span,
             NtBlock(block) => block.span,

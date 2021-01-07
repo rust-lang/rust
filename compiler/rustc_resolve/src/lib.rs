@@ -64,7 +64,7 @@ use tracing::debug;
 use diagnostics::{extend_span_to_previous_binding, find_span_of_binding_until_next_binding};
 use diagnostics::{ImportSuggestion, LabelSuggestion, Suggestion};
 use imports::{Import, ImportKind, ImportResolver, NameResolution};
-use late::{HasGenericParams, PathSource, Rib, RibKind::*};
+use late::{ConstantItemKind, HasGenericParams, PathSource, Rib, RibKind::*};
 use macros::{MacroRulesBinding, MacroRulesScope, MacroRulesScopeRef};
 
 type Res = def::Res<NodeId>;
@@ -210,7 +210,7 @@ enum ResolutionError<'a> {
     /// Error E0434: can't capture dynamic environment in a fn item.
     CannotCaptureDynamicEnvironmentInFnItem,
     /// Error E0435: attempt to use a non-constant value in a constant.
-    AttemptToUseNonConstantValueInConstant,
+    AttemptToUseNonConstantValueInConstant(Ident, String),
     /// Error E0530: `X` bindings cannot shadow `Y`s.
     BindingShadowsSomethingUnacceptable(&'static str, Symbol, &'a NameBinding<'a>),
     /// Error E0128: type parameters with a default cannot use forward-declared identifiers.
@@ -1837,14 +1837,16 @@ impl<'a> Resolver<'a> {
             // Use the rib kind to determine whether we are resolving parameters
             // (macro 2.0 hygiene) or local variables (`macro_rules` hygiene).
             let rib_ident = if ribs[i].kind.contains_params() { normalized_ident } else { ident };
-            if let Some(res) = ribs[i].bindings.get(&rib_ident).cloned() {
+            if let Some((original_rib_ident_def, res)) = ribs[i].bindings.get_key_value(&rib_ident)
+            {
                 // The ident resolves to a type parameter or local variable.
                 return Some(LexicalScopeBinding::Res(self.validate_res_from_ribs(
                     i,
                     rib_ident,
-                    res,
+                    *res,
                     record_used,
                     path_span,
+                    *original_rib_ident_def,
                     ribs,
                 )));
             }
@@ -2556,6 +2558,7 @@ impl<'a> Resolver<'a> {
         mut res: Res,
         record_used: bool,
         span: Span,
+        original_rib_ident_def: Ident,
         all_ribs: &[Rib<'a>],
     ) -> Res {
         const CG_BUG_STR: &str = "min_const_generics resolve check didn't stop compilation";
@@ -2602,10 +2605,31 @@ impl<'a> Resolver<'a> {
                                 res_err = Some(CannotCaptureDynamicEnvironmentInFnItem);
                             }
                         }
-                        ConstantItemRibKind(_) => {
+                        ConstantItemRibKind(_, item) => {
                             // Still doesn't deal with upvars
                             if record_used {
-                                self.report_error(span, AttemptToUseNonConstantValueInConstant);
+                                let (span, resolution_error) =
+                                    if let Some((ident, constant_item_kind)) = item {
+                                        let kind_str = match constant_item_kind {
+                                            ConstantItemKind::Const => "const",
+                                            ConstantItemKind::Static => "static",
+                                        };
+                                        let sugg = format!(
+                                            "consider using `let` instead of `{}`",
+                                            kind_str
+                                        );
+                                        (span, AttemptToUseNonConstantValueInConstant(ident, sugg))
+                                    } else {
+                                        let sugg = "consider using `const` instead of `let`";
+                                        (
+                                            rib_ident.span,
+                                            AttemptToUseNonConstantValueInConstant(
+                                                original_rib_ident_def,
+                                                sugg.to_string(),
+                                            ),
+                                        )
+                                    };
+                                self.report_error(span, resolution_error);
                             }
                             return Res::Err;
                         }
@@ -2641,7 +2665,7 @@ impl<'a> Resolver<'a> {
                             in_ty_param_default = true;
                             continue;
                         }
-                        ConstantItemRibKind(trivial) => {
+                        ConstantItemRibKind(trivial, _) => {
                             let features = self.session.features_untracked();
                             // HACK(min_const_generics): We currently only allow `N` or `{ N }`.
                             if !(trivial
@@ -2734,7 +2758,7 @@ impl<'a> Resolver<'a> {
                             in_ty_param_default = true;
                             continue;
                         }
-                        ConstantItemRibKind(trivial) => {
+                        ConstantItemRibKind(trivial, _) => {
                             let features = self.session.features_untracked();
                             // HACK(min_const_generics): We currently only allow `N` or `{ N }`.
                             if !(trivial

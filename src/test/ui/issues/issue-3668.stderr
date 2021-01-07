@@ -2,7 +2,9 @@ error[E0435]: attempt to use a non-constant value in a constant
   --> $DIR/issue-3668.rs:8:34
    |
 LL |        static childVal: Box<P> = self.child.get();
-   |                                  ^^^^ non-constant value
+   |               --------           ^^^^ non-constant value
+   |               |
+   |               help: consider using `let` instead of `static`
 
 error: aborting due to previous error
 

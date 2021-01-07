@@ -206,8 +206,7 @@ pub trait ResolverAstLowering {
     ) -> LocalDefId;
 }
 
-type NtToTokenstream =
-    fn(&Nonterminal, &ParseSess, Span, CanSynthesizeMissingTokens) -> TokenStream;
+type NtToTokenstream = fn(&Nonterminal, &ParseSess, CanSynthesizeMissingTokens) -> TokenStream;
 
 /// Context of `impl Trait` in code, which determines whether it is allowed in an HIR subtree,
 /// and if so, what meaning it has.
@@ -417,12 +416,7 @@ impl<'a> TokenStreamLowering<'a> {
     fn lower_token(&mut self, token: Token) -> TokenStream {
         match token.kind {
             token::Interpolated(nt) => {
-                let tts = (self.nt_to_tokenstream)(
-                    &nt,
-                    self.parse_sess,
-                    token.span,
-                    self.synthesize_tokens,
-                );
+                let tts = (self.nt_to_tokenstream)(&nt, self.parse_sess, self.synthesize_tokens);
                 TokenTree::Delimited(
                     DelimSpan::from_single(token.span),
                     DelimToken::NoDelim,
