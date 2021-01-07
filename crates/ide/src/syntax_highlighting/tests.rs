@@ -446,6 +446,11 @@ struct Foo {
 }
 
 impl Foo {
+    /// ```
+    /// let _ = "Call me
+    //    KILLER WHALE
+    ///     Ishmael.";
+    /// ```
     pub const bar: bool = true;
 
     /// Constructs a new `Foo`.

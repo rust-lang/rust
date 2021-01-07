@@ -343,6 +343,9 @@ pub(crate) fn semantic_tokens(
     let mut builder = semantic_tokens::SemanticTokensBuilder::new(id);
 
     for highlight_range in highlights {
+        if highlight_range.highlight.is_empty() {
+            continue;
+        }
         let (type_, mods) = semantic_token_type_and_modifiers(highlight_range.highlight);
         let token_index = semantic_tokens::type_index(type_);
         let modifier_bitset = mods.0;

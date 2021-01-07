@@ -4,9 +4,9 @@ use syntax::{
     AstNode, AstToken, SyntaxElement, SyntaxKind, SyntaxNode, TextRange,
 };
 
-use crate::{
-    syntax_highlighting::HighlightedRangeStack, HighlightTag, HighlightedRange, SymbolKind,
-};
+use crate::{HighlightTag, HighlightedRange, SymbolKind};
+
+use super::highlights::Highlights;
 
 #[derive(Default)]
 pub(super) struct FormatStringHighlighter {
@@ -39,22 +39,20 @@ impl FormatStringHighlighter {
     }
     pub(super) fn highlight_format_string(
         &self,
-        range_stack: &mut HighlightedRangeStack,
+        stack: &mut Highlights,
         string: &impl HasFormatSpecifier,
         range: TextRange,
     ) {
         if self.format_string.as_ref() == Some(&SyntaxElement::from(string.syntax().clone())) {
-            range_stack.push();
             string.lex_format_specifier(|piece_range, kind| {
                 if let Some(highlight) = highlight_format_specifier(kind) {
-                    range_stack.add(HighlightedRange {
+                    stack.add(HighlightedRange {
                         range: piece_range + range.start(),
                         highlight: highlight.into(),
                         binding_hash: None,
                     });
                 }
             });
-            range_stack.pop();
         }
     }
 }

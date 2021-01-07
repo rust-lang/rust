@@ -3,7 +3,7 @@
 use ide_db::base_db::SourceDatabase;
 use oorandom::Rand32;
 use stdx::format_to;
-use syntax::{AstNode, TextRange, TextSize};
+use syntax::AstNode;
 
 use crate::{syntax_highlighting::highlight, FileId, RootDatabase};
 
@@ -22,17 +22,15 @@ pub(crate) fn highlight_as_html(db: &RootDatabase, file_id: FileId, rainbow: boo
 
     let ranges = highlight(db, file_id, None, false);
     let text = parse.tree().syntax().to_string();
-    let mut prev_pos = TextSize::from(0);
     let mut buf = String::new();
     buf.push_str(&STYLE);
     buf.push_str("<pre><code>");
     for range in &ranges {
-        if range.range.start() > prev_pos {
-            let curr = &text[TextRange::new(prev_pos, range.range.start())];
-            let text = html_escape(curr);
-            buf.push_str(&text);
+        let curr = &text[range.range];
+        if range.highlight.is_empty() {
+            format_to!(buf, "{}", html_escape(curr));
+            continue;
         }
-        let curr = &text[TextRange::new(range.range.start(), range.range.end())];
 
         let class = range.highlight.to_string().replace('.', " ");
         let color = match (rainbow, range.binding_hash) {
@@ -42,13 +40,7 @@ pub(crate) fn highlight_as_html(db: &RootDatabase, file_id: FileId, rainbow: boo
             _ => "".into(),
         };
         format_to!(buf, "<span class=\"{}\"{}>{}</span>", class, color, html_escape(curr));
-
-        prev_pos = range.range.end();
     }
-    // Add the remaining (non-highlighted) text
-    let curr = &text[TextRange::new(prev_pos, TextSize::of(&text))];
-    let text = html_escape(curr);
-    buf.push_str(&text);
     buf.push_str("</code></pre>");
     buf
 }
