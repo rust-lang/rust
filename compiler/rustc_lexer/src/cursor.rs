@@ -33,7 +33,7 @@ impl<'a> Cursor<'a> {
 
         #[cfg(not(debug_assertions))]
         {
-            '\0'
+            EOF_CHAR
         }
     }
 
