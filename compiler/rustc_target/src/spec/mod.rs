@@ -34,6 +34,7 @@
 //! the target's settings, though `target-feature` and `link-args` will *add*
 //! to the list specified by the target, rather than replace.
 
+use crate::abi::Endian;
 use crate::spec::abi::{lookup as lookup_abi, Abi};
 use crate::spec::crt_objects::{CrtObjects, CrtObjectsFallback};
 use rustc_serialize::json::{Json, ToJson};
@@ -705,8 +706,8 @@ pub struct TargetOptions {
     /// Whether the target is built-in or loaded from a custom target specification.
     pub is_builtin: bool,
 
-    /// String to use as the `target_endian` `cfg` variable. Defaults to "little".
-    pub endian: String,
+    /// Used as the `target_endian` `cfg` variable. Defaults to little endian.
+    pub endian: Endian,
     /// Width of c_int type. Defaults to "32".
     pub c_int_width: String,
     /// OS name to use for conditional compilation (`target_os`). Defaults to "none".
@@ -1010,7 +1011,7 @@ impl Default for TargetOptions {
     fn default() -> TargetOptions {
         TargetOptions {
             is_builtin: false,
-            endian: "little".to_string(),
+            endian: Endian::Little,
             c_int_width: "32".to_string(),
             os: "none".to_string(),
             env: String::new(),
@@ -1439,8 +1440,10 @@ impl Target {
             } );
         }
 
+        if let Some(s) = obj.find("target-endian").and_then(Json::as_string) {
+            base.endian = s.parse()?;
+        }
         key!(is_builtin, bool);
-        key!(endian = "target-endian");
         key!(c_int_width = "target-c-int-width");
         key!(os);
         key!(env);
