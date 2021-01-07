@@ -94,12 +94,7 @@ impl MultiItemModifier for ProcMacroDerive {
         let input = if item.pretty_printing_compatibility_hack() {
             TokenTree::token(token::Interpolated(Lrc::new(item)), DUMMY_SP).into()
         } else {
-            nt_to_tokenstream(
-                &item,
-                &ecx.sess.parse_sess,
-                DUMMY_SP,
-                CanSynthesizeMissingTokens::Yes,
-            )
+            nt_to_tokenstream(&item, &ecx.sess.parse_sess, CanSynthesizeMissingTokens::Yes)
         };
 
         let server = proc_macro_server::Rustc::new(ecx);

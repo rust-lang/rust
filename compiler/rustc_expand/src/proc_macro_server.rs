@@ -179,7 +179,7 @@ impl FromInternal<(TreeAndSpacing, &'_ ParseSess, &'_ mut Vec<Self>)>
                 {
                     TokenTree::Ident(Ident::new(sess, name.name, is_raw, name.span))
                 } else {
-                    let stream = nt_to_tokenstream(&nt, sess, span, CanSynthesizeMissingTokens::No);
+                    let stream = nt_to_tokenstream(&nt, sess, CanSynthesizeMissingTokens::No);
                     TokenTree::Group(Group {
                         delimiter: Delimiter::None,
                         stream,
