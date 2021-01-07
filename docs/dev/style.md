@@ -53,6 +53,9 @@ We try to be very conservative with usage of crates.io dependencies.
 Don't use small "helper" crates (exception: `itertools` is allowed).
 If there's some general reusable bit of code you need, consider adding it to the `stdx` crate.
 
+**Rational:** keep compile times low, create ecosystem pressure for faster
+compiles, reduce the number of things which might break.
+
 ## Commit Style
 
 We don't have specific rules around git history hygiene.
@@ -66,14 +69,17 @@ Such messages create a lot of duplicate notification traffic during rebases.
 If possible, write commit messages from user's perspective:
 
 ```
-# Good
+# GOOD
 Goto definition works inside macros
 
-# Not as good
+# BAD
 Use original span for FileId
 ```
 
 This makes it easier to prepare a changelog.
+
+**Rational:** clean history is potentially useful, but rarely used.
+But many users read changelogs.
 
 ## Clippy
 
@@ -82,8 +88,9 @@ A number of default lints have high false positive rate.
 Selectively patching false-positives with `allow(clippy)` is considered worse than not using Clippy at all.
 There's `cargo xtask lint` command which runs a subset of low-FPR lints.
 Careful tweaking of `xtask lint` is welcome.
-See also [rust-lang/clippy#5537](https://github.com/rust-lang/rust-clippy/issues/5537).
 Of course, applying Clippy suggestions is welcome as long as they indeed improve the code.
+
+**Rational:** see [rust-lang/clippy#5537](https://github.com/rust-lang/rust-clippy/issues/5537).
 
 # Code
 
@@ -91,12 +98,6 @@ Of course, applying Clippy suggestions is welcome as long as they indeed improve
 
 Most tests in rust-analyzer start with a snippet of Rust code.
 This snippets should be minimal -- if you copy-paste a snippet of real code into the tests, make sure to remove everything which could be removed.
-There are many benefits to this:
-
-* less to read or to scroll past
-* easier to understand what exactly is tested
-* less stuff printed during printf-debugging
-* less time to run test
 
 It also makes sense to format snippets more compactly (for example, by placing enum definitions like `enum E { Foo, Bar }` on a single line),
 as long as they are still readable.
@@ -125,19 +126,28 @@ fn main() {
     }
 ```
 
-That way, you can use your editor's "number of selected characters" feature to correlate offsets with test's source code.
+**Rational:**
 
-## Preconditions
+There are many benefits to this:
+
+* less to read or to scroll past
+* easier to understand what exactly is tested
+* less stuff printed during printf-debugging
+* less time to run test
+
+Formatting ensures that you can use your editor's "number of selected characters" feature to correlate offsets with test's source code.
+
+## Function Preconditions
 
 Express function preconditions in types and force the caller to provide them (rather than checking in callee):
 
 ```rust
-// Good
+// GOOD
 fn frbonicate(walrus: Walrus) {
     ...
 }
 
-// Not as good
+// BAD
 fn frobnicate(walrus: Option<Walrus>) {
     let walrus = match walrus {
         Some(it) => it,
@@ -147,10 +157,13 @@ fn frobnicate(walrus: Option<Walrus>) {
 }
 ```
 
-Avoid preconditions that span across function boundaries:
+**Rational:** this makes control flow explicit at the call site.
+Call-site has more context, it often happens that the precondition falls out naturally or can be bubbled up higher in the stack.
+
+Avoid splitting precondition check and precondition use across functions:
 
 ```rust
-// Good
+// GOOD
 fn main() {
     let s: &str = ...;
     if let Some(contents) = string_literal_contents(s) {
@@ -166,7 +179,7 @@ fn string_literal_contents(s: &str) -> Option<&str> {
     }
 }
 
-// Not as good
+// BAD
 fn main() {
     let s: &str = ...;
     if is_string_literal(s) {
@@ -182,19 +195,23 @@ fn is_string_literal(s: &str) -> bool {
 In the "Not as good" version, the precondition that `1` is a valid char boundary is checked in `is_string_literal` and used in `foo`.
 In the "Good" version, the precondition check and usage are checked in the same block, and then encoded in the types.
 
+**Rational:** non-local code properties degrade under change.
+
 When checking a boolean precondition, prefer `if !invariant` to `if negated_invariant`:
 
 ```rust
-// Good
+// GOOD
 if !(idx < len) {
     return None;
 }
 
-// Not as good
+// BAD
 if idx >= len {
     return None;
 }
 ```
+
+**Rational:** its useful to see the invariant relied upon by the rest of the function clearly spelled out.
 
 ## Getters & Setters
 
@@ -211,31 +228,36 @@ struct Person {
     middle_name: Option<String>
 }
 
-// Good
+// GOOD
 impl Person {
     fn first_name(&self) -> &str { self.first_name.as_str() }
     fn middle_name(&self) -> Option<&str> { self.middle_name.as_ref() }
 }
 
-// Not as good
+// BAD
 impl Person {
     fn first_name(&self) -> String { self.first_name.clone() }
     fn middle_name(&self) -> &Option<String> { &self.middle_name }
 }
 ```
 
+**Rational:** we don't provide public API, it's cheaper to refactor than to pay getters rent.
+Non-local code properties degrade under change, privacy makes invariant local.
+Borrowed own data discloses irrelevant details about origin of data.
+Irrelevant (neither right nor wrong) things obscure correctness.
+
 ## Constructors
 
 Prefer `Default` to zero-argument `new` function
 
 ```rust
-// Good
+// GOOD
 #[derive(Default)]
 struct Foo {
     bar: Option<Bar>
 }
 
-// Not as good
+// BAD
 struct Foo {
     bar: Option<Bar>
 }
@@ -249,16 +271,18 @@ impl Foo {
 
 Prefer `Default` even it has to be implemented manually.
 
+**Rational:** less typing in the common case, uniformity.
+
 ## Functions Over Objects
 
 Avoid creating "doer" objects.
 That is, objects which are created only to execute a single action.
 
 ```rust
-// Good
+// GOOD
 do_thing(arg1, arg2);
 
-// Not as good
+// BAD
 ThingDoer::new(arg1, arg2).do();
 ```
 
@@ -303,16 +327,14 @@ impl ThingDoer {
 }
 ```
 
+**Rational:** not bothering the caller with irrelevant details, not mixing user API with implementor API.
+
 ## Avoid Monomorphization
 
-Rust uses monomorphization to compile generic code, meaning that for each instantiation of a generic functions with concrete types, the function is compiled afresh, *per crate*.
-This allows for exceptionally good performance, but leads to increased compile times.
-Runtime performance obeys 80%/20% rule -- only a small fraction of code is hot.
-Compile time **does not** obey this rule -- all code has to be compiled.
-For this reason, avoid making a lot of code type parametric, *especially* on the boundaries between crates.
+Avoid making a lot of code type parametric, *especially* on the boundaries between crates.
 
 ```rust
-// Good
+// GOOD
 fn frbonicate(f: impl FnMut()) {
     frobnicate_impl(&mut f)
 }
@@ -320,7 +342,7 @@ fn frobnicate_impl(f: &mut dyn FnMut()) {
     // lots of code
 }
 
-// Not as good
+// BAD
 fn frbonicate(f: impl FnMut()) {
     // lots of code
 }
@@ -329,14 +351,20 @@ fn frbonicate(f: impl FnMut()) {
 Avoid `AsRef` polymorphism, it pays back only for widely used libraries:
 
 ```rust
-// Good
+// GOOD
 fn frbonicate(f: &Path) {
 }
 
-// Not as good
+// BAD
 fn frbonicate(f: impl AsRef<Path>) {
 }
 ```
+
+**Rational:** Rust uses monomorphization to compile generic code, meaning that for each instantiation of a generic functions with concrete types, the function is compiled afresh, *per crate*.
+This allows for exceptionally good performance, but leads to increased compile times.
+Runtime performance obeys 80%/20% rule -- only a small fraction of code is hot.
+Compile time **does not** obey this rule -- all code has to be compiled.
+
 
 # Premature Pessimization
 
@@ -346,7 +374,7 @@ Avoid writing code which is slower than it needs to be.
 Don't allocate a `Vec` where an iterator would do, don't allocate strings needlessly.
 
 ```rust
-// Good
+// GOOD
 use itertools::Itertools;
 
 let (first_word, second_word) = match text.split_ascii_whitespace().collect_tuple() {
@@ -354,37 +382,40 @@ let (first_word, second_word) = match text.split_ascii_whitespace().collect_tupl
     None => return,
 }
 
-// Not as good
+// BAD
 let words = text.split_ascii_whitespace().collect::<Vec<_>>();
 if words.len() != 2 {
     return
 }
 ```
 
+**Rational:** not allocating is almost often faster.
+
 ## Push Allocations to the Call Site
 
 If allocation is inevitable, let the caller allocate the resource:
 
 ```rust
-// Good
+// GOOD
 fn frobnicate(s: String) {
     ...
 }
 
-// Not as good
+// BAD
 fn frobnicate(s: &str) {
     let s = s.to_string();
     ...
 }
 ```
 
-This is better because it reveals the costs.
+**Rational:** reveals the costs.
 It is also more efficient when the caller already owns the allocation.
 
 ## Collection types
 
 Prefer `rustc_hash::FxHashMap` and `rustc_hash::FxHashSet` instead of the ones in `std::collections`.
-They use a hasher that's slightly faster and using them consistently will reduce code size by some small amount.
+
+**Rational:** they use a hasher that's significantly faster and using them consistently will reduce code size by some small amount.
 
 # Style
 
@@ -392,6 +423,9 @@ They use a hasher that's slightly faster and using them consistently will reduce
 
 Separate import groups with blank lines.
 Use one `use` per crate.
+
+Module declarations come before the imports.
+Order them in "suggested reading order" for a person new to the code base.
 
 ```rust
 mod x;
@@ -411,46 +445,45 @@ use crate::{}
 use super::{}
 ```
 
-Module declarations come before the imports.
-Order them in "suggested reading order" for a person new to the code base.
+**Rational:** consistency.
+Reading order is important for new contributors.
+Grouping by crate allows to spot unwanted dependencies easier.
 
 ## Import Style
 
 Qualify items from `hir` and `ast`.
 
 ```rust
-// Good
+// GOOD
 use syntax::ast;
 
-fn frobnicate(func: hir::Function, strukt: ast::StructDef) {}
+fn frobnicate(func: hir::Function, strukt: ast::Struct) {}
 
-// Not as good
+// BAD
 use hir::Function;
-use syntax::ast::StructDef;
+use syntax::ast::Struct;
 
-fn frobnicate(func: Function, strukt: StructDef) {}
+fn frobnicate(func: Function, strukt: Struct) {}
 ```
 
-Avoid local `use MyEnum::*` imports.
-
-Prefer `use crate::foo::bar` to `use super::bar`.
+**Rational:** avoids name clashes, makes the layer clear at a glance.
 
 When implementing traits from `std::fmt` or `std::ops`, import the module:
 
 ```rust
-// Good
+// GOOD
 use std::fmt;
 
 impl fmt::Display for RenameError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { .. }
 }
 
-// Not as good
+// BAD
 impl std::fmt::Display for RenameError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { .. }
 }
 
-// Not as good
+// BAD
 use std::ops::Deref;
 
 impl Deref for Widget {
@@ -458,6 +491,15 @@ impl Deref for Widget {
     fn deref(&self) -> &str { .. }
 }
 ```
+
+**Rational:** overall, less typing.
+Makes it clear that a trait is implemented, rather than used.
+
+Avoid local `use MyEnum::*` imports.
+**Rational:** consistency.
+
+Prefer `use crate::foo::bar` to `use super::bar` or `use self::bar::baz`.
+**Rational:** consistency, this is the style which works in all cases.
 
 ## Order of Items
 
@@ -467,7 +509,7 @@ People read things from top to bottom, so place most important things first.
 Specifically, if all items except one are private, always put the non-private item on top.
 
 ```rust
-// Good
+// GOOD
 pub(crate) fn frobnicate() {
     Helper::act()
 }
@@ -481,7 +523,7 @@ impl Helper {
     }
 }
 
-// Not as good
+// BAD
 #[derive(Default)]
 struct Helper { stuff: i32 }
 
@@ -497,12 +539,11 @@ impl Helper {
 ```
 
 If there's a mixture of private and public items, put public items first.
-If function bodies are folded in the editor, the source code should read as documentation for the public API.
 
-Put `struct`s and `enum`s first, functions and impls last. Order types declarations in top-down manner.
+Put `struct`s and `enum`s first, functions and impls last. Order type declarations in top-down manner.
 
 ```rust
-// Good
+// GOOD
 struct Parent {
     children: Vec<Child>
 }
@@ -515,7 +556,7 @@ impl Parent {
 impl Child {
 }
 
-// Not as good
+// BAD
 struct Child;
 
 impl Child {
@@ -528,6 +569,9 @@ struct Parent {
 impl Parent {
 }
 ```
+
+**Rational:** easier to get the sense of the API by visually scanning the file.
+If function bodies are folded in the editor, the source code should read as documentation for the public API.
 
 ## Variable Naming
 
@@ -556,12 +600,14 @@ enum   -> enum_
 mod    -> module
 ```
 
+**Rationale:** consistency.
+
 ## Early Returns
 
 Do use early returns
 
 ```rust
-// Good
+// GOOD
 fn foo() -> Option<Bar> {
     if !condition() {
         return None;
@@ -570,7 +616,7 @@ fn foo() -> Option<Bar> {
     Some(...)
 }
 
-// Not as good
+// BAD
 fn foo() -> Option<Bar> {
     if condition() {
         Some(...)
@@ -580,20 +626,26 @@ fn foo() -> Option<Bar> {
 }
 ```
 
+**Rational:** reduce congnitive stack usage.
+
 ## Comparisons
 
 Use `<`/`<=`, avoid `>`/`>=`.
-Less-then comparisons are more intuitive, they correspond spatially to [real line](https://en.wikipedia.org/wiki/Real_line)
 
 ```rust
-// Good
+// GOOD
 assert!(lo <= x && x <= hi);
 
-// Not as good
+// BAD
 assert!(x >= lo && x <= hi>);
 ```
+
+**Rational:** Less-then comparisons are more intuitive, they correspond spatially to [real line](https://en.wikipedia.org/wiki/Real_line).
+
 
 ## Documentation
 
 For `.md` and `.adoc` files, prefer a sentence-per-line format, don't wrap lines.
 If the line is too long, you want to split the sentence in two :-)
+
+**Rational:** much easier to edit the text and read the diff.
